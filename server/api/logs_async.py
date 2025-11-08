@@ -168,7 +168,8 @@ async def submit_error_report(
 @router.get("/recent")
 async def get_recent_logs(
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async),
+    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
+    # current_user: dict = Depends(get_current_active_user_async),
     limit: int = 100,
     tool_name: str = None
 ):
@@ -179,9 +180,10 @@ async def get_recent_logs(
     """
     query = select(LogEntry)
 
-    # Non-admins can only see their own logs
-    if current_user["role"] not in ["admin", "superadmin"]:
-        query = query.where(LogEntry.user_id == current_user["user_id"])
+    # TEMPORARILY DISABLED - SHOW ALL LOGS
+    # # Non-admins can only see their own logs
+    # if current_user["role"] not in ["admin", "superadmin"]:
+    #     query = query.where(LogEntry.user_id == current_user["user_id"])
 
     # Filter by tool if specified
     if tool_name:

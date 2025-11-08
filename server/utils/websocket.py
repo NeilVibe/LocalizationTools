@@ -19,6 +19,7 @@ sio = socketio.AsyncServer(
 )
 
 # Socket.IO ASGI app
+# We'll use the standard /socket.io path for compatibility
 socket_app = socketio.ASGIApp(
     sio,
     socketio_path='/socket.io'
