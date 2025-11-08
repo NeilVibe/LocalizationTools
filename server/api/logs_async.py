@@ -15,6 +15,7 @@ from server.api.schemas import (
 )
 from server.database.models import LogEntry, ErrorLog, User
 from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.websocket import emit_log_entry, emit_error_report
 
 
 # Create router
@@ -72,6 +73,17 @@ async def submit_logs(
                 db.add(log_entry)
                 logs_created += 1
 
+                # Emit WebSocket event for real-time updates
+                await emit_log_entry({
+                    'user_id': user_id,
+                    'username': log_data.username,
+                    'tool_name': log_data.tool_name,
+                    'function_name': log_data.function_name,
+                    'status': log_data.status,
+                    'duration_seconds': log_data.duration_seconds,
+                    'timestamp': datetime.utcnow().isoformat()
+                })
+
         logger.info(f"Received {logs_created} log entries from user {current_user['username']}")
 
         return LogResponse(
@@ -117,6 +129,18 @@ async def submit_error_report(
             db.add(error_log)
             await db.flush()  # Flush to get the ID
             error_id = error_log.error_id
+
+        # Emit WebSocket event for real-time error notifications
+        await emit_error_report({
+            'error_id': error_id,
+            'user_id': current_user["user_id"],
+            'username': current_user["username"],
+            'tool_name': error.tool_name,
+            'function_name': error.function_name,
+            'error_type': error.error_type,
+            'error_message': error.error_message,
+            'timestamp': datetime.utcnow().isoformat()
+        })
 
         logger.error(
             f"Error reported by {current_user['username']}: "
