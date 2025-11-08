@@ -17,8 +17,10 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from server import config
-from server.utils.dependencies import initialize_database
+from server.utils.dependencies import initialize_database, initialize_async_database
 from server.api import auth, logs, sessions
+from server.api import auth_async, logs_async, sessions_async
+from server.utils.websocket import socket_app
 
 
 def setup_logging():
@@ -72,10 +74,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API routers
+# Include API routers (sync - for backward compatibility)
 app.include_router(auth.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
+
+# Include async API routers (v2)
+app.include_router(auth_async.router, prefix="/api/v2")
+app.include_router(logs_async.router, prefix="/api/v2")
+app.include_router(sessions_async.router, prefix="/api/v2")
+
+# Mount Socket.IO for WebSocket support
+app.mount("/ws", socket_app)
 
 
 # ============================================
@@ -88,14 +98,18 @@ async def startup_event():
     """Run on server startup."""
     logger.info("Server starting up...")
 
-    # Initialize database connection
+    # Initialize database connections (both sync and async)
     try:
         initialize_database()
-        logger.success("Database initialized successfully")
+        logger.success("Sync database initialized successfully")
+
+        initialize_async_database()
+        logger.success("Async database initialized successfully")
     except Exception as e:
         logger.exception(f"Failed to initialize database: {e}")
         raise
 
+    logger.info("WebSocket server mounted at /ws")
     logger.success("Server startup complete")
 
 

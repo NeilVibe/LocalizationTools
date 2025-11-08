@@ -13,6 +13,7 @@ from loguru import logger
 from server.api.schemas import SessionCreate, SessionResponse
 from server.database.models import Session
 from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.websocket import emit_session_update
 
 
 # Create router
@@ -50,6 +51,16 @@ async def start_session(
             db.add(new_session)
             await db.flush()  # Flush to get the session_id
             await db.refresh(new_session)
+
+        # Emit WebSocket event for session start
+        await emit_session_update({
+            'session_id': new_session.session_id,
+            'user_id': current_user["user_id"],
+            'username': current_user["username"],
+            'machine_id': session_data.machine_id,
+            'app_version': session_data.app_version,
+            'session_start': new_session.session_start.isoformat()
+        }, 'start')
 
         logger.info(
             f"New session started: {new_session.session_id} for user {current_user['username']} "
@@ -137,6 +148,15 @@ async def end_session(
     async with db.begin():
         session.is_active = False
         session.last_activity = datetime.utcnow()
+
+    # Emit WebSocket event for session end
+    await emit_session_update({
+        'session_id': session_id,
+        'user_id': current_user["user_id"],
+        'username': current_user["username"],
+        'is_active': False,
+        'last_activity': session.last_activity.isoformat()
+    }, 'end')
 
     logger.info(f"Session ended: {session_id} for user {current_user['username']}")
 
