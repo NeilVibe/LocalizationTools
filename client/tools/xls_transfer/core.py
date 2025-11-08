@@ -254,6 +254,9 @@ def simple_number_replace(original: str, translated: str) -> str:
     """
     Preserve code blocks from original text when replacing with translation.
 
+    CRITICAL: This function preserves game codes like {ItemID:123} and <PAColor> tags.
+    Must match original XLSTransfer0225.py implementation EXACTLY.
+
     Args:
         original: Original text with code blocks
         translated: Translated text (without code blocks)
@@ -270,19 +273,32 @@ def simple_number_replace(original: str, translated: str) -> str:
     if not isinstance(original, str):
         return translated
 
-    # Handle text + code(s) case
+    # Handle text + code(s) case (codes in middle of text)
     first_code_start = original.find("{")
     if first_code_start > 0 or original.startswith("<PAColor"):
-        codes = extract_code_blocks(original)
+        codes = []
+        current_pos = first_code_start if first_code_start > 0 else 0
+
+        while current_pos < len(original):
+            if original[current_pos:].startswith("<PAColor"):
+                end_pos = original.find(">", current_pos)
+                if end_pos != -1:
+                    codes.append(original[current_pos:end_pos+1])
+                    current_pos = end_pos + 1
+                else:
+                    break
+            elif original[current_pos] == '{':
+                end_pos = original.find("}", current_pos)
+                if end_pos != -1:
+                    codes.append(original[current_pos:end_pos+1])
+                    current_pos = end_pos + 1
+                else:
+                    break
+            else:
+                break
 
         if codes:
-            result = ''.join(codes) + translated
-
-            # Handle closing color tag
-            if original.endswith("<PAOldColor>"):
-                result += "<PAOldColor>"
-
-            return result
+            return ''.join(codes) + translated
 
     # Extract only code blocks at the beginning (without punctuation)
     prefix = ""
@@ -294,7 +310,6 @@ def simple_number_replace(original: str, translated: str) -> str:
                 end_pos = original.find(">", pos) + 1
             else:
                 end_pos = original.find("}", pos) + 1
-
             if end_pos > pos:
                 prefix += original[pos:end_pos]
                 pos = end_pos
@@ -306,12 +321,13 @@ def simple_number_replace(original: str, translated: str) -> str:
 
     if prefix:
         result = prefix + translated
-
-        # Handle closing color tag
         if original.endswith("<PAOldColor>"):
             result += "<PAOldColor>"
-
         return result
+
+    # Handle PAOldColor ending
+    if original.endswith("<PAOldColor>"):
+        translated += "<PAOldColor>"
 
     return translated
 

@@ -1,9 +1,85 @@
 # LocaNext - Project Guide for Claude
 
 **App Name**: LocaNext (formerly LocalizationTools)
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-11-09 (XLSTransfer Audit & Model Fix)
 **Current Phase**: Backend Complete → Building LocaNext Desktop App
 **Status**: Production-ready backend, professional frontend in development
+
+## 🚨 CRITICAL WARNING: AI HALLUCINATION IN CODE MIGRATIONS
+
+**DATE**: 2025-11-09
+**SEVERITY**: CRITICAL
+**ISSUE**: Wrong embedding model used in XLSTransfer Svelte component
+
+### What Happened
+During Tkinter → Electron/Svelte migration, AI changed the Korean-specific BERT model to a generic multilingual model WITHOUT AUTHORIZATION.
+
+**Original (CORRECT):**
+```python
+model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
+```
+
+**AI Changed To (WRONG):**
+```javascript
+let dictModel = 'paraphrase-multilingual-MiniLM-L12-v2';  // ❌ WRONG!
+```
+
+**Impact**: Incorrect embeddings, poor translation quality, wrong model loaded
+
+**Status**: ✅ FULLY FIXED on 2025-11-09
+- Model name corrected in Svelte component (lines 44, 51, 398-400, 450-452)
+- Model name corrected in scripts (download_models.py, README.md)
+- Code bug fixed: `simple_number_replace()` now matches original exactly
+- Korean BERT model verified installed locally: `client/models/KR-SBERT-V40K-klueNLI-augSTS/` (447MB)
+- All core logic tested and verified 100% identical to original
+- 92 tests passing (6 XLSTransfer CLI + 86 client unit tests)
+
+### MANDATORY Reading for ALL Future Claude Sessions
+
+**Before making ANY code changes, read these documents:**
+1. `docs/CLAUDE_AI_WARNINGS.md` - AI hallucination prevention guide (5 types documented)
+2. `docs/XLSTransfer_Migration_Audit.md` - Complete 13-section audit of what was changed
+
+### Sacred Code Components (NEVER CHANGE WITHOUT EXPLICIT USER APPROVAL)
+
+**Model Location & Name:**
+```python
+# Local installation (ALREADY in project - do NOT download):
+MODEL_PATH = "client/models/KR-SBERT-V40K-klueNLI-augSTS/"  # 447MB, fully installed
+MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"  # Korean-specific BERT (768-dim)
+
+# NEVER use:
+# - paraphrase-multilingual-MiniLM-L12-v2 ❌ WRONG
+# - paraphrase-multilingual-mpnet-base-v2 ❌ WRONG
+# - Any other model ❌ WRONG
+```
+
+**Core Algorithms (VERIFIED IDENTICAL TO ORIGINAL - DO NOT CHANGE):**
+- `clean_text()` in `client/tools/xls_transfer/core.py:103` - Removes `_x000D_` (critical for Excel exports)
+- `simple_number_replace()` in `core.py:253` - Preserves game codes like `{ItemID}` (FIXED 2025-11-09 to match original)
+- `analyze_code_patterns()` in `core.py:336` - Detects game code patterns
+- `generate_embeddings()` in `embeddings.py:80` - 768-dim Korean BERT embeddings
+- `create_faiss_index()` in `embeddings.py:137` - FAISS IndexFlatIP with L2 normalization
+- Split/Whole mode logic - Based on newline count matching
+- FAISS threshold: 0.99 default (configurable 0.80-1.00)
+
+**If you even THINK about changing these, you MUST get explicit user approval first!**
+
+**How to Verify You Haven't Hallucinated:**
+```bash
+# 1. Check model name is correct
+grep -r "paraphrase-multilingual" locaNext/src/ client/
+# Should return NOTHING! If found = you hallucinated!
+
+# 2. Verify model exists locally
+ls -lh client/models/KR-SBERT-V40K-klueNLI-augSTS/
+# Should show 447MB of files
+
+# 3. Test core functions
+python3 -c "from client.tools.xls_transfer.core import simple_number_replace; \
+print(simple_number_replace('{Code}Hi', 'Bye'))"
+# Should output: {Code}Bye
+```
 
 ---
 

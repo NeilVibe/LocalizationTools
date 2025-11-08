@@ -46,7 +46,7 @@ python scripts/download_models.py
 ```
 
 **What it does**:
-- Downloads sentence-transformers multilingual model
+- Downloads Korean-specific BERT model
 - Saves directly to `client/models/KRTransformer/`
 - Verifies model loads correctly
 - Tests with sample Korean text
@@ -54,9 +54,9 @@ python scripts/download_models.py
 **Model Location**: `client/models/KRTransformer/` (visible in project, not hidden)
 
 **Model Details**:
-- Name: paraphrase-multilingual-MiniLM-L12-v2
+- Name: snunlp/KR-SBERT-V40K-klueNLI-augSTS
 - Size: ~400MB
-- Supports: Korean, English, and 50+ languages
+- Optimized for: Korean game localization and translation
 - Used for: Semantic similarity in translation matching
 
 ---

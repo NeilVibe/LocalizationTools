@@ -1,8 +1,11 @@
 """
-Download Required ML Models
+Verify Required ML Models
 
-Downloads the Korean BERT model directly to client/models/KRTransformer/
-Simple, clean, visible - no hidden cache directories.
+IMPORTANT: The Korean BERT model is ALREADY in the project at:
+  client/models/KR-SBERT-V40K-klueNLI-augSTS/
+
+This script just VERIFIES it exists and loads correctly.
+NO download needed - model is already cloned in project directory.
 """
 
 import sys
@@ -15,57 +18,59 @@ from sentence_transformers import SentenceTransformer
 import os
 
 
-def download_korean_bert_model():
-    """Download Korean BERT model to local project folder."""
+def verify_korean_bert_model():
+    """
+    Verify Korean BERT model exists in project and loads correctly.
 
-    # Target directory - visible in project
+    Model is ALREADY in project directory - no download needed.
+    """
+
+    # Model is already in project at this location
     models_dir = Path(__file__).parent.parent / "client" / "models"
-    target_dir = models_dir / "KRTransformer"
+    target_dir = models_dir / "KR-SBERT-V40K-klueNLI-augSTS"
 
     print("=" * 60)
-    print("LocalizationTools - Model Download Script")
+    print("LocalizationTools - Model Verification")
     print("=" * 60)
-    print(f"\nTarget directory: {target_dir}")
-    print(f"Models directory: {models_dir}")
+    print(f"\nExpected location: {target_dir}")
+    print("Note: Model is ALREADY in project - just verifying it works.")
+    print()
 
-    # Create models directory if it doesn't exist
-    models_dir.mkdir(parents=True, exist_ok=True)
+    # Check if model exists
+    if not target_dir.exists():
+        print("✗ ERROR: Model directory not found!")
+        print(f"  Expected: {target_dir}")
+        print("\n  The model should already be in the project.")
+        print("  Please check git repository - model may not have been cloned.")
+        return False
 
-    # Check if model already exists
-    if target_dir.exists() and any(target_dir.iterdir()):
-        print("\n✓ Korean BERT model already exists!")
+    if not any(target_dir.iterdir()):
+        print("✗ ERROR: Model directory is empty!")
         print(f"  Location: {target_dir}")
+        return False
 
-        # Verify it loads
-        try:
-            print("\nVerifying model...")
-            model = SentenceTransformer(str(target_dir))
-            print("✓ Model loads successfully!")
-            print(f"  Model type: {type(model)}")
-            print(f"  Max sequence length: {model.max_seq_length}")
-            return True
-        except Exception as e:
-            print(f"\n✗ Model exists but failed to load: {e}")
-            print("  Downloading fresh copy...")
+    print("✓ Model directory found!")
+    print(f"  Location: {target_dir}")
 
-    # Download model
-    print("\nDownloading Korean BERT model...")
-    print("Model: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-    print("(This is a multilingual model that works well with Korean)")
-    print("\nThis may take a few minutes...")
+    # Check key files
+    key_files = ['model.safetensors', 'config.json', 'tokenizer.json', 'vocab.txt']
+    missing = []
+    for file in key_files:
+        if not (target_dir / file).exists():
+            missing.append(file)
 
+    if missing:
+        print(f"\n✗ ERROR: Missing files: {', '.join(missing)}")
+        return False
+
+    print("✓ All required files present")
+
+    # Verify it loads
     try:
-        # Download model - it will be cached by sentence-transformers
-        model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-        model = SentenceTransformer(model_name)
-
-        # Save to our local directory
-        print(f"\nSaving model to: {target_dir}")
-        model.save(str(target_dir))
-
-        print("\n✓ Model downloaded and saved successfully!")
-        print(f"  Location: {target_dir}")
-        print(f"  Model type: {type(model)}")
+        print("\nLoading model...")
+        model = SentenceTransformer(str(target_dir))
+        print("✓ Model loaded successfully!")
+        print(f"  Model type: {type(model).__name__}")
         print(f"  Max sequence length: {model.max_seq_length}")
 
         # Test the model
@@ -77,11 +82,11 @@ def download_korean_bert_model():
         return True
 
     except Exception as e:
-        print(f"\n✗ Error downloading model: {e}")
+        print(f"\n✗ Model exists but failed to load: {e}")
         print("\nTroubleshooting:")
-        print("1. Check your internet connection")
-        print("2. Make sure you have enough disk space (~400MB)")
-        print("3. Try running: pip install --upgrade sentence-transformers")
+        print("1. Model files may be corrupted - check git repository")
+        print("2. Try: pip install --upgrade sentence-transformers")
+        print("3. Check if transformers library is installed")
         return False
 
 
