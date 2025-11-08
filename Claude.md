@@ -1,5 +1,33 @@
 # LocalizationTools - Project Overview
 
+## 🗺️ For Future Claude Assistants - Read This First!
+
+**This section helps you navigate and continue development on this project.**
+
+### Quick Start Checklist
+1. ✅ Read this entire Claude.md file first (15 min)
+2. ✅ Review Roadmap.md for current progress
+3. ✅ Check TESTING.md for test documentation
+4. ✅ Review project structure below
+5. ✅ Run tests to verify everything works: `pytest`
+
+### Key Documentation Files
+- **Claude.md** (this file) - Project overview, architecture, standards
+- **Roadmap.md** - Development roadmap, progress tracking
+- **README.md** - User-facing documentation
+- **TESTING.md** - Complete testing guide
+- **ADMIN_SETUP.md** - Admin user setup guide
+- **STATS_DASHBOARD_SPEC.md** - Dashboard specifications
+
+### Critical Rules (READ BEFORE CODING!)
+1. **CLEAN CODE ONLY** - No temp files, no bloat, archive unused code
+2. **TEST EVERYTHING** - Add tests for every new feature
+3. **UPDATE ROADMAP** - After completing tasks, update Roadmap.md
+4. **COMMIT OFTEN** - Clean, descriptive commit messages
+5. **NO GLOBALS** - Use dependency injection, modular code
+
+---
+
 ## Project Purpose
 
 LocalizationTools is a desktop application suite that consolidates multiple Python-based localization/translation tools into a single, user-friendly interface. The primary goals are:
@@ -449,3 +477,142 @@ This clean code approach ensures:
 - Quick debugging and maintenance
 - Professional codebase presentation
 - Scalable project structure
+
+---
+
+## 📂 Complete Project Structure Guide
+
+**For Future Claude Assistants: This is your map!**
+
+```
+LocalizationTools/
+│
+├── 📄 Documentation (READ THESE FIRST!)
+│   ├── Claude.md                    # ← YOU ARE HERE - Project overview
+│   ├── Roadmap.md                   # Development roadmap (45% complete)
+│   ├── README.md                    # User documentation
+│   ├── TESTING.md                   # Complete testing guide
+│   ├── ADMIN_SETUP.md               # Admin setup instructions
+│   └── STATS_DASHBOARD_SPEC.md      # Dashboard specifications
+│
+├── 🖥️ Client Application
+│   ├── client/
+│   │   ├── main.py                  # ← PRODUCTION APP (multi-tool suite)
+│   │   ├── config.py                # Client configuration
+│   │   ├── utils/                   # Client utilities (TESTED ✅)
+│   │   │   ├── logger.py            # Usage logging (18 tests)
+│   │   │   ├── progress.py          # Progress tracking (27 tests)
+│   │   │   └── file_handler.py      # File operations (41 tests)
+│   │   └── tools/                   # Tool implementations
+│   │       └── xls_transfer/        # XLSTransfer tool (49 functions)
+│   │           ├── core.py          # Text processing (15 functions)
+│   │           ├── embeddings.py    # ML embeddings (13 functions)
+│   │           ├── translation.py   # Translation logic (10 functions)
+│   │           ├── excel_utils.py   # Excel operations (11 functions)
+│   │           ├── ui.py            # Gradio UI (7 tabs, 730 lines)
+│   │           └── config.py        # Tool configuration
+│   │
+├── ⚙️ Server (FastAPI)
+│   ├── server/
+│   │   ├── main.py                  # FastAPI app (27 routes)
+│   │   ├── config.py                # Server configuration
+│   │   ├── api/                     # API endpoints
+│   │   │   ├── auth.py              # Authentication (JWT, bcrypt)
+│   │   │   ├── logs.py              # Log submission & stats
+│   │   │   ├── sessions.py          # Session management
+│   │   │   └── schemas.py           # Pydantic models
+│   │   ├── database/                # Database layer
+│   │   │   ├── models.py            # SQLAlchemy models (12 tables)
+│   │   │   ├── db_setup.py          # DB initialization
+│   │   │   └── __init__.py          # Clean exports
+│   │   ├── utils/                   # Server utilities
+│   │   │   ├── auth.py              # Password hashing, JWT
+│   │   │   └── dependencies.py      # FastAPI dependencies
+│   │   └── admin/                   # Admin dashboard
+│   │       └── dashboard.py         # Gradio admin UI (5 tabs)
+│   │
+├── 🧪 Testing (94 tests - ALL PASSING ✅)
+│   ├── tests/
+│   │   ├── conftest.py              # Shared fixtures
+│   │   ├── unit/                    # Unit tests (86 tests)
+│   │   │   └── client/
+│   │   │       ├── test_utils_logger.py       # 18 tests
+│   │   │       ├── test_utils_progress.py     # 27 tests
+│   │   │       └── test_utils_file_handler.py # 41 tests
+│   │   ├── integration/             # Integration tests (8 tests)
+│   │   │   ├── test_server_startup.py
+│   │   │   └── test_api_endpoints.py
+│   │   ├── e2e/                     # End-to-end (future)
+│   │   ├── fixtures/                # Test data
+│   │   └── helpers/                 # Test utilities
+│   │
+├── 🛠️ Scripts & Utilities
+│   ├── scripts/
+│   │   ├── create_admin.py          # Initialize admin user
+│   │   └── test_admin_login.py      # Test authentication
+│   ├── run_xlstransfer.py           # XLSTransfer standalone (dev tool)
+│   └── run_admin_dashboard.py       # Admin dashboard launcher
+│
+├── 📦 Resources & Archive
+│   ├── RessourcesForCodingTheProject/  # Original scripts, test data
+│   │   ├── MAIN PYTHON SCRIPTS/        # Source material
+│   │   ├── SECONDARY PYTHON SCRIPTS/   # Additional tools
+│   │   └── datausedfortesting/         # Test files
+│   └── ARCHIVE/                        # Deprecated code ONLY
+│       ├── old_code/                   # Previous versions
+│       ├── test_scripts/               # One-off tests
+│       └── experiments/                # Failed experiments
+│
+└── ⚙️ Configuration Files
+    ├── pytest.ini                   # Test configuration (80% coverage)
+    ├── requirements.txt             # Python dependencies
+    ├── database_schema.sql          # Database schema reference
+    └── .gitignore                   # Git ignore rules
+```
+
+### Where to Find Things
+
+**Adding a new tool?**
+- Create module in `client/tools/your_tool/`
+- Add UI in `client/tools/your_tool/ui.py`
+- Integrate in `client/main.py`
+- Add tests in `tests/unit/client/`
+
+**Modifying the server?**
+- API endpoints: `server/api/`
+- Database models: `server/database/models.py`
+- Configuration: `server/config.py`
+- Add integration tests in `tests/integration/`
+
+**Need test data?**
+- Check `RessourcesForCodingTheProject/datausedfortesting/`
+- Create fixtures in `tests/conftest.py`
+- Add test helpers in `tests/helpers/`
+
+**Something not working?**
+- Check `Roadmap.md` for current status
+- Review `TESTING.md` for test guide
+- Run `pytest -v` to verify tests
+- Check logs in `server/data/logs/` or `client/data/logs/`
+
+### File Naming Conventions
+
+**Python modules:** `snake_case.py`
+**Test files:** `test_module_name.py`
+**Config files:** `config.py`, `settings.py`
+**Documentation:** `UPPERCASE.md`
+**Scripts:** Descriptive names (`create_admin.py`, `run_xlstransfer.py`)
+
+### When to Archive
+
+Move to `ARCHIVE/` when:
+- ✅ Code is superseded by refactored version
+- ✅ Feature is deprecated
+- ✅ Test script is no longer needed
+- ✅ Experiment failed or completed
+
+**NEVER archive:**
+- ❌ Active code
+- ❌ Current tests
+- ❌ Dependencies
+- ❌ Documentation (unless outdated)
