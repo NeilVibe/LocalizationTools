@@ -21,6 +21,25 @@ Currently, the tools exist as individual Python scripts compiled into executable
 
 ## Solution Architecture
 
+**IMPORTANT: Multi-Tool Suite Architecture**
+
+This is a **comprehensive, scalable multi-tool platform**, not just a single-tool application. The architecture is designed from the ground up to support 10+ localization tools in a unified, centralized system.
+
+### Application Entry Points
+
+**PRODUCTION APPLICATION (Main):**
+- `client/main.py` - **THE CORE APPLICATION**
+- Unified Gradio interface with tabbed layout
+- Each tool gets its own tab
+- Centralized logging, analytics, and user management
+- Scalable architecture for adding new tools
+- **This is what users will run in production**
+
+**Development Tools (Optional):**
+- `run_xlstransfer.py` - Standalone launcher for testing XLSTransfer only
+- Useful for development and debugging
+- NOT the main application - just a convenience tool
+
 ### Client-Side Application (User's Computer)
 
 **Technology**: Gradio Desktop App
@@ -29,17 +48,19 @@ Currently, the tools exist as individual Python scripts compiled into executable
 **Contains**:
 - Gradio web interface (runs locally, opens in desktop window)
 - Python runtime and all dependencies
-- All localization scripts (10+ tools)
+- **All localization tools (10+ tools)** - scalable architecture
 - ML models (Korean BERT, FAISS indices)
 - Local processing engine
+- Centralized logging and analytics client
 
 **Key Features**:
-- Tabbed interface (one tab per tool)
-- File upload/download
+- **Tabbed interface** - one tab per tool, infinitely expandable
+- File upload/download for all tools
 - Real-time progress tracking
 - Beautiful, modern UI
 - All processing uses USER's CPU (not server)
 - Works offline once downloaded
+- **Centralized logging** - all tool usage tracked automatically
 
 ### Server-Side (Central Logging Server)
 

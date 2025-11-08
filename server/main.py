@@ -10,12 +10,15 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
 
 from server import config
+from server.utils.dependencies import initialize_database
+from server.api import auth, logs, sessions
 
 
 def setup_logging():
@@ -69,6 +72,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include API routers
+app.include_router(auth.router, prefix="/api")
+app.include_router(logs.router, prefix="/api")
+app.include_router(sessions.router, prefix="/api")
+
 
 # ============================================
 # Startup and Shutdown Events
@@ -80,9 +88,13 @@ async def startup_event():
     """Run on server startup."""
     logger.info("Server starting up...")
 
-    # TODO: Initialize database connection
-    # TODO: Load initial data
-    # TODO: Start background tasks (aggregation, cleanup, etc.)
+    # Initialize database connection
+    try:
+        initialize_database()
+        logger.success("Database initialized successfully")
+    except Exception as e:
+        logger.exception(f"Failed to initialize database: {e}")
+        raise
 
     logger.success("Server startup complete")
 
@@ -119,78 +131,92 @@ async def root():
 @app.get(config.HEALTH_CHECK_ENDPOINT)
 async def health_check():
     """Health check endpoint."""
-    # TODO: Check database connection
-    # TODO: Check disk space
-    # TODO: Check memory usage
+    from server.utils.dependencies import _engine
+
+    db_status = "unknown"
+    if _engine:
+        try:
+            with _engine.connect() as conn:
+                from sqlalchemy import text
+                conn.execute(text("SELECT 1"))
+            db_status = "connected"
+        except Exception as e:
+            logger.error(f"Health check database error: {e}")
+            db_status = "error"
 
     return {
-        "status": "healthy",
-        "database": "connected",  # TODO: actual check
-        "timestamp": "2025-01-08T12:00:00",  # TODO: actual timestamp
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "database": db_status,
+        "version": config.APP_VERSION,
+        "timestamp": datetime.utcnow().isoformat()
     }
 
 
 # ============================================
-# API Routes (Placeholder)
+# Additional API Routes
 # ============================================
 
 
 @app.get("/api/version/latest")
 async def get_latest_version():
     """Get latest app version info."""
-    # TODO: Query database for latest version
+    from server.utils.dependencies import get_db
+    from server.database.models import AppVersion
 
-    return {
-        "latest_version": "1.0.0",
-        "download_url": f"{config.UPDATE_DOWNLOAD_URL_BASE}/LocalizationTools-1.0.0.exe",
-        "changelog": "Initial release",
-        "is_mandatory": False,
-        "release_date": "2025-01-08",
-    }
+    db = next(get_db())
+    try:
+        latest = db.query(AppVersion).filter(
+            AppVersion.is_latest == True
+        ).first()
 
-
-@app.post("/api/logs")
-async def receive_log(request: Request):
-    """Receive log entry from client."""
-    data = await request.json()
-
-    logger.info(f"Received log from user {data.get('user_id', 'unknown')}")
-
-    # TODO: Validate and store in database
-
-    return {"status": "success", "message": "Log received"}
-
-
-@app.post("/api/sessions/start")
-async def start_session(request: Request):
-    """Start a new user session."""
-    data = await request.json()
-
-    logger.info(f"Session started: {data.get('machine_id', 'unknown')}")
-
-    # TODO: Create session in database
-
-    return {
-        "session_id": "temp-session-id",
-        "status": "active",
-    }
+        if latest:
+            return {
+                "latest_version": latest.version_number,
+                "download_url": latest.download_url,
+                "release_notes": latest.release_notes,
+                "is_mandatory": latest.is_required,
+                "release_date": latest.release_date.isoformat(),
+            }
+        else:
+            return {
+                "latest_version": config.APP_VERSION,
+                "download_url": f"{config.UPDATE_DOWNLOAD_URL_BASE}/LocalizationTools-{config.APP_VERSION}.exe",
+                "release_notes": "Current version",
+                "is_mandatory": False,
+                "release_date": datetime.utcnow().isoformat(),
+            }
+    finally:
+        db.close()
 
 
 @app.get("/api/announcements")
 async def get_announcements():
     """Get active announcements for users."""
-    # TODO: Query database for active announcements
+    from server.utils.dependencies import get_db
+    from server.database.models import Announcement
 
-    return {
-        "announcements": [
-            {
-                "id": 1,
-                "title": "Welcome!",
-                "message": "Welcome to LocalizationTools",
-                "type": "info",
-            }
-        ]
-    }
+    db = next(get_db())
+    try:
+        now = datetime.utcnow()
+        announcements = db.query(Announcement).filter(
+            Announcement.is_active == True,
+            (Announcement.expires_at == None) | (Announcement.expires_at > now)
+        ).all()
+
+        return {
+            "announcements": [
+                {
+                    "id": a.announcement_id,
+                    "title": a.title,
+                    "message": a.message,
+                    "priority": a.priority,
+                    "created_at": a.created_at.isoformat()
+                }
+                for a in announcements
+            ]
+        }
+    finally:
+        db.close()
 
 
 # ============================================
