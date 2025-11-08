@@ -37,9 +37,10 @@
 ```
 Desktop Application
 ├── Electron (v36.4.0+)
-├── React + TypeScript (or lighter alternative)
-├── Ant Design (v5+) - Professional UI components
-├── @ant-design/charts - Data visualization
+├── Svelte + SvelteKit + TypeScript - Lightweight, fast, easy to maintain
+├── Carbon Components Svelte - Professional IBM Design System
+│   OR Skeleton UI - Modern Tailwind-based components
+├── Chart.js or Apache ECharts - Data visualization
 ├── Socket.io-client - Real-time WebSocket communication
 └── electron-builder - Cross-platform builds (Windows/Mac/Linux)
 ```
@@ -54,13 +55,34 @@ FastAPI Server (Already built ✓)
 └── Logging system ✓
 ```
 
-**Frontend Framework Options**:
-1. **React** (current WebTranslator choice) - Battle-tested, rich ecosystem
-2. **Vue.js** - Lighter than React, easier learning curve
-3. **Svelte** - Lightest, compiles to vanilla JS, very fast
-4. **Preact** - React-compatible API but 3KB (vs React's 45KB)
+**Frontend Framework Decision**:
 
-**Recommendation**: Stick with **React + Ant Design** like WebTranslator (proven success)
+**CHOSEN: Svelte + SvelteKit + Carbon Components**
+
+**Why Svelte over React?**
+1. ✅ **Lighter**: 3KB vs React's 145KB (React + React-DOM)
+2. ✅ **Simpler**: No hooks complexity (useState, useEffect, etc.)
+3. ✅ **Faster**: Compiles to vanilla JS, no virtual DOM overhead
+4. ✅ **Cleaner Code**: Less boilerplate, more readable
+5. ✅ **Built-in Animations**: No need for heavy libraries
+6. ✅ **Better Performance**: Smaller bundle, faster load times
+7. ✅ **Professional**: Used in Obsidian (popular Electron app)
+8. ✅ **Easier to Maintain**: Simpler syntax, less code to manage
+
+**Comparison**:
+```
+React:  const [count, setCount] = useState(0);
+        useEffect(() => {...}, [count]);
+
+Svelte: let count = 0;
+        $: console.log(count);  // Auto-reactive!
+```
+
+**UI Component Library**: Carbon Components Svelte (IBM Design System)
+- Professional, enterprise-ready
+- Similar aesthetics to Ant Design
+- Dark mode built-in
+- Comprehensive components (tables, modals, forms, charts)
 
 ---
 
@@ -319,23 +341,27 @@ python3 run_xlstransfer.py
     "devDependencies": {
       "electron": "^36.4.0",
       "electron-builder": "^26.0.12",
+      "@sveltejs/kit": "^2.0.0",
+      "@sveltejs/adapter-static": "^3.0.0",
+      "svelte": "^4.2.0",
+      "svelte-check": "^4.0.0",
       "typescript": "^5.8.3",
-      "webpack": "^5.99.9",
-      "@types/react": "^18.3.3",
+      "vite": "^5.0.0",
+      "svelte-preprocess": "^6.0.0",
       "@types/node": "^24.0.1"
     },
     "dependencies": {
-      "react": "^18.3.1",
-      "react-dom": "^18.3.1",
-      "antd": "^5.26.4",
-      "@ant-design/charts": "^2.6.0",
-      "@ant-design/icons": "^6.0.0",
+      "carbon-components-svelte": "^0.85.0",
+      "carbon-icons-svelte": "^12.0.0",
+      "chart.js": "^4.4.0",
       "socket.io-client": "^4.8.1",
       "axios": "^1.10.0",
       "dayjs": "^1.11.13"
     }
   }
   ```
+
+  **Note**: Using Vite instead of Webpack (faster, better for Svelte)
 
 - [ ] **Build Scripts**:
   - `npm run dev` - Development with hot reload
@@ -388,40 +414,69 @@ python3 run_xlstransfer.py
 ### 3. Professional Visual Design
 **Time**: 1 day
 
-Using **Ant Design** components:
-- [ ] **Color Scheme**: Professional blues/grays (similar to VS Code)
-- [ ] **Typography**: Clean, readable fonts (Inter, Roboto)
-- [ ] **Cards**: Rounded corners, subtle shadows for sections
-- [ ] **Icons**: @ant-design/icons for all actions
-- [ ] **Spacing**: Consistent 8px grid system
-- [ ] **Animations**: Smooth transitions (Ant Design built-in)
+Using **Carbon Components Svelte**:
+- [ ] **Color Scheme**: Professional blues/grays (IBM Carbon theme)
+- [ ] **Typography**: IBM Plex Sans (clean, corporate-friendly)
+- [ ] **Cards**: Tile components with subtle shadows
+- [ ] **Icons**: carbon-icons-svelte (comprehensive icon set)
+- [ ] **Spacing**: Consistent 8px grid system (Carbon Design)
+- [ ] **Animations**: Built-in Svelte transitions (fade, slide, fly)
 
 **Dashboard Summary Cards** (Top of main area):
-```tsx
-<Row gutter={16}>
-  <Col span={6}>
-    <Card>
-      <Statistic
-        title="Total Operations Today"
-        value={127}
-        prefix={<RocketOutlined />}
-        valueStyle={{ color: '#3f8600' }}
-      />
-    </Card>
-  </Col>
-  <Col span={6}>
-    <Card>
-      <Statistic
-        title="Success Rate"
-        value={98.5}
-        precision={1}
-        suffix="%"
-        valueStyle={{ color: '#3f8600' }}
-      />
-    </Card>
-  </Col>
-  {/* ... more cards */}
-</Row>
+```svelte
+<script lang="ts">
+  import { Tile, Grid, Row, Column } from 'carbon-components-svelte';
+  import { Rocket, CheckmarkFilled } from 'carbon-icons-svelte';
+
+  let totalOps = 127;
+  let successRate = 98.5;
+  let activeUsers = 12;
+  let avgDuration = 8.3;
+</script>
+
+<Grid>
+  <Row>
+    <Column lg={4} md={4} sm={4}>
+      <Tile>
+        <div class="stat-card">
+          <Rocket size={32} class="stat-icon" />
+          <h4>Total Operations Today</h4>
+          <p class="stat-value">{totalOps}</p>
+        </div>
+      </Tile>
+    </Column>
+
+    <Column lg={4} md={4} sm={4}>
+      <Tile>
+        <div class="stat-card">
+          <CheckmarkFilled size={32} class="stat-icon success" />
+          <h4>Success Rate</h4>
+          <p class="stat-value success">{successRate.toFixed(1)}%</p>
+        </div>
+      </Tile>
+    </Column>
+
+    <!-- More cards... -->
+  </Row>
+</Grid>
+
+<style>
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #161616;
+  }
+
+  .stat-value.success {
+    color: #24a148;
+  }
+</style>
 ```
 
 ---
@@ -430,49 +485,104 @@ Using **Ant Design** components:
 **Time**: 2 days
 
 **Main Page**: Simple function list with quick actions
-```tsx
-<Card title="XLSTransfer Functions">
-  <List
-    dataSource={functions}
-    renderItem={func => (
-      <List.Item
-        actions={[
-          <Button type="primary" onClick={() => openModal(func)}>
-            {func.name}
+```svelte
+<script lang="ts">
+  import { Tile, Button, StructuredList } from 'carbon-components-svelte';
+  import { DocumentAdd, TranslateAI, Checkmark } from 'carbon-icons-svelte';
+
+  const functions = [
+    {
+      name: 'Create Dictionary',
+      description: 'Build translation dictionaries from Excel files',
+      icon: DocumentAdd,
+      action: 'create_dictionary'
+    },
+    {
+      name: 'Transfer to Excel',
+      description: 'AI-powered translation transfer',
+      icon: TranslateAI,
+      action: 'transfer_to_excel'
+    },
+    // ... more functions
+  ];
+
+  let selectedFunction = null;
+
+  function openModal(func) {
+    selectedFunction = func;
+  }
+</script>
+
+<Tile>
+  <h3>XLSTransfer Functions</h3>
+  <StructuredList>
+    {#each functions as func}
+      <StructuredList.Row>
+        <StructuredList.Cell>
+          <div class="function-item">
+            <svelte:component this={func.icon} size={24} />
+            <div>
+              <h4>{func.name}</h4>
+              <p>{func.description}</p>
+            </div>
+          </div>
+        </StructuredList.Cell>
+        <StructuredList.Cell>
+          <Button kind="primary" on:click={() => openModal(func)}>
+            Execute
           </Button>
-        ]}
-      >
-        <List.Item.Meta
-          avatar={<Icon component={func.icon} />}
-          title={func.name}
-          description={func.description}
-        />
-      </List.Item>
-    )}
-  />
-</Card>
+        </StructuredList.Cell>
+      </StructuredList.Row>
+    {/each}
+  </StructuredList>
+</Tile>
 ```
 
 **Function Execution**: Opens modal with form
-```tsx
+```svelte
+<script lang="ts">
+  import { Modal, FileUploader, RadioButtonGroup, RadioButton, ProgressBar, Button } from 'carbon-components-svelte';
+
+  let isCreateDictOpen = false;
+  let isProcessing = false;
+  let progress = 0;
+  let mode = 'whole';
+  let files = [];
+
+  async function handleCreateDict() {
+    isProcessing = true;
+    // Processing logic with progress updates
+    for (let i = 0; i <= 100; i += 10) {
+      progress = i;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    isProcessing = false;
+  }
+</script>
+
 <Modal
-  title="Create Dictionary"
-  open={isCreateDictOpen}
-  width={800}
-  footer={null}
+  bind:open={isCreateDictOpen}
+  modalHeading="Create Dictionary"
+  primaryButtonText="Process"
+  secondaryButtonText="Cancel"
+  on:click:button--primary={handleCreateDict}
+  size="lg"
 >
-  <Form onFinish={handleCreateDict}>
-    <Upload.Dragger>Upload Excel files</Upload.Dragger>
-    <Form.Item label="Mode">
-      <Radio.Group>
-        <Radio value="split">Split Mode</Radio>
-        <Radio value="whole">Whole Mode</Radio>
-      </Radio.Group>
-    </Form.Item>
-    {/* Progress shown inline */}
-    {isProcessing && <Progress percent={progress} />}
-    <Button type="primary" htmlType="submit">Process</Button>
-  </Form>
+  <FileUploader
+    labelTitle="Upload Excel files"
+    labelDescription="Select one or more Excel files"
+    bind:files
+    multiple
+  />
+
+  <RadioButtonGroup legendText="Processing Mode" bind:selected={mode}>
+    <RadioButton value="split" labelText="Split Mode" />
+    <RadioButton value="whole" labelText="Whole Mode" />
+  </RadioButtonGroup>
+
+  {#if isProcessing}
+    <ProgressBar value={progress} helperText="Processing files..." />
+  {/if}
 </Modal>
 ```
 
@@ -494,26 +604,53 @@ Using **Ant Design** components:
   - `user_disconnected` - User leaves
   - `error_occurred` - Errors in real-time
 
-**Frontend: Socket.io Client**
-```tsx
-import io from 'socket.io-client';
+**Frontend: Socket.io Client (Svelte)**
+```svelte
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { ToastNotification } from 'carbon-components-svelte';
+  import io from 'socket.io-client';
 
-const socket = io('http://localhost:8888');
+  let socket;
+  let progress = 0;
+  let currentStage = '';
+  let showNotification = false;
+  let notificationData = {};
 
-socket.on('operation_progress', (data) => {
-  // Update progress bar in real-time
-  setProgress(data.percent);
-  setCurrentStage(data.stage);
-});
+  onMount(() => {
+    socket = io('http://localhost:8888');
 
-socket.on('operation_completed', (data) => {
-  // Show completion notification
-  notification.success({
-    message: 'Operation Complete!',
-    description: `Processed ${data.rows} rows in ${data.duration}s`
+    socket.on('operation_progress', (data) => {
+      // Update progress bar in real-time (reactive!)
+      progress = data.percent;
+      currentStage = data.stage;
+    });
+
+    socket.on('operation_completed', (data) => {
+      // Show completion notification
+      showNotification = true;
+      notificationData = {
+        title: 'Operation Complete!',
+        subtitle: `Processed ${data.rows} rows in ${data.duration}s`,
+        kind: 'success'
+      };
+    });
+
+    return () => socket.disconnect();
   });
-});
+</script>
+
+{#if showNotification}
+  <ToastNotification
+    title={notificationData.title}
+    subtitle={notificationData.subtitle}
+    kind={notificationData.kind}
+    on:close={() => showNotification = false}
+  />
+{/if}
 ```
+
+**Note**: Svelte's reactivity means no `setState` needed - just assign values!
 
 ---
 
@@ -638,49 +775,105 @@ socket.on('operation_completed', (data) => {
 ### 9. Analytics Dashboard with Charts
 **Time**: 2 days
 
-**Using @ant-design/charts**:
-```tsx
-import { Line, Pie, Column, Gauge } from '@ant-design/charts';
+**Using Chart.js with Svelte**:
+```svelte
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { Line, Pie, Bar, Doughnut } from 'svelte-chartjs';
+  import {
+    Chart as ChartJS,
+    Title,
+    Tooltip,
+    Legend,
+    LineElement,
+    ArcElement,
+    BarElement,
+    CategoryScale,
+    LinearScale,
+    PointElement
+  } from 'chart.js';
 
-// Usage Trends (Last 7/30 days)
-<Line
-  data={usageData}
-  xField="date"
-  yField="operations"
-  seriesField="tool"
-  smooth={true}
-/>
+  ChartJS.register(
+    Title, Tooltip, Legend,
+    LineElement, ArcElement, BarElement,
+    CategoryScale, LinearScale, PointElement
+  );
 
-// Tool Distribution
-<Pie
-  data={toolDistribution}
-  angleField="count"
-  colorField="tool"
-  radius={0.8}
-  label={{
-    type: 'outer',
-    content: '{name} {percentage}'
-  }}
-/>
+  // Usage Trends (Last 7/30 days)
+  const usageTrendData = {
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [{
+      label: 'XLSTransfer',
+      data: [12, 19, 15, 25, 22, 18, 20],
+      borderColor: 'rgb(75, 192, 192)',
+      tension: 0.4
+    }]
+  };
 
-// Success Rate Gauge
-<Gauge
-  percent={successRate / 100}
-  range={{ color: '#30BF78' }}
-  indicator={{
-    pointer: { style: { stroke: '#D0D0D0' } },
-    pin: { style: { stroke: '#D0D0D0' } },
-  }}
-/>
+  // Tool Distribution (Pie Chart)
+  const toolDistData = {
+    labels: ['XLSTransfer', 'Tool2', 'Tool3'],
+    datasets: [{
+      data: [65, 25, 10],
+      backgroundColor: [
+        'rgb(54, 162, 235)',
+        'rgb(255, 99, 132)',
+        'rgb(255, 205, 86)'
+      ]
+    }]
+  };
 
-// Hourly Usage Heat Map
-<Column
-  data={hourlyData}
-  xField="hour"
-  yField="operations"
-  seriesField="day"
-  isGroup={true}
-/>
+  // Hourly Usage (Bar Chart)
+  const hourlyData = {
+    labels: ['0h', '4h', '8h', '12h', '16h', '20h'],
+    datasets: [{
+      label: 'Operations',
+      data: [5, 10, 45, 80, 60, 20],
+      backgroundColor: 'rgba(54, 162, 235, 0.6)'
+    }]
+  };
+</script>
+
+<div class="charts-grid">
+  <div class="chart-container">
+    <h4>Usage Trends</h4>
+    <Line data={usageTrendData} options={{responsive: true}} />
+  </div>
+
+  <div class="chart-container">
+    <h4>Tool Distribution</h4>
+    <Doughnut data={toolDistData} options={{responsive: true}} />
+  </div>
+
+  <div class="chart-container">
+    <h4>Hourly Usage</h4>
+    <Bar data={hourlyData} options={{responsive: true}} />
+  </div>
+</div>
+
+<style>
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    padding: 1rem;
+  }
+
+  .chart-container {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+</style>
+```
+
+**Alternative**: Use **Carbon Charts** (IBM's chart library for Svelte)
+```svelte
+<script>
+  import { LineChart, PieChart, BarChart } from '@carbon/charts-svelte';
+  // Native Carbon integration - matches UI perfectly!
+</script>
 ```
 
 ---

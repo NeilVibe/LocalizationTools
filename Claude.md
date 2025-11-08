@@ -1,5 +1,30 @@
 # LocalizationTools - Project Overview
 
+## ⚠️ **MAJOR ARCHITECTURAL CHANGE** - Jan 8, 2025 ⚠️
+
+**Frontend pivot from Gradio to Electron + Svelte!**
+
+**What changed:**
+- ❌ Gradio UI (not professional enough for management)
+- ✅ Electron desktop app with Svelte + Carbon Components
+- ✅ Lighter (3KB vs 145KB React)
+- ✅ Cleaner code (no hooks complexity)
+- ✅ Real-time WebSocket updates (1-second polling)
+- ✅ Sidebar navigation (NOT tabs!)
+- ✅ Modals for functions (compact, professional)
+- ✅ CEO-ready presentation quality
+
+**What stayed the same:**
+- ✅ FastAPI backend (all 27 routes intact)
+- ✅ Database schema (12 tables)
+- ✅ Authentication system
+- ✅ All Python utilities
+- ✅ XLSTransfer refactored modules
+
+**See Roadmap.md Phase 1.11 for complete implementation plan.**
+
+---
+
 ## 🗺️ For Future Claude Assistants - Read This First!
 
 **This section helps you navigate and continue development on this project.**
@@ -73,25 +98,32 @@ This is a **comprehensive, scalable multi-tool platform**, not just a single-too
 
 ### Client-Side Application (User's Computer)
 
-**Technology**: Gradio Desktop App
-**Size**: ~500MB-1GB (one-time download)
+**Technology**: Electron Desktop App (Svelte + SvelteKit + Carbon Components)
+**Size**: ~300-500MB (one-time download, smaller than Gradio!)
 
 **Contains**:
-- Gradio web interface (runs locally, opens in desktop window)
-- Python runtime and all dependencies
+- Electron desktop application (native-looking, professional)
+- Svelte frontend (3KB framework - lightweight and fast)
+- Carbon Components UI library (IBM Design System - enterprise-ready)
+- Python backend integration (via IPC/API calls)
 - **All localization tools (10+ tools)** - scalable architecture
 - ML models (Korean BERT, FAISS indices)
 - Local processing engine
 - Centralized logging and analytics client
+- Real-time WebSocket connection for live updates
 
 **Key Features**:
-- **Tabbed interface** - one tab per tool, infinitely expandable
+- **Compact sidebar navigation** - NOT tabs! Hierarchical menu structure
+- **Modal-based workflows** - Functions open in modals/sub-windows
+- **Real-time updates** - WebSocket polling every 1 second
+- **Professional UI** - IBM Carbon Design System (management-ready)
 - File upload/download for all tools
-- Real-time progress tracking
-- Beautiful, modern UI
+- Live progress tracking with stage breakdowns
+- Beautiful charts and analytics (Chart.js)
 - All processing uses USER's CPU (not server)
 - Works offline once downloaded
 - **Centralized logging** - all tool usage tracked automatically
+- **Live process monitoring** - Click users to see their active operations
 
 ### Server-Side (Central Logging Server)
 
@@ -113,61 +145,81 @@ This is a **comprehensive, scalable multi-tool platform**, not just a single-too
 
 ### Admin Dashboard
 
-**Technology**: Gradio or React
-**Access**: Web-based (your.company.com:8885)
+**Technology**: Electron Desktop App (Same as client, admin view)
+**Access**: Desktop application or web-based (your.company.com:8885)
 
 **Features**:
-- Real-time usage statistics
-- User activity tracking
-- Function usage heatmaps
-- Performance metrics (processing times)
-- Tool popularity rankings
-- Export reports for management
+- **Real-time usage statistics** (WebSocket updates every 1 second)
+- **Live user activity tracking** - Click users to see their processes
+- **Function usage analytics** with interactive charts (Chart.js)
+- **Performance metrics** - CPU, memory, stage durations
+- **Tool popularity rankings** - Pie/bar charts
+- **Comprehensive logging console** - Expandable rows with full details
+- **Error tracking** - Full stack traces, error trends
+- **Comparison views** - This week vs last week, etc.
+- Export reports for management (PDF/Excel - future)
 
 ## Data Flow
 
 ```
 USER MACHINE                           CENTRAL SERVER
 ┌─────────────────┐                   ┌──────────────────┐
-│  Gradio App     │                   │  FastAPI Server  │
-│  (Desktop)      │                   │  (port 8888)     │
+│ Electron App    │ ←─WebSocket────── │  FastAPI Server  │
+│ (Svelte UI)     │   (live updates)  │  (port 8888)     │
 │                 │                   │                  │
-│  User uploads   │                   │                  │
-│  Excel file     │                   │                  │
+│  User uploads   │                   │  + WebSocket     │
+│  Excel file     │                   │    endpoint      │
 │       ↓         │                   │                  │
 │  Processing     │    Usage Log      │  Store in DB     │
-│  (User's CPU)   │─────────────────→ │                  │
+│  (User's CPU)   │─────────────────→ │  (SQLite/PG)     │
 │       ↓         │    {user_id,      │       ↓          │
 │  Download       │     tool,         │  Admin Dashboard │
-│  result         │     function,     │  (port 8885)     │
-│                 │     duration,     │                  │
-│                 │     timestamp}    │  Shows stats     │
+│  result         │     function,     │  (Electron or    │
+│                 │     duration,     │   Web: 8885)     │
+│  ← Live stats   │     metadata,     │                  │
+│    via WebSocket│     perf_data}    │  Shows stats     │
 └─────────────────┘                   └──────────────────┘
+
+NEW: Bidirectional WebSocket communication for real-time updates!
+- Server pushes: operation_progress, operation_completed, errors
+- Client receives: Live updates every 1 second
+- Admin dashboard: Click users to see their active processes
 ```
 
 ## Key Technologies
 
-### Client Application
-- **Gradio**: Web UI framework (Python-based)
-- **PyInstaller**: Package Python app as standalone executable
+### Client Application (Frontend)
+- **Electron**: Desktop app framework (cross-platform: Windows/Mac/Linux)
+- **Svelte**: Lightweight frontend framework (3KB bundle size)
+- **SvelteKit**: Application framework for Svelte
+- **Carbon Components Svelte**: IBM Design System (professional UI library)
+- **carbon-icons-svelte**: Icon library (1000+ icons)
+- **Chart.js**: Data visualization (charts, graphs)
+- **Socket.io-client**: Real-time WebSocket communication
+- **Vite**: Fast build tool (replaces Webpack)
+- **TypeScript**: Type safety and better DX
+- **electron-builder**: Package for Windows/Mac/Linux
+
+### Client Application (Backend - Python Integration)
 - **sentence-transformers**: Korean BERT model for semantic matching
 - **FAISS**: Vector similarity search
 - **pandas/openpyxl**: Excel processing
-- **requests**: Send logs to server
+- **axios/requests**: API communication with server
 
 ### Server
 - **FastAPI**: Modern Python web framework
-- **PostgreSQL**: Primary database (production) - robust, scalable, supports concurrent connections
-- **SQLite**: Development/testing database
+- **python-socketio**: WebSocket support for FastAPI
+- **PostgreSQL**: Primary database (production) - robust, scalable
+- **SQLite**: Development/testing database (currently active)
 - **uvicorn**: ASGI server
 - **SQLAlchemy**: ORM for database
 - **bcrypt**: Password hashing for security
-- **psycopg2**: PostgreSQL adapter
+- **JWT**: Token-based authentication
 
 ### Admin Dashboard
-- **Gradio**: Quick dashboard UI
-- **Plotly/matplotlib**: Charts and graphs
-- **pandas**: Data analysis
+- **Same as Client**: Electron + Svelte (admin view/mode)
+- **Carbon Charts**: IBM's chart library for data viz
+- **Real-time updates**: WebSocket polling every 1 second
 
 ## Initial Tools to Implement
 
