@@ -372,9 +372,17 @@ RessourcesForCodingTheProject/
 - Reference issue/task if applicable
 
 **Testing**:
+- **Comprehensive testing framework with pytest**
+- **86 unit tests (100% passing)** covering all utility modules
+- Test structure: `tests/unit/`, `tests/integration/`, `tests/e2e/`
+- Coverage requirement: 80% minimum (enforced by pytest.ini)
 - Test files mirror source structure
 - All critical functions have tests
-- Integration tests for API endpoints
+- Shared fixtures in `tests/conftest.py`
+- Detailed testing guide in `tests/README.md`
+- Test markers for organization (unit, integration, e2e, client, server, etc.)
+- Integration tests for API endpoints (to be added)
+- See `tests/README.md` for comprehensive testing documentation
 
 This clean code approach ensures:
 - Easy onboarding for new developers
