@@ -86,6 +86,66 @@ Svelte: let count = 0;
 
 ---
 
+## 🏗️ **Application Architecture Clarification**
+
+**Two Separate Applications**:
+
+### 1. **Client Application** (Electron Desktop App)
+**For**: End users who run localization tools
+
+**Technology**:
+- Electron + Svelte + Carbon Components
+- Desktop app (Windows/Mac/Linux)
+- Installed on user's computer
+
+**Features**:
+- ✅ Compact, hierarchical UI (sidebar → sub-menus → modals)
+- ✅ Task Manager (real-time progress tracking)
+- ✅ Tool execution (XLSTransfer, etc.)
+- ✅ Local processing (user's CPU does the work)
+- ✅ Sends logs to server
+- ✅ Beautiful, professional interface
+
+**NO TABS PER FUNCTION!** Instead:
+```
+Sidebar (Compact Navigation)
+├── 🏠 Dashboard
+├── 🔧 Tools
+│   ├── XLSTransfer
+│   │   ├── Create Dictionary (opens modal)
+│   │   ├── Transfer to Excel (opens modal)
+│   │   └── Check Newlines (opens modal)
+│   ├── Tool2 (future)
+│   └── Tool3 (future)
+├── 📊 Task Manager (live operations)
+└── ⚙️ Settings
+```
+
+### 2. **Admin Dashboard** (Web-Based)
+**For**: Managers, CEOs, admins who need stats/monitoring
+
+**Technology**:
+- FastAPI backend + Svelte frontend (web page)
+- **OR** keep existing Gradio (simpler, good enough for admin)
+- Access via browser (http://server:8885)
+
+**Features**:
+- ✅ Comprehensive statistics
+- ✅ User management
+- ✅ Live user monitoring (click user → see processes)
+- ✅ Error tracking
+- ✅ Two view modes:
+  - **Detailed View**: For developers/IT (all technical data)
+  - **Summary View**: For CEOs/managers (high-level KPIs, beautiful charts)
+
+**Why separate?**
+- 📦 Client app is lightweight (users don't need admin features)
+- 🌐 Admin is web-based (easy access, no installation)
+- 🔒 Security (admin features not exposed to regular users)
+- 💪 Each optimized for its purpose
+
+---
+
 ## 🎯 Current Status
 
 ### ✅ Completed
@@ -955,6 +1015,292 @@ Using **Carbon Components Svelte**:
 
 ---
 
+### 5. Task Manager (Real-Time Operations Dashboard)
+**Time**: 2 days
+
+**Inspired by WebTranslator but WAY BETTER, more beautiful, compact!**
+
+**Key Features**:
+- ✅ Live progress tracking for ALL operations
+- ✅ Real-time updates via WebSocket
+- ✅ Compact, beautiful design
+- ✅ Shows: progress %, current stage, files, memory, duration
+- ✅ Can pause/cancel operations
+- ✅ Newbie-friendly AND CEO-friendly
+- ✅ History of completed operations
+
+**UI Design** (Compact Card-Based Layout):
+```svelte
+<script lang="ts">
+  import { Tile, ProgressBar, Button, StructuredList, InlineLoading, Tag } from 'carbon-components-svelte';
+  import { Pause, Stop, Checkmark, WarningAlt, Time } from 'carbon-icons-svelte';
+  import { onMount } from 'svelte';
+  import io from 'socket.io-client';
+
+  let activeOperations = [];
+  let completedOperations = [];
+  let socket;
+
+  onMount(() => {
+    socket = io('http://localhost:8888');
+
+    socket.on('operation_started', (data) => {
+      activeOperations = [...activeOperations, {
+        id: data.id,
+        user: data.username,
+        tool: data.tool_name,
+        function: data.function_name,
+        progress: 0,
+        stage: 'Initializing...',
+        startTime: new Date(),
+        files: data.files || [],
+        status: 'running'
+      }];
+    });
+
+    socket.on('operation_progress', (data) => {
+      activeOperations = activeOperations.map(op =>
+        op.id === data.id ? {
+          ...op,
+          progress: data.percent,
+          stage: data.stage,
+          memory: data.memory_mb,
+          rowsProcessed: data.rows_processed
+        } : op
+      );
+    });
+
+    socket.on('operation_completed', (data) => {
+      // Move to completed
+      const completed = activeOperations.find(op => op.id === data.id);
+      if (completed) {
+        completed.status = data.status;
+        completed.duration = data.duration_seconds;
+        completed.endTime = new Date();
+        completedOperations = [completed, ...completedOperations].slice(0, 20); // Keep last 20
+        activeOperations = activeOperations.filter(op => op.id !== data.id);
+      }
+    });
+
+    return () => socket.disconnect();
+  });
+
+  function formatDuration(start) {
+    const elapsed = (new Date() - start) / 1000;
+    return `${elapsed.toFixed(1)}s`;
+  }
+</script>
+
+<div class="task-manager">
+  <!-- Active Operations Section -->
+  <Tile class="active-section">
+    <h4>
+      <InlineLoading status="active" description="" />
+      Active Operations ({activeOperations.length})
+    </h4>
+
+    {#if activeOperations.length === 0}
+      <p class="empty-state">No operations running</p>
+    {:else}
+      <StructuredList condensed>
+        {#each activeOperations as op}
+          <div class="operation-card">
+            <!-- Header: User, Tool, Function -->
+            <div class="op-header">
+              <div class="op-info">
+                <strong>{op.function}</strong>
+                <Tag type="blue" size="sm">{op.tool}</Tag>
+                <span class="op-user">{op.user}</span>
+              </div>
+              <div class="op-actions">
+                <Button kind="ghost" size="small" iconDescription="Pause">
+                  <Pause size={16} />
+                </Button>
+                <Button kind="danger-ghost" size="small" iconDescription="Cancel">
+                  <Stop size={16} />
+                </Button>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <ProgressBar
+              value={op.progress}
+              helperText={op.stage}
+              size="default"
+            />
+
+            <!-- Details (Compact Grid) -->
+            <div class="op-details">
+              <div class="detail-item">
+                <Time size={16} />
+                <span>{formatDuration(op.startTime)}</span>
+              </div>
+              {#if op.memory}
+                <div class="detail-item">
+                  <span>💾 {op.memory} MB</span>
+                </div>
+              {/if}
+              {#if op.rowsProcessed}
+                <div class="detail-item">
+                  <span>📄 {op.rowsProcessed} rows</span>
+                </div>
+              {/if}
+              {#if op.files.length > 0}
+                <div class="detail-item">
+                  <span>📁 {op.files.length} files</span>
+                </div>
+              {/if}
+            </div>
+
+            <!-- Current Stage (Highlighted) -->
+            <div class="current-stage">
+              <InlineLoading status="active" description={op.stage} />
+            </div>
+          </div>
+        {/each}
+      </StructuredList>
+    {/if}
+  </Tile>
+
+  <!-- Completed Operations Section (Collapsible) -->
+  <Tile class="completed-section">
+    <h4>
+      <Checkmark size={20} class="success-icon" />
+      Recent Completions ({completedOperations.length})
+    </h4>
+
+    {#if completedOperations.length > 0}
+      <StructuredList condensed>
+        {#each completedOperations.slice(0, 5) as op}
+          <div class="completed-card">
+            <div class="completed-header">
+              <div>
+                <strong>{op.function}</strong>
+                <Tag type={op.status === 'success' ? 'green' : 'red'} size="sm">
+                  {op.status === 'success' ? '✓ Success' : '✗ Failed'}
+                </Tag>
+              </div>
+              <span class="duration">{op.duration.toFixed(1)}s</span>
+            </div>
+            <div class="completed-details">
+              <span>{op.user}</span>
+              <span>·</span>
+              <span>{op.files.length} files</span>
+              <span>·</span>
+              <span>{op.endTime.toLocaleTimeString()}</span>
+            </div>
+          </div>
+        {/each}
+      </StructuredList>
+    {/if}
+  </Tile>
+</div>
+
+<style>
+  .task-manager {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .operation-card {
+    background: #f4f4f4;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border-radius: 4px;
+    border-left: 4px solid #0f62fe;
+  }
+
+  .op-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .op-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .op-user {
+    color: #525252;
+    font-size: 0.875rem;
+  }
+
+  .op-details {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #525252;
+  }
+
+  .detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .current-stage {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #e8f4fd;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+
+  .completed-card {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .completed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+  }
+
+  .completed-details {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #525252;
+  }
+
+  .duration {
+    font-family: 'IBM Plex Mono', monospace;
+    color: #0f62fe;
+  }
+
+  .empty-state {
+    color: #525252;
+    font-style: italic;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .success-icon {
+    color: #24a148;
+  }
+</style>
+```
+
+**Improvements over WebTranslator**:
+1. ✅ **More compact** - card-based layout vs full-width rows
+2. ✅ **Better visual hierarchy** - clear separation of active/completed
+3. ✅ **Richer details** - memory, rows, files, stages all visible
+4. ✅ **Better progress indication** - stage highlighted, real-time updates
+5. ✅ **Action buttons** - pause/cancel operations
+6. ✅ **Newbie-friendly** - clear labels, icons, easy to understand
+7. ✅ **CEO-friendly** - clean, professional, shows value (time saved, work done)
+8. ✅ **Carbon Design System** - professional IBM aesthetics
+
+---
+
 ## **Part C: Real-Time Features & Live Monitoring**
 
 ### 5. WebSocket Integration (1-second Updates)
@@ -1275,9 +1621,585 @@ Using **Carbon Components Svelte**:
 
 ---
 
-## **Summary: Phase 1.11 Timeline**
+### 11. Dual-View Statistics (Detailed + Summary)
+**Time**: 2 days
 
-**Total Estimated Time**: 17 days (3.5 weeks)
+**THE MOST IMPORTANT STATS FEATURE!**
+
+**Two Modes for Different Audiences**:
+
+#### **Mode 1: Detailed View** (For Developers/IT/Power Users)
+**Show EVERYTHING - LOT of details!**
+
+```svelte
+<script lang="ts">
+  import { Tabs, TabList, Tab, TabPanels, TabPanel, DataTable, ExpandableTile, Tag } from 'carbon-components-svelte';
+
+  let view = 'detailed'; // or 'summary'
+</script>
+
+{#if view === 'detailed'}
+  <div class="detailed-view">
+    <h3>Detailed Analytics - Complete Technical Data</h3>
+
+    <!-- Comprehensive Metrics Grid -->
+    <div class="metrics-grid-detailed">
+      <!-- Operations -->
+      <Tile>
+        <h5>Operations Metrics</h5>
+        <ul class="metric-list">
+          <li>Total Operations: <strong>1,247</strong></li>
+          <li>Successful: <strong>1,219</strong> (97.8%)</li>
+          <li>Failed: <strong>28</strong> (2.2%)</li>
+          <li>Avg Duration: <strong>12.5s</strong></li>
+          <li>Min Duration: <strong>0.8s</strong></li>
+          <li>Max Duration: <strong>89.3s</strong></li>
+          <li>Median Duration: <strong>10.2s</strong></li>
+          <li>P95 Duration: <strong>45.7s</strong></li>
+          <li>P99 Duration: <strong>78.1s</strong></li>
+        </ul>
+      </Tile>
+
+      <!-- Performance Metrics -->
+      <Tile>
+        <h5>Performance Metrics</h5>
+        <ul class="metric-list">
+          <li>Avg Memory Usage: <strong>245 MB</strong></li>
+          <li>Peak Memory: <strong>892 MB</strong></li>
+          <li>Avg CPU Usage: <strong>32%</strong></li>
+          <li>Total Rows Processed: <strong>3.2M</strong></li>
+          <li>Avg Rows/Second: <strong>12,400</strong></li>
+          <li>Total Files Processed: <strong>4,891</strong></li>
+          <li>Total Data Size: <strong>18.7 GB</strong></li>
+          <li>Cache Hit Rate: <strong>85.2%</strong></li>
+        </ul>
+      </Tile>
+
+      <!-- User Activity -->
+      <Tile>
+        <h5>User Activity Details</h5>
+        <ul class="metric-list">
+          <li>Total Users: <strong>45</strong></li>
+          <li>Active Today: <strong>12</strong></li>
+          <li>Active This Week: <strong>28</strong></li>
+          <li>Active This Month: <strong>38</strong></li>
+          <li>New Users (7d): <strong>3</strong></li>
+          <li>Avg Operations/User: <strong>27.7</strong></li>
+          <li>Most Active User: <strong>john.doe (183 ops)</strong></li>
+          <li>Least Active User: <strong>jane.smith (2 ops)</strong></li>
+        </ul>
+      </Tile>
+
+      <!-- Tool-Specific Stats -->
+      <Tile>
+        <h5>Tool Breakdown</h5>
+        <ul class="metric-list">
+          <li><strong>XLSTransfer:</strong> 892 ops (71.5%)</li>
+          <li>  └─ create_dictionary: 234 ops (avg 15.2s)</li>
+          <li>  └─ transfer_to_excel: 428 ops (avg 18.7s)</li>
+          <li>  └─ check_newlines: 145 ops (avg 3.1s)</li>
+          <li>  └─ combine_excel: 85 ops (avg 22.4s)</li>
+          <li><strong>Tool2:</strong> 245 ops (19.6%)</li>
+          <li><strong>Tool3:</strong> 110 ops (8.8%)</li>
+        </ul>
+      </Tile>
+
+      <!-- Error Analysis -->
+      <Tile>
+        <h5>Error Details</h5>
+        <ul class="metric-list">
+          <li>Total Errors: <strong>28</strong></li>
+          <li>File Not Found: <strong>12</strong> (42.9%)</li>
+          <li>Memory Error: <strong>8</strong> (28.6%)</li>
+          <li>Timeout: <strong>5</strong> (17.9%)</li>
+          <li>Permission Denied: <strong>3</strong> (10.7%)</li>
+          <li>Most Common: <strong>File Not Found</strong></li>
+          <li>Error Rate (24h): <strong>2.3%</strong></li>
+          <li>Error Rate (7d): <strong>1.8%</strong></li>
+        </ul>
+      </Tile>
+
+      <!-- Time Distribution -->
+      <Tile>
+        <h5>Time Distribution</h5>
+        <ul class="metric-list">
+          <li>Morning (6-12): <strong>385 ops (30.9%)</strong></li>
+          <li>Afternoon (12-18): <strong>627 ops (50.3%)</strong></li>
+          <li>Evening (18-24): <strong>198 ops (15.9%)</strong></li>
+          <li>Night (0-6): <strong>37 ops (3.0%)</strong></li>
+          <li>Peak Hour: <strong>14:00-15:00 (127 ops)</strong></li>
+          <li>Busiest Day: <strong>Wednesday (234 ops)</strong></li>
+        </ul>
+      </Tile>
+    </div>
+
+    <!-- Detailed Logs Table -->
+    <div class="detailed-logs">
+      <h5>Recent Operations - Full Details</h5>
+      <DataTable
+        headers={[
+          { key: 'timestamp', value: 'Timestamp' },
+          { key: 'user', value: 'User' },
+          { key: 'tool', value: 'Tool' },
+          { key: 'function', value: 'Function' },
+          { key: 'files', value: 'Files' },
+          { key: 'rows', value: 'Rows' },
+          { key: 'memory', value: 'Memory (MB)' },
+          { key: 'cpu', value: 'CPU (%)' },
+          { key: 'duration', value: 'Duration (s)' },
+          { key: 'status', value: 'Status' }
+        ]}
+        rows={detailedLogs}
+        pageSize={50}
+        expandable
+      />
+    </div>
+
+    <!-- Advanced Charts -->
+    <div class="advanced-charts">
+      <h5>Performance Trends (Last 30 Days)</h5>
+      <!-- Line chart with multiple metrics -->
+      <!-- Heatmap of operations by hour/day -->
+      <!-- Box plot of durations -->
+      <!-- Scatter plot of memory vs duration -->
+    </div>
+  </div>
+{/if}
+```
+
+#### **Mode 2: Summary View** (For CEOs/Managers/Presentations)
+**HIGH-LEVEL KPIs - Beautiful, Easy to Digest!**
+
+```svelte
+{#if view === 'summary'}
+  <div class="summary-view">
+    <h3>Executive Summary Dashboard</h3>
+
+    <!-- Big KPI Cards (CEO-Friendly) -->
+    <div class="kpi-cards">
+      <Tile class="kpi-card success">
+        <div class="kpi-content">
+          <div class="kpi-icon">✅</div>
+          <div class="kpi-data">
+            <h2>98%</h2>
+            <p>Success Rate</p>
+            <span class="trend positive">↑ 2.3% from last week</span>
+          </div>
+        </div>
+      </Tile>
+
+      <Tile class="kpi-card productivity">
+        <div class="kpi-content">
+          <div class="kpi-icon">🚀</div>
+          <div class="kpi-data">
+            <h2>1,247</h2>
+            <p>Operations Completed</p>
+            <span class="trend positive">↑ 18% from last week</span>
+          </div>
+        </div>
+      </Tile>
+
+      <Tile class="kpi-card users">
+        <div class="kpi-content">
+          <div class="kpi-icon">👥</div>
+          <div class="kpi-data">
+            <h2>45</h2>
+            <p>Active Users</p>
+            <span class="trend positive">↑ 3 new users this month</span>
+          </div>
+        </div>
+      </Tile>
+
+      <Tile class="kpi-card time">
+        <div class="kpi-content">
+          <div class="kpi-icon">⏱️</div>
+          <div class="kpi-data">
+            <h2>12.5s</h2>
+            <p>Average Processing Time</p>
+            <span class="trend positive">↓ 15% faster than last month</span>
+          </div>
+        </div>
+      </Tile>
+    </div>
+
+    <!-- Simple, Beautiful Charts -->
+    <div class="summary-charts">
+      <!-- Single clean line chart: Operations over time -->
+      <Tile class="chart-tile">
+        <h4>Usage Trend (Last 30 Days)</h4>
+        <Line data={simpleTrendData} options={ceoChartOptions} />
+      </Tile>
+
+      <!-- Doughnut chart: Tool distribution -->
+      <Tile class="chart-tile">
+        <h4>Tool Usage</h4>
+        <Doughnut data={toolDistData} options={ceoChartOptions} />
+      </Tile>
+    </div>
+
+    <!-- Key Insights (AI-Generated Summaries) -->
+    <Tile class="insights-section">
+      <h4>📊 Key Insights</h4>
+      <ul class="insight-list">
+        <li class="insight-item positive">
+          <Tag type="green">✓</Tag>
+          <strong>Excellent Performance:</strong> Success rate is 98%, exceeding target of 95%
+        </li>
+        <li class="insight-item positive">
+          <Tag type="green">✓</Tag>
+          <strong>Growing Adoption:</strong> 3 new users joined this month, +7% growth
+        </li>
+        <li class="insight-item positive">
+          <Tag type="green">✓</Tag>
+          <strong>Faster Processing:</strong> Average time decreased 15% due to optimization
+        </li>
+        <li class="insight-item neutral">
+          <Tag type="blue">ℹ</Tag>
+          <strong>Peak Usage:</strong> Most activity happens 12-18h, plan capacity accordingly
+        </li>
+        <li class="insight-item warning">
+          <Tag type="orange">⚠</Tag>
+          <strong>Watch Errors:</strong> File Not Found errors account for 43% of failures
+        </li>
+      </ul>
+    </Tile>
+
+    <!-- Comparison Table (Simple) -->
+    <Tile class="comparison-section">
+      <h4>Period Comparison</h4>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>This Week</th>
+            <th>Last Week</th>
+            <th>Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Operations</td>
+            <td>342</td>
+            <td>289</td>
+            <td class="positive">+18% ↑</td>
+          </tr>
+          <tr>
+            <td>Success Rate</td>
+            <td>98.2%</td>
+            <td>95.9%</td>
+            <td class="positive">+2.3% ↑</td>
+          </tr>
+          <tr>
+            <td>Active Users</td>
+            <td>28</td>
+            <td>25</td>
+            <td class="positive">+12% ↑</td>
+          </tr>
+          <tr>
+            <td>Avg Duration</td>
+            <td>11.8s</td>
+            <td>13.9s</td>
+            <td class="positive">-15% ↓</td>
+          </tr>
+        </tbody>
+      </table>
+    </Tile>
+  </div>
+{/if}
+
+<style>
+  /* Summary View Styling - CEO-Friendly */
+  .summary-view {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem;
+    border-radius: 8px;
+  }
+
+  .kpi-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .kpi-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  .kpi-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .kpi-icon {
+    font-size: 3rem;
+  }
+
+  .kpi-data h2 {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #161616;
+    margin: 0;
+  }
+
+  .kpi-data p {
+    color: #525252;
+    font-size: 1rem;
+    margin: 0.25rem 0;
+  }
+
+  .trend {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .trend.positive {
+    color: #24a148;
+  }
+
+  .insights-section {
+    background: white;
+    padding: 2rem;
+    margin-top: 2rem;
+  }
+
+  .insight-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    background: #f4f4f4;
+    border-radius: 8px;
+  }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .comparison-table .positive {
+    color: #24a148;
+    font-weight: bold;
+  }
+
+  /* Detailed View Styling - Technical */
+  .detailed-view {
+    background: #f4f4f4;
+    padding: 2rem;
+  }
+
+  .metrics-grid-detailed {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .metric-list {
+    list-style: none;
+    padding: 0;
+    font-size: 0.875rem;
+  }
+
+  .metric-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+</style>
+```
+
+**Toggle Between Views**:
+```svelte
+<ButtonSet>
+  <Button kind={view === 'summary' ? 'primary' : 'secondary'} on:click={() => view = 'summary'}>
+    Summary (CEO View)
+  </Button>
+  <Button kind={view === 'detailed' ? 'primary' : 'secondary'} on:click={() => view = 'detailed'}>
+    Detailed (Technical View)
+  </Button>
+</ButtonSet>
+```
+
+**Export Functionality**:
+```svelte
+<Button kind="tertiary" icon={Download}>
+  Export Report (PDF/Excel)
+</Button>
+```
+
+---
+
+## **Part E: Testing, Cleanup, and Audit** 🧹
+
+### 12. Comprehensive Testing
+**Time**: 2 days
+
+**Test Coverage**:
+- [ ] **Unit Tests** (pytest)
+  - Backend endpoints (async functions)
+  - WebSocket events
+  - Database models
+  - Cache logic
+  - Auth functions
+  - Target: 80%+ coverage
+
+- [ ] **Integration Tests**
+  - Client → Server communication
+  - WebSocket connection/reconnection
+  - Database transactions
+  - Cache invalidation
+  - File upload/download
+
+- [ ] **E2E Tests** (Playwright for Electron)
+  - Full user workflows
+  - Task manager updates
+  - Modal interactions
+  - Stats refresh
+  - Error handling
+
+- [ ] **Performance Tests**
+  - Load testing (100 concurrent users)
+  - Memory leak detection
+  - Database query optimization
+  - WebSocket scalability
+
+**Testing Commands**:
+```bash
+# Run all tests
+npm run test
+
+# Unit tests with coverage
+pytest tests/ --cov=server --cov-report=html
+
+# E2E tests
+npm run test:e2e
+
+# Performance tests
+locust -f tests/performance/locustfile.py
+```
+
+---
+
+### 13. Code Cleanup and Organization
+**Time**: 1 day
+
+**Cleanup Tasks**:
+- [ ] **Remove Unused Code**
+  - Old Gradio interfaces (archive first)
+  - Unused imports
+  - Dead code paths
+  - Commented-out code
+
+- [ ] **Archive Legacy Code**
+  - Move old Gradio UI to `archive/gradio_ui/`
+  - Keep for reference but remove from active codebase
+  - Update `.gitignore` to exclude archives
+
+- [ ] **Code Organization**
+  - Ensure consistent file structure
+  - Group related functions
+  - Extract reusable components
+  - Add missing docstrings
+
+- [ ] **Linting and Formatting**
+  - Run Black on Python code
+  - Run Prettier on Svelte/TS code
+  - Fix all ESLint warnings
+  - Ensure consistent naming
+
+**Cleanup Commands**:
+```bash
+# Python formatting
+black server/ client/
+
+# Python linting
+pylint server/ client/
+
+# TypeScript/Svelte formatting
+npm run format
+
+# TypeScript/Svelte linting
+npm run lint
+```
+
+---
+
+### 14. Security and Performance Audit
+**Time**: 1 day
+
+**Security Audit**:
+- [ ] **Authentication & Authorization**
+  - JWT token expiry working?
+  - Password hashing secure (bcrypt)?
+  - CORS configured correctly?
+  - API endpoints protected?
+
+- [ ] **Input Validation**
+  - All user inputs validated
+  - SQL injection prevention (SQLAlchemy ORM)
+  - XSS prevention (sanitize outputs)
+  - File upload validation (size, type, virus scan?)
+
+- [ ] **Secrets Management**
+  - No hardcoded passwords
+  - Environment variables used
+  - .env not in git
+  - Database credentials secure
+
+- [ ] **Dependencies**
+  - Run `npm audit` and fix vulnerabilities
+  - Run `pip-audit` for Python packages
+  - Update vulnerable packages
+
+**Performance Audit**:
+- [ ] **Database**
+  - Indexes on frequently queried columns
+  - N+1 query detection
+  - Connection pool optimized
+  - Query execution time < 100ms
+
+- [ ] **API**
+  - Response time < 50ms (cached)
+  - Response time < 500ms (uncached)
+  - Proper HTTP status codes
+  - Compression enabled (gzip)
+
+- [ ] **Frontend**
+  - Bundle size < 500KB
+  - Initial load < 2s
+  - WebSocket reconnection robust
+  - Memory leaks checked
+
+**Audit Commands**:
+```bash
+# Security scan
+npm audit
+pip-audit
+
+# Performance profiling
+py-spy record -o profile.svg -- python server/main.py
+
+# Bundle analysis
+npm run build:analyze
+```
+
+---
+
+## **Summary: Phase 1.11 Timeline (UPDATED)**
+
+**Total Estimated Time**: 23 days (~4.5 weeks)**
 
 | Part | Task | Days | Priority |
 |------|------|------|----------|
@@ -1289,30 +2211,42 @@ Using **Carbon Components Svelte**:
 | 0.5 | Add Celery background tasks | 0.5 | Important |
 | **A** | **Electron Setup** | **1** | After Part 0 |
 | A1 | Electron project setup & structure | 1 | - |
-| **B** | **UI/UX Design** | **5** | - |
+| **B** | **UI/UX Design** | **7** | - |
 | B2 | Main window layout (sidebar + content) | 2 | - |
 | B3 | Professional visual design (Carbon) | 1 | - |
 | B4 | XLSTransfer UI (modal-based) | 2 | - |
+| B5 | Task Manager (like WebTranslator but better!) | 2 | ⭐ NEW |
 | **C** | **Real-Time Features** | **4** | - |
-| C5 | Frontend WebSocket integration | 1 | - |
-| C6 | Live logs console | 1 | - |
-| C7 | User process monitoring | 1 | - |
-| C8 | Real-time notifications | 1 | - |
-| **D** | **Analytics & Stats** | **4** | - |
-| D9 | Enhanced logging (comprehensive metadata) | 1 | - |
-| D10 | Analytics dashboard (charts) | 2 | - |
-| D11 | Comparison views & reports | 1 | - |
+| C6 | Frontend WebSocket integration | 1 | - |
+| C7 | Live logs console | 1 | - |
+| C8 | User process monitoring | 1 | - |
+| C9 | Real-time notifications | 1 | - |
+| **D** | **Analytics & Stats** | **6** | - |
+| D10 | Enhanced logging (comprehensive metadata) | 1 | - |
+| D11 | Analytics dashboard (charts) | 2 | - |
+| D12 | Comparison views & reports | 1 | - |
+| D13 | Dual-View Stats (Detailed + CEO Summary) | 2 | ⭐ NEW |
+| **E** | **Testing, Cleanup, Audit** | **4** | ✅ QUALITY |
+| E14 | Comprehensive testing (unit/integration/E2E) | 2 | Critical |
+| E15 | Code cleanup and organization | 1 | Important |
+| E16 | Security and performance audit | 1 | Important |
 
 **Deliverables**:
 - ✅ **Production-grade backend** (async, PostgreSQL, Redis, Celery)
 - ✅ **Real-time WebSocket** communication (bi-directional)
 - ✅ **Professional Electron desktop app** (Svelte + Carbon)
-- ✅ **Compact, centralized UI** (no tabs, sidebar navigation)
-- ✅ **Live updates every 1 second** (WebSocket push)
+- ✅ **Compact, centralized UI** (NO tabs per function! sidebar → modals)
+- ✅ **Task Manager** (like WebTranslator but way better, more beautiful, compact!)
+- ✅ **Live updates** (WebSocket push, real-time progress tracking)
 - ✅ **Live user/process monitoring** (click users to see operations)
-- ✅ **Comprehensive logging** (files, sizes, performance, stages)
-- ✅ **Beautiful analytics** (interactive charts, comparisons)
-- ✅ **Management-ready presentation** (CEO-quality)
+- ✅ **Comprehensive logging** (files, sizes, performance, stages, memory, CPU)
+- ✅ **Dual-View Statistics**:
+  - **Detailed View** for developers (LOT of details, all metrics, technical data)
+  - **Summary View** for CEOs (beautiful KPIs, easy to digest, presentation-ready)
+- ✅ **Beautiful analytics** (interactive charts, graphs, comparisons, trends)
+- ✅ **Tested & Audited** (80%+ coverage, security scan, performance audit)
+- ✅ **Clean & Organized** (archived legacy code, linted, formatted, documented)
+- ✅ **Web-based Admin Dashboard** (separate from Electron client, easy browser access)
 
 ### 📋 Phase 1.12: Package and Deploy MVP
 - After user testing feedback

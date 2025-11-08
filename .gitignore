@@ -157,3 +157,7 @@ test_outputs/
 # Keep test resources but ignore large data
 !RessourcesForCodingTheProject/
 # Add specific large file patterns if needed
+# ML Models (too large for GitHub)
+client/models/*/*.safetensors
+client/models/*/*.bin
+client/models/*/pytorch_model.bin

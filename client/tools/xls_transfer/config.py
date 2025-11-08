@@ -11,12 +11,12 @@ from pathlib import Path
 # ============================================
 
 # Path to Korean BERT model (relative to project root)
-MODEL_NAME = "KRTransformer"
-MODEL_PATH = Path(__file__).parent.parent.parent / "models" / MODEL_NAME
+MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
+MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "KR-SBERT-V40K-klueNLI-augSTS"
 
 # Model loading
 LAZY_LOAD_MODEL = True  # Load only when needed
-OFFLINE_MODE = True  # Use local model (no internet required)
+OFFLINE_MODE = True  # Use local model (downloaded and ready)
 
 # ============================================
 # FAISS Settings
