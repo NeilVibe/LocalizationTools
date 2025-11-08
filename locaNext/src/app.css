@@ -1,0 +1,131 @@
+/* LocaNext - Matte Dark Minimalistic Theme */
+
+:root {
+  /* Override Carbon tokens with matte dark palette */
+  --cds-background: #0f0f0f;
+  --cds-layer-01: #1a1a1a;
+  --cds-layer-02: #262626;
+  --cds-layer-03: #303030;
+
+  --cds-field-01: #1a1a1a;
+  --cds-field-02: #262626;
+
+  --cds-ui-background: #0f0f0f;
+  --cds-ui-01: #1a1a1a;
+  --cds-ui-02: #262626;
+  --cds-ui-03: #303030;
+  --cds-ui-04: #3d3d3d;
+  --cds-ui-05: #525252;
+
+  --cds-text-01: #e8e8e8;
+  --cds-text-02: #c6c6c6;
+  --cds-text-03: #a8a8a8;
+  --cds-text-04: #8d8d8d;
+  --cds-text-05: #6f6f6f;
+
+  --cds-interactive-01: #4589ff;
+  --cds-interactive-02: #393939;
+  --cds-interactive-03: #4589ff;
+  --cds-interactive-04: #0f62fe;
+
+  --cds-hover-primary: #0f62fe;
+  --cds-active-primary: #0043ce;
+  --cds-hover-ui: #303030;
+
+  --cds-border-subtle-00: #1a1a1a;
+  --cds-border-subtle-01: #262626;
+  --cds-border-subtle-02: #303030;
+  --cds-border-strong-01: #3d3d3d;
+
+  /* Remove glossy effects */
+  --cds-layer-accent-01: #1a1a1a;
+  --cds-layer-accent-02: #262626;
+  --cds-layer-accent-03: #303030;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+  background: var(--cds-background);
+  color: var(--cds-text-01);
+  overflow: hidden;
+}
+
+/* Remove all glossy/shiny effects from Carbon components */
+.bx--btn,
+.bx--tile,
+.bx--accordion__item,
+.bx--data-table,
+.bx--header {
+  box-shadow: none !important;
+}
+
+/* Matte finish for all interactive elements */
+.bx--btn,
+.bx--tile,
+.bx--accordion__item,
+.bx--text-input,
+.bx--select-input,
+.bx--number input {
+  background: var(--cds-layer-01) !important;
+  border: 1px solid var(--cds-border-subtle-01) !important;
+  transition: all 0.2s ease;
+}
+
+.bx--btn:hover,
+.bx--tile:hover,
+.bx--accordion__item:hover {
+  background: var(--cds-layer-02) !important;
+  border-color: var(--cds-border-strong-01) !important;
+}
+
+/* Compact spacing */
+.bx--accordion__content {
+  padding: 1rem !important;
+}
+
+.bx--form-item {
+  margin-bottom: 1rem !important;
+}
+
+/* Cleaner header */
+.bx--header {
+  background: var(--cds-ui-01) !important;
+  border-bottom: 1px solid var(--cds-border-subtle-01) !important;
+}
+
+/* Scrollbar styling (matte dark) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cds-ui-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--cds-ui-03);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cds-ui-04);
+}
+
+/* Remove any remaining gloss/shine */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.bx--content {
+  background: var(--cds-background) !important;
+}
