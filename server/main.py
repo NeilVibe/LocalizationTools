@@ -22,6 +22,7 @@ from server.api import auth, logs, sessions
 from server.api import auth_async, logs_async, sessions_async
 from server.utils.websocket import socket_app
 from server.middleware import RequestLoggingMiddleware, PerformanceLoggingMiddleware
+from server.utils.cache import cache
 
 
 def setup_logging():
@@ -116,6 +117,13 @@ async def startup_event():
         raise
 
     logger.info("WebSocket server mounted at /ws")
+
+    # Initialize Redis cache (optional)
+    try:
+        await cache.connect()
+    except Exception as e:
+        logger.warning(f"Redis cache initialization skipped: {e}")
+
     logger.success("Server startup complete")
 
 
@@ -124,9 +132,14 @@ async def shutdown_event():
     """Run on server shutdown."""
     logger.info("Server shutting down...")
 
+    # Disconnect Redis cache
+    try:
+        await cache.disconnect()
+    except Exception as e:
+        logger.warning(f"Redis disconnect error: {e}")
+
     # TODO: Close database connections
     # TODO: Stop background tasks
-    # TODO: Cleanup
 
     logger.success("Server shutdown complete")
 
