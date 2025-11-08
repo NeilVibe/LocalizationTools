@@ -251,10 +251,44 @@ See `database_schema.sql` for complete schema definition.
 - Tool effectiveness measurements
 - Data-driven decisions
 
+## XLSTransfer Module Architecture
+
+**Status**: Refactoring COMPLETE ✓ (49 functions across 4 modules)
+
+The XLSTransfer tool has been refactored from a 1435-line monolithic script into a clean, modular architecture:
+
+### Module Structure
+
+**client/tools/xls_transfer/**
+- `config.py` - Tool-specific configuration (thresholds, paths, settings)
+- `core.py` - **15 functions**: Text processing, column conversion, code pattern handling
+- `embeddings.py` - **13 functions**: Model loading, embedding generation, FAISS operations
+- `translation.py` - **10 functions + TranslationProgress class**: Matching logic, statistics
+- `excel_utils.py` - **11 functions**: Excel file reading/writing, newline checking, combining
+- `__init__.py` - Clean exports of all 49 functions
+
+### Key Features
+- **Type hints** throughout all functions
+- **Comprehensive docstrings** with examples
+- **No global variables** - everything modular
+- **Logging integration** with loguru
+- **Progress tracking** integration
+- **Reusable and testable** - ready for unit tests
+
+### Functions Available
+- Text cleaning and code preservation
+- Korean BERT model loading and caching
+- Embedding generation and FAISS indexing
+- Similarity-based translation matching
+- Multi-mode matching (whole text + split fallback)
+- Excel operations (read, write, combine, adapt)
+- Newline mismatch detection and auto-fixing
+- Translation statistics and analysis
+
 ## Deployment Strategy
 
 ### Phase 1: MVP (Minimum Viable Product)
-- Single tool (XLSTransfer) in Gradio interface
+- Single tool (XLSTransfer) in Gradio interface ← **Modules ready!**
 - Basic logging to central server
 - Simple admin dashboard
 
