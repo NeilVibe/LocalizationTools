@@ -1,0 +1,159 @@
+# ============================================
+# LocalizationTools .gitignore
+# ============================================
+
+# -------------------- Python --------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# -------------------- IDEs --------------------
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# -------------------- OS --------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# -------------------- Project Specific --------------------
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+server/data/*.db
+server/data/*.sqlite
+
+# ML Models (too large for git)
+client/models/KRTransformer/
+*.npy
+*.pkl
+*.pth
+*.pt
+*.onnx
+
+# Embeddings & Dictionaries
+*Embeddings.npy
+*Dictionary.pkl
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*_temp.xlsx
+*_temp.txt
+
+# User data & uploads
+uploads/
+downloads/
+user_data/
+
+# Build artifacts
+*.exe
+*.dmg
+*.pkg
+*.deb
+*.rpm
+
+# Test outputs
+test_outputs/
+*_translated.*
+*_transferred.*
+*_adapted.*
+*_combined.*
+
+# -------------------- Keep These --------------------
+# Don't ignore these important files
+!.gitkeep
+!ARCHIVE/.gitkeep
+!client/models/.gitkeep
+!server/data/.gitkeep
+
+# -------------------- Documentation --------------------
+# Keep all docs
+!*.md
+!docs/
+
+# -------------------- Resources --------------------
+# Keep test resources but ignore large data
+!RessourcesForCodingTheProject/
+# Add specific large file patterns if needed
