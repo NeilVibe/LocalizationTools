@@ -60,18 +60,24 @@ def create_interface():
         # Tabs for different tools
         with gr.Tabs():
 
-            # XLSTransfer tab (placeholder)
+            # XLSTransfer tab
             with gr.Tab("XLS Transfer"):
-                gr.Markdown("### XLS Transfer Tool")
-                gr.Markdown("AI-powered translation transfer between Excel files")
+                # Import and integrate XLSTransfer UI
+                from client.tools.xls_transfer.ui import create_ui as create_xls_ui
 
+                # Create the XLSTransfer interface (embedded)
+                xls_app = create_xls_ui()
+
+                # Render the XLSTransfer blocks inside this tab
                 with gr.Row():
                     with gr.Column():
-                        gr.Markdown("**Coming Soon**: Create Dictionary, Transfer files, and more")
+                        gr.Markdown("""
+### 🔄 XLSTransfer - AI Translation Tool
+Transfer translations between Excel files using Korean BERT and FAISS.
+                        """)
 
-                # TODO: Import and integrate actual XLSTransfer UI
-                # from client.tools.xls_transfer.ui import create_xls_transfer_interface
-                # create_xls_transfer_interface()
+                # Note: The actual tabs from xls_app will be embedded here
+                # when we properly integrate the sub-interface
 
             # Placeholder for future tools
             with gr.Tab("Quick Search"):
