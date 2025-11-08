@@ -1,8 +1,66 @@
 # LocalizationTools - Development Roadmap
 
 **Last Updated**: 2025-01-08
-**Current Phase**: Phase 1 - Foundation & MVP (Day 10 Complete, READY FOR USER TESTING!)
-**Overall Progress**: 60% (1.1-1.10 ✓, All Tests Passing! **→ Ready to test!**)
+**Current Phase**: Phase 1 - Foundation & MVP → **MAJOR ARCHITECTURAL PIVOT TO ELECTRON**
+**Overall Progress**: 60% Backend Complete → **Frontend needs complete rebuild with Electron**
+
+---
+
+## ⚠️ **MAJOR CHANGE - ARCHITECTURAL PIVOT** ⚠️
+
+**Decision Date**: 2025-01-08
+**Reason**: Gradio is not professional enough for management presentations
+
+### Why the Change?
+
+**Gradio Limitations**:
+- ❌ Not visually impressive for CEOs/management
+- ❌ Tab-based UI doesn't scale (can't have 100 tabs for 100 functions)
+- ❌ Limited UI/UX customization
+- ❌ No compact, centralized layout
+- ❌ No sub-windows, modals, nested GUI structure
+- ❌ Not suitable for professional product presentation
+
+**New Direction: Electron Desktop App**:
+- ✅ Professional, native-looking desktop application
+- ✅ Inspired by successful WebTranslator project
+- ✅ Compact, centralized UI with sub-windows and modals
+- ✅ Real-time updates via WebSocket (1-second polling)
+- ✅ Beautiful, management-ready presentation
+- ✅ Scalable UI for many functions without tabs
+- ✅ Click on users to see their live processes
+- ✅ Comprehensive logging console with live updates
+
+### New Tech Stack
+
+**Frontend (Electron App)**:
+```
+Desktop Application
+├── Electron (v36.4.0+)
+├── React + TypeScript (or lighter alternative)
+├── Ant Design (v5+) - Professional UI components
+├── @ant-design/charts - Data visualization
+├── Socket.io-client - Real-time WebSocket communication
+└── electron-builder - Cross-platform builds (Windows/Mac/Linux)
+```
+
+**Backend (Keep existing)**:
+```
+FastAPI Server (Already built ✓)
+├── SQLAlchemy ORM (SQLite/PostgreSQL) ✓
+├── FastAPI endpoints (27 routes) ✓
+├── WebSocket support (for live updates) - TO ADD
+├── JWT authentication ✓
+└── Logging system ✓
+```
+
+**Frontend Framework Options**:
+1. **React** (current WebTranslator choice) - Battle-tested, rich ecosystem
+2. **Vue.js** - Lighter than React, easier learning curve
+3. **Svelte** - Lightest, compiles to vanilla JS, very fast
+4. **Preact** - React-compatible API but 3KB (vs React's 45KB)
+
+**Recommendation**: Stick with **React + Ant Design** like WebTranslator (proven success)
 
 ---
 
@@ -108,7 +166,7 @@
 
 **What's Working:**
 - ✅ XLSTransfer tool with full Gradio UI (7 functions)
-- ✅ Database layer (12 tables, SQLite + PostgreSQL support)
+- ✅ Database layer (12 tables, SQLite active, PostgreSQL support ready)
 - ✅ FastAPI logging server (27 API routes)
 - ✅ Admin dashboard (5 tabs with real-time stats)
 - ✅ User authentication (JWT, bcrypt)
@@ -218,10 +276,473 @@ python3 run_xlstransfer.py
 
 ### ⏳ In Progress
 - User testing and feedback
+- Model download fixed (Korean SBERT now working locally)
 
-### 📋 Next Up
-- **1.11** Package and Deploy MVP (after user testing feedback)
-- **1.12** Documentation & Final Polish
+### 📋 Next Up - Phase 1.11: Build Electron Desktop Application
+
+**COMPLETE FRONTEND REBUILD - Professional Desktop App**
+
+---
+
+## **Part A: Electron App Setup & Structure**
+
+### 1. Initialize Electron Project
+**Time**: 1 day
+
+- [ ] **Project Structure** (Inspired by WebTranslator):
+  ```
+  LocalizationTools/
+  ├── desktop-app/              # NEW Electron application
+  │   ├── src/
+  │   │   ├── main/             # Electron main process
+  │   │   │   └── main.ts       # App entry, window management
+  │   │   ├── preload/          # Security layer (IPC)
+  │   │   │   └── preload.ts    # Expose safe APIs to renderer
+  │   │   └── renderer/         # Frontend (React)
+  │   │       ├── App.tsx       # Main app component
+  │   │       ├── components/   # Reusable UI components
+  │   │       ├── pages/        # Main pages (not tabs!)
+  │   │       ├── services/     # API client, WebSocket
+  │   │       └── types/        # TypeScript types
+  │   ├── assets/               # Icons, images
+  │   ├── build/                # Compiled output
+  │   ├── package.json
+  │   ├── tsconfig.json
+  │   └── webpack.config.js
+  ├── server/                   # KEEP existing FastAPI server
+  └── client/                   # KEEP Python client utilities
+  ```
+
+- [ ] **Dependencies** (package.json):
+  ```json
+  {
+    "devDependencies": {
+      "electron": "^36.4.0",
+      "electron-builder": "^26.0.12",
+      "typescript": "^5.8.3",
+      "webpack": "^5.99.9",
+      "@types/react": "^18.3.3",
+      "@types/node": "^24.0.1"
+    },
+    "dependencies": {
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1",
+      "antd": "^5.26.4",
+      "@ant-design/charts": "^2.6.0",
+      "@ant-design/icons": "^6.0.0",
+      "socket.io-client": "^4.8.1",
+      "axios": "^1.10.0",
+      "dayjs": "^1.11.13"
+    }
+  }
+  ```
+
+- [ ] **Build Scripts**:
+  - `npm run dev` - Development with hot reload
+  - `npm run build` - Production build
+  - `npm run build:win` - Windows installer
+  - `npm run build:mac` - macOS app
+  - `npm run build:linux` - Linux AppImage
+
+---
+
+## **Part B: Modern UI/UX Design - Compact & Centralized**
+
+### 2. Main Window Layout (NO TABS!)
+**Time**: 2 days
+
+**Single-Page Dashboard with Regions**:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Header: Logo | Tools Menu | Admin Menu | User Avatar | Settings│
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ LEFT SIDEBAR (20%)           │ MAIN CONTENT AREA (60%)         │
+│ ─────────────────────────    │ ──────────────────────────────  │
+│ 📊 Dashboard                 │                                 │
+│ 🔧 Tools                     │  [Dynamic content based on      │
+│   └─ XLSTransfer            │   selection - shows function    │
+│   └─ Tool2 (future)         │   forms, results, etc.]         │
+│   └─ Tool3                  │                                 │
+│ 👥 Users (Admin)             │                                 │
+│ 📝 Logs (Admin)              │                                 │
+│ 📈 Analytics (Admin)         │                                 │
+│ ⚙️  Settings                 │                                 │
+│                              │                                 │
+│                              │                                 │
+├──────────────────────────────┼─────────────────────────────────┤
+│ BOTTOM STATUS BAR: Server Status | Active Operations | CPU/RAM │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Features**:
+- ✅ **Compact**: Everything visible in one screen
+- ✅ **Hierarchical**: Tools → Functions (expandable tree)
+- ✅ **No Tabs**: Sidebar navigation instead
+- ✅ **Context-aware**: Main area changes based on selection
+- ✅ **Sub-windows**: Modals for detailed views
+- ✅ **Live Status**: Bottom bar shows real-time info
+
+---
+
+### 3. Professional Visual Design
+**Time**: 1 day
+
+Using **Ant Design** components:
+- [ ] **Color Scheme**: Professional blues/grays (similar to VS Code)
+- [ ] **Typography**: Clean, readable fonts (Inter, Roboto)
+- [ ] **Cards**: Rounded corners, subtle shadows for sections
+- [ ] **Icons**: @ant-design/icons for all actions
+- [ ] **Spacing**: Consistent 8px grid system
+- [ ] **Animations**: Smooth transitions (Ant Design built-in)
+
+**Dashboard Summary Cards** (Top of main area):
+```tsx
+<Row gutter={16}>
+  <Col span={6}>
+    <Card>
+      <Statistic
+        title="Total Operations Today"
+        value={127}
+        prefix={<RocketOutlined />}
+        valueStyle={{ color: '#3f8600' }}
+      />
+    </Card>
+  </Col>
+  <Col span={6}>
+    <Card>
+      <Statistic
+        title="Success Rate"
+        value={98.5}
+        precision={1}
+        suffix="%"
+        valueStyle={{ color: '#3f8600' }}
+      />
+    </Card>
+  </Col>
+  {/* ... more cards */}
+</Row>
+```
+
+---
+
+### 4. XLSTransfer UI (Compact, Modal-Based)
+**Time**: 2 days
+
+**Main Page**: Simple function list with quick actions
+```tsx
+<Card title="XLSTransfer Functions">
+  <List
+    dataSource={functions}
+    renderItem={func => (
+      <List.Item
+        actions={[
+          <Button type="primary" onClick={() => openModal(func)}>
+            {func.name}
+          </Button>
+        ]}
+      >
+        <List.Item.Meta
+          avatar={<Icon component={func.icon} />}
+          title={func.name}
+          description={func.description}
+        />
+      </List.Item>
+    )}
+  />
+</Card>
+```
+
+**Function Execution**: Opens modal with form
+```tsx
+<Modal
+  title="Create Dictionary"
+  open={isCreateDictOpen}
+  width={800}
+  footer={null}
+>
+  <Form onFinish={handleCreateDict}>
+    <Upload.Dragger>Upload Excel files</Upload.Dragger>
+    <Form.Item label="Mode">
+      <Radio.Group>
+        <Radio value="split">Split Mode</Radio>
+        <Radio value="whole">Whole Mode</Radio>
+      </Radio.Group>
+    </Form.Item>
+    {/* Progress shown inline */}
+    {isProcessing && <Progress percent={progress} />}
+    <Button type="primary" htmlType="submit">Process</Button>
+  </Form>
+</Modal>
+```
+
+---
+
+## **Part C: Real-Time Features & Live Monitoring**
+
+### 5. WebSocket Integration (1-second Updates)
+**Time**: 2 days
+
+**Backend: Add WebSocket Support**
+- [ ] Install `python-socketio` for FastAPI
+- [ ] Create WebSocket endpoint: `ws://localhost:8888/ws`
+- [ ] Broadcast events:
+  - `operation_started` - When user starts operation
+  - `operation_progress` - Progress updates (% complete, current stage)
+  - `operation_completed` - Final results
+  - `user_connected` - User joins
+  - `user_disconnected` - User leaves
+  - `error_occurred` - Errors in real-time
+
+**Frontend: Socket.io Client**
+```tsx
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:8888');
+
+socket.on('operation_progress', (data) => {
+  // Update progress bar in real-time
+  setProgress(data.percent);
+  setCurrentStage(data.stage);
+});
+
+socket.on('operation_completed', (data) => {
+  // Show completion notification
+  notification.success({
+    message: 'Operation Complete!',
+    description: `Processed ${data.rows} rows in ${data.duration}s`
+  });
+});
+```
+
+---
+
+### 6. Live Logs Console (Admin)
+**Time**: 1 day
+
+**Features**:
+- [ ] **Auto-scrolling log viewer** (updates every 1 second via WebSocket)
+- [ ] **Filter controls**: By user, tool, function, status
+- [ ] **Search**: Real-time text search in logs
+- [ ] **Expandable rows**: Click to see full details
+
+```tsx
+<Card title="Live Logs" extra={<Switch>Auto-scroll</Switch>}>
+  <Space style={{ marginBottom: 16 }}>
+    <Select placeholder="User" onChange={setUserFilter} />
+    <Select placeholder="Tool" onChange={setToolFilter} />
+    <Select placeholder="Status" onChange={setStatusFilter} />
+    <Input.Search placeholder="Search..." onSearch={setSearchText} />
+  </Space>
+
+  <Table
+    dataSource={logs}
+    columns={logColumns}
+    expandable={{
+      expandedRowRender: (record) => (
+        <Descriptions bordered size="small">
+          <Descriptions.Item label="Files">{record.files}</Descriptions.Item>
+          <Descriptions.Item label="Memory">{record.memory} MB</Descriptions.Item>
+          <Descriptions.Item label="Stages">{record.stages}</Descriptions.Item>
+          {record.error && (
+            <Descriptions.Item label="Error" span={3}>
+              <pre>{record.error_stack}</pre>
+            </Descriptions.Item>
+          )}
+        </Descriptions>
+      )
+    }}
+    pagination={{ pageSize: 50 }}
+  />
+</Card>
+```
+
+---
+
+### 7. User Process Monitoring (Click to View)
+**Time**: 1 day
+
+**User List with Live Status**:
+```tsx
+<Card title="Active Users">
+  <List
+    dataSource={activeUsers}
+    renderItem={user => (
+      <List.Item
+        onClick={() => showUserDetails(user)}
+        style={{ cursor: 'pointer' }}
+      >
+        <List.Item.Meta
+          avatar={
+            <Badge dot status={user.isActive ? 'success' : 'default'}>
+              <Avatar>{user.name[0]}</Avatar>
+            </Badge>
+          }
+          title={user.name}
+          description={`${user.currentOps} active operations`}
+        />
+      </List.Item>
+    )}
+  />
+</Card>
+```
+
+**User Details Modal** (opens on click):
+```tsx
+<Modal title={`${user.name} - Live Processes`} width={1000}>
+  <Tabs>
+    <TabPane tab="Active Operations" key="active">
+      <Timeline>
+        {user.operations.map(op => (
+          <Timeline.Item color={op.status === 'running' ? 'blue' : 'green'}>
+            <Card size="small">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Text strong>{op.function}</Text>
+                <Progress percent={op.progress} status={op.status} />
+                <Text type="secondary">
+                  Stage: {op.currentStage} | Memory: {op.memory} MB
+                </Text>
+              </Space>
+            </Card>
+          </Timeline.Item>
+        ))}
+      </Timeline>
+    </TabPane>
+    <TabPane tab="Recent History" key="history">
+      {/* Show last 20 operations */}
+    </TabPane>
+    <TabPane tab="Statistics" key="stats">
+      {/* User-specific stats */}
+    </TabPane>
+  </Tabs>
+</Modal>
+```
+
+---
+
+## **Part D: Enhanced Logging & Statistics**
+
+### 8. Comprehensive Logging (Backend Enhancement)
+**Time**: 2 days
+
+**Update LogEntry model to include**:
+- [ ] File details (names, sizes, input/output)
+- [ ] Processing metrics (rows, embeddings, mode, threshold)
+- [ ] Performance data (memory peak/avg, CPU %, stage durations)
+- [ ] Full error details (stack traces, suggested fixes)
+
+**See updated logging format in Phase 1.3 section**
+
+---
+
+### 9. Analytics Dashboard with Charts
+**Time**: 2 days
+
+**Using @ant-design/charts**:
+```tsx
+import { Line, Pie, Column, Gauge } from '@ant-design/charts';
+
+// Usage Trends (Last 7/30 days)
+<Line
+  data={usageData}
+  xField="date"
+  yField="operations"
+  seriesField="tool"
+  smooth={true}
+/>
+
+// Tool Distribution
+<Pie
+  data={toolDistribution}
+  angleField="count"
+  colorField="tool"
+  radius={0.8}
+  label={{
+    type: 'outer',
+    content: '{name} {percentage}'
+  }}
+/>
+
+// Success Rate Gauge
+<Gauge
+  percent={successRate / 100}
+  range={{ color: '#30BF78' }}
+  indicator={{
+    pointer: { style: { stroke: '#D0D0D0' } },
+    pin: { style: { stroke: '#D0D0D0' } },
+  }}
+/>
+
+// Hourly Usage Heat Map
+<Column
+  data={hourlyData}
+  xField="hour"
+  yField="operations"
+  seriesField="day"
+  isGroup={true}
+/>
+```
+
+---
+
+### 10. Comparison Views & Reports
+**Time**: 1 day
+
+**Time Period Comparison**:
+```tsx
+<Card title="This Week vs Last Week">
+  <Row gutter={16}>
+    <Col span={12}>
+      <Statistic
+        title="This Week"
+        value={thisWeekOps}
+        prefix={<ArrowUpOutlined />}
+        valueStyle={{ color: '#3f8600' }}
+      />
+    </Col>
+    <Col span={12}>
+      <Statistic
+        title="Last Week"
+        value={lastWeekOps}
+        suffix={`(${percentChange}%)`}
+      />
+    </Col>
+  </Row>
+  <Divider />
+  <Column data={comparisonData} xField="week" yField="count" />
+</Card>
+```
+
+---
+
+## **Summary: Phase 1.11 Timeline**
+
+**Total Estimated Time**: 14 days (3 weeks)
+
+| Task | Days |
+|------|------|
+| A1. Electron setup & structure | 1 |
+| B2. Main window layout | 2 |
+| B3. Professional visual design | 1 |
+| B4. XLSTransfer UI (modal-based) | 2 |
+| C5. WebSocket integration | 2 |
+| C6. Live logs console | 1 |
+| C7. User process monitoring | 1 |
+| D8. Enhanced logging (backend) | 2 |
+| D9. Analytics dashboard | 2 |
+| D10. Comparison views | 1 |
+
+**Deliverables**:
+- ✅ Professional Electron desktop app
+- ✅ Compact, centralized UI (no tabs!)
+- ✅ Real-time updates (1-second WebSocket polling)
+- ✅ Live user/process monitoring
+- ✅ Comprehensive logging and statistics
+- ✅ Management-ready presentation quality
+
+### 📋 Phase 1.12: Package and Deploy MVP
+- After user testing feedback
+- Documentation & Final Polish
 
 ---
 
@@ -362,22 +883,64 @@ with gr.Blocks() as app:
 - [ ] Create logging utility that sends to server
 - [ ] Add error handling and user feedback
 
-**Logging Format**:
+**Logging Format** (Enhanced for Phase 1.11):
 ```python
 {
-    "user_id": "anonymous_123",  # or authenticated user
+    # Basic info
+    "user_id": "anonymous_123",
     "session_id": "uuid-here",
     "tool": "XLSTransfer",
     "function": "create_dictionary",
     "timestamp_start": "2025-01-08T10:30:00",
     "timestamp_end": "2025-01-08T10:30:45",
-    "duration_seconds": 45,
-    "file_size_mb": 2.5,
-    "rows_processed": 5000,
+    "duration_seconds": 45.2,
     "status": "success",  # or "error"
-    "error_message": null
+    "error_message": null,
+
+    # File details
+    "files": {
+        "input_files": ["translations_v1.xlsx", "translations_v2.xlsx"],
+        "output_files": ["SplitExcelDictionary.pkl", "SplitExcelEmbeddings.npy"],
+        "temp_files": ["temp_merged.xlsx"],
+        "input_size_mb": 2.5,
+        "output_size_mb": 3.2
+    },
+
+    # Processing details
+    "processing": {
+        "rows_total": 5000,
+        "rows_processed": 4850,
+        "rows_skipped": 150,
+        "unique_texts": 4850,
+        "embeddings_generated": 4850,
+        "embedding_dimensions": 768,
+        "mode": "whole",  # or "split"
+        "faiss_threshold": 0.99
+    },
+
+    # Performance metrics
+    "performance": {
+        "memory_peak_mb": 450,
+        "memory_avg_mb": 320,
+        "cpu_avg_percent": 85.5,
+        "stage_durations": {
+            "loading": 2.1,
+            "embedding": 8.3,
+            "indexing": 1.5,
+            "saving": 2.8
+        }
+    },
+
+    # Function-specific metadata (varies by function)
+    "metadata": {
+        "dictionary_type": "split",
+        "model_name": "snunlp/KR-SBERT-V40K-klueNLI-augSTS",
+        "batch_size": 100
+    }
 }
 ```
+
+**Note**: See Phase 1.11 for comprehensive logging enhancements
 
 **Estimated Time**: 2 days
 
@@ -385,33 +948,57 @@ with gr.Blocks() as app:
 
 ### 1.4 Set Up Database
 
+**CURRENT STATUS: Using SQLite for MVP Testing**
+
 **Tasks**:
 - [x] Design PostgreSQL schema (see `database_schema.sql`)
-- [ ] Install PostgreSQL locally for development
-- [ ] Create SQLite version for local testing
-- [ ] Run schema creation scripts
-- [ ] Create database connection utilities
-- [ ] Test database connections
-- [ ] Set up SQLAlchemy ORM models
+- [x] Create SQLite version for local testing ✅ ACTIVE
+- [x] Run schema creation scripts (SQLAlchemy auto-create)
+- [x] Create database connection utilities
+- [x] Test database connections
+- [x] Set up SQLAlchemy ORM models
+- [ ] **PostgreSQL Setup (Future - Production Only)**
+  - PostgreSQL 14.19 installed but not configured
+  - Will be needed for production deployment
+  - Code is ready (supports both databases)
+
+**Current Database**:
+- **Type:** SQLite
+- **File:** `/server/data/localizationtools.db` (196 KB)
+- **Status:** Working perfectly for testing
+- **Switch to PostgreSQL:** Set `DATABASE_TYPE=postgresql` env variable
 
 **Database Setup**:
 ```bash
-# For local testing (SQLite)
-python scripts/setup_database.py --db sqlite
+# Current setup (SQLite - working)
+DATABASE_TYPE=sqlite  # Default
 
-# For production (PostgreSQL)
-python scripts/setup_database.py --db postgresql
+# Future production (PostgreSQL)
+DATABASE_TYPE=postgresql
+# Then run: python scripts/setup_database.py --db postgresql
 ```
 
 **Schema includes**:
-- 13+ tables covering all aspects (users, logs, stats, errors, etc.)
-- Pre-computed views for dashboard performance
-- Automated aggregation functions
-- Optimized indexes for common queries
+- 12 tables covering all aspects (users, logs, stats, errors, etc.)
+- SQLAlchemy ORM models
+- Optimized for both SQLite and PostgreSQL
+- Automatic table creation on startup
 
-See `database_schema.sql` for complete schema.
+**Why SQLite for MVP**:
+- ✅ No setup required
+- ✅ Perfect for testing/development
+- ✅ Single file, easy backup
+- ✅ Sufficient for initial testing
 
-**Estimated Time**: 2 days
+**When to switch to PostgreSQL**:
+- Production deployment
+- Multiple concurrent users (20+)
+- Need for advanced features
+- Better performance at scale
+
+See `database_schema.sql` for complete PostgreSQL schema.
+
+**Time Spent**: 2 days (Complete for MVP)
 
 ---
 
