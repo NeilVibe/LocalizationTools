@@ -10,6 +10,8 @@ from typing import Optional
 import bcrypt
 import jwt
 from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from server import config
 
@@ -170,6 +172,59 @@ def get_current_user(token: str, db) -> Optional[dict]:
 
     # Fetch user from database
     user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        logger.warning(f"User {user_id} not found in database")
+        return None
+
+    if not user.is_active:
+        logger.warning(f"User {user_id} is not active")
+        return None
+
+    return {
+        "user_id": user.user_id,
+        "username": user.username,
+        "email": user.email,
+        "full_name": user.full_name,
+        "department": user.department,
+        "role": user.role,
+        "is_active": user.is_active,
+    }
+
+
+async def get_current_user_async(token: str, db: AsyncSession) -> Optional[dict]:
+    """
+    Get current user from JWT token (ASYNC version).
+
+    Args:
+        token: JWT token string.
+        db: Async database session.
+
+    Returns:
+        User data dict if valid, None otherwise.
+
+    Example:
+        >>> token = create_access_token({"user_id": 1, "username": "john"})
+        >>> user = await get_current_user_async(token, db)
+        >>> user["username"]
+        'john'
+    """
+    from server.database.models import User
+
+    # Verify token
+    payload = verify_token(token)
+    if not payload:
+        return None
+
+    # Get user ID from token
+    user_id = payload.get("user_id")
+    if not user_id:
+        logger.warning("No user_id in token")
+        return None
+
+    # Fetch user from database (async)
+    result = await db.execute(select(User).where(User.user_id == user_id))
+    user = result.scalar_one_or_none()
+
     if not user:
         logger.warning(f"User {user_id} not found in database")
         return None
