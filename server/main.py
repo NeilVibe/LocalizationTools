@@ -21,6 +21,7 @@ from server.utils.dependencies import initialize_database, initialize_async_data
 from server.api import auth, logs, sessions
 from server.api import auth_async, logs_async, sessions_async
 from server.utils.websocket import socket_app
+from server.middleware import RequestLoggingMiddleware, PerformanceLoggingMiddleware
 
 
 def setup_logging():
@@ -73,6 +74,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add comprehensive logging middleware
+# Order matters: These run in REVERSE order (last added = first to run)
+app.add_middleware(PerformanceLoggingMiddleware, sample_rate=1.0)
+app.add_middleware(RequestLoggingMiddleware)
 
 # Include API routers (sync - for backward compatibility)
 app.include_router(auth.router, prefix="/api")
