@@ -459,7 +459,9 @@ class TestServerIntegration:
 
             if response.status_code == 200:
                 data = response.json()
-                assert "message" in data or "name" in data
+                # Server returns: app, version, status, database, docs
+                assert "app" in data or "version" in data or "message" in data
+                assert data.get("app") == "LocalizationTools Server" or "message" in data
             else:
                 pytest.skip("Server not running")
 
@@ -473,7 +475,10 @@ class TestServerIntegration:
 
             if response.status_code == 200:
                 data = response.json()
-                assert "version_number" in data or "message" in data
+                # Server returns: latest_version, download_url, release_notes, etc.
+                assert "latest_version" in data or "version_number" in data or "message" in data
+                if "latest_version" in data:
+                    assert data["latest_version"] is not None
             else:
                 pytest.skip("Server not running")
 
