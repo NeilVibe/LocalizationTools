@@ -42,6 +42,13 @@ contextBridge.exposeInMainWorld('electron', {
   fileExists: (filePath) => ipcRenderer.invoke('file-exists', filePath),
 
   /**
+   * Open file dialog
+   * @param {object} options - { title, filters, properties }
+   * @returns {Promise<string[]|null>} - Array of file paths or null if cancelled
+   */
+  selectFiles: (options) => ipcRenderer.invoke('select-files', options),
+
+  /**
    * Listen for Python output events
    * @param {function} callback - Receives { type, data }
    */

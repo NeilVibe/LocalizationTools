@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, ipcMain } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
@@ -159,6 +159,29 @@ ipcMain.handle('file-exists', async (event, filePath) => {
     return { success: true, exists: true };
   } catch {
     return { success: true, exists: false };
+  }
+});
+
+/**
+ * Open file dialog
+ * Returns: array of file paths or null if cancelled
+ */
+ipcMain.handle('select-files', async (event, options = {}) => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: options.title || 'Select Files',
+      filters: options.filters || [],
+      properties: options.properties || ['openFile']
+    });
+
+    if (result.canceled) {
+      return null;
+    }
+
+    return result.filePaths;
+  } catch (error) {
+    console.error('File dialog error:', error);
+    return null;
   }
 });
 

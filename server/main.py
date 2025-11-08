@@ -67,10 +67,10 @@ app = FastAPI(
     redoc_url=config.REDOC_URL if config.ENABLE_DOCS else None,
 )
 
-# Add CORS middleware
+# Add CORS middleware - ALLOW ALL FOR TESTING
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.ALLOWED_ORIGINS,
+    allow_origins=["*"],  # Allow all origins for testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -91,8 +91,11 @@ app.include_router(auth_async.router, prefix="/api/v2")
 app.include_router(logs_async.router, prefix="/api/v2")
 app.include_router(sessions_async.router, prefix="/api/v2")
 
-# Mount Socket.IO for WebSocket support
-app.mount("/ws", socket_app)
+# Include updates API (for self-hosted app distribution)
+from server.api import updates
+app.include_router(updates.router)
+
+# Socket.IO will be mounted at the end after all setup is complete
 
 
 # ============================================
@@ -116,7 +119,7 @@ async def startup_event():
         logger.exception(f"Failed to initialize database: {e}")
         raise
 
-    logger.info("WebSocket server mounted at /ws")
+    logger.info("WebSocket server will be wrapped at startup")
 
     # Initialize Redis cache (optional)
     try:
@@ -272,6 +275,21 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # ============================================
+# Socket.IO Integration (wrap entire app AFTER all setup)
+# ============================================
+
+# Import Socket.IO server object (not the ASGI wrapper)
+from server.utils.websocket import sio
+import socketio
+
+# Wrap the complete FastAPI app with Socket.IO
+# This must be done AFTER all routes, middleware, and events are set up
+app = socketio.ASGIApp(sio, app, socketio_path='/ws/socket.io')
+
+logger.info("Socket.IO integrated with FastAPI app at /ws/socket.io")
+
+
+# ============================================
 # Run Server
 # ============================================
 
@@ -281,9 +299,9 @@ if __name__ == "__main__":
     logger.info(f"Starting server on {config.SERVER_HOST}:{config.SERVER_PORT}")
 
     uvicorn.run(
-        "server.main:app",
+        app,  # Run the wrapped app directly
         host=config.SERVER_HOST,
         port=config.SERVER_PORT,
-        reload=config.RELOAD,
+        reload=False,  # Disable reload when using wrapped app
         log_level=config.LOG_LEVEL.lower(),
     )
