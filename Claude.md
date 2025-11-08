@@ -35,10 +35,13 @@ This is a **comprehensive, scalable multi-tool platform**, not just a single-too
 - Scalable architecture for adding new tools
 - **This is what users will run in production**
 
-**Development Tools (Optional):**
-- `run_xlstransfer.py` - Standalone launcher for testing XLSTransfer only
-- Useful for development and debugging
-- NOT the main application - just a convenience tool
+**Development Tools (Optional - Intentionally Kept):**
+- `run_xlstransfer.py` - Standalone launcher for XLSTransfer ONLY
+  - **Purpose**: Quick testing/debugging of single tool without launching full app
+  - **When to use**: Development, debugging, isolated testing
+  - **When NOT to use**: Production (use client/main.py instead)
+  - **Keep or archive?**: KEEP - legitimate dev tool, common pattern
+  - Similar to running `pytest tests/unit/specific_test.py` vs entire test suite
 
 ### Client-Side Application (User's Computer)
 
@@ -349,14 +352,16 @@ This data will demonstrate the value and impact of your localization tools to ma
 
 ### Clean Code Policy
 
-This project follows **strict clean code standards**:
+This project follows **STRICT clean code standards**:
 
 **Core Principles**:
 1. **No clutter in main directories** - Keep working directories clean
-2. **Archive everything** - Old code, test scripts, experiments go to ARCHIVE
+2. **Archive everything unused** - Old code, test scripts, experiments go to ARCHIVE
 3. **Clear structure** - Every file has a purpose and place
-4. **No orphaned files** - If you create it, you organize it
+4. **No orphaned files** - If you create it, you organize it OR archive it
 5. **Document everything** - Code comments, README files, clear naming
+6. **Challenge everything** - If a file exists, it must have a DOCUMENTED purpose
+7. **If not using it, archive it** - No "maybe we'll need this later" files sitting around
 
 ### ARCHIVE Folder Structure
 
