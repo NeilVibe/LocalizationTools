@@ -132,12 +132,12 @@ class TestLogEndpoints:
         )
         token = login_response.json()["access_token"]
 
-        # Submit logs
+        # Submit logs (session_id is None since we don't have an active session)
         response = client.post(
             "/api/logs/submit",
             headers={"Authorization": f"Bearer {token}"},
             json={
-                "session_id": "test-session-123",
+                "session_id": None,
                 "logs": [
                     {
                         "username": "testuser",
