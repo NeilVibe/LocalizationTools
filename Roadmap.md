@@ -306,6 +306,373 @@ python3 run_xlstransfer.py
 
 ---
 
+## **Part 0: Backend Performance & Real-Time Enhancements** ⚡
+
+**CRITICAL: Upgrade backend for production-grade performance**
+
+**Time**: 2-3 days (do this FIRST before frontend!)
+
+### **What's Wrong with Current Backend:**
+- ❌ All endpoints are **synchronous** (blocking) - should be async
+- ❌ No WebSocket support - can't push real-time updates
+- ❌ SQLite in use - PostgreSQL ready but not configured
+- ❌ No background task queue - heavy stats calculated on request
+- ❌ No caching - stats recalculated every time
+- ❌ No connection pooling - inefficient database access
+
+---
+
+### **Backend Improvements to Make:**
+
+#### **1. Convert ALL Endpoints to Async** (6 hours)
+**Current (BAD - Blocking)**:
+```python
+@router.post("/logs")
+def submit_logs(data: LogBatchCreate, db: Session = Depends(get_db)):
+    # Blocking database call - holds up other requests!
+    for entry in data.logs:
+        db_log = LogEntry(**entry.dict())
+        db.add(db_log)
+    db.commit()
+    return {"status": "success"}
+```
+
+**Fixed (GOOD - Non-blocking)**:
+```python
+@router.post("/logs")
+async def submit_logs(data: LogBatchCreate, db: AsyncSession = Depends(get_async_db)):
+    # Non-blocking - handles 1000s of requests concurrently!
+    async with db.begin():
+        for entry in data.logs:
+            db_log = LogEntry(**entry.dict())
+            db.add(db_log)
+        await db.commit()
+    return {"status": "success"}
+```
+
+**Files to Update**:
+- [ ] `server/api/logs.py` - All log endpoints (7 endpoints)
+- [ ] `server/api/sessions.py` - All session endpoints (5 endpoints)
+- [ ] `server/api/auth.py` - All auth endpoints (7 endpoints)
+- [ ] `server/utils/dependencies.py` - Add `get_async_db` dependency
+
+**Benefits**:
+- ✅ 10-100x more concurrent requests
+- ✅ Non-blocking I/O - server stays responsive
+- ✅ Proper use of FastAPI's async capabilities
+
+---
+
+#### **2. Add WebSocket Support with python-socketio** (1 day)
+**Install**:
+```bash
+pip install python-socketio python-socketio[asyncio]
+```
+
+**Implementation**:
+```python
+# server/websocket.py
+import socketio
+from fastapi import FastAPI
+
+# Create Socket.IO server
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins='*',
+    logger=True,
+    engineio_logger=True
+)
+
+# Wrap with ASGI
+sio_app = socketio.ASGIApp(sio)
+
+@sio.event
+async def connect(sid, environ):
+    print(f"Client {sid} connected")
+    await sio.emit('welcome', {'message': 'Connected to server'}, to=sid)
+
+@sio.event
+async def disconnect(sid):
+    print(f"Client {sid} disconnected")
+
+# Broadcast functions (called from API endpoints)
+async def broadcast_operation_started(user_id, operation_data):
+    await sio.emit('operation_started', operation_data, room='admin')
+
+async def broadcast_operation_progress(user_id, progress_data):
+    await sio.emit('operation_progress', progress_data, room=f'user_{user_id}')
+
+async def broadcast_operation_completed(user_id, result_data):
+    await sio.emit('operation_completed', result_data, room='admin')
+    await sio.emit('operation_completed', result_data, room=f'user_{user_id}')
+
+# Mount to FastAPI app
+# In server/main.py:
+app.mount('/ws', sio_app)
+```
+
+**Usage in Log Endpoint**:
+```python
+from server.websocket import broadcast_operation_started, broadcast_operation_progress
+
+@router.post("/logs")
+async def submit_logs(data: LogBatchCreate, db: AsyncSession = Depends(get_async_db)):
+    # Broadcast to connected clients
+    await broadcast_operation_started(data.user_id, {
+        'user': data.username,
+        'tool': data.tool_name,
+        'function': data.function_name
+    })
+
+    # Process logs...
+
+    await broadcast_operation_completed(data.user_id, result)
+    return {"status": "success"}
+```
+
+**Benefits**:
+- ✅ Real-time updates to all connected clients
+- ✅ Rooms for targeted broadcasts (per-user, admin-only)
+- ✅ Bidirectional communication
+- ✅ Automatic reconnection handling
+
+---
+
+#### **3. Switch to PostgreSQL with Connection Pooling** (4 hours)
+**Install**:
+```bash
+pip install asyncpg  # Async PostgreSQL driver
+```
+
+**Configuration** (`server/config.py`):
+```python
+# Database settings
+DATABASE_TYPE = os.getenv("DATABASE_TYPE", "postgresql")  # Change default!
+
+# PostgreSQL connection pool settings
+POSTGRES_POOL_SIZE = int(os.getenv("POSTGRES_POOL_SIZE", "20"))
+POSTGRES_MAX_OVERFLOW = int(os.getenv("POSTGRES_MAX_OVERFLOW", "10"))
+POSTGRES_POOL_TIMEOUT = int(os.getenv("POSTGRES_POOL_TIMEOUT", "30"))
+POSTGRES_POOL_RECYCLE = int(os.getenv("POSTGRES_POOL_RECYCLE", "3600"))
+```
+
+**Database Setup** (`server/database/db_setup.py`):
+```python
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+# Create async engine with connection pooling
+async_engine = create_async_engine(
+    DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+    pool_size=POSTGRES_POOL_SIZE,
+    max_overflow=POSTGRES_MAX_OVERFLOW,
+    pool_timeout=POSTGRES_POOL_TIMEOUT,
+    pool_recycle=POSTGRES_POOL_RECYCLE,
+    echo=False,  # Set to True for debugging
+    future=True
+)
+
+# Create async session maker
+AsyncSessionLocal = async_sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+async def get_async_db():
+    """Async database dependency for FastAPI."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+```
+
+**Benefits**:
+- ✅ **Connection pooling** - Reuse connections (10-50x faster)
+- ✅ **Async queries** - Non-blocking database access
+- ✅ **Production-ready** - Handles 100+ concurrent users
+- ✅ **Auto-reconnect** - Handles network issues gracefully
+
+---
+
+#### **4. Add Redis Caching for Stats** (4 hours)
+**Install**:
+```bash
+pip install redis aioredis
+```
+
+**Setup** (`server/utils/cache.py`):
+```python
+import aioredis
+import json
+from datetime import timedelta
+
+# Redis connection
+redis = None
+
+async def init_redis():
+    global redis
+    redis = await aioredis.from_url(
+        "redis://localhost:6379",
+        encoding="utf-8",
+        decode_responses=True
+    )
+
+async def cache_get(key: str):
+    """Get cached value."""
+    if not redis:
+        return None
+    value = await redis.get(key)
+    return json.loads(value) if value else None
+
+async def cache_set(key: str, value: any, expire: int = 300):
+    """Set cached value with expiration (default 5 min)."""
+    if redis:
+        await redis.setex(key, expire, json.dumps(value))
+
+async def cache_delete(key: str):
+    """Delete cached value."""
+    if redis:
+        await redis.delete(key)
+```
+
+**Usage**:
+```python
+from server.utils.cache import cache_get, cache_set
+
+@router.get("/stats/overview")
+async def get_stats_overview(db: AsyncSession = Depends(get_async_db)):
+    # Try cache first
+    cached = await cache_get("stats:overview")
+    if cached:
+        return cached
+
+    # Calculate stats (expensive query)
+    stats = await calculate_overview_stats(db)
+
+    # Cache for 5 minutes
+    await cache_set("stats:overview", stats, expire=300)
+
+    return stats
+```
+
+**What to Cache**:
+- ✅ Overview stats (refresh every 5 min)
+- ✅ Tool usage stats (refresh every 10 min)
+- ✅ User lists (refresh when user added/removed)
+- ✅ Recent logs (refresh every 30 sec)
+
+**Benefits**:
+- ✅ **100x faster** stats queries (from cache, not DB)
+- ✅ Reduces database load
+- ✅ Dashboard stays snappy even with 1000s of logs
+
+---
+
+#### **5. Add Celery for Background Tasks** (1 day)
+**Install**:
+```bash
+pip install celery redis
+```
+
+**Setup** (`server/tasks/celery_app.py`):
+```python
+from celery import Celery
+
+celery_app = Celery(
+    'localizationtools',
+    broker='redis://localhost:6379/0',
+    backend='redis://localhost:6379/0'
+)
+
+celery_app.conf.update(
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
+)
+```
+
+**Background Tasks** (`server/tasks/stats_tasks.py`):
+```python
+from server.tasks.celery_app import celery_app
+from server.database.db_setup import AsyncSessionLocal
+from server.utils.cache import cache_set
+
+@celery_app.task
+async def calculate_daily_stats():
+    """Calculate daily stats in background (runs every hour)."""
+    async with AsyncSessionLocal() as db:
+        # Calculate expensive stats
+        daily_stats = await compute_daily_aggregates(db)
+
+        # Update cache
+        await cache_set("stats:daily", daily_stats, expire=3600)
+
+        # Store in materialized view
+        await update_daily_stats_view(db, daily_stats)
+
+@celery_app.task
+async def cleanup_old_logs():
+    """Delete logs older than 90 days (runs daily)."""
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            "DELETE FROM log_entries WHERE timestamp < NOW() - INTERVAL '90 days'"
+        )
+        await db.commit()
+```
+
+**Schedule Tasks** (`server/tasks/celerybeat_schedule.py`):
+```python
+from celery.schedules import crontab
+
+celery_app.conf.beat_schedule = {
+    'calculate-daily-stats': {
+        'task': 'server.tasks.stats_tasks.calculate_daily_stats',
+        'schedule': crontab(minute=0),  # Every hour
+    },
+    'cleanup-old-logs': {
+        'task': 'server.tasks.stats_tasks.cleanup_old_logs',
+        'schedule': crontab(hour=2, minute=0),  # 2 AM daily
+    },
+}
+```
+
+**Run Celery Worker**:
+```bash
+# Terminal 1: Start Celery worker
+celery -A server.tasks.celery_app worker --loglevel=info
+
+# Terminal 2: Start Celery beat (scheduler)
+celery -A server.tasks.celery_app beat --loglevel=info
+```
+
+**Benefits**:
+- ✅ Heavy stats calculated in background (doesn't block API)
+- ✅ Scheduled maintenance tasks (cleanup, aggregations)
+- ✅ Can retry failed tasks automatically
+- ✅ Scales horizontally (add more workers)
+
+---
+
+### **Summary: Backend Performance Improvements**
+
+| Feature | Before | After | Benefit |
+|---------|--------|-------|---------|
+| **Endpoints** | Sync (blocking) | Async (non-blocking) | 10-100x concurrency |
+| **WebSocket** | ❌ None | ✅ python-socketio | Real-time updates |
+| **Database** | SQLite | PostgreSQL + pooling | Production-ready |
+| **Caching** | ❌ None | ✅ Redis | 100x faster stats |
+| **Background Tasks** | ❌ None | ✅ Celery | Offload heavy work |
+| **Response Time** | 500-2000ms | 10-50ms (cached) | 40x faster! |
+
+**Estimated Time**: 2-3 days
+
+**Priority**: **DO THIS FIRST** before frontend - backend must be solid!
+
+---
+
 ## **Part A: Electron App Setup & Structure**
 
 ### 1. Initialize Electron Project
@@ -910,28 +1277,42 @@ Using **Carbon Components Svelte**:
 
 ## **Summary: Phase 1.11 Timeline**
 
-**Total Estimated Time**: 14 days (3 weeks)
+**Total Estimated Time**: 17 days (3.5 weeks)
 
-| Task | Days |
-|------|------|
-| A1. Electron setup & structure | 1 |
-| B2. Main window layout | 2 |
-| B3. Professional visual design | 1 |
-| B4. XLSTransfer UI (modal-based) | 2 |
-| C5. WebSocket integration | 2 |
-| C6. Live logs console | 1 |
-| C7. User process monitoring | 1 |
-| D8. Enhanced logging (backend) | 2 |
-| D9. Analytics dashboard | 2 |
-| D10. Comparison views | 1 |
+| Part | Task | Days | Priority |
+|------|------|------|----------|
+| **0** | **Backend Performance Upgrades** | **3** | **🔥 DO FIRST!** |
+| 0.1 | Convert all endpoints to async | 0.5 | Critical |
+| 0.2 | Add WebSocket support (python-socketio) | 1 | Critical |
+| 0.3 | Switch to PostgreSQL + connection pooling | 0.5 | Critical |
+| 0.4 | Add Redis caching | 0.5 | Important |
+| 0.5 | Add Celery background tasks | 0.5 | Important |
+| **A** | **Electron Setup** | **1** | After Part 0 |
+| A1 | Electron project setup & structure | 1 | - |
+| **B** | **UI/UX Design** | **5** | - |
+| B2 | Main window layout (sidebar + content) | 2 | - |
+| B3 | Professional visual design (Carbon) | 1 | - |
+| B4 | XLSTransfer UI (modal-based) | 2 | - |
+| **C** | **Real-Time Features** | **4** | - |
+| C5 | Frontend WebSocket integration | 1 | - |
+| C6 | Live logs console | 1 | - |
+| C7 | User process monitoring | 1 | - |
+| C8 | Real-time notifications | 1 | - |
+| **D** | **Analytics & Stats** | **4** | - |
+| D9 | Enhanced logging (comprehensive metadata) | 1 | - |
+| D10 | Analytics dashboard (charts) | 2 | - |
+| D11 | Comparison views & reports | 1 | - |
 
 **Deliverables**:
-- ✅ Professional Electron desktop app
-- ✅ Compact, centralized UI (no tabs!)
-- ✅ Real-time updates (1-second WebSocket polling)
-- ✅ Live user/process monitoring
-- ✅ Comprehensive logging and statistics
-- ✅ Management-ready presentation quality
+- ✅ **Production-grade backend** (async, PostgreSQL, Redis, Celery)
+- ✅ **Real-time WebSocket** communication (bi-directional)
+- ✅ **Professional Electron desktop app** (Svelte + Carbon)
+- ✅ **Compact, centralized UI** (no tabs, sidebar navigation)
+- ✅ **Live updates every 1 second** (WebSocket push)
+- ✅ **Live user/process monitoring** (click users to see operations)
+- ✅ **Comprehensive logging** (files, sizes, performance, stages)
+- ✅ **Beautiful analytics** (interactive charts, comparisons)
+- ✅ **Management-ready presentation** (CEO-quality)
 
 ### 📋 Phase 1.12: Package and Deploy MVP
 - After user testing feedback
