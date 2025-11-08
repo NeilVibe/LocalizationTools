@@ -230,6 +230,36 @@ def require_admin(
     return current_user
 
 
+async def require_admin_async(
+    current_user: dict = Depends(get_current_active_user_async)
+) -> dict:
+    """
+    FastAPI dependency to require admin role (ASYNC).
+
+    Args:
+        current_user: Current authenticated user.
+
+    Returns:
+        User data dictionary if admin.
+
+    Raises:
+        HTTPException: If user is not an admin.
+
+    Example:
+        >>> @app.delete("/users/{user_id}")
+        >>> async def delete_user(user_id: int, admin: dict = Depends(require_admin_async)):
+        >>>     # Only admins can access this endpoint
+        >>>     return {"message": "User deleted"}
+    """
+    if not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    return current_user
+
+
 def get_api_key(x_api_key: str = Header(...)) -> str:
     """
     FastAPI dependency to verify API key.
