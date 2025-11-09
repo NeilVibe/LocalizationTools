@@ -85,11 +85,20 @@ def run_create_dictionary_background(
         original_cwd = os.getcwd()
         os.chdir(project_root)
 
-        # Create dictionaries (ProgressTracker handles progress updates)
-        split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_excel_for_dictionary(
-            excel_files=excel_files,
-            progress_tracker=None  # TODO: Pass operation_id when process_operation supports it
-        )
+        # Redirect stderr to avoid broken pipe errors in background thread
+        import sys as sys_module
+        old_stderr = sys_module.stderr
+        sys_module.stderr = open(os.devnull, 'w')
+
+        try:
+            # Create dictionaries (ProgressTracker handles progress updates)
+            split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_excel_for_dictionary(
+                excel_files=excel_files,
+                progress_tracker=None  # TODO: Pass operation_id when process_operation supports it
+            )
+        finally:
+            # Restore stderr
+            sys_module.stderr = old_stderr
 
         logger.info("Dictionaries created, saving to disk", {
             "split_pairs": len(split_dict),
@@ -709,8 +718,18 @@ def run_translate_excel_background(
         original_cwd = os.getcwd()
         os.chdir(project_root)
 
-        # Run the translation (ProgressTracker handles progress updates)
-        result = process_operation.translate_excel(path_selections, threshold, operation_id)
+        # Redirect stderr to avoid broken pipe errors in background thread
+        # (process_operation.py has print statements to stderr)
+        import sys as sys_module
+        old_stderr = sys_module.stderr
+        sys_module.stderr = open(os.devnull, 'w')
+
+        try:
+            # Run the translation (ProgressTracker handles progress updates)
+            result = process_operation.translate_excel(path_selections, threshold, operation_id)
+        finally:
+            # Restore stderr
+            sys_module.stderr = old_stderr
 
         # Restore directory
         os.chdir(original_cwd)
