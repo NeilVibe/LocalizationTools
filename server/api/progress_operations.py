@@ -15,6 +15,12 @@ from loguru import logger
 
 from server.database.models import ActiveOperation, User
 from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.websocket import (
+    emit_operation_start,
+    emit_progress_update,
+    emit_operation_complete,
+    emit_operation_failed
+)
 
 router = APIRouter(prefix="/api/progress", tags=["Progress Operations"])
 
@@ -114,6 +120,21 @@ async def create_operation(
         await db.refresh(new_operation)
 
         logger.success(f"Operation created: ID={new_operation.operation_id}, Name={operation.operation_name}")
+
+        # Emit WebSocket event for operation start
+        await emit_operation_start({
+            'operation_id': new_operation.operation_id,
+            'user_id': new_operation.user_id,
+            'username': new_operation.username,
+            'tool_name': new_operation.tool_name,
+            'function_name': new_operation.function_name,
+            'operation_name': new_operation.operation_name,
+            'status': new_operation.status,
+            'progress_percentage': new_operation.progress_percentage,
+            'started_at': new_operation.started_at.isoformat(),
+            'file_info': new_operation.file_info,
+            'parameters': new_operation.parameters
+        })
 
         return new_operation
 
@@ -244,7 +265,36 @@ async def update_operation(
         await db.commit()
         await db.refresh(operation)
 
-        logger.success(f"Operation {operation_id} updated: {update_data.progress_percentage}% complete")
+        logger.success(f"Operation {operation_id} updated: {operation.progress_percentage}% complete")
+
+        # Emit WebSocket event based on status
+        operation_data = {
+            'operation_id': operation.operation_id,
+            'user_id': operation.user_id,
+            'username': operation.username,
+            'tool_name': operation.tool_name,
+            'function_name': operation.function_name,
+            'operation_name': operation.operation_name,
+            'status': operation.status,
+            'progress_percentage': operation.progress_percentage,
+            'current_step': operation.current_step,
+            'total_steps': operation.total_steps,
+            'completed_steps': operation.completed_steps,
+            'started_at': operation.started_at.isoformat(),
+            'updated_at': operation.updated_at.isoformat(),
+            'completed_at': operation.completed_at.isoformat() if operation.completed_at else None,
+            'estimated_completion': operation.estimated_completion.isoformat() if operation.estimated_completion else None,
+            'error_message': operation.error_message,
+            'file_info': operation.file_info,
+            'parameters': operation.parameters
+        }
+
+        if operation.status == "completed":
+            await emit_operation_complete(operation_data)
+        elif operation.status == "failed":
+            await emit_operation_failed(operation_data)
+        else:
+            await emit_progress_update(operation_data)
 
         return operation
 
