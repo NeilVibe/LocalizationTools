@@ -22,6 +22,7 @@ from copy import copy
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 from core import clean_text, excel_column_to_index
+import config
 
 
 def safe_most_frequent(x):
@@ -137,7 +138,7 @@ def translate_excel(selections, threshold):
     Exact replica of translate_excel_to_excel from original (lines 648-778)
     """
     # Load dictionaries and create index
-    if not os.path.exists('SplitExcelDictionary.pkl') or not os.path.exists('SplitExcelEmbeddings.pkl'):
+    if not os.path.exists('SplitExcelDictionary.pkl') or not os.path.exists('SplitExcelEmbeddings.npy'):
         return {"success": False, "error": "Dictionary not loaded. Please load dictionary first."}
 
     print("Loading model and dictionary...", file=sys.stderr)
@@ -229,11 +230,17 @@ def translate_excel(selections, threshold):
 
                 print(f"Processed {idx}/{total_rows} rows in tab '{sheet_name}'", file=sys.stderr)
 
-        output_file_path = f"{os.path.splitext(excel_file_path)[0]}_translated.xlsx"
+        # Save to organized output directory
+        output_dir = config.get_output_directory(app_name="xlstransfer")
+        original_filename = os.path.basename(excel_file_path)
+        output_filename = f"{os.path.splitext(original_filename)[0]}_translated.xlsx"
+        output_file_path = str(output_dir / output_filename)
+
         temp_wb.save(output_file_path)
         temp_wb.close()
         os.remove(temp_file_path)
-        print(f"Translation completed for {excel_file_path}! Output saved to {output_file_path}", file=sys.stderr)
+        print(f"Translation completed for {excel_file_path}!", file=sys.stderr)
+        print(f"Output saved to: {output_file_path}", file=sys.stderr)
 
     return {
         "success": True,

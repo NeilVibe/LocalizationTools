@@ -13,12 +13,17 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, Task, Logout } from "carbon-icons-svelte";
+  import { Apps } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
   import { logger } from "$lib/utils/logger.js";
+  import { remoteLogger } from "$lib/utils/remote-logger.js";
+
+  // Accept SvelteKit layout props to avoid warnings
+  export let data = {};
+  export let params = {};
 
   let isAppsMenuOpen = false;
   let checkingAuth = true;
@@ -102,6 +107,9 @@
   }
 
   onMount(() => {
+    // Initialize global error monitoring
+    remoteLogger.init();
+
     logger.component("Layout", "mounted");
     checkAuth();
   });
@@ -151,14 +159,12 @@
       <HeaderNavItem
         on:click={showTasks}
         text="Tasks"
-        icon={Task}
       />
 
       <!-- Logout Button -->
       <HeaderNavItem
         on:click={handleLogout}
         text="Logout"
-        icon={Logout}
       />
     </Header>
 

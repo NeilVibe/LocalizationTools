@@ -24,17 +24,19 @@ router = APIRouter(prefix="/api/v2/xlstransfer", tags=["XLSTransfer"])
 
 # Import XLSTransfer modules
 try:
-    from client.tools.xls_transfer import core, embeddings, translation
+    from client.tools.xls_transfer import core, embeddings, translation, process_operation
     logger.success("XLSTransfer modules loaded successfully", {
         "core": core is not None,
         "embeddings": embeddings is not None,
-        "translation": translation is not None
+        "translation": translation is not None,
+        "process_operation": process_operation is not None
     })
 except ImportError as e:
     logger.error(f"Failed to import XLSTransfer modules: {e}")
     core = None
     embeddings = None
     translation = None
+    process_operation = None
 
 
 @router.get("/health")
@@ -58,15 +60,17 @@ async def xlstransfer_health():
 @router.post("/test/create-dictionary")
 async def test_create_dictionary(
     files: List[UploadFile] = File(...),
-    kr_column: str = Form("KR"),
-    translation_column: str = Form("Translation"),
+    kr_column: str = Form("A"),
+    translation_column: str = Form("B"),
     sheet_name: Optional[str] = Form(None),
+    selections: Optional[str] = Form(None),  # JSON string of sheet/column selections
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Test dictionary creation with uploaded Excel files
 
     This simulates the "Create dictionary" button
+    Supports both simple mode (kr_column, translation_column) and advanced mode (selections)
     """
     start_time = time.time()
     username = current_user.get("username", "unknown") if isinstance(current_user, dict) else getattr(current_user, "username", "unknown")
@@ -106,16 +110,50 @@ async def test_create_dictionary(
         })
 
     try:
-        logger.info("Creating dictionaries from uploaded files", {
-            "file_count": len(file_paths),
-            "kr_column": kr_column,
-            "translation_column": translation_column
-        })
-
         # Prepare file list for processing (file_path, sheet_name, kr_column, trans_column)
         excel_files = []
-        for file_path in file_paths:
-            excel_files.append((file_path, sheet_name or "Sheet1", kr_column, translation_column))
+
+        if selections:
+            # Advanced mode: Use selections from Upload Settings Modal
+            logger.info("Using advanced mode with selections", {
+                "file_count": len(file_paths)
+            })
+
+            selections_dict = json.loads(selections)
+            # selections format: {"filename1.xlsx": {"Sheet1": {"kr_column": "A", "trans_column": "B"}}}
+
+            # Map filenames to saved paths
+            filename_to_path = {os.path.basename(fp): fp for fp in file_paths}
+
+            for filename, sheets in selections_dict.items():
+                if filename in filename_to_path:
+                    file_path = filename_to_path[filename]
+                    for sheet_name, columns in sheets.items():
+                        excel_files.append((
+                            file_path,
+                            sheet_name,
+                            columns['kr_column'],
+                            columns['trans_column']
+                        ))
+                        logger.info(f"Added selection: {filename} - {sheet_name}", {
+                            "kr_column": columns['kr_column'],
+                            "trans_column": columns['trans_column']
+                        })
+        else:
+            # Simple mode: Use default columns for all files
+            logger.info("Using simple mode with default columns", {
+                "file_count": len(file_paths),
+                "kr_column": kr_column,
+                "translation_column": translation_column
+            })
+
+            for file_path in file_paths:
+                excel_files.append((file_path, sheet_name or "Sheet1", kr_column, translation_column))
+
+        logger.info("Creating dictionaries from uploaded files", {
+            "excel_files_count": len(excel_files),
+            "mode": "advanced" if selections else "simple"
+        })
 
         # Process Excel files to create dictionaries
         split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_excel_for_dictionary(
@@ -198,22 +236,38 @@ async def test_load_dictionary(
     try:
         logger.info("Loading dictionary files from disk")
 
-        # Load dictionary files
-        result = embeddings.load_dictionary()
+        # Load split dictionary (primary mode)
+        split_embeddings, split_dict, split_index, split_kr_texts = embeddings.load_dictionary(mode="split")
+
+        logger.info("Split dictionary loaded", {
+            "split_pairs": len(split_dict)
+        })
+
+        # Try to load whole dictionary if it exists
+        whole_pairs = 0
+        try:
+            if embeddings.check_dictionary_exists(mode="whole"):
+                whole_embeddings, whole_dict, whole_index, whole_kr_texts = embeddings.load_dictionary(mode="whole")
+                whole_pairs = len(whole_dict)
+                logger.info("Whole dictionary loaded", {"whole_pairs": whole_pairs})
+        except Exception:
+            logger.info("No whole dictionary found, using split only")
 
         elapsed_time = time.time() - start_time
 
         response = {
             "success": True,
             "message": "Dictionary loaded successfully",
-            "entries_loaded": result.get("entries_count", 0),
-            "model_loaded": result.get("model_name", "unknown")
+            "split_pairs": len(split_dict),
+            "whole_pairs": whole_pairs,
+            "total_pairs": len(split_dict) + whole_pairs,
+            "elapsed_time": elapsed_time
         }
 
         logger.success(f"Dictionary loaded in {elapsed_time:.2f}s", {
             "user": username,
-            "entries_loaded": result.get("entries_count", 0),
-            "model_name": result.get("model_name", "unknown"),
+            "split_pairs": len(split_dict),
+            "whole_pairs": whole_pairs,
             "elapsed_time": elapsed_time
         })
 
@@ -256,28 +310,44 @@ async def test_translate_text(
         raise HTTPException(status_code=500, detail="XLSTransfer modules not loaded")
 
     try:
-        logger.info("Translating text using loaded dictionary")
+        logger.info("Loading dictionary for translation")
 
-        # Translate text
-        result = translation.translate_single_text(
+        # Load split dictionary (primary mode)
+        split_embeddings, split_dict, split_index, split_kr_texts = embeddings.load_dictionary(mode="split")
+
+        logger.info("Translating text using find_best_match", {
+            "dictionary_size": len(split_dict),
+            "text_preview": text[:50] + "..." if len(text) > 50 else text
+        })
+
+        # Find best match using backend function
+        matched_korean, translated_text, similarity_score = translation.find_best_match(
             text=text,
-            threshold=threshold
+            faiss_index=split_index,
+            kr_sentences=split_kr_texts,
+            translation_dict=split_dict,
+            threshold=threshold,
+            model=None  # Will use default model
         )
+
+        match_found = bool(matched_korean and translated_text)
 
         elapsed_time = time.time() - start_time
 
         response = {
             "success": True,
             "original_text": text,
-            "translated_text": result.get("translation", text),
-            "confidence": result.get("confidence", 0.0),
-            "match_found": result.get("match_found", False)
+            "matched_korean": matched_korean,
+            "translated_text": translated_text if match_found else text,
+            "confidence": similarity_score,
+            "match_found": match_found,
+            "elapsed_time": elapsed_time
         }
 
         logger.success(f"Text translated in {elapsed_time:.3f}s", {
             "user": username,
-            "match_found": result.get("match_found", False),
-            "confidence": result.get("confidence", 0.0),
+            "match_found": match_found,
+            "confidence": similarity_score,
             "elapsed_time": elapsed_time
         })
 
@@ -339,36 +409,92 @@ async def test_translate_file(
     try:
         if file_type == "txt":
             logger.info(f"Translating .txt file: {file.filename}")
-            # Translate txt file
-            result = translation.translate_txt_file(
-                input_path=str(input_path),
-                threshold=threshold
-            )
+
+            # Load dictionary
+            split_embeddings, split_dict, split_index, split_kr_texts = embeddings.load_dictionary(mode="split")
+
+            # Read txt file line by line
+            with open(input_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+
+            # Translate each line
+            translated_lines = []
+            matches_found = 0
+
+            for line in lines:
+                if not line.strip():
+                    translated_lines.append(line)
+                    continue
+
+                # Find best match
+                matched_korean, translated_text, confidence = translation.find_best_match(
+                    text=line.strip(),
+                    faiss_index=split_index,
+                    kr_sentences=split_kr_texts,
+                    translation_dict=split_dict,
+                    threshold=threshold,
+                    model=None
+                )
+
+                if matched_korean and translated_text:
+                    translated_lines.append(translated_text + '\n')
+                    matches_found += 1
+                else:
+                    translated_lines.append(line)
+
+            # Write output file
+            output_path = temp_dir / f"{Path(file.filename).stem}_translated.txt"
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.writelines(translated_lines)
+
+            elapsed_time = time.time() - start_time
+
+            response = {
+                "success": True,
+                "input_file": file.filename,
+                "output_file": str(output_path),
+                "lines_translated": len(lines),
+                "matches_found": matches_found,
+                "elapsed_time": elapsed_time
+            }
+
         else:
             logger.info(f"Translating Excel file: {file.filename}")
-            # Translate Excel file
-            result = translation.translate_excel_file(
-                input_path=str(input_path),
-                threshold=threshold
-            )
 
-        elapsed_time = time.time() - start_time
+            # For Excel, we need to use process_operation.translate_excel()
+            # This requires a specific "selections" format
+            # For testing, we'll use a simplified approach: translate column A to column B in Sheet1
 
-        response = {
-            "success": True,
-            "input_file": file.filename,
-            "output_file": result.get("output_path", ""),
-            "lines_translated": result.get("lines_translated", 0),
-            "matches_found": result.get("matches_found", 0),
-            "statistics": result.get("statistics", {})
-        }
+            selections = {
+                str(input_path): {
+                    "Sheet1": {
+                        "kr_column": "A",
+                        "trans_column": "B"
+                    }
+                }
+            }
+
+            # Call backend function
+            result = process_operation.translate_excel(selections, threshold)
+
+            elapsed_time = time.time() - start_time
+
+            if result.get("success"):
+                output_path = f"{str(input_path).rsplit('.', 1)[0]}_translated.xlsx"
+                response = {
+                    "success": True,
+                    "input_file": file.filename,
+                    "output_file": output_path,
+                    "message": result.get("message", ""),
+                    "elapsed_time": elapsed_time
+                }
+            else:
+                raise Exception(result.get("error", "Unknown error"))
 
         logger.success(f"File translation completed in {elapsed_time:.2f}s", {
             "user": username,
             "filename": file.filename,
             "file_type": file_type,
-            "lines_translated": result.get("lines_translated", 0),
-            "matches_found": result.get("matches_found", 0),
             "elapsed_time": elapsed_time
         })
 
@@ -385,6 +511,165 @@ async def test_translate_file(
             "elapsed_time": elapsed_time
         })
         raise HTTPException(status_code=500, detail=f"File translation failed: {str(e)}")
+
+
+@router.post("/test/translate-excel")
+async def test_translate_excel(
+    files: List[UploadFile] = File(...),
+    selections: str = Form(...),  # JSON string of sheet/column selections
+    threshold: float = Form(0.99),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Translate Excel files with sheet/column selections
+
+    This simulates "Transfer to Excel" with Upload Settings Modal
+    Accepts multiple files and translates specified sheets/columns
+    Returns translated Excel file for download
+    """
+    from fastapi.responses import FileResponse
+
+    start_time = time.time()
+    username = current_user.get("username", "unknown") if isinstance(current_user, dict) else getattr(current_user, "username", "unknown")
+
+    logger.info(f"Excel translation requested by user: {username}", {
+        "user": username,
+        "files_count": len(files),
+        "threshold": threshold
+    })
+
+    if process_operation is None or embeddings is None:
+        logger.error("XLSTransfer modules not loaded - cannot translate Excel")
+        raise HTTPException(status_code=500, detail="XLSTransfer modules not loaded")
+
+    # Save uploaded files to temp directory
+    temp_dir = Path("/tmp/xlstransfer_test")
+    temp_dir.mkdir(exist_ok=True)
+
+    logger.info(f"Saving {len(files)} uploaded files to temp directory", {"temp_dir": str(temp_dir)})
+
+    file_paths = []
+    for i, file in enumerate(files, 1):
+        file_path = temp_dir / file.filename
+        file_size = 0
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            file_size = len(content)
+            f.write(content)
+        file_paths.append(str(file_path))
+
+        logger.info(f"Saved file {i}/{len(files)}: {file.filename}", {
+            "filename": file.filename,
+            "size_bytes": file_size,
+            "path": str(file_path)
+        })
+
+    try:
+        # Parse selections
+        logger.info("Parsing selections for Excel translation")
+        selections_dict = json.loads(selections)
+
+        # Map filenames to saved paths for selections
+        filename_to_path = {os.path.basename(fp): fp for fp in file_paths}
+
+        # Build selections with full file paths
+        path_selections = {}
+        for filename, sheets in selections_dict.items():
+            if filename in filename_to_path:
+                file_path = filename_to_path[filename]
+                path_selections[file_path] = sheets
+
+                logger.info(f"Processing selections for: {filename}", {
+                    "file_path": file_path,
+                    "sheets": list(sheets.keys())
+                })
+
+        logger.info("Loading dictionary for translation")
+
+        # Load dictionary (required for translation)
+        try:
+            split_embeddings, split_dict, split_index, split_kr_texts = embeddings.load_dictionary(mode="split")
+            logger.info("Dictionary loaded successfully", {
+                "split_pairs": len(split_dict)
+            })
+        except Exception as e:
+            logger.error(f"Failed to load dictionary: {str(e)}")
+            raise HTTPException(
+                status_code=400,
+                detail="Dictionary not loaded. Please load or create a dictionary first."
+            )
+
+        logger.info("Starting Excel translation with process_operation.translate_excel", {
+            "selections_count": len(path_selections),
+            "threshold": threshold
+        })
+
+        # Change to project root directory (where dictionary files are saved)
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(project_root)
+            logger.info(f"Changed working directory to: {project_root}")
+
+            # Call backend function to translate Excel files
+            result = process_operation.translate_excel(path_selections, threshold)
+        finally:
+            # Restore original working directory
+            os.chdir(original_cwd)
+
+        elapsed_time = time.time() - start_time
+
+        if result.get("success"):
+            # Find the translated file in organized output directory
+            # Import config to get output directory
+            from client.tools.xls_transfer import config as xls_config
+
+            # Get organized output directory
+            output_dir = xls_config.get_output_directory(app_name="xlstransfer")
+
+            # Get the first file to determine output filename
+            first_file_path = list(path_selections.keys())[0]
+            original_filename = os.path.basename(first_file_path)
+            output_filename = f"{os.path.splitext(original_filename)[0]}_translated.xlsx"
+            output_path = str(output_dir / output_filename)
+
+            logger.success(f"Excel translation completed in {elapsed_time:.2f}s", {
+                "user": username,
+                "files_processed": len(files),
+                "output_file": output_path,
+                "elapsed_time": elapsed_time
+            })
+
+            # Return the file for download
+            if os.path.exists(output_path):
+                return FileResponse(
+                    path=output_path,
+                    filename=os.path.basename(output_path),
+                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            else:
+                # Return success response with details
+                response = {
+                    "success": True,
+                    "message": result.get("message", "Translation completed"),
+                    "files_processed": len(files),
+                    "output_file": output_path,
+                    "elapsed_time": elapsed_time
+                }
+                return response
+        else:
+            raise Exception(result.get("error", "Unknown error during translation"))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        elapsed_time = time.time() - start_time
+        logger.error(f"Excel translation failed after {elapsed_time:.2f}s: {str(e)}", {
+            "user": username,
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "elapsed_time": elapsed_time
+        })
+        raise HTTPException(status_code=500, detail=f"Excel translation failed: {str(e)}")
 
 
 @router.get("/test/status")
@@ -418,3 +703,70 @@ async def test_status(
     })
 
     return status
+
+
+@router.post("/test/get-sheets")
+async def test_get_sheets(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Get sheet names from an uploaded Excel file
+
+    This is for the Upload Settings Modal in browser mode
+    """
+    username = current_user.get("username", "unknown") if isinstance(current_user, dict) else getattr(current_user, "username", "unknown")
+
+    logger.info(f"Get sheets requested by user: {username}", {
+        "user": username,
+        "filename": file.filename
+    })
+
+    if core is None:
+        logger.error("XLSTransfer core module not loaded")
+        raise HTTPException(status_code=500, detail="XLSTransfer modules not loaded")
+
+    # Save uploaded file temporarily
+    temp_dir = Path("/tmp/xlstransfer_test")
+    temp_dir.mkdir(exist_ok=True)
+
+    file_path = temp_dir / file.filename
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    logger.info(f"File saved temporarily: {file.filename}", {
+        "path": str(file_path),
+        "size_bytes": len(content)
+    })
+
+    try:
+        # Get sheet names using openpyxl
+        import openpyxl
+        wb = openpyxl.load_workbook(file_path, read_only=True)
+        sheets = wb.sheetnames
+        wb.close()
+
+        logger.success(f"Retrieved {len(sheets)} sheets from {file.filename}", {
+            "filename": file.filename,
+            "sheet_count": len(sheets),
+            "sheets": sheets
+        })
+
+        response_data = {
+            "success": True,
+            "filename": file.filename,
+            "sheets": sheets
+        }
+
+        logger.info(f"RESPONSE being sent to frontend: {response_data}")
+
+        return response_data
+
+    except Exception as e:
+        logger.error(f"Failed to get sheets from {file.filename}: {str(e)}", {
+            "filename": file.filename,
+            "error": str(e),
+            "error_type": type(e).__name__
+        })
+        raise HTTPException(status_code=500, detail=f"Failed to read Excel file: {str(e)}")

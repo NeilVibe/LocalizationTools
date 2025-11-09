@@ -3,7 +3,7 @@ Remote Logging API - Central Collection Endpoint
 Receives logs from user installations for centralized monitoring
 """
 
-from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi import APIRouter, HTTPException, Header, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from pydantic import BaseModel
@@ -242,3 +242,33 @@ async def remote_logging_health():
 # - DELETE /installations/{id} - Deregister installation
 # - POST /installations/{id}/alert-config - Configure alerts per installation
 # - GET /analytics - Get aggregated analytics across all installations
+
+@router.post("/frontend")
+async def log_frontend(request: Request):
+    """
+    Receive logs from frontend browser and write to backend log file
+    This gives us visibility into browser console
+    """
+    try:
+        body = await request.json()
+        level = body.get('level', 'INFO')
+        message = body.get('message', '')
+        data = body.get('data', {})
+        source = body.get('source', 'frontend')
+        
+        log_message = f"[FRONTEND] {message}"
+
+        # Log with full data visibility
+        if level == 'ERROR':
+            logger.error(f"{log_message} | DATA: {data}")
+        elif level == 'WARNING':
+            logger.warning(f"{log_message} | DATA: {data}")
+        elif level == 'SUCCESS':
+            logger.success(f"{log_message} | DATA: {data}")
+        else:
+            logger.info(f"{log_message} | DATA: {data}")
+        
+        return {"status": "logged"}
+    except Exception as e:
+        logger.error(f"Failed to log frontend message: {str(e)}")
+        return {"status": "error", "detail": str(e)}

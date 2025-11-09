@@ -143,6 +143,22 @@ OUTPUT_SUFFIXES = {
 PRESERVE_FORMATTING = True  # Keep Excel cell formatting
 PRESERVE_FORMULAS = False  # Convert formulas to values
 
+# Organized output directory structure
+from pathlib import Path as ConfigPath
+import os
+
+# Base output directory (user's home or project-specific)
+OUTPUT_BASE_DIR = ConfigPath(os.path.expanduser("~")) / "LocalizationTools_Outputs"
+
+# App-specific subdirectories
+APP_OUTPUT_DIRS = {
+    "xlstransfer": "XLSTransfer",
+    "future_app": "FutureApp",  # Add more apps here
+}
+
+# Whether to organize outputs by date (YYYY-MM-DD folders)
+ORGANIZE_BY_DATE = True  # Creates folders like "2025-11-09"
+
 # ============================================
 # Helper Functions
 # ============================================
@@ -173,6 +189,41 @@ def validate_faiss_threshold(threshold: float) -> float:
         Clamped threshold between MIN and MAX
     """
     return max(MIN_FAISS_THRESHOLD, min(MAX_FAISS_THRESHOLD, threshold))
+
+
+def get_output_directory(app_name: str = "xlstransfer") -> ConfigPath:
+    """
+    Get organized output directory path for the given app.
+
+    Creates structure:
+    ~/LocalizationTools_Outputs/
+      XLSTransfer/
+        2025-11-09/  (if ORGANIZE_BY_DATE is True)
+
+    Args:
+        app_name: Name of the app (key in APP_OUTPUT_DIRS)
+
+    Returns:
+        Path object for the output directory
+    """
+    from datetime import datetime
+
+    # Base directory
+    output_dir = OUTPUT_BASE_DIR
+
+    # App-specific subdirectory
+    if app_name in APP_OUTPUT_DIRS:
+        output_dir = output_dir / APP_OUTPUT_DIRS[app_name]
+
+    # Date-based subdirectory (YYYY-MM-DD)
+    if ORGANIZE_BY_DATE:
+        today = datetime.now().strftime("%Y-%m-%d")
+        output_dir = output_dir / today
+
+    # Create directory if it doesn't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    return output_dir
 
 
 if __name__ == "__main__":
