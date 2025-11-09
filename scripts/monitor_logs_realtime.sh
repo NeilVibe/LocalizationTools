@@ -57,6 +57,12 @@ echo ""
 echo "📊 Monitoring:"
 echo "  - Backend Server: $PROJECT_ROOT/server/data/logs/server.log"
 echo "  - Backend Errors: $PROJECT_ROOT/server/data/logs/error.log"
+if [ "$BACKEND_ONLY" != true ]; then
+    echo "  - LocaNext App:   $PROJECT_ROOT/logs/locanext_app.log"
+    echo "  - LocaNext Errors: $PROJECT_ROOT/logs/locanext_error.log"
+    echo "  - Dashboard App:  $PROJECT_ROOT/logs/dashboard_app.log"
+    echo "  - Dashboard Errors: $PROJECT_ROOT/logs/dashboard_error.log"
+fi
 echo ""
 echo "💡 Tips:"
 echo "  - Press Ctrl+C to stop monitoring"
@@ -105,12 +111,32 @@ colorize_log() {
     done
 }
 
-# Monitor both server.log and error.log
+# Ensure log files exist
+touch "$PROJECT_ROOT/server/data/logs/server.log"
+touch "$PROJECT_ROOT/server/data/logs/error.log"
+touch "$PROJECT_ROOT/logs/locanext_app.log"
+touch "$PROJECT_ROOT/logs/locanext_error.log"
+touch "$PROJECT_ROOT/logs/dashboard_app.log"
+touch "$PROJECT_ROOT/logs/dashboard_error.log"
+
+# Monitor all log files
 echo "🚀 Monitoring started... (watching for new log entries)"
 echo ""
 
-# Use tail -f to follow both files, colorize output
-tail -f -n 0 \
-    "$PROJECT_ROOT/server/data/logs/server.log" \
-    "$PROJECT_ROOT/server/data/logs/error.log" \
-    2>/dev/null | colorize_log
+if [ "$BACKEND_ONLY" = true ]; then
+    # Backend only mode
+    tail -f -n 0 \
+        "$PROJECT_ROOT/server/data/logs/server.log" \
+        "$PROJECT_ROOT/server/data/logs/error.log" \
+        2>/dev/null | colorize_log
+else
+    # All servers mode
+    tail -f -n 0 \
+        "$PROJECT_ROOT/server/data/logs/server.log" \
+        "$PROJECT_ROOT/server/data/logs/error.log" \
+        "$PROJECT_ROOT/logs/locanext_app.log" \
+        "$PROJECT_ROOT/logs/locanext_error.log" \
+        "$PROJECT_ROOT/logs/dashboard_app.log" \
+        "$PROJECT_ROOT/logs/dashboard_error.log" \
+        2>/dev/null | colorize_log
+fi

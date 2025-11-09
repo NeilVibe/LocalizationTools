@@ -2,21 +2,42 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import adminAPI from '$lib/api/client.js';
+  import { logger } from '$lib/utils/logger.js';
 
   let users = [];
   let loading = true;
 
   onMount(async () => {
+    const startTime = performance.now();
+    logger.component('UsersPage', 'mounted');
+
     try {
+      logger.apiCall('/api/users', 'GET');
       users = await adminAPI.getAllUsers();
+
+      const elapsed = performance.now() - startTime;
+
+      logger.success('Users loaded successfully', {
+        user_count: users.length,
+        elapsed_ms: elapsed.toFixed(2)
+      });
+
       loading = false;
     } catch (error) {
-      console.error('Failed to load users:', error);
+      const elapsed = performance.now() - startTime;
+
+      logger.error('Failed to load users', {
+        error: error.message,
+        error_type: error.name,
+        elapsed_ms: elapsed.toFixed(2)
+      });
+
       loading = false;
     }
   });
 
   function viewUserDetails(userId) {
+    logger.userAction('View user details', { user_id: userId });
     goto(`/users/${userId}`);
   }
 </script>
