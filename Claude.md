@@ -1,9 +1,9 @@
 # LocaNext - Project Guide for Claude
 
 **App Name**: LocaNext (formerly LocalizationTools)
-**Last Updated**: 2025-11-09 (Complete Monitoring System Built)
-**Current Phase**: Phase 3 - Testing & Monitoring (Monitoring Complete ✅)
-**Status**: Backend ✅ | LocaNext ✅ | Dashboard ⏳ 85% | Monitoring ✅ Complete
+**Last Updated**: 2025-11-09 17:25 (XLSTransfer API Testing 40% Complete)
+**Current Phase**: Phase 3 - Testing & Monitoring (XLSTransfer testing in progress)
+**Status**: Backend ✅ | LocaNext ✅ | Dashboard ⏳ 85% | Monitoring ✅ | XLSTransfer Testing ⏳ 40%
 
 ---
 
@@ -44,6 +44,70 @@ split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_
 2. ✅ Verify you're calling backend functions correctly (names, parameters, types)
 3. ❌ Do NOT assume backend is wrong
 4. ❓ If truly stuck, ask user: "Should I modify the backend, or is this a wrapper issue?"
+
+---
+
+## 🎯 XLSTransfer GUI & API (CRITICAL REFERENCE)
+
+**IMPORTANT**: XLSTransfer has a **COMPLETE multi-file/sheet/column selection GUI** already built!
+
+### Full GUI Features (`locaNext/src/lib/components/apps/XLSTransfer.svelte`):
+
+**✅ Multi-File Selection**:
+- Native/browser file picker with `multiSelections` enabled
+- Can select multiple Excel files at once
+
+**✅ Upload Settings Modal** (lines 988-1029):
+- Shows each file with all available sheets
+- Per-sheet checkbox to enable/disable
+- When sheet selected, shows:
+  - "KR Column" text input (e.g., A, B, C)
+  - "Translation Column" text input (e.g., D, E, F)
+- Full validation (column letters, at least one sheet selected)
+
+**✅ Selections Data Structure**:
+```javascript
+selections = {
+  "/path/to/file1.xlsx": {
+    "Sheet1": { kr_column: "A", trans_column: "B" },
+    "Sheet2": { kr_column: "C", trans_column: "D" }
+  },
+  "/path/to/file2.xlsx": {
+    "Data": { kr_column: "A", trans_column: "E" }
+  }
+}
+```
+
+### Backend Integration:
+
+**Function**: `process_operation.py` functions accept the selections structure
+**How it works**:
+1. GUI opens Upload Settings modal
+2. User selects sheets and enters column letters
+3. Builds selections object
+4. Calls Python backend: `process_operation.py translate_excel selections threshold`
+5. Backend processes each file/sheet/column combination
+
+### API Testing Endpoints (`server/api/xlstransfer_async.py`):
+
+**Available Endpoints**:
+- `POST /api/v2/xlstransfer/test/create-dictionary` - Create translation dictionary from Excel
+- `POST /api/v2/xlstransfer/test/load-dictionary` - Load existing dictionary
+- `POST /api/v2/xlstransfer/test/translate-text` - Translate single text
+- `POST /api/v2/xlstransfer/test/translate-file` - Translate .txt or Excel file
+- `GET /api/v2/xlstransfer/health` - Check module status
+
+**Tested Functions** (4/10 complete):
+1. ✅ Create Dictionary - 18,332 pairs in 33.7s
+2. ✅ Load Dictionary - 0.16s load time
+3. ✅ Translate Text - BERT matching working
+4. ✅ Translate File (txt) - Line-by-line translation working
+
+**Wrapper Fixes Made** (Backend NEVER Modified):
+- Fixed function names to match backend
+- Fixed parameter names and types
+- Added proper error handling and logging
+- All fixes were in `server/api/xlstransfer_async.py` wrapper ONLY
 
 ---
 
