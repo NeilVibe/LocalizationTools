@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, dialog, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
@@ -202,6 +202,21 @@ ipcMain.handle('select-files', async (event, options = {}) => {
   } catch (error) {
     logger.error('File dialog error', { error: error.message });
     return null;
+  }
+});
+
+/**
+ * IPC Handler: Show item in file explorer
+ * Opens file explorer and highlights the specified file
+ */
+ipcMain.handle('show-item-in-folder', async (event, filePath) => {
+  logger.ipc('show-item-in-folder', { filePath });
+
+  try {
+    shell.showItemInFolder(filePath);
+    logger.success('Opened file in explorer', { filePath });
+  } catch (error) {
+    logger.error('Failed to open file in explorer', { error: error.message, filePath });
   }
 });
 

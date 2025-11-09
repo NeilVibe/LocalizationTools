@@ -106,6 +106,49 @@ class LogEntry(Base):
         return f"<LogEntry(log_id={self.log_id}, user='{self.username}', tool='{self.tool_name}', function='{self.function_name}')>"
 
 
+class ActiveOperation(Base):
+    """Track currently running operations with real-time progress."""
+    __tablename__ = "active_operations"
+
+    operation_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    session_id = Column(String(36), ForeignKey("sessions.session_id", ondelete="SET NULL"), nullable=True)
+    username = Column(String(50), nullable=False, index=True)
+
+    # Operation info
+    tool_name = Column(String(50), nullable=False, index=True)
+    function_name = Column(String(100), nullable=False, index=True)
+    operation_name = Column(String(200), nullable=False)  # Human-readable name
+
+    # Progress tracking
+    status = Column(String(20), default="running", index=True)  # running, completed, failed, cancelled
+    progress_percentage = Column(Float, default=0.0)  # 0.0 to 100.0
+    current_step = Column(String(200), nullable=True)  # "Processing row 150/500"
+    total_steps = Column(Integer, nullable=True)  # Total number of steps if known
+    completed_steps = Column(Integer, default=0)  # Steps completed so far
+
+    # Timing
+    started_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    estimated_completion = Column(DateTime, nullable=True)  # ETA based on progress
+
+    # File/Data metadata
+    file_info = Column(JSON, nullable=True)  # Files being processed
+    parameters = Column(JSON, nullable=True)  # Operation parameters
+
+    # Error tracking
+    error_message = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("idx_active_status", "status"),
+        Index("idx_active_user_started", "user_id", "started_at"),
+    )
+
+    def __repr__(self):
+        return f"<ActiveOperation(operation_id={self.operation_id}, user='{self.username}', operation='{self.operation_name}', progress={self.progress_percentage}%)>"
+
+
 # ============================================================================
 # Analytics Tables
 # ============================================================================

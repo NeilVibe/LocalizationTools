@@ -244,7 +244,8 @@ def translate_excel(selections, threshold):
 
     return {
         "success": True,
-        "message": "Translation completed for all files!"
+        "message": "Translation completed for all files!",
+        "output_dir": str(output_dir)
     }
 
 

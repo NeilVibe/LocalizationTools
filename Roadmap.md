@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Last Updated**: 2025-11-09 19:45 (Output Organization + Transfer to Excel Complete)
+**Last Updated**: 2025-11-09 20:55 (Progress Tracking Infrastructure + Architecture Clarified)
 **Current Phase**: Phase 3 - Testing & Monitoring ⏳ **READY FOR FULL TESTING**
 **Next Phase**: Phase 4 - Adding More Apps (ONLY after Phase 3 complete)
 
@@ -12,10 +12,15 @@
 - ✅ **API Endpoint**: `/api/v2/xlstransfer/test/translate-excel` - Full Transfer to Excel in browser
 - ✅ **API Enhancement**: `create-dictionary` accepts selections JSON for full modal workflow
 - ✅ **Organized Output Folders**: Date-based folder structure `~/LocalizationTools_Outputs/AppName/YYYY-MM-DD/`
+- ✅ **Auto-Open Folder**: Windows .exe automatically opens output folder after operations complete
+- ✅ **ActiveOperation Database Model**: Real-time progress tracking infrastructure (19 fields)
+- ✅ **Database Table Created**: `active_operations` table with progress/status/timing fields
+- ✅ **Deployment Architecture**: Clarified hybrid model (SQLite in .exe + PostgreSQL for central telemetry)
+- ⏳ **Progress Tracking System**: API endpoints + WebSocket + UI integration (IN PROGRESS)
 - ✅ **Testing = Production**: Testing in browser now identical to Electron .exe
 - ✅ Comprehensive Logging System: 240+ log statements (100% coverage)
 - ✅ Monitoring Infrastructure: Real-time color-coded log monitoring
-- 📋 **Next**: Test remaining XLSTransfer functions in browser, then build Electron .exe
+- 📋 **Next**: Complete progress tracking, test remaining XLSTransfer functions, then build Electron .exe
 
 ---
 
@@ -384,6 +389,43 @@ All XLSTransfer outputs now save to organized, date-based folders for easy user 
 - Ready for all future apps - just add to `APP_OUTPUT_DIRS`
 - Can toggle date organization per app if needed
 - Can extend to hour/minute folders if required
+
+### Auto-Open Output Folder (Electron Only)
+After operations complete, Windows .exe automatically opens the output folder for instant user access.
+
+**Implementation**:
+
+1. **Preload API** (`locaNext/electron/preload.js:51-56`):
+   - `showItemInFolder(filePath)` - Exposes shell API to renderer
+
+2. **IPC Handler** (`locaNext/electron/main.js:208-221`):
+   - Handles `show-item-in-folder` IPC call
+   - Uses Electron's `shell.showItemInFolder()`
+   - Opens File Explorer (Windows) with item highlighted
+
+3. **Backend** (`process_operation.py:245-249`):
+   - Returns `output_dir` in success result
+   - Points to organized folder (e.g., `~/LocalizationTools_Outputs/XLSTransfer/2025-11-09/`)
+
+4. **Frontend** (`XLSTransfer.svelte:940-944`):
+   - Checks if Electron mode: `if (isElectron && result.output_dir)`
+   - Calls `window.electron.showItemInFolder(result.output_dir)`
+   - Auto-opens folder after operation success
+
+**User Experience**:
+```
+User clicks "Transfer to Excel"
+  → Operation completes
+  → File Explorer opens automatically
+  → Today's output folder shown with file highlighted
+  → User sees result immediately (no navigation needed!)
+```
+
+**Benefits**:
+- ✅ **Zero user friction** - Output appears instantly
+- ✅ **Discoverable** - Users see where files are saved
+- ✅ **Professional** - Standard desktop app behavior
+- ✅ **Electron-only** - Browser mode uses standard download (can't open folders due to security)
 
 ---
 
