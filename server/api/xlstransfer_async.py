@@ -3,13 +3,17 @@ XLSTransfer API Endpoints (Async)
 Exposes XLSTransfer operations via REST API for testing without GUI
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import Optional, List
 import os
 import sys
 import json
 import time
+import httpx
+from datetime import datetime
 from pathlib import Path
 
 # Add project root to Python path
@@ -17,7 +21,8 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import User
+from server.database.models import User, ActiveOperation
+from server.utils.websocket import emit_operation_start, emit_progress_update, emit_operation_complete, emit_operation_failed
 from loguru import logger
 
 router = APIRouter(prefix="/api/v2/xlstransfer", tags=["XLSTransfer"])
@@ -57,14 +62,141 @@ async def xlstransfer_health():
     return status
 
 
+def run_create_dictionary_background(
+    operation_id: int,
+    user_id: int,
+    username: str,
+    excel_files: list,
+    file_paths: list
+):
+    """
+    Background task to create dictionary without blocking the server.
+    This runs in a thread pool, keeping the FastAPI event loop free.
+    """
+    import asyncio
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+    import server.config as config
+
+    try:
+        logger.info(f"Background task started for operation {operation_id}")
+
+        # Change to project root
+        original_cwd = os.getcwd()
+        os.chdir(project_root)
+
+        # Create dictionaries (ProgressTracker handles progress updates)
+        split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_excel_for_dictionary(
+            excel_files=excel_files,
+            progress_tracker=None  # TODO: Pass operation_id when process_operation supports it
+        )
+
+        logger.info("Dictionaries created, saving to disk", {
+            "split_pairs": len(split_dict),
+            "whole_pairs": len(whole_dict)
+        })
+
+        # Save dictionaries to disk
+        embeddings.save_dictionary(
+            embeddings=split_embeddings,
+            translation_dict=split_dict,
+            mode="split"
+        )
+
+        if whole_dict and len(whole_embeddings) > 0:
+            embeddings.save_dictionary(
+                embeddings=whole_embeddings,
+                translation_dict=whole_dict,
+                mode="whole"
+            )
+
+        # Restore directory
+        os.chdir(original_cwd)
+
+        # Update database with final status
+        engine = create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {})
+        db_session = Session(engine)
+
+        try:
+            operation = db_session.query(ActiveOperation).filter(ActiveOperation.operation_id == operation_id).first()
+
+            operation.status = "completed"
+            operation.progress_percentage = 100.0
+            operation.completed_at = datetime.utcnow()
+            operation.updated_at = datetime.utcnow()
+            db_session.commit()
+
+            # Emit WebSocket completion event
+            asyncio.run(emit_operation_complete({
+                'operation_id': operation_id,
+                'user_id': user_id,
+                'username': username,
+                'tool_name': 'XLSTransfer',
+                'function_name': 'create_dictionary',
+                'operation_name': operation.operation_name,
+                'status': 'completed',
+                'progress_percentage': 100.0,
+                'started_at': operation.started_at.isoformat(),
+                'completed_at': operation.completed_at.isoformat()
+            }))
+
+            logger.success(f"Dictionary creation completed for operation {operation_id}", {
+                "split_pairs": len(split_dict),
+                "whole_pairs": len(whole_dict),
+                "files_processed": len(file_paths)
+            })
+
+        finally:
+            db_session.close()
+
+    except Exception as e:
+        logger.error(f"Background dictionary creation failed: {str(e)}", {
+            "operation_id": operation_id,
+            "error": str(e),
+            "error_type": type(e).__name__
+        })
+
+        # Update database with failed status
+        try:
+            engine = create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {})
+            db_session = Session(engine)
+
+            operation = db_session.query(ActiveOperation).filter(ActiveOperation.operation_id == operation_id).first()
+            operation.status = "failed"
+            operation.error_message = str(e)
+            operation.completed_at = datetime.utcnow()
+            operation.updated_at = datetime.utcnow()
+            db_session.commit()
+
+            # Emit WebSocket failure event
+            asyncio.run(emit_operation_failed({
+                'operation_id': operation_id,
+                'user_id': user_id,
+                'username': username,
+                'tool_name': 'XLSTransfer',
+                'function_name': 'create_dictionary',
+                'operation_name': operation.operation_name if operation else "Create Dictionary",
+                'status': 'failed',
+                'error_message': str(e),
+                'started_at': operation.started_at.isoformat() if operation and operation.started_at else None,
+                'completed_at': operation.completed_at.isoformat() if operation and operation.completed_at else None
+            }))
+
+            db_session.close()
+        except Exception as db_error:
+            logger.error(f"Failed to update operation status: {db_error}")
+
+
 @router.post("/test/create-dictionary")
 async def test_create_dictionary(
+    background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     kr_column: str = Form("A"),
     translation_column: str = Form("B"),
     sheet_name: Optional[str] = Form(None),
     selections: Optional[str] = Form(None),  # JSON string of sheet/column selections
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Test dictionary creation with uploaded Excel files
@@ -74,6 +206,7 @@ async def test_create_dictionary(
     """
     start_time = time.time()
     username = current_user.get("username", "unknown") if isinstance(current_user, dict) else getattr(current_user, "username", "unknown")
+    user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "user_id", None)
 
     logger.info(f"Dictionary creation started by user: {username}", {
         "user": username,
@@ -81,6 +214,41 @@ async def test_create_dictionary(
         "kr_column": kr_column,
         "translation_column": translation_column,
         "sheet_name": sheet_name
+    })
+
+    # Create ActiveOperation record for progress tracking
+    operation = ActiveOperation(
+        user_id=user_id,
+        username=username,
+        tool_name="XLSTransfer",
+        function_name="create_dictionary",
+        operation_name=f"Create Dictionary ({len(files)} file{'s' if len(files) > 1 else ''})",
+        status="running",
+        progress_percentage=0.0,
+        completed_steps=0,
+        file_info={"files": [f.filename for f in files]},
+        started_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+
+    db.add(operation)
+    await db.commit()
+    await db.refresh(operation)
+
+    operation_id = operation.operation_id
+    logger.success(f"Created ActiveOperation record: ID={operation_id}")
+
+    # Emit WebSocket event for operation start
+    await emit_operation_start({
+        'operation_id': operation_id,
+        'user_id': user_id,
+        'username': username,
+        'tool_name': 'XLSTransfer',
+        'function_name': 'create_dictionary',
+        'operation_name': operation.operation_name,
+        'status': 'running',
+        'progress_percentage': 0.0,
+        'started_at': operation.started_at.isoformat()
     })
 
     if core is None:
@@ -150,59 +318,38 @@ async def test_create_dictionary(
             for file_path in file_paths:
                 excel_files.append((file_path, sheet_name or "Sheet1", kr_column, translation_column))
 
-        logger.info("Creating dictionaries from uploaded files", {
+        logger.info("Queuing dictionary creation as background task", {
             "excel_files_count": len(excel_files),
-            "mode": "advanced" if selections else "simple"
+            "mode": "advanced" if selections else "simple",
+            "operation_id": operation_id
         })
 
-        # Process Excel files to create dictionaries
-        split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_excel_for_dictionary(
+        # Add background task to run dictionary creation without blocking
+        background_tasks.add_task(
+            run_create_dictionary_background,
+            operation_id=operation_id,
+            user_id=user_id,
+            username=username,
             excel_files=excel_files,
-            progress_tracker=None
+            file_paths=file_paths
         )
 
-        logger.info("Dictionaries created, saving to disk", {
-            "split_pairs": len(split_dict),
-            "whole_pairs": len(whole_dict)
-        })
+        logger.success(f"Dictionary creation queued as operation {operation_id}")
 
-        # Save dictionaries to disk
-        # Save split dictionary
-        embeddings.save_dictionary(
-            embeddings=split_embeddings,
-            translation_dict=split_dict,
-            mode="split"
+        # Return immediately with 202 Accepted (operation in progress)
+        return JSONResponse(
+            status_code=202,
+            content={
+                "success": True,
+                "message": "Dictionary creation started",
+                "operation_id": operation_id,
+                "operation_name": operation.operation_name,
+                "files_count": len(files),
+                "excel_files_count": len(excel_files),
+                "status": "running",
+                "note": "Check /api/progress/operations/{operation_id} for real-time progress"
+            }
         )
-
-        # Save whole dictionary if it exists
-        if whole_dict and len(whole_embeddings) > 0:
-            embeddings.save_dictionary(
-                embeddings=whole_embeddings,
-                translation_dict=whole_dict,
-                mode="whole"
-            )
-
-        elapsed_time = time.time() - start_time
-
-        response = {
-            "success": True,
-            "message": "Dictionaries created successfully",
-            "files_processed": len(file_paths),
-            "split_pairs": len(split_dict),
-            "whole_pairs": len(whole_dict),
-            "total_pairs": len(split_dict) + len(whole_dict),
-            "elapsed_time": elapsed_time
-        }
-
-        logger.success(f"Dictionary creation completed in {elapsed_time:.2f}s", {
-            "user": username,
-            "files_processed": len(file_paths),
-            "split_pairs": len(split_dict),
-            "whole_pairs": len(whole_dict),
-            "elapsed_time": elapsed_time
-        })
-
-        return response
 
     except Exception as e:
         elapsed_time = time.time() - start_time
@@ -212,6 +359,32 @@ async def test_create_dictionary(
             "error_type": type(e).__name__,
             "elapsed_time": elapsed_time
         })
+
+        # Mark operation as failed
+        try:
+            operation.status = "failed"
+            operation.error_message = str(e)
+            operation.completed_at = datetime.utcnow()
+            operation.updated_at = datetime.utcnow()
+            await db.commit()
+            await db.refresh(operation)
+
+            # Emit WebSocket event for operation failure
+            await emit_operation_failed({
+                'operation_id': operation_id,
+                'user_id': user_id,
+                'username': username,
+                'tool_name': 'XLSTransfer',
+                'function_name': 'create_dictionary',
+                'operation_name': operation.operation_name,
+                'status': 'failed',
+                'error_message': str(e),
+                'started_at': operation.started_at.isoformat(),
+                'completed_at': operation.completed_at.isoformat()
+            })
+        except Exception as db_error:
+            logger.error(f"Failed to update operation status: {db_error}")
+
         raise HTTPException(status_code=500, detail=f"Dictionary creation failed: {str(e)}")
 
 
@@ -513,12 +686,116 @@ async def test_translate_file(
         raise HTTPException(status_code=500, detail=f"File translation failed: {str(e)}")
 
 
+def run_translate_excel_background(
+    operation_id: int,
+    user_id: int,
+    username: str,
+    path_selections: dict,
+    threshold: float
+):
+    """
+    Background task to run Excel translation without blocking the server.
+    This runs in a thread pool, keeping the FastAPI event loop free.
+    """
+    import asyncio
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+    import server.config as config
+
+    try:
+        logger.info(f"Background task started for operation {operation_id}")
+
+        # Change to project root
+        original_cwd = os.getcwd()
+        os.chdir(project_root)
+
+        # Run the translation (ProgressTracker handles progress updates)
+        result = process_operation.translate_excel(path_selections, threshold, operation_id)
+
+        # Restore directory
+        os.chdir(original_cwd)
+
+        # Update database with final status
+        engine = create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {})
+        db_session = Session(engine)
+
+        try:
+            operation = db_session.query(ActiveOperation).filter(ActiveOperation.operation_id == operation_id).first()
+
+            if result.get("success"):
+                operation.status = "completed"
+                operation.progress_percentage = 100.0
+                operation.completed_at = datetime.utcnow()
+                operation.updated_at = datetime.utcnow()
+                db_session.commit()
+
+                logger.success(f"Operation {operation_id} completed successfully")
+
+                # Emit WebSocket completion event
+                asyncio.run(emit_operation_complete({
+                    'operation_id': operation_id,
+                    'user_id': user_id,
+                    'username': username,
+                    'tool_name': 'XLSTransfer',
+                    'function_name': 'translate_excel',
+                    'operation_name': operation.operation_name,
+                    'status': 'completed',
+                    'progress_percentage': 100.0,
+                    'started_at': operation.started_at.isoformat(),
+                    'completed_at': operation.completed_at.isoformat()
+                }))
+            else:
+                operation.status = "failed"
+                operation.error_message = result.get("error", "Unknown error")
+                operation.completed_at = datetime.utcnow()
+                operation.updated_at = datetime.utcnow()
+                db_session.commit()
+
+                logger.error(f"Operation {operation_id} failed: {operation.error_message}")
+
+                # Emit WebSocket failure event
+                asyncio.run(emit_operation_failed({
+                    'operation_id': operation_id,
+                    'user_id': user_id,
+                    'username': username,
+                    'tool_name': 'XLSTransfer',
+                    'function_name': 'translate_excel',
+                    'operation_name': operation.operation_name,
+                    'status': 'failed',
+                    'error_message': operation.error_message,
+                    'started_at': operation.started_at.isoformat(),
+                    'completed_at': operation.completed_at.isoformat()
+                }))
+
+        finally:
+            db_session.close()
+
+    except Exception as e:
+        logger.error(f"Background task failed for operation {operation_id}: {e}", exc_info=True)
+
+        # Try to mark as failed in database
+        try:
+            engine = create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {})
+            db_session = Session(engine)
+            operation = db_session.query(ActiveOperation).filter(ActiveOperation.operation_id == operation_id).first()
+            operation.status = "failed"
+            operation.error_message = str(e)
+            operation.completed_at = datetime.utcnow()
+            operation.updated_at = datetime.utcnow()
+            db_session.commit()
+            db_session.close()
+        except:
+            pass
+
+
 @router.post("/test/translate-excel")
 async def test_translate_excel(
+    background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     selections: str = Form(...),  # JSON string of sheet/column selections
     threshold: float = Form(0.99),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Translate Excel files with sheet/column selections
@@ -531,11 +808,47 @@ async def test_translate_excel(
 
     start_time = time.time()
     username = current_user.get("username", "unknown") if isinstance(current_user, dict) else getattr(current_user, "username", "unknown")
+    user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "user_id", None)
 
     logger.info(f"Excel translation requested by user: {username}", {
         "user": username,
         "files_count": len(files),
         "threshold": threshold
+    })
+
+    # Create ActiveOperation record for progress tracking
+    operation = ActiveOperation(
+        user_id=user_id,
+        username=username,
+        tool_name="XLSTransfer",
+        function_name="translate_excel",
+        operation_name=f"Transfer to Excel ({len(files)} file{'s' if len(files) > 1 else ''})",
+        status="running",
+        progress_percentage=0.0,
+        completed_steps=0,
+        file_info={"files": [f.filename for f in files], "threshold": threshold},
+        started_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+
+    db.add(operation)
+    await db.commit()
+    await db.refresh(operation)
+
+    operation_id = operation.operation_id
+    logger.success(f"Created ActiveOperation record: ID={operation_id}")
+
+    # Emit WebSocket event for operation start
+    await emit_operation_start({
+        'operation_id': operation_id,
+        'user_id': user_id,
+        'username': username,
+        'tool_name': 'XLSTransfer',
+        'function_name': 'translate_excel',
+        'operation_name': operation.operation_name,
+        'status': 'running',
+        'progress_percentage': 0.0,
+        'started_at': operation.started_at.isoformat()
     })
 
     if process_operation is None or embeddings is None:
@@ -604,72 +917,66 @@ async def test_translate_excel(
             "threshold": threshold
         })
 
-        # Change to project root directory (where dictionary files are saved)
-        original_cwd = os.getcwd()
-        try:
-            os.chdir(project_root)
-            logger.info(f"Changed working directory to: {project_root}")
+        # Add background task to run translation without blocking
+        background_tasks.add_task(
+            run_translate_excel_background,
+            operation_id=operation_id,
+            user_id=user_id,
+            username=username,
+            path_selections=path_selections,
+            threshold=threshold
+        )
 
-            # Call backend function to translate Excel files
-            result = process_operation.translate_excel(path_selections, threshold)
-        finally:
-            # Restore original working directory
-            os.chdir(original_cwd)
+        logger.success(f"Excel translation queued as operation {operation_id}")
 
-        elapsed_time = time.time() - start_time
-
-        if result.get("success"):
-            # Find the translated file in organized output directory
-            # Import config to get output directory
-            from client.tools.xls_transfer import config as xls_config
-
-            # Get organized output directory
-            output_dir = xls_config.get_output_directory(app_name="xlstransfer")
-
-            # Get the first file to determine output filename
-            first_file_path = list(path_selections.keys())[0]
-            original_filename = os.path.basename(first_file_path)
-            output_filename = f"{os.path.splitext(original_filename)[0]}_translated.xlsx"
-            output_path = str(output_dir / output_filename)
-
-            logger.success(f"Excel translation completed in {elapsed_time:.2f}s", {
-                "user": username,
-                "files_processed": len(files),
-                "output_file": output_path,
-                "elapsed_time": elapsed_time
-            })
-
-            # Return the file for download
-            if os.path.exists(output_path):
-                return FileResponse(
-                    path=output_path,
-                    filename=os.path.basename(output_path),
-                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            else:
-                # Return success response with details
-                response = {
-                    "success": True,
-                    "message": result.get("message", "Translation completed"),
-                    "files_processed": len(files),
-                    "output_file": output_path,
-                    "elapsed_time": elapsed_time
-                }
-                return response
-        else:
-            raise Exception(result.get("error", "Unknown error during translation"))
+        # Return immediately with 202 Accepted (operation in progress)
+        return JSONResponse(
+            status_code=202,
+            content={
+                "success": True,
+                "message": "Translation started",
+                "operation_id": operation_id,
+                "operation_name": operation.operation_name,
+                "files_count": len(files),
+                "status": "running",
+                "note": "Check /api/progress/operations/{operation_id} for real-time progress"
+            }
+        )
 
     except HTTPException:
         raise
     except Exception as e:
         elapsed_time = time.time() - start_time
-        logger.error(f"Excel translation failed after {elapsed_time:.2f}s: {str(e)}", {
+        logger.error(f"Excel translation failed during setup: {str(e)}", {
             "user": username,
             "error": str(e),
             "error_type": type(e).__name__,
             "elapsed_time": elapsed_time
         })
-        raise HTTPException(status_code=500, detail=f"Excel translation failed: {str(e)}")
+
+        # Mark operation as failed
+        try:
+            operation.status = "failed"
+            operation.error_message = str(e)
+            operation.completed_at = datetime.utcnow()
+            operation.updated_at = datetime.utcnow()
+            await db.commit()
+
+            await emit_operation_failed({
+                'operation_id': operation_id,
+                'user_id': user_id,
+                'username': username,
+                'tool_name': 'XLSTransfer',
+                'function_name': 'translate_excel',
+                'operation_name': operation.operation_name,
+                'status': 'failed',
+                'error_message': str(e),
+                'started_at': operation.started_at.isoformat() if operation.started_at else None
+            })
+        except:
+            pass
+
+        raise HTTPException(status_code=500, detail=f"Failed to start translation: {str(e)}")
 
 
 @router.get("/test/status")
