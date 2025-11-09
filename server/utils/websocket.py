@@ -229,6 +229,84 @@ async def emit_stats_update(stats_data: Dict):
     await sio.emit('stats_update', stats_data, room='admin')
 
 
+async def emit_operation_start(operation_data: Dict):
+    """
+    Broadcast operation start event.
+
+    Args:
+        operation_data: Operation data (operation_id, user_id, tool_name, operation_name, etc.)
+    """
+    user_id = operation_data.get('user_id')
+
+    # Send to user's personal room
+    if user_id:
+        await sio.emit('operation_start', operation_data, room=f"user_{user_id}")
+
+    # Send to progress subscribers
+    await sio.emit('operation_start', operation_data, room='progress')
+
+    logger.info(f"Emitted operation_start for user {user_id}: {operation_data.get('operation_name')}")
+
+
+async def emit_progress_update(operation_data: Dict):
+    """
+    Broadcast real-time progress update.
+
+    Args:
+        operation_data: Operation data including progress_percentage, current_step, etc.
+    """
+    user_id = operation_data.get('user_id')
+    operation_id = operation_data.get('operation_id')
+
+    # Send to user's personal room
+    if user_id:
+        await sio.emit('progress_update', operation_data, room=f"user_{user_id}")
+
+    # Send to progress subscribers
+    await sio.emit('progress_update', operation_data, room='progress')
+
+    logger.debug(f"Emitted progress_update for operation {operation_id}: {operation_data.get('progress_percentage', 0):.1f}%")
+
+
+async def emit_operation_complete(operation_data: Dict):
+    """
+    Broadcast operation completion event.
+
+    Args:
+        operation_data: Operation data with final status
+    """
+    user_id = operation_data.get('user_id')
+
+    # Send to user's personal room
+    if user_id:
+        await sio.emit('operation_complete', operation_data, room=f"user_{user_id}")
+
+    # Send to progress subscribers
+    await sio.emit('operation_complete', operation_data, room='progress')
+
+    logger.success(f"Emitted operation_complete for user {user_id}: {operation_data.get('operation_name')}")
+
+
+async def emit_operation_failed(operation_data: Dict):
+    """
+    Broadcast operation failure event.
+
+    Args:
+        operation_data: Operation data with error details
+    """
+    user_id = operation_data.get('user_id')
+
+    # Send to user's personal room
+    if user_id:
+        await sio.emit('operation_failed', operation_data, room=f"user_{user_id}")
+
+    # Send to progress subscribers and errors room
+    await sio.emit('operation_failed', operation_data, room='progress')
+    await sio.emit('operation_failed', operation_data, room='errors')
+
+    logger.error(f"Emitted operation_failed for user {user_id}: {operation_data.get('operation_name')} - {operation_data.get('error_message')}")
+
+
 # ============================================================================
 # Utility Functions
 # ============================================================================
@@ -285,12 +363,12 @@ async def subscribe(sid, data):
     """
     Subscribe to specific event types.
 
-    Clients can subscribe to: 'logs', 'sessions', 'errors', 'stats'
+    Clients can subscribe to: 'logs', 'sessions', 'errors', 'stats', 'progress'
     """
     event_types = data.get('events', [])
 
     for event_type in event_types:
-        if event_type in ['logs', 'sessions', 'errors', 'stats', 'admin']:
+        if event_type in ['logs', 'sessions', 'errors', 'stats', 'progress', 'admin']:
             await sio.enter_room(sid, event_type)
             if sid in connected_clients:
                 connected_clients[sid]['rooms'].add(event_type)
@@ -322,6 +400,10 @@ __all__ = [
     'emit_session_update',
     'emit_user_update',
     'emit_stats_update',
+    'emit_operation_start',
+    'emit_progress_update',
+    'emit_operation_complete',
+    'emit_operation_failed',
     'get_connected_users',
     'disconnect_user',
     'broadcast_message'
