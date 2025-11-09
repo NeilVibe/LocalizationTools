@@ -49,6 +49,13 @@ contextBridge.exposeInMainWorld('electron', {
   selectFiles: (options) => ipcRenderer.invoke('select-files', options),
 
   /**
+   * Show item in file explorer
+   * @param {string} filePath - Full path to file
+   * @returns {Promise<void>}
+   */
+  showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath),
+
+  /**
    * Listen for Python output events
    * @param {function} callback - Receives { type, data }
    */
