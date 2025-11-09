@@ -112,7 +112,10 @@ client/models/KRTransformer/
 
 # Logs
 *.log
-logs/
+# Log monitoring (ignore all log contents, keep directory structure)
+logs/**/*
+!logs/.gitkeep
+!logs/*/.gitkeep
 *.log.*
 
 # Temporary files

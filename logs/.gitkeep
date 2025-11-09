@@ -1,0 +1,5 @@
+# This directory stores log monitoring data
+# Directory structure:
+# - archive/   - Archived logs
+# - sessions/  - Real-time monitoring session logs
+# - reports/   - Error analysis reports
