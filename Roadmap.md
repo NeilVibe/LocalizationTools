@@ -1,15 +1,17 @@
 # LocaNext - Development Roadmap
 
-**Last Updated**: 2025-11-09 (Logging Complete, Phase 3 Testing In Progress)
-**Current Phase**: Phase 3 - Testing & Monitoring ⏳ **LOGGING COMPLETE** (XLSTransfer testing in progress)
+**Last Updated**: 2025-11-09 17:25 (XLSTransfer API Testing 40% Complete)
+**Current Phase**: Phase 3 - Testing & Monitoring ⏳ **LOGGING COMPLETE** (XLSTransfer testing 4/10 functions done)
 **Next Phase**: Phase 4 - Adding More Apps (ONLY after Phase 3 complete)
 
 **Latest Session Progress**:
 - ✅ Comprehensive Logging System: 240+ log statements (100% coverage)
 - ✅ Remote Logging API: Central collection endpoint for user installations
 - ✅ Monitoring Infrastructure: Real-time color-coded log monitoring working perfectly
-- ⏳ XLSTransfer API Testing: Fixing API endpoints for browser-based testing
-- 📋 Next: Complete XLSTransfer testing (10 functions), finish Admin Dashboard
+- ✅ XLSTransfer API Wrapper Fixed: All wrapper bugs resolved (backend UNTOUCHED)
+- ✅ XLSTransfer Testing: 4/10 functions tested (Create Dict, Load Dict, Translate Text, Translate File-txt)
+- ⏳ XLSTransfer GUI Ready: Full multi-file/sheet/column selection modal implemented
+- 📋 Next: Test remaining 6 XLSTransfer functions (Excel translation, combine, newlines), finish Admin Dashboard
 
 ---
 
@@ -316,6 +318,72 @@ npm run electron:dev
 - ✅ Easier debugging with browser DevTools
 - ✅ Faster iteration (no Electron rebuild needed)
 - ✅ Test exact same API that Windows .exe will use
+
+---
+
+## 📊 XLSTransfer API Testing Progress (2025-11-09)
+
+**Overall Status**: 40% Complete (4/10 functions tested)
+
+### ✅ Tested & Working (4/10):
+
+**Function 1: Create Dictionary**
+- ✅ API endpoint: `/api/v2/xlstransfer/test/create-dictionary`
+- ✅ Processed 1 Excel file successfully
+- ✅ Created 18,332 Korean-English pairs
+- ✅ Generated 54MB BERT embeddings file
+- ✅ Processing time: 33.7 seconds
+- ✅ ZERO errors
+- 📁 Files: `SplitExcelDictionary.pkl` (3.5MB), `SplitExcelEmbeddings.npy` (54MB)
+
+**Function 2: Load Dictionary**
+- ✅ API endpoint: `/api/v2/xlstransfer/test/load-dictionary`
+- ✅ Loaded 18,332 pairs from disk
+- ✅ Processing time: 0.16 seconds (super fast!)
+- ✅ ZERO errors
+
+**Function 3: Translate Text**
+- ✅ API endpoint: `/api/v2/xlstransfer/test/translate-text`
+- ✅ Single text translation working
+- ✅ BERT semantic matching working (Korean SBERT model)
+- ✅ Threshold filtering working (0.99 default, 0.40 tested)
+- ✅ Processing time: 0.21-1.09 seconds
+- ✅ ZERO errors
+- Example: "안녕하세요" → "Poire" (confidence: 0.42)
+
+**Function 4: Translate File (txt)**
+- ✅ API endpoint: `/api/v2/xlstransfer/test/translate-file` (file_type="txt")
+- ✅ Line-by-line translation working
+- ✅ Translated 3 lines, 100% match rate
+- ✅ Processing time: 0.96 seconds
+- ✅ Output file created successfully
+- ✅ ZERO errors
+
+### ⏳ Remaining Functions (6/10):
+
+**Function 5: Translate File (Excel)**
+- 📋 API endpoint ready: `/api/v2/xlstransfer/test/translate-file` (file_type="excel")
+- 📋 Backend function: `process_operation.translate_excel()`
+- 📋 Requires selections format: `{file: {sheet: {kr_column, trans_column}}}`
+- 📋 Full GUI ready: Multi-file/sheet/column selection modal implemented
+
+**Functions 6-10**: Check newlines, Combine Excel, Newline Auto Adapt, Simple Transfer, etc.
+- 📋 Backend functions exist in `process_operation.py`
+- 📋 GUI integration ready in `XLSTransfer.svelte`
+- 📋 Need API wrapper testing
+
+### 🐛 Wrapper Layer Fixes Made (Backend UNTOUCHED):
+
+1. **Fixed**: `create_dictionaries_from_files()` → `process_excel_for_dictionary()`
+2. **Fixed**: `save_dictionary()` parameter names
+3. **Fixed**: `load_dictionary()` missing `mode` parameter
+4. **Fixed**: `translate_single_text()` → `find_best_match()`
+5. **Implemented**: txt file line-by-line translation wrapper
+6. **Added**: `process_operation` module import
+
+**Confirmed**: ZERO modifications to backend code (`client/tools/xls_transfer/`) ✅
+
+---
 
 **Testing Checklist**:
 
