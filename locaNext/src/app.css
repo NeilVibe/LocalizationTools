@@ -101,6 +101,40 @@ body {
   border-bottom: 1px solid var(--cds-border-subtle-01) !important;
 }
 
+/* Hide dots/bullets from header nav items */
+.bx--header__menu-item::before,
+.bx--header__menu-item::after,
+.bx--header__nav .bx--header__menu-item svg,
+.bx--header__menu-item .bx--header__menu-arrow,
+.bx--header__nav-container .bx--header__menu-item::before,
+a.bx--header__menu-item::before,
+a.bx--header__menu-item::after {
+  display: none !important;
+}
+
+.bx--header__menu-item,
+.bx--header__nav li {
+  list-style: none !important;
+}
+
+/* Clean header nav item styling */
+.bx--header__menu-item .bx--text-truncate--end {
+  padding-left: 0 !important;
+}
+
+/* Aggressive: hide all list markers in header */
+.bx--header ul,
+.bx--header li {
+  list-style-type: none !important;
+  list-style: none !important;
+}
+
+/* Hide any SVG icons in nav items (not actions) */
+.bx--header__nav .bx--header__menu-item svg,
+.bx--header__menu-item > svg {
+  display: none !important;
+}
+
 /* Scrollbar styling (matte dark) */
 ::-webkit-scrollbar {
   width: 10px;

@@ -1,9 +1,9 @@
 # LocaNext - Project Guide for Claude
 
 **App Name**: LocaNext (formerly LocalizationTools)
-**Last Updated**: 2025-11-09 17:25 (XLSTransfer API Testing 40% Complete)
-**Current Phase**: Phase 3 - Testing & Monitoring (XLSTransfer testing in progress)
-**Status**: Backend ✅ | LocaNext ✅ | Dashboard ⏳ 85% | Monitoring ✅ | XLSTransfer Testing ⏳ 40%
+**Last Updated**: 2025-11-09 17:45 (Dual-Mode Architecture Complete)
+**Current Phase**: Phase 3 - Testing & Monitoring (Ready for full XLSTransfer testing)
+**Status**: Backend ✅ | LocaNext ✅ | Dashboard ⏳ 85% | Monitoring ✅ | Dual-Mode ✅ | Ready for Testing ✅
 
 ---
 
@@ -47,9 +47,24 @@ split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_
 
 ---
 
-## 🎯 XLSTransfer GUI & API (CRITICAL REFERENCE)
+## 🎯 XLSTransfer Dual-Mode Architecture (CRITICAL REFERENCE)
 
-**IMPORTANT**: XLSTransfer has a **COMPLETE multi-file/sheet/column selection GUI** already built!
+**IMPORTANT**: XLSTransfer uses ONE component that works in BOTH Browser and Electron modes!
+
+### 🏗️ Dual-Mode Architecture (Browser = Electron)
+
+**One Component, Two Modes**:
+- `locaNext/src/lib/components/apps/XLSTransfer.svelte` - Single source of truth
+- Detects `isElectron` flag on mount
+- **Browser Mode**: Uses API calls to backend (`/api/v2/xlstransfer/...`)
+- **Electron Mode**: Uses IPC to Python scripts (`window.electron.executePython()`)
+- **SAME Upload Settings Modal in both modes** ✅
+
+**Why This Matters**:
+- ✅ Testing in browser = Testing production Electron app
+- ✅ No surprises after building .exe
+- ✅ Faster development (no Electron rebuild during testing)
+- ✅ Full testing capability in WSL2 headless environment
 
 ### Full GUI Features (`locaNext/src/lib/components/apps/XLSTransfer.svelte`):
 
@@ -78,36 +93,45 @@ selections = {
 }
 ```
 
-### Backend Integration:
+### Backend Integration (Dual-Mode):
 
-**Function**: `process_operation.py` functions accept the selections structure
-**How it works**:
+**Electron Mode**:
 1. GUI opens Upload Settings modal
 2. User selects sheets and enters column letters
 3. Builds selections object
-4. Calls Python backend: `process_operation.py translate_excel selections threshold`
-5. Backend processes each file/sheet/column combination
+4. Calls Python script via IPC: `process_operation.py create_dictionary selections threshold`
+5. Python processes each file/sheet/column combination
 
-### API Testing Endpoints (`server/api/xlstransfer_async.py`):
+**Browser Mode**:
+1. GUI opens Upload Settings modal (SAME modal!)
+2. User selects sheets and enters column letters
+3. Builds selections object
+4. Calls REST API: `POST /api/v2/xlstransfer/test/create-dictionary` with files + selections
+5. Backend API processes via Python modules (same code as Electron!)
 
-**Available Endpoints**:
-- `POST /api/v2/xlstransfer/test/create-dictionary` - Create translation dictionary from Excel
+### API Endpoints (`server/api/xlstransfer_async.py`):
+
+**Available Endpoints** (Enable Browser Mode Testing):
+- `POST /api/v2/xlstransfer/test/create-dictionary` - Create dictionary (supports selections JSON)
+- `POST /api/v2/xlstransfer/test/get-sheets` - Get sheet names from Excel file
 - `POST /api/v2/xlstransfer/test/load-dictionary` - Load existing dictionary
 - `POST /api/v2/xlstransfer/test/translate-text` - Translate single text
 - `POST /api/v2/xlstransfer/test/translate-file` - Translate .txt or Excel file
 - `GET /api/v2/xlstransfer/health` - Check module status
 
-**Tested Functions** (4/10 complete):
-1. ✅ Create Dictionary - 18,332 pairs in 33.7s
-2. ✅ Load Dictionary - 0.16s load time
-3. ✅ Translate Text - BERT matching working
-4. ✅ Translate File (txt) - Line-by-line translation working
+**Dual-Mode Implementation Status**:
+- ✅ Upload Settings Modal works in both Browser and Electron
+- ✅ `openUploadSettingsGUI()` - Dual-mode (API for browser, IPC for Electron)
+- ✅ `executeUploadSettings()` - Dual-mode (API for browser, Python for Electron)
+- ✅ `/api/v2/xlstransfer/test/get-sheets` - Get Excel sheet names (browser mode)
+- ✅ `/api/v2/xlstransfer/test/create-dictionary` - Accepts selections parameter
+- ✅ Browser testing = Electron production testing
 
-**Wrapper Fixes Made** (Backend NEVER Modified):
-- Fixed function names to match backend
-- Fixed parameter names and types
-- Added proper error handling and logging
-- All fixes were in `server/api/xlstransfer_async.py` wrapper ONLY
+**Ready for Full Testing**:
+- All infrastructure complete
+- Monitoring system ready (240+ log statements)
+- Browser and Electron use identical workflow
+- Test in browser → Build .exe → Ship to users
 
 ---
 
