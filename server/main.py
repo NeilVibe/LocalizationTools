@@ -99,6 +99,10 @@ app.include_router(updates.router)
 from server.api import xlstransfer_async
 app.include_router(xlstransfer_async.router)
 
+# Include Progress Operations API (for real-time progress tracking)
+from server.api import progress_operations
+app.include_router(progress_operations.router)
+
 # Include Remote Logging API (for centralized monitoring of user installations)
 from server.api import remote_logging
 app.include_router(remote_logging.router)
