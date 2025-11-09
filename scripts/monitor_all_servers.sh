@@ -29,10 +29,14 @@ curl -s http://localhost:5175/ > /dev/null && echo "  Dashboard (5175): ✅ HEAL
 curl -s http://localhost:5173/ > /dev/null && echo "  LocaNext (5173): ✅ HEALTHY" || echo "  LocaNext (5173): ❌ DOWN"
 echo ""
 
-echo "📝 Recent Activity (Last 20 log entries):"
+echo "📝 Recent Activity (Last 20 log entries from each server):"
 echo "========================================="
-if [ -f "/home/neil1988/LocalizationTools/server/logs/localizationtools.log" ]; then
-  tail -20 /home/neil1988/LocalizationTools/server/logs/localizationtools.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
+
+# Backend Server Logs
+echo ""
+echo "🖥️  BACKEND SERVER:"
+if [ -f "/home/neil1988/LocalizationTools/server/data/logs/server.log" ]; then
+  tail -10 /home/neil1988/LocalizationTools/server/data/logs/server.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
     if echo "$line" | grep -q "ERROR"; then
       echo "  ❌ $line"
     elif echo "$line" | grep -q "WARNING"; then
@@ -44,17 +48,63 @@ if [ -f "/home/neil1988/LocalizationTools/server/logs/localizationtools.log" ]; 
     fi
   done
 else
-  echo "  No log file found yet"
+  echo "  No backend log file found"
+fi
+
+# LocaNext App Logs
+echo ""
+echo "💻 LOCANEXT APP:"
+if [ -f "/home/neil1988/LocalizationTools/logs/locanext_app.log" ]; then
+  tail -10 /home/neil1988/LocalizationTools/logs/locanext_app.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
+    if echo "$line" | grep -q "ERROR"; then
+      echo "  ❌ $line"
+    elif echo "$line" | grep -q "WARNING"; then
+      echo "  ⚠️  $line"
+    elif echo "$line" | grep -q "SUCCESS"; then
+      echo "  ✅ $line"
+    else
+      echo "  ℹ️  $line"
+    fi
+  done
+else
+  echo "  No LocaNext log file found (app not run yet)"
+fi
+
+# Dashboard Logs
+echo ""
+echo "📊 ADMIN DASHBOARD:"
+if [ -f "/home/neil1988/LocalizationTools/logs/dashboard_app.log" ]; then
+  tail -10 /home/neil1988/LocalizationTools/logs/dashboard_app.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
+    if echo "$line" | grep -q "ERROR"; then
+      echo "  ❌ $line"
+    elif echo "$line" | grep -q "WARNING"; then
+      echo "  ⚠️  $line"
+    elif echo "$line" | grep -q "SUCCESS"; then
+      echo "  ✅ $line"
+    else
+      echo "  ℹ️  $line"
+    fi
+  done
+else
+  echo "  No Dashboard log file found (app not run yet)"
 fi
 echo ""
 
 echo "========================================="
 echo "🔄 Live Monitoring Commands:"
 echo "========================================="
-echo "Watch Backend:    tail -f server/logs/localizationtools.log"
-echo "Watch Errors:     tail -f server/logs/error.log"
-echo "Watch API Calls:  tail -f server/logs/localizationtools.log | grep 'API'"
-echo "Watch User:       tail -f server/logs/localizationtools.log | grep 'username'"
+echo "Monitor ALL servers (recommended):"
+echo "  bash scripts/monitor_logs_realtime.sh"
+echo ""
+echo "Monitor specific logs:"
+echo "  Backend:    tail -f server/data/logs/server.log"
+echo "  LocaNext:   tail -f logs/locanext_app.log"
+echo "  Dashboard:  tail -f logs/dashboard_app.log"
+echo "  All Errors: tail -f server/data/logs/error.log logs/*_error.log"
+echo ""
+echo "Monitor with filters:"
+echo "  bash scripts/monitor_logs_realtime.sh --errors-only"
+echo "  bash scripts/monitor_logs_realtime.sh --backend-only"
 echo ""
 echo "Run this script again: bash scripts/monitor_all_servers.sh"
 echo "========================================="

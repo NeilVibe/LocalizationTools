@@ -95,6 +95,14 @@ app.include_router(sessions_async.router, prefix="/api/v2")
 from server.api import updates
 app.include_router(updates.router)
 
+# Include XLSTransfer API (for web-based testing)
+from server.api import xlstransfer_async
+app.include_router(xlstransfer_async.router)
+
+# Include Remote Logging API (for centralized monitoring of user installations)
+from server.api import remote_logging
+app.include_router(remote_logging.router)
+
 # Socket.IO will be mounted at the end after all setup is complete
 
 

@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import adminAPI from '$lib/api/client.js';
   import { websocket } from '$lib/api/websocket.js';
+  import { logger } from '$lib/utils/logger.js';
   import { ChartLine, User, Activity, CheckmarkFilled } from 'carbon-icons-svelte';
 
   let stats = {
@@ -16,7 +17,14 @@
   let unsubscribe;
 
   onMount(async () => {
+    const startTime = performance.now();
+    logger.component('Dashboard', 'mounted');
+
     try {
+      logger.info("Loading dashboard data");
+      logger.apiCall("/api/users", "GET");
+      logger.apiCall("/api/logs", "GET", { limit: 10 });
+
       // Load stats and recent activity
       const [users, logs] = await Promise.all([
         adminAPI.getAllUsers().catch(() => []),
@@ -27,27 +35,49 @@
       stats.totalLogs = logs.length || 0;
       recentActivity = logs;
 
+      const elapsed = performance.now() - startTime;
+
       loading = false;
+      logger.success('Dashboard data loaded', {
+        totalUsers: stats.totalUsers,
+        totalLogs: stats.totalLogs,
+        elapsed_ms: elapsed.toFixed(2)
+      });
 
       // Connect to WebSocket for real-time updates
+      logger.info("Connecting to WebSocket for real-time updates");
       websocket.connect();
       isLive = true;
 
       // Listen for new log entries to update recent activity
       unsubscribe = websocket.on('log_entry', (newLog) => {
-        console.log('Dashboard: New activity received!', newLog);
+        logger.info('New activity received via WebSocket', {
+          logId: newLog?.log_id,
+          tool: newLog?.tool_name,
+          operation: newLog?.operation,
+          status: newLog?.status
+        });
         recentActivity = [newLog, ...recentActivity].slice(0, 10);
         stats.totalLogs = stats.totalLogs + 1;
       });
 
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      const elapsed = performance.now() - startTime;
+      logger.error('Failed to load dashboard data', {
+        error: error.message,
+        error_type: error.name,
+        elapsed_ms: elapsed.toFixed(2)
+      });
       loading = false;
     }
   });
 
   onDestroy(() => {
-    if (unsubscribe) unsubscribe();
+    logger.component('Dashboard', 'destroyed');
+    if (unsubscribe) {
+      logger.info("Cleaning up WebSocket subscription");
+      unsubscribe();
+    }
   });
 </script>
 

@@ -18,6 +18,7 @@
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
+  import { logger } from "$lib/utils/logger.js";
 
   let isAppsMenuOpen = false;
   let checkingAuth = true;
@@ -29,12 +30,14 @@
   ];
 
   function selectApp(appId) {
+    logger.userAction("App selected from menu", { app_id: appId });
     currentApp.set(appId);
     currentView.set('app');
     isAppsMenuOpen = false;
   }
 
   function showTasks() {
+    logger.userAction("Tasks view selected");
     currentView.set('tasks');
   }
 
@@ -42,31 +45,56 @@
    * Logout user
    */
   function handleLogout() {
+    logger.userAction("User logout", { username: $user?.username || "unknown" });
     api.clearAuth();
     isAuthenticated.set(false);
     user.set(null);
+    logger.info("User logged out successfully");
   }
 
   /**
    * Check if user is already authenticated
    */
   async function checkAuth() {
+    const startTime = performance.now();
     checkingAuth = true;
+
+    logger.info("Checking authentication status");
 
     // Check if token exists
     const token = api.getToken();
     if (!token) {
+      logger.info("No authentication token found - showing login");
       checkingAuth = false;
       return;
     }
 
+    logger.info("Token found - verifying with server");
+
     // Verify token is still valid by fetching current user
     try {
+      logger.apiCall("/api/users/me", "GET");
       const currentUser = await api.getCurrentUser();
+
+      const elapsed = performance.now() - startTime;
+
       user.set(currentUser);
       isAuthenticated.set(true);
+
+      logger.success("Authentication verified", {
+        username: currentUser.username,
+        role: currentUser.role,
+        elapsed_ms: elapsed.toFixed(2)
+      });
     } catch (error) {
-      console.error('Auth check failed:', error);
+      const elapsed = performance.now() - startTime;
+
+      logger.error("Authentication check failed", {
+        error: error.message,
+        error_type: error.name,
+        elapsed_ms: elapsed.toFixed(2)
+      });
+
       api.clearAuth();
     } finally {
       checkingAuth = false;
@@ -74,6 +102,7 @@
   }
 
   onMount(() => {
+    logger.component("Layout", "mounted");
     checkAuth();
   });
 </script>

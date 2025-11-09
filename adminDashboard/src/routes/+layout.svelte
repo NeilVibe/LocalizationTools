@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
   import { websocket } from '$lib/api/websocket.js';
   import { Dashboard, UserMultiple, Activity, ChartLine, Search, Logout } from 'carbon-icons-svelte';
+  import { logger } from '$lib/utils/logger.js';
 
   const navItems = [
     { href: '/', label: 'Dashboard', icon: Dashboard },
@@ -18,20 +19,30 @@
   let unsubscribeDisconnected;
 
   onMount(() => {
+    logger.component("AdminLayout", "mounted");
+
     // Monitor WebSocket connection status
+    logger.info("Setting up WebSocket connection monitoring");
+
     unsubscribeConnected = websocket.on('connected', () => {
       wsConnected = true;
+      logger.success("WebSocket connected - Live updates active");
     });
 
     unsubscribeDisconnected = websocket.on('disconnected', () => {
       wsConnected = false;
+      logger.warning("WebSocket disconnected - Attempting to reconnect");
     });
 
     // Check initial connection state
     wsConnected = websocket.isConnected();
+    logger.info("WebSocket initial state", { connected: wsConnected });
   });
 
   onDestroy(() => {
+    logger.component("AdminLayout", "destroyed");
+    logger.info("Cleaning up WebSocket subscriptions");
+
     if (unsubscribeConnected) unsubscribeConnected();
     if (unsubscribeDisconnected) unsubscribeDisconnected();
   });

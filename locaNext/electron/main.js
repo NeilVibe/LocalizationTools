@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import fs from 'fs';
+import { logger } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,8 @@ const projectRoot = path.join(__dirname, '../..');
 const pythonToolsPath = path.join(projectRoot, 'client', 'tools');
 
 function createWindow() {
+  logger.info('Creating main window', { isDev, width: 1400, height: 900 });
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -33,26 +36,32 @@ function createWindow() {
 
   // Load the app
   if (isDev) {
+    logger.info('Loading development URL', { url: 'http://localhost:5173' });
     mainWindow.loadURL('http://localhost:5173');
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
+    const buildPath = path.join(__dirname, '../build/index.html');
+    logger.info('Loading production build', { path: buildPath });
+    mainWindow.loadFile(buildPath);
   }
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
+    logger.success('Main window ready and visible');
     mainWindow.show();
   });
 
   // Handle window closed
   mainWindow.on('closed', () => {
+    logger.info('Main window closed');
     mainWindow = null;
   });
 
   // Create application menu (disable default menu in production)
   if (!isDev) {
     Menu.setApplicationMenu(null);
+    logger.info('Application menu disabled (production mode)');
   }
 }
 
@@ -63,6 +72,8 @@ function createWindow() {
  * Returns: { success, output, error }
  */
 ipcMain.handle('execute-python', async (event, { scriptPath, args = [], cwd = null }) => {
+  logger.ipc('execute-python', { scriptPath, args, cwd });
+
   return new Promise((resolve) => {
     const python = spawn('python3', [scriptPath, ...args], {
       cwd: cwd || pythonToolsPath,
@@ -94,8 +105,11 @@ ipcMain.handle('execute-python', async (event, { scriptPath, args = [], cwd = nu
     });
 
     python.on('close', (code) => {
+      const success = code === 0;
+      logger.python(scriptPath, success, stdout || stderr);
+
       resolve({
-        success: code === 0,
+        success,
         output: stdout,
         error: stderr,
         exitCode: code
@@ -103,6 +117,8 @@ ipcMain.handle('execute-python', async (event, { scriptPath, args = [], cwd = nu
     });
 
     python.on('error', (error) => {
+      logger.error('Python execution error', { scriptPath, error: error.message });
+
       resolve({
         success: false,
         output: '',
@@ -167,6 +183,8 @@ ipcMain.handle('file-exists', async (event, filePath) => {
  * Returns: array of file paths or null if cancelled
  */
 ipcMain.handle('select-files', async (event, options = {}) => {
+  logger.ipc('select-files', { title: options.title });
+
   try {
     const result = await dialog.showOpenDialog(mainWindow, {
       title: options.title || 'Select Files',
@@ -175,12 +193,14 @@ ipcMain.handle('select-files', async (event, options = {}) => {
     });
 
     if (result.canceled) {
+      logger.info('File dialog cancelled by user');
       return null;
     }
 
+    logger.success('Files selected', { count: result.filePaths.length });
     return result.filePaths;
   } catch (error) {
-    console.error('File dialog error:', error);
+    logger.error('File dialog error', { error: error.message });
     return null;
   }
 });
@@ -189,9 +209,16 @@ ipcMain.handle('select-files', async (event, options = {}) => {
 
 // App ready
 app.whenReady().then(() => {
+  logger.info('Electron app ready', {
+    version: app.getVersion(),
+    platform: process.platform,
+    nodeVersion: process.version
+  });
+
   createWindow();
 
   app.on('activate', () => {
+    logger.info('App activated');
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
@@ -200,12 +227,25 @@ app.whenReady().then(() => {
 
 // Quit when all windows are closed (except macOS)
 app.on('window-all-closed', () => {
+  logger.info('All windows closed');
   if (process.platform !== 'darwin') {
+    logger.info('Quitting application');
     app.quit();
   }
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
+  logger.critical('Uncaught exception', {
+    error: error.message,
+    stack: error.stack
+  });
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled promise rejection', {
+    reason: reason?.toString(),
+    promise: promise?.toString()
+  });
 });
