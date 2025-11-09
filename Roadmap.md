@@ -13,6 +13,35 @@
 
 ---
 
+## 🏛️ ARCHITECTURAL PRINCIPLE: BACKEND IS FLAWLESS
+
+**CRITICAL**: Unless explicitly told there's a bug, **ALL backend code (`client/tools/`) is 100% FLAWLESS**
+
+**Migration Work = Wrapper Layer Only**:
+- ✅ Create API endpoints (`server/api/`) that call backend correctly
+- ✅ Build GUI components (Svelte, Electron) that integrate with backend
+- ✅ Add logging, monitoring, error handling at wrapper layer
+- ❌ **DO NOT modify** core backend modules (core.py, embeddings.py, translation.py)
+
+**Clean Tree Structure**:
+```
+client/tools/xls_transfer/    ← Backend (FLAWLESS, don't touch)
+  ├── core.py                 ← Original logic
+  ├── embeddings.py           ← Original algorithms
+  └── translation.py          ← Original processing
+
+server/api/                   ← Wrapper Layer (your work)
+  ├── xlstransfer_async.py    ← REST API endpoints
+  └── remote_logging.py       ← New integrations
+
+locaNext/src/lib/components/  ← GUI Layer (your work)
+  └── apps/XLSTransfer.svelte ← Electron interface
+```
+
+**Read**: `Claude.md` section "ARCHITECTURAL PRINCIPLE" for full details
+
+---
+
 ## 🚨 CRITICAL: PHASE 3 MUST BE COMPLETED BEFORE ADDING MORE APPS
 
 **The Rule**:

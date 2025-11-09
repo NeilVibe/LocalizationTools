@@ -5,6 +5,48 @@
 **Current Phase**: Phase 3 - Testing & Monitoring (Monitoring Complete ✅)
 **Status**: Backend ✅ | LocaNext ✅ | Dashboard ⏳ 85% | Monitoring ✅ Complete
 
+---
+
+## 🏛️ ARCHITECTURAL PRINCIPLE: BACKEND IS FLAWLESS
+
+**RULE**: Unless explicitly told "there is a bug in the backend", assume **ALL backend code is 100% FLAWLESS**
+
+### What This Means:
+
+**Backend Code** (`client/tools/xls_transfer/`, all Python modules):
+- ✅ **PROVEN**: Thoroughly tested and working in production
+- ✅ **COMPLETE**: All logic, algorithms, and processing is correct
+- ❌ **DO NOT MODIFY**: Never change core backend functionality
+- ✅ **ONLY WRAP**: Create API endpoints, GUI layers, integrations
+
+**Your Job During Migration**:
+1. **Create wrapper layers** (API endpoints, GUI components, integrations)
+2. **Call backend correctly** (use proper function names, parameters, types)
+3. **Maintain clean structure** (organized routes, proper imports, clear separation)
+4. **Add monitoring/logging** (comprehensive logging at wrapper layer)
+
+**Example - XLSTransfer API**:
+```python
+# ✅ CORRECT: Wrapper calls backend properly
+from client.tools.xls_transfer import embeddings
+
+split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_excel_for_dictionary(
+    excel_files=file_list,
+    progress_tracker=None
+)
+
+# ❌ WRONG: Modifying backend core.py, embeddings.py, translation.py
+# Never change these files unless user says "there's a bug in the backend"
+```
+
+**If You Encounter Errors**:
+1. ✅ Check your wrapper code (API endpoint, parameter mapping, function calls)
+2. ✅ Verify you're calling backend functions correctly (names, parameters, types)
+3. ❌ Do NOT assume backend is wrong
+4. ❓ If truly stuck, ask user: "Should I modify the backend, or is this a wrapper issue?"
+
+---
+
 ## 🚨 CRITICAL WARNING: AI HALLUCINATION IN CODE MIGRATIONS
 
 **DATE**: 2025-11-09
