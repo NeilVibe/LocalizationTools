@@ -18,11 +18,13 @@ from pathlib import Path
 from sentence_transformers import SentenceTransformer
 import faiss
 from copy import copy
+from typing import Optional
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 from core import clean_text, excel_column_to_index
 import config
+from progress_tracker import ProgressTracker
 
 
 def safe_most_frequent(x):
@@ -32,24 +34,44 @@ def safe_most_frequent(x):
     return x.value_counts().index[0]
 
 
-def create_dictionary(selections):
+def create_dictionary(selections, operation_id: Optional[int] = None):
     """
     Create dictionary from Excel files
     Exact replica of process_excel_and_generate_embeddings from original (lines 197-308)
+
+    Args:
+        selections: Dict mapping file paths to sheet/column selections
+        operation_id: Optional ActiveOperation ID for progress tracking
     """
+    # Initialize progress tracker
+    tracker = ProgressTracker(operation_id)
+    tracker.log_milestone("Starting dictionary creation operation")
+
     all_kr_texts_split = []
     all_fr_texts_split = []
     all_kr_texts_whole = []
     all_fr_texts_whole = []
 
     # Load model
+    tracker.update(5.0, "Loading Korean BERT model...")
     print("Loading Korean BERT model...", file=sys.stderr)
     model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
+    tracker.log_milestone("Korean BERT model loaded successfully")
 
+    tracker.update(10.0, "Starting concatenation of tabs...")
     print("Starting concatenation of tabs...", file=sys.stderr)
     total_rows = 0
+    total_files = len(selections)
+    current_file_idx = 0
 
     for excel_file_path, file_selections in selections.items():
+        current_file_idx += 1
+        filename = os.path.basename(excel_file_path)
+
+        # Progress from 10% to 40% across all files
+        file_progress = 10.0 + (30.0 * current_file_idx / total_files)
+        tracker.update(file_progress, f"Processing file {current_file_idx}/{total_files}: {filename}")
+
         for sheet_name, columns in file_selections.items():
             df = pd.read_excel(excel_file_path, sheet_name=sheet_name, header=None)
             col_kr_index = excel_column_to_index(columns['kr_column'])
@@ -72,57 +94,84 @@ def create_dictionary(selections):
                     all_kr_texts_whole.append(kr)
                     all_fr_texts_whole.append(fr)
 
+            tracker.log_milestone(f"Sheet '{sheet_name}' in '{filename}' processed: {len(kr_texts)} rows")
             print(f"Tab '{sheet_name}' in file '{os.path.basename(excel_file_path)}' processed: {len(kr_texts)} rows", file=sys.stderr)
 
+    tracker.log_milestone(f"Processed {total_files} file(s), {total_rows} total rows")
     print(f"Total number of files processed: {len(selections)}", file=sys.stderr)
     print(f"Total number of rows concatenated: {total_rows}", file=sys.stderr)
 
     # Process split texts
+    tracker.update(40.0, "Processing split texts (grouping by Korean text)...")
     split_translation_pairs = pd.DataFrame({'KR': all_kr_texts_split, 'FR': all_fr_texts_split})
     split_most_freq_trans = split_translation_pairs.groupby('KR')['FR'].agg(safe_most_frequent).reset_index()
     split_most_freq_trans = split_most_freq_trans.dropna()
     unique_kr_texts_split = split_most_freq_trans['KR'].tolist()
+    tracker.log_milestone(f"Found {len(unique_kr_texts_split)} unique split texts")
 
     # Process whole texts
+    tracker.update(45.0, "Processing whole texts (grouping by Korean text)...")
     whole_translation_pairs = pd.DataFrame({'KR': all_kr_texts_whole, 'FR': all_fr_texts_whole})
     whole_most_freq_trans = whole_translation_pairs.groupby('KR')['FR'].agg(safe_most_frequent).reset_index()
     whole_most_freq_trans = whole_most_freq_trans.dropna()
     unique_kr_texts_whole = whole_most_freq_trans['KR'].tolist()
+    tracker.log_milestone(f"Found {len(unique_kr_texts_whole)} unique whole texts")
 
     print(f"Total unique split texts: {len(unique_kr_texts_split)}", file=sys.stderr)
     print(f"Total unique whole texts: {len(unique_kr_texts_whole)}", file=sys.stderr)
 
     # Generate embeddings for split
+    tracker.update(50.0, "Generating embeddings for split texts...")
     split_embeddings = []
     for index, text in enumerate(unique_kr_texts_split):
         batch_embeddings = model.encode([text], convert_to_tensor=False)
         split_embeddings.extend(batch_embeddings)
         if (index + 1) % 100 == 0 or (index + 1) == len(unique_kr_texts_split):
+            # Progress from 50% to 75% for split embeddings
+            embedding_progress = 50.0 + (25.0 * (index + 1) / len(unique_kr_texts_split))
+            tracker.update(
+                embedding_progress,
+                f"Generating split embeddings: {index + 1}/{len(unique_kr_texts_split)} texts"
+            )
             print(f"Split embedding progress: {index + 1}/{len(unique_kr_texts_split)} lines", file=sys.stderr)
 
     # Generate embeddings for whole
+    tracker.update(75.0, "Generating embeddings for whole texts...")
     whole_embeddings = []
     for index, text in enumerate(unique_kr_texts_whole):
         batch_embeddings = model.encode([text], convert_to_tensor=False)
         whole_embeddings.extend(batch_embeddings)
         if (index + 1) % 10 == 0 or (index + 1) == len(unique_kr_texts_whole):
+            # Progress from 75% to 90% for whole embeddings
+            embedding_progress = 75.0 + (15.0 * (index + 1) / len(unique_kr_texts_whole)) if len(unique_kr_texts_whole) > 0 else 90.0
+            tracker.update(
+                embedding_progress,
+                f"Generating whole embeddings: {index + 1}/{len(unique_kr_texts_whole)} blocks"
+            )
             print(f"Whole embedding progress: {index + 1}/{len(unique_kr_texts_whole)} blocks", file=sys.stderr)
 
     # Save embeddings and dictionaries
+    tracker.update(90.0, "Saving split embeddings and dictionary...")
     split_embeddings = np.array(split_embeddings)
     np.save('SplitExcelEmbeddings.npy', split_embeddings)
     split_translation_dict = dict(zip(split_most_freq_trans['KR'], split_most_freq_trans['FR']))
     with open('SplitExcelDictionary.pkl', 'wb') as f:
         pickle.dump(split_translation_dict, f)
+    tracker.log_milestone(f"Saved SplitExcelEmbeddings.npy ({len(unique_kr_texts_split)} entries)")
 
     if unique_kr_texts_whole:
+        tracker.update(93.0, "Saving whole embeddings and dictionary...")
         whole_embeddings = np.array(whole_embeddings)
         np.save('WholeExcelEmbeddings.npy', whole_embeddings)
         whole_translation_dict = dict(zip(whole_most_freq_trans['KR'], whole_most_freq_trans['FR']))
         with open('WholeExcelDictionary.pkl', 'wb') as f:
             pickle.dump(whole_translation_dict, f)
+        tracker.log_milestone(f"Saved WholeExcelEmbeddings.npy ({len(unique_kr_texts_whole)} entries)")
     else:
         print("No whole embeddings found. Skipping whole mode.", file=sys.stderr)
+
+    tracker.update(95.0, "Dictionary creation complete! Finalizing...")
+    tracker.log_milestone(f"Dictionary created: {len(unique_kr_texts_split)} split + {len(unique_kr_texts_whole)} whole entries")
 
     return {
         "success": True,
@@ -132,18 +181,30 @@ def create_dictionary(selections):
     }
 
 
-def translate_excel(selections, threshold):
+def translate_excel(selections, threshold, operation_id: Optional[int] = None):
     """
     Translate Excel to Excel
     Exact replica of translate_excel_to_excel from original (lines 648-778)
+
+    Args:
+        selections: Dict mapping file paths to sheet/column selections
+        threshold: FAISS similarity threshold (0.0-1.0)
+        operation_id: Optional ActiveOperation ID for progress tracking
     """
+    # Initialize progress tracker
+    tracker = ProgressTracker(operation_id)
+    tracker.log_milestone("Starting Excel translation operation")
+
     # Load dictionaries and create index
     if not os.path.exists('SplitExcelDictionary.pkl') or not os.path.exists('SplitExcelEmbeddings.npy'):
+        tracker.log_error("Dictionary files not found", "FileNotFoundError")
         return {"success": False, "error": "Dictionary not loaded. Please load dictionary first."}
 
+    tracker.update(5.0, "Loading Korean BERT model...")
     print("Loading model and dictionary...", file=sys.stderr)
     model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
 
+    tracker.update(10.0, "Loading translation dictionaries...")
     # Load split mode
     with open('SplitExcelDictionary.pkl', 'rb') as file:
         translation_dict_split = pickle.load(file)
@@ -167,7 +228,20 @@ def translate_excel(selections, threshold):
 
     faiss_threshold = float(threshold)
 
+    tracker.update(15.0, "Starting translation process...")
+    tracker.log_milestone(f"Processing {len(selections)} file(s) with threshold {faiss_threshold}")
+
+    # Track progress across files
+    total_files = len(selections)
+    current_file_idx = 0
+
     for excel_file_path, file_selections in selections.items():
+        current_file_idx += 1
+        filename = os.path.basename(excel_file_path)
+
+        # Update progress for this file (15% to 85% range)
+        file_progress = 15.0 + (70.0 * (current_file_idx - 1) / total_files)
+        tracker.update(file_progress, f"Processing file {current_file_idx}/{total_files}: {filename}")
         temp_file_path = f"{os.path.splitext(excel_file_path)[0]}_temp.xlsx"
         shutil.copy2(excel_file_path, temp_file_path)
 
@@ -180,8 +254,17 @@ def translate_excel(selections, threshold):
             print(f"Translating column {columns['kr_column']} in tab '{sheet_name}' and writing to column {columns['trans_column']}", file=sys.stderr)
 
             total_rows = sheet.max_row
+            tracker.log_milestone(f"Translating sheet '{sheet_name}' with {total_rows} rows")
 
             for idx in range(1, total_rows + 1):
+                # Update progress every 50 rows for smooth UI without spam
+                if idx % 50 == 0 or idx == 1 or idx == total_rows:
+                    row_progress = idx / total_rows
+                    current_progress = file_progress + (70.0 / total_files) * row_progress
+                    tracker.update(
+                        current_progress,
+                        f"{filename} | Sheet '{sheet_name}' | Row {idx}/{total_rows}"
+                    )
                 cell = sheet.cell(row=idx, column=col_to_translate)
                 if not isinstance(cell.value, str):
                     continue
@@ -231,6 +314,8 @@ def translate_excel(selections, threshold):
                 print(f"Processed {idx}/{total_rows} rows in tab '{sheet_name}'", file=sys.stderr)
 
         # Save to organized output directory
+        tracker.update(85.0 + (5.0 * current_file_idx / total_files), f"Saving {filename}...")
+
         output_dir = config.get_output_directory(app_name="xlstransfer")
         original_filename = os.path.basename(excel_file_path)
         output_filename = f"{os.path.splitext(original_filename)[0]}_translated.xlsx"
@@ -241,6 +326,11 @@ def translate_excel(selections, threshold):
         os.remove(temp_file_path)
         print(f"Translation completed for {excel_file_path}!", file=sys.stderr)
         print(f"Output saved to: {output_file_path}", file=sys.stderr)
+
+        tracker.log_milestone(f"Saved: {output_file_path}")
+
+    tracker.update(95.0, "Translation complete! Finalizing...")
+    tracker.log_milestone(f"Successfully processed {total_files} file(s)")
 
     return {
         "success": True,
