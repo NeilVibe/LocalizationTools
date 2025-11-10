@@ -20,7 +20,152 @@ This will:
 
 ## 📜 Available Scripts
 
-### `setup_environment.py`
+### 🧹 Maintenance Scripts
+
+#### `clean_logs.sh`
+**Purpose**: Clean and archive old logs for fresh start
+
+**Usage**:
+```bash
+./scripts/clean_logs.sh
+```
+
+**What it does**:
+- Archives all logs to `logs/archive/TIMESTAMP/`
+- Resets current logs with clean markers
+- Preserves historical data
+- Prevents confusion for future Claude sessions
+
+**When to use**:
+- Before starting new development sessions
+- After fixing major bugs (to clear error history)
+- When logs become too large
+- Before demonstrating to stakeholders
+
+**Logs cleaned**:
+- `server/data/logs/error.log` (backend errors)
+- `server/data/logs/server.log` (backend activity)
+- `server_output.log` (server console output)
+- `logs/locanext_*.log` (frontend logs)
+
+---
+
+### 🔍 Monitoring Scripts
+
+#### `monitor_system.sh`
+**Purpose**: Comprehensive system health check
+
+**Usage**:
+```bash
+./scripts/monitor_system.sh
+```
+
+**What it checks**:
+- Backend health (port 8888)
+- Frontend health (port 5173)
+- Database connectivity
+- Active operations
+- WebSocket functionality
+- Recent logs
+
+---
+
+#### `monitor_backend_live.sh`
+**Purpose**: Live dashboard updating every 5 seconds
+
+**Usage**:
+```bash
+./scripts/monitor_backend_live.sh
+```
+
+**Shows**:
+- Backend health status
+- Running operations count
+- Recent API calls
+- Last 5 log entries
+- Real-time updates
+
+---
+
+#### `monitor_taskmanager.sh`
+**Purpose**: Monitor TaskManager component activity
+
+**Usage**:
+```bash
+./scripts/monitor_taskmanager.sh
+```
+
+**Monitors**:
+- TaskManager API calls (`/api/progress/operations`)
+- Auth token usage
+- WebSocket progress events
+- Frontend component loads
+
+---
+
+#### `monitor_all_servers.sh`
+**Purpose**: Quick health check for all 3 servers
+
+**Usage**:
+```bash
+./scripts/monitor_all_servers.sh
+```
+
+**Checks**:
+- Backend API (port 8888)
+- Frontend Dev Server (port 5173)
+- Auth Server (port 8000)
+
+---
+
+#### `monitor_logs_realtime.sh`
+**Purpose**: Tail logs with color coding
+
+**Usage**:
+```bash
+./scripts/monitor_logs_realtime.sh
+```
+
+**Features**:
+- Color-coded output (errors in red, success in green)
+- Filters relevant entries
+- Real-time updates
+
+---
+
+#### `monitor_frontend_errors.sh`
+**Purpose**: Track frontend errors specifically
+
+**Usage**:
+```bash
+./scripts/monitor_frontend_errors.sh
+```
+
+**Monitors**: Frontend error log with filtering
+
+---
+
+### 🧪 Testing Scripts
+
+#### `test_full_xlstransfer_workflow.sh`
+**Purpose**: Complete workflow test for XLSTransfer
+
+**Usage**:
+```bash
+./scripts/test_full_xlstransfer_workflow.sh
+```
+
+**Tests**:
+- File upload
+- Processing pipeline
+- Progress tracking
+- Output generation
+
+---
+
+### 🛠️ Setup Scripts
+
+#### `setup_environment.py`
 **Purpose**: Complete automated environment setup
 
 **Usage**:
