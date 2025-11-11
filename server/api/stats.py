@@ -41,7 +41,7 @@ async def get_overview_stats(
     - Average duration
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting overview stats")
+        logger.info(f"Admin {current_user['username']} requesting overview stats")
 
         # Active users (last 30 minutes)
         thirty_min_ago = datetime.utcnow() - timedelta(minutes=30)
@@ -117,7 +117,7 @@ async def get_daily_stats(
     - Successful operations
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting daily stats for {days} days")
+        logger.info(f"Admin {current_user['username']} requesting daily stats for {days} days")
 
         # Calculate date range
         end_date = datetime.utcnow()
@@ -146,8 +146,10 @@ async def get_daily_stats(
         # Format results
         daily_stats = []
         for row in rows:
+            # Handle SQLite returning string vs PostgreSQL returning date object
+            date_str = row.date if isinstance(row.date, str) else (row.date.isoformat() if row.date else None)
             daily_stats.append({
-                "date": row.date.isoformat() if row.date else None,
+                "date": date_str,
                 "operations": int(row.operations),
                 "unique_users": int(row.unique_users),
                 "successful_ops": int(row.successful_ops or 0),
@@ -186,16 +188,16 @@ async def get_weekly_stats(
     - Average duration
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting weekly stats for {weeks} weeks")
+        logger.info(f"Admin {current_user['username']} requesting weekly stats for {weeks} weeks")
 
         # Calculate date range
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(weeks=weeks)
 
         # Query weekly statistics
-        # Note: date_trunc is PostgreSQL-specific, for SQLite we'll use a workaround
+        # For SQLite: group by year-week
         query = select(
-            func.date(LogEntry.timestamp, '-' + text("((strftime('%w', timestamp) + 6) % 7)") + ' days').label('week_start'),
+            func.strftime('%Y-%W', LogEntry.timestamp).label('week_start'),
             func.count(LogEntry.log_id).label('total_ops'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
             func.round(
@@ -206,9 +208,9 @@ async def get_weekly_stats(
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
-            func.date(LogEntry.timestamp, '-' + text("((strftime('%w', timestamp) + 6) % 7)") + ' days')
+            func.strftime('%Y-%W', LogEntry.timestamp)
         ).order_by(
-            func.date(LogEntry.timestamp, '-' + text("((strftime('%w', timestamp) + 6) % 7)") + ' days').desc()
+            func.strftime('%Y-%W', LogEntry.timestamp).desc()
         )
 
         result = await db.execute(query)
@@ -217,8 +219,9 @@ async def get_weekly_stats(
         # Format results
         weekly_stats = []
         for row in rows:
+            # week_start is already a string in format 'YYYY-WW'
             weekly_stats.append({
-                "week_start": row.week_start.isoformat() if row.week_start else None,
+                "week_start": row.week_start,
                 "total_ops": int(row.total_ops),
                 "unique_users": int(row.unique_users),
                 "success_rate": float(row.success_rate or 0),
@@ -258,7 +261,7 @@ async def get_monthly_stats(
     - Average duration
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting monthly stats for {months} months")
+        logger.info(f"Admin {current_user['username']} requesting monthly stats for {months} months")
 
         # Calculate date range
         end_date = datetime.utcnow()
@@ -331,7 +334,7 @@ async def get_tool_popularity(
     - Average duration
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting tool popularity for {days} days")
+        logger.info(f"Admin {current_user['username']} requesting tool popularity for {days} days")
 
         # Calculate date range
         start_date = datetime.utcnow() - timedelta(days=days)
@@ -405,7 +408,7 @@ async def get_function_stats(
     - Success rate
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting function stats for {tool_name}")
+        logger.info(f"Admin {current_user['username']} requesting function stats for {tool_name}")
 
         # Calculate date range
         start_date = datetime.utcnow() - timedelta(days=days)
@@ -491,7 +494,7 @@ async def get_fastest_functions(
     - Min/max duration
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting top {limit} fastest functions")
+        logger.info(f"Admin {current_user['username']} requesting top {limit} fastest functions")
 
         # Calculate date range
         start_date = datetime.utcnow() - timedelta(days=days)
@@ -559,7 +562,7 @@ async def get_slowest_functions(
     Returns top N slowest functions (same structure as fastest).
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting top {limit} slowest functions")
+        logger.info(f"Admin {current_user['username']} requesting top {limit} slowest functions")
 
         # Calculate date range
         start_date = datetime.utcnow() - timedelta(days=days)
@@ -632,7 +635,7 @@ async def get_error_rate(
     - Error percentage
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting error rate for {days} days")
+        logger.info(f"Admin {current_user['username']} requesting error rate for {days} days")
 
         # Calculate date range
         start_date = datetime.utcnow() - timedelta(days=days)
@@ -662,8 +665,10 @@ async def get_error_rate(
         # Format results
         error_rates = []
         for row in rows:
+            # Handle SQLite returning string vs PostgreSQL returning date object
+            date_str = row.date if isinstance(row.date, str) else (row.date.isoformat() if row.date else None)
             error_rates.append({
-                "date": row.date.isoformat() if row.date else None,
+                "date": date_str,
                 "total_operations": int(row.total_operations),
                 "errors": int(row.errors or 0),
                 "error_rate": float(row.error_rate or 0)
@@ -697,7 +702,7 @@ async def get_top_errors(
     - Most common tool
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting top {limit} errors")
+        logger.info(f"Admin {current_user['username']} requesting top {limit} errors")
 
         # Calculate date range
         start_date = datetime.utcnow() - timedelta(days=days)
