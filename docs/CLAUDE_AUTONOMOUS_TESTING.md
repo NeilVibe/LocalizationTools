@@ -31,9 +31,48 @@ You have access to:
 2. ✅ **Logs** - Monitor via tail/grep
 3. ✅ **Database** - Query if needed
 4. ✅ **Monitoring scripts** - Run and parse output
-5. ✅ **Headless browser** - If absolutely necessary
+5. ✅ **Graphical browser** - X server available, can open Chromium directly!
+6. ✅ **Headless browser** - For automated testing without GUI
+
+**IMPORTANT**: This environment HAS X server configured (DISPLAY=10.255.255.254:0)
+- You CAN open graphical browsers directly: `chromium-browser http://localhost:5173 &`
+- You CAN take screenshots: `chromium-browser --screenshot=screenshot.png http://localhost:5173`
+- You DON'T need Selenium for basic visual testing
 
 **NEVER ask the user to check something you can verify yourself!**
+
+---
+
+## Using Graphical Browser (X Server Available!)
+
+**Environment**: X server configured at DISPLAY=10.255.255.254:0
+**Browser**: Chromium 142 installed
+
+### Opening Browser for Visual Testing
+
+```bash
+# Open LocaNext frontend
+chromium-browser http://localhost:5173 &
+
+# Open Admin Dashboard
+chromium-browser http://localhost:5175 &
+
+# Open with specific window size
+chromium-browser --window-size=1920,1080 http://localhost:5173 &
+
+# Take screenshot without showing window
+chromium-browser --headless --screenshot=screenshot.png http://localhost:5173
+```
+
+### When to Use Graphical Browser
+
+Use graphical browser when:
+- Need to verify visual layout/styling
+- Need to test UI interactions (clicks, forms)
+- API testing isn't sufficient
+- Need to debug frontend rendering issues
+
+**Still prefer API testing first** - it's faster and more reliable.
 
 ---
 
