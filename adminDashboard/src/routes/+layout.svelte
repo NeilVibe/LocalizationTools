@@ -3,7 +3,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
   import { websocket } from '$lib/api/websocket.js';
-  import { Dashboard, UserMultiple, Activity, ChartLine, Search, Logout } from 'carbon-icons-svelte';
+  import { Dashboard, UserMultiple, Activity, ChartLine, Trophy, Search, Logout } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
 
   const navItems = [
@@ -11,6 +11,7 @@
     { href: '/users', label: 'Users', icon: UserMultiple },
     { href: '/activity', label: 'Live Activity', icon: Activity },
     { href: '/stats', label: 'Statistics', icon: ChartLine },
+    { href: '/rankings', label: 'Rankings', icon: Trophy },
     { href: '/logs', label: 'Logs', icon: Search }
   ];
 
