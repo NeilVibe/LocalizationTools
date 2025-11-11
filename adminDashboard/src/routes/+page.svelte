@@ -6,10 +6,10 @@
   import { ChartLine, User, Activity, CheckmarkFilled } from 'carbon-icons-svelte';
 
   let stats = {
-    totalUsers: 0,
-    totalLogs: 0,
-    activeSessions: 0,
-    successRate: 0
+    activeUsers: 0,
+    todayOperations: 0,
+    successRate: 0,
+    avgDuration: 0
   };
   let recentActivity = [];
   let loading = true;
@@ -22,25 +22,34 @@
 
     try {
       logger.info("Loading dashboard data");
-      logger.apiCall("/api/users", "GET");
-      logger.apiCall("/api/logs", "GET", { limit: 10 });
+      logger.apiCall("/admin/stats/overview", "GET");
+      logger.apiCall("/logs/recent", "GET", { limit: 10 });
 
-      // Load stats and recent activity
-      const [users, logs] = await Promise.all([
-        adminAPI.getAllUsers().catch(() => []),
+      // Load comprehensive stats and recent activity
+      const [overviewStats, logs] = await Promise.all([
+        adminAPI.getOverviewStats().catch(() => ({
+          active_users: 0,
+          today_operations: 0,
+          success_rate: 0,
+          avg_duration_seconds: 0
+        })),
         adminAPI.getAllLogs({ limit: 10 }).catch(() => [])
       ]);
 
-      stats.totalUsers = users.length || 0;
-      stats.totalLogs = logs.length || 0;
+      stats.activeUsers = overviewStats.active_users || 0;
+      stats.todayOperations = overviewStats.today_operations || 0;
+      stats.successRate = overviewStats.success_rate || 0;
+      stats.avgDuration = overviewStats.avg_duration_seconds || 0;
       recentActivity = logs;
 
       const elapsed = performance.now() - startTime;
 
       loading = false;
       logger.success('Dashboard data loaded', {
-        totalUsers: stats.totalUsers,
-        totalLogs: stats.totalLogs,
+        activeUsers: stats.activeUsers,
+        todayOperations: stats.todayOperations,
+        successRate: stats.successRate.toFixed(1),
+        avgDuration: stats.avgDuration.toFixed(2),
         elapsed_ms: elapsed.toFixed(2)
       });
 
@@ -58,7 +67,14 @@
           status: newLog?.status
         });
         recentActivity = [newLog, ...recentActivity].slice(0, 10);
-        stats.totalLogs = stats.totalLogs + 1;
+        stats.todayOperations = stats.todayOperations + 1;
+
+        // Update success rate if operation completed
+        if (newLog?.status === 'completed') {
+          // Recalculate success rate (approximate)
+          const successOps = Math.round(stats.todayOperations * (stats.successRate / 100));
+          stats.successRate = ((successOps + 1) / stats.todayOperations) * 100;
+        }
       });
 
     } catch (error) {
@@ -96,8 +112,8 @@
       <div class="stat-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <div class="stat-value">{stats.totalUsers}</div>
-            <div class="stat-label">Total Users</div>
+            <div class="stat-value">{stats.activeUsers}</div>
+            <div class="stat-label">Active Users (24h)</div>
           </div>
           <User size={32} style="color: var(--cds-interactive-01);" />
         </div>
@@ -106,8 +122,8 @@
       <div class="stat-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <div class="stat-value">{stats.totalLogs}</div>
-            <div class="stat-label">Total Operations</div>
+            <div class="stat-value">{stats.todayOperations}</div>
+            <div class="stat-label">Today's Operations</div>
           </div>
           <Activity size={32} style="color: var(--cds-interactive-01);" />
         </div>
@@ -116,20 +132,20 @@
       <div class="stat-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <div class="stat-value">{stats.activeSessions}</div>
-            <div class="stat-label">Active Sessions</div>
+            <div class="stat-value">{stats.successRate.toFixed(1)}%</div>
+            <div class="stat-label">Success Rate</div>
           </div>
-          <ChartLine size={32} style="color: var(--cds-interactive-01);" />
+          <CheckmarkFilled size={32} style="color: #24a148;" />
         </div>
       </div>
 
       <div class="stat-card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <div class="stat-value">{stats.successRate}%</div>
-            <div class="stat-label">Success Rate</div>
+            <div class="stat-value">{stats.avgDuration.toFixed(2)}s</div>
+            <div class="stat-label">Avg Duration</div>
           </div>
-          <CheckmarkFilled size={32} style="color: #24a148;" />
+          <ChartLine size={32} style="color: var(--cds-interactive-01);" />
         </div>
       </div>
     </div>
