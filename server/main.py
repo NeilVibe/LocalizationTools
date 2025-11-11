@@ -113,6 +113,11 @@ app.include_router(remote_logging.router)
 from server.api import download
 app.include_router(download.router)
 
+# Include Admin Statistics API (for dashboard analytics)
+from server.api import stats, rankings
+app.include_router(stats.router)
+app.include_router(rankings.router)
+
 # Socket.IO will be mounted at the end after all setup is complete
 
 
