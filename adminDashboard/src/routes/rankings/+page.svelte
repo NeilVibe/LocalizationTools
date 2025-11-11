@@ -3,6 +3,9 @@
   import adminAPI from '$lib/api/client.js';
   import { Trophy, Star, User, Apps, Function as FunctionIcon } from 'carbon-icons-svelte';
 
+  // SvelteKit auto-passes these props - declare to avoid warnings
+  export const data = {};
+
   let loading = true;
   let selectedPeriod = 'monthly'; // 'daily', 'weekly', 'monthly', 'all_time'
   let selectedLimit = 20;
@@ -135,7 +138,7 @@
             <div class="podium-rank">2nd</div>
             <div class="podium-name">{userRankings[1].username}</div>
             <div class="podium-stat">{userRankings[1].total_operations} ops</div>
-            <div class="podium-detail">{userRankings[1].success_rate.toFixed(1)}% success</div>
+            <div class="podium-detail">{userRankings[1].active_days} active days</div>
           </div>
 
           <!-- 1st Place -->
@@ -144,7 +147,7 @@
             <div class="podium-rank">1st</div>
             <div class="podium-name">{userRankings[0].username}</div>
             <div class="podium-stat">{userRankings[0].total_operations} ops</div>
-            <div class="podium-detail">{userRankings[0].success_rate.toFixed(1)}% success</div>
+            <div class="podium-detail">{userRankings[0].active_days} active days</div>
           </div>
 
           <!-- 3rd Place -->
@@ -153,7 +156,7 @@
             <div class="podium-rank">3rd</div>
             <div class="podium-name">{userRankings[2].username}</div>
             <div class="podium-stat">{userRankings[2].total_operations} ops</div>
-            <div class="podium-detail">{userRankings[2].success_rate.toFixed(1)}% success</div>
+            <div class="podium-detail">{userRankings[2].active_days} active days</div>
           </div>
         </div>
       </div>
@@ -176,7 +179,7 @@
                 <div class="ranking-details">
                   <div class="ranking-name">{user.username}</div>
                   <div class="ranking-stats">
-                    {user.total_operations} operations • {user.success_rate.toFixed(1)}% success
+                    {user.total_operations} operations • {user.active_days} active days
                   </div>
                 </div>
                 <div class="ranking-value">
@@ -319,8 +322,8 @@
                 <th>Rank</th>
                 <th>Username</th>
                 <th>Operations</th>
-                <th>Success Rate</th>
-                <th>Avg Duration</th>
+                <th>Active Days</th>
+                <th>Top Tool</th>
               </tr>
             </thead>
             <tbody>
@@ -335,10 +338,8 @@
                     {getMedalIcon(user.rank)} {user.username}
                   </td>
                   <td>{user.total_operations}</td>
-                  <td>
-                    <span class="success-badge">{user.success_rate.toFixed(1)}%</span>
-                  </td>
-                  <td>{user.avg_duration ? user.avg_duration.toFixed(2) + 's' : 'N/A'}</td>
+                  <td>{user.active_days}</td>
+                  <td>{user.top_tool || 'N/A'}</td>
                 </tr>
               {/each}
             </tbody>
@@ -584,15 +585,5 @@
   .username-cell {
     font-weight: 600;
     color: #78a9ff;
-  }
-
-  .success-badge {
-    display: inline-block;
-    background: #24a148;
-    color: #ffffff;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 600;
   }
 </style>

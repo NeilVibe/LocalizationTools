@@ -3,6 +3,9 @@
   import adminAPI from '$lib/api/client.js';
   import Chart from 'chart.js/auto';
 
+  // SvelteKit auto-passes these props - declare to avoid warnings
+  export const data = {};
+
   let overviewStats = null;
   let dailyStats = [];
   let toolPopularity = null;
@@ -82,8 +85,8 @@
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       });
 
-      const operationsData = dailyStats.map(day => day.operations);
-      const uniqueUsersData = dailyStats.map(day => day.unique_users);
+      const operationsData = dailyStats.map(day => day?.operations || 0);
+      const uniqueUsersData = dailyStats.map(day => day?.unique_users || 0);
 
       operationsChart = new Chart(ctx, {
         type: 'line',
@@ -179,8 +182,9 @@
       });
 
       const successRateData = dailyStats.map(day => {
-        if (day.operations === 0) return 0;
-        return ((day.successful_ops / day.operations) * 100).toFixed(1);
+        if (!day || !day.operations || day.operations === 0) return 0;
+        const successOps = day.successful_ops || 0;
+        return ((successOps / day.operations) * 100).toFixed(1);
       });
 
       successRateChart = new Chart(ctx, {
@@ -303,7 +307,7 @@
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       });
 
-      const durationData = dailyStats.map(day => day.avg_duration || 0);
+      const durationData = dailyStats.map(day => (day && typeof day.avg_duration === 'number') ? day.avg_duration : 0);
 
       timeDistributionChart = new Chart(ctx, {
         type: 'bar',
@@ -519,7 +523,7 @@
                     </div>
                   </td>
                   <td>
-                    <span class="percentage-badge">{tool.percentage.toFixed(1)}%</span>
+                    <span class="percentage-badge">{(tool?.percentage || 0).toFixed(1)}%</span>
                   </td>
                 </tr>
               {/each}

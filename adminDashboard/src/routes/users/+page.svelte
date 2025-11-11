@@ -4,6 +4,9 @@
   import adminAPI from '$lib/api/client.js';
   import { logger } from '$lib/utils/logger.js';
 
+  // SvelteKit auto-passes these props - declare to avoid warnings
+  export const data = {};
+
   let users = [];
   let loading = true;
 
