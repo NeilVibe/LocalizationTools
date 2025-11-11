@@ -99,6 +99,10 @@ app.include_router(updates.router)
 from server.api import xlstransfer_async
 app.include_router(xlstransfer_async.router)
 
+# Include TextBatchProcessor API (App #2 - demonstrates BaseToolAPI pattern)
+from server.api import textbatchprocessor_async
+app.include_router(textbatchprocessor_async.router)
+
 # Include Progress Operations API (for real-time progress tracking)
 from server.api import progress_operations
 app.include_router(progress_operations.router)
@@ -106,6 +110,10 @@ app.include_router(progress_operations.router)
 # Include Remote Logging API (for centralized monitoring of user installations)
 from server.api import remote_logging
 app.include_router(remote_logging.router)
+
+# Include File Download API
+from server.api import download
+app.include_router(download.router)
 
 # Socket.IO will be mounted at the end after all setup is complete
 

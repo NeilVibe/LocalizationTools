@@ -64,7 +64,7 @@ class OperationResponse(BaseModel):
     progress_percentage: float
     current_step: Optional[str]
     total_steps: Optional[int]
-    completed_steps: int
+    completed_steps: Optional[int]  # Changed from int to Optional[int]
 
     started_at: datetime
     updated_at: datetime
@@ -75,8 +75,15 @@ class OperationResponse(BaseModel):
     parameters: Optional[dict]
     error_message: Optional[str]
 
+    # Result files
+    output_dir: Optional[str]
+    output_files: Optional[list]
+
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat() + 'Z' if v else None
+        }
 
 
 # ============================================================================

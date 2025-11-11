@@ -115,9 +115,11 @@ def generate_embeddings(
         embeddings.extend(batch_embeddings)
 
         if progress_tracker:
+            # Calculate progress percentage for embedding batch
+            progress_pct = (min(i + batch_size, len(texts)) / len(texts)) * 100
             progress_tracker.update(
-                len(batch_texts),
-                status=f"Embedded {min(i + batch_size, len(texts))}/{len(texts)} texts"
+                progress_pct,
+                current_step=f"Embedded {min(i + batch_size, len(texts))}/{len(texts)} texts"
             )
 
         # Log progress every 100 texts or at completion
@@ -451,7 +453,7 @@ def process_excel_for_dictionary(
                 all_trans_texts_whole.append(trans)
 
         if progress_tracker:
-            progress_tracker.update(1, status=f"Processed {Path(file_path).name}")
+            progress_tracker.update(1.0, current_step=f"Processed {Path(file_path).name}")
 
     logger.info(f"Total rows processed: {total_rows}")
     logger.info(f"Split texts: {len(all_kr_texts_split)}, Whole texts: {len(all_kr_texts_whole)}")

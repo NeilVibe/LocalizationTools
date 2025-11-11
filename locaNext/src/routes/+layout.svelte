@@ -20,6 +20,7 @@
   import Login from "$lib/components/Login.svelte";
   import { logger } from "$lib/utils/logger.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
+  import { websocket } from "$lib/api/websocket.js";
 
   // Accept SvelteKit layout props to avoid warnings
   export let data = {};
@@ -54,6 +55,7 @@
     api.clearAuth();
     isAuthenticated.set(false);
     user.set(null);
+    websocket.disconnect();
     logger.info("User logged out successfully");
   }
 
@@ -104,6 +106,12 @@
     } finally {
       checkingAuth = false;
     }
+  }
+
+  // Connect websocket when authenticated
+  $: if ($isAuthenticated && !websocket.isConnected()) {
+    logger.info("Connecting WebSocket after authentication");
+    websocket.connect();
   }
 
   onMount(() => {

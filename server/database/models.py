@@ -140,6 +140,10 @@ class ActiveOperation(Base):
     # Error tracking
     error_message = Column(Text, nullable=True)
 
+    # Result storage
+    output_dir = Column(String(500), nullable=True)  # Directory where output files are saved
+    output_files = Column(JSON, nullable=True)  # List of output file paths/names
+
     __table_args__ = (
         Index("idx_active_status", "status"),
         Index("idx_active_user_started", "user_id", "started_at"),

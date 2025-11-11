@@ -19,28 +19,28 @@ try:
     from sqlalchemy import create_engine, text
     from sqlalchemy.orm import sessionmaker
     import server.config as config
-    from server.utils.websocket import emit_progress_update
 
     database_url = config.DATABASE_URL
     engine = create_engine(database_url, connect_args={"check_same_thread": False} if "sqlite" in database_url else {})
     SessionLocal = sessionmaker(bind=engine)
     DB_AVAILABLE = True
-    WEBSOCKET_AVAILABLE = True
     print(f"[PROGRESS] ✓ Database connection established: {database_url.split('/')[-1]}", file=sys.stderr)
 except ImportError as e:
-    if "emit_progress_update" in str(e):
-        # Database works but WebSocket doesn't - that's okay
-        WEBSOCKET_AVAILABLE = False
-        DB_AVAILABLE = True if 'engine' in locals() else False
-        print(f"[PROGRESS] ⚠ WebSocket not available: {e}", file=sys.stderr)
-    else:
-        print(f"[PROGRESS] ⚠ Database not available: {e}", file=sys.stderr)
-        DB_AVAILABLE = False
-        WEBSOCKET_AVAILABLE = False
+    print(f"[PROGRESS] ⚠ Database not available: {e}", file=sys.stderr)
+    DB_AVAILABLE = False
 except Exception as e:
     print(f"[PROGRESS] ⚠ Database not available: {e}", file=sys.stderr)
     DB_AVAILABLE = False
+
+# Import WebSocket separately (optional dependency)
+try:
+    from server.utils.websocket import emit_progress_update
+    WEBSOCKET_AVAILABLE = True
+    print(f"[PROGRESS] ✓ WebSocket emission available", file=sys.stderr)
+except ImportError as e:
     WEBSOCKET_AVAILABLE = False
+    emit_progress_update = None
+    print(f"[PROGRESS] ⚠ WebSocket not available (progress will still update via DB): {e}", file=sys.stderr)
 
 
 class ProgressTracker:
@@ -79,7 +79,7 @@ class ProgressTracker:
         total_steps: Optional[int] = None
     ):
         """
-        Send progress update directly to database.
+        Send progress update to database and emit WebSocket event for real-time UI updates.
 
         Args:
             progress_percentage: Progress from 0.0 to 100.0
@@ -103,7 +103,7 @@ class ProgressTracker:
                 file=sys.stderr
             )
 
-            # Update database directly
+            # 1. Update database directly
             db = SessionLocal()
             try:
                 update_query = text("""
@@ -129,9 +129,37 @@ class ProgressTracker:
             finally:
                 db.close()
 
+            # 2. Emit WebSocket event for real-time UI updates (non-blocking)
+            if WEBSOCKET_AVAILABLE and emit_progress_update:
+                try:
+                    import asyncio
+
+                    # Prepare event data
+                    event_data = {
+                        'operation_id': self.operation_id,
+                        'progress_percentage': round(progress_percentage, 2),
+                        'current_step': current_step,
+                        'updated_at': datetime.utcnow().isoformat() + 'Z'
+                    }
+
+                    # Add optional fields
+                    if completed_steps is not None:
+                        event_data['completed_steps'] = completed_steps
+                    if total_steps is not None:
+                        event_data['total_steps'] = total_steps
+
+                    # Emit WebSocket event (async call from sync function)
+                    asyncio.run(emit_progress_update(event_data))
+
+                    print(f"[PROGRESS] ✓ WebSocket event emitted", file=sys.stderr)
+
+                except Exception as ws_error:
+                    # WebSocket emission failed - log but don't break operation
+                    print(f"[PROGRESS] ⚠ WebSocket emission failed (operation continues): {ws_error}", file=sys.stderr)
+
         except Exception as e:
             # Any error - log but don't break the operation
-            print(f"[PROGRESS] ⚠ Database update failed: {type(e).__name__}: {e}", file=sys.stderr)
+            print(f"[PROGRESS] ⚠ Update failed: {type(e).__name__}: {e}", file=sys.stderr)
 
     def log_milestone(self, message: str):
         """
