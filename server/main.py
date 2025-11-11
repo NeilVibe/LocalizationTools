@@ -95,13 +95,11 @@ app.include_router(sessions_async.router, prefix="/api/v2")
 from server.api import updates
 app.include_router(updates.router)
 
-# Include XLSTransfer API (for web-based testing)
+# Include XLSTransfer API (App #1)
 from server.api import xlstransfer_async
 app.include_router(xlstransfer_async.router)
 
-# Include TextBatchProcessor API (App #2 - demonstrates BaseToolAPI pattern)
-from server.api import textbatchprocessor_async
-app.include_router(textbatchprocessor_async.router)
+# App #2 will be added here (user will specify)
 
 # Include Progress Operations API (for real-time progress tracking)
 from server.api import progress_operations
