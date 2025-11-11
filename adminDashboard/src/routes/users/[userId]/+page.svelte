@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import adminAPI from '$lib/api/client.js';
-  import websocket from '$lib/api/websocket.js';
+  import { websocket } from '$lib/api/websocket.js';
 
   let userId;
   let user = null;

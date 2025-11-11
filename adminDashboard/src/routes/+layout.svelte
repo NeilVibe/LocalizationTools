@@ -6,6 +6,9 @@
   import { Dashboard, UserMultiple, Activity, ChartLine, Trophy, Search, Logout } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
 
+  // SvelteKit auto-passes these props - declare them to avoid warnings
+  export const data = {};
+
   const navItems = [
     { href: '/', label: 'Dashboard', icon: Dashboard },
     { href: '/users', label: 'Users', icon: UserMultiple },
