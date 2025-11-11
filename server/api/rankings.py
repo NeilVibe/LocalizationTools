@@ -46,7 +46,7 @@ async def get_user_rankings(
     - Top tool
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting user rankings for period: {period}")
+        logger.info(f"Admin {current_user['username']} requesting user rankings for period: {period}")
 
         # Calculate date range based on period
         end_date = datetime.utcnow()
@@ -144,7 +144,7 @@ async def get_user_rankings_by_time(
     Same structure as operations ranking but sorted by time.
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting user rankings by time for period: {period}")
+        logger.info(f"Admin {current_user['username']} requesting user rankings by time for period: {period}")
 
         # Calculate date range based on period
         end_date = datetime.utcnow()
@@ -249,7 +249,7 @@ async def get_app_rankings(
     - Average duration per operation
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting app rankings for period: {period}")
+        logger.info(f"Admin {current_user['username']} requesting app rankings for period: {period}")
 
         # Calculate date range
         end_date = datetime.utcnow()
@@ -332,7 +332,7 @@ async def get_function_rankings(
     - Success rate
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting function rankings for period: {period}")
+        logger.info(f"Admin {current_user['username']} requesting function rankings for period: {period}")
 
         # Calculate date range
         end_date = datetime.utcnow()
@@ -411,7 +411,7 @@ async def get_function_rankings_by_time(
     Returns top N functions sorted by cumulative time spent.
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting function rankings by time for period: {period}")
+        logger.info(f"Admin {current_user['username']} requesting function rankings by time for period: {period}")
 
         # Calculate date range
         end_date = datetime.utcnow()
@@ -505,7 +505,7 @@ async def get_top_rankings(
     Perfect for dashboard overview page.
     """
     try:
-        logger.info(f"Admin {current_user.username} requesting combined top rankings for period: {period}")
+        logger.info(f"Admin {current_user['username']} requesting combined top rankings for period: {period}")
 
         # Calculate date range
         end_date = datetime.utcnow()
@@ -520,8 +520,8 @@ async def get_top_rankings(
 
         # Top 10 Users
         users_query = select(
-            User.username,
-            User.full_name,
+            UserModel.username,
+            UserModel.full_name,
             func.count(LogEntry.log_id).label('operations')
         ).join(
             LogEntry, UserModel.user_id == LogEntry.user_id
