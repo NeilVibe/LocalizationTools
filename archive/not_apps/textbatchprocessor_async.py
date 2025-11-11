@@ -1,381 +1,333 @@
 """
-TextBatchProcessor API - Batch text file processing endpoints
+TextBatchProcessor API - Batch text file processing tool
 
-Simple tool for common text operations:
-- Find and replace patterns
+Provides endpoints for:
+- Find and replace across multiple files
 - Extract unique strings
 - Combine multiple files
 - Word count statistics
 - Split files by delimiter
-
-Inherits from BaseToolAPI for consistent patterns.
 """
 
-from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
-from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, Form
+from fastapi.responses import FileResponse, JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
 from pathlib import Path
-import tempfile
-import shutil
-import sys
-import time
-
-# Add project root to Python path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+import asyncio
+from loguru import logger
 
 from server.api.base_tool_api import BaseToolAPI
 from server.utils.dependencies import get_async_db, get_current_active_user_async
-from sqlalchemy.ext.asyncio import AsyncSession
-from loguru import logger
+from client.tools.text_batch_processor import core as tbp_core
 
-
-# ============================================
-# Request/Response Models
-# ============================================
-
-class FindReplaceRequest(BaseModel):
-    """Request model for find and replace operation"""
-    find_pattern: str = Field(..., description="Pattern to find")
-    replace_text: str = Field(..., description="Replacement text")
-    use_regex: bool = Field(False, description="Use regex matching")
-
-
-class SplitRequest(BaseModel):
-    """Request model for split operation"""
-    delimiter: str = Field("\\n\\n", description="Delimiter to split by")
-    prefix: str = Field("part", description="Prefix for output files")
-
-
-class CombineRequest(BaseModel):
-    """Request model for combine operation"""
-    separator: str = Field("\\n", description="Separator between files")
-
-
-# ============================================
-# API Router
-# ============================================
 
 class TextBatchProcessorAPI(BaseToolAPI):
-    """
-    TextBatchProcessor API endpoints using BaseToolAPI pattern.
-
-    Demonstrates how quickly a new app can be added using the base class.
-    """
+    """TextBatchProcessor API using BaseToolAPI pattern"""
 
     def __init__(self):
         super().__init__(
             tool_name="TextBatchProcessor",
-            router_prefix="/api/v2/textbatchprocessor"
+            router_prefix="/api/v2/textbatchprocessor",
+            temp_dir="/tmp/textbatchprocessor_test"
         )
-        self.router = APIRouter(prefix="/api/v2/textbatchprocessor", tags=["TextBatchProcessor"])
         self._setup_routes()
 
     def _setup_routes(self):
-        """Setup all API routes"""
+        """Setup all TextBatchProcessor API routes"""
 
-        @self.router.post("/find-replace")
-        async def find_replace(
+        # Health check
+        @self.router.get("/health")
+        async def health_check():
+            """Health check for TextBatchProcessor"""
+            return {
+                "status": "ok",
+                "tool": "TextBatchProcessor",
+                "functions": [
+                    "find_and_replace",
+                    "extract_unique_strings",
+                    "combine_files",
+                    "word_count_stats",
+                    "split_by_delimiter"
+                ]
+            }
+
+        # Find and Replace
+        @self.router.post("/test/find-and-replace")
+        async def find_and_replace(
             files: List[UploadFile] = File(...),
             find_pattern: str = Form(...),
             replace_text: str = Form(...),
             use_regex: bool = Form(False),
-            current_user: dict = Depends(get_current_active_user_async),
+            background_tasks: BackgroundTasks = BackgroundTasks(),
             db: AsyncSession = Depends(get_async_db),
-            background_tasks: BackgroundTasks = None
+            current_user: dict = Depends(get_current_active_user_async)
         ):
-            """Find and replace text patterns in uploaded files"""
-            return await self._handle_find_replace(
-                files, find_pattern, replace_text, use_regex, current_user, db, background_tasks
-            )
+            """
+            Find and replace text patterns in multiple files.
 
-        @self.router.post("/extract-unique")
+            Supports both simple text replacement and regex patterns.
+            """
+            try:
+                # Extract user info
+                user_info = self.extract_user_info(current_user)
+
+                # Save uploaded files
+                file_paths = await self.save_uploaded_files(files)
+
+                # Create operation
+                operation = await self.create_operation(
+                    db=db,
+                    user_info=user_info,
+                    function_name="find_and_replace",
+                    operation_name=f"Find & Replace in {len(files)} files",
+                    file_info={
+                        "files": [f.filename for f in files],
+                        "pattern": find_pattern,
+                        "use_regex": use_regex
+                    }
+                )
+
+                # Execute in background
+                background_tasks.add_task(
+                    self._execute_find_and_replace,
+                    operation["operation_id"],
+                    file_paths,
+                    find_pattern,
+                    replace_text,
+                    use_regex,
+                    user_info
+                )
+
+                return JSONResponse({
+                    "status": "processing",
+                    "operation_id": operation["operation_id"],
+                    "message": f"Processing {len(files)} files..."
+                })
+
+            except Exception as e:
+                logger.error(f"Find and replace error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        # Extract Unique Strings
+        @self.router.post("/test/extract-unique")
         async def extract_unique(
             files: List[UploadFile] = File(...),
-            sort_alphabetically: bool = Form(True),
-            current_user: dict = Depends(get_current_active_user_async),
+            background_tasks: BackgroundTasks = BackgroundTasks(),
             db: AsyncSession = Depends(get_async_db),
-            background_tasks: BackgroundTasks = None
+            current_user: dict = Depends(get_current_active_user_async)
         ):
-            """Extract all unique strings from uploaded files"""
-            return await self._handle_extract_unique(
-                files, sort_alphabetically, current_user, db, background_tasks
-            )
+            """Extract unique strings from multiple files"""
+            try:
+                user_info = self.extract_user_info(current_user)
+                file_paths = await self.save_uploaded_files(files)
 
-        @self.router.post("/combine")
-        async def combine(
+                operation = await self.create_operation(
+                    db=db,
+                    user_info=user_info,
+                    function_name="extract_unique_strings",
+                    operation_name=f"Extract Unique from {len(files)} files",
+                    file_info={"files": [f.filename for f in files]}
+                )
+
+                background_tasks.add_task(
+                    self._execute_extract_unique,
+                    operation["operation_id"],
+                    file_paths,
+                    user_info
+                )
+
+                return JSONResponse({
+                    "status": "processing",
+                    "operation_id": operation["operation_id"]
+                })
+
+            except Exception as e:
+                logger.error(f"Extract unique error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        # Combine Files
+        @self.router.post("/test/combine")
+        async def combine_files(
             files: List[UploadFile] = File(...),
-            separator: str = Form("\\n"),
-            current_user: dict = Depends(get_current_active_user_async),
+            output_filename: str = Form("combined.txt"),
+            background_tasks: BackgroundTasks = BackgroundTasks(),
             db: AsyncSession = Depends(get_async_db),
-            background_tasks: BackgroundTasks = None
+            current_user: dict = Depends(get_current_active_user_async)
         ):
             """Combine multiple files into one"""
-            return await self._handle_combine(
-                files, separator, current_user, db, background_tasks
-            )
+            try:
+                user_info = self.extract_user_info(current_user)
+                file_paths = await self.save_uploaded_files(files)
 
-        @self.router.post("/word-count")
-        async def word_count(
+                operation = await self.create_operation(
+                    db=db,
+                    user_info=user_info,
+                    function_name="combine_files",
+                    operation_name=f"Combine {len(files)} files",
+                    file_info={
+                        "files": [f.filename for f in files],
+                        "output": output_filename
+                    }
+                )
+
+                background_tasks.add_task(
+                    self._execute_combine,
+                    operation["operation_id"],
+                    file_paths,
+                    output_filename,
+                    user_info
+                )
+
+                return JSONResponse({
+                    "status": "processing",
+                    "operation_id": operation["operation_id"]
+                })
+
+            except Exception as e:
+                logger.error(f"Combine files error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        # Word Count Stats
+        @self.router.post("/test/word-count")
+        async def word_count_stats(
             files: List[UploadFile] = File(...),
-            current_user: dict = Depends(get_current_active_user_async),
-            db: AsyncSession = Depends(get_async_db)
-        ):
-            """Get word count statistics for uploaded files"""
-            return await self._handle_word_count(files, current_user, db)
-
-        @self.router.post("/split")
-        async def split(
-            file: UploadFile = File(...),
-            delimiter: str = Form("\\n\\n"),
-            prefix: str = Form("part"),
-            current_user: dict = Depends(get_current_active_user_async),
+            background_tasks: BackgroundTasks = BackgroundTasks(),
             db: AsyncSession = Depends(get_async_db),
-            background_tasks: BackgroundTasks = None
+            current_user: dict = Depends(get_current_active_user_async)
         ):
-            """Split a file by delimiter into multiple files"""
-            return await self._handle_split(
-                file, delimiter, prefix, current_user, db, background_tasks
-            )
+            """Get word count statistics for files"""
+            try:
+                user_info = self.extract_user_info(current_user)
+                file_paths = await self.save_uploaded_files(files)
 
-    # ============================================
-    # Endpoint Handlers
-    # ============================================
+                operation = await self.create_operation(
+                    db=db,
+                    user_info=user_info,
+                    function_name="word_count_stats",
+                    operation_name=f"Word Count for {len(files)} files",
+                    file_info={"files": [f.filename for f in files]}
+                )
 
-    async def _handle_find_replace(
+                background_tasks.add_task(
+                    self._execute_word_count,
+                    operation["operation_id"],
+                    file_paths,
+                    user_info
+                )
+
+                return JSONResponse({
+                    "status": "processing",
+                    "operation_id": operation["operation_id"]
+                })
+
+            except Exception as e:
+                logger.error(f"Word count error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+    # Background task implementations
+
+    async def _execute_find_and_replace(
         self,
-        files: List[UploadFile],
+        operation_id: int,
+        file_paths: List[str],
         find_pattern: str,
         replace_text: str,
         use_regex: bool,
-        current_user: dict,
-        db: AsyncSession,
-        background_tasks: BackgroundTasks
+        user_info: dict
     ):
-        """Handle find and replace operation"""
-        start_time = time.time()
-        user_info = self.extract_user_info(current_user)
-
+        """Execute find and replace in background"""
         try:
-            # Save uploaded files
-            saved_files = await self.save_uploaded_files(files, log_prefix="TextBatchProcessor")
+            # Emit start event
+            emit_operation_start(operation_id, user_info["user_id"], user_info["username"])
 
-            # Import here to avoid circular dependencies
-            from client.tools.text_batch_processor import find_and_replace
-
-            # Process files
-            logger.info(f"[TextBatchProcessor] Find/replace: '{find_pattern}' → '{replace_text}'")
-            results = find_and_replace(
-                file_paths=saved_files,
+            # Execute
+            results = tbp_core.find_and_replace(
+                file_paths=file_paths,
                 find_pattern=find_pattern,
                 replace_text=replace_text,
                 use_regex=use_regex
             )
 
-            logger.info(f"[TextBatchProcessor] Processed {len(results)} files")
-
-            return self.success_response(
-                message=f"Find and replace completed for {len(results)} files",
-                data={
-                    "files_processed": len(results),
-                    "results": results
-                },
-                elapsed_time=time.time() - start_time
+            # Complete operation
+            await self.complete_operation(
+                operation_id=operation_id,
+                user_info=user_info,
+                result_data={"results": results, "files_processed": len(results)}
             )
 
         except Exception as e:
-            return await self.handle_endpoint_error(
-                e, user_info, "textbatchprocessor",
-                time.time() - start_time, db
-            )
+            logger.error(f"Find and replace execution error: {e}")
+            await self.fail_operation(operation_id, user_info, str(e))
 
-    async def _handle_extract_unique(
+    async def _execute_extract_unique(
         self,
-        files: List[UploadFile],
-        sort_alphabetically: bool,
-        current_user: dict,
-        db: AsyncSession,
-        background_tasks: BackgroundTasks
+        operation_id: int,
+        file_paths: List[str],
+        user_info: dict
     ):
-        """Handle extract unique strings operation"""
-        start_time = time.time()
-        user_info = self.extract_user_info(current_user)
-
+        """Execute extract unique strings in background"""
         try:
-            # Save uploaded files
-            saved_files = await self.save_uploaded_files(files, log_prefix="TextBatchProcessor")
+            emit_operation_start(operation_id, user_info["user_id"], user_info["username"])
 
-            # Import here
-            from client.tools.text_batch_processor import extract_unique_strings
+            results = tbp_core.extract_unique_strings(file_paths)
 
-            # Extract unique strings
-            logger.info(f"[TextBatchProcessor] Extracting unique strings from {len(saved_files)} files")
-            unique_strings, output_path = extract_unique_strings(
-                file_paths=saved_files,
-                sort_alphabetically=sort_alphabetically
-            )
-
-            logger.info(f"[TextBatchProcessor] Extracted {len(unique_strings)} unique strings")
-
-            return self.success_response(
-                message=f"Extracted {len(unique_strings)} unique strings",
-                data={
-                    "unique_count": len(unique_strings),
-                    "output_file": output_path,
-                    "unique_strings": unique_strings[:100]  # Return first 100 for preview
-                },
-                elapsed_time=time.time() - start_time
+            await self.complete_operation(
+                operation_id=operation_id,
+                user_info=user_info,
+                result_data={"unique_strings": len(results), "output_file": results}
             )
 
         except Exception as e:
-            return await self.handle_endpoint_error(
-                e, user_info, "textbatchprocessor",
-                time.time() - start_time, db
-            )
+            logger.error(f"Extract unique execution error: {e}")
+            await self.fail_operation(operation_id, user_info, str(e))
 
-    async def _handle_combine(
+    async def _execute_combine(
         self,
-        files: List[UploadFile],
-        separator: str,
-        current_user: dict,
-        db: AsyncSession,
-        background_tasks: BackgroundTasks
+        operation_id: int,
+        file_paths: List[str],
+        output_filename: str,
+        user_info: dict
     ):
-        """Handle combine files operation"""
-        start_time = time.time()
-        user_info = self.extract_user_info(current_user)
-
+        """Execute combine files in background"""
         try:
-            # Save uploaded files
-            saved_files = await self.save_uploaded_files(files, log_prefix="TextBatchProcessor")
+            emit_operation_start(operation_id, user_info["user_id"], user_info["username"])
 
-            # Import here
-            from client.tools.text_batch_processor import combine_files
+            output_path = tbp_core.combine_files(file_paths, output_filename)
 
-            # Combine files
-            logger.info(f"[TextBatchProcessor] Combining {len(saved_files)} files")
-            output_path, total_lines = combine_files(
-                file_paths=saved_files,
-                separator=separator
-            )
-
-            logger.info(f"[TextBatchProcessor] Combined into {total_lines} lines")
-
-            return self.success_response(
-                message=f"Combined {len(saved_files)} files into {total_lines} lines",
-                data={
-                    "files_combined": len(saved_files),
-                    "total_lines": total_lines,
-                    "output_file": output_path
-                },
-                elapsed_time=time.time() - start_time
+            await self.complete_operation(
+                operation_id=operation_id,
+                user_info=user_info,
+                result_data={"output_file": output_path, "files_combined": len(file_paths)}
             )
 
         except Exception as e:
-            return await self.handle_endpoint_error(
-                e, user_info, "textbatchprocessor",
-                time.time() - start_time, db
-            )
+            logger.error(f"Combine files execution error: {e}")
+            await self.fail_operation(operation_id, user_info, str(e))
 
-    async def _handle_word_count(
+    async def _execute_word_count(
         self,
-        files: List[UploadFile],
-        current_user: dict,
-        db: AsyncSession
+        operation_id: int,
+        file_paths: List[str],
+        user_info: dict
     ):
-        """Handle word count statistics operation"""
-        start_time = time.time()
-        user_info = self.extract_user_info(current_user)
-
+        """Execute word count stats in background"""
         try:
-            # Save uploaded files
-            saved_files = await self.save_uploaded_files(files, log_prefix="TextBatchProcessor")
+            emit_operation_start(operation_id, user_info["user_id"], user_info["username"])
 
-            # Import here
-            from client.tools.text_batch_processor import get_word_count_stats
+            stats = tbp_core.get_word_count_stats(file_paths)
 
-            # Get statistics
-            logger.info(f"[TextBatchProcessor] Analyzing {len(saved_files)} files")
-            stats = get_word_count_stats(file_paths=saved_files)
-
-            # Calculate totals
-            total_words = sum(s['words'] for s in stats.values())
-            total_characters = sum(s['characters'] for s in stats.values())
-            total_lines = sum(s['lines'] for s in stats.values())
-
-            logger.info(f"[TextBatchProcessor] Total: {total_words} words, {total_characters} chars")
-
-            return self.success_response(
-                message=f"Analyzed {len(stats)} files",
-                data={
-                    "files_analyzed": len(stats),
-                    "totals": {
-                        "words": total_words,
-                        "characters": total_characters,
-                        "lines": total_lines
-                    },
-                    "per_file": stats
-                },
-                elapsed_time=time.time() - start_time
+            await self.complete_operation(
+                operation_id=operation_id,
+                user_info=user_info,
+                result_data={"stats": stats}
             )
 
         except Exception as e:
-            return await self.handle_endpoint_error(
-                e, user_info, "textbatchprocessor",
-                time.time() - start_time, db
-            )
-
-    async def _handle_split(
-        self,
-        file: UploadFile,
-        delimiter: str,
-        prefix: str,
-        current_user: dict,
-        db: AsyncSession,
-        background_tasks: BackgroundTasks
-    ):
-        """Handle split file operation"""
-        start_time = time.time()
-        user_info = self.extract_user_info(current_user)
-
-        try:
-            # Save uploaded file
-            saved_files = await self.save_uploaded_files([file], log_prefix="TextBatchProcessor")
-
-            # Import here
-            from client.tools.text_batch_processor import split_by_delimiter
-
-            # Split file
-            logger.info(f"[TextBatchProcessor] Splitting file by delimiter: {repr(delimiter)}")
-            output_paths = split_by_delimiter(
-                file_path=saved_files[0],
-                delimiter=delimiter,
-                prefix=prefix
-            )
-
-            logger.info(f"[TextBatchProcessor] Split into {len(output_paths)} parts")
-
-            return self.success_response(
-                message=f"Split into {len(output_paths)} parts",
-                data={
-                    "parts_count": len(output_paths),
-                    "output_files": output_paths
-                },
-                elapsed_time=time.time() - start_time
-            )
-
-        except Exception as e:
-            return await self.handle_endpoint_error(
-                e, user_info, "textbatchprocessor",
-                time.time() - start_time, db
-            )
+            logger.error(f"Word count execution error: {e}")
+            await self.fail_operation(operation_id, user_info, str(e))
 
 
-# ============================================
-# Router Instance
-# ============================================
-
-# Create API instance
-text_batch_processor_api = TextBatchProcessorAPI()
-router = text_batch_processor_api.router
+# Create API instance and router
+tbp_api = TextBatchProcessorAPI()
+router = tbp_api.router

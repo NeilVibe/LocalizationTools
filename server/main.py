@@ -99,7 +99,7 @@ app.include_router(updates.router)
 from server.api import xlstransfer_async
 app.include_router(xlstransfer_async.router)
 
-# App #2 will be added here (user will specify)
+# App #2 will be added here (user will specify which tool from RessourcesForCodingTheProject)
 
 # Include Progress Operations API (for real-time progress tracking)
 from server.api import progress_operations
