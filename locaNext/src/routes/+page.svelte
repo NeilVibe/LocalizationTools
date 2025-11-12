@@ -1,6 +1,7 @@
 <script>
   import { currentApp, currentView } from "$lib/stores/app.js";
   import XLSTransfer from "$lib/components/apps/XLSTransfer.svelte";
+  import QuickSearch from "$lib/components/apps/QuickSearch.svelte";
   import TaskManager from "$lib/components/TaskManager.svelte";
   import Welcome from "$lib/components/Welcome.svelte";
 
@@ -27,6 +28,8 @@
   {:else if view === 'app'}
     {#if app === 'xlstransfer'}
       <XLSTransfer />
+    {:else if app === 'quicksearch'}
+      <QuickSearch />
     {:else}
       <Welcome />
     {/if}
