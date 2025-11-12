@@ -31,8 +31,8 @@
 
   // Available apps
   const apps = [
-    { id: 'xlstransfer', name: 'XLSTransfer', description: 'Excel translation tools' }
-    // Add more apps here as they're developed
+    { id: 'xlstransfer', name: 'XLSTransfer', description: 'Excel translation tools' },
+    { id: 'quicksearch', name: 'QuickSearch', description: 'Dictionary search tool' }
   ];
 
   function selectApp(appId) {
