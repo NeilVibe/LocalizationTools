@@ -2,115 +2,71 @@
   import { onMount, onDestroy } from 'svelte';
   import adminAPI from '$lib/api/client.js';
   import { websocket } from '$lib/api/websocket.js';
-  import { logger } from '$lib/utils/logger.js';
-  import { ChartLine, User, Activity, Apps, Function as FunctionIcon } from 'carbon-icons-svelte';
+  import ExpandableCard from '$lib/components/ExpandableCard.svelte';
+  import TerminalLog from '$lib/components/TerminalLog.svelte';
+  import { Apps, Function as FunctionIcon, User, Activity, ChartLine } from 'carbon-icons-svelte';
 
-  // SvelteKit auto-passes these props - declare to avoid warnings
   export const data = {};
 
-  let stats = {
-    activeUsers: 0,
-    todayOperations: 0,
-    totalOperations: 0,
-    mostUsedApp: { name: 'N/A', count: 0 },
-    mostUsedFunction: { name: 'N/A', app: 'N/A', count: 0 }
-  };
   let loading = true;
   let isLive = false;
   let unsubscribe;
 
+  // Data
+  let overviewStats = null;
+  let appRankings = [];
+  let functionRankings = [];
+  let recentLogs = [];
+
   onMount(async () => {
-    const startTime = performance.now();
-    logger.component('Dashboard', 'mounted');
+    await loadData();
 
-    try {
-      logger.info("Loading dashboard data");
+    // Connect to WebSocket
+    websocket.connect();
+    isLive = true;
 
-      // Load comprehensive stats
-      const [overviewStats, appRankings, functionRankings] = await Promise.all([
-        adminAPI.getOverviewStats().catch(() => ({
-          active_users: 0,
-          today_operations: 0
-        })),
-        adminAPI.getAppRankings('all_time').catch(() => ({ rankings: [] })),
-        adminAPI.getFunctionRankings('all_time', 5).catch(() => ({ rankings: [] }))
-      ]);
-
-      // Set basic stats
-      stats.activeUsers = overviewStats.active_users || 0;
-      stats.todayOperations = overviewStats.today_operations || 0;
-
-      // Calculate total operations from all apps
-      stats.totalOperations = appRankings.rankings?.reduce((sum, app) => sum + (app.usage_count || 0), 0) || 0;
-
-      // Most used app
-      if (appRankings.rankings && appRankings.rankings.length > 0) {
-        const topApp = appRankings.rankings[0];
-        stats.mostUsedApp = {
-          name: topApp.app_name,
-          count: topApp.usage_count
-        };
-      }
-
-      // Most used function
-      if (functionRankings.rankings && functionRankings.rankings.length > 0) {
-        const topFunc = functionRankings.rankings[0];
-        stats.mostUsedFunction = {
-          name: topFunc.function_name,
-          app: topFunc.tool_name,
-          count: topFunc.usage_count
-        };
-      }
-
-      const elapsed = performance.now() - startTime;
-
-      loading = false;
-      logger.success('Dashboard data loaded', {
-        activeUsers: stats.activeUsers,
-        todayOperations: stats.todayOperations,
-        totalOperations: stats.totalOperations,
-        mostUsedApp: stats.mostUsedApp.name,
-        mostUsedFunction: `${stats.mostUsedFunction.app}::${stats.mostUsedFunction.name}`,
-        elapsed_ms: elapsed.toFixed(2)
-      });
-
-      // Connect to WebSocket for real-time updates
-      logger.info("Connecting to WebSocket for real-time updates");
-      websocket.connect();
-      isLive = true;
-
-      // Listen for new log entries to update stats
-      unsubscribe = websocket.on('log_entry', (newLog) => {
-        logger.info('New activity received via WebSocket', {
-          logId: newLog?.log_id,
-          tool: newLog?.tool_name,
-          operation: newLog?.operation,
-          status: newLog?.status
-        });
-
-        // Update today's operations count
-        stats.todayOperations = stats.todayOperations + 1;
-        stats.totalOperations = stats.totalOperations + 1;
-      });
-
-    } catch (error) {
-      const elapsed = performance.now() - startTime;
-      logger.error('Failed to load dashboard data', {
-        error: error.message,
-        error_type: error.name,
-        elapsed_ms: elapsed.toFixed(2)
-      });
-      loading = false;
-    }
+    // Listen for new activity
+    unsubscribe = websocket.on('log_entry', (newLog) => {
+      recentLogs = [newLog, ...recentLogs].slice(0, 10);
+      // Refresh stats
+      loadData();
+    });
   });
 
   onDestroy(() => {
-    logger.component('Dashboard', 'destroyed');
-    if (unsubscribe) {
-      logger.info("Cleaning up WebSocket subscription");
-      unsubscribe();
-    }
+    if (unsubscribe) unsubscribe();
   });
+
+  async function loadData() {
+    try {
+      loading = true;
+
+      const [overview, apps, functions, logs] = await Promise.all([
+        adminAPI.getOverviewStats().catch(() => ({
+          active_users: 0,
+          today_operations: 0,
+          success_rate: 0
+        })),
+        adminAPI.getAppRankings('all_time').catch(() => ({ rankings: [] })),
+        adminAPI.getFunctionRankings('all_time', 5).catch(() => ({ rankings: [] })),
+        adminAPI.getAllLogs({ limit: 10 }).catch(() => [])
+      ]);
+
+      overviewStats = overview;
+      appRankings = apps.rankings || [];
+      functionRankings = functions.rankings || [];
+      recentLogs = logs;
+
+      loading = false;
+    } catch (error) {
+      console.error('Failed to load data:', error);
+      loading = false;
+    }
+  }
+
+  function getTotalOps() {
+    return appRankings.reduce((sum, app) => sum + (app.total_operations || 0), 0);
+  }
 </script>
 
 <div class="admin-content">
@@ -122,7 +78,7 @@
       {/if}
     </h1>
     <p class="page-subtitle">
-      {isLive ? '🔴 LIVE - Real-time system monitoring' : 'System activity and key metrics'}
+      {isLive ? '🔴 LIVE - Real-time monitoring' : 'System status and key metrics'}
     </p>
   </div>
 
@@ -131,71 +87,95 @@
       <p>Loading dashboard...</p>
     </div>
   {:else}
-    <!-- Key Metrics Grid -->
-    <div class="stats-grid">
-      <!-- Active Users -->
-      <div class="stat-card">
-        <div class="stat-card-content">
-          <div>
-            <div class="stat-value">{stats.activeUsers}</div>
-            <div class="stat-label">Active Users (24h)</div>
-          </div>
-          <User size={32} class="stat-icon" />
+    <!-- Compact Stats Row -->
+    <div class="compact-stats">
+      <div class="compact-stat">
+        <div class="compact-stat-icon"><Activity size={20} /></div>
+        <div>
+          <div class="compact-stat-value">{overviewStats.active_users}</div>
+          <div class="compact-stat-label">Active Users (24h)</div>
         </div>
       </div>
-
-      <!-- Today's Operations -->
-      <div class="stat-card">
-        <div class="stat-card-content">
-          <div>
-            <div class="stat-value">{stats.todayOperations}</div>
-            <div class="stat-label">Today's Operations</div>
-          </div>
-          <Activity size={32} class="stat-icon" />
+      <div class="compact-stat">
+        <div class="compact-stat-icon"><ChartLine size={20} /></div>
+        <div>
+          <div class="compact-stat-value">{overviewStats.today_operations}</div>
+          <div class="compact-stat-label">Today's Operations</div>
         </div>
       </div>
-
-      <!-- Total Operations (All Time) -->
-      <div class="stat-card">
-        <div class="stat-card-content">
-          <div>
-            <div class="stat-value">{stats.totalOperations.toLocaleString()}</div>
-            <div class="stat-label">Total Operations</div>
-          </div>
-          <ChartLine size={32} class="stat-icon" />
+      <div class="compact-stat">
+        <div class="compact-stat-icon"><ChartLine size={20} /></div>
+        <div>
+          <div class="compact-stat-value">{getTotalOps()}</div>
+          <div class="compact-stat-label">Total Operations</div>
         </div>
       </div>
-
-      <!-- Most Used App -->
-      <div class="stat-card highlight">
-        <div class="stat-card-content">
-          <div>
-            <div class="stat-value">{stats.mostUsedApp.name}</div>
-            <div class="stat-label">Most Used App ({stats.mostUsedApp.count} uses)</div>
-          </div>
-          <Apps size={32} class="stat-icon-highlight" />
-        </div>
-      </div>
-
-      <!-- Most Used Function -->
-      <div class="stat-card highlight">
-        <div class="stat-card-content">
-          <div>
-            <div class="stat-value function-name">{stats.mostUsedFunction.name}</div>
-            <div class="stat-label">
-              Most Used Function ({stats.mostUsedFunction.count} uses)
-              <br/>
-              <span class="app-name">in {stats.mostUsedFunction.app}</span>
-            </div>
-          </div>
-          <FunctionIcon size={32} class="stat-icon-highlight" />
+      <div class="compact-stat highlight">
+        <div class="compact-stat-icon"><ChartLine size={20} /></div>
+        <div>
+          <div class="compact-stat-value">{overviewStats.success_rate ? overviewStats.success_rate.toFixed(1) : 0}%</div>
+          <div class="compact-stat-label">Success Rate</div>
         </div>
       </div>
     </div>
 
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+      <!-- Top App (Expandable) -->
+      <ExpandableCard
+        icon={Apps}
+        stat={appRankings[0]?.tool_name || 'N/A'}
+        label="Most Used App"
+        highlight={true}
+      >
+        <div class="mini-ranking">
+          {#each appRankings.slice(0, 3) as app, i}
+            <div class="mini-rank-item">
+              <span class="mini-rank">{i + 1}</span>
+              <span class="mini-name">{app.tool_name}</span>
+              <span class="mini-value">{app.total_operations} ops</span>
+            </div>
+          {/each}
+        </div>
+        <a href="/stats" class="card-link">View all stats →</a>
+      </ExpandableCard>
+
+      <!-- Top Function (Expandable) -->
+      <ExpandableCard
+        icon={FunctionIcon}
+        stat={functionRankings[0]?.function_name || 'N/A'}
+        label="Most Used Function"
+        highlight={true}
+      >
+        <div class="mini-ranking">
+          {#each functionRankings.slice(0, 3) as func, i}
+            <div class="mini-rank-item">
+              <span class="mini-rank">{i + 1}</span>
+              <span class="mini-name">{func.function_name}</span>
+              <span class="mini-app">({func.tool_name})</span>
+              <span class="mini-value">{func.usage_count} calls</span>
+            </div>
+          {/each}
+        </div>
+        <a href="/stats" class="card-link">View all stats →</a>
+      </ExpandableCard>
+    </div>
+
+    <!-- Recent Activity Terminal -->
+    <div class="recent-activity">
+      <h2 class="section-title">Recent Activity</h2>
+      <TerminalLog
+        logs={recentLogs}
+        title="Last 10 Operations"
+        height="350px"
+        live={isLive}
+      />
+      <a href="/logs" class="view-all-link">View all logs →</a>
+    </div>
+
     <!-- System Status -->
-    <div class="card">
-      <h2 class="card-title">System Status</h2>
+    <div class="system-status">
+      <h3 class="status-title">System Status</h3>
       <div class="status-grid">
         <div class="status-item">
           <span class="status-indicator success"></span>
@@ -209,42 +189,11 @@
           <span class="status-indicator {isLive ? 'success' : 'warning'}"></span>
           <span class="status-text">WebSocket {isLive ? 'Connected' : 'Disconnected'}</span>
         </div>
+        <div class="status-item">
+          <span class="status-indicator success"></span>
+          <span class="status-text">{appRankings.length} Apps Active</span>
+        </div>
       </div>
-    </div>
-
-    <!-- Quick Links -->
-    <div class="quick-links-grid">
-      <a href="/stats" class="quick-link-card">
-        <ChartLine size={24} />
-        <div>
-          <div class="quick-link-title">Statistics</div>
-          <div class="quick-link-desc">View detailed charts and trends</div>
-        </div>
-      </a>
-
-      <a href="/rankings" class="quick-link-card">
-        <Apps size={24} />
-        <div>
-          <div class="quick-link-title">Rankings</div>
-          <div class="quick-link-desc">User, App & Function rankings</div>
-        </div>
-      </a>
-
-      <a href="/users" class="quick-link-card">
-        <User size={24} />
-        <div>
-          <div class="quick-link-title">Users</div>
-          <div class="quick-link-desc">Manage users and permissions</div>
-        </div>
-      </a>
-
-      <a href="/logs" class="quick-link-card">
-        <Activity size={24} />
-        <div>
-          <div class="quick-link-title">System Logs</div>
-          <div class="quick-link-desc">Browse and search all activity</div>
-        </div>
-      </a>
     </div>
   {/if}
 </div>
@@ -265,87 +214,179 @@
     50% { opacity: 0.5; }
   }
 
-  .stats-grid {
+  .compact-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .compact-stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 16px;
+    transition: all 0.2s;
+  }
+
+  .compact-stat:hover {
+    border-color: #4589ff;
+    transform: translateY(-2px);
+  }
+
+  .compact-stat.highlight {
+    border-color: #42be65;
+    background: linear-gradient(135deg, #1a1a1a 0%, #1a2a1a 100%);
+  }
+
+  .compact-stat-icon {
+    color: #4589ff;
+    flex-shrink: 0;
+  }
+
+  .compact-stat.highlight .compact-stat-icon {
+    color: #42be65;
+  }
+
+  .compact-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f4f4f4;
+  }
+
+  .compact-stat-label {
+    font-size: 0.75rem;
+    color: #c6c6c6;
+  }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 20px;
     margin-bottom: 24px;
   }
 
-  .stat-card {
-    background: #262626;
-    border: 1px solid #393939;
-    border-radius: 4px;
-    padding: 20px;
-    transition: all 0.2s;
+  .mini-ranking {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
   }
 
-  .stat-card:hover {
-    border-color: #4589ff;
-    box-shadow: 0 2px 8px rgba(69, 137, 255, 0.2);
-  }
-
-  .stat-card.highlight {
-    background: linear-gradient(135deg, #262626 0%, #2d2d2d 100%);
-    border-color: #4589ff;
-  }
-
-  .stat-card-content {
+  .mini-rank-item {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 10px;
+    padding: 8px;
+    background: #1a1a1a;
+    border-radius: 3px;
   }
 
-  .stat-value {
-    font-size: 2rem;
+  .mini-rank {
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #4589ff;
+    color: #161616;
+    border-radius: 50%;
     font-weight: 700;
+    font-size: 0.75rem;
+  }
+
+  .mini-name {
     color: #f4f4f4;
-    margin-bottom: 8px;
-    word-break: break-word;
-  }
-
-  .stat-value.function-name {
-    font-size: 1.5rem;
-    color: #78a9ff;
-    font-family: 'Courier New', monospace;
-  }
-
-  .stat-label {
+    font-weight: 600;
+    flex: 1;
     font-size: 0.875rem;
-    color: #c6c6c6;
   }
 
-  .app-name {
+  .mini-app {
+    color: #8d8d8d;
+    font-size: 0.75rem;
+  }
+
+  .mini-value {
     color: #78a9ff;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.8125rem;
   }
 
-  .stat-icon {
+  .card-link {
+    display: inline-block;
     color: #4589ff;
-    opacity: 0.8;
+    font-size: 0.875rem;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
   }
 
-  .stat-icon-highlight {
-    color: #ffb000;
-    opacity: 0.9;
+  .card-link:hover {
+    color: #78a9ff;
+    text-decoration: underline;
+  }
+
+  .recent-activity {
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    color: #f4f4f4;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .view-all-link {
+    display: inline-block;
+    margin-top: 12px;
+    color: #4589ff;
+    font-size: 0.875rem;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .view-all-link:hover {
+    color: #78a9ff;
+    text-decoration: underline;
+  }
+
+  .system-status {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 20px;
+  }
+
+  .status-title {
+    color: #f4f4f4;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
   }
 
   .status-grid {
-    display: flex;
-    gap: 32px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
   }
 
   .status-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
 
   .status-indicator {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
+    flex-shrink: 0;
   }
 
   .status-indicator.success {
@@ -359,49 +400,13 @@
   }
 
   .status-text {
-    color: #f4f4f4;
-    font-size: 14px;
+    color: #c6c6c6;
+    font-size: 0.875rem;
   }
 
-  .quick-links-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
-    margin-top: 24px;
-  }
-
-  .quick-link-card {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: #262626;
-    border: 1px solid #393939;
-    border-radius: 4px;
-    padding: 16px;
-    text-decoration: none;
-    color: #f4f4f4;
-    transition: all 0.2s;
-  }
-
-  .quick-link-card:hover {
-    border-color: #4589ff;
-    background: #2d2d2d;
-    transform: translateY(-2px);
-  }
-
-  .quick-link-card :global(svg) {
-    color: #4589ff;
-    flex-shrink: 0;
-  }
-
-  .quick-link-title {
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 4px;
-  }
-
-  .quick-link-desc {
-    font-size: 12px;
+  .loading-container {
+    text-align: center;
+    padding: 60px 20px;
     color: #c6c6c6;
   }
 </style>

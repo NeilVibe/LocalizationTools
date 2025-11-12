@@ -1,541 +1,240 @@
 <script>
   import { onMount } from 'svelte';
   import adminAPI from '$lib/api/client.js';
-  import Chart from 'chart.js/auto';
+  import ExpandableCard from '$lib/components/ExpandableCard.svelte';
+  import { Apps, Function as FunctionIcon, ChartLine, User, Trophy, Activity } from 'carbon-icons-svelte';
 
-  // SvelteKit auto-passes these props - declare to avoid warnings
   export const data = {};
 
-  let overviewStats = null;
-  let dailyStats = [];
-  let toolPopularity = null;
   let loading = true;
-  let selectedPeriod = 'daily'; // 'daily', 'weekly', 'monthly'
-  let selectedDays = 30;
+  let selectedPeriod = 'monthly';
 
-  // Chart instances
-  let operationsChartEl;
-  let successRateChartEl;
-  let toolUsageChartEl;
-  let timeDistributionChartEl;
-
-  let operationsChart;
-  let successRateChart;
-  let toolUsageChart;
-  let timeDistributionChart;
+  // Data
+  let overviewStats = null;
+  let appRankings = [];
+  let functionRankings = [];
+  let userRankings = [];
+  let dailyStats = [];
 
   onMount(async () => {
-    await loadStats();
-    createCharts();
+    await loadData();
   });
 
-  async function loadStats() {
+  async function loadData() {
     try {
       loading = true;
 
-      // Load comprehensive stats from new API
-      const [overview, daily, popularity] = await Promise.all([
+      const [overview, apps, functions, users, daily] = await Promise.all([
         adminAPI.getOverviewStats().catch(() => ({
           active_users: 0,
           today_operations: 0,
           success_rate: 0,
           avg_duration_seconds: 0
         })),
-        adminAPI.getDailyStats(selectedDays).catch(() => ({ data: [] })),
-        adminAPI.getToolPopularity(selectedDays).catch(() => ({ tools: [] }))
+        adminAPI.getAppRankings(selectedPeriod).catch(() => ({ rankings: [] })),
+        adminAPI.getFunctionRankings(selectedPeriod, 20).catch(() => ({ rankings: [] })),
+        adminAPI.getUserRankings(selectedPeriod, 10).catch(() => ({ rankings: [] })),
+        adminAPI.getDailyStats(30).catch(() => ({ data: [] }))
       ]);
 
       overviewStats = overview;
+      appRankings = apps.rankings || [];
+      functionRankings = functions.rankings || [];
+      userRankings = users.rankings || [];
       dailyStats = daily.data || [];
-      toolPopularity = popularity;
 
       loading = false;
-
-      // Recreate charts with new data
-      if (operationsChart) operationsChart.destroy();
-      if (successRateChart) successRateChart.destroy();
-      if (toolUsageChart) toolUsageChart.destroy();
-      if (timeDistributionChart) timeDistributionChart.destroy();
-
-      createCharts();
     } catch (error) {
-      console.error('Failed to load stats:', error);
+      console.error('Failed to load data:', error);
       loading = false;
     }
   }
 
   async function changePeriod(period) {
     selectedPeriod = period;
-    if (period === 'daily') selectedDays = 30;
-    else if (period === 'weekly') selectedDays = 90;
-    else if (period === 'monthly') selectedDays = 365;
-
-    await loadStats();
+    await loadData();
   }
 
-  function createCharts() {
-    if (!overviewStats || !dailyStats.length) return;
-
-    // Operations Over Time Chart (real data from daily stats)
-    if (operationsChartEl) {
-      const ctx = operationsChartEl.getContext('2d');
-
-      const labels = dailyStats.map(day => {
-        const date = new Date(day.date);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      });
-
-      const operationsData = dailyStats.map(day => day?.operations || 0);
-      const uniqueUsersData = dailyStats.map(day => day?.unique_users || 0);
-
-      operationsChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Operations',
-              data: operationsData,
-              borderColor: '#4589ff',
-              backgroundColor: 'rgba(69, 137, 255, 0.1)',
-              tension: 0.4,
-              fill: true,
-              yAxisID: 'y'
-            },
-            {
-              label: 'Unique Users',
-              data: uniqueUsersData,
-              borderColor: '#42be65',
-              backgroundColor: 'rgba(66, 190, 101, 0.1)',
-              tension: 0.4,
-              fill: true,
-              yAxisID: 'y1'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false,
-          },
-          plugins: {
-            legend: {
-              labels: { color: '#f4f4f4' }
-            },
-            tooltip: {
-              backgroundColor: '#262626',
-              titleColor: '#f4f4f4',
-              bodyColor: '#c6c6c6',
-              borderColor: '#393939',
-              borderWidth: 1
-            }
-          },
-          scales: {
-            y: {
-              type: 'linear',
-              display: true,
-              position: 'left',
-              beginAtZero: true,
-              ticks: { color: '#c6c6c6' },
-              grid: { color: '#393939' },
-              title: {
-                display: true,
-                text: 'Operations',
-                color: '#4589ff'
-              }
-            },
-            y1: {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              beginAtZero: true,
-              ticks: { color: '#c6c6c6' },
-              grid: { drawOnChartArea: false },
-              title: {
-                display: true,
-                text: 'Users',
-                color: '#42be65'
-              }
-            },
-            x: {
-              ticks: {
-                color: '#c6c6c6',
-                maxRotation: 45,
-                minRotation: 45
-              },
-              grid: { color: '#393939' }
-            }
-          }
-        }
-      });
-    }
-
-    // Success Rate Over Time
-    if (successRateChartEl && dailyStats.length > 0) {
-      const ctx = successRateChartEl.getContext('2d');
-
-      const labels = dailyStats.map(day => {
-        const date = new Date(day.date);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      });
-
-      const successRateData = dailyStats.map(day => {
-        if (!day || !day.operations || day.operations === 0) return 0;
-        const successOps = day.successful_ops || 0;
-        return ((successOps / day.operations) * 100).toFixed(1);
-      });
-
-      successRateChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Success Rate (%)',
-            data: successRateData,
-            backgroundColor: '#42be65',
-            borderColor: '#24a148',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              labels: { color: '#f4f4f4' }
-            },
-            tooltip: {
-              backgroundColor: '#262626',
-              titleColor: '#f4f4f4',
-              bodyColor: '#c6c6c6',
-              borderColor: '#393939',
-              borderWidth: 1,
-              callbacks: {
-                label: function(context) {
-                  return `Success Rate: ${context.parsed.y}%`;
-                }
-              }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 100,
-              ticks: {
-                color: '#c6c6c6',
-                callback: function(value) {
-                  return value + '%';
-                }
-              },
-              grid: { color: '#393939' }
-            },
-            x: {
-              ticks: {
-                color: '#c6c6c6',
-                maxRotation: 45,
-                minRotation: 45
-              },
-              grid: { color: '#393939' }
-            }
-          }
-        }
-      });
-    }
-
-    // Tool Usage Distribution (Doughnut)
-    if (toolUsageChartEl && toolPopularity && toolPopularity.tools && toolPopularity.tools.length > 0) {
-      const ctx = toolUsageChartEl.getContext('2d');
-
-      const colors = [
-        '#4589ff',
-        '#42be65',
-        '#ff8389',
-        '#78a9ff',
-        '#82cfff',
-        '#d4bbff',
-        '#ffb784',
-        '#ff7eb6'
-      ];
-
-      toolUsageChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: toolPopularity.tools.map(t => t.tool_name),
-          datasets: [{
-            data: toolPopularity.tools.map(t => t.usage_count),
-            backgroundColor: colors.slice(0, toolPopularity.tools.length),
-            borderColor: '#161616',
-            borderWidth: 2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: { color: '#f4f4f4' }
-            },
-            tooltip: {
-              backgroundColor: '#262626',
-              titleColor: '#f4f4f4',
-              bodyColor: '#c6c6c6',
-              borderColor: '#393939',
-              borderWidth: 1,
-              callbacks: {
-                label: function(context) {
-                  const percentage = context.parsed;
-                  const label = context.label;
-                  const value = context.raw;
-                  return `${label}: ${value} ops (${percentage.toFixed(1)}%)`;
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // Average Duration Over Time
-    if (timeDistributionChartEl && dailyStats.length > 0) {
-      const ctx = timeDistributionChartEl.getContext('2d');
-
-      const labels = dailyStats.map(day => {
-        const date = new Date(day.date);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      });
-
-      const durationData = dailyStats.map(day => (day && typeof day.avg_duration === 'number') ? day.avg_duration : 0);
-
-      timeDistributionChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Avg Duration (seconds)',
-            data: durationData,
-            backgroundColor: '#78a9ff',
-            borderColor: '#4589ff',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              labels: { color: '#f4f4f4' }
-            },
-            tooltip: {
-              backgroundColor: '#262626',
-              titleColor: '#f4f4f4',
-              bodyColor: '#c6c6c6',
-              borderColor: '#393939',
-              borderWidth: 1,
-              callbacks: {
-                label: function(context) {
-                  return `Duration: ${context.parsed.y.toFixed(2)}s`;
-                }
-              }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                color: '#c6c6c6',
-                callback: function(value) {
-                  return value.toFixed(1) + 's';
-                }
-              },
-              grid: { color: '#393939' }
-            },
-            x: {
-              ticks: {
-                color: '#c6c6c6',
-                maxRotation: 45,
-                minRotation: 45
-              },
-              grid: { color: '#393939' }
-            }
-          }
-        }
-      });
-    }
+  function getTotalOps() {
+    return appRankings.reduce((sum, app) => sum + (app.total_operations || 0), 0);
   }
 
-  function formatDuration(seconds) {
-    if (!seconds) return '0s';
-    if (seconds < 60) return `${seconds.toFixed(1)}s`;
-    if (seconds < 3600) return `${(seconds / 60).toFixed(1)}m`;
-    return `${(seconds / 3600).toFixed(1)}h`;
-  }
-
-  function calculateTotalOps() {
-    return dailyStats.reduce((sum, day) => sum + day.operations, 0);
-  }
-
-  function calculateTotalSuccess() {
-    return dailyStats.reduce((sum, day) => sum + day.successful_ops, 0);
-  }
-
-  function calculateTotalFailed() {
-    const total = calculateTotalOps();
-    const success = calculateTotalSuccess();
-    return total - success;
-  }
-
-  function calculateOverallSuccessRate() {
-    const total = calculateTotalOps();
-    const success = calculateTotalSuccess();
-    return total > 0 ? ((success / total) * 100).toFixed(1) : 0;
+  function getMedalIcon(rank) {
+    if (rank === 1) return '🥇';
+    if (rank === 2) return '🥈';
+    if (rank === 3) return '🥉';
+    if (rank <= 5) return '⭐';
+    return '📊';
   }
 </script>
 
 <div class="admin-content">
   <div class="page-header">
-    <h1 class="page-title">Statistics & Analytics</h1>
-    <p class="page-subtitle">System usage metrics and performance data</p>
+    <h1 class="page-title">Statistics & Rankings</h1>
+    <p class="page-subtitle">Comprehensive analytics and performance metrics</p>
   </div>
 
   <!-- Period Selector -->
   <div class="period-selector">
-    <button
-      class="period-btn {selectedPeriod === 'daily' ? 'active' : ''}"
-      on:click={() => changePeriod('daily')}
-    >
-      Last 30 Days
-    </button>
-    <button
-      class="period-btn {selectedPeriod === 'weekly' ? 'active' : ''}"
-      on:click={() => changePeriod('weekly')}
-    >
-      Last 90 Days
-    </button>
-    <button
-      class="period-btn {selectedPeriod === 'monthly' ? 'active' : ''}"
-      on:click={() => changePeriod('monthly')}
-    >
-      Last Year
-    </button>
+    <button class="period-btn {selectedPeriod === 'daily' ? 'active' : ''}" on:click={() => changePeriod('daily')}>Daily</button>
+    <button class="period-btn {selectedPeriod === 'weekly' ? 'active' : ''}" on:click={() => changePeriod('weekly')}>Weekly</button>
+    <button class="period-btn {selectedPeriod === 'monthly' ? 'active' : ''}" on:click={() => changePeriod('monthly')}>Monthly</button>
+    <button class="period-btn {selectedPeriod === 'all_time' ? 'active' : ''}" on:click={() => changePeriod('all_time')}>All Time</button>
   </div>
 
   {#if loading}
     <div class="loading-container">
       <p>Loading statistics...</p>
     </div>
-  {:else if overviewStats && dailyStats.length > 0}
-    <!-- Summary Stats -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">📊</div>
-        <div class="stat-value">{calculateTotalOps()}</div>
-        <div class="stat-label">Total Operations ({selectedDays} days)</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon">✅</div>
-        <div class="stat-value">{calculateTotalSuccess()}</div>
-        <div class="stat-label">Successful</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon">❌</div>
-        <div class="stat-value">{calculateTotalFailed()}</div>
-        <div class="stat-label">Failed</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon">📈</div>
-        <div class="stat-value">{calculateOverallSuccessRate()}%</div>
-        <div class="stat-label">Success Rate</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon">👥</div>
-        <div class="stat-value">{overviewStats.active_users}</div>
-        <div class="stat-label">Active Users (24h)</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon">🔧</div>
-        <div class="stat-value">{toolPopularity?.tools?.length || 0}</div>
-        <div class="stat-label">Active Tools</div>
-      </div>
-    </div>
-
-    <!-- Charts Grid -->
-    <div class="charts-grid">
-      <div class="chart-card">
-        <h3 class="chart-title">Operations & Users Over Time</h3>
-        <div class="chart-container">
-          <canvas bind:this={operationsChartEl}></canvas>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <h3 class="chart-title">Success Rate Over Time</h3>
-        <div class="chart-container">
-          <canvas bind:this={successRateChartEl}></canvas>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <h3 class="chart-title">Tool Usage Distribution</h3>
-        <div class="chart-container">
-          <canvas bind:this={toolUsageChartEl}></canvas>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <h3 class="chart-title">Average Duration Over Time</h3>
-        <div class="chart-container">
-          <canvas bind:this={timeDistributionChartEl}></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tool Statistics Table -->
-    {#if toolPopularity && toolPopularity.tools && toolPopularity.tools.length > 0}
-      <div class="card">
-        <h3 class="section-title">Tool Performance Details</h3>
-        <div class="data-table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Tool</th>
-                <th>Total Operations</th>
-                <th>Usage Share</th>
-                <th>Percentage</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each toolPopularity.tools as tool}
-                <tr>
-                  <td class="tool-name">{tool.tool_name}</td>
-                  <td>{tool.usage_count}</td>
-                  <td>
-                    <div class="usage-bar-container">
-                      <div class="usage-bar" style="width: {tool.percentage}%;"></div>
-                      <span class="usage-bar-text">{tool.usage_count} ops</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span class="percentage-badge">{(tool?.percentage || 0).toFixed(1)}%</span>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    {/if}
   {:else}
-    <div class="empty-state">
-      <h3>No statistics available</h3>
-      <p>Statistics will appear once operations are performed</p>
+    <!-- Quick Stats Grid -->
+    <div class="quick-stats">
+      <div class="quick-stat">
+        <Activity size={24} />
+        <div class="quick-stat-value">{overviewStats.active_users}</div>
+        <div class="quick-stat-label">Active Users (24h)</div>
+      </div>
+      <div class="quick-stat">
+        <ChartLine size={24} />
+        <div class="quick-stat-value">{overviewStats.today_operations}</div>
+        <div class="quick-stat-label">Today's Operations</div>
+      </div>
+      <div class="quick-stat">
+        <Trophy size={24} />
+        <div class="quick-stat-value">{getTotalOps()}</div>
+        <div class="quick-stat-label">Total Operations ({selectedPeriod})</div>
+      </div>
+      <div class="quick-stat">
+        <ChartLine size={24} />
+        <div class="quick-stat-value">{overviewStats.success_rate ? overviewStats.success_rate.toFixed(1) : 0}%</div>
+        <div class="quick-stat-label">Success Rate</div>
+      </div>
+    </div>
+
+    <!-- Main Stats Grid with Expandable Cards -->
+    <div class="stats-grid">
+      <!-- Most Used App -->
+      <ExpandableCard
+        icon={Apps}
+        stat={appRankings[0]?.tool_name || 'N/A'}
+        label="Most Used App ({appRankings[0]?.total_operations || 0} ops)"
+        highlight={true}
+        expanded={true}
+      >
+        <div class="ranking-list">
+          {#each appRankings.slice(0, 5) as app, i}
+            <div class="ranking-item">
+              <span class="rank-badge">{i + 1}</span>
+              <span class="ranking-name">{app.tool_name}</span>
+              <span class="ranking-value">{app.total_operations} ops</span>
+              <span class="medal">{getMedalIcon(i + 1)}</span>
+            </div>
+          {/each}
+        </div>
+      </ExpandableCard>
+
+      <!-- Most Used Function (All Apps) -->
+      <ExpandableCard
+        icon={FunctionIcon}
+        stat={functionRankings[0]?.function_name || 'N/A'}
+        label="Most Used Function ({functionRankings[0]?.usage_count || 0} calls)"
+        highlight={true}
+        expanded={true}
+      >
+        <div class="ranking-list">
+          {#each functionRankings.slice(0, 5) as func, i}
+            <div class="ranking-item">
+              <span class="rank-badge">{i + 1}</span>
+              <span class="ranking-name">{func.function_name}</span>
+              <span class="ranking-app">({func.tool_name})</span>
+              <span class="ranking-value">{func.usage_count} calls</span>
+              <span class="medal">{getMedalIcon(i + 1)}</span>
+            </div>
+          {/each}
+        </div>
+      </ExpandableCard>
+
+      <!-- App Rankings - Full List -->
+      <ExpandableCard
+        icon={Apps}
+        stat={appRankings.length}
+        label="Active Apps"
+      >
+        <div class="ranking-list">
+          {#each appRankings as app, i}
+            <div class="ranking-item">
+              <span class="rank-badge">{i + 1}</span>
+              <span class="ranking-name">{app.tool_name}</span>
+              <span class="ranking-value">{app.total_operations} ops</span>
+              <div class="usage-bar">
+                <div class="usage-bar-fill" style="width: {app.total_operations / appRankings[0]?.total_operations * 100}%"></div>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </ExpandableCard>
+
+      <!-- Function Rankings - Full List -->
+      <ExpandableCard
+        icon={FunctionIcon}
+        stat={functionRankings.length}
+        label="Functions Tracked"
+      >
+        <div class="ranking-list">
+          {#each functionRankings as func, i}
+            <div class="ranking-item">
+              <span class="rank-badge">{i + 1}</span>
+              <span class="ranking-name">{func.function_name}</span>
+              <span class="ranking-app">({func.tool_name})</span>
+              <span class="ranking-value">{func.usage_count} calls</span>
+            </div>
+          {/each}
+        </div>
+      </ExpandableCard>
+
+      <!-- Top Users -->
+      <ExpandableCard
+        icon={User}
+        stat={userRankings.length}
+        label="Active Users"
+      >
+        <div class="ranking-list">
+          {#each userRankings as user, i}
+            <div class="ranking-item">
+              <span class="rank-badge">{i + 1}</span>
+              <span class="ranking-name">{user.username}</span>
+              <span class="ranking-value">{user.total_operations} ops</span>
+              <span class="medal">{getMedalIcon(i + 1)}</span>
+            </div>
+          {/each}
+        </div>
+      </ExpandableCard>
+
+      <!-- Performance Stats -->
+      <ExpandableCard
+        icon={ChartLine}
+        stat={overviewStats.avg_duration_seconds ? overviewStats.avg_duration_seconds.toFixed(2) + 's' : 'N/A'}
+        label="Avg Operation Duration"
+      >
+        <div class="stats-detail">
+          <div class="detail-row">
+            <span class="detail-label">Success Rate:</span>
+            <span class="detail-value success">{overviewStats.success_rate ? overviewStats.success_rate.toFixed(1) : 0}%</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Active Users (24h):</span>
+            <span class="detail-value">{overviewStats.active_users}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Today's Operations:</span>
+            <span class="detail-value">{overviewStats.today_operations}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Total Operations:</span>
+            <span class="detail-value">{getTotalOps()}</span>
+          </div>
+        </div>
+      </ExpandableCard>
     </div>
   {/if}
 </div>
@@ -551,10 +250,11 @@
     background: #262626;
     border: 1px solid #393939;
     color: #c6c6c6;
-    padding: 10px 20px;
+    padding: 10px 24px;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
     transition: all 0.2s;
   }
 
@@ -567,120 +267,157 @@
     background: #4589ff;
     border-color: #4589ff;
     color: #ffffff;
-    font-weight: 500;
   }
 
-  .stats-grid {
+  .quick-stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
+    gap: 16px;
     margin-bottom: 32px;
   }
 
-  .stat-card {
-    background: #262626;
-    border: 1px solid #393939;
+  .quick-stat {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
     border-radius: 4px;
-    padding: 24px;
-    text-align: center;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
     transition: all 0.2s;
   }
 
-  .stat-card:hover {
+  .quick-stat:hover {
     border-color: #4589ff;
     transform: translateY(-2px);
   }
 
-  .stat-icon {
-    font-size: 32px;
-    margin-bottom: 12px;
+  .quick-stat :global(svg) {
+    color: #4589ff;
   }
 
-  .stat-value {
-    font-size: 32px;
-    font-weight: 600;
+  .quick-stat-value {
+    font-size: 2rem;
+    font-weight: 700;
     color: #f4f4f4;
-    margin-bottom: 8px;
   }
 
-  .stat-label {
+  .quick-stat-label {
+    font-size: 0.75rem;
     color: #c6c6c6;
-    font-size: 14px;
+    text-align: center;
   }
 
-  .charts-grid {
+  .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-    gap: 24px;
-    margin-bottom: 32px;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
   }
 
-  .chart-card {
-    background: #262626;
-    border: 1px solid #393939;
+  .ranking-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ranking-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #1a1a1a;
     border-radius: 4px;
-    padding: 24px;
+    border: 1px solid #2a2a2a;
+    transition: all 0.2s;
   }
 
-  .chart-title {
-    color: #f4f4f4;
-    font-size: 18px;
-    margin-bottom: 16px;
-    font-weight: 500;
+  .ranking-item:hover {
+    background: #2a2a2a;
+    border-color: #4589ff;
   }
 
-  .chart-container {
-    height: 300px;
-    position: relative;
-  }
-
-  .section-title {
-    color: #f4f4f4;
-    font-size: 20px;
-    margin-bottom: 16px;
-    font-weight: 500;
-  }
-
-  .tool-name {
-    font-weight: 500;
-    color: #78a9ff;
-  }
-
-  .usage-bar-container {
-    position: relative;
-    width: 100%;
+  .rank-badge {
+    min-width: 28px;
     height: 28px;
-    background: #161616;
-    border-radius: 4px;
-    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #4589ff;
+    color: #161616;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 0.875rem;
+  }
+
+  .ranking-name {
+    color: #f4f4f4;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .ranking-app {
+    color: #8d8d8d;
+    font-size: 0.875rem;
+  }
+
+  .ranking-value {
+    color: #78a9ff;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .medal {
+    font-size: 1.25rem;
   }
 
   .usage-bar {
-    position: absolute;
-    left: 0;
-    top: 0;
+    width: 100px;
+    height: 6px;
+    background: #2a2a2a;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .usage-bar-fill {
     height: 100%;
     background: linear-gradient(90deg, #4589ff, #78a9ff);
     transition: width 0.3s ease;
   }
 
-  .usage-bar-text {
-    position: relative;
-    z-index: 1;
-    color: #f4f4f4;
-    font-size: 12px;
-    line-height: 28px;
-    padding: 0 12px;
-    font-weight: 500;
+  .stats-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
-  .percentage-badge {
-    display: inline-block;
-    background: #393939;
-    color: #78a9ff;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 500;
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #1a1a1a;
+    border-radius: 4px;
+  }
+
+  .detail-label {
+    color: #c6c6c6;
+    font-size: 0.875rem;
+  }
+
+  .detail-value {
+    color: #f4f4f4;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .detail-value.success {
+    color: #42be65;
+  }
+
+  .loading-container {
+    text-align: center;
+    padding: 60px 20px;
+    color: #c6c6c6;
   }
 </style>
