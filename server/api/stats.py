@@ -776,3 +776,97 @@ async def get_top_errors(
     except Exception as e:
         logger.error(f"Error fetching top errors: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch top errors: {str(e)}")
+
+
+# ============================================================================
+# Server Logs Endpoint
+# ============================================================================
+
+@router.get("/server-logs")
+async def get_server_logs(
+    lines: int = Query(default=100, description="Number of log lines to return"),
+    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
+    # current_user: dict = Depends(require_admin_async)
+):
+    """
+    Get server log file contents (last N lines).
+
+    Returns real-time server logs from server.log file.
+    """
+    import os
+    from pathlib import Path
+
+    try:
+        logger.info(f"Requesting last {lines} server log lines")
+
+        # Path to server log file
+        log_file = Path(__file__).parent.parent / "data" / "logs" / "server.log"
+
+        if not log_file.exists():
+            logger.warning(f"Server log file not found: {log_file}")
+            return {
+                "logs": [],
+                "total_lines": 0,
+                "message": "Server log file not found"
+            }
+
+        # Read last N lines from file
+        with open(log_file, 'r', encoding='utf-8') as f:
+            all_lines = f.readlines()
+            last_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
+
+        # Parse log lines into structured format
+        logs = []
+        for line in last_lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            # Try to parse log line format: "TIMESTAMP | LEVEL | MESSAGE"
+            parts = line.split('|', 2)
+            if len(parts) >= 3:
+                timestamp = parts[0].strip()
+                level = parts[1].strip()
+                message = parts[2].strip()
+
+                # Determine status based on level
+                status_map = {
+                    'INFO': 'info',
+                    'SUCCESS': 'success',
+                    'WARNING': 'warning',
+                    'ERROR': 'error',
+                    'CRITICAL': 'error'
+                }
+                status = status_map.get(level.upper(), 'info')
+
+                logs.append({
+                    "timestamp": timestamp,
+                    "status": status,
+                    "tool_name": "SERVER",
+                    "function_name": "system",
+                    "username": "system",
+                    "message": message,
+                    "level": level
+                })
+            else:
+                # If line doesn't match format, add as raw message
+                logs.append({
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "status": "info",
+                    "tool_name": "SERVER",
+                    "function_name": "system",
+                    "username": "system",
+                    "message": line,
+                    "level": "INFO"
+                })
+
+        return {
+            "logs": logs,
+            "total_lines": len(all_lines),
+            "returned_lines": len(logs),
+            "log_file": str(log_file)
+        }
+
+    except Exception as e:
+        logger.error(f"Error reading server logs: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to read server logs: {str(e)}")

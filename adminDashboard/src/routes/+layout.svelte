@@ -10,12 +10,9 @@
   export const data = {};
 
   const navItems = [
-    { href: '/', label: 'Dashboard', icon: Dashboard },
-    { href: '/users', label: 'Users', icon: UserMultiple },
-    { href: '/activity', label: 'Live Activity', icon: Activity },
-    { href: '/stats', label: 'Statistics', icon: ChartLine },
-    { href: '/rankings', label: 'Rankings', icon: Trophy },
-    { href: '/logs', label: 'Logs', icon: Search }
+    { href: '/', label: 'Overview', icon: Dashboard },
+    { href: '/stats', label: 'Stats & Rankings', icon: ChartLine },
+    { href: '/logs', label: 'Activity Logs', icon: Activity }
   ];
 
   let wsConnected = false;
