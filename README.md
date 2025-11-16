@@ -159,6 +159,16 @@ LocalizationTools/
 ├── scripts/                   # BUILD & SETUP SCRIPTS
 │   └── setup_database.py      # Database initialization
 │
+├── NewScripts/                # RAPID SCRIPT DEVELOPMENT (Side Project)
+│   ├── README.md              # Guide for building new scripts
+│   ├── 2025-11/               # Scripts organized by month
+│   └── archive/               # Old or deprecated scripts
+│
+├── RessourcesForCodingTheProject/  # REFERENCE SCRIPT LIBRARY
+│   ├── MAIN PYTHON SCRIPTS/   # 9 major tools (XLSTransfer, QuickSearch, etc.)
+│   ├── SECONDARY PYTHON SCRIPTS/  # 74 utility scripts
+│   └── datausedfortesting/    # Test data
+│
 ├── archive/                   # ARCHIVED CODE
 │   └── gradio_version/        # Old Gradio-based version
 │
