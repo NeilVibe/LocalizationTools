@@ -1,12 +1,12 @@
-# TMX Transfer 도구 - 사용 가이드
+# TMX Transfer 사용 가이드
 
 **번역 전송을 위한 간단한 3단계 프로세스**
 
 ---
 
-## 이 도구의 기능
+## 프로그램 소개
 
-TMX Transfer는 Excel 파일의 번역을 XML 게임 파일로 전송하는 작업을 도와줍니다:
+TMX Transfer는 Excel 파일의 번역을 XML 게임 파일로 전송하는 프로그램입니다:
 1. 고유한 StringID 생성
 2. Excel 데이터를 TMX 형식으로 변환
 3. 번역 매칭 및 XML 파일로 전송
@@ -17,7 +17,7 @@ TMX Transfer는 Excel 파일의 번역을 XML 게임 파일로 전송하는 작�
 
 **목적**: 각 번역 문자열에 대한 고유 식별자 생성
 
-### 방법:
+### 사용 방법:
 
 1. **Excel 파일 준비** - 2개의 열 필요:
    - **1열**: DialogVoice (대화 식별자)
@@ -30,12 +30,12 @@ TMX Transfer는 Excel 파일의 번역을 XML 게임 파일로 전송하는 작�
    aidialog_quest     aidialog_quest_start_02
    ```
 
-2. **도구 실행**
+2. **프로그램 실행**
    - `tmxtransfer8.py` 실행
    - **"Generate StringID"** 버튼 클릭
 
 3. **Excel 파일 선택**
-   - 도구가 EventName에서 고유한 부분을 추출합니다
+   - 프로그램이 EventName에서 고유한 부분을 추출합니다
    - 결과: StringID가 포함된 새 Excel 파일 (`*_stridgenerated.xlsx`)
 
    결과:
@@ -85,9 +85,9 @@ StrOrigin        Str              StringID        DescOrigin           Desc
 
 **목적**: Excel 데이터를 번역 전송을 위한 TMX 형식으로 변환
 
-### 방법:
+### 사용 방법:
 
-1. **도구 실행**
+1. **프로그램 실행**
    - `tmxtransfer8.py` 실행
 
 2. **변환 유형 선택**:
@@ -117,13 +117,13 @@ StrOrigin        Str              StringID        DescOrigin           Desc
 
 **목적**: TMX의 번역을 XML 파일과 자동으로 매칭하여 업데이트
 
-### 방법:
+### 사용 방법:
 
 1. **파일 준비**:
    - ✅ TMX 파일 (3단계에서 생성)
    - ✅ 업데이트할 XML 파일
 
-2. **도구 실행**
+2. **프로그램 실행**
    - `tmxtransfer8.py` 실행
 
 3. **모드 선택**:
@@ -142,7 +142,7 @@ StrOrigin        Str              StringID        DescOrigin           Desc
 
 6. **Simple Translate 실행**:
    - **"KR+ID SIMPLE TRANSLATE"** 버튼 클릭
-   - 도구가 다음을 수행합니다:
+   - 프로그램이 자동으로 다음을 수행합니다:
      - StringID + 한국어 텍스트(StrOrigin)로 매칭
      - StringID + 한국어 설명(DescOrigin)으로 설명 매칭
      - XML 파일에서 일치하는 항목 업데이트
@@ -247,9 +247,9 @@ StrOrigin        Str              StringID        DescOrigin           Desc
 ---
 
 **마지막 업데이트**: 2025-11-21
-**도구 버전**: tmxtransfer8.py
-**대상**: 로컬라이제이션 팀원
+**프로그램 버전**: tmxtransfer8.py
+**대상**: 로컬라이제이션 팀
 
 ---
 
-*도움이 필요하신가요? StringID와 열 순서를 먼저 확인하세요 - 이것들이 가장 흔한 문제입니다!*
+*문제가 생기면 StringID와 열 순서를 먼저 확인해보세요!*
