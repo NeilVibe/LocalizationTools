@@ -395,24 +395,45 @@ if __name__ == "__main__":
 
 ### Folder Structure
 ```
-NewScripts/
-├── README.md (this file)
-├── WordCountMaster/
-│   ├── ROADMAP.md
-│   ├── wordcount_diff_master.py
-│   └── wordcount_history.json (auto-generated)
-├── ScriptName2/
-│   ├── ROADMAP.md
-│   └── script_name2.py
-└── archive/
-    └── [old or deprecated scripts]
+RessourcesForCodingTheProject/
+├── MAIN PYTHON SCRIPTS/
+├── SECONDARY PYTHON SCRIPTS/
+│   └── tmxtransfer8.py
+├── guides/                           # Guides for existing scripts
+│   ├── tmxtransfer_guide_en.md
+│   └── tmxtransfer_guide_kr.md
+└── NewScripts/
+    ├── README.md (this file)
+    ├── WORKFLOW.md
+    ├── guides/                       # General NewScripts guides (optional)
+    ├── WordCountMaster/              # Example mini-project
+    │   ├── ROADMAP.md
+    │   ├── wordcount_diff_master.py
+    │   ├── wordcount_history.json
+    │   └── docs/                     # Project-specific guides
+    │       ├── guide_en.md
+    │       └── guide_kr.md
+    ├── ScriptName2/
+    │   ├── ROADMAP.md
+    │   ├── script_name2.py
+    │   └── docs/
+    └── archive/
+        └── [old or deprecated scripts]
 ```
 
 **Organization Pattern:**
-- Each new script gets its own folder named after the script
+
+**For Existing Scripts (Type 1)**:
+- Guides for scripts in MAIN/SECONDARY PYTHON SCRIPTS
+- Go in: `/RessourcesForCodingTheProject/guides/`
+- Naming: `[scriptname]_guide_[language].md`
+
+**For New Mini-Projects (Type 2)**:
+- Each new script gets its own folder in NewScripts
 - Each folder contains:
-  - `ROADMAP.md` - Development plan and documentation
+  - `ROADMAP.md` - Development plan
   - Main script file(s)
+  - Optional `docs/` subfolder for project-specific guides
   - Any auto-generated data files
 - This keeps each script project self-contained and organized
 
