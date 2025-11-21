@@ -15,28 +15,33 @@ This document outlines the **systematic workflow** for creating new localization
 Before starting work, determine which type of task you're doing:
 
 ### Type 1: Guide Creation for Existing Scripts
-**Purpose**: Document how to use an existing script
+**Purpose**: Document how to use an existing script from RessourcesForCodingTheProject
 
 **When**:
 - User asks for a guide/documentation for an existing script
-- User wants simple usage instructions
+- User wants simple usage instructions for scripts in MAIN/SECONDARY PYTHON SCRIPTS
 - No new code needs to be written
 
-**Output Location**: `/guides/` folder
+**Output Location**: `/RessourcesForCodingTheProject/guides/` folder
 
 **Structure**:
 ```
-guides/
-├── tmxtransfer_guide_en.md      # English version
-├── tmxtransfer_guide_kr.md      # Korean version
-└── [other_script]_guide_en.md
+RessourcesForCodingTheProject/
+├── MAIN PYTHON SCRIPTS/
+├── SECONDARY PYTHON SCRIPTS/
+│   └── tmxtransfer8.py
+└── guides/                          # Guides for existing scripts
+    ├── tmxtransfer_guide_en.md
+    ├── tmxtransfer_guide_kr.md
+    └── [other_script]_guide_en.md
 ```
 
 **Process**:
 1. Read the existing script to understand functionality
 2. Create clean, simple markdown guide(s)
 3. Include step-by-step instructions with screenshots if needed
-4. Place in `/guides/` folder with naming: `[scriptname]_guide_[language].md`
+4. Place in `/RessourcesForCodingTheProject/guides/` folder
+5. Naming convention: `[scriptname]_guide_[language].md`
 
 ---
 
@@ -48,17 +53,20 @@ guides/
 - User wants to expand/improve functionality
 - New code development is required
 
-**Output Location**: `/NewScripts/[ProjectName]/` folder
+**Output Location**: `/RessourcesForCodingTheProject/NewScripts/[ProjectName]/` folder
 
 **Structure**:
 ```
 NewScripts/
-└── ProjectName/
+├── README.md
+├── WORKFLOW.md
+├── guides/                         # General NewScripts guides (optional)
+└── ProjectName/                    # Your mini-project
     ├── ROADMAP.md                  # Development plan
     ├── project_script_MMDD.py      # Main script
     ├── tests/                      # Optional: test files
     ├── data/                       # Optional: sample data
-    └── docs/                       # Optional: documentation
+    └── docs/                       # Project-specific guides
         ├── guide_en.md
         └── guide_kr.md
 ```
@@ -68,7 +76,7 @@ NewScripts/
 2. Create ROADMAP.md with development plan
 3. Build the new script using reference script as base
 4. Follow the 7-step workflow below
-5. Optionally create guides in `docs/` subfolder
+5. Optionally create guides in project's `docs/` subfolder for project-specific documentation
 
 ---
 
@@ -77,12 +85,13 @@ NewScripts/
 **Ask yourself**: Am I writing new code?
 
 - **NO** → Type 1: Guide Creation
-  - Just documenting existing script
-  - Goes in `/guides/`
+  - Just documenting existing script from RessourcesForCodingTheProject
+  - Goes in `/RessourcesForCodingTheProject/guides/`
 
 - **YES** → Type 2: Mini-Project
-  - Building/enhancing a script
-  - Gets its own folder in `/NewScripts/`
+  - Building/enhancing a script as new development
+  - Gets its own folder in `/NewScripts/[ProjectName]/`
+  - Can have project-specific docs in `/NewScripts/[ProjectName]/docs/`
 
 ---
 
