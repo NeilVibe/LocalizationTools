@@ -7,6 +7,31 @@
 
 ---
 
+## 📖 Documentation
+
+**New to NewScripts? Start here:**
+
+1. **[WORKFLOW.md](WORKFLOW.md)** ⭐ **START HERE**
+   - Step-by-step guide for creating new scripts
+   - Systematic 7-phase workflow
+   - Quality checklists and speed tips
+   - **Use this when building scripts!**
+
+2. **README.md** (this file)
+   - Reference script catalog
+   - Common patterns and templates
+   - Libraries and conventions
+   - **Use this for reference and context**
+
+3. **`.claude/newscript_instructions.md`** (for Claude Code)
+   - Systematic instructions for AI assistance
+   - Mandatory workflow for Claude
+   - Pattern reference guide
+
+**Quick Start**: Read [WORKFLOW.md](WORKFLOW.md) for the complete process!
+
+---
+
 ## 🎯 Purpose & Workflow
 
 ### The Mission
@@ -372,17 +397,24 @@ if __name__ == "__main__":
 ```
 NewScripts/
 ├── README.md (this file)
-├── 2025-11/
-│   ├── xmltoexcel1113.py
-│   ├── tmxconverter1113.py
-│   └── textcleaner1114.py
-├── 2025-12/
-│   └── [future scripts]
+├── WordCountMaster/
+│   ├── ROADMAP.md
+│   ├── wordcount_diff_master.py
+│   └── wordcount_history.json (auto-generated)
+├── ScriptName2/
+│   ├── ROADMAP.md
+│   └── script_name2.py
 └── archive/
     └── [old or deprecated scripts]
 ```
 
-**Organize by month** to keep things manageable.
+**Organization Pattern:**
+- Each new script gets its own folder named after the script
+- Each folder contains:
+  - `ROADMAP.md` - Development plan and documentation
+  - Main script file(s)
+  - Any auto-generated data files
+- This keeps each script project self-contained and organized
 
 ---
 
@@ -516,7 +548,7 @@ Track scripts by category for easy reference:
 
 ---
 
-**Last Updated**: 2025-11-13
+**Last Updated**: 2025-11-18
 **Total Reference Scripts**: ~83 (9 main + 74 secondary)
 **Scripts Built**: 0 (just getting started!)
 
