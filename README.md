@@ -258,7 +258,44 @@ Username: admin
 Password: admin123
 ```
 
-⚠️ **Change these credentials in production!**
+## ⚠️ 🔐 CRITICAL SECURITY WARNING 🔐 ⚠️
+
+**THIS IS A PUBLIC REPOSITORY WITH DEFAULT CREDENTIALS!**
+
+### FOR LOCAL DEVELOPMENT ONLY:
+- The default credentials (`admin/admin123`) are **ONLY** for local testing
+- These credentials are **PUBLICLY KNOWN** because this is a public repository
+- **NEVER** use these credentials in production or on internet-accessible servers
+
+### BEFORE DEPLOYING TO PRODUCTION:
+1. **IMMEDIATELY** change the default admin password:
+   ```bash
+   # After first login, go to User Settings → Change Password
+   # Or use SQL to update:
+   UPDATE users SET password_hash = '<new_bcrypt_hash>' WHERE username = 'admin';
+   ```
+
+2. **SET ENVIRONMENT VARIABLES** for all secrets:
+   ```bash
+   export SECRET_KEY="<generate-strong-random-key>"
+   export POSTGRES_PASSWORD="<strong-database-password>"
+   export API_KEY="<generate-strong-api-key>"
+   ```
+
+3. **DISABLE** the default admin user and create proper user accounts
+
+4. **ENABLE** proper authentication and change all default passwords
+
+### Generate Secure Secrets:
+```bash
+# Generate strong SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Generate strong API_KEY
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+**IF YOU DEPLOY WITH DEFAULT CREDENTIALS, YOUR SYSTEM WILL BE COMPROMISED!**
 
 ---
 

@@ -1,0 +1,24 @@
+# Git LFS Configuration for LocaNext
+# Track large model files with Git LFS
+
+# Korean BERT Model files (~447MB total)
+models/**/*.safetensors filter=lfs diff=lfs merge=lfs -text
+models/**/*.bin filter=lfs diff=lfs merge=lfs -text
+models/**/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
+
+# Embedding files (can be large)
+*.npy filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+
+# Model weights
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.onnx filter=lfs diff=lfs merge=lfs -text
+
+# Tokenizer files (large)
+models/**/tokenizer.json filter=lfs diff=lfs merge=lfs -text
+
+# Old model location (if any files remain)
+client/models/**/*.safetensors filter=lfs diff=lfs merge=lfs -text
+client/models/**/*.bin filter=lfs diff=lfs merge=lfs -text
+client/models/**/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
