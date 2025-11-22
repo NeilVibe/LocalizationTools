@@ -32,7 +32,8 @@
   // Available apps
   const apps = [
     { id: 'xlstransfer', name: 'XLSTransfer', description: 'Excel translation tools' },
-    { id: 'quicksearch', name: 'QuickSearch', description: 'Dictionary search tool' }
+    { id: 'quicksearch', name: 'QuickSearch', description: 'Dictionary search tool' },
+    { id: 'wordcount', name: 'WordCountMaster', description: 'Word count tracking and comparison' }
   ];
 
   function selectApp(appId) {

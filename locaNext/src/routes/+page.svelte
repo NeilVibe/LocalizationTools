@@ -2,6 +2,7 @@
   import { currentApp, currentView } from "$lib/stores/app.js";
   import XLSTransfer from "$lib/components/apps/XLSTransfer.svelte";
   import QuickSearch from "$lib/components/apps/QuickSearch.svelte";
+  import WordCountMaster from "$lib/components/apps/WordCountMaster.svelte";
   import TaskManager from "$lib/components/TaskManager.svelte";
   import Welcome from "$lib/components/Welcome.svelte";
 
@@ -30,6 +31,8 @@
       <XLSTransfer />
     {:else if app === 'quicksearch'}
       <QuickSearch />
+    {:else if app === 'wordcount'}
+      <WordCountMaster />
     {:else}
       <Welcome />
     {/if}
