@@ -185,6 +185,12 @@ test_outputs/
 # ML Models - Tracked by Git LFS (see .gitattributes)
 # The following patterns are now handled by LFS, not ignored
 
+# -------------------- Build Outputs --------------------
+# Installer output directory (large .exe files)
+installer_output/*.exe
+installer_output/*.msi
+!installer_output/README.md
+
 # Node modules (contains potentially sensitive data)
 node_modules/
 locaNext/node_modules/
