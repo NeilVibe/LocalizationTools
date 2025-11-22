@@ -35,3 +35,4 @@ Check build status: https://github.com/NeilVibe/LocalizationTools/actions
 Build History:
 --------------
 (Builds will be logged below as they are triggered)
+Build FULL v2511221939
