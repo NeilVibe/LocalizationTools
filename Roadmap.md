@@ -1,18 +1,19 @@
 # LocaNext - Development Roadmap
 
-> **Scope**: This roadmap focuses on the **LocaNext platform** (web application, APIs, infrastructure).
-> **Standalone Scripts**: For individual tools in `RessourcesForCodingTheProject/NewScripts/`, see [`NewScripts/ROADMAP.md`](RessourcesForCodingTheProject/NewScripts/ROADMAP.md).
+> **⚠️ IMPORTANT**: This roadmap is for the **LocaNext platform ONLY** (infrastructure, APIs, deployment).
+> **New Apps**: Can ONLY be added with EXPRESS DIRECT ORDER from user.
+> **Standalone Scripts**: Are tracked separately in [`NewScripts/ROADMAP.md`](RessourcesForCodingTheProject/NewScripts/ROADMAP.md).
 
 **Last Updated**: 2025-11-22
 **Project Status**: Production Ready - Distribution Phase
-**Current Focus**: Platform features and deployment infrastructure
+**Current Focus**: Testing builds and preparing for release
 
 ---
 
 ## 📊 Current Status
 
 ### Platform Overview
-- **Backend**: FastAPI with 28 tool endpoints + 16 admin endpoints (44 total)
+- **Backend**: FastAPI with 23 tool endpoints + 16 admin endpoints
 - **Frontend**: SvelteKit with modern UI
 - **Admin Dashboard**: Full analytics, rankings, and activity logs
 - **Database**: SQLite (dev) / PostgreSQL (prod)
@@ -23,7 +24,6 @@
 ### Operational Apps
 1. ✅ **XLSTransfer** (App #1) - AI-powered Excel translation with Korean BERT
 2. ✅ **QuickSearch** (App #2) - Multi-game dictionary search (15 languages, 4 games)
-3. ✅ **WordCountMaster** (App #3) - Translation word count tracking and comparison
 
 ### Available Builds
 - ✅ **Web Platform** - SvelteKit + FastAPI (localhost deployment)
@@ -32,20 +32,20 @@
 
 ### Completion Metrics
 - **Core Platform**: 100% (Backend, Frontend, Admin Dashboard)
-- **Apps**: 3 fully operational (XLSTransfer, QuickSearch, WordCountMaster)
+- **Apps**: 2 fully operational (XLSTransfer, QuickSearch)
 - **Distribution**: 100% (Git LFS, Inno Setup, GitHub Actions, build docs)
+- **Next**: Test Electron build and prepare for release
 
 ---
 
 ## ✅ Recently Completed Milestones
 
-### WordCountMaster (App #3) - Completed 2025-11-22
-- 5 API endpoints using BaseToolAPI pattern
-- Smart weekly/monthly categorization (7 days vs 30 days)
-- Excel report generation with 4 sheets (2 active, 2 N/A)
-- History tracking and report download
-- Full SvelteKit UI with Carbon Design System
-- Migrated from `NewScripts/WordCountMaster/` standalone script
+### Distribution Setup (Priority 1) - Completed 2025-11-22
+- Git LFS configured for 446MB Korean BERT model
+- Inno Setup installer script (Windows wizard)
+- GitHub Actions CI/CD workflow (automated builds)
+- Build troubleshooting documentation (VRS-Manager lessons)
+- Ready for Electron build testing and release
 
 ### QuickSearch (App #2) - Completed 2025-11-13
 - 8 API endpoints with BaseToolAPI pattern
@@ -1452,32 +1452,7 @@ sqlite3 server/data/locanext.db "SELECT * FROM error_logs ORDER BY timestamp DES
 
 ---
 
-### Priority 2: Integrate App #3 (WordCountMaster)
-**Estimated Time**: 4-6 hours
-**Status**: ✅ COMPLETE (2025-11-22)
-**Source**: Migrated from `NewScripts/WordCountMaster/`
-
-**Summary**:
-Successfully integrated WordCountMaster into LocaNext as App #3. This tool tracks translation word count changes over time and generates comparison reports.
-
-**Migration Completed**:
-- ✅ Backend API: `server/api/wordcount_async.py` (5 endpoints)
-- ✅ Processor module: `server/tools/wordcount/processor.py`
-- ✅ Frontend component: `locaNext/src/lib/components/apps/WordCountMaster.svelte`
-- ✅ Navigation and routing integrated
-- ✅ Documentation updated
-
-**Key Features**:
-- Smart weekly/monthly categorization
-- Excel report generation with 4 sheets
-- Real-time progress tracking via WebSocket
-- History management
-
-> **Detailed script development**: See [`NewScripts/ROADMAP.md`](RessourcesForCodingTheProject/NewScripts/ROADMAP.md) for standalone script development roadmap.
-
----
-
-### Priority 3: Admin Dashboard Authentication
+### Priority 2: Admin Dashboard Authentication
 **Estimated Time**: 2-3 hours
 **Status**: Pending
 
@@ -1489,7 +1464,7 @@ Successfully integrated WordCountMaster into LocaNext as App #3. This tool track
 
 ---
 
-### Priority 4: Export Functionality
+### Priority 3: Export Functionality
 **Estimated Time**: 3-4 hours
 **Status**: Pending
 
@@ -1501,7 +1476,7 @@ Successfully integrated WordCountMaster into LocaNext as App #3. This tool track
 
 ---
 
-### Priority 5: Production Web Deployment
+### Priority 4: Production Web Deployment
 **Estimated Time**: 4-6 hours
 **Status**: Pending
 

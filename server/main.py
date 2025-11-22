@@ -103,10 +103,6 @@ app.include_router(xlstransfer_async.router)
 from server.api import quicksearch_async
 app.include_router(quicksearch_async.router)
 
-# Include WordCountMaster API (App #3)
-from server.api import wordcount_async
-app.include_router(wordcount_async.router)
-
 # Include Progress Operations API (for real-time progress tracking)
 from server.api import progress_operations
 app.include_router(progress_operations.router)
