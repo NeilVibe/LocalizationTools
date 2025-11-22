@@ -1,0 +1,37 @@
+Build Trigger File - LocaNext Electron Distribution
+====================================================
+
+USAGE:
+------
+Add a line with the build command, then commit & push to main.
+GitHub Actions will automatically build when it detects the new line.
+
+FORMAT:
+  Build FULL v[version]  → Build Electron app with BERT model bundled
+
+EXAMPLE:
+  Build FULL v2511221939  → Builds Electron installer with 446MB BERT model
+
+WORKFLOW:
+1. Update VERSION in version.py (single source of truth)
+2. Run: python3 scripts/check_version_unified.py
+3. Commit version changes
+4. Add build command to this file
+5. Commit and push to main
+6. GitHub Actions will automatically build
+
+WHY MANUAL BUILDS?
+- Control when releases happen (not every code commit)
+- Save GitHub Actions minutes (Electron builds take ~15-20 min)
+- Save LFS bandwidth quota (446MB model download per build)
+- Intentional release process
+
+LFS OPTIMIZATION:
+- Electron build: lfs=true (needs model for bundling)
+- Release job: lfs=false (only needs artifacts, saves bandwidth)
+
+Check build status: https://github.com/NeilVibe/LocalizationTools/actions
+
+Build History:
+--------------
+(Builds will be logged below as they are triggered)
