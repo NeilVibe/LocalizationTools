@@ -1,15 +1,18 @@
 # LocaNext - Development Roadmap
 
+> **Scope**: This roadmap focuses on the **LocaNext platform** (web application, APIs, infrastructure).
+> **Standalone Scripts**: For individual tools in `RessourcesForCodingTheProject/NewScripts/`, see [`NewScripts/ROADMAP.md`](RessourcesForCodingTheProject/NewScripts/ROADMAP.md).
+
 **Last Updated**: 2025-11-22
 **Project Status**: Production Ready - Distribution Phase
-**Current Focus**: Distribution & Deployment Infrastructure
+**Current Focus**: Platform features and deployment infrastructure
 
 ---
 
 ## 📊 Current Status
 
 ### Platform Overview
-- **Backend**: FastAPI with 23 tool endpoints + 16 admin endpoints
+- **Backend**: FastAPI with 28 tool endpoints + 16 admin endpoints (44 total)
 - **Frontend**: SvelteKit with modern UI
 - **Admin Dashboard**: Full analytics, rankings, and activity logs
 - **Database**: SQLite (dev) / PostgreSQL (prod)
@@ -20,6 +23,7 @@
 ### Operational Apps
 1. ✅ **XLSTransfer** (App #1) - AI-powered Excel translation with Korean BERT
 2. ✅ **QuickSearch** (App #2) - Multi-game dictionary search (15 languages, 4 games)
+3. ✅ **WordCountMaster** (App #3) - Translation word count tracking and comparison
 
 ### Available Builds
 - ✅ **Web Platform** - SvelteKit + FastAPI (localhost deployment)
@@ -28,12 +32,20 @@
 
 ### Completion Metrics
 - **Core Platform**: 100% (Backend, Frontend, Admin Dashboard)
-- **Apps**: 2 fully operational (XLSTransfer, QuickSearch)
-- **Distribution**: 30% (Desktop build exists, needs proper setup)
+- **Apps**: 3 fully operational (XLSTransfer, QuickSearch, WordCountMaster)
+- **Distribution**: 100% (Git LFS, Inno Setup, GitHub Actions, build docs)
 
 ---
 
 ## ✅ Recently Completed Milestones
+
+### WordCountMaster (App #3) - Completed 2025-11-22
+- 5 API endpoints using BaseToolAPI pattern
+- Smart weekly/monthly categorization (7 days vs 30 days)
+- Excel report generation with 4 sheets (2 active, 2 N/A)
+- History tracking and report download
+- Full SvelteKit UI with Carbon Design System
+- Migrated from `NewScripts/WordCountMaster/` standalone script
 
 ### QuickSearch (App #2) - Completed 2025-11-13
 - 8 API endpoints with BaseToolAPI pattern
@@ -1440,36 +1452,28 @@ sqlite3 server/data/locanext.db "SELECT * FROM error_logs ORDER BY timestamp DES
 
 ---
 
-### Priority 2: Select App #3
+### Priority 2: Integrate App #3 (WordCountMaster)
 **Estimated Time**: 4-6 hours
 **Status**: ✅ COMPLETE (2025-11-22)
-**Selected**: WordCountMaster V2.0
-**Source**: `RessourcesForCodingTheProject/NewScripts/WordCountMaster/`
+**Source**: Migrated from `NewScripts/WordCountMaster/`
 
-**✅ COMPLETED TASKS**:
-- ✅ Analyzed original wordcount_diff_master.py script (1015 lines)
-- ✅ Created backend API: `server/api/wordcount_async.py` using BaseToolAPI
-- ✅ Created processor module: `server/tools/wordcount/processor.py`
-- ✅ Registered API in `server/main.py`
-- ✅ Created frontend component: `locaNext/src/lib/components/apps/WordCountMaster.svelte`
-- ✅ Added to navigation menu in `+layout.svelte`
-- ✅ Updated routing in `+page.svelte`
+**Summary**:
+Successfully integrated WordCountMaster into LocaNext as App #3. This tool tracks translation word count changes over time and generates comparison reports.
 
-**Features Implemented**:
-- Upload XML translation files (LanguageData_XXX.xml)
-- Select past date for comparison (7 days = Weekly, 30 days = Monthly)
-- Process files and generate Excel report with 4 sheets
-- Smart categorization (Weekly vs Monthly based on days difference)
-- Download generated Excel reports
-- View historical runs
+**Migration Completed**:
+- ✅ Backend API: `server/api/wordcount_async.py` (5 endpoints)
+- ✅ Processor module: `server/tools/wordcount/processor.py`
+- ✅ Frontend component: `locaNext/src/lib/components/apps/WordCountMaster.svelte`
+- ✅ Navigation and routing integrated
+- ✅ Documentation updated
+
+**Key Features**:
+- Smart weekly/monthly categorization
+- Excel report generation with 4 sheets
 - Real-time progress tracking via WebSocket
+- History management
 
-**Pattern Followed** (proven with XLSTransfer and QuickSearch):
-1. ✅ Analyze original script (30 min)
-2. ✅ Backend: REST API using BaseToolAPI (2 hours)
-3. ✅ Frontend: SvelteKit component with Carbon Design (2 hours)
-4. ⏳ Testing: Manual UI + automated tests (pending)
-5. ⏳ Documentation: Update README (pending)
+> **Detailed script development**: See [`NewScripts/ROADMAP.md`](RessourcesForCodingTheProject/NewScripts/ROADMAP.md) for standalone script development roadmap.
 
 ---
 
