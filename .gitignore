@@ -182,13 +182,8 @@ test_outputs/
 # Keep test resources but ignore large data
 !RessourcesForCodingTheProject/
 # Add specific large file patterns if needed
-# ML Models (too large for GitHub - use Git LFS)
-client/models/*/*.safetensors
-client/models/*/*.bin
-client/models/*/pytorch_model.bin
-models/*/*.safetensors
-models/*/*.bin
-models/*/pytorch_model.bin
+# ML Models - Tracked by Git LFS (see .gitattributes)
+# The following patterns are now handled by LFS, not ignored
 
 # Node modules (contains potentially sensitive data)
 node_modules/
