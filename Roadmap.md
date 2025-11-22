@@ -1,8 +1,8 @@
 # LocaNext - Development Roadmap
 
-**Last Updated**: 2025-11-13
-**Project Status**: Production Ready (95% Complete)
-**Current Phase**: QuickSearch Phase 4 Complete - Ready for App #3 Selection
+**Last Updated**: 2025-11-22
+**Project Status**: Production Ready - Distribution Phase
+**Current Focus**: Distribution & Deployment Infrastructure
 
 ---
 
@@ -15,219 +15,1483 @@
 - **Database**: SQLite (dev) / PostgreSQL (prod)
 - **Real-time**: WebSocket progress tracking
 - **Auth**: JWT-based authentication & sessions
+- **AI/ML**: Korean BERT (snunlp/KR-SBERT-V40K-klueNLI-augSTS) - 447MB
 
 ### Operational Apps
-1. ✅ **XLSTransfer** (App #1) - AI-powered Excel translation
-2. ✅ **QuickSearch** (App #2) - Dictionary-based translation search
+1. ✅ **XLSTransfer** (App #1) - AI-powered Excel translation with Korean BERT
+2. ✅ **QuickSearch** (App #2) - Multi-game dictionary search (15 languages, 4 games)
+
+### Available Builds
+- ✅ **Web Platform** - SvelteKit + FastAPI (localhost deployment)
+- ✅ **Desktop App** - Electron build (Windows .exe, Linux AppImage)
+- ⏳ **Distribution Setup** - Git LFS, installers, CI/CD (in progress)
 
 ### Completion Metrics
-- **Overall**: 95% complete (Production Ready)
-- **Backend Infrastructure**: 100%
-- **Admin Dashboard**: 100%
-- **App #1 (XLSTransfer)**: 100%
-- **App #2 (QuickSearch)**: 100%
-- **Documentation**: 90%
+- **Core Platform**: 100% (Backend, Frontend, Admin Dashboard)
+- **Apps**: 2 fully operational (XLSTransfer, QuickSearch)
+- **Distribution**: 30% (Desktop build exists, needs proper setup)
 
 ---
 
 ## ✅ Recently Completed Milestones
 
-### QuickSearch Migration (App #2) - Completed 2025-11-13
-**Duration**: 3 days (2025-11-11 to 2025-11-13)
-**Status**: ✅ COMPLETE - All 4 Phases Done
-
-#### Phase 1: Backend Core ✅
-- Parser module (273 lines) - XML/TXT/TSV parsing with exact text normalization
-- Dictionary manager (257 lines) - Create/load/save dictionaries
-- Searcher module (221 lines) - One-line & multi-line search with reference support
-- REST API (600 lines) - 8 endpoints using BaseToolAPI pattern
-- Total: 1,351 lines of backend code
-
-#### Phase 2 & 3: Frontend + Integration ✅
-- QuickSearch component (650 lines) - Full Carbon Design UI
-- Three modals: Create Dictionary, Load Dictionary, Set Reference
-- Search interface: One-line/multi-line modes, Contains/Exact match
-- Results table with pagination and reference column toggle
-- Navigation integration in main app
-
-#### Phase 4: Testing & Documentation ✅
-- Testing report created (QUICKSEARCH_PHASE4_TESTING_REPORT.md)
-- 14 test scenarios documented (functionality, task manager, dashboard, logs)
-- README.md updated with QuickSearch documentation
-- Automated test script (test_quicksearch_phase4.py)
-
-**Features Delivered**:
-- 8 API endpoints (health, create, load, search, search-multiline, set-reference, toggle-reference, list)
-- Multi-game support: BDO, BDM, BDC, CD
-- Multi-language support: 15 languages (DE, IT, PL, EN, ES, SP, FR, ID, JP, PT, RU, TR, TH, TW, CH)
-- Search modes: One-line, multi-line
-- Match types: Contains, exact match
-- Reference dictionary comparison
-- StringID fast lookup
-- Full frontend UI with SvelteKit
-
----
-
-### Admin Dashboard - Completed 2025-11-12
-**Status**: ✅ 100% Functional
-
-#### Features Delivered:
-- **Overview Page**: Real-time metrics (active users, operations, success rate)
-- **Stats & Rankings**: Interactive charts, leaderboards, tool usage analytics
-- **Activity Logs**: Operation logs, error tracking, server logs viewer
-- **User Management**: User details, activity tracking, session monitoring
-- **16 Admin API Endpoints**: Statistics (10) + Rankings (6)
-- **Real-time Updates**: WebSocket integration for live dashboard updates
-
-#### Pages:
-1. Overview (`/`) - Dashboard overview with metrics and activity feed
-2. Stats & Rankings (`/stats`) - Charts, graphs, and leaderboards
-3. Activity Logs (`/logs`) - Operation logs, errors, server logs
-4. Users (`/users`) - User management and tracking
-
----
+### QuickSearch (App #2) - Completed 2025-11-13
+- 8 API endpoints with BaseToolAPI pattern
+- Multi-game (BDO, BDM, BDC, CD) and multi-language (15 languages) support
+- One-line/multi-line search with reference dictionary comparison
+- Full SvelteKit UI with Carbon Design System
 
 ### XLSTransfer (App #1) - Completed 2025-11-11
-**Status**: ✅ 100% Functional
+- AI-powered translation transfer using Korean BERT embeddings
+- Dictionary creation and Excel-to-Excel translation
+- 5 API endpoints with real-time progress tracking
+- Full SvelteKit UI integration
 
-#### Features:
-- AI-powered translation transfer using semantic similarity
-- Korean BERT embeddings for accurate matching
-- Dictionary creation from bilingual Excel files
-- Excel-to-Excel translation transfer
-- Multi-sheet support
-- Real-time progress tracking
-- Full frontend UI with SvelteKit
+### Admin Dashboard - Completed 2025-11-12
+- 16 admin endpoints (10 statistics + 6 rankings)
+- Real-time WebSocket monitoring and analytics
+- Interactive charts, leaderboards, and activity logs
+- User management and session tracking
 
-#### API Endpoints (5):
-- `POST /api/v2/xlstransfer/test/create-dictionary`
-- `POST /api/v2/xlstransfer/test/load-dictionary`
-- `POST /api/v2/xlstransfer/test/translate-excel`
-- `POST /api/v2/xlstransfer/test/translate-file`
-- `GET /api/v2/xlstransfer/health`
-
----
-
-### REST API Refactoring - Completed 2025-11-11
-**Status**: ✅ COMPLETE
-**Impact**: 43% code reduction, 75% faster app development
-
-#### Achievements:
-- Created `BaseToolAPI` pattern (651 lines)
-- Refactored `xlstransfer_async.py` (1105 → 630 lines, 43% reduction)
-- Shared methods: user auth, operations, websocket, files, errors, logging
-- Documented in `docs/ADD_NEW_APP_GUIDE.md` (559 lines)
-- New apps now take ~2 hours instead of ~8 hours
+### BaseToolAPI Pattern - Completed 2025-11-11
+- Unified API pattern for all tools (43% code reduction)
+- Shared authentication, progress tracking, WebSocket, logging
+- Development time: 2-4 hours per app (down from 8 hours)
+- Documented in `docs/ADD_NEW_APP_GUIDE.md`
 
 ---
 
 ## 🎯 Next Steps
 
-### Priority 0: Complete QuickSearch Phase 4 Testing (IMMEDIATE)
-**Estimated Time**: 30-45 minutes
-**Status**: ⚡ IN PROGRESS - Backend complete, UI testing pending
-**Document**: `QUICKSEARCH_PHASE4_TESTING_REPORT.md`
+### Priority 1: Distribution & Deployment Infrastructure ⚡ URGENT
+**Estimated Time**: 1-2 days
+**Status**: IN PROGRESS
+**Reference**: VRS-Manager repository (NeilVibe/VRS-Manager)
 
-**What Needs Testing**:
-1. ✅ Backend API health checks - COMPLETE
-2. ✅ Server integration verified - COMPLETE
-3. ⏳ **QuickSearch UI functionality** (7 tests)
-   - Create dictionary from test files
-   - Load dictionary
-   - One-line search (contains & exact match)
-   - Multi-line search
-   - Reference dictionary features
-   - Pagination
-4. ⏳ **WebSocket & Task Manager integration** (2 tests)
-   - Real-time progress updates during operations
-   - Task Manager shows live progress bars
-   - Operations move from Active → Completed
-5. ⏳ **Admin Dashboard communication** (4 tests)
-   - Dashboard logs QuickSearch operations
-   - Live WebSocket updates to overview page
-   - Activity logs capture all events
-   - Stats & rankings include QuickSearch data
-6. ⏳ **Server logs monitoring** (1 test)
-   - All API calls logged with performance metrics
+**Goal**: Set up professional distribution pipeline for desktop and web applications with automated builds and proper model management.
 
-**Test Data Ready**:
-- File: `/RessourcesForCodingTheProject/datausedfortesting/test123.txt`
-- Contents: 1,185 lines of Korean-French game localization
-- Format: Tab-delimited (compatible with QuickSearch)
+#### 1.1 Git LFS Setup for Large Model Files
+**Status**: Not configured
+**Model Size**: Korean BERT model (snunlp/KR-SBERT-V40K-klueNLI-augSTS) - 447MB
 
-**Success Criteria**:
-- All 8 QuickSearch endpoints working via UI
-- Real-time progress tracking functional
-- Admin dashboard shows all operations
-- No console errors or WebSocket issues
-- Database tracking confirmed
+**Tasks**:
+- [ ] Install Git LFS: `git lfs install`
+- [ ] Configure `.gitattributes` for model tracking
+  ```
+  models/kr-sbert/** filter=lfs diff=lfs merge=lfs -text
+  *.safetensors filter=lfs diff=lfs merge=lfs -text
+  *.bin filter=lfs diff=lfs merge=lfs -text
+  SplitExcelEmbeddings.npy filter=lfs diff=lfs merge=lfs -text
+  ```
+- [ ] Track existing model files: `git lfs track "models/**"`
+- [ ] Migrate existing large files to LFS
+- [ ] Update repository with LFS pointers
 
-**Why This Matters**:
-This verifies the entire stack integration (UI → API → WebSocket → Task Manager → Admin Dashboard) that we built. Once confirmed, we can confidently say QuickSearch is "Fully Operational" and replicate this pattern for App #3.
+**Why**: Large model files (447MB+) should not be in standard Git. LFS enables efficient cloning and reduces repo size.
+
+#### 1.2 Automated Model Download Scripts
+**Status**: Manual setup required
+**Reference**: VRS-Manager `scripts/download_bert_model.py` and `download_model.bat`
+
+**Tasks**:
+- [ ] Create `scripts/download_bert_model.py`:
+  ```python
+  # Downloads snunlp/KR-SBERT-V40K-klueNLI-augSTS
+  # Saves to ./models/kr-sbert/
+  # Verifies config.json and model.safetensors exist
+  # Returns exit code 0 on success, 1 on failure
+  ```
+- [ ] Create `scripts/download_model.bat` for Windows users:
+  ```batch
+  # Checks Python 3.7+, pip availability
+  # Installs sentence-transformers
+  # Downloads model (~447MB, 5-10 minutes)
+  # Creates models/kr-sbert/ directory
+  ```
+- [ ] Add model verification in application startup
+- [ ] Document offline transfer process (for air-gapped environments)
+
+**Why**: Users need easy model setup. Scripts enable offline preparation and CI/CD integration.
 
 ---
 
-### Priority 1: Select App #3
-**Estimated Time**: 1-2 days
-**Status**: Pending (starts after Phase 4 testing complete)
+#### 1.2B Version Management & Build Revision (VRS-Manager EXACT System)
+**Status**: Not implemented
+**Reference**: VRS-Manager `check_version_unified.py` and `src/config.py`
+**Critical**: Prevents version mismatches across files before builds
+
+**VRS-Manager Version Format**:
+- **Format**: `YYMMDDHHMM` (e.g., `11202116` = November 20, 2025, 21:16)
+- **Single Source of Truth**: `server/config.py` or root-level `version.py`
+- **12 Files Validated**: Config, processors, UI, README, docs, installers, workflows
+
+**Create `version.py`** (single source of truth):
+```python
+"""
+LocaNext Version Configuration
+Single source of truth for version across entire project
+"""
+
+# Version in DateTime format: YYMMDDHHMM
+# Example: 11221900 = November 22, 2025, 19:00
+VERSION = "11221900"
+
+# Version footer for UI display
+VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform | XLSTransfer + QuickSearch"
+
+# Semantic version for package managers
+SEMANTIC_VERSION = "1.0.0"
+
+# Build type
+BUILD_TYPE = "FULL"  # FULL or LIGHT
+```
+
+**Create `scripts/check_version_unified.py`** (VRS-Manager EXACT pattern):
+```python
+"""
+Version Unification Validator
+
+Ensures version consistency across all project files.
+Based on VRS-Manager version management system.
+
+Validates 12 files contain matching VERSION.
+"""
+
+import re
+import sys
+from pathlib import Path
+
+# Single source of truth
+from version import VERSION
+
+# Files to validate (12 total)
+VERSION_FILES = {
+    'version.py': (r'VERSION = "(\d+)"', "Python VERSION"),
+    'server/config.py': (r'VERSION = "(\d+)"', "Server config"),
+    'server/main.py': (r'version="(\d+)"', "FastAPI version"),
+    'locaNext/package.json': (r'"version":\s*"([\d\.]+)"', "Frontend package"),
+    'adminDashboard/package.json': (r'"version":\s*"([\d\.]+)"', "Admin package"),
+    'README.md': (r'\*\*Version:\*\*\s*(\d+|[\d\.]+)', "README version"),
+    'Roadmap.md': (r'\*\*Last Updated\*\*:\s*\d{4}-\d{2}-\d{2}', "Roadmap date", True),  # Date only
+    'installer/locanext_full.iss': (r'AppVersion=(\d+|[\d\.]+)', "Installer version"),
+    '.github/workflows/build-installers.yml': (r'v\$\{\{ needs\.check-build-type\.outputs\.version \}\}', "Workflow", True),  # Skip
+    'BUILD_TRIGGER.txt': (r'^FULL\n(\d+)', "Build trigger"),
+}
+
+def validate_versions():
+    """Validate all files have matching versions."""
+
+    project_root = Path(__file__).parent.parent
+    errors = []
+
+    print("=" * 70)
+    print("LocaNext Version Unification Check")
+    print("=" * 70)
+    print(f"\nSource of Truth VERSION: {VERSION}")
+    print(f"Checking {len(VERSION_FILES)} files...\n")
+
+    for file_path, (pattern, description, *skip) in VERSION_FILES.items():
+        full_path = project_root / file_path
+
+        # Skip if file doesn't exist
+        if not full_path.exists():
+            print(f"⚠ {description:30} - File not found (skipping)")
+            continue
+
+        # Skip validation if marked
+        if skip and skip[0]:
+            print(f"✓ {description:30} - Skipped (format varies)")
+            continue
+
+        # Read file
+        content = full_path.read_text(encoding='utf-8')
+
+        # Find version
+        match = re.search(pattern, content, re.MULTILINE)
+        if not match:
+            errors.append(f"{description}: Version pattern not found")
+            print(f"✗ {description:30} - Pattern not found!")
+            continue
+
+        found_version = match.group(1)
+
+        # Check match
+        if found_version == VERSION or found_version == f"{VERSION[:2]}.{VERSION[2:4]}.{VERSION[4:]}":
+            print(f"✓ {description:30} - {found_version}")
+        else:
+            errors.append(f"{description}: Found '{found_version}', expected '{VERSION}'")
+            print(f"✗ {description:30} - MISMATCH! Found '{found_version}'")
+
+    # Summary
+    print("\n" + "=" * 70)
+    if errors:
+        print("✗ VERSION MISMATCH DETECTED!")
+        print("=" * 70)
+        for error in errors:
+            print(f"  - {error}")
+        print("\nFix these files before building!")
+        return False
+    else:
+        print("✓ ALL VERSIONS UNIFIED!")
+        print("=" * 70)
+        print("\nVersion consistency verified across all files.")
+        print("Safe to proceed with build.")
+        return True
+
+if __name__ == "__main__":
+    success = validate_versions()
+    sys.exit(0 if success else 1)
+```
+
+**Update `BUILD_TRIGGER.txt`** (VRS-Manager pattern):
+```
+FULL
+11221900
+```
+- Line 1: `FULL`, `LIGHT`, or `BOTH`
+- Line 2: Version number (matches `version.py`)
+
+**Pre-Build Checklist** (UPDATED with version check):
+```bash
+# 1. Update version in version.py ONLY
+nano version.py  # Change VERSION = "11221900"
+
+# 2. Validate version across all files
+python3 scripts/check_version_unified.py
+# Must show: "✓ ALL VERSIONS UNIFIED!"
+
+# 3. Update BUILD_TRIGGER.txt
+echo -e "FULL\n11221900" > BUILD_TRIGGER.txt
+
+# 4. Run tests
+pytest tests/ -v
+
+# 5. Commit and push
+git add .
+git commit -m "Release v11221900"
+git push
+```
+
+**Benefits**:
+- ✅ Single source of truth (version.py)
+- ✅ Automatic validation (12 files checked)
+- ✅ Prevents version mismatches in builds
+- ✅ DateTime versioning (sortable, unambiguous)
+- ✅ Pre-commit verification
+- ✅ VRS-Manager proven pattern
+
+**Tasks**:
+- [ ] Create `version.py` at project root
+- [ ] Create `scripts/check_version_unified.py`
+- [ ] Update all 12 files with current version
+- [ ] Add pre-commit hook to run version check
+- [ ] Document version format in README
+
+---
+
+#### 1.2C Security & Secrets Management 🔐 CRITICAL
+**Status**: ✅ Protected (verified 2025-11-22)
+**Reference**: GitHub security best practices + VRS-Manager pattern
+
+**CRITICAL RULE**: NEVER commit tokens, keys, or secrets to git!
+
+**✅ Current Protection Status**:
+- ✅ `.env` files ignored in .gitignore
+- ✅ No sensitive files found in git history (checked)
+- ✅ No API keys/tokens in tracked files (verified)
+- ✅ Enhanced .gitignore with comprehensive secret patterns
+- ✅ VRS-Manager: Clean (no secrets found in public repo)
+
+**Protected Patterns in .gitignore**:
+```gitignore
+# Environment variables
+.env
+.env.*
+*.env
+
+# API Keys & Tokens
+*_token.txt
+*_key.txt
+*_secret.txt
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+credentials.json
+secrets.json
+github_token.txt
+
+# SSH Keys
+.ssh/
+*.ppk
+
+# GitHub Actions secrets
+.github/secrets/
+```
+
+**GitHub CLI Token (gh auth)**:
+- ✅ Token stored in: `~/.config/gh/hosts.yml` (NOT in git)
+- ✅ Never commit this file
+- ✅ GitHub Actions uses: `${{ secrets.GITHUB_TOKEN }}` (auto-provided)
+
+**Environment Variables Pattern**:
+```bash
+# Create .env file (gitignored)
+cat > .env << EOF
+DATABASE_URL=postgresql://user:pass@localhost/locanext
+SECRET_KEY=your-secret-key-here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+EOF
+
+# Load in application
+# Python: python-dotenv
+# Node.js: dotenv package
+```
+
+**GitHub Actions Secrets**:
+```yaml
+# Use GitHub repository secrets (Settings → Secrets)
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Auto-provided
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}  # Add manually
+  SECRET_KEY: ${{ secrets.SECRET_KEY }}      # Add manually
+```
+
+**Pre-Commit Security Check**:
+```bash
+# Check for accidentally staged secrets
+git diff --cached | grep -E "ghp_|gho_|AKIA|sk-|password|secret"
+
+# If found, unstage immediately:
+git reset HEAD <file>
+```
+
+**Security Verification Commands**:
+```bash
+# 1. Check tracked files
+git ls-files | grep -E "(\.env|token|key|secret)"
+# Should return: NOTHING
+
+# 2. Search for actual secrets in code
+grep -r "ghp_\|AKIA\|sk-" --include="*.py" --include="*.js" .
+# Should return: NOTHING
+
+# 3. Check git history
+git log --all --pretty=format: --name-only | grep -E "\.env|_token|_key"
+# Should return: NOTHING
+```
+
+**What To Do If Secret Was Committed**:
+1. **IMMEDIATELY** rotate the compromised credential
+2. Remove from git history:
+   ```bash
+   git filter-branch --force --index-filter \
+     "git rm --cached --ignore-unmatch <secret-file>" \
+     --prune-empty --tag-name-filter cat -- --all
+   git push --force --all
+   ```
+3. Or use GitHub's BFG Repo-Cleaner
+4. Enable GitHub secret scanning (auto-enabled for public repos)
+
+**Tasks**:
+- [x] Verify .gitignore protects secrets
+- [x] Enhanced .gitignore with comprehensive patterns
+- [x] Check LocalizationTools for committed secrets (CLEAN)
+- [x] Check VRS-Manager for committed secrets (CLEAN)
+- [ ] Add pre-commit hook to check for secrets
+- [ ] Document .env.example for developers
+
+---
+
+#### 1.3 Development & Distribution Strategy ⭐ RECOMMENDED APPROACH
+
+**Current Status**: ✅ Web app working perfectly (best approach!)
+**Distribution**: Electron packaging (when ready for desktop deployment)
+
+### 🎯 The Plan (100% Correct Approach)
+
+**Phase 1: Web Development** (CURRENT - Keep doing this!)
+- ✅ Develop as web app (FastAPI + SvelteKit)
+- ✅ Debug in browser (Chrome DevTools)
+- ✅ Fast iteration with hot reload
+- ✅ Test all features in web mode
+- ✅ Run locally: `http://localhost:5173`
+
+**Phase 2: Electron Packaging** (When ready for distribution)
+- ✅ Same code, zero conversion needed
+- ✅ One command to package
+- ✅ Cross-platform builds (Windows/Mac/Linux)
+
+**Phase 3: Distribution** (VRS-Manager style)
+- ✅ GitHub Actions automated builds
+- ✅ Inno Setup installers (Windows)
+- ✅ GitHub Releases with download links
+
+---
+
+### 📱 Why Electron is Perfect for LocaNext
+
+**You have a WEB APP** (not a Python desktop app like VRS-Manager):
+- Beautiful SvelteKit UI ✅
+- FastAPI backend ✅
+- Browser-based interface ✅
+- Modern web technologies ✅
+
+**Electron wraps web apps into desktop apps**:
+- Keep your entire web stack ✅
+- No code changes needed ✅
+- Just packaging, not conversion ✅
+- Bundles: Chromium + Node.js + your app ✅
+
+**VRS-Manager used PyInstaller** because:
+- Pure Python app (Tkinter GUI)
+- No web technologies
+- Different use case
+
+---
+
+### 🚀 Development Workflow (CURRENT - PERFECT!)
+
+**Daily Development** (what you're doing now - KEEP THIS!):
+```bash
+# Terminal 1: Backend
+python server/main.py
+# → http://localhost:8888
+
+# Terminal 2: Frontend
+cd locaNext && npm run dev
+# → http://localhost:5173
+
+# Terminal 3: Admin Dashboard
+cd adminDashboard && npm run dev
+# → http://localhost:5174
+```
+
+**Debugging**:
+- ✅ Use Chrome DevTools (F12)
+- ✅ Hot reload on code changes
+- ✅ Console logs visible
+- ✅ Network inspector
+- ✅ React/Svelte DevTools
+- ✅ **FAST & EASY!**
+
+**Why this is the RIGHT approach**:
+- Browser debugging is 100x easier than Electron debugging
+- Instant feedback on changes
+- All web dev tools available
+- Standard web development workflow
+
+---
+
+### 📦 Electron Packaging (When Ready for Desktop)
+
+**Step 1: Configure electron-builder** (one-time setup)
+
+Update `locaNext/package.json`:
+```json
+{
+  "build": {
+    "appId": "com.locanext.app",
+    "productName": "LocaNext",
+    "files": [
+      "build/**/*",
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../models/kr-sbert",
+        "to": "models/kr-sbert",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../server",
+        "to": "server",
+        "filter": ["**/*.py", "**/*.json"]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Development"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.developer-tools"
+    }
+  }
+}
+```
+
+**Step 2: Build for distribution**
+```bash
+cd locaNext
+
+# Build SvelteKit frontend
+npm run build
+
+# Package with Electron
+npm run package
+
+# Output:
+# - Windows: dist-electron/LocaNext Setup 1.0.0.exe (~2GB with model)
+# - Linux: dist-electron/LocaNext-1.0.0.AppImage
+# - Mac: dist-electron/LocaNext-1.0.0.dmg
+```
+
+**Step 3: Test the build**
+```bash
+# Install the .exe on a clean Windows machine
+# Verify:
+# - App launches
+# - Backend starts automatically
+# - Model loads correctly
+# - All features work
+```
+
+---
+
+### 🏗️ Electron + VRS-Manager Build System (BEST OF BOTH!)
+
+**Use VRS-Manager's awesome build infrastructure FOR Electron!**
+
+**Create `.github/workflows/build-electron-installers.yml`**:
+```yaml
+name: Build LocaNext Electron Installers
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'BUILD_TRIGGER.txt'
+      - 'server/**'
+      - 'locaNext/**'
+      - 'models/**'
+
+jobs:
+  check-build-type:
+    runs-on: ubuntu-latest
+    outputs:
+      build_app: ${{ steps.check.outputs.build_app }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check BUILD_TRIGGER.txt
+        id: check
+        run: |
+          BUILD_TYPE=$(sed -n '1p' BUILD_TRIGGER.txt)
+          VERSION=$(sed -n '2p' BUILD_TRIGGER.txt)
+          echo "build_app=$([[ $BUILD_TYPE == "ELECTRON" || $BUILD_TYPE == "BOTH" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  build-windows:
+    runs-on: windows-latest
+    needs: check-build-type
+    if: needs.check-build-type.outputs.build_app == 'true'
+
+    steps:
+      - name: Checkout with LFS
+        uses: actions/checkout@v4
+        with:
+          lfs: true  # Download model files
+
+      - name: Verify model files
+        run: |
+          if (-Not (Test-Path "models\kr-sbert\model.safetensors")) {
+            Write-Error "Model missing!"
+            exit 1
+          }
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build Electron App
+        run: |
+          cd locaNext
+          npm install
+          npm run build
+          npm run package
+
+      - name: Create Installer with Inno Setup
+        run: |
+          choco install innosetup -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_electron.iss
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocaNext-Windows-Installer
+          path: installer_output/*.exe
+          retention-days: 7
+
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: check-build-type
+    if: needs.check-build-type.outputs.build_app == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Build AppImage
+        run: |
+          cd locaNext
+          npm install
+          npm run build
+          npm run package
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocaNext-Linux-AppImage
+          path: locaNext/dist-electron/*.AppImage
+          retention-days: 7
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [check-build-type, build-windows, build-linux]
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.check-build-type.outputs.version }}
+          name: LocaNext v${{ needs.check-build-type.outputs.version }}
+          body: |
+            ## LocaNext Desktop Application
+
+            **Downloads:**
+            - Windows: LocaNext-Setup.exe (~2GB)
+            - Linux: LocaNext.AppImage (~2GB)
+
+            **What's Included:**
+            - XLSTransfer (AI-powered translation)
+            - QuickSearch (Multi-game dictionary)
+            - Admin Dashboard
+            - Korean BERT model (bundled)
+
+            **Installation:**
+            1. Download for your platform
+            2. Run installer
+            3. Launch from Start Menu/Applications
+
+            🤖 Built with GitHub Actions + Electron
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.AppImage
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Benefits**:
+- ✅ VRS-Manager's proven build system
+- ✅ Applied to Electron builds
+- ✅ Automated GitHub releases
+- ✅ Multi-platform support
+- ✅ LFS for model files
+- ✅ Inno Setup for Windows
+- ✅ Same workflow, different tech
+
+---
+
+### 📋 Complete Development → Distribution Plan
+
+**Phase 1: Development (NOW - 90% of time)**
+```
+Work on web app:
+  ├─ Edit code in VSCode
+  ├─ See changes instantly in browser
+  ├─ Use Chrome DevTools for debugging
+  ├─ Test with curl/Postman
+  └─ Commit when working
+```
+
+**Phase 2: Pre-Release (Before distribution)**
+```
+Prepare for packaging:
+  ├─ Update version.py (version number)
+  ├─ Run python3 scripts/check_version_unified.py
+  ├─ Run all tests: pytest tests/
+  ├─ Test full workflow manually
+  └─ Update BUILD_TRIGGER.txt
+```
+
+**Phase 3: Build (Automated via GitHub Actions)**
+```
+Push to GitHub:
+  ├─ GitHub Actions detects BUILD_TRIGGER.txt
+  ├─ Builds Electron app (Windows + Linux)
+  ├─ Creates installers with Inno Setup
+  ├─ Uploads artifacts (7-day retention)
+  └─ Creates GitHub Release (permanent)
+```
+
+**Phase 4: Distribution (Users download)**
+```
+GitHub Releases page:
+  ├─ LocaNext-Setup-v1.0.0.exe (Windows)
+  ├─ LocaNext-v1.0.0.AppImage (Linux)
+  ├─ Installation instructions
+  └─ Release notes
+```
+
+---
+
+### ✅ Summary: Your Approach is PERFECT!
+
+**What you're doing RIGHT NOW**:
+- ✅ Developing web app (FastAPI + SvelteKit)
+- ✅ Debugging in browser
+- ✅ Fast iteration
+- ✅ **THIS IS THE CORRECT APPROACH!**
+
+**When you're ready to distribute**:
+- ✅ Package with Electron (one command)
+- ✅ Use VRS-Manager's build system
+- ✅ GitHub Actions automation
+- ✅ Professional installers
+
+**NO conversion needed** - Electron wraps your existing web app!
+
+**Tasks**:
+- [x] Continue web development (current workflow)
+- [ ] When ready: Configure electron-builder
+- [ ] When ready: Set up GitHub Actions (VRS-Manager style)
+- [ ] When ready: Create Inno Setup script
+- [ ] When ready: Build and distribute
+
+**For PyInstaller approach (VRS-Manager pattern):**
+
+Create `LocaNext.spec` (EXACT VRS-Manager pattern):
+```python
+# -*- mode: python ; coding: utf-8 -*-
+
+block_cipher = None
+
+a = Analysis(
+    ['server/main.py'],  # Entry point
+    pathex=[],
+    binaries=[],
+    datas=[
+        ('models/kr-sbert', 'models/kr-sbert'),  # BERT model (447MB)
+        ('client/data', 'client/data'),           # App data
+        ('images/icon.ico', 'images'),            # Icon
+    ],
+    hiddenimports=[
+        'numpy',
+        'pandas',
+        'torch',
+        'transformers',
+        'sentence_transformers',
+        'sklearn',
+        'fastapi',
+        'uvicorn',
+        'sqlalchemy',
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=['matplotlib', 'setuptools', 'distutils'],  # Reduce size
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='LocaNext',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,  # Enable UPX compression
+    console=True,  # True for debugging, False for production
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon='images/icon.ico'
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='LocaNext'
+)
+```
+
+**Build commands** (VRS-Manager pattern):
+```bash
+# FULL version with model
+pip install -r requirements.txt
+pip install pyinstaller
+python3 scripts/download_bert_model.py  # Download model first
+pyinstaller LocaNext.spec --clean --noconfirm --distpath dist_full
+
+# Result: dist_full/LocaNext/LocaNext.exe (~2GB with model)
+```
+
+**Why PyInstaller over Electron**:
+- ✅ Smaller size (~2GB vs ~3GB+ with Electron)
+- ✅ Faster startup (no Chromium overhead)
+- ✅ True standalone (no Node.js/Chromium dependencies)
+- ✅ VRS-Manager proven pattern
+- ❌ No web UI (would need to rebuild frontend as desktop UI OR run local server)
+
+**Tasks**:
+- [ ] **DECIDE**: Electron vs PyInstaller approach
+- [ ] If PyInstaller: Create spec file based on VRS-Manager
+- [ ] If PyInstaller: Test FastAPI + frontend bundling together
+- [ ] If staying Electron: Skip this, improve Electron build instead
+
+#### 1.4 Inno Setup Installer (VRS-Manager EXACT Pattern)
+**Status**: Not created
+**Reference**: VRS-Manager `installer/vrsmanager_full.iss` - EXACT implementation
+**Tool**: Inno Setup 6 (Windows only)
+
+**Installation**:
+```bash
+# Download from: https://jrsoftware.org/isdl.php
+# Or via Chocolatey:
+choco install innosetup
+```
+
+**Create `installer/locanext_full.iss` (VRS-Manager EXACT pattern)**:
+```ini
+; LocaNext FULL Installer (with AI model)
+; Based on VRS-Manager installer pattern
+
+[Setup]
+AppId={{9B8C4D5E-6F7A-8B9C-0D1E-2F3A4B5C6D7E}}
+AppName=LocaNext (FULL)
+AppVersion=1.0.0
+AppPublisher=Neil Schmitt
+AppPublisherURL=https://github.com/NeilVibe/LocalizationTools
+DefaultDirName={userdesktop}\LocaNext
+DefaultGroupName=LocaNext
+AllowNoIcons=yes
+OutputDir=installer_output
+OutputBaseFilename=LocaNext_v1.0.0_Full_Setup
+SetupIconFile=images\icon.ico
+Compression=lzma2/ultra64
+SolidCompression=yes
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
+WizardStyle=modern
+DisableProgramGroupPage=yes
+DisableWelcomePage=no
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional icons:"
+
+[Files]
+; Main executable and dependencies (from PyInstaller dist_full/ OR Electron dist/)
+Source: "dist_full\LocaNext\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Model files (447MB)
+Source: "models\kr-sbert\*"; DestDir: "{app}\models\kr-sbert"; Flags: ignoreversion recursesubdirs
+
+; Documentation
+Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs
+
+; Working directories
+Source: "Current\README.md"; DestDir: "{app}\Current"; Flags: ignoreversion
+Source: "Previous\README.md"; DestDir: "{app}\Previous"; Flags: ignoreversion
+
+[Icons]
+Name: "{group}\LocaNext"; Filename: "{app}\LocaNext.exe"
+Name: "{group}\Documentation"; Filename: "{app}\README.md"
+Name: "{group}\Uninstall LocaNext"; Filename: "{uninstallexe}"
+Name: "{userdesktop}\LocaNext"; Filename: "{app}\LocaNext.exe"; Tasks: desktopicon
+
+[Run]
+Filename: "{app}\LocaNext.exe"; Description: "Launch LocaNext"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+; Remove generated files on uninstall
+Type: files; Name: "{app}\*.xlsx"
+Type: files; Name: "{app}\*.xls"
+Type: files; Name: "{app}\*.log"
+Type: files; Name: "{app}\*.json"
+Type: filesandordirs; Name: "{app}\Current\*"
+Type: filesandordirs; Name: "{app}\Previous\*"
+```
+
+**Compile installer**:
+```bash
+# From project root
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_full.iss
+
+# Output: installer_output/LocaNext_v1.0.0_Full_Setup.exe
+```
+
+**Verification steps** (VRS-Manager pattern):
+```bash
+# Check installer was created
+ls -lh installer_output/LocaNext_v*.exe
+
+# Should show file size (varies: ~2GB for FULL, ~200MB for LIGHT)
+```
+
+**Tasks**:
+- [ ] Install Inno Setup 6
+- [ ] Create installer/ directory with locanext_full.iss
+- [ ] Build executable first (PyInstaller OR Electron)
+- [ ] Compile installer with ISCC.exe
+- [ ] Test installer on clean Windows 10/11 VM
+- [ ] Verify:
+  - Installation wizard completes
+  - Model files copied to {app}/models/kr-sbert/
+  - Start menu shortcuts created
+  - Desktop icon created (if selected)
+  - App launches successfully
+  - Uninstaller removes files correctly
+
+**Why**: Professional Windows installer. VRS-Manager proven pattern. LZMA2 ultra compression. Wizard UI. Clean uninstall.
+
+#### 1.5 GitHub Actions CI/CD (VRS-Manager EXACT Workflow)
+**Status**: Not configured
+**Reference**: VRS-Manager `.github/workflows/build-installers.yml` - EXACT implementation
+
+**Create `BUILD_TRIGGER.txt`** (version control file):
+```
+FULL
+1.0.0
+```
+- Line 1: `FULL`, `LIGHT`, or `BOTH` (which builds to create)
+- Line 2: Version number (e.g., `1.0.0`)
+
+**Create `.github/workflows/build-installers.yml` (VRS-Manager EXACT pattern)**:
+```yaml
+name: Build FULL Installer
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'BUILD_TRIGGER.txt'
+      - 'server/**'
+      - 'client/**'
+      - 'models/**'
+
+jobs:
+  check-build-type:
+    runs-on: ubuntu-latest
+    outputs:
+      build_full: ${{ steps.check.outputs.build_full }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check BUILD_TRIGGER.txt
+        id: check
+        run: |
+          BUILD_TYPE=$(sed -n '1p' BUILD_TRIGGER.txt)
+          VERSION=$(sed -n '2p' BUILD_TRIGGER.txt)
+          echo "build_full=$([[ $BUILD_TYPE == "FULL" || $BUILD_TYPE == "BOTH" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Build type: $BUILD_TYPE, Version: $VERSION"
+
+  build-full:
+    runs-on: windows-latest
+    needs: check-build-type
+    if: needs.check-build-type.outputs.build_full == 'true'
+
+    steps:
+      - name: Checkout code with LFS
+        uses: actions/checkout@v4
+        with:
+          lfs: true  # CRITICAL: Download LFS files (model)
+
+      - name: Verify model files
+        run: |
+          if (-Not (Test-Path "models\kr-sbert\config.json")) {
+            Write-Error "Model config.json missing!"
+            exit 1
+          }
+          if (-Not (Test-Path "models\kr-sbert\model.safetensors")) {
+            Write-Error "Model safetensors missing!"
+            exit 1
+          }
+          Write-Host "✓ Model files verified"
+          Get-ChildItem models\kr-sbert
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build executable with PyInstaller
+        run: |
+          pyinstaller LocaNext.spec --clean --noconfirm --distpath dist_full
+          if (-Not (Test-Path "dist_full\LocaNext\LocaNext.exe")) {
+            Write-Error "Build failed - executable not found!"
+            exit 1
+          }
+          Write-Host "✓ Executable built successfully"
+          $size = (Get-Item "dist_full\LocaNext\LocaNext.exe").Length / 1MB
+          Write-Host "Executable size: $($size.ToString('N2')) MB"
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+
+      - name: Create installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_full.iss
+          if (-Not (Test-Path "installer_output\LocaNext_v*_Full_Setup.exe")) {
+            Write-Error "Installer creation failed!"
+            exit 1
+          }
+          Write-Host "✓ Installer created successfully"
+          Get-ChildItem installer_output\*.exe
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocaNext-Full-Installer
+          path: installer_output/LocaNext_v*_Full_Setup.exe
+          retention-days: 7
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [check-build-type, build-full]
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.check-build-type.outputs.version }}
+          name: LocaNext v${{ needs.check-build-type.outputs.version }}
+          body: |
+            ## LocaNext v${{ needs.check-build-type.outputs.version }}
+
+            ### Downloads
+            - **FULL** (~2GB) - Includes AI-powered features with Korean BERT model
+
+            ### Installation
+            1. Download the FULL installer
+            2. Run the .exe file
+            3. Follow the installation wizard
+            4. Launch from Start Menu or Desktop
+
+            ### What's Included
+            - XLSTransfer (AI-powered translation)
+            - QuickSearch (Multi-game dictionary)
+            - Admin Dashboard (Analytics & monitoring)
+            - Korean BERT model (447MB, bundled)
+
+            🤖 Built with GitHub Actions
+          files: |
+            artifacts/LocaNext-Full-Installer/*.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Tasks**:
+- [ ] Create BUILD_TRIGGER.txt with `FULL` and version
+- [ ] Create .github/workflows/build-installers.yml
+- [ ] Create LocaNext.spec (PyInstaller config)
+- [ ] Create installer/locanext_full.iss (Inno Setup config)
+- [ ] Commit and push to main
+- [ ] Watch GitHub Actions → Build should trigger automatically
+- [ ] Download artifact from Actions tab (7-day retention)
+- [ ] OR download from Releases page (permanent)
+
+**Verify with gh CLI**:
+```bash
+# Watch build live
+gh run list
+gh run watch <run-id>
+
+# Check for errors
+gh run view <run-id> --log-failed
+
+# Download artifact
+gh run download <run-id> -n LocaNext-Full-Installer
+```
+
+**Why**: VRS-Manager proven pattern. Automated builds on every push. LFS integration for model. Inno Setup installer. GitHub Releases with download links. 7-day artifacts + permanent releases.
+
+#### 1.6 Cross-Platform Build Verification
+**Status**: Needs testing
+
+**Tasks**:
+- [ ] Test Windows .exe on Windows 10/11
+- [ ] Test Linux AppImage on Ubuntu 20.04/22.04
+- [ ] Test macOS .app on macOS 12+ (if applicable)
+- [ ] Verify model loading in all platforms
+- [ ] Check file permissions and execution rights
+- [ ] Test installer/uninstaller on all platforms
+
+**Why**: Distribution must work everywhere. Catch platform-specific issues early.
+
+---
+
+### 🔧 Build & Development Workflow (from VRS-Manager)
+
+#### Local Build Setup
+
+**LIGHT Version** (minimal dependencies, ~150MB):
+```bash
+pip install pandas openpyxl numpy pyinstaller
+pyinstaller LocaNext_light.spec --clean --noconfirm --distpath dist_light
+```
+
+**FULL Version** (with AI model, ~2GB):
+```bash
+pip install -r requirements.txt
+pip install pyinstaller
+python3 scripts/download_bert_model.py
+pyinstaller LocaNext.spec --clean --noconfirm --distpath dist_full
+```
+
+**Installer Compilation** (Windows with Inno Setup):
+```bash
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_light.iss
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_full.iss
+```
+
+**Requirements**:
+- Python 3.10+
+- PyInstaller
+- Inno Setup 6 (Windows only, for installers)
+
+---
+
+#### Pre-Build Testing Checklist
+
+**Before building/releasing**:
+```bash
+# 1. Verify version consistency across files
+python3 check_version_unified.py
+
+# 2. Run all tests
+pytest tests/ -v
+python3 tests/test_dashboard_api.py
+python3 tests/test_async_auth.py
+
+# 3. Update documentation if needed
+
+# 4. Commit and push all changes
+git add .
+git commit -m "Release v[version]"
+git push
+```
+
+---
+
+#### GitHub CLI (gh) Commands for Build Management
+
+**Authentication** (one-time setup):
+```bash
+# Install GitHub CLI
+# Ubuntu/Debian: sudo apt install gh
+# macOS: brew install gh
+# Windows: winget install GitHub.cli
+
+# Login with token
+gh auth login
+
+# Or use token directly
+export GH_TOKEN=your_personal_access_token
+echo $GH_TOKEN | gh auth login --with-token
+```
+
+**In GitHub Actions** (automatic):
+```yaml
+# Set GH_TOKEN in workflow steps
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+---
+
+#### Checking Build Status & History
+
+**List recent workflow runs**:
+```bash
+gh run list --workflow=build-installers.yml --limit 10
+```
+
+**Watch live build progress**:
+```bash
+gh run watch <run-id>
+```
+
+**View specific run details**:
+```bash
+gh run view <run-id>
+```
+
+**View run logs**:
+```bash
+# View all logs
+gh run view <run-id> --log
+
+# View only failed steps
+gh run view <run-id> --log-failed
+
+# Search logs for specific text
+gh run view <run-id> --log | grep "ERROR"
+gh run view <run-id> --log | grep "model"
+```
+
+**List workflow runs by status**:
+```bash
+gh run list --status=failure
+gh run list --status=success
+gh run list --status=in_progress
+```
+
+---
+
+#### Downloading Build Artifacts
+
+**Download from specific run**:
+```bash
+# List artifacts from a run
+gh run view <run-id>
+
+# Download specific artifact by name
+gh run download <run-id> -n artifact-name
+
+# Download all artifacts from run
+gh run download <run-id>
+
+# Interactive selector
+gh run download
+```
+
+**Access via Web**:
+1. Go to GitHub → Actions tab
+2. Click on workflow run
+3. Scroll to "Artifacts" section
+4. Download (7-day retention)
+
+---
+
+#### Checking Releases
+
+**List releases**:
+```bash
+gh release list
+```
+
+**View specific release**:
+```bash
+gh release view v1.0.0
+```
+
+**Download release assets**:
+```bash
+gh release download v1.0.0
+```
+
+---
+
+#### Workflow Management
+
+**List workflows**:
+```bash
+gh workflow list
+```
+
+**View workflow details**:
+```bash
+gh workflow view build-installers.yml
+```
+
+**Manually trigger workflow**:
+```bash
+gh workflow run build-installers.yml
+```
+
+**View workflow runs**:
+```bash
+gh workflow view build-installers.yml --yaml
+```
+
+---
+
+#### Local Testing of Built Executables
+
+**After building locally**:
+```bash
+# Test LIGHT version
+cd dist_light
+./LocaNext  # or LocaNext.exe on Windows
+
+# Test FULL version
+cd dist_full
+./LocaNext  # Verify model loads correctly
+```
+
+**Verify model bundling**:
+```bash
+# Check if model files exist in distribution
+ls -lh dist_full/models/kr-sbert/
+# Should show: config.json, model.safetensors, tokenizer files
+```
+
+**Test installer** (Windows):
+```bash
+# Run installer in VM or test machine
+installer_output/LocaNext_v[version]_Full_Setup.exe
+
+# Verify:
+# - Installation wizard completes
+# - Start menu shortcuts created
+# - Application launches successfully
+# - Uninstaller works correctly
+```
+
+---
+
+#### Log Checking During Development
+
+**Server logs** (live):
+```bash
+# Monitor server logs in real-time
+tail -f server/data/logs/server.log
+
+# Search for errors
+grep "ERROR" server/data/logs/server.log
+
+# Search for specific operations
+grep "xlstransfer" server/data/logs/server.log
+```
+
+**GitHub Actions logs**:
+- Navigate to Actions tab in repository
+- Click on workflow run
+- Click on job name (e.g., "build-full")
+- View live or completed logs
+- Download log files for offline analysis
+
+**Database logs**:
+```bash
+# Check operation logs in database
+sqlite3 server/data/locanext.db "SELECT * FROM log_entries ORDER BY timestamp DESC LIMIT 20;"
+
+# Check error logs
+sqlite3 server/data/locanext.db "SELECT * FROM error_logs ORDER BY timestamp DESC LIMIT 10;"
+```
+
+---
+
+### Priority 2: Select App #3
+**Estimated Time**: 4-6 hours
+**Status**: Pending (starts after distribution setup)
 **Source**: `RessourcesForCodingTheProject/`
 
 **Selection Criteria**:
 1. High user value
 2. Fits existing architecture
 3. Uses BaseToolAPI pattern
-4. 2-3 hours backend, 2-3 hours frontend
+4. Can be completed in 4-6 hours
 
 **Available Options**:
 - Korean Similarity Checker
 - TFM Full/Lite
 - TextSwapper
+- WordCountMaster (V2 complete in `RessourcesForCodingTheProject/NewScripts/`)
 - Other tools from RessourcesForCodingTheProject/
 
-**Migration Pattern** (proven with QuickSearch):
-1. Analyze original script
-2. Backend: REST API using BaseToolAPI
-3. Frontend: SvelteKit component with Carbon Design
-4. Testing: Manual UI + automated tests
-5. Documentation: Update README + create testing report
+**Migration Pattern** (proven with XLSTransfer and QuickSearch):
+1. Analyze original script (30 min)
+2. Backend: REST API using BaseToolAPI (2-3 hours)
+3. Frontend: SvelteKit component with Carbon Design (2-3 hours)
+4. Testing: Manual UI + automated tests (1 hour)
+5. Documentation: Update README (30 min)
 
 ---
 
-### Priority 2: Admin Dashboard Authentication
+### Priority 3: Admin Dashboard Authentication
 **Estimated Time**: 2-3 hours
 **Status**: Pending
 
 **Tasks**:
-- Add login page for admin dashboard
-- Protect admin routes with auth middleware
-- Role-based access control (admin vs regular user)
-- Session management for dashboard
+- [ ] Add login page for admin dashboard
+- [ ] Protect admin routes with auth middleware
+- [ ] Role-based access control (admin vs regular user)
+- [ ] Session management for dashboard
 
 ---
 
-### Priority 3: Export Functionality
+### Priority 4: Export Functionality
 **Estimated Time**: 3-4 hours
 **Status**: Pending
 
 **Tasks**:
-- Export rankings to CSV/Excel
-- Export statistics reports to PDF
-- Export activity logs to CSV
-- Download buttons in dashboard
+- [ ] Export rankings to CSV/Excel
+- [ ] Export statistics reports to PDF
+- [ ] Export activity logs to CSV
+- [ ] Download buttons in dashboard
 
 ---
 
-### Priority 4: Production Deployment
+### Priority 5: Production Web Deployment
 **Estimated Time**: 4-6 hours
 **Status**: Pending
 
 **Tasks**:
-- PostgreSQL setup and migration
-- Environment configuration (.env for production)
-- Frontend build optimization
-- Server deployment (nginx, systemd)
-- SSL/HTTPS setup
-- Backup strategy
+- [ ] PostgreSQL setup and migration
+- [ ] Environment configuration (.env for production)
+- [ ] Frontend build optimization
+- [ ] Server deployment (nginx, systemd)
+- [ ] SSL/HTTPS setup
+- [ ] Backup strategy
 
 ---
 
@@ -253,7 +1517,15 @@ This verifies the entire stack integration (UI → API → WebSocket → Task Ma
 
 **ML/AI:**
 - Sentence Transformers - Semantic text embeddings
-- Korean BERT Models - Korean language processing
+- Korean BERT (snunlp/KR-SBERT-V40K-klueNLI-augSTS) - 447MB
+- Three-tier loading: Hugging Face → Local cache → Graceful fallback
+
+**Distribution:**
+- PyInstaller - Standalone executables (no Python required)
+- Inno Setup - Professional Windows installers with wizard
+- GitHub Actions - Automated builds (Windows/Linux/macOS)
+- Git LFS - Large file storage for models (447MB+)
+- Electron - Desktop app packaging (current)
 
 ---
 
@@ -472,15 +1744,16 @@ app.include_router(your_app_api.router, prefix="/api/v2/your_app", tags=["your_a
 
 ## 🧪 Testing Strategy
 
-### Manual Testing
-- UI testing in browser (http://localhost:5173)
-- Admin dashboard monitoring (http://localhost:5174)
-- Backend logs monitoring
-
-### Automated Testing
-- Pytest for backend APIs
-- Integration tests for full workflows
-- Health check verification
+### Testing Checklist (for each new app)
+1. All API endpoints return 200 OK
+2. Frontend UI loads without errors
+3. Operations appear in Task Manager with real-time progress
+4. Admin dashboard logs operations and updates live
+5. Database tracking confirmed
+6. Error handling works correctly
+7. File upload/download works
+8. Authentication works
+9. WebSocket updates work
 
 ### Monitoring
 - Real-time logs in admin dashboard
@@ -488,60 +1761,34 @@ app.include_router(your_app_api.router, prefix="/api/v2/your_app", tags=["your_a
 - WebSocket progress updates
 - Database operation tracking
 
-### Testing Checklist (for each new app)
-1. ✅ All API endpoints return 200 OK
-2. ✅ Frontend UI loads without errors
-3. ✅ Operations appear in Task Manager
-4. ✅ Progress updates work in real-time
-5. ✅ Admin dashboard logs operations
-6. ✅ Database tracking works
-7. ✅ Error handling works correctly
-8. ✅ File upload/download works
-9. ✅ Authentication works
-10. ✅ WebSocket updates work
-
----
-
-## 📊 Success Metrics
-
-### Platform Metrics
-- ✅ Backend API: 39 endpoints (23 tools + 16 admin)
-- ✅ Test Coverage: 95%+ passing
-- ✅ Response Time: <200ms average
-- ✅ WebSocket Latency: <100ms
-- ✅ Database Queries: <50ms average
-- ✅ Frontend Load Time: <2s initial load
-
-### App Metrics (per app)
-- ✅ Development Time: 2-4 hours with BaseToolAPI
-- ✅ Code Quality: Type hints, docstrings, error handling
-- ✅ UI/UX: Carbon Design System consistency
-- ✅ Documentation: README + testing report
-- ✅ Monitoring: Full logging + progress tracking
-
 ---
 
 ## 🎯 Vision & Goals
 
-### Short Term (1-2 weeks)
-- ✅ App #1 (XLSTransfer) - COMPLETE
-- ✅ App #2 (QuickSearch) - COMPLETE
-- ⏳ App #3 (Selection pending)
-- ⏳ Admin Dashboard auth
-- ⏳ Export functionality
+### Immediate (1-2 weeks)
+- ⚡ **Distribution Infrastructure** (Priority 1)
+  - Git LFS for model files
+  - PyInstaller builds (full & light)
+  - Inno Setup installers
+  - GitHub Actions CI/CD
+- 🔧 **App #3** (Priority 2)
+- 🔐 **Admin auth** (Priority 3)
 
-### Medium Term (1-2 months)
-- Add 5-10 more apps from RessourcesForCodingTheProject/
-- User management improvements
+### Short Term (1 month)
+- Professional distribution pipeline operational
+- 3-5 apps migrated to platform
+- Export functionality (CSV/Excel/PDF)
 - Advanced analytics
-- Performance optimization
-- Production deployment
 
-### Long Term (3-6 months)
+### Medium Term (2-3 months)
+- 10+ apps from RessourcesForCodingTheProject/
+- Production web deployment
+- User roles & permissions
+- Performance optimization
+
+### Long Term (6 months)
 - 20+ apps in platform
 - Advanced AI features
-- API rate limiting
-- User roles & permissions
 - Multi-tenancy support
 - Plugin system for custom apps
 
@@ -549,20 +1796,47 @@ app.include_router(your_app_api.router, prefix="/api/v2/your_app", tags=["your_a
 
 ## 📖 Documentation
 
-### Essential Docs
-- `README.md` - Project overview, quick start
-- `Roadmap.md` - This file (current status, next steps)
-- `docs/ADD_NEW_APP_GUIDE.md` - How to add new apps
+### Platform Docs
+- `README.md` - Project overview, quick start, architecture
+- `Roadmap.md` - This file (current status, priorities, next steps)
+- `docs/ADD_NEW_APP_GUIDE.md` - How to add new apps with BaseToolAPI
 - `docs/TESTING_GUIDE.md` - Testing procedures
-- `docs/ADMIN_SETUP.md` - Admin dashboard setup
-
-### App-Specific Docs
-- `QUICKSEARCH_PHASE4_TESTING_REPORT.md` - QuickSearch testing
-- `QUICKSEARCH_MIGRATION_PLAN.md` - QuickSearch migration details
 
 ### API Documentation
 - Interactive docs: http://localhost:8888/docs
 - Backend health: http://localhost:8888/health
+
+---
+
+## 📝 Distribution Setup - VRS-Manager Reference
+
+### Model Management Pattern (from VRS-Manager)
+
+**Three-Tier Model Loading**:
+1. **Online Mode** (First Run): Auto-download from Hugging Face (5-10 min, 447MB)
+2. **Local Cache**: Load from `models/kr-sbert/` directory
+3. **Graceful Fallback**: Skip AI features if model unavailable
+
+**Directory Structure**:
+```
+LocaNext/
+├── models/
+│   └── kr-sbert/              # Korean BERT model (447MB)
+│       ├── config.json
+│       ├── model.safetensors  # or pytorch_model.bin
+│       └── tokenizer files
+└── LocaNext.exe               # Desktop app loads model from adjacent folder
+```
+
+**Setup Scripts** (to create):
+- `scripts/download_bert_model.py` - Python script for automated download
+- `scripts/download_model.bat` - Windows batch script with user prompts
+- Both verify model integrity (check config.json and weights exist)
+
+**Offline Transfer** (for air-gapped environments):
+1. Run download script on internet-connected PC
+2. Copy entire `models/` folder
+3. Place next to LocaNext.exe on offline PC
 
 ---
 
@@ -605,51 +1879,25 @@ Password: admin123
 
 ---
 
-## 📝 Session Notes
+## 📚 Key Documentation
 
-### For Next Claude Session
-1. **Start Here**: Read this Roadmap.md first
-2. **Current Status**: QuickSearch backend complete, Phase 4 UI testing in progress
-3. **IMMEDIATE NEXT TASK**: Complete QuickSearch Phase 4 Testing (Priority 0)
-   - See `QUICKSEARCH_PHASE4_TESTING_REPORT.md` for 14 test scenarios
-   - Test UI functionality (7 tests)
-   - Test WebSocket & Task Manager integration (2 tests)
-   - Test Admin Dashboard communication (4 tests)
-   - Test server logs monitoring (1 test)
-   - **Goal**: Verify full stack integration (UI → API → WebSocket → Task Manager → Dashboard)
-4. **After Phase 4**: Select App #3 from RessourcesForCodingTheProject/ (Priority 1)
-5. **Pattern**: Use BaseToolAPI (see docs/ADD_NEW_APP_GUIDE.md)
-6. **Commit**: Update testing report with results
+### Essential Docs
+- `README.md` - Project overview, quick start
+- `Roadmap.md` - This file (current status, priorities)
+- `docs/ADD_NEW_APP_GUIDE.md` - How to add new apps with BaseToolAPI
+- `docs/TESTING_GUIDE.md` - Testing procedures
 
-### Important Files to Review
-- `QUICKSEARCH_PHASE4_TESTING_REPORT.md` - Testing checklist (IMMEDIATE)
-- `README.md` - Platform overview
-- `docs/ADD_NEW_APP_GUIDE.md` - How to add apps
-- `server/api/base_tool_api.py` - Base class for all apps
-- `server/api/quicksearch_async.py` - Example of BaseToolAPI usage
-
-### Test Data Location
-- `/RessourcesForCodingTheProject/datausedfortesting/test123.txt` (1,185 lines)
-
-### Servers to Run
-```bash
-# Terminal 1: Backend (port 8888)
-source venv/bin/activate && python3 server/main.py
-
-# Terminal 2: Frontend (port 5173)
-cd locaNext && npm run dev
-
-# Terminal 3: Admin Dashboard (port 5174)
-cd adminDashboard && npm run dev
-```
+### Reference Projects
+- **VRS-Manager** (NeilVibe/VRS-Manager) - Distribution setup reference
+  - Git LFS configuration
+  - PyInstaller specs (full & light builds)
+  - Inno Setup installers with wizard
+  - GitHub Actions CI/CD pipeline
+  - Model download automation
 
 ---
 
-**Last Updated**: 2025-11-13
-**Current Phase**: QuickSearch Phase 4 Testing (IN PROGRESS)
-**Next Milestone**: Complete Phase 4 → Then App #3 Selection
-**Platform Status**: 95% Complete - Production Ready
-
----
-
-*Note: Detailed session summaries and historical notes have been archived. This roadmap focuses on current status, next steps, and key information for development.*
+**Last Updated**: 2025-11-22
+**Current Focus**: Distribution & Deployment Infrastructure (Priority 1)
+**Next Milestone**: Git LFS + PyInstaller + Inno Setup + GitHub Actions
+**Platform Status**: Core Complete - Distribution Phase

@@ -10,9 +10,12 @@ from pathlib import Path
 # Model Settings
 # ============================================
 
-# Path to Korean BERT model (relative to project root)
+# Path to Korean BERT model (VRS-Manager pattern: models/kr-sbert/ at project root)
 MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
-MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "KR-SBERT-V40K-klueNLI-augSTS"
+
+# Get project root (3 levels up from this file: client/tools/xls_transfer/config.py)
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+MODEL_PATH = _PROJECT_ROOT / "models" / "kr-sbert"
 
 # Model loading
 LAZY_LOAD_MODEL = True  # Load only when needed

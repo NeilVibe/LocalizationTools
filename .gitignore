@@ -86,10 +86,32 @@ $RECYCLE.BIN/
 
 # -------------------- Project Specific --------------------
 
-# Environment variables
+# Environment variables & Secrets
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+*.env
+
+# API Keys & Tokens (CRITICAL - NEVER COMMIT)
+*_token.txt
+*_key.txt
+*_secret.txt
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+*.p12
+*.pfx
+credentials.json
+secrets.json
+api_keys.txt
+github_token.txt
+
+# SSH Keys
+.ssh/
+*.ppk
 
 # Database
 *.db
@@ -160,7 +182,18 @@ test_outputs/
 # Keep test resources but ignore large data
 !RessourcesForCodingTheProject/
 # Add specific large file patterns if needed
-# ML Models (too large for GitHub)
+# ML Models (too large for GitHub - use Git LFS)
 client/models/*/*.safetensors
 client/models/*/*.bin
 client/models/*/pytorch_model.bin
+models/*/*.safetensors
+models/*/*.bin
+models/*/pytorch_model.bin
+
+# Node modules (contains potentially sensitive data)
+node_modules/
+locaNext/node_modules/
+adminDashboard/node_modules/
+
+# GitHub Actions secrets (local testing)
+.github/secrets/
