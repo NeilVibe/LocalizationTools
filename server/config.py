@@ -5,15 +5,21 @@ This module contains all configuration settings for the LocalizationTools centra
 """
 
 import os
+import sys
 from pathlib import Path
 from typing import Optional
+
+# Add parent directory to path for version import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from version import VERSION, SEMANTIC_VERSION, VERSION_FOOTER
 
 # ============================================
 # Application Info
 # ============================================
 
 APP_NAME = "LocalizationTools Server"
-APP_VERSION = "1.0.0"
+APP_VERSION = SEMANTIC_VERSION  # Uses semantic version (e.g., "1.0.0")
+VERSION = VERSION  # DateTime version (e.g., "2511221939")
 API_VERSION = "v1"
 APP_DESCRIPTION = "Central logging and analytics server for LocalizationTools"
 

@@ -1,9 +1,136 @@
-# LocaNext - Project Guide for Claude
+# CLAUDE.md - LocaNext Project Guide
 
 **App Name**: LocaNext (formerly LocalizationTools)
-**Last Updated**: 2025-11-10 16:54 (FULLY TESTED & VERIFIED - ALL SYSTEMS OPERATIONAL + XLSTRANSFER LIVE TEST)
-**Current Phase**: Phase 3 - Testing & Monitoring ✅ **100% COMPLETE**
-**Status**: Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | Tests ✅ | Logs ✅
+**Last Updated**: 2025-11-22 (Distribution Infrastructure Setup Complete)
+**Current Version**: 2511221939 (Semantic: 1.0.0)
+**Current Phase**: Distribution Setup - Git LFS, Version Management, Build System
+**Status**: Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | Distribution Setup ✅
+
+---
+
+## 📦 BUILD & DISTRIBUTION SYSTEM (VRS-Manager Pattern)
+
+### VERSIONING SCHEME
+
+**Format:** `YYMMDDHHMM` (DateTime-based versioning)
+- YY = Year (25 = 2025)
+- MM = Month (11 = November)
+- DD = Day (22)
+- HH = Hour (19)
+- MM = Minute (39)
+
+**Example:** `2511221939` = November 22, 2025 at 7:39 PM
+
+**Why?** Clear, sortable, shows when each version was created.
+
+### VERSION UPDATE WORKFLOW (FOLLOW THIS!)
+
+**CRITICAL: Always run check BEFORE commit/push!**
+
+```bash
+# 1. Get new datetime version
+NEW_VERSION=$(date '+%y%m%d%H%M')
+echo "New version: $NEW_VERSION"
+
+# 2. Update version.py (single source of truth)
+# Edit: VERSION = "2511221939" → VERSION = "$NEW_VERSION"
+
+# 3. RUN CHECK BEFORE COMMIT! (This catches mistakes!)
+python3 scripts/check_version_unified.py
+
+# 4. Only if check passes (exit code 0), then commit
+git add -A
+git commit -m "Version unification: v$NEW_VERSION"
+git push origin main
+
+# 5. NOW trigger build (when ready for release)
+echo "Build FULL v$NEW_VERSION" >> BUILD_TRIGGER.txt
+git add BUILD_TRIGGER.txt
+git commit -m "Trigger build v$NEW_VERSION"
+git push origin main
+```
+
+**Golden Rule:** Never commit version changes without running `check_version_unified.py` first!
+
+### BUILD TRIGGER - MANUAL CONTROL (NOT AUTOMATIC!)
+
+**IMPORTANT:** Builds are triggered MANUALLY by YOU, not automatic on every push!
+
+```bash
+# Build FULL version (with 446MB BERT model)
+echo "Build FULL v$(date '+%y%m%d%H%M')" >> BUILD_TRIGGER.txt
+git add BUILD_TRIGGER.txt
+git commit -m "Trigger FULL build v$(date '+%y%m%d%H%M')"
+git push origin main
+```
+
+**Why Manual Builds?**
+- Control when releases happen (not every commit)
+- Save GitHub Actions minutes
+- Save LFS bandwidth quota (446MB model download)
+- Intentional release process
+
+**Build starts automatically AFTER you push BUILD_TRIGGER.txt update.**
+Check: https://github.com/NeilVibe/LocalizationTools/actions
+
+### BUILD TROUBLESHOOTING
+
+⚠️ **LFS Bandwidth Quota (CRITICAL!)**
+
+**GitHub LFS has monthly bandwidth quota:**
+- Free tier: 1GB bandwidth/month
+- Korean BERT model: 446MB stored in LFS
+- Each build downloads model = counts against quota
+
+**The Fix (Use in GitHub Actions):**
+```yaml
+# Electron build (BERT required for bundling)
+build-electron:
+  - uses: actions/checkout@v3
+    with:
+      lfs: true  # ✅ Download BERT model for bundling
+
+# Release job (only needs artifacts, not source)
+create-release:
+  - uses: actions/checkout@v3
+    with:
+      lfs: false  # ✅ No source files needed, saves bandwidth
+```
+
+**Key Lesson:** Only enable `lfs: true` where BERT model is actually needed!
+
+**Check build logs:**
+```bash
+gh run list --workflow=build-electron.yml --limit 5
+gh run view [run-id] --log-failed | grep "LFS\|error"
+```
+
+### VERSION UNIFICATION (CRITICAL!)
+
+**WHY CRITICAL:** Version inconsistencies cause confusion for users, documentation mismatches, and make debugging difficult.
+
+**AUTOMATED CHECK:**
+```bash
+python3 scripts/check_version_unified.py
+```
+
+**What it checks:**
+- ✅ **version.py** - Single source of truth
+- ✅ **server/config.py** - Backend imports VERSION
+- ✅ **locaNext/package.json** - Electron app version
+- ✅ **README.md** - Documentation version
+- ✅ **Roadmap.md** - Project status version
+- ✅ **CLAUDE.md** - This file
+
+**⚠️ MANDATORY WORKFLOW:**
+1. Update VERSION in version.py
+2. **RUN THIS CHECK** → `python3 scripts/check_version_unified.py`
+3. Only if exit code 0 (success) → commit and push
+4. Then trigger build (if releasing)
+
+**NEVER commit version changes without running this check first!**
+
+---
 
 ## 🚨 CURRENT SYSTEM STATUS (2025-11-10)
 
