@@ -99,11 +99,32 @@ create-release:
 
 **Key Lesson:** Only enable `lfs: true` where BERT model is actually needed!
 
-**Check build logs:**
+**Check build logs with gh CLI (BEST method):**
 ```bash
-gh run list --workflow=build-electron.yml --limit 5
-gh run view [run-id] --log-failed | grep "LFS\|error"
+# Check if authenticated
+gh auth status
+
+# List recent builds
+gh run list --limit 5
+
+# Get full error logs for failed build
+gh run view $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed
+
+# Search for specific errors
+gh run view <RUN_ID> --log-failed | grep -i "error\|failed\|missing"
+
+# Get context around error
+gh run view <RUN_ID> --log-failed | grep -B 10 -A 10 "Compile.*installer"
 ```
+
+**Alternative: GitHub API (no auth required):**
+```bash
+curl -s "https://api.github.com/repos/NeilVibe/LocalizationTools/actions/runs?per_page=5" | \
+python3 -c "import sys, json; runs = json.load(sys.stdin)['workflow_runs']; \
+[print(f\"{r['name']}: {r['status']} - {r['conclusion']}\") for r in runs[:5]]"
+```
+
+**See docs/BUILD_TROUBLESHOOTING.md for complete debugging guide**
 
 ### VERSION UNIFICATION (CRITICAL!)
 
