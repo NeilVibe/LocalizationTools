@@ -373,34 +373,7 @@ Dictionary-based translation search tool for game localization projects.
 - `POST /api/v2/quicksearch/toggle-reference`
 - `GET /api/v2/quicksearch/list-dictionaries`
 
-### 3. WordCountMaster ✅ (Fully Operational)
-
-Translation word count tracking and comparison tool for monitoring localization progress.
-
-**Features:**
-- Process XML translation files (LanguageData_XXX.xml)
-- Compare TODAY's data against any past date
-- Smart weekly/monthly categorization (7 days vs 30 days)
-- Generate Excel reports with 4 sheets (2 active, 2 N/A based on period)
-- Track multiple languages (excluding Korean)
-- View historical runs
-- Real-time progress tracking
-- Full frontend UI in SvelteKit
-
-**API Endpoints:**
-- `GET /api/v2/wordcount/health`
-- `POST /api/v2/wordcount/process`
-- `GET /api/v2/wordcount/history`
-- `GET /api/v2/wordcount/download/{report_id}`
-- `DELETE /api/v2/wordcount/history`
-
-**Excel Report Structure:**
-- Weekly Diff - Full Summary (language-level comparison if ~7 days)
-- Monthly Diff - Full Summary (language-level comparison if ~30 days)
-- Weekly Diff - Detailed (category-level comparison if ~7 days)
-- Monthly Diff - Detailed (category-level comparison if ~30 days)
-
-### 4. More Tools Coming Soon...
+### 3. More Tools Coming Soon...
 
 Additional tools from `RessourcesForCodingTheProject/` will be added to the platform:
 - Korean Similarity Checker
@@ -576,13 +549,12 @@ ALLOWED_ORIGINS=http://localhost:5173,https://yourdomain.com
 
 ### ✅ Completed Features
 
-- ✅ FastAPI backend with 28 tool endpoints + 16 admin endpoints
+- ✅ FastAPI backend with 23 tool endpoints + 16 admin endpoints
 - ✅ SvelteKit frontend with modern UI
 - ✅ Admin dashboard with charts and rankings
 - ✅ Real-time WebSocket progress tracking
 - ✅ XLSTransfer tool (App #1 - fully operational with frontend UI)
 - ✅ QuickSearch tool (App #2 - fully operational with frontend UI)
-- ✅ WordCountMaster tool (App #3 - fully operational with frontend UI)
 - ✅ User authentication and sessions
 - ✅ Comprehensive test suite (95% passing)
 - ✅ Database schema with SQLAlchemy
