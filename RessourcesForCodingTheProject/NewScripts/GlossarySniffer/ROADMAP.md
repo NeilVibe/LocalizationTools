@@ -21,35 +21,41 @@
 ## 📋 Input/Output
 
 ### Input 1: XML Glossary Source
-**Format**: XML file with `StrOrigin` attributes
+**Format**: XML file with `StrOrigin` (Korean) and `Str` (English) attributes
 ```xml
 <Texts>
   <Text>
-    <LocStr StrOrigin="Kliff" Str="Kliff"/>
-    <LocStr StrOrigin="Calphade" Str="Calphade"/>
-    <LocStr StrOrigin="Duke Elenor" Str="Duke Elenor"/>
-    <LocStr StrOrigin="Lands of Gogogugu" Str="Lands of Gogogugu"/>
+    <LocStr StrOrigin="클리프" Str="Kliff"/>
+    <LocStr StrOrigin="칼파데" Str="Calphade"/>
+    <LocStr StrOrigin="엘레노어 공작" Str="Duke Elenor"/>
+    <LocStr StrOrigin="고고구구 땅" Str="Lands of Gogogugu"/>
   </Text>
 </Texts>
 ```
 
 ### Input 2: Lines to Analyze
-**Format**: Excel file (`.xlsx`) with lines to check
+**Format**: Excel file (`.xlsx`) with Korean lines to check
 ```
-| Line                                              |
-|---------------------------------------------------|
-| Kliff went to Calphade to talk to his friends    |
-| I am Duke Elenor, and I rule over the Lands of Gogogugu |
+| Line (Korean)                                |
+|----------------------------------------------|
+| 클리프가 칼파데에 가서 친구들과 이야기했다        |
+| 나는 엘레노어 공작이고, 고고구구 땅을 다스린다   |
 ```
 
 ### Output: Analysis Result
-**Format**: Excel file with original lines + glossary terms found
+**Format**: Excel file with original lines + glossary terms found + mapped translations
 ```
-| Original Line                                              | Glossary Terms Found      |
-|------------------------------------------------------------|---------------------------|
-| Kliff went to Calphade to talk to his friends             | Kliff, Calphade           |
-| I am Duke Elenor, and I rule over the Lands of Gogogugu   | Duke Elenor, Lands of Gogogugu |
+| Original Line (Korean)                                     | Glossary Terms Found (StrOrigin=Korean) | Mapped Translations (Str=English) |
+|------------------------------------------------------------|----------------------------------------|-----------------------------------|
+| 클리프가 칼파데에 가서 친구들과 이야기했다                      | 클리프, 칼파데                          | Kliff, Calphade                   |
+| 나는 엘레노어 공작이고, 고고구구 땅을 다스린다                 | 엘레노어 공작, 고고구구 땅                | Duke Elenor, Lands of Gogogugu    |
 ```
+
+**NEW ENHANCEMENT (2025-11-24)**:
+- **Column 3 added**: Maps each StrOrigin match to its corresponding Str value from XML
+- **Example**: If "클리프" (Korean) is found, show both "클리프" (StrOrigin) and "Kliff" (Str=English)
+- **Use case**: See Korean glossary term AND its English translation side-by-side
+- **Direction**: Korean (StrOrigin) → English (Str)
 
 ---
 
@@ -430,6 +436,181 @@ def main():
 2. **Glossary Filtering**: Length threshold, punctuation removal, sentence detection
 3. **Aho-Corasick**: Build automaton → make_automaton() → scan text for matches
 4. **Excel I/O**: openpyxl patterns from multiple scripts
+
+---
+
+## 🔄 ENHANCEMENT: Add Translation Mapping (Column 3)
+
+**Status**: 📋 PLANNED (2025-11-24)
+**Complexity**: LOW (straightforward mapping)
+**Estimated Time**: 30-45 minutes
+
+### What Changes
+
+**Current Output** (2 columns):
+```
+| Original Line | Glossary Terms Found |
+```
+
+**New Output** (3 columns):
+```
+| Original Line | Glossary Terms Found (StrOrigin) | Mapped Translations (Str) |
+```
+
+### Implementation Plan
+
+#### Step 1: Update Glossary Extraction (extract_glossary_from_xml)
+**Current**: Returns `list` of StrOrigin values only
+```python
+glossary = ['클리프', '칼파데', '엘레노어 공작']  # Korean only
+```
+
+**New**: Return BOTH list (for Aho-Corasick) AND mapping dict
+```python
+glossary_terms = ['클리프', '칼파데', '엘레노어 공작']  # Korean (for Aho-Corasick)
+glossary_map = {
+    '클리프': 'Kliff',              # Korean → English
+    '칼파데': 'Calphade',           # Korean → English
+    '엘레노어 공작': 'Duke Elenor'   # Korean → English
+}
+```
+
+**Code changes**:
+```python
+def extract_glossary_from_xml(xml_path, length_threshold, min_occurrence):
+    """
+    Returns:
+        tuple: (glossary_terms: list, glossary_map: dict)
+        - glossary_terms: List of StrOrigin values for Aho-Corasick
+        - glossary_map: Dict mapping StrOrigin → Str values
+    """
+    # Extract BOTH StrOrigin and Str
+    all_terms = []
+    term_to_str_map = {}  # NEW: Store mapping
+
+    for locstr in tree.xpath('//LocStr'):
+        str_origin = locstr.get('StrOrigin', '').strip()
+        str_value = locstr.get('Str', '').strip()
+
+        if str_origin:
+            all_terms.append(str_origin)
+            term_to_str_map[str_origin] = str_value  # NEW: Map StrOrigin → Str
+
+    # Filter glossary (same as before)
+    glossary_terms = filter_glossary_terms(all_terms, length_threshold, min_occurrence)
+
+    # Build final mapping (only for terms that passed filtering)
+    glossary_map = {term: term_to_str_map[term] for term in glossary_terms}
+
+    return glossary_terms, glossary_map  # NEW: Return both
+```
+
+#### Step 2: Update Main Function
+**Pass glossary_map through the pipeline**:
+```python
+def main():
+    # Step 1: Extract glossary + mapping
+    glossary_terms, glossary_map = extract_glossary_from_xml(xml_path)  # NEW: unpack tuple
+
+    # Step 2: Build Aho-Corasick (uses glossary_terms only)
+    automaton = build_ahocorasick_automaton(glossary_terms)
+
+    # Step 3: Process Excel (pass glossary_map)
+    results = process_excel_lines(excel_path, automaton, glossary_map)  # NEW: pass map
+
+    # Step 4: Write results (now includes translations)
+    write_results_to_excel(results, output_path)
+```
+
+#### Step 3: Update Excel Processing (process_excel_lines)
+**Add glossary_map parameter**:
+```python
+def process_excel_lines(excel_path, automaton, glossary_map):  # NEW: glossary_map param
+    """
+    Returns:
+        list: Tuples of (original_line, glossary_terms_found, mapped_translations)
+    """
+    for row in ws.iter_rows(...):
+        line = str(row[0])
+        matches = search_line_for_glossary(line, automaton)
+        matches = resolve_overlapping_matches(matches, line)
+
+        # NEW: Map each match to its Str value
+        mapped_translations = [glossary_map.get(term, '') for term in matches]
+
+        results.append((line, matches, mapped_translations))  # NEW: 3-tuple
+
+    return results
+```
+
+#### Step 4: Update Excel Output (write_results_to_excel)
+**Add third column**:
+```python
+def write_results_to_excel(results, output_path):
+    # Header row (3 columns now)
+    ws.append(["Original Line", "Glossary Terms Found (StrOrigin)", "Mapped Translations (Str)"])
+
+    # Data rows
+    for line, matches, translations in results:  # NEW: unpack 3-tuple
+        glossary_str = ", ".join(matches) if matches else ""
+        translation_str = ", ".join(translations) if translations else ""  # NEW
+
+        ws.append([line, glossary_str, translation_str])  # NEW: 3 columns
+
+    # Auto-size columns
+    ws.column_dimensions['A'].width = 80
+    ws.column_dimensions['B'].width = 50
+    ws.column_dimensions['C'].width = 50  # NEW
+```
+
+### Testing Plan
+
+**Test Case 1**: Basic mapping (Korean → English)
+- Input XML: `<LocStr StrOrigin="클리프" Str="Kliff"/>`
+- Input line: "클리프가 도시에 갔다" (Korean)
+- Expected output:
+  - Column 2: "클리프"
+  - Column 3: "Kliff"
+
+**Test Case 2**: Multi-word expressions (Korean → English)
+- Input XML: `<LocStr StrOrigin="엘레노어 공작" Str="Duke Elenor"/>`
+- Input line: "나는 엘레노어 공작이다" (Korean)
+- Expected output:
+  - Column 2: "엘레노어 공작"
+  - Column 3: "Duke Elenor"
+
+**Test Case 3**: Multiple matches (Korean → English)
+- Input line: "클리프가 칼파데에 갔다" (Korean)
+- Expected output:
+  - Column 2: "클리프, 칼파데"
+  - Column 3: "Kliff, Calphade"
+
+**Test Case 4**: No matches
+- Input line: "안녕하세요 세계" (Korean, no glossary terms)
+- Expected output:
+  - Column 2: ""
+  - Column 3: ""
+
+### Files to Modify
+
+✅ **glossary_sniffer_1124.py** (4 functions):
+1. `extract_glossary_from_xml()` - Return tuple (list, dict)
+2. `process_excel_lines()` - Add glossary_map param, return 3-tuple
+3. `write_results_to_excel()` - Add 3rd column
+4. `main()` - Update to pass glossary_map
+
+✅ **ROADMAP.md** (this file) - Document enhancement
+
+✅ **README.md** - Update example output (3 columns)
+
+✅ **SUMMARY.md** - Update example output (3 columns)
+
+### Summary
+
+**Changes**: Minimal, straightforward mapping
+**Complexity**: LOW (just passing data through)
+**Backward compatibility**: Output format changes (2 cols → 3 cols)
+**Testing**: 4 test cases to validate mapping
 
 ---
 

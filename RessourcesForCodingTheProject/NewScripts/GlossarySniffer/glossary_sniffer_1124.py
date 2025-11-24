@@ -45,7 +45,7 @@ WORD_BOUNDARIES = True  # Only match complete words (not inside other words)
 
 def extract_glossary_from_xml(xml_path, length_threshold=DEFAULT_LENGTH_THRESHOLD, min_occurrence=MIN_OCCURRENCE):
     """
-    Extract glossary terms from XML StrOrigin attributes.
+    Extract glossary terms from XML StrOrigin attributes + build mapping to Str values.
 
     HARDCODED FILTERING RULES (from QuickSearch0818):
     1. Length < 15 characters (Korean names/terms are usually short)
@@ -60,27 +60,36 @@ def extract_glossary_from_xml(xml_path, length_threshold=DEFAULT_LENGTH_THRESHOL
         min_occurrence: Minimum times a term must appear to be considered glossary
 
     Returns:
-        list: Filtered glossary terms (deduplicated, sorted by frequency)
+        tuple: (glossary_terms: list, glossary_map: dict)
+            - glossary_terms: List of StrOrigin values for Aho-Corasick
+            - glossary_map: Dict mapping StrOrigin → Str values (Korean → English)
     """
     print(f"\n📖 Extracting glossary from: {Path(xml_path).name}")
 
     try:
         tree = etree.parse(xml_path)
         all_terms = []
+        term_to_str_map = {}  # NEW: Store mapping StrOrigin → Str
 
-        # Extract all StrOrigin attributes from LocStr elements
+        # Extract all StrOrigin attributes AND Str values from LocStr elements
         for locstr in tree.xpath('//LocStr'):
-            term = locstr.get('StrOrigin', '').strip()
-            if term:
-                all_terms.append(term)
+            str_origin = locstr.get('StrOrigin', '').strip()
+            str_value = locstr.get('Str', '').strip()
+
+            if str_origin:
+                all_terms.append(str_origin)
+                term_to_str_map[str_origin] = str_value  # Map Korean → English
 
         print(f"   Found {len(all_terms):,} total StrOrigin entries")
 
         # Filter to keep only glossary-worthy terms (with occurrence counting)
-        glossary = filter_glossary_terms(all_terms, length_threshold, min_occurrence)
+        glossary_terms = filter_glossary_terms(all_terms, length_threshold, min_occurrence)
 
-        print(f"   ✅ Filtered to {len(glossary):,} glossary terms (min {min_occurrence} occurrences)")
-        return glossary
+        # Build final mapping (only for terms that passed filtering)
+        glossary_map = {term: term_to_str_map[term] for term in glossary_terms}
+
+        print(f"   ✅ Filtered to {len(glossary_terms):,} glossary terms (min {min_occurrence} occurrences)")
+        return glossary_terms, glossary_map  # NEW: Return both
 
     except Exception as e:
         print(f"   ❌ Error parsing XML: {e}")
@@ -256,16 +265,17 @@ def resolve_overlapping_matches(matches, line):
 
     return final_matches
 
-def process_excel_lines(excel_path, automaton):
+def process_excel_lines(excel_path, automaton, glossary_map):
     """
-    Read Excel, search each line for glossary terms.
+    Read Excel, search each line for glossary terms, map to translations.
 
     Args:
         excel_path: Path to input Excel file
         automaton: Aho-Corasick automaton
+        glossary_map: Dict mapping StrOrigin → Str (Korean → English)
 
     Returns:
-        list: Tuples of (original_line, glossary_terms_found)
+        list: Tuples of (original_line, glossary_terms_found, mapped_translations)
     """
     print(f"\n📊 Processing Excel file: {Path(excel_path).name}")
 
@@ -282,7 +292,7 @@ def process_excel_lines(excel_path, automaton):
             line = str(row[0]) if row[0] else ""
 
             if not line or line == "None":
-                results.append((line, []))
+                results.append((line, [], []))  # NEW: 3-tuple with empty translations
                 continue
 
             # Search for glossary terms
@@ -291,7 +301,10 @@ def process_excel_lines(excel_path, automaton):
             # Resolve overlapping matches (prefer longest)
             matches = resolve_overlapping_matches(matches, line)
 
-            results.append((line, matches))
+            # NEW: Map each match to its Str value (Korean → English)
+            mapped_translations = [glossary_map.get(term, '') for term in matches]
+
+            results.append((line, matches, mapped_translations))  # NEW: 3-tuple
 
             if matches:
                 total_matches += 1
@@ -312,12 +325,13 @@ def process_excel_lines(excel_path, automaton):
 
 def write_results_to_excel(results, output_path):
     """
-    Write results to Excel with 2 columns:
-    - Column 1: Original Line
-    - Column 2: Glossary Terms Found (comma-separated)
+    Write results to Excel with 3 columns:
+    - Column 1: Original Line (Korean)
+    - Column 2: Glossary Terms Found (StrOrigin = Korean, comma-separated)
+    - Column 3: Mapped Translations (Str = English, comma-separated)
 
     Args:
-        results: List of (original_line, glossary_terms) tuples
+        results: List of (original_line, glossary_terms, mapped_translations) tuples
         output_path: Path to save output Excel
     """
     print(f"\n💾 Saving results to: {Path(output_path).name}")
@@ -327,22 +341,24 @@ def write_results_to_excel(results, output_path):
         ws = wb.active
         ws.title = "Glossary Analysis"
 
-        # Header row
-        ws.append(["Original Line", "Glossary Terms Found"])
+        # Header row (3 columns now)
+        ws.append(["Original Line", "Glossary Terms Found (StrOrigin)", "Mapped Translations (Str)"])
 
         # Format header (bold)
         for cell in ws[1]:
             cell.font = openpyxl.styles.Font(bold=True)
 
         # Data rows
-        for line, matches in results:
-            # Join matches with comma
+        for line, matches, translations in results:  # NEW: Unpack 3-tuple
+            # Join matches and translations with comma
             glossary_str = ", ".join(matches) if matches else ""
-            ws.append([line, glossary_str])
+            translation_str = ", ".join(translations) if translations else ""  # NEW
+            ws.append([line, glossary_str, translation_str])  # NEW: 3 columns
 
         # Auto-size columns
         ws.column_dimensions['A'].width = 80
         ws.column_dimensions['B'].width = 50
+        ws.column_dimensions['C'].width = 50  # NEW
 
         wb.save(output_path)
         print(f"   ✅ Saved {len(results):,} rows")
@@ -384,22 +400,23 @@ def main():
             print("❌ No XML file selected. Exiting.")
             return
 
-        # Step 2: Extract and filter glossary
-        glossary = extract_glossary_from_xml(xml_path, DEFAULT_LENGTH_THRESHOLD)
+        # Step 2: Extract and filter glossary + build mapping
+        glossary_terms, glossary_map = extract_glossary_from_xml(xml_path, DEFAULT_LENGTH_THRESHOLD)  # NEW: Unpack tuple
 
-        if not glossary:
+        if not glossary_terms:
             messagebox.showerror("Error", "No glossary terms found in XML file!")
             return
 
-        # Show some sample terms
-        print(f"\n   Sample glossary terms:")
-        for term in glossary[:10]:
-            print(f"      - {term}")
-        if len(glossary) > 10:
-            print(f"      ... and {len(glossary)-10} more")
+        # Show some sample terms with translations
+        print(f"\n   Sample glossary terms (Korean → English):")
+        for term in glossary_terms[:10]:
+            translation = glossary_map.get(term, '')
+            print(f"      - {term} → {translation}")
+        if len(glossary_terms) > 10:
+            print(f"      ... and {len(glossary_terms)-10} more")
 
         # Step 3: Build Aho-Corasick automaton
-        automaton = build_ahocorasick_automaton(glossary)
+        automaton = build_ahocorasick_automaton(glossary_terms)  # NEW: Use glossary_terms
 
         # Step 4: Select Excel input file
         print("\n📂 Step 2: Select Excel input file (lines to analyze)")
@@ -416,7 +433,7 @@ def main():
             return
 
         # Step 5: Process Excel and search for glossary terms
-        results = process_excel_lines(excel_path, automaton)
+        results = process_excel_lines(excel_path, automaton, glossary_map)  # NEW: Pass glossary_map
 
         # Step 6: Select output location
         print("\n📂 Step 3: Select output location")
@@ -438,7 +455,7 @@ def main():
         print("\n" + "="*70)
         print("✅ SUCCESS!")
         print("="*70)
-        print(f"📊 Glossary Terms: {len(glossary):,}")
+        print(f"📊 Glossary Terms: {len(glossary_terms):,}")
         print(f"📄 Lines Processed: {len(results):,}")
         print(f"💾 Output: {output_path}")
         print("="*70)
@@ -446,7 +463,7 @@ def main():
         messagebox.showinfo(
             "Success",
             f"Glossary analysis complete!\n\n"
-            f"Glossary Terms: {len(glossary):,}\n"
+            f"Glossary Terms: {len(glossary_terms):,}\n"
             f"Lines Processed: {len(results):,}\n\n"
             f"Results saved to:\n{output_path}"
         )
