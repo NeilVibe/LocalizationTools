@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Texts>
+  <!-- Good glossary terms (single words) -->
+  <Text>
+    <LocStr StrOrigin="Kliff" Str="Kliff"/>
+    <LocStr StrOrigin="Calphade" Str="Calphade"/>
+    <LocStr StrOrigin="Heidel" Str="Heidel"/>
+    <LocStr StrOrigin="Valencia" Str="Valencia"/>
+  </Text>
+
+  <!-- Good glossary terms (multi-word expressions) -->
+  <Text>
+    <LocStr StrOrigin="Duke Elenor" Str="Duke Elenor"/>
+    <LocStr StrOrigin="Lands of Gogogugu" Str="Lands of Gogogugu"/>
+    <LocStr StrOrigin="Black Desert" Str="Black Desert"/>
+    <LocStr StrOrigin="Red Battlefield" Str="Red Battlefield"/>
+  </Text>
+
+  <!-- Should be filtered out (too long) -->
+  <Text>
+    <LocStr StrOrigin="This is a very long description that should not be in glossary" Str="Long description"/>
+  </Text>
+
+  <!-- Should be filtered out (ends with punctuation) -->
+  <Text>
+    <LocStr StrOrigin="Welcome to the city." Str="Welcome."/>
+    <LocStr StrOrigin="How are you?" Str="How are you?"/>
+    <LocStr StrOrigin="Hello, traveler!" Str="Hello!"/>
+  </Text>
+
+  <!-- Should be filtered out (contains punctuation) -->
+  <Text>
+    <LocStr StrOrigin="Well, well..." Str="Well, well..."/>
+    <LocStr StrOrigin="Wait—what?" Str="Wait—what?"/>
+  </Text>
+
+  <!-- Good glossary terms (more examples) -->
+  <Text>
+    <LocStr StrOrigin="Mediah" Str="Mediah"/>
+    <LocStr StrOrigin="Kamasylvia" Str="Kamasylvia"/>
+    <LocStr StrOrigin="Ancient Weapon" Str="Ancient Weapon"/>
+  </Text>
+</Texts>
