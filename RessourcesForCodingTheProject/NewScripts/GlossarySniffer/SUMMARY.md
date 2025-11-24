@@ -43,19 +43,24 @@ python glossary_sniffer_1124.py
 
 ## 📊 Example
 
-**Input XML**: 1000 StrOrigin entries  
+**Input XML**: 1000 StrOrigin entries (Korean → English mapping)
 **After filtering**: 111 glossary terms (passed all 5 rules)
 
 **Keep**:
-- "클리프" (4 chars, 5 occurrences) ✅
-- "엘레노어 공작" (8 chars, 2 occurrences) ✅
-- "검은사막" (4 chars, 10 occurrences) ✅
+- "클리프" → "Kliff" (4 chars, 5 occurrences) ✅
+- "엘레노어 공작" → "Duke Elenor" (8 chars, 2 occurrences) ✅
+- "검은사막" → "Black Desert" (4 chars, 10 occurrences) ✅
 
 **Remove**:
 - "클리프가 도시에 갔다." (ends with period) ❌
 - "안녕하세요, 여행자님!" (punctuation) ❌
 - "매우 긴 설명입니다" (16 chars) ❌
 - "임시항목" (1 occurrence only) ❌
+
+**Output** (3 columns):
+| Original Line (Korean) | Glossary Found (Korean) | Translation (English) |
+|------------------------|-------------------------|-----------------------|
+| 클리프가 검은사막에 갔다 | 클리프, 검은사막 | Kliff, Black Desert |
 
 ---
 

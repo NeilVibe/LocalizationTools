@@ -40,29 +40,29 @@ python glossary_sniffer_1124.py
 
 ## 📋 Example
 
-### Input 1: XML Glossary Source
+### Input 1: XML Glossary Source (Korean → English)
 ```xml
 <Texts>
   <Text>
-    <LocStr StrOrigin="Kliff" Str="Kliff"/>
-    <LocStr StrOrigin="Calphade" Str="Calphade"/>
-    <LocStr StrOrigin="Duke Elenor" Str="Duke Elenor"/>
-    <LocStr StrOrigin="Lands of Gogogugu" Str="Lands of Gogogugu"/>
+    <LocStr StrOrigin="클리프" Str="Kliff"/>
+    <LocStr StrOrigin="칼파데" Str="Calphade"/>
+    <LocStr StrOrigin="엘레노어 공작" Str="Duke Elenor"/>
+    <LocStr StrOrigin="고고구구 땅" Str="Lands of Gogogugu"/>
   </Text>
 </Texts>
 ```
 
-### Input 2: Excel Lines to Analyze
-| Text Line |
-|-----------|
-| Kliff went to Calphade to talk to his friends |
-| I am Duke Elenor, and I rule over the Lands of Gogogugu |
+### Input 2: Excel Lines to Analyze (Korean)
+| Text Line (Korean) |
+|--------------------|
+| 클리프가 칼파데에 가서 친구들과 이야기했다 |
+| 나는 엘레노어 공작이고, 고고구구 땅을 다스린다 |
 
-### Output: Analysis Result
-| Original Line | Glossary Terms Found |
-|---------------|----------------------|
-| Kliff went to Calphade to talk to his friends | Kliff, Calphade |
-| I am Duke Elenor, and I rule over the Lands of Gogogugu | Duke Elenor, Lands of Gogogugu |
+### Output: Analysis Result (3 columns)
+| Original Line (Korean) | Glossary Terms Found (StrOrigin) | Mapped Translations (Str) |
+|------------------------|----------------------------------|---------------------------|
+| 클리프가 칼파데에 가서 친구들과 이야기했다 | 클리프, 칼파데 | Kliff, Calphade |
+| 나는 엘레노어 공작이고, 고고구구 땅을 다스린다 | 엘레노어 공작, 고고구구 땅 | Duke Elenor, Lands of Gogogugu |
 
 ---
 
