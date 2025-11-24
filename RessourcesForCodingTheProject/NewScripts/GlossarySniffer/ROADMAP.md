@@ -611,6 +611,285 @@ def write_results_to_excel(results, output_path):
 **Complexity**: LOW (just passing data through)
 **Backward compatibility**: Output format changes (2 cols → 3 cols)
 **Testing**: 4 test cases to validate mapping
+**Status**: ✅ COMPLETE (2025-11-24)
+
+---
+
+## 🌍 ENHANCEMENT: Multi-Language Support (13 Languages)
+
+**Status**: 📋 PLANNED (2025-11-24)
+**Complexity**: MEDIUM (folder walking, multiple file parsing)
+**Estimated Time**: 2-3 hours
+**Reference**: wordcount1.py (lines 43-47, 134-148)
+
+### Current Limitation
+
+**Current**: Single XML file → Single language mapping (Korean → English)
+```
+Input: One XML file with StrOrigin + Str
+Output: 3 columns (Original Line | Korean | English)
+```
+
+**Problem**: Need to check translations across **13 languages**, not just one!
+
+### New Approach: Language Data Folder
+
+**Input**: LANGUAGE DATA FOLDER containing multiple XML files
+```
+languagedata_folder/
+├── languagedata_KOR.xml  ← StrOrigin (Korean source)
+├── languagedata_ENG.xml  ← English translation
+├── languagedata_FRA.xml  ← French translation
+├── languagedata_GER.xml  ← German translation
+├── languagedata_SPA.xml  ← Spanish translation
+├── languagedata_ITA.xml  ← Italian translation
+├── languagedata_POR.xml  ← Portuguese translation
+├── languagedata_RUS.xml  ← Russian translation
+├── languagedata_POL.xml  ← Polish translation
+├── languagedata_TUR.xml  ← Turkish translation
+├── languagedata_THA.xml  ← Thai translation
+├── languagedata_JPN.xml  ← Japanese translation
+├── languagedata_CHS.xml  ← Chinese Simplified translation
+└── languagedata_CHT.xml  ← Chinese Traditional translation
+```
+
+**Key Insight from wordcount1.py**:
+- All language files have the **SAME StrOrigin** values
+- Each file has **different Str translations**
+- Extract StrOrigin from KOR file (reference)
+- Map to all 13 language translations
+
+### New Output Format
+
+**Output**: Excel with **15 columns** (Original Line + StrOrigin + 13 languages)
+
+```
+| Original Line (Korean) | Glossary (StrOrigin=KOR) | ENG | FRA | GER | SPA | ITA | POR | RUS | POL | TUR | THA | JPN | CHS | CHT |
+|------------------------|--------------------------|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+| 클리프가 칼파데에 갔다   | 클리프, 칼파데            | Kliff, Calphade | Kliff, Calphade | Kliff, Calphade | ... | ... | ... | ... | ... | ... | ... | ... | ... | ... |
+```
+
+### Implementation Plan
+
+#### Step 1: Update XML Selection (UI)
+**Change**: Select FOLDER instead of single XML file
+```python
+def main():
+    # BEFORE: Select single XML file
+    xml_path = filedialog.askopenfilename(title="Select XML Glossary Source", ...)
+
+    # AFTER: Select LANGUAGE DATA FOLDER
+    folder_path = filedialog.askdirectory(title="Select Language Data Folder")
+```
+
+#### Step 2: Folder Walking (from wordcount1.py pattern)
+**New function**: Walk folder and find all `languagedata_*.xml` files
+```python
+def iter_language_files(folder: Path):
+    """
+    Walk folder and yield all languagedata_*.xml files.
+    Pattern from wordcount1.py lines 43-47.
+    """
+    for dirpath, _, filenames in os.walk(folder):
+        for fn in filenames:
+            if fn.lower().startswith("languagedata_") and fn.lower().endswith(".xml"):
+                yield Path(dirpath) / fn
+
+def extract_language_code(xml_path: Path) -> str:
+    """
+    Extract language code from filename.
+    Example: "languagedata_ENG.xml" → "ENG"
+    Pattern from wordcount1.py lines 135-139.
+    """
+    stem = xml_path.stem
+    parts = stem.split("_", 1)
+    if len(parts) == 2:
+        return parts[1].upper()
+    return "UNKNOWN"
+```
+
+#### Step 3: Multi-Language Glossary Extraction
+**New function**: Extract StrOrigin + all language translations
+```python
+def extract_multilanguage_glossary(folder_path, length_threshold, min_occurrence):
+    """
+    Extract glossary from LANGUAGE DATA FOLDER.
+
+    Returns:
+        tuple: (glossary_terms: list, multi_lang_map: dict)
+        - glossary_terms: List of StrOrigin values (from KOR)
+        - multi_lang_map: Dict mapping StrOrigin → {lang_code: translation}
+
+    Example multi_lang_map:
+    {
+        '클리프': {
+            'ENG': 'Kliff',
+            'FRA': 'Kliff',
+            'GER': 'Kliff',
+            'SPA': 'Kliff',
+            ...
+        },
+        '칼파데': {
+            'ENG': 'Calphade',
+            'FRA': 'Calphade',
+            ...
+        }
+    }
+    """
+    # 1. Find all languagedata_*.xml files
+    xml_files = list(iter_language_files(Path(folder_path)))
+    print(f"   Found {len(xml_files)} language files")
+
+    # 2. Group by language code
+    files_by_lang = {}
+    for xml_path in xml_files:
+        lang_code = extract_language_code(xml_path)
+        files_by_lang[lang_code] = xml_path
+
+    # 3. Extract StrOrigin from KOR file (reference)
+    if 'KOR' not in files_by_lang:
+        raise ValueError("No Korean (KOR) language file found!")
+
+    kor_path = files_by_lang['KOR']
+    tree = etree.parse(kor_path)
+
+    # Build StrOrigin list (for filtering)
+    all_terms = []
+    for locstr in tree.xpath('//LocStr'):
+        str_origin = locstr.get('StrOrigin', '').strip()
+        if str_origin:
+            all_terms.append(str_origin)
+
+    # Filter glossary (same rules as before)
+    glossary_terms = filter_glossary_terms(all_terms, length_threshold, min_occurrence)
+
+    # 4. Build multi-language mapping
+    multi_lang_map = {term: {} for term in glossary_terms}
+
+    for lang_code, xml_path in files_by_lang.items():
+        print(f"   Processing {lang_code}...")
+        tree = etree.parse(xml_path)
+
+        for locstr in tree.xpath('//LocStr'):
+            str_origin = locstr.get('StrOrigin', '').strip()
+            str_value = locstr.get('Str', '').strip()
+
+            # Only include terms that passed filtering
+            if str_origin in multi_lang_map:
+                multi_lang_map[str_origin][lang_code] = str_value
+
+    return glossary_terms, multi_lang_map
+```
+
+#### Step 4: Update Excel Processing
+**Modify**: Store translations for all languages
+```python
+def process_excel_lines(excel_path, automaton, multi_lang_map, language_codes):
+    """
+    Returns:
+        list: Tuples of (original_line, glossary_terms_found, translations_by_lang)
+        - translations_by_lang: Dict mapping lang_code → comma-separated translations
+    """
+    results = []
+
+    for row in ws.iter_rows(...):
+        line = str(row[0])
+        matches = search_line_for_glossary(line, automaton)
+        matches = resolve_overlapping_matches(matches, line)
+
+        # NEW: Build translations for ALL languages
+        translations_by_lang = {}
+        for lang_code in language_codes:
+            lang_translations = [
+                multi_lang_map.get(term, {}).get(lang_code, '')
+                for term in matches
+            ]
+            translations_by_lang[lang_code] = lang_translations
+
+        results.append((line, matches, translations_by_lang))
+
+    return results
+```
+
+#### Step 5: Update Excel Output (15 Columns)
+**New**: Write 15 columns instead of 3
+```python
+def write_results_to_excel(results, output_path, language_codes):
+    """
+    Write results with 15 columns:
+    - Column 1: Original Line
+    - Column 2: Glossary Terms Found (StrOrigin)
+    - Columns 3-15: Translations for each language
+    """
+    # Header row
+    headers = ["Original Line", "Glossary Terms (StrOrigin)"] + language_codes
+    ws.append(headers)
+
+    # Data rows
+    for line, matches, translations_by_lang in results:
+        glossary_str = ", ".join(matches) if matches else ""
+
+        row_data = [line, glossary_str]
+
+        # Add translation columns for each language
+        for lang_code in language_codes:
+            lang_translations = translations_by_lang.get(lang_code, [])
+            translation_str = ", ".join(lang_translations) if lang_translations else ""
+            row_data.append(translation_str)
+
+        ws.append(row_data)
+
+    # Auto-size columns
+    ws.column_dimensions['A'].width = 80  # Original Line
+    ws.column_dimensions['B'].width = 50  # Glossary Terms
+    for i, lang_code in enumerate(language_codes, start=3):
+        col_letter = chr(64 + i)  # C, D, E, F, ...
+        ws.column_dimensions[col_letter].width = 40
+```
+
+### Testing Plan
+
+**Test Case 1**: Folder with 13 language files
+- Input: Folder with languagedata_KOR.xml, languagedata_ENG.xml, etc.
+- Expected: Extracts glossary from KOR, maps to all 13 languages
+
+**Test Case 2**: Multi-language mapping
+- Input line: "클리프가 칼파데에 갔다"
+- Expected output: 15 columns with translations in all languages
+
+**Test Case 3**: Missing language file
+- Input: Folder missing one language (e.g., no FRA file)
+- Expected: Empty column for missing language, others work fine
+
+**Test Case 4**: Same StrOrigin across files
+- Verify: All language files have the same StrOrigin values
+- Verify: Only Str values differ per language
+
+### Files to Modify
+
+✅ **glossary_sniffer_1124.py** (major refactor):
+1. Add `iter_language_files()` - Folder walking
+2. Add `extract_language_code()` - Extract lang code from filename
+3. Modify `extract_glossary_from_xml()` → `extract_multilanguage_glossary()` - Multi-file parsing
+4. Modify `process_excel_lines()` - Handle multi-language translations
+5. Modify `write_results_to_excel()` - Write 15 columns
+
+✅ **ROADMAP.md** (this file) - Document enhancement
+
+✅ **README.md** - Update examples (15 columns)
+
+✅ **SUMMARY.md** - Update examples (15 columns)
+
+### Summary
+
+**Changes**: SIGNIFICANT refactor for multi-language support
+**Complexity**: MEDIUM (folder walking, multiple file parsing, 15-column output)
+**Backward compatibility**: BREAKS (output format changes 3 cols → 15 cols)
+**Testing**: 4 test cases + validation with real language data
+**Benefits**:
+- Check ALL 13 language translations at once ✅
+- Single run covers entire translation coverage ✅
+- No need to run 13 times for each language ✅
 
 ---
 
