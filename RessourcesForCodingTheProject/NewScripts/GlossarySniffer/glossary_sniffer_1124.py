@@ -1,24 +1,27 @@
 """
 Script Name: glossary_sniffer_1124.py
 Created: 2025-11-24
-Purpose: Extract glossary terms from XML and find them in Excel text lines
+Updated: 2025-11-24 (Multi-language support added)
+Purpose: Extract glossary terms from LANGUAGE DATA FOLDER and find them in Excel text lines
 Input:
-    1. XML file with StrOrigin attributes (glossary source)
-    2. Excel file with lines to analyze
-Output: Excel file with original lines + glossary terms found in each line
-Reference: QuickSearch0818.py (Aho-Corasick glossary extraction patterns)
+    1. LANGUAGE DATA FOLDER with languagedata_*.xml files (13 languages)
+    2. Excel file with lines to analyze (Korean text)
+Output: Excel file with original lines + glossary terms + translations in ALL languages
+Reference: QuickSearch0818.py (Aho-Corasick), wordcount1.py (folder walking)
 
 Usage:
     python glossary_sniffer_1124.py
 
     1. Run the script
-    2. Select XML file (glossary source)
-    3. Select Excel file (lines to analyze)
-    4. Script builds glossary and searches for terms
-    5. Select output location
-    6. Results saved with 2 columns:
-       - Column 1: Original Line
-       - Column 2: Glossary Terms Found (comma-separated)
+    2. Select LANGUAGE DATA FOLDER (with languagedata_KOR.xml, languagedata_ENG.xml, etc.)
+    3. Script extracts glossary from KOR file and maps to all language translations
+    4. Select Excel file (lines to analyze)
+    5. Script searches for glossary terms and maps to all languages
+    6. Select output location
+    7. Results saved with 2 + N language columns:
+       - Column 1: Original Line (Korean)
+       - Column 2: Glossary Terms Found (StrOrigin from KOR)
+       - Columns 3+: One column per language (ENG, FRA, GER, SPA, ITA, POR, RUS, POL, TUR, THA, JPN, CHS, CHT)
 
 Dependencies:
     pip install openpyxl lxml pyahocorasick
@@ -42,6 +45,139 @@ MIN_OCCURRENCE = 2  # Term must appear at least this many times to be glossary
 FILTER_SENTENCES = True  # Remove entries ending with punctuation (.?!)
 FILTER_PUNCTUATION = True  # Remove entries containing ANY punctuation (including …)
 WORD_BOUNDARIES = True  # Only match complete words (not inside other words)
+
+def iter_language_files(folder: Path):
+    """
+    Walk folder and yield all languagedata_*.xml files.
+    Pattern from wordcount1.py lines 43-47.
+
+    Args:
+        folder: Path to language data folder
+
+    Yields:
+        Path: Path to each languagedata_*.xml file found
+    """
+    for dirpath, _, filenames in os.walk(folder):
+        for fn in filenames:
+            if fn.lower().startswith("languagedata_") and fn.lower().endswith(".xml"):
+                yield Path(dirpath) / fn
+
+def extract_language_code(xml_path: Path) -> str:
+    """
+    Extract language code from filename.
+    Example: "languagedata_ENG.xml" → "ENG"
+    Pattern from wordcount1.py lines 135-139.
+
+    Args:
+        xml_path: Path to XML file
+
+    Returns:
+        str: Language code (e.g., "ENG", "FRA", "KOR")
+    """
+    stem = xml_path.stem
+    parts = stem.split("_", 1)
+    if len(parts) == 2:
+        return parts[1].upper()
+    return "UNKNOWN"
+
+def extract_multilanguage_glossary(folder_path, length_threshold=DEFAULT_LENGTH_THRESHOLD, min_occurrence=MIN_OCCURRENCE):
+    """
+    Extract glossary from LANGUAGE DATA FOLDER (multi-language support).
+
+    HARDCODED FILTERING RULES (from QuickSearch0818):
+    1. Length < 15 characters (Korean names/terms are usually short)
+    2. No punctuation endings (.?!)
+    3. No punctuation inside term (except spaces/hyphens for multi-word)
+    4. Must appear >= 2 times (min_occurrence)
+    5. Non-empty strings only
+
+    Args:
+        folder_path: Path to language data folder
+        length_threshold: Maximum character length for glossary terms
+        min_occurrence: Minimum times a term must appear to be considered glossary
+
+    Returns:
+        tuple: (glossary_terms: list, multi_lang_map: dict, language_codes: list)
+            - glossary_terms: List of StrOrigin values (from KOR)
+            - multi_lang_map: Dict mapping StrOrigin → {lang_code: translation}
+            - language_codes: List of language codes found (sorted)
+
+    Example multi_lang_map:
+    {
+        '클리프': {'ENG': 'Kliff', 'FRA': 'Kliff', 'GER': 'Kliff', ...},
+        '칼파데': {'ENG': 'Calphade', 'FRA': 'Calphade', ...}
+    }
+    """
+    print(f"\n📖 Extracting glossary from folder: {Path(folder_path).name}")
+
+    try:
+        # 1. Find all languagedata_*.xml files
+        xml_files = list(iter_language_files(Path(folder_path)))
+        print(f"   Found {len(xml_files)} language files")
+
+        if not xml_files:
+            raise ValueError("No languagedata_*.xml files found in folder!")
+
+        # 2. Group by language code
+        files_by_lang = {}
+        for xml_path in xml_files:
+            lang_code = extract_language_code(xml_path)
+            files_by_lang[lang_code] = xml_path
+            print(f"      - {lang_code}: {xml_path.name}")
+
+        # 3. Extract StrOrigin from KOR file (reference)
+        if 'KOR' not in files_by_lang:
+            raise ValueError("No Korean (KOR) language file found! Need languagedata_KOR.xml")
+
+        kor_path = files_by_lang['KOR']
+        print(f"\n   Using KOR file as reference: {kor_path.name}")
+        tree = etree.parse(kor_path)
+
+        # Build StrOrigin list (for filtering)
+        all_terms = []
+        for locstr in tree.xpath('//LocStr'):
+            str_origin = locstr.get('StrOrigin', '').strip()
+            if str_origin:
+                all_terms.append(str_origin)
+
+        print(f"   Found {len(all_terms):,} total StrOrigin entries from KOR")
+
+        # Filter glossary (same rules as before)
+        glossary_terms = filter_glossary_terms(all_terms, length_threshold, min_occurrence)
+
+        print(f"   ✅ Filtered to {len(glossary_terms):,} glossary terms (min {min_occurrence} occurrences)")
+
+        # 4. Build multi-language mapping
+        multi_lang_map = {term: {} for term in glossary_terms}
+
+        print(f"\n   Building multi-language mapping...")
+        for lang_code, xml_path in sorted(files_by_lang.items()):
+            print(f"      Processing {lang_code}...", end=" ")
+            tree = etree.parse(xml_path)
+
+            mapped_count = 0
+            for locstr in tree.xpath('//LocStr'):
+                str_origin = locstr.get('StrOrigin', '').strip()
+                str_value = locstr.get('Str', '').strip()
+
+                # Only include terms that passed filtering
+                if str_origin in multi_lang_map:
+                    multi_lang_map[str_origin][lang_code] = str_value
+                    mapped_count += 1
+
+            print(f"{mapped_count:,} terms mapped")
+
+        # Get sorted language codes (excluding KOR, put it first)
+        language_codes = sorted([lang for lang in files_by_lang.keys() if lang != 'KOR'])
+        language_codes = ['KOR'] + language_codes  # KOR first
+
+        print(f"\n   ✅ Multi-language glossary built: {len(glossary_terms):,} terms × {len(language_codes)} languages")
+
+        return glossary_terms, multi_lang_map, language_codes
+
+    except Exception as e:
+        print(f"   ❌ Error extracting glossary: {e}")
+        raise
 
 def extract_glossary_from_xml(xml_path, length_threshold=DEFAULT_LENGTH_THRESHOLD, min_occurrence=MIN_OCCURRENCE):
     """
@@ -265,17 +401,19 @@ def resolve_overlapping_matches(matches, line):
 
     return final_matches
 
-def process_excel_lines(excel_path, automaton, glossary_map):
+def process_excel_lines(excel_path, automaton, multi_lang_map, language_codes):
     """
-    Read Excel, search each line for glossary terms, map to translations.
+    Read Excel, search each line for glossary terms, map to all language translations.
 
     Args:
         excel_path: Path to input Excel file
         automaton: Aho-Corasick automaton
-        glossary_map: Dict mapping StrOrigin → Str (Korean → English)
+        multi_lang_map: Dict mapping StrOrigin → {lang_code: translation}
+        language_codes: List of language codes (e.g., ['KOR', 'ENG', 'FRA', ...])
 
     Returns:
-        list: Tuples of (original_line, glossary_terms_found, mapped_translations)
+        list: Tuples of (original_line, glossary_terms_found, translations_by_lang)
+            - translations_by_lang: Dict mapping lang_code → list of translations
     """
     print(f"\n📊 Processing Excel file: {Path(excel_path).name}")
 
@@ -292,7 +430,9 @@ def process_excel_lines(excel_path, automaton, glossary_map):
             line = str(row[0]) if row[0] else ""
 
             if not line or line == "None":
-                results.append((line, [], []))  # NEW: 3-tuple with empty translations
+                # Empty line: empty matches and empty translations for all languages
+                empty_translations = {lang: [] for lang in language_codes}
+                results.append((line, [], empty_translations))
                 continue
 
             # Search for glossary terms
@@ -301,10 +441,16 @@ def process_excel_lines(excel_path, automaton, glossary_map):
             # Resolve overlapping matches (prefer longest)
             matches = resolve_overlapping_matches(matches, line)
 
-            # NEW: Map each match to its Str value (Korean → English)
-            mapped_translations = [glossary_map.get(term, '') for term in matches]
+            # NEW: Build translations for ALL languages
+            translations_by_lang = {}
+            for lang_code in language_codes:
+                lang_translations = [
+                    multi_lang_map.get(term, {}).get(lang_code, '')
+                    for term in matches
+                ]
+                translations_by_lang[lang_code] = lang_translations
 
-            results.append((line, matches, mapped_translations))  # NEW: 3-tuple
+            results.append((line, matches, translations_by_lang))
 
             if matches:
                 total_matches += 1
@@ -323,16 +469,17 @@ def process_excel_lines(excel_path, automaton, glossary_map):
         print(f"   ❌ Error reading Excel: {e}")
         raise
 
-def write_results_to_excel(results, output_path):
+def write_results_to_excel(results, output_path, language_codes):
     """
-    Write results to Excel with 3 columns:
-    - Column 1: Original Line (Korean)
-    - Column 2: Glossary Terms Found (StrOrigin = Korean, comma-separated)
-    - Column 3: Mapped Translations (Str = English, comma-separated)
+    Write results to Excel with multiple columns (2 + N languages):
+    - Column 1: Original Line
+    - Column 2: Glossary Terms Found (StrOrigin, comma-separated)
+    - Columns 3+: One column per language (comma-separated translations)
 
     Args:
-        results: List of (original_line, glossary_terms, mapped_translations) tuples
+        results: List of (original_line, glossary_terms, translations_by_lang) tuples
         output_path: Path to save output Excel
+        language_codes: List of language codes (e.g., ['KOR', 'ENG', 'FRA', ...])
     """
     print(f"\n💾 Saving results to: {Path(output_path).name}")
 
@@ -341,27 +488,41 @@ def write_results_to_excel(results, output_path):
         ws = wb.active
         ws.title = "Glossary Analysis"
 
-        # Header row (3 columns now)
-        ws.append(["Original Line", "Glossary Terms Found (StrOrigin)", "Mapped Translations (Str)"])
+        # Header row: Original Line + Glossary Terms + one column per language
+        headers = ["Original Line", "Glossary Terms (StrOrigin)"] + language_codes
+        ws.append(headers)
 
         # Format header (bold)
         for cell in ws[1]:
             cell.font = openpyxl.styles.Font(bold=True)
 
         # Data rows
-        for line, matches, translations in results:  # NEW: Unpack 3-tuple
-            # Join matches and translations with comma
+        for line, matches, translations_by_lang in results:
+            # Column 1: Original Line
+            # Column 2: Glossary Terms Found (comma-separated)
             glossary_str = ", ".join(matches) if matches else ""
-            translation_str = ", ".join(translations) if translations else ""  # NEW
-            ws.append([line, glossary_str, translation_str])  # NEW: 3 columns
+
+            row_data = [line, glossary_str]
+
+            # Columns 3+: One column per language (comma-separated translations)
+            for lang_code in language_codes:
+                lang_translations = translations_by_lang.get(lang_code, [])
+                translation_str = ", ".join(lang_translations) if lang_translations else ""
+                row_data.append(translation_str)
+
+            ws.append(row_data)
 
         # Auto-size columns
-        ws.column_dimensions['A'].width = 80
-        ws.column_dimensions['B'].width = 50
-        ws.column_dimensions['C'].width = 50  # NEW
+        ws.column_dimensions['A'].width = 80  # Original Line
+        ws.column_dimensions['B'].width = 50  # Glossary Terms
+
+        # Auto-size language columns
+        for i, lang_code in enumerate(language_codes, start=3):
+            col_letter = chr(64 + i)  # C, D, E, F, G, ...
+            ws.column_dimensions[col_letter].width = 40
 
         wb.save(output_path)
-        print(f"   ✅ Saved {len(results):,} rows")
+        print(f"   ✅ Saved {len(results):,} rows with {len(language_codes)} language columns")
 
     except Exception as e:
         print(f"   ❌ Error saving Excel: {e}")
@@ -369,13 +530,14 @@ def write_results_to_excel(results, output_path):
 
 def main():
     """
-    Main execution:
-    1. Pick XML glossary source
-    2. Build glossary with smart filtering
+    Main execution (MULTI-LANGUAGE):
+    1. Pick LANGUAGE DATA FOLDER (with languagedata_*.xml files)
+    2. Build multi-language glossary with smart filtering
     3. Build Aho-Corasick automaton
-    4. Pick Excel input file
+    4. Pick Excel input file (lines to analyze)
     5. Search for glossary terms in each line
-    6. Save results to Excel
+    6. Map to ALL language translations
+    7. Save results to Excel (2 + N language columns)
     """
     print("="*70)
     print("🔍 GlossarySniffer - Glossary Term Extraction & Search")
@@ -386,37 +548,39 @@ def main():
     root.withdraw()
 
     try:
-        # Step 1: Select XML glossary source
-        print("\n📂 Step 1: Select XML glossary source file")
-        xml_path = filedialog.askopenfilename(
-            title="Select XML Glossary Source",
-            filetypes=[
-                ("XML Files", "*.xml"),
-                ("All Files", "*.*")
-            ]
+        # Step 1: Select LANGUAGE DATA FOLDER
+        print("\n📂 Step 1: Select Language Data Folder (with languagedata_*.xml files)")
+        folder_path = filedialog.askdirectory(
+            title="Select Language Data Folder"
         )
 
-        if not xml_path:
-            print("❌ No XML file selected. Exiting.")
+        if not folder_path:
+            print("❌ No folder selected. Exiting.")
             return
 
-        # Step 2: Extract and filter glossary + build mapping
-        glossary_terms, glossary_map = extract_glossary_from_xml(xml_path, DEFAULT_LENGTH_THRESHOLD)  # NEW: Unpack tuple
+        # Step 2: Extract multi-language glossary + build mapping
+        glossary_terms, multi_lang_map, language_codes = extract_multilanguage_glossary(
+            folder_path,
+            DEFAULT_LENGTH_THRESHOLD
+        )
 
         if not glossary_terms:
-            messagebox.showerror("Error", "No glossary terms found in XML file!")
+            messagebox.showerror("Error", "No glossary terms found in language data folder!")
             return
 
         # Show some sample terms with translations
-        print(f"\n   Sample glossary terms (Korean → English):")
-        for term in glossary_terms[:10]:
-            translation = glossary_map.get(term, '')
-            print(f"      - {term} → {translation}")
-        if len(glossary_terms) > 10:
-            print(f"      ... and {len(glossary_terms)-10} more")
+        print(f"\n   Sample glossary terms across languages:")
+        for term in glossary_terms[:5]:
+            translations = []
+            for lang in language_codes[:5]:  # Show first 5 languages
+                trans = multi_lang_map.get(term, {}).get(lang, '')
+                translations.append(f"{lang}:{trans}")
+            print(f"      - {term} → [{', '.join(translations)}]")
+        if len(glossary_terms) > 5:
+            print(f"      ... and {len(glossary_terms)-5} more")
 
         # Step 3: Build Aho-Corasick automaton
-        automaton = build_ahocorasick_automaton(glossary_terms)  # NEW: Use glossary_terms
+        automaton = build_ahocorasick_automaton(glossary_terms)
 
         # Step 4: Select Excel input file
         print("\n📂 Step 2: Select Excel input file (lines to analyze)")
@@ -433,7 +597,7 @@ def main():
             return
 
         # Step 5: Process Excel and search for glossary terms
-        results = process_excel_lines(excel_path, automaton, glossary_map)  # NEW: Pass glossary_map
+        results = process_excel_lines(excel_path, automaton, multi_lang_map, language_codes)
 
         # Step 6: Select output location
         print("\n📂 Step 3: Select output location")
@@ -449,21 +613,23 @@ def main():
             return
 
         # Step 7: Write results
-        write_results_to_excel(results, output_path)
+        write_results_to_excel(results, output_path, language_codes)
 
         # Success!
         print("\n" + "="*70)
         print("✅ SUCCESS!")
         print("="*70)
         print(f"📊 Glossary Terms: {len(glossary_terms):,}")
+        print(f"🌍 Languages: {len(language_codes)} ({', '.join(language_codes)})")
         print(f"📄 Lines Processed: {len(results):,}")
         print(f"💾 Output: {output_path}")
         print("="*70)
 
         messagebox.showinfo(
             "Success",
-            f"Glossary analysis complete!\n\n"
+            f"Multi-language glossary analysis complete!\n\n"
             f"Glossary Terms: {len(glossary_terms):,}\n"
+            f"Languages: {len(language_codes)} ({', '.join(language_codes[:5])}...)\n"
             f"Lines Processed: {len(results):,}\n\n"
             f"Results saved to:\n{output_path}"
         )

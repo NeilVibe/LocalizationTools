@@ -7,7 +7,7 @@
 
 ## 🎯 What It Does
 
-Extracts Korean glossary terms from XML and finds them in Excel lines using **Aho-Corasick** + **5 hardcoded filtering rules**.
+Extracts Korean glossary terms from **LANGUAGE DATA FOLDER** (13 languages) and finds them in Excel lines using **Aho-Corasick** + **5 hardcoded filtering rules**. Maps to **ALL 13 language translations** at once.
 
 ---
 
@@ -33,10 +33,10 @@ pip install openpyxl lxml pyahocorasick
 # Run
 python glossary_sniffer_1124.py
 
-# 1. Select XML (glossary source)
+# 1. Select LANGUAGE DATA FOLDER (with languagedata_*.xml files)
 # 2. Select Excel (lines to analyze)
 # 3. Save results
-# Done!
+# Done! (Output has 2 + N language columns)
 ```
 
 ---
