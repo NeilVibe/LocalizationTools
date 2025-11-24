@@ -6,13 +6,14 @@
 
 ## 🎯 What It Does
 
-**GlossarySniffer** extracts glossary terms from XML files and searches for them in Excel text lines, using the fast Aho-Corasick algorithm for multi-pattern matching.
+**GlossarySniffer** extracts glossary terms from a **LANGUAGE DATA FOLDER** (13 languages) and searches for them in Excel text lines, using the fast Aho-Corasick algorithm for multi-pattern matching.
 
 ### Use Case
-- Analyze translation lines to identify which glossary terms appear
+- Analyze Korean translation lines to identify which glossary terms appear
 - Build smart glossary from XML `StrOrigin` attributes (filters out sentences, punctuation, etc.)
-- Fast search for both single terms ("Kliff") and multi-word expressions ("Duke Elenor")
-- Output Excel with original lines + glossary terms found
+- **Map to ALL 13 language translations at once** (ENG, FRA, GER, SPA, ITA, POR, RUS, POL, TUR, THA, JPN, CHS, CHT)
+- Fast search for both single terms ("클리프") and multi-word expressions ("엘레노어 공작")
+- Output Excel with original lines + glossary terms + **all language translations**
 
 ---
 
