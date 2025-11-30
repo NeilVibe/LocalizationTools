@@ -79,7 +79,7 @@ WelcomeLabel2=This will install [name/ver] on your computer.%n%nAfter installati
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "downloadmodel"; Description: "Download AI Model after installation (~447MB, requires internet)"; GroupDescription: "AI Features:"; Flags: checked
+Name: "downloadmodel"; Description: "Download AI Model after installation (~447MB, requires internet)"; GroupDescription: "AI Features:"
 
 [Files]
 ; Main Electron application (NO model bundled!)
