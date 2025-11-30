@@ -24,6 +24,7 @@
 ### Operational Apps
 1. ✅ **XLSTransfer** (App #1) - AI-powered Excel translation with Korean BERT
 2. ✅ **QuickSearch** (App #2) - Multi-game dictionary search (15 languages, 4 games)
+3. ⏳ **KR Similar** (App #3) - Korean semantic similarity search (PLANNED)
 
 ### Build Status
 | Component | Status | Notes |
@@ -76,11 +77,75 @@
 3. Missing `favicon.ico` file (commented out)
 4. Invalid `Flags: checked` in Inno Setup Tasks section
 
-### Priority 2: UI/UX Enhancements 🎨
+### Priority 2: KR Similar (App #3) 🔍
+**Status**: Planned
+**Goal**: Integrate Korean semantic similarity search as third LocaNext app
+**Source**: `RessourcesForCodingTheProject/MAIN PYTHON SCRIPTS/KRSIMILAR0124.py`
+
+#### 2.1 Feature Overview
+KR Similar finds semantically similar Korean strings using the same Korean BERT model as XLSTransfer.
+
+**Core Functionality:**
+- Load reference Excel file with Korean strings
+- Build FAISS index from sentence embeddings
+- Search for similar strings by semantic meaning
+- Return top-N matches with similarity scores
+
+**Use Cases:**
+- Find translation reuse opportunities
+- Identify duplicate or near-duplicate content
+- Quality check for consistency
+
+#### 2.2 Implementation Plan
+```
+KR Similar Integration:
+├── Backend (server/tools/)
+│   ├── kr_similar.py           # Core logic (from KRSIMILAR0124.py)
+│   └── kr_similar_api.py       # FastAPI endpoints
+│
+├── Frontend (locaNext/src/)
+│   ├── routes/kr-similar/
+│   │   └── +page.svelte        # Main UI page
+│   ├── lib/components/
+│   │   ├── KRSimilarUpload.svelte
+│   │   ├── KRSimilarSearch.svelte
+│   │   └── KRSimilarResults.svelte
+│   └── lib/stores/
+│       └── krSimilarStore.ts   # State management
+│
+├── API Endpoints
+│   ├── POST /api/kr-similar/load      # Load Excel file
+│   ├── POST /api/kr-similar/search    # Search similar strings
+│   ├── GET  /api/kr-similar/status    # Index status
+│   └── DELETE /api/kr-similar/clear   # Clear index
+│
+└── Shared Resources
+    └── models/kr-sbert/        # Same BERT model as XLSTransfer
+```
+
+#### 2.3 Implementation Tasks
+- [ ] Extract core logic from KRSIMILAR0124.py
+- [ ] Create kr_similar.py backend module
+- [ ] Create kr_similar_api.py with FastAPI endpoints
+- [ ] Add navigation entry in LocaNext sidebar
+- [ ] Create KR Similar page with upload/search UI
+- [ ] Add WebSocket progress for index building
+- [ ] Write tests for similarity search
+- [ ] Update documentation
+
+#### 2.4 Technical Notes
+- **Model**: Uses same `snunlp/KR-SBERT-V40K-klueNLI-augSTS` as XLSTransfer
+- **Index**: FAISS for fast similarity search
+- **Dependencies**: sentence-transformers, faiss-cpu (already installed)
+- **Reuse**: Leverage existing model loading from XLSTransfer
+
+---
+
+### Priority 3: UI/UX Enhancements 🎨
 **Status**: Planned
 **Goal**: Add Settings menu with About and Preferences
 
-#### 2.1 Settings Dropdown Menu
+#### 3.1 Settings Dropdown Menu
 Add a settings dropdown in the header with:
 
 **About Section:**
@@ -98,7 +163,7 @@ Add a settings dropdown in the header with:
 - [ ] **Auto-update**: Enable/disable auto-update check
 - [ ] **Data**: Clear cache, reset preferences
 
-#### 2.2 Implementation Plan
+#### 3.2 Implementation Plan
 ```
 Settings Menu Structure:
 ├── About
@@ -120,19 +185,19 @@ Settings Menu Structure:
         └── Reset to Defaults [button]
 ```
 
-#### 2.3 Update Warning System
+#### 3.3 Update Warning System
 - Fetch latest release from GitHub API
 - Compare version numbers
 - Show notification badge on Settings icon if update available
 - Display update dialog with changelog
 
-### Priority 3: Admin Dashboard Authentication
+### Priority 4: Admin Dashboard Authentication
 **Status**: Pending
 - [ ] Add login page for admin dashboard
 - [ ] Protect admin routes with auth middleware
 - [ ] Role-based access control
 
-### Priority 4: Export Functionality
+### Priority 5: Export Functionality
 **Status**: Pending
 - [ ] Export rankings to CSV/Excel
 - [ ] Export statistics to PDF
@@ -172,9 +237,10 @@ git add -A && git commit -m "Trigger LIGHT build" && git push
 - ✅ WebSocket: Real-time progress tracking
 - ✅ Auth: JWT-based authentication
 
-### Apps - 2 Complete
+### Apps - 2 Complete, 1 Planned
 - ✅ XLSTransfer (App #1) - AI-powered translation with Korean BERT
 - ✅ QuickSearch (App #2) - Multi-game dictionary search
+- ⏳ KR Similar (App #3) - Korean semantic similarity search (NEXT)
 
 ### Distribution Infrastructure - 100% Complete
 - ✅ Git LFS configured (model tracked)
@@ -275,6 +341,6 @@ Password: admin123
 
 **Last Updated**: 2025-11-30
 **Current Version**: 2511221939
-**Current Focus**: First LIGHT build test
-**Next Milestone**: Settings menu with About/Preferences
-**Platform Status**: Core Complete - Ready for First Release
+**Current Focus**: KR Similar (App #3) Integration
+**Next Milestone**: KR Similar - Korean semantic similarity search
+**Platform Status**: Core Complete - First Release Available
