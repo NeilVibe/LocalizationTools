@@ -137,23 +137,49 @@ tests/
 ├── archive/                   # Deprecated tests (don't delete, archive!)
 │   └── README.md
 ├── e2e/                       # End-to-end tests (full pipeline with real data)
+│   ├── test_kr_similar_e2e.py    # KR Similar: 18 unit + 9 API tests
+│   ├── test_xlstransfer_e2e.py   # XLSTransfer: 9 unit + 8 API tests
+│   ├── test_quicksearch_e2e.py   # QuickSearch: 11 unit + 8 API tests
 │   ├── test_complete_user_flow.py
-│   ├── test_full_workflow.py
-│   └── test_kr_similar_e2e.py    # KR Similar E2E (15 tests)
-├── fixtures/                  # Shared test data
+│   └── test_full_workflow.py
+├── fixtures/                  # Shared test data (CRITICAL!)
 │   ├── __init__.py
-│   └── sample_language_data.txt  # Mock language data (20 rows)
+│   ├── sample_language_data.txt     # KR Similar fixture (20 rows)
+│   ├── sample_dictionary.xlsx       # XLSTransfer fixture (20 rows Excel)
+│   ├── sample_to_translate.txt      # Translation input fixture
+│   └── sample_quicksearch_data.txt  # QuickSearch 7-column fixture
 ├── integration/               # API integration tests
 │   ├── test_api_endpoints.py
 │   └── test_server_startup.py
 ├── unit/                      # Fast unit tests
-│   ├── client/
+│   ├── client/               # Client utilities
+│   │   ├── test_utils_logger.py
+│   │   ├── test_utils_progress.py
+│   │   └── test_utils_file_handler.py
 │   └── test_server/
-├── test_kr_similar.py         # KR Similar unit tests (15 tests)
+│       └── test_websocket.py     # WebSocket tests (13 tests)
+├── test_async_auth.py         # Auth tests (6 async tests)
+├── test_dashboard_api.py      # Admin Dashboard (20 tests, 16 endpoints)
+├── test_kr_similar.py         # KR Similar unit tests
 ├── test_quicksearch_phase4.py
 ├── test_xlstransfer_cli.py
 └── conftest.py
 ```
+
+### Test Coverage Summary (2025-12-01)
+
+| Category | Tests | Coverage |
+|----------|-------|----------|
+| **App E2E Tests** | | |
+| - KR Similar | 27 (18 unit + 9 API) | All 9 endpoints |
+| - XLSTransfer | 17 (9 unit + 8 API) | All 8 endpoints |
+| - QuickSearch | 19 (11 unit + 8 API) | All 8 endpoints |
+| **Infrastructure** | | |
+| - Admin Dashboard | 20 | 16/16 endpoints |
+| - Authentication | 6 | JWT, roles, activation |
+| - WebSocket | 13 | Events, rooms, real-time |
+| - Client Utils | 86 | Logger, progress, file handler |
+| **Total** | **188+** | Full coverage |
 
 ### When to Use Each Folder
 
@@ -376,5 +402,5 @@ python3 scripts/create_admin.py && python3 server/main.py & sleep 5 && RUN_API_T
 
 ---
 
-*Last updated: 2025-11-30*
-*Protocol version: 1.0*
+*Last updated: 2025-12-01*
+*Protocol version: 2.0*
