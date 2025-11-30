@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2511221939 (2025-11-22)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | Distribution ✅
+**Version:** 2511302350 (2025-11-30)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅
 
 ---
 
@@ -15,10 +15,12 @@
 - 📊 **Central monitoring**: Optional telemetry to server
 - 👔 **Professional**: CEO/management-ready quality
 
-### Current Status (2025-11-22):
-- ✅ **Backend**: 100% Complete (38 endpoints, WebSocket, async)
+### Current Status (2025-11-30):
+- ✅ **Backend**: 100% Complete (47+ endpoints, WebSocket, async)
 - ✅ **LocaNext Desktop App**: 100% Complete (Electron + Svelte)
-- ✅ **XLSTransfer**: 100% Complete (10 functions, exact replica)
+- ✅ **XLSTransfer (App #1)**: 100% Complete (10 functions, exact replica)
+- ✅ **QuickSearch (App #2)**: 100% Complete (dictionary search with reference)
+- ✅ **KR Similar (App #3)**: 100% Complete (Korean semantic similarity, 34 tests)
 - ✅ **Distribution**: Git LFS, versioning, build system ready
 - ⏳ **Admin Dashboard**: 85% Complete (needs auth & polish)
 
@@ -49,7 +51,8 @@
 |----------|----------------|
 | **[CODING_STANDARDS.md](docs/CODING_STANDARDS.md)** | Rules, patterns, conventions, common pitfalls |
 | **[ADD_NEW_APP_GUIDE.md](docs/ADD_NEW_APP_GUIDE.md)** | How to add new tools (XLSTransfer as template) |
-| **[TESTING_GUIDE.md](docs/TESTING_GUIDE.md)** | Testing procedures, async tests, coverage |
+| **[TESTING_GUIDE.md](docs/TESTING_GUIDE.md)** | User testing procedures, manual workflow |
+| **[TESTING_PROTOCOL.md](docs/TESTING_PROTOCOL.md)** | **FULL autonomous testing with server, API, everything** |
 | **[LOGGING_PROTOCOL.md](docs/LOGGING_PROTOCOL.md)** | Comprehensive logging requirements (MANDATORY!) |
 | **[MONITORING_COMPLETE_GUIDE.md](docs/MONITORING_COMPLETE_GUIDE.md)** | Monitoring system, real-time logs |
 
@@ -115,8 +118,8 @@
 
 ### 4. Testing Required
 - Run `pytest` before every commit
-- Maintain 80%+ coverage
-- See: [TESTING_GUIDE.md](docs/TESTING_GUIDE.md)
+- For FULL tests: `RUN_API_TESTS=1 pytest` (requires server running)
+- See: [TESTING_PROTOCOL.md](docs/TESTING_PROTOCOL.md) for autonomous testing
 
 ### 5. Async by Default
 - All new endpoints should be async
@@ -141,14 +144,17 @@ cd adminDashboard && npm run dev -- --port 5175
 
 ### Testing
 ```bash
-# All tests (160 expected)
+# Quick tests (no server needed)
 python3 -m pytest
+
+# FULL tests with API (start server first!)
+python3 scripts/create_admin.py
+python3 server/main.py &
+sleep 5
+RUN_API_TESTS=1 python3 -m pytest -v
 
 # Check version consistency
 python3 scripts/check_version_unified.py
-
-# Create admin user
-python3 scripts/create_admin.py
 ```
 
 ### Build & Deploy
@@ -212,12 +218,12 @@ bash scripts/clean_logs.sh
 
 ## 📊 PROJECT STATS
 
-- **Lines of Code:** ~15,000+
-- **API Endpoints:** 38 (19 async + 19 sync)
+- **Lines of Code:** ~18,000+
+- **API Endpoints:** 47+ (async + sync)
 - **Database Tables:** 13
-- **Tests:** 160 passing (49% coverage)
-- **Tools:** 1 (XLSTransfer - 10 functions)
-- **Documentation Files:** 20+
+- **Tests:** 200+ passing
+- **Tools:** 3 (XLSTransfer, QuickSearch, KR Similar)
+- **Documentation Files:** 25+
 
 ---
 
@@ -229,5 +235,5 @@ This project is **96% complete**, **clean**, **organized**, and **production-rea
 
 ---
 
-*Last updated: 2025-11-22 by Claude*
+*Last updated: 2025-11-30 by Claude*
 *MASTER NAVIGATION HUB - All details are in linked docs*
