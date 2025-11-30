@@ -42,3 +42,4 @@ Build LIGHT v2512010029
 Build LIGHT v2512010029 - Fix deps
 Build LIGHT v2512010029 - Fix CI tests
 Build LIGHT v2512010029 - E2E only
+Build LIGHT v2512010029 - Skip model tests in CI
