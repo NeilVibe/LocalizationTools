@@ -27,6 +27,18 @@ sys.path.insert(0, str(project_root))
 # Fixtures directory
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
+# Check if Korean BERT model is available (not in CI LIGHT builds)
+MODEL_DIR = project_root / "models" / "kr-sbert"
+MODEL_AVAILABLE = MODEL_DIR.exists() and (MODEL_DIR / "model.safetensors").exists()
+
+
+def requires_model(func):
+    """Decorator to skip tests that require the Korean BERT model."""
+    return pytest.mark.skipif(
+        not MODEL_AVAILABLE,
+        reason="Korean BERT model not available (LIGHT build or CI)"
+    )(func)
+
 
 class TestXLSTransferCore:
     """Unit tests for XLSTransfer core functionality."""
@@ -107,6 +119,7 @@ class TestXLSTransferEmbeddings:
         except ImportError:
             pytest.skip("XLSTransfer embeddings module not available")
 
+    @requires_model
     def test_05_model_loads(self, embeddings_module):
         """Test that the Korean BERT model loads.
 
@@ -122,6 +135,7 @@ class TestXLSTransferEmbeddings:
 
         print(f"Model loaded, embedding shape: {test_embedding.shape}")
 
+    @requires_model
     def test_06_process_excel_for_dictionary(self, embeddings_module):
         """Test creating dictionary from Excel file.
 
@@ -145,6 +159,7 @@ class TestXLSTransferEmbeddings:
         assert "안녕하세요" in split_dict or any("안녕" in k for k in split_dict.keys()), \
             "Dictionary should contain Korean greeting"
 
+    @requires_model
     def test_07_save_and_load_dictionary(self, embeddings_module):
         """Test saving and loading dictionary.
 
@@ -199,6 +214,7 @@ class TestXLSTransferTranslation:
         except ImportError:
             pytest.skip("XLSTransfer translation module not available")
 
+    @requires_model
     def test_08_find_best_match(self, translation_module):
         """Test finding best matching translation.
 
@@ -228,6 +244,7 @@ class TestXLSTransferTranslation:
         # Should find a match or return with low score
         assert isinstance(score, float), "Score should be a float"
 
+    @requires_model
     def test_09_translate_with_high_threshold(self, translation_module):
         """Test translation with exact match threshold.
 
