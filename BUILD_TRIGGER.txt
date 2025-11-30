@@ -36,3 +36,4 @@ Build FULL v2511221939 - First attempt (BLOCKED - LFS quota exceeded)
 Build LIGHT v2511221939
 Build LIGHT v2511221939 - Fix #2 missing lib files
 Build LIGHT v2511221939 - Fix #3 npm script name
+Build LIGHT v2511221939 - Fix #4 missing icon file
