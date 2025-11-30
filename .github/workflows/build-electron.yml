@@ -73,7 +73,7 @@ jobs:
         run: |
           cd locaNext
           npm run build
-          npm run electron:build
+          npm run build:electron
         shell: pwsh
 
       - name: Verify Electron Build
@@ -165,7 +165,7 @@ jobs:
         run: |
           cd locaNext
           npm run build
-          npm run electron:build
+          npm run build:electron
 
       - name: Verify Linux Build
         run: |
