@@ -71,12 +71,18 @@
 | **[POSTGRESQL_SETUP.md](docs/POSTGRESQL_SETUP.md)** | PostgreSQL configuration |
 | **[SECURITY_AND_LOGGING.md](docs/SECURITY_AND_LOGGING.md)** | Security best practices |
 
+### 🤖 Claude AI Guides (READ THESE!)
+
+| Document | What It Covers |
+|----------|----------------|
+| **[CLAUDE_AUTONOMOUS_TESTING.md](docs/CLAUDE_AUTONOMOUS_TESTING.md)** | **X Server, headless browser, work alone without asking user** |
+| **[CLAUDE_AI_WARNINGS.md](docs/CLAUDE_AI_WARNINGS.md)** | AI hallucination prevention (5 documented types) |
+
 ### 🎯 Tool-Specific Guides
 
 | Document | What It Covers |
 |----------|----------------|
 | **[XLSTRANSFER_GUIDE.md](docs/XLSTRANSFER_GUIDE.md)** | XLSTransfer complete reference (dual-mode, API, GUI) |
-| **[CLAUDE_AI_WARNINGS.md](docs/CLAUDE_AI_WARNINGS.md)** | AI hallucination prevention (5 documented types) |
 | **[XLSTransfer_Migration_Audit.md](docs/XLSTransfer_Migration_Audit.md)** | Complete 13-section audit |
 
 ### 📖 Reference
