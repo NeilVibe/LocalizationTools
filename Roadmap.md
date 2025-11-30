@@ -4,9 +4,9 @@
 > **New Apps**: Can ONLY be added with EXPRESS DIRECT ORDER from user.
 > **Standalone Scripts**: Are tracked separately in [`NewScripts/ROADMAP.md`](RessourcesForCodingTheProject/NewScripts/ROADMAP.md).
 
-**Last Updated**: 2025-11-30
+**Last Updated**: 2025-12-01
 **Project Status**: Production Ready - LIGHT Build Strategy
-**Current Version**: 2511221939
+**Current Version**: 2512010029
 
 ---
 
@@ -48,6 +48,21 @@
 ---
 
 ## ✅ Recent Progress (2025-12-01)
+
+### CI/CD Safety Checks & Build Pipeline - COMPLETE
+- ✅ **Safety Checks in CI**: Version validation, pytest, pip-audit, npm audit
+- ✅ **Build Pipeline**: Safety checks must pass before Windows/Linux builds start
+- ✅ **Model-Aware Tests**: Tests skip automatically when Korean BERT model unavailable (LIGHT builds)
+- ✅ **Release v2512010029**: Successfully built and published to GitHub Releases
+
+**CI/CD Pipeline Now Includes**:
+1. Version unification check (all 8 files must match)
+2. Python E2E tests (137 passing, model tests skip in CI)
+3. Python security audit (pip-audit)
+4. NPM security audit
+5. Windows installer build (Inno Setup)
+6. Linux AppImage build
+7. Auto-publish to GitHub Releases
 
 ### Comprehensive E2E Tests for ALL Apps - COMPLETE
 - ✅ **KR Similar**: 18 unit tests + 9 API tests = 27 total
@@ -153,11 +168,285 @@ server/tools/kr_similar/
 
 ---
 
-### Priority 3: UI/UX Enhancements 🎨
+### Priority 3: Security Hardening & Network Audit 🔒
+**Status**: REQUIRED BEFORE ENTERPRISE DEPLOYMENT
+**Goal**: Ensure app meets corporate IT security standards (IP restrictions, encryption, audit trails)
+
+This section provides a **step-by-step security checklist** for enterprise deployment. Each item must be verified and implemented before the app is approved by IT security teams.
+
+---
+
+#### 3.1 CORS & Network Origin Restrictions ⚠️ CRITICAL
+
+**Current Status**: ❌ INSECURE (Development Mode)
+```python
+# server/main.py - CURRENT (TOO PERMISSIVE!)
+allow_origins=["*"]  # Accepts requests from ANY origin
+
+# server/utils/websocket.py - CURRENT
+cors_allowed_origins='*'  # WebSocket accepts ANY origin
+```
+
+**Required Fix for Production**:
+```python
+# server/main.py - PRODUCTION CONFIG
+ALLOWED_ORIGINS = [
+    "http://192.168.11.100:5173",   # LocaNext app (11th floor example)
+    "http://192.168.11.100:5175",   # Admin dashboard
+    "http://192.168.11.101:5173",   # Additional approved workstation
+    # Add your company's IP range here
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,  # Whitelist only!
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+)
+```
+
+**Tasks**:
+- [ ] **3.1.1** Create `server/config_production.py` with IP whitelist template
+- [ ] **3.1.2** Update `server/main.py` to read from environment (`CORS_ORIGINS`)
+- [ ] **3.1.3** Update `server/utils/websocket.py` to use same whitelist
+- [ ] **3.1.4** Add IP range validation for subnet restrictions (e.g., `192.168.11.0/24`)
+- [ ] **3.1.5** Create deployment guide with IT-approved IP configuration
+- [ ] **3.1.6** Add test: Verify rejected requests from non-whitelisted origins
+
+---
+
+#### 3.2 TLS/HTTPS Encryption ⚠️ CRITICAL
+
+**Current Status**: ❌ HTTP Only (Unencrypted)
+- All traffic is unencrypted HTTP
+- Sensitive data (JWT tokens, passwords) transmitted in plaintext
+- Vulnerable to man-in-the-middle attacks
+
+**Required Fix for Production**:
+- [ ] **3.2.1** Create TLS configuration guide (`docs/TLS_SETUP.md`)
+- [ ] **3.2.2** Add reverse proxy setup (nginx/caddy) with TLS termination
+- [ ] **3.2.3** Generate/configure SSL certificates (Let's Encrypt or corporate CA)
+- [ ] **3.2.4** Update server config to enforce HTTPS-only redirects
+- [ ] **3.2.5** Add HSTS (HTTP Strict Transport Security) header
+- [ ] **3.2.6** Configure secure WebSocket (wss://) instead of ws://
+- [ ] **3.2.7** Document certificate renewal process
+
+**Certificate Options**:
+```
+Option A: Let's Encrypt (free, auto-renewal)
+Option B: Corporate CA (IT provides certificate)
+Option C: Self-signed (testing only - NOT for production)
+```
+
+---
+
+#### 3.3 Rate Limiting & DDoS Protection ⚠️ HIGH
+
+**Current Status**: ❌ NO RATE LIMITING
+- Any client can make unlimited requests
+- Vulnerable to brute-force attacks on /login
+- No protection against denial of service
+
+**Required Implementation**:
+- [ ] **3.3.1** Install `slowapi` or `fastapi-limiter` package
+- [ ] **3.3.2** Add rate limiting middleware to FastAPI
+- [ ] **3.3.3** Configure limits per endpoint:
+  ```
+  /api/v2/auth/login     → 5 requests/minute (prevent brute force)
+  /api/v2/*/create-*     → 10 requests/minute (resource-intensive)
+  /api/v2/*/search       → 30 requests/minute (normal usage)
+  Other endpoints        → 60 requests/minute (default)
+  ```
+- [ ] **3.3.4** Add IP-based blocking for repeated violations
+- [ ] **3.3.5** Log rate limit violations for security monitoring
+- [ ] **3.3.6** Add test: Verify rate limiting blocks excessive requests
+
+---
+
+#### 3.4 JWT Token Security ⚠️ HIGH
+
+**Current Status**: ⚠️ PARTIAL (Development Keys)
+```python
+# server/config.py - CURRENT
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-CHANGE-IN-PRODUCTION")
+ACCESS_TOKEN_EXPIRE_MINUTES = 30  # OK
+```
+
+**Security Assessment**:
+- ✅ JWT implementation uses PyJWT + bcrypt (industry standard)
+- ✅ Passwords hashed with bcrypt (secure)
+- ❌ Default SECRET_KEY is weak and public
+- ❌ No token refresh mechanism
+- ❌ No token revocation/blacklist
+
+**Required Fixes**:
+- [ ] **3.4.1** Enforce strong SECRET_KEY in production (min 256-bit)
+- [ ] **3.4.2** Add startup check that fails if using default SECRET_KEY
+- [ ] **3.4.3** Implement refresh token mechanism
+- [ ] **3.4.4** Add token blacklist for logout/revocation
+- [ ] **3.4.5** Add JWT expiry validation in all protected endpoints
+- [ ] **3.4.6** Log all authentication events (login, logout, token refresh)
+
+---
+
+#### 3.5 Input Validation & Injection Prevention ⚠️ HIGH
+
+**Current Status**: ⚠️ PARTIAL
+- ✅ SQLAlchemy ORM prevents SQL injection (parameterized queries)
+- ✅ Pydantic schemas validate API input types
+- ❌ No XSS sanitization for user-provided text
+- ❌ No file type validation beyond extension
+- ❌ No content-type verification for uploads
+
+**Required Fixes**:
+- [ ] **3.5.1** Add HTML/XSS sanitization for all text inputs
+- [ ] **3.5.2** Implement strict file upload validation:
+  - Verify MIME type matches extension
+  - Scan file headers (magic bytes)
+  - Set maximum file size limits
+  - Whitelist allowed extensions (.xlsx, .xls, .txt only)
+- [ ] **3.5.3** Add path traversal prevention for file operations
+- [ ] **3.5.4** Implement Content-Security-Policy headers
+- [ ] **3.5.5** Add test: Verify XSS payloads are sanitized
+- [ ] **3.5.6** Add test: Verify malicious file uploads are rejected
+
+---
+
+#### 3.6 Audit Logging & Monitoring ⚠️ MEDIUM
+
+**Current Status**: ⚠️ PARTIAL
+- ✅ HTTP request logging (method, path, duration)
+- ✅ Database operation logging
+- ❌ No security-specific audit log
+- ❌ No failed login tracking
+- ❌ No suspicious activity detection
+
+**Required Implementation**:
+- [ ] **3.6.1** Create security audit log table in database
+- [ ] **3.6.2** Log all authentication events:
+  - Successful logins (user, IP, timestamp)
+  - Failed logins (user, IP, timestamp, reason)
+  - Password changes
+  - Token refreshes
+  - Logouts
+- [ ] **3.6.3** Log all admin operations (user creation, deletion, permission changes)
+- [ ] **3.6.4** Implement failed login lockout (5 failures = 15 min lockout)
+- [ ] **3.6.5** Add security event alerting (email/webhook on suspicious activity)
+- [ ] **3.6.6** Create audit log viewer in admin dashboard
+
+---
+
+#### 3.7 Secrets Management ⚠️ MEDIUM
+
+**Current Status**: ⚠️ PARTIAL
+- ✅ Secrets use environment variables
+- ✅ `.env` is in `.gitignore`
+- ❌ Default secrets hardcoded in code
+- ❌ No secret rotation mechanism
+
+**Required Fixes**:
+- [ ] **3.7.1** Remove all default secrets from code (fail if not provided)
+- [ ] **3.7.2** Create `.env.example` with placeholder values
+- [ ] **3.7.3** Document secret generation process in SECURITY.md
+- [ ] **3.7.4** Add startup validation for required environment variables
+- [ ] **3.7.5** Implement secret rotation guide for production
+
+---
+
+#### 3.8 Network Binding & Firewall ⚠️ MEDIUM
+
+**Current Status**: ⚠️ RISKY
+```python
+# server/config.py - CURRENT
+SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")  # Binds to ALL interfaces!
+```
+
+**Security Risk**: Binding to `0.0.0.0` exposes server to ALL network interfaces.
+
+**Required Fixes**:
+- [ ] **3.8.1** Change default to `127.0.0.1` (localhost only)
+- [ ] **3.8.2** Document firewall rules for production deployment
+- [ ] **3.8.3** Create network architecture diagram showing allowed traffic flows
+- [ ] **3.8.4** Add deployment checklist with firewall configuration steps
+
+---
+
+#### 3.9 Dependency Security (CI/CD) ✅ IMPLEMENTED
+
+**Current Status**: ✅ DONE (Added 2025-12-01)
+- ✅ `pip-audit` runs in CI pipeline
+- ✅ `npm audit` runs in CI pipeline
+- ✅ Security audits run before every build
+- ✅ Build fails if critical vulnerabilities found
+
+**Maintenance Tasks**:
+- [ ] **3.9.1** Schedule weekly dependency updates
+- [ ] **3.9.2** Create process for reviewing/approving dependency updates
+- [ ] **3.9.3** Pin exact versions in requirements.txt for reproducibility
+
+---
+
+#### 3.10 Security Testing in CI ⚠️ PENDING
+
+**Current Status**: ⚠️ PARTIAL
+- ✅ Unit tests run in CI
+- ✅ Dependency audits run in CI
+- ❌ No security-specific tests
+- ❌ No penetration testing
+
+**Required Implementation**:
+- [ ] **3.10.1** Add security test suite (`tests/security/`)
+- [ ] **3.10.2** Test: Authentication bypass attempts
+- [ ] **3.10.3** Test: SQL injection attempts (should all fail)
+- [ ] **3.10.4** Test: XSS injection attempts (should all fail)
+- [ ] **3.10.5** Test: Path traversal attempts (should all fail)
+- [ ] **3.10.6** Test: Rate limiting enforcement
+- [ ] **3.10.7** Add OWASP ZAP or similar automated scan to CI (optional)
+
+---
+
+#### 3.11 Data Protection & Privacy ⚠️ LOW
+
+**Current Status**: ⚠️ BASIC
+- ✅ Passwords are hashed (bcrypt)
+- ❌ No data encryption at rest
+- ❌ No PII handling policy
+- ❌ No data retention policy
+
+**Tasks for Compliance** (if handling sensitive data):
+- [ ] **3.11.1** Document what data is collected and stored
+- [ ] **3.11.2** Implement database encryption at rest (if required)
+- [ ] **3.11.3** Create data retention policy
+- [ ] **3.11.4** Add data export/deletion functionality for GDPR compliance
+
+---
+
+#### Security Checklist Summary
+
+| Category | Status | Priority | Effort |
+|----------|--------|----------|--------|
+| 3.1 CORS/Origin Restrictions | ❌ Not Done | CRITICAL | 2-4 hours |
+| 3.2 TLS/HTTPS | ❌ Not Done | CRITICAL | 4-8 hours |
+| 3.3 Rate Limiting | ❌ Not Done | HIGH | 2-4 hours |
+| 3.4 JWT Security | ⚠️ Partial | HIGH | 4-6 hours |
+| 3.5 Input Validation | ⚠️ Partial | HIGH | 4-6 hours |
+| 3.6 Audit Logging | ⚠️ Partial | MEDIUM | 4-8 hours |
+| 3.7 Secrets Management | ⚠️ Partial | MEDIUM | 2-4 hours |
+| 3.8 Network Binding | ⚠️ Risky | MEDIUM | 1-2 hours |
+| 3.9 Dependency Security | ✅ Done | MEDIUM | Maintenance |
+| 3.10 Security Testing | ⚠️ Partial | MEDIUM | 4-8 hours |
+| 3.11 Data Protection | ⚠️ Basic | LOW | 4-8 hours |
+
+**Total Estimated Effort**: 30-60 hours for full enterprise security compliance
+
+---
+
+### Priority 4: UI/UX Enhancements 🎨
 **Status**: Planned
 **Goal**: Add Settings menu with About and Preferences
 
-#### 3.1 Settings Dropdown Menu
+#### 4.1 Settings Dropdown Menu
 Add a settings dropdown in the header with:
 
 **About Section:**
@@ -175,7 +464,7 @@ Add a settings dropdown in the header with:
 - [ ] **Auto-update**: Enable/disable auto-update check
 - [ ] **Data**: Clear cache, reset preferences
 
-#### 3.2 Implementation Plan
+#### 4.2 Implementation Plan
 ```
 Settings Menu Structure:
 ├── About
@@ -197,7 +486,7 @@ Settings Menu Structure:
         └── Reset to Defaults [button]
 ```
 
-#### 3.3 Update Warning System
+#### 4.3 Update Warning System
 - Fetch latest release from GitHub API
 - Compare version numbers
 - Show notification badge on Settings icon if update available
@@ -352,8 +641,9 @@ Password: admin123
 ---
 
 **Last Updated**: 2025-12-01
-**Current Version**: 2511302350
-**Current Focus**: UI/UX Enhancements & Admin Dashboard
-**Next Milestone**: Settings menu, About dialog, Theme support
+**Current Version**: 2512010029
+**Current Focus**: Security Hardening & Enterprise Compliance
+**Next Milestone**: CORS restrictions, TLS/HTTPS, Rate limiting, Audit logging
 **Platform Status**: 3 Apps Complete - All Operational
-**Test Status**: 63 E2E tests (38 passing, 25 API tests require server)
+**Test Status**: 137 passing + 25 skipped (API tests require server)
+**Build Status**: ✅ v2512010029 successfully released with safety checks
