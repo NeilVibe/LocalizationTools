@@ -45,10 +45,84 @@ jobs:
             echo "No build trigger found"
           fi
 
+  # ============================================================
+  # SAFETY CHECKS - Must pass before build proceeds
+  # ============================================================
+  safety-checks:
+    name: Safety Checks (Tests, Security, Version)
+    runs-on: ubuntu-latest
+    needs: check-build-trigger
+    if: needs.check-build-trigger.outputs.should_build == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: locaNext/package-lock.json
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pip-audit
+
+      - name: Install Node Dependencies
+        run: |
+          cd locaNext && npm ci
+
+      # ---- VERSION CHECK ----
+      - name: Version Unification Check
+        run: |
+          echo "=== Checking version unification across all files ==="
+          python scripts/check_version_unified.py
+          echo "✓ All versions unified"
+
+      # ---- PYTHON TESTS ----
+      - name: Run Python Tests
+        run: |
+          echo "=== Running Python test suite ==="
+          python -m pytest tests/ -v --tb=short --ignore=tests/archive/ -x
+          echo "✓ All Python tests passed"
+
+      # ---- SECURITY AUDITS ----
+      - name: Python Security Audit
+        run: |
+          echo "=== Checking Python dependencies for vulnerabilities ==="
+          pip-audit --strict --desc || echo "⚠️ Some vulnerabilities found (non-blocking)"
+        continue-on-error: true  # Don't fail build, just warn
+
+      - name: NPM Security Audit
+        run: |
+          echo "=== Checking NPM dependencies for vulnerabilities ==="
+          cd locaNext && npm audit --audit-level=high || echo "⚠️ Some vulnerabilities found (non-blocking)"
+        continue-on-error: true  # Don't fail build, just warn
+
+      - name: Safety Checks Summary
+        run: |
+          echo "============================================"
+          echo "✅ SAFETY CHECKS PASSED"
+          echo "============================================"
+          echo "- Version unification: ✓"
+          echo "- Python tests: ✓"
+          echo "- Security audits: Completed (warnings only)"
+          echo "============================================"
+          echo "Proceeding to build..."
+
   build-windows:
     name: Build Windows LIGHT Installer
     runs-on: windows-latest
-    needs: check-build-trigger
+    needs: [check-build-trigger, safety-checks]  # Must pass safety checks first!
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
     steps:
@@ -141,7 +215,7 @@ jobs:
   build-linux:
     name: Build Linux AppImage (LIGHT)
     runs-on: ubuntu-latest
-    needs: check-build-trigger
+    needs: [check-build-trigger, safety-checks]  # Must pass safety checks first!
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
     steps:
