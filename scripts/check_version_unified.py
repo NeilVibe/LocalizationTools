@@ -59,6 +59,9 @@ VERSION_FILES = {
     "installer/locanext_electron.iss": [
         r'#define MyAppVersion "(\d+)"',
     ],
+    "installer/locanext_light.iss": [
+        r'#define MyAppVersion "(\d+)"',
+    ],
 }
 
 
