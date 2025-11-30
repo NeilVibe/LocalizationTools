@@ -41,3 +41,4 @@ Build LIGHT v2511221939 - Fix #5 invalid task flag
 Build LIGHT v2512010029
 Build LIGHT v2512010029 - Fix deps
 Build LIGHT v2512010029 - Fix CI tests
+Build LIGHT v2512010029 - E2E only
