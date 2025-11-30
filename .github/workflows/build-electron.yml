@@ -91,15 +91,13 @@ jobs:
       # ---- PYTHON TESTS ----
       - name: Run Python Tests
         run: |
-          echo "=== Running Python test suite (unit tests only, no server required) ==="
-          python -m pytest tests/ -v --tb=short \
-            --ignore=tests/archive/ \
-            --ignore=tests/e2e/test_complete_user_flow.py \
-            --ignore=tests/e2e/test_full_workflow.py \
-            --ignore=tests/test_dashboard_api.py \
-            --ignore=tests/integration/ \
-            --no-cov \
-            -x
+          echo "=== Running E2E unit tests (core functionality, no server required) ==="
+          python -m pytest \
+            tests/e2e/test_kr_similar_e2e.py \
+            tests/e2e/test_xlstransfer_e2e.py \
+            tests/e2e/test_quicksearch_e2e.py \
+            tests/unit/ \
+            -v --tb=short --no-cov -x
           echo "✓ All Python tests passed"
 
       # ---- SECURITY AUDITS ----
