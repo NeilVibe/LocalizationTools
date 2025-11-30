@@ -74,6 +74,13 @@
 | **[POSTGRESQL_SETUP.md](docs/POSTGRESQL_SETUP.md)** | PostgreSQL configuration |
 | **[SECURITY_AND_LOGGING.md](docs/SECURITY_AND_LOGGING.md)** | Security best practices |
 
+### 🔒 Security
+
+| Document | What It Covers |
+|----------|----------------|
+| **[SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md)** | **Production security checklist: CORS, TLS, rate limiting, JWT** |
+| **[.env.example](.env.example)** | Production environment configuration template |
+
 ### 🤖 Claude AI Guides (READ THESE!)
 
 | Document | What It Covers |

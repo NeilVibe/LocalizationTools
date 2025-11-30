@@ -9,14 +9,25 @@ from loguru import logger
 from typing import Dict, List, Optional
 import asyncio
 
+# Import CORS settings from config
+from server import config
+
 
 # Create async Socket.IO server
+# Uses same CORS settings as main app for consistency
+_ws_cors_origins = '*' if config.CORS_ALLOW_ALL else config.CORS_ORIGINS
+
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins='*',  # Configure based on your needs
+    cors_allowed_origins=_ws_cors_origins,
     logger=False,
     engineio_logger=False
 )
+
+if config.CORS_ALLOW_ALL:
+    logger.warning("WebSocket CORS: Allowing ALL origins (development mode)")
+else:
+    logger.info(f"WebSocket CORS: Restricted to {len(config.CORS_ORIGINS)} whitelisted origins")
 
 # Socket.IO ASGI app
 # We'll use the standard /socket.io path for compatibility

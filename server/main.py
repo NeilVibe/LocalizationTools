@@ -67,14 +67,30 @@ app = FastAPI(
     redoc_url=config.REDOC_URL if config.ENABLE_DOCS else None,
 )
 
-# Add CORS middleware - ALLOW ALL FOR TESTING
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for testing
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Add CORS middleware
+# In development (CORS_ALLOW_ALL=True): accepts all origins for convenience
+# In production (CORS_ORIGINS env set): only whitelisted origins allowed
+if config.CORS_ALLOW_ALL:
+    logger.warning("CORS: Allowing ALL origins (development mode)")
+    logger.warning("Set CORS_ORIGINS env var for production!")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    logger.info(f"CORS: Restricting to {len(config.CORS_ORIGINS)} whitelisted origins")
+    for origin in config.CORS_ORIGINS:
+        logger.info(f"  - {origin}")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.CORS_ORIGINS,
+        allow_credentials=config.CORS_ALLOW_CREDENTIALS,
+        allow_methods=config.CORS_ALLOW_METHODS,
+        allow_headers=config.CORS_ALLOW_HEADERS,
+    )
 
 # Add comprehensive logging middleware
 # Order matters: These run in REVERSE order (last added = first to run)

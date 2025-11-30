@@ -51,17 +51,44 @@ SERVER_PORT = int(os.getenv("SERVER_PORT", "8888"))
 ADMIN_DASHBOARD_PORT = int(os.getenv("ADMIN_DASHBOARD_PORT", "8885"))
 
 # CORS settings
-ALLOWED_ORIGINS = [
-    "http://localhost:7860",
-    "http://127.0.0.1:7860",
-    "http://localhost:8885",
-    "http://127.0.0.1:8885",
-]
+# In development: allow all origins ("*")
+# In production: set CORS_ORIGINS env var to whitelist specific origins
+# Example: CORS_ORIGINS=http://192.168.11.100:5173,http://192.168.11.100:5175
+_cors_origins_env = os.getenv("CORS_ORIGINS", "")
 
-# Add production origins if specified
+if _cors_origins_env:
+    # Production: use explicit whitelist
+    CORS_ORIGINS = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
+    CORS_ALLOW_ALL = False
+else:
+    # Development: allow common localhost origins
+    CORS_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5175",
+        "http://localhost:7860",
+        "http://127.0.0.1:7860",
+        "http://localhost:8885",
+        "http://127.0.0.1:8885",
+    ]
+    CORS_ALLOW_ALL = True  # Allow all in development for convenience
+
+# Add production origins if specified (legacy support)
 PRODUCTION_ORIGIN = os.getenv("PRODUCTION_ORIGIN")
 if PRODUCTION_ORIGIN:
-    ALLOWED_ORIGINS.append(PRODUCTION_ORIGIN)
+    CORS_ORIGINS.append(PRODUCTION_ORIGIN)
+    CORS_ALLOW_ALL = False
+
+# Additional CORS settings from environment
+CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() == "true"
+CORS_ALLOW_METHODS = os.getenv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS").split(",")
+CORS_ALLOW_HEADERS = os.getenv("CORS_ALLOW_HEADERS", "Content-Type,Authorization,X-Request-ID").split(",")
+
+# Backward compatibility alias
+ALLOWED_ORIGINS = CORS_ORIGINS
 
 # ============================================
 # Database Settings
