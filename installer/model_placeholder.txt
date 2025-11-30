@@ -1,0 +1,17 @@
+Korean BERT Model Directory
+============================
+
+This directory will contain the AI model after download.
+
+If the model was not downloaded during installation, you can:
+
+1. Run: scripts\download_model.bat
+   - Requires Python 3.10+ and internet connection
+   - Downloads ~447MB from Hugging Face
+
+2. Manual download:
+   - Copy the 'models\kr-sbert' folder from another LocaNext installation
+   - Required files: config.json, model.safetensors, tokenizer files
+
+Model: snunlp/KR-SBERT-V40K-klueNLI-augSTS
+Source: https://huggingface.co/snunlp/KR-SBERT-V40K-klueNLI-augSTS
