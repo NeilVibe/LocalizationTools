@@ -28,8 +28,15 @@ sys.path.insert(0, str(project_root))
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
 # Check if Korean BERT model is available (not in CI LIGHT builds)
+# In LIGHT builds, model.safetensors is just a Git LFS pointer (~135 bytes)
+# The real model is ~447MB, so we check for >100MB to ensure it's not just a pointer
 MODEL_DIR = project_root / "models" / "kr-sbert"
-MODEL_AVAILABLE = MODEL_DIR.exists() and (MODEL_DIR / "model.safetensors").exists()
+MODEL_FILE = MODEL_DIR / "model.safetensors"
+MODEL_AVAILABLE = (
+    MODEL_DIR.exists()
+    and MODEL_FILE.exists()
+    and MODEL_FILE.stat().st_size > 100_000_000  # >100MB = real model, not LFS pointer
+)
 
 
 def requires_model(func):
