@@ -24,7 +24,7 @@
 ### Operational Apps
 1. ✅ **XLSTransfer** (App #1) - AI-powered Excel translation with Korean BERT
 2. ✅ **QuickSearch** (App #2) - Multi-game dictionary search (15 languages, 4 games)
-3. ⏳ **KR Similar** (App #3) - Korean semantic similarity search (PLANNED)
+3. ✅ **KR Similar** (App #3) - Korean semantic similarity search (34 tests passing)
 
 ### Build Status
 | Component | Status | Notes |
@@ -38,6 +38,19 @@
 ---
 
 ## ✅ Recent Progress (2025-11-30)
+
+### KR Similar (App #3) - COMPLETE
+- ✅ Backend: `server/tools/kr_similar/` (core.py, embeddings.py, searcher.py)
+- ✅ API: 9 endpoints at `/api/v2/kr-similar/`
+- ✅ Tests: 34 tests passing (15 unit + 15 E2E + 4 API)
+- ✅ Fixtures: `tests/fixtures/sample_language_data.txt` (20 rows)
+- ✅ Features: Dictionary creation, similarity search, auto-translate
+
+### Testing Protocol - COMPLETE
+- ✅ Created `docs/TESTING_PROTOCOL.md` - Full autonomous testing guide
+- ✅ Created `tests/archive/` - Folder for deprecated tests
+- ✅ E2E tests now run with real Korean BERT model
+- ✅ API tests enabled with `RUN_API_TESTS=1`
 
 ### LIGHT Build Strategy - COMPLETE
 - ✅ Created `scripts/download_model_silent.bat` - Silent download for wizard
@@ -77,67 +90,46 @@
 3. Missing `favicon.ico` file (commented out)
 4. Invalid `Flags: checked` in Inno Setup Tasks section
 
-### Priority 2: KR Similar (App #3) 🔍
-**Status**: Planned
-**Goal**: Integrate Korean semantic similarity search as third LocaNext app
-**Source**: `RessourcesForCodingTheProject/MAIN PYTHON SCRIPTS/KRSIMILAR0124.py`
+### Priority 2: KR Similar (App #3) 🔍 ✅ COMPLETE
+**Status**: DONE (2025-11-30)
+**Implementation**: `server/tools/kr_similar/` + `server/api/kr_similar_async.py`
 
-#### 2.1 Feature Overview
-KR Similar finds semantically similar Korean strings using the same Korean BERT model as XLSTransfer.
+#### 2.1 What Was Implemented
 
-**Core Functionality:**
-- Load reference Excel file with Korean strings
-- Build FAISS index from sentence embeddings
-- Search for similar strings by semantic meaning
-- Return top-N matches with similarity scores
-
-**Use Cases:**
-- Find translation reuse opportunities
-- Identify duplicate or near-duplicate content
-- Quality check for consistency
-
-#### 2.2 Implementation Plan
+**Backend Modules:**
 ```
-KR Similar Integration:
-├── Backend (server/tools/)
-│   ├── kr_similar.py           # Core logic (from KRSIMILAR0124.py)
-│   └── kr_similar_api.py       # FastAPI endpoints
-│
-├── Frontend (locaNext/src/)
-│   ├── routes/kr-similar/
-│   │   └── +page.svelte        # Main UI page
-│   ├── lib/components/
-│   │   ├── KRSimilarUpload.svelte
-│   │   ├── KRSimilarSearch.svelte
-│   │   └── KRSimilarResults.svelte
-│   └── lib/stores/
-│       └── krSimilarStore.ts   # State management
-│
-├── API Endpoints
-│   ├── POST /api/kr-similar/load      # Load Excel file
-│   ├── POST /api/kr-similar/search    # Search similar strings
-│   ├── GET  /api/kr-similar/status    # Index status
-│   └── DELETE /api/kr-similar/clear   # Clear index
-│
-└── Shared Resources
-    └── models/kr-sbert/        # Same BERT model as XLSTransfer
+server/tools/kr_similar/
+├── __init__.py          # Module exports
+├── core.py              # Text normalization, parsing, structure adaptation
+├── embeddings.py        # Korean BERT model, dictionary creation/loading
+└── searcher.py          # FAISS similarity search, auto-translate
 ```
 
-#### 2.3 Implementation Tasks
-- [ ] Extract core logic from KRSIMILAR0124.py
-- [ ] Create kr_similar.py backend module
-- [ ] Create kr_similar_api.py with FastAPI endpoints
-- [ ] Add navigation entry in LocaNext sidebar
-- [ ] Create KR Similar page with upload/search UI
-- [ ] Add WebSocket progress for index building
-- [ ] Write tests for similarity search
-- [ ] Update documentation
+**API Endpoints (9 total):**
+- `GET  /api/v2/kr-similar/health` - Health check
+- `GET  /api/v2/kr-similar/status` - Manager status
+- `GET  /api/v2/kr-similar/list-dictionaries` - Available dictionaries
+- `POST /api/v2/kr-similar/create-dictionary` - Create from files
+- `POST /api/v2/kr-similar/load-dictionary` - Load into memory
+- `POST /api/v2/kr-similar/search` - Find similar strings
+- `POST /api/v2/kr-similar/extract-similar` - Extract similar groups
+- `POST /api/v2/kr-similar/auto-translate` - Auto-translate using similarity
+- `DELETE /api/v2/kr-similar/clear` - Clear loaded dictionary
 
-#### 2.4 Technical Notes
-- **Model**: Uses same `snunlp/KR-SBERT-V40K-klueNLI-augSTS` as XLSTransfer
+**Tests (34 passing):**
+- Unit tests: `tests/test_kr_similar.py` (15 tests)
+- E2E tests: `tests/e2e/test_kr_similar_e2e.py` (15 tests)
+- API test: Included in E2E (4 API-related tests)
+
+**Test Fixtures:**
+- `tests/fixtures/sample_language_data.txt` - 20 rows mock data
+- Based on real language file structure with code markers
+
+#### 2.2 Technical Details
+- **Model**: `snunlp/KR-SBERT-V40K-klueNLI-augSTS` (768-dim embeddings)
 - **Index**: FAISS for fast similarity search
-- **Dependencies**: sentence-transformers, faiss-cpu (already installed)
-- **Reuse**: Leverage existing model loading from XLSTransfer
+- **Dictionary Types**: BDO, BDM, BDC, CD, TEST
+- **Embedding Types**: "split" (line-by-line) and "whole" (full text)
 
 ---
 
@@ -237,10 +229,10 @@ git add -A && git commit -m "Trigger LIGHT build" && git push
 - ✅ WebSocket: Real-time progress tracking
 - ✅ Auth: JWT-based authentication
 
-### Apps - 2 Complete, 1 Planned
+### Apps - 3 Complete
 - ✅ XLSTransfer (App #1) - AI-powered translation with Korean BERT
 - ✅ QuickSearch (App #2) - Multi-game dictionary search
-- ⏳ KR Similar (App #3) - Korean semantic similarity search (NEXT)
+- ✅ KR Similar (App #3) - Korean semantic similarity search (34 tests)
 
 ### Distribution Infrastructure - 100% Complete
 - ✅ Git LFS configured (model tracked)
@@ -340,7 +332,7 @@ Password: admin123
 ---
 
 **Last Updated**: 2025-11-30
-**Current Version**: 2511221939
-**Current Focus**: KR Similar (App #3) Integration
-**Next Milestone**: KR Similar - Korean semantic similarity search
-**Platform Status**: Core Complete - First Release Available
+**Current Version**: 2511302350
+**Current Focus**: UI/UX Enhancements & Admin Dashboard
+**Next Milestone**: Settings menu, About dialog, Theme support
+**Platform Status**: 3 Apps Complete - All Operational
