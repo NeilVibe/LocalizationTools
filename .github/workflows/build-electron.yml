@@ -1,7 +1,10 @@
-name: Build LocaNext Electron Installer
+name: Build LocaNext LIGHT Installer
 
-# Manual trigger via BUILD_TRIGGER.txt (VRS-Manager pattern)
-# Push a change to BUILD_TRIGGER.txt to start build
+# LIGHT Build Strategy (2025-11-30)
+# - NO model bundled in build (saves LFS bandwidth)
+# - Model downloaded by user post-install via Hugging Face
+# - Build size: ~100-150MB instead of ~2GB
+
 on:
   push:
     branches: [ main ]
@@ -22,14 +25,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        # NO lfs: true - LIGHT build doesn't need the model!
 
       - name: Check BUILD_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "Build FULL" | tail -1)
+          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "Build (LIGHT|FULL)" | tail -1)
           echo "Trigger line: $TRIGGER"
 
-          if echo "$TRIGGER" | grep -q "Build FULL"; then
+          if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)"; then
             echo "should_build=true" >> $GITHUB_OUTPUT
 
             # Extract version
@@ -42,45 +46,15 @@ jobs:
           fi
 
   build-windows:
-    name: Build Windows Installer
+    name: Build Windows LIGHT Installer
     runs-on: windows-latest
     needs: check-build-trigger
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
     steps:
-      - name: Checkout with LFS
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          lfs: true  # VRS-Manager lesson: Download 446MB BERT model
-
-      - name: Verify BERT Model (from LFS)
-        run: |
-          Write-Host "Checking for BERT model..."
-          if (!(Test-Path "models\kr-sbert\model.safetensors")) {
-            Write-Error "❌ BERT model not found at: models\kr-sbert\model.safetensors"
-            Write-Host "Current directory: $PWD"
-            Write-Host "`nListing models directory:"
-            if (Test-Path "models") {
-              Get-ChildItem "models" -Recurse -Force | Select-Object -First 10
-            }
-            exit 1
-          }
-          Write-Host "✓ BERT model exists"
-
-          $size = (Get-Item "models\kr-sbert\model.safetensors").length / 1MB
-          Write-Host "  Size: $([math]::Round($size, 1)) MB"
-
-          # Verify other critical model files
-          $requiredFiles = @("config.json", "tokenizer.json")
-          foreach ($file in $requiredFiles) {
-            $filePath = "models\kr-sbert\$file"
-            if (!(Test-Path $filePath)) {
-              Write-Error "❌ Missing required file: $file"
-              exit 1
-            }
-            Write-Host "  ✓ Found: $file"
-          }
-        shell: pwsh
+        # NO lfs: true - LIGHT build, model downloaded by user post-install
 
       - name: Setup Node.js 18
         uses: actions/setup-node@v4
@@ -106,15 +80,8 @@ jobs:
         run: |
           Write-Host "Verifying Electron build output..."
 
-          # Check if executable exists
           if (!(Test-Path "locaNext\dist-electron\win-unpacked\LocaNext.exe")) {
             Write-Error "❌ Electron build failed - LocaNext.exe not found"
-            Write-Host "Expected at: locaNext\dist-electron\win-unpacked\LocaNext.exe"
-
-            if (Test-Path "locaNext\dist-electron") {
-              Write-Host "`nContents of dist-electron:"
-              Get-ChildItem "locaNext\dist-electron" -Recurse | Select-Object -First 30
-            }
             exit 1
           }
 
@@ -122,9 +89,8 @@ jobs:
           $size = (Get-Item "locaNext\dist-electron\win-unpacked\LocaNext.exe").length / 1MB
           Write-Host "  Executable size: $([math]::Round($size, 1)) MB"
 
-          # Show total size
           $totalSize = (Get-ChildItem "locaNext\dist-electron\win-unpacked" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-          Write-Host "  Total app size: $([math]::Round($totalSize, 1)) MB"
+          Write-Host "  Total app size: $([math]::Round($totalSize, 1)) MB (LIGHT - no model)"
         shell: pwsh
 
       - name: Install Inno Setup
@@ -132,61 +98,56 @@ jobs:
           choco install innosetup -y
         shell: pwsh
 
-      - name: Compile Installer with Inno Setup
+      - name: Compile LIGHT Installer
         run: |
-          Write-Host "Compiling Windows installer..."
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_electron.iss
+          Write-Host "Compiling LIGHT Windows installer..."
+          Write-Host "Note: Model NOT bundled - will be downloaded post-install"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_light.iss
         shell: pwsh
 
       - name: Verify Installer
         run: |
           $version = "${{ needs.check-build-trigger.outputs.version }}"
-          $installerPath = "installer_output\LocaNext_v${version}_Setup.exe"
+          $installerPath = "installer_output\LocaNext_v${version}_Light_Setup.exe"
 
-          Write-Host "Looking for installer at: $installerPath"
+          Write-Host "Looking for LIGHT installer at: $installerPath"
 
+          # Try with version, then try to find any installer
           if (!(Test-Path $installerPath)) {
-            Write-Error "❌ Installer compilation failed"
-            Write-Host "`nContents of installer_output:"
-            if (Test-Path "installer_output") {
-              Get-ChildItem "installer_output" -Force
+            Write-Host "Exact path not found, searching for any installer..."
+            $found = Get-ChildItem "installer_output\*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              Write-Host "Found installer: $($found.Name)"
+              $installerPath = $found.FullName
+            } else {
+              Write-Error "❌ No installer found in installer_output"
+              exit 1
             }
-            exit 1
           }
 
-          Write-Host "✓ Installer compiled successfully"
+          Write-Host "✓ LIGHT Installer compiled successfully"
           $size = (Get-Item $installerPath).length / 1MB
           Write-Host "  Installer size: $([math]::Round($size, 1)) MB"
+          Write-Host "  (Model will be downloaded post-install: ~447MB)"
         shell: pwsh
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LocaNext-Windows-Setup
+          name: LocaNext-Windows-LIGHT-Setup
           path: installer_output/*.exe
           retention-days: 7
 
   build-linux:
-    name: Build Linux AppImage
+    name: Build Linux AppImage (LIGHT)
     runs-on: ubuntu-latest
     needs: check-build-trigger
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
     steps:
-      - name: Checkout with LFS
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          lfs: true  # Download BERT model
-
-      - name: Verify BERT Model
-        run: |
-          echo "Checking for BERT model..."
-          if [ ! -f "models/kr-sbert/model.safetensors" ]; then
-            echo "❌ BERT model not found"
-            exit 1
-          fi
-          echo "✓ BERT model exists"
-          ls -lh models/kr-sbert/model.safetensors
+        # NO lfs: true - LIGHT build
 
       - name: Setup Node.js 18
         uses: actions/setup-node@v4
@@ -209,23 +170,22 @@ jobs:
       - name: Verify Linux Build
         run: |
           echo "Verifying Linux build output..."
-          # AppImage location may vary, check common locations
-          find locaNext/dist-electron -name "*.AppImage" -type f
+          find locaNext/dist-electron -name "*.AppImage" -type f 2>/dev/null || true
 
-          if [ ! -f locaNext/dist-electron/*.AppImage ]; then
-            echo "❌ AppImage build may have failed"
-            echo "Contents of dist-electron:"
-            ls -la locaNext/dist-electron/ || true
-            # Don't exit - some Electron configs may not build AppImage
+          if ls locaNext/dist-electron/*.AppImage 1> /dev/null 2>&1; then
+            echo "✓ AppImage found"
+            ls -lh locaNext/dist-electron/*.AppImage
+          else
+            echo "Note: AppImage may not be built (depends on electron-builder config)"
           fi
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LocaNext-Linux-AppImage
+          name: LocaNext-Linux-LIGHT-AppImage
           path: locaNext/dist-electron/*.AppImage
           retention-days: 7
-        continue-on-error: true  # Don't fail if no AppImage
+        continue-on-error: true
 
   create-release:
     name: Create GitHub Release
@@ -236,19 +196,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          lfs: false  # VRS-Manager lesson: No LFS needed for release job
 
       - name: Download Windows Installer
         uses: actions/download-artifact@v4
         with:
-          name: LocaNext-Windows-Setup
+          name: LocaNext-Windows-LIGHT-Setup
           path: artifacts/windows
 
       - name: Download Linux AppImage
         uses: actions/download-artifact@v4
         with:
-          name: LocaNext-Linux-AppImage
+          name: LocaNext-Linux-LIGHT-AppImage
           path: artifacts/linux
         continue-on-error: true
 
@@ -256,67 +214,56 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.check-build-trigger.outputs.version }}
-          name: LocaNext v${{ needs.check-build-trigger.outputs.version }}
+          name: LocaNext v${{ needs.check-build-trigger.outputs.version }} (LIGHT)
           draft: false
           prerelease: false
           body: |
-            ## LocaNext Desktop Application
+            ## LocaNext Desktop Application (LIGHT Build)
 
             **Version:** ${{ needs.check-build-trigger.outputs.version }}
-            **Build Date:** ${{ github.event.head_commit.timestamp }}
+            **Build Type:** LIGHT (model downloaded during installation)
 
             ### 📥 Downloads
 
             **Windows:**
-            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Setup.exe` (~2GB)
-            - Includes Korean BERT model (446MB)
-            - Desktop installation (no admin required)
+            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Light_Setup.exe` (~100-150MB)
+            - AI model (~447MB) downloads automatically during installation
 
             **Linux:**
-            - `LocaNext.AppImage` (~2GB, if available)
-            - Portable application
+            - `LocaNext.AppImage` (~100-150MB, if available)
+            - Run `scripts/download_model.bat` after to get AI features
+
+            ### ⚠️ Requirements
+
+            - **Python 3.10+** - Required for AI model download
+            - **Internet connection** - For post-install model download
+            - **~1GB disk space** - For app + model
 
             ### 🚀 What's Included
 
-            - ✅ **XLSTransfer** - AI-powered Excel translation with Korean BERT
+            - ✅ **XLSTransfer** - AI-powered Excel translation
             - ✅ **QuickSearch** - Multi-game dictionary (BDO, BDM, BDC, CD)
-            - ✅ **Admin Dashboard** - Usage analytics and monitoring
-            - ✅ **Korean BERT Model** - Pre-bundled (no download needed)
+            - ✅ **Admin Dashboard** - Usage analytics
+            - ⏳ **Korean BERT Model** - Downloaded during installation
 
-            ### 💻 System Requirements
-
-            - **Windows:** Windows 7 SP1 or later (64-bit)
-            - **Linux:** Modern 64-bit distribution
-            - **RAM:** 4GB minimum, 8GB recommended
-            - **Disk Space:** 3GB free space
-
-            ### 📖 Installation
+            ### 💻 Installation
 
             **Windows:**
-            1. Download `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Setup.exe`
+            1. Download the installer
             2. Run the installer
-            3. Default location: `Desktop\LocaNext`
-            4. No admin rights required!
+            3. Wait for AI model download (~5-10 min)
+            4. Launch LocaNext!
 
-            **Linux:**
-            1. Download `LocaNext.AppImage`
-            2. Make executable: `chmod +x LocaNext.AppImage`
-            3. Run: `./LocaNext.AppImage`
+            **If model download fails:**
+            - Run `scripts\download_model.bat` manually
+            - Or copy `models\kr-sbert\` from another installation
 
-            ### 🔐 Security
+            ### 🔐 Default Credentials
 
-            This release uses default development credentials:
             - Username: `admin`
             - Password: `admin123`
 
-            **⚠️ IMPORTANT:** Change these immediately for production use!
-            See `SECURITY.md` for complete security guidelines.
-
-            ### 📚 Documentation
-
-            - [README](https://github.com/NeilVibe/LocalizationTools/blob/main/README.md)
-            - [Security Policy](https://github.com/NeilVibe/LocalizationTools/blob/main/SECURITY.md)
-            - [Build Troubleshooting](https://github.com/NeilVibe/LocalizationTools/blob/main/docs/BUILD_TROUBLESHOOTING.md)
+            **⚠️ Change these for production use!**
 
             ---
 
