@@ -44,7 +44,8 @@ AllowNoIcons=yes
 ; Output
 OutputDir=..\installer_output
 OutputBaseFilename=LocaNext_v{#MyAppVersion}_Light_Setup
-SetupIconFile=..\locaNext\public\favicon.ico
+; SetupIconFile - commented out until .ico file is created
+; SetupIconFile=..\locaNext\static\favicon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 ; Compression - still use good compression for smaller installer
