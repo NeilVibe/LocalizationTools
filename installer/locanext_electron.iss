@@ -9,10 +9,10 @@
 ; - Korean BERT model (446MB - bundled via Git LFS)
 ; - Complete Electron desktop application
 ;
-; Output: LocaNext_v2511221939_Setup.exe (~2GB)
+; Output: LocaNext_v2512010029_Setup.exe (~2GB)
 
 #define MyAppName "LocaNext"
-#define MyAppVersion "2511221939"
+#define MyAppVersion "2512010029"
 #define MyAppPublisher "Neil Schmitt"
 #define MyAppURL "https://github.com/NeilVibe/LocalizationTools"
 #define MyAppExeName "LocaNext.exe"
