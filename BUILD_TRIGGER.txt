@@ -1,38 +1,35 @@
-Build Trigger File - LocaNext Electron Distribution
-====================================================
+Build Trigger File - LocaNext LIGHT Build System
+=================================================
 
 USAGE:
 ------
 Add a line with the build command, then commit & push to main.
 GitHub Actions will automatically build when it detects the new line.
 
-FORMAT:
-  Build FULL v[version]  → Build Electron app with BERT model bundled
+FORMATS:
+  Build LIGHT v[version]  → Build LIGHT installer (~100-150MB, no model)
+  Build FULL v[version]   → Build FULL installer (~2GB, model bundled) [BLOCKED - LFS quota]
 
-EXAMPLE:
-  Build FULL v2511221939  → Builds Electron installer with 446MB BERT model
+EXAMPLES:
+  Build LIGHT v2511301200   → LIGHT installer, model downloads post-install
+  Build FULL v2511301200    → FULL installer with bundled model (needs LFS quota)
 
-WORKFLOW:
+WORKFLOW (VRS-Manager Protocol):
 1. Update VERSION in version.py (single source of truth)
 2. Run: python3 scripts/check_version_unified.py
-3. Commit version changes
+3. If all green ✅, commit version changes
 4. Add build command to this file
 5. Commit and push to main
 6. GitHub Actions will automatically build
 
-WHY MANUAL BUILDS?
-- Control when releases happen (not every code commit)
-- Save GitHub Actions minutes (Electron builds take ~15-20 min)
-- Save LFS bandwidth quota (446MB model download per build)
-- Intentional release process
+LIGHT vs FULL:
+- LIGHT: Small installer, model downloads during install from Hugging Face
+- FULL: Large installer, model bundled (requires LFS bandwidth quota)
 
-LFS OPTIMIZATION:
-- Electron build: lfs=true (needs model for bundling)
-- Release job: lfs=false (only needs artifacts, saves bandwidth)
+RECOMMENDED: Use LIGHT builds to avoid LFS costs!
 
 Check build status: https://github.com/NeilVibe/LocalizationTools/actions
 
 Build History:
 --------------
-(Builds will be logged below as they are triggered)
-Build FULL v2511221939
+Build FULL v2511221939 - First attempt (BLOCKED - LFS quota exceeded)
