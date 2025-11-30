@@ -1,0 +1,20 @@
+39	7924197	1001	0	1	{ChangeScene(Main_001)}{AudioVoice(NPC_001)}안녕하세요. 저는 마을의 촌장입니다.	{ChangeScene(Main_001)}{AudioVoice(NPC_001)}Hello. I am the village chief.	None	NPC Dialog
+39	7924197	1002	0	2	{AudioVoice(NPC_002)}오늘 날씨가 좋군요.	{AudioVoice(NPC_002)}The weather is nice today.	None	NPC Dialog
+39	7924197	1003	0	3	{ChangeScene(Main_002)}마을에 오신 것을 환영합니다!\n모든 것이 준비되어 있습니다.	{ChangeScene(Main_002)}Welcome to the village!\nEverything is ready.	None	NPC Dialog
+18	8504	2001	0	1	▶ 첫 번째 선택지를 선택하세요.\n▶ 두 번째 선택지를 선택하세요.\n▶ 세 번째 선택지를 선택하세요.	▶ Select the first option.\n▶ Select the second option.\n▶ Select the third option.	None	Menu Options
+18	8504	2002	0	2	▶ 예, 계속 진행합니다.\n▶ 아니요, 취소합니다.	▶ Yes, continue.\n▶ No, cancel.	None	Menu Options
+25	9100	3001	0	1	{ChangeScene(Battle_001)}전투를 시작합니다!\n적을 물리치세요!	{ChangeScene(Battle_001)}Battle begins!\nDefeat the enemies!	None	Combat
+25	9100	3002	0	2	{AudioVoice(Player_Attack)}공격!\n강력한 일격입니다!	{AudioVoice(Player_Attack)}Attack!\nA powerful strike!	None	Combat
+25	9100	3003	0	3	승리했습니다! 보상을 받으세요.	Victory! Receive your rewards.	None	Combat
+42	7500	4001	0	1	이 아이템은 매우 희귀합니다.\n신중하게 사용하세요.	This item is very rare.\nUse it carefully.	None	Item Description
+42	7500	4002	0	2	<color=red>경고</color>: 이 물약은 부작용이 있습니다.	<color=red>Warning</color>: This potion has side effects.	None	Item Description
+42	7500	4003	0	3	{Scale(1.2)}특별한 무기{/Scale}\n전설적인 힘이 깃들어 있습니다.	{Scale(1.2)}Special Weapon{/Scale}\nInfused with legendary power.	None	Item Description
+55	6200	5001	0	1	퀘스트를 완료했습니다!\n다음 도전을 준비하세요.	Quest completed!\nPrepare for the next challenge.	None	Quest Complete
+55	6200	5002	0	2	{ChangeScene(QuestHub)}새로운 퀘스트가 있습니다.\n모험을 떠나볼까요?	{ChangeScene(QuestHub)}There is a new quest.\nShall we go on an adventure?	None	Quest
+55	6200	5003	0	3	보스를 처치해야 합니다.\n준비가 되셨나요?	You must defeat the boss.\nAre you ready?	None	Quest
+60	8800	6001	0	1	마을 상점에 오신 것을 환영합니다.	Welcome to the village shop.	None	Shop
+60	8800	6002	0	2	무엇을 도와드릴까요?\n좋은 물건들이 많이 있습니다.	How can I help you?\nWe have many good items.	None	Shop
+60	8800	6003	0	3	오늘의 특가 상품입니다!\n놓치지 마세요.	Today's special offer!\nDon't miss it.	None	Shop
+70	9500	7001	0	1	캐릭터를 만들어 주세요.	Please create your character.	None	Character Creation
+70	9500	7002	0	2	이름을 입력하세요:\n영문과 숫자만 사용 가능합니다.	Enter your name:\nOnly letters and numbers allowed.	None	Character Creation
+70	9500	7003	0	3	직업을 선택하세요:\n전사, 마법사, 궁수 중에서 선택하세요.	Choose your class:\nSelect from Warrior, Mage, or Archer.	None	Character Creation

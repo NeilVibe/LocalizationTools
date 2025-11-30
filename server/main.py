@@ -103,6 +103,10 @@ app.include_router(xlstransfer_async.router)
 from server.api import quicksearch_async
 app.include_router(quicksearch_async.router)
 
+# Include KR Similar API (App #3)
+from server.api import kr_similar_async
+app.include_router(kr_similar_async.router)
+
 # Include Progress Operations API (for real-time progress tracking)
 from server.api import progress_operations
 app.include_router(progress_operations.router)
