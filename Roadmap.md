@@ -492,13 +492,13 @@ Settings Menu Structure:
 - Show notification badge on Settings icon if update available
 - Display update dialog with changelog
 
-### Priority 4: Admin Dashboard Authentication
+### Priority 5: Admin Dashboard Authentication
 **Status**: Pending
 - [ ] Add login page for admin dashboard
 - [ ] Protect admin routes with auth middleware
 - [ ] Role-based access control
 
-### Priority 5: Export Functionality
+### Priority 6: Export Functionality
 **Status**: Pending
 - [ ] Export rankings to CSV/Excel
 - [ ] Export statistics to PDF
