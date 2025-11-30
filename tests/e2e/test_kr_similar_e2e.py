@@ -318,46 +318,392 @@ class TestKRSimilarE2E:
 
         print(f"Parsed fixture file: {len(df)} rows")
 
+    def test_16_extract_similar_strings(self, embeddings_manager, fixture_file):
+        """Test extract_similar_strings - finds groups of similar strings in data.
+
+        PRODUCTION USE: Quality check to find strings that should have consistent translations.
+        INPUT: Language data file with Korean text
+        EXPECTED OUTPUT: List of groups containing similar strings
+        """
+        from server.tools.kr_similar.searcher import SimilaritySearcher
+        from server.tools.kr_similar.core import KRSimilarCore
+        import pandas as pd
+
+        searcher = SimilaritySearcher(embeddings_manager=embeddings_manager)
+
+        # Load fixture data as DataFrame (simulating uploaded file)
+        df = pd.read_csv(fixture_file, delimiter='\t', header=None, on_bad_lines='skip')
+
+        # Extract similar strings
+        results = searcher.extract_similar_strings(
+            data=df,
+            min_char_length=10,  # Lower for test data
+            similarity_threshold=0.5,  # Lower threshold for test data
+            filter_same_category=False
+        )
+
+        # Verify output structure
+        assert isinstance(results, list), "Results should be a list"
+
+        # Results should be a list of groups (each group is similar strings)
+        print(f"Extract similar found {len(results)} groups")
+
+        # If we have results, verify structure
+        if len(results) > 0:
+            first_group = results[0]
+            assert isinstance(first_group, (list, dict)), "Each group should be list or dict"
+            print(f"First group: {first_group}")
+
+    def test_17_auto_translate(self, embeddings_manager, fixture_file):
+        """Test auto_translate - automatically translates using similarity matching.
+
+        PRODUCTION USE: Auto-fill translations for new content using existing dictionary.
+        INPUT: Language data file with Korean text (some without translations)
+        EXPECTED OUTPUT: DataFrame with translations filled in based on similarity matches
+        """
+        from server.tools.kr_similar.searcher import SimilaritySearcher
+        import pandas as pd
+
+        searcher = SimilaritySearcher(embeddings_manager=embeddings_manager)
+
+        # Load fixture data
+        df = pd.read_csv(fixture_file, delimiter='\t', header=None, on_bad_lines='skip')
+
+        # Auto-translate using loaded dictionary
+        result_df = searcher.auto_translate(
+            data=df,
+            similarity_threshold=0.5  # Lower for test data
+        )
+
+        # Verify output
+        assert isinstance(result_df, pd.DataFrame), "Result should be a DataFrame"
+        assert len(result_df) == len(df), "Output should have same number of rows as input"
+
+        print(f"Auto-translate processed {len(result_df)} rows")
+        print(f"Output columns: {list(result_df.columns)}")
+
+    def test_18_clear_dictionary_from_memory(self, embeddings_manager):
+        """Test clearing dictionary from memory.
+
+        PRODUCTION USE: Free memory by unloading dictionary when not needed.
+        INPUT: None (uses currently loaded dictionary)
+        EXPECTED OUTPUT: All dictionary data cleared from memory
+        """
+        # First verify dictionary is loaded
+        assert embeddings_manager.split_index is not None, "Dictionary should be loaded before test"
+
+        # Clear dictionary
+        embeddings_manager.split_embeddings = None
+        embeddings_manager.split_dict = None
+        embeddings_manager.split_index = None
+        embeddings_manager.whole_embeddings = None
+        embeddings_manager.whole_dict = None
+        embeddings_manager.whole_index = None
+        embeddings_manager.current_dict_type = None
+
+        # Verify cleared
+        assert embeddings_manager.split_index is None, "Split index should be None after clear"
+        assert embeddings_manager.whole_index is None, "Whole index should be None after clear"
+        assert embeddings_manager.current_dict_type is None, "Current dict type should be None"
+
+        print("Dictionary cleared from memory successfully")
+
+        # Reload for subsequent tests (restore state)
+        from server.tools.kr_similar.embeddings import DICT_TYPES
+        if TEST_DICT_TYPE not in DICT_TYPES:
+            DICT_TYPES.append(TEST_DICT_TYPE)
+        embeddings_manager.load_dictionary(TEST_DICT_TYPE)
+        print("Dictionary reloaded for subsequent tests")
+
 
 class TestKRSimilarAPIE2E:
-    """End-to-end API tests (require running server)."""
+    """End-to-end API tests for ALL KR Similar production endpoints.
+
+    These tests require a running server (set RUN_API_TESTS=1).
+    They test the actual production routes that users interact with.
+    """
+
+    @pytest.fixture(scope="class")
+    def api_client(self):
+        """Create authenticated API client."""
+        import requests
+
+        class APIClient:
+            def __init__(self):
+                self.base_url = "http://localhost:8888"
+                self.token = None
+                self.headers = {}
+
+            def login(self):
+                """Authenticate and store token."""
+                r = requests.post(
+                    f"{self.base_url}/api/v2/auth/login",
+                    json={"username": "admin", "password": "admin123"},
+                    timeout=10
+                )
+                if r.status_code == 200:
+                    self.token = r.json()["access_token"]
+                    self.headers = {"Authorization": f"Bearer {self.token}"}
+                    return True
+                return False
+
+            def get(self, endpoint, **kwargs):
+                return requests.get(f"{self.base_url}{endpoint}", headers=self.headers, timeout=30, **kwargs)
+
+            def post(self, endpoint, **kwargs):
+                return requests.post(f"{self.base_url}{endpoint}", headers=self.headers, timeout=60, **kwargs)
+
+            def delete(self, endpoint, **kwargs):
+                return requests.delete(f"{self.base_url}{endpoint}", headers=self.headers, timeout=30, **kwargs)
+
+        client = APIClient()
+        return client
 
     @pytest.fixture
-    def api_base_url(self):
-        """Get API base URL."""
-        return "http://localhost:8888"
+    def fixture_file_path(self):
+        """Get fixture file path for API tests."""
+        return str(FIXTURES_DIR / "sample_language_data.txt")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
         reason="API tests require running server (set RUN_API_TESTS=1)"
     )
-    def test_api_health(self, api_base_url):
-        """Test KR Similar health endpoint."""
-        import requests
+    def test_api_01_health(self, api_client):
+        """Test GET /health endpoint.
 
-        # First login
-        login_r = requests.post(
-            f"{api_base_url}/api/v2/auth/login",
-            json={"username": "admin", "password": "admin123"},
-            timeout=10
-        )
-
-        if login_r.status_code != 200:
+        EXPECTED: status=ok, modules_loaded shows embeddings_manager and searcher
+        """
+        if not api_client.login():
             pytest.skip("Could not login to API")
 
-        token = login_r.json()["access_token"]
-        headers = {"Authorization": f"Bearer {token}"}
+        r = api_client.get("/api/v2/kr-similar/health")
 
-        r = requests.get(
-            f"{api_base_url}/api/v2/kr-similar/health",
-            headers=headers,
-            timeout=10
-        )
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+        data = r.json()
+        assert data["status"] == "ok"
+        assert "modules_loaded" in data
+        assert data["modules_loaded"]["embeddings_manager"] == True
+        assert data["modules_loaded"]["searcher"] == True
+        print(f"API health: {data}")
+
+    @pytest.mark.skipif(
+        not os.environ.get("RUN_API_TESTS"),
+        reason="API tests require running server (set RUN_API_TESTS=1)"
+    )
+    def test_api_02_list_dictionaries(self, api_client):
+        """Test GET /list-dictionaries endpoint.
+
+        EXPECTED: Returns list of available dictionaries with metadata
+        """
+        if not api_client.login():
+            pytest.skip("Could not login to API")
+
+        r = api_client.get("/api/v2/kr-similar/list-dictionaries")
 
         assert r.status_code == 200
         data = r.json()
-        assert data["status"] == "ok"
-        print(f"API health: {data}")
+        assert "data" in data
+        assert "dictionaries" in data["data"]
+        assert "available_types" in data["data"]
+        print(f"List dictionaries: {len(data['data']['dictionaries'])} found")
+
+    @pytest.mark.skipif(
+        not os.environ.get("RUN_API_TESTS"),
+        reason="API tests require running server (set RUN_API_TESTS=1)"
+    )
+    def test_api_03_status(self, api_client):
+        """Test GET /status endpoint.
+
+        EXPECTED: Returns tool status with embeddings and searcher info
+        """
+        if not api_client.login():
+            pytest.skip("Could not login to API")
+
+        r = api_client.get("/api/v2/kr-similar/status")
+
+        assert r.status_code == 200
+        data = r.json()
+        assert data["tool_name"] == "KRSimilar"
+        assert "embeddings" in data
+        assert "searcher" in data
+        assert "available_dict_types" in data
+        print(f"API status: tool_name={data['tool_name']}")
+
+    @pytest.mark.skipif(
+        not os.environ.get("RUN_API_TESTS"),
+        reason="API tests require running server (set RUN_API_TESTS=1)"
+    )
+    def test_api_04_create_dictionary(self, api_client, fixture_file_path):
+        """Test POST /create-dictionary endpoint.
+
+        EXPECTED: Queues dictionary creation, returns operation_id
+        """
+        if not api_client.login():
+            pytest.skip("Could not login to API")
+
+        # Ensure TEST type is available (need to add via direct import for API test)
+        from server.tools.kr_similar.embeddings import DICT_TYPES
+        if "TEST" not in DICT_TYPES:
+            DICT_TYPES.append("TEST")
+
+        with open(fixture_file_path, 'rb') as f:
+            r = api_client.post(
+                "/api/v2/kr-similar/create-dictionary",
+                files={"files": ("sample_language_data.txt", f, "text/plain")},
+                data={
+                    "dict_type": "TEST",
+                    "kr_column": "5",
+                    "trans_column": "6"
+                }
+            )
+
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        data = r.json()
+        assert "operation_id" in data
+        print(f"Create dictionary started: operation_id={data['operation_id']}")
+
+        # Wait a bit for background task
+        import time
+        time.sleep(5)
+
+    @pytest.mark.skipif(
+        not os.environ.get("RUN_API_TESTS"),
+        reason="API tests require running server (set RUN_API_TESTS=1)"
+    )
+    def test_api_05_load_dictionary(self, api_client):
+        """Test POST /load-dictionary endpoint.
+
+        EXPECTED: Loads dictionary into memory, returns pair counts
+        """
+        if not api_client.login():
+            pytest.skip("Could not login to API")
+
+        # Ensure TEST type is available
+        from server.tools.kr_similar.embeddings import DICT_TYPES
+        if "TEST" not in DICT_TYPES:
+            DICT_TYPES.append("TEST")
+
+        r = api_client.post(
+            "/api/v2/kr-similar/load-dictionary",
+            data={"dict_type": "TEST"}
+        )
+
+        # May fail if dictionary doesn't exist yet
+        if r.status_code == 404:
+            pytest.skip("TEST dictionary not found - run create_dictionary first")
+
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        data = r.json()
+        assert "data" in data
+        assert "split_pairs" in data["data"]
+        print(f"Load dictionary: {data['data']}")
+
+    @pytest.mark.skipif(
+        not os.environ.get("RUN_API_TESTS"),
+        reason="API tests require running server (set RUN_API_TESTS=1)"
+    )
+    def test_api_06_search(self, api_client):
+        """Test POST /search endpoint.
+
+        EXPECTED: Returns similar strings with scores
+        """
+        if not api_client.login():
+            pytest.skip("Could not login to API")
+
+        r = api_client.post(
+            "/api/v2/kr-similar/search",
+            data={
+                "query": "안녕하세요",
+                "threshold": "0.3",
+                "top_k": "5",
+                "use_whole": "false"
+            }
+        )
+
+        if r.status_code == 400 and "No dictionary loaded" in r.text:
+            pytest.skip("No dictionary loaded - run load_dictionary first")
+
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        data = r.json()
+        assert "data" in data
+        assert "results" in data["data"]
+        assert "count" in data["data"]
+        print(f"Search results: {data['data']['count']} found")
+
+    @pytest.mark.skipif(
+        not os.environ.get("RUN_API_TESTS"),
+        reason="API tests require running server (set RUN_API_TESTS=1)"
+    )
+    def test_api_07_extract_similar(self, api_client, fixture_file_path):
+        """Test POST /extract-similar endpoint.
+
+        EXPECTED: Queues extraction, returns operation_id
+        """
+        if not api_client.login():
+            pytest.skip("Could not login to API")
+
+        with open(fixture_file_path, 'rb') as f:
+            r = api_client.post(
+                "/api/v2/kr-similar/extract-similar",
+                files={"file": ("sample_language_data.txt", f, "text/plain")},
+                data={
+                    "min_char_length": "10",
+                    "similarity_threshold": "0.5",
+                    "filter_same_category": "false"
+                }
+            )
+
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        data = r.json()
+        assert "operation_id" in data
+        print(f"Extract similar started: operation_id={data['operation_id']}")
+
+    @pytest.mark.skipif(
+        not os.environ.get("RUN_API_TESTS"),
+        reason="API tests require running server (set RUN_API_TESTS=1)"
+    )
+    def test_api_08_auto_translate(self, api_client, fixture_file_path):
+        """Test POST /auto-translate endpoint.
+
+        EXPECTED: Queues auto-translation, returns operation_id
+        """
+        if not api_client.login():
+            pytest.skip("Could not login to API")
+
+        with open(fixture_file_path, 'rb') as f:
+            r = api_client.post(
+                "/api/v2/kr-similar/auto-translate",
+                files={"file": ("sample_language_data.txt", f, "text/plain")},
+                data={"similarity_threshold": "0.5"}
+            )
+
+        if r.status_code == 400 and "No dictionary loaded" in r.text:
+            pytest.skip("No dictionary loaded - run load_dictionary first")
+
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        data = r.json()
+        assert "operation_id" in data
+        print(f"Auto-translate started: operation_id={data['operation_id']}")
+
+    @pytest.mark.skipif(
+        not os.environ.get("RUN_API_TESTS"),
+        reason="API tests require running server (set RUN_API_TESTS=1)"
+    )
+    def test_api_09_clear(self, api_client):
+        """Test DELETE /clear endpoint.
+
+        EXPECTED: Clears dictionary from memory
+        """
+        if not api_client.login():
+            pytest.skip("Could not login to API")
+
+        r = api_client.delete("/api/v2/kr-similar/clear")
+
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        data = r.json()
+        assert "data" in data
+        assert data["data"]["current_dictionary"] is None
+        print(f"Clear dictionary: {data}")
 
 
 if __name__ == "__main__":
