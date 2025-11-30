@@ -34,3 +34,4 @@ Build History:
 --------------
 Build FULL v2511221939 - First attempt (BLOCKED - LFS quota exceeded)
 Build LIGHT v2511221939
+Build LIGHT v2511221939 - Fix #2 missing lib files
