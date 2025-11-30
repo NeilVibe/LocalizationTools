@@ -43,14 +43,45 @@ You have access to:
 
 ---
 
+## Starting X Server (VcXsrv) - DO THIS FIRST!
+
+**Claude CAN start VcXsrv by himself** via PowerShell from WSL:
+
+```bash
+# Check if VcXsrv is already running
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Get-Process vcxsrv -ErrorAction SilentlyContinue"
+
+# If not running, START IT:
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process 'C:\Program Files\VcXsrv\vcxsrv.exe' -ArgumentList ':0 -multiwindow -clipboard -wgl -ac'"
+
+# Wait 2 seconds, then verify it's running
+sleep 2
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Get-Process vcxsrv"
+
+# Test X connection (use DISPLAY=:0, not the old IP)
+export DISPLAY=:0
+xdpyinfo | head -3
+```
+
+**Key Points:**
+- VcXsrv is installed at `C:\Program Files\VcXsrv\vcxsrv.exe`
+- Use `-ac` flag to disable access control (allows WSL connections)
+- Set `DISPLAY=:0` (not the old `10.255.255.254:0`)
+- Claude can do this autonomously - NO user intervention needed!
+
+---
+
 ## Using Graphical Browser (X Server Available!)
 
-**Environment**: X server configured at DISPLAY=10.255.255.254:0
+**Environment**: X server on DISPLAY=:0 (start VcXsrv first - see above)
 **Browser**: Chromium 142 installed
 
 ### Opening Browser for Visual Testing
 
 ```bash
+# FIRST: Make sure X Server is running (see section above)
+export DISPLAY=:0
+
 # Open LocaNext frontend
 chromium-browser http://localhost:5173 &
 
@@ -437,10 +468,42 @@ print(f'API returns: {r.json()[0][\"started_at\"]}')"
 - ✅ Monitoring scripts
 - ✅ Database access
 - ✅ Headless browser (if needed)
+- ✅ **VcXsrv** (can start via PowerShell!)
+- ✅ **PowerShell access** (can run Windows commands from WSL)
 
 **Be autonomous. Be Claude-esque.**
 
 ---
 
-**Last Updated**: 2025-11-11
+## PowerShell Tricks from WSL
+
+Claude has full PowerShell access from WSL. Use it!
+
+```bash
+# Run any PowerShell command
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "YOUR_COMMAND"
+
+# Examples:
+# List Windows processes
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Get-Process | Select -First 5"
+
+# Start a Windows application
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process notepad"
+
+# Check if an app is running
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Get-Process vcxsrv -ErrorAction SilentlyContinue"
+
+# Start VcXsrv (X Server)
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process 'C:\Program Files\VcXsrv\vcxsrv.exe' -ArgumentList ':0 -multiwindow -clipboard -wgl -ac'"
+```
+
+**This means Claude can:**
+- Start Windows applications (VcXsrv, etc.)
+- Check Windows processes
+- Access Windows filesystem via `/mnt/c/`
+- Run Windows commands when Linux tools aren't enough
+
+---
+
+**Last Updated**: 2025-11-30
 **Status**: Mandatory reading before testing
