@@ -1,6 +1,33 @@
 # Build & Distribution System
 
-**VRS-Manager Pattern** | **Manual Build Triggers** | **Git LFS Management**
+**LIGHT-First Strategy** | **Manual Build Triggers** | **Post-Install Model Download**
+
+**Last Updated**: 2025-11-30
+
+---
+
+## 🎯 BUILD STRATEGY: LIGHT-First (2025-11-30)
+
+### The Problem
+- Git LFS free tier: 1GB bandwidth/month
+- Korean BERT model: 447MB
+- Each FULL build uses ~894MB bandwidth (model × 2 jobs)
+- **Result**: Quota exceeded after first test build
+
+### The Solution
+Instead of bundling the 447MB model in builds:
+1. **Build LIGHT installer** (~100-150MB) - NO model bundled
+2. **User downloads model during install wizard** - Their bandwidth, not GitHub's
+3. **No LFS costs** - Model never goes through GitHub Actions
+
+### Comparison
+| Aspect | OLD (FULL) | NEW (LIGHT) |
+|--------|------------|-------------|
+| Build size | ~2GB | ~100-150MB |
+| LFS bandwidth/build | ~894MB | ~0MB |
+| GitHub Actions | Blocked by quota | No issues |
+| Install time | Faster | +5-10 min (model download) |
+| Cost | $5/50GB data pack | FREE |
 
 ---
 
@@ -10,11 +37,11 @@
 
 - YY = Year (25 = 2025)
 - MM = Month (11 = November)
-- DD = Day (22)
+- DD = Day (30)
 - HH = Hour (19)
 - MM = Minute (39)
 
-**Example:** `2511221939` = November 22, 2025 at 7:39 PM
+**Example:** `2511301939` = November 30, 2025 at 7:39 PM
 
 **Why?** Clear, sortable, shows when each version was created.
 
@@ -41,7 +68,7 @@ git commit -m "Version unification: v$NEW_VERSION"
 git push origin main
 
 # 5. NOW trigger build (when ready for release)
-echo "Build FULL v$NEW_VERSION" >> BUILD_TRIGGER.txt
+echo "Build LIGHT v$NEW_VERSION" >> BUILD_TRIGGER.txt
 git add BUILD_TRIGGER.txt
 git commit -m "Trigger build v$NEW_VERSION"
 git push origin main
@@ -56,17 +83,17 @@ git push origin main
 **IMPORTANT:** Builds are triggered MANUALLY by YOU, not automatic on every push!
 
 ```bash
-# Build FULL version (with 446MB BERT model)
-echo "Build FULL v$(date '+%y%m%d%H%M')" >> BUILD_TRIGGER.txt
+# Build LIGHT version (recommended - no model bundled)
+echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> BUILD_TRIGGER.txt
 git add BUILD_TRIGGER.txt
-git commit -m "Trigger FULL build v$(date '+%y%m%d%H%M')"
+git commit -m "Trigger LIGHT build v$(date '+%y%m%d%H%M')"
 git push origin main
 ```
 
 **Why Manual Builds?**
 - Control when releases happen (not every commit)
 - Save GitHub Actions minutes
-- Save LFS bandwidth quota (446MB model download)
+- No LFS bandwidth issues with LIGHT builds
 - Intentional release process
 
 **Build starts automatically AFTER you push BUILD_TRIGGER.txt update.**
@@ -75,30 +102,39 @@ Check: https://github.com/NeilVibe/LocalizationTools/actions
 
 ---
 
-## ⚠️ GIT LFS BANDWIDTH QUOTA (CRITICAL!)
+## 📥 POST-INSTALL MODEL DOWNLOAD
 
-**GitHub LFS has monthly bandwidth quota:**
-- Free tier: 1GB bandwidth/month
-- Korean BERT model: 446MB stored in LFS
-- Each build downloads model = counts against quota
+The LIGHT installer includes a post-install step that downloads the Korean BERT model.
 
-**The Fix (Use in GitHub Actions):**
+### How It Works
+1. User runs installer
+2. Files are copied (~100-150MB)
+3. Wizard shows: "Downloading AI Model (447MB)..."
+4. `download_model.bat` runs automatically
+5. Model downloaded from Hugging Face to `models/kr-sbert/`
+6. App ready to use
 
-```yaml
-# Electron build (BERT required for bundling)
-build-electron:
-  - uses: actions/checkout@v3
-    with:
-      lfs: true  # ✅ Download BERT model for bundling
+### Inno Setup Configuration
+```ini
+[Run]
+; Download model after file installation
+Filename: "{app}\scripts\download_model.bat"; \
+  Description: "Downloading AI Model (447MB - Required for XLSTransfer)"; \
+  Flags: runhidden waituntilterminated; \
+  StatusMsg: "Downloading Korean BERT model... This may take 5-10 minutes."
 
-# Release job (only needs artifacts, not source)
-create-release:
-  - uses: actions/checkout@v3
-    with:
-      lfs: false  # ✅ No source files needed, saves bandwidth
+; Then launch app
+Filename: "{app}\LocaNext.exe"; \
+  Description: "Launch LocaNext"; \
+  Flags: nowait postinstall skipifsilent
 ```
 
-**Key Lesson:** Only enable `lfs: true` where BERT model is actually needed!
+### Fallback for Offline Users
+If user doesn't have internet during install:
+1. App installs without model
+2. XLSTransfer shows "Model not found" message
+3. User can run `scripts\download_model.bat` later
+4. Or manually copy `models/kr-sbert/` folder from another machine
 
 ---
 
@@ -118,17 +154,6 @@ gh run view $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') --
 
 # Search for specific errors
 gh run view <RUN_ID> --log-failed | grep -i "error\|failed\|missing"
-
-# Get context around error
-gh run view <RUN_ID> --log-failed | grep -B 10 -A 10 "Compile.*installer"
-```
-
-**Alternative: GitHub API (no auth required):**
-
-```bash
-curl -s "https://api.github.com/repos/NeilVibe/LocalizationTools/actions/runs?per_page=5" | \
-python3 -c "import sys, json; runs = json.load(sys.stdin)['workflow_runs']; \
-[print(f\"{r['name']}: {r['status']} - {r['conclusion']}\") for r in runs[:5]]"
 ```
 
 **See docs/BUILD_TROUBLESHOOTING.md for complete debugging guide**
@@ -145,14 +170,12 @@ python3 scripts/check_version_unified.py
 ```
 
 **What it checks:**
-- ✅ **version.py** - Single source of truth
-- ✅ **server/config.py** - Backend imports VERSION
-- ✅ **locaNext/package.json** - Electron app version
-- ✅ **README.md** - Documentation version
-- ✅ **Roadmap.md** - Project status version
-- ✅ **CLAUDE.md** - Master navigation hub
+- version.py - Single source of truth
+- server/config.py - Backend imports VERSION
+- locaNext/package.json - Electron app version
+- README.md - Documentation version
 
-**⚠️ MANDATORY WORKFLOW:**
+**MANDATORY WORKFLOW:**
 1. Update VERSION in version.py
 2. **RUN THIS CHECK** → `python3 scripts/check_version_unified.py`
 3. Only if exit code 0 (success) → commit and push
@@ -167,4 +190,4 @@ python3 scripts/check_version_unified.py
 - **BUILD_TROUBLESHOOTING.md** - Complete debugging guide
 - **BUILD_CHECKLIST.md** - Pre-release checklist
 - **PACKAGING_GUIDE.md** - Electron packaging details
-- **DEPLOYMENT.md** - Deployment procedures
+- **Roadmap.md** - Current build strategy and status
