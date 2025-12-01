@@ -97,8 +97,9 @@ class TestCompleteUserFlow:
         data = response.json()
         assert "access_token" in data
         token = data["access_token"]
-        user_id = data["user"]["user_id"]
-        print(f"✓ Login successful: {data['user']['username']} (ID: {user_id})")
+        # API returns user_id directly, not nested in user object
+        user_id = data["user_id"]
+        print(f"✓ Login successful: {data['username']} (ID: {user_id})")
 
         # 2. Store token for other tests
         TestCompleteUserFlow.token = token

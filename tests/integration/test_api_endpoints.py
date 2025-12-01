@@ -14,18 +14,38 @@ from server.utils.auth import hash_password
 
 @pytest.fixture(scope="module")
 def test_db():
-    """Setup test database."""
-    # Use SQLite for testing
-    engine, session_maker = setup_database(use_postgres=False, drop_existing=True)
+    """Setup test database using a separate test database file.
+
+    IMPORTANT: Uses drop_existing=False to avoid destroying the main database.
+    This test uses a TestClient which shares the app's database.
+    """
+    # Do NOT drop the existing database - just get a session maker
+    # The main database should already be set up with admin user
+    engine, session_maker = setup_database(use_postgres=False, drop_existing=False)
     yield session_maker
-    # Cleanup handled by pytest
+    # No cleanup needed - we're using the main database
 
 
 @pytest.fixture(scope="module")
 def test_user(test_db):
-    """Create a test user."""
+    """Get or create a test user.
+
+    IMPORTANT: Since we use drop_existing=False to preserve the main database,
+    we must check if the user exists before creating to avoid UNIQUE constraint errors.
+    """
+    from sqlalchemy import select
+
     db = test_db()
     try:
+        # Check if testuser already exists
+        existing_user = db.query(User).filter(User.username == "testuser").first()
+        if existing_user:
+            # Update password to ensure tests work (password may have been different)
+            existing_user.password_hash = hash_password("testpassword123")
+            db.commit()
+            return existing_user
+
+        # Create new test user if doesn't exist
         user = User(
             username="testuser",
             password_hash=hash_password("testpassword123"),
