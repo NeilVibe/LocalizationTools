@@ -21,6 +21,11 @@ This folder contains archived/deprecated tests that are no longer part of the ac
    - Include the date of archival
    - Note what test replaced it (if applicable)
 
-## Currently Archived
+## Currently Archived (2025-12-01)
 
-(Empty - no tests archived yet)
+| File | Reason | Replaced By |
+|------|--------|-------------|
+| `test_kr_similar.py` | Duplicate | `e2e/test_kr_similar_e2e.py` |
+| `test_quicksearch_phase4.py` | Duplicate | `e2e/test_quicksearch_e2e.py` |
+| `test_xlstransfer_cli.py` | Duplicate | `e2e/test_xlstransfer_e2e.py` |
+| `test_full_workflow.py` | Duplicate | `e2e/test_complete_user_flow.py` |
