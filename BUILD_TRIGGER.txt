@@ -50,3 +50,4 @@ Build LIGHT v2512020050
 Build LIGHT v2512020050 - Fix test import error
 Build LIGHT v2512020100 - Full stack: backend + frontend + auto-updater
 Build LIGHT v2512020100 - Fix package-lock.json
+Build LIGHT v2512020100 - Disable electron-builder publish
