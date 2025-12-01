@@ -396,7 +396,8 @@ class TestXLSTransferAPIE2E:
                 }
             )
 
-        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        # 202 Accepted for background task
+        assert r.status_code in [200, 202], f"Expected 200/202, got {r.status_code}: {r.text}"
         data = r.json()
         assert "operation_id" in data
         print(f"Create dictionary started: operation_id={data['operation_id']}")
@@ -424,8 +425,9 @@ class TestXLSTransferAPIE2E:
         assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
         data = r.json()
         assert data["success"] == True
-        assert "data" in data
-        print(f"Load dictionary: {data['data']}")
+        # API returns split_pairs directly, not wrapped in 'data'
+        assert "split_pairs" in data
+        print(f"Load dictionary: {data}")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
@@ -535,7 +537,8 @@ class TestXLSTransferAPIE2E:
                 }
             )
 
-        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        # 202 Accepted for background task
+        assert r.status_code in [200, 202], f"Expected 200/202, got {r.status_code}: {r.text}"
         data = r.json()
         assert "operation_id" in data
         print(f"Translate Excel started: operation_id={data['operation_id']}")

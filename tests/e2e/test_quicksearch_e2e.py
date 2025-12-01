@@ -335,9 +335,9 @@ class TestQuickSearchAPIE2E:
 
         assert r.status_code == 200
         data = r.json()
-        assert "data" in data
-        assert "dictionaries" in data["data"]
-        print(f"List dictionaries: {len(data['data']['dictionaries'])} found")
+        # API returns dictionaries directly, not wrapped in 'data'
+        assert "dictionaries" in data
+        print(f"List dictionaries: {len(data['dictionaries'])} found")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
@@ -361,7 +361,8 @@ class TestQuickSearchAPIE2E:
                 }
             )
 
-        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        # 202 Accepted for background task
+        assert r.status_code in [200, 202], f"Expected 200/202, got {r.status_code}: {r.text}"
         data = r.json()
         assert "operation_id" in data
         print(f"Create dictionary started: operation_id={data['operation_id']}")
@@ -394,8 +395,9 @@ class TestQuickSearchAPIE2E:
 
         assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
         data = r.json()
-        assert "data" in data
-        print(f"Load dictionary: {data['data']}")
+        # API returns pairs_count directly, not wrapped in 'data'
+        assert "pairs_count" in data or "success" in data
+        print(f"Load dictionary: {data}")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
@@ -421,10 +423,10 @@ class TestQuickSearchAPIE2E:
 
         assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
         data = r.json()
-        assert "data" in data
-        assert "results" in data["data"]
-        assert "total_count" in data["data"]
-        print(f"Search results: {data['data']['total_count']} found")
+        # API returns results directly, not wrapped in 'data'
+        assert "results" in data
+        assert "total_count" in data
+        print(f"Search results: {data['total_count']} found")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
@@ -449,9 +451,9 @@ class TestQuickSearchAPIE2E:
 
         assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
         data = r.json()
-        assert "data" in data
-        assert "results" in data["data"]
-        print(f"Multiline search: {data['data']['total_matches']} total matches")
+        # API returns results directly, not wrapped in 'data'
+        assert "results" in data
+        print(f"Multiline search: {data['total_matches']} total matches")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
@@ -478,8 +480,9 @@ class TestQuickSearchAPIE2E:
 
         assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
         data = r.json()
-        assert "data" in data
-        print(f"Set reference: {data['data']}")
+        # API returns reference_enabled directly, not wrapped in 'data'
+        assert "reference_enabled" in data or "success" in data
+        print(f"Set reference: {data}")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
@@ -501,8 +504,9 @@ class TestQuickSearchAPIE2E:
 
         assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
         data = r.json()
-        assert data["data"]["reference_enabled"] == True
-        print(f"Toggle reference enabled: {data['data']}")
+        # API returns reference_enabled directly, not wrapped in 'data'
+        assert data["reference_enabled"] == True
+        print(f"Toggle reference enabled: {data}")
 
         # Disable
         r = api_client.post(
@@ -512,8 +516,8 @@ class TestQuickSearchAPIE2E:
 
         assert r.status_code == 200
         data = r.json()
-        assert data["data"]["reference_enabled"] == False
-        print(f"Toggle reference disabled: {data['data']}")
+        assert data["reference_enabled"] == False
+        print(f"Toggle reference disabled: {data}")
 
 
 if __name__ == "__main__":
