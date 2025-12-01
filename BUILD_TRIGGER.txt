@@ -48,3 +48,4 @@ Build LIGHT v2512011310 - Security Hardening
 Build LIGHT v2512011310 - Security Audit Fix
 Build LIGHT v2512020050
 Build LIGHT v2512020050 - Fix test import error
+Build LIGHT v2512020100 - Full stack: backend + frontend + auto-updater
