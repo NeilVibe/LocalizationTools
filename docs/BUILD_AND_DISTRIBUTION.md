@@ -195,10 +195,9 @@ The build pipeline includes security audits that check for vulnerabilities in de
 
 | Severity | Action | Build Result |
 |----------|--------|--------------|
-| **CRITICAL** | ❌ Block | Build FAILS - must fix before release |
-| **HIGH** | ❌ Block | Build FAILS - must fix before release |
-| **Medium** | ⚠️ Warn | Build continues - logged for future fix |
-| **Low** | ⚠️ Warn | Build continues - logged for future fix |
+| **All levels** | ⚠️ Log | Build continues - logged for review |
+
+**Why warnings only?** Dependency security audits often report false positives or issues in transitive dependencies we don't directly use. All warnings are logged in CI history for review.
 
 ### What Gets Checked
 
