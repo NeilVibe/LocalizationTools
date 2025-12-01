@@ -1,9 +1,10 @@
 name: Build LocaNext LIGHT Installer
 
-# LIGHT Build Strategy (2025-11-30)
+# LIGHT Build Strategy (2025-12-01)
 # - NO model bundled in build (saves LFS bandwidth)
-# - Model downloaded by user post-install via Hugging Face
-# - Build size: ~100-150MB instead of ~2GB
+# - Standalone download_model.exe built with PyInstaller (NO Python needed on user PC!)
+# - Model downloaded post-install via safe Hugging Face pipeline
+# - Build size: ~150-200MB instead of ~2GB
 
 on:
   push:
@@ -25,7 +26,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        # NO lfs: true - LIGHT build doesn't need the model!
 
       - name: Check BUILD_TRIGGER.txt
         id: check
@@ -101,53 +101,44 @@ jobs:
           echo "✓ All Python tests passed"
 
       # ---- SECURITY AUDITS ----
-      # Protocol: Log all warnings, never block build (dependencies have false positives)
       - name: Python Security Audit
         run: |
           echo "=== Checking Python dependencies for vulnerabilities ==="
-          echo "Policy: Log all warnings for review, continue build"
-
-          # Run audit and log results (don't fail build)
           pip-audit --desc || echo "⚠️ Vulnerabilities found - logged for review"
-
-          echo ""
-          echo "✓ Python security audit complete (warnings logged above)"
-        continue-on-error: true  # Log warnings, don't block
+          echo "✓ Python security audit complete"
+        continue-on-error: true
 
       - name: NPM Security Audit
         run: |
-          echo "=== Checking NPM dependencies for vulnerabilities ==="
-          echo "Policy: Log all warnings for review, continue build"
           cd locaNext
-
-          # Run audit and log results (don't fail build)
           npm audit || echo "⚠️ Vulnerabilities found - logged for review"
-
-          echo ""
-          echo "✓ NPM security audit complete (warnings logged above)"
-        continue-on-error: true  # Log warnings, don't block
+          echo "✓ NPM security audit complete"
+        continue-on-error: true
 
       - name: Safety Checks Summary
         run: |
           echo "============================================"
           echo "✅ SAFETY CHECKS PASSED"
           echo "============================================"
-          echo "- Version unification: ✓"
-          echo "- Python tests: ✓"
-          echo "- Security audits: Completed (warnings only)"
-          echo "============================================"
-          echo "Proceeding to build..."
 
+  # ============================================================
+  # BUILD WINDOWS INSTALLER
+  # ============================================================
   build-windows:
     name: Build Windows LIGHT Installer
     runs-on: windows-latest
-    needs: [check-build-trigger, safety-checks]  # Must pass safety checks first!
+    needs: [check-build-trigger, safety-checks]
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        # NO lfs: true - LIGHT build, model downloaded by user post-install
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Setup Node.js 18
         uses: actions/setup-node@v4
@@ -156,7 +147,84 @@ jobs:
           cache: 'npm'
           cache-dependency-path: locaNext/package-lock.json
 
-      - name: Install Dependencies
+      # ============================================================
+      # STEP 1: Download VC++ Redistributable (bundle in installer)
+      # ============================================================
+      - name: Download VC++ Redistributable
+        run: |
+          Write-Host "Downloading VC++ Redistributable x64..."
+          New-Item -ItemType Directory -Force -Path "installer\redist"
+          Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "installer\redist\vc_redist.x64.exe"
+          $size = (Get-Item "installer\redist\vc_redist.x64.exe").length / 1MB
+          Write-Host "✓ Downloaded VC++ Redistributable: $([math]::Round($size, 1)) MB"
+        shell: pwsh
+
+      # ============================================================
+      # STEP 2: Download Python Embedded (portable, ~15MB)
+      # IT-Friendly: No .exe compilation, just portable Python!
+      # ============================================================
+      - name: Download Python Embedded
+        run: |
+          Write-Host "Downloading Python Embedded (portable)..."
+          New-Item -ItemType Directory -Force -Path "tools\python"
+
+          # Download Python 3.11 embedded (Windows x64)
+          $pythonUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
+          $zipPath = "tools\python-embedded.zip"
+
+          Invoke-WebRequest -Uri $pythonUrl -OutFile $zipPath
+          Expand-Archive -Path $zipPath -DestinationPath "tools\python" -Force
+          Remove-Item $zipPath
+
+          # Enable pip in embedded Python (uncomment import site)
+          $pthFile = Get-ChildItem "tools\python\python*._pth" | Select-Object -First 1
+          if ($pthFile) {
+            $content = Get-Content $pthFile.FullName
+            $content = $content -replace '#import site', 'import site'
+            Set-Content -Path $pthFile.FullName -Value $content
+          }
+
+          # Download and install pip
+          Write-Host "Installing pip in embedded Python..."
+          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "tools\python\get-pip.py"
+          & "tools\python\python.exe" "tools\python\get-pip.py" --no-warn-script-location
+          Remove-Item "tools\python\get-pip.py"
+
+          # Install huggingface_hub
+          Write-Host "Installing huggingface_hub..."
+          & "tools\python\python.exe" -m pip install --no-warn-script-location huggingface_hub
+
+          $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "✓ Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
+        shell: pwsh
+
+      - name: Verify Python Embedded + tools
+        run: |
+          Write-Host "Verifying embedded Python setup..."
+
+          # Check Python works
+          & "tools\python\python.exe" --version
+
+          # Check huggingface_hub is installed
+          & "tools\python\python.exe" -c "import huggingface_hub; print(f'huggingface_hub v{huggingface_hub.__version__}')"
+
+          # Check .bat and .py exist
+          if (!(Test-Path "tools\download_model.bat")) {
+            Write-Error "❌ download_model.bat not found"
+            exit 1
+          }
+          if (!(Test-Path "tools\download_model.py")) {
+            Write-Error "❌ download_model.py not found"
+            exit 1
+          }
+
+          Write-Host "✓ All download tools ready"
+        shell: pwsh
+
+      # ============================================================
+      # STEP 3: Build Electron app
+      # ============================================================
+      - name: Install Node Dependencies
         run: |
           cd locaNext
           npm ci
@@ -183,9 +251,12 @@ jobs:
           Write-Host "  Executable size: $([math]::Round($size, 1)) MB"
 
           $totalSize = (Get-ChildItem "locaNext\dist-electron\win-unpacked" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-          Write-Host "  Total app size: $([math]::Round($totalSize, 1)) MB (LIGHT - no model)"
+          Write-Host "  Total Electron app size: $([math]::Round($totalSize, 1)) MB"
         shell: pwsh
 
+      # ============================================================
+      # STEP 4: Compile Inno Setup installer
+      # ============================================================
       - name: Install Inno Setup
         run: |
           choco install innosetup -y
@@ -194,7 +265,12 @@ jobs:
       - name: Compile LIGHT Installer
         run: |
           Write-Host "Compiling LIGHT Windows installer..."
-          Write-Host "Note: Model NOT bundled - will be downloaded post-install"
+          Write-Host "Components:"
+          Write-Host "  - Electron app (LocaNext.exe)"
+          Write-Host "  - Standalone model downloader (download_model.exe)"
+          Write-Host "  - NO model bundled (downloaded post-install)"
+          Write-Host "  - NO Python required on user PC!"
+
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_light.iss
         shell: pwsh
 
@@ -203,17 +279,16 @@ jobs:
           $version = "${{ needs.check-build-trigger.outputs.version }}"
           $installerPath = "installer_output\LocaNext_v${version}_Light_Setup.exe"
 
-          Write-Host "Looking for LIGHT installer at: $installerPath"
+          Write-Host "Looking for installer at: $installerPath"
 
-          # Try with version, then try to find any installer
           if (!(Test-Path $installerPath)) {
-            Write-Host "Exact path not found, searching for any installer..."
+            Write-Host "Searching for any installer..."
             $found = Get-ChildItem "installer_output\*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($found) {
-              Write-Host "Found installer: $($found.Name)"
+              Write-Host "Found: $($found.Name)"
               $installerPath = $found.FullName
             } else {
-              Write-Error "❌ No installer found in installer_output"
+              Write-Error "❌ No installer found"
               exit 1
             }
           }
@@ -221,7 +296,15 @@ jobs:
           Write-Host "✓ LIGHT Installer compiled successfully"
           $size = (Get-Item $installerPath).length / 1MB
           Write-Host "  Installer size: $([math]::Round($size, 1)) MB"
-          Write-Host "  (Model will be downloaded post-install: ~447MB)"
+          Write-Host ""
+          Write-Host "📦 What's included:"
+          Write-Host "  - LocaNext Electron app"
+          Write-Host "  - Standalone model downloader (no Python needed!)"
+          Write-Host "  - VC++ Redistributable check"
+          Write-Host ""
+          Write-Host "📥 Post-install:"
+          Write-Host "  - AI model (~447MB) downloaded from Hugging Face"
+          Write-Host "  - Safe pipeline using huggingface_hub"
         shell: pwsh
 
       - name: Upload Installer Artifact
@@ -231,16 +314,18 @@ jobs:
           path: installer_output/*.exe
           retention-days: 7
 
+  # ============================================================
+  # BUILD LINUX (Optional)
+  # ============================================================
   build-linux:
     name: Build Linux AppImage (LIGHT)
     runs-on: ubuntu-latest
-    needs: [check-build-trigger, safety-checks]  # Must pass safety checks first!
+    needs: [check-build-trigger, safety-checks]
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        # NO lfs: true - LIGHT build
 
       - name: Setup Node.js 18
         uses: actions/setup-node@v4
@@ -260,18 +345,6 @@ jobs:
           npm run build
           npm run build:electron
 
-      - name: Verify Linux Build
-        run: |
-          echo "Verifying Linux build output..."
-          find locaNext/dist-electron -name "*.AppImage" -type f 2>/dev/null || true
-
-          if ls locaNext/dist-electron/*.AppImage 1> /dev/null 2>&1; then
-            echo "✓ AppImage found"
-            ls -lh locaNext/dist-electron/*.AppImage
-          else
-            echo "Note: AppImage may not be built (depends on electron-builder config)"
-          fi
-
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -280,6 +353,9 @@ jobs:
           retention-days: 7
         continue-on-error: true
 
+  # ============================================================
+  # CREATE GITHUB RELEASE
+  # ============================================================
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -319,36 +395,32 @@ jobs:
             ### 📥 Downloads
 
             **Windows:**
-            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Light_Setup.exe` (~100-150MB)
+            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Light_Setup.exe` (~150-200MB)
             - AI model (~447MB) downloads automatically during installation
 
-            **Linux:**
-            - `LocaNext.AppImage` (~100-150MB, if available)
-            - Run `scripts/download_model.bat` after to get AI features
+            ### ✅ Requirements
 
-            ### ⚠️ Requirements
-
-            - **Python 3.10+** - Required for AI model download
             - **Internet connection** - For post-install model download
             - **~1GB disk space** - For app + model
+            - **NO Python required!** - Everything is bundled
 
             ### 🚀 What's Included
 
             - ✅ **XLSTransfer** - AI-powered Excel translation
             - ✅ **QuickSearch** - Multi-game dictionary (BDO, BDM, BDC, CD)
-            - ✅ **Admin Dashboard** - Usage analytics
-            - ⏳ **Korean BERT Model** - Downloaded during installation
+            - ✅ **Standalone Model Downloader** - No Python needed!
+            - ⏳ **Korean BERT Model** - Downloaded automatically during installation
 
             ### 💻 Installation
 
             **Windows:**
             1. Download the installer
             2. Run the installer
-            3. Wait for AI model download (~5-10 min)
+            3. **Wait for AI model download** (~5-10 min, automatic)
             4. Launch LocaNext!
 
             **If model download fails:**
-            - Run `scripts\download_model.bat` manually
+            - Run `tools\download_model.exe` manually from install folder
             - Or copy `models\kr-sbert\` from another installation
 
             ### 🔐 Default Credentials
