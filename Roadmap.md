@@ -26,15 +26,29 @@
 2. ✅ **QuickSearch** (App #2) - Multi-game dictionary search (15 languages, 4 games)
 3. ✅ **KR Similar** (App #3) - Korean semantic similarity search
 
-### Comprehensive E2E Test Coverage (2025-12-01)
-| App | Unit Tests | API Tests* | Functions Tested | Status |
-|-----|------------|-----------|------------------|--------|
-| **KR Similar** | 18 | 9 | All 9 endpoints + core | ✅ COMPLETE |
-| **XLSTransfer** | 9 | 8 | All 8 endpoints + core | ✅ COMPLETE |
-| **QuickSearch** | 11 | 8 | All 8 endpoints + core | ✅ COMPLETE |
-| **Total** | **38** | **25** | **63 tests** | ✅ |
+### Test Suite Status (2025-12-01)
 
-*API tests require server (`RUN_API_TESTS=1`)
+| Domain | Tests | Files | Status |
+|--------|-------|-------|--------|
+| **Security** | 86 | 4 | ✅ Complete |
+| **E2E (Apps)** | 120+ | 8 | ✅ Complete |
+| **Unit (Client)** | 86 | 3 | ✅ Complete |
+| **Unit (Server)** | 60+ | 4 | ✅ Complete |
+| **Integration** | 60+ | 5 | ✅ Complete |
+| **Feature Tests** | 38 | 6 | ✅ Complete |
+| **Total** | **450** | **35+** | ✅ 49% coverage |
+
+**Coverage Progress**: 30% → 49% (+19%)
+**Tests Added**: 353 → 450 (+97 tests)
+**Test Status**: ✅ **450 passed, 0 skipped, 0 failed** (with server running)
+
+**Test Structure** (all directories now populated):
+- `tests/unit/test_server/` - Database models, config, utils
+- `tests/integration/server_tests/` - Auth, logging integration
+- `tests/integration/client_tests/` - File processing
+- `tests/e2e/server_tests/` - API workflows
+- `tests/e2e/client_tests/` - Tool workflows
+- `tests/helpers/` - Test utilities, mock data
 
 ### Build Status
 | Component | Status | Notes |
@@ -47,124 +61,30 @@
 
 ---
 
-## ✅ Recent Progress (2025-12-01)
+## 🎯 Current Priority: Test Coverage Improvement
 
-### CI/CD Safety Checks & Build Pipeline - COMPLETE
-- ✅ **Safety Checks in CI**: Version validation, pytest, pip-audit, npm audit
-- ✅ **Build Pipeline**: Safety checks must pass before Windows/Linux builds start
-- ✅ **Model-Aware Tests**: Tests skip automatically when Korean BERT model unavailable (LIGHT builds)
-- ✅ **Release v2512010029**: Successfully built and published to GitHub Releases
+### Progress Made (2025-12-01)
+- **Coverage**: 30% → 49% (+19% improvement)
+- **Tests**: 353 → 450 (+97 new tests)
+- **All placeholder directories filled** ✅
+- **0 skipped tests** (all tests run with server) ✅
 
-**CI/CD Pipeline Now Includes**:
-1. Version unification check (all 8 files must match)
-2. Python E2E tests (137 passing, model tests skip in CI)
-3. Python security audit (pip-audit)
-4. NPM security audit
-5. Windows installer build (Inno Setup)
-6. Linux AppImage build
-7. Auto-publish to GitHub Releases
+### What's Fully E2E Tested (Real Data, Production Simulation)
+| App/Component | Test File | Tests | Status |
+|---------------|-----------|-------|--------|
+| **XLSTransfer** | `test_xlstransfer_e2e.py` | 25+ | ✅ Real Excel files |
+| **QuickSearch** | `test_quicksearch_e2e.py` | 20+ | ✅ Real Korean data |
+| **KR Similar** | `test_kr_similar_e2e.py` | 34 | ✅ Real BERT embeddings |
+| **Edge Cases** | `test_edge_cases_e2e.py` | 23 | ✅ Empty, Unicode, special chars |
+| **User Flow** | `test_complete_user_flow.py` | 10+ | ✅ Auth, CLI, health |
+| **Auth API** | `test_api_auth_integration.py` | 15+ | ✅ JWT, sessions, login |
+| **Security** | `tests/security/` | 86 | ✅ IP, CORS, JWT, audit |
 
-### Comprehensive E2E Tests for ALL Apps - COMPLETE
-- ✅ **KR Similar**: 18 unit tests + 9 API tests = 27 total
-- ✅ **XLSTransfer**: 9 unit tests + 8 API tests = 17 total
-- ✅ **QuickSearch**: 11 unit tests + 8 API tests = 19 total
-- ✅ **Total**: 38 passing unit tests, 25 API tests (require server)
-
-**Test Files Created:**
-- `tests/e2e/test_kr_similar_e2e.py` - Full E2E with real Korean BERT model
-- `tests/e2e/test_xlstransfer_e2e.py` - Excel processing + AI translation
-- `tests/e2e/test_quicksearch_e2e.py` - Dictionary search functionality
-
-**Fixtures Created:**
-- `tests/fixtures/sample_language_data.txt` - KR Similar test data
-- `tests/fixtures/sample_dictionary.xlsx` - XLSTransfer test data
-- `tests/fixtures/sample_quicksearch_data.txt` - QuickSearch test data
-- `tests/fixtures/sample_to_translate.txt` - Translation test data
-
-### Testing Protocol - COMPLETE
-- ✅ Created `docs/TESTING_PROTOCOL.md` - Full autonomous testing guide
-- ✅ Created `tests/archive/` - Folder for deprecated tests
-- ✅ E2E tests now run with real Korean BERT model
-- ✅ API tests enabled with `RUN_API_TESTS=1`
-
-### LIGHT Build Strategy - COMPLETE
-- ✅ Created `scripts/download_model_silent.bat` - Silent download for wizard
-- ✅ Created `installer/locanext_light.iss` - LIGHT installer (no model bundled)
-- ✅ Updated `.github/workflows/build-electron.yml` - No LFS required
-- ✅ Updated `BUILD_TRIGGER.txt` - VRS-Manager format (LIGHT/FULL)
-
-### VRS-Manager Protocol Alignment - COMPLETE
-- ✅ Version unification script checks 8 files
-- ✅ Manual builds only (triggers on BUILD_TRIGGER.txt change)
-- ✅ Single source of truth: `version.py`
-- ✅ All files unified at version `2511221939`
-
-### How LIGHT Build Works
-1. GitHub Actions builds without LFS (~100-150MB installer)
-2. User runs installer → files copied
-3. Post-install → `download_model_silent.bat` runs automatically
-4. Model downloads from Hugging Face (official, secure)
-5. App ready with AI features
-
----
-
-## 🎯 Next Steps
-
-### Priority 1: First LIGHT Build ⚡ ✅ COMPLETE
-**Status**: DONE (2025-11-30)
-**Release**: https://github.com/NeilVibe/LocalizationTools/releases/tag/v2511221939
-
-- [x] Trigger build via BUILD_TRIGGER.txt
-- [x] Monitor GitHub Actions for errors (fixed 5 issues)
-- [x] Download and test installer artifact
-- [x] Create first GitHub Release
-
-**Issues Fixed During Build:**
-1. Missing `lib/` files in git (gitignore was too broad)
-2. Wrong npm script name (`electron:build` → `build:electron`)
-3. Missing `favicon.ico` file (commented out)
-4. Invalid `Flags: checked` in Inno Setup Tasks section
-
-### Priority 2: KR Similar (App #3) 🔍 ✅ COMPLETE
-**Status**: DONE (2025-11-30)
-**Implementation**: `server/tools/kr_similar/` + `server/api/kr_similar_async.py`
-
-#### 2.1 What Was Implemented
-
-**Backend Modules:**
-```
-server/tools/kr_similar/
-├── __init__.py          # Module exports
-├── core.py              # Text normalization, parsing, structure adaptation
-├── embeddings.py        # Korean BERT model, dictionary creation/loading
-└── searcher.py          # FAISS similarity search, auto-translate
-```
-
-**API Endpoints (9 total):**
-- `GET  /api/v2/kr-similar/health` - Health check
-- `GET  /api/v2/kr-similar/status` - Manager status
-- `GET  /api/v2/kr-similar/list-dictionaries` - Available dictionaries
-- `POST /api/v2/kr-similar/create-dictionary` - Create from files
-- `POST /api/v2/kr-similar/load-dictionary` - Load into memory
-- `POST /api/v2/kr-similar/search` - Find similar strings
-- `POST /api/v2/kr-similar/extract-similar` - Extract similar groups
-- `POST /api/v2/kr-similar/auto-translate` - Auto-translate using similarity
-- `DELETE /api/v2/kr-similar/clear` - Clear loaded dictionary
-
-**Tests (34 passing):**
-- Unit tests: `tests/test_kr_similar.py` (15 tests)
-- E2E tests: `tests/e2e/test_kr_similar_e2e.py` (15 tests)
-- API test: Included in E2E (4 API-related tests)
-
-**Test Fixtures:**
-- `tests/fixtures/sample_language_data.txt` - 20 rows mock data
-- Based on real language file structure with code markers
-
-#### 2.2 Technical Details
-- **Model**: `snunlp/KR-SBERT-V40K-klueNLI-augSTS` (768-dim embeddings)
-- **Index**: FAISS for fast similarity search
-- **Dictionary Types**: BDO, BDM, BDC, CD, TEST
-- **Embedding Types**: "split" (line-by-line) and "whole" (full text)
+### Remaining to Reach 80%
+To reach 80% coverage, need to add tests for:
+- Server tools internal logic (`kr_similar`, `quicksearch`, `xlstransfer`) - Currently ~25%
+- Server API endpoints - Currently ~40%
+- Client tools - Currently 0%
 
 ---
 
@@ -767,9 +687,8 @@ Password: admin123
 
 **Last Updated**: 2025-12-01
 **Current Version**: 2512010029
-**Current Focus**: Internal Enterprise Security (IP Range Configuration)
-**Next Milestone**: IP Range filtering → JWT hardening → Audit logging → IT Security Approval
+**Current Focus**: Test Coverage (30% → 80%)
 **Platform Status**: 3 Apps Complete - All Operational
-**Test Status**: 137 passing + 25 skipped (API tests require server)
-**Build Status**: ✅ v2512010029 successfully released with safety checks
-**Security Status**: 3/11 complete, ~6-10 hours to IT approval ready
+**Test Status**: ✅ **450 passed, 0 skipped, 0 failed** (49% coverage, target: 80%)
+**Build Status**: ✅ v2512010029 released
+**Security Status**: 7/11 complete (86 security tests)

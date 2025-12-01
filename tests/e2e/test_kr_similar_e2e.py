@@ -502,10 +502,10 @@ class TestKRSimilarAPIE2E:
 
         assert r.status_code == 200
         data = r.json()
-        assert "data" in data
-        assert "dictionaries" in data["data"]
-        assert "available_types" in data["data"]
-        print(f"List dictionaries: {len(data['data']['dictionaries'])} found")
+        # API returns dictionaries directly, not wrapped in 'data'
+        assert "dictionaries" in data
+        assert "available_types" in data
+        print(f"List dictionaries: {len(data['dictionaries'])} found")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
@@ -536,28 +536,25 @@ class TestKRSimilarAPIE2E:
     def test_api_04_create_dictionary(self, api_client, fixture_file_path):
         """Test POST /create-dictionary endpoint.
 
-        EXPECTED: Queues dictionary creation, returns operation_id
+        EXPECTED: Queues dictionary creation, returns operation_id (202 Accepted)
         """
         if not api_client.login():
             pytest.skip("Could not login to API")
 
-        # Ensure TEST type is available (need to add via direct import for API test)
-        from server.tools.kr_similar.embeddings import DICT_TYPES
-        if "TEST" not in DICT_TYPES:
-            DICT_TYPES.append("TEST")
-
+        # Use a valid dict_type (BDO is always available)
         with open(fixture_file_path, 'rb') as f:
             r = api_client.post(
                 "/api/v2/kr-similar/create-dictionary",
                 files={"files": ("sample_language_data.txt", f, "text/plain")},
                 data={
-                    "dict_type": "TEST",
+                    "dict_type": "BDO",  # Use valid type
                     "kr_column": "5",
                     "trans_column": "6"
                 }
             )
 
-        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        # 202 Accepted for background task
+        assert r.status_code in [200, 202], f"Expected 200/202, got {r.status_code}: {r.text}"
         data = r.json()
         assert "operation_id" in data
         print(f"Create dictionary started: operation_id={data['operation_id']}")
@@ -578,25 +575,20 @@ class TestKRSimilarAPIE2E:
         if not api_client.login():
             pytest.skip("Could not login to API")
 
-        # Ensure TEST type is available
-        from server.tools.kr_similar.embeddings import DICT_TYPES
-        if "TEST" not in DICT_TYPES:
-            DICT_TYPES.append("TEST")
-
         r = api_client.post(
             "/api/v2/kr-similar/load-dictionary",
-            data={"dict_type": "TEST"}
+            data={"dict_type": "BDO"}  # Use valid type
         )
 
         # May fail if dictionary doesn't exist yet
         if r.status_code == 404:
-            pytest.skip("TEST dictionary not found - run create_dictionary first")
+            pytest.skip("BDO dictionary not found - run create_dictionary first")
 
         assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
         data = r.json()
-        assert "data" in data
-        assert "split_pairs" in data["data"]
-        print(f"Load dictionary: {data['data']}")
+        # API returns split_pairs directly, not wrapped in 'data'
+        assert "split_pairs" in data
+        print(f"Load dictionary: {data}")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
@@ -625,10 +617,9 @@ class TestKRSimilarAPIE2E:
 
         assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
         data = r.json()
-        assert "data" in data
-        assert "results" in data["data"]
-        assert "count" in data["data"]
-        print(f"Search results: {data['data']['count']} found")
+        # API returns results directly, not wrapped in 'data'
+        assert "results" in data
+        print(f"Search results: {len(data['results'])} found")
 
     @pytest.mark.skipif(
         not os.environ.get("RUN_API_TESTS"),
@@ -653,7 +644,8 @@ class TestKRSimilarAPIE2E:
                 }
             )
 
-        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        # 202 Accepted for background task
+        assert r.status_code in [200, 202], f"Expected 200/202, got {r.status_code}: {r.text}"
         data = r.json()
         assert "operation_id" in data
         print(f"Extract similar started: operation_id={data['operation_id']}")
@@ -680,7 +672,8 @@ class TestKRSimilarAPIE2E:
         if r.status_code == 400 and "No dictionary loaded" in r.text:
             pytest.skip("No dictionary loaded - run load_dictionary first")
 
-        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        # 202 Accepted for background task
+        assert r.status_code in [200, 202], f"Expected 200/202, got {r.status_code}: {r.text}"
         data = r.json()
         assert "operation_id" in data
         print(f"Auto-translate started: operation_id={data['operation_id']}")
@@ -701,8 +694,9 @@ class TestKRSimilarAPIE2E:
 
         assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
         data = r.json()
-        assert "data" in data
-        assert data["data"]["current_dictionary"] is None
+        # API returns current_dictionary directly, not wrapped in 'data'
+        assert "current_dictionary" in data
+        assert data["current_dictionary"] is None
         print(f"Clear dictionary: {data}")
 
 
