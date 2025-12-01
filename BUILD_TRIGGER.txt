@@ -46,3 +46,4 @@ Build LIGHT v2512010029 - Skip model tests in CI
 Build LIGHT v2512010029 - Fix model size check for LFS pointers
 Build LIGHT v2512011310 - Security Hardening
 Build LIGHT v2512011310 - Security Audit Fix
+Build LIGHT v2512020050
