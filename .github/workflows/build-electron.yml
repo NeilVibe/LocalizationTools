@@ -101,17 +101,43 @@ jobs:
           echo "✓ All Python tests passed"
 
       # ---- SECURITY AUDITS ----
+      # Protocol: CRITICAL/HIGH = fail build, Medium/Low = warn only
       - name: Python Security Audit
         run: |
           echo "=== Checking Python dependencies for vulnerabilities ==="
-          pip-audit --strict --desc || echo "⚠️ Some vulnerabilities found (non-blocking)"
-        continue-on-error: true  # Don't fail build, just warn
+          echo "Policy: CRITICAL/HIGH → block build, Medium/Low → warn"
+
+          # Run audit and capture output
+          pip-audit --desc > pip_audit_report.txt 2>&1 || true
+          cat pip_audit_report.txt
+
+          # Check for critical/high vulnerabilities (fail build)
+          if grep -iE "(critical|high)" pip_audit_report.txt; then
+            echo "❌ CRITICAL/HIGH vulnerabilities found - blocking build!"
+            echo "Fix these before releasing."
+            exit 1
+          else
+            echo "✓ No critical/high vulnerabilities"
+            if grep -iE "(medium|low|moderate)" pip_audit_report.txt; then
+              echo "⚠️ Medium/Low warnings found - logged for future fix"
+            fi
+          fi
 
       - name: NPM Security Audit
         run: |
           echo "=== Checking NPM dependencies for vulnerabilities ==="
-          cd locaNext && npm audit --audit-level=high || echo "⚠️ Some vulnerabilities found (non-blocking)"
-        continue-on-error: true  # Don't fail build, just warn
+          echo "Policy: CRITICAL/HIGH → block build, Medium/Low → warn"
+          cd locaNext
+
+          # Run audit (high level = fail on high/critical only)
+          npm audit --audit-level=high
+
+          # If we get here, no high/critical issues
+          echo "✓ No critical/high vulnerabilities"
+
+          # Show all warnings for tracking
+          npm audit || echo "⚠️ Medium/Low warnings logged for future fix"
+        continue-on-error: false  # Fail on high/critical
 
       - name: Safety Checks Summary
         run: |

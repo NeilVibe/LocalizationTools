@@ -130,11 +130,28 @@ DB_ECHO = os.getenv("DB_ECHO", "False").lower() == "true"  # Log all SQL queries
 # Security Settings
 # ============================================
 
+# IP Range Filtering (Internal Enterprise Security)
+# Set ALLOWED_IP_RANGE to restrict access to specific IP ranges
+# Example: ALLOWED_IP_RANGE=192.168.11.0/24
+# Example: ALLOWED_IP_RANGE=192.168.11.0/24,192.168.12.0/24,10.0.0.0/8
+# If not set, all IPs are allowed (development mode)
+ALLOWED_IP_RANGE = os.getenv("ALLOWED_IP_RANGE", "")
+IP_FILTER_ALLOW_LOCALHOST = os.getenv("IP_FILTER_ALLOW_LOCALHOST", "true").lower() == "true"
+IP_FILTER_LOG_BLOCKED = os.getenv("IP_FILTER_LOG_BLOCKED", "true").lower() == "true"
+
 # JWT settings
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-CHANGE-IN-PRODUCTION")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
+
+# Default/insecure values (used for validation)
+_DEFAULT_SECRET_KEY = "dev-secret-key-CHANGE-IN-PRODUCTION"
+_DEFAULT_API_KEY = "dev-key-change-in-production"
+_DEFAULT_ADMIN_PASSWORD = "admin123"
+
+# Security mode: "strict" will fail on insecure defaults, "warn" will only log warnings
+SECURITY_MODE = os.getenv("SECURITY_MODE", "warn")  # "strict" or "warn"
 
 # API Key for client-server communication
 API_KEY = os.getenv("API_KEY", "dev-key-change-in-production")
@@ -319,6 +336,131 @@ def is_production() -> bool:
 def get_database_url() -> str:
     """Get the appropriate database URL."""
     return DATABASE_URL
+
+
+# ============================================
+# Security Validation Functions
+# ============================================
+
+
+def check_security_config() -> dict:
+    """
+    Check security configuration and return status.
+
+    Returns dict with:
+        - is_secure: bool - True if all security checks pass
+        - warnings: list - Warning messages for insecure settings
+        - errors: list - Error messages (only in strict mode)
+    """
+    warnings = []
+    errors = []
+
+    # Check SECRET_KEY
+    if SECRET_KEY == _DEFAULT_SECRET_KEY:
+        msg = "SECRET_KEY is using default value! Generate a secure key with: python3 -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        if SECURITY_MODE == "strict":
+            errors.append(msg)
+        else:
+            warnings.append(msg)
+    elif len(SECRET_KEY) < 32:
+        warnings.append(f"SECRET_KEY is only {len(SECRET_KEY)} characters. Recommend at least 32 characters.")
+
+    # Check API_KEY
+    if API_KEY == _DEFAULT_API_KEY:
+        msg = "API_KEY is using default value! Generate a secure key with: python3 -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        if SECURITY_MODE == "strict":
+            errors.append(msg)
+        else:
+            warnings.append(msg)
+
+    # Check admin password
+    if DEFAULT_ADMIN_PASSWORD == _DEFAULT_ADMIN_PASSWORD:
+        warnings.append("Default admin password 'admin123' should be changed after first login!")
+
+    # Check IP filter
+    if not ALLOWED_IP_RANGE:
+        warnings.append("ALLOWED_IP_RANGE not set - server accepts connections from any IP")
+
+    # Check CORS
+    if CORS_ALLOW_ALL:
+        warnings.append("CORS allows all origins - set CORS_ORIGINS for production")
+
+    return {
+        "is_secure": len(errors) == 0,
+        "warnings": warnings,
+        "errors": errors,
+        "security_mode": SECURITY_MODE,
+    }
+
+
+def validate_security_on_startup(logger=None) -> bool:
+    """
+    Validate security configuration on server startup.
+
+    In 'strict' mode: raises exception if critical security issues found
+    In 'warn' mode: logs warnings but continues
+
+    Args:
+        logger: Optional logger instance (uses print if not provided)
+
+    Returns:
+        True if startup should continue, False if should abort
+    """
+    result = check_security_config()
+
+    def log_warning(msg):
+        if logger:
+            logger.warning(f"SECURITY: {msg}")
+        else:
+            print(f"[WARNING] SECURITY: {msg}")
+
+    def log_error(msg):
+        if logger:
+            logger.error(f"SECURITY: {msg}")
+        else:
+            print(f"[ERROR] SECURITY: {msg}")
+
+    def log_info(msg):
+        if logger:
+            logger.info(f"SECURITY: {msg}")
+        else:
+            print(f"[INFO] SECURITY: {msg}")
+
+    # Log warnings
+    for warning in result["warnings"]:
+        log_warning(warning)
+
+    # Log errors
+    for error in result["errors"]:
+        log_error(error)
+
+    # In strict mode, fail if there are errors
+    if result["errors"]:
+        log_error("Security validation FAILED. Set SECURITY_MODE=warn to bypass (not recommended).")
+        return False
+
+    # Log success
+    if not result["warnings"]:
+        log_info("Security configuration validated - all checks passed!")
+    else:
+        log_warning(f"Security configuration has {len(result['warnings'])} warning(s) - review before production deployment")
+
+    return True
+
+
+def get_security_status() -> dict:
+    """Get security configuration status for API/dashboard display."""
+    result = check_security_config()
+    return {
+        "is_secure": result["is_secure"],
+        "warning_count": len(result["warnings"]),
+        "error_count": len(result["errors"]),
+        "security_mode": SECURITY_MODE,
+        "ip_filter_enabled": bool(ALLOWED_IP_RANGE),
+        "cors_restricted": not CORS_ALLOW_ALL,
+        "using_default_secret": SECRET_KEY == _DEFAULT_SECRET_KEY,
+        "using_default_api_key": API_KEY == _DEFAULT_API_KEY,
+    }
 
 
 if __name__ == "__main__":

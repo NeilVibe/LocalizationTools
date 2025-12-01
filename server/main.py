@@ -22,6 +22,7 @@ from server.api import auth, logs, sessions
 from server.api import auth_async, logs_async, sessions_async
 from server.utils.websocket import socket_app
 from server.middleware import RequestLoggingMiddleware, PerformanceLoggingMiddleware
+from server.middleware.ip_filter import IPFilterMiddleware, parse_ip_ranges
 from server.utils.cache import cache
 
 
@@ -58,6 +59,12 @@ def setup_logging():
 # Setup logging
 setup_logging()
 
+# Validate security configuration on startup
+if not config.validate_security_on_startup(logger):
+    logger.error("Server startup aborted due to security configuration errors!")
+    logger.error("Fix the security issues above or set SECURITY_MODE=warn to continue (not recommended for production)")
+    sys.exit(1)
+
 # Create FastAPI app
 app = FastAPI(
     title=config.APP_NAME,
@@ -91,6 +98,23 @@ else:
         allow_methods=config.CORS_ALLOW_METHODS,
         allow_headers=config.CORS_ALLOW_HEADERS,
     )
+
+# Add IP Range Filter middleware (Internal Enterprise Security)
+# This blocks requests from IPs outside the allowed ranges
+if config.ALLOWED_IP_RANGE:
+    allowed_ranges = parse_ip_ranges(config.ALLOWED_IP_RANGE)
+    logger.info(f"IP Filter: ENABLED - Restricting to {len(allowed_ranges)} range(s)")
+    for range_str in allowed_ranges:
+        logger.info(f"  - {range_str}")
+    app.add_middleware(
+        IPFilterMiddleware,
+        allowed_ranges=allowed_ranges,
+        allow_localhost=config.IP_FILTER_ALLOW_LOCALHOST,
+        log_blocked=config.IP_FILTER_LOG_BLOCKED,
+    )
+else:
+    logger.warning("IP Filter: DISABLED (no ALLOWED_IP_RANGE set)")
+    logger.warning("Set ALLOWED_IP_RANGE env var for production!")
 
 # Add comprehensive logging middleware
 # Order matters: These run in REVERSE order (last added = first to run)

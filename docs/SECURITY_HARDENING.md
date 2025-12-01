@@ -14,6 +14,92 @@ This guide documents the security hardening measures for LocaNext/LocalizationTo
 - **Development**: Relaxed security for local testing
 - **Production**: Strict security for enterprise deployment
 
+**Deployment Model**: Internal Enterprise (Closed IP Range)
+- Platform is only accessible within company network
+- IP range filtering is the primary access control
+
+---
+
+## 0. IP Range Filtering (Primary Security) ✅ IMPLEMENTED
+
+**Status**: ✅ COMPLETE (2025-12-01)
+
+This is the **primary security feature** for internal enterprise deployment. It restricts all API access to specific IP ranges only.
+
+### 0.1 Quick Start
+
+Add one line to your `.env` file:
+
+```bash
+# Restrict to your company network
+ALLOWED_IP_RANGE=192.168.11.0/24
+```
+
+**That's it!** Only IPs in `192.168.11.x` can access the server.
+
+### 0.2 Configuration Options
+
+```bash
+# .env file
+
+# Single subnet (most common)
+ALLOWED_IP_RANGE=192.168.11.0/24
+
+# Multiple subnets (multiple floors/departments)
+ALLOWED_IP_RANGE=192.168.11.0/24,192.168.12.0/24,10.0.0.0/8
+
+# Single IP only
+ALLOWED_IP_RANGE=192.168.11.50/32
+
+# Always allow localhost for development (default: true)
+IP_FILTER_ALLOW_LOCALHOST=true
+
+# Log blocked attempts for security monitoring (default: true)
+IP_FILTER_LOG_BLOCKED=true
+```
+
+### 0.3 CIDR Notation Reference
+
+| Notation | IP Range | Addresses |
+|----------|----------|-----------|
+| `192.168.11.0/24` | 192.168.11.0 - 192.168.11.255 | 256 |
+| `192.168.11.0/25` | 192.168.11.0 - 192.168.11.127 | 128 |
+| `192.168.11.0/28` | 192.168.11.0 - 192.168.11.15 | 16 |
+| `192.168.11.50/32` | 192.168.11.50 only | 1 |
+| `10.0.0.0/8` | 10.0.0.0 - 10.255.255.255 | 16M+ |
+
+### 0.4 How It Works
+
+1. Every request is checked against allowed IP ranges
+2. Blocked IPs receive `403 Forbidden` response
+3. Blocked attempts are logged for security monitoring
+4. Localhost is always allowed (for development)
+5. Supports `X-Forwarded-For` header for reverse proxy setups
+
+### 0.5 Testing IP Filter
+
+```bash
+# Check if IP filter is enabled (look for log message)
+python3 server/main.py
+# Look for: "IP Filter: ENABLED - Restricting to X range(s)"
+
+# Test blocked IP (from outside range)
+curl http://your-server:8888/health
+# Should return 403 if your IP is not in allowed range
+
+# Check server logs for blocked attempts
+tail -f server/data/logs/server.log | grep "IP Filter"
+```
+
+### 0.6 Files
+
+| File | Purpose |
+|------|---------|
+| `server/middleware/ip_filter.py` | IP filtering middleware |
+| `server/config.py` | Configuration (ALLOWED_IP_RANGE) |
+| `server/main.py` | Middleware integration |
+| `tests/security/test_ip_filter.py` | 24 tests |
+
 ---
 
 ## 1. CORS & Network Origin Restrictions
@@ -180,9 +266,39 @@ After repeated violations, IPs are temporarily blocked:
 
 ---
 
-## 4. Authentication & JWT Security
+## 4. Authentication & JWT Security ✅ IMPLEMENTED
 
-### 4.1 Secret Key Requirements
+**Status**: ✅ COMPLETE (2025-12-01)
+
+Server now validates security configuration on startup and warns/blocks insecure defaults.
+
+### 4.1 Startup Security Validation
+
+The server automatically checks security configuration on startup:
+
+```
+# Example startup output with default values:
+SECURITY: SECRET_KEY is using default value! Generate a secure key...
+SECURITY: API_KEY is using default value! Generate a secure key...
+SECURITY: Default admin password 'admin123' should be changed!
+SECURITY: ALLOWED_IP_RANGE not set - server accepts connections from any IP
+SECURITY: CORS allows all origins - set CORS_ORIGINS for production
+SECURITY: Security configuration has 5 warning(s) - review before production
+```
+
+### 4.2 Security Modes
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| `warn` (default) | Logs warnings, continues startup | Development |
+| `strict` | Fails startup if using defaults | Production |
+
+```bash
+# .env file
+SECURITY_MODE=strict  # Fail if using default SECRET_KEY/API_KEY
+```
+
+### 4.3 Secret Key Requirements
 
 **CRITICAL**: Never use default secrets in production!
 
@@ -194,7 +310,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
-### 4.2 Environment Variables
+### 4.4 Environment Variables
 
 ```bash
 # .env file - REQUIRED for production
@@ -202,14 +318,25 @@ SECRET_KEY=<your-256-bit-secret>
 API_KEY=<your-384-bit-key>
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# Security mode (strict recommended for production)
+SECURITY_MODE=strict
 ```
 
-### 4.3 Token Lifecycle
+### 4.5 Token Lifecycle
 
 1. User logs in → Receives access token (30 min) + refresh token (7 days)
 2. Access token expires → Client uses refresh token to get new access token
 3. Refresh token expires → User must log in again
 4. Logout → Both tokens invalidated (blacklisted)
+
+### 4.6 Files
+
+| File | Purpose |
+|------|---------|
+| `server/config.py` | Security validation functions |
+| `server/main.py` | Startup validation integration |
+| `tests/security/test_jwt_security.py` | 22 tests |
 
 ---
 
@@ -270,19 +397,73 @@ def safe_path(user_path: str, base_dir: Path) -> Path:
 
 ---
 
-## 6. Audit Logging
+## 6. Audit Logging ✅ IMPLEMENTED
+
+**Status**: ✅ COMPLETE (2025-12-01)
+
+Security audit logging tracks all security-relevant events for IT compliance.
 
 ### 6.1 What Gets Logged
 
-| Event | Logged Data |
-|-------|-------------|
-| Login Success | user_id, IP, timestamp |
-| Login Failure | username, IP, timestamp, reason |
-| Password Change | user_id, IP, timestamp |
-| Admin Actions | user_id, action, target, timestamp |
-| API Errors | endpoint, error, IP, timestamp |
+| Event Type | Logged Data | Severity |
+|------------|-------------|----------|
+| `LOGIN_SUCCESS` | user_id, username, IP, timestamp | INFO |
+| `LOGIN_FAILURE` | username, IP, timestamp, reason | WARNING |
+| `LOGOUT` | user_id, username, IP, timestamp | INFO |
+| `IP_BLOCKED` | IP, reason, endpoint | WARNING |
+| `PASSWORD_CHANGE` | user_id, IP, changed_by | INFO |
+| `USER_CREATED` | new_username, created_by, IP | INFO |
+| `USER_DELETED` | deleted_username, deleted_by, IP | WARNING |
+| `RATE_LIMITED` | IP, endpoint | WARNING |
+| `SERVER_STARTED` | config_summary | INFO |
 
-### 6.2 Log Retention
+### 6.2 Log Location
+
+```bash
+# Security audit log file
+server/data/logs/security_audit.log
+```
+
+### 6.3 Log Format
+
+```
+2025-12-01 14:30:45 | WARNING | [LOGIN_FAILURE] | success=False | user=baduser | ip=192.168.1.100 | details={"reason": "Invalid password"}
+2025-12-01 14:31:02 | INFO | [LOGIN_SUCCESS] | success=True | user=admin | ip=192.168.1.100
+2025-12-01 14:32:15 | WARNING | [IP_BLOCKED] | success=False | ip=10.0.0.1 | details={"reason": "IP not in allowed range"}
+```
+
+### 6.4 Viewing Audit Logs
+
+```bash
+# View recent security events
+tail -f server/data/logs/security_audit.log
+
+# Search for failed logins
+grep "LOGIN_FAILURE" server/data/logs/security_audit.log
+
+# Search for blocked IPs
+grep "IP_BLOCKED" server/data/logs/security_audit.log
+
+# Count failed logins from specific IP
+grep "LOGIN_FAILURE" server/data/logs/security_audit.log | grep "192.168.1.100" | wc -l
+```
+
+### 6.5 Programmatic Access
+
+```python
+from server.utils.audit_logger import (
+    get_recent_audit_events,
+    get_failed_login_count,
+)
+
+# Get last 100 events
+events = get_recent_audit_events(limit=100)
+
+# Count failed logins from IP in last 15 minutes
+failures = get_failed_login_count("192.168.1.100", minutes=15)
+```
+
+### 6.6 Log Retention
 
 | Log Type | Retention |
 |----------|-----------|
@@ -291,15 +472,14 @@ def safe_path(user_path: str, base_dir: Path) -> Path:
 | Security audit | 1 year |
 | Session logs | 30 days |
 
-### 6.3 Viewing Audit Logs
+### 6.7 Files
 
-```bash
-# View recent security events
-tail -f server/data/logs/security_audit.log
-
-# Search for failed logins
-grep "LOGIN_FAILED" server/data/logs/security_audit.log
-```
+| File | Purpose |
+|------|---------|
+| `server/utils/audit_logger.py` | Audit logging module |
+| `server/api/auth_async.py` | Login audit integration |
+| `server/middleware/ip_filter.py` | IP block audit integration |
+| `tests/security/test_audit_logging.py` | 29 tests |
 
 ---
 
@@ -459,5 +639,81 @@ For security incidents, contact:
 
 ---
 
+## 11. Functionality Verification After Security Changes
+
+**CRITICAL**: Security implementations must NEVER break existing functionality!
+
+### 11.1 Why This Matters
+
+Security middleware (IP filter, CORS, JWT) can accidentally:
+- Block legitimate API calls with 403 errors
+- Break inter-service communication
+- Disrupt authentication flows
+- Disconnect WebSocket connections
+
+### 11.2 Verification Protocol
+
+After ANY security change, run this verification:
+
+```bash
+# Step 1: Run ALL security tests (must pass 100%)
+python -m pytest tests/security/ -v --override-ini="addopts="
+# Expected: 86+ tests passed
+
+# Step 2: Run app functionality tests (must pass 100%)
+python -m pytest tests/test_kr_similar.py tests/test_quicksearch_phase4.py -v --override-ini="addopts="
+# Expected: All passed
+
+# Step 3: Verify security modules load without errors
+python3 -c "
+from server import config
+from server.middleware.ip_filter import IPFilterMiddleware
+from server.utils.audit_logger import log_login_success
+print('All security modules load correctly')
+"
+
+# Step 4: Start server and verify health
+python3 server/main.py &
+sleep 5
+curl -s http://localhost:8888/health | python3 -m json.tool
+# Expected: {"status": "healthy", ...}
+
+# Step 5: Verify API endpoints work
+curl -s http://localhost:8888/api/v2/kr-similar/health
+curl -s http://localhost:8888/api/v2/quicksearch/health
+curl -s http://localhost:8888/api/v2/xlstransfer/health
+# Expected: All return {"status": "ok"}
+
+# Step 6: Kill test server
+pkill -f "python3 server/main.py"
+```
+
+### 11.3 What to Check
+
+| Area | What to Verify |
+|------|----------------|
+| IP Filter | Localhost still works, allowed IPs pass through |
+| CORS | Frontend origins not blocked |
+| JWT | Login still works, tokens validate |
+| Audit | Events logged, no exceptions |
+| WebSocket | Real-time updates still function |
+| API Endpoints | All 47+ endpoints return expected responses |
+
+### 11.4 If Something Breaks
+
+1. **403 Forbidden errors** → Check IP filter config, CORS origins
+2. **401 Unauthorized** → Check JWT SECRET_KEY, token expiry
+3. **Connection refused** → Check server binding (0.0.0.0 vs 127.0.0.1)
+4. **CORS blocked** → Add origin to CORS_ORIGINS whitelist
+5. **WebSocket fails** → Verify wss:// protocol and CORS headers
+
+### 11.5 Reference Documents
+
+- **[TESTING_PROTOCOL.md](TESTING_PROTOCOL.md)** - Full testing procedures with security verification
+- **Roadmap.md** - Post-Security Verification Checklist
+
+---
+
 *Document maintained by: Development Team*
-*Last security audit: [Date of last audit]*
+*Last security audit: 2025-12-01*
+*Last updated: 2025-12-01*

@@ -185,9 +185,73 @@ python3 scripts/check_version_unified.py
 
 ---
 
+## 🔒 SECURITY AUDIT PROTOCOL (Build Pipeline)
+
+**Updated**: 2025-12-01
+
+The build pipeline includes security audits that check for vulnerabilities in dependencies.
+
+### Severity Policy
+
+| Severity | Action | Build Result |
+|----------|--------|--------------|
+| **CRITICAL** | ❌ Block | Build FAILS - must fix before release |
+| **HIGH** | ❌ Block | Build FAILS - must fix before release |
+| **Medium** | ⚠️ Warn | Build continues - logged for future fix |
+| **Low** | ⚠️ Warn | Build continues - logged for future fix |
+
+### What Gets Checked
+
+1. **Python Dependencies** (`pip-audit`)
+   - Scans all packages in requirements.txt
+   - Checks against vulnerability databases
+   - Reports severity levels
+
+2. **NPM Dependencies** (`npm audit`)
+   - Scans all packages in package-lock.json
+   - Uses `--audit-level=high` (only fails on high/critical)
+   - Full report logged for tracking
+
+### Viewing Security Warnings
+
+All warnings are logged in GitHub Actions history:
+
+```bash
+# View recent build logs
+gh run list --limit 5
+
+# Get logs for specific run
+gh run view <RUN_ID> --log
+
+# Search for security warnings
+gh run view <RUN_ID> --log | grep -i "vulnerab\|warning\|medium\|low"
+```
+
+### Fixing Vulnerabilities
+
+**For CRITICAL/HIGH (blocking):**
+```bash
+# Update specific package
+pip install --upgrade <package-name>
+
+# Or update all
+pip install --upgrade -r requirements.txt
+
+# Re-run audit locally
+pip-audit --desc
+```
+
+**For Medium/Low (warnings):**
+- Track in issue tracker or fix when convenient
+- Review during regular maintenance windows
+- Check CI history to see trends
+
+---
+
 ## 📚 Related Documentation
 
 - **BUILD_TROUBLESHOOTING.md** - Complete debugging guide
 - **BUILD_CHECKLIST.md** - Pre-release checklist
 - **PACKAGING_GUIDE.md** - Electron packaging details
+- **SECURITY_HARDENING.md** - Full security documentation
 - **Roadmap.md** - Current build strategy and status
