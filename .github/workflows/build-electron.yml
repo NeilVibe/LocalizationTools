@@ -190,9 +190,19 @@ jobs:
           & "tools\python\python.exe" "tools\python\get-pip.py" --no-warn-script-location
           Remove-Item "tools\python\get-pip.py"
 
-          # Install huggingface_hub
+          # Install huggingface_hub (for model download)
           Write-Host "Installing huggingface_hub..."
           & "tools\python\python.exe" -m pip install --no-warn-script-location huggingface_hub
+
+          # Install LIGHT backend dependencies (heavy ones like torch download post-install)
+          Write-Host "Installing light backend dependencies..."
+          & "tools\python\python.exe" -m pip install --no-warn-script-location `
+            fastapi uvicorn python-multipart python-socketio `
+            sqlalchemy aiosqlite `
+            python-jose passlib python-dotenv `
+            pydantic pydantic-settings email-validator `
+            pandas openpyxl xlrd `
+            httpx requests loguru tqdm pyyaml
 
           $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
           Write-Host "✓ Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
@@ -205,10 +215,13 @@ jobs:
           # Check Python works
           & "tools\python\python.exe" --version
 
-          # Check huggingface_hub is installed
+          # Check key packages are installed
           & "tools\python\python.exe" -c "import huggingface_hub; print(f'huggingface_hub v{huggingface_hub.__version__}')"
+          & "tools\python\python.exe" -c "import fastapi; print(f'fastapi v{fastapi.__version__}')"
+          & "tools\python\python.exe" -c "import uvicorn; print(f'uvicorn ready')"
+          & "tools\python\python.exe" -c "import sqlalchemy; print(f'sqlalchemy v{sqlalchemy.__version__}')"
 
-          # Check .bat and .py exist
+          # Check tools exist
           if (!(Test-Path "tools\download_model.bat")) {
             Write-Error "❌ download_model.bat not found"
             exit 1
@@ -217,8 +230,18 @@ jobs:
             Write-Error "❌ download_model.py not found"
             exit 1
           }
+          if (!(Test-Path "tools\install_deps.bat")) {
+            Write-Error "❌ install_deps.bat not found"
+            exit 1
+          }
 
-          Write-Host "✓ All download tools ready"
+          # Check server exists
+          if (!(Test-Path "server\main.py")) {
+            Write-Error "❌ server/main.py not found"
+            exit 1
+          }
+
+          Write-Host "✓ All tools and server ready"
         shell: pwsh
 
       # ============================================================
@@ -267,9 +290,13 @@ jobs:
           Write-Host "Compiling LIGHT Windows installer..."
           Write-Host "Components:"
           Write-Host "  - Electron app (LocaNext.exe)"
-          Write-Host "  - Standalone model downloader (download_model.exe)"
-          Write-Host "  - NO model bundled (downloaded post-install)"
-          Write-Host "  - NO Python required on user PC!"
+          Write-Host "  - Python Embedded + backend deps"
+          Write-Host "  - Backend server (auto-starts with app)"
+          Write-Host "  - Model downloader scripts"
+          Write-Host ""
+          Write-Host "Post-install downloads:"
+          Write-Host "  - torch + transformers (~2GB)"
+          Write-Host "  - AI model (~447MB)"
 
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_light.iss
         shell: pwsh

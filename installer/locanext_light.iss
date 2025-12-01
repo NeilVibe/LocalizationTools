@@ -1,18 +1,21 @@
 ; LocaNext LIGHT Installer Script
 ; Inno Setup 6.0+
 ;
-; LIGHT version - EVERYTHING bundled except the AI model
+; LIGHT version - Frontend + Backend bundled, heavy deps download post-install
 ; - VC++ Redistributable bundled (~14MB) - auto-installs silently
-; - Python Embedded + .bat bundled (~20MB) - IT-friendly, transparent!
+; - Python Embedded + deps bundled (~50MB) - IT-friendly, transparent!
 ; - Electron app bundled (~100MB)
-; - Total: ~140-160MB (LIGHT for Git Actions)
+; - Backend server bundled (~11MB)
+; - Total: ~180-200MB (LIGHT for Git Actions)
 ;
-; Post-install: Only the HEAVY stuff downloads (447MB model)
+; Post-install: Downloads HEAVY stuff automatically:
+; - AI model (~447MB) from Hugging Face
+; - torch + transformers (~2GB) via pip
 ;
 ; IT-FRIENDLY: All scripts are readable .bat and .py files!
-; User experience: Run installer → Everything automatic → Done!
+; User experience: Run installer → Wait for downloads → Done!
 ;
-; Output: LocaNext_v{version}_Light_Setup.exe (~140-160MB)
+; Output: LocaNext_v{version}_Light_Setup.exe (~180-200MB)
 
 #define MyAppName "LocaNext"
 #define MyAppVersion "2512011310"
@@ -89,12 +92,25 @@ Source: "..\locaNext\dist-electron\win-unpacked\{#MyAppExeName}"; DestDir: "{app
 Source: "..\locaNext\dist-electron\win-unpacked\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; ============================================================
-; Model downloader: Embedded Python + .bat (~20MB)
+; Python Embedded + tools (~50MB with deps)
 ; IT-Friendly: Transparent .bat and .py scripts!
 ; ============================================================
 Source: "..\tools\download_model.bat"; DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "..\tools\download_model.py"; DestDir: "{app}\tools"; Flags: ignoreversion
+Source: "..\tools\install_deps.bat"; DestDir: "{app}\tools"; Flags: ignoreversion
+Source: "..\tools\install_deps.py"; DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "..\tools\python\*"; DestDir: "{app}\tools\python"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; ============================================================
+; Backend Server (~11MB)
+; Python FastAPI server - auto-started by Electron
+; ============================================================
+Source: "..\server\*"; DestDir: "{app}\server"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "__pycache__,*.pyc,*.pyo,.pytest_cache"
+
+; ============================================================
+; Client utilities (for backend)
+; ============================================================
+Source: "..\client\*"; DestDir: "{app}\client"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "__pycache__,*.pyc,*.pyo"
 
 ; ============================================================
 ; Documentation
@@ -125,16 +141,22 @@ Filename: "{tmp}\vc_redist.x64.exe"; \
   Flags: waituntilterminated skipifdoesntexist
 
 ; ============================================================
-; STEP 2: Download AI model (the only HEAVY part - AUTOMATIC!)
-; Uses embedded Python + .bat - IT can inspect the scripts!
-; User sees console with progress, no clicks required!
+; STEP 2: Install Python dependencies (torch, transformers, etc.)
+; This downloads ~2GB - takes 10-20 minutes on good internet
+; ============================================================
+Filename: "{app}\tools\install_deps.bat"; \
+  StatusMsg: "Installing Python dependencies (~2GB)... This may take 15-20 minutes."; \
+  Flags: waituntilterminated shellexec
+
+; ============================================================
+; STEP 3: Download AI model (~447MB from Hugging Face)
 ; ============================================================
 Filename: "{app}\tools\download_model.bat"; \
   StatusMsg: "Downloading Korean BERT model (~447MB)... Please wait 5-10 minutes."; \
   Flags: waituntilterminated shellexec
 
 ; ============================================================
-; STEP 3: Launch app
+; STEP 4: Launch app
 ; ============================================================
 Filename: "{app}\{#MyAppExeName}"; \
   Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; \

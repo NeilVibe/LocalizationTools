@@ -1,73 +1,47 @@
 /**
- * Auto-Updater Configuration for Self-Hosted Updates
+ * Auto-Updater Configuration for GitHub Releases
  *
- * This allows LocaNext to check for updates from YOUR internal server
- * instead of GitHub or external services.
+ * LocaNext checks for updates from GitHub Releases.
+ * When you create a new release, users will be notified automatically.
  */
-
-// NOTE: electron-updater needs to be installed
-// Run: npm install electron-updater
 
 /**
- * To enable auto-updates:
+ * GitHub Releases Auto-Update Flow:
  *
- * 1. Install electron-updater:
- *    cd locaNext
- *    npm install electron-updater
+ * 1. You push code to GitHub
+ * 2. GitHub Actions builds the installer
+ * 3. Workflow creates a GitHub Release with the .exe
+ * 4. User's app checks GitHub for new releases
+ * 5. If newer version found → download and install
  *
- * 2. Import in electron/main.js:
- *    import { autoUpdater } from 'electron-updater';
- *
- * 3. Add after app.on('ready', ...) in main.js:
- *
- *    // Configure for self-hosted updates
- *    autoUpdater.setFeedURL({
- *      provider: 'generic',
- *      url: 'http://YOUR_SERVER_IP:8888/updates'  // Change to your IP
- *    });
- *
- *    // Check for updates on startup
- *    autoUpdater.checkForUpdatesAndNotify();
- *
- *    // Optional: Listen for update events
- *    autoUpdater.on('update-available', (info) => {
- *      console.log('Update available:', info.version);
- *      mainWindow.webContents.send('update-available', info);
- *    });
- *
- *    autoUpdater.on('update-downloaded', (info) => {
- *      console.log('Update downloaded. Will install on restart.');
- *      mainWindow.webContents.send('update-downloaded', info);
- *    });
- *
- *    autoUpdater.on('error', (err) => {
- *      console.error('Update error:', err);
- *    });
- *
- * 4. Update package.json "build" section:
- *    "build": {
- *      "appId": "com.locanext.app",
- *      "productName": "LocaNext",
- *      "publish": null,  // No automatic publishing
- *      ...
- *    }
- *
- * 5. Build and deploy:
- *    npm run build
- *    npm run build:electron
- *    cp dist-electron/LocaNext-Setup-*.exe ../updates/
- *    cp dist-electron/latest.yml ../updates/
- *
- * 6. Edit updates/latest.yml:
- *    Change URLs to: http://YOUR_SERVER_IP:8888/updates/download/LocaNext-Setup-1.0.0.exe
- *
- * 7. Employees' apps will auto-check for updates from YOUR server!
+ * To trigger an update:
+ * 1. Update version in version.py
+ * 2. Add build trigger to BUILD_TRIGGER.txt
+ * 3. Push to main
+ * 4. GitHub Actions builds and creates release
+ * 5. All user apps will auto-update!
  */
 
+// GitHub releases configuration
 export const autoUpdaterConfig = {
-  provider: 'generic',
-  url: 'http://localhost:8888/updates'  // CHANGE THIS to your server IP for production
+  provider: 'github',
+  owner: 'NeilVibe',
+  repo: 'LocalizationTools',
+  // Optional: use private token for private repos
+  // token: process.env.GH_TOKEN
 };
 
-// For development, you can disable auto-updates
+// For development, disable auto-updates
 export const isAutoUpdateEnabled = process.env.NODE_ENV !== 'development';
+
+/**
+ * For INTERNAL/PRIVATE updates (no GitHub):
+ * Change config to:
+ *
+ * export const autoUpdaterConfig = {
+ *   provider: 'generic',
+ *   url: 'http://YOUR_INTERNAL_SERVER:8888/updates'
+ * };
+ *
+ * Then host latest.yml and .exe on your internal server.
+ */
