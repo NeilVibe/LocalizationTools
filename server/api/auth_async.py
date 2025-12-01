@@ -5,7 +5,7 @@ User registration, login, and authentication management with async/await.
 """
 
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from loguru import logger
@@ -14,6 +14,25 @@ from server.api.schemas import UserLogin, UserRegister, Token, UserResponse
 from server.database.models import User
 from server.utils.dependencies import get_async_db, get_current_active_user_async, require_admin_async
 from server.utils.auth import hash_password, verify_password, create_access_token
+from server.utils.audit_logger import (
+    log_login_success,
+    log_login_failure,
+    log_user_created,
+    log_password_change,
+)
+
+
+def get_client_ip(request: Request) -> str:
+    """Extract client IP from request, handling proxies."""
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    x_real_ip = request.headers.get("X-Real-IP")
+    if x_real_ip:
+        return x_real_ip.strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
 
 
 # Create router
@@ -27,6 +46,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/login", response_model=Token)
 async def login(
     credentials: UserLogin,
+    request: Request,
     db: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -34,6 +54,8 @@ async def login(
 
     Returns JWT access token on successful authentication.
     """
+    client_ip = get_client_ip(request)
+
     # Find user by username
     result = await db.execute(
         select(User).where(User.username == credentials.username)
@@ -42,6 +64,8 @@ async def login(
 
     if not user:
         logger.warning(f"Login attempt with non-existent username: {credentials.username}")
+        # Audit log: failed login (user not found)
+        log_login_failure(credentials.username, client_ip, "User not found")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -51,6 +75,8 @@ async def login(
     # Verify password
     if not verify_password(credentials.password, user.password_hash):
         logger.warning(f"Failed login attempt for user: {credentials.username}")
+        # Audit log: failed login (wrong password)
+        log_login_failure(credentials.username, client_ip, "Invalid password")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -60,6 +86,8 @@ async def login(
     # Check if user is active
     if not user.is_active:
         logger.warning(f"Login attempt by inactive user: {credentials.username}")
+        # Audit log: failed login (inactive user)
+        log_login_failure(credentials.username, client_ip, "User account inactive")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
@@ -77,6 +105,8 @@ async def login(
     }
     access_token = create_access_token(token_data)
 
+    # Audit log: successful login
+    log_login_success(user.username, client_ip, user.user_id)
     logger.info(f"User logged in successfully: {user.username} (ID: {user.user_id})")
 
     return Token(

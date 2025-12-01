@@ -388,6 +388,72 @@ sleep 5
 
 ---
 
+## Security Changes Verification Protocol ⚠️ IMPORTANT
+
+**CRITICAL**: After adding ANY security features (IP filter, CORS, JWT, etc.), ALWAYS verify existing functionality still works!
+
+Security middleware can accidentally break:
+- API endpoints (403 errors)
+- Inter-service communication (CORS blocks)
+- Authentication flows (JWT issues)
+- WebSocket connections
+
+### Post-Security Change Checklist
+
+Run this EVERY TIME after security changes:
+
+```bash
+# Step 1: Run ALL security tests (must pass 100%)
+python -m pytest tests/security/ -v --override-ini="addopts="
+# Expected: 86+ tests passed
+
+# Step 2: Run app functionality tests (must pass 100%)
+python -m pytest tests/test_kr_similar.py tests/test_quicksearch_phase4.py -v --override-ini="addopts="
+# Expected: All passed
+
+# Step 3: Verify security modules load without errors
+python3 -c "
+from server import config
+from server.middleware.ip_filter import IPFilterMiddleware
+from server.utils.audit_logger import log_login_success
+print('✓ All security modules load correctly')
+"
+
+# Step 4: Start server and verify health
+python3 server/main.py &
+sleep 5
+curl -s http://localhost:8888/health | python3 -m json.tool
+# Expected: {"status": "healthy", ...}
+
+# Step 5: Verify API endpoints work
+curl -s http://localhost:8888/api/v2/kr-similar/health
+curl -s http://localhost:8888/api/v2/quicksearch/health
+curl -s http://localhost:8888/api/v2/xlstransfer/health
+# Expected: All return {"status": "ok"}
+
+# Step 6: Kill test server
+pkill -f "python3 server/main.py"
+```
+
+### Security Test Summary (Updated 2025-12-01)
+
+| Test File | Tests | What It Verifies |
+|-----------|-------|------------------|
+| `test_cors_config.py` | 11 | CORS origin restrictions |
+| `test_ip_filter.py` | 24 | IP range filtering |
+| `test_jwt_security.py` | 22 | SECRET_KEY validation, security modes |
+| `test_audit_logging.py` | 29 | Login/block event logging |
+| **Total Security Tests** | **86** | Full security coverage |
+
+### If Tests Fail After Security Changes
+
+1. **403 Forbidden errors** → Check IP filter config, CORS origins
+2. **401 Unauthorized** → Check JWT SECRET_KEY, token expiry
+3. **Connection refused** → Check server binding (0.0.0.0 vs 127.0.0.1)
+4. **CORS blocked** → Add origin to CORS_ORIGINS whitelist
+
+---
+
 ## Summary
 
 **The key insight:** Nothing blocks autonomous testing. If a test needs:
@@ -400,7 +466,12 @@ sleep 5
 python3 scripts/create_admin.py && python3 server/main.py & sleep 5 && RUN_API_TESTS=1 python3 -m pytest -v
 ```
 
+**After security changes:**
+```bash
+python -m pytest tests/security/ tests/test_kr_similar.py tests/test_quicksearch_phase4.py -v --override-ini="addopts="
+```
+
 ---
 
 *Last updated: 2025-12-01*
-*Protocol version: 2.0*
+*Protocol version: 2.1 (added security verification)*
