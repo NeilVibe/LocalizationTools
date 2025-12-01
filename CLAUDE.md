@@ -222,7 +222,7 @@ bash scripts/clean_logs.sh
 1. ✅ Read this file completely (you're here!)
 2. ✅ Read [QUICK_START_GUIDE.md](docs/QUICK_START_GUIDE.md) (5 min)
 3. ✅ Run `python3 server/main.py` to verify backend works
-4. ✅ Run `python3 -m pytest` to verify tests pass (160 expected)
+4. ✅ Run `RUN_API_TESTS=1 python3 -m pytest` to verify tests pass (415 expected)
 5. ✅ Check **Roadmap.md** for current task
 
 ### Current Phase:
@@ -242,10 +242,11 @@ bash scripts/clean_logs.sh
 - **Lines of Code:** ~18,000+
 - **API Endpoints:** 47+ (async + sync)
 - **Database Tables:** 13
-- **Tests:** 188+ (63 E2E app + 86 security + 39 infrastructure)
+- **Tests:** 415 (5 E2E apps + 9 integration + 6 unit + 4 security files)
+- **Test Coverage:** 49% (target: 80%)
 - **Security Tests:** 86 (IP filter, CORS, JWT, audit logging)
 - **Tools:** 3 (XLSTransfer, QuickSearch, KR Similar)
-- **Documentation Files:** 38+ (25 active + 13 archived)
+- **Documentation Files:** 28 active + 9 archived
 
 ---
 
@@ -258,5 +259,5 @@ This project is **96% complete**, **clean**, **organized**, and **production-rea
 ---
 
 *Last updated: 2025-12-01 by Claude*
-*Security hardening complete (7/11 items, 86 tests)*
+*Tests: 415 passing, 49% coverage | Security: 86 tests*
 *MASTER NAVIGATION HUB - All details are in linked docs*
