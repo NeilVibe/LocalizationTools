@@ -28,9 +28,11 @@ def check_existing():
     """Check if model already exists."""
     target = get_target_dir()
     config = target / "config.json"
-    model = target / "model.safetensors"
+    # Model can be either pytorch_model.bin or model.safetensors
+    model_pt = target / "pytorch_model.bin"
+    model_st = target / "model.safetensors"
 
-    if config.exists() and model.exists():
+    if config.exists() and (model_pt.exists() or model_st.exists()):
         print(f"[OK] Model already exists at: {target}")
         return True
     return False
@@ -87,18 +89,31 @@ def download_model():
 def verify_download():
     """Verify model files exist."""
     target = get_target_dir()
-    required = ["config.json", "model.safetensors"]
 
     print("\n[...] Verifying download...")
 
-    for filename in required:
-        filepath = target / filename
-        if filepath.exists():
-            size_mb = filepath.stat().st_size / (1024 * 1024)
-            print(f"  [OK] {filename} ({size_mb:.1f} MB)")
-        else:
-            print(f"  [MISSING] {filename}")
-            return False
+    # Check config.json (required)
+    config = target / "config.json"
+    if config.exists():
+        size_mb = config.stat().st_size / (1024 * 1024)
+        print(f"  [OK] config.json ({size_mb:.1f} MB)")
+    else:
+        print(f"  [MISSING] config.json")
+        return False
+
+    # Check model file (either pytorch_model.bin or model.safetensors)
+    model_pt = target / "pytorch_model.bin"
+    model_st = target / "model.safetensors"
+
+    if model_pt.exists():
+        size_mb = model_pt.stat().st_size / (1024 * 1024)
+        print(f"  [OK] pytorch_model.bin ({size_mb:.1f} MB)")
+    elif model_st.exists():
+        size_mb = model_st.stat().st_size / (1024 * 1024)
+        print(f"  [OK] model.safetensors ({size_mb:.1f} MB)")
+    else:
+        print(f"  [MISSING] model file (pytorch_model.bin or model.safetensors)")
+        return False
 
     return True
 
