@@ -1,22 +1,18 @@
 ; LocaNext LIGHT Installer Script
 ; Inno Setup 6.0+
 ;
-; LIGHT version - Model downloaded post-install (not bundled)
-; This avoids Git LFS bandwidth costs!
+; LIGHT version - EVERYTHING bundled except the AI model
+; - VC++ Redistributable bundled (~14MB) - auto-installs silently
+; - Python Embedded + .bat bundled (~20MB) - IT-friendly, transparent!
+; - Electron app bundled (~100MB)
+; - Total: ~140-160MB (LIGHT for Git Actions)
 ;
-; What's included:
-; - XLSTransfer (AI-powered translation)
-; - QuickSearch (Multi-game dictionary)
-; - Admin Dashboard
-; - Download scripts for Korean BERT model
+; Post-install: Only the HEAVY stuff downloads (447MB model)
 ;
-; What happens during install:
-; 1. Files copied (~100-150MB)
-; 2. Post-install: download_model_silent.bat runs
-; 3. Model downloaded from Hugging Face (~447MB)
-; 4. App ready to use
+; IT-FRIENDLY: All scripts are readable .bat and .py files!
+; User experience: Run installer → Everything automatic → Done!
 ;
-; Output: LocaNext_v{version}_Light_Setup.exe (~100-150MB)
+; Output: LocaNext_v{version}_Light_Setup.exe (~140-160MB)
 
 #define MyAppName "LocaNext"
 #define MyAppVersion "2512011310"
@@ -35,7 +31,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}/issues
 AppUpdatesURL={#MyAppURL}/releases
 
-; Install paths - Desktop for no-admin-required install
+; Install paths - User's Desktop for no-admin-required install
 DefaultDirName={userdesktop}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
@@ -44,11 +40,10 @@ AllowNoIcons=yes
 ; Output
 OutputDir=..\installer_output
 OutputBaseFilename=LocaNext_v{#MyAppVersion}_Light_Setup
-; SetupIconFile - commented out until .ico file is created
 ; SetupIconFile=..\locaNext\static\favicon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
-; Compression - still use good compression for smaller installer
+; Compression
 Compression=lzma2/ultra64
 SolidCompression=yes
 LZMAUseSeparateProcess=yes
@@ -59,11 +54,11 @@ ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 MinVersion=6.1sp1
 
-; Privileges - no admin required
+; Privileges - no admin required for user desktop install
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 
-; Wizard
+; Wizard appearance
 WizardStyle=modern
 DisableWelcomePage=no
 DisableDirPage=no
@@ -74,50 +69,73 @@ DisableFinishedPage=no
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Messages]
-; Custom messages for LIGHT version
-WelcomeLabel2=This will install [name/ver] on your computer.%n%nAfter installation, the AI model (~447MB) will be downloaded automatically from Hugging Face. This requires an internet connection and may take 5-10 minutes.%n%nRequirements:%n- Python 3.10 or later%n- Internet connection%n- ~1GB free disk space
+; Simple welcome message - everything is automatic!
+WelcomeLabel2=This will install [name/ver] on your computer.%n%nAfter installation, the AI model (~447MB) will be downloaded automatically.%n%nRequirements:%n- Internet connection%n- ~1GB free disk space%n%nEverything else is included - just click Install!
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "downloadmodel"; Description: "Download AI Model after installation (~447MB, requires internet)"; GroupDescription: "AI Features:"
+; Model download is AUTOMATIC - no checkbox needed, always happens!
 
 [Files]
-; Main Electron application (NO model bundled!)
+; ============================================================
+; VC++ Redistributable (bundled, ~14MB, auto-installs silently)
+; ============================================================
+Source: "..\installer\redist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion deleteafterinstall
+
+; ============================================================
+; Main Electron application (~100MB)
+; ============================================================
 Source: "..\locaNext\dist-electron\win-unpacked\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\locaNext\dist-electron\win-unpacked\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Download scripts - CRITICAL for LIGHT version
-Source: "..\scripts\download_model_silent.bat"; DestDir: "{app}\scripts"; Flags: ignoreversion
-Source: "..\scripts\download_bert_model.py"; DestDir: "{app}\scripts"; Flags: ignoreversion
-Source: "..\scripts\download_model.bat"; DestDir: "{app}\scripts"; Flags: ignoreversion
+; ============================================================
+; Model downloader: Embedded Python + .bat (~20MB)
+; IT-Friendly: Transparent .bat and .py scripts!
+; ============================================================
+Source: "..\tools\download_model.bat"; DestDir: "{app}\tools"; Flags: ignoreversion
+Source: "..\tools\download_model.py"; DestDir: "{app}\tools"; Flags: ignoreversion
+Source: "..\tools\python\*"; DestDir: "{app}\tools\python"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+; ============================================================
 ; Documentation
+; ============================================================
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\SECURITY.md"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists('..\SECURITY.md')
+Source: "..\SECURITY.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
-; Create empty models directory (model will be downloaded here)
-; Note: Inno Setup can't create empty dirs directly, so we create a placeholder
+; Create models directory placeholder
 Source: "..\installer\model_placeholder.txt"; DestDir: "{app}\models\kr-sbert"; Flags: ignoreversion
 
 [Icons]
 ; Start Menu
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autoprograms}\{#MyAppName}\Download AI Model"; Filename: "{app}\scripts\download_model.bat"
+Name: "{autoprograms}\{#MyAppName}\Download AI Model"; Filename: "{app}\tools\download_model.bat"
 Name: "{autoprograms}\{#MyAppName}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 
 ; Desktop icon (optional)
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-; Post-install: Download AI model (if user selected the task)
-; Uses silent script - no popups, runs in background
-Filename: "{app}\scripts\download_model_silent.bat"; \
-  Description: "Downloading AI Model (447MB from Hugging Face)..."; \
-  StatusMsg: "Downloading Korean BERT model... This may take 5-10 minutes."; \
-  Tasks: downloadmodel; \
-  Flags: runhidden waituntilterminated
+; ============================================================
+; STEP 1: Install VC++ Redistributable (silent, automatic)
+; Only installs if not already present
+; ============================================================
+Filename: "{tmp}\vc_redist.x64.exe"; \
+  Parameters: "/install /quiet /norestart"; \
+  StatusMsg: "Installing Visual C++ Runtime (required)..."; \
+  Flags: waituntilterminated skipifdoesntexist
 
-; Launch app after install
+; ============================================================
+; STEP 2: Download AI model (the only HEAVY part - AUTOMATIC!)
+; Uses embedded Python + .bat - IT can inspect the scripts!
+; User sees console with progress, no clicks required!
+; ============================================================
+Filename: "{app}\tools\download_model.bat"; \
+  StatusMsg: "Downloading Korean BERT model (~447MB)... Please wait 5-10 minutes."; \
+  Flags: waituntilterminated shellexec
+
+; ============================================================
+; STEP 3: Launch app
+; ============================================================
 Filename: "{app}\{#MyAppExeName}"; \
   Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; \
   Flags: nowait postinstall skipifsilent
@@ -133,27 +151,11 @@ Type: filesandordirs; Name: "{app}\temp\*"
 Type: filesandordirs; Name: "{app}\models\*"
 
 [Code]
-function FileExists(const Name: String): Boolean;
-begin
-  Result := FileExists(ExpandConstant(Name));
-end;
+// Everything is automatic - no user interaction needed!
+// VC++ Redistributable is bundled and installs silently.
 
-// Show warning if Python not detected (optional enhancement)
 function InitializeSetup(): Boolean;
-var
-  ResultCode: Integer;
 begin
   Result := True;
-
-  // Check for Python (optional - don't block install if not found)
-  if not Exec('python', '--version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-  begin
-    if MsgBox('Python was not detected on your system.' + #13#10 + #13#10 +
-              'Python 3.10+ is required to download the AI model.' + #13#10 +
-              'You can install Python from: https://www.python.org/downloads/' + #13#10 + #13#10 +
-              'Continue with installation anyway?', mbConfirmation, MB_YESNO) = IDNO then
-    begin
-      Result := False;
-    end;
-  end;
+  // No checks needed - everything is bundled!
 end;

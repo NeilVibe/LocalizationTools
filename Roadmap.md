@@ -36,11 +36,14 @@
 | **Unit (Server)** | 60+ | 4 | ✅ Complete |
 | **Integration** | 60+ | 5 | ✅ Complete |
 | **Feature Tests** | 38 | 6 | ✅ Complete |
-| **Total** | **450** | **35+** | ✅ 49% coverage |
+| **Total** | **418** | **30+** | ✅ 49% coverage |
 
 **Coverage Progress**: 30% → 49% (+19%)
-**Tests Added**: 353 → 450 (+97 tests)
-**Test Status**: ✅ **450 passed, 0 skipped, 0 failed** (with server running)
+**Tests Added**: 353 → 418 (+65 tests)
+**Test Status**: ✅ **418 passed, 0 skipped, 0 failed**
+
+**Note**: API tests (requiring running server) are in `tests/api/` and excluded from default run.
+Run them separately with: `RUN_API_TESTS=1 pytest tests/api/ -v`
 
 **Test Structure** (all directories now populated):
 - `tests/unit/test_server/` - Database models, config, utils
@@ -689,6 +692,6 @@ Password: admin123
 **Current Version**: 2512010029
 **Current Focus**: Test Coverage (30% → 80%)
 **Platform Status**: 3 Apps Complete - All Operational
-**Test Status**: ✅ **450 passed, 0 skipped, 0 failed** (49% coverage, target: 80%)
+**Test Status**: ✅ **418 passed, 0 skipped, 0 failed** (49% coverage, target: 80%)
 **Build Status**: ✅ v2512010029 released
 **Security Status**: 7/11 complete (86 security tests)
