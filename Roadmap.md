@@ -121,6 +121,53 @@ To reach 80% coverage, need to add tests for:
 
 ---
 
+### Priority 2.5: Data Structure Refactor 📁
+**Status**: IN PROGRESS (2025-12-02)
+**Goal**: All data in ONE clean tree inside program folder
+
+#### Current Problem (Scattered Data)
+- Outputs → `~/LocalizationTools_Outputs/` (user home)
+- Client data → `~/.localizationtools/` (hidden in home)
+- Combined files → Same folder as input (scattered)
+- Dictionaries → `server/data/` (correct)
+
+#### Target Structure (Clean Tree)
+```
+LocalizationTools/
+├── models/                         ← AI models (BERT)
+│   └── kr-sbert/
+├── server/
+│   └── data/                       ← ALL DATA HERE
+│       ├── localizationtools.db    ← Database
+│       ├── logs/                   ← All logs
+│       ├── backups/                ← DB backups
+│       ├── kr_similar_dictionaries/
+│       │   ├── BDO/
+│       │   ├── BDM/
+│       │   └── CD/
+│       ├── quicksearch_dictionaries/
+│       │   ├── BDO/{EN,FR,DE...}/
+│       │   └── CD/{EN,FR,DE...}/
+│       ├── xlstransfer_dictionaries/  ← NEW
+│       │   └── {embeddings + dicts}
+│       ├── outputs/                ← NEW: All outputs
+│       │   └── xlstransfer/
+│       │       └── {date}/
+│       │           └── translated_files.xlsx
+│       └── cache/                  ← NEW: Temp/cache
+└── updates/                        ← App updates
+```
+
+#### Tasks
+- [ ] Move XLSTransfer outputs to `server/data/outputs/xlstransfer/`
+- [ ] Move client data from `~/.localizationtools/` to `server/data/cache/`
+- [ ] Update combined file output to `server/data/outputs/`
+- [ ] Update all path configs in `client/config.py` and `client/tools/xls_transfer/config.py`
+- [ ] Test all paths work correctly
+- [ ] Update .gitignore for new structure
+
+---
+
 ### Priority 3: Internal Enterprise Security 🔒
 **Status**: IN PROGRESS
 **Goal**: Professional security for closed IP range deployment - impress the IT security team!
