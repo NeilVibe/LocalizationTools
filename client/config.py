@@ -33,11 +33,13 @@ ASSETS_DIR = BASE_DIR / "assets"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 ICON_PATH = ASSETS_DIR / "icon.ico"
 
-# User data directories (created at runtime)
-USER_DATA_DIR = Path.home() / ".localizationtools"
-CACHE_DIR = USER_DATA_DIR / "cache"
-LOGS_DIR = USER_DATA_DIR / "logs"
-TEMP_DIR = USER_DATA_DIR / "temp"
+# Data directories (ALL inside program folder under server/data/)
+# This keeps everything in one clean tree for easy backup and management
+SERVER_DATA_DIR = ROOT_DIR / "server" / "data"
+USER_DATA_DIR = SERVER_DATA_DIR / "cache"  # Client data/machine ID
+CACHE_DIR = SERVER_DATA_DIR / "cache"
+LOGS_DIR = SERVER_DATA_DIR / "logs"
+TEMP_DIR = SERVER_DATA_DIR / "cache" / "temp"
 
 # Create directories if they don't exist
 for directory in [USER_DATA_DIR, CACHE_DIR, LOGS_DIR, TEMP_DIR]:

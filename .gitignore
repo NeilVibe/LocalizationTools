@@ -121,6 +121,12 @@ github_token.txt
 server/data/*.db
 server/data/*.sqlite
 
+# Server Data (user-generated, not tracked)
+server/data/outputs/
+server/data/cache/
+!server/data/outputs/.gitkeep
+!server/data/cache/.gitkeep
+
 # ML Models (too large for git)
 client/models/KRTransformer/
 *.npy

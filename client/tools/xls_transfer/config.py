@@ -146,17 +146,21 @@ OUTPUT_SUFFIXES = {
 PRESERVE_FORMATTING = True  # Keep Excel cell formatting
 PRESERVE_FORMULAS = False  # Convert formulas to values
 
-# Organized output directory structure
+# Organized output directory structure (ALL inside program folder)
 from pathlib import Path as ConfigPath
 import os
 
-# Base output directory (user's home or project-specific)
-OUTPUT_BASE_DIR = ConfigPath(os.path.expanduser("~")) / "LocalizationTools_Outputs"
+# Get project root (3 levels up from this file: client/tools/xls_transfer/config.py)
+_CONFIG_PROJECT_ROOT = ConfigPath(__file__).parent.parent.parent.parent
+
+# Base output directory (inside program folder under server/data/outputs/)
+OUTPUT_BASE_DIR = _CONFIG_PROJECT_ROOT / "server" / "data" / "outputs"
 
 # App-specific subdirectories
 APP_OUTPUT_DIRS = {
-    "xlstransfer": "XLSTransfer",
-    "future_app": "FutureApp",  # Add more apps here
+    "xlstransfer": "xlstransfer",
+    "quicksearch": "quicksearch",
+    "kr_similar": "kr_similar",
 }
 
 # Whether to organize outputs by date (YYYY-MM-DD folders)
@@ -199,8 +203,8 @@ def get_output_directory(app_name: str = "xlstransfer") -> ConfigPath:
     Get organized output directory path for the given app.
 
     Creates structure:
-    ~/LocalizationTools_Outputs/
-      XLSTransfer/
+    LocalizationTools/server/data/outputs/
+      xlstransfer/
         2025-11-09/  (if ORGANIZE_BY_DATE is True)
 
     Args:
