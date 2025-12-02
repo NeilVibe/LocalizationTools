@@ -31,6 +31,18 @@ LocalizationTools/
 │   │   ├── database/ - Database layer
 │   │   │   ├── models.py ⭐ SQLAlchemy models (13 tables)
 │   │   │   └── db_setup.py - Database initialization
+│   │   ├── data/ ⭐ ALL USER DATA (unified location)
+│   │   │   ├── localizationtools.db - SQLite database
+│   │   │   ├── logs/ - All server logs
+│   │   │   ├── backups/ - Database backups
+│   │   │   ├── cache/ - Client cache & temp files
+│   │   │   ├── outputs/ - All tool outputs
+│   │   │   │   ├── xlstransfer/{date}/ - XLSTransfer outputs
+│   │   │   │   ├── quicksearch/{date}/ - QuickSearch outputs
+│   │   │   │   └── kr_similar/{date}/ - KR Similar outputs
+│   │   │   ├── kr_similar_dictionaries/ - KR Similar dictionaries
+│   │   │   ├── quicksearch_dictionaries/ - QuickSearch dictionaries
+│   │   │   └── xlstransfer_dictionaries/ - XLSTransfer embeddings
 │   │   ├── utils/ - Server utilities
 │   │   │   ├── auth.py ⭐ JWT, password hashing
 │   │   │   ├── dependencies.py ⭐ Async DB sessions
@@ -203,17 +215,18 @@ LocalizationTools Desktop App
 
 ---
 
-## 📊 PROJECT STATS (Updated 2025-11-22)
+## 📊 PROJECT STATS (Updated 2025-12-02)
 
 - **Overall Progress**: 96% Complete ✅
 - **Backend**: 100% Complete ✅
 - **LocaNext Desktop App**: 100% Complete ✅
 - **Admin Dashboard**: 85% Complete ⏳
-- **Tests**: 160 passing (49% coverage) ✅
-- **API Endpoints**: 38 (19 async + 19 sync) ✅
+- **Tests**: 450 passing (49% coverage) ✅
+- **API Endpoints**: 47+ (async + sync) ✅
 - **Database Tables**: 13 ✅
-- **Tool Modules**: 1 (XLSTransfer - 10 functions) ✅
-- **Lines of Code**: ~15,000+ (server + client + locaNext + adminDashboard + tests)
+- **Tool Modules**: 3 (XLSTransfer, QuickSearch, KR Similar) ✅
+- **Lines of Code**: ~18,000+ (server + client + locaNext + adminDashboard + tests)
+- **Data Structure**: Unified under `server/data/` ✅
 
 ---
 

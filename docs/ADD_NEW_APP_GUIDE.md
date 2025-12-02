@@ -1,6 +1,6 @@
 # Adding New Apps to LocaNext - Complete Guide
 
-**Last Updated**: 2025-11-11
+**Last Updated**: 2025-12-02
 **Status**: Production Ready
 **Code Reduction**: 43% per app using BaseToolAPI pattern
 
@@ -472,6 +472,46 @@ All 8 XLSTransfer endpoints tested autonomously:
 #### Logging
 - `log_function_start(function_name, user_info, **kwargs)` - Log function start
 - `log_function_success(function_name, user_info, elapsed_time, **kwargs)` - Log function success
+
+---
+
+## Data Structure (Where to Store Files)
+
+All app data is stored under `server/data/` in a unified structure:
+
+```
+server/data/
+├── outputs/                    ← All tool outputs
+│   ├── xlstransfer/{date}/     ← XLSTransfer outputs
+│   ├── quicksearch/{date}/     ← QuickSearch outputs
+│   ├── kr_similar/{date}/      ← KR Similar outputs
+│   └── yourapp/{date}/         ← Your app outputs (add here!)
+├── yourapp_dictionaries/       ← Your app's dictionaries (if any)
+├── cache/                      ← Temp files, client data
+└── logs/                       ← All server logs
+```
+
+### Adding Your App to Output Directory
+
+1. Add your app to `client/tools/xls_transfer/config.py`:
+```python
+APP_OUTPUT_DIRS = {
+    "xlstransfer": "xlstransfer",
+    "quicksearch": "quicksearch",
+    "kr_similar": "kr_similar",
+    "yourapp": "yourapp",  # ← Add your app here
+}
+```
+
+2. Use `get_output_directory()` in your code:
+```python
+from client.tools.xls_transfer.config import get_output_directory
+
+output_dir = get_output_directory("yourapp")
+# Returns: server/data/outputs/yourapp/2025-12-02/
+```
+
+This ensures all outputs stay inside the program folder - clean, organized, and easy to backup.
 
 ---
 
