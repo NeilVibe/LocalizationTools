@@ -137,17 +137,19 @@ tests/
 ├── archive/                   # Deprecated tests (don't delete, archive!)
 │   └── README.md
 ├── e2e/                       # End-to-end tests (full pipeline with real data)
-│   ├── test_kr_similar_e2e.py    # KR Similar: 18 unit + 9 API tests
-│   ├── test_xlstransfer_e2e.py   # XLSTransfer: 9 unit + 8 API tests
-│   ├── test_quicksearch_e2e.py   # QuickSearch: 11 unit + 8 API tests
-│   ├── test_complete_user_flow.py
-│   └── test_full_workflow.py
+│   ├── test_kr_similar_e2e.py        # KR Similar: 18 tests (embeddings, search, etc.)
+│   ├── test_xlstransfer_e2e.py       # XLSTransfer: 9 tests (dictionary, translation)
+│   ├── test_quicksearch_e2e.py       # QuickSearch: 11 tests (search, dictionary)
+│   ├── test_complete_user_flow.py    # 9 tests (cross-app workflows)
+│   ├── test_edge_cases_e2e.py        # 24 tests (edge cases, special chars)
+│   ├── test_real_workflows_e2e.py    # 14 tests (true simulation workflows)
+│   └── test_production_workflows_e2e.py  # 18 tests (full production simulations)
 ├── fixtures/                  # Shared test data (CRITICAL!)
-│   ├── __init__.py
-│   ├── sample_language_data.txt     # KR Similar fixture (20 rows)
-│   ├── sample_dictionary.xlsx       # XLSTransfer fixture (20 rows Excel)
-│   ├── sample_to_translate.txt      # Translation input fixture
-│   └── sample_quicksearch_data.txt  # QuickSearch 7-column fixture
+│   ├── __init__.py                   # Pattern documentation & helpers
+│   ├── sample_language_data.txt      # KR Similar fixture (23 rows, comprehensive)
+│   ├── sample_quicksearch_data.txt   # QuickSearch fixture (36 rows)
+│   ├── sample_dictionary.xlsx        # XLSTransfer fixture (Excel format)
+│   └── sample_to_translate.txt       # Translation input fixture (production format)
 ├── integration/               # API integration tests
 │   ├── test_api_endpoints.py
 │   └── test_server_startup.py
@@ -166,7 +168,7 @@ tests/
 └── conftest.py
 ```
 
-### Test Coverage Summary (2025-12-01)
+### Test Coverage Summary (2025-12-02)
 
 | Category | Tests | Coverage |
 |----------|-------|----------|
@@ -174,12 +176,27 @@ tests/
 | - KR Similar | 27 (18 unit + 9 API) | All 9 endpoints |
 | - XLSTransfer | 17 (9 unit + 8 API) | All 8 endpoints |
 | - QuickSearch | 19 (11 unit + 8 API) | All 8 endpoints |
+| **API User Simulation Tests** | | |
+| - Tools Simulation | 26 | Full user workflows |
+| - Admin Simulation | 15 | User/session/log management |
+| - Error Handling | 25 | Auth, validation, recovery |
+| - WebSocket/Polling | 10 | Real-time, reconnection |
 | **Infrastructure** | | |
 | - Admin Dashboard | 20 | 16/16 endpoints |
 | - Authentication | 6 | JWT, roles, activation |
 | - WebSocket | 13 | Events, rooms, real-time |
 | - Client Utils | 86 | Logger, progress, file handler |
-| **Total** | **188+** | Full coverage |
+| **Total** | **450** | 49% code coverage |
+
+### API User Simulation Test Files (NEW - 2025-12-02)
+
+| File | Tests | Description |
+|------|-------|-------------|
+| `tests/api/test_api_tools_simulation.py` | 26 | Simulates real user workflows for all 3 tools |
+| `tests/api/test_api_admin_simulation.py` | 15 | Simulates admin operations: users, sessions, logs |
+| `tests/api/test_api_error_handling.py` | 25 | Auth errors, validation, edge cases, recovery |
+| `tests/api/test_api_websocket.py` | 10 | WebSocket connection, messaging, HTTP polling |
+| **Total API Simulation** | **76** | TRUE PRODUCTION SIMULATION |
 
 ### When to Use Each Folder
 
@@ -297,6 +314,130 @@ Example fixture (`sample_language_data.txt`):
 ```
 39	7924197	1001	0	1	{ChangeScene(Main_001)}안녕하세요.	{ChangeScene(Main_001)}Hello.	None	NPC Dialog
 ```
+
+---
+
+## Test Data Design Philosophy
+
+> **Key Insight:** Test data should be SIMPLE but COMPREHENSIVE. It must cover all real-world patterns, not just basic cases.
+
+### The Problem We Solved
+
+Early test fixtures were "too simple" - they had correct structure (columns, tabs) but missed critical patterns from real production data:
+
+| Pattern | Real Data Has | Simple Test Data Had |
+|---------|---------------|---------------------|
+| Multiple tag blocks per cell | 3-5 `{ChangeScene}{AudioVoice}` blocks | 1 block only |
+| Complex voice IDs | `NPC_VCE_NEW_8513_2_11_Iksun` | `NPC_001` |
+| Multiple `\n` in one cell | 5+ newlines | 1-2 newlines |
+| Non-English translations | French, German, etc. | English only |
+| Empty trailing columns | `\t\t` at end | `None\tCategory` |
+| Korean dialect variations | `있잖아요?`, `싶어유!` | Standard Korean |
+
+**Result:** Tests passed but production code could still fail on real data!
+
+### Design Principles
+
+#### 1. Structure Must Match Exactly
+```
+# Real production format (tab-separated):
+COL0	COL1	COL2	COL3	COL4	KOREAN_TEXT	TRANSLATION	NOTES	CATEGORY
+
+# Test fixture MUST have same columns, same separators
+39	7924197	1001	0	1	{Tag}Korean	{Tag}English	None	Dialog
+```
+
+#### 2. Cover ALL Tag Patterns
+Real data has these patterns that MUST be in test fixtures:
+
+```python
+# Pattern 1: Multiple tags at start
+"{ChangeScene(X)}{AudioVoice(Y)}Text here"
+
+# Pattern 2: Tags mid-text (after newline)
+"First line\n{ChangeScene(X)}{AudioVoice(Y)}Second line"
+
+# Pattern 3: Multiple tag+text blocks in ONE cell
+"{Tag1}Line1\n{Tag2}Line2\n{Tag3}Line3"
+
+# Pattern 4: Nested/complex tag names
+"{AudioVoice(NPC_VCE_NEW_8513_2_11_Iksun)}"
+
+# Pattern 5: HTML-like tags
+"<color=red>Warning</color>"
+
+# Pattern 6: Scale/formatting tags
+"{Scale(1.2)}Big text{/Scale}"
+```
+
+#### 3. Cover Edge Cases in Content
+```python
+# Korean with punctuation variations
+"안녕하세요!"      # Exclamation
+"뭐라고요?"       # Question
+"그렇군요..."     # Ellipsis
+
+# Dialect markers
+"있잖아유?"       # Regional dialect
+"했슈?"          # Informal speech
+
+# Special characters in text
+"▶ 선택하세요"    # Bullet points
+"【경고】"        # Brackets
+
+# Mixed content
+"HP: 100 / MP: 50"  # Numbers and colons
+```
+
+#### 4. Keep It Simple, Not Simplistic
+- Simple = Easy to read and understand
+- Simplistic = Missing important patterns
+
+```python
+# WRONG (simplistic):
+"Hello"  # Too basic, misses all patterns
+
+# RIGHT (simple but comprehensive):
+"{ChangeScene(Main_001)}{AudioVoice(NPC_001)}안녕하세요.\n{AudioVoice(NPC_002)}반갑습니다!"
+# Covers: multiple tags, newline, Korean text, punctuation
+```
+
+### Real Data Reference
+
+Production data comes from `RessourcesForCodingTheProject/datausedfortesting/langsampleallweneed.txt`.
+
+**Key characteristics:**
+- Tab-separated (not comma, not space)
+- 7+ columns per row
+- Korean source with French/English translations
+- Complex inline tags for scenes and voice
+- Multi-line content within single cells (using `\n`)
+- Voice asset naming: `NPC_VCE_NEW_[ID]_[SEQ]_[Name]`
+- Scene naming: `MorningMain_XX_XXX`, `MorningLand_NPC_XXXXX`
+
+### Comprehensive Test Pattern Checklist
+
+When creating/updating fixtures, verify these patterns are covered:
+
+- [ ] **Basic single tag**: `{Tag}Text`
+- [ ] **Multiple tags start**: `{Tag1}{Tag2}Text`
+- [ ] **Tags after newline**: `Text\n{Tag}More text`
+- [ ] **Multiple blocks per cell**: `{T1}L1\n{T2}L2\n{T3}L3`
+- [ ] **Complex tag names**: `{AudioVoice(NPC_VCE_NEW_8504_26_10_Name)}`
+- [ ] **Scene references**: `{ChangeScene(MorningMain_04_137)}`
+- [ ] **Empty columns**: Row ends with `\t\t` or `\tNone\t`
+- [ ] **Korean punctuation**: `!`, `?`, `...`, `~`
+- [ ] **Special characters**: `▶`, `【】`, `<color>`, `{Scale}`
+- [ ] **Numbers in text**: `HP: 100`, `레벨 5`
+- [ ] **Long text (100+ chars)**: Test truncation handling
+
+### Future Claude Sessions: Remember This
+
+When working on tests:
+1. **Don't assume simple = correct** - Check against real data patterns
+2. **Compare with `langsampleallweneed.txt`** - The source of truth
+3. **Run pattern checklist above** - Before marking fixtures "complete"
+4. **Update this doc** - When you discover new patterns
 
 ---
 
@@ -435,7 +576,7 @@ curl -s http://localhost:8888/api/v2/xlstransfer/health
 pkill -f "python3 server/main.py"
 ```
 
-### Security Test Summary (Updated 2025-12-01)
+### Security Test Summary (Updated 2025-12-02)
 
 | Test File | Tests | What It Verifies |
 |-----------|-------|------------------|
@@ -444,6 +585,33 @@ pkill -f "python3 server/main.py"
 | `test_jwt_security.py` | 22 | SECRET_KEY validation, security modes |
 | `test_audit_logging.py` | 29 | Login/block event logging |
 | **Total Security Tests** | **86** | Full security coverage |
+
+### E2E Test Summary (Updated 2025-12-02)
+
+| Test File | Tests | What It Verifies |
+|-----------|-------|------------------|
+| `test_kr_similar_e2e.py` | 18 | BERT embeddings, similarity search |
+| `test_quicksearch_e2e.py` | 11 | Dictionary search, Korean data |
+| `test_xlstransfer_e2e.py` | 9 | Excel translation pipeline |
+| `test_edge_cases_e2e.py` | 23 | Empty/unicode/special chars |
+| `test_complete_user_flow.py` | 9 | Cross-app workflows |
+| `test_real_workflows_e2e.py` | 14 | Production patterns |
+| `test_production_workflows_e2e.py` | 18 | Full pipelines |
+| **Total E2E Tests** | **102** | All pass ✅ |
+
+### API User Simulation Tests (Updated 2025-12-02)
+
+| Test File | Tests | What It Simulates |
+|-----------|-------|-------------------|
+| `test_api_auth_integration.py` | 11 | Login, JWT, session management |
+| `test_api_tools_simulation.py` | 26 | **REAL USER workflows via API** |
+| **Total API Tests** | **37** | All pass ✅ |
+
+**API Simulation Coverage:**
+- ✅ KR Similar: health → list → create → load → search → edge cases
+- ✅ QuickSearch: health → list → create → load → search modes
+- ✅ XLSTransfer: health → list → create → translate
+- ✅ Cross-tool: session persistence, activity tracking
 
 ### If Tests Fail After Security Changes
 
@@ -473,5 +641,6 @@ python -m pytest tests/security/ tests/test_kr_similar.py tests/test_quicksearch
 
 ---
 
-*Last updated: 2025-12-01*
-*Protocol version: 2.1 (added security verification)*
+*Last updated: 2025-12-02*
+*Protocol version: 2.3 (added API user simulation tests)*
+*Total tests: 450 | E2E: 102 | API Simulation: 37 | Security: 86*

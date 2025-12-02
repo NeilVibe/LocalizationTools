@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512011310 (2025-12-01)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅
+**Version:** 2512021340 (2025-12-02)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅
 
 ---
 
@@ -15,14 +15,15 @@
 - 📊 **Central monitoring**: Optional telemetry to server
 - 👔 **Professional**: CEO/management-ready quality
 
-### Current Status (2025-12-01):
+### Current Status (2025-12-02):
 - ✅ **Backend**: 100% Complete (47+ endpoints, WebSocket, async)
 - ✅ **LocaNext Desktop App**: 100% Complete (Electron + Svelte)
 - ✅ **XLSTransfer (App #1)**: 100% Complete (10 functions, exact replica)
 - ✅ **QuickSearch (App #2)**: 100% Complete (dictionary search with reference)
-- ✅ **KR Similar (App #3)**: 100% Complete (Korean semantic similarity, 34 tests)
+- ✅ **KR Similar (App #3)**: 100% Complete (Korean semantic similarity)
 - ✅ **Distribution**: Git LFS, versioning, build system ready
 - ✅ **Security**: 7/11 Complete (IP filter, CORS, JWT, audit logging, 86 tests)
+- ✅ **Tests**: 450 passed, 49% coverage (with full server simulation)
 - ⏳ **Admin Dashboard**: 85% Complete (needs auth & polish)
 
 ---
@@ -136,9 +137,12 @@
 - Builds are **MANUAL** (not automatic on every push)
 - See: [BUILD_AND_DISTRIBUTION.md](docs/BUILD_AND_DISTRIBUTION.md)
 
-### 4. Testing Required
-- Run `pytest` before every commit
-- For FULL tests: `RUN_API_TESTS=1 pytest` (requires server running)
+### 4. Testing Required (FULL SERVER SIMULATION)
+- **ALWAYS run with server** for true production simulation:
+  ```bash
+  python3 scripts/create_admin.py && python3 server/main.py &
+  sleep 5 && RUN_API_TESTS=1 python3 -m pytest -v
+  ```
 - See: [TESTING_PROTOCOL.md](docs/TESTING_PROTOCOL.md) for autonomous testing
 
 ### 5. Async by Default
@@ -222,7 +226,7 @@ bash scripts/clean_logs.sh
 1. ✅ Read this file completely (you're here!)
 2. ✅ Read [QUICK_START_GUIDE.md](docs/QUICK_START_GUIDE.md) (5 min)
 3. ✅ Run `python3 server/main.py` to verify backend works
-4. ✅ Run `RUN_API_TESTS=1 python3 -m pytest` to verify tests pass (415 expected)
+4. ✅ Run `RUN_API_TESTS=1 python3 -m pytest` to verify tests pass (450 expected)
 5. ✅ Check **Roadmap.md** for current task
 
 ### Current Phase:
@@ -242,8 +246,9 @@ bash scripts/clean_logs.sh
 - **Lines of Code:** ~18,000+
 - **API Endpoints:** 47+ (async + sync)
 - **Database Tables:** 13
-- **Tests:** 418 passed, 0 skipped, 0 failed (49% coverage)
-- **Test Coverage:** 49% (target: 80%)
+- **Tests:** 450 passed, 49% coverage (with full server simulation)
+- **E2E Tests:** 102 (KR Similar 18 + QuickSearch 11 + XLSTransfer 9 + Edge Cases 23 + Workflows 41)
+- **API Simulation Tests:** 100 (Tools 26 + Admin 15 + Errors 25 + WebSocket 10 + Full System 24)
 - **Security Tests:** 86 (IP filter, CORS, JWT, audit logging)
 - **Tools:** 3 (XLSTransfer, QuickSearch, KR Similar)
 - **Documentation Files:** 28 active + 9 archived
@@ -258,6 +263,6 @@ This project is **96% complete**, **clean**, **organized**, and **production-rea
 
 ---
 
-*Last updated: 2025-12-01 by Claude*
-*Tests: 418 passed, 0 skipped, 0 failed | 49% coverage | Security: 86 tests*
+*Last updated: 2025-12-02 by Claude*
+*Tests: 450 passed | 49% coverage (with server) | API Sim: 100 | Security: 86*
 *MASTER NAVIGATION HUB - All details are in linked docs*
