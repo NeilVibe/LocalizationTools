@@ -53,3 +53,4 @@ Build LIGHT v2512020100 - Fix package-lock.json
 Build LIGHT v2512020100 - Disable electron-builder publish
 Build FULL v2512011310
 Build FULL v2512011310 - fix test import
+Build FULL v2512011310 - fix installer client ref
