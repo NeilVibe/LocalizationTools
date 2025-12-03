@@ -17,12 +17,23 @@ from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 import requests
 
+import server.utils.client.logger as logger_module
 from server.utils.client.logger import UsageLogger, get_logger, log_function_call
 
 
 # ============================================
 # Test Fixtures
 # ============================================
+
+@pytest.fixture(autouse=True)
+def reset_logger_singleton():
+    """Reset the global logger singleton before each test."""
+    # Reset the global _usage_logger before test
+    logger_module._usage_logger = None
+    yield
+    # Reset after test as well
+    logger_module._usage_logger = None
+
 
 @pytest.fixture
 def mock_config(monkeypatch):
