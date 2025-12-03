@@ -48,7 +48,7 @@ LocalizationTools Desktop App
 
 **After:**
 ```python
-client/tools/new_tool/
+server/tools/new_tool/
 ├── core.py          # Core business logic
 ├── processing.py    # Data processing functions
 ├── file_ops.py      # File I/O operations
@@ -67,7 +67,7 @@ Benefits:
 ### Step 3: Create Backend Scripts
 
 ```python
-client/tools/new_tool/
+server/tools/new_tool/
 ├── get_data.py           # Retrieve data
 ├── process_operation.py  # Main operations
 ├── export_results.py     # Export functionality

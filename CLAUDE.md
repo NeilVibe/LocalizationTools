@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512021340 (2025-12-02)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅
+**Version:** 2512031400 (2025-12-03)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅
 
 ---
 
@@ -15,7 +15,7 @@
 - 📊 **Central monitoring**: Optional telemetry to server
 - 👔 **Professional**: CEO/management-ready quality
 
-### Current Status (2025-12-02):
+### Current Status (2025-12-03):
 - ✅ **Backend**: 100% Complete (47+ endpoints, WebSocket, async)
 - ✅ **LocaNext Desktop App**: 100% Complete (Electron + Svelte)
 - ✅ **XLSTransfer (App #1)**: 100% Complete (10 functions, exact replica)
@@ -23,7 +23,8 @@
 - ✅ **KR Similar (App #3)**: 100% Complete (Korean semantic similarity)
 - ✅ **Distribution**: Git LFS, versioning, build system ready
 - ✅ **Security**: 7/11 Complete (IP filter, CORS, JWT, audit logging, 86 tests)
-- ✅ **Tests**: 582 passed, 52% coverage (TRUE simulation - no mocks!)
+- ✅ **Tests**: 660 passed (TRUE simulation - no mocks!)
+- ✅ **Structure**: Unified - all tools under `server/tools/` (Priority 6.0 complete)
 - ⏳ **Admin Dashboard**: 85% Complete (needs auth & polish)
 
 ---
@@ -255,7 +256,7 @@ bash scripts/clean_logs.sh
 - **Lines of Code:** ~18,000+
 - **API Endpoints:** 47+ (async + sync)
 - **Database Tables:** 13
-- **Tests:** 921 passed, 53% coverage (TRUE simulation - no mocks!)
+- **Tests:** 867 total (TRUE simulation - no mocks!)
 - **E2E Tests:** 115 (KR Similar 18 + QuickSearch 11 + XLSTransfer 9 + Edge Cases 23 + Workflows 54)
 - **Frontend E2E:** 164 (Playwright - LocaNext 134 + Admin Dashboard 30)
   - LocaNext 134: Login 10 + Nav 10 + Tools 11 + API 8 + Frontend-Backend 16 + Full Workflow 17 + TaskManager 22 + File Operations 20 + WebSocket/Real-time 19 + Screenshot 1
@@ -263,7 +264,7 @@ bash scripts/clean_logs.sh
 - **Unit Tests:** 350+ (auth, cache, websocket, dependencies, tools)
 - **API Simulation Tests:** 168 (Tools 26 + Admin 15 + Errors 25 + WebSocket 10 + Full System 72)
 - **Security Tests:** 86 (IP filter, CORS, JWT, audit logging)
-- **Tools:** 3 (XLSTransfer, QuickSearch, KR Similar)
+- **Tools:** 3 (XLSTransfer, QuickSearch, KR Similar) - all under `server/tools/`
 - **Documentation Files:** 28 active + 9 archived
 
 ---
@@ -277,5 +278,5 @@ This project is **96% complete**, **clean**, **organized**, and **production-rea
 ---
 
 *Last updated: 2025-12-03 by Claude*
-*Tests: 921 passed | 53% coverage (TRUE sim) | Frontend: 54 | API Sim: 168 | Security: 86*
-*MASTER NAVIGATION HUB - All details are in linked docs*
+*Tests: 867 total | Structure unified | Frontend: 164 | API Sim: 168 | Security: 86*
+*MASTER NAVIGATION HUB - All tools unified under server/tools/*

@@ -162,7 +162,7 @@ MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"  # Korean-specific BERT (768-
 ### 1. Check Backend Hasn't Changed:
 ```bash
 # Verify model name is correct
-grep -r "paraphrase-multilingual" locaNext/src/ client/
+grep -r "paraphrase-multilingual" locaNext/src/ server/tools/
 # Should return NOTHING! If found = you hallucinated!
 
 # Check core functions
@@ -201,7 +201,7 @@ RessourcesForCodingTheProject/MAIN PYTHON SCRIPTS/
 ```
 
 ### What Changed (Structure Only):
-- **File locations**: Moved to `client/tools/` and `server/tools/`
+- **File locations**: All tools unified under `server/tools/`
 - **Added type hints**: `def func(x)` → `def func(x: str) -> str:`
 - **Added docstrings**: Documentation for all functions
 - **Added safety checks**: `if end_pos != -1:` guards

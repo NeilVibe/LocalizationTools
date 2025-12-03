@@ -73,8 +73,10 @@ LocalizationTools/
 │   │   │   │   └── cli/ - Command-line interface
 │   │   │   ├── quicksearch/ - Dictionary search
 │   │   │   └── kr_similar/ - Korean semantic similarity
-│   │   ├── config/ - Server configuration
+│   │   ├── client_config/ - Client configuration (moved from client/)
 │   │   │   └── client_config.py - Client app settings
+│   │   ├── utils/client/ - Client utilities (moved from client/utils/)
+│   │   │   ├── file_handler.py, logger.py, progress.py
 │   │   └── STATUS: ✅ COMPLETE - All tool backends unified
 │
 ├── 🖥️ LOCANEXT (ELECTRON DESKTOP APP - COMPLETE ✅)
