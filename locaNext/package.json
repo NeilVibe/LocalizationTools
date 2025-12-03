@@ -11,7 +11,11 @@
     "build": "vite build",
     "build:electron": "electron-builder",
     "preview": "vite preview",
-    "package": "npm run build && electron-builder"
+    "package": "npm run build && electron-builder",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report"
   },
   "keywords": [
     "localization",
@@ -23,6 +27,7 @@
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@sveltejs/adapter-static": "^3.0.1",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^3.0.0",
