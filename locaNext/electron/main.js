@@ -34,7 +34,7 @@ const getAppPaths = () => {
     const projectRoot = path.join(__dirname, '../..');
     return {
       projectRoot,
-      pythonToolsPath: path.join(projectRoot, 'client', 'tools'),
+      pythonToolsPath: path.join(projectRoot, 'server', 'tools'),
       serverPath: path.join(projectRoot, 'server'),
       pythonExe: 'python3',  // Use system Python in dev
       modelsPath: path.join(projectRoot, 'models')
