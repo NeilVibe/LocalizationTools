@@ -169,7 +169,7 @@ def test_file_handler_validates_existing_file(tmp_path):
     test_file.write_text("test content")
 
     # Act
-    from client.utils.file_handler import validate_file_exists
+    from server.utils.client.file_handler import validate_file_exists
     is_valid, error = validate_file_exists(str(test_file), ['.xlsx'])
 
     # Assert

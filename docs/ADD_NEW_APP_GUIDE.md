@@ -72,7 +72,7 @@ class YourAppAPI(BaseToolAPI):
     def _load_modules(self):
         """Load your app's Python modules."""
         try:
-            from client.tools.your_app import core, processor
+            from server.tools.your_app import core, processor
 
             self.core = core
             self.processor = processor

@@ -13,7 +13,7 @@ from pathlib import Path
 # Path to Korean BERT model (VRS-Manager pattern: models/kr-sbert/ at project root)
 MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
 
-# Get project root (3 levels up from this file: client/tools/xls_transfer/config.py)
+# Get project root (3 levels up from this file: server/tools/xlstransfer/config.py)
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 MODEL_PATH = _PROJECT_ROOT / "models" / "kr-sbert"
 
@@ -150,7 +150,7 @@ PRESERVE_FORMULAS = False  # Convert formulas to values
 from pathlib import Path as ConfigPath
 import os
 
-# Get project root (3 levels up from this file: client/tools/xls_transfer/config.py)
+# Get project root (3 levels up from this file: server/tools/xlstransfer/config.py)
 _CONFIG_PROJECT_ROOT = ConfigPath(__file__).parent.parent.parent.parent
 
 # Base output directory (inside program folder under server/data/outputs/)

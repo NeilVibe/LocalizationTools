@@ -119,7 +119,7 @@ xls_transfer/
 ## 🚀 Usage Example
 
 ```python
-from client.tools.xls_transfer import XLSTransferTool
+from server.tools.xlstransfer import XLSTransferTool
 
 # Initialize tool
 tool = XLSTransferTool(username="john_doe")

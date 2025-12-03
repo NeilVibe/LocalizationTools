@@ -115,7 +115,7 @@ server/tools/new_tool/
 ```python
 # server/api/newtool_async.py
 from fastapi import APIRouter
-from client.tools.new_tool import core
+from server.tools.new_tool import core
 
 router = APIRouter(prefix="/api/v2/newtool", tags=["NewTool"])
 

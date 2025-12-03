@@ -18,6 +18,10 @@ import openpyxl
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Pre-import client_config module to ensure it's available for monkeypatch
+# This fixes test isolation issues where module import order affects attribute access
+import server.client_config.client_config  # noqa: E402, F401
+
 
 # ============================================
 # Temporary Directory Fixtures

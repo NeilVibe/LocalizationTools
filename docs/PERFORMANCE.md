@@ -182,7 +182,7 @@ DB_POOL_RECYCLE = 3600    # Recycle connections every hour
 
 All operations are logged with duration:
 ```python
-from client.utils.logger import get_logger
+from server.utils.client.logger import get_logger
 
 logger = get_logger()
 
