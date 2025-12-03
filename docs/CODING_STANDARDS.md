@@ -226,7 +226,7 @@ await db.commit()
 
 **KEEP** (these are needed):
 - Server code (all of it)
-- Client tool modules (`client/tools/*/`)
+- Tool modules (`server/tools/*/`)
 - Tests
 - Documentation
 - Configuration files

@@ -134,7 +134,7 @@ echo "New version: $NEW_VERSION"
 python3 scripts/download_models.py
 ```
 
-**Note:** Model already installed locally in `client/models/`
+**Note:** Model already installed locally in `server/data/models/`
 
 ---
 

@@ -588,7 +588,7 @@ def _long_operation_background(self, operation_id, user_info, file_paths):
 
 ## Next Steps
 
-1. Create your tool's client-side Python code in `client/tools/your_app/`
+1. Create your tool's backend Python code in `server/tools/your_app/`
 2. Create the API class following this guide
 3. Register the router in `server/main.py`
 4. Test all endpoints autonomously

@@ -131,7 +131,7 @@ selections = {
 ### Model Location & Name:
 ```python
 # Local installation (ALREADY in project - do NOT download):
-MODEL_PATH = "client/models/KR-SBERT-V40K-klueNLI-augSTS/"  # 447MB, fully installed
+MODEL_PATH = "server/data/models/KR-SBERT-V40K-klueNLI-augSTS/"  # 447MB, fully installed
 MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"  # Korean-specific BERT (768-dim)
 
 # NEVER use:
