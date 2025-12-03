@@ -23,12 +23,12 @@ class TestXLSTransferConfig:
 
     def test_config_imports(self):
         """Config module imports without error."""
-        from client.tools.xls_transfer import config
+        from server.tools.xlstransfer import config
         assert config is not None
 
     def test_config_has_required_constants(self):
         """Config has required constants."""
-        from client.tools.xls_transfer import config
+        from server.tools.xlstransfer import config
 
         # Check essential constants exist
         assert hasattr(config, 'MODEL_NAME')
@@ -37,7 +37,7 @@ class TestXLSTransferConfig:
 
     def test_model_name_is_korean_bert(self):
         """Model name is Korean BERT (not multilingual)."""
-        from client.tools.xls_transfer import config
+        from server.tools.xlstransfer import config
 
         # Must be Korean-specific model
         assert 'KR-SBERT' in config.MODEL_NAME or 'korean' in config.MODEL_NAME.lower()
@@ -46,13 +46,13 @@ class TestXLSTransferConfig:
 
     def test_faiss_threshold_valid_range(self):
         """FAISS threshold is in valid range."""
-        from client.tools.xls_transfer import config
+        from server.tools.xlstransfer import config
         assert 0.0 <= config.DEFAULT_FAISS_THRESHOLD <= 1.0
         assert config.MIN_FAISS_THRESHOLD <= config.MAX_FAISS_THRESHOLD
 
     def test_code_patterns_are_regexes(self):
         """Code patterns are valid regex patterns."""
-        from client.tools.xls_transfer import config
+        from server.tools.xlstransfer import config
         import re
 
         for pattern in config.CODE_PATTERNS:
@@ -66,7 +66,7 @@ class TestXLSTransferCore:
 
     @pytest.fixture
     def core(self):
-        from client.tools.xls_transfer import core
+        from server.tools.xlstransfer import core
         return core
 
     def test_clean_text_removes_carriage_return(self, core):
@@ -136,7 +136,7 @@ class TestXLSTransferExcelUtils:
 
     @pytest.fixture
     def excel_utils(self):
-        from client.tools.xls_transfer import excel_utils
+        from server.tools.xlstransfer import excel_utils
         return excel_utils
 
     def test_module_imports(self, excel_utils):
@@ -155,7 +155,7 @@ class TestXLSTransferAnalyzeCodePatterns:
     @pytest.fixture
     def analyze(self):
         try:
-            from client.tools.xls_transfer.core import analyze_code_patterns
+            from server.tools.xlstransfer.core import analyze_code_patterns
             return analyze_code_patterns
         except ImportError:
             pytest.skip("analyze_code_patterns not available")
@@ -197,7 +197,7 @@ class TestXLSTransferFindCodePatterns:
     @pytest.fixture
     def find_patterns(self):
         try:
-            from client.tools.xls_transfer.core import find_code_patterns_in_text
+            from server.tools.xlstransfer.core import find_code_patterns_in_text
             return find_code_patterns_in_text
         except ImportError:
             pytest.skip("find_code_patterns_in_text not available")

@@ -107,7 +107,7 @@ selections = {
 
 ## 🧩 BACKEND MODULES
 
-**Template for all future tools** - Located in `client/tools/xls_transfer/`:
+**Template for all future tools** - Located in `server/tools/xlstransfer/`:
 
 ### Core Modules:
 - `core.py` - 49 functions, core business logic
@@ -141,7 +141,7 @@ MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"  # Korean-specific BERT (768-
 ```
 
 ### Core Algorithms (VERIFIED IDENTICAL TO ORIGINAL):
-- `clean_text()` in `client/tools/xls_transfer/core.py:103` - Removes `_x000D_` (critical for Excel exports)
+- `clean_text()` in `server/tools/xlstransfer/core.py:103` - Removes `_x000D_` (critical for Excel exports)
 - `simple_number_replace()` in `core.py:253` - Preserves game codes like `{ItemID}`
 - `analyze_code_patterns()` in `core.py:336` - Detects game code patterns
 - `generate_embeddings()` in `embeddings.py:80` - 768-dim Korean BERT embeddings

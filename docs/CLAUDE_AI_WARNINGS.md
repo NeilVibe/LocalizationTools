@@ -343,7 +343,7 @@ Use this checklist for ANY AI-assisted code changes:
 
 - [XLSTransfer Migration Audit](./XLSTransfer_Migration_Audit.md)
 - Original XLSTransfer code: `RessourcesForCodingTheProject/MAIN PYTHON SCRIPTS/XLSTransfer0225.py`
-- Backend implementation: `client/tools/xls_transfer/`
+- Backend implementation: `server/tools/xlstransfer/`
 - Frontend implementation: `locaNext/src/lib/components/apps/XLSTransfer.svelte`
 
 ---

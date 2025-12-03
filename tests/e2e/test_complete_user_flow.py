@@ -29,7 +29,7 @@ API_BASE = f"{BASE_URL}/api/v2"
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 TEST_DATA_DIR = PROJECT_ROOT / "locaNext" / "test-data"
 TESTSMALL_FILE = TEST_DATA_DIR / "TESTSMALL.xlsx"
-CLI_SCRIPT = PROJECT_ROOT / "client/tools/xls_transfer/cli/xlstransfer_cli.py"
+CLI_SCRIPT = PROJECT_ROOT / "server/tools/xlstransfer/cli/xlstransfer_cli.py"
 
 
 def run_cli(command=None, *args):

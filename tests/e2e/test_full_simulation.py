@@ -204,7 +204,7 @@ class TestXLSTransferFullSimulation:
 
     def test_01_tag_reconstruction_full_matrix(self):
         """Test all tag reconstruction patterns."""
-        from client.tools.xls_transfer.core import simple_number_replace
+        from server.tools.xlstransfer.core import simple_number_replace
 
         # Complete matrix of production patterns
         test_cases = [
@@ -243,7 +243,7 @@ class TestXLSTransferFullSimulation:
 
     def test_02_code_extraction_all_patterns(self):
         """Test code block extraction from all pattern types."""
-        from client.tools.xls_transfer.core import extract_code_blocks
+        from server.tools.xlstransfer.core import extract_code_blocks
 
         test_cases = [
             ("{Code}Text", ["{Code}"]),
@@ -262,7 +262,7 @@ class TestXLSTransferFullSimulation:
 
     def test_03_strip_codes_preserves_text(self):
         """Test that strip_codes removes all tags but preserves text."""
-        from client.tools.xls_transfer.core import strip_codes_from_text
+        from server.tools.xlstransfer.core import strip_codes_from_text
 
         test_cases = [
             # (input, expected_contains, expected_not_contains)

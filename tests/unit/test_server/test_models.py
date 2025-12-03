@@ -126,7 +126,8 @@ class TestUserModel:
         user = User(
             username="reprtest",
             password_hash="hash",
-            department="QA",
+            team="QA",
+            language="EN",
         )
         test_db.add(user)
         test_db.commit()
@@ -134,6 +135,7 @@ class TestUserModel:
         repr_str = repr(user)
         assert "reprtest" in repr_str
         assert "QA" in repr_str
+        assert "EN" in repr_str
 
     def test_user_nullable_email(self, test_db):
         """Test that email can be null."""

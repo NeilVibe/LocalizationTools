@@ -14,9 +14,9 @@ import faiss
 from sentence_transformers import SentenceTransformer
 from loguru import logger
 
-from client.tools.xls_transfer import config
-from client.tools.xls_transfer.core import clean_text, excel_column_to_index
-from client.utils.progress import ProgressTracker
+from server.tools.xlstransfer import config
+from server.tools.xlstransfer.core import clean_text, excel_column_to_index
+from server.utils.client.progress import ProgressTracker
 
 
 # ============================================

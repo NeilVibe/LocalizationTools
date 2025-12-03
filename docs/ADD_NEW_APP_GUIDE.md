@@ -493,7 +493,7 @@ server/data/
 
 ### Adding Your App to Output Directory
 
-1. Add your app to `client/tools/xls_transfer/config.py`:
+1. Add your app to `server/tools/xlstransfer/config.py`:
 ```python
 APP_OUTPUT_DIRS = {
     "xlstransfer": "xlstransfer",
@@ -505,7 +505,7 @@ APP_OUTPUT_DIRS = {
 
 2. Use `get_output_directory()` in your code:
 ```python
-from client.tools.xls_transfer.config import get_output_directory
+from server.tools.xlstransfer.config import get_output_directory
 
 output_dir = get_output_directory("yourapp")
 # Returns: server/data/outputs/yourapp/2025-12-02/

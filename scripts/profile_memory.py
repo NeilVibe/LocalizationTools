@@ -75,7 +75,7 @@ def profile_xls_transfer_modules():
     snapshot1 = tracemalloc.take_snapshot()
 
     # Import modules
-    from client.tools.xls_transfer import core, embeddings, translation, excel_utils
+    from server.tools.xlstransfer import core, embeddings, translation, excel_utils
 
     # Snapshot after import
     snapshot2 = tracemalloc.take_snapshot()

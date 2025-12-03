@@ -321,7 +321,7 @@ class TestXLSTransferEdgeCases:
     def core_module(self):
         """Get XLSTransfer core module."""
         try:
-            from client.tools.xls_transfer import core
+            from server.tools.xlstransfer import core
             return core
         except ImportError:
             pytest.skip("XLSTransfer core not available")

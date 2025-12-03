@@ -40,7 +40,7 @@ model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
 
 **Backend Config (CORRECT):**
 ```python
-# client/tools/xls_transfer/config.py:14-15
+# server/tools/xlstransfer/config.py:14-15
 MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
 ```
 
@@ -153,7 +153,7 @@ Original could process ANY Excel structure!
 
 ### ✅ PRESERVED - Critical Functions
 
-All critical text processing algorithms are correctly preserved in `client/tools/xls_transfer/core.py`:
+All critical text processing algorithms are correctly preserved in `server/tools/xlstransfer/core.py`:
 
 #### 4.1 `clean_text()` - CORRECT ✅
 ```python
@@ -163,7 +163,7 @@ def clean_text(text):
         return None
     return text.replace('_x000D_', '').strip()
 
-# Current (client/tools/xls_transfer/core.py:18-51) - ENHANCED but CORRECT
+# Current (server/tools/xlstransfer/core.py:18-51) - ENHANCED but CORRECT
 def clean_text(text: Optional[Any]) -> Optional[str]:
     if text is None:
         return None
@@ -179,7 +179,7 @@ def clean_text(text: Optional[Any]) -> Optional[str]:
 #### 4.2 `simple_number_replace()` - CORRECT ✅
 ```python
 # Original (XLSTransfer0225.py:118-154) - Complex code preservation logic
-# Current (client/tools/xls_transfer/core.py:253-316) - PRESERVED EXACTLY
+# Current (server/tools/xlstransfer/core.py:253-316) - PRESERVED EXACTLY
 
 # Both handle:
 # - {Code} blocks
@@ -192,7 +192,7 @@ def clean_text(text: Optional[Any]) -> Optional[str]:
 #### 4.3 Split/Whole Mode Logic - CORRECT ✅
 ```python
 # Original (XLSTransfer0225.py:265-280) - Splits on newline count match
-# Current (client/tools/xls_transfer/embeddings.py:439-452) - PRESERVED
+# Current (server/tools/xlstransfer/embeddings.py:439-452) - PRESERVED
 
 # Original:
 if len(kr_lines) == len(trans_lines):
@@ -220,7 +220,7 @@ faiss.normalize_L2(embeddings)
 index = faiss.IndexFlatIP(embedding_dim)
 index.add(embeddings)
 
-# Current (client/tools/xls_transfer/embeddings.py:137-167)
+# Current (server/tools/xlstransfer/embeddings.py:137-167)
 faiss.normalize_L2(embeddings)  # ✅ Same L2 normalization
 embedding_dim = embeddings.shape[1]
 index = faiss.IndexFlatIP(embedding_dim)  # ✅ Same IndexFlatIP
@@ -236,7 +236,7 @@ most_freq_trans = df.groupby('KR')['Translation'].agg(
     lambda x: x.value_counts().index[0] if not x.empty else pd.NA
 )
 
-# Current (client/tools/xls_transfer/embeddings.py:174-230)
+# Current (server/tools/xlstransfer/embeddings.py:174-230)
 def safe_most_frequent(series: pd.Series) -> Any:
     if series.empty or series.isna().all():
         return pd.NA
@@ -259,7 +259,7 @@ model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
 
 ### Current Model Loading
 ```python
-# client/tools/xls_transfer/embeddings.py:29-63
+# server/tools/xlstransfer/embeddings.py:29-63
 def load_model(model_path: Optional[Path] = None) -> SentenceTransformer:
     global _model_instance
 
@@ -337,7 +337,7 @@ BATCH_SIZE = 32
 
 ### Current Configuration System
 ```python
-# client/tools/xls_transfer/config.py
+# server/tools/xlstransfer/config.py
 MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"  # ✅ Correct
 DEFAULT_FAISS_THRESHOLD = 0.85  # ✅ Matches original
 EMBEDDING_BATCH_SIZE = 32  # ✅ Matches original
@@ -364,7 +364,7 @@ CODE_PATTERNS = [
 
 ### Current: Modular CLI Architecture
 ```
-client/tools/xls_transfer/
+server/tools/xlstransfer/
 ├── cli/
 │   └── xlstransfer_cli.py      # CLI entry point
 ├── core.py                      # Text processing (✅ CORRECT)

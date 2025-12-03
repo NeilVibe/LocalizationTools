@@ -12,7 +12,7 @@
 
 ## 🎯 WHAT THIS MEANS
 
-### Backend Code (`client/tools/xls_transfer/`, all Python modules):
+### Backend Code (`server/tools/xlstransfer/`, all Python modules):
 
 - ✅ **PROVEN:** Thoroughly tested and working in production
 - ✅ **COMPLETE:** All logic, algorithms, and processing is correct
@@ -35,7 +35,7 @@
 ### ✅ CORRECT: Wrapper calls backend properly
 
 ```python
-from client.tools.xls_transfer import embeddings
+from server.tools.xlstransfer import embeddings
 
 split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_excel_for_dictionary(
     excel_files=file_list,
@@ -47,9 +47,9 @@ split_dict, whole_dict, split_embeddings, whole_embeddings = embeddings.process_
 
 ```python
 # NEVER change these files unless user says "there's a bug in the backend"
-# - client/tools/xls_transfer/core.py
-# - client/tools/xls_transfer/embeddings.py
-# - client/tools/xls_transfer/translation.py
+# - server/tools/xlstransfer/core.py
+# - server/tools/xlstransfer/embeddings.py
+# - server/tools/xlstransfer/translation.py
 ```
 
 ---
@@ -166,7 +166,7 @@ grep -r "paraphrase-multilingual" locaNext/src/ client/
 # Should return NOTHING! If found = you hallucinated!
 
 # Check core functions
-python3 -c "from client.tools.xls_transfer.core import simple_number_replace; \
+python3 -c "from server.tools.xlstransfer.core import simple_number_replace; \
 print(simple_number_replace('{Code}Hi', 'Bye'))"
 # Should output: {Code}Bye
 ```
@@ -220,7 +220,7 @@ diff <(grep -E "re.sub|return|if pd" "RessourcesForCodingTheProject/MAIN PYTHON 
 
 # Test simple_number_replace is identical
 python3 -c "
-from client.tools.xls_transfer.core import simple_number_replace
+from server.tools.xlstransfer.core import simple_number_replace
 assert simple_number_replace('{Code}Hi', 'Bye') == '{Code}Bye'
 assert simple_number_replace('{T1}{T2}Hi', 'Bye') == '{T1}{T2}Bye'
 print('✅ Original logic preserved')

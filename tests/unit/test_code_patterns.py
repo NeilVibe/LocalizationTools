@@ -59,19 +59,19 @@ class TestXLSTransferReconstruction:
     @pytest.fixture
     def reconstruct(self):
         """Get simple_number_replace function."""
-        from client.tools.xls_transfer.core import simple_number_replace
+        from server.tools.xlstransfer.core import simple_number_replace
         return simple_number_replace
 
     @pytest.fixture
     def extract_codes(self):
         """Get extract_code_blocks function."""
-        from client.tools.xls_transfer.core import extract_code_blocks
+        from server.tools.xlstransfer.core import extract_code_blocks
         return extract_code_blocks
 
     @pytest.fixture
     def strip_codes(self):
         """Get strip_codes_from_text function."""
-        from client.tools.xls_transfer.core import strip_codes_from_text
+        from server.tools.xlstransfer.core import strip_codes_from_text
         return strip_codes_from_text
 
     # === CATEGORY A: BASIC TAG PATTERNS ===
@@ -383,7 +383,7 @@ class TestProductionPatterns:
 
     @pytest.fixture
     def reconstruct(self):
-        from client.tools.xls_transfer.core import simple_number_replace
+        from server.tools.xlstransfer.core import simple_number_replace
         return simple_number_replace
 
     def test_prod_pattern_1_npc_dialog(self, normalize, reconstruct):

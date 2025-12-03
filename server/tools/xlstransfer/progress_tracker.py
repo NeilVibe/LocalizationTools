@@ -11,9 +11,10 @@ from typing import Optional
 from datetime import datetime
 from pathlib import Path
 
-# Add server path for database access
-server_path = Path(__file__).parent.parent.parent.parent / "server"
-sys.path.insert(0, str(server_path))
+# Add project root for database access
+# Path: server/tools/xlstransfer/progress_tracker.py -> go up 4 levels to project root
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 try:
     from sqlalchemy import create_engine, text

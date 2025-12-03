@@ -261,7 +261,7 @@ After getting everything running:
 2. **Explore the Codebase:**
    - `server/main.py` - Server entry point
    - `server/api/*_async.py` - Async API endpoints
-   - `client/tools/xls_transfer/` - Tool template
+   - `server/tools/xlstransfer/` - Tool template
 
 3. **Run Your First Test:**
    - Start backend server

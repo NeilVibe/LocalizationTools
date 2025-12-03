@@ -89,7 +89,7 @@ Benefits:
 
 **When adding a new tool:**
 1. Take the monolithic .py script
-2. Follow XLSTransfer pattern (see `client/tools/xls_transfer/`)
+2. Follow XLSTransfer pattern (see `server/tools/xlstransfer/`)
 3. Break into modules by functionality
 4. Add type hints and docstrings
 5. Write unit tests
@@ -286,7 +286,7 @@ threshold = config.get('threshold', DEFAULT_THRESHOLD)
 → Read: `server/database/models.py` (13 tables with relationships)
 
 **Want to understand tool restructuring?**
-→ Read: `client/tools/xls_transfer/` (template for all tools)
+→ Read: `server/tools/xlstransfer/` (template for all tools)
 
 **Want to understand WebSocket events?**
 → Read: `server/utils/websocket.py` (event emitters, connection management)
@@ -300,7 +300,7 @@ threshold = config.get('threshold', DEFAULT_THRESHOLD)
 
 1. `server/main.py` - Server entry point, middleware, routes
 2. `server/api/logs_async.py` - Example async endpoints with WebSocket
-3. `client/tools/xls_transfer/core.py` - Tool restructuring example
+3. `server/tools/xlstransfer/core.py` - Tool restructuring example
 4. `server/utils/dependencies.py` - Async DB session management
 
 ---

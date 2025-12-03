@@ -204,9 +204,9 @@ def mock_config(monkeypatch):
     Disables server logging to avoid network calls.
     """
     # Mock config values
-    monkeypatch.setattr("client.config.OFFLINE_MODE", True)
-    monkeypatch.setattr("client.config.ENABLE_SERVER_LOGGING", False)
-    monkeypatch.setattr("client.config.MOCK_SERVER", True)
+    monkeypatch.setattr("server.client_config.client_config.OFFLINE_MODE", True)
+    monkeypatch.setattr("server.client_config.client_config.ENABLE_SERVER_LOGGING", False)
+    monkeypatch.setattr("server.client_config.client_config.MOCK_SERVER", True)
 
 
 # ============================================

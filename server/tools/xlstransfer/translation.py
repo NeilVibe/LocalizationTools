@@ -12,9 +12,9 @@ import faiss
 from sentence_transformers import SentenceTransformer
 from loguru import logger
 
-from client.tools.xls_transfer import config
-from client.tools.xls_transfer.core import clean_text, simple_number_replace
-from client.tools.xls_transfer.embeddings import get_model
+from server.tools.xlstransfer import config
+from server.tools.xlstransfer.core import clean_text, simple_number_replace
+from server.tools.xlstransfer.embeddings import get_model
 
 
 # ============================================

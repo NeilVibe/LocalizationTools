@@ -15,7 +15,7 @@ import pytest
 from unittest.mock import Mock, MagicMock, patch
 import time
 
-from client.utils.progress import ProgressTracker, SimpleProgress, track_progress
+from server.utils.client.progress import ProgressTracker, SimpleProgress, track_progress
 
 
 # ============================================

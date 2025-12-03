@@ -103,7 +103,7 @@ class TestXLSTransferProductionWorkflow:
         - Dictionary created with split and whole modes
         - Embeddings generated for semantic matching
         """
-        from client.tools.xls_transfer import embeddings
+        from server.tools.xlstransfer import embeddings
 
         # User's Excel selections
         excel_files = [(dictionary_fixture, "Sheet1", "A", "B")]
@@ -142,7 +142,7 @@ class TestXLSTransferProductionWorkflow:
         - Dictionary loaded into memory
         - FAISS index created for fast search
         """
-        from client.tools.xls_transfer import embeddings
+        from server.tools.xlstransfer import embeddings
 
         # Load dictionary (what happens when user clicks "Load")
         loaded_embeddings, loaded_dict, loaded_index, loaded_kr_texts = \
@@ -168,7 +168,7 @@ class TestXLSTransferProductionWorkflow:
         - Returns best matching translation
         - Score indicates confidence level
         """
-        from client.tools.xls_transfer import embeddings, translation
+        from server.tools.xlstransfer import embeddings, translation
 
         # Load dictionary
         _, loaded_dict, loaded_index, loaded_kr_texts = \
@@ -220,8 +220,8 @@ class TestXLSTransferProductionWorkflow:
         - Tags like {AudioVoice(...)} and {ChangeScene(...)}
         - Multi-line content with \\n
         """
-        from client.tools.xls_transfer import embeddings, translation
-        from client.tools.xls_transfer.translate_file import clean_audiovoice_tags, trim_columns
+        from server.tools.xlstransfer import embeddings, translation
+        from server.tools.xlstransfer.translate_file import clean_audiovoice_tags, trim_columns
 
         # Load dictionary
         _, loaded_dict, loaded_index, loaded_kr_texts = \
@@ -286,7 +286,7 @@ class TestXLSTransferProductionWorkflow:
         - Only the text part should be translated
         - Tags must remain in exact same position
         """
-        from client.tools.xls_transfer.translate_file import clean_audiovoice_tags
+        from server.tools.xlstransfer.translate_file import clean_audiovoice_tags
 
         # Read input file
         with open(translation_input_fixture, 'r', encoding='utf-8') as f:
@@ -871,7 +871,7 @@ class TestCrossToolPipeline:
         - <color=...>
         """
         from server.tools.kr_similar.core import normalize_text
-        from client.tools.xls_transfer.translate_file import clean_audiovoice_tags
+        from server.tools.xlstransfer.translate_file import clean_audiovoice_tags
 
         test_texts = [
             "{AudioVoice(NPC_VCE_NEW_1001)}안녕하세요",
