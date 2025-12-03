@@ -53,10 +53,19 @@
 |----------|----------------|
 | **[CODING_STANDARDS.md](docs/CODING_STANDARDS.md)** | Rules, patterns, conventions, common pitfalls |
 | **[ADD_NEW_APP_GUIDE.md](docs/ADD_NEW_APP_GUIDE.md)** | How to add new tools (XLSTransfer as template) |
-| **[TESTING_GUIDE.md](docs/TESTING_GUIDE.md)** | User testing procedures, manual workflow |
-| **[TESTING_PROTOCOL.md](docs/TESTING_PROTOCOL.md)** | **FULL autonomous testing with server, API, everything** |
 | **[LOGGING_PROTOCOL.md](docs/LOGGING_PROTOCOL.md)** | Comprehensive logging requirements (MANDATORY!) |
 | **[MONITORING_COMPLETE_GUIDE.md](docs/MONITORING_COMPLETE_GUIDE.md)** | Monitoring system, real-time logs |
+
+### 🧪 Testing (Organized Tree)
+
+| Document | What It Covers |
+|----------|----------------|
+| **[testing/README.md](docs/testing/README.md)** | **Testing Hub** - Start here! |
+| **[testing/QUICK_COMMANDS.md](docs/testing/QUICK_COMMANDS.md)** | Copy-paste commands only |
+| **[testing/PYTEST_GUIDE.md](docs/testing/PYTEST_GUIDE.md)** | Python backend tests |
+| **[testing/PLAYWRIGHT_GUIDE.md](docs/testing/PLAYWRIGHT_GUIDE.md)** | Frontend E2E tests |
+| **[testing/X_SERVER_SETUP.md](docs/testing/X_SERVER_SETUP.md)** | VcXsrv for visual testing |
+| **[testing/TOOLS_REFERENCE.md](docs/testing/TOOLS_REFERENCE.md)** | xdotool, ffmpeg, etc. |
 
 ### 📦 Build & Distribution
 
@@ -99,7 +108,7 @@
 
 | Document | What It Covers |
 |----------|----------------|
-| **[CLAUDE_AUTONOMOUS_TESTING.md](docs/CLAUDE_AUTONOMOUS_TESTING.md)** | **X Server, headless browser, work alone without asking user** |
+| **[testing/README.md](docs/testing/README.md)** | **Testing Hub** - Autonomous testing, work alone! |
 | **[CLAUDE_AI_WARNINGS.md](docs/CLAUDE_AI_WARNINGS.md)** | AI hallucination prevention (5 documented types) |
 
 ### 🎯 Tool-Specific Guides
