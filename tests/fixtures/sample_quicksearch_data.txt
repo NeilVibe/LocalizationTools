@@ -18,3 +18,19 @@
 39	7924214	1018	0	1	다음	Next
 39	7924215	1019	0	1	이전	Previous
 39	7924216	1020	0	1	완료	Done
+18	8504	2001	0	1	뭐라고요?	What did you say?
+18	8504	2002	0	1	그렇군요...	I see...
+18	8504	2003	0	1	있잖아요?	You know what?
+18	8504	2004	0	1	잠깐만요~	Wait a moment~
+25	9100	3001	0	1	HP: 100	HP: 100
+25	9100	3002	0	1	MP: 50	MP: 50
+25	9100	3003	0	1	레벨 50 이상	Level 50+
+25	9100	3004	0	1	【경고】	【Warning】
+25	9100	3005	0	1	▶ 선택하세요	▶ Select
+42	7500	4001	0	1	이것은 아주 긴 텍스트입니다. 테스트를 위해 100자 이상의 긴 문장을 작성합니다.	This is a very long text. Writing a sentence over 100 characters for testing.
+42	7500	4002	0	1	푸줏간 백정	Butcher shop keeper
+42	7500	4003	0	1	땅꾼들	Snake hunters
+42	7500	4004	0	1	여우구슬	Fox orb
+55	6200	5001	0	1	촌장님	Village chief
+55	6200	5002	0	1	파란 안개꽃	Blue mist flower
+55	6200	5003	0	1	홍림채	Honglim base

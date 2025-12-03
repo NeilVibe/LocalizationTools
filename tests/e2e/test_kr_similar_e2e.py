@@ -310,13 +310,14 @@ class TestKRSimilarE2E:
 
         assert 'Korean' in df.columns
         assert 'Translation' in df.columns
-        assert len(df) == 20, f"Fixture should have 20 rows, got {len(df)}"
+        # Fixture now has 48 rows covering complete universe of test cases
+        assert len(df) >= 40, f"Fixture should have 40+ rows (universe coverage), got {len(df)}"
 
         # Verify some expected content
         first_korean = df.iloc[0]['Korean']
         assert '안녕하세요' in first_korean, "First row should contain greeting"
 
-        print(f"Parsed fixture file: {len(df)} rows")
+        print(f"Parsed fixture file: {len(df)} rows (complete universe coverage)")
 
     def test_16_extract_similar_strings(self, embeddings_manager, fixture_file):
         """Test extract_similar_strings - finds groups of similar strings in data.

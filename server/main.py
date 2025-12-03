@@ -6,6 +6,7 @@ Central logging and analytics server for LocalizationTools.
 
 import sys
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -65,13 +66,59 @@ if not config.validate_security_on_startup(logger):
     logger.error("Fix the security issues above or set SECURITY_MODE=warn to continue (not recommended for production)")
     sys.exit(1)
 
-# Create FastAPI app
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events.
+    Replaces deprecated @app.on_event("startup") and @app.on_event("shutdown")
+    """
+    # === STARTUP ===
+    logger.info("Server starting up...")
+
+    # Initialize database connections (both sync and async)
+    try:
+        initialize_database()
+        logger.success("Sync database initialized successfully")
+
+        initialize_async_database()
+        logger.success("Async database initialized successfully")
+    except Exception as e:
+        logger.exception(f"Failed to initialize database: {e}")
+        raise
+
+    logger.info("WebSocket server will be wrapped at startup")
+
+    # Initialize Redis cache (optional)
+    try:
+        await cache.connect()
+    except Exception as e:
+        logger.warning(f"Redis cache initialization skipped: {e}")
+
+    logger.success("Server startup complete")
+
+    yield  # Server runs here
+
+    # === SHUTDOWN ===
+    logger.info("Server shutting down...")
+
+    # Disconnect Redis cache
+    try:
+        await cache.disconnect()
+    except Exception as e:
+        logger.warning(f"Redis disconnect error: {e}")
+
+    logger.success("Server shutdown complete")
+
+
+# Create FastAPI app with lifespan
 app = FastAPI(
     title=config.APP_NAME,
     description=config.APP_DESCRIPTION,
     version=config.APP_VERSION,
     docs_url=config.DOCS_URL if config.ENABLE_DOCS else None,
     redoc_url=config.REDOC_URL if config.ENABLE_DOCS else None,
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -166,54 +213,9 @@ app.include_router(rankings.router)
 
 # Socket.IO will be mounted at the end after all setup is complete
 
-
-# ============================================
-# Startup and Shutdown Events
-# ============================================
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Run on server startup."""
-    logger.info("Server starting up...")
-
-    # Initialize database connections (both sync and async)
-    try:
-        initialize_database()
-        logger.success("Sync database initialized successfully")
-
-        initialize_async_database()
-        logger.success("Async database initialized successfully")
-    except Exception as e:
-        logger.exception(f"Failed to initialize database: {e}")
-        raise
-
-    logger.info("WebSocket server will be wrapped at startup")
-
-    # Initialize Redis cache (optional)
-    try:
-        await cache.connect()
-    except Exception as e:
-        logger.warning(f"Redis cache initialization skipped: {e}")
-
-    logger.success("Server startup complete")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Run on server shutdown."""
-    logger.info("Server shutting down...")
-
-    # Disconnect Redis cache
-    try:
-        await cache.disconnect()
-    except Exception as e:
-        logger.warning(f"Redis disconnect error: {e}")
-
-    # TODO: Close database connections
-    # TODO: Stop background tasks
-
-    logger.success("Server shutdown complete")
+# Note: Startup and shutdown events are now handled via the lifespan context manager
+# defined above (see @asynccontextmanager def lifespan). This replaces the deprecated
+# @app.on_event("startup") and @app.on_event("shutdown") decorators.
 
 
 # ============================================

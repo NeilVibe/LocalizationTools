@@ -1,20 +1,48 @@
-39	7924197	1001	0	1	{ChangeScene(Main_001)}{AudioVoice(NPC_001)}안녕하세요. 저는 마을의 촌장입니다.	{ChangeScene(Main_001)}{AudioVoice(NPC_001)}Hello. I am the village chief.	None	NPC Dialog
-39	7924197	1002	0	2	{AudioVoice(NPC_002)}오늘 날씨가 좋군요.	{AudioVoice(NPC_002)}The weather is nice today.	None	NPC Dialog
-39	7924197	1003	0	3	{ChangeScene(Main_002)}마을에 오신 것을 환영합니다!\n모든 것이 준비되어 있습니다.	{ChangeScene(Main_002)}Welcome to the village!\nEverything is ready.	None	NPC Dialog
-18	8504	2001	0	1	▶ 첫 번째 선택지를 선택하세요.\n▶ 두 번째 선택지를 선택하세요.\n▶ 세 번째 선택지를 선택하세요.	▶ Select the first option.\n▶ Select the second option.\n▶ Select the third option.	None	Menu Options
-18	8504	2002	0	2	▶ 예, 계속 진행합니다.\n▶ 아니요, 취소합니다.	▶ Yes, continue.\n▶ No, cancel.	None	Menu Options
-25	9100	3001	0	1	{ChangeScene(Battle_001)}전투를 시작합니다!\n적을 물리치세요!	{ChangeScene(Battle_001)}Battle begins!\nDefeat the enemies!	None	Combat
-25	9100	3002	0	2	{AudioVoice(Player_Attack)}공격!\n강력한 일격입니다!	{AudioVoice(Player_Attack)}Attack!\nA powerful strike!	None	Combat
-25	9100	3003	0	3	승리했습니다! 보상을 받으세요.	Victory! Receive your rewards.	None	Combat
-42	7500	4001	0	1	이 아이템은 매우 희귀합니다.\n신중하게 사용하세요.	This item is very rare.\nUse it carefully.	None	Item Description
-42	7500	4002	0	2	<color=red>경고</color>: 이 물약은 부작용이 있습니다.	<color=red>Warning</color>: This potion has side effects.	None	Item Description
-42	7500	4003	0	3	{Scale(1.2)}특별한 무기{/Scale}\n전설적인 힘이 깃들어 있습니다.	{Scale(1.2)}Special Weapon{/Scale}\nInfused with legendary power.	None	Item Description
+39	7924197	1001	0	1	{ChangeScene(MorningMain_13_005)}{AudioVoice(NPC_VCE_NEW_8513_2_11_Iksun)}안녕하세요. 저는 마을의 촌장입니다.	{ChangeScene(MorningMain_13_005)}{AudioVoice(NPC_VCE_NEW_8513_2_11_Iksun)}Bonjour. Je suis le chef du village.	None	NPC Dialog
+39	7924197	1002	0	2	{ChangeScene(MorningMain_13_005)}{AudioVoice(NPC_VCE_NEW_8513_2_11_Iksun)}죄인은 푸줏간 백정 변가놈과 공모하여,\n무단으로 뱀을 양식하고 유통하였다!!\n{ChangeScene(MorningMain_13_005)}{AudioVoice(NPC_VCE_NEW_8513_2_12_Iksun)}그 덕에, 관청에 허가받은 땅꾼들이 배를 곯았다!\n제 뱃속만 채우기에 급급한 파렴치 같으니!	{ChangeScene(MorningMain_13_005)}{AudioVoice(NPC_VCE_NEW_8513_2_11_Iksun)}L'accusé a comploté avec le boucher,\npour faire de l'élevage illégal de serpents !\n{ChangeScene(MorningMain_13_005)}{AudioVoice(NPC_VCE_NEW_8513_2_12_Iksun)}Par conséquent, les chasseurs officiels n'ont plus de travail !\nL'accusé ne cherchait qu'à satisfaire ses propres besoins !
+39	7924197	1003	0	3	{AudioVoice(NPC_VCE_NEW_8513_2_16_MahnSoo)}{ChangeScene(MorningMain_13_004)}태... 태수?\n네... 네가 어찌 여기...!	{AudioVoice(NPC_VCE_NEW_8513_2_16_MahnSoo)}{ChangeScene(MorningMain_13_004)}T-Taesoo ?\nQue... Que fais-tu ici ?	None	의뢰용 NPC / 만수 할아범
+18	8504	2001	0	1	{AudioVoice(NPC_VCE_NEW_8504_26_1_Dolsha)}{ChangeScene(MorningMain_04_137)}또 여우구슬을 아부지헌티 넘겼다믄,\n촌장은 더이상 명의루 남을 수 없지 않겄슈?\n{AudioVoice(NPC_VCE_NEW_8504_26_2_Dolsha)}{ChangeScene(MorningMain_04_137)}지 생각엔, 촌장이 여우구슬을\n갖구 있을 수두 있지 않을까...싶어유!	{AudioVoice(NPC_VCE_NEW_8504_26_1_Dolsha)}{ChangeScene(MorningMain_04_137)}Et s'il a vraiment donné l'Orbe du renard à son père,\nle chef aurait dû perdre ses pouvoirs, non ?\n{AudioVoice(NPC_VCE_NEW_8504_26_2_Dolsha)}{ChangeScene(MorningMain_04_137)}Ce qui veut dire que le chef possède encore l'Orbe !	None	order NPC: 의뢰용 NPC
+18	8504	2002	0	2	▶ 첫 번째 선택지를 선택하세요.\n▶ 두 번째 선택지를 선택하세요.\n▶ 세 번째 선택지를 선택하세요.	▶ Select the first option.\n▶ Select the second option.\n▶ Select the third option.	None	Menu Options
+18	8504	2003	0	3	▶ 예, 계속 진행합니다.\n▶ 아니요, 취소합니다.	▶ Yes, continue.\n▶ No, cancel.	None	Menu Options
+25	9100	3001	0	1	{ChangeScene(Battle_001)}{AudioVoice(NPC_VCE_NEW_9100_1_BattleStart)}전투를 시작합니다!\n적을 물리치세요!\n{AudioVoice(NPC_VCE_NEW_9100_2_Encourage)}힘내세요!	{ChangeScene(Battle_001)}{AudioVoice(NPC_VCE_NEW_9100_1_BattleStart)}Battle begins!\nDefeat the enemies!\n{AudioVoice(NPC_VCE_NEW_9100_2_Encourage)}You can do it!	None	Combat
+25	9100	3002	0	2	{AudioVoice(Player_VCE_Attack_01)}공격!\n강력한 일격입니다!	{AudioVoice(Player_VCE_Attack_01)}Attack!\nA powerful strike!	None	Combat
+25	9100	3003	0	3	승리했습니다! 보상을 받으세요.	Victory! Receive your rewards.
+42	7500	4001	0	1	【경고】이 아이템은 매우 희귀합니다.\n신중하게 사용하세요.	【Warning】This item is very rare.\nUse it carefully.	None	Item Description
+42	7500	4002	0	2	<color=red>경고</color>: 이 물약은 부작용이 있습니다.\nHP: 100 감소 / MP: 50 증가	<color=red>Warning</color>: This potion has side effects.\nHP: -100 / MP: +50	None	Item Description
+42	7500	4003	0	3	{Scale(1.2)}특별한 무기{/Scale}\n전설적인 힘이 깃들어 있습니다.\n레벨 50 이상 착용 가능	{Scale(1.2)}Special Weapon{/Scale}\nInfused with legendary power.\nRequired Level: 50+	None	Item Description
 55	6200	5001	0	1	퀘스트를 완료했습니다!\n다음 도전을 준비하세요.	Quest completed!\nPrepare for the next challenge.	None	Quest Complete
-55	6200	5002	0	2	{ChangeScene(QuestHub)}새로운 퀘스트가 있습니다.\n모험을 떠나볼까요?	{ChangeScene(QuestHub)}There is a new quest.\nShall we go on an adventure?	None	Quest
+55	6200	5002	0	2	{ChangeScene(QuestHub_Main_001)}{AudioVoice(NPC_VCE_Quest_01)}새로운 퀘스트가 있습니다.\n모험을 떠나볼까요?\n{AudioVoice(NPC_VCE_Quest_02)}보상은 충분히 드릴게요!	{ChangeScene(QuestHub_Main_001)}{AudioVoice(NPC_VCE_Quest_01)}There is a new quest.\nShall we go on an adventure?\n{AudioVoice(NPC_VCE_Quest_02)}The reward will be worth it!	None	Quest
 55	6200	5003	0	3	보스를 처치해야 합니다.\n준비가 되셨나요?	You must defeat the boss.\nAre you ready?	None	Quest
 60	8800	6001	0	1	마을 상점에 오신 것을 환영합니다.	Welcome to the village shop.	None	Shop
 60	8800	6002	0	2	무엇을 도와드릴까요?\n좋은 물건들이 많이 있습니다.	How can I help you?\nWe have many good items.	None	Shop
 60	8800	6003	0	3	오늘의 특가 상품입니다!\n놓치지 마세요.	Today's special offer!\nDon't miss it.	None	Shop
-70	9500	7001	0	1	캐릭터를 만들어 주세요.	Please create your character.	None	Character Creation
-70	9500	7002	0	2	이름을 입력하세요:\n영문과 숫자만 사용 가능합니다.	Enter your name:\nOnly letters and numbers allowed.	None	Character Creation
-70	9500	7003	0	3	직업을 선택하세요:\n전사, 마법사, 궁수 중에서 선택하세요.	Choose your class:\nSelect from Warrior, Mage, or Archer.	None	Character Creation
+70	9500	7001	0	1	뭐라고요?	What did you say?
+70	9500	7002	0	2	그렇군요...	I see...	None	Character Creation
+70	9500	7003	0	3	있잖아요? 제가 말씀드릴게 있어유~	You know what? I have something to tell you~	None	Dialect Example
+80	9600	8001	0	1	{ChangeScene(MorningLand_NPC_47255)}{AudioVoice(NPC_VCE_NEW_8504_26_10_DuckGoo)}네. 선생님,\n오늘도 촌장님께선 파란 안개꽃을 사가셨습니다.\n{AudioVoice(NPC_VCE_NEW_8504_26_11_DuckGoo)}어디로 갔는지 아시냐고요?\n자세히는 모르지만, 홍림채로 알고 있습니다.\n{AudioVoice(NPC_VCE_NEW_8504_26_12_DuckGoo)}무슨 일이 있어도 꼭 가셔요.	{ChangeScene(MorningLand_NPC_47255)}{AudioVoice(NPC_VCE_NEW_8504_26_10_DuckGoo)}Oui, tout à fait.\nLe chef m'a acheté des fleurs de Brume bleue.\n{AudioVoice(NPC_VCE_NEW_8504_26_11_DuckGoo)}Si je sais où il est allé ?\nPas en détails, mais il se dirige vers Honglim.\n{AudioVoice(NPC_VCE_NEW_8504_26_12_DuckGoo)}Il ne manque jamais sa sortie.	None	order NPC: 의뢰용 NPC
+80	9600	8002	0	2	이것은 아주 긴 텍스트입니다. 테스트를 위해 100자 이상의 긴 문장을 작성합니다. 게임 내에서 이렇게 긴 대사가 나올 수 있으므로, 이를 처리할 수 있는지 테스트해야 합니다. 잘 작동하나요?	This is a very long text. We are writing a sentence over 100 characters for testing purposes. Since such long dialogues can appear in games, we need to test if they can be handled properly. Is it working well?	None	Long Text Test
+90	9700	9001	0	1	안녕하세요! 👋 환영합니다 🎉 게임을 시작하세요 🎮	Hello! 👋 Welcome 🎉 Start the game 🎮	None	Emoji Test
+90	9700	9002	0	2	공백&nbsp;테스트&amp;특수문자&lt;태그&gt;	Space&nbsp;test&amp;special&lt;tag&gt;	None	HTML Entities
+90	9700	9003	0	3	{AudioVoice(NPC_001)}	{AudioVoice(NPC_001)}	None	Only Tags No Text
+90	9700	9004	0	4	{incomplete tag without closing	{incomplete tag without closing	None	Malformed Tag Open
+90	9700	9005	0	5	text with } orphan closing brace	text with } orphan closing brace	None	Orphan Closing Brace
+90	9700	9006	0	6	{{DoubleOpen}}텍스트{{DoubleClose}}	{{DoubleOpen}}text{{DoubleClose}}	None	Double Braces
+90	9700	9007	0	7	12345	12345	None	Pure Numbers
+90	9700	9008	0	8		Empty Translation	None	Empty Korean
+90	9700	9009	0	9	빈 번역 테스트		None	Empty Translation
+90	9700	9010	0	10	한국어と日本語混合テスト	Korean and Japanese mixed test	None	Korean Japanese Mix
+90	9700	9011	0	11	Привет 안녕 你好 مرحبا	Hello in multiple languages	None	Multi Script
+90	9700	9012	0	12	{Tag1}{Tag2}{Tag3}{Tag4}{Tag5}다섯개 태그	{Tag1}{Tag2}{Tag3}{Tag4}{Tag5}Five tags	None	Many Tags Start
+90	9700	9013	0	13	텍스트\n{Mid1}중간\n{Mid2}태그\n{Mid3}테스트	Text\n{Mid1}middle\n{Mid2}tags\n{Mid3}test	None	Tags In Middle
+90	9700	9014	0	14	{Outer{Inner}Nested}텍스트	{Outer{Inner}Nested}text	None	Nested Tags
+90	9700	9015	0	15	\n\n\n연속 줄바꿈\n\n\n테스트	\n\n\nConsecutive newlines\n\n\ntest	None	Multiple Newlines
+90	9700	9016	0	16	탭	분리	테스트	Tab	separated	test	None	Embedded Tabs
+90	9700	9017	0	17	"따옴표 '테스트' \"중첩\""	"Quotes 'test' \"nested\""	None	Quotes Test
+90	9700	9018	0	18	역슬래시\\테스트\\\\이중	Backslash\\test\\\\double	None	Backslash Test
+90	9700	9019	0	19	<script>alert('xss')</script>테스트	<script>alert('xss')</script>test	None	XSS Pattern
+90	9700	9020	0	20	{PAColor(#FF0000)}빨간색{PAOldColor}{PAColor(#00FF00)}초록색{PAOldColor}	{PAColor(#FF0000)}Red{PAOldColor}{PAColor(#00FF00)}Green{PAOldColor}	None	Color Tags
+90	9700	9021	0	21	★★★ 별점 테스트 ☆☆ ♥♡ 하트	★★★ Star rating ☆☆ ♥♡ Hearts	None	Symbol Heavy
+90	9700	9022	0	22	제로폭문자​테스트	Zero-width character​test	None	Zero Width Char
+90	9700	9023	0	23	아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주아주긴단어	verylongwordwithoutspacestotestwordbreakingandtextprocessinglimitsinthesystem	None	Very Long Word
+90	9700	9024	0	24	.	.	None	Single Character
+90	9700	9025	0	25	{ChangeScene(Scene_001)}\n{AudioVoice(Voice_001)}첫번째\n{ChangeScene(Scene_002)}\n{AudioVoice(Voice_002)}두번째\n{ChangeScene(Scene_003)}\n{AudioVoice(Voice_003)}세번째\n{ChangeScene(Scene_004)}\n{AudioVoice(Voice_004)}네번째\n{ChangeScene(Scene_005)}\n{AudioVoice(Voice_005)}다섯번째	{ChangeScene(Scene_001)}\n{AudioVoice(Voice_001)}First\n{ChangeScene(Scene_002)}\n{AudioVoice(Voice_002)}Second\n{ChangeScene(Scene_003)}\n{AudioVoice(Voice_003)}Third\n{ChangeScene(Scene_004)}\n{AudioVoice(Voice_004)}Fourth\n{ChangeScene(Scene_005)}\n{AudioVoice(Voice_005)}Fifth	None	10 Blocks Complex

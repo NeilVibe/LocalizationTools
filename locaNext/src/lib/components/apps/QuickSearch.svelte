@@ -679,23 +679,23 @@
     margin-bottom: 2rem;
   }
 
-  .status-tile h4 {
+  .status-tiles :global(.bx--tile h4) {
     font-size: 0.875rem;
     color: var(--cds-text-02);
     margin-bottom: 0.5rem;
   }
 
-  .status-tile p {
+  .status-tiles :global(.bx--tile p) {
     margin: 0.25rem 0;
     color: var(--cds-text-01);
   }
 
-  .status-tile .empty {
+  .status-tiles :global(.bx--tile .empty) {
     color: var(--cds-text-03);
     font-style: italic;
   }
 
-  .status-tile .small {
+  .status-tiles :global(.bx--tile .small) {
     font-size: 0.75rem;
     color: var(--cds-text-02);
   }

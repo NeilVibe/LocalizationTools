@@ -187,6 +187,48 @@ curl -X POST http://localhost:8888/api/v2/xlstransfer/test/translate-text \
 
 ---
 
+## ✅ ORIGINAL CODE LOGIC VERIFICATION
+
+**Last Verified: 2025-12-02**
+
+The original Python scripts are preserved in:
+```
+RessourcesForCodingTheProject/MAIN PYTHON SCRIPTS/
+├── XLSTransfer0225.py   # Original XLSTransfer
+├── KRSIMILAR0124.py     # Original KR Similar
+├── QS0305.py            # Original QuickSearch
+└── ...
+```
+
+### What Changed (Structure Only):
+- **File locations**: Moved to `client/tools/` and `server/tools/`
+- **Added type hints**: `def func(x)` → `def func(x: str) -> str:`
+- **Added docstrings**: Documentation for all functions
+- **Added safety checks**: `if end_pos != -1:` guards
+- **Reformatted**: 4-space indentation, PEP8 compliance
+
+### What Did NOT Change (Logic Preserved):
+- **Regex patterns**: All patterns identical
+- **Algorithm flow**: Same order of operations
+- **Function behavior**: Same inputs → same outputs
+
+### Verification Commands:
+```bash
+# Compare normalize_text logic
+diff <(grep -E "re.sub|return|if pd" "RessourcesForCodingTheProject/MAIN PYTHON SCRIPTS/KRSIMILAR0124.py" | head -20) \
+     <(grep -E "re.sub|return|if pd" server/tools/kr_similar/core.py | head -20)
+
+# Test simple_number_replace is identical
+python3 -c "
+from client.tools.xls_transfer.core import simple_number_replace
+assert simple_number_replace('{Code}Hi', 'Bye') == '{Code}Bye'
+assert simple_number_replace('{T1}{T2}Hi', 'Bye') == '{T1}{T2}Bye'
+print('✅ Original logic preserved')
+"
+```
+
+---
+
 ## 📚 RELATED DOCUMENTATION
 
 - **CLAUDE_AI_WARNINGS.md** - AI hallucination prevention (5 documented types)

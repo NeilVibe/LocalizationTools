@@ -10,7 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from loguru import logger
 
-from server.api.schemas import UserLogin, UserRegister, Token, UserResponse
+from server.api.schemas import (
+    UserLogin, UserRegister, Token, UserResponse,
+    PasswordChange, AdminUserCreate, AdminUserUpdate, AdminPasswordReset
+)
 from server.database.models import User
 from server.utils.dependencies import get_async_db, get_current_active_user_async, require_admin_async
 from server.utils.auth import hash_password, verify_password, create_access_token
@@ -310,5 +313,288 @@ async def deactivate_user(
         user.is_active = False
 
     logger.info(f"User {user.username} deactivated by admin {admin['username']}")
+
+    return {"message": f"User {user.username} deactivated successfully"}
+
+
+# ============================================================================
+# User Self-Service Endpoints
+# ============================================================================
+
+@router.put("/me/password")
+async def change_password(
+    password_data: PasswordChange,
+    request: Request,
+    current_user: dict = Depends(get_current_active_user_async),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Change own password (ASYNC).
+
+    User must provide current password and new password.
+    """
+    client_ip = get_client_ip(request)
+
+    # Verify passwords match
+    if password_data.new_password != password_data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New passwords do not match"
+        )
+
+    # Get user from database
+    result = await db.execute(
+        select(User).where(User.user_id == current_user["user_id"])
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Verify current password
+    if not verify_password(password_data.current_password, user.password_hash):
+        logger.warning(f"Failed password change attempt for user: {user.username} - wrong current password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect"
+        )
+
+    # Update password
+    user.password_hash = hash_password(password_data.new_password)
+    user.last_password_change = datetime.utcnow()
+    user.must_change_password = False  # Clear the flag after password change
+    await db.commit()
+
+    # Audit log
+    log_password_change(user.username, client_ip, user.user_id)
+    logger.info(f"Password changed successfully for user: {user.username}")
+
+    return {"message": "Password changed successfully"}
+
+
+# ============================================================================
+# Admin User Management Endpoints
+# ============================================================================
+
+@router.post("/admin/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def admin_create_user(
+    user_data: AdminUserCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    admin: dict = Depends(require_admin_async)
+):
+    """
+    Create a new user (admin only) (ASYNC).
+
+    Admin can set all user profile fields including team, language, etc.
+    """
+    client_ip = get_client_ip(request)
+
+    # Check if username already exists
+    result = await db.execute(
+        select(User).where(User.username == user_data.username)
+    )
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists"
+        )
+
+    # Check if email already exists (if provided)
+    if user_data.email:
+        result = await db.execute(
+            select(User).where(User.email == user_data.email)
+        )
+        existing_email = result.scalar_one_or_none()
+
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+    # Validate role
+    valid_roles = ["user", "admin"]
+    if user_data.role not in valid_roles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role. Must be one of: {valid_roles}"
+        )
+
+    # Hash password
+    password_hash = hash_password(user_data.password)
+
+    # Create new user with all profile fields
+    new_user = User(
+        username=user_data.username,
+        password_hash=password_hash,
+        email=user_data.email,
+        full_name=user_data.full_name,
+        team=user_data.team,
+        language=user_data.language,
+        department=user_data.department,
+        role=user_data.role,
+        is_active=True,
+        created_at=datetime.utcnow(),
+        created_by=admin["user_id"],
+        must_change_password=user_data.must_change_password
+    )
+
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+
+    # Audit log
+    log_user_created(new_user.username, admin["username"], client_ip)
+    logger.info(f"New user created: {new_user.username} (ID: {new_user.user_id}) by admin: {admin['username']}")
+
+    return new_user
+
+
+@router.put("/admin/users/{user_id}", response_model=UserResponse)
+async def admin_update_user(
+    user_id: int,
+    user_data: AdminUserUpdate,
+    db: AsyncSession = Depends(get_async_db),
+    admin: dict = Depends(require_admin_async)
+):
+    """
+    Update user profile (admin only) (ASYNC).
+
+    Admin can update email, full_name, team, language, department, role, is_active.
+    """
+    result = await db.execute(
+        select(User).where(User.user_id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Check email uniqueness if being updated
+    if user_data.email and user_data.email != user.email:
+        result = await db.execute(
+            select(User).where(User.email == user_data.email)
+        )
+        existing_email = result.scalar_one_or_none()
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+    # Validate role if being updated
+    if user_data.role:
+        valid_roles = ["user", "admin"]
+        if user_data.role not in valid_roles:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid role. Must be one of: {valid_roles}"
+            )
+
+    # Prevent admin from demoting themselves
+    if user.user_id == admin["user_id"] and user_data.role == "user":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot demote your own account"
+        )
+
+    # Update only provided fields
+    update_data = user_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if value is not None:
+            setattr(user, field, value)
+
+    await db.commit()
+    await db.refresh(user)
+
+    logger.info(f"User {user.username} updated by admin {admin['username']}: {update_data}")
+
+    return user
+
+
+@router.put("/admin/users/{user_id}/reset-password")
+async def admin_reset_password(
+    user_id: int,
+    password_data: AdminPasswordReset,
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    admin: dict = Depends(require_admin_async)
+):
+    """
+    Reset user password (admin only) (ASYNC).
+
+    Admin can reset any user's password. By default, forces password change on next login.
+    """
+    client_ip = get_client_ip(request)
+
+    result = await db.execute(
+        select(User).where(User.user_id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Update password
+    user.password_hash = hash_password(password_data.new_password)
+    user.last_password_change = datetime.utcnow()
+    user.must_change_password = password_data.must_change_password
+
+    await db.commit()
+
+    # Audit log
+    log_password_change(user.username, client_ip, user.user_id, changed_by=admin["username"])
+    logger.info(f"Password reset for user {user.username} by admin {admin['username']}")
+
+    return {"message": f"Password reset successfully for user {user.username}"}
+
+
+@router.delete("/admin/users/{user_id}")
+async def admin_delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    admin: dict = Depends(require_admin_async)
+):
+    """
+    Deactivate user (soft delete) (admin only) (ASYNC).
+
+    This is a soft delete - sets is_active=False instead of deleting the record.
+    Use PUT /users/{user_id}/activate to reactivate.
+    """
+    result = await db.execute(
+        select(User).where(User.user_id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Prevent deleting yourself
+    if user.user_id == admin["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+
+    # Soft delete
+    user.is_active = False
+    await db.commit()
+
+    logger.info(f"User {user.username} deactivated (soft delete) by admin {admin['username']}")
 
     return {"message": f"User {user.username} deactivated successfully"}

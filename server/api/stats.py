@@ -779,6 +779,264 @@ async def get_top_errors(
 
 
 # ============================================================================
+# Team & Language Analytics
+# ============================================================================
+
+@router.get("/analytics/by-team")
+async def get_stats_by_team(
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Get usage statistics grouped by team.
+
+    Returns operations per team with:
+    - Team name
+    - Total operations
+    - Unique users
+    - Average duration
+    - Most used tool
+    """
+    try:
+        logger.info(f"Requesting team analytics for {days} days")
+
+        start_date = datetime.utcnow() - timedelta(days=days)
+
+        # Join LogEntry with User to get team info
+        query = select(
+            UserModel.team,
+            func.count(LogEntry.log_id).label('total_ops'),
+            func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
+            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration'),
+            func.round(
+                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                2
+            ).label('success_rate')
+        ).join(
+            UserModel, LogEntry.user_id == UserModel.user_id
+        ).where(
+            LogEntry.timestamp >= start_date
+        ).group_by(
+            UserModel.team
+        ).order_by(
+            func.count(LogEntry.log_id).desc()
+        )
+
+        result = await db.execute(query)
+        rows = result.all()
+
+        # Get most used tool per team (separate query)
+        team_tools = {}
+        for row in rows:
+            if row.team:
+                tool_query = select(
+                    LogEntry.tool_name,
+                    func.count(LogEntry.log_id).label('count')
+                ).join(
+                    UserModel, LogEntry.user_id == UserModel.user_id
+                ).where(
+                    and_(
+                        LogEntry.timestamp >= start_date,
+                        UserModel.team == row.team
+                    )
+                ).group_by(
+                    LogEntry.tool_name
+                ).order_by(
+                    func.count(LogEntry.log_id).desc()
+                ).limit(1)
+                tool_result = await db.execute(tool_query)
+                tool_row = tool_result.first()
+                team_tools[row.team] = tool_row.tool_name if tool_row else None
+
+        # Format results
+        team_stats = []
+        for row in rows:
+            team_name = row.team or "Unassigned"
+            team_stats.append({
+                "team": team_name,
+                "total_ops": int(row.total_ops),
+                "unique_users": int(row.unique_users),
+                "avg_duration": float(row.avg_duration or 0),
+                "success_rate": float(row.success_rate or 0),
+                "most_used_tool": team_tools.get(row.team, None)
+            })
+
+        return {
+            "period": f"last_{days}_days",
+            "teams": team_stats
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching team analytics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch team analytics: {str(e)}")
+
+
+@router.get("/analytics/by-language")
+async def get_stats_by_language(
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Get usage statistics grouped by user's primary language.
+
+    Returns operations per language with:
+    - Language name
+    - Total operations
+    - Unique users
+    - Average duration
+    - Most used tool
+    """
+    try:
+        logger.info(f"Requesting language analytics for {days} days")
+
+        start_date = datetime.utcnow() - timedelta(days=days)
+
+        # Join LogEntry with User to get language info
+        query = select(
+            UserModel.language,
+            func.count(LogEntry.log_id).label('total_ops'),
+            func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
+            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration'),
+            func.round(
+                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                2
+            ).label('success_rate')
+        ).join(
+            UserModel, LogEntry.user_id == UserModel.user_id
+        ).where(
+            LogEntry.timestamp >= start_date
+        ).group_by(
+            UserModel.language
+        ).order_by(
+            func.count(LogEntry.log_id).desc()
+        )
+
+        result = await db.execute(query)
+        rows = result.all()
+
+        # Get most used tool per language
+        lang_tools = {}
+        for row in rows:
+            if row.language:
+                tool_query = select(
+                    LogEntry.tool_name,
+                    func.count(LogEntry.log_id).label('count')
+                ).join(
+                    UserModel, LogEntry.user_id == UserModel.user_id
+                ).where(
+                    and_(
+                        LogEntry.timestamp >= start_date,
+                        UserModel.language == row.language
+                    )
+                ).group_by(
+                    LogEntry.tool_name
+                ).order_by(
+                    func.count(LogEntry.log_id).desc()
+                ).limit(1)
+                tool_result = await db.execute(tool_query)
+                tool_row = tool_result.first()
+                lang_tools[row.language] = tool_row.tool_name if tool_row else None
+
+        # Format results
+        language_stats = []
+        for row in rows:
+            lang_name = row.language or "Unassigned"
+            language_stats.append({
+                "language": lang_name,
+                "total_ops": int(row.total_ops),
+                "unique_users": int(row.unique_users),
+                "avg_duration": float(row.avg_duration or 0),
+                "success_rate": float(row.success_rate or 0),
+                "most_used_tool": lang_tools.get(row.language, None)
+            })
+
+        return {
+            "period": f"last_{days}_days",
+            "languages": language_stats
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching language analytics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch language analytics: {str(e)}")
+
+
+@router.get("/analytics/user-rankings")
+async def get_user_rankings(
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    limit: int = Query(20, ge=1, le=100, description="Number of users to return"),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Get top users by activity with profile info.
+
+    Returns user rankings with:
+    - Full name (or username)
+    - Team
+    - Language
+    - Total operations
+    - Success rate
+    """
+    try:
+        logger.info(f"Requesting user rankings for {days} days")
+
+        start_date = datetime.utcnow() - timedelta(days=days)
+
+        query = select(
+            UserModel.user_id,
+            UserModel.username,
+            UserModel.full_name,
+            UserModel.team,
+            UserModel.language,
+            func.count(LogEntry.log_id).label('total_ops'),
+            func.round(
+                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                2
+            ).label('success_rate'),
+            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration')
+        ).join(
+            UserModel, LogEntry.user_id == UserModel.user_id
+        ).where(
+            LogEntry.timestamp >= start_date
+        ).group_by(
+            UserModel.user_id,
+            UserModel.username,
+            UserModel.full_name,
+            UserModel.team,
+            UserModel.language
+        ).order_by(
+            func.count(LogEntry.log_id).desc()
+        ).limit(limit)
+
+        result = await db.execute(query)
+        rows = result.all()
+
+        # Format results
+        rankings = []
+        for idx, row in enumerate(rows, 1):
+            display_name = row.full_name or row.username
+            rankings.append({
+                "rank": idx,
+                "user_id": row.user_id,
+                "display_name": display_name,
+                "username": row.username,
+                "team": row.team or "Unassigned",
+                "language": row.language or "Unassigned",
+                "total_ops": int(row.total_ops),
+                "success_rate": float(row.success_rate or 0),
+                "avg_duration": float(row.avg_duration or 0)
+            })
+
+        return {
+            "period": f"last_{days}_days",
+            "rankings": rankings
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching user rankings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch user rankings: {str(e)}")
+
+
+# ============================================================================
 # Server Logs Endpoint
 # ============================================================================
 
