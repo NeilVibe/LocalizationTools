@@ -269,7 +269,7 @@ logger.info("User logged in", {"username": username})
 threshold = 0.99
 
 # ✅ CORRECT
-from client.config import DEFAULT_THRESHOLD
+from server.client_config.client_config import DEFAULT_THRESHOLD
 threshold = config.get('threshold', DEFAULT_THRESHOLD)
 ```
 

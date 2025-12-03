@@ -129,7 +129,7 @@ To test:
 
 2. **XLSTransfer Execution**:
    - Spawn Python subprocess from Electron
-   - Call `/client/tools/xls_transfer/core.py` functions
+   - Call `/server/tools/xlstransfer/core.py` functions
    - Real-time progress via WebSocket
    - Send logs to server
 

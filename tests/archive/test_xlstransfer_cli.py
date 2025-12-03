@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent
-CLI_SCRIPT = PROJECT_ROOT / "client/tools/xls_transfer/cli/xlstransfer_cli.py"
+CLI_SCRIPT = PROJECT_ROOT / "server/tools/xlstransfer/cli/xlstransfer_cli.py"
 TEST_FILE = PROJECT_ROOT / "locaNext/test-data/TESTSMALL.xlsx"
 
 

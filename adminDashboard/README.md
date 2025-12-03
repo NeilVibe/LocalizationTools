@@ -122,8 +122,8 @@ To add a new tool to LocaNext:
      <YourTool />
    ```
 
-4. **Implement Python backend** in `/client/tools/yourtool/`
-   - Follow XLSTransfer pattern (see `/client/tools/xls_transfer/`)
+4. **Implement Python backend** in `/server/tools/yourtool/`
+   - Follow XLSTransfer pattern (see `/server/tools/xlstransfer/`)
 
 ## Backend Integration
 

@@ -28,6 +28,19 @@ from server.utils.client.logger import UsageLogger, get_logger, log_function_cal
 @pytest.fixture(autouse=True)
 def reset_logger_singleton():
     """Reset the global logger singleton before each test."""
+    # Ensure full module chain is properly loaded for monkeypatch to work
+    # This fixes test isolation issues where import order affects attribute access
+    import sys
+    import server
+    import server.client_config
+    import server.client_config.client_config
+
+    # Ensure the parent packages have the child modules as attributes
+    if not hasattr(server, 'client_config'):
+        server.client_config = sys.modules['server.client_config']
+    if not hasattr(server.client_config, 'client_config'):
+        server.client_config.client_config = sys.modules['server.client_config.client_config']
+
     # Reset the global _usage_logger before test
     logger_module._usage_logger = None
     yield
