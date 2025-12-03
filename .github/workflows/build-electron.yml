@@ -342,51 +342,12 @@ jobs:
           retention-days: 7
 
   # ============================================================
-  # BUILD LINUX (Optional)
-  # ============================================================
-  build-linux:
-    name: Build Linux AppImage (LIGHT)
-    runs-on: ubuntu-latest
-    needs: [check-build-trigger, safety-checks]
-    if: needs.check-build-trigger.outputs.should_build == 'true'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: locaNext/package-lock.json
-
-      - name: Install Dependencies
-        run: |
-          cd locaNext
-          npm ci
-
-      - name: Build Electron App (Linux)
-        run: |
-          cd locaNext
-          npm run build
-          npm run build:electron
-
-      - name: Upload Linux Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: LocaNext-Linux-LIGHT-AppImage
-          path: locaNext/dist-electron/*.AppImage
-          retention-days: 7
-        continue-on-error: true
-
-  # ============================================================
   # CREATE GITHUB RELEASE
   # ============================================================
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [check-build-trigger, build-windows, build-linux]
+    needs: [check-build-trigger, build-windows]
     if: success()
 
     steps:
@@ -398,13 +359,6 @@ jobs:
         with:
           name: LocaNext-Windows-LIGHT-Setup
           path: artifacts/windows
-
-      - name: Download Linux AppImage
-        uses: actions/download-artifact@v4
-        with:
-          name: LocaNext-Linux-LIGHT-AppImage
-          path: artifacts/linux
-        continue-on-error: true
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -462,6 +416,5 @@ jobs:
             🤖 Generated with [Claude Code](https://claude.com/claude-code)
           files: |
             artifacts/windows/*.exe
-            artifacts/linux/*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
