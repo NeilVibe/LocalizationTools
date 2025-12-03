@@ -21,21 +21,23 @@ APP_DESCRIPTION = "Unified Localization & Translation Tools Suite"
 # ============================================
 
 # Base directory (where this config file is located)
-BASE_DIR = Path(__file__).parent.absolute()
-ROOT_DIR = BASE_DIR.parent
+# client_config.py is at: server/client_config/client_config.py
+BASE_DIR = Path(__file__).parent.absolute()  # server/client_config/
+SERVER_DIR = BASE_DIR.parent  # server/
+PROJECT_ROOT = SERVER_DIR.parent  # LocalizationTools/
 
-# Models directory
-MODELS_DIR = BASE_DIR / "models"
+# Models directory (in server/data/models/)
+MODELS_DIR = SERVER_DIR / "data" / "models"
 KOREAN_BERT_MODEL_PATH = MODELS_DIR / "KRTransformer"
 
-# Assets directory
-ASSETS_DIR = BASE_DIR / "assets"
+# Assets directory (in server/data/assets/ or locaNext/static/)
+ASSETS_DIR = SERVER_DIR / "data" / "assets"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 ICON_PATH = ASSETS_DIR / "icon.ico"
 
-# Data directories (ALL inside program folder under server/data/)
+# Data directories (ALL inside server/data/)
 # This keeps everything in one clean tree for easy backup and management
-SERVER_DATA_DIR = ROOT_DIR / "server" / "data"
+SERVER_DATA_DIR = SERVER_DIR / "data"
 USER_DATA_DIR = SERVER_DATA_DIR / "cache"  # Client data/machine ID
 CACHE_DIR = SERVER_DATA_DIR / "cache"
 LOGS_DIR = SERVER_DATA_DIR / "logs"
