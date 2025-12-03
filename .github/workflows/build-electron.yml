@@ -218,7 +218,7 @@ jobs:
           & "tools\python\python.exe" -m pip install --no-warn-script-location `
             fastapi uvicorn python-multipart python-socketio `
             sqlalchemy aiosqlite `
-            "python-jose[cryptography]" passlib python-dotenv bcrypt `
+            PyJWT python-jose passlib python-dotenv bcrypt `
             pydantic pydantic-settings email-validator `
             pandas openpyxl xlrd `
             httpx requests loguru tqdm pyyaml
