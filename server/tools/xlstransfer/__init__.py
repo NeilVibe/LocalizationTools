@@ -24,10 +24,10 @@ __version__ = "0.3.0"
 __author__ = "Neil"
 
 # Import configuration
-from client.tools.xls_transfer import config
+from server.tools.xlstransfer import config
 
 # Import core utilities
-from client.tools.xls_transfer.core import (
+from server.tools.xlstransfer.core import (
     clean_text,
     excel_column_to_index,
     index_to_excel_column,
@@ -42,7 +42,7 @@ from client.tools.xls_transfer.core import (
 )
 
 # Import embedding functions
-from client.tools.xls_transfer.embeddings import (
+from server.tools.xlstransfer.embeddings import (
     load_model,
     get_model,
     generate_embeddings,
@@ -55,7 +55,7 @@ from client.tools.xls_transfer.embeddings import (
 )
 
 # Import translation functions
-from client.tools.xls_transfer.translation import (
+from server.tools.xlstransfer.translation import (
     find_best_match,
     process_batch,
     translate_text_multi_mode,
@@ -66,7 +66,7 @@ from client.tools.xls_transfer.translation import (
 )
 
 # Import Excel utilities
-from client.tools.xls_transfer.excel_utils import (
+from server.tools.xlstransfer.excel_utils import (
     read_excel_columns,
     get_sheet_names,
     write_translations_to_excel,
@@ -77,7 +77,7 @@ from client.tools.xls_transfer.excel_utils import (
     validate_excel_file
 )
 
-# Define what's available when using "from client.tools.xls_transfer import *"
+# Define what's available when using "from server.tools.xlstransfer import *"
 __all__ = [
     # Config
     'config',

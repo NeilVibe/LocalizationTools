@@ -14,9 +14,9 @@ from openpyxl.utils import column_index_from_string
 from copy import copy
 from loguru import logger
 
-from client.tools.xls_transfer import config
-from client.tools.xls_transfer.core import clean_text, excel_column_to_index, convert_cell_value, count_newlines
-from client.utils.file_handler import create_temp_copy, ensure_output_path
+from server.tools.xlstransfer import config
+from server.tools.xlstransfer.core import clean_text, excel_column_to_index, convert_cell_value, count_newlines
+from server.utils.client.file_handler import create_temp_copy, ensure_output_path
 
 
 # ============================================

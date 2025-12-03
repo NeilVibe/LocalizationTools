@@ -135,7 +135,7 @@ logger.success(f"Output file created: {output_path}", {
 ```python
 # At module level
 try:
-    from client.tools.xls_transfer import core, embeddings, translation
+    from server.tools.xlstransfer import core, embeddings, translation
     logger.success("XLSTransfer modules loaded successfully", {
         "core": core is not None,
         "embeddings": embeddings is not None,

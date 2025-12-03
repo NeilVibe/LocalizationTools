@@ -16,7 +16,7 @@ import json
 import requests
 from loguru import logger
 
-from client import config
+from server.client_config import client_config as config
 
 
 class UsageLogger:

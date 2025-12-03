@@ -63,28 +63,19 @@ LocalizationTools/
 │       ✅ Connection pooling (20+10 overflow)
 │       ✅ 17 async tests passing
 │
-├── 💻 CLIENT (PYTHON BACKEND - COMPLETE ✅)
-│   ├── client/
-│   │   ├── config.py - Client configuration
-│   │   ├── tools/ - Tool modules
-│   │   │   └── xls_transfer/ ⭐ TEMPLATE FOR ALL TOOLS
-│   │   │       ├── core.py (49 functions)
-│   │   │       ├── embeddings.py (BERT + FAISS)
-│   │   │       ├── translation.py (matching logic)
-│   │   │       ├── excel_utils.py (Excel ops)
-│   │   │       ├── get_sheets.py - Extract Excel sheet names
-│   │   │       ├── load_dictionary.py - Load embeddings & FAISS
-│   │   │       ├── process_operation.py - 5 operations (539 lines)
-│   │   │       ├── translate_file.py - .txt file translation
-│   │   │       └── simple_transfer.py - Placeholder
-│   │   ├── models/ - AI models (Git LFS)
-│   │   │   └── KR-SBERT-V40K-klueNLI-augSTS/ (447MB Korean BERT)
-│   │   └── utils/ - Client utilities
-│   │       ├── logger.py ⭐ Usage logger (sends to server)
-│   │       ├── progress.py - Progress tracking
-│   │       └── file_handler.py - File operations
-│   │
-│   └── STATUS: ✅ COMPLETE - All XLSTransfer backend scripts ready
+│   │   ├── tools/ ⭐ ALL TOOL BACKENDS (unified)
+│   │   │   ├── xlstransfer/ ⭐ TEMPLATE FOR ALL TOOLS
+│   │   │   │   ├── core.py (49 functions)
+│   │   │   │   ├── embeddings.py (BERT + FAISS)
+│   │   │   │   ├── translation.py (matching logic)
+│   │   │   │   ├── excel_utils.py (Excel ops)
+│   │   │   │   ├── process_operation.py - 5 operations
+│   │   │   │   └── cli/ - Command-line interface
+│   │   │   ├── quicksearch/ - Dictionary search
+│   │   │   └── kr_similar/ - Korean semantic similarity
+│   │   ├── config/ - Server configuration
+│   │   │   └── client_config.py - Client app settings
+│   │   └── STATUS: ✅ COMPLETE - All tool backends unified
 │
 ├── 🖥️ LOCANEXT (ELECTRON DESKTOP APP - COMPLETE ✅)
 │   └── locaNext/

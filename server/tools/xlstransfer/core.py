@@ -8,7 +8,7 @@ CLEAN, modular functions extracted from original XLSTransfer script.
 from typing import Optional, Dict, Set, Tuple, List, Any
 import re
 
-from client.tools.xls_transfer import config
+from server.tools.xlstransfer import config
 
 
 # ============================================

@@ -53,7 +53,7 @@ class TestXLSTransferCore:
     def test_01_core_module_imports(self):
         """Test that XLSTransfer core modules can be imported."""
         try:
-            from client.tools.xls_transfer import core, embeddings, translation, process_operation
+            from server.tools.xlstransfer import core, embeddings, translation, process_operation
             assert core is not None
             assert embeddings is not None
             assert translation is not None
@@ -69,7 +69,7 @@ class TestXLSTransferCore:
         INPUT: Text with carriage returns or whitespace
         EXPECTED OUTPUT: Cleaned text without _x000D_ characters
         """
-        from client.tools.xls_transfer.core import clean_text
+        from server.tools.xlstransfer.core import clean_text
 
         # Test carriage return removal
         result = clean_text("Hello_x000D_World")
@@ -89,7 +89,7 @@ class TestXLSTransferCore:
         INPUT: Column letter like 'A', 'B', 'Z'
         EXPECTED OUTPUT: Zero-based index (0, 1, 25)
         """
-        from client.tools.xls_transfer.core import excel_column_to_index, index_to_excel_column
+        from server.tools.xlstransfer.core import excel_column_to_index, index_to_excel_column
 
         # Test A = 0
         assert excel_column_to_index('A') == 0
@@ -121,7 +121,7 @@ class TestXLSTransferEmbeddings:
     def embeddings_module(self):
         """Get embeddings module."""
         try:
-            from client.tools.xls_transfer import embeddings
+            from server.tools.xlstransfer import embeddings
             return embeddings
         except ImportError:
             pytest.skip("XLSTransfer embeddings module not available")
@@ -204,7 +204,7 @@ class TestXLSTransferTranslation:
     def translation_module(self):
         """Get translation module."""
         try:
-            from client.tools.xls_transfer import translation, embeddings
+            from server.tools.xlstransfer import translation, embeddings
 
             # Ensure dictionary is loaded
             try:
@@ -229,7 +229,7 @@ class TestXLSTransferTranslation:
         INPUT: Korean text to translate
         EXPECTED OUTPUT: (matched_korean, translated_text, confidence_score)
         """
-        from client.tools.xls_transfer import embeddings
+        from server.tools.xlstransfer import embeddings
 
         # Load dictionary
         split_embeddings, split_dict, split_index, split_kr_texts = \
@@ -257,7 +257,7 @@ class TestXLSTransferTranslation:
 
         PRODUCTION USE: High threshold (0.99) for exact matches only.
         """
-        from client.tools.xls_transfer import embeddings
+        from server.tools.xlstransfer import embeddings
 
         split_embeddings, split_dict, split_index, split_kr_texts = \
             embeddings.load_dictionary(mode="split")

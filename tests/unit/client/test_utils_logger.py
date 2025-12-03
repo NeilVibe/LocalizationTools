@@ -17,7 +17,7 @@ from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 import requests
 
-from client.utils.logger import UsageLogger, get_logger, log_function_call
+from server.utils.client.logger import UsageLogger, get_logger, log_function_call
 
 
 # ============================================
@@ -27,29 +27,29 @@ from client.utils.logger import UsageLogger, get_logger, log_function_call
 @pytest.fixture
 def mock_config(monkeypatch):
     """Mock client configuration for testing."""
-    monkeypatch.setattr("client.config.OFFLINE_MODE", False)
-    monkeypatch.setattr("client.config.MOCK_SERVER", False)
-    monkeypatch.setattr("client.config.ENABLE_SERVER_LOGGING", True)
-    monkeypatch.setattr("client.config.LOG_FILE_NAMES", False)
-    monkeypatch.setattr("client.config.LOG_QUEUE_MAX_SIZE", 100)
-    monkeypatch.setattr("client.config.API_SESSION_START", "http://localhost:8000/api/session/start")
-    monkeypatch.setattr("client.config.API_SESSION_END", "http://localhost:8000/api/session/end")
-    monkeypatch.setattr("client.config.API_LOGS", "http://localhost:8000/api/logs")
-    monkeypatch.setattr("client.config.API_KEY", "test-api-key")
-    monkeypatch.setattr("client.config.API_TIMEOUT", 5)
-    monkeypatch.setattr("client.config.MACHINE_ID", "test-machine-123")
-    monkeypatch.setattr("client.config.APP_VERSION", "1.0.0")
-    monkeypatch.setattr("client.config.OS_INFO", "Linux")
+    monkeypatch.setattr("server.client_config.client_config.OFFLINE_MODE", False)
+    monkeypatch.setattr("server.client_config.client_config.MOCK_SERVER", False)
+    monkeypatch.setattr("server.client_config.client_config.ENABLE_SERVER_LOGGING", True)
+    monkeypatch.setattr("server.client_config.client_config.LOG_FILE_NAMES", False)
+    monkeypatch.setattr("server.client_config.client_config.LOG_QUEUE_MAX_SIZE", 100)
+    monkeypatch.setattr("server.client_config.client_config.API_SESSION_START", "http://localhost:8000/api/session/start")
+    monkeypatch.setattr("server.client_config.client_config.API_SESSION_END", "http://localhost:8000/api/session/end")
+    monkeypatch.setattr("server.client_config.client_config.API_LOGS", "http://localhost:8000/api/logs")
+    monkeypatch.setattr("server.client_config.client_config.API_KEY", "test-api-key")
+    monkeypatch.setattr("server.client_config.client_config.API_TIMEOUT", 5)
+    monkeypatch.setattr("server.client_config.client_config.MACHINE_ID", "test-machine-123")
+    monkeypatch.setattr("server.client_config.client_config.APP_VERSION", "1.0.0")
+    monkeypatch.setattr("server.client_config.client_config.OS_INFO", "Linux")
 
 
 @pytest.fixture
 def offline_config(monkeypatch):
     """Mock offline configuration."""
-    monkeypatch.setattr("client.config.OFFLINE_MODE", True)
-    monkeypatch.setattr("client.config.MOCK_SERVER", False)
-    monkeypatch.setattr("client.config.ENABLE_SERVER_LOGGING", True)
-    monkeypatch.setattr("client.config.LOG_FILE_NAMES", True)
-    monkeypatch.setattr("client.config.LOG_QUEUE_MAX_SIZE", 10)
+    monkeypatch.setattr("server.client_config.client_config.OFFLINE_MODE", True)
+    monkeypatch.setattr("server.client_config.client_config.MOCK_SERVER", False)
+    monkeypatch.setattr("server.client_config.client_config.ENABLE_SERVER_LOGGING", True)
+    monkeypatch.setattr("server.client_config.client_config.LOG_FILE_NAMES", True)
+    monkeypatch.setattr("server.client_config.client_config.LOG_QUEUE_MAX_SIZE", 10)
 
 
 @pytest.fixture
@@ -243,10 +243,10 @@ def test_log_operation_includes_file_name_when_allowed(monkeypatch, mock_request
     When: log_operation is called with file_name
     Then: file_name is sent to server
     """
-    monkeypatch.setattr("client.config.OFFLINE_MODE", False)
-    monkeypatch.setattr("client.config.LOG_FILE_NAMES", True)
-    monkeypatch.setattr("client.config.ENABLE_SERVER_LOGGING", True)
-    monkeypatch.setattr("client.config.MOCK_SERVER", False)
+    monkeypatch.setattr("server.client_config.client_config.OFFLINE_MODE", False)
+    monkeypatch.setattr("server.client_config.client_config.LOG_FILE_NAMES", True)
+    monkeypatch.setattr("server.client_config.client_config.ENABLE_SERVER_LOGGING", True)
+    monkeypatch.setattr("server.client_config.client_config.MOCK_SERVER", False)
 
     logger = UsageLogger()
 
@@ -484,7 +484,7 @@ def test_get_logger_returns_singleton(mock_config, mock_requests_success):
     Then: Same instance is returned (singleton pattern)
     """
     # Reset global logger
-    import client.utils.logger as logger_module
+    import server.utils.client.logger as logger_module
     logger_module._usage_logger = None
 
     logger1 = get_logger()

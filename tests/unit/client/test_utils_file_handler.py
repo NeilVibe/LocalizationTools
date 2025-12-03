@@ -18,7 +18,7 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from client.utils.file_handler import (
+from server.utils.client.file_handler import (
     get_file_size_mb,
     get_file_hash,
     create_temp_copy,

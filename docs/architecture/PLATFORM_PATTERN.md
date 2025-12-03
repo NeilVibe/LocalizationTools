@@ -62,7 +62,7 @@ Benefits:
 ✅ Framework-agnostic (works with Gradio, Electron, CLI, etc.)
 ```
 
-**See XLSTransfer as template:** `client/tools/xls_transfer/`
+**See XLSTransfer as template:** `server/tools/xlstransfer/`
 
 ### Step 3: Create Backend Scripts
 

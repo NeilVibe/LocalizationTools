@@ -48,7 +48,7 @@ class XLSTransferAPI(BaseToolAPI):
     def _load_modules(self):
         """Load XLSTransfer Python modules."""
         try:
-            from client.tools.xls_transfer import core, embeddings, translation, process_operation
+            from server.tools.xlstransfer import core, embeddings, translation, process_operation
 
             self.core = core
             self.embeddings = embeddings
@@ -567,7 +567,7 @@ class XLSTransferAPI(BaseToolAPI):
             logger.info(f"Creating dictionaries from {len(excel_files)} Excel file selections")
 
             # Import here to avoid circular dependency
-            from client.tools.xls_transfer.progress_tracker import ProgressTracker
+            from server.tools.xlstransfer.progress_tracker import ProgressTracker
 
             # Create progress tracker for real-time updates
             tracker = ProgressTracker(operation_id)
