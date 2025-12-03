@@ -108,6 +108,11 @@ Source: "..\tools\python\*"; DestDir: "{app}\tools\python"; Flags: ignoreversion
 Source: "..\server\*"; DestDir: "{app}\server"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "__pycache__,*.pyc,*.pyo,.pytest_cache"
 
 ; ============================================================
+; Version file (required by server)
+; ============================================================
+Source: "..\version.py"; DestDir: "{app}"; Flags: ignoreversion
+
+; ============================================================
 ; Documentation
 ; ============================================================
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
