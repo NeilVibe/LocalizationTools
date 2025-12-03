@@ -108,11 +108,6 @@ Source: "..\tools\python\*"; DestDir: "{app}\tools\python"; Flags: ignoreversion
 Source: "..\server\*"; DestDir: "{app}\server"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "__pycache__,*.pyc,*.pyo,.pytest_cache"
 
 ; ============================================================
-; Client utilities (for backend)
-; ============================================================
-Source: "..\client\*"; DestDir: "{app}\client"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "__pycache__,*.pyc,*.pyo"
-
-; ============================================================
 ; Documentation
 ; ============================================================
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
