@@ -5,10 +5,14 @@
   import TaskManager from "$lib/components/TaskManager.svelte";
   import Welcome from "$lib/components/Welcome.svelte";
 
-  // Accept SvelteKit page props to avoid warnings
-  export let data = {};
-  export let form = null;
-  export let params = {};
+  // SvelteKit page props (consumed to silence unused warnings)
+  export let data;
+  export let form;
+  export let params;
+  // Consume props to avoid unused warnings
+  $: void data;
+  $: void form;
+  $: void params;
 
   let view;
   let app;

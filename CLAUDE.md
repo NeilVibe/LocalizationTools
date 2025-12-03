@@ -257,7 +257,9 @@ bash scripts/clean_logs.sh
 - **Database Tables:** 13
 - **Tests:** 921 passed, 53% coverage (TRUE simulation - no mocks!)
 - **E2E Tests:** 115 (KR Similar 18 + QuickSearch 11 + XLSTransfer 9 + Edge Cases 23 + Workflows 54)
-- **Frontend E2E:** 54 (Playwright - Login 10 + Nav 10 + Tools 11 + API 8 + Dashboard 15)
+- **Frontend E2E:** 164 (Playwright - LocaNext 134 + Admin Dashboard 30)
+  - LocaNext 134: Login 10 + Nav 10 + Tools 11 + API 8 + Frontend-Backend 16 + Full Workflow 17 + TaskManager 22 + File Operations 20 + WebSocket/Real-time 19 + Screenshot 1
+  - Admin Dashboard 30: Dashboard 15 + Telemetry 15
 - **Unit Tests:** 350+ (auth, cache, websocket, dependencies, tools)
 - **API Simulation Tests:** 168 (Tools 26 + Admin 15 + Errors 25 + WebSocket 10 + Full System 72)
 - **Security Tests:** 86 (IP filter, CORS, JWT, audit logging)

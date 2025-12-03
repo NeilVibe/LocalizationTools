@@ -22,11 +22,19 @@ locaNext/tests/
 ├── tools.spec.ts                    # 11 tests
 ├── api-integration.spec.ts          # 8 tests
 ├── frontend-backend-integration.spec.ts  # 16 tests
+├── full-workflow-simulation.spec.ts # 17 tests
+├── taskmanager.spec.ts              # 22 tests
+├── file-operations.spec.ts          # 20 tests (REAL file uploads!)
+├── websocket-realtime.spec.ts       # 19 tests (Socket.IO, real-time)
 └── screenshot.spec.ts               # 1 utility
+Total: 134 tests
 
 adminDashboard/tests/
 ├── dashboard.spec.ts                # 15 tests
 └── telemetry-integration.spec.ts    # 15 tests
+Total: 30 tests
+
+GRAND TOTAL: 164 frontend E2E tests
 ```
 
 ---

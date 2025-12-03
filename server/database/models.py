@@ -32,20 +32,26 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     email = Column(String(100), unique=True, nullable=True, index=True)
-    full_name = Column(String(100), nullable=True)
-    department = Column(String(50), nullable=True, index=True)
+    full_name = Column(String(100), nullable=True)  # Display name (e.g., "Sujin Park")
+    department = Column(String(50), nullable=True, index=True)  # Legacy field
+    team = Column(String(100), nullable=True, index=True)  # Team name (e.g., "Team ABC")
+    language = Column(String(50), nullable=True, index=True)  # Primary work language (e.g., "Japanese")
     role = Column(String(20), default="user")  # user, admin, superadmin
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)  # Admin who created this user
     last_login = Column(DateTime, nullable=True)
+    last_password_change = Column(DateTime, nullable=True)  # Track password updates
+    must_change_password = Column(Boolean, default=False)  # Force password change on first login
 
     # Relationships
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
     log_entries = relationship("LogEntry", back_populates="user", cascade="all, delete-orphan")
     feedback = relationship("UserFeedback", back_populates="user", cascade="all, delete-orphan")
+    created_users = relationship("User", backref="creator", remote_side=[user_id])  # Users created by this admin
 
     def __repr__(self):
-        return f"<User(user_id={self.user_id}, username='{self.username}', department='{self.department}')>"
+        return f"<User(user_id={self.user_id}, username='{self.username}', team='{self.team}', language='{self.language}')>"
 
 
 class Session(Base):

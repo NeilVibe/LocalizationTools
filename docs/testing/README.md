@@ -18,7 +18,7 @@ sleep 3
 RUN_API_TESTS=1 python3 -m pytest -v
 
 # Frontend tests (headless, fast)
-cd locaNext && npm test        # 56 tests
+cd locaNext && npm test        # 134 tests
 cd adminDashboard && npm test  # 30 tests
 ```
 
@@ -66,9 +66,9 @@ INPUT → PROCESS → OUTPUT → ASSERTION = PASS or FAIL
 | Backend E2E | 115 | pytest |
 | API Simulation | 168 | pytest |
 | Security | 86 | pytest |
-| Frontend (LocaNext) | 56 | Playwright |
+| Frontend (LocaNext) | 134 | Playwright |
 | Frontend (Dashboard) | 30 | Playwright |
-| **Total** | **~950** | |
+| **Total** | **~1000+** | |
 
 ---
 

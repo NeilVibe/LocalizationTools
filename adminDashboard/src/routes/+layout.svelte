@@ -11,6 +11,7 @@
 
   const navItems = [
     { href: '/', label: 'Overview', icon: Dashboard },
+    { href: '/users', label: 'Users', icon: UserMultiple },
     { href: '/stats', label: 'Stats & Rankings', icon: ChartLine },
     { href: '/logs', label: 'Activity Logs', icon: Activity }
   ];

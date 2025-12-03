@@ -44,13 +44,55 @@ class UserResponse(BaseModel):
     email: Optional[str]
     full_name: Optional[str]
     department: Optional[str]
+    team: Optional[str] = None
+    language: Optional[str] = None
     role: str
     is_active: bool
     created_at: datetime
+    created_by: Optional[int] = None
     last_login: Optional[datetime]
+    last_password_change: Optional[datetime] = None
+    must_change_password: bool = False
 
     class Config:
         from_attributes = True  # For SQLAlchemy models
+
+
+class PasswordChange(BaseModel):
+    """Password change request."""
+    current_password: str
+    new_password: str = Field(..., min_length=6)
+    confirm_password: str
+
+
+class AdminUserCreate(BaseModel):
+    """Admin user creation request with full profile."""
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=6)
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    team: Optional[str] = None
+    language: Optional[str] = None
+    department: Optional[str] = None
+    role: str = "user"  # user, admin
+    must_change_password: bool = True  # Force password change on first login
+
+
+class AdminUserUpdate(BaseModel):
+    """Admin user update request."""
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    team: Optional[str] = None
+    language: Optional[str] = None
+    department: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class AdminPasswordReset(BaseModel):
+    """Admin password reset request."""
+    new_password: str = Field(..., min_length=6)
+    must_change_password: bool = True  # Force user to change on next login
 
 
 # ============================================================================

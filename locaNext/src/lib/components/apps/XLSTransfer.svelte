@@ -1159,17 +1159,17 @@
               />
               {#if sheet.selected}
                 <div class="column-inputs">
-                  <label>KR Column:</label>
                   <TextInput
                     bind:value={sheet.krColumn}
                     size="sm"
                     placeholder="A"
+                    labelText="KR Column"
                   />
-                  <label>Translation Column:</label>
                   <TextInput
                     bind:value={sheet.transColumn}
                     size="sm"
                     placeholder="B"
+                    labelText="Translation Column"
                   />
                 </div>
               {/if}
@@ -1279,7 +1279,7 @@
     margin-top: 0.5rem;
   }
 
-  .column-inputs label {
+  .column-inputs :global(.bx--label) {
     font-size: 0.875rem;
     color: var(--cds-text-02);
   }

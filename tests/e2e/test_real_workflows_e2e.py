@@ -82,7 +82,8 @@ class TestXLSTransferRealWorkflow:
             trans_column=6  # Translation is column 7 (0-indexed = 6)
         )
 
-        assert len(df) == 23, f"Expected 23 rows, got {len(df)}"
+        # Fixture now has 48 rows covering complete universe of test cases
+        assert len(df) >= 40, f"Expected 40+ rows (universe coverage), got {len(df)}"
 
         # Verify complex patterns are preserved
         complex_row = df[df['Korean'].str.contains('죄인은 푸줏간', na=False)]

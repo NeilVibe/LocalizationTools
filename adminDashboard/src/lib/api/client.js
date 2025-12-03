@@ -84,10 +84,44 @@ class AdminAPIClient {
   // USERS
   async getAllUsers() { return await this.request('/auth/users'); }
   async getUser(userId) { return await this.request(`/auth/users/${userId}`); }
-  async createUser(userData) {
-    return await this.request('/auth/users', {
+
+  // Admin User Management
+  async adminCreateUser(userData) {
+    return await this.request('/auth/admin/users', {
       method: 'POST',
       body: JSON.stringify(userData)
+    });
+  }
+
+  async adminUpdateUser(userId, userData) {
+    return await this.request(`/auth/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData)
+    });
+  }
+
+  async adminResetPassword(userId, newPassword, mustChangePassword = true) {
+    return await this.request(`/auth/admin/users/${userId}/reset-password`, {
+      method: 'PUT',
+      body: JSON.stringify({ new_password: newPassword, must_change_password: mustChangePassword })
+    });
+  }
+
+  async adminDeleteUser(userId) {
+    return await this.request(`/auth/admin/users/${userId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async activateUser(userId) {
+    return await this.request(`/auth/users/${userId}/activate`, {
+      method: 'PUT'
+    });
+  }
+
+  async deactivateUser(userId) {
+    return await this.request(`/auth/users/${userId}/deactivate`, {
+      method: 'PUT'
     });
   }
 
@@ -159,6 +193,19 @@ class AdminAPIClient {
 
   async getServerLogs(lines = 100) {
     return await this.request(`/admin/stats/server-logs?lines=${lines}`);
+  }
+
+  // TEAM & LANGUAGE ANALYTICS
+  async getTeamAnalytics(days = 30) {
+    return await this.request(`/admin/stats/analytics/by-team?days=${days}`);
+  }
+
+  async getLanguageAnalytics(days = 30) {
+    return await this.request(`/admin/stats/analytics/by-language?days=${days}`);
+  }
+
+  async getUserRankingsWithProfile(days = 30, limit = 20) {
+    return await this.request(`/admin/stats/analytics/user-rankings?days=${days}&limit=${limit}`);
   }
 
   // RANKINGS

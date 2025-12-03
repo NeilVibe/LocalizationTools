@@ -13,20 +13,32 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
+  import ChangePassword from "$lib/components/ChangePassword.svelte";
+  import AboutModal from "$lib/components/AboutModal.svelte";
+  import PreferencesModal from "$lib/components/PreferencesModal.svelte";
   import { logger } from "$lib/utils/logger.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
 
-  // Accept SvelteKit layout props to avoid warnings
-  export let data = {};
-  export let params = {};
+  // SvelteKit layout props (prefixed to silence unused warnings)
+  // These are standard SvelteKit props passed to layouts
+  export let data;
+  export let params;
+  // Consume props to avoid unused warnings
+  $: void data;
+  $: void params;
 
   let isAppsMenuOpen = false;
+  let isSettingsMenuOpen = false;
+  let isUserMenuOpen = false;
+  let showChangePassword = false;
+  let showAbout = false;
+  let showPreferences = false;
   let checkingAuth = true;
 
   // Available apps
@@ -45,6 +57,24 @@
   function showTasks() {
     logger.userAction("Tasks view selected");
     currentView.set('tasks');
+  }
+
+  function openChangePassword() {
+    logger.userAction("Change password modal opened");
+    showChangePassword = true;
+    isUserMenuOpen = false;
+  }
+
+  function openAbout() {
+    logger.userAction("About modal opened");
+    showAbout = true;
+    isSettingsMenuOpen = false;
+  }
+
+  function openPreferences() {
+    logger.userAction("Preferences modal opened");
+    showPreferences = true;
+    isSettingsMenuOpen = false;
   }
 
   /**
@@ -169,12 +199,58 @@
         text="Tasks"
       />
 
-      <!-- Logout Button -->
-      <HeaderNavItem
-        on:click={handleLogout}
-        text="Logout"
-      />
+      <!-- Settings Dropdown -->
+      <HeaderAction
+        bind:isOpen={isSettingsMenuOpen}
+        icon={Settings}
+        closeIcon={Settings}
+        text="Settings"
+      >
+        <HeaderPanelLinks>
+          <HeaderPanelLink on:click={openAbout}>
+            About LocaNext
+          </HeaderPanelLink>
+          <HeaderPanelDivider />
+          <HeaderPanelLink on:click={openPreferences}>
+            Preferences
+          </HeaderPanelLink>
+        </HeaderPanelLinks>
+      </HeaderAction>
+
+      <!-- User Menu -->
+      <HeaderAction
+        bind:isOpen={isUserMenuOpen}
+        icon={UserAvatar}
+        closeIcon={UserAvatar}
+        text={$user?.username || "User"}
+      >
+        <HeaderPanelLinks>
+          <HeaderPanelLink>
+            <div style="font-weight: 600;">{$user?.full_name || $user?.username || 'User'}</div>
+            <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
+              {$user?.email || 'No email'}
+            </div>
+          </HeaderPanelLink>
+          <HeaderPanelDivider />
+          <HeaderPanelLink on:click={openChangePassword}>
+            Change Password
+          </HeaderPanelLink>
+          <HeaderPanelDivider />
+          <HeaderPanelLink on:click={handleLogout}>
+            Logout
+          </HeaderPanelLink>
+        </HeaderPanelLinks>
+      </HeaderAction>
     </Header>
+
+    <!-- Change Password Modal -->
+    <ChangePassword bind:open={showChangePassword} />
+
+    <!-- About Modal -->
+    <AboutModal bind:open={showAbout} />
+
+    <!-- Preferences Modal -->
+    <PreferencesModal bind:open={showPreferences} />
 
     <Content>
       <slot />

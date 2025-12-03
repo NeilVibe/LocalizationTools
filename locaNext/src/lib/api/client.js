@@ -115,6 +115,23 @@ class APIClient {
   }
 
   /**
+   * Change password (self-service)
+   * @param {string} currentPassword - Current password
+   * @param {string} newPassword - New password
+   * @param {string} confirmPassword - Confirm new password
+   */
+  async changePassword(currentPassword, newPassword, confirmPassword) {
+    return await this.request('/api/v2/auth/me/password', {
+      method: 'PUT',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword
+      })
+    });
+  }
+
+  /**
    * Refresh token
    */
   async refreshToken() {
@@ -201,7 +218,7 @@ class APIClient {
   // ==================== HEALTH CHECK ====================
 
   /**
-   * Check server health
+   * Check server health (returns boolean)
    */
   async healthCheck() {
     try {
@@ -210,6 +227,17 @@ class APIClient {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Get server health details (version, build info)
+   */
+  async getHealth() {
+    const response = await fetch(`${this.baseURL}/health`);
+    if (!response.ok) {
+      throw new Error('Health check failed');
+    }
+    return await response.json();
   }
 
   // ==================== XLSTRANSFER API ====================

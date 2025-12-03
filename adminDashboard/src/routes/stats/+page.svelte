@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import adminAPI from '$lib/api/client.js';
   import ExpandableCard from '$lib/components/ExpandableCard.svelte';
-  import { Apps, Function as FunctionIcon, ChartLine, User, Trophy, Activity } from 'carbon-icons-svelte';
+  import { Apps, Function as FunctionIcon, ChartLine, User, Trophy, Activity, UserMultiple, Language } from 'carbon-icons-svelte';
 
   export const data = {};
 
@@ -15,6 +15,9 @@
   let functionRankings = [];
   let userRankings = [];
   let dailyStats = [];
+  let teamStats = [];
+  let languageStats = [];
+  let userRankingsWithProfile = [];
 
   onMount(async () => {
     await loadData();
@@ -24,7 +27,7 @@
     try {
       loading = true;
 
-      const [overview, apps, functions, users, daily] = await Promise.all([
+      const [overview, apps, functions, users, daily, teams, languages, usersProfile] = await Promise.all([
         adminAPI.getOverviewStats().catch(() => ({
           active_users: 0,
           today_operations: 0,
@@ -34,7 +37,10 @@
         adminAPI.getAppRankings(selectedPeriod).catch(() => ({ rankings: [] })),
         adminAPI.getFunctionRankings(selectedPeriod, 20).catch(() => ({ rankings: [] })),
         adminAPI.getUserRankings(selectedPeriod, 10).catch(() => ({ rankings: [] })),
-        adminAPI.getDailyStats(30).catch(() => ({ data: [] }))
+        adminAPI.getDailyStats(30).catch(() => ({ data: [] })),
+        adminAPI.getTeamAnalytics(30).catch(() => ({ teams: [] })),
+        adminAPI.getLanguageAnalytics(30).catch(() => ({ languages: [] })),
+        adminAPI.getUserRankingsWithProfile(30, 10).catch(() => ({ rankings: [] }))
       ]);
 
       overviewStats = overview;
@@ -42,6 +48,9 @@
       functionRankings = functions.rankings || [];
       userRankings = users.rankings || [];
       dailyStats = daily.data || [];
+      teamStats = teams.teams || [];
+      languageStats = languages.languages || [];
+      userRankingsWithProfile = usersProfile.rankings || [];
 
       loading = false;
     } catch (error) {
@@ -235,6 +244,93 @@
           </div>
         </div>
       </ExpandableCard>
+
+      <!-- Activity by Team -->
+      <ExpandableCard
+        icon={UserMultiple}
+        stat={teamStats.length}
+        label="Teams Active"
+        expanded={true}
+      >
+        <div class="ranking-list">
+          {#if teamStats.length === 0}
+            <div class="no-data">No team data available</div>
+          {:else}
+            {#each teamStats as team, i}
+              <div class="ranking-item">
+                <span class="rank-badge">{i + 1}</span>
+                <div class="team-info">
+                  <span class="ranking-name">{team.team}</span>
+                  <span class="team-tool">{team.most_used_tool || 'N/A'}</span>
+                </div>
+                <div class="team-stats">
+                  <span class="ranking-value">{team.total_ops} ops</span>
+                  <span class="team-users">{team.unique_users} users</span>
+                </div>
+                <span class="medal">{getMedalIcon(i + 1)}</span>
+              </div>
+            {/each}
+          {/if}
+        </div>
+      </ExpandableCard>
+
+      <!-- Activity by Language -->
+      <ExpandableCard
+        icon={Language}
+        stat={languageStats.length}
+        label="Languages Active"
+        expanded={true}
+      >
+        <div class="ranking-list">
+          {#if languageStats.length === 0}
+            <div class="no-data">No language data available</div>
+          {:else}
+            {#each languageStats as lang, i}
+              <div class="ranking-item">
+                <span class="rank-badge">{i + 1}</span>
+                <div class="team-info">
+                  <span class="ranking-name">{lang.language}</span>
+                  <span class="team-tool">{lang.most_used_tool || 'N/A'}</span>
+                </div>
+                <div class="team-stats">
+                  <span class="ranking-value">{lang.total_ops} ops</span>
+                  <span class="team-users">{lang.unique_users} users</span>
+                </div>
+                <span class="medal">{getMedalIcon(i + 1)}</span>
+              </div>
+            {/each}
+          {/if}
+        </div>
+      </ExpandableCard>
+
+      <!-- User Rankings with Profile -->
+      <ExpandableCard
+        icon={Trophy}
+        stat={userRankingsWithProfile.length}
+        label="Top Users"
+        expanded={true}
+      >
+        <div class="ranking-list">
+          {#if userRankingsWithProfile.length === 0}
+            <div class="no-data">No user data available</div>
+          {:else}
+            {#each userRankingsWithProfile as user, i}
+              <div class="ranking-item">
+                <span class="rank-badge">{user.rank}</span>
+                <div class="user-profile">
+                  <span class="ranking-name">{user.display_name}</span>
+                  <span class="user-meta">{user.team} | {user.language}</span>
+                </div>
+                <div class="team-stats">
+                  <span class="ranking-value">{user.total_ops} ops</span>
+                  <span class="success-badge">{user.success_rate}%</span>
+                </div>
+                <span class="medal">{getMedalIcon(user.rank)}</span>
+              </div>
+            {/each}
+          {/if}
+        </div>
+      </ExpandableCard>
     </div>
   {/if}
 </div>
@@ -419,5 +515,44 @@
     text-align: center;
     padding: 60px 20px;
     color: #c6c6c6;
+  }
+
+  .no-data {
+    text-align: center;
+    padding: 24px;
+    color: #8d8d8d;
+    font-style: italic;
+  }
+
+  .team-info, .user-profile {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+  }
+
+  .team-tool, .user-meta {
+    font-size: 0.75rem;
+    color: #8d8d8d;
+  }
+
+  .team-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .team-users {
+    font-size: 0.75rem;
+    color: #8d8d8d;
+  }
+
+  .success-badge {
+    font-size: 0.75rem;
+    color: #42be65;
+    background: rgba(66, 190, 101, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
   }
 </style>
