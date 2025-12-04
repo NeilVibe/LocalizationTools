@@ -37,7 +37,6 @@ if %ERRORLEVEL% NEQ 0 (
     echo.
     echo [ERROR] Installation failed. Check your internet connection.
     echo.
-    pause
     exit /b 1
 )
 
@@ -46,4 +45,3 @@ echo ============================================
 echo   Dependencies installed successfully!
 echo ============================================
 echo.
-pause

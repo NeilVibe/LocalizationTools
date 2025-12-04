@@ -6,6 +6,7 @@ import fs from 'fs';
 import http from 'http';
 import { logger } from './logger.js';
 import { autoUpdaterConfig, isAutoUpdateEnabled } from './updater.js';
+import { isFirstRunNeeded, runFirstRunSetup, setupFirstRunIPC } from './first-run-setup.js';
 
 // Auto-updater (only in production builds)
 let autoUpdater = null;
@@ -488,7 +489,28 @@ app.whenReady().then(async () => {
     paths: paths
   });
 
-  // Start backend server first
+  // Setup first-run IPC handlers
+  setupFirstRunIPC();
+
+  // Check if first-run setup is needed (production only)
+  if (!isDev && isFirstRunNeeded(paths.projectRoot)) {
+    logger.info('First-run setup needed - starting setup wizard');
+    const setupSuccess = await runFirstRunSetup(paths);
+    if (!setupSuccess) {
+      logger.error('First-run setup failed - cannot continue');
+      dialog.showErrorBox(
+        'Setup Failed',
+        'First-time setup could not be completed.\n\n' +
+        'Please check your internet connection and try again.\n\n' +
+        'If the problem persists, contact support.'
+      );
+      app.quit();
+      return;
+    }
+    logger.success('First-run setup completed successfully');
+  }
+
+  // Start backend server
   const serverReady = await startBackendServer();
   if (!serverReady && !isDev) {
     logger.error('Failed to start backend server - app may not function correctly');

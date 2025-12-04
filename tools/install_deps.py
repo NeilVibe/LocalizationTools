@@ -59,6 +59,8 @@ def main():
     print("\n" + "=" * 50)
     print("  LocaNext - Python Dependencies Installer")
     print("=" * 50)
+    print("0%")  # Initial progress for UI
+    sys.stdout.flush()
 
     # Core server dependencies
     packages = [
@@ -73,8 +75,10 @@ def main():
         ("aiosqlite", "Async SQLite support"),
 
         # Authentication
-        ("python-jose[cryptography]", "JWT tokens"),
+        ("PyJWT", "JWT tokens (import jwt)"),
+        ("python-jose[cryptography]", "JWT tokens (jose)"),
         ("passlib[bcrypt]", "Password hashing"),
+        ("bcrypt", "Password hashing backend"),
         ("python-dotenv", "Environment variables"),
 
         # Validation
@@ -98,21 +102,32 @@ def main():
         ("torch", "PyTorch AI framework (~2GB)"),
         ("transformers", "Hugging Face transformers"),
         ("sentence-transformers", "Sentence embeddings"),
+        ("huggingface_hub", "Model downloading"),
+        ("faiss-cpu", "Vector similarity search"),
 
         # Utilities
         ("tqdm", "Progress bars"),
         ("pyyaml", "YAML support"),
     ]
 
-    print(f"\n[INFO] Will install {len(packages)} packages")
+    total = len(packages)
+    print(f"\n[INFO] Will install {total} packages")
     print("[INFO] This may take 15-20 minutes...\n")
+    sys.stdout.flush()
 
     failed = []
-    for package, description in packages:
+    for i, (package, description) in enumerate(packages):
+        # Calculate and print progress percentage
+        progress = int((i / total) * 100)
+        print(f"{progress}% - Installing {package}...")
+        sys.stdout.flush()
+
         if not install_package(package, description):
             failed.append(package)
 
+    print("100%")  # Complete
     print("\n" + "=" * 50)
+    sys.stdout.flush()
 
     if failed:
         print(f"  [WARNING] {len(failed)} packages failed to install:")
@@ -120,11 +135,13 @@ def main():
             print(f"    - {pkg}")
         print("\n  The app may still work, but some features might be missing.")
         print("=" * 50)
+        sys.stdout.flush()
         return 1
 
     print("  [SUCCESS] All dependencies installed!")
     print("=" * 50)
     print("\n  LocaNext backend is ready!")
+    sys.stdout.flush()
 
     return 0
 

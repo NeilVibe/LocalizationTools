@@ -61,29 +61,64 @@ def install_huggingface_hub():
 def download_model():
     """Download model from Hugging Face."""
     from huggingface_hub import snapshot_download
+    import threading
+    import time
 
     target = get_target_dir()
     model_id = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
 
+    print("0%")  # Initial progress
     print(f"\n[...] Downloading: {model_id}")
     print(f"[...] Target: {target}")
     print(f"[...] This may take 5-10 minutes...\n")
+    sys.stdout.flush()
 
-    try:
-        # Create target directory
-        target.mkdir(parents=True, exist_ok=True)
+    # Track progress in a separate thread
+    download_complete = threading.Event()
+    download_error = [None]
 
-        # Download using official Hugging Face API
-        snapshot_download(
-            repo_id=model_id,
-            local_dir=str(target),
-            local_dir_use_symlinks=False
-        )
-        return True
+    def progress_tracker():
+        """Print fake progress while downloading (real progress is complex)."""
+        progress = 10
+        while not download_complete.is_set() and progress < 95:
+            print(f"{progress}%")
+            sys.stdout.flush()
+            time.sleep(3)  # Update every 3 seconds
+            progress = min(progress + 5, 95)
 
-    except Exception as e:
-        print(f"\n[ERROR] Download failed: {e}")
+    def do_download():
+        try:
+            # Create target directory
+            target.mkdir(parents=True, exist_ok=True)
+
+            # Download using official Hugging Face API
+            snapshot_download(
+                repo_id=model_id,
+                local_dir=str(target),
+                local_dir_use_symlinks=False
+            )
+        except Exception as e:
+            download_error[0] = e
+        finally:
+            download_complete.set()
+
+    # Start progress tracker
+    tracker = threading.Thread(target=progress_tracker, daemon=True)
+    tracker.start()
+
+    # Start download
+    downloader = threading.Thread(target=do_download)
+    downloader.start()
+    downloader.join()
+
+    if download_error[0]:
+        print(f"\n[ERROR] Download failed: {download_error[0]}")
+        sys.stdout.flush()
         return False
+
+    print("100%")
+    sys.stdout.flush()
+    return True
 
 
 def verify_download():

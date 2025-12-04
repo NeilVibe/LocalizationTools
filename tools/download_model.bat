@@ -31,7 +31,6 @@ if %ERRORLEVEL% NEQ 0 (
     echo.
     echo [ERROR] Download failed. Check your internet connection.
     echo.
-    pause
     exit /b 1
 )
 
@@ -40,4 +39,3 @@ echo ============================================
 echo   Download complete!
 echo ============================================
 echo.
-pause
