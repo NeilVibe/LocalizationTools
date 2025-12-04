@@ -2,39 +2,34 @@
  * Electron App Logger
  * Writes logs to file for monitoring and debugging
  *
- * FIXED v2: Uses app.getPath('userData') for reliable cross-platform logging
+ * FIXED v3: NO Electron imports - uses pure Node.js paths
  * - In dev: logs go to locaNext/logs/
- * - In production: logs go to %APPDATA%/locanext/logs/ (standard Electron location)
+ * - In production: logs go to install_dir/logs/ (next to exe)
  */
 
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { app } from 'electron';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
  * Get the correct logs directory based on environment
- * - Development: project_root/logs/
- * - Production: %APPDATA%/locanext/logs/ (reliable, always writable)
+ * NO ELECTRON DEPENDENCIES - works in all environments
  */
 function getLogsDir() {
   // Check if we're running inside an ASAR archive (packaged app)
   const isPackaged = __dirname.includes('app.asar');
 
   if (isPackaged) {
-    // Production: use Electron's userData path (standard, always writable)
-    // Windows: C:\Users\{user}\AppData\Roaming\locanext\logs
-    // This is the PROPER way to handle logs in Electron apps
-    try {
-      const userData = app.getPath('userData');
-      return path.join(userData, 'logs');
-    } catch (e) {
-      // Fallback: try process.cwd() (usually the app root)
-      return path.join(process.cwd(), 'logs');
-    }
+    // Production: ASAR path is like:
+    // C:\Users\...\LocaNext\resources\app.asar\electron
+    // We want: C:\Users\...\LocaNext\logs
+    // Go up from app.asar\electron -> app.asar -> resources -> LocaNext
+    const asarPath = __dirname.split('app.asar')[0];
+    const appRoot = path.join(asarPath, '..');
+    return path.join(appRoot, 'logs');
   } else {
     // Development: 2 levels up from electron/
     const projectRoot = path.join(__dirname, '../..');

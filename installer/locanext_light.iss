@@ -18,7 +18,7 @@
 ; Output: LocaNext_v{version}_Light_Setup.exe (~180-200MB)
 
 #define MyAppName "LocaNext"
-#define MyAppVersion "2512042249"
+#define MyAppVersion "2512042300"
 #define MyAppPublisher "Neil Schmitt"
 #define MyAppURL "https://github.com/NeilVibe/LocalizationTools"
 #define MyAppExeName "LocaNext.exe"
