@@ -93,19 +93,23 @@ jobs:
         run: |
           echo "=== Testing server can start (catches missing files) ==="
           # Start server in background
-          timeout 15 python server/main.py &
+          timeout 30 python server/main.py &
           SERVER_PID=$!
-          sleep 5
 
-          # Check if server is responding
-          if curl -s http://localhost:8888/health | grep -q "healthy"; then
-            echo "✓ Server started successfully"
-            kill $SERVER_PID 2>/dev/null || true
-          else
-            echo "❌ Server failed to start!"
-            kill $SERVER_PID 2>/dev/null || true
-            exit 1
-          fi
+          # Wait for server with retries
+          for i in {1..10}; do
+            sleep 2
+            echo "Checking server... ($i/10)"
+            if curl -s http://localhost:8888/health | grep -q "healthy"; then
+              echo "✓ Server started successfully"
+              kill $SERVER_PID 2>/dev/null || true
+              exit 0
+            fi
+          done
+
+          echo "❌ Server failed to start!"
+          kill $SERVER_PID 2>/dev/null || true
+          exit 1
 
       # ---- PYTHON TESTS ----
       - name: Run Python Tests
