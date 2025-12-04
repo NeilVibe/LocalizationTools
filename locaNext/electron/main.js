@@ -136,7 +136,13 @@ async function startBackendServer() {
       ...process.env,
       PYTHONUNBUFFERED: '1',
       PYTHONPATH: paths.projectRoot,
-      LOCANEXT_MODELS_PATH: paths.modelsPath
+      LOCANEXT_MODELS_PATH: paths.modelsPath,
+      // Suppress Python warnings (FutureWarning, UserWarning, etc.)
+      PYTHONWARNINGS: 'ignore',
+      // Suppress TensorFlow/transformers logs
+      TF_CPP_MIN_LOG_LEVEL: '3',
+      TRANSFORMERS_VERBOSITY: 'error',
+      TOKENIZERS_PARALLELISM: 'false'
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: false,

@@ -266,7 +266,15 @@ function runPythonScript(pythonExe, scriptPath, step) {
 
     const proc = spawn(pythonExe, [scriptPath], {
       cwd: path.dirname(scriptPath),
-      env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: '1',
+        // Suppress all Python warnings - user sees progress UI only
+        PYTHONWARNINGS: 'ignore',
+        TF_CPP_MIN_LOG_LEVEL: '3',
+        TRANSFORMERS_VERBOSITY: 'error',
+        TOKENIZERS_PARALLELISM: 'false'
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true
     });
@@ -325,7 +333,13 @@ async function verifyInstallation(pythonExe, appRoot) {
     const result = await new Promise((resolve, reject) => {
       const proc = spawn(pythonExe, ['-c', 'import fastapi; import torch; import transformers; print("OK")'], {
         timeout: 30000,
-        windowsHide: true
+        windowsHide: true,
+        env: {
+          ...process.env,
+          PYTHONWARNINGS: 'ignore',
+          TF_CPP_MIN_LOG_LEVEL: '3',
+          TRANSFORMERS_VERBOSITY: 'error'
+        }
       });
       let output = '';
       proc.stdout.on('data', (d) => output += d.toString());
