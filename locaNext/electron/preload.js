@@ -97,4 +97,65 @@ contextBridge.exposeInMainWorld('electronAPI', {
   retrySetup: (paths) => ipcRenderer.invoke('retry-setup', paths)
 });
 
+// Expose auto-update API
+contextBridge.exposeInMainWorld('electronUpdate', {
+  /**
+   * Listen for update available event
+   * @param {function} callback - Receives { version, releaseNotes, releaseDate }
+   */
+  onUpdateAvailable: (callback) => {
+    ipcRenderer.on('update-available', (event, info) => callback(info));
+  },
+
+  /**
+   * Listen for download progress event
+   * @param {function} callback - Receives { percent, transferred, total, bytesPerSecond }
+   */
+  onUpdateProgress: (callback) => {
+    ipcRenderer.on('update-progress', (event, progress) => callback(progress));
+  },
+
+  /**
+   * Listen for update downloaded event
+   * @param {function} callback - Receives { version, releaseNotes }
+   */
+  onUpdateDownloaded: (callback) => {
+    ipcRenderer.on('update-downloaded', (event, info) => callback(info));
+  },
+
+  /**
+   * Listen for update error event
+   * @param {function} callback - Receives error message
+   */
+  onUpdateError: (callback) => {
+    ipcRenderer.on('update-error', (event, error) => callback(error));
+  },
+
+  /**
+   * Start downloading the update
+   */
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+
+  /**
+   * Quit and install the downloaded update
+   */
+  quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
+
+  /**
+   * Check for updates manually
+   * @returns {Promise<{success, updateInfo, error}>}
+   */
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+
+  /**
+   * Remove all update listeners
+   */
+  removeListeners: () => {
+    ipcRenderer.removeAllListeners('update-available');
+    ipcRenderer.removeAllListeners('update-progress');
+    ipcRenderer.removeAllListeners('update-downloaded');
+    ipcRenderer.removeAllListeners('update-error');
+  }
+});
+
 console.log('LocaNext preload script loaded');

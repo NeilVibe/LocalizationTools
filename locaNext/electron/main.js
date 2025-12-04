@@ -233,34 +233,54 @@ function setupAutoUpdater() {
     mainWindow?.webContents.send('update-progress', progressObj);
   });
 
-  // Update downloaded
+  // Update downloaded - send to renderer (custom UI will handle it)
   autoUpdater.on('update-downloaded', (info) => {
     logger.success('Update downloaded', { version: info.version });
     mainWindow?.webContents.send('update-downloaded', info);
-
-    // Prompt user to restart
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'Update Ready',
-      message: `Version ${info.version} has been downloaded.`,
-      detail: 'The application will restart to install the update.',
-      buttons: ['Restart Now', 'Later']
-    }).then((result) => {
-      if (result.response === 0) {
-        autoUpdater.quitAndInstall();
-      }
-    });
+    // No system dialog - the UpdateModal in renderer will show restart options
   });
 
-  // Error
+  // Error - send to renderer
   autoUpdater.on('error', (err) => {
     logger.error('Auto-updater error', { error: err.message });
+    mainWindow?.webContents.send('update-error', err.message);
   });
 
   // Check for updates (silently)
   autoUpdater.checkForUpdates().catch((err) => {
     logger.warning('Failed to check for updates', { error: err.message });
   });
+}
+
+/**
+ * IPC: Download update
+ */
+ipcMain.handle('download-update', async () => {
+  if (!autoUpdater) {
+    return { success: false, error: 'Auto-updater not available' };
+  }
+
+  try {
+    logger.info('Starting update download...');
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (error) {
+    logger.error('Failed to download update', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * IPC: Quit and install update
+ */
+ipcMain.handle('quit-and-install', async () => {
+  if (!autoUpdater) {
+    return { success: false, error: 'Auto-updater not available' };
+  }
+
+  logger.info('Quitting and installing update...');
+  autoUpdater.quitAndInstall();
+  return { success: true };
 }
 
 /**

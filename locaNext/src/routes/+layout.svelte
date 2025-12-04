@@ -21,6 +21,7 @@
   import ChangePassword from "$lib/components/ChangePassword.svelte";
   import AboutModal from "$lib/components/AboutModal.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
+  import UpdateModal from "$lib/components/UpdateModal.svelte";
   import { logger } from "$lib/utils/logger.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
@@ -251,6 +252,9 @@
 
     <!-- Preferences Modal -->
     <PreferencesModal bind:open={showPreferences} />
+
+    <!-- Update Modal (auto-opens when update available) -->
+    <UpdateModal />
 
     <Content>
       <slot />
