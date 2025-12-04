@@ -321,36 +321,11 @@ jobs:
       - name: Test Server Launch with Embedded Python
         run: |
           Write-Host "=== Testing server can START with embedded Python ==="
-          Write-Host ""
-
-          # Set PYTHONPATH so server can find version.py
           $env:PYTHONPATH = Get-Location
-
-          # Try to import all server modules (catches import errors)
           Write-Host "Testing server imports..."
-          & "tools\python\python.exe" -c @"
-import sys
-sys.path.insert(0, '.')
-
-# Test version import
-from version import VERSION
-print(f'✓ version.py loaded: v{VERSION}')
-
-# Test server imports (this catches all import errors!)
-import server.main
-print('✓ server.main imports successfully')
-
-print('')
-print('✅ Server imports OK - all dependencies present!')
-"@
-
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "❌ Server import test FAILED - missing dependencies!"
-            exit 1
-          }
-
-          Write-Host ""
-          Write-Host "✅ Server launch test passed!"
+          & "tools\python\python.exe" -c "import sys; sys.path.insert(0,'.'); from version import VERSION; print(f'version OK: v{VERSION}'); import server.main; print('server.main OK')"
+          if ($LASTEXITCODE -ne 0) { Write-Error "Server import test FAILED!"; exit 1 }
+          Write-Host "Server launch test passed!"
         shell: pwsh
 
       # ============================================================
@@ -535,39 +510,16 @@ print('✅ Server imports OK - all dependencies present!')
       - name: Test Backend Can Start (Installed App)
         run: |
           Write-Host "=== Testing backend with INSTALLED embedded Python ==="
-          Write-Host ""
-
           $installDir = "$env:TEMP\LocaNext_Test"
           $pythonExe = "$installDir\tools\python\python.exe"
-
-          # Set PYTHONPATH to install dir
           $env:PYTHONPATH = $installDir
-
-          # Test imports work
           Write-Host "Testing server imports with installed Python..."
-          & $pythonExe -c @"
-import sys
-sys.path.insert(0, r'$installDir')
-
-# Test version import
-from version import VERSION
-print(f'✓ version.py loaded: v{VERSION}')
-
-# Test server imports
-import server.main
-print('✓ server.main imports successfully')
-
-print('')
-print('✅ Installed app imports OK!')
-"@
-
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "❌ Installed app import test FAILED!"
-            exit 1
-          }
-
-          Write-Host ""
-          Write-Host "✅ Backend import test passed!"
+          Push-Location $installDir
+          & $pythonExe -c "import sys; sys.path.insert(0,'.'); from version import VERSION; print(f'version OK: v{VERSION}'); import server.main; print('server.main OK')"
+          $exitCode = $LASTEXITCODE
+          Pop-Location
+          if ($exitCode -ne 0) { Write-Error "Installed app import test FAILED!"; exit 1 }
+          Write-Host "Backend import test passed!"
         shell: pwsh
 
       - name: Test Backend Actually Runs (Health Check)
