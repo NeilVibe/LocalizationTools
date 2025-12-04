@@ -13,9 +13,14 @@
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { BrowserWindow } from 'electron';
+import { fileURLToPath } from 'url';
+import { BrowserWindow, Menu } from 'electron';
 import { logger } from './logger.js';
 import { recordRepairAttempt } from './health-check.js';
+
+// ESM dirname equivalent (import.meta.dirname is undefined in Node 18)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let repairWindow = null;
 let isRepairRunning = false;
@@ -25,21 +30,25 @@ let isRepairRunning = false;
  */
 function createRepairWindow() {
   repairWindow = new BrowserWindow({
-    width: 500,
-    height: 450,
+    width: 550,
+    height: 520,
     resizable: false,
     minimizable: false,
     maximizable: false,
     closable: false,
     frame: true,
+    autoHideMenuBar: true,
     title: 'LocaNext - Repairing Installation',
     backgroundColor: '#1a1a2e',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(import.meta.dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js')
     }
   });
+
+  // Remove menu bar completely for cleaner look
+  repairWindow.setMenu(null);
 
   // Load repair HTML
   repairWindow.loadURL(`data:text/html,${encodeURIComponent(getRepairHtml())}`);
@@ -58,6 +67,7 @@ function getRepairHtml() {
   <title>LocaNext - Repairing</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; width: 100%; height: 100%; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -213,10 +223,14 @@ function getRepairHtml() {
 
 /**
  * Send progress update to repair window
+ * Uses executeJavaScript since inline HTML doesn't have preload/electronAPI
  */
 function sendProgress(step, status, progress, message) {
   if (repairWindow && !repairWindow.isDestroyed()) {
-    repairWindow.webContents.send('setup-progress', { step, status, progress, message });
+    // Escape message for JavaScript string
+    const safeMessage = (message || '').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
+    const js = `if(typeof updateStep === 'function') updateStep('${step}', '${status}', ${progress}, '${safeMessage}')`;
+    repairWindow.webContents.executeJavaScript(js).catch(() => {});
   }
   logger.info('Repair progress', { step, status, progress, message });
 }

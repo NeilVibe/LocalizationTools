@@ -13,8 +13,13 @@
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { BrowserWindow, ipcMain } from 'electron';
+import { fileURLToPath } from 'url';
+import { BrowserWindow, ipcMain, Menu } from 'electron';
 import { logger } from './logger.js';
+
+// ESM dirname equivalent (import.meta.dirname is undefined in Node 18)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Setup state
 let setupWindow = null;
@@ -48,24 +53,28 @@ function createFlagFile(appRoot) {
  */
 function createSetupWindow() {
   setupWindow = new BrowserWindow({
-    width: 500,
-    height: 400,
+    width: 550,
+    height: 480,
     resizable: false,
     minimizable: false,
     maximizable: false,
     closable: false, // Can't close during setup
     frame: true,
+    autoHideMenuBar: true,
     title: 'LocaNext - First Time Setup',
     backgroundColor: '#1a1a2e',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(import.meta.dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
+  // Remove menu bar completely for cleaner look
+  setupWindow.setMenu(null);
+
   // Load setup HTML
-  const setupHtml = path.join(import.meta.dirname, 'setup.html');
+  const setupHtml = path.join(__dirname, 'setup.html');
   if (fs.existsSync(setupHtml)) {
     setupWindow.loadFile(setupHtml);
   } else {
@@ -88,6 +97,7 @@ function getSetupHtml() {
   <title>LocaNext - First Time Setup</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; width: 100%; height: 100%; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -248,10 +258,14 @@ function getSetupHtml() {
 
 /**
  * Send progress update to setup window
+ * Uses executeJavaScript since inline HTML doesn't have preload/electronAPI
  */
 function sendProgress(step, status, progress, message) {
   if (setupWindow && !setupWindow.isDestroyed()) {
-    setupWindow.webContents.send('setup-progress', { step, status, progress, message });
+    // Escape message for JavaScript string
+    const safeMessage = (message || '').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
+    const js = `if(typeof updateStep === 'function') updateStep('${step}', '${status}', ${progress}, '${safeMessage}')`;
+    setupWindow.webContents.executeJavaScript(js).catch(() => {});
   }
   logger.info('Setup progress', { step, status, progress, message });
 }

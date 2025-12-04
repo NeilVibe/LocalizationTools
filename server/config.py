@@ -44,7 +44,9 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 # ============================================
 
 # Host and port
-SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
+# Default to 127.0.0.1 (localhost) to avoid Windows firewall popup
+# For network access, set SERVER_HOST=0.0.0.0 in environment
+SERVER_HOST = os.getenv("SERVER_HOST", "127.0.0.1")
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8888"))
 
 # Admin dashboard

@@ -150,9 +150,10 @@ function waitForServer(url, maxRetries = 30, retryDelay = 1000) {
 async function startBackendServer() {
   if (isDev) {
     // In development, assume server is running separately
-    logger.info('Development mode - expecting backend server at localhost:8888');
+    // Use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues on Windows
+    logger.info('Development mode - expecting backend server at 127.0.0.1:8888');
     try {
-      await waitForServer('http://localhost:8888', 5, 500);
+      await waitForServer('http://127.0.0.1:8888', 5, 500);
       return true;
     } catch {
       logger.warning('Backend server not running. Please start it manually: python3 server/main.py');
@@ -217,8 +218,9 @@ async function startBackendServer() {
   });
 
   // Wait for server to be ready
+  // Use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues on Windows
   try {
-    await waitForServer('http://localhost:8888', 30, 1000);
+    await waitForServer('http://127.0.0.1:8888', 30, 1000);
     return true;
   } catch (error) {
     logger.error('Backend server failed to start', { error: error.message });
