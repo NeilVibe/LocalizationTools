@@ -179,17 +179,17 @@ Priority 9.0: Auto-Update
 
 ```
 Priority 10.0: Auto-Update UI/UX
-├── 10.1 Update Notification Modal 📋
-│   ├── Custom Svelte modal (not system dialog)
+├── 10.1 Update Notification Modal ✅
+│   ├── Custom Svelte modal (UpdateModal.svelte)
 │   ├── Version comparison (current → new)
-│   ├── App icon and branding
-│   └── Smooth animations
+│   ├── Version badge with "New" tag
+│   └── Clean Carbon Design styling
 │
-├── 10.2 Download Progress UI 📋
+├── 10.2 Download Progress UI ✅
 │   ├── Progress bar with percentage
 │   ├── Download speed (MB/s)
 │   ├── Time remaining estimate
-│   └── Cancel button
+│   └── Bytes transferred / total
 │
 ├── 10.3 Patch Notes System 📋
 │   ├── Parse release notes from GitHub
@@ -197,27 +197,26 @@ Priority 10.0: Auto-Update UI/UX
 │   ├── Markdown rendering
 │   └── "Read full changelog" link
 │
-├── 10.4 Update Ready State 📋
-│   ├── Success animation
-│   ├── Summary of changes
+├── 10.4 Update Ready State ✅
+│   ├── Success notification
 │   ├── "Restart Now" / "Later" buttons
-│   └── Remember "Later" choice
+│   └── Prevents close during download
 │
-└── 10.5 IPC Communication 📋
+└── 10.5 IPC Communication ✅
     ├── update-available → Show modal
     ├── update-progress → Update progress bar
     ├── update-downloaded → Show ready state
     └── update-error → Show error message
 ```
 
-### Files to Create/Modify:
+### Files Created/Modified:
 
-| File | Change |
+| File | Status |
 |------|--------|
-| `locaNext/src/lib/UpdateModal.svelte` | NEW: Update notification UI |
-| `locaNext/src/routes/+layout.svelte` | Add UpdateModal component |
-| `locaNext/electron/main.js` | Enhanced IPC for updates |
-| `locaNext/electron/preload.js` | Expose update events |
+| `locaNext/src/lib/components/UpdateModal.svelte` | ✅ Created: Custom update UI |
+| `locaNext/src/routes/+layout.svelte` | ✅ Modified: Added UpdateModal |
+| `locaNext/electron/main.js` | ✅ Modified: IPC handlers + no system dialog |
+| `locaNext/electron/preload.js` | ✅ Modified: Expose electronUpdate API |
 
 ---
 
