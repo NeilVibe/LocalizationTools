@@ -14,6 +14,7 @@ Roadmap.md
 ├── ⚡ QUICK COMMANDS ──────────── Copy-paste commands
 │
 ├── 🔄 CURRENT: Priority 9.0 ───── Auto-Update System (IN PROGRESS)
+├── 📋 NEXT: Priority 10.0 ─────── Auto-Update UI/UX (PLANNED)
 ├── ✅ COMPLETE: Priority 8.0 ──── First-Run Setup
 ├── ✅ COMPLETE: Priority 6.0 ──── Structure Unification
 │
@@ -50,7 +51,8 @@ LocaNext Platform v2512041724
 └── 🎯 Priorities
     ├── ✅ P6: Structure ───────── Unified server/tools/
     ├── ✅ P8: First-Run ──────── Setup UI on launch
-    └── 🔄 P9: Auto-Update ────── IN PROGRESS
+    ├── 🔄 P9: Auto-Update ────── IN PROGRESS
+    └── 📋 P10: Update UI/UX ──── NEXT (Beautiful update experience)
 ```
 
 ---
@@ -139,6 +141,83 @@ Priority 9.0: Auto-Update
 | `version.py` | DateTime | 2512041724 | Release tags |
 | `version.py` | Semantic | 1.0.0 | Auto-updater |
 | `latest.yml` | Semantic | 1.0.0 | Update check |
+
+---
+
+## 📋 Priority 10.0: Auto-Update UI/UX (NEXT)
+
+**Goal:** Beautiful, informative update experience with progress tracking and patch notes.
+
+**Current (UGLY):** Basic system dialog with "Update Ready" message.
+**Target (ELEGANT):** Custom modal with progress, patch notes, and smooth UX.
+
+### UI Mockup:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  🎉 Update Available!                                    ✕  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  LocaNext v1.1.0 is ready to install                        │
+│  (You have v1.0.0)                                          │
+│                                                             │
+│  📋 What's New:                                             │
+│  • Auto-update system                                       │
+│  • Performance improvements                                 │
+│  • Bug fixes                                                │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ ████████████████░░░░░░░░░░  65%                      │  │
+│  │ 45 MB / 70 MB · 2.3 MB/s · ~10s remaining            │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                             │
+│  [Cancel]                              [Restart & Update]   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Checklist:
+
+```
+Priority 10.0: Auto-Update UI/UX
+├── 10.1 Update Notification Modal 📋
+│   ├── Custom Svelte modal (not system dialog)
+│   ├── Version comparison (current → new)
+│   ├── App icon and branding
+│   └── Smooth animations
+│
+├── 10.2 Download Progress UI 📋
+│   ├── Progress bar with percentage
+│   ├── Download speed (MB/s)
+│   ├── Time remaining estimate
+│   └── Cancel button
+│
+├── 10.3 Patch Notes System 📋
+│   ├── Parse release notes from GitHub
+│   ├── Show in update modal
+│   ├── Markdown rendering
+│   └── "Read full changelog" link
+│
+├── 10.4 Update Ready State 📋
+│   ├── Success animation
+│   ├── Summary of changes
+│   ├── "Restart Now" / "Later" buttons
+│   └── Remember "Later" choice
+│
+└── 10.5 IPC Communication 📋
+    ├── update-available → Show modal
+    ├── update-progress → Update progress bar
+    ├── update-downloaded → Show ready state
+    └── update-error → Show error message
+```
+
+### Files to Create/Modify:
+
+| File | Change |
+|------|--------|
+| `locaNext/src/lib/UpdateModal.svelte` | NEW: Update notification UI |
+| `locaNext/src/routes/+layout.svelte` | Add UpdateModal component |
+| `locaNext/electron/main.js` | Enhanced IPC for updates |
+| `locaNext/electron/preload.js` | Expose update events |
 
 ---
 
