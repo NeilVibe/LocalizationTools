@@ -28,6 +28,25 @@ process.on('unhandledRejection', (reason, promise) => {
   logger.critical('UNHANDLED REJECTION', { reason: String(reason), promise: String(promise) });
 });
 
+// ==================== INTERCEPT ERROR DIALOGS ====================
+// Capture error dialog content BEFORE it shows, log it, then show it
+const originalShowErrorBox = dialog.showErrorBox;
+dialog.showErrorBox = (title, content) => {
+  // LOG THE ERROR FIRST
+  logger.critical('ERROR DIALOG INTERCEPTED', { title, content });
+  // Then show it to user
+  originalShowErrorBox(title, content);
+};
+
+// Catch renderer/GPU crashes
+app.on('render-process-gone', (event, webContents, details) => {
+  logger.critical('RENDERER CRASHED', { reason: details.reason, exitCode: details.exitCode });
+});
+
+app.on('child-process-gone', (event, details) => {
+  logger.critical('CHILD PROCESS GONE', { type: details.type, reason: details.reason });
+});
+
 // Log startup immediately
 logger.info('================== APP STARTING ==================');
 logger.info('Process info', {
@@ -311,7 +330,7 @@ ipcMain.handle('quit-and-install', async () => {
   logger.info('Quitting and installing update...');
   autoUpdater.quitAndInstall();
   return { success: true };
-}
+});
 
 /**
  * IPC: Check for updates manually
