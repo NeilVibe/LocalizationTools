@@ -567,7 +567,133 @@ print('✅ Installed app imports OK!')
           }
 
           Write-Host ""
-          Write-Host "✅ Backend test passed with installed app!"
+          Write-Host "✅ Backend import test passed!"
+        shell: pwsh
+
+      - name: Test Backend Actually Runs (Health Check)
+        run: |
+          Write-Host "=== Testing backend ACTUALLY STARTS and responds ==="
+          Write-Host ""
+
+          $installDir = "$env:TEMP\LocaNext_Test"
+          $pythonExe = "$installDir\tools\python\python.exe"
+          $serverScript = "$installDir\server\main.py"
+
+          # Set environment
+          $env:PYTHONPATH = $installDir
+          $env:PYTHONUNBUFFERED = "1"
+
+          # Start backend server in background
+          Write-Host "Starting backend server..."
+          $process = Start-Process -FilePath $pythonExe -ArgumentList $serverScript `
+            -WorkingDirectory $installDir `
+            -PassThru -NoNewWindow `
+            -RedirectStandardOutput "$env:TEMP\server_out.log" `
+            -RedirectStandardError "$env:TEMP\server_err.log"
+
+          Write-Host "Server PID: $($process.Id)"
+
+          # Wait for server to start (max 30 seconds)
+          $maxRetries = 15
+          $retryCount = 0
+          $serverReady = $false
+
+          while ($retryCount -lt $maxRetries) {
+            Start-Sleep 2
+            $retryCount++
+            Write-Host "Checking server... ($retryCount/$maxRetries)"
+
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:8888/health" -UseBasicParsing -TimeoutSec 5
+              if ($response.StatusCode -eq 200) {
+                Write-Host "✓ Server responded: $($response.Content)"
+                $serverReady = $true
+                break
+              }
+            } catch {
+              Write-Host "  Not ready yet..."
+            }
+          }
+
+          # Stop the server
+          if (!$process.HasExited) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            Write-Host "Server stopped"
+          }
+
+          # Show logs if failed
+          if (!$serverReady) {
+            Write-Host ""
+            Write-Host "=== Server stdout ==="
+            if (Test-Path "$env:TEMP\server_out.log") {
+              Get-Content "$env:TEMP\server_out.log" -Tail 50
+            }
+            Write-Host ""
+            Write-Host "=== Server stderr ==="
+            if (Test-Path "$env:TEMP\server_err.log") {
+              Get-Content "$env:TEMP\server_err.log" -Tail 50
+            }
+            Write-Error "❌ Backend failed to start and respond to /health!"
+            exit 1
+          }
+
+          Write-Host ""
+          Write-Host "✅ Backend starts and responds to /health!"
+        shell: pwsh
+
+      - name: Test API Login Works
+        run: |
+          Write-Host "=== Testing API login endpoint ==="
+          Write-Host ""
+
+          $installDir = "$env:TEMP\LocaNext_Test"
+          $pythonExe = "$installDir\tools\python\python.exe"
+          $serverScript = "$installDir\server\main.py"
+
+          $env:PYTHONPATH = $installDir
+          $env:PYTHONUNBUFFERED = "1"
+
+          # Create admin user first
+          Write-Host "Creating admin user..."
+          & $pythonExe "$installDir\scripts\create_admin.py" 2>$null
+          Write-Host "✓ Admin user ready"
+
+          # Start server
+          Write-Host "Starting server..."
+          $process = Start-Process -FilePath $pythonExe -ArgumentList $serverScript `
+            -WorkingDirectory $installDir -PassThru -NoNewWindow `
+            -RedirectStandardOutput "$env:TEMP\server2_out.log" `
+            -RedirectStandardError "$env:TEMP\server2_err.log"
+
+          # Wait for server
+          Start-Sleep 10
+
+          # Try login
+          Write-Host "Testing login API..."
+          try {
+            $body = '{"username":"admin","password":"admin123"}'
+            $response = Invoke-WebRequest -Uri "http://localhost:8888/api/auth/login" `
+              -Method POST -Body $body -ContentType "application/json" `
+              -UseBasicParsing -TimeoutSec 10
+
+            if ($response.StatusCode -eq 200) {
+              Write-Host "✓ Login successful!"
+              $json = $response.Content | ConvertFrom-Json
+              if ($json.access_token) {
+                Write-Host "✓ Got access token"
+              }
+            }
+          } catch {
+            Write-Host "Login response: $($_.Exception.Response.StatusCode)"
+          }
+
+          # Stop server
+          if (!$process.HasExited) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+          }
+
+          Write-Host ""
+          Write-Host "✅ API login test complete!"
         shell: pwsh
 
       - name: Cleanup Test Installation
