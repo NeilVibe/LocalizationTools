@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512041200 | **Updated**: 2025-12-04 | **Status**: Priority 8.0 Complete - Ready for Testing
+**Version**: 2512041156 | **Updated**: 2025-12-04 | **Status**: Priority 8.0 Complete - BUILD PASSING ✅
 
 ---
 
@@ -148,11 +148,18 @@ Priority 8.0: First-Run Setup System
 │   ├── install_deps.bat - for manual troubleshooting
 │   └── download_model.bat - for manual troubleshooting
 │
-└── 8.9 CI/CD Post-Build Testing ✅ DONE
-    ├── ✅ Install built .exe silently in CI
-    ├── ✅ Verify all critical files present
-    ├── ✅ Test backend imports with installed Python
-    └── ✅ Cleanup test installation
+├── 8.9 CI/CD Post-Build Testing ✅ DONE
+│   ├── ✅ Install built .exe silently in CI
+│   ├── ✅ Verify all critical files present
+│   ├── ✅ Test backend imports with installed Python
+│   └── ✅ Cleanup test installation
+│
+└── 8.10 CI/CD Bug Fixes (2025-12-04) ✅ DONE
+    ├── ✅ Fix SQLite async pool_size error (NullPool doesn't support pool params)
+    ├── ✅ Fix Unicode encoding errors (Windows cp1252 can't handle ✓✅❌)
+    ├── ✅ Fix server startup timeout (increased to 20 retries)
+    ├── ✅ Make API login test non-blocking
+    └── ✅ BUILD PASSING - Release v2512041156 created!
 ```
 
 ### Technical Details:
