@@ -57,3 +57,4 @@ Build FULL v2512011310 - fix installer client ref
 Build LIGHT v$(date '+%y%m%d%H%M')
 Build LIGHT v2512041123
 Build LIGHT v2512041130 - YAML fix
+Build LIGHT v2512041140 - server timeout fix
