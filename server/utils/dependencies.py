@@ -70,19 +70,24 @@ def initialize_async_database():
         if config.DATABASE_TYPE == "postgresql":
             # PostgreSQL async URL (postgresql+asyncpg://)
             database_url = config.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+            # PostgreSQL supports connection pooling
+            _async_engine = create_async_engine(
+                database_url,
+                echo=config.DB_ECHO,
+                pool_size=20,              # Connection pool size
+                max_overflow=10,           # Max extra connections
+                pool_timeout=30,           # Timeout for getting connection
+                pool_recycle=3600,         # Recycle connections after 1 hour
+                pool_pre_ping=True         # Verify connections before using
+            )
         else:
             # SQLite async URL (sqlite+aiosqlite://)
             database_url = config.DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
-
-        _async_engine = create_async_engine(
-            database_url,
-            echo=config.DB_ECHO,
-            pool_size=20,              # Connection pool size
-            max_overflow=10,           # Max extra connections
-            pool_timeout=30,           # Timeout for getting connection
-            pool_recycle=3600,         # Recycle connections after 1 hour
-            pool_pre_ping=True         # Verify connections before using
-        )
+            # SQLite with aiosqlite uses NullPool - no pooling parameters supported
+            _async_engine = create_async_engine(
+                database_url,
+                echo=config.DB_ECHO
+            )
 
         _async_session_maker = async_sessionmaker(
             _async_engine,
