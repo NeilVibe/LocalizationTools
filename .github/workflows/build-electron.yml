@@ -227,25 +227,66 @@ jobs:
           Write-Host "✓ Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
         shell: pwsh
 
-      - name: Verify Python Embedded + tools
+      - name: Verify Python Embedded + ALL Dependencies
         run: |
           Write-Host "Verifying embedded Python setup..."
+          Write-Host ""
 
           # Check Python works
           & "tools\python\python.exe" --version
 
-          # Check ALL critical packages are installed (catches missing deps before build)
-          & "tools\python\python.exe" -c "import huggingface_hub; print(f'✓ huggingface_hub v{huggingface_hub.__version__}')"
+          Write-Host ""
+          Write-Host "=== Checking ALL critical packages (catches missing deps before build) ==="
+          Write-Host ""
+
+          # Core server dependencies
           & "tools\python\python.exe" -c "import fastapi; print(f'✓ fastapi v{fastapi.__version__}')"
           & "tools\python\python.exe" -c "import uvicorn; print(f'✓ uvicorn ready')"
+          & "tools\python\python.exe" -c "import socketio; print(f'✓ socketio (python-socketio) ready')"
+
+          # Database
           & "tools\python\python.exe" -c "import sqlalchemy; print(f'✓ sqlalchemy v{sqlalchemy.__version__}')"
-          & "tools\python\python.exe" -c "import jwt; print(f'✓ jwt (python-jose) ready')"
+          & "tools\python\python.exe" -c "import aiosqlite; print(f'✓ aiosqlite ready')"
+
+          # Authentication - CRITICAL: Both jwt packages needed!
+          & "tools\python\python.exe" -c "import jwt; print(f'✓ jwt (PyJWT) v{jwt.__version__}')"
+          & "tools\python\python.exe" -c "from jose import jwt as jose_jwt; print(f'✓ jose.jwt (python-jose) ready')"
           & "tools\python\python.exe" -c "import passlib; print(f'✓ passlib ready')"
           & "tools\python\python.exe" -c "import bcrypt; print(f'✓ bcrypt ready')"
+          & "tools\python\python.exe" -c "import dotenv; print(f'✓ python-dotenv ready')"
+
+          # Validation
           & "tools\python\python.exe" -c "import pydantic; print(f'✓ pydantic v{pydantic.__version__}')"
+          & "tools\python\python.exe" -c "import pydantic_settings; print(f'✓ pydantic-settings ready')"
+          & "tools\python\python.exe" -c "import email_validator; print(f'✓ email-validator ready')"
+
+          # Data processing
           & "tools\python\python.exe" -c "import pandas; print(f'✓ pandas v{pandas.__version__}')"
+          & "tools\python\python.exe" -c "import openpyxl; print(f'✓ openpyxl ready')"
+          & "tools\python\python.exe" -c "import xlrd; print(f'✓ xlrd ready')"
+
+          # HTTP
+          & "tools\python\python.exe" -c "import httpx; print(f'✓ httpx ready')"
+          & "tools\python\python.exe" -c "import requests; print(f'✓ requests ready')"
+
+          # Logging & utilities
           & "tools\python\python.exe" -c "import loguru; print(f'✓ loguru ready')"
-          & "tools\python\python.exe" -c "import socketio; print(f'✓ socketio ready')"
+          & "tools\python\python.exe" -c "import tqdm; print(f'✓ tqdm ready')"
+          & "tools\python\python.exe" -c "import yaml; print(f'✓ pyyaml ready')"
+
+          # Model downloading (for LIGHT build post-install)
+          & "tools\python\python.exe" -c "import huggingface_hub; print(f'✓ huggingface_hub v{huggingface_hub.__version__}')"
+
+          Write-Host ""
+          Write-Host "=== Checking required files ==="
+          Write-Host ""
+
+          # Check version.py exists (CRITICAL - was missing!)
+          if (!(Test-Path "version.py")) {
+            Write-Error "❌ version.py not found - CRITICAL!"
+            exit 1
+          }
+          Write-Host "✓ version.py exists"
 
           # Check tools exist
           if (!(Test-Path "tools\download_model.bat")) {
@@ -260,14 +301,56 @@ jobs:
             Write-Error "❌ install_deps.bat not found"
             exit 1
           }
+          if (!(Test-Path "tools\install_deps.py")) {
+            Write-Error "❌ install_deps.py not found"
+            exit 1
+          }
+          Write-Host "✓ All tool scripts exist"
 
           # Check server exists
           if (!(Test-Path "server\main.py")) {
             Write-Error "❌ server/main.py not found"
             exit 1
           }
+          Write-Host "✓ server/main.py exists"
 
-          Write-Host "✓ All tools and server ready"
+          Write-Host ""
+          Write-Host "✅ All embedded Python dependencies verified!"
+        shell: pwsh
+
+      - name: Test Server Launch with Embedded Python
+        run: |
+          Write-Host "=== Testing server can START with embedded Python ==="
+          Write-Host ""
+
+          # Set PYTHONPATH so server can find version.py
+          $env:PYTHONPATH = Get-Location
+
+          # Try to import all server modules (catches import errors)
+          Write-Host "Testing server imports..."
+          & "tools\python\python.exe" -c @"
+import sys
+sys.path.insert(0, '.')
+
+# Test version import
+from version import VERSION
+print(f'✓ version.py loaded: v{VERSION}')
+
+# Test server imports (this catches all import errors!)
+import server.main
+print('✓ server.main imports successfully')
+
+print('')
+print('✅ Server imports OK - all dependencies present!')
+"@
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ Server import test FAILED - missing dependencies!"
+            exit 1
+          }
+
+          Write-Host ""
+          Write-Host "✅ Server launch test passed!"
         shell: pwsh
 
       # ============================================================
@@ -367,6 +450,136 @@ jobs:
           path: installer_output/*.exe
           retention-days: 7
 
+      # ============================================================
+      # POST-BUILD TEST: Install and verify app works
+      # This catches issues that only appear after real installation
+      # ============================================================
+      - name: Test Install (Silent)
+        run: |
+          Write-Host "=== POST-BUILD TEST: Installing app silently ==="
+          Write-Host ""
+
+          # Find the installer
+          $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
+          if (!$installer) {
+            Write-Error "❌ No installer found"
+            exit 1
+          }
+
+          Write-Host "Installing: $($installer.Name)"
+
+          # Install silently to temp location
+          $installDir = "$env:TEMP\LocaNext_Test"
+
+          # Run installer silently
+          Start-Process -FilePath $installer.FullName `
+            -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$installDir" `
+            -Wait -NoNewWindow
+
+          Write-Host "✓ Installation completed"
+          Write-Host "  Install location: $installDir"
+        shell: pwsh
+
+      - name: Verify Installation Files
+        run: |
+          Write-Host "=== Verifying installed files ==="
+          Write-Host ""
+
+          $installDir = "$env:TEMP\LocaNext_Test"
+
+          # Check main executable
+          if (!(Test-Path "$installDir\LocaNext.exe")) {
+            Write-Error "❌ LocaNext.exe not found"
+            exit 1
+          }
+          Write-Host "✓ LocaNext.exe exists"
+
+          # Check server files
+          if (!(Test-Path "$installDir\server\main.py")) {
+            Write-Error "❌ server/main.py not found"
+            exit 1
+          }
+          Write-Host "✓ server/main.py exists"
+
+          # Check version.py
+          if (!(Test-Path "$installDir\version.py")) {
+            Write-Error "❌ version.py not found"
+            exit 1
+          }
+          Write-Host "✓ version.py exists"
+
+          # Check embedded Python
+          if (!(Test-Path "$installDir\tools\python\python.exe")) {
+            Write-Error "❌ Embedded Python not found"
+            exit 1
+          }
+          Write-Host "✓ Embedded Python exists"
+
+          # Check first-run setup script
+          if (!(Test-Path "$installDir\tools\install_deps.py")) {
+            Write-Error "❌ install_deps.py not found"
+            exit 1
+          }
+          Write-Host "✓ install_deps.py exists"
+
+          if (!(Test-Path "$installDir\tools\download_model.py")) {
+            Write-Error "❌ download_model.py not found"
+            exit 1
+          }
+          Write-Host "✓ download_model.py exists"
+
+          Write-Host ""
+          Write-Host "✅ All critical files present!"
+        shell: pwsh
+
+      - name: Test Backend Can Start (Installed App)
+        run: |
+          Write-Host "=== Testing backend with INSTALLED embedded Python ==="
+          Write-Host ""
+
+          $installDir = "$env:TEMP\LocaNext_Test"
+          $pythonExe = "$installDir\tools\python\python.exe"
+
+          # Set PYTHONPATH to install dir
+          $env:PYTHONPATH = $installDir
+
+          # Test imports work
+          Write-Host "Testing server imports with installed Python..."
+          & $pythonExe -c @"
+import sys
+sys.path.insert(0, r'$installDir')
+
+# Test version import
+from version import VERSION
+print(f'✓ version.py loaded: v{VERSION}')
+
+# Test server imports
+import server.main
+print('✓ server.main imports successfully')
+
+print('')
+print('✅ Installed app imports OK!')
+"@
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ Installed app import test FAILED!"
+            exit 1
+          }
+
+          Write-Host ""
+          Write-Host "✅ Backend test passed with installed app!"
+        shell: pwsh
+
+      - name: Cleanup Test Installation
+        if: always()
+        run: |
+          $installDir = "$env:TEMP\LocaNext_Test"
+          if (Test-Path $installDir) {
+            Remove-Item -Recurse -Force $installDir -ErrorAction SilentlyContinue
+            Write-Host "✓ Test installation cleaned up"
+          }
+        shell: pwsh
+
   # ============================================================
   # CREATE GITHUB RELEASE
   # ============================================================
@@ -397,38 +610,39 @@ jobs:
             ## LocaNext Desktop Application (LIGHT Build)
 
             **Version:** ${{ needs.check-build-trigger.outputs.version }}
-            **Build Type:** LIGHT (model downloaded during installation)
+            **Build Type:** LIGHT (deps + model installed on first launch)
 
             ### 📥 Downloads
 
             **Windows:**
             - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Light_Setup.exe` (~150-200MB)
-            - AI model (~447MB) downloads automatically during installation
 
             ### ✅ Requirements
 
-            - **Internet connection** - For post-install model download
-            - **~1GB disk space** - For app + model
+            - **Internet connection** - For first launch setup
+            - **~3GB disk space** - For app + deps + model
             - **NO Python required!** - Everything is bundled
 
             ### 🚀 What's Included
 
             - ✅ **XLSTransfer** - AI-powered Excel translation
             - ✅ **QuickSearch** - Multi-game dictionary (BDO, BDM, BDC, CD)
-            - ✅ **Standalone Model Downloader** - No Python needed!
-            - ⏳ **Korean BERT Model** - Downloaded automatically during installation
+            - ✅ **KR Similar** - Korean semantic similarity search
+            - ✅ **First-Run Setup** - Automatic deps + model install with progress UI
 
             ### 💻 Installation
 
             **Windows:**
-            1. Download the installer
-            2. Run the installer
-            3. **Wait for AI model download** (~5-10 min, automatic)
-            4. Launch LocaNext!
+            1. Download the installer (~150MB)
+            2. Run the installer (~1 min)
+            3. Launch LocaNext
+            4. **First-Time Setup wizard appears automatically:**
+               - Installing Python dependencies (~15-20 min)
+               - Downloading AI model (~5-10 min)
+               - All with visible progress bars!
+            5. Setup complete → App ready!
 
-            **If model download fails:**
-            - Run `tools\download_model.exe` manually from install folder
-            - Or copy `models\kr-sbert\` from another installation
+            **Subsequent launches:** Instant (no setup needed)
 
             ### 🔐 Default Credentials
 

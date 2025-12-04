@@ -72,8 +72,8 @@ DisableFinishedPage=no
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Messages]
-; Simple welcome message - everything is automatic!
-WelcomeLabel2=This will install [name/ver] on your computer.%n%nAfter installation, the AI model (~447MB) will be downloaded automatically.%n%nRequirements:%n- Internet connection%n- ~1GB free disk space%n%nEverything else is included - just click Install!
+; Simple welcome message - first-run setup handles deps/model
+WelcomeLabel2=This will install [name/ver] on your computer.%n%nOn first launch, the app will automatically:%n- Install Python dependencies (~2GB)%n- Download AI model (~447MB)%n%nRequirements:%n- Internet connection (for first launch)%n- ~3GB free disk space%n%nClick Install to continue!
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -124,7 +124,6 @@ Source: "..\installer\model_placeholder.txt"; DestDir: "{app}\models\kr-sbert"; 
 [Icons]
 ; Start Menu
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autoprograms}\{#MyAppName}\Download AI Model"; Filename: "{app}\tools\download_model.bat"
 Name: "{autoprograms}\{#MyAppName}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 
 ; Desktop icon (optional)
@@ -141,22 +140,16 @@ Filename: "{tmp}\vc_redist.x64.exe"; \
   Flags: waituntilterminated skipifdoesntexist
 
 ; ============================================================
-; STEP 2: Install Python dependencies (torch, transformers, etc.)
-; This downloads ~2GB - takes 10-20 minutes on good internet
+; NOTE: Python deps and AI model are installed on FIRST APP LAUNCH
+; not during installation. This provides:
+; - Better error handling and retry capability
+; - Visible progress to the user
+; - Faster initial install (~1 min instead of 20+ min)
+; See: electron/first-run-setup.js
 ; ============================================================
-Filename: "{app}\tools\install_deps.bat"; \
-  StatusMsg: "Installing Python dependencies (~2GB)... This may take 15-20 minutes."; \
-  Flags: waituntilterminated shellexec
 
 ; ============================================================
-; STEP 3: Download AI model (~447MB from Hugging Face)
-; ============================================================
-Filename: "{app}\tools\download_model.bat"; \
-  StatusMsg: "Downloading Korean BERT model (~447MB)... Please wait 5-10 minutes."; \
-  Flags: waituntilterminated shellexec
-
-; ============================================================
-; STEP 4: Launch app
+; STEP 2: Launch app (triggers first-run setup automatically)
 ; ============================================================
 Filename: "{app}\{#MyAppExeName}"; \
   Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; \

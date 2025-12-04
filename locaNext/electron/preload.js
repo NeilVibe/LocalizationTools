@@ -79,4 +79,22 @@ contextBridge.exposeInMainWorld('platform', {
   electron: process.versions.electron
 });
 
+// Expose setup progress API (for first-run setup window)
+contextBridge.exposeInMainWorld('electronAPI', {
+  /**
+   * Listen for setup progress events
+   * @param {function} callback - Receives { step, status, progress, message }
+   */
+  onSetupProgress: (callback) => {
+    ipcRenderer.on('setup-progress', (event, data) => callback(data));
+  },
+
+  /**
+   * Retry setup
+   * @param {object} paths - App paths
+   * @returns {Promise<boolean>}
+   */
+  retrySetup: (paths) => ipcRenderer.invoke('retry-setup', paths)
+});
+
 console.log('LocaNext preload script loaded');
