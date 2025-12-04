@@ -289,9 +289,19 @@ server/utils/client/
 - ✅ FastAPI backend (47+ endpoints)
 - ✅ SvelteKit frontend + Electron
 - ✅ Admin Dashboard (Overview, Users, Stats, Logs)
-- ✅ SQLite + async SQLAlchemy
+- ✅ Database: SQLite (local) / PostgreSQL (server) - config switch
 - ✅ WebSocket real-time progress
 - ✅ JWT authentication
+
+### Database Architecture
+```
+Current:  Local machine = SQLite (zero setup, just works)
+Future:   Central server = PostgreSQL (just change .env)
+
+# To switch later - edit .env:
+DATABASE_TYPE=postgresql
+DATABASE_URL=postgresql://user:pass@server-ip:5432/locanext
+```
 
 ### Apps
 - ✅ **XLSTransfer** - AI translation with Korean BERT (447MB model)
