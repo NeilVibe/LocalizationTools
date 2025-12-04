@@ -66,3 +66,4 @@ Build LIGHT v2512041724 - Fix publish never
 Build LIGHT v2512041724 - Fix latest.yml PYTHONPATH
 Build LIGHT v2512041847 - P10 Auto-Update UI/UX
 Build LIGHT v2512042150 - P11 Health Check & Auto-Repair
+Build LIGHT v2512042249 - Splash Screen + Logger Fix v2

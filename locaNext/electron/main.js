@@ -9,6 +9,7 @@ import { autoUpdaterConfig, isAutoUpdateEnabled } from './updater.js';
 import { isFirstRunNeeded, runFirstRunSetup, setupFirstRunIPC } from './first-run-setup.js';
 import { performHealthCheck, quickHealthCheck, wasRecentlyRepaired, HealthStatus } from './health-check.js';
 import { runRepair } from './repair.js';
+import { showSplash, updateSplash, closeSplash } from './splash.js';
 
 // Auto-updater (only in production builds)
 let autoUpdater = null;
@@ -378,6 +379,8 @@ function createWindow() {
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
     logger.success('Main window ready and visible');
+    closeSplash(); // Close splash screen
+    updateSplash('Ready!', 100); // In case splash is still visible
     mainWindow.show();
   });
 
@@ -561,16 +564,24 @@ app.whenReady().then(async () => {
     paths: paths
   });
 
+  // Show splash screen immediately (production only)
+  if (!isDev) {
+    showSplash();
+    updateSplash('Initializing...', 5);
+  }
+
   // Setup first-run IPC handlers
   setupFirstRunIPC();
 
   // Check if first-run setup is needed (production only)
   try {
+    updateSplash('Checking installation...', 10);
     const needsFirstRun = !isDev && isFirstRunNeeded(paths.projectRoot);
     logger.info('First-run check complete', { needsFirstRun, isDev, projectRoot: paths.projectRoot });
 
     if (needsFirstRun) {
       logger.info('First-run setup needed - starting setup wizard');
+      closeSplash(); // Close splash, first-run has its own UI
       const setupSuccess = await runFirstRunSetup(paths);
       if (!setupSuccess) {
         logger.error('First-run setup failed - cannot continue');
@@ -584,21 +595,27 @@ app.whenReady().then(async () => {
         return;
       }
       logger.success('First-run setup completed successfully');
+      // Re-show splash for remaining startup
+      showSplash();
+      updateSplash('Setup complete, starting app...', 50);
     }
   } catch (firstRunError) {
     logger.error('First-run setup crashed', { error: firstRunError.message, stack: firstRunError.stack });
+    closeSplash();
     dialog.showErrorBox(
       'Setup Error',
       `First-time setup encountered an error:\n\n${firstRunError.message}\n\n` +
       'Please report this issue.'
     );
     // Continue anyway - let user see what happens
+    showSplash();
   }
 
   // ==================== HEALTH CHECK & AUTO-REPAIR ====================
   // Run on EVERY launch (not just first-run) to detect and fix issues
   if (!isDev) {
     try {
+      updateSplash('Running health check...', 20);
       logger.info('Running startup health check');
 
       // Full health check (includes Python import verification)
@@ -607,6 +624,7 @@ app.whenReady().then(async () => {
 
       if (healthResult.status === HealthStatus.CRITICAL_FAILURE) {
         logger.error('Critical failure - essential components missing');
+        closeSplash();
         dialog.showErrorBox(
           'Critical Error',
           'Essential components are missing.\n\n' +
@@ -622,6 +640,7 @@ app.whenReady().then(async () => {
         // Check if we recently tried to repair (prevent loops)
         if (wasRecentlyRepaired(paths.projectRoot)) {
           logger.warning('Recently attempted repair - skipping to prevent loop');
+          closeSplash();
           dialog.showMessageBox({
             type: 'warning',
             title: 'Repair Needed',
@@ -630,8 +649,12 @@ app.whenReady().then(async () => {
                     'You can manually repair via Settings > Repair Installation.',
             buttons: ['Continue Anyway']
           });
+          showSplash();
+          updateSplash('Continuing with warnings...', 40);
         } else {
           // Run auto-repair
+          updateSplash('Repairing components...', 30);
+          closeSplash(); // Close splash, repair has its own UI
           logger.info('Starting auto-repair');
           const repairSuccess = await runRepair(paths, healthResult.repairNeeded);
 
@@ -653,18 +676,26 @@ app.whenReady().then(async () => {
           } else {
             logger.success('Auto-repair completed successfully');
           }
+          // Re-show splash for remaining startup
+          showSplash();
+          updateSplash('Repair complete...', 50);
         }
+      } else {
+        updateSplash('System healthy', 40);
       }
     } catch (healthError) {
       logger.error('Health check failed', { error: healthError.message });
       // Continue anyway - don't block app startup
+      updateSplash('Continuing...', 40);
     }
   }
 
   // Start backend server
+  updateSplash('Starting backend server...', 50);
   const serverReady = await startBackendServer();
   if (!serverReady && !isDev) {
     logger.error('Failed to start backend server - app may not function correctly');
+    closeSplash();
     // Show error dialog to user
     dialog.showErrorBox(
       'Backend Server Error',
@@ -673,6 +704,7 @@ app.whenReady().then(async () => {
     );
   }
 
+  updateSplash('Loading interface...', 80);
   createWindow();
 
   // Setup auto-updater (checks your internal server for updates)
