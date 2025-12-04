@@ -63,3 +63,4 @@ Build LIGHT v2512041145 - Unicode fix
 Build LIGHT v2512041156 - non-blocking test
 Build LIGHT v2512041724 - Auto-Update System
 Build LIGHT v2512041724 - Fix publish never
+Build LIGHT v2512041724 - Fix latest.yml PYTHONPATH
