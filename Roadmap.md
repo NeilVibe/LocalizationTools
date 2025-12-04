@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512041847 | **Updated**: 2025-12-04 | **Status**: Priority 11.0 IN PROGRESS | Repair & Health Check System
+**Version**: 2512050104 | **Updated**: 2025-12-05 | **Status**: Priority 11.0 IN PROGRESS | Repair & Health Check System
 
 ---
 
@@ -286,10 +286,24 @@ Priority 11.0: Repair & Health Check
 │   ├── Clear error messages per tool
 │   └── "Tool unavailable - click to repair"
 │
-└── 11.6 Logger Fix ✅ DONE
-    ├── ✅ Fixed ASAR path issue in logger.js
-    ├── ✅ Logs now write to install_dir/logs/ in production
-    └── ✅ Robust error handling (won't crash on write failure)
+├── 11.6 Logger Fix ✅ DONE
+│   ├── ✅ Fixed ASAR path issue in logger.js
+│   ├── ✅ Logs now write to install_dir/logs/ in production
+│   └── ✅ Robust error handling (won't crash on write failure)
+│
+├── 11.7 Remote Debugging Breakthrough ✅ DONE
+│   ├── ✅ Bulletproof logger using process.execPath (Node 18 compatible)
+│   ├── ✅ Error dialog interceptor (captures MessageBox content before display)
+│   ├── ✅ WSL can read Windows logs via /mnt/c/ path
+│   ├── ✅ Fixed import.meta.dirname → fileURLToPath(import.meta.url)
+│   └── ✅ See: docs/WINDOWS_TROUBLESHOOTING.md
+│
+└── 11.8 UI Polish & Firewall Fix ✅ DONE (v2512050104)
+    ├── ✅ Splash screen: overflow hidden (no floating scrollbar)
+    ├── ✅ Setup/Repair windows: no menu bar (setMenu(null))
+    ├── ✅ Setup/Repair windows: larger size (550x480/520)
+    ├── ✅ Server: bind to 127.0.0.1 (not 0.0.0.0 - avoids firewall popup)
+    └── ✅ Progress UI: uses executeJavaScript for inline HTML
 ```
 
 ### Files Created/Modified:

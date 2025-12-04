@@ -24,13 +24,14 @@ let splashWindow = null;
  */
 export function showSplash() {
   splashWindow = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 420,
+    height: 320,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
+    hasShadow: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true
@@ -91,6 +92,11 @@ function getSplashHTML() {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+    }
+    html, body {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
     }
     body {
       font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
