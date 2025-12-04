@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512041847 | **Updated**: 2025-12-04 | **Status**: Priority 10.0 COMPLETE ✅ | Auto-Update UI/UX Done!
+**Version**: 2512041847 | **Updated**: 2025-12-04 | **Status**: Priority 11.0 IN PROGRESS | Repair & Health Check System
 
 ---
 
@@ -14,7 +14,8 @@ Roadmap.md
 ├── ⚡ QUICK COMMANDS ──────────── Copy-paste commands
 │
 ├── ✅ COMPLETE: Priority 9.0 ──── Auto-Update System (DONE!)
-├── ✅ COMPLETE: Priority 10.0 ──── Auto-Update UI/UX (DONE!)
+├── 📋 BACKLOG: Priority 10.3 ──── Patch Notes System (deferred)
+├── 🔄 CURRENT: Priority 11.0 ──── Repair & Health Check System (IN PROGRESS)
 ├── ✅ COMPLETE: Priority 8.0 ──── First-Run Setup
 ├── ✅ COMPLETE: Priority 6.0 ──── Structure Unification
 │
@@ -52,7 +53,9 @@ LocaNext Platform v2512041847
     ├── ✅ P6: Structure ───────── Unified server/tools/
     ├── ✅ P8: First-Run ──────── Setup UI on launch
     ├── ✅ P9: Auto-Update ────── COMPLETE! (latest.yml + GitHub)
-    └── ✅ P10: Update UI/UX ──── COMPLETE! (Custom UpdateModal)
+    ├── ✅ P10.1-2,4-5: UI/UX ─── Modal, Progress, IPC done
+    ├── 📋 P10.3: Patch Notes ─── BACKLOG (deferred)
+    └── 🔄 P11: Repair System ─── IN PROGRESS (health check + auto-repair)
 ```
 
 ---
@@ -144,7 +147,7 @@ Priority 9.0: Auto-Update
 
 ---
 
-## ✅ Priority 10.0: Auto-Update UI/UX (COMPLETE)
+## 🔄 Priority 10.0: Auto-Update UI/UX (10.3 IN PROGRESS)
 
 **Goal:** Beautiful, informative update experience with progress tracking and patch notes.
 
@@ -191,11 +194,11 @@ Priority 10.0: Auto-Update UI/UX
 │   ├── Time remaining estimate
 │   └── Bytes transferred / total
 │
-├── 10.3 Patch Notes System 📋
-│   ├── Parse release notes from GitHub
-│   ├── Show in update modal
-│   ├── Markdown rendering
-│   └── "Read full changelog" link
+├── 10.3 Patch Notes System 🔄 IN PROGRESS
+│   ├── 📋 Fetch release notes from GitHub API
+│   ├── 📋 Display in UpdateModal
+│   ├── 📋 Markdown rendering
+│   └── 📋 "Read full changelog" link
 │
 ├── 10.4 Update Ready State ✅
 │   ├── Success notification
@@ -217,6 +220,106 @@ Priority 10.0: Auto-Update UI/UX
 | `locaNext/src/routes/+layout.svelte` | ✅ Modified: Added UpdateModal |
 | `locaNext/electron/main.js` | ✅ Modified: IPC handlers + no system dialog |
 | `locaNext/electron/preload.js` | ✅ Modified: Expose electronUpdate API |
+
+---
+
+## 🔄 Priority 11.0: Repair & Health Check System (IN PROGRESS)
+
+**Problem:** If Python deps get corrupted/deleted after first-run, app crashes with no recovery option.
+
+**Goal:** Robust self-healing system that detects and repairs broken installations.
+
+### Current Gap:
+
+```
+CURRENT (Fragile):
+┌─────────────────┐     ┌─────────────────┐
+│ First Launch    │────►│ flag exists?    │
+│                 │     │ YES → skip setup│
+└─────────────────┘     │ NO → run setup  │
+                        └─────────────────┘
+                        ⚠️ If deps break later = CRASH!
+
+PROPOSED (Robust):
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ Every Launch    │────►│ Health Check    │────►│ All OK?         │
+│                 │     │ (quick verify)  │     │ YES → continue  │
+└─────────────────┘     └─────────────────┘     │ NO → auto-repair│
+                                                └─────────────────┘
+```
+
+### Checklist:
+
+```
+Priority 11.0: Repair & Health Check
+│
+├── 11.1 Startup Health Check ✅ DONE
+│   ├── ✅ health-check.js module created
+│   ├── ✅ Check critical Python imports (fastapi, torch, etc.)
+│   ├── ✅ Check model files exist
+│   ├── ✅ Check server files exist
+│   └── ✅ Run on EVERY launch (integrated in main.js)
+│
+├── 11.2 Auto-Repair System ✅ DONE
+│   ├── ✅ repair.js module created
+│   ├── ✅ Detect which component is broken
+│   ├── ✅ Show "Repairing..." UI (custom window)
+│   ├── ✅ Re-run install_deps.py if packages missing
+│   ├── ✅ Re-download model if model missing
+│   └── ✅ Record repair attempts (prevent loops)
+│
+├── 11.3 Manual Repair Option ✅ DONE (backend)
+│   ├── ✅ IPC handlers: run-health-check, run-repair
+│   ├── ✅ Preload API: electronHealth.runRepair()
+│   ├── 📋 Frontend Settings UI (pending)
+│   └── 📋 Help menu integration (pending)
+│
+├── 11.4 Health Status in UI 📋
+│   ├── Settings page shows component status
+│   ├── Green/Red indicators for each component
+│   ├── "Last verified: 2 min ago"
+│   └── Backend health endpoint expansion
+│
+├── 11.5 Graceful Degradation 📋
+│   ├── If Korean BERT missing → disable KR Similar only
+│   ├── If one tool broken → others still work
+│   ├── Clear error messages per tool
+│   └── "Tool unavailable - click to repair"
+│
+└── 11.6 Logger Fix ✅ DONE
+    ├── ✅ Fixed ASAR path issue in logger.js
+    ├── ✅ Logs now write to install_dir/logs/ in production
+    └── ✅ Robust error handling (won't crash on write failure)
+```
+
+### Files Created/Modified:
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `electron/health-check.js` | ✅ Created | Startup verification, Python import checks |
+| `electron/repair.js` | ✅ Created | Auto-repair logic with UI window |
+| `electron/logger.js` | ✅ Fixed | ASAR path issue, robust logging |
+| `electron/main.js` | ✅ Modified | Health check + repair integration |
+| `electron/preload.js` | ✅ Modified | electronHealth API exposed |
+| `src/lib/components/RepairModal.svelte` | 📋 Pending | Frontend repair UI |
+| `src/routes/settings/+page.svelte` | 📋 Pending | Add repair button |
+
+### User Experience:
+
+**Scenario 1: Package deleted**
+```
+Launch → Health check fails → "Repairing..." UI → Fixed! → App loads
+```
+
+**Scenario 2: User wants manual repair**
+```
+Settings → "Repair Installation" → Confirm → Full repair runs → Done
+```
+
+**Scenario 3: One tool broken**
+```
+Launch → KR Similar broken → Other tools work → KR Similar shows "Repair needed"
+```
 
 ---
 

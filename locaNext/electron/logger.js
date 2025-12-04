@@ -1,6 +1,10 @@
 /**
  * Electron App Logger
  * Writes logs to file for monitoring and debugging
+ *
+ * FIXED: Handles ASAR packaging correctly
+ * - In dev: logs go to locaNext/logs/
+ * - In production: logs go to install_dir/logs/ (outside ASAR)
  */
 
 import fs from 'fs';
@@ -10,15 +14,40 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Get project root (2 levels up from electron/)
-const projectRoot = path.join(__dirname, '../..');
-const logsDir = path.join(projectRoot, 'logs');
+/**
+ * Get the correct logs directory based on environment
+ * - Development: project_root/logs/
+ * - Production: install_dir/logs/ (NOT inside app.asar!)
+ */
+function getLogsDir() {
+  // Check if we're running inside an ASAR archive (packaged app)
+  const isPackaged = __dirname.includes('app.asar');
+
+  if (isPackaged) {
+    // Production: use process.resourcesPath to get outside ASAR
+    // process.resourcesPath = C:\...\LocaNext\resources
+    // We want: C:\...\LocaNext\logs
+    const appRoot = path.join(process.resourcesPath, '..');
+    return path.join(appRoot, 'logs');
+  } else {
+    // Development: 2 levels up from electron/
+    const projectRoot = path.join(__dirname, '../..');
+    return path.join(projectRoot, 'logs');
+  }
+}
+
+const logsDir = getLogsDir();
 const locaNextLogFile = path.join(logsDir, 'locanext_app.log');
 const locaNextErrorFile = path.join(logsDir, 'locanext_error.log');
 
-// Ensure logs directory exists
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
+// Ensure logs directory exists (with error handling for production)
+try {
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+} catch (err) {
+  // If we can't create logs dir, log to console only
+  console.error('Failed to create logs directory:', logsDir, err.message);
 }
 
 /**
@@ -31,6 +60,7 @@ function getTimestamp() {
 
 /**
  * Write log entry to file
+ * Robust: won't crash if file write fails
  */
 function writeLog(level, message, data = null) {
   const timestamp = getTimestamp();
@@ -38,7 +68,11 @@ function writeLog(level, message, data = null) {
 
   if (data) {
     if (typeof data === 'object') {
-      logEntry += ` | ${JSON.stringify(data)}`;
+      try {
+        logEntry += ` | ${JSON.stringify(data)}`;
+      } catch {
+        logEntry += ` | [object - could not stringify]`;
+      }
     } else {
       logEntry += ` | ${data}`;
     }
@@ -46,17 +80,20 @@ function writeLog(level, message, data = null) {
 
   logEntry += '\n';
 
-  // Write to main log file
-  fs.appendFileSync(locaNextLogFile, logEntry);
+  // Always log to console in production too (helps with debugging)
+  console.log(logEntry.trim());
 
-  // Also write errors to separate error log
-  if (level === 'ERROR' || level === 'CRITICAL') {
-    fs.appendFileSync(locaNextErrorFile, logEntry);
-  }
+  // Try to write to file, but don't crash if it fails
+  try {
+    fs.appendFileSync(locaNextLogFile, logEntry);
 
-  // Also log to console for development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(logEntry.trim());
+    // Also write errors to separate error log
+    if (level === 'ERROR' || level === 'CRITICAL') {
+      fs.appendFileSync(locaNextErrorFile, logEntry);
+    }
+  } catch (err) {
+    // File write failed - already logged to console above
+    console.error('Failed to write to log file:', err.message);
   }
 }
 

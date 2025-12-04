@@ -158,4 +158,26 @@ contextBridge.exposeInMainWorld('electronUpdate', {
   }
 });
 
+// Expose repair/health API
+contextBridge.exposeInMainWorld('electronHealth', {
+  /**
+   * Run health check
+   * @returns {Promise<{success, result, error}>}
+   */
+  runHealthCheck: () => ipcRenderer.invoke('run-health-check'),
+
+  /**
+   * Run repair
+   * @param {string[]} components - ['deps', 'model'] or subset
+   * @returns {Promise<{success, error}>}
+   */
+  runRepair: (components) => ipcRenderer.invoke('run-repair', components),
+
+  /**
+   * Get app info (version, paths, etc.)
+   * @returns {Promise<object>}
+   */
+  getAppInfo: () => ipcRenderer.invoke('get-app-info')
+});
+
 console.log('LocaNext preload script loaded');

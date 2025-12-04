@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512031430 (2025-12-03)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅
+**Version:** 2512041930 (2025-12-04)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅
 
 ---
 
@@ -15,7 +15,7 @@
 - 📊 **Central monitoring**: Optional telemetry to server
 - 👔 **Professional**: CEO/management-ready quality
 
-### Current Status (2025-12-03):
+### Current Status (2025-12-04):
 - ✅ **Backend**: 100% Complete (47+ endpoints, WebSocket, async)
 - ✅ **LocaNext Desktop App**: 100% Complete (Electron + Svelte)
 - ✅ **XLSTransfer (App #1)**: 100% Complete (10 functions, exact replica)
@@ -26,6 +26,7 @@
 - ✅ **Tests**: 885 passed (TRUE simulation - no mocks!)
 - ✅ **Structure**: Unified - all tools under `server/tools/` (Priority 6.0 complete)
 - ✅ **Admin Dashboard**: 100% Complete (Overview, Users, Stats, Logs)
+- 🔄 **Health Check**: Priority 11.0 - Auto-repair system (core done, frontend pending)
 
 ---
 
@@ -76,6 +77,7 @@
 | **[BUILD_TROUBLESHOOTING.md](docs/BUILD_TROUBLESHOOTING.md)** | Debugging failed builds, GitHub Actions |
 | **[BUILD_CHECKLIST.md](docs/BUILD_CHECKLIST.md)** | Pre-release checklist |
 | **[PACKAGING_GUIDE.md](docs/PACKAGING_GUIDE.md)** | Electron packaging details |
+| **[WINDOWS_TROUBLESHOOT.md](docs/WINDOWS_TROUBLESHOOT.md)** | **Debug Windows builds from WSL, diagnostic commands** |
 
 ### 🌐 Deployment & Operations
 
@@ -242,12 +244,19 @@ bash scripts/clean_logs.sh
 ### Current Phase:
 - **Phase 3:** Security Hardening ✅ COMPLETE (7/11 items, 86 tests)
 - **Phase 4:** Admin Dashboard ✅ COMPLETE
-- **All Roadmap Items Complete!** See Roadmap.md for history
+- **Priority 11.0:** Health Check & Auto-Repair 🔄 IN PROGRESS
+  - ✅ Core: health-check.js, repair.js, main.js integration
+  - 📋 Pending: Frontend Settings UI for manual repair
 
 ### Questions to Ask User:
-- "Want to implement optional security items (TLS, Rate Limiting)?"
+- "Ready to build and test the new version with health check?"
+- "Want to add the Settings UI for manual repair?"
 - "Should we add another tool to LocaNext?"
-- "Any improvements or features you'd like to add?"
+
+### Windows Build Debugging:
+- See **[WINDOWS_TROUBLESHOOT.md](docs/WINDOWS_TROUBLESHOOT.md)** for WSL debugging commands
+- User can provide Windows install path (e.g., `C:\Users\...\LocaNext`)
+- Access via WSL: `/mnt/c/Users/.../LocaNext`
 
 ---
 
@@ -265,18 +274,19 @@ bash scripts/clean_logs.sh
 - **API Simulation Tests:** 168 (Tools 26 + Admin 15 + Errors 25 + WebSocket 10 + Full System 72)
 - **Security Tests:** 86 (IP filter, CORS, JWT, audit logging)
 - **Tools:** 3 (XLSTransfer, QuickSearch, KR Similar) - all under `server/tools/`
-- **Documentation Files:** 28 active + 9 archived
+- **Documentation Files:** 29 active + 9 archived (added WINDOWS_TROUBLESHOOT.md)
 
 ---
 
 ## 🎉 YOU'RE READY!
 
-This project is **96% complete**, **clean**, **organized**, and **production-ready**.
+This project is **97% complete**, **clean**, **organized**, and **production-ready**.
 
 **Everything is documented. Navigate using the tree above.**
 
 ---
 
-*Last updated: 2025-12-03 by Claude*
+*Last updated: 2025-12-04 by Claude*
 *Tests: 885 total | Structure unified | Frontend: 164 | API Sim: 168 | Security: 86*
+*Priority 11.0: Health Check + Auto-Repair system implemented*
 *MASTER NAVIGATION HUB - All tools unified under server/tools/*

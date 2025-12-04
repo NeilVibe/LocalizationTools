@@ -7,6 +7,8 @@ import http from 'http';
 import { logger } from './logger.js';
 import { autoUpdaterConfig, isAutoUpdateEnabled } from './updater.js';
 import { isFirstRunNeeded, runFirstRunSetup, setupFirstRunIPC } from './first-run-setup.js';
+import { performHealthCheck, quickHealthCheck, wasRecentlyRepaired, HealthStatus } from './health-check.js';
+import { runRepair } from './repair.js';
 
 // Auto-updater (only in production builds)
 let autoUpdater = null;
@@ -299,6 +301,50 @@ ipcMain.handle('check-for-updates', async () => {
   }
 });
 
+// ==================== REPAIR IPC HANDLERS ====================
+
+/**
+ * IPC: Run health check
+ */
+ipcMain.handle('run-health-check', async () => {
+  try {
+    const result = await performHealthCheck(paths);
+    return { success: true, result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * IPC: Run manual repair
+ */
+ipcMain.handle('run-repair', async (event, components = ['deps', 'model']) => {
+  try {
+    logger.info('Manual repair requested', { components });
+    const success = await runRepair(paths, components);
+    return { success };
+  } catch (error) {
+    logger.error('Manual repair failed', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * IPC: Get app paths for frontend
+ */
+ipcMain.handle('get-app-info', async () => {
+  return {
+    version: app.getVersion(),
+    paths: {
+      projectRoot: paths.projectRoot,
+      modelsPath: paths.modelsPath,
+      serverPath: paths.serverPath
+    },
+    isPackaged: app.isPackaged,
+    platform: process.platform
+  };
+});
+
 function createWindow() {
   logger.info('Creating main window', { isDev, width: 1400, height: 900 });
 
@@ -519,21 +565,100 @@ app.whenReady().then(async () => {
   setupFirstRunIPC();
 
   // Check if first-run setup is needed (production only)
-  if (!isDev && isFirstRunNeeded(paths.projectRoot)) {
-    logger.info('First-run setup needed - starting setup wizard');
-    const setupSuccess = await runFirstRunSetup(paths);
-    if (!setupSuccess) {
-      logger.error('First-run setup failed - cannot continue');
-      dialog.showErrorBox(
-        'Setup Failed',
-        'First-time setup could not be completed.\n\n' +
-        'Please check your internet connection and try again.\n\n' +
-        'If the problem persists, contact support.'
-      );
-      app.quit();
-      return;
+  try {
+    const needsFirstRun = !isDev && isFirstRunNeeded(paths.projectRoot);
+    logger.info('First-run check complete', { needsFirstRun, isDev, projectRoot: paths.projectRoot });
+
+    if (needsFirstRun) {
+      logger.info('First-run setup needed - starting setup wizard');
+      const setupSuccess = await runFirstRunSetup(paths);
+      if (!setupSuccess) {
+        logger.error('First-run setup failed - cannot continue');
+        dialog.showErrorBox(
+          'Setup Failed',
+          'First-time setup could not be completed.\n\n' +
+          'Please check your internet connection and try again.\n\n' +
+          'If the problem persists, contact support.'
+        );
+        app.quit();
+        return;
+      }
+      logger.success('First-run setup completed successfully');
     }
-    logger.success('First-run setup completed successfully');
+  } catch (firstRunError) {
+    logger.error('First-run setup crashed', { error: firstRunError.message, stack: firstRunError.stack });
+    dialog.showErrorBox(
+      'Setup Error',
+      `First-time setup encountered an error:\n\n${firstRunError.message}\n\n` +
+      'Please report this issue.'
+    );
+    // Continue anyway - let user see what happens
+  }
+
+  // ==================== HEALTH CHECK & AUTO-REPAIR ====================
+  // Run on EVERY launch (not just first-run) to detect and fix issues
+  if (!isDev) {
+    try {
+      logger.info('Running startup health check');
+
+      // Full health check (includes Python import verification)
+      const healthResult = await performHealthCheck(paths);
+      logger.info('Health check result', { status: healthResult.status, repairNeeded: healthResult.repairNeeded });
+
+      if (healthResult.status === HealthStatus.CRITICAL_FAILURE) {
+        logger.error('Critical failure - essential components missing');
+        dialog.showErrorBox(
+          'Critical Error',
+          'Essential components are missing.\n\n' +
+          'Please reinstall LocaNext from the original installer.'
+        );
+        app.quit();
+        return;
+      }
+
+      if (healthResult.status === HealthStatus.NEEDS_REPAIR) {
+        logger.info('Repair needed', { components: healthResult.repairNeeded });
+
+        // Check if we recently tried to repair (prevent loops)
+        if (wasRecentlyRepaired(paths.projectRoot)) {
+          logger.warning('Recently attempted repair - skipping to prevent loop');
+          dialog.showMessageBox({
+            type: 'warning',
+            title: 'Repair Needed',
+            message: 'Some components are still missing after a recent repair attempt.\n\n' +
+                    'The app will try to continue, but some features may not work.\n\n' +
+                    'You can manually repair via Settings > Repair Installation.',
+            buttons: ['Continue Anyway']
+          });
+        } else {
+          // Run auto-repair
+          logger.info('Starting auto-repair');
+          const repairSuccess = await runRepair(paths, healthResult.repairNeeded);
+
+          if (!repairSuccess) {
+            logger.error('Auto-repair failed');
+            const response = await dialog.showMessageBox({
+              type: 'warning',
+              title: 'Repair Incomplete',
+              message: 'Some components could not be repaired.\n\n' +
+                      'The app will try to continue, but some features may not work.',
+              buttons: ['Continue Anyway', 'Quit'],
+              defaultId: 0
+            });
+
+            if (response.response === 1) {
+              app.quit();
+              return;
+            }
+          } else {
+            logger.success('Auto-repair completed successfully');
+          }
+        }
+      }
+    } catch (healthError) {
+      logger.error('Health check failed', { error: healthError.message });
+      // Continue anyway - don't block app startup
+    }
   }
 
   // Start backend server
