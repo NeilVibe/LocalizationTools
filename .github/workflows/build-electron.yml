@@ -470,7 +470,12 @@ jobs:
           Write-Host "SHA512: $hash"
 
           # Get semantic version from version.py
-          $semanticVersion = & "tools\python\python.exe" -c "from version import SEMANTIC_VERSION; print(SEMANTIC_VERSION)"
+          $env:PYTHONPATH = Get-Location
+          $semanticVersion = & "tools\python\python.exe" -c "import sys; sys.path.insert(0,'.'); from version import SEMANTIC_VERSION; print(SEMANTIC_VERSION)"
+          if (!$semanticVersion -or $semanticVersion -eq "") {
+            $semanticVersion = "1.0.0"  # Fallback
+            Write-Host "Using fallback version: $semanticVersion"
+          }
           Write-Host "Semantic Version: $semanticVersion"
 
           # Generate latest.yml
