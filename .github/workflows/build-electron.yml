@@ -36,8 +36,8 @@ jobs:
           if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)"; then
             echo "should_build=true" >> $GITHUB_OUTPUT
 
-            # Extract version
-            VERSION=$(echo "$TRIGGER" | grep -oE 'v[0-9]+' | sed 's/v//')
+            # Extract version (first match only - ignore "v2" in comments like "Fix v2")
+            VERSION=$(echo "$TRIGGER" | grep -oE 'v[0-9]{10}' | head -1 | sed 's/v//')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "[OK] Build triggered for version: $VERSION"
           else
