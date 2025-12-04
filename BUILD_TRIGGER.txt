@@ -60,3 +60,4 @@ Build LIGHT v2512041130 - YAML fix
 Build LIGHT v2512041140 - server timeout fix
 Build LIGHT v2512041138 - SQLite async fix
 Build LIGHT v2512041145 - Unicode fix
+Build LIGHT v2512041156 - non-blocking test
