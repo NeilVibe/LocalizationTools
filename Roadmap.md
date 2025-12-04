@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512041156 | **Updated**: 2025-12-04 | **Status**: Priority 8.0 Complete - BUILD PASSING ✅
+**Version**: 2512041724 | **Updated**: 2025-12-04 | **Status**: Priority 9.0 - AUTO-UPDATE BUILD
 
 ---
 
@@ -25,13 +25,20 @@ LocaNext Platform
 │   ├── ✅ LIGHT Build ────────── First-run setup (deps/model on launch)
 │   └── ✅ Version Unified ────── 8 files synced
 │
-└── ✅ Priority 8.0: First-Run Setup (COMPLETE)
-    ├── ✅ Removed .bat calls from installer
-    ├── ✅ Created first-run-setup.js in Electron
-    ├── ✅ Created FirstTimeSetup UI (inline HTML)
-    ├── ✅ Auto-install deps on first launch
-    ├── ✅ Auto-download model on first launch
-    └── ✅ Verification before main app
+├── ✅ Priority 8.0: First-Run Setup (COMPLETE)
+│   ├── ✅ Removed .bat calls from installer
+│   ├── ✅ Created first-run-setup.js in Electron
+│   ├── ✅ Created FirstTimeSetup UI (inline HTML)
+│   ├── ✅ Auto-install deps on first launch
+│   ├── ✅ Auto-download model on first launch
+│   └── ✅ Verification before main app
+│
+└── 🔄 Priority 9.0: Auto-Update System (IN PROGRESS)
+    ├── ✅ Enable GitHub publish in package.json
+    ├── ✅ Add latest.yml generation to CI
+    ├── ✅ Add version increment validation
+    ├── ✅ Upload latest.yml to releases
+    └── 📋 Test auto-update flow end-to-end
 ```
 
 ---
@@ -214,6 +221,111 @@ const serverReady = await startBackendServer();
 **Subsequent Launches:**
 1. Click app icon
 2. Main app appears immediately (flag file exists)
+
+---
+
+## 🔄 Priority 9.0: Auto-Update System (2025-12-04)
+
+**Goal:** Enable seamless automatic updates so users always have the latest version.
+
+### How Auto-Update Works:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     USER'S INSTALLED APP                        │
+│                                                                 │
+│  1. App launches                                                │
+│  2. Electron calls autoUpdater.checkForUpdates()                │
+│  3. Fetches latest.yml from GitHub Releases                     │
+│  4. Compares version in latest.yml vs installed version         │
+│  5. If newer → downloads .exe silently                          │
+│  6. Shows dialog: "Update available! Restart now?"              │
+│  7. User clicks OK → app restarts with new version              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Implementation Checklist:
+
+```
+Priority 9.0: Auto-Update System
+├── 9.1 Enable GitHub Publish ✅ DONE
+│   ├── ✅ Changed package.json "publish": null → GitHub config
+│   ├── ✅ Provider: github
+│   ├── ✅ Owner: NeilVibe
+│   └── ✅ Repo: LocalizationTools
+│
+├── 9.2 Generate latest.yml in CI ✅ DONE
+│   ├── ✅ Calculate SHA512 hash of installer
+│   ├── ✅ Get semantic version from version.py
+│   ├── ✅ Generate latest.yml with proper format
+│   └── ✅ Upload to release artifacts
+│
+├── 9.3 Version Increment Validation ✅ DONE
+│   ├── ✅ Compare current VERSION vs latest release
+│   ├── ✅ Warn if version not incremented
+│   └── ✅ Uses YYMMDDHHMM numeric comparison
+│
+├── 9.4 Release Assets ✅ DONE
+│   ├── ✅ Installer .exe uploaded
+│   └── ✅ latest.yml uploaded alongside
+│
+└── 9.5 End-to-End Test 📋 TODO
+    ├── Trigger new build with incremented version
+    ├── Verify latest.yml in release
+    ├── Test old app detects new version
+    └── Test update downloads and installs
+```
+
+### Version System Summary:
+
+| File | Version Type | Example | Purpose |
+|------|--------------|---------|---------|
+| `version.py` | DateTime | 2512041724 | Internal tracking, release tags |
+| `version.py` | Semantic | 1.0.0 | package.json, auto-updater |
+| `package.json` | Semantic | 1.0.0 | Electron, electron-updater |
+| `latest.yml` | Semantic | 1.0.0 | Auto-update version check |
+
+### CI Safety Checks (Complete List):
+
+| # | Check | Status | Description |
+|---|-------|--------|-------------|
+| 1 | Version Unification | ✅ | All 8 files match |
+| 2 | Version Increment | ✅ | New > Latest release |
+| 3 | Server Launch Test | ✅ | Backend starts OK |
+| 4 | Python Tests | ✅ | E2E + Unit tests pass |
+| 5 | Security Audits | ✅ | pip-audit + npm audit |
+| 6 | Electron Build | ✅ | LocaNext.exe created |
+| 7 | Installer Build | ✅ | Inno Setup compiles |
+| 8 | Post-Install Test | ✅ | Silent install works |
+| 9 | File Verification | ✅ | Critical files exist |
+| 10 | Backend Import | ✅ | Installed Python imports |
+| 11 | Health Check | ✅ | /health responds |
+| 12 | API Login | ✅ | Auth works (non-blocking) |
+| 13 | latest.yml | ✅ | Auto-update manifest |
+| 14 | SHA512 Hash | ✅ | File integrity |
+
+### To Release an Update:
+
+```bash
+# 1. Update version
+NEW_VERSION=$(date '+%y%m%d%H%M')
+# Edit version.py: VERSION = "$NEW_VERSION"
+
+# 2. If breaking changes, bump SEMANTIC_VERSION
+# Edit version.py: SEMANTIC_VERSION = "1.1.0"
+
+# 3. Verify versions match
+python3 scripts/check_version_unified.py
+
+# 4. Commit and trigger build
+git add -A && git commit -m "Version v$NEW_VERSION"
+echo "Build LIGHT v$NEW_VERSION" >> BUILD_TRIGGER.txt
+git add BUILD_TRIGGER.txt && git commit -m "Trigger build v$NEW_VERSION"
+git push origin main
+
+# 5. GitHub Actions builds + creates release with latest.yml
+# 6. All installed apps auto-update on next launch!
+```
 
 ---
 

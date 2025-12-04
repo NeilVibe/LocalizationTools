@@ -88,6 +88,30 @@ jobs:
           python scripts/check_version_unified.py
           echo "[OK] All versions unified"
 
+      # ---- VERSION INCREMENT CHECK ----
+      - name: Check Version Increment
+        run: |
+          echo "=== Checking version is newer than latest release ==="
+
+          # Get current version from version.py
+          CURRENT_VERSION=$(python -c "from version import VERSION; print(VERSION)")
+          echo "Current version: $CURRENT_VERSION"
+
+          # Get latest release version from GitHub
+          LATEST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "v0")
+          LATEST_VERSION=$(echo "$LATEST_TAG" | sed 's/v//')
+          echo "Latest release: $LATEST_VERSION"
+
+          # Compare versions (both are YYMMDDHHMM format, simple numeric comparison)
+          if [ "$CURRENT_VERSION" -le "$LATEST_VERSION" ] 2>/dev/null; then
+            echo "[WARNING] Current version ($CURRENT_VERSION) is not greater than latest release ($LATEST_VERSION)"
+            echo "Consider updating VERSION in version.py"
+          else
+            echo "[OK] Version $CURRENT_VERSION is newer than $LATEST_VERSION"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # ---- SERVER LAUNCH TEST ----
       - name: Test Server Starts
         run: |
@@ -422,11 +446,67 @@ jobs:
           Write-Host "  - Safe pipeline using huggingface_hub"
         shell: pwsh
 
+      # ============================================================
+      # STEP 5: Generate latest.yml for Auto-Update
+      # ============================================================
+      - name: Generate latest.yml for Auto-Update
+        run: |
+          Write-Host "=== Generating latest.yml for electron-updater ==="
+          $version = "${{ needs.check-build-trigger.outputs.version }}"
+
+          # Find the installer
+          $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
+          if (!$installer) {
+            Write-Error "[ERROR] No installer found"
+            exit 1
+          }
+
+          # Get file info
+          $fileName = $installer.Name
+          $fileSize = $installer.Length
+
+          # Calculate SHA512 hash
+          $hash = (Get-FileHash -Path $installer.FullName -Algorithm SHA512).Hash.ToLower()
+          Write-Host "SHA512: $hash"
+
+          # Get semantic version from version.py
+          $semanticVersion = & "tools\python\python.exe" -c "from version import SEMANTIC_VERSION; print(SEMANTIC_VERSION)"
+          Write-Host "Semantic Version: $semanticVersion"
+
+          # Generate latest.yml
+          $releaseDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+
+          $latestYml = @"
+          version: $semanticVersion
+          files:
+            - url: $fileName
+              sha512: $hash
+              size: $fileSize
+          path: $fileName
+          sha512: $hash
+          releaseDate: '$releaseDate'
+          "@
+
+          # Remove leading spaces from heredoc
+          $latestYml = $latestYml -replace '(?m)^          ', ''
+
+          # Write to file
+          $latestYml | Out-File -FilePath "installer_output\latest.yml" -Encoding UTF8 -NoNewline
+
+          Write-Host ""
+          Write-Host "=== latest.yml generated ==="
+          Get-Content "installer_output\latest.yml"
+          Write-Host ""
+          Write-Host "[OK] Auto-update manifest ready"
+        shell: pwsh
+
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
           name: LocaNext-Windows-LIGHT-Setup
-          path: installer_output/*.exe
+          path: |
+            installer_output/*.exe
+            installer_output/latest.yml
           retention-days: 7
 
       # ============================================================
@@ -741,5 +821,6 @@ jobs:
             🤖 Generated with [Claude Code](https://claude.com/claude-code)
           files: |
             artifacts/windows/*.exe
+            artifacts/windows/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

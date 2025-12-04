@@ -66,6 +66,11 @@
       "target": "AppImage",
       "category": "Development"
     },
-    "publish": null
+    "publish": {
+      "provider": "github",
+      "owner": "NeilVibe",
+      "repo": "LocalizationTools",
+      "releaseType": "release"
+    }
   }
 }
