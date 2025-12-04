@@ -7,7 +7,7 @@ Based on VRS-Manager version management pattern
 
 # Version in DateTime format: YYMMDDHHMM
 # Example: 2511221939 = November 22, 2025, 19:39
-VERSION = "2512042150"
+VERSION = "2512042249"
 
 # Version footer for UI display
 VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform | XLSTransfer + QuickSearch"
@@ -20,7 +20,7 @@ BUILD_TYPE = "LIGHT"  # FULL (with AI model) or LIGHT (without AI)
 
 # Release info
 RELEASE_DATE = "2025-12-04"
-RELEASE_NAME = "Health Check & Auto-Repair (Priority 11.0)"
+RELEASE_NAME = "Splash Screen + Logger Fix v2 (Priority 11.0)"
 
 # Repository info
 REPOSITORY_URL = "https://github.com/NeilVibe/LocalizationTools"

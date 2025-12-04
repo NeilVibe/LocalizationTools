@@ -2,14 +2,15 @@
  * Electron App Logger
  * Writes logs to file for monitoring and debugging
  *
- * FIXED: Handles ASAR packaging correctly
+ * FIXED v2: Uses app.getPath('userData') for reliable cross-platform logging
  * - In dev: logs go to locaNext/logs/
- * - In production: logs go to install_dir/logs/ (outside ASAR)
+ * - In production: logs go to %APPDATA%/locanext/logs/ (standard Electron location)
  */
 
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { app } from 'electron';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,18 +18,23 @@ const __dirname = path.dirname(__filename);
 /**
  * Get the correct logs directory based on environment
  * - Development: project_root/logs/
- * - Production: install_dir/logs/ (NOT inside app.asar!)
+ * - Production: %APPDATA%/locanext/logs/ (reliable, always writable)
  */
 function getLogsDir() {
   // Check if we're running inside an ASAR archive (packaged app)
   const isPackaged = __dirname.includes('app.asar');
 
   if (isPackaged) {
-    // Production: use process.resourcesPath to get outside ASAR
-    // process.resourcesPath = C:\...\LocaNext\resources
-    // We want: C:\...\LocaNext\logs
-    const appRoot = path.join(process.resourcesPath, '..');
-    return path.join(appRoot, 'logs');
+    // Production: use Electron's userData path (standard, always writable)
+    // Windows: C:\Users\{user}\AppData\Roaming\locanext\logs
+    // This is the PROPER way to handle logs in Electron apps
+    try {
+      const userData = app.getPath('userData');
+      return path.join(userData, 'logs');
+    } catch (e) {
+      // Fallback: try process.cwd() (usually the app root)
+      return path.join(process.cwd(), 'logs');
+    }
   } else {
     // Development: 2 levels up from electron/
     const projectRoot = path.join(__dirname, '../..');
@@ -36,18 +42,31 @@ function getLogsDir() {
   }
 }
 
-const logsDir = getLogsDir();
-const locaNextLogFile = path.join(logsDir, 'locanext_app.log');
-const locaNextErrorFile = path.join(logsDir, 'locanext_error.log');
+// Lazy-initialized paths (can't call app.getPath before app is ready)
+let _logsDir = null;
+let _locaNextLogFile = null;
+let _locaNextErrorFile = null;
+let _initialized = false;
 
-// Ensure logs directory exists (with error handling for production)
-try {
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir, { recursive: true });
+/**
+ * Initialize logs directory (called lazily on first log write)
+ */
+function initLogsDir() {
+  if (_initialized) return;
+
+  _logsDir = getLogsDir();
+  _locaNextLogFile = path.join(_logsDir, 'locanext_app.log');
+  _locaNextErrorFile = path.join(_logsDir, 'locanext_error.log');
+
+  // Ensure logs directory exists
+  try {
+    if (!fs.existsSync(_logsDir)) {
+      fs.mkdirSync(_logsDir, { recursive: true });
+    }
+    _initialized = true;
+  } catch (err) {
+    console.error('Failed to create logs directory:', _logsDir, err.message);
   }
-} catch (err) {
-  // If we can't create logs dir, log to console only
-  console.error('Failed to create logs directory:', logsDir, err.message);
 }
 
 /**
@@ -63,6 +82,9 @@ function getTimestamp() {
  * Robust: won't crash if file write fails
  */
 function writeLog(level, message, data = null) {
+  // Lazy init on first write (ensures app is ready)
+  initLogsDir();
+
   const timestamp = getTimestamp();
   let logEntry = `${timestamp} | ${level.padEnd(8)} | ${message}`;
 
@@ -84,16 +106,18 @@ function writeLog(level, message, data = null) {
   console.log(logEntry.trim());
 
   // Try to write to file, but don't crash if it fails
-  try {
-    fs.appendFileSync(locaNextLogFile, logEntry);
+  if (_initialized && _locaNextLogFile) {
+    try {
+      fs.appendFileSync(_locaNextLogFile, logEntry);
 
-    // Also write errors to separate error log
-    if (level === 'ERROR' || level === 'CRITICAL') {
-      fs.appendFileSync(locaNextErrorFile, logEntry);
+      // Also write errors to separate error log
+      if ((level === 'ERROR' || level === 'CRITICAL') && _locaNextErrorFile) {
+        fs.appendFileSync(_locaNextErrorFile, logEntry);
+      }
+    } catch (err) {
+      // File write failed - already logged to console above
+      console.error('Failed to write to log file:', err.message);
     }
-  } catch (err) {
-    // File write failed - already logged to console above
-    console.error('Failed to write to log file:', err.message);
   }
 }
 
@@ -146,30 +170,41 @@ export const logger = {
    * Clear old logs (keep last 7 days)
    */
   cleanup() {
+    initLogsDir();
+    if (!_initialized || !_locaNextLogFile) return;
+
     try {
-      const stats = fs.statSync(locaNextLogFile);
+      const stats = fs.statSync(_locaNextLogFile);
       const daysOld = (Date.now() - stats.mtimeMs) / (1000 * 60 * 60 * 24);
 
       if (daysOld > 7) {
         // Archive old log
-        const archiveDir = path.join(logsDir, 'archive');
+        const archiveDir = path.join(_logsDir, 'archive');
         if (!fs.existsSync(archiveDir)) {
           fs.mkdirSync(archiveDir, { recursive: true });
         }
 
         const timestamp = new Date().toISOString().split('T')[0];
         const archiveFile = path.join(archiveDir, `locanext_app_${timestamp}.log`);
-        fs.renameSync(locaNextLogFile, archiveFile);
+        fs.renameSync(_locaNextLogFile, archiveFile);
 
         writeLog('INFO', 'Log file archived and rotated');
       }
     } catch (error) {
       // File doesn't exist yet, ignore
     }
+  },
+
+  /**
+   * Get current logs directory (for diagnostics)
+   */
+  getLogsDir() {
+    initLogsDir();
+    return _logsDir;
   }
 };
 
-// Initialize logger
-logger.info('LocaNext Electron Logger initialized', { logsDir });
+// NO auto-initialization - logs start when first writeLog is called
+// This ensures app is ready before we try to get paths
 
 export default logger;
