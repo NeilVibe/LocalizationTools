@@ -228,6 +228,30 @@ Start Backend & UI
 
 ---
 
+## ⚠️ IMPORTANT: Cleanup After Debugging
+
+**ALWAYS kill background shells and processes after debugging!**
+
+If shells are left running, they can:
+- Lock files, preventing folder deletion
+- Keep LocaNext.exe processes running
+- Cause stale reminders in Claude sessions
+
+```bash
+# Kill all LocaNext processes on Windows
+/mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe
+
+# If using Claude Code, kill any background shells:
+# Use the KillShell tool with the shell_id shown in system reminders
+```
+
+**Checklist before ending debug session:**
+- [ ] Kill all LocaNext.exe processes
+- [ ] Kill all background bash shells
+- [ ] Verify user can delete the test folder
+
+---
+
 ## 📞 Support Escalation
 
 If auto-repair fails repeatedly:
