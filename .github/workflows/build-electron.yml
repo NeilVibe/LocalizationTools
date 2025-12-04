@@ -39,7 +39,7 @@ jobs:
             # Extract version
             VERSION=$(echo "$TRIGGER" | grep -oE 'v[0-9]+' | sed 's/v//')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "✓ Build triggered for version: $VERSION"
+            echo "[OK] Build triggered for version: $VERSION"
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
             echo "No build trigger found"
@@ -86,7 +86,7 @@ jobs:
         run: |
           echo "=== Checking version unification across all files ==="
           python scripts/check_version_unified.py
-          echo "✓ All versions unified"
+          echo "[OK] All versions unified"
 
       # ---- SERVER LAUNCH TEST ----
       - name: Test Server Starts
@@ -101,13 +101,13 @@ jobs:
             sleep 2
             echo "Checking server... ($i/10)"
             if curl -s http://localhost:8888/health | grep -q "healthy"; then
-              echo "✓ Server started successfully"
+              echo "[OK] Server started successfully"
               kill $SERVER_PID 2>/dev/null || true
               exit 0
             fi
           done
 
-          echo "❌ Server failed to start!"
+          echo "[ERROR] Server failed to start!"
           kill $SERVER_PID 2>/dev/null || true
           exit 1
 
@@ -121,27 +121,27 @@ jobs:
             tests/e2e/test_quicksearch_e2e.py \
             tests/unit/ \
             -v --tb=short --no-cov -x
-          echo "✓ All Python tests passed"
+          echo "[OK] All Python tests passed"
 
       # ---- SECURITY AUDITS ----
       - name: Python Security Audit
         run: |
           echo "=== Checking Python dependencies for vulnerabilities ==="
           pip-audit --desc || echo "⚠️ Vulnerabilities found - logged for review"
-          echo "✓ Python security audit complete"
+          echo "[OK] Python security audit complete"
         continue-on-error: true
 
       - name: NPM Security Audit
         run: |
           cd locaNext
           npm audit || echo "⚠️ Vulnerabilities found - logged for review"
-          echo "✓ NPM security audit complete"
+          echo "[OK] NPM security audit complete"
         continue-on-error: true
 
       - name: Safety Checks Summary
         run: |
           echo "============================================"
-          echo "✅ SAFETY CHECKS PASSED"
+          echo "[PASS] SAFETY CHECKS PASSED"
           echo "============================================"
 
   # ============================================================
@@ -179,7 +179,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path "installer\redist"
           Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "installer\redist\vc_redist.x64.exe"
           $size = (Get-Item "installer\redist\vc_redist.x64.exe").length / 1MB
-          Write-Host "✓ Downloaded VC++ Redistributable: $([math]::Round($size, 1)) MB"
+          Write-Host "[OK] Downloaded VC++ Redistributable: $([math]::Round($size, 1)) MB"
         shell: pwsh
 
       # ============================================================
@@ -228,7 +228,7 @@ jobs:
             httpx requests loguru tqdm pyyaml
 
           $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-          Write-Host "✓ Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
+          Write-Host "[OK] Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
         shell: pwsh
 
       - name: Verify Python Embedded + ALL Dependencies
@@ -244,42 +244,42 @@ jobs:
           Write-Host ""
 
           # Core server dependencies
-          & "tools\python\python.exe" -c "import fastapi; print(f'✓ fastapi v{fastapi.__version__}')"
-          & "tools\python\python.exe" -c "import uvicorn; print(f'✓ uvicorn ready')"
-          & "tools\python\python.exe" -c "import socketio; print(f'✓ socketio (python-socketio) ready')"
+          & "tools\python\python.exe" -c "import fastapi; print(f'[OK] fastapi v{fastapi.__version__}')"
+          & "tools\python\python.exe" -c "import uvicorn; print('[OK] uvicorn ready')"
+          & "tools\python\python.exe" -c "import socketio; print('[OK] socketio (python-socketio) ready')"
 
           # Database
-          & "tools\python\python.exe" -c "import sqlalchemy; print(f'✓ sqlalchemy v{sqlalchemy.__version__}')"
-          & "tools\python\python.exe" -c "import aiosqlite; print(f'✓ aiosqlite ready')"
+          & "tools\python\python.exe" -c "import sqlalchemy; print(f'[OK] sqlalchemy v{sqlalchemy.__version__}')"
+          & "tools\python\python.exe" -c "import aiosqlite; print('[OK] aiosqlite ready')"
 
           # Authentication - CRITICAL: Both jwt packages needed!
-          & "tools\python\python.exe" -c "import jwt; print(f'✓ jwt (PyJWT) v{jwt.__version__}')"
-          & "tools\python\python.exe" -c "from jose import jwt as jose_jwt; print(f'✓ jose.jwt (python-jose) ready')"
-          & "tools\python\python.exe" -c "import passlib; print(f'✓ passlib ready')"
-          & "tools\python\python.exe" -c "import bcrypt; print(f'✓ bcrypt ready')"
-          & "tools\python\python.exe" -c "import dotenv; print(f'✓ python-dotenv ready')"
+          & "tools\python\python.exe" -c "import jwt; print(f'[OK] jwt (PyJWT) v{jwt.__version__}')"
+          & "tools\python\python.exe" -c "from jose import jwt as jose_jwt; print('[OK] jose.jwt (python-jose) ready')"
+          & "tools\python\python.exe" -c "import passlib; print('[OK] passlib ready')"
+          & "tools\python\python.exe" -c "import bcrypt; print('[OK] bcrypt ready')"
+          & "tools\python\python.exe" -c "import dotenv; print('[OK] python-dotenv ready')"
 
           # Validation
-          & "tools\python\python.exe" -c "import pydantic; print(f'✓ pydantic v{pydantic.__version__}')"
-          & "tools\python\python.exe" -c "import pydantic_settings; print(f'✓ pydantic-settings ready')"
-          & "tools\python\python.exe" -c "import email_validator; print(f'✓ email-validator ready')"
+          & "tools\python\python.exe" -c "import pydantic; print(f'[OK] pydantic v{pydantic.__version__}')"
+          & "tools\python\python.exe" -c "import pydantic_settings; print('[OK] pydantic-settings ready')"
+          & "tools\python\python.exe" -c "import email_validator; print('[OK] email-validator ready')"
 
           # Data processing
-          & "tools\python\python.exe" -c "import pandas; print(f'✓ pandas v{pandas.__version__}')"
-          & "tools\python\python.exe" -c "import openpyxl; print(f'✓ openpyxl ready')"
-          & "tools\python\python.exe" -c "import xlrd; print(f'✓ xlrd ready')"
+          & "tools\python\python.exe" -c "import pandas; print(f'[OK] pandas v{pandas.__version__}')"
+          & "tools\python\python.exe" -c "import openpyxl; print('[OK] openpyxl ready')"
+          & "tools\python\python.exe" -c "import xlrd; print('[OK] xlrd ready')"
 
           # HTTP
-          & "tools\python\python.exe" -c "import httpx; print(f'✓ httpx ready')"
-          & "tools\python\python.exe" -c "import requests; print(f'✓ requests ready')"
+          & "tools\python\python.exe" -c "import httpx; print('[OK] httpx ready')"
+          & "tools\python\python.exe" -c "import requests; print('[OK] requests ready')"
 
           # Logging & utilities
-          & "tools\python\python.exe" -c "import loguru; print(f'✓ loguru ready')"
-          & "tools\python\python.exe" -c "import tqdm; print(f'✓ tqdm ready')"
-          & "tools\python\python.exe" -c "import yaml; print(f'✓ pyyaml ready')"
+          & "tools\python\python.exe" -c "import loguru; print('[OK] loguru ready')"
+          & "tools\python\python.exe" -c "import tqdm; print('[OK] tqdm ready')"
+          & "tools\python\python.exe" -c "import yaml; print('[OK] pyyaml ready')"
 
           # Model downloading (for LIGHT build post-install)
-          & "tools\python\python.exe" -c "import huggingface_hub; print(f'✓ huggingface_hub v{huggingface_hub.__version__}')"
+          & "tools\python\python.exe" -c "import huggingface_hub; print(f'[OK] huggingface_hub v{huggingface_hub.__version__}')"
 
           Write-Host ""
           Write-Host "=== Checking required files ==="
@@ -287,39 +287,39 @@ jobs:
 
           # Check version.py exists (CRITICAL - was missing!)
           if (!(Test-Path "version.py")) {
-            Write-Error "❌ version.py not found - CRITICAL!"
+            Write-Error "[ERROR] version.py not found - CRITICAL!"
             exit 1
           }
-          Write-Host "✓ version.py exists"
+          Write-Host "[OK] version.py exists"
 
           # Check tools exist
           if (!(Test-Path "tools\download_model.bat")) {
-            Write-Error "❌ download_model.bat not found"
+            Write-Error "[ERROR] download_model.bat not found"
             exit 1
           }
           if (!(Test-Path "tools\download_model.py")) {
-            Write-Error "❌ download_model.py not found"
+            Write-Error "[ERROR] download_model.py not found"
             exit 1
           }
           if (!(Test-Path "tools\install_deps.bat")) {
-            Write-Error "❌ install_deps.bat not found"
+            Write-Error "[ERROR] install_deps.bat not found"
             exit 1
           }
           if (!(Test-Path "tools\install_deps.py")) {
-            Write-Error "❌ install_deps.py not found"
+            Write-Error "[ERROR] install_deps.py not found"
             exit 1
           }
-          Write-Host "✓ All tool scripts exist"
+          Write-Host "[OK] All tool scripts exist"
 
           # Check server exists
           if (!(Test-Path "server\main.py")) {
-            Write-Error "❌ server/main.py not found"
+            Write-Error "[ERROR] server/main.py not found"
             exit 1
           }
-          Write-Host "✓ server/main.py exists"
+          Write-Host "[OK] server/main.py exists"
 
           Write-Host ""
-          Write-Host "✅ All embedded Python dependencies verified!"
+          Write-Host "[PASS] All embedded Python dependencies verified!"
         shell: pwsh
 
       - name: Test Server Launch with Embedded Python
@@ -353,11 +353,11 @@ jobs:
           Write-Host "Verifying Electron build output..."
 
           if (!(Test-Path "locaNext\dist-electron\win-unpacked\LocaNext.exe")) {
-            Write-Error "❌ Electron build failed - LocaNext.exe not found"
+            Write-Error "[ERROR] Electron build failed - LocaNext.exe not found"
             exit 1
           }
 
-          Write-Host "✓ Electron build successful"
+          Write-Host "[OK] Electron build successful"
           $size = (Get-Item "locaNext\dist-electron\win-unpacked\LocaNext.exe").length / 1MB
           Write-Host "  Executable size: $([math]::Round($size, 1)) MB"
 
@@ -403,12 +403,12 @@ jobs:
               Write-Host "Found: $($found.Name)"
               $installerPath = $found.FullName
             } else {
-              Write-Error "❌ No installer found"
+              Write-Error "[ERROR] No installer found"
               exit 1
             }
           }
 
-          Write-Host "✓ LIGHT Installer compiled successfully"
+          Write-Host "[OK] LIGHT Installer compiled successfully"
           $size = (Get-Item $installerPath).length / 1MB
           Write-Host "  Installer size: $([math]::Round($size, 1)) MB"
           Write-Host ""
@@ -441,7 +441,7 @@ jobs:
           # Find the installer
           $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
           if (!$installer) {
-            Write-Error "❌ No installer found"
+            Write-Error "[ERROR] No installer found"
             exit 1
           }
 
@@ -455,7 +455,7 @@ jobs:
             -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$installDir" `
             -Wait -NoNewWindow
 
-          Write-Host "✓ Installation completed"
+          Write-Host "[OK] Installation completed"
           Write-Host "  Install location: $installDir"
         shell: pwsh
 
@@ -468,47 +468,47 @@ jobs:
 
           # Check main executable
           if (!(Test-Path "$installDir\LocaNext.exe")) {
-            Write-Error "❌ LocaNext.exe not found"
+            Write-Error "[ERROR] LocaNext.exe not found"
             exit 1
           }
-          Write-Host "✓ LocaNext.exe exists"
+          Write-Host "[OK] LocaNext.exe exists"
 
           # Check server files
           if (!(Test-Path "$installDir\server\main.py")) {
-            Write-Error "❌ server/main.py not found"
+            Write-Error "[ERROR] server/main.py not found"
             exit 1
           }
-          Write-Host "✓ server/main.py exists"
+          Write-Host "[OK] server/main.py exists"
 
           # Check version.py
           if (!(Test-Path "$installDir\version.py")) {
-            Write-Error "❌ version.py not found"
+            Write-Error "[ERROR] version.py not found"
             exit 1
           }
-          Write-Host "✓ version.py exists"
+          Write-Host "[OK] version.py exists"
 
           # Check embedded Python
           if (!(Test-Path "$installDir\tools\python\python.exe")) {
-            Write-Error "❌ Embedded Python not found"
+            Write-Error "[ERROR] Embedded Python not found"
             exit 1
           }
-          Write-Host "✓ Embedded Python exists"
+          Write-Host "[OK] Embedded Python exists"
 
           # Check first-run setup script
           if (!(Test-Path "$installDir\tools\install_deps.py")) {
-            Write-Error "❌ install_deps.py not found"
+            Write-Error "[ERROR] install_deps.py not found"
             exit 1
           }
-          Write-Host "✓ install_deps.py exists"
+          Write-Host "[OK] install_deps.py exists"
 
           if (!(Test-Path "$installDir\tools\download_model.py")) {
-            Write-Error "❌ download_model.py not found"
+            Write-Error "[ERROR] download_model.py not found"
             exit 1
           }
-          Write-Host "✓ download_model.py exists"
+          Write-Host "[OK] download_model.py exists"
 
           Write-Host ""
-          Write-Host "✅ All critical files present!"
+          Write-Host "[PASS] All critical files present!"
         shell: pwsh
 
       - name: Test Backend Can Start (Installed App)
@@ -562,7 +562,7 @@ jobs:
             try {
               $response = Invoke-WebRequest -Uri "http://localhost:8888/health" -UseBasicParsing -TimeoutSec 5
               if ($response.StatusCode -eq 200) {
-                Write-Host "✓ Server responded: $($response.Content)"
+                Write-Host "[OK] Server responded: $($response.Content)"
                 $serverReady = $true
                 break
               }
@@ -589,12 +589,12 @@ jobs:
             if (Test-Path "$env:TEMP\server_err.log") {
               Get-Content "$env:TEMP\server_err.log" -Tail 50
             }
-            Write-Error "❌ Backend failed to start and respond to /health!"
+            Write-Error "[ERROR] Backend failed to start and respond to /health!"
             exit 1
           }
 
           Write-Host ""
-          Write-Host "✅ Backend starts and responds to /health!"
+          Write-Host "[PASS] Backend starts and responds to /health!"
         shell: pwsh
 
       - name: Test API Login Works
@@ -612,7 +612,7 @@ jobs:
           # Create admin user first
           Write-Host "Creating admin user..."
           & $pythonExe "$installDir\scripts\create_admin.py" 2>$null
-          Write-Host "✓ Admin user ready"
+          Write-Host "[OK] Admin user ready"
 
           # Start server
           Write-Host "Starting server..."
@@ -633,10 +633,10 @@ jobs:
               -UseBasicParsing -TimeoutSec 10
 
             if ($response.StatusCode -eq 200) {
-              Write-Host "✓ Login successful!"
+              Write-Host "[OK] Login successful!"
               $json = $response.Content | ConvertFrom-Json
               if ($json.access_token) {
-                Write-Host "✓ Got access token"
+                Write-Host "[OK] Got access token"
               }
             }
           } catch {
@@ -649,7 +649,7 @@ jobs:
           }
 
           Write-Host ""
-          Write-Host "✅ API login test complete!"
+          Write-Host "[PASS] API login test complete!"
         shell: pwsh
 
       - name: Cleanup Test Installation
@@ -658,7 +658,7 @@ jobs:
           $installDir = "$env:TEMP\LocaNext_Test"
           if (Test-Path $installDir) {
             Remove-Item -Recurse -Force $installDir -ErrorAction SilentlyContinue
-            Write-Host "✓ Test installation cleaned up"
+            Write-Host "[OK] Test installation cleaned up"
           }
         shell: pwsh
 
