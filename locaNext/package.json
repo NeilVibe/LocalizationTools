@@ -9,7 +9,7 @@
     "dev:svelte": "vite dev",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build": "vite build",
-    "build:electron": "electron-builder",
+    "build:electron": "electron-builder --publish never",
     "preview": "vite preview",
     "package": "npm run build && electron-builder",
     "test": "playwright test",
