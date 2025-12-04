@@ -1,3 +1,8 @@
+/**
+ * LocaNext Main Process
+ * GLOBAL ERROR HANDLERS MUST BE SET UP IMMEDIATELY AFTER IMPORTS
+ */
+
 import { app, BrowserWindow, Menu, ipcMain, dialog, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -10,6 +15,28 @@ import { isFirstRunNeeded, runFirstRunSetup, setupFirstRunIPC } from './first-ru
 import { performHealthCheck, quickHealthCheck, wasRecentlyRepaired, HealthStatus } from './health-check.js';
 import { runRepair } from './repair.js';
 import { showSplash, updateSplash, closeSplash } from './splash.js';
+
+// ==================== GLOBAL ERROR HANDLERS ====================
+// These MUST be registered immediately to catch any startup errors
+
+process.on('uncaughtException', (error) => {
+  logger.crash(error);
+  logger.critical('UNCAUGHT EXCEPTION', { message: error.message, stack: error.stack });
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.critical('UNHANDLED REJECTION', { reason: String(reason), promise: String(promise) });
+});
+
+// Log startup immediately
+logger.info('================== APP STARTING ==================');
+logger.info('Process info', {
+  execPath: process.execPath,
+  cwd: process.cwd(),
+  argv: process.argv.slice(0, 3),
+  platform: process.platform,
+  version: process.version
+});
 
 // Auto-updater (only in production builds)
 let autoUpdater = null;
