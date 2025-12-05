@@ -1,15 +1,37 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512051540 | **Updated**: 2025-12-05 | **Status**: ✅ Full Stack Tested (20/20)
+**Version**: 2512051540 | **Updated**: 2025-12-05 | **Status**: ✅ Telemetry Two-Port Test PASSED
 
 ---
 
-## 🔥 Latest: v2512051540 - Timestamp Validation + Full Stack Testing
+## 🔥 Latest: Telemetry Architecture Validated (2025-12-05)
 
-### ✅ New in this version:
-1. **Timestamp Validation Safety Check** - Version must be within 1 hour of build time
-2. **Full Stack CDP Tests** - 20/20 tests passing (Backend, UI, WebSocket, Telemetry)
-3. **WINDOWS_TROUBLESHOOTING.md** - Comprehensive test coverage tree
+### ✅ Two-Port Simulation Test Results:
+1. **Desktop (8888) → Central (9999)** - Cross-port communication WORKING
+2. **Registration API** - `/api/v1/remote-logs/register` returns API key + installation ID
+3. **Log Submission** - `/api/v1/remote-logs/submit` receives batch logs with auth
+4. **Error Detection** - Central Server detects ERROR/CRITICAL in batches
+
+### 🏗️ Production Architecture Validated:
+```
+┌─────────────────────┐        ┌─────────────────────┐        ┌─────────────────────┐
+│  DESKTOP APP        │        │  CENTRAL SERVER     │        │  PATCH SERVER       │
+│  (User's Machine)   │  HTTP  │  (Company Server)   │        │  (Future)           │
+│                     │───────►│                     │        │                     │
+│  Port: 8888 (local) │        │  Port: 9999 (test)  │        │  Build management   │
+│  Backend + Frontend │        │  Telemetry receiver │        │  Update distribution│
+│  SQLite local       │        │  PostgreSQL central │        │  No GitHub needed   │
+└─────────────────────┘        └─────────────────────┘        └─────────────────────┘
+        ▲                              ▲                              ▲
+        │                              │                              │
+   Independent                   Aggregated View                 FUTURE (P13)
+   Fully Offline                 All Users Data
+```
+
+### 📋 This is a SIMULATION of Production:
+- **Dev Testing**: Both servers run on localhost with different ports
+- **Production Reality**: Desktop on user IP, Central on company server IP
+- **Purpose**: Validate the communication protocol before real deployment
 
 ---
 
@@ -65,7 +87,7 @@ Roadmap.md
 ## 🌳 STATUS TREE
 
 ```
-LocaNext Platform v2512051540
+LocaNext Platform v2512051540 - TRIPLE ENTITY ARCHITECTURE
 │
 ├── ✅ Backend (100%) ─────────── FastAPI, 47+ endpoints, async
 ├── ✅ Frontend (100%) ────────── SvelteKit + Carbon Design
@@ -74,7 +96,7 @@ LocaNext Platform v2512051540
 ├── ✅ Tests (885) ───────────── TRUE simulation (no mocks!)
 ├── ✅ Structure (100%) ───────── All tools under server/tools/
 │
-├── 🛠️ Apps
+├── 🛠️ Apps (3 Complete)
 │   ├── ✅ XLSTransfer ────────── Excel + Korean BERT AI
 │   ├── ✅ QuickSearch ────────── Dictionary (15 langs, 4 games)
 │   └── ✅ KR Similar ─────────── Korean semantic similarity
@@ -85,6 +107,28 @@ LocaNext Platform v2512051540
 │   ├── ✅ Version Unified ────── 8 files synced
 │   └── ✅ Auto-Update ────────── GitHub releases + Custom UI!
 │
+├── 🌐 TRIPLE ENTITY ARCHITECTURE ──── Production Simulation TESTED ✅
+│   │
+│   ├── 📦 ENTITY 1: Desktop App (User's Machine)
+│   │   ├── ✅ Electron + Svelte frontend
+│   │   ├── ✅ FastAPI backend (port 8888)
+│   │   ├── ✅ SQLite local database
+│   │   ├── ✅ Fully independent/offline capable
+│   │   └── 🔴 TODO: Telemetry client → Central Server
+│   │
+│   ├── 🖥️ ENTITY 2: Central Server (Company Server)
+│   │   ├── ✅ Remote Logging API (tested!)
+│   │   ├── ✅ Registration endpoint
+│   │   ├── ✅ Log submission endpoint
+│   │   ├── 🔴 TODO: PostgreSQL (not SQLite)
+│   │   ├── 🔴 TODO: Dashboard UI for aggregated view
+│   │   └── 🔴 TODO: Session tracking (connect/disconnect)
+│   │
+│   └── 📡 ENTITY 3: Patch Server (FUTURE - P13)
+│       ├── 📋 Build/revision management
+│       ├── 📋 Update distribution (no GitHub)
+│       └── 📋 Company wants internal control
+│
 └── 🎯 Priorities
     ├── ✅ P6: Structure ───────── Unified server/tools/
     ├── ✅ P8: First-Run ──────── Setup UI on launch
@@ -92,7 +136,8 @@ LocaNext Platform v2512051540
     ├── ✅ P10.1-2,4-5: UI/UX ─── Modal, Progress, IPC done
     ├── 📋 P10.3: Patch Notes ─── BACKLOG (deferred)
     ├── ✅ P11: Health Check ──── Auto-repair system done
-    └── 🔴 P12.5: Telemetry ──── Track connections, sessions, usage (NEXT!)
+    ├── 🔴 P12.5: Telemetry ──── TWO-PORT TEST PASSED! Implementation next
+    └── 📋 P13: Patch Server ─── Build/revision management (FAR FUTURE)
 ```
 
 ---
@@ -426,25 +471,60 @@ Priority 12.0: Critical Architecture Issues
 │   ├── ⚠️ WORKAROUND: +error.svelte renders content on 404 (hides the problem)
 │   └── 🔴 REAL FIX NEEDED: SvelteKit adapter-static config or hash-based routing
 │
-└── 12.5 Central Telemetry System 🚨 PRIORITY
+└── 12.5 Central Telemetry System ✅ TWO-PORT TEST PASSED
     ├── Problem: Desktop apps log LOCALLY only (no visibility)
     ├── Goal: Track user connections, session duration, tool usage
     │
-    ├── 📦 EXISTING CODE (Built but Not Connected):
+    ├── 🧪 TWO-PORT SIMULATION TEST (2025-12-05) ✅ PASSED
+    │   ├── Desktop (8888) → Central (9999) communication WORKING
+    │   ├── Registration: API key + installation_id returned
+    │   ├── Log Submission: 4 logs received, 1 ERROR detected
+    │   └── Server Logs: Full visibility into remote submissions
+    │
+    ├── 📦 EXISTING CODE (Built and TESTED):
     │   ├── ✅ UsageLogger (server/utils/client/logger.py)
     │   │   └── Logs operations, sessions, errors - BUT points to localhost
     │   ├── ✅ Remote Logging API (server/api/remote_logging.py)
-    │   │   └── /register, /submit, /status endpoints - BUT no DB tables
+    │   │   ├── /register - Returns API key + installation_id ✅ TESTED
+    │   │   ├── /submit - Receives log batches ✅ TESTED
+    │   │   ├── /status/{id} - Get installation status
+    │   │   └── /health - Service health ✅ TESTED
     │   ├── ✅ Machine ID (client_config.py)
     │   │   └── Unique per installation - READY
     │   └── ✅ Privacy Settings (LOG_FILE_NAMES, LOG_FILE_CONTENT)
     │
-    ├── 🔴 TODO: Implementation Steps
-    │   ├── 12.5.1 Database Tables (server/models/)
+    ├── 🔴 TODO: Implementation Steps (DATABASE NEEDED - FULL SQL UPDATE)
+    │   │
+    │   ├── 12.5.1 Database Tables (PostgreSQL for Central) 🔴 PRIORITY
     │   │   ├── installations - Register each desktop app
+    │   │   │   ├── installation_id (PK)
+    │   │   │   ├── api_key_hash (bcrypt)
+    │   │   │   ├── installation_name
+    │   │   │   ├── version
+    │   │   │   ├── owner_email
+    │   │   │   ├── created_at, last_seen
+    │   │   │   └── metadata (JSON)
+    │   │   │
     │   │   ├── sessions - Track connect/disconnect, duration
+    │   │   │   ├── session_id (PK)
+    │   │   │   ├── installation_id (FK)
+    │   │   │   ├── started_at, ended_at
+    │   │   │   ├── duration_seconds
+    │   │   │   └── ip_address
+    │   │   │
     │   │   ├── remote_logs - Store operation logs
+    │   │   │   ├── log_id (PK)
+    │   │   │   ├── installation_id (FK)
+    │   │   │   ├── timestamp, level, message
+    │   │   │   ├── source, component
+    │   │   │   ├── data (JSON)
+    │   │   │   └── received_at
+    │   │   │
     │   │   └── telemetry_summary - Aggregated stats per day
+    │   │       ├── date, installation_id
+    │   │       ├── total_sessions, total_duration
+    │   │       ├── tools_used (JSON)
+    │   │       └── error_count, critical_count
     │   │
     │   ├── 12.5.2 Central Server Config
     │   │   ├── CENTRAL_SERVER_URL env variable
@@ -469,10 +549,11 @@ Priority 12.0: Critical Architecture Issues
     │   │   └── Error rate monitoring
     │   │
     │   └── 12.5.6 Testing
-    │       ├── Integration tests for remote logging
+    │       ├── ✅ Two-port simulation test PASSED
+    │       ├── Integration tests for database persistence
     │       └── Simulate multi-installation telemetry
     │
-    └── Status: 🔴 NOT STARTED - NEEDS IMPLEMENTATION
+    └── Status: ✅ PROTOCOL TESTED → 🔴 DATABASE IMPLEMENTATION NEXT
 ```
 
 ### Architecture Decision Needed:
@@ -572,19 +653,73 @@ server/tools/           ← ALL tools here now
 
 ---
 
-## 🏗️ ARCHITECTURE
+## 🏗️ TRIPLE ENTITY ARCHITECTURE
 
 ```
-USER'S PC                           SERVER (Optional)
-┌─────────────────────────┐        ┌──────────────────┐
-│  LocaNext Electron      │        │  Telemetry       │
-│  ┌───────┐ ┌─────────┐  │        │  • Logs          │
-│  │Svelte │◄►│ Python  │  │───────►│  • Stats         │
-│  │  UI   │ │ Backend │  │ HTTP   │  • Dashboard     │
-│  └───────┘ └─────────┘  │        └──────────────────┘
-│  • Korean BERT (447MB)  │
-│  • Excel processing     │
-└─────────────────────────┘
+                            PRODUCTION DEPLOYMENT
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────┐
+│  ENTITY 1: DESKTOP APP      │
+│  (Each User's Machine)      │
+│                             │
+│  ┌─────────┐  ┌───────────┐ │
+│  │ Svelte  │◄►│ FastAPI   │ │
+│  │   UI    │  │  Backend  │ │
+│  └─────────┘  └───────────┘ │
+│  • Port 8888 (local only)   │
+│  • SQLite database          │        ┌─────────────────────────────┐
+│  • Korean BERT AI (447MB)   │        │  ENTITY 2: CENTRAL SERVER   │
+│  • Works fully offline!     │        │  (Company Server)           │
+│                             │  HTTP  │                             │
+│  Telemetry Client ──────────┼───────►│  ┌───────────────────────┐  │
+│  • On app launch: register  │        │  │ Remote Logging API    │  │
+│  • Log submissions          │        │  │ • /register           │  │
+│  • Session heartbeat        │        │  │ • /submit             │  │
+└─────────────────────────────┘        │  │ • /status             │  │
+                                       │  └───────────────────────┘  │
+┌─────────────────────────────┐        │                             │
+│  USER A's Desktop           │───────►│  PostgreSQL Database        │
+└─────────────────────────────┘        │  • installations table      │
+┌─────────────────────────────┐        │  • sessions table           │
+│  USER B's Desktop           │───────►│  • remote_logs table        │
+└─────────────────────────────┘        │  • telemetry_summary        │
+┌─────────────────────────────┐        │                             │
+│  USER C's Desktop           │───────►│  Admin Dashboard            │
+└─────────────────────────────┘        │  • Who's online now?        │
+        ▲                              │  • Tool usage stats         │
+        │                              │  • Error monitoring         │
+        │                              └─────────────────────────────┘
+        │
+        │ (FUTURE)
+        ▼
+┌─────────────────────────────┐
+│  ENTITY 3: PATCH SERVER     │
+│  (Future - Priority 13)     │
+│                             │
+│  • Build/revision mgmt      │
+│  • Update distribution      │
+│  • No GitHub dependency     │
+│  • Company internal control │
+└─────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════
+                          DEVELOPMENT SIMULATION
+═══════════════════════════════════════════════════════════════════════════
+
+For testing cross-entity communication on localhost:
+
+  Desktop (Port 8888)  ───HTTP───►  Central (Port 9999)
+       │                                   │
+       └──── Both run on same machine ─────┘
+             Different ports simulate
+             different IP addresses
+
+Test Command:
+  Terminal 1: python3 server/main.py                    # Desktop on 8888
+  Terminal 2: SERVER_PORT=9999 python3 server/main.py   # Central on 9999
+
+  Then test: curl -X POST http://localhost:9999/api/v1/remote-logs/register ...
 ```
 
 ---
