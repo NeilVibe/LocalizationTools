@@ -14,6 +14,7 @@
   import { logger } from "$lib/utils/logger.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
+  import { telemetry } from "$lib/utils/telemetry.js";
 
   // Check if running in Electron
   let isElectron = false;
@@ -218,12 +219,17 @@
           logger.success("Dictionary loaded successfully (Electron)", {
             elapsed_ms: elapsed.toFixed(2)
           });
+          telemetry.trackOperationSuccess('XLSTransfer', 'load_dictionary', startTime, {
+            mode: 'electron'
+          });
           showStatus('Dictionary loaded successfully! Transfer buttons enabled.', 'success');
         } else {
           logger.error("Dictionary load failed (Electron)", {
             error: result.error,
             elapsed_ms: elapsed.toFixed(2)
           });
+          telemetry.trackOperationError('XLSTransfer', 'load_dictionary', startTime,
+            new Error(result.error || 'Failed to load dictionary'), { mode: 'electron' });
           showStatus(result.error || 'Failed to load dictionary', 'error');
         }
       } else {
@@ -243,12 +249,18 @@
             whole_pairs: result.whole_pairs,
             elapsed_ms: elapsed.toFixed(2)
           });
+          telemetry.trackOperationSuccess('XLSTransfer', 'load_dictionary', startTime, {
+            mode: 'browser',
+            total_pairs: result.total_pairs
+          });
           showStatus(`Dictionary loaded! ${result.total_pairs || 0} pairs ready.`, 'success');
         } else {
           logger.error("Dictionary load failed (Browser)", {
             message: result.message,
             elapsed_ms: elapsed.toFixed(2)
           });
+          telemetry.trackOperationError('XLSTransfer', 'load_dictionary', startTime,
+            new Error(result.message || 'Failed to load dictionary'), { mode: 'browser' });
           showStatus(result.message || 'Failed to load dictionary', 'error');
         }
       }
@@ -259,6 +271,9 @@
         error_type: error.name,
         mode: isElectron ? "electron" : "browser",
         elapsed_ms: elapsed.toFixed(2)
+      });
+      telemetry.trackOperationError('XLSTransfer', 'load_dictionary', startTime, error, {
+        mode: isElectron ? 'electron' : 'browser'
       });
       showStatus(error.message, 'error');
     } finally {
@@ -316,6 +331,10 @@
             filename: files[0].split('/').pop(),
             elapsed_ms: elapsed.toFixed(2)
           });
+          telemetry.trackOperationSuccess('XLSTransfer', 'transfer_to_close', startTime, {
+            mode: 'electron',
+            threshold: parseFloat(threshold)
+          });
           showStatus('Translation completed!', 'success');
         } else {
           logger.error("File translation failed (Electron)", {
@@ -323,12 +342,17 @@
             filename: files[0].split('/').pop(),
             elapsed_ms: elapsed.toFixed(2)
           });
+          telemetry.trackOperationError('XLSTransfer', 'transfer_to_close', startTime,
+            new Error(result.error || 'Translation failed'), { mode: 'electron' });
           showStatus(result.error || 'Translation failed', 'error');
         }
       } catch (error) {
         logger.error("Transfer to Close error (Electron)", {
           error: error.message,
           error_type: error.name
+        });
+        telemetry.trackOperationError('XLSTransfer', 'transfer_to_close', Date.now(), error, {
+          mode: 'electron'
         });
         showStatus(error.message, 'error');
       } finally {
@@ -379,6 +403,12 @@
           matches_found: result.matches_found,
           elapsed_ms: elapsed.toFixed(2)
         });
+        telemetry.trackOperationSuccess('XLSTransfer', 'transfer_to_close', startTime, {
+          mode: 'browser',
+          threshold: parseFloat(threshold),
+          lines_translated: result.lines_translated,
+          matches_found: result.matches_found
+        });
         showStatus('Translation completed!', 'success');
 
         // If there's a download URL, trigger download
@@ -399,6 +429,8 @@
           message: result.message,
           elapsed_ms: elapsed.toFixed(2)
         });
+        telemetry.trackOperationError('XLSTransfer', 'transfer_to_close', startTime,
+          new Error(result.message || 'Translation failed'), { mode: 'browser' });
         showStatus(result.message || 'Translation failed', 'error');
       }
     } catch (error) {
@@ -408,6 +440,9 @@
         error: error.message,
         error_type: error.name,
         elapsed_ms: elapsed.toFixed(2)
+      });
+      telemetry.trackOperationError('XLSTransfer', 'transfer_to_close', startTime, error, {
+        mode: 'browser'
       });
       showStatus(error.message, 'error');
     } finally {
@@ -662,18 +697,26 @@
         logger.success("Simple Excel Transfer completed", {
           elapsed_ms: elapsed.toFixed(2)
         });
+        telemetry.trackOperationSuccess('XLSTransfer', 'simple_excel_transfer', startTime, {
+          mode: 'electron'
+        });
         showStatus('Simple Excel Transfer completed!', 'success');
       } else {
         logger.error("Simple Excel Transfer failed", {
           error: result.error,
           elapsed_ms: elapsed.toFixed(2)
         });
+        telemetry.trackOperationError('XLSTransfer', 'simple_excel_transfer', startTime,
+          new Error(result.error || 'Transfer failed'), { mode: 'electron' });
         showStatus(result.error || 'Transfer failed', 'error');
       }
     } catch (error) {
       logger.error("Simple Excel Transfer error", {
         error: error.message,
         error_type: error.name
+      });
+      telemetry.trackOperationError('XLSTransfer', 'simple_excel_transfer', startTime, error, {
+        mode: 'electron'
       });
       showStatus(error.message, 'error');
     } finally {
@@ -997,6 +1040,10 @@
           operation_type: uploadSettingsOperationType,
           elapsed_ms: elapsed.toFixed(2)
         });
+        telemetry.trackOperationSuccess('XLSTransfer', uploadSettingsOperationType, startTime, {
+          mode: isElectron ? 'electron' : 'browser',
+          files_count: Object.keys(selections).length
+        });
         showStatus(`${uploadSettingsOperationType} completed successfully!`, 'success');
 
         // Auto-open output folder in Electron mode
@@ -1018,6 +1065,11 @@
           error: result.error,
           elapsed_ms: elapsed.toFixed(2)
         });
+        telemetry.trackOperationError('XLSTransfer', uploadSettingsOperationType, startTime,
+          new Error(result.error || 'Operation failed'), {
+            mode: isElectron ? 'electron' : 'browser',
+            files_count: Object.keys(selections).length
+          });
         showStatus(result.error || 'Operation failed', 'error');
       }
     } catch (error) {
@@ -1027,6 +1079,9 @@
         error: error.message,
         error_type: error.name,
         elapsed_ms: elapsed.toFixed(2)
+      });
+      telemetry.trackOperationError('XLSTransfer', uploadSettingsOperationType, startTime, error, {
+        mode: isElectron ? 'electron' : 'browser'
       });
       showStatus(error.message, 'error');
     } finally {

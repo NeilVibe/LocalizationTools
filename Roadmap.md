@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512051600 | **Updated**: 2025-12-05 | **Status**: ✅ Telemetry SERVER-SIDE COMPLETE (P12.5)
+**Version**: 2512052315 | **Updated**: 2025-12-05 | **Status**: ✅ Telemetry FULL STACK COMPLETE (P12.5.9)
 
 ---
 
@@ -90,7 +90,7 @@ Roadmap.md - FULL DOCUMENT GUIDE
 │   ├── ✅ P12.0-12.5: Telemetry ─ Central Server (4 tables, 5 endpoints)
 │   │       ├── ✅ 12.5.7: Desktop Client COMPLETE
 │   │       ├── ✅ 12.5.8: Dashboard Telemetry Tab COMPLETE
-│   │       └── 12.5.9: NEXT ─── Tool Usage Tracking
+│   │       └── ✅ 12.5.9: Tool Usage Tracking COMPLETE
 │   │
 │   └── 📋 P13.0: Gitea ────────── Self-hosted Git + CI/CD (FUTURE)
 │           └── Full tree + checklist included
@@ -103,10 +103,10 @@ Roadmap.md - FULL DOCUMENT GUIDE
 │   ├── 📦 COMPLETED FEATURES ──── Compact summary of all done
 │   ├── 🏗️ QUAD ENTITY DIAGRAM ─── ASCII architecture (4 servers)
 │   └── 🚀 FULL PRIORITY TREE ──── P1→P16 complete roadmap
-│           ├── ✅ Completed: P1-P12.5.8
+│           ├── ✅ Completed: P1-P12.5.9
 │           ├── 📋 Backlog: P10.3
-│           ├── 🔴 Current: P12.5.9
-│           └── 📋 Future: P13-P16
+│           ├── 📋 Next: P13.0 (Gitea)
+│           └── 📋 Future: P14-P16
 │
 ├─────────────────────────────────────────────────────────────────────────
 │   📋 ARCHIVE (Historical Reference)
@@ -128,7 +128,7 @@ PORT SUMMARY (Quick Reference):
 │ Gitea Server     │ 3000   │ Git + CI/CD (FUTURE)        │
 └──────────────────┴────────┴─────────────────────────────┘
 
-WHAT'S NEXT? → P12.5.9: Tool Usage Tracking hooks
+WHAT'S NEXT? → P13.0: Gitea Patch Server (Self-hosted Git + CI/CD)
 ```
 
 ---
@@ -1022,14 +1022,15 @@ COMPLETE PRIORITY TREE (Past → Present → Future)
 │       ├── ✅ Auto-refresh + real-time data
 │       └── ✅ Navigation in sidebar
 │
-├── 🔴 CURRENT / NEXT
+├── ✅ COMPLETE (Dec 2025)
 │   │
-│   └── P12.5.9: Tool Usage Tracking
-│       ├── Hook XLSTransfer operations
-│       ├── Hook QuickSearch queries
-│       └── Duration, rows, errors
+│   └── P12.5.9: Tool Usage Tracking ✅
+│       ├── ✅ Hook XLSTransfer operations
+│       ├── ✅ Hook QuickSearch queries
+│       ├── ✅ Hook KRSimilar operations
+│       └── ✅ Duration, rows, errors tracked via telemetry.js
 │
-└── 📋 FUTURE (P13+)
+└── 📋 NEXT (P13+)
     │
     ├── P13.0: Gitea Patch Server ────────── Self-hosted Git + CI/CD
     │   ├── 13.1: Gitea installation

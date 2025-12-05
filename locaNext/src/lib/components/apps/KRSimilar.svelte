@@ -19,6 +19,7 @@
   import { Upload, Search, FolderOpen, TrashCan, Translate } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
+  import { telemetry } from "$lib/utils/telemetry.js";
 
   // API base URL
   const API_BASE = 'http://localhost:8888';
@@ -130,6 +131,7 @@
     }
 
     isCreatingDictionary = true;
+    const startTime = Date.now();
     logger.userAction("Creating KR Similar dictionary", { dict_type: createDictType, files: createFiles.length });
 
     try {
@@ -151,6 +153,10 @@
 
       if (response.ok) {
         showStatus(`Dictionary creation started: ${createDictType}`, 'success');
+        telemetry.trackOperationSuccess('KRSimilar', 'create_dictionary', startTime, {
+          dict_type: createDictType,
+          files_count: createFiles.length
+        });
         showCreateDictionaryModal = false;
         createFiles = [];
         await loadAvailableDictionaries();
@@ -159,6 +165,9 @@
       }
     } catch (error) {
       logger.error("Dictionary creation failed", { error: error.message });
+      telemetry.trackOperationError('KRSimilar', 'create_dictionary', startTime, error, {
+        dict_type: createDictType
+      });
       showStatus(`Error: ${error.message}`, 'error');
     } finally {
       isCreatingDictionary = false;
@@ -167,6 +176,7 @@
 
   async function loadDictionary() {
     isLoadingDictionary = true;
+    const startTime = Date.now();
     logger.userAction("Loading KR Similar dictionary", { dict_type: loadDictType });
 
     try {
@@ -188,6 +198,10 @@
           whole_pairs: data.data?.whole_pairs || 0,
           total_pairs: data.data?.total_pairs || 0
         };
+        telemetry.trackOperationSuccess('KRSimilar', 'load_dictionary', startTime, {
+          dict_type: loadDictType,
+          total_pairs: currentDictionary.total_pairs
+        });
         showStatus(`Dictionary loaded: ${loadDictType} (${currentDictionary.total_pairs} pairs)`, 'success');
         showLoadDictionaryModal = false;
       } else {
@@ -195,6 +209,9 @@
       }
     } catch (error) {
       logger.error("Dictionary load failed", { error: error.message });
+      telemetry.trackOperationError('KRSimilar', 'load_dictionary', startTime, error, {
+        dict_type: loadDictType
+      });
       showStatus(`Error: ${error.message}`, 'error');
     } finally {
       isLoadingDictionary = false;
@@ -235,6 +252,7 @@
     }
 
     isSearching = true;
+    const startTime = Date.now();
     logger.userAction("Performing KR Similar search", { query: searchQuery, threshold: searchThreshold, top_k: searchTopK });
 
     try {
@@ -254,6 +272,12 @@
 
       if (response.ok) {
         searchResults = data.data?.results || [];
+        telemetry.trackOperationSuccess('KRSimilar', 'search', startTime, {
+          threshold: searchThreshold,
+          top_k: searchTopK,
+          use_whole: searchUseWhole,
+          results_count: searchResults.length
+        });
         logger.info(`KR Similar search completed: ${searchResults.length} results found`);
         if (searchResults.length === 0) {
           showStatus('No similar strings found above threshold', 'info');
@@ -263,6 +287,10 @@
       }
     } catch (error) {
       logger.error("Search failed", { error: error.message });
+      telemetry.trackOperationError('KRSimilar', 'search', startTime, error, {
+        threshold: searchThreshold,
+        top_k: searchTopK
+      });
       showStatus(`Search error: ${error.message}`, 'error');
     } finally {
       isSearching = false;
@@ -276,6 +304,7 @@
     }
 
     isExtracting = true;
+    const startTime = Date.now();
     logger.userAction("Extracting similar strings", { filename: extractFile[0].name });
 
     try {
@@ -295,6 +324,10 @@
 
       if (response.ok) {
         showStatus(`Extraction started: ${extractFile[0].name}`, 'success');
+        telemetry.trackOperationSuccess('KRSimilar', 'extract_similar', startTime, {
+          threshold: extractThreshold,
+          min_char_length: extractMinCharLength
+        });
         showExtractSimilarModal = false;
         extractFile = [];
       } else {
@@ -302,6 +335,9 @@
       }
     } catch (error) {
       logger.error("Extraction failed", { error: error.message });
+      telemetry.trackOperationError('KRSimilar', 'extract_similar', startTime, error, {
+        threshold: extractThreshold
+      });
       showStatus(`Error: ${error.message}`, 'error');
     } finally {
       isExtracting = false;
@@ -320,6 +356,7 @@
     }
 
     isTranslating = true;
+    const startTime = Date.now();
     logger.userAction("Auto-translating", { filename: translateFile[0].name });
 
     try {
@@ -337,6 +374,9 @@
 
       if (response.ok) {
         showStatus(`Auto-translation started: ${translateFile[0].name}`, 'success');
+        telemetry.trackOperationSuccess('KRSimilar', 'auto_translate', startTime, {
+          threshold: translateThreshold
+        });
         showAutoTranslateModal = false;
         translateFile = [];
       } else {
@@ -344,6 +384,9 @@
       }
     } catch (error) {
       logger.error("Auto-translation failed", { error: error.message });
+      telemetry.trackOperationError('KRSimilar', 'auto_translate', startTime, error, {
+        threshold: translateThreshold
+      });
       showStatus(`Error: ${error.message}`, 'error');
     } finally {
       isTranslating = false;
