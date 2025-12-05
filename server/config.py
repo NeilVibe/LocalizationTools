@@ -52,6 +52,25 @@ SERVER_PORT = int(os.getenv("SERVER_PORT", "8888"))
 # Admin dashboard
 ADMIN_DASHBOARD_PORT = int(os.getenv("ADMIN_DASHBOARD_PORT", "8885"))
 
+# ============================================
+# Central Server Settings (Telemetry)
+# ============================================
+
+# Central Server URL for telemetry/remote logging
+# Desktop apps send logs to this server
+# Example: CENTRAL_SERVER_URL=http://192.168.11.100:9999
+CENTRAL_SERVER_URL = os.getenv("CENTRAL_SERVER_URL", "")
+
+# Enable telemetry sending (Desktop app setting)
+TELEMETRY_ENABLED = os.getenv("TELEMETRY_ENABLED", "true").lower() == "true"
+
+# Telemetry heartbeat interval in seconds
+TELEMETRY_HEARTBEAT_INTERVAL = int(os.getenv("TELEMETRY_HEARTBEAT_INTERVAL", "300"))  # 5 min
+
+# Offline queue: retry sending logs when central unavailable
+TELEMETRY_RETRY_INTERVAL = int(os.getenv("TELEMETRY_RETRY_INTERVAL", "60"))  # 1 min
+TELEMETRY_MAX_QUEUE_SIZE = int(os.getenv("TELEMETRY_MAX_QUEUE_SIZE", "1000"))  # max logs to queue
+
 # CORS settings
 # In development: allow all origins ("*")
 # In production: set CORS_ORIGINS env var to whitelist specific origins

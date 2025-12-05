@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512052300 (2025-12-05)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅
+**Version:** 2512060945 (2025-12-06)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Tool Tracking ✅ | Gitea 🔄
 
 ---
 
@@ -15,7 +15,7 @@
 - 📊 **Central monitoring**: Optional telemetry to server
 - 👔 **Professional**: CEO/management-ready quality
 
-### Current Status (2025-12-05):
+### Current Status (2025-12-06):
 - ✅ **Backend**: 100% Complete (47+ endpoints, WebSocket, async)
 - ✅ **LocaNext Desktop App**: 100% Complete (Electron + Svelte)
 - ✅ **XLSTransfer (App #1)**: 100% Complete (10 functions, exact replica)
@@ -27,7 +27,7 @@
 - ✅ **Structure**: Unified - all tools under `server/tools/` (Priority 6.0 complete)
 - ✅ **Admin Dashboard**: 100% Complete (Overview, Users, Stats, Logs, Telemetry)
 - ✅ **Health Check**: Priority 11.0 - Auto-repair system complete
-- ✅ **Telemetry**: Priority 12.5.8 COMPLETE - Server + Client + Dashboard
+- ✅ **Telemetry**: Priority 12.5.9 COMPLETE - Server + Client + Dashboard + Tool Tracking
 
 ---
 
@@ -273,20 +273,23 @@ bash scripts/clean_logs.sh
 - **Phase 3:** Security Hardening ✅ COMPLETE (7/11 items, 86 tests)
 - **Phase 4:** Admin Dashboard ✅ COMPLETE
 - **Priority 11.0:** Health Check & Auto-Repair ✅ COMPLETE
-  - ✅ Core: health-check.js, repair.js, main.js integration
-  - 📋 Pending: Frontend Settings UI for manual repair
-- **Priority 12.5:** Central Telemetry System ✅ CLIENT + DASHBOARD COMPLETE
-  - ✅ 4 Database tables: Installation, RemoteSession, RemoteLog, TelemetrySummary
-  - ✅ 5 API endpoints: /health, /register, /submit, /sessions/start, /sessions/end
-  - ✅ Config: CENTRAL_SERVER_URL + telemetry settings
-  - ✅ Desktop client (P12.5.7): Auto-register, sessions, log queue
-  - ✅ Admin Dashboard (P12.5.8): Telemetry tab with 4 views
-  - 📋 Next: P12.5.9 - Tool Usage Tracking hooks
+- **Priority 12.5:** Central Telemetry System ✅ FULL STACK COMPLETE
+- **Priority 13.0:** Gitea Patch Server 🔄 IN PROGRESS
+  - ✅ Installed: `/home/neil1988/gitea/` (v1.22.3, SQLite)
+  - ✅ Scripts: `./start.sh`, `./stop.sh`
+  - ✅ Config: Port 3000 (web), 2222 (SSH)
+  - 📋 Next: Complete web setup, add repo, configure dual-remote
+
+### Quick Gitea Commands:
+```bash
+cd ~/gitea && ./start.sh   # Start Gitea → http://localhost:3000
+cd ~/gitea && ./stop.sh    # Stop Gitea
+```
 
 ### Questions to Ask User:
-- "Ready for P12.5.9 (Tool Usage Tracking hooks)?"
-- "Should we add another tool to LocaNext?"
-- "Move to P13 (Gitea Patch Server)?"
+- "Complete Gitea web setup?" - Create admin user, push repo
+- "Should we add another tool to LocaNext?" (P14 - New Tools)
+- "Want to fix P10.3 (Patch Notes display)?" - Nice-to-have, backlog
 
 ### Windows Build Debugging:
 - See **[WINDOWS_TROUBLESHOOTING.md](docs/WINDOWS_TROUBLESHOOTING.md)** for WSL debugging commands

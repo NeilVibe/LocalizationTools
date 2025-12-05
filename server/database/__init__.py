@@ -10,6 +10,7 @@ from server.database.models import (
     User,
     Session,
     LogEntry,
+    ActiveOperation,
     # Analytics tables
     ToolUsageStats,
     FunctionUsageStats,
@@ -21,6 +22,11 @@ from server.database.models import (
     ErrorLog,
     Announcement,
     UserFeedback,
+    # Telemetry tables (Central Server)
+    Installation,
+    RemoteSession,
+    RemoteLog,
+    TelemetrySummary,
 )
 
 from server.database.db_setup import (
@@ -40,6 +46,7 @@ __all__ = [
     "User",
     "Session",
     "LogEntry",
+    "ActiveOperation",
     "ToolUsageStats",
     "FunctionUsageStats",
     "PerformanceMetrics",
@@ -49,6 +56,11 @@ __all__ = [
     "ErrorLog",
     "Announcement",
     "UserFeedback",
+    # Telemetry tables
+    "Installation",
+    "RemoteSession",
+    "RemoteLog",
+    "TelemetrySummary",
     # Setup functions
     "get_database_url",
     "create_database_engine",

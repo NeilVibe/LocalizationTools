@@ -366,6 +366,26 @@
       }
 
       showNotificationMessage(`Operation completed: ${data.operation_name}`, 'success');
+
+      // P12.5.9: Send telemetry for tool usage tracking
+      if (typeof window !== 'undefined' && window.electronTelemetry) {
+        const duration = data.completed_at && data.started_at
+          ? Math.round((new Date(data.completed_at) - new Date(data.started_at)) / 1000)
+          : null;
+
+        window.electronTelemetry.success(
+          `Tool operation completed: ${data.operation_name}`,
+          data.tool_name || 'Unknown',
+          {
+            operation_id: data.operation_id,
+            operation_name: data.operation_name,
+            tool_name: data.tool_name,
+            function_name: data.function_name,
+            duration_seconds: duration,
+            result: data.result || null
+          }
+        );
+      }
     });
 
     // Listen for operation_failed
@@ -384,6 +404,26 @@
       }
 
       showNotificationMessage(`Operation failed: ${data.operation_name}`, 'error');
+
+      // P12.5.9: Send telemetry for tool usage tracking (errors)
+      if (typeof window !== 'undefined' && window.electronTelemetry) {
+        const duration = data.completed_at && data.started_at
+          ? Math.round((new Date(data.completed_at) - new Date(data.started_at)) / 1000)
+          : null;
+
+        window.electronTelemetry.error(
+          `Tool operation failed: ${data.operation_name}`,
+          data.tool_name || 'Unknown',
+          {
+            operation_id: data.operation_id,
+            operation_name: data.operation_name,
+            tool_name: data.tool_name,
+            function_name: data.function_name,
+            duration_seconds: duration,
+            error_message: data.error_message || 'Unknown error'
+          }
+        );
+      }
     });
   });
 
