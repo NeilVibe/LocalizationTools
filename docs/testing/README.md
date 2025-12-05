@@ -1,6 +1,31 @@
 # Testing & Debugging Documentation Hub
 
-**Last Updated**: 2025-12-05
+**Last Updated**: 2025-12-06
+
+---
+
+## 🤖 CLAUDE AI: AUTONOMOUS TESTING MODE
+
+```
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                    CLAUDE WORKS ALONE ON TESTING                          ║
+║                                                                           ║
+║  ✅ Claude can: test, monitor, fix, troubleshoot, rebuild, redeploy      ║
+║  ❌ Claude does NOT need user for any testing/debugging tasks            ║
+║                                                                           ║
+║  User Role: Direction & Design ONLY                                       ║
+║  Claude Role: Execute ALL testing autonomously                            ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+```
+
+**When encountering issues, Claude should:**
+1. Read logs first
+2. Debug with available tools
+3. Fix the issue
+4. Retest
+5. Only ask user if architecture decision needed
+
+**Windows Test Folder:** `D:\LocaNext` (WSL: `/mnt/d/LocaNext`)
 
 ---
 
