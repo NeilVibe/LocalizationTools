@@ -22,9 +22,19 @@
   import { Upload, Search, FolderOpen, View, ViewOff } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
+  import { api } from "$lib/api/client.js";
 
   // API base URL
   const API_BASE = 'http://localhost:8888';
+
+  // Helper to get auth headers
+  function getAuthHeaders() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (token) {
+      return { 'Authorization': `Bearer ${token}` };
+    }
+    return {};
+  }
 
   // Games and Languages (from original QuickSearch)
   const GAMES = ['BDO', 'BDM', 'BDC', 'CD'];
@@ -93,8 +103,10 @@
 
   async function loadAvailableDictionaries() {
     try {
-      // Note: This endpoint requires authentication, but we'll handle that
-      const response = await fetch(`${API_BASE}/api/v2/quicksearch/list-dictionaries`);
+      // Note: This endpoint requires authentication
+      const response = await fetch(`${API_BASE}/api/v2/quicksearch/list-dictionaries`, {
+        headers: getAuthHeaders()
+      });
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -132,6 +144,7 @@
 
       const response = await fetch(`${API_BASE}/api/v2/quicksearch/create-dictionary`, {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData
       });
 
@@ -164,6 +177,7 @@
 
       const response = await fetch(`${API_BASE}/api/v2/quicksearch/load-dictionary`, {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData
       });
 
@@ -200,6 +214,7 @@
 
       const response = await fetch(`${API_BASE}/api/v2/quicksearch/set-reference`, {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData
       });
 
@@ -231,6 +246,7 @@
 
       const response = await fetch(`${API_BASE}/api/v2/quicksearch/toggle-reference`, {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData
       });
 
@@ -279,6 +295,7 @@
 
         const response = await fetch(`${API_BASE}/api/v2/quicksearch/search`, {
           method: 'POST',
+          headers: getAuthHeaders(),
           body: formData
         });
 
@@ -300,6 +317,7 @@
 
         const response = await fetch(`${API_BASE}/api/v2/quicksearch/search-multiline`, {
           method: 'POST',
+          headers: getAuthHeaders(),
           body: formData
         });
 

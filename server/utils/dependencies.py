@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from loguru import logger
 
-from server.database.db_setup import get_session_maker, create_database_engine
+from server.database.db_setup import get_session_maker, create_database_engine, initialize_database as init_db_tables
 from server.utils.auth import get_current_user, is_admin
 from server import config
 
@@ -29,14 +29,18 @@ _async_session_maker = None
 
 
 def initialize_database():
-    """Initialize database engine and session maker (call once at startup)."""
+    """Initialize database engine, session maker, and create tables (call once at startup)."""
     global _engine, _session_maker
 
     if _engine is None:
         use_postgres = config.DATABASE_TYPE == "postgresql"
         _engine = create_database_engine(use_postgres=use_postgres, echo=config.DB_ECHO)
         _session_maker = get_session_maker(_engine)
-        logger.info(f"Database initialized: {config.DATABASE_TYPE}")
+
+        # Create tables if they don't exist (safe to call multiple times)
+        init_db_tables(_engine)
+
+        logger.info(f"Database initialized with tables: {config.DATABASE_TYPE}")
 
 
 def get_db() -> Generator[Session, None, None]:

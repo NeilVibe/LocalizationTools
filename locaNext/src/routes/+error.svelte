@@ -1,7 +1,15 @@
 <script>
-  // DEBUG: This should log immediately when the module loads
-  console.log("[DEBUG] +page.svelte module loading...");
-
+  /**
+   * Error page that handles SvelteKit routing failures in Electron.
+   *
+   * In Electron with file:// protocol, SvelteKit router fails because:
+   * - URL is file:///C:/Users/.../index.html
+   * - Router tries to match route /C:/Users/.../index.html
+   * - No route matches, so "Not found" error
+   *
+   * This error page renders the main app content instead of an error.
+   */
+  import { page } from '$app/stores';
   import { currentApp, currentView } from "$lib/stores/app.js";
   import XLSTransfer from "$lib/components/apps/XLSTransfer.svelte";
   import QuickSearch from "$lib/components/apps/QuickSearch.svelte";
@@ -11,41 +19,28 @@
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
-  console.log("[DEBUG] +page.svelte imports complete");
-
-  // SvelteKit page props (consumed to silence unused warnings)
-  export let data;
-  export let form;
-  export let params;
-  // Consume props to avoid unused warnings
-  $: void data;
-  $: void form;
-  $: void params;
-
   let view;
   let app;
 
-  console.log("[DEBUG] +page.svelte subscribing to stores");
-
   currentView.subscribe(value => {
     view = value;
-    console.log("[DEBUG] View changed:", view);
-    logger.info("View changed", { view });
   });
 
   currentApp.subscribe(value => {
     app = value;
-    console.log("[DEBUG] App changed:", app);
-    logger.info("App changed", { app });
   });
 
   onMount(() => {
-    console.log("[DEBUG] +page.svelte onMount");
-    logger.component("+page.svelte", "mounted");
-    logger.info("Page state", { view, app });
+    logger.info("+error.svelte acting as main page (Electron file:// workaround)");
   });
+
+  // Log the error for debugging
+  $: if ($page.error) {
+    console.log("[Electron] SvelteKit routing error (expected in file:// mode):", $page.error.message);
+  }
 </script>
 
+<!-- Render main app content even though this is technically an error page -->
 <div class="main-container">
   {#if view === 'tasks'}
     <TaskManager />

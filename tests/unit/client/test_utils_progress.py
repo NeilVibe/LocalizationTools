@@ -3,7 +3,7 @@ Unit Tests for Progress Tracking Utilities
 
 Tests all functionality of the progress tracking system including:
 - ProgressTracker context manager
-- Console and Gradio progress updates
+- Console and callback progress updates
 - Status message handling
 - SimpleProgress helper
 - track_progress convenience function
@@ -37,7 +37,7 @@ def test_progress_tracker_initialization():
     assert tracker.total == 100
     assert tracker.desc == "Testing"
     assert tracker.current == 0
-    assert tracker.gradio_progress is None
+    assert tracker.callback is None
     assert tracker.tqdm_bar is None
 
 
@@ -128,48 +128,47 @@ def test_progress_tracker_set_status():
 
 @pytest.mark.unit
 @pytest.mark.client
-def test_progress_tracker_with_gradio_progress():
+def test_progress_tracker_with_callback():
     """
-    Test that ProgressTracker works with Gradio progress object.
+    Test that ProgressTracker works with callback function.
 
-    Given: A mock Gradio progress object
+    Given: A mock callback function
     When: ProgressTracker updates
-    Then: Gradio progress is called with correct values
+    Then: Callback is called with correct values
     """
-    mock_gradio_progress = Mock()
+    mock_callback = Mock()
 
-    with ProgressTracker(total=100, desc="Test", gradio_progress=mock_gradio_progress) as tracker:
+    with ProgressTracker(total=100, desc="Test", callback=mock_callback) as tracker:
         tracker.update(25, status="Quarter done")
 
-        # Gradio progress should be called
-        mock_gradio_progress.assert_called()
-        call_args = mock_gradio_progress.call_args
+        # Callback should be called
+        mock_callback.assert_called()
+        call_args = mock_callback.call_args
 
-        # Should be called with progress value (0.25) and description
+        # Should be called with progress value (0.25) and status
         progress_value = call_args[0][0]
         assert progress_value == 0.25
 
 
 @pytest.mark.unit
 @pytest.mark.client
-def test_progress_tracker_gradio_progress_with_status():
+def test_progress_tracker_callback_with_status():
     """
-    Test that Gradio progress receives status messages.
+    Test that callback receives status messages.
 
-    Given: A ProgressTracker with Gradio progress
+    Given: A ProgressTracker with callback
     When: update() is called with status
-    Then: Gradio receives combined description and status
+    Then: Callback receives progress value and status
     """
-    mock_gradio_progress = Mock()
+    mock_callback = Mock()
 
-    with ProgressTracker(total=10, desc="Processing", gradio_progress=mock_gradio_progress) as tracker:
+    with ProgressTracker(total=10, desc="Processing", callback=mock_callback) as tracker:
         tracker.update(5, status="Item 5")
 
-        call_args = mock_gradio_progress.call_args
-        desc = call_args.kwargs.get('desc', '')
+        call_args = mock_callback.call_args
+        status = call_args[0][1]
 
-        assert "Processing" in desc
-        assert "Item 5" in desc
+        assert "Item 5" in status
 
 
 @pytest.mark.unit
@@ -182,14 +181,14 @@ def test_progress_tracker_zero_total_no_crash():
     When: update() is called
     Then: No exception is raised
     """
-    mock_gradio_progress = Mock()
+    mock_callback = Mock()
 
-    with ProgressTracker(total=0, desc="Test", gradio_progress=mock_gradio_progress) as tracker:
+    with ProgressTracker(total=0, desc="Test", callback=mock_callback) as tracker:
         # Should not crash
         tracker.update(1)
 
-        # Gradio should receive 0.0 as progress
-        call_args = mock_gradio_progress.call_args
+        # Callback should receive 0.0 as progress
+        call_args = mock_callback.call_args
         progress_value = call_args[0][0]
         assert progress_value == 0.0
 
@@ -204,16 +203,16 @@ def test_progress_tracker_full_workflow():
     When: All 10 items are processed with updates
     Then: Progress reaches 100%
     """
-    mock_gradio_progress = Mock()
+    mock_callback = Mock()
 
-    with ProgressTracker(total=10, desc="Processing", gradio_progress=mock_gradio_progress) as tracker:
+    with ProgressTracker(total=10, desc="Processing", callback=mock_callback) as tracker:
         for i in range(10):
             tracker.update(1, status=f"Item {i+1}")
 
         assert tracker.current == 10
 
         # Final progress should be 1.0 (100%)
-        final_call = mock_gradio_progress.call_args
+        final_call = mock_callback.call_args
         progress_value = final_call[0][0]
         assert progress_value == 1.0
 
@@ -244,16 +243,16 @@ def test_track_progress_processes_all_items():
 
 @pytest.mark.unit
 @pytest.mark.client
-def test_track_progress_with_gradio():
+def test_track_progress_with_callback():
     """
-    Test that track_progress works with Gradio progress.
+    Test that track_progress works with callback.
 
-    Given: A list of items and mock Gradio progress
+    Given: A list of items and mock callback
     When: track_progress is called
-    Then: Gradio progress is updated for each item
+    Then: Callback is updated for each item
     """
     items = ["a", "b", "c"]
-    mock_gradio_progress = Mock()
+    mock_callback = Mock()
 
     def uppercase(x):
         return x.upper()
@@ -262,13 +261,13 @@ def test_track_progress_with_gradio():
         items,
         uppercase,
         desc="Converting",
-        gradio_progress=mock_gradio_progress
+        callback=mock_callback
     )
 
     assert results == ["A", "B", "C"]
 
-    # Gradio should be called for each item
-    assert mock_gradio_progress.call_count >= len(items)
+    # Callback should be called for each item
+    assert mock_callback.call_count >= len(items)
 
 
 @pytest.mark.unit
@@ -459,16 +458,16 @@ def test_progress_tracker_update_beyond_total():
     When: update() is called to exceed total
     Then: No exception is raised
     """
-    mock_gradio_progress = Mock()
+    mock_callback = Mock()
 
-    with ProgressTracker(total=10, desc="Test", gradio_progress=mock_gradio_progress) as tracker:
+    with ProgressTracker(total=10, desc="Test", callback=mock_callback) as tracker:
         tracker.update(15)
 
         # Should not crash, current becomes 15
         assert tracker.current == 15
 
         # Progress value should be capped at or exceed 1.0
-        call_args = mock_gradio_progress.call_args
+        call_args = mock_callback.call_args
         progress_value = call_args[0][0]
         assert progress_value >= 1.0
 
@@ -551,9 +550,9 @@ def test_progress_tracker_realistic_file_processing():
     files = [f"file_{i}.txt" for i in range(10)]
     processed_files = []
 
-    mock_gradio_progress = Mock()
+    mock_callback = Mock()
 
-    with ProgressTracker(total=len(files), desc="Processing files", gradio_progress=mock_gradio_progress) as tracker:
+    with ProgressTracker(total=len(files), desc="Processing files", callback=mock_callback) as tracker:
         for i, file in enumerate(files):
             # Simulate processing
             processed_files.append(file.upper())
@@ -563,7 +562,7 @@ def test_progress_tracker_realistic_file_processing():
     assert tracker.current == 10
 
     # Verify final progress is 100%
-    final_call = mock_gradio_progress.call_args
+    final_call = mock_callback.call_args
     progress_value = final_call[0][0]
     assert progress_value == 1.0
 

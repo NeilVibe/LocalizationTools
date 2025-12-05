@@ -15,6 +15,12 @@ const config = {
     }),
     prerender: {
       entries: ['*']
+    },
+    // CRITICAL: Use relative paths for Electron's file:// protocol
+    // Without this, paths like /_app/ resolve to C:/_app/ on Windows
+    // NOTE: base must be empty, Vite handles the actual asset base path
+    paths: {
+      relative: true
     }
   }
 };

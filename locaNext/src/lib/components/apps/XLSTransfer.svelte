@@ -202,11 +202,11 @@
       if (isElectron) {
         // Electron mode: use Python script
         logger.info("Loading dictionary via Python script (Electron mode)", {
-          scriptPath: `${pythonToolsPath}/xls_transfer/load_dictionary.py`
+          scriptPath: `${pythonToolsPath}/xlstransfer/load_dictionary.py`
         });
 
         const result = await window.electron.executePython({
-          scriptPath: `${pythonToolsPath}/xls_transfer/load_dictionary.py`,
+          scriptPath: `${pythonToolsPath}/xlstransfer/load_dictionary.py`,
           args: []
         });
 
@@ -305,7 +305,7 @@
         const startTime = performance.now();
 
         const result = await window.electron.executePython({
-          scriptPath: `${pythonToolsPath}/xls_transfer/translate_file.py`,
+          scriptPath: `${pythonToolsPath}/xlstransfer/translate_file.py`,
           args: [files[0], threshold]
         });
 
@@ -648,11 +648,11 @@
       statusMessage = 'Starting Simple Excel Transfer...';
 
       logger.info("Starting Simple Excel Transfer", {
-        scriptPath: `${pythonToolsPath}/xls_transfer/simple_transfer.py`
+        scriptPath: `${pythonToolsPath}/xlstransfer/simple_transfer.py`
       });
 
       const result = await window.electron.executePython({
-        scriptPath: `${pythonToolsPath}/xls_transfer/simple_transfer.py`,
+        scriptPath: `${pythonToolsPath}/xlstransfer/simple_transfer.py`,
         args: []
       });
 
@@ -718,7 +718,7 @@
         if (isElectron) {
           // Electron mode: Call Python script via IPC
           sheetInfo = await window.electron.executePython({
-            scriptPath: `${pythonToolsPath}/xls_transfer/get_sheets.py`,
+            scriptPath: `${pythonToolsPath}/xlstransfer/get_sheets.py`,
             args: [file]
           });
         } else {
@@ -879,7 +879,7 @@
         }
 
         result = await window.electron.executePython({
-          scriptPath: `${pythonToolsPath}/xls_transfer/process_operation.py`,
+          scriptPath: `${pythonToolsPath}/xlstransfer/process_operation.py`,
           args: [uploadSettingsOperationType, JSON.stringify(electronSelections), threshold]
         });
       } else {

@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512041930 (2025-12-04)
+**Version:** 2512051130 (2025-12-05)
 **Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅
 
 ---
@@ -15,7 +15,7 @@
 - 📊 **Central monitoring**: Optional telemetry to server
 - 👔 **Professional**: CEO/management-ready quality
 
-### Current Status (2025-12-04):
+### Current Status (2025-12-05):
 - ✅ **Backend**: 100% Complete (47+ endpoints, WebSocket, async)
 - ✅ **LocaNext Desktop App**: 100% Complete (Electron + Svelte)
 - ✅ **XLSTransfer (App #1)**: 100% Complete (10 functions, exact replica)
@@ -58,6 +58,27 @@
 | **[LOGGING_PROTOCOL.md](docs/LOGGING_PROTOCOL.md)** | Comprehensive logging requirements (MANDATORY!) |
 | **[MONITORING_COMPLETE_GUIDE.md](docs/MONITORING_COMPLETE_GUIDE.md)** | Monitoring system, real-time logs |
 
+### 📜 NewScripts (Mini-Projects)
+
+| Document | What It Covers |
+|----------|----------------|
+| **[NewScripts/README.md](RessourcesForCodingTheProject/NewScripts/README.md)** | Script catalog, patterns, templates, Claude instructions |
+| **[NewScripts/WORKFLOW.md](RessourcesForCodingTheProject/NewScripts/WORKFLOW.md)** | 7-phase workflow for creating new scripts |
+| **[NewScripts/ROADMAP.md](RessourcesForCodingTheProject/NewScripts/ROADMAP.md)** | Development plan for NewScripts |
+| **[GlossarySniffer/](RessourcesForCodingTheProject/NewScripts/GlossarySniffer/)** | Mini-project: Glossary extraction tool |
+| **[WordCountMaster/](RessourcesForCodingTheProject/NewScripts/WordCountMaster/)** | Mini-project: Word count diff tool |
+| **[ExcelRegex/](RessourcesForCodingTheProject/NewScripts/ExcelRegex/)** | Mini-project: Regex operations on Excel files |
+
+### 📂 Reference Scripts (RessourcesForCodingTheProject)
+
+| Resource | What It Covers |
+|----------|----------------|
+| **[MAIN PYTHON SCRIPTS/](RessourcesForCodingTheProject/MAIN%20PYTHON%20SCRIPTS/)** | 9 main tools (XLSTransfer, QuickSearch, KRSimilar, TFM, etc.) |
+| **[SECONDARY PYTHON SCRIPTS/](RessourcesForCodingTheProject/SECONDARY%20PYTHON%20SCRIPTS/)** | 74 utility scripts (XML, Excel, TMX, text processing) |
+| **[datausedfortesting/](RessourcesForCodingTheProject/datausedfortesting/)** | Test data for script development |
+| **[guides/](RessourcesForCodingTheProject/guides/)** | Guides for existing reference scripts |
+| **[.claude/newscript_instructions.md](.claude/newscript_instructions.md)** | Claude AI instructions for building scripts |
+
 ### 🧪 Testing (Organized Tree)
 
 | Document | What It Covers |
@@ -77,7 +98,7 @@
 | **[BUILD_TROUBLESHOOTING.md](docs/BUILD_TROUBLESHOOTING.md)** | Debugging failed builds, GitHub Actions |
 | **[BUILD_CHECKLIST.md](docs/BUILD_CHECKLIST.md)** | Pre-release checklist |
 | **[PACKAGING_GUIDE.md](docs/PACKAGING_GUIDE.md)** | Electron packaging details |
-| **[WINDOWS_TROUBLESHOOT.md](docs/WINDOWS_TROUBLESHOOT.md)** | **Debug Windows builds from WSL, diagnostic commands** |
+| **[WINDOWS_TROUBLESHOOTING.md](docs/WINDOWS_TROUBLESHOOTING.md)** | **Debug Windows EXE from WSL, CDP test scripts, +error.svelte workaround** |
 
 ### 🌐 Deployment & Operations
 
@@ -254,7 +275,7 @@ bash scripts/clean_logs.sh
 - "Should we add another tool to LocaNext?"
 
 ### Windows Build Debugging:
-- See **[WINDOWS_TROUBLESHOOT.md](docs/WINDOWS_TROUBLESHOOT.md)** for WSL debugging commands
+- See **[WINDOWS_TROUBLESHOOTING.md](docs/WINDOWS_TROUBLESHOOTING.md)** for WSL debugging commands
 - User can provide Windows install path (e.g., `C:\Users\...\LocaNext`)
 - Access via WSL: `/mnt/c/Users/.../LocaNext`
 
@@ -273,8 +294,8 @@ bash scripts/clean_logs.sh
 - **Unit Tests:** 350+ (auth, cache, websocket, dependencies, tools)
 - **API Simulation Tests:** 168 (Tools 26 + Admin 15 + Errors 25 + WebSocket 10 + Full System 72)
 - **Security Tests:** 86 (IP filter, CORS, JWT, audit logging)
-- **Tools:** 3 (XLSTransfer, QuickSearch, KR Similar) - all under `server/tools/`
-- **Documentation Files:** 29 active + 9 archived (added WINDOWS_TROUBLESHOOT.md)
+- **Tools:** 3 (XLSTransfer, QuickSearch, KR Similar) - all under `server/tools/`, 14/14 CDP tests passed
+- **Documentation Files:** 30 active + 9 archived (updated WINDOWS_TROUBLESHOOTING.md)
 
 ---
 
@@ -286,7 +307,7 @@ This project is **97% complete**, **clean**, **organized**, and **production-rea
 
 ---
 
-*Last updated: 2025-12-04 by Claude*
+*Last updated: 2025-12-05 by Claude*
 *Tests: 885 total | Structure unified | Frontend: 164 | API Sim: 168 | Security: 86*
-*Priority 11.0: Health Check + Auto-Repair system implemented*
+*Tools: 3/3 complete (XLSTransfer, QuickSearch, KR Similar)*
 *MASTER NAVIGATION HUB - All tools unified under server/tools/*
