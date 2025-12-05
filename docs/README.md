@@ -98,6 +98,17 @@ docs/
 │   │
 │   └── CLAUDE_AI_WARNINGS.md ──────── Hallucination prevention
 │
+├─────────────────────────────────────────────────────────────────────────────
+│   🏢 COMPANY SETUP (docs/company-setup/) - Enterprise Deployment
+├─────────────────────────────────────────────────────────────────────────────
+│   │
+│   ├── company-setup/README.md ────── Overview & Getting Started
+│   ├── company-setup/SECURITY.md ──── Security Architecture (86 tests)
+│   ├── company-setup/NETWORK.md ───── Network Setup & Air-Gapped Deploy
+│   ├── company-setup/LICENSING.md ─── License Compliance (MIT/Apache/BSD)
+│   ├── company-setup/INSTALLATION.md ─ Step-by-Step Install Guide
+│   └── company-setup/SALES_SHEET.md ── Executive Summary & ROI
+│
 └─────────────────────────────────────────────────────────────────────────────
     📋 ARCHIVE (docs/archive/)
 ─────────────────────────────────────────────────────────────────────────────
@@ -121,6 +132,7 @@ docs/
 | Deploy to production | [DEPLOYMENT.md](DEPLOYMENT.md) |
 | Set up security | [SECURITY_HARDENING.md](SECURITY_HARDENING.md) |
 | Understand architecture | [architecture/README.md](architecture/README.md) |
+| Deploy for company (air-gapped) | [company-setup/README.md](company-setup/README.md) |
 
 ---
 
@@ -137,7 +149,8 @@ docs/
 | Development | 4 | CODING_STANDARDS.md |
 | Tool-Specific | 3 | XLSTRANSFER_GUIDE.md |
 | Claude AI | 1 | CLAUDE_AI_WARNINGS.md |
-| **Total** | **38+** | |
+| Company Setup | 6 | company-setup/README.md |
+| **Total** | **44+** | |
 
 ---
 

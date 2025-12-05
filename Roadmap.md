@@ -1,10 +1,45 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512052315 | **Updated**: 2025-12-05 | **Status**: ✅ Telemetry FULL STACK COMPLETE (P12.5.9)
+**Version**: 2512060945 | **Updated**: 2025-12-06 | **Status**: 🔄 P13.0 Gitea Setup IN PROGRESS
 
 ---
 
-## 🔥 Latest: Telemetry Architecture Validated (2025-12-05)
+## 🔥 Latest: P13.0 Gitea Setup Started (2025-12-06)
+
+### ✅ Gitea Installed:
+```
+Location: /home/neil1988/gitea/
+├── gitea           # Binary v1.22.3 (137MB)
+├── custom/conf/    # Config (app.ini)
+├── data/           # SQLite database
+├── repositories/   # Git repos
+├── start.sh        # Helper: ./start.sh
+└── stop.sh         # Helper: ./stop.sh
+
+Start: cd ~/gitea && ./start.sh
+Stop:  cd ~/gitea && ./stop.sh
+URL:   http://localhost:3000
+```
+
+### 📋 Remaining P13 Tasks:
+- [ ] Complete web setup (create admin user)
+- [ ] Push LocalizationTools repo to Gitea
+- [ ] Configure dual-remote (GitHub primary + Gitea backup)
+- [ ] Set up Gitea Actions for CI/CD
+
+---
+
+## ✅ Previous: P12.5 Telemetry FULL STACK COMPLETE (2025-12-06)
+
+### ✅ All Telemetry Verified Working:
+1. **Server-side**: 4 DB tables, 8 API endpoints, session tracking
+2. **Desktop Client**: Auto-register, session lifecycle, log queue
+3. **Admin Dashboard**: Telemetry tab with 4 views (Overview, Installations, Sessions, Errors)
+4. **Tool Usage Hooks**: All 3 tools + TaskManager WebSocket events instrumented
+
+---
+
+## 🔥 Previous: Telemetry Architecture Validated (2025-12-05)
 
 ### ✅ Two-Port Simulation Test Results:
 1. **Desktop (8888) → Central (9999)** - Cross-port communication WORKING
@@ -129,6 +164,7 @@ PORT SUMMARY (Quick Reference):
 └──────────────────┴────────┴─────────────────────────────┘
 
 WHAT'S NEXT? → P13.0: Gitea Patch Server (Self-hosted Git + CI/CD)
+              → P10.3: Patch Notes (Backlog - nice to have)
 ```
 
 ---
@@ -855,10 +891,11 @@ SELF-HOSTED GIT INFRASTRUCTURE
 ```
 P13 TASKS:
 │
-├── 📋 13.1: Server Setup
-│   ├── [ ] Install Gitea on company server
-│   ├── [ ] Configure SSH
-│   ├── [ ] Create admin account
+├── 🔄 13.1: Server Setup (IN PROGRESS)
+│   ├── [x] Install Gitea binary (v1.22.3 @ ~/gitea/)
+│   ├── [x] Configure SQLite + ports (3000 web, 2222 SSH)
+│   ├── [x] Create start.sh / stop.sh helpers
+│   ├── [ ] Complete web installer (create admin user)
 │   └── [ ] Add developer SSH keys
 │
 ├── 📋 13.2: Repository Migration
@@ -1025,10 +1062,11 @@ COMPLETE PRIORITY TREE (Past → Present → Future)
 ├── ✅ COMPLETE (Dec 2025)
 │   │
 │   └── P12.5.9: Tool Usage Tracking ✅
-│       ├── ✅ Hook XLSTransfer operations
-│       ├── ✅ Hook QuickSearch queries
-│       ├── ✅ Hook KRSimilar operations
-│       └── ✅ Duration, rows, errors tracked via telemetry.js
+│       ├── ✅ Hook XLSTransfer operations (load_dict, transfer, upload)
+│       ├── ✅ Hook QuickSearch queries (create, load, search, reference)
+│       ├── ✅ Hook KRSimilar operations (create, load, search, extract, translate)
+│       ├── ✅ TaskManager WebSocket hooks (operation_complete, operation_failed)
+│       └── ✅ Frontend telemetry.js utility + electronTelemetry IPC
 │
 └── 📋 NEXT (P13+)
     │

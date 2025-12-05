@@ -357,3 +357,154 @@ class UserFeedback(Base):
 
     def __repr__(self):
         return f"<UserFeedback(id={self.feedback_id}, type='{self.feedback_type}', status='{self.status}')>"
+
+
+# ============================================================================
+# Telemetry Tables (Central Server - receives from Desktop Apps)
+# ============================================================================
+
+class Installation(Base):
+    """
+    Registered installations that send telemetry to Central Server.
+    Each Desktop App registers once and gets an API key for communication.
+    """
+    __tablename__ = "installations"
+
+    installation_id = Column(String(32), primary_key=True)  # Unique installation ID
+    api_key_hash = Column(String(255), nullable=False)  # Hashed API key for security
+    installation_name = Column(String(100), nullable=False, index=True)  # Human-readable name
+    version = Column(String(20), nullable=False)  # App version at registration
+    owner_email = Column(String(100), nullable=True, index=True)
+
+    # Status tracking
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_seen = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_version = Column(String(20), nullable=True)  # Most recent version reported
+
+    # Extra data (OS, machine info, etc.)
+    extra_data = Column(JSON, nullable=True)
+
+    # Relationships
+    remote_sessions = relationship("RemoteSession", back_populates="installation", cascade="all, delete-orphan")
+    remote_logs = relationship("RemoteLog", back_populates="installation", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_installation_active", "is_active"),
+        Index("idx_installation_last_seen", "last_seen"),
+    )
+
+    def __repr__(self):
+        return f"<Installation(id='{self.installation_id}', name='{self.installation_name}', active={self.is_active})>"
+
+
+class RemoteSession(Base):
+    """
+    Track user sessions from remote installations.
+    A session starts when user opens the app and ends when they close it.
+    """
+    __tablename__ = "remote_sessions"
+
+    session_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    installation_id = Column(String(32), ForeignKey("installations.installation_id", ondelete="CASCADE"),
+                            nullable=False, index=True)
+
+    # Timing
+    started_at = Column(DateTime, default=datetime.utcnow, index=True)
+    ended_at = Column(DateTime, nullable=True)
+    last_heartbeat = Column(DateTime, default=datetime.utcnow)
+    duration_seconds = Column(Integer, nullable=True)  # Calculated on end
+
+    # Connection info
+    ip_address = Column(String(45), nullable=True)
+    app_version = Column(String(20), nullable=False)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    end_reason = Column(String(50), nullable=True)  # "user_closed", "timeout", "error"
+
+    # Relationships
+    installation = relationship("Installation", back_populates="remote_sessions")
+
+    __table_args__ = (
+        Index("idx_remote_session_active", "is_active"),
+        Index("idx_remote_session_installation_started", "installation_id", "started_at"),
+    )
+
+    def __repr__(self):
+        return f"<RemoteSession(id='{self.session_id}', installation='{self.installation_id}', active={self.is_active})>"
+
+
+class RemoteLog(Base):
+    """
+    Store log entries received from remote installations.
+    Central Server receives batches of logs from Desktop Apps.
+    """
+    __tablename__ = "remote_logs"
+
+    log_id = Column(Integer, primary_key=True, autoincrement=True)
+    installation_id = Column(String(32), ForeignKey("installations.installation_id", ondelete="CASCADE"),
+                            nullable=False, index=True)
+
+    # Log data
+    timestamp = Column(DateTime, nullable=False, index=True)  # Original timestamp from client
+    level = Column(String(20), nullable=False, index=True)  # INFO, SUCCESS, WARNING, ERROR, CRITICAL
+    message = Column(Text, nullable=False)
+    data = Column(JSON, nullable=True)  # Additional structured data
+
+    # Source info
+    source = Column(String(50), nullable=False, index=True)  # "locanext-app", "admin-dashboard"
+    component = Column(String(100), nullable=True)  # Specific component/module
+
+    # Server tracking
+    received_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Relationships
+    installation = relationship("Installation", back_populates="remote_logs")
+
+    __table_args__ = (
+        Index("idx_remote_log_timestamp_level", "timestamp", "level"),
+        Index("idx_remote_log_installation_timestamp", "installation_id", "timestamp"),
+    )
+
+    def __repr__(self):
+        return f"<RemoteLog(id={self.log_id}, level='{self.level}', installation='{self.installation_id}')>"
+
+
+class TelemetrySummary(Base):
+    """
+    Daily aggregated telemetry statistics per installation.
+    Updated periodically by background job or on log submission.
+    """
+    __tablename__ = "telemetry_summary"
+
+    summary_id = Column(Integer, primary_key=True, autoincrement=True)
+    date = Column(DateTime, nullable=False, index=True)  # Date of summary (UTC midnight)
+    installation_id = Column(String(32), ForeignKey("installations.installation_id", ondelete="CASCADE"),
+                            nullable=False, index=True)
+
+    # Session stats
+    total_sessions = Column(Integer, default=0)
+    total_duration_seconds = Column(Integer, default=0)
+    avg_session_seconds = Column(Float, default=0.0)
+
+    # Tool usage
+    tools_used = Column(JSON, nullable=True)  # {"xlstransfer": 5, "quicksearch": 3}
+    total_operations = Column(Integer, default=0)
+
+    # Error tracking
+    info_count = Column(Integer, default=0)
+    success_count = Column(Integer, default=0)
+    warning_count = Column(Integer, default=0)
+    error_count = Column(Integer, default=0)
+    critical_count = Column(Integer, default=0)
+
+    # Update tracking
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_telemetry_date_installation", "date", "installation_id", unique=True),
+    )
+
+    def __repr__(self):
+        return f"<TelemetrySummary(date='{self.date.date()}', installation='{self.installation_id}', sessions={self.total_sessions})>"
