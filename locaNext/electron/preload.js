@@ -197,4 +197,38 @@ contextBridge.exposeInMainWorld('electronHealth', {
   getAppInfo: () => ipcRenderer.invoke('get-app-info')
 });
 
+// Expose telemetry API (P12.5.7)
+contextBridge.exposeInMainWorld('electronTelemetry', {
+  /**
+   * Send telemetry log to Central Server
+   * @param {string} level - 'info', 'success', 'warning', 'error', 'critical'
+   * @param {string} message - Log message
+   * @param {string} component - Component name (e.g., 'XLSTransfer', 'QuickSearch')
+   * @param {object} data - Additional data
+   * @returns {Promise<{success, error}>}
+   */
+  log: (level, message, component = null, data = null) =>
+    ipcRenderer.invoke('telemetry-log', { level, message, component, data }),
+
+  /**
+   * Convenience methods for each log level
+   */
+  info: (message, component, data) =>
+    ipcRenderer.invoke('telemetry-log', { level: 'info', message, component, data }),
+  success: (message, component, data) =>
+    ipcRenderer.invoke('telemetry-log', { level: 'success', message, component, data }),
+  warning: (message, component, data) =>
+    ipcRenderer.invoke('telemetry-log', { level: 'warning', message, component, data }),
+  error: (message, component, data) =>
+    ipcRenderer.invoke('telemetry-log', { level: 'error', message, component, data }),
+  critical: (message, component, data) =>
+    ipcRenderer.invoke('telemetry-log', { level: 'critical', message, component, data }),
+
+  /**
+   * Get telemetry state (for debugging)
+   * @returns {Promise<{enabled, serverUrl, installationId, sessionId, queueSize, isOnline}>}
+   */
+  getState: () => ipcRenderer.invoke('get-telemetry-state')
+});
+
 console.log('LocaNext preload script loaded');

@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512051540 | **Updated**: 2025-12-05 | **Status**: ✅ Telemetry Two-Port Test PASSED
+**Version**: 2512051600 | **Updated**: 2025-12-05 | **Status**: ✅ Telemetry SERVER-SIDE COMPLETE (P12.5)
 
 ---
 
@@ -61,25 +61,73 @@
 
 ---
 
-## 🗺️ NAVIGATION TREE (Jump to Section)
+## 🗺️ MASTER NAVIGATION TREE (START HERE!)
 
 ```
-Roadmap.md
+Roadmap.md - FULL DOCUMENT GUIDE
+═══════════════════════════════════════════════════════════════════════════
 │
-├── 🌳 STATUS TREE ─────────────── Platform overview at a glance
-├── 🔒 CI SAFETY CHECKS ────────── All 14 build verification checks
-├── ⚡ QUICK COMMANDS ──────────── Copy-paste commands
+├── 📍 YOU ARE HERE ─────────────── Navigation Tree (this section)
 │
-├── ✅ COMPLETE: Priority 9.0 ──── Auto-Update System (DONE!)
-├── 📋 BACKLOG: Priority 10.3 ──── Patch Notes System (deferred)
-├── ✅ COMPLETE: Priority 11.0 ──── Health Check & Auto-Repair
-├── 🔴 CURRENT: Priority 12.5 ──── Central Telemetry System (NEXT!)
-├── ✅ COMPLETE: Priority 8.0 ──── First-Run Setup
-├── ✅ COMPLETE: Priority 6.0 ──── Structure Unification
+├─────────────────────────────────────────────────────────────────────────
+│   🔥 CURRENT STATUS (Read First)
+├─────────────────────────────────────────────────────────────────────────
+│   │
+│   ├── 🔥 Latest ──────────────── Telemetry validated (2025-12-05)
+│   ├── 🔥 Hotfix Summary ──────── 11 fixes, 1 workaround
+│   ├── 🌳 STATUS TREE ─────────── Platform overview (QUAD ENTITY)
+│   └── ⚡ QUICK COMMANDS ──────── Copy-paste ready
 │
-├── 📦 COMPLETED FEATURES ──────── Compact list of all done items
-├── 🏗️ ARCHITECTURE ────────────── System diagram
-└── 📋 ARCHIVE ─────────────────── Historical fixes (Priority 7.0)
+├─────────────────────────────────────────────────────────────────────────
+│   🎯 PRIORITY SECTIONS (Detailed Documentation)
+├─────────────────────────────────────────────────────────────────────────
+│   │
+│   ├── ✅ P6.0: Structure ─────── All tools under server/tools/
+│   ├── ✅ P8.0: First-Run ─────── Setup UI on first launch
+│   ├── ✅ P9.0: Auto-Update ───── GitHub releases + latest.yml
+│   ├── ✅ P10.0: UI/UX ────────── Modal, Progress (10.3 = BACKLOG)
+│   ├── ✅ P11.0: Health Check ─── Auto-repair system
+│   ├── ✅ P12.0-12.5: Telemetry ─ Central Server (4 tables, 5 endpoints)
+│   │       ├── ✅ 12.5.7: Desktop Client COMPLETE
+│   │       └── 12.5.8-9: NEXT ─── Dashboard UI, Usage Tracking
+│   │
+│   └── 📋 P13.0: Gitea ────────── Self-hosted Git + CI/CD (FUTURE)
+│           └── Full tree + checklist included
+│
+├─────────────────────────────────────────────────────────────────────────
+│   🏗️ ARCHITECTURE & REFERENCE
+├─────────────────────────────────────────────────────────────────────────
+│   │
+│   ├── 🔒 CI SAFETY CHECKS ────── 14 build verification checks
+│   ├── 📦 COMPLETED FEATURES ──── Compact summary of all done
+│   ├── 🏗️ QUAD ENTITY DIAGRAM ─── ASCII architecture (4 servers)
+│   └── 🚀 FULL PRIORITY TREE ──── P1→P16 complete roadmap
+│           ├── ✅ Completed: P1-P12.5
+│           ├── 📋 Backlog: P10.3
+│           ├── 🔴 Current: P12.5.7-9
+│           └── 📋 Future: P13-P16
+│
+├─────────────────────────────────────────────────────────────────────────
+│   📋 ARCHIVE (Historical Reference)
+├─────────────────────────────────────────────────────────────────────────
+│   │
+│   └── 📋 P7.0: Archive ───────── Historical fixes (superseded)
+│
+└─────────────────────────────────────────────────────────────────────────
+    🔑 KEY PRINCIPLES (Bottom of doc)
+─────────────────────────────────────────────────────────────────────────
+
+PORT SUMMARY (Quick Reference):
+┌──────────────────┬────────┬─────────────────────────────┐
+│ Entity           │ Port   │ Purpose                     │
+├──────────────────┼────────┼─────────────────────────────┤
+│ Desktop App      │ 8888   │ Local backend (per user)    │
+│ Central Server   │ 9999   │ Telemetry (company server)  │
+│ Admin Dashboard  │ 5175   │ Monitoring UI               │
+│ Gitea Server     │ 3000   │ Git + CI/CD (FUTURE)        │
+└──────────────────┴────────┴─────────────────────────────┘
+
+WHAT'S NEXT? → P12.5.8: Admin Dashboard Telemetry Tab
 ```
 
 ---
@@ -87,7 +135,7 @@ Roadmap.md
 ## 🌳 STATUS TREE
 
 ```
-LocaNext Platform v2512051540 - TRIPLE ENTITY ARCHITECTURE
+LocaNext Platform v2512051540 - QUAD ENTITY ARCHITECTURE
 │
 ├── ✅ Backend (100%) ─────────── FastAPI, 47+ endpoints, async
 ├── ✅ Frontend (100%) ────────── SvelteKit + Carbon Design
@@ -95,6 +143,13 @@ LocaNext Platform v2512051540 - TRIPLE ENTITY ARCHITECTURE
 ├── ✅ Security (7/11) ────────── IP filter, CORS, JWT, audit
 ├── ✅ Tests (885) ───────────── TRUE simulation (no mocks!)
 ├── ✅ Structure (100%) ───────── All tools under server/tools/
+├── ✅ Documentation (38+) ───── Fully organized tree structure
+│
+├── 📚 Documentation Tree
+│   ├── docs/README.md ──────── Master index (all 38+ docs)
+│   ├── docs/testing/DEBUG_AND_TEST_HUB.md ── Testing capabilities
+│   ├── docs/architecture/README.md ──────── Architecture index
+│   └── CLAUDE.md ───────────── Project hub for Claude AI
 │
 ├── 🛠️ Apps (3 Complete)
 │   ├── ✅ XLSTransfer ────────── Excel + Korean BERT AI
@@ -107,7 +162,7 @@ LocaNext Platform v2512051540 - TRIPLE ENTITY ARCHITECTURE
 │   ├── ✅ Version Unified ────── 8 files synced
 │   └── ✅ Auto-Update ────────── GitHub releases + Custom UI!
 │
-├── 🌐 TRIPLE ENTITY ARCHITECTURE ──── Production Simulation TESTED ✅
+├── 🌐 QUAD ENTITY ARCHITECTURE ───── 4-Server Production System
 │   │
 │   ├── 📦 ENTITY 1: Desktop App (User's Machine)
 │   │   ├── ✅ Electron + Svelte frontend
@@ -118,16 +173,40 @@ LocaNext Platform v2512051540 - TRIPLE ENTITY ARCHITECTURE
 │   │
 │   ├── 🖥️ ENTITY 2: Central Server (Company Server)
 │   │   ├── ✅ Remote Logging API (tested!)
-│   │   ├── ✅ Registration endpoint
-│   │   ├── ✅ Log submission endpoint
-│   │   ├── 🔴 TODO: PostgreSQL (not SQLite)
-│   │   ├── 🔴 TODO: Dashboard UI for aggregated view
-│   │   └── 🔴 TODO: Session tracking (connect/disconnect)
+│   │   ├── ✅ Registration endpoint (API key + installation_id)
+│   │   ├── ✅ Log submission endpoint (batch + error detection)
+│   │   ├── ✅ Session tracking (start/heartbeat/end)
+│   │   ├── ✅ 4 Database tables (Installation, RemoteSession, RemoteLog, TelemetrySummary)
+│   │   ├── ✅ Config: CENTRAL_SERVER_URL + telemetry settings
+│   │   ├── 📋 TODO: PostgreSQL (currently SQLite)
+│   │   └── 📋 TODO: Dashboard UI for aggregated view
 │   │
-│   └── 📡 ENTITY 3: Patch Server (FUTURE - P13)
+│   ├── 📊 ENTITY 3: Admin Dashboard (Company Server)
+│   │   ├── ✅ Port 5175 (dev) / 80 (prod)
+│   │   ├── ✅ User management, stats, logs
+│   │   ├── 📋 TODO: Telemetry tab (view all installations)
+│   │   └── 📋 TODO: Live session monitoring
+│   │
+│   └── 📡 ENTITY 4: Patch Server (FUTURE - P13)
+│       ├── 📋 Replaces GitHub Actions for internal control
 │       ├── 📋 Build/revision management
-│       ├── 📋 Update distribution (no GitHub)
-│       └── 📋 Company wants internal control
+│       ├── 📋 Update distribution (no GitHub dependency)
+│       │
+│       └── 🏆 RECOMMENDED: Gitea (MIT License - Company Safe!)
+│           ├── ✅ Self-hosted GitHub clone
+│           ├── ✅ Single binary install (5 minutes)
+│           ├── ✅ Built-in Gitea Actions (same YAML as GitHub!)
+│           ├── ✅ Web UI: PRs, Issues, Wiki, Code Review
+│           ├── ✅ ~100MB RAM (lightweight)
+│           ├── ✅ MIT License = 100% free commercial use
+│           │
+│           ├── 📦 INSTALL:
+│           │   wget https://dl.gitea.com/gitea/1.21/gitea-1.21-linux-amd64
+│           │   chmod +x gitea && ./gitea web
+│           │   # Open http://server:3000 → done!
+│           │
+│           └── 🔄 PIPELINE (.gitea/workflows/build.yml):
+│               on: push → npm ci → npm run build:win → scp to update server
 │
 └── 🎯 Priorities
     ├── ✅ P6: Structure ───────── Unified server/tools/
@@ -136,7 +215,7 @@ LocaNext Platform v2512051540 - TRIPLE ENTITY ARCHITECTURE
     ├── ✅ P10.1-2,4-5: UI/UX ─── Modal, Progress, IPC done
     ├── 📋 P10.3: Patch Notes ─── BACKLOG (deferred)
     ├── ✅ P11: Health Check ──── Auto-repair system done
-    ├── 🔴 P12.5: Telemetry ──── TWO-PORT TEST PASSED! Implementation next
+    ├── ✅ P12.5: Telemetry ──── SERVER-SIDE COMPLETE (4 tables, 5 endpoints)
     └── 📋 P13: Patch Server ─── Build/revision management (FAR FUTURE)
 ```
 
@@ -198,7 +277,7 @@ echo "Build LIGHT vXXXX" >> BUILD_TRIGGER.txt && git add -A && git commit -m "Tr
 
 ---
 
-## 🔄 Priority 9.0: Auto-Update System (CURRENT)
+## ✅ Priority 9.0: Auto-Update System (COMPLETE)
 
 **Goal:** Users automatically get latest version on app launch.
 
@@ -229,7 +308,7 @@ Priority 9.0: Auto-Update
 
 ---
 
-## 🔄 Priority 10.0: Auto-Update UI/UX (10.3 IN PROGRESS)
+## ✅ Priority 10.0: Auto-Update UI/UX (10.3 BACKLOG)
 
 **Goal:** Beautiful, informative update experience with progress tracking and patch notes.
 
@@ -305,7 +384,7 @@ Priority 10.0: Auto-Update UI/UX
 
 ---
 
-## 🔄 Priority 11.0: Repair & Health Check System (IN PROGRESS)
+## ✅ Priority 11.0: Repair & Health Check System (COMPLETE)
 
 **Problem:** If Python deps get corrupted/deleted after first-run, app crashes with no recovery option.
 
@@ -471,89 +550,147 @@ Priority 12.0: Critical Architecture Issues
 │   ├── ⚠️ WORKAROUND: +error.svelte renders content on 404 (hides the problem)
 │   └── 🔴 REAL FIX NEEDED: SvelteKit adapter-static config or hash-based routing
 │
-└── 12.5 Central Telemetry System ✅ TWO-PORT TEST PASSED
-    ├── Problem: Desktop apps log LOCALLY only (no visibility)
-    ├── Goal: Track user connections, session duration, tool usage
+└── 12.5 Central Telemetry System ✅ CORE IMPLEMENTATION COMPLETE
+    │
+    ├── 🎯 Goal: Track user connections, session duration, tool usage
     │
     ├── 🧪 TWO-PORT SIMULATION TEST (2025-12-05) ✅ PASSED
     │   ├── Desktop (8888) → Central (9999) communication WORKING
     │   ├── Registration: API key + installation_id returned
-    │   ├── Log Submission: 4 logs received, 1 ERROR detected
-    │   └── Server Logs: Full visibility into remote submissions
+    │   ├── Log Submission: 3 logs received, 1 ERROR detected
+    │   ├── Session Tracking: 48s session, ended with user_closed
+    │   └── Database: All 4 tables populated correctly
     │
-    ├── 📦 EXISTING CODE (Built and TESTED):
-    │   ├── ✅ UsageLogger (server/utils/client/logger.py)
-    │   │   └── Logs operations, sessions, errors - BUT points to localhost
-    │   ├── ✅ Remote Logging API (server/api/remote_logging.py)
-    │   │   ├── /register - Returns API key + installation_id ✅ TESTED
-    │   │   ├── /submit - Receives log batches ✅ TESTED
-    │   │   ├── /status/{id} - Get installation status
-    │   │   └── /health - Service health ✅ TESTED
-    │   ├── ✅ Machine ID (client_config.py)
-    │   │   └── Unique per installation - READY
-    │   └── ✅ Privacy Settings (LOG_FILE_NAMES, LOG_FILE_CONTENT)
-    │
-    ├── 🔴 TODO: Implementation Steps (DATABASE NEEDED - FULL SQL UPDATE)
+    ├── ✅ COMPLETED IMPLEMENTATION TREE:
     │   │
-    │   ├── 12.5.1 Database Tables (PostgreSQL for Central) 🔴 PRIORITY
-    │   │   ├── installations - Register each desktop app
-    │   │   │   ├── installation_id (PK)
-    │   │   │   ├── api_key_hash (bcrypt)
-    │   │   │   ├── installation_name
-    │   │   │   ├── version
-    │   │   │   ├── owner_email
-    │   │   │   ├── created_at, last_seen
-    │   │   │   └── metadata (JSON)
+    │   ├── 12.5.1 Database Tables ✅ DONE
+    │   │   │   File: server/database/models.py
     │   │   │
-    │   │   ├── sessions - Track connect/disconnect, duration
-    │   │   │   ├── session_id (PK)
+    │   │   ├── Installation (Central Server registry)
+    │   │   │   ├── installation_id (PK, String 22)
+    │   │   │   ├── installation_name
+    │   │   │   ├── api_key_hash (SHA256, 64 chars)
+    │   │   │   ├── version, platform, os_version
+    │   │   │   ├── created_at, last_seen
+    │   │   │   ├── is_active (Boolean)
+    │   │   │   └── extra_data (JSON)
+    │   │   │
+    │   │   ├── RemoteSession (Session tracking)
+    │   │   │   ├── session_id (UUID PK)
     │   │   │   ├── installation_id (FK)
     │   │   │   ├── started_at, ended_at
     │   │   │   ├── duration_seconds
-    │   │   │   └── ip_address
+    │   │   │   ├── ip_address, user_agent
+    │   │   │   └── end_reason (user_closed/timeout/error)
     │   │   │
-    │   │   ├── remote_logs - Store operation logs
-    │   │   │   ├── log_id (PK)
+    │   │   ├── RemoteLog (Log storage)
+    │   │   │   ├── id (Auto PK)
     │   │   │   ├── installation_id (FK)
     │   │   │   ├── timestamp, level, message
     │   │   │   ├── source, component
     │   │   │   ├── data (JSON)
     │   │   │   └── received_at
     │   │   │
-    │   │   └── telemetry_summary - Aggregated stats per day
-    │   │       ├── date, installation_id
-    │   │       ├── total_sessions, total_duration
-    │   │       ├── tools_used (JSON)
-    │   │       └── error_count, critical_count
+    │   │   └── TelemetrySummary (Daily aggregation)
+    │   │       ├── id (Auto PK)
+    │   │       ├── installation_id (FK)
+    │   │       ├── date (Date)
+    │   │       ├── total_sessions, total_duration_seconds
+    │   │       ├── log_count, error_count, critical_count
+    │   │       └── tools_used (JSON)
     │   │
-    │   ├── 12.5.2 Central Server Config
-    │   │   ├── CENTRAL_SERVER_URL env variable
-    │   │   ├── Hybrid mode: log to LOCAL + CENTRAL
-    │   │   └── Offline queue: retry when central unavailable
+    │   ├── 12.5.2 Central Server Config ✅ DONE
+    │   │   │   File: server/config.py
+    │   │   │
+    │   │   ├── CENTRAL_SERVER_URL (env variable)
+    │   │   ├── TELEMETRY_ENABLED (default: true)
+    │   │   ├── TELEMETRY_HEARTBEAT_INTERVAL (300s = 5 min)
+    │   │   ├── TELEMETRY_RETRY_INTERVAL (60s)
+    │   │   └── TELEMETRY_MAX_QUEUE_SIZE (1000 logs)
     │   │
-    │   ├── 12.5.3 Session Tracking
-    │   │   ├── POST /api/sessions/start - On app launch
-    │   │   ├── POST /api/sessions/end - On app close
-    │   │   ├── Heartbeat every 5 min (keep alive)
-    │   │   └── Calculate session duration
+    │   ├── 12.5.3 Session Tracking API ✅ DONE
+    │   │   │   File: server/api/remote_logging.py
+    │   │   │
+    │   │   ├── POST /api/v1/remote-logs/sessions/start
+    │   │   │   ├── Creates RemoteSession record
+    │   │   │   ├── Updates Installation.last_seen
+    │   │   │   └── Returns session_id (UUID)
+    │   │   │
+    │   │   ├── POST /api/v1/remote-logs/sessions/heartbeat
+    │   │   │   ├── Updates session last_seen
+    │   │   │   └── Updates Installation.last_seen
+    │   │   │
+    │   │   └── POST /api/v1/remote-logs/sessions/end
+    │   │       ├── Sets ended_at, duration_seconds
+    │   │       ├── end_reason: user_closed/timeout/error
+    │   │       └── Updates TelemetrySummary
     │   │
-    │   ├── 12.5.4 Tool Usage Tracking
-    │   │   ├── Log each tool operation (XLSTransfer, QuickSearch, etc.)
-    │   │   ├── Track: duration, rows processed, errors
-    │   │   └── Aggregate: tools used per day/week/month
+    │   ├── 12.5.4 Remote Logging API ✅ DONE
+    │   │   │   File: server/api/remote_logging.py
+    │   │   │
+    │   │   ├── GET /api/v1/remote-logs/health
+    │   │   │   └── Service health check
+    │   │   │
+    │   │   ├── POST /api/v1/remote-logs/register
+    │   │   │   ├── Generates installation_id (URL-safe base64)
+    │   │   │   ├── Generates api_key (48-byte token)
+    │   │   │   ├── Stores SHA256 hash of api_key
+    │   │   │   └── Returns: installation_id + api_key
+    │   │   │
+    │   │   ├── POST /api/v1/remote-logs/submit
+    │   │   │   ├── Validates x-api-key header (lowercase!)
+    │   │   │   ├── Stores batch of RemoteLog records
+    │   │   │   ├── Detects ERROR/CRITICAL levels
+    │   │   │   └── Updates TelemetrySummary counters
+    │   │   │
+    │   │   └── GET /api/v1/remote-logs/status/{installation_id}
+    │   │       └── Returns installation info + stats
     │   │
-    │   ├── 12.5.5 Admin Dashboard UI (Telemetry Tab)
+    │   ├── 12.5.5 Database Exports ✅ DONE
+    │   │   │   File: server/database/__init__.py
+    │   │   │
+    │   │   └── Exports: Installation, RemoteSession, RemoteLog, TelemetrySummary
+    │   │
+    │   └── 12.5.6 Two-Port Integration Test ✅ PASSED
+    │       │
+    │       ├── Test Setup:
+    │       │   ├── Terminal 1: python3 server/main.py (8888)
+    │       │   └── Terminal 2: SERVER_PORT=9999 python3 server/main.py (9999)
+    │       │
+    │       ├── Test Results (All PASSED):
+    │       │   ├── ✅ /health - Service healthy
+    │       │   ├── ✅ /register - installation_id + api_key returned
+    │       │   ├── ✅ /sessions/start - session_id returned
+    │       │   ├── ✅ /submit - 3 logs received, 1 error detected
+    │       │   └── ✅ /sessions/end - 48s session recorded
+    │       │
+    │       └── Database Verification:
+    │           ├── installations: 1 record
+    │           ├── remote_sessions: 1 session (48s, user_closed)
+    │           ├── remote_logs: 3 entries
+    │           └── telemetry_summary: Daily aggregation
+    │
+    ├── 📋 PENDING (Future Enhancements):
+    │   │
+    │   ├── 12.5.7 Tool Usage Tracking (Desktop Client)
+    │   │   ├── Hook into XLSTransfer operations
+    │   │   ├── Hook into QuickSearch queries
+    │   │   ├── Hook into KR Similar searches
+    │   │   └── Track: duration, rows processed, errors
+    │   │
+    │   ├── 12.5.8 Admin Dashboard UI (Telemetry Tab)
     │   │   ├── Active installations list
     │   │   ├── Sessions timeline (who's online now)
     │   │   ├── Tool usage charts
     │   │   └── Error rate monitoring
     │   │
-    │   └── 12.5.6 Testing
-    │       ├── ✅ Two-port simulation test PASSED
-    │       ├── Integration tests for database persistence
-    │       └── Simulate multi-installation telemetry
+    │   └── 12.5.9 Desktop Telemetry Client
+    │       ├── Auto-register on first launch
+    │       ├── Session start/heartbeat/end lifecycle
+    │       ├── Log submission with offline queue
+    │       └── Uses CENTRAL_SERVER_URL from config
     │
-    └── Status: ✅ PROTOCOL TESTED → 🔴 DATABASE IMPLEMENTATION NEXT
+    └── Status: ✅ SERVER-SIDE COMPLETE → 📋 CLIENT INTEGRATION NEXT
 ```
 
 ### Architecture Decision Needed:
@@ -653,54 +790,155 @@ server/tools/           ← ALL tools here now
 
 ---
 
-## 🏗️ TRIPLE ENTITY ARCHITECTURE
+## 📋 Priority 13.0: Gitea Patch Server (FUTURE)
+
+**Goal:** Replace GitHub with self-hosted Gitea for full company control.
+
+### 🌳 Git/Gitea Documentation Tree
 
 ```
-                            PRODUCTION DEPLOYMENT
-═══════════════════════════════════════════════════════════════════════════
+SELF-HOSTED GIT INFRASTRUCTURE
+│
+├── 📚 DOCUMENTATION
+│   └── docs/GITEA_SETUP.md ──────── Complete setup guide
+│
+├── 🔐 AUTHENTICATION
+│   ├── SSH Keys (RECOMMENDED)
+│   │   ├── Generate: ssh-keygen -t ed25519
+│   │   ├── Add to Gitea: Settings → SSH Keys
+│   │   └── Clone: git@server:user/repo.git
+│   │
+│   └── HTTPS + Token (Alternative)
+│       ├── Generate: Gitea → Settings → Applications
+│       └── Clone: https://server/user/repo.git
+│
+├── 🖥️ GITEA SERVER
+│   ├── Install: Single binary (5 min)
+│   │   wget https://dl.gitea.com/gitea/1.21/gitea-1.21-linux-amd64
+│   │   chmod +x gitea && ./gitea web
+│   │
+│   ├── Production: Systemd service or Docker
+│   ├── Port 3000: Web UI
+│   ├── Port 22/2222: SSH
+│   └── License: MIT (100% company safe)
+│
+├── 🔄 CI/CD PIPELINE (Gitea Actions)
+│   ├── Same YAML as GitHub Actions!
+│   ├── .gitea/workflows/build.yml
+│   │
+│   ├── LocaNext Pipeline:
+│   │   on: push
+│   │   jobs:
+│   │     test: pytest
+│   │     build: npm run build:win
+│   │     deploy: scp to update server
+│   │
+│   └── Self-Hosted Runner (for Windows builds)
+│
+├── 📦 UPDATE DISTRIBUTION
+│   ├── /var/www/updates/
+│   │   ├── latest.yml
+│   │   └── LocaNext-Setup-x.x.x.exe
+│   │
+│   └── Desktop app checks: https://update-server/updates/latest.yml
+│
+└── 🔒 SECURITY
+    ├── SSH keys only (no passwords)
+    ├── Internal network only (no public access)
+    ├── Regular backups
+    └── Two-factor auth enabled
+```
 
-┌─────────────────────────────┐
-│  ENTITY 1: DESKTOP APP      │
-│  (Each User's Machine)      │
+### Implementation Checklist
+
+```
+P13 TASKS:
+│
+├── 📋 13.1: Server Setup
+│   ├── [ ] Install Gitea on company server
+│   ├── [ ] Configure SSH
+│   ├── [ ] Create admin account
+│   └── [ ] Add developer SSH keys
+│
+├── 📋 13.2: Repository Migration
+│   ├── [ ] Clone from GitHub
+│   ├── [ ] Push to Gitea
+│   ├── [ ] Update developer remotes
+│   └── [ ] Test push/pull workflow
+│
+├── 📋 13.3: CI/CD Setup
+│   ├── [ ] Enable Gitea Actions
+│   ├── [ ] Create build.yml workflow
+│   ├── [ ] Setup Windows runner
+│   └── [ ] Test full pipeline
+│
+├── 📋 13.4: Update Server
+│   ├── [ ] Setup nginx for /updates/
+│   ├── [ ] Configure autoUpdater URL
+│   ├── [ ] Test update flow
+│   └── [ ] Remove GitHub dependency
+│
+└── 📋 13.5: Documentation
+    ├── [x] GITEA_SETUP.md created
+    ├── [ ] Developer onboarding guide
+    └── [ ] Backup/restore procedures
+```
+
+---
+
+## 🏗️ QUAD ENTITY ARCHITECTURE
+
+```
+                            PRODUCTION DEPLOYMENT (4 ENTITIES)
+═══════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────┐         ┌─────────────────────────────┐
+│  ENTITY 1: DESKTOP APP      │         │  ENTITY 2: CENTRAL SERVER   │
+│  (Each User's Machine)      │         │  (Telemetry Receiver)       │
+│                             │         │                             │
+│  ┌─────────┐  ┌───────────┐ │  HTTP   │  Port 9999                  │
+│  │ Svelte  │◄►│ FastAPI   │ │────────►│  • /api/v1/remote-logs/*    │
+│  │   UI    │  │  Backend  │ │         │  • Registration             │
+│  └─────────┘  └───────────┘ │         │  • Log submission           │
+│                             │         │  • Session tracking         │
+│  Port 8888 (local)          │         │  • PostgreSQL database      │
+│  SQLite + Korean BERT       │         └─────────────────────────────┘
+│  Works fully offline!       │                      │
+└─────────────────────────────┘                      │ Shared DB
+         │                                           ▼
+         │ Check for                   ┌─────────────────────────────┐
+         │ updates                     │  ENTITY 3: ADMIN DASHBOARD  │
+         │                             │  (Monitoring UI)            │
+         ▼                             │                             │
+┌─────────────────────────────┐        │  Port 5175 (dev) / 80 (prod)│
+│  ENTITY 4: GITEA SERVER     │        │  • View all installations   │
+│  (Patch Server - P13)       │        │  • Live session monitoring  │
+│                             │        │  • Tool usage stats         │
+│  Port 3000: Web UI          │        │  • Error alerts             │
+│  Port 22: SSH               │        └─────────────────────────────┘
 │                             │
-│  ┌─────────┐  ┌───────────┐ │
-│  │ Svelte  │◄►│ FastAPI   │ │
-│  │   UI    │  │  Backend  │ │
-│  └─────────┘  └───────────┘ │
-│  • Port 8888 (local only)   │
-│  • SQLite database          │        ┌─────────────────────────────┐
-│  • Korean BERT AI (447MB)   │        │  ENTITY 2: CENTRAL SERVER   │
-│  • Works fully offline!     │        │  (Company Server)           │
-│                             │  HTTP  │                             │
-│  Telemetry Client ──────────┼───────►│  ┌───────────────────────┐  │
-│  • On app launch: register  │        │  │ Remote Logging API    │  │
-│  • Log submissions          │        │  │ • /register           │  │
-│  • Session heartbeat        │        │  │ • /submit             │  │
-└─────────────────────────────┘        │  │ • /status             │  │
-                                       │  └───────────────────────┘  │
-┌─────────────────────────────┐        │                             │
-│  USER A's Desktop           │───────►│  PostgreSQL Database        │
-└─────────────────────────────┘        │  • installations table      │
-┌─────────────────────────────┐        │  • sessions table           │
-│  USER B's Desktop           │───────►│  • remote_logs table        │
-└─────────────────────────────┘        │  • telemetry_summary        │
-┌─────────────────────────────┐        │                             │
-│  USER C's Desktop           │───────►│  Admin Dashboard            │
-└─────────────────────────────┘        │  • Who's online now?        │
-        ▲                              │  • Tool usage stats         │
-        │                              │  • Error monitoring         │
-        │                              └─────────────────────────────┘
-        │
-        │ (FUTURE)
-        ▼
-┌─────────────────────────────┐
-│  ENTITY 3: PATCH SERVER     │
-│  (Future - Priority 13)     │
+│  ┌─────────────────────┐    │
+│  │  Git Repository     │    │     DEVELOPER WORKFLOW:
+│  │  • LocaNext code    │◄───┼──── git push origin main
+│  └─────────────────────┘    │            │
+│           │                 │            ▼
+│           ▼                 │     ┌──────────────┐
+│  ┌─────────────────────┐    │     │ Gitea Actions│
+│  │  Gitea Actions      │    │     │ (CI/CD)      │
+│  │  • Test             │    │     └──────────────┘
+│  │  • Build Windows    │    │            │
+│  │  • Deploy update    │────┼────────────┘
+│  └─────────────────────┘    │
+│           │                 │
+│           ▼                 │
+│  ┌─────────────────────┐    │
+│  │  /var/www/updates/  │    │
+│  │  • latest.yml       │◄───┼──── Desktop apps check here
+│  │  • LocaNext-x.x.exe │    │
+│  └─────────────────────┘    │
 │                             │
-│  • Build/revision mgmt      │
-│  • Update distribution      │
-│  • No GitHub dependency     │
-│  • Company internal control │
+│  License: MIT (FREE!)       │
+│  No GitHub dependency!      │
 └─────────────────────────────┘
 
 ═══════════════════════════════════════════════════════════════════════════
@@ -745,4 +983,83 @@ Historical fixes superseded by Priority 8.0:
 
 ---
 
-*Login: admin / admin123 | Ports: Backend 8888 | Frontend 5173 | Admin 5175*
+---
+
+## 🚀 FULL PRIORITY ROADMAP
+
+```
+COMPLETE PRIORITY TREE (Past → Present → Future)
+│
+├── ✅ COMPLETED
+│   │
+│   ├── P1-5: Core Platform ──────── Backend, Frontend, Database, WebSocket
+│   ├── P6.0: Structure ──────────── All tools unified under server/tools/
+│   ├── P7.0: Hotfixes ───────────── Historical fixes (archived)
+│   ├── P8.0: First-Run Setup ────── Python deps install on first launch
+│   ├── P9.0: Auto-Update ────────── GitHub releases + latest.yml
+│   ├── P10.1-2,4-5: UI/UX ───────── Modal, Progress, IPC
+│   ├── P11.0: Health Check ──────── Auto-repair system
+│   └── P12.5: Telemetry ─────────── Central Server (4 tables, 5 endpoints)
+│
+├── 📋 BACKLOG (Deferred)
+│   │
+│   └── P10.3: Patch Notes ───────── Show release notes in update modal
+│
+├── ✅ JUST COMPLETED
+│   │
+│   └── P12.5.7: Desktop Telemetry Client ✅ DONE
+│       ├── ✅ Auto-register on first launch
+│       ├── ✅ Session start/heartbeat/end
+│       ├── ✅ Log queue with offline support
+│       └── ✅ Frontend API (electronTelemetry)
+│
+├── 🔴 CURRENT / NEXT
+│   │
+│   ├── P12.5.8: Admin Dashboard Telemetry Tab
+│   │   ├── Active installations list
+│   │   ├── Sessions timeline
+│   │   └── Error rate monitoring
+│   │
+│   └── P12.5.9: Tool Usage Tracking
+│       ├── Hook XLSTransfer operations
+│       ├── Hook QuickSearch queries
+│       └── Duration, rows, errors
+│
+└── 📋 FUTURE (P13+)
+    │
+    ├── P13.0: Gitea Patch Server ────────── Self-hosted Git + CI/CD
+    │   ├── 13.1: Gitea installation
+    │   ├── 13.2: Repository migration
+    │   ├── 13.3: CI/CD pipeline
+    │   ├── 13.4: Update server
+    │   └── 13.5: Documentation
+    │
+    ├── P14.0: New Tools ─────────────────── Expand platform
+    │   ├── GlossarySniffer
+    │   ├── WordCountMaster
+    │   ├── ExcelRegex
+    │   └── TFM (Translation File Manager)
+    │
+    ├── P15.0: Performance ───────────────── Optimization
+    │   ├── Redis caching
+    │   ├── Lazy loading
+    │   └── Bundle size reduction
+    │
+    └── P16.0: Enterprise Features ───────── Scale up
+        ├── Multi-tenant
+        ├── Role-based access
+        └── Audit trails
+```
+
+### Port Summary (Quad Entity)
+
+| Entity | Port | Purpose |
+|--------|------|---------|
+| Desktop App | 8888 | Local backend (per user) |
+| Central Telemetry | 9999 | Log collection (company server) |
+| Admin Dashboard | 5175/80 | Monitoring UI (company server) |
+| Gitea Server | 3000 + 22 | Git + CI/CD (company server) |
+
+---
+
+*Login: admin / admin123 | Ports: Backend 8888 | Frontend 5173 | Admin 5175 | Central 9999 | Gitea 3000*
