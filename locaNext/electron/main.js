@@ -15,6 +15,7 @@ import { isFirstRunNeeded, runFirstRunSetup, setupFirstRunIPC } from './first-ru
 import { performHealthCheck, quickHealthCheck, wasRecentlyRepaired, HealthStatus } from './health-check.js';
 import { runRepair } from './repair.js';
 import { showSplash, updateSplash, closeSplash } from './splash.js';
+import { initializeTelemetry, shutdownTelemetry, telemetryLog, getTelemetryState } from './telemetry.js';
 
 // ==================== GLOBAL ERROR HANDLERS ====================
 // These MUST be registered immediately to catch any startup errors
@@ -73,6 +74,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isDev = process.env.NODE_ENV === 'development';
+
+// DEBUG_MODE: Enable full debugging in production builds
+// Set to true to enable: DevTools, verbose logging, skip health checks
+// Launch with: --remote-debugging-port=9222 for CDP access
+const DEBUG_MODE = true; // TODO: Set to false before final release
 
 let mainWindow;
 let backendProcess = null;
@@ -395,8 +401,29 @@ ipcMain.handle('get-app-info', async () => {
   };
 });
 
+// ==================== TELEMETRY IPC HANDLERS (P12.5.7) ====================
+
+/**
+ * IPC: Send telemetry log from frontend
+ */
+ipcMain.handle('telemetry-log', async (event, { level, message, component, data }) => {
+  try {
+    telemetryLog[level.toLowerCase()]?.(message, component, data);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * IPC: Get telemetry state for debugging
+ */
+ipcMain.handle('get-telemetry-state', async () => {
+  return getTelemetryState();
+});
+
 function createWindow() {
-  logger.info('Creating main window', { isDev, width: 1400, height: 900 });
+  logger.info('Creating main window', { isDev, DEBUG_MODE, width: 1400, height: 900 });
 
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -421,8 +448,14 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     const buildPath = path.join(__dirname, '../build/index.html');
-    logger.info('Loading production build', { path: buildPath });
+    logger.info('Loading production build', { path: buildPath, DEBUG_MODE });
     mainWindow.loadFile(buildPath);
+
+    // Open DevTools in production if DEBUG_MODE is enabled
+    if (DEBUG_MODE) {
+      logger.info('DEBUG_MODE: Opening DevTools in production');
+      mainWindow.webContents.openDevTools();
+    }
   }
 
   // ==================== RENDERER LOGGING ====================
@@ -480,10 +513,12 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // Create application menu (disable default menu in production)
-  if (!isDev) {
+  // Create application menu (disable default menu in production, unless DEBUG_MODE)
+  if (!isDev && !DEBUG_MODE) {
     Menu.setApplicationMenu(null);
     logger.info('Application menu disabled (production mode)');
+  } else if (DEBUG_MODE) {
+    logger.info('DEBUG_MODE: Application menu kept visible for debugging');
   }
 }
 
@@ -858,6 +893,17 @@ app.whenReady().then(async () => {
   // Setup auto-updater (checks your internal server for updates)
   setupAutoUpdater();
 
+  // Initialize telemetry (P12.5.7)
+  // Connects to Central Server for monitoring (if CENTRAL_SERVER_URL is set)
+  initializeTelemetry(logger).then((success) => {
+    if (success) {
+      logger.info('Telemetry initialized successfully');
+      telemetryLog.info('App started', 'main', { version: app.getVersion() });
+    }
+  }).catch((err) => {
+    logger.warning('Telemetry initialization failed:', err.message);
+  });
+
   app.on('activate', () => {
     logger.info('App activated');
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -867,10 +913,18 @@ app.whenReady().then(async () => {
 });
 
 // Quit when all windows are closed (except macOS)
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
   logger.info('All windows closed');
   if (process.platform !== 'darwin') {
     logger.info('Quitting application');
+
+    // Shutdown telemetry before quit
+    try {
+      await shutdownTelemetry();
+    } catch (err) {
+      logger.warning('Telemetry shutdown error:', err.message);
+    }
+
     stopBackendServer();  // Stop the backend server
     app.quit();
   }
@@ -883,8 +937,16 @@ app.on('will-quit', () => {
 });
 
 // Handle app before-quit (macOS)
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
   logger.info('Application before quit');
+
+  // Shutdown telemetry (end session, flush logs)
+  try {
+    await shutdownTelemetry();
+  } catch (err) {
+    logger.warning('Telemetry shutdown error:', err.message);
+  }
+
   stopBackendServer();
 });
 

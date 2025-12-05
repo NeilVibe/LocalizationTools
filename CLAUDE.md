@@ -26,11 +26,14 @@
 - ✅ **Tests**: 885 passed (TRUE simulation - no mocks!)
 - ✅ **Structure**: Unified - all tools under `server/tools/` (Priority 6.0 complete)
 - ✅ **Admin Dashboard**: 100% Complete (Overview, Users, Stats, Logs)
-- 🔄 **Health Check**: Priority 11.0 - Auto-repair system (core done, frontend pending)
+- ✅ **Health Check**: Priority 11.0 - Auto-repair system complete
+- ✅ **Telemetry**: Priority 12.5 - Central Server (4 tables, 5 endpoints)
 
 ---
 
 ## 📚 DOCUMENTATION TREE (START HERE!)
+
+> **📖 Full Documentation Index:** [docs/README.md](docs/README.md) - Master index of all 38+ docs
 
 ### 🚀 Getting Started
 
@@ -38,13 +41,15 @@
 |----------|----------------|
 | **[QUICK_START_GUIDE.md](docs/QUICK_START_GUIDE.md)** | How to run servers, tests, common commands (5 min) |
 | **[PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)** | Complete file tree, module organization |
+| **[ADMIN_SETUP.md](docs/ADMIN_SETUP.md)** | Initial admin user setup, credentials |
 | **Roadmap.md** | Development plan, next steps, progress tracking |
 
 ### 🏗️ Architecture & Design
 
 | Document | What It Covers |
 |----------|----------------|
-| **[DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md)** | Hybrid model (SQLite + PostgreSQL), 3 applications |
+| **[architecture/README.md](docs/architecture/README.md)** | **Architecture Index** - Start here for architecture |
+| **[DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md)** | Quad Entity: Desktop, Central, Dashboard, Patch Server |
 | **[PLATFORM_PATTERN.md](docs/architecture/PLATFORM_PATTERN.md)** | Multi-tool platform approach, scalability |
 | **[BACKEND_PRINCIPLES.md](docs/architecture/BACKEND_PRINCIPLES.md)** | "Backend is Flawless" rule, wrapper pattern |
 | **[ASYNC_PATTERNS.md](docs/architecture/ASYNC_PATTERNS.md)** | Async/await, WebSocket, real-time updates |
@@ -79,16 +84,19 @@
 | **[guides/](RessourcesForCodingTheProject/guides/)** | Guides for existing reference scripts |
 | **[.claude/newscript_instructions.md](.claude/newscript_instructions.md)** | Claude AI instructions for building scripts |
 
-### 🧪 Testing (Organized Tree)
+### 🧪 Testing & Debugging (Complete Tree)
 
 | Document | What It Covers |
 |----------|----------------|
-| **[testing/README.md](docs/testing/README.md)** | **Testing Hub** - Start here! |
+| **[testing/DEBUG_AND_TEST_HUB.md](docs/testing/DEBUG_AND_TEST_HUB.md)** | **🎯 MASTER GUIDE** - ALL remote access methods, CDP, pytest, Playwright |
+| **[testing/README.md](docs/testing/README.md)** | Testing Hub - Quick navigation |
 | **[testing/QUICK_COMMANDS.md](docs/testing/QUICK_COMMANDS.md)** | Copy-paste commands only |
 | **[testing/PYTEST_GUIDE.md](docs/testing/PYTEST_GUIDE.md)** | Python backend tests |
 | **[testing/PLAYWRIGHT_GUIDE.md](docs/testing/PLAYWRIGHT_GUIDE.md)** | Frontend E2E tests |
 | **[testing/X_SERVER_SETUP.md](docs/testing/X_SERVER_SETUP.md)** | VcXsrv for visual testing |
 | **[testing/TOOLS_REFERENCE.md](docs/testing/TOOLS_REFERENCE.md)** | xdotool, ffmpeg, etc. |
+| **[WINDOWS_TROUBLESHOOTING.md](docs/WINDOWS_TROUBLESHOOTING.md)** | CDP debugging, Windows EXE from WSL |
+| **[ELECTRON_TROUBLESHOOTING.md](docs/ELECTRON_TROUBLESHOOTING.md)** | Black screen, preload fixes |
 
 ### 📦 Build & Distribution
 
@@ -98,7 +106,6 @@
 | **[BUILD_TROUBLESHOOTING.md](docs/BUILD_TROUBLESHOOTING.md)** | Debugging failed builds, GitHub Actions |
 | **[BUILD_CHECKLIST.md](docs/BUILD_CHECKLIST.md)** | Pre-release checklist |
 | **[PACKAGING_GUIDE.md](docs/PACKAGING_GUIDE.md)** | Electron packaging details |
-| **[WINDOWS_TROUBLESHOOTING.md](docs/WINDOWS_TROUBLESHOOTING.md)** | **Debug Windows EXE from WSL, CDP test scripts, +error.svelte workaround** |
 
 ### 🌐 Deployment & Operations
 
@@ -106,7 +113,9 @@
 |----------|----------------|
 | **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Production deployment procedures |
 | **[ENTERPRISE_DEPLOYMENT.md](docs/ENTERPRISE_DEPLOYMENT.md)** | Enterprise-scale deployment |
+| **[ADMIN_SETUP.md](docs/ADMIN_SETUP.md)** | Initial admin user setup, credentials |
 | **[POSTGRESQL_SETUP.md](docs/POSTGRESQL_SETUP.md)** | PostgreSQL configuration |
+| **[GITEA_SETUP.md](docs/GITEA_SETUP.md)** | **Self-hosted Git + CI/CD (P13 Patch Server)** |
 | **[SECURITY_AND_LOGGING.md](docs/SECURITY_AND_LOGGING.md)** | Security best practices |
 
 ### 🔒 Security
@@ -114,7 +123,6 @@
 | Document | What It Covers |
 |----------|----------------|
 | **[SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md)** | **Full security guide: IP filter, CORS, JWT, audit logging (86 tests)** |
-| **[TESTING_PROTOCOL.md](docs/TESTING_PROTOCOL.md)** | Security verification protocol after changes |
 | **[.env.example](.env.example)** | Production environment configuration template |
 
 **Security Implementation Status (7/11):**
@@ -148,7 +156,6 @@
 |----------|----------------|
 | **[BEST_PRACTICES.md](docs/BEST_PRACTICES.md)** | Best practices collection |
 | **[PERFORMANCE.md](docs/PERFORMANCE.md)** | Performance optimization |
-| **[QUICK_TEST_COMMANDS.md](docs/QUICK_TEST_COMMANDS.md)** | Terminal testing commands |
 | **[STATS_DASHBOARD_SPEC.md](docs/STATS_DASHBOARD_SPEC.md)** | Admin dashboard specifications |
 
 ---
@@ -265,13 +272,18 @@ bash scripts/clean_logs.sh
 ### Current Phase:
 - **Phase 3:** Security Hardening ✅ COMPLETE (7/11 items, 86 tests)
 - **Phase 4:** Admin Dashboard ✅ COMPLETE
-- **Priority 11.0:** Health Check & Auto-Repair 🔄 IN PROGRESS
+- **Priority 11.0:** Health Check & Auto-Repair ✅ COMPLETE
   - ✅ Core: health-check.js, repair.js, main.js integration
   - 📋 Pending: Frontend Settings UI for manual repair
+- **Priority 12.5:** Central Telemetry System ✅ SERVER-SIDE COMPLETE
+  - ✅ 4 Database tables: Installation, RemoteSession, RemoteLog, TelemetrySummary
+  - ✅ 5 API endpoints: /health, /register, /submit, /sessions/start, /sessions/end
+  - ✅ Config: CENTRAL_SERVER_URL + telemetry settings
+  - 📋 Pending: Desktop client integration
 
 ### Questions to Ask User:
-- "Ready to build and test the new version with health check?"
-- "Want to add the Settings UI for manual repair?"
+- "Want to integrate telemetry client into the Desktop app?"
+- "Ready to implement the Admin Dashboard Telemetry tab?"
 - "Should we add another tool to LocaNext?"
 
 ### Windows Build Debugging:
@@ -285,7 +297,7 @@ bash scripts/clean_logs.sh
 
 - **Lines of Code:** ~18,000+
 - **API Endpoints:** 47+ (async + sync)
-- **Database Tables:** 13
+- **Database Tables:** 17 (13 core + 4 telemetry)
 - **Tests:** 885 total (TRUE simulation - no mocks!)
 - **E2E Tests:** 115 (KR Similar 18 + QuickSearch 11 + XLSTransfer 9 + Edge Cases 23 + Workflows 54)
 - **Frontend E2E:** 164 (Playwright - LocaNext 134 + Admin Dashboard 30)

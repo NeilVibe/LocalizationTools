@@ -1,44 +1,81 @@
-# Testing Documentation Hub
+# Testing & Debugging Documentation Hub
 
-**Last Updated**: 2025-12-03
-
-Quick navigation for all testing docs.
+**Last Updated**: 2025-12-05
 
 ---
 
-## Quick Start
+## 🗺️ START HERE → [DEBUG_AND_TEST_HUB.md](DEBUG_AND_TEST_HUB.md)
+
+The **Debug & Test Hub** contains the complete tree of ALL capabilities for:
+- Remote access to Windows EXE (CDP)
+- Backend testing (pytest)
+- Frontend testing (Playwright)
+- Real-time monitoring (WebSocket, logs)
+- Telemetry testing
+- Visual debugging (X Server)
+
+---
+
+## 📚 Documentation Tree
+
+```
+docs/testing/
+│
+├── 🎯 DEBUG_AND_TEST_HUB.md ──── MASTER GUIDE (Start Here!)
+│   └── Complete capabilities tree
+│   └── All methods documented
+│   └── Quick reference commands
+│
+├── ⚡ QUICK_COMMANDS.md ────────── Copy-paste commands only
+│
+├── 🐍 PYTEST_GUIDE.md ─────────── Python backend testing
+│   └── Fixtures, patterns, TRUE simulation
+│
+├── 🌐 PLAYWRIGHT_GUIDE.md ─────── Frontend E2E testing
+│   └── Browser automation, selectors
+│
+├── 🖼️ X_SERVER_SETUP.md ──────── Visual testing from WSL
+│   └── VcXsrv setup, DISPLAY export
+│
+└── 🛠️ TOOLS_REFERENCE.md ──────── xdotool, ffmpeg, scrot
+```
+
+**Related Docs (outside testing/):**
+- `WINDOWS_TROUBLESHOOTING.md` - CDP, Electron logs, remote debugging
+- `ELECTRON_TROUBLESHOOTING.md` - Black screen, preload issues
+- `MONITORING_COMPLETE_GUIDE.md` - Log monitoring system
+
+---
+
+## ⚡ Quick Start (3 Commands)
 
 ```bash
-# Backend tests (no server needed)
-python3 -m pytest tests/ -v
-
-# Backend tests WITH server (TRUE simulation)
+# 1. Start server
 python3 server/main.py &
-sleep 3
-RUN_API_TESTS=1 python3 -m pytest -v
 
-# Frontend tests (headless, fast)
-cd locaNext && npm test        # 134 tests
-cd adminDashboard && npm test  # 30 tests
+# 2. Wait + run tests
+sleep 5 && RUN_API_TESTS=1 python3 -m pytest -v
+
+# 3. Frontend tests
+cd locaNext && npm test
 ```
 
 ---
 
-## Documentation Tree
+## 🧪 Test Counts Summary
 
-| Doc | Lines | Purpose |
-|-----|-------|---------|
-| [QUICK_COMMANDS.md](QUICK_COMMANDS.md) | ~50 | Copy-paste commands only |
-| [PYTEST_GUIDE.md](PYTEST_GUIDE.md) | ~120 | Python backend testing |
-| [PLAYWRIGHT_GUIDE.md](PLAYWRIGHT_GUIDE.md) | ~120 | Frontend E2E testing |
-| [X_SERVER_SETUP.md](X_SERVER_SETUP.md) | ~60 | VcXsrv for visual testing |
-| [TOOLS_REFERENCE.md](TOOLS_REFERENCE.md) | ~80 | xdotool, ffmpeg, etc. |
+| Domain | Tests | Tool |
+|--------|-------|------|
+| Backend (Unit + E2E + API) | 630+ | pytest |
+| Security | 86 | pytest |
+| Telemetry (P12.5) | 10 | pytest |
+| Frontend (LocaNext + Dashboard) | 164 | Playwright |
+| CDP (Windows EXE) | 15 | Node.js |
+| **Total** | **~1000+** | |
 
 ---
 
-## Philosophy: Mathematical Proof Testing
-
-Testing = Code verification, NOT visual inspection.
+## 🔑 Philosophy: Mathematical Proof Testing
 
 ```
 INPUT → PROCESS → OUTPUT → ASSERTION = PASS or FAIL
@@ -51,39 +88,8 @@ INPUT → PROCESS → OUTPUT → ASSERTION = PASS or FAIL
 39 passed (12.4s)
 ```
 
-**This IS the proof!** No screenshots needed because:
-- Assertions verify expected behavior
-- Error messages explain failures
-- Terminal output shows exact state
+**This IS the proof!** No screenshots needed because assertions verify expected behavior.
 
 ---
 
-## Test Counts
-
-| Domain | Tests | Tool |
-|--------|-------|------|
-| Backend Unit | 350+ | pytest |
-| Backend E2E | 115 | pytest |
-| API Simulation | 168 | pytest |
-| Security | 86 | pytest |
-| Frontend (LocaNext) | 134 | Playwright |
-| Frontend (Dashboard) | 30 | Playwright |
-| **Total** | **~1000+** | |
-
----
-
-## When to Use What
-
-| Task | Tool | Doc |
-|------|------|-----|
-| Test Python code | pytest | [PYTEST_GUIDE.md](PYTEST_GUIDE.md) |
-| Test frontend UI | Playwright | [PLAYWRIGHT_GUIDE.md](PLAYWRIGHT_GUIDE.md) |
-| Visual debugging | X Server + headed | [X_SERVER_SETUP.md](X_SERVER_SETUP.md) |
-| Record demo video | ffmpeg | [TOOLS_REFERENCE.md](TOOLS_REFERENCE.md) |
-
----
-
-**Screenshots are OPTIONAL** - only for:
-- Showing humans what UI looks like
-- Debugging visual bugs
-- Creating demo videos
+*For the complete capabilities tree, see [DEBUG_AND_TEST_HUB.md](DEBUG_AND_TEST_HUB.md)*
