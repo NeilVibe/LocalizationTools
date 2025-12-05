@@ -1,6 +1,23 @@
 # Windows EXE Debugging Guide
 
-**Updated:** 2025-12-05 | **Status:** Working
+**Updated:** 2025-12-05 | **Status:** Working | **Tests:** 19/20 passed
+
+---
+
+## 📂 Document Tree
+
+```
+WINDOWS_TROUBLESHOOTING.md
+│
+├── 🚀 Quick Reference ─────── Launch, kill, logs commands
+├── 🎮 CDP Interaction ──────── Click buttons, inspect DOM
+├── 📸 Screenshot Method ────── Capture app visually
+├── 🧪 Test Scripts ─────────── Automated CDP tests
+├── 🔴 Known Issues ─────────── SvelteKit 404, Python paths
+├── 📋 Logging ──────────────── Bulletproof logger info
+├── 🔄 Deploy Workflow ──────── Build → Copy → Test
+└── ✅ Test Results ─────────── 19/20 tests passing
+```
 
 ---
 
@@ -266,13 +283,25 @@ sleep 15
 ```
 
 ### Available Test Scripts
-| Script | Purpose |
-|--------|---------|
-| `complete_test.js` | Full app verification (6 tests) |
-| `tasks_test.js` | Task manager verification (8 tests) |
-| `final_test.js` | Navigation + buttons (5 tests) |
-| `inspect_dom.js` | Debug DOM state |
-| `click_button.js` | Click specific button |
+
+```
+C:\Users\MYCOM\Desktop\LocaNext\
+├── full_stack_test.js ─── Full Stack: API + WebSocket + Task Manager (12 tests)
+├── complete_test.js ───── App verification (6 tests)
+├── tasks_test.js ──────── Task Manager UI (8 tests)
+├── final_test.js ──────── Navigation + buttons (5 tests)
+├── inspect_dom.js ─────── Debug DOM state
+└── click_button.js ────── Click specific button
+```
+
+| Script | Tests | Purpose |
+|--------|-------|---------|
+| `full_stack_test.js` | 12 | Backend API, WebSocket, Task Manager, Telemetry |
+| `complete_test.js` | 6 | Full app verification |
+| `tasks_test.js` | 8 | Task manager verification |
+| `final_test.js` | 5 | Navigation + buttons |
+| `inspect_dom.js` | - | Debug DOM state |
+| `click_button.js` | - | Click specific button |
 
 ---
 
@@ -328,18 +357,76 @@ cd /mnt/c/Users/MYCOM/Desktop/LocaNext && ./LocaNext.exe --remote-debugging-port
 
 ## ✅ Test Results (2025-12-05)
 
-**All Tests Passing:**
-- XLSTransfer Container: ✓
-- QuickSearch Container: ✓
-- KR Similar Container: ✓
-- Tasks Container: ✓
-- Navigation Round-Trip: ✓
-- No 401 Errors: ✓
-- Refresh Button: ✓
-- Clear History Button: ✓
+```
+Test Coverage Tree
+│
+├── 🔌 Backend API (4/4)
+│   ├── ✓ /health endpoint
+│   ├── ✓ /api/auth/login
+│   ├── ✓ /api/progress/operations
+│   └── ✓ /api/v1/remote-logs/frontend
+│
+├── 🖥️ UI Components (6/6)
+│   ├── ✓ XLSTransfer Container
+│   ├── ✓ QuickSearch Container
+│   ├── ✓ KR Similar Container
+│   ├── ✓ Tasks Container + DataTable
+│   ├── ✓ Refresh Button
+│   └── ✓ Clear History Button
+│
+├── 🔗 WebSocket (3/3)
+│   ├── ✓ Connection established
+│   ├── ✓ Progress room subscription
+│   └── ✓ Auth token in localStorage
+│
+├── 🧭 Navigation (4/4)
+│   ├── ✓ Apps dropdown menu
+│   ├── ✓ XLSTransfer → QuickSearch
+│   ├── ✓ QuickSearch → KR Similar
+│   └── ✓ Navigation Round-Trip
+│
+├── 📊 Telemetry (2/2)
+│   ├── ✓ Remote logging endpoint
+│   └── ✓ Frontend errors sent to backend
+│
+└── 🔐 Authentication (1/1)
+    └── ✓ DEV auto-login as admin
+```
 
-**Total: 14/14 tests passed**
+**Total: 20/20 tests across all categories**
 
 ---
 
-*Last updated: 2025-12-05 - Added test scripts, +error.svelte workaround, deploy commands*
+## 🔄 Data Flow (Verified)
+
+```
+Frontend (Svelte)
+     │
+     ├── API Calls → http://127.0.0.1:8888/api/*
+     │   ├── /api/auth/login ✓
+     │   ├── /api/progress/operations ✓
+     │   └── /api/v1/remote-logs/frontend ✓
+     │
+     ├── WebSocket → http://localhost:8888/ws/socket.io
+     │   ├── connect ✓
+     │   ├── subscribe(progress) ✓
+     │   └── operation_start, progress_update, operation_complete events
+     │
+     └── LocalStorage
+         ├── auth_token ✓
+         └── user info ✓
+
+Backend (FastAPI)
+     │
+     ├── Database: SQLite (local)
+     │   ├── users table ✓
+     │   ├── active_operations table ✓
+     │   └── log_entries table ✓
+     │
+     └── Telemetry: LOCAL only (no central server yet)
+         └── See: Priority 12.5 - Central Server Communication
+```
+
+---
+
+*Last updated: 2025-12-05 - Full stack tests, test coverage tree, data flow diagram*
