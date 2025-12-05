@@ -89,7 +89,8 @@ Roadmap.md - FULL DOCUMENT GUIDE
 │   ├── ✅ P11.0: Health Check ─── Auto-repair system
 │   ├── ✅ P12.0-12.5: Telemetry ─ Central Server (4 tables, 5 endpoints)
 │   │       ├── ✅ 12.5.7: Desktop Client COMPLETE
-│   │       └── 12.5.8-9: NEXT ─── Dashboard UI, Usage Tracking
+│   │       ├── ✅ 12.5.8: Dashboard Telemetry Tab COMPLETE
+│   │       └── 12.5.9: NEXT ─── Tool Usage Tracking
 │   │
 │   └── 📋 P13.0: Gitea ────────── Self-hosted Git + CI/CD (FUTURE)
 │           └── Full tree + checklist included
@@ -102,9 +103,9 @@ Roadmap.md - FULL DOCUMENT GUIDE
 │   ├── 📦 COMPLETED FEATURES ──── Compact summary of all done
 │   ├── 🏗️ QUAD ENTITY DIAGRAM ─── ASCII architecture (4 servers)
 │   └── 🚀 FULL PRIORITY TREE ──── P1→P16 complete roadmap
-│           ├── ✅ Completed: P1-P12.5
+│           ├── ✅ Completed: P1-P12.5.8
 │           ├── 📋 Backlog: P10.3
-│           ├── 🔴 Current: P12.5.7-9
+│           ├── 🔴 Current: P12.5.9
 │           └── 📋 Future: P13-P16
 │
 ├─────────────────────────────────────────────────────────────────────────
@@ -127,7 +128,7 @@ PORT SUMMARY (Quick Reference):
 │ Gitea Server     │ 3000   │ Git + CI/CD (FUTURE)        │
 └──────────────────┴────────┴─────────────────────────────┘
 
-WHAT'S NEXT? → P12.5.8: Admin Dashboard Telemetry Tab
+WHAT'S NEXT? → P12.5.9: Tool Usage Tracking hooks
 ```
 
 ---
@@ -1013,12 +1014,15 @@ COMPLETE PRIORITY TREE (Past → Present → Future)
 │       ├── ✅ Log queue with offline support
 │       └── ✅ Frontend API (electronTelemetry)
 │
-├── 🔴 CURRENT / NEXT
+├── ✅ JUST COMPLETED
 │   │
-│   ├── P12.5.8: Admin Dashboard Telemetry Tab
-│   │   ├── Active installations list
-│   │   ├── Sessions timeline
-│   │   └── Error rate monitoring
+│   └── P12.5.8: Admin Dashboard Telemetry Tab ✅ DONE
+│       ├── ✅ Admin telemetry endpoints (/api/v2/admin/telemetry/*)
+│       ├── ✅ Telemetry page with tabs (Overview, Installations, Sessions, Errors)
+│       ├── ✅ Auto-refresh + real-time data
+│       └── ✅ Navigation in sidebar
+│
+├── 🔴 CURRENT / NEXT
 │   │
 │   └── P12.5.9: Tool Usage Tracking
 │       ├── Hook XLSTransfer operations

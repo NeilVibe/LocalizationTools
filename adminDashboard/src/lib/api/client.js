@@ -251,6 +251,50 @@ class AdminAPIClient {
     const response = await fetch('http://localhost:8888/health');
     return await response.json();
   }
+
+  // ============================================================================
+  // TELEMETRY (Central Server Monitoring)
+  // ============================================================================
+
+  // Overview
+  async getTelemetryOverview() {
+    return await this.request('/admin/telemetry/overview');
+  }
+
+  // Installations
+  async getInstallations(includeInactive = false) {
+    return await this.request(`/admin/telemetry/installations?include_inactive=${includeInactive}`);
+  }
+
+  async getInstallationDetail(installationId) {
+    return await this.request(`/admin/telemetry/installations/${installationId}`);
+  }
+
+  // Sessions
+  async getTelemetrySessions(activeOnly = true, days = 7, limit = 100) {
+    return await this.request(`/admin/telemetry/sessions?active_only=${activeOnly}&days=${days}&limit=${limit}`);
+  }
+
+  // Logs
+  async getRemoteLogs(installationId = null, level = null, hours = 24, limit = 100) {
+    const params = new URLSearchParams({ hours, limit });
+    if (installationId) params.append('installation_id', installationId);
+    if (level) params.append('level', level);
+    return await this.request(`/admin/telemetry/logs?${params.toString()}`);
+  }
+
+  async getRemoteErrorLogs(hours = 24, limit = 100) {
+    return await this.request(`/admin/telemetry/logs/errors?hours=${hours}&limit=${limit}`);
+  }
+
+  // Statistics
+  async getDailyTelemetryStats(days = 30) {
+    return await this.request(`/admin/telemetry/stats/daily?days=${days}`);
+  }
+
+  async getStatsByInstallation(days = 30) {
+    return await this.request(`/admin/telemetry/stats/by-installation?days=${days}`);
+  }
 }
 
 export const adminAPI = new AdminAPIClient();

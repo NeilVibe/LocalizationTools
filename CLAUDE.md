@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512051130 (2025-12-05)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅
+**Version:** 2512052300 (2025-12-05)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅
 
 ---
 
@@ -25,9 +25,9 @@
 - ✅ **Security**: 7/11 Complete (IP filter, CORS, JWT, audit logging, 86 tests)
 - ✅ **Tests**: 885 passed (TRUE simulation - no mocks!)
 - ✅ **Structure**: Unified - all tools under `server/tools/` (Priority 6.0 complete)
-- ✅ **Admin Dashboard**: 100% Complete (Overview, Users, Stats, Logs)
+- ✅ **Admin Dashboard**: 100% Complete (Overview, Users, Stats, Logs, Telemetry)
 - ✅ **Health Check**: Priority 11.0 - Auto-repair system complete
-- ✅ **Telemetry**: Priority 12.5 - Central Server (4 tables, 5 endpoints)
+- ✅ **Telemetry**: Priority 12.5.8 COMPLETE - Server + Client + Dashboard
 
 ---
 
@@ -275,16 +275,18 @@ bash scripts/clean_logs.sh
 - **Priority 11.0:** Health Check & Auto-Repair ✅ COMPLETE
   - ✅ Core: health-check.js, repair.js, main.js integration
   - 📋 Pending: Frontend Settings UI for manual repair
-- **Priority 12.5:** Central Telemetry System ✅ SERVER-SIDE COMPLETE
+- **Priority 12.5:** Central Telemetry System ✅ CLIENT + DASHBOARD COMPLETE
   - ✅ 4 Database tables: Installation, RemoteSession, RemoteLog, TelemetrySummary
   - ✅ 5 API endpoints: /health, /register, /submit, /sessions/start, /sessions/end
   - ✅ Config: CENTRAL_SERVER_URL + telemetry settings
-  - 📋 Pending: Desktop client integration
+  - ✅ Desktop client (P12.5.7): Auto-register, sessions, log queue
+  - ✅ Admin Dashboard (P12.5.8): Telemetry tab with 4 views
+  - 📋 Next: P12.5.9 - Tool Usage Tracking hooks
 
 ### Questions to Ask User:
-- "Want to integrate telemetry client into the Desktop app?"
-- "Ready to implement the Admin Dashboard Telemetry tab?"
+- "Ready for P12.5.9 (Tool Usage Tracking hooks)?"
 - "Should we add another tool to LocaNext?"
+- "Move to P13 (Gitea Patch Server)?"
 
 ### Windows Build Debugging:
 - See **[WINDOWS_TROUBLESHOOTING.md](docs/WINDOWS_TROUBLESHOOTING.md)** for WSL debugging commands
@@ -295,8 +297,8 @@ bash scripts/clean_logs.sh
 
 ## 📊 PROJECT STATS
 
-- **Lines of Code:** ~18,000+
-- **API Endpoints:** 47+ (async + sync)
+- **Lines of Code:** ~19,000+
+- **API Endpoints:** 55+ (async + sync, includes 8 admin telemetry)
 - **Database Tables:** 17 (13 core + 4 telemetry)
 - **Tests:** 885 total (TRUE simulation - no mocks!)
 - **E2E Tests:** 115 (KR Similar 18 + QuickSearch 11 + XLSTransfer 9 + Edge Cases 23 + Workflows 54)
