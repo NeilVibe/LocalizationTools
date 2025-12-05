@@ -6,7 +6,8 @@ LocaNext - Version Unification Check
 Ensures all files have matching version numbers from single source of truth: version.py
 
 CURRENT CHECKS:
-1. Version consistency across code, docs, and build configurations
+1. Timestamp Validation - Version (KST) must be within 1 hour of build time
+2. Version consistency across code, docs, and build configurations
 
 FUTURE EXTENSIBILITY:
 Can be expanded to monitor:
@@ -27,9 +28,57 @@ import os
 import re
 import sys
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 
 # Source of truth
 VERSION_FILE = "version.py"
+
+
+def check_version_timestamp(version, max_hours_diff=1):
+    """
+    Check if version timestamp is within acceptable range of current time.
+
+    Version format: YYMMDDHHMM (Year, Month, Day, Hour, Minute) in KST (UTC+9)
+    Script converts version from KST to UTC for comparison on GitHub Actions.
+
+    Args:
+        version: Version string (e.g., "2512051321") in KST
+        max_hours_diff: Maximum allowed difference in hours (default: 1)
+
+    Returns:
+        tuple: (is_valid, message)
+    """
+    if len(version) != 10:
+        return False, f"Invalid version format: {version} (expected YYMMDDHHMM, 10 digits)"
+
+    try:
+        version_year = int("20" + version[0:2])  # YY -> 20YY
+        version_month = int(version[2:4])
+        version_day = int(version[4:6])
+        version_hour = int(version[6:8])
+        version_minute = int(version[8:10])
+
+        # Get current time in UTC
+        now_utc = datetime.now(timezone.utc)
+
+        # Build version datetime in KST (UTC+9), then convert to UTC
+        kst = timezone(timedelta(hours=9))
+        try:
+            version_dt_kst = datetime(version_year, version_month, version_day,
+                                       version_hour, version_minute, tzinfo=kst)
+            version_dt_utc = version_dt_kst.astimezone(timezone.utc)
+        except ValueError as e:
+            return False, f"Invalid datetime in version: {version} ({e})"
+
+        # Calculate difference in hours (both in UTC now)
+        diff = abs((now_utc - version_dt_utc).total_seconds() / 3600)
+
+        if diff <= max_hours_diff:
+            return True, f"Version timestamp OK: {version} (KST) = {version_dt_utc.strftime('%Y-%m-%d %H:%M')} UTC, within {diff:.1f}h of now"
+        else:
+            return False, f"Version timestamp TOO FAR: {version} (KST) is {diff:.1f}h away from now. Max: {max_hours_diff}h"
+    except ValueError as e:
+        return False, f"Could not parse version timestamp: {version} ({e})"
 
 # All files that must have matching version
 VERSION_FILES = {
@@ -171,6 +220,26 @@ def main():
         print(f"✓ Semantic version: {semantic_version}")
     print()
 
+    # TIMESTAMP VALIDATION - Version must be within 1 hour of current time
+    print("Checking version timestamp...")
+    timestamp_valid, timestamp_msg = check_version_timestamp(source_version, max_hours_diff=1)
+    if timestamp_valid:
+        print(f"✓ {timestamp_msg}")
+    else:
+        print(f"❌ {timestamp_msg}")
+        print()
+        print("=" * 70)
+        print("❌ BUILD BLOCKED: Version timestamp too far from current time!")
+        print("   Update version to current timestamp before building.")
+        # Generate suggested version in KST
+        from datetime import datetime, timezone, timedelta
+        kst = timezone(timedelta(hours=9))
+        suggested = datetime.now(kst).strftime('%y%m%d%H%M')
+        print(f"   Suggested version: {suggested}")
+        print("=" * 70)
+        return 1
+    print()
+
     # Test runtime import
     print("Testing runtime imports...")
     try:
@@ -228,6 +297,7 @@ def main():
             print(f"ℹ️  Skipped {files_skipped} optional files (not created yet)")
         print()
         print("COVERAGE SUMMARY:")
+        print("  ✓ Timestamp Validation: Version (KST) within 1 hour of build time")
         print("  ✓ Source of Truth: version.py (VERSION, SEMANTIC_VERSION)")
         print("  ✓ Backend: server/config.py (imports VERSION)")
         print("  ✓ Documentation: README.md, CLAUDE.md, Roadmap.md")
