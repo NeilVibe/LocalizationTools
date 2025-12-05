@@ -1,6 +1,32 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512050104 | **Updated**: 2025-12-05 | **Status**: Priority 11.0 IN PROGRESS | Repair & Health Check System
+**Version**: 2512051130 | **Updated**: 2025-12-05 | **Status**: ✅ UI + API Working
+
+---
+
+## 🔥 HOTFIX 2512051130 - Summary
+
+### ✅ All Fixed:
+1. **UI Rendering** - 24 buttons found, XLSTransfer container exists (verified via CDP)
+2. **Button Clicks** - Work correctly, call backend API
+3. **Backend** - XLSTransfer, QuickSearch, KRSimilar all load
+4. **Auth/WebSocket** - Working
+5. **Gradio Parasite** - Removed from requirements.txt and progress.py
+6. **Python3 → Python.exe** - main.js uses `paths.pythonExe` for Windows
+7. **DEV Auto-Login** - Enabled for testing
+8. **XLSTransfer Uses API** - Refactored to use backend API instead of Python scripts
+   - Load Dictionary ✅
+   - Transfer to Close ✅
+   - Get Sheets ✅
+   - Process Operation ✅
+9. **Binary file reading** - Added `readFileBuffer` IPC for Excel files
+
+### ⚠️ Workarounds (NOT Real Fixes):
+10. **SvelteKit 404** - `+error.svelte` catches 404 and renders content
+    - Real fix: Hash-based routing or proper adapter-static config
+
+### 📋 Not Implemented:
+11. **Simple Excel Transfer** - Disabled (no API endpoint, use "Transfer to Excel" instead)
 
 ---
 
@@ -298,12 +324,22 @@ Priority 11.0: Repair & Health Check
 │   ├── ✅ Fixed import.meta.dirname → fileURLToPath(import.meta.url)
 │   └── ✅ See: docs/WINDOWS_TROUBLESHOOTING.md
 │
-└── 11.8 UI Polish & Firewall Fix ✅ DONE (v2512050104)
-    ├── ✅ Splash screen: overflow hidden (no floating scrollbar)
-    ├── ✅ Setup/Repair windows: no menu bar (setMenu(null))
-    ├── ✅ Setup/Repair windows: larger size (550x480/520)
-    ├── ✅ Server: bind to 127.0.0.1 (not 0.0.0.0 - avoids firewall popup)
-    └── ✅ Progress UI: uses executeJavaScript for inline HTML
+├── 11.8 UI Polish & Firewall Fix ✅ DONE (v2512050104)
+│   ├── ✅ Splash screen: overflow hidden (no floating scrollbar)
+│   ├── ✅ Setup/Repair windows: no menu bar (setMenu(null))
+│   ├── ✅ Setup/Repair windows: larger size (550x480/520)
+│   ├── ✅ Server: bind to 127.0.0.1 (not 0.0.0.0 - avoids firewall popup)
+│   └── ✅ Progress UI: uses executeJavaScript for inline HTML
+│
+└── 11.9 Black Screen Debug ✅ COMPLETE
+    ├── ✅ ISSUE IDENTIFIED: Two root causes found via renderer logging
+    │   ├── 1. preload.js used ES modules (import) but sandbox requires CommonJS
+    │   └── 2. SvelteKit generated absolute paths (/_app/) → resolved to C:/_app/ on file://
+    ├── ✅ FIX 1: Converted preload.js from ES modules to CommonJS (require)
+    ├── ✅ FIX 2: Post-process build output: /_app/ → ./_app/ for relative paths
+    ├── ✅ Added renderer logging (console-message, did-fail-load, dom-ready, preload-error)
+    ├── ✅ Verified: Login page renders correctly, components mount
+    └── 📚 See: docs/ELECTRON_TROUBLESHOOTING.md for debug protocol
 ```
 
 ### Files Created/Modified:
@@ -314,7 +350,7 @@ Priority 11.0: Repair & Health Check
 | `electron/repair.js` | ✅ Created | Auto-repair logic with UI window |
 | `electron/logger.js` | ✅ Fixed | ASAR path issue, robust logging |
 | `electron/main.js` | ✅ Modified | Health check + repair integration |
-| `electron/preload.js` | ✅ Modified | electronHealth API exposed |
+| `electron/preload.js` | ✅ Fixed | CommonJS (require) + electronHealth API |
 | `src/lib/components/RepairModal.svelte` | 📋 Pending | Frontend repair UI |
 | `src/routes/settings/+page.svelte` | 📋 Pending | Add repair button |
 
@@ -333,6 +369,82 @@ Settings → "Repair Installation" → Confirm → Full repair runs → Done
 **Scenario 3: One tool broken**
 ```
 Launch → KR Similar broken → Other tools work → KR Similar shows "Repair needed"
+```
+
+---
+
+## 🚨 Priority 12.0: Critical Architecture Issues (DISCOVERED 2025-12-05)
+
+**Date Identified:** 2025-12-05 during Electron frontend testing
+**Status Update:** 2025-12-05 - Issues 12.2, 12.3, 12.4 VERIFIED WORKING!
+- ✅ Backend starts successfully with database tables
+- ✅ Authentication works (admin/superadmin login verified)
+- ✅ WebSocket connected
+- ✅ Preload script loaded with appendLog
+- ⚠️ SvelteKit 404 is cosmetic only - app continues working
+
+### Critical Issues Found:
+
+```
+Priority 12.0: Critical Architecture Issues
+│
+├── 12.1 Central Authentication Architecture 🚨 CRITICAL
+│   ├── Problem: Desktop apps have LOCAL databases (isolated)
+│   ├── Current: Each app has its own SQLite with no users
+│   ├── Expected: Admin Dashboard on server manages users centrally
+│   ├── Desktop apps should authenticate against central server
+│   └── Status: NEEDS ARCHITECTURE DESIGN
+│
+├── 12.2 Missing Preload API: appendLog ✅ FIXED
+│   ├── Error: "window.electron.appendLog is not a function"
+│   ├── Cause: Frontend calls appendLog but preload.js doesn't expose it
+│   ├── Fix: Added appendLog to preload.js + IPC handler in main.js
+│   └── Status: FIXED (2025-12-05)
+│
+├── 12.3 Database Initialization on Desktop ✅ FIXED
+│   ├── Error: "sqlite3.OperationalError: no such table: users"
+│   ├── Cause: Desktop app database not initialized with tables
+│   ├── Fix: dependencies.py now calls init_db_tables() on startup
+│   └── Status: FIXED (2025-12-05)
+│
+├── 12.4 SvelteKit Path Issues ⚠️ PARTIAL
+│   ├── ✅ Fixed: Absolute paths (/_app/) → Relative (./_app/)
+│   ├── ✅ Fixed: preload.js ES modules → CommonJS
+│   ├── ✅ Created: scripts/fix-electron-paths.js (automated)
+│   ├── 📚 Doc: docs/ELECTRON_TROUBLESHOOTING.md
+│   ├── ⚠️ WORKAROUND: +error.svelte renders content on 404 (hides the problem)
+│   └── 🔴 REAL FIX NEEDED: SvelteKit adapter-static config or hash-based routing
+│
+└── 12.5 Central Server Communication 🚨 CRITICAL
+    ├── Problem: No mechanism for desktop ↔ central server sync
+    ├── Use Cases:
+    │   ├── Admin creates user on server → Desktop can login
+    │   ├── Usage telemetry from desktop → Server dashboard
+    │   └── License/access control from server → Desktop
+    └── Status: NEEDS ARCHITECTURE DESIGN
+```
+
+### Architecture Decision Needed:
+
+```
+CURRENT (Isolated):
+┌─────────────────┐     ┌─────────────────┐
+│ Admin Dashboard │     │ Desktop App     │
+│ (Server)        │     │ (Local SQLite)  │
+│ - Manages users │     │ - Own database  │
+│ - Own database  │ ✗   │ - No sync       │
+└─────────────────┘     └─────────────────┘
+        No connection between them!
+
+PROPOSED (Centralized Auth):
+┌─────────────────┐         ┌─────────────────┐
+│ Admin Dashboard │         │ Desktop App     │
+│ (Central Server)│◄───────►│ (Local + Remote)│
+│ - User mgmt     │  API    │ - Auth via API  │
+│ - Access ctrl   │  calls  │ - Local cache   │
+│ - PostgreSQL    │         │ - Telemetry     │
+└─────────────────┘         └─────────────────┘
+        Users managed centrally!
 ```
 
 ---

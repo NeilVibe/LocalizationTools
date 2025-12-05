@@ -2,17 +2,15 @@
 Progress Tracking Utilities
 
 Provides clean, reusable progress tracking for long-running operations.
-Works seamlessly with Gradio's progress indicators.
 """
 
 from typing import Callable, Optional
 from tqdm import tqdm
-import gradio as gr
 
 
 class ProgressTracker:
     """
-    Clean progress tracker that works with both console and Gradio.
+    Clean progress tracker for console output.
 
     Usage:
         with ProgressTracker(total=100, desc="Processing") as progress:
@@ -25,7 +23,7 @@ class ProgressTracker:
         self,
         total: int,
         desc: str = "Processing",
-        gradio_progress: Optional[gr.Progress] = None
+        callback: Optional[Callable] = None
     ):
         """
         Initialize progress tracker.
@@ -33,11 +31,11 @@ class ProgressTracker:
         Args:
             total: Total number of items to process
             desc: Description of the operation
-            gradio_progress: Optional Gradio progress object
+            callback: Optional callback function for progress updates
         """
         self.total = total
         self.desc = desc
-        self.gradio_progress = gradio_progress
+        self.callback = callback
         self.current = 0
         self.tqdm_bar = None
 
@@ -74,13 +72,10 @@ class ProgressTracker:
             if status:
                 self.tqdm_bar.set_postfix_str(status)
 
-        # Update Gradio progress if available
-        if self.gradio_progress:
+        # Call callback if provided
+        if self.callback:
             progress_value = self.current / self.total if self.total > 0 else 0
-            if status:
-                self.gradio_progress(progress_value, desc=f"{self.desc}: {status}")
-            else:
-                self.gradio_progress(progress_value, desc=self.desc)
+            self.callback(progress_value, status or self.desc)
 
     def set_status(self, status: str):
         """
@@ -92,16 +87,16 @@ class ProgressTracker:
         if self.tqdm_bar:
             self.tqdm_bar.set_postfix_str(status)
 
-        if self.gradio_progress:
+        if self.callback:
             progress_value = self.current / self.total if self.total > 0 else 0
-            self.gradio_progress(progress_value, desc=f"{self.desc}: {status}")
+            self.callback(progress_value, status)
 
 
 def track_progress(
     items: list,
     process_func: Callable,
     desc: str = "Processing",
-    gradio_progress: Optional[gr.Progress] = None
+    callback: Optional[Callable] = None
 ):
     """
     Convenience function to track progress over a list of items.
@@ -110,7 +105,7 @@ def track_progress(
         items: List of items to process
         process_func: Function to apply to each item
         desc: Description of the operation
-        gradio_progress: Optional Gradio progress object
+        callback: Optional callback function for progress updates
 
     Returns:
         List of results
@@ -127,7 +122,7 @@ def track_progress(
     with ProgressTracker(
         total=len(items),
         desc=desc,
-        gradio_progress=gradio_progress
+        callback=callback
     ) as progress:
         for i, item in enumerate(items):
             result = process_func(item)

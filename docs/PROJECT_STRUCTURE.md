@@ -90,7 +90,9 @@ LocalizationTools/
 │       │   └── lib/
 │       │       ├── components/
 │       │       │   ├── apps/
-│       │       │   │   └── XLSTransfer.svelte ⭐ (17KB - exact replica)
+│       │       │   │   ├── XLSTransfer.svelte ⭐ (17KB - exact replica)
+│       │       │   │   ├── QuickSearch.svelte ⭐ (dictionary search)
+│       │       │   │   └── KRSimilar.svelte ⭐ (Korean semantic similarity)
 │       │       │   ├── TopBar.svelte - Top menu bar
 │       │       │   └── TaskManager.svelte - Task manager sidebar
 │       │       └── api/
@@ -191,12 +193,18 @@ LocalizationTools/
 
 ```
 LocalizationTools Desktop App
-├── Tool 1: XLSTransfer ✅ (COMPLETE - exact replica of original)
+├── Tool 1: XLSTransfer ✅ (COMPLETE - backend + frontend)
 │   ├── 10 functions (Create dictionary, Load dictionary, Transfer to Close, etc.)
-│   └── Python modules: core.py, embeddings.py, translation.py, excel_utils.py
-│   └── Backend scripts: get_sheets.py, load_dictionary.py, process_operation.py, etc.
-├── Tool 2: [Your Next Script] 🔜
-├── Tool 3: [Another Script] 🔜
+│   ├── Python modules: core.py, embeddings.py, translation.py, excel_utils.py
+│   └── Frontend: XLSTransfer.svelte (17KB)
+├── Tool 2: QuickSearch ✅ (COMPLETE - backend + frontend)
+│   ├── Dictionary search with reference lookup
+│   ├── Python modules: dictionary.py, parser.py, searcher.py
+│   └── Frontend: QuickSearch.svelte
+├── Tool 3: KR Similar ✅ (COMPLETE - backend + frontend)
+│   ├── Korean semantic similarity search
+│   ├── Python modules: core.py, embeddings.py, searcher.py
+│   └── Frontend: KRSimilar.svelte
 └── Tool N: ... (scalable to 100+ tools)
 ```
 
@@ -208,16 +216,16 @@ LocalizationTools Desktop App
 
 ---
 
-## 📊 PROJECT STATS (Updated 2025-12-02)
+## 📊 PROJECT STATS (Updated 2025-12-05)
 
-- **Overall Progress**: 96% Complete ✅
+- **Overall Progress**: 97% Complete ✅
 - **Backend**: 100% Complete ✅
 - **LocaNext Desktop App**: 100% Complete ✅
 - **Admin Dashboard**: 85% Complete ⏳
-- **Tests**: 450 passing (49% coverage) ✅
+- **Tests**: 885 passing ✅
 - **API Endpoints**: 47+ (async + sync) ✅
 - **Database Tables**: 13 ✅
-- **Tool Modules**: 3 (XLSTransfer, QuickSearch, KR Similar) ✅
+- **Tools**: 3/3 complete (XLSTransfer, QuickSearch, KR Similar) ✅
 - **Lines of Code**: ~18,000+ (server + client + locaNext + adminDashboard + tests)
 - **Data Structure**: Unified under `server/data/` ✅
 

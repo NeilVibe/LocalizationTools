@@ -1,9 +1,12 @@
 /**
  * Preload script for LocaNext
  * Exposes safe IPC methods to renderer process
+ *
+ * NOTE: Uses CommonJS require() instead of ES modules import
+ * because Electron's sandboxed preload context doesn't support ES modules
  */
 
-import { contextBridge, ipcRenderer } from 'electron';
+const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose protected methods to renderer
 contextBridge.exposeInMainWorld('electron', {
@@ -21,11 +24,18 @@ contextBridge.exposeInMainWorld('electron', {
   getPaths: () => ipcRenderer.invoke('get-paths'),
 
   /**
-   * Read file
+   * Read file (text)
    * @param {string} filePath
    * @returns {Promise<{success, data, error}>}
    */
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
+
+  /**
+   * Read file as buffer (for binary files like Excel)
+   * @param {string} filePath
+   * @returns {Promise<{success, data (base64), mimeType, error}>}
+   */
+  readFileBuffer: (filePath) => ipcRenderer.invoke('read-file-buffer', filePath),
 
   /**
    * Write file
@@ -68,7 +78,14 @@ contextBridge.exposeInMainWorld('electron', {
    */
   offPythonOutput: () => {
     ipcRenderer.removeAllListeners('python-output');
-  }
+  },
+
+  /**
+   * Append log message to file (for frontend logging)
+   * @param {object} params - { logPath, message }
+   * @returns {Promise<{success, error}>}
+   */
+  appendLog: (params) => ipcRenderer.invoke('append-log', params)
 });
 
 // Expose platform info

@@ -1,6 +1,6 @@
 {
   "name": "locanext",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "LocaNext - Professional Desktop Platform for Localization Tools",
   "main": "electron/main.js",
   "type": "module",
@@ -8,7 +8,7 @@
     "dev": "concurrently \"npm run dev:svelte\" \"npm run dev:electron\"",
     "dev:svelte": "vite dev",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
-    "build": "vite build",
+    "build": "vite build && node scripts/fix-electron-paths.js",
     "build:electron": "electron-builder --publish never",
     "preview": "vite preview",
     "package": "npm run build && electron-builder",
@@ -54,6 +54,13 @@
     "files": [
       "build/**/*",
       "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../server/tools",
+        "to": "tools",
+        "filter": ["**/*.py", "**/*.json", "**/*.txt", "**/*.md", "**/requirements.txt"]
+      }
     ],
     "mac": {
       "category": "public.app-category.developer-tools",

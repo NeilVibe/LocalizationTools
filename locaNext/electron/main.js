@@ -91,13 +91,14 @@ const getAppPaths = () => {
     };
   } else {
     // Production: installed app structure
-    // app.asar is in resources/, app root is one level up
-    const appRoot = path.join(app.getAppPath(), '..', '..');
+    // app.asar is in resources/, resources dir is one level up
+    const resourcesPath = path.join(app.getAppPath(), '..');
+    const appRoot = path.join(resourcesPath, '..');
     return {
       projectRoot: appRoot,
-      pythonToolsPath: path.join(appRoot, 'tools'),
+      pythonToolsPath: path.join(resourcesPath, 'tools'),  // extraResources goes to resources/tools
       serverPath: path.join(appRoot, 'server'),
-      pythonExe: path.join(appRoot, 'tools', 'python', 'python.exe'),
+      pythonExe: path.join(appRoot, 'tools', 'python', 'python.exe'),  // Python installed at tools/python
       modelsPath: path.join(appRoot, 'models')
     };
   }
@@ -424,6 +425,47 @@ function createWindow() {
     mainWindow.loadFile(buildPath);
   }
 
+  // ==================== RENDERER LOGGING ====================
+  // Capture ALL console output from the frontend (Svelte)
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    const levelMap = { 0: 'DEBUG', 1: 'INFO', 2: 'WARNING', 3: 'ERROR' };
+    const levelName = levelMap[level] || 'LOG';
+    logger.info(`[Renderer ${levelName}]`, { message, line, source: sourceId });
+  });
+
+  // Log when page starts loading
+  mainWindow.webContents.on('did-start-loading', () => {
+    logger.info('[Renderer] Page started loading');
+  });
+
+  // Log when page finishes loading
+  mainWindow.webContents.on('did-finish-load', () => {
+    logger.success('[Renderer] Page finished loading');
+  });
+
+  // Log DOM ready
+  mainWindow.webContents.on('dom-ready', () => {
+    logger.info('[Renderer] DOM ready');
+  });
+
+  // Capture load failures (critical for debugging black screen!)
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    logger.error('[Renderer] FAILED TO LOAD', {
+      errorCode,
+      errorDescription,
+      url: validatedURL
+    });
+  });
+
+  // Capture preload script errors
+  mainWindow.webContents.on('preload-error', (event, preloadPath, error) => {
+    logger.error('[Renderer] PRELOAD ERROR', {
+      preloadPath,
+      error: error.message,
+      stack: error.stack
+    });
+  });
+
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
     logger.success('Main window ready and visible');
@@ -455,7 +497,11 @@ ipcMain.handle('execute-python', async (event, { scriptPath, args = [], cwd = nu
   logger.ipc('execute-python', { scriptPath, args, cwd });
 
   return new Promise((resolve) => {
-    const python = spawn('python3', [scriptPath, ...args], {
+    // Use the correct Python executable (python.exe on Windows, python3 on Linux)
+    const pythonExe = paths.pythonExe || 'python3';
+    logger.info('Executing Python script', { pythonExe, scriptPath, args });
+
+    const python = spawn(pythonExe, [scriptPath, ...args], {
       cwd: cwd || pythonToolsPath,
       env: {
         ...process.env,
@@ -523,7 +569,7 @@ ipcMain.handle('get-paths', async () => {
 });
 
 /**
- * Read file
+ * Read file (text)
  */
 ipcMain.handle('read-file', async (event, filePath) => {
   try {
@@ -533,6 +579,31 @@ ipcMain.handle('read-file', async (event, filePath) => {
     return { success: false, error: error.message };
   }
 });
+
+/**
+ * Read file as buffer (for binary files like Excel)
+ */
+ipcMain.handle('read-file-buffer', async (event, filePath) => {
+  try {
+    const buffer = await fs.promises.readFile(filePath);
+    // Return as base64 for transfer to renderer
+    return { success: true, data: buffer.toString('base64'), mimeType: getMimeType(filePath) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+function getMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes = {
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.xls': 'application/vnd.ms-excel',
+    '.txt': 'text/plain',
+    '.csv': 'text/csv',
+    '.json': 'application/json'
+  };
+  return mimeTypes[ext] || 'application/octet-stream';
+}
 
 /**
  * Write file
@@ -600,6 +671,29 @@ ipcMain.handle('show-item-in-folder', async (event, filePath) => {
   }
 });
 
+/**
+ * IPC Handler: Append log message to file
+ * Used by frontend logger to write logs to file
+ */
+ipcMain.handle('append-log', async (event, { logPath, message }) => {
+  try {
+    const fullPath = path.join(paths.projectRoot, logPath);
+
+    // Ensure logs directory exists
+    const logDir = path.dirname(fullPath);
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+
+    // Append message with newline
+    fs.appendFileSync(fullPath, message + '\n', 'utf8');
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to append log:', error.message);
+    return { success: false, error: error.message };
+  }
+});
+
 // ==================== APP LIFECYCLE ====================
 
 // App ready
@@ -660,8 +754,11 @@ app.whenReady().then(async () => {
   }
 
   // ==================== HEALTH CHECK & AUTO-REPAIR ====================
-  // Run on EVERY launch (not just first-run) to detect and fix issues
-  if (!isDev) {
+  // DISABLED: Set to true to enable automatic health check and repair on every launch
+  // When disabled, repair is manual only (via Settings or IPC)
+  const ENABLE_AUTO_HEALTH_CHECK = false;
+
+  if (!isDev && ENABLE_AUTO_HEALTH_CHECK) {
     try {
       updateSplash('Running health check...', 20);
       logger.info('Running startup health check');
@@ -736,6 +833,9 @@ app.whenReady().then(async () => {
       // Continue anyway - don't block app startup
       updateSplash('Continuing...', 40);
     }
+  } else if (!isDev) {
+    logger.info('Auto health check DISABLED - skipping to app startup');
+    updateSplash('Starting...', 40);
   }
 
   // Start backend server
