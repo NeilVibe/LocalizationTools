@@ -10,10 +10,10 @@
 ACCESS METHODS:
 │
 ├── 🔐 SSH (RECOMMENDED for company)
-│   ├── How: ssh://git@server/repo.git
+│   ├── How: ssh://USERNAME@server:2222/repo.git
 │   ├── Auth: SSH keys (no passwords)
 │   ├── Security: Encrypted, key-based
-│   ├── Firewall: Port 22 (usually open)
+│   ├── Firewall: Port 2222 (Gitea default)
 │   └── Setup: One-time key generation
 │
 ├── 🌐 HTTPS
@@ -25,6 +25,25 @@ ACCESS METHODS:
 │
 └── 🏆 WINNER: SSH
     └── No passwords, no certificates, just keys
+```
+
+### ⚠️ CRITICAL: Gitea SSH Username Bug
+
+**Gitea's built-in SSH server does NOT use `git` as username!**
+
+It uses your **Linux system username** (from `RUN_USER` in app.ini).
+
+```bash
+# WRONG (common mistake):
+ssh -T git@gitea-server          # ❌ Permission denied
+
+# CORRECT:
+ssh -T your_linux_user@gitea-server   # ✅ Works!
+```
+
+Check Gitea logs for this error:
+```
+Invalid SSH username git - must use USERNAME for all git operations via ssh
 ```
 
 ---

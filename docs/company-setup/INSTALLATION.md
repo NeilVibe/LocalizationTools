@@ -347,6 +347,52 @@ git add . && git commit -m "Test commit" && git push
 
 ---
 
+## SSH Setup (Recommended)
+
+### Why SSH?
+- No password typing after setup
+- More secure (key-based auth)
+- Industry standard
+
+### SSH Configuration
+
+**IMPORTANT:** Gitea's built-in SSH server uses your **Linux username**, NOT `git`!
+
+```bash
+# 1. Add your SSH key to Gitea via web UI
+#    http://your-gitea:3000/user/settings/keys
+
+# 2. Configure SSH (~/.ssh/config)
+cat >> ~/.ssh/config << 'EOF'
+Host gitea-server
+    HostName git.company.local
+    Port 2222
+    User YOUR_LINUX_USERNAME    # <-- NOT 'git'! Use actual username
+    IdentityFile ~/.ssh/id_ed25519
+EOF
+
+# 3. Add host key
+ssh-keyscan -p 2222 git.company.local >> ~/.ssh/known_hosts
+
+# 4. Test connection
+ssh -T YOUR_LINUX_USERNAME@gitea-server
+# Should say: "Hi there, USERNAME! You've successfully authenticated..."
+
+# 5. Add remote to your repo
+git remote add gitea YOUR_LINUX_USERNAME@gitea-server:org/repo.git
+```
+
+### Common SSH Issue
+
+If you see `Permission denied (publickey)`, check the Gitea log:
+```bash
+cat /path/to/gitea/log/gitea.log | grep -i "invalid ssh"
+```
+
+If it says `Invalid SSH username git - must use USERNAME`, you need to use your Linux username instead of `git` in your SSH config.
+
+---
+
 ## Troubleshooting
 
 ### Gitea Won't Start
