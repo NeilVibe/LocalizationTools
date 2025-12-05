@@ -50,7 +50,8 @@ Roadmap.md
 │
 ├── ✅ COMPLETE: Priority 9.0 ──── Auto-Update System (DONE!)
 ├── 📋 BACKLOG: Priority 10.3 ──── Patch Notes System (deferred)
-├── 🔄 CURRENT: Priority 11.0 ──── Repair & Health Check System (IN PROGRESS)
+├── ✅ COMPLETE: Priority 11.0 ──── Health Check & Auto-Repair
+├── 🔴 CURRENT: Priority 12.5 ──── Central Telemetry System (NEXT!)
 ├── ✅ COMPLETE: Priority 8.0 ──── First-Run Setup
 ├── ✅ COMPLETE: Priority 6.0 ──── Structure Unification
 │
@@ -90,7 +91,8 @@ LocaNext Platform v2512051540
     ├── ✅ P9: Auto-Update ────── COMPLETE! (latest.yml + GitHub)
     ├── ✅ P10.1-2,4-5: UI/UX ─── Modal, Progress, IPC done
     ├── 📋 P10.3: Patch Notes ─── BACKLOG (deferred)
-    └── 🔄 P11: Repair System ─── IN PROGRESS (health check + auto-repair)
+    ├── ✅ P11: Health Check ──── Auto-repair system done
+    └── 🔴 P12.5: Telemetry ──── Track connections, sessions, usage (NEXT!)
 ```
 
 ---
@@ -424,13 +426,53 @@ Priority 12.0: Critical Architecture Issues
 │   ├── ⚠️ WORKAROUND: +error.svelte renders content on 404 (hides the problem)
 │   └── 🔴 REAL FIX NEEDED: SvelteKit adapter-static config or hash-based routing
 │
-└── 12.5 Central Server Communication 🚨 CRITICAL
-    ├── Problem: No mechanism for desktop ↔ central server sync
-    ├── Use Cases:
-    │   ├── Admin creates user on server → Desktop can login
-    │   ├── Usage telemetry from desktop → Server dashboard
-    │   └── License/access control from server → Desktop
-    └── Status: NEEDS ARCHITECTURE DESIGN
+└── 12.5 Central Telemetry System 🚨 PRIORITY
+    ├── Problem: Desktop apps log LOCALLY only (no visibility)
+    ├── Goal: Track user connections, session duration, tool usage
+    │
+    ├── 📦 EXISTING CODE (Built but Not Connected):
+    │   ├── ✅ UsageLogger (server/utils/client/logger.py)
+    │   │   └── Logs operations, sessions, errors - BUT points to localhost
+    │   ├── ✅ Remote Logging API (server/api/remote_logging.py)
+    │   │   └── /register, /submit, /status endpoints - BUT no DB tables
+    │   ├── ✅ Machine ID (client_config.py)
+    │   │   └── Unique per installation - READY
+    │   └── ✅ Privacy Settings (LOG_FILE_NAMES, LOG_FILE_CONTENT)
+    │
+    ├── 🔴 TODO: Implementation Steps
+    │   ├── 12.5.1 Database Tables (server/models/)
+    │   │   ├── installations - Register each desktop app
+    │   │   ├── sessions - Track connect/disconnect, duration
+    │   │   ├── remote_logs - Store operation logs
+    │   │   └── telemetry_summary - Aggregated stats per day
+    │   │
+    │   ├── 12.5.2 Central Server Config
+    │   │   ├── CENTRAL_SERVER_URL env variable
+    │   │   ├── Hybrid mode: log to LOCAL + CENTRAL
+    │   │   └── Offline queue: retry when central unavailable
+    │   │
+    │   ├── 12.5.3 Session Tracking
+    │   │   ├── POST /api/sessions/start - On app launch
+    │   │   ├── POST /api/sessions/end - On app close
+    │   │   ├── Heartbeat every 5 min (keep alive)
+    │   │   └── Calculate session duration
+    │   │
+    │   ├── 12.5.4 Tool Usage Tracking
+    │   │   ├── Log each tool operation (XLSTransfer, QuickSearch, etc.)
+    │   │   ├── Track: duration, rows processed, errors
+    │   │   └── Aggregate: tools used per day/week/month
+    │   │
+    │   ├── 12.5.5 Admin Dashboard UI (Telemetry Tab)
+    │   │   ├── Active installations list
+    │   │   ├── Sessions timeline (who's online now)
+    │   │   ├── Tool usage charts
+    │   │   └── Error rate monitoring
+    │   │
+    │   └── 12.5.6 Testing
+    │       ├── Integration tests for remote logging
+    │       └── Simulate multi-installation telemetry
+    │
+    └── Status: 🔴 NOT STARTED - NEEDS IMPLEMENTATION
 ```
 
 ### Architecture Decision Needed:
