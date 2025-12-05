@@ -23,6 +23,7 @@
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { api } from "$lib/api/client.js";
+  import { telemetry } from "$lib/utils/telemetry.js";
 
   // API base URL
   const API_BASE = 'http://localhost:8888';
@@ -132,6 +133,7 @@
     }
 
     isCreatingDictionary = true;
+    const startTime = Date.now();
     logger.userAction("Creating dictionary", { game: createGame, language: createLanguage, files: createFiles.length });
 
     try {
@@ -152,6 +154,11 @@
 
       if (response.ok) {
         showStatus(`Dictionary creation started: ${createGame}-${createLanguage}`, 'success');
+        telemetry.trackOperationSuccess('QuickSearch', 'create_dictionary', startTime, {
+          game: createGame,
+          language: createLanguage,
+          files_count: createFiles.length
+        });
         showCreateDictionaryModal = false;
         createFiles = [];
         await loadAvailableDictionaries();
@@ -160,6 +167,10 @@
       }
     } catch (error) {
       logger.error("Dictionary creation failed", { error: error.message });
+      telemetry.trackOperationError('QuickSearch', 'create_dictionary', startTime, error, {
+        game: createGame,
+        language: createLanguage
+      });
       showStatus(`Error: ${error.message}`, 'error');
     } finally {
       isCreatingDictionary = false;
@@ -168,6 +179,7 @@
 
   async function loadDictionary() {
     isLoadingDictionary = true;
+    const startTime = Date.now();
     logger.userAction("Loading dictionary", { game: loadGame, language: loadLanguage });
 
     try {
@@ -190,6 +202,11 @@
           pairs_count: data.pairs_count,
           creation_date: data.creation_date
         };
+        telemetry.trackOperationSuccess('QuickSearch', 'load_dictionary', startTime, {
+          game: loadGame,
+          language: loadLanguage,
+          pairs_count: data.pairs_count
+        });
         showStatus(`Dictionary loaded: ${loadGame}-${loadLanguage} (${data.pairs_count} pairs)`, 'success');
         showLoadDictionaryModal = false;
       } else {
@@ -197,6 +214,10 @@
       }
     } catch (error) {
       logger.error("Dictionary load failed", { error: error.message });
+      telemetry.trackOperationError('QuickSearch', 'load_dictionary', startTime, error, {
+        game: loadGame,
+        language: loadLanguage
+      });
       showStatus(`Error: ${error.message}`, 'error');
     } finally {
       isLoadingDictionary = false;
@@ -205,6 +226,7 @@
 
   async function setReference() {
     isLoadingReference = true;
+    const startTime = Date.now();
     logger.userAction("Setting reference dictionary", { game: refGame, language: refLanguage });
 
     try {
@@ -223,6 +245,10 @@
       if (response.ok) {
         referenceDictionary = { game: refGame, language: refLanguage };
         referenceEnabled = true;
+        telemetry.trackOperationSuccess('QuickSearch', 'set_reference', startTime, {
+          game: refGame,
+          language: refLanguage
+        });
         showStatus(`Reference loaded: ${refGame}-${refLanguage}`, 'success');
         showSetReferenceModal = false;
 
@@ -233,6 +259,10 @@
       }
     } catch (error) {
       logger.error("Reference load failed", { error: error.message });
+      telemetry.trackOperationError('QuickSearch', 'set_reference', startTime, error, {
+        game: refGame,
+        language: refLanguage
+      });
       showStatus(`Error: ${error.message}`, 'error');
     } finally {
       isLoadingReference = false;
@@ -281,6 +311,7 @@
     }
 
     isSearching = true;
+    const startTime = Date.now();
     logger.userAction("Performing search", { query: searchQuery, match_type: matchType, mode: searchMode });
 
     try {
@@ -304,6 +335,11 @@
         if (response.ok) {
           searchResults = data.results || [];
           totalResults = data.total_count || 0;
+          telemetry.trackOperationSuccess('QuickSearch', 'search', startTime, {
+            mode: 'one-line',
+            match_type: matchType,
+            results_count: totalResults
+          });
           logger.info(`Search completed: ${totalResults} results found`);
         } else {
           throw new Error(data.detail || 'Search failed');
@@ -335,6 +371,12 @@
             }
           }
           totalResults = searchResults.length;
+          telemetry.trackOperationSuccess('QuickSearch', 'search', startTime, {
+            mode: 'multi-line',
+            match_type: matchType,
+            queries_count: queries.length,
+            results_count: totalResults
+          });
           logger.info(`Multi-line search completed: ${totalResults} total matches`);
         } else {
           throw new Error(data.detail || 'Multi-line search failed');
@@ -342,6 +384,10 @@
       }
     } catch (error) {
       logger.error("Search failed", { error: error.message });
+      telemetry.trackOperationError('QuickSearch', 'search', startTime, error, {
+        mode: searchMode,
+        match_type: matchType
+      });
       showStatus(`Search error: ${error.message}`, 'error');
     } finally {
       isSearching = false;
