@@ -1,8 +1,60 @@
 # Debug & Test Hub - Complete Remote Access Guide
 
-**Priority:** Central Documentation | **Updated:** 2025-12-05
+**Priority:** Central Documentation | **Updated:** 2025-12-06
 
 This is the **MASTER GUIDE** for all testing, debugging, and remote access methods.
+
+---
+
+## 🎯 AUTONOMOUS TESTING PHILOSOPHY
+
+**Claude works ALONE on testing. User provides direction only.**
+
+```
+TESTING PROTOCOL:
+═══════════════════════════════════════════════════════════════
+
+User Role:
+├── Overall design decisions
+├── Direction and priorities
+└── Final approval
+
+Claude Role (FULLY AUTONOMOUS):
+├── Build the app
+├── Deploy to test folder
+├── Run ALL tests independently
+├── Fix issues found
+├── Rebuild and retest
+├── Report results
+└── NO USER INTERVENTION NEEDED
+```
+
+### 📂 Windows Testing Playground
+
+```
+D:\LocaNext\              ← OFFICIAL WINDOWS TEST FOLDER
+├── LocaNext.exe          ← Built app
+├── server/               ← Backend
+├── logs/                 ← Test logs
+└── *.js                  ← CDP test scripts
+
+WSL Access: /mnt/d/LocaNext
+```
+
+**Claude has FULL authority to:**
+- ✅ Erase everything and rebuild fresh
+- ✅ Push new builds anytime
+- ✅ Run CDP tests via remote debugging
+- ✅ Auto-login (credentials in config)
+- ✅ Modify code, test, iterate independently
+- ✅ Install/uninstall as needed
+
+**Claude does NOT need user for:**
+- ❌ Running tests
+- ❌ Starting/stopping app
+- ❌ Reading logs
+- ❌ Building new versions
+- ❌ Deploying to test folder
 
 ---
 
