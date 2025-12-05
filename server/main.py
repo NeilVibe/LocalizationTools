@@ -211,6 +211,10 @@ from server.api import stats, rankings
 app.include_router(stats.router)
 app.include_router(rankings.router)
 
+# Include Admin Telemetry API (for central server monitoring)
+from server.api import admin_telemetry
+app.include_router(admin_telemetry.router)
+
 # Socket.IO will be mounted at the end after all setup is complete
 
 # Note: Startup and shutdown events are now handled via the lifespan context manager
