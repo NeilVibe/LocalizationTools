@@ -78,6 +78,9 @@ class XLSTransferAPI(BaseToolAPI):
         self.router.post("/test/translate-excel")(self.translate_excel)
         self.router.get("/test/status")(self.status)
         self.router.post("/test/get-sheets")(self.get_sheets)
+        # Simple Excel Transfer endpoints
+        self.router.post("/test/simple/analyze")(self.simple_analyze)
+        self.router.post("/test/simple/execute")(self.simple_execute)
 
     # ========================================================================
     # ENDPOINTS
@@ -448,6 +451,120 @@ class XLSTransferAPI(BaseToolAPI):
         except Exception as e:
             logger.error(f"Failed to get sheets: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to read Excel file: {str(e)}")
+
+    # ========================================================================
+    # SIMPLE EXCEL TRANSFER ENDPOINTS
+    # ========================================================================
+
+    async def simple_analyze(
+        self,
+        source_file: UploadFile = File(...),
+        dest_file: UploadFile = File(...),
+        current_user: dict = Depends(get_current_active_user_async)
+    ):
+        """
+        Analyze source and destination Excel files for Simple Transfer.
+        Returns sheet names from both files.
+        """
+        user_info = self.extract_user_info(current_user)
+
+        logger.info(f"Simple transfer analyze requested by {user_info['username']}", {
+            "source": source_file.filename,
+            "dest": dest_file.filename
+        })
+
+        try:
+            # Save uploaded files
+            file_paths = await self.save_uploaded_files([source_file, dest_file])
+            source_path = file_paths[0]
+            dest_path = file_paths[1]
+
+            # Import simple_transfer module
+            from server.tools.xlstransfer import simple_transfer
+
+            # Analyze files
+            result = simple_transfer.analyze_files(source_path, dest_path)
+
+            logger.success(f"Simple transfer analyze complete", {
+                "source_sheets": len(result['source_sheets']),
+                "dest_sheets": len(result['dest_sheets'])
+            })
+
+            return {
+                "success": True,
+                "source_file": source_file.filename,
+                "dest_file": dest_file.filename,
+                "source_sheets": result['source_sheets'],
+                "dest_sheets": result['dest_sheets'],
+                "temp_source": result['temp_source'],
+                "temp_dest": result['temp_dest']
+            }
+
+        except Exception as e:
+            logger.error(f"Simple transfer analyze failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def simple_execute(
+        self,
+        temp_source: str = Form(...),
+        temp_dest: str = Form(...),
+        dest_file: str = Form(...),
+        settings: str = Form(...),
+        current_user: dict = Depends(get_current_active_user_async)
+    ):
+        """
+        Execute Simple Excel Transfer with given settings.
+
+        settings JSON format:
+        [
+            {
+                "source_tab": "Sheet1",
+                "source_file_col": "A",
+                "source_note_col": "B",
+                "dest_tab": "Sheet1",
+                "dest_file_col": "A",
+                "dest_note_col": "B"
+            }
+        ]
+        """
+        user_info = self.extract_user_info(current_user)
+
+        logger.info(f"Simple transfer execute requested by {user_info['username']}", {
+            "dest_file": dest_file
+        })
+
+        try:
+            # Parse settings
+            settings_list = json.loads(settings)
+
+            # Import simple_transfer module
+            from server.tools.xlstransfer import simple_transfer
+
+            # Validate settings
+            is_valid, error = simple_transfer.validate_transfer_settings(settings_list)
+            if not is_valid:
+                return {"success": False, "error": error}
+
+            # Execute transfer
+            result = simple_transfer.execute_transfer(
+                temp_source_file=temp_source,
+                temp_dest_file=temp_dest,
+                dest_file=dest_file,
+                settings_list=settings_list,
+                cleanup_temps=True
+            )
+
+            logger.success(f"Simple transfer complete", {
+                "transfers": result['transfers_count'],
+                "rows": result['total_rows_transferred'],
+                "output": result['output_file']
+            })
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Simple transfer execute failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     # ========================================================================
     # HELPER METHODS
