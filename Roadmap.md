@@ -901,8 +901,8 @@ PORT SUMMARY (Quick Reference):
 └──────────────────┴────────┴─────────────────────────────┘
 
 WHAT'S NEXT? → ✅ P16: QuickSearch QA Tools COMPLETE
-              → 🔄 P13.3: Gitea CI/CD (Actions ✅, Workflow ✅, Runner needed)
-              → P10.3: Patch Notes (Backlog)
+              → ✅ P13.3: Gitea CI/CD COMPLETE (Runner online!)
+              → 📋 P13.4: Update Server (nginx for /updates/)
               → P17: LD Manager (CAT Tool) ★ BIG FEATURE
               → P18: UI/UX Overhaul ★ PLATFORM REDESIGN
 ```
@@ -1638,12 +1638,13 @@ P13 TASKS:
 │   ├── [✅] Dual remote: origin (GitHub) + gitea (local)
 │   └── [✅] Push/pull workflow verified
 │
-├── 🔄 13.3: CI/CD Setup (IN PROGRESS)
+├── ✅ 13.3: CI/CD Setup COMPLETE
 │   ├── [✅] Enable Gitea Actions (app.ini: ENABLED=true)
 │   ├── [✅] Create .gitea/workflows/build.yml
-│   ├── [ ] Install act_runner (self-hosted runner)
-│   ├── [ ] Register runner with Gitea
-│   └── [ ] Test full pipeline
+│   ├── [✅] Install act_runner v0.2.11
+│   ├── [✅] Register runner "locanext-runner" [ubuntu-latest, linux]
+│   ├── [✅] Helper scripts: start_runner.sh, stop_runner.sh
+│   └── [✅] Pipeline triggered successfully (tasks picked up)
 │
 ├── 📋 13.4: Update Server (FUTURE)
 │   ├── [ ] Setup nginx for /updates/
@@ -1800,10 +1801,11 @@ COMPLETE PRIORITY TREE (Past → Present → Future)
     │   ├── ✅ Character Count (BDO/BDM symbol validation)
     │   └── ✅ Pattern Check ({code} pattern matching)
     │
-    ├── 🔄 P13.3: Gitea CI/CD Workflow ────── IN PROGRESS
+    ├── ✅ P13.3: Gitea CI/CD Workflow ────── COMPLETE
     │   ├── ✅ Actions enabled (app.ini)
     │   ├── ✅ .gitea/workflows/build.yml created
-    │   └── 📋 Need: act_runner installation
+    │   ├── ✅ act_runner v0.2.11 installed + registered
+    │   └── ✅ Runner "locanext-runner" online, picking up tasks
     │
     ├── P10.3: Patch Notes ────────────────── Show release notes in update modal
     │
