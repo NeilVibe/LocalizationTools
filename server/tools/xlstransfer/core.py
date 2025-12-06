@@ -401,12 +401,13 @@ def strip_codes_from_text(text: str) -> str:
 def count_newlines(text: str) -> int:
     """
     Count the number of newline characters in text.
+    MONOLITH LINE 822-823: Only counts literal \\n, NOT escaped \\\\n
 
     Args:
         text: Text to count newlines in
 
     Returns:
-        Number of newlines
+        Number of literal newlines
 
     Example:
         >>> count_newlines("Hello\\nWorld\\nTest")
@@ -417,11 +418,9 @@ def count_newlines(text: str) -> int:
     if not isinstance(text, str):
         return 0
 
-    # Count both literal newlines and escaped newlines
-    literal_count = text.count('\n')
-    escaped_count = text.count(config.NEWLINE_ESCAPE)
-
-    return literal_count + escaped_count
+    # MONOLITH: Only count literal newlines (line 822)
+    # str(cell1).count('\n')
+    return text.count('\n')
 
 
 def normalize_newlines(text: str) -> str:
