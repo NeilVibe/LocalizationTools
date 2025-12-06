@@ -200,6 +200,7 @@ class EmbeddingsManager:
     ) -> Dict[str, Any]:
         """
         Process embeddings for a specific type (split or whole).
+        Supports incremental update (monolith lines 137-192).
 
         Args:
             embedding_type: 'split' or 'whole'
@@ -222,25 +223,79 @@ class EmbeddingsManager:
             lambda x: x.value_counts().index[0] if len(x) > 0 else ''
         ).reset_index()
 
-        total_texts = len(processed_data)
-        logger.info(f"Total unique {embedding_type} pairs: {total_texts}")
-
-        # Generate embeddings
-        embeddings = self.encode_texts(
-            processed_data['Korean'].tolist(),
-            progress_callback=progress_callback
-        )
-
-        # Create translation dictionary
-        translation_dict = dict(zip(processed_data['Korean'], processed_data['Translation']))
-
-        # Save embeddings and dictionary
+        # Prepare paths
         dict_dir = self.dictionaries_dir / dict_type
         dict_dir.mkdir(parents=True, exist_ok=True)
-
         embeddings_file = dict_dir / f'{embedding_type}_embeddings.npy'
         dict_file = dict_dir / f'{embedding_type}_translation_dict.pkl'
 
+        # MONOLITH LINES 137-192: Incremental update logic
+        if embeddings_file.exists() and dict_file.exists():
+            logger.info(f"Found existing {embedding_type} embeddings, performing incremental update")
+
+            # Load existing data (monolith lines 143-148)
+            existing_embeddings = np.load(embeddings_file)
+            with open(dict_file, 'rb') as f:
+                existing_dict = pickle.load(f)
+
+            # Identify new or changed strings (monolith lines 150-154)
+            existing_data = pd.DataFrame(list(existing_dict.items()), columns=['Korean', 'French'])
+            merged_data = pd.merge(
+                processed_data, existing_data,
+                on='Korean', how='outer', suffixes=('_new', '_old')
+            )
+            # Find entries where translation is new or changed
+            new_or_changed = merged_data[
+                merged_data['Translation'] != merged_data['French']
+            ].dropna(subset=['Translation'])
+
+            if len(new_or_changed) == 0:
+                logger.info(f"No new or changed strings found for {embedding_type}")
+                return {"pairs": len(existing_dict)}
+
+            logger.info(f"Identified {len(new_or_changed)} new or changed {embedding_type} strings")
+
+            # Generate embeddings only for new/changed (monolith lines 157-190)
+            new_embeddings = self.encode_texts(
+                new_or_changed['Korean'].tolist(),
+                progress_callback=progress_callback
+            )
+
+            # Update embeddings array - append new ones
+            # For changed strings, we need to replace; for new, append
+            korean_to_idx = {k: i for i, k in enumerate(existing_dict.keys())}
+            updated_embeddings = existing_embeddings.copy()
+
+            for i, korean_text in enumerate(new_or_changed['Korean']):
+                if korean_text in korean_to_idx:
+                    # Replace existing embedding
+                    idx = korean_to_idx[korean_text]
+                    updated_embeddings[idx] = new_embeddings[i]
+                else:
+                    # Append new embedding
+                    updated_embeddings = np.vstack([updated_embeddings, new_embeddings[i:i+1]])
+
+            # Update translation dictionary
+            translation_dict = existing_dict.copy()
+            for _, row in new_or_changed.iterrows():
+                translation_dict[row['Korean']] = row['Translation']
+
+            embeddings = updated_embeddings
+        else:
+            # Full generation (no existing data)
+            total_texts = len(processed_data)
+            logger.info(f"Total unique {embedding_type} pairs: {total_texts}")
+
+            # Generate all embeddings
+            embeddings = self.encode_texts(
+                processed_data['Korean'].tolist(),
+                progress_callback=progress_callback
+            )
+
+            # Create translation dictionary
+            translation_dict = dict(zip(processed_data['Korean'], processed_data['Translation']))
+
+        # Save updated embeddings and dictionary (monolith lines 195-198)
         np.save(embeddings_file, embeddings)
         with open(dict_file, 'wb') as f:
             pickle.dump(translation_dict, f)

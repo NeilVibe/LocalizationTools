@@ -120,10 +120,12 @@ class TestXLSTransferCore:
         assert core.convert_cell_value("123abc") == "123abc"
 
     def test_count_newlines(self, core):
-        """count_newlines counts correctly."""
+        """count_newlines counts ONLY literal newlines (monolith line 822)."""
         assert core.count_newlines("Hello") == 0
         assert core.count_newlines("Hello\nWorld") == 1
-        assert core.count_newlines("Line1\\nLine2\\nLine3") == 2
+        assert core.count_newlines("Line1\nLine2\nLine3") == 2
+        # Escaped \\n should NOT be counted (monolith behavior)
+        assert core.count_newlines("Line1\\nLine2\\nLine3") == 0
 
     def test_normalize_newlines(self, core):
         """normalize_newlines converts correctly."""
