@@ -162,6 +162,22 @@
 
 ## 🚨 CRITICAL RULES (READ FIRST!)
 
+### 0. MONOLITH CODE IS SACRED (MOST IMPORTANT!)
+```
+⚠️  THE ORIGIN MONOLITH CODE MUST BE PERFECTLY AND IDENTICALLY MIGRATED  ⚠️
+
+The Python scripts in RessourcesForCodingTheProject/ are FLAWLESS.
+ANY deviation from monolith logic = BUG in our implementation.
+```
+- **COPY** monolith logic EXACTLY into `server/tools/{tool}/`
+- **ONLY** change UI code (tkinter → API), **NEVER** change core logic
+- **TEST** with same input files the monolith uses
+- See: [MONOLITH_DEVIATIONS.md](docs/MONOLITH_DEVIATIONS.md) for audit status
+- Monolith sources:
+  - `XLSTransfer0225.py` → `server/tools/xlstransfer/`
+  - `KRSIMILAR0124.py` → `server/tools/kr_similar/`
+  - `QuickSearch0818.py` → `server/tools/quicksearch/`
+
 ### 1. Backend is Flawless
 - **NEVER** modify backend core code without explicit permission
 - Only create wrapper layers (API endpoints, GUI)

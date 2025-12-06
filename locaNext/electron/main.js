@@ -76,9 +76,9 @@ const __dirname = path.dirname(__filename);
 const isDev = process.env.NODE_ENV === 'development';
 
 // DEBUG_MODE: Enable full debugging in production builds
-// Set to true to enable: DevTools, verbose logging, skip health checks
+// Set to true to enable: DevTools auto-open, verbose logging, show menu bar
 // Launch with: --remote-debugging-port=9222 for CDP access
-const DEBUG_MODE = true; // TODO: Set to false before final release
+const DEBUG_MODE = false; // Production-ready: menu hidden, DevTools closed by default
 
 let mainWindow;
 let backendProcess = null;
@@ -401,6 +401,34 @@ ipcMain.handle('get-app-info', async () => {
   };
 });
 
+/**
+ * IPC: Toggle DevTools (for dev/debug access from Settings)
+ */
+ipcMain.handle('toggle-dev-tools', async () => {
+  if (mainWindow) {
+    if (mainWindow.webContents.isDevToolsOpened()) {
+      mainWindow.webContents.closeDevTools();
+      logger.info('DevTools closed via IPC');
+      return { success: true, opened: false };
+    } else {
+      mainWindow.webContents.openDevTools();
+      logger.info('DevTools opened via IPC');
+      return { success: true, opened: true };
+    }
+  }
+  return { success: false, error: 'No main window' };
+});
+
+/**
+ * IPC: Check if DevTools is open
+ */
+ipcMain.handle('is-dev-tools-open', async () => {
+  if (mainWindow) {
+    return { success: true, opened: mainWindow.webContents.isDevToolsOpened() };
+  }
+  return { success: false, opened: false };
+});
+
 // ==================== TELEMETRY IPC HANDLERS (P12.5.7) ====================
 
 /**
@@ -511,6 +539,22 @@ function createWindow() {
   mainWindow.on('closed', () => {
     logger.info('Main window closed');
     mainWindow = null;
+  });
+
+  // Keyboard shortcuts for DevTools (Ctrl+Shift+I or F12)
+  // Available even in production for debugging when needed
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // F12 or Ctrl+Shift+I to toggle DevTools
+    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      if (mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.closeDevTools();
+        logger.info('DevTools closed via keyboard shortcut');
+      } else {
+        mainWindow.webContents.openDevTools();
+        logger.info('DevTools opened via keyboard shortcut');
+      }
+      event.preventDefault();
+    }
   });
 
   // Create application menu (disable default menu in production, unless DEBUG_MODE)
@@ -688,6 +732,76 @@ ipcMain.handle('select-files', async (event, options = {}) => {
   } catch (error) {
     logger.error('File dialog error', { error: error.message });
     return null;
+  }
+});
+
+/**
+ * Open folder dialog
+ * Returns: folder path or null if cancelled
+ */
+ipcMain.handle('select-folder', async (event, options = {}) => {
+  logger.ipc('select-folder', { title: options.title });
+
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: options.title || 'Select Folder',
+      properties: ['openDirectory']
+    });
+
+    if (result.canceled) {
+      logger.info('Folder dialog cancelled by user');
+      return null;
+    }
+
+    logger.success('Folder selected', { path: result.filePaths[0] });
+    return result.filePaths[0];
+  } catch (error) {
+    logger.error('Folder dialog error', { error: error.message });
+    return null;
+  }
+});
+
+/**
+ * Recursively collect files from folder matching extensions
+ * Returns: array of { path, name, content (base64) }
+ */
+ipcMain.handle('collect-folder-files', async (event, { folderPath, extensions = ['.xml', '.txt', '.tsv'] }) => {
+  logger.ipc('collect-folder-files', { folderPath, extensions });
+
+  try {
+    const files = [];
+
+    // Recursive function to walk directory
+    const walkDir = async (dir) => {
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+          await walkDir(fullPath);
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (extensions.includes(ext)) {
+            // Read file content as base64
+            const content = await fs.promises.readFile(fullPath);
+            files.push({
+              path: fullPath,
+              name: entry.name,
+              content: content.toString('base64')
+            });
+          }
+        }
+      }
+    };
+
+    await walkDir(folderPath);
+
+    logger.success('Folder files collected', { count: files.length, folderPath });
+    return { success: true, files };
+  } catch (error) {
+    logger.error('Failed to collect folder files', { error: error.message, folderPath });
+    return { success: false, error: error.message, files: [] };
   }
 });
 

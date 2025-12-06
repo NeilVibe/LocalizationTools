@@ -41,6 +41,42 @@ D:\LocaNext\              ← OFFICIAL WINDOWS TEST FOLDER
 WSL Access: /mnt/d/LocaNext
 ```
 
+### 📁 Test Data Files (D:\TestFilesForLocaNext)
+
+```
+D:\TestFilesForLocaNext\          ← TEST DATA FOR ALL TOOLS
+│
+├── QuickSearch Test Files:
+│   ├── sampleofLanguageData.txt  ← RECOMMENDED (16MB, 9 cols, KR+FR)
+│   └── SMALLTESTFILEFORQUICKSEARCH.txt ← ⚠️ BAD (inconsistent columns)
+│
+├── XLSTransfer Test Files:
+│   ├── 150linetransaltiontest.xlsx
+│   ├── translationTEST.xlsx
+│   ├── TESTSMALL.xlsx
+│   └── versysmallSMALLDB1.xlsx
+│
+├── KR Similar Test Files:
+│   ├── lineembeddingtest.xlsx
+│   └── 검은별test.xlsx
+│
+├── Glossary Test Files:
+│   ├── GlossaryUploadTestFile.xlsx
+│   ├── fileusedfordynamicglossary.xlsx
+│   └── fileusedfornormalglossary.xlsx
+│
+└── Close Files:
+    ├── closetotest.txt
+    └── closetotest_translated.txt
+
+WSL Access: /mnt/d/TestFilesForLocaNext
+```
+
+**⚠️ IMPORTANT: QuickSearch requires 7+ column TSV files (cols 0-6):**
+- Column 5 = Korean text
+- Column 6 = Translation text
+- Use `sampleofLanguageData.txt` NOT `SMALLTESTFILEFORQUICKSEARCH.txt`
+
 **Claude has FULL authority to:**
 - ✅ Erase everything and rebuild fresh
 - ✅ Push new builds anytime

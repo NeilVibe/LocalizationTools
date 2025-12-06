@@ -56,6 +56,9 @@
   let createGame = 'BDO';
   let createLanguage = 'EN';
   let createFiles = [];
+  let sourceMode = 'files'; // 'files' or 'folder'
+  let selectedFolderPath = '';
+  let folderFilesCount = 0;
 
   // Load Dictionary form
   let loadGame = 'BDO';
@@ -101,6 +104,56 @@
   // ========================================================================
   // API CALLS
   // ========================================================================
+
+  // Check if running in Electron
+  const isElectron = typeof window !== 'undefined' && window.electron;
+
+  async function selectFolder() {
+    if (!isElectron) {
+      showStatus('Folder selection requires Electron desktop app', 'error');
+      return;
+    }
+
+    try {
+      const folderPath = await window.electron.selectFolder({
+        title: 'Select Folder Containing XML/TXT Files'
+      });
+
+      if (!folderPath) {
+        logger.info('Folder selection cancelled');
+        return;
+      }
+
+      selectedFolderPath = folderPath;
+      logger.info('Folder selected', { folderPath });
+
+      // Collect files from folder
+      const result = await window.electron.collectFolderFiles({
+        folderPath,
+        extensions: ['.xml', '.txt', '.tsv']
+      });
+
+      if (result.success) {
+        folderFilesCount = result.files.length;
+        // Convert base64 files to File objects for upload
+        createFiles = result.files.map(f => {
+          const binaryStr = atob(f.content);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          return new File([bytes], f.name, { type: 'application/octet-stream' });
+        });
+        logger.success(`Found ${folderFilesCount} files in folder`);
+        showStatus(`Found ${folderFilesCount} XML/TXT/TSV files in folder`, 'success');
+      } else {
+        showStatus(`Error: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      logger.error('Folder selection failed', { error: error.message });
+      showStatus(`Error: ${error.message}`, 'error');
+    }
+  }
 
   async function loadAvailableDictionaries() {
     try {
@@ -598,7 +651,7 @@
     primaryButtonText="Create"
     secondaryButtonText="Cancel"
     primaryButtonDisabled={isCreatingDictionary || createFiles.length === 0}
-    on:click:button--secondary={() => showCreateDictionaryModal = false}
+    on:click:button--secondary={() => { showCreateDictionaryModal = false; sourceMode = 'files'; createFiles = []; selectedFolderPath = ''; folderFilesCount = 0; }}
     on:click:button--primary={createDictionary}
   >
     <p class="modal-description">Upload XML, TXT, or TSV files to create a new dictionary.</p>
@@ -615,14 +668,37 @@
       {/each}
     </Select>
 
-    <FileUploader
-      labelTitle="Upload files"
-      labelDescription="XML, TXT, or TSV files only"
-      buttonLabel="Select files"
-      accept={['.xml', '.txt', '.tsv']}
-      multiple
-      bind:files={createFiles}
-    />
+    <RadioButtonGroup
+      legendText="Source Selection Mode"
+      bind:selected={sourceMode}
+      on:change={() => { createFiles = []; selectedFolderPath = ''; folderFilesCount = 0; }}
+    >
+      <RadioButton labelText="Select Files (XML/TXT)" value="files" />
+      <RadioButton labelText="Select Folder (recursive)" value="folder" />
+    </RadioButtonGroup>
+
+    {#if sourceMode === 'files'}
+      <FileUploader
+        labelTitle="Upload files"
+        labelDescription="XML, TXT, or TSV files only"
+        buttonLabel="Select files"
+        accept={['.xml', '.txt', '.tsv']}
+        multiple
+        bind:files={createFiles}
+      />
+    {:else}
+      <div class="folder-selection">
+        <Button kind="secondary" icon={FolderOpen} on:click={selectFolder}>
+          Select Folder
+        </Button>
+        {#if selectedFolderPath}
+          <p class="folder-path">{selectedFolderPath}</p>
+          <p class="folder-count">{folderFilesCount} XML/TXT/TSV files found</p>
+        {:else}
+          <p class="folder-hint">Select a folder to recursively scan for XML, TXT, and TSV files</p>
+        {/if}
+      </div>
+    {/if}
 
     {#if isCreatingDictionary}
       <InlineLoading description="Creating dictionary..." />
@@ -655,12 +731,23 @@
 
     {#if availableDictionaries.length > 0}
       <div class="available-dicts">
-        <p><strong>Available Dictionaries:</strong></p>
-        <ul>
+        <p><strong>Available Dictionaries:</strong> (click to select)</p>
+        <div class="dict-list">
           {#each availableDictionaries as dict}
-            <li>{dict.game}-{dict.language} ({dict.pairs_count} pairs)</li>
+            <button
+              class="dict-item"
+              class:selected={loadGame === dict.game && loadLanguage === dict.language}
+              on:click={() => { loadGame = dict.game; loadLanguage = dict.language; }}
+            >
+              <span class="dict-name">{dict.game}-{dict.language}</span>
+              <span class="dict-count">{dict.pairs_count} pairs</span>
+            </button>
           {/each}
-        </ul>
+        </div>
+      </div>
+    {:else}
+      <div class="no-dicts">
+        <p>No dictionaries available. Create one first using the "Create Dictionary" button.</p>
       </div>
     {/if}
 
@@ -845,5 +932,87 @@
     margin: 0.25rem 0;
     font-size: 0.875rem;
     color: var(--cds-text-02);
+  }
+
+  .dict-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .dict-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--cds-ui-02);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .dict-item:hover {
+    background: var(--cds-ui-03);
+    border-color: var(--cds-interactive-04);
+  }
+
+  .dict-item.selected {
+    background: var(--cds-interactive-02);
+    border-color: var(--cds-interactive-04);
+  }
+
+  .dict-name {
+    font-weight: 500;
+    color: var(--cds-text-01);
+  }
+
+  .dict-count {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+  }
+
+  .no-dicts {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--cds-ui-02);
+    border-radius: 4px;
+    text-align: center;
+  }
+
+  .no-dicts p {
+    color: var(--cds-text-03);
+    font-style: italic;
+    margin: 0;
+  }
+
+  .folder-selection {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--cds-ui-02);
+    border-radius: 4px;
+  }
+
+  .folder-path {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--cds-text-01);
+    word-break: break-all;
+    font-family: monospace;
+  }
+
+  .folder-count {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--cds-support-success);
+    font-weight: 500;
+  }
+
+  .folder-hint {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--cds-text-03);
+    font-style: italic;
   }
 </style>

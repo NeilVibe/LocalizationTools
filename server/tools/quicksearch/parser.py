@@ -170,11 +170,14 @@ def parse_txt_file(txt_path: str) -> Tuple[List, List, List, List]:
             dtype=str,
             quoting=csv.QUOTE_NONE,
             quotechar=None,
-            escapechar=None
+            escapechar=None,
+            on_bad_lines='skip'  # Skip lines with wrong column count
         )
     except Exception as e:
         logger.error(f"Failed to read TXT file {txt_path}: {e}")
-        return korean_lines_split, translation_lines_split, korean_lines_whole, translation_lines_whole
+        # Return 6 empty lists to match successful return signature
+        return (korean_lines_split, translation_lines_split, string_keys_split,
+                korean_lines_whole, translation_lines_whole, string_keys_whole)
 
     for row_idx, row in df.iterrows():
         korean_text = normalize_text(row[5] or "")
