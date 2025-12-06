@@ -1,6 +1,6 @@
 # LocaNext Build Pipeline - Gitea Actions
-# Mirrors GitHub Actions workflow for internal builds
-# Requires: act_runner on Windows machine
+# Internal builds with release creation
+# DUAL PUSH REQUIRED: git push origin main && git push gitea main
 
 name: Build LocaNext
 
@@ -54,6 +54,8 @@ jobs:
   build-windows:
     needs: test
     runs-on: windows-latest  # Requires Windows self-hosted runner
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,6 +65,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(python3 -c "from version import SEMANTIC_VERSION; print(SEMANTIC_VERSION)")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
 
       - name: Install dependencies
         working-directory: locaNext
@@ -87,13 +96,15 @@ jobs:
             locaNext/dist/latest.yml
 
   # ============================================
-  # JOB 3: Deploy to Update Server (Optional)
+  # JOB 3: Create Gitea Release
   # ============================================
-  deploy:
+  release:
     needs: build-windows
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -103,8 +114,34 @@ jobs:
       - name: List artifacts
         run: ls -la ./dist/
 
-      # Uncomment when update server is ready:
-      # - name: Deploy to update server
-      #   run: |
-      #     scp ./dist/*.exe user@server:/var/www/updates/
-      #     scp ./dist/latest.yml user@server:/var/www/updates/
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.build-windows.outputs.version }}
+          name: LocaNext v${{ needs.build-windows.outputs.version }}
+          body: |
+            ## LocaNext v${{ needs.build-windows.outputs.version }}
+
+            Built from Gitea Actions.
+
+            ### Download
+            - `LocaNext-Setup.exe` - Windows Installer
+
+            ### Auto-Update
+            Desktop apps will auto-detect this update on next launch.
+          files: |
+            ./dist/*.exe
+            ./dist/latest.yml
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Also update 'latest' tag for generic provider
+      - name: Update latest tag
+        run: |
+          git config user.name "Gitea Actions"
+          git config user.email "actions@gitea.local"
+          git tag -f latest
+          git push -f origin latest
+        continue-on-error: true

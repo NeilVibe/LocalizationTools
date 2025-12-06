@@ -1,47 +1,79 @@
 /**
- * Auto-Updater Configuration for GitHub Releases
+ * Auto-Updater Configuration
  *
- * LocaNext checks for updates from GitHub Releases.
- * When you create a new release, users will be notified automatically.
+ * Supports both GitHub (public) and Gitea (internal company) updates.
+ * Set UPDATE_SERVER environment variable to switch sources.
  */
 
 /**
- * GitHub Releases Auto-Update Flow:
+ * Update Flow (Dual Push - Always Both!):
  *
- * 1. You push code to GitHub
- * 2. GitHub Actions builds the installer
- * 3. Workflow creates a GitHub Release with the .exe
- * 4. User's app checks GitHub for new releases
- * 5. If newer version found → download and install
+ * DEVELOPER:
+ * 1. git push origin main   ← GitHub
+ * 2. git push gitea main    ← Gitea (internal)
+ * 3. Both CI/CD pipelines build and create releases
  *
- * To trigger an update:
- * 1. Update version in version.py
- * 2. Add build trigger to BUILD_TRIGGER.txt
- * 3. Push to main
- * 4. GitHub Actions builds and creates release
- * 5. All user apps will auto-update!
+ * USER APP:
+ * - Checks configured server for latest.yml
+ * - Downloads update if newer version found
+ * - Installs on restart
+ *
+ * SERVERS:
+ * - GitHub: https://github.com/NeilVibe/LocalizationTools/releases
+ * - Gitea:  http://localhost:3000/neilvibe/LocaNext/releases (internal)
  */
 
-// GitHub releases configuration
-export const autoUpdaterConfig = {
-  provider: 'github',
-  owner: 'NeilVibe',
-  repo: 'LocalizationTools',
-  // Optional: use private token for private repos
-  // token: process.env.GH_TOKEN
-};
+// Determine update source from environment
+const UPDATE_SERVER = process.env.UPDATE_SERVER || 'github';
+
+// Configuration based on update source
+let autoUpdaterConfig;
+
+if (UPDATE_SERVER === 'github') {
+  // GitHub Releases (default - public)
+  autoUpdaterConfig = {
+    provider: 'github',
+    owner: 'NeilVibe',
+    repo: 'LocalizationTools',
+  };
+} else if (UPDATE_SERVER === 'gitea') {
+  // Gitea Releases (internal company server)
+  // Uses generic provider with Gitea's release asset URL
+  const GITEA_URL = process.env.GITEA_URL || 'http://localhost:3000';
+  autoUpdaterConfig = {
+    provider: 'generic',
+    url: `${GITEA_URL}/neilvibe/LocaNext/releases/download/latest`,
+  };
+} else {
+  // Custom server (nginx, S3, etc.)
+  autoUpdaterConfig = {
+    provider: 'generic',
+    url: UPDATE_SERVER,
+  };
+}
+
+export { autoUpdaterConfig };
 
 // For development, disable auto-updates
 export const isAutoUpdateEnabled = process.env.NODE_ENV !== 'development';
 
 /**
- * For INTERNAL/PRIVATE updates (no GitHub):
- * Change config to:
+ * DEPLOYMENT OPTIONS:
  *
- * export const autoUpdaterConfig = {
- *   provider: 'generic',
- *   url: 'http://YOUR_INTERNAL_SERVER:8888/updates'
- * };
+ * 1. GitHub (Default):
+ *    - No env var needed
+ *    - Uses GitHub Releases
  *
- * Then host latest.yml and .exe on your internal server.
+ * 2. Gitea (Company Internal):
+ *    - Set: UPDATE_SERVER=gitea
+ *    - Set: GITEA_URL=http://your-gitea-server:3000
+ *    - Uses Gitea Releases
+ *
+ * 3. Custom Server:
+ *    - Set: UPDATE_SERVER=http://your-server/updates
+ *    - Host latest.yml + .exe at that URL
+ *
+ * DUAL PUSH REQUIRED:
+ *    git push origin main   # GitHub
+ *    git push gitea main    # Gitea
  */

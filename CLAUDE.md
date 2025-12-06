@@ -305,15 +305,16 @@ bash scripts/clean_logs.sh
 - **Phase 4:** Admin Dashboard ✅ COMPLETE
 - **Priority 11.0:** Health Check & Auto-Repair ✅ COMPLETE
 - **Priority 12.5:** Central Telemetry System ✅ FULL STACK COMPLETE
-- **Priority 13.0:** Gitea Patch Server ✅ CI/CD COMPLETE
+- **Priority 13.0:** Gitea Patch Server ✅ FULLY COMPLETE
   - ✅ Installed: `/home/neil1988/gitea/` (v1.22.3, SQLite)
   - ✅ Scripts: `start.sh`, `stop.sh`, `start_runner.sh`, `stop_runner.sh`
   - ✅ Config: Port 3000 (web), 2222 (SSH)
   - ✅ Repo: `neilvibe/LocaNext` (dual remote configured)
   - ✅ Actions: ENABLED + act_runner v0.2.11 registered
-  - ✅ Workflow: `.gitea/workflows/build.yml` (test → build → deploy)
-  - ✅ Runner: "locanext-runner" picking up tasks
-  - 📋 Next: P13.4 Update Server (nginx for /updates/)
+  - ✅ Workflow: `.gitea/workflows/build.yml` (test → build → release)
+  - ✅ Runner: "locanext-runner" online
+  - ✅ Auto-Update: `updater.js` supports GitHub/Gitea/Custom via env var
+  - ✅ DUAL PUSH: `git push origin main && git push gitea main`
 
 ### Quick Gitea Commands:
 ```bash
@@ -322,7 +323,6 @@ cd ~/gitea && ./stop.sh    # Stop Gitea
 ```
 
 ### Questions to Ask User:
-- "Setup P13.4 Update Server (nginx)?" - Host updates locally instead of GitHub
 - "Start P17 LD Manager (CAT Tool)?" - Big feature, language data editor
 - "Should we add another tool to LocaNext?" (P14 - New Tools)
 - "Want to fix P10.3 (Patch Notes display)?" - Nice-to-have, backlog
