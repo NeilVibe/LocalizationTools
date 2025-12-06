@@ -1651,8 +1651,20 @@ P13 TASKS:
 │   ├── [✅] Gitea workflow creates releases
 │   └── [✅] Dual push documented (origin + gitea ALWAYS)
 │
-└── ✅ 13.5: Documentation
-    └── [✅] GITEA_SETUP.md created
+├── ✅ 13.5: Documentation
+│   └── [✅] GITEA_SETUP.md created
+│
+└── 📋 13.6: Manual Testing (When Ready)
+    ├── [ ] Build on Windows or via GitHub Actions
+    ├── [ ] Upload release to Gitea manually (or auto via GitHub)
+    ├── [ ] Test update flow on D:\LocaNext playground
+    └── [ ] Verify: App detects update → Downloads → Installs
+
+CURRENT BUILD STRATEGY:
+├── GitHub Actions → Builds .exe (free Windows runners)
+├── Gitea Actions  → Runs tests only (Linux runner)
+├── Manual builds  → D:\LocaNext Windows playground
+└── FUTURE: Dedicated Windows build server for Gitea
 ```
 
 ---
