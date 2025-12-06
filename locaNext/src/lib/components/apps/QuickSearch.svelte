@@ -1335,8 +1335,8 @@
 
                 <div class="qa-options">
                   <Select labelText="Symbol Set" bind:selected={qaSymbolSet}>
-                    <SelectItem value="BDO" text="BDO: { }" />
-                    <SelectItem value="BDM" text="BDM: ▶ { } 🔗 |" />
+                    <SelectItem value="BDO" text="BDO: curly braces" />
+                    <SelectItem value="BDM" text="BDM: ▶ curly braces 🔗 |" />
                   </Select>
                   <TextInput
                     labelText="Custom Symbols (optional)"
