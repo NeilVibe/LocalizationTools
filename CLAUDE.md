@@ -229,12 +229,26 @@ NEW_VERSION=$(date '+%y%m%d%H%M')
 python3 scripts/check_version_unified.py
 git add -A && git commit -m "Version v$NEW_VERSION"
 git push origin main
+git push gitea main
 
 # Trigger build (when ready)
 echo "Build FULL v$NEW_VERSION" >> BUILD_TRIGGER.txt
 git add BUILD_TRIGGER.txt && git commit -m "Trigger build v$NEW_VERSION"
 git push origin main
+git push gitea main
 ```
+
+### Git Dual Push (REQUIRED)
+```bash
+# ALWAYS push to BOTH remotes after every commit:
+git push origin main   # GitHub (primary)
+git push gitea main    # Gitea (local backup + CI/CD)
+
+# Remotes configured:
+# origin = git@github.com:NeilVibe/LocalizationTools.git
+# gitea  = neil1988@gitea-local:neilvibe/LocaNext.git
+```
+> ⚠️ **Claude AI: ALWAYS push to both remotes!** This is NOT automatic.
 
 ### Monitoring
 ```bash
