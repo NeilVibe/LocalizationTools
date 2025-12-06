@@ -84,133 +84,137 @@ class Searcher:
         if not query or query.isspace():
             return []
 
-        query_str = str(query).strip()
+        try:
+            query_str = str(query).strip()
 
-        split_dict = self.current_dict.get('split_dict', {})
-        whole_dict = self.current_dict.get('whole_dict', {})
-        stringid_to_entry = self.current_dict.get('stringid_to_entry', {})
+            split_dict = self.current_dict.get('split_dict', {})
+            whole_dict = self.current_dict.get('whole_dict', {})
+            stringid_to_entry = self.current_dict.get('stringid_to_entry', {})
 
-        ref_split_dict = self.reference_dict.get('split_dict', {}) if self.reference_dict else {}
-        ref_whole_dict = self.reference_dict.get('whole_dict', {}) if self.reference_dict else {}
+            ref_split_dict = self.reference_dict.get('split_dict', {}) if self.reference_dict else {}
+            ref_whole_dict = self.reference_dict.get('whole_dict', {}) if self.reference_dict else {}
 
-        results = []
+            results = []
 
-        # --- Fast path: StringId direct lookup ---
-        if query_str in stringid_to_entry:
-            korean, translation = stringid_to_entry[query_str]
+            # --- Fast path: StringId direct lookup ---
+            if query_str in stringid_to_entry:
+                korean, translation = stringid_to_entry[query_str]
 
+                if self.reference_enabled and self.reference_dict:
+                    # Get reference translation
+                    ref_translation = None
+                    if korean in ref_split_dict and ref_split_dict[korean]:
+                        ref_translation = ref_split_dict[korean][0][0]
+                    elif korean in ref_whole_dict and ref_whole_dict[korean]:
+                        ref_translation = ref_whole_dict[korean][0][0]
+
+                    return [(korean, translation, ref_translation, query_str)], 1
+                else:
+                    return [(korean, translation, query_str)], 1
+
+            # --- Standard search ---
+            query_lower = query.lower()
+
+            def check_match(text1: str, text2: str, stringid: str) -> bool:
+                """Check if query matches any of the texts."""
+                if match_type == "contains":
+                    return (
+                        query_lower in str(text1).lower() or
+                        query_lower in str(text2).lower() or
+                        query_lower in str(stringid).lower()
+                    )
+                else:  # exact match
+                    return (
+                        query_lower == str(text1).lower() or
+                        query_lower == str(text2).lower() or
+                        query_lower == str(stringid).lower()
+                    )
+
+            def is_valid_entry(korean: str, translation: str, stringid: str) -> bool:
+                """Check if entry is valid."""
+                return bool(korean.strip() and translation.strip())
+
+            # Search in split_dict
+            for korean, translations in split_dict.items():
+                for translation, stringid in translations:
+                    if check_match(korean, translation, stringid) and is_valid_entry(korean, translation, stringid):
+                        if self.reference_enabled and self.reference_dict:
+                            # Get reference translation
+                            ref_translation = None
+                            if korean in ref_split_dict and ref_split_dict[korean]:
+                                ref_translation = ref_split_dict[korean][0][0]
+                            elif korean in ref_whole_dict and ref_whole_dict[korean]:
+                                ref_translation = ref_whole_dict[korean][0][0]
+
+                            results.append((korean, translation, ref_translation, stringid))
+                        else:
+                            results.append((korean, translation, stringid))
+
+            # Search in whole_dict
+            for korean, translations in whole_dict.items():
+                for translation, stringid in translations:
+                    if check_match(korean, translation, stringid) and is_valid_entry(korean, translation, stringid):
+                        if self.reference_enabled and self.reference_dict:
+                            # Get reference translation
+                            ref_translation = None
+                            if korean in ref_split_dict and ref_split_dict[korean]:
+                                ref_translation = ref_split_dict[korean][0][0]
+                            elif korean in ref_whole_dict and ref_whole_dict[korean]:
+                                ref_translation = ref_whole_dict[korean][0][0]
+
+                            results.append((korean, translation, ref_translation, stringid))
+                        else:
+                            results.append((korean, translation, stringid))
+
+            # Search in reference dictionary (if enabled and query not in main dict)
             if self.reference_enabled and self.reference_dict:
-                # Get reference translation
-                ref_translation = None
-                if korean in ref_split_dict and ref_split_dict[korean]:
-                    ref_translation = ref_split_dict[korean][0][0]
-                elif korean in ref_whole_dict and ref_whole_dict[korean]:
-                    ref_translation = ref_whole_dict[korean][0][0]
+                for korean, ref_translations in ref_split_dict.items():
+                    for ref_translation, _ in ref_translations:
+                        if query_lower in str(ref_translation).lower():
+                            # Find corresponding main translation
+                            translation = None
+                            stringid = None
 
-                return [(korean, translation, ref_translation, query_str)]
-            else:
-                return [(korean, translation, query_str)]
+                            if korean in split_dict and split_dict[korean]:
+                                translation, stringid = split_dict[korean][0]
+                            elif korean in whole_dict and whole_dict[korean]:
+                                translation, stringid = whole_dict[korean][0]
 
-        # --- Standard search ---
-        query_lower = query.lower()
-
-        def check_match(text1: str, text2: str, stringid: str) -> bool:
-            """Check if query matches any of the texts."""
-            if match_type == "contains":
-                return (
-                    query_lower in str(text1).lower() or
-                    query_lower in str(text2).lower() or
-                    query_lower in str(stringid).lower()
-                )
-            else:  # exact match
-                return (
-                    query_lower == str(text1).lower() or
-                    query_lower == str(text2).lower() or
-                    query_lower == str(stringid).lower()
-                )
-
-        def is_valid_entry(korean: str, translation: str, stringid: str) -> bool:
-            """Check if entry is valid."""
-            return bool(korean.strip() and translation.strip())
-
-        # Search in split_dict
-        for korean, translations in split_dict.items():
-            for translation, stringid in translations:
-                if check_match(korean, translation, stringid) and is_valid_entry(korean, translation, stringid):
-                    if self.reference_enabled and self.reference_dict:
-                        # Get reference translation
-                        ref_translation = None
-                        if korean in ref_split_dict and ref_split_dict[korean]:
-                            ref_translation = ref_split_dict[korean][0][0]
-                        elif korean in ref_whole_dict and ref_whole_dict[korean]:
-                            ref_translation = ref_whole_dict[korean][0][0]
-
-                        results.append((korean, translation, ref_translation, stringid))
-                    else:
-                        results.append((korean, translation, stringid))
-
-        # Search in whole_dict
-        for korean, translations in whole_dict.items():
-            for translation, stringid in translations:
-                if check_match(korean, translation, stringid) and is_valid_entry(korean, translation, stringid):
-                    if self.reference_enabled and self.reference_dict:
-                        # Get reference translation
-                        ref_translation = None
-                        if korean in ref_split_dict and ref_split_dict[korean]:
-                            ref_translation = ref_split_dict[korean][0][0]
-                        elif korean in ref_whole_dict and ref_whole_dict[korean]:
-                            ref_translation = ref_whole_dict[korean][0][0]
-
-                        results.append((korean, translation, ref_translation, stringid))
-                    else:
-                        results.append((korean, translation, stringid))
-
-        # Search in reference dictionary (if enabled and query not in main dict)
-        if self.reference_enabled and self.reference_dict:
-            for korean, ref_translations in ref_split_dict.items():
-                for ref_translation, _ in ref_translations:
-                    if query_lower in str(ref_translation).lower():
-                        # Find corresponding main translation
-                        translation = None
-                        stringid = None
-
-                        if korean in split_dict and split_dict[korean]:
-                            translation, stringid = split_dict[korean][0]
-                        elif korean in whole_dict and whole_dict[korean]:
-                            translation, stringid = whole_dict[korean][0]
-
-                        if translation and is_valid_entry(korean, translation, stringid):
-                            # Check if not already in results
-                            if (korean, translation, ref_translation, stringid) not in results:
+                            if translation and is_valid_entry(korean, translation, stringid):
+                                # Monolith allows duplicates - no dedup check
                                 results.append((korean, translation, ref_translation, stringid))
 
-            for korean, ref_translations in ref_whole_dict.items():
-                for ref_translation, _ in ref_translations:
-                    if query_lower in str(ref_translation).lower():
-                        # Find corresponding main translation
-                        translation = None
-                        stringid = None
+                for korean, ref_translations in ref_whole_dict.items():
+                    for ref_translation, _ in ref_translations:
+                        if query_lower in str(ref_translation).lower():
+                            # Find corresponding main translation
+                            translation = None
+                            stringid = None
 
-                        if korean in split_dict and split_dict[korean]:
-                            translation, stringid = split_dict[korean][0]
-                        elif korean in whole_dict and whole_dict[korean]:
-                            translation, stringid = whole_dict[korean][0]
+                            if korean in split_dict and split_dict[korean]:
+                                translation, stringid = split_dict[korean][0]
+                            elif korean in whole_dict and whole_dict[korean]:
+                                translation, stringid = whole_dict[korean][0]
 
-                        if translation and is_valid_entry(korean, translation, stringid):
-                            # Check if not already in results
-                            if (korean, translation, ref_translation, stringid) not in results:
+                            if translation and is_valid_entry(korean, translation, stringid):
+                                # Monolith allows duplicates - no dedup check
                                 results.append((korean, translation, ref_translation, stringid))
 
-        # Sort by length of korean text (shorter first)
-        results.sort(key=lambda x: len(str(x[0])))
+            # Sort by length of korean text (shorter first)
+            results.sort(key=lambda x: len(str(x[0])))
 
-        # Apply pagination
-        total_count = len(results)
-        results = results[start_index:start_index + limit]
+            # Apply pagination
+            total_count = len(results)
+            results = results[start_index:start_index + limit]
 
-        logger.info(f"Search completed: query='{query}', match_type={match_type}, found={total_count}, returned={len(results)}")
+            logger.info(f"Search completed: query='{query}', match_type={match_type}, found={total_count}, returned={len(results)}")
 
-        return results, total_count
+            return results, total_count
+
+        except Exception as e:
+            # Monolith returns [] on error (line 1103-1105)
+            logger.error(f"Error in search_one_line: {str(e)}")
+            return [], 0
 
     def search_multi_line(
         self,
