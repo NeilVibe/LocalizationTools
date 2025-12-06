@@ -901,8 +901,7 @@ PORT SUMMARY (Quick Reference):
 └──────────────────┴────────┴─────────────────────────────┘
 
 WHAT'S NEXT? → ✅ P16: QuickSearch QA Tools COMPLETE
-              → ✅ P13.3: Gitea CI/CD COMPLETE (Runner online!)
-              → 📋 P13.4: Update Server (nginx for /updates/)
+              → ✅ P13: Gitea COMPLETE (CI/CD + Updates + Dual Push)
               → P17: LD Manager (CAT Tool) ★ BIG FEATURE
               → P18: UI/UX Overhaul ★ PLATFORM REDESIGN
 ```
@@ -1646,10 +1645,11 @@ P13 TASKS:
 │   ├── [✅] Helper scripts: start_runner.sh, stop_runner.sh
 │   └── [✅] Pipeline triggered successfully (tasks picked up)
 │
-├── 📋 13.4: Update Server (FUTURE)
-│   ├── [ ] Setup nginx for /updates/
-│   ├── [ ] Configure autoUpdater URL
-│   └── [ ] Remove GitHub dependency
+├── ✅ 13.4: Gitea Update System COMPLETE
+│   ├── [✅] updater.js supports GitHub + Gitea + Custom
+│   ├── [✅] Environment-based switching (UPDATE_SERVER)
+│   ├── [✅] Gitea workflow creates releases
+│   └── [✅] Dual push documented (origin + gitea ALWAYS)
 │
 └── ✅ 13.5: Documentation
     └── [✅] GITEA_SETUP.md created
