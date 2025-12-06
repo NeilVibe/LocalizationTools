@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512062130 | **Updated**: 2025-12-06 21:30 | **Status**: ✅ MIGRATION VERIFIED + Real File Testing Complete
+**Version**: 2512062247 | **Updated**: 2025-12-06 21:30 | **Status**: ✅ MIGRATION VERIFIED + Real File Testing Complete
 
 ---
 
@@ -897,12 +897,12 @@ PORT SUMMARY (Quick Reference):
 │ Desktop App      │ 8888   │ Local backend (per user)    │
 │ Central Server   │ 9999   │ Telemetry (company server)  │
 │ Admin Dashboard  │ 5175   │ Monitoring UI               │
-│ Gitea Server     │ 3000   │ Git + CI/CD (FUTURE)        │
+│ Gitea Server     │ 3000   │ Git + CI/CD ✅ RUNNING       │
 └──────────────────┴────────┴─────────────────────────────┘
 
 WHAT'S NEXT? → ✅ P16: QuickSearch QA Tools COMPLETE
-              → P13.3: Gitea CI/CD Workflow
-              → P10.3: Patch Notes
+              → 🔄 P13.3: Gitea CI/CD (Actions ✅, Workflow ✅, Runner needed)
+              → P10.3: Patch Notes (Backlog)
               → P17: LD Manager (CAT Tool) ★ BIG FEATURE
               → P18: UI/UX Overhaul ★ PLATFORM REDESIGN
 ```
@@ -1638,10 +1638,11 @@ P13 TASKS:
 │   ├── [✅] Dual remote: origin (GitHub) + gitea (local)
 │   └── [✅] Push/pull workflow verified
 │
-├── 📋 13.3: CI/CD Setup (NEXT)
-│   ├── [ ] Enable Gitea Actions
-│   ├── [ ] Create .gitea/workflows/build.yml
-│   ├── [ ] Setup Windows runner
+├── 🔄 13.3: CI/CD Setup (IN PROGRESS)
+│   ├── [✅] Enable Gitea Actions (app.ini: ENABLED=true)
+│   ├── [✅] Create .gitea/workflows/build.yml
+│   ├── [ ] Install act_runner (self-hosted runner)
+│   ├── [ ] Register runner with Gitea
 │   └── [ ] Test full pipeline
 │
 ├── 📋 13.4: Update Server (FUTURE)
@@ -1799,8 +1800,10 @@ COMPLETE PRIORITY TREE (Past → Present → Future)
     │   ├── ✅ Character Count (BDO/BDM symbol validation)
     │   └── ✅ Pattern Check ({code} pattern matching)
     │
-    ├── P13.3: Gitea CI/CD Workflow ───────── Pipeline setup
-    │   └── .gitea/workflows/build.yml
+    ├── 🔄 P13.3: Gitea CI/CD Workflow ────── IN PROGRESS
+    │   ├── ✅ Actions enabled (app.ini)
+    │   ├── ✅ .gitea/workflows/build.yml created
+    │   └── 📋 Need: act_runner installation
     │
     ├── P10.3: Patch Notes ────────────────── Show release notes in update modal
     │

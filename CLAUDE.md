@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512062130 (2025-12-06)
+**Version:** 2512062247 (2025-12-06)
 **Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | **Migration VERIFIED** ✅
 
 ---
@@ -309,7 +309,10 @@ bash scripts/clean_logs.sh
   - ✅ Installed: `/home/neil1988/gitea/` (v1.22.3, SQLite)
   - ✅ Scripts: `./start.sh`, `./stop.sh`
   - ✅ Config: Port 3000 (web), 2222 (SSH)
-  - 📋 Next: Complete web setup, add repo, configure dual-remote
+  - ✅ Repo: `neilvibe/LocaNext` (dual remote configured)
+  - ✅ Actions: ENABLED in app.ini
+  - ✅ Workflow: `.gitea/workflows/build.yml` created
+  - 📋 Next: Install `act_runner` for Windows builds
 
 ### Quick Gitea Commands:
 ```bash
@@ -318,8 +321,9 @@ cd ~/gitea && ./stop.sh    # Stop Gitea
 ```
 
 ### Questions to Ask User:
-- "Complete Gitea web setup?" - Create admin user, push repo
+- "Install act_runner for Gitea CI/CD?" - Needed for Windows builds
 - "Should we add another tool to LocaNext?" (P14 - New Tools)
+- "Start P17 LD Manager (CAT Tool)?" - Big feature, language data editor
 - "Want to fix P10.3 (Patch Notes display)?" - Nice-to-have, backlog
 
 ### Windows Build Debugging:
