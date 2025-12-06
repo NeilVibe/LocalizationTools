@@ -81,6 +81,10 @@ class XLSTransferAPI(BaseToolAPI):
         # Simple Excel Transfer endpoints
         self.router.post("/test/simple/analyze")(self.simple_analyze)
         self.router.post("/test/simple/execute")(self.simple_execute)
+        # Additional XLSTransfer endpoints (P15 completion)
+        self.router.post("/test/check-newlines")(self.check_newlines)
+        self.router.post("/test/combine-excel")(self.combine_excel)
+        self.router.post("/test/newline-auto-adapt")(self.newline_auto_adapt)
 
     # ========================================================================
     # ENDPOINTS
@@ -742,6 +746,241 @@ class XLSTransferAPI(BaseToolAPI):
             user_info=user_info,
             function_name="translate_excel",
             operation_name="Translate Excel"
+        )
+        wrapped()
+
+    # ========================================================================
+    # CHECK NEWLINES, COMBINE EXCEL, NEWLINE AUTO-ADAPT ENDPOINTS
+    # ========================================================================
+
+    async def check_newlines(
+        self,
+        background_tasks: BackgroundTasks,
+        files: List[UploadFile] = File(...),
+        selections: str = Form(...),
+        current_user: dict = Depends(get_current_active_user_async),
+        db: AsyncSession = Depends(get_async_db)
+    ):
+        """
+        Check newline consistency between Korean and Translation columns.
+        Monolith: lines 782-865
+        """
+        start_time = time.time()
+        user_info = self.extract_user_info(current_user)
+
+        self.log_function_start("check_newlines", user_info,
+                                files_count=len(files))
+
+        operation = await self.create_operation(
+            db=db,
+            user_info=user_info,
+            function_name="check_newlines",
+            operation_name=f"Check Newlines ({len(files)} file{'s' if len(files) > 1 else ''})",
+            file_info={"files": [f.filename for f in files]}
+        )
+
+        await self.emit_start_event(operation, user_info)
+
+        if self.process_operation is None:
+            raise HTTPException(status_code=500, detail="XLSTransfer modules not loaded")
+
+        try:
+            file_paths = await self.save_uploaded_files(files, "Excel file")
+            selections_dict = json.loads(selections)
+            path_selections = self._create_path_selections(file_paths, selections_dict)
+
+            background_tasks.add_task(
+                self._run_check_newlines_background,
+                operation_id=operation.operation_id,
+                user_info=user_info,
+                path_selections=path_selections
+            )
+
+            logger.success(f"Check newlines queued as operation {operation.operation_id}")
+
+            return self.operation_started_response(
+                operation_id=operation.operation_id,
+                operation_name=operation.operation_name,
+                additional_info={"files_count": len(files)}
+            )
+
+        except Exception as e:
+            await self.handle_endpoint_error(
+                error=e,
+                user_info=user_info,
+                function_name="check_newlines",
+                elapsed_time=time.time() - start_time,
+                db=db,
+                operation=operation
+            )
+
+    def _run_check_newlines_background(self, operation_id, user_info, path_selections):
+        """Background task for check newlines."""
+        def task():
+            logger.info(f"Checking newlines, operation_id={operation_id}")
+            result = self.process_operation.check_newlines(path_selections)
+            return result
+
+        wrapped = self.create_background_task(
+            task_func=task,
+            operation_id=operation_id,
+            user_info=user_info,
+            function_name="check_newlines",
+            operation_name="Check Newlines"
+        )
+        wrapped()
+
+    async def combine_excel(
+        self,
+        background_tasks: BackgroundTasks,
+        files: List[UploadFile] = File(...),
+        selections: str = Form(...),
+        current_user: dict = Depends(get_current_active_user_async),
+        db: AsyncSession = Depends(get_async_db)
+    ):
+        """
+        Combine multiple Excel files into one.
+        Monolith: lines 869-941
+        """
+        start_time = time.time()
+        user_info = self.extract_user_info(current_user)
+
+        self.log_function_start("combine_excel", user_info,
+                                files_count=len(files))
+
+        operation = await self.create_operation(
+            db=db,
+            user_info=user_info,
+            function_name="combine_excel",
+            operation_name=f"Combine Excel ({len(files)} file{'s' if len(files) > 1 else ''})",
+            file_info={"files": [f.filename for f in files]}
+        )
+
+        await self.emit_start_event(operation, user_info)
+
+        if self.process_operation is None:
+            raise HTTPException(status_code=500, detail="XLSTransfer modules not loaded")
+
+        try:
+            file_paths = await self.save_uploaded_files(files, "Excel file")
+            selections_dict = json.loads(selections)
+            path_selections = self._create_path_selections(file_paths, selections_dict)
+
+            background_tasks.add_task(
+                self._run_combine_excel_background,
+                operation_id=operation.operation_id,
+                user_info=user_info,
+                path_selections=path_selections
+            )
+
+            logger.success(f"Combine Excel queued as operation {operation.operation_id}")
+
+            return self.operation_started_response(
+                operation_id=operation.operation_id,
+                operation_name=operation.operation_name,
+                additional_info={"files_count": len(files)}
+            )
+
+        except Exception as e:
+            await self.handle_endpoint_error(
+                error=e,
+                user_info=user_info,
+                function_name="combine_excel",
+                elapsed_time=time.time() - start_time,
+                db=db,
+                operation=operation
+            )
+
+    def _run_combine_excel_background(self, operation_id, user_info, path_selections):
+        """Background task for combine Excel."""
+        def task():
+            logger.info(f"Combining Excel files, operation_id={operation_id}")
+            result = self.process_operation.combine_excel(path_selections)
+            return result
+
+        wrapped = self.create_background_task(
+            task_func=task,
+            operation_id=operation_id,
+            user_info=user_info,
+            function_name="combine_excel",
+            operation_name="Combine Excel"
+        )
+        wrapped()
+
+    async def newline_auto_adapt(
+        self,
+        background_tasks: BackgroundTasks,
+        files: List[UploadFile] = File(...),
+        selections: str = Form(...),
+        current_user: dict = Depends(get_current_active_user_async),
+        db: AsyncSession = Depends(get_async_db)
+    ):
+        """
+        Auto-adapt newlines in translation to match Korean source.
+        Monolith: lines 946-1098
+        """
+        start_time = time.time()
+        user_info = self.extract_user_info(current_user)
+
+        self.log_function_start("newline_auto_adapt", user_info,
+                                files_count=len(files))
+
+        operation = await self.create_operation(
+            db=db,
+            user_info=user_info,
+            function_name="newline_auto_adapt",
+            operation_name=f"Newline Auto-Adapt ({len(files)} file{'s' if len(files) > 1 else ''})",
+            file_info={"files": [f.filename for f in files]}
+        )
+
+        await self.emit_start_event(operation, user_info)
+
+        if self.process_operation is None:
+            raise HTTPException(status_code=500, detail="XLSTransfer modules not loaded")
+
+        try:
+            file_paths = await self.save_uploaded_files(files, "Excel file")
+            selections_dict = json.loads(selections)
+            path_selections = self._create_path_selections(file_paths, selections_dict)
+
+            background_tasks.add_task(
+                self._run_newline_auto_adapt_background,
+                operation_id=operation.operation_id,
+                user_info=user_info,
+                path_selections=path_selections
+            )
+
+            logger.success(f"Newline auto-adapt queued as operation {operation.operation_id}")
+
+            return self.operation_started_response(
+                operation_id=operation.operation_id,
+                operation_name=operation.operation_name,
+                additional_info={"files_count": len(files)}
+            )
+
+        except Exception as e:
+            await self.handle_endpoint_error(
+                error=e,
+                user_info=user_info,
+                function_name="newline_auto_adapt",
+                elapsed_time=time.time() - start_time,
+                db=db,
+                operation=operation
+            )
+
+    def _run_newline_auto_adapt_background(self, operation_id, user_info, path_selections):
+        """Background task for newline auto-adapt."""
+        def task():
+            logger.info(f"Auto-adapting newlines, operation_id={operation_id}")
+            result = self.process_operation.newline_auto_adapt(path_selections)
+            return result
+
+        wrapped = self.create_background_task(
+            task_func=task,
+            operation_id=operation_id,
+            user_info=user_info,
+            function_name="newline_auto_adapt",
+            operation_name="Newline Auto-Adapt"
         )
         wrapped()
 

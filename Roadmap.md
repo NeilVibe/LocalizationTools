@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512061900 | **Updated**: 2025-12-06 19:00 | **Status**: ✅ PRISTINE - ALL TOOLS COMPLETE
+**Version**: 2512062000 | **Updated**: 2025-12-06 20:00 | **Status**: ✅ PRISTINE + P16 QA Tools Planned
 
 ---
 
@@ -57,6 +57,168 @@ P15: Monolith Migration ✅ ALL P1-P4 COMPLETE (11/11)
     ├── [✅] on_bad_lines='skip' (parser.py:174)
     ├── [✅] Exception handling returns [] (searcher.py:214-217)
     └── [✅] Remove ref search dedup (searcher.py:183-185,199-201)
+```
+
+---
+
+## 📋 P16: QuickSearch QA Tools (Glossary Checker) - PLANNED
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    P16: QUICKSEARCH QA TOOLS                                   ║
+║                    (Glossary Checker Tab from Monolith)                        ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   STATUS: PLANNED │ Priority: Medium │ Monolith: QuickSearch0818.py          ║
+║                                                                               ║
+║   Current QuickSearch (✅ DONE):                                              ║
+║   ├── Create/Load/List Dictionary                                             ║
+║   ├── Search (Single + Multiline)                                             ║
+║   ├── Reference Dictionary Compare                                            ║
+║   └── XML + TXT/TSV file support                                              ║
+║                                                                               ║
+║   NEW QA Tools Tab (📋 TO IMPLEMENT):                                         ║
+║   ├── 📝 Extract Glossary    ─ Build glossary from files                      ║
+║   ├── ✓  Line Check          ─ Validate lines against glossary               ║
+║   ├── 🔎 Term Check          ─ Find specific term usage                       ║
+║   ├── 📏 Character Count     ─ XML LocStr length validation                   ║
+║   └── 🔢 Pattern Sequence    ─ XML pattern consistency check                  ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### P16.1: Backend API Implementation (5 endpoints)
+
+```
+P16.1: QA Tools Backend
+│
+├── [ ] Extract Glossary API
+│   ├── POST /api/v2/quicksearch/qa/extract-glossary
+│   ├── Input: files[], filter_sentences, glossary_length_threshold
+│   ├── Output: glossary terms list (Korean → French pairs)
+│   └── Monolith: lines 2152-2345
+│
+├── [ ] Line Check API
+│   ├── POST /api/v2/quicksearch/qa/line-check
+│   ├── Input: files[], glossary (or build from files)
+│   ├── Output: mismatched lines with suggestions
+│   └── Monolith: lines 2347-2584
+│
+├── [ ] Term Check API
+│   ├── POST /api/v2/quicksearch/qa/term-check
+│   ├── Input: files[], terms[], min_occurrence
+│   ├── Output: term usage report
+│   └── Monolith: lines 2586-2906
+│
+├── [ ] Character Count Check API
+│   ├── POST /api/v2/quicksearch/qa/character-count
+│   ├── Input: xml_files[]
+│   ├── Output: entries exceeding limits
+│   └── Monolith: lines 2908-3100+
+│
+└── [ ] Pattern Sequence Check API
+    ├── POST /api/v2/quicksearch/qa/pattern-check
+    ├── Input: xml_files[]
+    ├── Output: pattern mismatches
+    └── Monolith: embedded in glossary_checker_tab
+```
+
+### P16.2: Frontend UI Implementation
+
+```
+P16.2: QA Tools Frontend (LocaNext Svelte)
+│
+├── [ ] Add "QA Tools" tab to QuickSearch app
+│   └── locaNext/src/lib/components/apps/QuickSearch.svelte
+│
+├── [ ] Extract Glossary Panel
+│   ├── File selector (multi-file)
+│   ├── Options: filter sentences, length threshold
+│   ├── Progress bar
+│   └── Results table (sortable)
+│
+├── [ ] Line Check Panel
+│   ├── File selector
+│   ├── Glossary source selector (file or existing)
+│   ├── Results: mismatched lines with diff view
+│   └── Export option
+│
+├── [ ] Term Check Panel
+│   ├── File selector
+│   ├── Term input (multi-term)
+│   ├── Min occurrence filter
+│   └── Results: usage report with context
+│
+├── [ ] Character Count Panel
+│   ├── XML file selector
+│   ├── Limit threshold input
+│   └── Results: entries over limit
+│
+└── [ ] Pattern Sequence Panel
+    ├── XML file selector
+    └── Results: pattern mismatches
+```
+
+### P16.3: UI/UX Design Philosophy
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    QUICKSEARCH UI/UX REDESIGN IDEAS                            ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   CURRENT: Single search interface                                            ║
+║   PROPOSED: Tabbed interface with tree-like organization                      ║
+║                                                                               ║
+║   ┌─────────────────────────────────────────────────────────────────────┐    ║
+║   │  QuickSearch                                              [─] [□] [×]│    ║
+║   ├─────────────────────────────────────────────────────────────────────┤    ║
+║   │  ┌──────────────┬──────────────┐                                    │    ║
+║   │  │ 🔍 Search    │ 📋 QA Tools  │                                    │    ║
+║   │  └──────────────┴──────────────┘                                    │    ║
+║   │                                                                      │    ║
+║   │  ┌─────────────────────────────────────────────────────────────┐   │    ║
+║   │  │ QA Tools                                                     │   │    ║
+║   │  │ ├── 📝 Extract Glossary                                      │   │    ║
+║   │  │ ├── ✓  Line Check                                           │   │    ║
+║   │  │ ├── 🔎 Term Check                                            │   │    ║
+║   │  │ ├── 📏 Character Count                                       │   │    ║
+║   │  │ └── 🔢 Pattern Sequence                                      │   │    ║
+║   │  └─────────────────────────────────────────────────────────────┘   │    ║
+║   │                                                                      │    ║
+║   │  [Tree sidebar] ──────────────────────── [Results panel]            │    ║
+║   │                                                                      │    ║
+║   └─────────────────────────────────────────────────────────────────────┘    ║
+║                                                                               ║
+║   DESIGN PRINCIPLES:                                                          ║
+║   ├── Tree-like navigation (matches project structure)                        ║
+║   ├── Collapsible/expandable sections                                         ║
+║   ├── Modern card-based results                                               ║
+║   ├── Progress indicators for long operations                                 ║
+║   ├── Dark mode compatible                                                    ║
+║   └── "Look at it and understand immediately"                                 ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Implementation Order
+
+```
+PHASE 1: Backend (API)
+├── Step 1: Create server/tools/quicksearch/qa_tools.py
+├── Step 2: Add 5 API endpoints to quicksearch_async.py
+├── Step 3: Unit tests for each QA function
+└── Estimated: 5 functions to migrate from monolith
+
+PHASE 2: Frontend (UI)
+├── Step 1: Add tab component to QuickSearch.svelte
+├── Step 2: Create QA Tools panels (5 panels)
+├── Step 3: Wire up API calls
+└── Step 4: Add progress/results display
+
+PHASE 3: Testing
+├── Real file testing with production data
+├── XML files for CD project
+└── Verify against monolith behavior
 ```
 
 ---
