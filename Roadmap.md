@@ -64,7 +64,7 @@ P15: Monolith Migration ✅ ALL P1-P4 COMPLETE (11/11)
 
 ---
 
-## ✅ P16: QuickSearch QA Tools (Glossary Checker) - BACKEND COMPLETE
+## ✅ P16: QuickSearch QA Tools (Glossary Checker) - COMPLETE
 
 ```
 ╔═══════════════════════════════════════════════════════════════════════════════╗
@@ -72,7 +72,7 @@ P15: Monolith Migration ✅ ALL P1-P4 COMPLETE (11/11)
 ║                    (Glossary Checker Tab from Monolith)                        ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
 ║                                                                               ║
-║   STATUS: P16.1 COMPLETE │ P16.2 PENDING │ Monolith: QuickSearch0818.py      ║
+║   STATUS: ✅ COMPLETE (2025-12-06) │ Monolith: QuickSearch0818.py            ║
 ║                                                                               ║
 ║   Current QuickSearch (✅ DONE):                                              ║
 ║   ├── Create/Load/List Dictionary                                             ║
@@ -87,8 +87,8 @@ P15: Monolith Migration ✅ ALL P1-P4 COMPLETE (11/11)
 ║   ├── 📏 Character Count     ─ Special char count validation (BDO/BDM)        ║
 ║   └── 🔢 Pattern Sequence    ─ {code} pattern consistency check               ║
 ║                                                                               ║
-║   QA Tools Frontend (📋 PENDING):                                             ║
-║   └── Add "QA Tools" tab to QuickSearch.svelte                                ║
+║   QA Tools Frontend (✅ COMPLETE - Tabbed UI with Accordion):                 ║
+║   └── "Glossary Checker" tab in QuickSearch.svelte                            ║
 ║                                                                               ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -131,40 +131,39 @@ P16.1: QA Tools Backend ✅ COMPLETE (2025-12-06)
 Tests: tests/unit/test_quicksearch_qa_tools.py (27 tests, 100% pass)
 ```
 
-### P16.2: Frontend UI Implementation
+### ✅ P16.2: Frontend UI Implementation - COMPLETE
 
 ```
-P16.2: QA Tools Frontend (LocaNext Svelte)
+P16.2: QA Tools Frontend ✅ COMPLETE (2025-12-06)
 │
-├── [ ] Add "QA Tools" tab to QuickSearch app
-│   └── locaNext/src/lib/components/apps/QuickSearch.svelte
+├── [✅] Add "Glossary Checker" tab to QuickSearch app
+│   └── locaNext/src/lib/components/apps/QuickSearch.svelte (2047 lines)
 │
-├── [ ] Extract Glossary Panel
+├── [✅] Extract Glossary Panel
 │   ├── File selector (multi-file)
-│   ├── Options: filter sentences, length threshold
-│   ├── Progress bar
-│   └── Results table (sortable)
+│   ├── Options: filter sentences, length threshold, min occurrence, sort method
+│   ├── Progress bar (polling operation status)
+│   └── Results table with export to TXT
 │
-├── [ ] Line Check Panel
-│   ├── File selector
-│   ├── Glossary source selector (file or existing)
-│   ├── Results: mismatched lines with diff view
+├── [✅] Line Check Panel
+│   ├── Source file selector + optional glossary files
+│   ├── Results: inconsistent translations with file info
 │   └── Export option
 │
-├── [ ] Term Check Panel
+├── [✅] Term Check Panel
+│   ├── Source file selector + optional glossary files
+│   ├── Max issues per term filter
+│   └── Results: missing term translations with context
+│
+├── [✅] Pattern Check Panel
 │   ├── File selector
-│   ├── Term input (multi-term)
-│   ├── Min occurrence filter
-│   └── Results: usage report with context
+│   └── Results: {code} pattern mismatches with comparison
 │
-├── [ ] Character Count Panel
-│   ├── XML file selector
-│   ├── Limit threshold input
-│   └── Results: entries over limit
-│
-└── [ ] Pattern Sequence Panel
-    ├── XML file selector
-    └── Results: pattern mismatches
+└── [✅] Character Count Panel
+    ├── Symbol set selector (BDO/BDM) + custom symbols
+    └── Results: char count mismatches with counts
+
+Implementation: Carbon Tabs + Accordion for tools, ProgressBar for operations
 ```
 
 ### P16.3: UI/UX Design Philosophy
@@ -901,7 +900,7 @@ PORT SUMMARY (Quick Reference):
 │ Gitea Server     │ 3000   │ Git + CI/CD (FUTURE)        │
 └──────────────────┴────────┴─────────────────────────────┘
 
-WHAT'S NEXT? → P16: QuickSearch QA Tools (5 QA features)
+WHAT'S NEXT? → ✅ P16: QuickSearch QA Tools COMPLETE
               → P13.3: Gitea CI/CD Workflow
               → P10.3: Patch Notes
               → P17: LD Manager (CAT Tool) ★ BIG FEATURE
@@ -1793,12 +1792,12 @@ COMPLETE PRIORITY TREE (Past → Present → Future)
 │
 └── 📋 NEXT PRIORITIES
     │
-    ├── P16: QuickSearch QA Tools ─────────── Glossary Checker (5 features)
-    │   ├── Extract Glossary (build glossary from files)
-    │   ├── Line Check (validate against glossary)
-    │   ├── Term Check (find term usage)
-    │   ├── Character Count (XML LocStr validation)
-    │   └── Pattern Sequence (XML consistency check)
+    ├── ✅ P16: QuickSearch QA Tools ───────── COMPLETE (2025-12-06)
+    │   ├── ✅ Extract Glossary (Aho-Corasick + export)
+    │   ├── ✅ Line Check (inconsistent translations)
+    │   ├── ✅ Term Check (missing term translations)
+    │   ├── ✅ Character Count (BDO/BDM symbol validation)
+    │   └── ✅ Pattern Check ({code} pattern matching)
     │
     ├── P13.3: Gitea CI/CD Workflow ───────── Pipeline setup
     │   └── .gitea/workflows/build.yml

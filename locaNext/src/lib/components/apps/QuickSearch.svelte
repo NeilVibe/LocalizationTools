@@ -17,9 +17,17 @@
     ToastNotification,
     FileUploader,
     Tile,
-    Toggle
+    Toggle,
+    Tabs,
+    Tab,
+    TabContent,
+    Accordion,
+    AccordionItem,
+    NumberInput,
+    Checkbox,
+    ProgressBar
   } from "carbon-components-svelte";
-  import { Upload, Search, FolderOpen, View, ViewOff } from "carbon-icons-svelte";
+  import { Upload, Search, FolderOpen, View, ViewOff, DocumentExport, CheckmarkOutline, WarningAlt, CharacterPatterns, StringInteger } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { api } from "$lib/api/client.js";
@@ -87,6 +95,49 @@
   let isCreatingDictionary = false;
   let isLoadingDictionary = false;
   let isLoadingReference = false;
+
+  // Tab state
+  let activeTab = 0;
+
+  // ============================================================================
+  // QA TOOLS STATE
+  // ============================================================================
+
+  // QA Tool Files
+  let qaFiles = [];
+  let qaGlossaryFiles = [];
+
+  // Extract Glossary options
+  let qaFilterSentences = true;
+  let qaGlossaryLengthThreshold = 15;
+  let qaMinOccurrence = 2;
+  let qaSortMethod = 'alphabetical';
+
+  // Line Check options
+  let qaLineCheckFilterSentences = true;
+  let qaLineCheckThreshold = 15;
+
+  // Term Check options
+  let qaTermCheckFilterSentences = true;
+  let qaTermCheckThreshold = 15;
+  let qaMaxIssuesPerTerm = 6;
+
+  // Character Count options
+  let qaSymbolSet = 'BDO';
+  let qaCustomSymbols = '';
+
+  // QA Processing states
+  let qaIsProcessing = false;
+  let qaProgress = 0;
+  let qaProgressMessage = '';
+  let qaCurrentOperation = null;
+
+  // QA Results
+  let qaGlossaryResults = null;
+  let qaLineCheckResults = null;
+  let qaTermCheckResults = null;
+  let qaPatternCheckResults = null;
+  let qaCharCountResults = null;
 
   function showStatus(message, type = 'success') {
     statusMessage = message;
@@ -474,6 +525,352 @@
     currentPage = event.detail.page;
     performSearch();
   }
+
+  // ============================================================================
+  // QA TOOLS FUNCTIONS
+  // ============================================================================
+
+  async function pollOperationStatus(operationId) {
+    const maxAttempts = 120; // 2 minutes max
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      try {
+        const response = await fetch(`${API_BASE}/api/progress/operations/${operationId}`, {
+          headers: getAuthHeaders()
+        });
+        if (response.ok) {
+          const status = await response.json();
+          qaProgress = status.progress || 0;
+          qaProgressMessage = status.message || 'Processing...';
+
+          if (status.status === 'completed') {
+            return { success: true, result: status.result };
+          } else if (status.status === 'failed') {
+            return { success: false, error: status.error_message || 'Operation failed' };
+          }
+        }
+      } catch (e) {
+        logger.error('Error polling operation', { error: e.message });
+      }
+    }
+    return { success: false, error: 'Operation timed out' };
+  }
+
+  async function runQAExtractGlossary() {
+    if (qaFiles.length === 0) {
+      showStatus('Please select files first', 'error');
+      return;
+    }
+
+    qaIsProcessing = true;
+    qaCurrentOperation = 'extract-glossary';
+    qaProgress = 0;
+    qaProgressMessage = 'Starting glossary extraction...';
+    qaGlossaryResults = null;
+
+    try {
+      const formData = new FormData();
+      for (const file of qaFiles) {
+        formData.append('files', file);
+      }
+      formData.append('filter_sentences', qaFilterSentences);
+      formData.append('glossary_length_threshold', qaGlossaryLengthThreshold);
+      formData.append('min_occurrence', qaMinOccurrence);
+      formData.append('sort_method', qaSortMethod);
+
+      const response = await fetch(`${API_BASE}/api/v2/quicksearch/qa/extract-glossary`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.operation_id) {
+        const result = await pollOperationStatus(data.operation_id);
+        if (result.success) {
+          qaGlossaryResults = result.result;
+          showStatus(`Extracted ${qaGlossaryResults.total_terms} glossary terms`, 'success');
+          logger.info('Glossary extraction complete', { terms: qaGlossaryResults.total_terms });
+        } else {
+          showStatus(result.error, 'error');
+        }
+      } else {
+        showStatus(data.detail || 'Failed to start extraction', 'error');
+      }
+    } catch (error) {
+      logger.error('Glossary extraction failed', { error: error.message });
+      showStatus(`Error: ${error.message}`, 'error');
+    } finally {
+      qaIsProcessing = false;
+      qaCurrentOperation = null;
+    }
+  }
+
+  async function runQALineCheck() {
+    if (qaFiles.length === 0) {
+      showStatus('Please select files first', 'error');
+      return;
+    }
+
+    qaIsProcessing = true;
+    qaCurrentOperation = 'line-check';
+    qaProgress = 0;
+    qaProgressMessage = 'Starting line check...';
+    qaLineCheckResults = null;
+
+    try {
+      const formData = new FormData();
+      for (const file of qaFiles) {
+        formData.append('files', file);
+      }
+      if (qaGlossaryFiles.length > 0) {
+        for (const file of qaGlossaryFiles) {
+          formData.append('glossary_files', file);
+        }
+      }
+      formData.append('filter_sentences', qaLineCheckFilterSentences);
+      formData.append('glossary_length_threshold', qaLineCheckThreshold);
+
+      const response = await fetch(`${API_BASE}/api/v2/quicksearch/qa/line-check`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.operation_id) {
+        const result = await pollOperationStatus(data.operation_id);
+        if (result.success) {
+          qaLineCheckResults = result.result;
+          showStatus(`Found ${qaLineCheckResults.inconsistent_count} inconsistent entries`, 'success');
+        } else {
+          showStatus(result.error, 'error');
+        }
+      } else {
+        showStatus(data.detail || 'Failed to start line check', 'error');
+      }
+    } catch (error) {
+      logger.error('Line check failed', { error: error.message });
+      showStatus(`Error: ${error.message}`, 'error');
+    } finally {
+      qaIsProcessing = false;
+      qaCurrentOperation = null;
+    }
+  }
+
+  async function runQATermCheck() {
+    if (qaFiles.length === 0) {
+      showStatus('Please select files first', 'error');
+      return;
+    }
+
+    qaIsProcessing = true;
+    qaCurrentOperation = 'term-check';
+    qaProgress = 0;
+    qaProgressMessage = 'Starting term check...';
+    qaTermCheckResults = null;
+
+    try {
+      const formData = new FormData();
+      for (const file of qaFiles) {
+        formData.append('files', file);
+      }
+      if (qaGlossaryFiles.length > 0) {
+        for (const file of qaGlossaryFiles) {
+          formData.append('glossary_files', file);
+        }
+      }
+      formData.append('filter_sentences', qaTermCheckFilterSentences);
+      formData.append('glossary_length_threshold', qaTermCheckThreshold);
+      formData.append('max_issues_per_term', qaMaxIssuesPerTerm);
+
+      const response = await fetch(`${API_BASE}/api/v2/quicksearch/qa/term-check`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.operation_id) {
+        const result = await pollOperationStatus(data.operation_id);
+        if (result.success) {
+          qaTermCheckResults = result.result;
+          showStatus(`Found ${qaTermCheckResults.issues_count} terms with missing translations`, 'success');
+        } else {
+          showStatus(result.error, 'error');
+        }
+      } else {
+        showStatus(data.detail || 'Failed to start term check', 'error');
+      }
+    } catch (error) {
+      logger.error('Term check failed', { error: error.message });
+      showStatus(`Error: ${error.message}`, 'error');
+    } finally {
+      qaIsProcessing = false;
+      qaCurrentOperation = null;
+    }
+  }
+
+  async function runQAPatternCheck() {
+    if (qaFiles.length === 0) {
+      showStatus('Please select files first', 'error');
+      return;
+    }
+
+    qaIsProcessing = true;
+    qaCurrentOperation = 'pattern-check';
+    qaProgress = 0;
+    qaProgressMessage = 'Starting pattern check...';
+    qaPatternCheckResults = null;
+
+    try {
+      const formData = new FormData();
+      for (const file of qaFiles) {
+        formData.append('files', file);
+      }
+
+      const response = await fetch(`${API_BASE}/api/v2/quicksearch/qa/pattern-check`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.operation_id) {
+        const result = await pollOperationStatus(data.operation_id);
+        if (result.success) {
+          qaPatternCheckResults = result.result;
+          showStatus(`Found ${qaPatternCheckResults.mismatch_count} pattern mismatches`, 'success');
+        } else {
+          showStatus(result.error, 'error');
+        }
+      } else {
+        showStatus(data.detail || 'Failed to start pattern check', 'error');
+      }
+    } catch (error) {
+      logger.error('Pattern check failed', { error: error.message });
+      showStatus(`Error: ${error.message}`, 'error');
+    } finally {
+      qaIsProcessing = false;
+      qaCurrentOperation = null;
+    }
+  }
+
+  async function runQACharacterCount() {
+    if (qaFiles.length === 0) {
+      showStatus('Please select files first', 'error');
+      return;
+    }
+
+    qaIsProcessing = true;
+    qaCurrentOperation = 'character-count';
+    qaProgress = 0;
+    qaProgressMessage = 'Starting character count check...';
+    qaCharCountResults = null;
+
+    try {
+      const formData = new FormData();
+      for (const file of qaFiles) {
+        formData.append('files', file);
+      }
+      formData.append('symbol_set', qaSymbolSet);
+      if (qaCustomSymbols.trim()) {
+        formData.append('custom_symbols', qaCustomSymbols.trim());
+      }
+
+      const response = await fetch(`${API_BASE}/api/v2/quicksearch/qa/character-count`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.operation_id) {
+        const result = await pollOperationStatus(data.operation_id);
+        if (result.success) {
+          qaCharCountResults = result.result;
+          showStatus(`Found ${qaCharCountResults.mismatch_count} character count mismatches`, 'success');
+        } else {
+          showStatus(result.error, 'error');
+        }
+      } else {
+        showStatus(data.detail || 'Failed to start character count check', 'error');
+      }
+    } catch (error) {
+      logger.error('Character count check failed', { error: error.message });
+      showStatus(`Error: ${error.message}`, 'error');
+    } finally {
+      qaIsProcessing = false;
+      qaCurrentOperation = null;
+    }
+  }
+
+  function clearQAResults() {
+    qaGlossaryResults = null;
+    qaLineCheckResults = null;
+    qaTermCheckResults = null;
+    qaPatternCheckResults = null;
+    qaCharCountResults = null;
+    qaFiles = [];
+    qaGlossaryFiles = [];
+  }
+
+  function exportQAResults(type) {
+    let data = null;
+    let filename = '';
+
+    switch (type) {
+      case 'glossary':
+        if (!qaGlossaryResults) return;
+        data = qaGlossaryResults.glossary.map(g => `${g.korean}\t${g.translation}\t${g.occurrence_count}`).join('\n');
+        filename = 'glossary_export.txt';
+        break;
+      case 'line-check':
+        if (!qaLineCheckResults) return;
+        data = qaLineCheckResults.inconsistent_entries.map(e =>
+          `${e.source}\n${e.translations.map(t => `  -> ${t.translation} (${t.files.join(', ')})`).join('\n')}`
+        ).join('\n\n');
+        filename = 'line_check_export.txt';
+        break;
+      case 'term-check':
+        if (!qaTermCheckResults) return;
+        data = qaTermCheckResults.issues.map(i =>
+          `[${i.korean_term}] Expected: ${i.expected_translation}\n${i.issues.map(iss => `  - ${iss.source} -> ${iss.translation}`).join('\n')}`
+        ).join('\n\n');
+        filename = 'term_check_export.txt';
+        break;
+      case 'pattern-check':
+        if (!qaPatternCheckResults) return;
+        data = qaPatternCheckResults.mismatches.map(m =>
+          `Source: ${m.source}\nTranslation: ${m.translation}\nSource patterns: ${m.source_patterns.join(', ')}\nTrans patterns: ${m.translation_patterns.join(', ')}`
+        ).join('\n\n');
+        filename = 'pattern_check_export.txt';
+        break;
+      case 'char-count':
+        if (!qaCharCountResults) return;
+        data = qaCharCountResults.mismatches.map(m =>
+          `[${m.mismatched_symbol}] Source(${m.source_count}) vs Trans(${m.translation_count})\n  ${m.source}\n  ${m.translation}`
+        ).join('\n\n');
+        filename = 'char_count_export.txt';
+        break;
+    }
+
+    if (data) {
+      const blob = new Blob([data], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      showStatus(`Exported ${filename}`, 'success');
+    }
+  }
 </script>
 
 <div class="quicksearch-container">
@@ -492,11 +889,18 @@
 
   <!-- Header -->
   <div class="header">
-    <h2>QuickSearch - Dictionary Search Tool</h2>
-    <p class="subtitle">Search game translations with XML/TXT dictionary support</p>
+    <h2>QuickSearch</h2>
+    <p class="subtitle">Dictionary Search & QA Tools</p>
   </div>
 
-  <!-- Action Buttons -->
+  <!-- Tabs -->
+  <Tabs bind:selected={activeTab}>
+    <Tab label="Dictionary Search" />
+    <Tab label="Glossary Checker" />
+    <svelte:fragment slot="content">
+      <!-- Tab 1: Dictionary Search -->
+      <TabContent>
+        <!-- Action Buttons -->
   <div class="action-buttons">
     <Button
       kind="primary"
@@ -643,6 +1047,342 @@
       </div>
     {/if}
   {/if}
+      </TabContent>
+
+      <!-- Tab 2: Glossary Checker (QA Tools) -->
+      <TabContent>
+        <div class="qa-tools-container">
+          <div class="qa-header">
+            <h3>Glossary Checker - QA Tools</h3>
+            <p>Quality assurance tools for translation consistency checking</p>
+          </div>
+
+          <!-- File Selection -->
+          <div class="qa-file-section">
+            <div class="qa-file-upload">
+              <FileUploader
+                labelTitle="Source Files"
+                labelDescription="Select XML, TXT, or TSV files to check"
+                buttonLabel="Select Files"
+                accept={['.xml', '.txt', '.tsv']}
+                multiple
+                bind:files={qaFiles}
+              />
+              {#if qaFiles.length > 0}
+                <p class="file-count">{qaFiles.length} file(s) selected</p>
+              {/if}
+            </div>
+
+            <div class="qa-file-upload">
+              <FileUploader
+                labelTitle="Glossary Files (Optional)"
+                labelDescription="Custom glossary files for Line/Term check"
+                buttonLabel="Select Glossary"
+                accept={['.xml', '.txt', '.tsv']}
+                multiple
+                bind:files={qaGlossaryFiles}
+              />
+              {#if qaGlossaryFiles.length > 0}
+                <p class="file-count">{qaGlossaryFiles.length} glossary file(s) selected</p>
+              {/if}
+            </div>
+
+            <Button kind="ghost" size="small" on:click={clearQAResults}>Clear All</Button>
+          </div>
+
+          <!-- Progress Bar -->
+          {#if qaIsProcessing}
+            <div class="qa-progress">
+              <ProgressBar value={qaProgress} max={100} labelText={qaProgressMessage} />
+            </div>
+          {/if}
+
+          <!-- QA Tools Accordion -->
+          <Accordion>
+            <!-- Extract Glossary -->
+            <AccordionItem title="Extract Glossary" open>
+              <div class="qa-tool-content">
+                <p class="tool-description">Build a glossary from source files. Filters short terms that appear multiple times.</p>
+
+                <div class="qa-options">
+                  <Checkbox bind:checked={qaFilterSentences} labelText="Filter sentences (skip entries ending with . ? !)" />
+                  <NumberInput
+                    label="Max source length"
+                    bind:value={qaGlossaryLengthThreshold}
+                    min={5}
+                    max={50}
+                    step={1}
+                  />
+                  <NumberInput
+                    label="Min occurrence"
+                    bind:value={qaMinOccurrence}
+                    min={1}
+                    max={10}
+                    step={1}
+                  />
+                  <Select labelText="Sort by" bind:selected={qaSortMethod}>
+                    <SelectItem value="alphabetical" text="Alphabetical" />
+                    <SelectItem value="length" text="Length" />
+                    <SelectItem value="frequency" text="Frequency" />
+                  </Select>
+                </div>
+
+                <div class="qa-actions">
+                  <Button
+                    kind="primary"
+                    disabled={qaIsProcessing || qaFiles.length === 0}
+                    on:click={runQAExtractGlossary}
+                  >
+                    {qaIsProcessing && qaCurrentOperation === 'extract-glossary' ? 'Extracting...' : 'Extract Glossary'}
+                  </Button>
+                  {#if qaGlossaryResults}
+                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('glossary')}>Export</Button>
+                  {/if}
+                </div>
+
+                {#if qaGlossaryResults}
+                  <div class="qa-results">
+                    <h4>Results: {qaGlossaryResults.total_terms} terms extracted</h4>
+                    <div class="results-table">
+                      <table>
+                        <thead>
+                          <tr><th>Korean</th><th>Translation</th><th>Count</th></tr>
+                        </thead>
+                        <tbody>
+                          {#each qaGlossaryResults.glossary.slice(0, 50) as item}
+                            <tr>
+                              <td>{item.korean}</td>
+                              <td>{item.translation}</td>
+                              <td>{item.occurrence_count}</td>
+                            </tr>
+                          {/each}
+                        </tbody>
+                      </table>
+                      {#if qaGlossaryResults.glossary.length > 50}
+                        <p class="more-results">Showing 50 of {qaGlossaryResults.glossary.length} results. Export for full list.</p>
+                      {/if}
+                    </div>
+                  </div>
+                {/if}
+              </div>
+            </AccordionItem>
+
+            <!-- Line Check -->
+            <AccordionItem title="Line Check">
+              <div class="qa-tool-content">
+                <p class="tool-description">Find inconsistent translations - same source text with different translations.</p>
+
+                <div class="qa-options">
+                  <Checkbox bind:checked={qaLineCheckFilterSentences} labelText="Filter sentences" />
+                  <NumberInput
+                    label="Max source length"
+                    bind:value={qaLineCheckThreshold}
+                    min={5}
+                    max={50}
+                    step={1}
+                  />
+                </div>
+
+                <div class="qa-actions">
+                  <Button
+                    kind="primary"
+                    disabled={qaIsProcessing || qaFiles.length === 0}
+                    on:click={runQALineCheck}
+                  >
+                    {qaIsProcessing && qaCurrentOperation === 'line-check' ? 'Checking...' : 'Run Line Check'}
+                  </Button>
+                  {#if qaLineCheckResults}
+                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('line-check')}>Export</Button>
+                  {/if}
+                </div>
+
+                {#if qaLineCheckResults}
+                  <div class="qa-results">
+                    <h4>Found {qaLineCheckResults.inconsistent_count} inconsistent entries</h4>
+                    <div class="results-list">
+                      {#each qaLineCheckResults.inconsistent_entries.slice(0, 20) as entry}
+                        <div class="inconsistent-entry">
+                          <div class="source-text">{entry.source}</div>
+                          <div class="translations">
+                            {#each entry.translations as trans}
+                              <div class="translation-variant">
+                                <span class="arrow">→</span>
+                                <span class="trans-text">{trans.translation}</span>
+                                <span class="files">({trans.files.join(', ')})</span>
+                              </div>
+                            {/each}
+                          </div>
+                        </div>
+                      {/each}
+                      {#if qaLineCheckResults.inconsistent_entries.length > 20}
+                        <p class="more-results">Showing 20 of {qaLineCheckResults.inconsistent_count} results.</p>
+                      {/if}
+                    </div>
+                  </div>
+                {/if}
+              </div>
+            </AccordionItem>
+
+            <!-- Term Check -->
+            <AccordionItem title="Term Check">
+              <div class="qa-tool-content">
+                <p class="tool-description">Find glossary terms that appear in source but are missing from translation.</p>
+
+                <div class="qa-options">
+                  <Checkbox bind:checked={qaTermCheckFilterSentences} labelText="Filter sentences" />
+                  <NumberInput
+                    label="Max source length"
+                    bind:value={qaTermCheckThreshold}
+                    min={5}
+                    max={50}
+                    step={1}
+                  />
+                  <NumberInput
+                    label="Max issues per term"
+                    bind:value={qaMaxIssuesPerTerm}
+                    min={1}
+                    max={20}
+                    step={1}
+                  />
+                </div>
+
+                <div class="qa-actions">
+                  <Button
+                    kind="primary"
+                    disabled={qaIsProcessing || qaFiles.length === 0}
+                    on:click={runQATermCheck}
+                  >
+                    {qaIsProcessing && qaCurrentOperation === 'term-check' ? 'Checking...' : 'Run Term Check'}
+                  </Button>
+                  {#if qaTermCheckResults}
+                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('term-check')}>Export</Button>
+                  {/if}
+                </div>
+
+                {#if qaTermCheckResults}
+                  <div class="qa-results">
+                    <h4>Found {qaTermCheckResults.issues_count} terms with issues</h4>
+                    <div class="results-list">
+                      {#each qaTermCheckResults.issues.slice(0, 15) as issue}
+                        <div class="term-issue">
+                          <div class="term-header">
+                            <span class="korean-term">{issue.korean_term}</span>
+                            <span class="expected">Expected: {issue.expected_translation}</span>
+                          </div>
+                          <div class="issue-list">
+                            {#each issue.issues.slice(0, 3) as iss}
+                              <div class="issue-item">
+                                <div class="issue-source">{iss.source}</div>
+                                <div class="issue-trans">→ {iss.translation}</div>
+                              </div>
+                            {/each}
+                            {#if issue.issues.length > 3}
+                              <p class="more-issues">+{issue.issues.length - 3} more...</p>
+                            {/if}
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+              </div>
+            </AccordionItem>
+
+            <!-- Pattern Check -->
+            <AccordionItem title="Pattern Check">
+              <div class="qa-tool-content">
+                <p class="tool-description">Check if {'{code}'} patterns in source match patterns in translation.</p>
+
+                <div class="qa-actions">
+                  <Button
+                    kind="primary"
+                    disabled={qaIsProcessing || qaFiles.length === 0}
+                    on:click={runQAPatternCheck}
+                  >
+                    {qaIsProcessing && qaCurrentOperation === 'pattern-check' ? 'Checking...' : 'Run Pattern Check'}
+                  </Button>
+                  {#if qaPatternCheckResults}
+                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('pattern-check')}>Export</Button>
+                  {/if}
+                </div>
+
+                {#if qaPatternCheckResults}
+                  <div class="qa-results">
+                    <h4>Found {qaPatternCheckResults.mismatch_count} pattern mismatches</h4>
+                    <div class="results-list">
+                      {#each qaPatternCheckResults.mismatches.slice(0, 20) as mismatch}
+                        <div class="pattern-mismatch">
+                          <div class="pattern-source">
+                            <strong>Source:</strong> {mismatch.source}
+                            <span class="patterns">[{mismatch.source_patterns.join(', ')}]</span>
+                          </div>
+                          <div class="pattern-trans">
+                            <strong>Trans:</strong> {mismatch.translation}
+                            <span class="patterns">[{mismatch.translation_patterns.join(', ')}]</span>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+              </div>
+            </AccordionItem>
+
+            <!-- Character Count -->
+            <AccordionItem title="Character Count">
+              <div class="qa-tool-content">
+                <p class="tool-description">Check if special character counts match between source and translation.</p>
+
+                <div class="qa-options">
+                  <Select labelText="Symbol Set" bind:selected={qaSymbolSet}>
+                    <SelectItem value="BDO" text="BDO: { }" />
+                    <SelectItem value="BDM" text="BDM: ▶ { } 🔗 |" />
+                  </Select>
+                  <TextInput
+                    labelText="Custom Symbols (optional)"
+                    placeholder="Enter each symbol to check"
+                    bind:value={qaCustomSymbols}
+                  />
+                </div>
+
+                <div class="qa-actions">
+                  <Button
+                    kind="primary"
+                    disabled={qaIsProcessing || qaFiles.length === 0}
+                    on:click={runQACharacterCount}
+                  >
+                    {qaIsProcessing && qaCurrentOperation === 'character-count' ? 'Checking...' : 'Run Character Count'}
+                  </Button>
+                  {#if qaCharCountResults}
+                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('char-count')}>Export</Button>
+                  {/if}
+                </div>
+
+                {#if qaCharCountResults}
+                  <div class="qa-results">
+                    <h4>Found {qaCharCountResults.mismatch_count} character count mismatches</h4>
+                    <p class="symbols-checked">Symbols checked: {qaCharCountResults.symbols_checked.join(' ')}</p>
+                    <div class="results-list">
+                      {#each qaCharCountResults.mismatches.slice(0, 20) as mismatch}
+                        <div class="char-mismatch">
+                          <div class="mismatch-symbol">
+                            <span class="symbol">{mismatch.mismatched_symbol}</span>
+                            Source: {mismatch.source_count} | Trans: {mismatch.translation_count}
+                          </div>
+                          <div class="mismatch-source">{mismatch.source}</div>
+                          <div class="mismatch-trans">→ {mismatch.translation}</div>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+              </div>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      </TabContent>
+    </svelte:fragment>
+  </Tabs>
 
   <!-- Create Dictionary Modal -->
   <Modal
@@ -1014,5 +1754,293 @@
     font-size: 0.875rem;
     color: var(--cds-text-03);
     font-style: italic;
+  }
+
+  /* ============================================================================
+   * QA TOOLS STYLES
+   * ============================================================================ */
+
+  .qa-tools-container {
+    padding: 1rem 0;
+  }
+
+  .qa-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .qa-header h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--cds-text-01);
+  }
+
+  .qa-header p {
+    color: var(--cds-text-02);
+    font-size: 0.875rem;
+  }
+
+  .qa-file-section {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 1rem;
+    background: var(--cds-ui-01);
+    border-radius: 4px;
+  }
+
+  .qa-file-upload {
+    flex: 1;
+    min-width: 250px;
+  }
+
+  .file-count {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--cds-support-success);
+    font-weight: 500;
+  }
+
+  .qa-progress {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--cds-ui-01);
+    border-radius: 4px;
+  }
+
+  .qa-tool-content {
+    padding: 0.5rem 0;
+  }
+
+  .tool-description {
+    color: var(--cds-text-02);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+  }
+
+  .qa-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: flex-end;
+  }
+
+  .qa-options :global(.bx--number) {
+    max-width: 150px;
+  }
+
+  .qa-options :global(.bx--select) {
+    max-width: 180px;
+  }
+
+  .qa-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    align-items: center;
+  }
+
+  .qa-results {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--cds-ui-02);
+    border-radius: 4px;
+  }
+
+  .qa-results h4 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: var(--cds-text-01);
+  }
+
+  .results-table {
+    overflow-x: auto;
+  }
+
+  .results-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .results-table th,
+  .results-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .results-table th {
+    font-weight: 600;
+    color: var(--cds-text-01);
+    background: var(--cds-ui-03);
+  }
+
+  .results-table td {
+    color: var(--cds-text-02);
+  }
+
+  .more-results {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--cds-text-03);
+    font-style: italic;
+  }
+
+  .results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Line Check Results */
+  .inconsistent-entry {
+    padding: 0.75rem;
+    background: var(--cds-ui-01);
+    border-radius: 4px;
+    border-left: 3px solid var(--cds-support-warning);
+  }
+
+  .source-text {
+    font-weight: 500;
+    color: var(--cds-text-01);
+    margin-bottom: 0.5rem;
+  }
+
+  .translations {
+    margin-left: 1rem;
+  }
+
+  .translation-variant {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+  }
+
+  .arrow {
+    color: var(--cds-text-03);
+  }
+
+  .trans-text {
+    color: var(--cds-text-02);
+  }
+
+  .files {
+    color: var(--cds-text-03);
+    font-size: 0.75rem;
+  }
+
+  /* Term Check Results */
+  .term-issue {
+    padding: 0.75rem;
+    background: var(--cds-ui-01);
+    border-radius: 4px;
+    border-left: 3px solid var(--cds-support-error);
+  }
+
+  .term-header {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .korean-term {
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .expected {
+    color: var(--cds-support-success);
+    font-size: 0.875rem;
+  }
+
+  .issue-list {
+    margin-left: 1rem;
+  }
+
+  .issue-item {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .issue-source {
+    color: var(--cds-text-02);
+  }
+
+  .issue-trans {
+    color: var(--cds-text-03);
+    margin-left: 1rem;
+  }
+
+  .more-issues {
+    font-size: 0.75rem;
+    color: var(--cds-text-03);
+    font-style: italic;
+  }
+
+  /* Pattern Check Results */
+  .pattern-mismatch {
+    padding: 0.75rem;
+    background: var(--cds-ui-01);
+    border-radius: 4px;
+    border-left: 3px solid var(--cds-interactive-04);
+    font-size: 0.875rem;
+  }
+
+  .pattern-source,
+  .pattern-trans {
+    margin-bottom: 0.25rem;
+    color: var(--cds-text-02);
+  }
+
+  .patterns {
+    margin-left: 0.5rem;
+    color: var(--cds-interactive-04);
+    font-family: monospace;
+    font-size: 0.75rem;
+  }
+
+  /* Character Count Results */
+  .char-mismatch {
+    padding: 0.75rem;
+    background: var(--cds-ui-01);
+    border-radius: 4px;
+    border-left: 3px solid var(--cds-support-info);
+    font-size: 0.875rem;
+  }
+
+  .mismatch-symbol {
+    font-weight: 500;
+    color: var(--cds-text-01);
+    margin-bottom: 0.5rem;
+  }
+
+  .mismatch-symbol .symbol {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    background: var(--cds-interactive-02);
+    border-radius: 2px;
+    margin-right: 0.5rem;
+    font-family: monospace;
+  }
+
+  .mismatch-source {
+    color: var(--cds-text-02);
+  }
+
+  .mismatch-trans {
+    color: var(--cds-text-03);
+    margin-left: 1rem;
+  }
+
+  .symbols-checked {
+    font-size: 0.875rem;
+    color: var(--cds-text-02);
+    margin-bottom: 1rem;
+    font-family: monospace;
   }
 </style>
