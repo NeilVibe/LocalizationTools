@@ -164,6 +164,13 @@ class SimilaritySearcher:
         index = faiss.IndexFlatIP(embeddings.shape[1])
         index.add(embeddings)
 
+        # Custom search that skips self (from monolith lines 258-261)
+        def custom_search(index, query_vector, k, skip_id):
+            """Search index excluding self, guarantees exactly k results."""
+            distances, indices = index.search(query_vector, k + 1)
+            mask = indices[0] != skip_id
+            return distances[0][mask][:k], indices[0][mask][:k]
+
         # Find similar pairs
         similar_groups = []
         processed = 0
@@ -172,13 +179,11 @@ class SimilaritySearcher:
             normalized_text = row['normalized_text']
             embedding = embeddings[idx].reshape(1, -1)
 
-            # Search for similar (skip self)
-            distances, indices = index.search(embedding, 11)  # Get 10 + self
+            # Search for similar using custom_search (guarantees 10 results excluding self)
+            k = 10
+            distances, indices = custom_search(index, embedding, k, idx)
 
-            for dist, ind in zip(distances[0], indices[0]):
-                if ind == idx:  # Skip self
-                    continue
-
+            for dist, ind in zip(distances, indices):
                 if similarity_threshold <= dist < 1.0:
                     similar_text = data.iloc[ind]['normalized_text']
                     if similar_text != normalized_text:
@@ -192,7 +197,7 @@ class SimilaritySearcher:
                     break
 
             processed += 1
-            if progress_callback and processed % 100 == 0:
+            if progress_callback and processed % 10 == 0:  # Every 10 rows like monolith (line 287)
                 progress_callback(processed, total)
 
         logger.info(f"Found {len(similar_groups)} similar groups before deduplication")
@@ -220,20 +225,50 @@ class SimilaritySearcher:
 
         logger.success(f"Extracted {len(unique_groups)} similar string groups")
 
-        # Format results
-        results = []
+        # Format results - 9 columns like monolith (lines 317-322)
+        output_rows = []
         for group in unique_groups:
-            group_data = []
             for text in group:
                 matching = data[data['normalized_text'] == text]
                 if not matching.empty:
                     row = matching.iloc[0]
-                    group_data.append({
-                        "text": text,
-                        "original": str(row.get(5, row.get('Korean', text))),
-                        "category": str(row.get(0, 'unknown'))
-                    })
-            results.append({"group": group_data})
+                    # Build 9-column row like monolith
+                    row_data = []
+                    for i in range(9):
+                        if i in row.index:
+                            val = row[i]
+                            row_data.append(str(val) if pd.notna(val) else '')
+                        else:
+                            row_data.append('')
+                    output_rows.append('\t'.join(row_data))
+
+        # Final deduplication based on first 5 columns (monolith lines 324-332)
+        seen_keys = set()
+        deduplicated_rows = []
+        for row in output_rows:
+            fields = row.split('\t')
+            key = '\t'.join(fields[:5])  # Use first 5 fields as key
+            if key not in seen_keys:
+                seen_keys.add(key)
+                deduplicated_rows.append(row)
+
+        removed_count = len(output_rows) - len(deduplicated_rows)
+        if removed_count > 0:
+            logger.info(f"Removed {removed_count} duplicate rows in final deduplication")
+
+        logger.success(f"Final output: {len(deduplicated_rows)} unique rows")
+
+        # Return structured data for API (can be converted to TSV by caller)
+        results = []
+        for row_str in deduplicated_rows:
+            fields = row_str.split('\t')
+            results.append({
+                "row_tsv": row_str,
+                "fields": fields,
+                "category": fields[0] if len(fields) > 0 else '',
+                "korean": fields[5] if len(fields) > 5 else '',
+                "translation": fields[6] if len(fields) > 6 else ''
+            })
 
         return results
 
@@ -318,6 +353,46 @@ class SimilaritySearcher:
                     reconstructed = '\\n'.join('▶' + line if line else '' for line in translated_lines)
                     result.at[idx, 'Translation'] = reconstructed
                     replaced_count += 1
+                else:
+                    # Fallback: Try normalized structure approach (from monolith lines 536-576)
+                    original_lines = original_text.split('\\n')
+                    normalized_structure = []
+                    current_line = ""
+                    for line in original_lines:
+                        if line.strip().startswith('▶'):
+                            if current_line:
+                                normalized_structure.append(current_line)
+                            current_line = line.strip()
+                        else:
+                            if line.strip():
+                                current_line += " " + line.strip()
+                    if current_line:
+                        normalized_structure.append(current_line)
+
+                    if normalized_structure and whole_index:
+                        fully_normalized_text = ' '.join(line.replace('▶', '').strip() for line in normalized_structure)
+                        embedding = self.model.encode([fully_normalized_text])
+                        faiss.normalize_L2(embedding)
+                        distances, indices = whole_index.search(embedding, 1)
+
+                        if distances[0][0] >= similarity_threshold:
+                            best_korean = whole_kr_texts[indices[0][0]]
+                            best_translation = whole_dict[best_korean]
+
+                            # Distribute translation words across lines
+                            words = best_translation.split()
+                            words_per_line = max(1, len(words) // len(normalized_structure))
+                            translated_lines = []
+
+                            for i in range(len(normalized_structure)):
+                                start_idx = i * words_per_line
+                                end_idx = start_idx + words_per_line if i < len(normalized_structure) - 1 else len(words)
+                                line_translation = ' '.join(words[start_idx:end_idx])
+                                translated_lines.append(line_translation)
+
+                            reconstructed = '\\n'.join('▶' + line if line else '' for line in translated_lines)
+                            result.at[idx, 'Translation'] = reconstructed
+                            replaced_count += 1
 
             else:
                 # Whole text matching

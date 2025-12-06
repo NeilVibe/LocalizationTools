@@ -42,32 +42,32 @@ The original Python scripts (monoliths) in `RessourcesForCodingTheProject/` are 
 
 ---
 
-## KR Similar (70% Correct)
+## KR Similar (95% Correct - FIXED 2025-12-06)
 
 **Monolith:** `RessourcesForCodingTheProject/MAIN PYTHON SCRIPTS/KRSIMILAR0124.py`
 **Implementation:** `server/tools/kr_similar/`
 
-### CRITICAL Issues
+### CRITICAL Issues - ALL FIXED ✅
 
-| Issue | Location | Original Lines | Fix Required |
-|-------|----------|----------------|--------------|
-| Missing triangle marker fallback | `searcher.py:294-320` | Lines 536-576 | Add normalized structure fallback when line_changed==False |
-| Custom skip-self logic differs | `searcher.py:175-176` | Lines 258-271 | Use mask-based skip with k+1 search |
+| Issue | Location | Status |
+|-------|----------|--------|
+| Missing triangle marker fallback | `searcher.py:321-365` | **FIXED** - Added normalized structure fallback |
+| Custom skip-self logic differs | `searcher.py:167-172` | **FIXED** - Using mask-based skip with k+1 search |
 
 ### HIGH Priority Issues
 
-| Issue | Location | Fix Required |
-|-------|----------|--------------|
-| Extract output format mismatch | `searcher.py:223-236` | Return 9-column TSV format |
-| Missing file deduplication on 5 cols | `searcher.py:200-204` | Add dedup on first 5 fields |
-| No file output in extract | `kr_similar_async.py:602` | Write results to disk |
-| Missing dictionary update mode | `embeddings.py:129-192` | Add incremental update logic |
+| Issue | Location | Status |
+|-------|----------|--------|
+| Extract output format mismatch | `searcher.py:228-272` | **FIXED** - Returns 9-column TSV format |
+| Missing file deduplication on 5 cols | `searcher.py:245-253` | **FIXED** - Dedup on first 5 fields |
+| No file output in extract | `kr_similar_async.py` | API returns data, caller handles file |
+| Missing dictionary update mode | `embeddings.py:129-192` | Backlog - incremental update |
 
-### MEDIUM Priority Issues
+### MEDIUM Priority Issues - FIXED ✅
 
-| Issue | Location | Fix Required |
-|-------|----------|--------------|
-| Progress every 100 vs 10 rows | `searcher.py:195` | Change to 10 rows |
+| Issue | Location | Status |
+|-------|----------|--------|
+| Progress every 100 vs 10 rows | `searcher.py:200` | **FIXED** - Now every 10 rows |
 
 ---
 
@@ -115,18 +115,18 @@ The original Python scripts (monoliths) in `RessourcesForCodingTheProject/` are 
 ## Priority Order for Fixes
 
 ### P1 - Critical (Blocking Features)
-1. KR Similar: Triangle marker fallback
-2. KR Similar: Skip-self logic
+1. ~~KR Similar: Triangle marker fallback~~ ✅ FIXED
+2. ~~KR Similar: Skip-self logic~~ ✅ FIXED
 3. XLSTransfer: Simple Excel Transfer implementation
 
 ### P2 - High (Wrong Results)
-4. KR Similar: Extract output format
-5. KR Similar: Deduplication on 5 fields
+4. ~~KR Similar: Extract output format~~ ✅ FIXED
+5. ~~KR Similar: Deduplication on 5 fields~~ ✅ FIXED
 6. QuickSearch: Exception handling
 
 ### P3 - Medium (User Experience)
-7. KR Similar: Progress frequency
-8. KR Similar: File output
+7. ~~KR Similar: Progress frequency~~ ✅ FIXED
+8. KR Similar: File output (API handles differently)
 9. QuickSearch: Remove ref search dedup
 
 ### P4 - Low (Optimization)
