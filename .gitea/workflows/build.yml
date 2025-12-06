@@ -1,0 +1,110 @@
+# LocaNext Build Pipeline - Gitea Actions
+# Mirrors GitHub Actions workflow for internal builds
+# Requires: act_runner on Windows machine
+
+name: Build LocaNext
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+  workflow_dispatch:  # Manual trigger
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ============================================
+  # JOB 1: Test Backend
+  # ============================================
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Create admin user
+        run: python3 scripts/create_admin.py
+
+      - name: Start server
+        run: |
+          python3 server/main.py &
+          sleep 5
+
+      - name: Run tests
+        run: RUN_API_TESTS=1 python3 -m pytest -v --tb=short
+        env:
+          PYTHONPATH: .
+
+  # ============================================
+  # JOB 2: Build Windows Installer
+  # ============================================
+  build-windows:
+    needs: test
+    runs-on: windows-latest  # Requires Windows self-hosted runner
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: locaNext
+        run: npm ci
+
+      - name: Check version
+        run: python scripts/check_version_unified.py
+
+      - name: Build Electron app
+        working-directory: locaNext
+        run: npm run build:win
+
+      - name: List build output
+        run: ls -la locaNext/dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: locanext-windows
+          path: |
+            locaNext/dist/*.exe
+            locaNext/dist/latest.yml
+
+  # ============================================
+  # JOB 3: Deploy to Update Server (Optional)
+  # ============================================
+  deploy:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: locanext-windows
+          path: ./dist
+
+      - name: List artifacts
+        run: ls -la ./dist/
+
+      # Uncomment when update server is ready:
+      # - name: Deploy to update server
+      #   run: |
+      #     scp ./dist/*.exe user@server:/var/www/updates/
+      #     scp ./dist/latest.yml user@server:/var/www/updates/
