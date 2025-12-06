@@ -1,6 +1,72 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512061200 | **Updated**: 2025-12-06 12:00 | **Status**: 🔧 DASHBOARD ENHANCEMENT IN PROGRESS
+**Version**: 2512061630 | **Updated**: 2025-12-06 16:30 | **Status**: 🚨 MONOLITH MIGRATION AUDIT
+
+---
+
+## 🚨 CRITICAL PRINCIPLE: MONOLITH CODE MIGRATION
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    ⚠️  ABSOLUTE CRITICAL REQUIREMENT  ⚠️                       ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   THE ORIGIN MONOLITH CODE MUST BE PERFECTLY AND IDENTICALLY MIGRATED        ║
+║   INTO THE SOURCE TREE CODE.                                                  ║
+║                                                                               ║
+║   • The monolith scripts are FLAWLESS - they work perfectly                   ║
+║   • ANY deviation from monolith logic = BUG in our implementation             ║
+║   • When in doubt, COPY THE ORIGINAL CODE EXACTLY                             ║
+║   • Only change UI code (tkinter → API), NEVER change core logic              ║
+║                                                                               ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   MONOLITH SOURCES (RessourcesForCodingTheProject/):                          ║
+║   ├── XLSTransfer0225.py      → server/tools/xlstransfer/                     ║
+║   ├── KRSIMILAR0124.py        → server/tools/kr_similar/                      ║
+║   ├── QuickSearch0818.py      → server/tools/quicksearch/                     ║
+║   └── (Future tools...)       → server/tools/{tool_name}/                     ║
+║                                                                               ║
+║   📋 AUDIT DOC: docs/MONOLITH_DEVIATIONS.md                                   ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### 🔴 CURRENT MONOLITH MIGRATION STATUS (Audited 2025-12-06)
+
+| Tool | Migration | Critical Issues |
+|------|-----------|-----------------|
+| XLSTransfer | 95% ✅ | Simple Excel Transfer NOT IMPLEMENTED |
+| KR Similar | 70% ⚠️ | Triangle fallback missing, skip-self logic wrong |
+| QuickSearch | 80% ⚠️ | Exception handling, ref search dedup |
+
+### 🎯 P15: MONOLITH MIGRATION COMPLETION (NEW TOP PRIORITY)
+
+```
+P15: Complete Monolith Migration
+├── P15.1: KR Similar Fixes (CRITICAL)
+│   ├── [ ] Triangle marker fallback (searcher.py:294-320)
+│   ├── [ ] Skip-self logic with mask (searcher.py:175-176)
+│   ├── [ ] Extract output format (9-col TSV)
+│   ├── [ ] Deduplication on 5 fields
+│   └── [ ] File output in extract
+│
+├── P15.2: XLSTransfer Fixes (CRITICAL)
+│   ├── [ ] Implement Simple Excel Transfer (simple_transfer.py)
+│   └── [ ] Fix newline counting (only literal \n)
+│
+├── P15.3: QuickSearch Fixes (HIGH)
+│   ├── [✅] Exception returns 6 values (FIXED 2025-12-06)
+│   ├── [✅] on_bad_lines='skip' (FIXED 2025-12-06)
+│   ├── [ ] Exception handling (return [] not crash)
+│   ├── [ ] Remove ref search deduplication
+│   └── [ ] File parsing continue on error
+│
+└── P15.4: Validation
+    ├── [ ] Test each tool against monolith with same input files
+    ├── [ ] Compare output byte-for-byte where applicable
+    └── [ ] Document any INTENTIONAL deviations (API format only)
+```
 
 ---
 

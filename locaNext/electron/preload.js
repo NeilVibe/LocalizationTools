@@ -59,6 +59,20 @@ contextBridge.exposeInMainWorld('electron', {
   selectFiles: (options) => ipcRenderer.invoke('select-files', options),
 
   /**
+   * Open folder dialog
+   * @param {object} options - { title }
+   * @returns {Promise<string|null>} - Folder path or null if cancelled
+   */
+  selectFolder: (options) => ipcRenderer.invoke('select-folder', options),
+
+  /**
+   * Collect files from folder recursively
+   * @param {object} params - { folderPath, extensions }
+   * @returns {Promise<{success, files: [{path, name, content (base64)}], error}>}
+   */
+  collectFolderFiles: (params) => ipcRenderer.invoke('collect-folder-files', params),
+
+  /**
    * Show item in file explorer
    * @param {string} filePath - Full path to file
    * @returns {Promise<void>}
@@ -194,7 +208,19 @@ contextBridge.exposeInMainWorld('electronHealth', {
    * Get app info (version, paths, etc.)
    * @returns {Promise<object>}
    */
-  getAppInfo: () => ipcRenderer.invoke('get-app-info')
+  getAppInfo: () => ipcRenderer.invoke('get-app-info'),
+
+  /**
+   * Toggle DevTools (for dev/debug access)
+   * @returns {Promise<{success, opened, error}>}
+   */
+  toggleDevTools: () => ipcRenderer.invoke('toggle-dev-tools'),
+
+  /**
+   * Check if DevTools is open
+   * @returns {Promise<{success, opened}>}
+   */
+  isDevToolsOpen: () => ipcRenderer.invoke('is-dev-tools-open')
 });
 
 // Expose telemetry API (P12.5.7)

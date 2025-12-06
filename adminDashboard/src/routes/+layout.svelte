@@ -3,6 +3,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
   import { websocket } from '$lib/api/websocket.js';
+  import adminAPI from '$lib/api/client.js';
   import { Dashboard, UserMultiple, Activity, ChartLine, Trophy, Search, Logout, WatsonHealthStackedScrolling_1 as Telemetry, DataBase, Meter } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
 
@@ -23,9 +24,39 @@
   let wsConnected = false;
   let unsubscribeConnected;
   let unsubscribeDisconnected;
+  let isAuthenticated = false;
+
+  // Auto-login for internal admin dashboard
+  async function ensureAuthenticated() {
+    // Check if we already have a valid token
+    const existingToken = localStorage.getItem('admin_token');
+    if (existingToken) {
+      try {
+        await adminAPI.getCurrentUser();
+        isAuthenticated = true;
+        logger.success("Using existing admin token");
+        return;
+      } catch (e) {
+        // Token invalid, try to login
+        logger.warning("Existing token invalid, re-authenticating");
+      }
+    }
+
+    // Auto-login with default admin credentials (internal use only)
+    try {
+      await adminAPI.login('admin', 'admin123');
+      isAuthenticated = true;
+      logger.success("Auto-authenticated as admin");
+    } catch (e) {
+      logger.error("Auto-login failed - admin user may not exist", e.message);
+    }
+  }
 
   onMount(() => {
     logger.component("AdminLayout", "mounted");
+
+    // Ensure we're authenticated for admin operations
+    ensureAuthenticated();
 
     // Monitor WebSocket connection status
     logger.info("Setting up WebSocket connection monitoring");

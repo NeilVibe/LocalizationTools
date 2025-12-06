@@ -32,6 +32,10 @@ class AdminAPIClient {
   }
 
   getHeaders() {
+    // Always reload token from localStorage before making requests
+    // This ensures we pick up tokens set by login or other sources
+    this.loadToken();
+
     const headers = { 'Content-Type': 'application/json' };
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
