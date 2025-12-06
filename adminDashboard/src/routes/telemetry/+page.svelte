@@ -11,11 +11,12 @@
     UserMultiple,
     ChartLine,
     Debug,
-    StatusPartialFail,
+    WarningAlt,
     Renew
   } from 'carbon-icons-svelte';
 
   export const data = {};
+  export let params = undefined;
 
   let loading = true;
   let activeTab = 'overview';
@@ -191,7 +192,7 @@
           <div class="quick-stat-label">Today's Logs</div>
         </div>
         <div class="quick-stat" class:warning={overview?.errors_24h > 0}>
-          <StatusPartialFail size={24} />
+          <WarningAlt size={24} />
           <div class="quick-stat-value">{overview?.errors_24h || 0}</div>
           <div class="quick-stat-label">Errors (24h)</div>
         </div>

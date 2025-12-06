@@ -5,6 +5,7 @@
   import { Apps, Function as FunctionIcon, ChartLine, User, Trophy, Activity, UserMultiple, Language } from 'carbon-icons-svelte';
 
   export const data = {};
+  export let params = undefined;
 
   let loading = true;
   let selectedPeriod = 'monthly';
@@ -65,7 +66,7 @@
   }
 
   function getTotalOps() {
-    return appRankings.reduce((sum, app) => sum + (app.total_operations || 0), 0);
+    return appRankings.reduce((sum, app) => sum + (app.usage_count || 0), 0);
   }
 
   function getMedalIcon(rank) {
@@ -125,8 +126,8 @@
       <!-- Most Used App -->
       <ExpandableCard
         icon={Apps}
-        stat={appRankings[0]?.tool_name || 'N/A'}
-        label="Most Used App ({appRankings[0]?.total_operations || 0} ops)"
+        stat={appRankings[0]?.app_name || 'N/A'}
+        label="Most Used App ({appRankings[0]?.usage_count || 0} ops)"
         highlight={true}
         expanded={true}
       >
@@ -134,8 +135,8 @@
           {#each appRankings.slice(0, 5) as app, i}
             <div class="ranking-item">
               <span class="rank-badge">{i + 1}</span>
-              <span class="ranking-name">{app.tool_name}</span>
-              <span class="ranking-value">{app.total_operations} ops</span>
+              <span class="ranking-name">{app.app_name}</span>
+              <span class="ranking-value">{app.usage_count} ops</span>
               <span class="medal">{getMedalIcon(i + 1)}</span>
             </div>
           {/each}
@@ -173,10 +174,10 @@
           {#each appRankings as app, i}
             <div class="ranking-item">
               <span class="rank-badge">{i + 1}</span>
-              <span class="ranking-name">{app.tool_name}</span>
-              <span class="ranking-value">{app.total_operations} ops</span>
+              <span class="ranking-name">{app.app_name}</span>
+              <span class="ranking-value">{app.usage_count} ops</span>
               <div class="usage-bar">
-                <div class="usage-bar-fill" style="width: {app.total_operations / appRankings[0]?.total_operations * 100}%"></div>
+                <div class="usage-bar-fill" style="width: {app.usage_count / appRankings[0]?.usage_count * 100}%"></div>
               </div>
             </div>
           {/each}

@@ -6,6 +6,7 @@
 
   let terminalEl;
   let autoScroll = true;
+  let expandedLogs = {};
 
   $: if (terminalEl && autoScroll && logs.length > 0) {
     setTimeout(() => {
@@ -14,22 +15,55 @@
   }
 
   function getLogClass(log) {
-    if (log.status === 'error' || log.error_message) return 'log-error';
-    if (log.status === 'success') return 'log-success';
-    if (log.status === 'warning') return 'log-warning';
+    if (log.status === 'error' || log.error_message || log.level === 'ERROR') return 'log-error';
+    if (log.status === 'success' || log.level === 'SUCCESS') return 'log-success';
+    if (log.status === 'warning' || log.level === 'WARNING') return 'log-warning';
     return 'log-info';
   }
 
   function getLogIcon(log) {
-    if (log.status === 'error' || log.error_message) return '✗';
-    if (log.status === 'success') return '✓';
-    if (log.status === 'warning') return '⚠';
+    if (log.status === 'error' || log.error_message || log.level === 'ERROR') return '✗';
+    if (log.status === 'success' || log.level === 'SUCCESS') return '✓';
+    if (log.status === 'warning' || log.level === 'WARNING') return '⚠';
     return '›';
   }
 
   function formatTimestamp(timestamp) {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function hasDetails(log) {
+    return log.file_info || log.parameters || (log.message && log.tool_name !== 'SERVER');
+  }
+
+  function toggleExpand(index) {
+    expandedLogs[index] = !expandedLogs[index];
+    expandedLogs = { ...expandedLogs };
+  }
+
+  function formatFileInfo(fileInfo) {
+    if (!fileInfo) return null;
+    if (typeof fileInfo === 'string') {
+      try {
+        return JSON.parse(fileInfo);
+      } catch {
+        return { path: fileInfo };
+      }
+    }
+    return fileInfo;
+  }
+
+  function formatParameters(params) {
+    if (!params) return null;
+    if (typeof params === 'string') {
+      try {
+        return JSON.parse(params);
+      } catch {
+        return { value: params };
+      }
+    }
+    return params;
   }
 </script>
 
@@ -56,18 +90,97 @@
     {:else}
       {#each logs as log, i}
         <div class="terminal-line {getLogClass(log)}">
-          <span class="log-timestamp">[{formatTimestamp(log.timestamp)}]</span>
-          <span class="log-icon">{getLogIcon(log)}</span>
-          <span class="log-app">{log.tool_name || 'SYSTEM'}</span>
-          <span class="log-separator">→</span>
-          <span class="log-function">{log.function_name || 'unknown'}</span>
-          <span class="log-user">({log.username})</span>
-          {#if log.duration_seconds}
-            <span class="log-duration">{log.duration_seconds.toFixed(2)}s</span>
+          <div class="log-main" on:click={() => hasDetails(log) && toggleExpand(i)} on:keydown={(e) => e.key === 'Enter' && hasDetails(log) && toggleExpand(i)} role={hasDetails(log) ? 'button' : 'listitem'} tabindex={hasDetails(log) ? 0 : -1} class:expandable={hasDetails(log)}>
+            <span class="log-timestamp">[{formatTimestamp(log.timestamp)}]</span>
+            <span class="log-icon">{getLogIcon(log)}</span>
+            {#if log.level}
+              <span class="log-level log-level-{log.level?.toLowerCase()}">{log.level}</span>
+            {/if}
+            <span class="log-app">{log.tool_name || 'SYSTEM'}</span>
+            <span class="log-separator">→</span>
+            <span class="log-function">{log.function_name || 'unknown'}</span>
+            <span class="log-user">({log.username})</span>
+            {#if log.duration_seconds}
+              <span class="log-duration">{log.duration_seconds.toFixed(2)}s</span>
+            {/if}
+            {#if hasDetails(log)}
+              <span class="expand-indicator">{expandedLogs[i] ? '▼' : '▶'}</span>
+            {/if}
+          </div>
+
+          <!-- Message display (always shown for server logs) -->
+          {#if log.message && log.tool_name === 'SERVER'}
+            <div class="log-message">
+              <span class="tree-char">│</span>
+              <span class="message-text">{log.message}</span>
+            </div>
           {/if}
+
+          <!-- Error display -->
           {#if log.error_message}
             <div class="log-error-detail">
-              └─ Error: {log.error_message}
+              <span class="tree-char">└─</span>
+              <span class="error-label">Error:</span>
+              <span class="error-text">{log.error_message}</span>
+            </div>
+          {/if}
+
+          <!-- Expandable details tree -->
+          {#if expandedLogs[i] && hasDetails(log)}
+            <div class="log-details">
+              {#if log.message && log.tool_name !== 'SERVER'}
+                <div class="detail-line">
+                  <span class="tree-char">├─</span>
+                  <span class="detail-label">Message:</span>
+                  <span class="detail-value">{log.message}</span>
+                </div>
+              {/if}
+              {#if log.file_info}
+                {@const fileInfo = formatFileInfo(log.file_info)}
+                <div class="detail-line">
+                  <span class="tree-char">├─</span>
+                  <span class="detail-label">File:</span>
+                </div>
+                {#if fileInfo}
+                  {#each Object.entries(fileInfo) as [key, value], idx}
+                    <div class="detail-line detail-nested">
+                      <span class="tree-char">{idx === Object.entries(fileInfo).length - 1 ? '│  └─' : '│  ├─'}</span>
+                      <span class="detail-key">{key}:</span>
+                      <span class="detail-value">{value}</span>
+                    </div>
+                  {/each}
+                {/if}
+              {/if}
+              {#if log.parameters}
+                {@const params = formatParameters(log.parameters)}
+                <div class="detail-line">
+                  <span class="tree-char">{log.session_id || log.machine_id ? '├─' : '└─'}</span>
+                  <span class="detail-label">Parameters:</span>
+                </div>
+                {#if params}
+                  {#each Object.entries(params) as [key, value], idx}
+                    <div class="detail-line detail-nested">
+                      <span class="tree-char">{idx === Object.entries(params).length - 1 ? '│  └─' : '│  ├─'}</span>
+                      <span class="detail-key">{key}:</span>
+                      <span class="detail-value">{typeof value === 'object' ? JSON.stringify(value) : value}</span>
+                    </div>
+                  {/each}
+                {/if}
+              {/if}
+              {#if log.session_id}
+                <div class="detail-line">
+                  <span class="tree-char">{log.machine_id ? '├─' : '└─'}</span>
+                  <span class="detail-label">Session:</span>
+                  <span class="detail-value detail-id">{log.session_id}</span>
+                </div>
+              {/if}
+              {#if log.machine_id}
+                <div class="detail-line">
+                  <span class="tree-char">└─</span>
+                  <span class="detail-label">Machine:</span>
+                  <span class="detail-value detail-id">{log.machine_id}</span>
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
@@ -177,10 +290,30 @@
   }
 
   .terminal-line {
-    padding: 2px 0;
+    padding: 4px 0;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .terminal-line:hover {
+    background: rgba(255,255,255,0.02);
+  }
+
+  .log-main {
     display: flex;
     gap: 8px;
     align-items: baseline;
+    padding: 2px 0;
+  }
+
+  .log-main.expandable {
+    cursor: pointer;
+  }
+
+  .log-main.expandable:hover {
+    background: rgba(69, 137, 255, 0.1);
+    border-radius: 2px;
   }
 
   .log-timestamp {
@@ -192,6 +325,22 @@
     min-width: 16px;
     font-weight: 700;
   }
+
+  .log-level {
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    min-width: 50px;
+    text-align: center;
+  }
+
+  .log-level-info { background: rgba(69, 137, 255, 0.2); color: #78a9ff; }
+  .log-level-success { background: rgba(66, 190, 101, 0.2); color: #42be65; }
+  .log-level-warning { background: rgba(241, 194, 27, 0.2); color: #f1c21b; }
+  .log-level-error { background: rgba(255, 131, 137, 0.2); color: #ff8389; }
+  .log-level-critical { background: rgba(218, 30, 40, 0.3); color: #fa4d56; }
 
   .log-app {
     color: #78a9ff;
@@ -220,8 +369,14 @@
     font-size: 0.75rem;
   }
 
+  .expand-indicator {
+    color: #6f6f6f;
+    font-size: 0.7rem;
+    margin-left: 8px;
+  }
+
   .log-error {
-    background: rgba(218, 30, 40, 0.1);
+    background: rgba(218, 30, 40, 0.08);
   }
 
   .log-error .log-icon {
@@ -240,10 +395,87 @@
     color: #4589ff;
   }
 
+  /* Tree structure elements */
+  .tree-char {
+    color: #525252;
+    font-family: monospace;
+    min-width: 24px;
+  }
+
+  .log-message {
+    padding-left: 99px;
+    display: flex;
+    gap: 8px;
+    margin-top: 2px;
+  }
+
+  .message-text {
+    color: #a8a8a8;
+    font-size: 0.8rem;
+    word-break: break-word;
+  }
+
   .log-error-detail {
     padding-left: 99px;
-    color: #ff8389;
-    font-size: 0.75rem;
+    display: flex;
+    gap: 8px;
     margin-top: 2px;
+  }
+
+  .error-label {
+    color: #ff8389;
+    font-weight: 600;
+    font-size: 0.75rem;
+  }
+
+  .error-text {
+    color: #ffb3b8;
+    font-size: 0.75rem;
+    word-break: break-word;
+  }
+
+  .log-details {
+    padding-left: 99px;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-left: 2px solid #303030;
+    margin-left: 103px;
+    padding-left: 12px;
+  }
+
+  .detail-line {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    padding: 1px 0;
+  }
+
+  .detail-nested {
+    padding-left: 16px;
+  }
+
+  .detail-label {
+    color: #78a9ff;
+    font-size: 0.75rem;
+    font-weight: 500;
+    min-width: 70px;
+  }
+
+  .detail-key {
+    color: #a8a8a8;
+    font-size: 0.7rem;
+    min-width: 80px;
+  }
+
+  .detail-value {
+    color: #c6c6c6;
+    font-size: 0.75rem;
+    word-break: break-all;
+  }
+
+  .detail-id {
+    color: #6f6f6f;
+    font-family: monospace;
+    font-size: 0.7rem;
   }
 </style>
