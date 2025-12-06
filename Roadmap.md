@@ -64,7 +64,7 @@ P15: Monolith Migration ✅ ALL P1-P4 COMPLETE (11/11)
 
 ---
 
-## 📋 P16: QuickSearch QA Tools (Glossary Checker) - PLANNED
+## ✅ P16: QuickSearch QA Tools (Glossary Checker) - BACKEND COMPLETE
 
 ```
 ╔═══════════════════════════════════════════════════════════════════════════════╗
@@ -72,7 +72,7 @@ P15: Monolith Migration ✅ ALL P1-P4 COMPLETE (11/11)
 ║                    (Glossary Checker Tab from Monolith)                        ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
 ║                                                                               ║
-║   STATUS: PLANNED │ Priority: Medium │ Monolith: QuickSearch0818.py          ║
+║   STATUS: P16.1 COMPLETE │ P16.2 PENDING │ Monolith: QuickSearch0818.py      ║
 ║                                                                               ║
 ║   Current QuickSearch (✅ DONE):                                              ║
 ║   ├── Create/Load/List Dictionary                                             ║
@@ -80,50 +80,55 @@ P15: Monolith Migration ✅ ALL P1-P4 COMPLETE (11/11)
 ║   ├── Reference Dictionary Compare                                            ║
 ║   └── XML + TXT/TSV file support                                              ║
 ║                                                                               ║
-║   NEW QA Tools Tab (📋 TO IMPLEMENT):                                         ║
-║   ├── 📝 Extract Glossary    ─ Build glossary from files                      ║
-║   ├── ✓  Line Check          ─ Validate lines against glossary               ║
-║   ├── 🔎 Term Check          ─ Find specific term usage                       ║
-║   ├── 📏 Character Count     ─ XML LocStr length validation                   ║
-║   └── 🔢 Pattern Sequence    ─ XML pattern consistency check                  ║
+║   QA Tools Backend (✅ COMPLETE - 5 endpoints + 27 tests):                    ║
+║   ├── 📝 Extract Glossary    ─ Build glossary with Aho-Corasick               ║
+║   ├── ✓  Line Check          ─ Find inconsistent translations                 ║
+║   ├── 🔎 Term Check          ─ Find missing term translations                 ║
+║   ├── 📏 Character Count     ─ Special char count validation (BDO/BDM)        ║
+║   └── 🔢 Pattern Sequence    ─ {code} pattern consistency check               ║
+║                                                                               ║
+║   QA Tools Frontend (📋 PENDING):                                             ║
+║   └── Add "QA Tools" tab to QuickSearch.svelte                                ║
 ║                                                                               ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-### P16.1: Backend API Implementation (5 endpoints)
+### ✅ P16.1: Backend API Implementation (5 endpoints) - COMPLETE
 
 ```
-P16.1: QA Tools Backend
+P16.1: QA Tools Backend ✅ COMPLETE (2025-12-06)
 │
-├── [ ] Extract Glossary API
+├── [✅] Extract Glossary API
 │   ├── POST /api/v2/quicksearch/qa/extract-glossary
-│   ├── Input: files[], filter_sentences, glossary_length_threshold
-│   ├── Output: glossary terms list (Korean → French pairs)
-│   └── Monolith: lines 2152-2345
+│   ├── Input: files[], filter_sentences, glossary_length_threshold, min_occurrence, sort_method
+│   ├── Output: glossary terms list with occurrence counts
+│   └── Implementation: server/tools/quicksearch/qa_tools.py:extract_glossary
 │
-├── [ ] Line Check API
+├── [✅] Line Check API
 │   ├── POST /api/v2/quicksearch/qa/line-check
-│   ├── Input: files[], glossary (or build from files)
-│   ├── Output: mismatched lines with suggestions
-│   └── Monolith: lines 2347-2584
+│   ├── Input: files[], glossary_files (optional), filter_sentences, glossary_length_threshold
+│   ├── Output: inconsistent translations (same source, different translations)
+│   └── Implementation: server/tools/quicksearch/qa_tools.py:line_check
 │
-├── [ ] Term Check API
+├── [✅] Term Check API
 │   ├── POST /api/v2/quicksearch/qa/term-check
-│   ├── Input: files[], terms[], min_occurrence
-│   ├── Output: term usage report
-│   └── Monolith: lines 2586-2906
+│   ├── Input: files[], glossary_files (optional), filter_sentences, max_issues_per_term
+│   ├── Output: terms found in source but missing from translation
+│   └── Implementation: server/tools/quicksearch/qa_tools.py:term_check
 │
-├── [ ] Character Count Check API
+├── [✅] Character Count Check API
 │   ├── POST /api/v2/quicksearch/qa/character-count
-│   ├── Input: xml_files[]
-│   ├── Output: entries exceeding limits
-│   └── Monolith: lines 2908-3100+
+│   ├── Input: files[], symbol_set (BDO/BDM), custom_symbols
+│   ├── Output: entries with mismatched special char counts
+│   └── Implementation: server/tools/quicksearch/qa_tools.py:character_count_check
 │
-└── [ ] Pattern Sequence Check API
+└── [✅] Pattern Sequence Check API
     ├── POST /api/v2/quicksearch/qa/pattern-check
-    ├── Input: xml_files[]
-    ├── Output: pattern mismatches
-    └── Monolith: embedded in glossary_checker_tab
+    ├── Input: files[]
+    ├── Output: entries with mismatched {code} patterns
+    └── Implementation: server/tools/quicksearch/qa_tools.py:pattern_sequence_check
+
+Tests: tests/unit/test_quicksearch_qa_tools.py (27 tests, 100% pass)
 ```
 
 ### P16.2: Frontend UI Implementation
