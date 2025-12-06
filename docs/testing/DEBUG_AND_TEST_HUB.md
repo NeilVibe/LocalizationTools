@@ -58,6 +58,119 @@ WSL Access: /mnt/d/LocaNext
 
 ---
 
+## 🚨 CRITICAL: CLEANUP PROTOCOL (BEFORE EACH TEST RUN)
+
+**ALWAYS kill test processes BEFORE launching new ones. Port conflicts = failures.**
+
+### Kill LocaNext (Windows) - REQUIRED before each test:
+```bash
+# USE FULL PATH - tasklist.exe alone may fail silently!
+/mnt/c/Windows/System32/taskkill.exe /F /IM "LocaNext.exe" /T
+
+# Verify CLEAN
+/mnt/c/Windows/System32/tasklist.exe | grep -i "loca" || echo "CLEAN"
+```
+
+### DO NOT KILL:
+```
+❌ Gitea - needed for git push/commit
+❌ Other user processes
+```
+
+### Kill Backend (WSL):
+```bash
+fuser -k 8888/tcp 2>/dev/null || true
+```
+
+### Verification:
+```bash
+# Check all clear
+/mnt/c/Windows/System32/tasklist.exe | grep -i loca   # Should be empty
+curl -s http://localhost:8888/health                   # Should fail (no server)
+curl -s http://localhost:3000/                         # Gitea should respond 200
+```
+
+### Known Hallucination Traps:
+1. **`tasklist.exe` without full path may return empty** - ALWAYS use `/mnt/c/Windows/System32/tasklist.exe`
+2. **"No process found" doesn't mean clean** - verify with full path
+3. **Multiple LocaNext instances accumulate** - each test run adds more if not killed
+
+---
+
+## 🎯 SINGLE-INSTANCE TESTING PROTOCOL (CRITICAL!)
+
+**ROOT CAUSE OF MULTIPLE WINDOWS**: Each bash command with `./LocaNext.exe &` spawns a NEW window.
+
+```
+⚠️ NEVER DO THIS:
+═══════════════════════════════════════════════════════════════
+# Each of these spawns a NEW instance!
+./LocaNext.exe &          # Instance 1
+sleep 5
+./LocaNext.exe &          # Instance 2 (BAD!)
+curl ...
+./LocaNext.exe &          # Instance 3 (WORSE!)
+```
+
+```
+✅ CORRECT APPROACH:
+═══════════════════════════════════════════════════════════════
+STEP 1: Clean slate
+├── Kill ALL existing instances
+├── /mnt/c/Windows/System32/taskkill.exe /F /IM "LocaNext.exe" /T
+└── Verify: /mnt/c/Windows/System32/tasklist.exe | grep -i loca
+
+STEP 2: Launch ONE instance
+├── cd /mnt/d/LocaNext && ./LocaNext.exe --remote-debugging-port=9222 &
+├── Wait 40 seconds for full startup
+└── NEVER launch again until code changes!
+
+STEP 3: Run ALL tests against that ONE instance
+├── Use curl/CDP/API tests - they don't spawn new windows
+├── Use pytest - runs against server, no new windows
+├── Use Node.js scripts - connects to existing CDP
+└── Reuse same instance for hours if needed
+
+STEP 4: Only restart when:
+├── Code changes need testing
+├── App crashes or freezes
+├── Configuration changes
+└── NOT for each new test!
+```
+
+### Commands That SPAWN New Windows (AVOID!):
+```bash
+./LocaNext.exe &              # ❌ Spawns new window
+/mnt/d/LocaNext/LocaNext.exe  # ❌ Spawns new window
+```
+
+### Commands That DON'T Spawn Windows (SAFE):
+```bash
+curl http://localhost:8888/health           # ✅ API call only
+curl http://localhost:9222/json             # ✅ CDP check only
+node test_script.js                         # ✅ Connects to existing CDP
+python3 -m pytest -v                        # ✅ Runs tests against server
+/mnt/c/Windows/System32/tasklist.exe        # ✅ Just checks processes
+```
+
+### Testing Flow:
+```
+[INIT] Kill all → Launch ONE → Wait 40s
+                      ↓
+              [TEST LOOP]
+              ↓        ↓
+         curl tests   CDP tests   pytest
+              ↓        ↓           ↓
+              └────────┴───────────┘
+                      ↓
+              [REPEAT TESTS]
+              (same instance)
+                      ↓
+         [ONLY RESTART IF CODE CHANGED]
+```
+
+---
+
 ## 🗺️ CAPABILITIES TREE (What Claude Can Do)
 
 ```
@@ -332,4 +445,4 @@ use: {
 
 ---
 
-*Last updated: 2025-12-05*
+*Last updated: 2025-12-06 - Added SINGLE-INSTANCE TESTING PROTOCOL*
