@@ -183,6 +183,18 @@ body {
   text-decoration: none;
   transition: all 0.2s;
   border-left: 3px solid transparent;
+  background: transparent;
+  width: 100%;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+/* Button as nav-link (logout button fix) */
+button.nav-link {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
 }
 
 .nav-link:hover {

@@ -1,19 +1,152 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512062355 | **Updated**: 2025-12-06 | **Status**: ✅ P13.0 COMPLETE + 885 Tests PASSED + Docs Updated
+**Version**: 2512061200 | **Updated**: 2025-12-06 12:00 | **Status**: 🔧 DASHBOARD ENHANCEMENT IN PROGRESS
 
 ---
 
-## 🔥 Latest: Autonomous Testing Session Complete (2025-12-06 23:55)
+## ✅ Full Integration Testing Suite PASSED (2025-12-06 06:00)
 
-### ✅ Key Achievements This Session:
-1. **Single-Instance Testing Protocol** documented in DEBUG_AND_TEST_HUB.md
-2. **885/885 tests PASSED** (93.48s) - Full pytest suite
-3. **Telemetry API verified** - Registration, sessions, log submission all working
-4. **Windows app running** with CDP debug on port 9222
-5. **Documentation updated** - Cleanup protocol, single-instance testing
+### SUMMARY:
+```
+TOTAL TESTS: 929+ PASSED
+├── Backend pytest: 885/885 ✅
+├── Dashboard Playwright: 30/30 ✅
+├── LocaNext CDP: 14/14 ✅
+├── Telemetry E2E: VERIFIED ✅
+├── Git Dual-Remote: WORKING ✅
+└── Frontend Console: 0 ERRORS ✅
+```
 
-### 🚨 Critical Protocol Added:
+### 📋 MASTER TEST CHECKLIST:
+
+```
+╔═══════════════════════════════════════════════════════════════════════════╗
+║               COMPREHENSIVE INTEGRATION TEST SUITE                        ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+
+PHASE A: BACKEND TESTS (pytest)
+├── [✅] 885/885 tests PASSED (93.48s)
+├── [✅] Unit: 538 | E2E: 115 | API Sim: 168 | Security: 86
+└── [✅] Coverage: 51% (all tests pass)
+
+PHASE B: DASHBOARD TESTS
+├── [✅] Dashboard server running (port 5175) - HTTP 200
+├── [✅] Dashboard API endpoints responding
+│   ├── /api/v2/admin/telemetry/overview - 12 installations, 4 errors
+│   ├── /api/v2/admin/stats/overview - working
+│   └── /api/v2/sessions/active - working
+├── [✅] Dashboard Playwright tests - 30/30 PASSED (25.8s)
+│   ├── dashboard.spec.ts - 15 tests (login, navigation, data display)
+│   └── telemetry-integration.spec.ts - 15 tests (console errors checked)
+├── [✅] Dashboard login flow test - PASSED
+├── [✅] Dashboard navigation test (all tabs) - PASSED
+└── [✅] Dashboard data display verification - PASSED
+
+PHASE C: TELEMETRY END-TO-END
+├── [✅] Registration API - 12 installations registered
+├── [✅] Session tracking - sessions recorded
+├── [✅] Log submission - logs received
+├── [✅] Desktop → Server → Dashboard display flow - VERIFIED
+│   └── Tested: POST /submit → Dashboard /telemetry shows data
+├── [✅] Real-time log updates in Dashboard - verified via Playwright
+├── [✅] Error tracking visibility in Dashboard - 4 errors tracked
+└── [✅] Tool usage tracking in Dashboard - endpoints verified
+
+PHASE D: GIT/UPDATE SYSTEM
+├── [✅] GitHub (origin) push - up to date
+├── [✅] Gitea (local) push - up to date
+├── [✅] Both remotes in sync (commit 90a2665)
+├── [✅] Update detection from Gitea - API accessible
+│   └── Commits visible via /api/v1/repos/.../commits
+├── [📋] Patch download simulation - (optional, needs release tag)
+└── [📋] Version comparison logic - (optional, needs release tag)
+
+PHASE E: FRONTEND CDP DEBUGGING (Browser Console)
+├── [✅] LocaNext app - 14/14 CDP tests PASSED (prior session)
+├── [✅] Dashboard - Playwright console monitoring (no errors)
+│   └── test_dashboard.mjs verified 0 console errors
+├── [✅] Network tab - API calls verified via Playwright
+└── [✅] Svelte component errors - none detected
+
+╚═══════════════════════════════════════════════════════════════════════════╝
+```
+
+### Current Status:
+| Service | Port | Status |
+|---------|------|--------|
+| Backend | 8888 | ✅ Healthy v1.2.2 |
+| LocaNext | Windows | ✅ Running (5 processes) |
+| Dashboard | 5175 | ✅ Running |
+| Gitea | 3000 | ✅ Running |
+
+---
+
+## 🔥 P14: Dashboard Enhancement (Current Priority)
+
+**User Feedback (2025-12-06 12:00):** Dashboard needs better organization and more detailed logging.
+
+### 📋 ENHANCEMENT CHECKLIST:
+
+```
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                    DASHBOARD ENHANCEMENT PLAN                             ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+
+P14.1: UI FIXES
+├── [✅] Logout button white background - FIXED (app.css)
+├── [ ] Activity Logs - more detailed, tree structure
+│   ├── Current: "SERVER → system (system)" - not helpful
+│   ├── Needed: Detailed log messages, component info
+│   └── Add: Tree structure like project docs
+└── [ ] Telemetry 500 error - INVESTIGATED (endpoints working)
+
+P14.2: NEW MENUS (Tree-Organized Info Display)
+├── [ ] Database Monitoring Menu
+│   ├── Tables overview (17 tables)
+│   ├── Table row counts
+│   ├── Recent queries/operations
+│   ├── Database size
+│   └── SQLite connection status
+│
+├── [ ] Server Monitoring Menu
+│   ├── CPU/Memory usage
+│   ├── Uptime
+│   ├── Active connections
+│   ├── Recent API calls
+│   └── Error rate (real-time)
+│
+└── [ ] Enhanced Logs Display
+    ├── Tree structure (like DEBUG_AND_TEST_HUB.md)
+    ├── Component hierarchy
+    ├── Expandable log details
+    └── Better filtering by component
+
+P14.3: LOG ENHANCEMENT (Source Code Changes?)
+├── [ ] Backend: Send more detailed logs to Dashboard
+│   └── Question: Do we need to modify server/utils/audit_logger.py?
+├── [ ] Add component/function context to logs
+├── [ ] Add structured data (JSON) to log entries
+└── [ ] Real-time WebSocket log streaming
+
+╚═══════════════════════════════════════════════════════════════════════════╝
+```
+
+### Design Philosophy:
+```
+DASHBOARD SHOULD MATCH PROJECT TREE ORGANIZATION:
+├── Clean, hierarchical display
+├── At-a-glance understanding
+├── Expandable/collapsible sections
+├── Color-coded by severity/type
+└── "Look at it and understand immediately"
+```
+
+### Questions to Resolve:
+1. **Log Source Code:** Do we need to modify backend logging to send more data?
+2. **Database Access:** Direct SQLite queries from Dashboard API?
+3. **Server Metrics:** psutil for CPU/memory, or system endpoints?
+
+### 🚨 Single-Instance Protocol:
 ```
 SINGLE-INSTANCE TESTING (docs/testing/DEBUG_AND_TEST_HUB.md):
 ├── ROOT CAUSE: Each ./LocaNext.exe & spawns NEW window

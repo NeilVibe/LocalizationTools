@@ -7,6 +7,7 @@
   import { Apps, Function as FunctionIcon, User, Activity, ChartLine } from 'carbon-icons-svelte';
 
   export const data = {};
+  export let params = undefined;
 
   let loading = true;
   let isLive = false;
@@ -65,7 +66,7 @@
   }
 
   function getTotalOps() {
-    return appRankings.reduce((sum, app) => sum + (app.total_operations || 0), 0);
+    return appRankings.reduce((sum, app) => sum + (app.usage_count || 0), 0);
   }
 </script>
 
@@ -124,7 +125,7 @@
       <!-- Top App (Expandable) -->
       <ExpandableCard
         icon={Apps}
-        stat={appRankings[0]?.tool_name || 'N/A'}
+        stat={appRankings[0]?.app_name || 'N/A'}
         label="Most Used App"
         highlight={true}
       >
@@ -132,8 +133,8 @@
           {#each appRankings.slice(0, 3) as app, i}
             <div class="mini-rank-item">
               <span class="mini-rank">{i + 1}</span>
-              <span class="mini-name">{app.tool_name}</span>
-              <span class="mini-value">{app.total_operations} ops</span>
+              <span class="mini-name">{app.app_name}</span>
+              <span class="mini-value">{app.usage_count} ops</span>
             </div>
           {/each}
         </div>

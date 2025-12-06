@@ -67,6 +67,18 @@ xdpyinfo | head -3
 
 ---
 
+## Admin Dashboard Visual Test
+
+```bash
+# Run visual test (7 pages, screenshots, error detection)
+cd adminDashboard && node scripts/visual-test.cjs
+
+# Screenshots saved to:
+ls /tmp/dashboard_*.png
+```
+
+---
+
 ## Screenshots & Recording
 
 ```bash

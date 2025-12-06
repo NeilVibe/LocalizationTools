@@ -4,6 +4,7 @@
   import { UserMultiple, Add, Edit, TrashCan, Password, Checkmark, Close, Renew, Search } from 'carbon-icons-svelte';
 
   export const data = {};
+  export let params = undefined;
 
   let users = [];
   let loading = true;

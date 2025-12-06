@@ -3,18 +3,21 @@
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
   import { websocket } from '$lib/api/websocket.js';
-  import { Dashboard, UserMultiple, Activity, ChartLine, Trophy, Search, Logout, WatsonHealthStackedScrolling_1 as Telemetry } from 'carbon-icons-svelte';
+  import { Dashboard, UserMultiple, Activity, ChartLine, Trophy, Search, Logout, WatsonHealthStackedScrolling_1 as Telemetry, DataBase, Meter } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
 
   // SvelteKit auto-passes these props - declare them to avoid warnings
   export const data = {};
+  export let params = undefined;
 
   const navItems = [
     { href: '/', label: 'Overview', icon: Dashboard },
     { href: '/users', label: 'Users', icon: UserMultiple },
     { href: '/stats', label: 'Stats & Rankings', icon: ChartLine },
     { href: '/telemetry', label: 'Telemetry', icon: Telemetry },
-    { href: '/logs', label: 'Activity Logs', icon: Activity }
+    { href: '/logs', label: 'Activity Logs', icon: Activity },
+    { href: '/database', label: 'Database', icon: DataBase },
+    { href: '/server', label: 'Server', icon: Meter }
   ];
 
   let wsConnected = false;

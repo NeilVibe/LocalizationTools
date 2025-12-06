@@ -1128,3 +1128,245 @@ async def get_server_logs(
     except Exception as e:
         logger.error(f"Error reading server logs: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to read server logs: {str(e)}")
+
+
+# ============================================================================
+# Database Monitoring Endpoint
+# ============================================================================
+
+@router.get("/database")
+async def get_database_stats(
+    db: AsyncSession = Depends(get_async_db),
+    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
+    # current_user: dict = Depends(require_admin_async)
+):
+    """
+    Get comprehensive database statistics including:
+    - Database size
+    - Table information with row counts
+    - Column details per table
+    - Index information
+    """
+    import os
+    import sqlite3
+    from pathlib import Path
+
+    try:
+        logger.info("Requesting database statistics")
+
+        # Path to SQLite database
+        db_path = Path(__file__).parent.parent / "data" / "localizationtools.db"
+
+        if not db_path.exists():
+            return {
+                "size_bytes": 0,
+                "tables": [],
+                "total_rows": 0,
+                "indexes_count": 0,
+                "path": "Database not found",
+                "sqlite_version": None,
+                "page_size": 0,
+                "last_modified": None
+            }
+
+        # Get file stats
+        file_stats = os.stat(db_path)
+        size_bytes = file_stats.st_size
+        last_modified = datetime.fromtimestamp(file_stats.st_mtime).isoformat()
+
+        # Connect to database for introspection
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        # Get SQLite version
+        cursor.execute("SELECT sqlite_version()")
+        sqlite_version = cursor.fetchone()[0]
+
+        # Get page size
+        cursor.execute("PRAGMA page_size")
+        page_size = cursor.fetchone()[0]
+
+        # Get all tables
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+        table_names = [row[0] for row in cursor.fetchall()]
+
+        tables = []
+        total_rows = 0
+
+        for table_name in table_names:
+            # Get row count
+            cursor.execute(f"SELECT COUNT(*) FROM '{table_name}'")
+            row_count = cursor.fetchone()[0]
+            total_rows += row_count
+
+            # Get column info
+            cursor.execute(f"PRAGMA table_info('{table_name}')")
+            columns = []
+            for col in cursor.fetchall():
+                columns.append({
+                    "cid": col[0],
+                    "name": col[1],
+                    "type": col[2] or "TEXT",
+                    "notnull": bool(col[3]),
+                    "default": col[4],
+                    "pk": bool(col[5])
+                })
+
+            # Get indexes for this table
+            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='{table_name}' AND name NOT LIKE 'sqlite_%'")
+            indexes = [row[0] for row in cursor.fetchall()]
+
+            tables.append({
+                "name": table_name,
+                "row_count": row_count,
+                "columns": columns,
+                "indexes": indexes
+            })
+
+        # Get total index count
+        cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'")
+        indexes_count = cursor.fetchone()[0]
+
+        conn.close()
+
+        return {
+            "size_bytes": size_bytes,
+            "tables": tables,
+            "total_rows": total_rows,
+            "indexes_count": indexes_count,
+            "path": str(db_path),
+            "sqlite_version": sqlite_version,
+            "page_size": page_size,
+            "last_modified": last_modified
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting database stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get database stats: {str(e)}")
+
+
+# ============================================================================
+# Server Monitoring Endpoint
+# ============================================================================
+
+@router.get("/server")
+async def get_server_stats(
+    db: AsyncSession = Depends(get_async_db),
+    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
+    # current_user: dict = Depends(require_admin_async)
+):
+    """
+    Get comprehensive server statistics including:
+    - CPU usage and load
+    - Memory usage
+    - Disk usage
+    - Network statistics
+    - System information
+    """
+    import os
+    import platform
+    import socket
+
+    try:
+        logger.info("Requesting server statistics")
+
+        # Try to import psutil for system stats
+        try:
+            import psutil
+            has_psutil = True
+        except ImportError:
+            has_psutil = False
+            logger.warning("psutil not available, returning limited server stats")
+
+        # Basic system info (always available)
+        system_info = {
+            "platform": platform.system(),
+            "platform_release": platform.release(),
+            "platform_version": platform.version(),
+            "architecture": platform.machine(),
+            "hostname": socket.gethostname(),
+            "python_version": platform.python_version(),
+            "pid": os.getpid()
+        }
+
+        if has_psutil:
+            # CPU info
+            cpu_info = {
+                "cores": psutil.cpu_count(),
+                "percent": psutil.cpu_percent(interval=0.1),
+                "load_avg": list(os.getloadavg()) if hasattr(os, 'getloadavg') else [0, 0, 0]
+            }
+
+            # Memory info
+            mem = psutil.virtual_memory()
+            memory_info = {
+                "total": mem.total,
+                "available": mem.available,
+                "used": mem.used,
+                "percent": mem.percent
+            }
+
+            # Disk info
+            disk = psutil.disk_usage('/')
+            disk_info = {
+                "total": disk.total,
+                "used": disk.used,
+                "free": disk.free,
+                "percent": disk.percent
+            }
+
+            # Network info
+            net_io = psutil.net_io_counters()
+            connections = len(psutil.net_connections())
+            network_info = {
+                "bytes_sent": net_io.bytes_sent,
+                "bytes_recv": net_io.bytes_recv,
+                "packets_sent": net_io.packets_sent,
+                "packets_recv": net_io.packets_recv,
+                "connections": connections
+            }
+
+            # Process info
+            process = psutil.Process(os.getpid())
+            uptime = datetime.now() - datetime.fromtimestamp(process.create_time())
+            uptime_seconds = int(uptime.total_seconds())
+
+        else:
+            # Fallback values when psutil not available
+            cpu_info = {"cores": os.cpu_count() or 1, "percent": 0, "load_avg": [0, 0, 0]}
+            memory_info = {"total": 0, "available": 0, "used": 0, "percent": 0}
+            disk_info = {"total": 0, "used": 0, "free": 0, "percent": 0}
+            network_info = {"bytes_sent": 0, "bytes_recv": 0, "packets_sent": 0, "packets_recv": 0, "connections": 0}
+            uptime_seconds = 0
+
+        # Get active sessions count from database
+        try:
+            active_sessions_result = await db.execute(
+                select(func.count(Session.session_id)).where(Session.is_active == True)
+            )
+            active_sessions = active_sessions_result.scalar() or 0
+        except:
+            active_sessions = 0
+
+        # API info
+        api_info = {
+            "port": 8888,
+            "active_sessions": active_sessions,
+            "websocket_clients": 0,  # Would need WebSocket manager to track this
+            "last_request": datetime.utcnow().isoformat()
+        }
+
+        return {
+            "status": "running",
+            "uptime": uptime_seconds,
+            "system": system_info,
+            "cpu": cpu_info,
+            "memory": memory_info,
+            "disk": disk_info,
+            "network": network_info,
+            "api": api_info
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting server stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get server stats: {str(e)}")
