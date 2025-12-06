@@ -226,6 +226,315 @@ PHASE 3: Testing
 
 ---
 
+## 📋 P17: LocaNext LanguageData Manager (CAT Tool) - FUTURE
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    P17: LANGUAGEDATA MANAGER (LD MANAGER)                      ║
+║                    Professional CAT Tool for LocaNext                          ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   VISION: A full-featured Computer-Assisted Translation tool that             ║
+║   combines viewing, editing, searching, and committing changes back           ║
+║   to original language data files.                                            ║
+║                                                                               ║
+║   BASE: QuickSearch + QA Tools (P16) as foundation                            ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### P17.1: Core Features
+
+```
+P17.1: LD Manager Core
+│
+├── 📖 VIEWER MODE
+│   ├── Load TXT (tab-separated) language data files
+│   ├── Load XML (LocStr format) language data files
+│   ├── Display in organized table/grid view
+│   ├── Column sorting, filtering, searching
+│   ├── Syntax highlighting for Korean/Translation
+│   └── Row count, statistics display
+│
+├── ✏️ EDITOR MODE
+│   ├── Click cell to edit content
+│   ├── Track modified cells (highlight changes)
+│   ├── Undo/Redo support
+│   ├── Multi-cell selection
+│   ├── Find & Replace within file
+│   └── Validation warnings (newlines, special chars)
+│
+├── 💾 COMMIT SYSTEM (Key Innovation!)
+│   │
+│   ├── XML Commit Logic:
+│   │   ├── Match by: StrOrigin + StringID
+│   │   ├── Find matching row in target file
+│   │   ├── Update Str attribute with new translation
+│   │   └── Preserve all other attributes
+│   │
+│   ├── TXT Commit Logic:
+│   │   ├── Match by: StringID (col 0) + Index5 (col 5)
+│   │   ├── Find matching row in target file
+│   │   ├── Update translation column (col 6)
+│   │   └── Preserve all other columns
+│   │
+│   ├── Commit Preview:
+│   │   ├── Show diff before commit
+│   │   ├── Highlight rows to be updated
+│   │   ├── Warn about conflicts/mismatches
+│   │   └── Backup original file option
+│   │
+│   └── Commit Execute:
+│       ├── Apply changes to target file
+│       ├── Generate commit report
+│       └── Log all modifications
+│
+└── 🔍 INTEGRATED SEARCH (from QuickSearch)
+    ├── Dictionary search within viewer
+    ├── Reference dictionary comparison
+    ├── Similar string detection (FAISS)
+    └── Quick translation suggestions
+```
+
+### P17.2: Advanced Features
+
+```
+P17.2: LD Manager Advanced
+│
+├── 🧠 AI-POWERED FEATURES (using existing models)
+│   ├── FAISS similarity search within file
+│   ├── Find inconsistent translations
+│   ├── Suggest translations from dictionary
+│   ├── Auto-detect duplicate strings
+│   └── Korean BERT semantic matching
+│
+├── 📋 QA INTEGRATION (from P16)
+│   ├── Glossary Check on current file
+│   ├── Line Check (newline validation)
+│   ├── Term Check (terminology consistency)
+│   ├── Character Count (length validation)
+│   └── Pattern Sequence Check
+│
+├── 📊 ORGANIZATION FEATURES
+│   ├── Filter by: translated/untranslated
+│   ├── Filter by: category/StringID prefix
+│   ├── Group by: similar strings
+│   ├── Sort by: modification date, length, etc.
+│   └── Custom views/presets
+│
+└── 📤 EXPORT OPTIONS
+    ├── Export modified rows only
+    ├── Export as new file
+    ├── Export diff report
+    └── Export to Excel for review
+```
+
+### P17.3: UI Design
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  LocaNext LanguageData Manager                                    [─] [□] [×] ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║  [📂 Open] [💾 Save] [⬆️ Commit] [🔍 Search] [📋 QA Tools] [⚙️ Settings]       ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║  │ StringID     │ Korean (StrOrigin)           │ Translation (Str)         │ ║
+║  ├──────────────┼──────────────────────────────┼───────────────────────────┤ ║
+║  │ ITEM_001     │ 마법의 검                     │ Épée magique              │ ║
+║  │ ITEM_002     │ 치유의 물약                   │ Potion de soin ✏️         │ ║  ← Modified
+║  │ ITEM_003     │ 전설의 방패                   │ [Click to edit...]        │ ║
+║  │ ...          │ ...                          │ ...                       │ ║
+║  └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                               ║
+║  ┌──────────────────────────┐  ┌────────────────────────────────────────────┐║
+║  │ 📊 Stats                 │  │ 🔍 Quick Search                            │║
+║  │ Total: 41,715 rows       │  │ [Search term...]              [Search]    │║
+║  │ Modified: 3              │  │                                            │║
+║  │ Untranslated: 127        │  │ Results: "마법" found in 23 entries        │║
+║  └──────────────────────────┘  └────────────────────────────────────────────┘║
+║                                                                               ║
+║  Status: Ready │ File: sampleofLanguageData.txt │ 3 unsaved changes          ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### P17.4: Implementation Plan
+
+```
+PHASE 1: Foundation (Build on QuickSearch)
+├── Extend QuickSearch viewer to full table display
+├── Add cell editing capability
+├── Track modifications in state
+└── Save modified file locally
+
+PHASE 2: Commit System
+├── Implement XML commit logic (StrOrigin + StringID match)
+├── Implement TXT commit logic (StringID + Index5 match)
+├── Add commit preview/diff view
+└── Add backup and logging
+
+PHASE 3: Integration
+├── Integrate QA Tools (P16)
+├── Integrate FAISS similarity search
+├── Add advanced filtering/organization
+└── Polish UI/UX
+
+PHASE 4: Testing
+├── Test with real 16MB language data files
+├── Test XML commit with CD project
+├── Performance optimization for large files
+└── User acceptance testing
+```
+
+---
+
+## 📋 P18: Platform UI/UX Overhaul - FUTURE
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    P18: PLATFORM UI/UX OVERHAUL                                ║
+║                    Modern, Tree-Organized, Modal-Based Design                  ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   VISION: Transform LocaNext into a modern, beautifully organized platform    ║
+║   that reflects our project's tree structure philosophy. Easy to extend,      ║
+║   easy to navigate, professional appearance.                                  ║
+║                                                                               ║
+║   PRINCIPLES:                                                                 ║
+║   ├── 🌳 TREE ORGANIZATION - Everything in hierarchical structure             ║
+║   ├── 📦 MODAL-BASED - Clean, focused interactions                            ║
+║   ├── ✨ MODERN SVELTE - Leverage Svelte's reactivity & transitions           ║
+║   ├── 🎨 CONSISTENT DESIGN - Unified look across all tools                    ║
+║   └── 🔌 EXTENSIBLE - Easy to add new apps/features                           ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### P18.1: Design System
+
+```
+P18.1: Unified Design System
+│
+├── 🎨 VISUAL LANGUAGE
+│   ├── Color palette (dark mode primary)
+│   ├── Typography scale
+│   ├── Spacing system (8px grid)
+│   ├── Border radius standards
+│   ├── Shadow levels
+│   └── Icon set (Carbon or custom)
+│
+├── 🧩 COMPONENT LIBRARY
+│   ├── TreeView component (collapsible, icons)
+│   ├── Modal system (stacked, animated)
+│   ├── Card components (expandable)
+│   ├── Table components (sortable, filterable)
+│   ├── Progress indicators
+│   ├── Toast notifications
+│   └── Form elements (inputs, selects, buttons)
+│
+└── 📐 LAYOUT PATTERNS
+    ├── Sidebar + Main content
+    ├── Tab-based navigation
+    ├── Split pane (resizable)
+    └── Floating panels
+```
+
+### P18.2: App Architecture
+
+```
+P18.2: Extensible App Architecture
+│
+├── 🏗️ APP REGISTRY
+│   ├── apps.config.js - Central app definitions
+│   ├── Each app: icon, name, component, category
+│   ├── Dynamic loading (lazy load apps)
+│   └── Easy to add new apps (just add config)
+│
+├── 🌳 NAVIGATION TREE
+│   ├── Categories (Translation, QA, Utilities)
+│   ├── Apps within categories
+│   ├── Recent/Favorites section
+│   └── Search across all apps
+│
+├── 📋 MODAL WORKFLOW
+│   ├── App opens in modal/panel
+│   ├── Multiple apps can be open (tabs)
+│   ├── Drag to rearrange
+│   └── Save workspace layouts
+│
+└── 🔄 SHARED STATE
+    ├── Global dictionary state
+    ├── File selection state
+    ├── User preferences
+    └── Operation queue
+```
+
+### P18.3: UI Mockup
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  LocaNext Platform                                          [👤 Admin] [⚙️]  ║
+╠════════════════════╦══════════════════════════════════════════════════════════╣
+║  🏠 Home           ║                                                          ║
+║                    ║   Welcome to LocaNext                                    ║
+║  📁 Translation    ║                                                          ║
+║  ├── XLSTransfer   ║   ┌─────────────┐ ┌─────────────┐ ┌─────────────┐       ║
+║  ├── KR Similar    ║   │ XLSTransfer │ │ LD Manager  │ │ KR Similar  │       ║
+║  └── LD Manager    ║   │    📊       │ │    📝       │ │    🔍       │       ║
+║                    ║   │ AI Transfer │ │  CAT Tool   │ │  Semantic   │       ║
+║  🔍 Search         ║   └─────────────┘ └─────────────┘ └─────────────┘       ║
+║  ├── QuickSearch   ║                                                          ║
+║  └── Dictionary    ║   ┌─────────────┐ ┌─────────────┐ ┌─────────────┐       ║
+║                    ║   │ QuickSearch │ │  QA Tools   │ │   Glossary  │       ║
+║  📋 QA Tools       ║   │    🔎       │ │    ✓        │ │    📚       │       ║
+║  ├── Glossary      ║   │   Search    │ │   Checker   │ │   Manager   │       ║
+║  ├── Line Check    ║   └─────────────┘ └─────────────┘ └─────────────┘       ║
+║  └── Term Check    ║                                                          ║
+║                    ║   Recent Activity                                        ║
+║  ⚙️ Settings       ║   • XLSTransfer: 1,234 rows translated (2 min ago)      ║
+║                    ║   • QuickSearch: BDO-FR loaded (41,715 pairs)            ║
+║  📊 Stats          ║   • KR Similar: Search completed (5 results)             ║
+║                    ║                                                          ║
+╚════════════════════╩══════════════════════════════════════════════════════════╝
+```
+
+### P18.4: Implementation Strategy
+
+```
+PHASE 1: Design System (Foundation)
+├── Create component library
+├── Define design tokens
+├── Build TreeView, Modal, Card components
+└── Document in Storybook (optional)
+
+PHASE 2: Layout Refactor
+├── Implement new sidebar navigation
+├── Create app registry system
+├── Migrate existing apps to new layout
+└── Add workspace/tab management
+
+PHASE 3: App Migration
+├── Migrate XLSTransfer to new design
+├── Migrate QuickSearch to new design
+├── Migrate KR Similar to new design
+├── Add LD Manager (P17)
+└── Ensure all APIs still work
+
+PHASE 4: Polish
+├── Animations and transitions
+├── Responsive adjustments
+├── Accessibility improvements
+└── Performance optimization
+
+⚠️ RISK MITIGATION:
+├── Keep existing apps working during migration
+├── Feature flags for new UI (gradual rollout)
+├── Comprehensive testing after each phase
+└── Rollback plan if issues arise
+```
+
+---
+
 ## ✅ Full Integration Testing Suite PASSED (2025-12-06 06:00)
 
 ### SUMMARY:
@@ -588,9 +897,11 @@ PORT SUMMARY (Quick Reference):
 │ Gitea Server     │ 3000   │ Git + CI/CD (FUTURE)        │
 └──────────────────┴────────┴─────────────────────────────┘
 
-WHAT'S NEXT? → P16: QuickSearch QA Tools (Glossary Checker - 5 new features)
-              → P13: Gitea CI/CD Pipeline (server installed, needs workflow)
-              → P10.3: Patch Notes (Backlog - nice to have)
+WHAT'S NEXT? → P16: QuickSearch QA Tools (5 QA features)
+              → P13.3: Gitea CI/CD Workflow
+              → P10.3: Patch Notes
+              → P17: LD Manager (CAT Tool) ★ BIG FEATURE
+              → P18: UI/UX Overhaul ★ PLATFORM REDESIGN
 ```
 
 ---
@@ -1494,16 +1805,26 @@ COMPLETE PRIORITY TREE (Past → Present → Future)
     │   ├── Character Count (XML LocStr validation)
     │   └── Pattern Sequence (XML consistency check)
     │
-    ├── P13: Gitea CI/CD Pipeline ─────────── Workflow setup
-    │   ├── 13.1: Gitea installation (DONE: ~/gitea/)
-    │   ├── 13.2: Repository migration (DONE: dual remote)
-    │   ├── 13.3: CI/CD workflow (.gitea/workflows/)
-    │   └── 13.4: Update server distribution
+    ├── P13.3: Gitea CI/CD Workflow ───────── Pipeline setup
+    │   └── .gitea/workflows/build.yml
     │
-    └── FUTURE:
-        ├── New Tools (GlossarySniffer, WordCountMaster, ExcelRegex, TFM)
-        ├── Performance (Redis caching, lazy loading)
-        └── Enterprise (Multi-tenant, RBAC)
+    ├── P10.3: Patch Notes ────────────────── Show release notes in update modal
+    │
+    ├── P17: LD Manager (CAT Tool) ────────── BIG FEATURE
+    │   ├── Language data viewer (TXT + XML)
+    │   ├── Cell editing with modification tracking
+    │   ├── COMMIT BACK to original files!
+    │   │   ├── XML: Match StrOrigin + StringID
+    │   │   └── TXT: Match StringID + Index5
+    │   ├── Integrated QA tools (P16)
+    │   └── FAISS similarity search
+    │
+    └── P18: UI/UX Overhaul ───────────────── PLATFORM REDESIGN
+        ├── Tree-organized navigation
+        ├── Modal-based app system
+        ├── Component library (Svelte)
+        ├── App registry for easy extension
+        └── Modern, beautiful, professional
 ```
 
 ### Port Summary (Quad Entity)
