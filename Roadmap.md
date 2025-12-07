@@ -1981,12 +1981,11 @@ P13 TASKS:
 │   │       └── Keeps latest N releases (default: 2)
 │   └── [✅] Build retention policy documented
 │
-├── 📋 13.8: API Token & Script Testing (PENDING)
-│   ├── [ ] Create Gitea API token
-│   │       └── Gitea → Settings → Applications → Generate Token
-│   ├── [ ] Save token: export GITEA_TOKEN=xxx (add to ~/.bashrc)
-│   ├── [ ] Test mirror script: GITEA_TOKEN=xxx ./scripts/mirror_release_to_gitea.sh
-│   ├── [ ] Test cleanup script: GITEA_TOKEN=xxx ./scripts/cleanup_old_releases.sh
+├── ✅ 13.8: API Token & Script Testing COMPLETE
+│   ├── [✅] Created Gitea API token: "patch-server-full" (all scopes)
+│   ├── [✅] Token saved to ~/.bashrc (GITEA_TOKEN)
+│   ├── [✅] Mirror script tested: v2512071233 mirrored successfully
+│   ├── [✅] Cleanup script tested: Works (keeps latest 2)
 │   └── [ ] (Optional) Set up cron for auto-mirror
 
 CURRENT BUILD STRATEGY:
