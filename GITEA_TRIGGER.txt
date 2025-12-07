@@ -40,3 +40,5 @@ Build LIGHT v2512072034 - Use powershell instead of pwsh (15 replacements)
 Build LIGHT v2512072034 - Fix NUL char issue with Add-Content -Encoding utf8
 
 Build LIGHT v2512072034 - Fix symlink permission issue (clear cache + disable code signing)
+
+Build LIGHT v2512072034 - Retry symlink fix (runner restarted)
