@@ -403,7 +403,7 @@ jobs:
       # GITEA FIX: Clear corrupted electron-builder cache (symlink + NSIS issues)
       - name: Clear Electron Builder Cache
         run: |
-          Write-Host "Clearing electron-builder cache to avoid corruption issues..."
+          Write-Host "Clearing ALL electron-builder caches to avoid corruption issues..."
 
           # Clear LOCALAPPDATA cache
           $localCache = "$env:LOCALAPPDATA\electron-builder\Cache"
@@ -419,14 +419,34 @@ jobs:
             Write-Host "[OK] Cleared TEMP electron-builder cache"
           }
 
-          # Clear systemprofile cache (service account)
-          $sysCache = "C:\Windows\System32\config\systemprofile\.cache\electron-builder"
-          if (Test-Path $sysCache) {
-            Remove-Item -Path $sysCache -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Host "[OK] Cleared systemprofile electron-builder cache"
+          # Clear Windows TEMP cache (another location)
+          $winTempCache = "C:\WINDOWS\TEMP\electron-builder-cache"
+          if (Test-Path $winTempCache) {
+            Remove-Item -Path $winTempCache -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "[OK] Cleared C:\WINDOWS\TEMP electron-builder cache"
+          }
+
+          # Clear systemprofile AppData caches (service account)
+          $sysLocalAppData = "C:\Windows\System32\config\systemprofile\AppData\Local\electron-builder"
+          if (Test-Path $sysLocalAppData) {
+            Remove-Item -Path $sysLocalAppData -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "[OK] Cleared systemprofile Local electron-builder cache"
           }
 
           Write-Host "[OK] All electron-builder caches cleared"
+        shell: powershell
+
+      # GITEA FIX: Set cache directory explicitly for SYSTEM account
+      - name: Configure Electron Builder Environment
+        run: |
+          # Create dedicated cache directory
+          $cacheDir = "C:\electron-builder-cache"
+          New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
+
+          # Set environment variables for this job
+          echo "ELECTRON_BUILDER_CACHE=$cacheDir" >> $env:GITHUB_ENV
+
+          Write-Host "[OK] ELECTRON_BUILDER_CACHE set to: $cacheDir"
         shell: powershell
 
       - name: Build Electron App
