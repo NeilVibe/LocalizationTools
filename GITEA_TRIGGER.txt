@@ -95,3 +95,4 @@ Build LIGHT v2512080202 - FIX: Use pre-installed Python (skip setup-python for S
 Build LIGHT v2512080217 - Fix: Use pre-installed Node.js
 Build LIGHT v2512080226 - Fix: Clear full NSIS cache
 Build LIGHT v2512080235 - Fix: ELECTRON_BUILDER_CACHE env var
+Build LIGHT v2512080241 - Fix: Pre-copy NSIS includes
