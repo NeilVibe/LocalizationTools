@@ -42,9 +42,26 @@ env:
 Cannot create symbolic link : Le client ne dispose pas d'un privilege necessaire
 ```
 
-**Cause:** electron-builder's winCodeSign module tries to create symlinks, which requires admin privileges on Windows.
+**Cause:** electron-builder downloads winCodeSign binaries even when `CSC_IDENTITY_AUTO_DISCOVERY: "false"` is set. The archive contains macOS symlinks that 7-zip cannot create without admin privileges.
 
-**Fix:** Disable code signing with `CSC_IDENTITY_AUTO_DISCOVERY: "false"` (prevents winCodeSign from running).
+**Fix:** Must disable code signing BOTH in workflow AND in package.json:
+
+1. In workflow (build.yml):
+```yaml
+env:
+  CSC_IDENTITY_AUTO_DISCOVERY: "false"
+```
+
+2. In package.json (locaNext/package.json):
+```json
+"win": {
+  "target": "nsis",
+  "sign": false,
+  "signAndEditExecutable": false
+}
+```
+
+**Important:** `CSC_IDENTITY_AUTO_DISCOVERY: "false"` alone is NOT sufficient! You MUST also set `sign: false` in package.json to prevent electron-builder from downloading winCodeSign entirely.
 
 ### 3. Version Format Errors
 
@@ -92,7 +109,7 @@ Cannot parse version "2512072249" - must be semver format
 | Date | Error | Root Cause | Fix |
 |------|-------|------------|-----|
 | 2025-12-07 | `Env WIN_CSC_LINK is not correct` | Empty string treated as file path | Remove WIN_CSC_LINK and CSC_LINK |
-| 2025-12-07 | `Cannot create symbolic link` | winCodeSign symlinks need admin | Use CSC_IDENTITY_AUTO_DISCOVERY |
+| 2025-12-07 | `Cannot create symbolic link` | winCodeSign downloaded even with CSC_IDENTITY_AUTO_DISCOVERY | Add `sign: false` to package.json win config |
 
 ---
 
