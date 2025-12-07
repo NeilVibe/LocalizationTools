@@ -667,8 +667,11 @@ jobs:
           if (Test-Path "locaNext\dist-electron") {
             Get-ChildItem "locaNext\dist-electron" | Format-Table Name, Mode
             if (Test-Path "locaNext\dist-electron\win-unpacked") {
-              Write-Host "win-unpacked contents:"
-              Get-ChildItem "locaNext\dist-electron\win-unpacked" | Select-Object -First 10 | Format-Table Name
+              Write-Host "win-unpacked ALL contents:"
+              Get-ChildItem "locaNext\dist-electron\win-unpacked" | Format-Table Name
+              Write-Host "`nLooking for *.exe:"
+              Get-ChildItem "locaNext\dist-electron\win-unpacked\*.exe" -ErrorAction SilentlyContinue | Format-Table Name, Length
+              Write-Host "LocaNext.exe exists: $(Test-Path 'locaNext\dist-electron\win-unpacked\LocaNext.exe')"
             }
           } else {
             Write-Host "locaNext\dist-electron NOT FOUND!"
