@@ -110,6 +110,38 @@
 | **[BUILD_CHECKLIST.md](docs/BUILD_CHECKLIST.md)** | Pre-release checklist |
 | **[PACKAGING_GUIDE.md](docs/PACKAGING_GUIDE.md)** | Electron packaging details |
 
+#### 🔀 Dual-Build System (GitHub + Gitea)
+
+**ONE codebase, TWO separate build triggers:**
+
+```
+LocalizationTools/
+├── .github/workflows/build-electron.yml  → Watches BUILD_TRIGGER.txt  (GitHub/Production)
+├── .gitea/workflows/build.yml            → Watches GITEA_TRIGGER.txt  (Gitea/Local Test)
+├── BUILD_TRIGGER.txt                     → GitHub trigger file
+└── GITEA_TRIGGER.txt                     → Gitea trigger file
+```
+
+**Quick Build Commands:**
+
+```bash
+# === GitHub Build (Production) ===
+NEW_VERSION=$(date '+%y%m%d%H%M')
+# 1. Update version.py with $NEW_VERSION
+# 2. python3 scripts/check_version_unified.py
+echo "Build LIGHT v$NEW_VERSION" >> BUILD_TRIGGER.txt
+git add -A && git commit -m "Build v$NEW_VERSION"
+git push origin main                    # GitHub ONLY
+
+# === Gitea Build (Local Testing) ===
+echo "Build LIGHT v$NEW_VERSION" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Gitea test v$NEW_VERSION"
+git push gitea main                     # Gitea ONLY
+
+# === Code Sync (No Build) ===
+git push origin main && git push gitea main  # BOTH remotes
+```
+
 ### 🌐 Deployment & Operations
 
 | Document | What It Covers |
@@ -319,7 +351,7 @@ bash scripts/clean_logs.sh
   - ✅ Auto-Update: `updater.js` supports GitHub/Gitea/Custom via env var
   - ✅ DUAL PUSH: `git push origin main && git push gitea main`
   - ✅ Patch Server Docs: `docs/PATCH_SERVER.md` (Option A: Mirror, Option B: Self-hosted)
-  - ✅ Mirror Script: `scripts/mirror_release_to_gitea.sh` (tested, v2512071233 mirrored)
+  - ✅ Mirror Script: `scripts/mirror_release_to_gitea.sh` (tested, v2512071836 mirrored)
   - ✅ Cleanup Script: `scripts/cleanup_old_releases.sh` (tested, keeps latest 2)
   - ✅ API Token: "patch-server-full" saved to ~/.bashrc
 - **Testing Toolkit:** ✅ COMPLETE

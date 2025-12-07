@@ -16,7 +16,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'BUILD_TRIGGER.txt'
+      - 'GITEA_TRIGGER.txt'
   workflow_dispatch:
 
 env:
@@ -37,10 +37,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check BUILD_TRIGGER.txt
+      - name: Check GITEA_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "Build (LIGHT|FULL)" | tail -1)
+          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "Build (LIGHT|FULL)" | tail -1)
           echo "Trigger line: $TRIGGER"
 
           if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)"; then
