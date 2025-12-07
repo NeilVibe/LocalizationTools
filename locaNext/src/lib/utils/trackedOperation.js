@@ -238,11 +238,12 @@ export async function executePythonTracked(scriptPath, args, options) {
  * // ... do work ...
  * tracker.update(50, 'Halfway done');
  * // ... more work ...
- * tracker.complete('All done!');
+ * tracker.complete('All done!', { filename: 'data.xlsx', rowCount: 1500 });
  */
 export function createTracker(tool, operation) {
   const opId = generateOperationId();
   let started = false;
+  let metadata = {}; // Store metadata throughout operation
 
   return {
     id: opId,
@@ -262,12 +263,32 @@ export function createTracker(tool, operation) {
       updateProgress(opId, percent, message);
     },
 
-    complete: (message) => {
-      completeOperation(opId, true, message || `${operation} completed`);
+    /**
+     * Set metadata to be saved in history
+     * @param {object} data - Metadata object (e.g., { filename, rowCount, pairs })
+     */
+    setMetadata: (data) => {
+      metadata = { ...metadata, ...data };
     },
 
-    fail: (message) => {
-      completeOperation(opId, false, message || `${operation} failed`);
+    /**
+     * Complete the operation successfully
+     * @param {string} message - Success message
+     * @param {object} extraMetadata - Additional metadata to merge
+     */
+    complete: (message, extraMetadata = {}) => {
+      const finalMetadata = { ...metadata, ...extraMetadata };
+      completeOperation(opId, true, message || `${operation} completed`, finalMetadata);
+    },
+
+    /**
+     * Mark operation as failed
+     * @param {string} message - Error message
+     * @param {object} extraMetadata - Additional metadata to merge
+     */
+    fail: (message, extraMetadata = {}) => {
+      const finalMetadata = { ...metadata, ...extraMetadata };
+      completeOperation(opId, false, message || `${operation} failed`, finalMetadata);
     }
   };
 }
