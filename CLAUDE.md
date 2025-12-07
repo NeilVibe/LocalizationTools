@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512071545 (2025-12-07)
+**Version:** 2512071836 (2025-12-07)
 **Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅
 
 ---
@@ -34,35 +34,81 @@
 
 ## 📚 DOCUMENTATION TREE (START HERE!)
 
-> **📖 Full Documentation Index:** [docs/README.md](docs/README.md) - Master index of all 38+ docs
+```
+docs/
+├── README.md                    # Master index
+├── getting-started/             # Onboarding
+│   ├── QUICK_START_GUIDE.md
+│   ├── PROJECT_STRUCTURE.md
+│   └── ADMIN_SETUP.md
+├── architecture/                # Design patterns
+│   ├── README.md
+│   ├── ASYNC_PATTERNS.md
+│   ├── BACKEND_PRINCIPLES.md
+│   └── PLATFORM_PATTERN.md
+├── development/                 # Coding guides
+│   ├── CODING_STANDARDS.md
+│   ├── ADD_NEW_APP_GUIDE.md
+│   ├── LOGGING_PROTOCOL.md
+│   ├── BEST_PRACTICES.md
+│   └── PERFORMANCE.md
+├── build/                       # Build & Distribution
+│   ├── BUILD_AND_DISTRIBUTION.md
+│   ├── BUILD_TROUBLESHOOTING.md
+│   ├── BUILD_CHECKLIST.md
+│   └── PACKAGING_GUIDE.md
+├── deployment/                  # Deploy & Operations
+│   ├── DEPLOYMENT.md
+│   ├── DEPLOYMENT_ARCHITECTURE.md
+│   ├── GITEA_SETUP.md
+│   ├── PATCH_SERVER.md
+│   └── POSTGRESQL_SETUP.md
+├── security/                    # Security
+│   ├── SECURITY_HARDENING.md
+│   └── SECURITY_AND_LOGGING.md
+├── testing/                     # Testing guides
+│   ├── README.md
+│   ├── DEBUG_AND_TEST_HUB.md
+│   ├── PYTEST_GUIDE.md
+│   ├── PLAYWRIGHT_GUIDE.md
+│   └── QUICK_COMMANDS.md
+├── troubleshooting/             # Debug guides
+│   ├── WINDOWS_TROUBLESHOOTING.md
+│   ├── ELECTRON_TROUBLESHOOTING.md
+│   └── MONITORING_COMPLETE_GUIDE.md
+├── tools/                       # Tool-specific
+│   ├── XLSTRANSFER_GUIDE.md
+│   └── MONOLITH_DEVIATIONS.md
+├── history/                     # Completed work
+│   └── ROADMAP_ARCHIVE.md
+└── deprecated/                  # Outdated docs
+```
 
 ### 🚀 Getting Started
 
-| Document | What It Covers |
-|----------|----------------|
-| **[QUICK_START_GUIDE.md](docs/QUICK_START_GUIDE.md)** | How to run servers, tests, common commands (5 min) |
-| **[PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)** | Complete file tree, module organization |
-| **[ADMIN_SETUP.md](docs/ADMIN_SETUP.md)** | Initial admin user setup, credentials |
-| **Roadmap.md** | Development plan, next steps, progress tracking |
+| Document | Path |
+|----------|------|
+| Quick Start | `docs/getting-started/QUICK_START_GUIDE.md` |
+| Project Structure | `docs/getting-started/PROJECT_STRUCTURE.md` |
+| Admin Setup | `docs/getting-started/ADMIN_SETUP.md` |
+| **Roadmap** | `Roadmap.md` (root) |
 
-### 🏗️ Architecture & Design
+### 🏗️ Architecture
 
-| Document | What It Covers |
-|----------|----------------|
-| **[architecture/README.md](docs/architecture/README.md)** | **Architecture Index** - Start here for architecture |
-| **[DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md)** | Quad Entity: Desktop, Central, Dashboard, Patch Server |
-| **[PLATFORM_PATTERN.md](docs/architecture/PLATFORM_PATTERN.md)** | Multi-tool platform approach, scalability |
-| **[BACKEND_PRINCIPLES.md](docs/architecture/BACKEND_PRINCIPLES.md)** | "Backend is Flawless" rule, wrapper pattern |
-| **[ASYNC_PATTERNS.md](docs/architecture/ASYNC_PATTERNS.md)** | Async/await, WebSocket, real-time updates |
+| Document | Path |
+|----------|------|
+| Architecture Index | `docs/architecture/README.md` |
+| Deployment Architecture | `docs/deployment/DEPLOYMENT_ARCHITECTURE.md` |
+| Platform Pattern | `docs/architecture/PLATFORM_PATTERN.md` |
+| Backend Principles | `docs/architecture/BACKEND_PRINCIPLES.md` |
 
-### 🛠️ Development Guides
+### 🛠️ Development
 
-| Document | What It Covers |
-|----------|----------------|
-| **[CODING_STANDARDS.md](docs/CODING_STANDARDS.md)** | Rules, patterns, conventions, common pitfalls |
-| **[ADD_NEW_APP_GUIDE.md](docs/ADD_NEW_APP_GUIDE.md)** | How to add new tools (XLSTransfer as template) |
-| **[LOGGING_PROTOCOL.md](docs/LOGGING_PROTOCOL.md)** | Comprehensive logging requirements (MANDATORY!) |
-| **[MONITORING_COMPLETE_GUIDE.md](docs/MONITORING_COMPLETE_GUIDE.md)** | Monitoring system, real-time logs |
+| Document | Path |
+|----------|------|
+| Coding Standards | `docs/development/CODING_STANDARDS.md` |
+| Add New App | `docs/development/ADD_NEW_APP_GUIDE.md` |
+| Logging Protocol | `docs/development/LOGGING_PROTOCOL.md` |
 
 ### 📜 NewScripts (Mini-Projects)
 
@@ -98,17 +144,17 @@
 | **[testing/PLAYWRIGHT_GUIDE.md](docs/testing/PLAYWRIGHT_GUIDE.md)** | Frontend E2E tests |
 | **[testing/X_SERVER_SETUP.md](docs/testing/X_SERVER_SETUP.md)** | VcXsrv for visual testing |
 | **[testing/TOOLS_REFERENCE.md](docs/testing/TOOLS_REFERENCE.md)** | xdotool, ffmpeg, etc. |
-| **[WINDOWS_TROUBLESHOOTING.md](docs/WINDOWS_TROUBLESHOOTING.md)** | CDP debugging, Windows EXE from WSL |
-| **[ELECTRON_TROUBLESHOOTING.md](docs/ELECTRON_TROUBLESHOOTING.md)** | Black screen, preload fixes |
+| **[WINDOWS_TROUBLESHOOTING.md](docs/troubleshooting/WINDOWS_TROUBLESHOOTING.md)** | CDP debugging, Windows EXE from WSL |
+| **[ELECTRON_TROUBLESHOOTING.md](docs/troubleshooting/ELECTRON_TROUBLESHOOTING.md)** | Black screen, preload fixes |
 
 ### 📦 Build & Distribution
 
 | Document | What It Covers |
 |----------|----------------|
-| **[BUILD_AND_DISTRIBUTION.md](docs/BUILD_AND_DISTRIBUTION.md)** | Versioning, manual builds, Git LFS, troubleshooting |
-| **[BUILD_TROUBLESHOOTING.md](docs/BUILD_TROUBLESHOOTING.md)** | Debugging failed builds, GitHub Actions |
-| **[BUILD_CHECKLIST.md](docs/BUILD_CHECKLIST.md)** | Pre-release checklist |
-| **[PACKAGING_GUIDE.md](docs/PACKAGING_GUIDE.md)** | Electron packaging details |
+| **[BUILD_AND_DISTRIBUTION.md](docs/build/BUILD_AND_DISTRIBUTION.md)** | Versioning, manual builds, Git LFS, troubleshooting |
+| **[BUILD_TROUBLESHOOTING.md](docs/build/BUILD_TROUBLESHOOTING.md)** | Debugging failed builds, GitHub Actions |
+| **[BUILD_CHECKLIST.md](docs/build/BUILD_CHECKLIST.md)** | Pre-release checklist |
+| **[PACKAGING_GUIDE.md](docs/build/PACKAGING_GUIDE.md)** | Electron packaging details |
 
 #### 🔀 Dual-Build System (GitHub + Gitea)
 
@@ -146,19 +192,19 @@ git push origin main && git push gitea main  # BOTH remotes
 
 | Document | What It Covers |
 |----------|----------------|
-| **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Production deployment procedures |
-| **[ENTERPRISE_DEPLOYMENT.md](docs/ENTERPRISE_DEPLOYMENT.md)** | Enterprise-scale deployment |
-| **[ADMIN_SETUP.md](docs/ADMIN_SETUP.md)** | Initial admin user setup, credentials |
-| **[POSTGRESQL_SETUP.md](docs/POSTGRESQL_SETUP.md)** | PostgreSQL configuration |
-| **[GITEA_SETUP.md](docs/GITEA_SETUP.md)** | Self-hosted Git + CI/CD setup |
-| **[PATCH_SERVER.md](docs/PATCH_SERVER.md)** | **Gitea as patch server for auto-updates** |
-| **[SECURITY_AND_LOGGING.md](docs/SECURITY_AND_LOGGING.md)** | Security best practices |
+| **[DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md)** | Production deployment procedures |
+| **[DEPLOYMENT_ARCHITECTURE.md](docs/deployment/DEPLOYMENT_ARCHITECTURE.md)** | Quad Entity architecture |
+| **[ADMIN_SETUP.md](docs/getting-started/ADMIN_SETUP.md)** | Initial admin user setup, credentials |
+| **[POSTGRESQL_SETUP.md](docs/deployment/POSTGRESQL_SETUP.md)** | PostgreSQL configuration |
+| **[GITEA_SETUP.md](docs/deployment/GITEA_SETUP.md)** | Self-hosted Git + CI/CD setup |
+| **[PATCH_SERVER.md](docs/deployment/PATCH_SERVER.md)** | **Gitea as patch server for auto-updates** |
+| **[SECURITY_AND_LOGGING.md](docs/security/SECURITY_AND_LOGGING.md)** | Security best practices |
 
 ### 🔒 Security
 
 | Document | What It Covers |
 |----------|----------------|
-| **[SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md)** | **Full security guide: IP filter, CORS, JWT, audit logging (86 tests)** |
+| **[SECURITY_HARDENING.md](docs/security/SECURITY_HARDENING.md)** | **Full security guide: IP filter, CORS, JWT, audit logging (86 tests)** |
 | **[.env.example](.env.example)** | Production environment configuration template |
 
 **Security Implementation Status (7/11):**
@@ -177,22 +223,22 @@ git push origin main && git push gitea main  # BOTH remotes
 | Document | What It Covers |
 |----------|----------------|
 | **[testing/README.md](docs/testing/README.md)** | **Testing Hub** - Autonomous testing, work alone! |
-| **[CLAUDE_AI_WARNINGS.md](docs/CLAUDE_AI_WARNINGS.md)** | AI hallucination prevention (5 documented types) |
+| **[CLAUDE_AI_WARNINGS.md](docs/development/CLAUDE_AI_WARNINGS.md)** | AI hallucination prevention (5 documented types) |
 
 ### 🎯 Tool-Specific Guides
 
 | Document | What It Covers |
 |----------|----------------|
-| **[XLSTRANSFER_GUIDE.md](docs/XLSTRANSFER_GUIDE.md)** | XLSTransfer complete reference (dual-mode, API, GUI) |
-| **[XLSTransfer_Migration_Audit.md](docs/XLSTransfer_Migration_Audit.md)** | Complete 13-section audit |
+| **[XLSTRANSFER_GUIDE.md](docs/tools/XLSTRANSFER_GUIDE.md)** | XLSTransfer complete reference (dual-mode, API, GUI) |
+| **[MONOLITH_DEVIATIONS.md](docs/tools/MONOLITH_DEVIATIONS.md)** | Migration audit status |
 
 ### 📖 Reference
 
 | Document | What It Covers |
 |----------|----------------|
-| **[BEST_PRACTICES.md](docs/BEST_PRACTICES.md)** | Best practices collection |
-| **[PERFORMANCE.md](docs/PERFORMANCE.md)** | Performance optimization |
-| **[STATS_DASHBOARD_SPEC.md](docs/STATS_DASHBOARD_SPEC.md)** | Admin dashboard specifications |
+| **[BEST_PRACTICES.md](docs/development/BEST_PRACTICES.md)** | Best practices collection |
+| **[PERFORMANCE.md](docs/development/PERFORMANCE.md)** | Performance optimization |
+| **[STATS_DASHBOARD_SPEC.md](docs/deprecated/STATS_DASHBOARD_SPEC.md)** | Admin dashboard specifications |
 
 ---
 
@@ -208,7 +254,7 @@ ANY deviation from monolith logic = BUG in our implementation.
 - **COPY** monolith logic EXACTLY into `server/tools/{tool}/`
 - **ONLY** change UI code (tkinter → API), **NEVER** change core logic
 - **TEST** with same input files the monolith uses
-- See: [MONOLITH_DEVIATIONS.md](docs/MONOLITH_DEVIATIONS.md) for audit status
+- See: [MONOLITH_DEVIATIONS.md](docs/tools/MONOLITH_DEVIATIONS.md) for audit status
 - Monolith sources:
   - `XLSTransfer0225.py` → `server/tools/xlstransfer/`
   - `KRSIMILAR0124.py` → `server/tools/kr_similar/`
@@ -222,12 +268,12 @@ ANY deviation from monolith logic = BUG in our implementation.
 ### 2. Logging is Mandatory
 - **LOG EVERYTHING** at every step
 - Use `logger`, NEVER use `print()`
-- See: [LOGGING_PROTOCOL.md](docs/LOGGING_PROTOCOL.md)
+- See: [LOGGING_PROTOCOL.md](docs/development/LOGGING_PROTOCOL.md)
 
 ### 3. Version Management
 - **ALWAYS** run `python3 scripts/check_version_unified.py` before commit
 - Builds are **MANUAL** (not automatic on every push)
-- See: [BUILD_AND_DISTRIBUTION.md](docs/BUILD_AND_DISTRIBUTION.md)
+- See: [BUILD_AND_DISTRIBUTION.md](docs/build/BUILD_AND_DISTRIBUTION.md)
 
 ### 4. Testing Required (FULL SERVER SIMULATION)
 - **ALWAYS run with server** for true production simulation:
@@ -235,7 +281,7 @@ ANY deviation from monolith logic = BUG in our implementation.
   python3 scripts/create_admin.py && python3 server/main.py &
   sleep 5 && RUN_API_TESTS=1 python3 -m pytest -v
   ```
-- See: [TESTING_PROTOCOL.md](docs/TESTING_PROTOCOL.md) for autonomous testing
+- See: [TESTING_PROTOCOL.md](docs/testing/TESTING_PROTOCOL.md) for autonomous testing
 
 ### 5. Async by Default
 - All new endpoints should be async
@@ -330,7 +376,7 @@ bash scripts/clean_logs.sh
 
 ### First Steps:
 1. ✅ Read this file completely (you're here!)
-2. ✅ Read [QUICK_START_GUIDE.md](docs/QUICK_START_GUIDE.md) (5 min)
+2. ✅ Read [QUICK_START_GUIDE.md](docs/getting-started/QUICK_START_GUIDE.md) (5 min)
 3. ✅ Run `python3 server/main.py` to verify backend works
 4. ✅ Run `RUN_API_TESTS=1 python3 -m pytest` to verify tests pass (885 expected)
 5. ✅ Check **Roadmap.md** for current task
@@ -371,7 +417,7 @@ cd ~/gitea && ./stop.sh    # Stop Gitea
 - "Want to fix P10.3 (Patch Notes display)?" - Nice-to-have, backlog
 
 ### Windows Build Debugging:
-- See **[WINDOWS_TROUBLESHOOTING.md](docs/WINDOWS_TROUBLESHOOTING.md)** for WSL debugging commands
+- See **[WINDOWS_TROUBLESHOOTING.md](docs/troubleshooting/WINDOWS_TROUBLESHOOTING.md)** for WSL debugging commands
 - User can provide Windows install path (e.g., `C:\Users\...\LocaNext`)
 - Access via WSL: `/mnt/c/Users/.../LocaNext`
 
