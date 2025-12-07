@@ -323,15 +323,38 @@ jobs:
       # ============================================================
       # STEP 4: Compile Inno Setup installer
       # ============================================================
-      - name: Install Inno Setup
+      - name: Setup Inno Setup Path
         run: |
-          choco install innosetup -y
+          # Check common Inno Setup locations and add to PATH
+          $innoLocations = @(
+            "C:\Program Files (x86)\Inno Setup 6",
+            "C:\Program Files\Inno Setup 6",
+            "$env:LOCALAPPDATA\Programs\Inno Setup 6"
+          )
+
+          foreach ($loc in $innoLocations) {
+            if (Test-Path "$loc\ISCC.exe") {
+              Write-Host "[OK] Found Inno Setup at: $loc"
+              $env:Path += ";$loc"
+              [Environment]::SetEnvironmentVariable('Path', $env:Path, 'Process')
+              break
+            }
+          }
+
+          # Verify ISCC is accessible
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if ($iscc) {
+            Write-Host "[OK] ISCC.exe found: $($iscc.Source)"
+          } else {
+            Write-Host "Inno Setup not found - installing via choco..."
+            choco install innosetup -y
+          }
         shell: pwsh
 
       - name: Compile LIGHT Installer
         run: |
           Write-Host "Compiling LIGHT Windows installer..."
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_light.iss
+          ISCC.exe installer\locanext_light.iss
         shell: pwsh
 
       - name: Verify Installer
