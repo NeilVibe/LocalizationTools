@@ -76,3 +76,5 @@ Build LIGHT v2512072249 - RETRY: Previous job stuck (sign:false fix is in place)
 Build LIGHT v2512080002 - VERSION UPDATED + sign:false fix
 
 Build LIGHT v2512080002 - ALL 8 FILES UNIFIED (retry after version fix)
+
+Build LIGHT v2512080002 - FIX: Add forceCodeSigning:false to prevent doSign() error
