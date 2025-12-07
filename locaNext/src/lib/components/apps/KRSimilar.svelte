@@ -20,6 +20,7 @@
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { telemetry } from "$lib/utils/telemetry.js";
+  import { createTracker } from "$lib/utils/trackedOperation.js";
 
   // API base URL
   const API_BASE = 'http://localhost:8888';
@@ -96,6 +97,120 @@
     logger.component("KRSimilar", "mounted");
     await loadAvailableDictionaries();
   });
+
+  // ========================================================================
+  // TEST MODE - For CDP Autonomous Testing
+  // ========================================================================
+
+  const KRS_TEST_CONFIG = {
+    // Load an existing dictionary for testing
+    loadDictionary: {
+      dictType: 'BDO'
+    },
+    // Test search query
+    search: {
+      query: '안녕하세요',
+      threshold: 0.85,
+      topK: 10
+    }
+  };
+
+  // Test state for CDP access (bypasses Svelte reactivity)
+  const _krsTestState = {
+    isProcessing: false,
+    statusMessage: '',
+    currentDictionary: null,
+    searchResults: []
+  };
+
+  // TEST: Load Dictionary (uses predefined dict_type)
+  // FACTOR ARCHITECTURE: Uses createTracker for centralized progress
+  async function testLoadDictionary() {
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('KRSimilar', 'Load Dictionary');
+    tracker.start();
+
+    _krsTestState.isProcessing = true;
+    _krsTestState.statusMessage = 'TEST: Loading KR Similar dictionary...';
+    logger.info('TEST MODE: Loading KR Similar dictionary', KRS_TEST_CONFIG.loadDictionary);
+
+    try {
+      loadDictType = KRS_TEST_CONFIG.loadDictionary.dictType;
+
+      tracker.update(25, `Loading ${loadDictType} embeddings...`);
+      await loadDictionary();
+
+      _krsTestState.currentDictionary = currentDictionary;
+      const successMsg = currentDictionary
+        ? `Dictionary loaded! ${currentDictionary.split_pairs} split + ${currentDictionary.whole_pairs} whole`
+        : 'Dictionary load completed';
+      _krsTestState.statusMessage = `TEST: ${successMsg}`;
+
+      // FACTOR: Complete tracker
+      tracker.complete(successMsg);
+    } catch (error) {
+      _krsTestState.statusMessage = `TEST ERROR: ${error.message}`;
+      logger.error('TEST MODE: Load KR Similar dictionary failed', { error: error.message });
+      // FACTOR: Fail tracker
+      tracker.fail(error.message);
+    } finally {
+      _krsTestState.isProcessing = false;
+    }
+  }
+
+  // TEST: Search (uses predefined query)
+  // FACTOR ARCHITECTURE: Uses createTracker for centralized progress
+  async function testSearch() {
+    if (!currentDictionary) {
+      _krsTestState.statusMessage = 'TEST ERROR: No dictionary loaded. Call testLoadDictionary first.';
+      return;
+    }
+
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('KRSimilar', 'Search Similar');
+    tracker.start();
+
+    _krsTestState.isProcessing = true;
+    _krsTestState.statusMessage = 'TEST: Searching for similar Korean texts...';
+    logger.info('TEST MODE: KR Similar search', KRS_TEST_CONFIG.search);
+
+    try {
+      searchQuery = KRS_TEST_CONFIG.search.query;
+      searchThreshold = KRS_TEST_CONFIG.search.threshold;
+      searchTopK = KRS_TEST_CONFIG.search.topK;
+
+      tracker.update(50, `Finding similar to "${searchQuery.substring(0, 20)}..."...`);
+      await performSearch();
+
+      _krsTestState.searchResults = searchResults;
+      const successMsg = `Search completed! ${searchResults.length} similar texts found`;
+      _krsTestState.statusMessage = `TEST: ${successMsg}`;
+
+      // FACTOR: Complete tracker
+      tracker.complete(successMsg);
+    } catch (error) {
+      _krsTestState.statusMessage = `TEST ERROR: ${error.message}`;
+      logger.error('TEST MODE: KR Similar search failed', { error: error.message });
+      // FACTOR: Fail tracker
+      tracker.fail(error.message);
+    } finally {
+      _krsTestState.isProcessing = false;
+    }
+  }
+
+  // Expose test functions globally for CDP access
+  if (typeof window !== 'undefined') {
+    window.krSimilarTest = {
+      loadDictionary: () => testLoadDictionary(),
+      search: () => testSearch(),
+      getStatus: () => ({
+        ..._krsTestState,
+        isDictionaryLoaded: !!currentDictionary,
+        dictionaryInfo: currentDictionary
+      }),
+      _state: _krsTestState
+    };
+  }
 
   // ========================================================================
   // API CALLS
@@ -179,9 +294,16 @@
     const startTime = Date.now();
     logger.userAction("Loading KR Similar dictionary", { dict_type: loadDictType });
 
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('KRSimilar', 'Load Dictionary');
+    tracker.start();
+    tracker.update(10, `Loading ${loadDictType} embeddings...`);
+
     try {
       const formData = new FormData();
       formData.append('dict_type', loadDictType);
+
+      tracker.update(30, 'Fetching dictionary from server...');
 
       const response = await fetch(`${API_BASE}/api/v2/kr-similar/load-dictionary`, {
         method: 'POST',
@@ -202,7 +324,9 @@
           dict_type: loadDictType,
           total_pairs: currentDictionary.total_pairs
         });
-        showStatus(`Dictionary loaded: ${loadDictType} (${currentDictionary.total_pairs} pairs)`, 'success');
+        const successMsg = `Dictionary loaded: ${loadDictType} (${currentDictionary.total_pairs} pairs)`;
+        showStatus(successMsg, 'success');
+        tracker.complete(successMsg);
         showLoadDictionaryModal = false;
       } else {
         throw new Error(data.detail || 'Failed to load dictionary');
@@ -213,6 +337,7 @@
         dict_type: loadDictType
       });
       showStatus(`Error: ${error.message}`, 'error');
+      tracker.fail(error.message);
     } finally {
       isLoadingDictionary = false;
     }
@@ -255,12 +380,19 @@
     const startTime = Date.now();
     logger.userAction("Performing KR Similar search", { query: searchQuery, threshold: searchThreshold, top_k: searchTopK });
 
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('KRSimilar', 'Search');
+    tracker.start();
+    tracker.update(10, 'Searching for similar strings...');
+
     try {
       const formData = new FormData();
       formData.append('query', searchQuery);
       formData.append('threshold', searchThreshold);
       formData.append('top_k', searchTopK);
       formData.append('use_whole', searchUseWhole);
+
+      tracker.update(30, 'Computing embeddings...');
 
       const response = await fetch(`${API_BASE}/api/v2/kr-similar/search`, {
         method: 'POST',
@@ -278,7 +410,9 @@
           use_whole: searchUseWhole,
           results_count: searchResults.length
         });
-        logger.info(`KR Similar search completed: ${searchResults.length} results found`);
+        const successMsg = `KR Similar search completed: ${searchResults.length} results found`;
+        logger.info(successMsg);
+        tracker.complete(successMsg);
         if (searchResults.length === 0) {
           showStatus('No similar strings found above threshold', 'info');
         }
@@ -292,6 +426,7 @@
         top_k: searchTopK
       });
       showStatus(`Search error: ${error.message}`, 'error');
+      tracker.fail(error.message);
     } finally {
       isSearching = false;
     }

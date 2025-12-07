@@ -18,8 +18,16 @@ from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
-from lxml import etree
 from loguru import logger
+
+# Try to import lxml (optional - only needed for XML parsing in QA tools)
+try:
+    from lxml import etree
+    HAS_LXML = True
+except ImportError:
+    HAS_LXML = False
+    etree = None
+    logger.warning("lxml not installed - XML QA functions will be disabled")
 
 # Try to import ahocorasick (optional but recommended for performance)
 try:

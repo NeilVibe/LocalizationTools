@@ -8,7 +8,11 @@ CLEAN, modular functions extracted from original XLSTransfer script.
 from typing import Optional, Dict, Set, Tuple, List, Any
 import re
 
-from server.tools.xlstransfer import config
+# Support both server mode and standalone mode
+try:
+    from server.tools.xlstransfer import config
+except ImportError:
+    import config  # Standalone mode (Windows build)
 
 
 # ============================================

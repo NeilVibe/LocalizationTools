@@ -184,6 +184,68 @@ socket.on('log_entry', (data) => {
 
 ---
 
+### 6. Factor Architecture for Progress Tracking (Frontend)
+
+**All async operations MUST use Factor Architecture for progress tracking.**
+
+```javascript
+// Module: locaNext/src/lib/utils/trackedOperation.js
+
+// Pattern 1: createTracker() - Manual control (RECOMMENDED)
+import { createTracker } from "$lib/utils/trackedOperation.js";
+
+async function loadDictionary() {
+  const tracker = createTracker('ToolName', 'Operation Name');
+  tracker.start();
+  tracker.update(25, 'Loading...');
+
+  try {
+    const result = await someAsyncOperation();
+    tracker.complete('Operation completed successfully!');
+    return result;
+  } catch (error) {
+    tracker.fail(error.message);
+    throw error;
+  }
+}
+
+// Pattern 2: withProgress() - Auto-wrapping
+import { withProgress } from "$lib/utils/trackedOperation.js";
+
+const result = await withProgress('ToolName', 'Operation', async (progress) => {
+  progress.update(50, 'Halfway done...');
+  return await someAsyncOperation();
+});
+
+// Pattern 3: parseProgress() - For Python stderr output
+import { parseProgress } from "$lib/utils/trackedOperation.js";
+
+const progressHandler = (data) => {
+  if (data.type === 'stderr') {
+    const parsed = parseProgress(data.data);  // Handles: "X%", "Row X/Y", "Step X of Y"
+    if (parsed) tracker.update(parsed.progress, parsed.message);
+  }
+};
+window.electron.onPythonOutput(progressHandler);
+```
+
+**When adding a new tool:**
+1. Import `createTracker` from `$lib/utils/trackedOperation.js`
+2. Create tracker at start of each async operation
+3. Update progress at meaningful points
+4. Complete or fail at the end
+5. GlobalStatusBar and TaskManager auto-display progress
+
+**Benefits:**
+- DRY: One implementation, used everywhere
+- Consistent: Same progress format across all tools
+- Maintainable: Fix bugs in ONE place
+- Extensible: Add new tools with zero boilerplate
+
+**Files:** `locaNext/src/lib/utils/trackedOperation.js`, `locaNext/src/lib/stores/globalProgress.js`
+
+---
+
 ## 🚨 COMMON PITFALLS TO AVOID
 
 ### 1. Don't Mix Async and Sync DB Sessions

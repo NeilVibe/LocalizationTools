@@ -51,6 +51,11 @@ docs/testing/
 │   └── All methods documented
 │   └── Quick reference commands
 │
+├── 🤖 AUTONOMOUS_WINDOWS_TESTING.md ── CDP + TEST MODE (NEW!)
+│   └── Skips file dialogs automatically
+│   └── window.xlsTransferTest functions
+│   └── Multi-process issue solutions
+│
 ├── ⚡ QUICK_COMMANDS.md ────────── Copy-paste commands only
 │
 ├── 🐍 PYTEST_GUIDE.md ─────────── Python backend testing

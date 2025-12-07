@@ -2,7 +2,7 @@
   "name": "locanext",
   "version": "1.2.2",
   "description": "LocaNext - Professional Desktop Platform for Localization Tools",
-  "main": "electron/main.js",
+  "main": "electron/bootstrap.js",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:svelte\" \"npm run dev:electron\"",
