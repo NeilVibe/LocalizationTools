@@ -32,3 +32,5 @@ Build LIGHT v2512071233 - First Gitea-only test
 Build LIGHT v2512072034 - Gitea Windows Runner Test
 
 Build LIGHT v2512072034 - Retry with version unification fix
+
+Build LIGHT v2512072034 - Retry with Git/PowerShell PATH fix

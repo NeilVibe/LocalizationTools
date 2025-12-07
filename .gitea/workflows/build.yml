@@ -186,6 +186,20 @@ jobs:
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
     steps:
+      # GITEA FIX: Add Git and PowerShell to PATH for self-hosted Windows runner
+      - name: Setup Windows Environment
+        run: |
+          echo "Adding Git and PowerShell to GITHUB_PATH..."
+          echo E:\GIT123\Git\cmd >> $env:GITHUB_PATH
+          echo E:\GIT123\Git\bin >> $env:GITHUB_PATH
+          echo "C:\Program Files\PowerShell\7" >> $env:GITHUB_PATH
+          # Also set for current step
+          $env:PATH = "E:\GIT123\Git\cmd;E:\GIT123\Git\bin;C:\Program Files\PowerShell\7;$env:PATH"
+          Write-Host "Verifying Git installation..."
+          & "E:\GIT123\Git\cmd\git.exe" --version
+          Write-Host "Environment setup complete"
+        shell: powershell
+
       - name: Checkout code
         uses: actions/checkout@v4
 
