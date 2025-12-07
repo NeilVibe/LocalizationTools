@@ -78,3 +78,5 @@ Build LIGHT v2512080002 - VERSION UPDATED + sign:false fix
 Build LIGHT v2512080002 - ALL 8 FILES UNIFIED (retry after version fix)
 
 Build LIGHT v2512080002 - FIX: Add forceCodeSigning:false to prevent doSign() error
+
+Build LIGHT v2512080002 - FIX: Add signDlls:false + CSC_LINK (NSIS signing bug)

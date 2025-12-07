@@ -70,7 +70,8 @@
     "win": {
       "target": "nsis",
       "sign": false,
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "signDlls": false
     },
     "linux": {
       "target": "AppImage",
