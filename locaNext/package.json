@@ -68,7 +68,7 @@
       "target": "dmg"
     },
     "win": {
-      "target": "portable",
+      "target": "dir",
       "sign": "./scripts/skip-sign.js",
       "signAndEditExecutable": false,
       "signDlls": false
