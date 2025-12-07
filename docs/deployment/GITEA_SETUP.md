@@ -211,6 +211,43 @@ Restart Gitea:
 sudo systemctl restart gitea
 ```
 
+### 🔍 Check Build Logs (Quick Reference)
+
+**Method 1: CLI (Fastest)**
+```bash
+# Latest build log (most recent job)
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1 | xargs cat | tail -100
+
+# Find error in latest log
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1 | xargs grep -i "error\|fail"
+
+# Watch for specific job (e.g., job 109)
+cat ~/gitea/data/actions_log/neilvibe/LocaNext/*/109.log | tail -50
+
+# List recent builds (newest first)
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -10
+```
+
+**Method 2: Web UI**
+```
+http://localhost:3000/neilvibe/LocaNext/actions
+→ Click on run number → Click on job → View logs
+```
+
+**Log Location Structure:**
+```
+~/gitea/data/actions_log/
+└── {owner}/{repo}/{hex_prefix}/{job_id}.log
+    Example: neilvibe/LocaNext/6d/109.log
+```
+
+**Quick Aliases (add to ~/.bashrc):**
+```bash
+alias gitea-log='ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1 | xargs cat | tail -100'
+alias gitea-err='ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1 | xargs grep -iE "error|fail|::error"'
+alias gitea-logs='ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -10'
+```
+
 ### Create Workflow File
 ```bash
 # In your repo:

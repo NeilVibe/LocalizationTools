@@ -254,12 +254,49 @@ jobs:
           Write-Host "[OK] Python ready for build" -ForegroundColor Green
         shell: powershell
 
-      - name: Setup Node.js 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: locaNext/package-lock.json
+      # NOTE: We don't use actions/setup-node@v4 because 7zr.exe extraction fails
+      # when runner runs as SYSTEM service. Instead, use pre-installed Node.js.
+      - name: Verify Node.js Installation
+        run: |
+          Write-Host "=== Verifying Node.js Installation ===" -ForegroundColor Cyan
+
+          # Check common Node.js locations
+          $nodePaths = @(
+            "C:\Program Files\nodejs\node.exe",
+            "C:\nodejs\node.exe"
+          )
+
+          $nodeExe = $null
+          foreach ($path in $nodePaths) {
+            if (Test-Path $path) {
+              $nodeExe = $path
+              Write-Host "[OK] Found Node.js at: $path" -ForegroundColor Green
+              break
+            }
+          }
+
+          if (-not $nodeExe) {
+            # Try PATH
+            $nodeExe = (Get-Command node -ErrorAction SilentlyContinue).Source
+            if ($nodeExe) {
+              Write-Host "[OK] Found Node.js in PATH: $nodeExe" -ForegroundColor Green
+            } else {
+              Write-Error "[ERROR] Node.js not found! Install Node.js 18+ to C:\Program Files\nodejs"
+              exit 1
+            }
+          }
+
+          # Get Node directory and add to PATH
+          $nodeDir = Split-Path $nodeExe -Parent
+          $env:PATH = "$nodeDir;$env:PATH"
+          Write-Host "Added to PATH: $nodeDir"
+
+          # Verify versions
+          & node --version
+          & npm --version
+
+          Write-Host "[OK] Node.js ready for build" -ForegroundColor Green
+        shell: powershell
 
       # ============================================================
       # STEP 1: Download VC++ Redistributable
