@@ -403,10 +403,16 @@ class TestCharacterCountCheck:
 class TestAhocorasickAvailability:
     """Test Aho-Corasick module availability."""
 
-    def test_ahocorasick_imported(self):
-        """Test that ahocorasick module is available."""
-        # This tests that the optional dependency is installed
-        assert qa_tools.HAS_AHOCORASICK == True, "ahocorasick should be installed for optimal performance"
+    def test_ahocorasick_availability_check(self):
+        """Test that ahocorasick availability is properly detected."""
+        # ahocorasick is OPTIONAL - code works with or without it
+        # Just verify the flag exists and is boolean
+        assert isinstance(qa_tools.HAS_AHOCORASICK, bool)
+        # Log for visibility (pytest captures this)
+        if qa_tools.HAS_AHOCORASICK:
+            print("[OK] ahocorasick installed - using fast Aho-Corasick algorithm")
+        else:
+            print("[INFO] ahocorasick not installed - using regex fallback (still works)")
 
 
 # =============================================================================
