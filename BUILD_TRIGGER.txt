@@ -83,3 +83,4 @@ Build FULL v2512071233 - CI Test Fix #2 (ahocorasick optional)
 Build FULL v2512071233 - CI Test Fix #3 (tuple return format)
 Build LIGHT v2512071233 - Gitea Workflow Test (P13.9)
 Build LIGHT v2512071233 - Gitea P13.9 (YAML fixed)
+Build LIGHT v2512071233 - Gitea Docker Network Fix
