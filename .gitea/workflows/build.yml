@@ -698,8 +698,12 @@ jobs:
           # Copy additional files into win-unpacked before zipping
           Copy-Item "server" -Destination "$srcDir\server" -Recurse -Force
           Copy-Item "version.py" -Destination "$srcDir\version.py" -Force
-          Copy-Item "tools\*.bat" -Destination "$srcDir\tools\" -Force -ErrorAction SilentlyContinue
-          Copy-Item "tools\*.py" -Destination "$srcDir\tools\" -Force -ErrorAction SilentlyContinue
+
+          # Create tools directory and copy scripts
+          $toolsDir = "$srcDir\tools"
+          if (!(Test-Path $toolsDir)) { New-Item -ItemType Directory -Path $toolsDir -Force }
+          Get-ChildItem "tools\*.bat" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName -Destination $toolsDir -Force }
+          Get-ChildItem "tools\*.py" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName -Destination $toolsDir -Force }
 
           # Create ZIP
           Compress-Archive -Path "$srcDir\*" -DestinationPath "$outDir\$zipName" -Force
