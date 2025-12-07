@@ -29,3 +29,4 @@ Build History:
 --------------
 Build LIGHT v2512071233 - First Gitea-only test
 
+Build LIGHT v2512072034 - Gitea Windows Runner Test
