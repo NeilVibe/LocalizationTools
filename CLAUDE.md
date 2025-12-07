@@ -416,10 +416,38 @@ cd ~/gitea && ./stop.sh    # Stop Gitea
 - "Should we add another tool to LocaNext?" (P14 - New Tools)
 - "Want to fix P10.3 (Patch Notes display)?" - Nice-to-have, backlog
 
-### Windows Build Debugging:
+### Windows Environment (C: Drive - SSD):
+```
+C:\NEIL_PROJECTS_WINDOWSBUILD\
+├── LocaNextProject\
+│   ├── LocaNext\                    # Installed app (playground/testing)
+│   │   ├── LocaNext.exe             # Main executable
+│   │   ├── server/                  # Backend
+│   │   ├── tools/                   # Python tools
+│   │   └── logs/                    # App logs
+│   └── TestFilesForLocaNext\        # Test files
+│       ├── *.xlsx                   # Excel test files
+│       ├── *.txt                    # Text test files
+│       └── sample_localization.xml  # XML test file (for QuickSearch/LD Manager)
+│
+└── GiteaRunner\                     # Windows act_runner (P13.11)
+    ├── act_runner.exe               # Runner binary
+    └── _work\                       # Build workspace
+```
+
+**WSL Access:**
+```bash
+# LocaNext App
+/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/
+
+# Test Files
+/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext/
+
+# Launch app with CDP
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext && ./LocaNext.exe --remote-debugging-port=9222 &
+```
+
 - See **[WINDOWS_TROUBLESHOOTING.md](docs/troubleshooting/WINDOWS_TROUBLESHOOTING.md)** for WSL debugging commands
-- User can provide Windows install path (e.g., `C:\Users\...\LocaNext`)
-- Access via WSL: `/mnt/c/Users/.../LocaNext`
 
 ---
 
@@ -449,7 +477,7 @@ This project is **97% complete**, **clean**, **organized**, and **production-rea
 
 ---
 
-*Last updated: 2025-12-06 by Claude*
+*Last updated: 2025-12-07 by Claude*
 *Tests: 912 total | Structure unified | Frontend: 164 | API Sim: 168 | Security: 86 | QA Tools: 27*
 *Tools: 3/3 complete (XLSTransfer, QuickSearch + QA Tools, KR Similar)*
 *MASTER NAVIGATION HUB - All tools unified under server/tools/*

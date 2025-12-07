@@ -17,7 +17,7 @@ SCRIPTS_DIR="$TOOLKIT_DIR/scripts"
 
 # Configuration
 CDP_PORT="${CDP_PORT:-9222}"
-LOCANEXT_PATH="${LOCANEXT_PATH:-D:\\LocaNext\\LocaNext.exe}"
+LOCANEXT_PATH="${LOCANEXT_PATH:-C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject\\LocaNext\\LocaNext.exe}"
 WAIT_AFTER_LAUNCH="${WAIT_AFTER_LAUNCH:-25}"
 
 echo "============================================================"
@@ -58,7 +58,7 @@ echo ""
 echo "[PHASE 2] Launching LocaNext with CDP on port $CDP_PORT..."
 
 # Clear logs
-rm -f /mnt/d/LocaNext/logs/*.log 2>/dev/null || true
+rm -f /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/*.log 2>/dev/null || true
 
 # Launch via PowerShell (synchronous start, app runs async)
 /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe \

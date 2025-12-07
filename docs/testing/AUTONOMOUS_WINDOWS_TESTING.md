@@ -129,7 +129,7 @@ main();
 EOF
 
 # Copy and run
-cp /tmp/test_xlstransfer.js /mnt/d/LocaNext/
+cp /tmp/test_xlstransfer.js /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/
 /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd D:\LocaNext; node test_xlstransfer.js"
 ```
 
@@ -157,7 +157,7 @@ echo "Process count: $PROC_COUNT"  # Should be 1-4 (main + renderer + GPU + util
 /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd D:\LocaNext; node test_xlstransfer.js"
 
 # 6. Check logs
-tail -30 /mnt/d/LocaNext/logs/locanext_app.log
+tail -30 /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/locanext_app.log
 
 # 7. Kill when done
 /mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe
@@ -173,7 +173,7 @@ tail -30 /mnt/d/LocaNext/logs/locanext_app.log
 |---------|-----------|
 | PowerShell | `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe` |
 | taskkill | `/mnt/c/Windows/System32/taskkill.exe` |
-| App location | `D:\LocaNext\LocaNext.exe` (from Windows) or `/mnt/d/LocaNext/` (from WSL) |
+| App location | `D:\LocaNext\LocaNext.exe` (from Windows) or `/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/` (from WSL) |
 
 ---
 
@@ -192,10 +192,10 @@ If you get "positional indexers are out-of-bounds", the test file columns are em
 
 ```bash
 # App logs
-/mnt/d/LocaNext/logs/locanext_app.log
+/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/locanext_app.log
 
 # Clear logs before testing
-rm -f /mnt/d/LocaNext/logs/*.log
+rm -f /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/*.log
 ```
 
 ---

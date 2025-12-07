@@ -25,7 +25,7 @@
 4. Retest
 5. Only ask user if architecture decision needed
 
-**Windows Test Folder:** `D:\LocaNext` (WSL: `/mnt/d/LocaNext`)
+**Windows Test Folder:** `D:\LocaNext` (WSL: `/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext`)
 
 ---
 
