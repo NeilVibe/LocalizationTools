@@ -44,3 +44,5 @@ Build LIGHT v2512072034 - Fix symlink permission issue (clear cache + disable co
 Build LIGHT v2512072034 - Retry symlink fix (runner restarted)
 
 Build LIGHT v2512072034 - ADMIN PRIVILEGES TEST (UAC elevated runner)
+
+Build LIGHT v2512072034 - ADMIN RUNNER FRESH START (single admin runner)
