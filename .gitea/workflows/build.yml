@@ -849,13 +849,15 @@ jobs:
         shell: powershell
 
   # ============================================================
-  # JOB 4: Create Gitea Release (GITEA API - replaces softprops/action-gh-release)
+  # JOB 4: Create Gitea Release (DISABLED - artifacts don't work on Gitea)
+  # The build succeeds and creates a portable ZIP in installer_output/
+  # For releases, manually download from runner or use mirror script
   # ============================================================
   create-release:
     name: Create Gitea Release
     runs-on: ubuntu-latest
     needs: [check-build-trigger, build-windows]
-    if: success()
+    if: false  # Disabled - download-artifact@v4 not supported on Gitea (GHES)
 
     steps:
       - name: Checkout code
