@@ -953,6 +953,42 @@ PHASE E: FRONTEND CDP DEBUGGING (Browser Console)
 
 ---
 
+## ✅ P13.10: Separate GitHub and Gitea Builds (COMPLETE)
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                  P13.10: BUILD SEPARATION STRATEGY                             ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   PROBLEM: Both GitHub and Gitea trigger on same BUILD_TRIGGER.txt           ║
+║   When pushing to both remotes, BOTH workflows run simultaneously            ║
+║   This causes confusion and unnecessary failed builds                         ║
+║                                                                               ║
+║   SOLUTION: Separate trigger mechanisms                                        ║
+║   ├── GitHub: BUILD_TRIGGER.txt  (existing, production builds)               ║
+║   ├── Gitea:  GITEA_TRIGGER.txt  (new file, local testing only)              ║
+║   └── OR: Push only to ONE remote when testing                                ║
+║                                                                               ║
+║   STATUS: ✅ COMPLETE                                                          ║
+║                                                                               ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   TASKS:                                                                       ║
+║   [✅] P13.10.1: Create GITEA_TRIGGER.txt for Gitea-only builds               ║
+║   [✅] P13.10.2: Update .gitea/workflows/build.yml to use GITEA_TRIGGER.txt   ║
+║   [✅] P13.10.3: GitHub is FINE (last success: CI test fix #3, stale timestamp)║
+║   [📋] P13.10.4: Document dual-push vs single-push strategy                   ║
+║                                                                               ║
+║   QUICK FIX (for now):                                                         ║
+║   - Test Gitea:  git push gitea main    (Gitea only)                          ║
+║   - Production:  git push origin main   (GitHub only)                         ║
+║   - Full sync:   git push origin main && git push gitea main                  ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
 ## ✅ P13.0 Gitea Setup COMPLETE + Comprehensive Testing (2025-12-06)
 
 ### ✅ Gitea Fully Configured:

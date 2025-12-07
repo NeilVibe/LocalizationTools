@@ -1,0 +1,31 @@
+Gitea Build Trigger File - LocaNext Local CI/CD
+================================================
+
+USAGE:
+------
+Add a line with the build command, then commit & push to GITEA ONLY.
+Gitea Actions will automatically build when it detects the new line.
+
+IMPORTANT: This file is for GITEA BUILDS ONLY!
+- Push to Gitea:  git push gitea main
+- DO NOT push to GitHub when testing Gitea builds
+
+FORMATS:
+  Build LIGHT v[version]  - Build LIGHT installer (~100-150MB, no model)
+  Build FULL v[version]   - Build FULL installer (~2GB, model bundled)
+
+EXAMPLES:
+  Build LIGHT v2512071800   - LIGHT installer test
+  Build FULL v2512071800    - FULL installer test
+
+WORKFLOW:
+1. Update VERSION in version.py
+2. Run: python3 scripts/check_version_unified.py
+3. Add build command below
+4. Commit changes
+5. Push to Gitea ONLY: git push gitea main
+
+Build History:
+--------------
+Build LIGHT v2512071233 - First Gitea-only test
+
