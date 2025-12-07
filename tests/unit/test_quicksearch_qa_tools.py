@@ -15,6 +15,10 @@ import pytest
 from pathlib import Path
 
 from server.tools.quicksearch import qa_tools
+from server.tools.quicksearch.qa_tools import HAS_LXML
+
+# Skip decorator for tests requiring lxml
+requires_lxml = pytest.mark.skipif(not HAS_LXML, reason="lxml not installed")
 
 
 # =============================================================================
@@ -155,6 +159,7 @@ class TestHelperFunctions:
 class TestExtractAllPairs:
     """Test extract_all_pairs_from_files function."""
 
+    @requires_lxml
     def test_extract_from_xml(self, temp_xml_file):
         """Test extraction from XML file."""
         pairs = qa_tools.extract_all_pairs_from_files([temp_xml_file])
@@ -225,6 +230,7 @@ class TestGlossaryFilter:
 class TestExtractGlossary:
     """Test extract_glossary function."""
 
+    @requires_lxml
     def test_extract_glossary_basic(self, temp_xml_file):
         """Test basic glossary extraction."""
         result = qa_tools.extract_glossary(
@@ -261,6 +267,7 @@ class TestExtractGlossary:
 class TestLineCheck:
     """Test line_check function."""
 
+    @requires_lxml
     def test_line_check_finds_inconsistencies(self, temp_xml_file):
         """Test that line check finds inconsistent translations."""
         result = qa_tools.line_check(
@@ -290,6 +297,7 @@ class TestLineCheck:
 class TestTermCheck:
     """Test term_check function."""
 
+    @requires_lxml
     def test_term_check_basic(self, temp_xml_file):
         """Test basic term check."""
         result = qa_tools.term_check(
@@ -317,6 +325,7 @@ class TestTermCheck:
 class TestPatternCheck:
     """Test pattern_sequence_check function."""
 
+    @requires_lxml
     def test_pattern_check_finds_mismatches(self, temp_xml_with_patterns):
         """Test that pattern check finds mismatched patterns."""
         result = qa_tools.pattern_sequence_check(file_paths=[temp_xml_with_patterns])
@@ -329,6 +338,7 @@ class TestPatternCheck:
         mismatch_ids = [m.get("locstr_id", "") for m in result["mismatches"]]
         assert any("PAT_003" in mid for mid in mismatch_ids)
 
+    @requires_lxml
     def test_pattern_check_matching_patterns(self, temp_xml_file):
         """Test pattern check with matching patterns."""
         result = qa_tools.pattern_sequence_check(file_paths=[temp_xml_file])
@@ -350,6 +360,7 @@ class TestPatternCheck:
 class TestCharacterCountCheck:
     """Test character_count_check function."""
 
+    @requires_lxml
     def test_character_count_bdo_symbols(self, temp_xml_with_symbols):
         """Test character count with BDO symbol set."""
         result = qa_tools.character_count_check(
@@ -366,6 +377,7 @@ class TestCharacterCountCheck:
         # SYM_004 has {a}{b}{c} vs {a}{b} (mismatch)
         assert result["mismatch_count"] >= 1
 
+    @requires_lxml
     def test_character_count_custom_symbols(self, temp_xml_with_symbols):
         """Test character count with custom symbols."""
         result = qa_tools.character_count_check(
@@ -404,6 +416,7 @@ class TestAhocorasickAvailability:
 class TestQAToolsIntegration:
     """Integration-like tests for QA tools workflow."""
 
+    @requires_lxml
     def test_full_qa_workflow(self, temp_xml_file):
         """Test running all QA tools on same file."""
         # Extract glossary
@@ -429,6 +442,7 @@ class TestQAToolsIntegration:
         char_result = qa_tools.character_count_check(file_paths=[temp_xml_file])
         assert "mismatches" in char_result
 
+    @requires_lxml
     def test_mixed_file_types(self, temp_xml_file, temp_txt_file):
         """Test processing mixed XML and TXT files."""
         pairs = qa_tools.extract_all_pairs_from_files([temp_xml_file, temp_txt_file])
