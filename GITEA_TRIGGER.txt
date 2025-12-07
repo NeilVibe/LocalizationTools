@@ -118,3 +118,4 @@ Build LIGHT v2512080458 - Fix tools dir creation
 Build LIGHT v2512080505 - Fix artifact upload (continue-on-error)
 Build LIGHT v2512080513 - Fix: Skip embedded Python check for LIGHT builds
 Build LIGHT v2512080522 - Disable create-release job (artifacts not supported)
+Build LIGHT v2512080529 - Remove artifact upload (causes ::error:: failure)
