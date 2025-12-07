@@ -100,14 +100,20 @@ class TestQuickSearchSearcher:
         """Test search with empty query."""
         searcher.load_dictionary(sample_dict)
 
-        assert searcher.search_one_line("") == []
-        assert searcher.search_one_line("   ") == []
+        # Empty query returns just empty list (not tuple)
+        results = searcher.search_one_line("")
+        assert results == []
+
+        results2 = searcher.search_one_line("   ")
+        assert results2 == []
 
     def test_search_by_stringid(self, searcher, sample_dict):
         """Test direct StringId lookup."""
         searcher.load_dictionary(sample_dict)
 
-        results = searcher.search_one_line("STR_001")
+        # search_one_line returns (results_list, count) tuple
+        results, count = searcher.search_one_line("STR_001")
+        assert count == 1
         assert len(results) == 1
         assert results[0][0] == '안녕하세요'
         assert results[0][1] == 'Hello'
@@ -118,7 +124,9 @@ class TestQuickSearchSearcher:
         searcher.load_dictionary(sample_dict)
         searcher.load_reference_dictionary(reference_dict)
 
-        results = searcher.search_one_line("STR_001")
+        # search_one_line returns (results_list, count) tuple
+        results, count = searcher.search_one_line("STR_001")
+        assert count == 1
         assert len(results) == 1
         assert results[0][0] == '안녕하세요'  # Korean
         assert results[0][1] == 'Hello'  # Main translation
@@ -129,50 +137,43 @@ class TestQuickSearchSearcher:
         """Test contains search with Korean text."""
         searcher.load_dictionary(sample_dict)
 
-        # search_one_line returns count when no matches structure
-        results = searcher.search_one_line("안녕", match_type="contains")
-        # Results may be list of tuples or count
-        if isinstance(results, list) and len(results) > 0:
-            if isinstance(results[0], tuple):
-                korean_texts = [r[0] for r in results]
-                assert any('안녕' in k for k in korean_texts)
-            else:
-                assert results  # Has some results
+        # search_one_line returns (results_list, count) tuple for valid queries
+        results, count = searcher.search_one_line("안녕", match_type="contains")
+        assert count >= 1
+        korean_texts = [r[0] for r in results]
+        assert any('안녕' in k for k in korean_texts)
 
     def test_search_contains_english(self, searcher, sample_dict):
         """Test contains search with English text."""
         searcher.load_dictionary(sample_dict)
 
-        results = searcher.search_one_line("Hello", match_type="contains")
-        # Results may be list of tuples or count
-        if isinstance(results, list) and len(results) > 0:
-            if isinstance(results[0], tuple):
-                translations = [r[1] for r in results]
-                assert any('Hello' in t for t in translations)
-            else:
-                assert results  # Has some results
+        # search_one_line returns (results_list, count) tuple
+        results, count = searcher.search_one_line("Hello", match_type="contains")
+        assert count >= 1
+        translations = [r[1] for r in results]
+        assert any('Hello' in t for t in translations)
 
     def test_search_case_insensitive(self, searcher, sample_dict):
         """Test case-insensitive search."""
         searcher.load_dictionary(sample_dict)
 
-        results_lower = searcher.search_one_line("hello", match_type="contains")
-        results_upper = searcher.search_one_line("HELLO", match_type="contains")
+        results_lower, count_lower = searcher.search_one_line("hello", match_type="contains")
+        results_upper, count_upper = searcher.search_one_line("HELLO", match_type="contains")
 
         # Both should find the same entries
-        assert len(results_lower) == len(results_upper)
+        assert count_lower == count_upper
 
     def test_search_with_reference_enabled(self, searcher, sample_dict, reference_dict):
         """Test search with reference dictionary enabled."""
         searcher.load_dictionary(sample_dict)
         searcher.load_reference_dictionary(reference_dict)
 
-        results = searcher.search_one_line("감사", match_type="contains")
+        results, count = searcher.search_one_line("감사", match_type="contains")
 
         # Results should include reference translation
-        assert len(results) >= 1
+        assert count >= 1
         # With reference, results are 4-tuples
-        if len(results[0]) == 4:
+        if len(results) > 0 and len(results[0]) == 4:
             assert results[0][2] is not None  # Has reference
 
     def test_search_pagination_limit(self, searcher, sample_dict):
@@ -180,7 +181,7 @@ class TestQuickSearchSearcher:
         searcher.load_dictionary(sample_dict)
 
         # Search for something that matches multiple entries
-        results = searcher.search_one_line("STR", match_type="contains", limit=2)
+        results, count = searcher.search_one_line("STR", match_type="contains", limit=2)
         assert len(results) <= 2
 
 
@@ -278,16 +279,17 @@ class TestQuickSearchIntegration:
 
         searcher.load_dictionary(test_dict)
 
-        # Search by Korean
-        results = searcher.search_one_line("테스트")
-        assert len(results) >= 1
+        # Search by Korean - returns (results_list, count) tuple
+        results, count = searcher.search_one_line("테스트")
+        assert count >= 1
 
         # Search by English
-        results = searcher.search_one_line("Test")
-        assert len(results) >= 1
+        results, count = searcher.search_one_line("Test")
+        assert count >= 1
 
         # Search by StringId
-        results = searcher.search_one_line("STR_TEST")
+        results, count = searcher.search_one_line("STR_TEST")
+        assert count == 1
         assert len(results) == 1
 
     def test_reference_dictionary_workflow(self):
@@ -316,8 +318,9 @@ class TestQuickSearchIntegration:
         searcher.load_dictionary(main_dict)
         searcher.load_reference_dictionary(ref_dict)
 
-        # Search should return both translations
-        results = searcher.search_one_line("STR_001")
+        # Search should return both translations - returns (results_list, count) tuple
+        results, count = searcher.search_one_line("STR_001")
+        assert count == 1
         assert len(results) == 1
         assert len(results[0]) == 4  # Korean, English, French, StringId
         assert results[0][1] == 'Hello'
