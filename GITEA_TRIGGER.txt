@@ -112,3 +112,4 @@ Build LIGHT v2512080415 - Debug ISCC paths
 Build LIGHT v2512080422 - Debug exe existence
 Build LIGHT v2512080430 - Skip missing vc_redist and embedded Python
 Build LIGHT v2512080437 - Create output dir + use full ISCC path
+Build LIGHT v2512080443 - Use direct ISCC path (not shim)
