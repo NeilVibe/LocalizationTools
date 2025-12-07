@@ -68,24 +68,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+      # Host mode: Use system Python 3.11 and Node directly (no setup actions needed)
+      - name: Verify Python 3.11
+        run: |
+          python3.11 --version
+          python3.11 -m pip --version
 
-      - name: Setup Node.js 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: locaNext/package-lock.json
+      - name: Verify Node.js
+        run: |
+          node --version
+          npm --version
 
       - name: Install Python Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pip-audit
+          python3.11 -m pip install --upgrade pip
+          python3.11 -m pip install -r requirements.txt
+          python3.11 -m pip install pytest pip-audit
 
       - name: Install Node Dependencies
         run: |
@@ -95,7 +93,7 @@ jobs:
       - name: Version Unification Check
         run: |
           echo "=== Checking version unification across all files ==="
-          python scripts/check_version_unified.py
+          python3.11 scripts/check_version_unified.py
           echo "[OK] All versions unified"
 
       # ---- VERSION INCREMENT CHECK (GITEA API) ----
@@ -104,7 +102,7 @@ jobs:
           echo "=== Checking version is newer than latest release ==="
 
           # Get current version from version.py
-          CURRENT_VERSION=$(python -c "from version import VERSION; print(VERSION)")
+          CURRENT_VERSION=$(python3.11 -c "from version import VERSION; print(VERSION)")
           echo "Current version: $CURRENT_VERSION"
 
           # Get latest release version from Gitea API
@@ -127,7 +125,7 @@ jobs:
         run: |
           echo "=== Testing server can start (catches missing files) ==="
           # Start server in background
-          timeout 30 python server/main.py &
+          timeout 30 python3.11 server/main.py &
           SERVER_PID=$!
 
           # Wait for server with retries
@@ -149,7 +147,7 @@ jobs:
       - name: Run Python Tests
         run: |
           echo "=== Running E2E unit tests (core functionality, no server required) ==="
-          python -m pytest \
+          python3.11 -m pytest \
             tests/e2e/test_kr_similar_e2e.py \
             tests/e2e/test_xlstransfer_e2e.py \
             tests/e2e/test_quicksearch_e2e.py \
