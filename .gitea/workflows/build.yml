@@ -182,10 +182,47 @@ jobs:
   build-windows:
     name: Build Windows LIGHT Installer
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
-    needs: [check-build-trigger, safety-checks]
-    if: needs.check-build-trigger.outputs.should_build == 'true'
+    # NOTE: Removed `needs:` to fix act_runner job status bug
+    # Build trigger is checked directly in the first step
 
     steps:
+      # Check build trigger directly (replaces needs: check-build-trigger)
+      - name: Check Build Trigger
+        id: check
+        run: |
+          Write-Host "=== Checking Build Trigger ==="
+          # Download trigger file using git clone minimal
+          $triggerUrl = "https://raw.githubusercontent.com/NeilVibe/LocalizationTools/main/GITEA_TRIGGER.txt"
+          try {
+            $trigger = (Invoke-WebRequest -Uri $triggerUrl -UseBasicParsing).Content
+          } catch {
+            $triggerUrl = "http://172.28.150.120:3000/neilvibe/LocaNext/raw/branch/main/GITEA_TRIGGER.txt"
+            $trigger = (Invoke-WebRequest -Uri $triggerUrl -UseBasicParsing).Content
+          }
+
+          $lastLine = ($trigger -split "`n" | Where-Object { $_.Trim() -ne "" } | Select-Object -Last 1).Trim()
+          Write-Host "Last trigger line: $lastLine"
+
+          if ($lastLine -match "Build (LIGHT|FULL) v(\d+)") {
+            $version = $Matches[2]
+            Write-Host "Detected version: $version"
+            echo "version=$version" >> $env:GITHUB_OUTPUT
+            echo "should_build=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "No valid build trigger found"
+            echo "should_build=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+        shell: powershell
+
+      # Skip rest if no build trigger
+      - name: Skip if no trigger
+        if: steps.check.outputs.should_build != 'true'
+        run: |
+          Write-Host "No build trigger - skipping build"
+          exit 0
+        shell: powershell
+
       # Git must be installed at C:\Program Files\Git with PATH enabled
       - name: Verify Git Installation
         run: |
@@ -682,7 +719,7 @@ jobs:
 
           # WORKAROUND: Skip Inno Setup (has path issues on Windows runner)
           # Instead, create a ZIP of the unpacked Electron app
-          $version = "${{ needs.check-build-trigger.outputs.version }}"
+          $version = "${{ steps.check.outputs.version }}"
           $srcDir = "locaNext\dist-electron\win-unpacked"
           $outDir = "installer_output"
           $zipName = "LocaNext_v${version}_Light_Portable.zip"
@@ -719,7 +756,7 @@ jobs:
 
       - name: Verify Portable ZIP
         run: |
-          $version = "${{ needs.check-build-trigger.outputs.version }}"
+          $version = "${{ steps.check.outputs.version }}"
           $archive = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
           if (!$archive) { Write-Error "[ERROR] No ZIP found"; exit 1 }
           Write-Host "[OK] Portable ZIP created: $($archive.Name)"
@@ -733,7 +770,7 @@ jobs:
       - name: Generate latest.yml for Auto-Update
         run: |
           Write-Host "=== Generating latest.yml for electron-updater ==="
-          $version = "${{ needs.check-build-trigger.outputs.version }}"
+          $version = "${{ steps.check.outputs.version }}"
 
           $archive = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
           if (!$archive) { Write-Error "[ERROR] No ZIP found"; exit 1 }
@@ -805,7 +842,7 @@ jobs:
           Write-Host "============================================"
           Write-Host "[SUCCESS] LocaNext LIGHT Build Complete!"
           Write-Host "============================================"
-          Write-Host "Output: installer_output\LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Light_Portable.zip"
+          Write-Host "Output: installer_output\LocaNext_v${{ steps.check.outputs.version }}_Light_Portable.zip"
           exit 0
         shell: powershell
 
@@ -837,7 +874,7 @@ jobs:
 
       - name: Create Gitea Release via API
         run: |
-          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          VERSION="${{ steps.check.outputs.version }}"
           TAG="v${VERSION}"
 
           echo "Creating release: $TAG"
@@ -920,7 +957,7 @@ jobs:
 
       - name: Update Latest Tag
         run: |
-          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          VERSION="${{ steps.check.outputs.version }}"
           echo "Updating 'latest' tag to point to v${VERSION}..."
 
           # This is done via git, similar to GitHub workflow
@@ -932,7 +969,7 @@ jobs:
 
       - name: Release Summary
         run: |
-          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          VERSION="${{ steps.check.outputs.version }}"
           echo "============================================"
           echo "[SUCCESS] Gitea Release Created!"
           echo "============================================"
