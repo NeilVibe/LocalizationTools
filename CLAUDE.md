@@ -197,6 +197,7 @@ git push origin main && git push gitea main  # BOTH remotes
 | **[ADMIN_SETUP.md](docs/getting-started/ADMIN_SETUP.md)** | Initial admin user setup, credentials |
 | **[POSTGRESQL_SETUP.md](docs/deployment/POSTGRESQL_SETUP.md)** | PostgreSQL configuration |
 | **[GITEA_SETUP.md](docs/deployment/GITEA_SETUP.md)** | Self-hosted Git + CI/CD setup |
+| **[WINDOWS_RUNNER_SETUP.md](docs/deployment/WINDOWS_RUNNER_SETUP.md)** | **Windows CI/CD runner (Git, NSSM, Service)** |
 | **[PATCH_SERVER.md](docs/deployment/PATCH_SERVER.md)** | **Gitea as patch server for auto-updates** |
 | **[SECURITY_AND_LOGGING.md](docs/security/SECURITY_AND_LOGGING.md)** | Security best practices |
 
@@ -397,7 +398,7 @@ bash scripts/clean_logs.sh
   - ✅ Auto-Update: `updater.js` supports GitHub/Gitea/Custom via env var
   - ✅ DUAL PUSH: `git push origin main && git push gitea main`
   - ✅ Patch Server Docs: `docs/PATCH_SERVER.md` (Option A: Mirror, Option B: Self-hosted)
-  - ✅ Mirror Script: `scripts/mirror_release_to_gitea.sh` (tested, v2512080002 mirrored)
+  - ✅ Mirror Script: `scripts/mirror_release_to_gitea.sh` (tested, v2512080155 mirrored)
   - ✅ Cleanup Script: `scripts/cleanup_old_releases.sh` (tested, keeps latest 2)
   - ✅ API Token: "patch-server-full" saved to ~/.bashrc
 - **Testing Toolkit:** ✅ COMPLETE
