@@ -1,0 +1,19 @@
+{
+  "name": "locanext-testing-toolkit",
+  "version": "1.0.0",
+  "description": "CDP testing scripts for LocaNext autonomous testing",
+  "main": "run_test.js",
+  "scripts": {
+    "test": "node run_test.js",
+    "test:all": "node run_all_tests.js",
+    "test:xlstransfer": "node run_all_tests.js --app xlsTransfer",
+    "test:quicksearch": "node run_all_tests.js --app quickSearch",
+    "test:krsimilar": "node run_all_tests.js --app krSimilar",
+    "test:fast": "node run_all_tests.js --skip-slow"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "author": "LocaNext Team",
+  "license": "MIT"
+}
