@@ -400,17 +400,33 @@ jobs:
           npm ci
         shell: powershell
 
-      # GITEA FIX: Clear corrupted electron-builder cache (symlink issues)
+      # GITEA FIX: Clear corrupted electron-builder cache (symlink + NSIS issues)
       - name: Clear Electron Builder Cache
         run: |
-          Write-Host "Clearing electron-builder cache to avoid symlink issues..."
-          $cachePath = "$env:LOCALAPPDATA\electron-builder\Cache\winCodeSign"
-          if (Test-Path $cachePath) {
-            Remove-Item -Path $cachePath -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Host "[OK] Cleared winCodeSign cache"
-          } else {
-            Write-Host "[INFO] No cache to clear"
+          Write-Host "Clearing electron-builder cache to avoid corruption issues..."
+
+          # Clear LOCALAPPDATA cache
+          $localCache = "$env:LOCALAPPDATA\electron-builder\Cache"
+          if (Test-Path $localCache) {
+            Remove-Item -Path $localCache -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "[OK] Cleared LOCALAPPDATA electron-builder cache"
           }
+
+          # Clear TEMP cache (NSIS, nsis-resources)
+          $tempCache = "$env:TEMP\electron-builder-cache"
+          if (Test-Path $tempCache) {
+            Remove-Item -Path $tempCache -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "[OK] Cleared TEMP electron-builder cache"
+          }
+
+          # Clear systemprofile cache (service account)
+          $sysCache = "C:\Windows\System32\config\systemprofile\.cache\electron-builder"
+          if (Test-Path $sysCache) {
+            Remove-Item -Path $sysCache -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "[OK] Cleared systemprofile electron-builder cache"
+          }
+
+          Write-Host "[OK] All electron-builder caches cleared"
         shell: powershell
 
       - name: Build Electron App
