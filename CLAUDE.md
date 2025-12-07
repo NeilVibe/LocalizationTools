@@ -398,7 +398,7 @@ bash scripts/clean_logs.sh
   - ✅ Auto-Update: `updater.js` supports GitHub/Gitea/Custom via env var
   - ✅ DUAL PUSH: `git push origin main && git push gitea main`
   - ✅ Patch Server Docs: `docs/PATCH_SERVER.md` (Option A: Mirror, Option B: Self-hosted)
-  - ✅ Mirror Script: `scripts/mirror_release_to_gitea.sh` (tested, v2512080430 mirrored)
+  - ✅ Mirror Script: `scripts/mirror_release_to_gitea.sh` (tested, v2512080437 mirrored)
   - ✅ Cleanup Script: `scripts/cleanup_old_releases.sh` (tested, keeps latest 2)
   - ✅ API Token: "patch-server-full" saved to ~/.bashrc
 - **Testing Toolkit:** ✅ COMPLETE

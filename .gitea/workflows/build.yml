@@ -680,13 +680,24 @@ jobs:
           Write-Host "`nChecking installer directory:"
           Get-ChildItem "installer" | Format-Table Name
 
+          # Create output directory first (in case it doesn't exist)
+          if (!(Test-Path "installer_output")) {
+            New-Item -ItemType Directory -Path "installer_output" -Force
+            Write-Host "[OK] Created installer_output directory"
+          }
+
           # Change to installer directory so relative paths in .iss work correctly
           cd installer
           Write-Host "`nNow in: $(Get-Location)"
           Write-Host "Parent exists: $(Test-Path '..\\locaNext\\dist-electron\\win-unpacked')"
+          Write-Host "Output dir exists: $(Test-Path '..\\installer_output')"
+
+          # Use full path to ISCC.exe
+          $iscc = (Get-Command ISCC.exe).Source
+          Write-Host "Using ISCC: $iscc"
 
           # Run ISCC with verbose output
-          ISCC.exe /V locanext_light.iss
+          & $iscc /V locanext_light.iss
         shell: powershell
 
       - name: Verify Installer
