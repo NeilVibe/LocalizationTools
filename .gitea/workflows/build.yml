@@ -754,18 +754,12 @@ jobs:
           Get-Content "installer_output\latest.yml"
         shell: powershell
 
-      - name: Upload Portable ZIP Artifact
-        continue-on-error: true  # Gitea doesn't support artifact v4, but build still succeeds
-        uses: actions/upload-artifact@v4
-        with:
-          name: LocaNext-Windows-LIGHT-Portable
-          path: |
-            installer_output/*.zip
-            installer_output/latest.yml
-          retention-days: 7
+      # NOTE: Artifact upload removed - actions/upload-artifact@v4 not supported on Gitea
+      # The portable ZIP is saved in installer_output/ on the runner
+      # To get the artifact: Check runner workspace at C:\WINDOWS\system32\config\systemprofile\.cache\act\...\hostexecutor\installer_output\
 
       # ============================================================
-      # POST-BUILD TESTS (Skip for portable ZIP)
+      # POST-BUILD TESTS
       # ============================================================
       - name: Test Portable ZIP
         run: |
