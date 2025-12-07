@@ -230,6 +230,7 @@ sleep 5
 
 ## Related Documentation
 
+- [ADD_TEST_MODE_GUIDE.md](ADD_TEST_MODE_GUIDE.md) - **How to add TEST MODE to new apps** (for future Claude sessions)
 - [AUTONOMOUS_TESTING_PROTOCOL.md](../docs/testing/AUTONOMOUS_TESTING_PROTOCOL.md) - Full protocol
 - [AUTONOMOUS_WINDOWS_TESTING.md](../docs/testing/AUTONOMOUS_WINDOWS_TESTING.md) - Windows-specific guide
 - [DEBUG_AND_TEST_HUB.md](../docs/testing/DEBUG_AND_TEST_HUB.md) - Master testing hub
