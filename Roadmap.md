@@ -1971,7 +1971,7 @@ P13 TASKS:
     ├── [ ] Test update flow on D:\LocaNext playground
     └── [ ] Verify: App detects update → Downloads → Installs
 
-├── ✅ 13.7: Patch Server Scripts & Docs COMPLETE
+├── ✅ 13.7: Patch Server Scripts & Docs (SCRIPTS CREATED)
 │   ├── [✅] docs/PATCH_SERVER.md - Full setup guide
 │   │       ├── Option A: GitHub build + Gitea mirror (recommended)
 │   │       └── Option B: Full Gitea build with self-hosted runner
@@ -1980,6 +1980,14 @@ P13 TASKS:
 │   ├── [✅] scripts/cleanup_old_releases.sh
 │   │       └── Keeps latest N releases (default: 2)
 │   └── [✅] Build retention policy documented
+│
+├── 📋 13.8: API Token & Script Testing (PENDING)
+│   ├── [ ] Create Gitea API token
+│   │       └── Gitea → Settings → Applications → Generate Token
+│   ├── [ ] Save token: export GITEA_TOKEN=xxx (add to ~/.bashrc)
+│   ├── [ ] Test mirror script: GITEA_TOKEN=xxx ./scripts/mirror_release_to_gitea.sh
+│   ├── [ ] Test cleanup script: GITEA_TOKEN=xxx ./scripts/cleanup_old_releases.sh
+│   └── [ ] (Optional) Set up cron for auto-mirror
 
 CURRENT BUILD STRATEGY:
 ├── GitHub Actions → Builds .exe (free Windows runners)
