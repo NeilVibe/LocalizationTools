@@ -449,6 +449,48 @@ jobs:
           Write-Host "[OK] ELECTRON_BUILDER_CACHE set to: $cacheDir"
         shell: powershell
 
+      # GITEA FIX: Pre-download NSIS resources and copy includes to expected location
+      - name: Fix NSIS Include Path
+        run: |
+          Write-Host "Fixing NSIS include paths for SYSTEM account..."
+
+          # The expected include directory
+          $includeDir = "locaNext\node_modules\app-builder-lib\templates\nsis\include"
+          New-Item -ItemType Directory -Force -Path $includeDir | Out-Null
+
+          # Download nsis-resources directly
+          $nsisResourcesUrl = "https://github.com/nicholasrice/nsis-resources/releases/download/v3.4.1/nsis-resources-3.4.1.7z"
+          $tempFile = "$env:TEMP\nsis-resources.7z"
+          $extractDir = "$env:TEMP\nsis-resources-extract"
+
+          Write-Host "Downloading NSIS resources..."
+          Invoke-WebRequest -Uri $nsisResourcesUrl -OutFile $tempFile
+
+          # Extract using 7zip from node_modules
+          $sevenZip = "locaNext\node_modules\7zip-bin\win\x64\7za.exe"
+          if (Test-Path $sevenZip) {
+            & $sevenZip x -y $tempFile "-o$extractDir"
+          } else {
+            Write-Host "7zip not found, trying system 7z..."
+            7z x -y $tempFile "-o$extractDir"
+          }
+
+          # Find and copy include files (StdUtils.nsh, etc.)
+          $resourcesDir = Get-ChildItem -Path $extractDir -Directory | Where-Object { $_.Name -like "nsis-resources*" } | Select-Object -First 1
+          if ($resourcesDir) {
+            $sourceInclude = Join-Path $resourcesDir.FullName "include"
+            if (Test-Path $sourceInclude) {
+              Copy-Item -Path "$sourceInclude\*" -Destination $includeDir -Recurse -Force
+              Write-Host "[OK] Copied NSIS includes to: $includeDir"
+              Get-ChildItem $includeDir
+            }
+          }
+
+          # Cleanup
+          Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+          Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+        shell: powershell
+
       - name: Build Electron App
         run: |
           cd locaNext
