@@ -48,6 +48,7 @@
   "build": {
     "appId": "com.locanext.app",
     "productName": "LocaNext",
+    "forceCodeSigning": false,
     "directories": {
       "output": "dist-electron"
     },
