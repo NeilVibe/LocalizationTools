@@ -186,15 +186,43 @@ jobs:
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
     steps:
-      # GITEA FIX: Add Git to PATH for self-hosted Windows runner
+      # GITEA FIX: Ensure Git is in PATH for self-hosted Windows runner
+      # Priority: 1) System PATH 2) Standard location 3) E: drive fallback
       - name: Setup Windows Environment
         run: |
-          Write-Host "Adding Git to GITHUB_PATH..."
-          Add-Content -Path $env:GITHUB_PATH -Value "E:\GIT123\Git\cmd" -Encoding utf8
-          Add-Content -Path $env:GITHUB_PATH -Value "E:\GIT123\Git\bin" -Encoding utf8
-          Write-Host "Verifying Git installation..."
-          & "E:\GIT123\Git\cmd\git.exe" --version
-          Write-Host "Environment setup complete"
+          Write-Host "=== Setting up Git PATH ==="
+
+          # Check if git is already in PATH (from proper installation)
+          $gitInPath = Get-Command git -ErrorAction SilentlyContinue
+          if ($gitInPath) {
+            Write-Host "[OK] Git already in PATH: $($gitInPath.Source)"
+            git --version
+            exit 0
+          }
+
+          # Try standard Program Files locations
+          $gitLocations = @(
+            "C:\Program Files\Git\cmd",
+            "C:\Program Files (x86)\Git\cmd",
+            "$env:LOCALAPPDATA\Programs\Git\cmd",
+            "E:\GIT123\Git\cmd"  # Legacy fallback
+          )
+
+          foreach ($loc in $gitLocations) {
+            if (Test-Path "$loc\git.exe") {
+              Write-Host "[OK] Found Git at: $loc"
+              Add-Content -Path $env:GITHUB_PATH -Value $loc -Encoding utf8
+              $binPath = $loc -replace '\\cmd$', '\bin'
+              if (Test-Path $binPath) {
+                Add-Content -Path $env:GITHUB_PATH -Value $binPath -Encoding utf8
+              }
+              & "$loc\git.exe" --version
+              exit 0
+            }
+          }
+
+          Write-Error "[ERROR] Git not found! Install Git to C:\Program Files\Git with PATH option"
+          exit 1
         shell: powershell
 
       - name: Checkout code
