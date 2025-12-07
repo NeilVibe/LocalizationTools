@@ -34,3 +34,5 @@ Build LIGHT v2512072034 - Gitea Windows Runner Test
 Build LIGHT v2512072034 - Retry with version unification fix
 
 Build LIGHT v2512072034 - Retry with Git/PowerShell PATH fix
+
+Build LIGHT v2512072034 - Use powershell instead of pwsh (15 replacements)

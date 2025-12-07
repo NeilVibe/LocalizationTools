@@ -226,7 +226,7 @@ jobs:
           Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "installer\redist\vc_redist.x64.exe"
           $size = (Get-Item "installer\redist\vc_redist.x64.exe").length / 1MB
           Write-Host "[OK] Downloaded VC++ Redistributable: $([math]::Round($size, 1)) MB"
-        shell: pwsh
+        shell: powershell
 
       # ============================================================
       # STEP 2: Download Python Embedded
@@ -272,7 +272,7 @@ jobs:
 
           $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
           Write-Host "[OK] Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
-        shell: pwsh
+        shell: powershell
 
       - name: Verify Python Embedded + ALL Dependencies
         run: |
@@ -298,7 +298,7 @@ jobs:
           if (!(Test-Path "version.py")) { Write-Error "[ERROR] version.py not found"; exit 1 }
           if (!(Test-Path "server\main.py")) { Write-Error "[ERROR] server/main.py not found"; exit 1 }
           Write-Host "[PASS] All dependencies verified!"
-        shell: pwsh
+        shell: powershell
 
       - name: Test Server Launch with Embedded Python
         run: |
@@ -307,7 +307,7 @@ jobs:
           & "tools\python\python.exe" -c "import sys; sys.path.insert(0,'.'); from version import VERSION; print(f'version OK: v{VERSION}'); import server.main; print('server.main OK')"
           if ($LASTEXITCODE -ne 0) { Write-Error "Server import test FAILED!"; exit 1 }
           Write-Host "Server launch test passed!"
-        shell: pwsh
+        shell: powershell
 
       # ============================================================
       # STEP 3: Build Electron app
@@ -316,14 +316,14 @@ jobs:
         run: |
           cd locaNext
           npm ci
-        shell: pwsh
+        shell: powershell
 
       - name: Build Electron App
         run: |
           cd locaNext
           npm run build
           npm run build:electron
-        shell: pwsh
+        shell: powershell
 
       - name: Verify Electron Build
         run: |
@@ -332,7 +332,7 @@ jobs:
             exit 1
           }
           Write-Host "[OK] Electron build successful"
-        shell: pwsh
+        shell: powershell
 
       # ============================================================
       # STEP 4: Compile Inno Setup installer
@@ -363,13 +363,13 @@ jobs:
             Write-Host "Inno Setup not found - installing via choco..."
             choco install innosetup -y
           }
-        shell: pwsh
+        shell: powershell
 
       - name: Compile LIGHT Installer
         run: |
           Write-Host "Compiling LIGHT Windows installer..."
           ISCC.exe installer\locanext_light.iss
-        shell: pwsh
+        shell: powershell
 
       - name: Verify Installer
         run: |
@@ -379,7 +379,7 @@ jobs:
           Write-Host "[OK] LIGHT Installer compiled: $($installer.Name)"
           $size = $installer.length / 1MB
           Write-Host "  Size: $([math]::Round($size, 1)) MB"
-        shell: pwsh
+        shell: powershell
 
       # ============================================================
       # STEP 5: Generate latest.yml for Auto-Update
@@ -407,7 +407,7 @@ jobs:
           $latestYml | Out-File -FilePath "installer_output\latest.yml" -Encoding UTF8 -NoNewline
           Write-Host "[OK] latest.yml generated"
           Get-Content "installer_output\latest.yml"
-        shell: pwsh
+        shell: powershell
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
@@ -430,7 +430,7 @@ jobs:
             -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$installDir" `
             -Wait -NoNewWindow
           Write-Host "[OK] Installation completed to: $installDir"
-        shell: pwsh
+        shell: powershell
 
       - name: Verify Installation Files
         run: |
@@ -440,7 +440,7 @@ jobs:
           if (!(Test-Path "$installDir\version.py")) { Write-Error "[ERROR] version.py not found"; exit 1 }
           if (!(Test-Path "$installDir\tools\python\python.exe")) { Write-Error "[ERROR] Embedded Python not found"; exit 1 }
           Write-Host "[PASS] All critical files present!"
-        shell: pwsh
+        shell: powershell
 
       - name: Test Backend Actually Runs (Health Check)
         run: |
@@ -482,7 +482,7 @@ jobs:
             exit 1
           }
           Write-Host "[PASS] Backend starts and responds to /health!"
-        shell: pwsh
+        shell: powershell
 
       - name: Cleanup Test Installation
         if: always()
@@ -492,7 +492,7 @@ jobs:
             Remove-Item -Recurse -Force $installDir -ErrorAction SilentlyContinue
             Write-Host "[OK] Test installation cleaned up"
           }
-        shell: pwsh
+        shell: powershell
 
   # ============================================================
   # JOB 4: Create Gitea Release (GITEA API - replaces softprops/action-gh-release)
