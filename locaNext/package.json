@@ -67,7 +67,9 @@
       "target": "dmg"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "sign": false,
+      "signAndEditExecutable": false
     },
     "linux": {
       "target": "AppImage",
