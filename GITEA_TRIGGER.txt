@@ -66,3 +66,5 @@ Build LIGHT v2512072249 - Fix symlink issue (WIN_CSC_LINK="" to skip winCodeSign
 Build LIGHT v2512072249 - RETRY: Fresh trigger for Windows build
 
 Build LIGHT v2512072249 - Force Windows build job creation
+
+Build LIGHT v2512072249 - FIX: Remove WIN_CSC_LINK="" (was treated as file path)
