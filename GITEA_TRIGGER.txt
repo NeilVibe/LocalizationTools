@@ -107,3 +107,4 @@ Build LIGHT v2512080307 - Debug: Show full NSIS directory structure
 Build LIGHT v2512080307 - Fix: Copy includes to NSIS cache directory
 Build LIGHT v2512080307 - Change target to portable (skip NSIS)
 Build LIGHT v2512080307 - Use dir target (no installer)
+Build LIGHT v2512080406 - Fix: cd to installer dir for ISCC paths

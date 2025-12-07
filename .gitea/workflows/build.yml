@@ -656,7 +656,9 @@ jobs:
       - name: Compile LIGHT Installer
         run: |
           Write-Host "Compiling LIGHT Windows installer..."
-          ISCC.exe installer\locanext_light.iss
+          # Change to installer directory so relative paths in .iss work correctly
+          cd installer
+          ISCC.exe locanext_light.iss
         shell: powershell
 
       - name: Verify Installer
