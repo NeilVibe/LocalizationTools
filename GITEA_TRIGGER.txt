@@ -46,3 +46,5 @@ Build LIGHT v2512072034 - Retry symlink fix (runner restarted)
 Build LIGHT v2512072034 - ADMIN PRIVILEGES TEST (UAC elevated runner)
 
 Build LIGHT v2512072034 - ADMIN RUNNER FRESH START (single admin runner)
+
+Build LIGHT v2512072034 - RETRY WITH LIVE ADMIN RUNNER (PID 29284)
