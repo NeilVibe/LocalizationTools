@@ -692,12 +692,20 @@ jobs:
           Write-Host "Parent exists: $(Test-Path '..\\locaNext\\dist-electron\\win-unpacked')"
           Write-Host "Output dir exists: $(Test-Path '..\\installer_output')"
 
-          # Use full path to ISCC.exe
-          $iscc = (Get-Command ISCC.exe).Source
-          Write-Host "Using ISCC: $iscc"
+          # Use direct Inno Setup path (not Chocolatey shim)
+          $isccDirect = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $isccDirect)) {
+            $isccDirect = "C:\Program Files\Inno Setup 6\ISCC.exe"
+          }
+          Write-Host "Using ISCC: $isccDirect"
+          Write-Host "ISCC exists: $(Test-Path $isccDirect)"
 
-          # Run ISCC with verbose output
-          & $iscc /V locanext_light.iss
+          # Show current directory contents
+          Write-Host "Current dir contents:"
+          Get-ChildItem | Format-Table Name
+
+          # Run ISCC with more verbose output
+          & $isccDirect /V9 locanext_light.iss
         shell: powershell
 
       - name: Verify Installer
