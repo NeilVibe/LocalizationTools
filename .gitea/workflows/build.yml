@@ -528,7 +528,37 @@ jobs:
       - name: Build Electron App
         run: |
           cd locaNext
+
+          # First build the frontend
           npm run build
+
+          # CRITICAL: Verify/restore NSIS include files right before electron-builder
+          Write-Host "=== Pre-build NSIS verification ==="
+          $includeDir = "node_modules\app-builder-lib\templates\nsis\include"
+          $stdUtils = "$includeDir\StdUtils.nsh"
+
+          if (!(Test-Path $stdUtils)) {
+            Write-Host "[WARN] StdUtils.nsh missing! Re-downloading..."
+            New-Item -ItemType Directory -Force -Path $includeDir | Out-Null
+
+            $baseUrl = "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include"
+            $files = @("StdUtils.nsh","WinVer.nsh","allowOnlyOneInstallerInstance.nsh","assistedInstaller.nsh","boringInstaller.nsh","checkAppRunning.nsh","extractAppPackage.nsh","fileAssociation.nsh","installer.nsh","installSection.nsh","multiUser.nsh","multiUserUi.nsh","oneClick.nsh","UAC.nsh","uninstaller.nsh")
+
+            foreach ($f in $files) {
+              & curl.exe -L --retry 3 -s -o "$includeDir\$f" "$baseUrl/$f"
+            }
+          }
+
+          # Verify StdUtils.nsh exists
+          if (Test-Path $stdUtils) {
+            $size = (Get-Item $stdUtils).Length
+            Write-Host "[OK] StdUtils.nsh exists ($size bytes)"
+          } else {
+            Write-Host "[ERROR] StdUtils.nsh STILL missing!"
+            exit 1
+          }
+
+          # Now run electron-builder
           npm run build:electron
         shell: powershell
         env:
