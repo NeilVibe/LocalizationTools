@@ -26,19 +26,27 @@ LocaNext v2512071836
 ### P13.11: Gitea Windows Build
 
 ```
-STATUS: 📋 TODO
+STATUS: 🔄 IN PROGRESS (Option A chosen)
 
-PROBLEM: Gitea runs locally, no access to GitHub's Windows runners
+ARCHITECTURE:
+├── Gitea Server     → WSL Linux (localhost:3000)
+├── Linux Runner     → WSL (handles ubuntu-latest jobs)
+└── Windows Runner   → Windows native (handles [self-hosted, windows] jobs)
 
-OPTIONS:
-├── A: Windows act_runner on local machine
-├── B: Cross-compile from Linux (electron-builder)
-└── C: Hybrid (Gitea=tests only, GitHub=Windows build)
+WINDOWS ENVIRONMENT:
+C:\NEIL_PROJECTS_WINDOWSBUILD\
+├── LocaNextProject\
+│   ├── LocaNext\                # App playground/testing
+│   └── TestFilesForLocaNext\    # Test files (xlsx, txt, xml)
+└── GiteaRunner\                 # Windows act_runner (NEXT)
 
 TASKS:
-[📋] Research Windows act_runner setup
-[📋] Test cross-compile option
-[📋] Implement chosen solution
+[✅] Docs updated to C: drive paths (SSD)
+[✅] XML test file created (sample_localization.xml)
+[✅] CLAUDE.md updated with Windows section
+[📋] Download act_runner for Windows
+[📋] Register Windows runner with Gitea
+[📋] Install prereqs (Python 3.11, Node.js 18, Chocolatey)
 [📋] Test full pipeline
 ```
 

@@ -43,23 +43,24 @@ else
 fi
 
 # Check test files directory (Windows path)
-echo -n "[CHECK] Test files (D:\\TestFilesForLocaNext\\): "
-if [ -d "/mnt/d/TestFilesForLocaNext" ]; then
-    FILE_COUNT=$(ls -1 /mnt/d/TestFilesForLocaNext/ 2>/dev/null | wc -l)
+echo -n "[CHECK] Test files (C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject\\TestFilesForLocaNext\\): "
+if [ -d "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext" ]; then
+    FILE_COUNT=$(ls -1 /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext/ 2>/dev/null | wc -l)
     echo "OK ($FILE_COUNT files)"
 else
     echo "MISSING"
-    echo "  -> Create D:\\TestFilesForLocaNext\\ with test files"
+    echo "  -> Create C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject\\TestFilesForLocaNext\\ with test files"
     ((ERRORS++))
 fi
 
 # Check specific test files
 echo ""
 echo "Test Files:"
+TEST_FILES_DIR="/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext"
 for FILE in "GlossaryUploadTestFile.xlsx" "translationTEST.xlsx"; do
     echo -n "  [CHECK] $FILE: "
-    if [ -f "/mnt/d/TestFilesForLocaNext/$FILE" ]; then
-        SIZE=$(du -h "/mnt/d/TestFilesForLocaNext/$FILE" 2>/dev/null | cut -f1)
+    if [ -f "$TEST_FILES_DIR/$FILE" ]; then
+        SIZE=$(du -h "$TEST_FILES_DIR/$FILE" 2>/dev/null | cut -f1)
         echo "OK ($SIZE)"
     else
         echo "MISSING"
@@ -69,9 +70,10 @@ done
 
 # Check LocaNext installation
 echo ""
-echo -n "[CHECK] LocaNext (D:\\LocaNext\\): "
-if [ -d "/mnt/d/LocaNext" ]; then
-    if [ -f "/mnt/d/LocaNext/LocaNext.exe" ]; then
+LOCANEXT_DIR="/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext"
+echo -n "[CHECK] LocaNext ($LOCANEXT_DIR): "
+if [ -d "$LOCANEXT_DIR" ]; then
+    if [ -f "$LOCANEXT_DIR/LocaNext.exe" ]; then
         echo "OK"
     else
         echo "MISSING (no LocaNext.exe)"
@@ -79,7 +81,7 @@ if [ -d "/mnt/d/LocaNext" ]; then
     fi
 else
     echo "MISSING"
-    echo "  -> Install LocaNext to D:\\LocaNext\\"
+    echo "  -> Install LocaNext to C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject\\LocaNext\\"
     ((ERRORS++))
 fi
 

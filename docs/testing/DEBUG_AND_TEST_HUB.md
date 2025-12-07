@@ -38,7 +38,7 @@ D:\LocaNext\              ← OFFICIAL WINDOWS TEST FOLDER
 ├── logs/                 ← Test logs
 └── *.js                  ← CDP test scripts
 
-WSL Access: /mnt/d/LocaNext
+WSL Access: /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext
 ```
 
 ### 📁 Test Data Files (D:\TestFilesForLocaNext)
@@ -324,7 +324,7 @@ STEP 1: Clean slate
 └── Verify: /mnt/c/Windows/System32/tasklist.exe | grep -i loca
 
 STEP 2: Launch ONE instance
-├── cd /mnt/d/LocaNext && ./LocaNext.exe --remote-debugging-port=9222 &
+├── cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext && ./LocaNext.exe --remote-debugging-port=9222 &
 ├── Wait 40 seconds for full startup
 └── NEVER launch again until code changes!
 
@@ -344,7 +344,7 @@ STEP 4: Only restart when:
 ### Commands That SPAWN New Windows (AVOID!):
 ```bash
 ./LocaNext.exe &              # ❌ Spawns new window
-/mnt/d/LocaNext/LocaNext.exe  # ❌ Spawns new window
+/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/LocaNext.exe  # ❌ Spawns new window
 ```
 
 ### Commands That DON'T Spawn Windows (SAFE):

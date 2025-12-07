@@ -30,7 +30,7 @@ Enable Claude to **fully test any function in any app** without user interaction
 ║    └── Error checking, log verification via CDP Runtime.evaluate             ║
 ║                                                                              ║
 ║  Layer 4: Backend Logs                                                       ║
-║    └── /mnt/d/LocaNext/logs/*.log - verify processing steps                  ║
+║    └── /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/*.log - verify processing steps                  ║
 ║                                                                              ║
 ║  Layer 5: Output Verification                                                ║
 ║    └── Check generated files, database state, API responses                  ║
@@ -138,7 +138,7 @@ async function testFunction1() {
 # ─── PHASE 1: Setup ───
 /mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe 2>&1 || true
 sleep 3
-rm -f /mnt/d/LocaNext/logs/*.log
+rm -f /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/*.log
 
 # ─── PHASE 2: Launch ───
 /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe \
@@ -160,17 +160,17 @@ sleep 25
 
 # ─── PHASE 4: Run TEST MODE ───
 # Execute via CDP (example: create dictionary)
-node /mnt/d/LocaNext/test_scripts/run_test.js createDictionary
+node /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/test_scripts/run_test.js createDictionary
 
 # ─── PHASE 5: Multi-Dimensional Verification ───
 # 5a. Check status via CDP
-node /mnt/d/LocaNext/test_scripts/check_status.js
+node /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/test_scripts/check_status.js
 
 # 5b. Check console errors via CDP
-node /mnt/d/LocaNext/test_scripts/check_console.js
+node /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/test_scripts/check_console.js
 
 # 5c. Check backend logs
-tail -50 /mnt/d/LocaNext/logs/locanext_app.log | grep -E "(ERROR|SUCCESS|FAIL)"
+tail -50 /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/locanext_app.log | grep -E "(ERROR|SUCCESS|FAIL)"
 
 # 5d. Check output files (if applicable)
 ls -la /mnt/d/TestFilesForLocaNext/output/

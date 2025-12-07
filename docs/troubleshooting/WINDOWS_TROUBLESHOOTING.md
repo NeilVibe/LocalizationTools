@@ -25,12 +25,12 @@ WINDOWS_TROUBLESHOOTING.md
 
 ### Launch App from WSL
 ```bash
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process 'C:\Users\MYCOM\Desktop\LocaNext\LocaNext.exe'" &
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process 'C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\LocaNext.exe'" &
 ```
 
 ### Launch with Remote Debugging (for UI interaction)
 ```bash
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process -FilePath 'C:\Users\MYCOM\Desktop\LocaNext\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'" &
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process -FilePath 'C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'" &
 ```
 
 ### Kill App
@@ -40,14 +40,14 @@ WINDOWS_TROUBLESHOOTING.md
 
 ### Read Logs
 ```bash
-cat "/mnt/c/Users/MYCOM/Desktop/LocaNext/logs/locanext_app.log" | tail -50
+cat "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/locanext_app.log" | tail -50
 ```
 
 ### Push Code Changes
 ```bash
-cp locaNext/electron/main.js "/mnt/c/Users/MYCOM/Desktop/LocaNext/resources/app/electron/main.js"
-cp locaNext/electron/preload.js "/mnt/c/Users/MYCOM/Desktop/LocaNext/resources/app/electron/preload.js"
-cp -r locaNext/build/* "/mnt/c/Users/MYCOM/Desktop/LocaNext/resources/app/build/"
+cp locaNext/electron/main.js "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/electron/main.js"
+cp locaNext/electron/preload.js "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/electron/preload.js"
+cp -r locaNext/build/* "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/build/"
 ```
 
 ---
@@ -60,7 +60,7 @@ Launch app with `--remote-debugging-port=9222`, then use Node.js to interact:
 
 ```bash
 # 1. Create click_button.js on Windows
-cat > "/mnt/c/Users/MYCOM/Desktop/LocaNext/click_button.js" << 'EOF'
+cat > "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/click_button.js" << 'EOF'
 const WebSocket = require('ws');
 async function main() {
     const buttonName = process.argv[2] || 'Load dictionary';
@@ -97,16 +97,16 @@ main();
 EOF
 
 # 2. Install ws module (one-time)
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\Users\MYCOM\Desktop\LocaNext; npm install ws --no-save"
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext; npm install ws --no-save"
 
 # 3. Click a button
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\Users\MYCOM\Desktop\LocaNext; node click_button.js 'Load dictionary'"
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext; node click_button.js 'Load dictionary'"
 ```
 
 ### Method 2: Inspect DOM
 ```bash
 # Create inspect_dom.js
-cat > "/mnt/c/Users/MYCOM/Desktop/LocaNext/inspect_dom.js" << 'EOF'
+cat > "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/inspect_dom.js" << 'EOF'
 const WebSocket = require('ws');
 async function main() {
     const response = await fetch('http://localhost:9222/json');
@@ -159,7 +159,7 @@ main();
 EOF
 
 # Run inspection
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\Users\MYCOM\Desktop\LocaNext; node inspect_dom.js"
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext; node inspect_dom.js"
 ```
 
 ### Method 3: Take Screenshot
@@ -173,11 +173,11 @@ Add-Type 'using System; using System.Runtime.InteropServices; public struct RECT
 \$w = \$r.Right - \$r.Left; \$h = \$r.Bottom - \$r.Top
 \$bmp = New-Object System.Drawing.Bitmap(\$w, \$h)
 [System.Drawing.Graphics]::FromImage(\$bmp).CopyFromScreen(\$r.Left, \$r.Top, 0, 0, [System.Drawing.Size]::new(\$w, \$h))
-\$bmp.Save('C:\Users\MYCOM\Desktop\LocaNext\screenshot.png')
+\$bmp.Save('C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\screenshot.png')
 "
 
 # View in Claude (use Read tool)
-# /mnt/c/Users/MYCOM/Desktop/LocaNext/screenshot.png
+# /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/screenshot.png
 ```
 
 ### Method 4: Test Backend API
@@ -210,7 +210,7 @@ When the Windows app won't start, use these methods to diagnose:
 The app now logs startup errors to a file:
 ```bash
 # Check startup crash log
-cat "/mnt/d/LocaNext/resources/app/logs/startup_crash.txt" 2>/dev/null || echo "No crash log - app started OK"
+cat "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/logs/startup_crash.txt" 2>/dev/null || echo "No crash log - app started OK"
 ```
 
 This captures ES module import errors before the main logging system starts.
@@ -249,12 +249,12 @@ If no logs and app shows error dialog:
 Example: `ERR_MODULE_NOT_FOUND: Cannot find module 'telemetry.js'`
 ```bash
 # Fix: Copy missing file
-cp /home/neil1988/LocalizationTools/locaNext/electron/telemetry.js /mnt/d/LocaNext/resources/app/electron/
+cp /home/neil1988/LocalizationTools/locaNext/electron/telemetry.js /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/electron/
 ```
 
 Always sync ALL electron files after changes:
 ```bash
-cp /home/neil1988/LocalizationTools/locaNext/electron/*.js /mnt/d/LocaNext/resources/app/electron/
+cp /home/neil1988/LocalizationTools/locaNext/electron/*.js /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/electron/
 ```
 
 ---
@@ -269,7 +269,7 @@ cp /home/neil1988/LocalizationTools/locaNext/electron/*.js /mnt/d/LocaNext/resou
 ### 2. Python Scripts Missing
 - **Symptom:** `can't open file '...tools/xlstransfer/load_dictionary.py': No such file`
 - **Fix:** Python scripts should be at `resources/tools/xlstransfer/` (extraResources from build)
-- **Manual deploy:** `cp -r server/tools/xlstransfer "/mnt/c/Users/MYCOM/Desktop/LocaNext/resources/tools/"`
+- **Manual deploy:** `cp -r server/tools/xlstransfer "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/tools/"`
 
 ### 3. Port 9222 Already in Use (CDP Conflict)
 - **Symptom:** `listen EADDRINUSE: address already in use :::9222` or CDP not responding
@@ -283,7 +283,7 @@ cp /home/neil1988/LocalizationTools/locaNext/electron/*.js /mnt/d/LocaNext/resou
 ss -tlnp | grep 9222 || echo "Port 9222 clear"
 
 # Then launch ONE instance
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process -FilePath 'C:\Users\MYCOM\Desktop\LocaNext\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'" &
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process -FilePath 'C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'" &
 ```
 - **Prevention:** Always kill previous instances before launching new ones during testing
 
@@ -306,21 +306,21 @@ Uses `process.execPath` which works in all environments:
 ```bash
 # 1. Kill, clear, push, restart
 /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Stop-Process -Name LocaNext -Force" 2>/dev/null
-rm -f "/mnt/c/Users/MYCOM/Desktop/LocaNext/logs/"*.log
-cp locaNext/electron/main.js "/mnt/c/Users/MYCOM/Desktop/LocaNext/resources/app/electron/main.js"
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process -FilePath 'C:\Users\MYCOM\Desktop\LocaNext\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'" &
+rm -f "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/"*.log
+cp locaNext/electron/main.js "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/electron/main.js"
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process -FilePath 'C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'" &
 
 # 2. Wait for startup
 sleep 35
 
 # 3. Inspect DOM
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\Users\MYCOM\Desktop\LocaNext; node inspect_dom.js"
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext; node inspect_dom.js"
 
 # 4. Click button
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\Users\MYCOM\Desktop\LocaNext; node click_button.js 'Create dictionary'"
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext; node click_button.js 'Create dictionary'"
 
 # 5. Check logs
-tail -30 "/mnt/c/Users/MYCOM/Desktop/LocaNext/logs/locanext_app.log"
+tail -30 "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/logs/locanext_app.log"
 ```
 
 ---
@@ -329,13 +329,13 @@ tail -30 "/mnt/c/Users/MYCOM/Desktop/LocaNext/logs/locanext_app.log"
 
 ## 🧪 Automated Test Scripts
 
-Pre-built test scripts in `C:\Users\MYCOM\Desktop\LocaNext\`:
+Pre-built test scripts in `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\`:
 
 ### Run Complete App Verification
 ```bash
 # Kill any existing instances, launch app, run test
 /mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe 2>/dev/null; sleep 2
-cd /mnt/c/Users/MYCOM/Desktop/LocaNext && ./LocaNext.exe --remote-debugging-port=9222 &
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext && ./LocaNext.exe --remote-debugging-port=9222 &
 sleep 15
 /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\\Users\\MYCOM\\Desktop\\LocaNext; node complete_test.js"
 ```
@@ -343,7 +343,7 @@ sleep 15
 ### Available Test Scripts
 
 ```
-C:\Users\MYCOM\Desktop\LocaNext\
+C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\
 ├── full_stack_test.js ─── Full Stack: API + WebSocket + Task Manager (12 tests)
 ├── complete_test.js ───── App verification (6 tests)
 ├── tasks_test.js ──────── Task Manager UI (8 tests)
@@ -404,11 +404,11 @@ cd /home/neil1988/LocalizationTools/locaNext
 npm run build
 
 # 2. Copy to Windows app
-cp -r build/* "/mnt/c/Users/MYCOM/Desktop/LocaNext/resources/app/build/"
+cp -r build/* "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/build/"
 
 # 3. Restart app to test
 /mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe 2>/dev/null
-cd /mnt/c/Users/MYCOM/Desktop/LocaNext && ./LocaNext.exe --remote-debugging-port=9222 &
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext && ./LocaNext.exe --remote-debugging-port=9222 &
 ```
 
 ---
