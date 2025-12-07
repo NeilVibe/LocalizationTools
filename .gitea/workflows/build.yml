@@ -367,16 +367,7 @@ jobs:
 
           $releaseDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
 
-          $latestYml = @"
-version: $semanticVersion
-files:
-  - url: $fileName
-    sha512: $hash
-    size: $fileSize
-path: $fileName
-sha512: $hash
-releaseDate: '$releaseDate'
-"@
+          $latestYml = "version: $semanticVersion`nfiles:`n  - url: $fileName`n    sha512: $hash`n    size: $fileSize`npath: $fileName`nsha512: $hash`nreleaseDate: '$releaseDate'"
 
           $latestYml | Out-File -FilePath "installer_output\latest.yml" -Encoding UTF8 -NoNewline
           Write-Host "[OK] latest.yml generated"
