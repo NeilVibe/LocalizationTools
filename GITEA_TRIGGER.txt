@@ -115,3 +115,4 @@ Build LIGHT v2512080437 - Create output dir + use full ISCC path
 Build LIGHT v2512080443 - Use direct ISCC path (not shim)
 Build LIGHT v2512080452 - Use ZIP instead of Inno Setup (workaround)
 Build LIGHT v2512080458 - Fix tools dir creation
+Build LIGHT v2512080505 - Fix artifact upload (continue-on-error)
