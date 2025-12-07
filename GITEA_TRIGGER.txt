@@ -74,3 +74,5 @@ Build LIGHT v2512072249 - FIX: Add sign:false to package.json (prevents winCodeS
 Build LIGHT v2512072249 - RETRY: Previous job stuck (sign:false fix is in place)
 
 Build LIGHT v2512080002 - VERSION UPDATED + sign:false fix
+
+Build LIGHT v2512080002 - ALL 8 FILES UNIFIED (retry after version fix)
