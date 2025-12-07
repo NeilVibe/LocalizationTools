@@ -16,13 +16,72 @@
   import { websocket } from "$lib/api/websocket.js";
   import { isAuthenticated, user } from "$lib/stores/app.js";
   import { logger } from "$lib/utils/logger.js";
+  import { activeOperations as frontendOperations } from "$lib/stores/globalProgress.js";
 
   // Task data from backend (ActiveOperation)
-  let tasks = [];
+  let backendTasks = [];
   let isLoading = false;
   let showNotification = false;
   let notificationMessage = '';
   let notificationType = 'success';
+
+  /**
+   * Transform frontend operation to task format (matching backend format)
+   */
+  function transformFrontendOperation(op) {
+    const startDate = new Date(op.startTime);
+    const timestamp = startDate.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    // Calculate duration
+    let duration = '-';
+    const now = Date.now();
+    const seconds = Math.round((op.endTime || now) - op.startTime) / 1000;
+
+    if (seconds < 60) {
+      duration = `${Math.round(seconds)}s`;
+    } else {
+      const minutes = Math.floor(seconds / 60);
+      const secs = Math.round(seconds % 60);
+      duration = op.status === 'running' ? `${minutes}m ${secs}s (running)` : `${minutes}m ${secs}s`;
+    }
+
+    return {
+      id: op.id,
+      name: op.function || 'Unknown',
+      app: op.tool || 'Unknown',
+      status: op.status || 'running',
+      progress: Math.round(op.progress || 0),
+      current_step: op.message || null,
+      timestamp,
+      duration,
+      source: 'frontend' // Mark as frontend operation
+    };
+  }
+
+  // Reactive: Merge frontend and backend tasks
+  $: tasks = (() => {
+    // Transform frontend operations
+    const frontendTasks = $frontendOperations.map(transformFrontendOperation);
+
+    // Get backend task IDs to avoid duplicates
+    const backendIds = new Set(backendTasks.map(t => t.id));
+
+    // Filter frontend tasks that aren't already in backend (no duplicates)
+    const uniqueFrontendTasks = frontendTasks.filter(t => !backendIds.has(t.id));
+
+    // Merge: frontend tasks first (most recent), then backend tasks
+    return [...uniqueFrontendTasks, ...backendTasks].sort((a, b) => {
+      // Sort by timestamp (most recent first)
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+  })();
 
   // WebSocket unsubscribe functions
   let unsubscribeOperationStart;
@@ -101,7 +160,7 @@
     if (!token) {
       // Silently skip fetch if not logged in (expected on initial load)
       isLoading = false;
-      tasks = []; // Show empty task list
+      backendTasks = []; // Show empty task list
       return;
     }
 
@@ -126,11 +185,11 @@
 
           // Smart update: only update if tasks actually changed
           // This prevents flickering by avoiding unnecessary re-renders
-          if (!areTasksEqual(tasks, newTasks)) {
-            tasks = newTasks;
+          if (!areTasksEqual(backendTasks, newTasks)) {
+            backendTasks = newTasks;
 
-            logger.success("Tasks updated", {
-              task_count: tasks.length,
+            logger.success("Backend tasks updated", {
+              task_count: backendTasks.length,
               elapsed_ms: elapsed.toFixed(2)
             });
           }
@@ -223,16 +282,18 @@
   }
 
   /**
-   * Clear completed and failed tasks
+   * Clear completed and failed tasks (backend tasks only)
+   * Frontend tasks are auto-removed after 5 seconds by globalProgress store
    */
   async function clearHistory() {
     const startTime = performance.now();
-    const tasksToDelete = tasks.filter(t => t.status === 'completed' || t.status === 'failed');
+    // Only delete backend tasks (frontend tasks auto-clear)
+    const tasksToDelete = backendTasks.filter(t => t.status === 'completed' || t.status === 'failed');
 
     logger.userAction("Clear History button clicked", { tasks_to_delete: tasksToDelete.length });
 
     if (tasksToDelete.length === 0) {
-      logger.info("No tasks to clear");
+      logger.info("No backend tasks to clear");
       showNotificationMessage('No tasks to clear', 'info');
       return;
     }
@@ -256,11 +317,11 @@
       const elapsed = performance.now() - startTime;
 
       // Remove from local array
-      tasks = tasks.filter(t => t.status === 'running');
+      backendTasks = backendTasks.filter(t => t.status === 'running');
 
       logger.success("Task history cleared", {
         deleted_count: tasksToDelete.length,
-        remaining_count: tasks.length,
+        remaining_count: backendTasks.length,
         elapsed_ms: elapsed.toFixed(2)
       });
 
@@ -331,7 +392,7 @@
       const newTask = transformOperationToTask(data);
 
       // Add new task to beginning
-      tasks = [newTask, ...tasks];
+      backendTasks = [newTask, ...backendTasks];
       showNotificationMessage(`Operation started: ${data.operation_name}`, 'info');
     });
 
@@ -343,11 +404,11 @@
         current_step: data.current_step
       });
 
-      const index = tasks.findIndex(t => t.id === data.operation_id.toString());
+      const index = backendTasks.findIndex(t => t.id === data.operation_id.toString());
       if (index >= 0) {
         // Update existing task
-        tasks[index] = transformOperationToTask(data);
-        tasks = [...tasks]; // Trigger reactivity
+        backendTasks[index] = transformOperationToTask(data);
+        backendTasks = [...backendTasks]; // Trigger reactivity
       }
     });
 
@@ -358,11 +419,11 @@
         operation_name: data.operation_name
       });
 
-      const index = tasks.findIndex(t => t.id === data.operation_id.toString());
+      const index = backendTasks.findIndex(t => t.id === data.operation_id.toString());
       if (index >= 0) {
         // Update task to completed
-        tasks[index] = transformOperationToTask(data);
-        tasks = [...tasks]; // Trigger reactivity
+        backendTasks[index] = transformOperationToTask(data);
+        backendTasks = [...backendTasks]; // Trigger reactivity
       }
 
       showNotificationMessage(`Operation completed: ${data.operation_name}`, 'success');
@@ -396,11 +457,11 @@
         error_message: data.error_message
       });
 
-      const index = tasks.findIndex(t => t.id === data.operation_id.toString());
+      const index = backendTasks.findIndex(t => t.id === data.operation_id.toString());
       if (index >= 0) {
         // Update task to failed
-        tasks[index] = transformOperationToTask(data);
-        tasks = [...tasks]; // Trigger reactivity
+        backendTasks[index] = transformOperationToTask(data);
+        backendTasks = [...backendTasks]; // Trigger reactivity
       }
 
       showNotificationMessage(`Operation failed: ${data.operation_name}`, 'error');

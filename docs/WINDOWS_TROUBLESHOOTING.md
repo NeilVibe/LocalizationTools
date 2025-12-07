@@ -1,6 +1,6 @@
 # Windows EXE Debugging Guide
 
-**Updated:** 2025-12-05 | **Status:** Working | **Tests:** 19/20 passed
+**Updated:** 2025-12-06 | **Status:** Working | **Tests:** All XLS Transfer endpoints verified
 
 ---
 
@@ -197,6 +197,64 @@ Invoke-RestMethod -Uri 'http://localhost:8888/health'
 ✅ Authentication verified | username: admin
 ✅ WebSocket connected
 ✅ Component: XLSTransfer - mounted
+```
+
+---
+
+## Startup Error Diagnosis (App Won't Launch)
+
+When the Windows app won't start, use these methods to diagnose:
+
+### 1. Check startup_crash.txt (Added 2025-12-06)
+
+The app now logs startup errors to a file:
+```bash
+# Check startup crash log
+cat "/mnt/d/LocaNext/resources/app/logs/startup_crash.txt" 2>/dev/null || echo "No crash log - app started OK"
+```
+
+This captures ES module import errors before the main logging system starts.
+
+### 2. Test Backend API Separately
+
+If app shows errors, test if backend is running:
+```bash
+# Use PowerShell to test Windows localhost (WSL curl can't reach Windows localhost!)
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+    Invoke-WebRequest -Uri 'http://localhost:8888/health' -UseBasicParsing -TimeoutSec 5
+"
+```
+
+### 3. Test API Endpoints Directly
+
+Use curl.exe to bypass UI issues:
+```bash
+# Login and test XLS Transfer endpoints via PowerShell
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+    \$response = Invoke-RestMethod -Uri 'http://localhost:8888/api/auth/login' -Method Post -Body '{\"username\":\"admin\",\"password\":\"admin123\"}' -ContentType 'application/json'
+    \$token = \$response.access_token
+    curl.exe -s 'http://localhost:8888/api/v2/xlstransfer/health' -H \"Authorization: Bearer \$token\"
+"
+```
+
+### 4. Ask User for Screenshot
+
+If no logs and app shows error dialog:
+1. Ask user to take screenshot of error dialog
+2. Save to `screenshotsForClaude/` folder
+3. Read the image with Read tool
+
+### 5. Missing Module Error (Common)
+
+Example: `ERR_MODULE_NOT_FOUND: Cannot find module 'telemetry.js'`
+```bash
+# Fix: Copy missing file
+cp /home/neil1988/LocalizationTools/locaNext/electron/telemetry.js /mnt/d/LocaNext/resources/app/electron/
+```
+
+Always sync ALL electron files after changes:
+```bash
+cp /home/neil1988/LocalizationTools/locaNext/electron/*.js /mnt/d/LocaNext/resources/app/electron/
 ```
 
 ---

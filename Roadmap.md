@@ -537,6 +537,314 @@ PHASE 4: Polish
 └── Rollback plan if issues arise
 ```
 
+### P18.5: Real-time Feedback & Task Manager (PRIORITY!)
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║           P18.5: REAL-TIME FEEDBACK & EARLY TASK REGISTRATION                 ║
+║           (Identified: User sees delayed feedback, tasks appear late)         ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   PROBLEM (Current):                                                          ║
+║   User clicks "Create Dictionary" → [2-3 sec silence] → Task appears          ║
+║   - No immediate feedback when button clicked                                 ║
+║   - Task Manager polls every few seconds, misses early stages                 ║
+║   - Progress updates come after work starts, not at creation                  ║
+║                                                                               ║
+║   SOLUTION (Target):                                                          ║
+║   User clicks → Instant "Starting..." → WebSocket pushes → Task shows         ║
+║   - Immediate UI feedback (spinner, status text)                              ║
+║   - WebSocket pushes operation creation event                                 ║
+║   - Backend emits signals BEFORE work starts                                  ║
+║   - Task Manager subscribes to real-time events                               ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+P18.5.1: Immediate UI Feedback (Quick Win)
+├── [ ] Show spinner/status instantly on button click
+├── [ ] "Starting operation..." message before API call returns
+├── [ ] Disable button during operation
+└── [ ] Clear feedback pattern for all tools
+
+P18.5.2: WebSocket Operation Events
+├── [ ] Emit "operation_created" event immediately
+├── [ ] Emit "operation_progress" with step details
+├── [ ] Emit "operation_completed" or "operation_failed"
+├── [ ] Task Manager subscribes to these events
+└── [ ] No more polling delay - instant updates
+
+P18.5.3: Backend Early Signals
+├── [ ] Send WebSocket event BEFORE background task starts
+├── [ ] Include operation_id in initial response
+├── [ ] Granular progress: "Reading file...", "Processing row 1/100..."
+└── [ ] Estimated time remaining calculation
+
+P18.5.4: Task Manager Improvements
+├── [ ] Show tasks immediately when created (not after poll)
+├── [ ] Real-time progress bar updates
+├── [ ] Expandable task details (current step, logs)
+├── [ ] Task history with timing info
+├── [ ] Cancel button for long-running tasks
+│
+P18.5.5: Global Status Bar (User Feedback 2025-12-07) - ✅ COMPLETE
+│
+├── 📌 Core Requirements (User Request) - ALL DONE
+│   ├── [x] Progress PERSISTS when navigating to another app
+│   ├── [x] Global bottom status bar (always visible during operations)
+│   ├── [x] "Hide" button to minimize status bar (not close)
+│   ├── [x] Progress visible in Task Manager with identical data
+│   └── [x] Consistent display - no duplicates, no disappearing
+│
+├── 🏗️ Implementation - ALL DONE (2025-12-07)
+│   ├── [x] Create globalProgress.js (Svelte store)
+│   │       - Single source of truth for all active operations
+│   │       - Survives component unmount
+│   ├── [x] Create GlobalStatusBar.svelte component
+│   │       - Fixed position at bottom
+│   │       - Show active operation: tool, function, progress %, message
+│   │       - "Hide" button minimizes (progress still tracked)
+│   │       - Click to expand full details
+│   ├── [x] Update Task Manager to read from globalProgress store
+│   │       - Same data as status bar
+│   │       - Merges frontend + backend operations
+│   │       - Real-time progress rows
+│   └── [x] Modify tool components (XLSTransfer)
+│           - Push updates to globalProgress store
+│           - testCreateDictionary uses global progress
+│
+└── 🧹 Remaining → See P18.6 below
+```
+
+---
+
+## 📋 P18.6: Centralized Progress Module (FACTORABLE ARCHITECTURE) ✅ 95% COMPLETE
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║              P18.6: CENTRALIZED PROGRESS TRACKING MODULE                       ║
+║              "Mega Trunk" - Graftable to ANY async process                    ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   PROBLEM: Current approach = manual code in EACH function                   ║
+║            - Copy-paste startOperation/updateProgress/completeOperation       ║
+║            - Not DRY, not factorable, hard to maintain                       ║
+║                                                                               ║
+║   SOLUTION: Create WRAPPER functions that auto-track ANY operation           ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+P18.6.1: Core Wrapper Module
+│
+├── 📁 Create: $lib/utils/trackedOperation.js
+│   │
+│   ├── withProgress(tool, operation, asyncFn)
+│   │   │   WRAPPER: Auto-tracks any async function
+│   │   │
+│   │   └── USAGE:
+│   │       // BEFORE (manual, repetitive):
+│   │       async function createDictionary() {
+│   │         const opId = generateOperationId();
+│   │         startOperation(opId, 'XLSTransfer', 'Create Dict');
+│   │         try {
+│   │           // ... work ...
+│   │           updateProgress(opId, 50, 'Processing...');
+│   │           // ... more work ...
+│   │           completeOperation(opId, true, 'Done!');
+│   │         } catch (e) {
+│   │           completeOperation(opId, false, e.message);
+│   │         }
+│   │       }
+│   │
+│   │       // AFTER (one-liner wrapper):
+│   │       const createDictionary = withProgress(
+│   │         'XLSTransfer',
+│   │         'Create Dictionary',
+│   │         async (progress) => {
+│   │           // ... work ...
+│   │           progress.update(50, 'Processing...');
+│   │           // ... more work ...
+│   │           return result;  // Auto-completes on return
+│   │         }
+│   │       );
+│   │
+│   ├── executePythonTracked(scriptPath, args, { tool, operation })
+│   │       AUTO-TRACKS any Python script execution
+│   │       - Intercepts stderr for progress %
+│   │       - Auto start/update/complete
+│   │       - Works with existing IPC pattern
+│   │
+│   └── trackOperation(tool, operation)
+│           Returns { start, update, complete, fail } object
+│           For cases where you need manual control
+│
+P18.6.2: Python Progress Parser
+│
+├── Centralized stderr → progress parsing
+│   ├── Regex patterns for: "X%", "Row X/Y", "Step X of Y"
+│   ├── Auto-calculates percentage from any format
+│   └── Single place to update parsing rules
+│
+P18.6.3: Auto-Integration Points
+│
+├── [ ] window.electron.executePython → executePythonTracked
+│       - Single change = ALL Python calls tracked
+│
+├── [ ] API calls (fetch) → withProgress wrapper
+│       - Optional: track long API calls
+│
+└── [ ] File operations → auto-track large file ops
+
+P18.6.4: Implementation Checklist (DETAILED)
+│
+├── Phase 1: Create Core Module ✅ COMPLETE
+│   ├── [x] Create $lib/utils/trackedOperation.js
+│   ├── [x] Implement withProgress(tool, operation, asyncFn)
+│   ├── [x] Implement executePythonTracked(scriptPath, args, opts)
+│   ├── [x] Implement parseProgress(stderr) - centralized parser
+│   ├── [x] Implement createTracker(tool, operation) - manual tracker
+│   └── [x] Export all functions
+│
+├── Phase 2: Refactor XLSTransfer ✅ COMPLETE
+│   ├── [x] Import trackedOperation in XLSTransfer.svelte
+│   ├── [x] Refactor testCreateDictionary → use Factor
+│   ├── [x] Refactor testTranslateExcel → use Factor
+│   ├── [x] Refactor testTransferToClose → use Factor
+│   ├── [x] Refactor loadDictionary (REGULAR) → use Factor
+│   ├── [x] Refactor transferToClose (REGULAR) → use Factor
+│   ├── [x] Refactor executeUploadSettings (REGULAR) → use Factor
+│   └── [x] Build and deploy to Windows
+│
+├── Phase 3: Refactor QuickSearch ✅ COMPLETE
+│   ├── [x] Import trackedOperation in QuickSearch.svelte
+│   ├── [x] Refactor testLoadDictionary → use Factor
+│   ├── [x] Refactor testSearch → use Factor
+│   ├── [x] Refactor loadDictionary (REGULAR) → use Factor
+│   ├── [x] Refactor performSearch (REGULAR) → use Factor
+│   └── [x] Build and deploy to Windows
+│
+├── Phase 4: Refactor KRSimilar ✅ COMPLETE
+│   ├── [x] Import trackedOperation in KRSimilar.svelte
+│   ├── [x] Refactor testLoadDictionary → use Factor
+│   ├── [x] Refactor testSearch → use Factor
+│   ├── [x] Refactor loadDictionary (REGULAR) → use Factor
+│   ├── [x] Refactor performSearch (REGULAR) → use Factor
+│   └── [x] Build and deploy to Windows
+│
+└── Phase 5: Cleanup & Commit 🔄 IN PROGRESS
+    ├── [x] Build and deploy to Windows playground
+    ├── [ ] Final integration test (user testing)
+    └── [ ] Commit and push
+
+BENEFITS:
+├── DRY: One implementation, used everywhere
+├── Consistent: Same progress format across all tools
+├── Maintainable: Fix bugs in ONE place
+├── Extensible: Add new tools with zero boilerplate
+└── Less Code: ~50 lines per function → 1 line wrapper
+```
+
+---
+
+## 📋 P19: Performance Monitoring & Optimization - FUTURE
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    P19: PERFORMANCE MONITORING & OPTIMIZATION                  ║
+║                    (Identified: QuickSearch LD loading slow)                   ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   STATUS: 📋 FUTURE │ Identified during Windows testing 2025-12-06           ║
+║                                                                               ║
+║   OBSERVED ISSUES:                                                            ║
+║   ├── QuickSearch language data loading takes very long time                 ║
+║   ├── May affect LD Manager (P17) which uses same loading mechanism          ║
+║   └── Need benchmarks to quantify before/after optimization                  ║
+║                                                                               ║
+║   PROPOSED METRICS:                                                           ║
+║   ├── Dictionary creation time (per 1000 rows)                               ║
+║   ├── Dictionary load time (from disk)                                        ║
+║   ├── AI model initialization time                                            ║
+║   ├── FAISS index build time                                                  ║
+║   ├── Memory usage during operations                                          ║
+║   └── Windows native vs WSL2 comparison                                       ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### P19.1: Performance Benchmarking
+
+```
+P19.1: Establish Baselines
+│
+├── [ ] Create benchmark suite
+│   ├── server/tools/benchmarks/
+│   ├── Standard test data sets
+│   └── Automated timing collection
+│
+├── [ ] QuickSearch benchmarks
+│   ├── TXT dictionary creation (varying sizes)
+│   ├── XML LocStr parsing speed
+│   ├── Dictionary load time
+│   └── Search performance
+│
+├── [ ] XLSTransfer benchmarks
+│   ├── Dictionary creation
+│   ├── Translation per 1000 rows
+│   └── Excel read/write speed
+│
+└── [ ] KR Similar benchmarks
+    ├── 41,715 pair processing
+    ├── FAISS similarity search
+    └── Auto-translate batch
+```
+
+### P19.2: Optimization Targets
+
+```
+P19.2: Optimization Areas
+│
+├── [ ] Lazy loading
+│   ├── Don't load AI model until needed
+│   ├── Incremental dictionary loading
+│   └── Progressive UI updates
+│
+├── [ ] Caching
+│   ├── Pre-computed embeddings
+│   ├── Disk cache for frequently used data
+│   └── Memory cache with LRU eviction
+│
+├── [ ] Parallelization
+│   ├── Multi-threaded dictionary creation
+│   ├── Batch embedding generation
+│   └── Async file I/O
+│
+└── [ ] Profiling
+    ├── CPU profiling (cProfile)
+    ├── Memory profiling (memory_profiler)
+    └── I/O bottleneck identification
+```
+
+### P19.3: Monitoring Integration
+
+```
+P19.3: Runtime Monitoring
+│
+├── [ ] Add timing to telemetry
+│   ├── Operation duration in logs
+│   ├── Step-by-step timing
+│   └── Slow operation alerts
+│
+├── [ ] Dashboard metrics
+│   ├── Average operation times
+│   ├── Performance trends
+│   └── Bottleneck visualization
+│
+└── [ ] User-facing indicators
+    ├── Loading progress with time estimate
+    ├── Performance tips in UI
+    └── "This operation typically takes X seconds"
+```
+
 ---
 
 ## ✅ Full Integration Testing Suite PASSED (2025-12-06 06:00)
@@ -902,8 +1210,9 @@ PORT SUMMARY (Quick Reference):
 
 WHAT'S NEXT? → ✅ P16: QuickSearch QA Tools COMPLETE
               → ✅ P13: Gitea COMPLETE (CI/CD + Updates + Dual Push)
-              → P17: LD Manager (CAT Tool) ★ BIG FEATURE
-              → P18: UI/UX Overhaul ★ PLATFORM REDESIGN
+              → ✅ P18.6: Factor Architecture COMPLETE (Progress Tracking)
+              → ★ P17: LD Manager (CAT Tool) ← NEXT (Main Mega App!)
+              → P18: UI/UX Overhaul (after LD Manager)
 ```
 
 ---
@@ -1830,12 +2139,19 @@ COMPLETE PRIORITY TREE (Past → Present → Future)
     │   ├── Integrated QA tools (P16)
     │   └── FAISS similarity search
     │
-    └── P18: UI/UX Overhaul ───────────────── PLATFORM REDESIGN
-        ├── Tree-organized navigation
-        ├── Modal-based app system
-        ├── Component library (Svelte)
-        ├── App registry for easy extension
-        └── Modern, beautiful, professional
+    ├── P18: UI/UX Overhaul ───────────────── PLATFORM REDESIGN
+    │   ├── Tree-organized navigation
+    │   ├── Modal-based app system
+    │   ├── Component library (Svelte)
+    │   ├── App registry for easy extension
+    │   └── Modern, beautiful, professional
+    │
+    └── P19: Performance Monitoring ───────── OPTIMIZATION
+        ├── Loading time monitoring (QuickSearch LD slow)
+        ├── Dictionary creation benchmarks
+        ├── AI model load time tracking
+        ├── Memory usage monitoring
+        └── Windows vs WSL performance comparison
 ```
 
 ### Port Summary (Quad Entity)

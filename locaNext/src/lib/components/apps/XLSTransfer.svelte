@@ -15,6 +15,7 @@
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
   import { telemetry } from "$lib/utils/telemetry.js";
+  import { createTracker, parseProgress } from "$lib/utils/trackedOperation.js";
 
   // Check if running in Electron
   let isElectron = false;
@@ -63,6 +64,299 @@
   let fileInputTransferClose;
   let fileInputTransferExcel;
 
+  // ============================================
+  // TEST MODE - For autonomous CDP testing
+  // ============================================
+  const TEST_FILES_PATH = 'D:\\TestFilesForLocaNext';
+  const TEST_CONFIG = {
+    createDictionary: {
+      // GlossaryUploadTestFile.xlsx: 100 rows, 2 columns (KR + FR) - fast for testing
+      // For large tests, use TESTSMALL.xlsx (22917 rows, ~15min)
+      file: `${TEST_FILES_PATH}\\GlossaryUploadTestFile.xlsx`,
+      sheet: 'Sheet1',
+      krColumn: 'A',
+      transColumn: 'B'
+    },
+    translateExcel: {
+      // Use a file with KR text to translate (single column is OK for translation target)
+      file: `${TEST_FILES_PATH}\\translationTEST.xlsx`,
+      sheet: 'Sheet1',
+      krColumn: 'A',
+      transColumn: 'B'
+    },
+    transferToClose: {
+      file: `${TEST_FILES_PATH}\\closetotest.txt`
+    }
+  };
+
+  // Test state tracking (explicit object for CDP access - bypasses Svelte reactivity issues)
+  const _testState = {
+    isProcessing: false,
+    statusMessage: '',
+    isDictionaryLoaded: false,
+    isTransferEnabled: false
+  };
+
+  // Expose test functions globally for CDP access
+  if (typeof window !== 'undefined') {
+    window.xlsTransferTest = {
+      createDictionary: () => testCreateDictionary(),
+      loadDictionary: () => loadDictionary(),
+      translateExcel: () => testTranslateExcel(),
+      transferToClose: () => testTransferToClose(),
+      // Use explicit state object for reliable CDP access
+      getStatus: () => ({ ..._testState }),
+      // Also expose direct access to state for updates
+      _state: _testState
+    };
+  }
+
+  // TEST: Create Dictionary (skips file dialog, with progress streaming)
+  // FACTOR ARCHITECTURE: Uses createTracker for centralized progress
+  async function testCreateDictionary() {
+    logger.info("TEST MODE: Creating dictionary with test file", TEST_CONFIG.createDictionary);
+
+    if (!isElectron) {
+      showStatus('Test mode requires Electron', 'error');
+      return;
+    }
+
+    const testFile = TEST_CONFIG.createDictionary.file;
+
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('XLSTransfer', 'Create Dictionary');
+    tracker.start();
+
+    // Update both Svelte state AND test state object for CDP access
+    isProcessing = true;
+    statusMessage = 'TEST: Starting dictionary creation...';
+    _testState.isProcessing = true;
+    _testState.statusMessage = 'TEST: Starting dictionary creation...';
+
+    // Build selections directly (skip file dialog and modal)
+    const selections = {
+      [testFile]: {
+        [TEST_CONFIG.createDictionary.sheet]: {
+          kr_column: TEST_CONFIG.createDictionary.krColumn,
+          trans_column: TEST_CONFIG.createDictionary.transColumn
+        }
+      }
+    };
+
+    logger.info("TEST MODE: Executing create_dictionary with selections", selections);
+
+    // FACTOR: Progress handler using centralized parseProgress
+    const progressHandler = (data) => {
+      if (data.type === 'stderr' && data.data) {
+        const parsed = parseProgress(data.data);
+        if (parsed && parsed.message) {
+          // Update BOTH Svelte state and test state object
+          statusMessage = `TEST: ${parsed.message}`;
+          _testState.statusMessage = `TEST: ${parsed.message}`;
+
+          // FACTOR: Update tracker with parsed progress
+          tracker.update(parsed.progress || 0, parsed.message);
+
+          logger.info("TEST PROGRESS", { message: parsed.message, progress: parsed.progress });
+        }
+      }
+    };
+
+    // Register progress listener
+    window.electron.onPythonOutput(progressHandler);
+
+    try {
+      const startTime = performance.now();
+
+      const result = await window.electron.executePython({
+        scriptPath: `${pythonToolsPath}/xlstransfer/process_operation.py`,
+        args: ['create_dictionary', JSON.stringify(selections), threshold]
+      });
+
+      const elapsed = performance.now() - startTime;
+
+      if (result.success) {
+        // Parse output if JSON
+        let output = result.output;
+        try {
+          output = JSON.parse(result.output);
+        } catch (e) { /* not JSON */ }
+
+        // Mark dictionary as loaded on success - update BOTH states
+        isDictionaryLoaded = true;
+        isTransferEnabled = true;
+        _testState.isDictionaryLoaded = true;
+        _testState.isTransferEnabled = true;
+
+        const successMsg = `Dictionary created! ${output?.split_entries || 0} split + ${output?.whole_entries || 0} whole entries (${(elapsed/1000).toFixed(1)}s)`;
+        statusMessage = `TEST: ${successMsg}`;
+        _testState.statusMessage = `TEST: ${successMsg}`;
+
+        // FACTOR: Complete tracker
+        tracker.complete(successMsg);
+
+        logger.success("TEST MODE: Dictionary created", { elapsed_ms: elapsed.toFixed(2), output });
+        showStatus(`TEST: ${successMsg}`, 'success');
+      } else {
+        const errorMsg = `Failed: ${result.error}`;
+        statusMessage = `TEST FAILED: ${result.error}`;
+        _testState.statusMessage = `TEST FAILED: ${result.error}`;
+
+        // FACTOR: Fail tracker
+        tracker.fail(errorMsg);
+
+        logger.error("TEST MODE: Dictionary creation failed", { error: result.error });
+        showStatus(`TEST FAILED: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      const errorMsg = `Error: ${error.message}`;
+      statusMessage = `TEST ERROR: ${error.message}`;
+      _testState.statusMessage = `TEST ERROR: ${error.message}`;
+
+      // FACTOR: Fail tracker
+      tracker.fail(errorMsg);
+
+      logger.error("TEST MODE: Exception", { error: error.message });
+      showStatus(`TEST ERROR: ${error.message}`, 'error');
+    } finally {
+      isProcessing = false;
+      _testState.isProcessing = false;
+      // Remove progress listener
+      window.electron.offPythonOutput();
+    }
+  }
+
+  // TEST: Translate Excel (skips file dialog)
+  // FACTOR ARCHITECTURE: Uses createTracker for centralized progress
+  async function testTranslateExcel() {
+    logger.info("TEST MODE: Translating Excel with test file", TEST_CONFIG.translateExcel);
+
+    if (!isDictionaryLoaded) {
+      showStatus('Load dictionary first!', 'error');
+      return;
+    }
+
+    const testFile = TEST_CONFIG.translateExcel.file;
+
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('XLSTransfer', 'Translate Excel');
+    tracker.start();
+
+    isProcessing = true;
+    statusMessage = 'TEST MODE: Translating Excel...';
+
+    const selections = {
+      [testFile]: {
+        [TEST_CONFIG.translateExcel.sheet]: {
+          kr_column: TEST_CONFIG.translateExcel.krColumn,
+          trans_column: TEST_CONFIG.translateExcel.transColumn
+        }
+      }
+    };
+
+    // FACTOR: Progress handler using centralized parseProgress
+    const progressHandler = (data) => {
+      if (data.type === 'stderr' && data.data) {
+        const parsed = parseProgress(data.data);
+        if (parsed && parsed.message) {
+          statusMessage = `TEST: ${parsed.message}`;
+          tracker.update(parsed.progress || 0, parsed.message);
+        }
+      }
+    };
+
+    window.electron.onPythonOutput(progressHandler);
+
+    try {
+      const startTime = performance.now();
+
+      const result = await window.electron.executePython({
+        scriptPath: `${pythonToolsPath}/xlstransfer/process_operation.py`,
+        args: ['translate_excel', JSON.stringify(selections), threshold]
+      });
+
+      const elapsed = performance.now() - startTime;
+
+      if (result.success) {
+        const successMsg = `Excel translated! (${(elapsed/1000).toFixed(1)}s)`;
+        tracker.complete(successMsg);
+        logger.success("TEST MODE: Excel translated", { elapsed_ms: elapsed.toFixed(2) });
+        showStatus(`TEST: ${successMsg}`, 'success');
+      } else {
+        tracker.fail(result.error);
+        logger.error("TEST MODE: Excel translation failed", { error: result.error });
+        showStatus(`TEST FAILED: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      tracker.fail(error.message);
+      logger.error("TEST MODE: Exception", { error: error.message });
+      showStatus(`TEST ERROR: ${error.message}`, 'error');
+    } finally {
+      isProcessing = false;
+      window.electron.offPythonOutput();
+    }
+  }
+
+  // TEST: Transfer to Close (skips file dialog)
+  // FACTOR ARCHITECTURE: Uses createTracker for centralized progress
+  async function testTransferToClose() {
+    logger.info("TEST MODE: Transfer to Close with test file", TEST_CONFIG.transferToClose);
+
+    if (!isDictionaryLoaded) {
+      showStatus('Load dictionary first!', 'error');
+      return;
+    }
+
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('XLSTransfer', 'Transfer to Close');
+    tracker.start();
+
+    isProcessing = true;
+    statusMessage = 'TEST MODE: Translating text file...';
+
+    // FACTOR: Progress handler using centralized parseProgress
+    const progressHandler = (data) => {
+      if (data.type === 'stderr' && data.data) {
+        const parsed = parseProgress(data.data);
+        if (parsed && parsed.message) {
+          statusMessage = `TEST: ${parsed.message}`;
+          tracker.update(parsed.progress || 0, parsed.message);
+        }
+      }
+    };
+
+    window.electron.onPythonOutput(progressHandler);
+
+    try {
+      const startTime = performance.now();
+
+      const result = await window.electron.executePython({
+        scriptPath: `${pythonToolsPath}/xlstransfer/translate_file.py`,
+        args: [TEST_CONFIG.transferToClose.file, threshold]
+      });
+
+      const elapsed = performance.now() - startTime;
+
+      if (result.success) {
+        const successMsg = `File translated! (${(elapsed/1000).toFixed(1)}s)`;
+        tracker.complete(successMsg);
+        logger.success("TEST MODE: File translated", { elapsed_ms: elapsed.toFixed(2) });
+        showStatus(`TEST: ${successMsg}`, 'success');
+      } else {
+        tracker.fail(result.error);
+        logger.error("TEST MODE: File translation failed", { error: result.error });
+        showStatus(`TEST FAILED: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      tracker.fail(error.message);
+      logger.error("TEST MODE: Exception", { error: error.message });
+      showStatus(`TEST ERROR: ${error.message}`, 'error');
+    } finally {
+      isProcessing = false;
+      window.electron.offPythonOutput();
+    }
+  }
+
   function showStatus(message, type = 'success') {
     statusMessage = message;
     notificationType = type;
@@ -96,6 +390,10 @@
           filenames: files.map(f => f.split('/').pop())
         });
 
+        // Show immediate feedback
+        isProcessing = true;
+        statusMessage = 'Loading sheet info...';
+
         // Open upload settings GUI
         openUploadSettingsGUI(files, 'create_dictionary');
 
@@ -127,6 +425,10 @@
       showStatus('No files selected', 'error');
       return;
     }
+
+    // Show immediate feedback
+    isProcessing = true;
+    statusMessage = 'Loading sheet info...';
 
     // Open upload settings GUI (same as Electron mode)
     // Convert FileList to Array and store as File objects with path property
@@ -196,8 +498,13 @@
     const startTime = performance.now();
     logger.userAction("Load Dictionary button clicked", { mode: isElectron ? "electron" : "browser" });
 
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('XLSTransfer', 'Load Dictionary');
+    tracker.start();
+
     isProcessing = true;
     statusMessage = 'Loading dictionary...';
+    tracker.update(10, 'Loading dictionary...');
 
     try {
       if (isElectron) {
@@ -205,6 +512,8 @@
         logger.info("Loading dictionary via Python script (Electron mode)", {
           scriptPath: `${pythonToolsPath}/xlstransfer/load_dictionary.py`
         });
+
+        tracker.update(30, 'Executing Python script...');
 
         const result = await window.electron.executePython({
           scriptPath: `${pythonToolsPath}/xlstransfer/load_dictionary.py`,
@@ -222,7 +531,9 @@
           telemetry.trackOperationSuccess('XLSTransfer', 'load_dictionary', startTime, {
             mode: 'electron'
           });
-          showStatus('Dictionary loaded successfully! Transfer buttons enabled.', 'success');
+          const successMsg = 'Dictionary loaded successfully! Transfer buttons enabled.';
+          showStatus(successMsg, 'success');
+          tracker.complete(successMsg);
         } else {
           logger.error("Dictionary load failed (Electron)", {
             error: result.error,
@@ -230,11 +541,14 @@
           });
           telemetry.trackOperationError('XLSTransfer', 'load_dictionary', startTime,
             new Error(result.error || 'Failed to load dictionary'), { mode: 'electron' });
-          showStatus(result.error || 'Failed to load dictionary', 'error');
+          const errorMsg = result.error || 'Failed to load dictionary';
+          showStatus(errorMsg, 'error');
+          tracker.fail(errorMsg);
         }
       } else {
         // Browser mode: use API
         logger.apiCall("/api/v2/xlstransfer/test/load-dictionary", "POST");
+        tracker.update(30, 'Calling API...');
 
         const result = await api.xlsTransferLoadDictionary();
 
@@ -253,7 +567,9 @@
             mode: 'browser',
             total_pairs: result.total_pairs
           });
-          showStatus(`Dictionary loaded! ${result.total_pairs || 0} pairs ready.`, 'success');
+          const successMsg = `Dictionary loaded! ${result.total_pairs || 0} pairs ready.`;
+          showStatus(successMsg, 'success');
+          tracker.complete(successMsg);
         } else {
           logger.error("Dictionary load failed (Browser)", {
             message: result.message,
@@ -261,7 +577,9 @@
           });
           telemetry.trackOperationError('XLSTransfer', 'load_dictionary', startTime,
             new Error(result.message || 'Failed to load dictionary'), { mode: 'browser' });
-          showStatus(result.message || 'Failed to load dictionary', 'error');
+          const errorMsg = result.message || 'Failed to load dictionary';
+          showStatus(errorMsg, 'error');
+          tracker.fail(errorMsg);
         }
       }
     } catch (error) {
@@ -276,6 +594,7 @@
         mode: isElectron ? 'electron' : 'browser'
       });
       showStatus(error.message, 'error');
+      tracker.fail(error.message);
     } finally {
       isProcessing = false;
     }
@@ -313,16 +632,35 @@
 
         logger.file("selected", files[0].split('/').pop(), { type: "txt", threshold: threshold });
 
+        // FACTOR: Create tracker for this operation
+        const tracker = createTracker('XLSTransfer', 'Transfer to Close');
+        tracker.start();
+
         isProcessing = true;
         stopProcessing = false;
         statusMessage = 'Translating file...';
+        tracker.update(10, 'Translating file...');
 
         const startTime = performance.now();
+
+        // FACTOR: Progress handler for Python stderr
+        const progressHandler = (data) => {
+          if (data.type === 'stderr' && data.data) {
+            const parsed = parseProgress(data.data);
+            if (parsed && parsed.message) {
+              statusMessage = parsed.message;
+              tracker.update(parsed.progress || 50, parsed.message);
+            }
+          }
+        };
+        window.electron.onPythonOutput(progressHandler);
 
         const result = await window.electron.executePython({
           scriptPath: `${pythonToolsPath}/xlstransfer/translate_file.py`,
           args: [files[0], threshold]
         });
+
+        window.electron.offPythonOutput(progressHandler);
 
         const elapsed = performance.now() - startTime;
 
@@ -335,7 +673,9 @@
             mode: 'electron',
             threshold: parseFloat(threshold)
           });
-          showStatus('Translation completed!', 'success');
+          const successMsg = 'Translation completed!';
+          showStatus(successMsg, 'success');
+          tracker.complete(successMsg);
         } else {
           logger.error("File translation failed (Electron)", {
             error: result.error,
@@ -344,7 +684,9 @@
           });
           telemetry.trackOperationError('XLSTransfer', 'transfer_to_close', startTime,
             new Error(result.error || 'Translation failed'), { mode: 'electron' });
-          showStatus(result.error || 'Translation failed', 'error');
+          const errorMsg = result.error || 'Translation failed';
+          showStatus(errorMsg, 'error');
+          tracker.fail(errorMsg);
         }
       } catch (error) {
         logger.error("Transfer to Close error (Electron)", {
@@ -495,6 +837,10 @@
           filenames: files.map(f => f.split('/').pop())
         });
 
+        // Show immediate feedback
+        isProcessing = true;
+        statusMessage = 'Loading sheet info...';
+
         // Open upload settings GUI
         openUploadSettingsGUI(files, 'translate_excel');
 
@@ -530,6 +876,10 @@
 
     // Clear file input so same file can be selected again
     event.target.value = '';
+
+    // Show immediate feedback
+    isProcessing = true;
+    statusMessage = 'Loading sheet info...';
 
     // Open Upload Settings GUI for sheet/column selection
     logger.info("Opening upload settings GUI for Excel translation", {
@@ -569,6 +919,10 @@
         file_count: files.length,
         filenames: files.map(f => f.split('/').pop())
       });
+
+      // Show immediate feedback
+      isProcessing = true;
+      statusMessage = 'Loading sheet info...';
 
       // Open upload settings GUI
       openUploadSettingsGUI(files, 'check_newlines');
@@ -612,6 +966,10 @@
         filenames: files.map(f => f.split('/').pop())
       });
 
+      // Show immediate feedback
+      isProcessing = true;
+      statusMessage = 'Loading sheet info...';
+
       // Open upload settings GUI
       openUploadSettingsGUI(files, 'combine_excel');
 
@@ -653,6 +1011,10 @@
         file_count: files.length,
         filenames: files.map(f => f.split('/').pop())
       });
+
+      // Show immediate feedback
+      isProcessing = true;
+      statusMessage = 'Loading sheet info...';
 
       // Open upload settings GUI
       openUploadSettingsGUI(files, 'newline_auto_adapt');
@@ -748,10 +1110,14 @@
     // Get sheet names for each file
     uploadSettingsData = [];
 
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       try {
         let sheetInfo;
         const fileName = isElectron ? file.split('/').pop() : file.name;
+
+        // Update status message with progress
+        statusMessage = `Loading sheet info... (${i + 1}/${files.length}) ${fileName}`;
 
         logger.info("Reading sheet info from file", {
           filename: fileName,
@@ -760,18 +1126,33 @@
 
         if (isElectron) {
           // Electron mode: Call Python script via IPC
-          sheetInfo = await window.electron.executePython({
+          const ipcResult = await window.electron.executePython({
             scriptPath: `${pythonToolsPath}/xlstransfer/get_sheets.py`,
             args: [file]
           });
+
+          // Parse the JSON output from Python script
+          if (ipcResult.success && ipcResult.output) {
+            try {
+              sheetInfo = JSON.parse(ipcResult.output);
+            } catch (parseError) {
+              logger.error("Failed to parse Python output as JSON", {
+                output: ipcResult.output,
+                error: parseError.message
+              });
+              sheetInfo = { success: false, error: `Invalid JSON response: ${parseError.message}` };
+            }
+          } else {
+            sheetInfo = { success: false, error: ipcResult.error || 'Python script failed' };
+          }
         } else {
           // Browser mode: Call API endpoint
           sheetInfo = await api.xlsTransferGetSheets(file);
         }
 
-        remoteLogger.info("SHEET INFO RESPONSE", { sheetInfo, fileName });
+        remoteLogger.info("SHEET INFO RESPONSE", { sheetInfo, fileName, isElectron });
 
-        if (sheetInfo.success) {
+        if (sheetInfo.success && sheetInfo.sheets && Array.isArray(sheetInfo.sheets)) {
           logger.success("Sheet info retrieved", {
             filename: fileName,
             sheet_count: sheetInfo.sheets.length,
@@ -794,7 +1175,16 @@
           uploadSettingsData = [...uploadSettingsData, fileDataEntry];
           remoteLogger.info("uploadSettingsData AFTER PUSH", { uploadSettingsData: uploadSettingsData.map(d => ({fileName: d.fileName, sheetCount: d.sheets.length})) });
         } else {
-          remoteLogger.error("sheetInfo.success is FALSE", { sheetInfo });
+          const errorMsg = !sheetInfo.success
+            ? `Failed to read file: ${sheetInfo.error || 'Unknown error'}`
+            : !sheetInfo.sheets
+            ? 'No sheets found in response - invalid file or API error'
+            : 'Invalid sheet data format';
+          remoteLogger.error("sheetInfo validation failed", { sheetInfo, errorMsg });
+          logger.error("Sheet info validation failed", { filename: fileName, error: errorMsg });
+          isProcessing = false;
+          showStatus(`Error: ${errorMsg}`, 'error');
+          return;
         }
       } catch (error) {
         const fileName = isElectron ? file.split('/').pop() : file.name;
@@ -803,6 +1193,7 @@
           error: error.message,
           error_type: error.name
         });
+        isProcessing = false;
         showStatus(`Error reading ${fileName}: ${error.message}`, 'error');
         return;
       }
@@ -814,6 +1205,8 @@
       showUploadSettings
     });
 
+    // Clear processing state - modal is ready
+    isProcessing = false;
     showUploadSettings = true;
 
     remoteLogger.info("AFTER SETTING showUploadSettings = true");
@@ -887,11 +1280,19 @@
     // Close modal
     closeUploadSettings();
 
+    // FACTOR: Create tracker for this operation
+    const operationName = uploadSettingsOperationType === 'create_dictionary' ? 'Create Dictionary' :
+                          uploadSettingsOperationType === 'translate_excel' ? 'Translate Excel' :
+                          uploadSettingsOperationType;
+    const tracker = createTracker('XLSTransfer', operationName);
+    tracker.start();
+
     // Execute the operation
     const startTime = performance.now();
     isProcessing = true;
     stopProcessing = false;
     statusMessage = `Processing ${uploadSettingsOperationType}...`;
+    tracker.update(10, `Processing ${uploadSettingsOperationType}...`);
 
     try {
       let result;
@@ -903,6 +1304,8 @@
           files_count: Object.keys(selections).length,
           threshold: threshold
         });
+
+        tracker.update(20, 'Preparing file selections...');
 
         // For Electron, build selections with full file paths
         const electronSelections = {};
@@ -921,10 +1324,26 @@
           }
         }
 
+        tracker.update(30, 'Executing Python script...');
+
+        // FACTOR: Progress handler for Python stderr
+        const progressHandler = (data) => {
+          if (data.type === 'stderr' && data.data) {
+            const parsed = parseProgress(data.data);
+            if (parsed && parsed.message) {
+              statusMessage = parsed.message;
+              tracker.update(parsed.progress || 50, parsed.message);
+            }
+          }
+        };
+        window.electron.onPythonOutput(progressHandler);
+
         result = await window.electron.executePython({
           scriptPath: `${pythonToolsPath}/xlstransfer/process_operation.py`,
           args: [uploadSettingsOperationType, JSON.stringify(electronSelections), threshold]
         });
+
+        window.electron.offPythonOutput(progressHandler);
       } else {
         // Browser mode: Call API
         logger.info("Executing operation via API (Browser)", {
@@ -1044,7 +1463,6 @@
           mode: isElectron ? 'electron' : 'browser',
           files_count: Object.keys(selections).length
         });
-        showStatus(`${uploadSettingsOperationType} completed successfully!`, 'success');
 
         // Auto-open output folder in Electron mode
         if (isElectron && result.output_dir) {
@@ -1052,12 +1470,20 @@
           window.electron.showItemInFolder(result.output_dir);
         }
 
-        // If this was create_dictionary, we may want to auto-load it
+        // FACTOR: Complete with appropriate success message
         if (uploadSettingsOperationType === 'create_dictionary') {
+          const successMsg = 'Dictionary created! You can now click "Load dictionary" to use it.';
           logger.info("Dictionary created - ready for loading");
-          showStatus('Dictionary created! You can now click "Load dictionary" to use it.', 'success');
+          showStatus(successMsg, 'success');
+          tracker.complete(successMsg);
         } else if (uploadSettingsOperationType === 'translate_excel') {
-          showStatus('Excel file translated and downloaded successfully!', 'success');
+          const successMsg = 'Excel file translated and downloaded successfully!';
+          showStatus(successMsg, 'success');
+          tracker.complete(successMsg);
+        } else {
+          const successMsg = `${uploadSettingsOperationType} completed successfully!`;
+          showStatus(successMsg, 'success');
+          tracker.complete(successMsg);
         }
       } else {
         logger.error("Operation failed", {
@@ -1070,7 +1496,9 @@
             mode: isElectron ? 'electron' : 'browser',
             files_count: Object.keys(selections).length
           });
-        showStatus(result.error || 'Operation failed', 'error');
+        const errorMsg = result.error || 'Operation failed';
+        showStatus(errorMsg, 'error');
+        tracker.fail(errorMsg);
       }
     } catch (error) {
       const elapsed = performance.now() - startTime;
@@ -1084,6 +1512,7 @@
         mode: isElectron ? 'electron' : 'browser'
       });
       showStatus(error.message, 'error');
+      tracker.fail(error.message);
     } finally {
       isProcessing = false;
     }

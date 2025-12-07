@@ -32,6 +32,7 @@
   import { logger } from "$lib/utils/logger.js";
   import { api } from "$lib/api/client.js";
   import { telemetry } from "$lib/utils/telemetry.js";
+  import { createTracker } from "$lib/utils/trackedOperation.js";
 
   // API base URL
   const API_BASE = 'http://localhost:8888';
@@ -151,6 +152,122 @@
     logger.component("QuickSearch", "mounted");
     await loadAvailableDictionaries();
   });
+
+  // ========================================================================
+  // TEST MODE - For CDP Autonomous Testing
+  // ========================================================================
+
+  const TEST_FILES_PATH = 'D:\\TestFilesForLocaNext';
+
+  const QS_TEST_CONFIG = {
+    // Load an existing dictionary for testing
+    loadDictionary: {
+      game: 'BDO',
+      language: 'EN'
+    },
+    // Test search query
+    search: {
+      query: '안녕하세요',
+      matchType: 'contains'
+    }
+  };
+
+  // Test state for CDP access (bypasses Svelte reactivity)
+  const _qsTestState = {
+    isProcessing: false,
+    statusMessage: '',
+    currentDictionary: null,
+    searchResults: []
+  };
+
+  // TEST: Load Dictionary (uses predefined game/language)
+  // FACTOR ARCHITECTURE: Uses createTracker for centralized progress
+  async function testLoadDictionary() {
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('QuickSearch', 'Load Dictionary');
+    tracker.start();
+
+    _qsTestState.isProcessing = true;
+    _qsTestState.statusMessage = 'TEST: Loading dictionary...';
+    logger.info('TEST MODE: Loading dictionary', QS_TEST_CONFIG.loadDictionary);
+
+    try {
+      loadGame = QS_TEST_CONFIG.loadDictionary.game;
+      loadLanguage = QS_TEST_CONFIG.loadDictionary.language;
+
+      tracker.update(25, `Loading ${loadGame}_${loadLanguage}...`);
+      await loadDictionary();
+
+      _qsTestState.currentDictionary = currentDictionary;
+      const successMsg = currentDictionary
+        ? `Dictionary loaded! ${currentDictionary.pairs_count} pairs`
+        : 'Dictionary load completed';
+      _qsTestState.statusMessage = `TEST: ${successMsg}`;
+
+      // FACTOR: Complete tracker
+      tracker.complete(successMsg);
+    } catch (error) {
+      _qsTestState.statusMessage = `TEST ERROR: ${error.message}`;
+      logger.error('TEST MODE: Load dictionary failed', { error: error.message });
+      // FACTOR: Fail tracker
+      tracker.fail(error.message);
+    } finally {
+      _qsTestState.isProcessing = false;
+    }
+  }
+
+  // TEST: Search (uses predefined query)
+  // FACTOR ARCHITECTURE: Uses createTracker for centralized progress
+  async function testSearch() {
+    if (!currentDictionary) {
+      _qsTestState.statusMessage = 'TEST ERROR: No dictionary loaded. Call testLoadDictionary first.';
+      return;
+    }
+
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('QuickSearch', 'Search');
+    tracker.start();
+
+    _qsTestState.isProcessing = true;
+    _qsTestState.statusMessage = 'TEST: Searching...';
+    logger.info('TEST MODE: Searching', QS_TEST_CONFIG.search);
+
+    try {
+      searchQuery = QS_TEST_CONFIG.search.query;
+      matchType = QS_TEST_CONFIG.search.matchType;
+
+      tracker.update(50, `Searching for "${searchQuery}"...`);
+      await performSearch();
+
+      _qsTestState.searchResults = searchResults;
+      const successMsg = `Search completed! ${totalResults} results found`;
+      _qsTestState.statusMessage = `TEST: ${successMsg}`;
+
+      // FACTOR: Complete tracker
+      tracker.complete(successMsg);
+    } catch (error) {
+      _qsTestState.statusMessage = `TEST ERROR: ${error.message}`;
+      logger.error('TEST MODE: Search failed', { error: error.message });
+      // FACTOR: Fail tracker
+      tracker.fail(error.message);
+    } finally {
+      _qsTestState.isProcessing = false;
+    }
+  }
+
+  // Expose test functions globally for CDP access
+  if (typeof window !== 'undefined') {
+    window.quickSearchTest = {
+      loadDictionary: () => testLoadDictionary(),
+      search: () => testSearch(),
+      getStatus: () => ({
+        ..._qsTestState,
+        isDictionaryLoaded: !!currentDictionary,
+        dictionaryInfo: currentDictionary
+      }),
+      _state: _qsTestState
+    };
+  }
 
   // ========================================================================
   // API CALLS
@@ -286,10 +403,17 @@
     const startTime = Date.now();
     logger.userAction("Loading dictionary", { game: loadGame, language: loadLanguage });
 
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('QuickSearch', 'Load Dictionary');
+    tracker.start();
+    tracker.update(10, `Loading ${loadGame}-${loadLanguage}...`);
+
     try {
       const formData = new FormData();
       formData.append('game', loadGame);
       formData.append('language', loadLanguage);
+
+      tracker.update(30, 'Fetching dictionary from server...');
 
       const response = await fetch(`${API_BASE}/api/v2/quicksearch/load-dictionary`, {
         method: 'POST',
@@ -311,7 +435,9 @@
           language: loadLanguage,
           pairs_count: data.pairs_count
         });
-        showStatus(`Dictionary loaded: ${loadGame}-${loadLanguage} (${data.pairs_count} pairs)`, 'success');
+        const successMsg = `Dictionary loaded: ${loadGame}-${loadLanguage} (${data.pairs_count} pairs)`;
+        showStatus(successMsg, 'success');
+        tracker.complete(successMsg);
         showLoadDictionaryModal = false;
       } else {
         throw new Error(data.detail || 'Failed to load dictionary');
@@ -323,6 +449,7 @@
         language: loadLanguage
       });
       showStatus(`Error: ${error.message}`, 'error');
+      tracker.fail(error.message);
     } finally {
       isLoadingDictionary = false;
     }
@@ -418,6 +545,11 @@
     const startTime = Date.now();
     logger.userAction("Performing search", { query: searchQuery, match_type: matchType, mode: searchMode });
 
+    // FACTOR: Create tracker for this operation
+    const tracker = createTracker('QuickSearch', 'Search');
+    tracker.start();
+    tracker.update(10, 'Searching...');
+
     try {
       const formData = new FormData();
       const startIndex = (currentPage - 1) * pageSize;
@@ -427,6 +559,8 @@
         formData.append('match_type', matchType);
         formData.append('start_index', startIndex);
         formData.append('limit', pageSize);
+
+        tracker.update(30, 'Querying server...');
 
         const response = await fetch(`${API_BASE}/api/v2/quicksearch/search`, {
           method: 'POST',
@@ -444,7 +578,9 @@
             match_type: matchType,
             results_count: totalResults
           });
-          logger.info(`Search completed: ${totalResults} results found`);
+          const successMsg = `Search completed: ${totalResults} results found`;
+          logger.info(successMsg);
+          tracker.complete(successMsg);
         } else {
           throw new Error(data.detail || 'Search failed');
         }
@@ -454,6 +590,8 @@
         formData.append('queries', JSON.stringify(queries));
         formData.append('match_type', matchType);
         formData.append('limit', pageSize);
+
+        tracker.update(30, `Processing ${queries.length} lines...`);
 
         const response = await fetch(`${API_BASE}/api/v2/quicksearch/search-multiline`, {
           method: 'POST',
@@ -481,7 +619,9 @@
             queries_count: queries.length,
             results_count: totalResults
           });
-          logger.info(`Multi-line search completed: ${totalResults} total matches`);
+          const successMsg = `Multi-line search completed: ${totalResults} total matches`;
+          logger.info(successMsg);
+          tracker.complete(successMsg);
         } else {
           throw new Error(data.detail || 'Multi-line search failed');
         }
@@ -493,6 +633,7 @@
         match_type: matchType
       });
       showStatus(`Search error: ${error.message}`, 'error');
+      tracker.fail(error.message);
     } finally {
       isSearching = false;
     }
