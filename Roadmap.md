@@ -26,28 +26,33 @@ LocaNext v2512071836
 ### P13.11: Gitea Windows Build
 
 ```
-STATUS: 🔄 IN PROGRESS (Option A chosen)
+STATUS: 🔄 IN PROGRESS - Runner installed, testing build pipeline
 
 ARCHITECTURE:
 ├── Gitea Server     → WSL Linux (localhost:3000)
 ├── Linux Runner     → WSL (handles ubuntu-latest jobs)
-└── Windows Runner   → Windows native (handles [self-hosted, windows] jobs)
+└── Windows Runner   → Windows native (handles [self-hosted, windows] jobs) ✅ INSTALLED
 
 WINDOWS ENVIRONMENT:
 C:\NEIL_PROJECTS_WINDOWSBUILD\
 ├── LocaNextProject\
 │   ├── LocaNext\                # App playground/testing
 │   └── TestFilesForLocaNext\    # Test files (xlsx, txt, xml)
-└── GiteaRunner\                 # Windows act_runner (NEXT)
+└── GiteaRunner\                 # Windows act_runner ✅ RUNNING AS SERVICE
 
-TASKS:
+COMPLETED:
 [✅] Docs updated to C: drive paths (SSD)
 [✅] XML test file created (sample_localization.xml)
 [✅] CLAUDE.md updated with Windows section
-[📋] Download act_runner for Windows
-[📋] Register Windows runner with Gitea
-[📋] Install prereqs (Python 3.11, Node.js 18, Chocolatey)
-[📋] Test full pipeline
+[✅] Chocolatey installed (package manager)
+[✅] Git installed via Chocolatey (system PATH)
+[✅] NSSM installed (service manager)
+[✅] act_runner.exe downloaded & registered
+[✅] GiteaActRunner Windows service running (auto-start)
+[✅] WINDOWS_RUNNER_SETUP.md documentation complete
+
+REMAINING:
+[📋] Test full build pipeline (trigger build, verify .exe output)
 ```
 
 ---
