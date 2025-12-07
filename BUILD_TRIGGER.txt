@@ -80,3 +80,4 @@ Build FULL v2512071233 - Factor Architecture Release
 Build FULL v2512071233 - TaskManager History + Factor Fix (GitHub Only)
 Build FULL v2512071233 - CI Test Fix (lxml skip)
 Build FULL v2512071233 - CI Test Fix #2 (ahocorasick optional)
+Build FULL v2512071233 - CI Test Fix #3 (tuple return format)
