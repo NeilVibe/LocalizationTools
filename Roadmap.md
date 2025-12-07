@@ -989,6 +989,36 @@ PHASE E: FRONTEND CDP DEBUGGING (Browser Console)
 
 ---
 
+## 🔧 P13.11: Gitea Windows Build (TODO)
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                  P13.11: GITEA WINDOWS BUILD SUPPORT                          ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   PROBLEM: Gitea runs locally, no access to GitHub's Windows runners          ║
+║   Current act_runner is Linux host mode only                                  ║
+║                                                                               ║
+║   SOLUTION OPTIONS:                                                           ║
+║   ├── Option A: Windows act_runner on local Windows machine                   ║
+║   ├── Option B: Cross-compile from Linux (electron-builder)                   ║
+║   └── Option C: Use Gitea only for safety-checks, GitHub for Windows build    ║
+║                                                                               ║
+║   STATUS: 📋 TODO                                                              ║
+║                                                                               ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   TASKS:                                                                       ║
+║   [📋] P13.11.1: Research Windows act_runner setup                            ║
+║   [📋] P13.11.2: Test cross-compile option (Linux → Windows)                  ║
+║   [📋] P13.11.3: Implement chosen solution                                    ║
+║   [📋] P13.11.4: Test full Gitea build pipeline                               ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
 ## ✅ P13.0 Gitea Setup COMPLETE + Comprehensive Testing (2025-12-06)
 
 ### ✅ Gitea Fully Configured:
