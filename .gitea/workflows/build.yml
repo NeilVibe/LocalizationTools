@@ -576,6 +576,32 @@ jobs:
           Write-Host "=== templates/nsis directory structure ==="
           Get-ChildItem "node_modules\app-builder-lib\templates\nsis" -Recurse | Select-Object FullName
 
+          # WORKAROUND: Copy includes to NSIS cache directory (permission issue)
+          # electron-builder downloads NSIS to this location
+          $nsisCache = "$env:TEMP\electron-builder-cache\nsis"
+          Write-Host "=== Looking for NSIS cache at: $nsisCache ==="
+
+          if (Test-Path $nsisCache) {
+            $nsisDir = Get-ChildItem $nsisCache -Directory | Select-Object -First 1
+            if ($nsisDir) {
+              $nsisInclude = Join-Path $nsisDir.FullName "Include"
+              Write-Host "Found NSIS dir: $($nsisDir.FullName)"
+              Write-Host "NSIS Include dir: $nsisInclude"
+
+              if (!(Test-Path $nsisInclude)) {
+                New-Item -ItemType Directory -Force -Path $nsisInclude | Out-Null
+              }
+
+              # Copy all .nsh files from templates/nsis/include to NSIS Include
+              $sourceInclude = "node_modules\app-builder-lib\templates\nsis\include"
+              if (Test-Path $sourceInclude) {
+                Copy-Item -Path "$sourceInclude\*.nsh" -Destination $nsisInclude -Force
+                Write-Host "[OK] Copied include files to NSIS Include directory"
+                Get-ChildItem $nsisInclude -Name
+              }
+            }
+          }
+
           # Now run electron-builder
           npm run build:electron
         shell: powershell
