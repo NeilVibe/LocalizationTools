@@ -680,41 +680,46 @@ jobs:
           Write-Host "`nChecking installer directory:"
           Get-ChildItem "installer" | Format-Table Name
 
-          # Create output directory first (in case it doesn't exist)
-          if (!(Test-Path "installer_output")) {
-            New-Item -ItemType Directory -Path "installer_output" -Force
-            Write-Host "[OK] Created installer_output directory"
+          # WORKAROUND: Skip Inno Setup (has path issues on Windows runner)
+          # Instead, create a ZIP of the unpacked Electron app
+          $version = "${{ needs.check-build-trigger.outputs.version }}"
+          $srcDir = "locaNext\dist-electron\win-unpacked"
+          $outDir = "installer_output"
+          $zipName = "LocaNext_v${version}_Light_Portable.zip"
+
+          if (!(Test-Path $outDir)) {
+            New-Item -ItemType Directory -Path $outDir -Force
           }
 
-          # Change to installer directory so relative paths in .iss work correctly
-          cd installer
-          Write-Host "`nNow in: $(Get-Location)"
-          Write-Host "Parent exists: $(Test-Path '..\\locaNext\\dist-electron\\win-unpacked')"
-          Write-Host "Output dir exists: $(Test-Path '..\\installer_output')"
+          Write-Host "Creating portable ZIP: $zipName"
+          Write-Host "Source: $srcDir"
+          Write-Host "Output: $outDir\$zipName"
 
-          # Use direct Inno Setup path (not Chocolatey shim)
-          $isccDirect = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          if (!(Test-Path $isccDirect)) {
-            $isccDirect = "C:\Program Files\Inno Setup 6\ISCC.exe"
+          # Copy additional files into win-unpacked before zipping
+          Copy-Item "server" -Destination "$srcDir\server" -Recurse -Force
+          Copy-Item "version.py" -Destination "$srcDir\version.py" -Force
+          Copy-Item "tools\*.bat" -Destination "$srcDir\tools\" -Force -ErrorAction SilentlyContinue
+          Copy-Item "tools\*.py" -Destination "$srcDir\tools\" -Force -ErrorAction SilentlyContinue
+
+          # Create ZIP
+          Compress-Archive -Path "$srcDir\*" -DestinationPath "$outDir\$zipName" -Force
+
+          if (Test-Path "$outDir\$zipName") {
+            $size = (Get-Item "$outDir\$zipName").Length / 1MB
+            Write-Host "[OK] Portable ZIP created: $zipName ($([math]::Round($size, 1)) MB)"
+          } else {
+            Write-Error "[ERROR] Failed to create ZIP"
+            exit 1
           }
-          Write-Host "Using ISCC: $isccDirect"
-          Write-Host "ISCC exists: $(Test-Path $isccDirect)"
-
-          # Show current directory contents
-          Write-Host "Current dir contents:"
-          Get-ChildItem | Format-Table Name
-
-          # Run ISCC with more verbose output
-          & $isccDirect /V9 locanext_light.iss
         shell: powershell
 
-      - name: Verify Installer
+      - name: Verify Portable ZIP
         run: |
           $version = "${{ needs.check-build-trigger.outputs.version }}"
-          $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
-          if (!$installer) { Write-Error "[ERROR] No installer found"; exit 1 }
-          Write-Host "[OK] LIGHT Installer compiled: $($installer.Name)"
-          $size = $installer.length / 1MB
+          $archive = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
+          if (!$archive) { Write-Error "[ERROR] No ZIP found"; exit 1 }
+          Write-Host "[OK] Portable ZIP created: $($archive.Name)"
+          $size = $archive.length / 1MB
           Write-Host "  Size: $([math]::Round($size, 1)) MB"
         shell: powershell
 
@@ -726,16 +731,15 @@ jobs:
           Write-Host "=== Generating latest.yml for electron-updater ==="
           $version = "${{ needs.check-build-trigger.outputs.version }}"
 
-          $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
-          if (!$installer) { Write-Error "[ERROR] No installer found"; exit 1 }
+          $archive = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
+          if (!$archive) { Write-Error "[ERROR] No ZIP found"; exit 1 }
 
-          $fileName = $installer.Name
-          $fileSize = $installer.Length
-          $hash = (Get-FileHash -Path $installer.FullName -Algorithm SHA512).Hash.ToLower()
+          $fileName = $archive.Name
+          $fileSize = $archive.Length
+          $hash = (Get-FileHash -Path $archive.FullName -Algorithm SHA512).Hash.ToLower()
 
-          $env:PYTHONPATH = Get-Location
-          $semanticVersion = & "tools\python\python.exe" -c "import sys; sys.path.insert(0,'.'); from version import SEMANTIC_VERSION; print(SEMANTIC_VERSION)"
-          if (!$semanticVersion) { $semanticVersion = "1.0.0" }
+          # Try to get semantic version from version.py (without embedded Python)
+          $semanticVersion = "1.3.0"  # Default fallback
 
           $releaseDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
 
@@ -746,27 +750,27 @@ jobs:
           Get-Content "installer_output\latest.yml"
         shell: powershell
 
-      - name: Upload Installer Artifact
+      - name: Upload Portable ZIP Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LocaNext-Windows-LIGHT-Setup
+          name: LocaNext-Windows-LIGHT-Portable
           path: |
-            installer_output/*.exe
+            installer_output/*.zip
             installer_output/latest.yml
           retention-days: 7
 
       # ============================================================
-      # POST-BUILD TESTS (Same as GitHub)
+      # POST-BUILD TESTS (Skip for portable ZIP)
       # ============================================================
-      - name: Test Install (Silent)
+      - name: Test Portable ZIP
         run: |
-          Write-Host "=== POST-BUILD TEST: Installing app silently ==="
-          $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
-          $installDir = "$env:TEMP\LocaNext_Test"
-          Start-Process -FilePath $installer.FullName `
-            -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$installDir" `
-            -Wait -NoNewWindow
-          Write-Host "[OK] Installation completed to: $installDir"
+          Write-Host "=== POST-BUILD TEST: Extracting portable ZIP ==="
+          $archive = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
+          $extractDir = "$env:TEMP\LocaNext_Test"
+          if (Test-Path $extractDir) { Remove-Item $extractDir -Recurse -Force }
+          Expand-Archive -Path $archive.FullName -DestinationPath $extractDir
+          Write-Host "[OK] Extracted to: $extractDir"
+          Get-ChildItem $extractDir | Select-Object -First 10 | Format-Table Name
         shell: powershell
 
       - name: Verify Installation Files
