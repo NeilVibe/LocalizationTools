@@ -203,11 +203,56 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+      # NOTE: We don't use actions/setup-python@v5 because it fails when runner
+      # runs as SYSTEM service (can't write to systemprofile cache).
+      # Instead, we use the pre-installed Python on the Windows build machine.
+      - name: Verify Python Installation
+        run: |
+          Write-Host "=== Verifying Python Installation ===" -ForegroundColor Cyan
+
+          # Check common Python locations
+          $pythonPaths = @(
+            "C:\Python313\python.exe",
+            "C:\Python311\python.exe",
+            "C:\Python310\python.exe",
+            "C:\Python39\python.exe"
+          )
+
+          $pythonExe = $null
+          foreach ($path in $pythonPaths) {
+            if (Test-Path $path) {
+              $pythonExe = $path
+              Write-Host "[OK] Found Python at: $path" -ForegroundColor Green
+              break
+            }
+          }
+
+          if (-not $pythonExe) {
+            # Try PATH
+            $pythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+            if ($pythonExe) {
+              Write-Host "[OK] Found Python in PATH: $pythonExe" -ForegroundColor Green
+            } else {
+              Write-Error "[ERROR] Python not found! Install Python 3.9+ to C:\PythonXX"
+              exit 1
+            }
+          }
+
+          # Get Python directory and add to PATH
+          $pythonDir = Split-Path $pythonExe -Parent
+          $scriptsDir = Join-Path $pythonDir "Scripts"
+
+          # Add to PATH for this session
+          $env:PATH = "$pythonDir;$scriptsDir;$env:PATH"
+          Write-Host "Added to PATH: $pythonDir, $scriptsDir"
+
+          # Verify
+          & $pythonExe --version
+
+          # Create aliases for python and pip
+          Set-Alias -Name python -Value $pythonExe -Scope Global
+          Write-Host "[OK] Python ready for build" -ForegroundColor Green
+        shell: powershell
 
       - name: Setup Node.js 18
         uses: actions/setup-node@v4
