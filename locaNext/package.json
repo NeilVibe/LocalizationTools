@@ -68,7 +68,7 @@
       "target": "dmg"
     },
     "win": {
-      "target": "nsis",
+      "target": "portable",
       "sign": "./scripts/skip-sign.js",
       "signAndEditExecutable": false,
       "signDlls": false
