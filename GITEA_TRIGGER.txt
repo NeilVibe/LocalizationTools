@@ -97,3 +97,4 @@ Build LIGHT v2512080226 - Fix: Clear full NSIS cache
 Build LIGHT v2512080235 - Fix: ELECTRON_BUILDER_CACHE env var
 Build LIGHT v2512080241 - Fix: Pre-copy NSIS includes
 Build LIGHT v2512080247 - Fix: Use curl.exe for downloads
+Build LIGHT v2512080254 - Fix: Correct NSIS resources URL
