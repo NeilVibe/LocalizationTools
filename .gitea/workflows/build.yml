@@ -315,12 +315,30 @@ jobs:
           npm ci
         shell: powershell
 
+      # GITEA FIX: Clear corrupted electron-builder cache (symlink issues)
+      - name: Clear Electron Builder Cache
+        run: |
+          Write-Host "Clearing electron-builder cache to avoid symlink issues..."
+          $cachePath = "$env:LOCALAPPDATA\electron-builder\Cache\winCodeSign"
+          if (Test-Path $cachePath) {
+            Remove-Item -Path $cachePath -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "[OK] Cleared winCodeSign cache"
+          } else {
+            Write-Host "[INFO] No cache to clear"
+          }
+        shell: powershell
+
       - name: Build Electron App
         run: |
           cd locaNext
           npm run build
           npm run build:electron
         shell: powershell
+        env:
+          # Disable code signing - we don't need it for unsigned builds
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          # Don't require winCodeSign
+          DEBUG: electron-builder
 
       - name: Verify Electron Build
         run: |
