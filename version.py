@@ -7,20 +7,20 @@ Based on VRS-Manager version management pattern
 
 # Version in DateTime format: YYMMDDHHMM
 # Example: 2511221939 = November 22, 2025, 19:39
-VERSION = "2512051540"
+VERSION = "2512071233"
 
 # Version footer for UI display
 VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform | XLSTransfer + QuickSearch"
 
 # Semantic version for package managers
-SEMANTIC_VERSION = "1.2.2"
+SEMANTIC_VERSION = "1.3.0"
 
 # Build type
 BUILD_TYPE = "LIGHT"  # FULL (with AI model) or LIGHT (without AI)
 
 # Release info
-RELEASE_DATE = "2025-12-05"
-RELEASE_NAME = "Timestamp Validation Safety Check"
+RELEASE_DATE = "2025-12-07"
+RELEASE_NAME = "Factor Architecture - Centralized Progress Tracking"
 
 # Repository info
 REPOSITORY_URL = "https://github.com/NeilVibe/LocalizationTools"
