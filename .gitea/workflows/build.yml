@@ -337,7 +337,10 @@ jobs:
         env:
           # Disable code signing - we don't need it for unsigned builds
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          # Don't require winCodeSign
+          # Completely disable code signing (prevents winCodeSign download)
+          WIN_CSC_LINK: ""
+          CSC_LINK: ""
+          # Debug output
           DEBUG: electron-builder
 
       - name: Verify Electron Build
