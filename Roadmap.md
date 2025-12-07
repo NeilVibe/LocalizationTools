@@ -1971,11 +1971,23 @@ P13 TASKS:
     ├── [ ] Test update flow on D:\LocaNext playground
     └── [ ] Verify: App detects update → Downloads → Installs
 
+├── ✅ 13.7: Patch Server Scripts & Docs COMPLETE
+│   ├── [✅] docs/PATCH_SERVER.md - Full setup guide
+│   │       ├── Option A: GitHub build + Gitea mirror (recommended)
+│   │       └── Option B: Full Gitea build with self-hosted runner
+│   ├── [✅] scripts/mirror_release_to_gitea.sh
+│   │       └── Mirrors GitHub releases to Gitea automatically
+│   ├── [✅] scripts/cleanup_old_releases.sh
+│   │       └── Keeps latest N releases (default: 2)
+│   └── [✅] Build retention policy documented
+
 CURRENT BUILD STRATEGY:
 ├── GitHub Actions → Builds .exe (free Windows runners)
 ├── Gitea Actions  → Runs tests only (Linux runner)
 ├── Manual builds  → D:\LocaNext Windows playground
-└── FUTURE: Dedicated Windows build server for Gitea
+├── Mirror script  → scripts/mirror_release_to_gitea.sh
+├── Cleanup script → scripts/cleanup_old_releases.sh (keep latest 2)
+└── Full docs      → docs/PATCH_SERVER.md
 ```
 
 ---

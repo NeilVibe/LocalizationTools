@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512062247 (2025-12-06)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | **Migration VERIFIED** ✅
+**Version:** 2512071545 (2025-12-07)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅
 
 ---
 
@@ -91,6 +91,8 @@
 |----------|----------------|
 | **[testing/DEBUG_AND_TEST_HUB.md](docs/testing/DEBUG_AND_TEST_HUB.md)** | **🎯 MASTER GUIDE** - ALL remote access methods, CDP, pytest, Playwright |
 | **[testing/README.md](docs/testing/README.md)** | Testing Hub - Quick navigation |
+| **[testing_toolkit/](testing_toolkit/)** | **Autonomous CDP testing scripts** (run_test.js, run_all_tests.js) |
+| **[testing_toolkit/ADD_TEST_MODE_GUIDE.md](testing_toolkit/ADD_TEST_MODE_GUIDE.md)** | **How to add TEST MODE to new apps** |
 | **[testing/QUICK_COMMANDS.md](docs/testing/QUICK_COMMANDS.md)** | Copy-paste commands only |
 | **[testing/PYTEST_GUIDE.md](docs/testing/PYTEST_GUIDE.md)** | Python backend tests |
 | **[testing/PLAYWRIGHT_GUIDE.md](docs/testing/PLAYWRIGHT_GUIDE.md)** | Frontend E2E tests |
@@ -116,7 +118,8 @@
 | **[ENTERPRISE_DEPLOYMENT.md](docs/ENTERPRISE_DEPLOYMENT.md)** | Enterprise-scale deployment |
 | **[ADMIN_SETUP.md](docs/ADMIN_SETUP.md)** | Initial admin user setup, credentials |
 | **[POSTGRESQL_SETUP.md](docs/POSTGRESQL_SETUP.md)** | PostgreSQL configuration |
-| **[GITEA_SETUP.md](docs/GITEA_SETUP.md)** | **Self-hosted Git + CI/CD (P13 Patch Server)** |
+| **[GITEA_SETUP.md](docs/GITEA_SETUP.md)** | Self-hosted Git + CI/CD setup |
+| **[PATCH_SERVER.md](docs/PATCH_SERVER.md)** | **Gitea as patch server for auto-updates** |
 | **[SECURITY_AND_LOGGING.md](docs/SECURITY_AND_LOGGING.md)** | Security best practices |
 
 ### 🔒 Security
@@ -315,6 +318,13 @@ bash scripts/clean_logs.sh
   - ✅ Runner: "locanext-runner" online
   - ✅ Auto-Update: `updater.js` supports GitHub/Gitea/Custom via env var
   - ✅ DUAL PUSH: `git push origin main && git push gitea main`
+  - ✅ Patch Server Docs: `docs/PATCH_SERVER.md` (Option A: Mirror, Option B: Self-hosted)
+  - ✅ Mirror Script: `scripts/mirror_release_to_gitea.sh`
+  - ✅ Cleanup Script: `scripts/cleanup_old_releases.sh` (keep latest 2)
+- **Testing Toolkit:** ✅ COMPLETE
+  - ✅ CDP-based autonomous testing (`testing_toolkit/`)
+  - ✅ All 3 apps have TEST MODE (xlsTransfer, quickSearch, krSimilar)
+  - ✅ ADD_TEST_MODE_GUIDE.md for future apps (LD Manager template)
 
 ### Quick Gitea Commands:
 ```bash
