@@ -80,3 +80,5 @@ Build LIGHT v2512080002 - ALL 8 FILES UNIFIED (retry after version fix)
 Build LIGHT v2512080002 - FIX: Add forceCodeSigning:false to prevent doSign() error
 
 Build LIGHT v2512080002 - FIX: Add signDlls:false + CSC_LINK (NSIS signing bug)
+
+Build LIGHT v2512080002 - FIX: Remove CSC_LINK (empty string = cwd path bug)

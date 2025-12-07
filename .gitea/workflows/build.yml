@@ -336,9 +336,9 @@ jobs:
         shell: powershell
         env:
           # Disable code signing completely for unsigned builds
-          # All three settings required to prevent NSIS signing bug in electron-builder 24.x
+          # CSC_IDENTITY_AUTO_DISCOVERY prevents auto-discovery of certificates
+          # DO NOT set CSC_LINK="" - empty string is treated as current directory!
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          CSC_LINK: ""
           # Debug output
           DEBUG: electron-builder
 
