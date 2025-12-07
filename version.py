@@ -7,7 +7,7 @@ Based on VRS-Manager version management pattern
 
 # Version in DateTime format: YYMMDDHHMM
 # Example: 2511221939 = November 22, 2025, 19:39
-VERSION = "2512080155"
+VERSION = "2512080202"
 
 # Version footer for UI display
 VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform | XLSTransfer + QuickSearch"
@@ -19,7 +19,7 @@ SEMANTIC_VERSION = "1.3.0"
 BUILD_TYPE = "LIGHT"  # FULL (with AI model) or LIGHT (without AI)
 
 # Release info
-RELEASE_DATE = "2025-12-07"
+RELEASE_DATE = "2025-12-08"
 RELEASE_NAME = "Factor Architecture - Centralized Progress Tracking"
 
 # Repository info

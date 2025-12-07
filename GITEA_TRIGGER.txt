@@ -90,3 +90,5 @@ Build LIGHT v2512080002 - FIX: Robust Git PATH detection (PATH → ProgramFiles 
 Build LIGHT v2512080200 - CLEAN BUILD (Git+NSSM+Service installed, no fallbacks)
 
 Build LIGHT v2512080155 - Trigger fresh build with corrected version
+
+Build LIGHT v2512080202 - FIX: Use pre-installed Python (skip setup-python for SYSTEM service)
