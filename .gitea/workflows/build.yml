@@ -7,7 +7,7 @@
 #   - windows-latest → self-hosted (Windows runner required)
 #   - softprops/action-gh-release → Gitea REST API
 #   - gh release list → Gitea API
-#   - GITHUB_TOKEN → GITEA_TOKEN
+#   - GITHUB_TOKEN → RELEASE_TOKEN (GITEA_ prefix is reserved)
 # ============================================================================
 
 name: Build LocaNext LIGHT Installer
@@ -109,7 +109,7 @@ jobs:
 
           # Get latest release version from Gitea API
           LATEST_TAG=$(curl -s "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases?limit=1" \
-            -H "Authorization: token ${{ secrets.GITEA_TOKEN }}" | \
+            -H "Authorization: token ${{ secrets.RELEASE_TOKEN }}" | \
             jq -r '.[0].tag_name // "v0"')
           LATEST_VERSION=$(echo "$LATEST_TAG" | sed 's/v//')
           echo "Latest release: $LATEST_VERSION"
@@ -529,7 +529,7 @@ releaseDate: '$releaseDate'
 
           # Create release via Gitea API
           RESPONSE=$(curl -s -X POST "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases" \
-            -H "Authorization: token ${{ secrets.GITEA_TOKEN }}" \
+            -H "Authorization: token ${{ secrets.RELEASE_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "{
               \"tag_name\": \"${TAG}\",
@@ -560,7 +560,7 @@ releaseDate: '$releaseDate'
               FILENAME=$(basename "$exe")
               echo "  Uploading: $FILENAME"
               curl -s -X POST "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}/assets?name=${FILENAME}" \
-                -H "Authorization: token ${{ secrets.GITEA_TOKEN }}" \
+                -H "Authorization: token ${{ secrets.RELEASE_TOKEN }}" \
                 -F "attachment=@${exe}"
             fi
           done
@@ -569,7 +569,7 @@ releaseDate: '$releaseDate'
           if [ -f "artifacts/windows/latest.yml" ]; then
             echo "  Uploading: latest.yml"
             curl -s -X POST "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}/assets?name=latest.yml" \
-              -H "Authorization: token ${{ secrets.GITEA_TOKEN }}" \
+              -H "Authorization: token ${{ secrets.RELEASE_TOKEN }}" \
               -F "attachment=@artifacts/windows/latest.yml"
           fi
 
