@@ -458,13 +458,19 @@ jobs:
           $includeDir = "locaNext\node_modules\app-builder-lib\templates\nsis\include"
           New-Item -ItemType Directory -Force -Path $includeDir | Out-Null
 
-          # Download nsis-resources directly
+          # Download nsis-resources directly (use curl.exe for SYSTEM account compatibility)
           $nsisResourcesUrl = "https://github.com/nicholasrice/nsis-resources/releases/download/v3.4.1/nsis-resources-3.4.1.7z"
           $tempFile = "$env:TEMP\nsis-resources.7z"
           $extractDir = "$env:TEMP\nsis-resources-extract"
 
-          Write-Host "Downloading NSIS resources..."
-          Invoke-WebRequest -Uri $nsisResourcesUrl -OutFile $tempFile
+          Write-Host "Downloading NSIS resources using curl..."
+          # Use curl.exe (built into Windows 10+) instead of Invoke-WebRequest
+          & curl.exe -L -o $tempFile $nsisResourcesUrl
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to download NSIS resources"
+            exit 1
+          }
+          Write-Host "[OK] Downloaded NSIS resources"
 
           # Extract using 7zip from node_modules
           $sevenZip = "locaNext\node_modules\7zip-bin\win\x64\7za.exe"
@@ -484,6 +490,8 @@ jobs:
               Write-Host "[OK] Copied NSIS includes to: $includeDir"
               Get-ChildItem $includeDir
             }
+          } else {
+            Write-Host "[WARN] Could not find extracted NSIS resources directory"
           }
 
           # Cleanup
