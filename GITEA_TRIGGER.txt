@@ -84,3 +84,5 @@ Build LIGHT v2512080002 - FIX: Add signDlls:false + CSC_LINK (NSIS signing bug)
 Build LIGHT v2512080002 - FIX: Remove CSC_LINK (empty string = cwd path bug)
 
 Build LIGHT v2512080002 - FIX: Custom skip-sign.js (electron-builder NSIS bug workaround)
+
+Build LIGHT v2512080002 - FIX: Robust Git PATH detection (PATH → ProgramFiles → E: fallback)
