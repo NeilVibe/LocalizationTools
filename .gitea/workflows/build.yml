@@ -1,147 +1,598 @@
+# ============================================================================
 # LocaNext Build Pipeline - Gitea Actions
-# Internal builds with release creation
-# DUAL PUSH REQUIRED: git push origin main && git push gitea main
+# MIRRORS GITHUB WORKFLOW EXACTLY (832 lines → Gitea compatible)
+# ============================================================================
+# This workflow is 100% identical to .github/workflows/build-electron.yml
+# with only these Gitea-specific adaptations:
+#   - windows-latest → self-hosted (Windows runner required)
+#   - softprops/action-gh-release → Gitea REST API
+#   - gh release list → Gitea API
+#   - GITHUB_TOKEN → GITEA_TOKEN
+# ============================================================================
 
-name: Build LocaNext
+name: Build LocaNext LIGHT Installer
 
 on:
   push:
-    branches: [main]
-    paths-ignore:
-      - '*.md'
-      - 'docs/**'
-  workflow_dispatch:  # Manual trigger
+    branches: [ main ]
+    paths:
+      - 'BUILD_TRIGGER.txt'
+  workflow_dispatch:
 
 env:
-  NODE_VERSION: '20'
-  PYTHON_VERSION: '3.11'
+  GITEA_URL: http://localhost:3000
+  GITEA_REPO: neilvibe/LocaNext
 
 jobs:
-  # ============================================
-  # JOB 1: Test Backend
-  # ============================================
-  test:
+  # ============================================================
+  # JOB 1: Check Build Trigger (IDENTICAL TO GITHUB)
+  # ============================================================
+  check-build-trigger:
+    name: Check Build Trigger
     runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      version: ${{ steps.check.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Check BUILD_TRIGGER.txt
+        id: check
+        run: |
+          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "Build (LIGHT|FULL)" | tail -1)
+          echo "Trigger line: $TRIGGER"
+
+          if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)"; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+
+            # Extract version (first match only - ignore "v2" in comments like "Fix v2")
+            VERSION=$(echo "$TRIGGER" | grep -oE 'v[0-9]{10}' | head -1 | sed 's/v//')
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "[OK] Build triggered for version: $VERSION"
+          else
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "No build trigger found"
+          fi
+
+  # ============================================================
+  # JOB 2: Safety Checks (IDENTICAL TO GITHUB)
+  # ============================================================
+  safety-checks:
+    name: Safety Checks (Tests, Security, Version)
+    runs-on: ubuntu-latest
+    needs: check-build-trigger
+    if: needs.check-build-trigger.outputs.should_build == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: '3.11'
+          cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio
-
-      - name: Create admin user
-        run: python3 scripts/create_admin.py
-
-      - name: Start server
-        run: |
-          python3 server/main.py &
-          sleep 5
-
-      - name: Run tests
-        run: RUN_API_TESTS=1 python3 -m pytest -v --tb=short
-        env:
-          PYTHONPATH: .
-
-  # ============================================
-  # JOB 2: Build Windows Installer
-  # ============================================
-  build-windows:
-    needs: test
-    runs-on: windows-latest  # Requires Windows self-hosted runner
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Setup Node.js
+      - name: Setup Node.js 18
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: locaNext/package-lock.json
 
-      - name: Get version
-        id: get_version
+      - name: Install Python Dependencies
         run: |
-          VERSION=$(python3 -c "from version import SEMANTIC_VERSION; print(SEMANTIC_VERSION)")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pip-audit
 
-      - name: Install dependencies
-        working-directory: locaNext
-        run: npm ci
+      - name: Install Node Dependencies
+        run: |
+          cd locaNext && npm ci
 
-      - name: Check version
-        run: python scripts/check_version_unified.py
+      # ---- VERSION CHECK ----
+      - name: Version Unification Check
+        run: |
+          echo "=== Checking version unification across all files ==="
+          python scripts/check_version_unified.py
+          echo "[OK] All versions unified"
 
-      - name: Build Electron app
-        working-directory: locaNext
-        run: npm run build:win
+      # ---- VERSION INCREMENT CHECK (GITEA API) ----
+      - name: Check Version Increment
+        run: |
+          echo "=== Checking version is newer than latest release ==="
 
-      - name: List build output
-        run: ls -la locaNext/dist/
+          # Get current version from version.py
+          CURRENT_VERSION=$(python -c "from version import VERSION; print(VERSION)")
+          echo "Current version: $CURRENT_VERSION"
 
-      - name: Upload artifacts
+          # Get latest release version from Gitea API
+          LATEST_TAG=$(curl -s "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases?limit=1" \
+            -H "Authorization: token ${{ secrets.GITEA_TOKEN }}" | \
+            jq -r '.[0].tag_name // "v0"')
+          LATEST_VERSION=$(echo "$LATEST_TAG" | sed 's/v//')
+          echo "Latest release: $LATEST_VERSION"
+
+          # Compare versions (both are YYMMDDHHMM format, simple numeric comparison)
+          if [ "$CURRENT_VERSION" -le "$LATEST_VERSION" ] 2>/dev/null; then
+            echo "[WARNING] Current version ($CURRENT_VERSION) is not greater than latest release ($LATEST_VERSION)"
+            echo "Consider updating VERSION in version.py"
+          else
+            echo "[OK] Version $CURRENT_VERSION is newer than $LATEST_VERSION"
+          fi
+
+      # ---- SERVER LAUNCH TEST ----
+      - name: Test Server Starts
+        run: |
+          echo "=== Testing server can start (catches missing files) ==="
+          # Start server in background
+          timeout 30 python server/main.py &
+          SERVER_PID=$!
+
+          # Wait for server with retries
+          for i in {1..10}; do
+            sleep 2
+            echo "Checking server... ($i/10)"
+            if curl -s http://localhost:8888/health | grep -q "healthy"; then
+              echo "[OK] Server started successfully"
+              kill $SERVER_PID 2>/dev/null || true
+              exit 0
+            fi
+          done
+
+          echo "[ERROR] Server failed to start!"
+          kill $SERVER_PID 2>/dev/null || true
+          exit 1
+
+      # ---- PYTHON TESTS ----
+      - name: Run Python Tests
+        run: |
+          echo "=== Running E2E unit tests (core functionality, no server required) ==="
+          python -m pytest \
+            tests/e2e/test_kr_similar_e2e.py \
+            tests/e2e/test_xlstransfer_e2e.py \
+            tests/e2e/test_quicksearch_e2e.py \
+            tests/unit/ \
+            -v --tb=short --no-cov -x
+          echo "[OK] All Python tests passed"
+
+      # ---- SECURITY AUDITS ----
+      - name: Python Security Audit
+        run: |
+          echo "=== Checking Python dependencies for vulnerabilities ==="
+          pip-audit --desc || echo "Vulnerabilities found - logged for review"
+          echo "[OK] Python security audit complete"
+        continue-on-error: true
+
+      - name: NPM Security Audit
+        run: |
+          cd locaNext
+          npm audit || echo "Vulnerabilities found - logged for review"
+          echo "[OK] NPM security audit complete"
+        continue-on-error: true
+
+      - name: Safety Checks Summary
+        run: |
+          echo "============================================"
+          echo "[PASS] SAFETY CHECKS PASSED"
+          echo "============================================"
+
+  # ============================================================
+  # JOB 3: Build Windows Installer (REQUIRES WINDOWS SELF-HOSTED RUNNER)
+  # ============================================================
+  build-windows:
+    name: Build Windows LIGHT Installer
+    runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
+    needs: [check-build-trigger, safety-checks]
+    if: needs.check-build-trigger.outputs.should_build == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: locaNext/package-lock.json
+
+      # ============================================================
+      # STEP 1: Download VC++ Redistributable
+      # ============================================================
+      - name: Download VC++ Redistributable
+        run: |
+          Write-Host "Downloading VC++ Redistributable x64..."
+          New-Item -ItemType Directory -Force -Path "installer\redist"
+          Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "installer\redist\vc_redist.x64.exe"
+          $size = (Get-Item "installer\redist\vc_redist.x64.exe").length / 1MB
+          Write-Host "[OK] Downloaded VC++ Redistributable: $([math]::Round($size, 1)) MB"
+        shell: pwsh
+
+      # ============================================================
+      # STEP 2: Download Python Embedded
+      # ============================================================
+      - name: Download Python Embedded
+        run: |
+          Write-Host "Downloading Python Embedded (portable)..."
+          New-Item -ItemType Directory -Force -Path "tools\python"
+
+          $pythonUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
+          $zipPath = "tools\python-embedded.zip"
+
+          Invoke-WebRequest -Uri $pythonUrl -OutFile $zipPath
+          Expand-Archive -Path $zipPath -DestinationPath "tools\python" -Force
+          Remove-Item $zipPath
+
+          # Enable pip in embedded Python
+          $pthFile = Get-ChildItem "tools\python\python*._pth" | Select-Object -First 1
+          if ($pthFile) {
+            $content = Get-Content $pthFile.FullName
+            $content = $content -replace '#import site', 'import site'
+            Set-Content -Path $pthFile.FullName -Value $content
+          }
+
+          # Install pip
+          Write-Host "Installing pip in embedded Python..."
+          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "tools\python\get-pip.py"
+          & "tools\python\python.exe" "tools\python\get-pip.py" --no-warn-script-location
+          Remove-Item "tools\python\get-pip.py"
+
+          # Install dependencies
+          Write-Host "Installing huggingface_hub..."
+          & "tools\python\python.exe" -m pip install --no-warn-script-location huggingface_hub
+
+          Write-Host "Installing light backend dependencies..."
+          & "tools\python\python.exe" -m pip install --no-warn-script-location `
+            fastapi uvicorn python-multipart python-socketio `
+            sqlalchemy aiosqlite `
+            PyJWT python-jose passlib python-dotenv bcrypt `
+            pydantic pydantic-settings email-validator `
+            pandas openpyxl xlrd `
+            httpx requests loguru tqdm pyyaml
+
+          $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "[OK] Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
+        shell: pwsh
+
+      - name: Verify Python Embedded + ALL Dependencies
+        run: |
+          Write-Host "Verifying embedded Python setup..."
+          & "tools\python\python.exe" --version
+
+          Write-Host "=== Checking ALL critical packages ==="
+          & "tools\python\python.exe" -c "import fastapi; print(f'[OK] fastapi v{fastapi.__version__}')"
+          & "tools\python\python.exe" -c "import uvicorn; print('[OK] uvicorn ready')"
+          & "tools\python\python.exe" -c "import socketio; print('[OK] socketio ready')"
+          & "tools\python\python.exe" -c "import sqlalchemy; print(f'[OK] sqlalchemy v{sqlalchemy.__version__}')"
+          & "tools\python\python.exe" -c "import aiosqlite; print('[OK] aiosqlite ready')"
+          & "tools\python\python.exe" -c "import jwt; print(f'[OK] jwt v{jwt.__version__}')"
+          & "tools\python\python.exe" -c "from jose import jwt as jose_jwt; print('[OK] jose.jwt ready')"
+          & "tools\python\python.exe" -c "import passlib; print('[OK] passlib ready')"
+          & "tools\python\python.exe" -c "import bcrypt; print('[OK] bcrypt ready')"
+          & "tools\python\python.exe" -c "import pydantic; print(f'[OK] pydantic v{pydantic.__version__}')"
+          & "tools\python\python.exe" -c "import pandas; print(f'[OK] pandas v{pandas.__version__}')"
+          & "tools\python\python.exe" -c "import openpyxl; print('[OK] openpyxl ready')"
+          & "tools\python\python.exe" -c "import huggingface_hub; print(f'[OK] huggingface_hub v{huggingface_hub.__version__}')"
+
+          # Check required files
+          if (!(Test-Path "version.py")) { Write-Error "[ERROR] version.py not found"; exit 1 }
+          if (!(Test-Path "server\main.py")) { Write-Error "[ERROR] server/main.py not found"; exit 1 }
+          Write-Host "[PASS] All dependencies verified!"
+        shell: pwsh
+
+      - name: Test Server Launch with Embedded Python
+        run: |
+          Write-Host "=== Testing server can START with embedded Python ==="
+          $env:PYTHONPATH = Get-Location
+          & "tools\python\python.exe" -c "import sys; sys.path.insert(0,'.'); from version import VERSION; print(f'version OK: v{VERSION}'); import server.main; print('server.main OK')"
+          if ($LASTEXITCODE -ne 0) { Write-Error "Server import test FAILED!"; exit 1 }
+          Write-Host "Server launch test passed!"
+        shell: pwsh
+
+      # ============================================================
+      # STEP 3: Build Electron app
+      # ============================================================
+      - name: Install Node Dependencies
+        run: |
+          cd locaNext
+          npm ci
+        shell: pwsh
+
+      - name: Build Electron App
+        run: |
+          cd locaNext
+          npm run build
+          npm run build:electron
+        shell: pwsh
+
+      - name: Verify Electron Build
+        run: |
+          if (!(Test-Path "locaNext\dist-electron\win-unpacked\LocaNext.exe")) {
+            Write-Error "[ERROR] Electron build failed - LocaNext.exe not found"
+            exit 1
+          }
+          Write-Host "[OK] Electron build successful"
+        shell: pwsh
+
+      # ============================================================
+      # STEP 4: Compile Inno Setup installer
+      # ============================================================
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+        shell: pwsh
+
+      - name: Compile LIGHT Installer
+        run: |
+          Write-Host "Compiling LIGHT Windows installer..."
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_light.iss
+        shell: pwsh
+
+      - name: Verify Installer
+        run: |
+          $version = "${{ needs.check-build-trigger.outputs.version }}"
+          $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
+          if (!$installer) { Write-Error "[ERROR] No installer found"; exit 1 }
+          Write-Host "[OK] LIGHT Installer compiled: $($installer.Name)"
+          $size = $installer.length / 1MB
+          Write-Host "  Size: $([math]::Round($size, 1)) MB"
+        shell: pwsh
+
+      # ============================================================
+      # STEP 5: Generate latest.yml for Auto-Update
+      # ============================================================
+      - name: Generate latest.yml for Auto-Update
+        run: |
+          Write-Host "=== Generating latest.yml for electron-updater ==="
+          $version = "${{ needs.check-build-trigger.outputs.version }}"
+
+          $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
+          if (!$installer) { Write-Error "[ERROR] No installer found"; exit 1 }
+
+          $fileName = $installer.Name
+          $fileSize = $installer.Length
+          $hash = (Get-FileHash -Path $installer.FullName -Algorithm SHA512).Hash.ToLower()
+
+          $env:PYTHONPATH = Get-Location
+          $semanticVersion = & "tools\python\python.exe" -c "import sys; sys.path.insert(0,'.'); from version import SEMANTIC_VERSION; print(SEMANTIC_VERSION)"
+          if (!$semanticVersion) { $semanticVersion = "1.0.0" }
+
+          $releaseDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+
+          $latestYml = @"
+version: $semanticVersion
+files:
+  - url: $fileName
+    sha512: $hash
+    size: $fileSize
+path: $fileName
+sha512: $hash
+releaseDate: '$releaseDate'
+"@
+
+          $latestYml | Out-File -FilePath "installer_output\latest.yml" -Encoding UTF8 -NoNewline
+          Write-Host "[OK] latest.yml generated"
+          Get-Content "installer_output\latest.yml"
+        shell: pwsh
+
+      - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: locanext-windows
+          name: LocaNext-Windows-LIGHT-Setup
           path: |
-            locaNext/dist/*.exe
-            locaNext/dist/latest.yml
+            installer_output/*.exe
+            installer_output/latest.yml
+          retention-days: 7
 
-  # ============================================
-  # JOB 3: Create Gitea Release
-  # ============================================
-  release:
-    needs: build-windows
+      # ============================================================
+      # POST-BUILD TESTS (Same as GitHub)
+      # ============================================================
+      - name: Test Install (Silent)
+        run: |
+          Write-Host "=== POST-BUILD TEST: Installing app silently ==="
+          $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
+          $installDir = "$env:TEMP\LocaNext_Test"
+          Start-Process -FilePath $installer.FullName `
+            -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$installDir" `
+            -Wait -NoNewWindow
+          Write-Host "[OK] Installation completed to: $installDir"
+        shell: pwsh
+
+      - name: Verify Installation Files
+        run: |
+          $installDir = "$env:TEMP\LocaNext_Test"
+          if (!(Test-Path "$installDir\LocaNext.exe")) { Write-Error "[ERROR] LocaNext.exe not found"; exit 1 }
+          if (!(Test-Path "$installDir\server\main.py")) { Write-Error "[ERROR] server/main.py not found"; exit 1 }
+          if (!(Test-Path "$installDir\version.py")) { Write-Error "[ERROR] version.py not found"; exit 1 }
+          if (!(Test-Path "$installDir\tools\python\python.exe")) { Write-Error "[ERROR] Embedded Python not found"; exit 1 }
+          Write-Host "[PASS] All critical files present!"
+        shell: pwsh
+
+      - name: Test Backend Actually Runs (Health Check)
+        run: |
+          Write-Host "=== Testing backend ACTUALLY STARTS and responds ==="
+          $installDir = "$env:TEMP\LocaNext_Test"
+          $pythonExe = "$installDir\tools\python\python.exe"
+          $serverScript = "$installDir\server\main.py"
+
+          $env:PYTHONPATH = $installDir
+          $env:PYTHONUNBUFFERED = "1"
+
+          $process = Start-Process -FilePath $pythonExe -ArgumentList $serverScript `
+            -WorkingDirectory $installDir -PassThru -NoNewWindow `
+            -RedirectStandardOutput "$env:TEMP\server_out.log" `
+            -RedirectStandardError "$env:TEMP\server_err.log"
+
+          $maxRetries = 15
+          $serverReady = $false
+
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            Start-Sleep 2
+            Write-Host "Checking server... ($i/$maxRetries)"
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:8888/health" -UseBasicParsing -TimeoutSec 5
+              if ($response.StatusCode -eq 200) {
+                Write-Host "[OK] Server responded: $($response.Content)"
+                $serverReady = $true
+                break
+              }
+            } catch { Write-Host "  Not ready yet..." }
+          }
+
+          if (!$process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
+
+          if (!$serverReady) {
+            Write-Host "=== Server stderr ==="
+            if (Test-Path "$env:TEMP\server_err.log") { Get-Content "$env:TEMP\server_err.log" -Tail 50 }
+            Write-Error "[ERROR] Backend failed to start!"
+            exit 1
+          }
+          Write-Host "[PASS] Backend starts and responds to /health!"
+        shell: pwsh
+
+      - name: Cleanup Test Installation
+        if: always()
+        run: |
+          $installDir = "$env:TEMP\LocaNext_Test"
+          if (Test-Path $installDir) {
+            Remove-Item -Recurse -Force $installDir -ErrorAction SilentlyContinue
+            Write-Host "[OK] Test installation cleaned up"
+          }
+        shell: pwsh
+
+  # ============================================================
+  # JOB 4: Create Gitea Release (GITEA API - replaces softprops/action-gh-release)
+  # ============================================================
+  create-release:
+    name: Create Gitea Release
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
+    needs: [check-build-trigger, build-windows]
+    if: success()
 
-      - name: Download artifacts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Windows Installer
         uses: actions/download-artifact@v4
         with:
-          name: locanext-windows
-          path: ./dist
+          name: LocaNext-Windows-LIGHT-Setup
+          path: artifacts/windows
 
-      - name: List artifacts
-        run: ls -la ./dist/
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ needs.build-windows.outputs.version }}
-          name: LocaNext v${{ needs.build-windows.outputs.version }}
-          body: |
-            ## LocaNext v${{ needs.build-windows.outputs.version }}
-
-            Built from Gitea Actions.
-
-            ### Download
-            - `LocaNext-Setup.exe` - Windows Installer
-
-            ### Auto-Update
-            Desktop apps will auto-detect this update on next launch.
-          files: |
-            ./dist/*.exe
-            ./dist/latest.yml
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Also update 'latest' tag for generic provider
-      - name: Update latest tag
+      - name: List Downloaded Artifacts
         run: |
+          echo "=== Downloaded artifacts ==="
+          ls -la artifacts/windows/
+
+      - name: Create Gitea Release via API
+        run: |
+          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          TAG="v${VERSION}"
+
+          echo "Creating release: $TAG"
+
+          # Create release body
+          BODY=$(cat << 'RELEASE_BODY'
+          ## LocaNext Desktop Application (LIGHT Build)
+
+          **Version:** VERSION_PLACEHOLDER
+          **Build Type:** LIGHT (deps + model installed on first launch)
+          **Built by:** Gitea Actions
+
+          ### Downloads
+          - `LocaNext_vVERSION_PLACEHOLDER_Light_Setup.exe` (~150-200MB)
+
+          ### Requirements
+          - Internet connection for first launch setup
+          - ~3GB disk space for app + deps + model
+          - NO Python required - everything bundled
+
+          ### Default Credentials
+          - Username: admin
+          - Password: admin123
+
+          ---
+          Built with Gitea Actions
+          RELEASE_BODY
+          )
+
+          # Replace placeholder
+          BODY=$(echo "$BODY" | sed "s/VERSION_PLACEHOLDER/${VERSION}/g")
+
+          # Create release via Gitea API
+          RESPONSE=$(curl -s -X POST "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases" \
+            -H "Authorization: token ${{ secrets.GITEA_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"tag_name\": \"${TAG}\",
+              \"name\": \"LocaNext ${TAG} (LIGHT)\",
+              \"body\": $(echo "$BODY" | jq -Rs .),
+              \"draft\": false,
+              \"prerelease\": false
+            }")
+
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" == "null" ]; then
+            echo "[ERROR] Failed to create release"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          echo "[OK] Release created with ID: $RELEASE_ID"
+          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
+
+      - name: Upload Release Assets
+        run: |
+          echo "Uploading assets to release $RELEASE_ID..."
+
+          # Upload .exe
+          for exe in artifacts/windows/*.exe; do
+            if [ -f "$exe" ]; then
+              FILENAME=$(basename "$exe")
+              echo "  Uploading: $FILENAME"
+              curl -s -X POST "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}/assets?name=${FILENAME}" \
+                -H "Authorization: token ${{ secrets.GITEA_TOKEN }}" \
+                -F "attachment=@${exe}"
+            fi
+          done
+
+          # Upload latest.yml
+          if [ -f "artifacts/windows/latest.yml" ]; then
+            echo "  Uploading: latest.yml"
+            curl -s -X POST "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}/assets?name=latest.yml" \
+              -H "Authorization: token ${{ secrets.GITEA_TOKEN }}" \
+              -F "attachment=@artifacts/windows/latest.yml"
+          fi
+
+          echo "[OK] All assets uploaded"
+
+      - name: Update Latest Tag
+        run: |
+          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          echo "Updating 'latest' tag to point to v${VERSION}..."
+
+          # This is done via git, similar to GitHub workflow
           git config user.name "Gitea Actions"
           git config user.email "actions@gitea.local"
           git tag -f latest
-          git push -f origin latest
+          git push -f origin latest || echo "Could not update latest tag (non-blocking)"
         continue-on-error: true
+
+      - name: Release Summary
+        run: |
+          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          echo "============================================"
+          echo "[SUCCESS] Gitea Release Created!"
+          echo "============================================"
+          echo "Version: v${VERSION}"
+          echo "URL: ${GITEA_URL}/${GITEA_REPO}/releases/tag/v${VERSION}"
+          echo "============================================"

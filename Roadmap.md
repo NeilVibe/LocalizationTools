@@ -1987,6 +1987,63 @@ P13 TASKS:
 │   ├── [✅] Mirror script tested: v2512071233 mirrored successfully
 │   ├── [✅] Cleanup script tested: Works (keeps latest 2)
 │   └── [ ] (Optional) Set up cron for auto-mirror
+│
+├── 📋 13.9: Gitea Build Parity (Match GitHub 100%) - IN PROGRESS
+│   │
+│   ├── ANALYSIS: GitHub Workflow Structure (832 lines, 4 jobs)
+│   │   ├── Job 1: check-build-trigger (ubuntu) - Parse BUILD_TRIGGER.txt
+│   │   ├── Job 2: safety-checks (ubuntu) - All tests + security audits
+│   │   ├── Job 3: build-windows (windows) - Full Windows build
+│   │   └── Job 4: create-release (ubuntu) - GitHub release creation
+│   │
+│   ├── COMPATIBILITY MATRIX:
+│   │   ├── [✅] actions/checkout@v4 - Same
+│   │   ├── [✅] actions/setup-python@v5 - Same
+│   │   ├── [✅] actions/setup-node@v4 - Same
+│   │   ├── [✅] actions/upload-artifact@v4 - Same
+│   │   ├── [✅] actions/download-artifact@v4 - Same
+│   │   ├── [✅] $GITHUB_OUTPUT syntax - Same in Gitea
+│   │   ├── [❌] windows-latest - Need Windows self-hosted runner
+│   │   ├── [❌] softprops/action-gh-release - GitHub-only, need curl API
+│   │   ├── [❌] gh release list - Need Gitea API equivalent
+│   │   └── [⚠️] secrets.GITHUB_TOKEN - Need GITEA_TOKEN secret
+│   │
+│   ├── 13.9.1: Safety Checks Job (CAN RUN ON LINUX)
+│   │   ├── [ ] Version unification check
+│   │   ├── [ ] Version increment check (vs Gitea releases)
+│   │   ├── [ ] Server launch test
+│   │   ├── [ ] Python E2E tests (kr_similar, xlstransfer, quicksearch)
+│   │   ├── [ ] pip-audit security check
+│   │   └── [ ] npm audit security check
+│   │
+│   ├── 13.9.2: Windows Self-Hosted Runner Setup
+│   │   ├── [ ] Install act_runner on Windows machine
+│   │   ├── [ ] Register with labels: [self-hosted, windows, x64]
+│   │   ├── [ ] Configure startup (run as service or on login)
+│   │   ├── [ ] Test runner picks up jobs
+│   │   └── [ ] Document in PATCH_SERVER.md
+│   │
+│   ├── 13.9.3: Build Windows Job (REQUIRES WINDOWS RUNNER)
+│   │   ├── [ ] Download VC++ Redistributable
+│   │   ├── [ ] Download Python Embedded + install deps
+│   │   ├── [ ] Verify all Python imports
+│   │   ├── [ ] Build Electron app
+│   │   ├── [ ] Compile Inno Setup installer
+│   │   ├── [ ] Generate latest.yml
+│   │   ├── [ ] Post-build silent install test
+│   │   └── [ ] Verify installed files + health check
+│   │
+│   ├── 13.9.4: Create Release Job (Gitea API)
+│   │   ├── [ ] Download artifacts from previous job
+│   │   ├── [ ] Create release via Gitea REST API (curl)
+│   │   ├── [ ] Upload .exe and latest.yml as assets
+│   │   └── [ ] Update 'latest' tag
+│   │
+│   └── 13.9.5: Full Integration Test
+│       ├── [ ] Trigger build via BUILD_TRIGGER.txt push
+│       ├── [ ] All 4 jobs complete successfully
+│       ├── [ ] Release appears in Gitea with correct files
+│       └── [ ] Desktop app can update from Gitea release
 
 CURRENT BUILD STRATEGY:
 ├── GitHub Actions → Builds .exe (free Windows runners)
