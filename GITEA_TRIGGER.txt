@@ -121,3 +121,4 @@ Build LIGHT v2512080522 - Disable create-release job (artifacts not supported)
 Build LIGHT v2512080529 - Remove artifact upload (causes ::error:: failure)
 Build LIGHT v2512080538 - Add explicit Build Complete step
 Build LIGHT v2512080545 - Make build-windows standalone (no needs)
+Build LIGHT v2512080549 - Fix version extraction using set-output
