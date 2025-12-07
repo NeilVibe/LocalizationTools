@@ -120,3 +120,4 @@ Build LIGHT v2512080513 - Fix: Skip embedded Python check for LIGHT builds
 Build LIGHT v2512080522 - Disable create-release job (artifacts not supported)
 Build LIGHT v2512080529 - Remove artifact upload (causes ::error:: failure)
 Build LIGHT v2512080538 - Add explicit Build Complete step
+Build LIGHT v2512080545 - Make build-windows standalone (no needs)
