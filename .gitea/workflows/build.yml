@@ -449,7 +449,7 @@ jobs:
           Write-Host "[OK] ELECTRON_BUILDER_CACHE set to: $cacheDir"
         shell: powershell
 
-      # GITEA FIX: Download NSIS resources from electron-builder-binaries
+      # GITEA FIX: Download NSIS resources and copy to node_modules location
       - name: Download NSIS Resources
         run: |
           Write-Host "Downloading NSIS resources from electron-builder-binaries..."
@@ -459,39 +459,41 @@ jobs:
           New-Item -ItemType Directory -Force -Path $nsisResourcesDir | Out-Null
 
           # Download nsis-resources from the correct repo (electron-userland/electron-builder-binaries)
-          # Use version 3.4.1 which matches what electron-builder expects
           $nsisResourcesUrl = "https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-resources-3.4.1/nsis-resources-3.4.1.7z"
           $tempFile = "$nsisResourcesDir\nsis-resources.7z"
 
           Write-Host "Downloading from: $nsisResourcesUrl"
           & curl.exe -L --retry 3 -o $tempFile $nsisResourcesUrl
 
-          # Check if download succeeded (file should be > 100KB)
           $fileSize = (Get-Item $tempFile -ErrorAction SilentlyContinue).Length
           if ($fileSize -lt 100000) {
-            Write-Host "[WARN] Downloaded file too small ($fileSize bytes), trying alternate URL..."
-            # Try alternate URL format
-            $altUrl = "https://github.com/nicholasrice/nsis-resources/releases/download/3.4.1/nsis-resources-3.4.1.7z"
-            & curl.exe -L --retry 3 -o $tempFile $altUrl
-            $fileSize = (Get-Item $tempFile -ErrorAction SilentlyContinue).Length
+            Write-Host "[WARN] Downloaded file too small ($fileSize bytes)"
+            exit 1
           }
 
-          if ($fileSize -lt 100000) {
-            Write-Host "[WARN] Could not download NSIS resources ($fileSize bytes)"
-            Write-Host "Continuing anyway - electron-builder will download on build"
+          Write-Host "[OK] Downloaded NSIS resources: $fileSize bytes"
+
+          # Extract using 7zip from node_modules
+          $sevenZip = "locaNext\node_modules\7zip-bin\win\x64\7za.exe"
+          & $sevenZip x -y $tempFile "-o$nsisResourcesDir"
+          Write-Host "[OK] Extracted NSIS resources"
+
+          # CRITICAL: Copy include files to where NSIS script expects them
+          $sourceInclude = "$nsisResourcesDir\nsis-resources-3.4.1\include"
+          $targetInclude = "locaNext\node_modules\app-builder-lib\templates\nsis\include"
+
+          # Create target directory
+          New-Item -ItemType Directory -Force -Path $targetInclude | Out-Null
+
+          if (Test-Path $sourceInclude) {
+            Copy-Item -Path "$sourceInclude\*" -Destination $targetInclude -Recurse -Force
+            Write-Host "[OK] Copied NSIS includes to: $targetInclude"
+            Write-Host "Files copied:"
+            Get-ChildItem $targetInclude -Name
           } else {
-            Write-Host "[OK] Downloaded NSIS resources: $fileSize bytes"
-
-            # Extract using 7zip from node_modules
-            $sevenZip = "locaNext\node_modules\7zip-bin\win\x64\7za.exe"
-            if (Test-Path $sevenZip) {
-              & $sevenZip x -y $tempFile "-o$nsisResourcesDir"
-              Write-Host "[OK] Extracted NSIS resources"
-
-              # Set environment variable for electron-builder
-              echo "ELECTRON_BUILDER_NSIS_RESOURCES_DIR=$nsisResourcesDir\nsis-resources-3.4.1" >> $env:GITHUB_ENV
-              Write-Host "[OK] ELECTRON_BUILDER_NSIS_RESOURCES_DIR set"
-            }
+            Write-Host "[ERROR] Source include directory not found: $sourceInclude"
+            Get-ChildItem $nsisResourcesDir -Recurse -Directory | Select-Object FullName
+            exit 1
           }
         shell: powershell
 
