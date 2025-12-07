@@ -13,7 +13,7 @@ VERSION = "2512072137"
 VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform | XLSTransfer + QuickSearch"
 
 # Semantic version for package managers
-SEMANTIC_VERSION = "2512072137"
+SEMANTIC_VERSION = "1.3.0"
 
 # Build type
 BUILD_TYPE = "LIGHT"  # FULL (with AI model) or LIGHT (without AI)
