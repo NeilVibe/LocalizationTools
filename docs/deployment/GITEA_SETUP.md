@@ -269,12 +269,85 @@ jobs:
 ```
 
 ### Self-Hosted Runner (For Windows Builds)
-```bash
-# On a Windows machine:
-# 1. Go to Gitea → Repo → Settings → Actions → Runners
-# 2. Click "Create new runner"
-# 3. Download and run the runner binary
-# 4. Now Windows builds work!
+
+#### Prerequisites (CRITICAL for reliability!)
+
+**1. Install Git to Standard Location with PATH**
+```powershell
+# Download from https://git-scm.com/download/win
+# During install, select:
+#   - Install to: C:\Program Files\Git (default)
+#   - "Git from the command line and also from 3rd-party software" ← IMPORTANT!
+#   - This adds Git to System PATH
+
+# Verify after install:
+git --version  # Should work from any PowerShell/CMD window
+```
+
+**2. Install Node.js (LTS)**
+```powershell
+# Download from https://nodejs.org/
+# Install to: C:\Program Files\nodejs (default)
+# Verify:
+node --version
+npm --version
+```
+
+**3. Runner Directory Structure**
+```
+C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\
+├── act_runner.exe      # Runner binary
+├── .runner             # Registration config (auto-generated)
+├── config.yaml         # Optional custom config
+└── .cache\             # Job workspace (auto-created)
+```
+
+#### Register the Runner
+```powershell
+cd C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
+
+# Register with Gitea (get token from Gitea → Repo → Settings → Actions → Runners)
+.\act_runner.exe register --no-interactive `
+    --instance http://YOUR_GITEA_IP:3000 `
+    --token YOUR_RUNNER_TOKEN `
+    --name windows-runner `
+    --labels windows,windows-latest,self-hosted,x64
+```
+
+#### Install as Windows Service (RECOMMENDED - Auto-restart, Full System Power)
+```powershell
+# Option A: Using sc.exe (built-in, requires Admin PowerShell)
+sc.exe create "GiteaActRunner" binPath= "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner.exe daemon" start= auto
+sc.exe start GiteaActRunner
+
+# Check status
+Get-Service GiteaActRunner
+
+# Option B: Using NSSM (better control, download from https://nssm.cc)
+nssm install GiteaActRunner "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner.exe" "daemon"
+nssm set GiteaActRunner AppDirectory "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
+nssm set GiteaActRunner Start SERVICE_AUTO_START
+nssm start GiteaActRunner
+```
+
+#### Troubleshooting
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| "git not recognized" | Git not in PATH | Reinstall Git with PATH option |
+| Runner picks up job but fails silently | Missing tools in PATH | Check node, npm, git from PowerShell |
+| Jobs timeout | Runner not a service | Install as Windows Service |
+| Signing errors | electron-builder bug | Add `sign: "./scripts/skip-sign.js"` to package.json |
+
+#### Verify Everything Works
+```powershell
+# All these should work from any PowerShell:
+git --version
+node --version
+npm --version
+
+# Check service
+Get-Service GiteaActRunner
 ```
 
 ---
