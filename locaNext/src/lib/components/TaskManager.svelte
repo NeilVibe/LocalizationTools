@@ -16,7 +16,11 @@
   import { websocket } from "$lib/api/websocket.js";
   import { isAuthenticated, user } from "$lib/stores/app.js";
   import { logger } from "$lib/utils/logger.js";
-  import { activeOperations as frontendOperations } from "$lib/stores/globalProgress.js";
+  import {
+    activeOperations as frontendOperations,
+    completedHistory,
+    clearCompletedHistory
+  } from "$lib/stores/globalProgress.js";
 
   // Task data from backend (ActiveOperation)
   let backendTasks = [];
@@ -52,6 +56,17 @@
       duration = op.status === 'running' ? `${minutes}m ${secs}s (running)` : `${minutes}m ${secs}s`;
     }
 
+    // Build details string from metadata
+    let details = null;
+    if (op.metadata) {
+      const parts = [];
+      if (op.metadata.filename) parts.push(`File: ${op.metadata.filename}`);
+      if (op.metadata.rowCount) parts.push(`${op.metadata.rowCount} rows`);
+      if (op.metadata.pairs) parts.push(`${op.metadata.pairs} pairs`);
+      if (op.metadata.matches) parts.push(`${op.metadata.matches} matches`);
+      if (parts.length > 0) details = parts.join(' | ');
+    }
+
     return {
       id: op.id,
       name: op.function || 'Unknown',
@@ -59,25 +74,35 @@
       status: op.status || 'running',
       progress: Math.round(op.progress || 0),
       current_step: op.message || null,
+      details, // New field for metadata display
       timestamp,
       duration,
       source: 'frontend' // Mark as frontend operation
     };
   }
 
-  // Reactive: Merge frontend and backend tasks
+  // Reactive: Merge frontend active, frontend history, and backend tasks
   $: tasks = (() => {
-    // Transform frontend operations
+    // Transform frontend active operations
     const frontendTasks = $frontendOperations.map(transformFrontendOperation);
 
-    // Get backend task IDs to avoid duplicates
+    // Transform completed history (from globalProgress store)
+    const historyTasks = $completedHistory.map(transformFrontendOperation);
+
+    // Get all existing IDs to avoid duplicates
+    const activeIds = new Set(frontendTasks.map(t => t.id));
     const backendIds = new Set(backendTasks.map(t => t.id));
 
     // Filter frontend tasks that aren't already in backend (no duplicates)
     const uniqueFrontendTasks = frontendTasks.filter(t => !backendIds.has(t.id));
 
-    // Merge: frontend tasks first (most recent), then backend tasks
-    return [...uniqueFrontendTasks, ...backendTasks].sort((a, b) => {
+    // Filter history tasks that aren't in active or backend
+    const uniqueHistoryTasks = historyTasks.filter(t =>
+      !activeIds.has(t.id) && !backendIds.has(t.id)
+    );
+
+    // Merge: active first, then history, then backend
+    return [...uniqueFrontendTasks, ...uniqueHistoryTasks, ...backendTasks].sort((a, b) => {
       // Sort by timestamp (most recent first)
       return new Date(b.timestamp) - new Date(a.timestamp);
     });
@@ -264,6 +289,7 @@
     { key: "app", value: "App" },
     { key: "status", value: "Status" },
     { key: "progress", value: "Progress" },
+    { key: "details", value: "Details" },
     { key: "timestamp", value: "Started" },
     { key: "duration", value: "Duration" }
   ];
@@ -282,57 +308,68 @@
   }
 
   /**
-   * Clear completed and failed tasks (backend tasks only)
-   * Frontend tasks are auto-removed after 5 seconds by globalProgress store
+   * Clear completed and failed tasks (both frontend history and backend)
    */
   async function clearHistory() {
     const startTime = performance.now();
-    // Only delete backend tasks (frontend tasks auto-clear)
-    const tasksToDelete = backendTasks.filter(t => t.status === 'completed' || t.status === 'failed');
+    // Get backend tasks to delete
+    const backendToDelete = backendTasks.filter(t => t.status === 'completed' || t.status === 'failed');
+    // Count frontend history
+    const frontendHistoryCount = $completedHistory.length;
+    const totalToDelete = backendToDelete.length + frontendHistoryCount;
 
-    logger.userAction("Clear History button clicked", { tasks_to_delete: tasksToDelete.length });
+    logger.userAction("Clear History button clicked", {
+      backend_tasks: backendToDelete.length,
+      frontend_history: frontendHistoryCount
+    });
 
-    if (tasksToDelete.length === 0) {
-      logger.info("No backend tasks to clear");
+    if (totalToDelete === 0) {
+      logger.info("No tasks to clear");
       showNotificationMessage('No tasks to clear', 'info');
       return;
     }
 
     isLoading = true;
     try {
-      logger.info("Deleting tasks from backend", { count: tasksToDelete.length });
+      logger.info("Deleting tasks", {
+        backend_count: backendToDelete.length,
+        frontend_count: frontendHistoryCount
+      });
 
-      const token = localStorage.getItem('auth_token');
+      // Clear frontend history first
+      clearCompletedHistory();
 
-      // Delete each task from backend (ActiveOperation API)
-      for (const task of tasksToDelete) {
-        await fetch(`http://localhost:8888/api/progress/operations/${task.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+      // Delete backend tasks
+      if (backendToDelete.length > 0) {
+        const token = localStorage.getItem('auth_token');
+        for (const task of backendToDelete) {
+          await fetch(`http://localhost:8888/api/progress/operations/${task.id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+        }
+        // Remove from local array
+        backendTasks = backendTasks.filter(t => t.status === 'running');
       }
 
       const elapsed = performance.now() - startTime;
 
-      // Remove from local array
-      backendTasks = backendTasks.filter(t => t.status === 'running');
-
       logger.success("Task history cleared", {
-        deleted_count: tasksToDelete.length,
+        deleted_count: totalToDelete,
         remaining_count: backendTasks.length,
         elapsed_ms: elapsed.toFixed(2)
       });
 
-      showNotificationMessage(`Cleared ${tasksToDelete.length} tasks`, 'success');
+      showNotificationMessage(`Cleared ${totalToDelete} tasks`, 'success');
     } catch (error) {
       const elapsed = performance.now() - startTime;
 
       logger.error("Failed to clear history", {
         error: error.message,
         error_type: error.name,
-        tasks_to_delete: tasksToDelete.length,
+        tasks_to_delete: totalToDelete,
         elapsed_ms: elapsed.toFixed(2)
       });
 
@@ -578,6 +615,14 @@
             {/if}
           </div>
         </div>
+      {:else if cell.key === "details"}
+        {#if cell.value}
+          <div style="font-size: 0.75rem; color: var(--cds-text-02); max-width: 200px;">
+            {cell.value}
+          </div>
+        {:else}
+          <span style="color: var(--cds-text-03);">-</span>
+        {/if}
       {:else}
         {cell.value}
       {/if}

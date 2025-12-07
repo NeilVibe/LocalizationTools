@@ -1211,8 +1211,10 @@ PORT SUMMARY (Quick Reference):
 WHAT'S NEXT? → ✅ P16: QuickSearch QA Tools COMPLETE
               → ✅ P13: Gitea COMPLETE (CI/CD + Updates + Dual Push)
               → ✅ P18.6: Factor Architecture COMPLETE (Progress Tracking)
+              → ✅ P18.6.1: TaskManager History Persistence (Metadata + Details)
               → ★ P17: LD Manager (CAT Tool) ← NEXT (Main Mega App!)
               → P18: UI/UX Overhaul (after LD Manager)
+              → P20: Self-Repair & Auto-Update System (Settings Integration)
 ```
 
 ---
@@ -2146,12 +2148,52 @@ COMPLETE PRIORITY TREE (Past → Present → Future)
     │   ├── App registry for easy extension
     │   └── Modern, beautiful, professional
     │
-    └── P19: Performance Monitoring ───────── OPTIMIZATION
-        ├── Loading time monitoring (QuickSearch LD slow)
-        ├── Dictionary creation benchmarks
-        ├── AI model load time tracking
-        ├── Memory usage monitoring
-        └── Windows vs WSL performance comparison
+    ├── P19: Performance Monitoring ───────── OPTIMIZATION
+    │   ├── Loading time monitoring (QuickSearch LD slow)
+    │   ├── Dictionary creation benchmarks
+    │   ├── AI model load time tracking
+    │   ├── Memory usage monitoring
+    │   └── Windows vs WSL performance comparison
+    │
+    └── P20: Self-Repair & Auto-Update ────── MAINTENANCE SYSTEM
+        │
+        ├── 🔧 SELF-REPAIR (Settings → Maintenance)
+        │   ├── Scan program folder integrity
+        │   ├── Verify Python dependencies
+        │   ├── Check database health
+        │   ├── Validate config files
+        │   ├── Auto-repair missing/corrupt files
+        │   └── Generate diagnostic report
+        │
+        ├── 🔄 AUTO-UPDATE SYSTEM
+        │   ├── Check GitHub releases API for new version
+        │   ├── Compare local version vs remote
+        │   ├── Download update package (delta or full)
+        │   ├── Apply update with rollback capability
+        │   └── Restart app after update
+        │
+        ├── 📋 UPDATE LOGIC
+        │   │
+        │   │  LOCAL APP                    GITHUB RELEASES
+        │   │  ─────────                    ───────────────
+        │   │  version.py (2512071233) ←── /releases/latest
+        │   │      ↓                            ↓
+        │   │  Compare versions          Download if newer
+        │   │      ↓                            ↓
+        │   │  Show update prompt        Extract to temp
+        │   │      ↓                            ↓
+        │   │  User approves             Replace files
+        │   │      ↓                            ↓
+        │   │  Restart app               Cleanup temp
+        │   │
+        │   └── Fallback: Manual download link if auto fails
+        │
+        └── 🎛️ SETTINGS UI
+            ├── "Check for Updates" button
+            ├── "Auto-check on startup" toggle
+            ├── "Run Diagnostics" button
+            ├── "Repair Installation" button
+            └── Version info display
 ```
 
 ### Port Summary (Quad Entity)

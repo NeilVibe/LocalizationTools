@@ -14,6 +14,13 @@ import { writable, derived, get } from 'svelte/store';
 // Map structure: operationId -> { tool, function, progress, message, startTime, logs }
 const operations = writable(new Map());
 
+// Store for completed operations history (persists after completion)
+// Array of completed operations with full details
+const completedHistory = writable([]);
+
+// Maximum number of completed operations to keep in history
+const MAX_HISTORY_SIZE = 50;
+
 // Store for status bar visibility
 export const statusBarVisible = writable(true);
 
@@ -77,8 +84,9 @@ export function updateProgress(operationId, progress, message) {
  * @param {string} operationId - Operation ID
  * @param {boolean} success - Whether operation succeeded
  * @param {string} finalMessage - Final status message
+ * @param {object} metadata - Optional metadata (filename, rowCount, etc.)
  */
-export function completeOperation(operationId, success, finalMessage) {
+export function completeOperation(operationId, success, finalMessage, metadata = {}) {
   operations.update(ops => {
     const op = ops.get(operationId);
     if (op) {
@@ -87,9 +95,21 @@ export function completeOperation(operationId, success, finalMessage) {
       op.status = success ? 'completed' : 'failed';
       op.endTime = Date.now();
       op.duration = op.endTime - op.startTime;
+      op.metadata = metadata; // Store detailed info (filename, rowCount, etc.)
       ops.set(operationId, op);
 
-      // Remove from active after 5 seconds for completed operations
+      // Save to completed history BEFORE removing from active
+      completedHistory.update(history => {
+        const historyEntry = {
+          ...op,
+          completedAt: new Date().toISOString()
+        };
+        // Add to beginning, keep max size
+        const newHistory = [historyEntry, ...history].slice(0, MAX_HISTORY_SIZE);
+        return newHistory;
+      });
+
+      // Remove from active after 3 seconds (reduced from 5 for snappier UI)
       setTimeout(() => {
         operations.update(innerOps => {
           const stillOp = innerOps.get(operationId);
@@ -98,7 +118,7 @@ export function completeOperation(operationId, success, finalMessage) {
           }
           return innerOps;
         });
-      }, 5000);
+      }, 3000);
     }
     return ops;
   });
@@ -110,6 +130,20 @@ export function completeOperation(operationId, success, finalMessage) {
  */
 export function cancelOperation(operationId) {
   completeOperation(operationId, false, 'Operation cancelled');
+}
+
+/**
+ * Get completed operations history
+ */
+export function getCompletedHistory() {
+  return get(completedHistory);
+}
+
+/**
+ * Clear completed operations history
+ */
+export function clearCompletedHistory() {
+  completedHistory.set([]);
 }
 
 /**
@@ -148,18 +182,24 @@ export function showStatusBar() {
   statusBarVisible.set(true);
 }
 
+// Export completedHistory store for direct subscription
+export { completedHistory };
+
 // Export the main store for direct subscription
 export const globalProgress = {
   operations,
   activeOperations,
   hasActiveOperations,
   currentOperation,
+  completedHistory,
   statusBarVisible,
   startOperation,
   updateProgress,
   completeOperation,
   cancelOperation,
   getOperation,
+  getCompletedHistory,
+  clearCompletedHistory,
   generateOperationId,
   toggleStatusBar,
   hideStatusBar,

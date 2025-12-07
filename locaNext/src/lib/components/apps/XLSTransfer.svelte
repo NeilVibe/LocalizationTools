@@ -192,8 +192,11 @@
         statusMessage = `TEST: ${successMsg}`;
         _testState.statusMessage = `TEST: ${successMsg}`;
 
-        // FACTOR: Complete tracker
-        tracker.complete(successMsg);
+        // FACTOR: Complete tracker with metadata
+        tracker.complete(successMsg, {
+          filename: selections.length > 0 ? selections[0].split('/').pop() : 'dictionary',
+          rowCount: (output?.split_entries || 0) + (output?.whole_entries || 0)
+        });
 
         logger.success("TEST MODE: Dictionary created", { elapsed_ms: elapsed.toFixed(2), output });
         showStatus(`TEST: ${successMsg}`, 'success');
@@ -533,7 +536,7 @@
           });
           const successMsg = 'Dictionary loaded successfully! Transfer buttons enabled.';
           showStatus(successMsg, 'success');
-          tracker.complete(successMsg);
+          tracker.complete(successMsg, { filename: 'Dictionary (Electron)' });
         } else {
           logger.error("Dictionary load failed (Electron)", {
             error: result.error,
@@ -569,7 +572,10 @@
           });
           const successMsg = `Dictionary loaded! ${result.total_pairs || 0} pairs ready.`;
           showStatus(successMsg, 'success');
-          tracker.complete(successMsg);
+          tracker.complete(successMsg, {
+            filename: 'Dictionary (API)',
+            pairs: result.total_pairs || 0
+          });
         } else {
           logger.error("Dictionary load failed (Browser)", {
             message: result.message,
