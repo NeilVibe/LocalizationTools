@@ -101,3 +101,4 @@ Build LIGHT v2512080254 - Fix: Correct NSIS resources URL
 Build LIGHT v2512080301 - Fix: Copy includes to node_modules
 Build LIGHT v2512080307 - Version timestamp fixed + NSIS includes copy
 Build LIGHT v2512080307 - Fix: Download NSIS includes from electron-builder repo
+Build LIGHT v2512080307 - Debug NSIS include path + force download

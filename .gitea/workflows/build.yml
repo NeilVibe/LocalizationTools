@@ -449,56 +449,79 @@ jobs:
           Write-Host "[OK] ELECTRON_BUILDER_CACHE set to: $cacheDir"
         shell: powershell
 
-      # GITEA FIX: Ensure NSIS include files exist (download from electron-builder repo if missing)
+      # GITEA FIX: Force download NSIS include files (npm package may not include them)
       - name: Ensure NSIS Include Files
         run: |
-          Write-Host "Checking NSIS include files..."
+          Write-Host "=== NSIS Include Files Setup ==="
 
-          $targetInclude = "locaNext\node_modules\app-builder-lib\templates\nsis\include"
+          # Get absolute path to working directory
+          $workDir = (Get-Location).Path
+          Write-Host "Working directory: $workDir"
 
-          # Check if include files exist from npm install
-          if (Test-Path "$targetInclude\StdUtils.nsh") {
-            Write-Host "[OK] NSIS include files already exist"
-            Get-ChildItem $targetInclude -Name
+          $targetInclude = Join-Path $workDir "locaNext\node_modules\app-builder-lib\templates\nsis\include"
+          Write-Host "Target include path: $targetInclude"
+
+          # Create target directory (force)
+          New-Item -ItemType Directory -Force -Path $targetInclude | Out-Null
+
+          # List existing files before download
+          Write-Host "=== Files BEFORE download ==="
+          if (Test-Path $targetInclude) {
+            Get-ChildItem $targetInclude -Name -ErrorAction SilentlyContinue
           } else {
-            Write-Host "[WARN] NSIS include files missing - downloading from electron-builder repo..."
+            Write-Host "(directory does not exist)"
+          }
 
-            # Create target directory
-            New-Item -ItemType Directory -Force -Path $targetInclude | Out-Null
+          # ALWAYS download include files (force overwrite)
+          Write-Host "=== Downloading NSIS include files from electron-builder repo ==="
 
-            # List of required NSIS include files from electron-builder templates
-            $includeFiles = @(
-              "StdUtils.nsh",
-              "WinVer.nsh",
-              "allowOnlyOneInstallerInstance.nsh",
-              "assistedInstaller.nsh",
-              "boringInstaller.nsh",
-              "checkAppRunning.nsh",
-              "extractAppPackage.nsh",
-              "fileAssociation.nsh",
-              "installer.nsh",
-              "installSection.nsh",
-              "multiUser.nsh",
-              "multiUserUi.nsh",
-              "oneClick.nsh",
-              "UAC.nsh",
-              "uninstaller.nsh"
-            )
+          $includeFiles = @(
+            "StdUtils.nsh",
+            "WinVer.nsh",
+            "allowOnlyOneInstallerInstance.nsh",
+            "assistedInstaller.nsh",
+            "boringInstaller.nsh",
+            "checkAppRunning.nsh",
+            "extractAppPackage.nsh",
+            "fileAssociation.nsh",
+            "installer.nsh",
+            "installSection.nsh",
+            "multiUser.nsh",
+            "multiUserUi.nsh",
+            "oneClick.nsh",
+            "UAC.nsh",
+            "uninstaller.nsh"
+          )
 
-            $baseUrl = "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include"
+          $baseUrl = "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include"
 
-            foreach ($file in $includeFiles) {
-              $url = "$baseUrl/$file"
-              $dest = "$targetInclude\$file"
-              Write-Host "Downloading: $file"
-              & curl.exe -L --retry 3 -s -o $dest $url
-              if (!(Test-Path $dest) -or (Get-Item $dest).Length -eq 0) {
-                Write-Host "[WARN] Failed to download $file"
-              }
+          foreach ($file in $includeFiles) {
+            $url = "$baseUrl/$file"
+            $dest = Join-Path $targetInclude $file
+            Write-Host "Downloading: $file -> $dest"
+            & curl.exe -L --retry 3 -s -o $dest $url
+            if (Test-Path $dest) {
+              $size = (Get-Item $dest).Length
+              Write-Host "  [OK] $file ($size bytes)"
+            } else {
+              Write-Host "  [FAIL] $file not downloaded"
             }
+          }
 
-            Write-Host "[OK] Downloaded NSIS include files:"
-            Get-ChildItem $targetInclude -Name
+          # Verify files after download
+          Write-Host "=== Files AFTER download ==="
+          Get-ChildItem $targetInclude -Name
+
+          # Verify StdUtils.nsh specifically
+          $stdUtils = Join-Path $targetInclude "StdUtils.nsh"
+          if (Test-Path $stdUtils) {
+            $content = Get-Content $stdUtils -Head 3
+            Write-Host "=== StdUtils.nsh first 3 lines ==="
+            Write-Host $content
+            Write-Host "[OK] StdUtils.nsh verified"
+          } else {
+            Write-Host "[ERROR] StdUtils.nsh NOT FOUND at: $stdUtils"
+            exit 1
           }
         shell: powershell
 
