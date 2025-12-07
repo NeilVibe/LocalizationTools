@@ -69,7 +69,7 @@
     },
     "win": {
       "target": "nsis",
-      "sign": false,
+      "sign": "./scripts/skip-sign.js",
       "signAndEditExecutable": false,
       "signDlls": false
     },
