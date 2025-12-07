@@ -110,3 +110,4 @@ Build LIGHT v2512080307 - Use dir target (no installer)
 Build LIGHT v2512080406 - Fix: cd to installer dir for ISCC paths
 Build LIGHT v2512080415 - Debug ISCC paths
 Build LIGHT v2512080422 - Debug exe existence
+Build LIGHT v2512080430 - Skip missing vc_redist and embedded Python

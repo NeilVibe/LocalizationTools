@@ -18,7 +18,7 @@
 ; Output: LocaNext_v{version}_Light_Setup.exe (~180-200MB)
 
 #define MyAppName "LocaNext"
-#define MyAppVersion "2512080422"
+#define MyAppVersion "2512080430"
 #define MyAppPublisher "Neil Schmitt"
 #define MyAppURL "https://github.com/NeilVibe/LocalizationTools"
 #define MyAppExeName "LocaNext.exe"
@@ -83,7 +83,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; ============================================================
 ; VC++ Redistributable (bundled, ~14MB, auto-installs silently)
 ; ============================================================
-Source: "..\installer\redist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion deleteafterinstall
+; NOTE: vc_redist.x64.exe must be downloaded separately before building installer
+; For CI builds, we skip this if not present (users can install VC++ Runtime manually)
+Source: "..\installer\redist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion deleteafterinstall skipifsourcedoesntexist
 
 ; ============================================================
 ; Main Electron application (~100MB)
@@ -99,7 +101,9 @@ Source: "..\tools\download_model.bat"; DestDir: "{app}\tools"; Flags: ignorevers
 Source: "..\tools\download_model.py"; DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "..\tools\install_deps.bat"; DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "..\tools\install_deps.py"; DestDir: "{app}\tools"; Flags: ignoreversion
-Source: "..\tools\python\*"; DestDir: "{app}\tools\python"; Flags: ignoreversion recursesubdirs createallsubdirs
+; NOTE: Embedded Python must be downloaded separately before building full installer
+; For CI/testing builds without embedded Python, this line is skipped
+; Source: "..\tools\python\*"; DestDir: "{app}\tools\python"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; ============================================================
 ; Backend Server (~11MB)
