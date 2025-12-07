@@ -449,51 +449,56 @@ jobs:
           Write-Host "[OK] ELECTRON_BUILDER_CACHE set to: $cacheDir"
         shell: powershell
 
-      # GITEA FIX: Download NSIS resources and copy to node_modules location
-      - name: Download NSIS Resources
+      # GITEA FIX: Ensure NSIS include files exist (download from electron-builder repo if missing)
+      - name: Ensure NSIS Include Files
         run: |
-          Write-Host "Downloading NSIS resources from electron-builder-binaries..."
+          Write-Host "Checking NSIS include files..."
 
-          # Create resources directory
-          $nsisResourcesDir = "C:\nsis-resources"
-          New-Item -ItemType Directory -Force -Path $nsisResourcesDir | Out-Null
-
-          # Download nsis-resources from the correct repo (electron-userland/electron-builder-binaries)
-          $nsisResourcesUrl = "https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-resources-3.4.1/nsis-resources-3.4.1.7z"
-          $tempFile = "$nsisResourcesDir\nsis-resources.7z"
-
-          Write-Host "Downloading from: $nsisResourcesUrl"
-          & curl.exe -L --retry 3 -o $tempFile $nsisResourcesUrl
-
-          $fileSize = (Get-Item $tempFile -ErrorAction SilentlyContinue).Length
-          if ($fileSize -lt 100000) {
-            Write-Host "[WARN] Downloaded file too small ($fileSize bytes)"
-            exit 1
-          }
-
-          Write-Host "[OK] Downloaded NSIS resources: $fileSize bytes"
-
-          # Extract using 7zip from node_modules
-          $sevenZip = "locaNext\node_modules\7zip-bin\win\x64\7za.exe"
-          & $sevenZip x -y $tempFile "-o$nsisResourcesDir"
-          Write-Host "[OK] Extracted NSIS resources"
-
-          # CRITICAL: Copy include files to where NSIS script expects them
-          $sourceInclude = "$nsisResourcesDir\nsis-resources-3.4.1\include"
           $targetInclude = "locaNext\node_modules\app-builder-lib\templates\nsis\include"
 
-          # Create target directory
-          New-Item -ItemType Directory -Force -Path $targetInclude | Out-Null
-
-          if (Test-Path $sourceInclude) {
-            Copy-Item -Path "$sourceInclude\*" -Destination $targetInclude -Recurse -Force
-            Write-Host "[OK] Copied NSIS includes to: $targetInclude"
-            Write-Host "Files copied:"
+          # Check if include files exist from npm install
+          if (Test-Path "$targetInclude\StdUtils.nsh") {
+            Write-Host "[OK] NSIS include files already exist"
             Get-ChildItem $targetInclude -Name
           } else {
-            Write-Host "[ERROR] Source include directory not found: $sourceInclude"
-            Get-ChildItem $nsisResourcesDir -Recurse -Directory | Select-Object FullName
-            exit 1
+            Write-Host "[WARN] NSIS include files missing - downloading from electron-builder repo..."
+
+            # Create target directory
+            New-Item -ItemType Directory -Force -Path $targetInclude | Out-Null
+
+            # List of required NSIS include files from electron-builder templates
+            $includeFiles = @(
+              "StdUtils.nsh",
+              "WinVer.nsh",
+              "allowOnlyOneInstallerInstance.nsh",
+              "assistedInstaller.nsh",
+              "boringInstaller.nsh",
+              "checkAppRunning.nsh",
+              "extractAppPackage.nsh",
+              "fileAssociation.nsh",
+              "installer.nsh",
+              "installSection.nsh",
+              "multiUser.nsh",
+              "multiUserUi.nsh",
+              "oneClick.nsh",
+              "UAC.nsh",
+              "uninstaller.nsh"
+            )
+
+            $baseUrl = "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include"
+
+            foreach ($file in $includeFiles) {
+              $url = "$baseUrl/$file"
+              $dest = "$targetInclude\$file"
+              Write-Host "Downloading: $file"
+              & curl.exe -L --retry 3 -s -o $dest $url
+              if (!(Test-Path $dest) -or (Get-Item $dest).Length -eq 0) {
+                Write-Host "[WARN] Failed to download $file"
+              }
+            }
+
+            Write-Host "[OK] Downloaded NSIS include files:"
+            Get-ChildItem $targetInclude -Name
           }
         shell: powershell
 
