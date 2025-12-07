@@ -656,9 +656,34 @@ jobs:
       - name: Compile LIGHT Installer
         run: |
           Write-Host "Compiling LIGHT Windows installer..."
+
+          # Debug: Show current directory structure
+          Write-Host "=== DEBUG: Directory Structure ==="
+          Write-Host "Working dir: $(Get-Location)"
+          Write-Host "Listing root:"
+          Get-ChildItem | Format-Table Name, Mode
+
+          Write-Host "`nChecking locaNext/dist-electron:"
+          if (Test-Path "locaNext\dist-electron") {
+            Get-ChildItem "locaNext\dist-electron" | Format-Table Name, Mode
+            if (Test-Path "locaNext\dist-electron\win-unpacked") {
+              Write-Host "win-unpacked contents:"
+              Get-ChildItem "locaNext\dist-electron\win-unpacked" | Select-Object -First 10 | Format-Table Name
+            }
+          } else {
+            Write-Host "locaNext\dist-electron NOT FOUND!"
+          }
+
+          Write-Host "`nChecking installer directory:"
+          Get-ChildItem "installer" | Format-Table Name
+
           # Change to installer directory so relative paths in .iss work correctly
           cd installer
-          ISCC.exe locanext_light.iss
+          Write-Host "`nNow in: $(Get-Location)"
+          Write-Host "Parent exists: $(Test-Path '..\\locaNext\\dist-electron\\win-unpacked')"
+
+          # Run ISCC with verbose output
+          ISCC.exe /V locanext_light.iss
         shell: powershell
 
       - name: Verify Installer
