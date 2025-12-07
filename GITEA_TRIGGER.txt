@@ -72,3 +72,5 @@ Build LIGHT v2512072249 - FIX: Remove WIN_CSC_LINK="" (was treated as file path)
 Build LIGHT v2512072249 - FIX: Add sign:false to package.json (prevents winCodeSign symlink error)
 
 Build LIGHT v2512072249 - RETRY: Previous job stuck (sign:false fix is in place)
+
+Build LIGHT v2512080002 - VERSION UPDATED + sign:false fix
