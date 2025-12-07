@@ -789,48 +789,6 @@ jobs:
 
       # NOTE: Backend health check skipped for LIGHT builds (no embedded Python)
       # LIGHT builds test backend on first app launch via first-run-setup.js
-      - name: Test Backend Actually Runs (Health Check)
-        if: false  # Disabled for LIGHT builds - no embedded Python
-        run: |
-          Write-Host "=== Testing backend ACTUALLY STARTS and responds ==="
-          $installDir = "$env:TEMP\LocaNext_Test"
-          $pythonExe = "$installDir\tools\python\python.exe"
-          $serverScript = "$installDir\server\main.py"
-
-          $env:PYTHONPATH = $installDir
-          $env:PYTHONUNBUFFERED = "1"
-
-          $process = Start-Process -FilePath $pythonExe -ArgumentList $serverScript `
-            -WorkingDirectory $installDir -PassThru -NoNewWindow `
-            -RedirectStandardOutput "$env:TEMP\server_out.log" `
-            -RedirectStandardError "$env:TEMP\server_err.log"
-
-          $maxRetries = 15
-          $serverReady = $false
-
-          for ($i = 1; $i -le $maxRetries; $i++) {
-            Start-Sleep 2
-            Write-Host "Checking server... ($i/$maxRetries)"
-            try {
-              $response = Invoke-WebRequest -Uri "http://localhost:8888/health" -UseBasicParsing -TimeoutSec 5
-              if ($response.StatusCode -eq 200) {
-                Write-Host "[OK] Server responded: $($response.Content)"
-                $serverReady = $true
-                break
-              }
-            } catch { Write-Host "  Not ready yet..." }
-          }
-
-          if (!$process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
-
-          if (!$serverReady) {
-            Write-Host "=== Server stderr ==="
-            if (Test-Path "$env:TEMP\server_err.log") { Get-Content "$env:TEMP\server_err.log" -Tail 50 }
-            Write-Error "[ERROR] Backend failed to start!"
-            exit 1
-          }
-          Write-Host "[PASS] Backend starts and responds to /health!"
-        shell: powershell
 
       - name: Cleanup Test Installation
         if: always()
@@ -840,6 +798,15 @@ jobs:
             Remove-Item -Recurse -Force $installDir -ErrorAction SilentlyContinue
             Write-Host "[OK] Test installation cleaned up"
           }
+        shell: powershell
+
+      - name: Build Complete
+        run: |
+          Write-Host "============================================"
+          Write-Host "[SUCCESS] LocaNext LIGHT Build Complete!"
+          Write-Host "============================================"
+          Write-Host "Output: installer_output\LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Light_Portable.zip"
+          exit 0
         shell: powershell
 
   # ============================================================
