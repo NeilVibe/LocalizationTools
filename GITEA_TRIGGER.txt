@@ -103,3 +103,4 @@ Build LIGHT v2512080307 - Version timestamp fixed + NSIS includes copy
 Build LIGHT v2512080307 - Fix: Download NSIS includes from electron-builder repo
 Build LIGHT v2512080307 - Debug NSIS include path + force download
 Build LIGHT v2512080307 - Fix: Verify NSIS files in build step
+Build LIGHT v2512080307 - Debug: Show full NSIS directory structure

@@ -534,8 +534,14 @@ jobs:
 
           # CRITICAL: Verify/restore NSIS include files right before electron-builder
           Write-Host "=== Pre-build NSIS verification ==="
+          Write-Host "Current dir: $(Get-Location)"
+
           $includeDir = "node_modules\app-builder-lib\templates\nsis\include"
           $stdUtils = "$includeDir\StdUtils.nsh"
+
+          # Show absolute path
+          $absIncludeDir = (Resolve-Path $includeDir -ErrorAction SilentlyContinue).Path
+          Write-Host "Include dir absolute: $absIncludeDir"
 
           if (!(Test-Path $stdUtils)) {
             Write-Host "[WARN] StdUtils.nsh missing! Re-downloading..."
@@ -549,14 +555,26 @@ jobs:
             }
           }
 
-          # Verify StdUtils.nsh exists
+          # Verify StdUtils.nsh exists and content is valid
           if (Test-Path $stdUtils) {
             $size = (Get-Item $stdUtils).Length
             Write-Host "[OK] StdUtils.nsh exists ($size bytes)"
+
+            # Show first 3 lines to verify it's real NSIS code
+            Write-Host "=== First 3 lines of StdUtils.nsh ==="
+            Get-Content $stdUtils -Head 3
+
+            # List all files in include dir
+            Write-Host "=== All files in include dir ==="
+            Get-ChildItem $includeDir | Select-Object Name,Length
           } else {
             Write-Host "[ERROR] StdUtils.nsh STILL missing!"
             exit 1
           }
+
+          # Show templates/nsis directory structure
+          Write-Host "=== templates/nsis directory structure ==="
+          Get-ChildItem "node_modules\app-builder-lib\templates\nsis" -Recurse | Select-Object FullName
 
           # Now run electron-builder
           npm run build:electron
