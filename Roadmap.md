@@ -117,14 +117,18 @@ Gitea + act_runner on Windows:
 
 ---
 
-### 🥇 Solution: Hyper-V VM Reset (Copy GitHub)
+### 🥇 Solution: Hyper-V VM Reset (Copy GitHub's Approach)
 
-**Replicate GitHub's fresh-VM approach locally:**
+**Confirmed:** This is exactly how GitHub does it.
+- [Microsoft Blog](https://techcommunity.microsoft.com/t5/azure-compute-blog/how-github-actions-handles-ci-cd-scale-on-short-running-jobs/ba-p/3321114): "7 million VMs reimaged per day"
+- GitHub doesn't fix the cleanup bug - they bypass it with infrastructure
+- [Issue #2687](https://github.com/actions/runner/issues/2687): Same bug exists in GitHub's self-hosted runners (marked NOT_PLANNED)
 
+**Our Local Version:**
 ```
-Our Hyper-V Setup:
+Hyper-V Setup:
 ┌─────────────────────────────────────────┐
-│  Windows VM in Hyper-V (pre-configured) │
+│  Windows VM (pre-configured)            │
 │  - Git, Node, Python, build tools       │
 │  - act_runner registered                │
 │  - Checkpoint: "Clean-Build-State"      │
@@ -132,42 +136,61 @@ Our Hyper-V Setup:
            │
            ▼
 ┌─────────────────────────────────────────┐
-│  Job triggers → VM runs job             │
-│  Job completes → Signal to host         │
-│  Host restores checkpoint               │  ← Fresh state!
-│  VM ready for next job                  │
+│  Job runs → Build completes             │
+│  Job ends (cleanup may fail)            │
+│  Host detects completion                │
+│  Restore-VMCheckpoint                   │  ← Fresh state!
 └─────────────────────────────────────────┘
 ```
 
-**Host script (runs on physical Windows machine):**
-```powershell
-$vmName = "LocaNext-Builder"
-$checkpoint = "Clean-Build-State"
+---
 
-while ($true) {
-    # Wait for job completion signal
-    while (-not (Test-Path "\\VM\share\job_done.txt")) {
-        Start-Sleep 5
-    }
+### Setup Complexity & Risks
 
-    # Reset VM to clean state
-    Stop-VM -Name $vmName -Force
-    Restore-VMCheckpoint -VMName $vmName -Name $checkpoint -Confirm:$false
-    Start-VM -Name $vmName
+**Complexity: MEDIUM** (1-2 hours initial setup)
 
-    Remove-Item "\\VM\share\job_done.txt"
-}
-```
+| Step | Difficulty | Risk |
+|------|------------|------|
+| Enable Hyper-V | Easy | Low - Windows feature |
+| Create Windows VM | Easy | Low - standard wizard |
+| Install build tools in VM | Easy | Low - same as current setup |
+| Take checkpoint | Easy | Low - one click |
+| Write reset script | Medium | Low - PowerShell only |
+| Integrate with Gitea workflow | Medium | Medium - timing coordination |
 
-**Pros:**
-- 100% clean state each build (like GitHub)
-- No cleanup issues possible
-- Elegant, standard approach
+**Requirements:**
+- Windows 10/11 Pro or Server (has Hyper-V)
+- ~50GB disk for VM
+- ~8GB RAM for VM (can share with host)
+- Windows license for VM (can use evaluation)
 
-**Cons:**
-- VM startup time (~30-60 sec)
-- Requires Hyper-V (Windows Pro/Server)
-- More initial setup
+**Risks:**
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| VM corrupts checkpoint | Low | Keep backup checkpoint |
+| Network config issues | Medium | Use external virtual switch |
+| Performance slower than bare metal | Low | ~10-20% overhead acceptable |
+| Gitea can't reach VM | Medium | Configure proper networking |
+| VM doesn't auto-start | Low | Configure Hyper-V auto-start |
+
+**What Could Go Wrong:**
+1. **Networking** - VM needs to reach Gitea server and internet
+2. **Timing** - Reset script needs to detect job completion reliably
+3. **Disk space** - Checkpoints grow over time (need cleanup)
+
+**NOT Dangerous** - Hyper-V is production-grade Microsoft tech. Worst case: VM doesn't work, fall back to current setup.
+
+---
+
+### Alternative: Just Accept It
+
+Given that GitHub also doesn't fix this for self-hosted runners:
+- Build works ✅
+- Output is correct ✅
+- Status shows "failed" (cosmetic) ⚠️
+
+**This is acceptable** for internal/local CI. The build artifact is what matters.
 
 ---
 
