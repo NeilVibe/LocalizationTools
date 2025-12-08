@@ -155,3 +155,4 @@ Version: {VERSION}
 Semantic: {SEMANTIC_VERSION}
 Footer: {VERSION_FOOTER} - Test patched runner service
 Build LIGHT v2512081600 - Test patched runner service
+Build LIGHT v2512081600 - Test patched runner v2 (both fixes)
