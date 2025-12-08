@@ -247,7 +247,7 @@ All 3 tools verified with production test files.
 
 ### P17: LocaNext LDM (LanguageData Manager)
 
-**Status:** 📋 PLANNING
+**Status:** 🔄 IN PROGRESS (Phase 1 & 2 Complete - 42%)
 
 **Goal:** Custom-built, powerful, elegant CAT tool for game localization. Google Docs-like real-time collaboration with file explorer, handling 500K-1M rows effortlessly.
 
@@ -265,10 +265,15 @@ P17 Quick Summary:
 │  Server:       ONE server (FastAPI:8888 + PostgreSQL + Gitea:3000)          │
 │  Phases:       6 phases (Foundation → File Explorer → Sync → Scale → CAT)   │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Frontend:     locaNext/src/routes/ldm/ + lib/components/ldm/               │
-│  Backend:      server/tools/ldm/ (api.py, websocket.py, models.py)          │
+│  Frontend:     locaNext/src/lib/components/ldm/ (FileExplorer, DataGrid)    │
+│  Backend:      server/tools/ldm/ (api.py, file_handlers/)                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Progress:     Phase 1 [X] Phase 2 [X] Phase 3 [ ] Phase 4 [ ] Phase 5 [ ]  │
+│                28/66 tasks (42%) - Next: Real-time Sync                     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Detailed task tracking:** See [docs/wip/P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md)
 
 > **Jump to sections:** [UX Flow](#ux-flow-how-users-work) | [File Formats](#file-format-parsing-rules) | [Architecture](#deployment-architecture-one-server-for-everything) | [Development Phases](#development-phases)
 
@@ -702,30 +707,32 @@ User A edits cell
 
 #### Development Phases
 
-**Phase 1: Foundation (Database + Basic API)**
+**Phase 1: Foundation (Database + Basic API)** ✅ COMPLETE
 ```
 Backend (server/tools/ldm/):
-- [ ] Create models.py (LDMProject, LDMFolder, LDMFile, LDMRow)
-- [ ] Create database migration (alembic)
-- [ ] Create api.py with basic CRUD endpoints
-- [ ] File upload endpoint (parse TXT/XML → store rows in DB)
-- [ ] Paginated rows endpoint (GET /files/{id}/rows?page=1&limit=50)
+- [x] Create models in server/database/models.py (6 LDM models)
+- [x] Tables auto-created via Base.metadata.create_all()
+- [x] Create api.py with CRUD endpoints
+- [x] File upload endpoint (parse TXT/XML → store rows in DB)
+- [x] Paginated rows endpoint (GET /files/{id}/rows?page=1&limit=50)
 
 Frontend (locaNext/src/):
-- [ ] Add "LDM" tab to sidebar navigation
-- [ ] Create routes/ldm/+page.svelte (empty shell)
+- [x] Add "LDM" to apps menu in header
+- [x] Create LDM.svelte component
 ```
 
-**Phase 2: File Explorer + Basic Grid**
+**Phase 2: File Explorer + Basic Grid** ✅ COMPLETE
 ```
 Backend:
-- [ ] Projects/folders CRUD API
-- [ ] File tree endpoint (nested structure)
+- [x] Projects/folders CRUD API
+- [x] File tree endpoint (nested structure)
+- [x] txt_handler.py (parse TXT, col 5=source, col 6=target)
+- [x] xml_handler.py (parse XML LocStr, StrOrigin=source, Str=target)
 
 Frontend:
-- [ ] FileExplorer.svelte (project/folder tree)
-- [ ] Basic DataGrid.svelte (display rows, no editing yet)
-- [ ] Connect to API, show real data
+- [x] FileExplorer.svelte (project/folder tree, upload modal)
+- [x] DataGrid.svelte (display rows, pagination, edit modal)
+- [x] Connect to API, show real data
 ```
 
 **Phase 3: Editing + Real-time Sync**
