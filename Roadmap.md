@@ -189,6 +189,14 @@ This was implemented in Go 1.19 to handle `ERROR_ACCESS_DENIED` and `ERROR_SHARI
 
 **Current Decision:** Pursuing Solution B (upstream PR) first, with Solution C as immediate workaround.
 
+**Implementation Status:**
+- ✅ **Solution C implemented** (2025-12-08): Added "Set Commit Status Success" step to workflow
+  - Runs after "Build Complete" but before cleanup
+  - Calls Gitea API: `POST /api/v1/repos/{owner}/{repo}/statuses/{sha}`
+  - Sets commit status to "success" with context "build-windows"
+  - Even if cleanup fails → job shows "failed" but commit shows ✅
+- 🔄 **Solution B**: PR to nektos/act pending (will benefit upstream)
+
 ---
 
 **Future Improvement: Build Caching**

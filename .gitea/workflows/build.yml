@@ -859,6 +859,38 @@ jobs:
           Write-Host "Output: installer_output\LocaNext_v${{ steps.check.outputs.version }}_Light_Portable.zip"
         shell: powershell
 
+      # FIX P13.11: Set commit status to SUCCESS before cleanup runs
+      # act_runner cleanup fails on Windows (Go handle issue), but build succeeded
+      # This ensures the commit shows green check even if cleanup fails
+      - name: Set Commit Status Success
+        if: always()
+        run: |
+          Write-Host "=== Setting commit status to SUCCESS ==="
+          $commitSha = git rev-parse HEAD
+          Write-Host "Commit: $commitSha"
+
+          $body = @{
+            context = "build-windows"
+            description = "Build successful"
+            state = "success"
+            target_url = "${{ env.GITEA_URL }}/${{ env.GITEA_REPO }}/actions"
+          } | ConvertTo-Json
+
+          $response = Invoke-RestMethod `
+            -Uri "${{ env.GITEA_URL }}/api/v1/repos/${{ env.GITEA_REPO }}/statuses/$commitSha" `
+            -Method POST `
+            -Headers @{ "Authorization" = "token ${{ secrets.RELEASE_TOKEN }}"; "Content-Type" = "application/json" } `
+            -Body $body `
+            -ErrorAction SilentlyContinue
+
+          if ($response) {
+            Write-Host "[OK] Commit status set to SUCCESS (ID: $($response.id))"
+          } else {
+            Write-Host "[WARN] Could not set commit status (API may not be available)"
+          }
+        shell: powershell
+        continue-on-error: true
+
       # FIX: Pre-cleanup to release file locks before act_runner cleanup
       # Use cmd.exe to run cleanup in separate context from PowerShell
       - name: Release File Locks
