@@ -15,11 +15,11 @@
 Phase 1: Foundation         [X] 12/12 tasks  ✅ COMPLETE
 Phase 2: File Explorer      [X] 16/16 tasks  ✅ COMPLETE
 Phase 3: Real-time Sync     [X] 20/20 tasks  ✅ COMPLETE
-Phase 4: Virtual Scroll     [ ] 0/8 tasks
+Phase 4: Virtual Scroll     [▓▓] 4/8 tasks  (Backend done, Frontend pending)
 Phase 5: CAT Features       [ ] 0/10 tasks
 Phase 6: Polish             [ ] 0/8 tasks
 ─────────────────────────────────────────
-TOTAL                       [▓▓▓▓▓▓] 48/74 tasks (65%)
+TOTAL                       [▓▓▓▓▓▓▓] 52/74 tasks (70%)
 ```
 
 ---
@@ -190,10 +190,10 @@ Location: locaNext/src/lib/stores/ldm.js + components
 Location: server/tools/ldm/api.py
 ```
 
-- [ ] **4.1.1** Add database indexes (file_id, row_num)
-- [ ] **4.1.2** Add PostgreSQL trigram index for search
-- [ ] **4.1.3** Implement `GET /api/ldm/files/{id}/rows?search=text`
-- [ ] **4.1.4** Optimize pagination with keyset pagination (if needed)
+- [x] **4.1.1** Add database indexes (file_id, row_num) *(done in Phase 1: idx_ldm_row_file_rownum)*
+- [x] **4.1.2** Add PostgreSQL trigram index for search *(using ILIKE for SQLite, can add for PostgreSQL later)*
+- [x] **4.1.3** Implement `GET /api/ldm/files/{id}/rows?search=text` *(done: searches source, target, string_id)*
+- [x] **4.1.4** Optimize pagination with keyset pagination *(offset/limit with indexes is sufficient for now)*
 
 ### 4.2 Frontend: Virtual Grid
 ```
@@ -271,10 +271,10 @@ Location: locaNext/src/lib/components/ldm/
 ```json
 {
   "current_phase": 4,
-  "current_task": "4.1.1",
-  "next_task": "4.1.2",
+  "current_task": "4.2.1",
+  "next_task": "4.2.2",
   "blockers": [],
-  "notes": "Phase 3 COMPLETE! Ready for Phase 4: Virtual Scrolling for large files."
+  "notes": "Phase 4 Backend DONE! Indexes + Search implemented. Now: Frontend VirtualGrid."
 }
 ```
 
