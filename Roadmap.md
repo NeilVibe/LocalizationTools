@@ -247,7 +247,7 @@ All 3 tools verified with production test files.
 
 ### P17: LocaNext LDM (LanguageData Manager)
 
-**Status:** 🔄 IN PROGRESS (Phase 1, 2, 3 Complete - 65%)
+**Status:** 🔄 IN PROGRESS (Phase 1-5 Complete - 96%)
 
 **Goal:** Custom-built, powerful, elegant CAT tool for game localization. Google Docs-like real-time collaboration with file explorer, handling 500K-1M rows effortlessly.
 
@@ -260,18 +260,33 @@ P17 Quick Summary:
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Scale:        500K - 1M rows (virtual scroll, server pagination)           │
 │  Collaboration: Real-time WebSocket sync between all users                  │
-│  UI:           File Explorer + Grid View + Edit Modal                       │
+│  UI:           File Explorer + VirtualGrid + Edit Modal                     │
 │  Editing:      Source (StrOrigin) = READ-ONLY, Target (Str) = EDITABLE      │
 │  Server:       ONE server (FastAPI:8888 + PostgreSQL + Gitea:3000)          │
 │  Phases:       6 phases (Foundation → File Explorer → Sync → Scale → CAT)   │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Frontend:     locaNext/src/lib/components/ldm/ (FileExplorer, DataGrid)    │
-│  Backend:      server/tools/ldm/ (api.py, websocket.py, file_handlers/)     │
+│  Frontend:     locaNext/src/lib/components/ldm/ (FileExplorer, VirtualGrid) │
+│  Backend:      server/tools/ldm/ (api.py, websocket.py, tm.py)              │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Progress:     Phase 1 [X] Phase 2 [X] Phase 3 [X] Phase 4 [ ] Phase 5 [ ]  │
-│                48/74 tasks (65%) - Next: Virtual Scrolling                  │
+│  Progress:     Phase 1 [X] Phase 2 [X] Phase 3 [X] Phase 4 [X] Phase 5 [X]  │
+│                65/68 tasks (96%) - Remaining: Glossary, Status Workflow     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Recent Completions (Phase 4-5):**
+- ✅ VirtualGrid.svelte - 1M+ row virtual scrolling
+- ✅ TM Backend (tm.py) - Word-level Jaccard similarity
+- ✅ TM Suggestions Panel - One-click apply in edit modal
+- ✅ Keyboard Shortcuts - Ctrl+Enter (save+next), Tab (apply TM), Escape (cancel)
+
+**Future Enhancement: WebTranslatorNew Reference**
+Explored `RessourcesForCodingTheProject/WebTranslatorNew/` for reusable logic:
+- 5-tier cascade search (perfect match → embeddings → n-grams)
+- Qwen embedding model + FAISS HNSW for semantic search
+- Dual-threshold system (cascade=0.92, context=0.49)
+- Data preprocessing with majority voting deduplication
+
+See: `RessourcesForCodingTheProject/WebTranslatorNew/README.md`
 
 **Detailed task tracking:** See [docs/wip/P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md)
 
