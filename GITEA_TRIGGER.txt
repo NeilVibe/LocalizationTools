@@ -165,3 +165,4 @@ Build LIGHT v2512090202 - Debug v5 runner
 Build LIGHT v2512090202 - Debug v5 with new daemon
 Build LIGHT v2512090202 - Debug v6 with Errorf logging
 Build LIGHT v2512090202 - Test v6 ONLY (v5 killed)
+Build LIGHT v2512090202 - v6 runner test with debug
