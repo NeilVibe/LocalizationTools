@@ -87,10 +87,109 @@ LocaNext v2512080549
 
 **Conclusion:** The issue is in act_runner's host mode cleanup on Windows. The Go process maintains handles on the workdir that child processes cannot release.
 
-**Next Investigation: Docker Mode**
-- GitHub Actions uses **Docker containers** (Linux) or **fresh VMs** (Windows/macOS)
-- Docker mode might solve handle issue: container stops → all handles released → cleanup is just removing container
-- Need to investigate: Can we run Windows builds in Docker? Or use WSL2 Docker?
+---
+
+### P13.11 Deep Dive: Technical Root Cause & Solutions (2025-12-08)
+
+**Exact Technical Root Cause:**
+```go
+// From nektos/act pkg/container/host_environment.go
+func (e *HostEnvironment) Remove() common.Executor {
+    return func(_ context.Context) error {
+        if e.CleanUp != nil {
+            e.CleanUp()
+        }
+        return os.RemoveAll(e.Path)  // <-- THIS FAILS ON WINDOWS
+    }
+}
+```
+
+1. `os.RemoveAll()` fails with `ERROR_SHARING_VIOLATION` (Windows error 0x20)
+2. Go's act_runner.exe process holds file handles on the workdir
+3. Child processes (PowerShell, cmd.exe) CANNOT release parent's handles
+4. No retry logic, no error handling - failure = job marked as failed
+
+**Go's Own Solution (Go 1.19+):**
+Go's testing package has this EXACT same issue and uses a [retry loop with exponential backoff](https://github.com/golang/go/issues/51442):
+```go
+func removeAll(path string) error {
+    const arbitraryTimeout = 2 * time.Second
+    var nextSleep = 1 * time.Millisecond
+    for {
+        err := os.RemoveAll(path)
+        if !isWindowsAccessDenied(err) && !isSharingViolation(err) {
+            return err
+        }
+        if time.Since(start) + nextSleep >= arbitraryTimeout {
+            return err
+        }
+        time.Sleep(nextSleep)
+        nextSleep += time.Duration(rand.Int63n(int64(nextSleep)))
+    }
+}
+```
+This was implemented in Go 1.19 to handle `ERROR_ACCESS_DENIED` and `ERROR_SHARING_VIOLATION`.
+
+**Key Research Findings:**
+| Finding | Source |
+|---------|--------|
+| GitHub Actions Windows uses fresh Azure VMs (not Docker) | GitHub docs |
+| Docker can't run native Windows Electron builds | Docker limitation |
+| No act_runner config to skip cleanup | [Gitea Forum](https://forum.gitea.com/t/disable-job-cleaning-between-jobs-host-mode/8540) |
+| GitHub's own runner has same issue | [actions/runner #2687](https://github.com/actions/runner/issues/2687) |
+| `RUNNER_TRACKING_ID=""` trick only prevents process kill, not cleanup | [actions/runner #598](https://github.com/actions/runner/issues/598) |
+| [github-act-runner](https://github.com/ChristopherHX/github-act-runner) has better Windows shell handling | Alternative runner |
+
+**Proposed Solutions:**
+
+| Solution | Effort | Impact | Recommendation |
+|----------|--------|--------|----------------|
+| **A. Fork & Patch gitea/act** | High | ✅ Permanent fix | Best long-term |
+| **B. PR to nektos/act** | Medium | ✅ Upstream fix | Submit & wait |
+| **C. Commit Status API** | Medium | ✅ Green checks | Good workaround |
+| **D. External Cleanup Service** | Low | ⚠️ Dir clean only | Partial fix |
+| **E. Runner Auto-Restart** | Low | ⚠️ Releases handles | Hacky workaround |
+
+**Solution A: Fork & Patch gitea/act**
+1. Fork `gitea.com/gitea/act` (the soft fork act_runner uses)
+2. Modify `pkg/container/host_environment.go` `Remove()` function
+3. Add Go's retry loop pattern for Windows
+4. Build custom act_runner.exe
+5. Deploy on Windows machine
+- Pros: Permanent fix, proper solution
+- Cons: Need to maintain fork, rebuild on updates
+
+**Solution B: PR to nektos/act**
+1. Create PR to upstream [nektos/act](https://github.com/nektos/act)
+2. Add retry logic to `host_environment.go`
+3. Wait for merge → gitea/act sync → act_runner release
+- Pros: No fork maintenance, benefits everyone
+- Cons: Could take weeks/months
+
+**Solution C: Commit Status API Workaround**
+1. Add Gitea webhook for workflow completion
+2. When job "fails" but all steps passed → API call to set commit status "success"
+3. Shows green check on commits despite internal "failed" status
+- Pros: Visual fix without code changes
+- Cons: Workflow still shows "failed" internally
+
+**Solution D: External Cleanup Service**
+1. Windows scheduled task monitors workdir
+2. Deletes old job directories (older than X minutes)
+3. Runs independently, no handle conflicts
+- Pros: Keeps disk clean
+- Cons: Doesn't fix status
+
+**Solution E: Runner Auto-Restart**
+1. Modify NSSM to restart service after each job
+2. Service restart releases all Go handles
+3. Next job cleanup succeeds
+- Pros: Simple, no code changes
+- Cons: 10-20 second restart delay between jobs
+
+**Current Decision:** Pursuing Solution B (upstream PR) first, with Solution C as immediate workaround.
+
+---
 
 **Future Improvement: Build Caching**
 - Currently downloading ~350MB every build (VC++, Python, npm, pip)
