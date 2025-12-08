@@ -23,16 +23,17 @@ LocaNext v2512080549
 
 ## In Progress
 
-### P13.11: Gitea Windows Build Pipeline
+### P13.11: Gitea Windows Build Pipeline - MUST FIX "FAILED" STATUS
 
 ```
-STATUS: ⚠️ BUILD WORKS, STATUS REPORTING BUG
+STATUS: ❌ BROKEN - Job reports "failed" even though build succeeds
+PRIORITY: HIGH - Cannot have "failed" status, must show green ✅
 
-THE BUILD ACTUALLY SUCCEEDS:
-├── Portable ZIP created: LocaNext_v2512080549_Light_Portable.zip (106.8 MB)
-├── All verification steps pass: [PASS] All critical files present!
-├── Build Complete runs: [SUCCESS] LocaNext LIGHT Build Complete!
-└── BUT: act_runner reports "Job failed" during cleanup (FALSE NEGATIVE)
+CURRENT STATE:
+├── ZIP file IS created: LocaNext_v2512080549_Light_Portable.zip (106.8 MB)
+├── All steps pass: [PASS] All critical files present!
+├── Build completes: [SUCCESS] LocaNext LIGHT Build Complete!
+└── ❌ PROBLEM: act_runner reports "Job failed" - THIS MUST BE FIXED
 
 ARTIFACT LOCATION (on Windows runner):
 C:\WINDOWS\system32\config\systemprofile\.cache\act\{hash}\hostexecutor\installer_output\
@@ -41,7 +42,7 @@ C:\WINDOWS\system32\config\systemprofile\.cache\act\{hash}\hostexecutor\installe
 ARCHITECTURE:
 ├── Gitea Server     → WSL Linux (localhost:3000)
 ├── Linux Runner     → WSL (handles ubuntu-latest jobs) ✅
-└── Windows Runner   → Windows native (act_runner v0.2.11 as SYSTEM service) ✅
+└── Windows Runner   → Windows native (act_runner v0.2.11 as SYSTEM service) ⚠️
 ```
 
 ### COMPLETED FIXES (2025-12-08):
@@ -55,47 +56,61 @@ ARCHITECTURE:
 [✅] Tools directory missing → Create before copying scripts
 ```
 
-### KNOWN ISSUE - act_runner v0.2.11 Status Bug:
+### ❌ CRITICAL BUG TO FIX - act_runner False Failure:
 ```
+THE PROBLEM:
+- Job shows "🏁 Job failed" even though ALL steps succeed
+- This is UNACCEPTABLE - we need green ✅ status, not red ❌
+
 SYMPTOM:
-- All workflow steps succeed (✅ marks everywhere)
+- All workflow steps succeed (✅ marks everywhere in log)
 - ZIP file created correctly with proper version
 - Post-checkout cleanup succeeds
 - THEN: "🏁 Job failed" during "Cleaning up container" phase
 
-EVIDENCE:
-- Log shows: "✅ Success - Post Checkout code"
-- Log shows: "Cleaning up container for job Build Windows LIGHT Installer"
-- Log shows: "🏁 Job failed" (7 seconds later, no error between)
+EVIDENCE FROM LOG:
+- "✅ Success - Post Checkout code"
+- "Cleaning up container for job Build Windows LIGHT Installer"
+- (7 seconds later, NO errors between)
+- "🏁 Job failed"  ← WHERE DOES THIS COME FROM?
 
-ROOT CAUSE:
-- Unknown bug in act_runner v0.2.11 when running on Windows as SYSTEM service
-- May be related to how act_runner reports composite job status
-- All steps succeed but final job status is incorrectly marked as failed
-
-WORKAROUND OPTIONS:
-1. Ignore status, manually verify artifact exists
-2. Add post-build script to copy artifact out of cache
-3. Upgrade act_runner when new version available
-4. File issue on nektos/act repository
+POSSIBLE CAUSES TO INVESTIGATE:
+1. act_runner v0.2.11 bug on Windows
+2. Running as SYSTEM service causes issues
+3. Workflow structure confuses act_runner
+4. Missing success signal expected by runner
+5. Container cleanup timeout or error not logged
 ```
 
-### REMAINING WORK:
+### 🔧 NEXT STEPS TO FIX (IN ORDER):
 ```
-[📋] OPTION A: Accept current state (build works, ignore false failure)
-     - Document known issue
-     - Create script to retrieve artifacts from runner cache
-     - Monitor for act_runner updates
+[1] CHECK WINDOWS RUNNER LOGS
+    - Location: C:\GiteaRunner\*.log (or wherever runner is installed)
+    - Look for errors during "Cleaning up container" phase
+    - May reveal what act_runner thinks went wrong
 
-[📋] OPTION B: Debug act_runner issue further
-     - Check act_runner logs on Windows: C:\GiteaRunner\*.log
-     - Try different act_runner versions
-     - Test with different job configurations
+[2] TRY DIFFERENT act_runner VERSION
+    - Current: v0.2.11
+    - Try: latest release from https://gitea.com/gitea/act_runner/releases
+    - Bug may be fixed in newer version
 
-[📋] OPTION C: Alternative build approach
-     - Build directly on Windows (no CI/CD)
-     - Use PowerShell script triggered by webhook
-     - Mirror builds from GitHub Actions instead
+[3] TEST SIMPLER WORKFLOW
+    - Create minimal workflow with just 1 step
+    - See if it reports success
+    - Gradually add steps to find what triggers failure
+
+[4] CHECK IF SYSTEM SERVICE IS THE ISSUE
+    - Try running act_runner as regular user (not SYSTEM)
+    - May fix permission/cleanup issues
+
+[5] LOOK AT nektos/act ISSUES
+    - act_runner is based on nektos/act
+    - Search for similar "job failed but steps succeed" issues
+    - https://github.com/nektos/act/issues
+
+[6] ADD EXPLICIT JOB RESULT
+    - Maybe workflow needs to explicitly set job result
+    - Try adding `conclusion: success` or similar at end
 ```
 
 ### FILES MODIFIED (for next Claude reference):
