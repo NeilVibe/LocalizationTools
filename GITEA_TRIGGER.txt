@@ -125,3 +125,4 @@ Build LIGHT v2512080549 - Fix version extraction using set-output
 Test fix v2512081002
 Test fix #2 v2512081051
 Test fix #3 v2512081101
+Test fix #4 v2512081124
