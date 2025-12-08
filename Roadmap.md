@@ -307,17 +307,40 @@ C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\
 └── SETUP_EPHEMERAL.md       # Setup instructions
 ```
 
-**To activate ephemeral mode, run on Windows (Admin PowerShell):**
+**To activate ephemeral mode (ONE-TIME setup, requires Admin):**
+
+Why admin? NSSM manages Windows services - modifying services requires admin rights.
+After setup, the service runs automatically on boot - no more admin needed.
+
 ```powershell
-# Stop current service
+# === RUN ONCE IN ADMIN POWERSHELL ===
+
+# Step 1: Stop current service
 nssm stop GiteaActRunner
 
-# Update to ephemeral script
+# Step 2: Update to ephemeral script
 nssm set GiteaActRunner Application "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\run_ephemeral.bat"
 nssm set GiteaActRunner AppParameters ""
 
-# Start service
+# Step 3: Start service
 nssm start GiteaActRunner
+
+# Step 4: Verify it's running
+nssm status GiteaActRunner
+```
+
+**What happens after setup:**
+1. Windows service starts `run_ephemeral.bat` automatically
+2. Script registers runner with `--ephemeral`
+3. Runner accepts ONE job, runs it, EXITS (handles released!)
+4. Script loops and re-registers for next job
+5. Service auto-starts on Windows boot
+
+**Rollback (if needed):**
+```powershell
+nssm set GiteaActRunner Application "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner.exe"
+nssm set GiteaActRunner AppParameters "-c config.yaml daemon"
+nssm restart GiteaActRunner
 ```
 
 ---
