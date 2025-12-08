@@ -15,7 +15,7 @@ LocaNext v2512080549
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar
 ├── Tests:       ✅ 912 total (no mocks)
 ├── Security:    ✅ 86 tests (IP filter, CORS, JWT, audit)
-├── CI/CD:       ✅ GitHub Actions + 🔄 Gitea (ephemeral mode, verifying)
+├── CI/CD:       ✅ GitHub Actions + ⚠️ Gitea (builds OK, status bug P13.11)
 └── Distribution: ✅ Auto-update enabled
 ```
 
@@ -23,42 +23,175 @@ LocaNext v2512080549
 
 ## In Progress
 
-*(No active development tasks - all priorities completed!)*
+### P13.11: Gitea Windows Build "Job Failed" Status Bug
+
+**Status:** 🔴 ACTIVE - Cleanup phase fails on Windows
+
+**The Problem:**
+Build succeeds 100% (ZIP created, tests pass) but act_runner reports "Job failed" during cleanup phase.
+
+```
+[SUCCESS] LocaNext LIGHT Build Complete!
+Output: LocaNext_v2512081600_Light_Portable.zip (106.8 MB)
+...
+Cleaning up container for job Build Windows LIGHT Installer
+🏁 Job failed    ← FALSE POSITIVE (build actually succeeded!)
+```
+
+**Root Cause:**
+```go
+// act_runner (nektos/act) pkg/container/host_environment.go
+return os.RemoveAll(e.Path)  // FAILS on Windows with ERROR_SHARING_VIOLATION
+```
+- Go process holds file handles on workdir
+- Windows can't delete directories with open handles
+- No retry logic in act_runner → failure = job marked failed
+
+---
+
+### What We've Tried
+
+| # | Solution | Result |
+|---|----------|--------|
+| 1 | Remove disabled jobs | ❌ Still fails |
+| 2 | persist-credentials: false | ❌ Still fails |
+| 3 | Replace checkout with git clone | ❌ Still fails |
+| 4 | Upgrade act_runner v0.2.13 | ❌ Still fails |
+| 5 | Pre-cleanup with taskkill | ❌ Still fails |
+| 6 | Change PWD before cleanup | ❌ Still fails |
+| 7 | Custom workdir_parent config | ❌ Still fails |
+| 8 | cmd.exe cleanup (not PowerShell) | ⚠️ Deletes files but job still fails |
+| 9 | **Ephemeral runner mode** | ⚠️ Runner restarts OK, but cleanup still fails BEFORE exit |
+| 10 | Status API workaround | ❌ Rejected (masks real failures) |
+
+**Key Finding:** Ephemeral mode ensures fresh runner per job, but cleanup failure happens BEFORE runner exits. The job is marked "failed" during cleanup, then runner exits.
+
+---
+
+### How GitHub Actions Succeeds
+
+**GitHub's Secret: Fresh Azure VMs**
+
+```
+GitHub Actions Windows:
+┌─────────────────────────────────────────┐
+│  Fresh Azure VM spun up for job         │
+│  ↓                                      │
+│  Job runs (checkout, build, test)       │
+│  ↓                                      │
+│  Job completes → VM DESTROYED           │  ← No cleanup needed!
+│  ↓                                      │
+│  Next job → NEW fresh VM                │
+└─────────────────────────────────────────┘
+```
+
+- VM is **ephemeral** at the infrastructure level
+- No cleanup code runs - whole VM is discarded
+- This is why `windows-latest` works perfectly
+
+**Our Situation:**
+```
+Gitea + act_runner on Windows:
+┌─────────────────────────────────────────┐
+│  Same Windows host for all jobs         │
+│  ↓                                      │
+│  Job runs (checkout, build, test)       │
+│  ↓                                      │
+│  Cleanup phase → os.RemoveAll() FAILS   │  ← Problem here!
+│  ↓                                      │
+│  Job marked "failed" (false positive)   │
+└─────────────────────────────────────────┘
+```
+
+---
+
+### Potential Solutions (Ranked)
+
+| # | Solution | Effort | Elegance | Notes |
+|---|----------|--------|----------|-------|
+| 🥇 | **Hyper-V VM Reset** | Medium | ✅ Elegant | Copy GitHub's approach locally |
+| 🥈 | **PR to nektos/act** | Medium | ✅ Upstream | Add retry loop, benefits everyone |
+| 🥉 | **WSL2 Build Agent** | High | ⚠️ Complex | Run Windows build from WSL |
+| 4 | **Fork act_runner** | High | ⚠️ Maintenance | Patch and maintain our own |
+| 5 | **Accept as cosmetic** | None | ❌ Not elegant | Build works, ignore red status |
+
+---
+
+### 🥇 Solution: Hyper-V VM Reset (Copy GitHub)
+
+**Replicate GitHub's fresh-VM approach locally:**
+
+```
+Our Hyper-V Setup:
+┌─────────────────────────────────────────┐
+│  Windows VM in Hyper-V (pre-configured) │
+│  - Git, Node, Python, build tools       │
+│  - act_runner registered                │
+│  - Checkpoint: "Clean-Build-State"      │
+└─────────────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────────────┐
+│  Job triggers → VM runs job             │
+│  Job completes → Signal to host         │
+│  Host restores checkpoint               │  ← Fresh state!
+│  VM ready for next job                  │
+└─────────────────────────────────────────┘
+```
+
+**Host script (runs on physical Windows machine):**
+```powershell
+$vmName = "LocaNext-Builder"
+$checkpoint = "Clean-Build-State"
+
+while ($true) {
+    # Wait for job completion signal
+    while (-not (Test-Path "\\VM\share\job_done.txt")) {
+        Start-Sleep 5
+    }
+
+    # Reset VM to clean state
+    Stop-VM -Name $vmName -Force
+    Restore-VMCheckpoint -VMName $vmName -Name $checkpoint -Confirm:$false
+    Start-VM -Name $vmName
+
+    Remove-Item "\\VM\share\job_done.txt"
+}
+```
+
+**Pros:**
+- 100% clean state each build (like GitHub)
+- No cleanup issues possible
+- Elegant, standard approach
+
+**Cons:**
+- VM startup time (~30-60 sec)
+- Requires Hyper-V (Windows Pro/Server)
+- More initial setup
+
+---
+
+### Current Status
+
+| Component | Status |
+|-----------|--------|
+| Build | ✅ Works perfectly (ZIP created) |
+| Tests | ✅ All pass |
+| Version | ✅ Correct (2512081600) |
+| Ephemeral Runner | ✅ Working (restarts after job) |
+| Job Status | ❌ Shows "failed" (false positive) |
+
+**Reality:** Build output is 100% correct. Only the displayed status is wrong.
+
+**Next Steps:**
+1. Research Hyper-V setup requirements
+2. Create VM with build tools pre-installed
+3. Implement checkpoint reset workflow
+4. Test full build cycle
 
 ---
 
 ## Recently Completed
-
-### P13.11: Gitea Windows Build "Job Failed" Status Bug (2025-12-08)
-
-**Status:** 🔄 IMPLEMENTED - Awaiting verification build
-
-**Problem:** Build succeeds (ZIP created, tests pass) but act_runner reports "Job failed" during cleanup.
-
-**Root Cause:** Go's `os.RemoveAll()` fails with `ERROR_SHARING_VIOLATION` on Windows. The act_runner process holds file handles that can't be released by child processes.
-
-**Solution:** Ephemeral Runner Mode (like GitHub Actions)
-- Runner exits after each job → all handles released
-- Wrapper script re-registers for next job
-- No hacky workarounds, no masked failures
-
-**Implementation:**
-```
-C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\
-├── run_ephemeral.bat        # Ephemeral wrapper
-├── registration_token.txt   # Gitea token
-└── config.yaml              # Runner config
-```
-
-**Setup (one-time, Admin PowerShell):**
-```powershell
-nssm set GiteaActRunner Application "C:\...\run_ephemeral.bat"
-nssm restart GiteaActRunner
-```
-
-**Full documentation:** [WINDOWS_RUNNER_SETUP.md](docs/deployment/WINDOWS_RUNNER_SETUP.md)
-
----
 
 **Future Improvement: Build Caching**
 - Currently downloading ~350MB every build (VC++, Python, npm, pip)
