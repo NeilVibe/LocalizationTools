@@ -51,6 +51,11 @@ Cleaning up container for job Build Windows LIGHT Installer  ← Host mode, no c
 🏁  Job failed  ← False failure during cleanup
 ```
 
+3. **Fix #3 (TESTING NOW):** Replace `actions/checkout@v4` with git clone
+   - Fix #2 failed → applying git clone approach
+   - No post-job cleanup, no JavaScript, just git
+   - Simpler and more reliable for self-hosted Windows runners
+
 ---
 
 ## Recently Completed

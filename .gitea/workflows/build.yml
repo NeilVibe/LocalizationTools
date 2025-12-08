@@ -226,10 +226,22 @@ jobs:
           }
         shell: powershell
 
+      # FIX: Use git clone instead of actions/checkout@v4
+      # actions/checkout has post-job cleanup that causes act_runner to report false failures
       - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false  # Reduces post-job cleanup (act_runner Windows fix)
+        run: |
+          Write-Host "=== Cloning repository ==="
+          # Clean workspace first
+          if (Test-Path ".git") {
+            Write-Host "Cleaning existing repo..."
+            Remove-Item -Recurse -Force * -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -Force .git -ErrorAction SilentlyContinue
+          }
+          # Clone from Gitea (shallow clone for speed)
+          git clone --depth 1 http://172.28.150.120:3000/neilvibe/LocaNext.git .
+          Write-Host "[OK] Repository cloned"
+          git log -1 --oneline
+        shell: powershell
 
       # NOTE: We don't use actions/setup-python@v5 because it fails when runner
       # runs as SYSTEM service (can't write to systemprofile cache).
