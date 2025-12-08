@@ -14,12 +14,12 @@
 ```
 Phase 1: Foundation         [X] 12/12 tasks  ✅ COMPLETE
 Phase 2: File Explorer      [X] 16/16 tasks  ✅ COMPLETE
-Phase 3: Real-time Sync     [ ] 0/12 tasks
+Phase 3: Real-time Sync     [X] 20/20 tasks  ✅ COMPLETE
 Phase 4: Virtual Scroll     [ ] 0/8 tasks
 Phase 5: CAT Features       [ ] 0/10 tasks
 Phase 6: Polish             [ ] 0/8 tasks
 ─────────────────────────────────────────
-TOTAL                       [▓▓▓] 28/66 tasks (42%)
+TOTAL                       [▓▓▓▓▓▓] 48/74 tasks (65%)
 ```
 
 ---
@@ -130,56 +130,56 @@ Location: locaNext/src/lib/components/ldm/
 
 ## Phase 3: Editing + Real-time Sync
 
-### 3.1 Backend: Row Update API
+### 3.1 Backend: Row Update API ✅
 ```
-Location: server/tools/ldm/api.py
+Location: server/tools/ldm/api.py (already built in Phase 1)
 ```
 
-- [ ] **3.1.1** `PUT /api/ldm/rows/{id}` - Update target text
-- [ ] **3.1.2** Validate: only target field editable
-- [ ] **3.1.3** Update status to "translated" when target set
+- [x] **3.1.1** `PUT /api/ldm/rows/{id}` - Update target text *(done in Phase 1)*
+- [x] **3.1.2** Validate: only target field editable *(source is READ-ONLY)*
+- [x] **3.1.3** Update status to "translated" when target set *(auto-update logic)*
 
-### 3.2 Backend: WebSocket
+### 3.2 Backend: WebSocket ✅
 ```
 Location: server/tools/ldm/websocket.py
 ```
 
-- [ ] **3.2.1** Create `websocket.py`
-- [ ] **3.2.2** Implement room management (users join/leave file rooms)
-- [ ] **3.2.3** Implement `cell_update` broadcast
-- [ ] **3.2.4** Implement `presence` broadcast (who's online)
-- [ ] **3.2.5** Implement row locking (when modal open)
-- [ ] **3.2.6** Register WebSocket route `/ws/ldm/{file_id}` in main.py
+- [x] **3.2.1** Create `websocket.py` *(full implementation with Socket.IO)*
+- [x] **3.2.2** Implement room management *(ldm_join_file, ldm_leave_file)*
+- [x] **3.2.3** Implement `cell_update` broadcast *(broadcast_cell_update)*
+- [x] **3.2.4** Implement `presence` broadcast *(broadcast_file_presence, ldm_get_presence)*
+- [x] **3.2.5** Implement row locking *(ldm_lock_row, ldm_unlock_row, is_row_locked)*
+- [x] **3.2.6** Register WebSocket route in main.py *(uses existing /ws/socket.io)*
 
-### 3.3 Frontend: Edit Modal
+### 3.3 Frontend: Edit Modal ✅
 ```
-Location: locaNext/src/lib/components/ldm/
-```
-
-- [ ] **3.3.1** Create `EditModal.svelte`
-- [ ] **3.3.2** Display StringID (read-only)
-- [ ] **3.3.3** Display Source/StrOrigin (read-only, grey)
-- [ ] **3.3.4** Display Target/Str (editable textarea)
-- [ ] **3.3.5** Save button → API call
-- [ ] **3.3.6** Double-click target cell → open modal
-
-### 3.4 Frontend: Real-time Updates
-```
-Location: locaNext/src/lib/stores/
+Location: locaNext/src/lib/components/ldm/DataGrid.svelte (built-in modal)
 ```
 
-- [ ] **3.4.1** Create `ldm.js` store
-- [ ] **3.4.2** WebSocket connection management
-- [ ] **3.4.3** Receive `cell_update` → update grid row
-- [ ] **3.4.4** Create `PresenceBar.svelte` (who's online)
-- [ ] **3.4.5** Show lock indicator on rows being edited
+- [x] **3.3.1** Edit modal built into DataGrid.svelte *(no separate file needed)*
+- [x] **3.3.2** Display StringID (read-only) *(in modal form)*
+- [x] **3.3.3** Display Source/StrOrigin (read-only, grey) *(source-preview class)*
+- [x] **3.3.4** Display Target/Str (editable textarea) *(TextArea component)*
+- [x] **3.3.5** Save button → API call *(saveEdit function)*
+- [x] **3.3.6** Double-click target cell → open modal *(openEditModal)*
+
+### 3.4 Frontend: Real-time Updates ✅
+```
+Location: locaNext/src/lib/stores/ldm.js + components
+```
+
+- [x] **3.4.1** Create `ldm.js` store *(with full WebSocket support)*
+- [x] **3.4.2** WebSocket connection management *(joinFile, leaveFile, lockRow, unlockRow)*
+- [x] **3.4.3** Receive `cell_update` → update grid row *(onCellUpdate, handleCellUpdates)*
+- [x] **3.4.4** Create `PresenceBar.svelte` *(shows avatars, viewer count)*
+- [x] **3.4.5** Show lock indicator on rows being edited *(Locked icon, tooltip)*
 
 **Phase 3 Completion Checklist:**
-- [ ] Can edit target text via modal
-- [ ] Changes saved to database
-- [ ] Changes broadcast to other users
-- [ ] See who's online
-- [ ] See lock on rows being edited
+- [x] Can edit target text via modal
+- [x] Changes saved to database
+- [x] Changes broadcast to other users
+- [x] See who's online (PresenceBar)
+- [x] See lock on rows being edited
 
 ---
 
@@ -270,11 +270,11 @@ Location: locaNext/src/lib/components/ldm/
 
 ```json
 {
-  "current_phase": 3,
-  "current_task": "3.1.1",
-  "next_task": "3.1.2",
+  "current_phase": 4,
+  "current_task": "4.1.1",
+  "next_task": "4.1.2",
   "blockers": [],
-  "notes": "Phase 2 COMPLETE! Ready for Phase 3: Real-time Sync"
+  "notes": "Phase 3 COMPLETE! Ready for Phase 4: Virtual Scrolling for large files."
 }
 ```
 
@@ -287,6 +287,7 @@ Location: locaNext/src/lib/components/ldm/
 | 2025-12-08 | Planning complete | Created task list, ready to start |
 | 2025-12-08 | Phase 1 COMPLETE (12/12) | Backend models, API, frontend component all done |
 | 2025-12-08 | Phase 2 COMPLETE (16/16) | File handlers, upload, FileExplorer, DataGrid |
+| 2025-12-08 | Phase 3 COMPLETE (20/20) | WebSocket, real-time sync, presence, row locking |
 
 ---
 

@@ -247,7 +247,7 @@ All 3 tools verified with production test files.
 
 ### P17: LocaNext LDM (LanguageData Manager)
 
-**Status:** 🔄 IN PROGRESS (Phase 1 & 2 Complete - 42%)
+**Status:** 🔄 IN PROGRESS (Phase 1, 2, 3 Complete - 65%)
 
 **Goal:** Custom-built, powerful, elegant CAT tool for game localization. Google Docs-like real-time collaboration with file explorer, handling 500K-1M rows effortlessly.
 
@@ -266,10 +266,10 @@ P17 Quick Summary:
 │  Phases:       6 phases (Foundation → File Explorer → Sync → Scale → CAT)   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Frontend:     locaNext/src/lib/components/ldm/ (FileExplorer, DataGrid)    │
-│  Backend:      server/tools/ldm/ (api.py, file_handlers/)                   │
+│  Backend:      server/tools/ldm/ (api.py, websocket.py, file_handlers/)     │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Progress:     Phase 1 [X] Phase 2 [X] Phase 3 [ ] Phase 4 [ ] Phase 5 [ ]  │
-│                28/66 tasks (42%) - Next: Real-time Sync                     │
+│  Progress:     Phase 1 [X] Phase 2 [X] Phase 3 [X] Phase 4 [ ] Phase 5 [ ]  │
+│                48/74 tasks (65%) - Next: Virtual Scrolling                  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
