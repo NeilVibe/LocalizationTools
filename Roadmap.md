@@ -25,38 +25,30 @@ LocaNext v2512080549
 
 ### P13.11: FIX Gitea Windows Build "Job Failed" Bug
 
-**Status: FIX APPLIED - NEEDS COMMIT & TEST**
+**Status: INVESTIGATING - Testing Fix #2**
 
-**What was the bug?**
-- Gitea builds completed successfully (ZIP created, all steps ✅)
-- But act_runner reported "🏁 Job failed" at the very end
-- This was a FALSE failure - the build actually worked
+**The bug:**
+- Gitea builds complete successfully (ZIP created, all steps ✅)
+- But act_runner reports "🏁 Job failed" at the very end
+- This is a FALSE failure - the build actually works
 
-**Root cause found (2025-12-08):**
-- `.gitea/workflows/build.yml` had a disabled job called `create-release`
-- It had `if: false` (never runs) BUT also `needs: [build-windows]`
-- act_runner v0.2.11 bug: evaluates disabled job dependencies incorrectly
-- This caused false "failed" status during cleanup phase
+**Investigation timeline:**
 
-**Fix applied (NOT YET COMMITTED):**
-- Edited `.gitea/workflows/build.yml` (lines 838-843)
-- Removed the entire `create-release` job (was ~130 lines of dead code)
-- Replaced with a comment explaining why it was removed
+1. **Fix #1 (APPLIED):** Removed disabled `create-release` job
+   - Had `if: false` + `needs: [build-windows]` causing dependency issues
+   - Result: Still fails → issue is elsewhere
 
-**TO COMPLETE THIS FIX:**
-```bash
-# 1. Commit the changes
-git add -A && git commit -m "fix: Remove disabled create-release job (act_runner status bug)"
+2. **Fix #2 (TESTING NOW):** Added `persist-credentials: false` to checkout
+   - The post-job cleanup of `actions/checkout@v4` may be causing the issue
+   - act_runner shows "Cleaning up container" even in host mode
+   - `persist-credentials: false` reduces post-job work
+   - Reference: [actions/checkout#1149](https://github.com/actions/checkout/issues/1149)
 
-# 2. Push to both remotes
-git push origin main && git push gitea main
-
-# 3. Test with a Gitea build
-echo "Test v$(date +%y%m%d%H%M)" >> GITEA_TRIGGER.txt
-git add GITEA_TRIGGER.txt && git commit -m "Test Gitea build fix"
-git push gitea main
-
-# 4. Check Gitea Actions → should show green ✅
+**Log analysis:**
+```
+✅  Success - Post Checkout code
+Cleaning up container for job Build Windows LIGHT Installer  ← Host mode, no container!
+🏁  Job failed  ← False failure during cleanup
 ```
 
 ---
