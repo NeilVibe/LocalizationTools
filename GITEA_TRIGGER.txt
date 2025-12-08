@@ -163,3 +163,4 @@ Build LIGHT v2512090202 - Test patched runner v3 (closeContainer fix)
 Build LIGHT v2512090202 - Test v3 runner retry
 Build LIGHT v2512090202 - Debug v5 runner
 Build LIGHT v2512090202 - Debug v5 with new daemon
+Build LIGHT v2512090202 - Debug v6 with Errorf logging
