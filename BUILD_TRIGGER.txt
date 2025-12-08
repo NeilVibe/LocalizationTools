@@ -86,3 +86,4 @@ Build LIGHT v2512071233 - Gitea P13.9 (YAML fixed)
 Build LIGHT v2512071233 - Gitea Docker Network Fix
 Build LIGHT v2512071233 - Host Mode Test (P13.9)
 Build LIGHT v2512071836 - P13.10 Build Separation + Docs Update
+Build LIGHT v2512090827 - P13.11 Complete (Docs + Service)
