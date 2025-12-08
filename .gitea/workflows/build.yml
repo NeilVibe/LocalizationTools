@@ -886,13 +886,19 @@ jobs:
           echo Waiting 5 seconds...
           ping -n 6 127.0.0.1 >nul
 
-          REM Try to delete workdir
+          REM Try to delete workdir AND its parent hash directory
           echo Attempting to delete: %WORKDIR%
           rd /s /q "%WORKDIR%" 2>nul
-          if exist "%WORKDIR%" (
-            echo [INFO] Could not delete workdir
+
+          REM Also delete parent directory (the hash folder)
+          for %%I in ("%WORKDIR%\..") do set "PARENT=%%~fI"
+          echo Attempting to delete parent: %PARENT%
+          rd /s /q "%PARENT%" 2>nul
+
+          if exist "%PARENT%" (
+            echo [INFO] Parent directory still exists
           ) else (
-            echo [OK] Workdir deleted
+            echo [OK] Workdir and parent deleted
           )
 
           echo [DONE] Pre-cleanup complete
