@@ -23,31 +23,35 @@ LocaNext v2512080549
 
 ## In Progress
 
-### P13.11: FIX Gitea Windows Build "Job Failed" Bug
+### P13.11: Gitea Windows Build "Job Failed" Status Bug
 
-**Status: NEXT → Fix #4 (Upgrade act_runner)**
+**Status: KNOWN LIMITATION - Build works, status cosmetic only**
 
-**The bug:** Build succeeds but act_runner reports "🏁 Job failed" during cleanup.
+**The bug:** Build succeeds 100% (ZIP created, tests pass) but act_runner reports "🏁 Job failed" during cleanup phase.
 
 | Fix | Description | Result |
 |-----|-------------|--------|
-| #1 | Remove disabled `create-release` job | ❌ Failed |
-| #2 | Add `persist-credentials: false` to checkout | ❌ Failed |
-| #3 | Replace `actions/checkout` with `git clone` | ❌ Failed |
-| #4 | **Upgrade act_runner v0.2.11 → v0.2.13** | 🔄 Next |
+| #1 | Remove disabled `create-release` job | ❌ Still fails |
+| #2 | Add `persist-credentials: false` | ❌ Still fails |
+| #3 | Replace `actions/checkout` with `git clone` | ❌ Still fails |
+| #4 | Upgrade act_runner v0.2.11 → v0.2.13 | ❌ Still fails |
+| #5 | Enable debug logging | ❌ No additional info |
 
-**Root cause:** act_runner v0.2.11 bug - reports false failure during host mode cleanup on Windows.
+**Root cause:** nektos/act bug in host mode on Windows
+- "Cleaning up container" runs even with no container (host mode)
+- Cleanup phase returns failure for unknown reason
+- [Gitea forum confirms](https://forum.gitea.com/t/disable-job-cleaning-between-jobs-host-mode/8540) no way to disable cleanup
 
-**Fix #4 Instructions (Windows Admin PowerShell):**
-```powershell
-cd C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
-nssm stop GiteaActRunner
-move act_runner.exe act_runner_v0.2.11.bak
-curl -L -o act_runner.exe https://gitea.com/gitea/act_runner/releases/download/v0.2.13/act_runner-0.2.13-windows-amd64.exe
-nssm start GiteaActRunner
-```
+**Current workaround:** None - this is cosmetic only
+- ✅ Build actually succeeds
+- ✅ ZIP is created correctly
+- ✅ All steps pass
+- ❌ Status shows "failed" (false positive)
 
-**After upgrade:** Trigger Gitea build → check if status shows ✅
+**Future options:**
+- Wait for act_runner fix
+- Report issue to gitea/act_runner repo
+- Accept cosmetic limitation for local testing (GitHub builds show ✅)
 
 ---
 
