@@ -158,3 +158,4 @@ Build LIGHT v2512081600 - Test patched runner service
 Build LIGHT v2512081600 - Test patched runner v2 (both fixes)
 Build LIGHT v2512081600 - Test with Node v20 fix
 Build LIGHT v2512090202 - Test patched runner v2 (both fixes)
+Build LIGHT v2512090202 - Test with Node v20 fix
