@@ -885,7 +885,10 @@ jobs:
           # Force .NET to release handles
           [GC]::Collect()
           [GC]::WaitForPendingFinalizers()
-          Start-Sleep -Seconds 1
+
+          # Wait for processes to fully exit and release handles
+          Write-Host "Waiting 10 seconds for handles to be released..."
+          Start-Sleep -Seconds 10
 
           # Try to delete workdir ourselves
           if (Test-Path $workdir) {
