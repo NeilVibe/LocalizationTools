@@ -186,8 +186,7 @@ jobs:
     # Build trigger is checked directly in the first step
 
     steps:
-      # FIX: Force UTF-8 encoding to prevent act_runner stream issues
-      # (Korean/non-UTF8 error messages can corrupt the output stream and cause false job failures)
+      # Configure UTF-8 to handle Korean characters in output
       - name: Configure UTF-8 Console Encoding
         run: |
           chcp 65001
@@ -223,36 +222,9 @@ jobs:
           }
         shell: powershell
 
-      # Git must be installed at C:\Program Files\Git with PATH enabled
-      - name: Verify Git Installation
-        run: |
-          Write-Host "=== Verifying Git Installation ==="
-          $git = Get-Command git -ErrorAction SilentlyContinue
-          if ($git) {
-            Write-Host "[OK] Git found: $($git.Source)"
-            git --version
-          } else {
-            Write-Error "[ERROR] Git not in PATH! Install Git to C:\Program Files\Git with 'Add to PATH' option"
-            exit 1
-          }
-        shell: powershell
-
-      # FIX: Use git clone instead of actions/checkout@v4
-      # actions/checkout has post-job cleanup that causes act_runner to report false failures
+      # Standard checkout - ephemeral runner handles cleanup elegantly
       - name: Checkout code
-        run: |
-          Write-Host "=== Cloning repository ==="
-          # Clean workspace first
-          if (Test-Path ".git") {
-            Write-Host "Cleaning existing repo..."
-            Remove-Item -Recurse -Force * -ErrorAction SilentlyContinue
-            Remove-Item -Recurse -Force .git -ErrorAction SilentlyContinue
-          }
-          # Clone from Gitea (shallow clone for speed)
-          git clone --depth 1 http://172.28.150.120:3000/neilvibe/LocaNext.git .
-          Write-Host "[OK] Repository cloned"
-          git log -1 --oneline
-        shell: powershell
+        uses: actions/checkout@v4
 
       # NOTE: We don't use actions/setup-python@v5 because it fails when runner
       # runs as SYSTEM service (can't write to systemprofile cache).
@@ -451,7 +423,7 @@ jobs:
           npm ci
         shell: powershell
 
-      # GITEA FIX: Clear corrupted electron-builder cache (symlink + NSIS issues)
+      # Clear electron-builder cache to avoid symlink/NSIS corruption
       - name: Clear Electron Builder Cache
         run: |
           Write-Host "Clearing ALL electron-builder caches to avoid corruption issues..."
@@ -487,7 +459,7 @@ jobs:
           Write-Host "[OK] All electron-builder caches cleared"
         shell: powershell
 
-      # GITEA FIX: Set cache directory explicitly for SYSTEM account
+      # Set cache directory for Windows SYSTEM account
       - name: Configure Electron Builder Environment
         run: |
           # Create dedicated cache directory
@@ -500,7 +472,7 @@ jobs:
           Write-Host "[OK] ELECTRON_BUILDER_CACHE set to: $cacheDir"
         shell: powershell
 
-      # GITEA FIX: Force download NSIS include files (npm package may not include them)
+      # Download NSIS include files (npm package may not include them)
       - name: Ensure NSIS Include Files
         run: |
           Write-Host "=== NSIS Include Files Setup ==="

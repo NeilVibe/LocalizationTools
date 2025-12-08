@@ -1,16 +1,17 @@
 # Windows Runner Setup for Gitea Actions
 
-**Version:** 2512080200
-**Status:** 100% CLEAN - No fallbacks, proper installation only
+**Version:** 2512081600
+**Status:** ✅ PRODUCTION READY - Ephemeral Mode (P13.11 Solved)
 
 ---
 
 ## Overview
 
-This guide documents how to set up a **production-ready Windows runner** for Gitea Actions that:
+This guide documents how to set up a **production-ready Windows runner** for Gitea Actions using **Ephemeral Mode**:
 - Runs as a Windows Service (auto-start on boot)
+- **Ephemeral mode**: Fresh runner for each job (like GitHub Actions)
+- No cleanup issues - runner exits after each job, handles released
 - Has Git properly installed in system PATH
-- Works without any fallbacks or workarounds
 
 ---
 
@@ -93,7 +94,47 @@ cd C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
 
 ---
 
-## Step 5: Create Windows Service with NSSM
+## Step 5: Create Ephemeral Wrapper Script
+
+Create `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\run_ephemeral.bat`:
+
+```batch
+@echo off
+setlocal EnableDelayedExpansion
+
+set "RUNNER_DIR=C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
+set "GITEA_URL=http://YOUR_GITEA_IP:3000"
+set "RUNNER_NAME=windows-ephemeral"
+set "RUNNER_LABELS=windows:host,windows-latest:host,self-hosted:host,x64:host"
+
+cd /d "%RUNNER_DIR%"
+
+:loop
+echo [%TIME%] Starting ephemeral runner cycle...
+
+REM Remove old registration
+if exist ".runner" del /f /q ".runner"
+
+REM Register as ephemeral (single-use)
+act_runner.exe register --no-interactive --ephemeral ^
+    --instance "%GITEA_URL%" ^
+    --token "%GITEA_RUNNER_TOKEN%" ^
+    --name "%RUNNER_NAME%" ^
+    --labels "%RUNNER_LABELS%"
+
+REM Run ONE job then exit
+act_runner.exe -c config.yaml daemon
+
+echo [%TIME%] Job complete, re-registering...
+timeout /t 5 /nobreak >nul
+goto loop
+```
+
+Create `registration_token.txt` with your Gitea runner token.
+
+---
+
+## Step 6: Create Windows Service with NSSM
 
 From **Admin PowerShell**:
 ```powershell
@@ -104,8 +145,8 @@ sc.exe stop GiteaActRunner 2>$null
 sc.exe delete GiteaActRunner 2>$null
 Start-Sleep -Seconds 2
 
-# Install service
-& $nssm install GiteaActRunner "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner.exe" "daemon"
+# Install service with EPHEMERAL wrapper
+& $nssm install GiteaActRunner "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\run_ephemeral.bat"
 & $nssm set GiteaActRunner AppDirectory "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
 & $nssm set GiteaActRunner Start SERVICE_AUTO_START
 
@@ -122,6 +163,19 @@ Name      : GiteaActRunner
 Status    : Running
 StartType : Automatic
 ```
+
+---
+
+## Why Ephemeral Mode?
+
+**Problem (P13.11):** In persistent daemon mode, act_runner's cleanup fails on Windows due to Go process holding file handles. Jobs show "failed" even when build succeeds.
+
+**Solution:** Ephemeral mode - runner exits after each job, releasing all handles. Fresh registration for next job.
+
+| Mode | How it works | Cleanup |
+|------|--------------|---------|
+| Persistent (old) | Runner stays running | ❌ Fails on Windows |
+| Ephemeral (new) | Runner exits after job | ✅ Handles released |
 
 ---
 

@@ -307,85 +307,48 @@ jobs:
 
 ### Self-Hosted Runner (For Windows Builds)
 
-#### Prerequisites (CRITICAL for reliability!)
+> **Full Guide:** See [WINDOWS_RUNNER_SETUP.md](WINDOWS_RUNNER_SETUP.md) for complete setup including **Ephemeral Mode** (recommended).
 
-**1. Install Git to Standard Location with PATH**
-```powershell
-# Download from https://git-scm.com/download/win
-# During install, select:
-#   - Install to: C:\Program Files\Git (default)
-#   - "Git from the command line and also from 3rd-party software" ← IMPORTANT!
-#   - This adds Git to System PATH
+#### Quick Overview
 
-# Verify after install:
-git --version  # Should work from any PowerShell/CMD window
-```
+**Recommended: Ephemeral Mode**
+- Runner exits after each job (like GitHub Actions)
+- No file handle/cleanup issues on Windows
+- Fresh registration for every job
 
-**2. Install Node.js (LTS)**
-```powershell
-# Download from https://nodejs.org/
-# Install to: C:\Program Files\nodejs (default)
-# Verify:
-node --version
-npm --version
-```
-
-**3. Runner Directory Structure**
+**Directory Structure:**
 ```
 C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\
-├── act_runner.exe      # Runner binary
-├── .runner             # Registration config (auto-generated)
-├── config.yaml         # Optional custom config
-└── .cache\             # Job workspace (auto-created)
+├── act_runner.exe        # Runner binary
+├── run_ephemeral.bat     # Ephemeral wrapper script
+├── registration_token.txt # Gitea token
+├── config.yaml           # Runner config
+└── _work\                # Job workspace
 ```
 
-#### Register the Runner
+#### Quick Start (Ephemeral Mode)
+
 ```powershell
-cd C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
+# 1. Install prerequisites (Admin PowerShell, one-time)
+choco install git -y --params "/GitAndUnixToolsOnPath"
+choco install nssm -y
 
-# Register with Gitea (get token from Gitea → Repo → Settings → Actions → Runners)
-.\act_runner.exe register --no-interactive `
-    --instance http://YOUR_GITEA_IP:3000 `
-    --token YOUR_RUNNER_TOKEN `
-    --name windows-runner `
-    --labels windows,windows-latest,self-hosted,x64
-```
-
-#### Install as Windows Service (RECOMMENDED - Auto-restart, Full System Power)
-```powershell
-# Option A: Using sc.exe (built-in, requires Admin PowerShell)
-sc.exe create "GiteaActRunner" binPath= "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner.exe daemon" start= auto
-sc.exe start GiteaActRunner
-
-# Check status
-Get-Service GiteaActRunner
-
-# Option B: Using NSSM (better control, download from https://nssm.cc)
-nssm install GiteaActRunner "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner.exe" "daemon"
-nssm set GiteaActRunner AppDirectory "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
-nssm set GiteaActRunner Start SERVICE_AUTO_START
+# 2. Create ephemeral service (Admin PowerShell, one-time)
+nssm install GiteaActRunner "C:\...\GiteaRunner\run_ephemeral.bat"
+nssm set GiteaActRunner AppDirectory "C:\...\GiteaRunner"
 nssm start GiteaActRunner
 ```
+
+See [WINDOWS_RUNNER_SETUP.md](WINDOWS_RUNNER_SETUP.md) for full instructions.
 
 #### Troubleshooting
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
 | "git not recognized" | Git not in PATH | Reinstall Git with PATH option |
-| Runner picks up job but fails silently | Missing tools in PATH | Check node, npm, git from PowerShell |
+| "Job failed" after success | File handles (Windows) | Use **Ephemeral Mode** |
 | Jobs timeout | Runner not a service | Install as Windows Service |
 | Signing errors | electron-builder bug | Add `sign: "./scripts/skip-sign.js"` to package.json |
-
-#### Verify Everything Works
-```powershell
-# All these should work from any PowerShell:
-git --version
-node --version
-npm --version
-
-# Check service
-Get-Service GiteaActRunner
-```
 
 ---
 
@@ -485,5 +448,5 @@ sudo systemctl start gitea
 
 ---
 
-*Last updated: 2025-12-05*
+*Last updated: 2025-12-08*
 *License: MIT (Gitea) | GPL v2 (Git)*
