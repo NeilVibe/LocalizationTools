@@ -69,7 +69,8 @@ LocaNext v2512080549
 | 2025-12-08 | Fix #7 | Add `Set-Location C:\` before cleanup to release directory lock |
 | 2025-12-08 | Fix #7 result | PWD change worked ✅, but error changed to "Access denied" - different issue |
 | 2025-12-08 | **Discovery** | Runner started without `-c config.yaml`! Config not applied! |
-| 2025-12-08 | Fix #8 | Updated run_daemon.bat to use `-c config.yaml` |
+| 2025-12-08 | Fix #8 | Updated NSSM service to use `-c config.yaml daemon` |
+| 2025-12-08 | Fix #8 result | Config now applied ✅ Workdir changed to `_work` but cleanup still fails |
 
 ---
 

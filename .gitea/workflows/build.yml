@@ -859,119 +859,30 @@ jobs:
           Write-Host "Output: installer_output\LocaNext_v${{ steps.check.outputs.version }}_Light_Portable.zip"
         shell: powershell
 
-      # ============================================================
-      # DIAGNOSTIC: Identify what's locking the act cache directory
-      # Investigation for P13.11 "Job failed" status bug
-      # ============================================================
-      - name: Diagnostic - Find Locking Processes
-        if: always()
-        run: |
-          Write-Host "=== DIAGNOSTIC: Investigating file locks ==="
-
-          $actCache = "C:\WINDOWS\system32\config\systemprofile\.cache\act"
-          Write-Host "Target directory: $actCache"
-
-          # 1. Show current working directory
-          Write-Host "`n=== Current Working Directory ==="
-          Write-Host "PWD: $(Get-Location)"
-          Write-Host "Is PWD inside act cache? $((Get-Location).Path.StartsWith($actCache))"
-
-          # 2. List ALL running processes with their paths
-          Write-Host "`n=== All Running Processes ==="
-          Get-Process | Where-Object { $_.Path } |
-            Select-Object Name, Id, Path |
-            Format-Table -AutoSize
-
-          # 3. Check for processes with working directory in act cache
-          Write-Host "`n=== Processes potentially using act cache ==="
-          Get-Process | ForEach-Object {
-            try {
-              $proc = $_
-              $modules = $proc.Modules | Where-Object { $_.FileName -like "*$actCache*" }
-              if ($modules) {
-                Write-Host "Process $($proc.Name) (PID $($proc.Id)) has modules in act cache:"
-                $modules | ForEach-Object { Write-Host "  - $($_.FileName)" }
-              }
-            } catch { }
-          }
-
-          # 4. List contents of act cache
-          Write-Host "`n=== Act Cache Contents ==="
-          if (Test-Path $actCache) {
-            Get-ChildItem $actCache -Recurse -Depth 2 |
-              Select-Object FullName, Length, LastWriteTime |
-              Format-Table -AutoSize
-          } else {
-            Write-Host "Act cache directory does not exist"
-          }
-
-          # 5. Try to identify open handles (if handle.exe available)
-          Write-Host "`n=== Checking for Sysinternals handle.exe ==="
-          $handleExe = Get-Command handle.exe -ErrorAction SilentlyContinue
-          if ($handleExe) {
-            Write-Host "handle.exe found, checking locks on: $actCache"
-            & handle.exe $actCache 2>&1
-          } else {
-            Write-Host "handle.exe not found (install Sysinternals for detailed handle info)"
-          }
-
-          # 6. Check for any PowerShell processes
-          Write-Host "`n=== PowerShell Processes ==="
-          Get-Process -Name *powershell* -ErrorAction SilentlyContinue |
-            Select-Object Name, Id, StartTime |
-            Format-Table -AutoSize
-
-          Write-Host "`n=== DIAGNOSTIC COMPLETE ==="
-        shell: powershell
-        continue-on-error: true
-
       # FIX: Pre-cleanup to release file locks before act_runner cleanup
-      # os.RemoveAll() in host mode fails on Windows if files are locked
-      # ROOT CAUSE: PowerShell PWD is inside act cache - Windows can't delete current working directory
+      # ROOT CAUSE: PowerShell PWD inside workdir prevents deletion
       - name: Release File Locks
         if: always()
         run: |
           Write-Host "=== Releasing file locks for cleanup ==="
 
-          # FIX: Change directory OUT of act cache before cleanup
-          # This is the ROOT CAUSE - PWD was inside the cache directory
+          # CRITICAL: Change directory OUT of workdir before cleanup
           Write-Host "Current PWD: $(Get-Location)"
           Set-Location "C:\"
           Write-Host "Changed PWD to: $(Get-Location)"
 
-          # Kill ALL node/python/git processes (they may hold file handles)
-          $processNames = @('node', 'python', 'python3', 'git', 'npm', 'electron')
-          foreach ($proc in $processNames) {
-            Get-Process -Name $proc -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          # Kill processes that may hold file handles
+          @('node', 'python', 'git', 'npm') | ForEach-Object {
+            Get-Process -Name $_ -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           }
-          Write-Host "[OK] Killed potential locking processes"
+          Write-Host "[OK] Killed processes"
 
-          # Force garbage collection to release .NET file handles
+          # Force .NET to release handles
           [GC]::Collect()
           [GC]::WaitForPendingFinalizers()
 
-          # Wait longer for Windows Defender/Indexer
-          Write-Host "Waiting for Windows to release file handles..."
-          Start-Sleep -Seconds 5
-
-          # Find and show what's locking files (diagnostic)
-          $actCache = "C:\WINDOWS\system32\config\systemprofile\.cache\act"
-          if (Test-Path $actCache) {
-            Write-Host "Attempting cleanup of: $actCache"
-
-            # Try to rename first (less aggressive, tests if locked)
-            $dirs = Get-ChildItem $actCache -Directory -ErrorAction SilentlyContinue
-            foreach ($dir in $dirs) {
-              $newName = "$($dir.FullName)_delete_me"
-              try {
-                Rename-Item $dir.FullName $newName -ErrorAction Stop
-                Remove-Item $newName -Recurse -Force -ErrorAction SilentlyContinue
-                Write-Host "[OK] Cleaned: $($dir.Name)"
-              } catch {
-                Write-Host "[LOCKED] Cannot clean: $($dir.Name) - $($_.Exception.Message)"
-              }
-            }
-          }
+          # Brief wait for Windows
+          Start-Sleep -Seconds 2
           Write-Host "[DONE] Pre-cleanup complete"
         shell: powershell
         continue-on-error: true
