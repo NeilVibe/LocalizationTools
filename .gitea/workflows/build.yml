@@ -202,13 +202,9 @@ jobs:
         run: |
           Write-Host "=== Getting Version from Source ==="
           # Use curl to get version.py content
-          $versionUrl = "https://raw.githubusercontent.com/NeilVibe/LocalizationTools/main/version.py"
-          try {
-            $content = (Invoke-WebRequest -Uri $versionUrl -UseBasicParsing).Content
-          } catch {
-            $versionUrl = "http://172.28.150.120:3000/neilvibe/LocaNext/raw/branch/main/version.py"
-            $content = (Invoke-WebRequest -Uri $versionUrl -UseBasicParsing).Content
-          }
+          # For Gitea builds, use Gitea version.py (not GitHub) to get correct version
+          $versionUrl = "http://172.28.150.120:3000/neilvibe/LocaNext/raw/branch/main/version.py"
+          $content = (Invoke-WebRequest -Uri $versionUrl -UseBasicParsing).Content
 
           # Extract VERSION using regex
           if ($content -match 'VERSION\s*=\s*"(\d+)"') {

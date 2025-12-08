@@ -211,41 +211,85 @@ Restart Gitea:
 sudo systemctl restart gitea
 ```
 
-### 🔍 Check Build Logs (Quick Reference)
+### 🔍 Gitea Action Logs Protocol
 
-**Method 1: CLI (Fastest)**
-```bash
-# Latest build log (most recent job)
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1 | xargs cat | tail -100
-
-# Find error in latest log
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1 | xargs grep -i "error\|fail"
-
-# Watch for specific job (e.g., job 109)
-cat ~/gitea/data/actions_log/neilvibe/LocaNext/*/109.log | tail -50
-
-# List recent builds (newest first)
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -10
+**Log Location:**
+```
+~/gitea/data/actions_log/{owner}/{repo}/{hex_prefix}/{job_id}.log
+Example: ~/gitea/data/actions_log/neilvibe/LocaNext/de/222.log
 ```
 
-**Method 2: Web UI**
+---
+
+#### 1. LIST ALL LOGS (Newest First)
+```bash
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -10
+```
+Output: Shows job ID, timestamp, size. **Use timestamp to identify new vs old.**
+
+---
+
+#### 2. CHECK IF A NEW BUILD STARTED
+```bash
+# Compare timestamps - if newest log timestamp > your push time, new build started
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1
+# Look at timestamp (e.g., "Dec 8 15:52")
+```
+
+---
+
+#### 3. WATCH LIVE BUILD (Ongoing)
+```bash
+# Tail the newest log in real-time (Ctrl+C to stop)
+tail -f $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)
+
+# Or if you know the job ID (e.g., 223):
+tail -f ~/gitea/data/actions_log/neilvibe/LocaNext/*/223.log
+```
+
+---
+
+#### 4. CHECK BUILD RESULT (Completed)
+```bash
+# Last 50 lines of most recent log (shows success/failure)
+tail -50 $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)
+
+# Check for job status
+grep -E "Job|SUCCESS|failed|🏁" $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)
+```
+
+---
+
+#### 5. FIND ERRORS IN LOG
+```bash
+# Search for errors/failures in latest log
+grep -iE "error|fail|::error" $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)
+```
+
+---
+
+#### 6. CHECK VERSION IN BUILD
+```bash
+# Verify which version the build is using
+grep -E "version|v[0-9]{10}" $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1) | head -5
+```
+
+---
+
+#### Quick Aliases (add to ~/.bashrc)
+```bash
+alias gitea-list='ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -10'
+alias gitea-live='tail -f $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)'
+alias gitea-result='tail -50 $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)'
+alias gitea-err='grep -iE "error|fail|::error" $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)'
+```
+
+---
+
+#### Web UI Method
 ```
 http://localhost:3000/neilvibe/LocaNext/actions
 → Click on run number → Click on job → View logs
-```
-
-**Log Location Structure:**
-```
-~/gitea/data/actions_log/
-└── {owner}/{repo}/{hex_prefix}/{job_id}.log
-    Example: neilvibe/LocaNext/6d/109.log
-```
-
-**Quick Aliases (add to ~/.bashrc):**
-```bash
-alias gitea-log='ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1 | xargs cat | tail -100'
-alias gitea-err='ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1 | xargs grep -iE "error|fail|::error"'
-alias gitea-logs='ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -10'
 ```
 
 ### Create Workflow File
