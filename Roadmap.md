@@ -77,9 +77,15 @@ LocaNext v2512080549
 | 2025-12-08 | Fix #12 | Use cmd.exe instead of PowerShell - **WORKDIR DELETED SUCCESSFULLY!** But `timeout` command failed |
 | 2025-12-08 | Fix #13 | Replace `timeout` with `ping -n 6` - workdir deleted ✅ but job still fails |
 | 2025-12-08 | Fix #14 | Also delete parent hash - act_runner fails with "pathcmd.txt not found" (it needs the dir!) |
-| 2025-12-08 | Fix #15 | Don't delete - just release handles via cmd.exe cd/taskkill, let act_runner clean up |
+| 2025-12-08 | Fix #15 | Don't delete - just release handles via cmd.exe cd/taskkill, let act_runner clean up - still fails (5.4s timeout) |
 
-**Key Discovery:** cmd.exe CAN delete the workdir, PowerShell cannot. But act_runner needs the workdir to exist for its cleanup to work properly (`act\workflow\pathcmd.txt`).
+**Key Discovery:**
+- cmd.exe CAN delete the workdir, PowerShell cannot (handle inheritance issue)
+- But act_runner needs the workdir to exist for its cleanup (`act\workflow\pathcmd.txt`)
+- Even with cmd.exe releasing handles, act_runner.exe (parent Go process) still holds handles
+- The cleanup consistently times out after ~5.4 seconds
+
+**Conclusion:** The issue is in act_runner's host mode cleanup on Windows. The Go process maintains handles on the workdir that child processes cannot release.
 
 ---
 
