@@ -361,6 +361,13 @@ async def global_exception_handler(request: Request, exc: Exception):
 from server.utils.websocket import sio
 import socketio
 
+# Import LDM WebSocket handlers (registers event handlers on sio)
+try:
+    import server.tools.ldm.websocket  # noqa: F401 - registers @sio.event handlers
+    logger.info("LDM WebSocket handlers registered")
+except ImportError as e:
+    logger.warning(f"LDM WebSocket handlers not available: {e}")
+
 # Wrap the complete FastAPI app with Socket.IO
 # This must be done AFTER all routes, middleware, and events are set up
 app = socketio.ASGIApp(sio, app, socketio_path='/ws/socket.io')

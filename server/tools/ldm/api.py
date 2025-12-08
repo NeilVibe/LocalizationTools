@@ -119,7 +119,9 @@ async def health():
             "folders": True,
             "files": True,
             "rows": True,
-            "websocket": False  # TODO: Phase 3
+            "websocket": True,  # Phase 3: Real-time sync enabled
+            "row_locking": True,
+            "presence": True
         }
     }
 
@@ -576,6 +578,22 @@ async def update_row(
 
     await db.commit()
     await db.refresh(row)
+
+    # Broadcast cell update to all viewers (real-time sync)
+    try:
+        from server.tools.ldm.websocket import broadcast_cell_update
+        await broadcast_cell_update(
+            file_id=row.file_id,
+            row_id=row.id,
+            row_num=row.row_num,
+            target=row.target,
+            status=row.status,
+            updated_by=current_user.user_id,
+            updated_by_username=current_user.username
+        )
+    except Exception as e:
+        # WebSocket broadcast failure shouldn't fail the API call
+        logger.warning(f"Failed to broadcast cell update: {e}")
 
     logger.info(f"Row updated: id={row_id}, user={current_user.user_id}")
     return row

@@ -13,9 +13,11 @@
     Select,
     SelectItem
   } from "carbon-components-svelte";
-  import { Edit, CheckmarkFilled, WarningAlt, Time } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
+  import { Edit, CheckmarkFilled, WarningAlt, Time, Locked } from "carbon-icons-svelte";
+  import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
+  import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate } from "$lib/stores/ldm.js";
+  import PresenceBar from "./PresenceBar.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -25,6 +27,9 @@
   // Props
   export let fileId = null;
   export let fileName = "";
+
+  // Real-time subscription
+  let cellUpdateUnsubscribe = null;
 
   // State
   let loading = false;
@@ -111,8 +116,26 @@
     loadRows();
   }
 
-  // Open edit modal
-  function openEditModal(row) {
+  // Open edit modal with row locking
+  async function openEditModal(row) {
+    // Check if row is locked by another user
+    const lock = isRowLocked(parseInt(row.id));
+    if (lock) {
+      logger.warning("Row locked by another user", { rowId: row.id, lockedBy: lock.locked_by });
+      alert(`This row is being edited by ${lock.locked_by}`);
+      return;
+    }
+
+    // Request lock before opening modal
+    if (fileId) {
+      const granted = await lockRow(fileId, parseInt(row.id));
+      if (!granted) {
+        logger.warning("Could not acquire lock", { rowId: row.id });
+        alert("Could not acquire lock. Row may be in use.");
+        return;
+      }
+    }
+
     editingRow = row;
     editTarget = row.target || "";
     editStatus = row.status || "pending";
@@ -120,12 +143,22 @@
     logger.userAction("Edit modal opened", { rowId: row.id });
   }
 
+  // Close edit modal and release lock
+  function closeEditModal() {
+    if (editingRow && fileId) {
+      unlockRow(fileId, parseInt(editingRow.id));
+    }
+    showEditModal = false;
+    editingRow = null;
+  }
+
   // Save edit
   async function saveEdit() {
     if (!editingRow) return;
     loading = true;
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/rows/${editingRow.id}`, {
+      const rowId = editingRow.id;
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${rowId}`, {
         method: 'PUT',
         headers: {
           ...getAuthHeaders(),
@@ -138,11 +171,10 @@
       });
 
       if (response.ok) {
-        logger.success("Row updated", { rowId: editingRow.id });
-        showEditModal = false;
-        editingRow = null;
+        logger.success("Row updated", { rowId });
+        closeEditModal();
         await loadRows();
-        dispatch('rowUpdate', { rowId: editingRow?.id });
+        dispatch('rowUpdate', { rowId });
       } else {
         const error = await response.json();
         logger.error("Update failed", { error: error.detail });
@@ -153,6 +185,46 @@
       loading = false;
     }
   }
+
+  // Handle real-time cell updates from other users
+  function handleCellUpdates(updates) {
+    updates.forEach(update => {
+      // Update the row in our local state
+      rows = rows.map(row => {
+        if (parseInt(row.id) === update.row_id) {
+          return {
+            ...row,
+            target: update.target,
+            status: update.status
+          };
+        }
+        return row;
+      });
+      logger.info("Real-time update applied", { rowId: update.row_id, by: update.updated_by_username });
+    });
+  }
+
+  // Subscribe to real-time updates when file changes
+  $: if (fileId) {
+    // Join WebSocket room for this file
+    joinFile(fileId);
+
+    // Subscribe to cell updates
+    if (cellUpdateUnsubscribe) {
+      cellUpdateUnsubscribe();
+    }
+    cellUpdateUnsubscribe = onCellUpdate(handleCellUpdates);
+  }
+
+  // Cleanup on component destroy
+  onDestroy(() => {
+    if (fileId) {
+      leaveFile(fileId);
+    }
+    if (cellUpdateUnsubscribe) {
+      cellUpdateUnsubscribe();
+    }
+  });
 
   // Get status tag kind
   function getStatusKind(status) {
@@ -175,8 +247,11 @@
 <div class="data-grid">
   {#if fileId}
     <div class="grid-header">
-      <h4>{fileName || `File #${fileId}`}</h4>
-      <span class="row-count">{total.toLocaleString()} rows</span>
+      <div class="header-left">
+        <h4>{fileName || `File #${fileId}`}</h4>
+        <span class="row-count">{total.toLocaleString()} rows</span>
+      </div>
+      <PresenceBar />
     </div>
 
     <DataTable
@@ -200,17 +275,26 @@
         {#if cell.key === "source"}
           <div class="source-cell">{cell.value || ""}</div>
         {:else if cell.key === "target"}
+          {@const rowLock = isRowLocked(parseInt(row.id))}
           <div
             class="target-cell"
+            class:locked={rowLock}
             on:dblclick={() => openEditModal(row)}
             role="button"
             tabindex="0"
             on:keydown={(e) => e.key === 'Enter' && openEditModal(row)}
+            title={rowLock ? `Locked by ${rowLock.locked_by}` : "Double-click to edit"}
           >
             {cell.value || ""}
-            <span class="edit-hint">
-              <Edit size={12} />
-            </span>
+            {#if rowLock}
+              <span class="lock-indicator" title="Locked by {rowLock.locked_by}">
+                <Locked size={12} />
+              </span>
+            {:else}
+              <span class="edit-hint">
+                <Edit size={12} />
+              </span>
+            {/if}
           </div>
         {:else if cell.key === "status"}
           <Tag type={getStatusKind(cell.value)} size="sm">
@@ -251,7 +335,8 @@
   primaryButtonText="Save"
   secondaryButtonText="Cancel"
   on:click:button--primary={saveEdit}
-  on:click:button--secondary={() => showEditModal = false}
+  on:click:button--secondary={closeEditModal}
+  on:close={closeEditModal}
   size="lg"
 >
   {#if editingRow}
@@ -301,6 +386,12 @@
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
     background: var(--cds-layer-01);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   .grid-header h4 {
@@ -353,6 +444,24 @@
 
   .target-cell:hover .edit-hint {
     opacity: 1;
+  }
+
+  .target-cell.locked {
+    background: var(--cds-layer-02);
+    cursor: not-allowed;
+  }
+
+  .target-cell.locked:hover {
+    background: var(--cds-layer-02);
+  }
+
+  .lock-indicator {
+    position: absolute;
+    right: 0.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cds-support-03);
+    opacity: 0.8;
   }
 
   .string-id-cell {
