@@ -298,6 +298,23 @@ Location: locaNext/src/lib/components/ldm/
 }
 ```
 
+## Next Steps for Next Claude Session
+
+### Immediate (P17 LDM Completion):
+1. **5.5.1 Glossary Backend** - Create `glossary.py` (reuse QA Tools)
+2. **5.5.2 Glossary Check API** - `GET /api/ldm/glossary/check?text=...`
+3. **5.5.3 Status Workflow UI** - Draft/Review/Approved states
+
+### Optional Enhancements (Discuss with User):
+- **TM Upload Button** - Allow users to load external .tmx files
+- **TM On/Off Toggle** - Enable/disable auto-suggestions
+- **Export to XML/XLIFF** - Save translated files in standard formats
+
+### Demo Content:
+- Screenshots captured: `docs/demos/ldm/` (11 images, full workflow)
+- Capture script: `docs/demos/ldm/capture_ldm.js` (Playwright)
+- Video recording not yet implemented (consider ffmpeg + VcXsrv)
+
 ---
 
 ## Future Enhancements (Noted)
@@ -443,6 +460,9 @@ node scripts/run_test.js ldm.getStatus
 | 2025-12-08 | Phase 5.3 TM Panel (7/10) | TM suggestions in edit modal with one-click apply |
 | 2025-12-08 | Phase 5.4 Keyboard Shortcuts | Ctrl+Enter (save+next), Tab (apply TM), Escape (cancel) |
 | 2025-12-08 | WebTranslatorNew Reference | Extracted 5-tier cascade search documentation for future TM enhancements |
+| 2025-12-08 | Demo Screenshots | 11 screenshots captured in docs/demos/ldm/ (full workflow) |
+| 2025-12-08 | Upload Performance Test | 16MB/103,500 rows - ~50 sec upload (~2,070 rows/sec) |
+| 2025-12-08 | TM Status Check | Auto-suggest in edit modal works; Upload TM UI not yet implemented |
 
 ---
 

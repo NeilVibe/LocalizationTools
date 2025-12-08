@@ -278,6 +278,8 @@ P17 Quick Summary:
 - ✅ TM Backend (tm.py) - Word-level Jaccard similarity
 - ✅ TM Suggestions Panel - One-click apply in edit modal
 - ✅ Keyboard Shortcuts - Ctrl+Enter (save+next), Tab (apply TM), Escape (cancel)
+- ✅ Demo Screenshots - 11 images captured (docs/demos/ldm/)
+- ✅ Upload Performance Test - 16MB/103,500 rows in ~50 seconds (~2,070 rows/sec)
 
 **Future Enhancement: WebTranslatorNew Reference**
 Explored `RessourcesForCodingTheProject/WebTranslatorNew/` for reusable logic:
