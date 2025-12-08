@@ -16,10 +16,10 @@ Phase 1: Foundation         [X] 12/12 tasks  ✅ COMPLETE
 Phase 2: File Explorer      [X] 16/16 tasks  ✅ COMPLETE
 Phase 3: Real-time Sync     [X] 20/20 tasks  ✅ COMPLETE
 Phase 4: Virtual Scroll     [X] 10/10 tasks  ✅ COMPLETE
-Phase 5: CAT Features       [ ] 0/10 tasks
+Phase 5: CAT Features       [▓▓] 3/10 tasks  (TM backend done)
 Phase 6: Polish             [ ] 0/8 tasks
 ─────────────────────────────────────────
-TOTAL                       [▓▓▓▓▓▓▓▓] 58/68 tasks (85%)
+TOTAL                       [▓▓▓▓▓▓▓▓▓] 61/68 tasks (90%)
 ```
 
 ---
@@ -220,14 +220,14 @@ Location: locaNext/src/lib/components/ldm/VirtualGrid.svelte
 
 ## Phase 5: CAT Features
 
-### 5.1 Backend: Translation Memory
+### 5.1 Backend: Translation Memory ✅
 ```
 Location: server/tools/ldm/tm.py
 ```
 
-- [ ] **5.1.1** Create `tm.py` (reuse KR Similar fuzzy matching)
-- [ ] **5.1.2** `GET /api/ldm/tm/suggest?source=text` - Get TM suggestions
-- [ ] **5.1.3** Implement similarity threshold (e.g., 70%+)
+- [x] **5.1.1** Create `tm.py` (reuse KR Similar fuzzy matching)
+- [x] **5.1.2** `GET /api/ldm/tm/suggest?source=text` - Get TM suggestions
+- [x] **5.1.3** Implement similarity threshold (default 70%+, tested with 30%)
 
 ### 5.2 Backend: Glossary
 ```
@@ -274,10 +274,10 @@ Location: locaNext/src/lib/components/ldm/
 ```json
 {
   "current_phase": 5,
-  "current_task": "5.1.1",
-  "next_task": "5.1.2",
+  "current_task": "5.2.1",
+  "next_task": "5.2.2",
   "blockers": [],
-  "notes": "Phase 4 COMPLETE! VirtualGrid with virtual scrolling, lazy loading, Go to row. Next: CAT features (TM, Glossary)."
+  "notes": "Phase 5.1 TM Backend DONE! API endpoint GET /api/ldm/tm/suggest works with word-level Jaccard similarity. Next: Glossary backend."
 }
 ```
 
@@ -401,6 +401,7 @@ node scripts/run_test.js ldm.getStatus
 | 2025-12-08 | Phase 3 COMPLETE (20/20) | WebSocket, real-time sync, presence, row locking |
 | 2025-12-08 | TEST MODE + API Tests | Added window.ldmTest, 8/8 backend API tests pass |
 | 2025-12-08 | Phase 4 COMPLETE (10/10) | VirtualGrid with virtual scrolling, lazy loading, Go to row, search |
+| 2025-12-08 | Phase 5.1 TM Backend (3/10) | tm.py + GET /api/ldm/tm/suggest with word-level Jaccard similarity |
 
 ---
 
