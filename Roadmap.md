@@ -36,6 +36,7 @@ LocaNext v2512080549
 | #3 | Replace `actions/checkout` with `git clone` | ❌ Still fails |
 | #4 | Upgrade act_runner v0.2.11 → v0.2.13 | ❌ Still fails |
 | #5 | Enable debug logging | ❌ No additional info |
+| #6 | Pre-cleanup with file lock release | 🔄 Testing |
 
 **Root cause (Deep Investigation):**
 
