@@ -101,9 +101,8 @@ Source: "..\tools\download_model.bat"; DestDir: "{app}\tools"; Flags: ignorevers
 Source: "..\tools\download_model.py"; DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "..\tools\install_deps.bat"; DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "..\tools\install_deps.py"; DestDir: "{app}\tools"; Flags: ignoreversion
-; NOTE: Embedded Python must be downloaded separately before building full installer
-; For CI/testing builds without embedded Python, this line is skipped
-; Source: "..\tools\python\*"; DestDir: "{app}\tools\python"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Python Embedded - downloaded by CI workflow before Inno Setup compile
+Source: "..\tools\python\*"; DestDir: "{app}\tools\python"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; ============================================================
 ; Backend Server (~11MB)
