@@ -866,23 +866,38 @@ jobs:
         run: |
           Write-Host "=== Releasing file locks for cleanup ==="
 
+          # Save workdir path before changing
+          $workdir = (Get-Location).Path
+          Write-Host "Workdir: $workdir"
+
           # CRITICAL: Change directory OUT of workdir before cleanup
-          Write-Host "Current PWD: $(Get-Location)"
           Set-Location "C:\"
-          Write-Host "Changed PWD to: $(Get-Location)"
+          Write-Host "Changed PWD to: C:\"
 
           # Kill processes that may hold file handles
-          @('node', 'python', 'git', 'npm') | ForEach-Object {
-            Get-Process -Name $_ -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          @('node', 'python', 'git', 'npm', 'powershell') | ForEach-Object {
+            Get-Process -Name $_ -ErrorAction SilentlyContinue |
+              Where-Object { $_.Id -ne $PID } |
+              Stop-Process -Force -ErrorAction SilentlyContinue
           }
           Write-Host "[OK] Killed processes"
 
           # Force .NET to release handles
           [GC]::Collect()
           [GC]::WaitForPendingFinalizers()
+          Start-Sleep -Seconds 1
 
-          # Brief wait for Windows
-          Start-Sleep -Seconds 2
+          # Try to delete workdir ourselves
+          if (Test-Path $workdir) {
+            Write-Host "Attempting to delete workdir: $workdir"
+            try {
+              Remove-Item -Path $workdir -Recurse -Force -ErrorAction Stop
+              Write-Host "[OK] Workdir deleted successfully"
+            } catch {
+              Write-Host "[INFO] Could not delete workdir: $($_.Exception.Message)"
+            }
+          }
+
           Write-Host "[DONE] Pre-cleanup complete"
         shell: powershell
         continue-on-error: true
