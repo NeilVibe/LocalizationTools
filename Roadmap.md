@@ -71,6 +71,7 @@ LocaNext v2512080549
 | 2025-12-08 | **Discovery** | Runner started without `-c config.yaml`! Config not applied! |
 | 2025-12-08 | Fix #8 | Updated NSSM service to use `-c config.yaml daemon` |
 | 2025-12-08 | Fix #8 result | Config now applied ✅ Workdir changed to `_work` but cleanup still fails |
+| 2025-12-08 | Fix #9 | Simplified cleanup step, removed diagnostic step |
 
 ---
 
