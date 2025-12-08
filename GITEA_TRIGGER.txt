@@ -162,3 +162,4 @@ Build LIGHT v2512090202 - Test with Node v20 fix
 Build LIGHT v2512090202 - Test patched runner v3 (closeContainer fix)
 Build LIGHT v2512090202 - Test v3 runner retry
 Build LIGHT v2512090202 - Debug v5 runner
+Build LIGHT v2512090202 - Debug v5 with new daemon
