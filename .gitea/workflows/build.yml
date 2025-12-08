@@ -186,6 +186,17 @@ jobs:
     # Build trigger is checked directly in the first step
 
     steps:
+      # FIX: Force UTF-8 encoding to prevent act_runner stream issues
+      # (Korean/non-UTF8 error messages can corrupt the output stream and cause false job failures)
+      - name: Configure UTF-8 Console Encoding
+        run: |
+          chcp 65001
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+          $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+          Write-Host "[OK] Console encoding set to UTF-8"
+        shell: powershell
+
       # Check build trigger and extract version from version.py
       - name: Get Version from Source
         id: check
