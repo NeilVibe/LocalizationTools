@@ -13,6 +13,7 @@
 | [TEXT_SEARCH.md](TEXT_SEARCH.md) | 5-Tier Cascade Search | `find_similar_entries_enhanced()` |
 | [EMBEDDINGS.md](EMBEDDINGS.md) | Vector Embeddings & FAISS | `generate_embeddings_batch()`, `get_faiss_index()` |
 | [DATA_PREPROCESSING.md](DATA_PREPROCESSING.md) | Data Cleaning & Deduplication | `DataPreprocessor`, duplicate resolution |
+| [FUZZY_SEARCH.md](FUZZY_SEARCH.md) | Fast Fuzzy Search (non-embedding) | RapidFuzz for target/translation text |
 
 ---
 

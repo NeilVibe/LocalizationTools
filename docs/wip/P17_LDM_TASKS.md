@@ -300,6 +300,38 @@ Location: locaNext/src/lib/components/ldm/
 
 ---
 
+## Future Enhancements (Noted)
+
+### Fast Fuzzy Search for Target/Translation Text
+
+**Problem:** Current TM searches Korean source text. Need fuzzy search on TARGET (translation) side for all languages.
+
+**Requirements:**
+- Fast (not embedding-based) - sub-millisecond for 100K entries
+- Multi-language support (French, English, etc.)
+- MIT licensed open source
+
+**Candidate Libraries:**
+| Library | License | Speed | Notes |
+|---------|---------|-------|-------|
+| **RapidFuzz** | MIT | Very Fast | Levenshtein-based, C++ backend |
+| **thefuzz** | MIT | Fast | Fork of FuzzyWuzzy |
+| **Polyfuzz** | MIT | Fast | Multi-string matching |
+| **pylcs** | MIT | Fast | Longest common subsequence |
+
+**Proposed API:**
+```python
+GET /api/ldm/search/target?query=Sword&threshold=0.7&file_id=3
+# Returns rows where target fuzzy matches "Sword"
+```
+
+**Use Cases:**
+- Find similar translations across files
+- Search for existing translations by partial match
+- QA: Find inconsistent translations of same term
+
+---
+
 ## Test Protocols
 
 ### Backend API Tests (Autonomous - via curl)
