@@ -187,54 +187,62 @@ Abbreviation    | "Attack Power"   vs "ATK"              | 45%  VERY POOR
 
 ---
 
-## Recommended: Hybrid Approach
+## Two Options (Pick One)
 
-| Search Type | Method | Use When |
-|-------------|--------|----------|
-| Exact/Typos | RapidFuzz | Fast initial filter, threshold 90%+ |
-| Semantic | Multilingual Embeddings | Synonyms, abbreviations, paraphrases |
+### Option A: Qwen + FAISS (Semantic - Like WebTranslatorNew)
 
-### Multilingual Embedding Options (for semantic search)
+Use the same proven stack from WebTranslatorNew:
 
 ```python
-# MIT licensed, ~500MB, supports 50+ languages
+# Same model as WebTranslatorNew
 from sentence_transformers import SentenceTransformer
-model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+model = SentenceTransformer('Qwen/Qwen3-Embedding-0.6B')
 
-# Encode translations
-embeddings = model.encode(["Sword of Light", "Blade of Light", "ATK"])
-# Now "Sword" and "Blade" will be semantically similar
+# FAISS HNSW index for fast search
+import faiss
+index = faiss.IndexHNSWFlat(dimension, 32, faiss.METRIC_INNER_PRODUCT)
 ```
 
-### Hybrid Search Implementation
+| Aspect | Value |
+|--------|-------|
+| Memory | ~2.4GB |
+| Speed | 10-50ms per query |
+| Typos | GOOD |
+| Synonyms | GOOD |
+| Abbreviations | GOOD |
+| All languages | YES |
 
-```python
-def search_target_hybrid(query, targets, threshold=0.7):
-    # Step 1: Fast RapidFuzz filter (exact/near-exact)
-    from rapidfuzz import process, fuzz
-    exact_matches = process.extract(query, targets, scorer=fuzz.WRatio,
-                                    score_cutoff=90, limit=10)
-
-    if exact_matches:
-        return exact_matches  # Fast path
-
-    # Step 2: Semantic search (slower but finds synonyms)
-    query_emb = model.encode([query])
-    similarities = cosine_similarity(query_emb, target_embeddings)
-    return top_k_by_similarity(similarities, threshold)
-```
+**When to use:** Need semantic search (synonyms, abbreviations, paraphrases)
 
 ---
 
-## Comparison
+### Option B: Simple Fuzzy (RapidFuzz Only)
 
-| Aspect | RapidFuzz | Multilingual Embeddings | Hybrid |
-|--------|-----------|------------------------|--------|
-| Speed | <1ms | 10-50ms | 1-50ms |
-| Typos | GOOD | GOOD | GOOD |
-| Word order | GOOD | GOOD | GOOD |
-| Synonyms | POOR | GOOD | GOOD |
-| Abbreviations | POOR | GOOD | GOOD |
-| Memory | <10MB | ~500MB | ~500MB |
+```python
+from rapidfuzz import process, fuzz
+matches = process.extract(query, targets, scorer=fuzz.WRatio,
+                          score_cutoff=70, limit=10)
+```
 
-**Recommendation:** Hybrid approach - RapidFuzz for speed, embeddings for accuracy.
+| Aspect | Value |
+|--------|-------|
+| Memory | <10MB |
+| Speed | <1ms per query |
+| Typos | GOOD |
+| Synonyms | POOR |
+| Abbreviations | POOR |
+| All languages | YES (lexical only) |
+
+**When to use:** Just need typo correction and near-exact matching
+
+---
+
+## Recommendation
+
+| Use Case | Choice |
+|----------|--------|
+| TM suggestions (semantic similarity) | **Option A: Qwen + FAISS** |
+| Quick search bar (find as you type) | **Option B: RapidFuzz** |
+| QA term consistency check | **Option A: Qwen + FAISS** |
+
+No hybrid needed - pick based on use case.
