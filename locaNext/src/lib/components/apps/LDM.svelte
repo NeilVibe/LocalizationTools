@@ -6,7 +6,9 @@
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import FileExplorer from "$lib/components/ldm/FileExplorer.svelte";
-  import DataGrid from "$lib/components/ldm/DataGrid.svelte";
+  import VirtualGrid from "$lib/components/ldm/VirtualGrid.svelte";
+  // Old DataGrid kept for reference (VirtualGrid replaces it for 1M+ rows)
+  // import DataGrid from "$lib/components/ldm/DataGrid.svelte";
 
   // API base URL
   const API_BASE = 'http://localhost:8888';
@@ -61,7 +63,7 @@
 
   // Component refs
   let fileExplorer;
-  let dataGrid;
+  let virtualGrid;
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -318,8 +320,8 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
         logger.success('TEST MODE: Row edited', { rowId, target: result.target });
 
         // Refresh grid
-        if (dataGrid) {
-          await dataGrid.loadRows();
+        if (virtualGrid) {
+          await virtualGrid.loadRows();
         }
       } else {
         const err = await editResponse.json();
@@ -373,6 +375,33 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
       editRow: () => testEditRow(),
       fullSequence: () => testFullSequence(),
 
+      // VirtualGrid specific tests
+      goToRow: async (rowNum) => {
+        if (!virtualGrid) {
+          _testState.statusMessage = 'TEST ERROR: VirtualGrid not ready';
+          return false;
+        }
+        // Trigger scroll to row via the grid's internal method
+        const scrollPos = (rowNum - 1) * 40; // ROW_HEIGHT = 40
+        const container = document.querySelector('.scroll-container');
+        if (container) {
+          container.scrollTop = scrollPos;
+          _testState.statusMessage = `TEST: Scrolled to row ${rowNum}`;
+          return true;
+        }
+        return false;
+      },
+
+      getVisibleRange: () => {
+        const container = document.querySelector('.scroll-container');
+        if (!container) return null;
+        const scrollTop = container.scrollTop;
+        const height = container.clientHeight;
+        const start = Math.floor(scrollTop / 40) + 1;
+        const end = Math.ceil((scrollTop + height) / 40);
+        return { start, end, scrollTop, height };
+      },
+
       // Status getter
       getStatus: () => ({
         isProcessing: _testState.isProcessing,
@@ -385,7 +414,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
         selectedFileId: selectedFileId,
         selectedFileName: selectedFileName,
         projectCount: projects.length,
-        isHealthy: healthStatus !== null
+        isHealthy: healthStatus !== null,
+        // VirtualGrid state
+        hasVirtualGrid: virtualGrid !== null
       }),
 
       // Config access for debugging
@@ -436,9 +467,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
         on:projectSelect={handleProjectSelect}
       />
 
-      <!-- Data Grid Main Area -->
-      <DataGrid
-        bind:this={dataGrid}
+      <!-- Virtual Grid Main Area (handles 1M+ rows) -->
+      <VirtualGrid
+        bind:this={virtualGrid}
         fileId={selectedFileId}
         fileName={selectedFileName}
       />

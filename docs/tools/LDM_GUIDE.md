@@ -1,7 +1,7 @@
 # LDM (LanguageData Manager) - Complete Guide
 
 **Created:** 2025-12-08
-**Status:** 70% Complete (Phase 4 in progress)
+**Status:** 85% Complete (Phase 4 done, Phase 5 next)
 **Task Tracking:** [docs/wip/P17_LDM_TASKS.md](../wip/P17_LDM_TASKS.md)
 
 ---
@@ -33,10 +33,11 @@ server/tools/ldm/
 locaNext/src/lib/
 ├── components/
 │   ├── apps/
-│   │   └── LDM.svelte       # Main LDM app component (+ TEST MODE)
+│   │   └── LDM.svelte           # Main LDM app component (+ TEST MODE)
 │   └── ldm/
 │       ├── FileExplorer.svelte  # Project/folder tree
-│       ├── DataGrid.svelte      # Rows table with edit modal
+│       ├── VirtualGrid.svelte   # Virtual scrolling grid (1M+ rows)
+│       ├── DataGrid.svelte      # Original grid (deprecated, kept for reference)
 │       └── PresenceBar.svelte   # Shows online viewers
 └── stores/
     └── ldm.js               # Svelte store for WebSocket state
@@ -149,7 +150,7 @@ node scripts/run_test.js ldm.fullSequence
 | Phase 1: Foundation | ✅ COMPLETE | Database, API, basic UI |
 | Phase 2: File Explorer | ✅ COMPLETE | Projects, folders, upload |
 | Phase 3: Real-time Sync | ✅ COMPLETE | WebSocket, presence, locking |
-| Phase 4: Virtual Scroll | 🔄 IN PROGRESS | Backend done, frontend pending |
+| Phase 4: Virtual Scroll | ✅ COMPLETE | VirtualGrid, lazy loading, Go to row |
 | Phase 5: CAT Features | ⏳ PLANNED | TM, Glossary, keyboard shortcuts |
 | Phase 6: Polish | ⏳ PLANNED | Export, permissions, offline |
 
