@@ -168,3 +168,4 @@ Build LIGHT v2512090202 - Test v6 ONLY (v5 killed)
 Build LIGHT v2512090202 - v6 runner test with debug
 Build LIGHT v2512090202 - v7 clean rebuild test
 Build LIGHT v2512090202 - v8 debug test
+Build LIGHT v2512090202 - v9 Infof debug test
