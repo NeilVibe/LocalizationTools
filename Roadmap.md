@@ -23,136 +23,40 @@ LocaNext v2512080549
 
 ## In Progress
 
-### P13.11: Gitea Windows Build Pipeline - MUST FIX "FAILED" STATUS
+### P13.11: FIX Gitea Windows Build "Job Failed" Bug
 
-```
-STATUS: ❌ BROKEN - Job reports "failed" even though build succeeds
-PRIORITY: HIGH - Cannot have "failed" status, must show green ✅
+**Status: FIX APPLIED - NEEDS COMMIT & TEST**
 
-CURRENT STATE:
-├── ZIP file IS created: LocaNext_v2512080549_Light_Portable.zip (106.8 MB)
-├── All steps pass: [PASS] All critical files present!
-├── Build completes: [SUCCESS] LocaNext LIGHT Build Complete!
-└── ❌ PROBLEM: act_runner reports "Job failed" - THIS MUST BE FIXED
+**What was the bug?**
+- Gitea builds completed successfully (ZIP created, all steps ✅)
+- But act_runner reported "🏁 Job failed" at the very end
+- This was a FALSE failure - the build actually worked
 
-ARTIFACT LOCATION (on Windows runner):
-C:\WINDOWS\system32\config\systemprofile\.cache\act\{hash}\hostexecutor\installer_output\
-└── LocaNext_v{VERSION}_Light_Portable.zip
+**Root cause found (2025-12-08):**
+- `.gitea/workflows/build.yml` had a disabled job called `create-release`
+- It had `if: false` (never runs) BUT also `needs: [build-windows]`
+- act_runner v0.2.11 bug: evaluates disabled job dependencies incorrectly
+- This caused false "failed" status during cleanup phase
 
-ARCHITECTURE:
-├── Gitea Server     → WSL Linux (localhost:3000)
-├── Linux Runner     → WSL (handles ubuntu-latest jobs) ✅
-└── Windows Runner   → Windows native (act_runner v0.2.11 as SYSTEM service) ⚠️
-```
+**Fix applied (NOT YET COMMITTED):**
+- Edited `.gitea/workflows/build.yml` (lines 838-843)
+- Removed the entire `create-release` job (was ~130 lines of dead code)
+- Replaced with a comment explaining why it was removed
 
-### COMPLETED FIXES (2025-12-08):
-```
-[✅] Inno Setup path issues → Switched to portable ZIP (bypass NSIS/Inno)
-[✅] NSIS include files missing → Changed electron-builder target to "dir"
-[✅] Embedded Python check failing → Made informational for LIGHT builds
-[✅] Artifact upload failing → Removed (actions/upload-artifact@v4 not supported on Gitea)
-[✅] Version not extracted → Fixed with ::set-output syntax
-[✅] Job dependencies causing issues → Made build-windows standalone
-[✅] Tools directory missing → Create before copying scripts
-```
-
-### ❌ CRITICAL BUG TO FIX - act_runner False Failure:
-```
-THE PROBLEM:
-- Job shows "🏁 Job failed" even though ALL steps succeed
-- This is UNACCEPTABLE - we need green ✅ status, not red ❌
-
-SYMPTOM:
-- All workflow steps succeed (✅ marks everywhere in log)
-- ZIP file created correctly with proper version
-- Post-checkout cleanup succeeds
-- THEN: "🏁 Job failed" during "Cleaning up container" phase
-
-EVIDENCE FROM LOG:
-- "✅ Success - Post Checkout code"
-- "Cleaning up container for job Build Windows LIGHT Installer"
-- (7 seconds later, NO errors between)
-- "🏁 Job failed"  ← WHERE DOES THIS COME FROM?
-
-POSSIBLE CAUSES TO INVESTIGATE:
-1. act_runner v0.2.11 bug on Windows
-2. Running as SYSTEM service causes issues
-3. Workflow structure confuses act_runner
-4. Missing success signal expected by runner
-5. Container cleanup timeout or error not logged
-```
-
-### 🔧 NEXT STEPS TO FIX (IN ORDER):
-```
-[1] CHECK WINDOWS RUNNER LOGS
-    - Location: C:\GiteaRunner\*.log (or wherever runner is installed)
-    - Look for errors during "Cleaning up container" phase
-    - May reveal what act_runner thinks went wrong
-
-[2] TRY DIFFERENT act_runner VERSION
-    - Current: v0.2.11
-    - Try: latest release from https://gitea.com/gitea/act_runner/releases
-    - Bug may be fixed in newer version
-
-[3] TEST SIMPLER WORKFLOW
-    - Create minimal workflow with just 1 step
-    - See if it reports success
-    - Gradually add steps to find what triggers failure
-
-[4] CHECK IF SYSTEM SERVICE IS THE ISSUE
-    - Try running act_runner as regular user (not SYSTEM)
-    - May fix permission/cleanup issues
-
-[5] LOOK AT nektos/act ISSUES
-    - act_runner is based on nektos/act
-    - Search for similar "job failed but steps succeed" issues
-    - https://github.com/nektos/act/issues
-
-[6] ADD EXPLICIT JOB RESULT
-    - Maybe workflow needs to explicitly set job result
-    - Try adding `conclusion: success` or similar at end
-```
-
-### FILES MODIFIED (for next Claude reference):
-```
-.gitea/workflows/build.yml - Main workflow (many changes)
-  - Removed needs: dependency from build-windows
-  - Added "Get Version from Source" step (reads version.py directly)
-  - Removed artifact upload step
-  - Changed electron-builder to "dir" target
-  - Added portable ZIP creation instead of Inno Setup
-  - Removed "Test Backend" step (no embedded Python in LIGHT)
-  - Added "Build Complete" success marker step
-
-installer/locanext_light.iss - Added skipifsourcedoesntexist flags
-locaNext/package.json - win.target: "dir" (bypass NSIS)
-version.py - Current: 2512080549
-```
-
-### HOW TO TEST BUILD (for next Claude):
+**TO COMPLETE THIS FIX:**
 ```bash
-# 1. Update version
-NEW_VER=$(date '+%y%m%d%H%M')
-# Edit version.py, .iss files, README, CLAUDE.md
+# 1. Commit the changes
+git add -A && git commit -m "fix: Remove disabled create-release job (act_runner status bug)"
 
-# 2. Run version check
-python3 scripts/check_version_unified.py
-
-# 3. Add trigger
-echo "Build LIGHT v$NEW_VER - description" >> GITEA_TRIGGER.txt
-
-# 4. Commit and push
-git add -A && git commit -m "message"
+# 2. Push to both remotes
 git push origin main && git push gitea main
 
-# 5. Wait ~200 seconds, check logs
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/1*.log | head -3
-tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/XX/YYY.log
+# 3. Test with a Gitea build
+echo "Test v$(date +%y%m%d%H%M)" >> GITEA_TRIGGER.txt
+git add GITEA_TRIGGER.txt && git commit -m "Test Gitea build fix"
+git push gitea main
 
-# 6. Check for success markers in log:
-#    - "[OK] Portable ZIP created: LocaNext_v{VERSION}_Light_Portable.zip"
-#    - "[SUCCESS] LocaNext LIGHT Build Complete!"
-#    - Ignore "Job failed" - it's a false negative
+# 4. Check Gitea Actions → should show green ✅
 ```
 
 ---
