@@ -73,7 +73,8 @@ LocaNext v2512080549
 | 2025-12-08 | Fix #8 result | Config now applied ✅ Workdir changed to `_work` but cleanup still fails |
 | 2025-12-08 | Fix #9 | Simplified cleanup step, removed diagnostic step |
 | 2025-12-08 | Fix #10 | Try to delete workdir ourselves - same error "used by another process" |
-| 2025-12-08 | Fix #11 | Add 10 second delay before delete attempt |
+| 2025-12-08 | Fix #11 | Add 10 second delay - still fails, lock persists |
+| 2025-12-08 | Fix #12 | Try cmd.exe instead of PowerShell (different process context) |
 
 ---
 
