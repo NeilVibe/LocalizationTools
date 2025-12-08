@@ -140,62 +140,173 @@ This was implemented in Go 1.19 to handle `ERROR_ACCESS_DENIED` and `ERROR_SHARI
 | `RUNNER_TRACKING_ID=""` trick only prevents process kill, not cleanup | [actions/runner #598](https://github.com/actions/runner/issues/598) |
 | [github-act-runner](https://github.com/ChristopherHX/github-act-runner) has better Windows shell handling | Alternative runner |
 
-**Proposed Solutions:**
+**Proposed Solutions (Ranked by Elegance):**
 
-| Solution | Effort | Impact | Recommendation |
-|----------|--------|--------|----------------|
-| **A. Fork & Patch gitea/act** | High | ✅ Permanent fix | Best long-term |
-| **B. PR to nektos/act** | Medium | ✅ Upstream fix | Submit & wait |
-| **C. Commit Status API** | Medium | ✅ Green checks | Good workaround |
-| **D. External Cleanup Service** | Low | ⚠️ Dir clean only | Partial fix |
-| **E. Runner Auto-Restart** | Low | ⚠️ Releases handles | Hacky workaround |
+| Rank | Solution | Effort | Impact | Notes |
+|------|----------|--------|--------|-------|
+| 🥇 | **F. Ephemeral Runner** | Medium | ✅ ELEGANT | Like GitHub Actions VMs |
+| 🥈 | **G. Hyper-V Checkpoint** | Medium | ✅ Fresh VM | Reset after each job |
+| 🥉 | **B. PR to nektos/act** | Medium | ✅ Upstream fix | Benefits everyone |
+| 4 | **A. Fork & Patch** | High | ✅ Permanent | Maintain fork |
+| 5 | **E. Runner Auto-Restart** | Low | ⚠️ Hacky | Works but slow |
+| 6 | **C. Commit Status API** | Low | ⚠️ Masks failures | Currently testing |
 
-**Solution A: Fork & Patch gitea/act**
-1. Fork `gitea.com/gitea/act` (the soft fork act_runner uses)
-2. Modify `pkg/container/host_environment.go` `Remove()` function
-3. Add Go's retry loop pattern for Windows
-4. Build custom act_runner.exe
-5. Deploy on Windows machine
-- Pros: Permanent fix, proper solution
-- Cons: Need to maintain fork, rebuild on updates
+---
 
-**Solution B: PR to nektos/act**
-1. Create PR to upstream [nektos/act](https://github.com/nektos/act)
-2. Add retry logic to `host_environment.go`
-3. Wait for merge → gitea/act sync → act_runner release
-- Pros: No fork maintenance, benefits everyone
-- Cons: Could take weeks/months
+### 🥇 Solution F: Ephemeral Runner (MOST ELEGANT)
 
-**Solution C: Commit Status API Workaround**
-1. Add Gitea webhook for workflow completion
-2. When job "fails" but all steps passed → API call to set commit status "success"
-3. Shows green check on commits despite internal "failed" status
-- Pros: Visual fix without code changes
-- Cons: Workflow still shows "failed" internally
+**This is how GitHub Actions works** - fresh runner for each job!
 
-**Solution D: External Cleanup Service**
-1. Windows scheduled task monitors workdir
-2. Deletes old job directories (older than X minutes)
-3. Runs independently, no handle conflicts
-- Pros: Keeps disk clean
-- Cons: Doesn't fix status
+act_runner has `--ephemeral` mode ([PR #649](https://gitea.com/gitea/act_runner/pulls/649), [Gitea #33570](https://github.com/go-gitea/gitea/pull/33570)):
+```bash
+# Register ephemeral runner (one-shot)
+./act_runner register --ephemeral --instance http://localhost:3000 --token TOKEN --name windows-ephemeral --labels windows:host
+```
 
-**Solution E: Runner Auto-Restart**
-1. Modify NSSM to restart service after each job
-2. Service restart releases all Go handles
-3. Next job cleanup succeeds
-- Pros: Simple, no code changes
-- Cons: 10-20 second restart delay between jobs
+**How it works:**
+1. Runner registers with `--ephemeral` flag
+2. Accepts ONE job, executes it
+3. After job completes → runner **EXITS** (releasing ALL handles!)
+4. Wrapper script re-registers for next job
 
-**Current Decision:** Pursuing Solution B (upstream PR) first, with Solution C as immediate workaround.
+**Wrapper script concept:**
+```batch
+:loop
+act_runner.exe register --ephemeral -c config.yaml --instance %GITEA_URL% --token %TOKEN% --name win-runner --labels windows:host
+act_runner.exe daemon --once -c config.yaml
+goto loop
+```
 
-**Implementation Status:**
-- ✅ **Solution C implemented** (2025-12-08): Added "Set Commit Status Success" step to workflow
-  - Runs after "Build Complete" but before cleanup
-  - Calls Gitea API: `POST /api/v1/repos/{owner}/{repo}/statuses/{sha}`
-  - Sets commit status to "success" with context "build-windows"
-  - Even if cleanup fails → job shows "failed" but commit shows ✅
-- 🔄 **Solution B**: PR to nektos/act pending (will benefit upstream)
+**Pros:**
+- Elegant like GitHub Actions (fresh each time)
+- No handle issues (process exits = handles released)
+- No need to patch code
+- Security benefit (single-use credentials)
+
+**Cons:**
+- Re-registration overhead (~5-10 seconds between jobs)
+- Need registration token (can use organization/instance token)
+- Need wrapper script for Windows service
+
+---
+
+### 🥈 Solution G: Hyper-V Checkpoint Reset
+
+**Like fresh Azure VMs but local:**
+
+1. Create Windows VM in Hyper-V with all build tools pre-installed
+2. Take checkpoint (snapshot) after clean setup
+3. After each job: `Restore-VMSnapshot` to reset VM
+4. Wrapper script on host triggers restore
+
+```powershell
+# On host machine (not the VM)
+$vmName = "LocaNext-Builder"
+$checkpointName = "Clean-Build-State"
+
+while ($true) {
+    # Wait for job completion marker
+    while (-not (Test-Path "\\VM\share\job_complete.txt")) { Start-Sleep 5 }
+
+    # Reset VM to clean state
+    Stop-VM -Name $vmName -Force
+    Restore-VMCheckpoint -VMName $vmName -Name $checkpointName -Confirm:$false
+    Start-VM -Name $vmName
+
+    Remove-Item "\\VM\share\job_complete.txt"
+}
+```
+
+**Pros:**
+- 100% fresh state each build (like GitHub's Azure VMs)
+- No cleanup issues at all
+- Can test different Windows versions
+
+**Cons:**
+- VM startup time (~30-60 seconds)
+- More complex setup
+- Requires Hyper-V (Windows Pro/Server)
+
+---
+
+### 🥉 Solution B: PR to nektos/act (Upstream Fix)
+
+Add Go's retry loop pattern to `host_environment.go`:
+```go
+func removeAllWithRetry(path string) error {
+    const timeout = 2 * time.Second
+    var nextSleep = 1 * time.Millisecond
+    start := time.Now()
+    for {
+        err := os.RemoveAll(path)
+        if err == nil || !isWindowsAccessError(err) {
+            return err
+        }
+        if time.Since(start)+nextSleep >= timeout {
+            return err
+        }
+        time.Sleep(nextSleep)
+        nextSleep *= 2
+    }
+}
+```
+
+**Pros:** Benefits everyone, no fork maintenance
+**Cons:** Could take weeks/months for merge + release
+
+---
+
+### Solution A: Fork & Patch gitea/act
+
+Same as Solution B but maintain our own fork.
+
+**Pros:** Immediate fix
+**Cons:** Fork maintenance burden
+
+---
+
+### Solution E: Runner Auto-Restart (via NSSM)
+
+Configure NSSM to restart after each job exit:
+```batch
+nssm set GiteaActRunner AppExit Default Restart
+nssm set GiteaActRunner AppRestartDelay 5000
+```
+
+**Pros:** Simple, no code changes
+**Cons:** 10-20 second restart delay
+
+---
+
+### Solution C: Commit Status API (Current Workaround)
+
+⚠️ **Note:** This masks real failures - not elegant!
+
+Set commit status before cleanup runs. If real build fails, it still shows success.
+
+**Pros:** Quick to implement
+**Cons:** Masks real failures, unstable
+
+---
+
+### Current Implementation Status
+
+| Solution | Status | Notes |
+|----------|--------|-------|
+| **C. Status API** | 🧪 Testing | Build v2512081445 in progress |
+| **F. Ephemeral** | 📋 Next | Most elegant, implement next |
+| **B. Upstream PR** | 📝 Draft | Will submit after testing F |
+
+---
+
+### Recommended Path Forward
+
+1. **Immediate**: Test Solution C (currently running)
+2. **Short-term**: Implement Solution F (Ephemeral Runner)
+   - Create wrapper script for Windows
+   - Test with organization token
+   - Replace NSSM service
+3. **Long-term**: Submit Solution B (PR to nektos/act)
 
 ---
 
