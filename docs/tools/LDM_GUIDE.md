@@ -1,4 +1,4 @@
-# LDM (LanguageData Manager) - SubTree Documentation
+# LDM (LanguageData Manager) - Complete Guide
 
 **Created:** 2025-12-08
 **Status:** 70% Complete (Phase 4 in progress)
@@ -177,11 +177,110 @@ curl -X POST http://localhost:8888/api/ldm/projects \
 
 ---
 
+## Future Development (Planned Features)
+
+### Phase 4: Virtual Scrolling (IN PROGRESS)
+- **VirtualGrid.svelte** - Replace DataGrid with virtual scrolling
+- Only render ~50 visible rows (performance for 1M+ rows)
+- "Go to row N" navigation with instant jump
+- Smooth scroll behavior with row buffering
+
+### Phase 5: CAT Features (PLANNED)
+- **Translation Memory (TM)**
+  - Reuse KR Similar fuzzy matching engine
+  - `GET /api/ldm/tm/suggest?source=text` - Get suggestions
+  - Show TM matches in edit modal (70%+ similarity)
+  - One-click apply suggestion
+
+- **Glossary Integration**
+  - Reuse QuickSearch QA Tools
+  - `GET /api/ldm/glossary/check?text=...` - Check terms
+  - Highlight glossary terms in source text
+  - Warn if glossary term missing in target
+
+- **Keyboard Shortcuts**
+  - `Ctrl+Enter` - Save and next row
+  - `Tab` - Apply TM suggestion
+  - `Escape` - Cancel edit
+  - Arrow keys - Navigate rows
+
+- **Status Workflow**
+  - Status flow: `pending` → `translated` → `reviewed` → `approved`
+  - Batch status change
+  - Filter by status
+
+### Phase 6: Polish & Scale (PLANNED)
+- **Version History**
+  - Track all changes via LDMEditHistory
+  - View diff between versions
+  - Rollback to previous version
+
+- **Export Formats**
+  - TMX export (Translation Memory eXchange)
+  - XLIFF export (industry standard)
+  - Re-export to original TXT/XML format
+
+- **Permissions**
+  - Project roles: Owner, Editor, Viewer
+  - Row-level locking improvements
+  - Multi-user conflict resolution
+
+- **Performance Tuning**
+  - PostgreSQL full-text search
+  - Connection pooling for 50+ users
+  - Caching layer for hot data
+
+- **Offline Mode**
+  - Read-only cache for offline viewing
+  - Queue edits for sync when online
+
+---
+
+## Architecture Notes
+
+### Why Source is Read-Only
+The Korean source text (`StrOrigin` / column 5) comes from the game developers. Translators should NEVER modify the source - only translate it. This is enforced at:
+- API level: `PUT /rows/{id}` only accepts `target` and `status`
+- UI level: Source displayed in grey, no edit controls
+
+### Real-time Collaboration Design
+```
+User A edits row 5        User B viewing same file
+      │                           │
+      ▼                           │
+  Lock row 5                      │
+      │                           │
+      ▼                           │
+  Save edit ─────────────────────►│
+      │        WebSocket          │
+      │      ldm_cell_update      ▼
+      │                      Grid updates
+      ▼                      in real-time
+ Unlock row 5
+```
+
+### File Size Considerations
+| File Size | Rows | Parse Time | Memory |
+|-----------|------|------------|--------|
+| 100KB | ~500 | <1s | ~10MB |
+| 10MB | ~50K | ~5s | ~100MB |
+| 100MB | ~500K | ~30s | ~500MB |
+| 1GB | ~5M | ~5min | PostgreSQL required |
+
+For files >100MB, consider:
+- PostgreSQL instead of SQLite
+- Background import with progress
+- Virtual scrolling (mandatory)
+
+---
+
 ## Related Documents
 
 - [P17_LDM_TASKS.md](../wip/P17_LDM_TASKS.md) - Detailed task tracking
 - [Roadmap.md](../../Roadmap.md) - Project roadmap (P17 section)
 - [QuickSearch parser.py](../../server/tools/quicksearch/parser.py) - Similar TXT/XML parsing
+- [KR Similar](../../server/tools/kr_similar/) - Fuzzy matching (for TM)
+- [QA Tools](../../server/tools/quicksearch/qa_tools.py) - Glossary checking
 
 ---
 

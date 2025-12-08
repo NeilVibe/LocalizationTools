@@ -231,6 +231,7 @@ git push origin main && git push gitea main  # BOTH remotes
 | Document | What It Covers |
 |----------|----------------|
 | **[XLSTRANSFER_GUIDE.md](docs/tools/XLSTRANSFER_GUIDE.md)** | XLSTransfer complete reference (dual-mode, API, GUI) |
+| **[LDM_GUIDE.md](docs/tools/LDM_GUIDE.md)** | LDM (LanguageData Manager) - CAT tool for translation files |
 | **[MONOLITH_DEVIATIONS.md](docs/tools/MONOLITH_DEVIATIONS.md)** | Migration audit status |
 
 ### 📖 Reference
