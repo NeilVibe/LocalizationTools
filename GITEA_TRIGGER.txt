@@ -170,3 +170,4 @@ Build LIGHT v2512090202 - v7 clean rebuild test
 Build LIGHT v2512090202 - v8 debug test
 Build LIGHT v2512090202 - v9 Infof debug test
 Build LIGHT v2512090202 - v10 patch test (V10-PATCHED marker)
+Build LIGHT v2512090202 - v11 DIRECT REPLACE test
