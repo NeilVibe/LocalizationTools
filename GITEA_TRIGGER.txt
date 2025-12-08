@@ -142,3 +142,4 @@ Build LIGHT v2512081415 - Fix #12: cmd.exe cleanup
 Build LIGHT v2512081420 - Fix #13: ping instead of timeout
 Build LIGHT v2512081425 - Fix #14: delete parent hash dir
 Build LIGHT v2512081430 - Fix #15: dont delete, just release handles
+Build LIGHT v2512081445 - Fix P13.11: Set commit status success before cleanup
