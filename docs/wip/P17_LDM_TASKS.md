@@ -17,9 +17,9 @@ Phase 2: File Explorer      [X] 16/16 tasks  ✅ COMPLETE
 Phase 3: Real-time Sync     [X] 20/20 tasks  ✅ COMPLETE
 Phase 4: Virtual Scroll     [X] 10/10 tasks  ✅ COMPLETE
 Phase 5: CAT Features       [▓▓▓▓] 7/10 tasks  (TM + keyboard done)
-Phase 6: Polish             [ ] 0/8 tasks
+Phase 6: Polish             [ ] 0/11 tasks  (includes UI enhancements)
 ─────────────────────────────────────────
-TOTAL                       [▓▓▓▓▓▓▓▓▓▓] 65/68 tasks (96%)
+TOTAL                       [▓▓▓▓▓▓▓▓▓▓] 65/71 tasks (92%)
 ```
 
 ---
@@ -275,14 +275,32 @@ Location: locaNext/src/lib/components/ldm/
 
 ## Phase 6: Polish & Scale
 
-- [ ] **6.1** Version history (track all changes)
-- [ ] **6.2** Rollback feature
-- [ ] **6.3** TMX export
-- [ ] **6.4** XLIFF export
-- [ ] **6.5** Project permissions (owner, editor, viewer)
-- [ ] **6.6** Performance tuning for 50+ concurrent users
-- [ ] **6.7** Offline mode (read-only cache)
-- [ ] **6.8** Final testing & documentation
+### 6.0 UI Enhancements (User Requested 2025-12-08)
+```
+Location: locaNext/src/lib/components/ldm/VirtualGrid.svelte + DataGrid.svelte
+```
+
+- [ ] **6.0.1** Smooth hover highlight - Add CSS transition for row/cell hover effect
+  - Current: `.target-cell:hover { background: var(--cds-layer-hover-01); }` (instant)
+  - Want: Add `transition: background-color 0.15s ease` for smooth highlight
+- [ ] **6.0.2** Row hover highlight - Entire row highlights on hover (not just target cell)
+- [ ] **6.0.3** Selected row highlight - Keep row highlighted after selection until another row clicked
+
+**Current Cell Edit Flow (Documented):**
+- Double-click Target cell → Opens edit modal
+- Source (Korean) = Read-only, Target = Editable textarea
+- Save → Updates DB → WebSocket broadcasts to all users
+- Row locking prevents simultaneous edits (shows lock icon)
+
+### 6.1 Core Polish
+- [ ] **6.1.1** Version history (track all changes)
+- [ ] **6.1.2** Rollback feature
+- [ ] **6.1.3** TMX export
+- [ ] **6.1.4** XLIFF export
+- [ ] **6.1.5** Project permissions (owner, editor, viewer)
+- [ ] **6.1.6** Performance tuning for 50+ concurrent users
+- [ ] **6.1.7** Offline mode (read-only cache)
+- [ ] **6.1.8** Final testing & documentation
 
 ---
 
@@ -463,6 +481,7 @@ node scripts/run_test.js ldm.getStatus
 | 2025-12-08 | Demo Screenshots | 11 screenshots captured in docs/demos/ldm/ (full workflow) |
 | 2025-12-08 | Upload Performance Test | 16MB/103,500 rows - ~50 sec upload (~2,070 rows/sec) |
 | 2025-12-08 | TM Status Check | Auto-suggest in edit modal works; Upload TM UI not yet implemented |
+| 2025-12-08 | UI Enhancement Request | User requested smooth hover transitions for grid cells + row highlights |
 
 ---
 
