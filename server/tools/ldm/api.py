@@ -355,6 +355,103 @@ async def get_file(
     return file
 
 
+@router.post("/files/upload", response_model=FileResponse)
+async def upload_file(
+    project_id: int = Form(...),
+    folder_id: Optional[int] = Form(None),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async)
+):
+    """
+    Upload a localization file (TXT/XML), parse it, and store rows in database.
+
+    Supported formats:
+    - TXT/TSV: Tab-delimited, columns 0-4=StringID, 5=Source(KR), 6=Target
+    - XML: LocStr elements with StringId, StrOrigin(source), Str(target)
+    """
+    # Verify project ownership
+    result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == project_id,
+            LDMProject.owner_id == current_user.user_id
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Verify folder exists (if provided)
+    if folder_id:
+        result = await db.execute(
+            select(LDMFolder).where(
+                LDMFolder.id == folder_id,
+                LDMFolder.project_id == project_id
+            )
+        )
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Determine file type and parse
+    filename = file.filename or "unknown"
+    ext = filename.lower().split('.')[-1] if '.' in filename else ''
+
+    if ext in ('txt', 'tsv'):
+        from server.tools.ldm.file_handlers.txt_handler import parse_txt_file, get_file_format, get_source_language
+        file_content = await file.read()
+        rows_data = parse_txt_file(file_content, filename)
+        file_format = get_file_format()
+        source_lang = get_source_language()
+    elif ext == 'xml':
+        from server.tools.ldm.file_handlers.xml_handler import parse_xml_file, get_file_format, get_source_language
+        file_content = await file.read()
+        rows_data = parse_xml_file(file_content, filename)
+        file_format = get_file_format()
+        source_lang = get_source_language()
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format: {ext}. Use TXT, TSV, or XML."
+        )
+
+    if not rows_data:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid rows found in file"
+        )
+
+    # Create file record
+    new_file = LDMFile(
+        project_id=project_id,
+        folder_id=folder_id,
+        name=filename,
+        original_filename=filename,
+        format=file_format,
+        row_count=len(rows_data),
+        source_language=source_lang,
+        target_language=None  # Set later based on project settings
+    )
+    db.add(new_file)
+    await db.flush()  # Get the file ID
+
+    # Create row records
+    for row_data in rows_data:
+        row = LDMRow(
+            file_id=new_file.id,
+            row_num=row_data["row_num"],
+            string_id=row_data["string_id"],
+            source=row_data["source"],
+            target=row_data["target"],
+            status=row_data["status"]
+        )
+        db.add(row)
+
+    await db.commit()
+    await db.refresh(new_file)
+
+    logger.success(f"File uploaded: id={new_file.id}, name='{filename}', rows={len(rows_data)}")
+    return new_file
+
+
 # ============================================================================
 # Rows (Pagination)
 # ============================================================================
