@@ -1,15 +1,16 @@
 # Windows Runner Setup for Gitea Actions
 
-**Version:** 2512081600
-**Status:** ✅ PRODUCTION READY - Ephemeral Mode (P13.11 Solved)
+**Version:** 2512090410
+**Status:** ✅ PRODUCTION READY - Patched Runner v15 (NUL Byte Fix)
 
 ---
 
 ## Overview
 
-This guide documents how to set up a **production-ready Windows runner** for Gitea Actions using **Ephemeral Mode**:
+This guide documents how to set up a **production-ready Windows runner** for Gitea Actions using a **patched act_runner**:
 - Runs as a Windows Service (auto-start on boot)
 - **Ephemeral mode**: Fresh runner for each job (like GitHub Actions)
+- **Patched v15**: Fixes Windows PowerShell NUL byte issue in GITHUB_OUTPUT
 - No cleanup issues - runner exits after each job, handles released
 - Has Git properly installed in system PATH
 
@@ -299,15 +300,90 @@ $nssm = "C:\ProgramData\chocolatey\lib\NSSM\tools\nssm.exe"
 
 ---
 
+## Patched Runner (v15) - NUL Byte Fix
+
+The stock act_runner v0.2.11 fails on Windows due to PowerShell writing NUL bytes (`\x00`) to GITHUB_OUTPUT files. This causes:
+- `invalid format '\x00'` errors
+- `exec: environment variable contains NUL` errors
+- "Job failed" even when all build steps succeed
+
+### The Problem
+
+Windows PowerShell's `Add-Content` and `>>` operators write NUL bytes to files, especially with certain encodings. When act_runner parses GITHUB_OUTPUT:
+
+```
+name=value\x00\x00
+```
+
+The NUL bytes cause Go's `os/exec` to reject environment variables.
+
+### The Solution (v15 Patch)
+
+Patch file: `~/act_runner_patch/act/pkg/container/parse_env_file.go`
+
+```go
+// V15-PATCH: Strip NUL bytes from line (Windows PowerShell bug)
+line = strings.ReplaceAll(line, "\x00", "")
+trimmed := strings.TrimSpace(line)
+if trimmed == "" {
+    continue
+}
+```
+
+### Building the Patched Runner
+
+```bash
+# Clone repositories
+mkdir -p ~/act_runner_patch && cd ~/act_runner_patch
+git clone https://github.com/nektos/act.git
+git clone https://gitea.com/gitea/act_runner.git
+
+# Apply patch to act/pkg/container/parse_env_file.go
+# (Insert lines after `line := s.Text()` in ParseEnvFile function)
+
+# Configure go.mod to use local act
+cd act_runner
+echo 'replace github.com/nektos/act => ../act' >> go.mod
+
+# Build
+GOOS=windows GOARCH=amd64 go build -o act_runner_patched_v15.exe
+
+# Deploy to Windows
+cp act_runner_patched_v15.exe /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/GiteaRunner/
+```
+
+### Using the Patched Runner
+
+Update `run_ephemeral.bat` to use the patched version:
+
+```batch
+REM Replace:
+act_runner.exe register ...
+act_runner.exe daemon ...
+
+REM With:
+act_runner_patched_v15.exe register ...
+act_runner_patched_v15.exe daemon ...
+```
+
+### Verification
+
+Look for these markers in build logs:
+- `[V10-PATCHED] Cleaning up container...` - Confirms patch is active
+- `Job succeeded` - No more false positive failures
+
+---
+
 ## Key Files & Locations
 
 | Item | Path |
 |------|------|
 | Git | `C:\Program Files\Git` |
 | NSSM | `C:\ProgramData\chocolatey\lib\NSSM\tools\nssm.exe` |
-| Runner | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner.exe` |
+| Runner | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner_patched_v15.exe` |
 | Runner Config | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\.runner` |
 | Runner Work Dir | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner` |
+| Patch Source | `~/act_runner_patch/act/pkg/container/parse_env_file.go` |
 
 ---
 
@@ -327,5 +403,5 @@ Windows Services created with `sc.exe create` require:
 
 ---
 
-*Last updated: 2025-12-08*
-*Tested on: Windows 11, Git 2.52.0, act_runner 0.2.11, NSSM 2.24*
+*Last updated: 2025-12-09*
+*Tested on: Windows 11, Git 2.52.0, act_runner 0.2.11 (patched v15), NSSM 2.24*
