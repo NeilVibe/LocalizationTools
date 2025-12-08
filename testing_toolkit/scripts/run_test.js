@@ -35,6 +35,16 @@ const TEST_FUNCTIONS = {
     loadDictionary: 'window.krSimilarTest.loadDictionary()',
     search: 'window.krSimilarTest.search()',
     getStatus: 'JSON.stringify(window.krSimilarTest.getStatus())'
+  },
+  ldm: {
+    createProject: 'window.ldmTest.createProject()',
+    uploadFile: 'window.ldmTest.uploadFile()',
+    uploadTxt: 'window.ldmTest.uploadTxt()',
+    uploadXml: 'window.ldmTest.uploadXml()',
+    selectFile: 'window.ldmTest.selectFile()',
+    editRow: 'window.ldmTest.editRow()',
+    fullSequence: 'window.ldmTest.fullSequence()',
+    getStatus: 'JSON.stringify(window.ldmTest.getStatus())'
   }
 };
 
@@ -64,6 +74,14 @@ Available tests:
   krSimilar.loadDictionary      Load BDO embeddings (~30s)
   krSimilar.search              Find similar texts
   krSimilar.getStatus           Get current status
+
+  ldm.createProject             Create a test project (~2s)
+  ldm.uploadFile                Upload test TXT file (~2s)
+  ldm.uploadXml                 Upload test XML file (~2s)
+  ldm.selectFile                Select uploaded file
+  ldm.editRow                   Edit first row (~2s)
+  ldm.fullSequence              Run full test sequence (~10s)
+  ldm.getStatus                 Get current status
 
 Options:
   --wait <seconds>              Wait after execution (default: 5)
