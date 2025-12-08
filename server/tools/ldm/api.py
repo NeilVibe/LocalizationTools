@@ -133,13 +133,14 @@ async def health():
 @router.get("/projects", response_model=List[ProjectResponse])
 async def list_projects(
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """List all projects for current user."""
-    logger.info(f"Listing projects for user {current_user.user_id}")
+    user_id = current_user["user_id"]
+    logger.info(f"Listing projects for user {user_id}")
 
     result = await db.execute(
-        select(LDMProject).where(LDMProject.owner_id == current_user.user_id)
+        select(LDMProject).where(LDMProject.owner_id == current_user["user_id"])
     )
     projects = result.scalars().all()
 
@@ -150,15 +151,16 @@ async def list_projects(
 async def create_project(
     project: ProjectCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """Create a new project."""
-    logger.info(f"Creating project '{project.name}' for user {current_user.user_id}")
+    user_id = current_user["user_id"]
+    logger.info(f"Creating project '{project.name}' for user {user_id}")
 
     new_project = LDMProject(
         name=project.name,
         description=project.description,
-        owner_id=current_user.user_id
+        owner_id=current_user["user_id"]
     )
 
     db.add(new_project)
@@ -173,13 +175,13 @@ async def create_project(
 async def get_project(
     project_id: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """Get a project by ID."""
     result = await db.execute(
         select(LDMProject).where(
             LDMProject.id == project_id,
-            LDMProject.owner_id == current_user.user_id
+            LDMProject.owner_id == current_user["user_id"]
         )
     )
     project = result.scalar_one_or_none()
@@ -194,13 +196,13 @@ async def get_project(
 async def delete_project(
     project_id: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """Delete a project and all its contents."""
     result = await db.execute(
         select(LDMProject).where(
             LDMProject.id == project_id,
-            LDMProject.owner_id == current_user.user_id
+            LDMProject.owner_id == current_user["user_id"]
         )
     )
     project = result.scalar_one_or_none()
@@ -223,14 +225,14 @@ async def delete_project(
 async def list_folders(
     project_id: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """List all folders in a project."""
     # Verify project ownership
     result = await db.execute(
         select(LDMProject).where(
             LDMProject.id == project_id,
-            LDMProject.owner_id == current_user.user_id
+            LDMProject.owner_id == current_user["user_id"]
         )
     )
     if not result.scalar_one_or_none():
@@ -248,14 +250,14 @@ async def list_folders(
 async def create_folder(
     folder: FolderCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """Create a new folder in a project."""
     # Verify project ownership
     result = await db.execute(
         select(LDMProject).where(
             LDMProject.id == folder.project_id,
-            LDMProject.owner_id == current_user.user_id
+            LDMProject.owner_id == current_user["user_id"]
         )
     )
     if not result.scalar_one_or_none():
@@ -279,7 +281,7 @@ async def create_folder(
 async def delete_folder(
     folder_id: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """Delete a folder and all its contents."""
     result = await db.execute(
@@ -292,7 +294,7 @@ async def delete_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if folder.project.owner_id != current_user.user_id:
+    if folder.project.owner_id != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     await db.delete(folder)
@@ -311,14 +313,14 @@ async def list_files(
     project_id: int,
     folder_id: Optional[int] = None,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """List files in a project, optionally filtered by folder."""
     # Verify project ownership
     result = await db.execute(
         select(LDMProject).where(
             LDMProject.id == project_id,
-            LDMProject.owner_id == current_user.user_id
+            LDMProject.owner_id == current_user["user_id"]
         )
     )
     if not result.scalar_one_or_none():
@@ -338,7 +340,7 @@ async def list_files(
 async def get_file(
     file_id: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """Get file metadata by ID."""
     result = await db.execute(
@@ -351,7 +353,7 @@ async def get_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    if file.project.owner_id != current_user.user_id:
+    if file.project.owner_id != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     return file
@@ -363,7 +365,7 @@ async def upload_file(
     folder_id: Optional[int] = Form(None),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Upload a localization file (TXT/XML), parse it, and store rows in database.
@@ -376,7 +378,7 @@ async def upload_file(
     result = await db.execute(
         select(LDMProject).where(
             LDMProject.id == project_id,
-            LDMProject.owner_id == current_user.user_id
+            LDMProject.owner_id == current_user["user_id"]
         )
     )
     if not result.scalar_one_or_none():
@@ -466,7 +468,7 @@ async def list_rows(
     search: Optional[str] = None,
     status: Optional[str] = None,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """Get paginated rows for a file."""
     # Verify file access
@@ -480,7 +482,7 @@ async def list_rows(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    if file.project.owner_id != current_user.user_id:
+    if file.project.owner_id != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Build query
@@ -531,7 +533,7 @@ async def update_row(
     row_id: int,
     update: RowUpdate,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """Update a row's target text or status (source is READ-ONLY)."""
     # Get row with file and project
@@ -545,7 +547,7 @@ async def update_row(
     if not row:
         raise HTTPException(status_code=404, detail="Row not found")
 
-    if row.file.project.owner_id != current_user.user_id:
+    if row.file.project.owner_id != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Save history before update
@@ -562,13 +564,13 @@ async def update_row(
     if update.status is not None:
         row.status = update.status
 
-    row.updated_by = current_user.user_id
+    row.updated_by = current_user["user_id"]
     row.updated_at = datetime.utcnow()
 
     # Create edit history
     history = LDMEditHistory(
         row_id=row_id,
-        user_id=current_user.user_id,
+        user_id=current_user["user_id"],
         old_target=old_target,
         new_target=row.target,
         old_status=old_status,
@@ -588,14 +590,15 @@ async def update_row(
             row_num=row.row_num,
             target=row.target,
             status=row.status,
-            updated_by=current_user.user_id,
-            updated_by_username=current_user.username
+            updated_by=current_user["user_id"],
+            updated_by_username=current_user["username"]
         )
     except Exception as e:
         # WebSocket broadcast failure shouldn't fail the API call
         logger.warning(f"Failed to broadcast cell update: {e}")
 
-    logger.info(f"Row updated: id={row_id}, user={current_user.user_id}")
+    user_id = current_user["user_id"]
+    logger.info(f"Row updated: id={row_id}, user={user_id}")
     return row
 
 
@@ -607,14 +610,14 @@ async def update_row(
 async def get_project_tree(
     project_id: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async)
 ):
     """Get full project tree structure (folders + files) for File Explorer."""
     # Verify project ownership
     result = await db.execute(
         select(LDMProject).where(
             LDMProject.id == project_id,
-            LDMProject.owner_id == current_user.user_id
+            LDMProject.owner_id == current_user["user_id"]
         )
     )
     project = result.scalar_one_or_none()
