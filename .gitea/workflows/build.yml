@@ -860,49 +860,43 @@ jobs:
         shell: powershell
 
       # FIX: Pre-cleanup to release file locks before act_runner cleanup
-      # ROOT CAUSE: PowerShell PWD inside workdir prevents deletion
+      # Use cmd.exe to run cleanup in separate context from PowerShell
       - name: Release File Locks
         if: always()
         run: |
-          Write-Host "=== Releasing file locks for cleanup ==="
+          @echo off
+          echo === Releasing file locks for cleanup ===
 
-          # Save workdir path before changing
-          $workdir = (Get-Location).Path
-          Write-Host "Workdir: $workdir"
+          REM Save current dir
+          set "WORKDIR=%CD%"
+          echo Workdir: %WORKDIR%
 
-          # CRITICAL: Change directory OUT of workdir before cleanup
-          Set-Location "C:\"
-          Write-Host "Changed PWD to: C:\"
+          REM Change to root to release directory handle
+          cd /d C:\
+          echo Changed to: %CD%
 
-          # Kill processes that may hold file handles
-          @('node', 'python', 'git', 'npm', 'powershell') | ForEach-Object {
-            Get-Process -Name $_ -ErrorAction SilentlyContinue |
-              Where-Object { $_.Id -ne $PID } |
-              Stop-Process -Force -ErrorAction SilentlyContinue
-          }
-          Write-Host "[OK] Killed processes"
+          REM Kill processes
+          taskkill /F /IM node.exe 2>nul
+          taskkill /F /IM python.exe 2>nul
+          taskkill /F /IM git.exe 2>nul
+          taskkill /F /IM npm.cmd 2>nul
+          echo [OK] Killed processes
 
-          # Force .NET to release handles
-          [GC]::Collect()
-          [GC]::WaitForPendingFinalizers()
+          REM Wait for handles to be released
+          echo Waiting 5 seconds...
+          timeout /t 5 /nobreak >nul
 
-          # Wait for processes to fully exit and release handles
-          Write-Host "Waiting 10 seconds for handles to be released..."
-          Start-Sleep -Seconds 10
+          REM Try to delete workdir
+          echo Attempting to delete: %WORKDIR%
+          rd /s /q "%WORKDIR%" 2>nul
+          if exist "%WORKDIR%" (
+            echo [INFO] Could not delete workdir
+          ) else (
+            echo [OK] Workdir deleted
+          )
 
-          # Try to delete workdir ourselves
-          if (Test-Path $workdir) {
-            Write-Host "Attempting to delete workdir: $workdir"
-            try {
-              Remove-Item -Path $workdir -Recurse -Force -ErrorAction Stop
-              Write-Host "[OK] Workdir deleted successfully"
-            } catch {
-              Write-Host "[INFO] Could not delete workdir: $($_.Exception.Message)"
-            }
-          }
-
-          Write-Host "[DONE] Pre-cleanup complete"
-        shell: powershell
+          echo [DONE] Pre-cleanup complete
+        shell: cmd
         continue-on-error: true
 
   # ============================================================
