@@ -134,3 +134,4 @@ Test custom workdir 2512081210
 Test UTF-8 fix 2512081235
 Build LIGHT v2512081330 - Diagnostic test for P13.11
 Build LIGHT v2512081335 - Fix: cd out of cache before cleanup
+Build LIGHT v2512081355 - Test workdir_parent config
