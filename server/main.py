@@ -215,6 +215,10 @@ app.include_router(rankings.router)
 from server.api import admin_telemetry
 app.include_router(admin_telemetry.router)
 
+# Include LDM (LanguageData Manager) API - Real-time collaborative CAT tool
+from server.tools.ldm import api as ldm_api
+app.include_router(ldm_api.router)
+
 # Socket.IO will be mounted at the end after all setup is complete
 
 # Note: Startup and shutdown events are now handled via the lifespan context manager
