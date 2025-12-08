@@ -37,21 +37,27 @@ LocaNext v2512080549
 | #4 | Upgrade act_runner v0.2.11 → v0.2.13 | ❌ Still fails |
 | #5 | Enable debug logging | ❌ No additional info |
 
-**Root cause:** nektos/act bug in host mode on Windows
-- "Cleaning up container" runs even with no container (host mode)
-- Cleanup phase returns failure for unknown reason
-- [Gitea forum confirms](https://forum.gitea.com/t/disable-job-cleaning-between-jobs-host-mode/8540) no way to disable cleanup
+**Root cause (Deep Investigation):**
 
-**Current workaround:** None - this is cosmetic only
-- ✅ Build actually succeeds
-- ✅ ZIP is created correctly
+1. Job status determined by `jobError == nil` in [job_executor.go](https://github.com/nektos/act/blob/master/pkg/runner/job_executor.go)
+2. `SetJobError(ctx, ctx.Err())` is called when context has error
+3. `ctx.Err()` returns `context.Canceled` or `context.DeadlineExceeded`
+4. **6-second gap** between "Cleaning up" and "Job failed" suggests context issue during cleanup
+5. Windows host mode cleanup (`HostEnvironment.CleanUp`) may be triggering context error
+
+**Related issues found:**
+- [nektos/act #587](https://github.com/nektos/act/issues/587) - Windows context canceled (Docker mode, fixed)
+- [nektos/act #1561](https://github.com/nektos/act/issues/1561) - Container removal context canceled
+- [Gitea forum](https://forum.gitea.com/t/disable-job-cleaning-between-jobs-host-mode/8540) - No cleanup disable option
+
+**Current status:** Cosmetic only - build works
+- ✅ ZIP created correctly
 - ✅ All steps pass
 - ❌ Status shows "failed" (false positive)
 
-**Future options:**
-- Wait for act_runner fix
-- Report issue to gitea/act_runner repo
-- Accept cosmetic limitation for local testing (GitHub builds show ✅)
+**Next steps:**
+- File issue on gitea/act_runner with technical findings
+- Or accept as cosmetic (GitHub builds show ✅)
 
 ---
 
