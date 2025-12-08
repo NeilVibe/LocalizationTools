@@ -65,6 +65,10 @@
   let editTarget = "";
   let editStatus = "";
 
+  // TM suggestions state
+  let tmSuggestions = [];
+  let tmLoading = false;
+
   // Table column widths
   const columns = [
     { key: "row_num", label: "#", width: 60 },
@@ -229,6 +233,50 @@
     logger.userAction("Go to row", { rowNumber: goToRowNumber });
   }
 
+  // Fetch TM suggestions for a source text
+  async function fetchTMSuggestions(sourceText, rowId) {
+    if (!sourceText || !sourceText.trim()) {
+      tmSuggestions = [];
+      return;
+    }
+
+    tmLoading = true;
+    tmSuggestions = [];
+
+    try {
+      const params = new URLSearchParams({
+        source: sourceText,
+        threshold: '0.3',
+        max_results: '5'
+      });
+      if (fileId) params.append('file_id', fileId.toString());
+      if (rowId) params.append('exclude_row_id', rowId.toString());
+
+      const response = await fetch(`${API_BASE}/api/ldm/tm/suggest?${params}`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        tmSuggestions = data.suggestions || [];
+        logger.info("TM suggestions fetched", { count: tmSuggestions.length });
+      }
+    } catch (err) {
+      logger.error("Failed to fetch TM suggestions", { error: err.message });
+    } finally {
+      tmLoading = false;
+    }
+  }
+
+  // Apply a TM suggestion
+  function applyTMSuggestion(suggestion) {
+    editTarget = suggestion.target;
+    logger.userAction("TM suggestion applied", {
+      source: suggestion.source.substring(0, 30),
+      similarity: suggestion.similarity
+    });
+  }
+
   // Open edit modal with row locking
   async function openEditModal(row) {
     if (!row) return;
@@ -256,6 +304,9 @@
     editStatus = row.status || "pending";
     showEditModal = true;
     logger.userAction("Edit modal opened", { rowId: row.id });
+
+    // Fetch TM suggestions in background
+    fetchTMSuggestions(row.source, row.id);
   }
 
   // Close edit modal and release lock
@@ -265,6 +316,47 @@
     }
     showEditModal = false;
     editingRow = null;
+    tmSuggestions = [];
+    tmLoading = false;
+  }
+
+  // Save and move to next row
+  async function saveAndNext() {
+    if (!editingRow) return;
+
+    const currentRowNum = editingRow.row_num;
+    await saveEdit();
+
+    // After save, find and edit next row
+    await tick();
+    const nextRow = rows[currentRowNum]; // row_num is 1-indexed, array is 0-indexed
+    if (nextRow && !nextRow.placeholder) {
+      setTimeout(() => openEditModal(nextRow), 100);
+    }
+  }
+
+  // Handle keyboard shortcuts in edit modal
+  function handleEditKeydown(event) {
+    // Ctrl+Enter: Save and next
+    if (event.ctrlKey && event.key === 'Enter') {
+      event.preventDefault();
+      saveAndNext();
+      return;
+    }
+
+    // Tab: Apply first TM suggestion (if available)
+    if (event.key === 'Tab' && !event.shiftKey && tmSuggestions.length > 0) {
+      event.preventDefault();
+      applyTMSuggestion(tmSuggestions[0]);
+      return;
+    }
+
+    // Escape: Cancel edit
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeEditModal();
+      return;
+    }
   }
 
   // Save edit
@@ -543,7 +635,8 @@
   size="lg"
 >
   {#if editingRow}
-    <div class="edit-form">
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+    <div class="edit-form" role="form" on:keydown={handleEditKeydown}>
       <div class="field">
         <label>StringID</label>
         <div class="readonly-value">{editingRow.string_id || "-"}</div>
@@ -560,6 +653,37 @@
         placeholder="Enter translation..."
         rows={4}
       />
+
+      <!-- TM Suggestions Panel -->
+      <div class="tm-panel">
+        <div class="tm-header">
+          <span class="tm-title">Translation Memory</span>
+          {#if tmLoading}
+            <InlineLoading description="Searching..." />
+          {/if}
+        </div>
+
+        {#if tmSuggestions.length > 0}
+          <div class="tm-suggestions">
+            {#each tmSuggestions as suggestion}
+              <button
+                class="tm-suggestion"
+                on:click={() => applyTMSuggestion(suggestion)}
+                title="Click to apply this translation"
+              >
+                <div class="tm-match">
+                  <Tag type="teal" size="sm">{Math.round(suggestion.similarity * 100)}%</Tag>
+                  <span class="tm-file">{suggestion.file_name}</span>
+                </div>
+                <div class="tm-source">{suggestion.source}</div>
+                <div class="tm-target">{suggestion.target}</div>
+              </button>
+            {/each}
+          </div>
+        {:else if !tmLoading}
+          <div class="tm-empty">No similar translations found</div>
+        {/if}
+      </div>
 
       <Select
         bind:selected={editStatus}
@@ -799,5 +923,92 @@
     color: var(--cds-text-02);
     font-size: 0.875rem;
     white-space: pre-wrap;
+  }
+
+  /* TM Panel Styles */
+  .tm-panel {
+    margin-top: 0.5rem;
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    background: var(--cds-layer-02);
+  }
+
+  .tm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    background: var(--cds-layer-accent-01);
+  }
+
+  .tm-title {
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cds-text-02);
+  }
+
+  .tm-suggestions {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .tm-suggestion {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .tm-suggestion:last-child {
+    border-bottom: none;
+  }
+
+  .tm-suggestion:hover {
+    background: var(--cds-layer-hover-02);
+  }
+
+  .tm-match {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .tm-file {
+    font-size: 0.6875rem;
+    color: var(--cds-text-02);
+  }
+
+  .tm-source {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tm-target {
+    font-size: 0.8125rem;
+    color: var(--cds-text-01);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tm-empty {
+    padding: 0.75rem;
+    text-align: center;
+    color: var(--cds-text-02);
+    font-size: 0.75rem;
+    font-style: italic;
   }
 </style>

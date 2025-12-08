@@ -16,10 +16,10 @@ Phase 1: Foundation         [X] 12/12 tasks  ✅ COMPLETE
 Phase 2: File Explorer      [X] 16/16 tasks  ✅ COMPLETE
 Phase 3: Real-time Sync     [X] 20/20 tasks  ✅ COMPLETE
 Phase 4: Virtual Scroll     [X] 10/10 tasks  ✅ COMPLETE
-Phase 5: CAT Features       [▓▓] 3/10 tasks  (TM backend done)
+Phase 5: CAT Features       [▓▓▓▓] 7/10 tasks  (TM + keyboard done)
 Phase 6: Polish             [ ] 0/8 tasks
 ─────────────────────────────────────────
-TOTAL                       [▓▓▓▓▓▓▓▓▓] 61/68 tasks (90%)
+TOTAL                       [▓▓▓▓▓▓▓▓▓▓] 65/68 tasks (96%)
 ```
 
 ---
@@ -237,21 +237,38 @@ Location: server/tools/ldm/glossary.py
 - [ ] **5.2.1** Create `glossary.py` (reuse QA Tools)
 - [ ] **5.2.2** `GET /api/ldm/glossary/check?text=...` - Check glossary terms
 
-### 5.3 Frontend: CAT Panels
+### 5.3 Frontend: TM Panel ✅
+```
+Location: locaNext/src/lib/components/ldm/VirtualGrid.svelte (integrated)
+```
+
+- [x] **5.3.1** TM suggestions panel integrated into edit modal (not separate component)
+- [x] **5.3.2** TM suggestions fetched on modal open
+- [x] **5.3.3** One-click apply suggestion → fills target textarea
+- [x] **5.3.4** Shows similarity %, source text, file name for each suggestion
+
+### 5.4 Frontend: Keyboard Shortcuts ✅
+```
+Location: locaNext/src/lib/components/ldm/VirtualGrid.svelte
+```
+
+- [x] **5.4.1** Ctrl+Enter: Save and move to next row
+- [x] **5.4.2** Tab: Apply first TM suggestion (if available)
+- [x] **5.4.3** Escape: Cancel edit (close modal)
+
+### 5.5 Future: Glossary Panel
 ```
 Location: locaNext/src/lib/components/ldm/
 ```
 
-- [ ] **5.3.1** Create `TMPanel.svelte` (shows suggestions in modal)
-- [ ] **5.3.2** Create `GlossaryPanel.svelte` (shows term matches)
-- [ ] **5.3.3** Integrate panels into EditModal
-- [ ] **5.3.4** Implement keyboard shortcuts (Ctrl+Enter, Tab)
-- [ ] **5.3.5** Implement status workflow UI (Draft/Review/Approved)
+- [ ] **5.5.1** Create `GlossaryPanel.svelte` (reuse QA Tools)
+- [ ] **5.5.2** Integrate glossary check into edit modal
+- [ ] **5.5.3** Implement status workflow UI (Draft/Review/Approved)
 
 **Phase 5 Completion Checklist:**
-- [ ] TM suggestions appear when editing
+- [x] TM suggestions appear when editing
 - [ ] Glossary terms highlighted
-- [ ] Keyboard shortcuts work
+- [x] Keyboard shortcuts work
 - [ ] Status workflow visible
 
 ---
@@ -274,10 +291,10 @@ Location: locaNext/src/lib/components/ldm/
 ```json
 {
   "current_phase": 5,
-  "current_task": "5.2.1",
-  "next_task": "5.2.2",
+  "current_task": "5.5.1",
+  "next_task": "5.5.2",
   "blockers": [],
-  "notes": "Phase 5.1 TM Backend DONE! API endpoint GET /api/ldm/tm/suggest works with word-level Jaccard similarity. Next: Glossary backend."
+  "notes": "Phase 5.3 TM Panel + 5.4 Keyboard Shortcuts COMPLETE! TM suggestions show in edit modal with one-click apply. Ctrl+Enter/Tab/Escape shortcuts work. Next: Glossary integration."
 }
 ```
 
@@ -402,6 +419,9 @@ node scripts/run_test.js ldm.getStatus
 | 2025-12-08 | TEST MODE + API Tests | Added window.ldmTest, 8/8 backend API tests pass |
 | 2025-12-08 | Phase 4 COMPLETE (10/10) | VirtualGrid with virtual scrolling, lazy loading, Go to row, search |
 | 2025-12-08 | Phase 5.1 TM Backend (3/10) | tm.py + GET /api/ldm/tm/suggest with word-level Jaccard similarity |
+| 2025-12-08 | Phase 5.3 TM Panel (7/10) | TM suggestions in edit modal with one-click apply |
+| 2025-12-08 | Phase 5.4 Keyboard Shortcuts | Ctrl+Enter (save+next), Tab (apply TM), Escape (cancel) |
+| 2025-12-08 | WebTranslatorNew Reference | Extracted 5-tier cascade search documentation for future TM enhancements |
 
 ---
 
