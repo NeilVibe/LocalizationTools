@@ -74,9 +74,10 @@ LocaNext v2512080549
 | 2025-12-08 | Fix #9 | Simplified cleanup step, removed verbose diagnostic |
 | 2025-12-08 | Fix #10 | Try to delete workdir ourselves before act_runner cleanup - same error "used by another process" |
 | 2025-12-08 | Fix #11 | Add 10 second delay before delete - still fails, some process still holds lock |
-| 2025-12-08 | Fix #12 | Use cmd.exe instead of PowerShell (maybe different process context releases handle) - testing |
+| 2025-12-08 | Fix #12 | Use cmd.exe instead of PowerShell - **WORKDIR DELETED SUCCESSFULLY!** But `timeout` command failed |
+| 2025-12-08 | Fix #13 | Replace `timeout` with `ping -n 6` (works in non-interactive mode) |
 
-**Current Theory:** The `act_runner.exe` process itself holds file handles on the workdir directory. Even after our cleanup script changes PWD and kills child processes, the parent act_runner Go process maintains handles throughout the job execution.
+**Key Discovery:** cmd.exe CAN delete the workdir, PowerShell cannot. The PowerShell process likely inherits handles from act_runner that cmd.exe doesn't.
 
 ---
 

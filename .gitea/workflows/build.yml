@@ -882,9 +882,9 @@ jobs:
           taskkill /F /IM npm.cmd 2>nul
           echo [OK] Killed processes
 
-          REM Wait for handles to be released
+          REM Wait for handles to be released (use ping instead of timeout - works in non-interactive)
           echo Waiting 5 seconds...
-          timeout /t 5 /nobreak >nul
+          ping -n 6 127.0.0.1 >nul
 
           REM Try to delete workdir
           echo Attempting to delete: %WORKDIR%
