@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512081600 | **Updated**: 2025-12-08 | **Status**: Production Ready
+**Version**: 2512091000 | **Updated**: 2025-12-09 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 
@@ -15,7 +15,7 @@ LocaNext v2512080549
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar
 ├── Tests:       ✅ 912 total (no mocks)
 ├── Security:    ✅ 86 tests (IP filter, CORS, JWT, audit)
-├── CI/CD:       ✅ GitHub Actions + ⚠️ Gitea (builds OK, status bug P13.11)
+├── CI/CD:       ✅ GitHub Actions + ⚠️ Gitea (P13.11 status bug + P13.12 caching)
 └── Distribution: ✅ Auto-update enabled
 ```
 
@@ -206,26 +206,75 @@ Given that GitHub also doesn't fix this for self-hosted runners:
 
 **Reality:** Build output is 100% correct. Only the displayed status is wrong.
 
+**Chosen Solution: Patch act_runner**
+
+After 10 failed attempts with workflow-level fixes, the only real solution is patching act_runner's Go code:
+
+```go
+// Patch: pkg/container/host_environment.go
+func (e *HostEnvironment) Close() error {
+    for i := 0; i < 5; i++ {
+        if err := os.RemoveAll(e.Path); err == nil {
+            return nil
+        }
+        time.Sleep(time.Duration(i+1) * time.Second)
+    }
+    return nil  // Ignore cleanup failure - job already succeeded
+}
+```
+
 **Next Steps:**
-1. Research Hyper-V setup requirements
-2. Create VM with build tools pre-installed
-3. Implement checkpoint reset workflow
-4. Test full build cycle
+1. Fork act_runner repo
+2. Apply cleanup retry patch
+3. Build custom act_runner.exe
+4. Deploy to Windows build machine
+
+**Detailed tracking:** [docs/wip/P13_GITEA_TASKS.md](docs/wip/P13_GITEA_TASKS.md)
+
+---
+
+### P13.12: Build Caching 🔄 NEW
+
+**Status:** 🔄 IN PROGRESS - Implementing smart cache
+
+**Problem:** Every build downloads ~350MB (slow, wasteful)
+
+```
+Current downloads per build:
+├── VC++ Redistributable     ~25MB   (never changes)
+├── Python Embedded         ~145MB   (rarely changes)
+├── npm packages            ~100MB   (changes with package-lock.json)
+└── NSIS includes            ~1MB    (never changes)
+```
+
+**Solution:** Local cache with hash-based invalidation
+
+```
+C:\BuildCache\
+├── CACHE_MANIFEST.json          # Version tracking + hashes
+├── vcredist\vc_redist.x64.exe   # Static
+├── python-embedded\3.11.9\      # Python + pip packages
+├── npm-cache\<hash>\            # Keyed by package-lock.json hash
+└── nsis-includes\*.nsh          # Static
+```
+
+**Expected Performance:**
+| Scenario | Before | After |
+|----------|--------|-------|
+| Cold cache | ~5 min | ~5 min |
+| Cache hit | ~5 min | **~30 sec** |
+| requirements.txt change | ~5 min | ~2 min |
+
+**Next Steps:**
+1. Create `setup_build_cache.ps1` script
+2. Modify `build.yml` with cache-first logic
+3. Test and validate
+
+**Detailed tracking:** [docs/wip/P13_GITEA_TASKS.md](docs/wip/P13_GITEA_TASKS.md)
 
 ---
 
 ## Recently Completed
-
-**Future Improvement: Build Caching**
-- Currently downloading ~350MB every build (VC++, Python, npm, pip)
-- GitHub Actions has `actions/cache` for elegant caching with staleness checks
-- For Gitea, we need to implement similar:
-  - Pre-download files to local cache on Windows machine
-  - Add cache staleness checks (hash comparison, version checks)
-  - Modify workflow to use cache-first approach
-- Benefits: Fast builds + clean/reproducible + elegant
-
----
 
 ### P13.10: Build Separation (2025-12-07) ✅
 
