@@ -293,8 +293,8 @@ Set commit status before cleanup runs. If real build fails, it still shows succe
 
 | Solution | Status | Notes |
 |----------|--------|-------|
-| **C. Status API** | 🧪 Testing | Build v2512081445 in progress |
-| **F. Ephemeral** | ✅ Created | Scripts ready, needs service update |
+| **C. Status API** | ❌ Removed | Masked failures - not elegant |
+| **F. Ephemeral** | ✅ ACTIVE | Service updated, testing now |
 | **B. Upstream PR** | 📝 Draft | Will submit after testing F |
 
 **Solution F Implementation (2025-12-08):**

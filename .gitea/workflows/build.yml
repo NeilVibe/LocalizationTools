@@ -859,69 +859,11 @@ jobs:
           Write-Host "Output: installer_output\LocaNext_v${{ steps.check.outputs.version }}_Light_Portable.zip"
         shell: powershell
 
-      # FIX P13.11: Set commit status to SUCCESS before cleanup runs
-      # act_runner cleanup fails on Windows (Go handle issue), but build succeeded
-      # This ensures the commit shows green check even if cleanup fails
-      - name: Set Commit Status Success
-        if: always()
-        run: |
-          Write-Host "=== Setting commit status to SUCCESS ==="
-          $commitSha = git rev-parse HEAD
-          Write-Host "Commit: $commitSha"
-
-          $body = @{
-            context = "build-windows"
-            description = "Build successful"
-            state = "success"
-            target_url = "${{ env.GITEA_URL }}/${{ env.GITEA_REPO }}/actions"
-          } | ConvertTo-Json
-
-          $response = Invoke-RestMethod `
-            -Uri "${{ env.GITEA_URL }}/api/v1/repos/${{ env.GITEA_REPO }}/statuses/$commitSha" `
-            -Method POST `
-            -Headers @{ "Authorization" = "token ${{ secrets.RELEASE_TOKEN }}"; "Content-Type" = "application/json" } `
-            -Body $body `
-            -ErrorAction SilentlyContinue
-
-          if ($response) {
-            Write-Host "[OK] Commit status set to SUCCESS (ID: $($response.id))"
-          } else {
-            Write-Host "[WARN] Could not set commit status (API may not be available)"
-          }
-        shell: powershell
-        continue-on-error: true
-
-      # FIX: Pre-cleanup to release file locks before act_runner cleanup
-      # Use cmd.exe to run cleanup in separate context from PowerShell
-      - name: Release File Locks
-        if: always()
-        run: |
-          @echo off
-          echo === Releasing file locks for cleanup ===
-
-          REM Save current dir
-          set "WORKDIR=%CD%"
-          echo Workdir: %WORKDIR%
-
-          REM Change to root to release directory handle
-          cd /d C:\
-          echo Changed to: %CD%
-
-          REM Kill processes
-          taskkill /F /IM node.exe 2>nul
-          taskkill /F /IM python.exe 2>nul
-          taskkill /F /IM git.exe 2>nul
-          taskkill /F /IM npm.cmd 2>nul
-          echo [OK] Killed processes
-
-          REM Wait for handles to be released (use ping instead of timeout - works in non-interactive)
-          echo Waiting 3 seconds...
-          ping -n 4 127.0.0.1 >nul
-
-          REM Don't delete - just release handles. act_runner needs the directory to exist.
-          echo [DONE] Pre-cleanup complete (handles released, workdir left for act_runner)
-        shell: cmd
-        continue-on-error: true
+      # NOTE: No cleanup workarounds needed!
+      # Using ephemeral runner mode (Solution F from P13.11):
+      # - Runner exits after each job
+      # - All handles released automatically
+      # - No more "Job failed" false positives
 
   # ============================================================
   # JOB 4: Create Gitea Release
