@@ -145,3 +145,4 @@ Build LIGHT v2512081430 - Fix #15: dont delete, just release handles
 Build LIGHT v2512081445 - Fix P13.11: Set commit status success before cleanup
 Build LIGHT v2512081530 - Test ephemeral runner (clean workflow)
 Build LIGHT v2512081600 - Ephemeral runner verification build
+Build LIGHT v2512081600 - Retry with Gitea version fetch fix
