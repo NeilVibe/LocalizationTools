@@ -25,36 +25,29 @@ LocaNext v2512080549
 
 ### P13.11: FIX Gitea Windows Build "Job Failed" Bug
 
-**Status: INVESTIGATING - Testing Fix #2**
+**Status: NEXT → Fix #4 (Upgrade act_runner)**
 
-**The bug:**
-- Gitea builds complete successfully (ZIP created, all steps ✅)
-- But act_runner reports "🏁 Job failed" at the very end
-- This is a FALSE failure - the build actually works
+**The bug:** Build succeeds but act_runner reports "🏁 Job failed" during cleanup.
 
-**Investigation timeline:**
+| Fix | Description | Result |
+|-----|-------------|--------|
+| #1 | Remove disabled `create-release` job | ❌ Failed |
+| #2 | Add `persist-credentials: false` to checkout | ❌ Failed |
+| #3 | Replace `actions/checkout` with `git clone` | ❌ Failed |
+| #4 | **Upgrade act_runner v0.2.11 → v0.2.13** | 🔄 Next |
 
-1. **Fix #1 (APPLIED):** Removed disabled `create-release` job
-   - Had `if: false` + `needs: [build-windows]` causing dependency issues
-   - Result: Still fails → issue is elsewhere
+**Root cause:** act_runner v0.2.11 bug - reports false failure during host mode cleanup on Windows.
 
-2. **Fix #2 (TESTING NOW):** Added `persist-credentials: false` to checkout
-   - The post-job cleanup of `actions/checkout@v4` may be causing the issue
-   - act_runner shows "Cleaning up container" even in host mode
-   - `persist-credentials: false` reduces post-job work
-   - Reference: [actions/checkout#1149](https://github.com/actions/checkout/issues/1149)
-
-**Log analysis:**
-```
-✅  Success - Post Checkout code
-Cleaning up container for job Build Windows LIGHT Installer  ← Host mode, no container!
-🏁  Job failed  ← False failure during cleanup
+**Fix #4 Instructions (Windows Admin PowerShell):**
+```powershell
+cd C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
+nssm stop GiteaActRunner
+move act_runner.exe act_runner_v0.2.11.bak
+curl -L -o act_runner.exe https://gitea.com/gitea/act_runner/releases/download/v0.2.13/act_runner-0.2.13-windows-amd64.exe
+nssm start GiteaActRunner
 ```
 
-3. **Fix #3 (TESTING NOW):** Replace `actions/checkout@v4` with git clone
-   - Fix #2 failed → applying git clone approach
-   - No post-job cleanup, no JavaScript, just git
-   - Simpler and more reliable for self-hosted Windows runners
+**After upgrade:** Trigger Gitea build → check if status shows ✅
 
 ---
 
