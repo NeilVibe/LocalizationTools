@@ -146,3 +146,5 @@ Build LIGHT v2512081445 - Fix P13.11: Set commit status success before cleanup
 Build LIGHT v2512081530 - Test ephemeral runner (clean workflow)
 Build LIGHT v2512081600 - Ephemeral runner verification build
 Build LIGHT v2512081600 - Retry with Gitea version fetch fix
+Test patched runner + cache $(date '+%Y%m%d-%H%M%S')
+Test patched runner + cache 20251209-011609
