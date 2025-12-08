@@ -6,6 +6,7 @@
   import XLSTransfer from "$lib/components/apps/XLSTransfer.svelte";
   import QuickSearch from "$lib/components/apps/QuickSearch.svelte";
   import KRSimilar from "$lib/components/apps/KRSimilar.svelte";
+  import LDM from "$lib/components/apps/LDM.svelte";
   import TaskManager from "$lib/components/TaskManager.svelte";
   import Welcome from "$lib/components/Welcome.svelte";
   import { onMount } from "svelte";
@@ -56,6 +57,8 @@
       <QuickSearch />
     {:else if app === 'krsimilar'}
       <KRSimilar />
+    {:else if app === 'ldm'}
+      <LDM />
     {:else}
       <Welcome />
     {/if}

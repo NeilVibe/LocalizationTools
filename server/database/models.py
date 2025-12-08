@@ -508,3 +508,193 @@ class TelemetrySummary(Base):
 
     def __repr__(self):
         return f"<TelemetrySummary(date='{self.date.date()}', installation='{self.installation_id}', sessions={self.total_sessions})>"
+
+
+# ============================================================================
+# LDM (LanguageData Manager) Tables
+# ============================================================================
+
+class LDMProject(Base):
+    """
+    LDM Project - Top-level container for organizing localization files.
+    Each user can have multiple projects.
+    """
+    __tablename__ = "ldm_projects"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(200), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    owner = relationship("User")
+    folders = relationship("LDMFolder", back_populates="project", cascade="all, delete-orphan")
+    files = relationship("LDMFile", back_populates="project", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_ldm_project_owner", "owner_id"),
+    )
+
+    def __repr__(self):
+        return f"<LDMProject(id={self.id}, name='{self.name}', owner_id={self.owner_id})>"
+
+
+class LDMFolder(Base):
+    """
+    LDM Folder - Organize files within a project (tree structure).
+    Supports nested folders via parent_id.
+    """
+    __tablename__ = "ldm_folders"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("ldm_projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    parent_id = Column(Integer, ForeignKey("ldm_folders.id", ondelete="CASCADE"), nullable=True, index=True)
+    name = Column(String(200), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    project = relationship("LDMProject", back_populates="folders")
+    parent = relationship("LDMFolder", remote_side=[id], backref="children")
+    files = relationship("LDMFile", back_populates="folder", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_ldm_folder_project_parent", "project_id", "parent_id"),
+    )
+
+    def __repr__(self):
+        return f"<LDMFolder(id={self.id}, name='{self.name}', project_id={self.project_id})>"
+
+
+class LDMFile(Base):
+    """
+    LDM File - Uploaded localization file stored in database.
+    Original file parsed into LDMRow entries for editing.
+    """
+    __tablename__ = "ldm_files"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("ldm_projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    folder_id = Column(Integer, ForeignKey("ldm_folders.id", ondelete="SET NULL"), nullable=True, index=True)
+    name = Column(String(255), nullable=False)
+    original_filename = Column(String(255), nullable=False)  # Original uploaded filename
+    format = Column(String(20), nullable=False)  # "txt", "xml", "xlsx"
+    row_count = Column(Integer, default=0)
+    source_language = Column(String(10), default="ko")  # Korean original
+    target_language = Column(String(10), nullable=True)  # Translation target language
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    project = relationship("LDMProject", back_populates="files")
+    folder = relationship("LDMFolder", back_populates="files")
+    rows = relationship("LDMRow", back_populates="file", cascade="all, delete-orphan")
+    creator = relationship("User")
+
+    __table_args__ = (
+        Index("idx_ldm_file_project_folder", "project_id", "folder_id"),
+    )
+
+    def __repr__(self):
+        return f"<LDMFile(id={self.id}, name='{self.name}', rows={self.row_count})>"
+
+
+class LDMRow(Base):
+    """
+    LDM Row - Single localization string (source + target).
+    Source (StrOrigin) is READ-ONLY, Target (Str) is EDITABLE.
+    """
+    __tablename__ = "ldm_rows"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    file_id = Column(Integer, ForeignKey("ldm_files.id", ondelete="CASCADE"), nullable=False, index=True)
+    row_num = Column(Integer, nullable=False)  # Original row number in file
+    string_id = Column(String(255), nullable=True, index=True)  # StringId attribute (may be null for TXT)
+
+    # Source = Korean original (READ-ONLY)
+    source = Column(Text, nullable=True)  # StrOrigin attribute or TXT index 5
+
+    # Target = Translation (EDITABLE)
+    target = Column(Text, nullable=True)  # Str attribute or TXT index 6
+
+    # Status tracking
+    status = Column(String(20), default="pending")  # pending, translated, reviewed, approved
+    updated_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    file = relationship("LDMFile", back_populates="rows")
+    editor = relationship("User")
+
+    __table_args__ = (
+        Index("idx_ldm_row_file_rownum", "file_id", "row_num"),
+        Index("idx_ldm_row_file_stringid", "file_id", "string_id"),
+        Index("idx_ldm_row_status", "status"),
+    )
+
+    def __repr__(self):
+        return f"<LDMRow(id={self.id}, file_id={self.file_id}, string_id='{self.string_id}', status='{self.status}')>"
+
+
+class LDMEditHistory(Base):
+    """
+    LDM Edit History - Track all changes to rows for version control.
+    Enables rollback and audit trail.
+    """
+    __tablename__ = "ldm_edit_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    row_id = Column(Integer, ForeignKey("ldm_rows.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+
+    old_target = Column(Text, nullable=True)
+    new_target = Column(Text, nullable=True)
+    old_status = Column(String(20), nullable=True)
+    new_status = Column(String(20), nullable=True)
+
+    edited_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Relationships
+    row = relationship("LDMRow")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("idx_ldm_history_row_time", "row_id", "edited_at"),
+    )
+
+    def __repr__(self):
+        return f"<LDMEditHistory(id={self.id}, row_id={self.row_id}, edited_at='{self.edited_at}')>"
+
+
+class LDMActiveSession(Base):
+    """
+    LDM Active Session - Track who's viewing/editing which file.
+    Used for presence indicators and row locking.
+    """
+    __tablename__ = "ldm_active_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    file_id = Column(Integer, ForeignKey("ldm_files.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Current position
+    cursor_row = Column(Integer, nullable=True)  # Row user is viewing
+    editing_row = Column(Integer, nullable=True)  # Row user has locked for editing (modal open)
+
+    # Timestamps
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    last_seen = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    file = relationship("LDMFile")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("idx_ldm_session_file", "file_id"),
+        Index("idx_ldm_session_user", "user_id"),
+    )
+
+    def __repr__(self):
+        return f"<LDMActiveSession(file_id={self.file_id}, user_id={self.user_id}, editing_row={self.editing_row})>"
