@@ -247,10 +247,172 @@ All 3 tools verified with production test files.
 
 ### P17: LanguageData Manager (CAT Tool)
 
-Full-featured translation memory management:
-- Import/Export TMX, XLIFF
-- Fuzzy matching
-- Term base integration
+**Status:** 📋 PLANNING
+
+**Goal:** Beautiful, fast, clean CAT tool for game localization. Spreadsheet-like UI inspired by [Gridly](https://www.gridly.com/) with the simplicity of Google Sheets.
+
+---
+
+#### Research: How Other CAT Tools Work
+
+| Tool | License | UI Style | Strengths |
+|------|---------|----------|-----------|
+| [OmegaT](https://omegat.org/) | GPL (Open Source) | Desktop, Java | TMX standard, fuzzy matching, glossaries |
+| [Gridly](https://www.gridly.com/) | Commercial | Spreadsheet/Grid | Game-focused, Unreal plugin, modern UI |
+| [Smartcat](https://www.smartcat.com/) | Commercial | Segment editor | TM panel, QA checks, collaboration |
+
+**Key insight:** Gridly's success comes from "UI similar to Google Sheets" - teams adapt quickly because it feels familiar.
+
+---
+
+#### What We Already Have (Reuse from QuickSearch)
+
+```
+server/tools/quicksearch/
+├── parser.py      → TXT/TSV/XML parsing ✅
+├── dictionary.py  → Dictionary management ✅
+├── searcher.py    → Search functionality ✅
+└── qa_tools.py    → QA checks (glossary, patterns) ✅
+```
+
+**Don't rebuild** - extend and reuse!
+
+---
+
+#### Core Features (MVP)
+
+| Feature | Priority | Description |
+|---------|----------|-------------|
+| **Grid Editor** | P0 | Source + Target columns, row-by-row editing |
+| **Customizable Columns** | P0 | Add StringID, metadata, notes, status |
+| **File Support** | P0 | TXT/TSV, XML (LocStr format), Excel |
+| **Search/Filter** | P0 | Fast filtering, regex support |
+| **Save/Export** | P0 | Save edits back to original format |
+
+#### Advanced Features (Post-MVP)
+
+| Feature | Priority | Description |
+|---------|----------|-------------|
+| **Translation Memory** | P1 | Fuzzy matching from existing translations |
+| **Glossary Panel** | P1 | Term suggestions while editing |
+| **QA Checks** | P1 | Missing tags, inconsistencies (reuse qa_tools.py) |
+| **Keyboard Shortcuts** | P1 | Ctrl+Enter confirm, Tab next segment |
+| **Status Tracking** | P2 | Draft, Reviewed, Approved states |
+| **TMX Import/Export** | P2 | Standard format interop |
+| **Diff View** | P2 | Compare versions, show changes |
+
+---
+
+#### UI Design Concept
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  LD Manager                              [Easy Mode ▼] [Save]   │
+├─────────────────────────────────────────────────────────────────┤
+│  File: sample_localization.xml    │ Filter: [________] [🔍]    │
+├─────────────────────────────────────────────────────────────────┤
+│  # │ StringID      │ Source (EN)        │ Target (KO)    │ ✓  │
+├────┼───────────────┼────────────────────┼────────────────┼────┤
+│  1 │ menu_start    │ Start Game         │ 게임 시작       │ ✅ │
+│  2 │ menu_options  │ Options            │ 설정           │ ✅ │
+│  3 │ menu_exit     │ Exit               │ [editing...]   │ 📝 │
+│  4 │ dialog_001    │ Hello, adventurer! │                │ ⬜ │
+├─────────────────────────────────────────────────────────────────┤
+│  [◀ Prev] [Confirm ✓] [Skip ▶]          Segments: 4/1000      │
+└─────────────────────────────────────────────────────────────────┘
+
+Advanced Mode adds:
+- Column visibility toggles
+- Metadata columns (context, char limit, tags)
+- TM suggestions panel
+- Glossary panel
+- QA warnings panel
+```
+
+---
+
+#### Easy Mode vs Advanced Mode
+
+| Mode | Columns | Features |
+|------|---------|----------|
+| **Easy** | Source, Target, Status | Basic editing, search, save |
+| **Advanced** | All customizable | TM, Glossary, QA, metadata, shortcuts |
+
+New users start in Easy mode. Power users toggle to Advanced.
+
+---
+
+#### Technical Architecture
+
+```
+Frontend (Svelte):
+├── LDManager.svelte          # Main container
+├── components/
+│   ├── DataGrid.svelte       # AG-Grid or custom virtualized grid
+│   ├── CellEditor.svelte     # Inline text editing
+│   ├── FilterBar.svelte      # Search/filter controls
+│   ├── TMPanel.svelte        # Translation memory suggestions
+│   └── StatusBar.svelte      # Progress, segment count
+
+Backend (FastAPI):
+├── server/tools/ld_manager/
+│   ├── __init__.py
+│   ├── editor.py             # Load, edit, save operations
+│   ├── tm_matcher.py         # Fuzzy matching (reuse KR Similar?)
+│   └── file_handlers/
+│       ├── txt_handler.py    # Reuse QuickSearch parser
+│       ├── xml_handler.py    # Reuse QuickSearch parser
+│       └── xlsx_handler.py   # Reuse XLSTransfer
+```
+
+---
+
+#### Performance Requirements
+
+| Metric | Target | Notes |
+|--------|--------|-------|
+| Load 10K segments | < 2 sec | Virtualized grid, paginated |
+| Search 10K segments | < 500ms | Index-based search |
+| Save changes | < 1 sec | Incremental save |
+| UI responsiveness | 60 FPS | No lag while scrolling |
+
+---
+
+#### Development Phases
+
+**Phase 1: Grid Editor MVP** (Core)
+- [ ] Load TXT/XML files into grid
+- [ ] Display Source + Target columns
+- [ ] Inline editing
+- [ ] Save back to file
+- [ ] Basic search/filter
+
+**Phase 2: Customization**
+- [ ] Easy/Advanced mode toggle
+- [ ] Customizable columns
+- [ ] Column visibility settings
+- [ ] Status tracking
+
+**Phase 3: CAT Features**
+- [ ] Translation Memory panel
+- [ ] Glossary suggestions
+- [ ] QA checks integration
+- [ ] Keyboard shortcuts
+
+**Phase 4: Polish**
+- [ ] TMX import/export
+- [ ] Excel support
+- [ ] Diff view
+- [ ] Collaboration features (future)
+
+---
+
+#### Open Questions
+
+1. **Grid library?** AG-Grid (powerful) vs custom (lighter)?
+2. **Virtualization?** For 10K+ rows performance
+3. **Auto-save?** Or manual save only?
+4. **File locking?** Multiple users editing same file?
 
 ### P18: Platform UI/UX Overhaul
 
