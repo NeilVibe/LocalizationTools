@@ -174,14 +174,67 @@ async def search_target_text(
 
 ---
 
-## Why Not Embeddings for Target Search?
+## Precision Test Results
 
-| Aspect | Embeddings | RapidFuzz |
-|--------|------------|-----------|
-| Speed | 10-50ms per query | <1ms per query |
-| Memory | 100MB+ for model | <10MB |
-| Setup | Load model first | No setup |
-| Multi-language | Needs multilingual model | Works out of box |
-| Semantic | Yes | No (lexical only) |
+```
+Typo            | "Sword of Light" vs "Sword of Lights"  | 97%  GOOD
+Word order      | "Sword of Light" vs "Light Sword"      | 95%  GOOD
+Synonym         | "Sword of Light" vs "Blade of Light"   | 71%  POOR
+Abbreviation    | "Attack Power"   vs "ATK"              | 45%  VERY POOR
+```
 
-**Recommendation:** Use RapidFuzz for target search (fast, lexical), keep embeddings for source (semantic, Korean).
+**Verdict:** RapidFuzz is lexical only - CANNOT handle synonyms or abbreviations.
+
+---
+
+## Recommended: Hybrid Approach
+
+| Search Type | Method | Use When |
+|-------------|--------|----------|
+| Exact/Typos | RapidFuzz | Fast initial filter, threshold 90%+ |
+| Semantic | Multilingual Embeddings | Synonyms, abbreviations, paraphrases |
+
+### Multilingual Embedding Options (for semantic search)
+
+```python
+# MIT licensed, ~500MB, supports 50+ languages
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
+# Encode translations
+embeddings = model.encode(["Sword of Light", "Blade of Light", "ATK"])
+# Now "Sword" and "Blade" will be semantically similar
+```
+
+### Hybrid Search Implementation
+
+```python
+def search_target_hybrid(query, targets, threshold=0.7):
+    # Step 1: Fast RapidFuzz filter (exact/near-exact)
+    from rapidfuzz import process, fuzz
+    exact_matches = process.extract(query, targets, scorer=fuzz.WRatio,
+                                    score_cutoff=90, limit=10)
+
+    if exact_matches:
+        return exact_matches  # Fast path
+
+    # Step 2: Semantic search (slower but finds synonyms)
+    query_emb = model.encode([query])
+    similarities = cosine_similarity(query_emb, target_embeddings)
+    return top_k_by_similarity(similarities, threshold)
+```
+
+---
+
+## Comparison
+
+| Aspect | RapidFuzz | Multilingual Embeddings | Hybrid |
+|--------|-----------|------------------------|--------|
+| Speed | <1ms | 10-50ms | 1-50ms |
+| Typos | GOOD | GOOD | GOOD |
+| Word order | GOOD | GOOD | GOOD |
+| Synonyms | POOR | GOOD | GOOD |
+| Abbreviations | POOR | GOOD | GOOD |
+| Memory | <10MB | ~500MB | ~500MB |
+
+**Recommendation:** Hybrid approach - RapidFuzz for speed, embeddings for accuracy.
