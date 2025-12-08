@@ -846,8 +846,47 @@ jobs:
           Write-Host "[SUCCESS] LocaNext LIGHT Build Complete!"
           Write-Host "============================================"
           Write-Host "Output: installer_output\LocaNext_v${{ steps.check.outputs.version }}_Light_Portable.zip"
-          exit 0
         shell: powershell
+
+      # FIX: Pre-cleanup to release file locks before act_runner cleanup
+      # os.RemoveAll() in host mode fails on Windows if files are locked
+      - name: Release File Locks
+        if: always()
+        run: |
+          Write-Host "=== Releasing file locks for cleanup ==="
+
+          # Kill any node/python processes we may have spawned
+          Get-Process -Name node,python,python3 -ErrorAction SilentlyContinue | Where-Object {
+            $_.Path -like "*\.cache\act\*"
+          } | Stop-Process -Force -ErrorAction SilentlyContinue
+
+          # Give Windows Defender time to release scanned files
+          Start-Sleep -Seconds 2
+
+          # Pre-clean the hostexecutor directory with retry
+          $actCache = "$env:USERPROFILE\.cache\act"
+          if (-not $actCache -or $actCache -eq "\.cache\act") {
+            $actCache = "C:\WINDOWS\system32\config\systemprofile\.cache\act"
+          }
+
+          if (Test-Path $actCache) {
+            $retries = 3
+            for ($i = 1; $i -le $retries; $i++) {
+              try {
+                Get-ChildItem $actCache -Directory | ForEach-Object {
+                  Remove-Item $_.FullName -Recurse -Force -ErrorAction Stop
+                }
+                Write-Host "[OK] Pre-cleanup successful"
+                break
+              } catch {
+                Write-Host "[RETRY $i/$retries] Cleanup failed, waiting..."
+                Start-Sleep -Seconds 2
+              }
+            }
+          }
+          Write-Host "[OK] File locks released"
+        shell: powershell
+        continue-on-error: true
 
   # ============================================================
   # JOB 4: Create Gitea Release
