@@ -148,3 +148,10 @@ Build LIGHT v2512081600 - Ephemeral runner verification build
 Build LIGHT v2512081600 - Retry with Gitea version fetch fix
 Test patched runner + cache $(date '+%Y%m%d-%H%M%S')
 Test patched runner + cache 20251209-011609
+Build LIGHT v2512081600
+ver. {VERSION} | AI-Powered Localization Platform | XLSTransfer + QuickSearch
+1.3.0
+Version: {VERSION}
+Semantic: {SEMANTIC_VERSION}
+Footer: {VERSION_FOOTER} - Test patched runner service
+Build LIGHT v2512081600 - Test patched runner service
