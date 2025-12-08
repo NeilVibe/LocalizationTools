@@ -72,6 +72,8 @@ LocaNext v2512080549
 | 2025-12-08 | Fix #8 | Updated NSSM service to use `-c config.yaml daemon` |
 | 2025-12-08 | Fix #8 result | Config now applied ✅ Workdir changed to `_work` but cleanup still fails |
 | 2025-12-08 | Fix #9 | Simplified cleanup step, removed diagnostic step |
+| 2025-12-08 | Fix #10 | Try to delete workdir ourselves - same error "used by another process" |
+| 2025-12-08 | Fix #11 | Add 10 second delay before delete attempt |
 
 ---
 

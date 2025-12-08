@@ -137,3 +137,4 @@ Build LIGHT v2512081335 - Fix: cd out of cache before cleanup
 Build LIGHT v2512081355 - Test workdir_parent config
 Build LIGHT v2512081400 - Fix #9: Simplified cleanup
 Build LIGHT v2512081405 - Fix #10: Pre-delete workdir
+Build LIGHT v2512081410 - Fix #11: 10 sec delay
