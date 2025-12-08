@@ -883,25 +883,11 @@ jobs:
           echo [OK] Killed processes
 
           REM Wait for handles to be released (use ping instead of timeout - works in non-interactive)
-          echo Waiting 5 seconds...
-          ping -n 6 127.0.0.1 >nul
+          echo Waiting 3 seconds...
+          ping -n 4 127.0.0.1 >nul
 
-          REM Try to delete workdir AND its parent hash directory
-          echo Attempting to delete: %WORKDIR%
-          rd /s /q "%WORKDIR%" 2>nul
-
-          REM Also delete parent directory (the hash folder)
-          for %%I in ("%WORKDIR%\..") do set "PARENT=%%~fI"
-          echo Attempting to delete parent: %PARENT%
-          rd /s /q "%PARENT%" 2>nul
-
-          if exist "%PARENT%" (
-            echo [INFO] Parent directory still exists
-          ) else (
-            echo [OK] Workdir and parent deleted
-          )
-
-          echo [DONE] Pre-cleanup complete
+          REM Don't delete - just release handles. act_runner needs the directory to exist.
+          echo [DONE] Pre-cleanup complete (handles released, workdir left for act_runner)
         shell: cmd
         continue-on-error: true
 

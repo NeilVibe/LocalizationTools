@@ -76,9 +76,10 @@ LocaNext v2512080549
 | 2025-12-08 | Fix #11 | Add 10 second delay before delete - still fails, some process still holds lock |
 | 2025-12-08 | Fix #12 | Use cmd.exe instead of PowerShell - **WORKDIR DELETED SUCCESSFULLY!** But `timeout` command failed |
 | 2025-12-08 | Fix #13 | Replace `timeout` with `ping -n 6` - workdir deleted ✅ but job still fails |
-| 2025-12-08 | Fix #14 | Also delete parent hash directory (act_runner might be cleaning that) |
+| 2025-12-08 | Fix #14 | Also delete parent hash - act_runner fails with "pathcmd.txt not found" (it needs the dir!) |
+| 2025-12-08 | Fix #15 | Don't delete - just release handles via cmd.exe cd/taskkill, let act_runner clean up |
 
-**Key Discovery:** cmd.exe CAN delete the workdir, PowerShell cannot. The PowerShell process likely inherits handles from act_runner that cmd.exe doesn't.
+**Key Discovery:** cmd.exe CAN delete the workdir, PowerShell cannot. But act_runner needs the workdir to exist for its cleanup to work properly (`act\workflow\pathcmd.txt`).
 
 ---
 
