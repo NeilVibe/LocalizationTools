@@ -927,10 +927,17 @@ jobs:
 
       # FIX: Pre-cleanup to release file locks before act_runner cleanup
       # os.RemoveAll() in host mode fails on Windows if files are locked
+      # ROOT CAUSE: PowerShell PWD is inside act cache - Windows can't delete current working directory
       - name: Release File Locks
         if: always()
         run: |
           Write-Host "=== Releasing file locks for cleanup ==="
+
+          # FIX: Change directory OUT of act cache before cleanup
+          # This is the ROOT CAUSE - PWD was inside the cache directory
+          Write-Host "Current PWD: $(Get-Location)"
+          Set-Location "C:\"
+          Write-Host "Changed PWD to: $(Get-Location)"
 
           # Kill ALL node/python/git processes (they may hold file handles)
           $processNames = @('node', 'python', 'python3', 'git', 'npm', 'electron')

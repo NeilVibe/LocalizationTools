@@ -65,6 +65,8 @@ LocaNext v2512080549
 |------|------|---------|
 | 2025-12-08 | Check logs | Directory `9ae6a946fb1ccc46` locked during cleanup, even after killing node/python/git |
 | 2025-12-08 | Add diagnostics | Adding step to identify which process holds the lock |
+| 2025-12-08 | **ROOT CAUSE** | PowerShell PWD is inside act cache! Windows can't delete current working directory |
+| 2025-12-08 | Fix attempt | Add `Set-Location C:\` before cleanup to release directory lock |
 
 ---
 
