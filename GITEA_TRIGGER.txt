@@ -173,3 +173,4 @@ Build LIGHT v2512090202 - v10 patch test (V10-PATCHED marker)
 Build LIGHT v2512090202 - v11 DIRECT REPLACE test
 Build LIGHT v2512090202 - v11 direct replace verification
 Build LIGHT v2512090202 - v11 SINGLE runner test
+Build LIGHT v2512090202 - v12 whitespace fix test
