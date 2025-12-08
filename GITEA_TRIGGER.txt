@@ -174,3 +174,4 @@ Build LIGHT v2512090202 - v11 DIRECT REPLACE test
 Build LIGHT v2512090202 - v11 direct replace verification
 Build LIGHT v2512090202 - v11 SINGLE runner test
 Build LIGHT v2512090202 - v12 whitespace fix test
+Build LIGHT v2512090343 - Test v12 patched runner
