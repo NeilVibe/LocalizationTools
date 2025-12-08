@@ -251,7 +251,26 @@ All 3 tools verified with production test files.
 
 **Goal:** Custom-built, powerful, elegant CAT tool for game localization. Google Docs-like real-time collaboration with file explorer, handling 500K-1M rows effortlessly.
 
-**Approach:** 100% custom. No open-source CAT tools. We build everything ourselves - clever, smart, powerful.
+**Approach:** 100% custom. No open-source CAT tools. We build everything ourselves.
+
+```
+P17 Quick Summary:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  LocaNext LDM - LanguageData Manager                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Scale:        500K - 1M rows (virtual scroll, server pagination)           │
+│  Collaboration: Real-time WebSocket sync between all users                  │
+│  UI:           File Explorer + Grid View + Edit Modal                       │
+│  Editing:      Source (StrOrigin) = READ-ONLY, Target (Str) = EDITABLE      │
+│  Server:       ONE server (FastAPI:8888 + PostgreSQL + Gitea:3000)          │
+│  Phases:       6 phases (Foundation → File Explorer → Sync → Scale → CAT)   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Frontend:     locaNext/src/routes/ldm/ + lib/components/ldm/               │
+│  Backend:      server/tools/ldm/ (api.py, websocket.py, models.py)          │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+> **Jump to sections:** [UX Flow](#ux-flow-how-users-work) | [File Formats](#file-format-parsing-rules) | [Architecture](#deployment-architecture-one-server-for-everything) | [Development Phases](#development-phases)
 
 ---
 
