@@ -57,8 +57,14 @@ LocaNext v2512080549
 - ❌ Status shows "failed" (false positive)
 
 **Next steps:**
-- File issue on gitea/act_runner with technical findings
-- Or accept as cosmetic (GitHub builds show ✅)
+- Methodical investigation in progress
+- Check recent logs, identify exact failure point, build solution incrementally
+
+**Investigation Log:**
+| Date | Step | Finding |
+|------|------|---------|
+| 2025-12-08 | Check logs | Directory `9ae6a946fb1ccc46` locked during cleanup, even after killing node/python/git |
+| 2025-12-08 | Add diagnostics | Adding step to identify which process holds the lock |
 
 ---
 
