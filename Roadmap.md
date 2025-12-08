@@ -87,6 +87,20 @@ LocaNext v2512080549
 
 **Conclusion:** The issue is in act_runner's host mode cleanup on Windows. The Go process maintains handles on the workdir that child processes cannot release.
 
+**Next Investigation: Docker Mode**
+- GitHub Actions uses **Docker containers** (Linux) or **fresh VMs** (Windows/macOS)
+- Docker mode might solve handle issue: container stops → all handles released → cleanup is just removing container
+- Need to investigate: Can we run Windows builds in Docker? Or use WSL2 Docker?
+
+**Future Improvement: Build Caching**
+- Currently downloading ~350MB every build (VC++, Python, npm, pip)
+- GitHub Actions has `actions/cache` for elegant caching with staleness checks
+- For Gitea, we need to implement similar:
+  - Pre-download files to local cache on Windows machine
+  - Add cache staleness checks (hash comparison, version checks)
+  - Modify workflow to use cache-first approach
+- Benefits: Fast builds + clean/reproducible + elegant
+
 ---
 
 ## Recently Completed
