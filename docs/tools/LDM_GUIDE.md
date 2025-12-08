@@ -1,7 +1,7 @@
 # LDM (LanguageData Manager) - Complete Guide
 
 **Created:** 2025-12-08
-**Status:** 85% Complete (Phase 4 done, Phase 5 next)
+**Status:** 96% Complete (Phase 5 mostly done)
 **Task Tracking:** [docs/wip/P17_LDM_TASKS.md](../wip/P17_LDM_TASKS.md)
 
 ---
@@ -151,7 +151,7 @@ node scripts/run_test.js ldm.fullSequence
 | Phase 2: File Explorer | ✅ COMPLETE | Projects, folders, upload |
 | Phase 3: Real-time Sync | ✅ COMPLETE | WebSocket, presence, locking |
 | Phase 4: Virtual Scroll | ✅ COMPLETE | VirtualGrid, lazy loading, Go to row |
-| Phase 5: CAT Features | ⏳ PLANNED | TM, Glossary, keyboard shortcuts |
+| Phase 5: CAT Features | ▓▓▓▓ 7/10 | TM backend+UI, keyboard shortcuts done |
 | Phase 6: Polish | ⏳ PLANNED | Export, permissions, offline |
 
 ---
@@ -180,35 +180,40 @@ curl -X POST http://localhost:8888/api/ldm/projects \
 
 ## Future Development (Planned Features)
 
-### Phase 4: Virtual Scrolling (IN PROGRESS)
-- **VirtualGrid.svelte** - Replace DataGrid with virtual scrolling
+### Phase 4: Virtual Scrolling ✅ COMPLETE
+- **VirtualGrid.svelte** - Replaced DataGrid with virtual scrolling
 - Only render ~50 visible rows (performance for 1M+ rows)
 - "Go to row N" navigation with instant jump
 - Smooth scroll behavior with row buffering
 
-### Phase 5: CAT Features (PLANNED)
-- **Translation Memory (TM)**
-  - Reuse KR Similar fuzzy matching engine
-  - `GET /api/ldm/tm/suggest?source=text` - Get suggestions
-  - Show TM matches in edit modal (70%+ similarity)
+### Phase 5: CAT Features (IN PROGRESS - 70% done)
+- **Translation Memory (TM)** ✅ COMPLETE
+  - Backend: `server/tools/ldm/tm.py` with word-level Jaccard similarity
+  - API: `GET /api/ldm/tm/suggest?source=text` - Get suggestions
+  - Frontend: TM suggestions panel in edit modal
   - One-click apply suggestion
 
-- **Glossary Integration**
+- **Keyboard Shortcuts** ✅ COMPLETE
+  - `Ctrl+Enter` - Save and move to next row
+  - `Tab` - Apply first TM suggestion
+  - `Escape` - Cancel edit (close modal)
+
+- **Glossary Integration** ⏳ PLANNED
   - Reuse QuickSearch QA Tools
   - `GET /api/ldm/glossary/check?text=...` - Check terms
   - Highlight glossary terms in source text
   - Warn if glossary term missing in target
 
-- **Keyboard Shortcuts**
-  - `Ctrl+Enter` - Save and next row
-  - `Tab` - Apply TM suggestion
-  - `Escape` - Cancel edit
-  - Arrow keys - Navigate rows
-
-- **Status Workflow**
+- **Status Workflow** ⏳ PLANNED
   - Status flow: `pending` → `translated` → `reviewed` → `approved`
   - Batch status change
   - Filter by status
+
+### Future Enhancement: 5-Tier Cascade Search
+Reference: `RessourcesForCodingTheProject/WebTranslatorNew/`
+- [TEXT_SEARCH.md](../../RessourcesForCodingTheProject/WebTranslatorNew/TEXT_SEARCH.md) - 5-tier cascade search
+- [EMBEDDINGS.md](../../RessourcesForCodingTheProject/WebTranslatorNew/EMBEDDINGS.md) - FAISS indices
+- [DATA_PREPROCESSING.md](../../RessourcesForCodingTheProject/WebTranslatorNew/DATA_PREPROCESSING.md) - Data cleaning
 
 ### Phase 6: Polish & Scale (PLANNED)
 - **Version History**
