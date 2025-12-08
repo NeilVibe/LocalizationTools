@@ -1,0 +1,63 @@
+{
+  "version": "1.0",
+  "description": "LocaNext Build Cache Manifest - Tracks cached components and their versions",
+  "created": "",
+  "updated": "",
+  "cache_root": "C:\\BuildCache",
+  "components": {
+    "vcredist": {
+      "version": "17.8",
+      "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe",
+      "path": "vcredist\\vc_redist.x64.exe",
+      "size_mb": 25,
+      "hash": "",
+      "cached_at": "",
+      "invalidate_on": "manual"
+    },
+    "python_embedded": {
+      "version": "3.11.9",
+      "url": "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip",
+      "path": "python-embedded\\python-3.11.9",
+      "size_mb": 15,
+      "includes_pip": true,
+      "pip_packages": [
+        "fastapi", "uvicorn", "python-multipart", "python-socketio",
+        "sqlalchemy", "aiosqlite",
+        "PyJWT", "python-jose", "passlib", "python-dotenv", "bcrypt",
+        "pydantic", "pydantic-settings", "email-validator",
+        "pandas", "openpyxl", "xlrd",
+        "httpx", "requests", "loguru", "tqdm", "pyyaml", "huggingface_hub"
+      ],
+      "requirements_hash": "",
+      "cached_at": "",
+      "invalidate_on": "requirements_hash_change"
+    },
+    "npm_cache": {
+      "packagelock_hash": "",
+      "path": "npm-cache",
+      "size_mb": 100,
+      "cached_at": "",
+      "invalidate_on": "packagelock_hash_change"
+    },
+    "nsis_includes": {
+      "version": "1.0",
+      "path": "nsis-includes",
+      "files": [
+        "StdUtils.nsh", "WinVer.nsh", "allowOnlyOneInstallerInstance.nsh",
+        "assistedInstaller.nsh", "boringInstaller.nsh", "checkAppRunning.nsh",
+        "extractAppPackage.nsh", "fileAssociation.nsh", "installer.nsh",
+        "installSection.nsh", "multiUser.nsh", "multiUserUi.nsh",
+        "oneClick.nsh", "UAC.nsh", "uninstaller.nsh"
+      ],
+      "source_url": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include",
+      "size_mb": 1,
+      "cached_at": "",
+      "invalidate_on": "manual"
+    }
+  },
+  "cache_policy": {
+    "max_npm_cache_entries": 3,
+    "cleanup_on_disk_low": true,
+    "disk_threshold_gb": 10
+  }
+}
