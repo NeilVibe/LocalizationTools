@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512072137 (2025-12-07)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅
+**Version:** 2512082200 (2025-12-08)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 96% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅
 
 ---
 
@@ -15,16 +15,21 @@
 - 📊 **Central monitoring**: Optional telemetry to server
 - 👔 **Professional**: CEO/management-ready quality
 
-### Current Status (2025-12-06):
-- ✅ **Backend**: 100% Complete (47+ endpoints, WebSocket, async)
+### Current Status (2025-12-08):
+- ✅ **Backend**: 100% Complete (55+ endpoints, WebSocket, async)
 - ✅ **LocaNext Desktop App**: 100% Complete (Electron + Svelte)
 - ✅ **XLSTransfer (App #1)**: VERIFIED - 10/10 tests with real Excel files
 - ✅ **QuickSearch (App #2)**: VERIFIED - 8/8 tests with TXT + XML files
 - ✅ **KR Similar (App #3)**: VERIFIED - 10/10 tests with 41,715 pairs
+- 🔄 **LDM (App #4)**: 96% Complete - CAT tool for translation files
+  - Phase 1-4: ✅ Complete (Foundation, FileExplorer, Real-time Sync, Virtual Scroll)
+  - Phase 5: 🔄 In Progress (TM Panel + Keyboard Shortcuts done, Glossary remaining)
+  - Demo: 11 screenshots in `docs/demos/ldm/`
+  - Performance: 16MB/103,500 rows in ~50 seconds
 - ✅ **Migration**: ALL 33 monolith functions verified with production test files
 - ✅ **Distribution**: Git LFS, versioning, build system ready
 - ✅ **Security**: 7/11 Complete (IP filter, CORS, JWT, audit logging, 86 tests)
-- ✅ **Tests**: 885 passed (TRUE simulation - no mocks!)
+- ✅ **Tests**: 912 passed (TRUE simulation - no mocks!)
 - ✅ **Structure**: Unified - all tools under `server/tools/` (Priority 6.0 complete)
 - ✅ **Admin Dashboard**: 100% Complete (Overview, Users, Stats, Logs, Telemetry)
 - ✅ **Health Check**: Priority 11.0 - Auto-repair system complete
@@ -81,6 +86,14 @@ docs/
 │   └── MONOLITH_DEVIATIONS.md
 ├── history/                     # Completed work
 │   └── ROADMAP_ARCHIVE.md
+├── demos/                       # Demo screenshots & videos
+│   ├── ldm/                     # LDM workflow (11 screenshots)
+│   ├── xlstransfer/             # XLSTransfer demos
+│   ├── quicksearch/             # QuickSearch demos
+│   ├── krsimilar/               # KR Similar demos
+│   └── general/                 # Platform-wide demos
+├── wip/                         # Work in Progress
+│   └── P17_LDM_TASKS.md         # LDM task tracking (65/68 tasks)
 └── deprecated/                  # Outdated docs
 ```
 
@@ -406,6 +419,18 @@ bash scripts/clean_logs.sh
   - ✅ CDP-based autonomous testing (`testing_toolkit/`)
   - ✅ All 3 apps have TEST MODE (xlsTransfer, quickSearch, krSimilar)
   - ✅ ADD_TEST_MODE_GUIDE.md for future apps (LD Manager template)
+- **P17: LDM (LanguageData Manager):** 🔄 IN PROGRESS (96% - 65/68 tasks)
+  - ✅ Phase 1: Foundation (models, API, frontend route)
+  - ✅ Phase 2: File Explorer + Basic Grid (upload TXT/XML, pagination)
+  - ✅ Phase 3: Editing + Real-time Sync (WebSocket, presence, row locking)
+  - ✅ Phase 4: Virtual Scrolling (1M+ rows, lazy loading, search)
+  - ✅ Phase 5.1-5.4: TM Backend + TM Panel + Keyboard Shortcuts
+  - 📋 Phase 5.5: Glossary integration (remaining)
+  - 📋 Phase 6: Polish & Scale (version history, export, permissions)
+  - **Demo Screenshots:** 11 images in `docs/demos/ldm/` (full workflow captured)
+  - **Performance Tested:** 16MB/103,500 rows upload ~50 seconds (~2,070 rows/sec)
+  - **TM Status:** Auto-suggest in edit modal works; Upload TM UI not yet implemented
+  - **Tasks File:** `docs/wip/P17_LDM_TASKS.md`
 
 ### Quick Gitea Commands:
 ```bash
@@ -414,7 +439,8 @@ cd ~/gitea && ./stop.sh    # Stop Gitea
 ```
 
 ### Questions to Ask User:
-- "Start P17 LD Manager (CAT Tool)?" - Big feature, language data editor
+- "Continue P17 LDM? Remaining: Glossary integration + Phase 6 Polish"
+- "Want to add TM Upload button to LDM?" - Load external .tmx files
 - "Should we add another tool to LocaNext?" (P14 - New Tools)
 - "Want to fix P10.3 (Patch Notes display)?" - Nice-to-have, backlog
 
@@ -466,7 +492,8 @@ cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext && ./LocaNext.exe 
 - **Unit Tests:** 377+ (auth, cache, websocket, dependencies, tools, QA Tools 27)
 - **API Simulation Tests:** 168 (Tools 26 + Admin 15 + Errors 25 + WebSocket 10 + Full System 72)
 - **Security Tests:** 86 (IP filter, CORS, JWT, audit logging)
-- **Tools:** 3 (XLSTransfer, QuickSearch, KR Similar) - all under `server/tools/`, 14/14 CDP tests passed
+- **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM) - all under `server/tools/`, 14/14 CDP tests passed
+- **Demo Screenshots:** 11 LDM workflow images in `docs/demos/ldm/`
 - **Documentation Files:** 30 active + 9 archived (updated WINDOWS_TROUBLESHOOTING.md)
 
 ---
@@ -479,7 +506,9 @@ This project is **97% complete**, **clean**, **organized**, and **production-rea
 
 ---
 
-*Last updated: 2025-12-07 by Claude*
+*Last updated: 2025-12-08 by Claude*
 *Tests: 912 total | Structure unified | Frontend: 164 | API Sim: 168 | Security: 86 | QA Tools: 27*
-*Tools: 3/3 complete (XLSTransfer, QuickSearch + QA Tools, KR Similar)*
+*Tools: 4 (XLSTransfer, QuickSearch + QA Tools, KR Similar, LDM 96%)*
+*P17 LDM: Phase 5 in progress - TM done, Glossary remaining*
+*Demo: 11 screenshots in docs/demos/ldm/ | Performance: 103K rows in 50 sec*
 *MASTER NAVIGATION HUB - All tools unified under server/tools/*
