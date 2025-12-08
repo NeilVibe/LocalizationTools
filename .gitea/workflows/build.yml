@@ -855,36 +855,40 @@ jobs:
         run: |
           Write-Host "=== Releasing file locks for cleanup ==="
 
-          # Kill any node/python processes we may have spawned
-          Get-Process -Name node,python,python3 -ErrorAction SilentlyContinue | Where-Object {
-            $_.Path -like "*\.cache\act\*"
-          } | Stop-Process -Force -ErrorAction SilentlyContinue
-
-          # Give Windows Defender time to release scanned files
-          Start-Sleep -Seconds 2
-
-          # Pre-clean the hostexecutor directory with retry
-          $actCache = "$env:USERPROFILE\.cache\act"
-          if (-not $actCache -or $actCache -eq "\.cache\act") {
-            $actCache = "C:\WINDOWS\system32\config\systemprofile\.cache\act"
+          # Kill ALL node/python/git processes (they may hold file handles)
+          $processNames = @('node', 'python', 'python3', 'git', 'npm', 'electron')
+          foreach ($proc in $processNames) {
+            Get-Process -Name $proc -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           }
+          Write-Host "[OK] Killed potential locking processes"
 
+          # Force garbage collection to release .NET file handles
+          [GC]::Collect()
+          [GC]::WaitForPendingFinalizers()
+
+          # Wait longer for Windows Defender/Indexer
+          Write-Host "Waiting for Windows to release file handles..."
+          Start-Sleep -Seconds 5
+
+          # Find and show what's locking files (diagnostic)
+          $actCache = "C:\WINDOWS\system32\config\systemprofile\.cache\act"
           if (Test-Path $actCache) {
-            $retries = 3
-            for ($i = 1; $i -le $retries; $i++) {
+            Write-Host "Attempting cleanup of: $actCache"
+
+            # Try to rename first (less aggressive, tests if locked)
+            $dirs = Get-ChildItem $actCache -Directory -ErrorAction SilentlyContinue
+            foreach ($dir in $dirs) {
+              $newName = "$($dir.FullName)_delete_me"
               try {
-                Get-ChildItem $actCache -Directory | ForEach-Object {
-                  Remove-Item $_.FullName -Recurse -Force -ErrorAction Stop
-                }
-                Write-Host "[OK] Pre-cleanup successful"
-                break
+                Rename-Item $dir.FullName $newName -ErrorAction Stop
+                Remove-Item $newName -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "[OK] Cleaned: $($dir.Name)"
               } catch {
-                Write-Host "[RETRY $i/$retries] Cleanup failed, waiting..."
-                Start-Sleep -Seconds 2
+                Write-Host "[LOCKED] Cannot clean: $($dir.Name) - $($_.Exception.Message)"
               }
             }
           }
-          Write-Host "[OK] File locks released"
+          Write-Host "[DONE] Pre-cleanup complete"
         shell: powershell
         continue-on-error: true
 
