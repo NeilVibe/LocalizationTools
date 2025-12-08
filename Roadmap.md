@@ -63,18 +63,20 @@ LocaNext v2512080549
 **Investigation Log:**
 | Date | Step | Finding |
 |------|------|---------|
-| 2025-12-08 | Check logs | Directory `9ae6a946fb1ccc46` locked during cleanup, even after killing node/python/git |
-| 2025-12-08 | Add diagnostics | Adding step to identify which process holds the lock |
-| 2025-12-08 | **ROOT CAUSE** | PowerShell PWD is inside act cache! Windows can't delete current working directory |
-| 2025-12-08 | Fix #7 | Add `Set-Location C:\` before cleanup to release directory lock |
-| 2025-12-08 | Fix #7 result | PWD change worked ✅, but error changed to "Access denied" - different issue |
-| 2025-12-08 | **Discovery** | Runner started without `-c config.yaml`! Config not applied! |
-| 2025-12-08 | Fix #8 | Updated NSSM service to use `-c config.yaml daemon` |
-| 2025-12-08 | Fix #8 result | Config now applied ✅ Workdir changed to `_work` but cleanup still fails |
-| 2025-12-08 | Fix #9 | Simplified cleanup step, removed diagnostic step |
-| 2025-12-08 | Fix #10 | Try to delete workdir ourselves - same error "used by another process" |
-| 2025-12-08 | Fix #11 | Add 10 second delay - still fails, lock persists |
-| 2025-12-08 | Fix #12 | Try cmd.exe instead of PowerShell (different process context) |
+| 2025-12-08 | Check logs | Directory locked during cleanup, even after killing node/python/git |
+| 2025-12-08 | Add diagnostics | Added PowerShell script to show PWD, running processes, and what's locking files |
+| 2025-12-08 | **ROOT CAUSE #1** | **PowerShell PWD was INSIDE the act cache directory!** Windows cannot delete a directory that is the current working directory of ANY running process. Diagnostic output showed: `PWD: C:\...\act\{hash}\hostexecutor` and `Is PWD inside act cache? True` |
+| 2025-12-08 | Fix #7 | Add `Set-Location C:\` before cleanup to move PWD out of workdir |
+| 2025-12-08 | Fix #7 result | PWD change worked ✅ (`Changed PWD to: C:\`), but error changed from "in use" to "Access denied" |
+| 2025-12-08 | **ROOT CAUSE #2** | **Runner config file not loaded!** Checked NSSM service - it ran `act_runner.exe daemon` without `-c config.yaml`. The `workdir_parent` setting in config.yaml was being ignored! |
+| 2025-12-08 | Fix #8 | Updated NSSM service: `nssm set GiteaActRunner AppParameters '-c config.yaml daemon'` |
+| 2025-12-08 | Fix #8 result | Config now applied ✅ Workdir moved from `C:\...\systemprofile\.cache\act\` to `C:\...\GiteaRunner\_work\` but cleanup still fails |
+| 2025-12-08 | Fix #9 | Simplified cleanup step, removed verbose diagnostic |
+| 2025-12-08 | Fix #10 | Try to delete workdir ourselves before act_runner cleanup - same error "used by another process" |
+| 2025-12-08 | Fix #11 | Add 10 second delay before delete - still fails, some process still holds lock |
+| 2025-12-08 | Fix #12 | Use cmd.exe instead of PowerShell (maybe different process context releases handle) - testing |
+
+**Current Theory:** The `act_runner.exe` process itself holds file handles on the workdir directory. Even after our cleanup script changes PWD and kills child processes, the parent act_runner Go process maintains handles throughout the job execution.
 
 ---
 
