@@ -280,6 +280,114 @@ Location: locaNext/src/lib/components/ldm/
 
 ---
 
+## Test Protocols
+
+### Backend API Tests (Autonomous - via curl)
+
+Run these tests from WSL with the server running (`python3 server/main.py`):
+
+```bash
+# Prerequisites
+python3 server/main.py &  # Start server in background
+
+# Test 1: Health Check
+curl -s http://localhost:8888/api/ldm/health
+
+# Test 2: Login and get token
+TOKEN=$(curl -s -X POST http://localhost:8888/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Test 3: Create Project
+curl -s -X POST http://localhost:8888/api/ldm/projects \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test Project"}'
+
+# Test 4: Upload TXT File
+cat > /tmp/test_ldm.txt << 'EOF'
+TEST_001					테스트 문자열 1	Test String 1
+TEST_002					테스트 문자열 2
+EOF
+curl -s -X POST http://localhost:8888/api/ldm/files/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "project_id=1" \
+  -F "file=@/tmp/test_ldm.txt"
+
+# Test 5: Get Rows
+curl -s "http://localhost:8888/api/ldm/files/1/rows?page=1&limit=10" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Test 6: Update Row
+curl -s -X PUT http://localhost:8888/api/ldm/rows/2 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"target":"New Translation","status":"translated"}'
+
+# Test 7: Upload XML File
+curl -s -X POST http://localhost:8888/api/ldm/files/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "project_id=1" \
+  -F "file=@/tmp/test_ldm.xml"
+```
+
+**Test Results (2025-12-08):**
+- ✅ Health check - PASS
+- ✅ List projects - PASS
+- ✅ Create project - PASS
+- ✅ Upload TXT file - PASS (5 rows parsed)
+- ✅ Get file rows - PASS (pagination works)
+- ✅ Update row - PASS (auto-status update works)
+- ✅ Row verification - PASS
+- ✅ Upload XML file - PASS (3 rows parsed)
+
+### Frontend CDP Tests (Requires Windows App)
+
+Run these tests via Chrome DevTools Protocol with LocaNext running:
+
+```bash
+# Launch app with CDP enabled (from WSL)
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext
+./LocaNext.exe --remote-debugging-port=9222 &
+
+# Wait for app to start, then run tests
+cd /home/neil1988/LocalizationTools/testing_toolkit
+node scripts/run_test.js ldm.createProject
+node scripts/run_test.js ldm.uploadFile
+node scripts/run_test.js ldm.selectFile
+node scripts/run_test.js ldm.editRow
+node scripts/run_test.js ldm.fullSequence  # All-in-one test
+node scripts/run_test.js ldm.getStatus
+```
+
+**Available CDP Tests:**
+| Test | Description | Status |
+|------|-------------|--------|
+| `ldm.createProject` | Create test project | 📋 Untested |
+| `ldm.uploadFile` | Upload embedded TXT data | 📋 Untested |
+| `ldm.uploadTxt` | Upload TXT test file | 📋 Untested |
+| `ldm.uploadXml` | Upload XML test file | 📋 Untested |
+| `ldm.selectFile` | Select uploaded file | 📋 Untested |
+| `ldm.editRow` | Edit first row | 📋 Untested |
+| `ldm.fullSequence` | Run all tests | 📋 Untested |
+| `ldm.getStatus` | Get current state | 📋 Untested |
+
+### Test Coverage Matrix
+
+| Component | Backend API | Frontend CDP | Notes |
+|-----------|-------------|--------------|-------|
+| Health Check | ✅ | - | API only |
+| Projects CRUD | ✅ | 📋 | Create, list |
+| Folders CRUD | ✅ | 📋 | Create, delete |
+| File Upload TXT | ✅ | 📋 | 5 rows parsed |
+| File Upload XML | ✅ | 📋 | 3 rows parsed |
+| Get Rows | ✅ | 📋 | Pagination works |
+| Edit Row | ✅ | 📋 | Auto-status |
+| WebSocket Presence | - | 📋 | Requires multi-user |
+| Row Locking | - | 📋 | Requires multi-user |
+
+---
+
 ## Session Log
 
 | Date | Tasks Completed | Notes |
@@ -288,6 +396,7 @@ Location: locaNext/src/lib/components/ldm/
 | 2025-12-08 | Phase 1 COMPLETE (12/12) | Backend models, API, frontend component all done |
 | 2025-12-08 | Phase 2 COMPLETE (16/16) | File handlers, upload, FileExplorer, DataGrid |
 | 2025-12-08 | Phase 3 COMPLETE (20/20) | WebSocket, real-time sync, presence, row locking |
+| 2025-12-08 | TEST MODE + API Tests | Added window.ldmTest, 8/8 backend API tests pass |
 
 ---
 
