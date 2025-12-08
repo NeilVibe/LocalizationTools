@@ -228,6 +228,8 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false  # Reduces post-job cleanup (act_runner Windows fix)
 
       # NOTE: We don't use actions/setup-python@v5 because it fails when runner
       # runs as SYSTEM service (can't write to systemprofile cache).
