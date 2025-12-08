@@ -427,10 +427,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: background-color 0.15s ease;
   }
 
   .target-cell:hover {
-    background: var(--cds-layer-hover-01);
+    background: var(--cds-layer-active-01);
   }
 
   .target-cell .edit-hint {
@@ -440,6 +441,7 @@
     transform: translateY(-50%);
     opacity: 0;
     color: var(--cds-icon-02);
+    transition: opacity 0.15s ease;
   }
 
   .target-cell:hover .edit-hint {

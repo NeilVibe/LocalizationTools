@@ -17,9 +17,9 @@ Phase 2: File Explorer      [X] 16/16 tasks  ✅ COMPLETE
 Phase 3: Real-time Sync     [X] 20/20 tasks  ✅ COMPLETE
 Phase 4: Virtual Scroll     [X] 10/10 tasks  ✅ COMPLETE
 Phase 5: CAT Features       [▓▓▓▓] 7/10 tasks  (TM + keyboard done)
-Phase 6: Polish             [ ] 0/11 tasks  (includes UI enhancements)
+Phase 6: Polish             [▓] 3/11 tasks  (UI enhancements done!)
 ─────────────────────────────────────────
-TOTAL                       [▓▓▓▓▓▓▓▓▓▓] 65/71 tasks (92%)
+TOTAL                       [▓▓▓▓▓▓▓▓▓▓] 68/71 tasks (96%)
 ```
 
 ---
@@ -280,11 +280,13 @@ Location: locaNext/src/lib/components/ldm/
 Location: locaNext/src/lib/components/ldm/VirtualGrid.svelte + DataGrid.svelte
 ```
 
-- [ ] **6.0.1** Smooth hover highlight - Add CSS transition for row/cell hover effect
-  - Current: `.target-cell:hover { background: var(--cds-layer-hover-01); }` (instant)
-  - Want: Add `transition: background-color 0.15s ease` for smooth highlight
-- [ ] **6.0.2** Row hover highlight - Entire row highlights on hover (not just target cell)
-- [ ] **6.0.3** Selected row highlight - Keep row highlighted after selection until another row clicked
+- [x] **6.0.1** Smooth hover highlight - Add CSS transition for row/cell hover effect ✅
+  - Added: `transition: background-color 0.15s ease, box-shadow 0.15s ease`
+  - Applied to: `.virtual-row`, `.cell.target`, `.edit-icon`
+- [x] **6.0.2** Row hover highlight - Entire row highlights on hover ✅
+  - Added: `box-shadow: inset 0 0 0 1px var(--cds-border-interactive)` on hover
+- [x] **6.0.3** Selected row highlight - Click to select, persists until another row clicked ✅
+  - Added: `selectedRowId` state + `.selected` class with stronger border
 
 **Current Cell Edit Flow (Documented):**
 - Double-click Target cell → Opens edit modal
@@ -482,6 +484,7 @@ node scripts/run_test.js ldm.getStatus
 | 2025-12-08 | Upload Performance Test | 16MB/103,500 rows - ~50 sec upload (~2,070 rows/sec) |
 | 2025-12-08 | TM Status Check | Auto-suggest in edit modal works; Upload TM UI not yet implemented |
 | 2025-12-08 | UI Enhancement Request | User requested smooth hover transitions for grid cells + row highlights |
+| 2025-12-08 | UI Enhancements DONE | Implemented 6.0.1-6.0.3: smooth transitions, row hover, selected row highlight |
 
 ---
 

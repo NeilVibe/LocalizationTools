@@ -65,6 +65,9 @@
   let editTarget = "";
   let editStatus = "";
 
+  // Selected row state
+  let selectedRowId = null;
+
   // TM suggestions state
   let tmSuggestions = [];
   let tmLoading = false;
@@ -275,6 +278,13 @@
       source: suggestion.source.substring(0, 30),
       similarity: suggestion.similarity
     });
+  }
+
+  // Select a row (single click)
+  function selectRow(row) {
+    if (!row || row.placeholder) return;
+    selectedRowId = row.id;
+    logger.info("Row selected", { rowId: row.id, rowNum: row.row_num });
   }
 
   // Open edit modal with row locking
@@ -548,11 +558,15 @@
           {#each visibleRows as row, i (row.row_num)}
             {@const rowTop = (visibleStart + i) * ROW_HEIGHT}
             {@const rowLock = row.id ? isRowLocked(parseInt(row.id)) : null}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
             <div
               class="virtual-row"
               class:placeholder={row.placeholder}
               class:locked={rowLock}
+              class:selected={selectedRowId === row.id}
               style="top: {rowTop}px; height: {ROW_HEIGHT}px;"
+              on:click={() => selectRow(row)}
+              role="row"
             >
               {#if row.placeholder}
                 <div class="cell" style="width: {columns[0].width}px;">{row.row_num}</div>
@@ -796,10 +810,17 @@
     display: flex;
     border-bottom: 1px solid var(--cds-border-subtle-01);
     background: var(--cds-layer-01);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .virtual-row:hover {
     background: var(--cds-layer-hover-01);
+    box-shadow: inset 0 0 0 1px var(--cds-border-interactive);
+  }
+
+  .virtual-row.selected {
+    background: var(--cds-layer-selected-01);
+    box-shadow: inset 0 0 0 2px var(--cds-border-interactive);
   }
 
   .virtual-row.placeholder {
@@ -841,10 +862,11 @@
     position: relative;
     cursor: pointer;
     padding-right: 1.5rem;
+    transition: background-color 0.15s ease;
   }
 
   .cell.target:hover {
-    background: var(--cds-layer-hover-01);
+    background: var(--cds-layer-active-01);
   }
 
   .cell.target.locked {
@@ -857,6 +879,7 @@
     right: 0.25rem;
     opacity: 0;
     color: var(--cds-icon-02);
+    transition: opacity 0.15s ease;
   }
 
   .cell.target:hover .edit-icon {
