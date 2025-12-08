@@ -294,8 +294,31 @@ Set commit status before cleanup runs. If real build fails, it still shows succe
 | Solution | Status | Notes |
 |----------|--------|-------|
 | **C. Status API** | 🧪 Testing | Build v2512081445 in progress |
-| **F. Ephemeral** | 📋 Next | Most elegant, implement next |
+| **F. Ephemeral** | ✅ Created | Scripts ready, needs service update |
 | **B. Upstream PR** | 📝 Draft | Will submit after testing F |
+
+**Solution F Implementation (2025-12-08):**
+
+Files created on Windows machine:
+```
+C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\
+├── run_ephemeral.bat        # Ephemeral wrapper script
+├── registration_token.txt    # Gitea registration token
+└── SETUP_EPHEMERAL.md       # Setup instructions
+```
+
+**To activate ephemeral mode, run on Windows (Admin PowerShell):**
+```powershell
+# Stop current service
+nssm stop GiteaActRunner
+
+# Update to ephemeral script
+nssm set GiteaActRunner Application "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\run_ephemeral.bat"
+nssm set GiteaActRunner AppParameters ""
+
+# Start service
+nssm start GiteaActRunner
+```
 
 ---
 
