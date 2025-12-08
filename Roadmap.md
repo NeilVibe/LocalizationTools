@@ -269,17 +269,19 @@ P17 Quick Summary:
 │  Backend:      server/tools/ldm/ (api.py, websocket.py, tm.py)              │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Progress:     Phase 1 [X] Phase 2 [X] Phase 3 [X] Phase 4 [X] Phase 5 [X]  │
-│                65/68 tasks (96%) - Remaining: Glossary, Status Workflow     │
+│                68/71 tasks (96%) - UI done, Remaining: Glossary, Status     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Recent Completions (Phase 4-5):**
+**Recent Completions (Phase 4-6):**
 - ✅ VirtualGrid.svelte - 1M+ row virtual scrolling
 - ✅ TM Backend (tm.py) - Word-level Jaccard similarity
 - ✅ TM Suggestions Panel - One-click apply in edit modal
 - ✅ Keyboard Shortcuts - Ctrl+Enter (save+next), Tab (apply TM), Escape (cancel)
 - ✅ Demo Screenshots - 11 images captured (docs/demos/ldm/)
 - ✅ Upload Performance Test - 16MB/103,500 rows in ~50 seconds (~2,070 rows/sec)
+- ✅ **UI Enhancements (Phase 6.0):** Smooth hover transitions, row highlight, selected row state
+- ✅ **Demo Folder Reorganization:** Subfolders for navigation, project-mgmt, grid, editing, ui-interactions
 
 **Future Enhancement: WebTranslatorNew Reference**
 Explored `RessourcesForCodingTheProject/WebTranslatorNew/` for reusable logic:
