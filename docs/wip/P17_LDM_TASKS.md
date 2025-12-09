@@ -76,10 +76,14 @@ Polish and patterns
 Phase 1-4: Foundation + Grid    [X] 58/58 tasks  ✅ COMPLETE
 Phase 5: Basic CAT              [▓▓▓] 7/10 tasks  (TM panel done)
 Phase 6: UI Polish              [▓▓▓▓] 7/16 tasks ✅ 6.0 + 6.1 COMPLETE
-Phase 7: Full TM System         [▓▓▓▓▓] 10/40 tasks (DB + Backup + Trash + Utils + TMManager!)
+Phase 7: Full TM System         [▓▓▓▓▓] 10/44 tasks (DB + TMManager + Updaters planned!)
 Phase 8: Nice View              [ ] 0/12 tasks   (Pattern rendering)
 ─────────────────────────────────────────
-TOTAL                           82/136 tasks (60%)
+TOTAL                           82/140 tasks (59%)
+
+NEW FEATURE: File Re-Upload with Incremental Update
+├── 7.5.1-7.5.4: LDM file update (diff-based, 95% faster for typical updates)
+└── 7.5.5-7.5.8: TM update (hash-based, preserves history)
 ```
 
 ---
@@ -620,13 +624,52 @@ BENEFITS:
 
 ---
 
-### 7.5 Incremental Update (4 tasks)
+### 7.5 Incremental Update (8 tasks) - FILE RE-UPLOAD OPTIMIZATION
+
+> **Use Case:** User uploads languagedata_fr.txt, works on it, then re-uploads updated version.
+> Instead of full delete + re-insert, detect changes and only update what changed.
+> **Performance:** 5% changed = 95% faster than full replace!
+
+**Strategy Documented:** `docs/wip/P_DB_OPTIMIZATION.md` → "Incremental Update Strategy"
+
+#### 7.5.1-7.5.4: File Re-Upload (LDM Rows)
+
+- [ ] **7.5.1** Create `server/tools/ldm/file_updater.py`
+  ```python
+  class FileUpdater:
+      def update_file_incremental(file_id, new_rows) -> dict
+      def detect_changes(file_id, new_rows) -> dict  # {inserted, updated, deleted}
+      def preview_changes(file_id, new_rows) -> dict  # Show before applying
+  ```
+
+- [ ] **7.5.2** Diff detection by string_id
+  - Load existing rows as {string_id: row}
+  - Compare with new rows
+  - Return: new, modified, deleted, unchanged counts
+
+- [ ] **7.5.3** Batch UPDATE using PostgreSQL UPSERT
+  ```sql
+  INSERT INTO ldm_rows (file_id, string_id, source, target)
+  VALUES (...)
+  ON CONFLICT (file_id, string_id) DO UPDATE SET
+    source = EXCLUDED.source,
+    target = EXCLUDED.target,
+    updated_at = NOW();
+  ```
+
+- [ ] **7.5.4** API: `POST /api/ldm/files/{id}/update`
+  ```
+  Request: multipart/form-data (new file)
+  Response: {"inserted": 50, "updated": 200, "deleted": 10, "unchanged": 99740}
+  ```
+
+#### 7.5.5-7.5.8: TM Re-Upload (TM Entries)
 
 > Reference: KR Similar `embeddings.py` lines 232-309
 
-- [ ] **7.5.1** Create `server/tools/ldm/tm_updater.py`
+- [ ] **7.5.5** Create `server/tools/ldm/tm_updater.py`
 
-- [ ] **7.5.2** Change detection
+- [ ] **7.5.6** Change detection using source_hash
   ```python
   def detect_changes(new_entries: List[dict], existing_lookup: dict) -> dict:
       """Compare new TM with existing, return changes"""
@@ -647,7 +690,7 @@ BENEFITS:
       return {"new": new, "modified": modified, "deleted": list(deleted_ids)}
   ```
 
-- [ ] **7.5.3** Incremental embedding update
+- [ ] **7.5.7** Incremental embedding update
   ```python
   def update_embeddings(changes: dict, tm_path: Path):
       """
@@ -662,7 +705,7 @@ BENEFITS:
       # ... (like KR Similar)
   ```
 
-- [ ] **7.5.4** API: `POST /api/ldm/tm/{id}/update`
+- [ ] **7.5.8** API: `POST /api/ldm/tm/{id}/update`
 
 ---
 
