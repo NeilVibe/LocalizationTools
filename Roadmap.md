@@ -1009,7 +1009,76 @@ Modern UI redesign:
 - Theme customization
 - Keyboard shortcuts
 
-### P20: Performance Monitoring
+### P20: Embedding Model Migration ✅ COMPLETE
+
+**Status:** ✅ COMPLETE (2025-12-09)
+**WIP Document:** [P20_MODEL_MIGRATION.md](docs/wip/P20_MODEL_MIGRATION.md)
+
+**Goal:** Unify all embedding tools to Qwen3-Embedding-0.6B (WebTranslatorNew pattern)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    P20: EMBEDDING MODEL MIGRATION                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  BEFORE (3 tools, 2 models):                                                 │
+│  ├── XLSTransfer:  snunlp/KR-SBERT-V40K + IndexFlatIP (brute force)         │
+│  ├── KR Similar:   snunlp/KR-SBERT-V40K + IndexFlatIP (brute force)         │
+│  └── LDM TM:       (new, needs model)                                        │
+│                                                                              │
+│  AFTER (3 tools, 1 unified model):                                           │
+│  ├── XLSTransfer:  Qwen/Qwen3-Embedding-0.6B + IndexHNSWFlat                │
+│  ├── KR Similar:   Qwen/Qwen3-Embedding-0.6B + IndexHNSWFlat                │
+│  └── LDM TM:       Qwen/Qwen3-Embedding-0.6B + IndexHNSWFlat                │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  KEY CHANGES:                                                                │
+│  ├── MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"  (was KR-SBERT)               │
+│  ├── Index: IndexHNSWFlat (was IndexFlatIP)                                  │
+│  ├── HNSW params: M=32, efConstruction=400, efSearch=500                    │
+│  └── Dimension: AUTOMATIC (embeddings.shape[1])                              │
+│                                                                              │
+│  BENEFITS:                                                                   │
+│  ├── 100+ languages (vs Korean-only)                                         │
+│  ├── O(log n) search (vs O(n) brute force)                                  │
+│  ├── Better cross-lingual KR↔EN matching                                    │
+│  └── Apache 2.0 license (commercial OK)                                      │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  GITEA FULL BUNDLE (Zero-Download):                                          │
+│  ├── GitHub: 1GB LFS limit → cannot bundle model                             │
+│  ├── Gitea: NO storage restrictions ✅                                       │
+│  └── Gitea builds include models/qwen-embedding/ (~1.2GB in installer)      │
+│                                                                              │
+│  Build Modes:                                                                │
+│  ├── GITHUB (LIGHT): Model downloads on first run                           │
+│  └── GITEA (FULL): Model bundled, zero download needed                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**FAISS Index Configuration (WebTranslatorNew Pattern):**
+```python
+# EXACT config from WebTranslatorNew/EMBEDDINGS.md
+embedding_dim = embeddings.shape[1]  # AUTOMATIC dimension
+index = faiss.IndexHNSWFlat(embedding_dim, 32, faiss.METRIC_INNER_PRODUCT)
+index.hnsw.efConstruction = 400  # Build quality
+index.hnsw.efSearch = 500        # Search quality
+faiss.normalize_L2(embeddings)
+index.add(embeddings)
+```
+
+**Migration Completed:**
+- [x] Clone Qwen model to `models/qwen-embedding/` (2.3GB)
+- [x] Update XLSTransfer: config.py + embeddings.py HNSW
+- [x] Update KR Similar: embeddings.py MODEL_NAME + HNSW
+- [x] Update LDM TM: Inherits Qwen via KR Similar imports
+- [x] Update download scripts: `scripts/download_bert_model.py`
+- [x] Update unit tests for new model
+- [x] Update Gitea build workflow (LIGHT/FULL detection + model bundling)
+
+---
+
+### P21: Performance Monitoring (Future)
 
 - Query optimization
 - Memory profiling

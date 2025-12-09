@@ -61,10 +61,11 @@ class TestEmbeddingsManagerInit:
 class TestModelConfiguration:
     """Test model configuration."""
 
-    def test_model_name_is_korean_bert(self):
-        """MODEL_NAME is Korean BERT model."""
+    def test_model_name_is_embedding_model(self):
+        """MODEL_NAME is a valid embedding model (KR-SBERT or Qwen)."""
         from server.tools.kr_similar.embeddings import MODEL_NAME
-        assert "KR-SBERT" in MODEL_NAME or "korean" in MODEL_NAME.lower()
+        # P20: Supports either KR-SBERT (legacy) or Qwen (unified)
+        assert "KR-SBERT" in MODEL_NAME or "Qwen" in MODEL_NAME or "korean" in MODEL_NAME.lower()
 
     def test_dict_types_contains_expected(self):
         """DICT_TYPES contains expected game codes."""

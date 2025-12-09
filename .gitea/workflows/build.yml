@@ -50,6 +50,15 @@ jobs:
             VERSION=$(echo "$TRIGGER" | grep -oE 'v[0-9]{10}' | head -1 | sed 's/v//')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "[OK] Build triggered for version: $VERSION"
+
+            # Detect FULL vs LIGHT build
+            if echo "$TRIGGER" | grep -q "FULL"; then
+              echo "build_type=FULL" >> $GITHUB_OUTPUT
+              echo "[OK] Build type: FULL (with bundled model)"
+            else
+              echo "build_type=LIGHT" >> $GITHUB_OUTPUT
+              echo "[OK] Build type: LIGHT (model downloads on first run)"
+            fi
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
             echo "No build trigger found"
@@ -215,6 +224,19 @@ jobs:
           } else {
             Write-Host "[ERROR] Could not extract version from version.py"
             exit 1
+          }
+
+          # Detect FULL vs LIGHT build from trigger file
+          $triggerUrl = "http://172.28.150.120:3000/neilvibe/LocaNext/raw/branch/main/GITEA_TRIGGER.txt"
+          $triggerContent = (Invoke-WebRequest -Uri $triggerUrl -UseBasicParsing).Content
+          $lastTrigger = ($triggerContent -split "`n" | Where-Object { $_ -match "Build (LIGHT|FULL)" } | Select-Object -Last 1)
+
+          if ($lastTrigger -match "FULL") {
+            Write-Host "[OK] Build type: FULL (with bundled model)"
+            Write-Output "::set-output name=build_type::FULL"
+          } else {
+            Write-Host "[OK] Build type: LIGHT (model downloads on first run)"
+            Write-Output "::set-output name=build_type::LIGHT"
           }
         shell: powershell
 
@@ -674,6 +696,55 @@ jobs:
         shell: powershell
 
       # ============================================================
+      # STEP 2.5: Download Qwen Model (FULL BUILD ONLY)
+      # Downloads ~2.3GB model and bundles it in the installer
+      # ============================================================
+      - name: Download Qwen Embedding Model (FULL only)
+        if: steps.check.outputs.build_type == 'FULL'
+        run: |
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host "  DOWNLOADING QWEN EMBEDDING MODEL (FULL BUILD)" -ForegroundColor Cyan
+          Write-Host "============================================" -ForegroundColor Cyan
+
+          $modelsDir = "models\qwen-embedding"
+          if (Test-Path $modelsDir) {
+            Write-Host "[SKIP] Model already exists at: $modelsDir"
+          } else {
+            Write-Host "Downloading Qwen/Qwen3-Embedding-0.6B (~2.3GB)..."
+            Write-Host "This may take 5-10 minutes..."
+
+            # Use embedded Python to download via sentence-transformers
+            & "tools\python\python.exe" -m pip install --quiet sentence-transformers
+
+            & "tools\python\python.exe" -c @"
+from sentence_transformers import SentenceTransformer
+print('Downloading Qwen/Qwen3-Embedding-0.6B...')
+model = SentenceTransformer('Qwen/Qwen3-Embedding-0.6B')
+model.save('./models/qwen-embedding')
+print('Model saved to models/qwen-embedding/')
+# Test embedding
+emb = model.encode(['test'])
+print(f'Embedding dimension: {emb.shape[1]}')
+print('SUCCESS!')
+"@
+
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "[ERROR] Model download failed!"
+              exit 1
+            }
+          }
+
+          # Verify model
+          if (Test-Path "$modelsDir\model.safetensors") {
+            $size = [math]::Round((Get-Item "$modelsDir\model.safetensors").Length / 1GB, 2)
+            Write-Host "[OK] Qwen model downloaded: $size GB" -ForegroundColor Green
+          } else {
+            Write-Error "[ERROR] model.safetensors not found!"
+            exit 1
+          }
+        shell: powershell
+
+      # ============================================================
       # STEP 3: Build Electron app
       # ============================================================
       - name: Install Node Dependencies
@@ -933,9 +1004,10 @@ jobs:
           }
         shell: powershell
 
-      - name: Compile LIGHT Installer
+      - name: Compile Installer (LIGHT or FULL)
         run: |
-          Write-Host "Compiling LIGHT Windows installer..."
+          $buildType = "${{ steps.check.outputs.build_type }}"
+          Write-Host "Compiling $buildType Windows installer..."
 
           # Debug: Show current directory structure
           Write-Host "=== DEBUG: Directory Structure ==="
@@ -965,7 +1037,13 @@ jobs:
           $version = "${{ steps.check.outputs.version }}"
           $srcDir = "locaNext\dist-electron\win-unpacked"
           $outDir = "installer_output"
-          $zipName = "LocaNext_v${version}_Light_Portable.zip"
+
+          # ZIP name depends on build type
+          if ($buildType -eq "FULL") {
+            $zipName = "LocaNext_v${version}_Full_Portable.zip"
+          } else {
+            $zipName = "LocaNext_v${version}_Light_Portable.zip"
+          }
 
           if (!(Test-Path $outDir)) {
             New-Item -ItemType Directory -Path $outDir -Force
@@ -974,6 +1052,7 @@ jobs:
           Write-Host "Creating portable ZIP: $zipName"
           Write-Host "Source: $srcDir"
           Write-Host "Output: $outDir\$zipName"
+          Write-Host "Build Type: $buildType"
 
           # Copy additional files into win-unpacked before zipping
           Copy-Item "server" -Destination "$srcDir\server" -Recurse -Force
@@ -985,12 +1064,29 @@ jobs:
           Get-ChildItem "tools\*.bat" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName -Destination $toolsDir -Force }
           Get-ChildItem "tools\*.py" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName -Destination $toolsDir -Force }
 
+          # FULL BUILD: Include Qwen embedding model (~2.3GB)
+          if ($buildType -eq "FULL") {
+            Write-Host "=== FULL BUILD: Bundling Qwen Model ===" -ForegroundColor Cyan
+            if (Test-Path "models\qwen-embedding") {
+              $modelsDir = "$srcDir\models"
+              if (!(Test-Path $modelsDir)) { New-Item -ItemType Directory -Path $modelsDir -Force }
+              Copy-Item "models\qwen-embedding" -Destination "$modelsDir\qwen-embedding" -Recurse -Force
+              $modelSize = [math]::Round((Get-ChildItem "$modelsDir\qwen-embedding" -Recurse | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+              Write-Host "[OK] Qwen model bundled: $modelSize GB" -ForegroundColor Green
+            } else {
+              Write-Error "[ERROR] models/qwen-embedding not found for FULL build!"
+              exit 1
+            }
+          }
+
           # Create ZIP
+          Write-Host "Creating ZIP archive..."
           Compress-Archive -Path "$srcDir\*" -DestinationPath "$outDir\$zipName" -Force
 
           if (Test-Path "$outDir\$zipName") {
             $size = (Get-Item "$outDir\$zipName").Length / 1MB
-            Write-Host "[OK] Portable ZIP created: $zipName ($([math]::Round($size, 1)) MB)"
+            $sizeStr = if ($size -gt 1024) { "$([math]::Round($size/1024, 2)) GB" } else { "$([math]::Round($size, 1)) MB" }
+            Write-Host "[OK] Portable ZIP created: $zipName ($sizeStr)" -ForegroundColor Green
           } else {
             Write-Error "[ERROR] Failed to create ZIP"
             exit 1
@@ -1164,17 +1260,48 @@ jobs:
             Write-Host "No existing release found, creating new..."
           }
 
-          # Create release body
-          $BODY = @"
+          # Get build type
+          $BUILD_TYPE = "${{ steps.check.outputs.build_type }}"
+
+          # Create release body based on build type
+          if ($BUILD_TYPE -eq "FULL") {
+            $BODY = @"
+## LocaNext Desktop Application (FULL Build)
+
+**Version:** $VERSION
+**Semantic:** $SEMANTIC
+**Build Type:** FULL (includes Qwen embedding model - ready to use!)
+
+### Downloads
+
+- ``LocaNext_v${VERSION}_Full_Portable.zip`` - Portable version with bundled AI model (~2.5GB)
+- ``latest.yml`` - Auto-update manifest
+
+### What's Included
+
+- XLSTransfer - AI-powered Excel translation
+- QuickSearch - Multi-game dictionary
+- KR Similar - Korean semantic similarity
+- LDM - Language Data Manager (CAT tool)
+- **Qwen/Qwen3-Embedding-0.6B** - Multilingual embedding model (bundled)
+
+### Notes
+This is a FULL build with the AI model pre-installed. No additional downloads needed!
+
+---
+*Auto-released by Gitea Actions*
+"@
+          } else {
+            $BODY = @"
 ## LocaNext Desktop Application (LIGHT Build)
 
 **Version:** $VERSION
 **Semantic:** $SEMANTIC
-**Build Type:** LIGHT (deps + model installed on first launch)
+**Build Type:** LIGHT (model downloads on first launch)
 
 ### Downloads
 
-- ``LocaNext_v${VERSION}_Light_Portable.zip`` - Portable version
+- ``LocaNext_v${VERSION}_Light_Portable.zip`` - Portable version (~100MB)
 - ``latest.yml`` - Auto-update manifest
 
 ### What's Included
@@ -1184,14 +1311,19 @@ jobs:
 - KR Similar - Korean semantic similarity
 - LDM - Language Data Manager (CAT tool)
 
+### Notes
+The AI embedding model (~2.3GB) will be downloaded automatically on first use of XLSTransfer or KR Similar.
+
 ---
 *Auto-released by Gitea Actions*
 "@
+          }
 
           # Create release via API
+          $releaseName = if ($BUILD_TYPE -eq "FULL") { "LocaNext v$VERSION (FULL)" } else { "LocaNext v$VERSION (LIGHT)" }
           $releaseData = @{
             tag_name = $TAG
-            name = "LocaNext v$VERSION (LIGHT)"
+            name = $releaseName
             body = $BODY
             draft = $false
             prerelease = $false
