@@ -1,10 +1,13 @@
 # LDM Text Search & TM System
 
-**Version:** 1.0
+**Version:** 1.1
 **Created:** 2025-12-09
-**Status:** PLANNING
+**Updated:** 2025-12-09 (P20 Qwen Migration)
+**Status:** READY FOR IMPLEMENTATION
 
 > Complete documentation for the 5-Tier Cascade Search system used in LDM Translation Memory.
+> **Model:** Qwen/Qwen3-Embedding-0.6B (1024-dim) - unified across all tools (P20).
+> **See Also:** [P17_TM_ARCHITECTURE.md](../wip/P17_TM_ARCHITECTURE.md) - Full 9-tier technical implementation.
 
 ---
 
@@ -259,11 +262,13 @@ if query in whole_text_lookup:
 ### 4.3 FAISS Index (Embedding Search)
 
 ```python
-# Built on upload
-embeddings = model.encode(all_source_texts)  # Shape: (N, 768)
+# Built on upload (Qwen/Qwen3-Embedding-0.6B)
+embeddings = model.encode(all_source_texts)  # Shape: (N, 1024)
 faiss.normalize_L2(embeddings)
 
-index = faiss.IndexHNSWFlat(768, 32)
+# P20: Unified HNSW config
+embedding_dim = embeddings.shape[1]  # AUTOMATIC (1024 for Qwen)
+index = faiss.IndexHNSWFlat(embedding_dim, 32, faiss.METRIC_INNER_PRODUCT)
 index.hnsw.efConstruction = 400
 index.hnsw.efSearch = 500
 index.add(embeddings)
@@ -286,14 +291,111 @@ server/data/ldm_tm/{tm_id}/
 │   └── line_lookup.pkl     # Hash index for lines
 │
 ├── embeddings/
-│   ├── whole.npy           # Whole text embeddings
+│   ├── whole.npy           # Whole text embeddings (N, 1024)
 │   ├── whole_mapping.pkl   # idx → entry_id
+│   ├── whole_dict.pkl      # source → target (for result lookup)
 │   ├── line.npy            # Line embeddings
 │   └── line_mapping.pkl    # idx → (entry_id, line_num)
 │
 └── faiss/
     ├── whole.index         # FAISS HNSW for whole
     └── line.index          # FAISS HNSW for lines
+```
+
+### 4.5 NPY vs PKL Roles (Important!)
+
+```
+TM Search Flow:
+
+1. SEARCH: Source → Source (find similar)
+   ┌─────────────┐    ┌─────────────┐
+   │  Query:     │    │  whole.npy  │     NPY = SOURCE EMBEDDINGS
+   │  "새 게임"   │ → │ (N, 1024)   │     (for Source→Source similarity)
+   └─────────────┘    └─────────────┘
+                            │
+                            ↓ FAISS returns idx + similarity
+
+2. LOOKUP: Get Target translation
+   ┌─────────────┐    ┌──────────────────┐
+   │  idx: 42    │ → │  whole_dict.pkl  │     PKL = SOURCE→TARGET DICT
+   │             │    │  {"새 게임":"New  │     (for getting translation)
+   └─────────────┘    │   Game", ...}    │
+                      └──────────────────┘
+                            │
+                            ↓
+3. RETURN:
+   {"source": "새 게임", "target": "New Game", "similarity": 0.95}
+```
+
+**Summary:**
+| File | Purpose | Data Type |
+|------|---------|-----------|
+| `whole.npy` | Source embeddings for FAISS search | numpy array (N, 1024) |
+| `whole_dict.pkl` | Source→Target lookup | dict {source: target} |
+| `whole_mapping.pkl` | FAISS idx→entry_id | dict {idx: entry_id} |
+
+### 4.6 Dual-Sided Embedding (Source + Target)
+
+For comprehensive TM + QA, we build **TWO** embedding indexes:
+
+```
+DUAL EMBEDDING ARCHITECTURE:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  SOURCE EMBEDDINGS (Primary TM)                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Purpose:   Find similar SOURCE texts → Return their TARGETs                │
+│  Use Case:  Translator working on Korean → Get English suggestions          │
+│                                                                              │
+│  Files:                                                                      │
+│  ├── source.npy           # Source text embeddings (N, 1024)                │
+│  ├── source.index         # FAISS HNSW for source search                    │
+│  └── source_to_target.pkl # {source: target} dictionary                     │
+│                                                                              │
+│  Query: "새 게임" → Find similar → "새로운 게임" → Return "New Game"          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  TARGET EMBEDDINGS (QA/Consistency)                                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Purpose:   Find similar TARGET texts → Check consistency                   │
+│  Use Case:  QA checking for duplicate/inconsistent translations             │
+│                                                                              │
+│  Files:                                                                      │
+│  ├── target.npy           # Target text embeddings (N, 1024)                │
+│  ├── target.index         # FAISS HNSW for target search                    │
+│  └── target_to_source.pkl # {target: [sources]} dictionary                  │
+│                                                                              │
+│  Query: "New Game" → Find similar → "New game" → Flag inconsistency!        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Use Cases:**
+
+| Feature | Embedding Used | Example |
+|---------|----------------|---------|
+| **TM Suggest** | Source→Source | Korean input → Find similar Korean → Return English |
+| **QA: Duplicates** | Target→Target | Find "Start Game" vs "Start the Game" duplicates |
+| **QA: Inconsistent** | Source→Source + compare targets | Same Korean → Different English = Flag |
+| **QA: Missing** | Target→Target | "New Game" exists but "New game" doesn't |
+
+**Storage with Dual Embedding:**
+
+```
+server/data/ldm_tm/{tm_id}/
+├── source/                     # SOURCE-SIDE (TM matching)
+│   ├── embeddings.npy          # Korean source embeddings
+│   ├── faiss.index             # HNSW for source search
+│   ├── source_dict.pkl         # source → target
+│   └── source_mapping.pkl      # idx → entry_id
+│
+├── target/                     # TARGET-SIDE (QA/consistency)
+│   ├── embeddings.npy          # English target embeddings
+│   ├── faiss.index             # HNSW for target search
+│   ├── target_dict.pkl         # target → [sources]
+│   └── target_mapping.pkl      # idx → entry_id
+│
+└── metadata.json               # Stats for both indexes
 ```
 
 ---
