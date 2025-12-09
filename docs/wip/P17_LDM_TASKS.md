@@ -28,12 +28,11 @@ PRIORITY 2: Phase 7.1 - TM Database Models (4 tasks) ✅ COMPLETE
 - ✅ LDMActiveTM (TM-to-project/file links with priority)
 - ✅ LDMBackup (backup tracking for disaster recovery)
 
-PRIORITY 3: Phase 7.2 - TM Upload + Parsers (6 tasks) ← NEXT
+PRIORITY 3: Phase 7.2 - TM Upload + Parsers (6 tasks) ✅ COMPLETE
 ────────────────────────────────────────────────────────────
-Why next: Need TM data before building indexes
-- 7.2.1 TMManager class (upload, build, load, delete)
-- 7.2.2-7.2.4 Parsers (TMX, Excel, TXT)
-- 7.2.5-7.2.6 Upload API + migration script
+- ✅ 7.2.1 TMManager class (upload, build, load, delete)
+- ✅ 7.2.3-7.2.4 Parsers (Excel, TXT via existing handlers)
+- ✅ 7.2.5-7.2.6 Upload API + CRUD endpoints (8 new routes)
 
 PRIORITY 4: Phase 7.3 - Index Building (6 tasks)
 ────────────────────────────────────────────────────────────
@@ -76,10 +75,10 @@ Polish and patterns
 Phase 1-4: Foundation + Grid    [X] 58/58 tasks  ✅ COMPLETE
 Phase 5: Basic CAT              [▓▓▓] 7/10 tasks  (TM panel done)
 Phase 6: UI Polish              [▓▓▓▓] 7/16 tasks ✅ 6.0 + 6.1 COMPLETE
-Phase 7: Full TM System         [▓▓▓▓▓] 10/44 tasks (DB + TMManager + Updaters planned!)
+Phase 7: Full TM System         [▓▓▓▓▓▓] 15/44 tasks (DB + TMManager + API COMPLETE!)
 Phase 8: Nice View              [ ] 0/12 tasks   (Pattern rendering)
 ─────────────────────────────────────────
-TOTAL                           82/140 tasks (59%)
+TOTAL                           87/140 tasks (62%)
 
 NEW FEATURE: File Re-Upload with Incremental Update
 ├── 7.5.1-7.5.4: LDM file update (diff-based, 95% faster for typical updates)
@@ -329,29 +328,35 @@ BENEFITS:
   - Uses bulk_insert_tm_entries() for 20k+ entries/sec import
   - Includes search_exact() for O(1) hash lookup
 
-- [ ] **7.2.2** TMX parser
-  ```python
-  def parse_tmx(file_path: str) -> List[dict]:
-      """Parse TMX <tu> elements → source/target pairs"""
-  ```
+- [ ] **7.2.2** TMX parser (deferred - use TXT/XML/Excel for now)
 
-- [ ] **7.2.3** Excel parser (source_col, target_col configurable)
+- [x] **7.2.3** Excel parser ✅ (in TMManager._parse_excel_for_tm)
+  - Column A = source, Column B = target
+  - Configurable via source_col, target_col params
 
-- [ ] **7.2.4** TXT parser (tab-delimited)
+- [x] **7.2.4** TXT parser ✅ (REUSES txt_handler.py)
+  - Column 5 = source, Column 6 = target
 
-- [ ] **7.2.5** API: `POST /api/ldm/tm/upload`
+- [x] **7.2.5** API: `POST /api/ldm/tm/upload` ✅ (2025-12-09)
   ```
   Request: multipart/form-data
-  - file: TM file
+  - file: TM file (TXT, XML, XLSX)
   - name: TM name
-  - source_column: int (for Excel/TXT)
-  - target_column: int (for Excel/TXT)
+  - source_lang: str (default: ko)
+  - target_lang: str (default: en)
+  - description: str (optional)
 
   Response:
-  {"tm_id": 1, "status": "indexing", "entry_count": 50000}
+  {"tm_id": 1, "name": "...", "entry_count": 50000, "status": "ready", "time_seconds": 2.5, "rate_per_second": 20000}
   ```
 
-- [ ] **7.2.6** APIs: `GET /list`, `DELETE /{id}`, `POST /{id}/activate`
+- [x] **7.2.6** APIs: TM CRUD endpoints ✅ (2025-12-09)
+  - `GET /api/ldm/tm` - List all TMs
+  - `GET /api/ldm/tm/{tm_id}` - Get single TM
+  - `DELETE /api/ldm/tm/{tm_id}` - Delete TM
+  - `GET /api/ldm/tm/{tm_id}/search/exact` - O(1) hash lookup
+  - `GET /api/ldm/tm/{tm_id}/search` - LIKE pattern search
+  - `POST /api/ldm/tm/{tm_id}/entries` - Add entry (Adaptive TM)
 
 ---
 
