@@ -40,6 +40,23 @@ from server.database.db_setup import (
     setup_database,
 )
 
+from server.database.db_utils import (
+    # Batch operations
+    bulk_insert,
+    bulk_insert_tm_entries,
+    bulk_insert_rows,
+    # Text utilities
+    normalize_text_for_hash,
+    # FTS
+    search_rows_fts,
+    add_fts_indexes,
+    add_trigram_index,
+    is_postgresql,
+    # Query helpers
+    chunked_query,
+    upsert_batch,
+)
+
 __all__ = [
     # Models
     "Base",
@@ -70,4 +87,15 @@ __all__ = [
     "test_connection",
     "get_table_counts",
     "setup_database",
+    # DB Utilities (batch operations, FTS)
+    "bulk_insert",
+    "bulk_insert_tm_entries",
+    "bulk_insert_rows",
+    "normalize_text_for_hash",
+    "search_rows_fts",
+    "add_fts_indexes",
+    "add_trigram_index",
+    "is_postgresql",
+    "chunked_query",
+    "upsert_batch",
 ]

@@ -10,7 +10,7 @@ from typing import Optional
 import uuid
 
 from sqlalchemy import (
-    Column, Integer, String, Text, Float, Boolean, DateTime,
+    Column, Integer, BigInteger, String, Text, Float, Boolean, DateTime,
     ForeignKey, Index, JSON, Enum as SQLEnum
 )
 from sqlalchemy.ext.declarative import declarative_base
@@ -698,3 +698,265 @@ class LDMActiveSession(Base):
 
     def __repr__(self):
         return f"<LDMActiveSession(file_id={self.file_id}, user_id={self.user_id}, editing_row={self.editing_row})>"
+
+
+# =============================================================================
+# LDM Translation Memory Tables (Phase 7)
+# =============================================================================
+
+class LDMTranslationMemory(Base):
+    """
+    LDM Translation Memory - Container for TM entries.
+    Each TM can have millions of source/target pairs with FAISS indexes.
+    """
+    __tablename__ = "ldm_translation_memories"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Source/Target language codes
+    source_lang = Column(String(10), default="ko")  # Korean
+    target_lang = Column(String(10), default="en")  # English
+
+    # Stats (updated after indexing)
+    entry_count = Column(Integer, default=0)
+    whole_pairs = Column(Integer, default=0)  # Entries in whole_text index
+    line_pairs = Column(Integer, default=0)   # Entries in line index
+
+    # Status: pending → indexing → ready → error
+    status = Column(String(50), default="pending")
+    error_message = Column(Text, nullable=True)
+
+    # Index storage paths (relative to TM storage root)
+    storage_path = Column(String(500), nullable=True)  # Base path for this TM's files
+    # Index files stored at: {storage_path}/whole.index, {storage_path}/line.index, etc.
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    indexed_at = Column(DateTime, nullable=True)  # When indexing completed
+
+    # Relationships
+    owner = relationship("User")
+    entries = relationship("LDMTMEntry", back_populates="tm", cascade="all, delete-orphan")
+    active_links = relationship("LDMActiveTM", back_populates="tm", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_ldm_tm_owner", "owner_id"),
+        Index("idx_ldm_tm_status", "status"),
+    )
+
+    def __repr__(self):
+        return f"<LDMTranslationMemory(id={self.id}, name='{self.name}', entries={self.entry_count}, status='{self.status}')>"
+
+
+class LDMTMEntry(Base):
+    """
+    LDM TM Entry - Single source/target translation pair.
+    Hash indexes for O(1) exact match lookup.
+    """
+    __tablename__ = "ldm_tm_entries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tm_id = Column(Integer, ForeignKey("ldm_translation_memories.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Translation pair
+    source_text = Column(Text, nullable=False)
+    target_text = Column(Text, nullable=True)
+
+    # Hash for exact lookup (SHA256 of normalized source)
+    source_hash = Column(String(64), nullable=False, index=True)
+
+    # Optional metadata from TMX
+    created_by = Column(String(255), nullable=True)  # creationid from TMX
+    change_date = Column(DateTime, nullable=True)    # changedate from TMX
+
+    # Import timestamp
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    tm = relationship("LDMTranslationMemory", back_populates="entries")
+
+    __table_args__ = (
+        Index("idx_ldm_tm_entry_tm", "tm_id"),
+        Index("idx_ldm_tm_entry_hash", "source_hash"),
+        Index("idx_ldm_tm_entry_tm_hash", "tm_id", "source_hash"),  # Composite for TM-specific lookup
+    )
+
+    def __repr__(self):
+        src_preview = self.source_text[:30] + "..." if len(self.source_text or "") > 30 else self.source_text
+        return f"<LDMTMEntry(id={self.id}, tm_id={self.tm_id}, source='{src_preview}')>"
+
+
+class LDMActiveTM(Base):
+    """
+    LDM Active TM - Links active TMs to projects/files.
+    A project can have multiple TMs active with priority ordering.
+    """
+    __tablename__ = "ldm_active_tms"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tm_id = Column(Integer, ForeignKey("ldm_translation_memories.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Can be linked to project OR specific file (one must be set)
+    project_id = Column(Integer, ForeignKey("ldm_projects.id", ondelete="CASCADE"), nullable=True, index=True)
+    file_id = Column(Integer, ForeignKey("ldm_files.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Priority order (lower = higher priority, searched first)
+    priority = Column(Integer, default=0)
+
+    # Who activated this TM
+    activated_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    activated_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    tm = relationship("LDMTranslationMemory", back_populates="active_links")
+    project = relationship("LDMProject")
+    file = relationship("LDMFile")
+
+    __table_args__ = (
+        Index("idx_ldm_active_tm_project", "project_id"),
+        Index("idx_ldm_active_tm_file", "file_id"),
+        # Ensure a TM is only linked once per project/file
+        Index("idx_ldm_active_tm_unique", "tm_id", "project_id", "file_id", unique=True),
+    )
+
+    def __repr__(self):
+        target = f"project={self.project_id}" if self.project_id else f"file={self.file_id}"
+        return f"<LDMActiveTM(tm_id={self.tm_id}, {target}, priority={self.priority})>"
+
+
+# =============================================================================
+# Database Backup & Safety Tables
+# =============================================================================
+
+class LDMBackup(Base):
+    """
+    LDM Backup - Track database backups for disaster recovery.
+    Automated backups before major operations + scheduled backups.
+    """
+    __tablename__ = "ldm_backups"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # What was backed up
+    backup_type = Column(String(50), nullable=False)  # "full", "project", "file", "tm"
+    project_id = Column(Integer, nullable=True)  # If project-specific backup
+    file_id = Column(Integer, nullable=True)     # If file-specific backup
+    tm_id = Column(Integer, nullable=True)       # If TM-specific backup
+
+    # Backup file location
+    backup_path = Column(String(500), nullable=False)
+    file_size = Column(BigInteger, nullable=True)  # Bytes
+
+    # Status
+    status = Column(String(50), default="completed")  # completed, failed, restoring
+    error_message = Column(Text, nullable=True)
+
+    # Trigger info
+    trigger = Column(String(100), nullable=True)  # "scheduled", "pre_delete", "manual", "pre_import"
+    created_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Retention
+    expires_at = Column(DateTime, nullable=True)  # Auto-delete after this date
+
+    __table_args__ = (
+        Index("idx_ldm_backup_type", "backup_type"),
+        Index("idx_ldm_backup_created", "created_at"),
+    )
+
+    def __repr__(self):
+        return f"<LDMBackup(id={self.id}, type='{self.backup_type}', status='{self.status}')>"
+
+
+class LDMTrash(Base):
+    """
+    LDM Trash Bin - Soft delete for projects, folders, files, and TMs.
+
+    User-friendly recycle bin:
+    - Items stay in trash for 30 days (configurable)
+    - Easy 1-click restore from UI
+    - Permanent delete after expiration
+    - Preserves full data for restore
+    """
+    __tablename__ = "ldm_trash"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # What was deleted
+    item_type = Column(String(50), nullable=False)  # "project", "folder", "file", "tm"
+    item_id = Column(Integer, nullable=False)       # Original ID
+    item_name = Column(String(255), nullable=False) # Name for display
+
+    # Parent info (for restoring to correct location)
+    parent_project_id = Column(Integer, nullable=True)  # Project it belonged to
+    parent_folder_id = Column(Integer, nullable=True)   # Folder it was in
+
+    # Full data snapshot (JSON) for restore
+    item_data = Column(Text, nullable=False)  # JSON of the deleted item + children
+
+    # Who deleted it
+    deleted_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    deleted_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Auto-expire (permanent delete after this date)
+    expires_at = Column(DateTime, nullable=False)  # Default: 30 days from deletion
+
+    # Status
+    status = Column(String(50), default="trashed")  # trashed, restored, expired
+
+    __table_args__ = (
+        Index("idx_ldm_trash_type", "item_type"),
+        Index("idx_ldm_trash_deleted_by", "deleted_by"),
+        Index("idx_ldm_trash_expires", "expires_at"),
+    )
+
+    def __repr__(self):
+        return f"<LDMTrash(id={self.id}, type='{self.item_type}', name='{self.item_name}')>"
+
+
+# =============================================================================
+# LDM Index Tracking (for TM FAISS indexes)
+# =============================================================================
+
+class LDMTMIndex(Base):
+    """
+    LDM TM Index - Track FAISS index files for TMs.
+
+    Each TM can have multiple indexes:
+    - whole.index (whole text embeddings)
+    - line.index (line-by-line embeddings)
+    - whole_text_lookup.pkl (hash lookup)
+    - line_lookup.pkl (line hash lookup)
+    """
+    __tablename__ = "ldm_tm_indexes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tm_id = Column(Integer, ForeignKey("ldm_translation_memories.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Index type
+    index_type = Column(String(50), nullable=False)  # "whole_faiss", "line_faiss", "whole_hash", "line_hash"
+    index_path = Column(String(500), nullable=False)  # Path to index file
+
+    # Stats
+    entry_count = Column(Integer, default=0)  # Entries in this index
+    file_size = Column(BigInteger, nullable=True)  # Bytes
+
+    # Status
+    status = Column(String(50), default="building")  # building, ready, error
+    error_message = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    built_at = Column(DateTime, nullable=True)  # When build completed
+
+    __table_args__ = (
+        Index("idx_ldm_tm_index_tm", "tm_id"),
+        Index("idx_ldm_tm_index_type", "tm_id", "index_type", unique=True),
+    )
+
+    def __repr__(self):
+        return f"<LDMTMIndex(tm_id={self.tm_id}, type='{self.index_type}', status='{self.status}')>"

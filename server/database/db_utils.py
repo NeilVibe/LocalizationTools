@@ -1,0 +1,577 @@
+"""
+Database Utilities - High-Performance Operations
+
+Optimized database operations for LocaNext:
+- Batch inserts (10x+ faster for large imports)
+- Full-Text Search (FTS) using PostgreSQL tsvector
+- Query optimization helpers
+"""
+
+import hashlib
+from typing import Any, Callable, Generator, List, Optional, Type, TypeVar
+
+from sqlalchemy import insert, text, func
+from sqlalchemy.orm import Session
+from sqlalchemy.ext.declarative import DeclarativeMeta
+from loguru import logger
+
+from server.database.models import Base, LDMTMEntry, LDMRow
+
+# Type variable for generic model operations
+T = TypeVar('T', bound=Base)
+
+
+# =============================================================================
+# Batch Insert Operations
+# =============================================================================
+
+def bulk_insert(
+    db: Session,
+    model: Type[T],
+    records: List[dict],
+    batch_size: int = 5000,
+    progress_callback: Optional[Callable[[int, int], None]] = None
+) -> int:
+    """
+    Bulk insert records into database using SQLAlchemy Core insert.
+
+    10x+ faster than individual ORM inserts for large datasets.
+    Uses batched commits to balance memory and performance.
+
+    Args:
+        db: Database session
+        model: SQLAlchemy model class (e.g., LDMTMEntry)
+        records: List of dictionaries with column values
+        batch_size: Number of records per batch (default 5000)
+        progress_callback: Optional callback(inserted, total) for progress updates
+
+    Returns:
+        Total number of records inserted
+
+    Example:
+        >>> entries = [
+        >>>     {"tm_id": 1, "source_text": "Hello", "target_text": "안녕", "source_hash": "abc123..."},
+        >>>     {"tm_id": 1, "source_text": "World", "target_text": "세계", "source_hash": "def456..."},
+        >>> ]
+        >>> count = bulk_insert(db, LDMTMEntry, entries)
+        >>> print(f"Inserted {count} entries")
+    """
+    if not records:
+        return 0
+
+    total = len(records)
+    inserted = 0
+
+    logger.info(f"Bulk inserting {total} records into {model.__tablename__} (batch_size={batch_size})")
+
+    try:
+        for i in range(0, total, batch_size):
+            batch = records[i:i + batch_size]
+
+            # Use SQLAlchemy Core insert for speed
+            stmt = insert(model)
+            db.execute(stmt, batch)
+
+            inserted += len(batch)
+
+            # Progress callback
+            if progress_callback:
+                progress_callback(inserted, total)
+
+            # Log progress every 10 batches
+            if (i // batch_size) % 10 == 0:
+                logger.debug(f"Progress: {inserted}/{total} ({100 * inserted / total:.1f}%)")
+
+        # Commit all batches
+        db.commit()
+        logger.success(f"Bulk insert complete: {inserted} records into {model.__tablename__}")
+
+        return inserted
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Bulk insert failed: {e}")
+        raise
+
+
+def bulk_insert_tm_entries(
+    db: Session,
+    tm_id: int,
+    entries: List[dict],
+    batch_size: int = 5000,
+    progress_callback: Optional[Callable[[int, int], None]] = None
+) -> int:
+    """
+    Optimized bulk insert for TM entries with auto hash generation.
+
+    Args:
+        db: Database session
+        tm_id: Translation Memory ID
+        entries: List of dicts with 'source_text' and 'target_text'
+        batch_size: Records per batch
+        progress_callback: Optional callback for progress
+
+    Returns:
+        Number of entries inserted
+
+    Example:
+        >>> entries = [
+        >>>     {"source_text": "Hello", "target_text": "안녕"},
+        >>>     {"source_text": "World", "target_text": "세계"},
+        >>> ]
+        >>> count = bulk_insert_tm_entries(db, tm_id=1, entries=entries)
+    """
+    # Prepare records with hashes
+    prepared = []
+    for entry in entries:
+        source = entry.get('source_text', '')
+        target = entry.get('target_text', '')
+
+        # Generate SHA256 hash of normalized source text
+        normalized_source = normalize_text_for_hash(source)
+        source_hash = hashlib.sha256(normalized_source.encode('utf-8')).hexdigest()
+
+        prepared.append({
+            'tm_id': tm_id,
+            'source_text': source,
+            'target_text': target,
+            'source_hash': source_hash,
+            'created_by': entry.get('created_by'),
+            'change_date': entry.get('change_date'),
+        })
+
+    return bulk_insert(db, LDMTMEntry, prepared, batch_size, progress_callback)
+
+
+def bulk_insert_rows(
+    db: Session,
+    file_id: int,
+    rows: List[dict],
+    batch_size: int = 5000,
+    progress_callback: Optional[Callable[[int, int], None]] = None
+) -> int:
+    """
+    Optimized bulk insert for LDM rows (from file upload).
+
+    Args:
+        db: Database session
+        file_id: LDM File ID
+        rows: List of dicts with 'row_num', 'string_id', 'source', 'target'
+        batch_size: Records per batch
+        progress_callback: Optional callback for progress
+
+    Returns:
+        Number of rows inserted
+    """
+    # Prepare records
+    prepared = []
+    for row in rows:
+        prepared.append({
+            'file_id': file_id,
+            'row_num': row.get('row_num', 0),
+            'string_id': row.get('string_id'),
+            'source': row.get('source'),
+            'target': row.get('target'),
+            'status': row.get('status', 'pending'),
+        })
+
+    return bulk_insert(db, LDMRow, prepared, batch_size, progress_callback)
+
+
+# =============================================================================
+# Text Normalization
+# =============================================================================
+
+def normalize_text_for_hash(text: str) -> str:
+    """
+    Normalize text for hash generation.
+
+    - Strip leading/trailing whitespace
+    - Normalize newlines to \n
+    - Remove excessive whitespace
+
+    Args:
+        text: Input text
+
+    Returns:
+        Normalized text for consistent hashing
+    """
+    if not text:
+        return ''
+
+    # Normalize newlines
+    normalized = text.replace('\r\n', '\n').replace('\r', '\n')
+
+    # Strip whitespace
+    normalized = normalized.strip()
+
+    return normalized
+
+
+# =============================================================================
+# Full-Text Search (PostgreSQL Only)
+# =============================================================================
+
+def is_postgresql(db: Session) -> bool:
+    """Check if database is PostgreSQL."""
+    try:
+        result = db.execute(text("SELECT version()"))
+        version = result.scalar()
+        return 'PostgreSQL' in str(version)
+    except Exception:
+        return False
+
+
+def search_rows_fts(
+    db: Session,
+    file_id: int,
+    query: str,
+    limit: int = 50,
+    search_source: bool = True,
+    search_target: bool = True
+) -> List[LDMRow]:
+    """
+    Full-text search on LDM rows using PostgreSQL tsvector.
+
+    Falls back to LIKE search if FTS columns don't exist.
+
+    Args:
+        db: Database session
+        file_id: File ID to search within
+        query: Search query string
+        limit: Maximum results to return
+        search_source: Search in source column
+        search_target: Search in target column
+
+    Returns:
+        List of matching LDMRow objects
+    """
+    from server.database.models import LDMRow
+
+    # Check if PostgreSQL and FTS columns exist
+    if is_postgresql(db):
+        try:
+            # Try FTS search first
+            return _search_rows_fts_postgres(db, file_id, query, limit, search_source, search_target)
+        except Exception as e:
+            logger.debug(f"FTS search not available, falling back to LIKE: {e}")
+
+    # Fallback to LIKE search
+    return _search_rows_like(db, file_id, query, limit, search_source, search_target)
+
+
+def _search_rows_fts_postgres(
+    db: Session,
+    file_id: int,
+    query: str,
+    limit: int,
+    search_source: bool,
+    search_target: bool
+) -> List[LDMRow]:
+    """PostgreSQL full-text search using tsvector."""
+    from server.database.models import LDMRow
+
+    ts_query = func.plainto_tsquery('simple', query)
+
+    conditions = [LDMRow.file_id == file_id]
+
+    fts_conditions = []
+    if search_source:
+        fts_conditions.append(LDMRow.source_tsv.op('@@')(ts_query))
+    if search_target:
+        fts_conditions.append(LDMRow.target_tsv.op('@@')(ts_query))
+
+    if fts_conditions:
+        from sqlalchemy import or_
+        conditions.append(or_(*fts_conditions))
+
+    return db.query(LDMRow).filter(*conditions).limit(limit).all()
+
+
+def _search_rows_like(
+    db: Session,
+    file_id: int,
+    query: str,
+    limit: int,
+    search_source: bool,
+    search_target: bool
+) -> List[LDMRow]:
+    """Fallback LIKE search for SQLite or when FTS not available."""
+    from server.database.models import LDMRow
+    from sqlalchemy import or_
+
+    conditions = [LDMRow.file_id == file_id]
+
+    like_conditions = []
+    search_pattern = f"%{query}%"
+
+    if search_source:
+        like_conditions.append(LDMRow.source.ilike(search_pattern))
+    if search_target:
+        like_conditions.append(LDMRow.target.ilike(search_pattern))
+
+    if like_conditions:
+        conditions.append(or_(*like_conditions))
+
+    return db.query(LDMRow).filter(*conditions).limit(limit).all()
+
+
+# =============================================================================
+# FTS Index Migration (PostgreSQL Only)
+# =============================================================================
+
+def add_fts_indexes(db: Session) -> bool:
+    """
+    Add Full-Text Search columns and indexes to ldm_rows table.
+
+    Only works on PostgreSQL. Safe to call multiple times (uses IF NOT EXISTS).
+
+    Args:
+        db: Database session
+
+    Returns:
+        True if indexes added/exist, False if not PostgreSQL
+    """
+    if not is_postgresql(db):
+        logger.warning("FTS indexes only supported on PostgreSQL")
+        return False
+
+    try:
+        logger.info("Adding FTS columns to ldm_rows...")
+
+        # Add tsvector columns (generated from source/target)
+        db.execute(text("""
+            ALTER TABLE ldm_rows
+            ADD COLUMN IF NOT EXISTS source_tsv tsvector
+            GENERATED ALWAYS AS (to_tsvector('simple', coalesce(source, ''))) STORED
+        """))
+
+        db.execute(text("""
+            ALTER TABLE ldm_rows
+            ADD COLUMN IF NOT EXISTS target_tsv tsvector
+            GENERATED ALWAYS AS (to_tsvector('simple', coalesce(target, ''))) STORED
+        """))
+
+        # Create GIN indexes for fast FTS
+        logger.info("Creating GIN indexes...")
+
+        db.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_ldm_rows_source_fts
+            ON ldm_rows USING GIN (source_tsv)
+        """))
+
+        db.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_ldm_rows_target_fts
+            ON ldm_rows USING GIN (target_tsv)
+        """))
+
+        db.commit()
+        logger.success("FTS indexes added successfully")
+        return True
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to add FTS indexes: {e}")
+        raise
+
+
+def add_trigram_index(db: Session, table: str, column: str) -> bool:
+    """
+    Add trigram GIN index for similarity search.
+
+    Requires pg_trgm extension (created if not exists).
+
+    Args:
+        db: Database session
+        table: Table name
+        column: Column name
+
+    Returns:
+        True if index added, False if not PostgreSQL
+    """
+    if not is_postgresql(db):
+        logger.warning("Trigram indexes only supported on PostgreSQL")
+        return False
+
+    try:
+        # Enable pg_trgm extension
+        db.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+
+        # Create GIN trigram index
+        index_name = f"idx_{table}_{column}_trgm"
+        db.execute(text(f"""
+            CREATE INDEX IF NOT EXISTS {index_name}
+            ON {table} USING GIN ({column} gin_trgm_ops)
+        """))
+
+        db.commit()
+        logger.success(f"Trigram index created: {index_name}")
+        return True
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create trigram index: {e}")
+        raise
+
+
+# =============================================================================
+# Query Helpers
+# =============================================================================
+
+def chunked_query(
+    db: Session,
+    model: Type[T],
+    filters: list,
+    chunk_size: int = 1000,
+    order_by=None
+) -> Generator[List[T], None, None]:
+    """
+    Yield query results in chunks to avoid memory issues with large datasets.
+
+    Args:
+        db: Database session
+        model: SQLAlchemy model class
+        filters: List of filter conditions
+        chunk_size: Number of records per chunk
+        order_by: Column to order by (required for consistent pagination)
+
+    Yields:
+        Lists of model instances
+
+    Example:
+        >>> for chunk in chunked_query(db, LDMRow, [LDMRow.file_id == 1], chunk_size=1000):
+        >>>     for row in chunk:
+        >>>         process(row)
+    """
+    query = db.query(model).filter(*filters)
+
+    if order_by is not None:
+        query = query.order_by(order_by)
+
+    offset = 0
+    while True:
+        chunk = query.offset(offset).limit(chunk_size).all()
+        if not chunk:
+            break
+        yield chunk
+        offset += chunk_size
+
+
+def upsert_batch(
+    db: Session,
+    model: Type[T],
+    records: List[dict],
+    unique_key: str,
+    batch_size: int = 1000
+) -> dict:
+    """
+    Upsert records (insert or update if exists).
+
+    PostgreSQL uses ON CONFLICT, SQLite falls back to individual upserts.
+
+    Args:
+        db: Database session
+        model: SQLAlchemy model class
+        records: List of dictionaries with column values
+        unique_key: Column name for conflict detection
+        batch_size: Records per batch
+
+    Returns:
+        Dict with 'inserted' and 'updated' counts
+    """
+    if not records:
+        return {'inserted': 0, 'updated': 0}
+
+    if is_postgresql(db):
+        return _upsert_batch_postgres(db, model, records, unique_key, batch_size)
+    else:
+        return _upsert_batch_sqlite(db, model, records, unique_key)
+
+
+def _upsert_batch_postgres(
+    db: Session,
+    model: Type[T],
+    records: List[dict],
+    unique_key: str,
+    batch_size: int
+) -> dict:
+    """PostgreSQL upsert using ON CONFLICT."""
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    inserted = 0
+    updated = 0
+
+    for i in range(0, len(records), batch_size):
+        batch = records[i:i + batch_size]
+
+        # Get all column names except primary key
+        columns = [c.name for c in model.__table__.columns if c.name != 'id']
+        update_dict = {c: getattr(pg_insert(model).excluded, c) for c in columns if c != unique_key}
+
+        stmt = pg_insert(model).values(batch)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[unique_key],
+            set_=update_dict
+        )
+
+        result = db.execute(stmt)
+        # PostgreSQL returns number of affected rows
+        # Can't easily distinguish inserts vs updates without more complex logic
+        inserted += len(batch)
+
+    db.commit()
+    return {'inserted': inserted, 'updated': updated}
+
+
+def _upsert_batch_sqlite(
+    db: Session,
+    model: Type[T],
+    records: List[dict],
+    unique_key: str
+) -> dict:
+    """SQLite fallback upsert using merge."""
+    inserted = 0
+    updated = 0
+
+    for record in records:
+        key_value = record.get(unique_key)
+        existing = db.query(model).filter(
+            getattr(model, unique_key) == key_value
+        ).first()
+
+        if existing:
+            for key, value in record.items():
+                if key != 'id':
+                    setattr(existing, key, value)
+            updated += 1
+        else:
+            db.add(model(**record))
+            inserted += 1
+
+    db.commit()
+    return {'inserted': inserted, 'updated': updated}
+
+
+# =============================================================================
+# Export utilities
+# =============================================================================
+
+__all__ = [
+    # Batch operations
+    'bulk_insert',
+    'bulk_insert_tm_entries',
+    'bulk_insert_rows',
+
+    # Text utilities
+    'normalize_text_for_hash',
+
+    # FTS
+    'search_rows_fts',
+    'add_fts_indexes',
+    'add_trigram_index',
+    'is_postgresql',
+
+    # Query helpers
+    'chunked_query',
+    'upsert_batch',
+]
