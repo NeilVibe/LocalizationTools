@@ -1,10 +1,13 @@
 # P17: LDM TM System - COMPLETE ARCHITECTURE
 
-**Version:** 1.0
+**Version:** 1.1
 **Created:** 2025-12-09
-**Status:** PLANNING
+**Updated:** 2025-12-09 (P20 Qwen Migration)
+**Status:** READY FOR IMPLEMENTATION
 
-> This document defines the COMPLETE TM architecture with MAXIMUM analysis and MAXIMUM indexing, all optimized with incremental update logic.
+> This document defines the COMPLETE TM architecture with MAXIMUM analysis and MAXIMUM indexing.
+> **Model:** Qwen/Qwen3-Embedding-0.6B (1024-dim, 100+ languages) - unified across all tools (P20).
+> **FAISS:** IndexHNSWFlat (M=32, efConstruction=400, efSearch=500, METRIC_INNER_PRODUCT).
 
 ---
 
@@ -139,7 +142,7 @@ server/data/ldm_tm/{tm_id}/
 │
 ├── embeddings/                   # Embedding arrays
 │   ├── whole/
-│   │   ├── embeddings.npy        # Shape: (N, 768)
+│   │   ├── embeddings.npy        # Shape: (N, 1024) - Qwen3-Embedding-0.6B
 │   │   ├── mapping.pkl           # idx → entry_id mapping
 │   │   └── dict.pkl              # source → target dictionary
 │   ├── line/
@@ -269,9 +272,9 @@ server/data/ldm_tm/{tm_id}/
 | 1 | **Exact Hash** | SHA256 | Hash table | O(1) | Perfect 100% match |
 | 2 | **Prefix Match** | Trie | Prefix trie | O(k) | "starts with" queries |
 | 3 | **Near-Exact** | Levenshtein ≤2 | BK-tree | O(log n) | Typos, minor edits |
-| 4 | **Whole Embedding** | KR-SBERT | FAISS HNSW | O(log n) | Semantic whole text |
-| 5 | **Line Embedding** | KR-SBERT | FAISS HNSW | O(log n) | Semantic per line |
-| 6 | **Sentence Embedding** | KR-SBERT | FAISS HNSW | O(log n) | Semantic per sentence |
+| 4 | **Whole Embedding** | Qwen3-Embedding-0.6B | FAISS HNSW | O(log n) | Semantic whole text |
+| 5 | **Line Embedding** | Qwen3-Embedding-0.6B | FAISS HNSW | O(log n) | Semantic per line |
+| 6 | **Sentence Embedding** | Qwen3-Embedding-0.6B | FAISS HNSW | O(log n) | Semantic per sentence |
 | 7 | **Word N-gram** | Jaccard | Inverted index | O(k) | Word overlap |
 | 8 | **Char N-gram** | Jaccard | Inverted index | O(k) | Char overlap |
 | 9 | **Length Filter** | Bucket | Bucket index | O(1) | Pre-filter by length |
@@ -289,10 +292,11 @@ server/data/ldm_tm/{tm_id}/
 class TMAnalyzer:
     """
     Performs ALL 12 analysis types on TM entries.
+    Uses Qwen/Qwen3-Embedding-0.6B (1024-dim) for semantic embeddings.
     """
 
     def __init__(self):
-        self.model = None  # KR-SBERT (lazy load)
+        self.model = None  # Qwen3-Embedding-0.6B (lazy load)
 
     # ═══════════════════════════════════════════════════════════════
     # GRANULARITY ANALYSIS
@@ -466,7 +470,7 @@ class TMAnalyzer:
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                          │
 │  │ WHOLE HNSW  │  │  LINE HNSW  │  │  SENT HNSW  │                          │
 │  │  142K vecs  │  │  85K vecs   │  │  95K vecs   │                          │
-│  │  768 dim    │  │  768 dim    │  │  768 dim    │                          │
+│  │  1024 dim   │  │  1024 dim   │  │  1024 dim   │  (Qwen)                  │
 │  │  M=32       │  │  M=32       │  │  M=32       │                          │
 │  │  ef=200     │  │  ef=200     │  │  ef=200     │                          │
 │  └─────────────┘  └─────────────┘  └─────────────┘                          │
@@ -527,10 +531,10 @@ class TMIndexBuilder:
 
         HNSW Parameters (optimized for 100K-500K entries):
         - M=32: Number of connections per layer (higher = more accurate, more memory)
-        - efConstruction=200: Build-time search depth (higher = better index quality)
-        - efSearch=100: Query-time search depth (can be tuned per query)
+        - efConstruction=400: Build-time search depth (higher = better index quality)
+        - efSearch=500: Query-time search depth (higher = more accurate)
 
-        Memory: ~1.5KB per vector (768 dim) + ~200 bytes HNSW overhead
+        Memory: ~2KB per vector (1024 dim Qwen) + ~200 bytes HNSW overhead
         Speed: ~1ms for k=10 search on 100K vectors
         """
         dim = embeddings.shape[1]
@@ -547,9 +551,10 @@ class TMIndexBuilder:
 
         if index_type == 'hnsw':
             # HNSW - best for our use case (fast, accurate, updatable)
-            index = faiss.IndexHNSWFlat(dim, 32)  # M=32
-            index.hnsw.efConstruction = 200
-            index.hnsw.efSearch = 100
+            # P20: Unified params - M=32, efC=400, efS=500, METRIC_INNER_PRODUCT
+            index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
+            index.hnsw.efConstruction = 400
+            index.hnsw.efSearch = 500
         elif index_type == 'ivf':
             # IVF - alternative for very large TMs (1M+)
             nlist = int(np.sqrt(n_vectors))
