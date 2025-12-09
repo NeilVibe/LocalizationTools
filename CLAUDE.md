@@ -249,17 +249,15 @@ git push origin main && git push gitea main  # BOTH remotes
 BUILD TRIGGER         →    BUILD             →    RELEASE           →    APP UPDATE
 ─────────────────────      ───────────────        ──────────────         ───────────────
 Add line to trigger   →    CI/CD builds     →    GitHub: AUTO     →    App checks
-file + git push            installer + yml       Gitea: MANUAL*         latest.yml
+file + git push            installer + yml       Gitea: AUTO            latest.yml
                                                                         on startup
-
-* Gitea: Run scripts/mirror_release_to_gitea.sh after GitHub release
 ```
 
 **Release Status:**
 | Platform | Build | Release | App Auto-Update |
 |----------|-------|---------|-----------------|
 | GitHub | ✅ Auto | ✅ Auto (softprops/action-gh-release) | ✅ Works |
-| Gitea | ✅ Auto | ⚠️ Manual (mirror script) | ✅ Works if mirrored |
+| Gitea | ✅ Auto | ✅ Auto (API + upload in build job) | ✅ Works |
 
 **App Update Source (configured via env):**
 ```javascript
