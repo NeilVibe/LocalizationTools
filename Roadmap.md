@@ -1075,6 +1075,22 @@ index.add(embeddings)
 - [x] Update download scripts: `scripts/download_bert_model.py`
 - [x] Update unit tests for new model
 - [x] Update Gitea build workflow (LIGHT/FULL detection + model bundling)
+- [x] Update TM Architecture doc with Qwen specs ([P17_TM_ARCHITECTURE.md](docs/wip/P17_TM_ARCHITECTURE.md))
+
+**LDM TM Architecture (Ready for Implementation):**
+```
+9-Tier TM Cascade (Source → Source matching):
+├── Tier 1-2: FAST (hash, prefix) - 0-2ms, 98-100% match
+├── Tier 3: NEAR-EXACT (Levenshtein) - 2-5ms, 95-98% match
+├── Tier 4-6: QWEN SEMANTIC (whole/line/sentence) - 5-10ms, 60-95% match
+└── Tier 7-9: FUZZY (n-gram, BK-tree, RapidFuzz) - 10-30ms, 30-70% match
+
+Dual Threshold:
+├── Auto-apply: ≥95% (Tier 1-2)
+└── Suggest: ≥70% (Tier 3-6)
+
+Index Types (10 total): Hash, Trie, FAISS×3, N-gram×2, BK-tree, RapidFuzz, Cache
+```
 
 ---
 
