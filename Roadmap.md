@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512091000 | **Updated**: 2025-12-09 | **Status**: Production Ready
+**Version**: 2512090827 | **Updated**: 2025-12-09 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 
@@ -9,227 +9,69 @@
 ## Current Status
 
 ```
-LocaNext v2512080549
+LocaNext v2512090827
 ├── Backend:     ✅ 55+ API endpoints, async, WebSocket
 ├── Frontend:    ✅ Electron + Svelte (LocaNext Desktop)
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar
 ├── Tests:       ✅ 912 total (no mocks)
 ├── Security:    ✅ 86 tests (IP filter, CORS, JWT, audit)
-├── CI/CD:       ✅ GitHub Actions + ⚠️ Gitea (P13.11 status bug + P13.12 caching)
+├── CI/CD:       ✅ GitHub Actions + ✅ Gitea (FULLY WORKING!)
 └── Distribution: ✅ Auto-update enabled
 ```
 
 ---
 
-## In Progress
+## Recently Completed
 
-### P13.11: Gitea Windows Build "Job Failed" Status Bug
+### P13.11: Gitea Windows Build - COMPLETE ✅ (2025-12-09)
 
-**Status:** 🔴 ACTIVE - Cleanup phase fails on Windows
+**Status:** ✅ COMPLETE - Patched act_runner v15 solves NUL byte issue
 
-**The Problem:**
-Build succeeds 100% (ZIP created, tests pass) but act_runner reports "Job failed" during cleanup phase.
+**The Problem (SOLVED):**
+Build succeeded but act_runner reported "Job failed" due to NUL bytes in PowerShell output.
 
-```
-[SUCCESS] LocaNext LIGHT Build Complete!
-Output: LocaNext_v2512081600_Light_Portable.zip (106.8 MB)
-...
-Cleaning up container for job Build Windows LIGHT Installer
-🏁 Job failed    ← FALSE POSITIVE (build actually succeeded!)
-```
-
-**Root Cause:**
+**Root Cause Found:**
 ```go
-// act_runner (nektos/act) pkg/container/host_environment.go
-return os.RemoveAll(e.Path)  // FAILS on Windows with ERROR_SHARING_VIOLATION
-```
-- Go process holds file handles on workdir
-- Windows can't delete directories with open handles
-- No retry logic in act_runner → failure = job marked failed
-
----
-
-### What We've Tried
-
-| # | Solution | Result |
-|---|----------|--------|
-| 1 | Remove disabled jobs | ❌ Still fails |
-| 2 | persist-credentials: false | ❌ Still fails |
-| 3 | Replace checkout with git clone | ❌ Still fails |
-| 4 | Upgrade act_runner v0.2.13 | ❌ Still fails |
-| 5 | Pre-cleanup with taskkill | ❌ Still fails |
-| 6 | Change PWD before cleanup | ❌ Still fails |
-| 7 | Custom workdir_parent config | ❌ Still fails |
-| 8 | cmd.exe cleanup (not PowerShell) | ⚠️ Deletes files but job still fails |
-| 9 | **Ephemeral runner mode** | ⚠️ Runner restarts OK, but cleanup still fails BEFORE exit |
-| 10 | Status API workaround | ❌ Rejected (masks real failures) |
-
-**Key Finding:** Ephemeral mode ensures fresh runner per job, but cleanup failure happens BEFORE runner exits. The job is marked "failed" during cleanup, then runner exits.
-
----
-
-### How GitHub Actions Succeeds
-
-**GitHub's Secret: Fresh Azure VMs**
-
-```
-GitHub Actions Windows:
-┌─────────────────────────────────────────┐
-│  Fresh Azure VM spun up for job         │
-│  ↓                                      │
-│  Job runs (checkout, build, test)       │
-│  ↓                                      │
-│  Job completes → VM DESTROYED           │  ← No cleanup needed!
-│  ↓                                      │
-│  Next job → NEW fresh VM                │
-└─────────────────────────────────────────┘
+// PowerShell writes NUL bytes (0x00) to stdout
+// act_runner's parseEnvFile() treated NUL byte lines as errors
+// Result: "Job failed" even though build was 100% successful
 ```
 
-- VM is **ephemeral** at the infrastructure level
-- No cleanup code runs - whole VM is discarded
-- This is why `windows-latest` works perfectly
-
-**Our Situation:**
-```
-Gitea + act_runner on Windows:
-┌─────────────────────────────────────────┐
-│  Same Windows host for all jobs         │
-│  ↓                                      │
-│  Job runs (checkout, build, test)       │
-│  ↓                                      │
-│  Cleanup phase → os.RemoveAll() FAILS   │  ← Problem here!
-│  ↓                                      │
-│  Job marked "failed" (false positive)   │
-└─────────────────────────────────────────┘
-```
-
----
-
-### Potential Solutions (Ranked)
-
-| # | Solution | Effort | Elegance | Notes |
-|---|----------|--------|----------|-------|
-| 🥇 | **Hyper-V VM Reset** | Medium | ✅ Elegant | Copy GitHub's approach locally |
-| 🥈 | **PR to nektos/act** | Medium | ✅ Upstream | Add retry loop, benefits everyone |
-| 🥉 | **WSL2 Build Agent** | High | ⚠️ Complex | Run Windows build from WSL |
-| 4 | **Fork act_runner** | High | ⚠️ Maintenance | Patch and maintain our own |
-| 5 | **Accept as cosmetic** | None | ❌ Not elegant | Build works, ignore red status |
-
----
-
-### 🥇 Solution: Hyper-V VM Reset (Copy GitHub's Approach)
-
-**Confirmed:** This is exactly how GitHub does it.
-- [Microsoft Blog](https://techcommunity.microsoft.com/t5/azure-compute-blog/how-github-actions-handles-ci-cd-scale-on-short-running-jobs/ba-p/3321114): "7 million VMs reimaged per day"
-- GitHub doesn't fix the cleanup bug - they bypass it with infrastructure
-- [Issue #2687](https://github.com/actions/runner/issues/2687): Same bug exists in GitHub's self-hosted runners (marked NOT_PLANNED)
-
-**Our Local Version:**
-```
-Hyper-V Setup:
-┌─────────────────────────────────────────┐
-│  Windows VM (pre-configured)            │
-│  - Git, Node, Python, build tools       │
-│  - act_runner registered                │
-│  - Checkpoint: "Clean-Build-State"      │
-└─────────────────────────────────────────┘
-           │
-           ▼
-┌─────────────────────────────────────────┐
-│  Job runs → Build completes             │
-│  Job ends (cleanup may fail)            │
-│  Host detects completion                │
-│  Restore-VMCheckpoint                   │  ← Fresh state!
-└─────────────────────────────────────────┘
-```
-
----
-
-### Setup Complexity & Risks
-
-**Complexity: MEDIUM** (1-2 hours initial setup)
-
-| Step | Difficulty | Risk |
-|------|------------|------|
-| Enable Hyper-V | Easy | Low - Windows feature |
-| Create Windows VM | Easy | Low - standard wizard |
-| Install build tools in VM | Easy | Low - same as current setup |
-| Take checkpoint | Easy | Low - one click |
-| Write reset script | Medium | Low - PowerShell only |
-| Integrate with Gitea workflow | Medium | Medium - timing coordination |
-
-**Requirements:**
-- Windows 10/11 Pro or Server (has Hyper-V)
-- ~50GB disk for VM
-- ~8GB RAM for VM (can share with host)
-- Windows license for VM (can use evaluation)
-
-**Risks:**
-
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| VM corrupts checkpoint | Low | Keep backup checkpoint |
-| Network config issues | Medium | Use external virtual switch |
-| Performance slower than bare metal | Low | ~10-20% overhead acceptable |
-| Gitea can't reach VM | Medium | Configure proper networking |
-| VM doesn't auto-start | Low | Configure Hyper-V auto-start |
-
-**What Could Go Wrong:**
-1. **Networking** - VM needs to reach Gitea server and internet
-2. **Timing** - Reset script needs to detect job completion reliably
-3. **Disk space** - Checkpoints grow over time (need cleanup)
-
-**NOT Dangerous** - Hyper-V is production-grade Microsoft tech. Worst case: VM doesn't work, fall back to current setup.
-
----
-
-### Alternative: Just Accept It
-
-Given that GitHub also doesn't fix this for self-hosted runners:
-- Build works ✅
-- Output is correct ✅
-- Status shows "failed" (cosmetic) ⚠️
-
-**This is acceptable** for internal/local CI. The build artifact is what matters.
-
----
-
-### Current Status
-
-| Component | Status |
-|-----------|--------|
-| Build | ✅ Works perfectly (ZIP created) |
-| Tests | ✅ All pass |
-| Version | ✅ Correct (2512081600) |
-| Ephemeral Runner | ✅ Working (restarts after job) |
-| Job Status | ❌ Shows "failed" (false positive) |
-
-**Reality:** Build output is 100% correct. Only the displayed status is wrong.
-
-**Chosen Solution: Patch act_runner**
-
-After 10 failed attempts with workflow-level fixes, the only real solution is patching act_runner's Go code:
-
+**The Solution: Patched act_runner v15**
 ```go
-// Patch: pkg/container/host_environment.go
-func (e *HostEnvironment) Close() error {
-    for i := 0; i < 5; i++ {
-        if err := os.RemoveAll(e.Path); err == nil {
-            return nil
-        }
-        time.Sleep(time.Duration(i+1) * time.Second)
-    }
-    return nil  // Ignore cleanup failure - job already succeeded
+// File: act/pkg/container/parse_env_file.go
+// V15-PATCH: Strip NUL bytes from line (Windows PowerShell bug)
+line = strings.ReplaceAll(line, "\x00", "")
+trimmed := strings.TrimSpace(line)
+if trimmed == "" {
+    continue
 }
 ```
 
-**Next Steps:**
-1. Fork act_runner repo
-2. Apply cleanup retry patch
-3. Build custom act_runner.exe
-4. Deploy to Windows build machine
+**Debugging Journey (v10-v15):**
+| Version | Approach | Result |
+|---------|----------|--------|
+| v10 | Cleanup retry loop | ❌ Wrong location |
+| v11 | RemoveAll with backoff | ❌ Still failed |
+| v12 | Ignore cleanup errors | ❌ Not the issue |
+| v13 | parseEnvFile NUL skip | ⚠️ Close! |
+| v14 | More NUL handling | ⚠️ Closer! |
+| **v15** | **strings.ReplaceAll NUL byte strip** | ✅ **WORKS!** |
 
-**Detailed tracking:** [docs/wip/P13_GITEA_TASKS.md](docs/wip/P13_GITEA_TASKS.md)
+**Current Setup:**
+- **Linux Runner**: Manual scripts (`~/gitea/start.sh`)
+- **Windows Runner**: NSSM Service (auto-start, ~8.5MB RAM)
+  - Service: `GiteaActRunner`
+  - Binary: `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner_patched_v15.exe`
+  - Mode: Ephemeral (fresh state per job)
+
+**Build Status:**
+| Platform | Status | Duration |
+|----------|--------|----------|
+| GitHub | ✅ SUCCESS | ~10 min |
+| Gitea | ✅ SUCCESS | ~1 min |
+
+**Documentation:** [docs/deployment/GITEA_SETUP.md](docs/deployment/GITEA_SETUP.md) - Complete rewrite with full setup guide
 
 ---
 
