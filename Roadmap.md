@@ -1094,11 +1094,57 @@ Index Types (10 total): Hash, Trie, FAISS×3, N-gram×2, BK-tree, RapidFuzz, Cac
 
 ---
 
-### P21: Performance Monitoring (Future)
+### P21: Database Powerhouse 🔄 PLANNING
 
-- Query optimization
-- Memory profiling
-- Load testing
+**Status:** PLANNING | **Goal:** Handle 40+ users uploading 1M rows simultaneously
+
+**Problem Identified (2025-12-10):**
+```
+Worst case: 40 users × 1M rows = 40 MILLION rows simultaneous insert
+Current bulk INSERT: ~20k rows/sec
+Need: ~100k rows/sec with ZERO queuing
+```
+
+**Solution: State of the Art DB Setup**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    POWERHOUSE ARCHITECTURE                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   Users (40+) ──► PgBouncer (1000 conns) ──► PostgreSQL 16                  │
+│                   pool_mode=transaction        ├── COPY BINARY (5-10x faster)│
+│                                                ├── 32GB RAM                  │
+│                                                ├── NVMe SSD                  │
+│                                                └── Tuned config              │
+│                                                                             │
+│   Result: 40 users × 1M rows = ~30 seconds (no queue)                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Changes:**
+| Current | Upgrade |
+|---------|---------|
+| bulk INSERT | COPY BINARY (5-10x faster) |
+| SQLAlchemy pool (30) | PgBouncer (1000 connections) |
+| Default PostgreSQL | Tuned config (8GB shared_buffers) |
+| Any server | 32GB RAM + NVMe SSD |
+
+**Phases:**
+- [ ] Phase 1: Implement COPY BINARY in db_utils.py
+- [ ] Phase 2: PostgreSQL tuning (config template)
+- [ ] Phase 3: PgBouncer setup (Docker Compose)
+- [ ] Phase 4: Advanced optimizations (partitioning, parallel COPY)
+
+**Server Specs (Recommended):**
+```
+CPU:  8 cores (16 threads)
+RAM:  32 GB
+SSD:  1 TB NVMe
+Cost: ~$100-150/month (cloud) or ~$1000 one-time (bare metal)
+```
+
+**WIP Document:** [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md)
 
 ---
 
