@@ -1,7 +1,7 @@
 # P13 Gitea Build System - Work In Progress
 
 **Created:** 2025-12-09
-**Status:** 🔄 IN PROGRESS
+**Status:** ✅ P13.11 COMPLETE | ✅ P13.12 VERIFIED
 **Priority:** P13.11 (Cleanup Bug) + P13.12 (Build Caching)
 
 ---
@@ -228,7 +228,10 @@ C:\BuildCache\
 - [x] P13.12.2: Define CACHE_MANIFEST.json schema (`scripts/CACHE_MANIFEST.template.json`)
 - [x] P13.12.3: Create cache initialization script (`scripts/setup_build_cache.ps1`)
 - [x] P13.12.4: Modify build.yml with cache-first logic
-- [ ] P13.12.5: Test cache hit scenario (run setup script on Windows, then trigger build)
+- [x] P13.12.5: Test cache hit scenario ✅ VERIFIED (Build #300 - 2m43s vs 3m18s)
+  - VC++: 24.4 MB from cache
+  - Python + packages: 233.6 MB from cache
+  - NSIS includes: 20 files cached
 - [ ] P13.12.6: Test cache invalidation scenarios
 - [ ] P13.12.7: Document cache maintenance
 
