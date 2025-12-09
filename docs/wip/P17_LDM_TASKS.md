@@ -8,6 +8,56 @@
 
 ---
 
+## 🎯 PRIORITY ORDER (Coding Sequence)
+
+```
+RECOMMENDED CODING ORDER:
+═══════════════════════════════════════════════════════════════════════════════
+
+PRIORITY 1: Phase 6.1 - Cell Display (4 tasks) ← START HERE
+────────────────────────────────────────────────────────────
+Why first: Basic UX needed before adding more features
+- 6.1.1 Cell expansion on click
+- 6.1.2 Newline display logic (grid: \n or ↵, modal: actual breaks)
+- 6.1.3 Long text indicator
+- 6.1.4 Tooltip preview
+
+PRIORITY 2: Phase 7.1-7.2 - TM Database + Upload (10 tasks)
+────────────────────────────────────────────────────────────
+Why next: Need TM data before building indexes
+- 7.1.1-7.1.4 Database models (LDMTranslationMemory, LDMTMEntry, LDMActiveTM)
+- 7.2.1-7.2.6 TM Upload + parsers (TMX, Excel, TXT)
+
+PRIORITY 3: Phase 7.3 - Index Building (6 tasks)
+────────────────────────────────────────────────────────────
+Why next: Need indexes for fast search
+- 7.3.1-7.3.6 whole_text_lookup, line_lookup, FAISS indexes
+
+PRIORITY 4: Phase 7.4 - Cascade Search (8 tasks)
+────────────────────────────────────────────────────────────
+Why next: Core TM functionality
+- 7.4.1-7.4.8 5-Tier cascade + dual threshold search
+
+PRIORITY 5: Phase 7.5 - TM Search API + Frontend (8 tasks)
+────────────────────────────────────────────────────────────
+Why next: Wire backend to frontend
+- 7.5.1-7.5.8 APIs + TMManager.svelte + TMUploadModal.svelte
+
+PRIORITY 6: Phase 5.5 - Glossary (3 tasks)
+────────────────────────────────────────────────────────────
+Optional but useful
+- 5.5.1-5.5.3 Glossary backend + API + panel
+
+PRIORITY 7: Phase 8 - Nice View (12 tasks)
+────────────────────────────────────────────────────────────
+Polish and patterns
+- 8.1-8.12 Pattern rendering, special display modes
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+
+---
+
 ## Progress Overview
 
 ```
