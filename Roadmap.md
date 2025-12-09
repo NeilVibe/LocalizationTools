@@ -218,6 +218,45 @@ P17 Quick Summary:
 - [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) - Detailed task list
 - [WebTranslatorNew/](RessourcesForCodingTheProject/WebTranslatorNew/) - Source architecture
 
+**Embedding Model Decision (2025-12-09):**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    EMBEDDING MODEL UNIFICATION                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  CURRENT STATE:                                                              │
+│  ├── XLSTransfer, KR Similar: snunlp/KR-SBERT-V40K-klueNLI-augSTS (447 MB)  │
+│  └── WebTranslatorNew:        Qwen/Qwen3-Embedding-0.6B (1.21 GB)           │
+│                                                                              │
+│  OPTIONS:                                                                    │
+│  ├── Option A: Keep KR-SBERT for existing apps, Qwen for LDM               │
+│  │             Total: ~1.65 GB (both models)                                │
+│  │                                                                          │
+│  └── Option B: Switch ALL apps to Qwen3-Embedding-0.6B ★ RECOMMENDED       │
+│                Total: 1.21 GB (single model)                                │
+│                Benefits:                                                    │
+│                ├── Multilingual (100+ languages vs Korean-only)             │
+│                ├── Better cross-lingual KR↔EN matching                     │
+│                ├── Unified codebase (follow WebTranslatorNew pattern)       │
+│                └── Apache 2.0 license (commercial OK)                       │
+│                                                                              │
+│  DECISION: Pending (user to confirm)                                         │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  GITEA LFS BUNDLING OPTION:                                                  │
+│  ├── Gitea has NO storage restrictions (unlike GitHub 1GB limit)            │
+│  ├── Can bundle model directly into build (~1.2GB with installer)           │
+│  └── Users get ZERO-DOWNLOAD experience (model included in EXE)             │
+│                                                                              │
+│  Pattern from WebTranslatorNew (EMBEDDINGS.md):                             │
+│  ```python                                                                   │
+│  from sentence_transformers import SentenceTransformer                       │
+│  model = SentenceTransformer('Qwen/Qwen3-Embedding-0.6B')                   │
+│  embeddings = model.encode(texts, batch_size=64)                            │
+│  ```                                                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 > **Jump to sections:** [UX Flow](#ux-flow-how-users-work) | [File Formats](#file-format-parsing-rules) | [Architecture](#deployment-architecture-one-server-for-everything) | [Development Phases](#development-phases)
 
 ---

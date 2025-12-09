@@ -69,6 +69,70 @@ Polish and patterns
 
 ---
 
+## 🔧 TECHNICAL DECISIONS (2025-12-09)
+
+### Embedding Model Unification
+
+**Current Models in Codebase:**
+| Location | Model | Size | License |
+|----------|-------|------|---------|
+| models/kr-sbert/ | snunlp/KR-SBERT-V40K-klueNLI-augSTS | **447 MB** | MIT |
+| WebTranslatorNew | Qwen/Qwen3-Embedding-0.6B | **1.21 GB** | Apache 2.0 |
+
+**Decision Options:**
+```
+Option A: Keep Both (Status Quo)
+├── KR-SBERT for XLSTransfer, KR Similar (Korean-only)
+├── Qwen for LDM TM system (multilingual)
+└── Total: ~1.65 GB
+
+Option B: Unify to Qwen ★ RECOMMENDED
+├── Single model for ALL tools
+├── Total: 1.21 GB
+├── Benefits:
+│   ├── Multilingual (100+ languages)
+│   ├── Better KR↔EN cross-lingual matching
+│   ├── WebTranslatorNew pattern already proven
+│   └── Apache 2.0 (commercial OK)
+└── Migration: Update embeddings.py in each tool
+```
+
+**Pattern from WebTranslatorNew:**
+```python
+# EMBEDDINGS.md - proven pattern
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer('Qwen/Qwen3-Embedding-0.6B')
+embeddings = model.encode(texts, batch_size=64)
+
+# FAISS HNSW index
+index = faiss.IndexHNSWFlat(dimension, 32, faiss.METRIC_INNER_PRODUCT)
+index.hnsw.efConstruction = 400
+index.hnsw.efSearch = 500
+```
+
+### Gitea LFS Bundling (Zero-Download Option)
+
+**New Capability (via Gitea):**
+- GitHub: 1GB LFS limit (can't bundle 1.2GB model)
+- Gitea: **NO storage restrictions** ✅
+
+**Option: Bundle Model in Build**
+```
+LocaNext-Setup.exe (~300MB installer)
+├── downloads Qwen model on first run (current)
+└── OR bundles model directly (~1.5GB installer, zero user download)
+```
+
+**Benefits of Bundling:**
+- ✅ Zero-download user experience
+- ✅ Works offline immediately
+- ✅ No network dependency after install
+- ⚠️ Larger installer size (~1.5GB vs 300MB)
+
+**Decision: Pending** - User to confirm preference
+
+---
+
 ## Progress Overview
 
 ```
