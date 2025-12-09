@@ -14,15 +14,14 @@
 RECOMMENDED CODING ORDER:
 ═══════════════════════════════════════════════════════════════════════════════
 
-PRIORITY 1: Phase 6.1 - Cell Display (4 tasks) ← START HERE
+PRIORITY 1: Phase 6.1 - Cell Display (4 tasks) ✅ COMPLETE
 ────────────────────────────────────────────────────────────
-Why first: Basic UX needed before adding more features
-- 6.1.1 Cell expansion on click
-- 6.1.2 Newline display logic (grid: \n or ↵, modal: actual breaks)
-- 6.1.3 Long text indicator
-- 6.1.4 Tooltip preview
+- ✅ Dynamic row heights (content-based sizing)
+- ✅ Newline display as ↵ symbol in grid
+- ✅ Full content display (no truncation)
+- ✅ Cell hover highlight + TM pre-fetch on click
 
-PRIORITY 2: Phase 7.1-7.2 - TM Database + Upload (10 tasks)
+PRIORITY 2: Phase 7.1-7.2 - TM Database + Upload (10 tasks) ← NEXT
 ────────────────────────────────────────────────────────────
 Why next: Need TM data before building indexes
 - 7.1.1-7.1.4 Database models (LDMTranslationMemory, LDMTMEntry, LDMActiveTM)
@@ -63,11 +62,11 @@ Polish and patterns
 ```
 Phase 1-4: Foundation + Grid    [X] 58/58 tasks  ✅ COMPLETE
 Phase 5: Basic CAT              [▓▓▓] 7/10 tasks  (TM panel done)
-Phase 6: UI Polish              [▓] 3/16 tasks
+Phase 6: UI Polish              [▓▓▓▓] 7/16 tasks ✅ 6.0 + 6.1 COMPLETE
 Phase 7: Full TM System         [ ] 0/32 tasks   (5-Tier Cascade)
 Phase 8: Nice View              [ ] 0/12 tasks   (Pattern rendering)
 ─────────────────────────────────────────
-TOTAL                           68/128 tasks (53%)
+TOTAL                           72/128 tasks (56%)
 ```
 
 ---
@@ -98,11 +97,11 @@ TOTAL                           68/128 tasks (53%)
 - [x] Hover transitions
 - [x] Row selection
 
-### 6.1: Cell Text Display (TODO)
-- [ ] **6.1.1** Cell expansion on click
-- [ ] **6.1.2** Newline display logic (grid: `\n` or `↵`, modal: actual breaks)
-- [ ] **6.1.3** Long text indicator
-- [ ] **6.1.4** Tooltip preview
+### 6.1: Cell Text Display ✅ COMPLETE
+- [x] **6.1.1** Dynamic row heights (content-based sizing)
+- [x] **6.1.2** Newline display logic (grid: `↵` symbol, modal: actual breaks)
+- [x] **6.1.3** Full content display (no truncation)
+- [x] **6.1.4** Cell hover highlight + single-click TM pre-fetch
 
 ### 6.2: Later
 - [ ] Version history, exports, permissions, etc.

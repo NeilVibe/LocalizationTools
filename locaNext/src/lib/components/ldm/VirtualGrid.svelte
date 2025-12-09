@@ -29,7 +29,10 @@
   export let fileName = "";
 
   // Virtual scrolling constants
-  const ROW_HEIGHT = 40; // Fixed row height in pixels
+  const MIN_ROW_HEIGHT = 48; // Minimum row height
+  const MAX_ROW_HEIGHT = 120; // Maximum row height (prevents huge rows)
+  const CHARS_PER_LINE = 50; // Estimated chars per line for height calc
+  const LINE_HEIGHT = 20; // Height per line of text
   const BUFFER_ROWS = 10; // Extra rows to render above/below viewport
   const PAGE_SIZE = 100; // Rows per page to fetch
 
@@ -95,15 +98,21 @@
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   }
 
-  // Calculate which rows are visible
+  // Calculate which rows are visible (with dynamic heights)
   function calculateVisibleRange() {
     if (!containerEl) return;
 
     containerHeight = containerEl.clientHeight;
     scrollTop = containerEl.scrollTop;
 
-    const startRow = Math.floor(scrollTop / ROW_HEIGHT);
-    const endRow = Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT);
+    // Use average height for estimation
+    const loadedRows = rows.filter(r => r && !r.placeholder);
+    const avgHeight = loadedRows.length > 0
+      ? loadedRows.reduce((sum, r) => sum + estimateRowHeight(r), 0) / loadedRows.length
+      : MIN_ROW_HEIGHT;
+
+    const startRow = Math.floor(scrollTop / avgHeight);
+    const endRow = Math.ceil((scrollTop + containerHeight) / avgHeight);
 
     visibleStart = Math.max(0, startRow - BUFFER_ROWS);
     visibleEnd = Math.min(total, endRow + BUFFER_ROWS);
@@ -226,8 +235,13 @@
       return;
     }
 
-    // Scroll to row position
-    const scrollPosition = (goToRowNumber - 1) * ROW_HEIGHT;
+    // Calculate scroll position based on average row height
+    const loadedRows = rows.filter(r => r && !r.placeholder);
+    const avgHeight = loadedRows.length > 0
+      ? loadedRows.reduce((sum, r) => sum + estimateRowHeight(r), 0) / loadedRows.length
+      : MIN_ROW_HEIGHT;
+
+    const scrollPosition = (goToRowNumber - 1) * avgHeight;
     if (containerEl) {
       containerEl.scrollTop = scrollPosition;
     }
@@ -278,13 +292,6 @@
       source: suggestion.source.substring(0, 30),
       similarity: suggestion.similarity
     });
-  }
-
-  // Select a row (single click)
-  function selectRow(row) {
-    if (!row || row.placeholder) return;
-    selectedRowId = row.id;
-    logger.info("Row selected", { rowId: row.id, rowNum: row.row_num });
   }
 
   // Open edit modal with row locking
@@ -440,14 +447,88 @@
     }
   }
 
+  // Format text for grid display - show newlines as ↵ symbol
+  function formatGridText(text) {
+    if (!text) return "";
+    // Replace newlines with ↵ symbol for compact display
+    return text.replace(/\r?\n/g, ' ↵ ');
+  }
+
+  // Estimate row height based on content length
+  function estimateRowHeight(row) {
+    if (!row || row.placeholder) return MIN_ROW_HEIGHT;
+
+    // Get the longest text (source or target)
+    const sourceLen = (row.source || "").length;
+    const targetLen = (row.target || "").length;
+    const maxLen = Math.max(sourceLen, targetLen);
+
+    // Count actual newlines too
+    const sourceNewlines = ((row.source || "").match(/\n/g) || []).length;
+    const targetNewlines = ((row.target || "").match(/\n/g) || []).length;
+    const maxNewlines = Math.max(sourceNewlines, targetNewlines);
+
+    // Estimate lines needed
+    const wrapLines = Math.ceil(maxLen / CHARS_PER_LINE);
+    const totalLines = Math.max(1, wrapLines + maxNewlines);
+
+    // Calculate height
+    const estimatedHeight = MIN_ROW_HEIGHT + (totalLines - 1) * LINE_HEIGHT;
+    return Math.min(estimatedHeight, MAX_ROW_HEIGHT);
+  }
+
+  // Calculate cumulative heights for virtual scroll positioning
+  function getRowTop(index) {
+    let top = 0;
+    for (let i = 0; i < index; i++) {
+      const row = rows[i];
+      top += estimateRowHeight(row);
+    }
+    return top;
+  }
+
+  // Calculate total content height
+  function getTotalHeight() {
+    // For performance, use average height estimation
+    const loadedRowCount = rows.filter(r => r && !r.placeholder).length;
+    if (loadedRowCount === 0) return total * MIN_ROW_HEIGHT;
+
+    let totalLoadedHeight = 0;
+    rows.forEach(row => {
+      if (row && !row.placeholder) {
+        totalLoadedHeight += estimateRowHeight(row);
+      }
+    });
+
+    const avgHeight = totalLoadedHeight / loadedRowCount;
+    return total * avgHeight;
+  }
+
+  // Pre-fetch TM on cell click
+  let prefetchedRowId = null;
+
+  function handleCellClick(row, event) {
+    if (!row || row.placeholder) return;
+
+    // Select the row
+    selectedRowId = row.id;
+
+    // Pre-fetch TM suggestions if not already fetched
+    if (prefetchedRowId !== row.id && row.source) {
+      prefetchedRowId = row.id;
+      fetchTMSuggestions(row.source, row.id);
+      logger.info("Pre-fetching TM for row", { rowId: row.id });
+    }
+  }
+
   // Get visible rows for rendering
   $: visibleRows = Array.from({ length: visibleEnd - visibleStart }, (_, i) => {
     const index = visibleStart + i;
     return rows[index] || { row_num: index + 1, placeholder: true };
   });
 
-  // Total scroll height
-  $: totalHeight = total * ROW_HEIGHT;
+  // Total scroll height (reactive to rows changes)
+  $: totalHeight = getTotalHeight();
 
   // Subscribe to real-time updates when file changes
   $: if (fileId) {
@@ -556,7 +637,8 @@
         <div class="scroll-content" style="height: {totalHeight}px;">
           <!-- Rendered rows -->
           {#each visibleRows as row, i (row.row_num)}
-            {@const rowTop = (visibleStart + i) * ROW_HEIGHT}
+            {@const rowTop = getRowTop(visibleStart + i)}
+            {@const rowHeight = estimateRowHeight(row)}
             {@const rowLock = row.id ? isRowLocked(parseInt(row.id)) : null}
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <div
@@ -564,8 +646,8 @@
               class:placeholder={row.placeholder}
               class:locked={rowLock}
               class:selected={selectedRowId === row.id}
-              style="top: {rowTop}px; height: {ROW_HEIGHT}px;"
-              on:click={() => selectRow(row)}
+              style="top: {rowTop}px; min-height: {rowHeight}px;"
+              on:click={(e) => handleCellClick(row, e)}
               role="row"
             >
               {#if row.placeholder}
@@ -580,27 +662,31 @@
                 </div>
 
                 <!-- StringID -->
-                <div class="cell string-id" style="width: {columns[1].width}px;" title={row.string_id}>
+                <div class="cell string-id" style="width: {columns[1].width}px;">
                   {row.string_id || "-"}
                 </div>
 
-                <!-- Source -->
-                <div class="cell source" style="width: {columns[2].width}px;" title={row.source}>
-                  {row.source || ""}
+                <!-- Source (full content with newline symbols) -->
+                <div
+                  class="cell source"
+                  class:cell-hover={selectedRowId === row.id}
+                  style="width: {columns[2].width}px;"
+                >
+                  <span class="cell-content">{formatGridText(row.source) || ""}</span>
                 </div>
 
-                <!-- Target (editable) -->
+                <!-- Target (editable, full content with newline symbols) -->
                 <div
                   class="cell target"
                   class:locked={rowLock}
+                  class:cell-hover={selectedRowId === row.id}
                   style="width: {columns[3].width}px;"
                   on:dblclick={() => openEditModal(row)}
                   role="button"
                   tabindex="0"
                   on:keydown={(e) => e.key === 'Enter' && openEditModal(row)}
-                  title={rowLock ? `Locked by ${rowLock.locked_by}` : "Double-click to edit"}
                 >
-                  {row.target || ""}
+                  <span class="cell-content">{formatGridText(row.target) || ""}</span>
                   {#if rowLock}
                     <span class="lock-icon"><Locked size={12} /></span>
                   {:else}
@@ -833,17 +919,22 @@
 
   .cell {
     padding: 0.5rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     font-size: 0.8125rem;
     border-right: 1px solid var(--cds-border-subtle-01);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    overflow: hidden;
+  }
+
+  .cell-content {
+    word-break: break-word;
+    white-space: pre-wrap;
+    line-height: 1.4;
   }
 
   .cell.row-num {
     justify-content: center;
+    align-items: center;
     color: var(--cds-text-02);
     font-size: 0.75rem;
   }
@@ -851,22 +942,34 @@
   .cell.string-id {
     font-family: monospace;
     font-size: 0.75rem;
+    word-break: break-all;
   }
 
   .cell.source {
     background: var(--cds-layer-02);
     color: var(--cds-text-02);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .cell.source.cell-hover {
+    background: var(--cds-layer-hover-02);
+    box-shadow: inset 0 0 0 2px var(--cds-border-interactive);
   }
 
   .cell.target {
     position: relative;
     cursor: pointer;
     padding-right: 1.5rem;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .cell.target:hover {
-    background: var(--cds-layer-active-01);
+    background: var(--cds-layer-hover-01);
+  }
+
+  .cell.target.cell-hover {
+    background: var(--cds-layer-selected-01);
+    box-shadow: inset 0 0 0 2px var(--cds-border-interactive);
   }
 
   .cell.target.locked {
