@@ -76,10 +76,10 @@ Polish and patterns
 Phase 1-4: Foundation + Grid    [X] 58/58 tasks  ✅ COMPLETE
 Phase 5: Basic CAT              [▓▓▓] 7/10 tasks  (TM panel done)
 Phase 6: UI Polish              [▓▓▓▓] 7/16 tasks ✅ 6.0 + 6.1 COMPLETE
-Phase 7: Full TM System         [▓▓▓▓] 9/40 tasks (DB + Backup + Trash + Utils done!)
+Phase 7: Full TM System         [▓▓▓▓▓] 10/40 tasks (DB + Backup + Trash + Utils + TMManager!)
 Phase 8: Nice View              [ ] 0/12 tasks   (Pattern rendering)
 ─────────────────────────────────────────
-TOTAL                           81/136 tasks (60%)
+TOTAL                           82/136 tasks (60%)
 ```
 
 ---
@@ -258,7 +258,35 @@ TOTAL                           81/136 tasks (60%)
 
 ---
 
-### 7.2 TM Upload & Parsing (6 tasks)
+### 7.2 TM Upload & Parsing (6 tasks) ← IN PROGRESS
+
+**PARSING STRATEGY: REUSE EXISTING HANDLERS!**
+```
+═══════════════════════════════════════════════════════════════════════════════
+
+TXT FILES → REUSE: server/tools/ldm/file_handlers/txt_handler.py
+├── parse_txt_file(file_content, filename)
+├── Column 5 = Source (Korean)
+├── Column 6 = Target (Translation)
+└── Already handles encoding, normalization ✅
+
+XML FILES → REUSE: server/tools/ldm/file_handlers/xml_handler.py
+├── parse_xml_file(file_content, filename)
+├── <LocStr StrOrigin="source" Str="target" />
+└── Already handles XML parsing ✅
+
+EXCEL FILES → NEW SIMPLE PARSER:
+├── Column A (index 0) = Source
+├── Column B (index 1) = Target
+└── Use openpyxl (already in project)
+
+TMManager wraps these parsers + adds:
+├── bulk_insert_tm_entries() for fast import (20k/sec!)
+├── SHA256 hash generation for exact match
+└── Progress callback for UI updates
+
+═══════════════════════════════════════════════════════════════════════════════
+```
 
 **TM Input Sources:**
 ```
@@ -266,9 +294,9 @@ TOTAL                           81/136 tasks (60%)
 │                           TM INPUT SOURCES                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  1. TMX File Upload      → Industry standard, auto-parse <tu> elements      │
-│  2. Excel Upload         → User selects source/target columns (like XLS)    │
-│  3. TXT Tab-Delimited    → Simple source\ttarget format                     │
+│  1. TXT Tab-Delimited    → REUSE txt_handler.py (col 5/6)                   │
+│  2. XML LocStr           → REUSE xml_handler.py (StrOrigin/Str)             │
+│  3. Excel (A/B columns)  → NEW simple parser (col 0/1)                      │
 │  4. ★ ADAPTIVE TM ★     → Auto-save edits as TM entries (reactive)         │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -289,15 +317,13 @@ BENEFITS:
 └── Toggle per project/file (user choice)
 ```
 
-- [ ] **7.2.1** Create `server/tools/ldm/tm_manager.py`
-  ```python
-  class TMManager:
-      def upload_tm(self, file, name: str, source_col=None, target_col=None) -> dict
-      def build_indexes(self, tm_id: int, progress_callback=None) -> dict
-      def load_tm(self, tm_id: int) -> bool
-      def delete_tm(self, tm_id: int) -> bool
-      def add_entry(self, tm_id: int, source: str, target: str) -> bool  # For Adaptive TM
-  ```
+- [x] **7.2.1** Create `server/tools/ldm/tm_manager.py` ✅
+  - TMManager class with upload_tm(), list_tms(), get_tm(), delete_tm(), add_entry()
+  - REUSES txt_handler.py for TXT parsing (Column 5=Source, Column 6=Target)
+  - REUSES xml_handler.py for XML parsing (StrOrigin=Source, Str=Target)
+  - NEW simple Excel parser (Column A=Source, Column B=Target)
+  - Uses bulk_insert_tm_entries() for 20k+ entries/sec import
+  - Includes search_exact() for O(1) hash lookup
 
 - [ ] **7.2.2** TMX parser
   ```python
