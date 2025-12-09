@@ -75,44 +75,34 @@ if trimmed == "" {
 
 ---
 
-### P13.12: Build Caching 🔄 NEW
+### P13.12: Build Caching ✅ SCRIPT READY
 
-**Status:** 🔄 IN PROGRESS - Implementing smart cache
+**Status:** ✅ Script ready, integration pending
 
-**Problem:** Every build downloads ~350MB (slow, wasteful)
+**What's Done:**
+- ✅ `scripts/setup_build_cache.ps1` - Downloads and caches all dependencies
+- ✅ Manifest system for version tracking
+- ✅ Handles: VC++ Redist, Python Embedded, NSIS includes, npm cache
 
-```
-Current downloads per build:
-├── VC++ Redistributable     ~25MB   (never changes)
-├── Python Embedded         ~145MB   (rarely changes)
-├── npm packages            ~100MB   (changes with package-lock.json)
-└── NSIS includes            ~1MB    (never changes)
-```
+**What's Pending:**
+- ⏳ Wire cache into `build.yml` workflow
+- ⏳ Test cache-first logic on Gitea runner
 
-**Solution:** Local cache with hash-based invalidation
-
+**Cache Structure:**
 ```
 C:\BuildCache\
 ├── CACHE_MANIFEST.json          # Version tracking + hashes
-├── vcredist\vc_redist.x64.exe   # Static
-├── python-embedded\3.11.9\      # Python + pip packages
+├── vcredist\vc_redist.x64.exe   # Static (~25MB)
+├── python-embedded\3.11.9\      # Python + pip packages (~145MB)
 ├── npm-cache\<hash>\            # Keyed by package-lock.json hash
-└── nsis-includes\*.nsh          # Static
+└── nsis-includes\*.nsh          # Static (~15 files)
 ```
 
-**Expected Performance:**
+**Expected Performance (once integrated):**
 | Scenario | Before | After |
 |----------|--------|-------|
 | Cold cache | ~5 min | ~5 min |
 | Cache hit | ~5 min | **~30 sec** |
-| requirements.txt change | ~5 min | ~2 min |
-
-**Next Steps:**
-1. Create `setup_build_cache.ps1` script
-2. Modify `build.yml` with cache-first logic
-3. Test and validate
-
-**Detailed tracking:** [docs/wip/P13_GITEA_TASKS.md](docs/wip/P13_GITEA_TASKS.md)
 
 ---
 
@@ -138,11 +128,9 @@ All 3 tools verified with production test files.
 
 ### P17: LocaNext LDM (LanguageData Manager)
 
-**Status:** 🔄 IN PROGRESS (Phase 1-5 Complete - 96%)
+**Status:** 🔄 IN PROGRESS (53% - 68/128 tasks)
 
-**Goal:** Custom-built, powerful, elegant CAT tool for game localization. Google Docs-like real-time collaboration with file explorer, handling 500K-1M rows effortlessly.
-
-**Approach:** 100% custom. No open-source CAT tools. We build everything ourselves.
+**Goal:** Professional CAT tool with 5-tier cascade TM search (WebTranslatorNew architecture)
 
 ```
 P17 Quick Summary:
@@ -151,39 +139,54 @@ P17 Quick Summary:
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Scale:        500K - 1M rows (virtual scroll, server pagination)           │
 │  Collaboration: Real-time WebSocket sync between all users                  │
-│  UI:           File Explorer + VirtualGrid + Edit Modal                     │
-│  Editing:      Source (StrOrigin) = READ-ONLY, Target (Str) = EDITABLE      │
-│  Server:       ONE server (FastAPI:8888 + PostgreSQL + Gitea:3000)          │
-│  Phases:       6 phases (Foundation → File Explorer → Sync → Scale → CAT)   │
+│  TM System:    5-Tier Cascade + Dual Threshold (WebTranslatorNew)           │
+│  Editing:      Source = READ-ONLY, Target = EDITABLE                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Frontend:     locaNext/src/lib/components/ldm/ (FileExplorer, VirtualGrid) │
-│  Backend:      server/tools/ldm/ (api.py, websocket.py, tm.py)              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  Progress:     Phase 1 [X] Phase 2 [X] Phase 3 [X] Phase 4 [X] Phase 5 [X]  │
-│                68/71 tasks (96%) - UI done, Remaining: Glossary, Status     │
+│  Progress:     Phase 1-5 [X] Phase 6 [▓] Phase 7-8 [ ]                      │
+│                68/128 tasks (53%) - Core done, Full TM System next          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Recent Completions (Phase 4-6):**
+**Completed Features:**
 - ✅ VirtualGrid.svelte - 1M+ row virtual scrolling
-- ✅ TM Backend (tm.py) - Word-level Jaccard similarity
-- ✅ TM Suggestions Panel - One-click apply in edit modal
-- ✅ Keyboard Shortcuts - Ctrl+Enter (save+next), Tab (apply TM), Escape (cancel)
-- ✅ Demo Screenshots - 11 images captured (docs/demos/ldm/)
-- ✅ Upload Performance Test - 16MB/103,500 rows in ~50 seconds (~2,070 rows/sec)
-- ✅ **UI Enhancements (Phase 6.0):** Smooth hover transitions, row highlight, selected row state
-- ✅ **Demo Folder Reorganization:** Subfolders for navigation, project-mgmt, grid, editing, ui-interactions
+- ✅ Basic TM Panel - One-click apply suggestions
+- ✅ Keyboard Shortcuts - Ctrl+Enter, Tab, Escape
+- ✅ Real-time WebSocket sync - Multi-user collaboration
+- ✅ Row locking - Prevents edit conflicts
 
-**Future Enhancement: WebTranslatorNew Reference**
-Explored `RessourcesForCodingTheProject/WebTranslatorNew/` for reusable logic:
-- 5-tier cascade search (perfect match → embeddings → n-grams)
-- Qwen embedding model + FAISS HNSW for semantic search
-- Dual-threshold system (cascade=0.92, context=0.49)
-- Data preprocessing with majority voting deduplication
+**Coming Next: Phase 7 - Full TM System (5-Tier Cascade)**
 
-See: `RessourcesForCodingTheProject/WebTranslatorNew/README.md`
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                 5-TIER CASCADE + DUAL THRESHOLD                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Tier 1: Perfect Whole Match    Hash O(1)         → 100% (stops cascade)    │
+│  Tier 2: Whole Text Embedding   FAISS HNSW        → stops if ≥0.92          │
+│  Tier 3: Perfect Line Match     Hash per line     → exact line matches      │
+│  Tier 4: Line-by-Line Embedding FAISS per line    → semantic line matches   │
+│  Tier 5: Word N-Gram Embedding  1,2,3-grams→FAISS → partial phrase matches  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  DUAL THRESHOLD:                                                             │
+│  ├── cascade_threshold = 0.92  → PRIMARY (high confidence, auto-apply)      │
+│  └── context_threshold = 0.49  → CONTEXT (single best reference)            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-**Detailed task tracking:** See [docs/wip/P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md)
+**User Workflow:**
+1. Upload TM file (TMX, Excel, TXT) → System builds indexes
+2. Select active TM in LDM
+3. Edit translation → TM suggestions appear with confidence levels
+4. ✅ PRIMARY (92%+): Safe to apply | ⚠️ CONTEXT (49-92%): Reference only
+
+**Phase 8: LocaNext Nice View (Pattern Rendering)**
+- Color codes → rendered in actual colors
+- Variables → highlighted pills
+- Toggle: [Raw View] ←→ [Nice View]
+
+**Documentation:**
+- [LDM_TEXT_SEARCH.md](docs/tools/LDM_TEXT_SEARCH.md) - Full TM system docs
+- [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) - Detailed task list
+- [WebTranslatorNew/](RessourcesForCodingTheProject/WebTranslatorNew/) - Source architecture
 
 > **Jump to sections:** [UX Flow](#ux-flow-how-users-work) | [File Formats](#file-format-parsing-rules) | [Architecture](#deployment-architecture-one-server-for-everything) | [Development Phases](#development-phases)
 

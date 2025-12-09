@@ -318,61 +318,239 @@ jobs:
         shell: powershell
 
       # ============================================================
-      # STEP 1: Download VC++ Redistributable
+      # SMART BUILD CACHE SYSTEM
+      # Cache location: C:\BuildCache\
+      # Auto-invalidates when versions/hashes change
       # ============================================================
-      - name: Download VC++ Redistributable
+      - name: Initialize Smart Cache
+        id: cache_init
         run: |
-          Write-Host "Downloading VC++ Redistributable x64..."
-          New-Item -ItemType Directory -Force -Path "installer\redist"
-          Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "installer\redist\vc_redist.x64.exe"
-          $size = (Get-Item "installer\redist\vc_redist.x64.exe").length / 1MB
-          Write-Host "[OK] Downloaded VC++ Redistributable: $([math]::Round($size, 1)) MB"
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host "  SMART BUILD CACHE SYSTEM" -ForegroundColor Cyan
+          Write-Host "============================================" -ForegroundColor Cyan
+
+          $cacheRoot = "C:\BuildCache"
+          $manifestPath = "$cacheRoot\CACHE_MANIFEST.json"
+
+          # Expected versions (update these when upgrading)
+          $expectedPythonVersion = "3.11.9"
+          $expectedVCRedistVersion = "17.8"
+
+          # Create cache root if needed
+          if (-not (Test-Path $cacheRoot)) {
+            New-Item -ItemType Directory -Path $cacheRoot -Force | Out-Null
+            Write-Host "[INIT] Created cache root: $cacheRoot"
+          }
+
+          # Load or create manifest
+          if (Test-Path $manifestPath) {
+            $manifest = Get-Content $manifestPath | ConvertFrom-Json
+            Write-Host "[OK] Loaded cache manifest"
+          } else {
+            $manifest = @{
+              version = "1.0"
+              created = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+              components = @{}
+            }
+            Write-Host "[INIT] Created new cache manifest"
+          }
+
+          # Output cache status
+          Write-Host ""
+          Write-Host "Cache Status:" -ForegroundColor Yellow
+
+          # Check VC++ cache validity
+          $vcCacheValid = $false
+          $vcCachePath = "$cacheRoot\vcredist\vc_redist.x64.exe"
+          if ((Test-Path $vcCachePath) -and $manifest.components.vcredist.version -eq $expectedVCRedistVersion) {
+            $vcCacheValid = $true
+            Write-Host "  [CACHED] VC++ Redistributable v$expectedVCRedistVersion" -ForegroundColor Green
+          } else {
+            Write-Host "  [MISS] VC++ Redistributable (will download)" -ForegroundColor Yellow
+          }
+
+          # Check Python cache validity
+          $pythonCacheValid = $false
+          $pythonCachePath = "$cacheRoot\python-embedded\python-$expectedPythonVersion"
+          if ((Test-Path "$pythonCachePath\python.exe") -and (Test-Path "$pythonCachePath\Lib\site-packages\fastapi") -and $manifest.components.python_embedded.version -eq $expectedPythonVersion) {
+            $pythonCacheValid = $true
+            Write-Host "  [CACHED] Python $expectedPythonVersion + packages" -ForegroundColor Green
+          } else {
+            Write-Host "  [MISS] Python Embedded (will download)" -ForegroundColor Yellow
+          }
+
+          # Check NSIS cache validity
+          $nsisCacheValid = $false
+          $nsisCachePath = "$cacheRoot\nsis-includes"
+          if (Test-Path "$nsisCachePath\StdUtils.nsh") {
+            $nsisCacheValid = $true
+            Write-Host "  [CACHED] NSIS include files" -ForegroundColor Green
+          } else {
+            Write-Host "  [MISS] NSIS includes (will download)" -ForegroundColor Yellow
+          }
+
+          # Set outputs for subsequent steps
+          Write-Output "::set-output name=vc_cached::$vcCacheValid"
+          Write-Output "::set-output name=python_cached::$pythonCacheValid"
+          Write-Output "::set-output name=nsis_cached::$nsisCacheValid"
+          Write-Output "::set-output name=cache_root::$cacheRoot"
+
+          Write-Host ""
         shell: powershell
 
       # ============================================================
-      # STEP 2: Download Python Embedded
+      # STEP 1: VC++ Redistributable (SMART CACHE)
       # ============================================================
-      - name: Download Python Embedded
+      - name: Get VC++ Redistributable (Smart Cache)
         run: |
-          Write-Host "Downloading Python Embedded (portable)..."
-          New-Item -ItemType Directory -Force -Path "tools\python"
+          $cacheRoot = "C:\BuildCache"
+          $cachedPath = "$cacheRoot\vcredist\vc_redist.x64.exe"
+          $targetPath = "installer\redist\vc_redist.x64.exe"
+          $manifestPath = "$cacheRoot\CACHE_MANIFEST.json"
+          $expectedVersion = "17.8"
 
-          $pythonUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
-          $zipPath = "tools\python-embedded.zip"
+          New-Item -ItemType Directory -Force -Path "installer\redist" | Out-Null
 
-          Invoke-WebRequest -Uri $pythonUrl -OutFile $zipPath
-          Expand-Archive -Path $zipPath -DestinationPath "tools\python" -Force
-          Remove-Item $zipPath
-
-          # Enable pip in embedded Python
-          $pthFile = Get-ChildItem "tools\python\python*._pth" | Select-Object -First 1
-          if ($pthFile) {
-            $content = Get-Content $pthFile.FullName
-            $content = $content -replace '#import site', 'import site'
-            Set-Content -Path $pthFile.FullName -Value $content
+          # Check if cache is valid
+          $useCache = $false
+          if (Test-Path $cachedPath) {
+            $cachedSize = (Get-Item $cachedPath).Length
+            if ($cachedSize -gt 10MB) {
+              $useCache = $true
+            }
           }
 
-          # Install pip
-          Write-Host "Installing pip in embedded Python..."
-          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "tools\python\get-pip.py"
-          & "tools\python\python.exe" "tools\python\get-pip.py" --no-warn-script-location
-          Remove-Item "tools\python\get-pip.py"
+          if ($useCache) {
+            Write-Host "[CACHE HIT] Copying VC++ Redistributable from cache..." -ForegroundColor Green
+            Copy-Item $cachedPath -Destination $targetPath -Force
+            $size = [math]::Round((Get-Item $targetPath).Length / 1MB, 1)
+            Write-Host "[OK] VC++ Redistributable: $size MB (from cache)" -ForegroundColor Green
+          } else {
+            Write-Host "[CACHE MISS] Downloading VC++ Redistributable..." -ForegroundColor Yellow
+            Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile $targetPath
+            $size = [math]::Round((Get-Item $targetPath).Length / 1MB, 1)
+            Write-Host "[OK] Downloaded VC++ Redistributable: $size MB"
 
-          # Install dependencies
-          Write-Host "Installing huggingface_hub..."
-          & "tools\python\python.exe" -m pip install --no-warn-script-location huggingface_hub
+            # POPULATE CACHE for next build
+            Write-Host "Populating cache for future builds..."
+            New-Item -ItemType Directory -Force -Path "$cacheRoot\vcredist" | Out-Null
+            Copy-Item $targetPath -Destination $cachedPath -Force
 
-          Write-Host "Installing light backend dependencies..."
-          & "tools\python\python.exe" -m pip install --no-warn-script-location `
-            fastapi uvicorn python-multipart python-socketio `
-            sqlalchemy aiosqlite `
-            PyJWT python-jose passlib python-dotenv bcrypt `
-            pydantic pydantic-settings email-validator `
-            pandas openpyxl xlrd `
-            httpx requests loguru tqdm pyyaml
+            # Update manifest
+            if (Test-Path $manifestPath) {
+              $manifest = Get-Content $manifestPath | ConvertFrom-Json
+            } else {
+              $manifest = @{ version = "1.0"; components = @{} }
+            }
+            $manifest.components | Add-Member -NotePropertyName "vcredist" -NotePropertyValue @{
+              version = $expectedVersion
+              path = $cachedPath
+              size_mb = $size
+              cached_at = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+            } -Force
+            $manifest | ConvertTo-Json -Depth 10 | Out-File $manifestPath -Encoding UTF8
+            Write-Host "[CACHED] VC++ Redistributable saved to cache" -ForegroundColor Cyan
+          }
+        shell: powershell
 
-          $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-          Write-Host "[OK] Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
+      # ============================================================
+      # STEP 2: Python Embedded + Packages (SMART CACHE)
+      # Invalidates if: Python version changes OR pip packages change
+      # ============================================================
+      - name: Get Python Embedded (Smart Cache)
+        run: |
+          $cacheRoot = "C:\BuildCache"
+          $pythonVersion = "3.11.9"
+          $cachedPythonDir = "$cacheRoot\python-embedded\python-$pythonVersion"
+          $targetDir = "tools\python"
+          $manifestPath = "$cacheRoot\CACHE_MANIFEST.json"
+
+          # List of required packages for validation
+          $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "huggingface_hub")
+
+          # Check if cache is valid (Python + all packages exist)
+          $useCache = $false
+          if (Test-Path "$cachedPythonDir\python.exe") {
+            $allPackagesExist = $true
+            foreach ($pkg in $requiredPackages) {
+              $pkgPath = "$cachedPythonDir\Lib\site-packages\$pkg"
+              if (-not (Test-Path $pkgPath)) {
+                Write-Host "[CACHE INVALID] Missing package: $pkg" -ForegroundColor Yellow
+                $allPackagesExist = $false
+                break
+              }
+            }
+            if ($allPackagesExist) {
+              $useCache = $true
+            }
+          }
+
+          if ($useCache) {
+            Write-Host "[CACHE HIT] Copying Python $pythonVersion + packages from cache..." -ForegroundColor Green
+            New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+            Copy-Item -Path "$cachedPythonDir\*" -Destination $targetDir -Recurse -Force
+            $size = [math]::Round((Get-ChildItem $targetDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+            Write-Host "[OK] Python + packages: $size MB (from cache)" -ForegroundColor Green
+          } else {
+            Write-Host "[CACHE MISS] Downloading Python $pythonVersion..." -ForegroundColor Yellow
+            New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+
+            # Download Python
+            $pythonUrl = "https://www.python.org/ftp/python/$pythonVersion/python-$pythonVersion-embed-amd64.zip"
+            $zipPath = "tools\python-embedded.zip"
+            Invoke-WebRequest -Uri $pythonUrl -OutFile $zipPath
+            Expand-Archive -Path $zipPath -DestinationPath $targetDir -Force
+            Remove-Item $zipPath
+
+            # Enable pip in embedded Python
+            $pthFile = Get-ChildItem "$targetDir\python*._pth" | Select-Object -First 1
+            if ($pthFile) {
+              $content = Get-Content $pthFile.FullName
+              $content = $content -replace '#import site', 'import site'
+              Set-Content -Path $pthFile.FullName -Value $content
+            }
+
+            # Install pip
+            Write-Host "Installing pip..."
+            Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "$targetDir\get-pip.py"
+            & "$targetDir\python.exe" "$targetDir\get-pip.py" --no-warn-script-location
+            Remove-Item "$targetDir\get-pip.py"
+
+            # Install all packages
+            Write-Host "Installing backend dependencies..."
+            & "$targetDir\python.exe" -m pip install --no-warn-script-location `
+              fastapi uvicorn python-multipart python-socketio `
+              sqlalchemy aiosqlite `
+              PyJWT python-jose passlib python-dotenv bcrypt `
+              pydantic pydantic-settings email-validator `
+              pandas openpyxl xlrd `
+              httpx requests loguru tqdm pyyaml huggingface_hub
+
+            $size = [math]::Round((Get-ChildItem $targetDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+            Write-Host "[OK] Python + packages installed: $size MB"
+
+            # POPULATE CACHE for next build
+            Write-Host "Populating cache for future builds..."
+            New-Item -ItemType Directory -Force -Path "$cacheRoot\python-embedded" | Out-Null
+            if (Test-Path $cachedPythonDir) { Remove-Item $cachedPythonDir -Recurse -Force }
+            Copy-Item -Path $targetDir -Destination $cachedPythonDir -Recurse -Force
+
+            # Update manifest
+            if (Test-Path $manifestPath) {
+              $manifest = Get-Content $manifestPath | ConvertFrom-Json
+            } else {
+              $manifest = @{ version = "1.0"; components = @{} }
+            }
+            $manifest.components | Add-Member -NotePropertyName "python_embedded" -NotePropertyValue @{
+              version = $pythonVersion
+              path = $cachedPythonDir
+              size_mb = $size
+              packages = ($requiredPackages -join ",")
+              cached_at = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+            } -Force
+            $manifest | ConvertTo-Json -Depth 10 | Out-File $manifestPath -Encoding UTF8
+            Write-Host "[CACHED] Python + packages saved to cache" -ForegroundColor Cyan
+          }
         shell: powershell
 
       - name: Verify Python Embedded + ALL Dependencies
@@ -468,78 +646,76 @@ jobs:
           Write-Host "[OK] ELECTRON_BUILDER_CACHE set to: $cacheDir"
         shell: powershell
 
-      # Download NSIS include files (npm package may not include them)
-      - name: Ensure NSIS Include Files
+      # ============================================================
+      # NSIS Include Files (SMART CACHE)
+      # Static files - cache forever until manually cleared
+      # ============================================================
+      - name: Get NSIS Include Files (Smart Cache)
         run: |
-          Write-Host "=== NSIS Include Files Setup ==="
+          Write-Host "=== NSIS Include Files (Smart Cache) ==="
 
-          # Get absolute path to working directory
+          $cacheRoot = "C:\BuildCache"
+          $cachedNsisDir = "$cacheRoot\nsis-includes"
           $workDir = (Get-Location).Path
-          Write-Host "Working directory: $workDir"
-
           $targetInclude = Join-Path $workDir "locaNext\node_modules\app-builder-lib\templates\nsis\include"
-          Write-Host "Target include path: $targetInclude"
-
-          # Create target directory (force)
-          New-Item -ItemType Directory -Force -Path $targetInclude | Out-Null
-
-          # List existing files before download
-          Write-Host "=== Files BEFORE download ==="
-          if (Test-Path $targetInclude) {
-            Get-ChildItem $targetInclude -Name -ErrorAction SilentlyContinue
-          } else {
-            Write-Host "(directory does not exist)"
-          }
-
-          # ALWAYS download include files (force overwrite)
-          Write-Host "=== Downloading NSIS include files from electron-builder repo ==="
 
           $includeFiles = @(
-            "StdUtils.nsh",
-            "WinVer.nsh",
-            "allowOnlyOneInstallerInstance.nsh",
-            "assistedInstaller.nsh",
-            "boringInstaller.nsh",
-            "checkAppRunning.nsh",
-            "extractAppPackage.nsh",
-            "fileAssociation.nsh",
-            "installer.nsh",
-            "installSection.nsh",
-            "multiUser.nsh",
-            "multiUserUi.nsh",
-            "oneClick.nsh",
-            "UAC.nsh",
-            "uninstaller.nsh"
+            "StdUtils.nsh", "WinVer.nsh", "allowOnlyOneInstallerInstance.nsh",
+            "assistedInstaller.nsh", "boringInstaller.nsh", "checkAppRunning.nsh",
+            "extractAppPackage.nsh", "fileAssociation.nsh", "installer.nsh",
+            "installSection.nsh", "multiUser.nsh", "multiUserUi.nsh",
+            "oneClick.nsh", "UAC.nsh", "uninstaller.nsh"
           )
 
-          $baseUrl = "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include"
+          # Create target directory
+          New-Item -ItemType Directory -Force -Path $targetInclude | Out-Null
 
-          foreach ($file in $includeFiles) {
-            $url = "$baseUrl/$file"
-            $dest = Join-Path $targetInclude $file
-            Write-Host "Downloading: $file -> $dest"
-            & curl.exe -L --retry 3 -s -o $dest $url
-            if (Test-Path $dest) {
-              $size = (Get-Item $dest).Length
-              Write-Host "  [OK] $file ($size bytes)"
-            } else {
-              Write-Host "  [FAIL] $file not downloaded"
+          # Check if cache is valid
+          $useCache = $false
+          if (Test-Path "$cachedNsisDir\StdUtils.nsh") {
+            $cachedCount = (Get-ChildItem "$cachedNsisDir\*.nsh" -ErrorAction SilentlyContinue).Count
+            if ($cachedCount -ge $includeFiles.Count) {
+              $useCache = $true
             }
           }
 
-          # Verify files after download
-          Write-Host "=== Files AFTER download ==="
-          Get-ChildItem $targetInclude -Name
+          if ($useCache) {
+            Write-Host "[CACHE HIT] Copying NSIS includes from cache..." -ForegroundColor Green
+            Copy-Item -Path "$cachedNsisDir\*.nsh" -Destination $targetInclude -Force
+            $count = (Get-ChildItem "$targetInclude\*.nsh").Count
+            Write-Host "[OK] NSIS includes: $count files (from cache)" -ForegroundColor Green
+          } else {
+            Write-Host "[CACHE MISS] Downloading NSIS include files..." -ForegroundColor Yellow
 
-          # Verify StdUtils.nsh specifically
+            $baseUrl = "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include"
+
+            foreach ($file in $includeFiles) {
+              $url = "$baseUrl/$file"
+              $dest = Join-Path $targetInclude $file
+              & curl.exe -L --retry 3 -s -o $dest $url
+              if (Test-Path $dest) {
+                Write-Host "  [OK] $file"
+              } else {
+                Write-Host "  [FAIL] $file" -ForegroundColor Red
+              }
+            }
+
+            $count = (Get-ChildItem "$targetInclude\*.nsh").Count
+            Write-Host "[OK] Downloaded $count NSIS include files"
+
+            # POPULATE CACHE for next build
+            Write-Host "Populating cache for future builds..."
+            New-Item -ItemType Directory -Force -Path $cachedNsisDir | Out-Null
+            Copy-Item -Path "$targetInclude\*.nsh" -Destination $cachedNsisDir -Force
+            Write-Host "[CACHED] NSIS includes saved to cache" -ForegroundColor Cyan
+          }
+
+          # Verify StdUtils.nsh
           $stdUtils = Join-Path $targetInclude "StdUtils.nsh"
           if (Test-Path $stdUtils) {
-            $content = Get-Content $stdUtils -Head 3
-            Write-Host "=== StdUtils.nsh first 3 lines ==="
-            Write-Host $content
-            Write-Host "[OK] StdUtils.nsh verified"
+            Write-Host "[OK] StdUtils.nsh verified" -ForegroundColor Green
           } else {
-            Write-Host "[ERROR] StdUtils.nsh NOT FOUND at: $stdUtils"
+            Write-Host "[ERROR] StdUtils.nsh NOT FOUND!" -ForegroundColor Red
             exit 1
           }
         shell: powershell
@@ -819,12 +995,47 @@ jobs:
           }
         shell: powershell
 
-      - name: Build Complete
+      - name: Build Complete + Cache Summary
         run: |
-          Write-Host "============================================"
-          Write-Host "[SUCCESS] LocaNext LIGHT Build Complete!"
-          Write-Host "============================================"
+          Write-Host ""
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host "  BUILD COMPLETE + CACHE SUMMARY" -ForegroundColor Cyan
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host ""
+          Write-Host "[SUCCESS] LocaNext LIGHT Build Complete!" -ForegroundColor Green
           Write-Host "Output: installer_output\LocaNext_v${{ steps.check.outputs.version }}_Light_Portable.zip"
+          Write-Host ""
+
+          # Show cache status
+          $cacheRoot = "C:\BuildCache"
+          if (Test-Path $cacheRoot) {
+            Write-Host "=== CACHE STATUS ===" -ForegroundColor Yellow
+            $totalSize = [math]::Round((Get-ChildItem $cacheRoot -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+            Write-Host "Cache location: $cacheRoot"
+            Write-Host "Total cache size: $totalSize MB" -ForegroundColor Green
+            Write-Host ""
+
+            if (Test-Path "$cacheRoot\vcredist") {
+              $size = [math]::Round((Get-ChildItem "$cacheRoot\vcredist" -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+              Write-Host "  [CACHED] VC++ Redistributable: $size MB" -ForegroundColor Green
+            }
+            if (Test-Path "$cacheRoot\python-embedded") {
+              $size = [math]::Round((Get-ChildItem "$cacheRoot\python-embedded" -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+              Write-Host "  [CACHED] Python + packages: $size MB" -ForegroundColor Green
+            }
+            if (Test-Path "$cacheRoot\nsis-includes") {
+              $count = (Get-ChildItem "$cacheRoot\nsis-includes\*.nsh" -ErrorAction SilentlyContinue).Count
+              Write-Host "  [CACHED] NSIS includes: $count files" -ForegroundColor Green
+            }
+
+            Write-Host ""
+            Write-Host "Next build will use cache (much faster!)" -ForegroundColor Cyan
+          } else {
+            Write-Host "[INFO] No cache directory found" -ForegroundColor Yellow
+          }
+
+          Write-Host ""
+          Write-Host "============================================" -ForegroundColor Cyan
         shell: powershell
 
       # NOTE: No cleanup workarounds needed!

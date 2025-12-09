@@ -27,13 +27,7 @@ docs/company-setup/
 │   ├── Network isolation
 │   ├── Authentication (JWT + IP filtering)
 │   ├── Audit logging
-│   └── No external calls
-│
-├── NETWORK.md ────────────── Network Setup
-│   ├── Firewall rules
-│   ├── Internal DNS
-│   ├── Port configuration
-│   └── Air-gapped deployment
+│   └── No external calls (86 security tests)
 │
 ├── LICENSING.md ──────────── License Compliance
 │   ├── All dependencies listed
@@ -41,17 +35,37 @@ docs/company-setup/
 │   ├── No GPL contamination
 │   └── Commercial use approved
 │
+├── EQUIPMENT_PRICING.md ──── Server Costs & Specs ⭐ NEW
+│   ├── Hardware requirements
+│   ├── Pricing tiers (budget/recommended/enterprise)
+│   ├── Cloud vs on-premise comparison
+│   └── 5-year TCO analysis
+│
+├── NETWORK.md ────────────── Network Setup
+│   ├── Firewall rules
+│   ├── Internal DNS
+│   ├── Port configuration
+│   └── Air-gapped deployment
+│
 ├── INSTALLATION.md ───────── Step-by-Step Install
 │   ├── Server requirements
 │   ├── Offline installation
 │   ├── Gitea setup
 │   └── Desktop deployment
 │
-└── SALES_SHEET.md ────────── For Sales/Management
-    ├── Feature list
-    ├── Cost savings
-    ├── Competitor comparison
-    └── ROI analysis
+├── SALES_SHEET.md ────────── For Sales/Management
+│   ├── Feature list
+│   ├── Cost savings ($296K+ over 5 years)
+│   ├── Competitor comparison
+│   └── ROI analysis
+│
+└── OBJECTION_RESPONSES.md ── Answer All Blockers ⭐ NEW
+    ├── Security team objections → Responses
+    ├── Legal team objections → Responses
+    ├── Finance team objections → Responses
+    ├── IT team objections → Responses
+    ├── Management objections → Responses
+    └── Compliance objections → Responses
 ```
 
 ---
@@ -142,13 +156,17 @@ COMPANY INTERNAL NETWORK ONLY
 
 ## Next Steps
 
-1. Read [SECURITY.md](SECURITY.md) - For security team approval
-2. Read [LICENSING.md](LICENSING.md) - For legal team approval
-3. Read [NETWORK.md](NETWORK.md) - For IT/network setup
-4. Read [INSTALLATION.md](INSTALLATION.md) - For deployment
-5. Read [SALES_SHEET.md](SALES_SHEET.md) - For management/sales
+| Step | Document | Audience |
+|------|----------|----------|
+| 1 | [SECURITY.md](SECURITY.md) | Security team |
+| 2 | [LICENSING.md](LICENSING.md) | Legal team |
+| 3 | [EQUIPMENT_PRICING.md](EQUIPMENT_PRICING.md) | Finance/Procurement |
+| 4 | [NETWORK.md](NETWORK.md) | IT/Network team |
+| 5 | [INSTALLATION.md](INSTALLATION.md) | IT/Deployment |
+| 6 | [SALES_SHEET.md](SALES_SHEET.md) | Management/Executives |
+| 7 | [OBJECTION_RESPONSES.md](OBJECTION_RESPONSES.md) | **Project Champion** (counter all objections) |
 
 ---
 
-*Document Version: 2025-12-06*
+*Document Version: 2025-12-09*
 *Classification: Internal Use*

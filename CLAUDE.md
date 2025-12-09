@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
 **Version:** 2512090827 (2025-12-09)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 96% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ (GitHub + Gitea BOTH WORKING!)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 53% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ (GitHub + Gitea BOTH WORKING!)
 
 ---
 
@@ -21,10 +21,12 @@
 - ✅ **XLSTransfer (App #1)**: VERIFIED - 10/10 tests with real Excel files
 - ✅ **QuickSearch (App #2)**: VERIFIED - 8/8 tests with TXT + XML files
 - ✅ **KR Similar (App #3)**: VERIFIED - 10/10 tests with 41,715 pairs
-- 🔄 **LDM (App #4)**: 96% Complete - CAT tool for translation files
-  - Phase 1-4: ✅ Complete (Foundation, FileExplorer, Real-time Sync, Virtual Scroll)
-  - Phase 5: 🔄 In Progress (TM Panel + Keyboard Shortcuts done, Glossary remaining)
-  - Demo: 11 screenshots in `docs/demos/ldm/`
+- 🔄 **LDM (App #4)**: 53% Complete - CAT tool with 5-Tier TM System
+  - Phase 1-5: ✅ Core Complete (Foundation, FileExplorer, Sync, VirtualGrid, Basic TM)
+  - Phase 6: 📋 Cell Display (expansion, newlines)
+  - Phase 7: 📋 **Full TM System** (5-Tier Cascade + Dual Threshold) ← NEXT
+  - Phase 8: 📋 LocaNext Nice View (pattern rendering)
+  - **Docs:** `docs/tools/LDM_TEXT_SEARCH.md`, `docs/wip/P17_LDM_TASKS.md`
   - Performance: 16MB/103,500 rows in ~50 seconds
 - ✅ **Migration**: ALL 33 monolith functions verified with production test files
 - ✅ **Distribution**: Git LFS, versioning, build system ready
