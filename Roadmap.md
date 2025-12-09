@@ -75,34 +75,58 @@ if trimmed == "" {
 
 ---
 
-### P13.12: Build Caching ✅ SCRIPT READY
+### P13.12: Smart Build Cache v2.0 ✅ COMPLETE (2025-12-09)
 
-**Status:** ✅ Script ready, integration pending
+**Status:** ✅ FULLY IMPLEMENTED + VERIFIED
 
-**What's Done:**
-- ✅ `scripts/setup_build_cache.ps1` - Downloads and caches all dependencies
-- ✅ Manifest system for version tracking
-- ✅ Handles: VC++ Redist, Python Embedded, NSIS includes, npm cache
+**Smart Cache v2.0 Features:**
+- ✅ **Hash-based invalidation** - `requirements.txt` hash auto-refreshes Python cache
+- ✅ **Version tracking** - Python/VC++ version changes auto-invalidate
+- ✅ **Manifest system** - JSON manifest stores hashes + versions
+- ✅ **Future-ready** - `package-lock.json` hash computed (npm cache ready)
 
-**What's Pending:**
-- ⏳ Wire cache into `build.yml` workflow
-- ⏳ Test cache-first logic on Gitea runner
+**Build Test Results:**
+| Build | Cache Status | Result |
+|-------|--------------|--------|
+| #304 | `[STALE]` (first v2.0) | ✅ Re-downloaded, hash stored |
+| #307 | `[VALID]` hash match | ✅ ALL CACHE HITS! |
+
+**Verified Output:**
+```
+SMART BUILD CACHE SYSTEM v2.0
+Hash-based invalidation enabled
+
+[HASH] requirements.txt: 068EFE750AB8
+[HASH] package-lock.json: 2210F74C6F85
+
+Cache Validation:
+  [VALID] VC++ Redistributable v17.8
+  [VALID] Python 3.11.9 + packages (hash: 068EFE750AB8)
+  [VALID] NSIS include files
+
+[CACHE HIT] VC++ Redistributable: 24.4 MB (from cache)
+[CACHE HIT] Python + packages: 233.8 MB (from cache)
+[CACHE HIT] NSIS includes: 20 files (from cache)
+
+Job succeeded
+```
+
+**Performance:**
+| Scenario | Before | After |
+|----------|--------|-------|
+| Cold cache | ~3 min | ~3 min (populates cache) |
+| Cache hit | ~3 min | **~1.5 min** (all from cache) |
 
 **Cache Structure:**
 ```
 C:\BuildCache\
-├── CACHE_MANIFEST.json          # Version tracking + hashes
+├── CACHE_MANIFEST.json          # Version tracking + HASHES
 ├── vcredist\vc_redist.x64.exe   # Static (~25MB)
-├── python-embedded\3.11.9\      # Python + pip packages (~145MB)
-├── npm-cache\<hash>\            # Keyed by package-lock.json hash
-└── nsis-includes\*.nsh          # Static (~15 files)
+├── python-embedded\3.11.9\      # Python + packages (~234MB)
+└── nsis-includes\*.nsh          # Static (20 files)
 ```
 
-**Expected Performance (once integrated):**
-| Scenario | Before | After |
-|----------|--------|-------|
-| Cold cache | ~5 min | ~5 min |
-| Cache hit | ~5 min | **~30 sec** |
+**Documentation:** [docs/wip/P13_GITEA_CACHE_PLAN.md](docs/wip/P13_GITEA_CACHE_PLAN.md)
 
 ---
 

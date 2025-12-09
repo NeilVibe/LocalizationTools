@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512090827 (2025-12-09)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 53% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ (GitHub + Gitea BOTH WORKING!)
+**Version:** 2512091135 (2025-12-09)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 53% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅
 
 ---
 
@@ -407,33 +407,32 @@ bash scripts/clean_logs.sh
 - **Priority 13.0:** Gitea Patch Server ✅ FULLY COMPLETE
   - ✅ Installed: `/home/neil1988/gitea/` (v1.22.3, SQLite)
   - ✅ Scripts: `start.sh`, `stop.sh`, `start_runner.sh`, `stop_runner.sh`
-  - ✅ Config: Port 3000 (web), 2222 (SSH)
-  - ✅ Repo: `neilvibe/LocaNext` (dual remote configured)
-  - ✅ Actions: ENABLED + act_runner v0.2.11 registered
   - ✅ Workflow: `.gitea/workflows/build.yml` (test → build → release)
-  - ✅ Runner: "locanext-runner" online
-  - ✅ Auto-Update: `updater.js` supports GitHub/Gitea/Custom via env var
+  - ✅ Runner: Patched v15 (NUL byte fix) + Ephemeral mode
   - ✅ DUAL PUSH: `git push origin main && git push gitea main`
-  - ✅ Patch Server Docs: `docs/PATCH_SERVER.md` (Option A: Mirror, Option B: Self-hosted)
-  - ✅ Mirror Script: `scripts/mirror_release_to_gitea.sh` (tested)
-  - ✅ Cleanup Script: `scripts/cleanup_old_releases.sh` (tested, keeps latest 2)
-  - ✅ API Token: "patch-server-full" saved to ~/.bashrc
+- **Priority 13.12:** Smart Build Cache v2.0 ✅ COMPLETE
+  - ✅ Hash-based invalidation (`requirements.txt` hash auto-refresh)
+  - ✅ Version tracking (Python/VC++ version changes auto-invalidate)
+  - ✅ Build #307 verified: ALL CACHE HITS
+  - ✅ Performance: ~1.5 min (vs ~3 min without cache)
+  - **Docs:** `docs/wip/P13_GITEA_CACHE_PLAN.md`
 - **Testing Toolkit:** ✅ COMPLETE
   - ✅ CDP-based autonomous testing (`testing_toolkit/`)
   - ✅ All 3 apps have TEST MODE (xlsTransfer, quickSearch, krSimilar)
   - ✅ ADD_TEST_MODE_GUIDE.md for future apps (LD Manager template)
-- **P17: LDM (LanguageData Manager):** 🔄 IN PROGRESS (96% - 65/68 tasks)
-  - ✅ Phase 1: Foundation (models, API, frontend route)
-  - ✅ Phase 2: File Explorer + Basic Grid (upload TXT/XML, pagination)
-  - ✅ Phase 3: Editing + Real-time Sync (WebSocket, presence, row locking)
-  - ✅ Phase 4: Virtual Scrolling (1M+ rows, lazy loading, search)
-  - ✅ Phase 5.1-5.4: TM Backend + TM Panel + Keyboard Shortcuts
-  - 📋 Phase 5.5: Glossary integration (remaining)
-  - 📋 Phase 6: Polish & Scale (version history, export, permissions)
-  - **Demo Screenshots:** 11 images in `docs/demos/ldm/` (full workflow captured)
-  - **Performance Tested:** 16MB/103,500 rows upload ~50 seconds (~2,070 rows/sec)
-  - **TM Status:** Auto-suggest in edit modal works; Upload TM UI not yet implemented
-  - **Tasks File:** `docs/wip/P17_LDM_TASKS.md`
+- **P17: LDM (LanguageData Manager):** 🔄 IN PROGRESS (53% - 68/128 tasks)
+  - ✅ **Phase 1-4:** Foundation + Grid + Sync + Virtual Scroll (58/58 tasks)
+  - ✅ **Phase 5.1-5.4:** Basic TM + Panel + Keyboard Shortcuts (7/10 tasks)
+  - 📋 **Phase 5.5:** Glossary integration (3 tasks)
+  - 📋 **Phase 6:** UI Polish - Cell display, newlines, tooltips (13 tasks)
+  - 📋 **Phase 7:** Full TM System - 5-Tier Cascade + Dual Threshold (32 tasks)
+  - 📋 **Phase 8:** Nice View - Pattern rendering (12 tasks)
+  - **Architecture Docs:**
+    - `docs/wip/P17_TM_ARCHITECTURE.md` - **FULL 9-Tier Cascade + 54 tasks** (1,700 lines)
+    - `docs/wip/P17_LDM_TASKS.md` - Task tracker (128 tasks)
+    - `docs/tools/LDM_TEXT_SEARCH.md` - 5-Tier + Dual Threshold spec
+  - **Demo:** 11 screenshots in `docs/demos/ldm/`
+  - **Performance:** 103K rows in 50 sec (~2,070 rows/sec)
 
 ### Quick Gitea Commands:
 ```bash
