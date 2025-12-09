@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512091215 (2025-12-09)
+**Version:** 2512091230 (2025-12-09)
 **Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 56% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅
 
 ---
@@ -37,6 +37,45 @@
 - ✅ **Health Check**: Priority 11.0 - Auto-repair system complete
 - ✅ **Telemetry**: Priority 12.5.9 COMPLETE - Server + Client + Dashboard + Tool Tracking
 - ✅ **CI/CD P13.11**: COMPLETE - GitHub + Gitea BOTH WORKING with patched act_runner v15
+
+---
+
+## 📋 DOCUMENTATION WORKFLOW
+
+### Roadmap vs WIP Structure
+
+```
+Roadmap.md (ROOT)                    docs/wip/*.md (DETAILED)
+────────────────────                 ────────────────────────
+• GLOBAL view                        • DETAILED task breakdown
+• Shows all priorities               • Per-priority implementation
+• Quick status overview              • Step-by-step tasks
+• Links to WIP docs                  • Technical specs
+• Updated after completion           • Updated DURING work
+
+EXAMPLE:
+Roadmap.md says:                     docs/wip/P17_LDM_TASKS.md has:
+"P17: LDM 56% Complete"              128 tasks with checkboxes
+                                     Priority order
+                                     Architecture diagrams
+```
+
+### When to Update What
+
+| Action | Update Roadmap.md | Update WIP Doc |
+|--------|-------------------|----------------|
+| Start new priority | Add section | Create new WIP file |
+| Complete a task | No | Mark [x] in WIP |
+| Complete a phase | Update % | Mark phase ✅ |
+| Priority fully done | Move to "Completed" | Archive or delete |
+
+### File Naming Convention
+```
+docs/wip/
+├── P13_GITEA_CACHE_PLAN.md    # P{priority}_{short_name}.md
+├── P17_LDM_TASKS.md           # Task tracker for P17
+└── P17_TM_ARCHITECTURE.md     # Architecture doc for P17 TM system
+```
 
 ---
 
@@ -202,6 +241,32 @@ git push gitea main                     # Gitea ONLY
 
 # === Code Sync (No Build) ===
 git push origin main && git push gitea main  # BOTH remotes
+```
+
+#### 🚀 Build → Release → Update Flow
+
+```
+BUILD TRIGGER         →    BUILD             →    RELEASE           →    APP UPDATE
+─────────────────────      ───────────────        ──────────────         ───────────────
+Add line to trigger   →    CI/CD builds     →    GitHub: AUTO     →    App checks
+file + git push            installer + yml       Gitea: MANUAL*         latest.yml
+                                                                        on startup
+
+* Gitea: Run scripts/mirror_release_to_gitea.sh after GitHub release
+```
+
+**Release Status:**
+| Platform | Build | Release | App Auto-Update |
+|----------|-------|---------|-----------------|
+| GitHub | ✅ Auto | ✅ Auto (softprops/action-gh-release) | ✅ Works |
+| Gitea | ✅ Auto | ⚠️ Manual (mirror script) | ✅ Works if mirrored |
+
+**App Update Source (configured via env):**
+```javascript
+// locaNext/electron/updater.js
+UPDATE_SERVER=github  // Default - uses GitHub Releases
+UPDATE_SERVER=gitea   // Company - uses Gitea Releases
+UPDATE_SERVER=http://... // Custom server
 ```
 
 ### 🌐 Deployment & Operations
