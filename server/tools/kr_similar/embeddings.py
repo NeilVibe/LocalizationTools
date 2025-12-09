@@ -31,8 +31,8 @@ from server.tools.kr_similar.core import KRSimilarCore, normalize_text
 # Supported dictionary types (games)
 DICT_TYPES = ["BDO", "BDM", "BDC", "CD"]
 
-# Model name
-MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
+# Model name (P20: Unified Qwen model for all tools)
+MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 
 
 class EmbeddingsManager:
@@ -339,9 +339,12 @@ class EmbeddingsManager:
         with open(split_dict_file, 'rb') as f:
             self.split_dict = pickle.load(f)
 
-        # Normalize and create FAISS index for split
+        # Normalize and create FAISS HNSW index for split (P20: WebTranslatorNew pattern)
         faiss.normalize_L2(self.split_embeddings)
-        self.split_index = faiss.IndexFlatIP(self.split_embeddings.shape[1])
+        embedding_dim = self.split_embeddings.shape[1]  # AUTOMATIC dimension
+        self.split_index = faiss.IndexHNSWFlat(embedding_dim, 32, faiss.METRIC_INNER_PRODUCT)
+        self.split_index.hnsw.efConstruction = 400
+        self.split_index.hnsw.efSearch = 500
         self.split_index.add(self.split_embeddings)
 
         # Load whole embeddings if available
@@ -350,8 +353,12 @@ class EmbeddingsManager:
             with open(whole_dict_file, 'rb') as f:
                 self.whole_dict = pickle.load(f)
 
+            # P20: HNSW index for whole embeddings
             faiss.normalize_L2(self.whole_embeddings)
-            self.whole_index = faiss.IndexFlatIP(self.whole_embeddings.shape[1])
+            embedding_dim = self.whole_embeddings.shape[1]  # AUTOMATIC dimension
+            self.whole_index = faiss.IndexHNSWFlat(embedding_dim, 32, faiss.METRIC_INNER_PRODUCT)
+            self.whole_index.hnsw.efConstruction = 400
+            self.whole_index.hnsw.efSearch = 500
             self.whole_index.add(self.whole_embeddings)
         else:
             self.whole_embeddings = None

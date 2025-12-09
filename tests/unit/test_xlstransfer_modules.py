@@ -35,13 +35,13 @@ class TestXLSTransferConfig:
         assert hasattr(config, 'CODE_PATTERNS')
         assert hasattr(config, 'DEFAULT_FAISS_THRESHOLD')
 
-    def test_model_name_is_korean_bert(self):
-        """Model name is Korean BERT (not multilingual)."""
+    def test_model_name_is_embedding_model(self):
+        """Model name is valid embedding model (KR-SBERT or Qwen)."""
         from server.tools.xlstransfer import config
 
-        # Must be Korean-specific model
-        assert 'KR-SBERT' in config.MODEL_NAME or 'korean' in config.MODEL_NAME.lower()
-        # Must NOT be generic multilingual
+        # P20: Supports either KR-SBERT (legacy) or Qwen (unified)
+        assert 'KR-SBERT' in config.MODEL_NAME or 'Qwen' in config.MODEL_NAME or 'korean' in config.MODEL_NAME.lower()
+        # Must NOT be generic multilingual paraphrase model
         assert 'paraphrase-multilingual' not in config.MODEL_NAME
 
     def test_faiss_threshold_valid_range(self):

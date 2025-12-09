@@ -10,12 +10,12 @@ from pathlib import Path
 # Model Settings
 # ============================================
 
-# Path to Korean BERT model (VRS-Manager pattern: models/kr-sbert/ at project root)
-MODEL_NAME = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
+# Path to Qwen Embedding model (unified for all tools - P20 migration)
+MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 
 # Get project root (3 levels up from this file: server/tools/xlstransfer/config.py)
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-MODEL_PATH = _PROJECT_ROOT / "models" / "kr-sbert"
+MODEL_PATH = _PROJECT_ROOT / "models" / "qwen-embedding"
 
 # Model loading
 LAZY_LOAD_MODEL = True  # Load only when needed

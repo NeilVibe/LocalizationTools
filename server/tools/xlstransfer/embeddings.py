@@ -136,35 +136,40 @@ def generate_embeddings(
 # FAISS Index Creation
 # ============================================
 
-def create_faiss_index(embeddings: np.ndarray) -> faiss.IndexFlatIP:
+def create_faiss_index(embeddings: np.ndarray) -> faiss.Index:
     """
-    Create FAISS index for fast similarity search.
+    Create FAISS HNSW index for fast similarity search.
+
+    Uses WebTranslatorNew pattern for O(log n) search performance.
 
     Args:
         embeddings: Numpy array of embeddings
 
     Returns:
-        FAISS index with normalized embeddings
+        FAISS HNSW index with normalized embeddings
 
     Example:
-        >>> embeddings = np.random.rand(100, 384).astype(np.float32)
+        >>> embeddings = np.random.rand(100, 768).astype(np.float32)
         >>> index = create_faiss_index(embeddings)
         >>> index.ntotal
         100
     """
-    logger.info(f"Creating FAISS index for {len(embeddings)} embeddings")
+    logger.info(f"Creating FAISS HNSW index for {len(embeddings)} embeddings")
 
     # Normalize embeddings for cosine similarity
     faiss.normalize_L2(embeddings)
 
-    # Create index (inner product = cosine similarity after normalization)
-    embedding_dim = embeddings.shape[1]
-    index = faiss.IndexFlatIP(embedding_dim)
+    # Create HNSW index (WebTranslatorNew pattern - P20 migration)
+    # M=32 connections per node, efConstruction=400 build quality, efSearch=500 search quality
+    embedding_dim = embeddings.shape[1]  # AUTOMATIC dimension
+    index = faiss.IndexHNSWFlat(embedding_dim, 32, faiss.METRIC_INNER_PRODUCT)
+    index.hnsw.efConstruction = 400
+    index.hnsw.efSearch = 500
 
     # Add embeddings to index
     index.add(embeddings)
 
-    logger.info(f"FAISS index created with {index.ntotal} vectors")
+    logger.info(f"FAISS HNSW index created with {index.ntotal} vectors (dim={embedding_dim})")
 
     return index
 
