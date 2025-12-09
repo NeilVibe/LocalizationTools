@@ -1,7 +1,20 @@
 # P13.12: Gitea Build Caching - Implementation Plan
 
-**Status:** READY TO IMPLEMENT
+**Status:** ✅ IMPLEMENTED - Smart Cache v2.0 (Hash-Based Invalidation)
 **Created:** 2025-12-09
+**Updated:** 2025-12-09
+
+---
+
+## Smart Cache v2.0 Features
+
+| Feature | Description |
+|---------|-------------|
+| **Hash-based invalidation** | `requirements.txt` hash triggers Python cache refresh |
+| **Version tracking** | Python/VC++ version changes auto-invalidate |
+| **Fallback validation** | Package existence check as safety net |
+| **Manifest tracking** | JSON manifest stores hashes + versions |
+| **Future-ready** | `package-lock.json` hash computed (npm cache ready) |
 
 ---
 

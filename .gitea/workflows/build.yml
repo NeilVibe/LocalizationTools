@@ -326,7 +326,8 @@ jobs:
         id: cache_init
         run: |
           Write-Host "============================================" -ForegroundColor Cyan
-          Write-Host "  SMART BUILD CACHE SYSTEM" -ForegroundColor Cyan
+          Write-Host "  SMART BUILD CACHE SYSTEM v2.0" -ForegroundColor Cyan
+          Write-Host "  Hash-based invalidation enabled" -ForegroundColor Cyan
           Write-Host "============================================" -ForegroundColor Cyan
 
           $cacheRoot = "C:\BuildCache"
@@ -335,6 +336,29 @@ jobs:
           # Expected versions (update these when upgrading)
           $expectedPythonVersion = "3.11.9"
           $expectedVCRedistVersion = "17.8"
+
+          # ============================================================
+          # SMART HASH COMPUTATION - Invalidate when dependencies change
+          # ============================================================
+
+          # Compute requirements.txt hash (for pip packages)
+          $reqHash = ""
+          if (Test-Path "requirements.txt") {
+            $reqHash = (Get-FileHash "requirements.txt" -Algorithm SHA256).Hash.Substring(0, 12)
+            Write-Host "[HASH] requirements.txt: $reqHash" -ForegroundColor Cyan
+          } else {
+            Write-Host "[WARN] requirements.txt not found - using package list hash" -ForegroundColor Yellow
+            # Fallback: hash the pip install command packages
+            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub"
+            $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
+          }
+
+          # Compute package-lock.json hash (for npm packages - future use)
+          $npmHash = ""
+          if (Test-Path "locaNext/package-lock.json") {
+            $npmHash = (Get-FileHash "locaNext/package-lock.json" -Algorithm SHA256).Hash.Substring(0, 12)
+            Write-Host "[HASH] package-lock.json: $npmHash" -ForegroundColor Cyan
+          }
 
           # Create cache root if needed
           if (-not (Test-Path $cacheRoot)) {
@@ -348,7 +372,7 @@ jobs:
             Write-Host "[OK] Loaded cache manifest"
           } else {
             $manifest = @{
-              version = "1.0"
+              version = "2.0"
               created = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
               components = @{}
             }
@@ -357,26 +381,42 @@ jobs:
 
           # Output cache status
           Write-Host ""
-          Write-Host "Cache Status:" -ForegroundColor Yellow
+          Write-Host "Cache Validation:" -ForegroundColor Yellow
 
-          # Check VC++ cache validity
+          # Check VC++ cache validity (version-based)
           $vcCacheValid = $false
           $vcCachePath = "$cacheRoot\vcredist\vc_redist.x64.exe"
           if ((Test-Path $vcCachePath) -and $manifest.components.vcredist.version -eq $expectedVCRedistVersion) {
             $vcCacheValid = $true
-            Write-Host "  [CACHED] VC++ Redistributable v$expectedVCRedistVersion" -ForegroundColor Green
+            Write-Host "  [VALID] VC++ Redistributable v$expectedVCRedistVersion" -ForegroundColor Green
           } else {
-            Write-Host "  [MISS] VC++ Redistributable (will download)" -ForegroundColor Yellow
+            if (Test-Path $vcCachePath) {
+              Write-Host "  [STALE] VC++ version mismatch (cached: $($manifest.components.vcredist.version), expected: $expectedVCRedistVersion)" -ForegroundColor Yellow
+            } else {
+              Write-Host "  [MISS] VC++ Redistributable not cached" -ForegroundColor Yellow
+            }
           }
 
-          # Check Python cache validity
+          # Check Python cache validity (version + hash-based)
           $pythonCacheValid = $false
           $pythonCachePath = "$cacheRoot\python-embedded\python-$expectedPythonVersion"
-          if ((Test-Path "$pythonCachePath\python.exe") -and (Test-Path "$pythonCachePath\Lib\site-packages\fastapi") -and $manifest.components.python_embedded.version -eq $expectedPythonVersion) {
+          $cachedReqHash = $manifest.components.python_embedded.requirements_hash
+
+          if ((Test-Path "$pythonCachePath\python.exe") -and
+              $manifest.components.python_embedded.version -eq $expectedPythonVersion -and
+              $cachedReqHash -eq $reqHash) {
             $pythonCacheValid = $true
-            Write-Host "  [CACHED] Python $expectedPythonVersion + packages" -ForegroundColor Green
+            Write-Host "  [VALID] Python $expectedPythonVersion + packages (hash: $reqHash)" -ForegroundColor Green
           } else {
-            Write-Host "  [MISS] Python Embedded (will download)" -ForegroundColor Yellow
+            if (Test-Path "$pythonCachePath\python.exe") {
+              if ($manifest.components.python_embedded.version -ne $expectedPythonVersion) {
+                Write-Host "  [STALE] Python version changed ($($manifest.components.python_embedded.version) -> $expectedPythonVersion)" -ForegroundColor Yellow
+              } elseif ($cachedReqHash -ne $reqHash) {
+                Write-Host "  [STALE] requirements.txt changed (cached: $cachedReqHash, current: $reqHash)" -ForegroundColor Yellow
+              }
+            } else {
+              Write-Host "  [MISS] Python not cached" -ForegroundColor Yellow
+            }
           }
 
           # Check NSIS cache validity
@@ -384,9 +424,9 @@ jobs:
           $nsisCachePath = "$cacheRoot\nsis-includes"
           if (Test-Path "$nsisCachePath\StdUtils.nsh") {
             $nsisCacheValid = $true
-            Write-Host "  [CACHED] NSIS include files" -ForegroundColor Green
+            Write-Host "  [VALID] NSIS include files" -ForegroundColor Green
           } else {
-            Write-Host "  [MISS] NSIS includes (will download)" -ForegroundColor Yellow
+            Write-Host "  [MISS] NSIS includes not cached" -ForegroundColor Yellow
           }
 
           # Set outputs for subsequent steps
@@ -394,7 +434,14 @@ jobs:
           Write-Output "::set-output name=python_cached::$pythonCacheValid"
           Write-Output "::set-output name=nsis_cached::$nsisCacheValid"
           Write-Output "::set-output name=cache_root::$cacheRoot"
+          Write-Output "::set-output name=req_hash::$reqHash"
+          Write-Output "::set-output name=npm_hash::$npmHash"
 
+          Write-Host ""
+          Write-Host "Smart Cache Summary:" -ForegroundColor Cyan
+          Write-Host "  VC++:   $(if ($vcCacheValid) {'CACHE HIT'} else {'WILL DOWNLOAD'})" -ForegroundColor $(if ($vcCacheValid) {'Green'} else {'Yellow'})
+          Write-Host "  Python: $(if ($pythonCacheValid) {'CACHE HIT'} else {'WILL DOWNLOAD'})" -ForegroundColor $(if ($pythonCacheValid) {'Green'} else {'Yellow'})
+          Write-Host "  NSIS:   $(if ($nsisCacheValid) {'CACHE HIT'} else {'WILL DOWNLOAD'})" -ForegroundColor $(if ($nsisCacheValid) {'Green'} else {'Yellow'})
           Write-Host ""
         shell: powershell
 
@@ -454,8 +501,8 @@ jobs:
         shell: powershell
 
       # ============================================================
-      # STEP 2: Python Embedded + Packages (SMART CACHE)
-      # Invalidates if: Python version changes OR pip packages change
+      # STEP 2: Python Embedded + Packages (SMART CACHE v2.0)
+      # Invalidates if: Python version changes OR requirements.txt hash changes
       # ============================================================
       - name: Get Python Embedded (Smart Cache)
         run: |
@@ -465,34 +512,70 @@ jobs:
           $targetDir = "tools\python"
           $manifestPath = "$cacheRoot\CACHE_MANIFEST.json"
 
-          # List of required packages for validation
+          # ============================================================
+          # SMART HASH COMPUTATION - Same logic as Initialize step
+          # ============================================================
+          $reqHash = ""
+          if (Test-Path "requirements.txt") {
+            $reqHash = (Get-FileHash "requirements.txt" -Algorithm SHA256).Hash.Substring(0, 12)
+          } else {
+            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub"
+            $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
+          }
+
+          # List of required packages for existence validation (fallback check)
           $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "huggingface_hub")
 
-          # Check if cache is valid (Python + all packages exist)
+          # Load manifest to check cached hash
+          $cachedReqHash = ""
+          if (Test-Path $manifestPath) {
+            $manifest = Get-Content $manifestPath | ConvertFrom-Json
+            $cachedReqHash = $manifest.components.python_embedded.requirements_hash
+          }
+
+          # ============================================================
+          # SMART CACHE VALIDATION
+          # 1. Python.exe exists
+          # 2. Version matches
+          # 3. Requirements hash matches (SMART!)
+          # 4. All required packages exist (fallback safety check)
+          # ============================================================
           $useCache = $false
+          $cacheInvalidReason = ""
+
           if (Test-Path "$cachedPythonDir\python.exe") {
-            $allPackagesExist = $true
-            foreach ($pkg in $requiredPackages) {
-              $pkgPath = "$cachedPythonDir\Lib\site-packages\$pkg"
-              if (-not (Test-Path $pkgPath)) {
-                Write-Host "[CACHE INVALID] Missing package: $pkg" -ForegroundColor Yellow
-                $allPackagesExist = $false
-                break
+            # Check hash match
+            if ($cachedReqHash -eq $reqHash) {
+              # Verify packages exist (safety check)
+              $allPackagesExist = $true
+              foreach ($pkg in $requiredPackages) {
+                $pkgPath = "$cachedPythonDir\Lib\site-packages\$pkg"
+                if (-not (Test-Path $pkgPath)) {
+                  $cacheInvalidReason = "Missing package: $pkg"
+                  $allPackagesExist = $false
+                  break
+                }
               }
+              if ($allPackagesExist) {
+                $useCache = $true
+              }
+            } else {
+              $cacheInvalidReason = "requirements.txt changed (cached: $cachedReqHash, current: $reqHash)"
             }
-            if ($allPackagesExist) {
-              $useCache = $true
-            }
+          } else {
+            $cacheInvalidReason = "Python not cached"
           }
 
           if ($useCache) {
             Write-Host "[CACHE HIT] Copying Python $pythonVersion + packages from cache..." -ForegroundColor Green
+            Write-Host "  Hash: $reqHash (matched)" -ForegroundColor Gray
             New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
             Copy-Item -Path "$cachedPythonDir\*" -Destination $targetDir -Recurse -Force
             $size = [math]::Round((Get-ChildItem $targetDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
             Write-Host "[OK] Python + packages: $size MB (from cache)" -ForegroundColor Green
           } else {
-            Write-Host "[CACHE MISS] Downloading Python $pythonVersion..." -ForegroundColor Yellow
+            Write-Host "[CACHE MISS] $cacheInvalidReason" -ForegroundColor Yellow
+            Write-Host "Downloading Python $pythonVersion..." -ForegroundColor Cyan
             New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
 
             # Download Python
@@ -531,25 +614,27 @@ jobs:
 
             # POPULATE CACHE for next build
             Write-Host "Populating cache for future builds..."
+            Write-Host "  Hash: $reqHash (will be stored)" -ForegroundColor Cyan
             New-Item -ItemType Directory -Force -Path "$cacheRoot\python-embedded" | Out-Null
             if (Test-Path $cachedPythonDir) { Remove-Item $cachedPythonDir -Recurse -Force }
             Copy-Item -Path $targetDir -Destination $cachedPythonDir -Recurse -Force
 
-            # Update manifest
+            # Update manifest with HASH for smart invalidation
             if (Test-Path $manifestPath) {
               $manifest = Get-Content $manifestPath | ConvertFrom-Json
             } else {
-              $manifest = @{ version = "1.0"; components = @{} }
+              $manifest = @{ version = "2.0"; components = @{} }
             }
             $manifest.components | Add-Member -NotePropertyName "python_embedded" -NotePropertyValue @{
               version = $pythonVersion
               path = $cachedPythonDir
               size_mb = $size
               packages = ($requiredPackages -join ",")
+              requirements_hash = $reqHash
               cached_at = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
             } -Force
             $manifest | ConvertTo-Json -Depth 10 | Out-File $manifestPath -Encoding UTF8
-            Write-Host "[CACHED] Python + packages saved to cache" -ForegroundColor Cyan
+            Write-Host "[CACHED] Python + packages saved with hash: $reqHash" -ForegroundColor Cyan
           }
         shell: powershell
 
