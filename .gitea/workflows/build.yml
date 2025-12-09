@@ -1123,6 +1123,125 @@ jobs:
           Write-Host "============================================" -ForegroundColor Cyan
         shell: powershell
 
+      # ============================================================
+      # CREATE GITEA RELEASE + UPLOAD ARTIFACTS
+      # ============================================================
+      - name: Create Gitea Release
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          Write-Host ""
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host "  CREATING GITEA RELEASE" -ForegroundColor Cyan
+          Write-Host "============================================" -ForegroundColor Cyan
+
+          $VERSION = "${{ steps.check.outputs.version }}"
+          $SEMANTIC = "${{ steps.check.outputs.semantic_version }}"
+          $TAG = "v$VERSION"
+          $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
+          $GITEA_REPO = "neilvibe/LocaNext"
+
+          Write-Host "Version: $VERSION"
+          Write-Host "Tag: $TAG"
+          Write-Host "Gitea: $GITEA_URL/$GITEA_REPO"
+
+          # Check if token exists
+          if (-not $env:GITEA_TOKEN) {
+            Write-Host "[SKIP] No GITEA_TOKEN - skipping release creation" -ForegroundColor Yellow
+            Write-Host "To enable: Add GITEA_TOKEN secret in Gitea repo settings"
+            exit 0
+          }
+
+          # Check if release already exists
+          try {
+            $existingRelease = curl.exe -s "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/tags/$TAG" `
+              -H "Authorization: token $env:GITEA_TOKEN" | ConvertFrom-Json
+            if ($existingRelease.id) {
+              Write-Host "[SKIP] Release $TAG already exists (ID: $($existingRelease.id))" -ForegroundColor Yellow
+              exit 0
+            }
+          } catch {
+            Write-Host "No existing release found, creating new..."
+          }
+
+          # Create release body
+          $BODY = @"
+## LocaNext Desktop Application (LIGHT Build)
+
+**Version:** $VERSION
+**Semantic:** $SEMANTIC
+**Build Type:** LIGHT (deps + model installed on first launch)
+
+### Downloads
+
+- ``LocaNext_v${VERSION}_Light_Portable.zip`` - Portable version
+- ``latest.yml`` - Auto-update manifest
+
+### What's Included
+
+- XLSTransfer - AI-powered Excel translation
+- QuickSearch - Multi-game dictionary
+- KR Similar - Korean semantic similarity
+- LDM - Language Data Manager (CAT tool)
+
+---
+*Auto-released by Gitea Actions*
+"@
+
+          # Create release via API
+          $releaseData = @{
+            tag_name = $TAG
+            name = "LocaNext v$VERSION (LIGHT)"
+            body = $BODY
+            draft = $false
+            prerelease = $false
+          } | ConvertTo-Json -Compress
+
+          Write-Host "Creating release..."
+          $response = curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases" `
+            -H "Authorization: token $env:GITEA_TOKEN" `
+            -H "Content-Type: application/json" `
+            -d $releaseData | ConvertFrom-Json
+
+          if (-not $response.id) {
+            Write-Host "[ERROR] Failed to create release" -ForegroundColor Red
+            Write-Host ($response | ConvertTo-Json)
+            exit 1
+          }
+
+          $RELEASE_ID = $response.id
+          Write-Host "[OK] Created release ID: $RELEASE_ID" -ForegroundColor Green
+
+          # Upload artifacts
+          Write-Host ""
+          Write-Host "Uploading artifacts..."
+
+          # Upload ZIP
+          $zipFile = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
+          if ($zipFile) {
+            Write-Host "  Uploading: $($zipFile.Name)"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$RELEASE_ID/assets?name=$($zipFile.Name)" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$($zipFile.FullName)" | Out-Null
+            Write-Host "  [OK] ZIP uploaded" -ForegroundColor Green
+          }
+
+          # Upload latest.yml
+          $ymlFile = "installer_output\latest.yml"
+          if (Test-Path $ymlFile) {
+            Write-Host "  Uploading: latest.yml"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$RELEASE_ID/assets?name=latest.yml" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$ymlFile" | Out-Null
+            Write-Host "  [OK] latest.yml uploaded" -ForegroundColor Green
+          }
+
+          Write-Host ""
+          Write-Host "[SUCCESS] Release created: $GITEA_URL/$GITEA_REPO/releases/tag/$TAG" -ForegroundColor Green
+        shell: powershell
+
       # NOTE: No cleanup workarounds needed!
       # Using ephemeral runner mode (Solution F from P13.11):
       # - Runner exits after each job
@@ -1130,8 +1249,7 @@ jobs:
       # - No more "Job failed" false positives
 
   # ============================================================
-  # JOB 4: Create Gitea Release
-  # REMOVED - The disabled job with needs: [build-windows] was causing
-  # act_runner to report false "Job failed" status.
-  # For releases, use the mirror script: scripts/mirror_release_to_gitea.sh
+  # NOTE: Release creation is now handled directly in build-windows job
+  # This ensures the release is created from the same runner where the
+  # artifacts exist, avoiding the need for artifact transfer between jobs.
   # ============================================================
