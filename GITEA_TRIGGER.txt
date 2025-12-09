@@ -179,3 +179,4 @@ Build LIGHT v2512090351 - Test v13 env parse debug
 Build LIGHT v2512090359 - Test v14 NUL byte fix
 Build LIGHT v2512090405 - Test v15 strip NUL
 Build LIGHT v2512090827 - P13.11 Complete (Docs + Service)
+Build LIGHT v2512091119 - P13.12 Test Smart Cache

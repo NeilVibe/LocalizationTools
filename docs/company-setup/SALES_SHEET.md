@@ -262,7 +262,7 @@ Annual Software Costs:
 ## FAQ
 
 **Q: Is this production-ready?**
-A: Yes. 885 tests pass, multiple tools complete, proven architecture.
+A: Yes. 912 tests pass, multiple tools complete, proven architecture.
 
 **Q: What support is available?**
 A: Self-supported with full documentation. Optional support contracts available.

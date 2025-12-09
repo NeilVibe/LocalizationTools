@@ -2,490 +2,586 @@
 
 **Started:** 2025-12-08
 **Status:** IN PROGRESS
-**Last Updated:** 2025-12-08
+**Last Updated:** 2025-12-09
 
-> This is the granular task breakdown for P17. Update checkboxes as tasks complete.
-> Main roadmap: [Roadmap.md](../../Roadmap.md)
+> Task breakdown for LDM with 5-Tier Cascade TM System (WebTranslatorNew architecture)
 
 ---
 
 ## Progress Overview
 
 ```
-Phase 1: Foundation         [X] 12/12 tasks  ✅ COMPLETE
-Phase 2: File Explorer      [X] 16/16 tasks  ✅ COMPLETE
-Phase 3: Real-time Sync     [X] 20/20 tasks  ✅ COMPLETE
-Phase 4: Virtual Scroll     [X] 10/10 tasks  ✅ COMPLETE
-Phase 5: CAT Features       [▓▓▓▓] 7/10 tasks  (TM + keyboard done)
-Phase 6: Polish             [▓] 3/11 tasks  (UI enhancements done!)
+Phase 1-4: Foundation + Grid    [X] 58/58 tasks  ✅ COMPLETE
+Phase 5: Basic CAT              [▓▓▓] 7/10 tasks  (TM panel done)
+Phase 6: UI Polish              [▓] 3/16 tasks
+Phase 7: Full TM System         [ ] 0/32 tasks   (5-Tier Cascade)
+Phase 8: Nice View              [ ] 0/12 tasks   (Pattern rendering)
 ─────────────────────────────────────────
-TOTAL                       [▓▓▓▓▓▓▓▓▓▓] 68/71 tasks (96%)
+TOTAL                           68/128 tasks (53%)
 ```
 
 ---
 
-## Phase 1: Foundation (Database + Basic API)
+## Phase 1-4: COMPLETE
 
-### 1.1 Backend: Database Models
-```
-Location: server/database/models.py (added to existing models file)
-```
-
-- [x] **1.1.1** Create `server/tools/ldm/` directory
-- [x] **1.1.2** Create `__init__.py`
-- [x] **1.1.3** Create models with SQLAlchemy (in server/database/models.py):
-  - [x] `LDMProject` (id, name, owner_id, created_at, updated_at)
-  - [x] `LDMFolder` (id, project_id, parent_id, name, created_at)
-  - [x] `LDMFile` (id, folder_id, name, format, row_count, created_at)
-  - [x] `LDMRow` (id, file_id, row_num, string_id, source, target, status, updated_by, updated_at)
-  - [x] `LDMEditHistory` (version tracking for rollback)
-  - [x] `LDMActiveSession` (presence tracking and row locking)
-- [x] **1.1.4** Tables auto-created via Base.metadata.create_all()
-- [x] **1.1.5** Verified models import correctly
-
-### 1.2 Backend: Basic API
-```
-Location: server/tools/ldm/api.py
-```
-
-- [x] **1.2.1** Create `api.py` with FastAPI router
-- [x] **1.2.2** Implement `GET /api/ldm/health` (test endpoint)
-- [x] **1.2.3** Register LDM router in `server/main.py`
-- [x] **1.2.4** API verified: imports correctly, router prefix `/api/ldm`
-
-### 1.3 Frontend: Basic Route
-```
-Location: locaNext/src/lib/components/apps/LDM.svelte
-```
-
-- [x] **1.3.1** Created `LDM.svelte` component (using existing app pattern)
-- [x] **1.3.2** Component shows health status and feature roadmap
-- [x] **1.3.3** Added "LDM" to apps array in `+layout.svelte`
-- [x] **1.3.4** Added LDM rendering in `+page.svelte`
-
-**Phase 1 Completion Checklist:**
-- [x] Database tables created (auto via Base.metadata.create_all)
-- [x] API endpoint responds (verified import)
-- [x] Frontend tab visible (added to apps menu)
-- [x] Module imports correctly
+*Foundation, File Explorer, Real-time Sync, Virtual Scroll - 58 tasks done*
 
 ---
 
-## Phase 2: File Explorer + Basic Grid
+## Phase 5: Basic CAT Features
 
-### 2.1 Backend: Projects/Folders API
-```
-Location: server/tools/ldm/api.py
-```
+### 5.1-5.4: COMPLETE ✅
+- [x] Basic TM (Jaccard similarity) - will be replaced by Phase 7
+- [x] TM panel in edit modal
+- [x] Keyboard shortcuts (Ctrl+Enter, Tab, Escape)
 
-- [x] **2.1.1** `POST /api/ldm/projects` - Create project *(built in Phase 1)*
-- [x] **2.1.2** `GET /api/ldm/projects` - List user's projects *(built in Phase 1)*
-- [x] **2.1.3** `POST /api/ldm/folders` - Create folder in project *(built in Phase 1)*
-- [x] **2.1.4** `GET /api/ldm/projects/{id}/tree` - Get folder tree *(built in Phase 1)*
-- [x] **2.1.5** `DELETE /api/ldm/folders/{id}` - Delete folder *(built in Phase 1)*
-
-### 2.2 Backend: File Upload
-```
-Location: server/tools/ldm/api.py, file_handlers/
-```
-
-- [x] **2.2.1** Create `file_handlers/` directory *(done in Phase 1)*
-- [x] **2.2.2** Create `txt_handler.py` (parse TXT, index 5=source, 6=target)
-- [x] **2.2.3** Create `xml_handler.py` (parse LocStr, StrOrigin=source, Str=target)
-- [x] **2.2.4** `POST /api/ldm/files/upload` - Upload file, parse, store rows in DB
-- [x] **2.2.5** `GET /api/ldm/files/{id}` - Get file metadata *(built in Phase 1)*
-
-### 2.3 Frontend: File Explorer
-```
-Location: locaNext/src/lib/components/ldm/
-```
-
-- [x] **2.3.1** Create `lib/components/ldm/` directory
-- [x] **2.3.2** Create `FileExplorer.svelte` (tree view)
-- [x] **2.3.3** Implement project/folder display
-- [x] **2.3.4** Implement "New Project" button
-- [x] **2.3.5** Implement "New Folder" button
-- [x] **2.3.6** Implement file upload (modal + FileUploader)
-
-### 2.4 Frontend: Basic Grid
-```
-Location: locaNext/src/lib/components/ldm/
-```
-
-- [x] **2.4.1** Create `DataGrid.svelte` (basic table)
-- [x] **2.4.2** Implement columns: # | StringID | Source (KR) | Target | Status
-- [x] **2.4.3** Paginated rows API connection
-- [x] **2.4.4** Connect grid to API, display real data
-- [x] **2.4.5** Style: Source column grey (read-only), Target column editable
-
-**Phase 2 Completion Checklist:**
-- [x] Can create project
-- [x] Can create folders
-- [x] Can upload TXT file
-- [x] Can upload XML file
-- [x] Grid shows parsed data
-- [x] Pagination works
+### 5.5: Glossary (TODO)
+- [ ] **5.5.1** Create `glossary.py`
+- [ ] **5.5.2** Glossary check API
+- [ ] **5.5.3** GlossaryPanel.svelte
 
 ---
 
-## Phase 3: Editing + Real-time Sync
+## Phase 6: UI Polish
 
-### 3.1 Backend: Row Update API ✅
-```
-Location: server/tools/ldm/api.py (already built in Phase 1)
-```
+### 6.0: COMPLETE ✅
+- [x] Hover transitions
+- [x] Row selection
 
-- [x] **3.1.1** `PUT /api/ldm/rows/{id}` - Update target text *(done in Phase 1)*
-- [x] **3.1.2** Validate: only target field editable *(source is READ-ONLY)*
-- [x] **3.1.3** Update status to "translated" when target set *(auto-update logic)*
+### 6.1: Cell Text Display (TODO)
+- [ ] **6.1.1** Cell expansion on click
+- [ ] **6.1.2** Newline display logic (grid: `\n` or `↵`, modal: actual breaks)
+- [ ] **6.1.3** Long text indicator
+- [ ] **6.1.4** Tooltip preview
 
-### 3.2 Backend: WebSocket ✅
-```
-Location: server/tools/ldm/websocket.py
-```
-
-- [x] **3.2.1** Create `websocket.py` *(full implementation with Socket.IO)*
-- [x] **3.2.2** Implement room management *(ldm_join_file, ldm_leave_file)*
-- [x] **3.2.3** Implement `cell_update` broadcast *(broadcast_cell_update)*
-- [x] **3.2.4** Implement `presence` broadcast *(broadcast_file_presence, ldm_get_presence)*
-- [x] **3.2.5** Implement row locking *(ldm_lock_row, ldm_unlock_row, is_row_locked)*
-- [x] **3.2.6** Register WebSocket route in main.py *(uses existing /ws/socket.io)*
-
-### 3.3 Frontend: Edit Modal ✅
-```
-Location: locaNext/src/lib/components/ldm/DataGrid.svelte (built-in modal)
-```
-
-- [x] **3.3.1** Edit modal built into DataGrid.svelte *(no separate file needed)*
-- [x] **3.3.2** Display StringID (read-only) *(in modal form)*
-- [x] **3.3.3** Display Source/StrOrigin (read-only, grey) *(source-preview class)*
-- [x] **3.3.4** Display Target/Str (editable textarea) *(TextArea component)*
-- [x] **3.3.5** Save button → API call *(saveEdit function)*
-- [x] **3.3.6** Double-click target cell → open modal *(openEditModal)*
-
-### 3.4 Frontend: Real-time Updates ✅
-```
-Location: locaNext/src/lib/stores/ldm.js + components
-```
-
-- [x] **3.4.1** Create `ldm.js` store *(with full WebSocket support)*
-- [x] **3.4.2** WebSocket connection management *(joinFile, leaveFile, lockRow, unlockRow)*
-- [x] **3.4.3** Receive `cell_update` → update grid row *(onCellUpdate, handleCellUpdates)*
-- [x] **3.4.4** Create `PresenceBar.svelte` *(shows avatars, viewer count)*
-- [x] **3.4.5** Show lock indicator on rows being edited *(Locked icon, tooltip)*
-
-**Phase 3 Completion Checklist:**
-- [x] Can edit target text via modal
-- [x] Changes saved to database
-- [x] Changes broadcast to other users
-- [x] See who's online (PresenceBar)
-- [x] See lock on rows being edited
+### 6.2: Later
+- [ ] Version history, exports, permissions, etc.
 
 ---
 
-## Phase 4: Virtual Scrolling (1M Rows)
+## Phase 7: Full TM System (5-Tier Cascade + Dual Threshold)
 
-### 4.1 Backend: Optimized Queries
+> **Architecture:** WebTranslatorNew 5-tier cascade + dual threshold
+> **Documentation:** [LDM_TEXT_SEARCH.md](../tools/LDM_TEXT_SEARCH.md)
+
+### 7.0 Architecture Summary
+
 ```
-Location: server/tools/ldm/api.py
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    5-TIER CASCADE + DUAL THRESHOLD                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  TIER 1: Perfect Whole Match    Hash O(1)         → 100% (stops cascade)    │
+│  TIER 2: Whole Text Embedding   FAISS HNSW        → stops if ≥0.92          │
+│  TIER 3: Perfect Line Match     Hash per line     → exact line matches      │
+│  TIER 4: Line-by-Line Embedding FAISS per line    → semantic line matches   │
+│  TIER 5: Word N-Gram Embedding  1,2,3-grams→FAISS → partial phrase matches  │
+│                                                                              │
+│  DUAL THRESHOLD:                                                             │
+│  ├── cascade_threshold = 0.92  → PRIMARY matches (high confidence)          │
+│  └── context_threshold = 0.49  → CONTEXT match (single best reference)      │
+│                                                                              │
+│  INDEXES:                                                                    │
+│  ├── whole_text_lookup.pkl     (hash for exact whole match)                 │
+│  ├── line_lookup.pkl           (hash for exact line match)                  │
+│  ├── whole.index               (FAISS HNSW for whole embeddings)            │
+│  └── line.index                (FAISS HNSW for line embeddings)             │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
-
-- [x] **4.1.1** Add database indexes (file_id, row_num) *(done in Phase 1: idx_ldm_row_file_rownum)*
-- [x] **4.1.2** Add PostgreSQL trigram index for search *(using ILIKE for SQLite, can add for PostgreSQL later)*
-- [x] **4.1.3** Implement `GET /api/ldm/files/{id}/rows?search=text` *(done: searches source, target, string_id)*
-- [x] **4.1.4** Optimize pagination with keyset pagination *(offset/limit with indexes is sufficient for now)*
-
-### 4.2 Frontend: Virtual Grid ✅
-```
-Location: locaNext/src/lib/components/ldm/VirtualGrid.svelte
-```
-
-- [x] **4.2.1** Created `VirtualGrid.svelte` (replaces DataGrid for 1M+ rows)
-- [x] **4.2.2** Implement virtual scrolling (render only visible ~50 rows + buffer)
-- [x] **4.2.3** Implement on-scroll pagination (lazy loading pages as user scrolls)
-- [x] **4.2.4** Implement "Go to row N" navigation (with NumberInput)
-- [x] **4.2.5** Implement search bar (server-side search with debounce)
-- [x] **4.2.6** Integrated into LDM.svelte (replaced DataGrid)
-
-**Phase 4 Completion Checklist:**
-- [x] VirtualGrid component with fixed row height (40px)
-- [x] Only renders visible rows + 10 buffer rows above/below
-- [x] Lazy loads pages (100 rows per page) on scroll
-- [x] "Go to row" button with number input
-- [x] Search with 300ms debounce
-- [x] TEST MODE functions: goToRow(), getVisibleRange()
-- [x] Frontend build passes
 
 ---
 
-## Phase 5: CAT Features
+### 7.1 Database Models (4 tasks)
 
-### 5.1 Backend: Translation Memory ✅
-```
-Location: server/tools/ldm/tm.py
-```
+- [ ] **7.1.1** Create `LDMTranslationMemory` model
+  ```python
+  class LDMTranslationMemory(Base):
+      __tablename__ = "ldm_translation_memories"
 
-- [x] **5.1.1** Create `tm.py` (reuse KR Similar fuzzy matching)
-- [x] **5.1.2** `GET /api/ldm/tm/suggest?source=text` - Get TM suggestions
-- [x] **5.1.3** Implement similarity threshold (default 70%+, tested with 30%)
+      id = Column(Integer, primary_key=True)
+      name = Column(String(255), nullable=False)
+      description = Column(Text)
+      owner_id = Column(Integer, ForeignKey("users.id"))
 
-### 5.2 Backend: Glossary
-```
-Location: server/tools/ldm/glossary.py
-```
+      # Stats
+      entry_count = Column(Integer, default=0)
+      whole_pairs = Column(Integer, default=0)
+      line_pairs = Column(Integer, default=0)
 
-- [ ] **5.2.1** Create `glossary.py` (reuse QA Tools)
-- [ ] **5.2.2** `GET /api/ldm/glossary/check?text=...` - Check glossary terms
+      # Status
+      status = Column(String(50), default="pending")  # pending, indexing, ready, error
+      storage_path = Column(String(500))
 
-### 5.3 Frontend: TM Panel ✅
-```
-Location: locaNext/src/lib/components/ldm/VirtualGrid.svelte (integrated)
-```
+      created_at = Column(DateTime, default=datetime.utcnow)
+      updated_at = Column(DateTime, onupdate=datetime.utcnow)
+  ```
 
-- [x] **5.3.1** TM suggestions panel integrated into edit modal (not separate component)
-- [x] **5.3.2** TM suggestions fetched on modal open
-- [x] **5.3.3** One-click apply suggestion → fills target textarea
-- [x] **5.3.4** Shows similarity %, source text, file name for each suggestion
+- [ ] **7.1.2** Create `LDMTMEntry` model
+  ```python
+  class LDMTMEntry(Base):
+      __tablename__ = "ldm_tm_entries"
 
-### 5.4 Frontend: Keyboard Shortcuts ✅
-```
-Location: locaNext/src/lib/components/ldm/VirtualGrid.svelte
-```
+      id = Column(Integer, primary_key=True)
+      tm_id = Column(Integer, ForeignKey("ldm_translation_memories.id"))
+      source_text = Column(Text, nullable=False)
+      target_text = Column(Text)
+      source_hash = Column(String(64), index=True)  # For exact lookup
+      created_at = Column(DateTime, default=datetime.utcnow)
+  ```
 
-- [x] **5.4.1** Ctrl+Enter: Save and move to next row
-- [x] **5.4.2** Tab: Apply first TM suggestion (if available)
-- [x] **5.4.3** Escape: Cancel edit (close modal)
+- [ ] **7.1.3** Create `LDMActiveTM` model (user's selected TM per file)
 
-### 5.5 Future: Glossary Panel
-```
-Location: locaNext/src/lib/components/ldm/
-```
-
-- [ ] **5.5.1** Create `GlossaryPanel.svelte` (reuse QA Tools)
-- [ ] **5.5.2** Integrate glossary check into edit modal
-- [ ] **5.5.3** Implement status workflow UI (Draft/Review/Approved)
-
-**Phase 5 Completion Checklist:**
-- [x] TM suggestions appear when editing
-- [ ] Glossary terms highlighted
-- [x] Keyboard shortcuts work
-- [ ] Status workflow visible
+- [ ] **7.1.4** Database migration script
 
 ---
 
-## Phase 6: Polish & Scale
+### 7.2 TM Upload & Parsing (6 tasks)
 
-### 6.0 UI Enhancements (User Requested 2025-12-08)
-```
-Location: locaNext/src/lib/components/ldm/VirtualGrid.svelte + DataGrid.svelte
-```
+- [ ] **7.2.1** Create `server/tools/ldm/tm_manager.py`
+  ```python
+  class TMManager:
+      def upload_tm(self, file, name: str) -> dict
+      def build_indexes(self, tm_id: int, progress_callback=None) -> dict
+      def load_tm(self, tm_id: int) -> bool
+      def delete_tm(self, tm_id: int) -> bool
+  ```
 
-- [x] **6.0.1** Smooth hover highlight - Add CSS transition for row/cell hover effect ✅
-  - Added: `transition: background-color 0.15s ease, box-shadow 0.15s ease`
-  - Applied to: `.virtual-row`, `.cell.target`, `.edit-icon`
-- [x] **6.0.2** Row hover highlight - Entire row highlights on hover ✅
-  - Added: `box-shadow: inset 0 0 0 1px var(--cds-border-interactive)` on hover
-- [x] **6.0.3** Selected row highlight - Click to select, persists until another row clicked ✅
-  - Added: `selectedRowId` state + `.selected` class with stronger border
+- [ ] **7.2.2** TMX parser
+  ```python
+  def parse_tmx(file_path: str) -> List[dict]:
+      """Parse TMX <tu> elements → source/target pairs"""
+  ```
 
-**Current Cell Edit Flow (Documented):**
-- Double-click Target cell → Opens edit modal
-- Source (Korean) = Read-only, Target = Editable textarea
-- Save → Updates DB → WebSocket broadcasts to all users
-- Row locking prevents simultaneous edits (shows lock icon)
+- [ ] **7.2.3** Excel parser (source_col, target_col configurable)
 
-### 6.1 Core Polish
-- [ ] **6.1.1** Version history (track all changes)
-- [ ] **6.1.2** Rollback feature
-- [ ] **6.1.3** TMX export
-- [ ] **6.1.4** XLIFF export
-- [ ] **6.1.5** Project permissions (owner, editor, viewer)
-- [ ] **6.1.6** Performance tuning for 50+ concurrent users
-- [ ] **6.1.7** Offline mode (read-only cache)
-- [ ] **6.1.8** Final testing & documentation
+- [ ] **7.2.4** TXT parser (tab-delimited)
 
----
+- [ ] **7.2.5** API: `POST /api/ldm/tm/upload`
+  ```
+  Request: multipart/form-data
+  - file: TM file
+  - name: TM name
+  - source_column: int (for Excel/TXT)
+  - target_column: int (for Excel/TXT)
 
-## Current Focus
+  Response:
+  {"tm_id": 1, "status": "indexing", "entry_count": 50000}
+  ```
 
-```json
-{
-  "current_phase": 5,
-  "current_task": "5.5.1",
-  "next_task": "5.5.2",
-  "blockers": [],
-  "notes": "Phase 5.3 TM Panel + 5.4 Keyboard Shortcuts COMPLETE! TM suggestions show in edit modal with one-click apply. Ctrl+Enter/Tab/Escape shortcuts work. Next: Glossary integration."
-}
-```
-
-## Next Steps for Next Claude Session
-
-### Immediate (P17 LDM Completion):
-1. **5.5.1 Glossary Backend** - Create `glossary.py` (reuse QA Tools)
-2. **5.5.2 Glossary Check API** - `GET /api/ldm/glossary/check?text=...`
-3. **5.5.3 Status Workflow UI** - Draft/Review/Approved states
-
-### Optional Enhancements (Discuss with User):
-- **TM Upload Button** - Allow users to load external .tmx files
-- **TM On/Off Toggle** - Enable/disable auto-suggestions
-- **Export to XML/XLIFF** - Save translated files in standard formats
-
-### Demo Content:
-- Screenshots captured: `docs/demos/ldm/` (11 images, full workflow)
-- Capture script: `docs/demos/ldm/capture_ldm.js` (Playwright)
-- Video recording not yet implemented (consider ffmpeg + VcXsrv)
+- [ ] **7.2.6** APIs: `GET /list`, `DELETE /{id}`, `POST /{id}/activate`
 
 ---
 
-## Future Enhancements (Noted)
+### 7.3 Index Building (6 tasks)
 
-### Search Strategy (Decided)
+- [ ] **7.3.1** Create `server/tools/ldm/tm_indexer.py`
 
-| Text Type | Method | Notes |
-|-----------|--------|-------|
-| **Korean source** | KR-BERT + FAISS (KR Similar) | Already implemented, semantic |
-| **Target/Translation** | RapidFuzz | Fast, lexical, good for typos |
+- [ ] **7.3.2** Build **whole_text_lookup** (hash index for Tier 1)
+  ```python
+  def build_whole_text_lookup(entries: List[dict]) -> dict:
+      lookup = {}
+      for entry in entries:
+          source = normalize_newlines(entry['source'])
+          lookup[source] = {'target': entry['target'], 'entry_id': entry['id']}
+          lookup[source.strip()] = ...  # whitespace variant
+      return lookup
+  ```
 
-**Decision:** Keep it simple. KR-BERT for Korean, RapidFuzz for everything else. Can upgrade to Qwen later if semantic search needed on targets.
+- [ ] **7.3.3** Build **line_lookup** (hash index for Tier 3)
+  ```python
+  def build_line_lookup(entries: List[dict]) -> dict:
+      lookup = {}
+      for entry in entries:
+          source_lines = entry['source'].split('\n')
+          target_lines = entry['target'].split('\n') if entry['target'] else []
+          for i, line in enumerate(source_lines):
+              if line.strip():
+                  lookup[normalize(line)] = {
+                      'target_line': target_lines[i] if i < len(target_lines) else '',
+                      'entry_id': entry['id'],
+                      'line_num': i
+                  }
+      return lookup
+  ```
 
-**Proposed API:**
-```python
-GET /api/ldm/search/target?query=Sword&threshold=0.7&file_id=3
-# Returns rows where target fuzzy matches "Sword" (RapidFuzz)
-```
+- [ ] **7.3.4** Generate **whole embeddings** + build **FAISS HNSW** (Tier 2)
+  ```python
+  def build_whole_faiss(entries: List[dict], model) -> faiss.Index:
+      texts = [normalize(e['source']) for e in entries]
+      embeddings = model.encode(texts, batch_size=64)
+      faiss.normalize_L2(embeddings)
 
-**Reference:** `RessourcesForCodingTheProject/WebTranslatorNew/FUZZY_SEARCH.md`
+      index = faiss.IndexHNSWFlat(768, 32)  # 768 dim, M=32
+      index.hnsw.efConstruction = 400
+      index.hnsw.efSearch = 500
+      index.add(embeddings)
+      return index
+  ```
 
----
+- [ ] **7.3.5** Generate **line embeddings** + build **line FAISS** (Tier 4)
 
-## Test Protocols
-
-### Backend API Tests (Autonomous - via curl)
-
-Run these tests from WSL with the server running (`python3 server/main.py`):
-
-```bash
-# Prerequisites
-python3 server/main.py &  # Start server in background
-
-# Test 1: Health Check
-curl -s http://localhost:8888/api/ldm/health
-
-# Test 2: Login and get token
-TOKEN=$(curl -s -X POST http://localhost:8888/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-
-# Test 3: Create Project
-curl -s -X POST http://localhost:8888/api/ldm/projects \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test Project"}'
-
-# Test 4: Upload TXT File
-cat > /tmp/test_ldm.txt << 'EOF'
-TEST_001					테스트 문자열 1	Test String 1
-TEST_002					테스트 문자열 2
-EOF
-curl -s -X POST http://localhost:8888/api/ldm/files/upload \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "project_id=1" \
-  -F "file=@/tmp/test_ldm.txt"
-
-# Test 5: Get Rows
-curl -s "http://localhost:8888/api/ldm/files/1/rows?page=1&limit=10" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Test 6: Update Row
-curl -s -X PUT http://localhost:8888/api/ldm/rows/2 \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"target":"New Translation","status":"translated"}'
-
-# Test 7: Upload XML File
-curl -s -X POST http://localhost:8888/api/ldm/files/upload \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "project_id=1" \
-  -F "file=@/tmp/test_ldm.xml"
-```
-
-**Test Results (2025-12-08):**
-- ✅ Health check - PASS
-- ✅ List projects - PASS
-- ✅ Create project - PASS
-- ✅ Upload TXT file - PASS (5 rows parsed)
-- ✅ Get file rows - PASS (pagination works)
-- ✅ Update row - PASS (auto-status update works)
-- ✅ Row verification - PASS
-- ✅ Upload XML file - PASS (3 rows parsed)
-
-### Frontend CDP Tests (Requires Windows App)
-
-Run these tests via Chrome DevTools Protocol with LocaNext running:
-
-```bash
-# Launch app with CDP enabled (from WSL)
-cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext
-./LocaNext.exe --remote-debugging-port=9222 &
-
-# Wait for app to start, then run tests
-cd /home/neil1988/LocalizationTools/testing_toolkit
-node scripts/run_test.js ldm.createProject
-node scripts/run_test.js ldm.uploadFile
-node scripts/run_test.js ldm.selectFile
-node scripts/run_test.js ldm.editRow
-node scripts/run_test.js ldm.fullSequence  # All-in-one test
-node scripts/run_test.js ldm.getStatus
-```
-
-**Available CDP Tests:**
-| Test | Description | Status |
-|------|-------------|--------|
-| `ldm.createProject` | Create test project | 📋 Untested |
-| `ldm.uploadFile` | Upload embedded TXT data | 📋 Untested |
-| `ldm.uploadTxt` | Upload TXT test file | 📋 Untested |
-| `ldm.uploadXml` | Upload XML test file | 📋 Untested |
-| `ldm.selectFile` | Select uploaded file | 📋 Untested |
-| `ldm.editRow` | Edit first row | 📋 Untested |
-| `ldm.fullSequence` | Run all tests | 📋 Untested |
-| `ldm.getStatus` | Get current state | 📋 Untested |
-
-### Test Coverage Matrix
-
-| Component | Backend API | Frontend CDP | Notes |
-|-----------|-------------|--------------|-------|
-| Health Check | ✅ | - | API only |
-| Projects CRUD | ✅ | 📋 | Create, list |
-| Folders CRUD | ✅ | 📋 | Create, delete |
-| File Upload TXT | ✅ | 📋 | 5 rows parsed |
-| File Upload XML | ✅ | 📋 | 3 rows parsed |
-| Get Rows | ✅ | 📋 | Pagination works |
-| Edit Row | ✅ | 📋 | Auto-status |
-| WebSocket Presence | - | 📋 | Requires multi-user |
-| Row Locking | - | 📋 | Requires multi-user |
+- [ ] **7.3.6** Save all indexes to disk
+  ```
+  server/data/ldm_tm/{tm_id}/
+  ├── metadata.json
+  ├── entries.pkl
+  ├── hash/
+  │   ├── whole_lookup.pkl
+  │   └── line_lookup.pkl
+  ├── embeddings/
+  │   ├── whole.npy
+  │   ├── whole_mapping.pkl    # idx → entry_id
+  │   ├── line.npy
+  │   └── line_mapping.pkl     # idx → (entry_id, line_num)
+  └── faiss/
+      ├── whole.index
+      └── line.index
+  ```
 
 ---
 
-## Session Log
+### 7.4 5-Tier Cascade Search (8 tasks)
 
-| Date | Tasks Completed | Notes |
-|------|-----------------|-------|
-| 2025-12-08 | Planning complete | Created task list, ready to start |
-| 2025-12-08 | Phase 1 COMPLETE (12/12) | Backend models, API, frontend component all done |
-| 2025-12-08 | Phase 2 COMPLETE (16/16) | File handlers, upload, FileExplorer, DataGrid |
-| 2025-12-08 | Phase 3 COMPLETE (20/20) | WebSocket, real-time sync, presence, row locking |
-| 2025-12-08 | TEST MODE + API Tests | Added window.ldmTest, 8/8 backend API tests pass |
-| 2025-12-08 | Phase 4 COMPLETE (10/10) | VirtualGrid with virtual scrolling, lazy loading, Go to row, search |
-| 2025-12-08 | Phase 5.1 TM Backend (3/10) | tm.py + GET /api/ldm/tm/suggest with word-level Jaccard similarity |
-| 2025-12-08 | Phase 5.3 TM Panel (7/10) | TM suggestions in edit modal with one-click apply |
-| 2025-12-08 | Phase 5.4 Keyboard Shortcuts | Ctrl+Enter (save+next), Tab (apply TM), Escape (cancel) |
-| 2025-12-08 | WebTranslatorNew Reference | Extracted 5-tier cascade search documentation for future TM enhancements |
-| 2025-12-08 | Demo Screenshots | 11 screenshots captured in docs/demos/ldm/ (full workflow) |
-| 2025-12-08 | Upload Performance Test | 16MB/103,500 rows - ~50 sec upload (~2,070 rows/sec) |
-| 2025-12-08 | TM Status Check | Auto-suggest in edit modal works; Upload TM UI not yet implemented |
-| 2025-12-08 | UI Enhancement Request | User requested smooth hover transitions for grid cells + row highlights |
-| 2025-12-08 | UI Enhancements DONE | Implemented 6.0.1-6.0.3: smooth transitions, row hover, selected row highlight |
+- [ ] **7.4.1** Create `server/tools/ldm/tm_search.py`
+  ```python
+  class TMCascadeSearch:
+      cascade_threshold = 0.92
+      context_threshold = 0.49
+
+      def search(self, query: str, tm_id: int, top_k: int = 5) -> dict:
+          """Run 5-tier cascade, return primary + context matches"""
+  ```
+
+- [ ] **7.4.2** **Tier 1: Perfect Whole Match**
+  ```python
+  def _tier1_perfect_whole(self, query: str) -> List[dict]:
+      """O(1) hash lookup - FASTEST"""
+      normalized = normalize_newlines(query)
+      if normalized in self.whole_lookup:
+          match = self.whole_lookup[normalized]
+          return [{
+              "source": normalized,
+              "target": match['target'],
+              "similarity": 1.0,
+              "tier": 1,
+              "strategy": "perfect_whole_match"
+          }]
+      # Also try stripped version
+      if normalized.strip() in self.whole_lookup:
+          ...
+      return []
+  ```
+
+- [ ] **7.4.3** **Tier 2: Whole Text Embedding**
+  ```python
+  def _tier2_whole_embedding(self, query: str, top_k: int = 10) -> List[dict]:
+      """FAISS HNSW semantic search"""
+      query_emb = self.model.encode([normalize(query)])
+      faiss.normalize_L2(query_emb)
+      distances, indices = self.whole_index.search(query_emb, top_k)
+
+      results = []
+      sources = list(self.whole_dict.keys())
+      for dist, idx in zip(distances[0], indices[0]):
+          if dist >= self.context_threshold:
+              source = sources[idx]
+              results.append({
+                  "source": source,
+                  "target": self.whole_dict[source],
+                  "similarity": float(dist),
+                  "tier": 2,
+                  "strategy": "whole-embedding"
+              })
+      return results
+  ```
+
+- [ ] **7.4.4** **Tier 3: Perfect Line Match**
+  ```python
+  def _tier3_perfect_line(self, query: str) -> List[dict]:
+      """O(1) hash lookup per line"""
+      results = []
+      for line in query.split('\n'):
+          normalized_line = normalize(line)
+          if normalized_line in self.line_lookup:
+              match = self.line_lookup[normalized_line]
+              results.append({
+                  "source_line": normalized_line,
+                  "target_line": match['target_line'],
+                  "similarity": 1.0,
+                  "tier": 3,
+                  "strategy": "perfect_line_match",
+                  "line_num": match['line_num']
+              })
+      return results
+  ```
+
+- [ ] **7.4.5** **Tier 4: Line-by-Line Embedding**
+  ```python
+  def _tier4_line_embedding(self, query: str, matched_lines: set) -> List[dict]:
+      """FAISS search per unmatched line"""
+      results = []
+      for i, line in enumerate(query.split('\n')):
+          if i in matched_lines or not line.strip():
+              continue
+
+          line_emb = self.model.encode([normalize(line)])
+          faiss.normalize_L2(line_emb)
+          distances, indices = self.line_index.search(line_emb, 5)
+
+          for dist, idx in zip(distances[0], indices[0]):
+              if dist >= self.context_threshold:
+                  results.append({
+                      "similarity": float(dist),
+                      "tier": 4,
+                      "strategy": "line-embedding",
+                      "query_line_num": i
+                  })
+      return results
+  ```
+
+- [ ] **7.4.6** **Tier 5: Word N-Gram Embedding**
+  ```python
+  def _tier5_ngram_embedding(self, query: str) -> List[dict]:
+      """1,2,3-word n-grams → embed each → FAISS search"""
+      from nltk import ngrams
+      from nltk.tokenize import word_tokenize
+
+      words = word_tokenize(query)
+      results = []
+
+      for n in [1, 2, 3]:
+          grams = [' '.join(g) for g in ngrams(words, n)]
+          for gram in grams:
+              if len(gram) < 3:  # Skip very short grams
+                  continue
+
+              gram_emb = self.model.encode([gram])
+              faiss.normalize_L2(gram_emb)
+              distances, indices = self.line_index.search(gram_emb, 3)
+
+              for dist, idx in zip(distances[0], indices[0]):
+                  if dist >= self.context_threshold:
+                      results.append({
+                          "gram": gram,
+                          "similarity": float(dist),
+                          "tier": 5,
+                          "strategy": f"word-{n}-gram"
+                      })
+      return results
+  ```
+
+- [ ] **7.4.7** **Dual Threshold + Result Assembly**
+  ```python
+  def _apply_dual_threshold(self, all_results: List[dict]) -> dict:
+      """
+      Separate into PRIMARY (>=0.92) and CONTEXT (0.49-0.92)
+      Return: all primary + single best context
+      """
+      # Deduplicate by source text
+      seen = set()
+      unique_results = []
+      for r in all_results:
+          key = r.get('source') or r.get('source_line') or r.get('gram')
+          if key not in seen:
+              seen.add(key)
+              unique_results.append(r)
+
+      # Split by threshold
+      primary = [r for r in unique_results if r['similarity'] >= self.cascade_threshold]
+      context = [r for r in unique_results
+                 if self.context_threshold <= r['similarity'] < self.cascade_threshold]
+
+      # Mark types
+      for r in primary:
+          r['type'] = 'primary'
+
+      # Get single best context
+      output = sorted(primary, key=lambda x: -x['similarity'])
+      if context:
+          best_context = max(context, key=lambda x: x['similarity'])
+          best_context['type'] = 'context'
+          output.append(best_context)
+
+      return output
+  ```
+
+- [ ] **7.4.8** **API: `GET /api/ldm/tm/suggest`**
+  ```
+  Parameters:
+  - source: str (text to search)
+  - tm_id: int (which TM to use)
+  - cascade_threshold: float = 0.92
+  - context_threshold: float = 0.49
+  - top_k: int = 5
+
+  Response:
+  {
+    "suggestions": [
+      {
+        "source": "게임을 시작하세요",
+        "target": "Start the game",
+        "similarity": 0.98,
+        "type": "primary",
+        "tier": 2,
+        "strategy": "whole-embedding"
+      },
+      {
+        "source": "플레이를 시작하세요",
+        "target": "Start playing",
+        "similarity": 0.71,
+        "type": "context",
+        "tier": 2,
+        "strategy": "whole-embedding"
+      }
+    ],
+    "search_time_ms": 45,
+    "tier_reached": 2
+  }
+  ```
 
 ---
 
-*This file is a working document. Update as tasks complete.*
+### 7.5 Incremental Update (4 tasks)
+
+> Reference: KR Similar `embeddings.py` lines 232-309
+
+- [ ] **7.5.1** Create `server/tools/ldm/tm_updater.py`
+
+- [ ] **7.5.2** Change detection
+  ```python
+  def detect_changes(new_entries: List[dict], existing_lookup: dict) -> dict:
+      """Compare new TM with existing, return changes"""
+      new = []
+      modified = []
+      deleted_ids = set(e['entry_id'] for e in existing_lookup.values())
+
+      for entry in new_entries:
+          source = normalize(entry['source'])
+          if source not in existing_lookup:
+              new.append(entry)
+          else:
+              existing = existing_lookup[source]
+              deleted_ids.discard(existing['entry_id'])
+              if existing['target'] != entry['target']:
+                  modified.append({**entry, 'existing_id': existing['entry_id']})
+
+      return {"new": new, "modified": modified, "deleted": list(deleted_ids)}
+  ```
+
+- [ ] **7.5.3** Incremental embedding update
+  ```python
+  def update_embeddings(changes: dict, tm_path: Path):
+      """
+      Update embeddings without full rebuild:
+      1. Load existing embeddings + mapping
+      2. Generate embeddings ONLY for new/modified
+      3. Replace modified in-place
+      4. Append new
+      5. Rebuild FAISS index
+      """
+      embeddings = np.load(tm_path / 'embeddings/whole.npy')
+      # ... (like KR Similar)
+  ```
+
+- [ ] **7.5.4** API: `POST /api/ldm/tm/{id}/update`
+
+---
+
+### 7.6 Frontend TM UI (4 tasks)
+
+- [ ] **7.6.1** Create `TMManager.svelte`
+  ```
+  ┌─ Translation Memories ─────────────────────────────────────┐
+  │ [+ Upload TM]                                              │
+  │                                                            │
+  │ Name             Entries    Status     Actions             │
+  │ ─────────────────────────────────────────────────────────  │
+  │ BDO Main TM      150,000    ✅ Ready   [Active ✓] [Delete] │
+  │ BDM Strings      45,000     ✅ Ready   [Activate] [Delete] │
+  │ New Upload       12,000     🔄 Indexing...                 │
+  └────────────────────────────────────────────────────────────┘
+  ```
+
+- [ ] **7.6.2** Create `TMUploadModal.svelte`
+  - File input (TMX, Excel, TXT)
+  - Name input
+  - Column mapping for Excel/TXT
+  - Progress bar during indexing
+
+- [ ] **7.6.3** Update TM Panel in edit modal
+  ```
+  ┌─ TM Suggestions ─────────────────────────────────────────────┐
+  │ Using: BDO Main TM [Change]                                  │
+  │                                                              │
+  │ ✅ 98% PRIMARY - Tier 2: whole-embedding                     │
+  │ Source: 게임을 시작하세요                                      │
+  │ Target: Start the game                         [Apply]       │
+  │                                                              │
+  │ ✅ 94% PRIMARY - Tier 1: perfect_whole_match                 │
+  │ Source: 게임을 시작합니다                                      │
+  │ Target: Starting the game                      [Apply]       │
+  │                                                              │
+  │ ⚠️ 71% CONTEXT - Tier 2: whole-embedding                     │
+  │ Source: 플레이를 시작하세요                                    │
+  │ Target: Start playing                          [Apply]       │
+  └──────────────────────────────────────────────────────────────┘
+  ```
+
+- [ ] **7.6.4** TM selector in LDM header
+
+---
+
+## Phase 8: LocaNext Nice View
+
+> Pattern rendering for color codes, variables, tags
+
+### 8.1 Pattern Detection (6 tasks)
+- [ ] **8.1.1** Create `patternRenderer.js`
+- [ ] **8.1.2** Color code rendering (`<PAColor>text<549039Color>` → green text)
+- [ ] **8.1.3** Variable rendering (`{player_name}` → pill)
+- [ ] **8.1.4** Tag rendering (`<b>text</b>` → bold)
+- [ ] **8.1.5** Link rendering
+- [ ] **8.1.6** Newline rendering (`\n` → `↵`)
+
+### 8.2 Nice View Toggle (6 tasks)
+- [ ] **8.2.1** Add toggle to grid header
+- [ ] **8.2.2** Create `NiceText.svelte` component
+- [ ] **8.2.3** Apply to grid cells
+- [ ] **8.2.4** Apply to edit modal (source preview)
+- [ ] **8.2.5** Store preference in localStorage
+- [ ] **8.2.6** CSS styling for rendered elements
+
+---
+
+## Priority Order
+
+### IMMEDIATE: Phase 7 (Full TM System)
+1. **7.1** Database models
+2. **7.2** TM upload + parsing
+3. **7.3** Index building (hash + FAISS)
+4. **7.4** 5-tier cascade search with dual threshold
+5. **7.6** Frontend UI
+
+### THEN
+6. **7.5** Incremental updates
+7. **6.1** Cell text display
+
+### LATER
+8. **8.1-8.2** Nice View
+9. **5.5** Glossary
+10. **6.2** Exports, permissions
+
+---
+
+## Reference Documents
+
+| Document | Location | Purpose |
+|----------|----------|---------|
+| **LDM Text Search** | `docs/tools/LDM_TEXT_SEARCH.md` | Full 5-tier cascade documentation |
+| **WebTranslatorNew** | `RessourcesForCodingTheProject/WebTranslatorNew/` | Source architecture |
+| **KR Similar** | `server/tools/kr_similar/embeddings.py` | Update logic pattern |
+
+---
+
+*Last updated: 2025-12-09 - Aligned with WebTranslatorNew 5-tier cascade + dual threshold*
