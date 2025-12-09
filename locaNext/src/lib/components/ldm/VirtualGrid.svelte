@@ -317,7 +317,8 @@
     }
 
     editingRow = row;
-    editTarget = row.target || "";
+    // Format target for editing (convert escapes to real newlines)
+    editTarget = formatGridText(row.target || "");
     editStatus = row.status || "pending";
     showEditModal = true;
     logger.userAction("Edit modal opened", { rowId: row.id });
@@ -382,6 +383,9 @@
     loading = true;
     try {
       const rowId = editingRow.id;
+      // Convert newlines based on file type before saving
+      const targetToSave = formatTextForSave(editTarget);
+
       const response = await fetch(`${API_BASE}/api/ldm/rows/${rowId}`, {
         method: 'PUT',
         headers: {
@@ -389,18 +393,18 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          target: editTarget,
+          target: targetToSave,
           status: editStatus
         })
       });
 
       if (response.ok) {
-        // Update local cache
+        // Update local cache with the saved format
         const rowIndex = editingRow.row_num - 1;
         if (rows[rowIndex]) {
           rows[rowIndex] = {
             ...rows[rowIndex],
-            target: editTarget,
+            target: targetToSave,
             status: editStatus
           };
           rows = [...rows];
@@ -447,11 +451,41 @@
     }
   }
 
-  // Format text for grid display - show newlines as ↵ symbol
+  // Format text for grid display - show actual line breaks
+  // Text is displayed with pre-wrap, so \n shows as real line breaks
+  // XML &lt;br/&gt; is converted to visual line breaks for display
   function formatGridText(text) {
     if (!text) return "";
-    // Replace newlines with ↵ symbol for compact display
-    return text.replace(/\r?\n/g, ' ↵ ');
+    // Convert XML-style line breaks to actual newlines for display
+    let formatted = text.replace(/&lt;br\/&gt;/g, '\n');
+    // Also handle escaped versions
+    formatted = formatted.replace(/\\n/g, '\n');
+    return formatted;
+  }
+
+  // Convert newlines back for saving based on file type
+  // XML files use &lt;br/&gt;, TXT files use \n
+  function formatTextForSave(text) {
+    if (!text) return "";
+    // Determine file type from fileName
+    const isXML = fileName.toLowerCase().endsWith('.xml');
+    if (isXML) {
+      // XML: convert actual newlines to &lt;br/&gt;
+      return text.replace(/\n/g, '&lt;br/&gt;');
+    } else {
+      // TXT and others: keep actual newlines (backend will handle)
+      return text;
+    }
+  }
+
+  // Count all types of newlines in text
+  function countNewlines(text) {
+    if (!text) return 0;
+    // Count actual \n, escaped \\n, and XML &lt;br/&gt;
+    const actualNewlines = (text.match(/\n/g) || []).length;
+    const escapedNewlines = (text.match(/\\n/g) || []).length;
+    const xmlNewlines = (text.match(/&lt;br\/&gt;/g) || []).length;
+    return actualNewlines + escapedNewlines + xmlNewlines;
   }
 
   // Estimate row height based on content length
@@ -463,9 +497,9 @@
     const targetLen = (row.target || "").length;
     const maxLen = Math.max(sourceLen, targetLen);
 
-    // Count actual newlines too
-    const sourceNewlines = ((row.source || "").match(/\n/g) || []).length;
-    const targetNewlines = ((row.target || "").match(/\n/g) || []).length;
+    // Count all newlines (actual, escaped, XML)
+    const sourceNewlines = countNewlines(row.source);
+    const targetNewlines = countNewlines(row.target);
     const maxNewlines = Math.max(sourceNewlines, targetNewlines);
 
     // Estimate lines needed
@@ -744,7 +778,7 @@
 
       <div class="field">
         <label>Source (Korean) - Read Only</label>
-        <div class="source-preview">{editingRow.source || "-"}</div>
+        <div class="source-preview">{formatGridText(editingRow.source) || "-"}</div>
       </div>
 
       <TextArea
