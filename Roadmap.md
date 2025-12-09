@@ -177,8 +177,14 @@ P17 Quick Summary:
 - ✅ Keyboard Shortcuts - Ctrl+Enter, Tab, Escape
 - ✅ Real-time WebSocket sync - Multi-user collaboration
 - ✅ Row locking - Prevents edit conflicts
+- ✅ TMManager - Upload TM from TXT/XML/Excel (20k+ entries/sec)
 
-**Coming Next: Phase 7 - Full TM System (5-Tier Cascade)**
+**Coming Next:**
+- Phase 7.5: File Re-Upload with Incremental Update
+  - Diff-based update (only process changed rows)
+  - 5% changed = 95% faster than full replace!
+  - Preserves edit history
+- Phase 7: Full TM System (5-Tier Cascade)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -943,7 +949,13 @@ DB OPTIMIZATION - PHASE 1 COMPLETE:
 - [x] GIN index for trigram similarity search
 - [x] db_utils.py created with all optimization functions
 
-**Phase 2 - Performance Tuning (Only If Needed):**
+**Phase 2 - Incremental Updates (PLANNED):**
+- [ ] File re-upload with diff-based update (5% changed = 95% faster!)
+- [ ] TM re-upload with hash-based merge
+- [ ] PostgreSQL UPSERT (ON CONFLICT) for batch updates
+- [ ] Preview changes before applying
+
+**Phase 3 - Performance Tuning (Only If Needed):**
 - [ ] Async database operations (only if blocking issues occur)
 - [ ] Query optimization (N+1 prevention)
 

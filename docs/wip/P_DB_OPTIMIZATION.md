@@ -52,6 +52,177 @@ Search Performance:
 
 ---
 
+## Incremental Update Strategy (RE-UPLOAD FILES)
+
+> **Use Case:** User uploads `languagedata_fr.txt`, works on it, then wants to UPDATE with new version.
+> Instead of full delete + re-insert, we detect changes and only update what changed.
+
+### Strategy Comparison
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         FILE RE-UPLOAD STRATEGIES                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  STRATEGY 1: Full Replace (Current - Simple)                                │
+│  ════════════════════════════════════════════                                │
+│  DELETE all rows → INSERT all new rows                                       │
+│  ├── Speed: 103k rows in ~5 seconds                                          │
+│  ├── Pros: Simple, clean slate, no conflicts                                │
+│  └── Cons: Loses edit history, always full time                             │
+│                                                                              │
+│  STRATEGY 2: Diff-Based Update (Recommended) ★                              │
+│  ══════════════════════════════════════════════                              │
+│  Compare new file with DB → INSERT/UPDATE/DELETE only changes               │
+│  ├── Speed: If 5% changed → 95% faster!                                      │
+│  ├── Pros: Preserves history, much faster for updates                       │
+│  └── Cons: More complex, needs row identity (string_id or row_num)          │
+│                                                                              │
+│  STRATEGY 3: Hash-Based Merge (For TM)                                       │
+│  ═══════════════════════════════════════                                     │
+│  Each entry has source_hash → O(1) lookup → UPSERT                          │
+│  ├── Speed: Near-instant for unchanged entries                              │
+│  ├── Pros: Perfect for TM updates, deduplication built-in                   │
+│  └── Cons: Only works for TM (needs unique source key)                      │
+│                                                                              │
+│  STRATEGY 4: Version Tracking (Future)                                       │
+│  ═════════════════════════════════════                                       │
+│  Keep file_version column → New upload = new version                        │
+│  ├── Speed: Fast insert (no delete needed)                                  │
+│  ├── Pros: Full history, can diff versions, rollback                        │
+│  └── Cons: More storage, complex UI                                         │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Recommended: Diff-Based Update
+
+```python
+# Pseudocode for incremental file update
+
+def update_file_incremental(db, file_id: int, new_rows: List[dict]):
+    """
+    Update file with only changed rows.
+
+    1. Load existing rows into memory (by string_id)
+    2. Compare with new rows
+    3. Batch: INSERT new, UPDATE changed, DELETE removed
+    """
+
+    # Get existing rows as dict {string_id: row}
+    existing = {r.string_id: r for r in db.query(LDMRow).filter_by(file_id=file_id)}
+
+    to_insert = []
+    to_update = []
+    seen_ids = set()
+
+    for new_row in new_rows:
+        sid = new_row['string_id']
+        seen_ids.add(sid)
+
+        if sid not in existing:
+            # New row
+            to_insert.append(new_row)
+        else:
+            # Existing row - check if changed
+            old = existing[sid]
+            if (old.source != new_row['source'] or
+                old.target != new_row['target']):
+                to_update.append((old.id, new_row))
+
+    # Rows in DB but not in new file = deleted
+    to_delete = [existing[sid].id for sid in existing if sid not in seen_ids]
+
+    # Execute batch operations
+    if to_insert:
+        bulk_insert_rows(db, file_id, to_insert)
+
+    if to_update:
+        for row_id, new_data in to_update:
+            db.query(LDMRow).filter_by(id=row_id).update(new_data)
+
+    if to_delete:
+        db.query(LDMRow).filter(LDMRow.id.in_(to_delete)).delete()
+
+    db.commit()
+
+    return {
+        "inserted": len(to_insert),
+        "updated": len(to_update),
+        "deleted": len(to_delete),
+        "unchanged": len(existing) - len(to_update) - len(to_delete)
+    }
+```
+
+### PostgreSQL UPSERT (ON CONFLICT)
+
+```sql
+-- Native PostgreSQL UPSERT - single statement for insert or update
+INSERT INTO ldm_rows (file_id, row_num, string_id, source, target, status)
+VALUES
+  (1, 1, 'menu_01', '게임 시작', 'Start Game', 'translated'),
+  (1, 2, 'menu_02', '설정', 'Settings', 'translated')
+ON CONFLICT (file_id, string_id) DO UPDATE SET
+  source = EXCLUDED.source,
+  target = EXCLUDED.target,
+  updated_at = NOW();
+```
+
+### Performance Estimates
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    RE-UPLOAD PERFORMANCE ESTIMATES                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Scenario: 100k row file, user updates and re-uploads                       │
+│                                                                              │
+│  If 0% changed (same file):                                                  │
+│  ├── Full Replace:  ~5 seconds (delete + insert all)                        │
+│  └── Diff-Based:    ~0.5 seconds (load + compare + no writes)               │
+│                                                                              │
+│  If 5% changed (typical translation update):                                │
+│  ├── Full Replace:  ~5 seconds                                              │
+│  └── Diff-Based:    ~0.8 seconds (5k updates only)                          │
+│                                                                              │
+│  If 50% changed (major revision):                                           │
+│  ├── Full Replace:  ~5 seconds                                              │
+│  └── Diff-Based:    ~3 seconds (50k updates)                                │
+│                                                                              │
+│  If 100% changed (completely new content):                                  │
+│  ├── Full Replace:  ~5 seconds                                              │
+│  └── Diff-Based:    ~6 seconds (compare overhead + full write)              │
+│                                                                              │
+│  CONCLUSION: Diff-based is faster for typical updates (<50% change)         │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### User Experience
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  RE-UPLOAD DIALOG (Future UI)                                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  File: languagedata_fr.txt already exists                                   │
+│                                                                              │
+│  ○ Replace (delete all, upload new)                                         │
+│    └── Faster for complete rewrites, loses edit history                     │
+│                                                                              │
+│  ● Update (merge changes) [Recommended]                                     │
+│    └── Only update changed rows, preserves edit history                     │
+│                                                                              │
+│  ○ Create New Version                                                       │
+│    └── Keep old file, create languagedata_fr_v2.txt                         │
+│                                                                              │
+│  [Cancel]                            [Upload]                                │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Current Database State
 
 ### What's Already Implemented (DONE)
