@@ -613,6 +613,12 @@ bash scripts/clean_logs.sh
   - **Task File:** `docs/wip/P17_LDM_TASKS.md` - Full breakdown with priority order
   - **Demo:** 11 screenshots in `docs/demos/ldm/`
   - **Performance:** 103K rows in 50 sec
+- **P21: Database Powerhouse:** 🔄 PLANNING (2025-12-10)
+  - 📋 State of the art DB setup for 40+ users × 1M rows
+  - 📋 COPY BINARY instead of INSERT (5-10x faster)
+  - 📋 PgBouncer for 1000+ connections
+  - 📋 PostgreSQL tuning (32GB RAM, NVMe SSD)
+  - **WIP:** `docs/wip/P21_DATABASE_POWERHOUSE.md`
 
 ### Quick Gitea Commands:
 ```bash
@@ -621,10 +627,31 @@ cd ~/gitea && ./stop.sh    # Stop Gitea
 ```
 
 ### Questions to Ask User:
+- "Ready to start P21 Database Powerhouse?" - COPY BINARY + PgBouncer implementation
+- "Cloud or bare metal for DB server? Budget ceiling?"
 - "Continue P17 LDM? Remaining: Glossary integration + Phase 6 Polish"
-- "Want to add TM Upload button to LDM?" - Load external .tmx files
-- "Should we add another tool to LocaNext?" (P14 - New Tools)
-- "Want to fix P10.3 (Patch Notes display)?" - Nice-to-have, backlog
+- "Add 'Save + Add to TM' button in cell edit?" - Simple glossary feature discussed
+
+### Context from Last Session (2025-12-10):
+**Architecture Discussion Conclusions:**
+```
+1. LOCAL PROCESSING: All heavy work (embeddings, FAISS, parsing) on user's PC
+2. CENTRAL DB: Only TEXT sync (source/target pairs, metadata)
+3. TM: DB stores text only, embeddings built locally (too heavy to sync)
+4. WEBSOCKET: Real-time sync already working (ldm/websocket.py)
+5. CURRENT BOTTLENECK: Bulk uploads need COPY BINARY for speed
+```
+
+**TM Feature Discussed:**
+- TM can work as simple glossary (hash-based exact match, no embeddings)
+- Cell edit should have "Save" and "Save + Add to TM" buttons
+- User's selected TM gets new entry when using "Save + Add to TM"
+
+**DB Sizing:**
+```
+40 users × 1M rows = 40M rows = 8GB data
+Recommended server: 8 cores, 32GB RAM, 1TB NVMe (~$100-150/month)
+```
 
 ### Windows Environment (C: Drive - SSD):
 ```
