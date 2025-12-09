@@ -221,6 +221,7 @@ docs/
 
 | Document | Path |
 |----------|------|
+| **Executive Summary** | `docs/EXECUTIVE_SUMMARY.md` ← **FOR BOSS/MANAGEMENT** |
 | Quick Start | `docs/getting-started/QUICK_START_GUIDE.md` |
 | Project Structure | `docs/getting-started/PROJECT_STRUCTURE.md` |
 | Admin Setup | `docs/getting-started/ADMIN_SETUP.md` |
