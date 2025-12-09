@@ -413,39 +413,41 @@ CREATE INDEX idx_ldm_tm_entry_source_trgm ON ldm_tm_entries
 ### PRIORITY 2: Performance Tuning
 
 #### 2.1 Async Database Operations
-**Status:** TODO
-**Impact:** Non-blocking I/O for high concurrency
+**Status:** ❌ NOT NEEDED
+**Decision:** 2025-12-09
 
-```python
-# Current (sync)
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
-
-# Async version (SQLAlchemy 2.0)
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-
-async_engine = create_async_engine(
-    DATABASE_URL.replace('postgresql://', 'postgresql+asyncpg://'),
-    pool_size=10,
-    max_overflow=20
-)
-AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
-
-# Usage
-async def get_rows(file_id: int):
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(LDMRow).where(LDMRow.file_id == file_id)
-        )
-        return result.scalars().all()
 ```
-
-**Files to modify:**
-- `server/database/database.py` (add async engine)
-- `server/tools/ldm/api.py` (convert to async)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ASYNC DB - ANALYSIS & DECISION                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  MYTH:   "Async = Faster queries"                                           │
+│  TRUTH:  Async = Handle more CONCURRENT requests (not faster per-query)     │
+│                                                                             │
+│  CURRENT CAPACITY:                                                          │
+│  ├── Connection Pool: 10 + 20 overflow = 30 simultaneous connections        │
+│  ├── Query speed: 2-5ms average                                             │
+│  ├── Theoretical: 6,000+ queries/sec                                        │
+│  └── 50 users clicking = ~100 queries/sec = 1.6% capacity                   │
+│                                                                             │
+│  ASYNC BENEFITS:                                                            │
+│  └── Only matters at 500+ concurrent users hammering DB                     │
+│                                                                             │
+│  ASYNC COSTS:                                                               │
+│  ├── Refactor ALL endpoints                                                 │
+│  ├── More complex debugging                                                 │
+│  ├── Async overhead for simple operations                                   │
+│  └── Higher code complexity                                                 │
+│                                                                             │
+│  DECISION: SKIP - Sync + connection pooling handles 50+ users easily        │
+│                                                                             │
+│  IF SLOWNESS OCCURS (future):                                               │
+│  1. Check query optimization (indexes) ← free                               │
+│  2. Increase pool size (10→20→30) ← free                                    │
+│  3. Last resort: Async refactor ← expensive                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
