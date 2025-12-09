@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512091135 (2025-12-09)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 53% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅
+**Version:** 2512091215 (2025-12-09)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 56% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅
 
 ---
 
@@ -21,9 +21,9 @@
 - ✅ **XLSTransfer (App #1)**: VERIFIED - 10/10 tests with real Excel files
 - ✅ **QuickSearch (App #2)**: VERIFIED - 8/8 tests with TXT + XML files
 - ✅ **KR Similar (App #3)**: VERIFIED - 10/10 tests with 41,715 pairs
-- 🔄 **LDM (App #4)**: 53% Complete - CAT tool with 5-Tier TM System
+- 🔄 **LDM (App #4)**: 56% Complete - CAT tool with 5-Tier TM System
   - Phase 1-5: ✅ Core Complete (Foundation, FileExplorer, Sync, VirtualGrid, Basic TM)
-  - Phase 6: 📋 Cell Display (expansion, newlines)
+  - Phase 6.0-6.1: ✅ Cell Display (dynamic heights, ↵ newlines, hover, TM pre-fetch)
   - Phase 7: 📋 **Full TM System** (5-Tier Cascade + Dual Threshold) ← NEXT
   - Phase 8: 📋 LocaNext Nice View (pattern rendering)
   - **Docs:** `docs/tools/LDM_TEXT_SEARCH.md`, `docs/wip/P17_LDM_TASKS.md`
