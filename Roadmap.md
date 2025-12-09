@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512090827 | **Updated**: 2025-12-09 | **Status**: Production Ready
+**Version**: 2512091330 | **Updated**: 2025-12-09 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 
@@ -909,14 +909,41 @@ const config = {
  - Raspberry Pi 4: ~$100 one-time"
 ```
 
-### P18: Platform UI/UX Overhaul
+### P18: Database Optimization
+
+**Status:** 🔄 IN PROGRESS
+**WIP Document:** [P_DB_OPTIMIZATION.md](docs/wip/P_DB_OPTIMIZATION.md)
+
+```
+DB OPTIMIZATION QUICK SUMMARY:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  DONE:       40+ indexes, connection pooling, hash indexes, cascades        │
+│  NEXT:       Batch inserts, FTS indexes, GIN trigram indexes                │
+│  FUTURE:     Async DB, Redis caching, partitioning (when needed)            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Priority 1 - Quick Wins:**
+- [ ] Batch inserts for TM imports (100k entries → 10x faster)
+- [ ] Full-Text Search (FTS) with PostgreSQL tsvector
+- [ ] GIN index for trigram similarity search
+
+**Priority 2 - Performance Tuning (Only If Needed):**
+- [ ] Async database operations (only if blocking issues occur)
+- [ ] Query optimization (N+1 prevention)
+
+**Note:** Redis/partitioning NOT needed - LocaNext is small team tool (10-50 users)
+
+---
+
+### P19: Platform UI/UX Overhaul
 
 Modern UI redesign:
 - Dashboard improvements
 - Theme customization
 - Keyboard shortcuts
 
-### P19: Performance Monitoring
+### P20: Performance Monitoring
 
 - Query optimization
 - Memory profiling

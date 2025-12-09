@@ -1,7 +1,85 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512091230 (2025-12-09)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 56% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅
+**Version:** 2512091330 (2025-12-09)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 60% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅ | **DB Opt P18** ✅
+
+---
+
+## 🌟 THIS FILE IS THE HUB
+
+```
+                    ┌─────────────────────────────────────────────┐
+                    │          CLAUDE.md = THE HUB               │
+                    │  (Central Navigation + Quick Reference)     │
+                    └────────────────────┬────────────────────────┘
+                                         │
+         ┌───────────┬───────────┬───────┴───────┬───────────┬───────────┐
+         ▼           ▼           ▼               ▼           ▼           ▼
+    ┌─────────┐ ┌─────────┐ ┌─────────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
+    │Roadmap  │ │ docs/   │ │ docs/wip/   │ │ server/ │ │locaNext/│ │ tests/  │
+    │.md      │ │         │ │             │ │         │ │         │ │         │
+    │(GLOBAL) │ │(GUIDES) │ │(GRANULAR)   │ │(CODE)   │ │(APP)    │ │(VERIFY) │
+    └─────────┘ └─────────┘ └─────────────┘ └─────────┘ └─────────┘ └─────────┘
+        │           │             │
+        │           │             └── P17_LDM_TASKS.md (128 tasks)
+        │           │                 P17_TM_ARCHITECTURE.md (54 tasks)
+        │           │                 P13_GITEA_CACHE_PLAN.md
+        │           │
+        │           └── architecture/, build/, deployment/, security/, testing/
+        │
+        └── High-level priorities + completion status
+
+    NAVIGATION PATTERN:
+    1. CLAUDE.md → Find what you need (tables link to docs)
+    2. Roadmap.md → See global priorities + status
+    3. docs/wip/*.md → Dive into detailed task lists
+```
+
+---
+
+## 📖 GLOSSARY (Quick Reference)
+
+| Term | Full Name | What It Is |
+|------|-----------|------------|
+| **RM** | Roadmap | `Roadmap.md` - GLOBAL view of all priorities, concise status |
+| **WIP** | Work In Progress | `docs/wip/*.md` - DETAILED task breakdowns per priority |
+| **LDM** | Language Data Manager | CAT tool (App #4) - edit TXT/XML translation files |
+| **TM** | Translation Memory | Database of source→target pairs for suggestions |
+| **CAT** | Computer-Assisted Translation | Software that helps translators work faster |
+| **FAISS** | Facebook AI Similarity Search | Vector index for fast semantic search |
+| **CDP** | Chrome DevTools Protocol | Remote debugging for Electron apps |
+| **WSL** | Windows Subsystem for Linux | Run Linux on Windows |
+
+### RM vs WIP: The Two-Level System
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    WHY TWO LEVELS? CLARITY + FOCUS                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  RM (Roadmap.md)                      WIP (docs/wip/*.md)                   │
+│  ══════════════                       ═══════════════════                   │
+│  • GLOBAL overview                    • GRANULAR details                    │
+│  • All priorities listed              • ONE priority per file               │
+│  • "P17 LDM: 59%"                     • "128 tasks with [x] checkboxes"     │
+│  • Read in 2 minutes                  • Read when working on that task      │
+│  • Updated AFTER phase complete       • Updated DURING work                 │
+│  • CEO/PM readable                    • Developer working doc               │
+│                                                                             │
+│  ANALOGY:                                                                   │
+│  RM = Table of Contents               WIP = Individual Chapters             │
+│  RM = City Map                        WIP = Building Blueprints             │
+│  RM = "We're building a house"        WIP = "Nail specs, wire gauges..."    │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  RULE: RM stays CONCISE. Details go in WIP. Never bloat RM with tasks.      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Document Structure:**
+- **RM (Roadmap.md)** = "What are we building?" (high-level, status overview)
+- **WIP (docs/wip/*.md)** = "How exactly?" (136 tasks with checkboxes)
+- **CLAUDE.md** = "Where do I find it?" (HUB with links to everything)
 
 ---
 
@@ -21,7 +99,7 @@
 - ✅ **XLSTransfer (App #1)**: VERIFIED - 10/10 tests with real Excel files
 - ✅ **QuickSearch (App #2)**: VERIFIED - 8/8 tests with TXT + XML files
 - ✅ **KR Similar (App #3)**: VERIFIED - 10/10 tests with 41,715 pairs
-- 🔄 **LDM (App #4)**: 56% Complete - CAT tool with 5-Tier TM System
+- 🔄 **LDM (App #4)**: 60% Complete - CAT tool with 5-Tier TM System
   - Phase 1-5: ✅ Core Complete (Foundation, FileExplorer, Sync, VirtualGrid, Basic TM)
   - Phase 6.0-6.1: ✅ Cell Display (dynamic heights, ↵ newlines, hover, TM pre-fetch)
   - Phase 7: 📋 **Full TM System** (5-Tier Cascade + Dual Threshold) ← NEXT
@@ -267,6 +345,40 @@ UPDATE_SERVER=gitea   // Company - uses Gitea Releases
 UPDATE_SERVER=http://... // Custom server
 ```
 
+**Patch Notes:** Currently template-based (version + tools list). For detailed changelog, add to GITEA_TRIGGER.txt comment or update workflow body.
+
+#### 🔧 App Self-Repair & Health Check System
+
+The desktop app has a comprehensive **auto-repair system** that runs on every launch:
+
+```
+APP LAUNCH → HEALTH CHECK → REPAIR IF NEEDED → MAIN APP
+     │             │                │
+     │             ▼                ▼
+     │      ┌─────────────┐   ┌──────────────────┐
+     │      │Quick Check: │   │Auto Repair:      │
+     │      │• Python exe │   │• Reinstall deps  │
+     │      │• Server     │   │• Download model  │
+     │      │• Model      │   │• Verify install  │
+     │      │• Packages   │   │• Progress UI     │
+     │      └─────────────┘   └──────────────────┘
+```
+
+**Files:**
+| File | Purpose |
+|------|---------|
+| `locaNext/electron/health-check.js` | Checks Python, packages, model, server on startup |
+| `locaNext/electron/repair.js` | Auto-repairs with progress UI (deps, model) |
+| `locaNext/electron/first-run-setup.js` | First-time installation with progress |
+| `locaNext/electron/updater.js` | Auto-updates from GitHub/Gitea/custom |
+
+**Health Status Flow:**
+- `OK` → Launch main app normally
+- `NEEDS_REPAIR` → Run auto-repair, then launch
+- `CRITICAL_FAILURE` → Show error, cannot continue
+
+**Repair Prevention:** Tracks `last_repair.json` to prevent repair loops (max once per hour).
+
 ### 🌐 Deployment & Operations
 
 | Document | What It Covers |
@@ -479,23 +591,27 @@ bash scripts/clean_logs.sh
   - ✅ Build #307 verified: ALL CACHE HITS
   - ✅ Performance: ~1.5 min (vs ~3 min without cache)
   - **Docs:** `docs/wip/P13_GITEA_CACHE_PLAN.md`
+- **P18: Database Optimization:** 🔄 Phase 1 COMPLETE
+  - ✅ Batch inserts (`bulk_insert_tm_entries`, `bulk_insert_rows`)
+  - ✅ Full-Text Search (FTS) with PostgreSQL tsvector
+  - ✅ GIN trigram indexes for similarity search
+  - 📋 Async DB, Redis caching (future)
+  - **WIP:** `docs/wip/P_DB_OPTIMIZATION.md`
 - **Testing Toolkit:** ✅ COMPLETE
   - ✅ CDP-based autonomous testing (`testing_toolkit/`)
   - ✅ All 3 apps have TEST MODE (xlsTransfer, quickSearch, krSimilar)
   - ✅ ADD_TEST_MODE_GUIDE.md for future apps (LD Manager template)
-- **P17: LDM (LanguageData Manager):** 🔄 IN PROGRESS (53% - 68/128 tasks)
+- **P17: LDM (LanguageData Manager):** 🔄 IN PROGRESS (60% - 81/136 tasks)
   - ✅ **Phase 1-4:** Foundation + Grid + Sync + Virtual Scroll (58/58 tasks)
   - ✅ **Phase 5.1-5.4:** Basic TM + Panel + Keyboard Shortcuts (7/10 tasks)
+  - ✅ **Phase 6.0-6.1:** Cell Display - dynamic heights, newlines, hover (7/16 tasks)
+  - 🎯 **NEXT: Phase 7.1-7.2** - TM Database + Upload (10 tasks) ← START HERE
+  - 📋 **Phase 7.3-7.5:** Index Building + Cascade Search + API (22 tasks)
   - 📋 **Phase 5.5:** Glossary integration (3 tasks)
-  - 📋 **Phase 6:** UI Polish - Cell display, newlines, tooltips (13 tasks)
-  - 📋 **Phase 7:** Full TM System - 5-Tier Cascade + Dual Threshold (32 tasks)
   - 📋 **Phase 8:** Nice View - Pattern rendering (12 tasks)
-  - **Architecture Docs:**
-    - `docs/wip/P17_TM_ARCHITECTURE.md` - **FULL 9-Tier Cascade + 54 tasks** (1,700 lines)
-    - `docs/wip/P17_LDM_TASKS.md` - Task tracker (128 tasks)
-    - `docs/tools/LDM_TEXT_SEARCH.md` - 5-Tier + Dual Threshold spec
+  - **Task File:** `docs/wip/P17_LDM_TASKS.md` - Full breakdown with priority order
   - **Demo:** 11 screenshots in `docs/demos/ldm/`
-  - **Performance:** 103K rows in 50 sec (~2,070 rows/sec)
+  - **Performance:** 103K rows in 50 sec
 
 ### Quick Gitea Commands:
 ```bash
@@ -571,9 +687,9 @@ This project is **97% complete**, **clean**, **organized**, and **production-rea
 
 ---
 
-*Last updated: 2025-12-08 by Claude*
+*Last updated: 2025-12-09 by Claude*
 *Tests: 912 total | Structure unified | Frontend: 164 | API Sim: 168 | Security: 86 | QA Tools: 27*
-*Tools: 4 (XLSTransfer, QuickSearch + QA Tools, KR Similar, LDM 96%)*
-*P17 LDM: Phase 5 in progress - TM done, Glossary remaining*
+*Tools: 4 (XLSTransfer, QuickSearch + QA Tools, KR Similar, LDM 56%)*
+*P17 LDM: Phase 6 in progress - Cell display, Glossary remaining*
 *Demo: 11 screenshots in docs/demos/ldm/ | Performance: 103K rows in 50 sec*
-*MASTER NAVIGATION HUB - All tools unified under server/tools/*
+*MASTER NAVIGATION HUB - All paths documented | Self-Repair ✅ | Auto-Update ✅*

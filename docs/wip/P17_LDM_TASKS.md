@@ -17,37 +17,50 @@ RECOMMENDED CODING ORDER:
 PRIORITY 1: Phase 6.1 - Cell Display (4 tasks) ✅ COMPLETE
 ────────────────────────────────────────────────────────────
 - ✅ Dynamic row heights (content-based sizing)
-- ✅ Newline display as ↵ symbol in grid
+- ✅ Newline auto-escape (actual line breaks in grid, not ↵ symbol)
 - ✅ Full content display (no truncation)
 - ✅ Cell hover highlight + TM pre-fetch on click
 
-PRIORITY 2: Phase 7.1-7.2 - TM Database + Upload (10 tasks) ← NEXT
+PRIORITY 2: Phase 7.1 - TM Database Models (4 tasks) ✅ COMPLETE
+────────────────────────────────────────────────────────────
+- ✅ LDMTranslationMemory (TM container with stats, status)
+- ✅ LDMTMEntry (source/target pairs with hash index)
+- ✅ LDMActiveTM (TM-to-project/file links with priority)
+- ✅ LDMBackup (backup tracking for disaster recovery)
+
+PRIORITY 3: Phase 7.2 - TM Upload + Parsers (6 tasks) ← NEXT
 ────────────────────────────────────────────────────────────
 Why next: Need TM data before building indexes
-- 7.1.1-7.1.4 Database models (LDMTranslationMemory, LDMTMEntry, LDMActiveTM)
-- 7.2.1-7.2.6 TM Upload + parsers (TMX, Excel, TXT)
+- 7.2.1 TMManager class (upload, build, load, delete)
+- 7.2.2-7.2.4 Parsers (TMX, Excel, TXT)
+- 7.2.5-7.2.6 Upload API + migration script
 
-PRIORITY 3: Phase 7.3 - Index Building (6 tasks)
+PRIORITY 4: Phase 7.3 - Index Building (6 tasks)
 ────────────────────────────────────────────────────────────
 Why next: Need indexes for fast search
 - 7.3.1-7.3.6 whole_text_lookup, line_lookup, FAISS indexes
 
-PRIORITY 4: Phase 7.4 - Cascade Search (8 tasks)
+PRIORITY 5: Phase 7.4 - Cascade Search (8 tasks)
 ────────────────────────────────────────────────────────────
 Why next: Core TM functionality
 - 7.4.1-7.4.8 5-Tier cascade + dual threshold search
 
-PRIORITY 5: Phase 7.5 - TM Search API + Frontend (8 tasks)
+PRIORITY 6: Phase 7.5 - TM Search API + Frontend (8 tasks)
 ────────────────────────────────────────────────────────────
 Why next: Wire backend to frontend
 - 7.5.1-7.5.8 APIs + TMManager.svelte + TMUploadModal.svelte
 
-PRIORITY 6: Phase 5.5 - Glossary (3 tasks)
+PRIORITY 7: Phase 7.6 - Adaptive TM (4 tasks) ★ NEW
+────────────────────────────────────────────────────────────
+Powerful: TM grows as users work (auto-save edits)
+- 7.6.1-7.6.4 Toggle + hook + incremental index + UI indicator
+
+PRIORITY 8: Phase 5.5 - Glossary (3 tasks)
 ────────────────────────────────────────────────────────────
 Optional but useful
 - 5.5.1-5.5.3 Glossary backend + API + panel
 
-PRIORITY 7: Phase 8 - Nice View (12 tasks)
+PRIORITY 9: Phase 8 - Nice View (12 tasks)
 ────────────────────────────────────────────────────────────
 Polish and patterns
 - 8.1-8.12 Pattern rendering, special display modes
@@ -63,11 +76,51 @@ Polish and patterns
 Phase 1-4: Foundation + Grid    [X] 58/58 tasks  ✅ COMPLETE
 Phase 5: Basic CAT              [▓▓▓] 7/10 tasks  (TM panel done)
 Phase 6: UI Polish              [▓▓▓▓] 7/16 tasks ✅ 6.0 + 6.1 COMPLETE
-Phase 7: Full TM System         [ ] 0/32 tasks   (5-Tier Cascade)
+Phase 7: Full TM System         [▓▓▓▓] 9/40 tasks (DB + Backup + Trash + Utils done!)
 Phase 8: Nice View              [ ] 0/12 tasks   (Pattern rendering)
 ─────────────────────────────────────────
-TOTAL                           72/128 tasks (56%)
+TOTAL                           81/136 tasks (60%)
 ```
+
+---
+
+## Database Safeguards
+
+### Backup Strategy (via LDMBackup table)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        DATABASE BACKUP SAFEGUARDS                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  AUTOMATIC BACKUPS:                                                          │
+│  ├── pre_delete    → Before deleting project/file/TM                        │
+│  ├── pre_import    → Before large TM import (>10k entries)                  │
+│  └── scheduled     → Daily/weekly full backup (configurable)                │
+│                                                                              │
+│  BACKUP TYPES:                                                               │
+│  ├── full          → All LDM tables (disaster recovery)                     │
+│  ├── project       → Single project + files + rows                          │
+│  ├── file          → Single file + rows + edit history                      │
+│  └── tm            → Single TM + entries                                    │
+│                                                                              │
+│  RETENTION:                                                                  │
+│  ├── pre_delete    → 30 days (recoverable)                                  │
+│  ├── pre_import    → 7 days (rollback window)                               │
+│  └── scheduled     → Keep last 5 (auto-cleanup)                             │
+│                                                                              │
+│  RESTORE:                                                                    │
+│  └── Admin API: POST /api/ldm/backup/{id}/restore                           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Data Integrity Features
+
+- **Edit History**: Every cell change tracked in `LDMEditHistory`
+- **Row Locking**: `LDMActiveSession.editing_row` prevents conflicts
+- **WebSocket Sync**: Real-time broadcast prevents stale data
+- **Hash Verification**: TM entries use SHA256 for deduplication
 
 ---
 
@@ -141,59 +194,109 @@ TOTAL                           72/128 tasks (56%)
 
 ---
 
-### 7.1 Database Models (4 tasks)
+### 7.1 Database Models (4 tasks) ✅ COMPLETE
 
-- [ ] **7.1.1** Create `LDMTranslationMemory` model
-  ```python
-  class LDMTranslationMemory(Base):
-      __tablename__ = "ldm_translation_memories"
+- [x] **7.1.1** Create `LDMTranslationMemory` model ✅
+  - Added to `server/database/models.py` (lines 707-752)
+  - Includes: name, description, owner, source/target lang, stats, status, storage_path
+  - Status flow: pending → indexing → ready → error
 
-      id = Column(Integer, primary_key=True)
-      name = Column(String(255), nullable=False)
-      description = Column(Text)
-      owner_id = Column(Integer, ForeignKey("users.id"))
+- [x] **7.1.2** Create `LDMTMEntry` model ✅
+  - Added to `server/database/models.py` (lines 755-790)
+  - Includes: source_text, target_text, source_hash (SHA256 for O(1) lookup)
+  - Composite index on (tm_id, source_hash) for fast TM-specific lookups
 
-      # Stats
-      entry_count = Column(Integer, default=0)
-      whole_pairs = Column(Integer, default=0)
-      line_pairs = Column(Integer, default=0)
+- [x] **7.1.3** Create `LDMActiveTM` model ✅
+  - Added to `server/database/models.py` (lines 793-828)
+  - Links TM to project OR file with priority ordering
+  - Unique constraint prevents duplicate TM links
 
-      # Status
-      status = Column(String(50), default="pending")  # pending, indexing, ready, error
-      storage_path = Column(String(500))
+- [x] **7.1.4** Create `LDMBackup` model ✅ (BONUS - Safeguard)
+  - Added to `server/database/models.py` (lines 835-872)
+  - Tracks: backup_type, backup_path, status, trigger, expires_at
+  - Supports: full, project, file, TM backups
+  - Triggers: scheduled, pre_delete, manual, pre_import
 
-      created_at = Column(DateTime, default=datetime.utcnow)
-      updated_at = Column(DateTime, onupdate=datetime.utcnow)
-  ```
+- [x] **7.1.5** Create `BackupService` class ✅ (SMART BACKUP)
+  - Added to `server/tools/ldm/backup_service.py`
+  - **GZIP Compression**: 70-90% space savings
+  - **Smart Expiration**:
+    - pre_delete: 7 days
+    - pre_import: 3 days
+    - scheduled: 7 days
+    - manual: 30 days
+  - **Max Backups**: full=3, project=5, file=10, tm=5
+  - **Auto-cleanup**: Removes expired + excess backups
+  - **Restore**: Supports file/project/TM restore
+  - Methods: `backup_before_delete_*()`, `restore_backup()`
 
-- [ ] **7.1.2** Create `LDMTMEntry` model
-  ```python
-  class LDMTMEntry(Base):
-      __tablename__ = "ldm_tm_entries"
+- [x] **7.1.6** Database tables created (run db_setup.py) ✅
 
-      id = Column(Integer, primary_key=True)
-      tm_id = Column(Integer, ForeignKey("ldm_translation_memories.id"))
-      source_text = Column(Text, nullable=False)
-      target_text = Column(Text)
-      source_hash = Column(String(64), index=True)  # For exact lookup
-      created_at = Column(DateTime, default=datetime.utcnow)
-  ```
+- [x] **7.1.7** Create `LDMTrash` table ✅ (TRASH BIN)
+  - Soft delete for projects, folders, files, TMs
+  - 30-day retention before permanent delete
+  - Easy 1-click restore from UI
+  - Stores full JSON snapshot for restore
 
-- [ ] **7.1.3** Create `LDMActiveTM` model (user's selected TM per file)
+- [x] **7.1.8** Create `LDMTMIndex` table ✅ (INDEX TRACKING)
+  - Tracks FAISS index files per TM
+  - Types: whole_faiss, line_faiss, whole_hash, line_hash
+  - Status: building → ready → error
+  - Stores file paths + sizes
 
-- [ ] **7.1.4** Database migration script
+- [x] **7.1.9** Database Optimization Utilities ✅ (P18 Integration)
+  - Created `server/database/db_utils.py` with:
+    - `bulk_insert()` - Generic batch insert (10x faster)
+    - `bulk_insert_tm_entries()` - TM-specific with auto SHA256 hash
+    - `bulk_insert_rows()` - LDM row upload optimization
+    - `search_rows_fts()` - Full-text search with PostgreSQL tsvector
+    - `add_fts_indexes()` - Migration script for FTS columns
+    - `add_trigram_index()` - GIN trigram index for similarity
+    - `chunked_query()` - Memory-safe large dataset iteration
+    - `upsert_batch()` - Insert or update with conflict handling
+  - WIP Document: `docs/wip/P_DB_OPTIMIZATION.md`
 
 ---
 
 ### 7.2 TM Upload & Parsing (6 tasks)
 
+**TM Input Sources:**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           TM INPUT SOURCES                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. TMX File Upload      → Industry standard, auto-parse <tu> elements      │
+│  2. Excel Upload         → User selects source/target columns (like XLS)    │
+│  3. TXT Tab-Delimited    → Simple source\ttarget format                     │
+│  4. ★ ADAPTIVE TM ★     → Auto-save edits as TM entries (reactive)         │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**★ Adaptive TM Feature (NEW CONCEPT):**
+```
+USER EDITS CELL              ADAPTIVE TM
+─────────────────            ──────────────────────────────────────
+Source: "안녕하세요"    →    Option: "Auto-save to TM?" [✓]
+Target: "Hello"         →    Creates TM entry automatically
+                             TM grows as users work!
+
+BENEFITS:
+├── TM builds organically from real translations
+├── No separate TM upload needed
+├── Project-specific TM created automatically
+└── Toggle per project/file (user choice)
+```
+
 - [ ] **7.2.1** Create `server/tools/ldm/tm_manager.py`
   ```python
   class TMManager:
-      def upload_tm(self, file, name: str) -> dict
+      def upload_tm(self, file, name: str, source_col=None, target_col=None) -> dict
       def build_indexes(self, tm_id: int, progress_callback=None) -> dict
       def load_tm(self, tm_id: int) -> bool
       def delete_tm(self, tm_id: int) -> bool
+      def add_entry(self, tm_id: int, source: str, target: str) -> bool  # For Adaptive TM
   ```
 
 - [ ] **7.2.2** TMX parser
