@@ -14,8 +14,9 @@
   import XLSTransfer from "$lib/components/apps/XLSTransfer.svelte";
   import QuickSearch from "$lib/components/apps/QuickSearch.svelte";
   import KRSimilar from "$lib/components/apps/KRSimilar.svelte";
+  import LDM from "$lib/components/apps/LDM.svelte";
   import TaskManager from "$lib/components/TaskManager.svelte";
-  import Welcome from "$lib/components/Welcome.svelte";
+  // Welcome component removed - LDM is now the default app
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
@@ -44,18 +45,15 @@
 <div class="main-container">
   {#if view === 'tasks'}
     <TaskManager />
-  {:else if view === 'app'}
-    {#if app === 'xlstransfer'}
-      <XLSTransfer />
-    {:else if app === 'quicksearch'}
-      <QuickSearch />
-    {:else if app === 'krsimilar'}
-      <KRSimilar />
-    {:else}
-      <Welcome />
-    {/if}
+  {:else if app === 'xlstransfer'}
+    <XLSTransfer />
+  {:else if app === 'quicksearch'}
+    <QuickSearch />
+  {:else if app === 'krsimilar'}
+    <KRSimilar />
   {:else}
-    <Welcome />
+    <!-- LDM is the default app -->
+    <LDM />
   {/if}
 </div>
 

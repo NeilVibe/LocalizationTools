@@ -1,7 +1,8 @@
 import { writable } from 'svelte/store';
 
-// Current selected app (xlstransfer, tool2, etc.)
-export const currentApp = writable('xlstransfer');
+// Current selected app (xlstransfer, quicksearch, krsimilar, ldm)
+// Default to LDM as main app
+export const currentApp = writable('ldm');
 
 // Current view (app or tasks)
 export const currentView = writable('app');
