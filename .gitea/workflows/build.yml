@@ -716,17 +716,7 @@ jobs:
             # Use embedded Python to download via sentence-transformers
             & "tools\python\python.exe" -m pip install --quiet sentence-transformers
 
-            & "tools\python\python.exe" -c @"
-from sentence_transformers import SentenceTransformer
-print('Downloading Qwen/Qwen3-Embedding-0.6B...')
-model = SentenceTransformer('Qwen/Qwen3-Embedding-0.6B')
-model.save('./models/qwen-embedding')
-print('Model saved to models/qwen-embedding/')
-# Test embedding
-emb = model.encode(['test'])
-print(f'Embedding dimension: {emb.shape[1]}')
-print('SUCCESS!')
-"@
+            & "tools\python\python.exe" -c "from sentence_transformers import SentenceTransformer; print('Downloading Qwen model...'); model = SentenceTransformer('Qwen/Qwen3-Embedding-0.6B'); model.save('./models/qwen-embedding'); print('Model saved!'); emb = model.encode(['test']); print(f'Dim: {emb.shape[1]}'); print('SUCCESS!')"
 
             if ($LASTEXITCODE -ne 0) {
               Write-Error "[ERROR] Model download failed!"
