@@ -1094,57 +1094,61 @@ Index Types (10 total): Hash, Trie, FAISS×3, N-gram×2, BK-tree, RapidFuzz, Cac
 
 ---
 
-### P21: Database Powerhouse 🔄 PLANNING
+### P21: Database Powerhouse 🔄 PLANNED
 
-**Status:** PLANNING | **Goal:** Handle 40+ users uploading 1M rows simultaneously
+**Status:** PLANNED | **Goal:** Handle 100 users uploading 1M rows simultaneously
 
-**Problem Identified (2025-12-10):**
+**Can It Handle 100 Users Smashing It?** ✅ YES
 ```
-Worst case: 40 users × 1M rows = 40 MILLION rows simultaneous insert
-Current bulk INSERT: ~20k rows/sec
-Need: ~100k rows/sec with ZERO queuing
+100 users × 1M rows = 100M rows → ~2-3 minutes (not hours)
+100 users editing cells = trivial (1-5% capacity)
+100 users searching = <500ms each with indexes
+Storage = capped at 6TB with tiered lifecycle
 ```
 
-**Solution: State of the Art DB Setup**
+**Architecture:**
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    POWERHOUSE ARCHITECTURE                                   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   Users (40+) ──► PgBouncer (1000 conns) ──► PostgreSQL 16                  │
-│                   pool_mode=transaction        ├── COPY BINARY (5-10x faster)│
-│                                                ├── 32GB RAM                  │
-│                                                ├── NVMe SSD                  │
-│                                                └── Tuned config              │
-│                                                                             │
-│   Result: 40 users × 1M rows = ~30 seconds (no queue)                       │
-│                                                                             │
+│   100 Users ──► PgBouncer (1000 conns) ──► PostgreSQL 16                    │
+│                 pool_mode=transaction       ├── COPY BINARY (5-10x faster)  │
+│                                             ├── 32GB RAM + NVMe SSD         │
+│                                             ├── Tuned config                │
+│                                             └── TOAST auto-compression      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key Changes:**
-| Current | Upgrade |
-|---------|---------|
-| bulk INSERT | COPY BINARY (5-10x faster) |
-| SQLAlchemy pool (30) | PgBouncer (1000 connections) |
-| Default PostgreSQL | Tuned config (8GB shared_buffers) |
-| Any server | 32GB RAM + NVMe SSD |
-
-**Phases:**
-- [ ] Phase 1: Implement COPY BINARY in db_utils.py
-- [ ] Phase 2: PostgreSQL tuning (config template)
-- [ ] Phase 3: PgBouncer setup (Docker Compose)
-- [ ] Phase 4: Advanced optimizations (partitioning, parallel COPY)
-
-**Server Specs (Recommended):**
+**Implementation Plan (5-7 days total):**
 ```
-CPU:  8 cores (16 threads)
-RAM:  32 GB
-SSD:  1 TB NVMe
-Cost: ~$100-150/month (cloud) or ~$1000 one-time (bare metal)
+PHASE    DIFFICULTY   TIME      ORDER
+═══════════════════════════════════════════════════════
+Phase 2  ███░░ 3/10   1 day     ← START HERE (easiest)
+Tuning   Config files, copy-paste values
+
+Phase 1  ████░░ 4/10  1-2 days  ← Second (biggest gain)
+COPY TEXT Simple, safe, 3-5x faster (not BINARY)
+
+Phase 3  ████░░ 4/10  1-2 days  ← If connection issues
+PgBouncer Connection pooling
+
+Phase 5  █████░ 5/10  2-3 days  ← Anytime (independent)
+Storage  Tiered lifecycle, prevents bloat
+
+Phase 4  ████████ 8/10          ← SKIP (100 users won't need it)
+Advanced Only if Phase 1-3 not enough
 ```
 
-**WIP Document:** [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md)
+**Tiered Storage (Phase 5):**
+```
+TIER 1: ACTIVE   → 10 GB/user → PostgreSQL (instant)
+TIER 2: ARCHIVED → 50 GB/user → Gzip on disk (5-10 sec restore)
+TIER 3: DELETED  → 30-day trash → Then permanently removed
+
+100 users = 6 TB MAX (never grows beyond)
+```
+
+**Server Specs:** 8 cores, 32GB RAM, 1TB NVMe = ~$100-150/month
+
+**WIP Document:** [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) (33 tasks, full testing checklist)
 
 ---
 

@@ -34,16 +34,19 @@ All hitting DB at the same time
 │   METHOD                          SPEED           USE CASE                  │
 │   ══════════════════════════════════════════════════════════════════════   │
 │                                                                             │
-│   1. COPY BINARY                  ★★★★★          Best for bulk import       │
-│      COPY table FROM STDIN WITH (FORMAT BINARY)                             │
-│      - 5-10x faster than INSERT                                             │
-│      - Bypasses SQL parsing                                                 │
-│      - Direct binary format                                                 │
-│                                                                             │
-│   2. COPY TEXT                    ★★★★☆          Standard bulk import       │
+│   1. COPY TEXT ★ RECOMMENDED      ★★★★☆          Best balance speed/safety  │
 │      COPY table FROM STDIN                                                  │
 │      - 3-5x faster than INSERT                                              │
 │      - Simple CSV/text format                                               │
+│      - Human-readable, easy debugging                                       │
+│      - Built-in psycopg2 support (copy_from)                                │
+│                                                                             │
+│   2. COPY BINARY (overkill)       ★★★★★          Only for 10M+ rows         │
+│      COPY table FROM STDIN WITH (FORMAT BINARY)                             │
+│      - 5-10x faster than INSERT                                             │
+│      - Complex implementation, hard to debug                                │
+│      - Risk of byte corruption                                              │
+│      - NOT WORTH IT for our use case                                        │
 │                                                                             │
 │   3. Bulk INSERT (current)        ★★★☆☆          Good for moderate loads    │
 │      INSERT INTO ... VALUES (...), (...), ...                               │
@@ -54,7 +57,31 @@ All hitting DB at the same time
 │      INSERT INTO ... VALUES (...)                                           │
 │      - 100x slower                                                          │
 │                                                                             │
-│   WINNER: COPY BINARY                                                       │
+│   WINNER: COPY TEXT (90% of speed, 10% of complexity)                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why COPY TEXT over COPY BINARY?
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    COPY TEXT vs COPY BINARY                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   COPY TEXT:                      COPY BINARY:                              │
+│   ══════════                      ════════════                              │
+│   3-5x faster than INSERT         5-10x faster than INSERT                  │
+│   ~20 lines of code               ~50+ lines of code                        │
+│   Human-readable data             Hex dumps to debug                        │
+│   Clear error messages            Cryptic errors                            │
+│   Built-in psycopg2 support       Manual struct packing                     │
+│   Zero corruption risk            Medium corruption risk                    │
+│                                                                             │
+│   1M rows: 10-15 seconds          1M rows: 5-10 seconds                     │
+│                                                                             │
+│   VERDICT: Save 5-10 seconds but add complexity + risk?                     │
+│            NOT WORTH IT.                                                    │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -210,74 +237,40 @@ server_round_robin = 1        # Distribute load evenly
 
 ---
 
-## COPY Implementation Plan
+## COPY TEXT Implementation Plan
 
 ### Current: bulk_insert() with INSERT
 ```python
-# Current method (3-5x slower)
+# Current method - 50 seconds for 1M rows
 stmt = insert(model)
 db.execute(stmt, batch)  # INSERT INTO ... VALUES (...), (...)
 ```
 
-### New: bulk_copy() with COPY BINARY
-```python
-# New method (fastest possible)
-from io import BytesIO
-import struct
-
-def bulk_copy_binary(db, table_name: str, columns: list, rows: list):
-    """
-    Use PostgreSQL COPY BINARY for maximum insert speed.
-    5-10x faster than bulk INSERT.
-    """
-    # Build binary buffer
-    buffer = BytesIO()
-
-    # COPY header
-    buffer.write(b'PGCOPY\n\xff\r\n\0')  # Signature
-    buffer.write(struct.pack('>I', 0))    # Flags
-    buffer.write(struct.pack('>I', 0))    # Extension area length
-
-    for row in rows:
-        # Field count
-        buffer.write(struct.pack('>h', len(columns)))
-        for value in row:
-            if value is None:
-                buffer.write(struct.pack('>i', -1))  # NULL
-            else:
-                encoded = str(value).encode('utf-8')
-                buffer.write(struct.pack('>i', len(encoded)))
-                buffer.write(encoded)
-
-    # Trailer
-    buffer.write(struct.pack('>h', -1))
-
-    buffer.seek(0)
-
-    # Execute COPY
-    raw_conn = db.connection().connection
-    cursor = raw_conn.cursor()
-    cursor.copy_expert(
-        f"COPY {table_name} ({','.join(columns)}) FROM STDIN WITH (FORMAT BINARY)",
-        buffer
-    )
-    raw_conn.commit()
-```
-
-### Alternative: Use psycopg2 copy_from (simpler)
+### New: bulk_copy() with COPY TEXT ★ RECOMMENDED
 ```python
 from io import StringIO
 
-def bulk_copy_csv(db, table_name: str, columns: list, rows: list):
+def bulk_copy(connection, table_name: str, columns: list, rows: list):
     """
-    Use PostgreSQL COPY with CSV format.
-    3-5x faster than bulk INSERT, simpler than BINARY.
+    Use PostgreSQL COPY TEXT for fast bulk inserts.
+    3-5x faster than bulk INSERT, simple and safe.
+
+    Args:
+        connection: Raw psycopg2 connection (not SQLAlchemy session)
+        table_name: Target table name
+        columns: List of column names
+        rows: List of tuples, each tuple is one row
+
+    Example:
+        bulk_copy(conn, 'ldm_rows',
+                  ['file_id', 'row_num', 'source', 'target'],
+                  [(1, 0, 'Hello', 'Bonjour'), (1, 1, 'World', 'Monde')])
     """
-    # Build CSV buffer
+    # Build tab-separated text buffer
     buffer = StringIO()
     for row in rows:
         line = '\t'.join(
-            '\\N' if v is None else str(v).replace('\t', ' ').replace('\n', '\\n')
+            '\\N' if v is None else str(v).replace('\\', '\\\\').replace('\t', ' ').replace('\n', '\\n')
             for v in row
         )
         buffer.write(line + '\n')
@@ -285,44 +278,304 @@ def bulk_copy_csv(db, table_name: str, columns: list, rows: list):
     buffer.seek(0)
 
     # Execute COPY
-    raw_conn = db.connection().connection
-    cursor = raw_conn.cursor()
-    cursor.copy_from(buffer, table_name, columns=columns)
-    raw_conn.commit()
+    cursor = connection.cursor()
+    cursor.copy_from(buffer, table_name, columns=columns, null='\\N')
+    connection.commit()
+
+    return len(rows)
+```
+
+### Wrapper Functions
+```python
+def bulk_copy_tm_entries(db_session, entries: list):
+    """
+    Bulk insert TM entries using COPY TEXT.
+
+    Args:
+        db_session: SQLAlchemy session
+        entries: List of dicts with 'source', 'target', 'tm_id', etc.
+    """
+    if not entries:
+        return 0
+
+    # Get raw connection from SQLAlchemy
+    raw_conn = db_session.connection().connection
+
+    columns = ['tm_id', 'source_text', 'target_text', 'source_hash', 'created_at']
+    rows = [
+        (e['tm_id'], e['source'], e['target'], e['source_hash'], e['created_at'])
+        for e in entries
+    ]
+
+    return bulk_copy(raw_conn, 'tm_entries', columns, rows)
+
+
+def bulk_copy_rows(db_session, file_id: int, rows: list):
+    """
+    Bulk insert LDM rows using COPY TEXT.
+
+    Args:
+        db_session: SQLAlchemy session
+        file_id: The file these rows belong to
+        rows: List of dicts with 'row_num', 'string_id', 'source', 'target'
+    """
+    if not rows:
+        return 0
+
+    raw_conn = db_session.connection().connection
+
+    columns = ['file_id', 'row_num', 'string_id', 'source', 'target', 'status']
+    data = [
+        (file_id, r['row_num'], r.get('string_id', ''), r['source'], r.get('target', ''), 'pending')
+        for r in rows
+    ]
+
+    return bulk_copy(raw_conn, 'ldm_rows', columns, data)
+```
+
+### SQLite Fallback (Dev Mode)
+```python
+def bulk_copy_with_fallback(db_session, table_name: str, columns: list, rows: list):
+    """
+    Use COPY TEXT for PostgreSQL, fall back to INSERT for SQLite.
+    """
+    dialect = db_session.bind.dialect.name
+
+    if dialect == 'postgresql':
+        raw_conn = db_session.connection().connection
+        return bulk_copy(raw_conn, table_name, columns, rows)
+    else:
+        # SQLite fallback - use regular INSERT
+        from sqlalchemy import text
+        placeholders = ', '.join(['?' for _ in columns])
+        cols = ', '.join(columns)
+        stmt = text(f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders})")
+        for row in rows:
+            db_session.execute(stmt, row)
+        db_session.commit()
+        return len(rows)
+```
+
+---
+
+## Implementation Guide
+
+### Difficulty & Risk Assessment
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    IMPLEMENTATION DIFFICULTY                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   PHASE    DIFFICULTY   TIME      RISK    NOTES                             │
+│   ═════════════════════════════════════════════════════════════════════════ │
+│                                                                             │
+│   Phase 1  ████░░░░░░   1-2 days  LOW     COPY TEXT is simple               │
+│   COPY     (4/10)                         Built-in psycopg2 support         │
+│                                           Human-readable, easy debug        │
+│                                                                             │
+│   Phase 2  ███░░░░░░░   1 day     LOW     Just config files                 │
+│   Tuning   (3/10)                         Copy-paste recommended values     │
+│                                           Easy to verify with benchmarks    │
+│                                                                             │
+│   Phase 3  ████░░░░░░   1-2 days  MEDIUM  Connection string changes         │
+│   PgBouncer(4/10)                         Must update app config too        │
+│                                           Test all endpoints after          │
+│                                                                             │
+│   Phase 4  ████████░░   3-5 days  HIGH    Complex, defer until needed       │
+│   Advanced (8/10)                         Only if Phase 1-3 not enough      │
+│                                                                             │
+│   Phase 5  █████░░░░░   2-3 days  MEDIUM  File operations need care         │
+│   Storage  (5/10)                         Don't lose user data!             │
+│                                           Add confirmation prompts          │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   TOTAL ESTIMATE: 5-7 days for Phase 1-3 + 5                                │
+│   (Phase 4 only if needed - probably never for 100 users)                   │
+│                                                                             │
+│   RECOMMENDED ORDER:                                                        │
+│   1. Phase 2 first (easiest, immediate benefit)                             │
+│   2. Phase 1 second (biggest speed gain, now LOW risk with COPY TEXT)       │
+│   3. Phase 3 third (only if connection issues appear)                       │
+│   4. Phase 5 anytime (independent, prevents storage bloat)                  │
+│   5. Phase 4 never? (100 users won't need it)                               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Critical Warnings
+
+```
+⚠️  COPY TEXT NOTES (Low Risk):
+───────────────────────────────
+1. Column order must match table definition
+2. Escape special chars: tabs → spaces, newlines → \n, backslash → \\
+3. NULL = '\N' string (handled by our function)
+4. Transaction isolation - COPY locks briefly (normal)
+5. Test with 100 rows first, then scale up
+
+⚠️  PGBOUNCER PITFALLS:
+──────────────────────
+1. Prepared statements don't work in transaction mode
+2. SET commands reset after transaction
+3. App must use port 6432, not 5432
+4. Auth file must match PostgreSQL users exactly
+
+⚠️  TIERED STORAGE PITFALLS:
+────────────────────────────
+1. Never delete without 30-day trash first
+2. Compression must be reversible (verify before delete)
+3. Show user EXACTLY what will be archived/deleted
+4. Admin override to prevent auto-deletion of critical files
+```
+
+### Testing Checklist (MANDATORY)
+
+```
+Before deploying each phase:
+
+Phase 1 (COPY TEXT):
+□ Test with 100 rows → verify data integrity
+□ Test with 10,000 rows → verify speed improvement
+□ Test with 1,000,000 rows → verify no timeout/memory issues
+□ Test with special chars (tabs, newlines, unicode) → verify escaping works
+□ Test SQLite fallback → verify dev mode still works
+□ Benchmark: compare old INSERT vs new COPY TEXT speed
+
+Phase 2 (Tuning):
+□ Run pg_stat_statements before/after
+□ Verify shared_buffers actually used (pg_buffercache)
+□ Check no OOM errors under load
+
+Phase 3 (PgBouncer):
+□ All API endpoints still work
+□ WebSocket connections work
+□ No "prepared statement" errors
+□ Connection count under 100 at peak
+
+Phase 5 (Storage):
+□ Archive a file → restore it → verify identical
+□ Delete from trash → verify unrecoverable
+□ Quota exceeded → verify oldest archived first
+□ UI shows correct status badges
 ```
 
 ---
 
 ## Implementation Tasks
 
-### Phase 1: COPY Implementation (Priority: HIGH)
+### Phase 1: COPY TEXT Implementation (Priority: HIGH, Difficulty: 4/10)
 - [ ] 1.1 Create `bulk_copy()` function in `db_utils.py`
 - [ ] 1.2 Create `bulk_copy_tm_entries()` wrapper
 - [ ] 1.3 Create `bulk_copy_rows()` wrapper
 - [ ] 1.4 Add fallback to INSERT for SQLite (dev mode)
-- [ ] 1.5 Benchmark: Compare COPY vs INSERT speed
-- [ ] 1.6 Update TM upload to use COPY
-- [ ] 1.7 Update file upload to use COPY
+- [ ] 1.5 Benchmark: Compare COPY TEXT vs INSERT speed
+- [ ] 1.6 Update TM upload to use COPY TEXT
+- [ ] 1.7 Update file upload to use COPY TEXT
+- [ ] 1.8 **TEST: Special chars (tabs, newlines, unicode)**
+- [ ] 1.9 **TEST: 1M row stress test**
 
-### Phase 2: PostgreSQL Tuning (Priority: HIGH)
+### Phase 2: PostgreSQL Tuning (Priority: HIGH, Difficulty: 3/10) ← START HERE
 - [ ] 2.1 Create `postgresql.conf.recommended` template
 - [ ] 2.2 Document memory calculation formula
 - [ ] 2.3 Create tuning script for different server sizes
 - [ ] 2.4 Add health check for DB performance
 - [ ] 2.5 Add monitoring for connection count, query time
+- [ ] 2.6 **TEST: Before/after benchmarks**
 
-### Phase 3: PgBouncer Setup (Priority: MEDIUM)
+### Phase 3: PgBouncer Setup (Priority: MEDIUM, Difficulty: 4/10)
 - [ ] 3.1 Create `pgbouncer.ini` template
 - [ ] 3.2 Create Docker Compose with PgBouncer
 - [ ] 3.3 Update connection string to use PgBouncer port
 - [ ] 3.4 Document PgBouncer installation
 - [ ] 3.5 Add PgBouncer stats endpoint to admin dashboard
+- [ ] 3.6 **TEST: All endpoints work through PgBouncer**
+- [ ] 3.7 **TEST: WebSocket still works**
 
-### Phase 4: Advanced Optimizations (Priority: LOW)
+### Phase 4: Advanced Optimizations (Priority: LOW, Difficulty: 8/10) ← SKIP FOR NOW
 - [ ] 4.1 Table partitioning for very large datasets
 - [ ] 4.2 Parallel COPY (split file, multiple connections)
 - [ ] 4.3 Async COPY with progress tracking
 - [ ] 4.4 Connection warming on server start
+
+### Phase 5: Tiered Storage Lifecycle (Priority: MEDIUM)
+
+**Problem:** Without cleanup, storage grows forever.
+```
+50 users × 10 files × 250MB = 125 GB initial
++ daily uploads = unlimited growth
+```
+
+**Solution:** 3-Tier automatic lifecycle management.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    3-TIER STORAGE LIFECYCLE                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   TIER 1: ACTIVE (Hot)                                                      │
+│   ════════════════════                                                      │
+│   • Full data in PostgreSQL                                                 │
+│   • Instant read/write                                                      │
+│   • User quota: 10 GB per user                                              │
+│   • Cost: $$$                                                               │
+│                                                                             │
+│              │                                                              │
+│              ▼ (auto-compress when quota exceeded)                          │
+│                                                                             │
+│   TIER 2: ARCHIVED (Warm)                                                   │
+│   ═══════════════════════                                                   │
+│   • Compressed .gz files on disk                                            │
+│   • Needs decompression to use (5-10 sec)                                   │
+│   • Quota: 50 GB per user                                                   │
+│   • Cost: $$                                                                │
+│   • Badge in UI: "📦 Archived - Click to restore"                           │
+│                                                                             │
+│              │                                                              │
+│              ▼ (auto-delete when archive quota exceeded)                    │
+│                                                                             │
+│   TIER 3: DELETED                                                           │
+│   ════════════════                                                          │
+│   • 30-day trash (optional recovery)                                        │
+│   • Then permanently deleted                                                │
+│   • Cost: $0                                                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Compression Ratios (Real Numbers):**
+| Data Type | Original | Compressed | Ratio |
+|-----------|----------|------------|-------|
+| Text/XML (translation files) | 250 MB | 25-50 MB | 5-10x |
+| PostgreSQL TOAST (automatic) | 250 MB | 50-100 MB | 2-5x |
+| Gzip on disk | 100 MB | 20-30 MB | 3-5x |
+| **Total: Raw → Archived** | 250 MB | 20-30 MB | **8-12x** |
+
+**Storage Math With Tiers:**
+```
+100 users, each uploads 10 files (250MB each):
+
+WITHOUT tiers:
+  100 × 10 × 250MB = 250 GB (and growing forever to infinity)
+
+WITH tiers (10GB active, 50GB archive per user):
+  Active:  100 × 10 GB = 1 TB max (PostgreSQL)
+  Archive: 100 × 50 GB = 5 TB max (compressed on disk)
+
+  TOTAL CAP: 6 TB (NEVER grows beyond this!)
+```
+
+**Implementation Tasks:**
+- [ ] 5.1 Add `storage_used` column to users table
+- [ ] 5.2 Add `file_status` enum (active/archived/deleted)
+- [ ] 5.3 Create compression job (gzip to disk)
+- [ ] 5.4 Create decompression on restore
+- [ ] 5.5 Auto-archive trigger when active quota exceeded
+- [ ] 5.6 Auto-delete trigger when archive quota exceeded
+- [ ] 5.7 UI badges + "Restore" button
+- [ ] 5.8 30-day trash before permanent deletion
+- [ ] 5.9 Admin dashboard: storage usage per user
 
 ---
 
