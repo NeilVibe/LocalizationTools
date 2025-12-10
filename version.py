@@ -7,7 +7,7 @@ Based on VRS-Manager version management pattern
 
 # Version in DateTime format: YYMMDDHHMM
 # Example: 2511221939 = November 22, 2025, 19:39
-VERSION = "2512091119"
+VERSION = "2512101620"
 
 # Version footer for UI display
 VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform | XLSTransfer + QuickSearch"
@@ -19,8 +19,8 @@ SEMANTIC_VERSION = "1.3.0"
 BUILD_TYPE = "LIGHT"  # FULL (with AI model) or LIGHT (without AI)
 
 # Release info
-RELEASE_DATE = "2025-12-09"
-RELEASE_NAME = "P13.11 Complete - Gitea CI/CD Production Ready"
+RELEASE_DATE = "2025-12-10"
+RELEASE_NAME = "P21 Database Powerhouse - PgBouncer + COPY TEXT"
 
 # Repository info
 REPOSITORY_URL = "https://github.com/NeilVibe/LocalizationTools"
