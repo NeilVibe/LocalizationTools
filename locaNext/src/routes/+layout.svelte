@@ -13,7 +13,7 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
   import { get } from 'svelte/store';
@@ -235,11 +235,11 @@
         </HeaderPanelLinks>
       </HeaderAction>
 
-      <!-- Tasks Button -->
-      <HeaderNavItem
-        on:click={showTasks}
-        text="Tasks"
-      />
+      <!-- Tasks Button (styled like other nav items with icon) -->
+      <button class="tasks-button" on:click={showTasks}>
+        <TaskComplete size={20} />
+        <span>Tasks</span>
+      </button>
 
       <!-- Settings Dropdown -->
       <HeaderAction
@@ -331,5 +331,30 @@
 
   .auth-loading p {
     font-size: 1.125rem;
+  }
+
+  /* Tasks button styling to match Carbon header actions */
+  .tasks-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1rem;
+    background: transparent;
+    border: none;
+    color: var(--cds-text-02);
+    font-size: 0.875rem;
+    cursor: pointer;
+    height: 48px;
+    transition: background 0.15s ease;
+  }
+
+  .tasks-button:hover {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-01);
+  }
+
+  .tasks-button:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
   }
 </style>

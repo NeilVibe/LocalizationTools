@@ -163,3 +163,29 @@ a.bx--header__menu-item::after {
 .bx--content {
   background: var(--cds-background) !important;
 }
+
+/* Fix tooltip z-index - tooltips should appear above everything */
+.bx--tooltip,
+.bx--assistive-text,
+.bx--tooltip--shown,
+.bx--tooltip__trigger::after,
+.bx--tooltip__trigger::before,
+.bx--btn--icon-only.bx--tooltip__trigger::before,
+.bx--btn--icon-only.bx--tooltip__trigger::after,
+[data-tooltip]::before,
+[data-tooltip]::after,
+.bx--popover,
+.bx--popover-content {
+  z-index: 10000 !important;
+}
+
+/* Ensure tooltips are visible above modals and panels */
+.bx--tooltip__caret,
+.bx--tooltip__content {
+  z-index: 10001 !important;
+}
+
+/* Fix tooltip positioning to not get clipped */
+.bx--tooltip__trigger {
+  position: relative;
+}

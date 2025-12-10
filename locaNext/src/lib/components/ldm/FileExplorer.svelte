@@ -6,9 +6,8 @@
     TextInput,
     FileUploader,
     InlineLoading,
-    ContextMenu,
-    ContextMenuOption,
-    ContextMenuDivider
+    ProgressBar,
+    InlineNotification
   } from "carbon-components-svelte";
   import { Folder, Document, Add, TrashCan, Upload, FolderAdd } from "carbon-icons-svelte";
   import { createEventDispatcher } from "svelte";
@@ -37,6 +36,8 @@
   let newFolderName = "";
   let selectedFolderId = null;
   let uploadFiles = [];
+  let uploadProgress = 0;
+  let uploadStatus = ""; // '', 'uploading', 'success', 'error'
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -150,10 +151,16 @@
     }
   }
 
-  // Upload file
+  // Upload file with progress feedback
   async function uploadFile() {
     if (!uploadFiles.length || !selectedProjectId) return;
-    loading = true;
+
+    uploadStatus = "uploading";
+    uploadProgress = 0;
+    const totalFiles = uploadFiles.length;
+    let completed = 0;
+    let hasErrors = false;
+
     try {
       for (const file of uploadFiles) {
         const formData = new FormData();
@@ -169,21 +176,33 @@
           body: formData
         });
 
+        completed++;
+        uploadProgress = Math.round((completed / totalFiles) * 100);
+
         if (response.ok) {
           const result = await response.json();
           logger.success("File uploaded", { name: file.name, rows: result.row_count });
         } else {
+          hasErrors = true;
           const error = await response.json();
           logger.error("Upload failed", { name: file.name, error: error.detail });
         }
       }
+
       await loadProjectTree(selectedProjectId);
-      showUploadModal = false;
-      uploadFiles = [];
+      uploadStatus = hasErrors ? "error" : "success";
+
+      // Auto-close modal after success
+      setTimeout(() => {
+        showUploadModal = false;
+        uploadFiles = [];
+        uploadStatus = "";
+        uploadProgress = 0;
+      }, 1500);
+
     } catch (err) {
+      uploadStatus = "error";
       logger.error("Upload error", { error: err.message });
-    } finally {
-      loading = false;
     }
   }
 
@@ -317,20 +336,43 @@
 <Modal
   bind:open={showUploadModal}
   modalHeading="Upload File"
-  primaryButtonText="Upload"
+  primaryButtonText={uploadStatus === "uploading" ? "Uploading..." : "Upload"}
+  primaryButtonDisabled={uploadStatus === "uploading"}
   secondaryButtonText="Cancel"
   on:click:button--primary={uploadFile}
-  on:click:button--secondary={() => { showUploadModal = false; uploadFiles = []; }}
+  on:click:button--secondary={() => { showUploadModal = false; uploadFiles = []; uploadStatus = ""; uploadProgress = 0; }}
 >
-  <FileUploader
-    labelTitle="Select localization file"
-    labelDescription="Supported formats: TXT, TSV, XML"
-    buttonLabel="Add file"
-    accept={[".txt", ".tsv", ".xml"]}
-    multiple
-    on:add={(e) => uploadFiles = [...uploadFiles, ...e.detail]}
-    on:remove={(e) => uploadFiles = uploadFiles.filter((_, i) => i !== e.detail)}
-  />
+  {#if uploadStatus === "uploading"}
+    <ProgressBar
+      value={uploadProgress}
+      max={100}
+      labelText="Uploading files..."
+      helperText="{uploadProgress}% complete"
+    />
+  {:else if uploadStatus === "success"}
+    <InlineNotification
+      kind="success"
+      title="Success"
+      subtitle="Files uploaded successfully!"
+      hideCloseButton
+    />
+  {:else if uploadStatus === "error"}
+    <InlineNotification
+      kind="error"
+      title="Error"
+      subtitle="Some files failed to upload. Check console for details."
+      hideCloseButton
+    />
+  {:else}
+    <FileUploader
+      labelTitle="Select localization file"
+      labelDescription="Supported formats: TXT, TSV, XML"
+      buttonLabel="Add file"
+      accept={[".txt", ".tsv", ".xml"]}
+      multiple
+      bind:files={uploadFiles}
+    />
+  {/if}
 </Modal>
 
 <style>
