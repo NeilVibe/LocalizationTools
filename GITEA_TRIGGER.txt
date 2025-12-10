@@ -183,3 +183,4 @@ Build LIGHT v2512091119 - P13.12 Test Smart Cache
 Build LIGHT v2512091130 - Test Smart Cache v2.0 Hash
 Build LIGHT v2512091135 - Verify Smart Cache Hash Match
 Build LIGHT v2512101606 - P21 DB Powerhouse
+Build LIGHT v2512101620 - Qwen3 + Transformers fix
