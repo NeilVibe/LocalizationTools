@@ -1,240 +1,201 @@
 # LocaNext Testing Toolkit
 
-**Autonomous Testing System for LocaNext Desktop App**
-
-This toolkit enables **fully autonomous testing** of all LocaNext app functions without human interaction using Chrome DevTools Protocol (CDP).
+**Autonomous Multi-Dimensional Testing System for LocaNext**
 
 ---
 
-## Quick Start
-
-```bash
-# 1. Install dependencies
-cd testing_toolkit/scripts
-npm install
-
-# 2. Check prerequisites
-cd ../setup
-bash check_prerequisites.sh
-
-# 3. Run all tests (launches app, tests, closes)
-bash launch_and_test.sh
-```
-
----
-
-## How It Works
-
-```
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                     AUTONOMOUS TESTING ARCHITECTURE                           ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║                                                                              ║
-║  ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐       ║
-║  │   WSL/Linux     │────▶│  LocaNext.exe   │────▶│   CDP (9222)    │       ║
-║  │   Test Runner   │◀────│  (Windows)      │◀────│   WebSocket     │       ║
-║  └─────────────────┘     └─────────────────┘     └─────────────────┘       ║
-║                                                                              ║
-║  Layer 1: TEST MODE (window.{app}Test.{function})                           ║
-║    └── Executes functions directly, skips file dialogs                      ║
-║                                                                              ║
-║  Layer 2: CDP Protocol                                                       ║
-║    └── Runtime.evaluate() to call JavaScript in Electron renderer           ║
-║                                                                              ║
-║  Layer 3: Backend API (port 8888)                                           ║
-║    └── Health checks, processing verification                               ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-```
-
----
-
-## Available Test Functions
-
-### XLSTransfer (`window.xlsTransferTest`)
-
-| Function | Command | Description | Time |
-|----------|---------|-------------|------|
-| createDictionary | `node run_test.js xlsTransfer.createDictionary` | Create dict from test file | ~20s |
-| loadDictionary | `node run_test.js xlsTransfer.loadDictionary` | Load existing dictionary | ~5s |
-| translateExcel | `node run_test.js xlsTransfer.translateExcel` | Translate Excel file | ~10s |
-| transferToClose | `node run_test.js xlsTransfer.transferToClose` | Transfer to Close tool | ~5s |
-| getStatus | `node run_test.js xlsTransfer.getStatus` | Get current status | instant |
-
-### QuickSearch (`window.quickSearchTest`)
-
-| Function | Command | Description | Time |
-|----------|---------|-------------|------|
-| loadDictionary | `node run_test.js quickSearch.loadDictionary` | Load BDO_EN dictionary | ~15s |
-| search | `node run_test.js quickSearch.search` | Search for test query | ~5s |
-| getStatus | `node run_test.js quickSearch.getStatus` | Get current status | instant |
-
-### KR Similar (`window.krSimilarTest`)
-
-| Function | Command | Description | Time |
-|----------|---------|-------------|------|
-| loadDictionary | `node run_test.js krSimilar.loadDictionary` | Load BDO embeddings | ~45s |
-| search | `node run_test.js krSimilar.search` | Find similar texts | ~10s |
-| getStatus | `node run_test.js krSimilar.getStatus` | Get current status | instant |
-
----
-
-## Directory Structure
+## 📁 Structure (NEW - 2025-12-11)
 
 ```
 testing_toolkit/
-├── README.md                  # This file
-├── TEST_FILES_MANIFEST.md     # Required test files documentation
+├── README.md                    # This file
+├── ADD_TEST_MODE_GUIDE.md       # How to add TEST MODE to apps
+├── TEST_FILES_MANIFEST.md       # Required test files
 │
-├── scripts/
-│   ├── package.json           # Node.js dependencies
-│   ├── run_test.js            # Single test runner
-│   └── run_all_tests.js       # Full test suite
+├── cdp/                         # ⭐ NEW: Organized CDP tests
+│   ├── utils/
+│   │   └── cdp-client.js       # Shared CDP connection utility
+│   ├── apps/                    # Per-app test suites
+│   │   ├── xlstransfer/        # XLSTransfer tests
+│   │   ├── quicksearch/        # QuickSearch tests
+│   │   ├── krsimilar/          # KR Similar tests
+│   │   └── ldm/                # ⭐ LDM tests
+│   │       └── test_file_upload.js
+│   └── runners/
+│       └── run_test.js         # CLI test runner
 │
-└── setup/
-    ├── check_prerequisites.sh # Verify environment
-    └── launch_and_test.sh     # Complete test workflow
+├── scripts/                     # Legacy scripts
+│   ├── run_test.js             # Single test runner (old)
+│   └── run_all_tests.js        # Full test suite (old)
+│
+├── setup/                       # Setup scripts
+│   ├── check_prerequisites.sh
+│   └── launch_and_test.sh
+│
+└── test-data/                   # Test files
 ```
 
 ---
 
-## Prerequisites
+## 🎯 Multi-Dimensional Testing (NEW)
 
-1. **LocaNext installed** at `D:\LocaNext\`
-2. **Test files** at `D:\TestFilesForLocaNext\` (see TEST_FILES_MANIFEST.md)
-3. **Node.js** with `ws` module installed
-4. **WSL** with access to Windows PowerShell
+| Dimension | Environment | Command | Use Case |
+|-----------|-------------|---------|----------|
+| **DEV** | API only | `node test.js dev` | Backend validation |
+| **APP** | electron:dev | `node test.js app` | Development testing |
+| **EXE** | LocaNext.exe | `node test.js exe` | Production validation |
 
-Verify with:
-```bash
-bash setup/check_prerequisites.sh
+### Why 3 Dimensions?
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  DEV                  APP                   EXE                 │
+│  (Backend Only)       (Dev Mode)            (Production)        │
+│                                                                 │
+│  ┌──────────┐        ┌──────────┐          ┌──────────┐        │
+│  │ curl/API │        │ Electron │          │ LocaNext │        │
+│  │ requests │        │ + DevTools│          │   .exe   │        │
+│  └────┬─────┘        └────┬─────┘          └────┬─────┘        │
+│       │                   │                     │               │
+│       ▼                   ▼                     ▼               │
+│  ┌──────────┐        ┌──────────┐          ┌──────────┐        │
+│  │ Backend  │        │ Backend  │          │ Backend  │        │
+│  │ :8888    │        │ :8888    │          │ :8888    │        │
+│  └──────────┘        └──────────┘          └──────────┘        │
+│                                                                 │
+│  Tests:              Tests:                Tests:               │
+│  - API endpoints     - UI rendering        - Full integration   │
+│  - Data parsing      - Navigation          - File paths         │
+│  - Auth flow         - Component state     - Windows compat     │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Manual Testing
+## 🚀 Quick Start
 
-If you prefer to control each step:
+### NEW: Multi-Dimensional Tests
 
 ```bash
-# 1. Kill existing processes
-/mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe
+# Install dependencies
+cd testing_toolkit/cdp
+npm install ws
 
-# 2. Launch with CDP
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe \
-  -Command "Start-Process -FilePath 'D:\LocaNext\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'"
+# Test LDM file upload in DEV mode (API only)
+node apps/ldm/test_file_upload.js dev
 
-# 3. Wait for app to start
-sleep 25
+# Test in APP mode (need electron:dev + CDP)
+cd locaNext && npm run electron:dev -- --remote-debugging-port=9222 &
+cd testing_toolkit/cdp
+node apps/ldm/test_file_upload.js app
 
-# 4. Run individual test
+# Test in EXE mode (need LocaNext.exe + CDP)
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext
+./LocaNext.exe --remote-debugging-port=9222 &
+cd ~/LocalizationTools/testing_toolkit/cdp
+node apps/ldm/test_file_upload.js exe
+```
+
+### Legacy Tests (still work)
+
+```bash
 cd testing_toolkit/scripts
-node run_test.js xlsTransfer.createDictionary --wait 30
+npm install
 
-# 5. Check status
-node run_test.js xlsTransfer.getStatus
+# Run all tests
+bash ../setup/launch_and_test.sh
 
-# 6. Cleanup
-/mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe
+# Run specific test
+node run_test.js xlsTransfer.createDictionary
 ```
 
 ---
 
-## Test Options
+## 🧪 Available Tests
 
-### Run specific app tests
-```bash
-node run_all_tests.js --app xlsTransfer
-node run_all_tests.js --app quickSearch
-node run_all_tests.js --app krSimilar
-```
+### LDM (LanguageData Manager) - NEW
 
-### Skip slow tests
-```bash
-node run_all_tests.js --skip-slow
-```
+| Test | File | What it Tests |
+|------|------|---------------|
+| File Upload | `cdp/apps/ldm/test_file_upload.js` | Upload TXT/XML, parse rows |
 
-### Custom wait time
-```bash
-node run_test.js xlsTransfer.createDictionary --wait 60
-```
+### XLSTransfer
 
-### Custom CDP port
-```bash
-CDP_PORT=9333 bash setup/launch_and_test.sh
-```
+| Function | Command | Time |
+|----------|---------|------|
+| createDictionary | `node run_test.js xlsTransfer.createDictionary` | ~20s |
+| loadDictionary | `node run_test.js xlsTransfer.loadDictionary` | ~5s |
+| translateExcel | `node run_test.js xlsTransfer.translateExcel` | ~10s |
+| getStatus | `node run_test.js xlsTransfer.getStatus` | instant |
+
+### QuickSearch
+
+| Function | Command | Time |
+|----------|---------|------|
+| loadDictionary | `node run_test.js quickSearch.loadDictionary` | ~15s |
+| search | `node run_test.js quickSearch.search` | ~5s |
+| getStatus | `node run_test.js quickSearch.getStatus` | instant |
+
+### KR Similar
+
+| Function | Command | Time |
+|----------|---------|------|
+| loadDictionary | `node run_test.js krSimilar.loadDictionary` | ~45s |
+| search | `node run_test.js krSimilar.search` | ~10s |
+| getStatus | `node run_test.js krSimilar.getStatus` | instant |
 
 ---
 
-## TEST MODE in Code
-
-Each app component exposes test functions via the `window` object:
+## 🔧 CDP Client API
 
 ```javascript
-// XLSTransfer.svelte
-window.xlsTransferTest = {
-  createDictionary: () => testCreateDictionary(),
-  loadDictionary: () => loadDictionary(),
-  translateExcel: () => testTranslateExcel(),
-  transferToClose: () => testTransferToClose(),
-  getStatus: () => ({
-    isProcessing,
-    statusMessage,
-    isDictionaryLoaded,
-    isTransferEnabled
-  })
-};
-```
+const {
+    connect,         // Connect to CDP
+    evaluate,        // Run JS in page
+    navigateToApp,   // Switch app (ldm, xlstransfer, etc.)
+    waitForSelector, // Wait for DOM element
+} = require('./utils/cdp-client');
 
-Test functions use predefined test files (see `TEST_CONFIG` in each component) to skip file dialogs.
+// Example
+const cdp = await connect();
+await navigateToApp(cdp, 'ldm');
+const result = await evaluate(cdp, 'window.ldmTest.getStatus()');
+```
 
 ---
 
-## Troubleshooting
+## 🔍 Troubleshooting
 
 ### CDP not accessible
-
 ```bash
-# Check if app is running
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe \
-  -Command "(Get-Process LocaNext -ErrorAction SilentlyContinue).Count"
-
-# Check CDP endpoint
+# Check if app is running with CDP
 curl http://localhost:9222/json
 ```
 
-### Multiple processes spawning
-
-Always kill ALL processes before launching:
+### Kill stuck processes
 ```bash
+# WSL
+pkill -f LocaNext
+
+# Windows
 /mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe
-sleep 3
 ```
 
 ### Test files not found
-
-Verify test files exist:
 ```bash
-ls -la /mnt/d/TestFilesForLocaNext/
-```
-
-### Port 8888 conflict
-
-Kill Python processes:
-```bash
-/mnt/c/Windows/System32/taskkill.exe /F /IM python.exe
-sleep 5
+ls -la /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext/
 ```
 
 ---
 
-## Related Documentation
+## 📚 Related Docs
 
-- [ADD_TEST_MODE_GUIDE.md](ADD_TEST_MODE_GUIDE.md) - **How to add TEST MODE to new apps** (for future Claude sessions)
-- [AUTONOMOUS_TESTING_PROTOCOL.md](../docs/testing/AUTONOMOUS_TESTING_PROTOCOL.md) - Full protocol
-- [AUTONOMOUS_WINDOWS_TESTING.md](../docs/testing/AUTONOMOUS_WINDOWS_TESTING.md) - Windows-specific guide
-- [DEBUG_AND_TEST_HUB.md](../docs/testing/DEBUG_AND_TEST_HUB.md) - Master testing hub
+| Doc | Description |
+|-----|-------------|
+| [ADD_TEST_MODE_GUIDE.md](ADD_TEST_MODE_GUIDE.md) | Add TEST MODE to new apps |
+| [docs/testing/README.md](../docs/testing/README.md) | Testing overview |
+| [docs/testing/DEBUG_AND_TEST_HUB.md](../docs/testing/DEBUG_AND_TEST_HUB.md) | Master testing hub |
 
 ---
 
-*Created: 2025-12-07 | LocaNext Testing Toolkit v1.0*
+*Updated: 2025-12-11 | Multi-dimensional testing added*
