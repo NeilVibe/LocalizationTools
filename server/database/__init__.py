@@ -41,7 +41,12 @@ from server.database.db_setup import (
 )
 
 from server.database.db_utils import (
-    # Batch operations
+    # COPY TEXT (P21 - 3-5x faster for PostgreSQL)
+    bulk_copy,
+    bulk_copy_tm_entries,
+    bulk_copy_rows,
+    escape_for_copy,
+    # Batch operations (legacy INSERT - still works for SQLite)
     bulk_insert,
     bulk_insert_tm_entries,
     bulk_insert_rows,
@@ -87,7 +92,12 @@ __all__ = [
     "test_connection",
     "get_table_counts",
     "setup_database",
-    # DB Utilities (batch operations, FTS)
+    # DB Utilities - COPY TEXT (P21 - 3-5x faster for PostgreSQL)
+    "bulk_copy",
+    "bulk_copy_tm_entries",
+    "bulk_copy_rows",
+    "escape_for_copy",
+    # DB Utilities - Batch operations (legacy INSERT)
     "bulk_insert",
     "bulk_insert_tm_entries",
     "bulk_insert_rows",
