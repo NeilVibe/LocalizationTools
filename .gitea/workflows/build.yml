@@ -1374,6 +1374,68 @@ The AI embedding model (~2.3GB) will be downloaded automatically on first use of
           Write-Host "[SUCCESS] Release created: $GITEA_URL/$GITEA_REPO/releases/tag/$TAG" -ForegroundColor Green
         shell: powershell
 
+      # ============================================================
+      # CLEANUP: Keep only last N releases to save disk space
+      # LIGHT builds ~100MB each, 20 releases = ~2GB max
+      # ============================================================
+      - name: Cleanup Old Releases
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          Write-Host ""
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host "  CLEANING UP OLD RELEASES" -ForegroundColor Cyan
+          Write-Host "============================================" -ForegroundColor Cyan
+
+          $MAX_RELEASES = 20  # Keep last 20 releases (~2GB max for LIGHT builds)
+          $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
+          $GITEA_REPO = "neilvibe/LocaNext"
+
+          if (-not $env:GITEA_TOKEN) {
+            Write-Host "[SKIP] No GITEA_TOKEN - skipping cleanup" -ForegroundColor Yellow
+            exit 0
+          }
+
+          # Get all releases sorted by date (newest first)
+          $releases = curl.exe -s "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases" `
+            -H "Authorization: token $env:GITEA_TOKEN" | ConvertFrom-Json
+
+          $releaseCount = $releases.Count
+          Write-Host "Found $releaseCount releases (keeping last $MAX_RELEASES)"
+
+          if ($releaseCount -le $MAX_RELEASES) {
+            Write-Host "[OK] No cleanup needed ($releaseCount <= $MAX_RELEASES)" -ForegroundColor Green
+            exit 0
+          }
+
+          # Sort by created_at descending and get releases to delete
+          $sortedReleases = $releases | Sort-Object { [DateTime]$_.created_at } -Descending
+          $toDelete = $sortedReleases | Select-Object -Skip $MAX_RELEASES
+
+          Write-Host "Deleting $($toDelete.Count) old releases..."
+
+          foreach ($release in $toDelete) {
+            $releaseId = $release.id
+            $releaseName = $release.name
+            $releaseTag = $release.tag_name
+
+            Write-Host "  Deleting: $releaseName ($releaseTag)..."
+
+            # Delete release
+            curl.exe -s -X DELETE "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$releaseId" `
+              -H "Authorization: token $env:GITEA_TOKEN" | Out-Null
+
+            # Delete tag (optional, keeps repo clean)
+            curl.exe -s -X DELETE "$GITEA_URL/api/v1/repos/$GITEA_REPO/tags/$releaseTag" `
+              -H "Authorization: token $env:GITEA_TOKEN" | Out-Null
+
+            Write-Host "    [DELETED] $releaseName" -ForegroundColor Yellow
+          }
+
+          Write-Host ""
+          Write-Host "[OK] Cleanup complete. Kept last $MAX_RELEASES releases." -ForegroundColor Green
+        shell: powershell
+
       # NOTE: No cleanup workarounds needed!
       # Using ephemeral runner mode (Solution F from P13.11):
       # - Runner exits after each job
