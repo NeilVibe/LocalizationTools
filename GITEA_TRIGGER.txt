@@ -187,3 +187,4 @@ Build LIGHT v2512101620 - Qwen3 + Transformers fix
 Build LIGHT v2512101620 - Re-trigger after Gitea restart
 Build LIGHT v2512101620 - YAML fix
 Build LIGHT v2512101620 - All heredocs fixed
+GITEA_TRIGGER.txt - Trigger Gitea build for test fix
