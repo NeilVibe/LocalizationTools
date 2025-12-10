@@ -679,6 +679,42 @@ WITH tiers (10GB active, 50GB archive per user):
 
 ---
 
+## Qwen Model Bundling (FULL vs LIGHT Builds)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    MODEL BUNDLING FLOW                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   LOCAL DEVELOPMENT:                                                        │
+│   ══════════════════                                                        │
+│   models/qwen-embedding/           ← Your local clone (2.3GB)               │
+│   • Ignored by .gitignore          ← Never pushed to GitHub                 │
+│   • Used by server at runtime      ← Instant, no download                   │
+│                                                                             │
+│   GITHUB BUILD (LIGHT only):                                                │
+│   ══════════════════════════                                                │
+│   • No model bundled               ← Installer ~100MB                       │
+│   • User downloads on first use    ← From HuggingFace                       │
+│   • GitHub has 2GB LFS limit       ← Can't host model anyway                │
+│                                                                             │
+│   GITEA BUILD (LIGHT or FULL):                                              │
+│   ════════════════════════════                                              │
+│   LIGHT: Same as GitHub            ← ~100MB, downloads later                │
+│   FULL:  Downloads during build    ← From HuggingFace, bundles in ZIP       │
+│          Installer ~2.5GB          ← Ready to use, no user download         │
+│                                                                             │
+│   FUTURE OPTION (cache model on Gitea):                                     │
+│   ══════════════════════════════════════                                    │
+│   • Store model in C:\BuildCache\qwen-embedding on Windows runner           │
+│   • FULL builds use cache (no HuggingFace download each time)               │
+│   • Faster FULL builds (~2 min instead of 10 min)                           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Quick Start (After Implementation)
 
 ```bash
