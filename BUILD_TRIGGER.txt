@@ -90,3 +90,4 @@ Build LIGHT v2512090827 - P13.11 Complete (Docs + Service)
 Build LIGHT v2512090827 - Fix embedded Python in installer
 Build LIGHT v2512101606 - P21 DB Powerhouse
 Build LIGHT v2512101620 - Version fix
+Build LIGHT v2512101620 - Transformers fix
