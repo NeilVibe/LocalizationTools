@@ -1253,60 +1253,11 @@ jobs:
           # Get build type
           $BUILD_TYPE = "${{ steps.check.outputs.build_type }}"
 
-          # Create release body based on build type
+          # Create release body based on build type (simplified for YAML compatibility)
           if ($BUILD_TYPE -eq "FULL") {
-            $BODY = @"
-## LocaNext Desktop Application (FULL Build)
-
-**Version:** $VERSION
-**Semantic:** $SEMANTIC
-**Build Type:** FULL (includes Qwen embedding model - ready to use!)
-
-### Downloads
-
-- ``LocaNext_v${VERSION}_Full_Portable.zip`` - Portable version with bundled AI model (~2.5GB)
-- ``latest.yml`` - Auto-update manifest
-
-### What's Included
-
-- XLSTransfer - AI-powered Excel translation
-- QuickSearch - Multi-game dictionary
-- KR Similar - Korean semantic similarity
-- LDM - Language Data Manager (CAT tool)
-- **Qwen/Qwen3-Embedding-0.6B** - Multilingual embedding model (bundled)
-
-### Notes
-This is a FULL build with the AI model pre-installed. No additional downloads needed!
-
----
-*Auto-released by Gitea Actions*
-"@
+            $BODY = "## LocaNext v$VERSION (FULL Build)`n`nIncludes Qwen embedding model. Ready to use!`n`n*Auto-released by Gitea Actions*"
           } else {
-            $BODY = @"
-## LocaNext Desktop Application (LIGHT Build)
-
-**Version:** $VERSION
-**Semantic:** $SEMANTIC
-**Build Type:** LIGHT (model downloads on first launch)
-
-### Downloads
-
-- ``LocaNext_v${VERSION}_Light_Portable.zip`` - Portable version (~100MB)
-- ``latest.yml`` - Auto-update manifest
-
-### What's Included
-
-- XLSTransfer - AI-powered Excel translation
-- QuickSearch - Multi-game dictionary
-- KR Similar - Korean semantic similarity
-- LDM - Language Data Manager (CAT tool)
-
-### Notes
-The AI embedding model (~2.3GB) will be downloaded automatically on first use of XLSTransfer or KR Similar.
-
----
-*Auto-released by Gitea Actions*
-"@
+            $BODY = "## LocaNext v$VERSION (LIGHT Build)`n`nModel downloads on first launch (~2.3GB).`n`n*Auto-released by Gitea Actions*"
           }
 
           # Create release via API
