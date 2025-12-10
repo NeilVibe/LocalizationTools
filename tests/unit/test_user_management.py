@@ -45,6 +45,17 @@ def get_admin_token():
     return None
 
 
+def get_admin_user_id(token):
+    """Get the admin user's ID from /me endpoint."""
+    response = requests.get(
+        f"{API_URL}/auth/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    if response.status_code == 200:
+        return response.json().get("user_id")
+    return None
+
+
 def create_test_user(token, username, password="testpass123", **kwargs):
     """Helper to create a test user."""
     data = {
@@ -100,6 +111,9 @@ class TestUserProfileFields:
         if not token:
             pytest.skip("Could not get admin token")
 
+        # Get admin's actual user_id (may not be 1 in CI environments)
+        admin_user_id = get_admin_user_id(token)
+
         # Create user with full profile (unique username)
         response = create_test_user(
             token,
@@ -115,7 +129,7 @@ class TestUserProfileFields:
         assert user["full_name"] == "Test User"
         assert user["team"] == "Team Alpha"
         assert user["language"] == "Japanese"
-        assert user["created_by"] == 1  # Created by admin (user_id=1)
+        assert user["created_by"] == admin_user_id  # Created by admin
 
         # Cleanup
         cleanup_test_user(token, user["user_id"])
@@ -126,13 +140,16 @@ class TestUserProfileFields:
         if not token:
             pytest.skip("Could not get admin token")
 
+        # Get admin's actual user_id
+        admin_user_id = get_admin_user_id(token)
+
         response = create_test_user(token, username=f"test_created_{TEST_SUFFIX}")
 
         assert response.status_code == 201
         user = response.json()
 
-        # Admin user_id is 1
-        assert user["created_by"] == 1
+        # Verify created_by matches the admin who created this user
+        assert user["created_by"] == admin_user_id
 
         cleanup_test_user(token, user["user_id"])
 
