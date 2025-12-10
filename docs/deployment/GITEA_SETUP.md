@@ -1,7 +1,7 @@
 # Gitea CI/CD Complete Setup Guide
 
-**Version:** 2512090500
-**Status:** PRODUCTION READY - Fully Working with Patched Runner
+**Version:** 2512101235
+**Status:** PRODUCTION READY - Fully Working with Non-Ephemeral Runner
 
 ---
 
@@ -39,9 +39,9 @@ This guide documents the complete setup of **Gitea** as a self-hosted Git server
 ┌──────────────────────────┐    ┌──────────────────────────────────┐
 │   Linux Runner (WSL)      │    │   Windows Runner (Native)         │
 ├──────────────────────────┤    ├──────────────────────────────────┤
-│  Name: locanext-runner    │    │  Name: windows-ephemeral          │
+│  Name: locanext-runner    │    │  Name: windows-runner             │
 │  Jobs: safety-checks,     │    │  Jobs: build-windows              │
-│        create-release     │    │  Mode: Ephemeral (fresh each job) │
+│        create-release     │    │  Mode: Non-Ephemeral (persistent) │
 │  Binary: act_runner       │    │  Binary: act_runner_patched_v15   │
 │  (stock, no patch needed) │    │  (PATCHED for NUL byte fix)       │
 └──────────────────────────┘    └──────────────────────────────────┘
@@ -535,6 +535,120 @@ Restart-Service GiteaActRunner       # Restart
 | Runner not picking up jobs | Wrong labels | Check runner labels match workflow `runs-on` |
 | SSH connection refused | Wrong port/username | Use `neil1988@host:2222` not `git@host` |
 | Build timeout | Service not running | Install as Windows Service |
+| Windows runner won't connect | NSSM service stopped | Start service manually (see 7.4) |
+| Ephemeral token expiration | Ephemeral mode re-registers each job | Use non-ephemeral (see 7.5) |
+| curl.exe JSON parse error | UTF-8 BOM character (`ï`) | Use `Invoke-RestMethod` instead |
+
+### 7.4 Windows Runner Service Issues (CRITICAL!)
+
+**Problem:** The Windows runner service (managed by NSSM) can stop unexpectedly, causing builds to hang at "build-windows" forever.
+
+**Symptoms:**
+- `safety-checks` job completes, but `build-windows` shows "waiting"
+- Linux runner shows jobs, Windows runner shows nothing
+- Service status shows "STOPPED"
+
+**Diagnosis (from WSL):**
+```bash
+# Check if Windows runner service is running
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Get-Service GiteaActRunner"
+
+# Expected output:
+# Status   Name               DisplayName
+# ------   ----               -----------
+# Running  GiteaActRunner     GiteaActRunner
+```
+
+**Fix (from WSL with PowerShell):**
+```bash
+# Start the service
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Service GiteaActRunner"
+
+# Verify it's running
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Get-Service GiteaActRunner"
+```
+
+**Why this happens:**
+- NSSM restarts the service, but registration can fail silently
+- Network changes can disconnect the runner from Gitea
+- Token expiration (especially in ephemeral mode)
+
+### 7.5 Ephemeral vs Non-Ephemeral Mode
+
+**Ephemeral Mode (NOT RECOMMENDED):**
+- Runner re-registers with a new token after each job
+- If token expires between jobs → registration fails → service loops
+- NSSM runs `run_ephemeral.bat` which re-registers each cycle
+
+**Non-Ephemeral Mode (RECOMMENDED):**
+- Runner registers ONCE with a persistent token
+- Token valid for 6 months (configurable in Gitea)
+- More stable, fewer moving parts
+
+**How to Switch to Non-Ephemeral:**
+
+1. **Generate a long-lived token in Gitea:**
+   - Gitea → Settings → Actions → Runners → Create new Runner
+   - Copy the registration token
+
+2. **Register the runner once (no `--ephemeral` flag):**
+   ```powershell
+   cd C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
+   .\act_runner_patched_v15.exe register --no-interactive `
+       --instance "http://172.28.150.120:3000" `
+       --token "YOUR_TOKEN" `
+       --name "windows-runner" `
+       --labels "windows:host,windows-latest:host,self-hosted:host,x64:host"
+   ```
+
+3. **Reconfigure NSSM to run daemon directly (no bat file):**
+   ```bash
+   # From WSL
+   /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+     nssm stop GiteaActRunner
+     nssm set GiteaActRunner Application 'C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner_patched_v15.exe'
+     nssm set GiteaActRunner AppParameters '-c config.yaml daemon'
+     nssm set GiteaActRunner AppDirectory 'C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner'
+     nssm start GiteaActRunner
+   "
+   ```
+
+4. **Verify:**
+   ```bash
+   /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Get-Service GiteaActRunner"
+   ```
+
+### 7.6 Release API Issues (curl.exe vs Invoke-RestMethod)
+
+**Problem:** When using `curl.exe` in PowerShell workflows to create releases, you may see:
+```
+Error: invalid character 'ï' looking for beginning of value
+```
+
+**Cause:** Windows `curl.exe` can add UTF-8 BOM (Byte Order Mark) characters to output, which corrupts JSON parsing.
+
+**Solution:** Use native PowerShell `Invoke-RestMethod` instead of `curl.exe`:
+
+```yaml
+# BAD - can produce UTF-8 BOM errors
+- name: Create Release
+  run: |
+    curl.exe -X POST "$env:GITEA_URL/api/v1/repos/$env:GITEA_REPO/releases" ...
+
+# GOOD - native PowerShell, no encoding issues
+- name: Create Release
+  run: |
+    $releaseData = @{
+      tag_name = "v${{ needs.safety-checks.outputs.version }}"
+      name = "LocaNext v${{ needs.safety-checks.outputs.version }}"
+      body = "Automated release"
+    } | ConvertTo-Json
+
+    $response = Invoke-RestMethod -Uri "$env:GITEA_URL/api/v1/repos/$env:GITEA_REPO/releases" `
+      -Method POST `
+      -Headers @{ "Authorization" = "token $env:GITEA_TOKEN"; "Content-Type" = "application/json" } `
+      -Body $releaseData
+```
 
 ### 7.2 Verify Patch is Working
 
@@ -573,15 +687,70 @@ Job succeeded                             ← No more false failures
 | Item | Path |
 |------|------|
 | Runner binary | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner_patched_v15.exe` |
-| Wrapper script | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\run_ephemeral.bat` |
+| Config | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\config.yaml` |
 | Runner token | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\registration_token.txt` |
 | Build workspace | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\_work\` |
+| Build cache | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\_cache\` |
 | Git | `C:\Program Files\Git\` |
 | Inno Setup | `C:\Program Files (x86)\Inno Setup 6\` |
 
 ---
 
-## Part 9: The Journey - How We Fixed It
+## Part 9: Maintenance
+
+### 9.1 Periodic Cleanup (Monthly)
+
+The `_work` folder accumulates build artifacts (~2GB per build). Clean it periodically:
+
+**From WSL:**
+```bash
+# Check size
+du -sh /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/GiteaRunner/_work
+
+# Clean (safe when no build is running)
+rm -rf /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/GiteaRunner/_work/*
+```
+
+**From PowerShell (Admin):**
+```powershell
+# Check size
+(Get-ChildItem -Recurse C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\_work | Measure-Object -Property Length -Sum).Sum / 1GB
+
+# Clean
+Remove-Item -Recurse -Force C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\_work\*
+```
+
+### 9.2 What to Keep vs Delete
+
+| Item | Keep? | Why |
+|------|-------|-----|
+| `act_runner_patched_v15.exe` | ✅ YES | Active runner binary |
+| `config.yaml` | ✅ YES | Runner configuration |
+| `.runner` | ✅ YES | Registration info |
+| `registration_token.txt` | ✅ YES | Auth token |
+| `_cache/` | ✅ YES | Speeds up builds (npm cache) |
+| `_work/` contents | 🗑️ DELETE | Old build artifacts |
+| `act_runner_patched_v*.exe` | 🗑️ DELETE | Old runner versions |
+| `*.log`, `*.txt` (except token) | 🗑️ DELETE | Old logs |
+
+### 9.3 Automated Cleanup (Optional)
+
+Add to Windows Task Scheduler for monthly cleanup:
+
+```powershell
+# cleanup_gitea_runner.ps1
+$workDir = "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\_work"
+$sizeBefore = (Get-ChildItem -Recurse $workDir -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB
+
+if ($sizeBefore -gt 500) {  # Only clean if > 500MB
+    Remove-Item -Recurse -Force "$workDir\*" -ErrorAction SilentlyContinue
+    Write-Host "Cleaned $([math]::Round($sizeBefore))MB from _work folder"
+}
+```
+
+---
+
+## Part 10: The Journey - How We Fixed It
 
 ### Problem Timeline
 
@@ -649,5 +818,5 @@ strings $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1) | 
 
 ---
 
-*Last updated: 2025-12-09*
-*Gitea: v1.22.3 | act_runner: v0.2.11 (patched v15) | Status: PRODUCTION READY*
+*Last updated: 2025-12-10*
+*Gitea: v1.22.3 | act_runner: v0.2.11 (patched v15) | Mode: Non-Ephemeral | Status: PRODUCTION READY*

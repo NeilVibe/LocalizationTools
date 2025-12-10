@@ -240,7 +240,7 @@ jobs:
           }
         shell: powershell
 
-      # Standard checkout - ephemeral runner handles cleanup elegantly
+      # Standard checkout - workspace cleanup handled at end of job
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -1381,11 +1381,19 @@ jobs:
           Write-Host "[OK] Cleanup complete. Kept last $MAX_RELEASES releases." -ForegroundColor Green
         shell: powershell
 
-      # NOTE: No cleanup workarounds needed!
-      # Using ephemeral runner mode (Solution F from P13.11):
-      # - Runner exits after each job
-      # - All handles released automatically
-      # - No more "Job failed" false positives
+      # Clean up workspace to prevent disk bloat
+      # Non-ephemeral mode doesn't auto-cleanup, so we do it manually
+      - name: Cleanup workspace
+        if: always()
+        run: |
+          Write-Host "[INFO] Cleaning up workspace..."
+          $workDir = "$env:GITHUB_WORKSPACE"
+          if (Test-Path $workDir) {
+            # Keep cache but remove build artifacts
+            Get-ChildItem -Path $workDir -Exclude "_cache" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "[OK] Workspace cleaned"
+          }
+        shell: powershell
 
   # ============================================================
   # NOTE: Release creation is now handled directly in build-windows job
