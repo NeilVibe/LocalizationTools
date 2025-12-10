@@ -944,7 +944,7 @@ const config = {
 
  Handles:
  - All localization tools
- - Real-time collaboration (50+ users)
+ - Real-time collaboration (100+ users)
  - 1 million rows of language data
  - Auto-updates for desktop app
 
@@ -995,10 +995,10 @@ DB OPTIMIZATION - PHASE 1 COMPLETE:
 - [ ] Preview changes before applying
 
 **Phase 3 - Performance Tuning:**
-- [x] Async database operations → ❌ NOT NEEDED (50 users = 1.6% of sync capacity)
+- [x] Async database operations → ❌ NOT NEEDED (100 users = 3% of sync capacity)
 - [ ] Query optimization (N+1 prevention) - only if slow queries detected
 
-**Note:** Sync + connection pooling (30 connections) handles 50+ users easily. Async only helps at 500+ concurrent users.
+**Note:** Sync + connection pooling handles 100+ users easily. Async only helps at 500+ concurrent users.
 
 ---
 

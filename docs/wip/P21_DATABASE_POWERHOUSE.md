@@ -153,7 +153,7 @@ All hitting DB at the same time
 
 ## Server Specifications
 
-### Minimum (50 users, 1M rows each)
+### Minimum (100 users, 1M rows each)
 ```
 CPU:    4 cores (8 threads)
 RAM:    16 GB
@@ -161,7 +161,7 @@ SSD:    500 GB NVMe
 Cost:   ~$50-80/month (cloud) or $500-800 one-time (bare metal)
 ```
 
-### Recommended (100 users, 1M rows each)
+### Recommended (100+ users, 1M rows each)
 ```
 CPU:    8 cores (16 threads)
 RAM:    32 GB
@@ -169,7 +169,7 @@ SSD:    1 TB NVMe
 Cost:   ~$100-150/month (cloud) or $1000-1500 one-time (bare metal)
 ```
 
-### Powerhouse (200+ users, unlimited rows)
+### Powerhouse (200+ users, 10M+ rows each)
 ```
 CPU:    16 cores (32 threads)
 RAM:    64 GB
@@ -193,16 +193,16 @@ TOTAL RECOMMENDED: 32 GB RAM
 
 ## PgBouncer Configuration
 
-**YES, WE NEED PGBOUNCER** for 50+ concurrent bulk uploads.
+**YES, WE NEED PGBOUNCER** for 100+ concurrent bulk uploads.
 
 ### Why PgBouncer?
 ```
 WITHOUT PgBouncer:
 ─────────────────
-• 40 users each hold connection for 60+ seconds
+• 100 users each hold connection for 60+ seconds
 • PostgreSQL max_connections = 200
 • Each connection uses ~10MB RAM
-• 40 connections × 10MB = 400MB just for connections
+• 100 connections × 10MB = 1GB just for connections
 • New users might get "too many connections" error
 
 WITH PgBouncer:
@@ -512,7 +512,7 @@ Phase 5 (Storage):
 
 **Problem:** Without cleanup, storage grows forever.
 ```
-50 users × 10 files × 250MB = 125 GB initial
+100 users × 10 files × 250MB = 250 GB initial
 + daily uploads = unlimited growth
 ```
 
@@ -686,7 +686,7 @@ WITH tiers (10GB active, 50GB archive per user):
 sudo cp config/postgresql.conf.recommended /etc/postgresql/16/main/postgresql.conf
 sudo systemctl restart postgresql
 
-# 2. Start PgBouncer (if needed for 50+ users)
+# 2. Start PgBouncer (required for 100+ users)
 sudo cp config/pgbouncer.ini /etc/pgbouncer/pgbouncer.ini
 sudo systemctl start pgbouncer
 
