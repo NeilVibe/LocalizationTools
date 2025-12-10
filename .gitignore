@@ -127,13 +127,15 @@ server/data/cache/
 !server/data/outputs/.gitkeep
 !server/data/cache/.gitkeep
 
-# ML Models (too large for git)
+# ML Models (too large for git - downloaded at runtime or during FULL build)
 client/models/KRTransformer/
+models/qwen-embedding/
 *.npy
 *.pkl
 *.pth
 *.pt
 *.onnx
+*.safetensors
 
 # Embeddings & Dictionaries
 *Embeddings.npy
