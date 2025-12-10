@@ -733,52 +733,28 @@ Remove-Item -Recurse -Force C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\_work\*
 | `act_runner_patched_v*.exe` | 🗑️ DELETE | Old runner versions |
 | `*.log`, `*.txt` (except token) | 🗑️ DELETE | Old logs |
 
-### 9.3 Automated Cleanup (Optional)
+### 9.3 Automated Cleanup (Recommended)
 
-Add to Windows Task Scheduler for monthly cleanup:
+Script already installed at `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\cleanup_workspace.ps1`
 
+**Setup Task Scheduler (one-time, from Admin PowerShell):**
 ```powershell
-# cleanup_gitea_runner.ps1
-$workDir = "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\_work"
-$sizeBefore = (Get-ChildItem -Recurse $workDir -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB
-
-if ($sizeBefore -gt 500) {  # Only clean if > 500MB
-    Remove-Item -Recurse -Force "$workDir\*" -ErrorAction SilentlyContinue
-    Write-Host "Cleaned $([math]::Round($sizeBefore))MB from _work folder"
-}
+$action = New-ScheduledTaskAction -Execute "powershell.exe" `
+    -Argument "-ExecutionPolicy Bypass -File C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\cleanup_workspace.ps1"
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 3am
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable
+Register-ScheduledTask -TaskName "GiteaRunnerCleanup" -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest
 ```
 
----
+**Manual run:**
+```powershell
+& "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\cleanup_workspace.ps1"
+```
 
-## Part 10: The Journey - How We Fixed It
-
-### Problem Timeline
-
-1. **Initial Setup**: Gitea installed, Actions enabled, runners registered
-2. **First Builds**: Linux jobs worked, Windows jobs showed "Job failed"
-3. **Investigation**: Build steps all succeeded, failure was in cleanup
-4. **Root Cause #1**: Windows file handles not released during cleanup
-5. **Solution #1**: Ephemeral mode (runner exits after each job)
-6. **Root Cause #2**: `invalid format '\x00'` - NUL bytes in GITHUB_OUTPUT
-7. **Investigation**: Windows PowerShell `Add-Content` writes NUL bytes
-8. **Solution #2**: Patch act_runner to strip NUL bytes from env files
-9. **Final Result**: v15 patch - all jobs show correct "Job succeeded"
-
-### The Patch Evolution
-
-| Version | Fix Attempted | Result |
-|---------|---------------|--------|
-| v10 | Skip cleanup errors | Still failed (NUL parse error) |
-| v11-v13 | Debug logging | Found `\x00` character |
-| v14 | Skip control-char lines | Failed (NUL in values too) |
-| **v15** | `strings.ReplaceAll(line, "\x00", "")` | **SUCCESS!** |
-
-### Key Learnings
-
-1. **Windows PowerShell is buggy**: It writes NUL bytes to files
-2. **Ephemeral mode is essential**: Prevents file handle issues
-3. **Go's os/exec rejects NUL**: Environment variables can't contain `\x00`
-4. **strings.TrimSpace doesn't help**: It only removes whitespace, not NUL
+**Check logs:**
+```powershell
+Get-Content C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\cleanup.log -Tail 10
+```
 
 ---
 
