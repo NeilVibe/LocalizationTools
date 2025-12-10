@@ -492,9 +492,12 @@ class TestAdminUserManagement:
         if not token:
             pytest.skip("Could not get admin token")
 
-        # Try to deactivate self (admin is user_id=1)
+        # Get admin's actual user_id
+        admin_user_id = get_admin_user_id(token)
+
+        # Try to deactivate self
         response = requests.delete(
-            f"{API_URL}/auth/admin/users/1",
+            f"{API_URL}/auth/admin/users/{admin_user_id}",
             headers={"Authorization": f"Bearer {token}"}
         )
         assert response.status_code == 400
@@ -506,9 +509,12 @@ class TestAdminUserManagement:
         if not token:
             pytest.skip("Could not get admin token")
 
+        # Get admin's actual user_id
+        admin_user_id = get_admin_user_id(token)
+
         # Try to change own role to user
         response = requests.put(
-            f"{API_URL}/auth/admin/users/1",
+            f"{API_URL}/auth/admin/users/{admin_user_id}",
             headers={"Authorization": f"Bearer {token}"},
             json={"role": "user"}
         )
