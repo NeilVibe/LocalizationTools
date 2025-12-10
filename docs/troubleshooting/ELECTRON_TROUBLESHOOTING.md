@@ -1,6 +1,6 @@
 # Electron Troubleshooting Guide
 
-**Last Updated:** 2025-12-05
+**Last Updated:** 2025-12-11
 **Purpose:** Debug protocol for Electron desktop app issues
 
 ---
@@ -299,4 +299,123 @@ This converts:
 
 ---
 
+---
+
+## Case Study: LDM Not Showing as Default App (2025-12-11)
+
+### The Problem
+User reported clicking "LDM" in Apps menu showed Welcome page instead of LDM app. Even after changing the store default to `'ldm'`, Welcome page still appeared.
+
+### Troubleshooting Journey
+
+#### Step 1: CDP Remote Debugging
+Used Chrome DevTools Protocol to inspect the running Electron app:
+```bash
+# Launch with CDP enabled
+./LocaNext.exe --remote-debugging-port=9222
+
+# Connect via Node.js WebSocket
+node test_ldm_nav.js  # Custom script to click menu items
+```
+
+#### Step 2: Initial Hypothesis - Store Isolation
+Created debug script to check store values vs DOM:
+```javascript
+// Debug revealed a mismatch:
+navTest.getState()  → {app: "ldm", view: "app"}  // Store says LDM
+document.querySelector('.main-container').children[0].className
+                    → "welcome-container"        // DOM shows Welcome!
+```
+
+**Hypothesis:** Svelte stores were isolated between components.
+
+#### Step 3: Wrong Fix Attempt
+Modified `src/lib/stores/app.js` to default to 'ldm':
+```javascript
+export const currentApp = writable('ldm');  // Changed from 'xlstransfer'
+```
+
+**Result:** Still showed Welcome page. Fix didn't work!
+
+#### Step 4: Key Discovery - Error Page as Main Page
+Examined the built JavaScript and found:
+```javascript
+// In node 1 (error page bundle):
+logger.info("+error.svelte acting as main page (Electron file:// workaround)")
+```
+
+**Root Cause Found:** In Electron's `file://` protocol mode, SvelteKit router fails because:
+1. URL is `file:///C:/Users/.../index.html`
+2. Router tries to match route `/C:/Users/.../index.html`
+3. No route matches → "Not found" error
+4. **`+error.svelte` renders instead of `+page.svelte`**
+
+The error page had the full app routing logic but was missing the LDM case!
+
+#### Step 5: Actual Fix
+Updated `src/routes/+error.svelte` (the REAL main page in Electron):
+
+```svelte
+<!-- BEFORE: Missing LDM, defaults to Welcome -->
+{:else if app === 'krsimilar'}
+  <KRSimilar />
+{:else}
+  <Welcome />  <!-- Always hit this fallback -->
+{/if}
+
+<!-- AFTER: LDM as default -->
+{:else if app === 'krsimilar'}
+  <KRSimilar />
+{:else}
+  <LDM />  <!-- Now shows LDM by default -->
+{/if}
+```
+
+Also added the missing LDM import:
+```javascript
+import LDM from "$lib/components/apps/LDM.svelte";
+```
+
+#### Step 6: Verification
+```bash
+# Kill app, rebuild, deploy, launch, verify
+taskkill /F /IM LocaNext.exe
+npm run build
+cp -r build /mnt/c/.../resources/app/
+./LocaNext.exe --remote-debugging-port=9222
+
+# Check DOM via CDP
+node verify_ldm.js
+# Output: { mainChildren: "ldm-app svelte-1bteajd", hasLDM: true, hasWelcome: false }
+```
+
+### Key Lessons
+
+1. **+error.svelte can be your main page** - In Electron `file://` mode, SvelteKit routing fails and error page renders instead
+
+2. **Store values don't lie** - When `navTest.getState()` returns `{app: "ldm"}` but DOM shows Welcome, the issue is in the RENDERING code, not the store
+
+3. **Check ALL routing paths** - Both `+page.svelte` AND `+error.svelte` need correct routing in Electron apps
+
+4. **CDP is powerful for debugging** - Remote debugging via WebSocket allows inspection without access to DevTools
+
+5. **Don't trust filename assumptions** - `+error.svelte` is NOT just for errors in Electron mode
+
+### Files Changed
+- `locaNext/src/routes/+error.svelte` - Added LDM import, made LDM default
+- `locaNext/src/routes/+page.svelte` - Same changes for consistency
+- `locaNext/src/lib/stores/app.js` - Changed default to 'ldm' (backup)
+
+### Verification Scripts Created
+```
+C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\
+├── verify_ldm.js      # Check DOM for LDM presence
+├── test_ldm_nav.js    # Click LDM in menu and verify
+├── debug_stores.js    # Compare store values vs DOM
+└── debug_ldm.js       # Full debug with console logging
+```
+
+---
+
 *Created: 2025-12-05 after fixing black screen issue*
+*Updated: 2025-12-11 - Added LDM routing case study*

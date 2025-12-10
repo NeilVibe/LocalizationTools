@@ -8,7 +8,7 @@
   import KRSimilar from "$lib/components/apps/KRSimilar.svelte";
   import LDM from "$lib/components/apps/LDM.svelte";
   import TaskManager from "$lib/components/TaskManager.svelte";
-  import Welcome from "$lib/components/Welcome.svelte";
+  // Welcome component removed - LDM is now the default app
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
@@ -23,47 +23,49 @@
   $: void form;
   $: void params;
 
-  let view;
-  let app;
+  import { get } from 'svelte/store';
 
-  console.log("[DEBUG] +page.svelte subscribing to stores");
+  // DEBUG: Expose page's view of stores for testing (set immediately, not in onMount)
+  // Use get() since this runs during initialization, not in reactive context
+  if (typeof window !== 'undefined') {
+    window.pageDebug = {
+      getStoreValues: () => ({
+        currentApp: get(currentApp),
+        currentView: get(currentView)
+      }),
+      setApp: (appId) => {
+        currentApp.set(appId);
+        currentView.set('app');
+        return { success: true, app: appId };
+      }
+    };
+    console.log("[DEBUG] window.pageDebug exposed immediately");
+  }
 
-  currentView.subscribe(value => {
-    view = value;
-    console.log("[DEBUG] View changed:", view);
-    logger.info("View changed", { view });
-  });
-
-  currentApp.subscribe(value => {
-    app = value;
-    console.log("[DEBUG] App changed:", app);
-    logger.info("App changed", { app });
-  });
+  // Use reactive statements for logging (the actual rendering uses $store syntax)
+  $: console.log("[DEBUG] View changed:", $currentView);
+  $: console.log("[DEBUG] App changed:", $currentApp);
+  $: logger.info("Navigation state", { view: $currentView, app: $currentApp });
 
   onMount(() => {
     console.log("[DEBUG] +page.svelte onMount");
     logger.component("+page.svelte", "mounted");
-    logger.info("Page state", { view, app });
+    logger.info("Page state", { view: $currentView, app: $currentApp });
   });
 </script>
 
 <div class="main-container">
-  {#if view === 'tasks'}
+  {#if $currentView === 'tasks'}
     <TaskManager />
-  {:else if view === 'app'}
-    {#if app === 'xlstransfer'}
-      <XLSTransfer />
-    {:else if app === 'quicksearch'}
-      <QuickSearch />
-    {:else if app === 'krsimilar'}
-      <KRSimilar />
-    {:else if app === 'ldm'}
-      <LDM />
-    {:else}
-      <Welcome />
-    {/if}
+  {:else if $currentApp === 'xlstransfer'}
+    <XLSTransfer />
+  {:else if $currentApp === 'quicksearch'}
+    <QuickSearch />
+  {:else if $currentApp === 'krsimilar'}
+    <KRSimilar />
   {:else}
-    <Welcome />
+    <!-- LDM is the default app - no Welcome page needed -->
+    <LDM />
   {/if}
 </div>
 

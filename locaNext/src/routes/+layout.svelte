@@ -16,6 +16,7 @@
   import { Apps, UserAvatar, Settings } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
+  import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
   import ChangePassword from "$lib/components/ChangePassword.svelte";
@@ -154,6 +155,43 @@
 
     logger.component("Layout", "mounted");
     checkAuth();
+
+    // TEST MODE: Expose navigation helper for CDP testing
+    // This allows automated tests to navigate between apps without DOM clicks
+    window.navTest = {
+      /**
+       * Navigate to a specific app
+       * @param {string} appId - One of: xlstransfer, quicksearch, krsimilar, ldm
+       */
+      goToApp: (appId) => {
+        const validApps = ['xlstransfer', 'quicksearch', 'krsimilar', 'ldm'];
+        if (!validApps.includes(appId)) {
+          return { success: false, error: `Invalid app: ${appId}. Valid: ${validApps.join(', ')}` };
+        }
+        currentApp.set(appId);
+        currentView.set('app');
+        logger.info("Test navigation", { app: appId });
+        return { success: true, app: appId };
+      },
+      /**
+       * Navigate to tasks view
+       */
+      goToTasks: () => {
+        currentView.set('tasks');
+        return { success: true, view: 'tasks' };
+      },
+      /**
+       * Get current navigation state (uses svelte/store get)
+       */
+      getState: () => {
+        return {
+          app: get(currentApp),
+          view: get(currentView),
+          authenticated: get(isAuthenticated)
+        };
+      }
+    };
+    logger.info("Test navigation helper exposed on window.navTest");
   });
 </script>
 
