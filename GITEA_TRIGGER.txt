@@ -197,3 +197,4 @@ Build v2512101843 - clean test
 Build v2512101939 - FIX: GITEA_URL localhost -> WSL IP
 Build v2512102006 - Service restarted
 Build v2512102012 - Fix curl JSON escaping
+Build v2512102014 - Version update + curl fix
