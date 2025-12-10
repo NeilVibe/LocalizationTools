@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512101440 (2025-12-10)
+**Version:** 2512102200 (2025-12-10)
 **Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 62% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅ | **DB Opt P18** ✅ | **TM API** ✅ | **P21 DB Powerhouse** ✅
 
 ---
@@ -624,12 +624,13 @@ bash scripts/clean_logs.sh
 - **Phase 4:** Admin Dashboard ✅ COMPLETE
 - **Priority 11.0:** Health Check & Auto-Repair ✅ COMPLETE
 - **Priority 12.5:** Central Telemetry System ✅ FULL STACK COMPLETE
-- **Priority 13.0:** Gitea Patch Server ✅ FULLY COMPLETE
+- **Priority 13.0:** Gitea Patch Server ✅ FULLY COMPLETE + AUTOMATED
   - ✅ Installed: `/home/neil1988/gitea/` (v1.22.3, SQLite)
   - ✅ Scripts: `start.sh`, `stop.sh`, `start_runner.sh`, `stop_runner.sh`
-  - ✅ Workflow: `.gitea/workflows/build.yml` (test → build → release)
-  - ✅ Runner: Patched v15 (NUL byte fix) + Ephemeral mode
+  - ✅ Workflow: `.gitea/workflows/build.yml` (test → build → release + cleanup)
+  - ✅ Runner: Patched v15 (NUL byte fix) + Non-Ephemeral (6-month token)
   - ✅ DUAL PUSH: `git push origin main && git push gitea main`
+  - ✅ Auto-cleanup: Workflow step + Weekly Task Scheduler (`GiteaRunnerCleanup`)
 - **Priority 13.12:** Smart Build Cache v2.0 ✅ COMPLETE
   - ✅ Hash-based invalidation (`requirements.txt` hash auto-refresh)
   - ✅ Version tracking (Python/VC++ version changes auto-invalidate)
@@ -688,35 +689,32 @@ sudo killall pgbouncer; sudo -u postgres pgbouncer -d /etc/pgbouncer/pgbouncer.i
 - "Add 'Save + Add to TM' button in cell edit?" - Simple glossary feature discussed
 
 ### Context from Last Session (2025-12-10):
-**P21 Database Powerhouse - Phase 1 COMPLETE:**
+**CI/CD Fully Automated - Zero Maintenance:**
 ```
-✅ COPY TEXT implementation (bulk_copy, bulk_copy_tm_entries, bulk_copy_rows)
-✅ PostgreSQL 14.20 configured and running
-✅ Credentials: .env auto-loading with python-dotenv
-✅ Benchmark: 15-24K entries/sec (both INSERT and COPY TEXT)
-✅ 1M rows = ~60 seconds
-```
-
-**Async vs Sync Verdict:**
-```
-Sync SQLAlchemy = BETTER for 100 users
-- Simpler code, easier maintenance
-- Database is the bottleneck, not Python's concurrency
-- Async only helps at 500+ concurrent connections
+✅ Ephemeral mode DITCHED → Non-Ephemeral (6-month token)
+✅ NSSM service runs act_runner_patched_v15.exe directly
+✅ Workflow cleanup step added (end of each build)
+✅ Weekly Task Scheduler: GiteaRunnerCleanup (Sunday 3am)
+✅ Script: C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\cleanup_workspace.ps1
+✅ Disk cleanup done: ~2.4GB freed (old runners + _work)
+✅ Runner directory now ~29MB (only v15.exe + config files)
 ```
 
-**Technology Stack (Industry Standard):**
-```
-✅ PostgreSQL 14.20 - Used by Instagram, Spotify, Reddit
-✅ Connection pooling - 10 pool, 20 overflow
-✅ Batch/COPY inserts - 15-24K entries/sec
-📋 PgBouncer - Phase 3 (for 1000+ connections)
+**Trigger Build (fully automated):**
+```bash
+echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Trigger build" && git push gitea main
 ```
 
-**DB Sizing:**
+**Key Files:**
 ```
-100 users × 1M rows = 100M rows = 20GB data
-Recommended: 8 cores, 32GB RAM, 1TB NVMe (~$100-150/month)
+GiteaRunner/
+├── act_runner_patched_v15.exe  # ONLY runner binary
+├── config.yaml                  # Runner config
+├── .runner                      # Registration (non-ephemeral)
+├── cleanup_workspace.ps1        # Auto-cleanup script
+├── _cache/                      # npm cache (KEEP)
+└── _work/                       # Build artifacts (auto-cleaned)
 ```
 
 ### Windows Environment (C: Drive - SSD):
