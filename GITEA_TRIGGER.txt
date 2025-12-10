@@ -195,3 +195,4 @@ Build v2512101825 - manual runner test
 Build v2512101829 - Fixed Gitea URL
 Build v2512101843 - clean test
 Build v2512101939 - FIX: GITEA_URL localhost -> WSL IP
+Build v2512102006 - Service restarted
