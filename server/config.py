@@ -9,6 +9,17 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# Load environment variables from .env file (if exists)
+# override=True ensures .env values take precedence over system env vars
+try:
+    from dotenv import load_dotenv
+    # Load from project root .env file
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
+except ImportError:
+    pass  # python-dotenv not installed, use system env vars only
+
 # Add parent directory to path for version import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from version import VERSION, SEMANTIC_VERSION, VERSION_FOOTER

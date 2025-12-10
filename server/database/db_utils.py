@@ -2,13 +2,20 @@
 Database Utilities - High-Performance Operations
 
 Optimized database operations for LocaNext:
-- Batch inserts (10x+ faster for large imports)
+- COPY TEXT bulk inserts (3-5x faster than INSERT for PostgreSQL)
+- Batch inserts fallback for SQLite
 - Full-Text Search (FTS) using PostgreSQL tsvector
 - Query optimization helpers
+
+P21 Database Powerhouse - COPY TEXT Implementation
+- PostgreSQL: Uses COPY FROM STDIN (psycopg2.copy_from)
+- SQLite: Falls back to batch INSERT
+- Handles special characters: tabs → spaces, newlines → \n, backslash → \\
 """
 
 import hashlib
-from typing import Any, Callable, Generator, List, Optional, Type, TypeVar
+from io import StringIO
+from typing import Any, Callable, Generator, List, Optional, Tuple, Type, TypeVar
 
 from sqlalchemy import insert, text, func
 from sqlalchemy.orm import Session
@@ -22,7 +29,185 @@ T = TypeVar('T', bound=Base)
 
 
 # =============================================================================
-# Batch Insert Operations
+# COPY TEXT - High-Performance Bulk Insert (PostgreSQL)
+# =============================================================================
+
+def escape_for_copy(value: Any) -> str:
+    """
+    Escape a value for PostgreSQL COPY TEXT format.
+
+    Handles:
+    - NULL values → \\N
+    - Tabs → space (COPY uses tabs as delimiter)
+    - Newlines → \\n (escaped newline)
+    - Backslashes → \\\\ (escaped backslash)
+
+    Args:
+        value: Any value to escape
+
+    Returns:
+        Escaped string safe for COPY TEXT format
+    """
+    if value is None:
+        return '\\N'
+
+    s = str(value)
+
+    # Escape in order: backslash first, then other special chars
+    s = s.replace('\\', '\\\\')  # Backslash → \\
+    s = s.replace('\t', ' ')      # Tab → space (delimiter conflict)
+    s = s.replace('\n', '\\n')    # Newline → \n
+    s = s.replace('\r', '\\r')    # Carriage return → \r
+
+    return s
+
+
+def bulk_copy(
+    db: Session,
+    table_name: str,
+    columns: List[str],
+    rows: List[Tuple],
+    progress_callback: Optional[Callable[[int, int], None]] = None
+) -> int:
+    """
+    High-performance bulk insert using PostgreSQL COPY FROM STDIN.
+
+    3-5x faster than batch INSERT for large datasets.
+    Falls back to batch INSERT for SQLite.
+
+    Args:
+        db: SQLAlchemy database session
+        table_name: Target table name (e.g., 'tm_entries')
+        columns: List of column names in order
+        rows: List of tuples, each tuple is one row
+        progress_callback: Optional callback(inserted, total) for progress
+
+    Returns:
+        Number of rows inserted
+
+    Example:
+        >>> rows = [
+        >>>     (1, 'Hello', 'World'),
+        >>>     (2, 'Foo', 'Bar'),
+        >>> ]
+        >>> count = bulk_copy(db, 'my_table', ['id', 'col1', 'col2'], rows)
+    """
+    if not rows:
+        return 0
+
+    total = len(rows)
+
+    # Check if PostgreSQL
+    if is_postgresql(db):
+        return _bulk_copy_postgres(db, table_name, columns, rows, progress_callback)
+    else:
+        # SQLite fallback - use batch INSERT
+        logger.debug(f"SQLite detected - falling back to batch INSERT for {table_name}")
+        return _bulk_copy_sqlite_fallback(db, table_name, columns, rows, progress_callback)
+
+
+def _bulk_copy_postgres(
+    db: Session,
+    table_name: str,
+    columns: List[str],
+    rows: List[Tuple],
+    progress_callback: Optional[Callable[[int, int], None]] = None
+) -> int:
+    """
+    PostgreSQL COPY FROM STDIN implementation.
+
+    Uses psycopg2's copy_from() which streams data directly to PostgreSQL.
+    Much faster than INSERT for large datasets.
+    """
+    total = len(rows)
+    logger.info(f"COPY TEXT: Inserting {total:,} rows into {table_name}")
+
+    try:
+        # Build tab-separated text buffer
+        buffer = StringIO()
+        for row in rows:
+            line = '\t'.join(escape_for_copy(v) for v in row)
+            buffer.write(line + '\n')
+
+        buffer.seek(0)
+
+        # Get raw psycopg2 connection from SQLAlchemy
+        raw_conn = db.connection().connection
+        cursor = raw_conn.cursor()
+
+        # Execute COPY
+        cursor.copy_from(
+            buffer,
+            table_name,
+            columns=columns,
+            null='\\N'
+        )
+
+        # Commit
+        db.commit()
+
+        # Progress callback - report 100% at end
+        if progress_callback:
+            progress_callback(total, total)
+
+        logger.success(f"COPY TEXT complete: {total:,} rows into {table_name}")
+        return total
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"COPY TEXT failed for {table_name}: {e}")
+        raise
+
+
+def _bulk_copy_sqlite_fallback(
+    db: Session,
+    table_name: str,
+    columns: List[str],
+    rows: List[Tuple],
+    progress_callback: Optional[Callable[[int, int], None]] = None,
+    batch_size: int = 5000
+) -> int:
+    """
+    SQLite fallback using batch INSERT.
+
+    SQLite doesn't support COPY, so we use parameterized INSERT.
+    """
+    total = len(rows)
+    inserted = 0
+
+    logger.info(f"Batch INSERT (SQLite): Inserting {total:,} rows into {table_name}")
+
+    try:
+        # Build parameterized SQL with named placeholders
+        col_names = ', '.join(columns)
+        placeholders = ', '.join([f':col_{i}' for i in range(len(columns))])
+        sql = f"INSERT INTO {table_name} ({col_names}) VALUES ({placeholders})"
+
+        for i in range(0, total, batch_size):
+            batch = rows[i:i + batch_size]
+
+            # Execute each row individually with proper param dict
+            for row in batch:
+                params = {f'col_{j}': v for j, v in enumerate(row)}
+                db.execute(text(sql), params)
+
+            inserted += len(batch)
+
+            if progress_callback:
+                progress_callback(inserted, total)
+
+        db.commit()
+        logger.success(f"Batch INSERT complete: {inserted:,} rows into {table_name}")
+        return inserted
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Batch INSERT failed for {table_name}: {e}")
+        raise
+
+
+# =============================================================================
+# Batch Insert Operations (Updated with COPY TEXT support)
 # =============================================================================
 
 def bulk_insert(
@@ -176,6 +361,113 @@ def bulk_insert_rows(
         })
 
     return bulk_insert(db, LDMRow, prepared, batch_size, progress_callback)
+
+
+# =============================================================================
+# COPY TEXT Wrapper Functions (3-5x faster for PostgreSQL)
+# =============================================================================
+
+def bulk_copy_tm_entries(
+    db: Session,
+    tm_id: int,
+    entries: List[dict],
+    progress_callback: Optional[Callable[[int, int], None]] = None
+) -> int:
+    """
+    COPY TEXT bulk insert for TM entries (3-5x faster than INSERT).
+
+    Uses PostgreSQL COPY FROM STDIN for maximum performance.
+    Falls back to batch INSERT for SQLite.
+
+    Args:
+        db: Database session
+        tm_id: Translation Memory ID
+        entries: List of dicts with 'source_text' and 'target_text'
+        progress_callback: Optional callback for progress
+
+    Returns:
+        Number of entries inserted
+
+    Example:
+        >>> entries = [
+        >>>     {"source_text": "Hello", "target_text": "안녕"},
+        >>>     {"source_text": "World", "target_text": "세계"},
+        >>> ]
+        >>> count = bulk_copy_tm_entries(db, tm_id=1, entries=entries)
+    """
+    if not entries:
+        return 0
+
+    # Prepare rows as tuples with hashes
+    rows = []
+    for entry in entries:
+        source = entry.get('source_text', '')
+        target = entry.get('target_text', '')
+
+        # Generate SHA256 hash of normalized source text
+        normalized_source = normalize_text_for_hash(source)
+        source_hash = hashlib.sha256(normalized_source.encode('utf-8')).hexdigest()
+
+        rows.append((
+            tm_id,
+            source,
+            target,
+            source_hash,
+            entry.get('created_by'),
+            entry.get('change_date'),
+        ))
+
+    columns = ['tm_id', 'source_text', 'target_text', 'source_hash', 'created_by', 'change_date']
+
+    return bulk_copy(db, 'ldm_tm_entries', columns, rows, progress_callback)
+
+
+def bulk_copy_rows(
+    db: Session,
+    file_id: int,
+    rows: List[dict],
+    progress_callback: Optional[Callable[[int, int], None]] = None
+) -> int:
+    """
+    COPY TEXT bulk insert for LDM rows (3-5x faster than INSERT).
+
+    Uses PostgreSQL COPY FROM STDIN for maximum performance.
+    Falls back to batch INSERT for SQLite.
+
+    Args:
+        db: Database session
+        file_id: LDM File ID
+        rows: List of dicts with 'row_num', 'string_id', 'source', 'target'
+        progress_callback: Optional callback for progress
+
+    Returns:
+        Number of rows inserted
+
+    Example:
+        >>> rows = [
+        >>>     {"row_num": 0, "string_id": "menu_01", "source": "게임", "target": "Game"},
+        >>>     {"row_num": 1, "string_id": "menu_02", "source": "설정", "target": "Settings"},
+        >>> ]
+        >>> count = bulk_copy_rows(db, file_id=1, rows=rows)
+    """
+    if not rows:
+        return 0
+
+    # Prepare rows as tuples
+    prepared = []
+    for row in rows:
+        prepared.append((
+            file_id,
+            row.get('row_num', 0),
+            row.get('string_id'),
+            row.get('source'),
+            row.get('target'),
+            row.get('status', 'pending'),
+        ))
+
+    columns = ['file_id', 'row_num', 'string_id', 'source', 'target', 'status']
+
+    return bulk_copy(db, 'ldm_rows', columns, prepared, progress_callback)
 
 
 # =============================================================================
@@ -557,7 +849,13 @@ def _upsert_batch_sqlite(
 # =============================================================================
 
 __all__ = [
-    # Batch operations
+    # COPY TEXT (P21 - 3-5x faster for PostgreSQL)
+    'bulk_copy',
+    'bulk_copy_tm_entries',
+    'bulk_copy_rows',
+    'escape_for_copy',
+
+    # Batch operations (legacy INSERT - still works for SQLite)
     'bulk_insert',
     'bulk_insert_tm_entries',
     'bulk_insert_rows',

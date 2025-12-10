@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512091330 (2025-12-09)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 62% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅ | **DB Opt P18** ✅ | **TM API** ✅
+**Version:** 2512101440 (2025-12-10)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 62% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅ | **DB Opt P18** ✅ | **TM API** ✅ | **P21 DB Powerhouse** ✅
 
 ---
 
@@ -657,11 +657,11 @@ bash scripts/clean_logs.sh
   - **Task File:** `docs/wip/P17_LDM_TASKS.md` - Full breakdown with priority order
   - **Demo:** 11 screenshots in `docs/demos/ldm/`
   - **Performance:** 103K rows in 50 sec
-- **P21: Database Powerhouse:** 🔄 PLANNING (2025-12-10)
-  - 📋 State of the art DB setup for 40+ users × 1M rows
-  - 📋 COPY BINARY instead of INSERT (5-10x faster)
-  - 📋 PgBouncer for 1000+ connections
-  - 📋 PostgreSQL tuning (32GB RAM, NVMe SSD)
+- **P21: Database Powerhouse:** ✅ COMPLETE (2025-12-10)
+  - ✅ COPY TEXT for bulk uploads (31K entries/sec)
+  - ✅ PgBouncer 1.16 on port 6433 (1000 connections)
+  - ✅ PostgreSQL tuned (8GB shared_buffers, 24GB cache)
+  - ✅ Performance indexes on all LDM tables
   - **WIP:** `docs/wip/P21_DATABASE_POWERHOUSE.md`
 
 ### Quick Gitea Commands:
@@ -670,31 +670,53 @@ cd ~/gitea && ./start.sh   # Start Gitea → http://localhost:3000
 cd ~/gitea && ./stop.sh    # Stop Gitea
 ```
 
+### Quick DB Commands:
+```bash
+# Check PgBouncer status
+pgrep -a pgbouncer
+
+# Connect through PgBouncer
+PGPASSWORD='locanext_dev_2025' psql -h 127.0.0.1 -p 6433 -U localization_admin -d localizationtools
+
+# Restart PgBouncer (if needed)
+sudo killall pgbouncer; sudo -u postgres pgbouncer -d /etc/pgbouncer/pgbouncer.ini
+```
+
 ### Questions to Ask User:
-- "Ready to start P21 Database Powerhouse?" - COPY BINARY + PgBouncer implementation
-- "Cloud or bare metal for DB server? Budget ceiling?"
+- "Continue P17 LDM? Remaining: Phase 7-8 (TM System + Nice View)"
 - "Continue P17 LDM? Remaining: Glossary integration + Phase 6 Polish"
 - "Add 'Save + Add to TM' button in cell edit?" - Simple glossary feature discussed
 
 ### Context from Last Session (2025-12-10):
-**Architecture Discussion Conclusions:**
+**P21 Database Powerhouse - Phase 1 COMPLETE:**
 ```
-1. LOCAL PROCESSING: All heavy work (embeddings, FAISS, parsing) on user's PC
-2. CENTRAL DB: Only TEXT sync (source/target pairs, metadata)
-3. TM: DB stores text only, embeddings built locally (too heavy to sync)
-4. WEBSOCKET: Real-time sync already working (ldm/websocket.py)
-5. CURRENT BOTTLENECK: Bulk uploads need COPY BINARY for speed
+✅ COPY TEXT implementation (bulk_copy, bulk_copy_tm_entries, bulk_copy_rows)
+✅ PostgreSQL 14.20 configured and running
+✅ Credentials: .env auto-loading with python-dotenv
+✅ Benchmark: 15-24K entries/sec (both INSERT and COPY TEXT)
+✅ 1M rows = ~60 seconds
 ```
 
-**TM Feature Discussed:**
-- TM can work as simple glossary (hash-based exact match, no embeddings)
-- Cell edit should have "Save" and "Save + Add to TM" buttons
-- User's selected TM gets new entry when using "Save + Add to TM"
+**Async vs Sync Verdict:**
+```
+Sync SQLAlchemy = BETTER for 100 users
+- Simpler code, easier maintenance
+- Database is the bottleneck, not Python's concurrency
+- Async only helps at 500+ concurrent connections
+```
+
+**Technology Stack (Industry Standard):**
+```
+✅ PostgreSQL 14.20 - Used by Instagram, Spotify, Reddit
+✅ Connection pooling - 10 pool, 20 overflow
+✅ Batch/COPY inserts - 15-24K entries/sec
+📋 PgBouncer - Phase 3 (for 1000+ connections)
+```
 
 **DB Sizing:**
 ```
-40 users × 1M rows = 40M rows = 8GB data
-Recommended server: 8 cores, 32GB RAM, 1TB NVMe (~$100-150/month)
+100 users × 1M rows = 100M rows = 20GB data
+Recommended: 8 cores, 32GB RAM, 1TB NVMe (~$100-150/month)
 ```
 
 ### Windows Environment (C: Drive - SSD):

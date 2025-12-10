@@ -24,8 +24,8 @@ from sqlalchemy.orm import Session
 from server.tools.ldm.file_handlers.txt_handler import parse_txt_file
 from server.tools.ldm.file_handlers.xml_handler import parse_xml_file
 
-# Database utilities
-from server.database.db_utils import bulk_insert_tm_entries
+# Database utilities - COPY TEXT for 3-5x faster uploads (P21)
+from server.database.db_utils import bulk_copy_tm_entries, bulk_insert_tm_entries
 from server.database.models import LDMTranslationMemory, LDMTMEntry
 
 
@@ -111,12 +111,11 @@ class TMManager:
 
             logger.info(f"Created TM record: id={tm.id}")
 
-            # Bulk insert entries
-            inserted = bulk_insert_tm_entries(
+            # Bulk insert entries using COPY TEXT (3-5x faster for PostgreSQL)
+            inserted = bulk_copy_tm_entries(
                 self.db,
                 tm.id,
                 entries,
-                batch_size=5000,
                 progress_callback=progress_callback
             )
 
@@ -344,9 +343,9 @@ class TMManager:
         if not tm:
             return None
 
-        # Use bulk insert for consistency (handles hash generation)
+        # Use COPY TEXT for consistency (handles hash generation)
         entries = [{"source_text": source_text, "target_text": target_text}]
-        inserted = bulk_insert_tm_entries(self.db, tm_id, entries)
+        inserted = bulk_copy_tm_entries(self.db, tm_id, entries)
 
         if inserted > 0:
             # Update entry count

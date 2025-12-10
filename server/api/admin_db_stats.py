@@ -15,8 +15,7 @@ from typing import Dict, Any, Optional
 from loguru import logger
 from datetime import datetime
 
-from server.utils.dependencies import get_db
-from server.utils.auth import require_admin
+from server.utils.dependencies import get_db, require_admin
 
 router = APIRouter(prefix="/api/v2/admin/db", tags=["Admin Database"])
 
