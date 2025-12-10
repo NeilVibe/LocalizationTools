@@ -1,0 +1,143 @@
+# ============================================================================
+# PostgreSQL Configuration - LocaNext Powerhouse (100+ Users)
+# ============================================================================
+# Optimized for: 100+ concurrent users, bulk uploads, 32GB RAM, NVMe SSD
+#
+# USAGE:
+#   1. Copy to PostgreSQL config directory:
+#      sudo cp postgresql.conf.recommended /etc/postgresql/16/main/postgresql.conf
+#   2. Restart PostgreSQL:
+#      sudo systemctl restart postgresql
+#   3. Verify settings:
+#      psql -c "SHOW shared_buffers;"
+#
+# MEMORY FORMULA (adjust for your server):
+#   shared_buffers     = 25% of RAM
+#   effective_cache_size = 75% of RAM
+#   work_mem           = RAM / 128 (per operation)
+#   maintenance_work_mem = RAM / 16
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# CONNECTION SETTINGS
+# ----------------------------------------------------------------------------
+# For 100+ users with PgBouncer in front
+max_connections = 200                    # PgBouncer handles 1000 → 200 DB
+superuser_reserved_connections = 3       # Reserve for admin access
+
+# ----------------------------------------------------------------------------
+# MEMORY SETTINGS (for 32GB RAM server)
+# ----------------------------------------------------------------------------
+# Adjust these based on your server RAM using the formula above
+
+shared_buffers = 8GB                     # 25% of 32GB RAM
+                                         # Main cache for frequently accessed data
+                                         # Too high = diminishing returns
+
+effective_cache_size = 24GB              # 75% of 32GB RAM
+                                         # Hint to planner about OS cache
+                                         # Doesn't allocate memory, just guides planning
+
+work_mem = 256MB                         # Per-operation memory (sorts, joins)
+                                         # 32GB / 128 = 256MB
+                                         # Careful: each query can use multiple
+                                         # 200 connections × 2 ops × 256MB = 100GB (!)
+                                         # PgBouncer limits actual concurrent queries
+
+maintenance_work_mem = 2GB               # For VACUUM, CREATE INDEX, etc.
+                                         # 32GB / 16 = 2GB
+                                         # Can be higher since only one at a time
+
+# ----------------------------------------------------------------------------
+# WRITE-AHEAD LOG (WAL)
+# ----------------------------------------------------------------------------
+wal_buffers = 256MB                      # WAL buffer size
+                                         # Higher = less disk writes during bulk ops
+
+checkpoint_completion_target = 0.9       # Spread checkpoint writes over 90% of interval
+                                         # Reduces I/O spikes
+
+checkpoint_timeout = 15min               # Maximum time between checkpoints
+                                         # Longer = better bulk insert performance
+
+max_wal_size = 4GB                       # Maximum WAL size before checkpoint
+                                         # Higher = fewer checkpoints during bulk ops
+
+min_wal_size = 1GB                       # Keep at least this much WAL
+
+# ----------------------------------------------------------------------------
+# SSD OPTIMIZATION
+# ----------------------------------------------------------------------------
+# These settings assume NVMe SSD storage
+
+random_page_cost = 1.1                   # SSD: random reads nearly as fast as sequential
+                                         # HDD would use 4.0 (default)
+
+effective_io_concurrency = 200           # SSD can handle 200+ concurrent I/O ops
+                                         # HDD would use 2
+
+# ----------------------------------------------------------------------------
+# PARALLEL QUERY
+# ----------------------------------------------------------------------------
+max_parallel_workers_per_gather = 4      # Max workers per parallel query
+max_parallel_workers = 8                 # Total parallel workers (match CPU cores)
+max_parallel_maintenance_workers = 4     # For parallel CREATE INDEX, VACUUM
+
+# ----------------------------------------------------------------------------
+# BULK INSERT OPTIMIZATION
+# ----------------------------------------------------------------------------
+# These help with COPY operations
+
+synchronous_commit = off                 # Async commits (slight data loss risk on crash)
+                                         # 2-3x faster bulk inserts
+                                         # Set to 'on' if you need strict durability
+
+commit_delay = 10000                     # Microseconds to wait for group commit
+                                         # Batches multiple commits together
+
+# ----------------------------------------------------------------------------
+# QUERY PLANNER
+# ----------------------------------------------------------------------------
+default_statistics_target = 100          # More accurate statistics
+                                         # Helps with complex queries
+
+# ----------------------------------------------------------------------------
+# LOGGING (for debugging, disable in production if too verbose)
+# ----------------------------------------------------------------------------
+log_min_duration_statement = 1000        # Log queries taking > 1 second
+log_checkpoints = on                     # Log checkpoint activity
+log_connections = off                    # Don't log every connection (too verbose)
+log_disconnections = off
+
+# ----------------------------------------------------------------------------
+# AUTOVACUUM (keep tables healthy)
+# ----------------------------------------------------------------------------
+autovacuum = on
+autovacuum_max_workers = 4               # Parallel vacuum workers
+autovacuum_naptime = 30s                 # Check for vacuum every 30s
+autovacuum_vacuum_scale_factor = 0.1     # Vacuum when 10% of rows changed
+autovacuum_analyze_scale_factor = 0.05   # Analyze when 5% of rows changed
+
+# ============================================================================
+# QUICK REFERENCE - Memory Scaling
+# ============================================================================
+#
+# 16GB RAM Server (Minimum for 100 users):
+#   shared_buffers = 4GB
+#   effective_cache_size = 12GB
+#   work_mem = 128MB
+#   maintenance_work_mem = 1GB
+#
+# 32GB RAM Server (Recommended for 100 users):
+#   shared_buffers = 8GB
+#   effective_cache_size = 24GB
+#   work_mem = 256MB
+#   maintenance_work_mem = 2GB
+#
+# 64GB RAM Server (Powerhouse for 200+ users):
+#   shared_buffers = 16GB
+#   effective_cache_size = 48GB
+#   work_mem = 512MB
+#   maintenance_work_mem = 4GB
+#
+# ============================================================================

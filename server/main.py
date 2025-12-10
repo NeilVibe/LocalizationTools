@@ -215,6 +215,10 @@ app.include_router(rankings.router)
 from server.api import admin_telemetry
 app.include_router(admin_telemetry.router)
 
+# Include Admin DB Stats API (P21: Database Powerhouse monitoring)
+from server.api import admin_db_stats
+app.include_router(admin_db_stats.router)
+
 # Include LDM (LanguageData Manager) API - Real-time collaborative CAT tool
 from server.tools.ldm import api as ldm_api
 app.include_router(ldm_api.router)
