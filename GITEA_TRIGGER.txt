@@ -190,3 +190,4 @@ Build LIGHT v2512101620 - All heredocs fixed
 GITEA_TRIGGER.txt - Trigger Gitea build for test fix
 GITEA_TRIGGER.txt - Build v2512101747 with test fix
 Build v2512101752 with more test fixes
+Build v2512101817 - fresh runner token
