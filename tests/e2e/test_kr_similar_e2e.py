@@ -74,7 +74,8 @@ class TestKRSimilarE2E:
 
         # Verify model can encode text
         test_embedding = embeddings_manager.model.encode(["테스트"])
-        assert test_embedding.shape == (1, 768), f"Expected shape (1, 768), got {test_embedding.shape}"
+        # Qwen3 uses 1024 dimensions, older models use 768 - accept both
+        assert test_embedding.shape[1] in (768, 1024), f"Expected dimension 768 or 1024, got {test_embedding.shape[1]}"
 
         print(f"Model loaded on device: {embeddings_manager.device}")
         print(f"Embedding dimension: {test_embedding.shape[1]}")
@@ -91,7 +92,7 @@ class TestKRSimilarE2E:
         embeddings = embeddings_manager.encode_texts(test_texts)
 
         assert embeddings.shape[0] == len(test_texts), "Should have one embedding per text"
-        assert embeddings.shape[1] == 768, "Embedding dimension should be 768"
+        assert embeddings.shape[1] in (768, 1024), "Embedding dimension should be 768 or 1024"
 
         # Verify embeddings are different (not all zeros or identical)
         assert not np.allclose(embeddings[0], embeddings[1]), "Embeddings should be different"
@@ -135,7 +136,7 @@ class TestKRSimilarE2E:
 
         # Verify file sizes
         split_emb = np.load(dict_dir / "split_embeddings.npy")
-        assert split_emb.shape[1] == 768, "Embedding dimension should be 768"
+        assert split_emb.shape[1] in (768, 1024), "Embedding dimension should be 768 or 1024"
 
         print(f"Dictionary files verified at: {dict_dir}")
         print(f"Split embeddings shape: {split_emb.shape}")
