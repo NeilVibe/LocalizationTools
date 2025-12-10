@@ -192,3 +192,4 @@ GITEA_TRIGGER.txt - Build v2512101747 with test fix
 Build v2512101752 with more test fixes
 Build v2512101817 - fresh runner token
 Build v2512101825 - manual runner test
+Build v2512101829 - Fixed Gitea URL
