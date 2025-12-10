@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512091330 | **Updated**: 2025-12-09 | **Status**: Production Ready
+**Version**: 2512102200 | **Updated**: 2025-12-10 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 
@@ -63,7 +63,8 @@ if trimmed == "" {
 - **Windows Runner**: NSSM Service (auto-start, ~8.5MB RAM)
   - Service: `GiteaActRunner`
   - Binary: `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner_patched_v15.exe`
-  - Mode: Ephemeral (fresh state per job)
+  - Mode: Non-Ephemeral (persistent, 6-month token)
+  - Cleanup: Automated (workflow + weekly Task Scheduler)
 
 **Build Status:**
 | Platform | Status | Duration |
