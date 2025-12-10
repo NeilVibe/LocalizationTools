@@ -679,36 +679,69 @@ WITH tiers (10GB active, 50GB archive per user):
 
 ---
 
-## Qwen Model Bundling (FULL vs LIGHT Builds)
+## Build Strategy: LIGHT Only (Save Disk Space)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    MODEL BUNDLING FLOW                                       │
+│                    BUILD STRATEGY - LIGHT ONLY                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   DECISION: NO FULL BUILDS. LIGHT ONLY.                                     │
+│   ══════════════════════════════════════                                    │
+│                                                                             │
+│   Why?                                                                      │
+│   • FULL build = 2.5GB installer (wastes YOUR bandwidth)                    │
+│   • LIGHT build = 100MB installer (fast, lean)                              │
+│   • Model downloads from HuggingFace on first use (THEIR bandwidth)         │
+│   • Same end result for users                                               │
+│                                                                             │
+│   LIGHT BUILD FLOW:                                                         │
+│   ══════════════════                                                        │
+│   Build: ~100MB installer                                                   │
+│   User installs → App launches → Uses embedding feature first time          │
+│   → Downloads 2.3GB from HuggingFace → Cached locally → Done forever        │
 │                                                                             │
 │   LOCAL DEVELOPMENT:                                                        │
 │   ══════════════════                                                        │
 │   models/qwen-embedding/           ← Your local clone (2.3GB)               │
-│   • Ignored by .gitignore          ← Never pushed to GitHub                 │
+│   • Ignored by .gitignore          ← Never pushed to GitHub/Gitea           │
 │   • Used by server at runtime      ← Instant, no download                   │
 │                                                                             │
-│   GITHUB BUILD (LIGHT only):                                                │
-│   ══════════════════════════                                                │
-│   • No model bundled               ← Installer ~100MB                       │
-│   • User downloads on first use    ← From HuggingFace                       │
-│   • GitHub has 2GB LFS limit       ← Can't host model anyway                │
+│   WINDOWS PLAYGROUND/TEST:                                                  │
+│   ═════════════════════════                                                 │
+│   C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\                   │
+│   • Has full installed app with model                                       │
+│   • Used for testing, no need to rebuild with model                         │
 │                                                                             │
-│   GITEA BUILD (LIGHT or FULL):                                              │
-│   ════════════════════════════                                              │
-│   LIGHT: Same as GitHub            ← ~100MB, downloads later                │
-│   FULL:  Downloads during build    ← From HuggingFace, bundles in ZIP       │
-│          Installer ~2.5GB          ← Ready to use, no user download         │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Gitea Release Cleanup (Auto, ~2GB Max)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    GITEA RELEASE CLEANUP                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   FUTURE OPTION (cache model on Gitea):                                     │
-│   ══════════════════════════════════════                                    │
-│   • Store model in C:\BuildCache\qwen-embedding on Windows runner           │
-│   • FULL builds use cache (no HuggingFace download each time)               │
-│   • Faster FULL builds (~2 min instead of 10 min)                           │
+│   PROBLEM: Releases stack up and eat disk space forever                     │
+│                                                                             │
+│   SOLUTION: Auto-cleanup in build workflow                                  │
+│   • Keep only last 20 releases                                              │
+│   • LIGHT builds = ~100MB each                                              │
+│   • 20 releases = ~2GB max                                                  │
+│   • Older releases auto-deleted after each new build                        │
+│                                                                             │
+│   IMPLEMENTED IN: .gitea/workflows/build.yml                                │
+│   Step: "Cleanup Old Releases"                                              │
+│                                                                             │
+│   MATH:                                                                     │
+│   ══════                                                                    │
+│   Daily builds for 20 days = 20 releases = ~2GB                             │
+│   Day 21 build → Deletes Day 1 release                                      │
+│   Storage NEVER exceeds ~2GB                                                │
+│                                                                             │
+│   CONFIGURABLE:                                                             │
+│   $MAX_RELEASES = 20   ← Change this to keep more/fewer                     │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
