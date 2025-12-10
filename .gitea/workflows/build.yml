@@ -1255,9 +1255,9 @@ jobs:
 
           # Create release body based on build type (simplified for YAML compatibility)
           if ($BUILD_TYPE -eq "FULL") {
-            $BODY = "## LocaNext v$VERSION (FULL Build)`n`nIncludes Qwen embedding model. Ready to use!`n`n*Auto-released by Gitea Actions*"
+            $BODY = "## LocaNext v$VERSION (FULL Build)\n\nIncludes Qwen embedding model. Ready to use!\n\n*Auto-released by Gitea Actions*"
           } else {
-            $BODY = "## LocaNext v$VERSION (LIGHT Build)`n`nModel downloads on first launch (~2.3GB).`n`n*Auto-released by Gitea Actions*"
+            $BODY = "## LocaNext v$VERSION (LIGHT Build)\n\nModel downloads on first launch (~2.3GB).\n\n*Auto-released by Gitea Actions*"
           }
 
           # Create release via API
@@ -1270,11 +1270,19 @@ jobs:
             prerelease = $false
           } | ConvertTo-Json -Compress
 
+          # Save JSON to temp file to avoid escaping issues with curl.exe
+          $tempFile = [System.IO.Path]::GetTempFileName()
+          $releaseData | Out-File -FilePath $tempFile -Encoding UTF8 -NoNewline
+
           Write-Host "Creating release..."
+          Write-Host "DEBUG: releaseData = $releaseData"
           $response = curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases" `
             -H "Authorization: token $env:GITEA_TOKEN" `
             -H "Content-Type: application/json" `
-            -d $releaseData | ConvertFrom-Json
+            -d "@$tempFile"
+
+          Remove-Item $tempFile -ErrorAction SilentlyContinue
+          $response = $response | ConvertFrom-Json
 
           if (-not $response.id) {
             Write-Host "[ERROR] Failed to create release" -ForegroundColor Red
