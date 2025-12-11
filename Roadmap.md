@@ -28,6 +28,7 @@ LocaNext v2512111200
 
 | Priority | Name | Status | WIP Doc |
 |----------|------|--------|---------|
+| **P22** | Production Parity (SQLite Removal) | 0% | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
 | **P17** | LDM LanguageData Manager | 60% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
 | **P21** | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
 | **P20** | Embedding Model Migration | ✅ Complete | [P20_MODEL_MIGRATION.md](docs/wip/P20_MODEL_MIGRATION.md) |
@@ -38,6 +39,29 @@ LocaNext v2512111200
 ---
 
 ## Active Development
+
+### P22: Production Parity - SQLite Removal (0%)
+
+**DEV = PRODUCTION** - Remove all SQLite fallback code from LocaNext core.
+
+**Why:**
+- Documentation says "PostgreSQL only" but code has SQLite fallbacks
+- Dead code creates confusion and maintenance burden
+- Dev environment must match production exactly
+
+**Scope:**
+- 11 server files (remove SQLite code paths)
+- 9 test files (PostgreSQL-only tests)
+- 8 doc files (update references)
+- ~33 files total
+
+**What KEEPS SQLite:**
+- Gitea internal (separate system)
+- Autonomous test scripts (temp storage if needed)
+
+**Details:** [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md)
+
+---
 
 ### P17: LDM LanguageData Manager (60%)
 
