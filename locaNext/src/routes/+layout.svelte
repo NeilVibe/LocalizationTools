@@ -13,7 +13,8 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete, Light, Moon } from "carbon-icons-svelte";
+  import { preferences, theme } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
   import { get } from 'svelte/store';
@@ -241,6 +242,19 @@
         <span>Tasks</span>
       </button>
 
+      <!-- Theme Toggle Button -->
+      <button
+        class="theme-toggle-button"
+        on:click={() => preferences.toggleTheme()}
+        title={$theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      >
+        {#if $theme === 'dark'}
+          <Light size={20} />
+        {:else}
+          <Moon size={20} />
+        {/if}
+      </button>
+
       <!-- Settings Dropdown -->
       <HeaderAction
         bind:isOpen={isSettingsMenuOpen}
@@ -354,6 +368,31 @@
   }
 
   .tasks-button:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  /* Theme toggle button */
+  .theme-toggle-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.875rem;
+    background: transparent;
+    border: none;
+    color: var(--cds-text-02);
+    cursor: pointer;
+    height: 48px;
+    width: 48px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .theme-toggle-button:hover {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-01);
+  }
+
+  .theme-toggle-button:focus {
     outline: 2px solid var(--cds-focus);
     outline-offset: -2px;
   }

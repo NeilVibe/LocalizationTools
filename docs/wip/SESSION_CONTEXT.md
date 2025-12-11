@@ -110,10 +110,11 @@ cp -r build/* /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resourc
 
 ## Next Steps
 
-1. P25: Light/Dark theme toggle (Appearance settings)
-2. P25: Font size/weight/color settings
+1. ~~P25: Light/Dark theme toggle~~ ✅ DONE
+2. ~~P25: Font size/weight settings~~ ✅ DONE
 3. P25: Grid UX simplification (remove Status column)
-4. P25: Preferences menu
+4. P25: Edit modal redesign (BIG, TM on right, shortcuts)
+5. P25: Preferences menu with column toggles
 
 ---
 

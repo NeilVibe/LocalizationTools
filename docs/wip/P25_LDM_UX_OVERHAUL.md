@@ -445,12 +445,18 @@ Show reference translations from another file (like QuickSearch reference featur
 - [ ] Add Preferences menu
 
 ### Appearance (NEW)
-- [ ] Light/Dark theme toggle
-- [ ] Theme CSS variables
-- [ ] Font size selector (Small/Medium/Large)
-- [ ] Bold text toggle
+- [x] Light/Dark theme toggle ✅ DONE 2025-12-12
+- [x] Theme CSS variables ✅ DONE 2025-12-12
+- [x] Font size selector (Small/Medium/Large) ✅ DONE 2025-12-12
+- [x] Bold text toggle ✅ DONE 2025-12-12
 - [ ] Custom text color picker
-- [ ] Persist preferences in localStorage
+- [x] Persist preferences in localStorage ✅ DONE 2025-12-12
+
+**Implementation:**
+- Created `src/lib/stores/preferences.js` - Svelte store with localStorage persistence
+- Added theme CSS variables in `app.css` (`:root` and `:root[data-theme="light"]`)
+- Updated `PreferencesModal.svelte` with theme/font settings
+- Added quick theme toggle button in header (sun/moon icons)
 
 ### Preferences Menu
 - [ ] Create Preferences panel/modal
