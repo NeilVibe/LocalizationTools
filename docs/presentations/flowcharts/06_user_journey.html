@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - User Journey</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
+            min-height: 100vh;
+            padding: 25px;
+            color: #e0e0e0;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.85rem;
+        }
+
+        /* Horizontal journey timeline */
+        .journey-container {
+            display: flex;
+            gap: 0;
+            align-items: stretch;
+            overflow-x: auto;
+            padding-bottom: 20px;
+        }
+
+        /* Phase box */
+        .phase {
+            min-width: 280px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .phase-header {
+            text-align: center;
+            padding: 15px;
+            border-radius: 12px 12px 0 0;
+            position: relative;
+        }
+
+        .phase-header h2 {
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .phase-header .time {
+            font-size: 0.65rem;
+            opacity: 0.7;
+        }
+
+        .phase-header .number {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        /* Phase colors */
+        .phase.install .phase-header { background: linear-gradient(135deg, rgba(153, 69, 255, 0.3), rgba(153, 69, 255, 0.1)); }
+        .phase.install .phase-header .number { background: #9945ff; color: white; }
+        .phase.install .phase-header h2 { color: #9945ff; }
+
+        .phase.setup .phase-header { background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.1)); }
+        .phase.setup .phase-header .number { background: #00d4ff; color: white; }
+        .phase.setup .phase-header h2 { color: #00d4ff; }
+
+        .phase.login .phase-header { background: linear-gradient(135deg, rgba(255, 136, 0, 0.3), rgba(255, 136, 0, 0.1)); }
+        .phase.login .phase-header .number { background: #ff8800; color: white; }
+        .phase.login .phase-header h2 { color: #ff8800; }
+
+        .phase.select .phase-header { background: linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 255, 136, 0.1)); }
+        .phase.select .phase-header .number { background: #00ff88; color: #111; }
+        .phase.select .phase-header h2 { color: #00ff88; }
+
+        .phase.work .phase-header { background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1)); }
+        .phase.work .phase-header .number { background: #ffd700; color: #111; }
+        .phase.work .phase-header h2 { color: #ffd700; }
+
+        .phase.results .phase-header { background: linear-gradient(135deg, rgba(255, 107, 53, 0.3), rgba(255, 107, 53, 0.1)); }
+        .phase.results .phase-header .number { background: #ff6b35; color: white; }
+        .phase.results .phase-header h2 { color: #ff6b35; }
+
+        /* Phase content */
+        .phase-content {
+            flex: 1;
+            background: rgba(20, 25, 35, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            padding: 15px;
+        }
+
+        .step-list {
+            list-style: none;
+        }
+
+        .step-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.8rem;
+        }
+
+        .step-list li:last-child {
+            border-bottom: none;
+        }
+
+        .step-list .icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .step-list .text {
+            flex: 1;
+        }
+
+        .step-list .detail {
+            font-size: 0.65rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Arrow connector */
+        .arrow-connector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            flex-shrink: 0;
+        }
+
+        .arrow-line {
+            width: 30px;
+            height: 3px;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.5));
+            position: relative;
+        }
+
+        .arrow-line::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            border-left: 8px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* User profile section */
+        .user-profiles {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+        }
+
+        .profile {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            min-width: 180px;
+        }
+
+        .profile .avatar {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        .profile .role {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .profile .tasks {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Bottom benefits */
+        .benefits {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 25px;
+        }
+
+        .benefit {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 255, 136, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 12px;
+            min-width: 200px;
+        }
+
+        .benefit .icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .benefit .value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .benefit .label {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>LocaNext - User Journey</h1>
+    <p class="subtitle">From Installation to Daily Productivity</p>
+
+    <!-- Journey Timeline -->
+    <div class="journey-container">
+        <!-- Phase 1: Install -->
+        <div class="phase install">
+            <div class="phase-header">
+                <div class="number">1</div>
+                <h2>INSTALL</h2>
+                <div class="time">~2 minutes</div>
+            </div>
+            <div class="phase-content">
+                <ul class="step-list">
+                    <li>
+                        <span class="icon">📥</span>
+                        <div class="text">
+                            Download Installer
+                            <div class="detail">LocaNext-Setup.exe (~150MB)</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">▶️</span>
+                        <div class="text">
+                            Run Installer
+                            <div class="detail">Standard Windows setup wizard</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">🐍</span>
+                        <div class="text">
+                            Auto Python Setup
+                            <div class="detail">Embedded Python 3.11 included</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">✅</span>
+                        <div class="text">
+                            Ready to Launch
+                            <div class="detail">Desktop shortcut created</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="arrow-connector"><div class="arrow-line"></div></div>
+
+        <!-- Phase 2: First Run -->
+        <div class="phase setup">
+            <div class="phase-header">
+                <div class="number">2</div>
+                <h2>FIRST RUN</h2>
+                <div class="time">~30 seconds</div>
+            </div>
+            <div class="phase-content">
+                <ul class="step-list">
+                    <li>
+                        <span class="icon">🚀</span>
+                        <div class="text">
+                            Launch LocaNext
+                            <div class="detail">Double-click desktop icon</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">🔧</span>
+                        <div class="text">
+                            Health Check
+                            <div class="detail">Auto-verifies Python, packages</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">🧠</span>
+                        <div class="text">
+                            AI Model Download
+                            <div class="detail">Qwen3-0.6B (~500MB, one-time)</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">⚡</span>
+                        <div class="text">
+                            Backend Starts
+                            <div class="detail">FastAPI on localhost:8888</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="arrow-connector"><div class="arrow-line"></div></div>
+
+        <!-- Phase 3: Login -->
+        <div class="phase login">
+            <div class="phase-header">
+                <div class="number">3</div>
+                <h2>LOGIN</h2>
+                <div class="time">~5 seconds</div>
+            </div>
+            <div class="phase-content">
+                <ul class="step-list">
+                    <li>
+                        <span class="icon">👤</span>
+                        <div class="text">
+                            Enter Credentials
+                            <div class="detail">Username + Password</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">🔐</span>
+                        <div class="text">
+                            JWT Authentication
+                            <div class="detail">Secure token issued</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">💾</span>
+                        <div class="text">
+                            Session Created
+                            <div class="detail">Remember me option</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">🏠</span>
+                        <div class="text">
+                            Dashboard Loads
+                            <div class="detail">Tool selection screen</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="arrow-connector"><div class="arrow-line"></div></div>
+
+        <!-- Phase 4: Select Tool -->
+        <div class="phase select">
+            <div class="phase-header">
+                <div class="number">4</div>
+                <h2>SELECT TOOL</h2>
+                <div class="time">~2 seconds</div>
+            </div>
+            <div class="phase-content">
+                <ul class="step-list">
+                    <li>
+                        <span class="icon">📊</span>
+                        <div class="text">
+                            XLSTransfer
+                            <div class="detail">Excel data migration</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">🔍</span>
+                        <div class="text">
+                            QuickSearch
+                            <div class="detail">Fast text/XML search</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">🔗</span>
+                        <div class="text">
+                            KR Similar
+                            <div class="detail">AI similarity matching</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">📝</span>
+                        <div class="text">
+                            LDM (CAT Tool)
+                            <div class="detail">Translation editing</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="arrow-connector"><div class="arrow-line"></div></div>
+
+        <!-- Phase 5: Work -->
+        <div class="phase work">
+            <div class="phase-header">
+                <div class="number">5</div>
+                <h2>WORK</h2>
+                <div class="time">Daily use</div>
+            </div>
+            <div class="phase-content">
+                <ul class="step-list">
+                    <li>
+                        <span class="icon">📁</span>
+                        <div class="text">
+                            Load Files
+                            <div class="detail">Drag & drop or browse</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">⚙️</span>
+                        <div class="text">
+                            Configure Options
+                            <div class="detail">Tool-specific settings</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">▶️</span>
+                        <div class="text">
+                            Process
+                            <div class="detail">Real-time progress bar</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">👁️</span>
+                        <div class="text">
+                            Review Results
+                            <div class="detail">Interactive preview</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="arrow-connector"><div class="arrow-line"></div></div>
+
+        <!-- Phase 6: Results -->
+        <div class="phase results">
+            <div class="phase-header">
+                <div class="number">6</div>
+                <h2>RESULTS</h2>
+                <div class="time">Instant</div>
+            </div>
+            <div class="phase-content">
+                <ul class="step-list">
+                    <li>
+                        <span class="icon">💾</span>
+                        <div class="text">
+                            Save/Export
+                            <div class="detail">Excel, TXT, XML formats</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">📋</span>
+                        <div class="text">
+                            Copy to Clipboard
+                            <div class="detail">Quick paste anywhere</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">📊</span>
+                        <div class="text">
+                            View Statistics
+                            <div class="detail">Matches, rows, time</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon">🔄</span>
+                        <div class="text">
+                            Next Task
+                            <div class="detail">Return to tool or switch</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profiles -->
+    <div class="user-profiles">
+        <div class="profile">
+            <div class="avatar">👩‍💻</div>
+            <div class="role">Translator</div>
+            <div class="tasks">LDM, QuickSearch daily</div>
+        </div>
+        <div class="profile">
+            <div class="avatar">👨‍💼</div>
+            <div class="role">Project Manager</div>
+            <div class="tasks">XLSTransfer for reports</div>
+        </div>
+        <div class="profile">
+            <div class="avatar">👩‍🔬</div>
+            <div class="role">QA Specialist</div>
+            <div class="tasks">QuickSearch, KR Similar</div>
+        </div>
+        <div class="profile">
+            <div class="avatar">👨‍🔧</div>
+            <div class="role">Localization Engineer</div>
+            <div class="tasks">All tools + Admin</div>
+        </div>
+    </div>
+
+    <!-- Benefits -->
+    <div class="benefits">
+        <div class="benefit">
+            <div class="icon">⚡</div>
+            <div class="value">&lt;3 min</div>
+            <div class="label">Install to First Use</div>
+        </div>
+        <div class="benefit">
+            <div class="icon">🖥️</div>
+            <div class="value">100%</div>
+            <div class="label">Offline Capable</div>
+        </div>
+        <div class="benefit">
+            <div class="icon">🔄</div>
+            <div class="value">Auto</div>
+            <div class="label">Updates & Repair</div>
+        </div>
+        <div class="benefit">
+            <div class="icon">💰</div>
+            <div class="value">98%</div>
+            <div class="label">Cost Savings</div>
+        </div>
+    </div>
+</body>
+</html>

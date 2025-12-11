@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - Tool Workflows</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
+            min-height: 100vh;
+            padding: 25px;
+            color: #e0e0e0;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, #00d4ff, #00ff88, #ffd700, #ff6b35);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 0.85rem;
+        }
+
+        /* 2x2 Grid for 4 tools */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        /* Tool container */
+        .tool-container {
+            background: linear-gradient(135deg, rgba(20, 30, 40, 0.95), rgba(15, 25, 35, 0.95));
+            border: 3px solid;
+            border-radius: 16px;
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        .tool-container.xls { border-color: #00ff88; }
+        .tool-container.qs { border-color: #00d4ff; }
+        .tool-container.kr { border-color: #ffd700; }
+        .tool-container.ldm { border-color: #ff6b35; }
+
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tool-icon {
+            font-size: 2rem;
+        }
+
+        .tool-title h2 {
+            font-size: 1.2rem;
+        }
+
+        .tool-title .desc {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        .tool-badge {
+            margin-left: auto;
+            font-size: 0.6rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        /* Workflow steps */
+        .workflow {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .tool-container.xls .step-number { background: rgba(0, 255, 136, 0.2); color: #00ff88; border: 2px solid #00ff88; }
+        .tool-container.qs .step-number { background: rgba(0, 212, 255, 0.2); color: #00d4ff; border: 2px solid #00d4ff; }
+        .tool-container.kr .step-number { background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 2px solid #ffd700; }
+        .tool-container.ldm .step-number { background: rgba(255, 107, 53, 0.2); color: #ff6b35; border: 2px solid #ff6b35; }
+
+        .step-content {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+
+        .step-content .action {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .step-content .detail {
+            font-size: 0.65rem;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        /* Arrow between steps */
+        .step-arrow {
+            display: flex;
+            justify-content: center;
+            padding: 2px 0;
+            margin-left: 14px;
+        }
+
+        .step-arrow::before {
+            content: '';
+            width: 2px;
+            height: 12px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+        }
+
+        /* Result box */
+        .result-box {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .tool-container.xls .result-box { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.3); }
+        .tool-container.qs .result-box { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); }
+        .tool-container.kr .result-box { background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); }
+        .tool-container.ldm .result-box { background: rgba(255, 107, 53, 0.1); border: 1px solid rgba(255, 107, 53, 0.3); }
+
+        .result-box .label {
+            font-size: 0.65rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .result-box .value {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        .tool-container.xls .result-box .value { color: #00ff88; }
+        .tool-container.qs .result-box .value { color: #00d4ff; }
+        .tool-container.kr .result-box .value { color: #ffd700; }
+        .tool-container.ldm .result-box .value { color: #ff6b35; }
+
+        /* Bottom stats */
+        .bottom-stats {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat .label {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        /* Use cases */
+        .use-cases {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .use-case {
+            font-size: 0.6rem;
+            padding: 3px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h1>LocaNext - Tool Workflows</h1>
+    <p class="subtitle">Step-by-Step Guide: How Each Tool Works</p>
+
+    <div class="tools-grid">
+        <!-- XLSTransfer -->
+        <div class="tool-container xls">
+            <div class="tool-header">
+                <div class="tool-icon">📊</div>
+                <div class="tool-title">
+                    <h2 style="color: #00ff88;">XLSTransfer</h2>
+                    <div class="desc">Excel Data Transfer & Processing</div>
+                </div>
+                <div class="tool-badge">VERIFIED</div>
+            </div>
+            <div class="workflow">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="action">Select Source Files</div>
+                        <div class="detail">Choose Excel files (.xlsx) to process</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="action">Configure Columns</div>
+                        <div class="detail">Map source → target column positions</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="action">Set Options</div>
+                        <div class="detail">Skip headers, handle duplicates, merge mode</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="action">Process & Export</div>
+                        <div class="detail">Generate output Excel with transferred data</div>
+                    </div>
+                </div>
+            </div>
+            <div class="result-box">
+                <div class="label">Output</div>
+                <div class="value">Merged Excel File</div>
+            </div>
+            <div class="use-cases">
+                <span class="use-case">Data migration</span>
+                <span class="use-case">Column reorganization</span>
+                <span class="use-case">Batch processing</span>
+            </div>
+        </div>
+
+        <!-- QuickSearch -->
+        <div class="tool-container qs">
+            <div class="tool-header">
+                <div class="tool-icon">🔍</div>
+                <div class="tool-title">
+                    <h2 style="color: #00d4ff;">QuickSearch</h2>
+                    <div class="desc">Fast Text & XML Search</div>
+                </div>
+                <div class="tool-badge">VERIFIED</div>
+            </div>
+            <div class="workflow">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="action">Load File</div>
+                        <div class="detail">Open TXT or XML localization file</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="action">Enter Search Query</div>
+                        <div class="detail">Text, regex, or pattern matching</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="action">View Results</div>
+                        <div class="detail">Highlighted matches with context</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="action">Navigate & Copy</div>
+                        <div class="detail">Jump to line, copy results</div>
+                    </div>
+                </div>
+            </div>
+            <div class="result-box">
+                <div class="label">Performance</div>
+                <div class="value">100K+ lines in &lt;200ms</div>
+            </div>
+            <div class="use-cases">
+                <span class="use-case">Find translations</span>
+                <span class="use-case">Pattern search</span>
+                <span class="use-case">QA checking</span>
+            </div>
+        </div>
+
+        <!-- KR Similar -->
+        <div class="tool-container kr">
+            <div class="tool-header">
+                <div class="tool-icon">🔗</div>
+                <div class="tool-title">
+                    <h2 style="color: #ffd700;">KR Similar</h2>
+                    <div class="desc">AI-Powered Similarity Search</div>
+                </div>
+                <div class="tool-badge">VERIFIED</div>
+            </div>
+            <div class="workflow">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="action">Build Dictionary</div>
+                        <div class="detail">Load language files, create FAISS index</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="action">Enter Korean Text</div>
+                        <div class="detail">Paste source text to find similar</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="action">AI Matching</div>
+                        <div class="detail">Qwen embeddings + FAISS HNSW search</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="action">Get Translations</div>
+                        <div class="detail">Ranked results with similarity scores</div>
+                    </div>
+                </div>
+            </div>
+            <div class="result-box">
+                <div class="label">Capacity</div>
+                <div class="value">41K+ pairs | 1334 matches/query</div>
+            </div>
+            <div class="use-cases">
+                <span class="use-case">Translation memory</span>
+                <span class="use-case">Consistency check</span>
+                <span class="use-case">Similar strings</span>
+            </div>
+        </div>
+
+        <!-- LDM -->
+        <div class="tool-container ldm">
+            <div class="tool-header">
+                <div class="tool-icon">📝</div>
+                <div class="tool-title">
+                    <h2 style="color: #ff6b35;">LDM (CAT Tool)</h2>
+                    <div class="desc">Language Data Manager</div>
+                </div>
+                <div class="tool-badge" style="background: rgba(255, 107, 53, 0.2); color: #ff6b35;">60%</div>
+            </div>
+            <div class="workflow">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="action">Open Translation File</div>
+                        <div class="detail">Load TXT/XML with source + target columns</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="action">Edit Cells</div>
+                        <div class="detail">Virtual grid, dynamic row heights</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="action">TM Suggestions</div>
+                        <div class="detail">5-tier cascade: Exact → Fuzzy → AI</div>
+                    </div>
+                </div>
+                <div class="step-arrow"></div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="action">Save & Sync</div>
+                        <div class="detail">Auto-save, file sync, export</div>
+                    </div>
+                </div>
+            </div>
+            <div class="result-box">
+                <div class="label">Performance</div>
+                <div class="value">103K rows in 50 seconds</div>
+            </div>
+            <div class="use-cases">
+                <span class="use-case">Translation editing</span>
+                <span class="use-case">TM leverage</span>
+                <span class="use-case">Batch review</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom stats -->
+    <div class="bottom-stats">
+        <div class="stat">
+            <div class="value">4</div>
+            <div class="label">Tools Available</div>
+        </div>
+        <div class="stat">
+            <div class="value">3</div>
+            <div class="label">Fully Verified</div>
+        </div>
+        <div class="stat">
+            <div class="value">14/14</div>
+            <div class="label">CDP Tests Passed</div>
+        </div>
+        <div class="stat">
+            <div class="value">100%</div>
+            <div class="label">Offline Capable</div>
+        </div>
+        <div class="stat">
+            <div class="value">&lt;200ms</div>
+            <div class="label">Search Speed</div>
+        </div>
+    </div>
+</body>
+</html>
