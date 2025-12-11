@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LocaNext - Database Architecture Flowchart</title>
+    <title>LocaNext - Database Architecture</title>
     <style>
         * {
             margin: 0;
@@ -13,740 +13,455 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a1a0a 0%, #1a2a1a 50%, #0a1a1a 100%);
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
             min-height: 100vh;
-            padding: 30px;
+            padding: 20px;
             color: #e0e0e0;
-        }
-
-        .container {
-            max-width: 1900px;
-            margin: 0 auto;
         }
 
         h1 {
             text-align: center;
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-            background: linear-gradient(90deg, #ffd700, #ff8800, #00ff88);
+            font-size: 2rem;
+            margin-bottom: 3px;
+            background: linear-gradient(90deg, #ffd700, #ff6b35, #00d4ff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
         .subtitle {
             text-align: center;
             color: #888;
-            margin-bottom: 40px;
-            font-size: 1rem;
+            margin-bottom: 15px;
+            font-size: 0.75rem;
         }
 
-        .flowchart {
+        /* 2x2 Grid Layout - Square */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 15px;
+            height: calc(100vh - 140px);
+            max-height: 800px;
+        }
+
+        /* Each quadrant */
+        .quadrant {
+            background: linear-gradient(135deg, rgba(20, 30, 40, 0.95), rgba(15, 25, 35, 0.95));
+            border: 3px solid;
+            border-radius: 16px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
+        }
+
+        .quadrant.pooler { border-color: #00d4ff; }
+        .quadrant.postgres { border-color: #ffd700; }
+        .quadrant.indexes { border-color: #00ff88; }
+        .quadrant.perf { border-color: #ff6b35; }
+
+        .quad-header {
+            display: flex;
             align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* Flow boxes */
-        .flow-box {
-            background: linear-gradient(135deg, rgba(30, 40, 30, 0.9), rgba(20, 30, 20, 0.9));
-            border: 2px solid #ffd700;
-            border-radius: 12px;
-            padding: 15px 25px;
-            text-align: center;
-            min-width: 200px;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        .quad-icon {
+            font-size: 1.5rem;
         }
 
-        .flow-box h3 {
+        .quad-title {
             font-size: 1rem;
-            margin-bottom: 5px;
+            font-weight: bold;
         }
 
-        .flow-box .tech {
+        .quadrant.pooler .quad-title { color: #00d4ff; }
+        .quadrant.postgres .quad-title { color: #ffd700; }
+        .quadrant.indexes .quad-title { color: #00ff88; }
+        .quadrant.perf .quad-title { color: #ff6b35; }
+
+        .quad-badge {
+            margin-left: auto;
+            font-size: 0.55rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .quadrant.pooler .quad-badge { background: rgba(0, 212, 255, 0.2); color: #00d4ff; }
+        .quadrant.postgres .quad-badge { background: rgba(255, 215, 0, 0.2); color: #ffd700; }
+        .quadrant.indexes .quad-badge { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .quadrant.perf .quad-badge { background: rgba(255, 107, 53, 0.2); color: #ff6b35; }
+
+        /* Flow items */
+        .flow-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .flow-box {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            padding: 6px 10px;
             font-size: 0.7rem;
+            flex: 1;
+            text-align: center;
+        }
+
+        .flow-arrow {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .flow-arrow-down {
+            text-align: center;
+            color: #666;
+            font-size: 0.7rem;
+            padding: 2px 0;
+        }
+
+        /* Highlight boxes */
+        .highlight-box {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: auto;
+        }
+
+        .quadrant.pooler .highlight-box { border: 1px solid rgba(0, 212, 255, 0.3); }
+        .quadrant.postgres .highlight-box { border: 1px solid rgba(255, 215, 0, 0.3); }
+        .quadrant.indexes .highlight-box { border: 1px solid rgba(0, 255, 136, 0.3); }
+        .quadrant.perf .highlight-box { border: 1px solid rgba(255, 107, 53, 0.3); }
+
+        .highlight-row {
+            display: flex;
+            justify-content: space-around;
+            gap: 8px;
+        }
+
+        .highlight-item {
+            text-align: center;
+        }
+
+        .highlight-value {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .quadrant.pooler .highlight-value { color: #00d4ff; }
+        .quadrant.postgres .highlight-value { color: #ffd700; }
+        .quadrant.indexes .highlight-value { color: #00ff88; }
+        .quadrant.perf .highlight-value { color: #ff6b35; }
+
+        .highlight-label {
+            font-size: 0.55rem;
             color: #888;
         }
 
-        .flow-box .detail {
-            font-size: 0.75rem;
-            color: #aaa;
-            margin-top: 5px;
-        }
-
-        /* Color variants */
-        .flow-box.app { border-color: #9945ff; box-shadow: 0 0 20px rgba(153, 69, 255, 0.3); }
-        .flow-box.pool { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
-        .flow-box.db { border-color: #ffd700; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
-        .flow-box.index { border-color: #00ff88; box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
-        .flow-box.cache { border-color: #ff6b35; box-shadow: 0 0 20px rgba(255, 107, 53, 0.3); }
-
-        /* Arrows */
-        .arrow {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 8px 0;
-        }
-
-        .arrow-line {
-            width: 3px;
-            height: 30px;
-            background: linear-gradient(to bottom, #ffd700, #00ff88);
-            position: relative;
-        }
-
-        .arrow-line::after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-top: 10px solid #00ff88;
-        }
-
-        .arrow-bi .arrow-line::before {
-            content: '';
-            position: absolute;
-            top: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-bottom: 10px solid #ffd700;
-        }
-
-        .arrow-label {
-            font-size: 0.65rem;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 2px 10px;
-            border-radius: 8px;
-            margin-top: 5px;
-            color: #aaa;
-        }
-
-        /* Horizontal flow */
-        .h-flow {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .h-arrow {
-            display: flex;
-            align-items: center;
-            position: relative;
-        }
-
-        .h-arrow-line {
-            width: 60px;
-            height: 3px;
-            background: linear-gradient(to right, #ffd700, #00ff88);
-        }
-
-        .h-arrow-line::after {
-            content: '';
-            position: absolute;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            border-top: 8px solid transparent;
-            border-bottom: 8px solid transparent;
-            border-left: 10px solid #00ff88;
-        }
-
-        .h-arrow-bi .h-arrow-line::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            border-top: 8px solid transparent;
-            border-bottom: 8px solid transparent;
-            border-right: 10px solid #ffd700;
-        }
-
-        /* Large section boxes */
-        .section-box {
-            background: linear-gradient(135deg, rgba(30, 35, 40, 0.95), rgba(20, 25, 30, 0.95));
-            border: 2px solid #ffd700;
-            border-radius: 16px;
-            padding: 25px;
-            margin: 15px 0;
-        }
-
-        .section-box h3 {
-            text-align: center;
-            color: #ffd700;
-            margin-bottom: 20px;
-            font-size: 1.1rem;
-        }
-
-        /* Table grid */
-        .table-grid {
+        /* Tech grid */
+        .tech-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-top: 15px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            flex: 1;
         }
 
-        .table-item {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .tech-item {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .quadrant.postgres .tech-item { border: 1px solid rgba(255, 215, 0, 0.2); }
+        .quadrant.indexes .tech-item { border: 1px solid rgba(0, 255, 136, 0.2); }
+
+        .tech-item .name {
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .quadrant.postgres .tech-item .name { color: #ffd700; }
+        .quadrant.indexes .tech-item .name { color: #00ff88; }
+
+        .tech-item .desc {
+            font-size: 0.55rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Perf metrics */
+        .perf-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            flex: 1;
+        }
+
+        .perf-item {
+            background: rgba(255, 107, 53, 0.1);
+            border: 1px solid rgba(255, 107, 53, 0.2);
             border-radius: 8px;
             padding: 10px;
             text-align: center;
         }
 
-        .table-item .name {
-            font-family: monospace;
-            font-size: 0.75rem;
-            color: #00d4ff;
+        .perf-item .value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #ff6b35;
         }
 
-        .table-item .count {
-            font-size: 0.65rem;
+        .perf-item .label {
+            font-size: 0.6rem;
             color: #888;
-            margin-top: 3px;
+            margin-top: 2px;
         }
 
-        .table-item.core { border-left: 3px solid #00ff88; }
-        .table-item.tool { border-left: 3px solid #9945ff; }
-        .table-item.telemetry { border-left: 3px solid #ff6b35; }
-        .table-item.tm { border-left: 3px solid #ffd700; }
-
-        /* Index section */
-        .index-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
+        .perf-item.wide {
+            grid-column: span 2;
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(255, 215, 0, 0.15));
         }
 
-        .index-item {
-            background: rgba(0, 255, 136, 0.1);
-            border: 1px solid #00ff88;
-            border-radius: 10px;
-            padding: 15px;
-        }
-
-        .index-item h4 {
-            color: #00ff88;
-            font-size: 0.9rem;
-            margin-bottom: 8px;
-        }
-
-        .index-item .detail {
-            font-size: 0.7rem;
-            color: #aaa;
-        }
-
-        .index-item .perf {
-            font-size: 0.75rem;
-            color: #ffd700;
-            margin-top: 5px;
-        }
-
-        /* Performance metrics */
-        .perf-row {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin: 15px 0;
-        }
-
-        .perf-box {
-            background: rgba(255, 215, 0, 0.1);
-            border: 1px solid #ffd700;
-            border-radius: 10px;
-            padding: 15px 25px;
-            text-align: center;
-        }
-
-        .perf-box .value {
+        .perf-item.wide .value {
             font-size: 1.4rem;
-            font-weight: bold;
-            color: #ffd700;
-        }
-
-        .perf-box .label {
-            font-size: 0.7rem;
-            color: #888;
-        }
-
-        /* Query flow */
-        .query-types {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin: 20px 0;
-        }
-
-        .query-type {
-            background: rgba(0, 0, 0, 0.3);
-            border: 2px solid;
-            border-radius: 12px;
-            padding: 15px 20px;
-            text-align: center;
-            min-width: 180px;
-        }
-
-        .query-type.read { border-color: #00d4ff; }
-        .query-type.write { border-color: #ff6b35; }
-        .query-type.search { border-color: #9945ff; }
-        .query-type.bulk { border-color: #00ff88; }
-
-        .query-type h4 {
-            font-size: 0.9rem;
-            margin-bottom: 8px;
-        }
-
-        .query-type .example {
-            font-family: monospace;
-            font-size: 0.65rem;
-            color: #888;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 5px 8px;
-            border-radius: 4px;
-            margin-top: 5px;
-        }
-
-        /* Connection diagram */
-        .connection-flow {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        .conn-box {
-            background: rgba(0, 0, 0, 0.4);
-            border: 2px solid #00d4ff;
-            border-radius: 10px;
-            padding: 12px 20px;
-            text-align: center;
-        }
-
-        .conn-box .port {
-            font-family: monospace;
-            font-size: 0.8rem;
-            color: #00ff88;
-        }
-
-        /* Legend */
-        .legend {
-            display: flex;
-            justify-content: center;
-            gap: 25px;
-            margin-top: 30px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.75rem;
-        }
-
-        .legend-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-            border: 2px solid;
-        }
-
-        /* Section title */
-        .section-title {
-            font-size: 0.7rem;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin: 25px 0 10px 0;
-        }
-
-        /* Stats footer */
-        .stats-footer {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            margin-top: 25px;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 1.6rem;
-            font-weight: bold;
-            background: linear-gradient(90deg, #ffd700, #00ff88);
+            background: linear-gradient(90deg, #ff6b35, #ffd700);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .stat-label {
-            font-size: 0.7rem;
-            color: #888;
-            text-transform: uppercase;
-        }
-
-        /* Tuning params */
-        .tuning-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
+        /* Bottom stats */
+        .bottom-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
             margin-top: 15px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
         }
 
-        .tuning-item {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 10px;
+        .stat {
             text-align: center;
         }
 
-        .tuning-item .param {
-            font-family: monospace;
-            font-size: 0.7rem;
-            color: #00d4ff;
+        .stat .value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #ffd700, #ff6b35);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .tuning-item .value {
-            font-size: 0.85rem;
-            font-weight: bold;
-            color: #00ff88;
-            margin-top: 3px;
+        .stat .label {
+            font-size: 0.6rem;
+            color: #888;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>LocaNext - Database Architecture Flowchart</h1>
-        <p class="subtitle">Query Flow: Application → PgBouncer → PostgreSQL → Tables → Indexes</p>
+    <h1>LocaNext - Database Architecture</h1>
+    <p class="subtitle">PostgreSQL 14 + PgBouncer 1.16 + COPY TEXT + GIN Indexes</p>
 
-        <div class="flowchart">
-            <!-- Application Layer -->
-            <div class="section-title">Application Layer</div>
-            <div class="flow-box app">
-                <h3>⚡ FASTAPI APPLICATION</h3>
-                <div class="tech">SQLAlchemy 2.0 + asyncpg</div>
-                <div class="detail">Async sessions, connection pooling</div>
+    <div class="main-grid">
+        <!-- Q1: PGBOUNCER (Top Left) -->
+        <div class="quadrant pooler">
+            <div class="quad-header">
+                <div class="quad-icon">🔄</div>
+                <div class="quad-title">PgBouncer 1.16</div>
+                <div class="quad-badge">PORT 6433</div>
             </div>
-
-            <div class="arrow arrow-bi">
-                <div class="arrow-line"></div>
-                <div class="arrow-label">SQL Queries (async)</div>
-            </div>
-
-            <!-- Query Types -->
-            <div class="section-title">Query Types</div>
-            <div class="query-types">
-                <div class="query-type read">
-                    <h4 style="color: #00d4ff;">📖 READ</h4>
-                    <div style="font-size: 0.75rem;">SELECT queries</div>
-                    <div class="example">SELECT * FROM users</div>
+            <div class="flow-container">
+                <div class="flow-row">
+                    <div class="flow-box">App Request</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box">Port 6433</div>
                 </div>
-                <div class="query-type write">
-                    <h4 style="color: #ff6b35;">✏️ WRITE</h4>
-                    <div style="font-size: 0.75rem;">INSERT/UPDATE</div>
-                    <div class="example">INSERT INTO logs</div>
+                <div class="flow-arrow-down">↓</div>
+                <div class="flow-row">
+                    <div class="flow-box">1000 Clients</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box">Pool Queue</div>
                 </div>
-                <div class="query-type search">
-                    <h4 style="color: #9945ff;">🔍 FTS</h4>
-                    <div style="font-size: 0.75rem;">Full-Text Search</div>
-                    <div class="example">WHERE tsv @@ query</div>
+                <div class="flow-arrow-down">↓</div>
+                <div class="flow-row">
+                    <div class="flow-box">Multiplex</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box">50 DB Conns</div>
                 </div>
-                <div class="query-type bulk">
-                    <h4 style="color: #00ff88;">📦 BULK</h4>
-                    <div style="font-size: 0.75rem;">COPY command</div>
-                    <div class="example">COPY FROM STDIN</div>
-                </div>
-            </div>
-
-            <div class="arrow arrow-bi">
-                <div class="arrow-line"></div>
-                <div class="arrow-label">Port 6433</div>
-            </div>
-
-            <!-- PgBouncer -->
-            <div class="section-title">Connection Pooler</div>
-            <div class="section-box" style="border-color: #00d4ff; min-width: 600px;">
-                <h3 style="color: #00d4ff;">🔄 PGBOUNCER 1.16</h3>
-                <div class="connection-flow">
-                    <div class="conn-box">
-                        <div style="font-size: 0.8rem;">Incoming</div>
-                        <div class="port">:6433</div>
-                        <div style="font-size: 0.65rem; color: #888;">1000 max</div>
-                    </div>
-                    <div class="h-arrow h-arrow-bi">
-                        <div class="h-arrow-line" style="width: 100px;"></div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 0.8rem; color: #00d4ff;">Transaction Pooling</div>
-                        <div style="font-size: 0.65rem; color: #888;">Reuse connections</div>
-                        <div style="font-size: 0.65rem; color: #888;">&lt;1ms overhead</div>
-                    </div>
-                    <div class="h-arrow h-arrow-bi">
-                        <div class="h-arrow-line" style="width: 100px;"></div>
-                    </div>
-                    <div class="conn-box">
-                        <div style="font-size: 0.8rem;">Backend</div>
-                        <div class="port">:5432</div>
-                        <div style="font-size: 0.65rem; color: #888;">100 pool</div>
-                    </div>
-                </div>
-                <div class="perf-row">
-                    <div class="perf-box">
-                        <div class="value">1000</div>
-                        <div class="label">Max Connections</div>
-                    </div>
-                    <div class="perf-box">
-                        <div class="value">100</div>
-                        <div class="label">Pool Size</div>
-                    </div>
-                    <div class="perf-box">
-                        <div class="value">&lt;1ms</div>
-                        <div class="label">Overhead</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="arrow arrow-bi">
-                <div class="arrow-line"></div>
-                <div class="arrow-label">Port 5432 (pooled)</div>
-            </div>
-
-            <!-- PostgreSQL -->
-            <div class="section-title">Database Engine</div>
-            <div class="section-box" style="border-color: #ffd700; min-width: 800px;">
-                <h3>🗄️ POSTGRESQL 16</h3>
-
-                <!-- Tuning Parameters -->
-                <div style="margin-bottom: 20px;">
-                    <div style="text-align: center; font-size: 0.8rem; color: #888; margin-bottom: 10px;">Performance Tuning (P21)</div>
-                    <div class="tuning-grid">
-                        <div class="tuning-item">
-                            <div class="param">shared_buffers</div>
-                            <div class="value">8GB</div>
+                <div class="highlight-box">
+                    <div class="highlight-row">
+                        <div class="highlight-item">
+                            <div class="highlight-value">1000</div>
+                            <div class="highlight-label">Max Clients</div>
                         </div>
-                        <div class="tuning-item">
-                            <div class="param">effective_cache_size</div>
-                            <div class="value">24GB</div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">50</div>
+                            <div class="highlight-label">Pool Size</div>
                         </div>
-                        <div class="tuning-item">
-                            <div class="param">work_mem</div>
-                            <div class="value">256MB</div>
-                        </div>
-                        <div class="tuning-item">
-                            <div class="param">maintenance_work_mem</div>
-                            <div class="value">1GB</div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">20:1</div>
+                            <div class="highlight-label">Ratio</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Tables -->
-                <div style="text-align: center; font-size: 0.8rem; color: #ffd700; margin: 15px 0;">17 Tables</div>
-                <div class="table-grid">
-                    <!-- Core tables -->
-                    <div class="table-item core">
-                        <div class="name">users</div>
-                        <div class="count">Auth + profiles</div>
-                    </div>
-                    <div class="table-item core">
-                        <div class="name">sessions</div>
-                        <div class="count">Login tracking</div>
-                    </div>
-                    <div class="table-item core">
-                        <div class="name">audit_logs</div>
-                        <div class="count">Security events</div>
-                    </div>
-                    <div class="table-item core">
-                        <div class="name">projects</div>
-                        <div class="count">User projects</div>
-                    </div>
-                    <!-- Tool tables -->
-                    <div class="table-item tool">
-                        <div class="name">dictionaries</div>
-                        <div class="count">KR Similar</div>
-                    </div>
-                    <div class="table-item tool">
-                        <div class="name">dictionary_entries</div>
-                        <div class="count">Term pairs</div>
-                    </div>
-                    <div class="table-item tool">
-                        <div class="name">search_history</div>
-                        <div class="count">QuickSearch</div>
-                    </div>
-                    <div class="table-item tool">
-                        <div class="name">project_cache</div>
-                        <div class="count">File cache</div>
-                    </div>
-                    <!-- TM tables -->
-                    <div class="table-item tm">
-                        <div class="name">tm_entries</div>
-                        <div class="count">Translation Memory</div>
-                    </div>
-                    <div class="table-item tm">
-                        <div class="name">tm_projects</div>
-                        <div class="count">TM metadata</div>
-                    </div>
-                    <div class="table-item tm">
-                        <div class="name">ldm_rows</div>
-                        <div class="count">LDM file data</div>
-                    </div>
-                    <div class="table-item tm">
-                        <div class="name">glossary</div>
-                        <div class="count">Term glossary</div>
-                    </div>
-                    <!-- Telemetry -->
-                    <div class="table-item telemetry">
-                        <div class="name">telemetry_events</div>
-                        <div class="count">Usage stats</div>
-                    </div>
-                    <div class="table-item telemetry">
-                        <div class="name">telemetry_sessions</div>
-                        <div class="count">App sessions</div>
-                    </div>
-                    <div class="table-item telemetry">
-                        <div class="name">telemetry_errors</div>
-                        <div class="count">Error reports</div>
-                    </div>
-                    <div class="table-item telemetry">
-                        <div class="name">system_metrics</div>
-                        <div class="count">Performance</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="arrow arrow-bi">
-                <div class="arrow-line"></div>
-                <div class="arrow-label">Index lookups</div>
-            </div>
-
-            <!-- Indexes -->
-            <div class="section-title">Index Layer</div>
-            <div class="section-box" style="border-color: #00ff88; min-width: 900px;">
-                <h3 style="color: #00ff88;">⚡ INDEXES (Query Optimization)</h3>
-                <div class="index-grid">
-                    <div class="index-item">
-                        <h4>🔤 GIN + tsvector</h4>
-                        <div class="detail">Full-text search on source/target text</div>
-                        <div class="detail">Supports Korean, English, mixed</div>
-                        <div class="perf">&lt;10ms search on 100K+ rows</div>
-                    </div>
-                    <div class="index-item">
-                        <h4>🔢 GIN pg_trgm</h4>
-                        <div class="detail">Trigram similarity matching</div>
-                        <div class="detail">Fuzzy search, typo tolerance</div>
-                        <div class="perf">LIKE '%term%' fast</div>
-                    </div>
-                    <div class="index-item">
-                        <h4>🌳 B-Tree</h4>
-                        <div class="detail">Primary keys, foreign keys</div>
-                        <div class="detail">Date ranges, numeric lookups</div>
-                        <div class="perf">O(log n) lookups</div>
-                    </div>
-                    <div class="index-item">
-                        <h4>📊 BRIN</h4>
-                        <div class="detail">Block Range Index</div>
-                        <div class="detail">Time-series telemetry data</div>
-                        <div class="perf">Minimal storage</div>
-                    </div>
-                    <div class="index-item">
-                        <h4>🎯 Partial Indexes</h4>
-                        <div class="detail">WHERE status = 'active'</div>
-                        <div class="detail">Smaller index, faster queries</div>
-                        <div class="perf">50% size reduction</div>
-                    </div>
-                    <div class="index-item">
-                        <h4>🔗 Composite</h4>
-                        <div class="detail">(project_id, created_at)</div>
-                        <div class="detail">Multi-column queries</div>
-                        <div class="perf">Covering indexes</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Performance Stats -->
-            <div class="section-title">Performance Metrics</div>
-            <div class="perf-row">
-                <div class="perf-box">
-                    <div class="value">31K/s</div>
-                    <div class="label">Bulk Insert</div>
-                </div>
-                <div class="perf-box">
-                    <div class="value">&lt;10ms</div>
-                    <div class="label">FTS Query</div>
-                </div>
-                <div class="perf-box">
-                    <div class="value">&lt;1ms</div>
-                    <div class="label">PK Lookup</div>
-                </div>
-                <div class="perf-box">
-                    <div class="value">100K+</div>
-                    <div class="label">TM Entries</div>
-                </div>
-                <div class="perf-box">
-                    <div class="value">24GB</div>
-                    <div class="label">Cache Size</div>
                 </div>
             </div>
         </div>
 
-        <!-- Legend -->
-        <div class="legend">
-            <div class="legend-item">
-                <div class="legend-color" style="border-color: #00ff88; background: rgba(0, 255, 136, 0.2);"></div>
-                <span>Core Tables</span>
+        <!-- Q2: POSTGRESQL (Top Right) -->
+        <div class="quadrant postgres">
+            <div class="quad-header">
+                <div class="quad-icon">🐘</div>
+                <div class="quad-title">PostgreSQL 14.20</div>
+                <div class="quad-badge">TUNED</div>
             </div>
-            <div class="legend-item">
-                <div class="legend-color" style="border-color: #9945ff; background: rgba(153, 69, 255, 0.2);"></div>
-                <span>Tool Tables</span>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <div class="name">shared_buffers</div>
+                    <div class="desc">8GB RAM cache</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">effective_cache</div>
+                    <div class="desc">24GB estimate</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">work_mem</div>
+                    <div class="desc">256MB per query</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">maintenance</div>
+                    <div class="desc">1GB for VACUUM</div>
+                </div>
             </div>
-            <div class="legend-item">
-                <div class="legend-color" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.2);"></div>
-                <span>TM/LDM Tables</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="border-color: #ff6b35; background: rgba(255, 107, 53, 0.2);"></div>
-                <span>Telemetry</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="border-color: #00d4ff; background: rgba(0, 212, 255, 0.2);"></div>
-                <span>Connection Pooler</span>
+            <div class="highlight-box">
+                <div class="highlight-row">
+                    <div class="highlight-item">
+                        <div class="highlight-value">COPY</div>
+                        <div class="highlight-label">Bulk Method</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">TEXT</div>
+                        <div class="highlight-label">Format</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">STDIN</div>
+                        <div class="highlight-label">Source</div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Stats footer -->
-        <div class="stats-footer">
-            <div class="stat-item">
-                <div class="stat-value">17</div>
-                <div class="stat-label">Tables</div>
+        <!-- Q3: INDEXES (Bottom Left) -->
+        <div class="quadrant indexes">
+            <div class="quad-header">
+                <div class="quad-icon">📇</div>
+                <div class="quad-title">Index Types</div>
+                <div class="quad-badge">GIN + FTS</div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value">GIN</div>
-                <div class="stat-label">Index Type</div>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <div class="name">GIN Trigram</div>
+                    <div class="desc">Fuzzy similarity</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">tsvector FTS</div>
+                    <div class="desc">Full-text search</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">B-tree</div>
+                    <div class="desc">Primary keys</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">Hash</div>
+                    <div class="desc">TM entry lookup</div>
+                </div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value">tsvector</div>
-                <div class="stat-label">FTS Engine</div>
+            <div class="highlight-box">
+                <div class="highlight-row">
+                    <div class="highlight-item">
+                        <div class="highlight-value">pg_trgm</div>
+                        <div class="highlight-label">Extension</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">simple</div>
+                        <div class="highlight-label">Dict Config</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">STORED</div>
+                        <div class="highlight-label">Generated</div>
+                    </div>
+                </div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value">1000</div>
-                <div class="stat-label">Max Connections</div>
+        </div>
+
+        <!-- Q4: PERFORMANCE (Bottom Right) -->
+        <div class="quadrant perf">
+            <div class="quad-header">
+                <div class="quad-icon">⚡</div>
+                <div class="quad-title">Performance</div>
+                <div class="quad-badge">BENCHMARKED</div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value">PgBouncer</div>
-                <div class="stat-label">Pooler</div>
+            <div class="perf-grid">
+                <div class="perf-item">
+                    <div class="value">31K</div>
+                    <div class="label">Entries/sec COPY</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">27K</div>
+                    <div class="label">Entries/sec INSERT</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">~32s</div>
+                    <div class="label">1M Rows</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">100+</div>
+                    <div class="label">Concurrent Users</div>
+                </div>
+                <div class="perf-item wide">
+                    <div class="value">COPY TEXT 3-5x FASTER</div>
+                    <div class="label">vs Batch INSERT • psycopg2.copy_from() • No INSERT overhead</div>
+                </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Bottom stats -->
+    <div class="bottom-stats">
+        <div class="stat">
+            <div class="value">31K</div>
+            <div class="label">COPY/sec</div>
+        </div>
+        <div class="stat">
+            <div class="value">1000</div>
+            <div class="label">Connections</div>
+        </div>
+        <div class="stat">
+            <div class="value">32GB</div>
+            <div class="label">RAM Tuned</div>
+        </div>
+        <div class="stat">
+            <div class="value">GIN</div>
+            <div class="label">Indexes</div>
+        </div>
+        <div class="stat">
+            <div class="value">FTS</div>
+            <div class="label">tsvector</div>
+        </div>
+        <div class="stat">
+            <div class="value">P21</div>
+            <div class="label">Powerhouse</div>
         </div>
     </div>
 </body>
