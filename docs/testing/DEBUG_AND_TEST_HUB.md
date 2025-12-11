@@ -753,9 +753,9 @@ REMOTE ACCESS & TESTING CAPABILITIES
 │   │   ├── Python requests: In test files
 │   │   └── httpie: http GET localhost:8888/health
 │   │
-│   └── Database Inspection
-│       ├── SQLite: sqlite3 server/data/localizationtools.db
-│       ├── Tables: .tables
+│   └── Database Inspection (PostgreSQL)
+│       ├── Connect: psql -h 127.0.0.1 -p 5432 -U localization_admin -d localizationtools
+│       ├── Tables: \dt
 │       └── Query: SELECT * FROM users;
 │
 ├── 🎭 PLAYWRIGHT - YOUR EYES INTO ANY BROWSER (USE THIS!)

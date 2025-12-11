@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - Complete System Architecture</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0f2027 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        .container {
+            max-width: 2400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        /* Main Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 120px 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* Sections */
+        .section {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+            border: 2px solid;
+        }
+        .user-section { border-color: #00d4ff; }
+        .server-section { border-color: #7b2cbf; }
+
+        .section-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-section .section-title { color: #00d4ff; }
+        .server-section .section-title { color: #7b2cbf; }
+
+        /* Component Box */
+        .component {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+        .component-electron { border-color: #47848f; }
+        .component-python { border-color: #3776ab; }
+        .component-ai { border-color: #ff6b6b; }
+        .component-security { border-color: #ffd700; }
+        .component-api { border-color: #7b2cbf; }
+        .component-db { border-color: #336791; }
+        .component-admin { border-color: #43e97b; }
+
+        .component-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .component-icon {
+            font-size: 1.8em;
+        }
+        .component-name {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .component-port {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            margin-left: auto;
+        }
+
+        /* Detail Grid */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            font-size: 0.85em;
+        }
+        .detail-item {
+            background: rgba(0,0,0,0.3);
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .detail-value {
+            color: #7fff7f;
+            font-weight: bold;
+        }
+
+        /* Security Box */
+        .security-box {
+            background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,100,0,0.1));
+            border: 2px solid #ffd700;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .security-title {
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            font-size: 0.8em;
+        }
+        .security-item {
+            background: rgba(0,0,0,0.3);
+            padding: 5px 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .security-check { color: #7fff7f; }
+
+        /* Connection Area */
+        .connection-area {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 20px 0;
+        }
+        .arrow-box {
+            background: rgba(0,0,0,0.4);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+            width: 100%;
+        }
+        .arrow {
+            font-size: 2em;
+            color: #00d4ff;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .arrow-label {
+            font-size: 0.75em;
+            color: #888;
+            margin-top: 5px;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Database Section */
+        .db-section {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+            border: 2px solid #336791;
+        }
+        .db-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+        .db-icon { font-size: 2.5em; }
+        .db-title { font-size: 1.5em; font-weight: bold; color: #336791; }
+        .db-subtitle { color: #888; font-size: 0.9em; }
+
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .table-box {
+            background: rgba(51,103,145,0.2);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            border: 1px solid rgba(51,103,145,0.5);
+        }
+        .table-name {
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-bottom: 3px;
+        }
+        .table-desc {
+            font-size: 0.7em;
+            color: #888;
+        }
+
+        .db-stats {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+        }
+        .db-stat {
+            text-align: center;
+        }
+        .db-stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #7fff7f;
+        }
+        .db-stat-label {
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        /* Tools Section */
+        .tools-section {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+            border: 2px solid #43e97b;
+            margin-top: 20px;
+        }
+        .tools-header {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #43e97b;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+        .tool-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            border-left: 4px solid;
+        }
+        .tool-1 { border-color: #f093fb; }
+        .tool-2 { border-color: #4facfe; }
+        .tool-3 { border-color: #43e97b; }
+        .tool-4 { border-color: #fee140; }
+
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .tool-icon { font-size: 1.5em; }
+        .tool-name { font-weight: bold; }
+        .tool-status {
+            margin-left: auto;
+            font-size: 0.75em;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .status-complete { background: #43e97b; color: #000; }
+        .status-progress { background: #fee140; color: #000; }
+
+        .tool-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .tool-feature {
+            background: rgba(255,255,255,0.1);
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+        }
+
+        /* Bottom Stats */
+        .bottom-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        /* Data Flow Arrows */
+        .flow-indicator {
+            position: relative;
+        }
+        .flow-arrow {
+            color: #00d4ff;
+            font-size: 1.2em;
+        }
+
+        /* API Endpoints Grid */
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            font-size: 0.75em;
+            margin-top: 10px;
+        }
+        .api-item {
+            background: rgba(123,44,191,0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        /* Sub-sections */
+        .sub-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .sub-title {
+            font-size: 0.9em;
+            color: #888;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LocaNext - Complete System Architecture</h1>
+        <p class="subtitle">System + Security + Database + Tools | Full Technical Overview</p>
+
+        <div class="main-grid">
+            <!-- USER PC SIDE -->
+            <div class="section user-section">
+                <div class="section-title">
+                    <span>🖥️</span> USER PC (Desktop Application)
+                </div>
+
+                <!-- Electron App -->
+                <div class="component component-electron">
+                    <div class="component-header">
+                        <span class="component-icon">⚡</span>
+                        <span class="component-name">LocaNext.exe</span>
+                        <span class="component-port">Electron 28</span>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span>Framework</span>
+                            <span class="detail-value">Svelte 4</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Language</span>
+                            <span class="detail-value">TypeScript</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Build</span>
+                            <span class="detail-value">Vite + esbuild</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>IPC</span>
+                            <span class="detail-value">Secure Bridge</span>
+                        </div>
+                    </div>
+                    <div class="security-box">
+                        <div class="security-title">🔒 Frontend Security</div>
+                        <div class="security-grid">
+                            <div class="security-item"><span class="security-check">✓</span> Context Isolation</div>
+                            <div class="security-item"><span class="security-check">✓</span> Node Disabled</div>
+                            <div class="security-item"><span class="security-check">✓</span> Sandbox Mode</div>
+                            <div class="security-item"><span class="security-check">✓</span> CSP Headers</div>
+                            <div class="security-item"><span class="security-check">✓</span> Preload Scripts</div>
+                            <div class="security-item"><span class="security-check">✓</span> No Remote Content</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Python Backend -->
+                <div class="component component-python">
+                    <div class="component-header">
+                        <span class="component-icon">🐍</span>
+                        <span class="component-name">Backend Engine</span>
+                        <span class="component-port">:8888</span>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span>Framework</span>
+                            <span class="detail-value">FastAPI</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Server</span>
+                            <span class="detail-value">Uvicorn ASGI</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Python</span>
+                            <span class="detail-value">3.11+</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Async</span>
+                            <span class="detail-value">100%</span>
+                        </div>
+                    </div>
+                    <div class="sub-section">
+                        <div class="sub-title">Local API Endpoints</div>
+                        <div class="api-grid">
+                            <div class="api-item">GET /health</div>
+                            <div class="api-item">POST /xlstransfer/*</div>
+                            <div class="api-item">POST /quicksearch/*</div>
+                            <div class="api-item">POST /krsimilar/*</div>
+                            <div class="api-item">POST /ldm/*</div>
+                            <div class="api-item">WS /ws/progress</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI/ML Engine -->
+                <div class="component component-ai">
+                    <div class="component-header">
+                        <span class="component-icon">🧠</span>
+                        <span class="component-name">AI/ML Engine</span>
+                        <span class="component-port">GPU/CPU</span>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span>Model</span>
+                            <span class="detail-value">Qwen3 0.6B</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Dimension</span>
+                            <span class="detail-value">1024-dim</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Index</span>
+                            <span class="detail-value">FAISS HNSW</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Speed</span>
+                            <span class="detail-value">~800/sec</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>M Value</span>
+                            <span class="detail-value">32</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>efSearch</span>
+                            <span class="detail-value">500</span>
+                        </div>
+                    </div>
+                    <div class="security-box">
+                        <div class="security-title">🔒 Data Security</div>
+                        <div class="security-grid">
+                            <div class="security-item"><span class="security-check">✓</span> Local Processing</div>
+                            <div class="security-item"><span class="security-check">✓</span> No Cloud Upload</div>
+                            <div class="security-item"><span class="security-check">✓</span> Encrypted Cache</div>
+                            <div class="security-item"><span class="security-check">✓</span> Memory Cleanup</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONNECTION ARROWS -->
+            <div class="connection-area">
+                <div class="arrow-box">
+                    <div class="arrow">→</div>
+                    <div class="arrow-label">HTTPS<br/>REST API</div>
+                </div>
+                <div class="arrow-box">
+                    <div class="arrow">←</div>
+                    <div class="arrow-label">JSON<br/>Response</div>
+                </div>
+                <div class="arrow-box">
+                    <div class="arrow">⇄</div>
+                    <div class="arrow-label">WSS<br/>Real-time</div>
+                </div>
+                <div class="arrow-box">
+                    <div class="arrow">→</div>
+                    <div class="arrow-label">Telemetry<br/>(Optional)</div>
+                </div>
+            </div>
+
+            <!-- SERVER SIDE -->
+            <div class="section server-section">
+                <div class="section-title">
+                    <span>🌐</span> CENTRAL SERVER (Optional)
+                </div>
+
+                <!-- API Server -->
+                <div class="component component-api">
+                    <div class="component-header">
+                        <span class="component-icon">🚀</span>
+                        <span class="component-name">API Server</span>
+                        <span class="component-port">:8888</span>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span>Endpoints</span>
+                            <span class="detail-value">63+</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Auth</span>
+                            <span class="detail-value">JWT + API Key</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Async</span>
+                            <span class="detail-value">AsyncIO</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Docs</span>
+                            <span class="detail-value">OpenAPI 3</span>
+                        </div>
+                    </div>
+                    <div class="sub-section">
+                        <div class="sub-title">API Groups</div>
+                        <div class="api-grid">
+                            <div class="api-item">/api/v2/auth/*</div>
+                            <div class="api-item">/api/v2/admin/*</div>
+                            <div class="api-item">/api/v2/tm/*</div>
+                            <div class="api-item">/api/v2/files/*</div>
+                            <div class="api-item">/api/v2/projects/*</div>
+                            <div class="api-item">/api/v1/remote-logs/*</div>
+                        </div>
+                    </div>
+                    <div class="security-box">
+                        <div class="security-title">🔒 API Security (86 Tests)</div>
+                        <div class="security-grid">
+                            <div class="security-item"><span class="security-check">✓</span> IP Range Filter</div>
+                            <div class="security-item"><span class="security-check">✓</span> CORS Strict</div>
+                            <div class="security-item"><span class="security-check">✓</span> JWT Validation</div>
+                            <div class="security-item"><span class="security-check">✓</span> Rate Limiting</div>
+                            <div class="security-item"><span class="security-check">✓</span> Input Sanitize</div>
+                            <div class="security-item"><span class="security-check">✓</span> SQL Injection</div>
+                            <div class="security-item"><span class="security-check">✓</span> XSS Prevention</div>
+                            <div class="security-item"><span class="security-check">✓</span> CSRF Tokens</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Dashboard -->
+                <div class="component component-admin">
+                    <div class="component-header">
+                        <span class="component-icon">📊</span>
+                        <span class="component-name">Admin Dashboard</span>
+                        <span class="component-port">:5175</span>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span>Framework</span>
+                            <span class="detail-value">SvelteKit</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Pages</span>
+                            <span class="detail-value">7</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Auth</span>
+                            <span class="detail-value">Admin Only</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Refresh</span>
+                            <span class="detail-value">Real-time</span>
+                        </div>
+                    </div>
+                    <div class="sub-section">
+                        <div class="sub-title">Dashboard Pages</div>
+                        <div class="api-grid">
+                            <div class="api-item">/overview</div>
+                            <div class="api-item">/users</div>
+                            <div class="api-item">/stats</div>
+                            <div class="api-item">/telemetry</div>
+                            <div class="api-item">/logs</div>
+                            <div class="api-item">/database</div>
+                            <div class="api-item">/server</div>
+                        </div>
+                    </div>
+                    <div class="security-box">
+                        <div class="security-title">🔒 Dashboard Security</div>
+                        <div class="security-grid">
+                            <div class="security-item"><span class="security-check">✓</span> Admin Auth Only</div>
+                            <div class="security-item"><span class="security-check">✓</span> Session Timeout</div>
+                            <div class="security-item"><span class="security-check">✓</span> Audit Logging</div>
+                            <div class="security-item"><span class="security-check">✓</span> Action History</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telemetry -->
+                <div class="component component-security">
+                    <div class="component-header">
+                        <span class="component-icon">📡</span>
+                        <span class="component-name">Telemetry System</span>
+                        <span class="component-port">Async</span>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span>Collection</span>
+                            <span class="detail-value">Opt-in</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Data</span>
+                            <span class="detail-value">Anonymized</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Storage</span>
+                            <span class="detail-value">30 days</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Encrypted</span>
+                            <span class="detail-value">Yes</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DATABASE SECTION -->
+        <div class="db-section">
+            <div class="db-header">
+                <span class="db-icon">🐘</span>
+                <div>
+                    <div class="db-title">PostgreSQL 16 + PgBouncer</div>
+                    <div class="db-subtitle">Enterprise Database with Connection Pooling</div>
+                </div>
+            </div>
+
+            <div class="tables-grid">
+                <div class="table-box">
+                    <div class="table-name">users</div>
+                    <div class="table-desc">Auth + Roles</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">projects</div>
+                    <div class="table-desc">LDM Projects</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">files</div>
+                    <div class="table-desc">File Metadata</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">rows</div>
+                    <div class="table-desc">Translation Units</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">tm_entries</div>
+                    <div class="table-desc">Translation Memory</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">glossary</div>
+                    <div class="table-desc">Term Database</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">audit_logs</div>
+                    <div class="table-desc">Security Events</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">sessions</div>
+                    <div class="table-desc">User Sessions</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">telemetry_installs</div>
+                    <div class="table-desc">Installation IDs</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">telemetry_sessions</div>
+                    <div class="table-desc">Usage Sessions</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">telemetry_logs</div>
+                    <div class="table-desc">Remote Logs</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">telemetry_events</div>
+                    <div class="table-desc">Events</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">project_users</div>
+                    <div class="table-desc">Permissions</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">file_history</div>
+                    <div class="table-desc">Versions</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">comments</div>
+                    <div class="table-desc">Reviews</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">settings</div>
+                    <div class="table-desc">Config</div>
+                </div>
+                <div class="table-box">
+                    <div class="table-name">api_keys</div>
+                    <div class="table-desc">Tokens</div>
+                </div>
+            </div>
+
+            <div class="db-stats">
+                <div class="db-stat">
+                    <div class="db-stat-value">17</div>
+                    <div class="db-stat-label">Tables</div>
+                </div>
+                <div class="db-stat">
+                    <div class="db-stat-value">31K/s</div>
+                    <div class="db-stat-label">Bulk Insert</div>
+                </div>
+                <div class="db-stat">
+                    <div class="db-stat-value">&lt;10ms</div>
+                    <div class="db-stat-label">FTS Search</div>
+                </div>
+                <div class="db-stat">
+                    <div class="db-stat-value">1000</div>
+                    <div class="db-stat-label">Connections</div>
+                </div>
+                <div class="db-stat">
+                    <div class="db-stat-value">8GB</div>
+                    <div class="db-stat-label">Shared Buffers</div>
+                </div>
+                <div class="db-stat">
+                    <div class="db-stat-value">24GB</div>
+                    <div class="db-stat-label">Effective Cache</div>
+                </div>
+                <div class="db-stat">
+                    <div class="db-stat-value">GIN</div>
+                    <div class="db-stat-label">Trigram Index</div>
+                </div>
+                <div class="db-stat">
+                    <div class="db-stat-value">tsvector</div>
+                    <div class="db-stat-label">Full-Text</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOOLS SECTION -->
+        <div class="tools-section">
+            <div class="tools-header">
+                <span>🛠️</span> Available Tools (4 Applications)
+            </div>
+            <div class="tools-grid">
+                <div class="tool-card tool-1">
+                    <div class="tool-header">
+                        <span class="tool-icon">📊</span>
+                        <span class="tool-name">XLSTransfer</span>
+                        <span class="tool-status status-complete">✓ 100%</span>
+                    </div>
+                    <p style="font-size:0.85em;color:#aaa;margin-bottom:8px;">Transfer translations between Excel files using semantic matching</p>
+                    <div class="tool-features">
+                        <span class="tool-feature">Excel → Excel</span>
+                        <span class="tool-feature">Qwen Embeddings</span>
+                        <span class="tool-feature">FAISS HNSW</span>
+                        <span class="tool-feature">85%+ Accuracy</span>
+                        <span class="tool-feature">Batch Mode</span>
+                    </div>
+                </div>
+                <div class="tool-card tool-2">
+                    <div class="tool-header">
+                        <span class="tool-icon">🔍</span>
+                        <span class="tool-name">QuickSearch</span>
+                        <span class="tool-status status-complete">✓ 100%</span>
+                    </div>
+                    <p style="font-size:0.85em;color:#aaa;margin-bottom:8px;">Fast full-text search across TXT and XML localization files</p>
+                    <div class="tool-features">
+                        <span class="tool-feature">TXT / XML</span>
+                        <span class="tool-feature">Regex Support</span>
+                        <span class="tool-feature">100K+ rows</span>
+                        <span class="tool-feature">&lt;100ms</span>
+                        <span class="tool-feature">Multi-file</span>
+                    </div>
+                </div>
+                <div class="tool-card tool-3">
+                    <div class="tool-header">
+                        <span class="tool-icon">🔗</span>
+                        <span class="tool-name">KR Similar</span>
+                        <span class="tool-status status-complete">✓ 100%</span>
+                    </div>
+                    <p style="font-size:0.85em;color:#aaa;margin-bottom:8px;">Find similar Korean strings using AI embeddings for QA</p>
+                    <div class="tool-features">
+                        <span class="tool-feature">Qwen 1024-dim</span>
+                        <span class="tool-feature">FAISS HNSW</span>
+                        <span class="tool-feature">83K pairs</span>
+                        <span class="tool-feature">Cross-lingual</span>
+                        <span class="tool-feature">Auto-translate</span>
+                    </div>
+                </div>
+                <div class="tool-card tool-4">
+                    <div class="tool-header">
+                        <span class="tool-icon">📝</span>
+                        <span class="tool-name">LDM (CAT Tool)</span>
+                        <span class="tool-status status-progress">62%</span>
+                    </div>
+                    <p style="font-size:0.85em;color:#aaa;margin-bottom:8px;">Language Data Manager - Full CAT tool with TM suggestions</p>
+                    <div class="tool-features">
+                        <span class="tool-feature">Virtual Grid</span>
+                        <span class="tool-feature">5-Tier TM</span>
+                        <span class="tool-feature">103K rows</span>
+                        <span class="tool-feature">Glossary</span>
+                        <span class="tool-feature">Nice View</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM STATS -->
+        <div class="bottom-stats">
+            <div class="stat-item">
+                <div class="stat-value">912</div>
+                <div class="stat-label">Tests Passed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">63+</div>
+                <div class="stat-label">API Endpoints</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">86</div>
+                <div class="stat-label">Security Tests</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">97%</div>
+                <div class="stat-label">Complete</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">$0</div>
+                <div class="stat-label">License Cost</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">19K+</div>
+                <div class="stat-label">Lines of Code</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -81,7 +81,7 @@ DELETE FROM users WHERE username = 'admin';
 ### 5. Security Hardening
 - [ ] Change `DEBUG = False` in production
 - [ ] Set `ENABLE_DOCS = False` (disable Swagger docs in production)
-- [ ] Use strong PostgreSQL password (not SQLite)
+- [ ] Use strong PostgreSQL password
 - [ ] Enable HTTPS/SSL
 - [ ] Set up firewall rules
 - [ ] Enable rate limiting
@@ -113,7 +113,7 @@ secrets.json
 ```
 
 ### Database Security
-- Use PostgreSQL in production (not SQLite)
+- Use PostgreSQL with PgBouncer for connection pooling
 - Use strong passwords (20+ characters)
 - Enable SSL connections
 - Regular backups
@@ -179,14 +179,14 @@ The default `admin/admin123` credentials are:
 - ❌ **UNSAFE** for internet-facing deployments
 
 ### Development vs Production
-| Component | Development | Production |
-|-----------|-------------|------------|
-| Database | SQLite | PostgreSQL |
-| DEBUG | True | **False** |
-| Docs | Enabled | **Disabled** |
-| SECRET_KEY | Default | **Strong random** |
-| Admin Password | admin123 | **Strong unique** |
-| HTTPS | Optional | **Required** |
+| Component | Setting |
+|-----------|---------|
+| Database | PostgreSQL + PgBouncer (same for dev & prod) |
+| DEBUG | **False** in production |
+| Docs | **Disabled** in production |
+| SECRET_KEY | **Strong random** |
+| Admin Password | **Strong unique** |
+| HTTPS | **Required** in production |
 
 ---
 
@@ -197,7 +197,7 @@ Before going live, verify:
 - [ ] Changed all default passwords
 - [ ] Set strong SECRET_KEY in .env
 - [ ] Set strong API_KEY in .env
-- [ ] Using PostgreSQL (not SQLite)
+- [ ] PostgreSQL + PgBouncer configured
 - [ ] DEBUG = False
 - [ ] ENABLE_DOCS = False
 - [ ] HTTPS enabled

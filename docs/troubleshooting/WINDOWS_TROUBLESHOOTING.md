@@ -504,13 +504,18 @@ Frontend (Svelte)
 
 Backend (FastAPI)
      │
-     ├── Database: SQLite (local)
+     ├── Database: PostgreSQL (central)
      │   ├── users table ✓
-     │   ├── active_operations table ✓
-     │   └── log_entries table ✓
+     │   ├── ldm_rows table ✓ (ALL text data)
+     │   ├── log_entries table ✓
+     │   └── PgBouncer: 1000 connections
      │
-     └── Telemetry: LOCAL only (no central server yet)
-         └── See: Priority 12.5 - Central Server Communication
+     ├── Local Storage (server/data/):
+     │   ├── FAISS indexes (heavy, rebuildable)
+     │   ├── Embeddings (.npy)
+     │   └── ML models
+     │
+     └── Telemetry: Sent to central PostgreSQL
 ```
 
 ---

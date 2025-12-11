@@ -55,11 +55,12 @@ DB_POOL_RECYCLE = 3600
 
 ## Performance Benefits
 
-- ✅ **10-100x better concurrency** vs SQLite
-- ✅ **Connection pooling** reduces overhead
+- ✅ **1000 concurrent connections** via PgBouncer
+- ✅ **31k entries/sec** bulk insert with COPY TEXT
 - ✅ **Async operations** with asyncpg
-- ✅ **Production-ready** for high load
+- ✅ **Production-ready** for 100+ users
 - ✅ **ACID compliance** for data integrity
+- ✅ **Real-time sync** for multi-user collaboration
 
 ## Status
 

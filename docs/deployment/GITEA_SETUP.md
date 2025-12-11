@@ -12,7 +12,7 @@ This guide documents the complete setup of **Gitea** as a self-hosted Git server
 - **Dual Remote Strategy**: Push to both GitHub (public) and Gitea (local CI/CD)
 - **Windows Builds**: Native Windows installer creation via Inno Setup
 - **Automatic Releases**: ZIP artifacts created on successful builds
-- **No External Dependencies**: Fully self-hosted, works offline
+- **No External Dependencies**: Fully self-hosted on company network
 
 ### Architecture
 
@@ -31,7 +31,7 @@ This guide documents the complete setup of **Gitea** as a self-hosted Git server
 │  Port 3000: Web UI + API                                        │
 │  Port 2222: SSH (git operations)                                │
 │  Actions: ENABLED                                               │
-│  Database: SQLite (simple, no setup)                            │
+│  Database: SQLite (Gitea's internal DB, NOT LocaNext data)      │
 └─────────────────────────────────────────────────────────────────┘
                                     │
                     ┌───────────────┴───────────────┐
@@ -86,6 +86,8 @@ DOMAIN = 172.28.150.120
 DISABLE_SSH = false
 
 [database]
+; This is Gitea's INTERNAL database for storing repos/users/issues
+; NOT related to LocaNext data (which uses PostgreSQL)
 DB_TYPE = sqlite3
 PATH = /home/neil1988/gitea/data/gitea.db
 

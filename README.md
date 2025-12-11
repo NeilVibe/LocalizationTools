@@ -202,8 +202,8 @@ LocaNext Platform
 │   │   ├── Full-text search           │                                      │
 │   │   └── Connection pooling         ├── GitHub Actions                     │
 │   │                                  │   └── CI/CD pipeline                 │
-│   └── SQLite (optional)              │                                      │
-│       └── Embedded/offline mode      └── NSIS                               │
+│   └── PgBouncer                      │                                      │
+│       └── Connection pooling (1000)  └── NSIS                               │
 │                                          └── Windows installer              │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -462,7 +462,7 @@ RUN_API_TESTS=1 python3 -m pytest -v
 
 - **Python 3.10+**
 - **Node.js 18+**
-- **PostgreSQL 14+** (production) or SQLite (development)
+- **PostgreSQL 14+** with PgBouncer
 
 ### Installation
 

@@ -146,17 +146,18 @@ async def operation(params: OperationParams):
 - Electron mode = IPC + Python scripts
 - Testing in browser = Testing production app
 
-### 4. Local Processing
-- All heavy processing on user's CPU
-- No server-side computation
-- Works completely offline
+### 4. Local Heavy Processing
+- ML/FAISS processing on user's CPU
+- FAISS indexes stored locally (rebuildable)
+- Embeddings computed locally
 - Fast, responsive
 
-### 5. Central Monitoring
-- Optional telemetry to server
-- Usage statistics
-- Error tracking
-- Update management
+### 5. Central Database (REQUIRED)
+- All text data syncs to PostgreSQL
+- Translation Memory shared across users
+- Real-time collaboration via WebSocket
+- Usage statistics and telemetry
+- Update management via Gitea
 
 ---
 

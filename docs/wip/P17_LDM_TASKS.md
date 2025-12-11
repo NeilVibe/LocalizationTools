@@ -34,10 +34,13 @@ PRIORITY 3: Phase 7.2 - TM Upload + Parsers (6 tasks) ✅ COMPLETE
 - ✅ 7.2.3-7.2.4 Parsers (Excel, TXT via existing handlers)
 - ✅ 7.2.5-7.2.6 Upload API + CRUD endpoints (8 new routes)
 
-PRIORITY 4: Phase 7.3 - Index Building (6 tasks)
+PRIORITY 4: Phase 7.3 - Index Building (7 tasks) ✅ COMPLETE
 ────────────────────────────────────────────────────────────
-Why next: Need indexes for fast search
-- 7.3.1-7.3.6 whole_text_lookup, line_lookup, FAISS indexes
+- ✅ 7.3.1 TMIndexer class (tm_indexer.py)
+- ✅ 7.3.2-7.3.3 Hash indexes (whole_text_lookup, line_lookup)
+- ✅ 7.3.4-7.3.5 FAISS HNSW indexes (whole, line embeddings)
+- ✅ 7.3.6 Disk storage structure
+- ✅ 7.3.7 API endpoints (build-indexes, indexes status)
 
 PRIORITY 5: Phase 7.4 - Cascade Search (8 tasks)
 ────────────────────────────────────────────────────────────
@@ -139,10 +142,10 @@ LocaNext-Setup.exe (~300MB installer)
 Phase 1-4: Foundation + Grid    [X] 58/58 tasks  ✅ COMPLETE
 Phase 5: Basic CAT              [▓▓▓] 7/10 tasks  (TM panel done)
 Phase 6: UI Polish              [▓▓▓▓] 7/16 tasks ✅ 6.0 + 6.1 COMPLETE
-Phase 7: Full TM System         [▓▓▓▓▓▓] 15/44 tasks (DB + TMManager + API COMPLETE!)
+Phase 7: Full TM System         [▓▓▓▓▓▓▓▓] 22/44 tasks (DB + TMManager + API + INDEXER COMPLETE!)
 Phase 8: Nice View              [ ] 0/12 tasks   (Pattern rendering)
 ─────────────────────────────────────────
-TOTAL                           87/140 tasks (62%)
+TOTAL                           94/140 tasks (67%)
 
 NEW FEATURE: File Re-Upload with Incremental Update
 ├── 7.5.1-7.5.4: LDM file update (diff-based, 95% faster for typical updates)
@@ -424,11 +427,13 @@ BENEFITS:
 
 ---
 
-### 7.3 Index Building (6 tasks)
+### 7.3 Index Building (6 tasks) ✅ COMPLETE
 
-- [ ] **7.3.1** Create `server/tools/ldm/tm_indexer.py`
+- [x] **7.3.1** Create `server/tools/ldm/tm_indexer.py` ✅
+  - TMIndexer class with build_indexes(), load_indexes(), delete_indexes()
+  - Stores indexes in server/data/ldm_tm/{tm_id}/
 
-- [ ] **7.3.2** Build **whole_text_lookup** (hash index for Tier 1)
+- [x] **7.3.2** Build **whole_text_lookup** (hash index for Tier 1) ✅
   ```python
   def build_whole_text_lookup(entries: List[dict]) -> dict:
       lookup = {}
@@ -439,56 +444,40 @@ BENEFITS:
       return lookup
   ```
 
-- [ ] **7.3.3** Build **line_lookup** (hash index for Tier 3)
-  ```python
-  def build_line_lookup(entries: List[dict]) -> dict:
-      lookup = {}
-      for entry in entries:
-          source_lines = entry['source'].split('\n')
-          target_lines = entry['target'].split('\n') if entry['target'] else []
-          for i, line in enumerate(source_lines):
-              if line.strip():
-                  lookup[normalize(line)] = {
-                      'target_line': target_lines[i] if i < len(target_lines) else '',
-                      'entry_id': entry['id'],
-                      'line_num': i
-                  }
-      return lookup
-  ```
+- [x] **7.3.3** Build **line_lookup** (hash index for Tier 3) ✅
+  - Implemented in TMIndexer._build_line_lookup()
+  - Maps individual lines to target translations
 
-- [ ] **7.3.4** Generate **whole embeddings** + build **FAISS HNSW** (Tier 2)
-  ```python
-  def build_whole_faiss(entries: List[dict], model) -> faiss.Index:
-      texts = [normalize(e['source']) for e in entries]
-      embeddings = model.encode(texts, batch_size=64)
-      faiss.normalize_L2(embeddings)
+- [x] **7.3.4** Generate **whole embeddings** + build **FAISS HNSW** (Tier 2) ✅
+  - Implemented in TMIndexer._build_whole_embeddings()
+  - Uses Qwen3-Embedding-0.6B model
+  - HNSW index with M=32, efConstruction=400, efSearch=500
 
-      index = faiss.IndexHNSWFlat(768, 32)  # 768 dim, M=32
-      index.hnsw.efConstruction = 400
-      index.hnsw.efSearch = 500
-      index.add(embeddings)
-      return index
-  ```
+- [x] **7.3.5** Generate **line embeddings** + build **line FAISS** (Tier 4) ✅
+  - Implemented in TMIndexer._build_line_embeddings()
+  - Extracts lines from multi-line texts for granular matching
 
-- [ ] **7.3.5** Generate **line embeddings** + build **line FAISS** (Tier 4)
-
-- [ ] **7.3.6** Save all indexes to disk
+- [x] **7.3.6** Save all indexes to disk ✅
+  - Storage structure implemented:
   ```
   server/data/ldm_tm/{tm_id}/
   ├── metadata.json
-  ├── entries.pkl
   ├── hash/
   │   ├── whole_lookup.pkl
   │   └── line_lookup.pkl
   ├── embeddings/
   │   ├── whole.npy
-  │   ├── whole_mapping.pkl    # idx → entry_id
+  │   ├── whole_mapping.pkl
   │   ├── line.npy
-  │   └── line_mapping.pkl     # idx → (entry_id, line_num)
+  │   └── line_mapping.pkl
   └── faiss/
       ├── whole.index
       └── line.index
   ```
+
+- [x] **7.3.7** API endpoints for index building ✅
+  - `POST /api/ldm/tm/{tm_id}/build-indexes` - Build FAISS indexes
+  - `GET /api/ldm/tm/{tm_id}/indexes` - Get index status
 
 ---
 
@@ -874,4 +863,4 @@ BENEFITS:
 
 ---
 
-*Last updated: 2025-12-09 - Aligned with WebTranslatorNew 5-tier cascade + dual threshold*
+*Last updated: 2025-12-11 - Phase 7.3 Index Building COMPLETE (TMIndexer + FAISS + API)*

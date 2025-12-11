@@ -283,19 +283,18 @@ BACKUP STRATEGY:
 ═══════════════════════════════════════════════════════════════
 
 Database:
-├── SQLite: Just copy the .db file
 └── PostgreSQL: Standard pg_dump
 
-User files:
-└── server/data/ directory (single folder)
+Local computed files:
+└── server/data/ directory (FAISS indexes, embeddings - rebuildable)
 
 Configuration:
 └── .env file (single file)
 
 Total backup:
-├── Size: < 1 GB typically
+├── Size: Database varies by usage
 ├── Frequency: Daily recommended
-└── Method: Standard file backup (no special tools)
+└── Method: Standard PostgreSQL backup (pg_dump)
 ```
 
 ### "What about uptime/availability?"
@@ -346,7 +345,7 @@ Verdict: MORE tested than most commercial software
 ### "What's our exit strategy?"
 
 **Response:**
-- Data stored in standard formats (SQLite/PostgreSQL, Excel, XML)
+- Data stored in standard formats (PostgreSQL, Excel, XML)
 - Export to TMX, Excel, TXT anytime
 - No proprietary data formats
 - Can migrate to commercial tool anytime (but why would you?)

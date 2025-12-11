@@ -289,9 +289,9 @@ PRIORITY 3 - Scale (Only If Needed - Likely NOT for LocaNext)
 □ Read replicas (only if multiple servers needed)
 ✗ Redis caching - NOT NEEDED for small team (10-50 users)
 
-NOTE: LocaNext is a small team tool on local network.
+NOTE: LocaNext is a team tool with 100+ concurrent users.
 Redis/partitioning are for high-traffic web apps with millions of users.
-Current SQLite + indexes is MORE than sufficient.
+PostgreSQL + PgBouncer handles 100+ users with 1M rows each.
 
 ===========================================================================================
 ```
@@ -705,9 +705,9 @@ if __name__ == "__main__":
 - [ ] **2.3** Add eager loading to project/file queries
 - [ ] **2.4** Run EXPLAIN ANALYZE on slow queries
 
-### Phase 3: Scale - NOT NEEDED FOR LOCANEXT
-~~Redis caching, partitioning, read replicas~~ - OVERKILL for small team tool.
-SQLite + indexes handles 10-50 users easily. Only revisit if 1000+ users.
+### Phase 3: Scale - Future if Needed
+~~Redis caching, partitioning, read replicas~~ - Only if 1000+ concurrent users.
+PostgreSQL + PgBouncer handles 100+ users with 1M rows each. Only revisit if growth exceeds this.
 
 ---
 

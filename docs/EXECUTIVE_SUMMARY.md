@@ -76,7 +76,7 @@ LocaNext is a **professional desktop platform** that consolidates multiple local
 | Benefit | Description |
 |---------|-------------|
 | **Unified Platform** | 4+ tools in one application, consistent UI/UX |
-| **Local Processing** | Runs on user's machine, works offline, no cloud dependency |
+| **Local Processing** | Heavy ML/FAISS on user's machine, text data syncs to PostgreSQL |
 | **Real-time Collaboration** | Multiple users can work on same file simultaneously |
 | **Enterprise Security** | IP filtering, JWT auth, audit logging, CORS protection |
 | **Cost Effective** | Self-hosted, no per-seat licensing, minimal infrastructure |
@@ -488,13 +488,13 @@ LocaNext Platform
 │   DATABASE                           INFRASTRUCTURE                         │
 │   ════════                           ══════════════                         │
 │   ├── PostgreSQL 14+                 ├── Gitea                              │
-│   │   ├── Primary database           │   └── Self-hosted Git + releases     │
+│   │   ├── ALL text data              │   └── Self-hosted Git + releases     │
 │   │   ├── Full-text search           │                                      │
-│   │   └── Connection pooling         ├── GitHub Actions                     │
-│   │                                  │   └── CI/CD pipeline                 │
-│   └── SQLite (optional)              │                                      │
-│       └── Embedded/offline mode      └── NSIS                               │
-│                                          └── Windows installer              │
+│   │   ├── PgBouncer (1000 conn)      ├── GitHub Actions                     │
+│   │   └── Real-time sync             │   └── CI/CD pipeline                 │
+│   │                                  │                                      │
+│   └── Local Storage                  └── NSIS                               │
+│       └── FAISS indexes, embeddings      └── Windows installer              │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -600,13 +600,13 @@ LocaNext Platform
 │   │                                                                     │  │
 │   └─────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
-│   OPTION C: FULLY LOCAL (Offline Mode)                                      │
-│   ════════════════════════════════════                                      │
+│   DATA ARCHITECTURE                                                         │
+│   ═════════════════                                                         │
 │                                                                             │
 │   ┌─────────────────────────────────────────────────────────────────────┐  │
-│   │   Desktop app includes embedded Python + SQLite                     │  │
-│   │   Works completely offline, no server needed                        │  │
-│   │   Suitable for: Single-user, travel, no network access              │  │
+│   │   TEXT DATA → PostgreSQL (shared, synced across users)              │  │
+│   │   COMPUTED FILES → Local disk (FAISS, embeddings, models)           │  │
+│   │   Multi-user collaboration via WebSocket real-time sync             │  │
 │   └─────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -691,7 +691,7 @@ LocaNext Platform
 │                                                                             │
 │   DATABASE                                                                  │
 │   ├── PostgreSQL         PostgreSQL Lic.   ✅ Free                          │
-│   └── SQLite             Public Domain     ✅ Free                          │
+│   └── PgBouncer          ISC               ✅ Free                          │
 │                                                                             │
 │   ML/SEARCH (Optional)                                                      │
 │   ├── FAISS              MIT               ✅ Free                          │

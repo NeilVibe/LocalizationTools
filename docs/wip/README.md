@@ -8,7 +8,7 @@
 
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
-| **P17** | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 60% | LDM LanguageData Manager - task tracking |
+| **P17** | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 67% | LDM LanguageData Manager - task tracking |
 | **P17** | [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | Reference | TM System 9-Tier architecture spec |
 | **P21** | [P21_DATABASE_POWERHOUSE.md](P21_DATABASE_POWERHOUSE.md) | Complete | Database optimization + PgBouncer |
 | **P20** | [P20_MODEL_MIGRATION.md](P20_MODEL_MIGRATION.md) | Complete | Qwen embedding model migration |
@@ -65,6 +65,9 @@ Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
 - [P21_DATABASE_POWERHOUSE.md](P21_DATABASE_POWERHOUSE.md) - PgBouncer + COPY TEXT
 - [P20_MODEL_MIGRATION.md](P20_MODEL_MIGRATION.md) - Qwen embedding
 - [P13_GITEA_CACHE_PLAN.md](P13_GITEA_CACHE_PLAN.md) - Smart cache v2.0
+
+**Other Resources:**
+- [Presentations](../presentations/) - 3 consolidated images (Full Architecture, Licensing, Apps)
 
 ---
 

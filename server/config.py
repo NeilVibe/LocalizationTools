@@ -126,14 +126,10 @@ ALLOWED_ORIGINS = CORS_ORIGINS
 # Database Settings
 # ============================================
 
-# Database type
-DATABASE_TYPE = os.getenv("DATABASE_TYPE", "sqlite")  # "sqlite" or "postgresql"
+# Database type - PostgreSQL is REQUIRED (no SQLite)
+DATABASE_TYPE = os.getenv("DATABASE_TYPE", "postgresql")
 
-# SQLite settings (development)
-SQLITE_DATABASE_PATH = DATA_DIR / "localizationtools.db"
-SQLITE_DATABASE_URL = f"sqlite:///{SQLITE_DATABASE_PATH}"
-
-# PostgreSQL settings (production)
+# PostgreSQL settings (same for dev and production)
 POSTGRES_USER = os.getenv("POSTGRES_USER", "localization_admin")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "change_this_password")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
@@ -144,10 +140,8 @@ POSTGRES_DATABASE_URL = (
     f"{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 )
 
-# Current database URL (based on DATABASE_TYPE)
-DATABASE_URL = (
-    POSTGRES_DATABASE_URL if DATABASE_TYPE == "postgresql" else SQLITE_DATABASE_URL
-)
+# Current database URL (PostgreSQL only)
+DATABASE_URL = POSTGRES_DATABASE_URL
 
 # Database pool settings
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
