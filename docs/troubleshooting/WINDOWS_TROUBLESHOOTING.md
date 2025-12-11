@@ -287,6 +287,34 @@ ss -tlnp | grep 9222 || echo "Port 9222 clear"
 ```
 - **Prevention:** Always kill previous instances before launching new ones during testing
 
+### 4. CDP Not Accessible from WSL (CRITICAL!)
+- **Symptom:** `fetch('http://localhost:9222/json')` hangs or fails from WSL
+- **Cause:** CDP on Windows binds to `127.0.0.1` (Windows-only). WSL has its own network stack and cannot reach Windows localhost directly.
+- **Wrong approach:**
+```bash
+# This WON'T work from WSL:
+curl http://localhost:9222/json  # Times out!
+node cdp_test.js                 # Connection refused!
+```
+- **Correct approach:** Run CDP scripts via PowerShell:
+```bash
+# Create test script on Windows side
+cat > /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/cdp_test.js << 'EOF'
+const WebSocket = require('ws');
+async function main() {
+    const response = await fetch('http://localhost:9222/json');
+    const pages = await response.json();
+    console.log('Pages:', pages.length);
+    // ... rest of test
+}
+main();
+EOF
+
+# Run from WSL via PowerShell (THIS WORKS!)
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\NEIL_PROJECTS_WINDOWSBUILD; node cdp_test.js"
+```
+- **Key insight:** The Node.js process runs on Windows, so it CAN reach Windows localhost:9222
+
 ---
 
 ## Bulletproof Logging
