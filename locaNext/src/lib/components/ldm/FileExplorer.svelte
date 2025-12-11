@@ -218,13 +218,33 @@
   // Handle tree node selection
   function handleNodeSelect(event) {
     const node = event.detail;
-    if (node.data.type === 'file') {
-      selectedFileId = node.data.id;
+
+    // Carbon TreeView passes: {id: "file-1", text: "name.txt", leaf: true, ...}
+    // Our node IDs are formatted as "{type}-{id}"
+    if (!node || !node.id) {
+      logger.warning("TreeView select: no node id", { node: JSON.stringify(node) });
+      return;
+    }
+
+    // Parse our custom ID format: "file-{id}" or "folder-{id}"
+    const idParts = node.id.split('-');
+    if (idParts.length < 2) {
+      logger.warning("TreeView select: invalid node id format", { id: node.id });
+      return;
+    }
+
+    const nodeType = idParts[0];  // 'file' or 'folder'
+    const nodeId = parseInt(idParts[1], 10);
+
+    if (nodeType === 'file') {
+      selectedFileId = nodeId;
       selectedFolderId = null;
-      dispatch('fileSelect', { fileId: node.data.id, file: node.data });
-    } else if (node.data.type === 'folder') {
-      selectedFolderId = node.data.id;
+      dispatch('fileSelect', { fileId: nodeId, file: { id: nodeId, name: node.text, type: 'file' } });
+      logger.info("File selected", { fileId: nodeId, name: node.text });
+    } else if (nodeType === 'folder') {
+      selectedFolderId = nodeId;
       selectedFileId = null;
+      logger.info("Folder selected", { folderId: nodeId, name: node.text });
     }
   }
 
