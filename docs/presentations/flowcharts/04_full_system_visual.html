@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - Complete System Visual</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #0a1a2a 50%, #1a1a3a 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 2400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, #00d4ff, #00ff88, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+        }
+
+        /* Main layout - 3 columns */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 80px 1fr 80px 1fr;
+            gap: 0;
+            align-items: stretch;
+            min-height: 800px;
+        }
+
+        /* Large container boxes */
+        .system-container {
+            background: linear-gradient(135deg, rgba(20, 30, 40, 0.95), rgba(15, 25, 35, 0.95));
+            border: 3px solid;
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .system-container.local {
+            border-color: #00d4ff;
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.2);
+        }
+
+        .system-container.server {
+            border-color: #ff6b35;
+            box-shadow: 0 0 40px rgba(255, 107, 53, 0.2);
+        }
+
+        .system-container.data {
+            border-color: #ffd700;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.2);
+        }
+
+        .container-header {
+            text-align: center;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 15px;
+        }
+
+        .container-header h2 {
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+
+        .container-header .location {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        /* Inner boxes */
+        .inner-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .inner-box h3 {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .inner-box .badge {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 8px;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        /* Nested components */
+        .component {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin: 6px 0;
+            font-size: 0.75rem;
+        }
+
+        .component .name {
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .component .detail {
+            color: #888;
+            font-size: 0.65rem;
+        }
+
+        /* Color coding inner boxes */
+        .inner-box.electron { border-color: #9945ff; }
+        .inner-box.electron h3 { color: #9945ff; }
+
+        .inner-box.backend { border-color: #00ff88; }
+        .inner-box.backend h3 { color: #00ff88; }
+
+        .inner-box.ai { border-color: #ff1493; }
+        .inner-box.ai h3 { color: #ff1493; }
+
+        .inner-box.api { border-color: #ff6b35; }
+        .inner-box.api h3 { color: #ff6b35; }
+
+        .inner-box.security { border-color: #ff4444; }
+        .inner-box.security h3 { color: #ff4444; }
+
+        .inner-box.admin { border-color: #00d4ff; }
+        .inner-box.admin h3 { color: #00d4ff; }
+
+        .inner-box.telemetry { border-color: #ffcc00; }
+        .inner-box.telemetry h3 { color: #ffcc00; }
+
+        .inner-box.db { border-color: #ffd700; }
+        .inner-box.db h3 { color: #ffd700; }
+
+        .inner-box.pool { border-color: #00d4ff; }
+        .inner-box.pool h3 { color: #00d4ff; }
+
+        .inner-box.index { border-color: #00ff88; }
+        .inner-box.index h3 { color: #00ff88; }
+
+        /* Tools grid */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .tool-item {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .tool-item .icon {
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+
+        .tool-item .name {
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .tool-item .tech {
+            font-size: 0.55rem;
+            color: #888;
+        }
+
+        /* Arrow connectors */
+        .arrow-connector {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 0;
+        }
+
+        .arrow-h {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .arrow-h-line {
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(to right, #00d4ff, #00ff88);
+            position: relative;
+        }
+
+        .arrow-h-line::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-left: 14px solid #00ff88;
+        }
+
+        .arrow-h-line.bi::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-right: 14px solid #00d4ff;
+        }
+
+        .arrow-label {
+            font-size: 0.6rem;
+            color: #888;
+            margin-top: 8px;
+            text-align: center;
+            max-width: 70px;
+        }
+
+        .arrow-labels {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        /* Security layer strip */
+        .security-strip {
+            background: linear-gradient(90deg, rgba(255, 68, 68, 0.1), rgba(255, 136, 0, 0.1));
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+            padding: 8px;
+            margin: 10px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .security-item {
+            font-size: 0.6rem;
+            padding: 3px 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            color: #ff8800;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin-top: auto;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat .value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .stat .label {
+            font-size: 0.55rem;
+            color: #888;
+        }
+
+        /* Table list */
+        .table-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            font-size: 0.6rem;
+        }
+
+        .table-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border-left: 2px solid;
+        }
+
+        .table-item.core { border-color: #00ff88; }
+        .table-item.tool { border-color: #9945ff; }
+        .table-item.tm { border-color: #ffd700; }
+        .table-item.tele { border-color: #ff6b35; }
+
+        /* Index grid */
+        .index-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .index-item {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            padding: 6px;
+            text-align: center;
+        }
+
+        .index-item .type {
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .index-item .desc {
+            font-size: 0.55rem;
+            color: #888;
+        }
+
+        /* Bottom stats */
+        .bottom-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .bottom-stat {
+            text-align: center;
+        }
+
+        .bottom-stat .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .bottom-stat .label {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        /* User icon at top */
+        .user-section {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .user-icon {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .user-label {
+            font-size: 0.8rem;
+            color: #00ff88;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LocaNext - Complete System Architecture</h1>
+        <p class="subtitle">Full Visual: Nested Components + Data Flow + Security Layers</p>
+
+        <!-- User at top -->
+        <div class="user-section">
+            <div class="user-icon">👤</div>
+            <div class="user-label">USER (Windows Desktop)</div>
+        </div>
+
+        <!-- Main 3-column layout -->
+        <div class="main-layout">
+            <!-- LOCAL MACHINE -->
+            <div class="system-container local">
+                <div class="container-header">
+                    <h2 style="color: #00d4ff;">💻 LOCAL MACHINE</h2>
+                    <div class="location">User's PC | Windows 10/11 | Offline Capable</div>
+                </div>
+
+                <!-- Electron -->
+                <div class="inner-box electron">
+                    <h3>⚡ ELECTRON 28 <span class="badge">Desktop</span></h3>
+                    <div class="component">
+                        <span class="name">Main Process</span>
+                        <div class="detail">Window mgmt, IPC, File dialogs, Auto-updater</div>
+                    </div>
+                    <div class="component">
+                        <span class="name">Renderer (Svelte 4)</span>
+                        <div class="detail">UI Components, State, WebSocket Client</div>
+                    </div>
+                    <div class="component">
+                        <span class="name">Preload Script</span>
+                        <div class="detail">contextBridge.exposeInMainWorld()</div>
+                    </div>
+                </div>
+
+                <!-- Backend -->
+                <div class="inner-box backend">
+                    <h3>🐍 FASTAPI BACKEND <span class="badge">:8888</span></h3>
+                    <div class="component">
+                        <span class="name">API Router</span>
+                        <div class="detail">63+ endpoints | REST + WebSocket</div>
+                    </div>
+                    <div class="component">
+                        <span class="name">Task Manager</span>
+                        <div class="detail">Async queue | Progress tracking</div>
+                    </div>
+                    <div class="tools-grid">
+                        <div class="tool-item">
+                            <div class="icon">📊</div>
+                            <div class="name">XLSTransfer</div>
+                            <div class="tech">openpyxl</div>
+                        </div>
+                        <div class="tool-item">
+                            <div class="icon">🔍</div>
+                            <div class="name">QuickSearch</div>
+                            <div class="tech">regex</div>
+                        </div>
+                        <div class="tool-item">
+                            <div class="icon">🔗</div>
+                            <div class="name">KR Similar</div>
+                            <div class="tech">FAISS</div>
+                        </div>
+                        <div class="tool-item">
+                            <div class="icon">📝</div>
+                            <div class="name">LDM</div>
+                            <div class="tech">CAT Tool</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI/ML -->
+                <div class="inner-box ai">
+                    <h3>🧠 AI/ML ENGINE</h3>
+                    <div class="component">
+                        <span class="name">Qwen3-0.6B</span>
+                        <div class="detail">1024-dim embeddings | Korean+English</div>
+                    </div>
+                    <div class="component">
+                        <span class="name">FAISS HNSW</span>
+                        <div class="detail">Vector index | &lt;10ms search</div>
+                    </div>
+                </div>
+
+                <div class="stats-bar">
+                    <div class="stat">
+                        <div class="value">4</div>
+                        <div class="label">Tools</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value">63+</div>
+                        <div class="label">Endpoints</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value">100%</div>
+                        <div class="label">Offline</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrow: Local → Server -->
+            <div class="arrow-connector">
+                <div class="arrow-labels">
+                    <div class="arrow-h">
+                        <div class="arrow-h-line bi"></div>
+                        <div class="arrow-label">HTTPS Telemetry (opt-in)</div>
+                    </div>
+                    <div class="arrow-h">
+                        <div class="arrow-h-line bi"></div>
+                        <div class="arrow-label">WebSocket Updates</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CENTRAL SERVER -->
+            <div class="system-container server">
+                <div class="container-header">
+                    <h2 style="color: #ff6b35;">🌐 CENTRAL SERVER</h2>
+                    <div class="location">Company Network | Linux | Optional</div>
+                </div>
+
+                <!-- API Server -->
+                <div class="inner-box api">
+                    <h3>🔧 API SERVER <span class="badge">:8888</span></h3>
+                    <div class="component">
+                        <span class="name">FastAPI Instance</span>
+                        <div class="detail">Uvicorn | Multi-user | Async</div>
+                    </div>
+                    <div class="component">
+                        <span class="name">WebSocket Hub</span>
+                        <div class="detail">Real-time sync | Broadcast</div>
+                    </div>
+                </div>
+
+                <!-- Security -->
+                <div class="inner-box security">
+                    <h3>🛡️ SECURITY LAYERS (7)</h3>
+                    <div class="security-strip">
+                        <span class="security-item">IP Filter</span>
+                        <span class="security-item">CORS</span>
+                        <span class="security-item">Rate Limit</span>
+                        <span class="security-item">JWT</span>
+                        <span class="security-item">Session</span>
+                        <span class="security-item">Role Auth</span>
+                        <span class="security-item">Audit Log</span>
+                    </div>
+                    <div class="component">
+                        <span class="name">86 Security Tests</span>
+                        <div class="detail">IP:24 | CORS:11 | JWT:22 | Audit:29</div>
+                    </div>
+                </div>
+
+                <!-- Admin Dashboard -->
+                <div class="inner-box admin">
+                    <h3>📊 ADMIN DASHBOARD <span class="badge">:5175</span></h3>
+                    <div class="component">
+                        <span class="name">Svelte + Vite</span>
+                        <div class="detail">User mgmt | Stats | Logs</div>
+                    </div>
+                </div>
+
+                <!-- Telemetry -->
+                <div class="inner-box telemetry">
+                    <h3>📈 TELEMETRY</h3>
+                    <div class="component">
+                        <span class="name">Usage Analytics</span>
+                        <div class="detail">Anonymous | Opt-in | GDPR</div>
+                    </div>
+                </div>
+
+                <div class="stats-bar">
+                    <div class="stat">
+                        <div class="value">7</div>
+                        <div class="label">Security</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value">86</div>
+                        <div class="label">Tests</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value">24h</div>
+                        <div class="label">JWT</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrow: Server → Data -->
+            <div class="arrow-connector">
+                <div class="arrow-labels">
+                    <div class="arrow-h">
+                        <div class="arrow-h-line bi"></div>
+                        <div class="arrow-label">SQL Queries :6433</div>
+                    </div>
+                    <div class="arrow-h">
+                        <div class="arrow-h-line bi"></div>
+                        <div class="arrow-label">Pooled Connections</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATA LAYER -->
+            <div class="system-container data">
+                <div class="container-header">
+                    <h2 style="color: #ffd700;">🗄️ DATA LAYER</h2>
+                    <div class="location">PostgreSQL 16 | PgBouncer | Optimized</div>
+                </div>
+
+                <!-- PgBouncer -->
+                <div class="inner-box pool">
+                    <h3>🔄 PGBOUNCER <span class="badge">:6433</span></h3>
+                    <div class="component">
+                        <span class="name">Connection Pooler</span>
+                        <div class="detail">1000 max | 100 pool | &lt;1ms overhead</div>
+                    </div>
+                </div>
+
+                <!-- PostgreSQL -->
+                <div class="inner-box db">
+                    <h3>🐘 POSTGRESQL 16 <span class="badge">:5432</span></h3>
+                    <div class="component">
+                        <span class="name">Performance Tuning</span>
+                        <div class="detail">8GB buffers | 24GB cache | 256MB work_mem</div>
+                    </div>
+                    <div style="font-size: 0.7rem; color: #ffd700; margin: 8px 0;">17 Tables:</div>
+                    <div class="table-list">
+                        <div class="table-item core">users</div>
+                        <div class="table-item core">sessions</div>
+                        <div class="table-item core">audit_logs</div>
+                        <div class="table-item core">projects</div>
+                        <div class="table-item tool">dictionaries</div>
+                        <div class="table-item tool">dict_entries</div>
+                        <div class="table-item tool">search_hist</div>
+                        <div class="table-item tool">project_cache</div>
+                        <div class="table-item tm">tm_entries</div>
+                        <div class="table-item tm">tm_projects</div>
+                        <div class="table-item tm">ldm_rows</div>
+                        <div class="table-item tm">glossary</div>
+                        <div class="table-item tele">tele_events</div>
+                        <div class="table-item tele">tele_sessions</div>
+                        <div class="table-item tele">tele_errors</div>
+                        <div class="table-item tele">sys_metrics</div>
+                    </div>
+                </div>
+
+                <!-- Indexes -->
+                <div class="inner-box index">
+                    <h3>⚡ INDEXES</h3>
+                    <div class="index-grid">
+                        <div class="index-item">
+                            <div class="type">GIN+tsvector</div>
+                            <div class="desc">Full-text search</div>
+                        </div>
+                        <div class="index-item">
+                            <div class="type">pg_trgm</div>
+                            <div class="desc">Fuzzy match</div>
+                        </div>
+                        <div class="index-item">
+                            <div class="type">B-Tree</div>
+                            <div class="desc">PK/FK lookup</div>
+                        </div>
+                        <div class="index-item">
+                            <div class="type">BRIN</div>
+                            <div class="desc">Time-series</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-bar">
+                    <div class="stat">
+                        <div class="value">17</div>
+                        <div class="label">Tables</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value">31K/s</div>
+                        <div class="label">Insert</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value">&lt;10ms</div>
+                        <div class="label">FTS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom stats -->
+        <div class="bottom-stats">
+            <div class="bottom-stat">
+                <div class="value">912</div>
+                <div class="label">Total Tests</div>
+            </div>
+            <div class="bottom-stat">
+                <div class="value">97%</div>
+                <div class="label">Complete</div>
+            </div>
+            <div class="bottom-stat">
+                <div class="value">$600/yr</div>
+                <div class="label">vs $30K Trados</div>
+            </div>
+            <div class="bottom-stat">
+                <div class="value">98%</div>
+                <div class="label">Savings</div>
+            </div>
+            <div class="bottom-stat">
+                <div class="value">19K+</div>
+                <div class="label">Lines of Code</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
