@@ -4,27 +4,30 @@
 
 This document defines the standard protocol for creating visual presentations for LocaNext. All presentations follow the same structure: **HTML source + PNG screenshot**.
 
-## Final Presentations (3 Images Only)
+## Final Presentations (4 Images)
 
 | # | File | Purpose | Audience |
 |---|------|---------|----------|
 | 1 | `01_full_architecture` | Complete system overview - Desktop, Backend, Database, AI, Security, Tools | All - Technical |
 | 2 | `02_licensing_complete` | Qwen Apache 2.0 PROOF + Full stack licensing + Cost comparison + Server options | Management, Finance |
 | 3 | `03_apps_ldm_focus` | LDM (flagship CAT tool) + 3 utility apps | End Users, Translators |
+| 4 | `04_admin_dashboard` | Admin Dashboard & Telemetry - Session tracking, usage analytics, error alerts | Management, IT |
 
 ## Folder Structure
 
 ```
 docs/presentations/
 ├── PRESENTATION_PROTOCOL.md   # This file
-├── html/                      # Active HTML source files (3 only)
+├── html/                      # Active HTML source files
 │   ├── 01_full_architecture.html
 │   ├── 02_licensing_complete.html
-│   └── 03_apps_ldm_focus.html
-├── images/                    # Active PNG screenshots (3 only)
+│   ├── 03_apps_ldm_focus.html
+│   └── 04_admin_dashboard.html
+├── images/                    # Active PNG screenshots
 │   ├── 01_full_architecture.png
 │   ├── 02_licensing_complete.png
-│   └── 03_apps_ldm_focus.png
+│   ├── 03_apps_ldm_focus.png
+│   └── 04_admin_dashboard.png
 └── archive/                   # Archived old presentations
     ├── html/                  # Old HTML files
     └── images/                # Old PNG files
@@ -62,6 +65,18 @@ docs/presentations/
 - **KR Similar:** Korean similarity with AI, 83K dictionary pairs
 **Layout:** LDM large left panel, 3 tools stacked on right
 
+### 4. Admin Dashboard & Telemetry (`04_admin_dashboard`)
+**Audience:** Management, IT, Operations
+**Content:** Complete monitoring and analytics dashboard
+- **Overview Cards:** Active installations, online now, sessions today, logs today, errors (24h)
+- **Live Session Tracking:** User name, machine, started time, duration, status (active/idle/ended)
+- **Usage Analytics:** Session stats, tool usage (7 days), performance metrics, error counts
+- **Registered Installations:** Online status, version, last seen, session count, error count
+- **Recent Activity Logs:** SUCCESS/INFO/WARNING/ERROR with timestamps and messages
+- **API Endpoints:** 8 telemetry routes documented
+- **Features Bar:** Session tracking, heartbeat, daily stats, tool usage, error alerts, JWT auth
+**Key Points:** Real-time monitoring, 30-day retention, admin-only access via JWT
+
 ---
 
 ## Protocol: Creating/Updating a Presentation
@@ -86,10 +101,12 @@ docs/presentations/html/{number}_{name}.html
 
 ```bash
 cd docs/presentations
-npx playwright screenshot --browser chromium --viewport-size=2560,1600 \
+npx playwright screenshot --browser chromium --viewport-size=2560,1600 --full-page \
     "file:///home/neil1988/LocalizationTools/docs/presentations/html/filename.html" \
     "images/filename.png"
 ```
+
+**Note:** `--full-page` ensures the entire content is captured even if it exceeds 1600px height.
 
 ### Step 4: Commit Pattern
 
@@ -133,7 +150,7 @@ git push origin main && git push gitea main
 cd docs/presentations
 for f in html/*.html; do
   name=$(basename "$f" .html)
-  npx playwright screenshot --browser chromium --viewport-size=2560,1600 \
+  npx playwright screenshot --browser chromium --viewport-size=2560,1600 --full-page \
       "file:///home/neil1988/LocalizationTools/docs/presentations/$f" \
       "images/${name}.png"
 done
