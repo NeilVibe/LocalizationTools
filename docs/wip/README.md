@@ -8,6 +8,7 @@
 
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
+| **P22** | [P22_PRODUCTION_PARITY.md](P22_PRODUCTION_PARITY.md) | 0% | **SQLite removal** - DEV = PRODUCTION |
 | **P17** | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 67% | LDM LanguageData Manager - task tracking |
 | **P17** | [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | Reference | TM System 9-Tier architecture spec |
 | **P21** | [P21_DATABASE_POWERHOUSE.md](P21_DATABASE_POWERHOUSE.md) | Complete | Database optimization + PgBouncer |
@@ -58,6 +59,7 @@ Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
 ## Quick Navigation
 
 **Currently Active:**
+- **Production Parity: [P22_PRODUCTION_PARITY.md](P22_PRODUCTION_PARITY.md)** - SQLite removal (DEV=PROD)
 - LDM Development: [P17_LDM_TASKS.md](P17_LDM_TASKS.md)
 - Bug Fixes: [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md)
 
