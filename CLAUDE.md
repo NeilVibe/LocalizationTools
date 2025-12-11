@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512102200 (2025-12-10)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 62% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅ | **DB Opt P18** ✅ | **TM API** ✅ | **P21 DB Powerhouse** ✅
+**Version:** 2512111500 (2025-12-11)
+**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 67% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅ | **DB Opt P18** ✅ | **TM API** ✅ | **P21 DB Powerhouse** ✅ | **TM Indexer** ✅
 
 ---
 
@@ -93,18 +93,21 @@
 - 📊 **Central monitoring**: Optional telemetry to server
 - 👔 **Professional**: CEO/management-ready quality
 
-### Current Status (2025-12-09):
-- ✅ **Backend**: 100% Complete (63+ endpoints, WebSocket, async)
+### Current Status (2025-12-11):
+- ✅ **Backend**: 100% Complete (65+ endpoints, WebSocket, async)
 - ✅ **LocaNext Desktop App**: 100% Complete (Electron + Svelte)
 - ✅ **XLSTransfer (App #1)**: VERIFIED - 10/10 tests with real Excel files
 - ✅ **QuickSearch (App #2)**: VERIFIED - 8/8 tests with TXT + XML files
 - ✅ **KR Similar (App #3)**: VERIFIED - 10/10 tests with 41,715 pairs
-- 🔄 **LDM (App #4)**: 60% Complete - CAT tool with 5-Tier TM System
+- 🔄 **LDM (App #4)**: 67% Complete - CAT tool with 5-Tier TM System
   - Phase 1-5: ✅ Core Complete (Foundation, FileExplorer, Sync, VirtualGrid, Basic TM)
   - Phase 6.0-6.1: ✅ Cell Display (dynamic heights, ↵ newlines, hover, TM pre-fetch)
-  - Phase 7: 📋 **Full TM System** (5-Tier Cascade + Dual Threshold) ← NEXT
+  - Phase 7.1-7.3: ✅ TM Backend Complete (DB + TMManager + API + TMIndexer)
+  - Phase 7.4: 📋 **5-Tier Cascade Search** (tm_search.py) ← NEXT
+  - Phase 7.6: 📋 TM Upload UI (TMManager.svelte, TMUploadModal.svelte)
   - Phase 8: 📋 LocaNext Nice View (pattern rendering)
   - **Docs:** `docs/tools/LDM_TEXT_SEARCH.md`, `docs/wip/P17_LDM_TASKS.md`
+  - **Known Issues:** ISSUE-010 (file upload), ISSUE-011 (missing TM upload menu)
   - Performance: 16MB/103,500 rows in ~50 seconds
 - ✅ **Migration**: ALL 33 monolith functions verified with production test files
 - ✅ **Distribution**: Git LFS, versioning, build system ready
@@ -536,6 +539,22 @@ ANY deviation from monolith logic = BUG in our implementation.
 - Use `AsyncSession` for database
 - See: [ASYNC_PATTERNS.md](docs/architecture/ASYNC_PATTERNS.md)
 
+### 6. WSL Cannot Access Windows CDP (CRITICAL FOR TESTING!)
+```
+⚠️  WSL and Windows have SEPARATE network stacks. localhost:9222 from WSL ≠ Windows localhost:9222
+```
+- **NEVER** run `curl http://localhost:9222/json` from WSL - it will ALWAYS fail
+- **ALWAYS** use PowerShell to launch and test Windows EXE:
+  ```bash
+  # Launch LocaNext with CDP
+  /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Start-Process -FilePath 'C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'"
+
+  # Run CDP tests (Node runs on Windows, CAN access Windows localhost)
+  /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\LocaNext\cdp\apps\ldm; node test_file_upload.js exe"
+  ```
+- **TEST FILES:** `testing_toolkit/cdp/apps/` has ready-made tests
+- See: [WINDOWS_TROUBLESHOOTING.md](docs/troubleshooting/WINDOWS_TROUBLESHOOTING.md) section "CDP Not Accessible from WSL"
+
 ---
 
 ## ⚡ QUICK COMMANDS
@@ -657,15 +676,17 @@ bash scripts/clean_logs.sh
   - ✅ CDP-based autonomous testing (`testing_toolkit/`)
   - ✅ All 3 apps have TEST MODE (xlsTransfer, quickSearch, krSimilar)
   - ✅ ADD_TEST_MODE_GUIDE.md for future apps (LD Manager template)
-- **P17: LDM (LanguageData Manager):** 🔄 IN PROGRESS (60% - 81/136 tasks)
+- **P17: LDM (LanguageData Manager):** 🔄 IN PROGRESS (67% - 94/140 tasks)
   - ✅ **Phase 1-4:** Foundation + Grid + Sync + Virtual Scroll (58/58 tasks)
   - ✅ **Phase 5.1-5.4:** Basic TM + Panel + Keyboard Shortcuts (7/10 tasks)
   - ✅ **Phase 6.0-6.1:** Cell Display - dynamic heights, newlines, hover (7/16 tasks)
-  - 🎯 **NEXT: Phase 7.1-7.2** - TM Database + Upload (10 tasks) ← START HERE
-  - 📋 **Phase 7.3-7.5:** Index Building + Cascade Search + API (22 tasks)
+  - ✅ **Phase 7.1-7.3:** TM Database + TMManager + API + TMIndexer COMPLETE
+  - 🎯 **NEXT: Phase 7.4** - 5-Tier Cascade Search (tm_search.py) ← START HERE
+  - 📋 **Phase 7.6:** TM Upload Frontend UI (TMManager.svelte, TMUploadModal.svelte)
   - 📋 **Phase 5.5:** Glossary integration (3 tasks)
   - 📋 **Phase 8:** Nice View - Pattern rendering (12 tasks)
   - **Task File:** `docs/wip/P17_LDM_TASKS.md` - Full breakdown with priority order
+  - **Known Issues:** ISSUE-010 (file upload), ISSUE-011 (TM upload menu missing)
   - **Demo:** 11 screenshots in `docs/demos/ldm/`
   - **Performance:** 103K rows in 50 sec
 - **P21: Database Powerhouse:** ✅ COMPLETE (2025-12-10)
@@ -694,37 +715,53 @@ sudo killall pgbouncer; sudo -u postgres pgbouncer -d /etc/pgbouncer/pgbouncer.i
 ```
 
 ### Questions to Ask User:
-- "Continue P17 LDM? Remaining: Phase 7-8 (TM System + Nice View)"
-- "Continue P17 LDM? Remaining: Glossary integration + Phase 6 Polish"
-- "Add 'Save + Add to TM' button in cell edit?" - Simple glossary feature discussed
+- "Continue P17 LDM? Next: Phase 7.4 - 5-Tier Cascade Search (tm_search.py)"
+- "Fix ISSUE-010 first? (LDM file upload not working - needs investigation)"
+- "Build Phase 7.6 TM Upload UI? (TMManager.svelte, TMUploadModal.svelte)"
 
-### Context from Last Session (2025-12-10):
-**CI/CD Fully Automated - Zero Maintenance:**
+### Context from Last Session (2025-12-11):
+**P17 LDM TM System Progress:**
 ```
-✅ Ephemeral mode DITCHED → Non-Ephemeral (6-month token)
-✅ NSSM service runs act_runner_patched_v15.exe directly
-✅ Workflow cleanup step added (end of each build)
-✅ Weekly Task Scheduler: GiteaRunnerCleanup (Sunday 3am)
-✅ Script: C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\cleanup_workspace.ps1
-✅ Disk cleanup done: ~2.4GB freed (old runners + _work)
-✅ Runner directory now ~29MB (only v15.exe + config files)
-```
+✅ Phase 7.1: TM Database Models (LDMTranslationMemory, LDMTMEntry, LDMActiveTM, LDMBackup)
+✅ Phase 7.2: TMManager class + Upload API (8 endpoints for TM CRUD)
+✅ Phase 7.3: TMIndexer class (FAISS HNSW + Hash indexes)
+   - Storage: server/data/ldm_tm/{tm_id}/
+   - Uses Qwen3-Embedding-0.6B (Apache 2.0 license)
+   - Hash indexes for O(1) exact match (Tier 1 & 3)
+   - FAISS indexes for semantic search (Tier 2 & 4)
 
-**Trigger Build (fully automated):**
-```bash
-echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
-git add -A && git commit -m "Trigger build" && git push gitea main
+📋 NEXT: Phase 7.4 - 5-Tier Cascade Search (tm_search.py)
+📋 THEN: Phase 7.6 - TM Upload UI (TMManager.svelte, TMUploadModal.svelte)
 ```
 
-**Key Files:**
+**Known Issues:**
+- ISSUE-010: LDM file upload not working (needs investigation)
+- ISSUE-011: Missing TM upload menu in UI (Phase 7.6)
+
+**Key Files Created:**
 ```
-GiteaRunner/
-├── act_runner_patched_v15.exe  # ONLY runner binary
-├── config.yaml                  # Runner config
-├── .runner                      # Registration (non-ephemeral)
-├── cleanup_workspace.ps1        # Auto-cleanup script
-├── _cache/                      # npm cache (KEEP)
-└── _work/                       # Build artifacts (auto-cleaned)
+server/tools/ldm/
+├── tm_manager.py     # TM upload, CRUD operations
+├── tm_indexer.py     # FAISS + Hash index building (NEW)
+└── api.py            # +2 endpoints for index building
+
+server/data/ldm_tm/{tm_id}/
+├── metadata.json
+├── hash/             # O(1) exact match lookups
+│   ├── whole_lookup.pkl
+│   └── line_lookup.pkl
+├── embeddings/       # Vector embeddings
+│   ├── whole.npy, whole_mapping.pkl
+│   └── line.npy, line_mapping.pkl
+└── faiss/            # HNSW indexes
+    ├── whole.index
+    └── line.index
+```
+
+**CI/CD Status:**
+```
+✅ GitHub + Gitea BOTH WORKING
+✅ Smart Cache v2.0 (hash-based invalidation)
 ```
 
 ### Windows Environment (C: Drive - SSD):
