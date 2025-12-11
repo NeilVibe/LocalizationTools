@@ -11,8 +11,9 @@ testing_toolkit/
 ├── README.md                    # This file
 ├── ADD_TEST_MODE_GUIDE.md       # How to add TEST MODE to apps
 ├── TEST_FILES_MANIFEST.md       # Required test files
+├── test_qwen_faiss.py          # ⭐ NEW: Qwen + FAISS integration test
 │
-├── cdp/                         # ⭐ NEW: Organized CDP tests
+├── cdp/                         # ⭐ Organized CDP tests
 │   ├── utils/
 │   │   └── cdp-client.js       # Shared CDP connection utility
 │   ├── apps/                    # Per-app test suites
@@ -188,6 +189,38 @@ ls -la /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext/
 
 ---
 
+## 🧠 ML/Embedding Tests
+
+### Qwen + FAISS Integration Test
+
+Tests the full embedding pipeline for KR Similar and LDM TM:
+
+```bash
+python3 testing_toolkit/test_qwen_faiss.py
+```
+
+**What it tests:**
+| Test | Description |
+|------|-------------|
+| Library Imports | PyTorch, FAISS, SentenceTransformers |
+| Qwen Model Loading | Qwen3-Embedding-0.6B (1024-dim) |
+| Embedding Generation | Batch encoding performance |
+| FAISS HNSW Index | Index creation and configuration |
+| Similarity Search | Cross-lingual KR↔EN matching |
+| KR Similar Integration | Module imports, dictionary listing |
+| LDM TM Integration | Fallback text search |
+| Batch Performance | Throughput benchmarking |
+
+**Expected output:**
+```
+Total: 8/8 passed
+[SUCCESS] All Qwen + FAISS tests passed!
+```
+
+**Note:** Existing BDO dictionary (768-dim KR-SBERT) needs rebuild for Qwen (1024-dim).
+
+---
+
 ## 📚 Related Docs
 
 | Doc | Description |
@@ -195,7 +228,8 @@ ls -la /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext/
 | [ADD_TEST_MODE_GUIDE.md](ADD_TEST_MODE_GUIDE.md) | Add TEST MODE to new apps |
 | [docs/testing/README.md](../docs/testing/README.md) | Testing overview |
 | [docs/testing/DEBUG_AND_TEST_HUB.md](../docs/testing/DEBUG_AND_TEST_HUB.md) | Master testing hub |
+| [docs/wip/P20_MODEL_MIGRATION.md](../docs/wip/P20_MODEL_MIGRATION.md) | Qwen migration details |
 
 ---
 
-*Updated: 2025-12-11 | Multi-dimensional testing added*
+*Updated: 2025-12-11 | Multi-dimensional testing + Qwen/FAISS test added*
