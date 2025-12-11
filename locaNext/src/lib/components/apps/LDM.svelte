@@ -420,7 +420,16 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
       }),
 
       // Config access for debugging
-      getConfig: () => LDM_TEST_CONFIG
+      getConfig: () => LDM_TEST_CONFIG,
+
+      // Refresh projects list
+      refreshProjects: async () => {
+        if (fileExplorer) {
+          await fileExplorer.loadProjects();
+          return true;
+        }
+        return false;
+      }
     };
 
     logger.info('TEST MODE: window.ldmTest interface exposed');
@@ -430,10 +439,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     logger.component("LDM", "mounted");
     loading = true;
 
-    const healthy = await checkHealth();
-    if (healthy && fileExplorer) {
-      await fileExplorer.loadProjects();
-    }
+    await checkHealth();
+    // FileExplorer now auto-loads projects on its own mount
+    // No need to call fileExplorer.loadProjects() here
 
     loading = false;
   });

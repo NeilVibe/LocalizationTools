@@ -9,7 +9,7 @@
 
 | Area | Open | Fixed | Total |
 |------|------|-------|-------|
-| LDM UI | 0 | 5 | 5 |
+| LDM UI | 0 | 9 | 9 |
 | Navigation | 0 | 1 | 1 |
 | General | 0 | 0 | 0 |
 
@@ -18,6 +18,59 @@
 ## Open Issues
 
 *No open issues at this time.*
+
+---
+
+## Recently Fixed (2025-12-11 Session 2)
+
+### ISSUE-007: Project List Not Auto-Refreshing on Startup
+- **Status:** [x] Fixed
+- **Priority:** High
+- **Fixed:** 2025-12-11
+- **Component:** LDM FileExplorer.svelte
+
+**Problem:** When LDM loads, the project list doesn't load automatically.
+
+**Root Cause:** Missing `onMount` in FileExplorer.svelte. Parent tried to call `loadProjects()` before binding was ready.
+
+**Fix Applied:**
+- Added `onMount` in FileExplorer.svelte to auto-call `loadProjects()`
+- FileExplorer now loads projects independently on mount
+- Removed redundant call from parent LDM.svelte
+
+**Verification:** CDP test confirmed 3 projects loaded automatically on startup
+
+---
+
+### ISSUE-008: Project List Not Refreshing After Actions
+- **Status:** [x] Fixed (was already working)
+- **Priority:** High
+- **Fixed:** 2025-12-11
+- **Component:** LDM FileExplorer.svelte
+
+**Problem:** User reported list not refreshing after actions.
+
+**Investigation:** Code review showed `loadProjects()` and `loadProjectTree()` were already being called after mutations.
+
+**Verification:** CDP test confirmed project count increased from 3→4 after create, and UI reflected changes.
+
+---
+
+### ISSUE-009: File Upload Still Not Working
+- **Status:** [x] Fixed
+- **Priority:** Critical
+- **Fixed:** 2025-12-11
+- **Component:** LDM FileExplorer.svelte
+
+**Problem:** User reported upload still not working despite code fix.
+
+**Root Cause:** Build wasn't deployed to Windows playground. User was running old version.
+
+**Fix Applied:**
+- Deployed fresh build to Windows playground
+- Verified via CDP that upload works: 10 rows uploaded successfully
+
+**Verification:** CDP test confirmed "TEST: File uploaded - 10 rows"
 
 ---
 
