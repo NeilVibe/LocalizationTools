@@ -1,87 +1,56 @@
-# LDM (LanguageData Manager) Demo Screenshots
+# LDM (LanguageData Manager) Screenshots
 
-**Last Updated:** 2025-12-08
+**Last Updated:** 2025-12-11
+**Status:** Working - All features verified via CDP testing
 
-## Folder Structure
+---
 
-```
-ldm/
-├── 01-navigation/          # Getting to LDM
-│   ├── ldm_01_homepage.png
-│   ├── ldm_02_apps.png
-│   └── ldm_03_main.png
-├── 02-project-management/  # Projects & folders
-│   ├── ldm_04_new_project_modal.png
-│   ├── ldm_05_project_name_filled.png
-│   ├── ldm_06_project_created.png
-│   └── ldm_07_project_selected.png
-├── 03-grid-view/           # Data grid display
-│   ├── ldm_08_grid_with_data.png
-│   └── ldm_09_grid_full.png
-├── 04-editing/             # Row editing
-│   ├── ldm_10_row_selection.png
-│   └── ldm_11_cell_interaction.png
-├── 05-ui-interactions/     # Hover, selection effects (NEW)
-│   └── (pending screenshots)
-└── scripts/                # Capture automation
-    └── capture_ldm.js
-```
+## Screenshots
 
-## Screenshot Index
+### Main Screenshot - Full Working View
+![LDM with Content](ldm_with_content.png)
 
-### 01 - Navigation
-| Screenshot | Description |
-|------------|-------------|
-| `ldm_01_homepage.png` | LocaNext main landing page |
-| `ldm_02_apps.png` | Apps dropdown menu showing LDM option |
-| `ldm_03_main.png` | LDM main view - empty state |
+**Features visible:**
+- Project list: dada, dede, csq, Test Project
+- File tree: BDO FR folder with SMALLTESTFILEFORQUICKSEARCH.txt
+- Grid: 1,183 rows of Korean/French translation pairs
+- Status badges: "translated" indicators
+- Header: LocaNext with Apps, Tasks, Settings, User navigation
 
-### 02 - Project Management
-| Screenshot | Description |
-|------------|-------------|
-| `ldm_04_new_project_modal.png` | "New Project" modal dialog |
-| `ldm_05_project_name_filled.png` | Project name entered |
-| `ldm_06_project_created.png` | Project appears in sidebar |
-| `ldm_07_project_selected.png` | Project selected, ready for file upload |
+### Project List View
+![Project List](01_ldm_projects.png)
+- Auto-loads projects on startup
+- Clean sidebar with project names
 
-### 03 - Grid View
-| Screenshot | Description |
-|------------|-------------|
-| `ldm_08_grid_with_data.png` | Grid showing uploaded TXT file data |
-| `ldm_09_grid_full.png` | Full grid view with all columns |
+### File Tree View
+![File Tree](02_ldm_tree.png)
+- Project selected, file tree expanded
+- Shows folder structure and files
 
-### 04 - Editing
-| Screenshot | Description |
-|------------|-------------|
-| `ldm_10_row_selection.png` | Row selected in grid |
-| `ldm_11_cell_interaction.png` | Cell interaction/editing |
+---
 
-### 05 - UI Interactions (NEW - Implemented 2025-12-08)
-**Features Implemented:**
-- Smooth hover transitions (0.15s ease) on rows and cells
-- Row hover highlight with subtle border (box-shadow)
-- Selected row state - persists until another row clicked
-- Edit icon fade-in on cell hover
+## Verified Features (2025-12-11)
 
-| Screenshot | Description |
-|------------|-------------|
-| `ui_01_grid_normal.png` | Grid in normal state |
-| (manual capture needed) | Row hover with smooth transition |
-| (manual capture needed) | Row selected with border highlight |
-| (manual capture needed) | Edit modal with TM suggestions |
+| Feature | Status | Verification |
+|---------|--------|--------------|
+| Project list auto-load | Working | CDP test |
+| File tree navigation | Working | CDP test |
+| File click loads content | Working | CDP test (ISSUE-008 fixed) |
+| Grid displays data | Working | 1,183 rows loaded |
+| Korean text rendering | Working | Visible in screenshot |
+| French translations | Working | Visible in screenshot |
+| Status badges | Working | "translated" shown |
 
-**Note:** Automated screenshot capture pending - manual capture recommended.
+---
 
-## How to Capture New Screenshots
+## How Screenshots Were Captured
+
+Screenshots captured autonomously using CDP (Chrome DevTools Protocol) from WSL:
 
 ```bash
-# Start servers
-python3 server/main.py &
-cd locaNext && npm run dev &
-
-# Run capture script
-cd docs/demos/ldm/scripts
-node capture_ldm.js
+# Run via PowerShell (CDP binds to Windows localhost)
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \
+  "cd C:\NEIL_PROJECTS_WINDOWSBUILD; node cdp_screenshot.js output.png"
 ```
 
-Or use Playwright interactively for specific shots.
+See `docs/troubleshooting/WINDOWS_TROUBLESHOOTING.md` for full CDP testing guide.
