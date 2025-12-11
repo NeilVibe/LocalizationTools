@@ -4,19 +4,20 @@
 
 ## System Overview
 
-### HYBRID DEPLOYMENT MODEL
+### DEPLOYMENT MODEL
 
 **User's PC (Windows .exe)**
 - LocaNext.exe (Electron desktop app)
 - Embedded Python Backend Server
-- **SQLite Database (LOCAL)** - User's projects, files, translation memory
-- ALL processing happens locally (FAST, works OFFLINE)
-- Optionally sends telemetry to central server
+- Connects to Central PostgreSQL Database
+- Local processing on user's CPU (FAST)
+- Works with company network
 
 **Central Server (Cloud/On-Premise)**
 - FastAPI Server (Python 3.11+)
-- PostgreSQL Database (aggregated data from all users)
-- Admin Dashboard (web interface for monitoring)
+- **PostgreSQL Database** (ALL data)
+- PgBouncer connection pooling (1000 connections)
+- Admin Dashboard (web interface)
 
 **Communication:**
 - HTTPS (REST API) for data exchange
@@ -24,29 +25,27 @@
 
 ---
 
-## Why Both SQLite AND PostgreSQL?
+## Database: PostgreSQL Only
 
-### SQLite (In User's Desktop App)
-
-| Feature | Benefit |
-|---------|---------|
-| Fast local operations | No network latency |
-| Works completely OFFLINE | No internet required |
-| No database server needed | Just run the .exe |
-| User data stays on PC | Privacy/security |
-| Isolated per user | No conflicts |
-
-### PostgreSQL (Central Server)
+### Why PostgreSQL?
 
 | Feature | Benefit |
 |---------|---------|
-| Handles concurrent writes | Many users at once |
-| Aggregates telemetry | All installations |
-| Powers Admin Dashboard | Monitoring |
-| Stores update info | Version management |
-| Production reliability | Enterprise-grade |
+| COPY TEXT bulk insert | 31,000 entries/second |
+| Full-Text Search (tsvector) | Fast search |
+| GIN trigram indexes | Similarity matching |
+| PgBouncer pooling | 1000 concurrent connections |
+| Enterprise reliability | Production-grade |
+| Backup & Recovery | Built-in tools |
 
-**This is NOT redundancy - they serve different purposes!**
+### Database Statistics
+
+| Metric | Value |
+|--------|-------|
+| Tables | 17 |
+| API Endpoints | 63+ |
+| Tests | 912 |
+| Bulk Insert Speed | 31K entries/sec |
 
 ---
 
@@ -56,8 +55,8 @@
 |-------|----------|------|---------|
 | API | REST/HTTPS | 443 | Data exchange |
 | Real-time | WebSocket (WSS) | 443 | Live updates |
-| Central DB | PostgreSQL | 5432 | Central storage |
-| Local DB | SQLite | - | Offline data |
+| Database | PostgreSQL | 5432 | Direct |
+| Connection Pool | PgBouncer | 6433 | Pooled |
 
 ---
 
@@ -92,31 +91,22 @@
 
 ---
 
-## Database Structure
-
-### User's Local (SQLite)
+## PostgreSQL Tables
 
 | Table | Purpose |
 |-------|---------|
-| users | Local user data |
-| projects | User's projects |
-| files | Uploaded files |
-| translation_memory | TM entries |
+| users | User accounts |
+| projects | All projects |
+| ldm_projects | LDM projects |
+| ldm_files | Translation files |
+| ldm_rows | Translation rows |
+| ldm_translation_memory | TM databases |
+| ldm_tm_entries | TM entries |
+| telemetry_events | Usage tracking |
+| audit_logs | Security logs |
 | sessions | Login sessions |
 
-### Central Server (PostgreSQL)
-
-| Table | Purpose |
-|-------|---------|
-| users | All users (aggregated) |
-| projects | All projects |
-| telemetry_events | Usage tracking |
-| telemetry_tool_events | Tool usage |
-| sessions | All sessions |
-| audit_logs | Security logs |
-| error_reports | Error tracking |
-
-**Total: 17 Tables | 63+ API Endpoints | 912 Tests**
+**Total: 17 Tables**
 
 ---
 
@@ -125,9 +115,9 @@
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | Desktop App | Electron + Svelte | User interface |
-| Local Backend | FastAPI + Python | API + Processing |
-| Local Database | SQLite | Offline data storage |
-| Central Database | PostgreSQL | Telemetry + Admin |
+| Backend | FastAPI + Python | API + Processing |
+| Database | **PostgreSQL** | ALL data storage |
+| Connection Pool | PgBouncer | Performance |
 | Real-time | Socket.IO | Live updates |
 | Admin Dashboard | SvelteKit | Monitoring |
 
@@ -136,21 +126,22 @@
 ## Data Flow
 
 ### Step 1: User Action
-User uploads Excel file in LocaNext desktop app
+User opens LDM, loads translation file
 
-### Step 2: Local Processing
-- Python processes file on user's CPU
-- **No data sent to cloud**
-- Works completely offline
-- Fast (no network latency)
+### Step 2: Database Query
+- FastAPI queries PostgreSQL
+- PgBouncer manages connections
+- Full-text search for TM matches
 
-### Step 3: Result
-Output file saved locally
+### Step 3: Local Processing
+- Python processes on user's CPU
+- Translation memory suggestions
+- Real-time updates via WebSocket
 
-### Step 4: Telemetry (Optional)
-- Usage statistics sent to central server
-- Error tracking
-- Update distribution
+### Step 4: Save to Database
+- Changes saved to PostgreSQL
+- COPY TEXT for bulk operations
+- Backup and safety checks
 
 ---
 
@@ -167,3 +158,4 @@ Output file saved locally
 ---
 
 *LocaNext v2512110832*
+*Database: PostgreSQL with PgBouncer*
