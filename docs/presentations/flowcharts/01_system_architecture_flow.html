@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - System Architecture Flowchart</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0a1a2a 100%);
+            min-height: 100vh;
+            padding: 30px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 1rem;
+        }
+
+        .flowchart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        /* Flow boxes */
+        .flow-box {
+            background: linear-gradient(135deg, rgba(30, 40, 60, 0.9), rgba(20, 30, 50, 0.9));
+            border: 2px solid #00d4ff;
+            border-radius: 12px;
+            padding: 20px 30px;
+            text-align: center;
+            position: relative;
+            min-width: 200px;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+
+        .flow-box.user {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .flow-box.electron {
+            border-color: #9945ff;
+            box-shadow: 0 0 20px rgba(153, 69, 255, 0.3);
+        }
+
+        .flow-box.backend {
+            border-color: #ff6b35;
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+        }
+
+        .flow-box.db {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .flow-box.ai {
+            border-color: #ff1493;
+            box-shadow: 0 0 20px rgba(255, 20, 147, 0.3);
+        }
+
+        .flow-box h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .flow-box .tech {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .flow-box .details {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 8px;
+        }
+
+        /* Arrows */
+        .arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #00d4ff;
+            font-size: 0.75rem;
+            padding: 5px 0;
+        }
+
+        .arrow-line {
+            width: 3px;
+            height: 30px;
+            background: linear-gradient(to bottom, #00d4ff, #00ff88);
+            position: relative;
+        }
+
+        .arrow-line::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 10px solid #00ff88;
+        }
+
+        .arrow-label {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 3px 10px;
+            border-radius: 10px;
+            margin-top: 5px;
+            font-size: 0.7rem;
+        }
+
+        /* Bidirectional arrow */
+        .arrow-bi {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #00d4ff;
+            font-size: 0.75rem;
+            padding: 5px 0;
+        }
+
+        .arrow-bi-line {
+            width: 3px;
+            height: 30px;
+            background: linear-gradient(to bottom, #00ff88, #00d4ff, #00ff88);
+            position: relative;
+        }
+
+        .arrow-bi-line::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 10px solid #00ff88;
+        }
+
+        .arrow-bi-line::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 10px solid #00ff88;
+        }
+
+        /* Horizontal flow section */
+        .horizontal-flow {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .h-arrow {
+            display: flex;
+            align-items: center;
+            color: #00d4ff;
+        }
+
+        .h-arrow-line {
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(to right, #00d4ff, #00ff88);
+            position: relative;
+        }
+
+        .h-arrow-line::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-left: 10px solid #00ff88;
+        }
+
+        .h-arrow-bi .h-arrow-line::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-right: 10px solid #00d4ff;
+        }
+
+        .h-arrow-label {
+            font-size: 0.65rem;
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 8px;
+            border-radius: 8px;
+        }
+
+        /* Main flow container */
+        .main-flow {
+            display: flex;
+            gap: 60px;
+            align-items: flex-start;
+        }
+
+        .flow-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Section labels */
+        .section-label {
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        /* Large expanded box */
+        .expanded-box {
+            background: linear-gradient(135deg, rgba(30, 40, 60, 0.95), rgba(20, 30, 50, 0.95));
+            border: 2px solid #00d4ff;
+            border-radius: 16px;
+            padding: 25px;
+            min-width: 350px;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.2);
+        }
+
+        .expanded-box h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #00d4ff;
+        }
+
+        .expanded-box .inner-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .inner-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 0.85rem;
+        }
+
+        .inner-box .label {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 0.75rem;
+        }
+
+        /* Connector lines */
+        .connector-wrapper {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 60px;
+        }
+
+        .branch-connector {
+            position: absolute;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            width: 600px;
+        }
+
+        .branch-line {
+            height: 30px;
+            width: 3px;
+            background: #00d4ff;
+        }
+
+        .branch-horizontal {
+            height: 3px;
+            width: 100%;
+            background: #00d4ff;
+        }
+
+        /* Three column layout */
+        .three-columns {
+            display: flex;
+            justify-content: center;
+            gap: 100px;
+            margin-top: 20px;
+        }
+
+        .column-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Decision diamond */
+        .diamond {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.3), rgba(255, 50, 50, 0.3));
+            border: 2px solid #ff6b35;
+            transform: rotate(45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .diamond-text {
+            transform: rotate(-45deg);
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 40px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid;
+        }
+
+        /* Stats footer */
+        .stats-footer {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LocaNext - System Architecture Flowchart</h1>
+        <p class="subtitle">Complete Data Flow: User Request → Processing → Response</p>
+
+        <div class="flowchart">
+            <!-- USER START -->
+            <div class="section-label">User Layer</div>
+            <div class="flow-box user" style="min-width: 300px;">
+                <h3>👤 USER</h3>
+                <div class="tech">Windows 10/11 Desktop</div>
+                <div class="details">Launches LocaNext.exe<br>Interacts with GUI</div>
+            </div>
+
+            <div class="arrow">
+                <div class="arrow-line"></div>
+                <div class="arrow-label">Double-click / File Association</div>
+            </div>
+
+            <!-- ELECTRON LAYER -->
+            <div class="section-label">Desktop Application</div>
+            <div class="expanded-box electron" style="border-color: #9945ff; min-width: 500px;">
+                <h3 style="color: #9945ff;">⚡ ELECTRON 28 + SVELTE 4</h3>
+                <div class="inner-flow">
+                    <div class="inner-box">
+                        <span class="label">Main Process</span><br>
+                        Window management, IPC, File dialogs, Auto-updater
+                    </div>
+                    <div class="arrow" style="padding: 3px 0;">
+                        <div class="arrow-bi-line" style="height: 15px;"></div>
+                    </div>
+                    <div class="inner-box">
+                        <span class="label">Renderer Process (Svelte)</span><br>
+                        UI Components, State Management, WebSocket Client
+                    </div>
+                    <div class="arrow" style="padding: 3px 0;">
+                        <div class="arrow-bi-line" style="height: 15px;"></div>
+                    </div>
+                    <div class="inner-box">
+                        <span class="label">Preload Script</span><br>
+                        Secure bridge: contextBridge.exposeInMainWorld()
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow">
+                <div class="arrow-bi-line"></div>
+                <div class="arrow-label">HTTP REST + WebSocket (localhost:8888)</div>
+            </div>
+
+            <!-- BACKEND LAYER -->
+            <div class="section-label">Backend Server</div>
+            <div class="expanded-box backend" style="border-color: #ff6b35; min-width: 600px;">
+                <h3 style="color: #ff6b35;">🔧 FASTAPI BACKEND (Python 3.11)</h3>
+                <div class="inner-flow">
+                    <div style="display: flex; gap: 15px;">
+                        <div class="inner-box" style="flex: 1;">
+                            <span class="label">API Router</span><br>
+                            63+ Endpoints<br>
+                            REST + WebSocket
+                        </div>
+                        <div class="inner-box" style="flex: 1;">
+                            <span class="label">Auth Middleware</span><br>
+                            JWT Validation<br>
+                            Session Check
+                        </div>
+                        <div class="inner-box" style="flex: 1;">
+                            <span class="label">Task Manager</span><br>
+                            Async Queue<br>
+                            Progress Tracking
+                        </div>
+                    </div>
+                    <div class="arrow" style="padding: 3px 0;">
+                        <div class="arrow-bi-line" style="height: 15px;"></div>
+                    </div>
+                    <div style="display: flex; gap: 15px;">
+                        <div class="inner-box" style="flex: 1; border-color: rgba(0, 255, 136, 0.3);">
+                            <span class="label" style="color: #00ff88;">XLSTransfer</span><br>
+                            Excel Processing
+                        </div>
+                        <div class="inner-box" style="flex: 1; border-color: rgba(0, 212, 255, 0.3);">
+                            <span class="label" style="color: #00d4ff;">QuickSearch</span><br>
+                            Text/XML Search
+                        </div>
+                        <div class="inner-box" style="flex: 1; border-color: rgba(255, 215, 0, 0.3);">
+                            <span class="label" style="color: #ffd700;">KR Similar</span><br>
+                            AI Similarity
+                        </div>
+                        <div class="inner-box" style="flex: 1; border-color: rgba(255, 20, 147, 0.3);">
+                            <span class="label" style="color: #ff1493;">LDM</span><br>
+                            CAT Tool
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Branch to AI and DB -->
+            <div style="display: flex; gap: 200px; margin-top: 20px;">
+                <!-- AI Branch -->
+                <div class="flow-column">
+                    <div class="arrow">
+                        <div class="arrow-bi-line"></div>
+                        <div class="arrow-label">Embeddings / Inference</div>
+                    </div>
+                    <div class="flow-box ai" style="border-color: #ff1493;">
+                        <h3>🧠 AI/ML ENGINE</h3>
+                        <div class="tech">Qwen3-0.6B + FAISS HNSW</div>
+                        <div class="details">
+                            1024-dim embeddings<br>
+                            Semantic similarity search<br>
+                            Translation Memory matching
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DB Branch -->
+                <div class="flow-column">
+                    <div class="arrow">
+                        <div class="arrow-bi-line"></div>
+                        <div class="arrow-label">SQL Queries (port 6433)</div>
+                    </div>
+                    <div class="flow-box" style="border-color: #00d4ff;">
+                        <h3>🔄 PGBOUNCER</h3>
+                        <div class="tech">Connection Pooler</div>
+                        <div class="details">
+                            1000 max connections<br>
+                            Transaction pooling<br>
+                            &lt;1ms overhead
+                        </div>
+                    </div>
+                    <div class="arrow">
+                        <div class="arrow-bi-line"></div>
+                        <div class="arrow-label">Pooled Connections (port 5432)</div>
+                    </div>
+                    <div class="flow-box db" style="border-color: #ffd700;">
+                        <h3>🗄️ POSTGRESQL 16</h3>
+                        <div class="tech">Enterprise Database</div>
+                        <div class="details">
+                            17 Tables | GIN + tsvector indexes<br>
+                            8GB shared_buffers | 24GB cache<br>
+                            31K entries/sec bulk insert
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Server Branch (Optional) -->
+            <div style="margin-top: 40px; opacity: 0.7;">
+                <div class="section-label">Optional: Central Server</div>
+                <div style="display: flex; gap: 30px; align-items: center;">
+                    <div class="flow-box" style="border-color: #666; min-width: 200px;">
+                        <h3>📊 TELEMETRY</h3>
+                        <div class="tech">Anonymous usage stats</div>
+                    </div>
+                    <div class="h-arrow h-arrow-bi">
+                        <div class="h-arrow-line" style="width: 80px;">
+                            <div class="h-arrow-label">HTTPS (opt-in)</div>
+                        </div>
+                    </div>
+                    <div class="flow-box" style="border-color: #666; min-width: 250px;">
+                        <h3>🌐 CENTRAL SERVER</h3>
+                        <div class="tech">Admin Dashboard + Analytics</div>
+                        <div class="details">Port 5175 | Company network only</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #00ff88; background: rgba(0, 255, 136, 0.2);"></div>
+                <span>User / Input</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #9945ff; background: rgba(153, 69, 255, 0.2);"></div>
+                <span>Electron App</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #ff6b35; background: rgba(255, 107, 53, 0.2);"></div>
+                <span>Backend</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #ff1493; background: rgba(255, 20, 147, 0.2);"></div>
+                <span>AI/ML</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.2);"></div>
+                <span>Database</span>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-footer">
+            <div class="stat-item">
+                <div class="stat-value">63+</div>
+                <div class="stat-label">API Endpoints</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">4</div>
+                <div class="stat-label">Tools</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">17</div>
+                <div class="stat-label">DB Tables</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">&lt;10ms</div>
+                <div class="stat-label">Query Latency</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Offline Capable</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
