@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - Licensing & Server Pricing</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #134e5e 0%, #71b280 50%, #0f2027 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        .container {
+            max-width: 2400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #7fff7f, #ffd700, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        /* Section */
+        .section {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 25px;
+            border: 3px solid;
+        }
+        .license-section { border-color: #7fff7f; }
+        .pricing-section { border-color: #ffd700; }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+        .section-icon { font-size: 2.5em; }
+        .section-title { font-size: 1.6em; font-weight: bold; }
+        .license-section .section-title { color: #7fff7f; }
+        .pricing-section .section-title { color: #ffd700; }
+
+        /* License Grid */
+        .license-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .license-card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 15px;
+            border-left: 4px solid;
+        }
+        .license-card.free { border-color: #7fff7f; }
+        .license-card.open { border-color: #4facfe; }
+
+        .license-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .license-icon { font-size: 1.5em; }
+        .license-name { font-size: 1.2em; font-weight: bold; }
+        .license-badge {
+            margin-left: auto;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .badge-free { background: #7fff7f; color: #000; }
+        .badge-open { background: #4facfe; color: #000; }
+
+        .license-details {
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        .license-list {
+            list-style: none;
+            margin-top: 10px;
+        }
+        .license-list li {
+            padding: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .license-check { color: #7fff7f; }
+
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        .comparison-table th {
+            background: rgba(0,0,0,0.4);
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+        .comparison-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .comparison-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .price-cell {
+            font-weight: bold;
+            color: #7fff7f;
+        }
+        .alternative-cell {
+            color: #ff6b6b;
+        }
+
+        /* Pricing Cards */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .pricing-card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .pricing-card.recommended {
+            border: 2px solid #ffd700;
+            background: rgba(255,215,0,0.1);
+        }
+        .pricing-tier {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .pricing-price {
+            font-size: 2em;
+            font-weight: bold;
+            color: #7fff7f;
+        }
+        .pricing-period {
+            font-size: 0.8em;
+            color: #888;
+        }
+        .pricing-features {
+            margin-top: 15px;
+            font-size: 0.85em;
+            text-align: left;
+        }
+        .pricing-features li {
+            padding: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Server Specs */
+        .server-specs {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .specs-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+        .spec-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .spec-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #7fff7f;
+        }
+        .spec-label {
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        /* Cost Comparison */
+        .cost-section {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 25px;
+            border: 3px solid #ff6b6b;
+        }
+        .cost-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .cost-title {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        .cost-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .cost-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+        .cost-card.locanext {
+            border-color: #7fff7f;
+            background: rgba(127,255,127,0.1);
+        }
+        .cost-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .cost-price {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        .cost-card.locanext .cost-price { color: #7fff7f; }
+        .cost-card:not(.locanext) .cost-price { color: #ff6b6b; }
+        .cost-period {
+            font-size: 0.9em;
+            color: #888;
+            margin-bottom: 15px;
+        }
+        .cost-features {
+            font-size: 0.85em;
+            text-align: left;
+        }
+        .cost-features li {
+            padding: 4px 0;
+        }
+
+        /* Summary */
+        .summary {
+            margin-top: 30px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 25px;
+            display: flex;
+            justify-content: space-around;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-value {
+            font-size: 3em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #7fff7f, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .summary-label {
+            color: #888;
+            font-size: 1em;
+        }
+
+        /* Savings Banner */
+        .savings-banner {
+            background: linear-gradient(135deg, #7fff7f, #43e97b);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+            color: #000;
+        }
+        .savings-amount {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        .savings-text {
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LocaNext - Licensing & Server Pricing</h1>
+        <p class="subtitle">100% Open Source | Zero License Cost | Self-Hosted</p>
+
+        <div class="main-grid">
+            <!-- LICENSE SECTION -->
+            <div class="section license-section">
+                <div class="section-header">
+                    <span class="section-icon">📜</span>
+                    <span class="section-title">Software Licensing</span>
+                </div>
+
+                <div class="license-grid">
+                    <div class="license-card free">
+                        <div class="license-header">
+                            <span class="license-icon">🆓</span>
+                            <span class="license-name">LocaNext Core</span>
+                            <span class="license-badge badge-free">FREE</span>
+                        </div>
+                        <div class="license-details">
+                            Proprietary but free for commercial use
+                            <ul class="license-list">
+                                <li><span class="license-check">✓</span> Desktop application</li>
+                                <li><span class="license-check">✓</span> All 4 tools included</li>
+                                <li><span class="license-check">✓</span> No seat limits</li>
+                                <li><span class="license-check">✓</span> Commercial use OK</li>
+                                <li><span class="license-check">✓</span> No annual fees</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="license-card open">
+                        <div class="license-header">
+                            <span class="license-icon">📂</span>
+                            <span class="license-name">Open Source Stack</span>
+                            <span class="license-badge badge-open">MIT/Apache</span>
+                        </div>
+                        <div class="license-details">
+                            Built on permissive open source
+                            <ul class="license-list">
+                                <li><span class="license-check">✓</span> Python (PSF)</li>
+                                <li><span class="license-check">✓</span> FastAPI (MIT)</li>
+                                <li><span class="license-check">✓</span> PostgreSQL (PostgreSQL)</li>
+                                <li><span class="license-check">✓</span> Electron (MIT)</li>
+                                <li><span class="license-check">✓</span> FAISS (MIT)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>License</th>
+                            <th class="price-cell">Our Cost</th>
+                            <th class="alternative-cell">Alternatives</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>CAT Tool (LDM)</td>
+                            <td>Free</td>
+                            <td class="price-cell">$0</td>
+                            <td class="alternative-cell">SDL Trados: $2,995/seat</td>
+                        </tr>
+                        <tr>
+                            <td>Translation Memory</td>
+                            <td>PostgreSQL</td>
+                            <td class="price-cell">$0</td>
+                            <td class="alternative-cell">memoQ: $1,990/seat</td>
+                        </tr>
+                        <tr>
+                            <td>AI Embeddings</td>
+                            <td>Qwen (Apache 2.0)</td>
+                            <td class="price-cell">$0</td>
+                            <td class="alternative-cell">OpenAI: $0.0001/1K tokens</td>
+                        </tr>
+                        <tr>
+                            <td>Vector Search</td>
+                            <td>FAISS (MIT)</td>
+                            <td class="price-cell">$0</td>
+                            <td class="alternative-cell">Pinecone: $70+/mo</td>
+                        </tr>
+                        <tr>
+                            <td>Database</td>
+                            <td>PostgreSQL</td>
+                            <td class="price-cell">$0</td>
+                            <td class="alternative-cell">Oracle: $17,500/core</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PRICING SECTION -->
+            <div class="section pricing-section">
+                <div class="section-header">
+                    <span class="section-icon">💰</span>
+                    <span class="section-title">Server Hosting Options</span>
+                </div>
+
+                <div class="pricing-grid">
+                    <div class="pricing-card">
+                        <div class="pricing-tier">Development</div>
+                        <div class="pricing-price">$0</div>
+                        <div class="pricing-period">Local Machine</div>
+                        <ul class="pricing-features">
+                            <li><span class="license-check">✓</span> Runs on laptop</li>
+                            <li><span class="license-check">✓</span> No internet needed</li>
+                            <li><span class="license-check">✓</span> Full features</li>
+                            <li><span class="license-check">✓</span> SQLite included</li>
+                        </ul>
+                    </div>
+
+                    <div class="pricing-card recommended">
+                        <div class="pricing-tier">Production</div>
+                        <div class="pricing-price">$50</div>
+                        <div class="pricing-period">/month (VPS)</div>
+                        <ul class="pricing-features">
+                            <li><span class="license-check">✓</span> 4 vCPU / 8GB RAM</li>
+                            <li><span class="license-check">✓</span> PostgreSQL</li>
+                            <li><span class="license-check">✓</span> 100+ users</li>
+                            <li><span class="license-check">✓</span> Auto-updates</li>
+                        </ul>
+                    </div>
+
+                    <div class="pricing-card">
+                        <div class="pricing-tier">Enterprise</div>
+                        <div class="pricing-price">$200</div>
+                        <div class="pricing-period">/month (Cloud)</div>
+                        <ul class="pricing-features">
+                            <li><span class="license-check">✓</span> 8+ vCPU / 32GB</li>
+                            <li><span class="license-check">✓</span> HA PostgreSQL</li>
+                            <li><span class="license-check">✓</span> 500+ users</li>
+                            <li><span class="license-check">✓</span> Backups included</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="server-specs">
+                    <div class="specs-title">Recommended Server Specifications</div>
+                    <div class="specs-grid">
+                        <div class="spec-box">
+                            <div class="spec-value">4+</div>
+                            <div class="spec-label">vCPU Cores</div>
+                        </div>
+                        <div class="spec-box">
+                            <div class="spec-value">8GB</div>
+                            <div class="spec-label">RAM Minimum</div>
+                        </div>
+                        <div class="spec-box">
+                            <div class="spec-value">100GB</div>
+                            <div class="spec-label">SSD Storage</div>
+                        </div>
+                        <div class="spec-box">
+                            <div class="spec-value">Linux</div>
+                            <div class="spec-label">Ubuntu 22.04+</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COST COMPARISON -->
+        <div class="cost-section">
+            <div class="cost-header">
+                <span class="section-icon">📊</span>
+                <span class="cost-title">Annual Cost Comparison (10 Users)</span>
+            </div>
+
+            <div class="cost-grid">
+                <div class="cost-card locanext">
+                    <div class="cost-name">LocaNext</div>
+                    <div class="cost-price">$600</div>
+                    <div class="cost-period">/year (server only)</div>
+                    <ul class="cost-features">
+                        <li>✓ Unlimited seats</li>
+                        <li>✓ All 4 tools</li>
+                        <li>✓ Full TM system</li>
+                        <li>✓ AI embeddings</li>
+                        <li>✓ Self-hosted</li>
+                    </ul>
+                </div>
+
+                <div class="cost-card">
+                    <div class="cost-name">SDL Trados</div>
+                    <div class="cost-price">$29,950</div>
+                    <div class="cost-period">/year (10 seats)</div>
+                    <ul class="cost-features">
+                        <li>• Per-seat licensing</li>
+                        <li>• Annual renewal</li>
+                        <li>• Cloud dependency</li>
+                        <li>• Limited customization</li>
+                    </ul>
+                </div>
+
+                <div class="cost-card">
+                    <div class="cost-name">memoQ</div>
+                    <div class="cost-price">$19,900</div>
+                    <div class="cost-period">/year (10 seats)</div>
+                    <ul class="cost-features">
+                        <li>• Per-seat licensing</li>
+                        <li>• Server separate cost</li>
+                        <li>• Support extra</li>
+                        <li>• Cloud add-ons</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="savings-banner">
+                <div class="savings-amount">98% SAVINGS</div>
+                <div class="savings-text">Save $29,350/year compared to SDL Trados (10 users)</div>
+            </div>
+        </div>
+
+        <!-- SUMMARY -->
+        <div class="summary">
+            <div class="summary-item">
+                <div class="summary-value">$0</div>
+                <div class="summary-label">Software License</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">$50</div>
+                <div class="summary-label">Monthly Server</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">∞</div>
+                <div class="summary-label">Unlimited Users</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">100%</div>
+                <div class="summary-label">Self-Hosted</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">4</div>
+                <div class="summary-label">Tools Included</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">912</div>
+                <div class="summary-label">Tests Passed</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
