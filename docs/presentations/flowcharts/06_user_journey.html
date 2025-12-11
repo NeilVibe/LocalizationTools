@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LocaNext - User Journey</title>
+    <title>LocaNext - Build & Deploy Overview</title>
     <style>
         * {
             margin: 0;
@@ -15,546 +15,484 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
             min-height: 100vh;
-            padding: 25px;
+            padding: 20px;
             color: #e0e0e0;
         }
 
         h1 {
             text-align: center;
             font-size: 2rem;
-            margin-bottom: 5px;
-            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            margin-bottom: 3px;
+            background: linear-gradient(90deg, #00d4ff, #00ff88, #ffd700);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .subtitle {
             text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 15px;
+            font-size: 0.75rem;
         }
 
-        /* Horizontal journey timeline */
-        .journey-container {
-            display: flex;
-            gap: 0;
-            align-items: stretch;
-            overflow-x: auto;
-            padding-bottom: 20px;
+        /* 2x2 Grid Layout - Square */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 15px;
+            height: calc(100vh - 140px);
+            max-height: 800px;
         }
 
-        /* Phase box */
-        .phase {
-            min-width: 280px;
-            flex: 1;
+        /* Each quadrant */
+        .quadrant {
+            background: linear-gradient(135deg, rgba(20, 30, 40, 0.95), rgba(15, 25, 35, 0.95));
+            border: 3px solid;
+            border-radius: 16px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
         }
 
-        .phase-header {
-            text-align: center;
-            padding: 15px;
-            border-radius: 12px 12px 0 0;
-            position: relative;
-        }
+        .quadrant.build { border-color: #9945ff; }
+        .quadrant.install { border-color: #00d4ff; }
+        .quadrant.security { border-color: #ff4444; }
+        .quadrant.license { border-color: #00ff88; }
 
-        .phase-header h2 {
-            font-size: 1rem;
-            margin-bottom: 4px;
-        }
-
-        .phase-header .time {
-            font-size: 0.65rem;
-            opacity: 0.7;
-        }
-
-        .phase-header .number {
-            position: absolute;
-            top: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
+        .quad-header {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-
-        /* Phase colors */
-        .phase.install .phase-header { background: linear-gradient(135deg, rgba(153, 69, 255, 0.3), rgba(153, 69, 255, 0.1)); }
-        .phase.install .phase-header .number { background: #9945ff; color: white; }
-        .phase.install .phase-header h2 { color: #9945ff; }
-
-        .phase.setup .phase-header { background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.1)); }
-        .phase.setup .phase-header .number { background: #00d4ff; color: white; }
-        .phase.setup .phase-header h2 { color: #00d4ff; }
-
-        .phase.login .phase-header { background: linear-gradient(135deg, rgba(255, 136, 0, 0.3), rgba(255, 136, 0, 0.1)); }
-        .phase.login .phase-header .number { background: #ff8800; color: white; }
-        .phase.login .phase-header h2 { color: #ff8800; }
-
-        .phase.select .phase-header { background: linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 255, 136, 0.1)); }
-        .phase.select .phase-header .number { background: #00ff88; color: #111; }
-        .phase.select .phase-header h2 { color: #00ff88; }
-
-        .phase.work .phase-header { background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1)); }
-        .phase.work .phase-header .number { background: #ffd700; color: #111; }
-        .phase.work .phase-header h2 { color: #ffd700; }
-
-        .phase.results .phase-header { background: linear-gradient(135deg, rgba(255, 107, 53, 0.3), rgba(255, 107, 53, 0.1)); }
-        .phase.results .phase-header .number { background: #ff6b35; color: white; }
-        .phase.results .phase-header h2 { color: #ff6b35; }
-
-        /* Phase content */
-        .phase-content {
-            flex: 1;
-            background: rgba(20, 25, 35, 0.9);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-top: none;
-            border-radius: 0 0 12px 12px;
-            padding: 15px;
-        }
-
-        .step-list {
-            list-style: none;
-        }
-
-        .step-list li {
-            display: flex;
-            align-items: flex-start;
             gap: 10px;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .quad-icon {
+            font-size: 1.5rem;
+        }
+
+        .quad-title {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .quadrant.build .quad-title { color: #9945ff; }
+        .quadrant.install .quad-title { color: #00d4ff; }
+        .quadrant.security .quad-title { color: #ff4444; }
+        .quadrant.license .quad-title { color: #00ff88; }
+
+        .quad-badge {
+            margin-left: auto;
+            font-size: 0.55rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .quadrant.build .quad-badge { background: rgba(153, 69, 255, 0.2); color: #9945ff; }
+        .quadrant.install .quad-badge { background: rgba(0, 212, 255, 0.2); color: #00d4ff; }
+        .quadrant.security .quad-badge { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
+        .quadrant.license .quad-badge { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+
+        /* Flow items */
+        .flow-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .flow-box {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            flex: 1;
+            text-align: center;
+        }
+
+        .flow-arrow {
+            color: #666;
             font-size: 0.8rem;
         }
 
-        .step-list li:last-child {
-            border-bottom: none;
+        .flow-arrow-down {
+            text-align: center;
+            color: #666;
+            font-size: 0.7rem;
+            padding: 2px 0;
         }
 
-        .step-list .icon {
+        /* Highlight boxes */
+        .highlight-box {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: auto;
+        }
+
+        .quadrant.build .highlight-box { border: 1px solid rgba(153, 69, 255, 0.3); }
+        .quadrant.install .highlight-box { border: 1px solid rgba(0, 212, 255, 0.3); }
+        .quadrant.security .highlight-box { border: 1px solid rgba(255, 68, 68, 0.3); }
+        .quadrant.license .highlight-box { border: 1px solid rgba(0, 255, 136, 0.3); }
+
+        .highlight-row {
+            display: flex;
+            justify-content: space-around;
+            gap: 8px;
+        }
+
+        .highlight-item {
+            text-align: center;
+        }
+
+        .highlight-value {
             font-size: 1rem;
-            flex-shrink: 0;
+            font-weight: bold;
         }
 
-        .step-list .text {
+        .quadrant.build .highlight-value { color: #9945ff; }
+        .quadrant.install .highlight-value { color: #00d4ff; }
+        .quadrant.security .highlight-value { color: #ff4444; }
+        .quadrant.license .highlight-value { color: #00ff88; }
+
+        .highlight-label {
+            font-size: 0.55rem;
+            color: #888;
+        }
+
+        /* Security grid */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
             flex: 1;
         }
 
-        .step-list .detail {
-            font-size: 0.65rem;
-            color: #888;
-            margin-top: 2px;
-        }
-
-        /* Arrow connector */
-        .arrow-connector {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            flex-shrink: 0;
-        }
-
-        .arrow-line {
-            width: 30px;
-            height: 3px;
-            background: linear-gradient(to right, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.5));
-            position: relative;
-        }
-
-        .arrow-line::after {
-            content: '';
-            position: absolute;
-            right: -6px;
-            top: 50%;
-            transform: translateY(-50%);
-            border-top: 6px solid transparent;
-            border-bottom: 6px solid transparent;
-            border-left: 8px solid rgba(255, 255, 255, 0.5);
-        }
-
-        /* User profile section */
-        .user-profiles {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-        }
-
-        .profile {
+        .security-item {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid rgba(255, 68, 68, 0.2);
+            border-radius: 6px;
+            padding: 6px;
             text-align: center;
-            padding: 15px 25px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-            min-width: 180px;
         }
 
-        .profile .avatar {
-            font-size: 2.5rem;
-            margin-bottom: 8px;
+        .security-item .icon {
+            font-size: 1rem;
+            margin-bottom: 2px;
         }
 
-        .profile .role {
-            font-size: 0.9rem;
-            font-weight: bold;
-            color: #00d4ff;
+        .security-item .name {
+            font-size: 0.6rem;
+            color: #ff6666;
         }
 
-        .profile .tasks {
-            font-size: 0.7rem;
-            color: #888;
-            margin-top: 5px;
+        /* License grid */
+        .license-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            flex: 1;
         }
 
-        /* Bottom benefits */
-        .benefits {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 25px;
-        }
-
-        .benefit {
-            text-align: center;
-            padding: 20px;
-            background: rgba(0, 255, 136, 0.05);
+        .license-item {
+            background: rgba(0, 255, 136, 0.1);
             border: 1px solid rgba(0, 255, 136, 0.2);
-            border-radius: 12px;
-            min-width: 200px;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
         }
 
-        .benefit .icon {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .benefit .value {
-            font-size: 1.3rem;
+        .license-item .name {
+            font-size: 0.75rem;
             font-weight: bold;
             color: #00ff88;
         }
 
-        .benefit .label {
-            font-size: 0.7rem;
+        .license-item .type {
+            font-size: 0.55rem;
             color: #888;
-            margin-top: 5px;
+            margin-top: 2px;
+        }
+
+        .license-item.free {
+            grid-column: span 2;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 212, 255, 0.15));
+            border-color: rgba(0, 255, 136, 0.4);
+        }
+
+        .license-item.free .name {
+            font-size: 1.2rem;
+        }
+
+        /* Bottom stats */
+        .bottom-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat .value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat .label {
+            font-size: 0.6rem;
+            color: #888;
+        }
+
+        /* Connection arrows between quadrants */
+        .center-connection {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border: 2px solid #333;
+            z-index: 10;
+        }
+
+        .grid-wrapper {
+            position: relative;
         }
     </style>
 </head>
 <body>
-    <h1>LocaNext - User Journey</h1>
-    <p class="subtitle">From Installation to Daily Productivity</p>
+    <h1>LocaNext - Build & Deploy Overview</h1>
+    <p class="subtitle">100% Open Source | Zero License Cost | Fully Secured | Self-Hosted</p>
 
-    <!-- Journey Timeline -->
-    <div class="journey-container">
-        <!-- Phase 1: Install -->
-        <div class="phase install">
-            <div class="phase-header">
-                <div class="number">1</div>
-                <h2>INSTALL</h2>
-                <div class="time">~2 minutes</div>
+    <div class="grid-wrapper">
+        <div class="main-grid">
+            <!-- Q1: BUILD (Top Left) -->
+            <div class="quadrant build">
+                <div class="quad-header">
+                    <div class="quad-icon">🔨</div>
+                    <div class="quad-title">CI/CD BUILD</div>
+                    <div class="quad-badge">AUTOMATED</div>
+                </div>
+                <div class="flow-container">
+                    <div class="flow-row">
+                        <div class="flow-box">Git Push</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box">GitHub/Gitea</div>
+                    </div>
+                    <div class="flow-arrow-down">↓</div>
+                    <div class="flow-row">
+                        <div class="flow-box">CI Runner</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box">Build EXE</div>
+                    </div>
+                    <div class="flow-arrow-down">↓</div>
+                    <div class="flow-row">
+                        <div class="flow-box">Sign & Pack</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box">Release</div>
+                    </div>
+                    <div class="highlight-box">
+                        <div class="highlight-row">
+                            <div class="highlight-item">
+                                <div class="highlight-value">~3min</div>
+                                <div class="highlight-label">Build Time</div>
+                            </div>
+                            <div class="highlight-item">
+                                <div class="highlight-value">Dual</div>
+                                <div class="highlight-label">GitHub+Gitea</div>
+                            </div>
+                            <div class="highlight-item">
+                                <div class="highlight-value">Auto</div>
+                                <div class="highlight-label">Versioning</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="phase-content">
-                <ul class="step-list">
-                    <li>
-                        <span class="icon">📥</span>
-                        <div class="text">
-                            Download Installer
-                            <div class="detail">LocaNext-Setup.exe (~150MB)</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">▶️</span>
-                        <div class="text">
-                            Run Installer
-                            <div class="detail">Standard Windows setup wizard</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">🐍</span>
-                        <div class="text">
-                            Auto Python Setup
-                            <div class="detail">Embedded Python 3.11 included</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">✅</span>
-                        <div class="text">
-                            Ready to Launch
-                            <div class="detail">Desktop shortcut created</div>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
 
-        <div class="arrow-connector"><div class="arrow-line"></div></div>
-
-        <!-- Phase 2: First Run -->
-        <div class="phase setup">
-            <div class="phase-header">
-                <div class="number">2</div>
-                <h2>FIRST RUN</h2>
-                <div class="time">~30 seconds</div>
+            <!-- Q2: USER INSTALL (Top Right) -->
+            <div class="quadrant install">
+                <div class="quad-header">
+                    <div class="quad-icon">💻</div>
+                    <div class="quad-title">USER INSTALL</div>
+                    <div class="quad-badge">&lt;3 MIN</div>
+                </div>
+                <div class="flow-container">
+                    <div class="flow-row">
+                        <div class="flow-box">Download EXE</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box">Run Installer</div>
+                    </div>
+                    <div class="flow-arrow-down">↓</div>
+                    <div class="flow-row">
+                        <div class="flow-box">Auto Python</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box">Auto Deps</div>
+                    </div>
+                    <div class="flow-arrow-down">↓</div>
+                    <div class="flow-row">
+                        <div class="flow-box">AI Model DL</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box">Ready!</div>
+                    </div>
+                    <div class="highlight-box">
+                        <div class="highlight-row">
+                            <div class="highlight-item">
+                                <div class="highlight-value">150MB</div>
+                                <div class="highlight-label">Installer</div>
+                            </div>
+                            <div class="highlight-item">
+                                <div class="highlight-value">Zero</div>
+                                <div class="highlight-label">Config</div>
+                            </div>
+                            <div class="highlight-item">
+                                <div class="highlight-value">Auto</div>
+                                <div class="highlight-label">Updates</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="phase-content">
-                <ul class="step-list">
-                    <li>
-                        <span class="icon">🚀</span>
-                        <div class="text">
-                            Launch LocaNext
-                            <div class="detail">Double-click desktop icon</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">🔧</span>
-                        <div class="text">
-                            Health Check
-                            <div class="detail">Auto-verifies Python, packages</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">🧠</span>
-                        <div class="text">
-                            AI Model Download
-                            <div class="detail">Qwen3-0.6B (~500MB, one-time)</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">⚡</span>
-                        <div class="text">
-                            Backend Starts
-                            <div class="detail">FastAPI on localhost:8888</div>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
 
-        <div class="arrow-connector"><div class="arrow-line"></div></div>
-
-        <!-- Phase 3: Login -->
-        <div class="phase login">
-            <div class="phase-header">
-                <div class="number">3</div>
-                <h2>LOGIN</h2>
-                <div class="time">~5 seconds</div>
+            <!-- Q3: SECURITY (Bottom Left) -->
+            <div class="quadrant security">
+                <div class="quad-header">
+                    <div class="quad-icon">🔒</div>
+                    <div class="quad-title">7-LAYER SECURITY</div>
+                    <div class="quad-badge">86 TESTS</div>
+                </div>
+                <div class="security-grid">
+                    <div class="security-item">
+                        <div class="icon">🌐</div>
+                        <div class="name">IP Filter</div>
+                    </div>
+                    <div class="security-item">
+                        <div class="icon">🔗</div>
+                        <div class="name">CORS</div>
+                    </div>
+                    <div class="security-item">
+                        <div class="icon">⏱️</div>
+                        <div class="name">Rate Limit</div>
+                    </div>
+                    <div class="security-item">
+                        <div class="icon">🔑</div>
+                        <div class="name">JWT Token</div>
+                    </div>
+                    <div class="security-item">
+                        <div class="icon">📋</div>
+                        <div class="name">Session</div>
+                    </div>
+                    <div class="security-item">
+                        <div class="icon">👤</div>
+                        <div class="name">Role Auth</div>
+                    </div>
+                </div>
+                <div class="highlight-box">
+                    <div class="highlight-row">
+                        <div class="highlight-item">
+                            <div class="highlight-value">Closed</div>
+                            <div class="highlight-label">IP Range</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">Audit</div>
+                            <div class="highlight-label">Logging</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">100%</div>
+                            <div class="highlight-label">Offline OK</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="phase-content">
-                <ul class="step-list">
-                    <li>
-                        <span class="icon">👤</span>
-                        <div class="text">
-                            Enter Credentials
-                            <div class="detail">Username + Password</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">🔐</span>
-                        <div class="text">
-                            JWT Authentication
-                            <div class="detail">Secure token issued</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">💾</span>
-                        <div class="text">
-                            Session Created
-                            <div class="detail">Remember me option</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">🏠</span>
-                        <div class="text">
-                            Dashboard Loads
-                            <div class="detail">Tool selection screen</div>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
 
-        <div class="arrow-connector"><div class="arrow-line"></div></div>
-
-        <!-- Phase 4: Select Tool -->
-        <div class="phase select">
-            <div class="phase-header">
-                <div class="number">4</div>
-                <h2>SELECT TOOL</h2>
-                <div class="time">~2 seconds</div>
-            </div>
-            <div class="phase-content">
-                <ul class="step-list">
-                    <li>
-                        <span class="icon">📊</span>
-                        <div class="text">
-                            XLSTransfer
-                            <div class="detail">Excel data migration</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">🔍</span>
-                        <div class="text">
-                            QuickSearch
-                            <div class="detail">Fast text/XML search</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">🔗</span>
-                        <div class="text">
-                            KR Similar
-                            <div class="detail">AI similarity matching</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">📝</span>
-                        <div class="text">
-                            LDM (CAT Tool)
-                            <div class="detail">Translation editing</div>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="arrow-connector"><div class="arrow-line"></div></div>
-
-        <!-- Phase 5: Work -->
-        <div class="phase work">
-            <div class="phase-header">
-                <div class="number">5</div>
-                <h2>WORK</h2>
-                <div class="time">Daily use</div>
-            </div>
-            <div class="phase-content">
-                <ul class="step-list">
-                    <li>
-                        <span class="icon">📁</span>
-                        <div class="text">
-                            Load Files
-                            <div class="detail">Drag & drop or browse</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">⚙️</span>
-                        <div class="text">
-                            Configure Options
-                            <div class="detail">Tool-specific settings</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">▶️</span>
-                        <div class="text">
-                            Process
-                            <div class="detail">Real-time progress bar</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">👁️</span>
-                        <div class="text">
-                            Review Results
-                            <div class="detail">Interactive preview</div>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="arrow-connector"><div class="arrow-line"></div></div>
-
-        <!-- Phase 6: Results -->
-        <div class="phase results">
-            <div class="phase-header">
-                <div class="number">6</div>
-                <h2>RESULTS</h2>
-                <div class="time">Instant</div>
-            </div>
-            <div class="phase-content">
-                <ul class="step-list">
-                    <li>
-                        <span class="icon">💾</span>
-                        <div class="text">
-                            Save/Export
-                            <div class="detail">Excel, TXT, XML formats</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">📋</span>
-                        <div class="text">
-                            Copy to Clipboard
-                            <div class="detail">Quick paste anywhere</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">📊</span>
-                        <div class="text">
-                            View Statistics
-                            <div class="detail">Matches, rows, time</div>
-                        </div>
-                    </li>
-                    <li>
-                        <span class="icon">🔄</span>
-                        <div class="text">
-                            Next Task
-                            <div class="detail">Return to tool or switch</div>
-                        </div>
-                    </li>
-                </ul>
+            <!-- Q4: LICENSE (Bottom Right) -->
+            <div class="quadrant license">
+                <div class="quad-header">
+                    <div class="quad-icon">📜</div>
+                    <div class="quad-title">LICENSING</div>
+                    <div class="quad-badge">100% FREE</div>
+                </div>
+                <div class="license-grid">
+                    <div class="license-item">
+                        <div class="name">Python</div>
+                        <div class="type">PSF License</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="name">FastAPI</div>
+                        <div class="type">MIT License</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="name">Electron</div>
+                        <div class="type">MIT License</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="name">FAISS</div>
+                        <div class="type">MIT License</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="name">PostgreSQL</div>
+                        <div class="type">PostgreSQL Lic</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="name">Qwen AI</div>
+                        <div class="type">Apache 2.0</div>
+                    </div>
+                    <div class="license-item free">
+                        <div class="name">$0 FOREVER</div>
+                        <div class="type">No seat limits • No annual fees • Commercial OK</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- User Profiles -->
-    <div class="user-profiles">
-        <div class="profile">
-            <div class="avatar">👩‍💻</div>
-            <div class="role">Translator</div>
-            <div class="tasks">LDM, QuickSearch daily</div>
+    <!-- Bottom stats -->
+    <div class="bottom-stats">
+        <div class="stat">
+            <div class="value">$0</div>
+            <div class="label">License Cost</div>
         </div>
-        <div class="profile">
-            <div class="avatar">👨‍💼</div>
-            <div class="role">Project Manager</div>
-            <div class="tasks">XLSTransfer for reports</div>
+        <div class="stat">
+            <div class="value">∞</div>
+            <div class="label">Users</div>
         </div>
-        <div class="profile">
-            <div class="avatar">👩‍🔬</div>
-            <div class="role">QA Specialist</div>
-            <div class="tasks">QuickSearch, KR Similar</div>
+        <div class="stat">
+            <div class="value">7</div>
+            <div class="label">Security Layers</div>
         </div>
-        <div class="profile">
-            <div class="avatar">👨‍🔧</div>
-            <div class="role">Localization Engineer</div>
-            <div class="tasks">All tools + Admin</div>
+        <div class="stat">
+            <div class="value">86</div>
+            <div class="label">Security Tests</div>
         </div>
-    </div>
-
-    <!-- Benefits -->
-    <div class="benefits">
-        <div class="benefit">
-            <div class="icon">⚡</div>
-            <div class="value">&lt;3 min</div>
-            <div class="label">Install to First Use</div>
-        </div>
-        <div class="benefit">
-            <div class="icon">🖥️</div>
+        <div class="stat">
             <div class="value">100%</div>
-            <div class="label">Offline Capable</div>
+            <div class="label">Open Source</div>
         </div>
-        <div class="benefit">
-            <div class="icon">🔄</div>
-            <div class="value">Auto</div>
-            <div class="label">Updates & Repair</div>
-        </div>
-        <div class="benefit">
-            <div class="icon">💰</div>
+        <div class="stat">
             <div class="value">98%</div>
             <div class="label">Cost Savings</div>
         </div>
