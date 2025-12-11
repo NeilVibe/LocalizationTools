@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - Security Architecture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a1a 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 3px;
+            background: linear-gradient(90deg, #ff4444, #ff8800, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 15px;
+            font-size: 0.75rem;
+        }
+
+        /* 2x2 Grid Layout - Square */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 15px;
+            height: calc(100vh - 140px);
+            max-height: 800px;
+        }
+
+        /* Each quadrant */
+        .quadrant {
+            background: linear-gradient(135deg, rgba(20, 30, 40, 0.95), rgba(15, 25, 35, 0.95));
+            border: 3px solid;
+            border-radius: 16px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quadrant.network { border-color: #ff8800; }
+        .quadrant.auth { border-color: #9945ff; }
+        .quadrant.access { border-color: #00d4ff; }
+        .quadrant.audit { border-color: #00ff88; }
+
+        .quad-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .quad-icon {
+            font-size: 1.5rem;
+        }
+
+        .quad-title {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .quadrant.network .quad-title { color: #ff8800; }
+        .quadrant.auth .quad-title { color: #9945ff; }
+        .quadrant.access .quad-title { color: #00d4ff; }
+        .quadrant.audit .quad-title { color: #00ff88; }
+
+        .quad-badge {
+            margin-left: auto;
+            font-size: 0.55rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .quadrant.network .quad-badge { background: rgba(255, 136, 0, 0.2); color: #ff8800; }
+        .quadrant.auth .quad-badge { background: rgba(153, 69, 255, 0.2); color: #9945ff; }
+        .quadrant.access .quad-badge { background: rgba(0, 212, 255, 0.2); color: #00d4ff; }
+        .quadrant.audit .quad-badge { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+
+        /* Security grid */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            flex: 1;
+        }
+
+        .security-item {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .quadrant.network .security-item { border: 1px solid rgba(255, 136, 0, 0.2); }
+        .quadrant.auth .security-item { border: 1px solid rgba(153, 69, 255, 0.2); }
+        .quadrant.access .security-item { border: 1px solid rgba(0, 212, 255, 0.2); }
+        .quadrant.audit .security-item { border: 1px solid rgba(0, 255, 136, 0.2); }
+
+        .security-item .icon {
+            font-size: 1.3rem;
+            margin-bottom: 4px;
+        }
+
+        .security-item .name {
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .quadrant.network .security-item .name { color: #ff8800; }
+        .quadrant.auth .security-item .name { color: #9945ff; }
+        .quadrant.access .security-item .name { color: #00d4ff; }
+        .quadrant.audit .security-item .name { color: #00ff88; }
+
+        .security-item .desc {
+            font-size: 0.55rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Highlight boxes */
+        .highlight-box {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: auto;
+        }
+
+        .quadrant.network .highlight-box { border: 1px solid rgba(255, 136, 0, 0.3); }
+        .quadrant.auth .highlight-box { border: 1px solid rgba(153, 69, 255, 0.3); }
+        .quadrant.access .highlight-box { border: 1px solid rgba(0, 212, 255, 0.3); }
+        .quadrant.audit .highlight-box { border: 1px solid rgba(0, 255, 136, 0.3); }
+
+        .highlight-row {
+            display: flex;
+            justify-content: space-around;
+            gap: 8px;
+        }
+
+        .highlight-item {
+            text-align: center;
+        }
+
+        .highlight-value {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .quadrant.network .highlight-value { color: #ff8800; }
+        .quadrant.auth .highlight-value { color: #9945ff; }
+        .quadrant.access .highlight-value { color: #00d4ff; }
+        .quadrant.audit .highlight-value { color: #00ff88; }
+
+        .highlight-label {
+            font-size: 0.55rem;
+            color: #888;
+        }
+
+        /* Bottom stats */
+        .bottom-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat .value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #ff4444, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat .label {
+            font-size: 0.6rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <h1>LocaNext - Security Architecture</h1>
+    <p class="subtitle">7-Layer Security Model | 86 Tests | Zero External Access</p>
+
+    <div class="main-grid">
+        <!-- Q1: NETWORK SECURITY (Top Left) -->
+        <div class="quadrant network">
+            <div class="quad-header">
+                <div class="quad-icon">🛡️</div>
+                <div class="quad-title">Network Security</div>
+                <div class="quad-badge">LAYERS 1-3</div>
+            </div>
+            <div class="security-grid">
+                <div class="security-item">
+                    <div class="icon">🌐</div>
+                    <div class="name">IP Filter</div>
+                    <div class="desc">127.0.0.1 + Private only</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">🔗</div>
+                    <div class="name">CORS</div>
+                    <div class="desc">localhost:5173-5180</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">⏱️</div>
+                    <div class="name">Rate Limit</div>
+                    <div class="desc">100/min • 5/min login</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">🚫</div>
+                    <div class="name">External</div>
+                    <div class="desc">BLOCKED 100%</div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <div class="highlight-row">
+                    <div class="highlight-item">
+                        <div class="highlight-value">24</div>
+                        <div class="highlight-label">IP Tests</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">11</div>
+                        <div class="highlight-label">CORS Tests</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">0</div>
+                        <div class="highlight-label">Public Access</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Q2: AUTHENTICATION (Top Right) -->
+        <div class="quadrant auth">
+            <div class="quad-header">
+                <div class="quad-icon">🔐</div>
+                <div class="quad-title">Authentication</div>
+                <div class="quad-badge">LAYER 4</div>
+            </div>
+            <div class="security-grid">
+                <div class="security-item">
+                    <div class="icon">📝</div>
+                    <div class="name">JWT Token</div>
+                    <div class="desc">HS256 signature</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">⏰</div>
+                    <div class="name">Access Token</div>
+                    <div class="desc">24h expiry</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">🔄</div>
+                    <div class="name">Refresh Token</div>
+                    <div class="desc">7-day rotation</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">👤</div>
+                    <div class="name">Claims</div>
+                    <div class="desc">user_id, role</div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <div class="highlight-row">
+                    <div class="highlight-item">
+                        <div class="highlight-value">22</div>
+                        <div class="highlight-label">JWT Tests</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">Auto</div>
+                        <div class="highlight-label">Refresh</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">Bcrypt</div>
+                        <div class="highlight-label">Password Hash</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Q3: ACCESS CONTROL (Bottom Left) -->
+        <div class="quadrant access">
+            <div class="quad-header">
+                <div class="quad-icon">🪪</div>
+                <div class="quad-title">Access Control</div>
+                <div class="quad-badge">LAYERS 5-6</div>
+            </div>
+            <div class="security-grid">
+                <div class="security-item">
+                    <div class="icon">📋</div>
+                    <div class="name">Session</div>
+                    <div class="desc">Active DB check</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">👑</div>
+                    <div class="name">Role Auth</div>
+                    <div class="desc">admin | user | viewer</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">🔒</div>
+                    <div class="name">Protected Routes</div>
+                    <div class="desc">63+ endpoints</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">🚪</div>
+                    <div class="name">Public Routes</div>
+                    <div class="desc">/health, /login only</div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <div class="highlight-row">
+                    <div class="highlight-item">
+                        <div class="highlight-value">3</div>
+                        <div class="highlight-label">Roles</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">DB</div>
+                        <div class="highlight-label">Session Store</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">100%</div>
+                        <div class="highlight-label">Route Coverage</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Q4: AUDIT & LOGGING (Bottom Right) -->
+        <div class="quadrant audit">
+            <div class="quad-header">
+                <div class="quad-icon">📋</div>
+                <div class="quad-title">Audit & Logging</div>
+                <div class="quad-badge">LAYER 7</div>
+            </div>
+            <div class="security-grid">
+                <div class="security-item">
+                    <div class="icon">📝</div>
+                    <div class="name">Action Log</div>
+                    <div class="desc">What happened</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">👤</div>
+                    <div class="name">User Log</div>
+                    <div class="desc">Who did it</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">🕐</div>
+                    <div class="name">Timestamp</div>
+                    <div class="desc">When + duration</div>
+                </div>
+                <div class="security-item">
+                    <div class="icon">🌍</div>
+                    <div class="name">Context</div>
+                    <div class="desc">IP + endpoint</div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <div class="highlight-row">
+                    <div class="highlight-item">
+                        <div class="highlight-value">29</div>
+                        <div class="highlight-label">Audit Tests</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">100%</div>
+                        <div class="highlight-label">Coverage</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">DB</div>
+                        <div class="highlight-label">Persistent</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom stats -->
+    <div class="bottom-stats">
+        <div class="stat">
+            <div class="value">7</div>
+            <div class="label">Security Layers</div>
+        </div>
+        <div class="stat">
+            <div class="value">86</div>
+            <div class="label">Security Tests</div>
+        </div>
+        <div class="stat">
+            <div class="value">24h</div>
+            <div class="label">Token Expiry</div>
+        </div>
+        <div class="stat">
+            <div class="value">0</div>
+            <div class="label">External Access</div>
+        </div>
+        <div class="stat">
+            <div class="value">100%</div>
+            <div class="label">Audit Coverage</div>
+        </div>
+        <div class="stat">
+            <div class="value">Offline</div>
+            <div class="label">Capability</div>
+        </div>
+    </div>
+</body>
+</html>
