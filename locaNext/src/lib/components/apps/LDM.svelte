@@ -490,7 +490,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     height: 100%;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    /* Changed from overflow: hidden to allow tooltips to escape */
+    overflow: visible;
+    position: relative;
   }
 
   .error-banner {
@@ -507,6 +509,8 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
   .ldm-layout {
     display: flex;
     flex: 1;
-    overflow: hidden;
+    /* Changed from overflow: hidden to allow tooltips to escape */
+    overflow: visible;
+    position: relative;
   }
 </style>

@@ -44,8 +44,8 @@ async def get_db_stats(db: Session = Depends(get_db)) -> Dict[str, Any]:
 
         if dialect == "postgresql":
             stats.update(await _get_postgresql_stats(db))
-        elif dialect == "sqlite":
-            stats.update(_get_sqlite_stats(db))
+        else:
+            stats["error"] = f"Unsupported database: {dialect}. PostgreSQL required."
 
     except Exception as e:
         logger.error(f"Error getting DB stats: {e}")
@@ -162,40 +162,6 @@ async def _get_postgresql_stats(db: Session) -> Dict[str, Any]:
     return stats
 
 
-def _get_sqlite_stats(db: Session) -> Dict[str, Any]:
-    """Get SQLite statistics (limited compared to PostgreSQL)."""
-    stats = {
-        "connection_pool": {
-            "note": "SQLite uses file-based locking, not connection pooling"
-        },
-        "performance": {},
-        "tables": {},
-        "configuration": {
-            "note": "SQLite - development mode only"
-        }
-    }
-
-    try:
-        # Get table row counts
-        tables_result = db.execute(text("""
-            SELECT name FROM sqlite_master
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
-        """)).fetchall()
-
-        for row in tables_result:
-            table_name = row[0]
-            count = db.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
-            stats["tables"][table_name] = {
-                "row_count": count
-            }
-
-    except Exception as e:
-        logger.error(f"Error getting SQLite stats: {e}")
-        stats["error"] = str(e)
-
-    return stats
-
-
 @router.get("/health", dependencies=[Depends(require_admin)])
 async def get_db_health(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
@@ -217,9 +183,8 @@ async def get_db_health(db: Session = Depends(get_db)) -> Dict[str, Any]:
         dialect = db.bind.dialect.name
 
         if dialect != "postgresql":
-            health["status"] = "warning"
-            health["issues"].append("Using SQLite - not recommended for production")
-            health["recommendations"].append("Migrate to PostgreSQL for 100+ users")
+            health["status"] = "critical"
+            health["issues"].append(f"Unsupported database: {dialect}. PostgreSQL required.")
             return health
 
         # Check cache hit ratio

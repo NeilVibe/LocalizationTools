@@ -189,3 +189,31 @@ a.bx--header__menu-item::after {
 .bx--tooltip__trigger {
   position: relative;
 }
+
+/* Fix for tooltips in LDM layout - allow overflow for tooltip visibility */
+.ldm-layout,
+.ldm-app,
+.file-explorer,
+.tree-actions,
+.tree-header {
+  overflow: visible !important;
+}
+
+/* But keep scroll for content areas */
+.ldm-layout .scroll-container,
+.file-explorer .projects-list,
+.file-explorer .bx--tree-view {
+  overflow-y: auto !important;
+}
+
+/* Ensure button tooltips in file explorer are visible */
+.file-explorer .bx--btn--icon-only {
+  overflow: visible !important;
+}
+
+/* Portal-style tooltip fix - ensure tooltip content escapes containers */
+.bx--tooltip--shown,
+.bx--tooltip__trigger.bx--tooltip--visible::before,
+.bx--tooltip__trigger.bx--tooltip--visible::after {
+  position: fixed !important;
+}

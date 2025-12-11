@@ -252,11 +252,8 @@ class BaseToolAPI:
             result_data: Optional result data to include in event
         """
         try:
-            # Create synchronous database session
-            engine = create_engine(
-                config.DATABASE_URL,
-                connect_args={"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {}
-            )
+            # Create synchronous database session (PostgreSQL)
+            engine = create_engine(config.DATABASE_URL)
             db_session = Session(engine)
 
             try:
@@ -320,10 +317,8 @@ class BaseToolAPI:
             error: Exception that caused the failure
         """
         try:
-            engine = create_engine(
-                config.DATABASE_URL,
-                connect_args={"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {}
-            )
+            # Create synchronous database session (PostgreSQL)
+            engine = create_engine(config.DATABASE_URL)
             db_session = Session(engine)
 
             try:

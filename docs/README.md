@@ -52,6 +52,7 @@ docs/
 │   ├── README.md                     # Testing hub navigation
 │   ├── DEBUG_AND_TEST_HUB.md         # MASTER GUIDE (Start Here!)
 │   ├── QUICK_COMMANDS.md             # Copy-paste commands
+│   ├── CDP_TESTING_GUIDE.md          # Electron app testing via CDP
 │   ├── PYTEST_GUIDE.md               # Python backend tests
 │   ├── PLAYWRIGHT_GUIDE.md           # Frontend E2E tests
 │   ├── TESTING_PROTOCOL.md           # Autonomous testing

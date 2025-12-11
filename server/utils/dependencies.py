@@ -33,14 +33,13 @@ def initialize_database():
     global _engine, _session_maker
 
     if _engine is None:
-        use_postgres = config.DATABASE_TYPE == "postgresql"
-        _engine = create_database_engine(use_postgres=use_postgres, echo=config.DB_ECHO)
+        _engine = create_database_engine(echo=config.DB_ECHO)
         _session_maker = get_session_maker(_engine)
 
         # Create tables if they don't exist (safe to call multiple times)
         init_db_tables(_engine)
 
-        logger.info(f"Database initialized with tables: {config.DATABASE_TYPE}")
+        logger.info("Database initialized: PostgreSQL")
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -70,28 +69,19 @@ def initialize_async_database():
     global _async_engine, _async_session_maker
 
     if _async_engine is None:
-        # Create async engine based on database type
-        if config.DATABASE_TYPE == "postgresql":
-            # PostgreSQL async URL (postgresql+asyncpg://)
-            database_url = config.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-            # PostgreSQL supports connection pooling
-            _async_engine = create_async_engine(
-                database_url,
-                echo=config.DB_ECHO,
-                pool_size=20,              # Connection pool size
-                max_overflow=10,           # Max extra connections
-                pool_timeout=30,           # Timeout for getting connection
-                pool_recycle=3600,         # Recycle connections after 1 hour
-                pool_pre_ping=True         # Verify connections before using
-            )
-        else:
-            # SQLite async URL (sqlite+aiosqlite://)
-            database_url = config.DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
-            # SQLite with aiosqlite uses NullPool - no pooling parameters supported
-            _async_engine = create_async_engine(
-                database_url,
-                echo=config.DB_ECHO
-            )
+        # PostgreSQL async URL (postgresql+asyncpg://)
+        database_url = config.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+
+        # PostgreSQL with connection pooling
+        _async_engine = create_async_engine(
+            database_url,
+            echo=config.DB_ECHO,
+            pool_size=20,              # Connection pool size
+            max_overflow=10,           # Max extra connections
+            pool_timeout=30,           # Timeout for getting connection
+            pool_recycle=3600,         # Recycle connections after 1 hour
+            pool_pre_ping=True         # Verify connections before using
+        )
 
         _async_session_maker = async_sessionmaker(
             _async_engine,
@@ -99,7 +89,7 @@ def initialize_async_database():
             expire_on_commit=False     # Don't expire objects after commit
         )
 
-        logger.info(f"Async database initialized: {config.DATABASE_TYPE}")
+        logger.info("Async database initialized: PostgreSQL")
 
 
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:

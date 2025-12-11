@@ -425,6 +425,45 @@ pytest --cov
 
 ---
 
+## 🖥️ CDP Testing (Electron App)
+
+**Chrome DevTools Protocol testing for LocaNext Electron app.**
+
+### Location
+```
+tests/cdp/
+├── README.md              # CDP test instructions
+├── test_edit_final.js     # BUG-002 lock fix verification
+├── test_lock_simple.js    # Simple lock/unlock test
+├── check_page.js          # Page state inspection
+├── find_buttons.js        # DOM button discovery
+└── debug_dom.js           # CSS class analysis
+```
+
+### Running CDP Tests
+
+```bash
+# 1. Start app with CDP enabled (from WSL)
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+Start-Process 'C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject\\LocaNext\\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'
+"
+
+# 2. Run test
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject; node test_edit_final.js"
+```
+
+### CDP Capabilities
+- ✅ Click elements, fill forms
+- ✅ Double-click for edit triggers
+- ✅ Intercept alert() dialogs
+- ✅ Check DOM state
+- ✅ Take screenshots
+- ✅ Verify WebSocket events
+
+**Full Guide:** [docs/testing/CDP_TESTING_GUIDE.md](../docs/testing/CDP_TESTING_GUIDE.md)
+
+---
+
 ## 📝 Test Documentation
 
 **Each test file has:**

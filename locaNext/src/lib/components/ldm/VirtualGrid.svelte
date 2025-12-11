@@ -1,8 +1,6 @@
 <script>
   import {
-    Toolbar,
-    ToolbarContent,
-    ToolbarSearch,
+    Search,
     InlineLoading,
     Tag,
     Button,
@@ -13,10 +11,10 @@
     TextInput,
     NumberInput
   } from "carbon-components-svelte";
-  import { Edit, Locked, ArrowRight, Search } from "carbon-icons-svelte";
+  import { Edit, Locked, ArrowRight, Search as SearchIcon } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
   import { logger } from "$lib/utils/logger.js";
-  import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate } from "$lib/stores/ldm.js";
+  import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate, ldmConnected } from "$lib/stores/ldm.js";
   import PresenceBar from "./PresenceBar.svelte";
 
   const dispatch = createEventDispatcher();
@@ -640,16 +638,15 @@
       </div>
     {/if}
 
-    <Toolbar>
-      <ToolbarContent>
-        <ToolbarSearch
-          bind:value={searchTerm}
-          on:clear={() => { searchTerm = ""; handleSearch(); }}
-          on:input={handleSearch}
-          placeholder="Search source, target, or StringID..."
-        />
-      </ToolbarContent>
-    </Toolbar>
+    <div class="search-bar">
+      <Search
+        bind:value={searchTerm}
+        on:clear={() => { searchTerm = ""; handleSearch(); }}
+        on:input={handleSearch}
+        placeholder="Search source, target, or StringID... (Press Enter)"
+        size="sm"
+      />
+    </div>
 
     <!-- Table Header -->
     <div class="table-header">
@@ -673,7 +670,7 @@
           {#each visibleRows as row, i (row.row_num)}
             {@const rowTop = getRowTop(visibleStart + i)}
             {@const rowHeight = estimateRowHeight(row)}
-            {@const rowLock = row.id ? isRowLocked(parseInt(row.id)) : null}
+            {@const rowLock = $ldmConnected && row.id ? isRowLocked(parseInt(row.id)) : null}
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <div
               class="virtual-row"
@@ -884,6 +881,26 @@
   .go-to-hint {
     font-size: 0.75rem;
     color: var(--cds-text-02);
+  }
+
+  /* Search bar - always expanded, clean styling */
+  .search-bar {
+    padding: 0.5rem 1rem;
+    background: var(--cds-layer-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .search-bar :global(.bx--search) {
+    background: var(--cds-field-01);
+  }
+
+  .search-bar :global(.bx--search-input) {
+    background: var(--cds-field-01);
+    border-bottom: 1px solid var(--cds-border-strong-01);
+  }
+
+  .search-bar :global(.bx--search-input:focus) {
+    border-bottom: 2px solid var(--cds-interactive-01);
   }
 
   .table-header {

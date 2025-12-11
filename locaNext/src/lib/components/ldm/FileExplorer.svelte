@@ -410,7 +410,9 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow: hidden;
+    /* Changed from overflow: hidden to allow tooltips to be visible */
+    overflow: visible;
+    position: relative;
   }
 
   .explorer-header {

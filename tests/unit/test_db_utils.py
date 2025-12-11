@@ -370,9 +370,9 @@ class TestSearchRowsFTS:
 class TestIsPostgreSQL:
     """Test PostgreSQL detection."""
 
-    def test_sqlite_returns_false(self, test_session):
-        """SQLite is not PostgreSQL."""
-        assert is_postgresql(test_session) == False
+    def test_always_returns_true(self, test_session):
+        """PostgreSQL-only mode always returns True."""
+        assert is_postgresql(test_session) == True
 
 
 # =============================================================================

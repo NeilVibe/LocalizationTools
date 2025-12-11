@@ -146,6 +146,14 @@ class WebSocketService {
   on(event, callback) {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
+
+      // Register Socket.IO listener for this event type (first time only)
+      // This ensures server events are relayed to our internal listeners
+      if (this.socket) {
+        this.socket.on(event, (data) => {
+          this.emit(event, data);
+        });
+      }
     }
     this.listeners.get(event).push(callback);
 

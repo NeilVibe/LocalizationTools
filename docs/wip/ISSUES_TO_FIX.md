@@ -9,13 +9,92 @@
 
 | Area | Open | Fixed | Total |
 |------|------|-------|-------|
-| LDM UI | 1 | 10 | 11 |
+| LDM UI | 2 | 13 | 15 |
 | Navigation | 0 | 1 | 1 |
+| Infrastructure | 0 | 1 | 1 |
 | General | 0 | 0 | 0 |
+
+**Open Issues:** BUG-001, ISSUE-011
+**Recently Fixed:** BUG-002, BUG-003, BUG-004
 
 ---
 
 ## Open Issues
+
+### BUG-002: Target Lock Blocking Editing (P25)
+- **Status:** [x] Fixed
+- **Priority:** HIGH (Blocking!)
+- **Reported:** 2025-12-12
+- **Fixed:** 2025-12-12
+- **Component:** WebSocket service (`websocket.js`)
+
+**Problem:** Target column shows "locked" even when nobody is editing. User cannot edit rows.
+
+**Root Cause:** WebSocket service's `on()` method only registered internal listeners but didn't subscribe to actual Socket.IO events from the server. Server sent `ldm_lock_granted` but frontend never received it, causing 3-second timeout.
+
+**Fix Applied:**
+```javascript
+// In websocket.js on() method:
+// Added Socket.IO listener registration when first subscriber registers
+if (this.socket) {
+  this.socket.on(event, (data) => {
+    this.emit(event, data);
+  });
+}
+```
+
+**Files Changed:** `locaNext/src/lib/api/websocket.js`
+
+**Verified by:** CDP autonomous test (test_edit_final.js)
+
+---
+
+### BUG-003: Upload File Tooltip Hidden (P25)
+- **Status:** [x] Fixed
+- **Priority:** Medium
+- **Reported:** 2025-12-12
+- **Fixed:** 2025-12-12
+- **Component:** LDM FileExplorer tooltip CSS
+
+**Problem:** Hover tooltip on "Upload File" button appears UNDER the main LanguageData view.
+
+**Root Cause:** Parent containers had `overflow: hidden` which created clipping contexts that cut off tooltips even with high z-index.
+
+**Fix Applied:**
+- Changed `overflow` from `hidden` to `visible` on LDM layout containers
+- Added CSS rules to ensure tooltips escape parent containers
+- Modified: `app.css`, `LDM.svelte`, `FileExplorer.svelte`
+
+---
+
+### BUG-004: Search Bar Requires Icon Click (P25)
+- **Status:** [x] Fixed
+- **Priority:** Medium
+- **Reported:** 2025-12-12
+- **Fixed:** 2025-12-12
+- **Component:** LDM VirtualGrid search
+
+**Problem:** User has to click icon on far right to search - tedious. Carbon `ToolbarSearch` component requires clicking to expand.
+
+**Fix Applied:**
+- Replaced `ToolbarSearch` with Carbon's `Search` component
+- Search bar is now always expanded and ready for input
+- Type and search immediately, no icon click needed
+- Modified: `VirtualGrid.svelte`
+
+---
+
+### BUG-001: Go to Row Not Useful (P25)
+- **Status:** [ ] Open
+- **Priority:** Low
+- **Reported:** 2025-12-12
+- **Component:** LDM Grid controls
+
+**Problem:** "Go to Row" button doesn't serve a clear purpose.
+
+**Fix:** Review and either improve functionality or remove.
+
+---
 
 ### ISSUE-011: Missing TM Upload Menu in UI
 - **Status:** [ ] Open
@@ -42,6 +121,37 @@
 ```
 
 **Fix:** Implement Phase 7.6 Frontend TM UI tasks
+
+---
+
+## Recently Fixed (2025-12-12)
+
+### ISSUE-012: Backend Not Starting - App Broken
+- **Status:** [x] Fixed
+- **Priority:** Critical
+- **Fixed:** 2025-12-12
+- **Component:** Infrastructure (PostgreSQL service)
+
+**Problem:** User reported playground app not working. Backend was not responding.
+
+**Root Cause:** PostgreSQL service was not running in WSL. The service was stopped/inactive.
+
+**Symptoms:**
+- `curl http://localhost:8888/health` → Connection refused
+- Server process stuck in "Dl" state (disk sleep)
+- App couldn't connect to backend
+
+**Fix Applied:**
+```bash
+sudo service postgresql start
+```
+
+**Prevention:** PostgreSQL service should auto-start. Consider adding to startup:
+```bash
+sudo systemctl enable postgresql
+```
+
+**Note:** Windows app also has a bundled backend that uses SQLite. This is a separate issue - the bundled backend should use PostgreSQL too, but for now, WSL backend must be running for the app to work properly.
 
 ---
 
