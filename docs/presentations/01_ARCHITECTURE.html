@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>LocaNext Architecture</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
+  <link rel="stylesheet" href="data:text/css,body{font-family:system-ui,-apple-system;max-width:800px;margin:auto;padding:20px;font-size:16px;line-height:1.6}pre{background:#1e1e1e;color:#d4d4d4;padding:15px;overflow-x:auto;border-radius:8px}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #ddd;padding:12px;text-align:left}th{background:#f5f5f5}h1,h2,h3{color:#333}hr{margin:30px 0}" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">LocaNext Architecture</h1>
+</header>
+<h1 id="locanext-system-architecture">LocaNext System Architecture</h1>
+<hr />
+<h2 id="system-overview">System Overview</h2>
+<pre><code>+==================================================================================+
+|                              LOCANEXT PLATFORM                                    |
++==================================================================================+
+
+     +-------------------------+          +-------------------------+
+     |      USER&#39;S PC          |          |     CENTRAL SERVER      |
+     |     (Windows .exe)      |          |    (Cloud/On-Premise)   |
+     +-------------------------+          +-------------------------+
+     |                         |          |                         |
+     |  +-------------------+  |   HTTPS  |  +-------------------+  |
+     |  |   LocaNext.exe    |  |  ------&gt; |  |  FastAPI Server   |  |
+     |  |   (Electron)      |  |  &lt;------ |  |  (Python 3.11+)   |  |
+     |  +-------------------+  |   WSS    |  +-------------------+  |
+     |           |             |          |           |             |
+     |           v             |          |           v             |
+     |  +-------------------+  |          |  +-------------------+  |
+     |  |  Embedded Python  |  |          |  |    PostgreSQL     |  |
+     |  |  Backend Server   |  |          |  |    Database       |  |
+     |  +-------------------+  |          |  +-------------------+  |
+     |           |             |          |           |             |
+     |           v             |          |           v             |
+     |  +-------------------+  |          |  +-------------------+  |
+     |  |  SQLite (Local)   |  |          |  |  Admin Dashboard  |  |
+     |  |  User Data Only   |  |          |  |  (Web Interface)  |  |
+     |  +-------------------+  |          |  +-------------------+  |
+     |                         |          |                         |
+     +-------------------------+          +-------------------------+</code></pre>
+<hr />
+<h2 id="communication-protocols">Communication Protocols</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Layer</th>
+<th>Protocol</th>
+<th>Port</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>API</td>
+<td>REST/HTTPS</td>
+<td>443</td>
+<td>Data exchange</td>
+</tr>
+<tr class="even">
+<td>Real-time</td>
+<td>WebSocket (WSS)</td>
+<td>443</td>
+<td>Live updates</td>
+</tr>
+<tr class="odd">
+<td>Database</td>
+<td>PostgreSQL</td>
+<td>5432</td>
+<td>Central storage</td>
+</tr>
+<tr class="even">
+<td>Local DB</td>
+<td>SQLite</td>
+<td>-</td>
+<td>Offline data</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="security-protocols">Security Protocols</h2>
+<pre><code>+------------------------------------------------------------------+
+|                    SECURITY LAYERS                                |
++------------------------------------------------------------------+
+|                                                                   |
+|  1. IP RANGE FILTERING (Primary)                                  |
+|     - Only company network IPs allowed (e.g., 192.168.11.0/24)    |
+|     - All other IPs receive 403 Forbidden                         |
+|                                                                   |
+|  2. CORS (Cross-Origin Resource Sharing)                          |
+|     - Whitelist of allowed origins only                           |
+|     - Blocks requests from unauthorized domains                   |
+|                                                                   |
+|  3. JWT AUTHENTICATION                                            |
+|     - Access Token: 30 minutes                                    |
+|     - Refresh Token: 7 days                                       |
+|     - Secure key generation required                              |
+|                                                                   |
+|  4. TLS/HTTPS ENCRYPTION                                          |
+|     - All data encrypted in transit                               |
+|     - TLS 1.2/1.3 supported                                       |
+|                                                                   |
+|  5. AUDIT LOGGING                                                 |
+|     - All login attempts logged                                   |
+|     - Failed access attempts tracked                              |
+|     - 1 year retention                                            |
+|                                                                   |
+|  6. INPUT VALIDATION                                              |
+|     - SQL Injection: Protected (SQLAlchemy ORM)                   |
+|     - XSS: Sanitized inputs                                       |
+|     - Path Traversal: Blocked                                     |
+|                                                                   |
++------------------------------------------------------------------+</code></pre>
+<hr />
+<h2 id="database-architecture">Database Architecture</h2>
+<pre><code>+------------------------------------------------------------------+
+|                    DATABASE STRUCTURE                             |
++------------------------------------------------------------------+
+
+USER&#39;S LOCAL (SQLite)              CENTRAL SERVER (PostgreSQL)
++---------------------+            +---------------------------+
+| users               |            | users                     |
+| projects            |            | projects (aggregated)     |
+| files               |            | telemetry_events          |
+| translation_memory  |            | telemetry_tool_events     |
+| sessions            |            | sessions (all users)      |
++---------------------+            | audit_logs                |
+                                   | error_reports             |
+                                   +---------------------------+
+
+17 Tables Total | 63+ API Endpoints | 912 Tests</code></pre>
+<hr />
+<h2 id="application-components">Application Components</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop App</td>
+<td>Electron + Svelte</td>
+<td>User interface</td>
+</tr>
+<tr class="even">
+<td>Backend</td>
+<td>FastAPI + Python</td>
+<td>API + Processing</td>
+</tr>
+<tr class="odd">
+<td>Database</td>
+<td>PostgreSQL/SQLite</td>
+<td>Data storage</td>
+</tr>
+<tr class="even">
+<td>Real-time</td>
+<td>Socket.IO</td>
+<td>Live updates</td>
+</tr>
+<tr class="odd">
+<td>Admin</td>
+<td>SvelteKit</td>
+<td>Monitoring</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="data-flow">Data Flow</h2>
+<pre><code>USER ACTION                    PROCESSING                    RESULT
++-----------+    +-------------------------------------+    +--------+
+| User      | -&gt; | Local Backend                       | -&gt; | Output |
+| uploads   |    | (Python processes on user&#39;s CPU)    |    | file   |
+| Excel     |    | - No data sent to cloud             |    |        |
++-----------+    | - Works offline                     |    +--------+
+                 | - Fast (no network latency)         |
+                 +-------------------------------------+
+                              |
+                              | (Optional) Telemetry
+                              v
+                 +-------------------------------------+
+                 | Central Server                      |
+                 | - Usage statistics                  |
+                 | - Error tracking                    |
+                 | - Update distribution               |
+                 +-------------------------------------+</code></pre>
+<hr />
+<h2 id="test-coverage">Test Coverage</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>Tests</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Unit Tests</td>
+<td>377+</td>
+<td>PASS</td>
+</tr>
+<tr class="even">
+<td>API Tests</td>
+<td>168</td>
+<td>PASS</td>
+</tr>
+<tr class="odd">
+<td>Security Tests</td>
+<td>86</td>
+<td>PASS</td>
+</tr>
+<tr class="even">
+<td>E2E Tests</td>
+<td>164</td>
+<td>PASS</td>
+</tr>
+<tr class="odd">
+<td><strong>Total</strong></td>
+<td><strong>912</strong></td>
+<td><strong>100%</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>LocaNext v2512110832</em></p>
+</body>
+</html>
