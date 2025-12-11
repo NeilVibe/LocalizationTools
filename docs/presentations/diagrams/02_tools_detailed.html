@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - Tools Deep Dive</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #0f2027 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        .container {
+            max-width: 2400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #f093fb, #4facfe, #43e97b, #fee140);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        /* Tools Grid */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+        }
+
+        /* Tool Card */
+        .tool-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 25px;
+            border: 3px solid;
+        }
+        .tool-1 { border-color: #f093fb; }
+        .tool-2 { border-color: #4facfe; }
+        .tool-3 { border-color: #43e97b; }
+        .tool-4 { border-color: #fee140; }
+
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+        .tool-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+        }
+        .tool-1 .tool-icon { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .tool-2 .tool-icon { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .tool-3 .tool-icon { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .tool-4 .tool-icon { background: linear-gradient(135deg, #fa709a, #fee140); }
+
+        .tool-info {
+            flex: 1;
+        }
+        .tool-name {
+            font-size: 1.6em;
+            font-weight: bold;
+        }
+        .tool-desc {
+            color: #aaa;
+            font-size: 0.9em;
+        }
+        .tool-status {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .status-complete { background: #43e97b; color: #000; }
+        .status-progress { background: #fee140; color: #000; }
+
+        /* Section within tool */
+        .tool-section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ccc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .feature-box {
+            background: rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+        .feature-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #7fff7f;
+        }
+        .feature-label {
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        /* Tech Stack */
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .tech-tag {
+            background: rgba(255,255,255,0.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+
+        /* Workflow */
+        .workflow {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        .workflow-step {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px 15px;
+            text-align: center;
+            min-width: 80px;
+        }
+        .workflow-step-icon {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        .workflow-step-label {
+            font-size: 0.75em;
+            color: #aaa;
+        }
+        .workflow-arrow {
+            font-size: 1.2em;
+            color: #7fff7f;
+        }
+
+        /* API Endpoints */
+        .api-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            font-size: 0.8em;
+        }
+        .api-item {
+            background: rgba(0,0,0,0.3);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            display: flex;
+            justify-content: space-between;
+        }
+        .api-method {
+            color: #7fff7f;
+            font-weight: bold;
+        }
+
+        /* Bottom Summary */
+        .summary {
+            margin-top: 30px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 25px;
+            display: flex;
+            justify-content: space-around;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #f093fb, #4facfe, #43e97b, #fee140);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .summary-label {
+            color: #888;
+        }
+
+        /* Use Cases */
+        .use-cases {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            font-size: 0.85em;
+        }
+        .use-case {
+            background: rgba(0,0,0,0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .use-case-icon {
+            color: #7fff7f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LocaNext - Tools Deep Dive</h1>
+        <p class="subtitle">4 Professional Localization Tools | Complete Feature Breakdown</p>
+
+        <div class="tools-grid">
+            <!-- TOOL 1: XLSTransfer -->
+            <div class="tool-card tool-1">
+                <div class="tool-header">
+                    <div class="tool-icon">📊</div>
+                    <div class="tool-info">
+                        <div class="tool-name">XLSTransfer</div>
+                        <div class="tool-desc">Transfer translations between Excel files using AI semantic matching</div>
+                    </div>
+                    <span class="tool-status status-complete">✓ 100%</span>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">📈 Performance Metrics</div>
+                    <div class="feature-grid">
+                        <div class="feature-box">
+                            <div class="feature-value">85%+</div>
+                            <div class="feature-label">Match Accuracy</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-value">~800/s</div>
+                            <div class="feature-label">Embeddings</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-value">&lt;1ms</div>
+                            <div class="feature-label">Search Time</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🔄 Workflow</div>
+                    <div class="workflow">
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📁</div>
+                            <div class="workflow-step-label">Source Excel</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">🧠</div>
+                            <div class="workflow-step-label">Qwen Embed</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📊</div>
+                            <div class="workflow-step-label">FAISS Index</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">🔍</div>
+                            <div class="workflow-step-label">Semantic Match</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📝</div>
+                            <div class="workflow-step-label">Transfer</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🛠️ Technology Stack</div>
+                    <div class="tech-stack">
+                        <span class="tech-tag">Qwen3-0.6B</span>
+                        <span class="tech-tag">FAISS HNSW</span>
+                        <span class="tech-tag">1024-dim</span>
+                        <span class="tech-tag">OpenPyXL</span>
+                        <span class="tech-tag">NumPy</span>
+                        <span class="tech-tag">Async I/O</span>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🎯 Use Cases</div>
+                    <div class="use-cases">
+                        <div class="use-case"><span class="use-case-icon">✓</span> Legacy translation recovery</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> Batch file processing</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> Cross-project TM transfer</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> QA consistency check</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOOL 2: QuickSearch -->
+            <div class="tool-card tool-2">
+                <div class="tool-header">
+                    <div class="tool-icon">🔍</div>
+                    <div class="tool-info">
+                        <div class="tool-name">QuickSearch</div>
+                        <div class="tool-desc">Fast full-text search across TXT and XML localization files</div>
+                    </div>
+                    <span class="tool-status status-complete">✓ 100%</span>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">📈 Performance Metrics</div>
+                    <div class="feature-grid">
+                        <div class="feature-box">
+                            <div class="feature-value">100K+</div>
+                            <div class="feature-label">Rows Capacity</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-value">&lt;100ms</div>
+                            <div class="feature-label">Search Time</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-value">Regex</div>
+                            <div class="feature-label">Pattern Support</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🔄 Workflow</div>
+                    <div class="workflow">
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📄</div>
+                            <div class="workflow-step-label">TXT/XML</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">🧹</div>
+                            <div class="workflow-step-label">Parse Cols</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">⚡</div>
+                            <div class="workflow-step-label">Index</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">🔎</div>
+                            <div class="workflow-step-label">Query</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📋</div>
+                            <div class="workflow-step-label">Results</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🛠️ Technology Stack</div>
+                    <div class="tech-stack">
+                        <span class="tech-tag">Python re</span>
+                        <span class="tech-tag">lxml</span>
+                        <span class="tech-tag">Pandas</span>
+                        <span class="tech-tag">Async File I/O</span>
+                        <span class="tech-tag">Memory Mapping</span>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🎯 Use Cases</div>
+                    <div class="use-cases">
+                        <div class="use-case"><span class="use-case-icon">✓</span> Find string locations</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> Pattern-based search</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> Multi-file grep</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> Translation lookup</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOOL 3: KR Similar -->
+            <div class="tool-card tool-3">
+                <div class="tool-header">
+                    <div class="tool-icon">🔗</div>
+                    <div class="tool-info">
+                        <div class="tool-name">KR Similar</div>
+                        <div class="tool-desc">Find similar Korean strings using AI embeddings for QA</div>
+                    </div>
+                    <span class="tool-status status-complete">✓ 100%</span>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">📈 Performance Metrics</div>
+                    <div class="feature-grid">
+                        <div class="feature-box">
+                            <div class="feature-value">83K</div>
+                            <div class="feature-label">Dictionary Pairs</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-value">1024</div>
+                            <div class="feature-label">Embedding Dim</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-value">&lt;1ms</div>
+                            <div class="feature-label">Query Time</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🔄 Workflow</div>
+                    <div class="workflow">
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📚</div>
+                            <div class="workflow-step-label">Dictionary</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">✂️</div>
+                            <div class="workflow-step-label">Split Text</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">🧠</div>
+                            <div class="workflow-step-label">Qwen Embed</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📊</div>
+                            <div class="workflow-step-label">HNSW Index</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">🎯</div>
+                            <div class="workflow-step-label">Similarity</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🛠️ Technology Stack</div>
+                    <div class="tech-stack">
+                        <span class="tech-tag">Qwen3-0.6B</span>
+                        <span class="tech-tag">FAISS HNSW</span>
+                        <span class="tech-tag">M=32, ef=500</span>
+                        <span class="tech-tag">Cosine Similarity</span>
+                        <span class="tech-tag">L2 Normalize</span>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🎯 Use Cases</div>
+                    <div class="use-cases">
+                        <div class="use-case"><span class="use-case-icon">✓</span> Consistency checking</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> Similar string detection</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> Auto-translation suggestions</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> QA validation</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOOL 4: LDM -->
+            <div class="tool-card tool-4">
+                <div class="tool-header">
+                    <div class="tool-icon">📝</div>
+                    <div class="tool-info">
+                        <div class="tool-name">LDM (CAT Tool)</div>
+                        <div class="tool-desc">Language Data Manager - Full CAT tool with TM suggestions</div>
+                    </div>
+                    <span class="tool-status status-progress">62%</span>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">📈 Performance Metrics</div>
+                    <div class="feature-grid">
+                        <div class="feature-box">
+                            <div class="feature-value">103K</div>
+                            <div class="feature-label">Rows Capacity</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-value">50s</div>
+                            <div class="feature-label">Full Load (16MB)</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-value">5-Tier</div>
+                            <div class="feature-label">TM Cascade</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🔄 Workflow</div>
+                    <div class="workflow">
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📁</div>
+                            <div class="workflow-step-label">Project</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📄</div>
+                            <div class="workflow-step-label">Load File</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">📊</div>
+                            <div class="workflow-step-label">Virtual Grid</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">✏️</div>
+                            <div class="workflow-step-label">Edit Cell</div>
+                        </div>
+                        <div class="workflow-arrow">→</div>
+                        <div class="workflow-step">
+                            <div class="workflow-step-icon">💾</div>
+                            <div class="workflow-step-label">Save + TM</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🛠️ Technology Stack</div>
+                    <div class="tech-stack">
+                        <span class="tech-tag">Virtual Scroll</span>
+                        <span class="tech-tag">PostgreSQL TM</span>
+                        <span class="tech-tag">5-Tier Cascade</span>
+                        <span class="tech-tag">Glossary</span>
+                        <span class="tech-tag">Nice View</span>
+                        <span class="tech-tag">FTS tsvector</span>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <div class="section-title">🎯 Use Cases</div>
+                    <div class="use-cases">
+                        <div class="use-case"><span class="use-case-icon">✓</span> Translation editing</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> TM suggestions</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> Glossary enforcement</div>
+                        <div class="use-case"><span class="use-case-icon">✓</span> Project management</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="summary">
+            <div class="summary-item">
+                <div class="summary-value">4</div>
+                <div class="summary-label">Tools Available</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">3</div>
+                <div class="summary-label">Fully Complete</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">10/10</div>
+                <div class="summary-label">XLSTransfer Tests</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">8/8</div>
+                <div class="summary-label">QuickSearch Tests</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">10/10</div>
+                <div class="summary-label">KR Similar Tests</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">14/14</div>
+                <div class="summary-label">CDP Tests</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
