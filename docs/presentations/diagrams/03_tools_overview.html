@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext Tools Overview</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 40px;
+            color: white;
+        }
+        .slide {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 50px;
+        }
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+        .tool-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s ease;
+        }
+        .tool-card:hover {
+            transform: translateY(-5px);
+        }
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .tool-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+        }
+        .tool-1 .tool-icon { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .tool-2 .tool-icon { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .tool-3 .tool-icon { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .tool-4 .tool-icon { background: linear-gradient(135deg, #fa709a, #fee140); }
+        .tool-name {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .tool-status {
+            font-size: 0.9em;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-left: auto;
+        }
+        .status-complete { background: #43e97b; color: #000; }
+        .status-progress { background: #fee140; color: #000; }
+        .tool-desc {
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .feature {
+            background: rgba(255,255,255,0.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+        .summary {
+            margin-top: 40px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 20px;
+            padding: 30px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+        .summary-item h3 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+        .summary-item p {
+            color: rgba(255,255,255,0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="slide">
+        <h1>🛠️ Available Tools</h1>
+
+        <div class="tools-grid">
+            <div class="tool-card tool-1">
+                <div class="tool-header">
+                    <div class="tool-icon">📊</div>
+                    <div class="tool-name">XLSTransfer</div>
+                    <span class="tool-status status-complete">✓ Complete</span>
+                </div>
+                <p class="tool-desc">Transfer translations between Excel files using semantic matching. Finds similar Korean text and applies existing translations.</p>
+                <div class="features">
+                    <span class="feature">Excel → Excel</span>
+                    <span class="feature">Semantic Match</span>
+                    <span class="feature">Batch Processing</span>
+                    <span class="feature">85%+ Accuracy</span>
+                </div>
+            </div>
+
+            <div class="tool-card tool-2">
+                <div class="tool-header">
+                    <div class="tool-icon">🔍</div>
+                    <div class="tool-name">QuickSearch</div>
+                    <span class="tool-status status-complete">✓ Complete</span>
+                </div>
+                <p class="tool-desc">Fast full-text search across TXT and XML localization files. Find any string instantly with regex support.</p>
+                <div class="features">
+                    <span class="feature">TXT / XML</span>
+                    <span class="feature">Regex Search</span>
+                    <span class="feature">100K+ rows</span>
+                    <span class="feature">&lt;100ms</span>
+                </div>
+            </div>
+
+            <div class="tool-card tool-3">
+                <div class="tool-header">
+                    <div class="tool-icon">🔗</div>
+                    <div class="tool-name">KR Similar</div>
+                    <span class="tool-status status-complete">✓ Complete</span>
+                </div>
+                <p class="tool-desc">Find similar Korean strings using AI embeddings. Quality check for translation consistency across files.</p>
+                <div class="features">
+                    <span class="feature">Qwen 1024-dim</span>
+                    <span class="feature">FAISS HNSW</span>
+                    <span class="feature">Cross-lingual</span>
+                    <span class="feature">Auto-translate</span>
+                </div>
+            </div>
+
+            <div class="tool-card tool-4">
+                <div class="tool-header">
+                    <div class="tool-icon">📝</div>
+                    <div class="tool-name">LDM (CAT Tool)</div>
+                    <span class="tool-status status-progress">60% Progress</span>
+                </div>
+                <p class="tool-desc">Language Data Manager - Full CAT tool for editing translation files with Translation Memory suggestions.</p>
+                <div class="features">
+                    <span class="feature">Virtual Grid</span>
+                    <span class="feature">TM Suggestions</span>
+                    <span class="feature">5-Tier Cascade</span>
+                    <span class="feature">103K rows</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary">
+            <div class="summary-item">
+                <h3>4</h3>
+                <p>Tools Available</p>
+            </div>
+            <div class="summary-item">
+                <h3>3</h3>
+                <p>Fully Complete</p>
+            </div>
+            <div class="summary-item">
+                <h3>100K+</h3>
+                <p>Rows Supported</p>
+            </div>
+            <div class="summary-item">
+                <h3>912</h3>
+                <p>Tests Passed</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

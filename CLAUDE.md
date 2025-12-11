@@ -470,6 +470,16 @@ APP LAUNCH → HEALTH CHECK → REPAIR IF NEEDED → MAIN APP
 │      • Don't try to "make it work" just to please                           │
 │      • Offer what WILL work instead                                         │
 │                                                                             │
+│   5. NEVER COMMAND THE USER                                                 │
+│      ═══════════════════════                                                │
+│      • NEVER use imperative forms like "Do this", "Run this", "Download"    │
+│      • NEVER tell the user what they should do                              │
+│      • Present information, results, and options - let user decide          │
+│      • BAD: "Run the test: python3 test.py"                                 │
+│      • GOOD: "Test script available at: testing_toolkit/test.py"            │
+│      • BAD: "Download the PDF from GitHub"                                  │
+│      • GOOD: "PDFs are at: docs/presentations/*.pdf"                        │
+│                                                                             │
 │   EXAMPLE:                                                                  │
 │   User: "What if we store 100TB in RAM?"                                    │
 │   BAD:  "That's an interesting approach! We could look into..."             │

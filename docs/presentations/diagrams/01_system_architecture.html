@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext System Architecture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 40px;
+            color: white;
+        }
+        .slide {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 40px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .architecture {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 30px;
+        }
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .box {
+            background: linear-gradient(145deg, #2d2d44, #1f1f33);
+            border-radius: 15px;
+            padding: 25px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0,212,255,0.2);
+        }
+        .user-side {
+            border-color: #00d4ff;
+        }
+        .server-side {
+            border-color: #7b2cbf;
+        }
+        .box-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+        .user-side .icon { background: linear-gradient(135deg, #00d4ff, #0099cc); }
+        .server-side .icon { background: linear-gradient(135deg, #7b2cbf, #5a1f9e); }
+        .box-content {
+            color: #b0b0b0;
+            line-height: 1.6;
+        }
+        .tech-tag {
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin: 3px;
+        }
+        .connection {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px 10px;
+        }
+        .arrow {
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            position: relative;
+            border-radius: 2px;
+        }
+        .arrow::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: -6px;
+            border: 8px solid transparent;
+            border-left-color: #7b2cbf;
+        }
+        .arrow-label {
+            font-size: 0.9em;
+            color: #888;
+            text-align: center;
+        }
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label {
+            color: #888;
+            margin-top: 5px;
+        }
+        .label-box {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .user-label { color: #00d4ff; border: 1px solid #00d4ff; }
+        .server-label { color: #7b2cbf; border: 1px solid #7b2cbf; }
+    </style>
+</head>
+<body>
+    <div class="slide">
+        <h1>LocaNext System Architecture</h1>
+
+        <div class="architecture">
+            <!-- User Side -->
+            <div class="column">
+                <div class="label-box user-label">USER PC (Desktop App)</div>
+
+                <div class="box user-side">
+                    <div class="box-title">
+                        <div class="icon">🖥️</div>
+                        LocaNext.exe
+                    </div>
+                    <div class="box-content">
+                        <p>Desktop application with modern UI</p>
+                        <div style="margin-top: 10px;">
+                            <span class="tech-tag">Electron</span>
+                            <span class="tech-tag">Svelte</span>
+                            <span class="tech-tag">TypeScript</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box user-side">
+                    <div class="box-title">
+                        <div class="icon">⚙️</div>
+                        Backend Engine
+                    </div>
+                    <div class="box-content">
+                        <p>Local processing server (port 8888)</p>
+                        <div style="margin-top: 10px;">
+                            <span class="tech-tag">Python</span>
+                            <span class="tech-tag">FastAPI</span>
+                            <span class="tech-tag">Async</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box user-side">
+                    <div class="box-title">
+                        <div class="icon">🧠</div>
+                        AI/ML Engine
+                    </div>
+                    <div class="box-content">
+                        <p>Semantic search & embeddings</p>
+                        <div style="margin-top: 10px;">
+                            <span class="tech-tag">Qwen 0.6B</span>
+                            <span class="tech-tag">FAISS HNSW</span>
+                            <span class="tech-tag">1024-dim</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connection -->
+            <div class="connection">
+                <div class="arrow-label">HTTPS<br/>REST API</div>
+                <div class="arrow"></div>
+                <div class="arrow" style="transform: rotate(180deg);"></div>
+                <div class="arrow-label">WSS<br/>Real-time</div>
+            </div>
+
+            <!-- Server Side -->
+            <div class="column">
+                <div class="label-box server-label">CENTRAL SERVER (Optional)</div>
+
+                <div class="box server-side">
+                    <div class="box-title">
+                        <div class="icon">🌐</div>
+                        API Server
+                    </div>
+                    <div class="box-content">
+                        <p>Central data management</p>
+                        <div style="margin-top: 10px;">
+                            <span class="tech-tag">FastAPI</span>
+                            <span class="tech-tag">63+ Endpoints</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box server-side">
+                    <div class="box-title">
+                        <div class="icon">🗄️</div>
+                        PostgreSQL
+                    </div>
+                    <div class="box-content">
+                        <p>Enterprise database with FTS</p>
+                        <div style="margin-top: 10px;">
+                            <span class="tech-tag">31K rows/sec</span>
+                            <span class="tech-tag">PgBouncer</span>
+                            <span class="tech-tag">17 Tables</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box server-side">
+                    <div class="box-title">
+                        <div class="icon">📊</div>
+                        Admin Dashboard
+                    </div>
+                    <div class="box-content">
+                        <p>Monitoring & management</p>
+                        <div style="margin-top: 10px;">
+                            <span class="tech-tag">SvelteKit</span>
+                            <span class="tech-tag">Telemetry</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">4</div>
+                <div class="stat-label">Tools Available</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">912</div>
+                <div class="stat-label">Tests Passed</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">97%</div>
+                <div class="stat-label">Complete</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">$0</div>
+                <div class="stat-label">License Cost</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
