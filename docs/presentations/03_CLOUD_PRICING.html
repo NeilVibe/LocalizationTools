@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Cloud Pricing</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
+  <link rel="stylesheet" href="data:text/css,body{font-family:system-ui,-apple-system;max-width:800px;margin:auto;padding:20px;font-size:16px;line-height:1.6}pre{background:#1e1e1e;color:#d4d4d4;padding:15px;overflow-x:auto;border-radius:8px}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #ddd;padding:12px;text-align:left}th{background:#f5f5f5}h1,h2,h3{color:#333}hr{margin:30px 0}" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Cloud Pricing</h1>
+</header>
+<h1 id="locanext-cloud-pricing-guide">LocaNext Cloud Pricing Guide</h1>
+<hr />
+<h2 id="deployment-options">Deployment Options</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Option</th>
+<th>Monthly Cost</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>On-Premise</strong></td>
+<td>$0</td>
+<td>Existing server</td>
+</tr>
+<tr class="even">
+<td><strong>Cloud VM</strong></td>
+<td>$20-150/month</td>
+<td>New deployment</td>
+</tr>
+<tr class="odd">
+<td><strong>Managed</strong></td>
+<td>$100-500/month</td>
+<td>Full service</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="cloud-provider-pricing-2025">Cloud Provider Pricing (2025)</h2>
+<h3 id="option-1-budget-10-30-users">Option 1: Budget (10-30 users)</h3>
+<pre><code>+------------------------------------------------------------------+
+|                    BUDGET OPTION                                  |
+|                    $20-50/month                                   |
++------------------------------------------------------------------+
+|                                                                   |
+|  AWS Lightsail                                                    |
+|  - 2 vCPU, 4GB RAM, 80GB SSD                                      |
+|  - $20/month                                                      |
+|                                                                   |
+|  DigitalOcean Droplet                                             |
+|  - 2 vCPU, 4GB RAM, 80GB SSD                                      |
+|  - $24/month                                                      |
+|                                                                   |
+|  Vultr Cloud Compute                                              |
+|  - 2 vCPU, 4GB RAM, 80GB SSD                                      |
+|  - $24/month                                                      |
+|                                                                   |
+|  Google Cloud (e2-medium)                                         |
+|  - 2 vCPU, 4GB RAM, 50GB SSD                                      |
+|  - ~$35/month                                                     |
+|                                                                   |
++------------------------------------------------------------------+</code></pre>
+<hr />
+<h3 id="option-2-standard-30-100-users">Option 2: Standard (30-100 users)</h3>
+<pre><code>+------------------------------------------------------------------+
+|                    STANDARD OPTION                                |
+|                    $50-100/month                                  |
++------------------------------------------------------------------+
+|                                                                   |
+|  AWS EC2 (t3.medium)                                              |
+|  - 2 vCPU, 4GB RAM + RDS PostgreSQL                               |
+|  - $50-80/month                                                   |
+|                                                                   |
+|  Azure (B2s VM)                                                   |
+|  - 2 vCPU, 4GB RAM + PostgreSQL Flexible                          |
+|  - $60-90/month                                                   |
+|                                                                   |
+|  Google Cloud (n2-standard-2)                                     |
+|  - 2 vCPU, 8GB RAM + Cloud SQL                                    |
+|  - $70-100/month                                                  |
+|                                                                   |
++------------------------------------------------------------------+</code></pre>
+<hr />
+<h3 id="option-3-enterprise-100-users">Option 3: Enterprise (100+ users)</h3>
+<pre><code>+------------------------------------------------------------------+
+|                    ENTERPRISE OPTION                              |
+|                    $150-300/month                                 |
++------------------------------------------------------------------+
+|                                                                   |
+|  AWS (t3.large + RDS)                                             |
+|  - 4 vCPU, 8GB RAM + Managed PostgreSQL                           |
+|  - $150-200/month                                                 |
+|                                                                   |
+|  Azure (D2s_v3 + PostgreSQL)                                      |
+|  - 4 vCPU, 8GB RAM + Managed PostgreSQL                           |
+|  - $180-250/month                                                 |
+|                                                                   |
+|  Google Cloud (n2-standard-4 + Cloud SQL)                         |
+|  - 4 vCPU, 16GB RAM + Managed PostgreSQL                          |
+|  - $200-300/month                                                 |
+|                                                                   |
++------------------------------------------------------------------+</code></pre>
+<hr />
+<h2 id="korean-cloud-providers">Korean Cloud Providers</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Provider</th>
+<th>Spec</th>
+<th>Monthly</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Naver Cloud</strong></td>
+<td>2vCPU/4GB</td>
+<td>~40,000 KRW</td>
+</tr>
+<tr class="even">
+<td><strong>NHN Cloud</strong></td>
+<td>2vCPU/4GB</td>
+<td>~35,000 KRW</td>
+</tr>
+<tr class="odd">
+<td><strong>KT Cloud</strong></td>
+<td>2vCPU/4GB</td>
+<td>~45,000 KRW</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="cost-comparison-summary">Cost Comparison Summary</h2>
+<pre><code>+------------------------------------------------------------------+
+|                    ANNUAL COST RANGE                              |
++------------------------------------------------------------------+
+|                                                                   |
+|  BUDGET (Small Team)                                              |
+|  +------------------------+-------------------+                   |
+|  | Cloud VM               | $240-600/year     |                   |
+|  | Software Licenses      | $0                |                   |
+|  | Support (DIY)          | $0                |                   |
+|  +------------------------+-------------------+                   |
+|  | TOTAL                  | $240-600/year     |                   |
+|  +------------------------+-------------------+                   |
+|                                                                   |
+|  STANDARD (Medium Team)                                           |
+|  +------------------------+-------------------+                   |
+|  | Cloud VM + DB          | $600-1,200/year   |                   |
+|  | Software Licenses      | $0                |                   |
+|  | Backup Storage         | $50-100/year      |                   |
+|  +------------------------+-------------------+                   |
+|  | TOTAL                  | $650-1,300/year   |                   |
+|  +------------------------+-------------------+                   |
+|                                                                   |
+|  ENTERPRISE (Large Team)                                          |
+|  +------------------------+-------------------+                   |
+|  | Cloud Infrastructure   | $1,800-3,600/year |                   |
+|  | Software Licenses      | $0                |                   |
+|  | Backup + DR            | $200-500/year     |                   |
+|  +------------------------+-------------------+                   |
+|  | TOTAL                  | $2,000-4,100/year |                   |
+|  +------------------------+-------------------+                   |
+|                                                                   |
++------------------------------------------------------------------+</code></pre>
+<hr />
+<h2 id="on-premise-zero-cloud-cost">On-Premise (Zero Cloud Cost)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Requirement</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Server</td>
+<td>Any Windows/Linux server</td>
+</tr>
+<tr class="even">
+<td>RAM</td>
+<td>4GB minimum, 8GB recommended</td>
+</tr>
+<tr class="odd">
+<td>Storage</td>
+<td>50GB minimum</td>
+</tr>
+<tr class="even">
+<td>Network</td>
+<td>Company intranet only</td>
+</tr>
+<tr class="odd">
+<td>Cost</td>
+<td><strong>$0</strong> (use existing infrastructure)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="recommendation">Recommendation</h2>
+<pre><code>+------------------------------------------------------------------+
+|                    RECOMMENDED APPROACH                           |
++------------------------------------------------------------------+
+|                                                                   |
+|  PHASE 1: On-Premise (NOW)                                        |
+|  - Use existing company server                                    |
+|  - Zero additional cost                                           |
+|  - Test with real users                                           |
+|                                                                   |
+|  PHASE 2: Cloud (OPTIONAL - Future)                               |
+|  - Migrate to cloud if needed                                     |
+|  - Budget: $50-100/month                                          |
+|  - Better uptime, easier backup                                   |
+|                                                                   |
++------------------------------------------------------------------+</code></pre>
+<hr />
+<p><em>Prices as of December 2025 - Subject to change</em> <em>LocaNext v2512110832</em></p>
+</body>
+</html>
