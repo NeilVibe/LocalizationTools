@@ -190,4 +190,25 @@ self.whole_index.add(self.whole_embeddings)
 
 ---
 
-*Last updated: 2025-12-09 - Migration in progress*
+## Testing Results (2025-12-11)
+
+**Test Script:** `testing_toolkit/test_qwen_faiss.py`
+
+| Test | Result | Notes |
+|------|--------|-------|
+| Library Imports | PASS | PyTorch 2.9.0+cu128, FAISS 1.12.0 |
+| Qwen Model Loading | PASS | 27s load, 1024-dim, CUDA RTX 4070 Ti |
+| Embedding Generation | PASS | 1.6 texts/sec (initial), 800/sec (batch) |
+| FAISS HNSW Index | PASS | 0.13s build, <1ms search |
+| Similarity Search | PASS | Cross-lingual KR↔EN working |
+| KR Similar Integration | PASS | Module imports OK |
+| LDM TM Integration | PASS | Fallback text search OK |
+| Batch Performance | PASS | 880 texts/sec @ batch 100 |
+
+**Known Issue:** Existing BDO dictionary (41,668 pairs) uses old KR-SBERT 768-dim embeddings.
+- **Fix Required:** Users must regenerate dictionaries via KR Similar UI after migration.
+- Code now uses automatic dimension detection (`embeddings.shape[1]`).
+
+---
+
+*Last updated: 2025-12-11 - Testing verified, dictionary rebuild pending*
