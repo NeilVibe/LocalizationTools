@@ -178,6 +178,12 @@ Local = Heavy processing (FAISS, ML - rebuildable)
 
 ## Recently Completed
 
+### P25 Phase 1: Bug Fixes + Theme ✅ (2025-12-12)
+- BUG-002, BUG-003, BUG-004 fixed
+- Light/Dark theme toggle
+- Font size/weight settings
+- CDP test suite (Normal + Detailed)
+
 ### P22 Phase 1: SQLite Removal ✅ (2025-12-11)
 - 12 server files cleaned
 - 595 unit tests pass

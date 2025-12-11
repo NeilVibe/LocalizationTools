@@ -74,12 +74,14 @@
 
 | File | Change |
 |------|--------|
-| `locaNext/src/app.css` | Added tooltip overflow CSS rules |
-| `locaNext/src/lib/components/apps/LDM.svelte` | Changed overflow to visible |
-| `locaNext/src/lib/components/ldm/FileExplorer.svelte` | Changed overflow to visible |
-| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | Replaced ToolbarSearch with Search |
-| `docs/wip/P25_LDM_UX_OVERHAUL.md` | Updated modal design specs |
-| `docs/wip/ISSUES_TO_FIX.md` | Updated bug statuses |
+| `locaNext/src/app.css` | Theme CSS variables (light/dark) |
+| `locaNext/src/lib/stores/preferences.js` | NEW - Preferences store |
+| `locaNext/src/lib/components/PreferencesModal.svelte` | Theme/font settings |
+| `locaNext/src/routes/+layout.svelte` | Theme toggle button |
+| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | Search bar fix |
+| `tests/cdp/test_full_flow.js` | NEW - E2E test (Normal) |
+| `tests/cdp/test_full_flow_detailed.js` | NEW - E2E test (Detailed) |
+| `docs/testing/CDP_TESTING_GUIDE.md` | Normal vs Detailed docs |
 
 ---
 
