@@ -4,190 +4,98 @@
 
 This document defines the standard protocol for creating visual presentations for LocaNext. All presentations follow the same structure: **HTML source + PNG screenshot**.
 
+## Final Presentations (3 Images Only)
+
+| # | File | Purpose | Audience |
+|---|------|---------|----------|
+| 1 | `01_full_architecture` | Complete system overview - Desktop, Backend, Database, AI, Security, Tools | All - Technical |
+| 2 | `02_licensing_complete` | Qwen Apache 2.0 PROOF + Full stack licensing + Cost comparison + Server options | Management, Finance |
+| 3 | `03_apps_ldm_focus` | LDM (flagship CAT tool) + 3 utility apps | End Users, Translators |
+
 ## Folder Structure
 
 ```
 docs/presentations/
 ├── PRESENTATION_PROTOCOL.md   # This file
-├── html/                      # HTML source files
+├── html/                      # Active HTML source files (3 only)
 │   ├── 01_full_architecture.html
-│   ├── 01_system_architecture_flow.html
-│   ├── 02_security_architecture_flow.html
-│   ├── 02_tools_detailed.html
-│   ├── 03_database_architecture_flow.html
-│   ├── 03_licensing_pricing.html
-│   ├── 04_full_system_visual.html
-│   ├── 05_tool_workflows.html
-│   └── 06_user_journey.html
-└── images/                    # Generated PNG screenshots
-    ├── 01_full_architecture.png
-    ├── 01_system_architecture_flow.png
-    └── ... (matching HTML files)
+│   ├── 02_licensing_complete.html
+│   └── 03_apps_ldm_focus.html
+├── images/                    # Active PNG screenshots (3 only)
+│   ├── 01_full_architecture.png
+│   ├── 02_licensing_complete.png
+│   └── 03_apps_ldm_focus.png
+└── archive/                   # Archived old presentations
+    ├── html/                  # Old HTML files
+    └── images/                # Old PNG files
 ```
-
-## Presentation Types
-
-### 1. System Architecture (`01_system_architecture_flow`)
-**Audience:** Technical team, IT
-**Content:** 2x2 grid showing Desktop App + Backend + Database + AI/ML
-**Layout:** SQUARE 2x2 grid, single view, no scroll
-
-### 2. Security Architecture (`02_security_architecture_flow`)
-**Audience:** Security team, IT
-**Content:** 2x2 grid showing 7 security layers
-**Layout:** SQUARE 2x2 grid, single view, no scroll
-
-### 3. Database Architecture (`03_database_architecture_flow`)
-**Audience:** DBA, Technical team
-**Content:** 2x2 grid showing PgBouncer + PostgreSQL + Indexes + Performance
-**Layout:** SQUARE 2x2 grid, single view, no scroll
-
-### 4. Full System Visual (`04_full_system_visual`)
-**Audience:** All - MASTER presentation
-**Content:** Nested boxes, full width, complete system overview
-**Layout:** SQUARE 2x2 grid, single view, no scroll
-
-### 5. Tool Workflows (`05_tool_workflows`)
-**Audience:** End users, Translators
-**Content:** 2x2 grid showing XLSTransfer, QuickSearch, KR Similar, LDM
-**Layout:** SQUARE 2x2 grid, single view, no scroll
-
-### 6. Build & Deploy (`06_user_journey`)
-**Audience:** Management, Stakeholders
-**Content:** 2x2 grid showing CI/CD Build, User Install, Security, Licensing
-**Layout:** SQUARE 2x2 grid, single view, no scroll
 
 ---
 
-## Protocol: Creating a New Presentation
+## Presentation Details
 
-### Step 1: Create HTML File
+### 1. Full Architecture (`01_full_architecture`)
+**Audience:** Technical team, Management
+**Content:** Complete system overview in one image
+- USER PC: LocaNext.exe (Electron 28 + Svelte 4), Backend Engine (FastAPI), AI/ML Engine (Qwen + FAISS)
+- CENTRAL SERVER: API Server (63+ endpoints), Admin Dashboard, Telemetry
+- DATABASE: PostgreSQL 14 + PgBouncer (17 tables, 31K/s bulk insert, <10ms FTS)
+- TOOLS: 4 apps (XLSTransfer, QuickSearch, KR Similar, LDM)
+- SECURITY: 86 tests, IP filter, CORS, JWT, audit logging
+**Stats:** 912 tests, 63+ endpoints, 86 security tests, 97% complete, $0 license, 19K+ LOC
+
+### 2. Licensing Complete (`02_licensing_complete`)
+**Audience:** Management, Finance, Legal
+**Content:** 2x2 grid layout
+- Q1: **Qwen License PROOF** - Apache 2.0, HuggingFace URL, official quote, commercial OK
+- Q2: **Full Open Source Stack** - Python (PSF), FastAPI (MIT), PostgreSQL, Electron (MIT), FAISS (MIT), Svelte (MIT)
+- Q3: **Cost Comparison** - LocaNext $600/yr vs SDL Trados $29,950/yr (10 users) = 98% savings
+- Q4: **Server Options** - $0 dev, $50/mo production, self-hosted, unlimited users
+**Key Point:** Qwen3-0.6B Apache 2.0 is PROVEN 100% free for commercial use
+
+### 3. Apps with LDM Focus (`03_apps_ldm_focus`)
+**Audience:** End users, Translators, Product team
+**Content:** LDM takes 50% of space, other tools share 50%
+- **LDM (Flagship):** 103K+ rows, 5-Tier TM cascade, Virtual scroll, FTS, PostgreSQL backend, 62% complete
+- **XLSTransfer:** Excel transfer with AI matching, 85%+ accuracy, Qwen+FAISS
+- **QuickSearch:** TXT/XML search, 100K+ rows, <100ms, regex support
+- **KR Similar:** Korean similarity with AI, 83K dictionary pairs
+**Layout:** LDM large left panel, 3 tools stacked on right
+
+---
+
+## Protocol: Creating/Updating a Presentation
+
+### Step 1: Edit HTML File
 
 ```
 docs/presentations/html/{number}_{name}.html
 ```
 
-**Naming:**
-- `01_`, `02_`, etc. for ordering
-- Descriptive name: `system_architecture_flow`, `tool_workflows`
-
-### Step 2: MANDATORY 2x2 Square Layout
-
-All presentations MUST use the 2x2 grid format:
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>LocaNext - {Title}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
-            font-family: 'Segoe UI', sans-serif;
-            color: #e0e0e0;
-            padding: 20px;
-            min-height: 100vh;
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 2rem;
-            margin-bottom: 3px;
-            background: linear-gradient(90deg, #00d4ff, #00ff88);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #888;
-            margin-bottom: 15px;
-            font-size: 0.75rem;
-        }
-
-        /* 2x2 Grid Layout - SQUARE */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 15px;
-            height: calc(100vh - 140px);
-            max-height: 800px;
-        }
-
-        .quadrant {
-            background: linear-gradient(135deg, rgba(20, 30, 40, 0.95), rgba(15, 25, 35, 0.95));
-            border: 3px solid;
-            border-radius: 16px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Bottom stats footer */
-        .bottom-stats {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            margin-top: 15px;
-            padding: 12px 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-        }
-    </style>
-</head>
-<body>
-    <h1>LocaNext - {Title}</h1>
-    <p class="subtitle">{Subtitle with key technologies}</p>
-
-    <div class="main-grid">
-        <!-- Q1: Top Left -->
-        <div class="quadrant">...</div>
-        <!-- Q2: Top Right -->
-        <div class="quadrant">...</div>
-        <!-- Q3: Bottom Left -->
-        <div class="quadrant">...</div>
-        <!-- Q4: Bottom Right -->
-        <div class="quadrant">...</div>
-    </div>
-
-    <div class="bottom-stats">
-        <!-- Summary metrics -->
-    </div>
-</body>
-</html>
-```
-
-### Step 3: Design Principles
+### Step 2: Design Principles
 
 | Principle | Implementation |
 |-----------|----------------|
-| **SQUARE 2x2** | Always use 4-quadrant grid |
 | **ONE PAGE** | No scrolling - everything visible at once |
 | **COMPRESSED** | Dense information, zoom for details |
-| **Color coding** | Each quadrant has distinct border color |
+| **Color coding** | Each section has distinct border color |
 | **Stats at bottom** | Summary metrics in footer |
 | **High contrast** | Dark background, bright accents |
 
-### Step 4: Generate PNG Screenshot
-
-Use Playwright CLI:
+### Step 3: Generate PNG Screenshot
 
 ```bash
 cd docs/presentations
-npx playwright screenshot --viewport-size=2560,1600 \
-    "file:///full/path/to/html/filename.html" \
+npx playwright screenshot --browser chromium --viewport-size=2560,1600 \
+    "file:///home/neil1988/LocalizationTools/docs/presentations/html/filename.html" \
     "images/filename.png"
 ```
 
-### Step 5: Commit Pattern
+### Step 4: Commit Pattern
 
 ```bash
 git add docs/presentations/html/*.html docs/presentations/images/*.png
-git commit -m "Add/Update {name} presentation - 2x2 layout
+git commit -m "Update presentations
 
 - {bullet point 1}
 - {bullet point 2}
@@ -199,37 +107,21 @@ git push origin main && git push gitea main
 
 ---
 
-## Current Presentations
-
-| HTML File | PNG Image | Purpose | Audience |
-|-----------|-----------|---------|----------|
-| `01_full_architecture` | ✅ | System overview cards | Technical |
-| `01_system_architecture_flow` | ✅ | 2x2 Desktop+Backend+DB+AI | Technical |
-| `02_security_architecture_flow` | ✅ | 2x2 Security 7 layers | Security |
-| `02_tools_detailed` | ✅ | 4 tools with features | Users |
-| `03_database_architecture_flow` | ✅ | 2x2 DB architecture | DBA |
-| `03_licensing_pricing` | ✅ | Cost comparison | Finance |
-| `04_full_system_visual` | ✅ | MASTER nested boxes | All |
-| `05_tool_workflows` | ✅ | 2x2 tool workflows | Users |
-| `06_user_journey` | ✅ | 2x2 Build & Deploy | Management |
-
----
-
 ## Color Palette
 
 ```css
-/* Primary colors - use for quadrant borders */
+/* Primary colors */
 --cyan: #00d4ff;      /* Info, databases */
---green: #00ff88;     /* Success, positive */
+--green: #7fff7f;     /* Success, positive, FREE */
 --orange: #ff6b35;    /* Backend, server */
---gold: #ffd700;      /* Database, premium */
+--gold: #ffd700;      /* Database, premium, LDM */
 --purple: #9945ff;    /* Electron, desktop */
---pink: #ff1493;      /* AI/ML */
---red: #ff4444;       /* Security, danger */
+--pink: #fa709a;      /* AI/ML, LDM accent */
+--red: #ff6b6b;       /* Comparison, competitors */
 
 /* Gradients */
---title-gradient: linear-gradient(90deg, #00d4ff, #00ff88);
---bg-gradient: linear-gradient(135deg, #0a0a1a, #1a1a3a);
+--title-gradient: linear-gradient(90deg, #00d4ff, #7fff7f);
+--bg-gradient: linear-gradient(135deg, #0a1628, #1a2940);
 ```
 
 ---
@@ -237,14 +129,17 @@ git push origin main && git push gitea main
 ## Quick Commands
 
 ```bash
-# Generate PNG from HTML
+# Generate all PNGs
 cd docs/presentations
-npx playwright screenshot --viewport-size=2560,1600 \
-    "file:///home/neil1988/LocalizationTools/docs/presentations/html/filename.html" \
-    "images/filename.png"
+for f in html/*.html; do
+  name=$(basename "$f" .html)
+  npx playwright screenshot --browser chromium --viewport-size=2560,1600 \
+      "file:///home/neil1988/LocalizationTools/docs/presentations/$f" \
+      "images/${name}.png"
+done
 
 # View HTML in browser
-xdg-open html/04_full_system_visual.html
+xdg-open html/01_full_architecture.html
 
 # Check file sizes
 ls -lh images/*.png
@@ -253,3 +148,4 @@ ls -lh images/*.png
 ---
 
 *Last updated: 2025-12-11*
+*Consolidated to 3 images: Full Architecture, Licensing (with Qwen Apache 2.0 proof), Apps (LDM focus)*

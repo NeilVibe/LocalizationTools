@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - Licensing & Open Source Proof</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2940 50%, #0f2027 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        .container {
+            max-width: 2400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, #7fff7f, #ffd700, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* 2x2 Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 15px;
+            height: calc(100vh - 150px);
+            max-height: 800px;
+        }
+
+        .quadrant {
+            background: linear-gradient(135deg, rgba(20, 30, 40, 0.95), rgba(15, 25, 35, 0.95));
+            border: 3px solid;
+            border-radius: 16px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quadrant.qwen { border-color: #ff6b6b; }
+        .quadrant.stack { border-color: #7fff7f; }
+        .quadrant.cost { border-color: #ffd700; }
+        .quadrant.server { border-color: #00d4ff; }
+
+        .quad-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .quad-icon { font-size: 1.5rem; }
+        .quad-title { font-size: 1rem; font-weight: bold; }
+
+        .quadrant.qwen .quad-title { color: #ff6b6b; }
+        .quadrant.stack .quad-title { color: #7fff7f; }
+        .quadrant.cost .quad-title { color: #ffd700; }
+        .quadrant.server .quad-title { color: #00d4ff; }
+
+        .quad-badge {
+            margin-left: auto;
+            font-size: 0.6rem;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .quadrant.qwen .quad-badge { background: rgba(255, 107, 107, 0.3); color: #ff6b6b; }
+        .quadrant.stack .quad-badge { background: rgba(127, 255, 127, 0.3); color: #7fff7f; }
+        .quadrant.cost .quad-badge { background: rgba(255, 215, 0, 0.3); color: #ffd700; }
+        .quadrant.server .quad-badge { background: rgba(0, 212, 255, 0.3); color: #00d4ff; }
+
+        /* Proof Box */
+        .proof-box {
+            background: rgba(255, 107, 107, 0.1);
+            border: 2px solid #ff6b6b;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .proof-title {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .proof-url {
+            font-family: monospace;
+            font-size: 0.7rem;
+            color: #00d4ff;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 6px 10px;
+            border-radius: 6px;
+            word-break: break-all;
+            margin-bottom: 8px;
+        }
+        .proof-quote {
+            font-size: 0.75rem;
+            color: #ccc;
+            font-style: italic;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 6px;
+            border-left: 3px solid #7fff7f;
+        }
+
+        /* License Grid */
+        .license-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            flex: 1;
+        }
+        .license-item {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .license-item .icon { font-size: 1.2rem; margin-bottom: 4px; }
+        .license-item .name { font-size: 0.75rem; font-weight: bold; color: #7fff7f; }
+        .license-item .type { font-size: 0.6rem; color: #888; }
+        .license-item .cost { font-size: 0.9rem; font-weight: bold; color: #7fff7f; margin-top: 4px; }
+
+        /* Cost comparison */
+        .cost-table {
+            width: 100%;
+            font-size: 0.7rem;
+            flex: 1;
+        }
+        .cost-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .cost-row:last-child { border-bottom: none; }
+        .cost-tool { color: #ccc; }
+        .cost-ours { color: #7fff7f; font-weight: bold; }
+        .cost-them { color: #ff6b6b; }
+
+        /* Savings box */
+        .savings-box {
+            background: linear-gradient(135deg, rgba(127, 255, 127, 0.2), rgba(0, 212, 255, 0.2));
+            border: 2px solid #7fff7f;
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            margin-top: auto;
+        }
+        .savings-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #7fff7f;
+        }
+        .savings-label {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        /* Server specs */
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            flex: 1;
+        }
+        .spec-item {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .spec-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        .spec-label {
+            font-size: 0.6rem;
+            color: #888;
+        }
+
+        /* Highlight */
+        .highlight-box {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: auto;
+        }
+        .highlight-row {
+            display: flex;
+            justify-content: space-around;
+        }
+        .highlight-item { text-align: center; }
+        .highlight-value { font-size: 1rem; font-weight: bold; }
+        .highlight-label { font-size: 0.55rem; color: #888; }
+
+        .quadrant.qwen .highlight-value { color: #ff6b6b; }
+        .quadrant.stack .highlight-value { color: #7fff7f; }
+        .quadrant.cost .highlight-value { color: #ffd700; }
+        .quadrant.server .highlight-value { color: #00d4ff; }
+
+        /* Bottom stats */
+        .bottom-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+        .stat { text-align: center; }
+        .stat .value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #7fff7f, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat .label { font-size: 0.6rem; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LocaNext - Licensing & Open Source</h1>
+        <p class="subtitle">100% Free Commercial Use | Apache 2.0 + MIT Licensed Stack | Zero Hidden Costs</p>
+
+        <div class="main-grid">
+            <!-- Q1: QWEN PROOF (Top Left) -->
+            <div class="quadrant qwen">
+                <div class="quad-header">
+                    <div class="quad-icon">🧠</div>
+                    <div class="quad-title">Qwen3-0.6B License PROOF</div>
+                    <div class="quad-badge">APACHE 2.0</div>
+                </div>
+
+                <div class="proof-box">
+                    <div class="proof-title">📋 Official License Declaration</div>
+                    <div class="proof-url">https://huggingface.co/Qwen/Qwen3-Embedding-0.6B</div>
+                    <div class="proof-quote">
+                        "License: Apache 2.0 - This model is released under the Apache License 2.0.
+                        You are free to use, modify, and distribute this model for both commercial
+                        and non-commercial purposes."
+                    </div>
+                </div>
+
+                <div class="license-grid">
+                    <div class="license-item">
+                        <div class="icon">✅</div>
+                        <div class="name">Commercial OK</div>
+                        <div class="type">No restrictions</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="icon">✅</div>
+                        <div class="name">Modify OK</div>
+                        <div class="type">Can fine-tune</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="icon">✅</div>
+                        <div class="name">Distribute OK</div>
+                        <div class="type">Ship with app</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="icon">✅</div>
+                        <div class="name">No Royalties</div>
+                        <div class="type">100% free</div>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <div class="highlight-row">
+                        <div class="highlight-item">
+                            <div class="highlight-value">0.6B</div>
+                            <div class="highlight-label">Parameters</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">1024</div>
+                            <div class="highlight-label">Dimensions</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">$0</div>
+                            <div class="highlight-label">Forever</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Q2: FULL STACK (Top Right) -->
+            <div class="quadrant stack">
+                <div class="quad-header">
+                    <div class="quad-icon">📂</div>
+                    <div class="quad-title">Open Source Stack</div>
+                    <div class="quad-badge">100% FREE</div>
+                </div>
+
+                <div class="license-grid">
+                    <div class="license-item">
+                        <div class="icon">🐍</div>
+                        <div class="name">Python 3.11</div>
+                        <div class="type">PSF License</div>
+                        <div class="cost">$0</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="icon">⚡</div>
+                        <div class="name">FastAPI</div>
+                        <div class="type">MIT License</div>
+                        <div class="cost">$0</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="icon">🐘</div>
+                        <div class="name">PostgreSQL 14</div>
+                        <div class="type">PostgreSQL License</div>
+                        <div class="cost">$0</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="icon">⚛️</div>
+                        <div class="name">Electron 28</div>
+                        <div class="type">MIT License</div>
+                        <div class="cost">$0</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="icon">📊</div>
+                        <div class="name">FAISS</div>
+                        <div class="type">MIT License</div>
+                        <div class="cost">$0</div>
+                    </div>
+                    <div class="license-item">
+                        <div class="icon">🎨</div>
+                        <div class="name">Svelte 4</div>
+                        <div class="type">MIT License</div>
+                        <div class="cost">$0</div>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <div class="highlight-row">
+                        <div class="highlight-item">
+                            <div class="highlight-value">6</div>
+                            <div class="highlight-label">Core Technologies</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">MIT/Apache</div>
+                            <div class="highlight-label">Permissive</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">$0</div>
+                            <div class="highlight-label">Total Cost</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Q3: COST COMPARISON (Bottom Left) -->
+            <div class="quadrant cost">
+                <div class="quad-header">
+                    <div class="quad-icon">💰</div>
+                    <div class="quad-title">Cost Comparison (10 Users/Year)</div>
+                    <div class="quad-badge">98% SAVINGS</div>
+                </div>
+
+                <div class="cost-table">
+                    <div class="cost-row">
+                        <span class="cost-tool">CAT Tool</span>
+                        <span class="cost-ours">$0</span>
+                        <span class="cost-them">SDL Trados: $29,950</span>
+                    </div>
+                    <div class="cost-row">
+                        <span class="cost-tool">Translation Memory</span>
+                        <span class="cost-ours">$0</span>
+                        <span class="cost-them">memoQ: $19,900</span>
+                    </div>
+                    <div class="cost-row">
+                        <span class="cost-tool">AI Embeddings</span>
+                        <span class="cost-ours">$0</span>
+                        <span class="cost-them">OpenAI: ~$1,200/yr</span>
+                    </div>
+                    <div class="cost-row">
+                        <span class="cost-tool">Vector Database</span>
+                        <span class="cost-ours">$0</span>
+                        <span class="cost-them">Pinecone: $840/yr</span>
+                    </div>
+                    <div class="cost-row">
+                        <span class="cost-tool">Database</span>
+                        <span class="cost-ours">$0</span>
+                        <span class="cost-them">Oracle: $17,500/core</span>
+                    </div>
+                    <div class="cost-row" style="margin-top: 8px; padding-top: 8px; border-top: 2px solid rgba(255,215,0,0.3);">
+                        <span class="cost-tool"><strong>Server Only</strong></span>
+                        <span class="cost-ours">$600/yr</span>
+                        <span class="cost-them">+$50K+ Software</span>
+                    </div>
+                </div>
+
+                <div class="savings-box">
+                    <div class="savings-value">Save $29,350/year</div>
+                    <div class="savings-label">vs SDL Trados (10 users) - 98% reduction</div>
+                </div>
+            </div>
+
+            <!-- Q4: SERVER OPTIONS (Bottom Right) -->
+            <div class="quadrant server">
+                <div class="quad-header">
+                    <div class="quad-icon">🖥️</div>
+                    <div class="quad-title">Server Hosting Options</div>
+                    <div class="quad-badge">SELF-HOSTED</div>
+                </div>
+
+                <div class="specs-grid">
+                    <div class="spec-item">
+                        <div class="spec-value">$0</div>
+                        <div class="spec-label">Development (Local)</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-value">$50/mo</div>
+                        <div class="spec-label">Production (VPS)</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-value">4 vCPU</div>
+                        <div class="spec-label">Recommended</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-value">8GB RAM</div>
+                        <div class="spec-label">Minimum</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-value">100GB SSD</div>
+                        <div class="spec-label">Storage</div>
+                    </div>
+                    <div class="spec-item">
+                        <div class="spec-value">Ubuntu</div>
+                        <div class="spec-label">22.04 LTS</div>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <div class="highlight-row">
+                        <div class="highlight-item">
+                            <div class="highlight-value">∞</div>
+                            <div class="highlight-label">Unlimited Users</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">100%</div>
+                            <div class="highlight-label">Offline OK</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">Your</div>
+                            <div class="highlight-label">Data Control</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom stats -->
+        <div class="bottom-stats">
+            <div class="stat">
+                <div class="value">$0</div>
+                <div class="label">Software License</div>
+            </div>
+            <div class="stat">
+                <div class="value">Apache 2.0</div>
+                <div class="label">Qwen License</div>
+            </div>
+            <div class="stat">
+                <div class="value">MIT</div>
+                <div class="label">Stack License</div>
+            </div>
+            <div class="stat">
+                <div class="value">$50/mo</div>
+                <div class="label">Server Only</div>
+            </div>
+            <div class="stat">
+                <div class="value">98%</div>
+                <div class="label">Cost Savings</div>
+            </div>
+            <div class="stat">
+                <div class="value">PROVEN</div>
+                <div class="label">Commercial Use</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
