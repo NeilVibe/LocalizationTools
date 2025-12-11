@@ -148,8 +148,7 @@ async def get_daily_stats(
         # Format results
         daily_stats = []
         for row in rows:
-            # Handle SQLite returning string vs PostgreSQL returning date object
-            date_str = row.date if isinstance(row.date, str) else (row.date.isoformat() if row.date else None)
+            date_str = row.date.isoformat() if row.date else None
             daily_stats.append({
                 "date": date_str,
                 "operations": int(row.operations),
@@ -197,10 +196,9 @@ async def get_weekly_stats(
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(weeks=weeks)
 
-        # Query weekly statistics
-        # For SQLite: group by year-week
+        # Query weekly statistics (PostgreSQL)
         query = select(
-            func.strftime('%Y-%W', LogEntry.timestamp).label('week_start'),
+            func.to_char(LogEntry.timestamp, 'IYYY-IW').label('week_start'),
             func.count(LogEntry.log_id).label('total_ops'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
             func.round(
@@ -211,9 +209,9 @@ async def get_weekly_stats(
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
-            func.strftime('%Y-%W', LogEntry.timestamp)
+            func.to_char(LogEntry.timestamp, 'IYYY-IW')
         ).order_by(
-            func.strftime('%Y-%W', LogEntry.timestamp).desc()
+            func.to_char(LogEntry.timestamp, 'IYYY-IW').desc()
         )
 
         result = await db.execute(query)
@@ -271,9 +269,9 @@ async def get_monthly_stats(
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=months * 30)  # Approximate
 
-        # Query monthly statistics
+        # Query monthly statistics (PostgreSQL)
         query = select(
-            func.strftime('%Y-%m', LogEntry.timestamp).label('month'),
+            func.to_char(LogEntry.timestamp, 'YYYY-MM').label('month'),
             func.count(LogEntry.log_id).label('total_ops'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
             func.sum(
@@ -286,9 +284,9 @@ async def get_monthly_stats(
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
-            func.strftime('%Y-%m', LogEntry.timestamp)
+            func.to_char(LogEntry.timestamp, 'YYYY-MM')
         ).order_by(
-            func.strftime('%Y-%m', LogEntry.timestamp).desc()
+            func.to_char(LogEntry.timestamp, 'YYYY-MM').desc()
         )
 
         result = await db.execute(query)
@@ -674,8 +672,7 @@ async def get_error_rate(
         # Format results
         error_rates = []
         for row in rows:
-            # Handle SQLite returning string vs PostgreSQL returning date object
-            date_str = row.date if isinstance(row.date, str) else (row.date.isoformat() if row.date else None)
+            date_str = row.date.isoformat() if row.date else None
             error_rates.append({
                 "date": date_str,
                 "total_operations": int(row.total_operations),
@@ -1146,75 +1143,83 @@ async def get_database_stats(
     - Table information with row counts
     - Column details per table
     - Index information
+
+    PostgreSQL only.
     """
-    import os
-    import sqlite3
-    from pathlib import Path
+    from sqlalchemy import text
 
     try:
         logger.info("Requesting database statistics")
 
-        # Path to SQLite database
-        db_path = Path(__file__).parent.parent / "data" / "localizationtools.db"
+        # Get PostgreSQL version
+        version_result = await db.execute(text("SELECT version()"))
+        pg_version = version_result.scalar()
 
-        if not db_path.exists():
-            return {
-                "size_bytes": 0,
-                "tables": [],
-                "total_rows": 0,
-                "indexes_count": 0,
-                "path": "Database not found",
-                "sqlite_version": None,
-                "page_size": 0,
-                "last_modified": None
-            }
+        # Get database size
+        size_result = await db.execute(text(
+            "SELECT pg_database_size(current_database())"
+        ))
+        size_bytes = size_result.scalar() or 0
 
-        # Get file stats
-        file_stats = os.stat(db_path)
-        size_bytes = file_stats.st_size
-        last_modified = datetime.fromtimestamp(file_stats.st_mtime).isoformat()
-
-        # Connect to database for introspection
-        conn = sqlite3.connect(str(db_path))
-        cursor = conn.cursor()
-
-        # Get SQLite version
-        cursor.execute("SELECT sqlite_version()")
-        sqlite_version = cursor.fetchone()[0]
-
-        # Get page size
-        cursor.execute("PRAGMA page_size")
-        page_size = cursor.fetchone()[0]
-
-        # Get all tables
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
-        table_names = [row[0] for row in cursor.fetchall()]
+        # Get all tables in public schema
+        tables_result = await db.execute(text("""
+            SELECT
+                t.table_name,
+                (SELECT reltuples::bigint FROM pg_class WHERE relname = t.table_name) as row_count
+            FROM information_schema.tables t
+            WHERE t.table_schema = 'public'
+            AND t.table_type = 'BASE TABLE'
+            ORDER BY t.table_name
+        """))
+        table_rows = tables_result.fetchall()
 
         tables = []
         total_rows = 0
 
-        for table_name in table_names:
-            # Get row count
-            cursor.execute(f"SELECT COUNT(*) FROM '{table_name}'")
-            row_count = cursor.fetchone()[0]
+        for table_row in table_rows:
+            table_name = table_row.table_name
+            row_count = int(table_row.row_count or 0)
             total_rows += row_count
 
-            # Get column info
-            cursor.execute(f"PRAGMA table_info('{table_name}')")
+            # Get column info for this table
+            columns_result = await db.execute(text("""
+                SELECT
+                    ordinal_position as cid,
+                    column_name as name,
+                    data_type as type,
+                    is_nullable = 'NO' as notnull,
+                    column_default as default_value,
+                    (SELECT COUNT(*) > 0 FROM information_schema.table_constraints tc
+                     JOIN information_schema.constraint_column_usage ccu
+                     ON tc.constraint_name = ccu.constraint_name
+                     WHERE tc.table_name = c.table_name
+                     AND ccu.column_name = c.column_name
+                     AND tc.constraint_type = 'PRIMARY KEY') as pk
+                FROM information_schema.columns c
+                WHERE c.table_schema = 'public'
+                AND c.table_name = :table_name
+                ORDER BY ordinal_position
+            """), {"table_name": table_name})
+
             columns = []
-            for col in cursor.fetchall():
+            for col in columns_result.fetchall():
                 columns.append({
-                    "cid": col[0],
-                    "name": col[1],
-                    "type": col[2] or "TEXT",
-                    "notnull": bool(col[3]),
-                    "default": col[4],
-                    "pk": bool(col[5])
+                    "cid": col.cid,
+                    "name": col.name,
+                    "type": col.type.upper(),
+                    "notnull": col.notnull,
+                    "default": col.default_value,
+                    "pk": col.pk
                 })
 
             # Get indexes for this table
-            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='{table_name}' AND name NOT LIKE 'sqlite_%'")
-            indexes = [row[0] for row in cursor.fetchall()]
+            indexes_result = await db.execute(text("""
+                SELECT indexname
+                FROM pg_indexes
+                WHERE schemaname = 'public'
+                AND tablename = :table_name
+            """), {"table_name": table_name})
+            indexes = [row.indexname for row in indexes_result.fetchall()]
 
             tables.append({
                 "name": table_name,
@@ -1224,20 +1229,21 @@ async def get_database_stats(
             })
 
         # Get total index count
-        cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'")
-        indexes_count = cursor.fetchone()[0]
-
-        conn.close()
+        idx_count_result = await db.execute(text("""
+            SELECT COUNT(*)
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+        """))
+        indexes_count = idx_count_result.scalar() or 0
 
         return {
             "size_bytes": size_bytes,
             "tables": tables,
             "total_rows": total_rows,
             "indexes_count": indexes_count,
-            "path": str(db_path),
-            "sqlite_version": sqlite_version,
-            "page_size": page_size,
-            "last_modified": last_modified
+            "database_type": "postgresql",
+            "pg_version": pg_version,
+            "last_modified": datetime.utcnow().isoformat()
         }
 
     except Exception as e:

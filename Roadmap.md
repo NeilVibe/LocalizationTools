@@ -1,24 +1,24 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512111200 | **Updated**: 2025-12-11 | **Status**: Production Ready
+**Version**: 2512120100 | **Updated**: 2025-12-12 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 > **Detailed Tasks**: [docs/wip/README.md](docs/wip/README.md) (WIP Hub)
-> **Known Issues**: [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md)
+> **Session Context**: [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)
 
 ---
 
 ## Current Status
 
 ```
-LocaNext v2512111200
+LocaNext v2512111745
 ├── Backend:     ✅ 55+ API endpoints, async, WebSocket
 ├── Frontend:    ✅ Electron + Svelte (LocaNext Desktop)
-├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar + LDM 60%
-├── Tests:       ✅ 912 total (no mocks)
+├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar + LDM 67%
+├── Tests:       ✅ 912 total (595 unit pass, no mocks)
 ├── Security:    ✅ 86 tests (IP filter, CORS, JWT, audit)
 ├── CI/CD:       ✅ GitHub Actions + Gitea (FULLY WORKING!)
-├── Database:    ✅ PostgreSQL 14 + PgBouncer (31K entries/sec)
+├── Database:    ✅ PostgreSQL + PgBouncer (NO SQLite!)
 └── Distribution: ✅ Auto-update enabled
 ```
 
@@ -28,42 +28,66 @@ LocaNext v2512111200
 
 | Priority | Name | Status | WIP Doc |
 |----------|------|--------|---------|
-| **P22** | Production Parity (SQLite Removal) | 0% | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
-| **P17** | LDM LanguageData Manager | 60% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
+| **P25** | LDM UX Overhaul | 📋 NEW | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
+| **P24** | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
+| **P17** | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
+| **P22** | SQLite Removal | Phase 1 ✅ | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
+| **P23** | Data Flow (Production) | 📋 Later | [P23_DATA_FLOW_ARCHITECTURE.md](docs/wip/P23_DATA_FLOW_ARCHITECTURE.md) |
 | **P21** | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
-| **P20** | Embedding Model Migration | ✅ Complete | [P20_MODEL_MIGRATION.md](docs/wip/P20_MODEL_MIGRATION.md) |
-| **P18** | Database Optimization | ✅ Complete | [P_DB_OPTIMIZATION.md](docs/wip/P_DB_OPTIMIZATION.md) |
-| **P13** | Gitea CI/CD + Smart Cache | ✅ Complete | [P13_GITEA_CACHE_PLAN.md](docs/wip/P13_GITEA_CACHE_PLAN.md) |
-| **ISSUES** | Bug Fixes | Active | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
+| **ISSUES** | Bug Fixes | 5 Open | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 
 ---
 
 ## Active Development
 
-### P22: Production Parity - SQLite Removal (0%)
+### P25: LDM UX Overhaul (NEW - Major)
 
-**DEV = PRODUCTION** - Remove all SQLite fallback code from LocaNext core.
+Comprehensive UX improvements based on user feedback.
 
-**Why:**
-- Documentation says "PostgreSQL only" but code has SQLite fallbacks
-- Dead code creates confusion and maintenance burden
-- Dev environment must match production exactly
+**Bugs to Fix:**
+- Target lock blocking editing (HIGH)
+- Upload tooltip z-index
+- Search bar icon requirement
+- Go to row usefulness
 
-**Scope:**
-- 11 server files (remove SQLite code paths)
-- 9 test files (PostgreSQL-only tests)
-- 8 doc files (update references)
-- ~33 files total
+**Grid Simplification:**
+- Remove Status column → Use cell colors (green=translated, blue=confirmed)
+- Default: Source + Target only
+- Optional columns via Preferences: Index, String ID, Reference, TM, QA
 
-**What KEEPS SQLite:**
-- Gitea internal (separate system)
-- Autonomous test scripts (temp storage if needed)
+**New Features:**
+- **Preferences Menu** - Toggle columns, configure QA/TM/Reference
+- **Edit Workflow** - Ctrl+S=Confirm, Ctrl+T=Translate only
+- **Merge Function** - Merge confirmed strings back to original file
+- **Reference Column** - Load reference from project/local file
+- **TM Integration** - Upload TM, show in Tasks, TM Results column
+- **Live QA** - Spell, grammar, glossary term, inconsistency checks
+- **Auto-Glossary** - Generate glossary during TM upload
 
-**Details:** [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md)
+**Details:** [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md)
 
 ---
 
-### P17: LDM LanguageData Manager (60%)
+### P24: Server Status Dashboard
+
+Real-time health monitoring for Central Server.
+
+**LocaNext App (Simple):**
+- Connection status: green/orange/red
+- Basic server health
+
+**Admin Dashboard (Detailed):**
+- API Server status + response time
+- Database: connections, load, query time
+- WebSocket: active connections
+- System: CPU, memory, disk
+- Active users count
+
+**Details:** [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md)
+
+---
+
+### P17: LDM LanguageData Manager (67%)
 
 Professional CAT tool with 5-tier cascade TM search.
 
@@ -71,67 +95,99 @@ Professional CAT tool with 5-tier cascade TM search.
 - ✅ Virtual scroll grid (1M+ rows)
 - ✅ File Explorer (projects, folders)
 - ✅ Real-time WebSocket sync
-- ✅ Basic TM panel + keyboard shortcuts
-- ✅ Row locking for multi-user
+- ✅ Phase 7.1-7.3: TM Database + TMManager + TMIndexer
 
-**What's Next:**
-- Phase 7: Full TM System (5-Tier Cascade)
-- Phase 8: Nice View (pattern rendering)
+**What's Next (Pick One):**
 
-**Details:** [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) | [P17_TM_ARCHITECTURE.md](docs/wip/P17_TM_ARCHITECTURE.md)
+| Task | Priority | Notes |
+|------|----------|-------|
+| **TM Upload UI** | HIGH | ISSUE-011 - Backend ready, need frontend |
+| **TM Search API** | HIGH | Phase 7.4 - `tm_search.py` |
+| **Custom Excel picker** | HIGH | Column selection (not just A/B) |
+| **Custom XML picker** | HIGH | Attribute selection |
+
+**Details:** [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md)
 
 ---
 
-### Known Issues (0 Open)
+### P22: SQLite Removal (Phase 1 ✅)
 
-All known issues have been resolved. See [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) for history.
+**Completed (2025-12-11):**
+- ✅ 12 server files cleaned
+- ✅ 595 unit tests pass
+- ✅ PostgreSQL-only architecture
 
-**Recently Fixed (2025-12-11):**
-- ISSUE-001: Tooltip z-index
-- ISSUE-002: File upload progress
-- ISSUE-003/004: Tasks button icon + cursor
-- ISSUE-005: LDM default app routing
+---
+
+### P23: Data Flow Architecture (LATER)
+
+**For Production Deployment** - Not needed during development.
+
+Currently localhost:8888 is hardcoded, which is FINE for dev/testing.
+
+**Connection Flow (Simplified):**
+```
+1. Admin sets Central Server IP (once, in build or config)
+2. User launches app → connects to Central Server
+3. Server checks client IP against whitelist (already built!)
+4. If authorized → connect, show green status
+```
+
+**What's LEFT to build:**
+- Connection Status Panel (green/orange/red indicators)
+- IP whitelist already exists in `server/middleware/`
+
+**Details:** [P23_DATA_FLOW_ARCHITECTURE.md](docs/wip/P23_DATA_FLOW_ARCHITECTURE.md)
+
+---
+
+### Known Issues (2 Open)
+
+| ID | Status | Description |
+|----|--------|-------------|
+| ~~BUG-002~~ | ✅ Fixed | ~~Target lock blocking editing~~ |
+| ~~BUG-003~~ | ✅ Fixed | ~~Upload tooltip z-index~~ |
+| ~~BUG-004~~ | ✅ Fixed | ~~Search bar requires icon click~~ |
+| BUG-001 | 📋 Open | Go to row not useful |
+| ISSUE-011 | 📋 Open | Missing TM upload UI (backend ready) |
+
+**Details:** [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md)
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│         Development (localhost)          │
+├─────────────────────────────────────────┤
+│  LocaNext Desktop                       │
+│       ↓                                 │
+│  FastAPI Backend (localhost:8888)       │
+│       ↓                                 │
+│  PostgreSQL (localhost:5432)            │
+│       ↓                                 │
+│  Local Indexes (FAISS, embeddings)      │
+└─────────────────────────────────────────┘
+
+Central = PostgreSQL (text data)
+Local = Heavy processing (FAISS, ML - rebuildable)
+```
 
 ---
 
 ## Recently Completed
 
+### P22 Phase 1: SQLite Removal ✅ (2025-12-11)
+- 12 server files cleaned
+- 595 unit tests pass
+
 ### P21: Database Powerhouse ✅ (2025-12-10)
 - PgBouncer 1.16 - 1000 connections
 - COPY TEXT - 31K entries/sec
-- PostgreSQL tuned for 32GB RAM
 
 ### P20: Embedding Model Migration ✅ (2025-12-09)
-- Unified to Qwen3-Embedding-0.6B
-- HNSW index for O(log n) search
-- 100+ language support
-
-### P13.12: Smart Build Cache v2.0 ✅ (2025-12-09)
-- Hash-based invalidation
-- Build time: ~1.5 min (from cache)
-
-### P13.11: Gitea Windows Build ✅ (2025-12-09)
-- Patched act_runner v15 (NUL byte fix)
-- Non-ephemeral mode (6-month token)
-- Automated cleanup
-
-### Presentations ✅ (2025-12-11)
-- **4 presentation images** in `docs/presentations/images/`
-- `01_full_architecture.png` - Complete system overview (PostgreSQL, PgBouncer, no SQLite)
-- `02_licensing_complete.png` - Qwen Apache 2.0 proof + cost comparison
-- `03_apps_ldm_focus.png` - LDM flagship (50%) + 3 utility apps
-- `04_admin_dashboard.png` - **NEW** Admin dashboard & telemetry for management
-- Protocol: `docs/presentations/PRESENTATION_PROTOCOL.md`
-
----
-
-## Future Priorities
-
-| Priority | Name | Description |
-|----------|------|-------------|
-| P19 | Platform UI/UX Overhaul | Modern UI, themes, keyboard shortcuts |
-| P22 | Performance Monitoring | Real-time dashboards, alerts |
-| P23 | Plugin System | Third-party tool integration |
+- Qwen3-Embedding-0.6B (Apache 2.0)
 
 ---
 
@@ -139,17 +195,14 @@ All known issues have been resolved. See [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_F
 
 ```bash
 # Start servers
-python3 server/main.py           # Backend (8888)
-cd locaNext && npm run electron:dev  # Desktop app
+python3 server/main.py
+cd locaNext && npm run electron:dev
 
 # Testing
-RUN_API_TESTS=1 python3 -m pytest -v
+python3 -m pytest tests/unit/ -v  # 595 tests
 
-# Build (GitHub)
-echo "Build LIGHT vXXXX" >> BUILD_TRIGGER.txt && git push origin main
-
-# Build (Gitea)
-echo "Build LIGHT vXXXX" >> GITEA_TRIGGER.txt && git push gitea main
+# Check session context
+cat docs/wip/SESSION_CONTEXT.md
 ```
 
 ---
@@ -157,28 +210,11 @@ echo "Build LIGHT vXXXX" >> GITEA_TRIGGER.txt && git push gitea main
 ## Key Principles
 
 1. **Monolith is Sacred** - Copy logic exactly, only change UI
-2. **Backend is Flawless** - Never modify core without permission
-3. **Log Everything** - Use `logger`, never `print()`
-4. **Test with Real Data** - No mocks for core functions
-5. **Version Before Build** - Run `check_version_unified.py`
+2. **PostgreSQL Only** - No SQLite in LocaNext core
+3. **Central = Text, Local = Heavy** - Data architecture
+4. **Log Everything** - Use `logger`, never `print()`
+5. **localhost OK for dev** - Server URL config is for production
 
 ---
 
-## Documentation Structure
-
-```
-Roadmap.md (THIS FILE)      ← Big picture overview
-    │
-    └── docs/wip/           ← Detailed task breakdowns
-        ├── README.md       ← WIP Hub index
-        ├── P17_*.md        ← LDM tasks
-        ├── P18_*.md        ← Database optimization
-        ├── P20_*.md        ← Model migration
-        ├── P21_*.md        ← Database powerhouse
-        └── ISSUES_TO_FIX.md ← Bug tracker
-```
-
----
-
-*For detailed history, see [ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)*
-*For all tasks, see [docs/wip/README.md](docs/wip/README.md)*
+*For session context, see [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)*

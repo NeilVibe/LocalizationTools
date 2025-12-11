@@ -2,7 +2,7 @@
 Database Models for LocalizationTools Server
 
 SQLAlchemy ORM models matching the database schema.
-Supports both SQLite (dev) and PostgreSQL (prod).
+PostgreSQL only.
 """
 
 from datetime import datetime

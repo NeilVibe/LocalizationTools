@@ -22,10 +22,10 @@ try:
     import server.config as config
 
     database_url = config.DATABASE_URL
-    engine = create_engine(database_url, connect_args={"check_same_thread": False} if "sqlite" in database_url else {})
+    engine = create_engine(database_url)
     SessionLocal = sessionmaker(bind=engine)
     DB_AVAILABLE = True
-    print(f"[PROGRESS] ✓ Database connection established: {database_url.split('/')[-1]}", file=sys.stderr)
+    print(f"[PROGRESS] ✓ Database connection established: PostgreSQL", file=sys.stderr)
 except ImportError as e:
     print(f"[PROGRESS] ⚠ Database not available: {e}", file=sys.stderr)
     DB_AVAILABLE = False

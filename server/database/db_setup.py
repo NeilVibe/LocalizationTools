@@ -2,14 +2,14 @@
 Database Setup and Initialization
 
 Handles database creation, connection management, and initialization.
-Supports both SQLite (development) and PostgreSQL (production).
+PostgreSQL only - no SQLite support.
 """
 
 import os
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
 from loguru import logger
@@ -19,68 +19,40 @@ from server import config
 
 
 # ============================================================================
-# SQLite Configuration
-# ============================================================================
-
-@event.listens_for(Engine, "connect")
-def set_sqlite_pragma(dbapi_conn, connection_record):
-    """Enable foreign key support for SQLite."""
-    if "sqlite" in str(dbapi_conn):
-        cursor = dbapi_conn.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
-
-
-# ============================================================================
 # Database Engine Creation
 # ============================================================================
 
-def get_database_url(use_postgres: bool = False) -> str:
+def get_database_url() -> str:
     """
-    Get database connection URL.
-
-    Args:
-        use_postgres: If True, use PostgreSQL. Otherwise use SQLite.
+    Get PostgreSQL database connection URL.
 
     Returns:
         Database connection URL string.
     """
-    if use_postgres:
-        # PostgreSQL URL (production)
-        return config.POSTGRES_DATABASE_URL
-    else:
-        # SQLite URL (development)
-        return config.SQLITE_DATABASE_URL
+    return config.DATABASE_URL
 
 
-def create_database_engine(use_postgres: bool = False, echo: bool = False):
+def create_database_engine(echo: bool = False):
     """
-    Create SQLAlchemy database engine.
+    Create SQLAlchemy database engine for PostgreSQL.
 
     Args:
-        use_postgres: If True, connect to PostgreSQL. Otherwise use SQLite.
         echo: If True, log all SQL statements (verbose).
 
     Returns:
         SQLAlchemy Engine instance.
     """
-    db_url = get_database_url(use_postgres=use_postgres)
+    db_url = get_database_url()
 
-    # Create engine with appropriate settings
-    if use_postgres:
-        engine = create_engine(
-            db_url,
-            echo=echo,
-            pool_size=10,
-            max_overflow=20,
-            pool_pre_ping=True  # Verify connections before using
-        )
-    else:
-        engine = create_engine(
-            db_url,
-            echo=echo,
-            connect_args={"check_same_thread": False}  # SQLite threading
-        )
+    engine = create_engine(
+        db_url,
+        echo=echo,
+        pool_size=config.DB_POOL_SIZE,
+        max_overflow=config.DB_MAX_OVERFLOW,
+        pool_timeout=config.DB_POOL_TIMEOUT,
+        pool_recycle=config.DB_POOL_RECYCLE,
+        pool_pre_ping=True  # Verify connections before using
+    )
 
     logger.info(f"Database engine created: {engine.url.database}")
     return engine
@@ -217,12 +189,11 @@ def get_table_counts(session: Session) -> dict:
 # Main Setup Function
 # ============================================================================
 
-def setup_database(use_postgres: bool = False, drop_existing: bool = False, echo: bool = False):
+def setup_database(drop_existing: bool = False, echo: bool = False):
     """
-    Complete database setup process.
+    Complete database setup process (PostgreSQL).
 
     Args:
-        use_postgres: If True, use PostgreSQL. Otherwise use SQLite.
         drop_existing: If True, drop all existing tables first.
         echo: If True, log all SQL statements.
 
@@ -230,21 +201,21 @@ def setup_database(use_postgres: bool = False, drop_existing: bool = False, echo
         Tuple of (engine, session_maker).
 
     Example:
-        >>> engine, session_maker = setup_database(use_postgres=False)
+        >>> engine, session_maker = setup_database()
         >>> with get_db_session(session_maker) as db:
         >>>     # Perform database operations
         >>>     pass
     """
     logger.info("=" * 70)
-    logger.info("DATABASE SETUP START")
+    logger.info("DATABASE SETUP START (PostgreSQL)")
     logger.info("=" * 70)
 
     # Create engine
-    engine = create_database_engine(use_postgres=use_postgres, echo=echo)
+    engine = create_database_engine(echo=echo)
 
     # Test connection
     if not test_connection(engine):
-        raise ConnectionError("Failed to connect to database")
+        raise ConnectionError("Failed to connect to PostgreSQL database")
 
     # Initialize tables
     initialize_database(engine, drop_existing=drop_existing)
@@ -276,12 +247,7 @@ def setup_database(use_postgres: bool = False, drop_existing: bool = False, echo
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Database setup utility")
-    parser.add_argument(
-        "--postgres",
-        action="store_true",
-        help="Use PostgreSQL instead of SQLite"
-    )
+    parser = argparse.ArgumentParser(description="Database setup utility (PostgreSQL)")
     parser.add_argument(
         "--drop",
         action="store_true",
@@ -296,7 +262,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.drop:
-        logger.warning("⚠️  DROP EXISTING TABLES REQUESTED!")
+        logger.warning("DROP EXISTING TABLES REQUESTED!")
         response = input("Are you sure? This will DELETE ALL DATA! (yes/no): ")
         if response.lower() != "yes":
             logger.info("Database setup cancelled")
@@ -305,11 +271,10 @@ if __name__ == "__main__":
     # Run setup
     try:
         engine, session_maker = setup_database(
-            use_postgres=args.postgres,
             drop_existing=args.drop,
             echo=args.echo
         )
-        logger.success("✓ Database is ready for use")
+        logger.success("Database is ready for use")
     except Exception as e:
         logger.exception(f"Database setup failed: {e}")
         exit(1)

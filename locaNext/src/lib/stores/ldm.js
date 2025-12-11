@@ -44,7 +44,13 @@ export const viewerCount = derived(fileViewers, $v => $v.length);
 export const lockedRowIds = derived(rowLocks, $locks => Array.from($locks.keys()));
 
 // Check if a specific row is locked (returns lock info or null)
+// Returns null if no active file connection (prevents stale lock display)
 export function isRowLocked(rowId) {
+  // Don't show locks if we're not connected to a file
+  const connected = get(ldmConnected);
+  if (!connected) {
+    return null;
+  }
   const locks = get(rowLocks);
   return locks.get(rowId) || null;
 }
@@ -165,6 +171,10 @@ export function joinFile(fileId) {
   if (current && current !== fileId) {
     leaveFile(current);
   }
+
+  // Clear any stale lock state before joining new file
+  rowLocks.set(new Map());
+  ldmConnected.set(false);
 
   // Setup event listeners if not already
   setupEventListeners();

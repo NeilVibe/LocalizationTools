@@ -46,7 +46,7 @@ from server.database.db_utils import (
     bulk_copy_tm_entries,
     bulk_copy_rows,
     escape_for_copy,
-    # Batch operations (legacy INSERT - still works for SQLite)
+    # Batch operations (legacy INSERT)
     bulk_insert,
     bulk_insert_tm_entries,
     bulk_insert_rows,

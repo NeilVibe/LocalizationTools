@@ -57,18 +57,8 @@ def run_migration():
                 continue
 
             try:
-                # SQLite doesn't support all ALTER TABLE features, so we handle it specially
-                if 'sqlite' in config.DATABASE_URL:
-                    # SQLite requires simpler syntax
-                    if 'REFERENCES' in column_type:
-                        # SQLite doesn't support adding FK constraints via ALTER TABLE
-                        simple_type = column_type.split(' REFERENCES')[0]
-                        sql = f"ALTER TABLE users ADD COLUMN {column_name} {simple_type}"
-                    else:
-                        sql = f"ALTER TABLE users ADD COLUMN {column_name} {column_type}"
-                else:
-                    # PostgreSQL syntax
-                    sql = f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column_name} {column_type}"
+                # PostgreSQL syntax
+                sql = f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column_name} {column_type}"
 
                 conn.execute(text(sql))
                 conn.commit()
@@ -91,10 +81,7 @@ def run_migration():
 
         for index_name, table_name, column_name in indexes:
             try:
-                if 'sqlite' in config.DATABASE_URL:
-                    sql = f"CREATE INDEX IF NOT EXISTS {index_name} ON {table_name}({column_name})"
-                else:
-                    sql = f"CREATE INDEX IF NOT EXISTS {index_name} ON {table_name}({column_name})"
+                sql = f"CREATE INDEX IF NOT EXISTS {index_name} ON {table_name}({column_name})"
 
                 conn.execute(text(sql))
                 conn.commit()
