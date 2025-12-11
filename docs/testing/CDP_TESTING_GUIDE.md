@@ -225,6 +225,37 @@ This helps correlate frontend actions with backend responses.
 
 ---
 
+## Test Types: Normal vs Detailed
+
+### Normal Tests (Quick)
+- **Purpose:** Quick pass/fail verification
+- **Logging:** Key steps only
+- **Use when:** Running CI/CD, quick sanity checks
+- **Example:** `test_full_flow.js`
+
+```
+[4/8] Checking for projects...
+   Found 5 project(s)
+   Selecting first project: Test Project LDM
+```
+
+### Detailed Tests (Verbose)
+- **Purpose:** Deep debugging, finding exact failure point
+- **Logging:** Every DOM query, click coordinates, timing, console messages
+- **Use when:** Debugging failures, understanding behavior
+- **Example:** `test_full_flow_detailed.js`
+
+```
+[  1234ms] ═══ STEP 4: Select Project ═══
+[  1235ms]   → DOM Query: ".project-item" (Project items)
+[  1240ms]   → Found 5 element(s), first: <BUTTON>
+[  1241ms] ✓ Found 5 project(s)
+[  1242ms]   → Click: ".project-item" (First project)
+[  1250ms] ✓ Clicked <BUTTON> at (145, 203) - "Test Project LDM"
+```
+
+---
+
 ## Test Categories
 
 ### 1. Page State Tests
@@ -246,6 +277,11 @@ This helps correlate frontend actions with backend responses.
 - Test with server down
 - Test with invalid data
 - Check error messages
+
+### 5. Full Flow Tests (E2E)
+- Complete user journeys
+- Project → File → Edit → Save
+- Login → Navigate → Interact
 
 ---
 
