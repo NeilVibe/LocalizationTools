@@ -91,12 +91,12 @@ All known issues have been resolved. See [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_F
 - Non-ephemeral mode (6-month token)
 - Automated cleanup
 
-### Presentations Consolidation ✅ (2025-12-11)
-- Consolidated from 9 presentations to **3 images only**
-- `01_full_architecture.png` - Complete system overview
+### Presentations ✅ (2025-12-11)
+- **4 presentation images** in `docs/presentations/images/`
+- `01_full_architecture.png` - Complete system overview (PostgreSQL, PgBouncer, no SQLite)
 - `02_licensing_complete.png` - Qwen Apache 2.0 proof + cost comparison
 - `03_apps_ldm_focus.png` - LDM flagship (50%) + 3 utility apps
-- Archived old presentations to `docs/presentations/archive/`
+- `04_admin_dashboard.png` - **NEW** Admin dashboard & telemetry for management
 - Protocol: `docs/presentations/PRESENTATION_PROTOCOL.md`
 
 ---

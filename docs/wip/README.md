@@ -67,7 +67,7 @@ Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
 - [P13_GITEA_CACHE_PLAN.md](P13_GITEA_CACHE_PLAN.md) - Smart cache v2.0
 
 **Other Resources:**
-- [Presentations](../presentations/) - 3 consolidated images (Full Architecture, Licensing, Apps)
+- [Presentations](../presentations/) - 4 images (Architecture, Licensing, Apps, Dashboard)
 
 ---
 
