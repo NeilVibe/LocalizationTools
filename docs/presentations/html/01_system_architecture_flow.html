@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - System Architecture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 3px;
+            background: linear-gradient(90deg, #00d4ff, #00ff88, #9945ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 15px;
+            font-size: 0.75rem;
+        }
+
+        /* 2x2 Grid Layout - Square */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 15px;
+            height: calc(100vh - 140px);
+            max-height: 800px;
+        }
+
+        /* Each quadrant */
+        .quadrant {
+            background: linear-gradient(135deg, rgba(20, 30, 40, 0.95), rgba(15, 25, 35, 0.95));
+            border: 3px solid;
+            border-radius: 16px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quadrant.desktop { border-color: #9945ff; }
+        .quadrant.backend { border-color: #ff6b35; }
+        .quadrant.database { border-color: #ffd700; }
+        .quadrant.ai { border-color: #ff1493; }
+
+        .quad-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .quad-icon {
+            font-size: 1.5rem;
+        }
+
+        .quad-title {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .quadrant.desktop .quad-title { color: #9945ff; }
+        .quadrant.backend .quad-title { color: #ff6b35; }
+        .quadrant.database .quad-title { color: #ffd700; }
+        .quadrant.ai .quad-title { color: #ff1493; }
+
+        .quad-badge {
+            margin-left: auto;
+            font-size: 0.55rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .quadrant.desktop .quad-badge { background: rgba(153, 69, 255, 0.2); color: #9945ff; }
+        .quadrant.backend .quad-badge { background: rgba(255, 107, 53, 0.2); color: #ff6b35; }
+        .quadrant.database .quad-badge { background: rgba(255, 215, 0, 0.2); color: #ffd700; }
+        .quadrant.ai .quad-badge { background: rgba(255, 20, 147, 0.2); color: #ff1493; }
+
+        /* Flow items */
+        .flow-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .flow-box {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            flex: 1;
+            text-align: center;
+        }
+
+        .flow-arrow {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .flow-arrow-down {
+            text-align: center;
+            color: #666;
+            font-size: 0.7rem;
+            padding: 2px 0;
+        }
+
+        /* Highlight boxes */
+        .highlight-box {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: auto;
+        }
+
+        .quadrant.desktop .highlight-box { border: 1px solid rgba(153, 69, 255, 0.3); }
+        .quadrant.backend .highlight-box { border: 1px solid rgba(255, 107, 53, 0.3); }
+        .quadrant.database .highlight-box { border: 1px solid rgba(255, 215, 0, 0.3); }
+        .quadrant.ai .highlight-box { border: 1px solid rgba(255, 20, 147, 0.3); }
+
+        .highlight-row {
+            display: flex;
+            justify-content: space-around;
+            gap: 8px;
+        }
+
+        .highlight-item {
+            text-align: center;
+        }
+
+        .highlight-value {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .quadrant.desktop .highlight-value { color: #9945ff; }
+        .quadrant.backend .highlight-value { color: #ff6b35; }
+        .quadrant.database .highlight-value { color: #ffd700; }
+        .quadrant.ai .highlight-value { color: #ff1493; }
+
+        .highlight-label {
+            font-size: 0.55rem;
+            color: #888;
+        }
+
+        /* Tech grid */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            flex: 1;
+        }
+
+        .tech-item {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .quadrant.backend .tech-item { border: 1px solid rgba(255, 107, 53, 0.2); }
+        .quadrant.database .tech-item { border: 1px solid rgba(255, 215, 0, 0.2); }
+        .quadrant.ai .tech-item { border: 1px solid rgba(255, 20, 147, 0.2); }
+
+        .tech-item .name {
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .quadrant.backend .tech-item .name { color: #ff6b35; }
+        .quadrant.database .tech-item .name { color: #ffd700; }
+        .quadrant.ai .tech-item .name { color: #ff1493; }
+
+        .tech-item .desc {
+            font-size: 0.55rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Bottom stats */
+        .bottom-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat .value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat .label {
+            font-size: 0.6rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <h1>LocaNext - System Architecture</h1>
+    <p class="subtitle">Electron 28 + Svelte 4 + FastAPI + PostgreSQL 14 + Qwen AI</p>
+
+    <div class="main-grid">
+        <!-- Q1: DESKTOP APP (Top Left) -->
+        <div class="quadrant desktop">
+            <div class="quad-header">
+                <div class="quad-icon">⚡</div>
+                <div class="quad-title">Electron 28 + Svelte 4</div>
+                <div class="quad-badge">DESKTOP</div>
+            </div>
+            <div class="flow-container">
+                <div class="flow-row">
+                    <div class="flow-box">User Launch</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box">LocaNext.exe</div>
+                </div>
+                <div class="flow-arrow-down">↓</div>
+                <div class="flow-row">
+                    <div class="flow-box">Main Process</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box">Renderer</div>
+                </div>
+                <div class="flow-arrow-down">↓</div>
+                <div class="flow-row">
+                    <div class="flow-box">IPC Bridge</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box">Svelte UI</div>
+                </div>
+                <div class="highlight-box">
+                    <div class="highlight-row">
+                        <div class="highlight-item">
+                            <div class="highlight-value">150MB</div>
+                            <div class="highlight-label">Installer</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">Auto</div>
+                            <div class="highlight-label">Updates</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-value">100%</div>
+                            <div class="highlight-label">Offline</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Q2: BACKEND (Top Right) -->
+        <div class="quadrant backend">
+            <div class="quad-header">
+                <div class="quad-icon">🔧</div>
+                <div class="quad-title">FastAPI Backend</div>
+                <div class="quad-badge">PYTHON 3.11</div>
+            </div>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <div class="name">XLSTransfer</div>
+                    <div class="desc">Excel Processing</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">QuickSearch</div>
+                    <div class="desc">TXT + XML Search</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">KR Similar</div>
+                    <div class="desc">AI Similarity</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">LDM</div>
+                    <div class="desc">CAT Tool</div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <div class="highlight-row">
+                    <div class="highlight-item">
+                        <div class="highlight-value">63+</div>
+                        <div class="highlight-label">Endpoints</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">REST</div>
+                        <div class="highlight-label">+ WebSocket</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">Async</div>
+                        <div class="highlight-label">Task Queue</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Q3: DATABASE (Bottom Left) -->
+        <div class="quadrant database">
+            <div class="quad-header">
+                <div class="quad-icon">🗄️</div>
+                <div class="quad-title">PostgreSQL 14 + PgBouncer</div>
+                <div class="quad-badge">P21 TUNED</div>
+            </div>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <div class="name">PgBouncer</div>
+                    <div class="desc">Port 6433 pooling</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">COPY TEXT</div>
+                    <div class="desc">31K/sec bulk</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">GIN Index</div>
+                    <div class="desc">Trigram + FTS</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">17 Tables</div>
+                    <div class="desc">Fully indexed</div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <div class="highlight-row">
+                    <div class="highlight-item">
+                        <div class="highlight-value">8GB</div>
+                        <div class="highlight-label">Shared Buffers</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">24GB</div>
+                        <div class="highlight-label">Cache Size</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">&lt;10ms</div>
+                        <div class="highlight-label">Query Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Q4: AI/ML (Bottom Right) -->
+        <div class="quadrant ai">
+            <div class="quad-header">
+                <div class="quad-icon">🧠</div>
+                <div class="quad-title">AI/ML Engine</div>
+                <div class="quad-badge">QWEN + FAISS</div>
+            </div>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <div class="name">Qwen3-0.6B</div>
+                    <div class="desc">Apache 2.0 License</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">FAISS HNSW</div>
+                    <div class="desc">Vector Search</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">1024-dim</div>
+                    <div class="desc">Embeddings</div>
+                </div>
+                <div class="tech-item">
+                    <div class="name">Semantic</div>
+                    <div class="desc">TM Matching</div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <div class="highlight-row">
+                    <div class="highlight-item">
+                        <div class="highlight-value">41K+</div>
+                        <div class="highlight-label">Dict Pairs</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">&lt;50ms</div>
+                        <div class="highlight-label">Search Time</div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-value">100%</div>
+                        <div class="highlight-label">Local</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom stats -->
+    <div class="bottom-stats">
+        <div class="stat">
+            <div class="value">63+</div>
+            <div class="label">API Endpoints</div>
+        </div>
+        <div class="stat">
+            <div class="value">4</div>
+            <div class="label">Tools</div>
+        </div>
+        <div class="stat">
+            <div class="value">17</div>
+            <div class="label">DB Tables</div>
+        </div>
+        <div class="stat">
+            <div class="value">912</div>
+            <div class="label">Tests</div>
+        </div>
+        <div class="stat">
+            <div class="value">100%</div>
+            <div class="label">Offline</div>
+        </div>
+        <div class="stat">
+            <div class="value">$0</div>
+            <div class="label">License</div>
+        </div>
+    </div>
+</body>
+</html>

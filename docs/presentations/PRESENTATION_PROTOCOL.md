@@ -4,23 +4,58 @@
 
 This document defines the standard protocol for creating visual presentations for LocaNext. All presentations follow the same structure: **HTML source + PNG screenshot**.
 
+## Folder Structure
+
+```
+docs/presentations/
+├── PRESENTATION_PROTOCOL.md   # This file
+├── html/                      # HTML source files
+│   ├── 01_full_architecture.html
+│   ├── 01_system_architecture_flow.html
+│   ├── 02_security_architecture_flow.html
+│   ├── 02_tools_detailed.html
+│   ├── 03_database_architecture_flow.html
+│   ├── 03_licensing_pricing.html
+│   ├── 04_full_system_visual.html
+│   ├── 05_tool_workflows.html
+│   └── 06_user_journey.html
+└── images/                    # Generated PNG screenshots
+    ├── 01_full_architecture.png
+    ├── 01_system_architecture_flow.png
+    └── ... (matching HTML files)
+```
+
 ## Presentation Types
 
-### 1. System Architecture (`flowcharts/04_full_system_visual`)
-**Audience:** Technical team, IT, Security team
-**Content:** Full nested box diagram showing Local Machine → Server → Data Layer
+### 1. System Architecture (`01_system_architecture_flow`)
+**Audience:** Technical team, IT
+**Content:** 2x2 grid showing Desktop App + Backend + Database + AI/ML
+**Layout:** SQUARE 2x2 grid, single view, no scroll
 
-### 2. Tool Workflows (`flowcharts/05_tool_workflows`)
-**Audience:** End users, Translators, Project Managers
-**Content:** Step-by-step workflow for each tool
+### 2. Security Architecture (`02_security_architecture_flow`)
+**Audience:** Security team, IT
+**Content:** 2x2 grid showing 7 security layers
+**Layout:** SQUARE 2x2 grid, single view, no scroll
 
-### 3. User Journey (`flowcharts/06_user_journey`)
+### 3. Database Architecture (`03_database_architecture_flow`)
+**Audience:** DBA, Technical team
+**Content:** 2x2 grid showing PgBouncer + PostgreSQL + Indexes + Performance
+**Layout:** SQUARE 2x2 grid, single view, no scroll
+
+### 4. Full System Visual (`04_full_system_visual`)
+**Audience:** All - MASTER presentation
+**Content:** Nested boxes, full width, complete system overview
+**Layout:** SQUARE 2x2 grid, single view, no scroll
+
+### 5. Tool Workflows (`05_tool_workflows`)
+**Audience:** End users, Translators
+**Content:** 2x2 grid showing XLSTransfer, QuickSearch, KR Similar, LDM
+**Layout:** SQUARE 2x2 grid, single view, no scroll
+
+### 6. Build & Deploy (`06_user_journey`)
 **Audience:** Management, Stakeholders
-**Content:** From installation to daily use
-
-### 4. ROI/Business Case (`diagrams/03_licensing_pricing`)
-**Audience:** Finance, Management, Decision makers
-**Content:** Cost comparison, savings, value proposition
+**Content:** 2x2 grid showing CI/CD Build, User Install, Security, Licensing
+**Layout:** SQUARE 2x2 grid, single view, no scroll
 
 ---
 
@@ -29,18 +64,16 @@ This document defines the standard protocol for creating visual presentations fo
 ### Step 1: Create HTML File
 
 ```
-docs/presentations/{type}/{number}_{name}.html
+docs/presentations/html/{number}_{name}.html
 ```
-
-**Types:**
-- `diagrams/` - Info cards, stats, comparisons
-- `flowcharts/` - Boxes with arrows, nested containers
 
 **Naming:**
 - `01_`, `02_`, etc. for ordering
-- Descriptive name: `full_system_visual`, `tool_workflows`
+- Descriptive name: `system_architecture_flow`, `tool_workflows`
 
-### Step 2: HTML Structure Template
+### Step 2: MANDATORY 2x2 Square Layout
+
+All presentations MUST use the 2x2 grid format:
 
 ```html
 <!DOCTYPE html>
@@ -49,40 +82,81 @@ docs/presentations/{type}/{number}_{name}.html
     <meta charset="UTF-8">
     <title>LocaNext - {Title}</title>
     <style>
-        /* Dark theme background */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
             background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
             font-family: 'Segoe UI', sans-serif;
             color: #e0e0e0;
             padding: 20px;
+            min-height: 100vh;
         }
 
-        /* Gradient title */
         h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 3px;
             background: linear-gradient(90deg, #00d4ff, #00ff88);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* Container boxes with colored borders */
-        .container {
-            border: 2px solid #00d4ff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 15px;
+            font-size: 0.75rem;
         }
 
-        /* Nested inner boxes */
-        .inner-box {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 12px;
+        /* 2x2 Grid Layout - SQUARE */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 15px;
+            height: calc(100vh - 140px);
+            max-height: 800px;
+        }
+
+        .quadrant {
+            background: linear-gradient(135deg, rgba(20, 30, 40, 0.95), rgba(15, 25, 35, 0.95));
+            border: 3px solid;
+            border-radius: 16px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Bottom stats footer */
+        .bottom-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
-    <!-- Content here -->
+    <h1>LocaNext - {Title}</h1>
+    <p class="subtitle">{Subtitle with key technologies}</p>
+
+    <div class="main-grid">
+        <!-- Q1: Top Left -->
+        <div class="quadrant">...</div>
+        <!-- Q2: Top Right -->
+        <div class="quadrant">...</div>
+        <!-- Q3: Bottom Left -->
+        <div class="quadrant">...</div>
+        <!-- Q4: Bottom Right -->
+        <div class="quadrant">...</div>
+    </div>
+
+    <div class="bottom-stats">
+        <!-- Summary metrics -->
+    </div>
 </body>
 </html>
 ```
@@ -91,50 +165,32 @@ docs/presentations/{type}/{number}_{name}.html
 
 | Principle | Implementation |
 |-----------|----------------|
-| **Fill the space** | Use CSS Grid or Flexbox for full-width layouts |
-| **Nested boxes** | Container → Inner box → Components |
-| **Arrows for flow** | CSS pseudo-elements (::before, ::after) |
-| **Color coding** | Cyan (#00d4ff), Green (#00ff88), Orange (#ff6b35), Gold (#ffd700) |
+| **SQUARE 2x2** | Always use 4-quadrant grid |
+| **ONE PAGE** | No scrolling - everything visible at once |
+| **COMPRESSED** | Dense information, zoom for details |
+| **Color coding** | Each quadrant has distinct border color |
 | **Stats at bottom** | Summary metrics in footer |
 | **High contrast** | Dark background, bright accents |
 
 ### Step 4: Generate PNG Screenshot
 
-Use Playwright from `adminDashboard/` directory:
+Use Playwright CLI:
 
-```javascript
-// Run from: cd adminDashboard && node -e "..."
-const { chromium } = require('playwright');
-
-(async () => {
-    const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
-
-    // 4K viewport for high resolution
-    await page.setViewportSize({ width: 2560, height: 1600 });
-
-    await page.goto('file:///path/to/file.html');
-    await page.waitForTimeout(1000);
-
-    await page.screenshot({
-        path: '/path/to/file.png',
-        fullPage: true
-    });
-
-    await browser.close();
-})();
+```bash
+cd docs/presentations
+npx playwright screenshot --viewport-size=2560,1600 \
+    "file:///full/path/to/html/filename.html" \
+    "images/filename.png"
 ```
 
 ### Step 5: Commit Pattern
 
 ```bash
-git add docs/presentations/{type}/{files}
-git commit -m "Add {name} presentation
+git add docs/presentations/html/*.html docs/presentations/images/*.png
+git commit -m "Add/Update {name} presentation - 2x2 layout
 
 - {bullet point 1}
 - {bullet point 2}
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
@@ -145,51 +201,25 @@ git push origin main && git push gitea main
 
 ## Current Presentations
 
-### Diagrams (`docs/presentations/diagrams/`)
-
-| File | Purpose | Audience |
-|------|---------|----------|
-| `01_full_architecture` | System + Security + DB overview cards | Technical |
-| `02_tools_detailed` | 4 tools with features/workflows | Users |
-| `03_licensing_pricing` | Cost comparison, 98% savings | Finance |
-
-### Flowcharts (`docs/presentations/flowcharts/`)
-
-| File | Purpose | Audience |
-|------|---------|----------|
-| `01_system_architecture_flow` | Top-down data flow | Technical |
-| `02_security_architecture_flow` | 7 security layers decision tree | Security |
-| `03_database_architecture_flow` | Query → PgBouncer → PostgreSQL | DBA |
-| `04_full_system_visual` | **MASTER** - Nested boxes, full width | All |
-
----
-
-## Needed Presentations
-
-### To Create:
-
-1. **Tool Workflows** (`05_tool_workflows`)
-   - XLSTransfer: Select files → Configure → Process → Export
-   - QuickSearch: Load file → Search → Navigate results
-   - KR Similar: Build dictionary → Search → Find matches
-   - LDM: Open file → Edit cells → TM suggestions → Save
-
-2. **User Journey** (`06_user_journey`)
-   - Install → First Launch → Login → Select Tool → Work → Results
-   - Shows the complete user experience
-
-3. **Deployment Options** (`07_deployment_options`)
-   - Standalone (local only)
-   - Team (shared server)
-   - Enterprise (full stack)
+| HTML File | PNG Image | Purpose | Audience |
+|-----------|-----------|---------|----------|
+| `01_full_architecture` | ✅ | System overview cards | Technical |
+| `01_system_architecture_flow` | ✅ | 2x2 Desktop+Backend+DB+AI | Technical |
+| `02_security_architecture_flow` | ✅ | 2x2 Security 7 layers | Security |
+| `02_tools_detailed` | ✅ | 4 tools with features | Users |
+| `03_database_architecture_flow` | ✅ | 2x2 DB architecture | DBA |
+| `03_licensing_pricing` | ✅ | Cost comparison | Finance |
+| `04_full_system_visual` | ✅ | MASTER nested boxes | All |
+| `05_tool_workflows` | ✅ | 2x2 tool workflows | Users |
+| `06_user_journey` | ✅ | 2x2 Build & Deploy | Management |
 
 ---
 
 ## Color Palette
 
 ```css
-/* Primary colors */
---cyan: #00d4ff;      /* Main accent, info */
+/* Primary colors - use for quadrant borders */
+--cyan: #00d4ff;      /* Info, databases */
 --green: #00ff88;     /* Success, positive */
 --orange: #ff6b35;    /* Backend, server */
 --gold: #ffd700;      /* Database, premium */
@@ -207,14 +237,17 @@ git push origin main && git push gitea main
 ## Quick Commands
 
 ```bash
-# Generate all PNGs
-cd adminDashboard && node scripts/generate_presentations.js
+# Generate PNG from HTML
+cd docs/presentations
+npx playwright screenshot --viewport-size=2560,1600 \
+    "file:///home/neil1988/LocalizationTools/docs/presentations/html/filename.html" \
+    "images/filename.png"
 
 # View HTML in browser
-xdg-open docs/presentations/flowcharts/04_full_system_visual.html
+xdg-open html/04_full_system_visual.html
 
 # Check file sizes
-ls -lh docs/presentations/**/*.png
+ls -lh images/*.png
 ```
 
 ---
