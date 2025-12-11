@@ -9,7 +9,7 @@
 
 | Area | Open | Fixed | Total |
 |------|------|-------|-------|
-| LDM UI | 0 | 9 | 9 |
+| LDM UI | 1 | 10 | 11 |
 | Navigation | 0 | 1 | 1 |
 | General | 0 | 0 | 0 |
 
@@ -17,11 +17,59 @@
 
 ## Open Issues
 
-*No open issues at this time.*
+### ISSUE-011: Missing TM Upload Menu in UI
+- **Status:** [ ] Open
+- **Priority:** High
+- **Reported:** 2025-12-11
+- **Component:** LDM Frontend (missing TMManager.svelte / TMUploadModal.svelte)
+
+**Problem:** No UI exists for uploading Translation Memory files. Backend TM API exists (Phase 7.1-7.3 complete) but frontend UI is missing.
+
+**Related:**
+- Backend APIs exist: `POST /api/ldm/tm/upload`, `GET /api/ldm/tm`, etc.
+- Task 7.6.1-7.6.4 in P17_LDM_TASKS.md covers this (TODO)
+- TMManager.svelte and TMUploadModal.svelte need to be created
+
+**Expected UI:**
+```
+┌─ Translation Memories ─────────────────────────────────────┐
+│ [+ Upload TM]                                              │
+│                                                            │
+│ Name             Entries    Status     Actions             │
+│ ─────────────────────────────────────────────────────────  │
+│ BDO Main TM      150,000    ✅ Ready   [Active ✓] [Delete] │
+└────────────────────────────────────────────────────────────┘
+```
+
+**Fix:** Implement Phase 7.6 Frontend TM UI tasks
 
 ---
 
 ## Recently Fixed (2025-12-11 Session 2)
+
+### ISSUE-010: LDM File Upload Not Working
+- **Status:** [x] Fixed (Cannot Reproduce)
+- **Priority:** Critical
+- **Fixed:** 2025-12-11
+- **Component:** LDM FileExplorer.svelte / Backend API
+
+**Problem:** User reported files could not be uploaded to LDM.
+
+**Investigation Results:**
+- DEV mode (API only): ✅ PASSED - 4 rows uploaded
+- EXE mode (CDP via PowerShell): ✅ PASSED - 4 rows uploaded
+- fullSequence test: ✅ PASSED - create, upload, select, edit all working
+
+**Root Cause:** Cannot reproduce. Likely causes were:
+1. Old build deployed to Windows playground
+2. Server not running or database connection issue
+3. PgBouncer misconfiguration (was on wrong port)
+
+**Fix Applied:** Updated `.env` to use direct PostgreSQL (port 5432) instead of PgBouncer (6433)
+
+**Verification:** CDP tests pass - full workflow working
+
+---
 
 ### ISSUE-007: Project List Not Auto-Refreshing on Startup
 - **Status:** [x] Fixed
