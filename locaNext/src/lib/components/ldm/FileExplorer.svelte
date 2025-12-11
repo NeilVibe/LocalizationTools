@@ -10,7 +10,7 @@
     InlineNotification
   } from "carbon-components-svelte";
   import { Folder, Document, Add, TrashCan, Upload, FolderAdd } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
   const dispatch = createEventDispatcher();
@@ -232,6 +232,12 @@
   $: if (selectedProjectId) {
     loadProjectTree(selectedProjectId);
   }
+
+  // Auto-load projects on mount
+  onMount(async () => {
+    logger.info("FileExplorer mounted, loading projects...");
+    await loadProjects();
+  });
 </script>
 
 <div class="file-explorer">
