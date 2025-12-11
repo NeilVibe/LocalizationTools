@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocaNext - Security Architecture Flowchart</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a1a 50%, #0a1a1a 100%);
+            min-height: 100vh;
+            padding: 30px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #ff4444, #ff8800, #ffcc00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 1rem;
+        }
+
+        .flowchart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Flow boxes */
+        .flow-box {
+            background: linear-gradient(135deg, rgba(40, 20, 20, 0.9), rgba(30, 15, 15, 0.9));
+            border: 2px solid #ff4444;
+            border-radius: 12px;
+            padding: 15px 25px;
+            text-align: center;
+            min-width: 180px;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.2);
+        }
+
+        .flow-box h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .flow-box .tech {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        /* Status colors */
+        .flow-box.success {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            background: linear-gradient(135deg, rgba(20, 40, 30, 0.9), rgba(15, 30, 20, 0.9));
+        }
+
+        .flow-box.warning {
+            border-color: #ffcc00;
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.3);
+            background: linear-gradient(135deg, rgba(40, 35, 20, 0.9), rgba(30, 25, 15, 0.9));
+        }
+
+        .flow-box.danger {
+            border-color: #ff4444;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+        }
+
+        .flow-box.info {
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            background: linear-gradient(135deg, rgba(20, 30, 40, 0.9), rgba(15, 20, 30, 0.9));
+        }
+
+        /* Arrows */
+        .arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        .arrow-line {
+            width: 3px;
+            height: 25px;
+            background: linear-gradient(to bottom, #ff4444, #00ff88);
+            position: relative;
+        }
+
+        .arrow-line::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 10px solid #00ff88;
+        }
+
+        .arrow-line.red::after {
+            border-top-color: #ff4444;
+        }
+
+        .arrow-line.red {
+            background: #ff4444;
+        }
+
+        .arrow-label {
+            font-size: 0.65rem;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 2px 8px;
+            border-radius: 8px;
+            margin-top: 5px;
+            color: #aaa;
+        }
+
+        /* Decision diamond */
+        .diamond-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .diamond {
+            width: 140px;
+            height: 140px;
+            background: linear-gradient(135deg, rgba(255, 136, 0, 0.2), rgba(255, 68, 68, 0.2));
+            border: 3px solid #ff8800;
+            transform: rotate(45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 30px rgba(255, 136, 0, 0.3);
+        }
+
+        .diamond-text {
+            transform: rotate(-45deg);
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #ff8800;
+        }
+
+        /* Branch paths */
+        .branch-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 100px;
+            margin: 10px 0;
+        }
+
+        .branch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .branch-label {
+            font-size: 0.8rem;
+            font-weight: bold;
+            padding: 5px 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+        }
+
+        .branch-label.yes {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 1px solid #00ff88;
+        }
+
+        .branch-label.no {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+
+        /* Horizontal connector */
+        .h-connector {
+            display: flex;
+            align-items: center;
+        }
+
+        .h-line {
+            width: 50px;
+            height: 3px;
+            background: #ff8800;
+        }
+
+        /* Security layer box */
+        .security-layer {
+            background: linear-gradient(135deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.95));
+            border: 2px solid #ff8800;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 15px 0;
+            min-width: 700px;
+        }
+
+        .security-layer h3 {
+            text-align: center;
+            color: #ff8800;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .security-checks {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .check-item {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px 15px;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .check-item .icon {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .check-item .name {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .check-item .detail {
+            font-size: 0.65rem;
+            color: #888;
+        }
+
+        /* Main flow sections */
+        .section-title {
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 20px 0 10px 0;
+        }
+
+        /* Endpoint box */
+        .endpoint-box {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+        }
+
+        .endpoint {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .endpoint .path {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .endpoint .method {
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        .endpoint .method.post {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .endpoint .method.get {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid;
+        }
+
+        /* Stats */
+        .stats-footer {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.6rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #ff4444, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        /* Rejection path */
+        .rejection-path {
+            position: relative;
+        }
+
+        .rejection-box {
+            background: linear-gradient(135deg, rgba(60, 20, 20, 0.9), rgba(40, 10, 10, 0.9));
+            border: 2px solid #ff4444;
+            border-radius: 10px;
+            padding: 12px 20px;
+            text-align: center;
+        }
+
+        .rejection-box h4 {
+            color: #ff4444;
+            font-size: 0.9rem;
+        }
+
+        .rejection-box .detail {
+            font-size: 0.7rem;
+            color: #ff8888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LocaNext - Security Architecture Flowchart</h1>
+        <p class="subtitle">Request Authentication & Authorization Flow (7 Security Layers)</p>
+
+        <div class="flowchart">
+            <!-- START: Incoming Request -->
+            <div class="section-title">Incoming Request</div>
+            <div class="flow-box info">
+                <h3>📨 INCOMING REQUEST</h3>
+                <div class="tech">HTTP/WebSocket to localhost:8888</div>
+            </div>
+
+            <div class="arrow">
+                <div class="arrow-line"></div>
+            </div>
+
+            <!-- Layer 1: IP Filter -->
+            <div class="security-layer">
+                <h3>🛡️ LAYER 1: IP RANGE FILTER (Primary Access Control)</h3>
+                <div class="security-checks">
+                    <div class="check-item">
+                        <div class="icon">🏠</div>
+                        <div class="name">Localhost</div>
+                        <div class="detail">127.0.0.1 ✓</div>
+                    </div>
+                    <div class="check-item">
+                        <div class="icon">🏢</div>
+                        <div class="name">Private Network</div>
+                        <div class="detail">10.x.x.x, 192.168.x.x ✓</div>
+                    </div>
+                    <div class="check-item">
+                        <div class="icon">📋</div>
+                        <div class="name">Whitelist</div>
+                        <div class="detail">Custom IPs</div>
+                    </div>
+                    <div class="check-item">
+                        <div class="icon">🚫</div>
+                        <div class="name">External</div>
+                        <div class="detail">BLOCKED</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="diamond-wrapper">
+                <div class="diamond">
+                    <div class="diamond-text">IP<br>Allowed?</div>
+                </div>
+            </div>
+
+            <div class="branch-container">
+                <div class="branch">
+                    <div class="branch-label no">✗ NO</div>
+                    <div class="arrow">
+                        <div class="arrow-line red"></div>
+                    </div>
+                    <div class="rejection-box">
+                        <h4>🚫 403 FORBIDDEN</h4>
+                        <div class="detail">IP not in allowed range<br>Logged to audit</div>
+                    </div>
+                </div>
+
+                <div class="branch">
+                    <div class="branch-label yes">✓ YES</div>
+                    <div class="arrow">
+                        <div class="arrow-line"></div>
+                    </div>
+
+                    <!-- Layer 2: CORS -->
+                    <div class="security-layer" style="min-width: 500px;">
+                        <h3>🌐 LAYER 2: CORS & ORIGIN CHECK</h3>
+                        <div class="security-checks">
+                            <div class="check-item">
+                                <div class="name">Allowed Origins</div>
+                                <div class="detail">localhost:5173-5180</div>
+                            </div>
+                            <div class="check-item">
+                                <div class="name">Credentials</div>
+                                <div class="detail">Secure cookies</div>
+                            </div>
+                            <div class="check-item">
+                                <div class="name">Methods</div>
+                                <div class="detail">GET, POST, PUT, DELETE</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">
+                        <div class="arrow-line"></div>
+                        <div class="arrow-label">Origin validated</div>
+                    </div>
+
+                    <!-- Layer 3: Rate Limiting -->
+                    <div class="flow-box warning" style="min-width: 300px;">
+                        <h3>⏱️ LAYER 3: RATE LIMITING</h3>
+                        <div class="tech">100 req/min general | 5 req/min login</div>
+                    </div>
+
+                    <div class="arrow">
+                        <div class="arrow-line"></div>
+                    </div>
+
+                    <!-- Decision: Auth Required? -->
+                    <div class="diamond-wrapper">
+                        <div class="diamond">
+                            <div class="diamond-text">Auth<br>Required?</div>
+                        </div>
+                    </div>
+
+                    <div class="branch-container" style="gap: 80px;">
+                        <div class="branch">
+                            <div class="branch-label no">PUBLIC</div>
+                            <div class="arrow">
+                                <div class="arrow-line" style="background: #ffcc00;"></div>
+                            </div>
+                            <div class="endpoint">
+                                <div class="path">/health</div>
+                                <div class="method get">GET</div>
+                                <div style="font-size: 0.7rem; color: #888;">No auth needed</div>
+                            </div>
+                        </div>
+
+                        <div class="branch">
+                            <div class="branch-label yes">PROTECTED</div>
+                            <div class="arrow">
+                                <div class="arrow-line"></div>
+                            </div>
+
+                            <!-- Layer 4: JWT Validation -->
+                            <div class="security-layer" style="min-width: 450px; border-color: #9945ff;">
+                                <h3 style="color: #9945ff;">🔐 LAYER 4: JWT TOKEN VALIDATION</h3>
+                                <div class="security-checks">
+                                    <div class="check-item">
+                                        <div class="icon">📝</div>
+                                        <div class="name">Signature</div>
+                                        <div class="detail">HS256 verify</div>
+                                    </div>
+                                    <div class="check-item">
+                                        <div class="icon">⏰</div>
+                                        <div class="name">Expiry</div>
+                                        <div class="detail">24h access token</div>
+                                    </div>
+                                    <div class="check-item">
+                                        <div class="icon">👤</div>
+                                        <div class="name">Claims</div>
+                                        <div class="detail">user_id, role</div>
+                                    </div>
+                                    <div class="check-item">
+                                        <div class="icon">🔄</div>
+                                        <div class="name">Refresh</div>
+                                        <div class="detail">7-day token</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="diamond-wrapper">
+                                <div class="diamond" style="width: 120px; height: 120px;">
+                                    <div class="diamond-text">Token<br>Valid?</div>
+                                </div>
+                            </div>
+
+                            <div class="branch-container" style="gap: 60px;">
+                                <div class="branch">
+                                    <div class="branch-label no">✗ INVALID</div>
+                                    <div class="arrow">
+                                        <div class="arrow-line red"></div>
+                                    </div>
+                                    <div class="rejection-box">
+                                        <h4>🚫 401 UNAUTHORIZED</h4>
+                                        <div class="detail">Token expired/invalid<br>Re-login required</div>
+                                    </div>
+                                </div>
+
+                                <div class="branch">
+                                    <div class="branch-label yes">✓ VALID</div>
+                                    <div class="arrow">
+                                        <div class="arrow-line"></div>
+                                    </div>
+
+                                    <!-- Layer 5: Session Check -->
+                                    <div class="flow-box info" style="min-width: 280px;">
+                                        <h3>🪪 LAYER 5: SESSION CHECK</h3>
+                                        <div class="tech">Active session in DB?</div>
+                                    </div>
+
+                                    <div class="arrow">
+                                        <div class="arrow-line"></div>
+                                    </div>
+
+                                    <!-- Layer 6: Role Check -->
+                                    <div class="flow-box warning" style="min-width: 280px;">
+                                        <h3>👑 LAYER 6: ROLE AUTHORIZATION</h3>
+                                        <div class="tech">admin | user | viewer</div>
+                                    </div>
+
+                                    <div class="arrow">
+                                        <div class="arrow-line"></div>
+                                    </div>
+
+                                    <!-- Layer 7: Audit -->
+                                    <div class="security-layer" style="min-width: 400px; border-color: #00d4ff;">
+                                        <h3 style="color: #00d4ff;">📋 LAYER 7: AUDIT LOGGING</h3>
+                                        <div class="security-checks">
+                                            <div class="check-item">
+                                                <div class="name">Action</div>
+                                                <div class="detail">What happened</div>
+                                            </div>
+                                            <div class="check-item">
+                                                <div class="name">User</div>
+                                                <div class="detail">Who did it</div>
+                                            </div>
+                                            <div class="check-item">
+                                                <div class="name">Timestamp</div>
+                                                <div class="detail">When</div>
+                                            </div>
+                                            <div class="check-item">
+                                                <div class="name">IP/Context</div>
+                                                <div class="detail">From where</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="arrow">
+                                        <div class="arrow-line"></div>
+                                    </div>
+
+                                    <!-- SUCCESS -->
+                                    <div class="flow-box success" style="min-width: 350px;">
+                                        <h3>✅ REQUEST PROCESSED</h3>
+                                        <div class="tech">Tool execution / Data access granted</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #ff8800; background: rgba(255, 136, 0, 0.2);"></div>
+                <span>Security Check</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #9945ff; background: rgba(153, 69, 255, 0.2);"></div>
+                <span>Authentication</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #00ff88; background: rgba(0, 255, 136, 0.2);"></div>
+                <span>Success Path</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #ff4444; background: rgba(255, 68, 68, 0.2);"></div>
+                <span>Rejection</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="border-color: #00d4ff; background: rgba(0, 212, 255, 0.2);"></div>
+                <span>Logging</span>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-footer">
+            <div class="stat-item">
+                <div class="stat-value">7</div>
+                <div class="stat-label">Security Layers</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">86</div>
+                <div class="stat-label">Security Tests</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">24h</div>
+                <div class="stat-label">Token Expiry</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Audit Coverage</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">0</div>
+                <div class="stat-label">External Access</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
