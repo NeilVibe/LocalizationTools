@@ -42,17 +42,34 @@
 
 ---
 
-### ISSUE-008: Project List Not Refreshing After Actions
-- **Status:** [x] Fixed (was already working)
-- **Priority:** High
-- **Fixed:** 2025-12-11
+### ISSUE-008: File Click Does Nothing - Cannot View Content
+- **Status:** [x] Fixed
+- **Priority:** Critical
+- **Fixed:** 2025-12-11 (Session 3 - CDP Verified)
 - **Component:** LDM FileExplorer.svelte
 
-**Problem:** User reported list not refreshing after actions.
+**Problem:** Clicking on a file in the TreeView did nothing. Grid remained blank with "Select a file" placeholder.
 
-**Investigation:** Code review showed `loadProjects()` and `loadProjectTree()` were already being called after mutations.
+**Root Cause:** `handleNodeSelect()` expected wrong event format from Carbon TreeView:
+- **Expected:** `event.detail.data.type` (custom format)
+- **Actual:** Carbon passes `{id: "file-1", text: "name.txt", leaf: true}`
 
-**Verification:** CDP test confirmed project count increased from 3→4 after create, and UI reflected changes.
+**Error:** `TypeError: Cannot read properties of undefined (reading 'type')`
+
+**Fix Applied:** Parse the node ID string which was formatted as `"{type}-{id}"`:
+```javascript
+// Parse our custom ID format: "file-{id}" or "folder-{id}"
+const idParts = node.id.split('-');
+const nodeType = idParts[0];  // 'file' or 'folder'
+const nodeId = parseInt(idParts[1], 10);
+```
+
+**Verification:** CDP test confirmed:
+- `Has content: true`
+- `Cell count: 133`
+- Korean text visible in grid
+
+**Files Changed:** `FileExplorer.svelte:219-249`
 
 ---
 
