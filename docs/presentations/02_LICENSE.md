@@ -11,8 +11,8 @@
 | **FastAPI** | MIT | Backend API |
 | **Python** | PSF License | Runtime |
 | **SQLAlchemy** | MIT | ORM |
-| **PostgreSQL** | PostgreSQL License | Database |
-| **SQLite** | Public Domain | Local DB |
+| **PostgreSQL** | PostgreSQL License | Central Database |
+| **SQLite** | Public Domain | Local Database |
 | **Socket.IO** | MIT | Real-time |
 | **Carbon Components** | Apache 2.0 | UI components |
 
@@ -20,33 +20,25 @@
 
 ## License Summary
 
-```
-+------------------------------------------------------------------+
-|                    LICENSE OVERVIEW                               |
-+------------------------------------------------------------------+
-|                                                                   |
-|  FRONTEND (Electron + Svelte)                                     |
-|  - MIT License                                                    |
-|  - Free for commercial use                                        |
-|  - No attribution required in UI                                  |
-|                                                                   |
-|  BACKEND (FastAPI + Python)                                       |
-|  - MIT License (FastAPI)                                          |
-|  - PSF License (Python)                                           |
-|  - Free for commercial use                                        |
-|                                                                   |
-|  DATABASE                                                         |
-|  - PostgreSQL License (similar to MIT/BSD)                        |
-|  - SQLite: Public Domain                                          |
-|  - No licensing fees                                              |
-|                                                                   |
-|  AI/ML COMPONENTS                                                 |
-|  - SentenceTransformers: Apache 2.0                               |
-|  - FAISS (Facebook): MIT                                          |
-|  - Free for commercial use                                        |
-|                                                                   |
-+------------------------------------------------------------------+
-```
+### FRONTEND (Electron + Svelte)
+- MIT License
+- Free for commercial use
+- No attribution required in UI
+
+### BACKEND (FastAPI + Python)
+- MIT License (FastAPI)
+- PSF License (Python)
+- Free for commercial use
+
+### DATABASE
+- PostgreSQL License (similar to MIT/BSD)
+- SQLite: Public Domain
+- No licensing fees
+
+### AI/ML COMPONENTS
+- SentenceTransformers: Apache 2.0
+- FAISS (Facebook): MIT
+- Free for commercial use
 
 ---
 
@@ -63,29 +55,17 @@
 
 ---
 
-## No License Fees Required
+## Software License Costs
 
-```
-+------------------------------------------------------------------+
-|                    COST BREAKDOWN                                 |
-+------------------------------------------------------------------+
-|                                                                   |
-|  SOFTWARE LICENSES                                                |
-|  +------------------------+-------------------+                   |
-|  | Component              | Annual Cost       |                   |
-|  +------------------------+-------------------+                   |
-|  | Electron               | $0                |                   |
-|  | Python                 | $0                |                   |
-|  | FastAPI                | $0                |                   |
-|  | PostgreSQL             | $0                |                   |
-|  | SQLite                 | $0                |                   |
-|  | All UI libraries       | $0                |                   |
-|  +------------------------+-------------------+                   |
-|  | TOTAL                  | $0                |                   |
-|  +------------------------+-------------------+                   |
-|                                                                   |
-+------------------------------------------------------------------+
-```
+| Component | Annual Cost |
+|-----------|-------------|
+| Electron | $0 |
+| Python | $0 |
+| FastAPI | $0 |
+| PostgreSQL | $0 |
+| SQLite | $0 |
+| All UI libraries | $0 |
+| **TOTAL** | **$0** |
 
 ---
 
