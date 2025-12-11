@@ -4,7 +4,7 @@
 
 ---
 
-## 🚀 QUICK START (5 MINUTES)
+## QUICK START (5 MINUTES)
 
 ### 1. Start the Backend Server
 
@@ -17,9 +17,9 @@ Server runs on `http://localhost:8888`
 
 **What you'll see:**
 - Comprehensive logging of every request/response
-- Database initialization (PostgreSQL or SQLite)
+- Database connection to PostgreSQL
 - WebSocket server ready
-- All 38 API endpoints registered
+- All 63+ API endpoints registered
 
 **Test it:**
 - Health check: `http://localhost:8888/health`
@@ -59,7 +59,7 @@ Dashboard runs on `http://localhost:5175`
 
 ---
 
-## 🧪 TESTING
+## TESTING
 
 ### Run All Tests
 
@@ -79,7 +79,7 @@ python3 -m pytest tests/unit/ -v
 python3 -m pytest --cov=server --cov=client
 ```
 
-**Expected:** 160 tests passing (49% coverage) ✅
+**Expected:** 912 tests passing
 
 ---
 
@@ -101,7 +101,7 @@ curl -X GET http://localhost:8888/api/v2/auth/me \
 
 ---
 
-## 🛠️ SETUP & UTILITIES
+## SETUP & UTILITIES
 
 ### Create Admin User
 
@@ -130,11 +130,11 @@ echo "New version: $NEW_VERSION"
 ### Download AI Models
 
 ```bash
-# Download Korean BERT model (447MB)
+# Download Qwen embedding model
 python3 scripts/download_models.py
 ```
 
-**Note:** Model already installed locally in `server/data/models/`
+**Note:** Model downloaded on first use from HuggingFace
 
 ---
 
@@ -153,7 +153,7 @@ python3 scripts/download_models.py
 
 ---
 
-## 🌐 IMPORTANT URLS
+## IMPORTANT URLS
 
 **When Servers Running:**
 
@@ -166,21 +166,22 @@ python3 scripts/download_models.py
 
 ---
 
-## ⚙️ ENVIRONMENT VARIABLES
+## ENVIRONMENT VARIABLES
 
-### Server Configuration
+### Server Configuration (.env)
 
 ```bash
-# Database (default: PostgreSQL)
-DATABASE_TYPE=postgresql  # or sqlite
+# PostgreSQL (REQUIRED)
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=6433          # PgBouncer port
+POSTGRES_USER=localization_admin
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=localizationtools
+DATABASE_TYPE=postgresql
 
 # Server
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8888
-
-# Optional Services
-REDIS_ENABLED=false  # true to enable
-CELERY_ENABLED=false  # true to enable
 
 # Development
 DEBUG=true
@@ -188,7 +189,7 @@ DEBUG=true
 
 ---
 
-## 📦 BUILD & DISTRIBUTION
+## BUILD & DISTRIBUTION
 
 ### Trigger Production Build
 
@@ -198,13 +199,14 @@ echo "Build FULL v$(date '+%y%m%d%H%M')" >> BUILD_TRIGGER.txt
 git add BUILD_TRIGGER.txt
 git commit -m "Trigger build v$(date '+%y%m%d%H%M')"
 git push origin main
+git push gitea main
 ```
 
 **Build Status:** https://github.com/NeilVibe/LocalizationTools/actions
 
 ---
 
-## 🔍 TROUBLESHOOTING
+## TROUBLESHOOTING
 
 ### Server Won't Start
 
@@ -224,12 +226,14 @@ tail -f server/data/logs/server.log
 ### Database Issues
 
 ```bash
-# Reset database (SQLite)
-rm server/data/app.db
-python3 server/main.py  # Will recreate
+# Check PostgreSQL connection
+PGPASSWORD='your_password' psql -h 127.0.0.1 -p 5432 -U localization_admin -d localizationtools -c "SELECT 1"
 
-# Check database
-sqlite3 server/data/app.db ".tables"
+# Check PgBouncer
+PGPASSWORD='your_password' psql -h 127.0.0.1 -p 6433 -U localization_admin -d localizationtools -c "SELECT 1"
+
+# View tables
+PGPASSWORD='your_password' psql -h 127.0.0.1 -p 5432 -U localization_admin -d localizationtools -c "\dt"
 ```
 
 ---
@@ -249,19 +253,19 @@ python3 -m pytest -s
 
 ---
 
-## 🎓 NEXT STEPS
+## NEXT STEPS
 
 After getting everything running:
 
 1. **Read Core Documentation:**
    - `CLAUDE.md` - Master navigation hub
-   - `DEPLOYMENT_ARCHITECTURE.md` - Understand hybrid model
-   - `XLSTRANSFER_GUIDE.md` - XLSTransfer deep dive
+   - `DEPLOYMENT_ARCHITECTURE.md` - Understand architecture
+   - `P21_DATABASE_POWERHOUSE.md` - Database performance
 
 2. **Explore the Codebase:**
    - `server/main.py` - Server entry point
    - `server/api/*_async.py` - Async API endpoints
-   - `server/tools/xlstransfer/` - Tool template
+   - `server/tools/ldm/` - LDM tool implementation
 
 3. **Run Your First Test:**
    - Start backend server
@@ -270,10 +274,10 @@ After getting everything running:
 
 ---
 
-## 📚 Related Documentation
+## Related Documentation
 
 - **CLAUDE.md** - Master navigation hub (start here!)
 - **PROJECT_STRUCTURE.md** - Complete file tree
 - **TESTING_GUIDE.md** - Comprehensive testing procedures
-- **MONITORING_COMPLETE_GUIDE.md** - Monitoring & logging
+- **P21_DATABASE_POWERHOUSE.md** - Database configuration
 - **BUILD_AND_DISTRIBUTION.md** - Build system

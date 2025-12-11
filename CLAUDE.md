@@ -1,7 +1,7 @@
 # CLAUDE.md - LocaNext Master Navigation Hub
 
-**Version:** 2512111500 (2025-12-11)
-**Status:** Backend ✅ | Frontend ✅ | Database ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 67% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅ | **DB Opt P18** ✅ | **TM API** ✅ | **P21 DB Powerhouse** ✅ | **TM Indexer** ✅
+**Version:** 2512111600 (2025-12-11)
+**Status:** Backend ✅ | Frontend ✅ | **PostgreSQL** ✅ | WebSocket ✅ | TaskManager ✅ | XLSTransfer ✅ | QuickSearch ✅ | KR Similar ✅ | **LDM (App #4)** 🔄 67% | Distribution ✅ | Security ✅ | Tests ✅ | Structure ✅ | Health Check ✅ | Telemetry ✅ | Testing Toolkit ✅ | **Migration VERIFIED** ✅ | **CI/CD COMPLETE** ✅ | **Smart Cache v2.0** ✅ | **DB Opt P18** ✅ | **TM API** ✅ | **P21 DB Powerhouse** ✅ | **TM Indexer** ✅
 
 ---
 
@@ -83,14 +83,79 @@
 
 ---
 
+## 🗄️ DATABASE ARCHITECTURE (CRITICAL!)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DATABASE ARCHITECTURE - READ THIS!                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                    PostgreSQL (CENTRAL DB)                          │    │
+│  │                    ═══════════════════════                          │    │
+│  │  • ALL text data (LDM rows, TM entries, users, telemetry)          │    │
+│  │  • Shared across all users via WebSocket sync                      │    │
+│  │  • PgBouncer for 1000 concurrent connections                       │    │
+│  │  • COPY TEXT for 31K entries/sec bulk insert                       │    │
+│  │  • Port 6433 (PgBouncer) → Port 5432 (PostgreSQL)                  │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                    Local Disk (USER'S PC)                           │    │
+│  │                    ══════════════════════                           │    │
+│  │  • FAISS indexes (.index files) - rebuildable from DB              │    │
+│  │  • Embeddings (.npy files) - rebuildable from DB                   │    │
+│  │  • ML models (sentence-transformers) - downloadable                │    │
+│  │  • Processing cache - temporary, rebuildable                       │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  RULE: User's PC does HEAVY LIFTING (ML, FAISS). All TEXT goes to DB.      │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  WHAT GOES WHERE:                                                           │
+│  ┌──────────────────────────────┬───────────────────────────────────────┐  │
+│  │ PostgreSQL (Shared)          │ Local Disk (Heavy Processing)         │  │
+│  ├──────────────────────────────┼───────────────────────────────────────┤  │
+│  │ LDM rows (source/target)     │ FAISS indexes (.index)                │  │
+│  │ TM entries                   │ Embeddings (.npy)                     │  │
+│  │ Users, sessions              │ ML models (Qwen3-Embedding)           │  │
+│  │ Telemetry data               │ Processing cache                      │  │
+│  │ Glossaries                   │ Temporary files                       │  │
+│  │ File metadata                │ Build artifacts                       │  │
+│  └──────────────────────────────┴───────────────────────────────────────┘  │
+│                                                                             │
+│  DEV = PRODUCTION: Same PostgreSQL database, same code. No fallbacks.      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Points:**
+- **PostgreSQL ONLY** for all LocaNext data - NO SQLite
+- **Real-time collaboration**: Multiple users can edit same file via WebSocket
+- **Row locking**: Prevents edit conflicts in multi-user scenarios
+- **Local = Heavy**: FAISS/embeddings stay local because they're large and rebuildable
+- **Central = Text**: All text data synced to PostgreSQL for sharing
+
+**LDM as Network CAT Tool:**
+LDM is designed like Lokalize or Phrase - multiple translators work on same files simultaneously:
+- User A locks row 5, User B sees it locked in real-time
+- TM suggestions come from shared PostgreSQL database
+- Local FAISS indexes are built from DB data on demand
+
+**See:** `docs/deployment/DEPLOYMENT_ARCHITECTURE.md` for full details
+
+---
+
 ## 🎯 PROJECT OVERVIEW
 
 **LocaNext** (formerly LocalizationTools) is a **professional desktop platform** that consolidates localization/translation Python scripts into one unified Electron application.
 
 ### Key Features:
 - 🏢 **Platform approach**: Host 10-20+ tools in one app
-- 💻 **Local processing**: Runs on user's CPU, works offline
-- 📊 **Central monitoring**: Optional telemetry to server
+- 💻 **Local processing**: Heavy ML/FAISS runs on user's CPU
+- 📊 **Central database**: All text data syncs to PostgreSQL
+- 🌐 **Multi-user**: Real-time collaboration via WebSocket
 - 👔 **Professional**: CEO/management-ready quality
 
 ### Current Status (2025-12-11):
@@ -654,7 +719,7 @@ bash scripts/clean_logs.sh
 - **Priority 11.0:** Health Check & Auto-Repair ✅ COMPLETE
 - **Priority 12.5:** Central Telemetry System ✅ FULL STACK COMPLETE
 - **Priority 13.0:** Gitea Patch Server ✅ FULLY COMPLETE + AUTOMATED
-  - ✅ Installed: `/home/neil1988/gitea/` (v1.22.3, SQLite)
+  - ✅ Installed: `/home/neil1988/gitea/` (v1.22.3)
   - ✅ Scripts: `start.sh`, `stop.sh`, `start_runner.sh`, `stop_runner.sh`
   - ✅ Workflow: `.gitea/workflows/build.yml` (test → build → release + cleanup)
   - ✅ Runner: Patched v15 (NUL byte fix) + Non-Ephemeral (6-month token)
@@ -826,9 +891,10 @@ This project is **97% complete**, **clean**, **organized**, and **production-rea
 
 ---
 
-*Last updated: 2025-12-09 by Claude*
+*Last updated: 2025-12-11 by Claude*
 *Tests: 912 total | Structure unified | Frontend: 164 | API Sim: 168 | Security: 86 | QA Tools: 27*
-*Tools: 4 (XLSTransfer, QuickSearch + QA Tools, KR Similar, LDM 56%)*
-*P17 LDM: Phase 6 in progress - Cell display, Glossary remaining*
+*Tools: 4 (XLSTransfer, QuickSearch + QA Tools, KR Similar, LDM 67%)*
+*Database: PostgreSQL + PgBouncer (NO SQLite for LocaNext) | Dev = Production*
+*P17 LDM: Phase 7 in progress - TM System (TMManager + TMIndexer complete)*
 *Demo: 11 screenshots in docs/demos/ldm/ | Performance: 103K rows in 50 sec*
 *MASTER NAVIGATION HUB - All paths documented | Self-Repair ✅ | Auto-Update ✅*

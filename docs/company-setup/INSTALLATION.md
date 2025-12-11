@@ -77,6 +77,8 @@ START_SSH_SERVER = true
 OFFLINE_MODE = true
 
 [database]
+; Note: This is Gitea's internal database, NOT LocaNext's database
+; LocaNext uses PostgreSQL - this SQLite is only for Gitea's own data
 DB_TYPE = sqlite3
 PATH = /opt/gitea/data/gitea.db
 
@@ -167,7 +169,14 @@ cat > .env << 'EOF'
 # Server Configuration
 SERVER_HOST=0.0.0.0
 SERVER_PORT=9999
-DATABASE_URL=sqlite:///./central_telemetry.db
+
+# PostgreSQL (REQUIRED)
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=6433
+POSTGRES_USER=localization_admin
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=localizationtools
+DATABASE_TYPE=postgresql
 
 # Security
 SECRET_KEY=your-super-secret-key-change-this

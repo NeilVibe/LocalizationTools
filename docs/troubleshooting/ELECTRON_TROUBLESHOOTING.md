@@ -100,7 +100,7 @@ ipcMain.handle('append-log', async (event, { logPath, message }) => {
 
 **Symptoms:**
 ```
-sqlite3.OperationalError: no such table: users
+psycopg2.errors.UndefinedTable: relation "users" does not exist
 ```
 
 **Root Cause:** `dependencies.py` creates engine but doesn't call `create_all()` to make tables.

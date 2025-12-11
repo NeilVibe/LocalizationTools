@@ -304,7 +304,7 @@ Software (All Free):
 [ ] OS: Ubuntu Server 22.04 LTS or Windows Server
 [ ] Python 3.11+
 [ ] Node.js 20+
-[ ] PostgreSQL 15+ (or use SQLite)
+[ ] PostgreSQL 15+ with PgBouncer
 
 Network:
 [ ] IP address in allowed range

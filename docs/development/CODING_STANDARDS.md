@@ -164,23 +164,33 @@ socket.on('log_entry', (data) => {
 
 ---
 
-### 5. Optional Services
+### 5. Database Architecture
 
-**All optional services gracefully degrade if unavailable:**
+**PostgreSQL is REQUIRED for all text data. No SQLite.**
 
-- **PostgreSQL:** Configured, ready to use, but SQLite is default
-  - To enable: Set `DATABASE_TYPE=postgresql` in environment
-  - See: `docs/POSTGRESQL_SETUP.md`
+```
+TEXT DATA → PostgreSQL (shared, synced across users)
+COMPUTED FILES → Local disk (heavy, rebuildable from DB)
+```
 
-- **Redis:** Caching layer with graceful fallback
+| PostgreSQL | Local Disk |
+|------------|------------|
+| LDM rows (source/target) | FAISS indexes |
+| TM entries | Embeddings (.npy) |
+| Projects, files metadata | Hash lookups (.pkl) |
+| Users, sessions, logs | ML models |
+
+- **PostgreSQL + PgBouncer:** 1000 connections, real-time sync
+  - Required for multi-user collaboration
+  - See: `docs/deployment/POSTGRESQL_SETUP.md`
+  - See: `docs/wip/P21_DATABASE_POWERHOUSE.md`
+
+- **Redis:** Optional caching layer
   - To enable: Set `REDIS_ENABLED=true`
   - Falls back silently if unavailable
-  - See: `server/utils/cache.py`
 
-- **Celery:** Background tasks (daily stats, cleanup)
+- **Celery:** Optional background tasks
   - To enable: Set `CELERY_ENABLED=true`
-  - Optional, not required for core functionality
-  - See: `server/tasks/`
 
 ---
 

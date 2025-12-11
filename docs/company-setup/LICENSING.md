@@ -69,8 +69,8 @@ LICENSE BREAKDOWN:
 
 | Component | Version | License | Commercial Use |
 |-----------|---------|---------|----------------|
-| SQLite | 3.x | Public Domain | ✅ Yes |
 | PostgreSQL | 15+ | PostgreSQL License | ✅ Yes |
+| PgBouncer | 1.16+ | ISC | ✅ Yes |
 | SQLAlchemy | 2.0+ | MIT | ✅ Yes |
 
 ### AI/ML Components

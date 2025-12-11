@@ -1,132 +1,150 @@
 # Deployment Architecture
 
-**Hybrid Model** | **SQLite + PostgreSQL** | **Local Processing + Central Monitoring**
+**Central PostgreSQL** | **Local Heavy Processing** | **Shared Data + Real-time Sync**
 
 ---
 
-## 🌐 PRODUCTION DEPLOYMENT MODEL
-
-**IMPORTANT**: This is a **HYBRID deployment model** - understanding this is critical!
-
-### How Users Get the App:
+## PRODUCTION DEPLOYMENT MODEL
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ USER'S PC (Windows .exe - Distributed to End Users)        │
+│ USER'S PC (Windows .exe)                                    │
 ├─────────────────────────────────────────────────────────────┤
-│ LocalizationTools.exe (Electron app)                        │
-│ ├─ Local SQLite Database (user's operations/files)         │
-│ ├─ Embedded Backend (Python + FastAPI inside .exe)         │
-│ ├─ ALL Processing Happens Locally (FAST, works OFFLINE)    │
-│ └─ Optionally sends telemetry ⬆️ → Central Server          │
-│    (logs, errors, usage stats - when internet available)   │
+│ LocaNext.exe (Electron app)                                 │
+│ ├─ Embedded Backend (Python + FastAPI)                      │
+│ ├─ LOCAL HEAVY PROCESSING:                                  │
+│ │   ├─ FAISS indexes (server/data/ldm_tm/)                  │
+│ │   ├─ Embeddings generation                                │
+│ │   ├─ File parsing                                         │
+│ │   └─ Model inference (Qwen)                               │
+│ │                                                           │
+│ └─ ALL TEXT DATA → Central PostgreSQL                       │
+│     ├─ LDM rows (source/target)                             │
+│     ├─ TM entries                                           │
+│     ├─ Projects, files metadata                             │
+│     └─ Logs, telemetry                                      │
 └─────────────────────────────────────────────────────────────┘
-                                ⬆️ Telemetry
-                                ⬇️ Updates
+                        │
+                        │ ALL DATA (PostgreSQL connection)
+                        │ WebSocket (real-time sync)
+                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ CENTRAL SERVER (Your Server - Cloud/WSL2)                  │
+│ CENTRAL SERVER                                              │
 ├─────────────────────────────────────────────────────────────┤
-│ PostgreSQL Database                                         │
-│ ├─ Receives logs from ALL users                            │
-│ ├─ Aggregates usage statistics                             │
-│ ├─ Stores error reports                                    │
-│ └─ Tracks app versions/updates                             │
+│ PostgreSQL + PgBouncer                                      │
+│ ├─ ALL user data (LDM, TM, projects, files, rows)           │
+│ ├─ 1000 connections via PgBouncer                           │
+│ ├─ Real-time sync (multiple users same file)                │
+│ ├─ Logs, telemetry, sessions                                │
+│ └─ 100+ users, 1M rows each = no problem                    │
 │                                                             │
-│ Admin Dashboard (Monitor all users)                        │
-│ ├─ Real-time activity feed                                 │
-│ ├─ Error tracking across all installations                 │
-│ ├─ Usage statistics and analytics                          │
-│ └─ Push updates to users                                   │
+│ Admin Dashboard                                             │
+│ ├─ Monitor all users                                        │
+│ ├─ View logs, errors                                        │
+│ └─ Usage statistics                                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🗄️ WHY BOTH SQLite AND PostgreSQL?
+## WHY THIS ARCHITECTURE?
 
-### SQLite (In User's .exe):
-- ✅ Fast local operations (no network latency)
-- ✅ Works completely OFFLINE
-- ✅ No database server installation required
-- ✅ User's data stays on their PC
-- ✅ Each user has isolated database
+### Central PostgreSQL (ALL text data):
+- Multiple users work on SAME file simultaneously
+- Real-time sync via WebSocket
+- Data never lost (server backup)
+- Admin can monitor everything
+- PgBouncer handles 1000 connections
 
-### PostgreSQL (Central Server):
-- ✅ Handles concurrent writes from many users
-- ✅ Aggregates telemetry from all installations
-- ✅ Powers Admin Dashboard
-- ✅ Stores update information
-- ✅ Reliable for production server
-
-**This is NOT redundancy - they serve different purposes!**
+### Local Processing (Heavy computation):
+- FAISS indexes built on user's PC
+- Embeddings computed locally
+- File parsing done locally
+- Model inference (Qwen) runs locally
+- Only TEXT data travels over network
 
 ---
 
-## 💻 DEVELOPMENT/TESTING (Your WSL2 Environment)
+## WHAT GOES WHERE
 
-```
-Your WSL2 Environment:
-├─ Backend Server: localhost:8888 (SQLite for now, PostgreSQL later)
-├─ Browser Testing: localhost:5173 (tests the .exe functionality)
-├─ Admin Dashboard: localhost:5175 (will connect to PostgreSQL)
-└─ Goal: Test everything before building Windows .exe
-```
-
-### Testing Flow:
-1. Test in browser (WSL2) → Validates all functionality
-2. Build Windows .exe → Packages everything
-3. Deploy central server with PostgreSQL → Receives telemetry
-4. Distribute .exe to users → Each gets standalone app
+| Data Type | Location | Why |
+|-----------|----------|-----|
+| LDM rows (source/target text) | PostgreSQL | Shared, synced, backed up |
+| TM entries | PostgreSQL | Shared across users |
+| Projects, folders, files metadata | PostgreSQL | Shared |
+| Users, sessions, auth | PostgreSQL | Centralized |
+| Logs, telemetry | PostgreSQL | Admin monitoring |
+| FAISS indexes (.index files) | Local disk | Heavy, rebuildable from DB |
+| Hash lookups (.pkl files) | Local disk | Heavy, rebuildable from DB |
+| Embeddings (.npy files) | Local disk | Heavy, rebuildable from DB |
+| ML models (Qwen) | Local disk | Large, downloaded once |
 
 ---
 
-## 🏢 THREE APPLICATIONS
+## THREE APPLICATIONS
 
-### 1. LocaNext (Electron Desktop App) - ✅ COMPLETE
+### 1. LocaNext (Electron Desktop App)
 - **For**: End users who run tools
-- **Tech Stack**: Electron + Svelte + Skeleton UI (matte dark theme)
-- **Location**: `/locaNext/` folder
+- **Tech Stack**: Electron + Svelte + Carbon UI
+- **Location**: `/locaNext/`
 - **Features**:
-  - Ultra-clean top menu (Apps dropdown + Tasks button)
-  - Everything on one page (seamless UI/UX)
-  - Modular sub-GUIs within same window
-  - Task Manager (live progress tracking, history)
-  - Local processing (user's CPU)
-  - Sends logs to server
-  - Authentication with "Remember Me"
-  - Real-time WebSocket updates
+  - Apps: XLSTransfer, QuickSearch, KR Similar, LDM
+  - Task Manager (live progress tracking)
+  - Local heavy processing (user's CPU)
+  - Connects to Central PostgreSQL
+  - Real-time WebSocket sync
 
-### 2. Server Application (FastAPI Backend) - ✅ COMPLETE
-- **For**: Central logging, monitoring, analytics
-- **Tech Stack**: FastAPI + SQLAlchemy + Socket.IO
-- **Location**: `server/`
+### 2. Server Application (FastAPI Backend)
+- **For**: API, database, real-time sync
+- **Tech Stack**: FastAPI + SQLAlchemy + PostgreSQL
+- **Location**: `/server/`
 - **Features**:
-  - 38 API endpoints (19 async + 19 sync)
+  - 63+ API endpoints
   - WebSocket real-time events
-  - Comprehensive logging middleware
   - JWT authentication
-  - PostgreSQL/SQLite support
-  - Optional Redis caching
-  - Optional Celery background tasks
+  - PgBouncer connection pooling
 
-### 3. Admin Dashboard (SvelteKit Web App) - ⏳ 85% COMPLETE
-- **For**: Administrators to monitor usage and manage users
-- **Tech Stack**: SvelteKit + Skeleton UI (matte dark theme)
-- **Location**: `/adminDashboard/` folder
+### 3. Admin Dashboard (SvelteKit Web App)
+- **For**: Administrators to monitor usage
+- **Tech Stack**: SvelteKit + Carbon UI
+- **Location**: `/adminDashboard/`
 - **Features**:
-  - Dashboard home with stats cards
-  - User management (view, edit, delete)
-  - Live activity feed (real-time WebSocket)
-  - Statistics page with charts
-  - Logs viewer with filters
-  - Export to CSV/JSON
-  - User detail pages
+  - User management
+  - Live activity feed
+  - Logs viewer
+  - Telemetry statistics
 
 ---
 
-## 📚 Related Documentation
+## DATABASE CONFIGURATION
 
-- **POSTGRESQL_SETUP.md** - PostgreSQL configuration guide
+### Central Server
+```
+PostgreSQL: port 5432
+PgBouncer:  port 6433 (connection pooling)
+
+Capacity:
+- 1000 client connections (via PgBouncer)
+- 100 database connections (pool)
+- 100+ users simultaneous
+- 1M rows per user = no problem
+```
+
+### User's PC (.env)
+```bash
+POSTGRES_HOST=your-central-server.com
+POSTGRES_PORT=6433
+POSTGRES_USER=localization_admin
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=localizationtools
+DATABASE_TYPE=postgresql
+```
+
+---
+
+## Related Documentation
+
+- **POSTGRESQL_SETUP.md** - PostgreSQL + PgBouncer configuration
+- **P21_DATABASE_POWERHOUSE.md** - Database performance tuning
 - **DEPLOYMENT.md** - Production deployment procedures
 - **ENTERPRISE_DEPLOYMENT.md** - Enterprise-scale deployment
-- **SECURITY_AND_LOGGING.md** - Security best practices

@@ -1035,3 +1035,99 @@ async def add_tm_entry(
         return result
     finally:
         sync_db.close()
+
+
+@router.post("/tm/{tm_id}/build-indexes")
+async def build_tm_indexes(
+    tm_id: int,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Build FAISS indexes for a Translation Memory.
+
+    Creates:
+    - whole_text_lookup (hash index for Tier 1 exact match)
+    - line_lookup (hash index for Tier 3 line match)
+    - whole.index (FAISS HNSW for Tier 2 semantic search)
+    - line.index (FAISS HNSW for Tier 4 line-by-line search)
+
+    This is required before using the 5-Tier Cascade TM search.
+    Building indexes can take several minutes for large TMs (50k+ entries).
+    """
+    from server.tools.ldm.tm_indexer import TMIndexer
+
+    logger.info(f"Building TM indexes: tm_id={tm_id}, user={current_user['user_id']}")
+
+    sync_db = next(get_db())
+    try:
+        # Verify TM ownership first
+        tm = sync_db.query(LDMTranslationMemory).filter(
+            LDMTranslationMemory.id == tm_id
+        ).first()
+
+        if not tm:
+            raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+        if tm.owner_id != current_user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Build indexes
+        indexer = TMIndexer(sync_db)
+        result = indexer.build_indexes(tm_id)
+
+        logger.success(f"TM indexes built: tm_id={tm_id}, entries={result['entry_count']}")
+        return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"TM index build failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Index build failed: {str(e)}")
+    finally:
+        sync_db.close()
+
+
+@router.get("/tm/{tm_id}/indexes")
+async def get_tm_index_status(
+    tm_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Get index status for a Translation Memory.
+
+    Returns list of indexes and their status.
+    """
+    from server.database.models import LDMTMIndex
+
+    # Verify TM ownership
+    result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    tm = result.scalar_one_or_none()
+
+    if not tm:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    # Get indexes
+    result = await db.execute(
+        select(LDMTMIndex).where(LDMTMIndex.tm_id == tm_id)
+    )
+    indexes = result.scalars().all()
+
+    return {
+        "tm_id": tm_id,
+        "tm_status": tm.status,
+        "indexes": [
+            {
+                "type": idx.index_type,
+                "status": idx.status,
+                "file_size": idx.file_size,
+                "built_at": idx.built_at.isoformat() if idx.built_at else None
+            }
+            for idx in indexes
+        ]
+    }

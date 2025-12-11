@@ -4,235 +4,207 @@
 
 ---
 
-## 📁 COMPLETE PROJECT TREE
+## COMPLETE PROJECT TREE
 
 ```
 LocalizationTools/
 │
-├── 📋 PROJECT DOCS (READ THESE!)
+├── PROJECT DOCS (READ THESE!)
 │   ├── CLAUDE.md ⭐ MASTER NAVIGATION HUB - Start here!
 │   ├── Roadmap.md ⭐ Development plan, next steps
 │   ├── README.md - User-facing documentation
 │   └── docs/ - Detailed documentation (see below)
 │
-├── 🖥️ SERVER (100% COMPLETE ✅)
+├── SERVER (100% COMPLETE)
 │   ├── server/
 │   │   ├── main.py ⭐ FastAPI server entry point
 │   │   ├── config.py - Server configuration
 │   │   ├── api/ - API endpoints
-│   │   │   ├── auth_async.py ⭐ Async authentication (7 endpoints)
-│   │   │   ├── logs_async.py ⭐ Async logging (7 endpoints)
-│   │   │   ├── sessions_async.py ⭐ Async sessions (5 endpoints)
-│   │   │   ├── xlstransfer_async.py ⭐ XLSTransfer API endpoints
-│   │   │   ├── auth.py - Sync auth (backward compat)
-│   │   │   ├── logs.py - Sync logs (backward compat)
-│   │   │   ├── sessions.py - Sync sessions (backward compat)
+│   │   │   ├── auth_async.py ⭐ Async authentication
+│   │   │   ├── logs_async.py ⭐ Async logging
+│   │   │   ├── sessions_async.py ⭐ Async sessions
+│   │   │   ├── admin_telemetry.py - Telemetry dashboard
 │   │   │   └── schemas.py - Pydantic models
 │   │   ├── database/ - Database layer
-│   │   │   ├── models.py ⭐ SQLAlchemy models (13 tables)
-│   │   │   └── db_setup.py - Database initialization
-│   │   ├── data/ ⭐ ALL USER DATA (unified location)
-│   │   │   ├── localizationtools.db - SQLite database
-│   │   │   ├── logs/ - All server logs
-│   │   │   ├── backups/ - Database backups
-│   │   │   ├── cache/ - Client cache & temp files
-│   │   │   ├── outputs/ - All tool outputs
-│   │   │   │   ├── xlstransfer/{date}/ - XLSTransfer outputs
-│   │   │   │   ├── quicksearch/{date}/ - QuickSearch outputs
-│   │   │   │   └── kr_similar/{date}/ - KR Similar outputs
-│   │   │   ├── kr_similar_dictionaries/ - KR Similar dictionaries
-│   │   │   ├── quicksearch_dictionaries/ - QuickSearch dictionaries
-│   │   │   └── xlstransfer_dictionaries/ - XLSTransfer embeddings
+│   │   │   ├── models.py ⭐ SQLAlchemy models (17 tables)
+│   │   │   ├── db_setup.py - Database initialization
+│   │   │   └── db_utils.py - COPY TEXT bulk inserts
+│   │   ├── data/ ⭐ LOCAL COMPUTED FILES (heavy stuff)
+│   │   │   ├── ldm_tm/ - TM indexes (FAISS, hash, embeddings)
+│   │   │   ├── logs/ - Server logs
+│   │   │   ├── cache/ - Temp files
+│   │   │   └── outputs/ - Tool outputs
+│   │   ├── tools/ ⭐ ALL TOOL BACKENDS
+│   │   │   ├── xlstransfer/ - Excel transfer tool
+│   │   │   ├── quicksearch/ - Dictionary search
+│   │   │   ├── kr_similar/ - Korean similarity
+│   │   │   └── ldm/ ⭐ Language Data Manager
+│   │   │       ├── api.py - LDM API endpoints
+│   │   │       ├── tm_manager.py - TM CRUD
+│   │   │       ├── tm_indexer.py - FAISS index builder
+│   │   │       └── file_handlers/ - TXT/XML parsers
 │   │   ├── utils/ - Server utilities
 │   │   │   ├── auth.py ⭐ JWT, password hashing
 │   │   │   ├── dependencies.py ⭐ Async DB sessions
-│   │   │   ├── websocket.py ⭐ Socket.IO real-time events
-│   │   │   └── cache.py ⭐ Redis caching (optional)
-│   │   ├── middleware/ - Request/response logging
-│   │   │   └── logging_middleware.py ⭐ Comprehensive logging
-│   │   └── tasks/ - Background jobs (Celery)
-│   │       ├── celery_app.py - Celery configuration
-│   │       └── background_tasks.py - Scheduled tasks
+│   │   │   └── websocket.py ⭐ Real-time sync
+│   │   └── middleware/ - Request/response logging
 │   │
 │   └── BACKEND STATUS:
-│       ✅ Async architecture (10-100x concurrency)
-│       ✅ WebSocket real-time updates
-│       ✅ Comprehensive request/response logging
-│       ✅ Performance tracking
-│       ✅ PostgreSQL-ready (SQLite default)
-│       ✅ Connection pooling (20+10 overflow)
-│       ✅ 17 async tests passing
+│       ✅ PostgreSQL (ALL text data)
+│       ✅ PgBouncer (1000 connections)
+│       ✅ Async architecture
+│       ✅ WebSocket real-time sync
+│       ✅ 63+ API endpoints
 │
-│   │   ├── tools/ ⭐ ALL TOOL BACKENDS (unified)
-│   │   │   ├── xlstransfer/ ⭐ TEMPLATE FOR ALL TOOLS
-│   │   │   │   ├── core.py (49 functions)
-│   │   │   │   ├── embeddings.py (BERT + FAISS)
-│   │   │   │   ├── translation.py (matching logic)
-│   │   │   │   ├── excel_utils.py (Excel ops)
-│   │   │   │   ├── process_operation.py - 5 operations
-│   │   │   │   └── cli/ - Command-line interface
-│   │   │   ├── quicksearch/ - Dictionary search
-│   │   │   └── kr_similar/ - Korean semantic similarity
-│   │   ├── client_config/ - Client configuration (moved from client/)
-│   │   │   └── client_config.py - Client app settings
-│   │   ├── utils/client/ - Client utilities (moved from client/utils/)
-│   │   │   ├── file_handler.py, logger.py, progress.py
-│   │   └── STATUS: ✅ COMPLETE - All tool backends unified
-│
-├── 🖥️ LOCANEXT (ELECTRON DESKTOP APP - COMPLETE ✅)
+├── LOCANEXT (ELECTRON DESKTOP APP - COMPLETE)
 │   └── locaNext/
 │       ├── electron/ - Electron main process
-│       │   ├── main.js ⭐ Main process (IPC, file dialogs)
-│       │   └── preload.js - Preload script (expose APIs)
+│       │   ├── main.js ⭐ Main process
+│       │   ├── preload.js - Preload script
+│       │   ├── telemetry.js - Sends logs to central server
+│       │   └── health-check.js - Auto-repair system
 │       ├── src/ - Svelte frontend
 │       │   ├── routes/
 │       │   │   └── +page.svelte - Main app page
 │       │   └── lib/
-│       │       ├── components/
-│       │       │   ├── apps/
-│       │       │   │   ├── XLSTransfer.svelte ⭐ (17KB - exact replica)
-│       │       │   │   ├── QuickSearch.svelte ⭐ (dictionary search)
-│       │       │   │   └── KRSimilar.svelte ⭐ (Korean semantic similarity)
-│       │       │   ├── TopBar.svelte - Top menu bar
-│       │       │   └── TaskManager.svelte - Task manager sidebar
-│       │       └── api/
-│       │           ├── client.js - API client
-│       │           └── websocket.js - WebSocket service
-│       ├── package.json - Electron app dependencies
-│       └── STATUS: ✅ COMPLETE - Fully functional desktop app
+│       │       └── components/
+│       │           └── apps/
+│       │               ├── XLSTransfer.svelte
+│       │               ├── QuickSearch.svelte
+│       │               ├── KRSimilar.svelte
+│       │               └── LDM.svelte ⭐ Language Data Manager
+│       └── STATUS: ✅ COMPLETE
 │
-├── 📊 ADMIN DASHBOARD (SVELTEKIT WEB APP - 85% COMPLETE ⏳)
+├── ADMIN DASHBOARD (COMPLETE)
 │   └── adminDashboard/
 │       ├── src/routes/
 │       │   ├── +page.svelte - Dashboard Home
-│       │   ├── users/+page.svelte - User Management
-│       │   ├── users/[userId]/+page.svelte - User Detail
-│       │   ├── activity/+page.svelte - Live Activity Feed
-│       │   ├── stats/+page.svelte - Statistics
-│       │   └── logs/+page.svelte - Logs Viewer
-│       └── src/lib/
-│           ├── api/client.js - API client
-│           └── api/websocket.js - WebSocket service
+│       │   ├── users/ - User Management
+│       │   ├── stats/ - Statistics
+│       │   ├── logs/ - Logs Viewer
+│       │   └── telemetry/ - Telemetry dashboard
+│       └── STATUS: ✅ COMPLETE
 │
-├── 🧪 TESTS (COMPREHENSIVE ✅)
+├── TESTS (912 PASSING)
 │   └── tests/
-│       ├── test_async_infrastructure.py ⭐ (7 tests - async DB)
-│       ├── test_async_auth.py (6 tests - async auth)
-│       ├── test_async_sessions.py (4 tests - async sessions)
-│       ├── test_utils_logger.py (18 tests - logging)
-│       ├── test_utils_progress.py (27 tests - progress)
-│       ├── test_utils_file_handler.py (41 tests - files)
-│       └── e2e/ - End-to-end tests
+│       ├── unit/ - Unit tests
+│       ├── integration/ - Integration tests
+│       ├── e2e/ - End-to-end tests
+│       └── security/ - Security tests (86)
 │
-├── 🛠️ SCRIPTS (SETUP & UTILITIES)
+├── SCRIPTS (UTILITIES)
 │   └── scripts/
 │       ├── create_admin.py ⭐ Create admin user
-│       ├── download_models.py - Download AI models
-│       ├── setup_environment.py - Environment setup
-│       ├── test_admin_login.py - Test authentication
-│       ├── check_version_unified.py ⭐ Version consistency check
-│       ├── benchmark_server.py - Performance testing
-│       └── profile_memory.py - Memory profiling
+│       ├── check_version_unified.py ⭐ Version check
+│       ├── benchmark_copy.py - DB performance test
+│       └── generate_postgresql_config.py - DB tuning
 │
-├── 📦 ARCHIVE (REFERENCE ONLY)
-│   └── archive/gradio_version/ ⭐ OLD GRADIO UI
-│       ├── README.md - Why archived, how to use
-│       ├── run_xlstransfer.py - Gradio XLSTransfer launcher
-│       ├── run_admin_dashboard.py - Gradio admin launcher
-│       ├── client_main_gradio.py - Old client main
-│       ├── xlstransfer_ui_gradio.py - XLSTransfer Gradio UI
-│       └── admin_dashboard/ - Gradio admin dashboard
-│
-└── 📚 DOCS (DOCUMENTATION)
+└── DOCS (DOCUMENTATION)
     └── docs/
-        ├── Core Guides
-        │   ├── BUILD_AND_DISTRIBUTION.md ⭐ Build system, versioning
-        │   ├── DEPLOYMENT_ARCHITECTURE.md ⭐ Hybrid model explanation
-        │   ├── XLSTRANSFER_GUIDE.md ⭐ XLSTransfer complete guide
-        │   ├── PROJECT_STRUCTURE.md ⭐ This file
-        │   ├── QUICK_START_GUIDE.md ⭐ How to run everything
-        │   └── CODING_STANDARDS.md ⭐ Rules, patterns, conventions
-        │
-        ├── Architecture
-        │   ├── BACKEND_PRINCIPLES.md - "Backend is Flawless" principle
-        │   ├── PLATFORM_PATTERN.md - Multi-tool platform approach
-        │   └── ASYNC_PATTERNS.md - Async architecture patterns
-        │
-        ├── Development Guides
-        │   ├── ADD_NEW_APP_GUIDE.md - Adding new tools
-        │   ├── TESTING_GUIDE.md - Testing procedures
-        │   ├── LOGGING_PROTOCOL.md - Logging requirements
-        │   └── MONITORING_COMPLETE_GUIDE.md - Monitoring system
-        │
-        ├── Deployment & Operations
-        │   ├── DEPLOYMENT.md - Production deployment
-        │   ├── ENTERPRISE_DEPLOYMENT.md - Enterprise-scale
-        │   ├── POSTGRESQL_SETUP.md - PostgreSQL configuration
-        │   └── SECURITY_AND_LOGGING.md - Security practices
-        │
-        ├── Build & Release
-        │   ├── BUILD_TROUBLESHOOTING.md - Debugging builds
-        │   ├── BUILD_CHECKLIST.md - Pre-release checklist
-        │   └── PACKAGING_GUIDE.md - Electron packaging
-        │
-        └── Reference
-            ├── CLAUDE_AI_WARNINGS.md - AI hallucination prevention
-            ├── XLSTransfer_Migration_Audit.md - Migration audit
-            ├── BEST_PRACTICES.md - Best practices
-            ├── PERFORMANCE.md - Performance optimization
-            └── QUICK_TEST_COMMANDS.md - Testing commands
+        ├── getting-started/ - Onboarding guides
+        ├── architecture/ - Design patterns
+        ├── deployment/ - Production deployment
+        ├── development/ - Coding guides
+        ├── testing/ - Test procedures
+        ├── tools/ - Tool-specific docs
+        ├── wip/ - Work in progress
+        │   ├── P17_LDM_TASKS.md - LDM task tracking
+        │   ├── P17_TM_ARCHITECTURE.md - TM system design
+        │   └── P21_DATABASE_POWERHOUSE.md ⭐ DB performance
+        └── troubleshooting/ - Debug guides
 ```
 
 ---
 
-## 🏛️ ARCHITECTURE OVERVIEW
+## ARCHITECTURE OVERVIEW
 
-### The Platform Pattern
+### Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ USER'S PC (LocaNext.exe)                                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ LOCAL STORAGE (server/data/):                               │
+│ ├─ ldm_tm/{tm_id}/ - FAISS indexes, embeddings, hash        │
+│ ├─ outputs/ - Tool outputs                                  │
+│ └─ cache/ - Temp files                                      │
+│                                                             │
+│ LOCAL PROCESSING:                                           │
+│ ├─ File parsing                                             │
+│ ├─ FAISS index building                                     │
+│ ├─ Embedding generation                                     │
+│ └─ Model inference                                          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+                        │
+                        │ TEXT DATA (PostgreSQL)
+                        │ Real-time sync (WebSocket)
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│ CENTRAL POSTGRESQL                                          │
+├─────────────────────────────────────────────────────────────┤
+│ ├─ LDM: projects, folders, files, rows (ALL text)           │
+│ ├─ TM: translation_memories, tm_entries                     │
+│ ├─ Users, sessions, auth                                    │
+│ ├─ Logs, telemetry                                          │
+│ └─ PgBouncer: 1000 connections                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### What Goes Where
+
+| Data Type | Location | Why |
+|-----------|----------|-----|
+| LDM rows (source/target) | PostgreSQL | Shared, synced |
+| TM entries | PostgreSQL | Shared across users |
+| Projects, files metadata | PostgreSQL | Shared |
+| Users, sessions | PostgreSQL | Centralized |
+| Logs, telemetry | PostgreSQL | Admin monitoring |
+| FAISS indexes | Local disk | Heavy, rebuildable |
+| Embeddings | Local disk | Heavy, rebuildable |
+| ML models | Local disk | Large, downloaded once |
+
+---
+
+## THE PLATFORM PATTERN
 
 **This is a PLATFORM for hosting multiple tools**, not just one tool!
 
 ```
-LocalizationTools Desktop App
-├── Tool 1: XLSTransfer ✅ (COMPLETE - backend + frontend)
-│   ├── 10 functions (Create dictionary, Load dictionary, Transfer to Close, etc.)
-│   ├── Python modules: core.py, embeddings.py, translation.py, excel_utils.py
-│   └── Frontend: XLSTransfer.svelte (17KB)
-├── Tool 2: QuickSearch ✅ (COMPLETE - backend + frontend)
-│   ├── Dictionary search with reference lookup
-│   ├── Python modules: dictionary.py, parser.py, searcher.py
-│   └── Frontend: QuickSearch.svelte
-├── Tool 3: KR Similar ✅ (COMPLETE - backend + frontend)
-│   ├── Korean semantic similarity search
-│   ├── Python modules: core.py, embeddings.py, searcher.py
-│   └── Frontend: KRSimilar.svelte
+LocaNext Desktop App
+├── Tool 1: XLSTransfer ✅
+├── Tool 2: QuickSearch ✅
+├── Tool 3: KR Similar ✅
+├── Tool 4: LDM (Language Data Manager) 🔄 67%
 └── Tool N: ... (scalable to 100+ tools)
 ```
 
 ### Process for Adding Tools:
-1. Take monolithic .py script (1000+ lines)
-2. Restructure into clean modules (like XLSTransfer)
-3. Integrate into LocaNext (Apps dropdown → one-page GUI)
-4. Users run it locally, logs sent to server
+1. Take monolithic .py script
+2. Restructure into clean modules under `server/tools/`
+3. Create Svelte component under `locaNext/src/lib/components/apps/`
+4. Add API endpoints
+5. All text data → PostgreSQL, heavy computation → local
 
 ---
 
-## 📊 PROJECT STATS (Updated 2025-12-05)
+## PROJECT STATS (Updated 2025-12-11)
 
-- **Overall Progress**: 97% Complete ✅
-- **Backend**: 100% Complete ✅
-- **LocaNext Desktop App**: 100% Complete ✅
-- **Admin Dashboard**: 85% Complete ⏳
-- **Tests**: 885 passing ✅
-- **API Endpoints**: 47+ (async + sync) ✅
-- **Database Tables**: 13 ✅
-- **Tools**: 3/3 complete (XLSTransfer, QuickSearch, KR Similar) ✅
-- **Lines of Code**: ~18,000+ (server + client + locaNext + adminDashboard + tests)
-- **Data Structure**: Unified under `server/data/` ✅
+- **Backend**: 100% Complete
+- **LocaNext Desktop App**: 100% Complete
+- **Admin Dashboard**: 100% Complete
+- **LDM Tool**: 67% Complete (Phase 7)
+- **Tests**: 912 passing
+- **API Endpoints**: 63+
+- **Database Tables**: 17
+- **Tools**: 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
 
 ---
 
-## 📚 Related Documentation
+## Related Documentation
 
-- **CLAUDE.md** - Master navigation hub (start here!)
-- **PLATFORM_PATTERN.md** - Platform architecture explanation
-- **ADD_NEW_APP_GUIDE.md** - Adding new tools to the platform
+- **CLAUDE.md** - Master navigation hub
+- **DEPLOYMENT_ARCHITECTURE.md** - Full architecture
+- **P21_DATABASE_POWERHOUSE.md** - Database performance
+- **ADD_NEW_APP_GUIDE.md** - Adding new tools

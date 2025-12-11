@@ -3,9 +3,10 @@
 ## 🏢 **For Companies with Strict Network Security**
 
 This guide is for deploying LocaNext **entirely within your company network** with NO external dependencies. Perfect for organizations that require:
-- ✅ No internet access required
+- ✅ No external internet required (internal network only)
 - ✅ No GitHub or external services
-- ✅ All updates distributed internally
+- ✅ Central PostgreSQL for multi-user collaboration
+- ✅ All updates distributed internally via Gitea
 - ✅ Maximum security and control
 
 ---
@@ -238,7 +239,7 @@ path: http://YOUR_IP:8888/updates/download/LocaNext-Setup-1.0.0.exe
 
 | Feature | GitHub Releases | Self-Hosted (Your Setup) |
 |---------|----------------|--------------------------|
-| **External Access** | ❌ Requires internet | ✅ No internet needed |
+| **External Access** | ❌ Requires internet | ✅ Internal network only |
 | **Security Control** | ❌ Data goes to GitHub | ✅ 100% internal |
 | **Company Policy** | ❌ May not be allowed | ✅ Fully compliant |
 | **Setup Complexity** | Easy | Easy (we built it!) |

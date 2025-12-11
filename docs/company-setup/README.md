@@ -132,10 +132,10 @@ COMPANY INTERNAL NETWORK ONLY
 │ (Desktop)     │    │ (Desktop)     │    │ (Desktop)     │
 └───────────────┘    └───────────────┘    └───────────────┘
 
-                    ❌ NO INTERNET CONNECTION REQUIRED
+                    ❌ NO EXTERNAL INTERNET REQUIRED
                     ❌ NO DATA LEAVES COMPANY NETWORK
                     ❌ NO EXTERNAL API CALLS
-                    ✅ 100% INTERNAL PROCESSING
+                    ✅ 100% INTERNAL NETWORK (PostgreSQL + Apps)
 ```
 
 ---
@@ -147,7 +147,7 @@ COMPANY INTERNAL NETWORK ONLY
 | LocaNext Desktop | Main application | MIT |
 | FastAPI Backend | API server | MIT |
 | Gitea | Internal Git server | MIT |
-| SQLite/PostgreSQL | Database | Public Domain / PostgreSQL |
+| PostgreSQL + PgBouncer | Database | PostgreSQL License / ISC |
 | Korean BERT Model | AI translation | Apache 2.0 |
 | Electron | Desktop framework | MIT |
 | SvelteKit | Frontend framework | MIT |

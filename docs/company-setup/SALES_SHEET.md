@@ -37,8 +37,8 @@ Monthly subscriptions               Zero recurring cost
 
 | Benefit | Impact |
 |---------|--------|
-| **Air-gapped capable** | Works without internet |
-| **No external APIs** | Zero data transmission outside |
+| **Internal network only** | No external internet required |
+| **No external APIs** | Zero data transmission outside company |
 | **Full audit trail** | Every action logged |
 | **MIT licensed** | No legal risk, full commercial rights |
 | **Source code available** | Complete transparency |
@@ -50,7 +50,7 @@ Monthly subscriptions               Zero recurring cost
 | **Simple deployment** | ~30 minute setup |
 | **Low resource usage** | Runs on standard hardware |
 | **Self-hosted** | No cloud dependencies |
-| **Standard technologies** | Python, Node.js, SQLite |
+| **Standard technologies** | Python, Node.js, PostgreSQL |
 | **Easy maintenance** | Automatic updates via internal Git |
 
 ---
@@ -112,8 +112,8 @@ SAVINGS: $298,000 over 5 years
 |---------|-------------|
 | **Internal Git (Gitea)** | Version control without GitHub |
 | **Automatic Updates** | Deploy updates via internal server |
-| **Offline Mode** | Works without any internet |
-| **Multi-user** | Unlimited concurrent users |
+| **Central Database** | PostgreSQL for shared Translation Memory |
+| **Multi-user** | Real-time collaboration via WebSocket |
 
 ---
 

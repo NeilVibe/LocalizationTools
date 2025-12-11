@@ -379,28 +379,9 @@ def bulk_copy_rows(db_session, file_id: int, rows: list):
     return bulk_copy(raw_conn, 'ldm_rows', columns, data)
 ```
 
-### SQLite Fallback (Dev Mode)
-```python
-def bulk_copy_with_fallback(db_session, table_name: str, columns: list, rows: list):
-    """
-    Use COPY TEXT for PostgreSQL, fall back to INSERT for SQLite.
-    """
-    dialect = db_session.bind.dialect.name
-
-    if dialect == 'postgresql':
-        raw_conn = db_session.connection().connection
-        return bulk_copy(raw_conn, table_name, columns, rows)
-    else:
-        # SQLite fallback - use regular INSERT
-        from sqlalchemy import text
-        placeholders = ', '.join(['?' for _ in columns])
-        cols = ', '.join(columns)
-        stmt = text(f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders})")
-        for row in rows:
-            db_session.execute(stmt, row)
-        db_session.commit()
-        return len(rows)
-```
+### Note: PostgreSQL Only
+Dev = Production. Same PostgreSQL database, same code, same everything.
+No fallback to other databases needed.
 
 ---
 
@@ -486,7 +467,6 @@ Phase 1 (COPY TEXT):
 □ Test with 10,000 rows → verify speed improvement
 □ Test with 1,000,000 rows → verify no timeout/memory issues
 □ Test with special chars (tabs, newlines, unicode) → verify escaping works
-□ Test SQLite fallback → verify dev mode still works
 □ Benchmark: compare old INSERT vs new COPY TEXT speed
 
 Phase 2 (Tuning):
@@ -515,7 +495,7 @@ Phase 5 (Storage):
 - [x] 1.1 Create `bulk_copy()` function in `db_utils.py`
 - [x] 1.2 Create `bulk_copy_tm_entries()` wrapper
 - [x] 1.3 Create `bulk_copy_rows()` wrapper
-- [x] 1.4 Add fallback to INSERT for SQLite (dev mode)
+- [x] 1.4 PostgreSQL only (dev = production)
 - [x] 1.5 Benchmark: Create `scripts/benchmark_copy.py`
 - [x] 1.6 Update TM upload to use COPY TEXT
 - [ ] 1.7 Update file upload to use COPY TEXT (async - deferred)

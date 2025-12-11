@@ -47,7 +47,7 @@
 <div class="admin-content">
   <div class="page-header">
     <h1 class="page-title">Database Monitoring</h1>
-    <p class="page-subtitle">SQLite database statistics and table information</p>
+    <p class="page-subtitle">PostgreSQL database statistics and table information</p>
   </div>
 
   {#if loading}
@@ -182,8 +182,8 @@
             </div>
             <div class="info-item">
               <span class="tree-char">   ├─</span>
-              <span class="info-label">SQLite Version:</span>
-              <span class="info-value">{dbStats.sqlite_version || 'N/A'}</span>
+              <span class="info-label">PostgreSQL Version:</span>
+              <span class="info-value">{dbStats.postgres_version || dbStats.sqlite_version || 'N/A'}</span>
             </div>
             <div class="info-item">
               <span class="tree-char">   ├─</span>

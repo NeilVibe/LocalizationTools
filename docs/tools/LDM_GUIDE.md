@@ -236,9 +236,10 @@ Reference: `RessourcesForCodingTheProject/WebTranslatorNew/`
   - Connection pooling for 50+ users
   - Caching layer for hot data
 
-- **Offline Mode**
-  - Read-only cache for offline viewing
-  - Queue edits for sync when online
+- **Network Mode (Default)**
+  - Real-time sync via WebSocket
+  - Multi-user collaboration with row locking
+  - All edits saved immediately to PostgreSQL
 
 ---
 
@@ -271,12 +272,24 @@ User A edits row 5        User B viewing same file
 | 100KB | ~500 | <1s | ~10MB |
 | 10MB | ~50K | ~5s | ~100MB |
 | 100MB | ~500K | ~30s | ~500MB |
-| 1GB | ~5M | ~5min | PostgreSQL required |
+| 1GB | ~5M | ~5min | PgBouncer recommended |
 
-For files >100MB, consider:
-- PostgreSQL instead of SQLite
-- Background import with progress
+PostgreSQL handles ALL sizes. For very large files:
+- Use COPY TEXT bulk insert (31k entries/sec)
+- PgBouncer for connection pooling
 - Virtual scrolling (mandatory)
+
+### Data Architecture
+```
+TEXT DATA → PostgreSQL (shared, synced)
+COMPUTED FILES → Local disk (heavy, rebuildable)
+```
+
+| PostgreSQL | Local Disk |
+|------------|------------|
+| LDM rows (source/target) | FAISS indexes |
+| TM entries | Embeddings (.npy) |
+| Projects, files metadata | Hash lookups (.pkl) |
 
 ---
 

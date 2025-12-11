@@ -90,8 +90,8 @@ python3 server/main.py  # Run in foreground to see live output
 
 ### **2. Database Operations**
 ```
-2025-11-09 00:20:37 | INFO | Database initialized: sqlite
-2025-11-09 00:20:37 | SUCCESS | Sync database initialized successfully
+2025-11-09 00:20:37 | INFO | Database initialized: postgresql
+2025-11-09 00:20:37 | SUCCESS | Async database initialized successfully
 ```
 
 ### **3. WebSocket Connections**
