@@ -59,7 +59,7 @@ If none of these apply → **DOCUMENT ONLY, DO NOT FIX**
 
 ## STRICT Issue Classification Rules
 
-**BE HARSH. When in doubt, mark as OPEN.**
+**FIX EVERYTHING. NO EXCUSES. NO DEFER.**
 
 ### What is OPEN [ ]
 ```
@@ -70,35 +70,55 @@ ANY issue that:
 - Creates new connections instead of using pool
 - Disables security features
 - Has O(n) or worse where O(1) is possible
+
+ALL OPEN ISSUES MUST BE FIXED. No exceptions.
+```
+
+### What is FIXED [x]
+```
+Issue resolved with actual code changes.
+Must be tested and verified working.
 ```
 
 ### What is ACCEPT [~]
 ```
-ONLY these qualify:
+ONLY these qualify (truly not issues):
 - Pure style preference (naming, formatting)
 - Intentional design choice (documented)
-- CLI/script code (not server)
+- CLI/script code (not server code)
 - Placeholder for planned feature (documented TODO)
+
+If it affects production at scale → NOT ACCEPT
 ```
 
-### What is DEFER [-]
+### DEFER IS NOT ALLOWED [-]
 ```
-ONLY if:
-- Requires major refactor (weeks of work)
-- Has workaround that works at scale
-- Explicitly agreed with user to defer
+❌ DEFER IS REMOVED FROM THIS PROTOCOL
+
+Previous excuses that are NO LONGER VALID:
+- "Too much work" → Do the work
+- "Operations are fast" → Still blocks, still fix
+- "Requires refactor" → Do the refactor
+- "2-3 hours of work" → Spend the 2-3 hours
+
+If an issue breaks at scale, FIX IT.
+No task files. No "later". No excuses.
 ```
 
 ### Common Mistakes (DON'T DO THIS)
 ```
-❌ "Works fine now" → Still OPEN if breaks at scale
-❌ "Quick operations" → Still OPEN if blocks async
-❌ "Acceptable for internal tool" → We target 100+ users
-❌ "Minor tech debt" → If it affects scale, it's OPEN
+❌ "Works fine now" → Still breaks at scale, FIX IT
+❌ "Quick operations" → Still blocks async, FIX IT
+❌ "Acceptable for internal tool" → We target 100+ users, FIX IT
+❌ "Minor tech debt" → If it affects scale, FIX IT
+❌ "Too much work" → DO THE WORK
+❌ "Created a task file" → THAT'S NOT FIXING IT
 ```
 
-**Remember:** Project goal is 100+ concurrent users, 50M+ rows.
-Any issue that breaks this = OPEN, not ACCEPT.
+**RULE: Code review is not complete until ALL issues are FIXED or ACCEPT.**
+
+Project goal: 100+ concurrent users, 50M+ rows.
+Any issue that breaks this = MUST BE FIXED.
 
 ---
 
