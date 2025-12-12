@@ -179,6 +179,18 @@ _DEFAULT_ADMIN_PASSWORD = "admin123"
 # Security mode: "strict" will fail on insecure defaults, "warn" will only log warnings
 SECURITY_MODE = os.getenv("SECURITY_MODE", "warn")  # "strict" or "warn"
 
+# DEV_MODE: Enables localhost-only auto-authentication for autonomous testing
+# SECURITY: Only works when request comes from localhost (127.0.0.1 or ::1)
+# Set DEV_MODE=true to enable. NEVER enable in production builds.
+DEV_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
+PRODUCTION = os.getenv("PRODUCTION", "false").lower() == "true"
+
+# DEV_MODE is blocked if PRODUCTION is set
+if DEV_MODE and PRODUCTION:
+    import warnings
+    warnings.warn("DEV_MODE disabled: Cannot use DEV_MODE with PRODUCTION=true")
+    DEV_MODE = False
+
 # API Key for client-server communication
 API_KEY = os.getenv("API_KEY", "dev-key-change-in-production")
 

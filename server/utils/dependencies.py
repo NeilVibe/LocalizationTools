@@ -6,8 +6,9 @@ Dependency injection functions for FastAPI endpoints.
 
 from typing import Generator, AsyncGenerator
 
-from fastapi import Depends, HTTPException, status, Header
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status, Header, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, HTTPBasicCredentials
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from loguru import logger
@@ -72,15 +73,15 @@ def initialize_async_database():
         # PostgreSQL async URL (postgresql+asyncpg://)
         database_url = config.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
 
-        # PostgreSQL with connection pooling
+        # PostgreSQL with connection pooling (uses config values)
         _async_engine = create_async_engine(
             database_url,
             echo=config.DB_ECHO,
-            pool_size=20,              # Connection pool size
-            max_overflow=10,           # Max extra connections
-            pool_timeout=30,           # Timeout for getting connection
-            pool_recycle=3600,         # Recycle connections after 1 hour
-            pool_pre_ping=True         # Verify connections before using
+            pool_size=config.DB_POOL_SIZE,       # Connection pool size
+            max_overflow=config.DB_MAX_OVERFLOW, # Max extra connections
+            pool_timeout=config.DB_POOL_TIMEOUT, # Timeout for getting connection
+            pool_recycle=config.DB_POOL_RECYCLE, # Recycle connections after N seconds
+            pool_pre_ping=True                   # Verify connections before using
         )
 
         _async_session_maker = async_sessionmaker(
@@ -96,6 +97,9 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency to get async database session.
 
+    NOTE: Auto-commits on success, auto-rollbacks on exception.
+    For explicit transaction control, use session.begin() in endpoint.
+
     Yields:
         Async database session.
 
@@ -103,7 +107,7 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
         >>> @app.get("/users")
         >>> async def get_users(db: AsyncSession = Depends(get_async_db)):
         >>>     result = await db.execute(select(User))
-        >>>     return result.scalars().all()
+        >>>     return result.scalars().all()  # Auto-commits after return
     """
     if _async_session_maker is None:
         initialize_async_database()
@@ -111,9 +115,9 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     async with _async_session_maker() as session:
         try:
             yield session
-            await session.commit()
+            await session.commit()  # Auto-commit on success
         except Exception:
-            await session.rollback()
+            await session.rollback()  # Auto-rollback on exception
             raise
         finally:
             await session.close()
@@ -124,18 +128,50 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
 # ============================================================================
 
 # HTTP Bearer token security
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)  # auto_error=False for DEV_MODE support
+
+
+# ============================================================================
+# DEV_MODE: Localhost-only Auto-Authentication
+# ============================================================================
+
+def _is_localhost(request: Request) -> bool:
+    """Check if request comes from localhost."""
+    if not request.client:
+        return False
+    host = request.client.host
+    return host in ("127.0.0.1", "::1", "localhost")
+
+
+def _get_dev_user() -> dict:
+    """Return auto-authenticated dev user for DEV_MODE."""
+    return {
+        "user_id": 1,
+        "username": "dev_admin",
+        "role": "admin",
+        "is_active": True,
+        "dev_mode": True  # Flag to identify DEV_MODE sessions
+    }
+
+
+# Log DEV_MODE status on module load
+if config.DEV_MODE:
+    logger.warning("⚠️  DEV_MODE enabled - localhost auto-authentication active")
 
 
 def get_current_active_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db)
 ) -> dict:
     """
     FastAPI dependency to get current authenticated user (SYNC).
 
+    Supports DEV_MODE: Auto-authenticates as admin on localhost when enabled.
+
     Args:
-        credentials: HTTP Bearer token from Authorization header.
+        request: FastAPI request object.
+        credentials: HTTP Bearer token from Authorization header (optional in DEV_MODE).
         db: Database session.
 
     Returns:
@@ -143,12 +179,21 @@ def get_current_active_user(
 
     Raises:
         HTTPException: If token is invalid or user not found.
-
-    Example:
-        >>> @app.get("/protected")
-        >>> def protected_route(user: dict = Depends(get_current_active_user)):
-        >>>     return {"message": f"Hello {user['username']}"}
     """
+    # DEV_MODE: Auto-authenticate on localhost
+    if config.DEV_MODE and _is_localhost(request):
+        if not credentials:
+            logger.debug("DEV_MODE: Auto-authenticating as dev_admin")
+            return _get_dev_user()
+
+    # Normal authentication flow
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token = credentials.credentials
     user = get_current_user(token, db)
 
@@ -163,14 +208,18 @@ def get_current_active_user(
 
 
 async def get_current_active_user_async(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_async_db)
 ) -> dict:
     """
     FastAPI dependency to get current authenticated user (ASYNC).
 
+    Supports DEV_MODE: Auto-authenticates as admin on localhost when enabled.
+
     Args:
-        credentials: HTTP Bearer token from Authorization header.
+        request: FastAPI request object.
+        credentials: HTTP Bearer token from Authorization header (optional in DEV_MODE).
         db: Async database session.
 
     Returns:
@@ -184,6 +233,20 @@ async def get_current_active_user_async(
         >>> async def protected_route(user: dict = Depends(get_current_active_user_async)):
         >>>     return {"message": f"Hello {user['username']}"}
     """
+    # DEV_MODE: Auto-authenticate on localhost
+    if config.DEV_MODE and _is_localhost(request):
+        if not credentials:
+            logger.debug("DEV_MODE: Auto-authenticating as dev_admin (async)")
+            return _get_dev_user()
+
+    # Normal authentication flow
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     from server.utils.auth import get_current_user_async
 
     token = credentials.credentials
