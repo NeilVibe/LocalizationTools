@@ -64,7 +64,7 @@ def excel_column_to_index(column_letter: str) -> int:
     Convert Excel column letter to zero-based index.
 
     Args:
-        column_letter: Column letter (e.g., 'A', 'B', 'AA')
+        column_letter: Column letter (e.g., 'A', 'B', 'AA', 'AZ')
 
     Returns:
         Zero-based column index
@@ -76,8 +76,15 @@ def excel_column_to_index(column_letter: str) -> int:
         1
         >>> excel_column_to_index('Z')
         25
+        >>> excel_column_to_index('AA')
+        26
+        >>> excel_column_to_index('AZ')
+        51
     """
-    return ord(column_letter.upper()) - ord('A')
+    result = 0
+    for char in column_letter.upper():
+        result = result * 26 + (ord(char) - ord('A') + 1)
+    return result - 1
 
 
 def index_to_excel_column(index: int) -> str:
@@ -88,7 +95,7 @@ def index_to_excel_column(index: int) -> str:
         index: Zero-based column index
 
     Returns:
-        Column letter (e.g., 'A', 'B', 'AA')
+        Column letter (e.g., 'A', 'B', 'AA', 'AZ')
 
     Example:
         >>> index_to_excel_column(0)
@@ -97,8 +104,18 @@ def index_to_excel_column(index: int) -> str:
         'B'
         >>> index_to_excel_column(25)
         'Z'
+        >>> index_to_excel_column(26)
+        'AA'
+        >>> index_to_excel_column(51)
+        'AZ'
     """
-    return chr(ord('A') + index)
+    result = ""
+    index += 1  # Convert to 1-based
+    while index > 0:
+        index -= 1
+        result = chr(ord('A') + (index % 26)) + result
+        index //= 26
+    return result
 
 
 # ============================================

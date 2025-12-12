@@ -128,15 +128,20 @@ class TranslationMemory:
         project_id: Optional[int],
         exclude_row_id: Optional[int]
     ) -> List[Dict[str, Any]]:
-        """Perform semantic similarity search."""
-        # TODO: Build index from LDM rows for proper semantic search
-        # For now, fall back to text search
-        # This would require:
-        # 1. Indexing all translated rows in the project/file
-        # 2. Using FAISS to find similar embeddings
-        # 3. Returning matches above threshold
+        """
+        Perform semantic similarity search.
 
-        # Placeholder - actual implementation would build embeddings
+        NOTE: Semantic search is not yet implemented. This returns []
+        to trigger fallback to text search in the caller.
+
+        Future implementation would require:
+        1. Indexing all translated rows in the project/file
+        2. Using FAISS to find similar embeddings
+        3. Returning matches above threshold
+
+        See: DR4-004 in docs/code-review/ISSUES_20251212.md
+        """
+        # Returns empty to trigger text search fallback
         return []
 
     def _text_search(

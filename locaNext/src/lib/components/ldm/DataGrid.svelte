@@ -15,14 +15,16 @@
   } from "carbon-components-svelte";
   import { Edit, CheckmarkFilled, WarningAlt, Time, Locked } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
+  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
   import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate } from "$lib/stores/ldm.js";
+  import { serverUrl } from "$lib/stores/app.js";
   import PresenceBar from "./PresenceBar.svelte";
 
   const dispatch = createEventDispatcher();
 
-  // API base URL
-  const API_BASE = 'http://localhost:8888';
+  // API base URL from store
+  $: API_BASE = get(serverUrl);
 
   // Props
   export let fileId = null;

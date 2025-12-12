@@ -158,6 +158,7 @@ def cached(ttl: int = DEFAULT_CACHE_TTL, key_prefix: str = ""):
             if args or kwargs:
                 import hashlib
                 params_str = f"{args}{kwargs}"
+                # MD5 used for cache key uniqueness only, not security
                 params_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
                 cache_key = f"{cache_key}:{params_hash}"
 

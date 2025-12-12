@@ -398,14 +398,14 @@ class EmbeddingsManager:
                 try:
                     with open(split_dict_file, 'rb') as f:
                         split_pairs = len(pickle.load(f))
-                except:
+                except Exception:
                     pass
 
                 try:
                     if whole_dict_file.exists():
                         with open(whole_dict_file, 'rb') as f:
                             whole_pairs = len(pickle.load(f))
-                except:
+                except Exception:
                     pass
 
                 dictionaries.append({
