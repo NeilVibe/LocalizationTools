@@ -1,184 +1,222 @@
 # P26: LocaNext Full Source Code Review
 
-**Priority:** P26 | **Status:** Pending | **Created:** 2025-12-12
+**Priority:** P26 | **Status:** In Progress | **Created:** 2025-12-12
 
-**Frequency:** Weekly (or after major changes)
-
----
-
-## Purpose
-
-Systematic review of the entire codebase to identify and eliminate:
-- Dead code / unused files
-- Duplicate logic / copy-paste blocks
-- Old code coexisting with replacement code
-- Parasitic imports / dependencies
-- Inconsistent patterns
-- Technical debt
+**Frequency:** Weekly (Sunday or after major changes)
 
 ---
 
-## Review Checklist
+## Codebase Stats
 
-### 1. DEAD CODE
-- [ ] Unused imports
-- [ ] Unused functions/classes
-- [ ] Commented-out code blocks
-- [ ] Files not referenced anywhere
-- [ ] Deprecated endpoints still present
-
-### 2. DUPLICATES
-- [ ] Same logic in multiple files
-- [ ] Copy-pasted functions with minor changes
-- [ ] Multiple implementations of same feature
-- [ ] Redundant utility functions
-
-### 3. OLD + NEW COEXISTENCE
-- [ ] Old implementation not removed after new one added
-- [ ] Legacy compatibility shims that are no longer needed
-- [ ] Multiple versions of same component
-- [ ] Outdated patterns alongside new patterns
-
-### 4. PARASITES
-- [ ] Unused npm packages in package.json
-- [ ] Unused pip packages in requirements.txt
-- [ ] Imports that aren't used
-- [ ] Dependencies that could be removed
-
-### 5. INCONSISTENCIES
-- [ ] Mixed sync/async patterns (should be consistent)
-- [ ] Different error handling styles
-- [ ] Inconsistent naming conventions
-- [ ] Mixed logging approaches (logger vs print)
-
-### 6. ARCHITECTURE
-- [ ] Files in wrong directories
-- [ ] Circular imports
-- [ ] God files (too many responsibilities)
-- [ ] Missing abstractions
+| Metric | Count |
+|--------|-------|
+| Python files (server/) | 80 |
+| Svelte files | 19 |
+| JS files | 12 |
+| Test files | 70 |
+| **Python LOC** | 27,211 |
+| **Svelte LOC** | 11,515 |
+| **JS LOC** | 2,228 |
+| **Total LOC** | ~41,000 |
 
 ---
 
-## Areas to Review
+## Known Issues Found (Initial Scan)
 
-### Backend (server/)
+### CRITICAL: Duplicate Progress Trackers
+```
+server/tools/xlstransfer/progress_tracker.py  ← OLD (XLSTransfer specific)
+server/utils/progress_tracker.py              ← NEW (unified, context manager)
+server/utils/client/progress.py               ← UNKNOWN (check usage)
+server/api/progress_operations.py             ← API endpoints (keep)
+```
+**Action:** Migrate xlstransfer to use new unified tracker, remove old one.
 
-| Area | Files | Priority | Status |
-|------|-------|----------|--------|
-| **API endpoints** | server/api/*.py | High | [ ] Pending |
-| **Tools** | server/tools/*/ | High | [ ] Pending |
-| **Database** | server/database/*.py | Medium | [ ] Pending |
-| **Utils** | server/utils/*.py | Medium | [ ] Pending |
-| **Config** | server/config.py | Low | [ ] Pending |
+### print() Statements: 98 found
+Should be `logger.info()` etc. Many in:
+- progress_tracker.py (uses `print(..., file=sys.stderr)`)
+- Various tool files
 
-### Frontend (locaNext/)
-
-| Area | Files | Priority | Status |
-|------|-------|----------|--------|
-| **Components** | src/lib/components/*.svelte | High | [ ] Pending |
-| **LDM Components** | src/lib/components/ldm/*.svelte | High | [ ] Pending |
-| **Stores** | src/lib/stores/*.js | Medium | [ ] Pending |
-| **API Client** | src/lib/api/*.js | Medium | [ ] Pending |
-| **Utils** | src/lib/utils/*.js | Low | [ ] Pending |
-
-### Tests
-
-| Area | Files | Priority | Status |
-|------|-------|----------|--------|
-| **Unit tests** | tests/unit/*.py | Medium | [ ] Pending |
-| **CDP tests** | tests/cdp/*.py | Low | [ ] Pending |
-| **Integration** | tests/integration/*.py | Low | [ ] Pending |
-
-### Shared
-
-| Area | Files | Priority | Status |
-|------|-------|----------|--------|
-| **Scripts** | scripts/*.py, scripts/*.sh | Low | [ ] Pending |
-| **Config files** | *.json, *.yaml | Low | [ ] Pending |
-| **Documentation** | docs/**/*.md | Low | [ ] Pending |
+### TODO/FIXME Comments: 7 found
+Need to review and either fix or remove.
 
 ---
 
-## Known Issues to Check
+## Review Order (Priority)
 
-### High Priority
-- [ ] `server/tools/xlstransfer/progress_tracker.py` - Now duplicated by `server/utils/progress_tracker.py`?
-- [ ] Multiple WebSocket emit patterns
-- [ ] Sync vs Async database access patterns
+### Week 1: Core Infrastructure
+| # | Area | Files | Est. Time | Status |
+|---|------|-------|-----------|--------|
+| 1 | **Progress tracking** | 4 files | 30 min | [ ] |
+| 2 | **WebSocket utils** | server/utils/websocket.py | 20 min | [ ] |
+| 3 | **Database models** | server/database/*.py | 30 min | [ ] |
+| 4 | **Config** | server/config.py | 15 min | [ ] |
 
-### Medium Priority
-- [ ] Old API patterns vs new base_tool_api pattern
-- [ ] Multiple file upload handlers?
-- [ ] Unused Carbon components imports
+### Week 2: API Layer
+| # | Area | Files | Est. Time | Status |
+|---|------|-------|-----------|--------|
+| 5 | **Base Tool API** | server/api/base_tool_api.py | 30 min | [ ] |
+| 6 | **LDM API** | server/tools/ldm/api.py | 45 min | [ ] |
+| 7 | **Progress API** | server/api/progress_operations.py | 20 min | [ ] |
+| 8 | **Other APIs** | server/api/*.py (rest) | 60 min | [ ] |
 
-### Low Priority
-- [ ] Comments that don't match code
-- [ ] TODO comments that are done
-- [ ] Console.log / print statements that should be logger
+### Week 3: Tools
+| # | Area | Files | Est. Time | Status |
+|---|------|-------|-----------|--------|
+| 9 | **XLSTransfer** | server/tools/xlstransfer/*.py | 60 min | [ ] |
+| 10 | **QuickSearch** | server/tools/quicksearch/*.py | 45 min | [ ] |
+| 11 | **KR Similar** | server/tools/kr_similar/*.py | 45 min | [ ] |
+| 12 | **LDM handlers** | server/tools/ldm/*.py | 45 min | [ ] |
+
+### Week 4: Frontend
+| # | Area | Files | Est. Time | Status |
+|---|------|-------|-----------|--------|
+| 13 | **LDM Components** | locaNext/src/lib/components/ldm/*.svelte | 60 min | [ ] |
+| 14 | **Other Components** | locaNext/src/lib/components/*.svelte | 45 min | [ ] |
+| 15 | **Stores** | locaNext/src/lib/stores/*.js | 30 min | [ ] |
+| 16 | **API Client** | locaNext/src/lib/api/*.js | 30 min | [ ] |
 
 ---
 
-## Review Process
+## Automated Scan Commands
 
-### Step 1: Automated Scan
+Run these before manual review:
+
 ```bash
-# Find unused imports (Python)
-# Find unused exports (JS)
-# Find duplicate function names
-# Find TODO/FIXME/HACK comments
+# === FIND TODO/FIXME/HACK ===
+grep -rn "TODO\|FIXME\|HACK" server/ --include="*.py"
+
+# === FIND print() (should be logger) ===
+grep -rn "print(" server/ --include="*.py" | grep -v "file=sys.stderr"
+
+# === FIND DUPLICATE FUNCTION NAMES ===
+grep -rn "^def \|^async def " server/ --include="*.py" | cut -d: -f2 | sort | uniq -d
+
+# === FIND UNUSED IMPORTS (manual check needed) ===
+# Use IDE or pylint for accurate detection
+
+# === FIND LARGE FILES (>500 lines) ===
+find server/ -name "*.py" -exec wc -l {} \; | awk '$1 > 500' | sort -rn
+
+# === FRONTEND: console.log ===
+grep -rn "console.log" locaNext/src/ --include="*.js" --include="*.svelte"
+
+# === FRONTEND: Unused imports ===
+# Use ESLint or IDE
 ```
 
-### Step 2: Manual Review
-- Read through each file in priority order
-- Note issues in this document
-- Mark fixed items
+---
 
-### Step 3: Refactor
-- Remove dead code
-- Consolidate duplicates
-- Update patterns to be consistent
+## Review Checklist Per File
 
-### Step 4: Test
-- Run full test suite
-- Manual smoke test
-- Verify no regressions
+For each file reviewed:
+
+- [ ] **Dead code:** Unused functions, commented blocks
+- [ ] **Duplicates:** Same logic elsewhere?
+- [ ] **Imports:** All used? Correct source?
+- [ ] **Logging:** Uses logger, not print()?
+- [ ] **Error handling:** Consistent pattern?
+- [ ] **Naming:** Follows conventions?
+- [ ] **Comments:** Accurate? Not stale?
+- [ ] **Type hints:** Present where useful?
+
+---
+
+## Specific Issues to Fix
+
+### 1. Progress Tracker Consolidation
+**Files:**
+- `server/tools/xlstransfer/progress_tracker.py` - OLD
+- `server/utils/progress_tracker.py` - NEW (keep)
+- `server/utils/client/progress.py` - CHECK
+
+**Action:**
+1. Check what uses old progress_tracker
+2. Migrate to new TrackedOperation
+3. Delete old file
+
+### 2. print() to logger Migration
+**Target:** 98 print statements → 0
+
+**Pattern:**
+```python
+# OLD
+print(f"[PROGRESS] {msg}", file=sys.stderr)
+
+# NEW
+logger.info(msg)
+```
+
+### 3. Sync/Async Consistency
+**Issue:** Some tools are sync, some async. DB access mixed.
+
+**Check:**
+- Is there unnecessary sync code in async functions?
+- Are we using `asyncio.run()` from sync correctly?
 
 ---
 
 ## Review Log
 
-### Review #1 - 2025-12-12
-**Reviewer:** Claude
-**Status:** Not started
+### Session 1: 2025-12-12 (Initial Scan)
+**Duration:** 15 min
 **Findings:**
-- (To be filled during review)
+- 98 print statements need migration
+- 7 TODO comments to review
+- 3-4 progress tracking implementations (duplicates)
+- New unified TrackedOperation created
 
-**Actions Taken:**
-- Created `server/utils/progress_tracker.py` - unified progress tracking with context manager
-- Old `server/tools/xlstransfer/progress_tracker.py` - CANDIDATE FOR REMOVAL (check usage first)
-
----
-
-## Metrics
-
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Total Python files | ? | ? | ? |
-| Total Svelte files | ? | ? | ? |
-| Lines of code | ? | ? | ? |
-| Unused imports | ? | ? | ? |
-| Duplicate blocks | ? | ? | ? |
+**Actions:**
+- Created `server/utils/progress_tracker.py` (unified)
+- Need to migrate old usages
 
 ---
 
-## Schedule
+### Session 2: TBD
+**Duration:**
+**Findings:**
 
-| Date | Type | Notes |
-|------|------|-------|
-| 2025-12-12 | Initial setup | Created this document |
-| 2025-12-19 | Weekly review #1 | TBD |
-| 2025-12-26 | Weekly review #2 | TBD |
+**Actions:**
 
 ---
 
-*This document should be updated after each review session.*
+## Cleanup Candidates
+
+Files that might be deletable after migration:
+
+| File | Reason | Blocked By |
+|------|--------|------------|
+| `server/tools/xlstransfer/progress_tracker.py` | Replaced by unified | Check usages |
+| `server/utils/client/progress.py` | Unknown purpose | Check usages |
+
+---
+
+## Weekly Metrics
+
+| Week | Files Reviewed | Issues Found | Issues Fixed | LOC Removed |
+|------|----------------|--------------|--------------|-------------|
+| 1 | 0 | 0 | 0 | 0 |
+| 2 | | | | |
+| 3 | | | | |
+| 4 | | | | |
+
+---
+
+## Quick Commands
+
+```bash
+# Start review session
+cd /home/neil1988/LocalizationTools
+code .  # or your editor
+
+# Run automated checks
+grep -rn "TODO\|FIXME" server/ --include="*.py"
+grep -rn "print(" server/ --include="*.py" | wc -l
+
+# After fixes - run tests
+python3 -m pytest tests/unit/ -v --tb=short
+```
+
+---
+
+*Last updated: 2025-12-12*
