@@ -28,7 +28,7 @@ LocaNext v2512111745
 
 | # | Priority | Name | Status | Doc |
 |---|----------|------|--------|-----|
-| **1** | **CODE REVIEW** | Deep Review (12 sessions) | 🔨 Session 1 | [docs/code-review/](docs/code-review/) |
+| **1** | **CODE REVIEW** | Deep Review (12 sessions) | ✅ COMPLETE | [docs/code-review/](docs/code-review/) |
 | 2 | P25 | LDM UX Overhaul | 🔨 70% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
 | 3 | P24 | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
 | 4 | P17 | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
@@ -46,22 +46,26 @@ Full codebase review - 12 sessions in dependency order.
 
 **Protocol:** [docs/code-review/CODE_REVIEW_PROTOCOL.md](docs/code-review/CODE_REVIEW_PROTOCOL.md)
 
-| Session | Module | Status |
-|---------|--------|--------|
-| 1 | Database & Models | 🔨 Next |
-| 2 | Utils & Core | 📋 |
-| 3 | Auth & Security | 📋 |
-| 4 | LDM Backend | 📋 |
-| 5 | XLSTransfer | 📋 |
-| 6 | QuickSearch | 📋 |
-| 7 | KR Similar | 📋 |
-| 8 | API Layer | 📋 |
-| 9 | Frontend Core | 📋 |
-| 10 | Frontend LDM | 📋 |
-| 11 | Admin Dashboard | 📋 |
-| 12 | Scripts & Config | 📋 |
+| Session | Module | Status | Issues |
+|---------|--------|--------|--------|
+| 1 | Database & Models | ✅ Done | 8 |
+| 2 | Utils & Core | ✅ Done | 8 |
+| 3 | Auth & Security | ✅ Done | 9 |
+| 4 | LDM Backend | ✅ Done | 8 |
+| 5 | XLSTransfer | ✅ Done | 5 |
+| 6 | QuickSearch | ✅ Done | 4 |
+| 7 | KR Similar | ✅ Done | 3 |
+| 8 | API Layer | ✅ Done | 3 |
+| 9 | Frontend Core | ✅ Done | 2 |
+| 10 | Frontend LDM | ✅ Done | 3 |
+| 11 | Admin Dashboard | ✅ Done | 2 |
+| 12 | Scripts & Config | ✅ Done | 2 |
 
-**Quick Scan Week 1:** ✅ Complete (9 issues found, 4 fixed, Pass 2 clean)
+**All issues:** [ISSUES_20251212.md](docs/code-review/ISSUES_20251212.md) (66 total: 31 open, 5 fixed, 29 accept, 1 defer)
+
+**Consolidated:** [CONSOLIDATED_ISSUES.md](docs/code-review/CONSOLIDATED_ISSUES.md) (7 groups)
+
+**Next:** Phase 3 (Fix Sprint) - Start with Groups A + E (quick fixes)
 
 ---
 
