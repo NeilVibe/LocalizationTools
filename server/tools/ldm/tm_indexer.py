@@ -46,6 +46,43 @@ HNSW_EF_CONSTRUCTION = 400  # Build-time accuracy
 HNSW_EF_SEARCH = 500  # Search-time accuracy
 
 
+def normalize_newlines_universal(text: str) -> str:
+    """
+    Universal newline normalization for ALL formats.
+
+    Handles:
+    - \\n (escaped newlines in TEXT files)
+    - \r\n, \r (Windows/Mac line endings)
+    - <br/>, <br /> (XML unescaped)
+    - &lt;br/&gt;, &lt;br /&gt; (XML escaped)
+
+    All converted to canonical \n for consistent matching.
+    """
+    if not text:
+        return text
+
+    # 1. Escaped \\n → \n (TEXT files store as literal backslash-n)
+    text = text.replace('\\n', '\n')
+
+    # 2. XML <br/> variants → \n
+    text = text.replace('<br/>', '\n')
+    text = text.replace('<br />', '\n')
+    text = text.replace('<BR/>', '\n')
+    text = text.replace('<BR />', '\n')
+
+    # 3. HTML-escaped &lt;br/&gt; variants → \n
+    text = text.replace('&lt;br/&gt;', '\n')
+    text = text.replace('&lt;br /&gt;', '\n')
+    text = text.replace('&LT;BR/&GT;', '\n')
+    text = text.replace('&LT;BR /&GT;', '\n')
+
+    # 4. Windows/Mac line endings → \n
+    text = text.replace('\r\n', '\n')
+    text = text.replace('\r', '\n')
+
+    return text
+
+
 def normalize_for_hash(text: str) -> str:
     """
     Normalize text for hash-based lookup.
@@ -53,8 +90,8 @@ def normalize_for_hash(text: str) -> str:
     """
     if not text:
         return ""
-    # Normalize newlines to \n
-    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    # Universal newline normalization first
+    text = normalize_newlines_universal(text)
     # Lowercase for case-insensitive matching
     text = text.lower()
     # Normalize whitespace but preserve structure
@@ -69,8 +106,8 @@ def normalize_for_embedding(text: str) -> str:
     """
     if not text:
         return ""
-    # Normalize newlines
-    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    # Universal newline normalization
+    text = normalize_newlines_universal(text)
     # Basic whitespace cleanup
     return ' '.join(text.split())
 
@@ -644,3 +681,1032 @@ class TMIndexer:
         """Load JSON file."""
         with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
+
+
+# =============================================================================
+# TM Searcher - 5-Tier Cascade Search
+# =============================================================================
+
+# Default threshold for TM matching (92%)
+DEFAULT_THRESHOLD = 0.92
+
+# NPC (Neil's Probabilistic Check) threshold for Target verification (80%)
+NPC_THRESHOLD = 0.80
+
+
+class TMSearcher:
+    """
+    5-Tier Cascade TM Search.
+
+    Tier 1: Perfect whole match (hash) → Show if exists
+    Tier 2: Whole embedding match (FAISS) → Top 3 ≥92%
+    Tier 3: Perfect line match (hash) → Show if exists
+    Tier 4: Line embedding match (FAISS) → Top 3 ≥92%
+    Tier 5: N-gram fallback → Top 3 ≥92%
+
+    Usage:
+        searcher = TMSearcher(indexes)
+        results = searcher.search("query text")
+    """
+
+    def __init__(
+        self,
+        indexes: Dict[str, Any],
+        model: "SentenceTransformer" = None,
+        threshold: float = DEFAULT_THRESHOLD
+    ):
+        """
+        Initialize TMSearcher with loaded indexes.
+
+        Args:
+            indexes: Dict from TMIndexer.load_indexes()
+            model: SentenceTransformer model (will load if None)
+            threshold: Similarity threshold (default 0.92)
+        """
+        self.indexes = indexes
+        self.threshold = threshold
+        self.model = model
+
+        # Extract indexes for easy access
+        self.whole_lookup = indexes.get("whole_lookup", {})
+        self.line_lookup = indexes.get("line_lookup", {})
+        self.whole_index = indexes.get("whole_index")
+        self.line_index = indexes.get("line_index")
+        self.whole_mapping = indexes.get("whole_mapping", [])
+        self.line_mapping = indexes.get("line_mapping", [])
+
+    def _ensure_model_loaded(self):
+        """Load embedding model if not already loaded."""
+        if self.model is None:
+            if not MODELS_AVAILABLE:
+                raise RuntimeError("sentence_transformers not available")
+            logger.info(f"Loading embedding model: {MODEL_NAME}")
+            self.model = SentenceTransformer(MODEL_NAME)
+
+    def search(
+        self,
+        query: str,
+        top_k: int = 3,
+        threshold: float = None
+    ) -> Dict[str, Any]:
+        """
+        Perform 5-Tier Cascade search.
+
+        Args:
+            query: Source text to search
+            top_k: Max results for embedding tiers (default 3)
+            threshold: Override default threshold
+
+        Returns:
+            Dict with:
+                - tier: Which tier produced results (1-5)
+                - tier_name: Tier description
+                - results: List of match dicts
+                - perfect_match: True if Tier 1 or 3
+        """
+        if not query:
+            return {"tier": 0, "tier_name": "empty", "results": [], "perfect_match": False}
+
+        threshold = threshold or self.threshold
+
+        # Normalize query
+        query_normalized = normalize_for_hash(query)
+        query_for_embedding = normalize_for_embedding(query)
+
+        # =====================================================================
+        # TIER 1: Perfect Whole Match (Hash Lookup)
+        # =====================================================================
+        if query_normalized in self.whole_lookup:
+            match = self.whole_lookup[query_normalized]
+            logger.debug(f"Tier 1 match: {query[:50]}...")
+            return {
+                "tier": 1,
+                "tier_name": "perfect_whole",
+                "perfect_match": True,
+                "results": [{
+                    "entry_id": match["entry_id"],
+                    "source_text": match["source_text"],
+                    "target_text": match["target_text"],
+                    "score": 1.0,
+                    "match_type": "perfect_whole"
+                }]
+            }
+
+        # =====================================================================
+        # TIER 2: Whole Embedding Match (FAISS)
+        # =====================================================================
+        if self.whole_index and self.whole_mapping:
+            self._ensure_model_loaded()
+
+            # Generate query embedding
+            query_embedding = self.model.encode(
+                [query_for_embedding],
+                show_progress_bar=False
+            )
+            query_embedding = np.array(query_embedding, dtype=np.float32)
+            faiss.normalize_L2(query_embedding)
+
+            # Search FAISS
+            scores, indices = self.whole_index.search(query_embedding, min(top_k * 2, 20))
+
+            # Filter by threshold
+            results = []
+            for i, (score, idx) in enumerate(zip(scores[0], indices[0])):
+                if idx < 0 or idx >= len(self.whole_mapping):
+                    continue
+                if score < threshold:
+                    continue
+
+                match = self.whole_mapping[idx]
+                results.append({
+                    "entry_id": match["entry_id"],
+                    "source_text": match["source_text"],
+                    "target_text": match["target_text"],
+                    "score": float(score),
+                    "match_type": "whole_embedding"
+                })
+
+                if len(results) >= top_k:
+                    break
+
+            if results:
+                logger.debug(f"Tier 2 matches: {len(results)} results")
+                return {
+                    "tier": 2,
+                    "tier_name": "whole_embedding",
+                    "perfect_match": False,
+                    "results": results
+                }
+
+        # =====================================================================
+        # TIER 3: Perfect Line Match (Hash Lookup)
+        # =====================================================================
+        query_lines = query.split('\n')
+        line_matches = []
+
+        for i, line in enumerate(query_lines):
+            line_normalized = normalize_for_hash(line)
+            if not line_normalized:
+                continue
+
+            if line_normalized in self.line_lookup:
+                match = self.line_lookup[line_normalized]
+                line_matches.append({
+                    "entry_id": match["entry_id"],
+                    "source_line": match["source_line"],
+                    "target_line": match["target_line"],
+                    "query_line_num": i,
+                    "tm_line_num": match["line_num"],
+                    "score": 1.0,
+                    "match_type": "perfect_line"
+                })
+
+        if line_matches:
+            logger.debug(f"Tier 3 matches: {len(line_matches)} lines")
+            return {
+                "tier": 3,
+                "tier_name": "perfect_line",
+                "perfect_match": True,
+                "results": line_matches
+            }
+
+        # =====================================================================
+        # TIER 4: Line Embedding Match (FAISS)
+        # =====================================================================
+        if self.line_index and self.line_mapping and query_lines:
+            self._ensure_model_loaded()
+
+            line_results = []
+
+            for i, line in enumerate(query_lines):
+                line_for_embedding = normalize_for_embedding(line)
+                if not line_for_embedding or len(line_for_embedding) < 3:
+                    continue
+
+                # Generate line embedding
+                line_embedding = self.model.encode(
+                    [line_for_embedding],
+                    show_progress_bar=False
+                )
+                line_embedding = np.array(line_embedding, dtype=np.float32)
+                faiss.normalize_L2(line_embedding)
+
+                # Search FAISS for this line
+                scores, indices = self.line_index.search(line_embedding, min(top_k * 2, 20))
+
+                for score, idx in zip(scores[0], indices[0]):
+                    if idx < 0 or idx >= len(self.line_mapping):
+                        continue
+                    if score < threshold:
+                        continue
+
+                    match = self.line_mapping[idx]
+                    line_results.append({
+                        "entry_id": match["entry_id"],
+                        "source_line": match["source_line"],
+                        "target_line": match["target_line"],
+                        "query_line_num": i,
+                        "tm_line_num": match["line_num"],
+                        "score": float(score),
+                        "match_type": "line_embedding"
+                    })
+                    break  # Best match per query line
+
+            if line_results:
+                # Sort by score, take top_k
+                line_results.sort(key=lambda x: x["score"], reverse=True)
+                logger.debug(f"Tier 4 matches: {len(line_results)} lines")
+                return {
+                    "tier": 4,
+                    "tier_name": "line_embedding",
+                    "perfect_match": False,
+                    "results": line_results[:top_k]
+                }
+
+        # =====================================================================
+        # TIER 5: N-gram Fallback (Character Similarity)
+        # =====================================================================
+        results = self._ngram_search(query_normalized, top_k, threshold)
+
+        if results:
+            logger.debug(f"Tier 5 matches: {len(results)} results")
+            return {
+                "tier": 5,
+                "tier_name": "ngram_fallback",
+                "perfect_match": False,
+                "results": results
+            }
+
+        # No matches found
+        return {
+            "tier": 0,
+            "tier_name": "no_match",
+            "perfect_match": False,
+            "results": []
+        }
+
+    def _ngram_search(
+        self,
+        query: str,
+        top_k: int,
+        threshold: float,
+        n: int = 3
+    ) -> List[Dict]:
+        """
+        N-gram based fallback search for Tier 5.
+
+        Uses character n-grams for fuzzy matching.
+        Less accurate than embeddings but catches edge cases.
+
+        Args:
+            query: Normalized query text
+            top_k: Max results
+            threshold: Similarity threshold
+            n: N-gram size (default 3)
+
+        Returns:
+            List of matches
+        """
+        if not query or len(query) < n:
+            return []
+
+        # Generate query n-grams
+        query_ngrams = self._get_ngrams(query, n)
+        if not query_ngrams:
+            return []
+
+        # Score candidates from whole_lookup
+        scores = []
+        for normalized_text, match in self.whole_lookup.items():
+            if not normalized_text or len(normalized_text) < n:
+                continue
+
+            candidate_ngrams = self._get_ngrams(normalized_text, n)
+            if not candidate_ngrams:
+                continue
+
+            # Jaccard similarity on n-grams
+            intersection = len(query_ngrams & candidate_ngrams)
+            union = len(query_ngrams | candidate_ngrams)
+            score = intersection / union if union > 0 else 0
+
+            if score >= threshold:
+                scores.append((score, match))
+
+        # Sort by score, take top_k
+        scores.sort(key=lambda x: x[0], reverse=True)
+
+        results = []
+        for score, match in scores[:top_k]:
+            results.append({
+                "entry_id": match["entry_id"],
+                "source_text": match["source_text"],
+                "target_text": match["target_text"],
+                "score": score,
+                "match_type": "ngram"
+            })
+
+        return results
+
+    def _get_ngrams(self, text: str, n: int) -> set:
+        """Generate character n-grams from text."""
+        if len(text) < n:
+            return set()
+        return set(text[i:i+n] for i in range(len(text) - n + 1))
+
+    def search_batch(
+        self,
+        queries: List[str],
+        top_k: int = 3,
+        threshold: float = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Batch search for multiple queries.
+
+        Args:
+            queries: List of source texts
+            top_k: Max results per query
+            threshold: Override threshold
+
+        Returns:
+            List of search results (one per query)
+        """
+        return [self.search(q, top_k, threshold) for q in queries]
+
+    def npc_check(
+        self,
+        user_target: str,
+        tm_matches: List[Dict],
+        threshold: float = None
+    ) -> Dict[str, Any]:
+        """
+        NPC (Neil's Probabilistic Check) - Verify translation consistency.
+
+        Checks if user's Target translation is consistent with TM Targets
+        for the matched Source entries.
+
+        Flow:
+        1. Embed user's Target (1 embedding call)
+        2. Embed each TM Target from matches (or use cached if available)
+        3. Compute cosine similarity
+        4. If any match ≥80%, translation is consistent
+        5. If no matches, flag potential inconsistency
+
+        Args:
+            user_target: User's translation (Target text)
+            tm_matches: List of TM matches from search results
+            threshold: Similarity threshold (default 0.80 / NPC_THRESHOLD)
+
+        Returns:
+            Dict with:
+                - consistent: True if any TM Target matches ≥threshold
+                - best_match: Best matching TM entry (if any)
+                - best_score: Highest similarity score
+                - all_scores: List of (tm_target, score) pairs
+                - warning: Warning message if inconsistent
+        """
+        if not user_target or not tm_matches:
+            return {
+                "consistent": False,
+                "best_match": None,
+                "best_score": 0.0,
+                "all_scores": [],
+                "warning": "No target text or TM matches to check"
+            }
+
+        threshold = threshold or NPC_THRESHOLD
+
+        # Normalize user target
+        user_target_normalized = normalize_for_embedding(user_target)
+        if not user_target_normalized:
+            return {
+                "consistent": False,
+                "best_match": None,
+                "best_score": 0.0,
+                "all_scores": [],
+                "warning": "Empty target text after normalization"
+            }
+
+        # Load model
+        self._ensure_model_loaded()
+
+        # Embed user's target (1 call)
+        user_embedding = self.model.encode(
+            [user_target_normalized],
+            show_progress_bar=False
+        )
+        user_embedding = np.array(user_embedding, dtype=np.float32)
+        faiss.normalize_L2(user_embedding)
+
+        # Get TM targets to compare
+        tm_targets = []
+        for match in tm_matches:
+            # Handle both whole and line match formats
+            target = match.get("target_text") or match.get("target_line", "")
+            if target:
+                tm_targets.append((match, target))
+
+        if not tm_targets:
+            return {
+                "consistent": False,
+                "best_match": None,
+                "best_score": 0.0,
+                "all_scores": [],
+                "warning": "No TM targets to compare against"
+            }
+
+        # Embed TM targets
+        tm_target_texts = [normalize_for_embedding(t[1]) for t in tm_targets]
+        tm_target_texts = [t if t else " " for t in tm_target_texts]  # Handle empty
+
+        tm_embeddings = self.model.encode(
+            tm_target_texts,
+            show_progress_bar=False
+        )
+        tm_embeddings = np.array(tm_embeddings, dtype=np.float32)
+        faiss.normalize_L2(tm_embeddings)
+
+        # Compute cosine similarities (dot product since normalized)
+        similarities = np.dot(tm_embeddings, user_embedding.T).flatten()
+
+        # Find best match
+        best_idx = int(np.argmax(similarities))
+        best_score = float(similarities[best_idx])
+        best_match = tm_targets[best_idx][0]
+
+        # Build all scores
+        all_scores = [
+            {
+                "tm_target": tm_targets[i][1],
+                "score": float(similarities[i]),
+                "entry_id": tm_targets[i][0].get("entry_id")
+            }
+            for i in range(len(similarities))
+        ]
+        all_scores.sort(key=lambda x: x["score"], reverse=True)
+
+        # Check consistency
+        consistent = best_score >= threshold
+
+        result = {
+            "consistent": consistent,
+            "best_match": best_match,
+            "best_score": best_score,
+            "all_scores": all_scores,
+            "threshold": threshold
+        }
+
+        if not consistent:
+            result["warning"] = (
+                f"Target translation may be inconsistent. "
+                f"Best TM match similarity: {best_score:.1%} (threshold: {threshold:.0%})"
+            )
+        else:
+            result["message"] = (
+                f"Translation consistent with TM. "
+                f"Best match: {best_score:.1%} similarity"
+            )
+
+        return result
+
+    def search_with_npc(
+        self,
+        source: str,
+        user_target: str,
+        top_k: int = 3,
+        search_threshold: float = None,
+        npc_threshold: float = None
+    ) -> Dict[str, Any]:
+        """
+        Combined search + NPC check in one call.
+
+        Performs 5-Tier Cascade search, then runs NPC on results.
+
+        Args:
+            source: Source text to search
+            user_target: User's translation to verify
+            top_k: Max TM results
+            search_threshold: TM search threshold (default 0.92)
+            npc_threshold: NPC threshold (default 0.80)
+
+        Returns:
+            Dict with search results + NPC verification
+        """
+        # Perform search
+        search_result = self.search(source, top_k, search_threshold)
+
+        # Run NPC if we have matches
+        if search_result["results"]:
+            npc_result = self.npc_check(
+                user_target,
+                search_result["results"],
+                npc_threshold
+            )
+        else:
+            npc_result = {
+                "consistent": None,  # Can't verify without matches
+                "best_match": None,
+                "best_score": 0.0,
+                "all_scores": [],
+                "message": "No TM matches found for NPC verification"
+            }
+
+        return {
+            "search": search_result,
+            "npc": npc_result
+        }
+
+
+# =============================================================================
+# TM Sync Manager - PKL vs DB Synchronization
+# =============================================================================
+
+class TMSyncManager:
+    """
+    Manages synchronization between DB (central) and PKL/FAISS (local).
+
+    Sync Strategy:
+    - DB is always up-to-date (source of truth)
+    - PKL/FAISS is local cache, synced on demand
+    - Uses pd.merge on Source to detect:
+      - INSERT: in DB, not in PKL
+      - UPDATE: in both, but Target changed
+      - DELETE: in PKL, not in DB (don't copy)
+      - UNCHANGED: same Source and Target (copy existing embedding)
+
+    This minimizes expensive QWEN embedding calls by:
+    - Only embedding INSERT/UPDATE entries
+    - Reusing existing embeddings for UNCHANGED entries
+
+    Usage:
+        sync_manager = TMSyncManager(db, tm_id)
+        result = sync_manager.sync()
+    """
+
+    def __init__(
+        self,
+        db: Session,
+        tm_id: int,
+        data_dir: str = None
+    ):
+        """
+        Initialize TMSyncManager.
+
+        Args:
+            db: SQLAlchemy session
+            tm_id: Translation Memory ID
+            data_dir: Base directory for TM data
+        """
+        self.db = db
+        self.tm_id = tm_id
+        self.model = None
+
+        # Set data directory
+        if data_dir:
+            self.data_dir = Path(data_dir)
+        else:
+            self.data_dir = Path(__file__).parent.parent.parent / "data" / "ldm_tm"
+
+        self.tm_path = self.data_dir / str(tm_id)
+
+    def _ensure_model_loaded(self):
+        """Load embedding model if not already loaded."""
+        if self.model is None:
+            if not MODELS_AVAILABLE:
+                raise RuntimeError("sentence_transformers not available")
+            logger.info(f"Loading embedding model: {MODEL_NAME}")
+            self.model = SentenceTransformer(MODEL_NAME)
+
+    def get_db_entries(self) -> List[Dict]:
+        """
+        Get current TM entries from database.
+
+        Returns:
+            List of entry dicts with source_text, target_text, id
+        """
+        entries = self.db.query(LDMTMEntry).filter(
+            LDMTMEntry.tm_id == self.tm_id
+        ).all()
+
+        return [
+            {
+                "id": e.id,
+                "source_text": e.source_text,
+                "target_text": e.target_text
+            }
+            for e in entries
+        ]
+
+    def get_pkl_state(self) -> Optional[Dict]:
+        """
+        Load current PKL state (embeddings + mapping).
+
+        Returns:
+            Dict with embeddings, mapping, lookup if exists, else None
+        """
+        whole_emb_path = self.tm_path / "embeddings" / "whole.npy"
+        whole_map_path = self.tm_path / "embeddings" / "whole_mapping.pkl"
+        whole_lookup_path = self.tm_path / "hash" / "whole_lookup.pkl"
+
+        if not whole_map_path.exists():
+            return None
+
+        try:
+            embeddings = np.load(whole_emb_path) if whole_emb_path.exists() else None
+            with open(whole_map_path, 'rb') as f:
+                mapping = pickle.load(f)
+            lookup = None
+            if whole_lookup_path.exists():
+                with open(whole_lookup_path, 'rb') as f:
+                    lookup = pickle.load(f)
+
+            return {
+                "embeddings": embeddings,
+                "mapping": mapping,
+                "lookup": lookup
+            }
+        except Exception as e:
+            logger.error(f"Failed to load PKL state: {e}")
+            return None
+
+    def compute_diff(
+        self,
+        db_entries: List[Dict],
+        pkl_state: Optional[Dict]
+    ) -> Dict[str, Any]:
+        """
+        Compute diff between DB and PKL using pd.merge on Source.
+
+        Args:
+            db_entries: Current DB entries
+            pkl_state: Current PKL state (or None for fresh build)
+
+        Returns:
+            Dict with:
+                - insert: entries to add (in DB, not in PKL)
+                - update: entries to update (Target changed)
+                - delete: entries to remove (in PKL, not in DB)
+                - unchanged: entries with same Source+Target
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            raise RuntimeError("pandas required for TM sync")
+
+        # Build DB dataframe
+        db_df = pd.DataFrame(db_entries)
+        if db_df.empty:
+            return {
+                "insert": [],
+                "update": [],
+                "delete": [],
+                "unchanged": [],
+                "stats": {"insert": 0, "update": 0, "delete": 0, "unchanged": 0}
+            }
+
+        # Normalize source for comparison
+        db_df["source_normalized"] = db_df["source_text"].apply(normalize_for_hash)
+
+        # If no PKL state, everything is INSERT
+        if pkl_state is None or not pkl_state.get("mapping"):
+            insert_list = db_df.to_dict("records")
+            return {
+                "insert": insert_list,
+                "update": [],
+                "delete": [],
+                "unchanged": [],
+                "stats": {
+                    "insert": len(insert_list),
+                    "update": 0,
+                    "delete": 0,
+                    "unchanged": 0
+                }
+            }
+
+        # Build PKL dataframe from mapping
+        pkl_mapping = pkl_state["mapping"]
+        pkl_df = pd.DataFrame(pkl_mapping)
+
+        if pkl_df.empty:
+            insert_list = db_df.to_dict("records")
+            return {
+                "insert": insert_list,
+                "update": [],
+                "delete": [],
+                "unchanged": [],
+                "stats": {
+                    "insert": len(insert_list),
+                    "update": 0,
+                    "delete": 0,
+                    "unchanged": 0
+                }
+            }
+
+        pkl_df["source_normalized"] = pkl_df["source_text"].apply(normalize_for_hash)
+
+        # Merge on normalized source
+        merged = pd.merge(
+            db_df,
+            pkl_df,
+            on="source_normalized",
+            how="outer",
+            suffixes=("_db", "_pkl"),
+            indicator=True
+        )
+
+        # Categorize
+        insert_mask = merged["_merge"] == "left_only"
+        delete_mask = merged["_merge"] == "right_only"
+        both_mask = merged["_merge"] == "both"
+
+        # For 'both': check if Target changed
+        if both_mask.any():
+            both_df = merged[both_mask].copy()
+            # Compare targets (normalize for fair comparison)
+            both_df["target_db_norm"] = both_df["target_text_db"].fillna("").apply(str.strip)
+            both_df["target_pkl_norm"] = both_df["target_text_pkl"].fillna("").apply(str.strip)
+            both_df["target_changed"] = both_df["target_db_norm"] != both_df["target_pkl_norm"]
+
+            update_df = both_df[both_df["target_changed"]]
+            unchanged_df = both_df[~both_df["target_changed"]]
+        else:
+            update_df = pd.DataFrame()
+            unchanged_df = pd.DataFrame()
+
+        # Build result lists
+        insert_list = []
+        for _, row in merged[insert_mask].iterrows():
+            insert_list.append({
+                "id": row.get("id_db") or row.get("id"),
+                "source_text": row.get("source_text_db") or row.get("source_text"),
+                "target_text": row.get("target_text_db") or row.get("target_text"),
+                "source_normalized": row["source_normalized"]
+            })
+
+        update_list = []
+        for _, row in update_df.iterrows():
+            update_list.append({
+                "id": row.get("id_db"),
+                "source_text": row.get("source_text_db"),
+                "target_text": row.get("target_text_db"),
+                "source_normalized": row["source_normalized"],
+                "old_target": row.get("target_text_pkl")
+            })
+
+        delete_list = []
+        for _, row in merged[delete_mask].iterrows():
+            delete_list.append({
+                "id": row.get("id_pkl"),
+                "source_text": row.get("source_text_pkl"),
+                "target_text": row.get("target_text_pkl"),
+                "source_normalized": row["source_normalized"]
+            })
+
+        unchanged_list = []
+        for _, row in unchanged_df.iterrows():
+            unchanged_list.append({
+                "id": row.get("id_db"),
+                "source_text": row.get("source_text_db"),
+                "target_text": row.get("target_text_db"),
+                "source_normalized": row["source_normalized"]
+            })
+
+        return {
+            "insert": insert_list,
+            "update": update_list,
+            "delete": delete_list,
+            "unchanged": unchanged_list,
+            "stats": {
+                "insert": len(insert_list),
+                "update": len(update_list),
+                "delete": len(delete_list),
+                "unchanged": len(unchanged_list)
+            }
+        }
+
+    def sync(
+        self,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None
+    ) -> Dict[str, Any]:
+        """
+        Synchronize PKL/FAISS with DB.
+
+        Steps:
+        1. Load DB entries
+        2. Load current PKL state
+        3. Compute diff (INSERT/UPDATE/DELETE/UNCHANGED)
+        4. Generate embeddings only for INSERT/UPDATE
+        5. Copy existing embeddings for UNCHANGED
+        6. Rebuild all indexes
+
+        Args:
+            progress_callback: Optional (stage, current, total)
+
+        Returns:
+            Dict with sync results
+        """
+        start_time = datetime.now()
+
+        if progress_callback:
+            progress_callback("Loading DB entries", 0, 5)
+
+        # 1. Get current DB state
+        db_entries = self.get_db_entries()
+        if not db_entries:
+            logger.warning(f"No entries in DB for TM {self.tm_id}")
+            return {
+                "tm_id": self.tm_id,
+                "status": "empty",
+                "stats": {"insert": 0, "update": 0, "delete": 0, "unchanged": 0}
+            }
+
+        # 2. Load current PKL state
+        pkl_state = self.get_pkl_state()
+
+        if progress_callback:
+            progress_callback("Computing diff", 1, 5)
+
+        # 3. Compute diff
+        diff = self.compute_diff(db_entries, pkl_state)
+        stats = diff["stats"]
+
+        logger.info(
+            f"TM {self.tm_id} sync diff: "
+            f"INSERT={stats['insert']}, UPDATE={stats['update']}, "
+            f"DELETE={stats['delete']}, UNCHANGED={stats['unchanged']}"
+        )
+
+        # If nothing to embed, rebuild from unchanged only
+        needs_embedding = diff["insert"] + diff["update"]
+
+        if progress_callback:
+            progress_callback("Generating embeddings", 2, 5)
+
+        # 4. Build new embeddings
+        self._ensure_model_loaded()
+
+        # Prepare all entries for final state
+        final_entries = diff["unchanged"] + diff["insert"] + diff["update"]
+
+        # Build source->index mapping from PKL for unchanged entries
+        pkl_source_to_idx = {}
+        if pkl_state and pkl_state.get("mapping"):
+            for idx, m in enumerate(pkl_state["mapping"]):
+                src_norm = normalize_for_hash(m.get("source_text", ""))
+                pkl_source_to_idx[src_norm] = idx
+
+        # Generate embeddings
+        new_embeddings = []
+        new_mapping = []
+
+        # First, copy unchanged embeddings
+        for entry in diff["unchanged"]:
+            src_norm = entry.get("source_normalized") or normalize_for_hash(entry["source_text"])
+            if src_norm in pkl_source_to_idx and pkl_state["embeddings"] is not None:
+                idx = pkl_source_to_idx[src_norm]
+                if idx < len(pkl_state["embeddings"]):
+                    new_embeddings.append(pkl_state["embeddings"][idx])
+                    new_mapping.append({
+                        "entry_id": entry["id"],
+                        "source_text": entry["source_text"],
+                        "target_text": entry["target_text"]
+                    })
+
+        # Then generate new embeddings for INSERT/UPDATE
+        if needs_embedding:
+            texts_to_embed = [
+                normalize_for_embedding(e["source_text"])
+                for e in needs_embedding
+            ]
+            texts_to_embed = [t for t in texts_to_embed if t]
+
+            if texts_to_embed:
+                logger.info(f"Embedding {len(texts_to_embed)} new/changed entries...")
+                embeddings = self.model.encode(
+                    texts_to_embed,
+                    batch_size=64,
+                    show_progress_bar=False
+                )
+                embeddings = np.array(embeddings, dtype=np.float32)
+                faiss.normalize_L2(embeddings)
+
+                for i, entry in enumerate(needs_embedding):
+                    if i < len(embeddings):
+                        new_embeddings.append(embeddings[i])
+                        new_mapping.append({
+                            "entry_id": entry["id"],
+                            "source_text": entry["source_text"],
+                            "target_text": entry["target_text"]
+                        })
+
+        if progress_callback:
+            progress_callback("Rebuilding indexes", 3, 5)
+
+        # 5. Rebuild all indexes
+        whole_lookup = {}
+        line_lookup = {}
+
+        if new_embeddings:
+            new_embeddings = np.array(new_embeddings, dtype=np.float32)
+
+            # Ensure directory exists
+            self.tm_path.mkdir(parents=True, exist_ok=True)
+            (self.tm_path / "hash").mkdir(exist_ok=True)
+            (self.tm_path / "embeddings").mkdir(exist_ok=True)
+            (self.tm_path / "faiss").mkdir(exist_ok=True)
+
+            # Save embeddings and mapping
+            np.save(self.tm_path / "embeddings" / "whole.npy", new_embeddings)
+            with open(self.tm_path / "embeddings" / "whole_mapping.pkl", 'wb') as f:
+                pickle.dump(new_mapping, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+            # Build FAISS index
+            dim = new_embeddings.shape[1]
+            index = faiss.IndexHNSWFlat(dim, HNSW_M, faiss.METRIC_INNER_PRODUCT)
+            index.hnsw.efConstruction = HNSW_EF_CONSTRUCTION
+            index.hnsw.efSearch = HNSW_EF_SEARCH
+            index.add(new_embeddings)
+            faiss.write_index(index, str(self.tm_path / "faiss" / "whole.index"))
+
+            # Rebuild hash lookup
+            for entry in final_entries:
+                src = entry["source_text"]
+                if not src:
+                    continue
+                normalized = normalize_for_hash(src)
+                if normalized and normalized not in whole_lookup:
+                    whole_lookup[normalized] = {
+                        "entry_id": entry["id"],
+                        "source_text": src,
+                        "target_text": entry["target_text"]
+                    }
+            with open(self.tm_path / "hash" / "whole_lookup.pkl", 'wb') as f:
+                pickle.dump(whole_lookup, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+            # Rebuild line lookup
+            for entry in final_entries:
+                source = entry["source_text"]
+                target = entry["target_text"] or ""
+                if not source:
+                    continue
+
+                source_lines = source.split('\n')
+                target_lines = target.split('\n')
+
+                for i, line in enumerate(source_lines):
+                    if not line.strip():
+                        continue
+                    normalized_line = normalize_for_hash(line)
+                    if not normalized_line or normalized_line in line_lookup:
+                        continue
+                    target_line = target_lines[i] if i < len(target_lines) else ""
+                    line_lookup[normalized_line] = {
+                        "entry_id": entry["id"],
+                        "source_line": line,
+                        "target_line": target_line,
+                        "line_num": i,
+                        "total_lines": len(source_lines)
+                    }
+            with open(self.tm_path / "hash" / "line_lookup.pkl", 'wb') as f:
+                pickle.dump(line_lookup, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+            logger.info(f"Rebuilt indexes: {len(whole_lookup)} whole, {len(line_lookup)} lines")
+
+        if progress_callback:
+            progress_callback("Saving metadata", 4, 5)
+
+        # 6. Save metadata
+        metadata = {
+            "tm_id": self.tm_id,
+            "entry_count": len(final_entries),
+            "whole_lookup_count": len(whole_lookup),
+            "line_lookup_count": len(line_lookup),
+            "whole_embeddings_count": len(new_mapping),
+            "embedding_dim": new_embeddings.shape[1] if len(new_embeddings) > 0 else 0,
+            "model": MODEL_NAME,
+            "synced_at": datetime.now().isoformat(),
+            "sync_stats": stats
+        }
+        with open(self.tm_path / "metadata.json", 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+        if progress_callback:
+            progress_callback("Complete", 5, 5)
+
+        elapsed = (datetime.now() - start_time).total_seconds()
+
+        logger.success(
+            f"TM {self.tm_id} sync complete in {elapsed:.2f}s: "
+            f"INSERT={stats['insert']}, UPDATE={stats['update']}, "
+            f"DELETE={stats['delete']}, UNCHANGED={stats['unchanged']}"
+        )
+
+        return {
+            "tm_id": self.tm_id,
+            "status": "synced",
+            "stats": stats,
+            "final_count": len(final_entries),
+            "embeddings_generated": len(needs_embedding),
+            "embeddings_reused": len(diff["unchanged"]),
+            "time_seconds": round(elapsed, 2)
+        }
