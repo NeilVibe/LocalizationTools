@@ -1223,8 +1223,9 @@ def _build_txt_file(rows: List[LDMRow]) -> bytes:
     """
     lines = []
     for row in rows:
-        # Reconstruct string_id parts if available
-        string_id_parts = row.string_id.split('\t') if row.string_id else [""] * 5
+        # Reconstruct string_id parts - stored with spaces, output with tabs
+        # Upload stores as "0 100 0 0 1" (space-joined), we need "0\t100\t0\t0\t1"
+        string_id_parts = row.string_id.split(' ') if row.string_id else [""] * 5
 
         # Ensure we have 5 parts for the index
         while len(string_id_parts) < 5:
