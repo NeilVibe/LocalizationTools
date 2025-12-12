@@ -1,24 +1,21 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-13 ~05:30 KST | **By:** Claude
+**Updated:** 2025-12-13 ~09:00 KST | **By:** Claude
 
 ---
 
-## Session Summary: TM/QA + NPC Finalized
+## Session Summary: TM/QA Core Implementation Complete
 
 ### What Was Done
 
 | Task | Status | Notes |
 |------|--------|-------|
-| **TM/QA Architecture Design** | ✅ Finalized | Two separate systems fully documented |
-| **NPC (Neil's Probabilistic Check)** | ✅ Approved | Simple Target verification via cosine sim |
-| **Single Threshold (92%)** | ✅ Decided | Simplified from DUAL threshold |
-| **TM Display Rules** | ✅ Defined | Perfect = show if exists, Embedding = top 3 |
-| **TM DB Sync Architecture** | ✅ Designed | DB=central, FAISS=local, 3 triggers |
-| **pd.merge INSERT/UPDATE/DELETE** | ✅ Documented | Full diff logic for TM updates |
-| **Roadmap.md Phase 10** | ✅ Updated | SYSTEM 1 + NPC + SYSTEM 2 |
-| **P25_LDM_UX_OVERHAUL.md** | ✅ Updated | Full TM update flow + NPC + tasks |
-| **IDEAS_FUTURE.md** | ✅ Updated | NPC moved from parked → approved |
+| **Universal Newline Normalizer** | ✅ IMPLEMENTED | `normalize_newlines_universal()` handles TEXT + XML |
+| **5-Tier Cascade Search** | ✅ IMPLEMENTED | `TMSearcher` class with all 5 tiers |
+| **PKL vs DB Sync** | ✅ IMPLEMENTED | `TMSyncManager` with INSERT/UPDATE/DELETE detection |
+| **NPC (Neil's Probabilistic Check)** | ✅ IMPLEMENTED | `npc_check()` method on TMSearcher |
+| **Test Data Generator** | ✅ IMPLEMENTED | `TMTestDataGenerator` for TEXT + XML mock data |
+| **Unit Tests** | ✅ 82 PASSING | Normalizer (29) + Search (20) + Sync (17) + NPC (16) |
 
 ---
 
@@ -111,13 +108,17 @@ Target embeddings = on-demand for NPC (not synced)
 
 ---
 
-## Files Modified This Session
+## Files Modified/Created This Session
 
 | File | Changes |
 |------|---------|
-| `Roadmap.md` | Phase 10 updated with SYSTEM 1 + SYSTEM 2 |
-| `docs/wip/P25_LDM_UX_OVERHAUL.md` | Complete TM/QA architecture + pseudocode |
-| `docs/wip/IDEAS_FUTURE.md` | Created - parked Probabilistic QA idea |
+| `server/tools/ldm/tm_indexer.py` | Added TMSearcher, TMSyncManager, NPC methods, 1700+ lines |
+| `server/tools/ldm/__init__.py` | Updated exports for TM classes |
+| `tests/helpers/tm_test_data.py` | NEW: Mock TM data generator (TEXT + XML) |
+| `tests/unit/test_tm_normalizer.py` | NEW: 29 tests for newline normalization |
+| `tests/unit/test_tm_search.py` | NEW: 20 tests for 5-Tier Cascade search |
+| `tests/unit/test_tm_sync.py` | NEW: 17 tests for PKL vs DB sync |
+| `tests/unit/test_npc.py` | NEW: 16 tests for NPC verification |
 | `docs/wip/SESSION_CONTEXT.md` | This file - session summary |
 
 ---
@@ -132,26 +133,23 @@ Target embeddings = on-demand for NPC (not synced)
 
 ## Next Priorities
 
-### P25 Phase 10: TM/QA Implementation (READY TO BUILD)
+### P25 Phase 10: TM/QA Implementation
 
-**Shared:**
-- [ ] Universal newline normalizer (`normalize_newlines_universal()`)
+**Backend (DONE):**
+- [x] Universal newline normalizer (`normalize_newlines_universal()`)
+- [x] QWEN embedding generation (Source)
+- [x] FAISS index (HNSW)
+- [x] 5-Tier Cascade + Single Threshold (92%)
+- [x] TM Update logic (incremental via pd.merge)
+- [x] NPC (Neil's Probabilistic Check) - 80% threshold
 
-**SYSTEM 1 (TM Matching - Suggestions):**
-- [ ] QWEN embedding generation (Source AND Target)
-- [ ] FAISS index (HNSW)
-- [ ] 5-Tier Cascade + Single Threshold (92%)
-- [ ] Display rules: Perfect = show if exists, Embedding = top 3
-- [ ] TM Update logic (incremental via pd.merge)
+**Frontend Integration (TODO):**
 - [ ] TM Results in Edit Modal
-
-**NPC (Neil's Probabilistic Check):**
 - [ ] [NPC] button in Edit Modal
-- [ ] Embed user's Target (1 call)
-- [ ] Cosine similarity vs TM Targets (threshold: 80%)
 - [ ] Display: ✅ Consistent / ⚠️ Potential issue
+- [ ] API endpoints for TM search/sync/NPC
 
-**SYSTEM 2 (QA - Error Detection):**
+**SYSTEM 2 (QA - Error Detection) - TODO:**
 - [ ] Glossary extraction (≤26 chars, no sentences)
 - [ ] Aho-Corasick automaton (pyahocorasick) for Word Check
 - [ ] Dict lookup for Line Check
