@@ -213,8 +213,7 @@ async def get_current_user_info(
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # admin: dict = Depends(require_admin_async),
+    admin: dict = Depends(require_admin_async),
     skip: int = 0,
     limit: int = 100
 ):
@@ -223,11 +222,11 @@ async def list_users(
 
     Returns paginated list of all users.
     """
-    query = select(User).offset(skip).limit(limit)
+    query = select(User).order_by(User.user_id).offset(skip).limit(limit)
     result = await db.execute(query)
     users = result.scalars().all()
 
-    logger.info(f"User list requested (auth temporarily disabled)")
+    logger.info(f"Admin {admin['username']} requested user list")
     return users
 
 

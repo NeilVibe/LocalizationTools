@@ -1,6 +1,6 @@
 # Code Review Protocol
 
-**Owner:** Development Team
+**Owner:** Development Team | **Version:** 2.1
 
 ---
 
@@ -9,9 +9,86 @@
 | Type | Frequency | Duration | Scope |
 |------|-----------|----------|-------|
 | **Quick Scan** | Weekly | ~1 hour | Automated scans, surface issues |
-| **Deep Review** | Bi-weekly | ~4-8 hours | Full manual code review |
+| **Deep Review** | Bi-weekly | ~2-4 hours | Full manual code review |
 
-**Full codebase review = 6 Deep Review sessions (12 weeks)**
+**Full codebase review = 12 Deep Review sessions**
+
+---
+
+## Critical Rule: REVIEW ALL FIRST, FIX LATER
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  DO NOT FIX ISSUES DURING REVIEW SESSIONS                       │
+│                                                                 │
+│  Phase 1: Complete ALL 12 sessions (review only, document)     │
+│  Phase 2: Consolidate findings, prioritize across codebase     │
+│  Phase 3: Fix in batches by type/priority                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Why This Approach?
+
+1. **Full Picture First**
+   - Same issue may appear in multiple sessions (e.g., JSON→JSONB)
+   - Batch fixes are more efficient than one-off patches
+
+2. **Better Prioritization**
+   - After 12 sessions: "50 issues total, 5 HIGH, 20 MEDIUM, 25 LOW"
+   - Can prioritize by actual impact across entire codebase
+
+3. **No Context Loss**
+   - Related issues fixed together
+   - Single migration script vs 12 separate ones
+
+4. **Working System**
+   - Issues are technical debt, not blocking bugs
+   - System works fine during review phase
+
+### Exception: Fix Immediately ONLY If
+
+| Condition | Example |
+|-----------|---------|
+| **Security vulnerability** | SQL injection, exposed secrets |
+| **Data corruption risk** | Silent data loss, race condition |
+| **Blocking bug** | App crashes, feature broken |
+
+If none of these apply → **DOCUMENT ONLY, DO NOT FIX**
+
+---
+
+## Per-Session Workflow
+
+### Step 1: Read Files
+```bash
+# Read all files for the session
+# Use Read tool or cat
+```
+
+### Step 2: Review Using Checklist
+- Use the per-file checklist (see below)
+- Note issues with file:line references
+- Categorize: HIGH / MEDIUM / LOW
+
+### Step 3: Add to Issue List
+```
+docs/code-review/ISSUES_YYYYMMDD.md
+```
+
+Add new section for this session:
+- Session header with files reviewed (LOC)
+- Issues found (with severity, file:line)
+- **DO NOT FIX - just document**
+
+### Step 4: Update Tracking
+- Update `CODE_REVIEW_PROTOCOL.md` history table
+- Update `SESSION_CONTEXT.md`
+- Update `Roadmap.md` session status
+
+### Step 5: Move to Next Session
+- **DO NOT FIX** issues from this session
+- Proceed to next session
+- Repeat until Session 12 complete
 
 ---
 
@@ -19,10 +96,18 @@
 
 ```
 docs/code-review/
-├── CODE_REVIEW_PROTOCOL.md       ← This file
-├── ISSUES_YYYYMMDD.md            ← Quick scan issues
-└── DEEP_REVIEW_[MODULE]_YYYYMMDD.md  ← Deep review per module
+├── CODE_REVIEW_PROTOCOL.md       ← This file (protocol)
+├── ISSUES_YYYYMMDD.md            ← ONE active issue list (all issues)
+│
+└── history/                      ← Archived when complete
+    └── ISSUES_YYYYMMDD.md        ← Old completed issue lists
 ```
+
+**Rules:**
+- ONE issue list at a time
+- Quick scan + Deep review sessions = same file
+- DateTime in filename = creation date
+- When all fixed → move to `history/`
 
 ---
 
@@ -387,66 +472,107 @@ Dockerfile, docker-compose.yml
 
 ---
 
-## Deep Review Output Template
+## Issue Entry Format
 
-Create `DEEP_REVIEW_[MODULE]_YYYYMMDD.md`:
+Add to `ISSUES_YYYYMMDD.md` under the session section:
 
 ```markdown
-# Deep Review: [Module Name]
+## Deep Review Session N: [Module Name]
 
-**Date:** YYYY-MM-DD
-**Reviewer:** Claude
-**Files Reviewed:** X
+**Files:** `path/to/files/` (X files, Y LOC)
 
-## Summary
-
-| Severity | Count |
-|----------|-------|
-| Critical | X |
-| Major | X |
-| Minor | X |
-| Suggestions | X |
-
-## Findings
-
-### [CRITICAL] filename.py:123 - Description
-**Problem:** What's wrong
+### [ ] DR{N}-001: Short Title
+**Priority:** HIGH/MEDIUM/LOW | **File:** `path/file.py:123`
+**Issue:** What's wrong
 **Fix:** How to fix
 
-### [MAJOR] filename.py:456 - Description
-...
-
-## Action Items
-- [ ] Fix critical issues
-- [ ] Fix major issues
-- [ ] Review minor issues
-
-## Pass 2 Verification
-- [ ] All critical fixed
-- [ ] All major fixed
-- [ ] No regressions
+### [~] DR{N}-002: Another Issue
+**Priority:** LOW | **File:** `path/file.py:456`
+**Accept:** Why this is acceptable
 ```
+
+**Status markers:**
+- `[ ]` OPEN - needs fixing
+- `[x]` FIXED - resolved
+- `[~]` ACCEPT - not a real issue
+- `[-]` DEFER - postponed
 
 ---
 
 ## Review Schedule
 
-| Week | Date | Type | Module |
-|------|------|------|--------|
-| 1 | 2025-12-12 | Quick | All (done) |
-| 2 | 2025-12-19 | Deep | Database & Models |
-| 3 | 2025-12-26 | Quick | - |
-| 4 | 2026-01-02 | Deep | Utils & Core |
-| ... | ... | ... | ... |
+### Phase 1: Review (Current)
+
+| Session | Module | Status | Issues |
+|---------|--------|--------|--------|
+| 1 | Database & Models | ✅ Done | 8 |
+| 2 | Utils & Core | ✅ Done | 8 |
+| 3 | Auth & Security | ✅ Done | 9 (1H!) |
+| 4 | LDM Backend | ✅ Done | 8 |
+| 5 | XLSTransfer | ✅ Done | 5 |
+| 6 | QuickSearch | ✅ Done | 4 |
+| 7 | KR Similar | ✅ Done | 3 |
+| 8 | API Layer | ✅ Done | 3 |
+| 9 | Frontend Core | ✅ Done | 2 |
+| 10 | Frontend LDM | ✅ Done | 3 |
+| 11 | Admin Dashboard | ✅ Done | 2 |
+| 12 | Scripts & Config | ✅ Done | 2 |
+
+**All issues go to:** [ISSUES_20251212.md](ISSUES_20251212.md)
+
+### Phase 2: Consolidation ✅ COMPLETE
+
+**Document:** [CONSOLIDATED_ISSUES.md](CONSOLIDATED_ISSUES.md)
+
+31 open issues grouped into 7 categories:
+
+| Group | Issues | Priority |
+|-------|--------|----------|
+| A. Hardcoded URLs | 4 | MEDIUM |
+| B. Database/SQL | 6 | MEDIUM |
+| C. Async/Sync Mixing | 5 | MEDIUM |
+| D. Auth Refactor | 5 | MEDIUM |
+| E. Code Bugs | 8 | MEDIUM |
+| F. Performance | 2 | DEFER |
+| G. DEV_MODE Feature | 1 | MEDIUM |
+
+### Phase 3: Fix Sprint
+
+```
+Week N:   Consolidation + prioritization
+Week N+1: Fix HIGH priority issues
+Week N+2: Fix MEDIUM priority issues
+Week N+3: Fix LOW priority issues (if time)
+Week N+4: Verification pass
+```
+
+**Fix Sprint Rules:**
+- One commit per issue group (not per issue)
+- Run tests after each commit
+- Update issue status in reports
+- Final verification: re-run all scans
 
 ---
 
 ## History
 
-| Date | Type | Module | Issues | Fixed | Status |
-|------|------|--------|--------|-------|--------|
-| 2025-12-12 | Quick | All | 9 | 4 | ✓ Pass 2 Clean |
+| Date | Type | Session | Issues | Status |
+|------|------|---------|--------|--------|
+| 2025-12-12 | Quick | Week 1 | 9 | ✅ 4 fixed, 4 acceptable, 1 deferred |
+| 2025-12-12 | Deep | Session 1 | 8 | ✅ Documented (no fixes yet) |
+| 2025-12-12 | Deep | Session 2 | 8 | ✅ Documented (no fixes yet) |
+| 2025-12-12 | Deep | Session 3 | 9 | ⚠️ 1 HIGH (fixed) |
+| 2025-12-12 | Deep | Session 4 | 8 | ✅ Documented |
+| 2025-12-12 | Deep | Session 5 | 5 | ✅ Documented |
+| 2025-12-12 | Deep | Session 6 | 4 | ✅ Documented |
+| 2025-12-12 | Deep | Session 7 | 3 | ✅ Documented |
+| 2025-12-12 | Deep | Session 8 | 3 | ✅ Documented |
+| 2025-12-12 | Deep | Session 9 | 2 | ✅ Clean |
+| 2025-12-12 | Deep | Session 10 | 3 | ✅ Documented |
+| 2025-12-12 | Deep | Session 11 | 2 | ✅ Clean |
+| 2025-12-12 | Deep | Session 12 | 2 | ✅ Clean |
+| 2025-12-12 | Phase 2 | Consolidation | - | ✅ 31 issues grouped |
 
 ---
 
-*Protocol v2.0 - Updated 2025-12-12*
+*Protocol v2.1 - Updated 2025-12-12*
