@@ -153,7 +153,7 @@ def test_connection(engine) -> bool:
 
 def get_table_counts(session: Session) -> dict:
     """
-    Get row counts for all tables.
+    Get row counts for all tables dynamically.
 
     Args:
         session: Database session.
@@ -161,26 +161,17 @@ def get_table_counts(session: Session) -> dict:
     Returns:
         Dictionary mapping table names to row counts.
     """
-    from server.database.models import (
-        User, Session as DBSession, LogEntry, ToolUsageStats,
-        FunctionUsageStats, PerformanceMetrics, UserActivitySummary,
-        AppVersion, UpdateHistory, ErrorLog, Announcement, UserFeedback
-    )
+    from sqlalchemy import text
 
-    counts = {
-        "users": session.query(User).count(),
-        "sessions": session.query(DBSession).count(),
-        "log_entries": session.query(LogEntry).count(),
-        "tool_usage_stats": session.query(ToolUsageStats).count(),
-        "function_usage_stats": session.query(FunctionUsageStats).count(),
-        "performance_metrics": session.query(PerformanceMetrics).count(),
-        "user_activity_summary": session.query(UserActivitySummary).count(),
-        "app_versions": session.query(AppVersion).count(),
-        "update_history": session.query(UpdateHistory).count(),
-        "error_logs": session.query(ErrorLog).count(),
-        "announcements": session.query(Announcement).count(),
-        "user_feedback": session.query(UserFeedback).count(),
-    }
+    counts = {}
+
+    # Get all table names from metadata
+    for table_name in Base.metadata.tables.keys():
+        try:
+            result = session.execute(text(f'SELECT COUNT(*) FROM "{table_name}"'))
+            counts[table_name] = result.scalar()
+        except Exception:
+            counts[table_name] = -1  # Table might not exist yet
 
     return counts
 

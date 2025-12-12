@@ -1,11 +1,16 @@
 """
-Authentication API Endpoints
+Authentication API Endpoints (SYNC - DEPRECATED)
+
+DEPRECATION WARNING: Use auth_async.py for new code.
+This sync version is kept for backwards compatibility only.
+The async version has audit logging and better error handling.
 
 User registration, login, and authentication management.
 """
 
+import warnings
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from loguru import logger
 
@@ -13,19 +18,40 @@ from server.api.schemas import UserLogin, UserRegister, Token, UserResponse
 from server.database.models import User
 from server.utils.dependencies import get_db, get_current_active_user, require_admin
 from server.utils.auth import hash_password, verify_password, create_access_token
+from server.utils.audit_logger import log_login_success, log_login_failure
 
+# Emit deprecation warning on import
+warnings.warn(
+    "server.api.auth (sync) is deprecated. Use server.api.auth_async instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 # Create router
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication (Deprecated)"])
 
 
 # ============================================================================
 # Public Endpoints
 # ============================================================================
 
+def _get_client_ip(request: Request) -> str:
+    """Extract client IP from request."""
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    x_real_ip = request.headers.get("X-Real-IP")
+    if x_real_ip:
+        return x_real_ip.strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
+
+
 @router.post("/login", response_model=Token)
 def login(
     credentials: UserLogin,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -33,11 +59,14 @@ def login(
 
     Returns JWT access token on successful authentication.
     """
+    client_ip = _get_client_ip(request)
+
     # Find user by username
     user = db.query(User).filter(User.username == credentials.username).first()
 
     if not user:
         logger.warning(f"Login attempt with non-existent username: {credentials.username}")
+        log_login_failure(credentials.username, client_ip, "User not found")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -47,6 +76,7 @@ def login(
     # Verify password
     if not verify_password(credentials.password, user.password_hash):
         logger.warning(f"Failed login attempt for user: {credentials.username}")
+        log_login_failure(credentials.username, client_ip, "Invalid password")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -56,6 +86,7 @@ def login(
     # Check if user is active
     if not user.is_active:
         logger.warning(f"Login attempt by inactive user: {credentials.username}")
+        log_login_failure(credentials.username, client_ip, "Account inactive")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
@@ -74,6 +105,7 @@ def login(
     access_token = create_access_token(token_data)
 
     logger.info(f"User logged in successfully: {user.username} (ID: {user.user_id})")
+    log_login_success(user.user_id, user.username, client_ip)
 
     return Token(
         access_token=access_token,
@@ -173,7 +205,7 @@ def list_users(
 
     Returns paginated list of all users.
     """
-    users = db.query(User).offset(skip).limit(limit).all()
+    users = db.query(User).order_by(User.user_id).offset(skip).limit(limit).all()
     logger.info(f"Admin {admin['username']} requested user list")
     return users
 
