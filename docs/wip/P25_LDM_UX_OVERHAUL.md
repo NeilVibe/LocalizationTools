@@ -483,11 +483,14 @@ Show reference translations from another file (like QuickSearch reference featur
 - Shortcut bar at top showing all keyboard shortcuts
 - Tab key applies first TM suggestion
 
-### Merge Function
-- [ ] Add "Merge File" to file context menu
-- [ ] Implement TEXT merge logic
-- [ ] Implement XML merge logic
-- [ ] Only merge confirmed strings
+### Merge Function / Download
+- [x] Download endpoint (GET /api/ldm/files/{id}/download) ✅ DONE 2025-12-12
+- [x] Download menu in grid header (overflow menu) ✅ DONE 2025-12-12
+- [x] Filter by status (all, translated, reviewed) ✅ DONE 2025-12-12
+- [x] TXT file export ✅ DONE 2025-12-12
+- [x] XML file export ✅ DONE 2025-12-12
+- [x] Excel file export ✅ DONE 2025-12-12
+- [ ] Merge with original file (requires original file storage)
 
 ### Reference Column
 - [ ] Create Reference column component
