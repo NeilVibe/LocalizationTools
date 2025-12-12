@@ -25,9 +25,15 @@ docs/code-review/
 
 ---
 
-## Review Process
+## Review Process (2 Passes)
 
-### 1. Run Automated Scans
+**A code review = 2 full passes. Pass 2 verifies Pass 1 fixes are clean.**
+
+---
+
+### PASS 1: Find & Fix
+
+#### 1.1 Run Automated Scans
 ```bash
 cd /home/neil1988/LocalizationTools
 
@@ -47,20 +53,44 @@ grep -rn "console.log" locaNext/src/ --include="*.js" --include="*.svelte" | wc 
 grep -rhn "^def \|^async def " server/ --include="*.py" | sed 's/.*def //' | sed 's/(.*$//' | sort | uniq -c | sort -rn | head -10
 ```
 
-### 2. Create Issue List
+#### 1.2 Create Issue List
 Create `ISSUES_YYYYMMDD.md` with all findings.
 
-### 3. Review Issues with User
+#### 1.3 Review Issues with User
 Go through list, confirm priorities.
 
-### 4. Fix One by One
+#### 1.4 Fix One by One
 Mark each issue fixed with one-liner summary.
 
-### 5. Final Review
-Run scans again, confirm issues resolved.
+#### 1.5 Commit Pass 1
+Commit fixes with reference to issue list.
 
-### 6. Commit
-Commit with reference to issue list.
+---
+
+### PASS 2: Verify Clean
+
+#### 2.1 Re-run All Scans
+Same scans as Pass 1 to verify fixes didn't introduce new issues.
+
+#### 2.2 Check Fixed Issues
+Verify each "FIXED" issue is actually resolved.
+
+#### 2.3 Check for Regressions
+- Did fixes break anything?
+- Any new duplicates introduced?
+- Imports still clean?
+
+#### 2.4 Final Commit
+Update issue list with Pass 2 results, commit.
+
+---
+
+### Summary
+
+| Pass | Purpose |
+|------|---------|
+| Pass 1 | Find problems → List → Fix → Commit |
+| Pass 2 | Verify fixes → Check regressions → Final commit |
 
 ---
 
@@ -76,9 +106,9 @@ Commit with reference to issue list.
 
 ## Review History
 
-| Date | Issue List | Issues | Fixed |
-|------|------------|--------|-------|
-| 2025-12-12 | [ISSUES_20251212.md](ISSUES_20251212.md) | 9 | 0 |
+| Date | Issue List | Issues | Fixed | Pass 2 |
+|------|------------|--------|-------|--------|
+| 2025-12-12 | [ISSUES_20251212.md](ISSUES_20251212.md) | 9 | 4 | ✓ Clean |
 
 ---
 
