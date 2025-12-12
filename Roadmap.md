@@ -28,6 +28,7 @@ LocaNext v2512111745
 
 | Priority | Name | Status | WIP Doc |
 |----------|------|--------|---------|
+| **P26** | Code Review (Weekly) | 📋 Pending | [P26_CODE_REVIEW.md](docs/wip/P26_CODE_REVIEW.md) |
 | **P25** | LDM UX Overhaul | 🔨 70% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
 | **P24** | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
 | **P17** | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
