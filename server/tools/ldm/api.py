@@ -5,10 +5,13 @@ REST API for managing localization projects, folders, files, and rows.
 Supports real-time collaboration via WebSocket (see websocket.py).
 """
 
+import asyncio
+import hashlib
+from functools import partial
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
 from datetime import datetime
@@ -17,6 +20,7 @@ from loguru import logger
 from io import BytesIO
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
+from server.database.db_utils import normalize_text_for_hash
 from server.database.models import (
     User, LDMProject, LDMFolder, LDMFile, LDMRow, LDMEditHistory, LDMActiveSession,
     LDMTranslationMemory, LDMTMEntry
@@ -830,8 +834,6 @@ async def upload_tm(
 
     Performance: ~20,000+ entries/second bulk insert
     """
-    from server.tools.ldm.tm_manager import TMManager
-
     filename = file.filename or "unknown"
     ext = filename.lower().split('.')[-1] if '.' in filename else ''
 
@@ -846,22 +848,27 @@ async def upload_tm(
     try:
         file_content = await file.read()
 
-        # Use sync session for TMManager
-        sync_db = next(get_db())
-        try:
-            tm_manager = TMManager(sync_db)
-            result = tm_manager.upload_tm(
-                file_content=file_content,
-                filename=filename,
-                name=name,
-                owner_id=current_user["user_id"],
-                source_lang=source_lang,
-                target_lang=target_lang,
-                description=description
-            )
-            return result
-        finally:
-            sync_db.close()
+        # Run sync TMManager in threadpool to avoid blocking event loop
+        def _upload_tm():
+            sync_db = next(get_db())
+            try:
+                from server.tools.ldm.tm_manager import TMManager
+                tm_manager = TMManager(sync_db)
+                return tm_manager.upload_tm(
+                    file_content=file_content,
+                    filename=filename,
+                    name=name,
+                    owner_id=current_user["user_id"],
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    description=description
+                )
+            finally:
+                sync_db.close()
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _upload_tm)
+        return result
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -938,6 +945,7 @@ async def delete_tm(
 async def search_tm_exact(
     tm_id: int,
     source: str,
+    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -945,26 +953,42 @@ async def search_tm_exact(
 
     Uses hash-based O(1) lookup for maximum speed.
     """
-    from server.tools.ldm.tm_manager import TMManager
-
     logger.info(f"TM exact search: tm_id={tm_id}, source={source[:30]}...")
 
-    sync_db = next(get_db())
-    try:
-        tm_manager = TMManager(sync_db)
+    # Verify TM ownership (async)
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    if not tm_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-        # Verify TM ownership
-        tm = tm_manager.get_tm(tm_id)
-        if not tm or tm.get("owner_id") != current_user["user_id"]:
-            # Try async check for ownership
-            pass  # Will fail in search if not owned
+    # Generate hash for O(1) lookup (async query)
+    normalized = normalize_text_for_hash(source)
+    source_hash = hashlib.sha256(normalized.encode('utf-8')).hexdigest()
 
-        result = tm_manager.search_exact(tm_id, source)
-        if result:
-            return {"match": result, "found": True}
-        return {"match": None, "found": False}
-    finally:
-        sync_db.close()
+    entry_result = await db.execute(
+        select(LDMTMEntry).where(
+            LDMTMEntry.tm_id == tm_id,
+            LDMTMEntry.source_hash == source_hash
+        )
+    )
+    entry = entry_result.scalar_one_or_none()
+
+    if entry:
+        return {
+            "match": {
+                "source_text": entry.source_text,
+                "target_text": entry.target_text,
+                "similarity": 1.0,
+                "tier": 1,
+                "strategy": "perfect_whole_match"
+            },
+            "found": True
+        }
+    return {"match": None, "found": False}
 
 
 @router.get("/tm/{tm_id}/search")
@@ -972,6 +996,7 @@ async def search_tm(
     tm_id: int,
     pattern: str,
     limit: int = Query(10, ge=1, le=100),
+    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -979,17 +1004,38 @@ async def search_tm(
 
     For fuzzy/similar text searching (not exact match).
     """
-    from server.tools.ldm.tm_manager import TMManager
-
     logger.info(f"TM search: tm_id={tm_id}, pattern={pattern[:30]}...")
 
-    sync_db = next(get_db())
-    try:
-        tm_manager = TMManager(sync_db)
-        results = tm_manager.search_like(tm_id, pattern, limit=limit)
-        return {"results": results, "count": len(results)}
-    finally:
-        sync_db.close()
+    # Verify TM ownership (async)
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    if not tm_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    # Async LIKE search
+    entries_result = await db.execute(
+        select(LDMTMEntry).where(
+            LDMTMEntry.tm_id == tm_id,
+            LDMTMEntry.source_text.ilike(f"%{pattern}%")
+        ).limit(limit)
+    )
+    entries = entries_result.scalars().all()
+
+    results = [
+        {
+            "source_text": e.source_text,
+            "target_text": e.target_text,
+            "similarity": 0.0,  # LIKE doesn't provide similarity
+            "tier": 0,
+            "strategy": "like_search"
+        }
+        for e in entries
+    ]
+    return {"results": results, "count": len(results)}
 
 
 @router.post("/tm/{tm_id}/entries")
@@ -997,6 +1043,7 @@ async def add_tm_entry(
     tm_id: int,
     source_text: str = Form(...),
     target_text: str = Form(...),
+    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -1004,28 +1051,43 @@ async def add_tm_entry(
 
     Used to add translations as they're created during editing.
     """
-    from server.tools.ldm.tm_manager import TMManager
-
     logger.info(f"Adding TM entry: tm_id={tm_id}, source={source_text[:30]}...")
 
-    sync_db = next(get_db())
-    try:
-        tm_manager = TMManager(sync_db)
-        result = tm_manager.add_entry(tm_id, source_text, target_text)
+    # Verify TM ownership (async)
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    if not tm_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-        if not result:
-            raise HTTPException(status_code=404, detail="Translation Memory not found")
+    # Run sync bulk_copy in threadpool to avoid blocking event loop
+    def _add_entry():
+        sync_db = next(get_db())
+        try:
+            from server.tools.ldm.tm_manager import TMManager
+            tm_manager = TMManager(sync_db)
+            return tm_manager.add_entry(tm_id, source_text, target_text)
+        finally:
+            sync_db.close()
 
-        logger.success(f"TM entry added: tm_id={tm_id}, total entries={result['entry_count']}")
-        return result
-    finally:
-        sync_db.close()
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _add_entry)
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    logger.success(f"TM entry added: tm_id={tm_id}, total entries={result['entry_count']}")
+    return result
 
 
 @router.post("/tm/{tm_id}/build-indexes")
 async def build_tm_indexes(
     tm_id: int,
     background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -1047,47 +1109,59 @@ async def build_tm_indexes(
 
     logger.info(f"Building TM indexes: tm_id={tm_id}, user={current_user['user_id']}")
 
-    sync_db = next(get_db())
-    try:
-        # Verify TM ownership first
-        tm = sync_db.query(LDMTranslationMemory).filter(
+    # Verify TM ownership (async)
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
             LDMTranslationMemory.id == tm_id
-        ).first()
+        )
+    )
+    tm = tm_result.scalar_one_or_none()
 
-        if not tm:
-            raise HTTPException(status_code=404, detail="Translation Memory not found")
+    if not tm:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-        if tm.owner_id != current_user["user_id"]:
-            raise HTTPException(status_code=403, detail="Access denied")
+    if tm.owner_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
 
-        # Create operation for progress tracking
-        with TrackedOperation(
-            operation_name=f"Build TM Indexes: {tm.name}",
-            user_id=current_user["user_id"],
-            username=current_user.get("username", "unknown"),
-            tool_name="LDM",
-            function_name="build_tm_indexes",
-            total_steps=4,
-            parameters={"tm_id": tm_id}
-        ) as tracker:
-            # Build indexes with progress callback
-            def progress_callback(stage: str, current: int, total: int):
-                progress_pct = (current / total) * 100 if total > 0 else 0
-                tracker.update(progress_pct, stage, current, total)
+    tm_name = tm.name  # Capture for use in executor
 
-            indexer = TMIndexer(sync_db)
-            result = indexer.build_indexes(tm_id, progress_callback=progress_callback)
+    # Run indexing in threadpool to avoid blocking event loop
+    def _build_indexes():
+        sync_db = next(get_db())
+        try:
+            # Create operation for progress tracking
+            with TrackedOperation(
+                operation_name=f"Build TM Indexes: {tm_name}",
+                user_id=current_user["user_id"],
+                username=current_user.get("username", "unknown"),
+                tool_name="LDM",
+                function_name="build_tm_indexes",
+                total_steps=4,
+                parameters={"tm_id": tm_id}
+            ) as tracker:
+                # Build indexes with progress callback
+                def progress_callback(stage: str, current: int, total: int):
+                    progress_pct = (current / total) * 100 if total > 0 else 0
+                    tracker.update(progress_pct, stage, current, total)
 
-            logger.success(f"TM indexes built: tm_id={tm_id}, entries={result['entry_count']}")
-            return result
+                indexer = TMIndexer(sync_db)
+                result = indexer.build_indexes(tm_id, progress_callback=progress_callback)
+
+                logger.success(f"TM indexes built: tm_id={tm_id}, entries={result['entry_count']}")
+                return result
+        finally:
+            sync_db.close()
+
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _build_indexes)
+        return result
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"TM index build failed: {e}")
         raise HTTPException(status_code=500, detail=f"Index build failed: {str(e)}")
-    finally:
-        sync_db.close()
 
 
 @router.get("/tm/{tm_id}/indexes")

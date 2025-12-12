@@ -88,6 +88,16 @@ git push origin main && git push gitea main
 Users just launch app and work. All config is admin/IT responsibility.
 See: [docs/wip/P23_DATA_FLOW_ARCHITECTURE.md](docs/wip/P23_DATA_FLOW_ARCHITECTURE.md)
 
+### 8. Code Review: FIX EVERYTHING
+```
+NO DEFER. NO EXCUSES. FIX ALL ISSUES.
+- "Too much work" → Do the work
+- "Operations are fast" → Still blocks, fix it
+- "Created a task file" → That's not fixing it
+Target: 100+ users, 50M+ rows. If it breaks at scale, FIX IT.
+```
+See: [docs/code-review/CODE_REVIEW_PROTOCOL.md](docs/code-review/CODE_REVIEW_PROTOCOL.md)
+
 ---
 
 ## Quick Commands
