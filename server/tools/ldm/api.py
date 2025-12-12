@@ -6,6 +6,7 @@ Supports real-time collaboration via WebSocket (see websocket.py).
 """
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -13,6 +14,7 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
 from loguru import logger
+from io import BytesIO
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
 from server.database.models import (
@@ -1131,3 +1133,171 @@ async def get_tm_index_status(
             for idx in indexes
         ]
     }
+
+
+# ============================================================================
+# File Download/Export Endpoints
+# ============================================================================
+
+@router.get("/files/{file_id}/download")
+async def download_file(
+    file_id: int,
+    status_filter: Optional[str] = Query(None, description="Filter by status: reviewed, translated, all"),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Download a file with current translations.
+
+    Rebuilds the file from database rows in the original format.
+
+    Query params:
+    - status_filter: "reviewed" (confirmed only), "translated" (translated+reviewed), "all" (everything)
+    """
+    # Get file info
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.id == file_id)
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Get all rows for this file
+    status_conditions = []
+    if status_filter == "reviewed":
+        # Only confirmed/reviewed strings
+        status_conditions = ["reviewed", "approved"]
+    elif status_filter == "translated":
+        # Translated and reviewed
+        status_conditions = ["translated", "reviewed", "approved"]
+    # else: all rows
+
+    query = select(LDMRow).where(LDMRow.file_id == file_id).order_by(LDMRow.row_num)
+
+    if status_conditions:
+        query = query.where(LDMRow.status.in_(status_conditions))
+
+    result = await db.execute(query)
+    rows = result.scalars().all()
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="No rows found for this file")
+
+    # Build file content based on format (case-insensitive)
+    format_lower = file.format.lower() if file.format else ""
+    if format_lower == "txt":
+        content = _build_txt_file(rows)
+        media_type = "text/plain"
+        extension = ".txt"
+    elif format_lower == "xml":
+        content = _build_xml_file(rows)
+        media_type = "application/xml"
+        extension = ".xml"
+    elif format_lower in ["xlsx", "excel"]:
+        content = _build_excel_file(rows)
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        extension = ".xlsx"
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {file.format}")
+
+    # Create filename
+    base_name = file.original_filename.rsplit('.', 1)[0] if '.' in file.original_filename else file.original_filename
+    download_name = f"{base_name}_export{extension}"
+
+    logger.info(f"LDM: Downloading file {file_id} ({len(rows)} rows) as {download_name}")
+
+    return StreamingResponse(
+        BytesIO(content),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={download_name}"}
+    )
+
+
+def _build_txt_file(rows: List[LDMRow]) -> bytes:
+    """
+    Rebuild TXT file from rows.
+
+    TXT format: tab-separated columns
+    Original format: idx0\tidx1\tidx2\tidx3\tidx4\tsource\ttarget
+    """
+    lines = []
+    for row in rows:
+        # Reconstruct string_id parts if available
+        string_id_parts = row.string_id.split('\t') if row.string_id else [""] * 5
+
+        # Ensure we have 5 parts for the index
+        while len(string_id_parts) < 5:
+            string_id_parts.append("")
+
+        # Build line: idx0\tidx1\tidx2\tidx3\tidx4\tsource\ttarget
+        source = row.source or ""
+        target = row.target or ""
+
+        # Replace newlines back to actual newlines in the file
+        source = source.replace("↵", "\n")
+        target = target.replace("↵", "\n")
+
+        line = "\t".join(string_id_parts[:5] + [source, target])
+        lines.append(line)
+
+    content = "\n".join(lines)
+    return content.encode('utf-8')
+
+
+def _build_xml_file(rows: List[LDMRow]) -> bytes:
+    """
+    Rebuild XML file from rows.
+
+    XML format:
+    <?xml version="1.0" encoding="UTF-8"?>
+    <LangData>
+        <String stringid="ID" strorigin="source" str="target"/>
+    </LangData>
+    """
+    import xml.etree.ElementTree as ET
+    from xml.dom import minidom
+
+    root = ET.Element("LangData")
+
+    for row in rows:
+        string_elem = ET.SubElement(root, "String")
+        string_elem.set("stringid", row.string_id or "")
+        string_elem.set("strorigin", row.source or "")
+        string_elem.set("str", row.target or "")
+
+    # Pretty print
+    xml_str = ET.tostring(root, encoding='unicode')
+    dom = minidom.parseString(xml_str)
+    pretty_xml = dom.toprettyxml(indent="  ", encoding="UTF-8")
+
+    return pretty_xml
+
+
+def _build_excel_file(rows: List[LDMRow]) -> bytes:
+    """
+    Rebuild Excel file from rows.
+
+    Excel format: Source in column A, Target in column B
+    """
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Translations"
+
+    # Header
+    ws.cell(row=1, column=1, value="Source")
+    ws.cell(row=1, column=2, value="Target")
+
+    # Data
+    for i, row in enumerate(rows, start=2):
+        ws.cell(row=i, column=1, value=row.source or "")
+        ws.cell(row=i, column=2, value=row.target or "")
+
+    # Save to bytes
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return output.read()
