@@ -1211,6 +1211,109 @@ async def get_tm_index_status(
 
 
 # ============================================================================
+# File to TM Conversion Endpoint
+# ============================================================================
+
+class FileToTMRequest(BaseModel):
+    name: str
+    project_id: Optional[int] = None
+    language: str = "en"
+    description: Optional[str] = None
+
+
+@router.post("/files/{file_id}/register-as-tm")
+async def register_file_as_tm(
+    file_id: int,
+    request: FileToTMRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Convert an LDM file into a Translation Memory.
+
+    Takes all source/target pairs from the file and creates a new TM.
+    """
+    # Get file info
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.id == file_id)
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    logger.info(f"Converting file to TM: file_id={file_id}, name={request.name}")
+
+    try:
+        # Get all rows from the file
+        result = await db.execute(
+            select(LDMRow).where(
+                LDMRow.file_id == file_id,
+                LDMRow.source.isnot(None),
+                LDMRow.source != "",
+                LDMRow.target.isnot(None),
+                LDMRow.target != ""
+            ).order_by(LDMRow.row_num)
+        )
+        rows = result.scalars().all()
+
+        if not rows:
+            raise HTTPException(status_code=400, detail="File has no translatable rows")
+
+        # Create TM entries data
+        entries_data = [
+            {"source": row.source, "target": row.target}
+            for row in rows
+        ]
+
+        # Run sync TMManager in threadpool to avoid blocking event loop
+        def _create_tm():
+            sync_db = next(get_db())
+            try:
+                from server.tools.ldm.tm_manager import TMManager
+                tm_manager = TMManager(sync_db)
+
+                # Create TM
+                tm = tm_manager.create_tm(
+                    name=request.name,
+                    owner_id=current_user["user_id"],
+                    source_lang="ko",  # Default, can be extended
+                    target_lang=request.language,
+                    description=request.description or f"Created from file: {file.name}"
+                )
+
+                # Add entries in bulk
+                import time
+                start_time = time.time()
+                entry_count = tm_manager.add_entries_bulk(tm.id, entries_data)
+                elapsed = time.time() - start_time
+
+                return {
+                    "tm_id": tm.id,
+                    "name": tm.name,
+                    "entry_count": entry_count,
+                    "status": tm.status,
+                    "time_seconds": round(elapsed, 2),
+                    "rate_per_second": int(entry_count / elapsed) if elapsed > 0 else 0,
+                    "source_file": file.name
+                }
+            finally:
+                sync_db.close()
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _create_tm)
+
+        logger.info(f"TM created from file: tm_id={result['tm_id']}, entries={result['entry_count']}")
+        return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"File to TM conversion failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
+
+
+# ============================================================================
 # File Download/Export Endpoints
 # ============================================================================
 

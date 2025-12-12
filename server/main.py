@@ -219,6 +219,10 @@ app.include_router(admin_telemetry.router)
 from server.api import admin_db_stats
 app.include_router(admin_db_stats.router)
 
+# Include Health Status API (P24: Server Status Dashboard)
+from server.api import health
+app.include_router(health.router)
+
 # Include LDM (LanguageData Manager) API - Real-time collaborative CAT tool
 from server.tools.ldm import api as ldm_api
 app.include_router(ldm_api.router)

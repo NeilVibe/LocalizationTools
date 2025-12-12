@@ -76,8 +76,17 @@
     row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
     string_id: { key: "string_id", label: "StringID", width: 150, prefKey: "showStringId" },
     source: { key: "source", label: "Source (KR)", width: 350, always: true },
-    target: { key: "target", label: "Target", width: 350, always: true }
+    target: { key: "target", label: "Target", width: 350, always: true },
+    reference: { key: "reference", label: "Reference", width: 300, prefKey: "showReference" },
+    tm_result: { key: "tm_result", label: "TM Match", width: 300, prefKey: "showTmResults" }
   };
+
+  // Reference data cache (loaded when referenceFileId changes)
+  let referenceData = new Map(); // string_id -> { target, source }
+  let referenceLoading = false;
+
+  // TM results cache (per row)
+  let tmResults = new Map(); // row_id -> { target, similarity, source }
 
   // Reactive: visible columns based on preferences
   $: visibleColumns = getVisibleColumns($preferences);
@@ -98,6 +107,16 @@
     // Always visible: Source and Target
     cols.push(allColumns.source);
     cols.push(allColumns.target);
+
+    // Optional: Reference column
+    if (prefs.showReference) {
+      cols.push(allColumns.reference);
+    }
+
+    // Optional: TM Results column
+    if (prefs.showTmResults) {
+      cols.push(allColumns.tm_result);
+    }
 
     return cols;
   }
@@ -300,6 +319,135 @@
     });
   }
 
+  // =========================================================================
+  // Reference Column Functions (Phase 8)
+  // =========================================================================
+
+  /**
+   * Load reference file data for matching
+   */
+  async function loadReferenceData(refFileId) {
+    if (!refFileId) {
+      referenceData = new Map();
+      return;
+    }
+
+    referenceLoading = true;
+    logger.info("Loading reference file", { fileId: refFileId });
+
+    try {
+      // Fetch all rows from reference file
+      const response = await fetch(`${API_BASE}/api/ldm/files/${refFileId}/rows?limit=50000`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const refRows = data.rows || [];
+
+        // Build lookup map by string_id
+        referenceData = new Map();
+        for (const row of refRows) {
+          if (row.string_id) {
+            referenceData.set(row.string_id, {
+              target: row.target,
+              source: row.source
+            });
+          }
+        }
+
+        logger.success("Reference data loaded", { entries: referenceData.size });
+      } else {
+        logger.error("Failed to load reference file", { status: response.status });
+      }
+    } catch (err) {
+      logger.error("Error loading reference", { error: err.message });
+    } finally {
+      referenceLoading = false;
+    }
+  }
+
+  /**
+   * Get reference translation for a row
+   */
+  function getReferenceForRow(row, matchMode) {
+    if (!row.string_id || referenceData.size === 0) return null;
+
+    const ref = referenceData.get(row.string_id);
+    if (!ref) return null;
+
+    // If matching by string_id + source, verify source matches too
+    if (matchMode === 'stringIdAndSource') {
+      if (ref.source !== row.source) return null;
+    }
+
+    return ref.target;
+  }
+
+  // Reactive: load reference when preference changes
+  $: if ($preferences.referenceFileId) {
+    loadReferenceData($preferences.referenceFileId);
+  } else {
+    referenceData = new Map();
+  }
+
+  // =========================================================================
+  // TM Results Column Functions (Phase 9)
+  // =========================================================================
+
+  /**
+   * Get best TM match for a row (cached)
+   */
+  function getTMResultForRow(row) {
+    if (!row.id) return null;
+    return tmResults.get(row.id) || null;
+  }
+
+  /**
+   * Fetch TM result for a row and cache it
+   */
+  async function fetchTMResultForRow(row) {
+    if (!row.source || !$preferences.activeTmId) return;
+
+    const rowId = row.id;
+    if (tmResults.has(rowId)) return; // Already cached
+
+    try {
+      const params = new URLSearchParams({
+        source: row.source,
+        threshold: '0.5',
+        max_results: '1'
+      });
+      if ($preferences.activeTmId) {
+        params.append('tm_id', $preferences.activeTmId.toString());
+      }
+
+      const response = await fetch(`${API_BASE}/api/ldm/tm/suggest?${params}`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.suggestions && data.suggestions.length > 0) {
+          const best = data.suggestions[0];
+          tmResults.set(rowId, {
+            target: best.target,
+            similarity: best.similarity,
+            source: best.source
+          });
+          tmResults = tmResults; // Trigger reactivity
+        }
+      }
+    } catch (err) {
+      // Silent fail - TM results are optional
+    }
+  }
+
+  // Clear TM cache when active TM changes
+  $: if ($preferences.activeTmId !== undefined) {
+    tmResults = new Map();
+  }
+
   // Open edit modal with row locking
   async function openEditModal(row) {
     if (!row) return;
@@ -313,17 +461,15 @@
       return;
     }
 
-    // TODO: Row locking temporarily disabled - WebSocket event delivery issue
-    // See ISSUES_TO_FIX.md for details
-    // The ldm_lock_row event is not being received by the server
-    // if (fileId) {
-    //   const granted = await lockRow(fileId, parseInt(row.id));
-    //   if (!granted) {
-    //     logger.warning("Could not acquire lock", { rowId: row.id });
-    //     alert("Could not acquire lock. Row may be in use.");
-    //     return;
-    //   }
-    // }
+    // Request row lock for editing
+    if (fileId) {
+      const granted = await lockRow(fileId, parseInt(row.id));
+      if (!granted) {
+        logger.warning("Could not acquire lock", { rowId: row.id });
+        alert("Could not acquire lock. Row may be in use by another user.");
+        return;
+      }
+    }
 
     editingRow = row;
     // Format target for editing (convert escapes to real newlines)
@@ -786,6 +932,48 @@
                     <span class="edit-icon"><Edit size={12} /></span>
                   {/if}
                 </div>
+
+                <!-- Reference Column (conditional - Phase 8) -->
+                {#if $preferences.showReference}
+                  {@const refText = getReferenceForRow(row, $preferences.referenceMatchMode)}
+                  <div
+                    class="cell reference"
+                    class:has-match={refText}
+                    class:no-match={!refText}
+                    style="width: {allColumns.reference.width}px;"
+                    title={refText ? `Reference: ${refText}` : 'No reference match'}
+                  >
+                    {#if referenceLoading}
+                      <span class="cell-loading">Loading...</span>
+                    {:else if refText}
+                      <span class="cell-content ref-match">{formatGridText(refText)}</span>
+                    {:else}
+                      <span class="cell-content no-match">-</span>
+                    {/if}
+                  </div>
+                {/if}
+
+                <!-- TM Result Column (conditional - Phase 9) -->
+                {#if $preferences.showTmResults}
+                  {@const tmResult = getTMResultForRow(row)}
+                  <div
+                    class="cell tm-result"
+                    class:has-match={tmResult}
+                    class:high-match={tmResult && tmResult.similarity >= 0.9}
+                    class:medium-match={tmResult && tmResult.similarity >= 0.7 && tmResult.similarity < 0.9}
+                    class:low-match={tmResult && tmResult.similarity < 0.7}
+                    style="width: {allColumns.tm_result.width}px;"
+                    title={tmResult ? `${Math.round(tmResult.similarity * 100)}% match` : 'No TM match'}
+                    on:mouseenter={() => fetchTMResultForRow(row)}
+                  >
+                    {#if tmResult}
+                      <span class="tm-similarity">{Math.round(tmResult.similarity * 100)}%</span>
+                      <span class="cell-content">{formatGridText(tmResult.target)}</span>
+                    {:else}
+                      <span class="cell-content no-match">-</span>
+                    {/if}
+                  </div>
+                {/if}
               {/if}
             </div>
           {/each}
@@ -1108,6 +1296,80 @@
   .cell.target.locked .lock-icon {
     opacity: 0.8;
     color: var(--cds-support-03);
+  }
+
+  /* ========================================
+     Reference Column (Phase 8)
+     ======================================== */
+  .cell.reference {
+    background: var(--cds-layer-02);
+    color: var(--cds-text-02);
+    font-size: 0.8rem;
+  }
+
+  .cell.reference.has-match {
+    background: rgba(36, 161, 72, 0.08);
+    border-left: 2px solid var(--cds-support-02);
+  }
+
+  .cell.reference .ref-match {
+    color: var(--cds-text-01);
+  }
+
+  .cell.reference .no-match {
+    color: var(--cds-text-03);
+    font-style: italic;
+  }
+
+  /* ========================================
+     TM Match Column (Phase 9)
+     ======================================== */
+  .cell.tm-result {
+    background: var(--cds-layer-02);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .cell.tm-result.high-match {
+    background: rgba(36, 161, 72, 0.12);
+    border-left: 3px solid var(--cds-support-02);
+  }
+
+  .cell.tm-result.medium-match {
+    background: rgba(255, 209, 0, 0.12);
+    border-left: 3px solid var(--cds-support-03);
+  }
+
+  .cell.tm-result.low-match {
+    background: rgba(198, 198, 198, 0.12);
+    border-left: 3px solid var(--cds-border-subtle-01);
+  }
+
+  .tm-similarity {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: var(--cds-layer-accent-01);
+    color: var(--cds-text-02);
+  }
+
+  .cell.tm-result.high-match .tm-similarity {
+    background: var(--cds-support-02);
+    color: white;
+  }
+
+  .cell.tm-result.medium-match .tm-similarity {
+    background: var(--cds-support-03);
+    color: var(--cds-text-inverse);
+  }
+
+  .cell.tm-result .no-match {
+    color: var(--cds-text-03);
+    font-style: italic;
+    font-size: 0.75rem;
   }
 
   .loading-cell {

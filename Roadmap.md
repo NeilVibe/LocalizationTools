@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512130200 | **Updated**: 2025-12-13 | **Status**: Production Ready
+**Version**: 2512122230 | **Updated**: 2025-12-12 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 > **Detailed Tasks**: [docs/wip/README.md](docs/wip/README.md) (WIP Hub)
@@ -11,10 +11,10 @@
 ## Current Status
 
 ```
-LocaNext v2512111745
-├── Backend:     ✅ 55+ API endpoints, async, WebSocket
+LocaNext v2512122230
+├── Backend:     ✅ 63+ API endpoints, async, WebSocket
 ├── Frontend:    ✅ Electron + Svelte (LocaNext Desktop)
-├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar + LDM 67%
+├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar + LDM 80%
 ├── Tests:       ✅ 912 total (595 unit pass, no mocks)
 ├── Security:    ✅ 86 tests (IP filter, CORS, JWT, audit)
 ├── CI/CD:       ✅ GitHub Actions + Gitea (FULLY WORKING!)
@@ -28,19 +28,19 @@ LocaNext v2512111745
 
 | # | Priority | Name | Status | Doc |
 |---|----------|------|--------|-----|
-| **1** | P25 | LDM UX Overhaul | 🔨 70% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
-| 2 | P24 | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
-| 3 | P17 | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
+| **1** | P25 | LDM UX Overhaul | 🔨 85% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
+| 2 | P24 | Server Status Dashboard | ✅ Complete | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
+| 3 | P17 | LDM LanguageData Manager | 80% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
 | - | CODE REVIEW | Review 20251212 | ✅ CLOSED | [history/](docs/code-review/history/) |
 | - | P22 | SQLite Removal | ✅ Phase 1 | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
 | - | P21 | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
-| - | ISSUES | Bug Fixes | 2 Open | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
+| - | ISSUES | Bug Fixes | ✅ All Fixed | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 
 ---
 
 ## Active Development
 
-### P25: LDM UX Overhaul (70% Complete) - Priority #1
+### P25: LDM UX Overhaul (85% Complete) - Priority #1
 
 Comprehensive UX improvements based on user feedback.
 
@@ -62,111 +62,100 @@ Comprehensive UX improvements based on user feedback.
 - ✅ Keyboard shortcuts working (Ctrl+S=Confirm, Ctrl+T=Translate)
 
 **Phase 4: Preferences Menu ✅**
-- ✅ Column toggles: Index Number, String ID
+- ✅ Column toggles: Index Number, String ID, Reference, TM
+- ✅ TM selector (choose active TM)
+- ✅ Reference file selector + match mode
 - ✅ Settings persist in localStorage
-- ✅ Grid updates dynamically
-- Reference/TM/QA toggles ready (disabled until features built)
 
-**Phase 5: Download/Export ✅** (NEW)
+**Phase 5: Download/Export ✅**
 - ✅ Download endpoint + frontend menu
 - ✅ Status filters (all, translated, reviewed)
 - ✅ TXT/XML/Excel export
-- ✅ Format verification test (exact match with original)
 
-**Remaining Phases:**
-- Phase 6: Right-Click Context Menu - download, QA, upload as TM
-- Phase 7: Tasks Panel - background task progress (TM processing, QA)
-- Phase 8: Reference Column - show reference from another file
-- Phase 9: TM Integration - upload TM, TM Results column
-- Phase 10: Live QA System - spell, grammar, glossary checks
+**Phase 6: Right-Click Context Menu ✅**
+- ✅ Already exists in FileExplorer.svelte
+- ✅ Download, Register as TM options
+
+**Phase 7: Tasks Panel** (Existing)
+- ✅ TaskManager.svelte with WebSocket updates
+- ✅ Real-time progress tracking
+
+**Phase 8: Reference Column ✅**
+- ✅ Reference column in grid
+- ✅ Load reference from project file
+- ✅ Match by StringID or StringID+Source
+- ✅ Preferences UI for reference settings
+
+**Phase 9: TM Integration ✅**
+- ✅ TMManager.svelte - list, delete, build indexes
+- ✅ TMUploadModal.svelte - upload TM files
+- ✅ TM Results column in grid (shows matches on hover)
+- ✅ TM selector in Preferences
+
+**Phase 10: Live QA System** (NOT IMPLEMENTED)
+- ❌ Skipped - No good MIT/Apache multi-language spell checker
+- Recommendation: Use Glossary + Inconsistency checks instead
+
+**Remaining:**
+- QA: Glossary term check (pyahocorasick - MIT)
+- QA: Inconsistency check (same source = same target)
+- QA: Missing translation check
+- QA: Number mismatch check
 
 **Details:** [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md)
 
 ---
 
-### P24: Server Status Dashboard
+### P24: Server Status Dashboard ✅ COMPLETE
 
 Real-time health monitoring for Central Server.
 
-**LocaNext App (Simple):**
-- Connection status: green/orange/red
-- Basic server health
+**Backend API:**
+- ✅ `GET /api/health/simple` - green/orange/red status
+- ✅ `GET /api/health/status` - detailed metrics (auth required)
+- ✅ `GET /api/health/ping` - ultra-simple ping/pong
 
-**Admin Dashboard (Detailed):**
-- API Server status + response time
-- Database: connections, load, query time
-- WebSocket: active connections
-- System: CPU, memory, disk
-- Active users count
+**Frontend:**
+- ✅ ServerStatus.svelte - visual health modal
+- ✅ Auto-refresh every 30 seconds
+- ✅ API, Database, WebSocket indicators
 
 **Details:** [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md)
 
 ---
 
-### P17: LDM LanguageData Manager (67%)
+### P17: LDM LanguageData Manager (80%)
 
-Professional CAT tool with 5-tier cascade TM search.
+Professional CAT tool with real-time collaboration.
 
 **What's Done:**
 - ✅ Virtual scroll grid (1M+ rows)
 - ✅ File Explorer (projects, folders)
-- ✅ Real-time WebSocket sync
-- ✅ Phase 7.1-7.3: TM Database + TMManager + TMIndexer
+- ✅ Real-time WebSocket sync + Row locking
+- ✅ TM Database + TMManager + TMIndexer
+- ✅ TM Upload UI (TMManager, TMUploadModal)
+- ✅ Reference column + TM column
+- ✅ Preferences with TM/Reference selectors
 
-**What's Next (Pick One):**
-
-| Task | Priority | Notes |
-|------|----------|-------|
-| **TM Upload UI** | HIGH | ISSUE-011 - Backend ready, need frontend |
-| **TM Search API** | HIGH | Phase 7.4 - `tm_search.py` |
-| **Custom Excel picker** | HIGH | Column selection (not just A/B) |
-| **Custom XML picker** | HIGH | Attribute selection |
+**What's Next:**
+- Custom Excel picker (column selection)
+- Custom XML picker (attribute selection)
+- QA: Glossary, Inconsistency, Numbers checks
 
 **Details:** [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md)
 
 ---
 
-### P22: SQLite Removal (Phase 1 ✅)
-
-**Completed (2025-12-11):**
-- ✅ 12 server files cleaned
-- ✅ 595 unit tests pass
-- ✅ PostgreSQL-only architecture
-
----
-
-### P23: Data Flow Architecture (LATER)
-
-**For Production Deployment** - Not needed during development.
-
-Currently localhost:8888 is hardcoded, which is FINE for dev/testing.
-
-**Connection Flow (Simplified):**
-```
-1. Admin sets Central Server IP (once, in build or config)
-2. User launches app → connects to Central Server
-3. Server checks client IP against whitelist (already built!)
-4. If authorized → connect, show green status
-```
-
-**What's LEFT to build:**
-- Connection Status Panel (green/orange/red indicators)
-- IP whitelist already exists in `server/middleware/`
-
-**Details:** [P23_DATA_FLOW_ARCHITECTURE.md](docs/wip/P23_DATA_FLOW_ARCHITECTURE.md)
-
----
-
-### Known Issues (2 Open)
+### Known Issues ✅ ALL FIXED
 
 | ID | Status | Description |
 |----|--------|-------------|
-| ~~BUG-001~~ | ✅ Fixed | ~~Go to row removed~~ |
-| ~~BUG-002~~ | ✅ Fixed | ~~Target lock blocking editing~~ |
-| ~~BUG-003~~ | ✅ Fixed | ~~Upload tooltip z-index~~ |
-| ~~BUG-004~~ | ✅ Fixed | ~~Search bar requires icon click~~ |
-| ISSUE-011 | 📋 Open | Missing TM upload UI (backend ready) |
-| ISSUE-013 | 📋 Open | WebSocket locking events (workaround applied) |
+| ~~BUG-001~~ | ✅ Fixed | Go to row removed |
+| ~~BUG-002~~ | ✅ Fixed | Target lock blocking editing |
+| ~~BUG-003~~ | ✅ Fixed | Upload tooltip z-index |
+| ~~BUG-004~~ | ✅ Fixed | Search bar requires icon click |
+| ~~ISSUE-011~~ | ✅ Fixed | TM Upload UI (TMManager, TMUploadModal) |
+| ~~ISSUE-013~~ | ✅ Fixed | WebSocket locking re-enabled |
 
 **Details:** [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md)
 
@@ -193,36 +182,22 @@ Local = Heavy processing (FAISS, ML - rebuildable)
 
 ---
 
-## Recently Completed
+## Recently Completed (2025-12-12)
 
-### Full Code Review ✅ (2025-12-12)
-- 12 Deep Review sessions (30+ files, 25K+ LOC)
-- 66 issues found → 29 fixed, 34 accept, 2 open, 1 defer
-- Phase 3 Fix Sprint: All 7 groups completed
-- **DEV_MODE feature** - `DEV_MODE=true` for localhost auto-auth
-- **JSONB migration** - Script at `scripts/migrate_json_to_jsonb.py`
-- **Auth hardening** - Rate limiting, audit logging, deprecation warning
-- **Docs:** [ISSUES_20251212.md](docs/code-review/ISSUES_20251212.md)
+### P25 Phases 6-9 ✅
+- Phase 6: Right-click menu (already existed)
+- Phase 8: Reference column with file selector + match modes
+- Phase 9: TM integration with TMManager, TMUploadModal, TM column
+- Preferences enhanced: TM selector, Reference selector
 
-### P25 Phases 1-5: Core UX + Download ✅ (2025-12-12)
-- BUG-001, BUG-002, BUG-003, BUG-004 all fixed
-- Light/Dark theme toggle + Font settings
-- Status column → Cell colors, Go to Row removed
-- **Edit Modal Redesign** - BIG modal, TM panel, shortcuts
-- **Preferences Menu** - Column toggles (Index, StringID)
-- **Download/Export** - TXT/XML/Excel with format verification
-- CDP test suite (Normal + Detailed + Format verification)
+### P24: Server Status Dashboard ✅
+- health.py API (simple, status, ping endpoints)
+- ServerStatus.svelte modal
+- LDM toolbar integration
 
-### P22 Phase 1: SQLite Removal ✅ (2025-12-11)
-- 12 server files cleaned
-- 595 unit tests pass
-
-### P21: Database Powerhouse ✅ (2025-12-10)
-- PgBouncer 1.16 - 1000 connections
-- COPY TEXT - 31K entries/sec
-
-### P20: Embedding Model Migration ✅ (2025-12-09)
-- Qwen3-Embedding-0.6B (Apache 2.0)
+### Bug Fixes ✅
+- ISSUE-011: TM Upload UI created
+- ISSUE-013: WebSocket locking fixed (was commented out)
 
 ---
 
@@ -230,7 +205,11 @@ Local = Heavy processing (FAISS, ML - rebuildable)
 
 ```bash
 # Start servers
+./scripts/start_all_servers.sh
+# OR manually:
 python3 server/main.py
+
+# Start frontend
 cd locaNext && npm run electron:dev
 
 # Testing

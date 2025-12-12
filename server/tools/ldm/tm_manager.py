@@ -361,6 +361,96 @@ class TMManager:
 
         return None
 
+    def create_tm(
+        self,
+        name: str,
+        owner_id: int,
+        source_lang: str = "ko",
+        target_lang: str = "en",
+        description: Optional[str] = None
+    ) -> LDMTranslationMemory:
+        """
+        Create a new empty TM record.
+
+        Args:
+            name: TM display name
+            owner_id: User ID of TM owner
+            source_lang: Source language code
+            target_lang: Target language code
+            description: Optional description
+
+        Returns:
+            Created TM model object
+        """
+        tm = LDMTranslationMemory(
+            name=name,
+            description=description,
+            owner_id=owner_id,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            entry_count=0,
+            status="pending"
+        )
+        self.db.add(tm)
+        self.db.commit()
+
+        logger.info(f"Created TM record: id={tm.id} name={name}")
+        return tm
+
+    def add_entries_bulk(
+        self,
+        tm_id: int,
+        entries: List[Dict],
+        progress_callback: Optional[Callable[[int, int], None]] = None
+    ) -> int:
+        """
+        Add multiple entries to a TM in bulk.
+
+        Args:
+            tm_id: TM ID to add entries to
+            entries: List of dicts with 'source' and 'target' keys
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            Number of entries inserted
+        """
+        tm = self.db.query(LDMTranslationMemory).filter(
+            LDMTranslationMemory.id == tm_id
+        ).first()
+
+        if not tm:
+            raise ValueError(f"TM not found: id={tm_id}")
+
+        # Convert to expected format (source_text, target_text)
+        formatted_entries = [
+            {
+                "source_text": e.get("source") or e.get("source_text"),
+                "target_text": e.get("target") or e.get("target_text")
+            }
+            for e in entries
+            if (e.get("source") or e.get("source_text")) and (e.get("target") or e.get("target_text"))
+        ]
+
+        if not formatted_entries:
+            logger.warning(f"No valid entries to add to TM {tm_id}")
+            return 0
+
+        # Use COPY TEXT for bulk insert
+        inserted = bulk_copy_tm_entries(
+            self.db,
+            tm_id,
+            formatted_entries,
+            progress_callback=progress_callback
+        )
+
+        # Update TM record
+        tm.entry_count = (tm.entry_count or 0) + inserted
+        tm.status = "ready"
+        self.db.commit()
+
+        logger.info(f"Bulk added {inserted} entries to TM {tm_id}")
+        return inserted
+
     # =========================================================================
     # TM Search (Basic - Full 5-tier cascade in tm_search.py)
     # =========================================================================
