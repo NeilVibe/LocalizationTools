@@ -29,8 +29,7 @@ router = APIRouter(prefix="/api/v2/admin/stats", tags=["Admin Statistics"])
 @router.get("/overview")
 async def get_overview_stats(
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get real-time overview metrics for dashboard home page.
@@ -107,8 +106,7 @@ async def get_overview_stats(
 async def get_daily_stats(
     days: int = Query(30, ge=1, le=365, description="Number of days to retrieve"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get daily usage statistics for the specified number of days.
@@ -177,8 +175,7 @@ async def get_daily_stats(
 async def get_weekly_stats(
     weeks: int = Query(12, ge=1, le=52, description="Number of weeks to retrieve"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get weekly aggregated statistics.
@@ -249,8 +246,7 @@ async def get_weekly_stats(
 async def get_monthly_stats(
     months: int = Query(12, ge=1, le=24, description="Number of months to retrieve"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get monthly aggregated statistics.
@@ -324,8 +320,7 @@ async def get_monthly_stats(
 async def get_tool_popularity(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get tool popularity statistics.
@@ -399,8 +394,7 @@ async def get_function_stats(
     tool_name: str,
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get function-level statistics for a specific tool.
@@ -485,8 +479,7 @@ async def get_fastest_functions(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     min_usage: int = Query(10, ge=1, description="Minimum usage count for inclusion"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get fastest functions by average duration.
@@ -559,8 +552,7 @@ async def get_slowest_functions(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     min_usage: int = Query(10, ge=1, description="Minimum usage count for inclusion"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get slowest functions by average duration.
@@ -630,8 +622,7 @@ async def get_slowest_functions(
 async def get_error_rate(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get error rate over time.
@@ -695,8 +686,7 @@ async def get_top_errors(
     limit: int = Query(10, ge=1, le=50, description="Number of errors to return"),
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get most common errors.
@@ -1040,8 +1030,7 @@ async def get_user_rankings(
 @router.get("/server-logs")
 async def get_server_logs(
     lines: int = Query(default=100, description="Number of log lines to return"),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get server log file contents (last N lines).
@@ -1134,8 +1123,7 @@ async def get_server_logs(
 @router.get("/database")
 async def get_database_stats(
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get comprehensive database statistics including:
@@ -1258,8 +1246,7 @@ async def get_database_stats(
 @router.get("/server")
 async def get_server_stats(
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    current_user: dict = Depends(require_admin_async)
 ):
     """
     Get comprehensive server statistics including:

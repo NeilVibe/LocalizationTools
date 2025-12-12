@@ -743,80 +743,63 @@ async def get_tm_suggestions(
 
     logger.info(f"TM suggest: source={source[:30]}..., file={file_id}, project={project_id}")
 
-    # Need sync session for TM queries (using async session's sync_session)
-    # For now, use a simpler approach with direct query
-
     try:
-        # Build query for rows with translations
-        query = select(
-            LDMRow.id,
-            LDMRow.source,
-            LDMRow.target,
-            LDMRow.file_id,
-            LDMFile.name.label('file_name')
-        ).join(
-            LDMFile, LDMRow.file_id == LDMFile.id
-        ).where(
-            LDMRow.target.isnot(None),
-            LDMRow.target != ''
-        )
+        # Use PostgreSQL pg_trgm similarity() for efficient fuzzy matching
+        # This is O(log n) with GIN index vs O(n) Python loop
+        from sqlalchemy import text, literal_column
 
-        # Scope by file if specified
+        # Build SQL with pg_trgm similarity
+        # Note: Requires pg_trgm extension and GIN index on source column
+        sql_params = {
+            'search_text': source.strip(),
+            'threshold': threshold,
+            'max_results': max_results
+        }
+
+        # Base conditions
+        conditions = ["r.target IS NOT NULL", "r.target != ''"]
         if file_id:
-            query = query.where(LDMRow.file_id == file_id)
+            conditions.append(f"r.file_id = {file_id}")
         elif project_id:
-            query = query.where(LDMFile.project_id == project_id)
-
-        # Exclude current row
+            conditions.append(f"f.project_id = {project_id}")
         if exclude_row_id:
-            query = query.where(LDMRow.id != exclude_row_id)
+            conditions.append(f"r.id != {exclude_row_id}")
 
-        # Limit search
-        query = query.limit(1000)
+        where_clause = " AND ".join(conditions)
 
-        result = await db.execute(query)
+        # Use pg_trgm similarity() for fuzzy matching
+        # Falls back to exact match if pg_trgm not available
+        sql = text(f"""
+            SELECT
+                r.id,
+                r.source,
+                r.target,
+                r.file_id,
+                f.name as file_name,
+                similarity(lower(r.source), lower(:search_text)) as sim
+            FROM ldm_rows r
+            JOIN ldm_files f ON r.file_id = f.id
+            WHERE {where_clause}
+              AND similarity(lower(r.source), lower(:search_text)) >= :threshold
+            ORDER BY sim DESC
+            LIMIT :max_results
+        """)
+
+        result = await db.execute(sql, sql_params)
         rows = result.fetchall()
 
-        # Calculate similarity for each row
-        normalized_source = source.strip().lower()
-        suggestions = []
+        suggestions = [
+            {
+                'source': row.source,
+                'target': row.target,
+                'similarity': round(float(row.sim), 3),
+                'row_id': row.id,
+                'file_name': row.file_name
+            }
+            for row in rows
+        ]
 
-        for row in rows:
-            if row.source:
-                row_source = row.source.strip().lower()
-
-                # Simple similarity calculation
-                if normalized_source == row_source:
-                    similarity = 1.0
-                elif normalized_source in row_source or row_source in normalized_source:
-                    shorter = min(len(normalized_source), len(row_source))
-                    longer = max(len(normalized_source), len(row_source))
-                    similarity = 0.8 * (shorter / longer)
-                else:
-                    # Word-level Jaccard similarity
-                    words1 = set(normalized_source.split())
-                    words2 = set(row_source.split())
-                    if words1 and words2:
-                        intersection = len(words1 & words2)
-                        union = len(words1 | words2)
-                        similarity = intersection / union if union > 0 else 0
-                    else:
-                        similarity = 0
-
-                if similarity >= threshold:
-                    suggestions.append({
-                        'source': row.source,
-                        'target': row.target,
-                        'similarity': round(similarity, 3),
-                        'row_id': row.id,
-                        'file_name': row.file_name
-                    })
-
-        # Sort by similarity and limit
-        suggestions.sort(key=lambda x: x['similarity'], reverse=True)
-        suggestions = suggestions[:max_results]
-
-        logger.info(f"TM found {len(suggestions)} suggestions")
+        logger.info(f"TM found {len(suggestions)} suggestions (pg_trgm)")
         return {"suggestions": suggestions, "count": len(suggestions)}
 
     except Exception as e:

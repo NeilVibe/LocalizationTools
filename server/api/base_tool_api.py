@@ -19,7 +19,6 @@ Usage:
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any, Callable
 from pathlib import Path
@@ -33,7 +32,7 @@ import sys
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.dependencies import get_async_db, get_current_active_user_async, get_sync_engine
 from server.database.models import User, ActiveOperation
 from server.utils.websocket import (
     emit_operation_start,
@@ -252,8 +251,8 @@ class BaseToolAPI:
             result_data: Optional result data to include in event
         """
         try:
-            # Create synchronous database session (PostgreSQL)
-            engine = create_engine(config.DATABASE_URL)
+            # Use shared engine from connection pool
+            engine = get_sync_engine()
             db_session = Session(engine)
 
             try:
@@ -317,8 +316,8 @@ class BaseToolAPI:
             error: Exception that caused the failure
         """
         try:
-            # Create synchronous database session (PostgreSQL)
-            engine = create_engine(config.DATABASE_URL)
+            # Use shared engine from connection pool
+            engine = get_sync_engine()
             db_session = Session(engine)
 
             try:
