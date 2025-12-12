@@ -94,6 +94,38 @@ WSL Access: /mnt/d/TestFilesForLocaNext
 
 ---
 
+## 🔑 DEV_MODE: Localhost Auto-Authentication
+
+**For autonomous testing without manual login:**
+
+```bash
+# Start server with DEV_MODE
+DEV_MODE=true python3 server/main.py
+```
+
+**What DEV_MODE does:**
+- Auto-authenticates API calls from localhost (127.0.0.1, ::1)
+- Returns `dev_admin` user with admin privileges
+- No JWT token required for API testing
+- Warning logged on startup: "DEV_MODE enabled"
+
+**Security constraints:**
+- ONLY works on localhost - remote requests still require auth
+- Blocked if `PRODUCTION=true` is set
+- If token provided, uses normal auth flow
+
+**Use cases:**
+- Claude autonomous API testing
+- curl commands without auth header
+- CDP tests without login flow
+- Admin dashboard testing
+
+**Files:**
+- `server/config.py` - DEV_MODE flag
+- `server/utils/dependencies.py` - auto-auth logic
+
+---
+
 ## 🌍 MULTI-ENVIRONMENT TESTING (CRITICAL!)
 
 ### 📊 FULL MULTI-DIMENSIONAL TEST TREE

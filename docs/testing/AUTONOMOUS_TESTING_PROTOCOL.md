@@ -40,6 +40,33 @@ Enable Claude to **fully test any function in any app** without user interaction
 
 ---
 
+## DEV_MODE: Skip Authentication
+
+**For autonomous API testing, use DEV_MODE:**
+
+```bash
+DEV_MODE=true python3 server/main.py
+```
+
+This enables:
+- **Auto-auth on localhost** - No JWT token needed
+- **Admin privileges** - Full access to all endpoints
+- **curl without headers** - `curl http://localhost:8888/api/v2/...` just works
+
+**Security:** Only works on 127.0.0.1 / ::1. Blocked if PRODUCTION=true.
+
+**Example autonomous testing:**
+```bash
+# Start server with DEV_MODE
+DEV_MODE=true python3 server/main.py &
+
+# Test any endpoint without auth
+curl http://localhost:8888/api/v2/admin/stats/overview
+curl http://localhost:8888/api/v2/users
+```
+
+---
+
 ## Test Files Location
 
 ```
