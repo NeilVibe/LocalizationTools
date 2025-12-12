@@ -92,8 +92,14 @@ DB = CENTRAL (always up-to-date)
 
 FAISS = LOCAL (synced on demand)
 ├── User clicks [Synchronize TM]
-├── Pull DB → diff → embed new/changed only
+├── PKL vs DB comparison (pd.merge on Source)
+├── INSERT/UPDATE → QWEN embed (expensive)
+├── DELETE → skip (not copied)
+├── UNCHANGED → copy existing embedding (fast)
 └── Rebuild FAISS, Aho-Corasick, Line Dict
+
+Source embeddings only (WHOLE + SPLIT)
+Target embeddings = on-demand for NPC (not synced)
 ```
 
 ### Key Decisions

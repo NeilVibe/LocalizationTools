@@ -617,61 +617,78 @@ User's local FAISS is now stale (sync needed later)
 ```
 User clicks [Synchronize TM] button in TM menu
         ↓
-Fetch ALL current TM entries from DB → db_data
+Fetch ALL current TM entries from DB → db_data (DataFrame)
         ↓
-Load local state:
-  - embeddings.npy (Source embeddings)
-  - embeddings_target.npy (Target embeddings)
-  - tm_dict.pkl (Source → Target + metadata)
-        ↓
-Compare db_data vs local tm_dict
+Load local PKL → existing_dict (local snapshot)
         ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ DETECT CHANGES (same logic):                                 │
+│ COMPARE: PKL vs DB (same as KR Similar)                      │
 │                                                              │
-│ to_embed_new = Sources in DB but not in local               │
-│ to_embed_update = Sources where Target changed              │
-│ to_remove = Sources in local but not in DB                  │
+│ existing_data = DataFrame from existing_dict                 │
+│ merged = pd.merge(db_data, existing_data,                   │
+│                   on='Source', how='outer',                  │
+│                   suffixes=('_db', '_local'))                │
+│                                                              │
+│ INSERT = merged[Target_local.isna() & Target_db.notna()]    │
+│ DELETE = merged[Target_db.isna() & Target_local.notna()]    │
+│ UPDATE = merged[Target_db != Target_local]                   │
+│ UNCHANGED = merged[Target_db == Target_local]                │
 └─────────────────────────────────────────────────────────────┘
         ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ LOCAL OPERATIONS:                                            │
+│ BUILD NEW EMBEDDINGS (Source only, WHOLE + SPLIT):           │
 │                                                              │
-│ 1. EMBEDDING (expensive, only for new/changed):             │
-│    for each source in to_embed_new + to_embed_update:       │
-│      source_emb = qwen_embed(source)                        │
-│      target_emb = qwen_embed(target)                        │
-│      store in embeddings arrays                             │
+│ new_embeddings = []                                          │
+│ new_dict = {}                                                │
 │                                                              │
-│ 2. UPDATE tm_dict.pkl:                                      │
-│    - Add new entries                                        │
-│    - Update changed entries                                 │
-│    - Remove deleted entries                                 │
+│ for source, target in db_data:                               │
+│   if source in UNCHANGED:                                    │
+│     → copy existing embedding (fast, no QWEN)                │
+│   elif source in INSERT or UPDATE:                           │
+│     → qwen_embed(source) (expensive, only these)             │
+│   # DELETE entries: not copied, not in new_dict              │
 │                                                              │
-│ 3. REBUILD FAISS (fast, from all embeddings):               │
+│   new_dict[source] = target                                  │
+│   new_embeddings.append(embedding)                           │
+│                                                              │
+│ Same for SPLIT embeddings (split by \n, each line)           │
+└─────────────────────────────────────────────────────────────┘
+        ↓
+┌─────────────────────────────────────────────────────────────┐
+│ SAVE + REBUILD:                                              │
+│                                                              │
+│ 1. Save PKL: pickle.dump(new_dict, 'tm_dict.pkl')           │
+│ 2. Save embeddings: np.save('whole_embeddings.npy')         │
+│                     np.save('split_embeddings.npy')         │
+│                                                              │
+│ 3. REBUILD FAISS (fast):                                     │
 │    index = faiss.IndexHNSWFlat(dimension, M)                │
 │    index.add(all_source_embeddings)                         │
-│    faiss.write_index(index, "tm_source.faiss")              │
 │                                                              │
 │ 4. REBUILD Aho-Corasick (fast):                             │
-│    automaton = ahocorasick.Automaton()                      │
-│    for term in glossary_terms:                              │
-│      automaton.add_word(term, term)                         │
-│    automaton.make_automaton()                               │
+│    automaton.add_word(term, term) for glossary terms        │
 │                                                              │
 │ 5. REBUILD Line Check Dict (fast):                          │
-│    line_dict = {source: target for source, target in db}    │
+│    line_dict = {source: target for each entry}              │
 └─────────────────────────────────────────────────────────────┘
         ↓
 Progress shown in Tasks panel:
   "Synchronizing TM..."
-  "Embedding 127 new entries..."
+  "Embedding 127 new/changed entries..."
   "Building FAISS index..."
   "Done!"
         ↓
-Local FAISS now matches DB
+Local now perfectly matches DB
 User can use TM matching + NPC + QA
 ```
+
+**Key Points:**
+- **PKL = local snapshot** compared against DB
+- **Only Source embeddings** (WHOLE + SPLIT) - no Target embeddings synced
+- **Target embeddings for NPC** = on-demand when user clicks [NPC]
+- **DELETE = don't copy** - entry not in new array, no orphans
+- **UNCHANGED = copy** - no QWEN call, fast
+- **INSERT/UPDATE = embed** - QWEN call, only for these
 
 ---
 
@@ -715,15 +732,36 @@ User can use TM matching + NPC + QA
 
 | Resource | When | Speed |
 |----------|------|-------|
-| Source embeddings (.npy) | New/changed only | Slow (QWEN call) |
-| Target embeddings (.npy) | New/changed only | Slow (QWEN call) |
-| tm_dict.pkl | Full rebuild | Fast |
+| whole_embeddings.npy | INSERT/UPDATE only | Slow (QWEN) |
+| split_embeddings.npy | INSERT/UPDATE only | Slow (QWEN) |
+| tm_dict.pkl | Full rebuild from DB | Fast |
 | FAISS index | Full rebuild | Fast |
 | Aho-Corasick automaton | Full rebuild | Fast |
 | Line Check dict | Full rebuild | Fast |
 
-**Embedding is the bottleneck** - that's why we only embed new/changed.
-Everything else rebuilds from scratch (cheap).
+**Source embeddings only** (WHOLE + SPLIT). No Target embeddings synced.
+**Target embeddings for NPC** = generated on-demand when user clicks [NPC].
+
+**Embedding is the bottleneck** - that's why we only embed INSERT/UPDATE.
+UNCHANGED = copy existing (no QWEN). DELETE = skip (not copied).
+
+---
+
+### FUTURE: StringID Support (Later)
+
+```
+CURRENT:
+PKL = {source: target}
+Match: Source → Target
+
+FUTURE (after core implementation):
+PKL = {source: {"target": target, "string_id": string_id}}
+Match: Source → Target (SAME LOGIC, unchanged)
+Warning: If Source matches but StringID differs → ⚠️ "StringID mismatch"
+```
+
+**StringID is metadata for warnings, not part of matching key.**
+Matching logic stays simple: Source → Target.
 
 ---
 
@@ -1164,26 +1202,33 @@ These are simple checks, not based on TM.
 
 **Backend (TODO):**
 - [ ] Universal newline normalizer (`\n`, `\\n`, `<br/>`, `&lt;br/&gt;` → `\n`)
-- [ ] QWEN embedding generation (local, background) - Source AND Target
+- [ ] QWEN embedding generation (Source only, WHOLE + SPLIT)
 - [ ] FAISS index building (HNSW)
 - [ ] PKL file (Source → Target mapping)
-- [ ] 5-Tier Cascade implementation
+- [ ] 5-Tier Cascade implementation (WHOLE + SPLIT)
 - [ ] Single Threshold: 92% (simplified from DUAL)
 - [ ] Display rules: Perfect tiers = show if exists, Embedding tiers = top 3 ≥92%
 - [ ] Progress tracking in Tasks panel
 
 **TM DB Sync (TODO):**
 - [ ] DB table: tm_entries (tm_id, source, target, created_at, updated_at)
-- [ ] TRIGGER 1: Re-upload TM → pd.merge → INSERT/UPDATE/DELETE DB
+- [ ] TRIGGER 1: Re-upload TM → pd.merge → INSERT/UPDATE/DELETE to DB
 - [ ] TRIGGER 2: Ctrl+S confirm → INSERT or UPDATE to DB (if TM active)
-- [ ] TRIGGER 3: [Synchronize TM] button → pull DB → diff → re-embed new/changed → rebuild FAISS
+- [ ] TRIGGER 3: [Synchronize TM] button:
+  - [ ] PKL vs DB comparison (pd.merge on Source)
+  - [ ] INSERT/UPDATE → QWEN embed (expensive)
+  - [ ] DELETE → skip (not copied)
+  - [ ] UNCHANGED → copy existing embedding (fast)
+  - [ ] Rebuild FAISS, Aho-Corasick, Line Dict
 - [ ] TM Menu UI with sync status (✅ Up to date / ⚠️ X new entries)
 - [ ] Track last_synced timestamp per user per TM
 
 **NPC (Neil's Probabilistic Check):**
 - [ ] [NPC] button in Edit Modal (after TM results load)
-- [ ] Embed user's Target (1 call)
-- [ ] Cosine similarity vs TM Targets
+- [ ] On-demand embedding (not synced):
+  - [ ] Embed user's Target (1 QWEN call)
+  - [ ] Embed TM Targets from matches (~3-10 QWEN calls, fast)
+- [ ] Cosine similarity: user Target vs TM Targets
 - [ ] Threshold: 80% (lenient, "in the ballpark")
 - [ ] Display: ✅ Consistent / ⚠️ Potential issue
 
