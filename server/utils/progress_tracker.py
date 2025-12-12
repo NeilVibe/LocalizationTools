@@ -95,8 +95,21 @@ class ProgressTracker:
         self.enabled = operation_id is not None and DB_AVAILABLE
         self._db = None
 
-    def update(self, progress: float, message: str, completed_steps: Optional[int] = None, total_steps: Optional[int] = None):
-        """Update progress in DB and emit WebSocket event."""
+    def update(self, progress: float, message: str = None, completed_steps: Optional[int] = None, total_steps: Optional[int] = None, current_step: str = None):
+        """Update progress in DB and emit WebSocket event.
+
+        Args:
+            progress: Progress percentage (0-100)
+            message: Progress message (positional)
+            completed_steps: Number of completed steps
+            total_steps: Total number of steps
+            current_step: Alias for message (for compatibility)
+        """
+        # Support both 'message' (positional) and 'current_step' (keyword) for compatibility
+        if current_step and not message:
+            message = current_step
+        if not message:
+            message = f"Progress: {progress:.1f}%"
         if not self.enabled:
             logger.info(f"[PROGRESS] {progress:.1f}% - {message}")
             return

@@ -16,7 +16,8 @@ from loguru import logger
 
 from server.tools.xlstransfer import config
 from server.tools.xlstransfer.core import clean_text, excel_column_to_index
-from server.utils.client.progress import ProgressTracker
+# Factor Power: Use centralized progress tracker
+from server.utils.progress_tracker import ProgressTracker
 
 
 # ============================================

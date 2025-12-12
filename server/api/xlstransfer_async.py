@@ -688,9 +688,9 @@ class XLSTransferAPI(BaseToolAPI):
             logger.info(f"Creating dictionaries from {len(excel_files)} Excel file selections")
 
             # Import here to avoid circular dependency
-            from server.tools.xlstransfer.progress_tracker import ProgressTracker
+            from server.utils.progress_tracker import ProgressTracker
 
-            # Create progress tracker for real-time updates
+            # Create progress tracker for real-time updates (unified Factor Power)
             tracker = ProgressTracker(operation_id)
 
             split_dict, whole_dict, split_embeddings, whole_embeddings = self.embeddings.process_excel_for_dictionary(
