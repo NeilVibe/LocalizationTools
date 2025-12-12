@@ -1,75 +1,62 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-12 15:30 KST | **By:** Claude
+**Updated:** 2025-12-12 22:00 KST | **By:** Claude
 
 ---
 
-## Session Summary: P25 Grid UX Simplification
+## Session Summary: P25 Edit Modal + Preferences
 
 ### What Was Accomplished This Session
 
-1. **Grid UX Simplification COMPLETE**
-   - Status column REMOVED from grid
-   - Cell colors now indicate status:
-     - Teal left border = translated
-     - Blue left border = reviewed
-     - Green left border = approved/confirmed
-   - "Go to Row" button REMOVED (BUG-001 fixed)
-   - Cleaner, simpler grid interface
+1. **Edit Modal Redesign COMPLETE** ✅
+   - BIG modal (85% width/height)
+   - Two-column layout: Source/Target left, TM panel right
+   - Shortcut bar at top (Ctrl+S, Ctrl+T, Tab, Esc)
+   - Keyboard shortcuts working
+   - CDP test verified
 
-2. **Previous Session Work (Already Done)**
-   - BUG-002, BUG-003, BUG-004 fixed
-   - Light/Dark theme toggle
-   - Font size/weight settings
-   - CDP test suite (Normal + Detailed)
+2. **Preferences Menu with Column Toggles COMPLETE** ✅
+   - Grid Columns section added to Preferences
+   - Index Number toggle (shows # column)
+   - String ID toggle (shows StringID column)
+   - Reference/TM/QA toggles (disabled - features pending)
+   - Settings persist in localStorage
+   - Grid updates dynamically
+
+3. **WebSocket Locking Issue Documented**
+   - ISSUE-013: `ldm_lock_row` events not received by server
+   - Workaround: Row locking temporarily disabled
+   - Single-user editing works fine
 
 ### Files Modified This Session
 
 | File | Change |
 |------|--------|
-| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | Removed Status column, added cell colors, removed Go to Row |
-| `docs/wip/ISSUES_TO_FIX.md` | BUG-001 marked as fixed |
-| `Roadmap.md` | Updated P25 progress, issue counts |
+| `VirtualGrid.svelte` | Edit modal redesign, column preferences |
+| `PreferencesModal.svelte` | Added Grid Columns section |
+| `ISSUES_TO_FIX.md` | Added ISSUE-013 (WebSocket locking) |
+| `P25_LDM_UX_OVERHAUL.md` | Updated task status to 65% |
 
 ---
 
-## Current Focus: P25 LDM UX Overhaul
-
-### Bug Status - ALL FIXED
-| Bug | Priority | Status |
-|-----|----------|--------|
-| ~~BUG-001~~ | Low | ✅ FIXED - Go to Row removed |
-| ~~BUG-002~~ | HIGH | ✅ FIXED - WebSocket event relay |
-| ~~BUG-003~~ | Medium | ✅ FIXED - Tooltip z-index |
-| ~~BUG-004~~ | Medium | ✅ FIXED - Search bar |
+## Current Focus: P25 LDM UX Overhaul (65%)
 
 ### P25 Progress
-- [x] Phase 1: Bug fixes (BUG-001 through BUG-004)
-- [x] Phase 2: Grid simplification (Status column → cell colors)
-- [ ] Phase 3: Edit modal redesign (BIG, TM on right, shortcuts)
-- [ ] Phase 4: Preferences menu with column toggles
-- [ ] Phase 5: Edit workflow (Ctrl+S=Confirm, Ctrl+T=Translate)
+- [x] Phase 1: Bug fixes (BUG-001 through BUG-004) ✅
+- [x] Phase 2: Grid simplification (Status column → cell colors) ✅
+- [x] Phase 3: Edit modal redesign (BIG, TM on right, shortcuts) ✅
+- [x] Phase 4: Preferences menu with column toggles ✅
+- [x] Phase 5: Edit workflow (Ctrl+S=Confirm, Ctrl+T=Translate) ✅
+- [ ] Phase 6: Merge Function
+- [ ] Phase 7: Reference Column
+- [ ] Phase 8: TM Integration
+- [ ] Phase 9: Live QA System
 
-### Grid Status Colors (NEW)
-```css
-/* Translated = teal left border */
-.cell.target.status-translated {
-  background: rgba(0, 157, 154, 0.15);
-  border-left: 3px solid var(--cds-support-04);
-}
-
-/* Reviewed = blue left border */
-.cell.target.status-reviewed {
-  background: rgba(15, 98, 254, 0.15);
-  border-left: 3px solid var(--cds-support-01);
-}
-
-/* Approved = green left border */
-.cell.target.status-approved {
-  background: rgba(36, 161, 72, 0.15);
-  border-left: 3px solid var(--cds-support-02);
-}
-```
+### Known Issues
+| Issue | Priority | Status |
+|-------|----------|--------|
+| ISSUE-011 | High | 📋 Open - Missing TM upload UI |
+| ISSUE-013 | Medium | 📋 Open - WebSocket locking (workaround applied) |
 
 ---
 
@@ -77,10 +64,10 @@
 
 | Priority | Task | Status |
 |----------|------|--------|
-| P25 | Edit modal redesign | Next |
+| P25 | Merge Function | Next |
+| P25 | Reference Column | Pending |
 | P24 | Server Status Dashboard | Pending |
 | P17 | TM Upload UI (ISSUE-011) | Pending |
-| P17 | Custom Excel/XML pickers | Pending |
 
 ---
 
@@ -88,7 +75,7 @@
 
 - PostgreSQL: ✅ Running (localhost:5432)
 - Backend API: ✅ Running (localhost:8888)
-- WebSocket: ✅ Working
+- WebSocket: ✅ Working (locking disabled)
 
 ### Quick Commands
 
@@ -96,27 +83,24 @@
 # Check servers
 ./scripts/check_servers.sh
 
-# Start all servers
-./scripts/start_all_servers.sh
-
 # Build and deploy
 cd locaNext && npm run build
 cp -r build/* /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/build/
 
-# Run CDP test
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject; node test_full_flow.js"
+# Run CDP tests (from PowerShell)
+node test_edit_modal_v2.js   # Edit modal test
+node test_preferences.js      # Column toggle test
 ```
 
 ---
 
 ## Next Steps
 
-1. ~~P25: Light/Dark theme toggle~~ ✅ DONE
-2. ~~P25: Font size/weight settings~~ ✅ DONE
-3. ~~P25: Grid UX simplification (remove Status column)~~ ✅ DONE
-4. ~~P25: Remove Go to Row button~~ ✅ DONE
-5. P25: Edit modal redesign (BIG, TM on right, shortcuts)
-6. P25: Preferences menu with column toggles
+1. ~~P25: Edit modal redesign~~ ✅ DONE
+2. ~~P25: Preferences menu with column toggles~~ ✅ DONE
+3. P25: Merge Function (merge confirmed translations back)
+4. P25: Reference Column (show reference from another file)
+5. P25: TM Integration (upload, selection, results)
 
 ---
 

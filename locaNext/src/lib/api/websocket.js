@@ -26,7 +26,10 @@ class WebSocketService {
       return;
     }
 
-    console.log(`Connecting to WebSocket: ${url}`);
+    // Get auth token from localStorage
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+
+    console.log(`Connecting to WebSocket: ${url}`, token ? '(with auth)' : '(no auth)');
 
     this.socket = io(url, {
       path: '/ws/socket.io',  // Server Socket.IO path
@@ -35,7 +38,8 @@ class WebSocketService {
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 10000
+      timeout: 10000,
+      auth: token ? { token } : undefined
     });
 
     this.setupEventHandlers();
@@ -144,17 +148,23 @@ class WebSocketService {
    * Subscribe to event
    */
   on(event, callback) {
+    // Initialize listener array if needed
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
-
-      // Register Socket.IO listener for this event type (first time only)
-      // This ensures server events are relayed to our internal listeners
-      if (this.socket) {
-        this.socket.on(event, (data) => {
-          this.emit(event, data);
-        });
-      }
     }
+
+    // Ensure Socket.IO listener is registered for this event
+    // Track which events have socket.io listeners registered
+    if (!this._socketListeners) {
+      this._socketListeners = new Set();
+    }
+    if (this.socket && !this._socketListeners.has(event)) {
+      this._socketListeners.add(event);
+      this.socket.on(event, (data) => {
+        this.emit(event, data);
+      });
+    }
+
     this.listeners.get(event).push(callback);
 
     // Return unsubscribe function
@@ -182,9 +192,10 @@ class WebSocketService {
    */
   send(event, data) {
     if (this.socket?.connected) {
+      console.log(`[WS] Sending: ${event}`, data);
       this.socket.emit(event, data);
     } else {
-      console.error('WebSocket not connected');
+      console.error(`[WS] Not connected! Cannot send: ${event}`, data);
     }
   }
 

@@ -10,11 +10,12 @@
 | Area | Open | Fixed | Total |
 |------|------|-------|-------|
 | LDM UI | 1 | 14 | 15 |
+| LDM WebSocket | 1 | 1 | 2 |
 | Navigation | 0 | 1 | 1 |
 | Infrastructure | 0 | 1 | 1 |
 | General | 0 | 0 | 0 |
 
-**Open Issues:** ISSUE-011
+**Open Issues:** ISSUE-011, ISSUE-013
 **Recently Fixed:** BUG-001, BUG-002, BUG-003, BUG-004
 
 ---
@@ -124,6 +125,51 @@ if (this.socket) {
 ```
 
 **Fix:** Implement Phase 7.6 Frontend TM UI tasks
+
+---
+
+### ISSUE-013: WebSocket ldm_lock_row Events Not Received by Server
+- **Status:** [ ] Open
+- **Priority:** Medium (Workaround exists)
+- **Reported:** 2025-12-12
+- **Component:** LDM WebSocket (`websocket.py`, `ldm.js`, `websocket.js`)
+
+**Problem:** When user double-clicks a cell to edit, the frontend sends `ldm_lock_row` event but the server never receives it. Other events like `ldm_join_file` work correctly.
+
+**Symptoms:**
+- `[LDM] lockRow called: { fileId: X, rowId: Y, wsConnected: true }` in browser console
+- `[LDM] Sending ldm_lock_row event...` in browser console
+- Server logs show `ldm_join_file` events but NEVER `ldm_lock_row`
+- 3-second timeout occurs, lockRow returns false
+
+**Investigation Done:**
+1. WebSocket auth verified - `ldm_join_file` works with authenticated user
+2. Socket listener registration verified - added `_socketListeners` tracking
+3. Disconnect handler auto-setup added - still not receiving lock events
+4. Stale lock cleanup added - doesn't help because lock event never arrives
+
+**Current Workaround:** Row locking is temporarily disabled in VirtualGrid.svelte:
+```javascript
+// TODO: Row locking temporarily disabled - WebSocket event delivery issue
+// if (fileId) {
+//   const granted = await lockRow(fileId, parseInt(row.id));
+//   ...
+// }
+```
+
+**Impact:** Multi-user editing without locking could cause conflicts, but single-user editing works fine.
+
+**Suspected Causes:**
+1. Socket.IO event namespace issue - `ldm_lock_row` might need different namespace
+2. Event registration timing - handler might not be registered when event is sent
+3. Server-side event handler not being called despite correct registration
+
+**Files Involved:**
+- `locaNext/src/lib/stores/ldm.js:220-267` - `lockRow()` function
+- `locaNext/src/lib/api/websocket.js` - WebSocket service
+- `server/tools/ldm/websocket.py:168-231` - `ldm_lock_row` handler
+
+**Fix Priority:** Medium - single user editing works. Fix before multi-user collaboration feature.
 
 ---
 

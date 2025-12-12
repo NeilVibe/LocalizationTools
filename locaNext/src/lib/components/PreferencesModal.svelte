@@ -7,7 +7,8 @@
     FormGroup,
     InlineNotification,
     RadioButtonGroup,
-    RadioButton
+    RadioButton,
+    Checkbox
   } from "carbon-components-svelte";
   import { logger } from "$lib/utils/logger.js";
   import { preferences, theme, fontSize, fontWeight } from "$lib/stores/preferences.js";
@@ -24,6 +25,13 @@
   let currentFontWeight = 'normal';
   let notifications = true;
   let language = 'en';
+
+  // Column visibility toggles
+  let showIndex = false;
+  let showStringId = false;
+  let showReference = false;
+  let showTmResults = false;
+  let showQaResults = false;
 
   // Available languages for UI
   const languages = [
@@ -46,6 +54,12 @@
     currentTheme = prefs.theme || 'dark';
     currentFontSize = prefs.fontSize || 'medium';
     currentFontWeight = prefs.fontWeight || 'normal';
+    // Column visibility
+    showIndex = prefs.showIndex || false;
+    showStringId = prefs.showStringId || false;
+    showReference = prefs.showReference || false;
+    showTmResults = prefs.showTmResults || false;
+    showQaResults = prefs.showQaResults || false;
   }
 
   // Handle theme toggle
@@ -73,6 +87,13 @@
     preferences.setFontWeight(weight);
     showSaved();
     logger.userAction("Font weight changed", { fontWeight: weight });
+  }
+
+  // Handle column visibility toggle
+  function handleColumnToggle(column, checked) {
+    preferences.setColumn(column, checked);
+    showSaved();
+    logger.userAction("Column visibility changed", { column, visible: checked });
   }
 
   function showSaved() {
@@ -147,6 +168,41 @@
       <p class="hint">Adjust text appearance for better readability.</p>
     </FormGroup>
 
+    <FormGroup legendText="Grid Columns">
+      <p class="hint" style="margin-bottom: 0.75rem;">Choose which columns to display in the LDM grid. Source and Target are always visible.</p>
+      <div class="checkbox-group">
+        <Checkbox
+          labelText="Index Number"
+          checked={showIndex}
+          on:check={(e) => { showIndex = e.detail; handleColumnToggle('showIndex', e.detail); }}
+        />
+        <Checkbox
+          labelText="String ID"
+          checked={showStringId}
+          on:check={(e) => { showStringId = e.detail; handleColumnToggle('showStringId', e.detail); }}
+        />
+        <Checkbox
+          labelText="Reference Column"
+          checked={showReference}
+          on:check={(e) => { showReference = e.detail; handleColumnToggle('showReference', e.detail); }}
+          disabled
+        />
+        <Checkbox
+          labelText="TM Results"
+          checked={showTmResults}
+          on:check={(e) => { showTmResults = e.detail; handleColumnToggle('showTmResults', e.detail); }}
+          disabled
+        />
+        <Checkbox
+          labelText="QA Results"
+          checked={showQaResults}
+          on:check={(e) => { showQaResults = e.detail; handleColumnToggle('showQaResults', e.detail); }}
+          disabled
+        />
+      </div>
+      <p class="hint" style="margin-top: 0.5rem;">Reference, TM, and QA columns will be available after TM/QA features are implemented.</p>
+    </FormGroup>
+
     <FormGroup legendText="Language">
       <Select
         labelText="Interface Language"
@@ -187,6 +243,12 @@
     margin-top: 1rem;
   }
 
+  .checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
   :global(.bx--form-item) {
     margin-bottom: 1.5rem;
   }
@@ -196,6 +258,10 @@
   }
 
   :global(.bx--toggle__label-text) {
+    font-size: 0.875rem;
+  }
+
+  :global(.bx--checkbox-label-text) {
     font-size: 0.875rem;
   }
 </style>
