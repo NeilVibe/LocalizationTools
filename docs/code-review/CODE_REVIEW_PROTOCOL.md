@@ -723,7 +723,41 @@ Ask: "Would fixing this EVER make the code better?"
 - All ACCEPT decisions re-validated
 - Update issue file status to CLOSED
 - Move to `docs/code-review/history/`
+- Update history/README.md with summary
 
 ---
 
-*Protocol v2.4 - Updated 2025-12-13 (NO DEFER policy, PASS 2 verification)*
+## Retention Policy
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  RETENTION: 6 MONTHS                                            │
+│                                                                 │
+│  - Keep closed review files for 6 months                        │
+│  - After 6 months: DELETE the issue file                        │
+│  - Update history/README.md to keep summary line                │
+│  - Summary stays forever, details get deleted                   │
+│                                                                 │
+│  Why: Prevents bloat, summaries capture key info                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Cleanup Checklist (Every 6 Months)
+
+```bash
+# 1. Find old reviews
+find docs/code-review/history -name "ISSUES_*.md" -mtime +180
+
+# 2. Delete old files (keep README.md!)
+rm docs/code-review/history/ISSUES_YYYYMMDD.md
+
+# 3. Verify summary still in README.md
+# The one-liner summary row should remain
+
+# 4. Record cleanup date
+# Update "Last cleanup" in history/README.md
+```
+
+---
+
+*Protocol v2.5 - Updated 2025-12-13 (Added retention policy)*
