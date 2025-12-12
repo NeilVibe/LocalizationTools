@@ -661,25 +661,57 @@ When starting next cycle, move `ISSUES_20251212.md` to `docs/code-review/history
 
 ---
 
-## Next Review Cycle (PASS 2)
+## Code Review Lifecycle
 
-**When:** After significant new code or every 2-4 weeks
-
-### What to Review
-1. **New code since last review** - Any new files/features
-2. **Modified files** - Check if fixes introduced new issues
-3. **Deferred items** - Re-evaluate DR4-001/DR4-002
-4. **Fresh scan** - Run Quick Scan commands again
-
-### How to Start
-```bash
-# Create new issue file
-touch docs/code-review/ISSUES_YYYYMMDD.md
-
-# Archive old one
-mv docs/code-review/ISSUES_20251212.md docs/code-review/history/
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│  PASS 1: Review + Fix                                           │
+│  - Phase 1: Review all 12 sessions (document only)              │
+│  - Phase 2: Consolidate findings                                │
+│  - Phase 3: Fix all issues (NO DEFER)                           │
+├─────────────────────────────────────────────────────────────────┤
+│  PASS 2: Verification                                           │
+│  - Re-run all Quick Scan commands                               │
+│  - Verify fixes didn't introduce new issues                     │
+│  - Spot-check modified files                                    │
+│  - Confirm 0 OPEN issues remain                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  CLOSE: Archive                                                 │
+│  - Only after PASS 2 confirms clean                             │
+│  - Move ISSUES_YYYYMMDD.md to history/                          │
+│  - Code review ID = datetime (unique identifier)                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**A code review is NOT complete until PASS 2 verification passes.**
+
+### PASS 2 Checklist
+
+```bash
+# 1. Re-run Quick Scan commands
+grep -rhn "^def \|^async def " server/ --include="*.py" | \
+  sed 's/.*def //' | sed 's/(.*$//' | sort | uniq -c | sort -rn | head -10
+
+grep -rn "TODO\|FIXME" server/ --include="*.py" | wc -l
+grep -rn "print(" server/ --include="*.py" | wc -l
+grep -rn "console.log" locaNext/src/ --include="*.svelte" | wc -l
+find server/ -name "*.py" -exec wc -l {} \; | awk '$1 > 500' | sort -rn
+
+# 2. Check for sync-in-async patterns
+grep -rn "next(get_db())" server/ --include="*.py"
+
+# 3. Verify no hardcoded URLs
+grep -rn "localhost:8888" server/ --include="*.py" | grep -v "config\|#\|test"
+
+# 4. Run tests
+python3 -m pytest tests/ -v --tb=short
+```
+
+### When All Pass
+- Update issue file status to CLOSED
+- Move to `docs/code-review/history/ISSUES_YYYYMMDD.md`
+- Next code review gets new datetime ID
 
 ---
 
-*Protocol v2.3 - Updated 2025-12-12 (Stricter classification rules added)*
+*Protocol v2.4 - Updated 2025-12-13 (NO DEFER policy, PASS 2 verification)*

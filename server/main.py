@@ -279,14 +279,15 @@ async def health_check():
 @app.get("/api/version/latest")
 async def get_latest_version():
     """Get latest app version info."""
-    from server.utils.dependencies import get_db
+    from sqlalchemy import select
+    from server.utils.dependencies import get_async_db
     from server.database.models import AppVersion
 
-    db = next(get_db())
-    try:
-        latest = db.query(AppVersion).filter(
-            AppVersion.is_latest == True
-        ).first()
+    async for db in get_async_db():
+        result = await db.execute(
+            select(AppVersion).where(AppVersion.is_latest == True)
+        )
+        latest = result.scalar_one_or_none()
 
         if latest:
             return {
@@ -304,23 +305,24 @@ async def get_latest_version():
                 "is_mandatory": False,
                 "release_date": datetime.utcnow().isoformat(),
             }
-    finally:
-        db.close()
 
 
 @app.get("/api/announcements")
 async def get_announcements():
     """Get active announcements for users."""
-    from server.utils.dependencies import get_db
+    from sqlalchemy import select, or_
+    from server.utils.dependencies import get_async_db
     from server.database.models import Announcement
 
-    db = next(get_db())
-    try:
+    async for db in get_async_db():
         now = datetime.utcnow()
-        announcements = db.query(Announcement).filter(
-            Announcement.is_active == True,
-            (Announcement.expires_at == None) | (Announcement.expires_at > now)
-        ).all()
+        result = await db.execute(
+            select(Announcement).where(
+                Announcement.is_active == True,
+                or_(Announcement.expires_at == None, Announcement.expires_at > now)
+            )
+        )
+        announcements = result.scalars().all()
 
         return {
             "announcements": [
@@ -334,8 +336,6 @@ async def get_announcements():
                 for a in announcements
             ]
         }
-    finally:
-        db.close()
 
 
 # ============================================

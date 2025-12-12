@@ -12,11 +12,11 @@
 
 | Status | Count | Notes |
 |--------|-------|-------|
-| **FIXED** | 35 | Code changes made |
+| **FIXED** | 36 | Code changes made |
 | **ACCEPT** | 30 | Acceptable as-is |
 | **DEFER** | 0 | None (NO DEFER policy) |
 | **OPEN** | 0 | None remaining |
-| **Total** | 65 | |
+| **Total** | 66 | |
 
 ---
 
@@ -42,6 +42,11 @@
 3. `search_tm` - Direct async LIKE query
 4. `add_tm_entry` - Uses `run_in_executor` for bulk_copy
 5. `build_tm_indexes` - Async ownership check + `run_in_executor` for indexing
+
+### PASS 2 Verification Fix
+
+Found and fixed during PASS 2:
+- **PASS2-001**: main.py `get_latest_version()` and `get_announcements()` converted to async
 
 ### Earlier Groups (A-G)
 
