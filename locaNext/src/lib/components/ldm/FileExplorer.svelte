@@ -7,10 +7,13 @@
     FileUploader,
     InlineLoading,
     ProgressBar,
-    InlineNotification
+    InlineNotification,
+    Select,
+    SelectItem,
+    TextArea
   } from "carbon-components-svelte";
-  import { Folder, Document, Add, TrashCan, Upload, FolderAdd } from "carbon-icons-svelte";
-  import { createEventDispatcher, onMount } from "svelte";
+  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase } from "carbon-icons-svelte";
+  import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
   const dispatch = createEventDispatcher();
@@ -38,6 +41,19 @@
   let uploadFiles = [];
   let uploadProgress = 0;
   let uploadStatus = ""; // '', 'uploading', 'success', 'error'
+
+  // Context menu state
+  let showContextMenu = false;
+  let contextMenuX = 0;
+  let contextMenuY = 0;
+  let contextMenuFile = null; // {id, name, type, format}
+
+  // TM Registration modal state
+  let showTMModal = false;
+  let tmName = "";
+  let tmProjectId = null;
+  let tmLanguage = "en";
+  let tmDescription = "";
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -215,7 +231,7 @@
     dispatch('projectSelect', { projectId });
   }
 
-  // Handle tree node selection
+  // Handle tree node selection (Carbon TreeView - deprecated)
   function handleNodeSelect(event) {
     const node = event.detail;
 
@@ -248,15 +264,181 @@
     }
   }
 
+  // Handle custom tree node click
+  function handleNodeClick(node) {
+    const data = node.data;
+    if (data.type === 'file') {
+      selectedFileId = data.id;
+      selectedFolderId = null;
+      dispatch('fileSelect', { fileId: data.id, file: data });
+      logger.info("File selected", { fileId: data.id, name: data.name });
+    } else if (data.type === 'folder') {
+      selectedFolderId = data.id;
+      selectedFileId = null;
+      logger.info("Folder selected", { folderId: data.id, name: data.name });
+    }
+  }
+
   // Watch for project selection changes
   $: if (selectedProjectId) {
     loadProjectTree(selectedProjectId);
+  }
+
+  // ============== Context Menu Functions ==============
+
+  // Show context menu on right-click
+  function handleContextMenu(event, file) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Only show for files, not folders
+    if (file.type !== 'file') return;
+
+    contextMenuFile = file;
+    contextMenuX = event.clientX;
+    contextMenuY = event.clientY;
+    showContextMenu = true;
+
+    logger.info("Context menu opened", { file: file.name });
+  }
+
+  // Close context menu
+  function closeContextMenu() {
+    showContextMenu = false;
+    contextMenuFile = null;
+  }
+
+  // Handle click outside to close menu
+  function handleClickOutside(event) {
+    if (showContextMenu) {
+      closeContextMenu();
+    }
+  }
+
+  // Download file
+  async function downloadFile() {
+    if (!contextMenuFile) return;
+    closeContextMenu();
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/files/${contextMenuFile.id}/download`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = contextMenuFile.name || 'download';
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="(.+)"/);
+          if (match) filename = match[1];
+        }
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+
+        logger.success("File downloaded", { name: filename });
+      } else {
+        logger.error("Download failed", { status: response.status });
+      }
+    } catch (err) {
+      logger.error("Download error", { error: err.message });
+    }
+  }
+
+  // Run Line Check QA
+  async function runLineCheckQA() {
+    if (!contextMenuFile) return;
+    closeContextMenu();
+
+    logger.info("Line Check QA started", { file: contextMenuFile.name });
+    // TODO: Implement full line check QA
+    // This will dispatch an event or open a modal to show progress
+    dispatch('runQA', { fileId: contextMenuFile.id, type: 'line', fileName: contextMenuFile.name });
+  }
+
+  // Run Word Check QA
+  async function runWordCheckQA() {
+    if (!contextMenuFile) return;
+    closeContextMenu();
+
+    logger.info("Word Check QA started", { file: contextMenuFile.name });
+    // TODO: Implement full word check QA
+    dispatch('runQA', { fileId: contextMenuFile.id, type: 'word', fileName: contextMenuFile.name });
+  }
+
+  // Open TM Registration modal
+  function openTMRegistration() {
+    if (!contextMenuFile) return;
+    closeContextMenu();
+
+    // Pre-fill TM name from file name
+    tmName = contextMenuFile.name.replace(/\.[^.]+$/, '') + "_TM";
+    tmProjectId = selectedProjectId;
+    tmLanguage = "en";
+    tmDescription = "";
+    showTMModal = true;
+
+    logger.info("TM Registration opened", { file: contextMenuFile.name });
+  }
+
+  // Register file as TM
+  async function registerAsTM() {
+    if (!contextMenuFile || !tmName.trim()) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/files/${contextMenuFile.id}/register-as-tm`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: tmName,
+          project_id: tmProjectId,
+          language: tmLanguage,
+          description: tmDescription
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        logger.success("TM registered", { name: tmName, tmId: result.tm_id });
+        showTMModal = false;
+
+        // Dispatch event for Tasks panel to show progress
+        dispatch('tmRegistered', {
+          tmId: result.tm_id,
+          name: tmName,
+          fileId: contextMenuFile.id,
+          fileName: contextMenuFile.name
+        });
+      } else {
+        const error = await response.json();
+        logger.error("TM registration failed", { error: error.detail });
+      }
+    } catch (err) {
+      logger.error("TM registration error", { error: err.message });
+    }
   }
 
   // Auto-load projects on mount
   onMount(async () => {
     logger.info("FileExplorer mounted, loading projects...");
     await loadProjects();
+
+    // Add global click listener to close context menu
+    document.addEventListener('click', handleClickOutside);
+  });
+
+  onDestroy(() => {
+    document.removeEventListener('click', handleClickOutside);
   });
 </script>
 
@@ -315,16 +497,73 @@
       </div>
 
       {#if treeNodes.length > 0}
-        <TreeView
-          children={treeNodes}
-          on:select={handleNodeSelect}
-        />
+        <div class="custom-tree" on:contextmenu|preventDefault>
+          {#each treeNodes as node}
+            <div
+              class="tree-node"
+              class:selected={node.data.type === 'file' && selectedFileId === node.data.id}
+              on:click={() => handleNodeClick(node)}
+              on:contextmenu={(e) => handleContextMenu(e, node.data)}
+              role="button"
+              tabindex="0"
+            >
+              <svelte:component this={node.icon} size={16} />
+              <span class="node-text">{node.text}</span>
+            </div>
+            {#if node.children && node.children.length > 0}
+              <div class="tree-children">
+                {#each node.children as child}
+                  <div
+                    class="tree-node"
+                    class:selected={child.data.type === 'file' && selectedFileId === child.data.id}
+                    on:click={() => handleNodeClick(child)}
+                    on:contextmenu={(e) => handleContextMenu(e, child.data)}
+                    role="button"
+                    tabindex="0"
+                  >
+                    <svelte:component this={child.icon} size={16} />
+                    <span class="node-text">{child.text}</span>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          {/each}
+        </div>
       {:else}
         <p class="empty-message">No files yet. Upload a TXT or XML file.</p>
       {/if}
     {/if}
   {/if}
 </div>
+
+<!-- Context Menu -->
+{#if showContextMenu}
+  <div
+    class="context-menu"
+    style="left: {contextMenuX}px; top: {contextMenuY}px;"
+    on:click|stopPropagation
+    role="menu"
+  >
+    <button class="context-menu-item" on:click={downloadFile} role="menuitem">
+      <Download size={16} />
+      <span>Download File</span>
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" on:click={runLineCheckQA} role="menuitem">
+      <Search size={16} />
+      <span>Run Full Line Check QA</span>
+    </button>
+    <button class="context-menu-item" on:click={runWordCheckQA} role="menuitem">
+      <TextCreation size={16} />
+      <span>Run Full Word Check QA</span>
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" on:click={openTMRegistration} role="menuitem">
+      <DataBase size={16} />
+      <span>Upload as TM...</span>
+    </button>
+  </div>
+{/if}
 
 <!-- New Project Modal -->
 <Modal
@@ -399,6 +638,62 @@
       bind:files={uploadFiles}
     />
   {/if}
+</Modal>
+
+<!-- TM Registration Modal -->
+<Modal
+  bind:open={showTMModal}
+  modalHeading="Register as Translation Memory"
+  primaryButtonText="Register TM"
+  secondaryButtonText="Cancel"
+  on:click:button--primary={registerAsTM}
+  on:click:button--secondary={() => showTMModal = false}
+>
+  <div class="tm-form">
+    <TextInput
+      bind:value={tmName}
+      labelText="TM Name"
+      placeholder="BDO_EN_TM_v1.0"
+      required
+    />
+
+    <Select
+      bind:selected={tmProjectId}
+      labelText="Assign to Project"
+    >
+      <SelectItem value={null} text="-- Select Project --" />
+      {#each projects as project}
+        <SelectItem value={project.id} text={project.name} />
+      {/each}
+    </Select>
+
+    <Select
+      bind:selected={tmLanguage}
+      labelText="Language"
+    >
+      <SelectItem value="en" text="English (EN)" />
+      <SelectItem value="ko" text="Korean (KO)" />
+      <SelectItem value="ja" text="Japanese (JA)" />
+      <SelectItem value="zh" text="Chinese (ZH)" />
+      <SelectItem value="de" text="German (DE)" />
+      <SelectItem value="fr" text="French (FR)" />
+      <SelectItem value="es" text="Spanish (ES)" />
+      <SelectItem value="pt" text="Portuguese (PT)" />
+      <SelectItem value="ru" text="Russian (RU)" />
+    </Select>
+
+    <TextArea
+      bind:value={tmDescription}
+      labelText="Description (Optional)"
+      placeholder="Notes about this TM..."
+      rows={3}
+    />
+
+    <p class="tm-info">
+      After registration, the TM will be processed locally (embeddings + FAISS index).
+      Progress will be shown in the Tasks panel.
+    </p>
+  </div>
 </Modal>
 
 <style>
@@ -489,5 +784,111 @@
     flex: 1;
     overflow-y: auto;
     padding: 0.5rem;
+  }
+
+  /* Custom Tree Styles */
+  .custom-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+
+  .tree-node {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--cds-text-01);
+    font-size: 0.875rem;
+    user-select: none;
+  }
+
+  .tree-node:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .tree-node.selected {
+    background: var(--cds-layer-selected-01);
+  }
+
+  .tree-node .node-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tree-children {
+    padding-left: 1.25rem;
+  }
+
+  /* Context Menu Styles - Native OS Feel */
+  .context-menu {
+    position: fixed;
+    z-index: 10000;
+    background: var(--cds-layer-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    min-width: 200px;
+    padding: 0.25rem 0;
+    animation: context-menu-appear 0.1s ease-out;
+  }
+
+  @keyframes context-menu-appear {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--cds-text-01);
+    font-size: 0.875rem;
+  }
+
+  .context-menu-item:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .context-menu-item span {
+    flex: 1;
+  }
+
+  .context-menu-divider {
+    height: 1px;
+    background: var(--cds-border-subtle-01);
+    margin: 0.25rem 0;
+  }
+
+  /* TM Form Styles */
+  .tm-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .tm-info {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--cds-text-02);
+    padding: 0.75rem;
+    background: var(--cds-layer-02);
+    border-radius: 4px;
   }
 </style>
