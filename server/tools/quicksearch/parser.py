@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import csv
 import os
+import re
 from typing import Tuple, Dict, List
 from loguru import logger
 

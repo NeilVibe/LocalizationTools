@@ -3,7 +3,8 @@
  * Connects to FastAPI backend for admin operations
  */
 
-const API_BASE_URL = 'http://localhost:8888/api/v2';
+// Use env var for production, fallback to localhost for development
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8888/api/v2';
 
 class AdminAPIClient {
   constructor() {

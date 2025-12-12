@@ -104,6 +104,9 @@ def extract_all_pairs_from_files(
 
         try:
             if ext == ".xml":
+                if not HAS_LXML:
+                    logger.warning(f"Skipping XML file (lxml not installed): {file_path}")
+                    continue
                 parser = etree.XMLParser(recover=True, resolve_entities=False)
                 tree = etree.parse(file_path, parser)
                 for locstr in tree.xpath('//LocStr'):
@@ -169,6 +172,9 @@ def extract_all_locstrs_from_files(
 
         try:
             if ext == ".xml":
+                if not HAS_LXML:
+                    logger.warning(f"Skipping XML file (lxml not installed): {file_path}")
+                    continue
                 parser = etree.XMLParser(recover=True, resolve_entities=False)
                 tree = etree.parse(file_path, parser)
                 for locstr in tree.xpath('//LocStr'):
@@ -345,6 +351,9 @@ def extract_glossary(
 
             try:
                 if ext == ".xml":
+                    if not HAS_LXML:
+                        logger.warning(f"Skipping XML file (lxml not installed): {file_path}")
+                        continue
                     parser = etree.XMLParser(recover=True, resolve_entities=False)
                     tree = etree.parse(file_path, parser)
 
@@ -497,6 +506,9 @@ def line_check(
 
         try:
             if ext == ".xml":
+                if not HAS_LXML:
+                    logger.warning(f"Skipping XML file (lxml not installed): {file_path}")
+                    continue
                 parser = etree.XMLParser(recover=True, resolve_entities=False)
                 tree = etree.parse(file_path, parser)
 
@@ -663,6 +675,9 @@ def term_check(
 
         try:
             if ext == ".xml":
+                if not HAS_LXML:
+                    logger.warning(f"Skipping XML file (lxml not installed): {file_path}")
+                    continue
                 parser = etree.XMLParser(recover=True, resolve_entities=False)
                 tree = etree.parse(file_path, parser)
 

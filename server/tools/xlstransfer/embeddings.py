@@ -58,7 +58,10 @@ def load_model(model_path: Optional[Path] = None) -> SentenceTransformer:
         # Download from HuggingFace
         _model_instance = SentenceTransformer(config.MODEL_NAME)
         # Save locally for future use
-        _model_instance.save(str(model_path))
+        try:
+            _model_instance.save(str(model_path))
+        except (OSError, PermissionError) as e:
+            logger.warning(f"Could not save model to {model_path}: {e}")
 
     logger.info("Model loaded successfully")
     return _model_instance

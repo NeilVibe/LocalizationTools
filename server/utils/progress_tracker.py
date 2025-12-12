@@ -22,6 +22,7 @@ Features:
 """
 
 import sys
+import json
 from typing import Optional
 from datetime import datetime
 from pathlib import Path
@@ -289,8 +290,8 @@ class TrackedOperation:
                     "function_name": self.function_name,
                     "operation_name": self.operation_name,
                     "total_steps": self.total_steps,
-                    "file_info": str(self.file_info) if self.file_info else None,
-                    "parameters": str(self.parameters) if self.parameters else None,
+                    "file_info": json.dumps(self.file_info) if self.file_info else None,
+                    "parameters": json.dumps(self.parameters) if self.parameters else None,
                     "started_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
                 })
