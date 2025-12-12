@@ -4,25 +4,14 @@
 
 ---
 
-## Review Types
+## Overview
 
-| Type | Frequency | Scope | Time |
-|------|-----------|-------|------|
-| **Quick Scan** | Weekly | Automated scans + surface issues | ~1 hour |
-| **Deep Review** | Bi-weekly | Full code read, architecture, logic | ~4-8 hours |
+| Type | Frequency | Duration | Scope |
+|------|-----------|----------|-------|
+| **Quick Scan** | Weekly | ~1 hour | Automated scans, surface issues |
+| **Deep Review** | Bi-weekly | ~4-8 hours | Full manual code review |
 
----
-
-## Purpose
-
-Eliminate:
-- Dead code / unused files
-- Duplicate logic (Factor Power violations)
-- Old + new code coexistence
-- Parasitic imports
-- Logic bugs, security issues
-- Poor error handling
-- Architectural problems
+**Full codebase review = 6 Deep Review sessions (12 weeks)**
 
 ---
 
@@ -30,150 +19,434 @@ Eliminate:
 
 ```
 docs/code-review/
-├── CODE_REVIEW_PROTOCOL.md    ← This file (reusable process)
-├── ISSUES_YYYYMMDD.md         ← Issue list per review session
-└── DEEP_REVIEW_YYYYMMDD.md    ← Deep review notes (bi-weekly)
+├── CODE_REVIEW_PROTOCOL.md       ← This file
+├── ISSUES_YYYYMMDD.md            ← Quick scan issues
+└── DEEP_REVIEW_[MODULE]_YYYYMMDD.md  ← Deep review per module
 ```
 
 ---
 
-# QUICK SCAN (Weekly)
+# PART 1: QUICK SCAN (Weekly)
 
-**2 passes: Find & Fix, then Verify**
+Fast automated checks + immediate fixes.
 
-## Pass 1: Find & Fix
+## Process
 
-### 1.1 Run Automated Scans
+### Step 1: Run Scans
 ```bash
 cd /home/neil1988/LocalizationTools
 
-# TODO/FIXME/HACK
-grep -rn "TODO\|FIXME\|HACK" server/ --include="*.py" | wc -l
+# Duplicates
+grep -rhn "^def \|^async def " server/ --include="*.py" | \
+  sed 's/.*def //' | sed 's/(.*$//' | sort | uniq -c | sort -rn | head -10
 
-# print() (should be logger)
-grep -rn "print(" server/ --include="*.py" | grep -v "file=sys.stderr" | wc -l
+# TODO/FIXME
+grep -rn "TODO\|FIXME" server/ --include="*.py" | wc -l
 
-# Large files (>500 LOC)
-find server/ -name "*.py" -exec wc -l {} \; | awk '$1 > 500' | sort -rn | head -10
+# print() statements
+grep -rn "print(" server/ --include="*.py" | wc -l
 
-# console.log (frontend)
-grep -rn "console.log" locaNext/src/ --include="*.js" --include="*.svelte" | wc -l
+# console.log
+grep -rn "console.log" locaNext/src/ --include="*.svelte" | wc -l
 
-# Duplicate functions
-grep -rhn "^def \|^async def " server/ --include="*.py" | sed 's/.*def //' | sed 's/(.*$//' | sort | uniq -c | sort -rn | head -10
+# Large files
+find server/ -name "*.py" -exec wc -l {} \; | awk '$1 > 500' | sort -rn
 ```
 
-### 1.2 Create Issue List
-Create `ISSUES_YYYYMMDD.md` with findings.
-
-### 1.3 Fix One by One
-Mark each fixed with one-liner.
-
-### 1.4 Commit Pass 1
-
-## Pass 2: Verify Clean
-
-### 2.1 Re-run All Scans
-### 2.2 Check Fixed Issues
-### 2.3 Check for Regressions
-### 2.4 Final Commit
+### Step 2: Create ISSUES_YYYYMMDD.md
+### Step 3: Fix issues
+### Step 4: Pass 2 - Re-run scans to verify
+### Step 5: Commit
 
 ---
 
-# DEEP REVIEW (Bi-weekly)
+# PART 2: DEEP REVIEW (Bi-weekly)
 
-**Full manual code review - read every file, check logic, architecture**
+Full manual code review. **One module per session.**
 
-## Module Rotation
+---
 
-Review one module per session (rotate):
+## Module Order (Most Logical Flow)
 
-| Week | Module | Files |
-|------|--------|-------|
-| 1 | LDM | server/tools/ldm/, locaNext LDM components |
-| 2 | XLSTransfer | server/tools/xlstransfer/, server/api/xlstransfer* |
-| 3 | QuickSearch | server/tools/quicksearch/ |
-| 4 | KR Similar | server/tools/kr_similar/ |
-| 5 | Core/Auth | server/api/auth*, server/database/, server/utils/ |
-| 6 | Frontend | locaNext/src/lib/, adminDashboard/ |
+Review in dependency order - bottom-up, so foundations are solid before reviewing code that depends on them.
 
-## Per-File Review Checklist
+| Session | Module | Why This Order |
+|---------|--------|----------------|
+| **1** | **Database & Models** | Foundation - everything depends on this |
+| **2** | **Utils & Core** | Shared utilities used everywhere |
+| **3** | **Auth & Security** | Critical - must be solid |
+| **4** | **LDM Backend** | Main app #4, most complex |
+| **5** | **XLSTransfer** | Tool #1 |
+| **6** | **QuickSearch** | Tool #2 |
+| **7** | **KR Similar** | Tool #3 |
+| **8** | **API Layer** | All endpoints, ties everything together |
+| **9** | **Frontend - Core** | Svelte components, stores |
+| **10** | **Frontend - LDM** | LDM UI components |
+| **11** | **Admin Dashboard** | Admin UI |
+| **12** | **Scripts & Config** | Build, deploy, CI/CD |
 
-For EVERY file in the module:
+---
 
-### Code Quality
-- [ ] Clear function names and purpose?
-- [ ] Functions <50 lines? (split if larger)
-- [ ] No dead code / commented code?
-- [ ] No magic numbers? (use constants)
-- [ ] Consistent style?
+## Session 1: Database & Models
 
-### Logic & Correctness
-- [ ] Edge cases handled? (null, empty, invalid)
+**Files:**
+```
+server/database/
+├── __init__.py
+├── db_setup.py
+├── db_utils.py
+└── models.py
+
+server/config.py
+```
+
+**Review Focus:**
+- [ ] Models complete and correct?
+- [ ] Relationships defined properly?
+- [ ] Indexes on frequently queried columns?
+- [ ] No N+1 query patterns in utils?
+- [ ] Connection pooling configured?
+- [ ] Migrations strategy?
+
+---
+
+## Session 2: Utils & Core
+
+**Files:**
+```
+server/utils/
+├── __init__.py
+├── cache.py
+├── dependencies.py
+├── progress_tracker.py
+├── text_utils.py
+├── websocket.py
+└── client/
+    ├── file_handler.py
+    ├── logger.py
+    └── progress.py
+```
+
+**Review Focus:**
+- [ ] Factor Power - no duplicates?
+- [ ] Each util has single responsibility?
+- [ ] Error handling consistent?
+- [ ] Logging consistent?
+- [ ] WebSocket thread-safe?
+
+---
+
+## Session 3: Auth & Security
+
+**Files:**
+```
+server/api/auth.py
+server/api/auth_async.py
+server/utils/dependencies.py (auth parts)
+```
+
+**Review Focus:**
+- [ ] Password hashing secure? (bcrypt)
+- [ ] JWT implementation correct?
+- [ ] Token expiration handled?
+- [ ] Rate limiting?
+- [ ] No secrets in code?
+- [ ] All endpoints require auth?
+- [ ] CORS configured correctly?
+
+---
+
+## Session 4: LDM Backend
+
+**Files:**
+```
+server/tools/ldm/
+├── __init__.py
+├── api.py (1300+ lines - main focus)
+├── tm.py
+├── tm_indexer.py
+├── websocket.py
+└── file_handlers/
+    ├── txt_handler.py
+    └── xml_handler.py
+```
+
+**Review Focus:**
+- [ ] File parsing robust? (encoding, malformed)
+- [ ] Row locking for multi-user?
+- [ ] TM search tiers correct?
+- [ ] WebSocket events complete?
+- [ ] Large file handling? (memory)
+- [ ] Export formats correct?
+
+---
+
+## Session 5: XLSTransfer
+
+**Files:**
+```
+server/tools/xlstransfer/
+├── __init__.py
+├── config.py
+├── core.py
+├── embeddings.py
+├── translation.py
+├── process_operation.py
+├── excel_utils.py
+└── cli/
+
+server/api/xlstransfer_async.py
+```
+
+**Review Focus:**
+- [ ] Matches original XLSTransfer0225.py exactly?
+- [ ] Embedding generation efficient?
+- [ ] FAISS index handling correct?
+- [ ] Excel read/write preserves formatting?
+- [ ] Progress tracking complete?
+
+---
+
+## Session 6: QuickSearch
+
+**Files:**
+```
+server/tools/quicksearch/
+├── __init__.py
+├── parser.py
+├── searcher.py
+└── api.py
+```
+
+**Review Focus:**
+- [ ] Matches original QuickSearch0818.py?
+- [ ] Split vs whole mode correct?
+- [ ] Search ranking accurate?
+- [ ] StringID handling correct?
+
+---
+
+## Session 7: KR Similar
+
+**Files:**
+```
+server/tools/kr_similar/
+├── __init__.py
+├── core.py
+├── embeddings.py
+└── searcher.py
+
+server/api/kr_similar_async.py
+```
+
+**Review Focus:**
+- [ ] Matches original KRSIMILAR0124.py?
+- [ ] Korean text normalization correct?
+- [ ] Similarity threshold logic?
+- [ ] Auto-translate structure adaptation?
+
+---
+
+## Session 8: API Layer
+
+**Files:**
+```
+server/api/
+├── __init__.py
+├── stats.py
+├── updates.py
+├── progress_operations.py
+└── (already reviewed: auth, xlstransfer, kr_similar)
+
+server/main.py
+```
+
+**Review Focus:**
+- [ ] All endpoints have auth?
+- [ ] Input validation on all endpoints?
+- [ ] Error responses consistent?
+- [ ] OpenAPI docs accurate?
+- [ ] Rate limiting where needed?
+
+---
+
+## Session 9: Frontend - Core
+
+**Files:**
+```
+locaNext/src/
+├── App.svelte
+├── lib/
+│   ├── stores/
+│   ├── services/
+│   └── utils/
+└── routes/
+```
+
+**Review Focus:**
+- [ ] Store management clean?
+- [ ] API calls centralized?
+- [ ] Error handling in UI?
+- [ ] Loading states?
+- [ ] Reactive statements correct?
+
+---
+
+## Session 10: Frontend - LDM
+
+**Files:**
+```
+locaNext/src/lib/components/ldm/
+├── ProjectExplorer.svelte
+├── FileExplorer.svelte
+├── EditorPanel.svelte
+├── TranslationGrid.svelte
+└── ...
+```
+
+**Review Focus:**
+- [ ] Grid performance with large files?
+- [ ] Real-time sync working?
+- [ ] Edit conflicts handled?
+- [ ] Keyboard shortcuts?
+- [ ] Accessibility?
+
+---
+
+## Session 11: Admin Dashboard
+
+**Files:**
+```
+adminDashboard/src/
+├── App.svelte
+├── lib/
+│   ├── components/
+│   └── services/
+└── routes/
+```
+
+**Review Focus:**
+- [ ] Admin-only access enforced?
+- [ ] User management complete?
+- [ ] Stats accurate?
+- [ ] Logs accessible?
+
+---
+
+## Session 12: Scripts & Config
+
+**Files:**
+```
+scripts/
+├── start_all_servers.sh
+├── stop_all_servers.sh
+├── check_servers.sh
+└── ...
+
+.github/workflows/
+package.json, requirements.txt
+Dockerfile, docker-compose.yml
+```
+
+**Review Focus:**
+- [ ] Scripts idempotent?
+- [ ] CI/CD complete?
+- [ ] Dependencies pinned?
+- [ ] Docker build works?
+- [ ] Environment configs correct?
+
+---
+
+## Per-File Checklist (Use for Every File)
+
+### Quality
+- [ ] Clear names?
+- [ ] Functions < 50 lines?
+- [ ] No dead code?
+- [ ] No magic numbers?
+
+### Logic
+- [ ] Edge cases? (null, empty, invalid)
 - [ ] Off-by-one errors?
-- [ ] Race conditions? (async code)
-- [ ] Correct error propagation?
+- [ ] Race conditions?
 
-### Error Handling
-- [ ] All exceptions caught appropriately?
-- [ ] Meaningful error messages?
-- [ ] Errors logged?
-- [ ] User-facing errors sanitized? (no stack traces)
+### Errors
+- [ ] Exceptions caught?
+- [ ] Logged?
+- [ ] User-friendly messages?
 
 ### Security
-- [ ] Input validation?
-- [ ] SQL injection safe? (parameterized queries)
-- [ ] No secrets in code?
-- [ ] Auth checks on endpoints?
+- [ ] Input validated?
+- [ ] SQL safe?
+- [ ] No secrets?
 
 ### Architecture
 - [ ] Single responsibility?
-- [ ] Factor Power applied? (no duplicates)
-- [ ] Correct layer? (API vs service vs util)
-- [ ] Dependencies minimal?
+- [ ] Factor Power? (no duplicates)
+- [ ] Right layer?
 
-### Performance
-- [ ] N+1 queries?
-- [ ] Unnecessary loops?
-- [ ] Large data in memory?
-- [ ] Caching where needed?
+---
 
-## Deep Review Output
+## Deep Review Output Template
 
-Create `DEEP_REVIEW_YYYYMMDD.md`:
+Create `DEEP_REVIEW_[MODULE]_YYYYMMDD.md`:
+
 ```markdown
 # Deep Review: [Module Name]
 
 **Date:** YYYY-MM-DD
+**Reviewer:** Claude
 **Files Reviewed:** X
 
 ## Summary
-- Critical issues: X
-- Major issues: X
-- Minor issues: X
-- Suggestions: X
 
-## File-by-File
+| Severity | Count |
+|----------|-------|
+| Critical | X |
+| Major | X |
+| Minor | X |
+| Suggestions | X |
 
-### filename.py
-- [CRITICAL] Description
-- [MAJOR] Description
-- [MINOR] Description
-- [SUGGESTION] Description
+## Findings
+
+### [CRITICAL] filename.py:123 - Description
+**Problem:** What's wrong
+**Fix:** How to fix
+
+### [MAJOR] filename.py:456 - Description
+...
 
 ## Action Items
-1. [ ] Fix critical issue X
-2. [ ] Fix major issue Y
+- [ ] Fix critical issues
+- [ ] Fix major issues
+- [ ] Review minor issues
+
+## Pass 2 Verification
+- [ ] All critical fixed
+- [ ] All major fixed
+- [ ] No regressions
 ```
 
 ---
 
-## Review History
+## Review Schedule
 
-| Date | Type | Module | Issues | Fixed | Pass 2 |
-|------|------|--------|--------|-------|--------|
-| 2025-12-12 | Quick | All | 9 | 4 | ✓ Clean |
+| Week | Date | Type | Module |
+|------|------|------|--------|
+| 1 | 2025-12-12 | Quick | All (done) |
+| 2 | 2025-12-19 | Deep | Database & Models |
+| 3 | 2025-12-26 | Quick | - |
+| 4 | 2026-01-02 | Deep | Utils & Core |
+| ... | ... | ... | ... |
 
 ---
 
-*Update this protocol as process improves.*
+## History
+
+| Date | Type | Module | Issues | Fixed | Status |
+|------|------|--------|--------|-------|--------|
+| 2025-12-12 | Quick | All | 9 | 4 | ✓ Pass 2 Clean |
+
+---
+
+*Protocol v2.0 - Updated 2025-12-12*
