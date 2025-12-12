@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512122200 | **Updated**: 2025-12-12 | **Status**: Production Ready
+**Version**: 2512122330 | **Updated**: 2025-12-12 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 > **Detailed Tasks**: [docs/wip/README.md](docs/wip/README.md) (WIP Hub)
@@ -28,10 +28,10 @@ LocaNext v2512111745
 
 | # | Priority | Name | Status | Doc |
 |---|----------|------|--------|-----|
-| **1** | **CODE REVIEW** | Deep Review (12 sessions) | ✅ COMPLETE | [docs/code-review/](docs/code-review/) |
-| 2 | P25 | LDM UX Overhaul | 🔨 70% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
-| 3 | P24 | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
-| 4 | P17 | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
+| **1** | P25 | LDM UX Overhaul | 🔨 70% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
+| 2 | P24 | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
+| 3 | P17 | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
+| - | CODE REVIEW | Deep Review + Fix Sprint | ✅ COMPLETE | [docs/code-review/](docs/code-review/) |
 | - | P22 | SQLite Removal | ✅ Phase 1 | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
 | - | P21 | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
 | - | ISSUES | Bug Fixes | 2 Open | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
@@ -40,36 +40,7 @@ LocaNext v2512111745
 
 ## Active Development
 
-### CODE REVIEW: Deep Review (Priority #1)
-
-Full codebase review - 12 sessions in dependency order.
-
-**Protocol:** [docs/code-review/CODE_REVIEW_PROTOCOL.md](docs/code-review/CODE_REVIEW_PROTOCOL.md)
-
-| Session | Module | Status | Issues |
-|---------|--------|--------|--------|
-| 1 | Database & Models | ✅ Done | 8 |
-| 2 | Utils & Core | ✅ Done | 8 |
-| 3 | Auth & Security | ✅ Done | 9 |
-| 4 | LDM Backend | ✅ Done | 8 |
-| 5 | XLSTransfer | ✅ Done | 5 |
-| 6 | QuickSearch | ✅ Done | 4 |
-| 7 | KR Similar | ✅ Done | 3 |
-| 8 | API Layer | ✅ Done | 3 |
-| 9 | Frontend Core | ✅ Done | 2 |
-| 10 | Frontend LDM | ✅ Done | 3 |
-| 11 | Admin Dashboard | ✅ Done | 2 |
-| 12 | Scripts & Config | ✅ Done | 2 |
-
-**All issues:** [ISSUES_20251212.md](docs/code-review/ISSUES_20251212.md) (66 total: 31 open, 5 fixed, 29 accept, 1 defer)
-
-**Consolidated:** [CONSOLIDATED_ISSUES.md](docs/code-review/CONSOLIDATED_ISSUES.md) (7 groups)
-
-**Next:** Phase 3 (Fix Sprint) - Start with Groups A + E (quick fixes)
-
----
-
-### P25: LDM UX Overhaul (70% Complete)
+### P25: LDM UX Overhaul (70% Complete) - Priority #1
 
 Comprehensive UX improvements based on user feedback.
 
@@ -223,6 +194,15 @@ Local = Heavy processing (FAISS, ML - rebuildable)
 ---
 
 ## Recently Completed
+
+### Full Code Review ✅ (2025-12-12)
+- 12 Deep Review sessions (30+ files, 25K+ LOC)
+- 66 issues found → 29 fixed, 34 accept, 2 open, 1 defer
+- Phase 3 Fix Sprint: All 7 groups completed
+- **DEV_MODE feature** - `DEV_MODE=true` for localhost auto-auth
+- **JSONB migration** - Script at `scripts/migrate_json_to_jsonb.py`
+- **Auth hardening** - Rate limiting, audit logging, deprecation warning
+- **Docs:** [ISSUES_20251212.md](docs/code-review/ISSUES_20251212.md)
 
 ### P25 Phases 1-5: Core UX + Download ✅ (2025-12-12)
 - BUG-001, BUG-002, BUG-003, BUG-004 all fixed
