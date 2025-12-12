@@ -256,6 +256,54 @@ window.electron.onPythonOutput(progressHandler);
 
 ---
 
+### 7. Factor Architecture for Progress Tracking (Backend)
+
+**All backend long-running operations MUST use TrackedOperation context manager.**
+
+```python
+# Module: server/utils/progress_tracker.py
+
+# Pattern 1: Context Manager (RECOMMENDED) - Auto create/complete/fail
+from server.utils.progress_tracker import TrackedOperation
+
+def process_tm(file_id, user_id):
+    with TrackedOperation("TM Processing", user_id, tool_name="LDM") as op:
+        op.update(25, "Generating embeddings...")
+        embeddings = generate_embeddings()
+
+        op.update(75, "Building FAISS index...")
+        build_faiss(embeddings)
+
+    # AUTO: Creates DB record on enter
+    # AUTO: Emits WebSocket start event
+    # AUTO: Updates DB + WebSocket on op.update()
+    # AUTO: Marks complete on clean exit
+    # AUTO: Marks failed on exception (with error message)
+
+# Pattern 2: Manual Tracker (for existing code)
+from server.utils.progress_tracker import ProgressTracker
+
+tracker = ProgressTracker(operation_id)
+tracker.update(50, "Halfway done...")
+tracker.complete()  # or tracker.fail("Error message")
+```
+
+**When adding a new backend operation:**
+1. Import `TrackedOperation` from `server/utils/progress_tracker.py`
+2. Wrap long-running code in `with TrackedOperation(...) as op:`
+3. Call `op.update(percent, message)` at meaningful points
+4. TaskManager auto-displays progress via WebSocket
+
+**Benefits:**
+- AUTO: DB record created/updated/completed
+- AUTO: WebSocket events emitted
+- AUTO: Exception handling (marks failed)
+- SYNC-SAFE: Works in sync functions (bridges to async WebSocket)
+
+**Files:** `server/utils/progress_tracker.py`, `server/api/progress_operations.py`
+
+---
+
 ## 🚨 COMMON PITFALLS TO AVOID
 
 ### 1. Don't Mix Async and Sync DB Sessions
