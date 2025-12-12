@@ -56,6 +56,15 @@ else
     ALL_OK=false
 fi
 
+# Check Admin Dashboard
+echo -n "Admin Dashboard (5175)... "
+if curl -s --connect-timeout 2 http://localhost:5175 >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ OK${NC}"
+else
+    echo -e "${RED}✗ NOT RUNNING${NC}"
+    ALL_OK=false
+fi
+
 echo ""
 echo "=============================================="
 if [ "$ALL_OK" = true ]; then
