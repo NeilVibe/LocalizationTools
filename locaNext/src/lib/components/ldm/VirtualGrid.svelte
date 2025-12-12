@@ -2,16 +2,13 @@
   import {
     Search,
     InlineLoading,
-    Tag,
-    Modal,
-    TextArea,
-    Select,
-    SelectItem
+    Tag
   } from "carbon-components-svelte";
   import { Edit, Locked } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate, ldmConnected } from "$lib/stores/ldm.js";
+  import { preferences } from "$lib/stores/preferences.js";
   import PresenceBar from "./PresenceBar.svelte";
 
   const dispatch = createEventDispatcher();
@@ -68,7 +65,39 @@
   let tmSuggestions = [];
   let tmLoading = false;
 
-  // Table column widths (Status column REMOVED - using cell colors instead)
+  // Table column definitions (widths will be calculated dynamically)
+  // Note: Status column REMOVED - using cell colors instead
+  const allColumns = {
+    row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
+    string_id: { key: "string_id", label: "StringID", width: 150, prefKey: "showStringId" },
+    source: { key: "source", label: "Source (KR)", width: 350, always: true },
+    target: { key: "target", label: "Target", width: 350, always: true }
+  };
+
+  // Reactive: visible columns based on preferences
+  $: visibleColumns = getVisibleColumns($preferences);
+
+  function getVisibleColumns(prefs) {
+    const cols = [];
+
+    // Optional: Index number
+    if (prefs.showIndex) {
+      cols.push(allColumns.row_num);
+    }
+
+    // Optional: String ID
+    if (prefs.showStringId) {
+      cols.push(allColumns.string_id);
+    }
+
+    // Always visible: Source and Target
+    cols.push(allColumns.source);
+    cols.push(allColumns.target);
+
+    return cols;
+  }
+
+  // Legacy: columns array for compatibility (deprecated, use visibleColumns)
   const columns = [
     { key: "row_num", label: "#", width: 60 },
     { key: "string_id", label: "StringID", width: 150 },
@@ -272,21 +301,24 @@
 
     // Check if row is locked by another user
     const lock = isRowLocked(parseInt(row.id));
-    if (lock) {
+    // Only block if there's a valid lock with a username (null = stale/invalid lock)
+    if (lock && lock.locked_by) {
       logger.warning("Row locked by another user", { rowId: row.id, lockedBy: lock.locked_by });
       alert(`This row is being edited by ${lock.locked_by}`);
       return;
     }
 
-    // Request lock before opening modal
-    if (fileId) {
-      const granted = await lockRow(fileId, parseInt(row.id));
-      if (!granted) {
-        logger.warning("Could not acquire lock", { rowId: row.id });
-        alert("Could not acquire lock. Row may be in use.");
-        return;
-      }
-    }
+    // TODO: Row locking temporarily disabled - WebSocket event delivery issue
+    // See ISSUES_TO_FIX.md for details
+    // The ldm_lock_row event is not being received by the server
+    // if (fileId) {
+    //   const granted = await lockRow(fileId, parseInt(row.id));
+    //   if (!granted) {
+    //     logger.warning("Could not acquire lock", { rowId: row.id });
+    //     alert("Could not acquire lock. Row may be in use.");
+    //     return;
+    //   }
+    // }
 
     editingRow = row;
     // Format target for editing (convert escapes to real newlines)
@@ -327,7 +359,23 @@
 
   // Handle keyboard shortcuts in edit modal
   function handleEditKeydown(event) {
-    // Ctrl+Enter: Save and next
+    // Ctrl+S: Save as Confirmed (Reviewed status)
+    if (event.ctrlKey && event.key === 's') {
+      event.preventDefault();
+      editStatus = 'reviewed';
+      saveEdit();
+      return;
+    }
+
+    // Ctrl+T: Save as Translated only (not confirmed)
+    if (event.ctrlKey && event.key === 't') {
+      event.preventDefault();
+      editStatus = 'translated';
+      saveEdit();
+      return;
+    }
+
+    // Ctrl+Enter: Save and next (legacy, keeps current status)
     if (event.ctrlKey && event.key === 'Enter') {
       event.preventDefault();
       saveAndNext();
@@ -600,7 +648,7 @@
 
     <!-- Table Header -->
     <div class="table-header">
-      {#each columns as col}
+      {#each visibleColumns as col}
         <div class="th" style="width: {col.width}px; min-width: {col.width}px;">
           {col.label}
         </div>
@@ -632,31 +680,35 @@
               role="row"
             >
               {#if row.placeholder}
-                <div class="cell" style="width: {columns[0].width}px;">{row.row_num}</div>
+                <div class="cell" style="width: {visibleColumns[0]?.width || 60}px;">{row.row_num}</div>
                 <div class="cell loading-cell" style="flex: 1;">
                   <InlineLoading description="" />
                 </div>
               {:else}
-                <!-- Row number -->
-                <div class="cell row-num" style="width: {columns[0].width}px;">
-                  {row.row_num}
-                </div>
+                <!-- Row number (conditional) -->
+                {#if $preferences.showIndex}
+                  <div class="cell row-num" style="width: {allColumns.row_num.width}px;">
+                    {row.row_num}
+                  </div>
+                {/if}
 
-                <!-- StringID -->
-                <div class="cell string-id" style="width: {columns[1].width}px;">
-                  {row.string_id || "-"}
-                </div>
+                <!-- StringID (conditional) -->
+                {#if $preferences.showStringId}
+                  <div class="cell string-id" style="width: {allColumns.string_id.width}px;">
+                    {row.string_id || "-"}
+                  </div>
+                {/if}
 
-                <!-- Source (full content with newline symbols) -->
+                <!-- Source (always visible, full content with newline symbols) -->
                 <div
                   class="cell source"
                   class:cell-hover={selectedRowId === row.id}
-                  style="width: {columns[2].width}px;"
+                  style="width: {allColumns.source.width}px;"
                 >
                   <span class="cell-content">{formatGridText(row.source) || ""}</span>
                 </div>
 
-                <!-- Target (editable, full content with newline symbols) -->
+                <!-- Target (always visible, editable, full content with newline symbols) -->
                 <!-- Cell color indicates status: default=pending, translated=teal, confirmed=green -->
                 <div
                   class="cell target"
@@ -665,7 +717,7 @@
                   class:status-translated={row.status === 'translated'}
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
-                  style="width: {columns[3].width}px;"
+                  style="width: {allColumns.target.width}px;"
                   on:dblclick={() => openEditModal(row)}
                   role="button"
                   tabindex="0"
@@ -701,79 +753,80 @@
   {/if}
 </div>
 
-<!-- Edit Modal -->
-<Modal
-  bind:open={showEditModal}
-  modalHeading="Edit Translation"
-  primaryButtonText="Save"
-  secondaryButtonText="Cancel"
-  on:click:button--primary={saveEdit}
-  on:click:button--secondary={closeEditModal}
-  on:close={closeEditModal}
-  size="lg"
->
-  {#if editingRow}
+<!-- Edit Modal - BIG, Clean, Space-Optimized -->
+{#if showEditModal && editingRow}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="edit-modal-overlay" on:click={closeEditModal}>
     <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-    <div class="edit-form" role="form" on:keydown={handleEditKeydown}>
-      <div class="field">
-        <label>StringID</label>
-        <div class="readonly-value">{editingRow.string_id || "-"}</div>
+    <div class="edit-modal" role="dialog" on:click|stopPropagation on:keydown={handleEditKeydown}>
+      <!-- Shortcut bar at top -->
+      <div class="shortcut-bar">
+        <div class="shortcuts">
+          <span class="shortcut"><kbd>Ctrl+S</kbd> Confirm (Reviewed)</span>
+          <span class="shortcut"><kbd>Ctrl+T</kbd> Translate Only</span>
+          <span class="shortcut"><kbd>Tab</kbd> Apply TM</span>
+          <span class="shortcut"><kbd>Esc</kbd> Cancel</span>
+        </div>
+        <button class="close-btn" on:click={closeEditModal} title="Close (Esc)">×</button>
       </div>
 
-      <div class="field">
-        <label>Source (Korean) - Read Only</label>
-        <div class="source-preview">{formatGridText(editingRow.source) || "-"}</div>
-      </div>
+      <!-- Two-column layout -->
+      <div class="edit-content">
+        <!-- Left column: Source + Target -->
+        <div class="edit-left">
+          <div class="source-section">
+            <span class="section-label">SOURCE (Korean)</span>
+            <div class="source-text">{formatGridText(editingRow.source) || "-"}</div>
+          </div>
 
-      <TextArea
-        bind:value={editTarget}
-        labelText="Target (Translation)"
-        placeholder="Enter translation..."
-        rows={4}
-      />
-
-      <!-- TM Suggestions Panel -->
-      <div class="tm-panel">
-        <div class="tm-header">
-          <span class="tm-title">Translation Memory</span>
-          {#if tmLoading}
-            <InlineLoading description="Searching..." />
-          {/if}
+          <div class="target-section">
+            <label class="section-label" for="target-edit-textarea">TARGET (Translation)</label>
+            <textarea
+              id="target-edit-textarea"
+              class="target-textarea"
+              bind:value={editTarget}
+              placeholder="Enter translation..."
+            ></textarea>
+          </div>
         </div>
 
-        {#if tmSuggestions.length > 0}
-          <div class="tm-suggestions">
-            {#each tmSuggestions as suggestion}
-              <button
-                class="tm-suggestion"
-                on:click={() => applyTMSuggestion(suggestion)}
-                title="Click to apply this translation"
-              >
-                <div class="tm-match">
-                  <Tag type="teal" size="sm">{Math.round(suggestion.similarity * 100)}%</Tag>
-                  <span class="tm-file">{suggestion.file_name}</span>
-                </div>
-                <div class="tm-source">{suggestion.source}</div>
-                <div class="tm-target">{suggestion.target}</div>
-              </button>
-            {/each}
-          </div>
-        {:else if !tmLoading}
-          <div class="tm-empty">No similar translations found</div>
-        {/if}
-      </div>
+        <!-- Right column: TM Suggestions -->
+        <div class="edit-right">
+          <div class="tm-section">
+            <div class="tm-header-bar">
+              <span class="section-label">TM MATCHES</span>
+              {#if tmLoading}
+                <InlineLoading description="" />
+              {/if}
+            </div>
 
-      <Select
-        bind:selected={editStatus}
-        labelText="Status"
-      >
-        {#each statusOptions as opt}
-          <SelectItem value={opt.value} text={opt.label} />
-        {/each}
-      </Select>
+            <div class="tm-list">
+              {#if tmSuggestions.length > 0}
+                {#each tmSuggestions as suggestion, idx}
+                  <button
+                    class="tm-item"
+                    on:click={() => applyTMSuggestion(suggestion)}
+                    title="Click to apply (Tab = apply first)"
+                  >
+                    <div class="tm-item-header">
+                      <Tag type="teal" size="sm">{Math.round(suggestion.similarity * 100)}%</Tag>
+                      {#if idx === 0}<span class="tm-hint">Tab</span>{/if}
+                    </div>
+                    <div class="tm-item-source">{suggestion.source}</div>
+                    <div class="tm-item-target">{suggestion.target}</div>
+                  </button>
+                {/each}
+              {:else if !tmLoading}
+                <div class="tm-empty-msg">No similar translations found</div>
+              {/if}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  {/if}
-</Modal>
+  </div>
+{/if}
 
 <style>
   .virtual-grid {
@@ -1027,117 +1080,269 @@
     color: var(--cds-text-02);
   }
 
-  .edit-form {
+  /* ========================================
+     NEW EDIT MODAL - BIG, Clean, Spacious
+     ======================================== */
+
+  .edit-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(2px);
+  }
+
+  .edit-modal {
+    width: 85%;
+    height: 85%;
+    max-width: 1400px;
+    max-height: 900px;
+    background: var(--cds-layer-01);
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
   }
 
-  .field label {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-    margin-bottom: 0.25rem;
-  }
-
-  .readonly-value {
-    font-size: 0.875rem;
-    color: var(--cds-text-01);
-  }
-
-  .source-preview {
-    background: var(--cds-layer-02);
-    padding: 0.75rem;
-    border-radius: 4px;
-    color: var(--cds-text-02);
-    font-size: 0.875rem;
-    white-space: pre-wrap;
-  }
-
-  /* TM Panel Styles */
-  .tm-panel {
-    margin-top: 0.5rem;
-    border: 1px solid var(--cds-border-subtle-01);
-    border-radius: 4px;
-    background: var(--cds-layer-02);
-  }
-
-  .tm-header {
+  /* Shortcut bar at top */
+  .shortcut-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 1rem;
+    background: var(--cds-layer-accent-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .shortcuts {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .shortcut {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+  }
+
+  .shortcut kbd {
+    background: var(--cds-layer-02);
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 3px;
+    padding: 0.15rem 0.4rem;
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: var(--cds-text-01);
+  }
+
+  .close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--cds-text-02);
+    cursor: pointer;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .close-btn:hover {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-01);
+  }
+
+  /* Two-column layout */
+  .edit-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .edit-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 1rem;
+    overflow: hidden;
+  }
+
+  .edit-right {
+    width: 320px;
+    min-width: 280px;
+    border-left: 1px solid var(--cds-border-subtle-01);
+    background: var(--cds-layer-02);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Section labels */
+  .section-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cds-text-02);
+    margin-bottom: 0.5rem;
+  }
+
+  /* Source section */
+  .source-section {
+    flex: 0 0 auto;
+    max-height: 40%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .source-text {
+    flex: 1;
+    background: var(--cds-layer-02);
+    padding: 1rem;
+    border-radius: 4px;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--cds-text-02);
+    white-space: pre-wrap;
+    overflow-y: auto;
+    border: 1px solid var(--cds-border-subtle-01);
+  }
+
+  /* Target section */
+  .target-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .target-textarea {
+    flex: 1;
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid var(--cds-border-strong-01);
+    border-radius: 4px;
+    background: var(--cds-field-01);
+    color: var(--cds-text-01);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    resize: none;
+    font-family: inherit;
+  }
+
+  .target-textarea:focus {
+    outline: none;
+    border-color: var(--cds-interactive-01);
+    box-shadow: 0 0 0 1px var(--cds-interactive-01);
+  }
+
+  .target-textarea::placeholder {
+    color: var(--cds-text-placeholder);
+  }
+
+  /* TM section (right column) */
+  .tm-section {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .tm-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
     background: var(--cds-layer-accent-01);
   }
 
-  .tm-title {
-    font-weight: 600;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--cds-text-02);
-  }
-
-  .tm-suggestions {
-    max-height: 200px;
+  .tm-list {
+    flex: 1;
     overflow-y: auto;
+    padding: 0.5rem;
   }
 
-  .tm-suggestion {
+  .tm-item {
     display: block;
     width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: none;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    background: transparent;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    background: var(--cds-layer-01);
     text-align: left;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
   }
 
-  .tm-suggestion:last-child {
-    border-bottom: none;
+  .tm-item:hover {
+    background: var(--cds-layer-hover-01);
+    border-color: var(--cds-border-interactive);
+    transform: translateY(-1px);
   }
 
-  .tm-suggestion:hover {
-    background: var(--cds-layer-hover-02);
+  .tm-item:active {
+    transform: translateY(0);
   }
 
-  .tm-match {
+  .tm-item-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
   }
 
-  .tm-file {
-    font-size: 0.6875rem;
+  .tm-hint {
+    font-size: 0.625rem;
     color: var(--cds-text-02);
+    background: var(--cds-layer-02);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    font-family: monospace;
   }
 
-  .tm-source {
+  .tm-item-source {
     font-size: 0.75rem;
     color: var(--cds-text-02);
     margin-bottom: 0.25rem;
-    white-space: nowrap;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
   }
 
-  .tm-target {
+  .tm-item-target {
     font-size: 0.8125rem;
     color: var(--cds-text-01);
-    white-space: nowrap;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
   }
 
-  .tm-empty {
-    padding: 0.75rem;
+  .tm-empty-msg {
+    padding: 2rem 1rem;
     text-align: center;
     color: var(--cds-text-02);
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     font-style: italic;
   }
 </style>

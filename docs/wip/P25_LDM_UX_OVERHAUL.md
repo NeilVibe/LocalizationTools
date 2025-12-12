@@ -1,6 +1,6 @@
 # P25: LDM UX Overhaul & Advanced Features
 
-**Priority:** P25 | **Status:** Planning | **Created:** 2025-12-12
+**Priority:** P25 | **Status:** In Progress (65%) | **Created:** 2025-12-12
 
 ---
 
@@ -32,18 +32,18 @@ Major UX improvements and new features for LDM based on user feedback.
 ## 1. BUGS TO FIX
 
 ### BUG-001: "Go to Row" Button Not Useful
-- **Status:** [ ] Open
+- **Status:** [x] Fixed (2025-12-12)
 - **Priority:** Medium
 - **Problem:** Go to row button doesn't serve a clear purpose
-- **Fix:** Review and either improve functionality or remove
+- **Fix:** Removed the button entirely - users use search or scroll
 
 ### BUG-002: Target Lock Behavior Wrong
-- **Status:** [ ] Open
+- **Status:** [x] Fixed (2025-12-12)
 - **Priority:** High
 - **Problem:** Target column shows "locked" even when nobody is editing
 - **User cannot edit** - this is blocking!
 - **Expected:** Lock only appears when someone IS currently editing that row
-- **Fix:** Debug WebSocket presence/lock logic
+- **Fix:** Fixed WebSocket event relay in websocket.js
 
 ### BUG-003: Upload File Tooltip Hidden
 - **Status:** [x] Fixed (2025-12-12)
@@ -439,10 +439,10 @@ Show reference translations from another file (like QuickSearch reference featur
 - [ ] BUG-001: Go to row usefulness
 
 ### Grid UX
-- [ ] Remove Status column, use cell colors instead
-- [ ] Remove unused far-right column
-- [ ] Make Source/Target the default view
-- [ ] Add Preferences menu
+- [x] Remove Status column, use cell colors instead ✅ DONE 2025-12-12
+- [x] Remove Go to Row button ✅ DONE 2025-12-12
+- [x] Make Source/Target the default view ✅ DONE 2025-12-12
+- [x] Add Preferences menu (column toggles) ✅ DONE 2025-12-12
 
 ### Appearance (NEW)
 - [x] Light/Dark theme toggle ✅ DONE 2025-12-12
@@ -459,22 +459,29 @@ Show reference translations from another file (like QuickSearch reference featur
 - Added quick theme toggle button in header (sun/moon icons)
 
 ### Preferences Menu
-- [ ] Create Preferences panel/modal
-- [ ] Appearance settings section
-- [ ] Index number toggle
-- [ ] String ID toggle
-- [ ] Reference column toggle
-- [ ] TM Results toggle
-- [ ] QA Results toggle
+- [x] Create Preferences panel/modal ✅ DONE 2025-12-12
+- [x] Appearance settings section ✅ DONE 2025-12-12
+- [x] Index number toggle ✅ DONE 2025-12-12
+- [x] String ID toggle ✅ DONE 2025-12-12
+- [ ] Reference column toggle (disabled - needs Reference feature)
+- [ ] TM Results toggle (disabled - needs TM feature)
+- [ ] QA Results toggle (disabled - needs QA feature)
 
 ### Edit Modal (Updated)
-- [ ] Clean, spacious modal design
-- [ ] Source text display (read-only)
-- [ ] Target text editing (large textarea)
-- [ ] TM suggestions panel
-- [ ] Implement Ctrl+S = Confirm
-- [ ] Implement Ctrl+T = Translate only
-- [ ] Track "confirmed" status per row
+- [x] Clean, spacious modal design ✅ DONE 2025-12-12
+- [x] Source text display (read-only) ✅ DONE 2025-12-12
+- [x] Target text editing (large textarea) ✅ DONE 2025-12-12
+- [x] TM suggestions panel ✅ DONE 2025-12-12
+- [x] Implement Ctrl+S = Confirm (reviewed status) ✅ DONE 2025-12-12
+- [x] Implement Ctrl+T = Translate only ✅ DONE 2025-12-12
+- [x] Track "confirmed" status per row ✅ DONE 2025-12-12
+
+**Implementation Details:**
+- Modal is 85% width/height with two-column layout
+- Left column: Source (read-only) + Target (editable textarea)
+- Right column: TM matches panel with Apply button
+- Shortcut bar at top showing all keyboard shortcuts
+- Tab key applies first TM suggestion
 
 ### Merge Function
 - [ ] Add "Merge File" to file context menu

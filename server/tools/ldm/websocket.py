@@ -175,12 +175,15 @@ async def ldm_lock_row(sid, data):
     file_id = data.get('file_id')
     row_id = data.get('row_id')
 
+    logger.info(f"LDM: Lock request for row {row_id} in file {file_id} from {sid}")
+
     if not file_id or not row_id:
         await sio.emit('ldm_error', {'message': 'file_id and row_id required'}, to=sid)
         return
 
     client_info = connected_clients.get(sid)
     if not client_info:
+        logger.warning(f"LDM: Lock denied - client {sid} not authenticated")
         await sio.emit('ldm_error', {'message': 'Not authenticated'}, to=sid)
         return
 
@@ -189,8 +192,10 @@ async def ldm_lock_row(sid, data):
     # Check if row is already locked by someone else
     if lock_key in ldm_row_locks:
         existing_lock = ldm_row_locks[lock_key]
+        logger.info(f"LDM: Lock exists for row {row_id}: sid={existing_lock['sid']}, username={existing_lock['username']}")
         if existing_lock['sid'] != sid:
             # Row is locked by another user
+            logger.warning(f"LDM: Lock denied for row {row_id} - already locked by {existing_lock['username']}")
             await sio.emit('ldm_lock_denied', {
                 'file_id': file_id,
                 'row_id': row_id,
@@ -295,6 +300,15 @@ async def ldm_get_locks(sid, data):
     file_id = data.get('file_id')
     if not file_id:
         return
+
+    # Clean up stale locks (no username = invalid session)
+    stale_keys = []
+    for (f_id, r_id), lock_info in ldm_row_locks.items():
+        if f_id == file_id and not lock_info.get('username'):
+            stale_keys.append((f_id, r_id))
+    for key in stale_keys:
+        logger.warning(f"LDM: Removing stale lock: {key}")
+        del ldm_row_locks[key]
 
     locks = []
     for (f_id, r_id), lock_info in ldm_row_locks.items():
@@ -480,3 +494,6 @@ __all__ = [
     'is_row_locked',
     'setup_ldm_disconnect_handler'
 ]
+
+# Auto-setup the disconnect handler when module is imported
+setup_ldm_disconnect_handler()

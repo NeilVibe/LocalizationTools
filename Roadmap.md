@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512120100 | **Updated**: 2025-12-12 | **Status**: Production Ready
+**Version**: 2512122200 | **Updated**: 2025-12-12 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 > **Detailed Tasks**: [docs/wip/README.md](docs/wip/README.md) (WIP Hub)
@@ -28,44 +28,50 @@ LocaNext v2512111745
 
 | Priority | Name | Status | WIP Doc |
 |----------|------|--------|---------|
-| **P25** | LDM UX Overhaul | 📋 NEW | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
+| **P25** | LDM UX Overhaul | 🔨 65% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
 | **P24** | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
 | **P17** | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
 | **P22** | SQLite Removal | Phase 1 ✅ | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
 | **P23** | Data Flow (Production) | 📋 Later | [P23_DATA_FLOW_ARCHITECTURE.md](docs/wip/P23_DATA_FLOW_ARCHITECTURE.md) |
 | **P21** | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
-| **ISSUES** | Bug Fixes | 1 Open | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
+| **ISSUES** | Bug Fixes | 2 Open | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 
 ---
 
 ## Active Development
 
-### P25: LDM UX Overhaul (NEW - Major)
+### P25: LDM UX Overhaul (65% Complete)
 
 Comprehensive UX improvements based on user feedback.
 
-**Bugs Fixed (Phase 1):**
+**Phase 1: Bug Fixes ✅**
 - ✅ Target lock blocking editing (BUG-002)
 - ✅ Upload tooltip z-index (BUG-003)
 - ✅ Search bar icon requirement (BUG-004)
 - ✅ Go to row removed (BUG-001)
 
-**Grid Simplification (Phase 2 - DONE):**
+**Phase 2: Grid Simplification ✅**
 - ✅ Status column REMOVED → Using cell colors instead
-  - Teal left border = translated
-  - Blue left border = reviewed
-  - Green left border = approved/confirmed
-- Default: Source + Target columns only
-- Optional columns via Preferences: Index, String ID, Reference, TM, QA
+- ✅ Default: Source + Target columns only
+- ✅ Cell colors: teal=translated, blue=reviewed, green=approved
 
-**New Features:**
-- **Preferences Menu** - Toggle columns, configure QA/TM/Reference
-- **Edit Workflow** - Ctrl+S=Confirm, Ctrl+T=Translate only
-- **Merge Function** - Merge confirmed strings back to original file
-- **Reference Column** - Load reference from project/local file
-- **TM Integration** - Upload TM, show in Tasks, TM Results column
-- **Live QA** - Spell, grammar, glossary term, inconsistency checks
-- **Auto-Glossary** - Generate glossary during TM upload
+**Phase 3: Edit Modal Redesign ✅** (NEW)
+- ✅ BIG modal (85% width/height)
+- ✅ Two-column layout: Source/Target left, TM panel right
+- ✅ Shortcut bar at top (Ctrl+S, Ctrl+T, Tab, Esc)
+- ✅ Keyboard shortcuts working (Ctrl+S=Confirm, Ctrl+T=Translate)
+
+**Phase 4: Preferences Menu ✅** (NEW)
+- ✅ Column toggles: Index Number, String ID
+- ✅ Settings persist in localStorage
+- ✅ Grid updates dynamically
+- Reference/TM/QA toggles ready (disabled until features built)
+
+**Remaining Phases:**
+- Phase 5: Merge Function - merge confirmed strings back to file
+- Phase 6: Reference Column - show reference from another file
+- Phase 7: TM Integration - upload TM, TM Results column
+- Phase 8: Live QA System - spell, grammar, glossary checks
 
 **Details:** [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md)
 
@@ -144,7 +150,7 @@ Currently localhost:8888 is hardcoded, which is FINE for dev/testing.
 
 ---
 
-### Known Issues (1 Open)
+### Known Issues (2 Open)
 
 | ID | Status | Description |
 |----|--------|-------------|
@@ -153,6 +159,7 @@ Currently localhost:8888 is hardcoded, which is FINE for dev/testing.
 | ~~BUG-003~~ | ✅ Fixed | ~~Upload tooltip z-index~~ |
 | ~~BUG-004~~ | ✅ Fixed | ~~Search bar requires icon click~~ |
 | ISSUE-011 | 📋 Open | Missing TM upload UI (backend ready) |
+| ISSUE-013 | 📋 Open | WebSocket locking events (workaround applied) |
 
 **Details:** [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md)
 
@@ -181,13 +188,13 @@ Local = Heavy processing (FAISS, ML - rebuildable)
 
 ## Recently Completed
 
-### P25 Phase 1+2: Bug Fixes + Grid UX ✅ (2025-12-12)
+### P25 Phases 1-4: Core UX Complete ✅ (2025-12-12)
 - BUG-001, BUG-002, BUG-003, BUG-004 all fixed
-- Light/Dark theme toggle
-- Font size/weight settings
+- Light/Dark theme toggle + Font settings
+- Status column → Cell colors, Go to Row removed
+- **Edit Modal Redesign** - BIG modal, TM panel, shortcuts
+- **Preferences Menu** - Column toggles (Index, StringID)
 - CDP test suite (Normal + Detailed)
-- Status column REMOVED → Cell colors show status
-- Go to Row button REMOVED
 
 ### P22 Phase 1: SQLite Removal ✅ (2025-12-11)
 - 12 server files cleaned

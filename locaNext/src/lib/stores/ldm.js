@@ -219,15 +219,20 @@ export function leaveFile(fileId = null) {
  */
 export async function lockRow(fileId, rowId) {
   return new Promise((resolve) => {
-    // Check if already locked by someone else
+    console.log('[LDM] lockRow called:', { fileId, rowId, wsConnected: websocket.isConnected() });
+
+    // Check if already locked by someone else (ignore stale locks with no username)
     const existingLock = isRowLocked(rowId);
-    if (existingLock) {
+    if (existingLock && existingLock.locked_by) {
       console.log('[LDM] Row already locked by', existingLock.locked_by);
       resolve(false);
       return;
+    } else if (existingLock) {
+      console.log('[LDM] Ignoring stale lock with no username');
     }
 
     // Request lock
+    console.log('[LDM] Sending ldm_lock_row event...');
     websocket.send('ldm_lock_row', { file_id: fileId, row_id: rowId });
 
     // Wait for response (with timeout)
