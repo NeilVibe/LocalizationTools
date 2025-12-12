@@ -5,6 +5,7 @@ Real-time communication using Socket.IO for live updates.
 """
 
 import socketio
+import time
 from loguru import logger
 from typing import Dict, List, Optional
 import asyncio
@@ -59,7 +60,7 @@ async def connect(sid, environ, auth):
         'user_id': None,
         'username': None,
         'rooms': set(),
-        'connected_at': asyncio.get_event_loop().time()
+        'connected_at': time.time()
     }
 
     # Authenticate if token provided
