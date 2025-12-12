@@ -57,6 +57,51 @@ If none of these apply → **DOCUMENT ONLY, DO NOT FIX**
 
 ---
 
+## STRICT Issue Classification Rules
+
+**BE HARSH. When in doubt, mark as OPEN.**
+
+### What is OPEN [ ]
+```
+ANY issue that:
+- Breaks at scale (100+ users, 1M+ rows)
+- Blocks event loop in async code
+- Uses unbounded memory (loads all to RAM)
+- Creates new connections instead of using pool
+- Disables security features
+- Has O(n) or worse where O(1) is possible
+```
+
+### What is ACCEPT [~]
+```
+ONLY these qualify:
+- Pure style preference (naming, formatting)
+- Intentional design choice (documented)
+- CLI/script code (not server)
+- Placeholder for planned feature (documented TODO)
+```
+
+### What is DEFER [-]
+```
+ONLY if:
+- Requires major refactor (weeks of work)
+- Has workaround that works at scale
+- Explicitly agreed with user to defer
+```
+
+### Common Mistakes (DON'T DO THIS)
+```
+❌ "Works fine now" → Still OPEN if breaks at scale
+❌ "Quick operations" → Still OPEN if blocks async
+❌ "Acceptable for internal tool" → We target 100+ users
+❌ "Minor tech debt" → If it affects scale, it's OPEN
+```
+
+**Remember:** Project goal is 100+ concurrent users, 50M+ rows.
+Any issue that breaks this = OPEN, not ACCEPT.
+
+---
+
 ## Per-Session Workflow
 
 ### Step 1: Read Files
@@ -617,4 +662,4 @@ mv docs/code-review/ISSUES_20251212.md docs/code-review/history/
 
 ---
 
-*Protocol v2.2 - Updated 2025-12-12 (Cycle 1 Complete)*
+*Protocol v2.3 - Updated 2025-12-12 (Stricter classification rules added)*
