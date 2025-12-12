@@ -1,62 +1,75 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-12 14:00 KST | **By:** Claude
+**Updated:** 2025-12-12 15:30 KST | **By:** Claude
 
 ---
 
-## Session Summary: P25 Bug Fixes + UX Improvements
+## Session Summary: P25 Grid UX Simplification
 
 ### What Was Accomplished This Session
 
-1. **BUG-003 FIXED** - Upload tooltip z-index
-   - Root cause: `overflow: hidden` on parent containers created clipping contexts
-   - Fix: Changed overflow to `visible`, added CSS rules for tooltip escape
-   - Files: `app.css`, `LDM.svelte`, `FileExplorer.svelte`
+1. **Grid UX Simplification COMPLETE**
+   - Status column REMOVED from grid
+   - Cell colors now indicate status:
+     - Teal left border = translated
+     - Blue left border = reviewed
+     - Green left border = approved/confirmed
+   - "Go to Row" button REMOVED (BUG-001 fixed)
+   - Cleaner, simpler grid interface
 
-2. **BUG-004 FIXED** - Search bar icon requirement
-   - Root cause: Carbon `ToolbarSearch` requires icon click to expand
-   - Fix: Replaced with `Search` component (always expanded)
-   - File: `VirtualGrid.svelte`
+2. **Previous Session Work (Already Done)**
+   - BUG-002, BUG-003, BUG-004 fixed
+   - Light/Dark theme toggle
+   - Font size/weight settings
+   - CDP test suite (Normal + Detailed)
 
-3. **P25 WIP Document Updated**
-   - Detailed modal redesign specs added
-   - Modal: BIG, TM on RIGHT, shortcuts on TOP, resizable
-   - No Status dropdown - use Ctrl+S/Ctrl+T shortcuts
+### Files Modified This Session
 
-### Previous Session (BUG-002 + Infrastructure)
-- BUG-002 FIXED - WebSocket event relay
-- Server management scripts created
-- CDP testing infrastructure documented
+| File | Change |
+|------|--------|
+| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | Removed Status column, added cell colors, removed Go to Row |
+| `docs/wip/ISSUES_TO_FIX.md` | BUG-001 marked as fixed |
+| `Roadmap.md` | Updated P25 progress, issue counts |
 
 ---
 
 ## Current Focus: P25 LDM UX Overhaul
 
-### Bug Status
+### Bug Status - ALL FIXED
 | Bug | Priority | Status |
 |-----|----------|--------|
+| ~~BUG-001~~ | Low | ✅ FIXED - Go to Row removed |
 | ~~BUG-002~~ | HIGH | ✅ FIXED - WebSocket event relay |
 | ~~BUG-003~~ | Medium | ✅ FIXED - Tooltip z-index |
 | ~~BUG-004~~ | Medium | ✅ FIXED - Search bar |
-| BUG-001 | Low | Open - Go to row not useful |
 
-### Major UX Changes Planned
+### P25 Progress
+- [x] Phase 1: Bug fixes (BUG-001 through BUG-004)
+- [x] Phase 2: Grid simplification (Status column → cell colors)
+- [ ] Phase 3: Edit modal redesign (BIG, TM on right, shortcuts)
+- [ ] Phase 4: Preferences menu with column toggles
+- [ ] Phase 5: Edit workflow (Ctrl+S=Confirm, Ctrl+T=Translate)
 
-**Grid Simplification:**
-- Remove Status column → Use cell colors
-- Default view: Source + Target only
-- Optional columns via Preferences
+### Grid Status Colors (NEW)
+```css
+/* Translated = teal left border */
+.cell.target.status-translated {
+  background: rgba(0, 157, 154, 0.15);
+  border-left: 3px solid var(--cds-support-04);
+}
 
-**New Features:**
-- Preferences menu (column toggles, QA/TM/Reference settings)
-- Edit workflow: Ctrl+S=Confirm, Ctrl+T=Translate only
-- Merge function (merge confirmed strings to file)
-- Reference column (from project/local file)
-- TM Results column
-- Live QA (spell, grammar, glossary, inconsistency)
-- Auto-glossary during TM upload
+/* Reviewed = blue left border */
+.cell.target.status-reviewed {
+  background: rgba(15, 98, 254, 0.15);
+  border-left: 3px solid var(--cds-support-01);
+}
 
-**Full details:** [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md)
+/* Approved = green left border */
+.cell.target.status-approved {
+  background: rgba(36, 161, 72, 0.15);
+  border-left: 3px solid var(--cds-support-02);
+}
+```
 
 ---
 
@@ -64,24 +77,10 @@
 
 | Priority | Task | Status |
 |----------|------|--------|
+| P25 | Edit modal redesign | Next |
 | P24 | Server Status Dashboard | Pending |
 | P17 | TM Upload UI (ISSUE-011) | Pending |
 | P17 | Custom Excel/XML pickers | Pending |
-
----
-
-## Key Files Modified This Session
-
-| File | Change |
-|------|--------|
-| `locaNext/src/app.css` | Theme CSS variables (light/dark) |
-| `locaNext/src/lib/stores/preferences.js` | NEW - Preferences store |
-| `locaNext/src/lib/components/PreferencesModal.svelte` | Theme/font settings |
-| `locaNext/src/routes/+layout.svelte` | Theme toggle button |
-| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | Search bar fix |
-| `tests/cdp/test_full_flow.js` | NEW - E2E test (Normal) |
-| `tests/cdp/test_full_flow_detailed.js` | NEW - E2E test (Detailed) |
-| `docs/testing/CDP_TESTING_GUIDE.md` | Normal vs Detailed docs |
 
 ---
 
@@ -105,7 +104,7 @@ cd locaNext && npm run build
 cp -r build/* /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/build/
 
 # Run CDP test
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject; node test_edit_final.js"
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject; node test_full_flow.js"
 ```
 
 ---
@@ -114,9 +113,10 @@ cp -r build/* /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resourc
 
 1. ~~P25: Light/Dark theme toggle~~ ✅ DONE
 2. ~~P25: Font size/weight settings~~ ✅ DONE
-3. P25: Grid UX simplification (remove Status column)
-4. P25: Edit modal redesign (BIG, TM on right, shortcuts)
-5. P25: Preferences menu with column toggles
+3. ~~P25: Grid UX simplification (remove Status column)~~ ✅ DONE
+4. ~~P25: Remove Go to Row button~~ ✅ DONE
+5. P25: Edit modal redesign (BIG, TM on right, shortcuts)
+6. P25: Preferences menu with column toggles
 
 ---
 
