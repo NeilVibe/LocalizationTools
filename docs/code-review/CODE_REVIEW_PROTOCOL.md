@@ -641,10 +641,12 @@ Week N+4: Verification pass
 
 ---
 
-## Review Cycle 1: COMPLETE ✅
+## Review Cycle 1: CLOSED ✅
 
-**Date:** 2025-12-12
-**Result:** 66 issues → 29 fixed, 34 acceptable, 2 deferred (performance), 1 deferred (future)
+**Date:** 2025-12-12 to 2025-12-13
+**ID:** ISSUES_20251212
+**Result:** 66 issues → 36 fixed, 30 acceptable, 0 deferred, 0 open
+**PASS 2 Verified:** Yes
 
 ### Key Fixes Made
 - **DEV_MODE feature** - Localhost auto-auth for testing
@@ -652,12 +654,11 @@ Week N+4: Verification pass
 - **Auth hardening** - Rate limiting, audit logging, deprecation warning
 - **Hardcoded URLs** - Now use config
 - **Code bugs** - Missing imports, lxml guards, etc.
-
-### Still Open (2 issues)
-- DR4-001/DR4-002: Sync calls in async context (TMManager) - requires architecture refactor
+- **Async/Sync patterns** - All TM endpoints + main.py now async
+- **Scale optimizations** - pg_trgm search, chunked queries, shared engine
 
 ### Archive
-When starting next cycle, move `ISSUES_20251212.md` to `docs/code-review/history/`
+Issue file archived to `docs/code-review/history/ISSUES_20251212.md`
 
 ---
 
