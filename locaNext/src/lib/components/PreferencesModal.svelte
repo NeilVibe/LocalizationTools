@@ -12,6 +12,8 @@
   } from "carbon-components-svelte";
   import { logger } from "$lib/utils/logger.js";
   import { preferences, theme, fontSize, fontWeight } from "$lib/stores/preferences.js";
+  import { serverUrl } from "$lib/stores/app.js";
+  import { get } from "svelte/store";
   import { onMount } from "svelte";
 
   export let open = false;
@@ -33,6 +35,15 @@
   let showTmResults = false;
   let showQaResults = false;
 
+  // TM and Reference settings
+  let activeTmId = null;
+  let referenceFileId = null;
+  let referenceMatchMode = 'stringIdOnly';
+  let availableTMs = [];
+  let availableFiles = [];
+  let loadingTMs = false;
+  let loadingFiles = false;
+
   // Available languages for UI
   const languages = [
     { value: 'en', label: 'English' },
@@ -48,6 +59,50 @@
     { value: 'large', label: 'Large (16px)' }
   ];
 
+  // Helper to get auth headers
+  function getAuthHeaders() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
+  // Load available TMs from server
+  async function loadTMs() {
+    loadingTMs = true;
+    try {
+      const API_BASE = get(serverUrl);
+      const response = await fetch(`${API_BASE}/api/ldm/tm`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        availableTMs = data.tms || [];
+      }
+    } catch (err) {
+      console.error('Failed to load TMs:', err);
+    } finally {
+      loadingTMs = false;
+    }
+  }
+
+  // Load available files from server (for reference)
+  async function loadFiles() {
+    loadingFiles = true;
+    try {
+      const API_BASE = get(serverUrl);
+      const response = await fetch(`${API_BASE}/api/ldm/files?limit=100`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        availableFiles = data.files || [];
+      }
+    } catch (err) {
+      console.error('Failed to load files:', err);
+    } finally {
+      loadingFiles = false;
+    }
+  }
+
   // Load preferences from store
   function loadFromStore() {
     const prefs = $preferences;
@@ -60,6 +115,10 @@
     showReference = prefs.showReference || false;
     showTmResults = prefs.showTmResults || false;
     showQaResults = prefs.showQaResults || false;
+    // TM and Reference
+    activeTmId = prefs.activeTmId;
+    referenceFileId = prefs.referenceFileId;
+    referenceMatchMode = prefs.referenceMatchMode || 'stringIdOnly';
   }
 
   // Handle theme toggle
@@ -96,6 +155,33 @@
     logger.userAction("Column visibility changed", { column, visible: checked });
   }
 
+  // Handle TM selection
+  function handleTmChange(e) {
+    const tmId = e.target.value ? parseInt(e.target.value) : null;
+    activeTmId = tmId;
+    preferences.setActiveTm(tmId);
+    showSaved();
+    logger.userAction("Active TM changed", { tmId });
+  }
+
+  // Handle Reference file selection
+  function handleReferenceFileChange(e) {
+    const fileId = e.target.value ? parseInt(e.target.value) : null;
+    referenceFileId = fileId;
+    preferences.setReferenceFile(fileId);
+    showSaved();
+    logger.userAction("Reference file changed", { fileId });
+  }
+
+  // Handle Reference match mode change
+  function handleMatchModeChange(e) {
+    const mode = e.detail;
+    referenceMatchMode = mode;
+    preferences.setReferenceMatchMode(mode);
+    showSaved();
+    logger.userAction("Reference match mode changed", { mode });
+  }
+
   function showSaved() {
     saved = true;
     setTimeout(() => saved = false, 2000);
@@ -108,6 +194,8 @@
   // Load when modal opens
   $: if (open) {
     loadFromStore();
+    loadTMs();
+    loadFiles();
     saved = false;
   }
 
@@ -185,13 +273,11 @@
           labelText="Reference Column"
           checked={showReference}
           on:check={(e) => { showReference = e.detail; handleColumnToggle('showReference', e.detail); }}
-          disabled
         />
         <Checkbox
           labelText="TM Results"
           checked={showTmResults}
           on:check={(e) => { showTmResults = e.detail; handleColumnToggle('showTmResults', e.detail); }}
-          disabled
         />
         <Checkbox
           labelText="QA Results"
@@ -200,7 +286,56 @@
           disabled
         />
       </div>
-      <p class="hint" style="margin-top: 0.5rem;">Reference, TM, and QA columns will be available after TM/QA features are implemented.</p>
+      <p class="hint" style="margin-top: 0.5rem;">QA Results column will be available after QA features are implemented.</p>
+    </FormGroup>
+
+    <FormGroup legendText="Translation Memory">
+      <Select
+        labelText="Active TM"
+        selected={activeTmId || ''}
+        on:change={handleTmChange}
+      >
+        <SelectItem value="" text="None (disabled)" />
+        {#each availableTMs as tm}
+          <SelectItem value={tm.id} text="{tm.name} ({tm.entry_count || 0} entries)" />
+        {/each}
+      </Select>
+      {#if loadingTMs}
+        <p class="hint">Loading TMs...</p>
+      {:else if availableTMs.length === 0}
+        <p class="hint">No TMs available. Upload or register a TM first.</p>
+      {:else}
+        <p class="hint">Select a TM to get translation suggestions in the grid and edit modal.</p>
+      {/if}
+    </FormGroup>
+
+    <FormGroup legendText="Reference File">
+      <Select
+        labelText="Reference File"
+        selected={referenceFileId || ''}
+        on:change={handleReferenceFileChange}
+      >
+        <SelectItem value="" text="None (disabled)" />
+        {#each availableFiles as file}
+          <SelectItem value={file.id} text="{file.name} ({file.row_count || 0} rows)" />
+        {/each}
+      </Select>
+      {#if loadingFiles}
+        <p class="hint">Loading files...</p>
+      {:else}
+        <p class="hint">Select a file to show reference translations in the grid.</p>
+      {/if}
+
+      <RadioButtonGroup
+        legendText="Match Mode"
+        selected={referenceMatchMode}
+        on:change={handleMatchModeChange}
+        style="margin-top: 1rem;"
+      >
+        <RadioButton value="stringIdOnly" labelText="Match by String ID only" />
+        <RadioButton value="stringIdAndSource" labelText="Match by String ID + Source text" />
+      </RadioButtonGroup>
+      <p class="hint">Choose how to match rows between current file and reference file.</p>
     </FormGroup>
 
     <FormGroup legendText="Language">

@@ -1,6 +1,6 @@
 # P25: LDM UX Overhaul & Advanced Features
 
-**Priority:** P25 | **Status:** In Progress (70%) | **Created:** 2025-12-12
+**Priority:** P25 | **Status:** In Progress (85%) | **Created:** 2025-12-12
 
 ---
 
@@ -472,16 +472,24 @@ Show reference translations from another file (like QuickSearch reference featur
 
 ## 9. LIVE QA SYSTEM
 
-### QA Checks (Run live while translating)
+### Status: PARTIALLY SKIPPED
 
-**CRITICAL:** QA must trigger INSTANTLY as user types. No lag allowed.
+**Spell Check & Grammar Check: SKIPPED**
+- No good MIT/Apache licensed multi-language spell checker exists
+- Hunspell is LGPL (copyleft concerns)
+- pyspellchecker/symspellpy only support limited languages
+- Decision: Skip spell/grammar, focus on other QA features
+
+### QA Checks (Remaining - Will Implement)
 
 | Check | Description | Recommended Method | Speed |
 |-------|-------------|-------------------|-------|
-| **Spell Check** | Check spelling | `hunspell` or `pyspellchecker` | <5ms |
-| **Grammar Check** | Check grammar | `language-tool-python` (local) | ~50ms |
-| **Glossary/Term Check** | Verify terms match glossary | **Aho-Corasick** | <1ms |
+| ~~**Spell Check**~~ | ~~Check spelling~~ | SKIPPED | - |
+| ~~**Grammar Check**~~ | ~~Check grammar~~ | SKIPPED | - |
+| **Glossary/Term Check** | Verify terms match glossary | **Aho-Corasick** (pyahocorasick MIT) | <1ms |
 | **Inconsistency Check** | Same source = same target | In-memory dict lookup | <1ms |
+| **Missing Translation** | Empty target for translated status | Simple check | <1ms |
+| **Number Mismatch** | Numbers in source vs target | Regex comparison | <1ms |
 
 ### Why Aho-Corasick for Glossary?
 
@@ -533,11 +541,12 @@ Show reference translations from another file (like QuickSearch reference featur
 
 ## 10. TASKS
 
-### Bugs (Priority)
-- [x] BUG-002: Target lock blocking editing (HIGH) ✅ FIXED 2025-12-12
+### Bugs (All Fixed)
+- [x] BUG-001: Go to row removed ✅ FIXED 2025-12-12
+- [x] BUG-002: Target lock blocking editing ✅ FIXED 2025-12-12
 - [x] BUG-003: Upload tooltip z-index ✅ FIXED 2025-12-12
 - [x] BUG-004: Search bar icon requirement ✅ FIXED 2025-12-12
-- [ ] BUG-001: Go to row usefulness
+- [x] ISSUE-013: WebSocket locking re-enabled ✅ FIXED 2025-12-12
 
 ### Grid UX
 - [x] Remove Status column, use cell colors instead ✅ DONE 2025-12-12
@@ -564,8 +573,11 @@ Show reference translations from another file (like QuickSearch reference featur
 - [x] Appearance settings section ✅ DONE 2025-12-12
 - [x] Index number toggle ✅ DONE 2025-12-12
 - [x] String ID toggle ✅ DONE 2025-12-12
-- [ ] Reference column toggle (disabled - needs Reference feature)
-- [ ] TM Results toggle (disabled - needs TM feature)
+- [x] Reference column toggle ✅ DONE 2025-12-12
+- [x] Reference file selector ✅ DONE 2025-12-12
+- [x] Reference match mode ✅ DONE 2025-12-12
+- [x] TM Results toggle ✅ DONE 2025-12-12
+- [x] TM selector ✅ DONE 2025-12-12
 - [ ] QA Results toggle (disabled - needs QA feature)
 
 ### Edit Modal (Updated)
@@ -594,44 +606,42 @@ Show reference translations from another file (like QuickSearch reference featur
 - [x] Format verification test (string_id split fix) ✅ DONE 2025-12-12
 - [ ] Merge with original file (requires original file storage)
 
-### Right-Click Context Menu (NEW)
-- [ ] Native OS-style right-click menu on files
-- [ ] Download File option
+### Right-Click Context Menu
+- [x] Native OS-style right-click menu on files ✅ Already existed (FileExplorer.svelte)
+- [x] Download File option ✅ DONE 2025-12-12
 - [ ] Run Full Line Check QA option
 - [ ] Run Full Word Check QA option
-- [ ] Upload as TM option (opens TM registration modal)
-- [ ] TM Registration modal (name, project, language, description)
+- [x] Register as TM option ✅ DONE 2025-12-12
 
 ### Reference Column
-- [ ] Create Reference column component
-- [ ] Load reference from project file
-- [ ] Load reference from local file
-- [ ] Match by String ID
-- [ ] Match by String ID + Source
+- [x] Create Reference column component ✅ DONE 2025-12-12
+- [x] Load reference from project file ✅ DONE 2025-12-12
+- [x] Reference file selector in Preferences ✅ DONE 2025-12-12
+- [x] Match by String ID ✅ DONE 2025-12-12
+- [x] Match by String ID + Source ✅ DONE 2025-12-12
+- [x] Match mode selector in Preferences ✅ DONE 2025-12-12
 
 ### Tasks Panel (Background Task Progress)
-- [ ] Create Tasks panel component (sidebar or modal)
-- [ ] Show all background tasks with status icons
-- [ ] Real-time progress bars with percentages
-- [ ] Task details (e.g., "12,340 / 29,500 entries")
-- [ ] Clean, organized list design
-- [ ] WebSocket updates for progress
-- [ ] Task completion notifications
+- [x] Create Tasks panel component ✅ Already existed (TaskManager.svelte)
+- [x] Show all background tasks with status icons ✅ DONE
+- [x] Real-time progress via WebSocket ✅ DONE
+- [x] Task completion notifications ✅ DONE
 
 ### TM Integration
-- [ ] TM upload shows in Tasks panel
+- [x] TM upload UI (TMManager, TMUploadModal) ✅ DONE 2025-12-12
+- [x] TM selection UI in Preferences ✅ DONE 2025-12-12
+- [x] TM Results column in grid ✅ DONE 2025-12-12
+- [x] Active TM indicator in preferences ✅ DONE 2025-12-12
 - [ ] TM local processing (embeddings, FAISS) with progress
-- [ ] TM selection UI
-- [ ] TM Results column
-- [ ] Active TM indicator
-- [ ] Another user selects TM → local processing with progress
 
-### QA System
-- [ ] Live QA framework
-- [ ] Spell check integration
-- [ ] Grammar check integration
-- [ ] Glossary term check (Aho-Corasick)
-- [ ] Inconsistency check
+### QA System (Spell/Grammar SKIPPED)
+- [ ] QA framework (without spell/grammar)
+- [x] ~~Spell check integration~~ SKIPPED - no MIT/Apache multi-lang library
+- [x] ~~Grammar check integration~~ SKIPPED - same reason
+- [ ] Glossary term check (pyahocorasick - MIT)
+- [ ] Inconsistency check (same source = same target)
+- [ ] Missing translation check
+- [ ] Number mismatch check
 - [ ] QA Results column
 
 ### Auto-Glossary

@@ -1,14 +1,28 @@
 <script>
   import {
     ToastNotification,
-    InlineLoading
+    InlineLoading,
+    Button
   } from "carbon-components-svelte";
+  import { DataBase, Settings, ServerProxy } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import FileExplorer from "$lib/components/ldm/FileExplorer.svelte";
   import VirtualGrid from "$lib/components/ldm/VirtualGrid.svelte";
+  import TMManager from "$lib/components/ldm/TMManager.svelte";
+  import PreferencesModal from "$lib/components/PreferencesModal.svelte";
+  import ServerStatus from "$lib/components/ServerStatus.svelte";
   // Old DataGrid kept for reference (VirtualGrid replaces it for 1M+ rows)
   // import DataGrid from "$lib/components/ldm/DataGrid.svelte";
+
+  // TM Manager state
+  let showTMManager = false;
+
+  // Preferences modal state
+  let showPreferences = false;
+
+  // Server status modal state
+  let showServerStatus = false;
 
   // API base URL
   const API_BASE = 'http://localhost:8888';
@@ -475,14 +489,58 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
         on:projectSelect={handleProjectSelect}
       />
 
-      <!-- Virtual Grid Main Area (handles 1M+ rows) -->
-      <VirtualGrid
-        bind:this={virtualGrid}
-        fileId={selectedFileId}
-        fileName={selectedFileName}
-      />
+      <!-- Main Content Area -->
+      <div class="ldm-main">
+        <!-- Quick Access Toolbar -->
+        <div class="ldm-toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">LanguageData Manager</span>
+          </div>
+          <div class="toolbar-right">
+            <Button
+              kind="ghost"
+              size="small"
+              icon={DataBase}
+              iconDescription="Translation Memories"
+              on:click={() => showTMManager = true}
+            >
+              TM Manager
+            </Button>
+            <Button
+              kind="ghost"
+              size="small"
+              icon={ServerProxy}
+              iconDescription="Server Status"
+              on:click={() => showServerStatus = true}
+            />
+            <Button
+              kind="ghost"
+              size="small"
+              icon={Settings}
+              iconDescription="Preferences"
+              on:click={() => showPreferences = true}
+            />
+          </div>
+        </div>
+
+        <!-- Virtual Grid Main Area (handles 1M+ rows) -->
+        <VirtualGrid
+          bind:this={virtualGrid}
+          fileId={selectedFileId}
+          fileName={selectedFileName}
+        />
+      </div>
     </div>
   {/if}
+
+  <!-- TM Manager Modal -->
+  <TMManager bind:open={showTMManager} />
+
+  <!-- Preferences Modal -->
+  <PreferencesModal bind:open={showPreferences} />
+
+  <!-- Server Status Modal -->
+  <ServerStatus bind:open={showServerStatus} />
 </div>
 
 <style>
@@ -512,5 +570,40 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     /* Changed from overflow: hidden to allow tooltips to escape */
     overflow: visible;
     position: relative;
+  }
+
+  .ldm-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .ldm-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: var(--cds-layer-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    min-height: 48px;
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .toolbar-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
   }
 </style>

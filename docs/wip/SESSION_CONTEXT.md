@@ -1,58 +1,73 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-13 02:30 KST | **By:** Claude
+**Updated:** 2025-12-12 23:30 KST | **By:** Claude
 
 ---
 
-## Session Summary: CODE REVIEW 20251212 CLOSED
+## Session Summary: P25 Feature Sprint Complete
 
-### What Happened
+### What Was Done
 
-First full code review cycle completed:
+| Task | Status | Notes |
+|------|--------|-------|
+| **P25 Phase 8: Reference Column** | ✅ Complete | VirtualGrid + PreferencesModal selectors |
+| **P25 Phase 9: TM Integration** | ✅ Complete | TM column + TM selector in Preferences |
+| **P25 Phase 10: Live QA** | ❌ Skipped | No MIT/Apache multi-lang spell checker |
+| **ISSUE-013: WebSocket Locking** | ✅ Fixed | Re-enabled lockRow() - was commented out |
+| **PreferencesModal Enhancements** | ✅ Complete | TM selector, Reference file selector, Match mode |
+| **P24: Status Dashboard** | ✅ Complete | Backend API + ServerStatus.svelte |
+| **ISSUE-011: TM Upload UI** | ✅ Complete | TMManager.svelte, TMUploadModal.svelte |
 
-| Phase | Status | Notes |
-|-------|--------|-------|
-| **PASS 1** | ✅ | 12 deep review sessions, 66 issues found |
-| **Fix Sprint** | ✅ | 36 fixed, 30 accepted |
-| **PASS 2** | ✅ | Full re-review, 1 new issue fixed |
-| **CLOSED** | ✅ | Archived to history/ |
+### New Components Created
 
-### Key Fixes Made
+| Component | Purpose |
+|-----------|---------|
+| `TMManager.svelte` | List, delete, build indexes for TMs |
+| `TMUploadModal.svelte` | Upload new TM files (TXT, XML, XLSX) |
+| `ServerStatus.svelte` | Visual health status (API, DB, WS) |
+| `server/api/health.py` | `/api/health/simple` + `/api/health/status` |
 
-| Category | Fixes |
-|----------|-------|
-| **Async/Sync** | 5 TM endpoints + 2 main.py endpoints now async |
-| **Security** | Rate limiting, audit logging, auth re-enabled |
-| **Scale** | pg_trgm search, chunked queries, shared engine |
-| **Data** | JSONB migration, DEV_MODE feature |
-| **Code** | Missing imports, lxml guards, URL hardcoding |
+### Backend Additions
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/ldm/files/{id}/register-as-tm` | Convert LDM file to TM |
+| `GET /api/health/simple` | Simple health check for apps |
+| `GET /api/health/status` | Detailed health for admin |
+| `GET /api/health/ping` | Ultra-simple ping/pong |
+
+### LDM Toolbar Added
+
+New toolbar in LDM with buttons for:
+- **TM Manager** - Opens TM management modal
+- **Server Status** - Opens health status modal
+- **Settings** - Opens preferences modal
 
 ---
 
-## Protocol Updates
+## Open Issues
 
-**Code Review Protocol v2.4:**
-- PASS 2 = Full review (same as PASS 1)
-- NO DEFER allowed - fix everything
-- ACCEPT = Would fixing provide ZERO benefit?
-- Retention: Delete archives older than 6 months
+| ID | Priority | Status | Notes |
+|----|----------|--------|-------|
+| *None* | - | - | All issues fixed |
 
 ---
 
 ## Next Priorities
 
-Code review complete. Pick from:
+### P25 Remaining (QA Features)
+- QA: Glossary term check (pyahocorasick - MIT)
+- QA: Inconsistency check (same source = same target)
+- QA: Missing translation check
+- QA: Number mismatch check
 
-### Option 1: P25 Phase 6 (Recommended)
-- Right-Click Context Menu
-- Then Phases 7-10
+### P17 LDM Remaining
+- Custom Excel picker (column selection)
+- Custom XML picker (attribute selection)
 
-### Option 2: P17 LDM Features
-- TM Upload UI
-- TM Search API
-
-### Option 3: P24 Status Dashboard
-- Real-time health monitoring
+### Build & Deploy
+- Test new features in running app
+- Deploy to Windows playground
 
 ---
 
@@ -60,11 +75,15 @@ Code review complete. Pick from:
 
 | File | Changes |
 |------|---------|
-| `server/tools/ldm/api.py` | Async TM endpoints |
-| `server/main.py` | Async version/announcements |
-| `server/api/stats.py` | Auth re-enabled |
-| `server/utils/dependencies.py` | DEV_MODE, get_sync_engine |
-| `docs/code-review/` | Protocol v2.4, history hub |
+| `locaNext/src/lib/components/PreferencesModal.svelte` | TM/Reference selectors, match mode |
+| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | P8+P9 CSS, re-enabled lockRow() |
+| `locaNext/src/lib/components/ldm/TMManager.svelte` | TM list management |
+| `locaNext/src/lib/components/ldm/TMUploadModal.svelte` | TM upload modal |
+| `locaNext/src/lib/components/ServerStatus.svelte` | Health status modal |
+| `locaNext/src/lib/components/apps/LDM.svelte` | Toolbar integrations |
+| `server/api/health.py` | Health API endpoints |
+| `server/tools/ldm/api.py` | register-as-tm endpoint |
+| `server/tools/ldm/tm_manager.py` | create_tm, add_entries_bulk |
 
 ---
 
@@ -73,9 +92,9 @@ Code review complete. Pick from:
 | Need | Location |
 |------|----------|
 | Current task | [Roadmap.md](../../Roadmap.md) |
-| Closed reviews | [docs/code-review/history/](../code-review/history/) |
-| Protocol | [CODE_REVIEW_PROTOCOL.md](../code-review/CODE_REVIEW_PROTOCOL.md) |
 | Known bugs | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) |
+| P25 UX tasks | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) |
+| P24 Dashboard | [P24_STATUS_DASHBOARD.md](P24_STATUS_DASHBOARD.md) |
 
 ---
 

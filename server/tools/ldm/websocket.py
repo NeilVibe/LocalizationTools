@@ -16,6 +16,9 @@ from loguru import logger
 # Import the shared Socket.IO instance
 from server.utils.websocket import sio, connected_clients
 
+# Debug: Log when module is imported (confirms event handlers will be registered)
+logger.info("LDM WebSocket module loading - registering event handlers...")
+
 
 # ============================================================================
 # LDM State Management
@@ -171,7 +174,14 @@ async def ldm_lock_row(sid, data):
     Lock a row for editing (prevents others from editing same row).
 
     Data: {file_id: int, row_id: int}
+
+    DEBUG NOTE: If this event is never received while ldm_join_file works,
+    check for client-side issues (socket reconnection, auth expiry).
+    The @sio.event decorator should register this handler at module import time.
     """
+    # Debug: Log that handler was invoked
+    logger.debug(f"LDM DEBUG: ldm_lock_row handler invoked - sid={sid}, data={data}")
+
     file_id = data.get('file_id')
     row_id = data.get('row_id')
 
@@ -497,3 +507,6 @@ __all__ = [
 
 # Auto-setup the disconnect handler when module is imported
 setup_ldm_disconnect_handler()
+
+# Debug: Confirm all handlers registered
+logger.info("LDM WebSocket module loaded - handlers registered: ldm_join_file, ldm_leave_file, ldm_lock_row, ldm_unlock_row, ldm_get_presence, ldm_get_locks")
