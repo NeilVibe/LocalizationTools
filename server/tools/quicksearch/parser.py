@@ -9,60 +9,11 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import csv
 import os
-import re
 from typing import Tuple, Dict, List
 from loguru import logger
 
-
-def normalize_text(text: str) -> str:
-    """
-    Normalize text for dictionary (EXACT COPY from original QuickSearch0818.py).
-
-    Preserves original logic:
-    - Quote balancing (remove unmatched quotes)
-    - Unicode whitespace normalization
-    - Apostrophe normalization
-    - Whitespace normalization
-
-    Args:
-        text: Input text to normalize
-
-    Returns:
-        Normalized text
-    """
-    if not isinstance(text, str):
-        return ""
-
-    # First, handle unmatched quotation marks by identifying balanced pairs
-    balanced_indices = set()
-    quote_indices = [i for i, char in enumerate(text) if char == '"']
-
-    # Greedily match quotes from left to right in pairs
-    for i in range(0, len(quote_indices) - 1, 2):
-        balanced_indices.add(quote_indices[i])
-        balanced_indices.add(quote_indices[i + 1])
-
-    # Create a new string without unmatched quotes
-    result = []
-    for i, char in enumerate(text):
-        if char == '"' and i not in balanced_indices:
-            continue  # Skip this unmatched quote
-        result.append(char)
-
-    # Convert back to string
-    text = ''.join(result)
-
-    # Normalize all Unicode whitespace variants
-    text = re.sub(r'[\u00A0\u1680\u180E\u2000-\u200B\u202F\u205F\u3000\uFEFF]+', ' ', text)  # Unicode spaces including NBSP
-    text = re.sub(r'[\u200B-\u200F\u202A-\u202E]+', '', text)  # Remove zero-width and directional characters
-
-    # Normalize apostrophes to straight apostrophe
-    text = re.sub(r'[\u2019\u2018\u02BC\u2032\u0060\u00B4]', "'", text)
-
-    # Normalize remaining whitespace
-    text = re.sub(r'\s+', ' ', text)
-
-    return text.strip()
+# Factor Power: Use centralized text utils
+from server.utils.text_utils import normalize_text
 
 
 def tokenize(text: str) -> List[str]:

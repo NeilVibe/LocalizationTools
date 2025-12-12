@@ -6,46 +6,12 @@ Extracted from KRSIMILAR0124.py source script.
 """
 
 import re
-import pandas as pd
 from typing import Optional
 
+import pandas as pd
 
-def normalize_text(text: str) -> str:
-    """
-    Normalize Korean text by removing code markers and formatting.
-
-    Removes:
-    - Code markers like {ChangeScene()}, {AudioVoice()}
-    - Triangle markers (▶)
-    - Scale/Color tags
-    - Extra whitespace
-
-    Args:
-        text: Raw Korean text from language file
-
-    Returns:
-        Normalized text for embedding generation
-    """
-    if pd.isna(text) or not isinstance(text, str):
-        return ''
-
-    # Replace \n not followed by { or ▶ with space
-    text = re.sub(r'\\n(?![\{▶])', ' ', text)
-
-    # Remove triangles
-    text = re.sub(r'▶', '', text)
-
-    # Remove various tags
-    text = re.sub(r'<Scale[^>]*>|</Scale>', '', text)
-    text = re.sub(r'<color[^>]*>|</color>', '', text)
-    text = re.sub(r'<PAColor[^>]*>|<PAOldColor>', '', text)
-    text = re.sub(r'\{[^}]*\}', '', text)  # Remove content in curly braces
-    text = re.sub(r'<Style:[^>]*>', '', text)  # Handle Style tags
-
-    # Remove extra spaces
-    text = re.sub(r'\s+', ' ', text)
-
-    return text.strip()
+# Factor Power: Use centralized text utils
+from server.utils.text_utils import normalize_korean_text as normalize_text
 
 
 def adapt_structure(kr_text: str, translation: str) -> str:

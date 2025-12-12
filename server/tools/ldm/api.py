@@ -5,7 +5,7 @@ REST API for managing localization projects, folders, files, and rows.
 Supports real-time collaboration via WebSocket (see websocket.py).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -1042,6 +1042,7 @@ async def add_tm_entry(
 @router.post("/tm/{tm_id}/build-indexes")
 async def build_tm_indexes(
     tm_id: int,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -1055,8 +1056,11 @@ async def build_tm_indexes(
 
     This is required before using the 5-Tier Cascade TM search.
     Building indexes can take several minutes for large TMs (50k+ entries).
+
+    Returns operation_id for progress tracking via WebSocket/TaskManager.
     """
     from server.tools.ldm.tm_indexer import TMIndexer
+    from server.utils.progress_tracker import TrackedOperation
 
     logger.info(f"Building TM indexes: tm_id={tm_id}, user={current_user['user_id']}")
 
@@ -1073,12 +1077,26 @@ async def build_tm_indexes(
         if tm.owner_id != current_user["user_id"]:
             raise HTTPException(status_code=403, detail="Access denied")
 
-        # Build indexes
-        indexer = TMIndexer(sync_db)
-        result = indexer.build_indexes(tm_id)
+        # Create operation for progress tracking
+        with TrackedOperation(
+            operation_name=f"Build TM Indexes: {tm.name}",
+            user_id=current_user["user_id"],
+            username=current_user.get("username", "unknown"),
+            tool_name="LDM",
+            function_name="build_tm_indexes",
+            total_steps=4,
+            parameters={"tm_id": tm_id}
+        ) as tracker:
+            # Build indexes with progress callback
+            def progress_callback(stage: str, current: int, total: int):
+                progress_pct = (current / total) * 100 if total > 0 else 0
+                tracker.update(progress_pct, stage, current, total)
 
-        logger.success(f"TM indexes built: tm_id={tm_id}, entries={result['entry_count']}")
-        return result
+            indexer = TMIndexer(sync_db)
+            result = indexer.build_indexes(tm_id, progress_callback=progress_callback)
+
+            logger.success(f"TM indexes built: tm_id={tm_id}, entries={result['entry_count']}")
+            return result
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

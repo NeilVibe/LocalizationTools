@@ -22,9 +22,13 @@ from typing import Optional
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
+# Add project root for centralized imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+
 from core import clean_text, excel_column_to_index
 import config
-from progress_tracker import ProgressTracker
+# Factor Power: Use centralized progress tracker
+from server.utils.progress_tracker import ProgressTracker
 
 
 def safe_most_frequent(x):
