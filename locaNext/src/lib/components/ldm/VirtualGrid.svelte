@@ -3,15 +3,12 @@
     Search,
     InlineLoading,
     Tag,
-    Button,
     Modal,
     TextArea,
     Select,
-    SelectItem,
-    TextInput,
-    NumberInput
+    SelectItem
   } from "carbon-components-svelte";
-  import { Edit, Locked, ArrowRight, Search as SearchIcon } from "carbon-icons-svelte";
+  import { Edit, Locked } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate, ldmConnected } from "$lib/stores/ldm.js";
@@ -56,9 +53,7 @@
   let loadedPages = new Set();
   let loadingPages = new Set();
 
-  // Go to row state
-  let showGoToRow = false;
-  let goToRowNumber = 1;
+  // Go to row state - REMOVED (BUG-001 - not useful)
 
   // Edit modal state
   let showEditModal = false;
@@ -73,13 +68,12 @@
   let tmSuggestions = [];
   let tmLoading = false;
 
-  // Table column widths
+  // Table column widths (Status column REMOVED - using cell colors instead)
   const columns = [
     { key: "row_num", label: "#", width: 60 },
     { key: "string_id", label: "StringID", width: 150 },
-    { key: "source", label: "Source (KR)", width: 300 },
-    { key: "target", label: "Target", width: 300 },
-    { key: "status", label: "Status", width: 100 }
+    { key: "source", label: "Source (KR)", width: 350 },
+    { key: "target", label: "Target", width: 350 }
   ];
 
   // Status options
@@ -226,27 +220,7 @@
     }, 300);
   }
 
-  // Go to specific row
-  async function goToRow() {
-    if (goToRowNumber < 1 || goToRowNumber > total) {
-      logger.warning("Invalid row number", { rowNumber: goToRowNumber, total });
-      return;
-    }
-
-    // Calculate scroll position based on average row height
-    const loadedRows = rows.filter(r => r && !r.placeholder);
-    const avgHeight = loadedRows.length > 0
-      ? loadedRows.reduce((sum, r) => sum + estimateRowHeight(r), 0) / loadedRows.length
-      : MIN_ROW_HEIGHT;
-
-    const scrollPosition = (goToRowNumber - 1) * avgHeight;
-    if (containerEl) {
-      containerEl.scrollTop = scrollPosition;
-    }
-
-    showGoToRow = false;
-    logger.userAction("Go to row", { rowNumber: goToRowNumber });
-  }
+  // Go to specific row - REMOVED (BUG-001 - not useful)
 
   // Fetch TM suggestions for a source text
   async function fetchTMSuggestions(sourceText, rowId) {
@@ -610,33 +584,9 @@
         <span class="row-count">{total.toLocaleString()} rows</span>
       </div>
       <div class="header-right">
-        <Button
-          size="small"
-          kind="ghost"
-          icon={ArrowRight}
-          iconDescription="Go to row"
-          on:click={() => showGoToRow = !showGoToRow}
-        >
-          Go to row
-        </Button>
         <PresenceBar />
       </div>
     </div>
-
-    {#if showGoToRow}
-      <div class="go-to-row-bar">
-        <NumberInput
-          bind:value={goToRowNumber}
-          min={1}
-          max={total}
-          size="sm"
-          label="Row number"
-          hideLabel
-        />
-        <Button size="small" on:click={goToRow}>Go</Button>
-        <span class="go-to-hint">1 - {total.toLocaleString()}</span>
-      </div>
-    {/if}
 
     <div class="search-bar">
       <Search
@@ -707,10 +657,14 @@
                 </div>
 
                 <!-- Target (editable, full content with newline symbols) -->
+                <!-- Cell color indicates status: default=pending, translated=teal, confirmed=green -->
                 <div
                   class="cell target"
                   class:locked={rowLock}
                   class:cell-hover={selectedRowId === row.id}
+                  class:status-translated={row.status === 'translated'}
+                  class:status-reviewed={row.status === 'reviewed'}
+                  class:status-approved={row.status === 'approved'}
                   style="width: {columns[3].width}px;"
                   on:dblclick={() => openEditModal(row)}
                   role="button"
@@ -723,13 +677,6 @@
                   {:else}
                     <span class="edit-icon"><Edit size={12} /></span>
                   {/if}
-                </div>
-
-                <!-- Status -->
-                <div class="cell status" style="width: {columns[4].width}px;">
-                  <Tag type={getStatusKind(row.status)} size="sm">
-                    {row.status || "pending"}
-                  </Tag>
                 </div>
               {/if}
             </div>
@@ -865,20 +812,6 @@
   }
 
   .row-count {
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-  }
-
-  .go-to-row-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--cds-layer-02);
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-  }
-
-  .go-to-hint {
     font-size: 0.75rem;
     color: var(--cds-text-02);
   }
@@ -1028,6 +961,29 @@
     background: var(--cds-layer-02);
   }
 
+  /* Status-based cell colors (replaces Status column) */
+  .cell.target.status-translated {
+    background: rgba(0, 157, 154, 0.15); /* teal - translated */
+    border-left: 3px solid var(--cds-support-04);
+  }
+
+  .cell.target.status-reviewed {
+    background: rgba(15, 98, 254, 0.15); /* blue - reviewed */
+    border-left: 3px solid var(--cds-support-01);
+  }
+
+  .cell.target.status-approved {
+    background: rgba(36, 161, 72, 0.15); /* green - approved/confirmed */
+    border-left: 3px solid var(--cds-support-02);
+  }
+
+  /* Status hover overrides for colored cells */
+  .cell.target.status-translated:hover,
+  .cell.target.status-reviewed:hover,
+  .cell.target.status-approved:hover {
+    filter: brightness(1.1);
+  }
+
   .edit-icon, .lock-icon {
     position: absolute;
     right: 0.25rem;
@@ -1043,10 +999,6 @@
   .cell.target.locked .lock-icon {
     opacity: 0.8;
     color: var(--cds-support-03);
-  }
-
-  .cell.status {
-    justify-content: center;
   }
 
   .loading-cell {

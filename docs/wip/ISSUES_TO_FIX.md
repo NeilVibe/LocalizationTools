@@ -1,7 +1,7 @@
 # Issues To Fix
 
 **Purpose:** Track known bugs, UI issues, and improvements across LocaNext
-**Last Updated:** 2025-12-11
+**Last Updated:** 2025-12-12
 
 ---
 
@@ -9,13 +9,13 @@
 
 | Area | Open | Fixed | Total |
 |------|------|-------|-------|
-| LDM UI | 2 | 13 | 15 |
+| LDM UI | 1 | 14 | 15 |
 | Navigation | 0 | 1 | 1 |
 | Infrastructure | 0 | 1 | 1 |
 | General | 0 | 0 | 0 |
 
-**Open Issues:** BUG-001, ISSUE-011
-**Recently Fixed:** BUG-002, BUG-003, BUG-004
+**Open Issues:** ISSUE-011
+**Recently Fixed:** BUG-001, BUG-002, BUG-003, BUG-004
 
 ---
 
@@ -85,14 +85,17 @@ if (this.socket) {
 ---
 
 ### BUG-001: Go to Row Not Useful (P25)
-- **Status:** [ ] Open
+- **Status:** [x] Fixed
 - **Priority:** Low
 - **Reported:** 2025-12-12
-- **Component:** LDM Grid controls
+- **Fixed:** 2025-12-12
+- **Component:** LDM VirtualGrid.svelte
 
 **Problem:** "Go to Row" button doesn't serve a clear purpose.
 
-**Fix:** Review and either improve functionality or remove.
+**Fix Applied:** Removed the "Go to Row" button entirely. Users can scroll or use search to find specific rows.
+
+**Files Changed:** `VirtualGrid.svelte` - removed button, NumberInput, related CSS and handlers
 
 ---
 

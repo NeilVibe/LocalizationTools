@@ -34,7 +34,7 @@ LocaNext v2512111745
 | **P22** | SQLite Removal | Phase 1 ✅ | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
 | **P23** | Data Flow (Production) | 📋 Later | [P23_DATA_FLOW_ARCHITECTURE.md](docs/wip/P23_DATA_FLOW_ARCHITECTURE.md) |
 | **P21** | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
-| **ISSUES** | Bug Fixes | 5 Open | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
+| **ISSUES** | Bug Fixes | 1 Open | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 
 ---
 
@@ -44,15 +44,18 @@ LocaNext v2512111745
 
 Comprehensive UX improvements based on user feedback.
 
-**Bugs to Fix:**
-- Target lock blocking editing (HIGH)
-- Upload tooltip z-index
-- Search bar icon requirement
-- Go to row usefulness
+**Bugs Fixed (Phase 1):**
+- ✅ Target lock blocking editing (BUG-002)
+- ✅ Upload tooltip z-index (BUG-003)
+- ✅ Search bar icon requirement (BUG-004)
+- ✅ Go to row removed (BUG-001)
 
-**Grid Simplification:**
-- Remove Status column → Use cell colors (green=translated, blue=confirmed)
-- Default: Source + Target only
+**Grid Simplification (Phase 2 - DONE):**
+- ✅ Status column REMOVED → Using cell colors instead
+  - Teal left border = translated
+  - Blue left border = reviewed
+  - Green left border = approved/confirmed
+- Default: Source + Target columns only
 - Optional columns via Preferences: Index, String ID, Reference, TM, QA
 
 **New Features:**
@@ -141,14 +144,14 @@ Currently localhost:8888 is hardcoded, which is FINE for dev/testing.
 
 ---
 
-### Known Issues (2 Open)
+### Known Issues (1 Open)
 
 | ID | Status | Description |
 |----|--------|-------------|
+| ~~BUG-001~~ | ✅ Fixed | ~~Go to row removed~~ |
 | ~~BUG-002~~ | ✅ Fixed | ~~Target lock blocking editing~~ |
 | ~~BUG-003~~ | ✅ Fixed | ~~Upload tooltip z-index~~ |
 | ~~BUG-004~~ | ✅ Fixed | ~~Search bar requires icon click~~ |
-| BUG-001 | 📋 Open | Go to row not useful |
 | ISSUE-011 | 📋 Open | Missing TM upload UI (backend ready) |
 
 **Details:** [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md)
@@ -178,11 +181,13 @@ Local = Heavy processing (FAISS, ML - rebuildable)
 
 ## Recently Completed
 
-### P25 Phase 1: Bug Fixes + Theme ✅ (2025-12-12)
-- BUG-002, BUG-003, BUG-004 fixed
+### P25 Phase 1+2: Bug Fixes + Grid UX ✅ (2025-12-12)
+- BUG-001, BUG-002, BUG-003, BUG-004 all fixed
 - Light/Dark theme toggle
 - Font size/weight settings
 - CDP test suite (Normal + Detailed)
+- Status column REMOVED → Cell colors show status
+- Go to Row button REMOVED
 
 ### P22 Phase 1: SQLite Removal ✅ (2025-12-11)
 - 12 server files cleaned
