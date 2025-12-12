@@ -26,20 +26,44 @@ LocaNext v2512111745
 
 ## Priority Status Overview
 
-| Priority | Name | Status | Doc |
-|----------|------|--------|-----|
-| **CODE REVIEW** | Weekly Review | 🔨 Week 1 | [docs/code-review/](docs/code-review/) |
-| **P25** | LDM UX Overhaul | 🔨 70% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
-| **P24** | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
-| **P17** | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
-| **P22** | SQLite Removal | Phase 1 ✅ | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
-| **P23** | Data Flow (Production) | 📋 Later | [P23_DATA_FLOW_ARCHITECTURE.md](docs/wip/P23_DATA_FLOW_ARCHITECTURE.md) |
-| **P21** | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
-| **ISSUES** | Bug Fixes | 2 Open | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
+| # | Priority | Name | Status | Doc |
+|---|----------|------|--------|-----|
+| **1** | **CODE REVIEW** | Deep Review (12 sessions) | 🔨 Session 1 | [docs/code-review/](docs/code-review/) |
+| 2 | P25 | LDM UX Overhaul | 🔨 70% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
+| 3 | P24 | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
+| 4 | P17 | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
+| - | P22 | SQLite Removal | ✅ Phase 1 | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
+| - | P21 | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
+| - | ISSUES | Bug Fixes | 2 Open | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 
 ---
 
 ## Active Development
+
+### CODE REVIEW: Deep Review (Priority #1)
+
+Full codebase review - 12 sessions in dependency order.
+
+**Protocol:** [docs/code-review/CODE_REVIEW_PROTOCOL.md](docs/code-review/CODE_REVIEW_PROTOCOL.md)
+
+| Session | Module | Status |
+|---------|--------|--------|
+| 1 | Database & Models | 🔨 Next |
+| 2 | Utils & Core | 📋 |
+| 3 | Auth & Security | 📋 |
+| 4 | LDM Backend | 📋 |
+| 5 | XLSTransfer | 📋 |
+| 6 | QuickSearch | 📋 |
+| 7 | KR Similar | 📋 |
+| 8 | API Layer | 📋 |
+| 9 | Frontend Core | 📋 |
+| 10 | Frontend LDM | 📋 |
+| 11 | Admin Dashboard | 📋 |
+| 12 | Scripts & Config | 📋 |
+
+**Quick Scan Week 1:** ✅ Complete (9 issues found, 4 fixed, Pass 2 clean)
+
+---
 
 ### P25: LDM UX Overhaul (70% Complete)
 
