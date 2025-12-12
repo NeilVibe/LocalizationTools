@@ -649,7 +649,7 @@ def chunked_query(
         model: SQLAlchemy model class
         filters: List of filter conditions
         chunk_size: Number of records per chunk
-        order_by: Column to order by (required for consistent pagination)
+        order_by: Column to order by (defaults to primary key for consistent pagination)
 
     Yields:
         Lists of model instances
@@ -661,8 +661,14 @@ def chunked_query(
     """
     query = db.query(model).filter(*filters)
 
+    # Default to primary key if no order_by specified (required for consistent OFFSET/LIMIT)
     if order_by is not None:
         query = query.order_by(order_by)
+    else:
+        # Get primary key column(s) from model
+        pk_columns = [c for c in model.__table__.columns if c.primary_key]
+        if pk_columns:
+            query = query.order_by(*pk_columns)
 
     offset = 0
     while True:
@@ -691,13 +697,13 @@ def upsert_batch(
         batch_size: Records per batch
 
     Returns:
-        Dict with 'inserted' and 'updated' counts
+        Dict with 'total' count (inserted + updated combined)
+        Note: PostgreSQL ON CONFLICT doesn't distinguish inserts from updates
     """
     if not records:
-        return {'inserted': 0, 'updated': 0}
+        return {'total': 0}
 
-    inserted = 0
-    updated = 0
+    total = 0
 
     for i in range(0, len(records), batch_size):
         batch = records[i:i + batch_size]
@@ -713,10 +719,10 @@ def upsert_batch(
         )
 
         db.execute(stmt)
-        inserted += len(batch)
+        total += len(batch)
 
     db.commit()
-    return {'inserted': inserted, 'updated': updated}
+    return {'total': total}
 
 
 # =============================================================================

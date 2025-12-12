@@ -11,8 +11,9 @@ import uuid
 
 from sqlalchemy import (
     Column, Integer, BigInteger, String, Text, Float, Boolean, DateTime,
-    ForeignKey, Index, JSON, Enum as SQLEnum
+    ForeignKey, Index, Enum as SQLEnum
 )
+# Note: Using JSONB instead of JSON for PostgreSQL (faster, indexable)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -97,8 +98,8 @@ class LogEntry(Base):
     error_message = Column(Text, nullable=True)
 
     # File/Data metadata (JSONB for flexibility)
-    file_info = Column(JSON, nullable=True)  # {size_mb, rows, columns, etc.}
-    parameters = Column(JSON, nullable=True)  # Function parameters used
+    file_info = Column(JSONB, nullable=True)  # {size_mb, rows, columns, etc.}
+    parameters = Column(JSONB, nullable=True)  # Function parameters used
 
     # Relationships
     user = relationship("User", back_populates="log_entries")
@@ -140,15 +141,15 @@ class ActiveOperation(Base):
     estimated_completion = Column(DateTime, nullable=True)  # ETA based on progress
 
     # File/Data metadata
-    file_info = Column(JSON, nullable=True)  # Files being processed
-    parameters = Column(JSON, nullable=True)  # Operation parameters
+    file_info = Column(JSONB, nullable=True)  # Files being processed
+    parameters = Column(JSONB, nullable=True)  # Operation parameters
 
     # Error tracking
     error_message = Column(Text, nullable=True)
 
     # Result storage
     output_dir = Column(String(500), nullable=True)  # Directory where output files are saved
-    output_files = Column(JSON, nullable=True)  # List of output file paths/names
+    output_files = Column(JSONB, nullable=True)  # List of output file paths/names
 
     __table_args__ = (
         Index("idx_active_status", "status"),
@@ -245,7 +246,7 @@ class UserActivitySummary(Base):
 
     total_operations = Column(Integer, default=0)
     total_duration_seconds = Column(Float, default=0.0)
-    tools_used = Column(JSON, nullable=True)  # List of tool names
+    tools_used = Column(JSONB, nullable=True)  # List of tool names
     first_activity = Column(DateTime, nullable=True)
     last_activity = Column(DateTime, nullable=True)
 
@@ -308,7 +309,7 @@ class ErrorLog(Base):
     stack_trace = Column(Text, nullable=True)
 
     app_version = Column(String(20), nullable=False)
-    context = Column(JSON, nullable=True)  # Additional context
+    context = Column(JSONB, nullable=True)  # Additional context
 
     __table_args__ = (
         Index("idx_error_timestamp_tool", "timestamp", "tool_name"),
@@ -329,7 +330,7 @@ class Announcement(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True)
-    target_users = Column(JSON, nullable=True)  # None = all users, or list of user_ids
+    target_users = Column(JSONB, nullable=True)  # None = all users, or list of user_ids
 
     def __repr__(self):
         return f"<Announcement(id={self.announcement_id}, title='{self.title}', priority='{self.priority}')>"
@@ -383,7 +384,7 @@ class Installation(Base):
     last_version = Column(String(20), nullable=True)  # Most recent version reported
 
     # Extra data (OS, machine info, etc.)
-    extra_data = Column(JSON, nullable=True)
+    extra_data = Column(JSONB, nullable=True)
 
     # Relationships
     remote_sessions = relationship("RemoteSession", back_populates="installation", cascade="all, delete-orphan")
@@ -450,7 +451,7 @@ class RemoteLog(Base):
     timestamp = Column(DateTime, nullable=False, index=True)  # Original timestamp from client
     level = Column(String(20), nullable=False, index=True)  # INFO, SUCCESS, WARNING, ERROR, CRITICAL
     message = Column(Text, nullable=False)
-    data = Column(JSON, nullable=True)  # Additional structured data
+    data = Column(JSONB, nullable=True)  # Additional structured data
 
     # Source info
     source = Column(String(50), nullable=False, index=True)  # "locanext-app", "admin-dashboard"
@@ -489,7 +490,7 @@ class TelemetrySummary(Base):
     avg_session_seconds = Column(Float, default=0.0)
 
     # Tool usage
-    tools_used = Column(JSON, nullable=True)  # {"xlstransfer": 5, "quicksearch": 3}
+    tools_used = Column(JSONB, nullable=True)  # {"xlstransfer": 5, "quicksearch": 3}
     total_operations = Column(Integer, default=0)
 
     # Error tracking
@@ -896,7 +897,7 @@ class LDMTrash(Base):
     parent_folder_id = Column(Integer, nullable=True)   # Folder it was in
 
     # Full data snapshot (JSON) for restore
-    item_data = Column(Text, nullable=False)  # JSON of the deleted item + children
+    item_data = Column(JSONB, nullable=False)  # JSON of the deleted item + children
 
     # Who deleted it
     deleted_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)

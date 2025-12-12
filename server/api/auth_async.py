@@ -22,7 +22,12 @@ from server.utils.audit_logger import (
     log_login_failure,
     log_user_created,
     log_password_change,
+    get_failed_login_count,
 )
+
+# Rate limiting constants
+MAX_FAILED_LOGINS = 5  # Max attempts per IP
+LOCKOUT_MINUTES = 15   # Time window for rate limiting
 
 
 def get_client_ip(request: Request) -> str:
@@ -37,6 +42,9 @@ def get_client_ip(request: Request) -> str:
         return request.client.host
     return "unknown"
 
+
+# Valid user roles
+VALID_ROLES = ["user", "admin"]
 
 # Create router
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -56,8 +64,18 @@ async def login(
     User login endpoint (ASYNC).
 
     Returns JWT access token on successful authentication.
+    Rate limited: max 5 failed attempts per IP per 15 minutes.
     """
     client_ip = get_client_ip(request)
+
+    # Rate limiting check
+    failed_count = get_failed_login_count(client_ip, LOCKOUT_MINUTES)
+    if failed_count >= MAX_FAILED_LOGINS:
+        logger.warning(f"Rate limit exceeded for IP: {client_ip} ({failed_count} failed attempts)")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed login attempts. Please try again in {LOCKOUT_MINUTES} minutes."
+        )
 
     # Find user by username
     result = await db.execute(
@@ -418,11 +436,10 @@ async def admin_create_user(
             )
 
     # Validate role
-    valid_roles = ["user", "admin"]
-    if user_data.role not in valid_roles:
+    if user_data.role not in VALID_ROLES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role. Must be one of: {valid_roles}"
+            detail=f"Invalid role. Must be one of: {VALID_ROLES}"
         )
 
     # Hash password
@@ -496,7 +513,7 @@ async def admin_update_user(
         if user_data.role not in valid_roles:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid role. Must be one of: {valid_roles}"
+                detail=f"Invalid role. Must be one of: {VALID_ROLES}"
             )
 
     # Prevent admin from demoting themselves
