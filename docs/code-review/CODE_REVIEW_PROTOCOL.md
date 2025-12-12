@@ -666,52 +666,63 @@ Issue file archived to `docs/code-review/history/ISSUES_20251212.md`
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  PASS 1: Review + Fix                                           │
-│  - Phase 1: Review all 12 sessions (document only)              │
-│  - Phase 2: Consolidate findings                                │
-│  - Phase 3: Fix all issues (NO DEFER)                           │
+│  PASS 1: Initial Review + Fix                                   │
+│  - Quick Scan (automated scans)                                 │
+│  - Deep Review (all 12 sessions, document only)                 │
+│  - Consolidate findings                                         │
+│  - Fix all issues (NO DEFER)                                    │
 ├─────────────────────────────────────────────────────────────────┤
-│  PASS 2: Verification                                           │
-│  - Re-run all Quick Scan commands                               │
-│  - Verify fixes didn't introduce new issues                     │
-│  - Spot-check modified files                                    │
+│  PASS 2: Full Verification (SAME AS PASS 1)                     │
+│  - Quick Scan (automated scans again)                           │
+│  - Deep Review (all 12 sessions again)                          │
+│  - Verify fixes are correct                                     │
+│  - Verify no new issues introduced                              │
+│  - Fix any new issues found                                     │
 │  - Confirm 0 OPEN issues remain                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │  CLOSE: Archive                                                 │
-│  - Only after PASS 2 confirms clean                             │
+│  - Only after PASS 2 confirms 100% clean                        │
 │  - Move ISSUES_YYYYMMDD.md to history/                          │
 │  - Code review ID = datetime (unique identifier)                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**A code review is NOT complete until PASS 2 verification passes.**
+### CRITICAL: PASS 2 is a FULL review, not a quick check
 
-### PASS 2 Checklist
+```
+PASS 2 = PASS 1 (full process repeated)
 
-```bash
-# 1. Re-run Quick Scan commands
-grep -rhn "^def \|^async def " server/ --include="*.py" | \
-  sed 's/.*def //' | sed 's/(.*$//' | sort | uniq -c | sort -rn | head -10
+❌ WRONG: "Just run scans and spot-check"
+✅ RIGHT: "Full 12-session deep review again"
 
-grep -rn "TODO\|FIXME" server/ --include="*.py" | wc -l
-grep -rn "print(" server/ --include="*.py" | wc -l
-grep -rn "console.log" locaNext/src/ --include="*.svelte" | wc -l
-find server/ -name "*.py" -exec wc -l {} \; | awk '$1 > 500' | sort -rn
-
-# 2. Check for sync-in-async patterns
-grep -rn "next(get_db())" server/ --include="*.py"
-
-# 3. Verify no hardcoded URLs
-grep -rn "localhost:8888" server/ --include="*.py" | grep -v "config\|#\|test"
-
-# 4. Run tests
-python3 -m pytest tests/ -v --tb=short
+Purpose of PASS 2:
+1. Verify all fixes are actually correct
+2. Catch issues introduced by fixes
+3. Re-validate all ACCEPT decisions
+4. Ensure 100% confidence before CLOSE
 ```
 
-### When All Pass
+### ACCEPT Criteria (Strict)
+
+```
+ACCEPT [~] means:
+- Fixing it would provide ZERO benefit
+- Not "too hard" or "too much work"
+- Not "works fine for now"
+- Genuinely not an issue
+
+Ask: "Would fixing this EVER make the code better?"
+- If YES → FIX IT (not ACCEPT)
+- If NO → ACCEPT (truly not an issue)
+```
+
+### When PASS 2 Complete
+- All 12 sessions reviewed
+- All scans pass
+- 0 OPEN issues
+- All ACCEPT decisions re-validated
 - Update issue file status to CLOSED
-- Move to `docs/code-review/history/ISSUES_YYYYMMDD.md`
-- Next code review gets new datetime ID
+- Move to `docs/code-review/history/`
 
 ---
 
