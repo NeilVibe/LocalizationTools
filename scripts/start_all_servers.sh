@@ -80,7 +80,27 @@ for i in {1..30}; do
 done
 
 # ----------------------------------------------------------------------------
-# 4. Health Check
+# 4. Start Gitea
+# ----------------------------------------------------------------------------
+echo -n "Checking Gitea... "
+if curl -s --connect-timeout 2 http://localhost:3000 >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ Running${NC}"
+else
+    echo -e "${YELLOW}Starting Gitea...${NC}"
+    cd /home/neil1988/gitea
+    GITEA_WORK_DIR="/home/neil1988/gitea" nohup ./gitea web > /dev/null 2>&1 &
+    sleep 3
+    if curl -s --connect-timeout 2 http://localhost:3000 >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Gitea started${NC}"
+    else
+        echo -e "${RED}✗ FAILED to start Gitea!${NC}"
+        # Don't exit - Gitea is optional
+    fi
+    cd /home/neil1988/LocalizationTools
+fi
+
+# ----------------------------------------------------------------------------
+# 5. Health Check
 # ----------------------------------------------------------------------------
 echo ""
 echo "=============================================="
@@ -93,8 +113,15 @@ echo "Backend: $HEALTH"
 DB_CHECK=$(curl -s http://localhost:8888/api/stats/db-health 2>/dev/null || echo '{"status":"unknown"}')
 echo "Database: $DB_CHECK"
 
+# Check Gitea
+if curl -s --connect-timeout 2 http://localhost:3000 >/dev/null 2>&1; then
+    echo "Gitea: OK"
+else
+    echo "Gitea: Not running (optional)"
+fi
+
 # ----------------------------------------------------------------------------
-# 5. Summary
+# 6. Summary
 # ----------------------------------------------------------------------------
 echo ""
 echo "=============================================="
@@ -105,6 +132,7 @@ echo "Services:"
 echo "  • PostgreSQL:  localhost:5432"
 echo "  • Backend API: localhost:8888"
 echo "  • API Docs:    localhost:8888/docs"
+echo "  • Gitea:       localhost:3000"
 echo ""
 echo "Logs: tail -f /tmp/locatools_server.log"
 echo ""

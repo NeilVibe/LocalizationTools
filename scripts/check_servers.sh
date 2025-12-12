@@ -47,6 +47,15 @@ else
     ALL_OK=false
 fi
 
+# Check Gitea
+echo -n "Gitea (3000)... "
+if curl -s --connect-timeout 2 http://localhost:3000 >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ OK${NC}"
+else
+    echo -e "${RED}✗ NOT RUNNING${NC}"
+    ALL_OK=false
+fi
+
 echo ""
 echo "=============================================="
 if [ "$ALL_OK" = true ]; then
