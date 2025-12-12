@@ -1,109 +1,102 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-12 23:30 KST | **By:** Claude
+**Updated:** 2025-12-12 23:50 KST | **By:** Claude
 
 ---
 
-## Session Summary: CODE REVIEW COMPLETE
+## Session Summary: CODE REVIEW - Group H In Progress
 
-### What Was Accomplished This Session
+### Current Status
 
-**Full Code Review - All 3 Phases COMPLETE**
+**Phase 3 Fix Sprint - Group H (Scale Issues) IN PROGRESS**
 
-1. **Phase 1: Deep Review (12 sessions)** - Reviewed 30+ files, 25K+ LOC
-2. **Phase 2: Consolidation** - Grouped 31 open issues into 7 categories
-3. **Phase 3: Fix Sprint** - Fixed all actionable issues
+6 issues remain OPEN - all affect scalability at 100+ users / 50M+ rows:
 
-**Final Issue Count (66 total):**
-| Status | Count | Notes |
-|--------|-------|-------|
-| FIXED | 29 | Code changes made |
-| ACCEPT | 34 | Acceptable as-is |
-| DEFER | 1 | Future work |
-| OPEN | 2 | Performance (needs architecture) |
+| Issue | Problem | Impact |
+|-------|---------|--------|
+| **DR4-001** | Sync TMManager in async | Server freezes |
+| **DR4-002** | Repeated sync pattern | Same as above |
+| **DR4-003** | TM O(n) search loop | Timeout at 1M rows |
+| **DR4-005** | Backup loads all to RAM | OOM at 50M rows |
+| **DR8-001** | Auth disabled on 13 endpoints | Security gap |
+| **DR8-002** | New engine per sync call | Connection exhaustion |
 
----
+### Issue Count
 
-## Phase 3 Fix Summary
-
-All groups completed in this session:
-
-| Group | Description | Result |
-|-------|-------------|--------|
-| A | Hardcoded URLs | 3 fixed |
-| B | Database/SQL | 5 fixed + JSONB migration script |
-| C | Async/Sync | 3 fixed, 2 accept |
-| D | Auth Refactor | 5 fixed (rate limit, audit, deprecation) |
-| E | Code Bugs | 8 fixed, 2 accept |
-| F | Performance | Deferred (needs architecture changes) |
-| G | DEV_MODE | 1 fixed, 1 accept |
-
-**Key Commits:**
-1. `Phase 3 Fix Sprint: Groups A + E complete`
-2. `Phase 3 Fix Sprint: Groups B + D complete`
-3. `Phase 3 Fix Sprint: Groups C + G complete`
+| Status | Count |
+|--------|-------|
+| **OPEN** | 6 |
+| **FIXED** | 29 |
+| **ACCEPT** | 30 |
+| **DEFER** | 1 |
+| **Total** | 66 |
 
 ---
 
-## DEV_MODE Feature (NEW!)
+## What Was Done This Session
 
-Implemented DR3-009 for Claude autonomous testing:
+1. **Completed Groups A-G** (29 fixes)
+2. **Implemented DEV_MODE** - Localhost auto-auth for testing
+3. **Updated Protocol** - Stricter classification rules (v2.3)
+4. **Re-classified issues** - 4 moved from ACCEPT to OPEN
 
-```bash
-# Enable DEV_MODE
-DEV_MODE=true python3 server/main.py
+---
+
+## Key Protocol Update
+
+**STRICT Classification Rules Added (Protocol v2.3):**
+
+```
+OPEN [ ] = ANY issue that:
+- Breaks at scale (100+ users, 1M+ rows)
+- Blocks event loop in async code
+- Uses unbounded memory
+- Creates connections outside pool
+- Has O(n) where O(1) possible
+
+ACCEPT [~] = ONLY:
+- Pure style preference
+- Intentional design (documented)
+- CLI/script code (not server)
 ```
 
-**How it works:**
-- Auto-authenticates as admin on localhost (127.0.0.1, ::1)
-- No login/token required for API calls from localhost
-- PRODUCTION=true blocks DEV_MODE (safety)
-- Warning logged on startup
-
-**Files changed:**
-- `server/config.py` - DEV_MODE and PRODUCTION flags
-- `server/utils/dependencies.py` - _is_localhost(), _get_dev_user(), updated auth functions
+**Project goal: 100+ users, 50M+ rows. Issues breaking this = OPEN.**
 
 ---
 
-## Key Decisions (Don't Lose)
+## Next Steps: Fix Group H
 
-| Decision | Reason |
-|----------|--------|
-| **Review all first, fix later** | Batch fixes more efficient |
-| **JSON → JSONB migration** | Script at `scripts/migrate_json_to_jsonb.py` |
-| **Deprecate sync auth.py** | Async is primary, sync marked DEPRECATED |
-| **DEV_MODE localhost-only** | Security constraint - never works remotely |
-| **2 issues remain OPEN** | DR4-001/DR4-002 need async TMManager refactor |
+### 1. DR4-001/002: Async TMManager (Priority: HIGH)
+- Refactor `server/tools/ldm/tm.py` to async
+- Update all LDM endpoints using TMManager
+- Remove `next(get_db())` hacks
+
+### 2. DR4-003: TM Search Performance
+- Replace O(n) Python loop with database FTS
+- Or use trigram index / FAISS
+
+### 3. DR4-005: Backup Streaming
+- Stream backup instead of loading all to memory
+- Use chunked queries
+
+### 4. DR8-002: Connection Pooling
+- Use shared engine from `db_setup.py`
+- Don't create new engine per call
+
+### 5. DR8-001: Re-enable Auth
+- Uncomment `Depends(require_admin)` on 13 endpoints
+- DEV_MODE handles localhost testing
 
 ---
 
-## P25 Progress (70%)
+## Files to Modify
 
-LDM UX Overhaul - Phases 1-5 complete:
-
-- [x] Phase 1-4: Bug fixes, grid, edit modal, preferences
-- [x] Phase 5: Download/Export
-- [ ] Phase 6: Right-Click Context Menu
-- [ ] Phase 7: Tasks Panel
-- [ ] Phase 8: Reference Column
-- [ ] Phase 9: TM Integration
-- [ ] Phase 10: Live QA System
-
----
-
-## Next Steps (Pick One)
-
-### Option 1: Continue P25
-- Phase 6: Right-Click Context Menu
-- Then Phase 7-10
-
-### Option 2: LDM Core Features
-- TM Upload UI (ISSUE-011)
-- TM Search API (Phase 7.4)
-
-### Option 3: P24 Server Status Dashboard
-- Connection indicators for LocaNext app
+| File | Changes |
+|------|---------|
+| `server/tools/ldm/tm.py` | Make TMManager async |
+| `server/tools/ldm/api.py` | Use async db, fix search |
+| `server/api/base_tool_api.py` | Use shared engine |
+| `server/api/stats.py` | Re-enable auth (13 places) |
 
 ---
 
@@ -111,9 +104,8 @@ LDM UX Overhaul - Phases 1-5 complete:
 
 | Doc | Purpose |
 |-----|---------|
-| [ISSUES_20251212.md](../code-review/ISSUES_20251212.md) | Full issue list with all 66 items |
-| [CONSOLIDATED_ISSUES.md](../code-review/CONSOLIDATED_ISSUES.md) | Grouped fix plan (reference only now) |
-| [CODE_REVIEW_PROTOCOL.md](../code-review/CODE_REVIEW_PROTOCOL.md) | Review methodology |
+| [ISSUES_20251212.md](../code-review/ISSUES_20251212.md) | Full issue list (6 OPEN) |
+| [CODE_REVIEW_PROTOCOL.md](../code-review/CODE_REVIEW_PROTOCOL.md) | Protocol v2.3 |
 
 ---
 
