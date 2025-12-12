@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512121200 | **Status:** 97% Complete | **LDM:** 67%
+**Version:** 2512122330 | **Status:** 97% Complete | **LDM:** 67%
 
 > **KEEP THIS FILE COMPACT.** Only essential info here. Details go in linked docs.
 
@@ -102,6 +102,9 @@ See: [docs/wip/P23_DATA_FLOW_ARCHITECTURE.md](docs/wip/P23_DATA_FLOW_ARCHITECTUR
 # Start backend only (if PostgreSQL already running)
 python3 server/main.py
 
+# Start backend with DEV_MODE (no auth required on localhost)
+DEV_MODE=true python3 server/main.py
+
 # Start desktop app
 cd locaNext && npm run electron:dev
 
@@ -145,6 +148,9 @@ docs/
 ├── testing/                  # Test guides
 ├── troubleshooting/          # Debug guides
 ├── tools/                    # Tool-specific
+├── code-review/              # Code review docs
+│   ├── ISSUES_20251212.md    # ← Latest review issues
+│   └── CODE_REVIEW_PROTOCOL.md
 ├── wip/                      # Work in progress
 │   ├── SESSION_CONTEXT.md    # ← Last session state
 │   ├── P17_LDM_TASKS.md      # ← LDM task tracker
@@ -197,4 +203,4 @@ See: [docs/development/SERVER_MANAGEMENT.md](docs/development/SERVER_MANAGEMENT.
 
 ---
 
-*Last updated: 2025-12-11 | Hub file - details live in linked docs*
+*Last updated: 2025-12-12 | Hub file - details live in linked docs*
