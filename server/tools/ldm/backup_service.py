@@ -23,6 +23,7 @@ from server.database.models import (
     LDMBackup, LDMProject, LDMFolder, LDMFile, LDMRow,
     LDMEditHistory, LDMTranslationMemory, LDMTMEntry
 )
+from server.database.db_utils import chunked_query
 
 
 class BackupService:
@@ -247,13 +248,14 @@ class BackupService:
                 "source_language": f.source_language, "target_language": f.target_language
             })
 
-        # Rows (can be large!)
-        for r in db.query(LDMRow).all():
-            data["rows"].append({
-                "id": r.id, "file_id": r.file_id, "row_num": r.row_num,
-                "string_id": r.string_id, "source": r.source, "target": r.target,
-                "status": r.status
-            })
+        # Rows (can be large!) - use chunked query to avoid OOM
+        for chunk in chunked_query(db, LDMRow, [], chunk_size=5000):
+            for r in chunk:
+                data["rows"].append({
+                    "id": r.id, "file_id": r.file_id, "row_num": r.row_num,
+                    "string_id": r.string_id, "source": r.source, "target": r.target,
+                    "status": r.status
+                })
 
         # TMs
         for tm in db.query(LDMTranslationMemory).all():
@@ -263,13 +265,14 @@ class BackupService:
                 "entry_count": tm.entry_count, "status": tm.status
             })
 
-        # TM Entries (can be very large!)
-        for e in db.query(LDMTMEntry).all():
-            data["tm_entries"].append({
-                "id": e.id, "tm_id": e.tm_id,
-                "source_text": e.source_text, "target_text": e.target_text,
-                "source_hash": e.source_hash
-            })
+        # TM Entries (can be very large!) - use chunked query to avoid OOM
+        for chunk in chunked_query(db, LDMTMEntry, [], chunk_size=5000):
+            for e in chunk:
+                data["tm_entries"].append({
+                    "id": e.id, "tm_id": e.tm_id,
+                    "source_text": e.source_text, "target_text": e.target_text,
+                    "source_hash": e.source_hash
+                })
 
         logger.info(f"Full backup: {len(data['projects'])} projects, {len(data['files'])} files, {len(data['rows'])} rows")
         return data

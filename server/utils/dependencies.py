@@ -65,6 +65,28 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+def get_sync_engine():
+    """
+    Get the shared synchronous database engine.
+
+    Use this instead of create_engine() to share connection pool.
+    Useful for background tasks that need sync database access.
+
+    Returns:
+        SQLAlchemy Engine instance.
+
+    Example:
+        >>> from server.utils.dependencies import get_sync_engine
+        >>> engine = get_sync_engine()
+        >>> with Session(engine) as session:
+        >>>     result = session.query(User).all()
+    """
+    global _engine
+    if _engine is None:
+        initialize_database()
+    return _engine
+
+
 def initialize_async_database():
     """Initialize async database engine and session maker (call once at startup)."""
     global _async_engine, _async_session_maker
