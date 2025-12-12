@@ -107,6 +107,17 @@ server/config.py
 
 ---
 
+## Key Decisions (Don't Lose)
+
+| Decision | Reason |
+|----------|--------|
+| **nohup+disown** for servers | Servers must LIVE after logout. tmux dies when session dies. |
+| **WebSocket + API same port (8888)** | HTTP Upgrade protocol - designed to share. No conflict. |
+| **Deep Review bi-weekly** | Full codebase = 12 sessions. Too much for weekly. |
+| **Dependency order** | Review bottom-up: foundations first, then code that depends on them. |
+
+---
+
 ## Next Steps
 
 1. **Start Deep Review Session 1: Database & Models** ← CURRENT PRIORITY
