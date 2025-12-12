@@ -92,15 +92,57 @@ Comprehensive UX improvements based on user feedback.
 - ✅ TM Results column in grid (shows matches on hover)
 - ✅ TM selector in Preferences
 
-**Phase 10: Live QA System** (NOT IMPLEMENTED)
-- ❌ Skipped - No good MIT/Apache multi-language spell checker
-- Recommendation: Use Glossary + Inconsistency checks instead
+**Phase 10: TM Matching + QA Systems** (IN PROGRESS)
 
-**Remaining:**
-- QA: Glossary term check (pyahocorasick - MIT)
-- QA: Inconsistency check (same source = same target)
-- QA: Missing translation check
-- QA: Number mismatch check
+Two separate systems, both built from TM upload:
+
+```
+SYSTEM 1: TM MATCHING (WebTranslatorNew)
+├── QWEN Embeddings + FAISS + PKL
+├── 5-Tier Cascade + Single Threshold (92%)
+├── Display: Perfect tiers = show if exists, Embedding = top 3
+└── Purpose: Suggestions in Edit Modal
+
++ NPC (Neil's Probabilistic Check)
+├── Reuses TM results (no extra Source matching)
+├── Cosine similarity: User Target vs TM Targets
+├── Threshold: 80% (lenient)
+└── Purpose: Verify translation consistency
+
+SYSTEM 2: QA CHECKS (QuickSearch)
+├── Word Check: Aho-Corasick (scans full text, finds all terms)
+├── Line Check: Dict lookup (split by \n, lookup each line)
+└── Purpose: Find errors/inconsistencies
+```
+
+**Key Architecture:**
+- Universal newline normalization (`\n`, `\\n`, `<br/>`, `&lt;br/&gt;` → `\n`)
+- DB stores canonical `\n` format
+- Embed BOTH Source AND Target (for NPC)
+
+**TM DB Sync:**
+```
+DB = CENTRAL (always up-to-date)
+├── Re-upload TM → INSERT/UPDATE/DELETE instantly
+├── Ctrl+S confirm → INSERT or UPDATE (if TM active)
+└── Multi-user: everyone updates same DB
+
+FAISS = LOCAL (synced on demand)
+├── [Synchronize TM] button
+├── Pull DB → diff → embed new/changed only
+└── Rebuild FAISS, Aho-Corasick, Line Dict
+```
+
+**Remaining Implementation:**
+- [ ] TM DB Sync: 3 triggers (re-upload, Ctrl+S, [Synchronize TM])
+- [ ] SYSTEM 1: QWEN + FAISS + 5-Tier (92% threshold)
+- [ ] NPC: [NPC] button + Target embedding + cosine sim (80%)
+- [ ] SYSTEM 2 Word Check: Aho-Corasick automaton (pyahocorasick)
+- [ ] SYSTEM 2 Line Check: Dict lookup per line
+- [ ] Universal newline normalizer
+- [ ] QA panel in Edit Modal
+
+**Skipped:** Spell/Grammar check (no MIT multi-lang library)
 
 **Details:** [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md)
 

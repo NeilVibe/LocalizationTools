@@ -10,7 +10,7 @@
     WarningAlt,
     Error,
     Renew,
-    Connection,
+    ConnectionSignal,
     DataBase,
     Wifi
   } from "carbon-icons-svelte";
@@ -170,7 +170,7 @@
         <!-- API Server -->
         <div class="service-item">
           <div class="service-icon">
-            <Connection size={20} />
+            <ConnectionSignal size={20} />
           </div>
           <div class="service-info">
             <span class="service-name">API Server</span>

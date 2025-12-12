@@ -1,7 +1,7 @@
 # CDP (Chrome DevTools Protocol) Testing Guide
 
 **Purpose:** Autonomous testing of LocaNext Electron app via Chrome DevTools Protocol
-**Last Updated:** 2025-12-12
+**Last Updated:** 2025-12-13
 
 ---
 
@@ -194,6 +194,59 @@ await send(ws, id++, 'Runtime.evaluate', {
     returnByValue: true
 });
 ```
+
+### Keyboard Testing: Focus Matters
+
+Two ways to simulate keyboard input - they behave differently:
+
+| Method | Level | Focus Required? |
+|--------|-------|-----------------|
+| `Runtime.evaluate` + `new KeyboardEvent()` | JavaScript | No - can target any element |
+| `Input.dispatchKeyEvent` | Browser (real keys) | **YES** - goes to focused element |
+
+**Real key simulation (Input.dispatchKeyEvent):**
+```javascript
+// IMPORTANT: Check/set focus FIRST
+await send(ws, id++, 'Runtime.evaluate', {
+    expression: `document.querySelector('.my-textarea').focus()`,
+    returnByValue: true
+});
+
+// Then send keys - they go to focused element
+await send(ws, id++, 'Input.dispatchKeyEvent', {
+    type: 'keyDown', key: 'Control', code: 'ControlLeft', modifiers: 2
+});
+await send(ws, id++, 'Input.dispatchKeyEvent', {
+    type: 'keyDown', key: 's', code: 'KeyS', modifiers: 2, text: 's'
+});
+await send(ws, id++, 'Input.dispatchKeyEvent', {
+    type: 'keyUp', key: 's', code: 'KeyS', modifiers: 2
+});
+await send(ws, id++, 'Input.dispatchKeyEvent', {
+    type: 'keyUp', key: 'Control', code: 'ControlLeft', modifiers: 0
+});
+```
+
+**JS-level events (can target directly):**
+```javascript
+await send(ws, id++, 'Runtime.evaluate', {
+    expression: `
+        const el = document.querySelector('.my-textarea');
+        const event = new KeyboardEvent('keydown', {
+            key: 's', code: 'KeyS', ctrlKey: true,
+            bubbles: true, cancelable: true
+        });
+        el.dispatchEvent(event);
+    `,
+    returnByValue: true
+});
+```
+
+**When to use which:**
+- `Input.dispatchKeyEvent` - Testing real user behavior, Electron shortcuts
+- `Runtime.evaluate` + KeyboardEvent - Quick tests, when focus is complex
+
+**Common gotcha:** If `Input.dispatchKeyEvent` seems to do nothing, check `document.activeElement` - focus is probably wrong.
 
 ---
 
