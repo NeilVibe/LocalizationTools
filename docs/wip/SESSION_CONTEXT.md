@@ -1,73 +1,107 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-12 23:30 KST | **By:** Claude
+**Updated:** 2025-12-13 ~05:30 KST | **By:** Claude
 
 ---
 
-## Session Summary: P25 Feature Sprint Complete
+## Session Summary: TM/QA + NPC Finalized
 
 ### What Was Done
 
 | Task | Status | Notes |
 |------|--------|-------|
-| **P25 Phase 8: Reference Column** | ✅ Complete | VirtualGrid + PreferencesModal selectors |
-| **P25 Phase 9: TM Integration** | ✅ Complete | TM column + TM selector in Preferences |
-| **P25 Phase 10: Live QA** | ❌ Skipped | No MIT/Apache multi-lang spell checker |
-| **ISSUE-013: WebSocket Locking** | ✅ Fixed | Re-enabled lockRow() - was commented out |
-| **PreferencesModal Enhancements** | ✅ Complete | TM selector, Reference file selector, Match mode |
-| **P24: Status Dashboard** | ✅ Complete | Backend API + ServerStatus.svelte |
-| **ISSUE-011: TM Upload UI** | ✅ Complete | TMManager.svelte, TMUploadModal.svelte |
-
-### New Components Created
-
-| Component | Purpose |
-|-----------|---------|
-| `TMManager.svelte` | List, delete, build indexes for TMs |
-| `TMUploadModal.svelte` | Upload new TM files (TXT, XML, XLSX) |
-| `ServerStatus.svelte` | Visual health status (API, DB, WS) |
-| `server/api/health.py` | `/api/health/simple` + `/api/health/status` |
-
-### Backend Additions
-
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /api/ldm/files/{id}/register-as-tm` | Convert LDM file to TM |
-| `GET /api/health/simple` | Simple health check for apps |
-| `GET /api/health/status` | Detailed health for admin |
-| `GET /api/health/ping` | Ultra-simple ping/pong |
-
-### LDM Toolbar Added
-
-New toolbar in LDM with buttons for:
-- **TM Manager** - Opens TM management modal
-- **Server Status** - Opens health status modal
-- **Settings** - Opens preferences modal
+| **TM/QA Architecture Design** | ✅ Finalized | Two separate systems fully documented |
+| **NPC (Neil's Probabilistic Check)** | ✅ Approved | Simple Target verification via cosine sim |
+| **Single Threshold (92%)** | ✅ Decided | Simplified from DUAL threshold |
+| **TM Display Rules** | ✅ Defined | Perfect = show if exists, Embedding = top 3 |
+| **TM DB Sync Architecture** | ✅ Designed | DB=central, FAISS=local, 3 triggers |
+| **pd.merge INSERT/UPDATE/DELETE** | ✅ Documented | Full diff logic for TM updates |
+| **Roadmap.md Phase 10** | ✅ Updated | SYSTEM 1 + NPC + SYSTEM 2 |
+| **P25_LDM_UX_OVERHAUL.md** | ✅ Updated | Full TM update flow + NPC + tasks |
+| **IDEAS_FUTURE.md** | ✅ Updated | NPC moved from parked → approved |
 
 ---
 
-## Open Issues
+## TM/QA Architecture (FINALIZED)
 
-| ID | Priority | Status | Notes |
-|----|----------|--------|-------|
-| *None* | - | - | All issues fixed |
+### SYSTEM 1: TM Matching (WebTranslatorNew Style)
+```
+Purpose: SUGGESTIONS in Edit Modal
 
----
+QWEN Embeddings + FAISS (HNSW) + PKL
+├── 5-Tier Cascade:
+│   1. Perfect whole match → Show if exists
+│   2. Whole embedding match → Top 3 ≥92%
+│   3. Perfect line match → Show if exists
+│   4. Line embedding match → Top 3 ≥92%
+│   5. N-gram fallback → Top 3 ≥92%
+├── Single Threshold: 92% (simplified from DUAL)
+└── TM Update: Incremental (KR Similar logic)
+```
 
-## Next Priorities
+### NPC: Neil's Probabilistic Check
+```
+Purpose: VERIFY translation consistency
 
-### P25 Remaining (QA Features)
-- QA: Glossary term check (pyahocorasick - MIT)
-- QA: Inconsistency check (same source = same target)
-- QA: Missing translation check
-- QA: Number mismatch check
+1. TM panel shows Source matches ≥92%
+2. User clicks [NPC] button
+3. Embed user's Target (1 call)
+4. Cosine similarity vs TM Targets
+5. Any match ≥80%? → ✅ Consistent
+   No matches? → ⚠️ Potential issue
 
-### P17 LDM Remaining
-- Custom Excel picker (column selection)
-- Custom XML picker (attribute selection)
+Fast: 1 embedding + N cosine calcs (N < 10)
+No FAISS needed - direct similarity
+```
 
-### Build & Deploy
-- Test new features in running app
-- Deploy to Windows playground
+### SYSTEM 2: QA Checks (QuickSearch Style)
+```
+Purpose: Find ERRORS/INCONSISTENCIES
+
+Word Check: Aho-Corasick automaton
+├── Scans FULL TEXT in one pass - O(text length)
+├── Finds ALL glossary terms simultaneously
+├── No word splitting needed
+└── Glossary rules: ≤26 chars, no sentences
+
+Line Check: Dict lookup
+├── normalize_newlines_universal() → all to \n
+├── split('\n') → array of lines
+├── Lookup each line in dict
+└── One line? Still works (array of 1)
+```
+
+### Universal Newline Normalization
+```python
+def normalize_newlines_universal(text):
+    """Handle ALL newline formats"""
+    text = text.replace('\\n', '\n')      # Escaped
+    text = text.replace('<br/>', '\n')    # XML unescaped
+    text = text.replace('<br />', '\n')   # XML with space
+    text = text.replace('&lt;br/&gt;', '\n')    # XML escaped
+    text = text.replace('&lt;br /&gt;', '\n')   # XML escaped + space
+    return text
+```
+
+### TM Update Architecture
+```
+DB = CENTRAL (always up-to-date)
+├── Re-upload TM → INSERT/UPDATE/DELETE instantly
+├── Ctrl+S confirm → INSERT or UPDATE (if TM active)
+└── Multi-user: everyone updates same DB
+
+FAISS = LOCAL (synced on demand)
+├── User clicks [Synchronize TM]
+├── Pull DB → diff → embed new/changed only
+└── Rebuild FAISS, Aho-Corasick, Line Dict
+```
+
+### Key Decisions
+- DB stores canonical `\n` format
+- Pre-index everything on TM upload → Instant lookups
+- Smart TM Update: Only re-embed new/changed entries
+- pd.merge logic: INSERT (new) / UPDATE (changed) / DELETE (removed)
+- Spell/Grammar check SKIPPED (no MIT multi-lang library)
 
 ---
 
@@ -75,15 +109,51 @@ New toolbar in LDM with buttons for:
 
 | File | Changes |
 |------|---------|
-| `locaNext/src/lib/components/PreferencesModal.svelte` | TM/Reference selectors, match mode |
-| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | P8+P9 CSS, re-enabled lockRow() |
-| `locaNext/src/lib/components/ldm/TMManager.svelte` | TM list management |
-| `locaNext/src/lib/components/ldm/TMUploadModal.svelte` | TM upload modal |
-| `locaNext/src/lib/components/ServerStatus.svelte` | Health status modal |
-| `locaNext/src/lib/components/apps/LDM.svelte` | Toolbar integrations |
-| `server/api/health.py` | Health API endpoints |
-| `server/tools/ldm/api.py` | register-as-tm endpoint |
-| `server/tools/ldm/tm_manager.py` | create_tm, add_entries_bulk |
+| `Roadmap.md` | Phase 10 updated with SYSTEM 1 + SYSTEM 2 |
+| `docs/wip/P25_LDM_UX_OVERHAUL.md` | Complete TM/QA architecture + pseudocode |
+| `docs/wip/IDEAS_FUTURE.md` | Created - parked Probabilistic QA idea |
+| `docs/wip/SESSION_CONTEXT.md` | This file - session summary |
+
+---
+
+## Open Issues
+
+| ID | Priority | Status | Notes |
+|----|----------|--------|-------|
+| *None* | - | - | All known bugs fixed |
+
+---
+
+## Next Priorities
+
+### P25 Phase 10: TM/QA Implementation (READY TO BUILD)
+
+**Shared:**
+- [ ] Universal newline normalizer (`normalize_newlines_universal()`)
+
+**SYSTEM 1 (TM Matching - Suggestions):**
+- [ ] QWEN embedding generation (Source AND Target)
+- [ ] FAISS index (HNSW)
+- [ ] 5-Tier Cascade + Single Threshold (92%)
+- [ ] Display rules: Perfect = show if exists, Embedding = top 3
+- [ ] TM Update logic (incremental via pd.merge)
+- [ ] TM Results in Edit Modal
+
+**NPC (Neil's Probabilistic Check):**
+- [ ] [NPC] button in Edit Modal
+- [ ] Embed user's Target (1 call)
+- [ ] Cosine similarity vs TM Targets (threshold: 80%)
+- [ ] Display: ✅ Consistent / ⚠️ Potential issue
+
+**SYSTEM 2 (QA - Error Detection):**
+- [ ] Glossary extraction (≤26 chars, no sentences)
+- [ ] Aho-Corasick automaton (pyahocorasick) for Word Check
+- [ ] Dict lookup for Line Check
+- [ ] QA panel in Edit Modal
+
+### P17 LDM Remaining
+- Custom Excel picker (column selection)
+- Custom XML picker (attribute selection)
 
 ---
 
@@ -92,9 +162,10 @@ New toolbar in LDM with buttons for:
 | Need | Location |
 |------|----------|
 | Current task | [Roadmap.md](../../Roadmap.md) |
+| TM/QA Architecture | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) Section 9 |
 | Known bugs | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) |
-| P25 UX tasks | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) |
-| P24 Dashboard | [P24_STATUS_DASHBOARD.md](P24_STATUS_DASHBOARD.md) |
+| Future ideas | [IDEAS_FUTURE.md](IDEAS_FUTURE.md) |
+| CDP Testing | [docs/testing/CDP_TESTING_GUIDE.md](../testing/CDP_TESTING_GUIDE.md) |
 
 ---
 

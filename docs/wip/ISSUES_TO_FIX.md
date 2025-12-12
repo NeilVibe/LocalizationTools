@@ -1,7 +1,7 @@
 # Issues To Fix
 
 **Purpose:** Track known bugs, UI issues, and improvements across LocaNext
-**Last Updated:** 2025-12-12
+**Last Updated:** 2025-12-13
 
 ---
 
@@ -9,14 +9,54 @@
 
 | Area | Open | Fixed | Total |
 |------|------|-------|-------|
-| LDM UI | 0 | 15 | 15 |
+| LDM UI | 0 | 16 | 16 |
 | LDM WebSocket | 0 | 2 | 2 |
 | Navigation | 0 | 1 | 1 |
 | Infrastructure | 0 | 1 | 1 |
-| **Total** | **0** | **19** | **19** |
+| **Total** | **0** | **20** | **20** |
 
 **Open Issues:** None - All issues resolved
-**Session 2025-12-12:** ISSUE-013, ISSUE-011, BUG-001-004
+**Session 2025-12-13:** BUG-005 fixed (keyboard shortcuts)
+
+---
+
+## Open Issues
+
+*None - All issues resolved*
+
+---
+
+## Fixed Issues (2025-12-13 Session)
+
+### BUG-005: Edit Modal Keyboard Shortcuts Not Working (P25)
+- **Status:** ✅ Fixed
+- **Priority:** HIGH
+- **Reported:** 2025-12-13
+- **Fixed:** 2025-12-13
+- **Component:** VirtualGrid.svelte (`openEditModal`)
+
+**Problem:** In the Cell Edit Modal, pressing `Ctrl+S` (Confirm/Reviewed) or `Ctrl+T` (Translate Only) did nothing.
+
+**Root Cause:** When modal opened, focus stayed on `BODY` instead of the textarea. The `on:keydown={handleEditKeydown}` handler on the modal div never received keyboard events because focus was elsewhere.
+
+**Investigation (CDP tests):**
+1. `test_edit_keyboard.js` - JavaScript events worked (events dispatched programmatically)
+2. `test_edit_keyboard_real.js` - Real key simulation via `Input.dispatchKeyEvent` worked when textarea was focused
+3. Test without focus - **FAILED** - events never reached handler
+
+**Fix Applied:**
+```javascript
+// In openEditModal() - added after showEditModal = true:
+await tick();
+const textarea = document.querySelector('.target-textarea');
+if (textarea) {
+  textarea.focus();
+}
+```
+
+**Files Changed:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte:484-489`
+
+**Verified by:** CDP test `test_bug005_fix.js` - auto-focus works, Ctrl+S closes modal
 
 ---
 

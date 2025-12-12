@@ -470,72 +470,599 @@ Show reference translations from another file (like QuickSearch reference featur
 
 ---
 
-## 9. LIVE QA SYSTEM
+## 9. TM MATCHING & QA SYSTEMS (SEPARATE)
 
-### Status: PARTIALLY SKIPPED
+### Core Principle: MEGA SPEED
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│  BUILD ONCE (background) → USE INSTANTLY (during work)                  │
+│                                                                          │
+│  TM Upload triggers BACKGROUND indexing:                                │
+│  - User can continue working while indexing happens                     │
+│  - Progress shown in Tasks panel                                        │
+│  - Once done, all lookups are PRE-CACHED and INSTANT                   │
+│                                                                          │
+│  USER EXPERIENCE: SMOOTH. NO BLOCKING. NO WAITING.                      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Core Architecture - TWO SEPARATE SYSTEMS
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│  SYSTEM 1: TM MATCHING (WebTranslatorNew Style)                         │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  Purpose: Find similar translations → Show in Edit Modal                │
+│  Method: QWEN Embeddings + 5-Tier Cascade + Single Threshold (92%)      │
+│                                                                          │
+│  + NPC (Neil's Probabilistic Check): Verify Target vs TM Targets (80%)  │
+│                                                                          │
+│  NOT QA. This is for SUGGESTIONS + VERIFICATION.                        │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  SYSTEM 2: QA CHECKS (QuickSearch Style)                                │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  Purpose: Quality assurance → Find errors and inconsistencies           │
+│                                                                          │
+│  A. WORD CHECK (Term Check)                                             │
+│     Method: Aho-Corasick automaton                                      │
+│     Check: Glossary terms translated correctly?                         │
+│                                                                          │
+│  B. LINE CHECK (Inconsistency Check)                                    │
+│     Method: Dictionary lookup (NOT embeddings)                          │
+│     Check: Same source → Same target? If not → Inconsistent             │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+BOTH SYSTEMS built from TM Upload → All pre-indexed → Instant during work
+```
+
+---
+
+### TM UPDATE ARCHITECTURE
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│  DB = CENTRAL SOURCE OF TRUTH (always up-to-date)                       │
+│  FAISS = LOCAL INDEX (synced on demand)                                 │
+│                                                                          │
+│  DB updates happen AUTOMATICALLY:                                       │
+│  - Re-upload TM file → DB updates instantly                             │
+│  - Ctrl+S confirm string → DB updates instantly (if TM active)          │
+│  - Multiple users update DB simultaneously → blazing fast               │
+│                                                                          │
+│  FAISS sync happens ON DEMAND:                                          │
+│  - User clicks [Synchronize TM] button in TM menu                       │
+│  - Pulls changes from DB → INSERT/UPDATE/DELETE locally                 │
+│  - Re-embeds new/changed entries only                                   │
+│  - Rebuilds FAISS index at the end                                      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### TM UPDATE FLOW - DETAILED STEPS
+
+#### TRIGGER 1: Re-upload TM File
+
+```
+User uploads new TM file (same TM name)
+        ↓
+Parse file → new_data DataFrame (Source, Target)
+        ↓
+Fetch existing from DB → existing_data DataFrame
+        ↓
+pd.merge(new_data, existing_data, on='Source', how='outer', suffixes=('_new', '_old'))
+        ↓
+┌─────────────────────────────────────────────────────────────┐
+│ DETECT CHANGES:                                              │
+│                                                              │
+│ to_insert = merged[Target_old.isna() & Target_new.notna()]  │
+│ to_delete = merged[Target_new.isna() & Target_old.notna()]  │
+│ to_update = merged[                                         │
+│     Target_new.notna() &                                    │
+│     Target_old.notna() &                                    │
+│     (Target_new != Target_old)                              │
+│ ]                                                            │
+│ unchanged = the rest (skip)                                  │
+└─────────────────────────────────────────────────────────────┘
+        ↓
+┌─────────────────────────────────────────────────────────────┐
+│ DB OPERATIONS (PostgreSQL):                                  │
+│                                                              │
+│ INSERT INTO tm_entries (tm_id, source, target)              │
+│   VALUES ... for each to_insert                              │
+│                                                              │
+│ UPDATE tm_entries SET target = new_target                   │
+│   WHERE tm_id = ? AND source = ? for each to_update         │
+│                                                              │
+│ DELETE FROM tm_entries                                       │
+│   WHERE tm_id = ? AND source IN (...) for to_delete         │
+└─────────────────────────────────────────────────────────────┘
+        ↓
+DB is now up-to-date (all users see new data)
+FAISS not touched yet (local sync needed)
+```
+
+#### TRIGGER 2: Ctrl+S Confirm String (TM Active)
+
+```
+User confirms translation with Ctrl+S
+        ↓
+Check: Is a TM active for this project?
+        ↓
+    NO → Just save row, done
+    YES ↓
+        ↓
+Get Source + Target from confirmed row
+        ↓
+Check: Does this Source exist in TM?
+        ↓
+    NO → INSERT INTO tm_entries (tm_id, source, target)
+    YES → UPDATE tm_entries SET target = ? WHERE source = ?
+        ↓
+DB updated instantly
+User's local FAISS is now stale (sync needed later)
+```
+
+#### TRIGGER 3: User Clicks [Synchronize TM]
+
+```
+User clicks [Synchronize TM] button in TM menu
+        ↓
+Fetch ALL current TM entries from DB → db_data
+        ↓
+Load local state:
+  - embeddings.npy (Source embeddings)
+  - embeddings_target.npy (Target embeddings)
+  - tm_dict.pkl (Source → Target + metadata)
+        ↓
+Compare db_data vs local tm_dict
+        ↓
+┌─────────────────────────────────────────────────────────────┐
+│ DETECT CHANGES (same logic):                                 │
+│                                                              │
+│ to_embed_new = Sources in DB but not in local               │
+│ to_embed_update = Sources where Target changed              │
+│ to_remove = Sources in local but not in DB                  │
+└─────────────────────────────────────────────────────────────┘
+        ↓
+┌─────────────────────────────────────────────────────────────┐
+│ LOCAL OPERATIONS:                                            │
+│                                                              │
+│ 1. EMBEDDING (expensive, only for new/changed):             │
+│    for each source in to_embed_new + to_embed_update:       │
+│      source_emb = qwen_embed(source)                        │
+│      target_emb = qwen_embed(target)                        │
+│      store in embeddings arrays                             │
+│                                                              │
+│ 2. UPDATE tm_dict.pkl:                                      │
+│    - Add new entries                                        │
+│    - Update changed entries                                 │
+│    - Remove deleted entries                                 │
+│                                                              │
+│ 3. REBUILD FAISS (fast, from all embeddings):               │
+│    index = faiss.IndexHNSWFlat(dimension, M)                │
+│    index.add(all_source_embeddings)                         │
+│    faiss.write_index(index, "tm_source.faiss")              │
+│                                                              │
+│ 4. REBUILD Aho-Corasick (fast):                             │
+│    automaton = ahocorasick.Automaton()                      │
+│    for term in glossary_terms:                              │
+│      automaton.add_word(term, term)                         │
+│    automaton.make_automaton()                               │
+│                                                              │
+│ 5. REBUILD Line Check Dict (fast):                          │
+│    line_dict = {source: target for source, target in db}    │
+└─────────────────────────────────────────────────────────────┘
+        ↓
+Progress shown in Tasks panel:
+  "Synchronizing TM..."
+  "Embedding 127 new entries..."
+  "Building FAISS index..."
+  "Done!"
+        ↓
+Local FAISS now matches DB
+User can use TM matching + NPC + QA
+```
+
+---
+
+### WHY THIS ARCHITECTURE?
+
+| Aspect | Benefit |
+|--------|---------|
+| **DB = instant** | Ctrl+S updates TM immediately, all users see it |
+| **FAISS = on demand** | Heavy work only when user wants it |
+| **Smart diff** | Only embed new/changed (not entire TM) |
+| **Multi-user** | Everyone updates same DB, sync locally when ready |
+| **No conflicts** | DB handles concurrency, local is read-only copy |
+
+---
+
+### TM MENU UI
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  TM: BDO_EN_TM_v1.0                              [▼ Select] │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Status: ⚠️ 127 new entries available                       │
+│  Last synced: 2025-12-13 10:30 KST                         │
+│                                                             │
+│  [ 🔄 Synchronize TM ]                                      │
+│                                                             │
+│  [ 📤 Re-upload TM File ]                                   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Status shows:**
+- ✅ Up to date (local matches DB)
+- ⚠️ X new entries available (sync needed)
+- 🔄 Syncing... (in progress)
+
+---
+
+### WHAT GETS REBUILT ON SYNC
+
+| Resource | When | Speed |
+|----------|------|-------|
+| Source embeddings (.npy) | New/changed only | Slow (QWEN call) |
+| Target embeddings (.npy) | New/changed only | Slow (QWEN call) |
+| tm_dict.pkl | Full rebuild | Fast |
+| FAISS index | Full rebuild | Fast |
+| Aho-Corasick automaton | Full rebuild | Fast |
+| Line Check dict | Full rebuild | Fast |
+
+**Embedding is the bottleneck** - that's why we only embed new/changed.
+Everything else rebuilds from scratch (cheap).
+
+---
+
+### SYSTEM 1: TM MATCHING
+
+**Purpose:** Provide TM suggestions in Edit Modal (NOT QA)
+
+**Technology:** Same as WebTranslatorNew
+- QWEN Embeddings
+- 5-Tier Cascade
+- Single Threshold: **92%** (simplified from DUAL)
+- FAISS for fast similarity search
+- PKL for Source → Target mapping
+
+**When TM is uploaded:**
+```
+TM Source/Target pairs
+    ↓
+QWEN generates embeddings for each Source + Target
+    ↓
+FAISS index built for similarity search
+    ↓
+PKL file: Source → Target mapping
+    ↓
+5-Tier Cascade ready (threshold: 92%)
+```
+
+**5-Tier Cascade:**
+| Tier | Type | Display Rule |
+|------|------|--------------|
+| 1 | Perfect whole match | Show if exists, else nothing |
+| 2 | Whole embedding match | Top 3 results ≥92% |
+| 3 | Perfect line match | Show if exists, else nothing |
+| 4 | Line embedding match | Top 3 results ≥92% |
+| 5 | N-gram fallback | Top 3 results ≥92% |
+
+**Usage:** When user opens Edit Modal → Search FAISS → Apply cascade → Show matches ≥92%
+
+**This is NOT QA.** This is for finding similar translations to suggest.
+
+---
+
+### NPC: Neil's Probabilistic Check
+
+**Purpose:** Verify user's translation is consistent with TM patterns
+
+**Button:** [NPC] - appears in Edit Modal after TM results load
+
+**Logic:**
+```
+1. TM panel already has Source matches ≥92%
+2. User clicks [NPC] button
+3. Embed user's Target (1 embedding call)
+4. Cosine similarity vs each TM Target
+5. Any match ≥80%? → ✅ Consistent
+   No matches ≥80%? → ⚠️ Potential issue
+```
+
+**Code:**
+```python
+def npc_check(user_target, tm_targets, threshold=0.80):
+    """Neil's Probabilistic Check - simple and fast"""
+    user_embedding = embed(user_target)
+
+    for tm_target in tm_targets:
+        sim = cosine_sim(user_embedding, tm_target.embedding)
+        if sim >= threshold:
+            return "✅ Consistent"
+
+    return "⚠️ Potential issue"
+```
+
+**Example:**
+```
+Source: "저장하기"
+TM finds 3 matches ≥92%:
+  - "저장" → "Save"
+  - "저장하기" → "Save"
+  - "저장합니다" → "Saving"
+
+User types: "Save"
+NPC: "Save" vs ["Save", "Save", "Saving"] → 100% match ✅
+
+User types: "Delete"
+NPC: "Delete" vs ["Save", "Save", "Saving"] → <80% ⚠️
+```
+
+**Why it works:**
+- TM matches are high confidence (≥92% Source similarity)
+- If user's Target doesn't match ANY expected Target (≥80%) → suspicious
+- No FAISS needed for NPC, just direct cosine similarity
+- Fast: 1 embedding call + N cosine calcs (N usually <10)
+
+**Thresholds:**
+| Check | Threshold | Purpose |
+|-------|-----------|---------|
+| Source → TM | 92% | High confidence matches only |
+| User Target → TM Targets (NPC) | 80% | Lenient, "in the ballpark" |
+
+---
+
+### SYSTEM 2: QA CHECKS
+
+**Purpose:** Quality assurance - find errors and inconsistencies
+
+**Technology:** From QuickSearch
+- Word Check: Aho-Corasick (pyahocorasick)
+- Line Check: Simple dictionary lookup
+
+**QA compares CURRENT FILE against TM.**
+
+---
+
+### QA Parsing Flow (Shared)
+
+**Both Word Check and Line Check use the same initial parsing:**
+
+```
+Source in Edit Modal
+        ↓
+    normalize_newlines_universal(text)  ← NORMALIZE FIRST!
+        ↓
+    split('\n')  ← Always split by \n after normalization
+        ↓
+┌───────┴───────┬───────────────┐
+↓               ↓               ↓
+Line 1        Line 2         Line N
+↓               ↓               ↓
+├── WORD CHECK (Aho-Corasick scan each line)
+└── LINE CHECK (Dict lookup each line)
+```
+
+### Newline Normalization (from WebTranslatorNew)
+
+**Original (embedding.py:615):**
+```python
+def normalize_newlines(text):
+    return text.replace('\\n', '\n') if text else text
+```
+
+**Extended for LDM (handles ALL formats):**
+```python
+def normalize_newlines_universal(text):
+    """Handle ALL newline formats for consistent parsing"""
+    if not text:
+        return text
+
+    # 1. Escaped \\n → \n (TEXT files store as literal backslash-n)
+    text = text.replace('\\n', '\n')
+
+    # 2. XML <br/> → \n (unescaped XML linebreak)
+    text = text.replace('<br/>', '\n')
+    text = text.replace('<br />', '\n')
+
+    # 3. HTML-escaped &lt;br/&gt; → \n (escaped XML linebreak)
+    text = text.replace('&lt;br/&gt;', '\n')
+    text = text.replace('&lt;br /&gt;', '\n')
+
+    return text
+```
+
+**Why normalize FIRST, then always split by `\n`:**
+- Simpler logic - one split function
+- TM and QA use same normalization = consistent matching
+- No need to track file type during QA check
+
+**Newline Formats:**
+| Format | Source | Example |
+|--------|--------|---------|
+| `\n` | Actual newline | Multi-line in memory |
+| `\\n` | TEXT files | Stored as literal `\n` |
+| `<br/>` | XML files (parsed) | XML linebreak tag |
+| `&lt;br/&gt;` | XML files (raw/escaped) | HTML-escaped XML |
+
+---
+
+### QA Word Check (Term Check)
+
+**From:** QuickSearch Term Check function
+
+**Method:** Aho-Corasick automaton
+
+**When TM is uploaded:**
+```
+TM Source/Target pairs
+    ↓
+Filter by glossary rules:
+  - NO sentences (exclude if ends with . ! ?)
+  - Max 26 characters
+  - Skip if contains punctuation or ellipsis
+  - Unique entries only
+    ↓
+Build Aho-Corasick automaton (pyahocorasick)
+    ↓
+Build glossary dict: Source term → Expected target
+```
+
+**Config:** PRE-CONFIGURED, no user input needed
+- Max length: 26 characters
+- Exclude sentences (ending with . ! ?)
+- Exclude entries with punctuation or …
+- Result: Clean glossary of terms only
+
+**How it works (on Edit Modal):**
+```
+Step 1: Parse source by linebreak
+        source_lines = source_text.split('\n')
+
+Step 2: For each line, Aho-Corasick scan
+        for line in source_lines:
+            found_terms = aho_corasick.scan(line)
+            # found_terms = ["버튼", "클릭", "시작하기"]
+
+Step 3: Get expected targets from glossary
+        for term in found_terms:
+            expected_target = glossary[term]
+            # "시작하기" → "Get Started"
+
+Step 4: Check if expected targets appear in user's translation
+        for expected in expected_targets:
+            if expected.lower() not in user_target.lower():
+                flag_qa_warning(term, expected)
+```
+
+**Example:**
+```
+Source: "버튼을 클릭하여 시작하기"
+User's Target: "Click button to start"
+
+Word Check:
+├── "버튼" → expected "button" → ✅ found in target
+├── "클릭" → expected "click" → ✅ found in target
+└── "시작하기" → expected "Get Started" → ❌ NOT FOUND
+
+QA Flag: ⚠️ "시작하기" should be "Get Started"
+```
+
+### Why Aho-Corasick?
+
+**Best choice for multi-pattern matching:**
+- Searches ALL glossary terms in ONE pass
+- O(n + m + z) complexity
+- Same algorithm used in QuickSearch
+- Library: `pyahocorasick` (Python, MIT license)
+
+---
+
+### QA Line Check (Inconsistency Check)
+
+**From:** QuickSearch Line Check function
+
+**Method:** Dictionary lookup (NOT embeddings!)
+
+**When TM is uploaded:**
+```
+TM Source/Target pairs
+    ↓
+Build dictionary: Source → Target
+    ↓
+Save as .pkl for instant lookup
+```
+
+**How it works (on Edit Modal):**
+```
+Step 1: Parse source by linebreak
+        source_lines = source_text.split('\n')
+
+Step 2: For each line, exact dict lookup
+        for line in source_lines:
+            if line in tm_dict:
+                tm_target = tm_dict[line]
+
+Step 3: Compare TM target with user's target
+        # Split user target by linebreak too
+        user_lines = user_target.split('\n')
+
+        if tm_target != corresponding_user_line:
+            flag_qa_warning(line, tm_target, user_line)
+```
+
+**Example:**
+```
+Source: "저장하기\n취소하기"
+User's Target: "Store\nCancel"
+
+Line Check:
+├── "저장하기" → TM says "Save" → User wrote "Store" → ❌ MISMATCH
+└── "취소하기" → TM says "Cancel" → User wrote "Cancel" → ✅ OK
+
+QA Flag: ⚠️ Line "저장하기" should be "Save" (TM), not "Store"
+```
+
+**This is NOT similarity matching.** It's exact source lookup per line.
+
+---
+
+### Other QA Checks
+
+| Check | What It Does | Method | Severity |
+|-------|--------------|--------|----------|
+| **Missing Translation** | Empty target for translated status | Simple check | Warning |
+| **Number Mismatch** | Numbers in source vs target don't match | Regex comparison | Warning |
+
+These are simple checks, not based on TM.
+
+---
+
+### QA Status
 
 **Spell Check & Grammar Check: SKIPPED**
-- No good MIT/Apache licensed multi-language spell checker exists
+- No good MIT/Apache licensed multi-language spell checker
 - Hunspell is LGPL (copyleft concerns)
-- pyspellchecker/symspellpy only support limited languages
-- Decision: Skip spell/grammar, focus on other QA features
+- Decision: Focus on TM-based QA instead
 
-### QA Checks (Remaining - Will Implement)
+---
 
-| Check | Description | Recommended Method | Speed |
-|-------|-------------|-------------------|-------|
-| ~~**Spell Check**~~ | ~~Check spelling~~ | SKIPPED | - |
-| ~~**Grammar Check**~~ | ~~Check grammar~~ | SKIPPED | - |
-| **Glossary/Term Check** | Verify terms match glossary | **Aho-Corasick** (pyahocorasick MIT) | <1ms |
-| **Inconsistency Check** | Same source = same target | In-memory dict lookup | <1ms |
-| **Missing Translation** | Empty target for translated status | Simple check | <1ms |
-| **Number Mismatch** | Numbers in source vs target | Regex comparison | <1ms |
+### QA Results Display
 
-### Why Aho-Corasick for Glossary?
-
-**Aho-Corasick is the BEST choice for glossary term matching:**
-- Searches ALL terms in glossary simultaneously in ONE pass
-- O(n + m + z) complexity - n=text length, m=patterns, z=matches
-- Perfect for "find all glossary terms in this sentence"
-- Used by antivirus, spam filters, DNA sequencing
-
-**Alternatives considered:**
-| Method | Speed | Why Not |
-|--------|-------|---------|
-| Regex per term | Slow | O(n * terms) - doesn't scale |
-| Simple string search | Slow | O(n * terms) |
-| Trie | Fast | Good but Aho-Corasick is better for multi-pattern |
-| **Aho-Corasick** | **Fastest** | **Single pass, all patterns** |
-
-**Library:** `pyahocorasick` (Python) - builds automaton once, queries are instant
-
-### QA Results Column
-- Shows issues found
-- Position: Far far right (always last)
+**In Grid:**
+- QA Results column (far right, optional via Preferences)
 - Color-coded: Red = error, Yellow = warning
+- Click to see details
 
-### Auto-Glossary Generation
+**In Edit Modal:**
+- QA panel on right side (below TM matches)
+- Shows issues for current row
+- Can be toggled via Preferences
 
-**During TM Upload, automatically generate glossary:**
+---
 
-1. **Extraction Rules:**
-   - Filter out sentences (anything ending with punctuation: `.` `!` `?`)
-   - Max length: 26 characters
-   - Take unique entries only
-   - If duplicates: use most frequent version
+### Configuration Summary
 
-2. **Processing:**
-   - Embedding for semantic matching
-   - Aho-Corasick index for fast term lookup
+**PRE-CONFIGURED (no user input):**
+- Glossary rules: ≤26 chars, no sentences, no punctuation
+- Check types and thresholds
 
-3. **Storage:**
-   - Glossary stored per TM
-   - Used for live QA term checking
-
-**Question:** Any other glossary extraction rules needed?
-- Minimum length? (e.g., > 2 characters)
-- Exclude numbers-only entries?
-- Exclude single words vs multi-word terms?
+**User CAN toggle:**
+- Show/hide QA Results column
+- Enable/disable live QA
 
 ---
 
@@ -627,28 +1154,64 @@ Show reference translations from another file (like QuickSearch reference featur
 - [x] Real-time progress via WebSocket ✅ DONE
 - [x] Task completion notifications ✅ DONE
 
-### TM Integration
+### SYSTEM 1: TM Matching (WebTranslatorNew Style)
+
+**UI (Done):**
 - [x] TM upload UI (TMManager, TMUploadModal) ✅ DONE 2025-12-12
 - [x] TM selection UI in Preferences ✅ DONE 2025-12-12
 - [x] TM Results column in grid ✅ DONE 2025-12-12
 - [x] Active TM indicator in preferences ✅ DONE 2025-12-12
-- [ ] TM local processing (embeddings, FAISS) with progress
 
-### QA System (Spell/Grammar SKIPPED)
-- [ ] QA framework (without spell/grammar)
-- [x] ~~Spell check integration~~ SKIPPED - no MIT/Apache multi-lang library
-- [x] ~~Grammar check integration~~ SKIPPED - same reason
-- [ ] Glossary term check (pyahocorasick - MIT)
-- [ ] Inconsistency check (same source = same target)
-- [ ] Missing translation check
-- [ ] Number mismatch check
-- [ ] QA Results column
+**Backend (TODO):**
+- [ ] Universal newline normalizer (`\n`, `\\n`, `<br/>`, `&lt;br/&gt;` → `\n`)
+- [ ] QWEN embedding generation (local, background) - Source AND Target
+- [ ] FAISS index building (HNSW)
+- [ ] PKL file (Source → Target mapping)
+- [ ] 5-Tier Cascade implementation
+- [ ] Single Threshold: 92% (simplified from DUAL)
+- [ ] Display rules: Perfect tiers = show if exists, Embedding tiers = top 3 ≥92%
+- [ ] Progress tracking in Tasks panel
 
-### Auto-Glossary
-- [ ] Extract terms during TM upload
-- [ ] Filter rules (no sentences, max length, unique)
-- [ ] Embedding for semantic
-- [ ] Aho-Corasick index for fast lookup
+**TM DB Sync (TODO):**
+- [ ] DB table: tm_entries (tm_id, source, target, created_at, updated_at)
+- [ ] TRIGGER 1: Re-upload TM → pd.merge → INSERT/UPDATE/DELETE DB
+- [ ] TRIGGER 2: Ctrl+S confirm → INSERT or UPDATE to DB (if TM active)
+- [ ] TRIGGER 3: [Synchronize TM] button → pull DB → diff → re-embed new/changed → rebuild FAISS
+- [ ] TM Menu UI with sync status (✅ Up to date / ⚠️ X new entries)
+- [ ] Track last_synced timestamp per user per TM
+
+**NPC (Neil's Probabilistic Check):**
+- [ ] [NPC] button in Edit Modal (after TM results load)
+- [ ] Embed user's Target (1 call)
+- [ ] Cosine similarity vs TM Targets
+- [ ] Threshold: 80% (lenient, "in the ballpark")
+- [ ] Display: ✅ Consistent / ⚠️ Potential issue
+
+### SYSTEM 2: QA Checks (QuickSearch Style)
+
+**Word Check (Aho-Corasick):**
+- [ ] Glossary extraction from TM (≤26 chars, no sentences, no punctuation)
+- [ ] Aho-Corasick automaton build (pyahocorasick - MIT)
+- [ ] Word Check logic: scan source text → find all terms → verify in target
+- [ ] No word splitting needed - Aho-Corasick scans full text automatically
+
+**Line Check (Dict Lookup):**
+- [ ] Dictionary build from TM (Source → Target)
+- [ ] Line Check logic: normalize → split('\n') → lookup each line → compare
+- [ ] Works with 0 or N linebreaks (1 line = 1 lookup)
+
+**Other Checks:**
+- [ ] Missing translation check (simple: empty target?)
+- [ ] Number mismatch check (regex: compare numbers in source vs target)
+
+**UI:**
+- [ ] QA Results column in grid
+- [ ] QA panel in Edit Modal (below TM panel)
+- [ ] QA Results toggle in Preferences
+
+**SKIPPED:**
+- [x] ~~Spell check~~ SKIPPED - no MIT/Apache multi-lang library
+- [x] ~~Grammar check~~ SKIPPED - same reason
 
 ---
 
@@ -679,9 +1242,12 @@ Show reference translations from another file (like QuickSearch reference featur
 
 | Feature | Depends On |
 |---------|------------|
-| Glossary Term Check | Auto-Glossary generation |
-| Auto-Glossary | TM Upload |
-| TM Results | TM Upload + Selection |
+| TM Matching (suggestions) | TM Upload + QWEN + FAISS + 5-Tier (92%) |
+| NPC (probabilistic check) | TM Matching + Target embeddings (80%) |
+| QA Word Check | TM Upload + Glossary extraction + Aho-Corasick |
+| QA Line Check | TM Upload + Dictionary build |
+| TM Results column | TM Matching system |
+| QA Results column | QA Word/Line Check systems |
 | Reference Column | File parser (TEXT, XML) |
 | Merge | Confirmed status tracking |
 

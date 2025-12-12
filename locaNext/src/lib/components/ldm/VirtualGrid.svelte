@@ -480,6 +480,13 @@
 
     // Fetch TM suggestions in background
     fetchTMSuggestions(row.source, row.id);
+
+    // Auto-focus textarea after modal renders (fixes BUG-005: keyboard shortcuts not working)
+    await tick();
+    const textarea = document.querySelector('.target-textarea');
+    if (textarea) {
+      textarea.focus();
+    }
   }
 
   // Close edit modal and release lock
