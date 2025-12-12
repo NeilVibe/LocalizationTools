@@ -2,137 +2,140 @@
 # ============================================================================
 # LocaNext Server Startup Script
 # ============================================================================
-# This script ensures ALL servers are running before development/testing.
-# Run this at the start of every session.
+# Starts all servers as background processes that persist after logout.
+# Servers run independently - no tmux session required.
 #
 # Usage: ./scripts/start_all_servers.sh
+# Stop:  ./scripts/stop_all_servers.sh
 # ============================================================================
 
-set -e  # Exit on error
+set -e
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
+
+PROJECT_DIR="/home/neil1988/LocalizationTools"
+GITEA_DIR="/home/neil1988/gitea"
+LOG_DIR="/tmp/locanext"
 
 echo "=============================================="
-echo "  LocaNext Server Startup Script"
+echo "  LocaNext Server Startup"
 echo "=============================================="
 echo ""
 
+# Create log directory
+mkdir -p $LOG_DIR
+
 # ----------------------------------------------------------------------------
-# 1. Check PostgreSQL
+# 1. PostgreSQL (system service)
 # ----------------------------------------------------------------------------
-echo -n "Checking PostgreSQL... "
+echo -n "PostgreSQL (5432)... "
 if pg_isready -q 2>/dev/null; then
     echo -e "${GREEN}✓ Running${NC}"
 else
-    echo -e "${YELLOW}Starting PostgreSQL...${NC}"
+    echo -e "${YELLOW}Starting...${NC}"
     sudo service postgresql start
     sleep 2
     if pg_isready -q 2>/dev/null; then
-        echo -e "${GREEN}✓ PostgreSQL started${NC}"
+        echo -e "${GREEN}✓ Started${NC}"
     else
-        echo -e "${RED}✗ FAILED to start PostgreSQL!${NC}"
+        echo -e "${RED}✗ FAILED${NC}"
         exit 1
     fi
 fi
 
 # ----------------------------------------------------------------------------
-# 2. Check/Kill existing backend on port 8888
+# 2. Backend API (8888)
 # ----------------------------------------------------------------------------
-echo -n "Checking port 8888... "
-PID=$(lsof -t -i:8888 2>/dev/null || true)
-if [ -n "$PID" ]; then
-    echo -e "${YELLOW}Port in use by PID $PID - killing...${NC}"
-    kill -9 $PID 2>/dev/null || true
-    sleep 1
-    echo -e "${GREEN}✓ Port 8888 freed${NC}"
+echo -n "Backend API (8888)... "
+if curl -s --connect-timeout 1 http://localhost:8888/health >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ Already running${NC}"
 else
-    echo -e "${GREEN}✓ Port available${NC}"
+    # Kill any orphan process on port
+    PID=$(lsof -t -i:8888 2>/dev/null || true)
+    [ -n "$PID" ] && kill -9 $PID 2>/dev/null || true
+
+    # Start backend
+    cd $PROJECT_DIR
+    nohup python3 server/main.py > $LOG_DIR/backend.log 2>&1 &
+    disown
+
+    # Wait for ready
+    for i in {1..30}; do
+        if curl -s --connect-timeout 1 http://localhost:8888/health >/dev/null 2>&1; then
+            echo -e "${GREEN}✓ Started${NC}"
+            break
+        fi
+        sleep 1
+        [ $i -eq 30 ] && echo -e "${RED}✗ TIMEOUT${NC}"
+    done
 fi
 
 # ----------------------------------------------------------------------------
-# 3. Start Backend Server
+# 3. Gitea (3000)
 # ----------------------------------------------------------------------------
-echo "Starting FastAPI backend..."
-cd /home/neil1988/LocalizationTools
-
-# Start in background with nohup
-nohup python3 server/main.py > /tmp/locatools_server.log 2>&1 &
-BACKEND_PID=$!
-echo "Backend PID: $BACKEND_PID"
-
-# Wait for server to be ready
-echo -n "Waiting for backend to start..."
-for i in {1..30}; do
-    if curl -s http://localhost:8888/health > /dev/null 2>&1; then
-        echo -e " ${GREEN}✓ Ready!${NC}"
-        break
-    fi
-    echo -n "."
-    sleep 1
-    if [ $i -eq 30 ]; then
-        echo -e " ${RED}✗ TIMEOUT - Backend failed to start!${NC}"
-        echo "Check logs: cat /tmp/locatools_server.log"
-        exit 1
-    fi
-done
-
-# ----------------------------------------------------------------------------
-# 4. Start Gitea
-# ----------------------------------------------------------------------------
-echo -n "Checking Gitea... "
-if curl -s --connect-timeout 2 http://localhost:3000 >/dev/null 2>&1; then
-    echo -e "${GREEN}✓ Running${NC}"
+echo -n "Gitea (3000)... "
+if curl -s --connect-timeout 1 http://localhost:3000 >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ Already running${NC}"
 else
-    echo -e "${YELLOW}Starting Gitea...${NC}"
-    cd /home/neil1988/gitea
-    GITEA_WORK_DIR="/home/neil1988/gitea" nohup ./gitea web > /dev/null 2>&1 &
-    sleep 3
-    if curl -s --connect-timeout 2 http://localhost:3000 >/dev/null 2>&1; then
-        echo -e "${GREEN}✓ Gitea started${NC}"
-    else
-        echo -e "${RED}✗ FAILED to start Gitea!${NC}"
-        # Don't exit - Gitea is optional
-    fi
-    cd /home/neil1988/LocalizationTools
+    cd $GITEA_DIR
+    GITEA_WORK_DIR=$GITEA_DIR nohup ./gitea web > $LOG_DIR/gitea.log 2>&1 &
+    disown
+
+    for i in {1..15}; do
+        if curl -s --connect-timeout 1 http://localhost:3000 >/dev/null 2>&1; then
+            echo -e "${GREEN}✓ Started${NC}"
+            break
+        fi
+        sleep 1
+        [ $i -eq 15 ] && echo -e "${YELLOW}~ Starting (slow)${NC}"
+    done
 fi
 
 # ----------------------------------------------------------------------------
-# 5. Health Check
+# 4. Admin Dashboard (5175)
+# ----------------------------------------------------------------------------
+echo -n "Admin Dashboard (5175)... "
+if curl -s --connect-timeout 1 http://localhost:5175 >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ Already running${NC}"
+else
+    cd $PROJECT_DIR/adminDashboard
+    nohup npm run dev -- --port 5175 > $LOG_DIR/admin.log 2>&1 &
+    disown
+
+    for i in {1..15}; do
+        if curl -s --connect-timeout 1 http://localhost:5175 >/dev/null 2>&1; then
+            echo -e "${GREEN}✓ Started${NC}"
+            break
+        fi
+        sleep 1
+        [ $i -eq 15 ] && echo -e "${YELLOW}~ Starting (slow)${NC}"
+    done
+fi
+
+# ----------------------------------------------------------------------------
+# 5. Summary
 # ----------------------------------------------------------------------------
 echo ""
 echo "=============================================="
-echo "  Health Check"
-echo "=============================================="
-HEALTH=$(curl -s http://localhost:8888/health)
-echo "Backend: $HEALTH"
-
-# Check DB connection
-DB_CHECK=$(curl -s http://localhost:8888/api/stats/db-health 2>/dev/null || echo '{"status":"unknown"}')
-echo "Database: $DB_CHECK"
-
-# Check Gitea
-if curl -s --connect-timeout 2 http://localhost:3000 >/dev/null 2>&1; then
-    echo "Gitea: OK"
-else
-    echo "Gitea: Not running (optional)"
-fi
-
-# ----------------------------------------------------------------------------
-# 6. Summary
-# ----------------------------------------------------------------------------
-echo ""
-echo "=============================================="
-echo -e "  ${GREEN}ALL SERVERS READY${NC}"
+echo -e "  ${GREEN}ALL SERVERS STARTED${NC}"
 echo "=============================================="
 echo ""
 echo "Services:"
-echo "  • PostgreSQL:  localhost:5432"
-echo "  • Backend API: localhost:8888"
-echo "  • API Docs:    localhost:8888/docs"
-echo "  • Gitea:       localhost:3000"
+echo "  • PostgreSQL:      localhost:5432"
+echo "  • Backend API:     localhost:8888"
+echo "  • API Docs:        localhost:8888/docs"
+echo "  • Gitea:           localhost:3000"
+echo "  • Admin Dashboard: localhost:5175"
 echo ""
-echo "Logs: tail -f /tmp/locatools_server.log"
+echo "Logs: $LOG_DIR/"
+echo "  • tail -f $LOG_DIR/backend.log"
+echo "  • tail -f $LOG_DIR/gitea.log"
+echo "  • tail -f $LOG_DIR/admin.log"
+echo ""
+echo "Commands:"
+echo "  • Check: ./scripts/check_servers.sh"
+echo "  • Stop:  ./scripts/stop_all_servers.sh"
 echo ""
