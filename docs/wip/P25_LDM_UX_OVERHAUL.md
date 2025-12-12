@@ -1,6 +1,6 @@
 # P25: LDM UX Overhaul & Advanced Features
 
-**Priority:** P25 | **Status:** In Progress (65%) | **Created:** 2025-12-12
+**Priority:** P25 | **Status:** In Progress (70%) | **Created:** 2025-12-12
 
 ---
 
@@ -293,15 +293,116 @@ GOOD (New - space maximized):
 
 ---
 
-## 5. MERGE FUNCTION
+## 5. RIGHT-CLICK CONTEXT MENU
+
+### Design Philosophy
+**Native OS-style context menu** - looks and feels like Windows right-click menu.
+
+When user right-clicks on a file in the File Explorer:
+
+```
+┌────────────────────────────────────┐
+│  📥 Download File                   │
+│  ─────────────────────────────────  │
+│  🔍 Run Full Line Check QA          │
+│  🔤 Run Full Word Check QA          │
+│  ─────────────────────────────────  │
+│  📚 Upload as TM...                 │
+│     → Opens TM registration modal   │
+└────────────────────────────────────┘
+```
+
+### Right-Click Options
+
+| Option | Description |
+|--------|-------------|
+| **Download File** | Download file with all edits (exact original format) |
+| **Run Full Line Check QA** | Run comprehensive line-level QA on entire file |
+| **Run Full Word Check QA** | Run comprehensive word-level QA on entire file |
+| **Upload as TM** | Register this file as a Translation Memory |
+
+### Upload as TM Flow
+
+```
+Right-click → "Upload as TM..."
+    ↓
+┌─────────────────────────────────────────────────────────┐
+│                 REGISTER AS TM                          │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  TM Name:     [ BDO_EN_TM_v1.0                       ]  │
+│                                                         │
+│  Project:     [▼ Select Project...                   ]  │
+│               • BDO English                             │
+│               • BDO German                              │
+│               • (Create New Project)                    │
+│                                                         │
+│  Language:    [▼ English (EN)                        ]  │
+│                                                         │
+│  Description: [                                      ]  │
+│               [ Optional notes about this TM         ]  │
+│                                                         │
+│                          [Cancel]  [Register TM]        │
+└─────────────────────────────────────────────────────────┘
+    ↓
+TM registered on central server
+    ↓
+Local processing begins (embeddings, FAISS index)
+    ↓
+Progress shown in TASKS panel
+    ↓
+TM ready for use
+```
+
+### TM Processing Flow (Important!)
+
+**Central Server:**
+- TM metadata stored in PostgreSQL
+- Source/target pairs stored in DB
+
+**Local Processing (Heavy):**
+- Embedding generation (runs locally)
+- FAISS index building (runs locally)
+- Progress tracked in Tasks panel
+
+**When another user wants the TM:**
+1. User selects TM from list
+2. Local processing starts for THEIR machine
+3. Progress shown in THEIR Tasks panel
+4. Once done, TM is ready locally
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    TASKS                                │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ✅ TM "BDO_EN_TM_v1.0" registered                      │
+│                                                         │
+│  ⏳ Processing TM embeddings...                         │
+│     ████████░░░░░░░░░░░░ 42%                           │
+│     12,340 / 29,500 entries                             │
+│                                                         │
+│  ⏳ Building FAISS index...                             │
+│     Waiting for embeddings...                           │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Tasks Panel Rules:**
+- Shows ALL background tasks with real-time progress
+- Clean, organized list
+- Each task shows: status icon, name, progress bar, details
+- User knows EXACTLY what's happening
+
+---
+
+## 6. MERGE FUNCTION
 
 ### Purpose
 Merge confirmed translations back into the original file format.
 
-### Access
-Right-click on file → Context menu:
-- Download File
-- **Merge File** (new)
+### Access (via Right-Click Menu)
+Right-click on file → Download File
 
 ### Merge Logic
 
@@ -331,7 +432,7 @@ Right-click on file → Context menu:
 
 ---
 
-## 6. REFERENCE COLUMN
+## 7. REFERENCE COLUMN
 
 ### Purpose
 Show reference translations from another file (like QuickSearch reference feature).
@@ -351,10 +452,10 @@ Show reference translations from another file (like QuickSearch reference featur
 
 ---
 
-## 7. TM INTEGRATION
+## 8. TM INTEGRATION
 
 ### TM Upload
-- Upload TM files (TMX, etc.)
+- Upload TM files (TMX, etc.) OR convert LDM file to TM via right-click
 - During upload: Shows in **Tasks menu** with progress
 - Embedding process runs in background (takes time for large TMs)
 
@@ -369,7 +470,7 @@ Show reference translations from another file (like QuickSearch reference featur
 
 ---
 
-## 8. LIVE QA SYSTEM
+## 9. LIVE QA SYSTEM
 
 ### QA Checks (Run live while translating)
 
@@ -430,7 +531,7 @@ Show reference translations from another file (like QuickSearch reference featur
 
 ---
 
-## 9. TASKS
+## 10. TASKS
 
 ### Bugs (Priority)
 - [x] BUG-002: Target lock blocking editing (HIGH) ✅ FIXED 2025-12-12
@@ -490,7 +591,16 @@ Show reference translations from another file (like QuickSearch reference featur
 - [x] TXT file export ✅ DONE 2025-12-12
 - [x] XML file export ✅ DONE 2025-12-12
 - [x] Excel file export ✅ DONE 2025-12-12
+- [x] Format verification test (string_id split fix) ✅ DONE 2025-12-12
 - [ ] Merge with original file (requires original file storage)
+
+### Right-Click Context Menu (NEW)
+- [ ] Native OS-style right-click menu on files
+- [ ] Download File option
+- [ ] Run Full Line Check QA option
+- [ ] Run Full Word Check QA option
+- [ ] Upload as TM option (opens TM registration modal)
+- [ ] TM Registration modal (name, project, language, description)
 
 ### Reference Column
 - [ ] Create Reference column component
@@ -499,11 +609,22 @@ Show reference translations from another file (like QuickSearch reference featur
 - [ ] Match by String ID
 - [ ] Match by String ID + Source
 
+### Tasks Panel (Background Task Progress)
+- [ ] Create Tasks panel component (sidebar or modal)
+- [ ] Show all background tasks with status icons
+- [ ] Real-time progress bars with percentages
+- [ ] Task details (e.g., "12,340 / 29,500 entries")
+- [ ] Clean, organized list design
+- [ ] WebSocket updates for progress
+- [ ] Task completion notifications
+
 ### TM Integration
-- [ ] TM upload shows in Tasks
+- [ ] TM upload shows in Tasks panel
+- [ ] TM local processing (embeddings, FAISS) with progress
 - [ ] TM selection UI
 - [ ] TM Results column
 - [ ] Active TM indicator
+- [ ] Another user selects TM → local processing with progress
 
 ### QA System
 - [ ] Live QA framework
@@ -521,7 +642,7 @@ Show reference translations from another file (like QuickSearch reference featur
 
 ---
 
-## 10. COLUMN LAYOUT SUMMARY
+## 11. COLUMN LAYOUT SUMMARY
 
 **Default View:**
 ```
@@ -544,7 +665,7 @@ Show reference translations from another file (like QuickSearch reference featur
 
 ---
 
-## 11. DEPENDENCIES
+## 12. DEPENDENCIES
 
 | Feature | Depends On |
 |---------|------------|
@@ -556,7 +677,7 @@ Show reference translations from another file (like QuickSearch reference featur
 
 ---
 
-## 12. DATA ARCHITECTURE REMINDER
+## 13. DATA ARCHITECTURE REMINDER
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

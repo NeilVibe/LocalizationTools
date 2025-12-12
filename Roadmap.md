@@ -28,7 +28,7 @@ LocaNext v2512111745
 
 | Priority | Name | Status | WIP Doc |
 |----------|------|--------|---------|
-| **P25** | LDM UX Overhaul | 🔨 65% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
+| **P25** | LDM UX Overhaul | 🔨 70% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
 | **P24** | Server Status Dashboard | 📋 Pending | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
 | **P17** | LDM LanguageData Manager | 67% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
 | **P22** | SQLite Removal | Phase 1 ✅ | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
@@ -40,7 +40,7 @@ LocaNext v2512111745
 
 ## Active Development
 
-### P25: LDM UX Overhaul (65% Complete)
+### P25: LDM UX Overhaul (70% Complete)
 
 Comprehensive UX improvements based on user feedback.
 
@@ -55,23 +55,30 @@ Comprehensive UX improvements based on user feedback.
 - ✅ Default: Source + Target columns only
 - ✅ Cell colors: teal=translated, blue=reviewed, green=approved
 
-**Phase 3: Edit Modal Redesign ✅** (NEW)
+**Phase 3: Edit Modal Redesign ✅**
 - ✅ BIG modal (85% width/height)
 - ✅ Two-column layout: Source/Target left, TM panel right
 - ✅ Shortcut bar at top (Ctrl+S, Ctrl+T, Tab, Esc)
 - ✅ Keyboard shortcuts working (Ctrl+S=Confirm, Ctrl+T=Translate)
 
-**Phase 4: Preferences Menu ✅** (NEW)
+**Phase 4: Preferences Menu ✅**
 - ✅ Column toggles: Index Number, String ID
 - ✅ Settings persist in localStorage
 - ✅ Grid updates dynamically
 - Reference/TM/QA toggles ready (disabled until features built)
 
+**Phase 5: Download/Export ✅** (NEW)
+- ✅ Download endpoint + frontend menu
+- ✅ Status filters (all, translated, reviewed)
+- ✅ TXT/XML/Excel export
+- ✅ Format verification test (exact match with original)
+
 **Remaining Phases:**
-- Phase 5: Merge Function - merge confirmed strings back to file
-- Phase 6: Reference Column - show reference from another file
-- Phase 7: TM Integration - upload TM, TM Results column
-- Phase 8: Live QA System - spell, grammar, glossary checks
+- Phase 6: Right-Click Context Menu - download, QA, upload as TM
+- Phase 7: Tasks Panel - background task progress (TM processing, QA)
+- Phase 8: Reference Column - show reference from another file
+- Phase 9: TM Integration - upload TM, TM Results column
+- Phase 10: Live QA System - spell, grammar, glossary checks
 
 **Details:** [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md)
 
@@ -188,13 +195,14 @@ Local = Heavy processing (FAISS, ML - rebuildable)
 
 ## Recently Completed
 
-### P25 Phases 1-4: Core UX Complete ✅ (2025-12-12)
+### P25 Phases 1-5: Core UX + Download ✅ (2025-12-12)
 - BUG-001, BUG-002, BUG-003, BUG-004 all fixed
 - Light/Dark theme toggle + Font settings
 - Status column → Cell colors, Go to Row removed
 - **Edit Modal Redesign** - BIG modal, TM panel, shortcuts
 - **Preferences Menu** - Column toggles (Index, StringID)
-- CDP test suite (Normal + Detailed)
+- **Download/Export** - TXT/XML/Excel with format verification
+- CDP test suite (Normal + Detailed + Format verification)
 
 ### P22 Phase 1: SQLite Removal ✅ (2025-12-11)
 - 12 server files cleaned
