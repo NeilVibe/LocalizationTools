@@ -89,6 +89,11 @@ echo "WINDOWS_BUILD" > /home/neil1988/.locanext_checkpoint
 rm /home/neil1988/.locanext_checkpoint
 ```
 
+**⚠️ Known Issue:** Auto-clear from Windows doesn't work (WSL path access issue). After Windows build succeeds, manually clear the checkpoint:
+```bash
+rm /home/neil1988/.locanext_checkpoint
+```
+
 This prevents re-running 900+ tests when only Windows is failing.
 
 ### Checkpoint Types
