@@ -197,8 +197,10 @@ jobs:
           POSTGRES_PORT: "5432"
         run: |
           echo "=== Starting server for tests ==="
+          # Clear Python cache to ensure fresh code is used
+          find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
           # DEV_MODE=true disables rate limiting for CI tests (see docs/cicd/TROUBLESHOOTING.md)
-          DEV_MODE=true python3.11 server/main.py &
+          PYTHONDONTWRITEBYTECODE=1 DEV_MODE=true python3.11 server/main.py &
           echo $! > /tmp/server.pid
 
           # Wait for server with retries
