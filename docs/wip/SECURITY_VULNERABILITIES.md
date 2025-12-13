@@ -12,6 +12,42 @@
 |--------|-------|------|----------|-----|
 | npm | 11 | 1 | 7 | 3 |
 | pip | 28+ | ~10 | ~15 | ~3 |
+| **Ubuntu/apt** | **85** | TBD | TBD | TBD |
+
+---
+
+## Ubuntu System Packages (NEW - 2025-12-14)
+
+**85 packages need updating** on Ubuntu 22.04.3 LTS (jammy)
+
+### Key System Components
+
+| Package | Current | Status |
+|---------|---------|--------|
+| OpenSSL | 3.0.2 (Mar 2022) | ⚠️ Likely has CVEs |
+| Python | 3.10.12 | Check for updates |
+| Node.js | 20.18.3 | Relatively recent |
+| apt | 2.4.10 | Update available |
+| docker.io | 27.5.1 | Update to 28.2.2 |
+| containerd | 1.7.24 | Update to 1.7.28 |
+
+### Fix Command
+```bash
+# Check what needs updating
+apt list --upgradable
+
+# Update all system packages (requires sudo)
+sudo apt update && sudo apt upgrade -y
+
+# For security-only updates
+sudo unattended-upgrades --dry-run  # Preview
+sudo unattended-upgrades            # Apply
+```
+
+### Notes
+- System updates may require reboot
+- Test application after system updates
+- Consider scheduling during maintenance window
 
 ---
 

@@ -306,4 +306,46 @@ pip install torch>=2.6.0
 
 ---
 
+## Priority 5: SYSTEM (Ubuntu Packages) - NEW
+
+### 5.1 Ubuntu System Updates
+
+**85 packages need updating** on Ubuntu 22.04.3 LTS
+
+| Component | Current | Status |
+|-----------|---------|--------|
+| OpenSSL | 3.0.2 (Mar 2022) | ⚠️ Likely has CVEs |
+| apt | 2.4.10 | Update available |
+| docker.io | 27.5.1 | Update to 28.2.2 |
+| containerd | 1.7.24 | Update to 1.7.28 |
+| Python | 3.10.12 | Check for updates |
+| Node.js | 20.18.3 | Relatively recent |
+
+**Fix:**
+```bash
+# Preview
+apt list --upgradable
+
+# Update all
+sudo apt update && sudo apt upgrade -y
+
+# Security-only
+sudo unattended-upgrades
+```
+
+**Breaking Changes:** Possible - test after update, may need reboot.
+
+---
+
+## Complete Checklist
+
+- [ ] Phase 1: Safe pip fixes (requests, jose, multipart)
+- [ ] Phase 2: Safe npm fixes (npm audit fix)
+- [ ] Phase 3: Critical pip (cryptography, starlette, socketio)
+- [ ] Phase 4: High risk (torch, electron)
+- [ ] **Phase 5: Ubuntu system packages (85 pending)**
+- [ ] Phase 6: urllib3 (system package, needs virtualenv or OS planning)
+
+---
+
 *Ready to execute when you give the go.*
