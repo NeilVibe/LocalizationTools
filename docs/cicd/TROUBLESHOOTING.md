@@ -33,20 +33,29 @@ TROUBLESHOOT trigger
    echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt
    git add -A && git commit -m "TROUBLESHOOT" && git push gitea main
 
-2. CHECK LOGS (wait for job to finish)
-   - Gitea UI: http://localhost:3000/neilvibe/LocaNext/actions
-   - OR disk: tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<latest>/*.log
+2. SLEEP 10 MINUTES
+   (Build takes time - don't check immediately)
 
-3. IF TEST FAILED:
-   - Read error message
+3. CHECK BUILD STATUS
+   - Check Gitea UI: http://localhost:3000/neilvibe/LocaNext/actions
+   - OR check logs: tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<latest>/*.log
+
+   STATUS:
+   - STILL RUNNING → Go to step 2 (sleep again)
+   - FAILED → Go to step 4
+   - PASSED → Done!
+
+4. IF FAILED:
+   - Read error message from logs
    - Fix the code
    - Commit fix
    - Go to step 1 (checkpoint auto-resumes)
 
-4. REPEAT until all tests pass
+5. REPEAT until all tests pass
 ```
 
 **Key Points:**
+- Sleep 10 minutes between checks (builds take time)
 - Checkpoint persists across builds - no restart from test #1
 - Each iteration resumes from the exact failed test
 - Fix one issue at a time for clean debugging
