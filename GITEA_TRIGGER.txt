@@ -292,3 +292,4 @@ TROUBLESHOOT
 TROUBLESHOOT
 Build LIGHT v2512140131 - Normal build verification (all 900+ tests)
 Build LIGHT v2512140136 - Robust server cleanup + 60s timeout
+Build LIGHT v2512140141 - Lazy import SentenceTransformer (fast startup)
