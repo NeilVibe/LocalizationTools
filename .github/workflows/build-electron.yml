@@ -118,6 +118,23 @@ jobs:
         run: |
           cd locaNext && npm ci
 
+      # ---- INJECT VERSION (Pipeline Executive Power) ----
+      - name: Inject Version
+        run: |
+          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          echo "=== PIPELINE EXECUTIVE POWER ==="
+          echo "Injecting version: $VERSION (YY.MMDD.HHMM format)"
+
+          # Update version.py
+          sed -i "s/VERSION = \"[^\"]*\"/VERSION = \"$VERSION\"/" version.py
+          sed -i "s/SEMANTIC_VERSION = \"[^\"]*\"/SEMANTIC_VERSION = \"$VERSION\"/" version.py
+
+          # Update package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" locaNext/package.json
+
+          echo "[OK] All files updated to version: $VERSION"
+          grep "VERSION" version.py | head -2
+
       # ---- VERSION CHECK ----
       - name: Version Unification Check
         run: |
