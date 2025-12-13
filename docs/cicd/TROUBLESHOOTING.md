@@ -51,6 +51,90 @@ cat ~/.locanext_checkpoint
 rm ~/.locanext_checkpoint
 ```
 
+### Recreate Checkpoint from Last Fail
+
+If checkpoint is lost, recreate it from the last failed test:
+
+```bash
+# 1. Collect all tests into a file
+cd /path/to/project
+python3 -m pytest --collect-only -q 2>/dev/null | grep "::" > /tmp/all_tests.txt
+
+# 2. Find position of last failed test
+grep -n "test_name_here" /tmp/all_tests.txt
+# Example output: 689:tests/integration/test_file.py::TestClass::test_name_here
+
+# 3. Create checkpoint from that position
+tail -n +689 /tmp/all_tests.txt > ~/.locanext_checkpoint
+
+# 4. Verify
+wc -l ~/.locanext_checkpoint  # Shows remaining test count
+head -1 ~/.locanext_checkpoint  # Shows starting test
+```
+
+**Example:**
+```bash
+# Last fail was test_get_announcements
+grep -n "test_get_announcements" /tmp/all_tests.txt
+# Output: 689:tests/integration/server_tests/test_api_endpoints.py::TestVersionEndpoint::test_get_announcements
+
+# Create checkpoint starting from test 689
+tail -n +689 /tmp/all_tests.txt > ~/.locanext_checkpoint
+# Now TROUBLESHOOT will resume from test 689
+```
+
+---
+
+## Autonomous TROUBLESHOOT Loop
+
+When Claude runs TROUBLESHOOT mode autonomously:
+
+### Loop Protocol
+
+```
+1. TRIGGER
+   echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt
+   git add -A && git commit -m "Fix: <description>" && git push gitea main
+
+2. WAIT (~30-40 sec for tests to start)
+   sleep 40
+
+3. CHECK LIVE LOGS
+   curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -80
+
+4. ANALYZE
+   - If "All tests passed! Checkpoint cleared" → DONE
+   - If FAILED → Read error, identify fix
+
+5. FIX
+   - Edit the failing file
+   - Go back to step 1
+
+6. REPEAT until all pass
+```
+
+### Key Commands for Claude
+
+```bash
+# Get latest run number
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oP 'runs/\d+' | head -1
+
+# Check test progress (filter PASSED/FAILED)
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" | grep -E "(PASSED|FAILED|remaining|passed|failed)" | tail -40
+
+# Quick status
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -20
+```
+
+### Common Test Fixes
+
+| Pattern | Fix |
+|---------|-----|
+| `assert 401 in [200, 403, 404]` | Add 401 to expected codes |
+| `MultipleResultsFound` | Use `.first()` instead of `.scalar_one_or_none()` |
+| `column must appear in GROUP BY` | Use variable for column expression |
+| SQLite test using in-memory | Change to PostgreSQL with env vars |
+
 ---
 
 ## Common Errors
