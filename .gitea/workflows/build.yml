@@ -60,11 +60,11 @@ jobs:
 
             if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
-              echo "skip_build=yes" >> $GITHUB_OUTPUT
+              echo "skip_build=true" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT] Smart checkpoint mode"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
-              # Don't set skip_build for official - empty = falsy = build runs
+              echo "skip_build=false" >> $GITHUB_OUTPUT
               echo "[OFFICIAL] Full clean build"
             fi
 
@@ -86,7 +86,7 @@ jobs:
     name: Safety Checks (Tests, Security, Version)
     runs-on: ubuntu-latest
     needs: check-build-trigger
-    # Always run this job - check should_build internally to handle act_runner bugs
+    if: needs.check-build-trigger.outputs.should_build == 'true'
 
     # Gitea runner is host mode - use PostgreSQL installed on host
     # Created with: sudo -u postgres psql -c "CREATE USER locanext_ci ..."
@@ -97,35 +97,17 @@ jobs:
       POSTGRES_DB: locanext_ci_test
       POSTGRES_HOST: localhost
       POSTGRES_PORT: "5432"
-      # Pass outputs as env vars (avoids expression evaluation bugs)
-      SHOULD_BUILD: ${{ needs.check-build-trigger.outputs.should_build }}
-      BUILD_MODE: ${{ needs.check-build-trigger.outputs.mode }}
-      BUILD_VERSION: ${{ needs.check-build-trigger.outputs.version }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Verify build trigger
-        run: |
-          echo "=== Environment Variables from Job 1 ==="
-          echo "SHOULD_BUILD='$SHOULD_BUILD'"
-          echo "BUILD_MODE='$BUILD_MODE'"
-          echo "BUILD_VERSION='$BUILD_VERSION'"
-          # Regex match to handle both 'true' and '%!t(string=true)'
-          if [[ ! "$SHOULD_BUILD" =~ true ]]; then
-            echo "::error::No build trigger - this job should not have run"
-            exit 1
-          fi
-          echo "[OK] Build trigger verified"
 
       # ============================================================
       # EXECUTIVE POWER: Inject auto-generated version
       # ============================================================
       - name: Inject Version (Pipeline Executive Power)
         run: |
-          # Use env var (set from job outputs) to avoid expression mangling
-          VERSION="$BUILD_VERSION"
+          VERSION="${{ needs.check-build-trigger.outputs.version }}"
           echo "=== PIPELINE EXECUTIVE POWER ==="
           echo "Injecting version: $VERSION (YY.MMDD.HHMM format)"
 
