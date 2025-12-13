@@ -213,3 +213,4 @@ Build LIGHT v2512131240 - Tests use PostgreSQL in CI (full proof)
 Build LIGHT v2512131300 - Add psycopg2-binary to embedded Python
 Build LIGHT v2512131230 - Version update + psycopg2 + P26 WIP
 Build LIGHT v2512131235 - Gitea: Remove Docker PostgreSQL (host mode)
+Build LIGHT v2512131240 - Skip PostgreSQL tests in Gitea host mode

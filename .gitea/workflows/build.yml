@@ -75,6 +75,8 @@ jobs:
 
     # NOTE: No PostgreSQL service - Gitea runner is host mode, not Docker
     # Tests will use SQLite fallback (no POSTGRES_* env vars set)
+    env:
+      CI: "true"  # Mark as CI environment for test skipping logic
 
     steps:
       - name: Checkout code
