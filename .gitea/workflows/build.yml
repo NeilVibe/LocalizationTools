@@ -60,11 +60,11 @@ jobs:
 
             if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
-              echo "skip_build=true" >> $GITHUB_OUTPUT
+              echo "skip_build=yes" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT] Smart checkpoint mode"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
-              echo "skip_build=false" >> $GITHUB_OUTPUT
+              # Don't set skip_build for official - empty = falsy = build runs
               echo "[OFFICIAL] Full clean build"
             fi
 
@@ -86,7 +86,7 @@ jobs:
     name: Safety Checks (Tests, Security, Version)
     runs-on: ubuntu-latest
     needs: check-build-trigger
-    if: needs.check-build-trigger.outputs.should_build == 'true'
+    if: ${{ needs.check-build-trigger.outputs.should_build }}
 
     # Gitea runner is host mode - use PostgreSQL installed on host
     # Created with: sudo -u postgres psql -c "CREATE USER locanext_ci ..."
@@ -337,7 +337,7 @@ jobs:
   build-windows:
     name: Build Windows LIGHT Installer
     needs: [check-build-trigger, safety-checks]  # Wait for tests to pass
-    if: needs.check-build-trigger.outputs.skip_build != 'true'
+    if: ${{ !needs.check-build-trigger.outputs.skip_build }}
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
     steps:
