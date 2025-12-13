@@ -73,10 +73,15 @@ jobs:
     needs: check-build-trigger
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
-    # NOTE: No PostgreSQL service - Gitea runner is host mode, not Docker
-    # Tests will use SQLite fallback (no POSTGRES_* env vars set)
+    # Gitea runner is host mode - use PostgreSQL installed on host
+    # Created with: sudo -u postgres psql -c "CREATE USER locanext_ci ..."
     env:
-      CI: "true"  # Mark as CI environment for test skipping logic
+      CI: "true"
+      POSTGRES_USER: locanext_ci
+      POSTGRES_PASSWORD: locanext_ci_test
+      POSTGRES_DB: locanext_ci_test
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
 
     steps:
       - name: Checkout code
