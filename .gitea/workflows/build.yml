@@ -197,6 +197,13 @@ jobs:
           POSTGRES_PORT: "5432"
         run: |
           echo "=== Starting server for tests ==="
+          # Kill any existing server from previous runs
+          pkill -f "python.*server/main.py" 2>/dev/null || true
+          if [ -f /tmp/server.pid ]; then
+            kill $(cat /tmp/server.pid) 2>/dev/null || true
+            rm -f /tmp/server.pid
+          fi
+          sleep 1
           # Clear Python cache to ensure fresh code is used
           find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
           # DEV_MODE=true disables rate limiting for CI tests (see docs/cicd/TROUBLESHOOTING.md)
