@@ -24,6 +24,12 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(scope="function")
+def unique_id():
+    """Generate unique ID for test isolation."""
+    return uuid.uuid4().hex[:8]
+
+
+@pytest.fixture(scope="function")
 def test_db():
     """Create a test database using PostgreSQL (required for JSONB)."""
     from server import config
@@ -39,7 +45,7 @@ def test_db():
 class TestUserCreation:
     """Tests for user creation and management."""
 
-    def test_create_user_with_hashed_password(self, test_db):
+    def test_create_user_with_hashed_password(self, test_db, unique_id):
         """Test creating a user with properly hashed password."""
         import bcrypt
 
@@ -47,23 +53,23 @@ class TestUserCreation:
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
         user = User(
-            username="hashtest",
+            username=f"hashtest_{unique_id}",
             password_hash=password_hash,
-            email="hash@test.com",
+            email=f"hash_{unique_id}@test.com",
         )
         test_db.add(user)
         test_db.commit()
 
         # Verify password can be checked
-        stored_user = test_db.query(User).filter_by(username="hashtest").first()
+        stored_user = test_db.query(User).filter_by(username=f"hashtest_{unique_id}").first()
         assert bcrypt.checkpw(password.encode(), stored_user.password_hash.encode())
 
-    def test_create_admin_user(self, test_db):
+    def test_create_admin_user(self, test_db, unique_id):
         """Test creating an admin user."""
         admin = User(
-            username="admin",
+            username=f"admin_test_{unique_id}",
             password_hash="admin_hash",
-            email="admin@test.com",
+            email=f"admin_{unique_id}@test.com",
             role="admin",
         )
         test_db.add(admin)
@@ -72,10 +78,10 @@ class TestUserCreation:
         assert admin.role == "admin"
         assert admin.is_active is True
 
-    def test_deactivate_user(self, test_db):
+    def test_deactivate_user(self, test_db, unique_id):
         """Test deactivating a user."""
         user = User(
-            username="deactivate_me",
+            username=f"deactivate_{unique_id}",
             password_hash="hash",
         )
         test_db.add(user)
@@ -92,15 +98,15 @@ class TestUserCreation:
 class TestSessionManagement:
     """Tests for session creation and management."""
 
-    def test_create_session_for_user(self, test_db):
+    def test_create_session_for_user(self, test_db, unique_id):
         """Test creating a session for a user."""
-        user = User(username="sessiontest", password_hash="hash")
+        user = User(username=f"sessiontest_{unique_id}", password_hash="hash")
         test_db.add(user)
         test_db.commit()
 
         session = DBSession(
             user_id=user.user_id,
-            machine_id="test_machine_001",
+            machine_id=f"test_machine_{unique_id}",
             ip_address="192.168.1.100",
             app_version="2512010029",
         )
@@ -110,9 +116,9 @@ class TestSessionManagement:
         assert session.session_id is not None
         assert session.is_active is True
 
-    def test_multiple_sessions_per_user(self, test_db):
+    def test_multiple_sessions_per_user(self, test_db, unique_id):
         """Test that a user can have multiple sessions."""
-        user = User(username="multisession", password_hash="hash")
+        user = User(username=f"multisession_{unique_id}", password_hash="hash")
         test_db.add(user)
         test_db.commit()
 
@@ -120,7 +126,7 @@ class TestSessionManagement:
         for i in range(3):
             session = DBSession(
                 user_id=user.user_id,
-                machine_id=f"machine_{i}",
+                machine_id=f"machine_{unique_id}_{i}",
                 app_version="1.0.0",
             )
             test_db.add(session)
@@ -129,15 +135,15 @@ class TestSessionManagement:
 
         assert len(user.sessions) == 3
 
-    def test_end_session(self, test_db):
+    def test_end_session(self, test_db, unique_id):
         """Test ending a session."""
-        user = User(username="endsession", password_hash="hash")
+        user = User(username=f"endsession_{unique_id}", password_hash="hash")
         test_db.add(user)
         test_db.commit()
 
         session = DBSession(
             user_id=user.user_id,
-            machine_id="machine",
+            machine_id=f"machine_{unique_id}",
             app_version="1.0.0",
         )
         test_db.add(session)
@@ -149,15 +155,15 @@ class TestSessionManagement:
 
         assert session.is_active is False
 
-    def test_update_last_activity(self, test_db):
+    def test_update_last_activity(self, test_db, unique_id):
         """Test updating session last activity."""
-        user = User(username="activity", password_hash="hash")
+        user = User(username=f"activity_{unique_id}", password_hash="hash")
         test_db.add(user)
         test_db.commit()
 
         session = DBSession(
             user_id=user.user_id,
-            machine_id="machine",
+            machine_id=f"machine_{unique_id}",
             app_version="1.0.0",
         )
         test_db.add(session)
@@ -173,9 +179,9 @@ class TestSessionManagement:
 
         assert session.last_activity > original_activity
 
-    def test_find_active_sessions(self, test_db):
+    def test_find_active_sessions(self, test_db, unique_id):
         """Test finding all active sessions."""
-        user = User(username="findactive", password_hash="hash")
+        user = User(username=f"findactive_{unique_id}", password_hash="hash")
         test_db.add(user)
         test_db.commit()
 
@@ -183,7 +189,7 @@ class TestSessionManagement:
         for i in range(5):
             session = DBSession(
                 user_id=user.user_id,
-                machine_id=f"machine_{i}",
+                machine_id=f"machine_{unique_id}_{i}",
                 app_version="1.0.0",
                 is_active=(i % 2 == 0),  # Alternate active/inactive
             )
@@ -202,10 +208,10 @@ class TestSessionManagement:
 class TestLoginFlow:
     """Tests for the complete login flow."""
 
-    def test_successful_login_updates_last_login(self, test_db):
+    def test_successful_login_updates_last_login(self, test_db, unique_id):
         """Test that successful login updates last_login."""
         user = User(
-            username="loginuser",
+            username=f"loginuser_{unique_id}",
             password_hash="hash",
         )
         test_db.add(user)
@@ -219,16 +225,16 @@ class TestLoginFlow:
 
         assert user.last_login is not None
 
-    def test_login_creates_session(self, test_db):
+    def test_login_creates_session(self, test_db, unique_id):
         """Test that login creates a new session."""
-        user = User(username="createsession", password_hash="hash")
+        user = User(username=f"createsession_{unique_id}", password_hash="hash")
         test_db.add(user)
         test_db.commit()
 
         # Simulate login creating session
         session = DBSession(
             user_id=user.user_id,
-            machine_id="login_machine",
+            machine_id=f"login_machine_{unique_id}",
             ip_address="10.0.0.1",
             app_version="1.0.0",
         )
@@ -243,7 +249,7 @@ class TestLoginFlow:
 class TestPasswordSecurity:
     """Tests for password security features."""
 
-    def test_password_not_stored_plaintext(self, test_db):
+    def test_password_not_stored_plaintext(self, test_db, unique_id):
         """Verify passwords are never stored as plaintext."""
         import bcrypt
 
@@ -251,28 +257,28 @@ class TestPasswordSecurity:
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
         user = User(
-            username="plaintext_test",
+            username=f"plaintext_test_{unique_id}",
             password_hash=hashed,
         )
         test_db.add(user)
         test_db.commit()
 
-        stored = test_db.query(User).filter_by(username="plaintext_test").first()
+        stored = test_db.query(User).filter_by(username=f"plaintext_test_{unique_id}").first()
         assert stored.password_hash != password
         assert stored.password_hash.startswith("$2")  # bcrypt hash prefix
 
-    def test_different_users_different_hashes(self, test_db):
+    def test_different_users_different_hashes(self, test_db, unique_id):
         """Test that same password produces different hashes for different users."""
         import bcrypt
 
         password = "same_password"
 
         user1 = User(
-            username="user1",
+            username=f"user1_{unique_id}",
             password_hash=bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode(),
         )
         user2 = User(
-            username="user2",
+            username=f"user2_{unique_id}",
             password_hash=bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode(),
         )
 
@@ -290,13 +296,13 @@ class TestPasswordSecurity:
 class TestRoleBasedAccess:
     """Tests for role-based access control."""
 
-    def test_user_roles(self, test_db):
+    def test_user_roles(self, test_db, unique_id):
         """Test different user roles."""
         roles = ["user", "admin", "superadmin"]
 
         for role in roles:
             user = User(
-                username=f"{role}_user",
+                username=f"{role}_user_{unique_id}",
                 password_hash="hash",
                 role=role,
             )
@@ -306,13 +312,13 @@ class TestRoleBasedAccess:
 
         # Verify each role
         for role in roles:
-            user = test_db.query(User).filter_by(username=f"{role}_user").first()
+            user = test_db.query(User).filter_by(username=f"{role}_user_{unique_id}").first()
             assert user.role == role
 
-    def test_default_role_is_user(self, test_db):
+    def test_default_role_is_user(self, test_db, unique_id):
         """Test that default role is 'user'."""
         user = User(
-            username="norole",
+            username=f"norole_{unique_id}",
             password_hash="hash",
         )
         test_db.add(user)
@@ -320,12 +326,12 @@ class TestRoleBasedAccess:
 
         assert user.role == "user"
 
-    def test_find_admins(self, test_db):
+    def test_find_admins(self, test_db, unique_id):
         """Test finding all admin users."""
         # Create mix of users and admins
         for i in range(5):
             user = User(
-                username=f"mixed_{i}",
+                username=f"mixed_{unique_id}_{i}",
                 password_hash="hash",
                 role="admin" if i < 2 else "user",
             )
@@ -333,5 +339,9 @@ class TestRoleBasedAccess:
 
         test_db.commit()
 
-        admins = test_db.query(User).filter_by(role="admin").all()
+        # Query only for this test's users
+        admins = test_db.query(User).filter(
+            User.username.like(f"mixed_{unique_id}%"),
+            User.role == "admin"
+        ).all()
         assert len(admins) == 2
