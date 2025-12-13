@@ -109,7 +109,7 @@ class TestAuthEndpoints:
     def test_get_current_user_without_auth(self, client):
         """Test getting current user without authentication."""
         response = client.get("/api/auth/me")
-        assert response.status_code == 403  # No auth header
+        assert response.status_code == 401  # 401 = need to authenticate (no auth header)
 
     def test_get_current_user_with_auth(self, client, test_user):
         """Test getting current user with valid token."""
