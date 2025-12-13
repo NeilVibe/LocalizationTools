@@ -28,8 +28,8 @@ def profile_database_operations():
     # Snapshot 1: Before database setup
     snapshot1 = tracemalloc.take_snapshot()
 
-    # Setup database
-    engine, session_maker = setup_database(use_postgres=False, drop_existing=False)
+    # Setup database (PostgreSQL ONLY)
+    engine, session_maker = setup_database(drop_existing=False)
 
     # Snapshot 2: After database setup
     snapshot2 = tracemalloc.take_snapshot()

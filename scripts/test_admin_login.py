@@ -24,9 +24,8 @@ def test_admin_login():
     logger.info("TESTING ADMIN LOGIN")
     logger.info("=" * 70)
 
-    # Setup database
-    use_postgres = config.DATABASE_TYPE == "postgresql"
-    engine = create_database_engine(use_postgres=use_postgres, echo=False)
+    # Setup database (PostgreSQL ONLY)
+    engine = create_database_engine(echo=False)
     session_maker = get_session_maker(engine)
     db = session_maker()
 

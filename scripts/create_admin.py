@@ -103,10 +103,9 @@ def main():
     logger.info("LOCALIZATIONTOOLS - INITIAL SETUP")
     logger.info("=" * 70)
 
-    # Setup database
+    # Setup database (PostgreSQL ONLY)
     logger.info("Setting up database...")
-    use_postgres = config.DATABASE_TYPE == "postgresql"
-    engine, session_maker = setup_database(use_postgres=use_postgres, drop_existing=False)
+    engine, session_maker = setup_database(drop_existing=False)
 
     # Create database session
     db = session_maker()

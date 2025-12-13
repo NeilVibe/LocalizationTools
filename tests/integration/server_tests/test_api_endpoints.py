@@ -14,14 +14,15 @@ from server.utils.auth import hash_password
 
 @pytest.fixture(scope="module")
 def test_db():
-    """Setup test database using a separate test database file.
+    """Setup test database connection.
 
     IMPORTANT: Uses drop_existing=False to avoid destroying the main database.
     This test uses a TestClient which shares the app's database.
+    PostgreSQL ONLY (no SQLite fallback).
     """
     # Do NOT drop the existing database - just get a session maker
     # The main database should already be set up with admin user
-    engine, session_maker = setup_database(use_postgres=False, drop_existing=False)
+    engine, session_maker = setup_database(drop_existing=False)
     yield session_maker
     # No cleanup needed - we're using the main database
 
