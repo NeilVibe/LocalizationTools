@@ -230,3 +230,4 @@ Build LIGHT v25.1213.1540 - UNIFIED FORMAT: YY.MMDD.HHMM (semver + datetime fact
 Build LIGHT - FULL EXECUTIVE POWER: Pipeline auto-generates version at build time!
 Build LIGHT - FIX: Version check separates critical vs informational files
 Build LIGHT - FIX: Remove deprecated use_postgres parameter from tests/scripts
+TEST ONLY tests/integration/server_tests/test_api_endpoints.py - FAST TEST: verify 401 fix
