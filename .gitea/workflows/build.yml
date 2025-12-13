@@ -55,13 +55,17 @@ jobs:
             echo "[OK] Auto-generated version: $VERSION"
 
             # ============================================================
-            # 3 MODES ONLY: Build LIGHT, Build FULL, TROUBLESHOOT
+            # 4 MODES: Build LIGHT, Build FULL, TROUBLESHOOT, LASTFAIL
             # ============================================================
 
             if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
               echo "skip_build=yes" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT] Smart checkpoint mode"
+            elif echo "$TRIGGER" | grep -q "^LASTFAIL"; then
+              echo "mode=lastfail" >> $GITHUB_OUTPUT
+              echo "skip_build=yes" >> $GITHUB_OUTPUT
+              echo "[LASTFAIL] Run only last failed tests (pytest --lf)"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=false" >> $GITHUB_OUTPUT
@@ -266,7 +270,7 @@ jobs:
               set -e
             else
               echo "[NO CHECKPOINT] Collecting tests..."
-              python3.11 -m pytest $TEST_DIRS $DESELECTS --collect-only -q --quiet 2>&1 | grep "::" | grep "test_" > /tmp/all_tests.txt
+              python3.11 -m pytest $TEST_DIRS $DESELECTS --collect-only -q --quiet 2>/dev/null | grep "::" | grep "test_" > /tmp/all_tests.txt
               TOTAL=$(wc -l < /tmp/all_tests.txt)
               echo "Collected $TOTAL tests. Running full suite..."
 
@@ -313,6 +317,24 @@ jobs:
 
             echo "[OK] All tests passed! Checkpoint cleared."
             rm -f "$CHECKPOINT_FILE"
+
+          # ============================================================
+          # LASTFAIL MODE: Run only last failed tests (pytest --lf)
+          # ============================================================
+          elif [ "$MODE" = "lastfail" ]; then
+            echo "=== LASTFAIL MODE ==="
+            echo "Running only tests that failed in the last run..."
+
+            set +e
+            python3.11 -m pytest $TEST_DIRS $DESELECTS --lf -v --tb=short --no-cov
+            RESULT=$?
+            set -e
+
+            if [ $RESULT -ne 0 ]; then
+              echo "[FAILED] Some tests still failing"
+              exit 1
+            fi
+            echo "[OK] All previously failed tests now pass!"
 
           # ============================================================
           # OFFICIAL MODE: Full clean run (clears any old checkpoint)
