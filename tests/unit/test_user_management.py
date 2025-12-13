@@ -21,17 +21,19 @@ TEST_SUFFIX = str(int(time.time()))[-6:]
 BASE_URL = "http://localhost:8888"
 API_URL = f"{BASE_URL}/api/v2"
 
-# Skip if server not running (check safely without crashing at import)
+# Check if server running at RUNTIME (not import time)
 def _server_running():
     try:
         return requests.get(f"{BASE_URL}/health", timeout=2).ok
     except Exception:
         return False
 
-pytestmark = pytest.mark.skipif(
-    not _server_running(),
-    reason="Server not running"
-)
+
+@pytest.fixture(autouse=True)
+def require_server():
+    """Skip test if server not running - checked at runtime, not import time."""
+    if not _server_running():
+        pytest.skip("Server not running")
 
 
 def get_admin_token():

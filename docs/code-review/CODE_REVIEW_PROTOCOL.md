@@ -11,7 +11,7 @@
 | **Quick Scan** | Weekly | ~1 hour | Automated scans, surface issues |
 | **Deep Review** | Bi-weekly | ~2-4 hours | Full manual code review |
 
-**Full codebase review = 12 Deep Review sessions**
+**Full codebase review = 16 Deep Review sessions**
 
 ---
 
@@ -233,7 +233,11 @@ Review in dependency order - bottom-up, so foundations are solid before reviewin
 | **9** | **Frontend - Core** | Svelte components, stores |
 | **10** | **Frontend - LDM** | LDM UI components |
 | **11** | **Admin Dashboard** | Admin UI |
-| **12** | **Scripts & Config** | Build, deploy, CI/CD |
+| **12** | **Scripts & Config** | Build, deploy scripts |
+| **13** | **CI/CD Workflows** | GitHub + Gitea automation |
+| **14** | **Tests** | Test quality and coverage |
+| **15** | **Electron/Desktop** | Desktop app security |
+| **16** | **Installer** | Distribution packages |
 
 ---
 
@@ -493,17 +497,112 @@ scripts/
 ├── check_servers.sh
 └── ...
 
-.github/workflows/
 package.json, requirements.txt
 Dockerfile, docker-compose.yml
 ```
 
 **Review Focus:**
 - [ ] Scripts idempotent?
-- [ ] CI/CD complete?
 - [ ] Dependencies pinned?
 - [ ] Docker build works?
 - [ ] Environment configs correct?
+
+---
+
+## Session 13: CI/CD Workflows (ADDED 2025-12-13)
+
+**Files:**
+```
+.gitea/workflows/build.yml
+.github/workflows/build-electron.yml
+```
+
+**Review Focus:**
+- [ ] Job dependencies correct? (tests before build)
+- [ ] Environment variables at correct level? (job vs step)
+- [ ] Secrets handled securely?
+- [ ] Both workflows in sync? (Gitea and GitHub)
+- [ ] Test coverage complete? (no unintended skips)
+- [ ] Server stays running during tests?
+- [ ] Admin user created for integration tests?
+- [ ] Model-dependent tests properly deselected?
+
+**CI/CD Gotchas Learned:**
+```
+1. Gitea host mode ≠ Docker mode
+   - services: block doesn't work in host mode
+   - Must use PostgreSQL installed on host
+
+2. Environment variables
+   - Job-level env may not propagate to all steps
+   - Always set step-level env for critical vars
+
+3. pytest module-level skipif
+   - Evaluates at import time, not runtime
+   - Server must be running BEFORE pytest starts
+
+4. Workflow sync
+   - Keep Gitea and GitHub workflows in sync
+   - Same fixes needed in both places
+```
+
+---
+
+## Session 14: Tests (ADDED 2025-12-13)
+
+**Files:**
+```
+tests/
+├── unit/
+├── api/
+├── e2e/
+└── conftest.py
+```
+
+**Review Focus:**
+- [ ] Skip conditions legitimate?
+- [ ] Test coverage adequate?
+- [ ] Fixtures properly shared?
+- [ ] No hardcoded values?
+- [ ] Archive tests excluded?
+
+---
+
+## Session 15: Electron/Desktop (ADDED 2025-12-13)
+
+**Files:**
+```
+locaNext/electron/
+├── main.js
+├── preload.js
+└── ...
+```
+
+**Review Focus (SECURITY CRITICAL):**
+- [ ] contextIsolation: true?
+- [ ] nodeIntegration: false?
+- [ ] No remote module usage?
+- [ ] IPC channels validated?
+- [ ] File system access restricted?
+- [ ] Auto-updater signed?
+
+---
+
+## Session 16: Installer (ADDED 2025-12-13)
+
+**Files:**
+```
+installer/
+├── locanext_electron.iss
+├── locanext_light.iss
+└── ...
+```
+
+**Review Focus:**
+- [ ] All required files included?
+- [ ] Uninstaller complete?
+- [ ] Registry entries correct?
+- [ ] Embedded Python packages complete?
 
 ---
 
@@ -760,4 +859,4 @@ rm docs/code-review/history/ISSUES_YYYYMMDD.md
 
 ---
 
-*Protocol v2.5 - Updated 2025-12-13 (Added retention policy)*
+*Protocol v3.0 - Updated 2025-12-13 (Added Sessions 13-16: CI/CD, Tests, Electron, Installer)*
