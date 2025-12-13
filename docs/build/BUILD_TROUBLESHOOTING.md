@@ -5,10 +5,62 @@
 **NEVER trigger a new build without PROVING you have fixed a REAL issue.**
 
 Before triggering ANY rebuild:
-1. Read the ACTUAL build log from the failed run
-2. Identify the SPECIFIC error message
-3. Make a code change that addresses that EXACT error
-4. Document what you changed and WHY
+1. **RUN VERSION CHECK FIRST:**
+   ```bash
+   python3 scripts/check_version_unified.py
+   ```
+   This catches 90% of build failures (stale version timestamp, mismatched versions).
+
+2. Read the ACTUAL build log from the failed run
+3. Identify the SPECIFIC error message
+4. Make a code change that addresses that EXACT error
+5. Document what you changed and WHY
+
+---
+
+## FAST LOG CHECK PROTOCOL
+
+**Step 1: Find latest build folder**
+```bash
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3
+```
+
+**Step 2: List log files in that folder**
+```bash
+ls ~/gitea/data/actions_log/neilvibe/LocaNext/<FOLDER>/
+```
+
+**Step 3: Search for errors (check BOTH logs if multiple exist)**
+```bash
+grep -i "error\|failed\|⨯\|BLOCKED" ~/gitea/data/actions_log/neilvibe/LocaNext/<FOLDER>/*.log | head -20
+```
+
+**Step 4: Read end of log for final error**
+```bash
+tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<FOLDER>/<NUMBER>.log
+```
+
+---
+
+## COMMON BUILD FAILURES (CHECK THESE FIRST!)
+
+### Version Timestamp Too Old (MOST COMMON!)
+
+**Error:**
+```
+❌ Version timestamp TOO FAR: 2512131330 (KST) is 1.1h away from now. Max: 1h
+❌ BUILD BLOCKED: Version timestamp too far from current time!
+```
+
+**Fix:**
+```bash
+# 1. Check what needs updating
+python3 scripts/check_version_unified.py
+
+# 2. Update version.py with suggested timestamp
+# 3. Run check again to fix all files
+# 4. Commit and push
+```
 
 **WRONG approaches that WASTE TIME:**
 - "Let's try rebuilding and see if it works"

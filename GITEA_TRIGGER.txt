@@ -226,3 +226,5 @@ Build LIGHT v2512131445 - CI-011: Fix hardcoded semantic version in latest.yml
 Build LIGHT v2512131455 - CI-012: Modern set-output syntax (8 instances)
 Build LIGHT v2512131505 - CI-014: Use env vars for Gitea URL
 Build LIGHT v2512131540 - Version unified + all CI fixes
+Build LIGHT v25.1213.1540 - UNIFIED FORMAT: YY.MMDD.HHMM (semver + datetime factorized)
+Build LIGHT - FULL EXECUTIVE POWER: Pipeline auto-generates version at build time!

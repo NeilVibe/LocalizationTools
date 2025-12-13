@@ -46,10 +46,11 @@ jobs:
           if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)"; then
             echo "should_build=true" >> $GITHUB_OUTPUT
 
-            # Extract version (first match only - ignore "v2" in comments like "Fix v2")
-            VERSION=$(echo "$TRIGGER" | grep -oE 'v[0-9]{10}' | head -1 | sed 's/v//')
+            # AUTO-GENERATE VERSION: YY.MMDD.HHMM format (unified semver + datetime)
+            # Pipeline has EXECUTIVE POWER - generates version at build time
+            VERSION=$(TZ='Asia/Seoul' date '+%y.%m%d.%H%M')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "[OK] Build triggered for version: $VERSION"
+            echo "[OK] Auto-generated version: $VERSION (YY.MMDD.HHMM in KST)"
 
             # Detect FULL vs LIGHT build
             if echo "$TRIGGER" | grep -q "FULL"; then
@@ -86,6 +87,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # ============================================================
+      # EXECUTIVE POWER: Inject auto-generated version
+      # ============================================================
+      - name: Inject Version (Pipeline Executive Power)
+        run: |
+          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          echo "=== PIPELINE EXECUTIVE POWER ==="
+          echo "Injecting version: $VERSION (YY.MMDD.HHMM format)"
+
+          # Update version.py
+          sed -i "s/VERSION = \"[^\"]*\"/VERSION = \"$VERSION\"/" version.py
+
+          # Update package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" locaNext/package.json
+
+          # Update installer scripts
+          sed -i "s/#define MyAppVersion \"[^\"]*\"/#define MyAppVersion \"$VERSION\"/" installer/locanext_light.iss
+          sed -i "s/#define MyAppVersion \"[^\"]*\"/#define MyAppVersion \"$VERSION\"/" installer/locanext_electron.iss
+
+          echo "[OK] All files updated to version: $VERSION"
+          grep "VERSION" version.py | head -1
 
       # Host mode: Use system Python 3.11 and Node directly (no setup actions needed)
       - name: Verify Python 3.11
@@ -299,6 +322,48 @@ jobs:
       # Standard checkout - workspace cleanup handled at end of job
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # ============================================================
+      # EXECUTIVE POWER: Inject auto-generated version into ALL files
+      # Pipeline controls ALL versions - single source of truth
+      # Format: YY.MMDD.HHMM (valid semver + human-readable datetime)
+      # ============================================================
+      - name: Inject Version (Pipeline Executive Power)
+        run: |
+          $version = "${{ steps.check.outputs.version }}"
+          Write-Host "=== PIPELINE EXECUTIVE POWER ===" -ForegroundColor Cyan
+          Write-Host "Injecting auto-generated version: $version" -ForegroundColor Green
+          Write-Host "Format: YY.MMDD.HHMM (semver + datetime unified)" -ForegroundColor Yellow
+
+          # 1. version.py (source of truth)
+          $content = Get-Content "version.py" -Raw
+          $content = $content -replace 'VERSION = "[^"]+"', "VERSION = `"$version`""
+          $content | Set-Content "version.py" -NoNewline
+          Write-Host "[OK] version.py updated" -ForegroundColor Green
+
+          # 2. package.json (Electron)
+          $pkgPath = "locaNext/package.json"
+          if (Test-Path $pkgPath) {
+            $pkg = Get-Content $pkgPath -Raw
+            $pkg = $pkg -replace '"version": "[^"]+"', "`"version`": `"$version`""
+            $pkg | Set-Content $pkgPath -NoNewline
+            Write-Host "[OK] package.json updated" -ForegroundColor Green
+          }
+
+          # 3. Installer scripts
+          foreach ($issFile in @("installer/locanext_light.iss", "installer/locanext_electron.iss")) {
+            if (Test-Path $issFile) {
+              $iss = Get-Content $issFile -Raw
+              $iss = $iss -replace '#define MyAppVersion "[^"]+"', "#define MyAppVersion `"$version`""
+              $iss | Set-Content $issFile -NoNewline
+              Write-Host "[OK] $issFile updated" -ForegroundColor Green
+            }
+          }
+
+          Write-Host ""
+          Write-Host "=== VERSION INJECTION COMPLETE ===" -ForegroundColor Cyan
+          Write-Host "All files now use: $version" -ForegroundColor Green
+        shell: powershell
 
       # NOTE: We don't use actions/setup-python@v5 because it fails when runner
       # runs as SYSTEM service (can't write to systemprofile cache).
@@ -1164,14 +1229,14 @@ jobs:
           $fileSize = $archive.Length
           $hash = (Get-FileHash -Path $archive.FullName -Algorithm SHA512).Hash.ToLower()
 
-          # Extract SEMANTIC_VERSION from version.py
+          # Extract VERSION (unified format: YY.MMDD.HHMM - valid semver + datetime)
           $versionContent = Get-Content "version.py" -Raw
-          if ($versionContent -match 'SEMANTIC_VERSION\s*=\s*"([^"]+)"') {
+          if ($versionContent -match 'VERSION\s*=\s*"(\d{2}\.\d{4}\.\d{4})"') {
             $semanticVersion = $Matches[1]
-            Write-Host "[OK] Extracted SEMANTIC_VERSION: $semanticVersion"
+            Write-Host "[OK] Extracted unified VERSION: $semanticVersion (YY.MMDD.HHMM format)"
           } else {
-            $semanticVersion = "1.4.0"  # Fallback if extraction fails
-            Write-Host "[WARN] Could not extract SEMANTIC_VERSION, using fallback: $semanticVersion"
+            $semanticVersion = "25.0101.0000"  # Fallback with unified format
+            Write-Host "[WARN] Could not extract VERSION, using fallback: $semanticVersion"
           }
 
           $releaseDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
