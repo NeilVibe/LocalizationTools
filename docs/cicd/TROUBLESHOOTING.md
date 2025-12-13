@@ -275,6 +275,64 @@ This simple endpoint doesn't need async - sync is simpler and avoids event loop 
 
 ---
 
+## Test Isolation Pattern: "Works in TROUBLESHOOT, Fails in Normal"
+
+### The Pattern
+
+Many CI failures follow this pattern:
+- ✅ Test PASSES when run in isolation (TROUBLESHOOT with checkpoint)
+- ❌ Test FAILS when run after 100+ other tests (normal build)
+
+**Root cause:** State pollution from prior tests.
+
+### How to Identify
+
+1. Test fails in normal build
+2. Create checkpoint, run TROUBLESHOOT → test passes
+3. **This means:** Prior tests are polluting state
+
+### How to Fix (MANDATORY)
+
+**DO NOT** just make the test pass in isolation. Ask:
+> "Why does this fail after 100+ tests but pass when first?"
+
+Common causes and fixes:
+
+| Polluted State | Example | Fix |
+|---------------|---------|-----|
+| Event loop | Async session tied to old loop | Use sync db instead |
+| Rate limiting | Too many failed logins | Skip rate limiting when `DEV_MODE=true` (CI starts server with this) |
+| Database state | Prior tests left data | Filter by unique test identifiers |
+| Global variables | Module-level cache | Reset in fixture |
+| Connection pools | Exhausted connections | Proper cleanup in fixtures |
+
+### Rate Limiting Fix (Applied 2025-12-14)
+
+**Problem:** `test_dashboard_api.py` tests fail with "Too many failed login attempts" after 100+ tests.
+
+**Root Cause:** Tests before accumulated failed logins in audit log, triggering rate limit.
+
+**Fix:** Skip rate limiting when `DEV_MODE=true` or in pytest environment.
+
+Files changed:
+- `server/api/auth_async.py` - Added `skip_rate_limit` check
+- `.gitea/workflows/build.yml` - Server starts with `DEV_MODE=true`
+
+### Verification (MANDATORY)
+
+Before committing a fix, verify it works for NORMAL builds:
+```bash
+# Run the failing test AFTER many other tests
+python3 -m pytest tests/path/to/earlier_tests.py tests/path/to/failing_test.py -v
+
+# Or run the entire test file
+python3 -m pytest tests/integration/server_tests/test_file.py -v
+```
+
+If it only passes in isolation, the fix is incomplete.
+
+---
+
 ## Quick Diagnosis
 
 ```
