@@ -315,32 +315,34 @@ async def get_latest_version():
 
 
 @app.get("/api/announcements")
-async def get_announcements(db: AsyncSession = Depends(get_async_db)):
+async def get_announcements():
     """Get active announcements for users."""
     from sqlalchemy import select, or_
+    from server.utils.dependencies import get_async_db
     from server.database.models import Announcement
 
-    now = datetime.utcnow()
-    result = await db.execute(
-        select(Announcement).where(
-            Announcement.is_active == True,
-            or_(Announcement.expires_at == None, Announcement.expires_at > now)
+    async for db in get_async_db():
+        now = datetime.utcnow()
+        result = await db.execute(
+            select(Announcement).where(
+                Announcement.is_active == True,
+                or_(Announcement.expires_at == None, Announcement.expires_at > now)
+            )
         )
-    )
-    announcements = result.scalars().all()
+        announcements = result.scalars().all()
 
-    return {
-        "announcements": [
-            {
-                "id": a.announcement_id,
-                "title": a.title,
-                "message": a.message,
-                "priority": a.priority,
-                "created_at": a.created_at.isoformat()
-            }
-            for a in announcements
-        ]
-    }
+        return {
+            "announcements": [
+                {
+                    "id": a.announcement_id,
+                    "title": a.title,
+                    "message": a.message,
+                    "priority": a.priority,
+                    "created_at": a.created_at.isoformat()
+                }
+                for a in announcements
+            ]
+        }
 
 
 # ============================================
