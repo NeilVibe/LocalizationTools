@@ -271,8 +271,9 @@ async def get_monthly_stats(
         start_date = end_date - timedelta(days=months * 30)  # Approximate
 
         # Query monthly statistics (PostgreSQL)
+        month_col = func.to_char(LogEntry.timestamp, 'YYYY-MM')
         query = select(
-            func.to_char(LogEntry.timestamp, 'YYYY-MM').label('month'),
+            month_col.label('month'),
             func.count(LogEntry.log_id).label('total_ops'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
             func.sum(
@@ -285,9 +286,9 @@ async def get_monthly_stats(
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
-            func.to_char(LogEntry.timestamp, 'YYYY-MM')
+            month_col
         ).order_by(
-            func.to_char(LogEntry.timestamp, 'YYYY-MM').desc()
+            month_col.desc()
         )
 
         result = await db.execute(query)
