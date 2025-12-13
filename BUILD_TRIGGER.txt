@@ -100,3 +100,4 @@ Build LIGHT v2512131215 - Fix: Add asyncpg for async PostgreSQL
 Build LIGHT v2512131220 - Fix: SQLite test uses specific tables (no JSONB)
 Build LIGHT v2512131230 - Skip JSONB model tests in CI
 Build LIGHT v2512131240 - Tests use PostgreSQL in CI (full proof)
+Build LIGHT v2512131300 - Add psycopg2-binary to embedded Python

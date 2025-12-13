@@ -394,7 +394,7 @@ jobs:
           } else {
             Write-Host "[WARN] requirements.txt not found - using package list hash" -ForegroundColor Yellow
             # Fallback: hash the pip install command packages
-            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub"
+            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite psycopg2-binary PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub"
             $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
           }
 
@@ -564,7 +564,7 @@ jobs:
           if (Test-Path "requirements.txt") {
             $reqHash = (Get-FileHash "requirements.txt" -Algorithm SHA256).Hash.Substring(0, 12)
           } else {
-            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub"
+            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite psycopg2-binary PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub"
             $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
           }
 
@@ -648,7 +648,7 @@ jobs:
             Write-Host "Installing backend dependencies..."
             & "$targetDir\python.exe" -m pip install --no-warn-script-location `
               fastapi uvicorn python-multipart python-socketio `
-              sqlalchemy aiosqlite `
+              sqlalchemy aiosqlite psycopg2-binary `
               PyJWT python-jose passlib python-dotenv bcrypt `
               pydantic pydantic-settings email-validator `
               pandas openpyxl xlrd `
