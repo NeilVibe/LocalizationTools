@@ -71,10 +71,12 @@ async def login(
 
     # Rate limiting check (skip in DEV_MODE or test environments)
     # See docs/cicd/TROUBLESHOOTING.md "Test Isolation Pattern"
-    from server import config
+    # Use os.environ directly to avoid import issues
+    dev_mode = os.environ.get("DEV_MODE", "").lower() == "true"
     skip_rate_limit = (
-        config.DEV_MODE or  # DEV_MODE disables rate limiting for localhost testing
+        dev_mode or  # DEV_MODE=true disables rate limiting for CI tests
         os.environ.get("PYTEST_CURRENT_TEST") or  # pytest sets this when running tests
+        os.environ.get("CI") == "true" or  # CI environment
         client_ip == "testclient"  # FastAPI TestClient uses this IP
     )
     if not skip_rate_limit:
