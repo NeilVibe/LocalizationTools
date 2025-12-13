@@ -27,6 +27,7 @@ _engine = None
 _session_maker = None
 _async_engine = None
 _async_session_maker = None
+_async_engine_loop = None  # Track which event loop the async engine was created in
 
 
 def initialize_database():
@@ -89,7 +90,21 @@ def get_sync_engine():
 
 def initialize_async_database():
     """Initialize async database engine and session maker (call once at startup)."""
-    global _async_engine, _async_session_maker
+    import asyncio
+    global _async_engine, _async_session_maker, _async_engine_loop
+
+    # Get current event loop
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+
+    # Recreate engine if we're in a different event loop (fixes test isolation)
+    if _async_engine is not None and _async_engine_loop is not None and current_loop is not None:
+        if _async_engine_loop != current_loop:
+            logger.debug("Event loop changed, recreating async engine")
+            _async_engine = None
+            _async_session_maker = None
 
     if _async_engine is None:
         # PostgreSQL async URL (postgresql+asyncpg://)
@@ -111,6 +126,9 @@ def initialize_async_database():
             class_=AsyncSession,
             expire_on_commit=False     # Don't expire objects after commit
         )
+
+        # Track which event loop this engine was created in
+        _async_engine_loop = current_loop
 
         logger.info("Async database initialized: PostgreSQL")
 
