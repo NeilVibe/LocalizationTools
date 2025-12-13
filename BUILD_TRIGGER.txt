@@ -93,3 +93,4 @@ Build LIGHT v2512101620 - Version fix
 Build LIGHT v2512101620 - Transformers fix
 Build LIGHT v2512101620 - Qwen3 1024-dim fix
 Build LIGHT v2512131106
+Build v2512131115
