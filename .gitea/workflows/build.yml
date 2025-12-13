@@ -68,8 +68,16 @@ jobs:
             elif echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
               echo "skip_build=yes" >> $GITHUB_OUTPUT
-              echo "skip_linux=no" >> $GITHUB_OUTPUT
-              echo "[TROUBLESHOOT] Smart checkpoint mode"
+
+              # Check if WINDOWS_BUILD checkpoint exists (skip all Linux safety checks)
+              CHECKPOINT_FILE="/home/neil1988/.locanext_checkpoint"
+              if [ -f "$CHECKPOINT_FILE" ] && grep -q "^WINDOWS_BUILD$" "$CHECKPOINT_FILE"; then
+                echo "skip_linux=yes" >> $GITHUB_OUTPUT
+                echo "[TROUBLESHOOT] WINDOWS_BUILD checkpoint found - skipping Linux entirely"
+              else
+                echo "skip_linux=no" >> $GITHUB_OUTPUT
+                echo "[TROUBLESHOOT] Smart checkpoint mode"
+              fi
             else
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=false" >> $GITHUB_OUTPUT
@@ -478,7 +486,7 @@ jobs:
       # ============================================================
       - name: Inject Version (Pipeline Executive Power)
         run: |
-          $version = "${{ steps.check.outputs.version }}"
+          $version = "$env:BUILD_VERSION"
           Write-Host "=== PIPELINE EXECUTIVE POWER ===" -ForegroundColor Cyan
           Write-Host "Injecting auto-generated version: $version" -ForegroundColor Green
           Write-Host "Format: YY.MMDD.HHMM (semver + datetime unified)" -ForegroundColor Yellow
