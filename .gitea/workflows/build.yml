@@ -1162,8 +1162,15 @@ jobs:
           $fileSize = $archive.Length
           $hash = (Get-FileHash -Path $archive.FullName -Algorithm SHA512).Hash.ToLower()
 
-          # Try to get semantic version from version.py (without embedded Python)
-          $semanticVersion = "1.3.0"  # Default fallback
+          # Extract SEMANTIC_VERSION from version.py
+          $versionContent = Get-Content "version.py" -Raw
+          if ($versionContent -match 'SEMANTIC_VERSION\s*=\s*"([^"]+)"') {
+            $semanticVersion = $Matches[1]
+            Write-Host "[OK] Extracted SEMANTIC_VERSION: $semanticVersion"
+          } else {
+            $semanticVersion = "1.4.0"  # Fallback if extraction fails
+            Write-Host "[WARN] Could not extract SEMANTIC_VERSION, using fallback: $semanticVersion"
+          }
 
           $releaseDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
 
