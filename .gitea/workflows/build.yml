@@ -60,7 +60,7 @@ jobs:
 
             if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
-              echo "skip_build=true" >> $GITHUB_OUTPUT
+              echo "skip_build=yes" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT] Smart checkpoint mode"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
@@ -86,12 +86,12 @@ jobs:
     name: Safety Checks (Tests, Security, Version)
     runs-on: ubuntu-latest
     needs: check-build-trigger
-    if: needs.check-build-trigger.outputs.should_build == 'true'
 
     # Gitea runner is host mode - use PostgreSQL installed on host
     # Created with: sudo -u postgres psql -c "CREATE USER locanext_ci ..."
     env:
       CI: "true"
+      BUILD_MODE: ${{ needs.check-build-trigger.outputs.mode }}
       POSTGRES_USER: locanext_ci
       POSTGRES_PASSWORD: locanext_ci_test
       POSTGRES_DB: locanext_ci_test
