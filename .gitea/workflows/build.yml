@@ -262,11 +262,14 @@ jobs:
       # Check build trigger and extract version from version.py
       - name: Get Version from Source
         id: check
+        env:
+          GITEA_URL: ${{ env.GITEA_URL }}
+          GITEA_REPO: ${{ env.GITEA_REPO }}
         run: |
           Write-Host "=== Getting Version from Source ==="
-          # Use curl to get version.py content
-          # For Gitea builds, use Gitea version.py (not GitHub) to get correct version
-          $versionUrl = "http://172.28.150.120:3000/neilvibe/LocaNext/raw/branch/main/version.py"
+          # Use env vars for Gitea URL (defined at workflow level)
+          $versionUrl = "$env:GITEA_URL/$env:GITEA_REPO/raw/branch/main/version.py"
+          Write-Host "Fetching: $versionUrl"
           $content = (Invoke-WebRequest -Uri $versionUrl -UseBasicParsing).Content
 
           # Extract VERSION using regex
@@ -280,7 +283,7 @@ jobs:
           }
 
           # Detect FULL vs LIGHT build from trigger file
-          $triggerUrl = "http://172.28.150.120:3000/neilvibe/LocaNext/raw/branch/main/GITEA_TRIGGER.txt"
+          $triggerUrl = "$env:GITEA_URL/$env:GITEA_REPO/raw/branch/main/GITEA_TRIGGER.txt"
           $triggerContent = (Invoke-WebRequest -Uri $triggerUrl -UseBasicParsing).Content
           $lastTrigger = ($triggerContent -split "`n" | Where-Object { $_ -match "Build (LIGHT|FULL)" } | Select-Object -Last 1)
 
