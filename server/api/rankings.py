@@ -272,7 +272,7 @@ async def get_app_rankings(
             func.count(LogEntry.log_id).label('usage_count'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
             func.sum(LogEntry.duration_seconds).label('total_time_seconds'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration')
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration')
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
