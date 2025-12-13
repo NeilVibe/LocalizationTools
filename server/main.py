@@ -19,7 +19,8 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from server import config
-from server.utils.dependencies import initialize_database, initialize_async_database, get_async_db
+from sqlalchemy.orm import Session
+from server.utils.dependencies import initialize_database, initialize_async_database, get_async_db, get_db
 from server.api import auth, logs, sessions
 from server.api import auth_async, logs_async, sessions_async
 from server.utils.websocket import socket_app
@@ -315,34 +316,33 @@ async def get_latest_version():
 
 
 @app.get("/api/announcements")
-async def get_announcements():
-    """Get active announcements for users."""
-    from sqlalchemy import select, or_
-    from server.utils.dependencies import get_async_db
+def get_announcements(db: Session = Depends(get_db)):
+    """Get active announcements for users.
+
+    NOTE: Uses SYNC db session to avoid async event loop test isolation issues.
+    See docs/cicd/TROUBLESHOOTING.md "Known Issue: Async Event Loop Test Isolation"
+    """
+    from sqlalchemy import or_
     from server.database.models import Announcement
 
-    async for db in get_async_db():
-        now = datetime.utcnow()
-        result = await db.execute(
-            select(Announcement).where(
-                Announcement.is_active == True,
-                or_(Announcement.expires_at == None, Announcement.expires_at > now)
-            )
-        )
-        announcements = result.scalars().all()
+    now = datetime.utcnow()
+    announcements = db.query(Announcement).filter(
+        Announcement.is_active == True,
+        or_(Announcement.expires_at == None, Announcement.expires_at > now)
+    ).all()
 
-        return {
-            "announcements": [
-                {
-                    "id": a.announcement_id,
-                    "title": a.title,
-                    "message": a.message,
-                    "priority": a.priority,
-                    "created_at": a.created_at.isoformat()
-                }
-                for a in announcements
-            ]
-        }
+    return {
+        "announcements": [
+            {
+                "id": a.announcement_id,
+                "title": a.title,
+                "message": a.message,
+                "priority": a.priority,
+                "created_at": a.created_at.isoformat()
+            }
+            for a in announcements
+        ]
+    }
 
 
 # ============================================
