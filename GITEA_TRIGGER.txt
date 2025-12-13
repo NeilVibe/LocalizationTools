@@ -224,3 +224,4 @@ Build LIGHT v2512131330 - VERIFY: Windows waits for safety-checks
 Build LIGHT v2512131430 - CI-010: Add tests/integration/ + tests/security/
 Build LIGHT v2512131445 - CI-011: Fix hardcoded semantic version in latest.yml
 Build LIGHT v2512131455 - CI-012: Modern set-output syntax (8 instances)
+Build LIGHT v2512131505 - CI-014: Use env vars for Gitea URL
