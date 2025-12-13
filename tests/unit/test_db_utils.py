@@ -31,10 +31,25 @@ from server.database.db_utils import (
 
 @pytest.fixture
 def test_session():
-    """Create a fresh in-memory SQLite database for each test."""
+    """Create a fresh in-memory SQLite database for each test.
+
+    Note: Only creates LDM tables (no JSONB columns) since SQLite
+    doesn't support PostgreSQL JSONB type.
+    """
     # Create fresh engine per test (in-memory = isolated)
     engine = create_engine("sqlite:///:memory:", echo=False)
-    Base.metadata.create_all(engine)
+
+    # Only create tables needed for these tests (avoid JSONB columns)
+    # LDM tables don't have JSONB, so they work with SQLite
+    tables_to_create = [
+        User.__table__,
+        LDMProject.__table__,
+        LDMFile.__table__,
+        LDMRow.__table__,
+        LDMTranslationMemory.__table__,
+        LDMTMEntry.__table__,
+    ]
+    Base.metadata.create_all(engine, tables=tables_to_create)
 
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = SessionLocal()
