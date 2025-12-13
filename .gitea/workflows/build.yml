@@ -68,16 +68,8 @@ jobs:
             elif echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
               echo "skip_build=yes" >> $GITHUB_OUTPUT
-
-              # Check if WINDOWS_BUILD checkpoint exists (skip all Linux safety checks)
-              CHECKPOINT_FILE="/home/neil1988/.locanext_checkpoint"
-              if [ -f "$CHECKPOINT_FILE" ] && grep -q "^WINDOWS_BUILD$" "$CHECKPOINT_FILE"; then
-                echo "skip_linux=yes" >> $GITHUB_OUTPUT
-                echo "[TROUBLESHOOT] WINDOWS_BUILD checkpoint found - skipping Linux entirely"
-              else
-                echo "skip_linux=no" >> $GITHUB_OUTPUT
-                echo "[TROUBLESHOOT] Smart checkpoint mode"
-              fi
+              echo "skip_linux=no" >> $GITHUB_OUTPUT
+              echo "[TROUBLESHOOT] Smart checkpoint mode"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=false" >> $GITHUB_OUTPUT
@@ -386,9 +378,7 @@ jobs:
   build-windows:
     name: Build Windows LIGHT Installer
     needs: [check-build-trigger, safety-checks]
-    # Run even if safety-checks is skipped (WINDOWS_BUILD checkpoint)
-    # But NOT if safety-checks failed
-    if: ${{ !failure() && !cancelled() && needs.check-build-trigger.outputs.should_build == 'true' }}
+    # Run after safety-checks passes
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
     env:
