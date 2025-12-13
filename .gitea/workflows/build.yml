@@ -43,7 +43,7 @@ jobs:
       - name: Check GITEA_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build (LIGHT|FULL)|^TROUBLESHOOT" | tail -1)
+          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build (LIGHT|FULL)|^TROUBLESHOOT|^LASTFAIL" | tail -1)
           echo "Trigger line: $TRIGGER"
 
           if [ -n "$TRIGGER" ]; then
