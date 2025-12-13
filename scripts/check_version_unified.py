@@ -38,25 +38,30 @@ def check_version_timestamp(version, max_hours_diff=1):
     """
     Check if version timestamp is within acceptable range of current time.
 
-    Version format: YYMMDDHHMM (Year, Month, Day, Hour, Minute) in KST (UTC+9)
+    UNIFIED VERSION FORMAT: YY.MMDD.HHMM (e.g., "25.1213.1540")
+    - Valid semver (X.Y.Z)
+    - Human readable (Dec 13, 2025, 15:40 KST)
     Script converts version from KST to UTC for comparison on GitHub Actions.
 
     Args:
-        version: Version string (e.g., "2512051321") in KST
+        version: Version string (e.g., "25.1213.1540") in KST
         max_hours_diff: Maximum allowed difference in hours (default: 1)
 
     Returns:
         tuple: (is_valid, message)
     """
-    if len(version) != 10:
-        return False, f"Invalid version format: {version} (expected YYMMDDHHMM, 10 digits)"
+    # Parse YY.MMDD.HHMM format
+    parts = version.split('.')
+    if len(parts) != 3:
+        return False, f"Invalid version format: {version} (expected YY.MMDD.HHMM, e.g., 25.1213.1540)"
 
     try:
-        version_year = int("20" + version[0:2])  # YY -> 20YY
-        version_month = int(version[2:4])
-        version_day = int(version[4:6])
-        version_hour = int(version[6:8])
-        version_minute = int(version[8:10])
+        yy, mmdd, hhmm = parts
+        version_year = int("20" + yy)  # YY -> 20YY
+        version_month = int(mmdd[:2])
+        version_day = int(mmdd[2:])
+        version_hour = int(hhmm[:2])
+        version_minute = int(hhmm[2:])
 
         # Get current time in UTC
         now_utc = datetime.now(timezone.utc)
@@ -80,36 +85,40 @@ def check_version_timestamp(version, max_hours_diff=1):
     except ValueError as e:
         return False, f"Could not parse version timestamp: {version} ({e})"
 
+# UNIFIED VERSION FORMAT: YY.MMDD.HHMM (e.g., 25.1213.1540)
+# This format is BOTH valid semver AND human-readable datetime!
+# Capture group pattern for version extraction
+VER = r'(\d{2}\.\d{4}\.\d{4})'  # Matches and captures YY.MMDD.HHMM
+
 # All files that must have matching version
 VERSION_FILES = {
     "version.py": [
-        r'VERSION = "(\d+)"',
+        r'VERSION = "' + VER + r'"',
     ],
     "server/config.py": [
-        r'VERSION = "(\d+)"',
-        r'from version import VERSION',  # Verify import exists
+        r'from version import VERSION',  # Verify import exists (no version string here)
     ],
     "README.md": [
-        r'\*\*Version:\*\* (\d+)',
-        r'ver\. (\d+)',
+        r'\*\*Version:\*\* ' + VER,
+        r'ver\. ' + VER,
     ],
     "CLAUDE.md": [
-        r'\*\*Current Version:\*\* (\d+)',
-        r'v(\d{10})',  # YYMMDDHHMM format
+        r'\*\*Current Version:\*\* ' + VER,
+        r'v' + VER,
     ],
     "Roadmap.md": [
-        r'## Current Status.*v(\d+)',
-        r'Version (\d+)',
+        r'## Current Status.*v' + VER,
+        r'Version ' + VER,
     ],
     # Optional files (may not exist yet)
     "locaNext/package.json": [
-        r'"version": "(\d+\.\d+\.\d+)"',  # Semantic version
+        r'"version": "' + VER + r'"',  # Same unified format!
     ],
     "installer/locanext_electron.iss": [
-        r'#define MyAppVersion "(\d+)"',
+        r'#define MyAppVersion "' + VER + r'"',
     ],
     "installer/locanext_light.iss": [
-        r'#define MyAppVersion "(\d+)"',
+        r'#define MyAppVersion "' + VER + r'"',
     ],
 }
 
@@ -122,22 +131,20 @@ def get_source_version():
         sys.exit(1)
 
     content = version_path.read_text()
-    match = re.search(r'VERSION = "(\d+)"', content)
+    # Match unified format: YY.MMDD.HHMM (e.g., 25.1213.1540)
+    match = re.search(r'VERSION = "(\d{2}\.\d{4}\.\d{4})"', content)
     if not match:
-        print(f"❌ Error: Could not find VERSION in {VERSION_FILE}")
+        print(f"❌ Error: Could not find VERSION in unified format (YY.MMDD.HHMM) in {VERSION_FILE}")
         sys.exit(1)
 
     return match.group(1)
 
 
 def get_semantic_version():
-    """Get semantic version from version.py"""
-    version_path = Path(VERSION_FILE)
-    content = version_path.read_text()
-    match = re.search(r'SEMANTIC_VERSION = "(\d+\.\d+\.\d+)"', content)
-    if match:
-        return match.group(1)
-    return None
+    """Get semantic version from version.py - now same as VERSION (unified format)"""
+    # With unified format, SEMANTIC_VERSION = VERSION
+    # Both are now YY.MMDD.HHMM which is valid semver
+    return get_source_version()
 
 
 def check_file_versions(file_path, patterns, source_version, semantic_version=None):
@@ -231,11 +238,13 @@ def main():
         print("=" * 70)
         print("❌ BUILD BLOCKED: Version timestamp too far from current time!")
         print("   Update version to current timestamp before building.")
-        # Generate suggested version in KST
+        # Generate suggested version in KST using UNIFIED FORMAT: YY.MMDD.HHMM
         from datetime import datetime, timezone, timedelta
         kst = timezone(timedelta(hours=9))
-        suggested = datetime.now(kst).strftime('%y%m%d%H%M')
+        now_kst = datetime.now(kst)
+        suggested = f"{now_kst.strftime('%y')}.{now_kst.strftime('%m%d')}.{now_kst.strftime('%H%M')}"
         print(f"   Suggested version: {suggested}")
+        print("   Format: YY.MMDD.HHMM (valid semver + human-readable)")
         print("=" * 70)
         return 1
     print()

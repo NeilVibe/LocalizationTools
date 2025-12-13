@@ -3,17 +3,22 @@ LocaNext Version Configuration
 Single source of truth for version across entire project
 
 Based on VRS-Manager version management pattern
+FACTORIZED: Single version format for ALL uses (datetime + semver)
 """
 
-# Version in DateTime format: YYMMDDHHMM
-# Example: 2511221939 = November 22, 2025, 19:39
-VERSION = "2512131540"
+# UNIFIED VERSION FORMAT: YY.MMDD.HHMM
+# - Valid semver: 25.1213.1540 = X.Y.Z
+# - Human readable: Dec 13, 2025, 15:40 KST
+# - Auto-increments with time
+# - Works everywhere: electron, CI, installer, UI
+VERSION = "25.1213.1540"
 
 # Version footer for UI display
 VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform | XLSTransfer + QuickSearch"
 
-# Semantic version for package managers
-SEMANTIC_VERSION = "1.4.0"
+# DEPRECATED: No longer needed - VERSION is now semver-compatible
+# Kept for backwards compatibility during transition
+SEMANTIC_VERSION = VERSION  # Same as VERSION now!
 
 # Build type
 BUILD_TYPE = "LIGHT"  # FULL (with AI model) or LIGHT (without AI)
