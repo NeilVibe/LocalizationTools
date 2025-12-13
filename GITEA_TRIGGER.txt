@@ -208,3 +208,4 @@ Build LIGHT v2512131200 - CI PostgreSQL fix
 Build LIGHT v2512131210 - Fix: Use POSTGRES_* env vars
 Build LIGHT v2512131215 - Fix: Add asyncpg for async PostgreSQL
 Build LIGHT v2512131220 - Fix: SQLite test uses specific tables (no JSONB)
+Build LIGHT v2512131230 - Skip JSONB model tests in CI
