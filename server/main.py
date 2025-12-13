@@ -12,13 +12,14 @@ from contextlib import asynccontextmanager
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from datetime import datetime
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
 
 from server import config
-from server.utils.dependencies import initialize_database, initialize_async_database
+from server.utils.dependencies import initialize_database, initialize_async_database, get_async_db
 from server.api import auth, logs, sessions
 from server.api import auth_async, logs_async, sessions_async
 from server.utils.websocket import socket_app
@@ -312,34 +313,32 @@ async def get_latest_version():
 
 
 @app.get("/api/announcements")
-async def get_announcements():
+async def get_announcements(db: AsyncSession = Depends(get_async_db)):
     """Get active announcements for users."""
     from sqlalchemy import select, or_
-    from server.utils.dependencies import get_async_db
     from server.database.models import Announcement
 
-    async for db in get_async_db():
-        now = datetime.utcnow()
-        result = await db.execute(
-            select(Announcement).where(
-                Announcement.is_active == True,
-                or_(Announcement.expires_at == None, Announcement.expires_at > now)
-            )
+    now = datetime.utcnow()
+    result = await db.execute(
+        select(Announcement).where(
+            Announcement.is_active == True,
+            or_(Announcement.expires_at == None, Announcement.expires_at > now)
         )
-        announcements = result.scalars().all()
+    )
+    announcements = result.scalars().all()
 
-        return {
-            "announcements": [
-                {
-                    "id": a.announcement_id,
-                    "title": a.title,
-                    "message": a.message,
-                    "priority": a.priority,
-                    "created_at": a.created_at.isoformat()
-                }
-                for a in announcements
-            ]
-        }
+    return {
+        "announcements": [
+            {
+                "id": a.announcement_id,
+                "title": a.title,
+                "message": a.message,
+                "priority": a.priority,
+                "created_at": a.created_at.isoformat()
+            }
+            for a in announcements
+        ]
+    }
 
 
 # ============================================
