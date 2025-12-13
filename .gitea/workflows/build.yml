@@ -386,7 +386,9 @@ jobs:
   build-windows:
     name: Build Windows LIGHT Installer
     needs: [check-build-trigger, safety-checks]
-    # Run after safety-checks passes
+    # Run even if safety-checks is skipped (WINDOWS_BUILD checkpoint)
+    # But NOT if safety-checks failed
+    if: ${{ !failure() && !cancelled() && needs.check-build-trigger.outputs.should_build == 'true' }}
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
     env:
