@@ -1,13 +1,13 @@
 # ============================================================================
 # LocaNext Build Pipeline - Gitea Actions
-# MIRRORS GITHUB WORKFLOW EXACTLY (832 lines → Gitea compatible)
 # ============================================================================
-# This workflow is 100% identical to .github/workflows/build-electron.yml
-# with only these Gitea-specific adaptations:
-#   - windows-latest → self-hosted (Windows runner required)
-#   - softprops/action-gh-release → Gitea REST API
-#   - gh release list → Gitea API
-#   - GITHUB_TOKEN → RELEASE_TOKEN (GITEA_ prefix is reserved)
+# 3 MODES:
+#   - Build LIGHT: Full official build (~200MB)
+#   - Build FULL:  Same + bundled AI model (~2GB)
+#   - TROUBLESHOOT: Smart checkpoint mode (resume from last failure)
+#
+# VERSION: Auto-generated YY.MMDD.HHMM format (Pipeline Executive Power)
+# CHECKPOINT: Stored at /home/neil1988/.locanext_checkpoint (persistent)
 # ============================================================================
 
 name: Build LocaNext LIGHT Installer
@@ -25,7 +25,7 @@ env:
 
 jobs:
   # ============================================================
-  # JOB 1: Check Build Trigger (IDENTICAL TO GITHUB)
+  # JOB 1: Check Build Trigger
   # ============================================================
   check-build-trigger:
     name: Check Build Trigger
@@ -80,7 +80,7 @@ jobs:
           fi
 
   # ============================================================
-  # JOB 2: Safety Checks (IDENTICAL TO GITHUB)
+  # JOB 2: Safety Checks (Tests, Security, Version)
   # ============================================================
   safety-checks:
     name: Safety Checks (Tests, Security, Version)
@@ -331,8 +331,8 @@ jobs:
           echo "============================================"
 
   # ============================================================
-  # JOB 3: Build Windows Installer (REQUIRES WINDOWS SELF-HOSTED RUNNER)
-  # Skips if TEST ONLY mode (fast iteration on test fixes)
+  # JOB 3: Build Windows Installer
+  # Skips if TROUBLESHOOT mode (test-only, no build artifact)
   # ============================================================
   build-windows:
     name: Build Windows LIGHT Installer
@@ -364,8 +364,8 @@ jobs:
           Write-Host "Fetching: $versionUrl"
           $content = (Invoke-WebRequest -Uri $versionUrl -UseBasicParsing).Content
 
-          # Extract VERSION using regex
-          if ($content -match 'VERSION\s*=\s*"(\d+)"') {
+          # Extract VERSION using regex (YY.MMDD.HHMM format)
+          if ($content -match 'VERSION\s*=\s*"(\d{2}\.\d{4}\.\d{4})"') {
             $version = $Matches[1]
             Write-Host "Detected version: $version"
             "version=$version" >> $env:GITHUB_OUTPUT
