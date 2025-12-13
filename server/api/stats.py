@@ -12,7 +12,8 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case, and_, desc, text
+from sqlalchemy import select, func, case, and_, desc, text, cast
+from sqlalchemy.types import Numeric
 from loguru import logger
 
 from server.database.models import User as UserModel, Session, LogEntry, ErrorLog
@@ -65,9 +66,12 @@ async def get_overview_stats(
         # Success rate (today)
         success_rate_query = select(
             func.round(
-                100.0 * func.sum(
-                    case((LogEntry.status == 'success', 1), else_=0)
-                ) / func.count(LogEntry.log_id),
+                cast(
+                    100.0 * func.sum(
+                        case((LogEntry.status == 'success', 1), else_=0)
+                    ) / func.count(LogEntry.log_id),
+                    Numeric
+                ),
                 2
             )
         ).where(LogEntry.timestamp >= today_start)
@@ -199,10 +203,10 @@ async def get_weekly_stats(
             func.count(LogEntry.log_id).label('total_ops'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
             func.round(
-                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                cast(100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id), Numeric),
                 2
             ).label('success_rate'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration')
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration')
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
@@ -425,9 +429,9 @@ async def get_function_stats(
         query = select(
             LogEntry.function_name,
             func.count(LogEntry.log_id).label('usage_count'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration'),
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration'),
             func.round(
-                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                cast(100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id), Numeric),
                 2
             ).label('success_rate')
         ).where(
@@ -646,7 +650,7 @@ async def get_error_rate(
                 case((LogEntry.status == 'error', 1), else_=0)
             ).label('errors'),
             func.round(
-                100.0 * func.sum(case((LogEntry.status == 'error', 1), else_=0)) / func.count(LogEntry.log_id),
+                cast(100.0 * func.sum(case((LogEntry.status == 'error', 1), else_=0)) / func.count(LogEntry.log_id), Numeric),
                 2
             ).label('error_rate')
         ).where(
@@ -794,9 +798,9 @@ async def get_stats_by_team(
             UserModel.team,
             func.count(LogEntry.log_id).label('total_ops'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration'),
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration'),
             func.round(
-                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                cast(100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id), Numeric),
                 2
             ).label('success_rate')
         ).join(
@@ -883,9 +887,9 @@ async def get_stats_by_language(
             UserModel.language,
             func.count(LogEntry.log_id).label('total_ops'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration'),
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration'),
             func.round(
-                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                cast(100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id), Numeric),
                 2
             ).label('success_rate')
         ).join(
@@ -976,10 +980,10 @@ async def get_user_rankings(
             UserModel.language,
             func.count(LogEntry.log_id).label('total_ops'),
             func.round(
-                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                cast(100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id), Numeric),
                 2
             ).label('success_rate'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration')
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration')
         ).join(
             UserModel, LogEntry.user_id == UserModel.user_id
         ).where(

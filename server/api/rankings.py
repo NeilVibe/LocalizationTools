@@ -12,7 +12,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case, and_, desc, text
+from sqlalchemy import select, func, case, and_, desc, text, cast
+from sqlalchemy.types import Numeric
 from loguru import logger
 
 from server.database.models import User as UserModel, LogEntry
@@ -359,9 +360,9 @@ async def get_function_rankings(
             LogEntry.tool_name,
             LogEntry.function_name,
             func.count(LogEntry.log_id).label('usage_count'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration'),
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration'),
             func.round(
-                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                cast(100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id), Numeric),
                 2
             ).label('success_rate')
         ).where(
@@ -440,9 +441,9 @@ async def get_function_rankings_by_time(
             LogEntry.function_name,
             func.count(LogEntry.log_id).label('usage_count'),
             func.sum(LogEntry.duration_seconds).label('total_time_seconds'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration'),
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration'),
             func.round(
-                100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id),
+                cast(100.0 * func.sum(case((LogEntry.status == 'success', 1), else_=0)) / func.count(LogEntry.log_id), Numeric),
                 2
             ).label('success_rate')
         ).where(
