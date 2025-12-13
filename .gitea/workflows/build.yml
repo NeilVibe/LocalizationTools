@@ -469,22 +469,24 @@ jobs:
       SKIP_BUILD: ${{ needs.check-build-trigger.outputs.skip_build }}
       BUILD_VERSION: ${{ needs.check-build-trigger.outputs.version }}
       BUILD_TYPE: ${{ needs.check-build-trigger.outputs.build_type }}
+      BUILD_MODE: ${{ needs.check-build-trigger.outputs.mode }}
 
     steps:
       # Check if we should skip the build (TROUBLESHOOT mode)
       # BUT: If checkpoint is WINDOWS_BUILD, we must run (Linux already passed)
       - name: Check if should build
         run: |
-          Write-Host "SKIP_BUILD='$env:SKIP_BUILD'"
+          Write-Host "BUILD_MODE='$env:BUILD_MODE'"
 
-          # Skip build in TROUBLESHOOT mode (use TROUBLESHOOT_WINDOWS for Windows-only)
-          if ($env:SKIP_BUILD -match 'yes') {
+          # TROUBLESHOOT (not TROUBLESHOOT_WINDOWS) = skip Windows build
+          # TROUBLESHOOT_WINDOWS or official = run Windows build
+          if ($env:BUILD_MODE -eq 'troubleshoot') {
             Write-Host "::notice::TROUBLESHOOT mode - skipping Windows build"
             Write-Host "Use TROUBLESHOOT_WINDOWS trigger for Windows-only builds"
             exit 0
           }
 
-          Write-Host "[OK] Proceeding with Windows build"
+          Write-Host "[OK] Proceeding with Windows build (mode: $env:BUILD_MODE)"
         shell: powershell
 
       # Configure UTF-8 to handle Korean characters in output
