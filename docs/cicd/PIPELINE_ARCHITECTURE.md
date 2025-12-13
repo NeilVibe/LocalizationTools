@@ -6,27 +6,33 @@
 
 ## Pipeline Philosophy
 
-### Why Full Rebuild?
+### Official Builds: Full Rebuild
+
+For release builds (`Build LIGHT`, `Build FULL`), every build starts fresh:
 
 ```
-FULL REBUILD (Our Approach):
 ┌──────────────────────────────────────────────────────────┐
-│  Every build starts fresh                                │
 │  ✓ Clean state - no stale artifacts                     │
 │  ✓ Reproducible - same input = same output              │
 │  ✓ No "works on CI but not locally" bugs                │
 │  ✓ Simple to debug - no cache corruption                │
 └──────────────────────────────────────────────────────────┘
+```
 
-CHECKPOINT APPROACH (We avoid):
+### Troubleshoot Mode: Fast Iteration
+
+For debugging CI failures:
+
+```
 ┌──────────────────────────────────────────────────────────┐
-│  Resume from last successful step                        │
-│  ✗ Stale state can hide bugs                            │
-│  ✗ Cache corruption possible                            │
-│  ✗ Hard to reproduce issues                             │
-│  ✗ "It worked yesterday" syndrome                       │
+│  TEST ONLY path/to/test.py   → Run single test file     │
+│  TROUBLESHOOT                → Run all, save checkpoint │
+│  CONTINUE                    → Resume (same run only)   │
 └──────────────────────────────────────────────────────────┘
 ```
+
+**Note:** CONTINUE only works within the same CI run (checkpoints in /tmp are ephemeral).
+Use `TEST ONLY` for fast iteration across multiple runs.
 
 ### What We DO Cache
 

@@ -55,28 +55,29 @@ jobs:
             echo "[OK] Auto-generated version: $VERSION (YY.MMDD.HHMM in KST)"
 
             # ============================================================
-            # MODE DETECTION
+            # MODE DETECTION (uses ^ to match start of line ONLY)
+            # Order: TEST ONLY → TROUBLESHOOT → CONTINUE → OFFICIAL
             # ============================================================
 
+            # TEST ONLY MODE: Run specific test file (check FIRST - most specific)
+            if echo "$TRIGGER" | grep -q "^TEST ONLY"; then
+              TEST_PATH=$(echo "$TRIGGER" | sed 's/^TEST ONLY //' | awk '{print $1}')
+              echo "mode=test_only" >> $GITHUB_OUTPUT
+              echo "test_only=$TEST_PATH" >> $GITHUB_OUTPUT
+              echo "skip_build=true" >> $GITHUB_OUTPUT
+              echo "[TEST ONLY MODE] Running: $TEST_PATH"
+
             # TROUBLESHOOT MODE: Start fresh troubleshooting session
-            if echo "$TRIGGER" | grep -q "TROUBLESHOOT"; then
+            elif echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
               echo "skip_build=true" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT MODE] Starting new troubleshoot session"
 
             # CONTINUE MODE: Resume from last checkpoint
-            elif echo "$TRIGGER" | grep -q "CONTINUE"; then
+            elif echo "$TRIGGER" | grep -q "^CONTINUE"; then
               echo "mode=continue" >> $GITHUB_OUTPUT
               echo "skip_build=true" >> $GITHUB_OUTPUT
               echo "[CONTINUE MODE] Resuming from last checkpoint"
-
-            # TEST ONLY MODE: Run specific test file
-            elif echo "$TRIGGER" | grep -q "TEST ONLY"; then
-              TEST_PATH=$(echo "$TRIGGER" | sed 's/.*TEST ONLY //' | awk '{print $1}')
-              echo "mode=test_only" >> $GITHUB_OUTPUT
-              echo "test_only=$TEST_PATH" >> $GITHUB_OUTPUT
-              echo "skip_build=true" >> $GITHUB_OUTPUT
-              echo "[TEST ONLY MODE] Running: $TEST_PATH"
 
             # OFFICIAL MODE: Full clean build
             else

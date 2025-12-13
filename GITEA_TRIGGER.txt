@@ -231,3 +231,4 @@ Build LIGHT - FULL EXECUTIVE POWER: Pipeline auto-generates version at build tim
 Build LIGHT - FIX: Version check separates critical vs informational files
 Build LIGHT - FIX: Remove deprecated use_postgres parameter from tests/scripts
 TEST ONLY tests/integration/server_tests/test_api_endpoints.py - Verify 401 fix + new TROUBLESHOOT mode
+TEST ONLY tests/integration/server_tests/test_api_endpoints.py

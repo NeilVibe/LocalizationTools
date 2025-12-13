@@ -154,6 +154,22 @@ After successful build:
 
 ## Tips
 
+### Trigger Format Matters
+
+Mode keywords must be at the **start** of the line:
+
+```bash
+# Correct:
+TEST ONLY tests/path/to/test.py
+TROUBLESHOOT
+CONTINUE
+Build LIGHT - description
+
+# Wrong (mode keyword in description):
+Build LIGHT - TROUBLESHOOT fix      # Will detect as Build, not TROUBLESHOOT
+TEST ONLY tests/foo.py - CONTINUE   # Correct - CONTINUE is in description
+```
+
 ### Don't Specify Version
 
 ```bash
