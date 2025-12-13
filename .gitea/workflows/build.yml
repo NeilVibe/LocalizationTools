@@ -86,7 +86,7 @@ jobs:
     name: Safety Checks (Tests, Security, Version)
     runs-on: ubuntu-latest
     needs: check-build-trigger
-    if: ${{ needs.check-build-trigger.outputs.should_build }}
+    # Always run this job - check should_build internally to handle act_runner bugs
 
     # Gitea runner is host mode - use PostgreSQL installed on host
     # Created with: sudo -u postgres psql -c "CREATE USER locanext_ci ..."
@@ -97,17 +97,35 @@ jobs:
       POSTGRES_DB: locanext_ci_test
       POSTGRES_HOST: localhost
       POSTGRES_PORT: "5432"
+      # Pass outputs as env vars (avoids expression evaluation bugs)
+      SHOULD_BUILD: ${{ needs.check-build-trigger.outputs.should_build }}
+      BUILD_MODE: ${{ needs.check-build-trigger.outputs.mode }}
+      BUILD_VERSION: ${{ needs.check-build-trigger.outputs.version }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Verify build trigger
+        run: |
+          echo "=== Environment Variables from Job 1 ==="
+          echo "SHOULD_BUILD='$SHOULD_BUILD'"
+          echo "BUILD_MODE='$BUILD_MODE'"
+          echo "BUILD_VERSION='$BUILD_VERSION'"
+          # Regex match to handle both 'true' and '%!t(string=true)'
+          if [[ ! "$SHOULD_BUILD" =~ true ]]; then
+            echo "::error::No build trigger - this job should not have run"
+            exit 1
+          fi
+          echo "[OK] Build trigger verified"
 
       # ============================================================
       # EXECUTIVE POWER: Inject auto-generated version
       # ============================================================
       - name: Inject Version (Pipeline Executive Power)
         run: |
-          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          # Use env var (set from job outputs) to avoid expression mangling
+          VERSION="$BUILD_VERSION"
           echo "=== PIPELINE EXECUTIVE POWER ==="
           echo "Injecting version: $VERSION (YY.MMDD.HHMM format)"
 
@@ -228,10 +246,11 @@ jobs:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: "5432"
           RUN_API_TESTS: "1"
-          MODE: "${{ needs.check-build-trigger.outputs.mode }}"
         run: |
           echo "Server: $(curl -s http://localhost:8888/health)"
-          echo "Mode: $MODE"
+          echo "Mode: $BUILD_MODE"
+          # Use BUILD_MODE from job-level env
+          MODE="$BUILD_MODE"
 
           # PERSISTENT checkpoint (survives across CI runs - host mode)
           # Use absolute path to avoid $HOME override issues
@@ -337,13 +356,30 @@ jobs:
   build-windows:
     name: Build Windows LIGHT Installer
     needs: [check-build-trigger, safety-checks]  # Wait for tests to pass
-    if: ${{ !needs.check-build-trigger.outputs.skip_build }}
+    # NOTE: Removed 'if' condition due to act_runner bug - check internally
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
+    env:
+      SKIP_BUILD: ${{ needs.check-build-trigger.outputs.skip_build }}
+      BUILD_VERSION: ${{ needs.check-build-trigger.outputs.version }}
+
     steps:
+      # Check if we should skip the build (TROUBLESHOOT mode)
+      - name: Check if should build
+        run: |
+          Write-Host "SKIP_BUILD='$env:SKIP_BUILD'"
+          # Match 'yes' anywhere in the value (handles %!t(string=yes) bug)
+          if ($env:SKIP_BUILD -match 'yes') {
+            Write-Host "::notice::TROUBLESHOOT mode - skipping Windows build"
+            exit 0
+          }
+          Write-Host "[OK] Proceeding with Windows build"
+        shell: powershell
+
       # Configure UTF-8 to handle Korean characters in output
       - name: Configure UTF-8 Console Encoding
         run: |
+          if ($env:SKIP_BUILD -match 'yes') { exit 0 }
           chcp 65001
           [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
           [Console]::InputEncoding = [System.Text.Encoding]::UTF8
