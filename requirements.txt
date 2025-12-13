@@ -40,6 +40,9 @@ psycopg2-binary==2.9.9  # PostgreSQL (sync)
 asyncpg>=0.29.0  # PostgreSQL (async)
 alembic==1.13.2  # Database migrations
 
+# XML Processing
+lxml>=4.9.0  # XML parsing for QA tools
+
 # Authentication & Security
 python-jose[cryptography]==3.3.0  # JWT (jose)
 PyJWT==2.9.0  # JWT (jwt) - used by auth.py
