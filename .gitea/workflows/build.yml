@@ -197,21 +197,40 @@ jobs:
           POSTGRES_PORT: "5432"
         run: |
           echo "=== Starting server for tests ==="
-          # Kill any existing server from previous runs (by PID file only, not pkill)
+          # Robust cleanup: Kill any process on port 8888 AND by PID file
+          echo "Cleaning up old server processes..."
+
+          # Kill by PID file
           if [ -f /tmp/server.pid ]; then
             OLD_PID=$(cat /tmp/server.pid)
-            echo "Killing old server (PID: $OLD_PID)..."
-            kill $OLD_PID 2>/dev/null || true
-            sleep 2
+            echo "Killing old server by PID file (PID: $OLD_PID)..."
+            kill -9 $OLD_PID 2>/dev/null || true
             rm -f /tmp/server.pid
           fi
+
+          # Kill any process on port 8888
+          PORT_PID=$(lsof -t -i:8888 2>/dev/null || true)
+          if [ -n "$PORT_PID" ]; then
+            echo "Killing process on port 8888 (PID: $PORT_PID)..."
+            kill -9 $PORT_PID 2>/dev/null || true
+          fi
+
+          # Wait for port to be free
+          sleep 3
+
+          # Verify port is free
+          if lsof -i:8888 > /dev/null 2>&1; then
+            echo "[ERROR] Port 8888 still in use!"
+            lsof -i:8888
+            exit 1
+          fi
+          echo "[OK] Port 8888 is free"
 
           # Clear Python cache to ensure fresh code is used
           find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
           # Start server with nohup to survive shell exit (critical for CI steps)
           # Note: CI=true (job env) already skips rate limiting, no need for DEV_MODE
-          # DEV_MODE would also bypass auth - we need auth tests to work properly
           rm -f /tmp/server.log
           nohup env PYTHONDONTWRITEBYTECODE=1 CI=true python3.11 server/main.py > /tmp/server.log 2>&1 &
           SERVER_PID=$!
@@ -220,10 +239,14 @@ jobs:
 
           echo "Server started with PID: $SERVER_PID (nohup + disown)"
 
-          # Wait for server with retries
-          for i in {1..15}; do
+          # Wait for server with retries (60 seconds total - server init can be slow)
+          for i in {1..30}; do
             sleep 2
-            echo "Checking server... ($i/15)"
+            # Show progress every 5 iterations
+            if [ $((i % 5)) -eq 0 ]; then
+              echo "Waiting for server... ($i/30) - Last log:"
+              tail -1 /tmp/server.log 2>/dev/null || echo "(no log yet)"
+            fi
             if curl -s http://localhost:8888/health | grep -q "healthy"; then
               echo "[OK] Server is healthy (PID: $SERVER_PID)"
               # Verify server is still running
@@ -238,10 +261,12 @@ jobs:
             fi
           done
 
-          echo "[ERROR] Server failed to start!"
-          echo "=== Server logs ==="
+          echo "[ERROR] Server failed to start within 60 seconds!"
+          echo "=== Server logs (last 100 lines) ==="
           cat /tmp/server.log | tail -100
-          kill $SERVER_PID 2>/dev/null || true
+          echo "=== Process status ==="
+          ps -p $SERVER_PID -o pid,state,cmd 2>/dev/null || echo "Process not found"
+          kill -9 $SERVER_PID 2>/dev/null || true
           exit 1
 
       # ---- CREATE ADMIN USER FOR TESTS ----
