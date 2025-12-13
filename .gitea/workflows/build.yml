@@ -267,12 +267,13 @@ jobs:
                 echo "Clearing checkpoint and running remaining tests..."
                 rm -f "$CHECKPOINT_FILE"
 
-                # Run full suite
+                # Run full suite with live output
                 set +e
-                python3.11 -m pytest $TEST_DIRS $DESELECTS -v --tb=short -x > /tmp/pytest_output.txt 2>&1
+                set -o pipefail
+                python3.11 -m pytest $TEST_DIRS $DESELECTS -v --tb=short -x 2>&1 | tee /tmp/pytest_output.txt
                 RESULT=$?
+                set +o pipefail
                 set -e
-                cat /tmp/pytest_output.txt
               else
                 echo "[STILL FAILING] $FAILED_TEST"
                 echo "Fix and trigger TROUBLESHOOT again"
@@ -280,14 +281,13 @@ jobs:
               fi
             else
               echo "[NO CHECKPOINT] Running full test suite..."
-              # Run pytest and capture exit code properly
-              # Use script to capture output while preserving exit code
+              # Run pytest with live output + capture exit code
               set +e
-              python3.11 -m pytest $TEST_DIRS $DESELECTS -v --tb=short -x > /tmp/pytest_output.txt 2>&1
+              set -o pipefail
+              python3.11 -m pytest $TEST_DIRS $DESELECTS -v --tb=short -x 2>&1 | tee /tmp/pytest_output.txt
               RESULT=$?
+              set +o pipefail
               set -e
-              # Show output
-              cat /tmp/pytest_output.txt
             fi
 
             # Save checkpoint on failure
