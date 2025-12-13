@@ -10,9 +10,12 @@ import sys
 from pathlib import Path
 import tempfile
 import shutil
-from typing import Generator
+from typing import Generator, Optional
 import pandas as pd
 import openpyxl
+import requests
+import time
+import os
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -21,6 +24,227 @@ sys.path.insert(0, str(project_root))
 # Pre-import client_config module to ensure it's available for monkeypatch
 # This fixes test isolation issues where module import order affects attribute access
 import server.client_config.client_config  # noqa: E402, F401
+
+
+# ============================================
+# Admin User Management (Self-Healing)
+# ============================================
+
+# Constants for admin credentials
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin123"
+BASE_URL = "http://localhost:8888"
+
+
+def _server_is_running() -> bool:
+    """Check if the server is running."""
+    try:
+        response = requests.get(f"{BASE_URL}/health", timeout=2)
+        return response.ok
+    except Exception:
+        return False
+
+
+def _try_admin_login() -> Optional[str]:
+    """
+    Try to login as admin.
+
+    Returns:
+        Access token if successful, None otherwise.
+    """
+    try:
+        response = requests.post(
+            f"{BASE_URL}/api/v2/auth/login",
+            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
+            timeout=10
+        )
+        if response.status_code == 200:
+            return response.json().get("access_token")
+        return None
+    except Exception:
+        return None
+
+
+def _ensure_admin_exists() -> bool:
+    """
+    Ensure admin user exists with correct password.
+
+    This is the SELF-HEALING mechanism:
+    - Directly accesses the database to fix admin user
+    - Resets password if admin exists but password is wrong
+    - Creates admin if it doesn't exist
+
+    Returns:
+        True if admin is now ready, False if failed.
+    """
+    try:
+        from server.database.db_setup import setup_database
+        from server.database.models import User
+        from server.utils.auth import hash_password
+        from server import config
+        from datetime import datetime
+
+        # Get database session
+        engine, session_maker = setup_database(drop_existing=False)
+        db = session_maker()
+
+        try:
+            # Check if admin exists
+            admin = db.query(User).filter(User.username == ADMIN_USERNAME).first()
+
+            if admin:
+                # Admin exists - reset password to known value
+                admin.password_hash = hash_password(ADMIN_PASSWORD)
+                admin.is_active = True  # Ensure active
+                db.commit()
+                print(f"[conftest] Admin user password reset to {ADMIN_PASSWORD}")
+                return True
+            else:
+                # Create admin user
+                admin = User(
+                    username=ADMIN_USERNAME,
+                    password_hash=hash_password(ADMIN_PASSWORD),
+                    email=config.DEFAULT_ADMIN_EMAIL,
+                    full_name="System Administrator",
+                    department="IT",
+                    role="superadmin",
+                    is_active=True,
+                    created_at=datetime.utcnow()
+                )
+                db.add(admin)
+                db.commit()
+                print(f"[conftest] Admin user created: {ADMIN_USERNAME}")
+                return True
+
+        finally:
+            db.close()
+
+    except Exception as e:
+        print(f"[conftest] Failed to ensure admin exists: {e}")
+        return False
+
+
+def get_admin_token_with_retry(max_retries: int = 3) -> str:
+    """
+    Get admin token with self-healing retry logic.
+
+    This is the ROBUST fix for admin login failures:
+    1. Try to login
+    2. If login fails, ensure admin exists (fix credentials)
+    3. Retry login
+
+    Args:
+        max_retries: Maximum number of retry attempts.
+
+    Returns:
+        Valid admin access token.
+
+    Raises:
+        RuntimeError: If unable to get admin token after all retries.
+    """
+    if not _server_is_running():
+        raise RuntimeError("Server is not running at http://localhost:8888")
+
+    for attempt in range(max_retries):
+        # Try to login
+        token = _try_admin_login()
+        if token:
+            return token
+
+        # Login failed - try to fix admin user
+        print(f"[conftest] Admin login failed (attempt {attempt + 1}/{max_retries}), ensuring admin exists...")
+
+        if _ensure_admin_exists():
+            # Wait a moment for database changes to propagate
+            time.sleep(0.5)
+
+            # Try login again
+            token = _try_admin_login()
+            if token:
+                print(f"[conftest] Admin login succeeded after self-healing")
+                return token
+
+        # Wait before next retry
+        time.sleep(1)
+
+    raise RuntimeError(
+        f"Failed to get admin token after {max_retries} attempts. "
+        f"Check if server is running and database is accessible. "
+        f"URL: {BASE_URL}, Username: {ADMIN_USERNAME}"
+    )
+
+
+@pytest.fixture(scope="session")
+def admin_token_session() -> str:
+    """
+    Session-scoped admin token fixture.
+
+    This token is obtained ONCE at the start of the test session
+    using the self-healing mechanism. All tests in the session
+    can share this token.
+
+    Note: Use this for tests that don't modify admin credentials.
+    """
+    return get_admin_token_with_retry()
+
+
+@pytest.fixture
+def admin_token_fresh() -> str:
+    """
+    Fresh admin token fixture (function-scoped).
+
+    Gets a NEW token for each test. Use this if:
+    - Previous tests might have invalidated the token
+    - You need to ensure a fresh authentication state
+    """
+    return get_admin_token_with_retry()
+
+
+@pytest.fixture(scope="session")
+def admin_headers_session(admin_token_session: str) -> dict:
+    """Session-scoped authorization headers."""
+    return {"Authorization": f"Bearer {admin_token_session}"}
+
+
+@pytest.fixture
+def admin_headers_fresh(admin_token_fresh: str) -> dict:
+    """Fresh authorization headers (function-scoped)."""
+    return {"Authorization": f"Bearer {admin_token_fresh}"}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_admin_at_session_start():
+    """
+    Session-scoped autouse fixture that ensures admin user exists.
+
+    This runs ONCE at the very start of the test session, BEFORE any tests.
+    It ensures:
+    1. Admin user exists in the database
+    2. Admin password is set to 'admin123'
+    3. Admin is active
+
+    This protects ALL tests, even those that don't use the self-healing
+    admin_token fixtures explicitly.
+    """
+    # Only run if server is up (don't fail if server isn't running for unit tests)
+    if _server_is_running():
+        # Try login first - if it works, admin is fine
+        if not _try_admin_login():
+            # Login failed, ensure admin exists
+            print("[conftest] Session start: Admin login failed, ensuring admin exists...")
+            _ensure_admin_exists()
+            # Verify it works now
+            if _try_admin_login():
+                print("[conftest] Session start: Admin user is now ready")
+            else:
+                print("[conftest] Session start: WARNING - Admin still not working after fix attempt")
+        else:
+            print("[conftest] Session start: Admin user verified OK")
+
+    yield
+
+    # Session cleanup (optional)
+    pass
 
 
 # ============================================
