@@ -234,7 +234,8 @@ jobs:
           echo "Mode: $MODE"
 
           # PERSISTENT checkpoint (survives across CI runs - host mode)
-          CHECKPOINT_FILE="$HOME/.locanext_checkpoint"
+          # Use absolute path to avoid $HOME override issues
+          CHECKPOINT_FILE="/home/neil1988/.locanext_checkpoint"
 
           # Common test args (factored out)
           TEST_DIRS="tests/unit/ tests/integration/ tests/security/ tests/e2e/test_kr_similar_e2e.py tests/e2e/test_xlstransfer_e2e.py tests/e2e/test_quicksearch_e2e.py"
