@@ -228,3 +228,4 @@ Build LIGHT v2512131505 - CI-014: Use env vars for Gitea URL
 Build LIGHT v2512131540 - Version unified + all CI fixes
 Build LIGHT v25.1213.1540 - UNIFIED FORMAT: YY.MMDD.HHMM (semver + datetime factorized)
 Build LIGHT - FULL EXECUTIVE POWER: Pipeline auto-generates version at build time!
+Build LIGHT - FIX: Version check separates critical vs informational files
