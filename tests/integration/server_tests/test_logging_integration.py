@@ -156,8 +156,8 @@ class TestLogEntryCreation:
 
         test_db.commit()
 
-        # Query for specific tool
-        xls_logs = test_db.query(LogEntry).filter_by(tool_name="XLSTransfer").all()
+        # Query for specific tool (filter by function_name to avoid pollution from other tests)
+        xls_logs = test_db.query(LogEntry).filter_by(tool_name="XLSTransfer", function_name="test").all()
         assert len(xls_logs) == 3
 
     def test_query_logs_by_date_range(self, test_db, test_user):
