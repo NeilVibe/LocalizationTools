@@ -2,25 +2,56 @@
 
 ## Checking Logs
 
-### Live Logs (While Running)
+### Live Logs (While Running) - USE CURL
 
 ```bash
 # Get latest run number
 curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oP 'runs/\d+' | head -1
 
-# Stream live logs (replace 203 with run number)
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/203/jobs/1/logs" | tail -50
+# Stream live logs (replace 221 with run number)
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/221/jobs/1/logs" | tail -50
+
+# Filter for test results only
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/221/jobs/1/logs" | grep -E "(PASSED|FAILED|remaining)" | tail -30
 ```
 
-### Disk Logs (After Completion)
+### Last Fail Log (After Completion) - USE DISK
+
+**NOT curl** - read from disk on the runner machine:
 
 ```bash
-# Find latest build folder
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3
+# SSH to runner and find latest log
+ssh neil1988@localhost "ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3"
 
-# Read log
-tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log
+# Read the log file (replace <folder> with actual folder name)
+ssh neil1988@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep -E 'FAILED|Error|assert' | tail -50"
+
+# Or just get the last failure line
+ssh neil1988@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep FAILED | tail -1"
 ```
+
+### Quick Reference
+
+| Need | Method |
+|------|--------|
+| Build still running? | `curl` live logs |
+| Build finished, find last fail? | `ssh` + disk logs |
+
+### Windows Build Logs
+
+Windows builds run on a separate runner. Check these logs for Windows-specific failures:
+
+```bash
+# Find Windows build logs (usually "fe" folder for Windows job)
+ssh neil1988@localhost "ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5"
+
+# Check specific folder for Windows errors
+ssh neil1988@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/fe/*.log | grep -E 'FAILED|Error|Traceback' | tail -20"
+```
+
+Common Windows errors:
+- `AssertionError: A version must be provided for OpenAPI` → VERSION import failing
+- `Server import test FAILED` → Check embedded Python path issues
 
 ---
 
