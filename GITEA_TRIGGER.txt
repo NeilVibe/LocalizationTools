@@ -218,3 +218,4 @@ Build LIGHT v2512131245 - Skip JSONB tests when SQLite
 Build LIGHT v2512131255 - Full PostgreSQL tests (no skips)
 Build LIGHT v2512131300 - 0 skips: server running + PostgreSQL env + lxml + deselect model tests
 Build LIGHT v2512131330 - CI/CD fix: Windows waits for tests, correct deselect, admin user
+Build LIGHT v2512131330 - Fix: Runtime server check (18 skips -> 0)
