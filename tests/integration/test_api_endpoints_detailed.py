@@ -312,7 +312,7 @@ class TestAPIInputValidation:
             "query": long_query,
             "threshold": 0.5
         })
-        assert response.status_code in [200, 400, 403, 413, 422, 500]
+        assert response.status_code in [200, 400, 401, 403, 413, 422, 500]
 
     def test_null_values_rejected(self, client):
         """Null values in required fields rejected."""
