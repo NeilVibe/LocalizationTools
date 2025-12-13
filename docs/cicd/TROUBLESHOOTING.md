@@ -55,30 +55,25 @@ Common Windows errors:
 
 ---
 
-## TROUBLESHOOT Modes
+## TROUBLESHOOT Mode
 
-Two modes for iterative fixing:
+Checkpoint system for iterative test fixing.
 
-| Mode | Trigger | What it does |
-|------|---------|--------------|
-| `TROUBLESHOOT` | Linux tests only | Checkpoint system, skip Windows build |
-| `TROUBLESHOOT_WINDOWS` | Windows build only | Skip Linux tests, run Windows build |
-
-### Trigger Linux Tests
+### Trigger
 
 ```bash
 echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt
 git add -A && git commit -m "TROUBLESHOOT" && git push gitea main
 ```
 
-### Trigger Windows Build Only (Skip Linux)
+### WINDOWS_BUILD Checkpoint
 
-```bash
-echo "TROUBLESHOOT_WINDOWS" >> GITEA_TRIGGER.txt
-git add -A && git commit -m "TROUBLESHOOT_WINDOWS" && git push gitea main
-```
+If Linux tests pass but Windows build fails:
+1. Checkpoint automatically saves as "WINDOWS_BUILD"
+2. Next TROUBLESHOOT skips Linux tests, runs Windows build
+3. When Windows build succeeds, checkpoint is cleared
 
-Use `TROUBLESHOOT_WINDOWS` when Linux tests pass but Windows build fails.
+This prevents re-running 900+ tests when only Windows is failing.
 
 ### How It Works
 

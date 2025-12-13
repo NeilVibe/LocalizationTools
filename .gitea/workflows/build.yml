@@ -255,11 +255,19 @@ jobs:
           # ============================================================
           # TROUBLESHOOT MODE: True resume from checkpoint
           # - Checkpoint = list of remaining tests (one per line)
+          # - Checkpoint = "WINDOWS_BUILD" means skip to Windows build
           # - Resume runs only remaining tests, not full suite
           # - On failure: update checkpoint with new remaining tests
           # ============================================================
           if [ "$MODE" = "troubleshoot" ]; then
             echo "=== TROUBLESHOOT MODE ==="
+
+            # Check if checkpoint says to skip to Windows build
+            if [ -f "$CHECKPOINT_FILE" ] && grep -q "^WINDOWS_BUILD$" "$CHECKPOINT_FILE"; then
+              echo "[CHECKPOINT] WINDOWS_BUILD - Skipping Linux tests"
+              echo "Linux tests already passed. Proceeding to Windows build."
+              exit 0
+            fi
 
             if [ -f "$CHECKPOINT_FILE" ]; then
               REMAINING=$(wc -l < "$CHECKPOINT_FILE")
@@ -370,8 +378,7 @@ jobs:
   build-windows:
     name: Build Windows LIGHT Installer
     needs: [check-build-trigger, safety-checks]
-    # Run if: (1) safety-checks passed, OR (2) TROUBLESHOOT_WINDOWS mode (skip_linux=yes)
-    if: always() && (needs.safety-checks.result == 'success' || needs.safety-checks.result == 'skipped')
+    # Run after safety-checks passes
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
     env:
@@ -380,15 +387,36 @@ jobs:
 
     steps:
       # Check if we should skip the build (TROUBLESHOOT mode)
+      # BUT: If checkpoint is WINDOWS_BUILD, we must run (Linux already passed)
       - name: Check if should build
         run: |
           Write-Host "SKIP_BUILD='$env:SKIP_BUILD'"
-          # Match 'yes' anywhere in the value (handles %!t(string=yes) bug)
-          if ($env:SKIP_BUILD -match 'yes') {
+          $checkpointFile = "\\wsl.localhost\Ubuntu-22.04\home\neil1988\.locanext_checkpoint"
+
+          # Check if WINDOWS_BUILD checkpoint exists (forces build even in TROUBLESHOOT)
+          $forceWindowsBuild = $false
+          if (Test-Path $checkpointFile) {
+            $content = Get-Content $checkpointFile -Raw -ErrorAction SilentlyContinue
+            if ($content -match "WINDOWS_BUILD") {
+              Write-Host "[CHECKPOINT] WINDOWS_BUILD found - running Windows build"
+              $forceWindowsBuild = $true
+            }
+          }
+
+          # Skip build in TROUBLESHOOT mode (unless WINDOWS_BUILD checkpoint)
+          if (($env:SKIP_BUILD -match 'yes') -and (-not $forceWindowsBuild)) {
             Write-Host "::notice::TROUBLESHOOT mode - skipping Windows build"
             exit 0
           }
+
           Write-Host "[OK] Proceeding with Windows build"
+
+          # Save WINDOWS_BUILD checkpoint (if not already set)
+          # So if build fails, next TROUBLESHOOT skips Linux
+          if (-not $forceWindowsBuild) {
+            "WINDOWS_BUILD" | Out-File -FilePath $checkpointFile -Encoding utf8 -Force
+            Write-Host "[CHECKPOINT] Saved WINDOWS_BUILD (Linux passed)"
+          }
         shell: powershell
 
       # Configure UTF-8 to handle Korean characters in output
@@ -1416,6 +1444,13 @@ jobs:
 
       - name: Build Complete + Cache Summary
         run: |
+          # Clear WINDOWS_BUILD checkpoint on success
+          $checkpointFile = "\\wsl.localhost\Ubuntu-22.04\home\neil1988\.locanext_checkpoint"
+          if (Test-Path $checkpointFile) {
+            Remove-Item $checkpointFile -Force -ErrorAction SilentlyContinue
+            Write-Host "[CHECKPOINT] Cleared (build succeeded)" -ForegroundColor Green
+          }
+
           Write-Host ""
           Write-Host "============================================" -ForegroundColor Cyan
           Write-Host "  BUILD COMPLETE + CACHE SUMMARY" -ForegroundColor Cyan
