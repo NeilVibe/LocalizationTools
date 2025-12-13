@@ -90,12 +90,17 @@ git commit -m "Trigger build"
 git push origin main && git push gitea main
 ```
 
-### Build Types
+### Build Types & Modes
 
-| Type | Command | Size | Description |
-|------|---------|------|-------------|
-| LIGHT | `Build LIGHT` | ~200MB | Frontend + backend, model downloads on first run |
-| FULL | `Build FULL` | ~2GB | Everything bundled including AI model |
+| Mode | Trigger | Description |
+|------|---------|-------------|
+| **Build LIGHT** | `Build LIGHT - desc` | ~200MB, model downloads on first run |
+| **Build FULL** | `Build FULL - desc` | ~2GB, AI model bundled |
+| **TEST ONLY** | `TEST ONLY path/to/test.py` | Run single test file (fast iteration) |
+| **TROUBLESHOOT** | `TROUBLESHOOT` | Run all tests, save checkpoint on failure |
+| **CONTINUE** | `CONTINUE` | Resume from checkpoint (same CI run only) |
+
+**Note:** Mode keywords must be at **start** of line.
 
 ---
 
