@@ -3,8 +3,12 @@ Unit Tests for Dependencies Module
 
 Tests FastAPI dependency injection functions.
 TRUE SIMULATION - no mocks, real database and auth operations.
+
+NOTE: These tests require PostgreSQL with correct credentials.
+Skip in environments without proper PostgreSQL setup (e.g., Gitea host mode).
 """
 
+import os
 import pytest
 import sys
 from pathlib import Path
@@ -12,6 +16,27 @@ from pathlib import Path
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
+
+
+def postgresql_available():
+    """Check if PostgreSQL is available with correct credentials."""
+    # In CI with PostgreSQL service, POSTGRES_USER is set
+    # Locally, server defaults may work
+    # On Gitea host mode, PostgreSQL exists but credentials are wrong
+    pg_user = os.getenv("POSTGRES_USER")
+    if pg_user:
+        return True  # CI environment with configured PostgreSQL
+    # Check if we're NOT in CI (local dev might have PostgreSQL configured)
+    if not os.getenv("CI") and not os.getenv("GITHUB_ACTIONS"):
+        return True  # Local dev - try to connect
+    return False  # CI without POSTGRES_USER = no valid PostgreSQL
+
+
+# Skip entire module if PostgreSQL not properly configured
+pytestmark = pytest.mark.skipif(
+    not postgresql_available(),
+    reason="PostgreSQL not configured (Gitea host mode or CI without service)"
+)
 
 
 class TestDatabaseInitialization:
