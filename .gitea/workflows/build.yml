@@ -167,6 +167,19 @@ jobs:
           cat /tmp/server.pid | xargs kill 2>/dev/null || true
           exit 1
 
+      # ---- CREATE ADMIN USER FOR TESTS ----
+      - name: Create Admin User
+        env:
+          POSTGRES_USER: locanext_ci
+          POSTGRES_PASSWORD: locanext_ci_test
+          POSTGRES_DB: locanext_ci_test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
+        run: |
+          echo "=== Creating admin user for tests ==="
+          python3.11 scripts/create_admin.py || echo "Admin may already exist"
+          echo "[OK] Admin user ready"
+
       # ---- PYTHON TESTS ----
       - name: Run Python Tests
         env:
@@ -187,11 +200,11 @@ jobs:
             tests/e2e/test_xlstransfer_e2e.py \
             tests/e2e/test_quicksearch_e2e.py \
             tests/unit/ \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_05_model_loads \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_06_process_excel_for_dictionary \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_07_save_and_load_dictionary \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_08_find_best_match \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_09_translate_with_high_threshold \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold \
             -v --tb=short --no-cov -x
           echo "[OK] All Python tests passed"
 
@@ -229,9 +242,8 @@ jobs:
   # ============================================================
   build-windows:
     name: Build Windows LIGHT Installer
+    needs: build-linux  # Wait for tests to pass before building
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
-    # NOTE: Removed `needs:` to fix act_runner job status bug
-    # Build trigger is checked directly in the first step
 
     steps:
       # Configure UTF-8 to handle Korean characters in output
