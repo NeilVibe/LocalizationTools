@@ -1,251 +1,79 @@
 # CI/CD Troubleshooting Guide
 
-**Quick fixes for common CI/CD failures**
+## Checking Logs
+
+### Live Logs (While Running)
+
+```bash
+# Get latest run number
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oP 'runs/\d+' | head -1
+
+# Stream live logs (replace 203 with run number)
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/203/jobs/1/logs" | tail -50
+```
+
+### Disk Logs (After Completion)
+
+```bash
+# Find latest build folder
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3
+
+# Read log
+tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log
+```
 
 ---
 
 ## TROUBLESHOOT Mode
 
-**Smart checkpoint system for iterative test fixing.**
+Checkpoint system for iterative test fixing.
+
+### Trigger
+
+```bash
+echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "TROUBLESHOOT" && git push gitea main
+```
 
 ### How It Works
 
-```
-TROUBLESHOOT trigger
-       ↓
-   Run tests
-       ↓
- Test fails? ──→ Save checkpoint → Exit
-       ↓              ↓
-   All pass     Fix code, push
-       ↓              ↓
-    Done        TROUBLESHOOT again
-                      ↓
-                Resume at checkpoint
-```
+1. First run: Collects all tests, runs from beginning
+2. On failure: Saves remaining tests to `~/.locanext_checkpoint`
+3. Next run: Resumes from checkpoint
 
-### Claude Code Autonomous Loop Protocol
-
-**When using TROUBLESHOOT mode with Claude Code, follow this loop:**
-
-```
-1. TRIGGER BUILD
-   echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt
-   git add -A && git commit -m "TROUBLESHOOT" && git push gitea main
-
-2. SLEEP 10 MINUTES
-   (Build takes time - don't check immediately)
-
-3. CHECK BUILD STATUS
-   - Check Gitea UI: http://localhost:3000/neilvibe/LocaNext/actions
-   - OR check logs: tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<latest>/*.log
-
-   STATUS:
-   - STILL RUNNING → Go to step 2 (sleep again)
-   - FAILED → Go to step 4
-   - PASSED → Done!
-
-4. IF FAILED:
-   - Read error message from logs
-   - Fix the code
-   - Commit fix
-   - Go to step 1 (checkpoint auto-resumes)
-
-5. REPEAT until all tests pass
-```
-
-**Key Points:**
-- Sleep 10 minutes between checks (builds take time)
-- Checkpoint persists across builds - no restart from test #1
-- Each iteration resumes from the exact failed test
-- Fix one issue at a time for clean debugging
-- This is a FULL AUTONOMOUS LOOP within Claude Code memory
-
-### Quick Commands
+### Commands
 
 ```bash
 # Check checkpoint
 cat ~/.locanext_checkpoint
 
-# Check latest log (ALWAYS DO THIS FIRST)
-tail -5 $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)
-
-# Clear checkpoint manually
+# Clear checkpoint (restart from beginning)
 rm ~/.locanext_checkpoint
 ```
 
-### Checkpoint Location
+---
 
-`/home/neil1988/.locanext_checkpoint` - Persists across CI runs (host mode).
+## Common Errors
+
+| Error | Fix |
+|-------|-----|
+| `round(double precision, integer) does not exist` | Cast to Numeric: `func.round(cast(x, Numeric), 2)` |
+| `got Future attached to a different loop` | Use `Depends(get_async_db)` not `async for` |
+| `Cannot create symbolic link` | Add `sign: false` to package.json |
+| `No module named 'X'` | Add to requirements.txt |
 
 ---
 
-## CRITICAL RULES
-
-1. **NEVER rebuild without checking logs first.**
-2. **NEVER restart services to "fix" issues.** Find root cause.
-3. **ALWAYS proper fix.** No workarounds, no skipping tests.
-
-```bash
-# Step 1: Find latest build
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3
-
-# Step 2: Check for errors
-grep -i "error\|failed\|❌\|BLOCKED" ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | head -20
-
-# Step 3: Read the actual error
-tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/<number>.log
-```
-
-**NOTE:** Disk logs only appear AFTER job completes. For live logs, use Gitea web UI:
-`http://localhost:3000/neilvibe/LocaNext/actions`
-
----
-
-## Error Categories
-
-### Category A: Version Issues
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Version timestamp TOO FAR` | Old version in version.py | **AUTO-FIXED** - Pipeline generates version |
-| `Expected 'X', found 'Y'` in docs | Docs have old version | **WARN ONLY** - Doesn't block build |
-| `Expected 'X', found 'Y'` in critical files | Version injection failed | Check pipeline logs |
-
-### Category B: Test Failures
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `unexpected keyword argument 'use_postgres'` | Old function signature | Remove `use_postgres` parameter |
-| `No module named 'X'` | Missing dependency | Add to requirements.txt |
-| `Connection refused` | Server not running | Check PostgreSQL is up |
-
-### Category C: Build Failures
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Cannot create symbolic link` | Windows symlink permission | `sign: false` in package.json |
-| `Cannot parse version` | Invalid semver format | Use YY.MMDD.HHMM format |
-| `Env WIN_CSC_LINK is not correct` | Code signing misconfigured | Remove WIN_CSC_LINK entirely |
-
----
-
-## Quick Diagnosis Flow
+## Quick Diagnosis
 
 ```
 BUILD FAILED
      ↓
-┌────────────────────────────────┐
-│ 1. Check which job failed      │
-│    - check-build-trigger?      │
-│    - safety-checks?            │
-│    - build-windows?            │
-└────────────┬───────────────────┘
-             ↓
-┌────────────────────────────────┐
-│ 2. Read the error message      │
-│    grep "error\|failed" *.log  │
-└────────────┬───────────────────┘
-             ↓
-┌────────────────────────────────┐
-│ 3. Check this table:           │
-│    - Version issue? → Cat A    │
-│    - Test failed? → Cat B      │
-│    - Build failed? → Cat C     │
-└────────────┬───────────────────┘
-             ↓
-┌────────────────────────────────┐
-│ 4. Apply fix from table        │
-│ 5. Commit and push             │
-│ 6. Verify fix in next build    │
-└────────────────────────────────┘
+1. curl live logs (see above)
+2. Find error message
+3. Fix code
+4. Push and retrigger
 ```
-
----
-
-## Job-Specific Issues
-
-### Job 1: check-build-trigger
-
-**Common issues:**
-- No "Build LIGHT" or "Build FULL" in GITEA_TRIGGER.txt
-- Malformed trigger line
-
-**Fix:** Add proper trigger line:
-```
-Build LIGHT - description here
-```
-
-### Job 2: safety-checks
-
-**Common issues:**
-- Test failures
-- Import errors
-- Database connection errors
-
-**Debug commands:**
-```bash
-# Run tests locally
-python3 -m pytest tests/ -v --tb=short
-
-# Check specific test
-python3 -m pytest tests/path/to/test.py -v
-```
-
-### Job 3: build-windows
-
-**Common issues:**
-- Code signing errors
-- Missing dependencies
-- Path issues
-
-**Debug:** Check Windows runner is online:
-```bash
-# Check runner status
-cat /tmp/windows_runner_output.txt
-```
-
----
-
-## Version Check Details
-
-The version check has two categories:
-
-### Critical Files (Block Build)
-- `version.py` - Source of truth
-- `server/config.py` - Backend import
-- `locaNext/package.json` - Electron version
-- `installer/*.iss` - Installer version
-
-### Informational Files (Warn Only)
-- `README.md`
-- `CLAUDE.md`
-- `Roadmap.md`
-
-If critical files mismatch → Build fails
-If informational files mismatch → Warning only, build continues
-
----
-
-## Historical Fixes
-
-| Date | Error | Root Cause | Fix |
-|------|-------|------------|-----|
-| 2025-12-13 | `use_postgres` TypeError | Deprecated parameter | Remove from all scripts |
-| 2025-12-13 | README.md version mismatch | Docs not injected by pipeline | Separate critical vs informational |
-| 2025-12-13 | Version too old | Manual version updates | Pipeline auto-generates |
-| 2025-12-07 | Symlink permission | winCodeSign downloaded | `sign: false` in package.json |
-
----
-
-## Prevention Checklist
-
-Before pushing code that might break CI:
-
-- [ ] Run `python3 scripts/check_version_unified.py` locally
-- [ ] Run `python3 -m pytest tests/ -v` locally
-- [ ] Check for deprecated function signatures
-- [ ] Verify PostgreSQL is the only database (no SQLite fallbacks)
 
 ---
 
