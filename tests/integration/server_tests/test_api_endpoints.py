@@ -142,7 +142,7 @@ class TestLogEndpoints:
             "/api/logs/submit",
             json={"session_id": "test-session", "logs": []}
         )
-        assert response.status_code == 403  # No auth
+        assert response.status_code == 401  # 401 = no auth header provided
 
     def test_submit_logs_with_auth(self, client, test_user):
         """Test log submission with authentication."""
