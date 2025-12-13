@@ -67,9 +67,6 @@ jobs:
     needs: check-build-trigger
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
-    env:
-      BUILD_MODE: ${{ needs.check-build-trigger.outputs.mode }}
-
     services:
       postgres:
         image: postgres:15
@@ -86,6 +83,7 @@ jobs:
           --health-retries 5
 
     env:
+      BUILD_MODE: ${{ needs.check-build-trigger.outputs.mode }}
       # Server config.py uses individual POSTGRES_* env vars, not DATABASE_URL
       POSTGRES_USER: locanext
       POSTGRES_PASSWORD: locanext_test
