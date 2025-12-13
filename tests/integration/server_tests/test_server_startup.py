@@ -121,6 +121,6 @@ class TestServerConfig:
         """Test database configuration."""
         from server import config
 
-        assert config.DATABASE_TYPE in ["sqlite", "postgresql"]
-        assert config.SQLITE_DATABASE_URL is not None
-        assert config.POSTGRES_DATABASE_URL is not None
+        # PostgreSQL only (SQLite removed)
+        assert config.DATABASE_TYPE == "postgresql"
+        assert config.DATABASE_URL is not None
