@@ -476,32 +476,15 @@ jobs:
       - name: Check if should build
         run: |
           Write-Host "SKIP_BUILD='$env:SKIP_BUILD'"
-          $checkpointFile = "\\wsl.localhost\Ubuntu-22.04\home\neil1988\.locanext_checkpoint"
 
-          # Check if WINDOWS_BUILD checkpoint exists (forces build even in TROUBLESHOOT)
-          $forceWindowsBuild = $false
-          if (Test-Path $checkpointFile) {
-            $content = Get-Content $checkpointFile -Raw -ErrorAction SilentlyContinue
-            if ($content -match "WINDOWS_BUILD") {
-              Write-Host "[CHECKPOINT] WINDOWS_BUILD found - running Windows build"
-              $forceWindowsBuild = $true
-            }
-          }
-
-          # Skip build in TROUBLESHOOT mode (unless WINDOWS_BUILD checkpoint)
-          if (($env:SKIP_BUILD -match 'yes') -and (-not $forceWindowsBuild)) {
+          # Skip build in TROUBLESHOOT mode (use TROUBLESHOOT_WINDOWS for Windows-only)
+          if ($env:SKIP_BUILD -match 'yes') {
             Write-Host "::notice::TROUBLESHOOT mode - skipping Windows build"
+            Write-Host "Use TROUBLESHOOT_WINDOWS trigger for Windows-only builds"
             exit 0
           }
 
           Write-Host "[OK] Proceeding with Windows build"
-
-          # Save WINDOWS_BUILD checkpoint (if not already set)
-          # So if build fails, next TROUBLESHOOT skips Linux
-          if (-not $forceWindowsBuild) {
-            "WINDOWS_BUILD" | Out-File -FilePath $checkpointFile -Encoding utf8 -Force
-            Write-Host "[CHECKPOINT] Saved WINDOWS_BUILD (Linux passed)"
-          }
         shell: powershell
 
       # Configure UTF-8 to handle Korean characters in output
