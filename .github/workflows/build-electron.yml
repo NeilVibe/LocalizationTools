@@ -70,7 +70,12 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://locanext:locanext_test@localhost:5432/locanext_test
+      # Server config.py uses individual POSTGRES_* env vars, not DATABASE_URL
+      POSTGRES_USER: locanext
+      POSTGRES_PASSWORD: locanext_test
+      POSTGRES_DB: locanext_test
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
 
     steps:
       - name: Checkout code
