@@ -113,10 +113,12 @@ async def lifespan(app: FastAPI):
 
 
 # Create FastAPI app with lifespan
+# Fallback version if config.APP_VERSION is empty (Windows embedded Python issue)
+_app_version = config.APP_VERSION or "0.0.0"
 app = FastAPI(
     title=config.APP_NAME,
     description=config.APP_DESCRIPTION,
-    version=config.APP_VERSION,
+    version=_app_version,
     docs_url=config.DOCS_URL if config.ENABLE_DOCS else None,
     redoc_url=config.REDOC_URL if config.ENABLE_DOCS else None,
     lifespan=lifespan,
