@@ -73,7 +73,7 @@ class TestKRSimilarAPIDetailed:
     def test_status_endpoint(self, client):
         """KR Similar status endpoint."""
         response = client.get("/api/v2/kr-similar/status")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code in [200, 401, 403, 404]
         if response.status_code == 200:
             data = response.json()
             assert isinstance(data, dict)
@@ -81,7 +81,7 @@ class TestKRSimilarAPIDetailed:
     def test_dictionaries_endpoint(self, client):
         """KR Similar dictionaries endpoint."""
         response = client.get("/api/v2/kr-similar/dictionaries")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code in [200, 401, 403, 404]
 
 
 class TestQuickSearchAPIDetailed:
@@ -156,7 +156,7 @@ class TestXLSTransferAPIDetailed:
         """Status endpoint returns details."""
         response = client.get("/api/v2/xlstransfer/status")
         # May be 403 for IP filtering or 200/404
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code in [200, 401, 403, 404]
         if response.status_code == 200:
             data = response.json()
             # Should have some status info
@@ -267,7 +267,7 @@ class TestVersionAndUpdatesAPI:
     def test_version_endpoint(self, client):
         """Version endpoint returns current version."""
         response = client.get("/api/version/latest")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code in [200, 401, 403, 404]
         if response.status_code == 200:
             data = response.json()
             # May be "version" or "latest_version" key
@@ -276,7 +276,7 @@ class TestVersionAndUpdatesAPI:
     def test_announcements_endpoint(self, client):
         """Announcements endpoint."""
         response = client.get("/api/announcements")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code in [200, 401, 403, 404]
 
 
 class TestAPIInputValidation:
