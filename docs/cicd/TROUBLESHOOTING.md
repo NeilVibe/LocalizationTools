@@ -4,9 +4,49 @@
 
 ---
 
-## CRITICAL RULE
+## TROUBLESHOOT Mode
 
-**NEVER rebuild without checking logs first.**
+**Smart checkpoint system for iterative test fixing.**
+
+### How It Works
+
+```
+TROUBLESHOOT trigger
+       ↓
+   Run tests
+       ↓
+ Test fails? ──→ Save checkpoint → Exit
+       ↓              ↓
+   All pass     Fix code, push
+       ↓              ↓
+    Done        TROUBLESHOOT again
+                      ↓
+                Resume at checkpoint
+```
+
+### Quick Commands
+
+```bash
+# Check checkpoint
+cat ~/.locanext_checkpoint
+
+# Check latest log (ALWAYS DO THIS FIRST)
+tail -5 $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)
+
+# Clear checkpoint manually
+rm ~/.locanext_checkpoint
+```
+
+### Checkpoint Location
+
+`/home/neil1988/.locanext_checkpoint` - Persists across CI runs (host mode).
+
+---
+
+## CRITICAL RULES
+
+1. **NEVER rebuild without checking logs first.**
+2. **NEVER restart services to "fix" issues.** Find root cause.
 
 ```bash
 # Step 1: Find latest build
