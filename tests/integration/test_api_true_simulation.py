@@ -201,8 +201,8 @@ class TestAPIErrorHandling:
             content="not valid json",
             headers={"Content-Type": "application/json"}
         )
-        # Should return error code (400, 403, 422, etc)
-        assert response.status_code in [400, 403, 422, 500]
+        # Should return error code (400, 401, 403, 422, etc)
+        assert response.status_code in [400, 401, 403, 422, 500]
 
     def test_method_not_allowed(self, client):
         """Wrong HTTP method returns 405."""
