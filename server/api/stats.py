@@ -198,8 +198,9 @@ async def get_weekly_stats(
         start_date = end_date - timedelta(weeks=weeks)
 
         # Query weekly statistics (PostgreSQL)
+        week_col = func.to_char(LogEntry.timestamp, 'IYYY-IW')
         query = select(
-            func.to_char(LogEntry.timestamp, 'IYYY-IW').label('week_start'),
+            week_col.label('week_start'),
             func.count(LogEntry.log_id).label('total_ops'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
             func.round(
@@ -210,9 +211,9 @@ async def get_weekly_stats(
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
-            func.to_char(LogEntry.timestamp, 'IYYY-IW')
+            week_col
         ).order_by(
-            func.to_char(LogEntry.timestamp, 'IYYY-IW').desc()
+            week_col.desc()
         )
 
         result = await db.execute(query)
@@ -507,8 +508,8 @@ async def get_fastest_functions(
             LogEntry.function_name,
             func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration'),
             func.count(LogEntry.log_id).label('usage_count'),
-            func.round(func.min(LogEntry.duration_seconds), 2).label('min_duration'),
-            func.round(func.max(LogEntry.duration_seconds), 2).label('max_duration')
+            func.round(cast(func.min(LogEntry.duration_seconds), Numeric), 2).label('min_duration'),
+            func.round(cast(func.max(LogEntry.duration_seconds), Numeric), 2).label('max_duration')
         ).where(
             and_(
                 LogEntry.status == 'success',
@@ -575,8 +576,8 @@ async def get_slowest_functions(
             LogEntry.function_name,
             func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration'),
             func.count(LogEntry.log_id).label('usage_count'),
-            func.round(func.min(LogEntry.duration_seconds), 2).label('min_duration'),
-            func.round(func.max(LogEntry.duration_seconds), 2).label('max_duration')
+            func.round(cast(func.min(LogEntry.duration_seconds), Numeric), 2).label('min_duration'),
+            func.round(cast(func.max(LogEntry.duration_seconds), Numeric), 2).label('max_duration')
         ).where(
             and_(
                 LogEntry.status == 'success',
