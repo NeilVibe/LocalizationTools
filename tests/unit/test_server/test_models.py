@@ -49,6 +49,13 @@ def using_postgresql():
     return "postgresql" in get_test_database_url()
 
 
+# Skip entire module when using SQLite (models have JSONB columns)
+pytestmark = pytest.mark.skipif(
+    not using_postgresql(),
+    reason="Models use PostgreSQL JSONB - SQLite incompatible"
+)
+
+
 @pytest.fixture(scope="function")
 def test_db():
     """Create a fresh test database for each test."""
