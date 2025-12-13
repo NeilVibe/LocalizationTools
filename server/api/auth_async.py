@@ -77,7 +77,6 @@ async def login(
         os.environ.get("PYTEST_CURRENT_TEST") or  # pytest sets this when running tests
         client_ip == "testclient"  # FastAPI TestClient uses this IP
     )
-    logger.info(f"Rate limit check: DEV_MODE={config.DEV_MODE}, PYTEST={os.environ.get('PYTEST_CURRENT_TEST')}, IP={client_ip}, skip={skip_rate_limit}")
     if not skip_rate_limit:
         failed_count = get_failed_login_count(client_ip, LOCKOUT_MINUTES)
         if failed_count >= MAX_FAILED_LOGINS:
