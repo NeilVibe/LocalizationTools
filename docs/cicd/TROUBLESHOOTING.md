@@ -24,6 +24,34 @@ TROUBLESHOOT trigger
                 Resume at checkpoint
 ```
 
+### Claude Code Autonomous Loop Protocol
+
+**When using TROUBLESHOOT mode with Claude Code, follow this loop:**
+
+```
+1. TRIGGER BUILD
+   echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt
+   git add -A && git commit -m "TROUBLESHOOT" && git push gitea main
+
+2. CHECK LOGS (wait for job to finish)
+   - Gitea UI: http://localhost:3000/neilvibe/LocaNext/actions
+   - OR disk: tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<latest>/*.log
+
+3. IF TEST FAILED:
+   - Read error message
+   - Fix the code
+   - Commit fix
+   - Go to step 1 (checkpoint auto-resumes)
+
+4. REPEAT until all tests pass
+```
+
+**Key Points:**
+- Checkpoint persists across builds - no restart from test #1
+- Each iteration resumes from the exact failed test
+- Fix one issue at a time for clean debugging
+- This is a FULL AUTONOMOUS LOOP within Claude Code memory
+
 ### Quick Commands
 
 ```bash
