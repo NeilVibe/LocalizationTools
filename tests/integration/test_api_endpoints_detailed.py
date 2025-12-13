@@ -21,10 +21,10 @@ pytest.importorskip("httpx")
 
 from fastapi.testclient import TestClient
 
-# Common status codes including 403 for IP filtering
+# Common status codes including 401/403 for auth/IP filtering
 SUCCESS_CODES = [200]
-ERROR_CODES = [400, 403, 422, 500]
-ALL_CODES = [200, 400, 403, 404, 422, 500]
+ERROR_CODES = [400, 401, 403, 422, 500]
+ALL_CODES = [200, 400, 401, 403, 404, 422, 500]
 
 
 class TestKRSimilarAPIDetailed:
