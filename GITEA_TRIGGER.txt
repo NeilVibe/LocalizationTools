@@ -297,3 +297,4 @@ Build LIGHT v2512140208 - Self-healing admin fixture (NORMAL build)
 Build LIGHT v2512140233 - Robust version detection (no network)
 TROUBLESHOOT_WINDOWS
 TROUBLESHOOT_WINDOWS
+TROUBLESHOOT_WINDOWS
