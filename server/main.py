@@ -290,9 +290,9 @@ async def get_latest_version():
 
     async for db in get_async_db():
         result = await db.execute(
-            select(AppVersion).where(AppVersion.is_latest == True)
+            select(AppVersion).where(AppVersion.is_latest == True).order_by(AppVersion.release_date.desc()).limit(1)
         )
-        latest = result.scalar_one_or_none()
+        latest = result.scalars().first()
 
         if latest:
             return {
