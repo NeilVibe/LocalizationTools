@@ -43,7 +43,7 @@ jobs:
       - name: Check GITEA_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build (LIGHT|FULL)|^TROUBLESHOOT|^LASTFAIL" | tail -1)
+          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build (LIGHT|FULL)|^TROUBLESHOOT" | tail -1)
           echo "Trigger line: $TRIGGER"
 
           if [ -n "$TRIGGER" ]; then
@@ -55,17 +55,13 @@ jobs:
             echo "[OK] Auto-generated version: $VERSION"
 
             # ============================================================
-            # 4 MODES: Build LIGHT, Build FULL, TROUBLESHOOT, LASTFAIL
+            # 3 MODES: Build LIGHT, Build FULL, TROUBLESHOOT
             # ============================================================
 
             if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
               echo "skip_build=yes" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT] Smart checkpoint mode"
-            elif echo "$TRIGGER" | grep -q "^LASTFAIL"; then
-              echo "mode=lastfail" >> $GITHUB_OUTPUT
-              echo "skip_build=yes" >> $GITHUB_OUTPUT
-              echo "[LASTFAIL] Run only last failed tests (pytest --lf)"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=false" >> $GITHUB_OUTPUT
@@ -317,24 +313,6 @@ jobs:
 
             echo "[OK] All tests passed! Checkpoint cleared."
             rm -f "$CHECKPOINT_FILE"
-
-          # ============================================================
-          # LASTFAIL MODE: Run only last failed tests (pytest --lf)
-          # ============================================================
-          elif [ "$MODE" = "lastfail" ]; then
-            echo "=== LASTFAIL MODE ==="
-            echo "Running only tests that failed in the last run..."
-
-            set +e
-            python3.11 -m pytest $TEST_DIRS $DESELECTS --lf -v --tb=short --no-cov
-            RESULT=$?
-            set -e
-
-            if [ $RESULT -ne 0 ]; then
-              echo "[FAILED] Some tests still failing"
-              exit 1
-            fi
-            echo "[OK] All previously failed tests now pass!"
 
           # ============================================================
           # OFFICIAL MODE: Full clean run (clears any old checkpoint)
