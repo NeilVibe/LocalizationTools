@@ -31,14 +31,24 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture(scope="function")
 def test_db():
-    """Create a test database."""
-    engine = create_engine("sqlite:///:memory:", echo=False)
-    Base.metadata.create_all(engine)
+    """Create a test database using PostgreSQL."""
+    import os
+
+    # Use PostgreSQL from environment (CI) or default local config
+    pg_user = os.getenv("POSTGRES_USER", "locanext")
+    pg_pass = os.getenv("POSTGRES_PASSWORD", "locanext_password")
+    pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    pg_port = os.getenv("POSTGRES_PORT", "6433")
+    pg_db = os.getenv("POSTGRES_DB", "locanext")
+
+    db_url = f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+    engine = create_engine(db_url, echo=False)
+
+    # Don't create/drop all - use existing tables
     TestSession = sessionmaker(bind=engine)
     session = TestSession()
     yield session
     session.close()
-    Base.metadata.drop_all(engine)
 
 
 @pytest.fixture
