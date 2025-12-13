@@ -210,9 +210,10 @@ jobs:
           find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
           # Start server with nohup to survive shell exit (critical for CI steps)
-          # DEV_MODE=true disables rate limiting for CI tests (see docs/cicd/TROUBLESHOOTING.md)
+          # Note: CI=true (job env) already skips rate limiting, no need for DEV_MODE
+          # DEV_MODE would also bypass auth - we need auth tests to work properly
           rm -f /tmp/server.log
-          nohup env PYTHONDONTWRITEBYTECODE=1 DEV_MODE=true python3.11 server/main.py > /tmp/server.log 2>&1 &
+          nohup env PYTHONDONTWRITEBYTECODE=1 CI=true python3.11 server/main.py > /tmp/server.log 2>&1 &
           SERVER_PID=$!
           echo $SERVER_PID > /tmp/server.pid
           disown $SERVER_PID
