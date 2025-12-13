@@ -690,8 +690,14 @@ class TMIndexer:
 # Default threshold for TM matching (92%)
 DEFAULT_THRESHOLD = 0.92
 
-# NPC (Neil's Probabilistic Check) threshold for Target verification (80%)
-NPC_THRESHOLD = 0.80
+# NPC (Neil's Probabilistic Check) threshold for Target verification
+# Originally 80%, but empirical testing showed:
+# - "Save" vs "Save file" = 70.6% (should pass but fails at 80%)
+# - "Save" vs "Save changes" = 61.3%
+# - Korean longer text works better (~89%)
+# Lowered to 65% to catch valid variations while rejecting wrong translations
+# (Save vs Delete = 59%, which correctly fails at 65%)
+NPC_THRESHOLD = 0.65
 
 
 class TMSearcher:
