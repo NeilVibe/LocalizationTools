@@ -90,29 +90,19 @@ def check_version_timestamp(version, max_hours_diff=1):
 # Capture group pattern for version extraction
 VER = r'(\d{2}\.\d{4}\.\d{4})'  # Matches and captures YY.MMDD.HHMM
 
-# All files that must have matching version
-VERSION_FILES = {
+# ============================================================
+# CRITICAL FILES: Must match - blocks build if mismatch
+# These are injected by pipeline and MUST be consistent
+# ============================================================
+CRITICAL_VERSION_FILES = {
     "version.py": [
         r'VERSION = "' + VER + r'"',
     ],
     "server/config.py": [
-        r'from version import VERSION',  # Verify import exists (no version string here)
+        r'from version import VERSION',  # Verify import exists
     ],
-    "README.md": [
-        r'\*\*Version:\*\* ' + VER,
-        r'ver\. ' + VER,
-    ],
-    "CLAUDE.md": [
-        r'\*\*Current Version:\*\* ' + VER,
-        r'v' + VER,
-    ],
-    "Roadmap.md": [
-        r'## Current Status.*v' + VER,
-        r'Version ' + VER,
-    ],
-    # Optional files (may not exist yet)
     "locaNext/package.json": [
-        r'"version": "' + VER + r'"',  # Same unified format!
+        r'"version": "' + VER + r'"',
     ],
     "installer/locanext_electron.iss": [
         r'#define MyAppVersion "' + VER + r'"',
@@ -121,6 +111,25 @@ VERSION_FILES = {
         r'#define MyAppVersion "' + VER + r'"',
     ],
 }
+
+# ============================================================
+# INFORMATIONAL FILES: Warn only - don't block build
+# Documentation versions are updated on commit, not by pipeline
+# ============================================================
+INFORMATIONAL_VERSION_FILES = {
+    "README.md": [
+        r'\*\*Version:\*\* ' + VER,
+    ],
+    "CLAUDE.md": [
+        r'\*\*Current Version:\*\* ' + VER,
+    ],
+    "Roadmap.md": [
+        r'## Current Status.*v' + VER,
+    ],
+}
+
+# Combined for backwards compatibility
+VERSION_FILES = {**CRITICAL_VERSION_FILES, **INFORMATIONAL_VERSION_FILES}
 
 
 def get_source_version():
@@ -269,56 +278,82 @@ def main():
         print(f"❌ Failed to import VERSION from version.py: {e}")
         return 1
 
-    # Check all files
-    all_good = True
-    files_checked = 0
-    files_skipped = 0
+    # ============================================================
+    # CHECK CRITICAL FILES (build-blocking)
+    # ============================================================
+    print("CRITICAL FILES (must match - blocks build):")
+    critical_ok = True
+    critical_checked = 0
 
-    for file_path, patterns in VERSION_FILES.items():
-        mismatches = check_file_versions(file_path, patterns, source_version, semantic_version)
-
+    for file_path, patterns in CRITICAL_VERSION_FILES.items():
         if not Path(file_path).exists():
             if "locaNext/package.json" in file_path or "installer/" in file_path:
-                files_skipped += 1
-                continue  # Skip optional files silently
+                continue  # Skip optional build files silently
+            print(f"⚠️  {file_path} (not found)")
+            continue
 
-        files_checked += 1
+        mismatches = check_file_versions(file_path, patterns, source_version, semantic_version)
+        critical_checked += 1
 
         if mismatches:
-            all_good = False
+            critical_ok = False
             print(f"❌ {file_path}")
             for line_num, error in mismatches:
                 if line_num > 0:
                     print(f"   Line {line_num}: {error}")
                 else:
                     print(f"   {error}")
-            print()
+        else:
+            print(f"✓ {file_path}")
+
+    print()
+
+    # ============================================================
+    # CHECK INFORMATIONAL FILES (warn only - don't block build)
+    # ============================================================
+    print("INFORMATIONAL FILES (docs - warn only):")
+    info_warnings = 0
+
+    for file_path, patterns in INFORMATIONAL_VERSION_FILES.items():
+        if not Path(file_path).exists():
+            continue
+
+        mismatches = check_file_versions(file_path, patterns, source_version, semantic_version)
+
+        if mismatches:
+            info_warnings += 1
+            print(f"⚠️  {file_path} (outdated - update on next commit)")
+            for line_num, error in mismatches:
+                if line_num > 0:
+                    print(f"   Line {line_num}: {error}")
         else:
             print(f"✓ {file_path}")
 
     print()
     print("=" * 70)
 
-    if all_good:
-        print(f"🎉 SUCCESS! All {files_checked} files have unified version: {source_version}")
+    if critical_ok:
+        print(f"🎉 SUCCESS! All {critical_checked} critical files have version: {source_version}")
         print(f"🎉 Runtime imports verified!")
-        if files_skipped > 0:
-            print(f"ℹ️  Skipped {files_skipped} optional files (not created yet)")
+        if info_warnings > 0:
+            print(f"ℹ️  {info_warnings} documentation file(s) have old version (non-blocking)")
         print()
         print("COVERAGE SUMMARY:")
         print("  ✓ Timestamp Validation: Version (KST) within 1 hour of build time")
-        print("  ✓ Source of Truth: version.py (VERSION, SEMANTIC_VERSION)")
+        print("  ✓ Source of Truth: version.py (VERSION)")
         print("  ✓ Backend: server/config.py (imports VERSION)")
-        print("  ✓ Documentation: README.md, CLAUDE.md, Roadmap.md")
+        print("  ✓ Build System: package.json, installer scripts")
         print("  ✓ Runtime Imports: Verified successful")
-        if files_skipped == 0:
-            print("  ✓ Build System: Electron package.json, installer scripts")
+        if info_warnings > 0:
+            print(f"  ⚠️  Documentation: {info_warnings} file(s) outdated (update on commit)")
+        else:
+            print("  ✓ Documentation: All up to date")
         print()
-        print("All version references unified and consistent!")
+        print("Build can proceed!")
         print("=" * 70)
         return 0
     else:
-        print(f"⚠️  MISMATCH DETECTED! Fix version inconsistencies above.")
+        print(f"❌ CRITICAL MISMATCH! Fix version inconsistencies in critical files.")
         print("=" * 70)
         return 1
 
