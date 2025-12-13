@@ -189,10 +189,13 @@ jobs:
           echo "Server: $(curl -s http://localhost:8888/health)"
           # Deselect model-dependent tests (require 2GB Korean BERT model)
           python -m pytest \
+            tests/unit/ \
+            tests/integration/ \
+            tests/security/ \
             tests/e2e/test_kr_similar_e2e.py \
             tests/e2e/test_xlstransfer_e2e.py \
             tests/e2e/test_quicksearch_e2e.py \
-            tests/unit/ \
+            --deselect=tests/integration/test_tm_real_model.py \
             --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads \
             --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary \
             --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary \

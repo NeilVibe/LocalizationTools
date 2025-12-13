@@ -221,3 +221,4 @@ Build LIGHT v2512131330 - CI/CD fix: Windows waits for tests, correct deselect, 
 Build LIGHT v2512131330 - Fix: Runtime server check (18 skips -> 0)
 Build LIGHT v2512131330 - REAL FIX: needs: safety-checks (not build-linux)
 Build LIGHT v2512131330 - VERIFY: Windows waits for safety-checks
+Build LIGHT v2512131430 - CI-010: Add tests/integration/ + tests/security/
