@@ -104,3 +104,4 @@ Build LIGHT v2512131300 - Add psycopg2-binary to embedded Python
 Build LIGHT v2512131230 - Version update + psycopg2 + P26 WIP
 Build LIGHT v2512131250 - All CI fixes applied
 Build LIGHT v2512132159 - Unified version + TROUBLESHOOT mode
+Build LIGHT v2512132206 - Fix duplicate env
