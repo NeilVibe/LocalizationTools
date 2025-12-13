@@ -219,9 +219,59 @@ curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" |
 | Error | Fix |
 |-------|-----|
 | `round(double precision, integer) does not exist` | Cast to Numeric: `func.round(cast(x, Numeric), 2)` |
-| `got Future attached to a different loop` | Use `Depends(get_async_db)` not `async for` |
 | `Cannot create symbolic link` | Add `sign: false` to package.json |
 | `No module named 'X'` | Add to requirements.txt |
+
+---
+
+## Known Issue: Async Event Loop Test Isolation
+
+### Problem: `got Future attached to a different loop`
+
+**Test:** `test_get_announcements` (and any test using async db after 100+ prior tests)
+
+**Symptoms:**
+- Test PASSES when run in isolation or as first test
+- Test FAILS when run after many other tests (test #128+)
+- Error: `RuntimeError: Task ... got Future attached to a different loop`
+
+**Root Cause:**
+The `_async_session_maker` in `server/utils/dependencies.py` is tied to an event loop at initialization time. When pytest's TestClient runs many tests, the event loop state can become corrupted. The session maker remains tied to the old loop while tests run in a new context.
+
+**Pattern Observed:**
+| Run Type | test_get_announcements | Why |
+|----------|------------------------|-----|
+| TROUBLESHOOT (first test) | ✅ PASSES | Fresh event loop, no pollution |
+| NORMAL (test #128) | ❌ FAILS | 127 prior tests corrupted loop state |
+
+**Workaround (TROUBLESHOOT mode):**
+Create checkpoint to run the failing test first:
+```bash
+# Find test position
+python3 -m pytest --collect-only -qq 2>/dev/null | grep "::" > /tmp/all_tests.txt
+grep -n "test_get_announcements" /tmp/all_tests.txt
+
+# Create checkpoint (replace 128 with actual line number)
+tail -n +128 /tmp/all_tests.txt > ~/.locanext_checkpoint
+
+# Trigger TROUBLESHOOT
+echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "TROUBLESHOOT" && git push gitea main
+```
+
+**Permanent Fix Options:**
+1. Use sync db session for simple public endpoints (recommended)
+2. Add pytest fixture to reinitialize async engine between test modules
+3. Skip affected tests in full test suite, run separately
+
+**Affected Endpoints:**
+- `/api/announcements` - ✅ FIXED (now uses sync `Depends(get_db)`)
+
+**DO NOT USE** `Depends(get_async_db)` - this makes the problem WORSE.
+
+**Fix Applied (2025-12-13):**
+Changed `/api/announcements` from async to sync db session in `server/main.py`.
+This simple endpoint doesn't need async - sync is simpler and avoids event loop issues.
 
 ---
 
