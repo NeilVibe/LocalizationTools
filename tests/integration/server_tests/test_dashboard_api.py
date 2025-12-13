@@ -318,18 +318,10 @@ class TestAuthentication:
     """Test authentication requirements."""
 
     def test_requires_authentication(self):
-        """Test that endpoints work without authentication.
-
-        NOTE: Authentication is TEMPORARILY DISABLED for admin stats endpoints
-        during dashboard development. When auth is re-enabled, this test should
-        check for 401/403 status codes.
-        """
+        """Test that endpoints require authentication."""
         response = requests.get(f"{BASE_URL}/api/v2/admin/stats/overview")
-        # Auth temporarily disabled - endpoint returns 200
-        # TODO: Re-enable auth check when security is enabled
-        # assert response.status_code in [401, 403]
-        assert response.status_code == 200
-        print("✅ Stats endpoint accessible (auth temporarily disabled)")
+        assert response.status_code in [401, 403]
+        print("✅ Stats endpoint correctly requires authentication")
 
     def test_requires_admin_role(self, auth_headers):
         """Test that endpoints require admin role."""
