@@ -107,3 +107,4 @@ Build LIGHT v2512132159 - Unified version + TROUBLESHOOT mode
 Build LIGHT v2512132206 - Fix duplicate env
 Build LIGHT v2512132216 - Add version injection to safety-checks
 Build LIGHT v2512132223 - Fix installer version injection
+Build LIGHT v2512132236 - Async loop fix
