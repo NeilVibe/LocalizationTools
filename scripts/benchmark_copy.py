@@ -182,9 +182,9 @@ def main():
     print("COPY TEXT vs INSERT Performance Test")
     print("=" * 70 + "\n")
 
-    # Setup database
+    # Setup database (PostgreSQL ONLY)
     logger.info("Setting up database connection...")
-    engine, SessionMaker = setup_database(use_postgres=args.postgres)
+    engine, SessionMaker = setup_database()
 
     with SessionMaker() as session:
         # Check database type
