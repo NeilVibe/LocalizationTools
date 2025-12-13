@@ -68,27 +68,59 @@ git add -A && git commit -m "TROUBLESHOOT" && git push gitea main
 
 ### WINDOWS_BUILD Checkpoint
 
+**Location:** `/home/neil1988/.locanext_checkpoint`
+
 If Linux tests pass but Windows build fails:
-1. Checkpoint automatically saves as "WINDOWS_BUILD"
-2. Next TROUBLESHOOT skips Linux tests, runs Windows build
-3. When Windows build succeeds, checkpoint is cleared
+1. Windows build automatically saves `WINDOWS_BUILD` to checkpoint at start
+2. If Windows build fails, checkpoint remains
+3. Next TROUBLESHOOT detects `WINDOWS_BUILD`:
+   - Skips 900+ pytest tests (already passed)
+   - Still runs security audits (fast, ~1-2 min)
+   - Windows build runs immediately after
+4. When Windows build succeeds, checkpoint is cleared
+
+**Create WINDOWS_BUILD checkpoint manually:**
+```bash
+echo "WINDOWS_BUILD" > /home/neil1988/.locanext_checkpoint
+```
+
+**Clear checkpoint:**
+```bash
+rm /home/neil1988/.locanext_checkpoint
+```
 
 This prevents re-running 900+ tests when only Windows is failing.
+
+### Checkpoint Types
+
+**Two checkpoint modes:**
+
+| Type | Content | Effect |
+|------|---------|--------|
+| Test list | `tests/unit/test_foo.py::test_bar`... | Resume from specific test |
+| WINDOWS_BUILD | `WINDOWS_BUILD` | Skip all tests, run Windows build |
 
 ### How It Works
 
 1. First run: Collects all tests, runs from beginning
-2. On failure: Saves remaining tests to `~/.locanext_checkpoint`
+2. On test failure: Saves remaining tests to checkpoint
 3. Next run: Resumes from checkpoint
+4. On all tests pass → Windows build starts
+5. Windows build saves `WINDOWS_BUILD` to checkpoint
+6. If Windows fails: Next run skips tests, retries Windows
+7. On Windows success: Checkpoint cleared
 
 ### Commands
 
 ```bash
 # Check checkpoint
-cat ~/.locanext_checkpoint
+cat /home/neil1988/.locanext_checkpoint
 
 # Clear checkpoint (restart from beginning)
-rm ~/.locanext_checkpoint
+rm /home/neil1988/.locanext_checkpoint
+
+# Force Windows build (skip tests)
+echo "WINDOWS_BUILD" > /home/neil1988/.locanext_checkpoint
 ```
 
 ### Recreate Checkpoint from Last Fail
