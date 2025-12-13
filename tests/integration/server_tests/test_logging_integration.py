@@ -53,7 +53,20 @@ def test_db():
 
 @pytest.fixture
 def test_user(test_db):
-    """Create a test user."""
+    """Get or create a test user, cleaning up old test data."""
+    # Check if user exists first (PostgreSQL persists data)
+    existing = test_db.query(User).filter_by(username="logtest_user").first()
+    if existing:
+        # Clean up old test data for this user
+        test_db.query(LogEntry).filter_by(user_id=existing.user_id).delete()
+        test_db.query(ErrorLog).filter(ErrorLog.tool_name.in_(['XLSTransfer', 'Test', 'QuickSearch', 'KRSimilar'])).delete(synchronize_session='fetch')
+        test_db.query(ActiveOperation).filter_by(user_id=existing.user_id).delete()
+        test_db.query(PerformanceMetrics).delete()
+        test_db.query(FunctionUsageStats).delete()
+        test_db.query(ToolUsageStats).delete()
+        test_db.commit()
+        return existing
+
     user = User(
         username="logtest_user",
         password_hash="hash",
@@ -279,7 +292,7 @@ class TestPerformanceTracking:
 
         assert len(slow_ops) == 4  # 12, 14, 16, 18
 
-    def test_average_performance(self, test_db):
+    def test_average_performance(self, test_db, test_user):
         """Test calculating average performance."""
         from sqlalchemy import func
 
