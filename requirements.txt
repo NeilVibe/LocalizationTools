@@ -36,7 +36,8 @@ python-socketio==5.11.0  # WebSocket support
 # Database
 sqlalchemy==2.0.32
 aiosqlite==0.20.0  # Async SQLite support
-psycopg2-binary==2.9.9  # PostgreSQL
+psycopg2-binary==2.9.9  # PostgreSQL (sync)
+asyncpg>=0.29.0  # PostgreSQL (async)
 alembic==1.13.2  # Database migrations
 
 # Authentication & Security
