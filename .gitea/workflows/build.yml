@@ -1,10 +1,11 @@
 # ============================================================================
 # LocaNext Build Pipeline - Gitea Actions
 # ============================================================================
-# 3 MODES:
+# 4 MODES:
 #   - Build LIGHT: Full official build (~200MB)
 #   - Build FULL:  Same + bundled AI model (~2GB)
 #   - TROUBLESHOOT: Smart checkpoint mode (resume from last failure)
+#   - TROUBLESHOOT_WINDOWS: Skip Linux tests, run Windows build only
 #
 # VERSION: Auto-generated YY.MMDD.HHMM format (Pipeline Executive Power)
 # CHECKPOINT: Stored at /home/neil1988/.locanext_checkpoint (persistent)
@@ -35,6 +36,7 @@ jobs:
       version: ${{ steps.check.outputs.version }}
       mode: ${{ steps.check.outputs.mode }}
       skip_build: ${{ steps.check.outputs.skip_build }}
+      skip_linux: ${{ steps.check.outputs.skip_linux }}
       build_type: ${{ steps.check.outputs.build_type }}
     steps:
       - name: Checkout code
@@ -43,7 +45,7 @@ jobs:
       - name: Check GITEA_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build (LIGHT|FULL)|^TROUBLESHOOT" | tail -1)
+          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build (LIGHT|FULL)|^TROUBLESHOOT|^TROUBLESHOOT_WINDOWS" | tail -1)
           echo "Trigger line: $TRIGGER"
 
           if [ -n "$TRIGGER" ]; then
@@ -55,16 +57,23 @@ jobs:
             echo "[OK] Auto-generated version: $VERSION"
 
             # ============================================================
-            # 3 MODES: Build LIGHT, Build FULL, TROUBLESHOOT
+            # 4 MODES: Build LIGHT, Build FULL, TROUBLESHOOT, TROUBLESHOOT_WINDOWS
             # ============================================================
 
-            if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
+            if echo "$TRIGGER" | grep -q "^TROUBLESHOOT_WINDOWS"; then
+              echo "mode=troubleshoot_windows" >> $GITHUB_OUTPUT
+              echo "skip_build=yes" >> $GITHUB_OUTPUT
+              echo "skip_linux=yes" >> $GITHUB_OUTPUT
+              echo "[TROUBLESHOOT_WINDOWS] Skip Linux tests, Windows build only"
+            elif echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
               echo "skip_build=yes" >> $GITHUB_OUTPUT
+              echo "skip_linux=no" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT] Smart checkpoint mode"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=false" >> $GITHUB_OUTPUT
+              echo "skip_linux=no" >> $GITHUB_OUTPUT
               echo "[OFFICIAL] Full clean build"
             fi
 
@@ -86,6 +95,7 @@ jobs:
     name: Safety Checks (Tests, Security, Version)
     runs-on: ubuntu-latest
     needs: check-build-trigger
+    if: needs.check-build-trigger.outputs.skip_linux != 'yes'
 
     # Gitea runner is host mode - use PostgreSQL installed on host
     # Created with: sudo -u postgres psql -c "CREATE USER locanext_ci ..."
@@ -359,8 +369,9 @@ jobs:
   # ============================================================
   build-windows:
     name: Build Windows LIGHT Installer
-    needs: [check-build-trigger, safety-checks]  # Wait for tests to pass
-    # NOTE: Removed 'if' condition due to act_runner bug - check internally
+    needs: [check-build-trigger, safety-checks]
+    # Run if: (1) safety-checks passed, OR (2) TROUBLESHOOT_WINDOWS mode (skip_linux=yes)
+    if: always() && (needs.safety-checks.result == 'success' || needs.safety-checks.result == 'skipped')
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
     env:
