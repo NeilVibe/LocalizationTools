@@ -205,3 +205,4 @@ Build v2512102038 - No ephemeral
 Build v2512102049 - FINAL TEST non-ephemeral
 Build LIGHT v2512110832 - Fix File Upload + UI Bugs
 Build LIGHT v2512131200 - CI PostgreSQL fix
+Build LIGHT v2512131210 - Fix: Use POSTGRES_* env vars
