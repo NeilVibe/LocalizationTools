@@ -243,45 +243,33 @@ jobs:
           DESELECTS="--deselect=tests/integration/test_tm_real_model.py --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold"
 
           # ============================================================
-          # TROUBLESHOOT MODE: Smart persistent checkpoint
-          # - If checkpoint exists: run that test first, then continue
-          # - If test fails: save checkpoint and exit
-          # - If all pass: clear checkpoint
+          # TROUBLESHOOT MODE: True resume from checkpoint
+          # - Checkpoint = list of remaining tests (one per line)
+          # - Resume runs only remaining tests, not full suite
+          # - On failure: update checkpoint with new remaining tests
           # ============================================================
           if [ "$MODE" = "troubleshoot" ]; then
             echo "=== TROUBLESHOOT MODE ==="
 
             if [ -f "$CHECKPOINT_FILE" ]; then
-              FAILED_TEST=$(cat "$CHECKPOINT_FILE")
-              echo "[CHECKPOINT FOUND] Last failed: $FAILED_TEST"
-              echo "Running that test first..."
+              REMAINING=$(wc -l < "$CHECKPOINT_FILE")
+              FIRST_TEST=$(head -1 "$CHECKPOINT_FILE")
+              echo "[CHECKPOINT FOUND] $REMAINING tests remaining"
+              echo "Starting at: $FIRST_TEST"
 
-              # Run the previously failed test
+              # Run only remaining tests from checkpoint
               set +e
-              python3.11 -m pytest "$FAILED_TEST" -v --tb=short
-              CHECKPOINT_RESULT=$?
+              set -o pipefail
+              python3.11 -m pytest $(cat "$CHECKPOINT_FILE" | tr '\n' ' ') -v --tb=short --no-cov -x 2>&1 | tee /tmp/pytest_output.txt
+              RESULT=$?
+              set +o pipefail
               set -e
-
-              if [ $CHECKPOINT_RESULT -eq 0 ]; then
-                echo "[OK] Previously failed test now passes!"
-                echo "Clearing checkpoint and running remaining tests..."
-                rm -f "$CHECKPOINT_FILE"
-
-                # Run full suite with live output
-                set +e
-                set -o pipefail
-                python3.11 -m pytest $TEST_DIRS $DESELECTS -v --tb=short -x 2>&1 | tee /tmp/pytest_output.txt
-                RESULT=$?
-                set +o pipefail
-                set -e
-              else
-                echo "[STILL FAILING] $FAILED_TEST"
-                echo "Fix and trigger TROUBLESHOOT again"
-                exit 1
-              fi
             else
-              echo "[NO CHECKPOINT] Running full test suite..."
-              # Run pytest with live output + capture exit code
+              echo "[NO CHECKPOINT] Collecting tests..."
+              python3.11 -m pytest $TEST_DIRS $DESELECTS --collect-only -q --quiet 2>&1 | grep "::" | grep "test_" > /tmp/all_tests.txt
+              TOTAL=$(wc -l < /tmp/all_tests.txt)
+              echo "Collected $TOTAL tests. Running full suite..."
+
               set +e
               set -o pipefail
               python3.11 -m pytest $TEST_DIRS $DESELECTS -v --tb=short -x 2>&1 | tee /tmp/pytest_output.txt
@@ -290,19 +278,35 @@ jobs:
               set -e
             fi
 
-            # Save checkpoint on failure
+            # Handle failure - save remaining tests to checkpoint
             if [ $RESULT -ne 0 ]; then
-              echo "[DEBUG] pytest exit code: $RESULT"
               FAILED=$(grep -E "^FAILED " /tmp/pytest_output.txt | head -1 | sed 's/FAILED //' | cut -d' ' -f1)
-              echo "[DEBUG] Extracted failed test: $FAILED"
+
               if [ -n "$FAILED" ]; then
-                echo "$FAILED" > "$CHECKPOINT_FILE"
                 echo "============================================"
-                echo "[CHECKPOINT SAVED] $FAILED"
-                echo "Fix the issue, then trigger: TROUBLESHOOT"
+                echo "[FAILED] $FAILED"
+
+                if [ -f "$CHECKPOINT_FILE" ]; then
+                  # Update checkpoint: find failed test, keep it + remaining
+                  POSITION=$(grep -n "^${FAILED}$" "$CHECKPOINT_FILE" | cut -d: -f1)
+                  if [ -n "$POSITION" ]; then
+                    tail -n +$POSITION "$CHECKPOINT_FILE" > /tmp/new_checkpoint.txt
+                    mv /tmp/new_checkpoint.txt "$CHECKPOINT_FILE"
+                  fi
+                else
+                  # First run: find position in collected list
+                  POSITION=$(grep -n "^${FAILED}$" /tmp/all_tests.txt | cut -d: -f1)
+                  if [ -n "$POSITION" ]; then
+                    tail -n +$POSITION /tmp/all_tests.txt > "$CHECKPOINT_FILE"
+                  else
+                    echo "$FAILED" > "$CHECKPOINT_FILE"
+                  fi
+                fi
+
+                REMAINING=$(wc -l < "$CHECKPOINT_FILE")
+                echo "[CHECKPOINT SAVED] $REMAINING tests remaining"
+                echo "Fix and trigger TROUBLESHOOT again"
                 echo "============================================"
-              else
-                echo "[WARN] Could not extract failed test name"
               fi
               exit 1
             fi
