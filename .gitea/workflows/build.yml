@@ -462,7 +462,8 @@ jobs:
   build-windows:
     name: Build Windows LIGHT Installer
     needs: [check-build-trigger, safety-checks]
-    # Run after safety-checks passes
+    # Run if: safety-checks passed OR was skipped (TROUBLESHOOT_WINDOWS mode)
+    if: always() && (needs.safety-checks.result == 'success' || needs.safety-checks.result == 'skipped')
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
     env:
