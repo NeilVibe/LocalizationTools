@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512122230 | **Updated**: 2025-12-12 | **Status**: Production Ready
+**Version**: 2512140245 | **Updated**: 2025-12-14 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 > **Detailed Tasks**: [docs/wip/README.md](docs/wip/README.md) (WIP Hub)
@@ -11,13 +11,13 @@
 ## Current Status
 
 ```
-LocaNext v2512122230
+LocaNext v2512140245
 ├── Backend:     ✅ 63+ API endpoints, async, WebSocket
 ├── Frontend:    ✅ Electron + Svelte (LocaNext Desktop)
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar + LDM 80%
 ├── Tests:       ✅ 912 total (595 unit pass, no mocks)
-├── Security:    ✅ 86 tests (IP filter, CORS, JWT, audit)
-├── CI/CD:       ✅ GitHub Actions + Gitea (FULLY WORKING!)
+├── Security:    ⚠️ 39+ vulnerabilities identified (fix in progress)
+├── CI/CD:       ✅ GitHub Actions + Gitea (hardened 2025-12-14)
 ├── Database:    ✅ PostgreSQL + PgBouncer (NO SQLite!)
 └── Distribution: ✅ Auto-update enabled
 ```
@@ -28,9 +28,11 @@ LocaNext v2512122230
 
 | # | Priority | Name | Status | Doc |
 |---|----------|------|--------|-----|
-| **1** | P25 | LDM UX Overhaul | 🔨 85% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
-| 2 | P24 | Server Status Dashboard | ✅ Complete | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
-| 3 | P17 | LDM LanguageData Manager | 80% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
+| **1** | P26 | Security Vulnerability Fix | 🔨 0% | [SECURITY_FIX_PLAN.md](docs/wip/SECURITY_FIX_PLAN.md) |
+| 2 | P25 | LDM UX Overhaul | 🔨 85% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
+| 3 | P24 | Server Status Dashboard | ✅ Complete | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
+| 4 | P17 | LDM LanguageData Manager | 80% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
+| - | CI/CD | Hardening | ✅ Complete | Self-healing admin, robust builds |
 | - | CODE REVIEW | Review 20251212 | ✅ CLOSED | [history/](docs/code-review/history/) |
 | - | P22 | SQLite Removal | ✅ Phase 1 | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
 | - | P21 | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
@@ -40,7 +42,55 @@ LocaNext v2512122230
 
 ## Active Development
 
-### P25: LDM UX Overhaul (85% Complete) - Priority #1
+### P26: Security Vulnerability Remediation (Priority #1)
+
+**Status:** 0% | **Audit Complete** | **Fix Plan Ready**
+
+39+ vulnerabilities identified across pip and npm dependencies. Incremental fix approach to avoid breaking changes.
+
+**Vulnerability Summary:**
+
+| Source | Total | Critical | High | Moderate | Low |
+|--------|-------|----------|------|----------|-----|
+| pip    | 28+   | 3        | ~7   | ~15      | ~3  |
+| npm    | 11    | 0        | 1    | 7        | 3   |
+
+**Critical (Fix ASAP):**
+- **cryptography 3.4.8 → 42.0.2** - 8 CVEs, handles JWT/password hashing
+- **starlette 0.38.6 → 0.47.2** - Path traversal, request smuggling
+- **python-socketio 5.11.0 → 5.14.0** - WebSocket auth bypass
+
+**Incremental Fix Plan:**
+```
+Phase 1: Safe pip fixes (no breaking changes)
+  → requests, python-jose, python-multipart, oauthlib, configobj
+  → Run tests → Verify no conflicts
+
+Phase 2: Safe npm fixes
+  → npm audit fix (glob, js-yaml)
+  → Run tests → Verify no conflicts
+
+Phase 3: Moderate risk (test thoroughly)
+  → cryptography, starlette, python-socketio
+  → Run FULL test suite → Test auth flows manually
+
+Phase 4: High risk (major testing)
+  → torch upgrade (test embeddings!)
+  → electron upgrade (test desktop app!)
+  → Full regression test
+
+Phase 5: System level (coordinate with IT)
+  → urllib3 (Ubuntu system package)
+  → May need virtualenv or OS upgrade
+```
+
+**Documentation:**
+- Full Audit: [SECURITY_VULNERABILITIES.md](docs/wip/SECURITY_VULNERABILITIES.md)
+- Fix Plan: [SECURITY_FIX_PLAN.md](docs/wip/SECURITY_FIX_PLAN.md)
+
+---
+
+### P25: LDM UX Overhaul (85% Complete) - Priority #2
 
 Comprehensive UX improvements based on user feedback.
 
@@ -224,9 +274,22 @@ Local = Heavy processing (FAISS, ML - rebuildable)
 
 ---
 
-## Recently Completed (2025-12-12)
+## Recently Completed (2025-12-14)
 
-### P25 Phases 6-9 ✅
+### CI/CD Hardening ✅
+All "forever" fixes - eliminated failure modes entirely:
+- **Server persistence:** `nohup` + `disown` for background server in CI
+- **Fast startup:** Lazy import SentenceTransformer (28s → 4.2s)
+- **Self-healing admin:** Auto-reset credentials if corrupted by tests
+- **Robust Windows build:** Use env vars, no network calls for version
+
+### Security Audit ✅
+- Full vulnerability scan of pip + npm dependencies
+- 39+ vulnerabilities documented with CVE details
+- Prioritized fix plan created (5 phases)
+- See: `docs/wip/SECURITY_VULNERABILITIES.md`, `docs/wip/SECURITY_FIX_PLAN.md`
+
+### P25 Phases 6-9 ✅ (2025-12-12)
 - Phase 6: Right-click menu (already existed)
 - Phase 8: Reference column with file selector + match modes
 - Phase 9: TM integration with TMManager, TMUploadModal, TM column
@@ -236,10 +299,6 @@ Local = Heavy processing (FAISS, ML - rebuildable)
 - health.py API (simple, status, ping endpoints)
 - ServerStatus.svelte modal
 - LDM toolbar integration
-
-### Bug Fixes ✅
-- ISSUE-011: TM Upload UI created
-- ISSUE-013: WebSocket locking fixed (was commented out)
 
 ---
 
