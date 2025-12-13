@@ -5,13 +5,12 @@ Model loading, embedding generation, FAISS index creation, and dictionary manage
 CLEAN, modular functions for semantic similarity search.
 """
 
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, TYPE_CHECKING
 from pathlib import Path
 import pickle
 import numpy as np
 import pandas as pd
 import faiss
-from sentence_transformers import SentenceTransformer
 from loguru import logger
 
 from server.tools.xlstransfer import config
@@ -19,15 +18,20 @@ from server.tools.xlstransfer.core import clean_text, excel_column_to_index
 # Factor Power: Use centralized progress tracker
 from server.utils.progress_tracker import ProgressTracker
 
+# Lazy import for SentenceTransformer (takes ~30s to load PyTorch)
+# Import only when model is actually needed, not at module load time
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+
 
 # ============================================
 # Model Management
 # ============================================
 
-_model_instance: Optional[SentenceTransformer] = None
+_model_instance: Optional["SentenceTransformer"] = None
 
 
-def load_model(model_path: Optional[Path] = None) -> SentenceTransformer:
+def load_model(model_path: Optional[Path] = None) -> "SentenceTransformer":
     """
     Load Korean BERT model for embedding generation.
 
@@ -39,7 +43,11 @@ def load_model(model_path: Optional[Path] = None) -> SentenceTransformer:
 
     Note:
         Model is cached after first load for efficiency.
+        SentenceTransformer is imported lazily here to avoid slow startup (~30s PyTorch load).
     """
+    # Lazy import - only load heavy ML libraries when model is actually needed
+    from sentence_transformers import SentenceTransformer
+
     global _model_instance
 
     if _model_instance is not None:
@@ -67,7 +75,7 @@ def load_model(model_path: Optional[Path] = None) -> SentenceTransformer:
     return _model_instance
 
 
-def get_model() -> SentenceTransformer:
+def get_model() -> "SentenceTransformer":
     """
     Get the current model instance (loads if not already loaded).
 
