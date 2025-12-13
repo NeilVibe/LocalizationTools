@@ -59,6 +59,9 @@ grep -i "error\|failed\|❌\|BLOCKED" ~/gitea/data/actions_log/neilvibe/LocaNext
 tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/<number>.log
 ```
 
+**NOTE:** Disk logs only appear AFTER job completes. For live logs, use Gitea web UI:
+`http://localhost:3000/neilvibe/LocaNext/actions`
+
 ---
 
 ## Error Categories
