@@ -2,15 +2,16 @@
 Tests for Database Utilities (db_utils.py)
 
 Tests bulk insert, FTS search, and query helpers.
-Uses SQLite for testing (PostgreSQL features gracefully degrade).
+Uses PostgreSQL in CI, SQLite locally.
 """
 
+import os
 import pytest
 import hashlib
 import uuid
 from datetime import datetime
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from server.database.models import Base, LDMTMEntry, LDMRow, LDMFile, LDMProject, LDMTranslationMemory, User
@@ -25,31 +26,44 @@ from server.database.db_utils import (
 )
 
 
+def get_test_database_url():
+    """Get database URL - PostgreSQL in CI, SQLite locally."""
+    # CI environment has POSTGRES_* env vars
+    pg_user = os.getenv("POSTGRES_USER")
+    pg_pass = os.getenv("POSTGRES_PASSWORD")
+    pg_db = os.getenv("POSTGRES_DB")
+    pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    pg_port = os.getenv("POSTGRES_PORT", "5432")
+
+    if pg_user and pg_pass and pg_db:
+        return f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+    return "sqlite:///:memory:"
+
+
 # =============================================================================
 # Fixtures - Fresh database per test
 # =============================================================================
 
 @pytest.fixture
 def test_session():
-    """Create a fresh in-memory SQLite database for each test.
+    """Create a fresh test database - PostgreSQL in CI, SQLite locally."""
+    db_url = get_test_database_url()
+    engine = create_engine(db_url, echo=False)
 
-    Note: Only creates LDM tables (no JSONB columns) since SQLite
-    doesn't support PostgreSQL JSONB type.
-    """
-    # Create fresh engine per test (in-memory = isolated)
-    engine = create_engine("sqlite:///:memory:", echo=False)
-
-    # Only create tables needed for these tests (avoid JSONB columns)
-    # LDM tables don't have JSONB, so they work with SQLite
-    tables_to_create = [
-        User.__table__,
-        LDMProject.__table__,
-        LDMFile.__table__,
-        LDMRow.__table__,
-        LDMTranslationMemory.__table__,
-        LDMTMEntry.__table__,
-    ]
-    Base.metadata.create_all(engine, tables=tables_to_create)
+    if "postgresql" in db_url:
+        # PostgreSQL: Create all tables (supports JSONB)
+        Base.metadata.create_all(engine)
+    else:
+        # SQLite: Only create tables without JSONB columns
+        tables_to_create = [
+            User.__table__,
+            LDMProject.__table__,
+            LDMFile.__table__,
+            LDMRow.__table__,
+            LDMTranslationMemory.__table__,
+            LDMTMEntry.__table__,
+        ]
+        Base.metadata.create_all(engine, tables=tables_to_create)
 
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = SessionLocal()
@@ -57,6 +71,11 @@ def test_session():
     yield session
 
     session.close()
+
+    if "postgresql" in db_url:
+        # PostgreSQL: Clean up tables after test
+        Base.metadata.drop_all(engine)
+
     engine.dispose()
 
 
