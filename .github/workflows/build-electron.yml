@@ -23,6 +23,8 @@ jobs:
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       version: ${{ steps.check.outputs.version }}
+      mode: ${{ steps.check.outputs.mode }}
+      skip_build: ${{ steps.check.outputs.skip_build }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,16 +32,27 @@ jobs:
       - name: Check BUILD_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "Build (LIGHT|FULL)" | tail -1)
+          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "^Build (LIGHT|FULL)|^TROUBLESHOOT" | tail -1)
           echo "Trigger line: $TRIGGER"
 
-          if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)"; then
+          if [ -n "$TRIGGER" ]; then
             echo "should_build=true" >> $GITHUB_OUTPUT
 
-            # Extract version (first match only - ignore "v2" in comments like "Fix v2")
-            VERSION=$(echo "$TRIGGER" | grep -oE 'v[0-9]{10}' | head -1 | sed 's/v//')
+            # AUTO-GENERATE VERSION: YY.MMDD.HHMM format (unified with Gitea)
+            VERSION=$(TZ='Asia/Seoul' date '+%y.%m%d.%H%M')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "[OK] Build triggered for version: $VERSION"
+            echo "[OK] Auto-generated version: $VERSION"
+
+            # Detect mode
+            if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
+              echo "mode=troubleshoot" >> $GITHUB_OUTPUT
+              echo "skip_build=yes" >> $GITHUB_OUTPUT
+              echo "[TROUBLESHOOT] Test-only mode (no Windows build)"
+            else
+              echo "mode=official" >> $GITHUB_OUTPUT
+              echo "skip_build=no" >> $GITHUB_OUTPUT
+              echo "[OFFICIAL] Full build mode"
+            fi
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
             echo "No build trigger found"
@@ -53,6 +66,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: check-build-trigger
     if: needs.check-build-trigger.outputs.should_build == 'true'
+
+    env:
+      BUILD_MODE: ${{ needs.check-build-trigger.outputs.mode }}
 
     services:
       postgres:
@@ -240,7 +256,10 @@ jobs:
     name: Build Windows LIGHT Installer
     runs-on: windows-latest
     needs: [check-build-trigger, safety-checks]
-    if: needs.check-build-trigger.outputs.should_build == 'true'
+    if: needs.check-build-trigger.outputs.should_build == 'true' && needs.check-build-trigger.outputs.skip_build != 'yes'
+
+    env:
+      BUILD_VERSION: ${{ needs.check-build-trigger.outputs.version }}
 
     steps:
       - name: Checkout code
@@ -822,7 +841,7 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: [check-build-trigger, build-windows]
-    if: success()
+    if: success() && needs.check-build-trigger.outputs.skip_build != 'yes'
 
     steps:
       - name: Checkout code
