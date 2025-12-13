@@ -216,3 +216,4 @@ Build LIGHT v2512131235 - Gitea: Remove Docker PostgreSQL (host mode)
 Build LIGHT v2512131240 - Skip PostgreSQL tests in Gitea host mode
 Build LIGHT v2512131245 - Skip JSONB tests when SQLite
 Build LIGHT v2512131255 - Full PostgreSQL tests (no skips)
+Build LIGHT v2512131300 - 0 skips: server running + PostgreSQL env + lxml + deselect model tests

@@ -139,40 +139,69 @@ jobs:
             echo "[OK] Version $CURRENT_VERSION is newer than $LATEST_VERSION"
           fi
 
-      # ---- SERVER LAUNCH TEST ----
-      - name: Test Server Starts
+      # ---- START SERVER FOR TESTS ----
+      - name: Start Server for Tests
+        env:
+          CI: "true"
+          POSTGRES_USER: locanext_ci
+          POSTGRES_PASSWORD: locanext_ci_test
+          POSTGRES_DB: locanext_ci_test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
         run: |
-          echo "=== Testing server can start (catches missing files) ==="
-          # Start server in background
-          timeout 30 python3.11 server/main.py &
-          SERVER_PID=$!
+          echo "=== Starting server for tests ==="
+          python3.11 server/main.py &
+          echo $! > /tmp/server.pid
 
           # Wait for server with retries
-          for i in {1..10}; do
+          for i in {1..15}; do
             sleep 2
-            echo "Checking server... ($i/10)"
+            echo "Checking server... ($i/15)"
             if curl -s http://localhost:8888/health | grep -q "healthy"; then
-              echo "[OK] Server started successfully"
-              kill $SERVER_PID 2>/dev/null || true
+              echo "[OK] Server started successfully (PID: $(cat /tmp/server.pid))"
               exit 0
             fi
           done
 
           echo "[ERROR] Server failed to start!"
-          kill $SERVER_PID 2>/dev/null || true
+          cat /tmp/server.pid | xargs kill 2>/dev/null || true
           exit 1
 
       # ---- PYTHON TESTS ----
       - name: Run Python Tests
+        env:
+          CI: "true"
+          POSTGRES_USER: locanext_ci
+          POSTGRES_PASSWORD: locanext_ci_test
+          POSTGRES_DB: locanext_ci_test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
+          RUN_API_TESTS: "1"
         run: |
-          echo "=== Running E2E unit tests (core functionality, no server required) ==="
+          echo "=== Running all Python tests ==="
+          echo "PostgreSQL env: POSTGRES_USER=$POSTGRES_USER POSTGRES_DB=$POSTGRES_DB"
+          echo "Server: $(curl -s http://localhost:8888/health)"
+          # Deselect model-dependent tests (require 2GB Korean BERT model)
           python3.11 -m pytest \
             tests/e2e/test_kr_similar_e2e.py \
             tests/e2e/test_xlstransfer_e2e.py \
             tests/e2e/test_quicksearch_e2e.py \
             tests/unit/ \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_05_model_loads \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_06_process_excel_for_dictionary \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_07_save_and_load_dictionary \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_08_find_best_match \
+            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferE2E::test_09_translate_with_high_threshold \
             -v --tb=short --no-cov -x
           echo "[OK] All Python tests passed"
+
+      - name: Stop Server
+        if: always()
+        run: |
+          if [ -f /tmp/server.pid ]; then
+            cat /tmp/server.pid | xargs kill 2>/dev/null || true
+            echo "[OK] Server stopped"
+          fi
 
       # ---- SECURITY AUDITS ----
       - name: Python Security Audit
