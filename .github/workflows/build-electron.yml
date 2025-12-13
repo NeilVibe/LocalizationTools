@@ -132,6 +132,10 @@ jobs:
           # Update package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" locaNext/package.json
 
+          # Update installer scripts
+          sed -i "s/#define MyAppVersion \"[^\"]*\"/#define MyAppVersion \"$VERSION\"/" installer/locanext_light.iss
+          sed -i "s/#define MyAppVersion \"[^\"]*\"/#define MyAppVersion \"$VERSION\"/" installer/locanext_electron.iss
+
           echo "[OK] All files updated to version: $VERSION"
           grep "VERSION" version.py | head -2
 
