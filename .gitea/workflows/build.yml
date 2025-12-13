@@ -273,8 +273,7 @@ jobs:
           if ($content -match 'VERSION\s*=\s*"(\d+)"') {
             $version = $Matches[1]
             Write-Host "Detected version: $version"
-            # Use deprecated but working syntax for act_runner
-            Write-Output "::set-output name=version::$version"
+            "version=$version" >> $env:GITHUB_OUTPUT
           } else {
             Write-Host "[ERROR] Could not extract version from version.py"
             exit 1
@@ -287,10 +286,10 @@ jobs:
 
           if ($lastTrigger -match "FULL") {
             Write-Host "[OK] Build type: FULL (with bundled model)"
-            Write-Output "::set-output name=build_type::FULL"
+            "build_type=FULL" >> $env:GITHUB_OUTPUT
           } else {
             Write-Host "[OK] Build type: LIGHT (model downloads on first run)"
-            Write-Output "::set-output name=build_type::LIGHT"
+            "build_type=LIGHT" >> $env:GITHUB_OUTPUT
           }
         shell: powershell
 
@@ -506,12 +505,12 @@ jobs:
           }
 
           # Set outputs for subsequent steps
-          Write-Output "::set-output name=vc_cached::$vcCacheValid"
-          Write-Output "::set-output name=python_cached::$pythonCacheValid"
-          Write-Output "::set-output name=nsis_cached::$nsisCacheValid"
-          Write-Output "::set-output name=cache_root::$cacheRoot"
-          Write-Output "::set-output name=req_hash::$reqHash"
-          Write-Output "::set-output name=npm_hash::$npmHash"
+          "vc_cached=$vcCacheValid" >> $env:GITHUB_OUTPUT
+          "python_cached=$pythonCacheValid" >> $env:GITHUB_OUTPUT
+          "nsis_cached=$nsisCacheValid" >> $env:GITHUB_OUTPUT
+          "cache_root=$cacheRoot" >> $env:GITHUB_OUTPUT
+          "req_hash=$reqHash" >> $env:GITHUB_OUTPUT
+          "npm_hash=$npmHash" >> $env:GITHUB_OUTPUT
 
           Write-Host ""
           Write-Host "Smart Cache Summary:" -ForegroundColor Cyan
