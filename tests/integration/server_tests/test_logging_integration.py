@@ -179,10 +179,11 @@ class TestLogEntryCreation:
 
         test_db.commit()
 
-        # Query last 3 days
+        # Query last 3 days (for this user only)
         three_days_ago = now - timedelta(days=3)
         recent_logs = test_db.query(LogEntry).filter(
-            LogEntry.timestamp >= three_days_ago
+            LogEntry.timestamp >= three_days_ago,
+            LogEntry.user_id == test_user.user_id
         ).all()
 
         assert len(recent_logs) == 4  # today + 3 days back
