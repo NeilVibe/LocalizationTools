@@ -33,6 +33,7 @@ jobs:
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       version: ${{ steps.check.outputs.version }}
+      mode: ${{ steps.check.outputs.mode }}
       test_only: ${{ steps.check.outputs.test_only }}
       skip_build: ${{ steps.check.outputs.skip_build }}
     steps:
@@ -42,39 +43,54 @@ jobs:
       - name: Check GITEA_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "Build (LIGHT|FULL)|TEST ONLY" | tail -1)
+          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "Build (LIGHT|FULL)|TEST ONLY|TROUBLESHOOT|CONTINUE" | tail -1)
           echo "Trigger line: $TRIGGER"
 
-          if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)|TEST ONLY"; then
+          if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)|TEST ONLY|TROUBLESHOOT|CONTINUE"; then
             echo "should_build=true" >> $GITHUB_OUTPUT
 
             # AUTO-GENERATE VERSION: YY.MMDD.HHMM format (unified semver + datetime)
-            # Pipeline has EXECUTIVE POWER - generates version at build time
             VERSION=$(TZ='Asia/Seoul' date '+%y.%m%d.%H%M')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "[OK] Auto-generated version: $VERSION (YY.MMDD.HHMM in KST)"
 
             # ============================================================
-            # FAST TEST MODE: Run specific test file only
-            # Trigger: "TEST ONLY tests/path/to/test.py"
+            # MODE DETECTION
             # ============================================================
-            if echo "$TRIGGER" | grep -q "TEST ONLY"; then
+
+            # TROUBLESHOOT MODE: Start fresh troubleshooting session
+            if echo "$TRIGGER" | grep -q "TROUBLESHOOT"; then
+              echo "mode=troubleshoot" >> $GITHUB_OUTPUT
+              echo "skip_build=true" >> $GITHUB_OUTPUT
+              echo "[TROUBLESHOOT MODE] Starting new troubleshoot session"
+
+            # CONTINUE MODE: Resume from last checkpoint
+            elif echo "$TRIGGER" | grep -q "CONTINUE"; then
+              echo "mode=continue" >> $GITHUB_OUTPUT
+              echo "skip_build=true" >> $GITHUB_OUTPUT
+              echo "[CONTINUE MODE] Resuming from last checkpoint"
+
+            # TEST ONLY MODE: Run specific test file
+            elif echo "$TRIGGER" | grep -q "TEST ONLY"; then
               TEST_PATH=$(echo "$TRIGGER" | sed 's/.*TEST ONLY //' | awk '{print $1}')
+              echo "mode=test_only" >> $GITHUB_OUTPUT
               echo "test_only=$TEST_PATH" >> $GITHUB_OUTPUT
               echo "skip_build=true" >> $GITHUB_OUTPUT
-              echo "[FAST TEST MODE] Running only: $TEST_PATH"
+              echo "[TEST ONLY MODE] Running: $TEST_PATH"
+
+            # OFFICIAL MODE: Full clean build
             else
+              echo "mode=official" >> $GITHUB_OUTPUT
               echo "test_only=" >> $GITHUB_OUTPUT
               echo "skip_build=false" >> $GITHUB_OUTPUT
+              echo "[OFFICIAL MODE] Full clean build"
             fi
 
             # Detect FULL vs LIGHT build
             if echo "$TRIGGER" | grep -q "FULL"; then
               echo "build_type=FULL" >> $GITHUB_OUTPUT
-              echo "[OK] Build type: FULL (with bundled model)"
             else
               echo "build_type=LIGHT" >> $GITHUB_OUTPUT
-              echo "[OK] Build type: LIGHT (model downloads on first run)"
             fi
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
@@ -220,7 +236,7 @@ jobs:
           echo "[OK] Admin user ready"
 
       # ---- PYTHON TESTS ----
-      # Supports FAST TEST MODE: "TEST ONLY tests/path/to/test.py"
+      # Supports: OFFICIAL, TEST ONLY, TROUBLESHOOT, CONTINUE modes
       - name: Run Python Tests
         env:
           CI: "true"
@@ -230,24 +246,117 @@ jobs:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: "5432"
           RUN_API_TESTS: "1"
+          MODE: "${{ needs.check-build-trigger.outputs.mode }}"
           TEST_ONLY: "${{ needs.check-build-trigger.outputs.test_only }}"
         run: |
           echo "Server: $(curl -s http://localhost:8888/health)"
+          echo "Mode: $MODE"
+
+          # Checkpoint file location
+          CHECKPOINT_FILE="/tmp/locanext_test_checkpoint.txt"
+          PASSED_TESTS_FILE="/tmp/locanext_passed_tests.txt"
 
           # ============================================================
-          # FAST TEST MODE: Run specific test only
+          # TEST ONLY MODE: Run specific test file
           # ============================================================
-          if [ -n "$TEST_ONLY" ]; then
-            echo "=== FAST TEST MODE: Running only $TEST_ONLY ==="
+          if [ "$MODE" = "test_only" ]; then
+            echo "=== TEST ONLY MODE: Running $TEST_ONLY ==="
             python3.11 -m pytest "$TEST_ONLY" -v --tb=short -x
-            echo "[OK] Fast test passed: $TEST_ONLY"
+            echo "[OK] Test passed: $TEST_ONLY"
+
+          # ============================================================
+          # CONTINUE MODE: Resume from last failed test
+          # ============================================================
+          elif [ "$MODE" = "continue" ]; then
+            echo "=== CONTINUE MODE: Resuming from checkpoint ==="
+            if [ -f "$CHECKPOINT_FILE" ]; then
+              FAILED_TEST=$(cat "$CHECKPOINT_FILE")
+              echo "Last failed test: $FAILED_TEST"
+              echo "Running from that test onwards..."
+
+              # Run the failed test first
+              python3.11 -m pytest "$FAILED_TEST" -v --tb=short -x
+
+              if [ $? -eq 0 ]; then
+                echo "[OK] Previously failed test now passes!"
+                echo "Running remaining tests..."
+                # Continue with full test suite (pytest will skip already-passed)
+                python3.11 -m pytest \
+                  tests/unit/ tests/integration/ tests/security/ \
+                  tests/e2e/test_kr_similar_e2e.py \
+                  tests/e2e/test_xlstransfer_e2e.py \
+                  tests/e2e/test_quicksearch_e2e.py \
+                  --deselect=tests/integration/test_tm_real_model.py \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold \
+                  --last-failed --last-failed-no-failures=all \
+                  -v --tb=short -x 2>/dev/null || \
+                python3.11 -m pytest \
+                  tests/unit/ tests/integration/ tests/security/ \
+                  tests/e2e/test_kr_similar_e2e.py \
+                  tests/e2e/test_xlstransfer_e2e.py \
+                  tests/e2e/test_quicksearch_e2e.py \
+                  --deselect=tests/integration/test_tm_real_model.py \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match \
+                  --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold \
+                  -v --tb=short -x
+              fi
+            else
+              echo "[WARN] No checkpoint found, running full tests"
+              python3.11 -m pytest tests/unit/ tests/integration/ tests/security/ -v --tb=short -x
+            fi
+
+          # ============================================================
+          # TROUBLESHOOT MODE: Run tests and save checkpoint on failure
+          # ============================================================
+          elif [ "$MODE" = "troubleshoot" ]; then
+            echo "=== TROUBLESHOOT MODE: Running with checkpoint ==="
+            # Clear old checkpoint
+            rm -f "$CHECKPOINT_FILE" "$PASSED_TESTS_FILE"
+
+            # Run tests and capture output
+            python3.11 -m pytest \
+              tests/unit/ \
+              tests/integration/ \
+              tests/security/ \
+              tests/e2e/test_kr_similar_e2e.py \
+              tests/e2e/test_xlstransfer_e2e.py \
+              tests/e2e/test_quicksearch_e2e.py \
+              --deselect=tests/integration/test_tm_real_model.py \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold \
+              -v --tb=short -x 2>&1 | tee /tmp/pytest_output.txt
+
+            RESULT=${PIPESTATUS[0]}
+
+            if [ $RESULT -ne 0 ]; then
+              # Extract failed test name and save checkpoint
+              FAILED=$(grep -E "^FAILED " /tmp/pytest_output.txt | head -1 | sed 's/FAILED //' | cut -d' ' -f1)
+              if [ -n "$FAILED" ]; then
+                echo "$FAILED" > "$CHECKPOINT_FILE"
+                echo "============================================"
+                echo "[CHECKPOINT SAVED] Failed at: $FAILED"
+                echo "Fix the issue, then trigger: CONTINUE"
+                echo "============================================"
+              fi
+              exit 1
+            fi
+            echo "[OK] All tests passed in troubleshoot mode"
+
+          # ============================================================
+          # OFFICIAL MODE: Full clean run (no checkpoints)
+          # ============================================================
           else
-            # ============================================================
-            # FULL TEST MODE: Run all tests
-            # ============================================================
-            echo "=== Running all Python tests ==="
-            echo "PostgreSQL env: POSTGRES_USER=$POSTGRES_USER POSTGRES_DB=$POSTGRES_DB"
-            # Deselect model-dependent tests (require 2GB Korean BERT model)
+            echo "=== OFFICIAL MODE: Full test suite ==="
             python3.11 -m pytest \
               tests/unit/ \
               tests/integration/ \
@@ -262,7 +371,7 @@ jobs:
               --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match \
               --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold \
               -v --tb=short --no-cov -x
-            echo "[OK] All Python tests passed"
+            echo "[OK] All tests passed"
           fi
 
       - name: Stop Server
