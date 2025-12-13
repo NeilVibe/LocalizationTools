@@ -468,6 +468,7 @@ jobs:
     env:
       SKIP_BUILD: ${{ needs.check-build-trigger.outputs.skip_build }}
       BUILD_VERSION: ${{ needs.check-build-trigger.outputs.version }}
+      BUILD_TYPE: ${{ needs.check-build-trigger.outputs.build_type }}
 
     steps:
       # Check if we should skip the build (TROUBLESHOOT mode)
@@ -514,41 +515,35 @@ jobs:
           Write-Host "[OK] Console encoding set to UTF-8"
         shell: powershell
 
-      # Check build trigger and extract version from version.py
-      - name: Get Version from Source
+      # ============================================================
+      # ROBUST VERSION: Use BUILD_VERSION env var from pipeline
+      # NO fragile network calls or regex parsing - single source of truth
+      # ============================================================
+      - name: Get Version and Build Type
         id: check
-        env:
-          GITEA_URL: ${{ env.GITEA_URL }}
-          GITEA_REPO: ${{ env.GITEA_REPO }}
         run: |
-          Write-Host "=== Getting Version from Source ==="
-          # Use env vars for Gitea URL (defined at workflow level)
-          $versionUrl = "$env:GITEA_URL/$env:GITEA_REPO/raw/branch/main/version.py"
-          Write-Host "Fetching: $versionUrl"
-          $content = (Invoke-WebRequest -Uri $versionUrl -UseBasicParsing).Content
+          Write-Host "=== Getting Version from Pipeline (Robust) ===" -ForegroundColor Cyan
 
-          # Extract VERSION using regex (YY.MMDD.HHMM format)
-          if ($content -match 'VERSION\s*=\s*"(\d{2}\.\d{4}\.\d{4})"') {
-            $version = $Matches[1]
-            Write-Host "Detected version: $version"
-            "version=$version" >> $env:GITHUB_OUTPUT
-          } else {
-            Write-Host "[ERROR] Could not extract version from version.py"
+          # VERSION: Use BUILD_VERSION from pipeline env (set by check-build-trigger job)
+          # This is the SINGLE SOURCE OF TRUTH - no network calls, no regex
+          $version = $env:BUILD_VERSION
+
+          if ([string]::IsNullOrEmpty($version)) {
+            Write-Host "[ERROR] BUILD_VERSION env var not set!" -ForegroundColor Red
             exit 1
           }
 
-          # Detect FULL vs LIGHT build from trigger file
-          $triggerUrl = "$env:GITEA_URL/$env:GITEA_REPO/raw/branch/main/GITEA_TRIGGER.txt"
-          $triggerContent = (Invoke-WebRequest -Uri $triggerUrl -UseBasicParsing).Content
-          $lastTrigger = ($triggerContent -split "`n" | Where-Object { $_ -match "Build (LIGHT|FULL)" } | Select-Object -Last 1)
+          Write-Host "[OK] Version from pipeline: $version" -ForegroundColor Green
+          "version=$version" >> $env:GITHUB_OUTPUT
 
-          if ($lastTrigger -match "FULL") {
-            Write-Host "[OK] Build type: FULL (with bundled model)"
-            "build_type=FULL" >> $env:GITHUB_OUTPUT
-          } else {
-            Write-Host "[OK] Build type: LIGHT (model downloads on first run)"
-            "build_type=LIGHT" >> $env:GITHUB_OUTPUT
+          # BUILD TYPE: Use BUILD_TYPE from pipeline env (set by check-build-trigger job)
+          $buildType = $env:BUILD_TYPE
+          if ([string]::IsNullOrEmpty($buildType)) {
+            $buildType = "LIGHT"  # Default to LIGHT if not set
           }
+
+          Write-Host "[OK] Build type: $buildType" -ForegroundColor Green
+          "build_type=$buildType" >> $env:GITHUB_OUTPUT
         shell: powershell
 
       # Standard checkout - workspace cleanup handled at end of job
