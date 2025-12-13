@@ -13,6 +13,12 @@ import pytest
 import requests
 from datetime import datetime
 import time
+import sys
+from pathlib import Path
+
+# Import the self-healing admin token function from conftest
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from tests.conftest import get_admin_token_with_retry
 
 # Unique suffix for test users to avoid conflicts
 TEST_SUFFIX = str(int(time.time()))[-6:]
@@ -37,14 +43,18 @@ def require_server():
 
 
 def get_admin_token():
-    """Get admin authentication token."""
-    response = requests.post(
-        f"{API_URL}/auth/login",
-        json={"username": "admin", "password": "admin123"}
-    )
-    if response.status_code == 200:
-        return response.json().get("access_token")
-    return None
+    """
+    Get admin authentication token using SELF-HEALING mechanism.
+
+    This function uses the robust get_admin_token_with_retry() which:
+    1. Tries to login
+    2. If login fails, resets admin credentials via direct DB access
+    3. Retries login
+
+    This ensures tests ALWAYS get a valid token, even if previous
+    tests corrupted the admin user state.
+    """
+    return get_admin_token_with_retry()
 
 
 def get_admin_user_id(token):
