@@ -41,6 +41,11 @@
 **Fix:** Use `BUILD_VERSION` and `BUILD_TYPE` env vars directly from pipeline.
 **File:** `.gitea/workflows/build.yml` (Get Version and Build Type step)
 
+### 5. TROUBLESHOOT_WINDOWS Not Running
+**Problem:** Windows build depended on `safety-checks` job, which was skipped.
+**Fix:** Changed `needs: [check-build-trigger]` only, removed checkpoint logic.
+**File:** `.gitea/workflows/build.yml`
+
 ---
 
 ## Security Vulnerabilities Audit
@@ -65,19 +70,17 @@
 
 ## Build Status
 
-**Current Build:** `Build LIGHT v2512140233 - Robust version detection (no network)`
-**Status:** RUNNING (verify on next session)
+**Last Build:** `TROUBLESHOOT_WINDOWS` - ✅ SUCCESS
+**CI/CD Status:** All fixes verified working
+- Self-healing admin fixture ✅
+- Windows version detection (env vars) ✅
+- TROUBLESHOOT_WINDOWS mode ✅
 
 ---
 
 ## Next Priorities
 
-### 1. Verify Build Success (IMMEDIATE)
-- Check Gitea build status
-- Confirm all 900+ tests pass
-- Confirm Windows installer builds
-
-### 2. Security Vulnerability Remediation (NEXT)
+### 1. Security Vulnerability Remediation (PRIORITY #1)
 
 **Incremental Fix Plan:**
 ```
