@@ -33,6 +33,8 @@ jobs:
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       version: ${{ steps.check.outputs.version }}
+      test_only: ${{ steps.check.outputs.test_only }}
+      skip_build: ${{ steps.check.outputs.skip_build }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,10 +42,10 @@ jobs:
       - name: Check GITEA_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "Build (LIGHT|FULL)" | tail -1)
+          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "Build (LIGHT|FULL)|TEST ONLY" | tail -1)
           echo "Trigger line: $TRIGGER"
 
-          if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)"; then
+          if echo "$TRIGGER" | grep -qE "Build (LIGHT|FULL)|TEST ONLY"; then
             echo "should_build=true" >> $GITHUB_OUTPUT
 
             # AUTO-GENERATE VERSION: YY.MMDD.HHMM format (unified semver + datetime)
@@ -51,6 +53,20 @@ jobs:
             VERSION=$(TZ='Asia/Seoul' date '+%y.%m%d.%H%M')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "[OK] Auto-generated version: $VERSION (YY.MMDD.HHMM in KST)"
+
+            # ============================================================
+            # FAST TEST MODE: Run specific test file only
+            # Trigger: "TEST ONLY tests/path/to/test.py"
+            # ============================================================
+            if echo "$TRIGGER" | grep -q "TEST ONLY"; then
+              TEST_PATH=$(echo "$TRIGGER" | sed 's/.*TEST ONLY //' | awk '{print $1}')
+              echo "test_only=$TEST_PATH" >> $GITHUB_OUTPUT
+              echo "skip_build=true" >> $GITHUB_OUTPUT
+              echo "[FAST TEST MODE] Running only: $TEST_PATH"
+            else
+              echo "test_only=" >> $GITHUB_OUTPUT
+              echo "skip_build=false" >> $GITHUB_OUTPUT
+            fi
 
             # Detect FULL vs LIGHT build
             if echo "$TRIGGER" | grep -q "FULL"; then
@@ -204,6 +220,7 @@ jobs:
           echo "[OK] Admin user ready"
 
       # ---- PYTHON TESTS ----
+      # Supports FAST TEST MODE: "TEST ONLY tests/path/to/test.py"
       - name: Run Python Tests
         env:
           CI: "true"
@@ -213,26 +230,40 @@ jobs:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: "5432"
           RUN_API_TESTS: "1"
+          TEST_ONLY: "${{ needs.check-build-trigger.outputs.test_only }}"
         run: |
-          echo "=== Running all Python tests ==="
-          echo "PostgreSQL env: POSTGRES_USER=$POSTGRES_USER POSTGRES_DB=$POSTGRES_DB"
           echo "Server: $(curl -s http://localhost:8888/health)"
-          # Deselect model-dependent tests (require 2GB Korean BERT model)
-          python3.11 -m pytest \
-            tests/unit/ \
-            tests/integration/ \
-            tests/security/ \
-            tests/e2e/test_kr_similar_e2e.py \
-            tests/e2e/test_xlstransfer_e2e.py \
-            tests/e2e/test_quicksearch_e2e.py \
-            --deselect=tests/integration/test_tm_real_model.py \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match \
-            --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold \
-            -v --tb=short --no-cov -x
-          echo "[OK] All Python tests passed"
+
+          # ============================================================
+          # FAST TEST MODE: Run specific test only
+          # ============================================================
+          if [ -n "$TEST_ONLY" ]; then
+            echo "=== FAST TEST MODE: Running only $TEST_ONLY ==="
+            python3.11 -m pytest "$TEST_ONLY" -v --tb=short -x
+            echo "[OK] Fast test passed: $TEST_ONLY"
+          else
+            # ============================================================
+            # FULL TEST MODE: Run all tests
+            # ============================================================
+            echo "=== Running all Python tests ==="
+            echo "PostgreSQL env: POSTGRES_USER=$POSTGRES_USER POSTGRES_DB=$POSTGRES_DB"
+            # Deselect model-dependent tests (require 2GB Korean BERT model)
+            python3.11 -m pytest \
+              tests/unit/ \
+              tests/integration/ \
+              tests/security/ \
+              tests/e2e/test_kr_similar_e2e.py \
+              tests/e2e/test_xlstransfer_e2e.py \
+              tests/e2e/test_quicksearch_e2e.py \
+              --deselect=tests/integration/test_tm_real_model.py \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match \
+              --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold \
+              -v --tb=short --no-cov -x
+            echo "[OK] All Python tests passed"
+          fi
 
       - name: Stop Server
         if: always()
@@ -265,10 +296,12 @@ jobs:
 
   # ============================================================
   # JOB 3: Build Windows Installer (REQUIRES WINDOWS SELF-HOSTED RUNNER)
+  # Skips if TEST ONLY mode (fast iteration on test fixes)
   # ============================================================
   build-windows:
     name: Build Windows LIGHT Installer
-    needs: safety-checks  # Wait for tests to pass before building
+    needs: [check-build-trigger, safety-checks]  # Wait for tests to pass
+    if: needs.check-build-trigger.outputs.skip_build != 'true'
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
     steps:

@@ -26,6 +26,27 @@ That's it! Pipeline auto-generates version and builds.
 |------|---------|------|----------|
 | LIGHT | `Build LIGHT` | ~200MB | Regular builds, testing |
 | FULL | `Build FULL` | ~2GB | Release with bundled AI model |
+| TEST ONLY | `TEST ONLY tests/path.py` | N/A | Fast iteration on test fixes |
+
+---
+
+## FAST TEST MODE
+
+When fixing test failures, skip the full build and run only specific tests:
+
+```bash
+# Run only the failing test file
+echo "TEST ONLY tests/integration/server_tests/test_api_endpoints.py" >> GITEA_TRIGGER.txt
+git add . && git commit -m "Test fix" && git push origin main && git push gitea main
+```
+
+**Benefits:**
+- Skips Windows build job (~20 min saved)
+- Runs only specified test file
+- Fast iteration on test fixes
+
+**When to use:**
+1. Fix test → Trigger TEST ONLY → Pass? → Then do full Build LIGHT
 
 ---
 
