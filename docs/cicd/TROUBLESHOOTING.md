@@ -47,6 +47,7 @@ rm ~/.locanext_checkpoint
 
 1. **NEVER rebuild without checking logs first.**
 2. **NEVER restart services to "fix" issues.** Find root cause.
+3. **ALWAYS proper fix.** No workarounds, no skipping tests.
 
 ```bash
 # Step 1: Find latest build
