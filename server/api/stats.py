@@ -135,7 +135,7 @@ async def get_daily_stats(
             func.sum(
                 case((LogEntry.status == 'success', 1), else_=0)
             ).label('successful_ops'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration')
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration')
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
@@ -280,7 +280,7 @@ async def get_monthly_stats(
             func.sum(
                 case((LogEntry.status == 'error', 1), else_=0)
             ).label('failed_ops'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration')
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration')
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
@@ -353,7 +353,7 @@ async def get_tool_popularity(
             LogEntry.tool_name,
             func.count(LogEntry.log_id).label('usage_count'),
             func.count(func.distinct(LogEntry.user_id)).label('unique_users'),
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration')
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration')
         ).where(
             LogEntry.timestamp >= start_date
         ).group_by(
@@ -505,7 +505,7 @@ async def get_fastest_functions(
         query = select(
             LogEntry.tool_name,
             LogEntry.function_name,
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration'),
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration'),
             func.count(LogEntry.log_id).label('usage_count'),
             func.round(func.min(LogEntry.duration_seconds), 2).label('min_duration'),
             func.round(func.max(LogEntry.duration_seconds), 2).label('max_duration')
@@ -573,7 +573,7 @@ async def get_slowest_functions(
         query = select(
             LogEntry.tool_name,
             LogEntry.function_name,
-            func.round(func.avg(LogEntry.duration_seconds), 2).label('avg_duration'),
+            func.round(cast(func.avg(LogEntry.duration_seconds), Numeric), 2).label('avg_duration'),
             func.count(LogEntry.log_id).label('usage_count'),
             func.round(func.min(LogEntry.duration_seconds), 2).label('min_duration'),
             func.round(func.max(LogEntry.duration_seconds), 2).label('max_duration')
