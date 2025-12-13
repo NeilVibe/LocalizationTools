@@ -30,23 +30,66 @@ That's it! Pipeline auto-generates version and builds.
 
 ---
 
-## FAST TEST MODE
+## TROUBLESHOOT MODE (Checkpoint/Resume)
 
-When fixing test failures, skip the full build and run only specific tests:
+When build fails, use TROUBLESHOOT mode for fast iteration:
 
-```bash
-# Run only the failing test file
-echo "TEST ONLY tests/integration/server_tests/test_api_endpoints.py" >> GITEA_TRIGGER.txt
-git add . && git commit -m "Test fix" && git push origin main && git push gitea main
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    TROUBLESHOOT WORKFLOW                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. TROUBLESHOOT - Start troubleshooting session                 │
+│     ↓                                                            │
+│  2. Tests run, FAILS at test X                                   │
+│     → Checkpoint saved: "test X"                                 │
+│     ↓                                                            │
+│  3. Fix the issue                                                │
+│     ↓                                                            │
+│  4. CONTINUE - Resume from checkpoint                            │
+│     → Runs test X first                                          │
+│     → If passes, continues remaining tests                       │
+│     ↓                                                            │
+│  5. Repeat 3-4 until all pass                                    │
+│     ↓                                                            │
+│  6. Build LIGHT - Official clean build                           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Benefits:**
-- Skips Windows build job (~20 min saved)
-- Runs only specified test file
-- Fast iteration on test fixes
+### Commands
 
-**When to use:**
-1. Fix test → Trigger TEST ONLY → Pass? → Then do full Build LIGHT
+```bash
+# Start troubleshooting (saves checkpoints on failure)
+echo "TROUBLESHOOT - Start debugging session" >> GITEA_TRIGGER.txt
+
+# After fixing, resume from last failure
+echo "CONTINUE - Resume from checkpoint" >> GITEA_TRIGGER.txt
+
+# When all passes, do official build
+echo "Build LIGHT - Official release" >> GITEA_TRIGGER.txt
+```
+
+---
+
+## TEST ONLY MODE (Single File)
+
+Run only a specific test file:
+
+```bash
+echo "TEST ONLY tests/integration/server_tests/test_api_endpoints.py" >> GITEA_TRIGGER.txt
+```
+
+---
+
+## Mode Comparison
+
+| Mode | Trigger | Checkpoints | Build | Use Case |
+|------|---------|-------------|-------|----------|
+| OFFICIAL | `Build LIGHT` | No | Yes | Release build |
+| TROUBLESHOOT | `TROUBLESHOOT` | Saves on fail | No | Start debugging |
+| CONTINUE | `CONTINUE` | Resumes | No | After fix |
+| TEST ONLY | `TEST ONLY path` | No | No | Single file test |
 
 ---
 
