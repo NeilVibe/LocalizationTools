@@ -73,28 +73,8 @@ jobs:
     needs: check-build-trigger
     if: needs.check-build-trigger.outputs.should_build == 'true'
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: locanext
-          POSTGRES_PASSWORD: locanext_test
-          POSTGRES_DB: locanext_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      # Server config.py uses individual POSTGRES_* env vars, not DATABASE_URL
-      POSTGRES_USER: locanext
-      POSTGRES_PASSWORD: locanext_test
-      POSTGRES_DB: locanext_test
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: "5432"
+    # NOTE: No PostgreSQL service - Gitea runner is host mode, not Docker
+    # Tests will use SQLite fallback (no POSTGRES_* env vars set)
 
     steps:
       - name: Checkout code
