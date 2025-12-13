@@ -242,7 +242,7 @@ jobs:
   # ============================================================
   build-windows:
     name: Build Windows LIGHT Installer
-    needs: build-linux  # Wait for tests to pass before building
+    needs: safety-checks  # Wait for tests to pass before building
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
     steps:
