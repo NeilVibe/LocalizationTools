@@ -2,20 +2,11 @@
 Unit Tests for Database Models
 
 Tests for SQLAlchemy ORM models in server/database/models.py
-
-NOTE: These tests use SQLite which doesn't support PostgreSQL JSONB type.
-Many models tested here have JSONB columns, so we skip in CI environments.
-Run locally with PostgreSQL for full model testing.
+Uses PostgreSQL in CI (for JSONB support), SQLite locally (limited).
 """
 
 import os
 import pytest
-
-# Skip entire module in CI - models have PostgreSQL JSONB columns
-pytestmark = pytest.mark.skipif(
-    os.getenv("CI") == "true" or os.getenv("GITHUB_ACTIONS") == "true",
-    reason="Models use PostgreSQL JSONB - not compatible with SQLite in CI"
-)
 from datetime import datetime, timedelta
 import uuid
 
@@ -40,11 +31,29 @@ from server.database.models import (
 )
 
 
-# Create an in-memory SQLite database for testing
+def get_test_database_url():
+    """Get database URL - PostgreSQL in CI, SQLite locally."""
+    pg_user = os.getenv("POSTGRES_USER")
+    pg_pass = os.getenv("POSTGRES_PASSWORD")
+    pg_db = os.getenv("POSTGRES_DB")
+    pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    pg_port = os.getenv("POSTGRES_PORT", "5432")
+
+    if pg_user and pg_pass and pg_db:
+        return f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+    return "sqlite:///:memory:"
+
+
+# Skip JSONB tests when using SQLite
+def using_postgresql():
+    return "postgresql" in get_test_database_url()
+
+
 @pytest.fixture(scope="function")
 def test_db():
     """Create a fresh test database for each test."""
-    engine = create_engine("sqlite:///:memory:", echo=False)
+    db_url = get_test_database_url()
+    engine = create_engine(db_url, echo=False)
     Base.metadata.create_all(engine)
     TestSession = sessionmaker(bind=engine)
     session = TestSession()
