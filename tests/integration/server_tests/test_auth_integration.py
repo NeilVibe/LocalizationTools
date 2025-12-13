@@ -25,14 +25,15 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture(scope="function")
 def test_db():
-    """Create a test database."""
-    engine = create_engine("sqlite:///:memory:", echo=False)
+    """Create a test database using PostgreSQL (required for JSONB)."""
+    from server import config
+    engine = create_engine(config.DATABASE_URL, echo=False)
     Base.metadata.create_all(engine)
     TestSession = sessionmaker(bind=engine)
     session = TestSession()
     yield session
     session.close()
-    Base.metadata.drop_all(engine)
+    # Don't drop tables - they're shared with the running server
 
 
 class TestUserCreation:
