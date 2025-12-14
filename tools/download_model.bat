@@ -1,24 +1,26 @@
 @echo off
 REM ============================================
-REM LocaNext - Korean BERT Model Downloader
+REM LocaNext - Qwen Embedding Model Downloader
 REM ============================================
 REM
-REM Downloads AI model from Hugging Face
+REM Downloads Embedding model from Hugging Face
 REM Uses embedded Python (no install required)
 REM
 REM IT-Friendly: You can inspect this .bat and
 REM the download_model.py script to see exactly
 REM what it does. Safe, transparent, trusted.
+REM
+REM P20 Migration: Switched from KR-SBERT to Qwen
 REM ============================================
 
 echo.
 echo ============================================
-echo   LocaNext - AI Model Download
+echo   LocaNext - Embedding Model Download
 echo ============================================
 echo.
-echo   Model: Korean BERT (snunlp/KR-SBERT)
-echo   Size:  ~447 MB
-echo   Time:  5-10 minutes
+echo   Model: Qwen/Qwen3-Embedding-0.6B
+echo   Size:  ~1.21 GB
+echo   Time:  5-15 minutes
 echo.
 echo   Using embedded Python (no install needed)
 echo ============================================
