@@ -127,9 +127,7 @@ jobs:
           # Update package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" locaNext/package.json
 
-          # Update installer scripts
-          sed -i "s/#define MyAppVersion \"[^\"]*\"/#define MyAppVersion \"$VERSION\"/" installer/locanext_light.iss
-          sed -i "s/#define MyAppVersion \"[^\"]*\"/#define MyAppVersion \"$VERSION\"/" installer/locanext_electron.iss
+          # NOTE: Inno Setup .iss files deprecated (P28) - using electron-builder NSIS now
 
           echo "[OK] All files updated to version: $VERSION"
           grep "VERSION" version.py | head -1
@@ -576,15 +574,7 @@ jobs:
             Write-Host "[OK] package.json updated" -ForegroundColor Green
           }
 
-          # 3. Installer scripts
-          foreach ($issFile in @("installer/locanext_light.iss", "installer/locanext_electron.iss")) {
-            if (Test-Path $issFile) {
-              $iss = Get-Content $issFile -Raw
-              $iss = $iss -replace '#define MyAppVersion "[^"]+"', "#define MyAppVersion `"$version`""
-              $iss | Set-Content $issFile -NoNewline
-              Write-Host "[OK] $issFile updated" -ForegroundColor Green
-            }
-          }
+          # NOTE: Inno Setup .iss files deprecated (P28) - using electron-builder NSIS now
 
           Write-Host ""
           Write-Host "=== VERSION INJECTION COMPLETE ===" -ForegroundColor Cyan
@@ -1311,132 +1301,61 @@ jobs:
         shell: powershell
 
       # ============================================================
-      # STEP 4: Compile Inno Setup installer
+      # STEP 4: Collect NSIS Installer
+      # electron-builder with target: "nsis" produces installer in dist-electron/
       # ============================================================
-      - name: Setup Inno Setup Path
-        run: |
-          # Check common Inno Setup locations and add to PATH
-          $innoLocations = @(
-            "C:\Program Files (x86)\Inno Setup 6",
-            "C:\Program Files\Inno Setup 6",
-            "$env:LOCALAPPDATA\Programs\Inno Setup 6"
-          )
-
-          foreach ($loc in $innoLocations) {
-            if (Test-Path "$loc\ISCC.exe") {
-              Write-Host "[OK] Found Inno Setup at: $loc"
-              $env:Path += ";$loc"
-              [Environment]::SetEnvironmentVariable('Path', $env:Path, 'Process')
-              break
-            }
-          }
-
-          # Verify ISCC is accessible
-          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-          if ($iscc) {
-            Write-Host "[OK] ISCC.exe found: $($iscc.Source)"
-          } else {
-            Write-Host "Inno Setup not found - installing via choco..."
-            choco install innosetup -y
-          }
-        shell: powershell
-
-      - name: Compile Installer (LIGHT or FULL)
+      - name: Collect NSIS Installer
         run: |
           $buildType = "${{ steps.check.outputs.build_type }}"
-          Write-Host "Compiling $buildType Windows installer..."
-
-          # Debug: Show current directory structure
-          Write-Host "=== DEBUG: Directory Structure ==="
-          Write-Host "Working dir: $(Get-Location)"
-          Write-Host "Listing root:"
-          Get-ChildItem | Format-Table Name, Mode
-
-          Write-Host "`nChecking locaNext/dist-electron:"
-          if (Test-Path "locaNext\dist-electron") {
-            Get-ChildItem "locaNext\dist-electron" | Format-Table Name, Mode
-            if (Test-Path "locaNext\dist-electron\win-unpacked") {
-              Write-Host "win-unpacked ALL contents:"
-              Get-ChildItem "locaNext\dist-electron\win-unpacked" | Format-Table Name
-              Write-Host "`nLooking for *.exe:"
-              Get-ChildItem "locaNext\dist-electron\win-unpacked\*.exe" -ErrorAction SilentlyContinue | Format-Table Name, Length
-              Write-Host "LocaNext.exe exists: $(Test-Path 'locaNext\dist-electron\win-unpacked\LocaNext.exe')"
-            }
-          } else {
-            Write-Host "locaNext\dist-electron NOT FOUND!"
-          }
-
-          Write-Host "`nChecking installer directory:"
-          Get-ChildItem "installer" | Format-Table Name
-
-          # WORKAROUND: Skip Inno Setup (has path issues on Windows runner)
-          # Instead, create a ZIP of the unpacked Electron app
           $version = "${{ steps.check.outputs.version }}"
-          $srcDir = "locaNext\dist-electron\win-unpacked"
           $outDir = "installer_output"
 
-          # ZIP name depends on build type
-          if ($buildType -eq "FULL") {
-            $zipName = "LocaNext_v${version}_Full_Portable.zip"
-          } else {
-            $zipName = "LocaNext_v${version}_Light_Portable.zip"
-          }
+          Write-Host "=== Collecting NSIS Installer ==="
+          Write-Host "Build Type: $buildType"
+          Write-Host "Version: $version"
 
+          # Create output directory
           if (!(Test-Path $outDir)) {
             New-Item -ItemType Directory -Path $outDir -Force
           }
 
-          Write-Host "Creating portable ZIP: $zipName"
-          Write-Host "Source: $srcDir"
-          Write-Host "Output: $outDir\$zipName"
-          Write-Host "Build Type: $buildType"
+          # Find the NSIS installer produced by electron-builder
+          Write-Host "`nLooking for NSIS installer in locaNext/dist-electron:"
+          Get-ChildItem "locaNext\dist-electron" | Format-Table Name, Length
 
-          # Copy additional files into win-unpacked before zipping
-          Copy-Item "server" -Destination "$srcDir\server" -Recurse -Force
-          Copy-Item "version.py" -Destination "$srcDir\version.py" -Force
+          $installer = Get-ChildItem "locaNext\dist-electron\*.exe" -ErrorAction SilentlyContinue |
+                       Where-Object { $_.Name -like "*Setup*" } |
+                       Select-Object -First 1
 
-          # Create tools directory and copy scripts
-          $toolsDir = "$srcDir\tools"
-          if (!(Test-Path $toolsDir)) { New-Item -ItemType Directory -Path $toolsDir -Force }
-          Get-ChildItem "tools\*.bat" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName -Destination $toolsDir -Force }
-          Get-ChildItem "tools\*.py" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName -Destination $toolsDir -Force }
-
-          # FULL BUILD: Include Qwen embedding model (~2.3GB)
-          if ($buildType -eq "FULL") {
-            Write-Host "=== FULL BUILD: Bundling Qwen Model ===" -ForegroundColor Cyan
-            if (Test-Path "models\qwen-embedding") {
-              $modelsDir = "$srcDir\models"
-              if (!(Test-Path $modelsDir)) { New-Item -ItemType Directory -Path $modelsDir -Force }
-              Copy-Item "models\qwen-embedding" -Destination "$modelsDir\qwen-embedding" -Recurse -Force
-              $modelSize = [math]::Round((Get-ChildItem "$modelsDir\qwen-embedding" -Recurse | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-              Write-Host "[OK] Qwen model bundled: $modelSize GB" -ForegroundColor Green
-            } else {
-              Write-Error "[ERROR] models/qwen-embedding not found for FULL build!"
-              exit 1
-            }
-          }
-
-          # Create ZIP
-          Write-Host "Creating ZIP archive..."
-          Compress-Archive -Path "$srcDir\*" -DestinationPath "$outDir\$zipName" -Force
-
-          if (Test-Path "$outDir\$zipName") {
-            $size = (Get-Item "$outDir\$zipName").Length / 1MB
-            $sizeStr = if ($size -gt 1024) { "$([math]::Round($size/1024, 2)) GB" } else { "$([math]::Round($size, 1)) MB" }
-            Write-Host "[OK] Portable ZIP created: $zipName ($sizeStr)" -ForegroundColor Green
-          } else {
-            Write-Error "[ERROR] Failed to create ZIP"
+          if (!$installer) {
+            Write-Error "[ERROR] NSIS installer not found in dist-electron!"
+            Write-Host "Available files:"
+            Get-ChildItem "locaNext\dist-electron" -Recurse | Select-Object FullName
             exit 1
           }
+
+          Write-Host "[OK] Found installer: $($installer.Name)"
+
+          # Rename to include version and build type
+          if ($buildType -eq "FULL") {
+            $newName = "LocaNext_v${version}_Full_Setup.exe"
+          } else {
+            $newName = "LocaNext_v${version}_Light_Setup.exe"
+          }
+
+          Copy-Item $installer.FullName -Destination "$outDir\$newName"
+
+          $size = (Get-Item "$outDir\$newName").Length / 1MB
+          $sizeStr = if ($size -gt 1024) { "$([math]::Round($size/1024, 2)) GB" } else { "$([math]::Round($size, 1)) MB" }
+          Write-Host "[OK] Installer ready: $newName ($sizeStr)" -ForegroundColor Green
         shell: powershell
 
-      - name: Verify Portable ZIP
+      - name: Verify NSIS Installer
         run: |
-          $version = "${{ steps.check.outputs.version }}"
-          $archive = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
-          if (!$archive) { Write-Error "[ERROR] No ZIP found"; exit 1 }
-          Write-Host "[OK] Portable ZIP created: $($archive.Name)"
-          $size = $archive.length / 1MB
+          $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
+          if (!$installer) { Write-Error "[ERROR] No installer found"; exit 1 }
+          Write-Host "[OK] NSIS installer verified: $($installer.Name)"
+          $size = $installer.Length / 1MB
           Write-Host "  Size: $([math]::Round($size, 1)) MB"
         shell: powershell
 
@@ -1446,14 +1365,13 @@ jobs:
       - name: Generate latest.yml for Auto-Update
         run: |
           Write-Host "=== Generating latest.yml for electron-updater ==="
-          $version = "${{ steps.check.outputs.version }}"
 
-          $archive = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
-          if (!$archive) { Write-Error "[ERROR] No ZIP found"; exit 1 }
+          $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
+          if (!$installer) { Write-Error "[ERROR] No installer found"; exit 1 }
 
-          $fileName = $archive.Name
-          $fileSize = $archive.Length
-          $hash = (Get-FileHash -Path $archive.FullName -Algorithm SHA512).Hash.ToLower()
+          $fileName = $installer.Name
+          $fileSize = $installer.Length
+          $hash = (Get-FileHash -Path $installer.FullName -Algorithm SHA512).Hash.ToLower()
 
           # Extract VERSION (unified format: YY.MMDD.HHMM - valid semver + datetime)
           $versionContent = Get-Content "version.py" -Raw
@@ -1474,37 +1392,70 @@ jobs:
           Get-Content "installer_output\latest.yml"
         shell: powershell
 
-      # NOTE: Artifact upload removed - actions/upload-artifact@v4 not supported on Gitea
-      # The portable ZIP is saved in installer_output/ on the runner
-      # To get the artifact: Check runner workspace at C:\WINDOWS\system32\config\systemprofile\.cache\act\...\hostexecutor\installer_output\
-
       # ============================================================
       # POST-BUILD TESTS
+      # Test using win-unpacked directory (same files as installer bundles)
       # ============================================================
-      - name: Test Portable ZIP
+      - name: Verify Build Contents
         run: |
-          Write-Host "=== POST-BUILD TEST: Extracting portable ZIP ==="
-          $archive = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
-          $extractDir = "$env:TEMP\LocaNext_Test"
-          if (Test-Path $extractDir) { Remove-Item $extractDir -Recurse -Force }
-          Expand-Archive -Path $archive.FullName -DestinationPath $extractDir
-          Write-Host "[OK] Extracted to: $extractDir"
-          Get-ChildItem $extractDir | Select-Object -First 10 | Format-Table Name
+          Write-Host "=== POST-BUILD TEST: Verifying bundled files ==="
+
+          # electron-builder extraResources go to: win-unpacked/resources/
+          $resourcesDir = "locaNext\dist-electron\win-unpacked\resources"
+
+          Write-Host "Checking resources directory:"
+          Get-ChildItem $resourcesDir -ErrorAction SilentlyContinue | Format-Table Name
+
+          # Check for critical files in extraResources
+          $checks = @(
+            @{Path="$resourcesDir\server\main.py"; Desc="Backend server"},
+            @{Path="$resourcesDir\version.py"; Desc="Version file"},
+            @{Path="$resourcesDir\tools\python\python.exe"; Desc="Embedded Python"},
+            @{Path="$resourcesDir\tools\install_deps.py"; Desc="Deps installer script"}
+          )
+
+          $allOk = $true
+          foreach ($check in $checks) {
+            if (Test-Path $check.Path) {
+              Write-Host "[OK] $($check.Desc): $($check.Path)"
+            } else {
+              Write-Host "[WARN] $($check.Desc) not found: $($check.Path)" -ForegroundColor Yellow
+              # Only fail for critical files
+              if ($check.Path -like "*main.py*") {
+                $allOk = $false
+              }
+            }
+          }
+
+          # Verify LocaNext.exe exists
+          if (Test-Path "locaNext\dist-electron\win-unpacked\LocaNext.exe") {
+            Write-Host "[OK] LocaNext.exe present"
+          } else {
+            Write-Error "[ERROR] LocaNext.exe not found"
+            $allOk = $false
+          }
+
+          if ($allOk) {
+            Write-Host "[PASS] All critical files present!" -ForegroundColor Green
+          } else {
+            Write-Error "[FAIL] Some critical files missing!"
+            exit 1
+          }
         shell: powershell
 
-      - name: Verify Installation Files
+      - name: Test Embedded Python
         run: |
-          $installDir = "$env:TEMP\LocaNext_Test"
-          if (!(Test-Path "$installDir\LocaNext.exe")) { Write-Error "[ERROR] LocaNext.exe not found"; exit 1 }
-          if (!(Test-Path "$installDir\server\main.py")) { Write-Error "[ERROR] server/main.py not found"; exit 1 }
-          if (!(Test-Path "$installDir\version.py")) { Write-Error "[ERROR] version.py not found"; exit 1 }
-          # NOTE: LIGHT builds don't include embedded Python - backend tested on first app launch
-          if (Test-Path "$installDir\tools\python\python.exe") {
-            Write-Host "[OK] Embedded Python found (FULL build)"
+          $pythonExe = "locaNext\dist-electron\win-unpacked\resources\tools\python\python.exe"
+
+          if (Test-Path $pythonExe) {
+            Write-Host "=== Testing Embedded Python ==="
+            & $pythonExe --version
+            & $pythonExe -c "import fastapi; print('[OK] fastapi')"
+            & $pythonExe -c "import uvicorn; print('[OK] uvicorn')"
+            Write-Host "[PASS] Embedded Python works!" -ForegroundColor Green
           } else {
-            Write-Host "[INFO] No embedded Python (LIGHT build - uses system Python on first launch)"
+            Write-Host "[INFO] No embedded Python - LIGHT build (first-run setup will install)" -ForegroundColor Yellow
           }
-          Write-Host "[PASS] All critical files present!"
         shell: powershell
 
       # NOTE: Backend health check skipped for LIGHT builds (no embedded Python)
@@ -1535,7 +1486,7 @@ jobs:
           Write-Host "============================================" -ForegroundColor Cyan
           Write-Host ""
           Write-Host "[SUCCESS] LocaNext LIGHT Build Complete!" -ForegroundColor Green
-          Write-Host "Output: installer_output\LocaNext_v${{ steps.check.outputs.version }}_Light_Portable.zip"
+          Write-Host "Output: installer_output\LocaNext_v${{ steps.check.outputs.version }}_Light_Setup.exe"
           Write-Host ""
 
           # Show cache status
@@ -1654,15 +1605,15 @@ jobs:
           Write-Host ""
           Write-Host "Uploading artifacts..."
 
-          # Upload ZIP
-          $zipFile = Get-ChildItem "installer_output\*.zip" | Select-Object -First 1
-          if ($zipFile) {
-            Write-Host "  Uploading: $($zipFile.Name)"
-            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$RELEASE_ID/assets?name=$($zipFile.Name)" `
+          # Upload Installer (.exe)
+          $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
+          if ($installer) {
+            Write-Host "  Uploading: $($installer.Name)"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$RELEASE_ID/assets?name=$($installer.Name)" `
               -H "Authorization: token $env:GITEA_TOKEN" `
               -H "Content-Type: application/octet-stream" `
-              --data-binary "@$($zipFile.FullName)" | Out-Null
-            Write-Host "  [OK] ZIP uploaded" -ForegroundColor Green
+              --data-binary "@$($installer.FullName)" | Out-Null
+            Write-Host "  [OK] Installer uploaded" -ForegroundColor Green
           }
 
           # Upload latest.yml

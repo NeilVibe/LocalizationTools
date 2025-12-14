@@ -1,77 +1,99 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-14 ~17:50 KST | **By:** Claude
+**Updated:** 2025-12-14 ~21:30 KST | **By:** Claude
 
 ---
 
-## Current Status: P27 COMPLETE + CI/CD FIXED
+## P28: CI/CD Fixed - electron-builder NSIS
 
-| Platform | Status | Commit |
-|----------|--------|--------|
-| **Gitea** | ✅ Build succeeded | `d8fd6a2` |
-| **GitHub** | ✅ Should pass (tests removed) | `d8fd6a2` |
-| **Codebase** | ✅ Synced | `d8fd6a2` |
+**Status: COMPLETE** | Replaced broken Inno Setup with native NSIS
 
----
+### What Changed
 
-## P27: Stack Modernization ✅ COMPLETE
+| Component | Before | After |
+|-----------|--------|-------|
+| Installer tech | Inno Setup (skipped!) | electron-builder NSIS |
+| Build output | Portable ZIP (broken) | Setup.exe installer |
+| Python bundling | Missing | extraResources config |
+| Config location | .iss files | package.json |
 
-| Package | Before | After |
-|---------|--------|-------|
-| svelte | 4.2.8 | 5.x |
-| vite | 5.0.8 | 7.x |
-| electron | 28.0.0 | 39.x |
-| electron-builder | 24.9.1 | 26.x |
-| carbon-components-svelte | 0.85.0 | 0.95.x |
-| @sveltejs/vite-plugin-svelte | 3.0.0 | 6.x |
+### Files Modified
 
----
+1. **locaNext/package.json**
+   - `win.target`: "dir" → "nsis"
+   - Added `nsis` config block
+   - Expanded `extraResources` for Python + server
 
-## Build Issues - ALL FIXED
+2. **.gitea/workflows/build.yml**
+   - Removed "Setup Inno Setup Path" step
+   - Replaced "Compile Installer" (ZIP) with "Collect NSIS Installer"
+   - Updated asset upload to use .exe
+   - Removed deprecated .iss file updates
 
-| Issue | Platform | Fix |
-|-------|----------|-----|
-| electron-builder `sign`/`signDlls` deprecated | Both | Removed from package.json |
-| Node.js 18 → Vite 7 needs 20+ | GitHub | Updated workflow to Node 20 |
-| Server D state (transient) | Gitea | Added retry mechanism |
-| Windows tests need PostgreSQL | GitHub | Removed tests (Linux covers this) |
+3. **.github/workflows/build-electron.yml** (CI/CD Code Review fix)
+   - Synced with Gitea workflow - now uses NSIS instead of Inno Setup
+   - Updated silent install flags for NSIS (`/S /D=path`)
+   - Fixed verification paths for electron-builder structure (`resources/`)
+   - Updated latest.yml generation to use unified version format
 
----
+4. **installer/deprecated/** - Archived old .iss files
 
-## CI/CD Architecture (Now Clean)
-
-| Step | Gitea | GitHub |
-|------|-------|--------|
-| Linux safety checks | ✅ PostgreSQL | ✅ PostgreSQL (Docker) |
-| Windows build | ✅ Build only | ✅ Build only |
-| Server tests | Linux job | Linux job |
-
-**Both platforms now match - clean Windows builds, proper Linux tests.**
+5. **LICENSE** - Added MIT license file
 
 ---
 
-## Previous: P26 Security ✅ COMPLETE
+## CI/CD Code Review - Session 13 COMPLETE
 
-| Metric | Before | After |
-|--------|--------|-------|
-| CRITICAL vulns | 3 | **0** |
-| HIGH (production) | ~7 | **0** |
+### Issues Fixed
+
+| ID | Severity | Issue | Fix |
+|----|----------|-------|-----|
+| CI-001 | HIGH | Gitea still updated .iss files | Removed deprecated .iss updates |
+| CI-002 | CRITICAL | GitHub still used Inno Setup | Synced to use NSIS |
+| CI-003 | MEDIUM | NSIS install flags wrong | Fixed to `/S /D=path` |
+| CI-004 | MEDIUM | File verification paths wrong | Updated for `resources/` structure |
+
+### Both Workflows Now Sync
+
+- Gitea (.gitea/workflows/build.yml)
+- GitHub (.github/workflows/build-electron.yml)
+- Both use electron-builder NSIS
+- Same verification tests
 
 ---
 
-## Quick Commands
+## Next: P29 - Verification Test
+
+Need to trigger a build and verify:
+1. NSIS installer is produced
+2. Download and install on Windows
+3. App starts standalone
+4. Embedded Python works
+
+### Trigger Build Command
 
 ```bash
-# Trigger GitHub build
-echo "Build LIGHT vXXXX" >> BUILD_TRIGGER.txt
-git add BUILD_TRIGGER.txt && git commit -m "Build" && git push origin main
+echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "P28: CI/CD sync - both workflows use NSIS" && git push origin main && git push gitea main
+```
 
-# Trigger Gitea build
-echo "Build LIGHT vXXXX" >> GITEA_TRIGGER.txt
-git add GITEA_TRIGGER.txt && git commit -m "Build" && git push gitea main
+---
 
-# Sync both
-git push origin main && git push gitea main
+## Quick Reference
+
+**New build output:**
+```
+installer_output/LocaNext_v25.XXXX.XXXX_Light_Setup.exe
+```
+
+**Key config (locaNext/package.json):**
+```json
+"win": { "target": "nsis" },
+"nsis": {
+  "oneClick": false,
+  "allowToChangeInstallationDirectory": true,
+  ...
+}
 ```
 
 ---
