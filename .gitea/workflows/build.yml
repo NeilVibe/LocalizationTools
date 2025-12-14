@@ -300,6 +300,7 @@ jobs:
       - name: Run Python Tests
         env:
           CI: "true"
+          DEV_MODE: "true"  # Skip auth tests since server uses DEV_MODE
           POSTGRES_USER: locanext_ci
           POSTGRES_PASSWORD: locanext_ci_test
           POSTGRES_DB: locanext_ci_test
