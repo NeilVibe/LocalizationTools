@@ -348,7 +348,12 @@ jobs:
 
           # Common test args (factored out)
           TEST_DIRS="tests/unit/ tests/integration/ tests/security/ tests/e2e/test_kr_similar_e2e.py tests/e2e/test_xlstransfer_e2e.py tests/e2e/test_quicksearch_e2e.py"
-          DESELECTS="--deselect=tests/integration/test_tm_real_model.py --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold"
+          # P30 Optimization: Remove duplicate tests from CI (72 redundant tests removed)
+          # - test_cache_extended.py: duplicates test_cache_module.py
+          # - test_server/test_cache.py: duplicates test_cache_module.py
+          # - test_websocket_module.py: trivial import checks (test_websocket_functions.py is comprehensive)
+          # - server_tests/test_api_endpoints.py: subset of test_api_endpoints_detailed.py
+          DESELECTS="--deselect=tests/unit/test_cache_extended.py --deselect=tests/unit/test_server/test_cache.py --deselect=tests/unit/test_websocket_module.py --deselect=tests/integration/server_tests/test_api_endpoints.py --deselect=tests/integration/test_tm_real_model.py --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold"
 
           # ============================================================
           # TROUBLESHOOT MODE: True resume from checkpoint
@@ -1420,6 +1425,160 @@ jobs:
           Write-Host ""
           Write-Host "============================================" -ForegroundColor Cyan
         shell: powershell
+
+      # ============================================================
+      # P30: SMOKE TEST - Verify installer works end-to-end
+      # Tests: Install, file verification, app launch, backend health, login
+      # NOTE: This adds ~2-3 min to build (no model download in smoke test)
+      # ============================================================
+      - name: Smoke Test - Installer Verification
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $LogFile = "smoke_test.log"
+
+          function Log($msg) {
+            $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            "$timestamp | $msg" | Tee-Object -FilePath $LogFile -Append
+          }
+
+          try {
+            Log "========================================"
+            Log "P30 SMOKE TEST - Installer Verification"
+            Log "========================================"
+
+            # === PHASE 1: Find Installer ===
+            Log "=== PHASE 1: FIND INSTALLER ==="
+            $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
+            if (!$installer) { throw "No installer found in installer_output!" }
+            Log "OK: Found installer: $($installer.Name)"
+            Log "OK: Size: $([math]::Round($installer.Length / 1MB, 1)) MB"
+
+            # === PHASE 2: Silent Install ===
+            Log "=== PHASE 2: SILENT INSTALL ==="
+            $installDir = "C:\LocaNextSmokeTest"
+
+            # Clean up any previous test install
+            if (Test-Path $installDir) {
+              Log "Removing previous test install..."
+              Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+
+            Log "Installing to: $installDir"
+            $proc = Start-Process -FilePath $installer.FullName -Args "/S /D=$installDir" -Wait -PassThru
+            if ($proc.ExitCode -ne 0) { throw "Installation failed with exit code $($proc.ExitCode)" }
+            Log "OK: Installation completed"
+
+            # === PHASE 3: File Verification ===
+            Log "=== PHASE 3: FILE VERIFICATION ==="
+            $requiredFiles = @(
+              "$installDir\LocaNext.exe",
+              "$installDir\resources\server\main.py",
+              "$installDir\resources\tools\python\python.exe",
+              "$installDir\resources\tools\download_model.py",
+              "$installDir\resources\tools\install_deps.py"
+            )
+            foreach ($file in $requiredFiles) {
+              if (!(Test-Path $file)) { throw "MISSING FILE: $file" }
+              Log "OK: $file"
+            }
+
+            # === PHASE 4: Launch App (Quick Test - No Model Download) ===
+            Log "=== PHASE 4: LAUNCH APP ==="
+            Log "Starting LocaNext.exe..."
+
+            # Create first_run_complete.flag to skip first-run setup (model download)
+            # This allows quick smoke test without 10-min model download
+            $flagFile = "$installDir\first_run_complete.flag"
+            '{"completedAt":"smoke-test","version":"smoke"}' | Out-File -FilePath $flagFile -Encoding UTF8
+            Log "OK: Created first_run_complete.flag (skip model download for smoke test)"
+
+            $appProc = Start-Process "$installDir\LocaNext.exe" -PassThru
+            Log "OK: App started with PID: $($appProc.Id)"
+
+            # Wait for backend to start (up to 60 seconds)
+            Log "Waiting for backend health check..."
+            $timeout = 60
+            $startTime = Get-Date
+            $backendUp = $false
+
+            while (((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
+              Start-Sleep -Seconds 2
+              try {
+                $health = Invoke-WebRequest -Uri "http://localhost:8888/health" -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
+                if ($health.StatusCode -eq 200) {
+                  Log "OK: Backend health check PASSED ($(($health.Content | ConvertFrom-Json).status))"
+                  $backendUp = $true
+                  break
+                }
+              } catch {
+                $elapsed = [int]((Get-Date) - $startTime).TotalSeconds
+                Log "Waiting... ($elapsed s)"
+              }
+            }
+
+            if (!$backendUp) {
+              throw "Backend failed to respond within $timeout seconds"
+            }
+
+            # === PHASE 5: API Tests ===
+            Log "=== PHASE 5: API TESTS ==="
+
+            # Test health endpoint
+            $healthResp = Invoke-WebRequest -Uri "http://localhost:8888/api/health/simple" -UseBasicParsing
+            Log "OK: /api/health/simple - Status $($healthResp.StatusCode)"
+
+            # Test API docs available
+            $docsResp = Invoke-WebRequest -Uri "http://localhost:8888/docs" -UseBasicParsing
+            if ($docsResp.StatusCode -eq 200) {
+              Log "OK: /docs - API documentation accessible"
+            }
+
+            # === PHASE 6: Cleanup ===
+            Log "=== PHASE 6: CLEANUP ==="
+            Stop-Process -Id $appProc.Id -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+            Log "OK: App stopped"
+
+            # Clean up test installation
+            if (Test-Path $installDir) {
+              Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
+              Log "OK: Test installation cleaned up"
+            }
+
+            # === SUCCESS ===
+            Log "========================================"
+            Log "SMOKE TEST PASSED - ALL CHECKS OK"
+            Log "========================================"
+
+            # Output summary
+            Write-Host ""
+            Write-Host "============================================" -ForegroundColor Green
+            Write-Host "  SMOKE TEST PASSED" -ForegroundColor Green
+            Write-Host "============================================" -ForegroundColor Green
+            Write-Host ""
+            Get-Content $LogFile | Select-Object -Last 20 | Write-Host
+
+          } catch {
+            Log "========================================"
+            Log "SMOKE TEST FAILED"
+            Log "Error: $($_.Exception.Message)"
+            Log "========================================"
+
+            # Kill app if running
+            if ($appProc -and !$appProc.HasExited) {
+              Stop-Process -Id $appProc.Id -Force -ErrorAction SilentlyContinue
+            }
+
+            # Output full log
+            Write-Host ""
+            Write-Host "============================================" -ForegroundColor Red
+            Write-Host "  SMOKE TEST FAILED" -ForegroundColor Red
+            Write-Host "============================================" -ForegroundColor Red
+            Write-Host ""
+            Get-Content $LogFile | Write-Host
+            exit 1
+          }
 
       # ============================================================
       # CREATE GITEA RELEASE + UPLOAD ARTIFACTS

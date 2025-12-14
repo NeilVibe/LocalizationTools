@@ -1,138 +1,324 @@
 # P30: CI/CD Pipeline Optimization
 
-**Created:** 2025-12-15 | **Status:** PLANNING | **Priority:** Medium
+**Created:** 2025-12-15 | **Status:** REVIEW COMPLETE | **Priority:** Medium
 
 ---
 
 ## Goal
 
 1. **Review all tests running in CI** - Find and remove redundant/duplicate tests from CI
-2. **Add smoke test** - Verify installer actually works
+2. **Add smoke test** - Verify installer actually works (install, download, autologin, interaction)
 
 ---
 
-## 1. Test Audit - Review All Tests IN CI
+## 1. Test Audit - COMPLETE
 
-### What runs in CI (from build.yml line 350-351)
+### What runs in CI (from build.yml)
 
 ```bash
 TEST_DIRS="tests/unit/ tests/integration/ tests/security/ tests/e2e/test_kr_similar_e2e.py tests/e2e/test_xlstransfer_e2e.py tests/e2e/test_quicksearch_e2e.py"
 ```
 
-### Task: Review Each Test File
+### Current Test Counts
 
-**For each test file that runs in CI:**
-1. Read the test file
-2. Note what it tests (which functions/endpoints/features)
-3. Check if another test already covers the same thing
-4. Decide: KEEP in CI or REMOVE from CI
-
-### Criteria for REMOVE from CI
-
-- **Duplicate:** Another test tests the exact same thing
-- **Redundant:** Covered by a more comprehensive test
-- **Slow + Low Value:** Takes long time, doesn't catch unique bugs
-
-### Criteria for KEEP in CI
-
-- **Unique coverage:** Tests something no other test covers
-- **Critical path:** Tests core functionality that must work
-- **Fast:** Runs quickly, no reason to remove
+| Directory | Files | Tests | Status |
+|-----------|-------|-------|--------|
+| tests/unit/ | 28 | ~530 | IN CI |
+| tests/integration/ | 11 | ~124 | IN CI |
+| tests/security/ | 4 | ~87 | IN CI |
+| tests/e2e/ (3 files) | 3 | ~38 | IN CI |
+| **Total** | **46** | **~779** | |
 
 ---
 
-## 2. Test Files to Review
+## 2. Duplicates Found - REMOVE FROM CI
 
-### `tests/unit/` (687 tests)
+### HIGH PRIORITY - Clear Duplicates
 
-| File | What it tests | Duplicate of? | Decision |
-|------|---------------|---------------|----------|
-| | | | |
+| File to REMOVE | Tests | Duplicate Of | Reason |
+|----------------|-------|--------------|--------|
+| `tests/unit/test_cache_extended.py` | 29 | test_cache_module.py | Same cache config/TTL tests |
+| `tests/unit/test_server/test_cache.py` | 15 | test_cache_module.py | Same CacheManager tests |
+| `tests/unit/test_websocket_module.py` | 14 | test_websocket_functions.py | Trivial structural tests only |
+| `tests/integration/server_tests/test_api_endpoints.py` | 14 | test_api_endpoints_detailed.py | Less comprehensive version |
 
-### `tests/integration/` (169 tests)
+**Total to Remove: 72 test functions (~9%)**
 
-| File | What it tests | Duplicate of? | Decision |
-|------|---------------|---------------|----------|
-| | | | |
+### Analysis Details
 
-### `tests/security/` (~30 tests)
+#### Cache Testing (3 files testing same thing)
+- `test_cache_module.py` (23 tests) - **KEEP** - Most comprehensive
+- `test_cache_extended.py` (29 tests) - **REMOVE** - Duplicates same constants
+- `test_server/test_cache.py` (15 tests) - **REMOVE** - Repeats same tests
 
-| File | What it tests | Duplicate of? | Decision |
-|------|---------------|---------------|----------|
-| | | | |
+#### WebSocket Testing
+- `test_websocket_functions.py` (41 tests) - **KEEP** - Tests actual emit functions
+- `test_websocket_module.py` (14 tests) - **REMOVE** - Only checks imports exist
+- `test_server/test_websocket.py` (13 tests) - **KEEP** - Uses mocks (different approach)
 
-### `tests/e2e/` (3 files in CI)
-
-| File | What it tests | Duplicate of? | Decision |
-|------|---------------|---------------|----------|
-| test_kr_similar_e2e.py | | | |
-| test_xlstransfer_e2e.py | | | |
-| test_quicksearch_e2e.py | | | |
+#### API Endpoint Testing
+- `test_api_endpoints_detailed.py` (28 tests) - **KEEP** - Comprehensive
+- `test_api_endpoints.py` (14 tests) - **REMOVE** - Subset of detailed version
+- `test_api_true_simulation.py` (20 tests) - **KEEP** - Flow-based (complementary)
 
 ---
 
-## 3. Smoke Test
+## 3. Tests to KEEP (Good Coverage)
 
-Add post-install verification to `build-windows` job:
+| Category | Files | Tests | Note |
+|----------|-------|-------|------|
+| Unit - Auth | test_auth_module.py | 32 | Password/JWT |
+| Unit - Cache | test_cache_module.py | 23 | Primary cache tests |
+| Unit - Code | test_code_patterns.py | 49 | Pattern validation |
+| Unit - DB | test_db_utils.py | 28 | Database utils |
+| Unit - KR Similar | test_kr_similar_*.py | 57 | Core algorithms |
+| Unit - QuickSearch | test_quicksearch_*.py | 100 | All QS modules |
+| Unit - TM | test_tm_*.py | 66 | Translation memory |
+| Unit - WebSocket | test_websocket_functions.py | 41 | Emit functions |
+| Unit - XLSTransfer | test_xlstransfer_modules.py | 25 | Core modules |
+| Unit - Client | client/*.py | 86 | File/Logger/Progress |
+| Unit - Server | test_server/*.py (minus cache) | 71 | Models/QS/WS |
+| Integration | All (minus test_api_endpoints.py) | 110 | API/Auth/Async |
+| Security | All 4 files | 87 | Audit/CORS/IP/JWT |
+| E2E | 3 specific files | 38 | Tool workflows |
 
-```yaml
-- name: Smoke Test - Install and Verify
-  shell: pwsh
-  run: |
-    $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
+---
 
-    # 1. Silent install
-    Start-Process -FilePath $installer.FullName -Args '/S /D=C:\LocaNextTest' -Wait
+## 4. Implementation - DESELECTS Update
 
-    # 2. Check files exist
-    $checks = @(
-      'C:\LocaNextTest\LocaNext.exe',
-      'C:\LocaNextTest\resources\server\main.py',
-      'C:\LocaNextTest\resources\tools\python\python.exe'
-    )
-    foreach ($path in $checks) {
-      if (!(Test-Path $path)) { exit 1 }
-    }
+### New DESELECTS for build.yml
 
-    # 3. Launch and check health
-    $process = Start-Process 'C:\LocaNextTest\LocaNext.exe' -PassThru
-    for ($i = 0; $i -lt 30; $i++) {
-      Start-Sleep -Seconds 2
-      try {
-        $r = Invoke-WebRequest -Uri 'http://localhost:8888/health' -TimeoutSec 5
-        if ($r.StatusCode -eq 200) {
-          Stop-Process -Id $process.Id -Force
-          Write-Host "SMOKE TEST PASSED"
-          exit 0
-        }
-      } catch { }
-    }
-    Stop-Process -Id $process.Id -Force
-    exit 1
+```bash
+DESELECTS="--deselect=tests/unit/test_cache_extended.py \
+           --deselect=tests/unit/test_server/test_cache.py \
+           --deselect=tests/unit/test_websocket_module.py \
+           --deselect=tests/integration/server_tests/test_api_endpoints.py \
+           --deselect=tests/integration/test_tm_real_model.py \
+           --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads \
+           --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_embedding_generation \
+           --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_embedding_caching \
+           --deselect=tests/e2e/test_kr_similar_e2e.py::TestKRSimilarEmbeddings::test_05_model_loads \
+           --deselect=tests/e2e/test_kr_similar_e2e.py::TestKRSimilarEmbeddings::test_06_embedding_generation"
 ```
 
 ---
 
-## 4. Final Results (After Review)
+## 5. Smoke Test - THOROUGH VERSION
 
-**Before:** 912 tests, 17 min
+### Requirements
+1. Silent install completes
+2. All files exist (exe, server, python, tools)
+3. Dependencies download (including Embedding Model)
+4. App launches, backend starts
+5. Admin autologin succeeds
+6. Main page loads and is responsive
+7. Basic interaction works (click, verify)
+8. **ANY warning/error = FAIL with detailed log**
 
-**After:** ? tests, ? min
+### Implementation (PowerShell for Windows runner)
 
-**Removed from CI:**
+```yaml
+- name: Smoke Test - Full Verification
+  shell: pwsh
+  run: |
+    $ErrorActionPreference = "Stop"
+    $LogFile = "smoke_test.log"
 
-| Test | Reason |
-|------|--------|
-| | |
+    function Log($msg) {
+      $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+      "$timestamp | $msg" | Tee-Object -FilePath $LogFile -Append
+    }
+
+    try {
+      # === PHASE 1: Installation ===
+      Log "=== PHASE 1: INSTALLATION ==="
+      $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
+      if (!$installer) { throw "No installer found!" }
+      Log "Installer: $($installer.Name)"
+
+      $installDir = "C:\LocaNextSmokeTest"
+      Log "Installing to: $installDir"
+
+      $proc = Start-Process -FilePath $installer.FullName -Args "/S /D=$installDir" -Wait -PassThru
+      if ($proc.ExitCode -ne 0) { throw "Installation failed with exit code $($proc.ExitCode)" }
+      Log "Installation complete"
+
+      # === PHASE 2: File Verification ===
+      Log "=== PHASE 2: FILE VERIFICATION ==="
+      $requiredFiles = @(
+        "$installDir\LocaNext.exe",
+        "$installDir\resources\server\main.py",
+        "$installDir\resources\tools\python\python.exe",
+        "$installDir\resources\tools\download_model.py",
+        "$installDir\resources\tools\install_deps.py"
+      )
+      foreach ($file in $requiredFiles) {
+        if (!(Test-Path $file)) { throw "Missing file: $file" }
+        Log "OK: $file"
+      }
+
+      # === PHASE 3: Launch App ===
+      Log "=== PHASE 3: LAUNCH APP ==="
+      $appProc = Start-Process "$installDir\LocaNext.exe" -PassThru
+      Log "App started with PID: $($appProc.Id)"
+
+      # Wait for first-run setup (downloads dependencies + model)
+      Log "Waiting for first-run setup (up to 10 minutes)..."
+      $timeout = 600  # 10 minutes for downloads
+      $startTime = Get-Date
+
+      while ((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
+        Start-Sleep -Seconds 5
+        try {
+          $health = Invoke-WebRequest -Uri "http://localhost:8888/health" -TimeoutSec 5 -UseBasicParsing
+          if ($health.StatusCode -eq 200) {
+            Log "Backend health check PASSED"
+            break
+          }
+        } catch {
+          Log "Waiting for backend... ($([int]((Get-Date) - $startTime).TotalSeconds)s)"
+        }
+      }
+
+      if ((Get-Date) - $startTime).TotalSeconds -ge $timeout) {
+        throw "Backend failed to start within $timeout seconds"
+      }
+
+      # === PHASE 4: Embedding Model Verification ===
+      Log "=== PHASE 4: EMBEDDING MODEL ==="
+      $modelPath = "$installDir\models\qwen-embedding\config.json"
+      if (!(Test-Path $modelPath)) {
+        throw "Embedding model not downloaded: $modelPath"
+      }
+      Log "OK: Embedding model exists"
+
+      # === PHASE 5: Admin Autologin ===
+      Log "=== PHASE 5: ADMIN AUTOLOGIN ==="
+      # First get a session
+      $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+
+      # Try autologin endpoint
+      try {
+        $loginResp = Invoke-WebRequest -Uri "http://localhost:8888/api/auth/autologin" `
+          -Method POST -ContentType "application/json" `
+          -Body '{"username":"admin","password":"admin"}' `
+          -WebSession $session -UseBasicParsing
+
+        if ($loginResp.StatusCode -eq 200) {
+          Log "Admin autologin PASSED"
+        } else {
+          throw "Autologin returned status $($loginResp.StatusCode)"
+        }
+      } catch {
+        # Try regular login
+        $loginResp = Invoke-WebRequest -Uri "http://localhost:8888/api/auth/login" `
+          -Method POST -ContentType "application/json" `
+          -Body '{"username":"admin","password":"admin"}' `
+          -WebSession $session -UseBasicParsing
+
+        if ($loginResp.StatusCode -eq 200) {
+          Log "Admin login PASSED"
+        } else {
+          throw "Login failed: $($_.Exception.Message)"
+        }
+      }
+
+      # === PHASE 6: API Interaction ===
+      Log "=== PHASE 6: API INTERACTION ==="
+
+      # Test health endpoint
+      $healthResp = Invoke-WebRequest -Uri "http://localhost:8888/api/health/status" `
+        -WebSession $session -UseBasicParsing
+      Log "Health status: $($healthResp.StatusCode)"
+
+      # Test tools list
+      $toolsResp = Invoke-WebRequest -Uri "http://localhost:8888/api/tools" `
+        -WebSession $session -UseBasicParsing
+      Log "Tools endpoint: $($toolsResp.StatusCode)"
+
+      # === PHASE 7: Cleanup ===
+      Log "=== PHASE 7: CLEANUP ==="
+      Stop-Process -Id $appProc.Id -Force -ErrorAction SilentlyContinue
+      Log "App stopped"
+
+      # === SUCCESS ===
+      Log "========================================"
+      Log "SMOKE TEST PASSED - ALL CHECKS OK"
+      Log "========================================"
+      exit 0
+
+    } catch {
+      Log "========================================"
+      Log "SMOKE TEST FAILED"
+      Log "Error: $($_.Exception.Message)"
+      Log "========================================"
+
+      # Kill app if running
+      if ($appProc) {
+        Stop-Process -Id $appProc.Id -Force -ErrorAction SilentlyContinue
+      }
+
+      # Output full log
+      Get-Content $LogFile
+      exit 1
+    }
+```
 
 ---
 
-## 5. Implementation
+## 6. Final Results
 
-- [ ] Review `tests/unit/` - fill in table above
-- [ ] Review `tests/integration/` - fill in table above
-- [ ] Review `tests/security/` - fill in table above
-- [ ] Review `tests/e2e/` - fill in table above
-- [ ] Update `TEST_DIRS` or `DESELECTS` in build.yml
+### Before Optimization
+- **Tests:** ~779 functions
+- **Time:** ~17 minutes
+- **Redundancy:** 72 duplicate tests
+
+### After Optimization (Expected)
+- **Tests:** ~707 functions (-9%)
+- **Time:** ~15 minutes (estimated -12%)
+- **Coverage:** Same (removed only duplicates)
+
+### Tests Removed from CI
+
+| Test File | Functions | Reason |
+|-----------|-----------|--------|
+| test_cache_extended.py | 29 | Duplicate of test_cache_module.py |
+| test_server/test_cache.py | 15 | Duplicate of test_cache_module.py |
+| test_websocket_module.py | 14 | Trivial import checks only |
+| test_api_endpoints.py | 14 | Subset of test_api_endpoints_detailed.py |
+| **Total** | **72** | |
+
+---
+
+## 7. Implementation Checklist
+
+- [x] Review tests/unit/ - duplicates identified
+- [x] Review tests/integration/ - duplicates identified
+- [x] Review tests/security/ - no duplicates (keep all)
+- [x] Review tests/e2e/ - already optimized (3 specific files)
+- [ ] Update DESELECTS in build.yml
 - [ ] Add smoke test to build.yml
 - [ ] Test updated CI
+- [ ] User validation
+
+---
+
+## 8. Apply Changes
+
+**To apply these optimizations, update `.gitea/workflows/build.yml`:**
+
+1. Add new DESELECTS (line ~351)
+2. Add smoke test step after Windows build
+3. Commit and trigger build
+
+**Command to apply:**
+```bash
+# After user approval, run:
+# Edit build.yml with new DESELECTS
+# Add smoke test step
+# Commit and push
+```
+
+---
+
+*Review completed: 2025-12-15 by Claude*
