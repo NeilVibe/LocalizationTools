@@ -13,10 +13,10 @@
 ```
 LocaNext v2512140245
 ├── Backend:     ✅ 63+ API endpoints, async, WebSocket
-├── Frontend:    ✅ Electron + Svelte (LocaNext Desktop)
+├── Frontend:    ⬆️ Electron + Svelte 4 → Svelte 5 migration (P27)
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar + LDM 80%
 ├── Tests:       ✅ 912 total (595 unit pass, no mocks)
-├── Security:    ⚠️ 39+ vulnerabilities identified (fix in progress)
+├── Security:    ✅ All CRITICAL/HIGH fixed (P26 complete)
 ├── CI/CD:       ✅ GitHub Actions + Gitea (hardened 2025-12-14)
 ├── Database:    ✅ PostgreSQL + PgBouncer (NO SQLite!)
 └── Distribution: ✅ Auto-update enabled
@@ -42,6 +42,27 @@ LocaNext v2512140245
 ---
 
 ## Active Development
+
+### P27: Stack Modernization (Svelte 5) 📋 PLANNED
+
+**Status:** 0% | **Priority #1** | **Effort: 7-10 hours**
+
+Full stack upgrade to latest ecosystem:
+
+| Package | Current | Target | Why |
+|---------|---------|--------|-----|
+| svelte | 4.2.8 | 5.46.0 | Runes, performance, smaller bundles |
+| vite | 5.0.8 | 7.2.7 | Faster builds |
+| electron | 28.0.0 | 39.2.7 | ASAR security fix |
+| @sveltejs/kit | 2.0.0 | 2.49.2 | Bug fixes |
+
+**Codebase:** 22 components, 33 reactive statements to convert
+
+**Protocol:** Test after each step - never accumulate errors
+
+**Detailed Plan:** [P27_STACK_MODERNIZATION.md](docs/wip/P27_STACK_MODERNIZATION.md)
+
+---
 
 ### P26: Security Vulnerability Remediation ✅ COMPLETE
 
