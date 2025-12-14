@@ -50,3 +50,4 @@ Build LIGHT v2512150039 - Cache cleared
 Build LIGHT v2512150043 - Original script
 Build LIGHT v2512150050 - Fix dotenv override (CI uses correct DB)
 Build LIGHT v2512150100 - Full Review PASSED + CPU Terror Fix
+Build LIGHT v2512150204 - P30 CI Optimization + Smoke Test
