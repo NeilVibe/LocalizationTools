@@ -154,8 +154,9 @@
       </div>
     {:else if status}
       <!-- Overall Status -->
+      {@const StatusIcon = getStatusIcon(status.status)}
       <div class="overall-status" class:healthy={status.status === 'healthy'} class:degraded={status.status === 'degraded'} class:unhealthy={status.status === 'unhealthy'}>
-        <svelte:component this={getStatusIcon(status.status)} size={24} />
+        <StatusIcon size={24} />
         <span class="status-text">
           {#if status.status === 'healthy'}
             All Systems Operational
