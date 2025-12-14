@@ -20,8 +20,9 @@
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
-  let view;
-  let app;
+  // Svelte 5 Runes
+  let view = $state(null);
+  let app = $state(null);
 
   currentView.subscribe(value => {
     view = value;
@@ -35,10 +36,12 @@
     logger.info("+error.svelte acting as main page (Electron file:// workaround)");
   });
 
-  // Log the error for debugging
-  $: if ($page.error) {
-    console.log("[Electron] SvelteKit routing error (expected in file:// mode):", $page.error.message);
-  }
+  // Svelte 5: Effect - Log the error for debugging
+  $effect(() => {
+    if ($page.error) {
+      console.log("[Electron] SvelteKit routing error (expected in file:// mode):", $page.error.message);
+    }
+  });
 </script>
 
 <!-- Render main app content even though this is technically an error page -->

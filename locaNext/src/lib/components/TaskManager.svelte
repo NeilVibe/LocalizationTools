@@ -22,12 +22,12 @@
     clearCompletedHistory
   } from "$lib/stores/globalProgress.js";
 
-  // Task data from backend (ActiveOperation)
-  let backendTasks = [];
-  let isLoading = false;
-  let showNotification = false;
-  let notificationMessage = '';
-  let notificationType = 'success';
+  // Svelte 5 Runes - Task data from backend (ActiveOperation)
+  let backendTasks = $state([]);
+  let isLoading = $state(false);
+  let showNotification = $state(false);
+  let notificationMessage = $state('');
+  let notificationType = $state('success');
 
   /**
    * Transform frontend operation to task format (matching backend format)
@@ -81,20 +81,20 @@
     };
   }
 
-  // Reactive: Merge frontend active, frontend history, and backend tasks
-  $: tasks = (() => {
+  // Svelte 5: Derived - Merge frontend active, frontend history, and backend tasks
+  let tasks = $derived((() => {
     // Transform frontend active operations
-    const frontendTasks = $frontendOperations.map(transformFrontendOperation);
+    const frontendTasksList = $frontendOperations.map(transformFrontendOperation);
 
     // Transform completed history (from globalProgress store)
     const historyTasks = $completedHistory.map(transformFrontendOperation);
 
     // Get all existing IDs to avoid duplicates
-    const activeIds = new Set(frontendTasks.map(t => t.id));
+    const activeIds = new Set(frontendTasksList.map(t => t.id));
     const backendIds = new Set(backendTasks.map(t => t.id));
 
     // Filter frontend tasks that aren't already in backend (no duplicates)
-    const uniqueFrontendTasks = frontendTasks.filter(t => !backendIds.has(t.id));
+    const uniqueFrontendTasks = frontendTasksList.filter(t => !backendIds.has(t.id));
 
     // Filter history tasks that aren't in active or backend
     const uniqueHistoryTasks = historyTasks.filter(t =>
@@ -106,7 +106,7 @@
       // Sort by timestamp (most recent first)
       return new Date(b.timestamp) - new Date(a.timestamp);
     });
-  })();
+  })());
 
   // WebSocket unsubscribe functions
   let unsubscribeOperationStart;

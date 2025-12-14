@@ -21,13 +21,15 @@
   // API base URL
   const API_BASE = 'http://localhost:8888';
 
-  // Props
-  export let projects = [];
-  export let selectedProjectId = null;
-  export let selectedFileId = null;
+  // Svelte 5: Props
+  let {
+    projects = $bindable([]),
+    selectedProjectId = $bindable(null),
+    selectedFileId = $bindable(null)
+  } = $props();
 
   // State
-  let loading = false;
+  let loading = $state(false);
   let projectTree = null;
   let treeNodes = [];
 
@@ -279,10 +281,12 @@
     }
   }
 
-  // Watch for project selection changes
-  $: if (selectedProjectId) {
-    loadProjectTree(selectedProjectId);
-  }
+  // Svelte 5: Effect - Watch for project selection changes
+  $effect(() => {
+    if (selectedProjectId) {
+      loadProjectTree(selectedProjectId);
+    }
+  });
 
   // ============== Context Menu Functions ==============
 
@@ -463,7 +467,7 @@
         <button
           class="project-item"
           class:selected={selectedProjectId === project.id}
-          on:click={() => selectProject(project.id)}
+          onclick={() => selectProject(project.id)}
         >
           <Folder size={16} />
           <span>{project.name}</span>
@@ -497,13 +501,13 @@
       </div>
 
       {#if treeNodes.length > 0}
-        <div class="custom-tree" on:contextmenu|preventDefault>
+        <div class="custom-tree" oncontextmenu={(e) => e.preventDefault()}>
           {#each treeNodes as node}
             <div
               class="tree-node"
               class:selected={node.data.type === 'file' && selectedFileId === node.data.id}
-              on:click={() => handleNodeClick(node)}
-              on:contextmenu={(e) => handleContextMenu(e, node.data)}
+              onclick={() => handleNodeClick(node)}
+              oncontextmenu={(e) => handleContextMenu(e, node.data)}
               role="button"
               tabindex="0"
             >
@@ -516,8 +520,8 @@
                   <div
                     class="tree-node"
                     class:selected={child.data.type === 'file' && selectedFileId === child.data.id}
-                    on:click={() => handleNodeClick(child)}
-                    on:contextmenu={(e) => handleContextMenu(e, child.data)}
+                    onclick={() => handleNodeClick(child)}
+                    oncontextmenu={(e) => handleContextMenu(e, child.data)}
                     role="button"
                     tabindex="0"
                   >
@@ -541,24 +545,24 @@
   <div
     class="context-menu"
     style="left: {contextMenuX}px; top: {contextMenuY}px;"
-    on:click|stopPropagation
+    onclick={(e) => e.stopPropagation()}
     role="menu"
   >
-    <button class="context-menu-item" on:click={downloadFile} role="menuitem">
+    <button class="context-menu-item" onclick={downloadFile} role="menuitem">
       <Download size={16} />
       <span>Download File</span>
     </button>
     <div class="context-menu-divider"></div>
-    <button class="context-menu-item" on:click={runLineCheckQA} role="menuitem">
+    <button class="context-menu-item" onclick={runLineCheckQA} role="menuitem">
       <Search size={16} />
       <span>Run Full Line Check QA</span>
     </button>
-    <button class="context-menu-item" on:click={runWordCheckQA} role="menuitem">
+    <button class="context-menu-item" onclick={runWordCheckQA} role="menuitem">
       <TextCreation size={16} />
       <span>Run Full Word Check QA</span>
     </button>
     <div class="context-menu-divider"></div>
-    <button class="context-menu-item" on:click={openTMRegistration} role="menuitem">
+    <button class="context-menu-item" onclick={openTMRegistration} role="menuitem">
       <DataBase size={16} />
       <span>Upload as TM...</span>
     </button>

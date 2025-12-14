@@ -11,19 +11,12 @@
   // Welcome component removed - LDM is now the default app
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
+  import { get } from 'svelte/store';
 
   console.log("[DEBUG] +page.svelte imports complete");
 
-  // SvelteKit page props (consumed to silence unused warnings)
-  export let data;
-  export let form;
-  export let params;
-  // Consume props to avoid unused warnings
-  $: void data;
-  $: void form;
-  $: void params;
-
-  import { get } from 'svelte/store';
+  // Svelte 5: SvelteKit page props (destructure to acknowledge them)
+  let { data, form } = $props();
 
   // DEBUG: Expose page's view of stores for testing (set immediately, not in onMount)
   // Use get() since this runs during initialization, not in reactive context
@@ -42,10 +35,18 @@
     console.log("[DEBUG] window.pageDebug exposed immediately");
   }
 
-  // Use reactive statements for logging (the actual rendering uses $store syntax)
-  $: console.log("[DEBUG] View changed:", $currentView);
-  $: console.log("[DEBUG] App changed:", $currentApp);
-  $: logger.info("Navigation state", { view: $currentView, app: $currentApp });
+  // Svelte 5: Effect - Debug logging when stores change
+  $effect(() => {
+    console.log("[DEBUG] View changed:", $currentView);
+  });
+
+  $effect(() => {
+    console.log("[DEBUG] App changed:", $currentApp);
+  });
+
+  $effect(() => {
+    logger.info("Navigation state", { view: $currentView, app: $currentApp });
+  });
 
   onMount(() => {
     console.log("[DEBUG] +page.svelte onMount");

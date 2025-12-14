@@ -18,12 +18,11 @@
 
   const dispatch = createEventDispatcher();
 
-  // API base URL from store
-  $: API_BASE = get(serverUrl);
+  // Svelte 5: Derived - API base URL from store
+  let API_BASE = $derived(get(serverUrl));
 
-  // Props
-  export let fileId = null;
-  export let fileName = "";
+  // Svelte 5: Props
+  let { fileId = $bindable(null), fileName = "" } = $props();
 
   // Virtual scrolling constants
   const MIN_ROW_HEIGHT = 48; // Minimum row height
@@ -36,39 +35,39 @@
   // Real-time subscription
   let cellUpdateUnsubscribe = null;
 
-  // State
-  let loading = false;
-  let initialLoading = true;
-  let rows = []; // Cached rows (sparse array by row_num)
-  let total = 0;
-  let searchTerm = "";
+  // Svelte 5: State
+  let loading = $state(false);
+  let initialLoading = $state(true);
+  let rows = $state([]); // Cached rows (sparse array by row_num)
+  let total = $state(0);
+  let searchTerm = $state("");
   let searchDebounceTimer = null;
 
-  // Virtual scroll state
-  let containerEl;
-  let scrollTop = 0;
-  let containerHeight = 400;
-  let visibleStart = 0;
-  let visibleEnd = 50;
+  // Svelte 5: Virtual scroll state
+  let containerEl = $state(null);
+  let scrollTop = $state(0);
+  let containerHeight = $state(400);
+  let visibleStart = $state(0);
+  let visibleEnd = $state(50);
 
   // Page cache - track which pages we've loaded
-  let loadedPages = new Set();
-  let loadingPages = new Set();
+  let loadedPages = $state(new Set());
+  let loadingPages = $state(new Set());
 
   // Go to row state - REMOVED (BUG-001 - not useful)
 
-  // Edit modal state
-  let showEditModal = false;
-  let editingRow = null;
-  let editTarget = "";
-  let editStatus = "";
+  // Svelte 5: Edit modal state
+  let showEditModal = $state(false);
+  let editingRow = $state(null);
+  let editTarget = $state("");
+  let editStatus = $state("");
 
   // Selected row state
-  let selectedRowId = null;
+  let selectedRowId = $state(null);
 
   // TM suggestions state
-  let tmSuggestions = [];
-  let tmLoading = false;
+  let tmSuggestions = $state([]);
+  let tmLoading = $state(false);
 
   // Table column definitions (widths will be calculated dynamically)
   // Note: Status column REMOVED - using cell colors instead
@@ -82,14 +81,14 @@
   };
 
   // Reference data cache (loaded when referenceFileId changes)
-  let referenceData = new Map(); // string_id -> { target, source }
-  let referenceLoading = false;
+  let referenceData = $state(new Map()); // string_id -> { target, source }
+  let referenceLoading = $state(false);
 
   // TM results cache (per row)
-  let tmResults = new Map(); // row_id -> { target, similarity, source }
+  let tmResults = $state(new Map()); // row_id -> { target, similarity, source }
 
-  // Reactive: visible columns based on preferences
-  $: visibleColumns = getVisibleColumns($preferences);
+  // Svelte 5: Derived - visible columns based on preferences
+  let visibleColumns = $derived(getVisibleColumns($preferences));
 
   function getVisibleColumns(prefs) {
     const cols = [];
@@ -384,12 +383,14 @@
     return ref.target;
   }
 
-  // Reactive: load reference when preference changes
-  $: if ($preferences.referenceFileId) {
-    loadReferenceData($preferences.referenceFileId);
-  } else {
-    referenceData = new Map();
-  }
+  // Svelte 5: Effect - load reference when preference changes
+  $effect(() => {
+    if ($preferences.referenceFileId) {
+      loadReferenceData($preferences.referenceFileId);
+    } else {
+      referenceData = new Map();
+    }
+  });
 
   // =========================================================================
   // TM Results Column Functions (Phase 9)
@@ -443,10 +444,12 @@
     }
   }
 
-  // Clear TM cache when active TM changes
-  $: if ($preferences.activeTmId !== undefined) {
-    tmResults = new Map();
-  }
+  // Svelte 5: Effect - Clear TM cache when active TM changes
+  $effect(() => {
+    if ($preferences.activeTmId !== undefined) {
+      tmResults = new Map();
+    }
+  });
 
   // Open edit modal with row locking
   async function openEditModal(row) {
@@ -779,29 +782,33 @@
     }
   }
 
-  // Get visible rows for rendering
-  $: visibleRows = Array.from({ length: visibleEnd - visibleStart }, (_, i) => {
+  // Svelte 5: Derived - Get visible rows for rendering
+  let visibleRows = $derived(Array.from({ length: visibleEnd - visibleStart }, (_, i) => {
     const index = visibleStart + i;
     return rows[index] || { row_num: index + 1, placeholder: true };
+  }));
+
+  // Svelte 5: Derived - Total scroll height (reactive to rows changes)
+  let totalHeight = $derived(getTotalHeight());
+
+  // Svelte 5: Effect - Subscribe to real-time updates when file changes
+  $effect(() => {
+    if (fileId) {
+      joinFile(fileId);
+      if (cellUpdateUnsubscribe) {
+        cellUpdateUnsubscribe();
+      }
+      cellUpdateUnsubscribe = onCellUpdate(handleCellUpdates);
+    }
   });
 
-  // Total scroll height (reactive to rows changes)
-  $: totalHeight = getTotalHeight();
-
-  // Subscribe to real-time updates when file changes
-  $: if (fileId) {
-    joinFile(fileId);
-    if (cellUpdateUnsubscribe) {
-      cellUpdateUnsubscribe();
+  // Svelte 5: Effect - Watch file changes
+  $effect(() => {
+    if (fileId) {
+      searchTerm = "";
+      loadRows();
     }
-    cellUpdateUnsubscribe = onCellUpdate(handleCellUpdates);
-  }
-
-  // Watch file changes
-  $: if (fileId) {
-    searchTerm = "";
-    loadRows();
-  }
+  });
 
   // Setup scroll listener on mount
   onMount(() => {

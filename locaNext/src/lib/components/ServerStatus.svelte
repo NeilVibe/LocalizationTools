@@ -19,17 +19,17 @@
   import { serverUrl } from "$lib/stores/app.js";
   import { get } from "svelte/store";
 
-  // Props
-  export let open = false;
+  // Svelte 5: Props
+  let { open = $bindable(false) } = $props();
 
-  // State
-  let status = null;
-  let loading = false;
-  let errorMessage = "";
-  let pollInterval = null;
+  // Svelte 5: State
+  let status = $state(null);
+  let loading = $state(false);
+  let errorMessage = $state("");
+  let pollInterval = $state(null);
 
-  // API base URL from store
-  $: API_BASE = get(serverUrl);
+  // Svelte 5: Derived - API base URL from store
+  let API_BASE = $derived(get(serverUrl));
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -126,12 +126,14 @@
     }
   }
 
-  // Watch open state
-  $: if (open) {
-    startPolling();
-  } else {
-    stopPolling();
-  }
+  // Svelte 5: Effect - Watch open state
+  $effect(() => {
+    if (open) {
+      startPolling();
+    } else {
+      stopPolling();
+    }
+  });
 
   onDestroy(() => {
     stopPolling();

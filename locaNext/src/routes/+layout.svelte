@@ -29,21 +29,17 @@
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
 
-  // SvelteKit layout props (prefixed to silence unused warnings)
-  // These are standard SvelteKit props passed to layouts
-  export let data;
-  export let params;
-  // Consume props to avoid unused warnings
-  $: void data;
-  $: void params;
+  // Svelte 5: SvelteKit layout props
+  let { data, children } = $props();
 
-  let isAppsMenuOpen = false;
-  let isSettingsMenuOpen = false;
-  let isUserMenuOpen = false;
-  let showChangePassword = false;
-  let showAbout = false;
-  let showPreferences = false;
-  let checkingAuth = true;
+  // Svelte 5: State
+  let isAppsMenuOpen = $state(false);
+  let isSettingsMenuOpen = $state(false);
+  let isUserMenuOpen = $state(false);
+  let showChangePassword = $state(false);
+  let showAbout = $state(false);
+  let showPreferences = $state(false);
+  let checkingAuth = $state(true);
 
   // Available apps
   const apps = [
@@ -144,11 +140,13 @@
     }
   }
 
-  // Connect websocket when authenticated
-  $: if ($isAuthenticated && !websocket.isConnected()) {
-    logger.info("Connecting WebSocket after authentication");
-    websocket.connect();
-  }
+  // Svelte 5: Effect - Connect websocket when authenticated
+  $effect(() => {
+    if ($isAuthenticated && !websocket.isConnected()) {
+      logger.info("Connecting WebSocket after authentication");
+      websocket.connect();
+    }
+  });
 
   onMount(() => {
     // Initialize global error monitoring
@@ -237,7 +235,7 @@
       </HeaderAction>
 
       <!-- Tasks Button (styled like other nav items with icon) -->
-      <button class="tasks-button" on:click={showTasks}>
+      <button class="tasks-button" onclick={showTasks}>
         <TaskComplete size={20} />
         <span>Tasks</span>
       </button>
@@ -245,7 +243,7 @@
       <!-- Theme Toggle Button -->
       <button
         class="theme-toggle-button"
-        on:click={() => preferences.toggleTheme()}
+        onclick={() => preferences.toggleTheme()}
         title={$theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
       >
         {#if $theme === 'dark'}
@@ -312,7 +310,7 @@
     <UpdateModal />
 
     <Content>
-      <slot />
+      {@render children()}
     </Content>
 
     <!-- Global Status Bar (P18.5.5) - Shows active operations across all apps -->
