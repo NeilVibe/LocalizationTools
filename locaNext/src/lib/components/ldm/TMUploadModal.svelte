@@ -22,21 +22,21 @@
   // API base URL
   const API_BASE = 'http://localhost:8888';
 
-  // Props
-  export let open = false;
+  // Svelte 5: Props
+  let { open = $bindable(false) } = $props();
 
-  // Form state
-  let tmName = "";
-  let sourceLang = "ko";
-  let targetLang = "en";
-  let description = "";
-  let uploadFiles = [];
+  // Svelte 5: Form state
+  let tmName = $state("");
+  let sourceLang = $state("ko");
+  let targetLang = $state("en");
+  let description = $state("");
+  let uploadFiles = $state([]);
 
-  // Upload state
-  let uploadStatus = ""; // '', 'uploading', 'success', 'error'
-  let uploadProgress = 0;
-  let errorMessage = "";
-  let uploadResult = null;
+  // Svelte 5: Upload state
+  let uploadStatus = $state(""); // '', 'uploading', 'success', 'error'
+  let uploadProgress = $state(0);
+  let errorMessage = $state("");
+  let uploadResult = $state(null);
 
   // Languages
   const languages = [
@@ -161,10 +161,12 @@
     }
   }
 
-  // Watch file changes
-  $: if (uploadFiles.length > 0) {
-    handleFileAdd();
-  }
+  // Svelte 5: Effect - Watch file changes
+  $effect(() => {
+    if (uploadFiles.length > 0) {
+      handleFileAdd();
+    }
+  });
 </script>
 
 <Modal

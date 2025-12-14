@@ -37,53 +37,53 @@
   // Dictionary types (from backend)
   const DICT_TYPES = ['BDO', 'BDM', 'BDC', 'CD'];
 
-  // State
-  let currentDictionary = null; // {dict_type, split_pairs, whole_pairs}
-  let availableDictionaries = [];
+  // Svelte 5: State
+  let currentDictionary = $state(null); // {dict_type, split_pairs, whole_pairs}
+  let availableDictionaries = $state([]);
 
-  // Modal states
-  let showCreateDictionaryModal = false;
-  let showLoadDictionaryModal = false;
-  let showExtractSimilarModal = false;
-  let showAutoTranslateModal = false;
+  // Svelte 5: Modal states
+  let showCreateDictionaryModal = $state(false);
+  let showLoadDictionaryModal = $state(false);
+  let showExtractSimilarModal = $state(false);
+  let showAutoTranslateModal = $state(false);
 
-  // Create Dictionary form
-  let createDictType = 'BDO';
-  let createKrColumn = 5;
-  let createTransColumn = 6;
-  let createFiles = [];
+  // Svelte 5: Create Dictionary form
+  let createDictType = $state('BDO');
+  let createKrColumn = $state(5);
+  let createTransColumn = $state(6);
+  let createFiles = $state([]);
 
-  // Load Dictionary form
-  let loadDictType = 'BDO';
+  // Svelte 5: Load Dictionary form
+  let loadDictType = $state('BDO');
 
-  // Search form
-  let searchQuery = '';
-  let searchThreshold = 0.85;
-  let searchTopK = 10;
-  let searchUseWhole = false;
-  let searchResults = [];
-  let isSearching = false;
+  // Svelte 5: Search form
+  let searchQuery = $state('');
+  let searchThreshold = $state(0.85);
+  let searchTopK = $state(10);
+  let searchUseWhole = $state(false);
+  let searchResults = $state([]);
+  let isSearching = $state(false);
 
-  // Extract Similar form
-  let extractFile = [];
-  let extractMinCharLength = 50;
-  let extractThreshold = 0.85;
-  let extractFilterSameCategory = true;
+  // Svelte 5: Extract Similar form
+  let extractFile = $state([]);
+  let extractMinCharLength = $state(50);
+  let extractThreshold = $state(0.85);
+  let extractFilterSameCategory = $state(true);
 
-  // Auto-Translate form
-  let translateFile = [];
-  let translateThreshold = 0.85;
+  // Svelte 5: Auto-Translate form
+  let translateFile = $state([]);
+  let translateThreshold = $state(0.85);
 
-  // Status
-  let statusMessage = '';
-  let showNotification = false;
-  let notificationType = 'success';
+  // Svelte 5: Status
+  let statusMessage = $state('');
+  let showNotification = $state(false);
+  let notificationType = $state('success');
 
-  // Processing states
-  let isCreatingDictionary = false;
-  let isLoadingDictionary = false;
-  let isExtracting = false;
-  let isTranslating = false;
+  // Svelte 5: Processing states
+  let isCreatingDictionary = $state(false);
+  let isLoadingDictionary = $state(false);
+  let isExtracting = $state(false);
+  let isTranslating = $state(false);
 
   function showStatus(message, type = 'success') {
     statusMessage = message;
@@ -535,13 +535,13 @@
     { key: 'similarity', value: 'Similarity' }
   ];
 
-  // DataTable rows
-  $: rows = searchResults.map((result, index) => ({
+  // Svelte 5: Derived - DataTable rows
+  let rows = $derived(searchResults.map((result, index) => ({
     id: index.toString(),
     korean: result.korean || result.text || '',
     translation: result.translation || '',
     similarity: result.similarity ? `${(result.similarity * 100).toFixed(1)}%` : ''
-  }));
+  })));
 </script>
 
 <div class="krsimilar-container">

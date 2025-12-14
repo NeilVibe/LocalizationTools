@@ -14,24 +14,27 @@
   import { api } from "$lib/api/client.js";
   import { logger } from "$lib/utils/logger.js";
 
-  export let open = false;
+  // Svelte 5 Runes
+  let { open = $bindable(false) } = $props();
 
   // Version info (fetched from backend /health)
-  let versionInfo = {
+  let versionInfo = $state({
     version: "Loading...",
     build_type: "LIGHT",
     release_date: "-",
     release_name: "-"
-  };
+  });
 
-  let checkingUpdate = false;
-  let updateStatus = null; // null | 'up-to-date' | 'update-available' | 'error'
-  let updateMessage = "";
+  let checkingUpdate = $state(false);
+  let updateStatus = $state(null); // null | 'up-to-date' | 'update-available' | 'error'
+  let updateMessage = $state("");
 
   // Fetch version when modal opens
-  $: if (open) {
-    fetchVersionInfo();
-  }
+  $effect(() => {
+    if (open) {
+      fetchVersionInfo();
+    }
+  });
 
   async function fetchVersionInfo() {
     try {

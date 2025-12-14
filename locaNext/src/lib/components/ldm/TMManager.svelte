@@ -28,17 +28,17 @@
   // API base URL
   const API_BASE = 'http://localhost:8888';
 
-  // Props
-  export let open = false;
+  // Svelte 5: Props
+  let { open = $bindable(false) } = $props();
 
-  // State
-  let tms = [];
-  let loading = false;
-  let errorMessage = "";
-  let showUploadModal = false;
-  let deleteConfirmOpen = false;
-  let tmToDelete = null;
-  let buildingIndexes = new Set();
+  // Svelte 5: State
+  let tms = $state([]);
+  let loading = $state(false);
+  let errorMessage = $state("");
+  let showUploadModal = $state(false);
+  let deleteConfirmOpen = $state(false);
+  let tmToDelete = $state(null);
+  let buildingIndexes = $state(new Set());
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -177,10 +177,12 @@
     deleteConfirmOpen = true;
   }
 
-  // Load TMs when modal opens
-  $: if (open) {
-    loadTMs();
-  }
+  // Svelte 5: Effect - Load TMs when modal opens
+  $effect(() => {
+    if (open) {
+      loadTMs();
+    }
+  });
 
   // DataTable headers
   const headers = [

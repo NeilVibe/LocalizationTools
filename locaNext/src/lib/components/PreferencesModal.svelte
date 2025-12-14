@@ -16,33 +16,34 @@
   import { get } from "svelte/store";
   import { onMount } from "svelte";
 
-  export let open = false;
+  // Svelte 5 Runes
+  let { open = $bindable(false) } = $props();
 
   // Local UI state
-  let saved = false;
+  let saved = $state(false);
 
   // Local copies for binding (synced with store)
-  let currentTheme = 'dark';
-  let currentFontSize = 'medium';
-  let currentFontWeight = 'normal';
-  let notifications = true;
-  let language = 'en';
+  let currentTheme = $state('dark');
+  let currentFontSize = $state('medium');
+  let currentFontWeight = $state('normal');
+  let notifications = $state(true);
+  let language = $state('en');
 
   // Column visibility toggles
-  let showIndex = false;
-  let showStringId = false;
-  let showReference = false;
-  let showTmResults = false;
-  let showQaResults = false;
+  let showIndex = $state(false);
+  let showStringId = $state(false);
+  let showReference = $state(false);
+  let showTmResults = $state(false);
+  let showQaResults = $state(false);
 
   // TM and Reference settings
-  let activeTmId = null;
-  let referenceFileId = null;
-  let referenceMatchMode = 'stringIdOnly';
-  let availableTMs = [];
-  let availableFiles = [];
-  let loadingTMs = false;
-  let loadingFiles = false;
+  let activeTmId = $state(null);
+  let referenceFileId = $state(null);
+  let referenceMatchMode = $state('stringIdOnly');
+  let availableTMs = $state([]);
+  let availableFiles = $state([]);
+  let loadingTMs = $state(false);
+  let loadingFiles = $state(false);
 
   // Available languages for UI
   const languages = [
@@ -191,13 +192,15 @@
     open = false;
   }
 
-  // Load when modal opens
-  $: if (open) {
-    loadFromStore();
-    loadTMs();
-    loadFiles();
-    saved = false;
-  }
+  // Svelte 5: Effect - Load when modal opens
+  $effect(() => {
+    if (open) {
+      loadFromStore();
+      loadTMs();
+      loadFiles();
+      saved = false;
+    }
+  });
 
   onMount(() => {
     loadFromStore();

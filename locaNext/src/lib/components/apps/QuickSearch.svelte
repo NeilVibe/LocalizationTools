@@ -50,95 +50,95 @@
   const GAMES = ['BDO', 'BDM', 'BDC', 'CD'];
   const LANGUAGES = ['DE', 'IT', 'PL', 'EN', 'ES', 'SP', 'FR', 'ID', 'JP', 'PT', 'RU', 'TR', 'TH', 'TW', 'CH'];
 
-  // State
-  let currentDictionary = null; // {game, language, pairs_count}
-  let referenceDictionary = null; // {game, language}
-  let referenceEnabled = false;
-  let availableDictionaries = [];
+  // Svelte 5: State
+  let currentDictionary = $state(null); // {game, language, pairs_count}
+  let referenceDictionary = $state(null); // {game, language}
+  let referenceEnabled = $state(false);
+  let availableDictionaries = $state([]);
 
-  // Modal states
-  let showCreateDictionaryModal = false;
-  let showLoadDictionaryModal = false;
-  let showSetReferenceModal = false;
+  // Svelte 5: Modal states
+  let showCreateDictionaryModal = $state(false);
+  let showLoadDictionaryModal = $state(false);
+  let showSetReferenceModal = $state(false);
 
-  // Create Dictionary form
-  let createGame = 'BDO';
-  let createLanguage = 'EN';
-  let createFiles = [];
-  let sourceMode = 'files'; // 'files' or 'folder'
-  let selectedFolderPath = '';
-  let folderFilesCount = 0;
+  // Svelte 5: Create Dictionary form
+  let createGame = $state('BDO');
+  let createLanguage = $state('EN');
+  let createFiles = $state([]);
+  let sourceMode = $state('files'); // 'files' or 'folder'
+  let selectedFolderPath = $state('');
+  let folderFilesCount = $state(0);
 
-  // Load Dictionary form
-  let loadGame = 'BDO';
-  let loadLanguage = 'EN';
+  // Svelte 5: Load Dictionary form
+  let loadGame = $state('BDO');
+  let loadLanguage = $state('EN');
 
-  // Reference Dictionary form
-  let refGame = 'BDO';
-  let refLanguage = 'EN';
+  // Svelte 5: Reference Dictionary form
+  let refGame = $state('BDO');
+  let refLanguage = $state('EN');
 
-  // Search
-  let searchQuery = '';
-  let matchType = 'contains'; // 'contains' or 'exact'
-  let searchMode = 'one-line'; // 'one-line' or 'multi-line'
-  let searchResults = [];
-  let totalResults = 0;
-  let currentPage = 1;
-  let pageSize = 50;
-  let isSearching = false;
+  // Svelte 5: Search
+  let searchQuery = $state('');
+  let matchType = $state('contains'); // 'contains' or 'exact'
+  let searchMode = $state('one-line'); // 'one-line' or 'multi-line'
+  let searchResults = $state([]);
+  let totalResults = $state(0);
+  let currentPage = $state(1);
+  let pageSize = $state(50);
+  let isSearching = $state(false);
 
-  // Status
-  let statusMessage = '';
-  let showNotification = false;
-  let notificationType = 'success';
+  // Svelte 5: Status
+  let statusMessage = $state('');
+  let showNotification = $state(false);
+  let notificationType = $state('success');
 
-  // Processing states
-  let isCreatingDictionary = false;
-  let isLoadingDictionary = false;
-  let isLoadingReference = false;
+  // Svelte 5: Processing states
+  let isCreatingDictionary = $state(false);
+  let isLoadingDictionary = $state(false);
+  let isLoadingReference = $state(false);
 
-  // Tab state
-  let activeTab = 0;
+  // Svelte 5: Tab state
+  let activeTab = $state(0);
 
   // ============================================================================
-  // QA TOOLS STATE
+  // QA TOOLS STATE (Svelte 5)
   // ============================================================================
 
-  // QA Tool Files
-  let qaFiles = [];
-  let qaGlossaryFiles = [];
+  // Svelte 5: QA Tool Files
+  let qaFiles = $state([]);
+  let qaGlossaryFiles = $state([]);
 
-  // Extract Glossary options
-  let qaFilterSentences = true;
-  let qaGlossaryLengthThreshold = 15;
-  let qaMinOccurrence = 2;
-  let qaSortMethod = 'alphabetical';
+  // Svelte 5: Extract Glossary options
+  let qaFilterSentences = $state(true);
+  let qaGlossaryLengthThreshold = $state(15);
+  let qaMinOccurrence = $state(2);
+  let qaSortMethod = $state('alphabetical');
 
-  // Line Check options
-  let qaLineCheckFilterSentences = true;
-  let qaLineCheckThreshold = 15;
+  // Svelte 5: Line Check options
+  let qaLineCheckFilterSentences = $state(true);
+  let qaLineCheckThreshold = $state(15);
 
-  // Term Check options
-  let qaTermCheckFilterSentences = true;
-  let qaTermCheckThreshold = 15;
-  let qaMaxIssuesPerTerm = 6;
+  // Svelte 5: Term Check options
+  let qaTermCheckFilterSentences = $state(true);
+  let qaTermCheckThreshold = $state(15);
+  let qaMaxIssuesPerTerm = $state(6);
 
-  // Character Count options
-  let qaSymbolSet = 'BDO';
-  let qaCustomSymbols = '';
+  // Svelte 5: Character Count options
+  let qaSymbolSet = $state('BDO');
+  let qaCustomSymbols = $state('');
 
-  // QA Processing states
-  let qaIsProcessing = false;
-  let qaProgress = 0;
-  let qaProgressMessage = '';
-  let qaCurrentOperation = null;
+  // Svelte 5: QA Processing states
+  let qaIsProcessing = $state(false);
+  let qaProgress = $state(0);
+  let qaProgressMessage = $state('');
+  let qaCurrentOperation = $state(null);
 
-  // QA Results
-  let qaGlossaryResults = null;
-  let qaLineCheckResults = null;
-  let qaTermCheckResults = null;
-  let qaPatternCheckResults = null;
-  let qaCharCountResults = null;
+  // Svelte 5: QA Results
+  let qaGlossaryResults = $state(null);
+  let qaLineCheckResults = $state(null);
+  let qaTermCheckResults = $state(null);
+  let qaPatternCheckResults = $state(null);
+  let qaCharCountResults = $state(null);
 
   function showStatus(message, type = 'success') {
     statusMessage = message;
@@ -639,8 +639,8 @@
     }
   }
 
-  // DataTable headers
-  $: headers = referenceEnabled
+  // Svelte 5: Derived - DataTable headers
+  let headers = $derived(referenceEnabled
     ? [
         { key: 'korean', value: 'Korean' },
         { key: 'translation', value: 'Translation' },
@@ -651,16 +651,16 @@
         { key: 'korean', value: 'Korean' },
         { key: 'translation', value: 'Translation' },
         { key: 'string_id', value: 'String ID' }
-      ];
+      ]);
 
-  // DataTable rows
-  $: rows = searchResults.map((result, index) => ({
+  // Svelte 5: Derived - DataTable rows
+  let rows = $derived(searchResults.map((result, index) => ({
     id: index.toString(),
     ...result
-  }));
+  })));
 
-  // Pagination
-  $: totalPages = Math.ceil(totalResults / pageSize);
+  // Svelte 5: Derived - Pagination
+  let totalPages = $derived(Math.ceil(totalResults / pageSize));
 
   function handlePageChange(event) {
     currentPage = event.detail.page;
@@ -1618,7 +1618,7 @@
             <button
               class="dict-item"
               class:selected={loadGame === dict.game && loadLanguage === dict.language}
-              on:click={() => { loadGame = dict.game; loadLanguage = dict.language; }}
+              onclick={() => { loadGame = dict.game; loadLanguage = dict.language; }}
             >
               <span class="dict-name">{dict.game}-{dict.language}</span>
               <span class="dict-count">{dict.pairs_count} pairs</span>

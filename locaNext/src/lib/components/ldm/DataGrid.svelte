@@ -23,30 +23,29 @@
 
   const dispatch = createEventDispatcher();
 
-  // API base URL from store
-  $: API_BASE = get(serverUrl);
+  // Svelte 5: Derived - API base URL from store
+  let API_BASE = $derived(get(serverUrl));
 
-  // Props
-  export let fileId = null;
-  export let fileName = "";
+  // Svelte 5: Props
+  let { fileId = $bindable(null), fileName = "" } = $props();
 
   // Real-time subscription
   let cellUpdateUnsubscribe = null;
 
-  // State
-  let loading = false;
-  let rows = [];
-  let total = 0;
-  let page = 1;
-  let pageSize = 50;
-  let totalPages = 1;
-  let searchTerm = "";
+  // Svelte 5: State
+  let loading = $state(false);
+  let rows = $state([]);
+  let total = $state(0);
+  let page = $state(1);
+  let pageSize = $state(50);
+  let totalPages = $state(1);
+  let searchTerm = $state("");
 
-  // Edit modal state
-  let showEditModal = false;
-  let editingRow = null;
-  let editTarget = "";
-  let editStatus = "";
+  // Svelte 5: Edit modal state
+  let showEditModal = $state(false);
+  let editingRow = $state(null);
+  let editTarget = $state("");
+  let editStatus = $state("");
 
   // Table headers
   const headers = [
@@ -206,17 +205,19 @@
     });
   }
 
-  // Subscribe to real-time updates when file changes
-  $: if (fileId) {
-    // Join WebSocket room for this file
-    joinFile(fileId);
+  // Svelte 5: Effect - Subscribe to real-time updates when file changes
+  $effect(() => {
+    if (fileId) {
+      // Join WebSocket room for this file
+      joinFile(fileId);
 
-    // Subscribe to cell updates
-    if (cellUpdateUnsubscribe) {
-      cellUpdateUnsubscribe();
+      // Subscribe to cell updates
+      if (cellUpdateUnsubscribe) {
+        cellUpdateUnsubscribe();
+      }
+      cellUpdateUnsubscribe = onCellUpdate(handleCellUpdates);
     }
-    cellUpdateUnsubscribe = onCellUpdate(handleCellUpdates);
-  }
+  });
 
   // Cleanup on component destroy
   onDestroy(() => {
@@ -238,12 +239,14 @@
     }
   }
 
-  // Watch file changes
-  $: if (fileId) {
-    page = 1;
-    searchTerm = "";
-    loadRows();
-  }
+  // Svelte 5: Effect - Watch file changes
+  $effect(() => {
+    if (fileId) {
+      page = 1;
+      searchTerm = "";
+      loadRows();
+    }
+  });
 </script>
 
 <div class="data-grid">
