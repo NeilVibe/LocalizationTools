@@ -45,3 +45,4 @@ Build LIGHT v2512142141 - Fix NSIS npm fallback
 Build LIGHT v2512142207 - ROBUST NSIS fix (bundled in repo)
 Build LIGHT v2512142235 - Fix version passing to release
 Build LIGHT v2512142330 - Fix electron paths (server/python in resources/)
+Build LIGHT v2512150035
