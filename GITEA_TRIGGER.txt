@@ -42,3 +42,4 @@ Build LIGHT v2512142043
 Build LIGHT v2512142055
 Build LIGHT v2512142116
 Build LIGHT v2512142141 - Fix NSIS npm fallback
+Build LIGHT v2512142207 - ROBUST NSIS fix (bundled in repo)
