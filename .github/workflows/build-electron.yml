@@ -125,19 +125,16 @@ jobs:
           echo "=== PIPELINE EXECUTIVE POWER ==="
           echo "Injecting version: $VERSION (YY.MMDD.HHMM format)"
 
-          # Update version.py
+          # Update version.py (VERSION only - SEMANTIC_VERSION is an alias)
           sed -i "s/VERSION = \"[^\"]*\"/VERSION = \"$VERSION\"/" version.py
-          sed -i "s/SEMANTIC_VERSION = \"[^\"]*\"/SEMANTIC_VERSION = \"$VERSION\"/" version.py
 
           # Update package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" locaNext/package.json
 
-          # Update installer scripts
-          sed -i "s/#define MyAppVersion \"[^\"]*\"/#define MyAppVersion \"$VERSION\"/" installer/locanext_light.iss
-          sed -i "s/#define MyAppVersion \"[^\"]*\"/#define MyAppVersion \"$VERSION\"/" installer/locanext_electron.iss
+          # NOTE: Inno Setup .iss files deprecated (P28) - using electron-builder NSIS now
 
           echo "[OK] All files updated to version: $VERSION"
-          grep "VERSION" version.py | head -2
+          grep "VERSION" version.py | head -1
 
       # ---- VERSION CHECK ----
       - name: Version Unification Check
@@ -493,60 +490,53 @@ jobs:
         shell: pwsh
 
       # ============================================================
-      # STEP 4: Compile Inno Setup installer
+      # STEP 4: Collect NSIS Installer (electron-builder produces it)
       # ============================================================
-      - name: Install Inno Setup
-        run: |
-          choco install innosetup -y
-        shell: pwsh
-
-      - name: Compile LIGHT Installer
-        run: |
-          Write-Host "Compiling LIGHT Windows installer..."
-          Write-Host "Components:"
-          Write-Host "  - Electron app (LocaNext.exe)"
-          Write-Host "  - Python Embedded + backend deps"
-          Write-Host "  - Backend server (auto-starts with app)"
-          Write-Host "  - Model downloader scripts"
-          Write-Host ""
-          Write-Host "Post-install downloads:"
-          Write-Host "  - torch + transformers (~2GB)"
-          Write-Host "  - AI model (~447MB)"
-
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\locanext_light.iss
-        shell: pwsh
-
-      - name: Verify Installer
+      - name: Collect NSIS Installer
         run: |
           $version = "${{ needs.check-build-trigger.outputs.version }}"
-          $installerPath = "installer_output\LocaNext_v${version}_Light_Setup.exe"
+          $outDir = "installer_output"
 
-          Write-Host "Looking for installer at: $installerPath"
+          Write-Host "=== Collecting NSIS Installer ==="
+          Write-Host "Version: $version"
 
-          if (!(Test-Path $installerPath)) {
-            Write-Host "Searching for any installer..."
-            $found = Get-ChildItem "installer_output\*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) {
-              Write-Host "Found: $($found.Name)"
-              $installerPath = $found.FullName
-            } else {
-              Write-Error "[ERROR] No installer found"
-              exit 1
-            }
+          # Create output directory
+          if (!(Test-Path $outDir)) {
+            New-Item -ItemType Directory -Path $outDir -Force
           }
 
-          Write-Host "[OK] LIGHT Installer compiled successfully"
-          $size = (Get-Item $installerPath).length / 1MB
-          Write-Host "  Installer size: $([math]::Round($size, 1)) MB"
-          Write-Host ""
-          Write-Host "📦 What's included:"
-          Write-Host "  - LocaNext Electron app"
-          Write-Host "  - Standalone model downloader (no Python needed!)"
-          Write-Host "  - VC++ Redistributable check"
-          Write-Host ""
-          Write-Host "📥 Post-install:"
-          Write-Host "  - AI model (~447MB) downloaded from Hugging Face"
-          Write-Host "  - Safe pipeline using huggingface_hub"
+          # Find the NSIS installer produced by electron-builder
+          Write-Host "`nLooking for NSIS installer in locaNext/dist-electron:"
+          Get-ChildItem "locaNext\dist-electron" | Format-Table Name, Length
+
+          $installer = Get-ChildItem "locaNext\dist-electron\*.exe" -ErrorAction SilentlyContinue |
+                       Where-Object { $_.Name -like "*Setup*" } |
+                       Select-Object -First 1
+
+          if (!$installer) {
+            Write-Error "[ERROR] NSIS installer not found in dist-electron!"
+            Write-Host "Available files:"
+            Get-ChildItem "locaNext\dist-electron" -Recurse | Select-Object FullName
+            exit 1
+          }
+
+          Write-Host "[OK] Found installer: $($installer.Name)"
+
+          # Rename to include version
+          $newName = "LocaNext_v${version}_Light_Setup.exe"
+          Copy-Item $installer.FullName -Destination "$outDir\$newName"
+
+          $size = (Get-Item "$outDir\$newName").Length / 1MB
+          Write-Host "[OK] Installer ready: $newName ($([math]::Round($size, 1)) MB)" -ForegroundColor Green
+        shell: pwsh
+
+      - name: Verify NSIS Installer
+        run: |
+          $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
+          if (!$installer) { Write-Error "[ERROR] No installer found"; exit 1 }
+          Write-Host "[OK] NSIS installer verified: $($installer.Name)"
+          $size = $installer.Length / 1MB
+          Write-Host "  Size: $([math]::Round($size, 1)) MB"
         shell: pwsh
 
       # ============================================================
@@ -555,57 +545,31 @@ jobs:
       - name: Generate latest.yml for Auto-Update
         run: |
           Write-Host "=== Generating latest.yml for electron-updater ==="
-          $version = "${{ needs.check-build-trigger.outputs.version }}"
 
-          # Find the installer
-          $installer = Get-ChildItem "installer_output\*.exe" | Select-Object -First 1
-          if (!$installer) {
-            Write-Error "[ERROR] No installer found"
-            exit 1
-          }
+          $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
+          if (!$installer) { Write-Error "[ERROR] No installer found"; exit 1 }
 
-          # Get file info
           $fileName = $installer.Name
           $fileSize = $installer.Length
-
-          # Calculate SHA512 hash
           $hash = (Get-FileHash -Path $installer.FullName -Algorithm SHA512).Hash.ToLower()
-          Write-Host "SHA512: $hash"
 
-          # Get semantic version from version.py
-          $env:PYTHONPATH = Get-Location
-          $semanticVersion = & "tools\python\python.exe" -c "import sys; sys.path.insert(0,'.'); from version import SEMANTIC_VERSION; print(SEMANTIC_VERSION)"
-          if (!$semanticVersion -or $semanticVersion -eq "") {
-            $semanticVersion = "1.0.0"  # Fallback
-            Write-Host "Using fallback version: $semanticVersion"
+          # Extract VERSION (unified format: YY.MMDD.HHMM - valid semver + datetime)
+          $versionContent = Get-Content "version.py" -Raw
+          if ($versionContent -match 'VERSION\s*=\s*"(\d{2}\.\d{4}\.\d{4})"') {
+            $semanticVersion = $Matches[1]
+            Write-Host "[OK] Extracted unified VERSION: $semanticVersion (YY.MMDD.HHMM format)"
+          } else {
+            $semanticVersion = "25.0101.0000"  # Fallback with unified format
+            Write-Host "[WARN] Could not extract VERSION, using fallback: $semanticVersion"
           }
-          Write-Host "Semantic Version: $semanticVersion"
 
-          # Generate latest.yml
           $releaseDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
 
-          $latestYml = @"
-          version: $semanticVersion
-          files:
-            - url: $fileName
-              sha512: $hash
-              size: $fileSize
-          path: $fileName
-          sha512: $hash
-          releaseDate: '$releaseDate'
-          "@
+          $latestYml = "version: $semanticVersion`nfiles:`n  - url: $fileName`n    sha512: $hash`n    size: $fileSize`npath: $fileName`nsha512: $hash`nreleaseDate: '$releaseDate'"
 
-          # Remove leading spaces from heredoc
-          $latestYml = $latestYml -replace '(?m)^          ', ''
-
-          # Write to file
           $latestYml | Out-File -FilePath "installer_output\latest.yml" -Encoding UTF8 -NoNewline
-
-          Write-Host ""
-          Write-Host "=== latest.yml generated ==="
+          Write-Host "[OK] latest.yml generated"
           Get-Content "installer_output\latest.yml"
-          Write-Host ""
-          Write-Host "[OK] Auto-update manifest ready"
         shell: pwsh
 
       - name: Upload Installer Artifact
@@ -636,11 +600,12 @@ jobs:
           Write-Host "Installing: $($installer.Name)"
 
           # Install silently to temp location
+          # NSIS silent flags: /S for silent, /D= for directory (must be last)
           $installDir = "$env:TEMP\LocaNext_Test"
 
-          # Run installer silently
+          # Run NSIS installer silently
           Start-Process -FilePath $installer.FullName `
-            -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$installDir" `
+            -ArgumentList "/S", "/D=$installDir" `
             -Wait -NoNewWindow
 
           Write-Host "[OK] Installation completed"
@@ -649,10 +614,12 @@ jobs:
 
       - name: Verify Installation Files
         run: |
-          Write-Host "=== Verifying installed files ==="
+          Write-Host "=== Verifying installed files (electron-builder NSIS structure) ==="
           Write-Host ""
 
           $installDir = "$env:TEMP\LocaNext_Test"
+          # electron-builder extraResources go to: resources/
+          $resourcesDir = "$installDir\resources"
 
           # Check main executable
           if (!(Test-Path "$installDir\LocaNext.exe")) {
@@ -661,39 +628,33 @@ jobs:
           }
           Write-Host "[OK] LocaNext.exe exists"
 
-          # Check server files
-          if (!(Test-Path "$installDir\server\main.py")) {
-            Write-Error "[ERROR] server/main.py not found"
+          # Check server files (in resources/)
+          if (!(Test-Path "$resourcesDir\server\main.py")) {
+            Write-Error "[ERROR] server/main.py not found in resources/"
             exit 1
           }
           Write-Host "[OK] server/main.py exists"
 
-          # Check version.py
-          if (!(Test-Path "$installDir\version.py")) {
-            Write-Error "[ERROR] version.py not found"
+          # Check version.py (in resources/)
+          if (!(Test-Path "$resourcesDir\version.py")) {
+            Write-Error "[ERROR] version.py not found in resources/"
             exit 1
           }
           Write-Host "[OK] version.py exists"
 
-          # Check embedded Python
-          if (!(Test-Path "$installDir\tools\python\python.exe")) {
-            Write-Error "[ERROR] Embedded Python not found"
+          # Check embedded Python (in resources/tools/)
+          if (!(Test-Path "$resourcesDir\tools\python\python.exe")) {
+            Write-Error "[ERROR] Embedded Python not found in resources/"
             exit 1
           }
           Write-Host "[OK] Embedded Python exists"
 
           # Check first-run setup script
-          if (!(Test-Path "$installDir\tools\install_deps.py")) {
+          if (!(Test-Path "$resourcesDir\tools\install_deps.py")) {
             Write-Error "[ERROR] install_deps.py not found"
             exit 1
           }
           Write-Host "[OK] install_deps.py exists"
-
-          if (!(Test-Path "$installDir\tools\download_model.py")) {
-            Write-Error "[ERROR] download_model.py not found"
-            exit 1
-          }
-          Write-Host "[OK] download_model.py exists"
 
           Write-Host ""
           Write-Host "[PASS] All critical files present!"
@@ -703,10 +664,11 @@ jobs:
         run: |
           Write-Host "=== Testing backend with INSTALLED embedded Python ==="
           $installDir = "$env:TEMP\LocaNext_Test"
-          $pythonExe = "$installDir\tools\python\python.exe"
-          $env:PYTHONPATH = $installDir
+          $resourcesDir = "$installDir\resources"
+          $pythonExe = "$resourcesDir\tools\python\python.exe"
+          $env:PYTHONPATH = $resourcesDir
           Write-Host "Testing server imports with installed Python..."
-          Push-Location $installDir
+          Push-Location $resourcesDir
           & $pythonExe -c "import sys; sys.path.insert(0,'.'); from version import VERSION; print(f'version OK: v{VERSION}'); import server.main; print('server.main OK')"
           $exitCode = $LASTEXITCODE
           Pop-Location

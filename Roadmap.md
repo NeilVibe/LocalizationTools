@@ -17,10 +17,54 @@ LocaNext v2512141620
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar + LDM 80%
 ├── Tests:       ✅ 912 total (595 unit pass, no mocks)
 ├── Security:    ✅ All CRITICAL/HIGH fixed (P26 complete)
-├── CI/CD:       ✅ GitHub Actions + Gitea (both clean, synced)
+├── CI/CD:       ✅ FIXED - electron-builder NSIS (P28 complete)
 ├── Database:    ✅ PostgreSQL + PgBouncer (NO SQLite!)
-└── Distribution: ✅ Auto-update enabled
+└── Distribution: ⏳ PENDING TEST - Need to verify NSIS installer works
 ```
+
+---
+
+## ✅ P28: CI/CD Fixed - NSIS Installer
+
+**Priority: #1** | **Status: FIXED** | **Completed: 2025-12-14**
+
+### What Was Fixed
+
+Replaced broken Inno Setup workflow with electron-builder's native NSIS:
+
+| Before | After |
+|--------|-------|
+| Inno Setup skipped with WORKAROUND | electron-builder NSIS native |
+| Portable ZIP (broken) | Proper installer (.exe) |
+| Missing embedded Python | Bundled via extraResources |
+| Two tools (electron-builder + Inno) | One tool (electron-builder) |
+
+### Changes Made
+
+1. **package.json**: `win.target: "dir"` → `"nsis"` + full NSIS config
+2. **package.json**: `extraResources` expanded for Python + server
+3. **build.yml**: Removed Inno Setup steps, simplified to collect NSIS output
+4. **installer/*.iss**: Moved to `installer/deprecated/`
+5. **LICENSE**: Added MIT license file
+
+### New Build Output
+
+```
+installer_output/LocaNext_v25.XXXX.XXXX_Light_Setup.exe  (~200MB)
+```
+
+---
+
+## P29: Full CI/CD Review
+
+**Priority: #2** | **Status: PENDING**
+
+Complete review to verify everything works:
+- [ ] Trigger test build on Gitea
+- [ ] Verify NSIS installer produced
+- [ ] Download and install on Windows
+- [ ] Verify app starts standalone
+- [ ] Verify embedded Python works
 
 ---
 
@@ -28,13 +72,13 @@ LocaNext v2512141620
 
 | # | Priority | Name | Status | Doc |
 |---|----------|------|--------|-----|
-| **1** | P27 | Stack Modernization (Svelte 5) | ✅ Complete | [P27_STACK_MODERNIZATION.md](docs/wip/P27_STACK_MODERNIZATION.md) |
-| 2 | P26 | Security Vulnerability Fix | ✅ Complete | [SECURITY_FIX_PLAN.md](docs/wip/SECURITY_FIX_PLAN.md) |
-| 3 | P25 | LDM UX Overhaul | 🔨 85% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
-| 3 | P24 | Server Status Dashboard | ✅ Complete | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
-| 4 | P17 | LDM LanguageData Manager | 80% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
-| - | CI/CD | Hardening | ✅ Complete | Self-healing admin, robust builds |
-| - | CODE REVIEW | Review 20251212 | ✅ CLOSED | [history/](docs/code-review/history/) |
+| **1** | **P29** | **CI/CD Verification Test** | ⏳ Pending | Trigger build, verify installer |
+| 2 | P28 | CI/CD NSIS Fix | ✅ Complete | See above |
+| 3 | P27 | Stack Modernization (Svelte 5) | ✅ Complete | [P27_STACK_MODERNIZATION.md](docs/wip/P27_STACK_MODERNIZATION.md) |
+| 4 | P26 | Security Vulnerability Fix | ✅ Complete | [SECURITY_FIX_PLAN.md](docs/wip/SECURITY_FIX_PLAN.md) |
+| 5 | P25 | LDM UX Overhaul | 🔨 85% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
+| - | P24 | Server Status Dashboard | ✅ Complete | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
+| - | P17 | LDM LanguageData Manager | 80% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
 | - | P22 | SQLite Removal | ✅ Phase 1 | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
 | - | P21 | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
 | - | ISSUES | Bug Fixes | ✅ All Fixed | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |

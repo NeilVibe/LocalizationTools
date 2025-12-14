@@ -58,15 +58,23 @@
     ],
     "extraResources": [
       {
-        "from": "../server/tools",
+        "from": "../tools/python",
+        "to": "tools/python",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../server",
+        "to": "server",
+        "filter": ["**/*.py", "**/*.json", "**/*.txt", "**/*.md", "!**/__pycache__/**", "!**/*.pyc", "!**/*.pyo"]
+      },
+      {
+        "from": "../tools",
         "to": "tools",
-        "filter": [
-          "**/*.py",
-          "**/*.json",
-          "**/*.txt",
-          "**/*.md",
-          "**/requirements.txt"
-        ]
+        "filter": ["*.bat", "*.py"]
+      },
+      {
+        "from": "../version.py",
+        "to": "version.py"
       }
     ],
     "mac": {
@@ -74,8 +82,18 @@
       "target": "dmg"
     },
     "win": {
-      "target": "dir",
+      "target": "nsis",
       "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LocaNext",
+      "uninstallDisplayName": "LocaNext",
+      "license": "../LICENSE"
     },
     "linux": {
       "target": "AppImage",

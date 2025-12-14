@@ -29,6 +29,7 @@
 | **TM** | Translation Memory |
 | **FAISS** | Vector index for semantic search |
 | **CDP** | Chrome DevTools Protocol |
+| **Playground** | Windows test environment (`C:\NEIL_PROJECTS_WINDOWSBUILD\...`) |
 
 ---
 
