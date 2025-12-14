@@ -465,6 +465,36 @@ jobs:
           npm ci
         shell: pwsh
 
+      # ============================================================
+      # NSIS Include Files (FROM REPO - Always Reliable)
+      # Files bundled in installer/nsis-includes/ - no downloads needed
+      # ============================================================
+      - name: Copy NSIS Include Files from Repo
+        run: |
+          Write-Host "=== NSIS Include Files (from repo) ===" -ForegroundColor Cyan
+
+          $sourceDir = "installer\nsis-includes"
+          $targetDir = "locaNext\node_modules\app-builder-lib\templates\nsis\include"
+
+          # Create target directory
+          New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+
+          # Copy from repo (always available, no downloads)
+          Copy-Item -Path "$sourceDir\*.nsh" -Destination $targetDir -Force
+
+          # Verify
+          $files = Get-ChildItem "$targetDir\*.nsh"
+          Write-Host "[OK] Copied $($files.Count) NSIS include files from repo" -ForegroundColor Green
+
+          # Verify StdUtils.nsh (required by electron-builder)
+          if (Test-Path "$targetDir\StdUtils.nsh") {
+            Write-Host "[OK] StdUtils.nsh verified" -ForegroundColor Green
+          } else {
+            Write-Host "[ERROR] StdUtils.nsh missing!" -ForegroundColor Red
+            exit 1
+          }
+        shell: pwsh
+
       - name: Build Electron App
         run: |
           cd locaNext
