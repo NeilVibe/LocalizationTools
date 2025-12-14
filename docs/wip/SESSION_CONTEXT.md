@@ -1,128 +1,111 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-14 ~02:45 KST | **By:** Claude
+**Updated:** 2025-12-14 ~22:30 KST | **By:** Claude
 
 ---
 
-## Session Summary: CI/CD Hardening + Security Audit
+## Current Priority: P27 Stack Modernization
 
-### What Was Done
+### Next Task: Full Svelte 5 Migration
 
-| Task | Status | Notes |
-|------|--------|-------|
-| **Server Process Persistence** | ✅ FIXED | `nohup` + `disown` for CI steps |
-| **Lazy Import SentenceTransformer** | ✅ FIXED | Startup 28s → 4.2s |
-| **Self-Healing Admin Fixture** | ✅ IMPLEMENTED | Auto-reset admin credentials if corrupted |
-| **Windows Version Detection** | ✅ FIXED | Use env vars, no network calls |
-| **Security Audit** | ✅ DOCUMENTED | 39+ vulnerabilities tracked |
-| **Security Fix Plan** | ✅ CREATED | Prioritized remediation plan |
+**Decision:** After security audit, decided to do FULL stack modernization instead of skipping Electron upgrade.
 
----
+**Why:** Svelte 5 is praised as a major improvement - performance, bundle size, developer experience. Worth the 7-10 hour investment.
 
-## CI/CD Fixes (All "Forever" Fixes)
+| Package | Current | Target |
+|---------|---------|--------|
+| svelte | 4.2.8 | 5.46.0 |
+| vite | 5.0.8 | 7.2.7 |
+| electron | 28.0.0 | 39.2.7 |
+| @sveltejs/kit | 2.0.0 | 2.49.2 |
+| carbon-components-svelte | 0.85.0 | 0.95.2 |
 
-### 1. Server Dying Between CI Steps
-**Problem:** Background server started with `&` died when shell exited between steps.
-**Fix:** Added `nohup` + `disown` to detach server from shell.
-**File:** `.gitea/workflows/build.yml` (Start Server for Tests step)
+**Detailed Plan:** [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md)
 
-### 2. Slow Server Startup (28s)
-**Problem:** `sentence_transformers` import loads PyTorch at module load time.
-**Fix:** Lazy import - only load when model is actually needed.
-**File:** `server/tools/xlstransfer/embeddings.py`
-
-### 3. Admin Login Fails at Test #728
-**Problem:** Admin credentials corrupted by earlier tests, login fails.
-**Fix:** Self-healing `get_admin_token_with_retry()` - resets admin via direct DB access if login fails.
-**Files:** `tests/conftest.py`, `tests/integration/server_tests/test_dashboard_api.py`, `tests/unit/test_user_management.py`
-
-### 4. Windows Build Version Detection Fails
-**Problem:** Fetching version from Gitea raw URL + regex parsing was fragile.
-**Fix:** Use `BUILD_VERSION` and `BUILD_TYPE` env vars directly from pipeline.
-**File:** `.gitea/workflows/build.yml` (Get Version and Build Type step)
-
-### 5. TROUBLESHOOT_WINDOWS Not Running
-**Problem:** Windows build depended on `safety-checks` job, which was skipped.
-**Fix:** Changed `needs: [check-build-trigger]` only, removed checkpoint logic.
-**File:** `.gitea/workflows/build.yml`
+**Codebase Size:**
+- 22 Svelte components
+- 33 reactive statements to convert
+- Estimated: 7-10 hours
 
 ---
 
-## Security Vulnerabilities Audit
+## Previous Session: Security Remediation ✅ COMPLETE
 
-### Summary
+### Security Status: PRODUCTION SAFE
 
-| Source | Total | Critical | High | Moderate | Low |
-|--------|-------|----------|------|----------|-----|
-| pip    | 28+   | 3        | ~7   | ~15      | ~3  |
-| npm    | 11    | 0        | 1    | 7        | 3   |
+| Metric | Before | After | Status |
+|--------|--------|-------|--------|
+| pip vulnerabilities | 28+ | 16 | ✅ IMPROVED |
+| npm vulnerabilities | 11 | 9 | ✅ IMPROVED |
+| CRITICAL vulns | 3 | **0** | ✅ FIXED |
+| HIGH (production) | ~7 | **0** | ✅ FIXED |
 
-### Critical (Fix ASAP)
-- **cryptography 3.4.8 → 42.0.2** - 8 CVEs, handles JWT/auth
-- **starlette 0.38.6 → 0.47.2** - Path traversal, request smuggling
-- **python-socketio 5.11.0 → 5.14.0** - WebSocket auth bypass
+### What Was Fixed
 
-### Documentation
-- **Full Audit:** `docs/wip/SECURITY_VULNERABILITIES.md`
-- **Fix Plan:** `docs/wip/SECURITY_FIX_PLAN.md`
+| Package | Before | After | Impact |
+|---------|--------|-------|--------|
+| cryptography | 3.4.8 | 46.0.3 | Auth security - 8 CVEs FIXED |
+| starlette | 0.38.6 | 0.50.0 | API security - path traversal FIXED |
+| socketio | 5.11.0 | 5.15.0 | WebSocket auth bypass FIXED |
+| fastapi | 0.115.0 | 0.124.4 | Framework security |
+| torch | 2.3.1 | 2.9.1 | ML model loading security |
+| requests | 2.32.3 | 2.32.5 | HTTP security |
+| python-jose | 3.3.0 | 3.5.0 | JWT security |
+| Ubuntu | 84 pkgs | updated | System security |
+
+### Remaining (Will Be Fixed by P27)
+
+| Package | Current Issue | P27 Fix |
+|---------|---------------|---------|
+| electron | ASAR bypass (moderate) | → 39.2.7 |
+| esbuild/vite | Dev server leak | → vite 7.2.7 |
+
+### Remaining (Acceptable Risk)
+
+| Package | Risk | Reason |
+|---------|------|--------|
+| urllib3 | LOW | System pkg, CVEs need MITM |
+| twisted | N/A | Ubuntu system pkg, not used |
 
 ---
 
-## Build Status
+## Electron Upgrade Test (2025-12-14)
 
-**Last Build:** `TROUBLESHOOT_WINDOWS` - ✅ SUCCESS
-**CI/CD Status:** All fixes verified working
-- Self-healing admin fixture ✅
-- Windows version detection (env vars) ✅
-- TROUBLESHOOT_WINDOWS mode ✅
+**Test performed:** `npm audit fix --force`
+**Result:** BUILD FAILED
 
----
-
-## Next Priorities
-
-### 1. Security Vulnerability Remediation (PRIORITY #1)
-
-**Incremental Fix Plan:**
 ```
-Phase 1: Safe pip fixes (no breaking changes)
-  pip install requests>=2.32.4 python-jose>=3.4.0 python-multipart>=0.0.18
-  → Run tests → Verify no conflicts
+Problem: npm audit tried to downgrade @sveltejs/kit to 0.0.30
+         which requires Svelte 5.x
 
-Phase 2: Safe npm fixes
-  cd locaNext && npm audit fix
-  → Run tests → Verify no conflicts
-
-Phase 3: Moderate risk pip fixes (test thoroughly)
-  pip install cryptography>=42.0.2 starlette>=0.47.2 python-socketio>=5.14.0
-  → Run FULL test suite → Test auth flows manually
-
-Phase 4: High risk fixes (major testing)
-  pip install torch>=2.6.0  # Test embeddings!
-  cd locaNext && npm audit fix --force  # electron upgrade
-  → Full regression test
-
-Phase 5: System level (coordinate with IT)
-  urllib3 upgrade (Ubuntu system package)
-  May need virtualenv or OS upgrade
+Cascade:
+- @sveltejs/kit 2.x → 0.0.30 (broken)
+- vite-plugin-svelte needs Svelte 5.x
+- Error: Cannot find module '@sveltejs/kit/vite'
 ```
 
-### 3. Continue P25 LDM UX (After Security)
-- TM/QA frontend integration
-- API endpoints for TM search/sync/NPC
+**Conclusion:** Cannot upgrade Electron alone. Need full Svelte 5 migration.
+
+**New Decision:** Do the full migration (P27) instead of accepting the risk.
 
 ---
 
-## Files Modified This Session
+## Security Audit Results (2025-12-14)
 
-| File | Changes |
-|------|---------|
-| `.gitea/workflows/build.yml` | Server nohup/disown, version detection fix |
-| `server/tools/xlstransfer/embeddings.py` | Lazy import SentenceTransformer |
-| `tests/conftest.py` | Self-healing admin fixtures |
-| `tests/integration/server_tests/test_dashboard_api.py` | Use self-healing admin |
-| `tests/unit/test_user_management.py` | Use self-healing admin |
-| `docs/wip/SECURITY_VULNERABILITIES.md` | NEW: Full audit |
-| `docs/wip/SECURITY_FIX_PLAN.md` | NEW: Prioritized fix plan |
+### JWT & Auth: ✅ SOLID
+- Algorithm: HS256 (industry standard)
+- SECRET_KEY: From env var (not hardcoded)
+- Token expiry: 60 min access, 30 days refresh
+- Validation: Warns on insecure defaults
+
+### Password Hashing: ✅ EXCELLENT
+- Algorithm: bcrypt
+- Rounds: 12 (secure)
+- Salt: Unique per password
+
+### .gitignore: ✅ COMPREHENSIVE
+- All secrets patterns covered
+- No credentials will accidentally commit
 
 ---
 
@@ -130,11 +113,31 @@ Phase 5: System level (coordinate with IT)
 
 | Need | Location |
 |------|----------|
-| Current task | [Roadmap.md](../../Roadmap.md) |
-| Security audit | [SECURITY_VULNERABILITIES.md](SECURITY_VULNERABILITIES.md) |
-| Security fix plan | [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) |
-| Known bugs | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) |
-| CI/CD troubleshooting | [docs/cicd/TROUBLESHOOTING.md](../cicd/TROUBLESHOOTING.md) |
+| **Current task** | [Roadmap.md](../../Roadmap.md) |
+| **Svelte 5 migration plan** | [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) |
+| **Security fix plan** | [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) |
+| **Security audit** | [SECURITY_VULNERABILITIES.md](SECURITY_VULNERABILITIES.md) |
+
+---
+
+## Verification Commands
+
+```bash
+# Check pip vulnerabilities
+pip-audit
+
+# Check npm vulnerabilities
+cd locaNext && npm audit
+
+# Server health
+curl http://localhost:8888/api/health/ping
+
+# Run tests
+python3 -m pytest tests/unit/ --tb=short
+
+# Build test
+cd locaNext && npm run build
+```
 
 ---
 

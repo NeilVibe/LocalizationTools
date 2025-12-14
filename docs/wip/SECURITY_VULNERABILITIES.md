@@ -207,15 +207,23 @@ pip install torch>=2.6.0
 
 ---
 
-## Checklist
+## Execution Checklist (Optimized Order)
 
-- [ ] Phase 1: Safe npm fixes
-- [ ] Phase 1: Safe pip fixes
-- [ ] Phase 2: starlette/socketio upgrade
-- [ ] Phase 2: cryptography upgrade
-- [ ] Phase 3: electron upgrade + test desktop
-- [ ] Phase 3: torch upgrade + test embeddings
-- [ ] Phase 4: urllib3 (system level)
+See [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) for full details.
+
+| Phase | What | Status |
+|-------|------|--------|
+| 0 | Ubuntu `apt upgrade` | [ ] |
+| 1 | Safe pip (requests, jose, multipart, oauth, config) | [ ] |
+| 2 | Safe npm (glob, js-yaml) | [ ] |
+| 3a | starlette (alone) | [ ] |
+| 3b | python-socketio (alone) | [ ] |
+| 3c | cryptography (alone) | [ ] |
+| 4 | torch (alone - high risk) | [ ] |
+| 5 | electron (alone - high risk) | [ ] |
+| 6 | urllib3 (check if Ubuntu fixed) | [ ] |
+
+**Principle:** Bottom-up, isolated changes, easy conflict detection.
 
 ---
 
