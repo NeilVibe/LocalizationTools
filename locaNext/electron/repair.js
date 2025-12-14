@@ -6,7 +6,7 @@
  *
  * Repair actions:
  * - deps: Re-run install_deps.py to install missing Python packages
- * - model: Re-run download_model.py to download AI model
+ * - model: Re-run download_model.py to download Embedding Model (Qwen)
  * - full: Run both deps and model installation
  */
 
@@ -164,7 +164,7 @@ function getRepairHtml() {
   <div id="step-model" class="step">
     <div class="step-header">
       <div class="step-icon">2</div>
-      <span class="step-title">Redownloading AI model</span>
+      <span class="step-title">Redownloading Embedding Model</span>
     </div>
     <div class="progress-bar"><div class="progress-fill" id="progress-model"></div></div>
     <div class="status" id="status-model"></div>
@@ -324,10 +324,10 @@ async function verifyRepair(paths) {
   }
 
   // Check model (models are at projectRoot, not in resources)
-  sendProgress('verify', 'active', 66, 'Checking AI model...');
-  const modelConfig = path.join(paths.modelsPath, 'kr-sbert', 'config.json');
+  sendProgress('verify', 'active', 66, 'Checking Embedding Model...');
+  const modelConfig = path.join(paths.modelsPath, 'qwen-embedding', 'config.json');
   if (!fs.existsSync(modelConfig)) {
-    sendProgress('verify', 'error', 66, 'AI model still missing');
+    sendProgress('verify', 'error', 66, 'Embedding Model still missing');
     return false;
   }
 

@@ -1,7 +1,7 @@
 # Issues To Fix
 
 **Purpose:** Track known bugs, UI issues, and improvements across LocaNext
-**Last Updated:** 2025-12-13
+**Last Updated:** 2025-12-15
 
 ---
 
@@ -12,10 +12,11 @@
 | LDM UI | 0 | 16 | 16 |
 | LDM WebSocket | 0 | 2 | 2 |
 | Navigation | 0 | 1 | 1 |
-| Infrastructure | 0 | 1 | 1 |
-| **Total** | **0** | **20** | **20** |
+| Infrastructure | 0 | 2 | 2 |
+| **Total** | **0** | **21** | **21** |
 
 **Open Issues:** None - All issues resolved
+**Session 2025-12-15:** BUG-006 fixed (Embedding Model download)
 **Session 2025-12-13:** BUG-005 fixed (keyboard shortcuts)
 
 ---
@@ -23,6 +24,54 @@
 ## Open Issues
 
 *None - All issues resolved*
+
+---
+
+## Fixed Issues (2025-12-15 Session)
+
+### BUG-006: Embedding Model Download Fails in First-Run Setup
+- **Status:** ✅ Fixed
+- **Priority:** CRITICAL
+- **Reported:** 2025-12-15
+- **Fixed:** 2025-12-15
+- **Component:** First-run setup, download_model.py, health-check.js, repair.js
+
+**Problem:** LocaNext.exe fails at "AI MODEL" download during first-run setup. The download script was downloading deprecated KR-SBERT model to wrong path instead of the current QWEN model.
+
+**Root Cause:**
+- `tools/download_model.py` was downloading `snunlp/KR-SBERT-V40K-klueNLI-augSTS` to `models/kr-sbert/`
+- All code expects `Qwen/Qwen3-Embedding-0.6B` at `models/qwen-embedding/` (P20 migration completed 2025-12-09)
+- The script was never updated after P20 model migration
+
+**Investigation:**
+- `server/tools/xlstransfer/config.py` expects `models/qwen-embedding`
+- `server/tools/ldm/tm_indexer.py` uses `Qwen/Qwen3-Embedding-0.6B`
+- `scripts/download_bert_model.py` correctly downloads QWEN (but isn't used in first-run)
+- P20_MODEL_MIGRATION.md documents the completed migration
+
+**Fix Applied:**
+1. Rewrote `tools/download_model.py` to download QWEN model:
+   - Model: `Qwen/Qwen3-Embedding-0.6B`
+   - Target: `models/qwen-embedding/`
+   - Uses sentence_transformers for proper download
+
+2. Updated all path checks from `kr-sbert` to `qwen-embedding`:
+   - `locaNext/electron/first-run-setup.js:406`
+   - `locaNext/electron/health-check.js:166,206`
+   - `locaNext/electron/repair.js:328`
+
+3. Renamed "AI MODEL" to "Embedding Model" throughout:
+   - `first-run-setup.js` (header comment, UI text)
+   - `repair.js` (header comment, UI text)
+   - `health-check.js` (comments)
+
+**Files Changed:**
+- `tools/download_model.py` (complete rewrite)
+- `locaNext/electron/first-run-setup.js`
+- `locaNext/electron/health-check.js`
+- `locaNext/electron/repair.js`
+
+**Verified by:** Code review - matches P20 migration spec
 
 ---
 
