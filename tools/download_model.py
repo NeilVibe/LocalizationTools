@@ -1,15 +1,17 @@
 """
-LocaNext - AI Model Downloader
+LocaNext - Embedding Model Downloader
 
-Downloads Korean BERT model from Hugging Face.
-Uses huggingface_hub library for safe, verified downloads.
+Downloads Qwen Embedding model from Hugging Face.
+Uses sentence_transformers for optimal download and save.
 
 IT-Friendly: This script is readable and transparent.
 You can inspect exactly what it downloads and where.
 
-Model: snunlp/KR-SBERT-V40K-klueNLI-augSTS
-Size: ~447 MB
-Target: ../models/kr-sbert/
+Model: Qwen/Qwen3-Embedding-0.6B
+Size: ~1.21 GB
+Target: ../models/qwen-embedding/
+
+P20 Migration: All tools unified to Qwen (XLSTransfer, KR Similar, LDM)
 """
 
 import os
@@ -17,11 +19,16 @@ import sys
 from pathlib import Path
 
 
+# Model configuration (P20: Unified Qwen model)
+MODEL_ID = "Qwen/Qwen3-Embedding-0.6B"
+MODEL_DIR_NAME = "qwen-embedding"
+
+
 def get_target_dir():
     """Get model target directory (relative to this script)."""
     script_dir = Path(__file__).parent
-    # Go up from tools/ to app root, then models/kr-sbert
-    return script_dir.parent / "models" / "kr-sbert"
+    # Go up from tools/ to app root, then models/qwen-embedding
+    return script_dir.parent / "models" / MODEL_DIR_NAME
 
 
 def check_existing():
@@ -33,44 +40,44 @@ def check_existing():
     model_st = target / "model.safetensors"
 
     if config.exists() and (model_pt.exists() or model_st.exists()):
-        print(f"[OK] Model already exists at: {target}")
+        print(f"[OK] Embedding model already exists at: {target}")
         return True
     return False
 
 
-def install_huggingface_hub():
-    """Install huggingface_hub if not present."""
+def install_sentence_transformers():
+    """Install sentence_transformers if not present."""
     try:
-        import huggingface_hub
-        print(f"[OK] huggingface_hub v{huggingface_hub.__version__} ready")
+        import sentence_transformers
+        print(f"[OK] sentence_transformers v{sentence_transformers.__version__} ready")
         return True
     except ImportError:
-        print("[...] Installing huggingface_hub (first time only)...")
+        print("[...] Installing sentence_transformers (first time only)...")
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--quiet", "huggingface_hub"],
+            [sys.executable, "-m", "pip", "install", "--quiet", "sentence-transformers"],
             capture_output=True
         )
         if result.returncode != 0:
-            print("[ERROR] Failed to install huggingface_hub")
+            print("[ERROR] Failed to install sentence_transformers")
             return False
-        print("[OK] huggingface_hub installed")
+        print("[OK] sentence_transformers installed")
         return True
 
 
 def download_model():
-    """Download model from Hugging Face."""
-    from huggingface_hub import snapshot_download
+    """Download model from Hugging Face using sentence_transformers."""
+    from sentence_transformers import SentenceTransformer
     import threading
     import time
 
     target = get_target_dir()
-    model_id = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
 
     print("0%")  # Initial progress
-    print(f"\n[...] Downloading: {model_id}")
+    print(f"\n[...] Downloading: {MODEL_ID}")
     print(f"[...] Target: {target}")
-    print(f"[...] This may take 5-10 minutes...\n")
+    print(f"[...] Size: ~1.21 GB")
+    print(f"[...] This may take 5-15 minutes...\n")
     sys.stdout.flush()
 
     # Track progress in a separate thread
@@ -78,12 +85,12 @@ def download_model():
     download_error = [None]
 
     def progress_tracker():
-        """Print fake progress while downloading (real progress is complex)."""
-        progress = 10
+        """Print progress while downloading."""
+        progress = 5
         while not download_complete.is_set() and progress < 95:
             print(f"{progress}%")
             sys.stdout.flush()
-            time.sleep(3)  # Update every 3 seconds
+            time.sleep(5)  # Update every 5 seconds (larger model)
             progress = min(progress + 5, 95)
 
     def do_download():
@@ -91,12 +98,16 @@ def download_model():
             # Create target directory
             target.mkdir(parents=True, exist_ok=True)
 
-            # Download using official Hugging Face API
-            snapshot_download(
-                repo_id=model_id,
-                local_dir=str(target),
-                local_dir_use_symlinks=False
-            )
+            # Download using sentence_transformers (handles caching properly)
+            print("[...] Loading model from Hugging Face...")
+            sys.stdout.flush()
+            model = SentenceTransformer(MODEL_ID)
+
+            # Save to local directory
+            print("[...] Saving model to local directory...")
+            sys.stdout.flush()
+            model.save(str(target))
+
         except Exception as e:
             download_error[0] = e
         finally:
@@ -130,8 +141,8 @@ def verify_download():
     # Check config.json (required)
     config = target / "config.json"
     if config.exists():
-        size_mb = config.stat().st_size / (1024 * 1024)
-        print(f"  [OK] config.json ({size_mb:.1f} MB)")
+        size_kb = config.stat().st_size / 1024
+        print(f"  [OK] config.json ({size_kb:.1f} KB)")
     else:
         print(f"  [MISSING] config.json")
         return False
@@ -140,14 +151,14 @@ def verify_download():
     model_pt = target / "pytorch_model.bin"
     model_st = target / "model.safetensors"
 
-    if model_pt.exists():
-        size_mb = model_pt.stat().st_size / (1024 * 1024)
-        print(f"  [OK] pytorch_model.bin ({size_mb:.1f} MB)")
-    elif model_st.exists():
+    if model_st.exists():
         size_mb = model_st.stat().st_size / (1024 * 1024)
         print(f"  [OK] model.safetensors ({size_mb:.1f} MB)")
+    elif model_pt.exists():
+        size_mb = model_pt.stat().st_size / (1024 * 1024)
+        print(f"  [OK] pytorch_model.bin ({size_mb:.1f} MB)")
     else:
-        print(f"  [MISSING] model file (pytorch_model.bin or model.safetensors)")
+        print(f"  [MISSING] model file (model.safetensors or pytorch_model.bin)")
         return False
 
     return True
@@ -156,16 +167,16 @@ def verify_download():
 def main():
     """Main function."""
     print("\n" + "=" * 50)
-    print("  LocaNext - AI Model Downloader")
+    print("  LocaNext - Embedding Model Downloader")
     print("=" * 50)
 
     # Check if already downloaded
     if check_existing():
-        print("\n[SUCCESS] Model is ready!")
+        print("\n[SUCCESS] Embedding model is ready!")
         return 0
 
-    # Install huggingface_hub if needed
-    if not install_huggingface_hub():
+    # Install sentence_transformers if needed
+    if not install_sentence_transformers():
         return 1
 
     # Download model
@@ -177,9 +188,11 @@ def main():
         return 1
 
     print("\n" + "=" * 50)
-    print("  [SUCCESS] Model download complete!")
+    print("  [SUCCESS] Embedding model download complete!")
     print("=" * 50)
-    print("\n  LocaNext AI features are now ready!")
+    print("\n  LocaNext embedding features are now ready!")
+    print(f"  Model: {MODEL_ID}")
+    print(f"  Features: 100+ languages, 1024-dim embeddings")
 
     return 0
 

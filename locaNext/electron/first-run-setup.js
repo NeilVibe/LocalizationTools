@@ -4,7 +4,7 @@
  * Handles automatic setup on first app launch:
  * 1. Check if setup is needed (flag file)
  * 2. Install Python dependencies
- * 3. Download AI model
+ * 3. Download Embedding Model (Qwen/Qwen3-Embedding-0.6B)
  * 4. Create flag file when complete
  *
  * All with progress feedback to the UI.
@@ -196,7 +196,7 @@ function getSetupHtml() {
   <div id="step-model" class="step">
     <div class="step-header">
       <div class="step-icon">2</div>
-      <span class="step-title">Downloading AI model</span>
+      <span class="step-title">Downloading Embedding Model</span>
     </div>
     <div class="progress-bar"><div class="progress-fill" id="progress-model"></div></div>
     <div class="status" id="status-model"></div>
@@ -402,11 +402,11 @@ async function verifyInstallation(paths) {
   }
 
   // Check 2: Model exists (models are at projectRoot, not in resources)
-  sendProgress('verify', 'active', 50, 'Checking AI model...');
-  const modelPath = path.join(paths.modelsPath, 'kr-sbert', 'config.json');
+  sendProgress('verify', 'active', 50, 'Checking Embedding Model...');
+  const modelPath = path.join(paths.modelsPath, 'qwen-embedding', 'config.json');
   if (!fs.existsSync(modelPath)) {
-    sendProgress('verify', 'error', 50, 'AI model not found');
-    throw new Error('AI model not found at: ' + modelPath);
+    sendProgress('verify', 'error', 50, 'Embedding Model not found');
+    throw new Error('Embedding Model not found at: ' + modelPath);
   }
 
   // Check 3: Server directory exists (server is in resources/)

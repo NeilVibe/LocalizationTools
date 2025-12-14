@@ -7,7 +7,7 @@
  * Checks:
  * 1. Python executable exists and works
  * 2. Critical Python packages installed (fastapi, torch, transformers)
- * 3. AI model files present
+ * 3. Embedding Model files present (Qwen)
  * 4. Server files present
  */
 
@@ -161,20 +161,20 @@ export async function performHealthCheck(paths) {
     logger.warning('Health check: AI packages missing', { missing: aiPackages.missing });
   }
 
-  // 5. Check AI model files
-  logger.info('Health check: AI model files');
-  const modelConfig = path.join(paths.modelsPath, 'kr-sbert', 'config.json');
-  const modelCheck = checkPath(modelConfig, 'Korean BERT model');
+  // 5. Check Embedding Model files
+  logger.info('Health check: Embedding Model files');
+  const modelConfig = path.join(paths.modelsPath, 'qwen-embedding', 'config.json');
+  const modelCheck = checkPath(modelConfig, 'Qwen Embedding Model');
   results.checks.model = modelCheck;
   if (!modelCheck.exists) {
     // Check if it's just placeholder
-    const placeholder = path.join(paths.modelsPath, 'kr-sbert', 'model_placeholder.txt');
+    const placeholder = path.join(paths.modelsPath, 'qwen-embedding', 'model_placeholder.txt');
     if (fs.existsSync(placeholder)) {
       results.checks.model.status = 'placeholder_only';
     }
     results.status = HealthStatus.NEEDS_REPAIR;
     results.repairNeeded.push('model');
-    logger.warning('Health check: AI model missing or placeholder only');
+    logger.warning('Health check: Embedding Model missing or placeholder only');
   }
 
   // Calculate elapsed time
@@ -203,7 +203,7 @@ export function quickHealthCheck(paths) {
     status: HealthStatus.OK,
     pythonExists: fs.existsSync(paths.pythonExe),
     serverExists: fs.existsSync(path.join(paths.serverPath, 'main.py')),
-    modelExists: fs.existsSync(path.join(paths.modelsPath, 'kr-sbert', 'config.json'))
+    modelExists: fs.existsSync(path.join(paths.modelsPath, 'qwen-embedding', 'config.json'))
   };
 
   if (!results.pythonExists || !results.serverExists) {
