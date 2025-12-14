@@ -1,52 +1,71 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-15 ~09:55 KST | **By:** Claude
+**Updated:** 2025-12-15 ~10:05 KST | **By:** Claude
 
 ---
 
 ## Current Session: P28.5 - CI/CD Infrastructure Hardening
 
-**Status: IN PROGRESS** | Build v25.1215.0050 running
+**Status: BUILD RUNNING** | Build v25.1215.0100 (tasks 615, 616)
 
 ### Issues Found & Fixed This Session
 
 | ID | Severity | Issue | Root Cause | Fix |
 |----|----------|-------|------------|-----|
-| INFRA-001 | **CRITICAL** | 706% CPU Terror | Undocumented systemd service with `Restart=always`, no limits | Removed; created safe service config |
-| INFRA-002 | HIGH | Build failed with Node.js syntax error | Systemd service ran in isolated env without NVM | Reverted to manual `start_runner.sh` (inherits NVM) |
+| INFRA-001 | **CRITICAL** | 706% CPU Terror | Undocumented systemd service with `Restart=always`, no limits | Safe systemd config with limits |
+| INFRA-002 | HIGH | Build failed with Node.js syntax error | Systemd service ran in isolated env without NVM | Wrapper script sources NVM |
 | INFRA-003 | HIGH | Server stuck at "Creating database tables..." in CI | `.env` file with `override=True` overriding CI env vars | Changed to `override=False` in server/config.py |
 
-### Session 13B: CI/CD Infrastructure Review (COMPLETE)
+### CPU Terror Prevention - APPLIED ✅
 
-**What happened:**
-1. User reported computer overheating - 706% CPU from Gitea
-2. Found undocumented systemd service restarting 506 times
-3. Created proper systemd service with safeguards BUT it broke builds
-4. Root cause: systemd runs in isolated environment without NVM/Node.js 20
-5. Fix: Reverted to manual script, created wrapper for future systemd use
-6. During testing, found `.env` override bug breaking CI database connection
-
-**Key Files:**
-- `~/gitea/start_runner.sh` - Original manual script (WORKING)
-- `~/gitea/start_runner_systemd.sh` - Wrapper with NVM (READY for future use)
-- `/etc/systemd/system/gitea-runner.service` - Disabled (needs wrapper)
-- `server/config.py:19` - Changed `override=True` to `override=False`
-
-### CPU Terror Prevention (PENDING APPLY after build)
-
-Safe systemd service design:
+Safe systemd service now running:
 ```ini
 [Unit]
-StartLimitBurst=3               # Max 3 restarts...
-StartLimitIntervalSec=300       # ...per 5 minutes, then STOP
-BindsTo=gitea.service           # Dies if Gitea dies
+StartLimitBurst=3               # Max 3 restarts per 5 min, then STOPS
+StartLimitIntervalSec=300
+BindsTo=gitea.service           # Runner dies if Gitea dies
 
 [Service]
 ExecStartPre=/bin/bash -c 'curl -sf http://localhost:3000/api/v1/version || exit 1'
-ExecStart=/home/neil1988/gitea/start_runner_systemd.sh  # Sources NVM
-Restart=on-failure              # NOT always
+ExecStart=/home/neil1988/gitea/start_runner_systemd.sh  # Sources NVM for Node.js 20
+Restart=on-failure              # NOT always - only restart on actual failures
 RestartSec=30
 ```
+
+**Verification:**
+```
+$ systemctl is-active gitea-runner.service
+active
+
+$ journalctl -u gitea-runner.service -n 5
+Now using node v20.18.3 (npm v11.6.0)
+Starting act_runner daemon...
+task 615 repo is neilvibe/LocaNext
+task 616 repo is neilvibe/LocaNext
+```
+
+### Key Files Created/Modified
+
+| File | Purpose |
+|------|---------|
+| `~/gitea/start_runner_systemd.sh` | Wrapper script that sources NVM before starting runner |
+| `/etc/systemd/system/gitea-runner.service` | Safe systemd service with restart limits |
+| `server/config.py:19` | Changed `override=True` to `override=False` |
+
+---
+
+## Full Build Review - ALL CHECKS PASS ✅
+
+| # | Component | Status | Details |
+|---|-----------|--------|---------|
+| 1 | win.target | ✅ OK | `"nsis"` |
+| 2 | extraResources | ✅ OK | 4 mappings (python, server, tools, version.py) |
+| 3 | Electron Paths | ✅ OK | `resourcesPath = app.getAppPath()/..` |
+| 4 | dotenv override | ✅ OK | `override=False` (CI env vars win) |
+| 5 | NSIS Includes | ✅ OK | 13 files bundled in repo |
+| 6 | Error Dialog | ✅ OK | Exit button + setClosable(true) |
+| 7 | Runner Service | ✅ OK | Active with safety limits |
+| 8 | CPU Terror Prevention | ✅ OK | StartLimitBurst=3, on-failure, BindsTo |
 
 ---
 
@@ -72,32 +91,6 @@ RestartSec=30
 | Python bundling | Missing | extraResources config |
 | Config location | .iss files | package.json |
 
-### Files Modified
-
-1. **locaNext/package.json**
-   - `win.target`: "dir" → "nsis"
-   - Added `nsis` config block
-   - Expanded `extraResources` for Python + server
-
-2. **.gitea/workflows/build.yml**
-   - Removed Inno Setup steps
-   - NSIS includes bundled in repo (no downloads)
-   - Fixed safety-checks conditions
-
-3. **locaNext/electron/main/index.ts**
-   - Fixed path resolution: `resourcesPath = path.join(app.getAppPath(), '..')`
-   - Production: files in `resources/` folder
-   - Dev: files at project root
-
-4. **locaNext/electron/main/first-run-setup.ts**
-   - Added NSIS installer details display
-   - Fixed error dialog (Exit button, closable)
-
-5. **server/config.py**
-   - `override=True` → `override=False` (CI env vars take precedence)
-
-6. **installer/nsis-includes/*.nsh** - 11 NSIS files bundled in repo
-
 ---
 
 ## Electron Path Structure (CRITICAL)
@@ -120,11 +113,9 @@ C:\Users\X\AppData\Local\Programs\LocaNext\
     └── version.py
 ```
 
-**Key Code (main/index.ts):**
-```typescript
-const resourcesPath = app.isPackaged
-  ? path.join(app.getAppPath(), '..')  // resources/
-  : process.cwd();                      // project root
+**Key Code (electron/main.js:101):**
+```javascript
+const resourcesPath = path.join(app.getAppPath(), '..');  // resources/
 ```
 
 ---
@@ -147,17 +138,18 @@ const resourcesPath = app.isPackaged
 
 ## Build History (Recent)
 
-| Run | Version | Status | Issue |
+| Run | Version | Status | Notes |
 |-----|---------|--------|-------|
 | #263 | v25.1214.2235 | ✅ SUCCESS | First good NSIS build |
 | #264-265 | v25.1215.0035-0043 | FAILED | Node.js syntax error (systemd env) |
-| #266 | v25.1215.0050 | RUNNING | Fixed dotenv override |
+| #266 | v25.1215.0050 | FAILED | dotenv override (wrong DB) |
+| #267 | v25.1215.0100 | ⏳ RUNNING | Full review passed + CPU fix |
 
 ---
 
 ## P29: Verification Test - PENDING
 
-Need to verify after successful build:
+Need to verify after build #267 succeeds:
 1. [ ] Download and install on Windows
 2. [ ] App starts standalone
 3. [ ] Embedded Python works
@@ -166,26 +158,15 @@ Need to verify after successful build:
 
 ---
 
-## Documentation Created This Session
-
-| Document | Purpose |
-|----------|---------|
-| `docs/cicd/RUNNER_SERVICE_SETUP.md` | Safe systemd service configuration |
-| `docs/build/ELECTRON_PACKAGING.md` | Dev vs Prod path structure |
-| `docs/troubleshooting/GITEA_SAFETY_PROTOCOL.md` | 706% CPU incident documentation |
-| `docs/code-review/CODE_REVIEW_TYPES.md` | CI/CD Code vs Infrastructure review types |
-
----
-
 ## Quick Commands
 
 ```bash
+# Check runner status (systemd)
+sudo systemctl status gitea-runner.service
+sudo journalctl -u gitea-runner.service -n 20
+
 # Check build logs
 ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
-tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/XX/YYY.log
-
-# Check runner status
-tail -f /tmp/act_runner.log
 
 # Trigger new build
 echo "Build LIGHT v$(TZ='Asia/Seoul' date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
