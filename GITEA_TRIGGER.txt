@@ -47,3 +47,4 @@ Build LIGHT v2512142235 - Fix version passing to release
 Build LIGHT v2512142330 - Fix electron paths (server/python in resources/)
 Build LIGHT v2512150035
 Build LIGHT v2512150039 - Cache cleared
+Build LIGHT v2512150043 - Original script
