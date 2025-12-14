@@ -25,24 +25,8 @@ WORKFLOW:
 4. Commit changes
 5. Push to Gitea ONLY: git push gitea main
 
-Build History:
---------------
-Build LIGHT v2512071233 - First Gitea-only test
-Build LIGHT v2512140136 - Robust server cleanup + 60s timeout
-Build LIGHT v2512140141 - Lazy import SentenceTransformer (fast startup)
-Build LIGHT v2512140208 - Self-healing admin fixture (NORMAL build)
-Build LIGHT v2512140233 - Robust version detection (no network)
-TROUBLESHOOT_WINDOWS
-TROUBLESHOOT_WINDOWS
-TROUBLESHOOT_WINDOWS
-TROUBLESHOOT_WINDOWS
-Build LIGHT v2512141558 - P27 Svelte 5 Full Latest
-Build LIGHT v2512141620 - Fix electron-builder 26.x config (remove sign/signDlls)
-Build LIGHT v2512142043
-Build LIGHT v2512142055
-Build LIGHT v2512142116
-Build LIGHT v2512142141 - Fix NSIS npm fallback
-Build LIGHT v2512142207 - ROBUST NSIS fix (bundled in repo)
+Build History (last 10):
+------------------------
 Build LIGHT v2512142235 - Fix version passing to release
 Build LIGHT v2512142330 - Fix electron paths (server/python in resources/)
 Build LIGHT v2512150035
@@ -51,3 +35,4 @@ Build LIGHT v2512150043 - Original script
 Build LIGHT v2512150050 - Fix dotenv override (CI uses correct DB)
 Build LIGHT v2512150100 - Full Review PASSED + CPU Terror Fix
 Build LIGHT v2512150204 - P30 CI Optimization + Smoke Test
+Build LIGHT v2512150230 - P30 Smoke Test Fix (no-DB CI compatible)
