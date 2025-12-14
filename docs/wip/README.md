@@ -8,16 +8,25 @@
 
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
-| **P22** | [P22_PRODUCTION_PARITY.md](P22_PRODUCTION_PARITY.md) | 0% | **SQLite removal** - DEV = PRODUCTION |
-| **P17** | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 67% | LDM LanguageData Manager - task tracking |
+| **P27** | [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) | ✅ Complete | Svelte 5 + Vite 7 + Electron 39 |
+| **P26** | [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) | ✅ Complete | Security vulnerability remediation |
+| **P25** | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 85% | LDM UX improvements |
+| **P22** | [P22_PRODUCTION_PARITY.md](P22_PRODUCTION_PARITY.md) | Phase 1 | SQLite removal - DEV = PRODUCTION |
+| **P17** | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 80% | LDM LanguageData Manager - task tracking |
 | **P17** | [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | Reference | TM System 9-Tier architecture spec |
-| **P21** | [P21_DATABASE_POWERHOUSE.md](P21_DATABASE_POWERHOUSE.md) | Complete | Database optimization + PgBouncer |
-| **P20** | [P20_MODEL_MIGRATION.md](P20_MODEL_MIGRATION.md) | Complete | Qwen embedding model migration |
-| **P18** | [P_DB_OPTIMIZATION.md](P_DB_OPTIMIZATION.md) | Complete | PostgreSQL batch inserts + FTS |
-| **P13** | [P13_GITEA_CACHE_PLAN.md](P13_GITEA_CACHE_PLAN.md) | Complete | Smart build cache v2.0 |
-| **P13** | [P13_GITEA_TASKS.md](P13_GITEA_TASKS.md) | Complete | Gitea CI/CD setup tasks |
+| **SESSION** | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Active | Last session state + current status |
 | **ISSUES** | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Active | Known bugs + UI issues to fix |
-| **BACKLOG** | [P_TESTING_DOCS_IMPROVEMENTS.md](P_TESTING_DOCS_IMPROVEMENTS.md) | Backlog | Testing suite + docs improvements |
+
+## Completed (Reference)
+
+| Priority | Document | Description |
+|----------|----------|-------------|
+| P21 | [P21_DATABASE_POWERHOUSE.md](P21_DATABASE_POWERHOUSE.md) | Database optimization + PgBouncer |
+| P20 | [P20_MODEL_MIGRATION.md](P20_MODEL_MIGRATION.md) | Qwen embedding model migration |
+| P18 | [P_DB_OPTIMIZATION.md](P_DB_OPTIMIZATION.md) | PostgreSQL batch inserts + FTS |
+| P13 | [../history/P13_GITEA_CACHE_PLAN.md](../history/P13_GITEA_CACHE_PLAN.md) | Smart build cache v2.0 |
+| P13 | [../history/P13_GITEA_TASKS.md](../history/P13_GITEA_TASKS.md) | Gitea CI/CD setup tasks |
+| BACKLOG | [P_TESTING_DOCS_IMPROVEMENTS.md](P_TESTING_DOCS_IMPROVEMENTS.md) | Testing suite + docs improvements |
 
 ---
 
@@ -58,19 +67,18 @@ Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
 
 ## Quick Navigation
 
-**Currently Active:**
-- **Production Parity: [P22_PRODUCTION_PARITY.md](P22_PRODUCTION_PARITY.md)** - SQLite removal (DEV=PROD)
-- LDM Development: [P17_LDM_TASKS.md](P17_LDM_TASKS.md)
+**Current Session:** [SESSION_CONTEXT.md](SESSION_CONTEXT.md)
+
+**Active Work:**
+- LDM UX: [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) - 85%
+- LDM Core: [P17_LDM_TASKS.md](P17_LDM_TASKS.md) - 80%
 - Bug Fixes: [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md)
 
-**Completed (Reference):**
-- [P21_DATABASE_POWERHOUSE.md](P21_DATABASE_POWERHOUSE.md) - PgBouncer + COPY TEXT
-- [P20_MODEL_MIGRATION.md](P20_MODEL_MIGRATION.md) - Qwen embedding
-- [P13_GITEA_CACHE_PLAN.md](P13_GITEA_CACHE_PLAN.md) - Smart cache v2.0
-
-**Other Resources:**
-- [Presentations](../presentations/) - 4 images (Architecture, Licensing, Apps, Dashboard)
+**Recently Completed:**
+- P27: Stack Modernization (Svelte 5 + Vite 7 + Electron 39)
+- P26: Security Vulnerability Remediation
+- CI/CD: GitHub + Gitea hardening
 
 ---
 
-*Last Updated: 2025-12-11*
+*Last Updated: 2025-12-14*
