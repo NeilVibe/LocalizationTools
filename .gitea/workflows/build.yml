@@ -1041,7 +1041,7 @@ jobs:
       # Downloads ~2.3GB model and bundles it in the installer
       # ============================================================
       - name: Download Qwen Embedding Model (FULL only)
-        if: steps.check.outputs.build_type == 'FULL'
+        if: needs.check-build-trigger.outputs.build_type == 'FULL'
         run: |
           Write-Host "============================================" -ForegroundColor Cyan
           Write-Host "  DOWNLOADING QWEN EMBEDDING MODEL (FULL BUILD)" -ForegroundColor Cyan
@@ -1206,8 +1206,8 @@ jobs:
       # ============================================================
       - name: Collect NSIS Installer
         run: |
-          $buildType = "${{ steps.check.outputs.build_type }}"
-          $version = "${{ steps.check.outputs.version }}"
+          $buildType = "${{ needs.check-build-trigger.outputs.build_type }}"
+          $version = "${{ needs.check-build-trigger.outputs.version }}"
           $outDir = "installer_output"
 
           Write-Host "=== Collecting NSIS Installer ==="
@@ -1386,7 +1386,7 @@ jobs:
           Write-Host "============================================" -ForegroundColor Cyan
           Write-Host ""
           Write-Host "[SUCCESS] LocaNext LIGHT Build Complete!" -ForegroundColor Green
-          Write-Host "Output: installer_output\LocaNext_v${{ steps.check.outputs.version }}_Light_Setup.exe"
+          Write-Host "Output: installer_output\LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Light_Setup.exe"
           Write-Host ""
 
           # Show cache status
@@ -1433,8 +1433,7 @@ jobs:
           Write-Host "  CREATING GITEA RELEASE" -ForegroundColor Cyan
           Write-Host "============================================" -ForegroundColor Cyan
 
-          $VERSION = "${{ steps.check.outputs.version }}"
-          $SEMANTIC = "${{ steps.check.outputs.semantic_version }}"
+          $VERSION = "${{ needs.check-build-trigger.outputs.version }}"
           $TAG = "v$VERSION"
           $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
           $GITEA_REPO = "neilvibe/LocaNext"
@@ -1463,7 +1462,7 @@ jobs:
           }
 
           # Get build type
-          $BUILD_TYPE = "${{ steps.check.outputs.build_type }}"
+          $BUILD_TYPE = "${{ needs.check-build-trigger.outputs.build_type }}"
 
           # Create release body based on build type (simplified for YAML compatibility)
           if ($BUILD_TYPE -eq "FULL") {
