@@ -93,7 +93,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "LocaNext",
       "uninstallDisplayName": "LocaNext",
-      "license": "../LICENSE"
+      "license": "../LICENSE",
+      "include": "../installer/nsis-includes/installer-ui.nsh"
     },
     "linux": {
       "target": "AppImage",

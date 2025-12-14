@@ -227,6 +227,10 @@ function getRepairHtml() {
  */
 function sendProgress(step, status, progress, message) {
   if (repairWindow && !repairWindow.isDestroyed()) {
+    // On error, make window closable so user can exit
+    if (status === 'error') {
+      repairWindow.setClosable(true);
+    }
     // Escape message for JavaScript string
     const safeMessage = (message || '').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
     const js = `if(typeof updateStep === 'function') updateStep('${step}', '${status}', ${progress}, '${safeMessage}')`;

@@ -548,6 +548,96 @@ Dockerfile, docker-compose.yml
 
 ---
 
+## Session 13B: CI/CD Infrastructure (ADDED 2025-12-15)
+
+**CRITICAL: This is DIFFERENT from Session 13 (workflow files)**
+
+Session 13 reviews `.yml` workflow files.
+Session 13B reviews INFRASTRUCTURE that runs workflows.
+
+**Why separate?** The 706% CPU incident (2025-12-14) was NOT caught by workflow review because the bug was in systemd service configuration, not workflow files.
+
+**Locations to check:**
+```bash
+# Linux systemd services
+/etc/systemd/system/gitea*.service
+/etc/systemd/system/*runner*.service
+
+# Linux runner files
+~/gitea/*.sh
+~/gitea/config.yaml
+~/gitea/.runner
+
+# Windows runner
+C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\
+```
+
+**Review Focus:**
+
+### Linux Services (DANGER ZONE)
+- [ ] **NO `Restart=always` without limits** ← 706% CPU ROOT CAUSE
+- [ ] `StartLimitBurst` + `StartLimitIntervalSec` set?
+- [ ] Service dependencies correct? (`Requires=`, `After=`)
+- [ ] `PartOf=` used for dependent services?
+- [ ] Resource limits set? (`CPUQuota`, `MemoryMax`)
+
+### Runner Configuration
+- [ ] Only ONE runner per platform registered?
+- [ ] Polling interval reasonable? (not < 5s)
+- [ ] Token expiration handled?
+- [ ] Non-ephemeral mode for stability?
+
+### Commands to Run:
+```bash
+# Check for dangerous Restart=always
+grep -r "Restart=always" /etc/systemd/system/ 2>/dev/null
+
+# Check registered runners
+systemctl list-units | grep -iE "gitea|runner"
+
+# Check restart limits exist
+grep -r "StartLimitBurst" /etc/systemd/system/gitea*.service 2>/dev/null
+
+# Check service dependencies
+systemctl show gitea-runner.service --property=Requires,After 2>/dev/null
+
+# Check restart count
+systemctl show gitea-runner.service --property=NRestarts 2>/dev/null
+```
+
+### Safe systemd Template (REFERENCE)
+```ini
+[Unit]
+Description=Gitea Actions Runner
+After=gitea.service network.target
+Requires=gitea.service
+PartOf=gitea.service
+
+[Service]
+Type=simple
+User=neil1988
+WorkingDirectory=/home/neil1988/gitea
+ExecStart=/home/neil1988/gitea/act_runner daemon
+Restart=on-failure          # NOT "always"
+RestartSec=30               # 30 second cooldown
+StartLimitBurst=3           # Max 3 restarts...
+StartLimitIntervalSec=300   # ...in 5 minutes
+CPUQuota=100%
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Full guide:** [docs/cicd/RUNNER_SERVICE_SETUP.md](../cicd/RUNNER_SERVICE_SETUP.md)
+
+### Incident Log
+| Date | Issue | Root Cause | Prevention |
+|------|-------|------------|------------|
+| 2025-12-14 | 706% CPU (506 restarts) | `Restart=always` + no limits | Add `StartLimitBurst=3` |
+
+---
+
 ## Session 14: Tests (ADDED 2025-12-13)
 
 **Files:**
