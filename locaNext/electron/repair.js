@@ -297,14 +297,14 @@ function runPythonScript(pythonExe, scriptPath, step) {
 /**
  * Verify repair was successful
  */
-async function verifyRepair(pythonExe, appRoot) {
+async function verifyRepair(paths) {
   sendProgress('verify', 'active', 0, 'Checking repair...');
 
   // Check Python imports
   sendProgress('verify', 'active', 33, 'Checking Python packages...');
   try {
     await new Promise((resolve, reject) => {
-      const proc = spawn(pythonExe, ['-c', 'import fastapi; import torch; print("OK")'], {
+      const proc = spawn(paths.pythonExe, ['-c', 'import fastapi; import torch; print("OK")'], {
         timeout: 30000,
         windowsHide: true,
         env: { ...process.env, PYTHONWARNINGS: 'ignore' }
@@ -319,9 +319,9 @@ async function verifyRepair(pythonExe, appRoot) {
     return false;
   }
 
-  // Check model
+  // Check model (models are at projectRoot, not in resources)
   sendProgress('verify', 'active', 66, 'Checking AI model...');
-  const modelConfig = path.join(appRoot, 'models', 'kr-sbert', 'config.json');
+  const modelConfig = path.join(paths.modelsPath, 'kr-sbert', 'config.json');
   if (!fs.existsSync(modelConfig)) {
     sendProgress('verify', 'error', 66, 'AI model still missing');
     return false;
@@ -352,7 +352,7 @@ export async function runRepair(paths, components = ['deps', 'model']) {
 
     const pythonExe = paths.pythonExe;
     const appRoot = paths.projectRoot;
-    const toolsDir = path.join(appRoot, 'tools');
+    const toolsDir = paths.pythonToolsPath;  // tools are in resources/tools
 
     // Repair dependencies if needed
     if (components.includes('deps')) {
@@ -388,7 +388,7 @@ export async function runRepair(paths, components = ['deps', 'model']) {
     }
 
     // Verify repair
-    const success = await verifyRepair(pythonExe, appRoot);
+    const success = await verifyRepair(paths);
 
     // Record repair attempt
     recordRepairAttempt(appRoot, components);

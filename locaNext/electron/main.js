@@ -97,15 +97,15 @@ const getAppPaths = () => {
     };
   } else {
     // Production: installed app structure
-    // app.asar is in resources/, resources dir is one level up
+    // app.asar is in resources/, extraResources also goes to resources/
     const resourcesPath = path.join(app.getAppPath(), '..');
     const appRoot = path.join(resourcesPath, '..');
     return {
       projectRoot: appRoot,
       pythonToolsPath: path.join(resourcesPath, 'tools'),  // extraResources goes to resources/tools
-      serverPath: path.join(appRoot, 'server'),
-      pythonExe: path.join(appRoot, 'tools', 'python', 'python.exe'),  // Python installed at tools/python
-      modelsPath: path.join(appRoot, 'models')
+      serverPath: path.join(resourcesPath, 'server'),      // extraResources: server → resources/server
+      pythonExe: path.join(resourcesPath, 'tools', 'python', 'python.exe'),  // extraResources: tools/python → resources/tools/python
+      modelsPath: path.join(appRoot, 'models')  // models stays at app root (downloaded post-install)
     };
   }
 };
