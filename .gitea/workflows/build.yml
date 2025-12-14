@@ -1134,109 +1134,32 @@ jobs:
         shell: powershell
 
       # ============================================================
-      # NSIS Include Files (SMART CACHE)
-      # Static files - cache forever until manually cleared
+      # NSIS Include Files (FROM REPO - Always Reliable)
+      # Files bundled in installer/nsis-includes/ - no downloads needed
       # ============================================================
-      - name: Get NSIS Include Files (Smart Cache)
+      - name: Copy NSIS Include Files from Repo
         run: |
-          Write-Host "=== NSIS Include Files (Smart Cache) ==="
+          Write-Host "=== NSIS Include Files (from repo) ===" -ForegroundColor Cyan
 
-          $cacheRoot = "C:\BuildCache"
-          $cachedNsisDir = "$cacheRoot\nsis-includes"
-          $workDir = (Get-Location).Path
-          $targetInclude = Join-Path $workDir "locaNext\node_modules\app-builder-lib\templates\nsis\include"
-
-          $includeFiles = @(
-            "StdUtils.nsh", "WinVer.nsh", "allowOnlyOneInstallerInstance.nsh",
-            "assistedInstaller.nsh", "boringInstaller.nsh", "checkAppRunning.nsh",
-            "extractAppPackage.nsh", "fileAssociation.nsh", "installer.nsh",
-            "installSection.nsh", "multiUser.nsh", "multiUserUi.nsh",
-            "oneClick.nsh", "UAC.nsh", "uninstaller.nsh"
-          )
+          $sourceDir = "installer\nsis-includes"
+          $targetDir = "locaNext\node_modules\app-builder-lib\templates\nsis\include"
 
           # Create target directory
-          New-Item -ItemType Directory -Force -Path $targetInclude | Out-Null
+          New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
 
-          # Check if cache is valid (file count AND size check - 14 bytes = corrupted)
-          $useCache = $false
-          if (Test-Path "$cachedNsisDir\StdUtils.nsh") {
-            $cachedFiles = Get-ChildItem "$cachedNsisDir\*.nsh" -ErrorAction SilentlyContinue
-            $cachedCount = $cachedFiles.Count
-            # Check for corrupted files (14 bytes = download failure/HTML error page)
-            $corruptedCount = ($cachedFiles | Where-Object { $_.Length -le 100 }).Count
-            if ($cachedCount -ge $includeFiles.Count -and $corruptedCount -eq 0) {
-              $useCache = $true
-            } else {
-              Write-Host "[CACHE INVALID] Found $corruptedCount corrupted files (<=100 bytes) - rebuilding cache" -ForegroundColor Yellow
-              Remove-Item "$cachedNsisDir\*" -Force -ErrorAction SilentlyContinue
-            }
-          }
+          # Copy from repo (always available, no downloads)
+          Copy-Item -Path "$sourceDir\*.nsh" -Destination $targetDir -Force
 
-          if ($useCache) {
-            Write-Host "[CACHE HIT] Copying NSIS includes from cache..." -ForegroundColor Green
-            Copy-Item -Path "$cachedNsisDir\*.nsh" -Destination $targetInclude -Force
-            $count = (Get-ChildItem "$targetInclude\*.nsh").Count
-            Write-Host "[OK] NSIS includes: $count files (from cache)" -ForegroundColor Green
-          } else {
-            Write-Host "[CACHE MISS] Downloading NSIS include files..." -ForegroundColor Yellow
+          # Verify
+          $files = Get-ChildItem "$targetDir\*.nsh"
+          Write-Host "[OK] Copied $($files.Count) NSIS include files from repo" -ForegroundColor Green
+          $files | ForEach-Object { Write-Host "  - $($_.Name) ($($_.Length) bytes)" }
 
-            $baseUrl = "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include"
-
-            $downloadFailed = $false
-            foreach ($file in $includeFiles) {
-              $url = "$baseUrl/$file"
-              $dest = Join-Path $targetInclude $file
-              & curl.exe -L --retry 3 --fail -s -o $dest $url
-              if ((Test-Path $dest) -and (Get-Item $dest).Length -gt 100) {
-                $size = (Get-Item $dest).Length
-                Write-Host "  [OK] $file ($size bytes)"
-              } else {
-                Write-Host "  [FAIL] $file (download failed or file too small)" -ForegroundColor Red
-                $downloadFailed = $true
-              }
-            }
-
-            if ($downloadFailed) {
-              Write-Host "[WARNING] Some downloads failed - trying alternative source..." -ForegroundColor Yellow
-              # Alternative: use npm package directly
-              # After npm install, the files are already in targetInclude, so just verify
-              Write-Host "Installing app-builder-lib to get NSIS templates..."
-              cd locaNext
-              npm install app-builder-lib --save-dev
-              # Files are now at node_modules\app-builder-lib\templates\nsis\include
-              # which IS our $targetInclude - no copy needed, just verify
-              $installedInclude = "node_modules\app-builder-lib\templates\nsis\include"
-              if (Test-Path $installedInclude) {
-                $npmFiles = Get-ChildItem "$installedInclude\*.nsh" -ErrorAction SilentlyContinue
-                Write-Host "[OK] npm package installed - found $($npmFiles.Count) files in place" -ForegroundColor Green
-              } else {
-                Write-Host "[ERROR] npm package missing include directory!" -ForegroundColor Red
-              }
-              cd ..
-            }
-
-            $count = (Get-ChildItem "$targetInclude\*.nsh").Count
-            Write-Host "[OK] Got $count NSIS include files"
-
-            # Validate all files before caching
-            $validFiles = Get-ChildItem "$targetInclude\*.nsh" | Where-Object { $_.Length -gt 100 }
-            if ($validFiles.Count -eq $includeFiles.Count) {
-              # POPULATE CACHE for next build
-              Write-Host "Populating cache for future builds..."
-              New-Item -ItemType Directory -Force -Path $cachedNsisDir | Out-Null
-              Copy-Item -Path "$targetInclude\*.nsh" -Destination $cachedNsisDir -Force
-              Write-Host "[CACHED] NSIS includes saved to cache" -ForegroundColor Cyan
-            } else {
-              Write-Host "[SKIP CACHE] Not all files are valid - won't cache corrupted files" -ForegroundColor Yellow
-            }
-          }
-
-          # Verify StdUtils.nsh
-          $stdUtils = Join-Path $targetInclude "StdUtils.nsh"
-          if (Test-Path $stdUtils) {
+          # Verify StdUtils.nsh (required by electron-builder)
+          if (Test-Path "$targetDir\StdUtils.nsh") {
             Write-Host "[OK] StdUtils.nsh verified" -ForegroundColor Green
           } else {
-            Write-Host "[ERROR] StdUtils.nsh NOT FOUND!" -ForegroundColor Red
+            Write-Host "[ERROR] StdUtils.nsh missing!" -ForegroundColor Red
             exit 1
           }
         shell: powershell
@@ -1245,80 +1168,19 @@ jobs:
         run: |
           cd locaNext
 
-          # First build the frontend
+          # Build frontend
           npm run build
 
-          # CRITICAL: Verify/restore NSIS include files right before electron-builder
-          Write-Host "=== Pre-build NSIS verification ==="
-          Write-Host "Current dir: $(Get-Location)"
-
-          $includeDir = "node_modules\app-builder-lib\templates\nsis\include"
-          $stdUtils = "$includeDir\StdUtils.nsh"
-
-          # Show absolute path
-          $absIncludeDir = (Resolve-Path $includeDir -ErrorAction SilentlyContinue).Path
-          Write-Host "Include dir absolute: $absIncludeDir"
-
-          if (!(Test-Path $stdUtils)) {
-            Write-Host "[WARN] StdUtils.nsh missing! Re-downloading..."
-            New-Item -ItemType Directory -Force -Path $includeDir | Out-Null
-
-            $baseUrl = "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include"
-            $files = @("StdUtils.nsh","WinVer.nsh","allowOnlyOneInstallerInstance.nsh","assistedInstaller.nsh","boringInstaller.nsh","checkAppRunning.nsh","extractAppPackage.nsh","fileAssociation.nsh","installer.nsh","installSection.nsh","multiUser.nsh","multiUserUi.nsh","oneClick.nsh","UAC.nsh","uninstaller.nsh")
-
-            foreach ($f in $files) {
-              & curl.exe -L --retry 3 -s -o "$includeDir\$f" "$baseUrl/$f"
-            }
-          }
-
-          # Verify StdUtils.nsh exists and content is valid
+          # Verify NSIS files are in place (copied from repo in previous step)
+          $stdUtils = "node_modules\app-builder-lib\templates\nsis\include\StdUtils.nsh"
           if (Test-Path $stdUtils) {
-            $size = (Get-Item $stdUtils).Length
-            Write-Host "[OK] StdUtils.nsh exists ($size bytes)"
-
-            # Show first 3 lines to verify it's real NSIS code
-            Write-Host "=== First 3 lines of StdUtils.nsh ==="
-            Get-Content $stdUtils -Head 3
-
-            # List all files in include dir
-            Write-Host "=== All files in include dir ==="
-            Get-ChildItem $includeDir | Select-Object Name,Length
+            Write-Host "[OK] NSIS includes ready" -ForegroundColor Green
           } else {
-            Write-Host "[ERROR] StdUtils.nsh STILL missing!"
+            Write-Host "[ERROR] NSIS includes missing - check previous step" -ForegroundColor Red
             exit 1
           }
 
-          # Show templates/nsis directory structure
-          Write-Host "=== templates/nsis directory structure ==="
-          Get-ChildItem "node_modules\app-builder-lib\templates\nsis" -Recurse | Select-Object FullName
-
-          # WORKAROUND: Copy includes to NSIS cache directory (permission issue)
-          # electron-builder downloads NSIS to this location
-          $nsisCache = "$env:TEMP\electron-builder-cache\nsis"
-          Write-Host "=== Looking for NSIS cache at: $nsisCache ==="
-
-          if (Test-Path $nsisCache) {
-            $nsisDir = Get-ChildItem $nsisCache -Directory | Select-Object -First 1
-            if ($nsisDir) {
-              $nsisInclude = Join-Path $nsisDir.FullName "Include"
-              Write-Host "Found NSIS dir: $($nsisDir.FullName)"
-              Write-Host "NSIS Include dir: $nsisInclude"
-
-              if (!(Test-Path $nsisInclude)) {
-                New-Item -ItemType Directory -Force -Path $nsisInclude | Out-Null
-              }
-
-              # Copy all .nsh files from templates/nsis/include to NSIS Include
-              $sourceInclude = "node_modules\app-builder-lib\templates\nsis\include"
-              if (Test-Path $sourceInclude) {
-                Copy-Item -Path "$sourceInclude\*.nsh" -Destination $nsisInclude -Force
-                Write-Host "[OK] Copied include files to NSIS Include directory"
-                Get-ChildItem $nsisInclude -Name
-              }
-            }
-          }
-
-          # Now run electron-builder
+          # Build electron app with NSIS installer
           npm run build:electron
         shell: powershell
         env:
