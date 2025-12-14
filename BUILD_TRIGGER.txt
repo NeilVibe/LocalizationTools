@@ -39,3 +39,4 @@ Build LIGHT v2512141557 - P27 Svelte 5 Full Latest
 Build LIGHT v2512141625 - ROBUST FIX: Node 20 + electron-builder config
 Build LIGHT v2512141700 - Fix SQLite fallback for Windows tests
 Build LIGHT v2512141730 - Skip backend test (no PostgreSQL on Windows runner)
+Build LIGHT v2512141745 - Remove useless server tests (match Gitea)
