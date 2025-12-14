@@ -156,13 +156,88 @@ Cannot parse version "2512072249" - must be semver format
 
 ---
 
+## Post-Install Runtime Errors
+
+### ENOENT: Python/Server Not Found (CRITICAL!)
+
+**Error:**
+```
+spawn C:\...\Playground\tools\python\python.exe ENOENT
+```
+
+**Cause:** Code looks for `extraResources` at wrong path.
+- `extraResources` go to `resources/` folder, NOT app root
+- Dev: `../tools/python/python.exe`
+- Prod: `resources/tools/python/python.exe`
+
+**Fix:** Use `resourcesPath` for production paths:
+```javascript
+// WRONG
+const pythonExe = path.join(appRoot, 'tools', 'python', 'python.exe');
+
+// RIGHT
+const resourcesPath = path.join(app.getAppPath(), '..');
+const pythonExe = path.join(resourcesPath, 'tools', 'python', 'python.exe');
+```
+
+**Full guide:** [ELECTRON_PACKAGING.md](ELECTRON_PACKAGING.md)
+
+---
+
+### First-Run Setup Fails Silently
+
+**Symptom:** App opens but nothing works, no error shown.
+
+**Cause:** Error dialog wasn't closable (no Exit button).
+
+**Fix:** Added Exit button and made window closable on error:
+```javascript
+if (status === 'error') {
+  setupWindow.setClosable(true);
+}
+```
+
+---
+
+## Post-Build Testing Protocol (MANDATORY!)
+
+**DO NOT RELEASE WITHOUT TESTING ON CLEAN MACHINE.**
+
+### Quick Test Checklist
+
+1. **Install on Playground/clean folder**
+2. **Check folder structure:**
+   ```powershell
+   dir "C:\...\Playground\resources\server"    # Should exist
+   dir "C:\...\Playground\resources\tools"     # Should exist
+   ```
+3. **Run app and check:**
+   - [ ] First-run setup starts
+   - [ ] No ENOENT errors in logs
+   - [ ] Error dialog has Exit button
+   - [ ] Installer showed progress details
+
+### Where to Find Logs
+
+```powershell
+# Windows logs
+dir %APPDATA%\LocaNext\logs\
+
+# Or check Event Viewer for crashes
+```
+
+---
+
 ## History of Build Fixes
 
 | Date | Error | Root Cause | Fix |
 |------|-------|------------|-----|
 | 2025-12-07 | `Env WIN_CSC_LINK is not correct` | Empty string treated as file path | Remove WIN_CSC_LINK and CSC_LINK |
 | 2025-12-07 | `Cannot create symbolic link` | winCodeSign downloaded even with CSC_IDENTITY_AUTO_DISCOVERY | Add `sign: false` to package.json win config |
+| 2025-12-14 | `spawn python.exe ENOENT` | extraResources at `resources/` not `appRoot/` | Use `resourcesPath` for prod paths |
+| 2025-12-14 | Error dialog can't close | No Exit button, `closable: false` | Add Exit button, `setClosable(true)` on error |
+| 2025-12-14 | Installer shows no details | NSIS default hides details | Added `ShowInstDetails show` in nsis-includes |
 
 ---
 
-*Last updated: 2025-12-07*
+*Last updated: 2025-12-15*

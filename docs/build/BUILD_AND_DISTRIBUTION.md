@@ -266,8 +266,18 @@ pip-audit --desc
 
 ## 📚 Related Documentation
 
-- **BUILD_TROUBLESHOOTING.md** - Complete debugging guide
-- **BUILD_CHECKLIST.md** - Pre-release checklist
-- **PACKAGING_GUIDE.md** - Electron packaging details
-- **SECURITY_HARDENING.md** - Full security documentation
-- **Roadmap.md** - Current build strategy and status
+| Document | Contents |
+|----------|----------|
+| [BUILD_TROUBLESHOOTING.md](BUILD_TROUBLESHOOTING.md) | Error solutions, post-build testing protocol |
+| [BUILD_CHECKLIST.md](BUILD_CHECKLIST.md) | Pre-release checklist |
+| [ELECTRON_PACKAGING.md](ELECTRON_PACKAGING.md) | **CRITICAL:** Dev vs Prod path structure |
+| [PACKAGING_GUIDE.md](PACKAGING_GUIDE.md) | Distribution to employees |
+| [../cicd/CI_CD_HUB.md](../cicd/CI_CD_HUB.md) | CI/CD pipeline overview |
+| [../cicd/RUNNER_SERVICE_SETUP.md](../cicd/RUNNER_SERVICE_SETUP.md) | Gitea runner systemd setup |
+| [../security/SECURITY_HARDENING.md](../security/SECURITY_HARDENING.md) | Security documentation |
+
+### Critical Reading Before First Build
+
+1. **ELECTRON_PACKAGING.md** - Understand `extraResources` → `resources/` path mapping
+2. **BUILD_TROUBLESHOOTING.md** - Post-build testing protocol (MANDATORY!)
+3. **RUNNER_SERVICE_SETUP.md** - Safe runner configuration (prevents 706% CPU)

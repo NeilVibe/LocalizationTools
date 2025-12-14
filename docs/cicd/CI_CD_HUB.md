@@ -24,6 +24,8 @@
 | Build failed? | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
 | Pipeline details? | [PIPELINE_ARCHITECTURE.md](PIPELINE_ARCHITECTURE.md) |
 | Version format? | [VERSION_SYSTEM.md](VERSION_SYSTEM.md) |
+| **Runner services?** | [RUNNER_SERVICE_SETUP.md](RUNNER_SERVICE_SETUP.md) |
+| **CPU issues?** | [../troubleshooting/GITEA_SAFETY_PROTOCOL.md](../troubleshooting/GITEA_SAFETY_PROTOCOL.md) |
 
 ---
 

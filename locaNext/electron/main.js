@@ -342,6 +342,14 @@ ipcMain.handle('quit-and-install', async () => {
 });
 
 /**
+ * IPC: Exit app (used when setup fails)
+ */
+ipcMain.handle('exit-app', async () => {
+  logger.info('User requested app exit');
+  app.quit();
+});
+
+/**
  * IPC: Check for updates manually
  */
 ipcMain.handle('check-for-updates', async () => {

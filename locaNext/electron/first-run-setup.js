@@ -162,17 +162,22 @@ function getSetupHtml() {
       margin-top: 20px;
       text-align: center;
     }
-    .retry-btn {
+    .button-row {
       margin-top: 20px;
+      display: none;
+      gap: 12px;
+    }
+    .btn {
       padding: 10px 30px;
-      background: #4a9eff;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      display: none;
     }
-    .retry-btn:hover { background: #3a8eef; }
+    .btn-primary { background: #4a9eff; }
+    .btn-primary:hover { background: #3a8eef; }
+    .btn-danger { background: #666; }
+    .btn-danger:hover { background: #f44336; }
   </style>
 </head>
 <body>
@@ -207,7 +212,10 @@ function getSetupHtml() {
   </div>
 
   <div id="error-msg" class="error-msg" style="display:none;"></div>
-  <button id="retry-btn" class="retry-btn" onclick="location.reload()">Retry</button>
+  <div id="button-row" class="button-row">
+    <button class="btn btn-primary" onclick="retrySetup()">Retry Setup</button>
+    <button class="btn btn-danger" onclick="exitApp()">Exit</button>
+  </div>
 
   <script>
     // Listen for progress updates from main process
@@ -248,7 +256,31 @@ function getSetupHtml() {
       if (status === 'error') {
         document.getElementById('error-msg').style.display = 'block';
         document.getElementById('error-msg').textContent = message || 'Setup failed';
-        document.getElementById('retry-btn').style.display = 'inline-block';
+        document.getElementById('button-row').style.display = 'flex';
+      }
+    }
+
+    function retrySetup() {
+      // Reset UI
+      document.getElementById('error-msg').style.display = 'none';
+      document.getElementById('button-row').style.display = 'none';
+      document.querySelectorAll('.step').forEach(s => s.className = 'step');
+      document.querySelectorAll('.progress-fill').forEach(p => p.style.width = '0%');
+      document.querySelectorAll('.status').forEach(s => s.textContent = '');
+      document.querySelectorAll('.step-icon').forEach((icon, i) => icon.textContent = (i + 1).toString());
+      // Signal main process to retry
+      if (window.electronAPI && window.electronAPI.retrySetup) {
+        window.electronAPI.retrySetup();
+      } else {
+        location.reload();
+      }
+    }
+
+    function exitApp() {
+      if (window.electronAPI && window.electronAPI.exitApp) {
+        window.electronAPI.exitApp();
+      } else {
+        window.close();
       }
     }
   </script>
@@ -262,6 +294,10 @@ function getSetupHtml() {
  */
 function sendProgress(step, status, progress, message) {
   if (setupWindow && !setupWindow.isDestroyed()) {
+    // On error, make window closable so user can exit
+    if (status === 'error') {
+      setupWindow.setClosable(true);
+    }
     // Escape message for JavaScript string
     const safeMessage = (message || '').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
     const js = `if(typeof updateStep === 'function') updateStep('${step}', '${status}', ${progress}, '${safeMessage}')`;

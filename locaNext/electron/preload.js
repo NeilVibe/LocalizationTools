@@ -125,7 +125,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @param {object} paths - App paths
    * @returns {Promise<boolean>}
    */
-  retrySetup: (paths) => ipcRenderer.invoke('retry-setup', paths)
+  retrySetup: (paths) => ipcRenderer.invoke('retry-setup', paths),
+
+  /**
+   * Exit the app (used when setup fails and user wants to quit)
+   */
+  exitApp: () => ipcRenderer.invoke('exit-app')
 });
 
 // Expose auto-update API
