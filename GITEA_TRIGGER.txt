@@ -40,3 +40,4 @@ Build LIGHT v2512141558 - P27 Svelte 5 Full Latest
 Build LIGHT v2512141620 - Fix electron-builder 26.x config (remove sign/signDlls)
 Build LIGHT v2512142043
 Build LIGHT v2512142055
+Build LIGHT v2512142116
