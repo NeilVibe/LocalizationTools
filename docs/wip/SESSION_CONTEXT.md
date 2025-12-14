@@ -1,12 +1,12 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-14 ~22:00 KST | **By:** Claude
+**Updated:** 2025-12-15 ~07:30 KST | **By:** Claude
 
 ---
 
 ## P28: CI/CD Fixed - electron-builder NSIS
 
-**Status: COMPLETE** | Build verification in progress (Run #258)
+**Status: COMPLETE** | ✅ First successful build: v25.1214.2235
 
 ### Technology Stack
 
@@ -56,6 +56,11 @@
 
 6. **LICENSE** - Added MIT license file
 
+7. **installer/nsis-includes/*.nsh** (NEW)
+   - 11 NSIS include files bundled in repo
+   - No more unreliable GitHub raw downloads
+   - Both workflows copy from repo at build time
+
 ---
 
 ## CI/CD Code Review - Session 13 COMPLETE
@@ -68,11 +73,12 @@
 | CI-002 | CRITICAL | GitHub still used Inno Setup | Synced to use NSIS |
 | CI-003 | MEDIUM | NSIS install flags wrong | Fixed to `/S /D=path` |
 | CI-004 | MEDIUM | File verification paths wrong | Updated for `resources/` structure |
-| CI-005 | HIGH | NSIS cache corruption (14-byte files) | Added size validation, fallback to npm |
+| CI-005 | HIGH | NSIS cache corruption (14-byte files) | Bundled NSIS in repo (no downloads) |
 | CI-006 | HIGH | safety-checks skipped | Added should_build condition |
 | CI-007 | MEDIUM | build-windows didn't wait for safety-checks | Added dependency |
 | CI-008 | MEDIUM | Server died on startup in CI | Added DEV_MODE=true |
 | CI-009 | LOW | test_requires_authentication failed | Skip in DEV_MODE |
+| CI-010 | CRITICAL | Version empty in release step | Fixed: needs.check-build-trigger.outputs.version |
 
 ### Both Workflows Now Sync
 
@@ -89,21 +95,29 @@
 |-----|--------|-------|-------------|
 | #256 | Failed | NSIS cache corrupted, safety-checks skipped | CI-005, CI-006, CI-007, CI-008 |
 | #257 | Failed | test_requires_authentication (200 vs 401) | CI-009 |
-| #258 | Running | Testing all fixes | - |
+| #258-262 | Failed | Version empty → Portable instead of Setup.exe | CI-010 |
+| #263 | ✅ SUCCESS | v25.1214.2235 | First good NSIS build |
 
 ---
 
-## P29: Verification Test - IN PROGRESS
+## Release Cleanup (DONE)
+
+Old broken releases deleted. Only kept:
+- **v25.1214.2235** - `LocaNext_v25.1214.2235_Light_Setup.exe` (162.8 MB)
+
+---
+
+## P29: Verification Test - PENDING USER
 
 Need to verify:
-1. [ ] NSIS installer is produced
+1. [x] NSIS installer is produced ✅
 2. [ ] Download and install on Windows
 3. [ ] App starts standalone
 4. [ ] Embedded Python works
 
-### Current Build
+### First Good Build
 
-**Run #258** - All fixes applied, awaiting results
+**v25.1214.2235** - Ready for Windows testing
 
 ---
 

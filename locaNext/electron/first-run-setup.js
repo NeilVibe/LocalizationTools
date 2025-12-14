@@ -338,14 +338,14 @@ function runPythonScript(pythonExe, scriptPath, step) {
 /**
  * Verify installation
  */
-async function verifyInstallation(pythonExe, appRoot) {
+async function verifyInstallation(paths) {
   sendProgress('verify', 'active', 0, 'Checking installation...');
 
   // Check 1: Python can import core deps
   sendProgress('verify', 'active', 25, 'Checking Python imports...');
   try {
     const result = await new Promise((resolve, reject) => {
-      const proc = spawn(pythonExe, ['-c', 'import fastapi; import torch; import transformers; print("OK")'], {
+      const proc = spawn(paths.pythonExe, ['-c', 'import fastapi; import torch; import transformers; print("OK")'], {
         timeout: 30000,
         windowsHide: true,
         env: {
@@ -365,17 +365,17 @@ async function verifyInstallation(pythonExe, appRoot) {
     throw new Error('Python imports failed: ' + e.message);
   }
 
-  // Check 2: Model exists
+  // Check 2: Model exists (models are at projectRoot, not in resources)
   sendProgress('verify', 'active', 50, 'Checking AI model...');
-  const modelPath = path.join(appRoot, 'models', 'kr-sbert', 'config.json');
+  const modelPath = path.join(paths.modelsPath, 'kr-sbert', 'config.json');
   if (!fs.existsSync(modelPath)) {
     sendProgress('verify', 'error', 50, 'AI model not found');
     throw new Error('AI model not found at: ' + modelPath);
   }
 
-  // Check 3: Server directory exists
+  // Check 3: Server directory exists (server is in resources/)
   sendProgress('verify', 'active', 75, 'Checking server files...');
-  const serverMain = path.join(appRoot, 'server', 'main.py');
+  const serverMain = path.join(paths.serverPath, 'main.py');
   if (!fs.existsSync(serverMain)) {
     sendProgress('verify', 'error', 75, 'Server files not found');
     throw new Error('Server not found at: ' + serverMain);
@@ -406,7 +406,7 @@ export async function runFirstRunSetup(paths) {
 
     const pythonExe = paths.pythonExe;
     const appRoot = paths.projectRoot;
-    const toolsDir = path.join(appRoot, 'tools');
+    const toolsDir = paths.pythonToolsPath;  // tools are in resources/tools
 
     // Step 1: Install Python dependencies
     const installDepsScript = path.join(toolsDir, 'install_deps.py');
@@ -427,7 +427,7 @@ export async function runFirstRunSetup(paths) {
     }
 
     // Step 3: Verify installation
-    await verifyInstallation(pythonExe, appRoot);
+    await verifyInstallation(paths);
 
     // Success! Create flag file
     createFlagFile(appRoot);
