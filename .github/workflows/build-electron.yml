@@ -723,9 +723,11 @@ jobs:
           $pythonExe = "$installDir\tools\python\python.exe"
           $serverScript = "$installDir\server\main.py"
 
-          # Set environment
+          # Set environment - use SQLite since no PostgreSQL on Windows runner
           $env:PYTHONPATH = $installDir
           $env:PYTHONUNBUFFERED = "1"
+          $env:DATABASE_TYPE = "sqlite"
+          $env:DEV_MODE = "true"
 
           # Start backend server in background
           Write-Host "Starting backend server..."
@@ -796,8 +798,11 @@ jobs:
           $pythonExe = "$installDir\tools\python\python.exe"
           $serverScript = "$installDir\server\main.py"
 
+          # Use SQLite since no PostgreSQL on Windows runner
           $env:PYTHONPATH = $installDir
           $env:PYTHONUNBUFFERED = "1"
+          $env:DATABASE_TYPE = "sqlite"
+          $env:DEV_MODE = "true"
 
           # Create admin user first
           Write-Host "Creating admin user..."
