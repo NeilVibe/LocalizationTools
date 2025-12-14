@@ -4,6 +4,18 @@
 
 ---
 
+## Technology Stack
+
+| Component | Technology | Notes |
+|-----------|------------|-------|
+| **CI/CD Primary** | Gitea Actions | Self-hosted, Linux runner (host mode) |
+| **CI/CD Secondary** | GitHub Actions | Cloud, Windows runner |
+| **Installer Builder** | electron-builder 26.x | Native NSIS support |
+| **Installer Format** | NSIS (Nullsoft) | Replaced Inno Setup in P28 |
+| **Build Output** | `LocaNext_v*.exe` | ~200MB Light, ~2GB Full |
+
+---
+
 ## Quick Reference
 
 | Need | Go To |
@@ -74,8 +86,8 @@ Smart checkpoint that **persists across CI runs**:
 │                             ↓ (if mode=official)                    │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │ JOB 3: build-windows (Windows self-hosted)                  │   │
-│  │ - Build Electron app                                        │   │
-│  │ - Create portable ZIP                                       │   │
+│  │ - Build Electron app with electron-builder                  │   │
+│  │ - Create NSIS installer (.exe)                              │   │
 │  │ - Generate latest.yml for auto-updater                      │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 │                                                                     │
@@ -124,4 +136,4 @@ cat ~/.locanext_checkpoint
 
 ---
 
-*Last updated: 2025-12-13*
+*Last updated: 2025-12-14*
