@@ -75,9 +75,7 @@
     },
     "win": {
       "target": "dir",
-      "sign": "./scripts/skip-sign.js",
-      "signAndEditExecutable": false,
-      "signDlls": false
+      "signAndEditExecutable": false
     },
     "linux": {
       "target": "AppImage",
