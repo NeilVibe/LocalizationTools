@@ -6,9 +6,8 @@
 
 ## Goal
 
-Two objectives:
-1. **Add smoke test** - Verify installer actually works
-2. **Curate CI test list** - Decide which tests should run in CI (not delete, just include/exclude)
+1. **Review the 912 tests IN CI** - Find and remove redundant/duplicate tests
+2. **Add smoke test** - Verify installer actually works
 
 ---
 
@@ -79,85 +78,74 @@ Add to `build-windows` job after NSIS packaging:
 
 **Estimated time:** +2-3 minutes
 
-### What This Catches
-- Missing files after packaging
-- Wrong path resolution in production mode
-- Backend startup failures
-- Python embedding issues
-
 ---
 
-## 2. CI Test Curation
-
-**Goal:** Review each test directory and decide: IN CI or OUT of CI
-
-Tests stay in the repo regardless - this is just about what runs in the pipeline.
+## 2. Test Audit - Review 912 Tests IN CI
 
 ### Current CI Configuration
 
 ```bash
 # From .gitea/workflows/build.yml line 350-351
 TEST_DIRS="tests/unit/ tests/integration/ tests/security/ tests/e2e/test_kr_similar_e2e.py tests/e2e/test_xlstransfer_e2e.py tests/e2e/test_quicksearch_e2e.py"
-
-DESELECTS="--deselect=tests/integration/test_tm_real_model.py --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads ..."
 ```
 
-### Current Status
+### Tests Currently IN CI
 
-| Directory/File | Tests | In CI? | Decision |
-|----------------|-------|--------|----------|
-| **tests/unit/** | 687 | ✅ YES | TBD |
-| **tests/integration/** | 169 | ✅ YES | TBD |
-| **tests/security/** | ~30 | ✅ YES | TBD |
-| **tests/e2e/test_kr_similar_e2e.py** | ? | ✅ YES | TBD |
-| **tests/e2e/test_xlstransfer_e2e.py** | ? | ✅ YES | TBD |
-| **tests/e2e/test_quicksearch_e2e.py** | ? | ✅ YES | TBD |
-| **tests/e2e/test_full_simulation.py** | ? | ❌ NO | TBD |
-| **tests/e2e/test_production_workflows_e2e.py** | ? | ❌ NO | TBD |
-| **tests/e2e/test_complete_user_flow.py** | ? | ❌ NO | TBD |
-| **tests/e2e/test_real_workflows_e2e.py** | ? | ❌ NO | TBD |
-| **tests/e2e/test_edge_cases_e2e.py** | ? | ❌ NO | TBD |
-| **tests/api/** | 121 | ❌ NO | TBD |
-| **tests/archive/** | ~5 | ❌ NO | Keep out (deprecated) |
+| Directory | Tests | Time? | Review Status |
+|-----------|-------|-------|---------------|
+| `tests/unit/` | 687 | ? | TODO |
+| `tests/integration/` | 169 | ? | TODO |
+| `tests/security/` | ~30 | ? | TODO |
+| `tests/e2e/test_kr_similar_e2e.py` | ? | ? | TODO |
+| `tests/e2e/test_xlstransfer_e2e.py` | ? | ? | TODO |
+| `tests/e2e/test_quicksearch_e2e.py` | ? | ? | TODO |
+| **Total** | ~912 | 17 min | |
 
-### Review Questions for Each
+### Review Questions
 
-1. **Does this test add unique value?** Or is it covered by another test?
-2. **Is it reliable?** Flaky tests waste CI time
-3. **Is it fast enough?** Very slow tests might be better as manual/nightly
-4. **Does it need special setup?** (ML models, external services, etc.)
+For each test file/directory:
+1. **Is it redundant?** Same thing tested elsewhere?
+2. **Is it a duplicate?** Nearly identical test exists?
+3. **Is it slow?** Takes too long for the value it adds?
+4. **Is it unique?** Tests something nothing else tests?
+
+### Tests NOT in CI (excluded for a reason)
+
+These are already excluded - probably duplicates or require special setup:
+- `tests/api/` (121 tests) - likely duplicates of integration tests
+- `tests/e2e/` other files - likely covered by the 3 files that run
+- `tests/archive/` - deprecated
 
 ---
 
-## 3. Test Review Session
+## 3. Review Session Plan
 
-### To Review: `tests/api/` (121 tests - NOT in CI)
+### Step 1: Get test durations
+```bash
+python3 -m pytest tests/unit/ tests/integration/ tests/security/ --durations=50 -v 2>&1 | tail -100
+```
 
-| File | Purpose | IN or OUT? | Reason |
-|------|---------|------------|--------|
-| `test_api_error_handling.py` | | | |
-| `test_api_full_system_integration.py` | | | |
-| `test_api_tools_simulation.py` | | | |
-| `test_api_websocket.py` | | | |
-| `test_remote_logging.py` | | | |
+### Step 2: Review each directory
 
-### To Review: `tests/e2e/` (5 files NOT in CI)
+#### `tests/unit/` (687 tests)
+| File | Tests | Keep in CI? | Reason |
+|------|-------|-------------|--------|
+| TODO | | | |
 
-| File | Purpose | IN or OUT? | Reason |
-|------|---------|------------|--------|
-| `test_full_simulation.py` | | | |
-| `test_production_workflows_e2e.py` | | | |
-| `test_complete_user_flow.py` | | | |
-| `test_real_workflows_e2e.py` | | | |
-| `test_edge_cases_e2e.py` | | | |
+#### `tests/integration/` (169 tests)
+| File | Tests | Keep in CI? | Reason |
+|------|-------|-------------|--------|
+| TODO | | | |
 
-### To Review: Currently IN CI (check for redundancy)
+#### `tests/security/` (~30 tests)
+| File | Tests | Keep in CI? | Reason |
+|------|-------|-------------|--------|
+| TODO | | | |
 
-| Directory | Check for |
-|-----------|-----------|
-| `tests/unit/` | Duplicates, very slow tests |
-| `tests/integration/` | Overlap with tests/api/ |
-| `tests/security/` | Should all stay in |
+#### `tests/e2e/` (3 files in CI)
+| File | Tests | Keep in CI? | Reason |
+|------|-------|-------------|--------|
+| TODO | | | |
 
 ---
 
@@ -166,33 +154,34 @@ DESELECTS="--deselect=tests/integration/test_tm_real_model.py --deselect=tests/e
 ### Phase 1: Add Smoke Test
 - [ ] Add smoke test step to `.gitea/workflows/build.yml`
 - [ ] Add smoke test step to `.github/workflows/build-electron.yml`
-- [ ] Test on next build
 
-### Phase 2: Test Review Session
-- [ ] Review each file in `tests/api/` - decide IN or OUT
-- [ ] Review each file in `tests/e2e/` not running - decide IN or OUT
-- [ ] Check `tests/unit/` and `tests/integration/` for duplicates
-- [ ] Update `TEST_DIRS` in build.yml based on decisions
+### Phase 2: Test Audit
+- [ ] Run `--durations=50` to identify slow tests
+- [ ] Review `tests/unit/` for redundancy
+- [ ] Review `tests/integration/` for redundancy
+- [ ] Review `tests/security/` for redundancy
+- [ ] Review e2e tests for redundancy
+- [ ] Update `TEST_DIRS` or `DESELECTS` based on findings
 
 ### Phase 3: Verify
 - [ ] Run updated CI
-- [ ] Confirm all important tests still run
-- [ ] Document final decisions
+- [ ] Confirm coverage is still good
+- [ ] Document what was removed and why
 
 ---
 
-## 5. Final Configuration (After Review)
+## 5. Final Results (After Review)
 
-```bash
-# Updated TEST_DIRS (to be filled after review)
-TEST_DIRS="tests/unit/ tests/integration/ tests/security/ ..."
+**Before:** 912 tests, 17 min
 
-# Updated DESELECTS (to be filled after review)
-DESELECTS="..."
-```
+**After:** ? tests, ? min
+
+**Removed from CI:**
+| Test | Reason |
+|------|--------|
+| TBD | |
 
 ---
 
 *Related docs:*
 - [SESSION_CONTEXT.md](SESSION_CONTEXT.md) - Current session status
-- [docs/cicd/RUNNER_SERVICE_SETUP.md](../cicd/RUNNER_SERVICE_SETUP.md) - Runner configuration
