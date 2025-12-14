@@ -29,6 +29,52 @@
 
 ---
 
+## Migration Protocol (TEST AFTER EACH STEP)
+
+### Core Principle: Never Accumulate Errors
+
+```
+DO:    Change → Test → Fix → Next
+DON'T: Change → Change → Change → Test → Cry
+```
+
+### Checkpoint System
+
+| After This Step | Run This Test | Must Pass? |
+|-----------------|---------------|------------|
+| Update package.json | `npm install` | ✅ Yes |
+| Fix vite.config.js | `npm run build` | ✅ Yes (may have warnings) |
+| Fix svelte.config.js | `npm run build` | ✅ Yes |
+| Each component converted | `npm run build` | ✅ Yes |
+| All components done | `npm run electron:dev` | ✅ Yes |
+| Manual feature test | All 4 tools work | ✅ Yes |
+
+### If Build Fails
+
+```
+1. STOP - don't continue
+2. Read the error
+3. Fix the specific issue
+4. Test again
+5. Only proceed when green
+```
+
+### Component Migration Order
+
+```
+Tier 1 (Simple) → build test after each
+    ↓
+Tier 2 (Medium) → build test after each
+    ↓
+Tier 3 (Complex) → build test after each
+    ↓
+Full electron:dev test
+    ↓
+Manual testing all features
+```
+
+---
+
 ## Current vs Target Versions
 
 | Package | Current | Target | Jump |
