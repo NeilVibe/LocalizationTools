@@ -4,13 +4,11 @@
 
 ---
 
-## Overview
+## Goal
 
-Optimize the CI/CD pipeline for faster feedback and better coverage. Current state:
-- **Total build time:** ~22 minutes
-- **Safety-checks job:** ~17 minutes (tests + security)
-- **Build-windows job:** ~5 minutes
-- **Test count:** 1226 test functions
+Two objectives:
+1. **Add smoke test** - Verify installer actually works
+2. **Remove duplicate tests** - Clean up redundant tests that waste CI time
 
 ---
 
@@ -89,209 +87,153 @@ Add to `build-windows` job after NSIS packaging:
 
 ---
 
-## 2. Current Test Structure
+## 2. Test Audit - Remove Duplicates
 
-### Test Count by Directory
+### Current Test Count
 
-| Directory | Tests | In CI? | Notes |
-|-----------|-------|--------|-------|
-| `tests/unit/` | 687 | ✅ Yes | Fast, isolated |
-| `tests/integration/` | 169 | ✅ Yes | DB + server tests |
-| `tests/e2e/` | 116 | ✅ Partial | Only 3 files run |
-| `tests/api/` | 121 | ❌ **NO** | Not in TEST_DIRS! |
-| `tests/security/` | ~30 | ✅ Yes | Auth, CORS, JWT |
-| `tests/archive/` | ~5 | ❌ No | Deprecated |
+| Directory | Tests | In CI? | Status |
+|-----------|-------|--------|--------|
+| `tests/unit/` | 687 | ✅ Yes | Review needed |
+| `tests/integration/` | 169 | ✅ Yes | Review needed |
+| `tests/e2e/` | 116 | ⚠️ Partial | Only 3 files run |
+| `tests/api/` | 121 | ❌ NO | Not in CI at all |
+| `tests/security/` | ~30 | ✅ Yes | Keep |
+| `tests/archive/` | ~5 | ❌ No | Already deprecated |
 | **Total** | ~1226 | ~912 | |
 
-### Finding: `tests/api/` Not Running!
+### Known Issues
 
-The `tests/api/` directory (121 tests) is NOT included in the CI pipeline:
-
+#### Issue 1: `tests/api/` (121 tests) NOT in CI
 ```bash
+# Current TEST_DIRS in build.yml:
 TEST_DIRS="tests/unit/ tests/integration/ tests/security/ tests/e2e/..."
 # No tests/api/ !
 ```
 
-**Options:**
-1. Add `tests/api/` to CI → More coverage but longer runtime
-2. Remove `tests/api/` → If redundant with integration tests
-3. Merge into `tests/integration/` → Consolidate
+**Action:** Review each file in `tests/api/` - either add to CI or delete if redundant.
 
-**Action needed:** Review if `tests/api/` is redundant or missing from CI.
+#### Issue 2: E2E - Only 3/8 Files Run
 
----
+**Running:**
+- `test_kr_similar_e2e.py`
+- `test_xlstransfer_e2e.py`
+- `test_quicksearch_e2e.py`
 
-## 3. Potential Redundancies
-
-### Files with `sleep()` (Slow Tests)
-
-```
-tests/api/test_api_full_system_integration.py
-tests/api/test_api_tools_simulation.py
-tests/api/test_api_websocket.py
-tests/api/test_remote_logging.py
-tests/integration/server_tests/test_auth_integration.py
-```
-
-These likely have artificial delays. Could be optimized with:
-- Reduce sleep times
-- Use async waiting instead of fixed sleeps
-- Mock slow operations
-
-### Deselected Tests (Known Slow)
-
-Already deselected in CI:
-```
---deselect=tests/integration/test_tm_real_model.py  # ML model loading
---deselect=tests/e2e/test_xlstransfer_e2e.py::*embedding*  # Embedding tests
-```
-
-These are correctly skipped - they require ML models.
-
-### E2E Tests - Only 3 Files Run
-
-```
-tests/e2e/test_kr_similar_e2e.py
-tests/e2e/test_xlstransfer_e2e.py
-tests/e2e/test_quicksearch_e2e.py
-```
-
-**Not running:**
+**NOT Running:**
 - `test_full_simulation.py`
 - `test_production_workflows_e2e.py`
 - `test_complete_user_flow.py`
 - `test_real_workflows_e2e.py`
 - `test_edge_cases_e2e.py`
 
-**Question:** Are these deprecated or intentionally skipped?
+**Action:** Review each - add to CI or delete if redundant/deprecated.
 
 ---
 
-## 4. Optimization Strategies
+## 3. Test Review Checklist
 
-### Option A: Fast Mode (QUICK builds)
+### Step 1: Identify Duplicates
 
-Add `Build LIGHT QUICK` trigger that runs only critical tests:
-
-```yaml
-# In check-build-trigger
-if [[ "$TRIGGER_LINE" == *"QUICK"* ]]; then
-  echo "quick_mode=true" >> $GITHUB_OUTPUT
-fi
-
-# In safety-checks
-if: needs.check-build-trigger.outputs.quick_mode != 'true'
-```
-
-**Result:** Skip 17-min safety-checks for quick iteration.
-
-### Option B: Parallel Test Jobs
-
-Split tests across multiple jobs:
-
-```yaml
-test-unit:
-  runs-on: ubuntu-latest
-  # 687 unit tests (~5 min)
-
-test-integration:
-  runs-on: ubuntu-latest
-  # 169 integration tests (~8 min)
-
-test-security:
-  runs-on: ubuntu-latest
-  # 30 security tests (~2 min)
-```
-
-**Result:** 17 min → ~8 min (parallel)
-**Cost:** More runner usage
-
-### Option C: Test Duration Analysis
-
-Run locally to identify slow tests:
-
+Run locally to see test names:
 ```bash
-python3 -m pytest tests/ --durations=50 2>&1 | tail -60
+# List all test functions
+grep -r "def test_" tests/ --include="*.py" | sort > /tmp/all_tests.txt
+
+# Find similar names
+cat /tmp/all_tests.txt | awk -F'def ' '{print $2}' | sort | uniq -d
 ```
 
-Then optimize or deselect the slowest ones.
+### Step 2: Review Each Directory
 
-### Option D: Remove Redundant Tests
+#### `tests/api/` (121 tests) - NOT IN CI
+| File | Tests | Keep/Delete | Reason |
+|------|-------|-------------|--------|
+| `test_api_error_handling.py` | ? | TBD | |
+| `test_api_full_system_integration.py` | ? | TBD | Has sleeps |
+| `test_api_tools_simulation.py` | ? | TBD | Has sleeps |
+| `test_api_websocket.py` | ? | TBD | Has sleeps |
+| `test_remote_logging.py` | ? | TBD | Has sleeps |
+| ... | | | |
 
-If `tests/api/` duplicates `tests/integration/`, remove one.
+#### `tests/e2e/` (5 files NOT running)
+| File | Tests | Keep/Delete | Reason |
+|------|-------|-------------|--------|
+| `test_full_simulation.py` | ? | TBD | |
+| `test_production_workflows_e2e.py` | ? | TBD | |
+| `test_complete_user_flow.py` | ? | TBD | |
+| `test_real_workflows_e2e.py` | ? | TBD | |
+| `test_edge_cases_e2e.py` | ? | TBD | |
+
+#### `tests/unit/` (687 tests)
+Run duration analysis:
+```bash
+python3 -m pytest tests/unit/ --durations=20 --collect-only
+```
+
+#### `tests/integration/` (169 tests)
+Check for overlap with `tests/api/`:
+```bash
+diff <(grep "def test_" tests/integration/*.py | sort) \
+     <(grep "def test_" tests/api/*.py | sort)
+```
 
 ---
 
-## 5. Recommended Actions
+## 4. Implementation Plan
 
-### Phase 1: Quick Wins (Do Now)
-- [ ] Add smoke test to build-windows job
-- [ ] Review `tests/api/` - add to CI or delete if redundant
-- [ ] Run `--durations=50` locally to find slow tests
+### Phase 1: Add Smoke Test
+- [ ] Add smoke test step to `.gitea/workflows/build.yml`
+- [ ] Add smoke test step to `.github/workflows/build-electron.yml`
+- [ ] Test on next build
 
-### Phase 2: Optimization (Next Sprint)
-- [ ] Add `QUICK` mode for fast iteration builds
-- [ ] Consider parallel test jobs if runner resources available
-- [ ] Clean up unused e2e tests or add them to CI
+### Phase 2: Test Audit
+- [ ] Review `tests/api/` - decide keep or delete for each file
+- [ ] Review skipped e2e tests - decide keep or delete
+- [ ] Run `--durations=50` to find slow tests
+- [ ] Remove confirmed duplicates
+- [ ] Update TEST_DIRS if adding tests
 
-### Phase 3: Advanced (Future)
-- [ ] Add Playwright/Spectron for full Electron UI tests
-- [ ] Add visual regression tests for UI
-- [ ] Add performance benchmarks
-
----
-
-## 6. Implementation Checklist
-
-- [ ] **Smoke Test**
-  - [ ] Add silent install step
-  - [ ] Add file verification
-  - [ ] Add backend health check
-  - [ ] Add cleanup step
-
-- [ ] **Test Audit**
-  - [ ] Run `--durations=50` analysis
-  - [ ] Review `tests/api/` redundancy
-  - [ ] Review skipped e2e tests
-  - [ ] Document findings
-
-- [ ] **Quick Mode**
-  - [ ] Add `QUICK` trigger detection
-  - [ ] Skip safety-checks on QUICK
-  - [ ] Document usage in GITEA_TRIGGER.txt
+### Phase 3: Verify
+- [ ] Run full test suite locally
+- [ ] Confirm CI passes
+- [ ] Document what was removed and why
 
 ---
 
-## Current CI Timeline
+## 5. Files to Review
 
+### `tests/api/` (121 tests - NOT in CI)
 ```
-check-build-trigger    [====]                              ~1 min
-safety-checks          [========================]          ~17 min
-                            └─ tests, security audit
-build-windows               [========]                     ~5 min
-                                 └─ npm, electron-builder
-release                              [==]                  ~1 min
-                                      └─ upload
-───────────────────────────────────────────────────────────
-Total                                                      ~22-24 min
+tests/api/test_api_error_handling.py
+tests/api/test_api_full_system_integration.py
+tests/api/test_api_tools_simulation.py
+tests/api/test_api_websocket.py
+tests/api/test_remote_logging.py
 ```
 
-## Target CI Timeline (with optimizations)
+### `tests/e2e/` (5 files NOT running)
+```
+tests/e2e/test_full_simulation.py
+tests/e2e/test_production_workflows_e2e.py
+tests/e2e/test_complete_user_flow.py
+tests/e2e/test_real_workflows_e2e.py
+tests/e2e/test_edge_cases_e2e.py
+```
 
-```
-check-build-trigger    [====]                              ~1 min
-safety-checks          [================]                  ~10 min (optimized)
-                            └─ parallel tests, no redundancy
-build-windows               [========]                     ~5 min
-  └─ smoke-test                  [===]                     ~3 min (NEW)
-release                              [==]                  ~1 min
-───────────────────────────────────────────────────────────
-Total                                                      ~18-20 min
-```
+---
+
+## 6. Current vs Target
+
+**Current:** 17 min safety-checks, no smoke test, unknown duplicates
+
+**Target:**
+- Smoke test added (+3 min on Windows build)
+- Duplicate tests removed (-? min)
+- All valuable tests running
+- No wasted CI time on redundant tests
 
 ---
 
 *Related docs:*
 - [SESSION_CONTEXT.md](SESSION_CONTEXT.md) - Current session status
-- [docs/build/BUILD_AND_DISTRIBUTION.md](../build/BUILD_AND_DISTRIBUTION.md) - Build process
 - [docs/cicd/RUNNER_SERVICE_SETUP.md](../cicd/RUNNER_SERVICE_SETUP.md) - Runner configuration
