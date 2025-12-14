@@ -95,7 +95,7 @@ jobs:
     name: Safety Checks (Tests, Security, Version)
     runs-on: ubuntu-latest
     needs: check-build-trigger
-    if: needs.check-build-trigger.outputs.skip_linux != 'yes'
+    if: needs.check-build-trigger.outputs.should_build == 'true' && needs.check-build-trigger.outputs.skip_linux != 'yes'
 
     # Gitea runner is host mode - use PostgreSQL installed on host
     # Created with: sudo -u postgres psql -c "CREATE USER locanext_ci ..."
@@ -233,8 +233,9 @@ jobs:
             find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
             # Start server with nohup to survive shell exit (critical for CI steps)
+            # DEV_MODE=true skips rate limiting for tests, CI=true signals we're in CI environment
             rm -f /tmp/server.log
-            nohup env PYTHONDONTWRITEBYTECODE=1 CI=true python3.11 server/main.py > /tmp/server.log 2>&1 &
+            nohup env PYTHONDONTWRITEBYTECODE=1 CI=true DEV_MODE=true python3.11 server/main.py > /tmp/server.log 2>&1 &
             SERVER_PID=$!
             echo $SERVER_PID > /tmp/server.pid
             disown $SERVER_PID
@@ -473,8 +474,10 @@ jobs:
   # ============================================================
   build-windows:
     name: Build Windows LIGHT Installer
-    needs: [check-build-trigger]
-    # Normal builds wait for safety-checks via workflow order, TROUBLESHOOT_WINDOWS skips it
+    needs: [check-build-trigger, safety-checks]
+    # Depends on safety-checks for official builds
+    # TROUBLESHOOT_WINDOWS skips safety-checks via the if condition on safety-checks job
+    if: always() && needs.check-build-trigger.outputs.should_build == 'true' && (needs.safety-checks.result == 'success' || needs.check-build-trigger.outputs.skip_linux == 'yes')
     runs-on: [self-hosted, windows, x64]  # GITEA: Use self-hosted Windows runner
 
     env:
@@ -1153,12 +1156,18 @@ jobs:
           # Create target directory
           New-Item -ItemType Directory -Force -Path $targetInclude | Out-Null
 
-          # Check if cache is valid
+          # Check if cache is valid (file count AND size check - 14 bytes = corrupted)
           $useCache = $false
           if (Test-Path "$cachedNsisDir\StdUtils.nsh") {
-            $cachedCount = (Get-ChildItem "$cachedNsisDir\*.nsh" -ErrorAction SilentlyContinue).Count
-            if ($cachedCount -ge $includeFiles.Count) {
+            $cachedFiles = Get-ChildItem "$cachedNsisDir\*.nsh" -ErrorAction SilentlyContinue
+            $cachedCount = $cachedFiles.Count
+            # Check for corrupted files (14 bytes = download failure/HTML error page)
+            $corruptedCount = ($cachedFiles | Where-Object { $_.Length -le 100 }).Count
+            if ($cachedCount -ge $includeFiles.Count -and $corruptedCount -eq 0) {
               $useCache = $true
+            } else {
+              Write-Host "[CACHE INVALID] Found $corruptedCount corrupted files (<=100 bytes) - rebuilding cache" -ForegroundColor Yellow
+              Remove-Item "$cachedNsisDir\*" -Force -ErrorAction SilentlyContinue
             }
           }
 
@@ -1172,25 +1181,48 @@ jobs:
 
             $baseUrl = "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/templates/nsis/include"
 
+            $downloadFailed = $false
             foreach ($file in $includeFiles) {
               $url = "$baseUrl/$file"
               $dest = Join-Path $targetInclude $file
-              & curl.exe -L --retry 3 -s -o $dest $url
-              if (Test-Path $dest) {
-                Write-Host "  [OK] $file"
+              & curl.exe -L --retry 3 --fail -s -o $dest $url
+              if ((Test-Path $dest) -and (Get-Item $dest).Length -gt 100) {
+                $size = (Get-Item $dest).Length
+                Write-Host "  [OK] $file ($size bytes)"
               } else {
-                Write-Host "  [FAIL] $file" -ForegroundColor Red
+                Write-Host "  [FAIL] $file (download failed or file too small)" -ForegroundColor Red
+                $downloadFailed = $true
               }
             }
 
-            $count = (Get-ChildItem "$targetInclude\*.nsh").Count
-            Write-Host "[OK] Downloaded $count NSIS include files"
+            if ($downloadFailed) {
+              Write-Host "[WARNING] Some downloads failed - trying alternative source..." -ForegroundColor Yellow
+              # Alternative: use npm package directly
+              Write-Host "Installing app-builder-lib to get NSIS templates..."
+              cd locaNext
+              npm install app-builder-lib --save-dev
+              $npmInclude = "node_modules\app-builder-lib\templates\nsis\include"
+              if (Test-Path $npmInclude) {
+                Copy-Item -Path "$npmInclude\*" -Destination $targetInclude -Force
+                Write-Host "[OK] Copied from npm package" -ForegroundColor Green
+              }
+              cd ..
+            }
 
-            # POPULATE CACHE for next build
-            Write-Host "Populating cache for future builds..."
-            New-Item -ItemType Directory -Force -Path $cachedNsisDir | Out-Null
-            Copy-Item -Path "$targetInclude\*.nsh" -Destination $cachedNsisDir -Force
-            Write-Host "[CACHED] NSIS includes saved to cache" -ForegroundColor Cyan
+            $count = (Get-ChildItem "$targetInclude\*.nsh").Count
+            Write-Host "[OK] Got $count NSIS include files"
+
+            # Validate all files before caching
+            $validFiles = Get-ChildItem "$targetInclude\*.nsh" | Where-Object { $_.Length -gt 100 }
+            if ($validFiles.Count -eq $includeFiles.Count) {
+              # POPULATE CACHE for next build
+              Write-Host "Populating cache for future builds..."
+              New-Item -ItemType Directory -Force -Path $cachedNsisDir | Out-Null
+              Copy-Item -Path "$targetInclude\*.nsh" -Destination $cachedNsisDir -Force
+              Write-Host "[CACHED] NSIS includes saved to cache" -ForegroundColor Cyan
+            } else {
+              Write-Host "[SKIP CACHE] Not all files are valid - won't cache corrupted files" -ForegroundColor Yellow
+            }
           }
 
           # Verify StdUtils.nsh
