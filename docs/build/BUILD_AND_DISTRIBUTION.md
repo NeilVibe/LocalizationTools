@@ -1,8 +1,22 @@
 # Build & Distribution System
 
-**LIGHT-First Strategy** | **Manual Build Triggers** | **Post-Install Model Download**
+**LIGHT-First Strategy** | **electron-builder + NSIS** | **Post-Install Model Download**
 
-**Last Updated**: 2025-11-30
+**Last Updated**: 2025-12-14
+
+---
+
+## Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Build Tool** | electron-builder 26.x |
+| **Installer Format** | NSIS (Nullsoft Scriptable Install System) |
+| **CI/CD** | Gitea Actions (primary) + GitHub Actions (secondary) |
+| **Output** | `LocaNext_vXX.XXXX.XXXX_Light_Setup.exe` |
+
+> **P28 Change (2025-12-14)**: Replaced Inno Setup with electron-builder's native NSIS.
+> Old `.iss` files archived to `installer/deprecated/`.
 
 ---
 
@@ -107,26 +121,29 @@ Check: https://github.com/NeilVibe/LocalizationTools/actions
 The LIGHT installer includes a post-install step that downloads the Korean BERT model.
 
 ### How It Works
-1. User runs installer
-2. Files are copied (~100-150MB)
-3. Wizard shows: "Downloading AI Model (447MB)..."
-4. `download_model.bat` runs automatically
-5. Model downloaded from Hugging Face to `models/kr-sbert/`
-6. App ready to use
+1. User runs NSIS installer (.exe)
+2. Files are copied (~200MB including embedded Python)
+3. On first app launch or via script: model download
+4. Model downloaded from Hugging Face to `models/kr-sbert/`
+5. App ready to use
 
-### Inno Setup Configuration
-```ini
-[Run]
-; Download model after file installation
-Filename: "{app}\scripts\download_model.bat"; \
-  Description: "Downloading AI Model (447MB - Required for XLSTransfer)"; \
-  Flags: runhidden waituntilterminated; \
-  StatusMsg: "Downloading Korean BERT model... This may take 5-10 minutes."
-
-; Then launch app
-Filename: "{app}\LocaNext.exe"; \
-  Description: "Launch LocaNext"; \
-  Flags: nowait postinstall skipifsilent
+### electron-builder NSIS Configuration (package.json)
+```json
+{
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "perMachine": true,
+    "installerIcon": "build/icon.ico",
+    "uninstallerIcon": "build/icon.ico",
+    "artifactName": "LocaNext_v${version}_Light_Setup.${ext}"
+  },
+  "extraResources": [
+    { "from": "../server", "to": "server" },
+    { "from": "../tools", "to": "tools" },
+    { "from": "../python_embed", "to": "python_embed" }
+  ]
+}
 ```
 
 ### Fallback for Offline Users

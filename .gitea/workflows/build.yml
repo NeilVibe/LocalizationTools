@@ -1199,13 +1199,18 @@ jobs:
             if ($downloadFailed) {
               Write-Host "[WARNING] Some downloads failed - trying alternative source..." -ForegroundColor Yellow
               # Alternative: use npm package directly
+              # After npm install, the files are already in targetInclude, so just verify
               Write-Host "Installing app-builder-lib to get NSIS templates..."
               cd locaNext
               npm install app-builder-lib --save-dev
-              $npmInclude = "node_modules\app-builder-lib\templates\nsis\include"
-              if (Test-Path $npmInclude) {
-                Copy-Item -Path "$npmInclude\*" -Destination $targetInclude -Force
-                Write-Host "[OK] Copied from npm package" -ForegroundColor Green
+              # Files are now at node_modules\app-builder-lib\templates\nsis\include
+              # which IS our $targetInclude - no copy needed, just verify
+              $installedInclude = "node_modules\app-builder-lib\templates\nsis\include"
+              if (Test-Path $installedInclude) {
+                $npmFiles = Get-ChildItem "$installedInclude\*.nsh" -ErrorAction SilentlyContinue
+                Write-Host "[OK] npm package installed - found $($npmFiles.Count) files in place" -ForegroundColor Green
+              } else {
+                Write-Host "[ERROR] npm package missing include directory!" -ForegroundColor Red
               }
               cd ..
             }
