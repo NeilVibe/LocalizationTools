@@ -1,12 +1,58 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-15 ~07:30 KST | **By:** Claude
+**Updated:** 2025-12-15 ~09:55 KST | **By:** Claude
+
+---
+
+## Current Session: P28.5 - CI/CD Infrastructure Hardening
+
+**Status: IN PROGRESS** | Build v25.1215.0050 running
+
+### Issues Found & Fixed This Session
+
+| ID | Severity | Issue | Root Cause | Fix |
+|----|----------|-------|------------|-----|
+| INFRA-001 | **CRITICAL** | 706% CPU Terror | Undocumented systemd service with `Restart=always`, no limits | Removed; created safe service config |
+| INFRA-002 | HIGH | Build failed with Node.js syntax error | Systemd service ran in isolated env without NVM | Reverted to manual `start_runner.sh` (inherits NVM) |
+| INFRA-003 | HIGH | Server stuck at "Creating database tables..." in CI | `.env` file with `override=True` overriding CI env vars | Changed to `override=False` in server/config.py |
+
+### Session 13B: CI/CD Infrastructure Review (COMPLETE)
+
+**What happened:**
+1. User reported computer overheating - 706% CPU from Gitea
+2. Found undocumented systemd service restarting 506 times
+3. Created proper systemd service with safeguards BUT it broke builds
+4. Root cause: systemd runs in isolated environment without NVM/Node.js 20
+5. Fix: Reverted to manual script, created wrapper for future systemd use
+6. During testing, found `.env` override bug breaking CI database connection
+
+**Key Files:**
+- `~/gitea/start_runner.sh` - Original manual script (WORKING)
+- `~/gitea/start_runner_systemd.sh` - Wrapper with NVM (READY for future use)
+- `/etc/systemd/system/gitea-runner.service` - Disabled (needs wrapper)
+- `server/config.py:19` - Changed `override=True` to `override=False`
+
+### CPU Terror Prevention (PENDING APPLY after build)
+
+Safe systemd service design:
+```ini
+[Unit]
+StartLimitBurst=3               # Max 3 restarts...
+StartLimitIntervalSec=300       # ...per 5 minutes, then STOP
+BindsTo=gitea.service           # Dies if Gitea dies
+
+[Service]
+ExecStartPre=/bin/bash -c 'curl -sf http://localhost:3000/api/v1/version || exit 1'
+ExecStart=/home/neil1988/gitea/start_runner_systemd.sh  # Sources NVM
+Restart=on-failure              # NOT always
+RestartSec=30
+```
 
 ---
 
 ## P28: CI/CD Fixed - electron-builder NSIS
 
-**Status: COMPLETE** | ✅ First successful build: v25.1214.2235
+**Status: COMPLETE** | First successful build: v25.1214.2235
 
 ### Technology Stack
 
@@ -34,124 +80,116 @@
    - Expanded `extraResources` for Python + server
 
 2. **.gitea/workflows/build.yml**
-   - Removed "Setup Inno Setup Path" step
-   - Replaced "Compile Installer" (ZIP) with "Collect NSIS Installer"
-   - Updated asset upload to use .exe
-   - Removed deprecated .iss file updates
-   - Added NSIS cache validation (check file sizes to detect corruption)
-   - Fixed safety-checks condition (was skipped due to missing should_build)
-   - Fixed build-windows dependency on safety-checks
-   - Added DEV_MODE=true to server startup and pytest env
+   - Removed Inno Setup steps
+   - NSIS includes bundled in repo (no downloads)
+   - Fixed safety-checks conditions
 
-3. **.github/workflows/build-electron.yml** (CI/CD Code Review fix)
-   - Synced with Gitea workflow - now uses NSIS instead of Inno Setup
-   - Updated silent install flags for NSIS (`/S /D=path`)
-   - Fixed verification paths for electron-builder structure (`resources/`)
-   - Updated latest.yml generation to use unified version format
+3. **locaNext/electron/main/index.ts**
+   - Fixed path resolution: `resourcesPath = path.join(app.getAppPath(), '..')`
+   - Production: files in `resources/` folder
+   - Dev: files at project root
 
-4. **tests/integration/server_tests/test_dashboard_api.py**
-   - Added skip condition for `test_requires_authentication` when DEV_MODE=true
+4. **locaNext/electron/main/first-run-setup.ts**
+   - Added NSIS installer details display
+   - Fixed error dialog (Exit button, closable)
 
-5. **installer/deprecated/** - Archived old .iss files
+5. **server/config.py**
+   - `override=True` → `override=False` (CI env vars take precedence)
 
-6. **LICENSE** - Added MIT license file
-
-7. **installer/nsis-includes/*.nsh** (NEW)
-   - 11 NSIS include files bundled in repo
-   - No more unreliable GitHub raw downloads
-   - Both workflows copy from repo at build time
+6. **installer/nsis-includes/*.nsh** - 11 NSIS files bundled in repo
 
 ---
 
-## CI/CD Code Review - Session 13 COMPLETE
+## Electron Path Structure (CRITICAL)
 
-### Issues Fixed
+**Dev Mode:**
+```
+LocalizationTools/
+├── server/main.py          ← serverDir = process.cwd()
+├── tools/python/python.exe ← pythonDir = process.cwd()/tools/python
+└── version.py
+```
 
-| ID | Severity | Issue | Fix |
-|----|----------|-------|-----|
-| CI-001 | HIGH | Gitea still updated .iss files | Removed deprecated .iss updates |
-| CI-002 | CRITICAL | GitHub still used Inno Setup | Synced to use NSIS |
-| CI-003 | MEDIUM | NSIS install flags wrong | Fixed to `/S /D=path` |
-| CI-004 | MEDIUM | File verification paths wrong | Updated for `resources/` structure |
-| CI-005 | HIGH | NSIS cache corruption (14-byte files) | Bundled NSIS in repo (no downloads) |
-| CI-006 | HIGH | safety-checks skipped | Added should_build condition |
-| CI-007 | MEDIUM | build-windows didn't wait for safety-checks | Added dependency |
-| CI-008 | MEDIUM | Server died on startup in CI | Added DEV_MODE=true |
-| CI-009 | LOW | test_requires_authentication failed | Skip in DEV_MODE |
-| CI-010 | CRITICAL | Version empty in release step | Fixed: needs.check-build-trigger.outputs.version |
+**Production (after install):**
+```
+C:\Users\X\AppData\Local\Programs\LocaNext\
+├── LocaNext.exe
+└── resources/
+    ├── server/main.py      ← serverDir = resources/server
+    ├── tools/python/       ← pythonDir = resources/tools/python
+    └── version.py
+```
 
-### Both Workflows Now Sync
+**Key Code (main/index.ts):**
+```typescript
+const resourcesPath = app.isPackaged
+  ? path.join(app.getAppPath(), '..')  // resources/
+  : process.cwd();                      // project root
+```
 
-- Gitea (.gitea/workflows/build.yml)
-- GitHub (.github/workflows/build-electron.yml)
-- Both use electron-builder NSIS
-- Same verification tests
+---
+
+## CI/CD Code Review - All Sessions
+
+### Session 13 (2025-12-14)
+| ID | Issue | Fix |
+|----|-------|-----|
+| CI-001 to CI-010 | Various NSIS, version, safety-checks issues | All fixed |
+
+### Session 13B (2025-12-15) - Infrastructure
+| ID | Issue | Fix |
+|----|-------|-----|
+| INFRA-001 | 706% CPU (infinite restart) | Safe systemd config with limits |
+| INFRA-002 | Node.js syntax error (no NVM in systemd) | Wrapper script with NVM sourcing |
+| INFRA-003 | Wrong DB in CI (dotenv override) | `override=False` in config.py |
 
 ---
 
 ## Build History (Recent)
 
-| Run | Status | Issue | Fix Applied |
-|-----|--------|-------|-------------|
-| #256 | Failed | NSIS cache corrupted, safety-checks skipped | CI-005, CI-006, CI-007, CI-008 |
-| #257 | Failed | test_requires_authentication (200 vs 401) | CI-009 |
-| #258-262 | Failed | Version empty → Portable instead of Setup.exe | CI-010 |
-| #263 | ✅ SUCCESS | v25.1214.2235 | First good NSIS build |
+| Run | Version | Status | Issue |
+|-----|---------|--------|-------|
+| #263 | v25.1214.2235 | ✅ SUCCESS | First good NSIS build |
+| #264-265 | v25.1215.0035-0043 | FAILED | Node.js syntax error (systemd env) |
+| #266 | v25.1215.0050 | RUNNING | Fixed dotenv override |
 
 ---
 
-## Release Cleanup (DONE)
+## P29: Verification Test - PENDING
 
-Old broken releases deleted. Only kept:
-- **v25.1214.2235** - `LocaNext_v25.1214.2235_Light_Setup.exe` (162.8 MB)
-
----
-
-## P29: Verification Test - PENDING USER
-
-Need to verify:
-1. [x] NSIS installer is produced ✅
-2. [ ] Download and install on Windows
-3. [ ] App starts standalone
-4. [ ] Embedded Python works
-
-### First Good Build
-
-**v25.1214.2235** - Ready for Windows testing
+Need to verify after successful build:
+1. [ ] Download and install on Windows
+2. [ ] App starts standalone
+3. [ ] Embedded Python works
+4. [ ] Backend server starts correctly
+5. [ ] Tools (XLSTransfer, QuickSearch, etc.) work
 
 ---
 
-## Security Check (Completed)
+## Documentation Created This Session
 
-- Auth: bcrypt + JWT + IP range filtering + rate limiting
-- User creation: Admin-only endpoints (all protected with `Depends(require_admin)`)
-- IP range config: `server/config.py:160-164` (`ALLOWED_IP_RANGE` env var)
-- Self-registration: Disabled (`FEATURE_USER_REGISTRATION = False`)
-
-**Future WIP idea:** Admin can allocate admin rights to specific IP+Username
+| Document | Purpose |
+|----------|---------|
+| `docs/cicd/RUNNER_SERVICE_SETUP.md` | Safe systemd service configuration |
+| `docs/build/ELECTRON_PACKAGING.md` | Dev vs Prod path structure |
+| `docs/troubleshooting/GITEA_SAFETY_PROTOCOL.md` | 706% CPU incident documentation |
+| `docs/code-review/CODE_REVIEW_TYPES.md` | CI/CD Code vs Infrastructure review types |
 
 ---
 
-## Quick Reference
+## Quick Commands
 
-**New build output:**
-```
-installer_output/LocaNext_v25.XXXX.XXXX_Light_Setup.exe
-```
-
-**Key config (locaNext/package.json):**
-```json
-"win": { "target": "nsis" },
-"nsis": {
-  "oneClick": false,
-  "allowToChangeInstallationDirectory": true,
-  ...
-}
-```
-
-**Check build logs:**
 ```bash
+# Check build logs
 ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
+tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/XX/YYY.log
+
+# Check runner status
+tail -f /tmp/act_runner.log
+
+# Trigger new build
+echo "Build LIGHT v$(TZ='Asia/Seoul' date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Build" && git push origin main && git push gitea main
 ```
 
 ---
