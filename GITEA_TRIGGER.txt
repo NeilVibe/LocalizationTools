@@ -48,3 +48,4 @@ Build LIGHT v2512142330 - Fix electron paths (server/python in resources/)
 Build LIGHT v2512150035
 Build LIGHT v2512150039 - Cache cleared
 Build LIGHT v2512150043 - Original script
+Build LIGHT v2512150050 - Fix dotenv override (CI uses correct DB)
