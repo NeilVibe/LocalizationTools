@@ -28,81 +28,6 @@ LIGHT vs FULL:
 
 RECOMMENDED: Use LIGHT builds to avoid LFS costs!
 
-Check build status: https://github.com/NeilVibe/LocalizationTools/actions
-
-Build History:
---------------
-Build FULL v2511221939 - First attempt (BLOCKED - LFS quota exceeded)
-Build LIGHT v2511221939
-Build LIGHT v2511221939 - Fix #2 missing lib files
-Build LIGHT v2511221939 - Fix #3 npm script name
-Build LIGHT v2511221939 - Fix #4 missing icon file
-Build LIGHT v2511221939 - Fix #5 invalid task flag
-Build LIGHT v2512010029
-Build LIGHT v2512010029 - Fix deps
-Build LIGHT v2512010029 - Fix CI tests
-Build LIGHT v2512010029 - E2E only
-Build LIGHT v2512010029 - Skip model tests in CI
-Build LIGHT v2512010029 - Fix model size check for LFS pointers
-Build LIGHT v2512011310 - Security Hardening
-Build LIGHT v2512011310 - Security Audit Fix
-Build LIGHT v2512020050
-Build LIGHT v2512020050 - Fix test import error
-Build LIGHT v2512020100 - Full stack: backend + frontend + auto-updater
-Build LIGHT v2512020100 - Fix package-lock.json
-Build LIGHT v2512020100 - Disable electron-builder publish
-Build FULL v2512011310
-Build FULL v2512011310 - fix test import
-Build FULL v2512011310 - fix installer client ref
-Build LIGHT v$(date '+%y%m%d%H%M')
-Build LIGHT v2512041123
-Build LIGHT v2512041130 - YAML fix
-Build LIGHT v2512041140 - server timeout fix
-Build LIGHT v2512041138 - SQLite async fix
-Build LIGHT v2512041145 - Unicode fix
-Build LIGHT v2512041156 - non-blocking test
-Build LIGHT v2512041724 - Auto-Update System
-Build LIGHT v2512041724 - Fix publish never
-Build LIGHT v2512041724 - Fix latest.yml PYTHONPATH
-Build LIGHT v2512041847 - P10 Auto-Update UI/UX
-Build LIGHT v2512042150 - P11 Health Check & Auto-Repair
-Build LIGHT v2512042249 - Splash Screen + Logger Fix v2 (retry)
-Build LIGHT v2512042300 - Logger Fix v3 (no Electron imports)
-Build LIGHT v2512042327 - Bulletproof Logger v4 (process.execPath)
-Build LIGHT v2512042331 - Error Dialog Interceptor
-Build LIGHT v2512042345 - Syntax Fix (missing parenthesis)
-Build LIGHT v2512042345 - Retry with README fix
-Build FULL v2512050125 - UI Polish & Firewall Fix
-Build LIGHT v2512050125 - All Apps Working (14/14 CDP tests)
-Build LIGHT v2512051540 - Timestamp Validation Safety Check
-# Trigger Gitea Actions test - Sat Dec  6 11:06:15 PM KST 2025
-Build FULL v2512071233 - Factor Architecture Release
-Build FULL v2512071233 - TaskManager History + Factor Fix (GitHub Only)
-Build FULL v2512071233 - CI Test Fix (lxml skip)
-Build FULL v2512071233 - CI Test Fix #2 (ahocorasick optional)
-Build FULL v2512071233 - CI Test Fix #3 (tuple return format)
-Build LIGHT v2512071233 - Gitea Workflow Test (P13.9)
-Build LIGHT v2512071233 - Gitea P13.9 (YAML fixed)
-Build LIGHT v2512071233 - Gitea Docker Network Fix
-Build LIGHT v2512071233 - Host Mode Test (P13.9)
-Build LIGHT v2512071836 - P13.10 Build Separation + Docs Update
-Build LIGHT v2512090827 - P13.11 Complete (Docs + Service)
-Build LIGHT v2512090827 - Fix embedded Python in installer
-Build LIGHT v2512101606 - P21 DB Powerhouse
-Build LIGHT v2512101620 - Version fix
-Build LIGHT v2512101620 - Transformers fix
-Build LIGHT v2512101620 - Qwen3 1024-dim fix
-Build LIGHT v2512131106
-Build v2512131115
-Build LIGHT v2512131200 - CI PostgreSQL fix
-Build LIGHT v2512131210 - Fix: Use POSTGRES_* env vars
-Build LIGHT v2512131215 - Fix: Add asyncpg for async PostgreSQL
-Build LIGHT v2512131220 - Fix: SQLite test uses specific tables (no JSONB)
-Build LIGHT v2512131230 - Skip JSONB model tests in CI
-Build LIGHT v2512131240 - Tests use PostgreSQL in CI (full proof)
-Build LIGHT v2512131300 - Add psycopg2-binary to embedded Python
-Build LIGHT v2512131230 - Version update + psycopg2 + P26 WIP
-Build LIGHT v2512131250 - All CI fixes applied
 Build LIGHT v2512132159 - Unified version + TROUBLESHOOT mode
 Build LIGHT v2512132206 - Fix duplicate env
 Build LIGHT v2512132216 - Add version injection to safety-checks
@@ -113,3 +38,4 @@ Build LIGHT v2512132319 - All tests pass
 Build LIGHT v2512141557 - P27 Svelte 5 Full Latest
 Build LIGHT v2512141625 - ROBUST FIX: Node 20 + electron-builder config
 Build LIGHT v2512141700 - Fix SQLite fallback for Windows tests
+Build LIGHT v2512141730 - Skip backend test (no PostgreSQL on Windows runner)
