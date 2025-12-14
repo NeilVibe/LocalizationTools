@@ -6,19 +6,74 @@
 
 ## Goal
 
-1. **Review the 912 tests IN CI** - Find and remove redundant/duplicate tests
+1. **Review all tests running in CI** - Find and remove redundant/duplicate tests from CI
 2. **Add smoke test** - Verify installer actually works
 
 ---
 
-## 1. Smoke Test (Installer Verification)
+## 1. Test Audit - Review All Tests IN CI
 
-### Problem
-Current pipeline builds the installer but never runs it. Path issues (like `resourcesPath` bug) slip through.
+### What runs in CI (from build.yml line 350-351)
 
-### Solution: Post-Install Smoke Test
+```bash
+TEST_DIRS="tests/unit/ tests/integration/ tests/security/ tests/e2e/test_kr_similar_e2e.py tests/e2e/test_xlstransfer_e2e.py tests/e2e/test_quicksearch_e2e.py"
+```
 
-Add to `build-windows` job after NSIS packaging:
+### Task: Review Each Test File
+
+**For each test file that runs in CI:**
+1. Read the test file
+2. Note what it tests (which functions/endpoints/features)
+3. Check if another test already covers the same thing
+4. Decide: KEEP in CI or REMOVE from CI
+
+### Criteria for REMOVE from CI
+
+- **Duplicate:** Another test tests the exact same thing
+- **Redundant:** Covered by a more comprehensive test
+- **Slow + Low Value:** Takes long time, doesn't catch unique bugs
+
+### Criteria for KEEP in CI
+
+- **Unique coverage:** Tests something no other test covers
+- **Critical path:** Tests core functionality that must work
+- **Fast:** Runs quickly, no reason to remove
+
+---
+
+## 2. Test Files to Review
+
+### `tests/unit/` (687 tests)
+
+| File | What it tests | Duplicate of? | Decision |
+|------|---------------|---------------|----------|
+| | | | |
+
+### `tests/integration/` (169 tests)
+
+| File | What it tests | Duplicate of? | Decision |
+|------|---------------|---------------|----------|
+| | | | |
+
+### `tests/security/` (~30 tests)
+
+| File | What it tests | Duplicate of? | Decision |
+|------|---------------|---------------|----------|
+| | | | |
+
+### `tests/e2e/` (3 files in CI)
+
+| File | What it tests | Duplicate of? | Decision |
+|------|---------------|---------------|----------|
+| test_kr_similar_e2e.py | | | |
+| test_xlstransfer_e2e.py | | | |
+| test_quicksearch_e2e.py | | | |
+
+---
+
+## 3. Smoke Test
+
+Add post-install verification to `build-windows` job:
 
 ```yaml
 - name: Smoke Test - Install and Verify
@@ -27,161 +82,57 @@ Add to `build-windows` job after NSIS packaging:
     $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
 
     # 1. Silent install
-    Write-Host "Installing $($installer.Name)..."
     Start-Process -FilePath $installer.FullName -Args '/S /D=C:\LocaNextTest' -Wait
 
     # 2. Check files exist
     $checks = @(
       'C:\LocaNextTest\LocaNext.exe',
       'C:\LocaNextTest\resources\server\main.py',
-      'C:\LocaNextTest\resources\tools\python\python.exe',
-      'C:\LocaNextTest\resources\version.py'
+      'C:\LocaNextTest\resources\tools\python\python.exe'
     )
     foreach ($path in $checks) {
-      if (!(Test-Path $path)) {
-        Write-Error "SMOKE TEST FAILED: Missing $path"
-        exit 1
-      }
+      if (!(Test-Path $path)) { exit 1 }
     }
 
-    # 3. Launch app and wait for backend
-    Write-Host "Launching LocaNext..."
+    # 3. Launch and check health
     $process = Start-Process 'C:\LocaNextTest\LocaNext.exe' -PassThru
-
-    # 4. Wait for backend health endpoint
-    $maxRetries = 30
-    $ready = $false
-    for ($i = 0; $i -lt $maxRetries; $i++) {
+    for ($i = 0; $i -lt 30; $i++) {
       Start-Sleep -Seconds 2
       try {
-        $response = Invoke-WebRequest -Uri 'http://localhost:8888/health' -UseBasicParsing -TimeoutSec 5
-        if ($response.StatusCode -eq 200) {
-          Write-Host "Backend is healthy!"
-          $ready = $true
-          break
+        $r = Invoke-WebRequest -Uri 'http://localhost:8888/health' -TimeoutSec 5
+        if ($r.StatusCode -eq 200) {
+          Stop-Process -Id $process.Id -Force
+          Write-Host "SMOKE TEST PASSED"
+          exit 0
         }
-      } catch {
-        Write-Host "Waiting for backend... ($i/$maxRetries)"
-      }
+      } catch { }
     }
-
-    # 5. Cleanup
-    Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-
-    if (!$ready) {
-      Write-Error "SMOKE TEST FAILED: Backend never became healthy"
-      exit 1
-    }
-
-    Write-Host "SMOKE TEST PASSED"
+    Stop-Process -Id $process.Id -Force
+    exit 1
 ```
 
-**Estimated time:** +2-3 minutes
-
 ---
 
-## 2. Test Audit - Review 912 Tests IN CI
-
-### Current CI Configuration
-
-```bash
-# From .gitea/workflows/build.yml line 350-351
-TEST_DIRS="tests/unit/ tests/integration/ tests/security/ tests/e2e/test_kr_similar_e2e.py tests/e2e/test_xlstransfer_e2e.py tests/e2e/test_quicksearch_e2e.py"
-```
-
-### Tests Currently IN CI
-
-| Directory | Tests | Time? | Review Status |
-|-----------|-------|-------|---------------|
-| `tests/unit/` | 687 | ? | TODO |
-| `tests/integration/` | 169 | ? | TODO |
-| `tests/security/` | ~30 | ? | TODO |
-| `tests/e2e/test_kr_similar_e2e.py` | ? | ? | TODO |
-| `tests/e2e/test_xlstransfer_e2e.py` | ? | ? | TODO |
-| `tests/e2e/test_quicksearch_e2e.py` | ? | ? | TODO |
-| **Total** | ~912 | 17 min | |
-
-### Review Questions
-
-For each test file/directory:
-1. **Is it redundant?** Same thing tested elsewhere?
-2. **Is it a duplicate?** Nearly identical test exists?
-3. **Is it slow?** Takes too long for the value it adds?
-4. **Is it unique?** Tests something nothing else tests?
-
-### Tests NOT in CI (excluded for a reason)
-
-These are already excluded - probably duplicates or require special setup:
-- `tests/api/` (121 tests) - likely duplicates of integration tests
-- `tests/e2e/` other files - likely covered by the 3 files that run
-- `tests/archive/` - deprecated
-
----
-
-## 3. Review Session Plan
-
-### Step 1: Get test durations
-```bash
-python3 -m pytest tests/unit/ tests/integration/ tests/security/ --durations=50 -v 2>&1 | tail -100
-```
-
-### Step 2: Review each directory
-
-#### `tests/unit/` (687 tests)
-| File | Tests | Keep in CI? | Reason |
-|------|-------|-------------|--------|
-| TODO | | | |
-
-#### `tests/integration/` (169 tests)
-| File | Tests | Keep in CI? | Reason |
-|------|-------|-------------|--------|
-| TODO | | | |
-
-#### `tests/security/` (~30 tests)
-| File | Tests | Keep in CI? | Reason |
-|------|-------|-------------|--------|
-| TODO | | | |
-
-#### `tests/e2e/` (3 files in CI)
-| File | Tests | Keep in CI? | Reason |
-|------|-------|-------------|--------|
-| TODO | | | |
-
----
-
-## 4. Implementation Plan
-
-### Phase 1: Add Smoke Test
-- [ ] Add smoke test step to `.gitea/workflows/build.yml`
-- [ ] Add smoke test step to `.github/workflows/build-electron.yml`
-
-### Phase 2: Test Audit
-- [ ] Run `--durations=50` to identify slow tests
-- [ ] Review `tests/unit/` for redundancy
-- [ ] Review `tests/integration/` for redundancy
-- [ ] Review `tests/security/` for redundancy
-- [ ] Review e2e tests for redundancy
-- [ ] Update `TEST_DIRS` or `DESELECTS` based on findings
-
-### Phase 3: Verify
-- [ ] Run updated CI
-- [ ] Confirm coverage is still good
-- [ ] Document what was removed and why
-
----
-
-## 5. Final Results (After Review)
+## 4. Final Results (After Review)
 
 **Before:** 912 tests, 17 min
 
 **After:** ? tests, ? min
 
 **Removed from CI:**
+
 | Test | Reason |
 |------|--------|
-| TBD | |
+| | |
 
 ---
 
-*Related docs:*
-- [SESSION_CONTEXT.md](SESSION_CONTEXT.md) - Current session status
+## 5. Implementation
+
+- [ ] Review `tests/unit/` - fill in table above
+- [ ] Review `tests/integration/` - fill in table above
+- [ ] Review `tests/security/` - fill in table above
+- [ ] Review `tests/e2e/` - fill in table above
+- [ ] Update `TEST_DIRS` or `DESELECTS` in build.yml
+- [ ] Add smoke test to build.yml
+- [ ] Test updated CI
