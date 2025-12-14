@@ -885,14 +885,14 @@
             {@const rowTop = getRowTop(visibleStart + i)}
             {@const rowHeight = estimateRowHeight(row)}
             {@const rowLock = $ldmConnected && row.id ? isRowLocked(parseInt(row.id)) : null}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
               class="virtual-row"
               class:placeholder={row.placeholder}
               class:locked={rowLock}
               class:selected={selectedRowId === row.id}
               style="top: {rowTop}px; min-height: {rowHeight}px;"
-              on:click={(e) => handleCellClick(row, e)}
+              onclick={(e) => handleCellClick(row, e)}
               role="row"
             >
               {#if row.placeholder}
@@ -934,10 +934,10 @@
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
                   style="width: {allColumns.target.width}px;"
-                  on:dblclick={() => openEditModal(row)}
+                  ondblclick={() => openEditModal(row)}
                   role="button"
                   tabindex="0"
-                  on:keydown={(e) => e.key === 'Enter' && openEditModal(row)}
+                  onkeydown={(e) => e.key === 'Enter' && openEditModal(row)}
                 >
                   <span class="cell-content">{formatGridText(row.target) || ""}</span>
                   {#if rowLock}
@@ -978,7 +978,7 @@
                     class:low-match={tmResult && tmResult.similarity < 0.7}
                     style="width: {allColumns.tm_result.width}px;"
                     title={tmResult ? `${Math.round(tmResult.similarity * 100)}% match` : 'No TM match'}
-                    on:mouseenter={() => fetchTMResultForRow(row)}
+                    onmouseenter={() => fetchTMResultForRow(row)}
                   >
                     {#if tmResult}
                       <span class="tm-similarity">{Math.round(tmResult.similarity * 100)}%</span>
@@ -1013,11 +1013,11 @@
 
 <!-- Edit Modal - BIG, Clean, Space-Optimized -->
 {#if showEditModal && editingRow}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="edit-modal-overlay" on:click={closeEditModal}>
-    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-    <div class="edit-modal" role="dialog" on:click|stopPropagation on:keydown={handleEditKeydown}>
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="edit-modal-overlay" onclick={closeEditModal} role="presentation">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div class="edit-modal" role="dialog" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={handleEditKeydown}>
       <!-- Shortcut bar at top -->
       <div class="shortcut-bar">
         <div class="shortcuts">
@@ -1026,7 +1026,7 @@
           <span class="shortcut"><kbd>Tab</kbd> Apply TM</span>
           <span class="shortcut"><kbd>Esc</kbd> Cancel</span>
         </div>
-        <button class="close-btn" on:click={closeEditModal} title="Close (Esc)">×</button>
+        <button class="close-btn" onclick={closeEditModal} title="Close (Esc)">×</button>
       </div>
 
       <!-- Two-column layout -->
@@ -1064,7 +1064,7 @@
                 {#each tmSuggestions as suggestion, idx}
                   <button
                     class="tm-item"
-                    on:click={() => applyTMSuggestion(suggestion)}
+                    onclick={() => applyTMSuggestion(suggestion)}
                     title="Click to apply (Tab = apply first)"
                   >
                     <div class="tm-item-header">

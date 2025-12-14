@@ -294,7 +294,7 @@
     { key: "duration", value: "Duration" }
   ];
 
-  let filteredRowIds = [];
+  let filteredRowIds = $state([]);
 
   function getStatusColor(status) {
     switch(status) {

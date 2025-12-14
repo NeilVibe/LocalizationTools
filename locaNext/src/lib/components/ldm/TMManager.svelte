@@ -255,6 +255,7 @@
           </thead>
           <tbody>
             {#each tms as tm}
+              {@const TMStatusIcon = getStatusIcon(tm.status)}
               <tr>
                 <td class="name-cell">
                   <span class="tm-name">{tm.name}</span>
@@ -270,8 +271,8 @@
                 </td>
                 <td class="status-cell">
                   <Tag type={getStatusKind(tm.status)} size="sm">
-                    {#if getStatusIcon(tm.status)}
-                      <svelte:component this={getStatusIcon(tm.status)} size={12} />
+                    {#if TMStatusIcon}
+                      <TMStatusIcon size={12} />
                     {/if}
                     {tm.status}
                   </Tag>

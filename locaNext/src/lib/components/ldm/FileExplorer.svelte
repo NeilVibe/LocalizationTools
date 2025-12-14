@@ -28,34 +28,34 @@
     selectedFileId = $bindable(null)
   } = $props();
 
-  // State
+  // Svelte 5: State
   let loading = $state(false);
-  let projectTree = null;
-  let treeNodes = [];
+  let projectTree = $state(null);
+  let treeNodes = $state([]);
 
-  // Modal states
-  let showNewProjectModal = false;
-  let showNewFolderModal = false;
-  let showUploadModal = false;
-  let newProjectName = "";
-  let newFolderName = "";
-  let selectedFolderId = null;
-  let uploadFiles = [];
-  let uploadProgress = 0;
-  let uploadStatus = ""; // '', 'uploading', 'success', 'error'
+  // Svelte 5: Modal states
+  let showNewProjectModal = $state(false);
+  let showNewFolderModal = $state(false);
+  let showUploadModal = $state(false);
+  let newProjectName = $state("");
+  let newFolderName = $state("");
+  let selectedFolderId = $state(null);
+  let uploadFiles = $state([]);
+  let uploadProgress = $state(0);
+  let uploadStatus = $state(""); // '', 'uploading', 'success', 'error'
 
-  // Context menu state
-  let showContextMenu = false;
-  let contextMenuX = 0;
-  let contextMenuY = 0;
-  let contextMenuFile = null; // {id, name, type, format}
+  // Svelte 5: Context menu state
+  let showContextMenu = $state(false);
+  let contextMenuX = $state(0);
+  let contextMenuY = $state(0);
+  let contextMenuFile = $state(null); // {id, name, type, format}
 
-  // TM Registration modal state
-  let showTMModal = false;
-  let tmName = "";
-  let tmProjectId = null;
-  let tmLanguage = "en";
-  let tmDescription = "";
+  // Svelte 5: TM Registration modal state
+  let showTMModal = $state(false);
+  let tmName = $state("");
+  let tmProjectId = $state(null);
+  let tmLanguage = $state("en");
+  let tmDescription = $state("");
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -503,6 +503,7 @@
       {#if treeNodes.length > 0}
         <div class="custom-tree" oncontextmenu={(e) => e.preventDefault()}>
           {#each treeNodes as node}
+            {@const NodeIcon = node.icon}
             <div
               class="tree-node"
               class:selected={node.data.type === 'file' && selectedFileId === node.data.id}
@@ -511,12 +512,13 @@
               role="button"
               tabindex="0"
             >
-              <svelte:component this={node.icon} size={16} />
+              <NodeIcon size={16} />
               <span class="node-text">{node.text}</span>
             </div>
             {#if node.children && node.children.length > 0}
               <div class="tree-children">
                 {#each node.children as child}
+                  {@const ChildIcon = child.icon}
                   <div
                     class="tree-node"
                     class:selected={child.data.type === 'file' && selectedFileId === child.data.id}
@@ -525,7 +527,7 @@
                     role="button"
                     tabindex="0"
                   >
-                    <svelte:component this={child.icon} size={16} />
+                    <ChildIcon size={16} />
                     <span class="node-text">{child.text}</span>
                   </div>
                 {/each}
