@@ -10,13 +10,13 @@ from pathlib import Path
 from typing import Optional
 
 # Load environment variables from .env file (if exists)
-# override=True ensures .env values take precedence over system env vars
+# override=False ensures system env vars (e.g., CI) take precedence over .env file
 try:
     from dotenv import load_dotenv
     # Load from project root .env file
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
-        load_dotenv(env_path, override=True)
+        load_dotenv(env_path, override=False)
 except ImportError:
     pass  # python-dotenv not installed, use system env vars only
 
