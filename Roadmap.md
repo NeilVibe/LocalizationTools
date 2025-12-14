@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512141750 | **Updated**: 2025-12-14 | **Status**: Production Ready
+**Version**: 2512150955 | **Updated**: 2025-12-15 | **Status**: Production Ready
 
 > **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 > **Detailed Tasks**: [docs/wip/README.md](docs/wip/README.md) (WIP Hub)
@@ -11,15 +11,15 @@
 ## Current Status
 
 ```
-LocaNext v2512141620
+LocaNext v2512150050
 ├── Backend:     ✅ 63+ API endpoints, async, WebSocket
 ├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7 (P27 COMPLETE)
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar + LDM 80%
 ├── Tests:       ✅ 912 total (595 unit pass, no mocks)
 ├── Security:    ✅ All CRITICAL/HIGH fixed (P26 complete)
-├── CI/CD:       ✅ FIXED - electron-builder NSIS (P28 complete)
+├── CI/CD:       ✅ FIXED - NSIS + Infrastructure hardened (P28.5)
 ├── Database:    ✅ PostgreSQL + PgBouncer (NO SQLite!)
-└── Distribution: ⏳ PENDING TEST - Need to verify NSIS installer works
+└── Distribution: ⏳ BUILD RUNNING - v25.1215.0050
 ```
 
 ---
