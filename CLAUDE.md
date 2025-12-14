@@ -125,8 +125,8 @@ cd adminDashboard && npm run dev -- --port 5175
 python3 scripts/create_admin.py && python3 server/main.py &
 sleep 5 && RUN_API_TESTS=1 python3 -m pytest -v
 
-# Trigger build
-echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> BUILD_TRIGGER.txt
+# Trigger Gitea build
+echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
 git add -A && git commit -m "Build" && git push origin main && git push gitea main
 ```
 
