@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512162200 | **Updated**: 2025-12-16 22:00 | **Status**: P33+P32 Complete, Build 282 ✅
+**Version**: 2512162245 | **Updated**: 2025-12-16 22:45 | **Status**: Build 283 ✅ Unified CI
 
 > **Session Context**: [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)
 > **WIP Tasks**: [docs/wip/README.md](docs/wip/README.md)
@@ -11,12 +11,12 @@
 ## Current Status
 
 ```
-LocaNext v2512160600
-├── Backend:     ✅ Working + SQLite offline mode (auto-detect)
+LocaNext v2512162245
+├── Backend:     ✅ Working + SQLite offline mode (auto-login)
 ├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar, LDM
 ├── Database:    ✅ PostgreSQL (online) + SQLite (offline auto-fallback)
-├── CI/CD:       ✅ 256 real tests (Linux + Windows smoke)
+├── CI/CD:       ✅ 255 tests unified (GitHub + Gitea identical)
 ├── Offline:     ✅ Full offline mode with auto-login
 └── Distribution: ✅ NSIS installer works
 ```
@@ -25,10 +25,11 @@ LocaNext v2512160600
 
 ## Current Priority: P25 LDM UX (Next)
 
-**P33 + P32: ✅ COMPLETE** (Build 282 passed)
-- Offline mode with auto-login working
+**CI Unified + P33 + P32: ✅ COMPLETE** (Build 283 passed)
+- Unified CI: GitHub and Gitea run identical 255 tests
+- Linux: PostgreSQL (online mode) - 255 tests pass
+- Windows: SQLite smoke test (offline mode) - auto-login works
 - Code review: 9/11 issues fixed
-- CI: 257 Linux tests + Windows smoke test passing
 
 **Next:** P25 LDM UX (85% complete)
 - TM matching (Qwen + FAISS 5-tier)
@@ -53,11 +54,12 @@ LocaNext v2512160600
 
 | Priority | What | Status |
 |----------|------|--------|
-| P33 | Offline Mode + CI Overhaul | 100% ✅ |
+| CI | Unified GitHub + Gitea (255 tests) | ✅ |
+| P33 | Offline Mode + Auto-Login | ✅ |
+| P32 | Code Review (9/11 fixed) | ✅ |
 | P28 | NSIS Installer | ✅ |
 | P27 | Svelte 5 + Modern Stack | ✅ |
 | P26 | Security Vulnerabilities | ✅ |
-| P24 | Server Status Dashboard | ✅ |
 
 ---
 
@@ -72,7 +74,7 @@ LocaNext.exe (User PC)              Central PostgreSQL
 └─ File parsing (local)
 
 ONLINE:  PostgreSQL (multi-user, WebSocket sync)
-OFFLINE: SQLite (single-user, CI testing)
+OFFLINE: SQLite (single-user, auto-login, CI testing)
 ```
 
 ---
@@ -86,8 +88,8 @@ OFFLINE: SQLite (single-user, CI testing)
 # Build frontend
 cd locaNext && npm run build
 
-# Run tests
-python3 -m pytest tests/integration/test_api_true_simulation.py tests/security/ -v
+# Run tests (unified suite)
+python3 -m pytest tests/unit/ tests/integration/ tests/security/ -v
 
 # Test SQLite mode
 DATABASE_MODE=sqlite python3 server/main.py
