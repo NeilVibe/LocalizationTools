@@ -42,3 +42,4 @@ Build LIGHT v2512151747 - SQLite smoke test
 Build LIGHT v2512151800 - Auto-detect smoke test
 Build LIGHT v2512151820 - Fix smoke test cleanup
 Build LIGHT v2512151905 - Full backend smoke test
+Build LIGHT v2512151920 - Fix env var passing
