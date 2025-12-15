@@ -18,7 +18,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
 from loguru import logger
 
-from server.database.models import Base
+from server.database.models import Base, User
 from server import config
 
 
@@ -418,6 +418,27 @@ def setup_database(
             logger.info(f"  {table}: {count}")
         if len(counts) > 5:
             logger.info(f"  ... and {len(counts) - 5} more tables")
+
+        # Create default admin user for SQLite + DEV_MODE (for CI smoke tests)
+        dev_mode = os.environ.get("DEV_MODE", "").lower() == "true"
+        if use_sqlite and dev_mode:
+            existing_admin = SessionLocal.query(User).filter(User.username == "admin").first()
+            if not existing_admin:
+                # Import here to avoid circular import
+                from server.utils.auth import hash_password
+                logger.info("Creating default admin user for SQLite + DEV_MODE...")
+                admin_user = User(
+                    username="admin",
+                    email="admin@localhost",
+                    password_hash=hash_password("admin"),
+                    role="admin",
+                    is_active=True
+                )
+                SessionLocal.add(admin_user)
+                SessionLocal.commit()
+                logger.success("Default admin user created (username: admin, password: admin)")
+            else:
+                logger.info("Admin user already exists")
     finally:
         SessionLocal.close()
 
