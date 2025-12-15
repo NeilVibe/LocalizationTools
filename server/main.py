@@ -325,7 +325,12 @@ async def go_online():
 
 @app.get(config.HEALTH_CHECK_ENDPOINT)
 async def health_check():
-    """Health check endpoint."""
+    """
+    Health check endpoint.
+
+    P33 Offline Mode: Returns auto_token for SQLite mode (local access).
+    Frontend can use this token to auto-login without credentials.
+    """
     from server.utils.dependencies import _engine
 
     db_status = "unknown"
@@ -339,12 +344,30 @@ async def health_check():
             logger.error(f"Health check database error: {e}")
             db_status = "error"
 
-    return {
+    # Base response
+    response = {
         "status": "healthy" if db_status == "connected" else "degraded",
         "database": db_status,
+        "database_type": config.ACTIVE_DATABASE_TYPE,
         "version": config.APP_VERSION,
         "timestamp": datetime.utcnow().isoformat()
     }
+
+    # P33: Auto-token for SQLite offline mode
+    # Local mode = no login required, full admin access
+    if config.ACTIVE_DATABASE_TYPE == "sqlite":
+        from server.utils.auth import create_access_token
+        response["local_mode"] = True
+        response["auto_token"] = create_access_token({
+            "user_id": "LOCAL",
+            "username": "LOCAL",
+            "role": "admin"
+        })
+        logger.debug("Health check: SQLite mode - auto_token provided for local access")
+    else:
+        response["local_mode"] = False
+
+    return response
 
 
 # ============================================
