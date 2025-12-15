@@ -121,6 +121,8 @@ class TestServerConfig:
         """Test database configuration."""
         from server import config
 
-        # PostgreSQL only (SQLite removed)
-        assert config.DATABASE_TYPE == "postgresql"
+        # Database mode can be: auto, postgresql, sqlite
+        assert config.DATABASE_MODE in ("auto", "postgresql", "sqlite")
+        # Active type is set after detection
+        assert config.ACTIVE_DATABASE_TYPE in ("postgresql", "sqlite")
         assert config.DATABASE_URL is not None
