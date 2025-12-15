@@ -1,144 +1,106 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-15 16:00 | **By:** Claude
+**Updated:** 2025-12-15 20:30 | **By:** Claude
 
 ---
 
-## Current Priority: P33 Offline Mode + CI Overhaul
+## Current Priority: P33 Offline Mode + CI Smoke Test Fixes
 
-**Status: 100% COMPLETE** | Full structure preservation + Sync + CI verified
+**Status: IN PROGRESS** | Fixing CI smoke test to work with SQLite offline mode
 
 ---
 
 ## Latest Build Status
 
-### Build v2512151747
-- **Trigger:** SQLite smoke test
-- **Expected Result:** May fail on old code (before auto-detect fix)
-- **Next Action:** Trigger new build with auto-detect fix committed
+### Build 8c (Run 280) - IN PROGRESS
+- **Trigger:** Fix circular import for default admin user
+- **Commit:** `73fa21a` - Trigger build: Fix circular import
+- **Expected:** May still fail - needs permanent offline auth solution
 
-### Pending Commit (READY)
-```bash
-git diff .gitea/workflows/build.yml
-# Changes: Windows smoke test now uses auto-detect mode (not manual DATABASE_MODE=sqlite)
-```
+### Issues Fixed This Session
 
----
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | Exit code 2 (installer fails in 2s) | Process cleanup before install |
+| 2 | Backend WARN (not responding) | Forced SQLite mode + REQUIRED backend test |
+| 3 | Env var not passed to Electron | Use .NET Process class with explicit env |
+| 4 | Backend timeout (>60s) | Increased to 120s |
+| 5 | Login TypeError (async/sync mismatch) | Changed login to sync `get_db` |
+| 6 | Login 401 (no admin user) | Create default admin in SQLite + DEV_MODE |
 
-## What Was Fixed This Session
-
-### 1. Windows Smoke Test Auto-Detection (build.yml)
-**Problem:** Smoke test manually set `DATABASE_MODE=sqlite`, bypassing auto-detection feature.
-**Fix:** Removed manual override, let backend auto-detect and fallback to SQLite.
-
-```powershell
-# BEFORE (wrong - manual override):
-$env:DATABASE_MODE = "sqlite"
-$appProc = Start-Process "$installDir\LocaNext.exe" -PassThru
-
-# AFTER (correct - auto-detect):
-# Let auto-detection work - no manual DATABASE_MODE override
-# Backend will try PostgreSQL, fail, auto-fallback to SQLite
-$appProc = Start-Process "$installDir\LocaNext.exe" -PassThru
-```
-
-### 2. CI Tests Already Fixed (Previous Session)
-- `test_server_startup.py`: Fixed `DATABASE_TYPE` → `DATABASE_MODE`/`ACTIVE_DATABASE_TYPE`
-- `test_full_simulation.py`: Added FAISS dimension mismatch skip
-
-### 3. SQL Injection Fixed (CR-002)
-- `server/tools/ldm/api.py`: All TM queries now use parameterized queries
+### Pending Issue (Build 8c Tests)
+- **Problem:** Current fix creates fake admin/admin user - hacky
+- **Better Solution:** Automatic full access for offline mode (see plan below)
 
 ---
 
-## Test Architecture
+## PLAN: Permanent Offline Mode Auto-Access
 
-### Linux CI (PostgreSQL)
-```
-TEST_DIRS (build.yml line 362):
-- tests/integration/test_api_true_simulation.py  # Real API tests
-- tests/integration/server_tests/test_server_startup.py
-- tests/integration/server_tests/test_auth_integration.py
-- tests/integration/server_tests/test_async_auth.py
-- tests/security/  # All security tests
-- tests/e2e/test_full_simulation.py  # KR Similar, XLSTransfer
-- tests/e2e/test_kr_similar_e2e.py
-- tests/e2e/test_quicksearch_e2e.py
-- tests/unit/test_db_utils.py
-- tests/unit/test_kr_similar_core.py
-- tests/unit/test_tm_search.py
-```
-**Result:** ~256 tests (real API, real PostgreSQL)
+### The Principle
+**SQLite = Local = User's Machine = No Login Required**
 
-### Windows Smoke Test (build.yml Phase 4)
-```powershell
-# 1. Silent install installer
-# 2. Verify required files exist
-# 3. Start app, wait for backend
-# 4. Check /health endpoint
-# 5. Verify database_type (auto-detected)
-```
-**Result:** Installer + Backend verification
+When running in SQLite offline mode:
+- No login screen shown
+- Automatic full admin access
+- User goes straight to app
+- Local data, local control
 
-### ULTIMATE Smoke Test (Manual/CDP)
-```
-tests/cdp/test_ultimate_smoke.py
-- Requires: LocaNext.exe running with --remote-debugging-port=9222
-- Tests: Full user journey (login → edit cell → verify DB → download)
-- Use for: Manual testing, Windows E2E validation
-```
-**NOT for Linux CI** (requires running Electron app)
+### Implementation Plan
 
----
-
-## P33 Phase Status (100% Complete)
-
-| Phase | Status | What |
-|-------|--------|------|
-| 1 | ✅ | SQLite backend (FlexibleJSON, db_setup.py, auto-fallback) |
-| 2 | ✅ | Auto-detection (PostgreSQL unreachable → SQLite) |
-| 3 | ✅ | Tabbed sidebar (Files/TM tabs) |
-| 4 | ✅ | Online/Offline badges in toolbar |
-| 5 | ✅ | Go Online button + Upload to Server modal |
-| 6 | ✅ | CI streamlined (1536 → 256 real tests) |
-| 7 | ✅ | extra_data JSONB + Sync endpoints |
-| 8 | ✅ | Windows smoke test uses auto-detect |
-
----
-
-## Key Implementation Details
-
-### Database Mode Configuration
+#### 1. Backend: Auto-grant token for SQLite mode
 ```python
-# server/config.py
-DATABASE_MODE = "auto"  # Options: auto | postgresql | sqlite
-ACTIVE_DATABASE_TYPE = "postgresql"  # Set at runtime by auto-detection
-
-# Auto-detection flow:
-# 1. Try PostgreSQL connection
-# 2. If fails → fallback to SQLite
-# 3. Set ACTIVE_DATABASE_TYPE = actual type used
+# In health endpoint or new /api/auth/local-session endpoint
+if is_sqlite() or config.ACTIVE_DATABASE_TYPE == "sqlite":
+    # Return auto-authenticated token
+    return {
+        "status": "ok",
+        "database_type": "sqlite",
+        "local_mode": True,
+        "auto_token": create_access_token({
+            "user_id": "LOCAL",
+            "username": "LOCAL",
+            "role": "admin"
+        })
+    }
 ```
 
-### extra_data JSONB (Full Structure Preservation)
+#### 2. Frontend: Skip login for SQLite
+```javascript
+// In auth store initialization
+const health = await fetch('/health');
+if (health.database_type === 'sqlite' && health.auto_token) {
+    // Auto-login with local token
+    setToken(health.auto_token);
+    setUser({ username: 'LOCAL', role: 'admin' });
+    // Skip login screen entirely
+}
+```
+
+#### 3. Database: Auto-create LOCAL user
 ```python
-# server/database/models.py
-class LDMFile(Base):
-    extra_data = Column(FlexibleJSON, nullable=True)
-    # TXT: {"encoding": "utf-8", "total_columns": 10}
-    # XML: {"root_element": "LangData", "element_tag": "LocStr"}
-
-class LDMRow(Base):
-    extra_data = Column(FlexibleJSON, nullable=True)
-    # TXT: {"col7": "value", "col8": "value"}
-    # XML: {"CustomAttr": "value"}
+# In db_setup.py for SQLite mode
+if use_sqlite:
+    # Create LOCAL user (or use anonymous access)
+    local_user = User(
+        username="LOCAL",
+        email="local@localhost",
+        password_hash="OFFLINE_MODE",  # Never used for auth
+        role="admin",
+        is_active=True
+    )
 ```
 
-### Sync Endpoints
-```
-POST /api/ldm/sync-to-central     # Sync file + rows SQLite → PostgreSQL
-POST /api/ldm/tm/sync-to-central  # Sync TM + entries SQLite → PostgreSQL
-```
+### Benefits
+- No fake credentials (no admin/admin)
+- Cleaner UX - straight to app
+- Secure - only works in SQLite mode
+- Future-proof - works forever
+
+### Files to Modify
+1. `server/main.py` - health endpoint returns auto_token
+2. `server/database/db_setup.py` - create LOCAL user
+3. `locaNext/src/lib/stores/auth.js` - auto-login logic
+4. `locaNext/src/routes/+layout.svelte` - skip login redirect
 
 ---
 
@@ -146,72 +108,41 @@ POST /api/ldm/tm/sync-to-central  # Sync TM + entries SQLite → PostgreSQL
 
 | File | Change |
 |------|--------|
-| `.gitea/workflows/build.yml` | Windows smoke test uses auto-detect (not manual SQLite) |
-
-## Files Modified Previous Session
-
-| File | Change |
-|------|--------|
-| `server/database/models.py` | Added `extra_data` JSONB columns |
-| `server/tools/ldm/file_handlers/txt_handler.py` | Captures extra columns |
-| `server/tools/ldm/file_handlers/xml_handler.py` | Captures extra attributes |
-| `server/tools/ldm/api.py` | SQL injection fix + sync endpoints |
-| `tests/integration/server_tests/test_server_startup.py` | Fixed config test |
-| `tests/e2e/test_full_simulation.py` | Added FAISS skip |
-| `tests/cdp/test_ultimate_smoke.py` | Created comprehensive CDP test |
-
----
-
-## Next Steps
-
-1. **Commit auto-detect fix:**
-   ```bash
-   git add .gitea/workflows/build.yml
-   git commit -m "P33: Windows smoke test uses auto-detect mode"
-   ```
-
-2. **Trigger new build:**
-   ```bash
-   echo "Build LIGHT v$(date '+%y%m%d%H%M') - Auto-detect smoke test" >> GITEA_TRIGGER.txt
-   git add -A && git commit -m "Build: Auto-detect smoke test"
-   git push origin main && git push gitea main
-   ```
-
-3. **Verify build passes:**
-   - Linux CI: ~256 tests with PostgreSQL
-   - Windows: Installer + Backend with auto-detect SQLite fallback
+| `.gitea/workflows/build.yml` | Process cleanup, SQLite mode, 120s timeout, debug logging |
+| `server/api/auth_async.py` | Login uses sync `get_db` (SQLite compatible) |
+| `server/database/db_setup.py` | Create default admin for SQLite + DEV_MODE |
 
 ---
 
 ## Quick Commands
 
 ```bash
-# Check git status
-git status
+# Check build status
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
 
-# Run Linux tests locally (with PostgreSQL)
-./scripts/start_all_servers.sh
-python3 -m pytest tests/integration/test_api_true_simulation.py -v
+# Check smoke test logs
+grep -E "(PHASE|PASS|FAIL|login|admin)" ~/gitea/data/actions_log/neilvibe/LocaNext/*/651.log | tail -30
 
-# Test SQLite auto-detection locally
-POSTGRES_HOST=invalid python3 server/main.py
-# Should fallback to SQLite
-
-# Trigger build
+# Trigger new build
 echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
 git add -A && git commit -m "Build" && git push origin main && git push gitea main
 ```
 
 ---
 
-## Code Review Status (P32 - LOW PRIORITY)
+## CI Pipeline Flow (Sequential)
 
-11 issues documented in `docs/code-review/ISSUES_20251215_LDM_API.md`:
-- ~~2 CRITICAL~~ → 1 fixed (SQL injection), 1 remaining (response format)
-- 3 HIGH (deprecated asyncio)
-- 6 MEDIUM/LOW
-
-**Do AFTER P33 build verification.**
+```
+1. Check Build Trigger    (~10s)
+         |
+2. Safety Checks (Linux)  (~6min) - 257 tests with PostgreSQL
+         |
+3. Windows Build          (~5min) - electron-builder
+         |
+4. Smoke Test             (~3min) - Install + Backend + Health
+         |
+5. GitHub Release         (~1min) - Upload artifacts
+```
 
 ---
 

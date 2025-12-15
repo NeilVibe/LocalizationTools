@@ -108,6 +108,42 @@ class APIClient {
   }
 
   /**
+   * P33: Auto-login for SQLite offline mode
+   * Uses auto_token from health endpoint - no credentials needed
+   * @returns {boolean} - true if auto-login succeeded
+   */
+  async tryLocalModeLogin() {
+    try {
+      const health = await this.getHealth();
+
+      // Check if we're in local mode (SQLite)
+      if (health.local_mode && health.auto_token) {
+        console.log('[Auth] SQLite local mode detected - auto-login enabled');
+
+        // Set the token from health response
+        this.setToken(health.auto_token);
+
+        // Set user info for local mode
+        user.set({
+          user_id: 'LOCAL',
+          username: 'LOCAL',
+          role: 'admin',
+          email: 'local@localhost'
+        });
+        isAuthenticated.set(true);
+
+        console.log('[Auth] Local mode auto-login successful');
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('[Auth] Local mode check failed:', error);
+      return false;
+    }
+  }
+
+  /**
    * Get current user
    */
   async getCurrentUser() {

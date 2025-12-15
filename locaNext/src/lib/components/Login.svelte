@@ -192,30 +192,25 @@
 
   onMount(async () => {
     logger.component("Login", "mounted");
+    isLoading = true;
 
-    // DEV AUTO-LOGIN: Automatically login with admin credentials for testing
-    // This bypasses the login screen entirely
-    const DEV_AUTO_LOGIN = true; // Set to false to disable
+    // P33: Check for SQLite local mode first (no login required)
+    try {
+      logger.info("Checking for local mode (SQLite)...");
+      const isLocalMode = await api.tryLocalModeLogin();
 
-    if (DEV_AUTO_LOGIN) {
-      logger.info("DEV MODE: Auto-login enabled - logging in as admin");
-      username = "admin";
-      password = "admin123";
-      isLoading = true;
-
-      try {
-        await api.login(username, password);
-        logger.success("DEV MODE: Auto-login successful");
-      } catch (err) {
-        logger.error("DEV MODE: Auto-login failed", { error: err.message });
-        isLoading = false;
-        // Fall back to normal login
-        tryAutoLogin();
+      if (isLocalMode) {
+        logger.success("LOCAL MODE: Auto-login successful - SQLite offline mode");
+        // User is now authenticated, auth flow will redirect
+        return;
       }
-      return;
+    } catch (err) {
+      logger.warning("Local mode check failed", { error: err.message });
     }
 
-    // Try auto-login on mount (with saved credentials)
+    // Not in local mode - try saved credentials
+    logger.info("Online mode - checking for saved credentials");
+    isLoading = false;
     tryAutoLogin();
   });
 
