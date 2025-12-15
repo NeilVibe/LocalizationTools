@@ -19,7 +19,8 @@
 ### Reference / Complete
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
-| P33 | [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md) | ✅ Complete | Offline mode + CI overhaul |
+| CI | Unified GitHub + Gitea | ✅ Complete | 255 tests, both platforms |
+| P33 | [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md) | ✅ Complete | Offline mode + auto-login |
 | P32 | [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md) | ✅ Complete | Code review (9/11 fixed) |
 | P27 | [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) | ✅ Complete | Svelte 5 + Vite 7 + Electron 39 |
 | P26 | [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) | ✅ Complete | Security vulnerability remediation |
@@ -86,12 +87,13 @@ Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
   - 85% complete
 
 **✅ RECENTLY COMPLETED:**
-- **P33:** Offline Mode + CI Overhaul (100%)
-- **P32:** Code Review (9/11 fixed, Build 282 ✅)
+- **CI:** Unified GitHub + Gitea (255 tests, Build 283 ✅)
+- **P33:** Offline Mode + Auto-Login (100%)
+- **P32:** Code Review (9/11 fixed)
 
 **Low Priority (Later):**
 - P17: Custom pickers
 
 ---
 
-*Last Updated: 2025-12-16 22:00 KST*
+*Last Updated: 2025-12-16 22:45 KST*

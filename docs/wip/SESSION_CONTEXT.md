@@ -1,12 +1,24 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-16 22:45 KST | **Build:** 283 (in progress)
+**Updated:** 2025-12-16 22:45 KST | **Build:** 283 ✅ ALL PASSED
 
 ---
 
-## CURRENT STATUS: CI UNIFIED - BUILD 283 IN PROGRESS
+## CURRENT STATUS: ALL GREEN - UNIFIED CI COMPLETE
 
-Build 283 triggered on both GitHub and Gitea with unified test configuration.
+Build 283 passed on both GitHub and Gitea with unified test configuration.
+Both online (PostgreSQL) and offline (SQLite + auto-login) modes verified.
+
+---
+
+## Build 283 Results
+
+| Platform | Database | Tests | Status |
+|----------|----------|-------|--------|
+| GitHub Linux | PostgreSQL | 255 | ✅ PASSED |
+| Gitea Linux | PostgreSQL | 255 | ✅ PASSED |
+| GitHub Windows | SQLite | Smoke | ✅ PASSED |
+| Gitea Windows | SQLite | Smoke | ✅ PASSED |
 
 ---
 
@@ -32,19 +44,9 @@ DESELECTED (require 2GB model):
 - 5 embedding-dependent tests in xlstransfer
 ```
 
-### 2. Previous: P32 + P33 (Build 282 PASSED)
-- Smoke test IPv4/IPv6 fix
-- 9/11 code review issues fixed
-
----
-
-## Build Status
-
-| Build | Platform | Status |
-|-------|----------|--------|
-| 283 | GitHub + Gitea | IN PROGRESS |
-| 282 | Linux | 257 tests passed |
-| 282 | Windows | Smoke test passed |
+### 2. Previous Session: P32 + P33 (Build 282)
+- Smoke test IPv4/IPv6 fix (localhost → 127.0.0.1)
+- 9/11 code review issues fixed in `server/tools/ldm/api.py`
 
 ---
 
@@ -52,10 +54,26 @@ DESELECTED (require 2GB model):
 
 | Priority | Status | What |
 |----------|--------|------|
-| CI | ✅ DONE | Unified GitHub + Gitea |
-| P33 | ✅ DONE | Offline Mode + CI Overhaul |
+| CI | ✅ DONE | Unified GitHub + Gitea (255 tests) |
+| P33 | ✅ DONE | Offline Mode + Auto-Login |
 | P32 | ✅ DONE | Code Review (9/11 fixed) |
 | **P25** | 🔴 NEXT | LDM UX (85%) - TM matching, QA checks |
+
+---
+
+## Offline Auto-Login Flow (P33)
+
+```
+SQLite Mode Startup
+       ↓
+db_setup.py creates LOCAL admin user (server/database/db_setup.py:422-437)
+       ↓
+Frontend calls /health endpoint
+       ↓
+Backend returns auto_token (server/main.py:361-366)
+       ↓
+Frontend uses auto_token → NO LOGIN SCREEN
+```
 
 ---
 
@@ -75,28 +93,20 @@ git push gitea main
 gh run list --limit 3
 
 # Check Gitea
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oE 'runs/[0-9]+' | head -1
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/283" | grep -oP '(success|failure)'
 ```
-
----
-
-## Key Files Changed This Session
-
-| File | Change |
-|------|--------|
-| `.gitea/workflows/build.yml` | Unified test config |
-| `.github/workflows/build-electron.yml` | Added test_full_simulation.py |
-| `BUILD_TRIGGER.txt` | Build 283 trigger |
-| `GITEA_TRIGGER.txt` | Build 283 trigger |
 
 ---
 
 ## Next Session Checklist
 
 1. `./scripts/check_servers.sh`
-2. Check Build 283 status on both GitHub and Gitea
-3. **P25 (LDM UX)** is next if builds pass
-4. Or ask user what to work on
+2. Check [Roadmap.md](../../Roadmap.md) - P25 is next
+3. **P25 (LDM UX)** tasks:
+   - TM matching (Qwen + FAISS 5-tier)
+   - QA checks (Word Check, Line Check)
+   - Custom file pickers
+4. See [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) for details
 
 ---
 
