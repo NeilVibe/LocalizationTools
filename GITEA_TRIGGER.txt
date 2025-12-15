@@ -46,3 +46,4 @@ Build LIGHT v2512151920 - Fix env var passing
 Build LIGHT v2512151934 - Debug backend
 Build LIGHT v2512151951 - Better debug
 Build LIGHT v2512152010 - SQLite login fix
+Build LIGHT v2512152027 - Fix circular import
