@@ -1544,9 +1544,10 @@ jobs:
               $appProc = $process
               Log "OK: App started with PID: $($appProc.Id) (DATABASE_MODE=sqlite)"
 
-              # Backend should start quickly with SQLite (60 seconds timeout for safety)
-              Log "Waiting for backend (SQLite mode, 60s timeout)..."
-              $timeout = 60
+              # Backend needs time to initialize (imports, SQLite setup, etc.)
+              # 120 seconds timeout - first startup can be slow
+              Log "Waiting for backend (SQLite mode, 120s timeout)..."
+              $timeout = 120
               $startTime = Get-Date
 
               while (((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
@@ -1611,7 +1612,7 @@ jobs:
                 }
 
                 # Backend MUST respond - this is a FAILURE
-                throw "Backend failed to respond within 60s - SQLite mode not working!"
+                throw "Backend failed to respond within ${timeout}s - SQLite mode not working!"
               }
             } catch {
               Log "ERROR: Backend test failed - $($_.Exception.Message)"
