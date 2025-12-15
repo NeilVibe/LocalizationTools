@@ -219,6 +219,7 @@ jobs:
         run: |
           echo "=== Running all Python tests ==="
           echo "Server: $(curl -s http://localhost:8888/health)"
+          # UNIFIED CONFIG (matches Gitea exactly)
           # Deselect model-dependent tests (require 2GB Korean BERT model)
           python -m pytest \
             tests/unit/ \
@@ -227,6 +228,7 @@ jobs:
             tests/e2e/test_kr_similar_e2e.py \
             tests/e2e/test_xlstransfer_e2e.py \
             tests/e2e/test_quicksearch_e2e.py \
+            tests/e2e/test_full_simulation.py \
             --deselect=tests/integration/test_tm_real_model.py \
             --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads \
             --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary \

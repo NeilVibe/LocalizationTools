@@ -359,11 +359,11 @@ jobs:
           #
           # REMOVED: Mock-heavy tests, redundant tests, slow model tests
           # ============================================================
-          # Match GitHub: run full directories (fast anyway, ~255 tests in 15s)
-          TEST_DIRS="tests/unit/ tests/integration/test_api_true_simulation.py tests/integration/server_tests/ tests/security/ tests/e2e/test_full_simulation.py tests/e2e/test_kr_similar_e2e.py tests/e2e/test_quicksearch_e2e.py"
+          # UNIFIED CONFIG (matches GitHub exactly)
+          TEST_DIRS="tests/unit/ tests/integration/ tests/security/ tests/e2e/test_kr_similar_e2e.py tests/e2e/test_xlstransfer_e2e.py tests/e2e/test_quicksearch_e2e.py tests/e2e/test_full_simulation.py"
 
-          # Deselect slow/redundant tests (model loading, embedding generation)
-          DESELECTS=""
+          # Deselect model-dependent tests (require 2GB Korean BERT model not in CI)
+          DESELECTS="--deselect=tests/integration/test_tm_real_model.py --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold"
 
           # ============================================================
           # TROUBLESHOOT MODE: True resume from checkpoint
