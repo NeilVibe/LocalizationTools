@@ -232,7 +232,7 @@ class TestDbWithConfig:
         initialize_database()
 
         # Config should specify database type
-        assert config.DATABASE_TYPE in ['sqlite', 'postgresql']
+        assert config.ACTIVE_DATABASE_TYPE in ['sqlite', 'postgresql']
 
 
 if __name__ == "__main__":
