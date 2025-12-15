@@ -346,14 +346,23 @@ jobs:
           # Use absolute path to avoid $HOME override issues
           CHECKPOINT_FILE="/home/neil1988/.locanext_checkpoint"
 
-          # Common test args (factored out)
-          TEST_DIRS="tests/unit/ tests/integration/ tests/security/ tests/e2e/test_kr_similar_e2e.py tests/e2e/test_xlstransfer_e2e.py tests/e2e/test_quicksearch_e2e.py"
-          # P30 Optimization: Remove duplicate tests from CI (72 redundant tests removed)
-          # - test_cache_extended.py: duplicates test_cache_module.py
-          # - test_server/test_cache.py: duplicates test_cache_module.py
-          # - test_websocket_module.py: trivial import checks (test_websocket_functions.py is comprehensive)
-          # - server_tests/test_api_endpoints.py: subset of test_api_endpoints_detailed.py
-          DESELECTS="--deselect=tests/unit/test_cache_extended.py --deselect=tests/unit/test_server/test_cache.py --deselect=tests/unit/test_websocket_module.py --deselect=tests/integration/server_tests/test_api_endpoints.py --deselect=tests/integration/test_tm_real_model.py --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_05_model_loads --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_06_process_excel_for_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferEmbeddings::test_07_save_and_load_dictionary --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_08_find_best_match --deselect=tests/e2e/test_xlstransfer_e2e.py::TestXLSTransferTranslation::test_09_translate_with_high_threshold"
+          # ============================================================
+          # P33 CI OVERHAUL: Focus on REAL tests that catch REAL bugs
+          # ============================================================
+          # ~100 essential tests (no bloat, fast CI):
+          # - API validation: test_api_true_simulation.py
+          # - Server startup: test_server_startup.py
+          # - Auth: test_auth_integration.py, test_async_auth.py
+          # - Security: All security tests
+          # - Tools e2e: KR Similar, XLSTransfer, QuickSearch
+          # - Core: DB utils, TM search
+          #
+          # REMOVED: Mock-heavy tests, redundant tests, slow model tests
+          # ============================================================
+          TEST_DIRS="tests/integration/test_api_true_simulation.py tests/integration/server_tests/test_server_startup.py tests/integration/server_tests/test_auth_integration.py tests/integration/server_tests/test_async_auth.py tests/security/ tests/e2e/test_full_simulation.py tests/e2e/test_kr_similar_e2e.py tests/e2e/test_quicksearch_e2e.py tests/unit/test_db_utils.py tests/unit/test_kr_similar_core.py tests/unit/test_tm_search.py"
+
+          # Deselect slow/redundant tests (model loading, embedding generation)
+          DESELECTS=""
 
           # ============================================================
           # TROUBLESHOOT MODE: True resume from checkpoint

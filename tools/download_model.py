@@ -25,10 +25,23 @@ MODEL_DIR_NAME = "qwen-embedding"
 
 
 def get_target_dir():
-    """Get model target directory (relative to this script)."""
+    """Get model target directory (relative to this script).
+
+    In dev:      tools/download_model.py -> ../models/
+    In packaged: resources/tools/download_model.py -> ../../models/
+    """
     script_dir = Path(__file__).parent
-    # Go up from tools/ to app root, then models/qwen-embedding
-    return script_dir.parent / "models" / MODEL_DIR_NAME
+    parent = script_dir.parent
+
+    # Detect packaged app: parent is 'resources' folder
+    if parent.name == "resources":
+        # Packaged: go up two levels (resources/tools -> app root)
+        app_root = parent.parent
+    else:
+        # Dev: go up one level (tools -> project root)
+        app_root = parent
+
+    return app_root / "models" / MODEL_DIR_NAME
 
 
 def check_existing():

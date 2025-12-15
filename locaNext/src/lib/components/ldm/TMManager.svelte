@@ -39,6 +39,8 @@
   let deleteConfirmOpen = $state(false);
   let tmToDelete = $state(null);
   let buildingIndexes = $state(new Set());
+  let buildConfirmOpen = $state(false);
+  let tmToBuild = $state(null);
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -177,6 +179,21 @@
     deleteConfirmOpen = true;
   }
 
+  // Open build confirmation (warning about resource usage)
+  function confirmBuildIndexes(tm) {
+    tmToBuild = tm;
+    buildConfirmOpen = true;
+  }
+
+  // Execute build after confirmation
+  function executeBuildIndexes() {
+    if (tmToBuild) {
+      buildIndexes(tmToBuild);
+    }
+    buildConfirmOpen = false;
+    tmToBuild = null;
+  }
+
   // Svelte 5: Effect - Load TMs when modal opens
   $effect(() => {
     if (open) {
@@ -286,7 +303,7 @@
                       icon={Renew}
                       iconDescription="Build Indexes"
                       disabled={buildingIndexes.has(tm.id)}
-                      on:click={() => buildIndexes(tm)}
+                      on:click={() => confirmBuildIndexes(tm)}
                     />
                   {/if}
                   <Button
@@ -327,6 +344,32 @@
     <p class="delete-warning">
       This will permanently delete {formatCount(tmToDelete.entry_count)} entries and all associated indexes.
     </p>
+  {/if}
+</Modal>
+
+<!-- Build Indexes Confirmation Modal -->
+<Modal
+  bind:open={buildConfirmOpen}
+  modalHeading="Build TM Indexes"
+  primaryButtonText="Start Processing"
+  secondaryButtonText="Cancel"
+  on:click:button--primary={executeBuildIndexes}
+  on:click:button--secondary={() => { buildConfirmOpen = false; tmToBuild = null; }}
+>
+  {#if tmToBuild}
+    <p>Build semantic search indexes for <strong>{tmToBuild.name}</strong>?</p>
+    <div class="build-warning">
+      <p><WarningAlt size={16} style="display: inline; vertical-align: middle; margin-right: 4px;" />
+        <strong>Resource Warning:</strong></p>
+      <ul>
+        <li>Processing <strong>{formatCount(tmToBuild.entry_count)}</strong> entries</li>
+        <li>Uses AI model (Qwen) for embeddings</li>
+        <li>Creates FAISS vector index</li>
+        <li>May take several minutes for large TMs</li>
+        <li>CPU/Memory usage will increase during processing</li>
+      </ul>
+      <p class="build-hint">Progress will be tracked in the Task Manager.</p>
+    </div>
   {/if}
 </Modal>
 
@@ -453,5 +496,34 @@
     margin-top: 0.5rem;
     font-size: 0.875rem;
     color: var(--cds-text-02);
+  }
+
+  .build-warning {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--cds-notification-info-background);
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+
+  .build-warning p {
+    margin: 0 0 0.5rem 0;
+  }
+
+  .build-warning ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .build-warning li {
+    margin: 0.25rem 0;
+    color: var(--cds-text-02);
+  }
+
+  .build-hint {
+    margin-top: 0.75rem !important;
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    font-style: italic;
   }
 </style>

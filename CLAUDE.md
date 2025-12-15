@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512141750 | **Status:** 97% Complete | **LDM:** 80%
+**Version:** 2512151400 | **Status:** 97% Complete | **LDM:** 80%
 
 > **KEEP THIS FILE COMPACT.** Only essential info here. Details go in linked docs.
 
@@ -13,6 +13,7 @@
 | **Current task?** | [Roadmap.md](Roadmap.md) |
 | **Last session context?** | [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
 | **LDM tasks?** | [docs/wip/P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
+| **P33 Offline+CI?** | [docs/wip/P33_OFFLINE_MODE_CI_OVERHAUL.md](docs/wip/P33_OFFLINE_MODE_CI_OVERHAUL.md) |
 | **Known bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 | **All WIP docs?** | [docs/wip/README.md](docs/wip/README.md) |
 | **All docs index?** | [docs/README.md](docs/README.md) |
@@ -29,23 +30,31 @@
 | **TM** | Translation Memory |
 | **FAISS** | Vector index for semantic search |
 | **CDP** | Chrome DevTools Protocol |
-| **Playground** | Windows test environment (`C:\NEIL_PROJECTS_WINDOWSBUILD\...`) |
+| **Playground** | Windows test environment: `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground` (WSL: `/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground`) |
 
 ---
 
 ## Architecture
 
-**PostgreSQL ONLY** - No SQLite for LocaNext data.
+**Central PostgreSQL + Local Heavy Processing**
 
-| PostgreSQL (Shared) | Local Disk (Heavy) |
-|---------------------|-------------------|
+```
+LocaNext.exe (User PC)          Central PostgreSQL
+├─ Embedded Python Backend  ──→  ├─ ALL text data
+├─ FAISS indexes (local)         ├─ Users, sessions
+├─ Qwen model (local)            ├─ LDM rows, TM entries
+└─ File parsing (local)          └─ Logs, telemetry
+```
+
+| Central PostgreSQL | Local Disk |
+|-------------------|------------|
 | LDM rows, TM entries | FAISS indexes |
 | Users, sessions | Embeddings (.npy) |
-| Telemetry, glossaries | ML models |
+| Telemetry, glossaries | ML models (Qwen 2.3GB) |
 
-- Port 6433 (PgBouncer) → 5432 (PostgreSQL)
-- WebSocket for real-time sync
-- Row locking for multi-user
+- **Dev:** PostgreSQL on localhost:5432
+- **Prod:** Change `POSTGRES_HOST` in `.env`
+- **Offline:** P33 - SQLite fallback (in progress)
 
 **Details:** [docs/deployment/DEPLOYMENT_ARCHITECTURE.md](docs/deployment/DEPLOYMENT_ARCHITECTURE.md)
 
@@ -160,10 +169,11 @@ docs/
 ├── troubleshooting/          # Debug guides
 ├── tools/                    # Tool-specific
 ├── code-review/              # Code review docs
-│   ├── ISSUES_20251212.md    # ← Latest review issues
+│   ├── ISSUES_20251215_LDM_API.md  # ← P32: 11 issues
 │   └── CODE_REVIEW_PROTOCOL.md
 ├── wip/                      # Work in progress
 │   ├── SESSION_CONTEXT.md    # ← Last session state
+│   ├── P33_OFFLINE_MODE_CI_OVERHAUL.md  # ← P33: Current priority
 │   ├── P17_LDM_TASKS.md      # ← LDM task tracker
 │   └── ISSUES_TO_FIX.md      # ← Known bugs
 └── history/                  # Archive
@@ -207,11 +217,11 @@ See: [docs/development/SERVER_MANAGEMENT.md](docs/development/SERVER_MANAGEMENT.
 
 ## Stats
 
-- **Tests:** 912 (no mocks)
+- **Tests:** 927 in CI (needs overhaul - P33)
 - **Endpoints:** 63+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
-- **Database:** PostgreSQL + PgBouncer
+- **Database:** PostgreSQL (online) / SQLite (offline - P33)
 
 ---
 
-*Last updated: 2025-12-14 | Hub file - details live in linked docs*
+*Last updated: 2025-12-15 | Hub file - details live in linked docs*

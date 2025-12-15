@@ -4,18 +4,28 @@
 
 ---
 
-## Active WIP Documents
+## Priority Tiers
 
+### Tier 1: CORE (Current Focus)
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
-| **P27** | [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) | ✅ Complete | Svelte 5 + Vite 7 + Electron 39 |
-| **P26** | [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) | ✅ Complete | Security vulnerability remediation |
-| **P25** | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 85% | LDM UX improvements |
-| **P22** | [P22_PRODUCTION_PARITY.md](P22_PRODUCTION_PARITY.md) | Phase 1 | SQLite removal - DEV = PRODUCTION |
-| **P17** | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 80% | LDM LanguageData Manager - task tracking |
-| **P17** | [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | Reference | TM System 9-Tier architecture spec |
-| **SESSION** | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Active | Last session state + current status |
-| **ISSUES** | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Active | Known bugs + UI issues to fix |
+| **P33** | [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md) | 🔴 CURRENT | Offline mode + MEGA SMOKE TEST + CI overhaul |
+
+### Tier 2: LATER (Low Priority)
+| Priority | Document | Status | Description |
+|----------|----------|--------|-------------|
+| P32 | [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md) | Pending | 11 code review issues |
+| P25 | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 85% | TM matching, QA - features |
+| P17 | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 80% | Custom pickers - features |
+
+### Reference / Complete
+| Priority | Document | Status | Description |
+|----------|----------|--------|-------------|
+| P27 | [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) | ✅ Complete | Svelte 5 + Vite 7 + Electron 39 |
+| P26 | [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) | ✅ Complete | Security vulnerability remediation |
+| P17 | [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | Reference | TM System architecture spec |
+| SESSION | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Active | Last session state |
+| ISSUES | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Active | Known bugs |
 
 ## Completed (Reference)
 
@@ -69,16 +79,19 @@ Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
 
 **Current Session:** [SESSION_CONTEXT.md](SESSION_CONTEXT.md)
 
-**Active Work:**
-- LDM UX: [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) - 85%
-- LDM Core: [P17_LDM_TASKS.md](P17_LDM_TASKS.md) - 80%
-- Bug Fixes: [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md)
+**🔴 CURRENT FOCUS:**
+- **P33:** [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md)
+  - Offline Mode (SQLite fallback)
+  - Tabbed Sidebar (Files/TM)
+  - TM Editing in VirtualGrid
+  - **Linux:** 82 essential tests (Qwen/FAISS REAL)
+  - **Windows:** MEGA SMOKE TEST (full CDP simulation)
+  - **Cache:** Qwen 2.3GB, pip, npm, Electron (~2 min total)
 
-**Recently Completed:**
-- P27: Stack Modernization (Svelte 5 + Vite 7 + Electron 39)
-- P26: Security Vulnerability Remediation
-- CI/CD: GitHub + Gitea hardening
+**Low Priority (Later):**
+- P32: Code review fixes
+- P25/P17: LDM features
 
 ---
 
-*Last Updated: 2025-12-14*
+*Last Updated: 2025-12-15*

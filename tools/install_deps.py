@@ -72,6 +72,8 @@ def main():
 
         # Database
         ("sqlalchemy", "Database ORM"),
+        ("psycopg2-binary", "PostgreSQL driver"),
+        ("asyncpg", "Async PostgreSQL driver"),
         ("aiosqlite", "Async SQLite support"),
 
         # Authentication
