@@ -409,8 +409,13 @@ async def upload_file(
     Upload a localization file (TXT/XML), parse it, and store rows in database.
 
     Supported formats:
-    - TXT/TSV: Tab-delimited, columns 0-4=StringID, 5=Source(KR), 6=Target
-    - XML: LocStr elements with StringId, StrOrigin(source), Str(target)
+    - TXT/TSV: Tab-delimited, columns 0-4=StringID, 5=Source(KR), 6=Target, 7+=extra
+    - XML: LocStr elements with StringId, StrOrigin(source), Str(target), other attrs=extra
+
+    Full Structure Preservation:
+    - File-level metadata stored in LDMFile.extra_data (encoding, root element, etc.)
+    - Row-level extra data stored in LDMRow.extra_data (extra columns/attributes)
+    - Enables FULL reconstruction of original file format
     """
     # Verify project ownership
     result = await db.execute(
@@ -437,18 +442,21 @@ async def upload_file(
     filename = file.filename or "unknown"
     ext = filename.lower().split('.')[-1] if '.' in filename else ''
 
+    file_metadata = None
     if ext in ('txt', 'tsv'):
-        from server.tools.ldm.file_handlers.txt_handler import parse_txt_file, get_file_format, get_source_language
+        from server.tools.ldm.file_handlers.txt_handler import parse_txt_file, get_file_format, get_source_language, get_file_metadata
         file_content = await file.read()
         rows_data = parse_txt_file(file_content, filename)
         file_format = get_file_format()
         source_lang = get_source_language()
+        file_metadata = get_file_metadata()
     elif ext == 'xml':
-        from server.tools.ldm.file_handlers.xml_handler import parse_xml_file, get_file_format, get_source_language
+        from server.tools.ldm.file_handlers.xml_handler import parse_xml_file, get_file_format, get_source_language, get_file_metadata
         file_content = await file.read()
         rows_data = parse_xml_file(file_content, filename)
         file_format = get_file_format()
         source_lang = get_source_language()
+        file_metadata = get_file_metadata()
     else:
         raise HTTPException(
             status_code=400,
@@ -461,7 +469,7 @@ async def upload_file(
             detail="No valid rows found in file"
         )
 
-    # Create file record
+    # Create file record (with file-level metadata for reconstruction)
     new_file = LDMFile(
         project_id=project_id,
         folder_id=folder_id,
@@ -470,12 +478,13 @@ async def upload_file(
         format=file_format,
         row_count=len(rows_data),
         source_language=source_lang,
-        target_language=None  # Set later based on project settings
+        target_language=None,  # Set later based on project settings
+        extra_data=file_metadata  # File-level metadata for full reconstruction
     )
     db.add(new_file)
     await db.flush()  # Get the file ID
 
-    # Create row records
+    # Create row records (with row-level extra data for reconstruction)
     for row_data in rows_data:
         row = LDMRow(
             file_id=new_file.id,
@@ -483,14 +492,15 @@ async def upload_file(
             string_id=row_data["string_id"],
             source=row_data["source"],
             target=row_data["target"],
-            status=row_data["status"]
+            status=row_data["status"],
+            extra_data=row_data.get("extra_data")  # Extra columns/attributes
         )
         db.add(row)
 
     await db.commit()
     await db.refresh(new_file)
 
-    logger.success(f"File uploaded: id={new_file.id}, name='{filename}', rows={len(rows_data)}")
+    logger.success(f"File uploaded: id={new_file.id}, name='{filename}', rows={len(rows_data)}, has_metadata={file_metadata is not None}")
     return new_file
 
 
@@ -760,14 +770,17 @@ async def get_tm_suggestions(
             'max_results': max_results
         }
 
-        # Base conditions
+        # Base conditions - use parameterized queries (NO f-strings for SQL!)
         conditions = ["r.target IS NOT NULL", "r.target != ''"]
         if file_id:
-            conditions.append(f"r.file_id = {file_id}")
+            conditions.append("r.file_id = :file_id")
+            sql_params['file_id'] = file_id
         elif project_id:
-            conditions.append(f"f.project_id = {project_id}")
+            conditions.append("f.project_id = :project_id")
+            sql_params['project_id'] = project_id
         if exclude_row_id:
-            conditions.append(f"r.id != {exclude_row_id}")
+            conditions.append("r.id != :exclude_row_id")
+            sql_params['exclude_row_id'] = exclude_row_id
 
         where_clause = " AND ".join(conditions)
 
@@ -1328,6 +1341,7 @@ async def download_file(
     Download a file with current translations.
 
     Rebuilds the file from database rows in the original format.
+    Uses extra_data for FULL structure preservation (extra columns, attributes, etc.)
 
     Query params:
     - status_filter: "reviewed" (confirmed only), "translated" (translated+reviewed), "all" (everything)
@@ -1340,6 +1354,9 @@ async def download_file(
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
+
+    # Get file-level metadata for reconstruction
+    file_metadata = file.extra_data or {}
 
     # Get all rows for this file
     status_conditions = []
@@ -1363,17 +1380,18 @@ async def download_file(
         raise HTTPException(status_code=404, detail="No rows found for this file")
 
     # Build file content based on format (case-insensitive)
+    # Pass file_metadata for full structure preservation
     format_lower = file.format.lower() if file.format else ""
     if format_lower == "txt":
-        content = _build_txt_file(rows)
+        content = _build_txt_file(rows, file_metadata)
         media_type = "text/plain"
         extension = ".txt"
     elif format_lower == "xml":
-        content = _build_xml_file(rows)
+        content = _build_xml_file(rows, file_metadata)
         media_type = "application/xml"
         extension = ".xml"
     elif format_lower in ["xlsx", "excel"]:
-        content = _build_excel_file(rows)
+        content = _build_excel_file(rows, file_metadata)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         extension = ".xlsx"
     else:
@@ -1392,14 +1410,21 @@ async def download_file(
     )
 
 
-def _build_txt_file(rows: List[LDMRow]) -> bytes:
+def _build_txt_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
     """
-    Rebuild TXT file from rows.
+    Rebuild TXT file from rows with FULL structure preservation.
 
     TXT format: tab-separated columns
-    Original format: idx0\tidx1\tidx2\tidx3\tidx4\tsource\ttarget
+    Original format: idx0\tidx1\tidx2\tidx3\tidx4\tsource\ttarget\t[extra columns...]
+
+    Uses:
+    - file_metadata.encoding: Original file encoding
+    - file_metadata.total_columns: Total column count
+    - row.extra_data: Extra columns beyond 0-6
     """
+    file_metadata = file_metadata or {}
     lines = []
+
     for row in rows:
         # Reconstruct string_id parts - stored with spaces, output with tabs
         # Upload stores as "0 100 0 0 1" (space-joined), we need "0\t100\t0\t0\t1"
@@ -1409,7 +1434,7 @@ def _build_txt_file(rows: List[LDMRow]) -> bytes:
         while len(string_id_parts) < 5:
             string_id_parts.append("")
 
-        # Build line: idx0\tidx1\tidx2\tidx3\tidx4\tsource\ttarget
+        # Build base columns: idx0\tidx1\tidx2\tidx3\tidx4\tsource\ttarget
         source = row.source or ""
         target = row.target or ""
 
@@ -1417,62 +1442,124 @@ def _build_txt_file(rows: List[LDMRow]) -> bytes:
         source = source.replace("↵", "\n")
         target = target.replace("↵", "\n")
 
-        line = "\t".join(string_id_parts[:5] + [source, target])
+        # Start with standard 7 columns
+        parts = string_id_parts[:5] + [source, target]
+
+        # Add extra columns from extra_data (col7, col8, etc.)
+        if row.extra_data:
+            # Get the total columns from file metadata, or calculate from extra_data
+            total_cols = file_metadata.get("total_columns", 7)
+            for i in range(7, total_cols):
+                col_key = f"col{i}"
+                parts.append(row.extra_data.get(col_key, ""))
+
+        line = "\t".join(parts)
         lines.append(line)
 
     content = "\n".join(lines)
-    return content.encode('utf-8')
+
+    # Use original encoding if available
+    encoding = file_metadata.get("encoding", "utf-8")
+    return content.encode(encoding)
 
 
-def _build_xml_file(rows: List[LDMRow]) -> bytes:
+def _build_xml_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
     """
-    Rebuild XML file from rows.
+    Rebuild XML file from rows with FULL structure preservation.
 
     XML format:
     <?xml version="1.0" encoding="UTF-8"?>
-    <LangData>
-        <String stringid="ID" strorigin="source" str="target"/>
-    </LangData>
+    <RootElement rootAttr="...">
+        <ElementTag stringid="ID" strorigin="source" str="target" otherAttr="..."/>
+    </RootElement>
+
+    Uses:
+    - file_metadata.root_element: Original root element tag name
+    - file_metadata.root_attributes: Original root element attributes
+    - file_metadata.element_tag: Original localization element tag name
+    - row.extra_data: Extra attributes beyond stringid/strorigin/str
     """
     import xml.etree.ElementTree as ET
     from xml.dom import minidom
 
-    root = ET.Element("LangData")
+    file_metadata = file_metadata or {}
+
+    # Use original root element or default to LangData
+    root_tag = file_metadata.get("root_element", "LangData")
+    root = ET.Element(root_tag)
+
+    # Add original root attributes if preserved
+    root_attribs = file_metadata.get("root_attributes")
+    if root_attribs:
+        for key, val in root_attribs.items():
+            root.set(key, val)
+
+    # Use original element tag or default to String
+    element_tag = file_metadata.get("element_tag", "String")
 
     for row in rows:
-        string_elem = ET.SubElement(root, "String")
+        string_elem = ET.SubElement(root, element_tag)
+
+        # Set core attributes
         string_elem.set("stringid", row.string_id or "")
         string_elem.set("strorigin", row.source or "")
         string_elem.set("str", row.target or "")
 
-    # Pretty print
+        # Add extra attributes from extra_data
+        if row.extra_data:
+            for attr_name, attr_val in row.extra_data.items():
+                string_elem.set(attr_name, attr_val or "")
+
+    # Pretty print with original encoding
+    encoding = file_metadata.get("encoding", "UTF-8")
     xml_str = ET.tostring(root, encoding='unicode')
     dom = minidom.parseString(xml_str)
-    pretty_xml = dom.toprettyxml(indent="  ", encoding="UTF-8")
+    pretty_xml = dom.toprettyxml(indent="  ", encoding=encoding)
 
     return pretty_xml
 
 
-def _build_excel_file(rows: List[LDMRow]) -> bytes:
+def _build_excel_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
     """
-    Rebuild Excel file from rows.
+    Rebuild Excel file from rows with FULL structure preservation.
 
-    Excel format: Source in column A, Target in column B
+    Excel format: Source in column A, Target in column B, extra columns in C+
+
+    Uses:
+    - file_metadata.headers: Original column headers
+    - file_metadata.sheet_name: Original sheet name
+    - row.extra_data: Extra columns beyond A-B
     """
     import openpyxl
 
+    file_metadata = file_metadata or {}
+
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Translations"
+    ws.title = file_metadata.get("sheet_name", "Translations")
 
-    # Header
-    ws.cell(row=1, column=1, value="Source")
-    ws.cell(row=1, column=2, value="Target")
+    # Get headers from metadata or use defaults
+    headers = file_metadata.get("headers", ["Source", "Target"])
+    if len(headers) < 2:
+        headers = ["Source", "Target"]
 
-    # Data
-    for i, row in enumerate(rows, start=2):
-        ws.cell(row=i, column=1, value=row.source or "")
-        ws.cell(row=i, column=2, value=row.target or "")
+    # Header row
+    for col_idx, header in enumerate(headers, start=1):
+        ws.cell(row=1, column=col_idx, value=header)
+
+    # Data rows
+    for row_idx, row in enumerate(rows, start=2):
+        ws.cell(row=row_idx, column=1, value=row.source or "")
+        ws.cell(row=row_idx, column=2, value=row.target or "")
+
+        # Add extra columns from extra_data (C, D, E, etc.)
+        if row.extra_data:
+            for col_letter, val in row.extra_data.items():
+                # Convert column letter to index (C=3, D=4, etc.)
+                if col_letter.isalpha() and len(col_letter) == 1:
+                    col_num = ord(col_letter.upper()) - ord('A') + 1
+                    if col_num > 2:  # Skip A and B (source/target)
+                        ws.cell(row=row_idx, column=col_num, value=val or "")
 
     # Save to bytes
     output = BytesIO()
@@ -1480,3 +1567,266 @@ def _build_excel_file(rows: List[LDMRow]) -> bytes:
     output.seek(0)
 
     return output.read()
+
+
+# ============================================================================
+# Sync to Central Server (Offline → Online)
+# ============================================================================
+
+class SyncFileToCentralRequest(BaseModel):
+    """Request body for syncing a local file to central PostgreSQL."""
+    file_id: int  # File ID in local SQLite
+    destination_project_id: int  # Project ID in central PostgreSQL
+
+
+class SyncFileToCentralResponse(BaseModel):
+    """Response for sync operation."""
+    success: bool
+    new_file_id: Optional[int] = None
+    rows_synced: int = 0
+    message: str
+
+
+class SyncTMToCentralRequest(BaseModel):
+    """Request body for syncing a local TM to central PostgreSQL."""
+    tm_id: int  # TM ID in local SQLite
+
+
+class SyncTMToCentralResponse(BaseModel):
+    """Response for TM sync operation."""
+    success: bool
+    new_tm_id: Optional[int] = None
+    entries_synced: int = 0
+    message: str
+
+
+@router.post("/sync-to-central", response_model=SyncFileToCentralResponse)
+async def sync_file_to_central(
+    request: SyncFileToCentralRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Sync a file from local SQLite to central PostgreSQL.
+
+    This endpoint:
+    1. Reads file metadata + all rows from local SQLite
+    2. Creates new file record in PostgreSQL (destination project)
+    3. Bulk inserts all rows to PostgreSQL
+    4. Returns the new file_id in central DB
+
+    Use this when:
+    - User worked offline (SQLite mode)
+    - User reconnected (went online)
+    - User wants to upload local work to central server
+
+    The file data is passed as JSON (not re-read from disk).
+    """
+    from server.config import ACTIVE_DATABASE_TYPE
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+    import os
+
+    logger.info(f"Sync to central: file_id={request.file_id}, dest_project={request.destination_project_id}")
+
+    # Verify we're online (connected to PostgreSQL)
+    if ACTIVE_DATABASE_TYPE != "postgresql":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot sync to central server while in offline mode. Connect to server first."
+        )
+
+    # Verify destination project exists and user has access
+    project_result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == request.destination_project_id,
+            LDMProject.owner_id == current_user["user_id"]
+        )
+    )
+    if not project_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Destination project not found or access denied")
+
+    # Read from local SQLite database
+    # The SQLite file is at server/data/locanext.db
+    sqlite_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "locanext.db")
+
+    if not os.path.exists(sqlite_path):
+        raise HTTPException(
+            status_code=400,
+            detail="No local database found. You may not have worked offline."
+        )
+
+    try:
+        # Create SQLite engine and session
+        sqlite_engine = create_engine(f"sqlite:///{sqlite_path}")
+        sqlite_session = Session(sqlite_engine)
+
+        try:
+            # Read the file from SQLite
+            local_file = sqlite_session.query(LDMFile).filter(LDMFile.id == request.file_id).first()
+
+            if not local_file:
+                raise HTTPException(status_code=404, detail="File not found in local database")
+
+            # Read all rows for this file from SQLite
+            local_rows = sqlite_session.query(LDMRow).filter(
+                LDMRow.file_id == request.file_id
+            ).order_by(LDMRow.row_num).all()
+
+            logger.info(f"Read {len(local_rows)} rows from local SQLite for file {request.file_id}")
+
+            # Create new file in PostgreSQL
+            new_file = LDMFile(
+                project_id=request.destination_project_id,
+                folder_id=None,  # Goes to project root
+                name=local_file.name,
+                original_filename=local_file.original_filename,
+                format=local_file.format,
+                row_count=len(local_rows),
+                source_language=local_file.source_language,
+                target_language=local_file.target_language,
+                extra_data=local_file.extra_data,
+                created_by=current_user["user_id"]
+            )
+            db.add(new_file)
+            await db.flush()
+
+            # Create rows in PostgreSQL
+            for local_row in local_rows:
+                new_row = LDMRow(
+                    file_id=new_file.id,
+                    row_num=local_row.row_num,
+                    string_id=local_row.string_id,
+                    source=local_row.source,
+                    target=local_row.target,
+                    status=local_row.status,
+                    extra_data=local_row.extra_data
+                )
+                db.add(new_row)
+
+            await db.commit()
+
+            logger.success(f"Synced file to central: local_id={request.file_id} → central_id={new_file.id}, rows={len(local_rows)}")
+
+            return SyncFileToCentralResponse(
+                success=True,
+                new_file_id=new_file.id,
+                rows_synced=len(local_rows),
+                message=f"Successfully synced {len(local_rows)} rows to central server"
+            )
+
+        finally:
+            sqlite_session.close()
+            sqlite_engine.dispose()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Sync to central failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+
+
+@router.post("/tm/sync-to-central", response_model=SyncTMToCentralResponse)
+async def sync_tm_to_central(
+    request: SyncTMToCentralRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Sync a Translation Memory from local SQLite to central PostgreSQL.
+
+    This endpoint:
+    1. Reads TM metadata + all entries from local SQLite
+    2. Creates new TM record in PostgreSQL
+    3. Bulk inserts all entries to PostgreSQL
+    4. Returns the new tm_id in central DB
+    """
+    from server.config import ACTIVE_DATABASE_TYPE
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+    import os
+
+    logger.info(f"Sync TM to central: tm_id={request.tm_id}")
+
+    # Verify we're online (connected to PostgreSQL)
+    if ACTIVE_DATABASE_TYPE != "postgresql":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot sync to central server while in offline mode. Connect to server first."
+        )
+
+    # Read from local SQLite database
+    sqlite_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "locanext.db")
+
+    if not os.path.exists(sqlite_path):
+        raise HTTPException(
+            status_code=400,
+            detail="No local database found. You may not have worked offline."
+        )
+
+    try:
+        # Create SQLite engine and session
+        sqlite_engine = create_engine(f"sqlite:///{sqlite_path}")
+        sqlite_session = Session(sqlite_engine)
+
+        try:
+            # Read the TM from SQLite
+            local_tm = sqlite_session.query(LDMTranslationMemory).filter(
+                LDMTranslationMemory.id == request.tm_id
+            ).first()
+
+            if not local_tm:
+                raise HTTPException(status_code=404, detail="Translation Memory not found in local database")
+
+            # Read all entries for this TM from SQLite
+            local_entries = sqlite_session.query(LDMTMEntry).filter(
+                LDMTMEntry.tm_id == request.tm_id
+            ).all()
+
+            logger.info(f"Read {len(local_entries)} entries from local SQLite for TM {request.tm_id}")
+
+            # Create new TM in PostgreSQL
+            new_tm = LDMTranslationMemory(
+                name=local_tm.name,
+                description=local_tm.description,
+                owner_id=current_user["user_id"],
+                source_lang=local_tm.source_lang,
+                target_lang=local_tm.target_lang,
+                entry_count=len(local_entries),
+                status="pending"  # Will need re-indexing on server
+            )
+            db.add(new_tm)
+            await db.flush()
+
+            # Bulk insert entries to PostgreSQL
+            for local_entry in local_entries:
+                new_entry = LDMTMEntry(
+                    tm_id=new_tm.id,
+                    source_text=local_entry.source_text,
+                    target_text=local_entry.target_text,
+                    source_hash=local_entry.source_hash,
+                    created_by=local_entry.created_by,
+                    change_date=local_entry.change_date
+                )
+                db.add(new_entry)
+
+            await db.commit()
+
+            logger.success(f"Synced TM to central: local_id={request.tm_id} → central_id={new_tm.id}, entries={len(local_entries)}")
+
+            return SyncTMToCentralResponse(
+                success=True,
+                new_tm_id=new_tm.id,
+                entries_synced=len(local_entries),
+                message=f"Successfully synced {len(local_entries)} TM entries to central server. Run 'Build Indexes' on the server to enable semantic search."
+            )
+
+        finally:
+            sqlite_session.close()
+            sqlite_engine.dispose()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"TM sync to central failed: {e}")
+        raise HTTPException(status_code=500, detail=f"TM sync failed: {str(e)}")

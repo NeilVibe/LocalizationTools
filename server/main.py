@@ -55,7 +55,7 @@ def setup_logging():
     logger.add(sys.stdout, format=config.LOG_FORMAT, level=config.LOG_LEVEL)
 
     logger.info(f"Starting {config.APP_NAME} v{config.APP_VERSION}")
-    logger.info(f"Database: {config.DATABASE_TYPE}")
+    logger.info(f"Database Mode: {config.DATABASE_MODE}")
     logger.info(f"Database URL: {config.DATABASE_URL}")
 
 
@@ -250,9 +250,77 @@ async def root():
         "app": config.APP_NAME,
         "version": config.APP_VERSION,
         "status": "running",
-        "database": config.DATABASE_TYPE,
+        "database_mode": config.DATABASE_MODE,
+        "database_type": config.ACTIVE_DATABASE_TYPE,
         "docs": f"{config.DOCS_URL}" if config.ENABLE_DOCS else "disabled",
     }
+
+
+@app.get("/api/status")
+async def get_status():
+    """
+    P33 Phase 4: Connection status endpoint for UI badges.
+
+    Returns:
+        - connection_mode: "online" | "offline"
+        - database_type: "postgresql" | "sqlite"
+        - database_mode: "auto" | "postgresql" | "sqlite"
+        - can_sync: true if online (can sync TMs to server)
+    """
+    is_online = config.ACTIVE_DATABASE_TYPE == "postgresql"
+
+    return {
+        "connection_mode": "online" if is_online else "offline",
+        "database_type": config.ACTIVE_DATABASE_TYPE,
+        "database_mode": config.DATABASE_MODE,
+        "can_sync": is_online,
+        "server_version": config.APP_VERSION,
+    }
+
+
+@app.post("/api/go-online")
+async def go_online():
+    """
+    P33 Phase 5: Attempt to reconnect to PostgreSQL (Go Online).
+
+    This endpoint checks if PostgreSQL is reachable and attempts to switch
+    from SQLite to PostgreSQL mode. Currently requires app restart to take effect.
+
+    Returns:
+        - success: bool
+        - message: status message
+        - postgresql_reachable: bool
+        - action_required: "restart" | "none"
+    """
+    from server.database.db_setup import check_postgresql_reachable
+
+    # Check if already online
+    if config.ACTIVE_DATABASE_TYPE == "postgresql":
+        return {
+            "success": True,
+            "message": "Already connected to PostgreSQL",
+            "postgresql_reachable": True,
+            "action_required": "none"
+        }
+
+    # Check PostgreSQL reachability
+    pg_url = config.POSTGRES_URL
+    is_reachable = check_postgresql_reachable(pg_url)
+
+    if is_reachable:
+        return {
+            "success": True,
+            "message": "PostgreSQL is reachable. Please restart the application to go online.",
+            "postgresql_reachable": True,
+            "action_required": "restart"
+        }
+    else:
+        return {
+            "success": False,
+            "message": "PostgreSQL is not reachable. Check your network connection.",
+            "postgresql_reachable": False,
+            "action_required": "none"
+        }
 
 
 @app.get(config.HEALTH_CHECK_ENDPOINT)

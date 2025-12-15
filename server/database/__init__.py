@@ -41,7 +41,10 @@ from server.database.db_setup import (
 )
 
 from server.database.db_utils import (
-    # COPY TEXT (P21 - 3-5x faster for PostgreSQL)
+    # Database detection (P33 Offline Mode)
+    is_postgresql,
+    is_sqlite,
+    # COPY TEXT (P21 - 3-5x faster for PostgreSQL, INSERT fallback for SQLite)
     bulk_copy,
     bulk_copy_tm_entries,
     bulk_copy_rows,
@@ -52,11 +55,10 @@ from server.database.db_utils import (
     bulk_insert_rows,
     # Text utilities
     normalize_text_for_hash,
-    # FTS
+    # FTS (PostgreSQL tsvector / SQLite LIKE)
     search_rows_fts,
     add_fts_indexes,
     add_trigram_index,
-    is_postgresql,
     # Query helpers
     chunked_query,
     upsert_batch,
@@ -105,7 +107,9 @@ __all__ = [
     "search_rows_fts",
     "add_fts_indexes",
     "add_trigram_index",
+    # Database detection (P33 Offline Mode)
     "is_postgresql",
+    "is_sqlite",
     "chunked_query",
     "upsert_batch",
 ]

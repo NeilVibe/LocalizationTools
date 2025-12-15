@@ -126,8 +126,11 @@ ALLOWED_ORIGINS = CORS_ORIGINS
 # Database Settings
 # ============================================
 
-# Database type - PostgreSQL is REQUIRED (no SQLite)
-DATABASE_TYPE = os.getenv("DATABASE_TYPE", "postgresql")
+# Database mode: "auto", "postgresql", or "sqlite"
+# - auto: Try PostgreSQL first, fallback to SQLite if unreachable (P33 Offline Mode)
+# - postgresql: PostgreSQL only (fail if unreachable)
+# - sqlite: SQLite only (offline mode)
+DATABASE_MODE = os.getenv("DATABASE_MODE", "auto")
 
 # PostgreSQL settings (same for dev and production)
 POSTGRES_USER = os.getenv("POSTGRES_USER", "localization_admin")
@@ -140,14 +143,23 @@ POSTGRES_DATABASE_URL = (
     f"{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 )
 
-# Current database URL (PostgreSQL only)
-DATABASE_URL = POSTGRES_DATABASE_URL
+# SQLite settings (offline mode - P33)
+SQLITE_DATABASE_PATH = Path(os.getenv("SQLITE_DATABASE_PATH", str(DATA_DIR / "offline.db")))
+SQLITE_DATABASE_URL = f"sqlite:///{SQLITE_DATABASE_PATH}"
 
-# Database pool settings
+# Current database URL - determined at startup based on mode and connectivity
+# This is set dynamically by db_setup.py after connection check
+DATABASE_URL = POSTGRES_DATABASE_URL  # Default, may change to SQLite
+ACTIVE_DATABASE_TYPE = "postgresql"  # Track which database is actually in use
+
+# Database pool settings (PostgreSQL only - SQLite doesn't use pooling)
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
 DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))
 DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
 DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "3600"))
+
+# PostgreSQL connection check timeout (seconds) - for auto mode fallback
+POSTGRES_CONNECT_TIMEOUT = int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "3"))
 
 # Query settings
 DB_ECHO = os.getenv("DB_ECHO", "False").lower() == "true"  # Log all SQL queries
@@ -357,7 +369,8 @@ def get_config_summary() -> dict:
     return {
         "app_name": APP_NAME,
         "app_version": APP_VERSION,
-        "database_type": DATABASE_TYPE,
+        "database_mode": DATABASE_MODE,
+        "database_type": ACTIVE_DATABASE_TYPE,
         "debug_mode": DEBUG,
         "server_host": SERVER_HOST,
         "server_port": SERVER_PORT,
@@ -368,12 +381,37 @@ def get_config_summary() -> dict:
 
 def is_production() -> bool:
     """Check if running in production mode."""
-    return not DEBUG and DATABASE_TYPE == "postgresql"
+    return not DEBUG and ACTIVE_DATABASE_TYPE == "postgresql"
 
 
 def get_database_url() -> str:
     """Get the appropriate database URL."""
     return DATABASE_URL
+
+
+def is_online_mode() -> bool:
+    """Check if connected to PostgreSQL (online mode)."""
+    return ACTIVE_DATABASE_TYPE == "postgresql"
+
+
+def is_offline_mode() -> bool:
+    """Check if using SQLite (offline mode)."""
+    return ACTIVE_DATABASE_TYPE == "sqlite"
+
+
+def set_active_database(db_type: str, db_url: str):
+    """
+    Set the active database type and URL.
+
+    Called by db_setup.py after determining which database to use.
+
+    Args:
+        db_type: "postgresql" or "sqlite"
+        db_url: The database connection URL
+    """
+    global ACTIVE_DATABASE_TYPE, DATABASE_URL
+    ACTIVE_DATABASE_TYPE = db_type
+    DATABASE_URL = db_url
 
 
 # ============================================

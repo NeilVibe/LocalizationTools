@@ -1,359 +1,97 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512151005 | **Updated**: 2025-12-15 | **Status**: Production Ready
+**Version**: 2512151500 | **Updated**: 2025-12-15 | **Status**: P33 100% Complete
 
-> **Full History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
-> **Detailed Tasks**: [docs/wip/README.md](docs/wip/README.md) (WIP Hub)
 > **Session Context**: [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)
+> **WIP Tasks**: [docs/wip/README.md](docs/wip/README.md)
+> **History**: [docs/history/ROADMAP_ARCHIVE.md](docs/history/ROADMAP_ARCHIVE.md)
 
 ---
 
 ## Current Status
 
 ```
-LocaNext v2512151005
-├── Backend:     ✅ 63+ API endpoints, async, WebSocket
-├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7 (P27 COMPLETE)
-├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar + LDM 80%
-├── Tests:       ✅ 912 total (595 unit pass, no mocks)
-├── Security:    ✅ All CRITICAL/HIGH fixed (P26 complete)
-├── CI/CD:       ✅ FIXED - NSIS + Infrastructure hardened (P28.5)
-├── Database:    ✅ PostgreSQL + PgBouncer (NO SQLite!)
-└── Distribution: ⏳ BUILD RUNNING - v25.1215.0100 (tasks 615,616)
+LocaNext v2512151500
+├── Backend:     ✅ Working + SQLite offline mode
+├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7
+├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar, LDM
+├── Database:    ✅ PostgreSQL (online) + SQLite (offline)
+├── CI/CD:       ✅ 272 real tests (streamlined from 1536)
+├── Offline:     ✅ Full structure preservation + Sync
+└── Distribution: ✅ NSIS installer works
 ```
 
 ---
 
-## ✅ P28: CI/CD Fixed - NSIS Installer
+## Current Priority: P33 Offline Mode (100% Complete)
 
-**Priority: #1** | **Status: FIXED** | **Completed: 2025-12-14**
+| Phase | Status | What |
+|-------|--------|------|
+| 1 | ✅ | SQLite backend (FlexibleJSON, auto-fallback) |
+| 2 | ✅ | Auto-detection (PostgreSQL unreachable → SQLite) |
+| 3 | ✅ | Tabbed sidebar (Files/TM tabs) |
+| 4 | ✅ | Online/Offline badges in toolbar |
+| 5 | ✅ | Go Online + Upload to Server modal |
+| 6 | ✅ | CI overhaul (272 real tests) |
+| 7 | ✅ | **extra_data JSONB + Sync endpoints** |
 
-### What Was Fixed
+**What's Left (verification only):**
+1. ~~**Fix Upload to Server**~~ ✅ DONE - sync-to-central endpoint
+2. Verify CI pipeline in Gitea
+3. Windows smoke test with CDP
 
-Replaced broken Inno Setup workflow with electron-builder's native NSIS:
-
-| Before | After |
-|--------|-------|
-| Inno Setup skipped with WORKAROUND | electron-builder NSIS native |
-| Portable ZIP (broken) | Proper installer (.exe) |
-| Missing embedded Python | Bundled via extraResources |
-| Two tools (electron-builder + Inno) | One tool (electron-builder) |
-
-### Changes Made
-
-1. **package.json**: `win.target: "dir"` → `"nsis"` + full NSIS config
-2. **package.json**: `extraResources` expanded for Python + server
-3. **build.yml**: Removed Inno Setup steps, simplified to collect NSIS output
-4. **installer/*.iss**: Moved to `installer/deprecated/`
-5. **LICENSE**: Added MIT license file
-
-### New Build Output
-
-```
-installer_output/LocaNext_v25.XXXX.XXXX_Light_Setup.exe  (~200MB)
-```
+**Details:** [P33_OFFLINE_MODE_CI_OVERHAUL.md](docs/wip/P33_OFFLINE_MODE_CI_OVERHAUL.md)
 
 ---
 
-## P29: Full CI/CD Review
+## Next Priorities
 
-**Priority: #2** | **Status: PENDING**
+### P32: Code Review Issues (LOW PRIORITY)
 
-Complete review to verify everything works:
-- [ ] Trigger test build on Gitea
-- [ ] Verify NSIS installer produced
-- [ ] Download and install on Windows
-- [ ] Verify app starts standalone
-- [ ] Verify embedded Python works
+11 issues in `server/tools/ldm/api.py`:
+- 2 CRITICAL (SQL injection, response format)
+- 3 HIGH (deprecated asyncio)
+- 6 MEDIUM/LOW
 
----
+**Do after P33 is verified.**
 
-## Priority Status Overview
+**Details:** [docs/code-review/ISSUES_20251215_LDM_API.md](docs/code-review/ISSUES_20251215_LDM_API.md)
 
-| # | Priority | Name | Status | Doc |
-|---|----------|------|--------|-----|
-| **1** | **P29** | **CI/CD Verification Test** | ⏳ Pending | Trigger build, verify installer |
-| 2 | P28 | CI/CD NSIS Fix | ✅ Complete | See above |
-| 3 | P27 | Stack Modernization (Svelte 5) | ✅ Complete | [P27_STACK_MODERNIZATION.md](docs/wip/P27_STACK_MODERNIZATION.md) |
-| 4 | P26 | Security Vulnerability Fix | ✅ Complete | [SECURITY_FIX_PLAN.md](docs/wip/SECURITY_FIX_PLAN.md) |
-| 5 | P25 | LDM UX Overhaul | 🔨 85% | [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md) |
-| - | P24 | Server Status Dashboard | ✅ Complete | [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md) |
-| - | P17 | LDM LanguageData Manager | 80% | [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md) |
-| - | P22 | SQLite Removal | ✅ Phase 1 | [P22_PRODUCTION_PARITY.md](docs/wip/P22_PRODUCTION_PARITY.md) |
-| - | P21 | Database Powerhouse | ✅ Complete | [P21_DATABASE_POWERHOUSE.md](docs/wip/P21_DATABASE_POWERHOUSE.md) |
-| - | ISSUES | Bug Fixes | ✅ All Fixed | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
+### P25: LDM UX (85% Complete)
 
----
-
-## Active Development
-
-### P27: Stack Modernization (Svelte 5) ✅ COMPLETE
-
-**Status:** 100% | **Completed: 2025-12-14**
-
-Full stack upgrade to latest ecosystem - ALL packages at maximum versions:
-
-| Package | Before | After | Status |
-|---------|--------|-------|--------|
-| svelte | 4.2.8 | 5.x | ✅ |
-| vite | 5.0.8 | 7.x | ✅ |
-| electron | 28.0.0 | 39.x | ✅ |
-| electron-builder | 24.9.1 | 26.x | ✅ |
-| carbon-components-svelte | 0.85.0 | 0.95.x | ✅ |
-| @sveltejs/vite-plugin-svelte | 3.0.0 | 6.x | ✅ |
-
-**Key Commits:**
-- `6c1e49d` P27: The FOREVER CHANGE - Svelte 5 + Modern Stack
-- `4a52f5c` P27: FULL LATEST POWER - All packages at maximum versions
-
-**Detailed Plan:** [P27_STACK_MODERNIZATION.md](docs/wip/P27_STACK_MODERNIZATION.md)
-
----
-
-### P26: Security Vulnerability Remediation ✅ COMPLETE
-
-**Status:** 100% | **PRODUCTION SAFE** | **All Critical/High FIXED**
-
-**Security Summary:**
-
-| Metric | Before | After | Status |
-|--------|--------|-------|--------|
-| pip CRITICAL | 3 | **0** | ✅ FIXED |
-| pip HIGH | ~7 | **0** | ✅ FIXED |
-| npm HIGH | 1 | 0 | ✅ FIXED |
-| Total pip | 28+ | 16 | Remaining = system/dev/low |
-| Total npm | 11 | 9 | Remaining = dev-only/low |
-
-**What Was Fixed:**
-- cryptography 3.4.8 → 46.0.3 (8 CVEs - auth security)
-- starlette 0.38.6 → 0.50.0 (path traversal, request smuggling)
-- python-socketio 5.11.0 → 5.15.0 (WebSocket auth bypass)
-- torch 2.3.1 → 2.9.1 (model loading RCE)
-- 5 safe pip packages + 84 Ubuntu packages
-
-**What Remains (Acceptable Risk):**
-- urllib3: System package, CVEs need MITM
-- electron: ASAR bypass needs local access
-- esbuild/vite: Dev server only, not production
-- twisted: Ubuntu system package, not used by our code
-
-**Is system at risk?** NO - All production-critical vulnerabilities fixed.
-
-**Documentation:**
-- Session Context: [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)
-- Fix Plan: [SECURITY_FIX_PLAN.md](docs/wip/SECURITY_FIX_PLAN.md)
-
----
-
-### P25: LDM UX Overhaul (85% Complete) - Priority #2
-
-Comprehensive UX improvements based on user feedback.
-
-**Phase 1: Bug Fixes ✅**
-- ✅ Target lock blocking editing (BUG-002)
-- ✅ Upload tooltip z-index (BUG-003)
-- ✅ Search bar icon requirement (BUG-004)
-- ✅ Go to row removed (BUG-001)
-
-**Phase 2: Grid Simplification ✅**
-- ✅ Status column REMOVED → Using cell colors instead
-- ✅ Default: Source + Target columns only
-- ✅ Cell colors: teal=translated, blue=reviewed, green=approved
-
-**Phase 3: Edit Modal Redesign ✅**
-- ✅ BIG modal (85% width/height)
-- ✅ Two-column layout: Source/Target left, TM panel right
-- ✅ Shortcut bar at top (Ctrl+S, Ctrl+T, Tab, Esc)
-- ✅ Keyboard shortcuts working (Ctrl+S=Confirm, Ctrl+T=Translate)
-
-**Phase 4: Preferences Menu ✅**
-- ✅ Column toggles: Index Number, String ID, Reference, TM
-- ✅ TM selector (choose active TM)
-- ✅ Reference file selector + match mode
-- ✅ Settings persist in localStorage
-
-**Phase 5: Download/Export ✅**
-- ✅ Download endpoint + frontend menu
-- ✅ Status filters (all, translated, reviewed)
-- ✅ TXT/XML/Excel export
-
-**Phase 6: Right-Click Context Menu ✅**
-- ✅ Already exists in FileExplorer.svelte
-- ✅ Download, Register as TM options
-
-**Phase 7: Tasks Panel** (Existing)
-- ✅ TaskManager.svelte with WebSocket updates
-- ✅ Real-time progress tracking
-
-**Phase 8: Reference Column ✅**
-- ✅ Reference column in grid
-- ✅ Load reference from project file
-- ✅ Match by StringID or StringID+Source
-- ✅ Preferences UI for reference settings
-
-**Phase 9: TM Integration ✅**
-- ✅ TMManager.svelte - list, delete, build indexes
-- ✅ TMUploadModal.svelte - upload TM files
-- ✅ TM Results column in grid (shows matches on hover)
-- ✅ TM selector in Preferences
-
-**Phase 10: TM Matching + QA Systems** (IN PROGRESS)
-
-Two separate systems, both built from TM upload:
-
-```
-SYSTEM 1: TM MATCHING (WebTranslatorNew)
-├── QWEN Embeddings + FAISS + PKL
-├── 5-Tier Cascade + Single Threshold (92%)
-├── Display: Perfect tiers = show if exists, Embedding = top 3
-└── Purpose: Suggestions in Edit Modal
-
-+ NPC (Neil's Probabilistic Check)
-├── Reuses TM results (no extra Source matching)
-├── Cosine similarity: User Target vs TM Targets
-├── Threshold: 80% (lenient)
-└── Purpose: Verify translation consistency
-
-SYSTEM 2: QA CHECKS (QuickSearch)
-├── Word Check: Aho-Corasick (scans full text, finds all terms)
-├── Line Check: Dict lookup (split by \n, lookup each line)
-└── Purpose: Find errors/inconsistencies
-```
-
-**Key Architecture:**
-- Universal newline normalization (`\n`, `\\n`, `<br/>`, `&lt;br/&gt;` → `\n`)
-- DB stores canonical `\n` format
-- Embed BOTH Source AND Target (for NPC)
-
-**TM DB Sync:**
-```
-DB = CENTRAL (always up-to-date)
-├── Re-upload TM → INSERT/UPDATE/DELETE instantly
-├── Ctrl+S confirm → INSERT or UPDATE (if TM active)
-└── Multi-user: everyone updates same DB
-
-FAISS = LOCAL (synced on demand)
-├── [Synchronize TM] button
-├── Pull DB → diff → embed new/changed only
-└── Rebuild FAISS, Aho-Corasick, Line Dict
-```
-
-**Remaining Implementation:**
-- [ ] TM DB Sync: 3 triggers (re-upload, Ctrl+S, [Synchronize TM])
-- [ ] SYSTEM 1: QWEN + FAISS + 5-Tier (92% threshold)
-- [ ] NPC: [NPC] button + Target embedding + cosine sim (80%)
-- [ ] SYSTEM 2 Word Check: Aho-Corasick automaton (pyahocorasick)
-- [ ] SYSTEM 2 Line Check: Dict lookup per line
-- [ ] Universal newline normalizer
-- [ ] QA panel in Edit Modal
-
-**Skipped:** Spell/Grammar check (no MIT multi-lang library)
+- TM matching (Qwen + FAISS 5-tier)
+- QA checks (Word Check, Line Check)
+- Custom file pickers
 
 **Details:** [P25_LDM_UX_OVERHAUL.md](docs/wip/P25_LDM_UX_OVERHAUL.md)
 
 ---
 
-### P24: Server Status Dashboard ✅ COMPLETE
+## Completed (Recent)
 
-Real-time health monitoring for Central Server.
-
-**Backend API:**
-- ✅ `GET /api/health/simple` - green/orange/red status
-- ✅ `GET /api/health/status` - detailed metrics (auth required)
-- ✅ `GET /api/health/ping` - ultra-simple ping/pong
-
-**Frontend:**
-- ✅ ServerStatus.svelte - visual health modal
-- ✅ Auto-refresh every 30 seconds
-- ✅ API, Database, WebSocket indicators
-
-**Details:** [P24_STATUS_DASHBOARD.md](docs/wip/P24_STATUS_DASHBOARD.md)
-
----
-
-### P17: LDM LanguageData Manager (80%)
-
-Professional CAT tool with real-time collaboration.
-
-**What's Done:**
-- ✅ Virtual scroll grid (1M+ rows)
-- ✅ File Explorer (projects, folders)
-- ✅ Real-time WebSocket sync + Row locking
-- ✅ TM Database + TMManager + TMIndexer
-- ✅ TM Upload UI (TMManager, TMUploadModal)
-- ✅ Reference column + TM column
-- ✅ Preferences with TM/Reference selectors
-
-**What's Next:**
-- Custom Excel picker (column selection)
-- Custom XML picker (attribute selection)
-- QA: Glossary, Inconsistency, Numbers checks
-
-**Details:** [P17_LDM_TASKS.md](docs/wip/P17_LDM_TASKS.md)
-
----
-
-### Known Issues ✅ ALL FIXED
-
-| ID | Status | Description |
-|----|--------|-------------|
-| ~~BUG-001~~ | ✅ Fixed | Go to row removed |
-| ~~BUG-002~~ | ✅ Fixed | Target lock blocking editing |
-| ~~BUG-003~~ | ✅ Fixed | Upload tooltip z-index |
-| ~~BUG-004~~ | ✅ Fixed | Search bar requires icon click |
-| ~~ISSUE-011~~ | ✅ Fixed | TM Upload UI (TMManager, TMUploadModal) |
-| ~~ISSUE-013~~ | ✅ Fixed | WebSocket locking re-enabled |
-
-**Details:** [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md)
+| Priority | What | Status |
+|----------|------|--------|
+| P33 | Offline Mode + CI Overhaul | 95% ✅ |
+| P28 | NSIS Installer | ✅ |
+| P27 | Svelte 5 + Modern Stack | ✅ |
+| P26 | Security Vulnerabilities | ✅ |
+| P24 | Server Status Dashboard | ✅ |
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│         Development (localhost)          │
-├─────────────────────────────────────────┤
-│  LocaNext Desktop                       │
-│       ↓                                 │
-│  FastAPI Backend (localhost:8888)       │
-│       ↓                                 │
-│  PostgreSQL (localhost:5432)            │
-│       ↓                                 │
-│  Local Indexes (FAISS, embeddings)      │
-└─────────────────────────────────────────┘
+LocaNext.exe (User PC)              Central PostgreSQL
+├─ Electron + Svelte 5          →   ├─ All text data
+├─ Embedded Python Backend          ├─ Users, sessions
+├─ FAISS indexes (local)            ├─ LDM rows, TM entries
+├─ Qwen model (local)               └─ Logs, telemetry
+└─ File parsing (local)
 
-Central = PostgreSQL (text data)
-Local = Heavy processing (FAISS, ML - rebuildable)
+ONLINE:  PostgreSQL (multi-user, WebSocket sync)
+OFFLINE: SQLite (single-user, CI testing)
 ```
-
----
-
-## Recently Completed (2025-12-14)
-
-### CI/CD Hardening ✅
-All "forever" fixes - eliminated failure modes entirely:
-- **Server persistence:** `nohup` + `disown` for background server in CI
-- **Fast startup:** Lazy import SentenceTransformer (28s → 4.2s)
-- **Self-healing admin:** Auto-reset credentials if corrupted by tests
-- **Robust Windows build:** Use env vars, no network calls for version
-
-### Security Audit ✅
-- Full vulnerability scan of pip + npm dependencies
-- 39+ vulnerabilities documented with CVE details
-- Prioritized fix plan created (5 phases)
-- See: `docs/wip/SECURITY_VULNERABILITIES.md`, `docs/wip/SECURITY_FIX_PLAN.md`
-
-### P25 Phases 6-9 ✅ (2025-12-12)
-- Phase 6: Right-click menu (already existed)
-- Phase 8: Reference column with file selector + match modes
-- Phase 9: TM integration with TMManager, TMUploadModal, TM column
-- Preferences enhanced: TM selector, Reference selector
-
-### P24: Server Status Dashboard ✅
-- health.py API (simple, status, ping endpoints)
-- ServerStatus.svelte modal
-- LDM toolbar integration
 
 ---
 
@@ -362,17 +100,15 @@ All "forever" fixes - eliminated failure modes entirely:
 ```bash
 # Start servers
 ./scripts/start_all_servers.sh
-# OR manually:
-python3 server/main.py
 
-# Start frontend
-cd locaNext && npm run electron:dev
+# Build frontend
+cd locaNext && npm run build
 
-# Testing
-python3 -m pytest tests/unit/ -v  # 595 tests
+# Run tests
+python3 -m pytest tests/integration/test_api_true_simulation.py tests/security/ -v
 
-# Check session context
-cat docs/wip/SESSION_CONTEXT.md
+# Test SQLite mode
+DATABASE_MODE=sqlite python3 server/main.py
 ```
 
 ---
@@ -380,11 +116,10 @@ cat docs/wip/SESSION_CONTEXT.md
 ## Key Principles
 
 1. **Monolith is Sacred** - Copy logic exactly, only change UI
-2. **PostgreSQL Only** - No SQLite in LocaNext core
-3. **Central = Text, Local = Heavy** - Data architecture
-4. **Log Everything** - Use `logger`, never `print()`
-5. **localhost OK for dev** - Server URL config is for production
+2. **Central = Text, Local = Heavy** - PostgreSQL for data, local for FAISS/Qwen
+3. **Log Everything** - Use `logger`, never `print()`
+4. **Real Tests Only** - No mocks, TestClient with real API calls
 
 ---
 
-*For session context, see [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)*
+*For session details: [SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)*

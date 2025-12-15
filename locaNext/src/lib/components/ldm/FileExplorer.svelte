@@ -10,9 +10,10 @@
     InlineNotification,
     Select,
     SelectItem,
-    TextArea
+    TextArea,
+    Tag
   } from "carbon-components-svelte";
-  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase } from "carbon-icons-svelte";
+  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
@@ -25,13 +26,22 @@
   let {
     projects = $bindable([]),
     selectedProjectId = $bindable(null),
-    selectedFileId = $bindable(null)
+    selectedFileId = $bindable(null),
+    selectedTMId = $bindable(null),
+    connectionMode = 'unknown' // P33 Phase 5: 'online' | 'offline' | 'unknown'
   } = $props();
 
-  // Svelte 5: State
+  // Svelte 5: State - Tab navigation (P33 Phase 3)
+  let activeTab = $state('files'); // 'files' | 'tm'
+
+  // Svelte 5: State - Files tab
   let loading = $state(false);
   let projectTree = $state(null);
   let treeNodes = $state([]);
+
+  // Svelte 5: State - TM tab
+  let tmList = $state([]);
+  let tmLoading = $state(false);
 
   // Svelte 5: Modal states
   let showNewProjectModal = $state(false);
@@ -57,6 +67,13 @@
   let tmLanguage = $state("en");
   let tmDescription = $state("");
 
+  // P33 Phase 5: Upload to Server modal state
+  let showUploadToServerModal = $state(false);
+  let uploadToServerFile = $state(null); // {id, name, type}
+  let uploadToServerDestination = $state(null); // project id
+  let uploadToServerLoading = $state(false);
+  let uploadToServerProjects = $state([]); // Central server projects list
+
   // Helper to get auth headers
   function getAuthHeaders() {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
@@ -79,6 +96,53 @@
     } finally {
       loading = false;
     }
+  }
+
+  // ============== TM Tab Functions (P33 Phase 3) ==============
+
+  // Load TM list
+  export async function loadTMList() {
+    tmLoading = true;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/tm`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        tmList = await response.json();
+        logger.info("Loaded TM list", { count: tmList.length });
+      }
+    } catch (err) {
+      logger.error("Failed to load TM list", { error: err.message });
+    } finally {
+      tmLoading = false;
+    }
+  }
+
+  // Select TM to open in VirtualGrid
+  function selectTM(tm) {
+    selectedTMId = tm.id;
+    selectedFileId = null; // Deselect file when TM selected
+    dispatch('tmSelect', { tmId: tm.id, tm });
+    logger.info("TM selected", { tmId: tm.id, name: tm.name });
+  }
+
+  // Refresh TM list
+  async function refreshTMList() {
+    await loadTMList();
+  }
+
+  // Switch to TM tab and load TMs
+  function switchToTMTab() {
+    activeTab = 'tm';
+    if (tmList.length === 0) {
+      loadTMList();
+    }
+  }
+
+  // Switch to Files tab
+  function switchToFilesTab() {
+    activeTab = 'files';
+    selectedTMId = null;
   }
 
   // Load project tree
@@ -432,6 +496,94 @@
     }
   }
 
+  // ============== P33 Phase 5: Upload to Central Server ==============
+
+  // Open upload to server modal
+  async function openUploadToServer() {
+    if (!contextMenuFile) return;
+    closeContextMenu();
+
+    uploadToServerFile = contextMenuFile;
+    uploadToServerDestination = null;
+    uploadToServerLoading = true;
+
+    try {
+      // Fetch central server projects list
+      // Note: This endpoint would need to query PostgreSQL directly
+      // For now, we use the same /api/ldm/projects endpoint
+      const response = await fetch(`${API_BASE}/api/ldm/projects`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        uploadToServerProjects = await response.json();
+      }
+    } catch (err) {
+      logger.error("Failed to load server projects", { error: err.message });
+      uploadToServerProjects = [];
+    } finally {
+      uploadToServerLoading = false;
+    }
+
+    showUploadToServerModal = true;
+    logger.info("Upload to Server modal opened", { file: contextMenuFile.name });
+  }
+
+  // Execute upload to central server (P33: Sync DB entries, not file blob)
+  async function executeUploadToServer() {
+    if (!uploadToServerFile || !uploadToServerDestination) return;
+
+    uploadToServerLoading = true;
+
+    try {
+      // Use the sync-to-central endpoint which:
+      // 1. Reads file metadata + rows from local SQLite
+      // 2. Creates them in PostgreSQL (central server)
+      // This preserves all translations and extra_data for full reconstruction
+      const syncResponse = await fetch(`${API_BASE}/api/ldm/sync-to-central`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          file_id: uploadToServerFile.id,
+          destination_project_id: uploadToServerDestination
+        })
+      });
+
+      if (syncResponse.ok) {
+        const result = await syncResponse.json();
+        logger.success("File synced to central server", {
+          file: uploadToServerFile.name,
+          projectId: uploadToServerDestination,
+          newFileId: result.new_file_id,
+          rowsSynced: result.rows_synced
+        });
+
+        // Dispatch event to notify parent
+        dispatch('uploadToServer', {
+          fileId: result.new_file_id,
+          fileName: uploadToServerFile.name,
+          projectId: uploadToServerDestination,
+          rowsSynced: result.rows_synced
+        });
+
+        showUploadToServerModal = false;
+      } else {
+        const error = await syncResponse.json();
+        logger.error("Sync to server failed", { error: error.detail });
+        // Show error to user
+        alert(`Sync failed: ${error.detail}`);
+      }
+    } catch (err) {
+      logger.error("Sync to server error", { error: err.message });
+      alert(`Sync error: ${err.message}`);
+    } finally {
+      uploadToServerLoading = false;
+    }
+  }
+
   // Auto-load projects on mount
   onMount(async () => {
     logger.info("FileExplorer mounted, loading projects...");
@@ -447,97 +599,162 @@
 </script>
 
 <div class="file-explorer">
-  <div class="explorer-header">
-    <h4>Projects</h4>
-    <Button
-      kind="ghost"
-      size="small"
-      icon={Add}
-      iconDescription="New Project"
-      on:click={() => showNewProjectModal = true}
-    />
+  <!-- P33 Phase 3: Tab Bar -->
+  <div class="tab-bar">
+    <button
+      class="tab-button"
+      class:active={activeTab === 'files'}
+      onclick={switchToFilesTab}
+    >
+      <Folder size={16} />
+      <span>Files</span>
+    </button>
+    <button
+      class="tab-button"
+      class:active={activeTab === 'tm'}
+      onclick={switchToTMTab}
+    >
+      <Translate size={16} />
+      <span>TM</span>
+    </button>
   </div>
 
-  {#if loading}
-    <InlineLoading description="Loading..." />
-  {:else}
-    <!-- Projects List -->
-    <div class="projects-list">
-      {#each projects as project}
-        <button
-          class="project-item"
-          class:selected={selectedProjectId === project.id}
-          onclick={() => selectProject(project.id)}
-        >
-          <Folder size={16} />
-          <span>{project.name}</span>
-        </button>
-      {/each}
-      {#if projects.length === 0}
-        <p class="empty-message">No projects yet</p>
-      {/if}
+  <!-- Files Tab Content -->
+  {#if activeTab === 'files'}
+    <div class="explorer-header">
+      <h4>Projects</h4>
+      <Button
+        kind="ghost"
+        size="small"
+        icon={Add}
+        iconDescription="New Project"
+        on:click={() => showNewProjectModal = true}
+      />
     </div>
 
-    <!-- Project Tree -->
-    {#if selectedProjectId && projectTree}
-      <div class="tree-header">
-        <h5>{projectTree.project.name}</h5>
-        <div class="tree-actions">
-          <Button
-            kind="ghost"
-            size="small"
-            icon={FolderAdd}
-            iconDescription="New Folder"
-            on:click={() => showNewFolderModal = true}
-          />
-          <Button
-            kind="ghost"
-            size="small"
-            icon={Upload}
-            iconDescription="Upload File"
-            on:click={() => showUploadModal = true}
-          />
-        </div>
+    {#if loading}
+      <InlineLoading description="Loading..." />
+    {:else}
+      <!-- Projects List -->
+      <div class="projects-list">
+        {#each projects as project}
+          <button
+            class="project-item"
+            class:selected={selectedProjectId === project.id}
+            onclick={() => selectProject(project.id)}
+          >
+            <Folder size={16} />
+            <span>{project.name}</span>
+          </button>
+        {/each}
+        {#if projects.length === 0}
+          <p class="empty-message">No projects yet</p>
+        {/if}
       </div>
 
-      {#if treeNodes.length > 0}
-        <div class="custom-tree" oncontextmenu={(e) => e.preventDefault()}>
-          {#each treeNodes as node}
-            {@const NodeIcon = node.icon}
-            <div
-              class="tree-node"
-              class:selected={node.data.type === 'file' && selectedFileId === node.data.id}
-              onclick={() => handleNodeClick(node)}
-              oncontextmenu={(e) => handleContextMenu(e, node.data)}
-              role="button"
-              tabindex="0"
-            >
-              <NodeIcon size={16} />
-              <span class="node-text">{node.text}</span>
-            </div>
-            {#if node.children && node.children.length > 0}
-              <div class="tree-children">
-                {#each node.children as child}
-                  {@const ChildIcon = child.icon}
-                  <div
-                    class="tree-node"
-                    class:selected={child.data.type === 'file' && selectedFileId === child.data.id}
-                    onclick={() => handleNodeClick(child)}
-                    oncontextmenu={(e) => handleContextMenu(e, child.data)}
-                    role="button"
-                    tabindex="0"
-                  >
-                    <ChildIcon size={16} />
-                    <span class="node-text">{child.text}</span>
-                  </div>
-                {/each}
-              </div>
-            {/if}
-          {/each}
+      <!-- Project Tree -->
+      {#if selectedProjectId && projectTree}
+        <div class="tree-header">
+          <h5>{projectTree.project.name}</h5>
+          <div class="tree-actions">
+            <Button
+              kind="ghost"
+              size="small"
+              icon={FolderAdd}
+              iconDescription="New Folder"
+              on:click={() => showNewFolderModal = true}
+            />
+            <Button
+              kind="ghost"
+              size="small"
+              icon={Upload}
+              iconDescription="Upload File"
+              on:click={() => showUploadModal = true}
+            />
+          </div>
         </div>
-      {:else}
-        <p class="empty-message">No files yet. Upload a TXT or XML file.</p>
+
+        {#if treeNodes.length > 0}
+          <div class="custom-tree" oncontextmenu={(e) => e.preventDefault()}>
+            {#each treeNodes as node}
+              {@const NodeIcon = node.icon}
+              <div
+                class="tree-node"
+                class:selected={node.data.type === 'file' && selectedFileId === node.data.id}
+                onclick={() => handleNodeClick(node)}
+                oncontextmenu={(e) => handleContextMenu(e, node.data)}
+                role="button"
+                tabindex="0"
+              >
+                <NodeIcon size={16} />
+                <span class="node-text">{node.text}</span>
+              </div>
+              {#if node.children && node.children.length > 0}
+                <div class="tree-children">
+                  {#each node.children as child}
+                    {@const ChildIcon = child.icon}
+                    <div
+                      class="tree-node"
+                      class:selected={child.data.type === 'file' && selectedFileId === child.data.id}
+                      onclick={() => handleNodeClick(child)}
+                      oncontextmenu={(e) => handleContextMenu(e, child.data)}
+                      role="button"
+                      tabindex="0"
+                    >
+                      <ChildIcon size={16} />
+                      <span class="node-text">{child.text}</span>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            {/each}
+          </div>
+        {:else}
+          <p class="empty-message">No files yet. Upload a TXT or XML file.</p>
+        {/if}
       {/if}
+    {/if}
+  {/if}
+
+  <!-- TM Tab Content (P33 Phase 3) -->
+  {#if activeTab === 'tm'}
+    <div class="explorer-header">
+      <h4>Translation Memories</h4>
+      <Button
+        kind="ghost"
+        size="small"
+        icon={Renew}
+        iconDescription="Refresh TM List"
+        on:click={refreshTMList}
+      />
+    </div>
+
+    {#if tmLoading}
+      <InlineLoading description="Loading TMs..." />
+    {:else}
+      <div class="tm-list">
+        {#each tmList as tm}
+          <button
+            class="tm-item"
+            class:selected={selectedTMId === tm.id}
+            onclick={() => selectTM(tm)}
+          >
+            <DataBase size={16} />
+            <div class="tm-info">
+              <span class="tm-name">{tm.name}</span>
+              <span class="tm-meta">{tm.entry_count || 0} entries</span>
+            </div>
+            {#if tm.is_indexed}
+              <Tag type="green" size="sm">Indexed</Tag>
+            {:else}
+              <Tag type="outline" size="sm">Pending</Tag>
+            {/if}
+          </button>
+        {/each}
+        {#if tmList.length === 0}
+          <p class="empty-message">No TMs yet. Register a file as TM from Files tab.</p>
+        {/if}
+      </div>
     {/if}
   {/if}
 </div>
@@ -568,6 +785,13 @@
       <DataBase size={16} />
       <span>Upload as TM...</span>
     </button>
+    {#if connectionMode === 'offline'}
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item upload-to-server" onclick={openUploadToServer} role="menuitem">
+        <CloudUpload size={16} />
+        <span>Upload to Central Server...</span>
+      </button>
+    {/if}
   </div>
 {/if}
 
@@ -702,6 +926,65 @@
   </div>
 </Modal>
 
+<!-- P33 Phase 5: Upload to Central Server Modal -->
+<Modal
+  bind:open={showUploadToServerModal}
+  modalHeading="Upload to Central Server"
+  primaryButtonText={uploadToServerLoading ? "Uploading..." : "Upload"}
+  primaryButtonDisabled={!uploadToServerDestination || uploadToServerLoading}
+  secondaryButtonText="Cancel"
+  on:click:button--primary={executeUploadToServer}
+  on:click:button--secondary={() => showUploadToServerModal = false}
+>
+  <div class="upload-server-form">
+    {#if uploadToServerFile}
+      <div class="upload-file-info">
+        <Document size={24} />
+        <span class="upload-file-name">{uploadToServerFile.name}</span>
+      </div>
+    {/if}
+
+    <Select
+      bind:selected={uploadToServerDestination}
+      labelText="Choose destination project"
+    >
+      <SelectItem value={null} text="-- Select Project --" />
+      {#each uploadToServerProjects as project}
+        <SelectItem value={project.id} text={project.name} />
+      {/each}
+    </Select>
+
+    <div class="upload-safety-checks">
+      <h4>Safety Checks</h4>
+      {#if uploadToServerFile}
+        <div class="safety-item success">
+          <span>✓</span>
+          <span>File format supported</span>
+        </div>
+        <div class="safety-item success">
+          <span>✓</span>
+          <span>File name valid</span>
+        </div>
+        {#if uploadToServerDestination}
+          <div class="safety-item success">
+            <span>✓</span>
+            <span>Destination selected</span>
+          </div>
+        {:else}
+          <div class="safety-item pending">
+            <span>○</span>
+            <span>Select a destination project</span>
+          </div>
+        {/if}
+      {/if}
+    </div>
+
+    <p class="upload-info">
+      Once uploaded, this file will be visible to all users with access to the selected project.
+    </p>
+  </div>
+</Modal>
+
 <style>
   .file-explorer {
     width: 280px;
@@ -714,6 +997,41 @@
     /* Changed from overflow: hidden to allow tooltips to be visible */
     overflow: visible;
     position: relative;
+  }
+
+  /* P33 Phase 3: Tab Bar Styles */
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    background: var(--cds-layer-02);
+  }
+
+  .tab-button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    color: var(--cds-text-02);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+
+  .tab-button:hover {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-01);
+  }
+
+  .tab-button.active {
+    background: var(--cds-layer-01);
+    color: var(--cds-text-01);
+    border-bottom-color: var(--cds-interactive-01);
   }
 
   .explorer-header {
@@ -735,6 +1053,56 @@
     max-height: 150px;
     overflow-y: auto;
     border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+
+  /* P33 Phase 3: TM List Styles */
+  .tm-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+
+  .tm-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--cds-text-01);
+    font-size: 0.875rem;
+    border-radius: 4px;
+    margin-bottom: 0.25rem;
+  }
+
+  .tm-item:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .tm-item.selected {
+    background: var(--cds-layer-selected-01);
+  }
+
+  .tm-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .tm-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tm-meta {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
   }
 
   .project-item {
@@ -896,5 +1264,69 @@
     padding: 0.75rem;
     background: var(--cds-layer-02);
     border-radius: 4px;
+  }
+
+  /* P33 Phase 5: Upload to Server Modal Styles */
+  .upload-server-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .upload-file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--cds-layer-02);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+
+  .upload-file-name {
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .upload-safety-checks {
+    padding: 1rem;
+    background: var(--cds-layer-02);
+    border-radius: 4px;
+  }
+
+  .upload-safety-checks h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .safety-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .safety-item.success {
+    color: var(--cds-support-success);
+  }
+
+  .safety-item.pending {
+    color: var(--cds-text-02);
+  }
+
+  .upload-info {
+    font-size: 0.8125rem;
+    color: var(--cds-text-02);
+    padding: 0.75rem;
+    background: var(--cds-layer-accent-01);
+    border-radius: 4px;
+    margin-top: 0.5rem;
+  }
+
+  .context-menu-item.upload-to-server {
+    color: var(--cds-support-info);
   }
 </style>

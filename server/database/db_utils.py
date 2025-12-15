@@ -1,14 +1,19 @@
 """
-Database Utilities - High-Performance Operations (PostgreSQL Only)
+Database Utilities - High-Performance Operations
 
 Optimized database operations for LocaNext:
-- COPY TEXT bulk inserts (3-5x faster than INSERT)
-- Full-Text Search (FTS) using PostgreSQL tsvector
+- COPY TEXT bulk inserts (3-5x faster than INSERT) - PostgreSQL
+- INSERT fallback for SQLite
+- Full-Text Search (FTS) using PostgreSQL tsvector / SQLite LIKE
 - Query optimization helpers
 
 P21 Database Powerhouse - COPY TEXT Implementation
-- Uses COPY FROM STDIN (psycopg2.copy_from)
-- Handles special characters: tabs → spaces, newlines → \\n, backslash → \\\\
+- Uses COPY FROM STDIN (psycopg2.copy_from) on PostgreSQL
+- Falls back to batch INSERT on SQLite
+
+P33 Offline Mode - SQLite Support
+- Automatic detection of database type
+- SQLite-compatible fallbacks for all operations
 """
 
 import hashlib
@@ -18,33 +23,47 @@ from typing import Any, Callable, Generator, List, Optional, Tuple, Type, TypeVa
 from sqlalchemy import insert, text, func
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from loguru import logger
 
 from server.database.models import Base, LDMTMEntry, LDMRow
+from server import config
 
 # Type variable for generic model operations
 T = TypeVar('T', bound=Base)
 
 
 # =============================================================================
-# Database Detection (PostgreSQL-only, kept for compatibility)
+# Database Detection
 # =============================================================================
 
-def is_postgresql(session_or_engine) -> bool:
+def is_postgresql(session_or_engine=None) -> bool:
     """
     Check if database is PostgreSQL.
 
-    Always returns True since LocaNext is PostgreSQL-only.
-    Kept for backwards compatibility with existing code.
+    Uses config.ACTIVE_DATABASE_TYPE set during database setup.
 
     Args:
-        session_or_engine: SQLAlchemy session or engine (ignored)
+        session_or_engine: SQLAlchemy session or engine (ignored, kept for compatibility)
 
     Returns:
-        True (always - PostgreSQL only)
+        True if PostgreSQL, False if SQLite
     """
-    return True
+    return config.ACTIVE_DATABASE_TYPE == "postgresql"
+
+
+def is_sqlite(session_or_engine=None) -> bool:
+    """
+    Check if database is SQLite.
+
+    Uses config.ACTIVE_DATABASE_TYPE set during database setup.
+
+    Args:
+        session_or_engine: SQLAlchemy session or engine (ignored, kept for compatibility)
+
+    Returns:
+        True if SQLite, False if PostgreSQL
+    """
+    return config.ACTIVE_DATABASE_TYPE == "sqlite"
 
 
 # =============================================================================
@@ -89,9 +108,10 @@ def bulk_copy(
     progress_callback: Optional[Callable[[int, int], None]] = None
 ) -> int:
     """
-    High-performance bulk insert using PostgreSQL COPY FROM STDIN.
+    High-performance bulk insert.
 
-    3-5x faster than batch INSERT for large datasets.
+    - PostgreSQL: Uses COPY FROM STDIN (3-5x faster than INSERT)
+    - SQLite: Falls back to batch INSERT
 
     Args:
         db: SQLAlchemy database session
@@ -114,6 +134,12 @@ def bulk_copy(
         return 0
 
     total = len(rows)
+
+    # Use INSERT fallback for SQLite
+    if is_sqlite():
+        return _bulk_copy_sqlite(db, table_name, columns, rows, progress_callback)
+
+    # PostgreSQL: Use COPY TEXT
     logger.info(f"COPY TEXT: Inserting {total:,} rows into {table_name}")
 
     try:
@@ -150,6 +176,62 @@ def bulk_copy(
     except Exception as e:
         db.rollback()
         logger.error(f"COPY TEXT failed for {table_name}: {e}")
+        raise
+
+
+def _bulk_copy_sqlite(
+    db: Session,
+    table_name: str,
+    columns: List[str],
+    rows: List[Tuple],
+    progress_callback: Optional[Callable[[int, int], None]] = None,
+    batch_size: int = 1000
+) -> int:
+    """
+    SQLite fallback for bulk_copy using batch INSERT.
+
+    Args:
+        db: SQLAlchemy database session
+        table_name: Target table name
+        columns: List of column names
+        rows: List of tuples
+        progress_callback: Optional callback for progress
+        batch_size: Number of rows per batch
+
+    Returns:
+        Number of rows inserted
+    """
+    total = len(rows)
+    inserted = 0
+
+    logger.info(f"SQLite INSERT: Inserting {total:,} rows into {table_name}")
+
+    try:
+        # Build column string with named parameters
+        cols_str = ', '.join(f'"{c}"' for c in columns)
+        placeholders = ', '.join(f':{c}' for c in columns)
+        stmt = text(f'INSERT INTO "{table_name}" ({cols_str}) VALUES ({placeholders})')
+
+        for i in range(0, total, batch_size):
+            batch = rows[i:i + batch_size]
+
+            # Execute batch insert
+            for row in batch:
+                params = {columns[j]: row[j] for j in range(len(columns))}
+                db.execute(stmt, params)
+
+            inserted += len(batch)
+
+            if progress_callback:
+                progress_callback(inserted, total)
+
+        db.commit()
+        logger.success(f"SQLite INSERT complete: {inserted:,} rows into {table_name}")
+        return inserted
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"SQLite INSERT failed for {table_name}: {e}")
         raise
 
 
@@ -548,14 +630,21 @@ def add_fts_indexes(db: Session) -> bool:
     """
     Add Full-Text Search columns and indexes to ldm_rows table.
 
+    - PostgreSQL: Creates tsvector columns and GIN indexes
+    - SQLite: Skips (uses LIKE search fallback)
+
     Safe to call multiple times (uses IF NOT EXISTS).
 
     Args:
         db: Database session
 
     Returns:
-        True if indexes added/exist
+        True if indexes added/exist (always True for SQLite)
     """
+    if is_sqlite():
+        logger.info("SQLite: Skipping FTS indexes (using LIKE search)")
+        return True
+
     try:
         logger.info("Adding FTS columns to ldm_rows...")
 
@@ -599,6 +688,9 @@ def add_trigram_index(db: Session, table: str, column: str) -> bool:
     """
     Add trigram GIN index for similarity search.
 
+    - PostgreSQL: Creates pg_trgm GIN index
+    - SQLite: Skips (not supported)
+
     Requires pg_trgm extension (created if not exists).
 
     Args:
@@ -607,8 +699,12 @@ def add_trigram_index(db: Session, table: str, column: str) -> bool:
         column: Column name
 
     Returns:
-        True if index added
+        True if index added (always True for SQLite)
     """
+    if is_sqlite():
+        logger.info(f"SQLite: Skipping trigram index for {table}.{column}")
+        return True
+
     try:
         # Enable pg_trgm extension
         db.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
@@ -687,7 +783,10 @@ def upsert_batch(
     batch_size: int = 1000
 ) -> dict:
     """
-    Upsert records (insert or update if exists) using PostgreSQL ON CONFLICT.
+    Upsert records (insert or update if exists).
+
+    - PostgreSQL: Uses ON CONFLICT DO UPDATE
+    - SQLite: Uses INSERT OR REPLACE
 
     Args:
         db: Database session
@@ -698,10 +797,15 @@ def upsert_batch(
 
     Returns:
         Dict with 'total' count (inserted + updated combined)
-        Note: PostgreSQL ON CONFLICT doesn't distinguish inserts from updates
     """
     if not records:
         return {'total': 0}
+
+    if is_sqlite():
+        return _upsert_batch_sqlite(db, model, records, unique_key, batch_size)
+
+    # PostgreSQL: Use ON CONFLICT
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
 
     total = 0
 
@@ -725,12 +829,56 @@ def upsert_batch(
     return {'total': total}
 
 
+def _upsert_batch_sqlite(
+    db: Session,
+    model: Type[T],
+    records: List[dict],
+    unique_key: str,
+    batch_size: int = 1000
+) -> dict:
+    """
+    SQLite fallback for upsert using INSERT OR REPLACE.
+
+    Args:
+        db: Database session
+        model: SQLAlchemy model class
+        records: List of dictionaries
+        unique_key: Column for conflict detection
+        batch_size: Records per batch
+
+    Returns:
+        Dict with 'total' count
+    """
+    total = 0
+    table_name = model.__tablename__
+
+    for i in range(0, len(records), batch_size):
+        batch = records[i:i + batch_size]
+
+        for record in batch:
+            columns = list(record.keys())
+            cols_str = ', '.join(f'"{c}"' for c in columns)
+            placeholders = ', '.join(f':{c}' for c in columns)
+
+            # SQLite INSERT OR REPLACE
+            stmt = text(f'INSERT OR REPLACE INTO "{table_name}" ({cols_str}) VALUES ({placeholders})')
+            db.execute(stmt, record)
+            total += 1
+
+    db.commit()
+    return {'total': total}
+
+
 # =============================================================================
 # Export utilities
 # =============================================================================
 
 __all__ = [
-    # COPY TEXT (P21 - 3-5x faster)
+    # Database detection
+    'is_postgresql',
+    'is_sqlite',
+
+    # COPY TEXT (P21 - 3-5x faster on PostgreSQL, INSERT fallback on SQLite)
     'bulk_copy',
     'bulk_copy_tm_entries',
     'bulk_copy_rows',
@@ -744,7 +892,7 @@ __all__ = [
     # Text utilities
     'normalize_text_for_hash',
 
-    # FTS
+    # FTS (PostgreSQL tsvector / SQLite LIKE)
     'search_rows_fts',
     'add_fts_indexes',
     'add_trigram_index',

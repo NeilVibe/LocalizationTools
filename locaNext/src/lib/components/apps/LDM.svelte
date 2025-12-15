@@ -2,9 +2,10 @@
   import {
     ToastNotification,
     InlineLoading,
-    Button
+    Button,
+    Tag
   } from "carbon-components-svelte";
-  import { DataBase, Settings, ServerProxy } from "carbon-icons-svelte";
+  import { DataBase, Settings, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import FileExplorer from "$lib/components/ldm/FileExplorer.svelte";
@@ -75,6 +76,18 @@
   let selectedFileId = null;
   let selectedFileName = "";
 
+  // P33 Phase 3: TM selection state
+  let selectedTMId = null;
+  let selectedTMName = "";
+  let viewMode = 'file'; // 'file' | 'tm' - what's displayed in VirtualGrid
+
+  // P33 Phase 4: Connection status
+  let connectionStatus = $state({
+    mode: 'unknown', // 'online' | 'offline' | 'unknown'
+    canSync: false,
+    dbType: 'unknown'
+  });
+
   // Component refs
   let fileExplorer;
   let virtualGrid;
@@ -110,12 +123,84 @@
   }
 
   /**
+   * P33 Phase 4: Fetch connection status for Online/Offline badge
+   */
+  async function fetchConnectionStatus() {
+    try {
+      const response = await fetch(`${API_BASE}/api/status`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const status = await response.json();
+        connectionStatus = {
+          mode: status.connection_mode,
+          canSync: status.can_sync,
+          dbType: status.database_type
+        };
+        logger.info("Connection status", connectionStatus);
+      }
+    } catch (err) {
+      connectionStatus = {
+        mode: 'offline',
+        canSync: false,
+        dbType: 'unknown'
+      };
+      logger.warn("Could not fetch connection status", { error: err.message });
+    }
+  }
+
+  // P33 Phase 5: Go Online state
+  let goingOnline = $state(false);
+  let goOnlineMessage = $state('');
+
+  /**
+   * P33 Phase 5: Attempt to go online (reconnect to PostgreSQL)
+   */
+  async function handleGoOnline() {
+    goingOnline = true;
+    goOnlineMessage = '';
+
+    try {
+      logger.apiCall("/api/go-online", "POST");
+      const response = await fetch(`${API_BASE}/api/go-online`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+
+      const result = await response.json();
+      logger.info("Go online result", result);
+
+      if (result.success) {
+        if (result.action_required === 'restart') {
+          goOnlineMessage = 'PostgreSQL is available! Restart the app to go online.';
+          // Optionally show a toast notification
+        } else {
+          goOnlineMessage = 'Already online!';
+          await fetchConnectionStatus(); // Refresh status
+        }
+      } else {
+        goOnlineMessage = result.message || 'Could not connect to PostgreSQL';
+      }
+    } catch (err) {
+      logger.error("Go online failed", { error: err.message });
+      goOnlineMessage = 'Failed to check connection';
+    } finally {
+      goingOnline = false;
+    }
+  }
+
+  /**
    * Handle file selection from explorer
    */
   function handleFileSelect(event) {
     const { fileId, file } = event.detail;
     selectedFileId = fileId;
     selectedFileName = file.name;
+    // P33: Clear TM selection when file is selected
+    selectedTMId = null;
+    selectedTMName = "";
+    viewMode = 'file';
     logger.userAction("File selected", { fileId, name: file.name });
   }
 
@@ -128,6 +213,20 @@
     selectedFileId = null;
     selectedFileName = "";
     logger.userAction("Project selected", { projectId });
+  }
+
+  /**
+   * P33 Phase 3: Handle TM selection from explorer
+   */
+  function handleTMSelect(event) {
+    const { tmId, tm } = event.detail;
+    selectedTMId = tmId;
+    selectedTMName = tm.name;
+    // Clear file selection when TM is selected
+    selectedFileId = null;
+    selectedFileName = "";
+    viewMode = 'tm';
+    logger.userAction("TM selected", { tmId, name: tm.name });
   }
 
   // ================================
@@ -454,6 +553,8 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     loading = true;
 
     await checkHealth();
+    // P33 Phase 4: Fetch connection status for Online/Offline badge
+    await fetchConnectionStatus();
     // FileExplorer now auto-loads projects on its own mount
     // No need to call fileExplorer.loadProjects() here
 
@@ -479,14 +580,18 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     </div>
   {:else}
     <div class="ldm-layout">
-      <!-- File Explorer Sidebar -->
+      <!-- File Explorer Sidebar (P33: Now with Files/TM tabs) -->
       <FileExplorer
         bind:this={fileExplorer}
         bind:projects
         bind:selectedProjectId
         bind:selectedFileId
+        bind:selectedTMId
+        connectionMode={connectionStatus.mode}
         on:fileSelect={handleFileSelect}
         on:projectSelect={handleProjectSelect}
+        on:tmSelect={handleTMSelect}
+        on:uploadToServer={(e) => logger.info("Upload to server requested", e.detail)}
       />
 
       <!-- Main Content Area -->
@@ -495,6 +600,34 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
         <div class="ldm-toolbar">
           <div class="toolbar-left">
             <span class="toolbar-title">LanguageData Manager</span>
+            <!-- P33 Phase 4-5: Online/Offline Status Badge + Go Online Button -->
+            {#if connectionStatus.mode === 'online'}
+              <Tag type="green" size="sm">
+                <Cloud size={12} style="margin-right: 4px;" />
+                Online
+              </Tag>
+            {:else if connectionStatus.mode === 'offline'}
+              <Tag type="outline" size="sm">
+                <CloudOffline size={12} style="margin-right: 4px;" />
+                Offline
+              </Tag>
+              <!-- P33 Phase 5: Go Online button -->
+              <Button
+                kind="ghost"
+                size="small"
+                icon={Renew}
+                iconDescription="Try to reconnect to server"
+                disabled={goingOnline}
+                on:click={handleGoOnline}
+              >
+                {goingOnline ? 'Checking...' : 'Go Online'}
+              </Button>
+              {#if goOnlineMessage}
+                <span class="go-online-message">{goOnlineMessage}</span>
+              {/if}
+            {:else}
+              <Tag type="gray" size="sm">...</Tag>
+            {/if}
           </div>
           <div class="toolbar-right">
             <Button
@@ -524,11 +657,32 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
         </div>
 
         <!-- Virtual Grid Main Area (handles 1M+ rows) -->
-        <VirtualGrid
-          bind:this={virtualGrid}
-          fileId={selectedFileId}
-          fileName={selectedFileName}
-        />
+        {#if viewMode === 'file'}
+          <VirtualGrid
+            bind:this={virtualGrid}
+            fileId={selectedFileId}
+            fileName={selectedFileName}
+          />
+        {:else if viewMode === 'tm' && selectedTMId}
+          <!-- P33: TM View - placeholder for TM editing -->
+          <div class="tm-view-placeholder">
+            <DataBase size={48} />
+            <h3>Translation Memory: {selectedTMName}</h3>
+            <p>TM editing coming soon. Use TM Manager for now.</p>
+            <Button
+              kind="tertiary"
+              on:click={() => showTMManager = true}
+            >
+              Open TM Manager
+            </Button>
+          </div>
+        {:else}
+          <VirtualGrid
+            bind:this={virtualGrid}
+            fileId={selectedFileId}
+            fileName={selectedFileName}
+          />
+        {/if}
       </div>
     </div>
   {/if}
@@ -605,5 +759,38 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     display: flex;
     align-items: center;
     gap: 0.25rem;
+  }
+
+  /* P33 Phase 5: Go Online message */
+  .go-online-message {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    margin-left: 0.5rem;
+    font-style: italic;
+  }
+
+  /* P33 Phase 3: TM View Placeholder */
+  .tm-view-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+    color: var(--cds-text-02);
+    text-align: center;
+  }
+
+  .tm-view-placeholder h3 {
+    margin: 0;
+    color: var(--cds-text-01);
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .tm-view-placeholder p {
+    margin: 0;
+    max-width: 400px;
   }
 </style>

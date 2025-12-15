@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from loguru import logger
 
-from server.database.db_setup import get_session_maker, create_database_engine, initialize_database as init_db_tables
+from server.database.db_setup import get_session_maker, create_database_engine, initialize_database as init_db_tables, setup_database
 from server.utils.auth import get_current_user, is_admin
 from server import config
 
@@ -31,17 +31,21 @@ _async_engine_loop = None  # Track which event loop the async engine was created
 
 
 def initialize_database():
-    """Initialize database engine, session maker, and create tables (call once at startup)."""
+    """
+    Initialize database engine, session maker, and create tables (call once at startup).
+
+    P33 Offline Mode:
+    - Uses setup_database() which handles DATABASE_MODE auto-detection
+    - If DATABASE_MODE=auto and PostgreSQL unreachable → uses SQLite
+    - If DATABASE_MODE=postgresql → fails if PostgreSQL unreachable
+    - If DATABASE_MODE=sqlite → uses SQLite directly
+    """
     global _engine, _session_maker
 
     if _engine is None:
-        _engine = create_database_engine(echo=config.DB_ECHO)
-        _session_maker = get_session_maker(_engine)
-
-        # Create tables if they don't exist (safe to call multiple times)
-        init_db_tables(_engine)
-
-        logger.info("Database initialized: PostgreSQL")
+        # Use setup_database() for proper mode handling (P33 Offline Mode)
+        _engine, _session_maker = setup_database(echo=config.DB_ECHO)
+        logger.info(f"Database initialized: {config.ACTIVE_DATABASE_TYPE.upper()}")
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -89,9 +93,20 @@ def get_sync_engine():
 
 
 def initialize_async_database():
-    """Initialize async database engine and session maker (call once at startup)."""
+    """
+    Initialize async database engine and session maker (call once at startup).
+
+    P33 Offline Mode:
+    - SQLite: Skip async initialization (pysqlite is not async)
+    - PostgreSQL: Initialize async engine with asyncpg
+    """
     import asyncio
     global _async_engine, _async_session_maker, _async_engine_loop
+
+    # Skip async database for SQLite (pysqlite is not async)
+    if config.ACTIVE_DATABASE_TYPE == "sqlite":
+        logger.info("Async database skipped: SQLite mode (using sync database only)")
+        return
 
     # Get current event loop
     try:
@@ -140,6 +155,10 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     NOTE: Auto-commits on success, auto-rollbacks on exception.
     For explicit transaction control, use session.begin() in endpoint.
 
+    P33 Offline Mode:
+    - SQLite: Falls back to sync session (wrapped for async compatibility)
+    - PostgreSQL: Uses async session
+
     Yields:
         Async database session.
 
@@ -151,6 +170,24 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """
     if _async_session_maker is None:
         initialize_async_database()
+
+    # SQLite mode: async_session_maker is None, use sync session
+    if _async_session_maker is None:
+        # Fallback to sync session for SQLite mode
+        # Note: This works because sync sessions can be used in async context
+        # but won't benefit from async I/O
+        if _session_maker is None:
+            initialize_database()
+        session = _session_maker()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+        return
 
     async with _async_session_maker() as session:
         try:

@@ -665,6 +665,14 @@ tests/
 locaNext/electron/
 ├── main.js
 ├── preload.js
+├── bootstrap.js
+├── first-run-setup.js
+├── health-check.js
+└── ...
+
+tools/
+├── download_model.py
+├── install_deps.py
 └── ...
 ```
 
@@ -675,6 +683,68 @@ locaNext/electron/
 - [ ] IPC channels validated?
 - [ ] File system access restricted?
 - [ ] Auto-updater signed?
+
+**Review Focus (PATH LOGIC CRITICAL):**
+- [ ] **All path logic tested in BOTH dev AND packaged modes?**
+- [ ] Scripts in `tools/` account for being inside `resources/` when packaged?
+- [ ] `__file__` based paths go up correct number of levels?
+- [ ] `process.execPath` vs `__dirname` vs `app.getAppPath()` used correctly?
+- [ ] Model paths match between downloader and verifier?
+- [ ] First-run setup paths match runtime paths?
+
+**Packaged App Structure Gotchas (CRITICAL):**
+```
+DEV MODE:
+  project/
+  ├── tools/download_model.py     # __file__.parent.parent = project/
+  ├── models/qwen-embedding/      # Target: project/models/
+  └── locaNext/electron/main.js
+
+PACKAGED MODE:
+  LocaNext/
+  ├── LocaNext.exe
+  ├── resources/
+  │   ├── tools/download_model.py  # __file__.parent = resources/ (NOT app root!)
+  │   └── app.asar
+  └── models/qwen-embedding/       # Target: LocaNext/models/ (app root)
+
+KEY DIFFERENCE:
+  - Dev: tools/ is at project root
+  - Packaged: tools/ is inside resources/
+  - Path logic MUST detect which mode and adjust accordingly
+```
+
+**Path Detection Pattern (Python):**
+```python
+def get_app_root():
+    script_dir = Path(__file__).parent
+    parent = script_dir.parent
+
+    # Detect packaged app: parent is 'resources' folder
+    if parent.name == "resources":
+        # Packaged: go up TWO levels (resources/tools -> app root)
+        return parent.parent
+    else:
+        # Dev: go up ONE level (tools -> project root)
+        return parent
+```
+
+**Path Detection Pattern (JavaScript):**
+```javascript
+function getAppRoot() {
+  const isPackaged = !process.execPath.includes('electron');
+  if (isPackaged) {
+    return path.dirname(process.execPath);  // Next to LocaNext.exe
+  } else {
+    return process.cwd();  // Project root in dev
+  }
+}
+```
+
+**Incident Log:**
+| Date | Issue | Root Cause | Prevention |
+|------|-------|------------|------------|
+| 2025-12-15 | Model download path wrong | `tools/` inside `resources/` not handled | Check parent.name == "resources" |
 
 ---
 

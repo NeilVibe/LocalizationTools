@@ -2,7 +2,7 @@
 Database Models for LocalizationTools Server
 
 SQLAlchemy ORM models matching the database schema.
-PostgreSQL only.
+Supports PostgreSQL (online) and SQLite (offline mode).
 """
 
 from datetime import datetime
@@ -11,12 +11,35 @@ import uuid
 
 from sqlalchemy import (
     Column, Integer, BigInteger, String, Text, Float, Boolean, DateTime,
-    ForeignKey, Index, Enum as SQLEnum
+    ForeignKey, Index, Enum as SQLEnum, JSON
 )
-# Note: Using JSONB instead of JSON for PostgreSQL (faster, indexable)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.types import TypeDecorator
+
+# Dialect-agnostic JSON type
+# Uses JSONB on PostgreSQL (faster, indexable) and JSON on SQLite
+class FlexibleJSON(TypeDecorator):
+    """
+    Dialect-agnostic JSON column type.
+
+    - PostgreSQL: Uses JSONB (faster, indexable)
+    - SQLite: Uses JSON (TEXT storage with JSON functions)
+
+    This allows the same models to work with both databases.
+    """
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            from sqlalchemy.dialects.postgresql import JSONB
+            return dialect.type_descriptor(JSONB())
+        else:
+            return dialect.type_descriptor(JSON())
+
+# Alias for backwards compatibility and clarity
+JSONB = FlexibleJSON
 
 Base = declarative_base()
 
@@ -572,6 +595,11 @@ class LDMFile(Base):
     """
     LDM File - Uploaded localization file stored in database.
     Original file parsed into LDMRow entries for editing.
+
+    extra_data stores file-level metadata for FULL reconstruction:
+    - TXT: {"encoding": "utf-8", "total_columns": 10, "column_headers": [...]}
+    - XML: {"root_element": "LangData", "declaration": "<?xml...?>", "namespaces": {...}}
+    - Excel: {"sheet_name": "...", "headers": [...], "total_columns": 5}
     """
     __tablename__ = "ldm_files"
 
@@ -587,6 +615,9 @@ class LDMFile(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     created_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+
+    # File-level metadata for FULL reconstruction (preserves original structure)
+    extra_data = Column(FlexibleJSON, nullable=True)
 
     # Relationships
     project = relationship("LDMProject", back_populates="files")
@@ -606,6 +637,11 @@ class LDMRow(Base):
     """
     LDM Row - Single localization string (source + target).
     Source (StrOrigin) is READ-ONLY, Target (Str) is EDITABLE.
+
+    extra_data stores additional columns/attributes for FULL file reconstruction:
+    - TXT: columns beyond 0-6 → {"col7": "...", "col8": "..."}
+    - XML: attributes beyond stringid/strorigin/str → {"attr1": "...", "attr2": "..."}
+    - Excel: columns beyond A-B → {"C": "...", "D": "..."}
     """
     __tablename__ = "ldm_rows"
 
@@ -624,6 +660,9 @@ class LDMRow(Base):
     status = Column(String(20), default="pending")  # pending, translated, reviewed, approved
     updated_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Extra data for FULL file reconstruction (preserves ALL original data)
+    extra_data = Column(FlexibleJSON, nullable=True)
 
     # Relationships
     file = relationship("LDMFile", back_populates="rows")
