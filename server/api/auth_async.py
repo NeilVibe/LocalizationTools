@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import select
 from loguru import logger
 
@@ -16,7 +17,7 @@ from server.api.schemas import (
     PasswordChange, AdminUserCreate, AdminUserUpdate, AdminPasswordReset
 )
 from server.database.models import User
-from server.utils.dependencies import get_async_db, get_current_active_user_async, require_admin_async
+from server.utils.dependencies import get_db, get_async_db, get_current_active_user_async, require_admin_async
 from server.utils.auth import hash_password, verify_password, create_access_token
 from server.utils.audit_logger import (
     log_login_success,
@@ -56,13 +57,13 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # ============================================================================
 
 @router.post("/login", response_model=Token)
-async def login(
+def login(
     credentials: UserLogin,
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: Session = Depends(get_db)
 ):
     """
-    User login endpoint (ASYNC).
+    User login endpoint (SYNC - works with both PostgreSQL and SQLite).
 
     Returns JWT access token on successful authentication.
     Rate limited: max 5 failed attempts per IP per 15 minutes.
@@ -89,7 +90,7 @@ async def login(
             )
 
     # Find user by username
-    result = await db.execute(
+    result = db.execute(
         select(User).where(User.username == credentials.username)
     )
     user = result.scalar_one_or_none()
@@ -127,7 +128,7 @@ async def login(
 
     # Update last login
     user.last_login = datetime.utcnow()
-    await db.commit()
+    db.commit()
 
     # Create access token
     token_data = {
