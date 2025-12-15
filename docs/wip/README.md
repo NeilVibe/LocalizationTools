@@ -9,18 +9,18 @@
 ### Tier 1: CORE (Current Focus)
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
-| **P32** | [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md) | 🔴 CURRENT | 10 code review issues in LDM API |
+| **P25** | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 🔴 NEXT | TM matching, QA checks (85%) |
 
 ### Tier 2: LATER (Low Priority)
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
-| P25 | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 85% | TM matching, QA - features |
 | P17 | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 80% | Custom pickers - features |
 
 ### Reference / Complete
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
 | P33 | [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md) | ✅ Complete | Offline mode + CI overhaul |
+| P32 | [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md) | ✅ Complete | Code review (9/11 fixed) |
 | P27 | [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) | ✅ Complete | Svelte 5 + Vite 7 + Electron 39 |
 | P26 | [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) | ✅ Complete | Security vulnerability remediation |
 | P17 | [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | Reference | TM System architecture spec |
@@ -79,17 +79,19 @@ Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
 
 **Current Session:** [SESSION_CONTEXT.md](SESSION_CONTEXT.md)
 
-**🔴 CURRENT FOCUS:**
-- **P32:** [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md)
-  - 10 code review issues in LDM API
-  - 1 CRITICAL, 3 HIGH, 5 MEDIUM/LOW
+**🔴 NEXT FOCUS:**
+- **P25:** [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md)
+  - TM matching (Qwen + FAISS 5-tier)
+  - QA checks (Word Check, Line Check)
+  - 85% complete
 
 **✅ RECENTLY COMPLETED:**
 - **P33:** Offline Mode + CI Overhaul (100%)
+- **P32:** Code Review (9/11 fixed, Build 282 ✅)
 
 **Low Priority (Later):**
-- P25/P17: LDM features
+- P17: Custom pickers
 
 ---
 
-*Last Updated: 2025-12-16*
+*Last Updated: 2025-12-16 22:00 KST*
