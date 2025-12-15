@@ -49,3 +49,4 @@ Build LIGHT v2512152010 - SQLite login fix
 Build LIGHT v2512152027 - Fix circular import
 Build LIGHT v2512152043 - Permanent offline auto-login
 Build LIGHT v2512152141 - P32 Code Review + P33 Smoke Fix
+Build LIGHT v2512152244 - Unified CI config
