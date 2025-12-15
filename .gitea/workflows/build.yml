@@ -1498,9 +1498,9 @@ jobs:
             Log "INSTALLER VERIFIED - Phases 1-3 PASSED"
             Log "========================================"
 
-            # === PHASE 4: Optional Backend Test (CI has no PostgreSQL) ===
-            Log "=== PHASE 4: BACKEND TEST (OPTIONAL) ==="
-            Log "NOTE: CI environment has no PostgreSQL - backend test is informational only"
+            # === PHASE 4: Backend Test (SQLite Offline Mode) ===
+            Log "=== PHASE 4: BACKEND TEST (SQLITE OFFLINE MODE) ==="
+            Log "Testing backend with SQLite - no PostgreSQL needed!"
 
             $backendUp = $false
             try {
@@ -1509,12 +1509,16 @@ jobs:
               '{"completedAt":"smoke-test","version":"smoke"}' | Out-File -FilePath $flagFile -Encoding UTF8
               Log "OK: Created first_run_complete.flag"
 
+              # Force SQLite mode by setting DATABASE_MODE=sqlite
+              $env:DATABASE_MODE = "sqlite"
+              Log "OK: Set DATABASE_MODE=sqlite (offline mode)"
+
               $appProc = Start-Process "$installDir\LocaNext.exe" -PassThru
               Log "OK: App started with PID: $($appProc.Id)"
 
-              # Quick check for backend (15 seconds - just informational)
-              Log "Quick backend check (15s timeout)..."
-              $timeout = 15
+              # Backend should start with SQLite (30 seconds timeout)
+              Log "Waiting for backend (SQLite mode, 30s timeout)..."
+              $timeout = 30
               $startTime = Get-Date
 
               while (((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
@@ -1522,20 +1526,25 @@ jobs:
                 try {
                   $health = Invoke-WebRequest -Uri "http://localhost:8888/health" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
                   if ($health.StatusCode -eq 200) {
-                    Log "BONUS: Backend is responding!"
+                    $healthData = $health.Content | ConvertFrom-Json
+                    $dbType = $healthData.database_type
+                    Log "OK: Backend healthy! Database: $dbType"
                     $backendUp = $true
                     break
                   }
                 } catch {
-                  # Expected - CI has no PostgreSQL
+                  # Still starting up
                 }
               }
 
-              if (!$backendUp) {
-                Log "INFO: Backend not responding (expected - no PostgreSQL in CI)"
+              if ($backendUp) {
+                Log "PASS: Backend running in offline mode (SQLite)"
+              } else {
+                Log "WARN: Backend not responding after 30s - check logs"
+                # Don't fail the build - backend test is best-effort
               }
             } catch {
-              Log "INFO: Backend test skipped - $($_.Exception.Message)"
+              Log "WARN: Backend test error - $($_.Exception.Message)"
             } finally {
               # Cleanup app
               if ($appProc -and !$appProc.HasExited) {
@@ -1561,7 +1570,7 @@ jobs:
             Log "- Installer: VERIFIED"
             Log "- Installation: VERIFIED"
             Log "- Files: VERIFIED"
-            if ($backendUp) { Log "- Backend: BONUS PASS" } else { Log "- Backend: SKIPPED (no DB in CI)" }
+            if ($backendUp) { Log "- Backend: PASS (SQLite offline mode)" } else { Log "- Backend: WARN (not responding)" }
             Log "========================================"
 
             Write-Host ""
