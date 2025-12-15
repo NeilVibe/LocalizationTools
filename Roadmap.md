@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512151600 | **Updated**: 2025-12-15 | **Status**: P33 100% Complete
+**Version**: 2512152100 | **Updated**: 2025-12-15 21:00 | **Status**: P33 Build 281 In Progress
 
 > **Session Context**: [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)
 > **WIP Tasks**: [docs/wip/README.md](docs/wip/README.md)
@@ -23,7 +23,7 @@ LocaNext v2512151600
 
 ---
 
-## Current Priority: P33 Offline Mode (100% Complete)
+## Current Priority: P33 Offline Mode (Build 281 In Progress)
 
 | Phase | Status | What |
 |-------|--------|------|
@@ -35,11 +35,23 @@ LocaNext v2512151600
 | 6 | ✅ | CI overhaul (256 real tests) |
 | 7 | ✅ | extra_data JSONB + Sync endpoints |
 | 8 | ✅ | Windows smoke test uses auto-detect |
+| 9 | 🔄 | **Offline auto-login (LOCAL user + auto_token)** - Build 281 |
+
+**NEW - Offline Auto-Access (Build 281):**
+- Backend creates `LOCAL` user automatically in SQLite mode
+- Health endpoint returns `auto_token` for instant login
+- Frontend skips login screen in offline mode
+- No credentials needed - straight to app
 
 **Testing Architecture:**
-- **Linux CI:** 256 tests with real PostgreSQL
-- **Windows CI:** Installer + Backend smoke test (auto-detect SQLite)
+- **Linux CI:** 257 tests with real PostgreSQL
+- **Windows CI:** Installer + Backend smoke test (SQLite + LOCAL auto-login)
 - **Manual:** ULTIMATE smoke test (CDP) for full E2E
+
+**Check Build 281:**
+```bash
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/281/jobs/2/logs" | grep -E "(PASS|FAIL|smoke)" | tail -10
+```
 
 **Details:** [P33_OFFLINE_MODE_CI_OVERHAUL.md](docs/wip/P33_OFFLINE_MODE_CI_OVERHAUL.md)
 

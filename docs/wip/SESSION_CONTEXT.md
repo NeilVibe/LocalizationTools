@@ -1,148 +1,131 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-15 20:30 | **By:** Claude
+**Updated:** 2025-12-15 21:00 | **By:** Claude
 
 ---
 
-## Current Priority: P33 Offline Mode + CI Smoke Test Fixes
+## CURRENT STATUS: BUILD 281 IN PROGRESS
 
-**Status: IN PROGRESS** | Fixing CI smoke test to work with SQLite offline mode
+**Run 281** is building with the **permanent offline auto-access fix**.
 
----
-
-## Latest Build Status
-
-### Build 8c (Run 280) - IN PROGRESS
-- **Trigger:** Fix circular import for default admin user
-- **Commit:** `73fa21a` - Trigger build: Fix circular import
-- **Expected:** May still fail - needs permanent offline auth solution
-
-### Issues Fixed This Session
-
-| # | Issue | Fix |
-|---|-------|-----|
-| 1 | Exit code 2 (installer fails in 2s) | Process cleanup before install |
-| 2 | Backend WARN (not responding) | Forced SQLite mode + REQUIRED backend test |
-| 3 | Env var not passed to Electron | Use .NET Process class with explicit env |
-| 4 | Backend timeout (>60s) | Increased to 120s |
-| 5 | Login TypeError (async/sync mismatch) | Changed login to sync `get_db` |
-| 6 | Login 401 (no admin user) | Create default admin in SQLite + DEV_MODE |
-
-### Pending Issue (Build 8c Tests)
-- **Problem:** Current fix creates fake admin/admin user - hacky
-- **Better Solution:** Automatic full access for offline mode (see plan below)
-
----
-
-## PLAN: Permanent Offline Mode Auto-Access
-
-### The Principle
-**SQLite = Local = User's Machine = No Login Required**
-
-When running in SQLite offline mode:
-- No login screen shown
-- Automatic full admin access
-- User goes straight to app
-- Local data, local control
-
-### Implementation Plan
-
-#### 1. Backend: Auto-grant token for SQLite mode
-```python
-# In health endpoint or new /api/auth/local-session endpoint
-if is_sqlite() or config.ACTIVE_DATABASE_TYPE == "sqlite":
-    # Return auto-authenticated token
-    return {
-        "status": "ok",
-        "database_type": "sqlite",
-        "local_mode": True,
-        "auto_token": create_access_token({
-            "user_id": "LOCAL",
-            "username": "LOCAL",
-            "role": "admin"
-        })
-    }
-```
-
-#### 2. Frontend: Skip login for SQLite
-```javascript
-// In auth store initialization
-const health = await fetch('/health');
-if (health.database_type === 'sqlite' && health.auto_token) {
-    // Auto-login with local token
-    setToken(health.auto_token);
-    setUser({ username: 'LOCAL', role: 'admin' });
-    // Skip login screen entirely
-}
-```
-
-#### 3. Database: Auto-create LOCAL user
-```python
-# In db_setup.py for SQLite mode
-if use_sqlite:
-    # Create LOCAL user (or use anonymous access)
-    local_user = User(
-        username="LOCAL",
-        email="local@localhost",
-        password_hash="OFFLINE_MODE",  # Never used for auth
-        role="admin",
-        is_active=True
-    )
-```
-
-### Benefits
-- No fake credentials (no admin/admin)
-- Cleaner UX - straight to app
-- Secure - only works in SQLite mode
-- Future-proof - works forever
-
-### Files to Modify
-1. `server/main.py` - health endpoint returns auto_token
-2. `server/database/db_setup.py` - create LOCAL user
-3. `locaNext/src/lib/stores/auth.js` - auto-login logic
-4. `locaNext/src/routes/+layout.svelte` - skip login redirect
-
----
-
-## Files Modified This Session
-
-| File | Change |
-|------|--------|
-| `.gitea/workflows/build.yml` | Process cleanup, SQLite mode, 120s timeout, debug logging |
-| `server/api/auth_async.py` | Login uses sync `get_db` (SQLite compatible) |
-| `server/database/db_setup.py` | Create default admin for SQLite + DEV_MODE |
-
----
-
-## Quick Commands
+### How to Check Build Status
 
 ```bash
-# Check build status
+# LIVE logs (while running):
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/281/jobs/2/logs" | tail -40
+
+# Check for PASS/FAIL:
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/281/jobs/2/logs" | grep -E "(PHASE|PASS|FAIL|LOCAL|smoke)" | tail -20
+
+# FINISHED logs (after completion):
 ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
-
-# Check smoke test logs
-grep -E "(PHASE|PASS|FAIL|login|admin)" ~/gitea/data/actions_log/neilvibe/LocaNext/*/651.log | tail -30
-
-# Trigger new build
-echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
-git add -A && git commit -m "Build" && git push origin main && git push gitea main
+cat ~/gitea/data/actions_log/neilvibe/LocaNext/<latest_folder>/*.log | grep -E "FAIL|PASS|Error" | tail -30
 ```
 
 ---
 
-## CI Pipeline Flow (Sequential)
+## What Was Fixed This Session
+
+### Issue Chain (All Fixed)
+
+| # | Issue | Fix | File |
+|---|-------|-----|------|
+| 1 | Exit code 2 (installer fails) | Process cleanup before install | `build.yml` |
+| 2 | Backend WARN (not responding) | Forced SQLite mode + required backend | `build.yml` |
+| 3 | Env var not passed to Electron | .NET Process class with explicit env | `build.yml` |
+| 4 | Backend timeout (>60s) | Increased to 120s | `build.yml` |
+| 5 | Login TypeError (async/sync) | Changed login to sync `get_db` | `auth_async.py` |
+| 6 | Login 401 (no admin user) | **Permanent fix below** | Multiple files |
+
+### Permanent Offline Auto-Access Fix (Committed)
+
+**Commit:** `faa3895` - P33: Permanent offline auto-access (LOCAL user + auto_token)
+
+**How it works:**
+1. Backend starts in SQLite mode → Creates `LOCAL` user automatically
+2. Health endpoint (`/health`) returns `local_mode: true` + `auto_token` (JWT)
+3. Frontend checks health first via `api.tryLocalModeLogin()`
+4. If `local_mode` → Uses auto_token, sets user as LOCAL/admin, skips login
+5. Result → User goes straight to app, no credentials needed
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `server/main.py` | Health endpoint returns `auto_token` + `local_mode` for SQLite |
+| `server/database/db_setup.py` | Creates `LOCAL` user automatically in SQLite mode |
+| `locaNext/src/lib/api/client.js` | Added `tryLocalModeLogin()` method |
+| `locaNext/src/lib/components/Login.svelte` | Checks local mode first, skips login screen |
+
+---
+
+## CI Log Checking Reference
+
+### LIVE (Running) - Use CURL
+```bash
+# Get latest run number
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oE 'runs/[0-9]+' | head -1
+
+# Stream live logs (job 1 = Linux, job 2 = Windows)
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/2/logs" | tail -50
+
+# Filter for test results
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/2/logs" | grep -E "(PASSED|FAILED|PHASE)" | tail -30
+```
+
+### FINISHED (Completed) - Use Disk Logs
+```bash
+# Find latest log folder
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
+
+# Check for failures
+cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep -E "FAIL|Error" | tail -20
+```
+
+---
+
+## CI Pipeline Flow
 
 ```
 1. Check Build Trigger    (~10s)
-         |
+         ↓
 2. Safety Checks (Linux)  (~6min) - 257 tests with PostgreSQL
-         |
-3. Windows Build          (~5min) - electron-builder
-         |
-4. Smoke Test             (~3min) - Install + Backend + Health
-         |
+         ↓
+3. Windows Build          (~5min) - electron-builder + NSIS
+         ↓
+4. Smoke Test             (~3min) - Install + Backend + Health + LOCAL auto-login
+         ↓
 5. GitHub Release         (~1min) - Upload artifacts
 ```
+
+---
+
+## Next Steps for New Session
+
+1. **Check if Build 281 passed:**
+   ```bash
+   curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/281/jobs/2/logs" | grep -E "(PASS|FAIL|smoke)" | tail -10
+   ```
+
+2. **If PASSED:** P33 Offline Mode is complete! Test in Playground.
+
+3. **If FAILED:** Check the error:
+   ```bash
+   curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/281/jobs/2/logs" | grep -E "Error|FAIL|login" | tail -20
+   ```
+
+4. **After CI passes:** Copy installer to Playground and test offline/online mode manually.
+
+---
+
+## Key Code Locations
+
+| Feature | File | Function/Section |
+|---------|------|------------------|
+| Health auto_token | `server/main.py:326` | `health_check()` |
+| LOCAL user creation | `server/database/db_setup.py:422` | In `setup_database()` |
+| Frontend local login | `locaNext/src/lib/api/client.js:115` | `tryLocalModeLogin()` |
+| Login component | `locaNext/src/lib/components/Login.svelte:193` | `onMount()` |
+| Smoke test | `.gitea/workflows/build.yml:1500+` | Phase 4: Backend Test |
 
 ---
 
