@@ -1498,26 +1498,25 @@ jobs:
             Log "INSTALLER VERIFIED - Phases 1-3 PASSED"
             Log "========================================"
 
-            # === PHASE 4: Backend Test (SQLite Offline Mode) ===
-            Log "=== PHASE 4: BACKEND TEST (SQLITE OFFLINE MODE) ==="
-            Log "Testing backend with SQLite - no PostgreSQL needed!"
+            # === PHASE 4: Backend Test (Auto-Detect Mode) ===
+            Log "=== PHASE 4: BACKEND TEST (AUTO-DETECT) ==="
+            Log "DATABASE_MODE=auto - will auto-fallback to SQLite if no PostgreSQL"
 
             $backendUp = $false
+            $dbType = "unknown"
             try {
               # Create first_run_complete.flag to skip model download
               $flagFile = "$installDir\first_run_complete.flag"
               '{"completedAt":"smoke-test","version":"smoke"}' | Out-File -FilePath $flagFile -Encoding UTF8
               Log "OK: Created first_run_complete.flag"
 
-              # Force SQLite mode by setting DATABASE_MODE=sqlite
-              $env:DATABASE_MODE = "sqlite"
-              Log "OK: Set DATABASE_MODE=sqlite (offline mode)"
-
+              # Let auto-detection work - no manual DATABASE_MODE override
+              # Backend will try PostgreSQL, fail, auto-fallback to SQLite
               $appProc = Start-Process "$installDir\LocaNext.exe" -PassThru
               Log "OK: App started with PID: $($appProc.Id)"
 
-              # Backend should start with SQLite (30 seconds timeout)
-              Log "Waiting for backend (SQLite mode, 30s timeout)..."
+              # Backend should auto-detect and start (30 seconds timeout)
+              Log "Waiting for backend (auto-detect mode, 30s timeout)..."
               $timeout = 30
               $startTime = Get-Date
 
@@ -1538,10 +1537,9 @@ jobs:
               }
 
               if ($backendUp) {
-                Log "PASS: Backend running in offline mode (SQLite)"
+                Log "PASS: Backend running (auto-detected: $dbType)"
               } else {
                 Log "WARN: Backend not responding after 30s - check logs"
-                # Don't fail the build - backend test is best-effort
               }
             } catch {
               Log "WARN: Backend test error - $($_.Exception.Message)"

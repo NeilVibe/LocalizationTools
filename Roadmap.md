@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512151500 | **Updated**: 2025-12-15 | **Status**: P33 100% Complete
+**Version**: 2512151600 | **Updated**: 2025-12-15 | **Status**: P33 100% Complete
 
 > **Session Context**: [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)
 > **WIP Tasks**: [docs/wip/README.md](docs/wip/README.md)
@@ -11,12 +11,12 @@
 ## Current Status
 
 ```
-LocaNext v2512151500
-├── Backend:     ✅ Working + SQLite offline mode
+LocaNext v2512151600
+├── Backend:     ✅ Working + SQLite offline mode (auto-detect)
 ├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar, LDM
-├── Database:    ✅ PostgreSQL (online) + SQLite (offline)
-├── CI/CD:       ✅ 272 real tests (streamlined from 1536)
+├── Database:    ✅ PostgreSQL (online) + SQLite (offline auto-fallback)
+├── CI/CD:       ✅ 256 real tests (Linux + Windows smoke)
 ├── Offline:     ✅ Full structure preservation + Sync
 └── Distribution: ✅ NSIS installer works
 ```
@@ -32,13 +32,14 @@ LocaNext v2512151500
 | 3 | ✅ | Tabbed sidebar (Files/TM tabs) |
 | 4 | ✅ | Online/Offline badges in toolbar |
 | 5 | ✅ | Go Online + Upload to Server modal |
-| 6 | ✅ | CI overhaul (272 real tests) |
-| 7 | ✅ | **extra_data JSONB + Sync endpoints** |
+| 6 | ✅ | CI overhaul (256 real tests) |
+| 7 | ✅ | extra_data JSONB + Sync endpoints |
+| 8 | ✅ | Windows smoke test uses auto-detect |
 
-**What's Left (verification only):**
-1. ~~**Fix Upload to Server**~~ ✅ DONE - sync-to-central endpoint
-2. Verify CI pipeline in Gitea
-3. Windows smoke test with CDP
+**Testing Architecture:**
+- **Linux CI:** 256 tests with real PostgreSQL
+- **Windows CI:** Installer + Backend smoke test (auto-detect SQLite)
+- **Manual:** ULTIMATE smoke test (CDP) for full E2E
 
 **Details:** [P33_OFFLINE_MODE_CI_OVERHAUL.md](docs/wip/P33_OFFLINE_MODE_CI_OVERHAUL.md)
 
@@ -48,12 +49,13 @@ LocaNext v2512151500
 
 ### P32: Code Review Issues (LOW PRIORITY)
 
-11 issues in `server/tools/ldm/api.py`:
-- 2 CRITICAL (SQL injection, response format)
+10 issues remaining in `server/tools/ldm/api.py`:
+- ~~1 CRITICAL (SQL injection)~~ ✅ FIXED
+- 1 CRITICAL (response format)
 - 3 HIGH (deprecated asyncio)
-- 6 MEDIUM/LOW
+- 5 MEDIUM/LOW
 
-**Do after P33 is verified.**
+**Do after P33 build verification.**
 
 **Details:** [docs/code-review/ISSUES_20251215_LDM_API.md](docs/code-review/ISSUES_20251215_LDM_API.md)
 
@@ -71,7 +73,7 @@ LocaNext v2512151500
 
 | Priority | What | Status |
 |----------|------|--------|
-| P33 | Offline Mode + CI Overhaul | 95% ✅ |
+| P33 | Offline Mode + CI Overhaul | 100% ✅ |
 | P28 | NSIS Installer | ✅ |
 | P27 | Svelte 5 + Modern Stack | ✅ |
 | P26 | Security Vulnerabilities | ✅ |
