@@ -1587,13 +1587,27 @@ jobs:
                   $finalPython | ForEach-Object { Log "DEBUG: Python PID=$($_.Id) Path=$($_.Path)" }
                 }
 
-                # Check if there's a locanext.log file
-                $logFile = "$installDir\locanext.log"
+                # Check if there's a locanext.log file (in logs/ subdirectory)
+                $logFile = "$installDir\logs\locanext.log"
                 if (Test-Path $logFile) {
-                  Log "DEBUG: Found locanext.log, last 20 lines:"
-                  Get-Content $logFile -Tail 20 | ForEach-Object { Log "  $_" }
+                  Log "DEBUG: Found locanext.log, last 30 lines:"
+                  Get-Content $logFile -Tail 30 | ForEach-Object { Log "  $_" }
                 } else {
                   Log "DEBUG: No locanext.log found at $logFile"
+                  # Check if logs directory exists
+                  if (Test-Path "$installDir\logs") {
+                    Log "DEBUG: logs directory exists, contents:"
+                    Get-ChildItem "$installDir\logs" | ForEach-Object { Log "  $($_.Name) - $($_.Length) bytes" }
+                  }
+                }
+
+                # Check if port 8888 is listening
+                Log "DEBUG: Checking port 8888..."
+                $listening = Get-NetTCPConnection -LocalPort 8888 -ErrorAction SilentlyContinue
+                if ($listening) {
+                  Log "DEBUG: Port 8888 is listening! PID: $($listening.OwningProcess)"
+                } else {
+                  Log "DEBUG: Port 8888 is NOT listening"
                 }
 
                 # Backend MUST respond - this is a FAILURE
