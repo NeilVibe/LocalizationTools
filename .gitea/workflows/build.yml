@@ -359,7 +359,8 @@ jobs:
           #
           # REMOVED: Mock-heavy tests, redundant tests, slow model tests
           # ============================================================
-          TEST_DIRS="tests/integration/test_api_true_simulation.py tests/integration/server_tests/test_server_startup.py tests/integration/server_tests/test_auth_integration.py tests/integration/server_tests/test_async_auth.py tests/security/ tests/e2e/test_full_simulation.py tests/e2e/test_kr_similar_e2e.py tests/e2e/test_quicksearch_e2e.py tests/unit/test_db_utils.py tests/unit/test_kr_similar_core.py tests/unit/test_tm_search.py"
+          # Match GitHub: run full directories (fast anyway, ~255 tests in 15s)
+          TEST_DIRS="tests/unit/ tests/integration/test_api_true_simulation.py tests/integration/server_tests/ tests/security/ tests/e2e/test_full_simulation.py tests/e2e/test_kr_similar_e2e.py tests/e2e/test_quicksearch_e2e.py"
 
           # Deselect slow/redundant tests (model loading, embedding generation)
           DESELECTS=""
