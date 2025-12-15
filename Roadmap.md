@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512160600 | **Updated**: 2025-12-16 06:00 | **Status**: P33 Complete, P32 Next
+**Version**: 2512162200 | **Updated**: 2025-12-16 22:00 | **Status**: P33+P32 Complete, Build 282 ✅
 
 > **Session Context**: [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)
 > **WIP Tasks**: [docs/wip/README.md](docs/wip/README.md)
@@ -23,13 +23,17 @@ LocaNext v2512160600
 
 ---
 
-## Current Priority: Build Verification
+## Current Priority: P25 LDM UX (Next)
 
-**P32 Code Review: ✅ COMPLETE** (9/11 fixed, 2 LOW deferred)
-- All CRITICAL, HIGH, MEDIUM issues fixed
-- [Details](docs/code-review/ISSUES_20251215_LDM_API.md)
+**P33 + P32: ✅ COMPLETE** (Build 282 passed)
+- Offline mode with auto-login working
+- Code review: 9/11 issues fixed
+- CI: 257 Linux tests + Windows smoke test passing
 
-**P33 Smoke Test:** Fixed IPv4/IPv6 bug, awaiting build verification
+**Next:** P25 LDM UX (85% complete)
+- TM matching (Qwen + FAISS 5-tier)
+- QA checks (Word Check, Line Check)
+- Custom file pickers
 
 ---
 

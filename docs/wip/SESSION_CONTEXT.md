@@ -1,90 +1,45 @@
 # Session Context - Last Working State
 
-**Updated:** 2025-12-16 06:00 | **By:** Claude
+**Updated:** 2025-12-16 22:00 KST | **Build:** 282 ✅ ALL PASSED
 
 ---
 
-## CURRENT STATUS: P33 COMPLETE, SMOKE TEST FIX PENDING BUILD
+## CURRENT STATUS: ALL GREEN - READY FOR NEXT FEATURES
 
-**P33 Offline Mode is DONE.** Build 281 proved the feature works:
-- LOCAL user auto-created in SQLite mode
-- Auto-login via health endpoint token
-- Frontend skips login screen
+Both **P33 (Offline Mode)** and **P32 (Code Review)** are **COMPLETE**.
+Build 282 passed on both Linux (257 tests) and Windows (smoke test).
 
-**Build 281 failed due to smoke test bug (not feature bug):**
-- Backend was working (logs prove it)
-- Smoke test used `localhost` which resolved to IPv6
-- Backend binds to `127.0.0.1` (IPv4 only)
-- **Fix applied:** Changed smoke test to use `127.0.0.1`
+---
+
+## Build 282 Results
+
+| Platform | Result |
+|----------|--------|
+| Linux | ✅ 257 tests passed |
+| Windows | ✅ Smoke test passed (SQLite offline mode) |
 
 ---
 
 ## What Was Fixed This Session
 
-### Smoke Test IPv4/IPv6 Bug
-- **Problem:** Smoke test timed out even though backend was healthy
-- **Root Cause:** `localhost` → `::1` (IPv6), but backend on `127.0.0.1` (IPv4)
-- **Fix:** `.gitea/workflows/build.yml` - use `127.0.0.1` not `localhost`
+### 1. Smoke Test IPv4/IPv6 Bug (P33)
+- **Problem:** `localhost` resolved to `::1` (IPv6), backend binds to `127.0.0.1` (IPv4)
+- **Fix:** Changed smoke test to use `127.0.0.1` directly
+- **File:** `.gitea/workflows/build.yml:1564`
 
-### Documentation Alignment
-- P33 WIP: Updated to 100% complete
-- Roadmap: Removed contradictions, P32 now current priority
-- SESSION_CONTEXT: This file
+### 2. Code Review Issues (P32) - 9/11 Fixed
+| Issue | Fix |
+|-------|-----|
+| CR-002 | SQL injection → parameterized queries |
+| CR-003 | `asyncio.get_event_loop()` → `asyncio.to_thread()` |
+| CR-004 | Added `DeleteResponse`, `TMSuggestResponse` models |
+| CR-005 | Sync DB now uses `asyncio.to_thread()` |
+| CR-006 | Added `Query(ge=0.0, le=1.0)` validation |
+| CR-007 | Sanitized all `str(e)` leaks in error messages |
+| CR-008 | Moved websocket import to top of file |
+| CR-009 | Tree building O(n*m) → O(n) with `defaultdict` |
 
----
-
-## Next Steps
-
-1. **Trigger new build** to verify smoke test fix:
-   ```bash
-   echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
-   git add -A && git commit -m "Fix smoke test IPv4/IPv6" && git push origin main && git push gitea main
-   ```
-
-2. **Check build status:**
-   ```bash
-   curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oE 'runs/[0-9]+' | head -1
-   # Then check that run's logs
-   ```
-
-3. **After build passes:** Test in Playground
-
----
-
-## CI Log Checking Reference
-
-### LIVE (Running) - Use CURL
-```bash
-# Get latest run number
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oE 'runs/[0-9]+' | head -1
-
-# Stream live logs (job 2 = Windows)
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/2/logs" | tail -50
-
-# Filter for test results
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/2/logs" | grep -E "(PASSED|FAILED|PHASE)" | tail -30
-```
-
-### FINISHED (Completed) - Use Disk Logs
-```bash
-# Find latest log folder
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
-
-# Check for failures
-cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep -E "FAIL|Error" | tail -20
-```
-
----
-
-## Key Code Locations
-
-| Feature | File | Function/Section |
-|---------|------|------------------|
-| Health auto_token | `server/main.py:326` | `health_check()` |
-| LOCAL user creation | `server/database/db_setup.py:422` | In `setup_database()` |
-| Frontend local login | `locaNext/src/lib/api/client.js:115` | `tryLocalModeLogin()` |
-| Login component | `locaNext/src/lib/components/Login.svelte:193` | `onMount()` |
-| Smoke test | `.gitea/workflows/build.yml:1561` | Phase 4: Backend Test |
+**Deferred (LOW):** CR-010 (hardcoded lang), CR-011 (magic numbers)
 
 ---
 
@@ -92,11 +47,50 @@ cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep -E "FAIL|Er
 
 | Priority | Status | What |
 |----------|--------|------|
-| **P33** | ✅ DONE | Offline Mode + CI Overhaul |
-| **P32** | 🔴 CURRENT | Code Review Issues (10 remaining) |
-| P25 | Later | LDM UX (85%) |
+| P33 | ✅ DONE | Offline Mode + CI Overhaul |
+| P32 | ✅ DONE | Code Review (9/11 fixed) |
+| **P25** | 🔴 NEXT | LDM UX (85%) - TM matching, QA checks |
+
+---
+
+## CI/CD Quick Reference
+
+### Gitea (Local) - Uses `GITEA_TRIGGER.txt`
+```bash
+echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Trigger build" && git push origin main && git push gitea main
+
+# Check status
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oE 'runs/[0-9]+' | head -1
+```
+
+### GitHub (Remote) - Uses `BUILD_TRIGGER.txt`
+```bash
+echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> BUILD_TRIGGER.txt
+git add -A && git commit -m "Trigger GitHub build" && git push origin main
+# Check: https://github.com/NeilVibe/LocalizationTools/actions
+```
+
+---
+
+## Key Files Changed This Session
+
+| File | Change |
+|------|--------|
+| `server/tools/ldm/api.py` | 9 code review fixes |
+| `.gitea/workflows/build.yml` | IPv4 smoke test fix |
+| `docs/code-review/ISSUES_20251215_LDM_API.md` | Marked issues fixed |
+
+---
+
+## Next Session Checklist
+
+1. `./scripts/check_servers.sh`
+2. Check [Roadmap.md](../../Roadmap.md) for current priority
+3. **P25 (LDM UX)** is next if continuing features
+4. Or ask user what to work on
 
 ---
 
 *For global priorities: [Roadmap.md](../../Roadmap.md)*
-*For P33 details: [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md)*
+*For code review details: [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md)*
