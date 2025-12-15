@@ -1551,6 +1551,12 @@ jobs:
 
               while (((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
                 Start-Sleep -Seconds 3
+                $elapsed = [math]::Round(((Get-Date) - $startTime).TotalSeconds)
+
+                # Debug: Check if processes are running
+                $locanextProcs = Get-Process -Name "LocaNext*" -ErrorAction SilentlyContinue
+                $pythonProcs = Get-Process -Name "python*" -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*LocaNextSmokeTest*" }
+
                 try {
                   $health = Invoke-WebRequest -Uri "http://localhost:8888/health" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
                   if ($health.StatusCode -eq 200) {
@@ -1561,8 +1567,7 @@ jobs:
                     break
                   }
                 } catch {
-                  $elapsed = [math]::Round(((Get-Date) - $startTime).TotalSeconds)
-                  Log "... waiting ($elapsed s)"
+                  Log "... waiting ($elapsed s) [LocaNext: $($locanextProcs.Count), Python: $($pythonProcs.Count)]"
                 }
               }
 
@@ -1572,6 +1577,25 @@ jobs:
                   Log "WARN: Expected sqlite but got $dbType"
                 }
               } else {
+                # Debug info before failing
+                Log "DEBUG: Checking final process state..."
+                $finalLocanext = Get-Process -Name "LocaNext*" -ErrorAction SilentlyContinue
+                $finalPython = Get-Process -Name "python*" -ErrorAction SilentlyContinue
+                Log "DEBUG: LocaNext processes: $($finalLocanext.Count)"
+                Log "DEBUG: Python processes: $($finalPython.Count)"
+                if ($finalPython) {
+                  $finalPython | ForEach-Object { Log "DEBUG: Python PID=$($_.Id) Path=$($_.Path)" }
+                }
+
+                # Check if there's a locanext.log file
+                $logFile = "$installDir\locanext.log"
+                if (Test-Path $logFile) {
+                  Log "DEBUG: Found locanext.log, last 20 lines:"
+                  Get-Content $logFile -Tail 20 | ForEach-Object { Log "  $_" }
+                } else {
+                  Log "DEBUG: No locanext.log found at $logFile"
+                }
+
                 # Backend MUST respond - this is a FAILURE
                 throw "Backend failed to respond within 60s - SQLite mode not working!"
               }
