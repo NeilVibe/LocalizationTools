@@ -1559,7 +1559,9 @@ jobs:
                 $pythonProcs = Get-Process -Name "python*" -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*LocaNextSmokeTest*" }
 
                 try {
-                  $health = Invoke-WebRequest -Uri "http://localhost:8888/health" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+                  # IMPORTANT: Use 127.0.0.1 NOT localhost!
+                  # Backend binds to 127.0.0.1 (IPv4), but localhost can resolve to ::1 (IPv6) on Windows
+                  $health = Invoke-WebRequest -Uri "http://127.0.0.1:8888/health" -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop
                   if ($health.StatusCode -eq 200) {
                     $healthData = $health.Content | ConvertFrom-Json
                     $dbType = $healthData.database_type
@@ -1568,7 +1570,8 @@ jobs:
                     break
                   }
                 } catch {
-                  Log "... waiting ($elapsed s) [LocaNext: $($locanextProcs.Count), Python: $($pythonProcs.Count)]"
+                  # Log every attempt for debugging
+                  Log "... waiting ($elapsed s) [LocaNext: $($locanextProcs.Count), Python: $($pythonProcs.Count)] Error: $($_.Exception.Message)"
                 }
               }
 

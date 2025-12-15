@@ -8,12 +8,16 @@
 
 ## Summary
 
-| Severity | Count |
-|----------|-------|
-| CRITICAL | 2 |
-| HIGH | 3 |
-| MEDIUM | 4 |
-| LOW | 2 |
+| Severity | Count | Notes |
+|----------|-------|-------|
+| CRITICAL | 0 | ~~2~~ (ALL FIXED) |
+| HIGH | 0 | ~~3~~ (ALL FIXED) |
+| MEDIUM | 0 | ~~4~~ (ALL FIXED) |
+| LOW | 2 | Deferred (minor) |
+
+**Status: ✅ ALL CRITICAL/HIGH/MEDIUM FIXED** (2025-12-16)
+
+Remaining LOW issues (CR-010, CR-011) are minor and deferred.
 
 ---
 
@@ -61,41 +65,24 @@ async def list_all_rows(...):  # Returns plain array
 
 ---
 
-### CR-002: SQL Injection Pattern in TM Suggest
+### CR-002: ~~SQL Injection Pattern in TM Suggest~~ ✅ FIXED
 
-**Location:** Lines 766-771
-**Impact:** Potential SQL injection
+**Status:** ✅ FIXED (verified 2025-12-16)
+
+**Location:** Lines 773-783 (now uses parameterized queries)
 
 ```python
-# DANGEROUS - f-string into SQL
-if file_id:
-    conditions.append(f"r.file_id = {file_id}")  # Line 768
-elif project_id:
-    conditions.append(f"f.project_id = {project_id}")  # Line 770
-if exclude_row_id:
-    conditions.append(f"r.id != {exclude_row_id}")  # Line 771
-```
-
-**Why It's Risky:**
-- Even though FastAPI validates these as `int`, the pattern is dangerous
-- Copy-paste to string fields would be catastrophic
-- Code review might miss this if query params change
-
-**Fix:**
-```python
-# Use parameterized queries
+# FIXED - Now uses parameterized queries
 conditions = ["r.target IS NOT NULL", "r.target != ''"]
-params = {'search_text': source.strip(), 'threshold': threshold, 'max_results': max_results}
-
 if file_id:
     conditions.append("r.file_id = :file_id")
-    params['file_id'] = file_id
+    sql_params['file_id'] = file_id
 elif project_id:
     conditions.append("f.project_id = :project_id")
-    params['project_id'] = project_id
+    sql_params['project_id'] = project_id
 if exclude_row_id:
     conditions.append("r.id != :exclude_row_id")
-    params['exclude_row_id'] = exclude_row_id
+    sql_params['exclude_row_id'] = exclude_row_id
 ```
 
 ---
@@ -284,19 +271,19 @@ Should be constants with documentation.
 
 ## Action Items
 
-| Priority | Issue | Effort | Fix |
-|----------|-------|--------|-----|
-| P0 | CR-001 | Medium | Standardize response formats |
-| P0 | CR-002 | Low | Parameterize SQL |
-| P1 | CR-003 | Low | Replace deprecated asyncio calls |
-| P1 | CR-004 | Medium | Add response models |
-| P1 | CR-005 | High | Refactor sync DB usage |
-| P2 | CR-006 | Low | Add validation |
-| P2 | CR-007 | Low | Sanitize error messages |
-| P2 | CR-008 | Low | Move import, improve logging |
-| P2 | CR-009 | Low | Optimize tree building |
-| P3 | CR-010 | Low | Make configurable |
-| P3 | CR-011 | Low | Extract constants |
+| Priority | Issue | Effort | Fix | Status |
+|----------|-------|--------|-----|--------|
+| ~~P0~~ | ~~CR-001~~ | ~~Medium~~ | ~~Standardize response formats~~ | ✅ FIXED |
+| ~~P0~~ | ~~CR-002~~ | ~~Low~~ | ~~Parameterize SQL~~ | ✅ FIXED |
+| ~~P1~~ | ~~CR-003~~ | ~~Low~~ | ~~Replace deprecated asyncio calls~~ | ✅ FIXED |
+| ~~P1~~ | ~~CR-004~~ | ~~Medium~~ | ~~Add response models~~ | ✅ FIXED |
+| ~~P1~~ | ~~CR-005~~ | ~~High~~ | ~~Refactor sync DB usage~~ | ✅ FIXED (asyncio.to_thread) |
+| ~~P2~~ | ~~CR-006~~ | ~~Low~~ | ~~Add validation~~ | ✅ FIXED |
+| ~~P2~~ | ~~CR-007~~ | ~~Low~~ | ~~Sanitize error messages~~ | ✅ FIXED |
+| ~~P2~~ | ~~CR-008~~ | ~~Low~~ | ~~Move import, improve logging~~ | ✅ FIXED |
+| ~~P2~~ | ~~CR-009~~ | ~~Low~~ | ~~Optimize tree building~~ | ✅ FIXED |
+| P3 | CR-010 | Low | Make configurable | Deferred |
+| P3 | CR-011 | Low | Extract constants | Deferred |
 
 ---
 

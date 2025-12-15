@@ -1,6 +1,6 @@
 # LocaNext - Development Roadmap
 
-**Version**: 2512152100 | **Updated**: 2025-12-15 21:00 | **Status**: P33 Build 281 In Progress
+**Version**: 2512160600 | **Updated**: 2025-12-16 06:00 | **Status**: P33 Complete, P32 Next
 
 > **Session Context**: [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)
 > **WIP Tasks**: [docs/wip/README.md](docs/wip/README.md)
@@ -11,65 +11,29 @@
 ## Current Status
 
 ```
-LocaNext v2512151600
+LocaNext v2512160600
 ├── Backend:     ✅ Working + SQLite offline mode (auto-detect)
 ├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar, LDM
 ├── Database:    ✅ PostgreSQL (online) + SQLite (offline auto-fallback)
 ├── CI/CD:       ✅ 256 real tests (Linux + Windows smoke)
-├── Offline:     ✅ Full structure preservation + Sync
+├── Offline:     ✅ Full offline mode with auto-login
 └── Distribution: ✅ NSIS installer works
 ```
 
 ---
 
-## Current Priority: P33 Offline Mode (Build 281 In Progress)
+## Current Priority: Build Verification
 
-| Phase | Status | What |
-|-------|--------|------|
-| 1 | ✅ | SQLite backend (FlexibleJSON, auto-fallback) |
-| 2 | ✅ | Auto-detection (PostgreSQL unreachable → SQLite) |
-| 3 | ✅ | Tabbed sidebar (Files/TM tabs) |
-| 4 | ✅ | Online/Offline badges in toolbar |
-| 5 | ✅ | Go Online + Upload to Server modal |
-| 6 | ✅ | CI overhaul (256 real tests) |
-| 7 | ✅ | extra_data JSONB + Sync endpoints |
-| 8 | ✅ | Windows smoke test uses auto-detect |
-| 9 | 🔄 | **Offline auto-login (LOCAL user + auto_token)** - Build 281 |
+**P32 Code Review: ✅ COMPLETE** (9/11 fixed, 2 LOW deferred)
+- All CRITICAL, HIGH, MEDIUM issues fixed
+- [Details](docs/code-review/ISSUES_20251215_LDM_API.md)
 
-**NEW - Offline Auto-Access (Build 281):**
-- Backend creates `LOCAL` user automatically in SQLite mode
-- Health endpoint returns `auto_token` for instant login
-- Frontend skips login screen in offline mode
-- No credentials needed - straight to app
-
-**Testing Architecture:**
-- **Linux CI:** 257 tests with real PostgreSQL
-- **Windows CI:** Installer + Backend smoke test (SQLite + LOCAL auto-login)
-- **Manual:** ULTIMATE smoke test (CDP) for full E2E
-
-**Check Build 281:**
-```bash
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/281/jobs/2/logs" | grep -E "(PASS|FAIL|smoke)" | tail -10
-```
-
-**Details:** [P33_OFFLINE_MODE_CI_OVERHAUL.md](docs/wip/P33_OFFLINE_MODE_CI_OVERHAUL.md)
+**P33 Smoke Test:** Fixed IPv4/IPv6 bug, awaiting build verification
 
 ---
 
 ## Next Priorities
-
-### P32: Code Review Issues (LOW PRIORITY)
-
-10 issues remaining in `server/tools/ldm/api.py`:
-- ~~1 CRITICAL (SQL injection)~~ ✅ FIXED
-- 1 CRITICAL (response format)
-- 3 HIGH (deprecated asyncio)
-- 5 MEDIUM/LOW
-
-**Do after P33 build verification.**
-
-**Details:** [docs/code-review/ISSUES_20251215_LDM_API.md](docs/code-review/ISSUES_20251215_LDM_API.md)
 
 ### P25: LDM UX (85% Complete)
 

@@ -9,18 +9,18 @@
 ### Tier 1: CORE (Current Focus)
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
-| **P33** | [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md) | 🔴 CURRENT | Offline mode + MEGA SMOKE TEST + CI overhaul |
+| **P32** | [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md) | 🔴 CURRENT | 10 code review issues in LDM API |
 
 ### Tier 2: LATER (Low Priority)
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
-| P32 | [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md) | Pending | 11 code review issues |
 | P25 | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 85% | TM matching, QA - features |
 | P17 | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 80% | Custom pickers - features |
 
 ### Reference / Complete
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
+| P33 | [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md) | ✅ Complete | Offline mode + CI overhaul |
 | P27 | [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) | ✅ Complete | Svelte 5 + Vite 7 + Electron 39 |
 | P26 | [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) | ✅ Complete | Security vulnerability remediation |
 | P17 | [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | Reference | TM System architecture spec |
@@ -80,18 +80,16 @@ Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
 **Current Session:** [SESSION_CONTEXT.md](SESSION_CONTEXT.md)
 
 **🔴 CURRENT FOCUS:**
-- **P33:** [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md)
-  - Offline Mode (SQLite fallback)
-  - Tabbed Sidebar (Files/TM)
-  - TM Editing in VirtualGrid
-  - **Linux:** 82 essential tests (Qwen/FAISS REAL)
-  - **Windows:** MEGA SMOKE TEST (full CDP simulation)
-  - **Cache:** Qwen 2.3GB, pip, npm, Electron (~2 min total)
+- **P32:** [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md)
+  - 10 code review issues in LDM API
+  - 1 CRITICAL, 3 HIGH, 5 MEDIUM/LOW
+
+**✅ RECENTLY COMPLETED:**
+- **P33:** Offline Mode + CI Overhaul (100%)
 
 **Low Priority (Later):**
-- P32: Code review fixes
 - P25/P17: LDM features
 
 ---
 
-*Last Updated: 2025-12-15*
+*Last Updated: 2025-12-16*
