@@ -1531,13 +1531,18 @@ jobs:
               '{"completedAt":"smoke-test","version":"smoke"}' | Out-File -FilePath $flagFile -Encoding UTF8
               Log "OK: Created first_run_complete.flag"
 
-              # Set environment variable BEFORE starting the app
-              $env:DATABASE_MODE = "sqlite"
-              Log "OK: Set DATABASE_MODE=sqlite"
-
-              # Start the app (it will read DATABASE_MODE from environment)
-              $appProc = Start-Process "$installDir\LocaNext.exe" -PassThru
-              Log "OK: App started with PID: $($appProc.Id)"
+              # Start the app with DATABASE_MODE=sqlite in its environment
+              # NOTE: Start-Process doesn't inherit $env vars, so we use .NET Process class
+              Log "Starting app with DATABASE_MODE=sqlite..."
+              $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+              $processInfo.FileName = "$installDir\LocaNext.exe"
+              $processInfo.UseShellExecute = $false
+              $processInfo.EnvironmentVariables["DATABASE_MODE"] = "sqlite"
+              $process = New-Object System.Diagnostics.Process
+              $process.StartInfo = $processInfo
+              $process.Start() | Out-Null
+              $appProc = $process
+              Log "OK: App started with PID: $($appProc.Id) (DATABASE_MODE=sqlite)"
 
               # Backend should start quickly with SQLite (60 seconds timeout for safety)
               Log "Waiting for backend (SQLite mode, 60s timeout)..."
