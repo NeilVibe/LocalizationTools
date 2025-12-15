@@ -1468,10 +1468,30 @@ jobs:
             Log "=== PHASE 2: SILENT INSTALL ==="
             $installDir = "C:\LocaNextSmokeTest"
 
+            # CRITICAL: Kill any processes from previous smoke tests that might lock files
+            Log "Killing any leftover processes..."
+            Get-Process -Name "LocaNext*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Get-Process -Name "python*" -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*LocaNextSmokeTest*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2  # Wait for processes to fully terminate
+            Log "OK: Process cleanup done"
+
             # Clean up any previous test install
             if (Test-Path $installDir) {
               Log "Removing previous test install..."
-              Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
+              try {
+                Remove-Item $installDir -Recurse -Force -ErrorAction Stop
+                Log "OK: Previous install removed"
+              } catch {
+                Log "WARN: Could not remove previous install: $($_.Exception.Message)"
+                # Try harder - maybe files are still locked
+                Start-Sleep -Seconds 3
+                Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
+              }
+            }
+
+            # Verify directory is gone
+            if (Test-Path $installDir) {
+              throw "Cannot clean up previous installation at $installDir - files may be locked"
             }
 
             Log "Installing to: $installDir"
