@@ -7,6 +7,7 @@ Supports real-time collaboration via WebSocket (see websocket.py).
 
 import asyncio
 import hashlib
+from collections import defaultdict
 from functools import partial
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse
@@ -25,6 +26,7 @@ from server.database.models import (
     User, LDMProject, LDMFolder, LDMFile, LDMRow, LDMEditHistory, LDMActiveSession,
     LDMTranslationMemory, LDMTMEntry
 )
+from server.tools.ldm.websocket import broadcast_cell_update
 
 
 # ============================================================================
@@ -133,6 +135,27 @@ class TMSearchResult(BaseModel):
     strategy: str
 
 
+class DeleteResponse(BaseModel):
+    """Standard response for delete operations."""
+    message: str
+
+
+class TMSuggestion(BaseModel):
+    """Single TM suggestion."""
+    id: int
+    source: str
+    target: str
+    file_id: int
+    file_name: str
+    similarity: float
+
+
+class TMSuggestResponse(BaseModel):
+    """Response from TM suggest endpoint."""
+    suggestions: List[TMSuggestion]
+    count: int
+
+
 # ============================================================================
 # Router
 # ============================================================================
@@ -230,7 +253,7 @@ async def get_project(
     return project
 
 
-@router.delete("/projects/{project_id}")
+@router.delete("/projects/{project_id}", response_model=DeleteResponse)
 async def delete_project(
     project_id: int,
     db: AsyncSession = Depends(get_async_db),
@@ -315,7 +338,7 @@ async def create_folder(
     return new_folder
 
 
-@router.delete("/folders/{folder_id}")
+@router.delete("/folders/{folder_id}", response_model=DeleteResponse)
 async def delete_folder(
     folder_id: int,
     db: AsyncSession = Depends(get_async_db),
@@ -631,7 +654,6 @@ async def update_row(
 
     # Broadcast cell update to all viewers (real-time sync)
     try:
-        from server.tools.ldm.websocket import broadcast_cell_update
         await broadcast_cell_update(
             file_id=row.file_id,
             row_id=row.id,
@@ -643,7 +665,7 @@ async def update_row(
         )
     except Exception as e:
         # WebSocket broadcast failure shouldn't fail the API call
-        logger.warning(f"Failed to broadcast cell update: {e}")
+        logger.warning(f"WebSocket broadcast failed for row {row_id}: {e}")
 
     user_id = current_user["user_id"]
     logger.info(f"Row updated: id={row_id}, user={user_id}")
@@ -685,30 +707,36 @@ async def get_project_tree(
     )
     files = result.scalars().all()
 
-    # Build tree structure
+    # Build lookup dicts for O(n) tree building instead of O(n*m)
+    folders_by_parent = defaultdict(list)
+    files_by_folder = defaultdict(list)
+
+    for folder in folders:
+        folders_by_parent[folder.parent_id].append(folder)
+    for file in files:
+        files_by_folder[file.folder_id].append(file)
+
     def build_tree(parent_id=None):
         tree = []
 
-        # Add folders at this level
-        for folder in folders:
-            if folder.parent_id == parent_id:
-                tree.append({
-                    "type": "folder",
-                    "id": folder.id,
-                    "name": folder.name,
-                    "children": build_tree(folder.id)
-                })
+        # Add folders at this level (O(1) lookup)
+        for folder in folders_by_parent.get(parent_id, []):
+            tree.append({
+                "type": "folder",
+                "id": folder.id,
+                "name": folder.name,
+                "children": build_tree(folder.id)
+            })
 
-        # Add files at this level
-        for file in files:
-            if file.folder_id == parent_id:
-                tree.append({
-                    "type": "file",
-                    "id": file.id,
-                    "name": file.name,
-                    "format": file.format,
-                    "row_count": file.row_count
-                })
+        # Add files at this level (O(1) lookup)
+        for file in files_by_folder.get(parent_id, []):
+            tree.append({
+                "type": "file",
+                "id": file.id,
+                "name": file.name,
+                "format": file.format,
+                "row_count": file.row_count
+            })
 
         return tree
 
@@ -726,14 +754,14 @@ async def get_project_tree(
 # Translation Memory (TM) API
 # ============================================================================
 
-@router.get("/tm/suggest")
+@router.get("/tm/suggest", response_model=TMSuggestResponse)
 async def get_tm_suggestions(
     source: str,
     file_id: Optional[int] = None,
     project_id: Optional[int] = None,
     exclude_row_id: Optional[int] = None,
-    threshold: float = 0.70,
-    max_results: int = 5,
+    threshold: float = Query(0.70, ge=0.0, le=1.0, description="Similarity threshold (0.0-1.0)"),
+    max_results: int = Query(5, ge=1, le=50, description="Maximum suggestions to return"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -820,8 +848,8 @@ async def get_tm_suggestions(
         return {"suggestions": suggestions, "count": len(suggestions)}
 
     except Exception as e:
-        logger.error(f"TM suggest failed: {e}")
-        raise HTTPException(status_code=500, detail=f"TM search failed: {str(e)}")
+        logger.error(f"TM suggest failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="TM search failed. Check server logs.")
 
 
 # ============================================================================
@@ -879,15 +907,14 @@ async def upload_tm(
             finally:
                 sync_db.close()
 
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, _upload_tm)
+        result = await asyncio.to_thread(_upload_tm)
         return result
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid TM data provided")
     except Exception as e:
-        logger.error(f"TM upload failed: {e}")
-        raise HTTPException(status_code=500, detail=f"TM upload failed: {str(e)}")
+        logger.error(f"TM upload failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="TM upload failed. Check server logs.")
 
 
 @router.get("/tm", response_model=List[TMResponse])
@@ -928,7 +955,7 @@ async def get_tm(
     return tm
 
 
-@router.delete("/tm/{tm_id}")
+@router.delete("/tm/{tm_id}", response_model=DeleteResponse)
 async def delete_tm(
     tm_id: int,
     db: AsyncSession = Depends(get_async_db),
@@ -1086,8 +1113,7 @@ async def add_tm_entry(
         finally:
             sync_db.close()
 
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _add_entry)
+    result = await asyncio.to_thread(_add_entry)
 
     if not result:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
@@ -1166,15 +1192,14 @@ async def build_tm_indexes(
             sync_db.close()
 
     try:
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, _build_indexes)
+        result = await asyncio.to_thread(_build_indexes)
         return result
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid TM configuration")
     except Exception as e:
-        logger.error(f"TM index build failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Index build failed: {str(e)}")
+        logger.error(f"TM index build failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Index build failed. Check server logs.")
 
 
 @router.get("/tm/{tm_id}/indexes")
@@ -1313,17 +1338,16 @@ async def register_file_as_tm(
             finally:
                 sync_db.close()
 
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, _create_tm)
+        result = await asyncio.to_thread(_create_tm)
 
         logger.info(f"TM created from file: tm_id={result['tm_id']}, entries={result['entry_count']}")
         return result
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid file format or data")
     except Exception as e:
-        logger.error(f"File to TM conversion failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
+        logger.error(f"File to TM conversion failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Conversion failed. Check server logs.")
 
 
 # ============================================================================
@@ -1722,8 +1746,8 @@ async def sync_file_to_central(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Sync to central failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+        logger.error(f"Sync to central failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Sync failed. Check server logs.")
 
 
 @router.post("/tm/sync-to-central", response_model=SyncTMToCentralResponse)
@@ -1828,5 +1852,5 @@ async def sync_tm_to_central(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"TM sync to central failed: {e}")
-        raise HTTPException(status_code=500, detail=f"TM sync failed: {str(e)}")
+        logger.error(f"TM sync to central failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="TM sync failed. Check server logs.")
