@@ -1,6 +1,6 @@
 # LocaNext - Roadmap & Navigation Hub
 
-**Build:** 292 ✅ | **Updated:** 2025-12-16 | **Status:** 97% Complete
+**Build:** 295 ⏳ | **Updated:** 2025-12-16 | **Status:** 98% Complete | **Open Issues:** 0
 
 ---
 
@@ -18,12 +18,13 @@
 ## Current Status
 
 ```
-LocaNext v25.1216.1251 (Build 292)
+LocaNext v25.1216.1624 (Build 295 pending)
 ├── Backend:     ✅ PostgreSQL + SQLite offline
 ├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar, LDM
 ├── CI/CD:       ✅ ~273 tests in ~5min (PostgreSQL verified)
-├── Offline:     ✅ Auto-fallback + indicator
+├── Offline:     ✅ Auto-fallback + indicator + Server Config UI
+├── UI:          ✅ Compartmentalized modals (UI-001 to UI-004)
 └── Installer:   ✅ NSIS fixed, release available
 ```
 
@@ -31,16 +32,17 @@ LocaNext v25.1216.1251 (Build 292)
 
 ## Priority Queue
 
-### NOW: UI Polish (4 Open)
+### NOW: All Issues Resolved! (0 Open)
 
-| Priority | Issue | Description |
-|----------|-------|-------------|
-| MEDIUM | UI-001 to UI-004 | UI/UX cleanup |
-| LOW | - | Test new installer on Windows |
+**All 38 issues fixed!** No blocking issues remaining.
 
-**Recently Implemented (Need Production Testing):**
-- BUG-007: Offline auto-fallback (3s timeout, SQLite fallback)
-- BUG-008: Online/Offline indicator + "Go Online" button
+| Recently Fixed | Description |
+|----------------|-------------|
+| UI-001 | Dark mode only - removed theme toggle |
+| UI-002 | Compartmentalized modals (Grid, Reference, Display) |
+| UI-003 | TM activation in TMManager |
+| UI-004 | Removed TM Results checkbox |
+| BUG-012 | Server Config UI for PostgreSQL |
 
 **Details:** [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md)
 
@@ -58,13 +60,12 @@ LocaNext v25.1216.1251 (Build 292)
 
 | What | When | Details |
 |------|------|---------|
+| **UI-001 to UI-004** | 2025-12-16 | Compartmentalized modals, dark mode only |
+| **BUG-012 Server Config** | 2025-12-16 | PostgreSQL config UI for online mode |
 | Connectivity Tests | 2025-12-16 | 26 new tests for offline/online mode |
 | P35 Svelte 5 Migration | 2025-12-16 | Fixed BUG-011 (connection issue) |
 | CI Smoke Tests | 2025-12-16 | Svelte 5 + **PostgreSQL verification** |
-| P34 Resource Protocol | 2025-12-16 | Zombie cleanup docs |
-| CI Unification | 2025-12-15 | 285 tests, GitHub + Gitea |
 | P33 Offline Mode | 2025-12-15 | SQLite fallback + auto-fallback |
-| P32 Code Review | 2025-12-15 | 9/11 issues fixed |
 | P28 NSIS Installer | 2025-12-14 | electron-builder NSIS |
 
 ---
