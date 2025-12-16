@@ -56,3 +56,4 @@ Build LIGHT v2512161029
 Build LIGHT v2512161046
 Build LIGHT v2512161115 - Debug server startup
 Build LIGHT v2512161138 - Fix test database isolation (don't drop CI tables)
+Build LIGHT v2512161210 - Fix Gitea test bloat (273 tests, not 900)
