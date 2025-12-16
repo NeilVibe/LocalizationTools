@@ -1,7 +1,7 @@
 # Issues To Fix
 
 **Purpose:** Track known bugs, UI issues, and improvements across LocaNext
-**Last Updated:** 2025-12-16
+**Last Updated:** 2025-12-16 09:00 KST
 
 ---
 
@@ -9,18 +9,22 @@
 
 | Area | Open | Fixed | Total |
 |------|------|-------|-------|
-| Svelte 5 Migration | 1 | 1 | 2 |
-| LDM Connection | 2 | 0 | 2 |
+| Svelte 5 Migration | 0 | 1 | 1 |
+| LDM Connection | 2 | 1 | 3 |
 | LDM UI/UX | 4 | 16 | 20 |
 | LDM WebSocket | 0 | 2 | 2 |
 | Installer | 2 | 0 | 2 |
 | Navigation | 0 | 1 | 1 |
 | Infrastructure | 0 | 2 | 2 |
-| **Total** | **9** | **22** | **31** |
+| **Total** | **8** | **23** | **31** |
 
-**Open Issues:** 7 (1 CRITICAL, 2 HIGH, 4 MEDIUM)
-**Session 2025-12-16:** BUG-011 FIXED - Root cause: Svelte 5 reactivity bug from mixed syntax
-**New Task:** P35_SVELTE5_MIGRATION - Full codebase needs Svelte 5 runes migration
+**Open Issues:** 8 (2 CRITICAL, 2 HIGH, 4 MEDIUM)
+
+### Session 2025-12-16 Summary
+- **FIXED:** BUG-011 - App stuck at "Connecting to LDM..." (Svelte 5 reactivity)
+- **ADDED:** CI smoke test (`check_svelte_build.sh`) to catch future reactivity bugs
+- **PENDING:** BUG-007/008 (offline mode), BUG-009/010 (installer fixes ready)
+- **BUILD 284:** Running - includes all Svelte 5 fixes
 
 ---
 

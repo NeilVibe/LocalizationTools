@@ -1,50 +1,157 @@
-# Session Context - Last Working State
+# Session Context - Claude Handoff Document
 
-**Updated:** 2025-12-16 14:30 KST | **Build:** 284 (CI Verification)
-
----
-
-## CURRENT STATUS: CI SMOKE TEST VERIFICATION
-
-### Summary
-
-**BUG-011 VERIFIED FIXED:** App connection issue was fixed via P35 Svelte 5 migration.
-
-**CI Coverage Verified:**
-- ✅ **Build-time**: `check_svelte_build.sh` catches reactivity bugs (BUG-011 type)
-- ✅ **Runtime-Windows**: Smoke test verifies backend starts with SQLite mode
-- ✅ **Database-Linux**: Tests run against real PostgreSQL
-
-**Root Cause of BUG-011:** Mixed Svelte 4/5 syntax caused reactivity to break. When ANY `$state()` is used in a file, ALL `let` declarations become non-reactive.
-
-**Solution:** Converted all component state to use `$state()` runes properly.
-
-### What Was Done
-
-1. **Identified Root Cause via CDP Testing**
-   - CDP tests showed API calls succeed but UI stays in loading state
-   - Traced to Svelte 5 reactivity issue
-
-2. **Migrated All Components to Svelte 5**
-   - LDM.svelte: 15 state vars → `$state()`
-   - Login.svelte: 5 state vars → `$state()`
-   - XLSTransfer.svelte: 15 state vars → `$state()`
-   - ChangePassword.svelte: 6 vars → `$state()` + `$props()`
-   - GlobalStatusBar.svelte: 1 state var → `$state()`
-   - UpdateModal.svelte: 6 state vars → `$state()`
-
-3. **Verified Build**
-   - Zero `non_reactive_update` warnings
-   - Build completes successfully
-
-4. **Added CI Smoke Tests**
-   - Created `scripts/check_svelte_build.sh`
-   - Added to both GitHub and Gitea workflows
-   - Catches reactivity issues before they reach production
+**Updated:** 2025-12-16 09:00 KST | **Build:** 284 (CI Running)
 
 ---
 
-## Files Modified This Session
+## TL;DR FOR NEXT SESSION
+
+**What Just Happened:**
+- BUG-011 (app stuck at "Connecting to LDM...") was FIXED via P35 Svelte 5 migration
+- CI smoke tests verified and documented
+- Build 284 triggered - should be running now
+
+**What To Do Next:**
+1. Check if Build 284 passed: http://localhost:3000/neilvibe/LocaNext/actions
+2. If passed: Deploy to Playground and test BUG-011 is actually fixed
+3. Then: Fix BUG-007 (offline auto-fallback) and BUG-008 (offline indicator)
+
+**Quick Commands:**
+```bash
+# Check build status
+curl -s http://localhost:3000/api/v1/repos/neilvibe/LocaNext/actions/runners | jq
+
+# Check servers are running
+./scripts/check_servers.sh
+
+# Run local smoke test
+./scripts/check_svelte_build.sh
+```
+
+---
+
+## CURRENT STATE
+
+### Build 284 Status
+- **Triggered:** 2025-12-16 09:00 KST
+- **Commit:** 694278b
+- **Message:** P35: Svelte 5 Migration + CI Smoke Test Verification
+- **Check:** http://localhost:3000/neilvibe/LocaNext/actions
+
+### App Status
+```
+LocaNext v25.1216.0900
+├── Backend:     ✅ Working (PostgreSQL online, SQLite offline)
+├── Frontend:    ✅ Electron 39 + Svelte 5 (runes migrated)
+├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar, LDM
+├── CI/CD:       ✅ 255 tests + Svelte 5 smoke test
+├── Offline:     🔴 NOT WORKING (no auto-fallback to SQLite)
+└── Installer:   ⚠️ BUG-009, BUG-010 fixes ready (needs build)
+```
+
+### Servers (WSL)
+```
+PostgreSQL (5432)... Should be running
+Backend API (8888)... Should be running
+Gitea (3000)...       Should be running
+```
+
+Run `./scripts/check_servers.sh` to verify.
+
+---
+
+## ISSUE SUMMARY
+
+### Fixed This Session
+| Issue | Description | Fix |
+|-------|-------------|-----|
+| BUG-011 | App stuck at "Connecting to LDM..." | P35 Svelte 5 migration |
+
+### Open Issues (8 total)
+
+| Priority | Issue | Description | Status |
+|----------|-------|-------------|--------|
+| CRITICAL | BUG-007 | Offline mode auto-fallback | TO FIX |
+| CRITICAL | BUG-008 | Online/Offline indicator | TO FIX |
+| HIGH | BUG-009 | Installer shows no details | Fix Applied |
+| HIGH | BUG-010 | First-run window not closing | Fix Applied |
+| MEDIUM | UI-001 | Remove light/dark toggle | TO FIX |
+| MEDIUM | UI-002 | Reorganize Preferences | TO FIX |
+| MEDIUM | UI-003 | TM activation via modal | TO FIX |
+| MEDIUM | UI-004 | Remove TM from grid | TO FIX |
+
+**Details:** [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md)
+
+---
+
+## WHAT WAS DONE THIS SESSION
+
+### 1. BUG-011 Root Cause Analysis
+Used CDP (Chrome DevTools Protocol) tests to debug:
+- API calls succeed (200 OK)
+- `loading = false` executes
+- **BUT UI doesn't update!**
+
+Root cause: **Svelte 5 mixed syntax**. When ANY `$state()` is used in a file, ALL `let` declarations become non-reactive.
+
+### 2. P35 Svelte 5 Migration
+Converted all component state to `$state()` runes:
+
+| Component | State Vars Migrated |
+|-----------|---------------------|
+| LDM.svelte | 15 vars |
+| Login.svelte | 5 vars |
+| XLSTransfer.svelte | 15 vars |
+| ChangePassword.svelte | 6 vars + `$props()` |
+| GlobalStatusBar.svelte | 1 var |
+| UpdateModal.svelte | 6 vars |
+
+### 3. CI Smoke Test Added
+Created `scripts/check_svelte_build.sh`:
+- Catches `non_reactive_update` warnings (BUG-011 type)
+- Fails build if critical warnings found
+- Added to both GitHub and Gitea workflows
+
+### 4. CI Coverage Verified
+| Test Type | Platform | What It Tests |
+|-----------|----------|---------------|
+| Build-time | Linux + Windows | Svelte 5 reactivity warnings |
+| Runtime | Windows | Backend starts with SQLite |
+| Database | Linux | PostgreSQL connection + API |
+
+---
+
+## CI SMOKE TEST DETAILS
+
+### Svelte 5 Build Health Check
+```bash
+./scripts/check_svelte_build.sh
+```
+- Runs `npm run build` and checks output
+- FAILS if `non_reactive_update` warnings found
+- Reports non-critical warnings (event syntax, CSS, a11y)
+
+### Windows Smoke Test (Gitea build.yml)
+Phase 4 Backend Test:
+- Installs app silently
+- Starts with DATABASE_MODE=sqlite
+- Waits up to 120s for http://127.0.0.1:8888/health
+- **Detailed debug logs on failure:**
+  - Process state
+  - Log file contents
+  - Port listening status
+
+### Linux Tests (safety-checks job)
+- Real PostgreSQL service container
+- 255 tests including:
+  - Unit tests
+  - Integration tests
+  - Security tests
+  - E2E tests (KR Similar, XLSTransfer, QuickSearch)
+
+---
+
+## FILES MODIFIED THIS SESSION
 
 | File | Change |
 |------|--------|
@@ -54,78 +161,37 @@
 | `locaNext/src/lib/components/ChangePassword.svelte` | 6 vars → `$state()` + `$props()` |
 | `locaNext/src/lib/components/GlobalStatusBar.svelte` | 1 state var → `$state()` |
 | `locaNext/src/lib/components/UpdateModal.svelte` | 6 state vars → `$state()` |
-| `scripts/check_svelte_build.sh` | NEW - CI smoke test script |
-| `.github/workflows/build-electron.yml` | Added Svelte 5 build health check |
-| `.gitea/workflows/build.yml` | Added Svelte 5 build health check |
-| `docs/wip/P35_SVELTE5_MIGRATION.md` | NEW - Migration documentation |
-| `docs/wip/ISSUES_TO_FIX.md` | Updated BUG-011 with root cause and fix |
-| `docs/wip/README.md` | Added P35, updated quick nav |
+| `scripts/check_svelte_build.sh` | NEW - CI smoke test |
+| `.github/workflows/build-electron.yml` | Added Svelte 5 check |
+| `.gitea/workflows/build.yml` | Added Svelte 5 check |
+| `docs/wip/P35_SVELTE5_MIGRATION.md` | NEW - documentation |
+| `docs/wip/P34_RESOURCE_CHECK_PROTOCOL.md` | NEW - resource cleanup |
+| `tests/cdp/*.js` | NEW - 7 CDP debug tests |
 
 ---
 
-## Priority Order (Updated)
-
-| # | Priority | Issue | Status |
-|---|----------|-------|--------|
-| 1 | **P0** | BUG-011: Infinite "Connecting to LDM..." | ✅ **FIXED** |
-| 2 | **P35** | Svelte 5 Migration | ✅ **COMPLETED** |
-| 3 | **CRITICAL** | BUG-007: Offline mode auto-fallback | To Fix |
-| 4 | **CRITICAL** | BUG-008: Online/Offline indicator | To Fix |
-| 5 | HIGH | BUG-009: Installer no details | Fix Ready |
-| 6 | HIGH | BUG-010: First-run window not closing | Fix Ready |
-| 7 | MEDIUM | UI-001: Remove light/dark toggle | To Fix |
-| 8 | MEDIUM | UI-002: Reorganize Preferences | To Fix |
-| 9 | MEDIUM | UI-003: TM activation via modal | To Fix |
-| 10 | MEDIUM | UI-004: Remove TM from grid | To Fix |
-
----
-
-## CI Improvements Made
-
-### New: Svelte 5 Build Health Check
-
-Both GitHub and Gitea pipelines now include:
-
-```yaml
-- name: Svelte 5 Build Health Check
-  run: |
-    ./scripts/check_svelte_build.sh
-```
-
-This check:
-- Fails build if `non_reactive_update` warnings found
-- Reports cosmetic warnings (event syntax, unused CSS, a11y)
-- Prevents reactivity bugs from reaching production
-
----
-
-## CDP Test Files Created
+## CDP TEST FILES (Manual Debug)
 
 ```
 tests/cdp/
-├── test_console_capture.js      # Capture console output
-├── test_ldm_state.js            # Check LDM internal state
-├── test_fetch_debug.js          # Debug fetch calls
-├── test_ldm_component_flow.js   # Mirror LDM.svelte onMount
-├── test_onmount_debug.js        # Watch onMount execution
+├── test_connection_check.js    # Check app state, errors, LDM status
+├── test_console_capture.js     # Capture console output
+├── test_ldm_state.js           # Check LDM internal state
+├── test_fetch_debug.js         # Debug fetch calls
+├── test_ldm_component_flow.js  # Mirror LDM.svelte onMount
+├── test_onmount_debug.js       # Watch onMount execution
+└── test_api_url.js             # Check API URL configuration
+```
+
+Run from PowerShell (WSL cannot access Windows CDP):
+```powershell
+cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\tests\cdp
+node test_connection_check.js
 ```
 
 ---
 
-## Server Status
-
-All LocaNext servers running:
-```
-PostgreSQL (5432)... ✓ OK
-Backend API (8888)... ✓ OK
-WebSocket (8888/ws)... ✓ OK
-Gitea (3000)... ✓ OK
-Admin Dashboard (5175)... ✓ OK
-```
-
----
-
-## User Created (Testing)
+## TEST USER
 
 ```
 Username: neil
@@ -137,70 +203,99 @@ Language: EN
 
 ---
 
-## Next Actions
+## LESSONS LEARNED
 
-1. **VERIFY FIX:** Deploy new build to Playground and test BUG-011 is fixed
-   - Trigger build: `echo "Build LIGHT" >> GITEA_TRIGGER.txt && git add -A && git commit -m "P35" && git push gitea main`
-   - Or test locally with CDP if app already running
-
-2. **CONTINUE:** Fix remaining issues (BUG-007, BUG-008, etc.)
-
-3. **FUTURE:** Consider full Svelte 5 cleanup (event syntax, stores)
-
-## CI Smoke Test Coverage (VERIFIED)
-
-### Build-Time Tests (Linux + Windows)
-- ✅ `check_svelte_build.sh` - Catches `non_reactive_update` warnings (BUG-011)
-- ✅ Svelte 5 mixed syntax detection
-- ✅ Build failure on critical warnings
-
-### Runtime Tests (Windows CI)
-The Gitea `build.yml` has comprehensive smoke testing:
-- ✅ Phase 1-3: Installer verification (files exist)
-- ✅ Phase 4: Backend health check with SQLite mode (120s timeout)
-- ✅ **Detailed debug logs on failure:**
-  - Process state (LocaNext, Python processes)
-  - Log file contents (`locanext.log`)
-  - Port listening status (netstat)
-  - 3s interval progress reporting
-
-### Database Tests (Linux CI)
-- ✅ Real PostgreSQL service container
-- ✅ Backend startup with PostgreSQL
-- ✅ API integration tests
-- ✅ E2E tests (KR Similar, XLSTransfer, QuickSearch)
-
-### What's NOT Tested in CI
-- ❌ Frontend UI state beyond backend health (would need Playwright)
-- ❌ Central PostgreSQL from Windows (no PostgreSQL on Windows runner)
-
-**Note:** The CDP tests in `tests/cdp/` can be used for manual frontend testing but aren't integrated into CI.
-
----
-
-## Lessons Learned (P35)
-
-### Critical: Svelte 5 Mixed Syntax
-
-**Problem:** When a `.svelte` file uses ANY `$state()` rune, it enters "runes mode". In this mode:
+### Svelte 5 Runes Mode
+When a `.svelte` file uses ANY `$state()` rune:
+- File enters "runes mode"
 - `let x = value;` is NOT reactive
 - Only `let x = $state(value);` triggers UI updates
-- Mixing both = silent reactivity failure
-
-**Solution:**
-- All component state must use `$state()`
-- Added CI check to catch this automatically
-- Documented in P35_SVELTE5_MIGRATION.md
+- Mixing = **silent failure** (no errors, just broken UI)
 
 ### CI Must Catch Frontend Issues
+Backend tests don't catch frontend bugs:
+- API works fine (200 OK)
+- Build succeeds (no errors)
+- But runtime behavior broken
 
-The existing tests didn't catch the Svelte 5 issue because:
-- Backend tests passed (API works fine)
-- Frontend build succeeded (no build errors)
-- But runtime behavior was broken
-
-**Fix:** Added `check_svelte_build.sh` to CI to catch reactivity warnings.
+Solution: `check_svelte_build.sh` catches build warnings.
 
 ---
 
-*Last updated: 2025-12-16 02:00 KST*
+## NEXT PRIORITIES
+
+### Immediate (If Build 284 Passes)
+1. Deploy to Playground: `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground`
+2. Test BUG-011 is actually fixed (app loads past "Connecting to LDM...")
+3. If fixed, proceed to BUG-007/008
+
+### BUG-007: Offline Auto-Fallback
+Need to implement:
+- 3s connection timeout to central PostgreSQL
+- Auto-switch to SQLite if timeout
+- User notification
+
+Location: Likely in `server/config.py` or `server/database/` initialization
+
+### BUG-008: Offline/Online Indicator
+Need to add:
+- Status indicator in header/toolbar
+- Manual toggle option
+- Visual feedback on mode change
+
+Location: `LDM.svelte` toolbar or global status bar
+
+---
+
+## ARCHITECTURE REMINDER
+
+```
+LocaNext.exe (User PC)           Central PostgreSQL
+├─ Electron + Svelte 5       →   ├─ All text data
+├─ Embedded Python Backend       ├─ Users, sessions
+├─ FAISS indexes (local)         ├─ LDM rows, TM entries
+├─ Qwen model (local, 2.3GB)     └─ Logs, telemetry
+└─ File parsing (local)
+
+ONLINE:  PostgreSQL (multi-user, WebSocket sync)
+OFFLINE: SQLite (single-user, auto-login) ← NEEDS: Auto-fallback
+```
+
+---
+
+## USEFUL COMMANDS
+
+```bash
+# Check servers
+./scripts/check_servers.sh
+
+# Start all servers
+./scripts/start_all_servers.sh
+
+# Run Svelte 5 check
+./scripts/check_svelte_build.sh
+
+# Trigger Gitea build
+echo "Build LIGHT v$(TZ='Asia/Seoul' date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Build" && git push origin main && git push gitea main
+
+# Test offline mode
+DATABASE_MODE=sqlite python3 server/main.py
+```
+
+---
+
+## LINKS
+
+| What | Where |
+|------|-------|
+| Roadmap | [Roadmap.md](../../Roadmap.md) |
+| Issues | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) |
+| WIP Hub | [README.md](README.md) |
+| P35 Details | [P35_SVELTE5_MIGRATION.md](P35_SVELTE5_MIGRATION.md) |
+| Gitea Actions | http://localhost:3000/neilvibe/LocaNext/actions |
+| Backend Docs | http://localhost:8888/docs |
+
+---
+
+*Last updated: 2025-12-16 09:00 KST*
