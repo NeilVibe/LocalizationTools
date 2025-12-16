@@ -14,12 +14,12 @@
   import { isAuthenticated, user } from "$lib/stores/app.js";
   import { logger } from "$lib/utils/logger.js";
 
-  // Form state
-  let username = "";
-  let password = "";
-  let rememberMe = false;
-  let isLoading = false;
-  let error = "";
+  // Form state (Svelte 5 runes)
+  let username = $state("");
+  let password = $state("");
+  let rememberMe = $state(false);
+  let isLoading = $state(false);
+  let error = $state("");
 
   // Remember me storage keys
   const REMEMBER_KEY = 'locanext_remember';

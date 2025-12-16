@@ -473,6 +473,7 @@ export async function runFirstRunSetup(paths) {
 
     // Close setup window
     if (setupWindow && !setupWindow.isDestroyed()) {
+      setupWindow.setClosable(true);  // Must enable closing first (window created with closable: false)
       setupWindow.close();
       setupWindow = null;
     }

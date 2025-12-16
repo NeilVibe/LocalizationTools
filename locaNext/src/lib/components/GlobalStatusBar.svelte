@@ -17,7 +17,8 @@
   } from "$lib/stores/globalProgress.js";
   import { currentView } from "$lib/stores/app.js";
 
-  let expanded = false;
+  // Svelte 5: State
+  let expanded = $state(false);
 
   function toggleExpand() {
     expanded = !expanded;

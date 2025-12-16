@@ -10,30 +10,30 @@
   import { onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
-  // Modal state
-  let open = false;
-  let updateState = 'idle'; // 'idle' | 'available' | 'downloading' | 'downloaded' | 'error'
+  // Svelte 5: Modal state
+  let open = $state(false);
+  let updateState = $state('idle'); // 'idle' | 'available' | 'downloading' | 'downloaded' | 'error'
 
-  // Update info
-  let updateInfo = {
+  // Svelte 5: Update info
+  let updateInfo = $state({
     version: '',
     releaseNotes: '',
     releaseDate: ''
-  };
+  });
 
-  // Download progress
-  let progress = {
+  // Svelte 5: Download progress
+  let progress = $state({
     percent: 0,
     transferred: 0,
     total: 0,
     bytesPerSecond: 0
-  };
+  });
 
-  // Error state
-  let errorMessage = '';
+  // Svelte 5: Error state
+  let errorMessage = $state('');
 
-  // Current version (from backend health)
-  let currentVersion = '';
+  // Svelte 5: Current version (from backend health)
+  let currentVersion = $state('');
 
   // Fetch current version on mount
   onMount(async () => {

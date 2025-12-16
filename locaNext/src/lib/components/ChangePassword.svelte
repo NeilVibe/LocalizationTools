@@ -10,14 +10,16 @@
   import { api } from "$lib/api/client.js";
   import { logger } from "$lib/utils/logger.js";
 
-  export let open = false;
+  // Svelte 5: Props
+  let { open = $bindable(false) } = $props();
 
-  let currentPassword = '';
-  let newPassword = '';
-  let confirmPassword = '';
-  let loading = false;
-  let error = null;
-  let success = false;
+  // Svelte 5: State
+  let currentPassword = $state('');
+  let newPassword = $state('');
+  let confirmPassword = $state('');
+  let loading = $state(false);
+  let error = $state(null);
+  let success = $state(false);
 
   function resetForm() {
     currentPassword = '';

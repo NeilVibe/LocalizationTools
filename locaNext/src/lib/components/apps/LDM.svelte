@@ -17,13 +17,13 @@
   // import DataGrid from "$lib/components/ldm/DataGrid.svelte";
 
   // TM Manager state
-  let showTMManager = false;
+  let showTMManager = $state(false);
 
   // Preferences modal state
-  let showPreferences = false;
+  let showPreferences = $state(false);
 
   // Server status modal state
-  let showServerStatus = false;
+  let showServerStatus = $state(false);
 
   // API base URL
   const API_BASE = 'http://localhost:8888';
@@ -65,21 +65,21 @@
     testFileId: null
   };
 
-  // State
-  let healthStatus = null;
-  let loading = true;
-  let error = null;
+  // State (Svelte 5 runes for reactivity)
+  let healthStatus = $state(null);
+  let loading = $state(true);
+  let error = $state(null);
 
   // Selection state
-  let projects = [];
-  let selectedProjectId = null;
-  let selectedFileId = null;
-  let selectedFileName = "";
+  let projects = $state([]);
+  let selectedProjectId = $state(null);
+  let selectedFileId = $state(null);
+  let selectedFileName = $state("");
 
   // P33 Phase 3: TM selection state
-  let selectedTMId = null;
-  let selectedTMName = "";
-  let viewMode = 'file'; // 'file' | 'tm' - what's displayed in VirtualGrid
+  let selectedTMId = $state(null);
+  let selectedTMName = $state("");
+  let viewMode = $state('file'); // 'file' | 'tm' - what's displayed in VirtualGrid
 
   // P33 Phase 4: Connection status
   let connectionStatus = $state({
@@ -88,9 +88,9 @@
     dbType: 'unknown'
   });
 
-  // Component refs
-  let fileExplorer;
-  let virtualGrid;
+  // Component refs (Svelte 5 requires $state for bindable refs)
+  let fileExplorer = $state(null);
+  let virtualGrid = $state(null);
 
   // Helper to get auth headers
   function getAuthHeaders() {

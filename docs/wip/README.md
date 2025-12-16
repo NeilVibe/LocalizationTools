@@ -6,15 +6,26 @@
 
 ## Priority Tiers
 
-### Tier 1: CORE (Current Focus)
+### Tier 0: CRITICAL BUGS (Must Fix First)
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
-| **P25** | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 🔴 NEXT | TM matching, QA checks (85%) |
+| **BUGS** | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | 🔴 NOW | 7 issues (BUG-011 fixed!) |
+| **P35** | [P35_SVELTE5_MIGRATION.md](P35_SVELTE5_MIGRATION.md) | ✅ DONE | Svelte 5 reactivity fix (BUG-011) |
+
+### Tier 1: CORE (After Bug Fixes)
+| Priority | Document | Status | Description |
+|----------|----------|--------|-------------|
+| **P25** | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | ⏸️ PAUSED | TM matching, QA checks (85%) |
 
 ### Tier 2: LATER (Low Priority)
 | Priority | Document | Status | Description |
 |----------|----------|--------|-------------|
 | P17 | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 80% | Custom pickers - features |
+
+### Tier 3: Investigation / Protocol
+| Priority | Document | Status | Description |
+|----------|----------|--------|-------------|
+| **P34** | [P34_RESOURCE_CHECK_PROTOCOL.md](P34_RESOURCE_CHECK_PROTOCOL.md) | 🔵 NEW | Resource zombies + cleanup protocol |
 
 ### Reference / Complete
 | Priority | Document | Status | Description |
@@ -80,20 +91,34 @@ Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
 
 **Current Session:** [SESSION_CONTEXT.md](SESSION_CONTEXT.md)
 
-**🔴 NEXT FOCUS:**
-- **P25:** [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md)
-  - TM matching (Qwen + FAISS 5-tier)
-  - QA checks (Word Check, Line Check)
-  - 85% complete
+**✅ JUST FIXED:**
+- **BUG-011:** App stuck at "Connecting to LDM..." → **FIXED (P35 Svelte 5 migration)**
+- See: [P35_SVELTE5_MIGRATION.md](P35_SVELTE5_MIGRATION.md)
+
+**🔴 CRITICAL - FIX NEXT:**
+- **BUG-007:** Offline mode auto-fallback (3s timeout)
+- **BUG-008:** Online/Offline mode indicator
+- See: [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md)
+
+**⚠️ HIGH (Fixes Ready):**
+- **BUG-009:** Installer no details (fix applied)
+- **BUG-010:** First-run window not closing (fix applied)
+
+**📋 MEDIUM (UI/UX):**
+- UI-001: Remove light/dark toggle
+- UI-002: Reorganize Preferences
+- UI-003: TM activation via modal
+- UI-004: Remove TM from grid
+
+**⏸️ PAUSED (After Bug Fixes):**
+- **P25:** LDM UX (85%) - TM matching, QA checks
 
 **✅ RECENTLY COMPLETED:**
-- **CI:** Unified GitHub + Gitea (255 tests, Build 283 ✅)
-- **P33:** Offline Mode + Auto-Login (100%)
-- **P32:** Code Review (9/11 fixed)
-
-**Low Priority (Later):**
-- P17: Custom pickers
+- **P35:** Svelte 5 Migration (BUG-011 fix)
+- **P34:** Resource Check Protocol (Docker cleanup)
+- **CI:** Unified GitHub + Gitea (255 tests)
+- **P33:** Offline Mode + Auto-Login (CI only)
 
 ---
 
-*Last Updated: 2025-12-16 22:45 KST*
+*Last Updated: 2025-12-16 01:50 KST*
