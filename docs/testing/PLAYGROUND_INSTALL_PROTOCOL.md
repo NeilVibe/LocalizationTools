@@ -1,7 +1,7 @@
 # Autonomous Playground Install Protocol
 
 **Purpose:** Clean install LocaNext to Playground for testing
-**Last Updated:** 2025-12-16
+**Last Updated:** 2025-12-17
 
 ---
 
@@ -98,14 +98,25 @@ Parameters:
 │     └─> Wait for completion (~60-90 seconds)                │
 │     └─> Verify: LocaNext.exe exists                         │
 │                                                             │
-│  5. LAUNCH (optional)                                       │
+│  5. CONFIGURE CENTRAL SERVER                                │
+│     └─> Create: %APPDATA%\LocaNext\server-config.json       │
+│     └─> Host: 172.28.150.120:5432 (PostgreSQL)              │
+│     └─> User: localization_admin                            │
+│     └─> IMPORTANT: Write UTF-8 without BOM                  │
+│                                                             │
+│  6. LAUNCH (optional)                                       │
 │     └─> Run: LocaNext.exe --remote-debugging-port=9222      │
 │     └─> Wait: 5 seconds for startup                         │
 │                                                             │
-│  6. VERIFY (optional)                                       │
+│  7. VERIFY (optional)                                       │
 │     └─> CDP: http://127.0.0.1:9222/json                     │
 │     └─> Check: page target exists                           │
-│     └─> Check: page URL/title valid                         │
+│     └─> Check: backend health shows database_type: postgresql│
+│                                                             │
+│  8. AUTO-LOGIN (optional)                                   │
+│     └─> Wait for First Time Setup (~5 min on first run)     │
+│     └─> Login via API: POST /api/auth/login                 │
+│     └─> User: neil / Password: neil                         │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -123,6 +134,62 @@ Parameters:
 | User Data | `%APPDATA%\LocaNext` |
 | Local Data | `%LOCALAPPDATA%\LocaNext` |
 | Updater | `%LOCALAPPDATA%\locanext-updater` |
+| **Server Config** | `%APPDATA%\LocaNext\server-config.json` |
+
+---
+
+## Central Server Configuration
+
+The install script automatically creates `%APPDATA%\LocaNext\server-config.json` with PostgreSQL credentials for online mode.
+
+### Config File Format
+
+```json
+{
+  "postgres_host": "172.28.150.120",
+  "postgres_port": 5432,
+  "postgres_user": "localization_admin",
+  "postgres_password": "locanext_dev_2025",
+  "postgres_db": "localizationtools"
+}
+```
+
+### Critical: UTF-8 Without BOM
+
+**PowerShell 5.x** (`Set-Content -Encoding UTF8`) adds a UTF-8 BOM which breaks JSON parsing. The install script uses .NET to write without BOM:
+
+```powershell
+# Correct - no BOM
+$jsonContent = $config | ConvertTo-Json
+[System.IO.File]::WriteAllText($configPath, $jsonContent, [System.Text.UTF8Encoding]::new($false))
+
+# WRONG - adds BOM, breaks JSON parsing
+$config | ConvertTo-Json | Set-Content -Path $configPath -Encoding UTF8
+```
+
+### Config Priority
+
+The backend loads configuration with this priority:
+1. Environment variables (highest)
+2. User config file (`server-config.json`)
+3. Default values (lowest)
+
+### Verifying Connection
+
+After install, verify PostgreSQL connection:
+
+```powershell
+# Check backend health
+Invoke-RestMethod -Uri "http://localhost:8888/health"
+
+# Expected for ONLINE mode:
+# {
+#   "status": "healthy",
+#   "database": "connected",
+#   "database_type": "postgresql",   <-- THIS indicates online mode
+#   "local_mode": false
+# }
+```
 
 ---
 
@@ -318,7 +385,7 @@ cd $env:TEMP && npm install ws
 
 ---
 
-## Test Results (Build 292)
+## Test Results (Build 296)
 
 ### Verified Working
 
@@ -329,17 +396,30 @@ cd $env:TEMP && npm install ws
 | CDP debugging | ✅ | `--remote-debugging-port=9222` |
 | First-time setup | ✅ | Dependencies and model loaded |
 | Offline mode (SQLite) | ✅ | Embedded backend working |
+| **Online mode (PostgreSQL)** | ✅ | Auto-configured via server-config.json |
+| Auto-login | ✅ | neil/neil via API after First Time Setup |
 | App UI | ✅ | LDM loaded, navigation works |
-| "Go Online" button | ✅ | Correctly detects PostgreSQL not reachable |
 
-### Requires Configuration
+### Complete Flow
 
-| Feature | Status | Reason |
-|---------|--------|--------|
-| Online mode (PostgreSQL) | ⚠️ | Central server credentials required |
-| WebSocket sync | ⚠️ | Requires online mode |
-| Multi-user features | ⚠️ | Requires online mode |
+```
+1. Install (163MB download, ~90s install)
+2. Configure (server-config.json created automatically)
+3. Launch (CDP enabled)
+4. First Time Setup (~5 min on first run)
+5. Backend connects to PostgreSQL (172.28.150.120:5432)
+6. Auto-login as neil/neil
+7. App ready in ONLINE mode
+```
+
+### Prerequisites
+
+| Requirement | Details |
+|-------------|---------|
+| PostgreSQL | Running on 172.28.150.120:5432 |
+| User | localization_admin with correct password |
+| pg_hba.conf | Allow connections from 172.28.0.0/16 |
 
 ---
 
-*Created: 2025-12-16 | Tested with Build 292 (v25.1216.1251)*
+*Created: 2025-12-16 | Updated: 2025-12-17 | Tested with Build 296 (v25.1217.0100)*
