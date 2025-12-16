@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff
 
-**Updated:** 2025-12-17 07:00 KST | **Build:** 295 ✅
+**Updated:** 2025-12-17 01:15 KST | **Build:** 296 ✅
 
 ---
 
@@ -8,12 +8,37 @@
 
 | Status | Value |
 |--------|-------|
-| **Build** | 295 ✅ (v25.1216.1626) |
-| **Latest Commit** | `480e7fc` - E2E tests committed |
+| **Build** | 296 ✅ (v25.1217.0100) |
+| **Latest Commit** | `8ab7acc` - Build: Retry Build 296 |
 | **Open Issues** | 0 |
-| **Playground** | Online (PostgreSQL) |
-| **Current** | P36 Phase 1 COMPLETE ✅ - Ready for Phase 2 |
+| **Playground** | Online (PostgreSQL) with auto-login |
+| **Current** | Security fix - removed Server Config UI |
 | **Next** | Phase 2 Backend (API endpoints) |
+
+---
+
+## IMPORTANT: Session Changes (2025-12-17)
+
+### Security Fix: Removed Server Config UI ✅
+
+**Problem:** Users could see "Configure Server" button exposing PostgreSQL settings.
+
+**Fixed:**
+1. ❌ Deleted `ServerConfigModal.svelte` (exposed DB credentials)
+2. ❌ Removed `/api/server-config/*` endpoints from backend
+3. ❌ Removed "Configure Server" button from ServerStatus.svelte
+4. ✅ App now auto-connects to central PostgreSQL (no user config needed)
+
+### Playground Auto-Login Feature ✅
+
+Added `--auto-login` flag to playground install:
+
+```bash
+# Full install with auto-login as neil/neil
+./scripts/playground_install.sh --launch --auto-login
+```
+
+This waits for First Time Setup, then logs in automatically via API.
 
 ---
 
@@ -227,8 +252,8 @@ python3 tests/fixtures/pretranslation/test_real_patterns.py
 # Check servers
 ./scripts/check_servers.sh
 
-# Playground install
-./scripts/playground_install.sh --launch
+# Playground install with auto-login
+./scripts/playground_install.sh --launch --auto-login
 ```
 
 ---

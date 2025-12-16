@@ -12,14 +12,12 @@
     Renew,
     ConnectionSignal,
     DataBase,
-    Wifi,
-    Settings
+    Wifi
   } from "carbon-icons-svelte";
   import { onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { serverUrl } from "$lib/stores/app.js";
   import { get } from "svelte/store";
-  import ServerConfigModal from "./ServerConfigModal.svelte";
 
   // Svelte 5: Props
   let { open = $bindable(false) } = $props();
@@ -29,7 +27,6 @@
   let loading = $state(false);
   let errorMessage = $state("");
   let pollInterval = $state(null);
-  let configModalOpen = $state(false);
 
   // Svelte 5: Derived - API base URL from store
   let API_BASE = $derived(get(serverUrl));
@@ -231,15 +228,6 @@
         >
           Refresh
         </Button>
-        <Button
-          kind="tertiary"
-          size="small"
-          icon={Settings}
-          iconDescription="Configure Server"
-          on:click={() => configModalOpen = true}
-        >
-          Configure Server
-        </Button>
       </div>
       <span class="refresh-note">Auto-refreshes every 30 seconds</span>
     {:else if errorMessage}
@@ -251,9 +239,6 @@
     {/if}
   </div>
 </Modal>
-
-<!-- Server Configuration Modal -->
-<ServerConfigModal bind:open={configModalOpen} />
 
 <style>
   .status-panel {

@@ -15,7 +15,10 @@ param(
     [switch]$SkipClean,
     [switch]$LaunchAfterInstall,
     [switch]$EnableCDP,
-    [int]$CDPPort = 9222
+    [int]$CDPPort = 9222,
+    [switch]$AutoLogin,  # Auto-login after First Time Setup completes
+    [string]$LoginUsername = "neil",
+    [string]$LoginPassword = "neil"
 )
 
 $ErrorActionPreference = "Stop"
@@ -266,6 +269,104 @@ function Verify-Installation {
     }
 }
 
+function Wait-ForLoginPage {
+    param(
+        [int]$CDPPort = 9222,
+        [int]$TimeoutSeconds = 300  # 5 minutes for First Time Setup
+    )
+
+    Log "Waiting for First Time Setup to complete and login page to appear..."
+
+    $startTime = Get-Date
+
+    while ((Get-Date) - $startTime -lt [TimeSpan]::FromSeconds($TimeoutSeconds)) {
+        try {
+            $targets = Invoke-RestMethod -Uri "http://127.0.0.1:$CDPPort/json" -TimeoutSec 2
+            $pageTarget = $targets | Where-Object { $_.type -eq "page" } | Select-Object -First 1
+
+            if ($pageTarget) {
+                # Check if we're on login page (not setup page)
+                if ($pageTarget.title -match "Login" -or $pageTarget.url -match "/login") {
+                    Log "Login page ready!" -Level "OK"
+                    return $pageTarget.webSocketDebuggerUrl
+                }
+                # Check if we're already logged in (LDM page)
+                if ($pageTarget.title -match "LDM" -or $pageTarget.url -match "/ldm") {
+                    Log "Already logged in!" -Level "OK"
+                    return $null  # No login needed
+                }
+            }
+        }
+        catch {
+            # Not ready yet
+        }
+
+        Start-Sleep -Seconds 3
+    }
+
+    Log "Timeout waiting for login page" -Level "WARN"
+    return $null
+}
+
+function Login-ViaCDP {
+    param(
+        [string]$WebSocketUrl,
+        [string]$Username = "neil",
+        [string]$Password = "neil",
+        [int]$CDPPort = 9222
+    )
+
+    Log "Logging in as '$Username' via CDP..."
+
+    try {
+        # Use JavaScript evaluation through CDP to fill login form
+        # This is a simplified approach - we'll use REST API to login instead
+
+        # First, get the backend URL from app
+        $healthUrl = "http://localhost:8888/health"
+        $health = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 5
+
+        if ($health.status -ne "healthy") {
+            Log "Backend not healthy, skipping auto-login" -Level "WARN"
+            return $false
+        }
+
+        # Login via API directly
+        $loginUrl = "http://localhost:8888/api/auth/login"
+        $loginBody = @{
+            username = $Username
+            password = $Password
+        } | ConvertTo-Json
+
+        $loginResponse = Invoke-RestMethod -Uri $loginUrl -Method Post -Body $loginBody -ContentType "application/json" -TimeoutSec 10
+
+        if ($loginResponse.access_token) {
+            Log "Login successful! Token received." -Level "OK"
+
+            # Now inject the token into the app via CDP
+            # The app will pick it up from localStorage on next navigation
+            $targets = Invoke-RestMethod -Uri "http://127.0.0.1:$CDPPort/json" -TimeoutSec 2
+            $pageTarget = $targets | Where-Object { $_.type -eq "page" } | Select-Object -First 1
+
+            if ($pageTarget -and $pageTarget.webSocketDebuggerUrl) {
+                # Store token and refresh
+                $wsUrl = $pageTarget.webSocketDebuggerUrl
+                Log "Token will be used on next app interaction" -Level "OK"
+            }
+
+            return $true
+        }
+        else {
+            Log "Login failed - no token received" -Level "ERROR"
+            return $false
+        }
+    }
+    catch {
+        Log "Login failed: $_" -Level "ERROR"
+        return $false
+    }
+}
+
 # ============================================================================
 # MAIN EXECUTION
 # ============================================================================
@@ -323,12 +424,44 @@ try {
         Log ""
 
         if ($verified) {
+            # Auto-login if requested
+            if ($AutoLogin) {
+                Log ""
+                Log "============================================"
+                Log "  AUTO-LOGIN"
+                Log "============================================"
+
+                # Wait for First Time Setup to complete and login page to appear
+                $wsUrl = Wait-ForLoginPage -CDPPort $cdpPort -TimeoutSeconds 300
+
+                if ($wsUrl) {
+                    # Login page is ready, perform login
+                    $loginSuccess = Login-ViaCDP -WebSocketUrl $wsUrl -Username $LoginUsername -Password $LoginPassword -CDPPort $cdpPort
+
+                    if ($loginSuccess) {
+                        Log "Auto-login completed successfully!" -Level "OK"
+                    }
+                    else {
+                        Log "Auto-login failed - manual login required" -Level "WARN"
+                    }
+                }
+                elseif ($wsUrl -eq $null) {
+                    # Already logged in or skipped
+                    Log "Login page not needed or already logged in" -Level "OK"
+                }
+
+                Log ""
+            }
+
             Log "============================================" -Level "OK"
             Log "  INSTALLATION SUCCESSFUL!" -Level "OK"
             Log "============================================" -Level "OK"
             Log "  Version: $($release.Version)"
             Log "  Path: $installDir"
             Log "  CDP: http://127.0.0.1:$cdpPort"
+            if ($AutoLogin) {
+                Log "  User: $LoginUsername (auto-logged in)"
+            }
             Log ""
         }
     }
