@@ -1,7 +1,7 @@
 # Issues To Fix
 
 **Purpose:** Track known bugs, UI issues, and improvements across LocaNext
-**Last Updated:** 2025-12-16 09:20 KST
+**Last Updated:** 2025-12-16 12:30 KST
 
 ---
 
@@ -15,12 +15,21 @@
 | LDM WebSocket | 0 | 2 | 2 |
 | Installer | 0 | 2 | 2 |
 | Navigation | 0 | 1 | 1 |
-| Infrastructure | 0 | 2 | 2 |
-| **Total** | **4** | **27** | **31** |
+| Infrastructure | 0 | 6 | 6 |
+| **Total** | **4** | **31** | **35** |
 
-**Open Issues:** 4 (0 CRITICAL, 0 HIGH, 4 MEDIUM) - all UI polish
+**Open Issues:** 4 (0 HIGH, 4 MEDIUM)
 
-### Session 2025-12-16 Summary
+### Session 2025-12-16 (continued) Summary
+- **FIXED:** CI test isolation - unit tests were dropping CI database tables
+- **FIXED:** CI test bloat - Gitea runs ~273 tests in 5 min (not 1000+ in 23 min)
+- **FIXED:** Connectivity tests included (`test_database_connectivity.py` - 26 tests)
+- **BUILD 290:** Tests PASSED in 5m7s, but overall FAILED
+- **CRITICAL:** 7 consecutive failures since Build 284 (Svelte 5 migration)
+- **ISSUE:** Windows build step failing - runner may be down or Electron build broken
+- **LAST PASSING:** Build 283 (22m48s)
+
+### Session 2025-12-16 Summary (earlier)
 - **FIXED:** BUG-011 - App stuck at "Connecting to LDM..." (Svelte 5 reactivity)
 - **IMPLEMENTED:** BUG-007 - Auto-fallback to SQLite when PostgreSQL unreachable
 - **IMPLEMENTED:** BUG-008 - Online/Offline indicator + "Go Online" button
@@ -29,7 +38,6 @@
   - **PostgreSQL verification** - FAILS if server fell back to SQLite
   - `test_database_connectivity.py` - 26 new connectivity tests
 - **PENDING:** BUG-009/010 (installer fixes ready, needs build)
-- **BUILD 285:** Running - includes Svelte 5 fixes + PostgreSQL smoke test
 
 ---
 
