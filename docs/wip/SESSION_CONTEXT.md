@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Updated:** 2025-12-16 09:00 KST | **Build:** 284 (CI Running)
+**Updated:** 2025-12-16 09:15 KST | **Build:** 285 (PostgreSQL Smoke Test)
 
 ---
 
@@ -184,9 +184,9 @@ Phase 4 Backend Test:
 | `locaNext/src/lib/components/ChangePassword.svelte` | 6 vars → `$state()` + `$props()` |
 | `locaNext/src/lib/components/GlobalStatusBar.svelte` | 1 state var → `$state()` |
 | `locaNext/src/lib/components/UpdateModal.svelte` | 6 state vars → `$state()` |
-| `scripts/check_svelte_build.sh` | NEW - CI smoke test |
-| `.github/workflows/build-electron.yml` | Added Svelte 5 check |
-| `.gitea/workflows/build.yml` | Added Svelte 5 check |
+| `scripts/check_svelte_build.sh` | NEW - Svelte 5 CI smoke test |
+| `.github/workflows/build-electron.yml` | Added Svelte 5 check + **PostgreSQL verification** |
+| `.gitea/workflows/build.yml` | Added Svelte 5 check + **PostgreSQL verification** |
 | `docs/wip/P35_SVELTE5_MIGRATION.md` | NEW - documentation |
 | `docs/wip/P34_RESOURCE_CHECK_PROTOCOL.md` | NEW - resource cleanup |
 | `tests/cdp/*.js` | NEW - 7 CDP debug tests |
