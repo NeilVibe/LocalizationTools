@@ -1,112 +1,75 @@
-# Work In Progress (WIP) Hub
+# WIP - Work In Progress
 
-**Purpose:** Track active tasks and link to detailed docs
-**Updated:** 2025-12-16 09:20 KST
+**Updated:** 2025-12-16 | **Active Files:** 7 | **Open Issues:** 0
 
 ---
 
-## Start Here
+## Quick Navigation
 
-| Need | Go To |
-|------|-------|
-| **Last session state?** | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) |
+| Need | File |
+|------|------|
+| **Session state?** | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) |
 | **Bug list?** | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) |
-| **High-level roadmap?** | [Roadmap.md](../../Roadmap.md) |
+| **Roadmap?** | [Roadmap.md](../../Roadmap.md) |
 
 ---
 
 ## Current Status
 
 ```
-Build 285 Running (2025-12-16)
-├── P35 Svelte 5 Migration: ✅ DONE (BUG-011 fixed)
-├── CI Smoke Tests: ✅ Svelte 5 + PostgreSQL verification
-├── Open Issues: 8 (2 CRITICAL, 2 HIGH, 4 MEDIUM)
-└── Next: BUG-007/008 (offline mode)
+Build 295 ✅ PASSED | v25.1216.1626
+├── Open Issues: 0 (all 38 fixed!)
+├── P36 Pretranslation Stack: Planning (NEW!)
+├── P25 LDM UX: 85%
+└── Enterprise Docs: Created
 ```
 
 ---
 
-## Priority Queue
+## Active WIP
 
-### NOW: Bug Fixes
+| File | Status | Description |
+|------|--------|-------------|
+| `SESSION_CONTEXT.md` | Always | Claude handoff state |
+| `ISSUES_TO_FIX.md` | 0 open | Bug tracker |
+| `P36_PRETRANSLATION_STACK.md` | Planning | **NEW!** Unified TM + KR Similar + XLS Transfer |
+| `P25_LDM_UX_OVERHAUL.md` | 85% | TM matching, QA checks |
+| `P17_LDM_TASKS.md` | 80% | LDM feature list |
 
-| Priority | Issue | Description | Status |
-|----------|-------|-------------|--------|
-| CRITICAL | BUG-007 | Offline mode auto-fallback | TO FIX |
-| CRITICAL | BUG-008 | Online/Offline indicator | TO FIX |
-| HIGH | BUG-009 | Installer no details | Fix Ready |
-| HIGH | BUG-010 | First-run window stuck | Fix Ready |
-| MEDIUM | UI-001-004 | UI/UX cleanup | TO FIX |
+## Reference WIP
 
-### NEXT: P25 LDM UX (Paused)
-
-- TM matching (Qwen + FAISS)
-- QA checks
-- Custom pickers
-
----
-
-## Document Index
-
-### Active
-| Doc | Status | Purpose |
-|-----|--------|---------|
-| [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Active | Claude handoff state |
-| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Active | Bug tracker |
-| [P35_SVELTE5_MIGRATION.md](P35_SVELTE5_MIGRATION.md) | ✅ Done | Svelte 5 runes migration |
-| [P34_RESOURCE_CHECK_PROTOCOL.md](P34_RESOURCE_CHECK_PROTOCOL.md) | Reference | Zombie process cleanup |
-
-### Paused
-| Doc | Status | Purpose |
-|-----|--------|---------|
-| [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 85% | TM matching, QA checks |
-| [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 80% | LDM features |
-
-### Completed
-| Doc | Purpose |
-|-----|---------|
-| [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md) | Offline mode + CI |
-| [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) | Svelte 5 + Vite 7 |
-| [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | TM system design |
+| File | Description |
+|------|-------------|
+| `P23_DATA_FLOW_ARCHITECTURE.md` | Local ↔ Central data flow |
+| `P24_STATUS_DASHBOARD.md` | Server status (paused) |
+| `P34_RESOURCE_CHECK_PROTOCOL.md` | Zombie cleanup protocol |
+| `IDEAS_FUTURE.md` | Future feature ideas |
 
 ---
 
-## Recently Completed
+## Archived (History)
 
-| Date | What | Details |
-|------|------|---------|
-| 2025-12-16 | P35 Svelte 5 | BUG-011 fixed, CI: Svelte 5 + PostgreSQL smoke tests |
-| 2025-12-16 | P34 Resources | Zombie cleanup protocol |
-| 2025-12-15 | CI Unification | 255 tests, GitHub + Gitea |
-| 2025-12-15 | P33 Offline | SQLite fallback (CI only) |
-| 2025-12-15 | P32 Code Review | 9/11 issues fixed |
+| Location | Contents |
+|----------|----------|
+| `history/wip-archive/` | 12 completed P* files |
+| `history/ISSUES_HISTORY.md` | 38 fixed issues |
+| `history/ROADMAP_ARCHIVE.md` | Old roadmap items |
 
 ---
 
-## Quick Reference
+## Quick Commands
 
-### Check Build Status
 ```bash
-# Gitea UI
-http://localhost:3000/neilvibe/LocaNext/actions
+# Check build
+http://172.28.150.120:3000/neilvibe/LocaNext/actions
 
-# API
-curl -s http://localhost:3000/api/v1/repos/neilvibe/LocaNext/actions/runners
-```
+# Trigger build
+echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git push origin main && git push gitea main
 
-### Trigger New Build
-```bash
-echo "Build LIGHT" >> GITEA_TRIGGER.txt
-git add -A && git commit -m "Build" && git push origin main && git push gitea main
-```
-
-### Run Local Tests
-```bash
-./scripts/check_svelte_build.sh      # Svelte 5 check
-python3 -m pytest tests/unit/ -v     # Unit tests
+# Check servers
+./scripts/check_servers.sh
 ```
 
 ---
 
-*Last Updated: 2025-12-16 09:20 KST*
+*Keep WIP lean. Archive completed work to `docs/history/`.*
