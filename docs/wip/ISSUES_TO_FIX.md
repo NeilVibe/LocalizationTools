@@ -23,31 +23,32 @@
 
 ### Session 2025-12-16 - BUILD 294 PASSED + BUG-012 VERIFIED IN PLAYGROUND
 
-**BUG-012 Server Configuration UI - FULLY VERIFIED:**
+**BUG-012 Server Configuration UI - FULLY VERIFIED + ONLINE MODE WORKING:**
 - ✅ Build 294 passed with new `test_server_config.py` in CI
 - ✅ GET /api/server-config - Returns current config (without password)
 - ✅ POST /api/server-config/test - Tests PostgreSQL connection
-  - Returns `reachable: true` when server accessible
-  - Returns `authenticated: false` with error message when credentials wrong
-- ✅ POST /api/server-config - Saves config to `%APPDATA%\LocaNext\server-config.json`
-- ✅ Config file created correctly, restart required to apply
+- ✅ POST /api/server-config - Saves config file
+- ✅ App restart picks up new config
+- ✅ **ONLINE MODE CONNECTED TO CENTRAL POSTGRESQL!**
 
-**Playground Test Results (v25.1216.1449):**
+**Final Playground Status (v25.1216.1449):**
 ```json
-GET /api/server-config:
 {
-  "config_file_path": "C:\\Users\\MYCOM\\AppData\\Roaming\\LocaNext\\server-config.json",
-  "config_file_exists": true,
-  "database_mode": "auto",
-  "active_database_type": "sqlite"
+  "status": "healthy",
+  "database": "connected",
+  "database_type": "postgresql",
+  "local_mode": false,
+  "version": "25.1216.1449"
 }
+```
 
-POST /api/server-config/test to 172.28.150.120:5432:
-{
-  "reachable": true,
-  "authenticated": false,
-  "message": "Authentication failed. Check username and password."
-}
+**Working PostgreSQL Credentials:**
+```
+Host: 172.28.150.120
+Port: 5432
+User: locanext_ci
+Password: locanext_ci_test
+Database: locanext_ci_test
 ```
 
 ### Session 2025-12-16 - BUILD 292 PASSED + PLAYGROUND TESTED
