@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff
 
-**Updated:** 2025-12-17 01:15 KST | **Build:** 296 ✅
+**Updated:** 2025-12-17 02:20 KST | **Build:** 296 ✅
 
 ---
 
@@ -8,11 +8,11 @@
 
 | Status | Value |
 |--------|-------|
-| **Build** | 296 ✅ (v25.1217.0100) |
-| **Latest Commit** | `8ab7acc` - Build: Retry Build 296 |
+| **Build** | 296 ✅ (v25.1217.0136) |
+| **Latest Commit** | Pending - playground config fix |
 | **Open Issues** | 0 |
-| **Playground** | Online (PostgreSQL) with auto-login |
-| **Current** | Security fix - removed Server Config UI |
+| **Playground** | ✅ ONLINE (PostgreSQL 172.28.150.120:5432) |
+| **Current** | Playground auto-config + docs complete |
 | **Next** | Phase 2 Backend (API endpoints) |
 
 ---
@@ -39,6 +39,23 @@ Added `--auto-login` flag to playground install:
 ```
 
 This waits for First Time Setup, then logs in automatically via API.
+
+### Playground Auto-Config for PostgreSQL ✅
+
+**Problem:** App was falling back to SQLite (OFFLINE) even with server-config.json.
+
+**Root Cause:** PowerShell 5.x `Set-Content -Encoding UTF8` adds a UTF-8 BOM which breaks Python's JSON parsing. The config file was silently failing to load.
+
+**Fixed in `playground_install.ps1`:**
+```powershell
+# Write without BOM (PowerShell 5.x UTF8 adds BOM which breaks JSON parsing)
+$jsonContent = $config | ConvertTo-Json
+[System.IO.File]::WriteAllText($configPath, $jsonContent, [System.Text.UTF8Encoding]::new($false))
+```
+
+**Also fixed:** Reset PostgreSQL password for `localization_admin` to match config.
+
+**Verified:** App now connects to PostgreSQL and shows `database_type: postgresql` in health check.
 
 ---
 

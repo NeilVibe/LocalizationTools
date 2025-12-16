@@ -308,6 +308,48 @@ function Wait-ForLoginPage {
     return $null
 }
 
+function Configure-CentralServer {
+    param(
+        [string]$PostgresHost = "172.28.150.120",
+        [int]$PostgresPort = 5432,
+        [string]$PostgresUser = "localization_admin",
+        [string]$PostgresPassword = "locanext_dev_2025",
+        [string]$PostgresDb = "localizationtools"
+    )
+
+    Log "Configuring central server connection..."
+
+    try {
+        # Create config directory if it doesn't exist
+        $configDir = "$env:APPDATA\LocaNext"
+        if (-not (Test-Path $configDir)) {
+            New-Item -Path $configDir -ItemType Directory -Force | Out-Null
+            Log "Created config directory: $configDir"
+        }
+
+        # Create server-config.json
+        $configPath = "$configDir\server-config.json"
+        $config = @{
+            postgres_host = $PostgresHost
+            postgres_port = $PostgresPort
+            postgres_user = $PostgresUser
+            postgres_password = $PostgresPassword
+            postgres_db = $PostgresDb
+        }
+
+        # Write without BOM (PowerShell 5.x UTF8 adds BOM which breaks JSON parsing)
+        $jsonContent = $config | ConvertTo-Json
+        [System.IO.File]::WriteAllText($configPath, $jsonContent, [System.Text.UTF8Encoding]::new($false))
+        Log "Created server config: $configPath" -Level "OK"
+
+        return $true
+    }
+    catch {
+        Log "Failed to configure central server: $_" -Level "ERROR"
+        return $false
+    }
+}
+
 function Login-ViaCDP {
     param(
         [string]$WebSocketUrl,
@@ -319,17 +361,34 @@ function Login-ViaCDP {
     Log "Logging in as '$Username' via CDP..."
 
     try {
-        # Use JavaScript evaluation through CDP to fill login form
-        # This is a simplified approach - we'll use REST API to login instead
-
         # First, get the backend URL from app
         $healthUrl = "http://localhost:8888/health"
-        $health = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 5
 
-        if ($health.status -ne "healthy") {
-            Log "Backend not healthy, skipping auto-login" -Level "WARN"
+        # Wait for backend to be healthy (may take time after restart)
+        $maxAttempts = 30
+        $attempts = 0
+        $health = $null
+
+        while ($attempts -lt $maxAttempts) {
+            try {
+                $health = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 5
+                if ($health.status -eq "healthy") {
+                    break
+                }
+            }
+            catch {
+                # Backend not ready yet
+            }
+            $attempts++
+            Start-Sleep -Seconds 2
+        }
+
+        if (-not $health -or $health.status -ne "healthy") {
+            Log "Backend not healthy after $maxAttempts attempts, skipping auto-login" -Level "WARN"
             return $false
         }
+
+        Log "Backend healthy, database: $($health.database_type)" -Level "OK"
 
         # Login via API directly
         $loginUrl = "http://localhost:8888/api/auth/login"
@@ -342,18 +401,6 @@ function Login-ViaCDP {
 
         if ($loginResponse.access_token) {
             Log "Login successful! Token received." -Level "OK"
-
-            # Now inject the token into the app via CDP
-            # The app will pick it up from localStorage on next navigation
-            $targets = Invoke-RestMethod -Uri "http://127.0.0.1:$CDPPort/json" -TimeoutSec 2
-            $pageTarget = $targets | Where-Object { $_.type -eq "page" } | Select-Object -First 1
-
-            if ($pageTarget -and $pageTarget.webSocketDebuggerUrl) {
-                # Store token and refresh
-                $wsUrl = $pageTarget.webSocketDebuggerUrl
-                Log "Token will be used on next app interaction" -Level "OK"
-            }
-
             return $true
         }
         else {
@@ -410,7 +457,21 @@ try {
     $exePath = Install-LocaNext -InstallerPath $installerPath -InstallDir $installDir
     Log ""
 
-    # Step 5: Launch and verify (optional)
+    # Step 5: Configure central server (ALWAYS - required for online mode)
+    Log ""
+    Log "============================================"
+    Log "  CONFIGURE CENTRAL SERVER"
+    Log "============================================"
+    $configSuccess = Configure-CentralServer
+    if ($configSuccess) {
+        Log "Central server configured for PostgreSQL at 172.28.150.120:5432" -Level "OK"
+    }
+    else {
+        Log "Central server configuration failed - app will run in offline mode" -Level "WARN"
+    }
+    Log ""
+
+    # Step 6: Launch and verify (optional)
     if ($LaunchAfterInstall -or $EnableCDP) {
         $cdpPort = if ($EnableCDP) { $CDPPort } else { 9222 }
 
@@ -453,12 +514,27 @@ try {
                 Log ""
             }
 
+            # Check final status
+            $finalHealth = $null
+            try {
+                $finalHealth = Invoke-RestMethod -Uri "http://localhost:8888/health" -TimeoutSec 5
+            }
+            catch { }
+
             Log "============================================" -Level "OK"
             Log "  INSTALLATION SUCCESSFUL!" -Level "OK"
             Log "============================================" -Level "OK"
             Log "  Version: $($release.Version)"
             Log "  Path: $installDir"
             Log "  CDP: http://127.0.0.1:$cdpPort"
+            if ($finalHealth) {
+                if ($finalHealth.database_type -eq "postgresql") {
+                    Log "  Database: PostgreSQL (ONLINE)" -Level "OK"
+                }
+                else {
+                    Log "  Database: SQLite (OFFLINE)" -Level "WARN"
+                }
+            }
             if ($AutoLogin) {
                 Log "  User: $LoginUsername (auto-logged in)"
             }
