@@ -4,10 +4,9 @@
 ; Must use customHeader macro for electron-builder
 ; See: https://github.com/electron-userland/electron-builder/issues/4719
 !macro customHeader
+  ; ShowInstDetails and ShowUnInstDetails are compile-time directives
   ShowInstDetails show
   ShowUnInstDetails show
-  ; Enable detailed file extraction output
-  SetDetailsPrint both
 !macroend
 
 ; Optional: Auto-scroll the details panel
@@ -15,6 +14,9 @@
 
 ; Set detail text at start
 !macro customInstall
+  ; Enable detailed output (must be in Section/Function, not compile-time macro)
+  SetDetailsPrint both
+
   DetailPrint "================================================"
   DetailPrint "  LocaNext Installation"
   DetailPrint "================================================"
