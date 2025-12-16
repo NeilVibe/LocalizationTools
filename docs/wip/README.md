@@ -1,7 +1,7 @@
 # Work In Progress (WIP) Hub
 
 **Purpose:** Track active tasks and link to detailed docs
-**Updated:** 2025-12-16 09:00 KST
+**Updated:** 2025-12-16 09:20 KST
 
 ---
 
@@ -18,9 +18,9 @@
 ## Current Status
 
 ```
-Build 284 Running (2025-12-16)
+Build 285 Running (2025-12-16)
 ├── P35 Svelte 5 Migration: ✅ DONE (BUG-011 fixed)
-├── CI Smoke Tests: ✅ Added (check_svelte_build.sh)
+├── CI Smoke Tests: ✅ Svelte 5 + PostgreSQL verification
 ├── Open Issues: 8 (2 CRITICAL, 2 HIGH, 4 MEDIUM)
 └── Next: BUG-007/008 (offline mode)
 ```
@@ -76,7 +76,7 @@ Build 284 Running (2025-12-16)
 
 | Date | What | Details |
 |------|------|---------|
-| 2025-12-16 | P35 Svelte 5 | BUG-011 fixed, CI smoke test added |
+| 2025-12-16 | P35 Svelte 5 | BUG-011 fixed, CI: Svelte 5 + PostgreSQL smoke tests |
 | 2025-12-16 | P34 Resources | Zombie cleanup protocol |
 | 2025-12-15 | CI Unification | 255 tests, GitHub + Gitea |
 | 2025-12-15 | P33 Offline | SQLite fallback (CI only) |
@@ -109,4 +109,4 @@ python3 -m pytest tests/unit/ -v     # Unit tests
 
 ---
 
-*Last Updated: 2025-12-16 09:00 KST*
+*Last Updated: 2025-12-16 09:20 KST*
