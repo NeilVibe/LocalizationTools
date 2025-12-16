@@ -65,3 +65,4 @@ Build LIGHT v2512161624 - UI-001 to UI-004 fixes (compartmentalized modals)
 Build LIGHT - P36 E2E tests
 Build LIGHT - Build 296
 Build LIGHT - Build 296 retry
+Build LIGHT - Security fix + Auto-login
