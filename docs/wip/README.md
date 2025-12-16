@@ -1,124 +1,112 @@
 # Work In Progress (WIP) Hub
 
-**Purpose:** Detailed task breakdowns for active priorities. Roadmap.md stays high-level, WIP docs have the details.
+**Purpose:** Track active tasks and link to detailed docs
+**Updated:** 2025-12-16 09:00 KST
 
 ---
 
-## Priority Tiers
+## Start Here
 
-### Tier 0: CRITICAL BUGS (Must Fix First)
-| Priority | Document | Status | Description |
-|----------|----------|--------|-------------|
-| **BUGS** | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | 🔴 NOW | 7 issues (BUG-011 fixed!) |
-| **P35** | [P35_SVELTE5_MIGRATION.md](P35_SVELTE5_MIGRATION.md) | ✅ DONE | Svelte 5 reactivity fix (BUG-011) |
-
-### Tier 1: CORE (After Bug Fixes)
-| Priority | Document | Status | Description |
-|----------|----------|--------|-------------|
-| **P25** | [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | ⏸️ PAUSED | TM matching, QA checks (85%) |
-
-### Tier 2: LATER (Low Priority)
-| Priority | Document | Status | Description |
-|----------|----------|--------|-------------|
-| P17 | [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 80% | Custom pickers - features |
-
-### Tier 3: Investigation / Protocol
-| Priority | Document | Status | Description |
-|----------|----------|--------|-------------|
-| **P34** | [P34_RESOURCE_CHECK_PROTOCOL.md](P34_RESOURCE_CHECK_PROTOCOL.md) | 🔵 NEW | Resource zombies + cleanup protocol |
-
-### Reference / Complete
-| Priority | Document | Status | Description |
-|----------|----------|--------|-------------|
-| CI | Unified GitHub + Gitea | ✅ Complete | 255 tests, both platforms |
-| P33 | [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md) | ✅ Complete | Offline mode + auto-login |
-| P32 | [../code-review/ISSUES_20251215_LDM_API.md](../code-review/ISSUES_20251215_LDM_API.md) | ✅ Complete | Code review (9/11 fixed) |
-| P27 | [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) | ✅ Complete | Svelte 5 + Vite 7 + Electron 39 |
-| P26 | [SECURITY_FIX_PLAN.md](SECURITY_FIX_PLAN.md) | ✅ Complete | Security vulnerability remediation |
-| P17 | [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | Reference | TM System architecture spec |
-| SESSION | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Active | Last session state |
-| ISSUES | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Active | Known bugs |
-
-## Completed (Reference)
-
-| Priority | Document | Description |
-|----------|----------|-------------|
-| P21 | [P21_DATABASE_POWERHOUSE.md](P21_DATABASE_POWERHOUSE.md) | Database optimization + PgBouncer |
-| P20 | [P20_MODEL_MIGRATION.md](P20_MODEL_MIGRATION.md) | Qwen embedding model migration |
-| P18 | [P_DB_OPTIMIZATION.md](P_DB_OPTIMIZATION.md) | PostgreSQL batch inserts + FTS |
-| P13 | [../history/P13_GITEA_CACHE_PLAN.md](../history/P13_GITEA_CACHE_PLAN.md) | Smart build cache v2.0 |
-| P13 | [../history/P13_GITEA_TASKS.md](../history/P13_GITEA_TASKS.md) | Gitea CI/CD setup tasks |
-| BACKLOG | [P_TESTING_DOCS_IMPROVEMENTS.md](P_TESTING_DOCS_IMPROVEMENTS.md) | Testing suite + docs improvements |
+| Need | Go To |
+|------|-------|
+| **Last session state?** | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) |
+| **Bug list?** | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) |
+| **High-level roadmap?** | [Roadmap.md](../../Roadmap.md) |
 
 ---
 
-## Document Hierarchy
+## Current Status
 
 ```
-Roadmap.md (ROOT)           ← BIG PICTURE: "What priorities exist?"
-    │
-    └── docs/wip/           ← DETAILS: "How to implement each priority"
-        ├── README.md       ← THIS FILE (hub index)
-        ├── P17_*.md        ← LDM development tasks
-        ├── P18_*.md        ← Database optimization
-        ├── P20_*.md        ← Model migration
-        ├── P21_*.md        ← Database powerhouse
-        └── ISSUES_TO_FIX.md ← Bug tracker
+Build 284 Running (2025-12-16)
+├── P35 Svelte 5 Migration: ✅ DONE (BUG-011 fixed)
+├── CI Smoke Tests: ✅ Added (check_svelte_build.sh)
+├── Open Issues: 8 (2 CRITICAL, 2 HIGH, 4 MEDIUM)
+└── Next: BUG-007/008 (offline mode)
 ```
 
 ---
 
-## Rules
+## Priority Queue
 
-1. **Roadmap.md** = Status overview only (~200 lines)
-   - One paragraph + status per priority
-   - Link to WIP doc for details
-   - NO detailed task lists in Roadmap
+### NOW: Bug Fixes
 
-2. **WIP docs** = Full implementation details
-   - Task checklists with [x] checkboxes
-   - Technical specs + diagrams
-   - Updated DURING development
+| Priority | Issue | Description | Status |
+|----------|-------|-------------|--------|
+| CRITICAL | BUG-007 | Offline mode auto-fallback | TO FIX |
+| CRITICAL | BUG-008 | Online/Offline indicator | TO FIX |
+| HIGH | BUG-009 | Installer no details | Fix Ready |
+| HIGH | BUG-010 | First-run window stuck | Fix Ready |
+| MEDIUM | UI-001-004 | UI/UX cleanup | TO FIX |
 
-3. **ISSUES_TO_FIX.md** = Bug/issue tracker
-   - UI bugs, UX problems
-   - Categorized by area
-   - Linked from here
+### NEXT: P25 LDM UX (Paused)
 
----
-
-## Quick Navigation
-
-**Current Session:** [SESSION_CONTEXT.md](SESSION_CONTEXT.md)
-
-**✅ JUST FIXED:**
-- **BUG-011:** App stuck at "Connecting to LDM..." → **FIXED (P35 Svelte 5 migration)**
-- See: [P35_SVELTE5_MIGRATION.md](P35_SVELTE5_MIGRATION.md)
-
-**🔴 CRITICAL - FIX NEXT:**
-- **BUG-007:** Offline mode auto-fallback (3s timeout)
-- **BUG-008:** Online/Offline mode indicator
-- See: [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md)
-
-**⚠️ HIGH (Fixes Ready):**
-- **BUG-009:** Installer no details (fix applied)
-- **BUG-010:** First-run window not closing (fix applied)
-
-**📋 MEDIUM (UI/UX):**
-- UI-001: Remove light/dark toggle
-- UI-002: Reorganize Preferences
-- UI-003: TM activation via modal
-- UI-004: Remove TM from grid
-
-**⏸️ PAUSED (After Bug Fixes):**
-- **P25:** LDM UX (85%) - TM matching, QA checks
-
-**✅ RECENTLY COMPLETED:**
-- **P35:** Svelte 5 Migration (BUG-011 fix)
-- **P34:** Resource Check Protocol (Docker cleanup)
-- **CI:** Unified GitHub + Gitea (255 tests)
-- **P33:** Offline Mode + Auto-Login (CI only)
+- TM matching (Qwen + FAISS)
+- QA checks
+- Custom pickers
 
 ---
 
-*Last Updated: 2025-12-16 01:50 KST*
+## Document Index
+
+### Active
+| Doc | Status | Purpose |
+|-----|--------|---------|
+| [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Active | Claude handoff state |
+| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Active | Bug tracker |
+| [P35_SVELTE5_MIGRATION.md](P35_SVELTE5_MIGRATION.md) | ✅ Done | Svelte 5 runes migration |
+| [P34_RESOURCE_CHECK_PROTOCOL.md](P34_RESOURCE_CHECK_PROTOCOL.md) | Reference | Zombie process cleanup |
+
+### Paused
+| Doc | Status | Purpose |
+|-----|--------|---------|
+| [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 85% | TM matching, QA checks |
+| [P17_LDM_TASKS.md](P17_LDM_TASKS.md) | 80% | LDM features |
+
+### Completed
+| Doc | Purpose |
+|-----|---------|
+| [P33_OFFLINE_MODE_CI_OVERHAUL.md](P33_OFFLINE_MODE_CI_OVERHAUL.md) | Offline mode + CI |
+| [P27_STACK_MODERNIZATION.md](P27_STACK_MODERNIZATION.md) | Svelte 5 + Vite 7 |
+| [P17_TM_ARCHITECTURE.md](P17_TM_ARCHITECTURE.md) | TM system design |
+
+---
+
+## Recently Completed
+
+| Date | What | Details |
+|------|------|---------|
+| 2025-12-16 | P35 Svelte 5 | BUG-011 fixed, CI smoke test added |
+| 2025-12-16 | P34 Resources | Zombie cleanup protocol |
+| 2025-12-15 | CI Unification | 255 tests, GitHub + Gitea |
+| 2025-12-15 | P33 Offline | SQLite fallback (CI only) |
+| 2025-12-15 | P32 Code Review | 9/11 issues fixed |
+
+---
+
+## Quick Reference
+
+### Check Build Status
+```bash
+# Gitea UI
+http://localhost:3000/neilvibe/LocaNext/actions
+
+# API
+curl -s http://localhost:3000/api/v1/repos/neilvibe/LocaNext/actions/runners
+```
+
+### Trigger New Build
+```bash
+echo "Build LIGHT" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Build" && git push origin main && git push gitea main
+```
+
+### Run Local Tests
+```bash
+./scripts/check_svelte_build.sh      # Svelte 5 check
+python3 -m pytest tests/unit/ -v     # Unit tests
+```
+
+---
+
+*Last Updated: 2025-12-16 09:00 KST*
