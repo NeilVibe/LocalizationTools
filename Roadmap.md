@@ -1,6 +1,6 @@
 # LocaNext - Roadmap & Navigation Hub
 
-**Build:** 285 | **Updated:** 2025-12-16 | **Status:** 97% Complete
+**Build:** 292 ✅ | **Updated:** 2025-12-16 | **Status:** 97% Complete
 
 ---
 
@@ -18,26 +18,25 @@
 ## Current Status
 
 ```
-LocaNext v25.1216.0900
+LocaNext v25.1216.1251 (Build 292)
 ├── Backend:     ✅ PostgreSQL + SQLite offline
 ├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar, LDM
-├── CI/CD:       ✅ 285 tests + smoke tests (GitHub + Gitea)
-├── Offline:     ✅ Auto-fallback + indicator (needs prod test)
-└── Installer:   ⚠️ Fixes ready, need build
+├── CI/CD:       ✅ ~273 tests in ~5min (PostgreSQL verified)
+├── Offline:     ✅ Auto-fallback + indicator
+└── Installer:   ✅ NSIS fixed, release available
 ```
 
 ---
 
 ## Priority Queue
 
-### NOW: Bug Fixes (6 Open)
+### NOW: UI Polish (4 Open)
 
 | Priority | Issue | Description |
 |----------|-------|-------------|
-| HIGH | BUG-009 | Installer no details (fix ready) |
-| HIGH | BUG-010 | First-run window stuck (fix ready) |
 | MEDIUM | UI-001 to UI-004 | UI/UX cleanup |
+| LOW | - | Test new installer on Windows |
 
 **Recently Implemented (Need Production Testing):**
 - BUG-007: Offline auto-fallback (3s timeout, SQLite fallback)
