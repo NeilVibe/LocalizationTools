@@ -1,6 +1,6 @@
 # LocaNext - Roadmap & Navigation Hub
 
-**Build:** 284 | **Updated:** 2025-12-16 | **Status:** 97% Complete
+**Build:** 285 | **Updated:** 2025-12-16 | **Status:** 97% Complete
 
 ---
 
@@ -58,7 +58,7 @@ LocaNext v25.1216.0900
 | What | When | Details |
 |------|------|---------|
 | P35 Svelte 5 Migration | 2025-12-16 | Fixed BUG-011 (connection issue) |
-| CI Smoke Tests | 2025-12-16 | `check_svelte_build.sh` |
+| CI Smoke Tests | 2025-12-16 | Svelte 5 + **PostgreSQL verification** |
 | P34 Resource Protocol | 2025-12-16 | Zombie cleanup docs |
 | CI Unification | 2025-12-15 | 255 tests, GitHub + Gitea |
 | P33 Offline Mode | 2025-12-15 | SQLite fallback (CI only) |

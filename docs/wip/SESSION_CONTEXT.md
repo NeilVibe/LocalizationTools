@@ -10,13 +10,12 @@
 - BUG-011 (app stuck at "Connecting to LDM...") was FIXED via P35 Svelte 5 migration
 - CI smoke tests verified and documented
 - **NEW:** Added PostgreSQL connection verification to CI (fails if SQLite fallback)
-- Build 285 needs to be triggered with the new smoke test
+- Build 285 triggered and running
 
 **What To Do Next:**
-1. Trigger Build 285: `git add -A && git commit -m "CI: PostgreSQL smoke test" && git push`
-2. Check if build passed: http://localhost:3000/neilvibe/LocaNext/actions
-3. If passed: Deploy to Playground and test BUG-011 is actually fixed
-4. Then: Fix BUG-007 (offline auto-fallback) and BUG-008 (offline indicator)
+1. Check if Build 285 passed: http://localhost:3000/neilvibe/LocaNext/actions
+2. If passed: Deploy to Playground and test BUG-011 is actually fixed
+3. Then: Fix BUG-007 (offline auto-fallback) and BUG-008 (offline indicator)
 
 **Quick Commands:**
 ```bash
@@ -34,10 +33,10 @@ curl -s http://localhost:3000/api/v1/repos/neilvibe/LocaNext/actions/runners | j
 
 ## CURRENT STATE
 
-### Build 284 Status
-- **Triggered:** 2025-12-16 09:00 KST
-- **Commit:** 694278b
-- **Message:** P35: Svelte 5 Migration + CI Smoke Test Verification
+### Build 285 Status
+- **Triggered:** 2025-12-16 09:15 KST
+- **Commit:** 773acac (PostgreSQL smoke test)
+- **Message:** CI: Add PostgreSQL connection verification smoke test
 - **Check:** http://localhost:3000/neilvibe/LocaNext/actions
 
 ### App Status

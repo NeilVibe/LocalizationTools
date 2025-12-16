@@ -1,7 +1,7 @@
 # Issues To Fix
 
 **Purpose:** Track known bugs, UI issues, and improvements across LocaNext
-**Last Updated:** 2025-12-16 09:00 KST
+**Last Updated:** 2025-12-16 09:20 KST
 
 ---
 
@@ -22,9 +22,11 @@
 
 ### Session 2025-12-16 Summary
 - **FIXED:** BUG-011 - App stuck at "Connecting to LDM..." (Svelte 5 reactivity)
-- **ADDED:** CI smoke test (`check_svelte_build.sh`) to catch future reactivity bugs
+- **ADDED:** CI smoke tests:
+  - `check_svelte_build.sh` - Catches Svelte 5 reactivity bugs
+  - **PostgreSQL verification** - FAILS if server fell back to SQLite
 - **PENDING:** BUG-007/008 (offline mode), BUG-009/010 (installer fixes ready)
-- **BUILD 284:** Running - includes all Svelte 5 fixes
+- **BUILD 285:** Running - includes Svelte 5 fixes + PostgreSQL smoke test
 
 ---
 
