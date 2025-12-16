@@ -290,6 +290,49 @@ jobs:
           kill -9 $SERVER_PID 2>/dev/null || true
           exit 1
 
+      # ---- VERIFY POSTGRESQL CONNECTION (P35 SMOKE TEST) ----
+      - name: Verify PostgreSQL Connection
+        run: |
+          echo "=== P35: Verifying Central Server Connection ==="
+
+          # Get health endpoint data
+          HEALTH_JSON=$(curl -s http://localhost:8888/health)
+          echo "Health response: $HEALTH_JSON"
+
+          # Extract database_type
+          DB_TYPE=$(echo "$HEALTH_JSON" | jq -r '.database_type // "unknown"')
+          echo "Database type: $DB_TYPE"
+
+          # FAIL if not PostgreSQL (means fallback to SQLite happened)
+          if [ "$DB_TYPE" != "postgresql" ]; then
+            echo ""
+            echo "=========================================="
+            echo "[FAIL] CENTRAL SERVER CONNECTION FAILED!"
+            echo "=========================================="
+            echo "Expected: postgresql"
+            echo "Got: $DB_TYPE"
+            echo ""
+            echo "This means PostgreSQL was not reachable and server fell back to SQLite."
+            echo "Check PostgreSQL service is running on localhost:5432"
+            echo ""
+            echo "=== Server logs (database section) ==="
+            grep -i "database\|postgresql\|sqlite" /tmp/server.log | tail -20
+            exit 1
+          fi
+
+          echo ""
+          echo "=========================================="
+          echo "[OK] SUCCESS! Connected to Central Server (PostgreSQL)"
+          echo "=========================================="
+
+          # Double-check by grepping server log for the success message
+          if grep -q "DATABASE SETUP COMPLETE (POSTGRESQL)" /tmp/server.log; then
+            echo "[OK] Server log confirms PostgreSQL connection"
+          else
+            echo "[WARNING] Could not find PostgreSQL confirmation in server log"
+            grep -i "database setup" /tmp/server.log || echo "(no database setup log found)"
+          fi
+
       # ---- CREATE ADMIN USER FOR TESTS ----
       - name: Create Admin User
         env:

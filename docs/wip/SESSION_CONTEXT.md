@@ -9,12 +9,14 @@
 **What Just Happened:**
 - BUG-011 (app stuck at "Connecting to LDM...") was FIXED via P35 Svelte 5 migration
 - CI smoke tests verified and documented
-- Build 284 triggered - should be running now
+- **NEW:** Added PostgreSQL connection verification to CI (fails if SQLite fallback)
+- Build 285 needs to be triggered with the new smoke test
 
 **What To Do Next:**
-1. Check if Build 284 passed: http://localhost:3000/neilvibe/LocaNext/actions
-2. If passed: Deploy to Playground and test BUG-011 is actually fixed
-3. Then: Fix BUG-007 (offline auto-fallback) and BUG-008 (offline indicator)
+1. Trigger Build 285: `git add -A && git commit -m "CI: PostgreSQL smoke test" && git push`
+2. Check if build passed: http://localhost:3000/neilvibe/LocaNext/actions
+3. If passed: Deploy to Playground and test BUG-011 is actually fixed
+4. Then: Fix BUG-007 (offline auto-fallback) and BUG-008 (offline indicator)
 
 **Quick Commands:**
 ```bash
@@ -123,7 +125,7 @@ Created `scripts/check_svelte_build.sh`:
 
 ## CI SMOKE TEST DETAILS
 
-### Svelte 5 Build Health Check
+### 1. Svelte 5 Build Health Check
 ```bash
 ./scripts/check_svelte_build.sh
 ```
@@ -131,18 +133,39 @@ Created `scripts/check_svelte_build.sh`:
 - FAILS if `non_reactive_update` warnings found
 - Reports non-critical warnings (event syntax, CSS, a11y)
 
-### Windows Smoke Test (Gitea build.yml)
+### 2. PostgreSQL Connection Verification (NEW)
+**Added this session!**
+
+On Linux CI (GitHub + Gitea):
+```bash
+# Checks /health endpoint for database_type
+DB_TYPE=$(curl -s http://localhost:8888/health | jq -r '.database_type')
+if [ "$DB_TYPE" != "postgresql" ]; then
+  echo "[FAIL] CENTRAL SERVER CONNECTION FAILED!"
+  exit 1
+fi
+echo "[OK] SUCCESS! Connected to Central Server (PostgreSQL)"
+```
+
+- FAILS if server fell back to SQLite
+- Shows detailed debug logs on failure
+- Confirms "DATABASE SETUP COMPLETE (POSTGRESQL)" in server log
+
+**Why this matters:** Without this check, if PostgreSQL was unreachable, CI would silently use SQLite and all tests would still pass - but we'd never know we weren't testing real PostgreSQL.
+
+### 3. Windows Smoke Test (Gitea build.yml)
 Phase 4 Backend Test:
 - Installs app silently
-- Starts with DATABASE_MODE=sqlite
+- Starts with DATABASE_MODE=sqlite (no PostgreSQL available)
 - Waits up to 120s for http://127.0.0.1:8888/health
 - **Detailed debug logs on failure:**
   - Process state
   - Log file contents
   - Port listening status
 
-### Linux Tests (safety-checks job)
-- Real PostgreSQL service container
+### 4. Linux Tests (safety-checks job)
+- Real PostgreSQL service
+- **NEW:** PostgreSQL connection verification (fails if SQLite fallback)
 - 255 tests including:
   - Unit tests
   - Integration tests
