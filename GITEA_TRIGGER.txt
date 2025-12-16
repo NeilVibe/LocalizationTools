@@ -66,3 +66,4 @@ Build LIGHT - P36 E2E tests
 Build LIGHT - Build 296
 Build LIGHT - Build 296 retry
 Build LIGHT - Security fix + Auto-login
+Build LIGHT - CI fix
