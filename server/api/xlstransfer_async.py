@@ -48,7 +48,14 @@ class XLSTransferAPI(BaseToolAPI):
     def _load_modules(self):
         """Load XLSTransfer Python modules."""
         try:
-            from server.tools.xlstransfer import core, embeddings, translation, process_operation
+            logger.info("Loading XLSTransfer core module...")
+            from server.tools.xlstransfer import core
+            logger.info("Loading XLSTransfer embeddings module...")
+            from server.tools.xlstransfer import embeddings
+            logger.info("Loading XLSTransfer translation module...")
+            from server.tools.xlstransfer import translation
+            logger.info("Loading XLSTransfer process_operation module...")
+            from server.tools.xlstransfer import process_operation
 
             self.core = core
             self.embeddings = embeddings
@@ -61,8 +68,10 @@ class XLSTransferAPI(BaseToolAPI):
                 "translation": translation is not None,
                 "process_operation": process_operation is not None
             })
-        except ImportError as e:
-            logger.error(f"Failed to import XLSTransfer modules: {e}")
+        except Exception as e:
+            logger.error(f"Failed to import XLSTransfer modules: {type(e).__name__}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             self.core = None
             self.embeddings = None
             self.translation = None
