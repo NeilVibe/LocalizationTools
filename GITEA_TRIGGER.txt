@@ -61,3 +61,4 @@ Build LIGHT v2512161242 - Fix NSIS SetDetailsPrint error
 Build LIGHT v2512161250 - Retry after server startup hang
 Build BUG-012 Fix - Server Config UI 2512161434
 Build LIGHT v2512161450 - Add test_server_config.py to CI + retry
+Build LIGHT v2512161624 - UI-001 to UI-004 fixes (compartmentalized modals)

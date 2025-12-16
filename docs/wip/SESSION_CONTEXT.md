@@ -1,31 +1,35 @@
 # Session Context - Claude Handoff Document
 
-**Updated:** 2025-12-16 15:30 KST | **Build:** 294 ✅ PASSED | **Online Mode:** ✅ WORKING
+**Updated:** 2025-12-16 16:15 KST | **Build:** 294 ✅ PASSED | **Pending:** 295
 
 ---
 
 ## TL;DR FOR NEXT SESSION
 
-**MAJOR MILESTONE: ONLINE MODE FULLY WORKING!**
+**ALL UI ISSUES FIXED + VERIFIED WITH CDP SCREENSHOTS!**
 
-After BUG-012 fix, the app now:
-1. Starts in offline mode (SQLite) by default
-2. User can configure PostgreSQL via Server Config UI
-3. After restart, app connects to central PostgreSQL in ONLINE mode
+Completed UI-001 to UI-004:
+1. **UI-001**: Dark mode only - removed theme toggle
+2. **UI-002**: Compartmentalized modals (Grid Columns, Reference Settings, Display Settings)
+3. **UI-003**: TM activation in TMManager with Power icon button
+4. **UI-004**: Removed TM Results checkbox from grid columns
+
+**Open Issues: 0** (all 38 resolved!)
 
 **Current Playground Status:**
 ```json
 {
   "status": "healthy",
   "database": "connected",
-  "database_type": "postgresql",  // ← ONLINE MODE!
-  "local_mode": false,            // ← CENTRAL SERVER!
+  "database_type": "postgresql",
+  "local_mode": false,
   "version": "25.1216.1449"
 }
 ```
 
 | Build | Status | Notes |
 |-------|--------|-------|
+| **295** | ⏳ | UI fixes (UI-001 to UI-004) - PENDING |
 | **294** | ✅ | BUG-012 fix + test_server_config.py in CI |
 | 293 | ❌ | Transient server startup issue |
 | 292 | ✅ | Playground offline mode tested |
@@ -33,6 +37,33 @@ After BUG-012 fix, the app now:
 ---
 
 ## WHAT WAS ACCOMPLISHED THIS SESSION
+
+### UI-001 to UI-004: Compartmentalized UI Fixes - COMPLETE
+
+**Files Created:**
+```
+locaNext/src/lib/components/GridColumnsModal.svelte     # NEW: Column visibility
+locaNext/src/lib/components/ReferenceSettingsModal.svelte # NEW: Reference file config
+```
+
+**Files Modified:**
+```
+locaNext/src/lib/components/PreferencesModal.svelte     # Renamed to "Display Settings"
+locaNext/src/lib/components/ldm/TMManager.svelte        # Added TM activation
+locaNext/src/lib/components/apps/LDM.svelte            # 5 toolbar buttons
+locaNext/src/lib/stores/preferences.js                  # Removed theme, added activeTm
+locaNext/src/routes/+layout.svelte                      # Removed theme toggle
+locaNext/src/app.css                                    # Removed light theme CSS
+```
+
+**CDP Screenshot Verification:**
+- `02_ldm_page.png` - Main LDM with 5 toolbar buttons
+- `03_tm_manager.png` - TM Manager modal
+- `04_grid_columns.png` - Grid Columns (3 checkboxes, NO TM Results)
+- `modal_reference_settings.png` - Reference Settings modal
+- `modal_display_settings.png` - Display Settings (NO theme toggle)
+
+---
 
 ### BUG-012: Server Configuration UI - COMPLETE
 
@@ -90,10 +121,13 @@ Database: locanext_ci_test
 
 ## REMAINING OPEN ISSUES
 
-**4 MEDIUM priority issues remaining** (see ISSUES_TO_FIX.md):
-- LDM UI/UX improvements (not blocking)
+**0 open issues!** All 38 issues have been resolved (see ISSUES_TO_FIX.md).
 
-**No HIGH priority issues remaining.**
+Last 4 issues fixed this session:
+- UI-001: Dark mode only ✅
+- UI-002: Compartmentalized modals ✅
+- UI-003: TM activation in TMManager ✅
+- UI-004: No TM Results checkbox ✅
 
 ---
 
@@ -183,11 +217,12 @@ Old releases deleted to save space (~1GB freed).
 
 ## NEXT STEPS
 
-1. Test WebSocket sync in online mode
-2. Test all 4 tools with PostgreSQL
-3. Address remaining 4 MEDIUM issues
-4. Consider creating a production PostgreSQL user (neil/neil or similar)
+1. ✅ All UI issues fixed (UI-001 to UI-004)
+2. Build 295 pending - verify CI passes
+3. Test WebSocket sync in online mode
+4. Test all 4 tools with PostgreSQL
+5. Consider creating a production PostgreSQL user
 
 ---
 
-*Last updated: 2025-12-16 15:45 KST - Online Mode Working + Releases Cleaned!*
+*Last updated: 2025-12-16 16:15 KST - All UI issues fixed + 0 open issues!*

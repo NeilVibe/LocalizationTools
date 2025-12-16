@@ -13,8 +13,9 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete, Light, Moon } from "carbon-icons-svelte";
-  import { preferences, theme } from "$lib/stores/preferences.js";
+  import { Apps, UserAvatar, Settings, TaskComplete } from "carbon-icons-svelte";
+  // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
+  import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
   import { get } from 'svelte/store';
@@ -240,18 +241,7 @@
         <span>Tasks</span>
       </button>
 
-      <!-- Theme Toggle Button -->
-      <button
-        class="theme-toggle-button"
-        onclick={() => preferences.toggleTheme()}
-        title={$theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-      >
-        {#if $theme === 'dark'}
-          <Light size={20} />
-        {:else}
-          <Moon size={20} />
-        {/if}
-      </button>
+      <!-- UI-001: Theme Toggle Button removed (dark mode only) -->
 
       <!-- Settings Dropdown -->
       <HeaderAction
