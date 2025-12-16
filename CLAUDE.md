@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512161730 | **Build:** 295 ✅ | **Status:** 98% | **Issues:** 0
+**Version:** 2512170700 | **Build:** 295 ✅ | **Status:** 98% | **Issues:** 0
 
 > **KEEP THIS FILE COMPACT.** Details in linked docs.
 
@@ -101,11 +101,12 @@ docs/
 ├── wip/                  # Active work
 │   ├── SESSION_CONTEXT.md   ← Session state
 │   ├── ISSUES_TO_FIX.md     ← Bug tracker (0 open)
-│   └── P25_LDM_UX_OVERHAUL.md ← Current work
+│   ├── P36_PRETRANSLATION_STACK.md ← Phase 1 ✅
+│   └── P25_LDM_UX_OVERHAUL.md ← 85% done
 ├── enterprise/           # Company deployment
 │   └── HUB.md               ← Start here
 ├── history/              # Archives
-│   ├── wip-archive/         ← Completed P* files
+│   ├── wip-archive/         ← 12 completed P* files
 │   └── ISSUES_HISTORY.md    ← Fixed bugs (38)
 └── [other guides...]
 ```
@@ -141,4 +142,4 @@ docs/
 
 ---
 
-*Last updated: 2025-12-16 | Hub file - details in linked docs*
+*Last updated: 2025-12-17 | Hub file - details in linked docs*
