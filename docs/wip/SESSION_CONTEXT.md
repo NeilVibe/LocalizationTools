@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff
 
-**Updated:** 2025-12-17 05:30 KST | **Build:** 295 ✅
+**Updated:** 2025-12-17 07:00 KST | **Build:** 295 ✅
 
 ---
 
@@ -9,10 +9,11 @@
 | Status | Value |
 |--------|-------|
 | **Build** | 295 ✅ (v25.1216.1626) |
+| **Latest Commit** | `480e7fc` - E2E tests committed |
 | **Open Issues** | 0 |
 | **Playground** | Online (PostgreSQL) |
-| **Current** | P36 Phase 1 - E2E Tests COMPLETE ✅ |
-| **Next** | Phase 2 Backend implementation |
+| **Current** | P36 Phase 1 COMPLETE ✅ - Ready for Phase 2 |
+| **Next** | Phase 2 Backend (API endpoints) |
 
 ---
 
@@ -199,12 +200,15 @@ One edge case documented:
 
 ## Next Steps
 
-1. **Phase 1 COMPLETE** - All E2E tests passing (1,633 tests)
-2. **NEXT:** Phase 2 Backend implementation
-   - API endpoints for pretranslation
+1. **Phase 1 COMPLETE** - All E2E tests passing (2,133 tests) ✅
+2. **Commit `480e7fc`** - E2E test suite + doc cleanup pushed ✅
+3. **NEXT:** Phase 2 Backend implementation
+   - API endpoint for pretranslation (`/api/ldm/pretranslate`)
    - Engine selection (Standard TM / XLS Transfer / KR Similar)
    - Batch processing support
-3. **AFTER:** Phase 3 Pretranslation Modal UI
+4. **AFTER:** Phase 3 Pretranslation Modal UI
+   - Right-click file → "Pretranslate..."
+   - Engine selection, threshold slider, options
 
 ---
 
@@ -242,4 +246,4 @@ python3 tests/fixtures/pretranslation/test_real_patterns.py
 
 ---
 
-*Last: 2025-12-17 05:30 KST - Phase 1 COMPLETE. 2,172 tests passed. QWEN verified for TEXT similarity. Ready for Phase 2 Backend.*
+*Last: 2025-12-17 07:00 KST - Commit 480e7fc pushed. Phase 1 COMPLETE (2,133 E2E tests). Ready for Phase 2 Backend.*

@@ -1,6 +1,6 @@
 # LocaNext - Roadmap & Navigation Hub
 
-**Build:** 295 ✅ | **Updated:** 2025-12-17 | **Status:** 98% Complete | **Open Issues:** 0
+**Build:** 295 ✅ | **Updated:** 2025-12-17 07:00 KST | **Status:** 98% Complete | **Open Issues:** 0
 
 ---
 
@@ -92,13 +92,13 @@ Key Finding: QWEN = TEXT similarity (not meaning)
 
 | What | When | Details |
 |------|------|---------|
+| **P36 Phase 1 E2E Tests** | 2025-12-17 | 2,133 tests (XLS Transfer, KR Similar, Standard TM, QWEN) |
+| **Doc cleanup + archive** | 2025-12-17 | 12 P* files archived, enterprise docs created |
 | **UI-001 to UI-004** | 2025-12-16 | Compartmentalized modals, dark mode only |
 | **BUG-012 Server Config** | 2025-12-16 | PostgreSQL config UI for online mode |
 | Connectivity Tests | 2025-12-16 | 26 new tests for offline/online mode |
 | P35 Svelte 5 Migration | 2025-12-16 | Fixed BUG-011 (connection issue) |
-| CI Smoke Tests | 2025-12-16 | Svelte 5 + **PostgreSQL verification** |
 | P33 Offline Mode | 2025-12-15 | SQLite fallback + auto-fallback |
-| P28 NSIS Installer | 2025-12-14 | electron-builder NSIS |
 
 ---
 
