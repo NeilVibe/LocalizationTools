@@ -1,25 +1,30 @@
 # Session Context - Claude Handoff Document
 
-**Updated:** 2025-12-16 14:50 KST | **Build:** 294 ⏳ IN PROGRESS
+**Updated:** 2025-12-16 15:20 KST | **Build:** 294 ✅ PASSED + VERIFIED
 
 ---
 
 ## TL;DR FOR NEXT SESSION
 
-**BUILD 294 IN PROGRESS - BUG-012 FIX RETRY**
+**BUILD 294 PASSED - BUG-012 FULLY VERIFIED IN PLAYGROUND**
 
 | Build | Status | Time | Notes |
 |-------|--------|------|-------|
-| **294** | ⏳ | - | **IN PROGRESS** - Retry with test_server_config.py in CI |
-| 293 | ❌ | - | Failed - transient/test not in CI list |
+| **294** | ✅ | - | **PASSED** - BUG-012 verified in Playground |
+| 293 | ❌ | - | Failed - transient server startup issue |
 | **292** | ✅ | ~7m | PASSING - Playground tested |
 | 291 | ❌ | 2m | Server startup hang (transient) |
 
-**What's in Build 294:**
-- BUG-012 Fix: Server Configuration UI (same as 293)
-- Added `test_server_config.py` to CI test list
-- Users can configure PostgreSQL connection via UI
-- New: `ServerConfigModal.svelte`, `/api/server-config` endpoints
+**BUG-012 Server Configuration UI - VERIFIED:**
+- ✅ GET /api/server-config - Returns current config (without password)
+- ✅ POST /api/server-config/test - Tests PostgreSQL connection
+- ✅ POST /api/server-config - Saves to %APPDATA%\LocaNext\server-config.json
+- ✅ Config file created, restart required to apply
+- ✅ Central server reachable (172.28.150.120:5432)
+
+**Release:** v25.1216.1449 installed and tested in Playground
+
+**Remaining Open Issues:** 4 MEDIUM (see ISSUES_TO_FIX.md)
 
 **Release Created:**
 - **Version:** v25.1216.1251
