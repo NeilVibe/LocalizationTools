@@ -60,3 +60,4 @@ Build LIGHT v2512161210 - Fix Gitea test bloat (273 tests, not 900)
 Build LIGHT v2512161242 - Fix NSIS SetDetailsPrint error
 Build LIGHT v2512161250 - Retry after server startup hang
 Build BUG-012 Fix - Server Config UI 2512161434
+Build LIGHT v2512161450 - Add test_server_config.py to CI + retry

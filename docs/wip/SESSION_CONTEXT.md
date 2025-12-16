@@ -1,25 +1,25 @@
 # Session Context - Claude Handoff Document
 
-**Updated:** 2025-12-16 15:00 KST | **Build:** 293 ⏳ IN PROGRESS
+**Updated:** 2025-12-16 14:50 KST | **Build:** 294 ⏳ IN PROGRESS
 
 ---
 
 ## TL;DR FOR NEXT SESSION
 
-**BUILD 293 IN PROGRESS - BUG-012 FIX**
+**BUILD 294 IN PROGRESS - BUG-012 FIX RETRY**
 
 | Build | Status | Time | Notes |
 |-------|--------|------|-------|
-| **293** | ⏳ | - | **IN PROGRESS** - BUG-012 Server Config UI |
+| **294** | ⏳ | - | **IN PROGRESS** - Retry with test_server_config.py in CI |
+| 293 | ❌ | - | Failed - transient/test not in CI list |
 | **292** | ✅ | ~7m | PASSING - Playground tested |
 | 291 | ❌ | 2m | Server startup hang (transient) |
-| 290 | ❌ | 5m | NSIS SetDetailsPrint error |
 
-**What's in Build 293:**
-- BUG-012 Fix: Server Configuration UI
-- Users can now configure PostgreSQL connection via UI
+**What's in Build 294:**
+- BUG-012 Fix: Server Configuration UI (same as 293)
+- Added `test_server_config.py` to CI test list
+- Users can configure PostgreSQL connection via UI
 - New: `ServerConfigModal.svelte`, `/api/server-config` endpoints
-- CI test: `test_server_config.py`
 
 **Release Created:**
 - **Version:** v25.1216.1251
