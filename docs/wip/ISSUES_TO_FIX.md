@@ -1,7 +1,7 @@
 # Issues To Fix
 
 **Purpose:** Track known bugs, UI issues, and improvements across LocaNext
-**Last Updated:** 2025-12-16 13:00 KST
+**Last Updated:** 2025-12-16 14:30 KST
 
 ---
 
@@ -16,11 +16,12 @@
 | Installer | 0 | 3 | 3 |
 | Navigation | 0 | 1 | 1 |
 | Infrastructure | 0 | 7 | 7 |
-| **Total** | **4** | **33** | **37** |
+| **Server Config** | 0 | **1** | 1 |
+| **Total** | **4** | **34** | **38** |
 
-**Open Issues:** 4 (0 HIGH, 4 MEDIUM)
+**Open Issues:** 4 (0 HIGH, 4 MEDIUM) - BUG-012 implemented, needs testing
 
-### Session 2025-12-16 - BUILD 292 PASSED
+### Session 2025-12-16 - BUILD 292 PASSED + PLAYGROUND TESTED
 - **BUILD 292:** ✅ **PASSING** - Full release created (v25.1216.1251)
 - **FIXED:** NSIS `SetDetailsPrint` error - moved from `customHeader` to `customInstall`
 - **FIXED:** CI test isolation - unit tests use SQLite, don't drop CI database
@@ -28,6 +29,13 @@
 - **VERIFIED:** Connectivity tests coverage (26 tests) - timeout/failover scenarios
 - **Release:** `LocaNext_v25.1216.1251_Light_Setup.exe`
 - **Note:** Build 291 had transient server startup hang, Build 292 passed clean
+- **PLAYGROUND TESTED:**
+  - ✅ Autonomous install via `scripts/playground_install.sh`
+  - ✅ Offline mode (SQLite) working
+  - ✅ App UI loads, LDM functional
+  - ✅ "Go Online" correctly detects PostgreSQL unreachable
+  - ⚠️ Online mode requires central server credentials configuration
+- **NEW DOCS:** `docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md`
 
 ### Session 2025-12-16 Summary (earlier)
 - **FIXED:** BUG-011 - App stuck at "Connecting to LDM..." (Svelte 5 reactivity)
@@ -42,6 +50,126 @@
 ---
 
 ## Open Issues
+
+### PRIORITY 1 - HIGH (Blocking Production)
+
+#### BUG-012: Cannot Connect to Central Server - No Way to Configure PostgreSQL
+- **Status:** [x] **IMPLEMENTED** - Needs Build & Testing
+- **Priority:** **HIGH - BLOCKING PRODUCTION**
+- **Reported:** 2025-12-16
+- **Implemented:** 2025-12-16
+- **Component:** Server Configuration / Deployment / CI
+
+**Problem:** Fresh installs cannot connect to central PostgreSQL server because:
+1. Default `POSTGRES_HOST` is "localhost" - wrong for production
+2. Default credentials don't match production server
+3. **No UI to configure server settings** - users can't change this themselves
+
+**Current Defaults (in `server/config.py`):**
+```python
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")  # ❌ Wrong
+POSTGRES_USER = os.getenv("POSTGRES_USER", "localization_admin")  # ❌ May not match
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "change_this_password")  # ❌ Wrong
+```
+
+**Impact:**
+- Offline mode works ✅
+- Online mode DOES NOT work ❌
+- Multi-user features unavailable ❌
+- WebSocket sync unavailable ❌
+
+---
+
+### WHY CI DIDN'T CATCH THIS (Root Cause Analysis)
+
+**CI Configuration (`.gitea/workflows/build.yml`):**
+```yaml
+env:
+  POSTGRES_USER: locanext_ci
+  POSTGRES_PASSWORD: locanext_ci_test
+  POSTGRES_HOST: localhost  # CI PostgreSQL runs locally
+```
+
+**The Gap:**
+1. CI sets environment variables → tests pass ✅
+2. Built installer ships with DEFAULT values from `config.py`
+3. Production users DON'T have these env vars set
+4. App uses defaults → cannot connect ❌
+
+**No test verifies:**
+- [ ] Production defaults work for central server
+- [ ] OR user can configure server settings via UI
+- [ ] OR config file mechanism exists
+
+**This is a CI BLIND SPOT - environment overrides mask production config issues.**
+
+---
+
+### REQUIRED FIX (Full Robust Solution)
+
+**Part 1: Server Settings UI**
+- Add "Server Configuration" section in Preferences
+- Allow user to set: Host, Port, User, Password, Database
+- Save to `%APPDATA%\LocaNext\server-config.json`
+- Backend reads this config on startup
+- "Go Online" uses configured settings
+
+**Part 2: CI Test for Production Config**
+- New test: `test_production_config.py`
+- Verifies either:
+  - Default config connects to expected central server, OR
+  - Server Settings UI exists and saves config correctly
+- Runs WITHOUT env var overrides (simulates fresh install)
+
+**Part 3: First-Run Experience**
+- If no `server-config.json` exists AND offline mode:
+  - Show prompt asking user to configure server
+  - Or continue in offline mode
+
+---
+
+### Files to Modify
+
+```
+server/config.py                    # Read from config file
+server/main.py                      # Add /api/server-config endpoint
+locaNext/src/lib/components/Preferences.svelte  # Add Server Settings UI
+locaNext/src/lib/stores/serverConfig.js         # NEW: Server config store
+tests/integration/test_production_config.py     # NEW: CI test
+```
+
+**Workaround (Current):**
+Manually edit `<install>\resources\server\config.py` and restart app.
+
+---
+
+### IMPLEMENTATION COMPLETE (2025-12-16)
+
+**Files Modified:**
+```
+server/config.py                    # Added user config file support
+server/main.py                      # Added /api/server-config endpoints
+locaNext/src/lib/components/ServerConfigModal.svelte   # NEW: Config UI
+locaNext/src/lib/components/ServerStatus.svelte        # Added Configure button
+tests/integration/test_server_config.py                # NEW: CI test
+```
+
+**New API Endpoints:**
+- `GET /api/server-config` - Get current config (without password)
+- `POST /api/server-config` - Save config to user file
+- `POST /api/server-config/test` - Test connection with provided settings
+
+**User Config File:**
+- Windows: `%APPDATA%\LocaNext\server-config.json`
+- Linux/Mac: `~/.config/locanext/server-config.json`
+
+**Next Steps:**
+1. Build and deploy to Playground
+2. Test Server Configuration UI
+3. Verify config file is created and persists
+4. Test connection to central PostgreSQL with UI
+
+---
 
 ### PRIORITY 0 - ULTRA CRITICAL (App Broken)
 

@@ -240,4 +240,109 @@ This script can be used in CI for Windows E2E testing:
 
 ---
 
+## Database Modes & Testing
+
+### Architecture Overview
+
+LocaNext supports two database modes:
+
+| Mode | Database | Use Case |
+|------|----------|----------|
+| **Offline (Local)** | SQLite | Single-user, no network required |
+| **Online (Central)** | PostgreSQL | Multi-user, enterprise deployment |
+
+The embedded Python backend (`localhost:8888`) runs on the user's machine and connects to either SQLite locally or PostgreSQL centrally.
+
+### Default Behavior (Fresh Install)
+
+After a fresh Playground install:
+- App starts in **Offline mode** (SQLite)
+- Server Status shows:
+  - API Server: `http://localhost:8888` ✅ connected (embedded backend)
+  - Database: PostgreSQL ❌ error (not configured)
+  - WebSocket: ❌ disconnected
+- "Go Online" button triggers connection attempt
+
+### Testing Offline Mode
+
+```powershell
+# Check embedded backend health
+Invoke-RestMethod -Uri "http://localhost:8888/health"
+
+# Expected response:
+# status: healthy
+# database: connected
+# database_type: sqlite
+# local_mode: True
+```
+
+### Configuring Central Server Access
+
+To connect to a central PostgreSQL server:
+
+1. **Modify bundled config** (for testing):
+   ```
+   <Playground>\LocaNext\resources\server\config.py
+   ```
+   Change:
+   ```python
+   POSTGRES_HOST = os.getenv("POSTGRES_HOST", "172.28.150.120")  # Central server
+   POSTGRES_USER = os.getenv("POSTGRES_USER", "locanext")
+   POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "your_password")
+   POSTGRES_DB = os.getenv("POSTGRES_DB", "locanext")
+   ```
+
+2. **Restart app** - environment changes require restart
+
+3. **Verify connection**:
+   ```powershell
+   Invoke-RestMethod -Uri "http://localhost:8888/health"
+   # Should show: database_type: postgresql
+   ```
+
+### WSL Network Limitations
+
+**Important:** WSL2 cannot directly access Windows `localhost`. When testing:
+
+```bash
+# ❌ This fails from WSL:
+curl http://127.0.0.1:9222/json
+
+# ✅ Use PowerShell instead:
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+    Invoke-RestMethod -Uri 'http://127.0.0.1:9222/json'
+"
+```
+
+For CDP automation from WSL, install `ws` module on Windows:
+```powershell
+cd $env:TEMP && npm install ws
+```
+
+---
+
+## Test Results (Build 292)
+
+### Verified Working
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Autonomous install | ✅ | 163MB download, 605MB installed |
+| Silent NSIS install | ✅ | `/S /D=path` works correctly |
+| CDP debugging | ✅ | `--remote-debugging-port=9222` |
+| First-time setup | ✅ | Dependencies and model loaded |
+| Offline mode (SQLite) | ✅ | Embedded backend working |
+| App UI | ✅ | LDM loaded, navigation works |
+| "Go Online" button | ✅ | Correctly detects PostgreSQL not reachable |
+
+### Requires Configuration
+
+| Feature | Status | Reason |
+|---------|--------|--------|
+| Online mode (PostgreSQL) | ⚠️ | Central server credentials required |
+| WebSocket sync | ⚠️ | Requires online mode |
+| Multi-user features | ⚠️ | Requires online mode |
+
+---
+
 *Created: 2025-12-16 | Tested with Build 292 (v25.1216.1251)*

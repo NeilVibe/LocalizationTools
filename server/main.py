@@ -323,6 +323,182 @@ async def go_online():
         }
 
 
+@app.get("/api/server-config")
+async def get_server_config():
+    """
+    BUG-012 Fix: Get current server configuration.
+
+    Returns the current PostgreSQL settings (without password for security).
+    Allows frontend to display current configuration in Server Settings UI.
+    """
+    return {
+        "postgres_host": config.POSTGRES_HOST,
+        "postgres_port": config.POSTGRES_PORT,
+        "postgres_user": config.POSTGRES_USER,
+        "postgres_db": config.POSTGRES_DB,
+        "postgres_password_set": config.POSTGRES_PASSWORD != "change_this_password",
+        "config_file_path": str(config.USER_CONFIG_PATH),
+        "config_file_exists": config.USER_CONFIG_PATH.exists(),
+        "database_mode": config.DATABASE_MODE,
+        "active_database_type": config.ACTIVE_DATABASE_TYPE
+    }
+
+
+@app.post("/api/server-config")
+async def save_server_config(request: Request):
+    """
+    BUG-012 Fix: Save server configuration to user config file.
+
+    Saves PostgreSQL connection settings to user config file.
+    Requires app restart to take effect.
+
+    Request body:
+    {
+        "postgres_host": "172.28.150.120",
+        "postgres_port": 5432,
+        "postgres_user": "locanext",
+        "postgres_password": "password",
+        "postgres_db": "locanext"
+    }
+    """
+    try:
+        data = await request.json()
+
+        # Validate required fields
+        required_fields = ["postgres_host", "postgres_port", "postgres_user", "postgres_password", "postgres_db"]
+        for field in required_fields:
+            if field not in data:
+                return {"success": False, "message": f"Missing required field: {field}"}
+
+        # Build config object
+        user_config = {
+            "postgres_host": data["postgres_host"],
+            "postgres_port": int(data["postgres_port"]),
+            "postgres_user": data["postgres_user"],
+            "postgres_password": data["postgres_password"],
+            "postgres_db": data["postgres_db"]
+        }
+
+        # Save to file
+        success = config.save_user_config(user_config)
+
+        if success:
+            logger.info(f"Server config saved to {config.USER_CONFIG_PATH}")
+            return {
+                "success": True,
+                "message": "Configuration saved. Please restart the application to apply changes.",
+                "config_file_path": str(config.USER_CONFIG_PATH),
+                "action_required": "restart"
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Failed to save configuration file.",
+                "action_required": "none"
+            }
+
+    except json.JSONDecodeError:
+        return {"success": False, "message": "Invalid JSON in request body"}
+    except Exception as e:
+        logger.error(f"Error saving server config: {e}")
+        return {"success": False, "message": str(e)}
+
+
+@app.post("/api/server-config/test")
+async def test_server_connection(request: Request):
+    """
+    BUG-012 Fix: Test PostgreSQL connection with provided settings.
+
+    Tests if the provided PostgreSQL settings can connect to the server.
+    Does NOT save the configuration.
+
+    Request body:
+    {
+        "postgres_host": "172.28.150.120",
+        "postgres_port": 5432,
+        "postgres_user": "locanext",
+        "postgres_password": "password",
+        "postgres_db": "locanext"
+    }
+    """
+    try:
+        data = await request.json()
+
+        host = data.get("postgres_host", "localhost")
+        port = int(data.get("postgres_port", 5432))
+        user = data.get("postgres_user", "")
+        password = data.get("postgres_password", "")
+        db = data.get("postgres_db", "")
+
+        # Test connection using socket first (fast check)
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(3)
+        try:
+            result = sock.connect_ex((host, port))
+            sock.close()
+            if result != 0:
+                return {
+                    "success": False,
+                    "message": f"Cannot reach {host}:{port}. Check host and port.",
+                    "reachable": False
+                }
+        except socket.error as e:
+            return {
+                "success": False,
+                "message": f"Network error: {str(e)}",
+                "reachable": False
+            }
+
+        # Host is reachable, try actual PostgreSQL connection
+        try:
+            from sqlalchemy import create_engine, text
+            test_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
+            test_engine = create_engine(test_url, pool_pre_ping=True)
+
+            with test_engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+
+            test_engine.dispose()
+
+            return {
+                "success": True,
+                "message": f"Successfully connected to PostgreSQL at {host}:{port}/{db}",
+                "reachable": True,
+                "authenticated": True
+            }
+
+        except Exception as e:
+            error_msg = str(e)
+            if "authentication failed" in error_msg.lower():
+                return {
+                    "success": False,
+                    "message": "Authentication failed. Check username and password.",
+                    "reachable": True,
+                    "authenticated": False
+                }
+            elif "does not exist" in error_msg.lower():
+                return {
+                    "success": False,
+                    "message": f"Database '{db}' does not exist on the server.",
+                    "reachable": True,
+                    "authenticated": True
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"Connection error: {error_msg}",
+                    "reachable": True,
+                    "authenticated": False
+                }
+
+    except json.JSONDecodeError:
+        return {"success": False, "message": "Invalid JSON in request body"}
+    except Exception as e:
+        logger.error(f"Error testing server connection: {e}")
+        return {"success": False, "message": str(e)}
+
+
 @app.get(config.HEALTH_CHECK_ENDPOINT)
 async def health_check():
     """

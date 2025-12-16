@@ -123,6 +123,59 @@ CORS_ALLOW_HEADERS = os.getenv("CORS_ALLOW_HEADERS", "Content-Type,Authorization
 ALLOWED_ORIGINS = CORS_ORIGINS
 
 # ============================================
+# User Configuration File (BUG-012 Fix)
+# ============================================
+
+# User config file location - allows users to configure server settings
+# Priority: 1. Environment variables, 2. User config file, 3. Defaults
+import json
+import platform
+
+def _get_user_config_path() -> Path:
+    """Get path to user server configuration file."""
+    if platform.system() == "Windows":
+        # Windows: %APPDATA%\LocaNext\server-config.json
+        appdata = os.getenv("APPDATA", "")
+        if appdata:
+            return Path(appdata) / "LocaNext" / "server-config.json"
+    else:
+        # Linux/Mac: ~/.config/locanext/server-config.json
+        home = Path.home()
+        return home / ".config" / "locanext" / "server-config.json"
+    # Fallback to data directory
+    return DATA_DIR / "server-config.json"
+
+def _load_user_config() -> dict:
+    """Load user server configuration from file."""
+    config_path = _get_user_config_path()
+    if config_path.exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {}
+
+def save_user_config(config: dict) -> bool:
+    """Save user server configuration to file."""
+    config_path = _get_user_config_path()
+    try:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
+        return True
+    except IOError:
+        return False
+
+def get_user_config() -> dict:
+    """Get current user server configuration."""
+    return _load_user_config()
+
+# Load user config at startup
+_USER_CONFIG = _load_user_config()
+USER_CONFIG_PATH = _get_user_config_path()
+
+# ============================================
 # Database Settings
 # ============================================
 
@@ -132,12 +185,13 @@ ALLOWED_ORIGINS = CORS_ORIGINS
 # - sqlite: SQLite only (offline mode)
 DATABASE_MODE = os.getenv("DATABASE_MODE", "auto")
 
-# PostgreSQL settings (same for dev and production)
-POSTGRES_USER = os.getenv("POSTGRES_USER", "localization_admin")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "change_this_password")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
-POSTGRES_DB = os.getenv("POSTGRES_DB", "localizationtools")
+# PostgreSQL settings
+# Priority: 1. Environment variables, 2. User config file, 3. Defaults
+POSTGRES_USER = os.getenv("POSTGRES_USER", _USER_CONFIG.get("postgres_user", "localization_admin"))
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", _USER_CONFIG.get("postgres_password", "change_this_password"))
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", _USER_CONFIG.get("postgres_host", "localhost"))
+POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", _USER_CONFIG.get("postgres_port", "5432")))
+POSTGRES_DB = os.getenv("POSTGRES_DB", _USER_CONFIG.get("postgres_db", "localizationtools"))
 POSTGRES_DATABASE_URL = (
     f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@"
     f"{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
