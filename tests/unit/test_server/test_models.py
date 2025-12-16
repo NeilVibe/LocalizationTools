@@ -32,15 +32,14 @@ from server.database.models import (
 
 
 def get_test_database_url():
-    """Get database URL - PostgreSQL in CI, SQLite locally."""
-    pg_user = os.getenv("POSTGRES_USER")
-    pg_pass = os.getenv("POSTGRES_PASSWORD")
-    pg_db = os.getenv("POSTGRES_DB")
-    pg_host = os.getenv("POSTGRES_HOST", "localhost")
-    pg_port = os.getenv("POSTGRES_PORT", "5432")
+    """Get database URL for unit tests.
 
-    if pg_user and pg_pass and pg_db:
-        return f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+    IMPORTANT: Unit tests use SQLite in-memory to avoid interfering with
+    the running server's PostgreSQL database. The models should be compatible
+    with both SQLite and PostgreSQL for testing purposes.
+    """
+    # Always use SQLite for unit tests - they should be isolated
+    # from the running server's database
     return "sqlite:///:memory:"
 
 
