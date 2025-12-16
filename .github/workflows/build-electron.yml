@@ -118,6 +118,14 @@ jobs:
         run: |
           cd locaNext && npm ci
 
+      # ---- P35: SVELTE 5 BUILD HEALTH CHECK ----
+      - name: Svelte 5 Build Health Check
+        run: |
+          echo "=== P35: Checking for Svelte 5 reactivity issues ==="
+          chmod +x scripts/check_svelte_build.sh
+          ./scripts/check_svelte_build.sh
+          echo "[OK] Svelte 5 build health check passed"
+
       # ---- INJECT VERSION (Pipeline Executive Power) ----
       - name: Inject Version
         run: |

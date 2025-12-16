@@ -17,9 +17,9 @@
   import { telemetry } from "$lib/utils/telemetry.js";
   import { createTracker, parseProgress } from "$lib/utils/trackedOperation.js";
 
-  // Check if running in Electron
-  let isElectron = false;
-  let pythonToolsPath = '';
+  // Check if running in Electron (Svelte 5 state)
+  let isElectron = $state(false);
+  let pythonToolsPath = $state('');
 
   onMount(async () => {
     logger.component("XLSTransfer", "mounted", { mode: isElectron ? "electron" : "browser" });
@@ -37,27 +37,27 @@
     }
   });
 
-  // Status states
-  let isProcessing = false;
-  let statusMessage = '';
-  let showNotification = false;
-  let notificationType = 'success';
+  // Status states (Svelte 5)
+  let isProcessing = $state(false);
+  let statusMessage = $state('');
+  let showNotification = $state(false);
+  let notificationType = $state('success');
 
-  // Dictionary loading state
-  let isDictionaryLoaded = false;
-  let isTransferEnabled = false;
+  // Dictionary loading state (Svelte 5)
+  let isDictionaryLoaded = $state(false);
+  let isTransferEnabled = $state(false);
 
-  // Threshold value (최소 일치율)
-  let threshold = '0.99';
+  // Threshold value (최소 일치율) (Svelte 5)
+  let threshold = $state('0.99');
 
-  // Global stop flag
-  let stopProcessing = false;
+  // Global stop flag (Svelte 5)
+  let stopProcessing = $state(false);
 
-  // Upload settings modal state
-  let showUploadSettings = false;
-  let uploadSettingsFiles = [];
-  let uploadSettingsOperationType = '';
-  let uploadSettingsData = [];
+  // Upload settings modal state (Svelte 5)
+  let showUploadSettings = $state(false);
+  let uploadSettingsFiles = $state([]);
+  let uploadSettingsOperationType = $state('');
+  let uploadSettingsData = $state([]);
 
   // File input references for browser mode
   let fileInputCreateDict;

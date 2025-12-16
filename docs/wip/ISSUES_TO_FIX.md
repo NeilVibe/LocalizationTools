@@ -1,7 +1,7 @@
 # Issues To Fix
 
 **Purpose:** Track known bugs, UI issues, and improvements across LocaNext
-**Last Updated:** 2025-12-15
+**Last Updated:** 2025-12-16
 
 ---
 
@@ -9,21 +9,207 @@
 
 | Area | Open | Fixed | Total |
 |------|------|-------|-------|
-| LDM UI | 0 | 16 | 16 |
+| Svelte 5 Migration | 1 | 1 | 2 |
+| LDM Connection | 2 | 0 | 2 |
+| LDM UI/UX | 4 | 16 | 20 |
 | LDM WebSocket | 0 | 2 | 2 |
+| Installer | 2 | 0 | 2 |
 | Navigation | 0 | 1 | 1 |
 | Infrastructure | 0 | 2 | 2 |
-| **Total** | **0** | **21** | **21** |
+| **Total** | **9** | **22** | **31** |
 
-**Open Issues:** None - All issues resolved
-**Session 2025-12-15:** BUG-006 fixed (Embedding Model download)
-**Session 2025-12-13:** BUG-005 fixed (keyboard shortcuts)
+**Open Issues:** 7 (1 CRITICAL, 2 HIGH, 4 MEDIUM)
+**Session 2025-12-16:** BUG-011 FIXED - Root cause: Svelte 5 reactivity bug from mixed syntax
+**New Task:** P35_SVELTE5_MIGRATION - Full codebase needs Svelte 5 runes migration
 
 ---
 
 ## Open Issues
 
-*None - All issues resolved*
+### PRIORITY 0 - ULTRA CRITICAL (App Broken)
+
+#### BUG-011: Cannot Connect to Backend - App Stuck at "Connecting to LDM..."
+- **Status:** [x] **FIXED** - ROOT CAUSE IDENTIFIED
+- **Priority:** **PRIORITY 0 - ULTRA CRITICAL**
+- **Reported:** 2025-12-16
+- **Fixed:** 2025-12-16
+- **Component:** LDM.svelte - Svelte 5 Reactivity Bug
+
+**Problem:** App launches, shows login, user logs in, but then gets stuck at "Connecting to LDM..." forever. Cannot use the app at all.
+
+**CDP Test Results:**
+```
+Loading state: { hasLoading: true, loadingText: 'loading Connecting to LDM...' }
+LDM: { hasLDM: true, hasGrid: false, hasFileExplorer: false, projectCount: 0, fileCount: 0 }
+```
+
+**Root Cause: SVELTE 5 REACTIVITY BUG**
+
+CDP investigation showed:
+1. `onMount` runs successfully
+2. `checkHealth()` API call succeeds (200 OK)
+3. `fetchConnectionStatus()` API call succeeds (200 OK)
+4. `loading = false` assignment executes
+5. **BUT UI DOESN'T UPDATE** - loading stays true!
+
+The problem: **Mixed Svelte 4 and Svelte 5 syntax**
+
+```javascript
+// BROKEN CODE (Svelte 4 style in Svelte 5 runes mode)
+let loading = true;  // NOT reactive!
+let connectionStatus = $state({...});  // This makes file use runes mode
+
+// When ANY $state() is used, ALL let declarations become non-reactive
+// loading = false does nothing to the UI
+```
+
+**Fix Applied:**
+
+Convert all state variables to `$state()` runes:
+
+```javascript
+// FIXED CODE (Svelte 5 runes)
+let healthStatus = $state(null);
+let loading = $state(true);  // NOW REACTIVE!
+let error = $state(null);
+let projects = $state([]);
+let selectedProjectId = $state(null);
+let selectedFileId = $state(null);
+let selectedFileName = $state("");
+let selectedTMId = $state(null);
+let selectedTMName = $state("");
+let viewMode = $state('file');
+let showTMManager = $state(false);
+let showPreferences = $state(false);
+let showServerStatus = $state(false);
+let fileExplorer = $state(null);
+let virtualGrid = $state(null);
+```
+
+**Files Changed:** `locaNext/src/lib/components/apps/LDM.svelte`
+
+**Related Task:** P35_SVELTE5_MIGRATION.md - Full codebase needs migration to Svelte 5 runes
+
+**Verification:** Needs rebuild and test
+
+---
+
+### CRITICAL - Connection/Offline Mode
+
+#### BUG-007: LDM Not Connecting to Central Server - No Offline Fallback
+- **Status:** [ ] Open
+- **Priority:** CRITICAL
+- **Reported:** 2025-12-16
+- **Component:** LDM Connection, Database Mode
+
+**Problem:** When LDM cannot connect to central PostgreSQL server, there is no automatic fallback to offline mode. App just fails to connect.
+
+**Expected Behavior:**
+- Connection attempt should timeout after 3 seconds max
+- Auto-fallback to SQLite offline mode
+- User notification that offline mode is active
+
+**Root Cause:** P33 offline mode was implemented for CI/auto-login but not integrated into LDM's connection flow.
+
+---
+
+#### BUG-008: No Offline/Online Mode Indicator or Toggle
+- **Status:** [ ] Open
+- **Priority:** CRITICAL
+- **Reported:** 2025-12-16
+- **Component:** LDM UI, Settings
+
+**Problem:** No visual indicator showing current connection mode (online/offline). No button to manually switch modes.
+
+**Expected Behavior:**
+- Status indicator in header or toolbar showing Online/Offline status
+- Ability to manually switch modes
+- Visual feedback when mode changes
+
+---
+
+### HIGH - Installer Issues
+
+#### BUG-009: NSIS Installer Shows No Details During Install
+- **Status:** [ ] Open (FIX READY)
+- **Priority:** HIGH
+- **Reported:** 2025-12-16
+- **Component:** installer/nsis-includes/installer-ui.nsh
+
+**Problem:** Installer shows green progress bar but empty white details box. No text showing what's being extracted.
+
+**Fix Applied:** Added `SetDetailsPrint both` and more DetailPrint messages. Needs new build to take effect.
+
+---
+
+#### BUG-010: First-Run Setup Window Not Closing on Completion
+- **Status:** [ ] Open (FIX READY)
+- **Priority:** HIGH
+- **Reported:** 2025-12-16
+- **Component:** locaNext/electron/first-run-setup.js
+
+**Problem:** After first-run setup completes successfully, the setup window stays open instead of closing.
+
+**Root Cause:** Window created with `closable: false`, but `setClosable(true)` not called before `close()`.
+
+**Fix Applied:** Added `setupWindow.setClosable(true)` before close. Needs new build to take effect.
+
+---
+
+### MEDIUM - UI/UX Improvements
+
+#### UI-001: Remove Light/Dark Mode Toggle
+- **Status:** [ ] Open
+- **Priority:** MEDIUM
+- **Reported:** 2025-12-16
+- **Component:** Settings/Preferences
+
+**Problem:** Light/dark mode toggle is unnecessary. App should be dark mode only.
+
+**Action:** Remove toggle, keep dark mode as default, remove light mode CSS.
+
+---
+
+#### UI-002: Preferences Menu Too Cluttered
+- **Status:** [ ] Open
+- **Priority:** MEDIUM
+- **Reported:** 2025-12-16
+- **Component:** Settings/Preferences
+
+**Problem:** All settings crammed into one menu. Needs better organization.
+
+**Expected:**
+- Separate menus for: LDM viewing, TM settings, General
+- Compartmentalized modal design
+- Minimal options in main Preferences
+
+---
+
+#### UI-003: TM Activation Should Be Via Click/Modal Not Settings
+- **Status:** [ ] Open
+- **Priority:** MEDIUM
+- **Reported:** 2025-12-16
+- **Component:** TM Manager
+
+**Problem:** Activating TMs requires going to settings. Should be direct interaction.
+
+**Expected:**
+- Click on TM opens modal (like LDM viewer)
+- Modal shows: Read, Edit, Erase options
+- Activate/Deactivate buttons at top
+- Remove TM activation from Preferences
+
+---
+
+#### UI-004: Remove "Show TM Results in Grid" Option
+- **Status:** [ ] Open
+- **Priority:** MEDIUM
+- **Reported:** 2025-12-16
+- **Component:** LDM Grid, Preferences
+
+**Problem:** TM results shown in grid is not useful. TM results should only appear in Edit Modal.
+
+**Action:** Remove option from preferences, remove TM column from grid.
 
 ---
 
