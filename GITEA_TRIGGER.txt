@@ -59,3 +59,4 @@ Build LIGHT v2512161138 - Fix test database isolation (don't drop CI tables)
 Build LIGHT v2512161210 - Fix Gitea test bloat (273 tests, not 900)
 Build LIGHT v2512161242 - Fix NSIS SetDetailsPrint error
 Build LIGHT v2512161250 - Retry after server startup hang
+Build BUG-012 Fix - Server Config UI 2512161434

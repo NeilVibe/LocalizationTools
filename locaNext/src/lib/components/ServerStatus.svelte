@@ -12,12 +12,14 @@
     Renew,
     ConnectionSignal,
     DataBase,
-    Wifi
+    Wifi,
+    Settings
   } from "carbon-icons-svelte";
   import { onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { serverUrl } from "$lib/stores/app.js";
   import { get } from "svelte/store";
+  import ServerConfigModal from "./ServerConfigModal.svelte";
 
   // Svelte 5: Props
   let { open = $bindable(false) } = $props();
@@ -27,6 +29,7 @@
   let loading = $state(false);
   let errorMessage = $state("");
   let pollInterval = $state(null);
+  let configModalOpen = $state(false);
 
   // Svelte 5: Derived - API base URL from store
   let API_BASE = $derived(get(serverUrl));
@@ -216,8 +219,8 @@
         </div>
       </div>
 
-      <!-- Refresh Button -->
-      <div class="refresh-section">
+      <!-- Actions -->
+      <div class="actions-section">
         <Button
           kind="ghost"
           size="small"
@@ -228,8 +231,17 @@
         >
           Refresh
         </Button>
-        <span class="refresh-note">Auto-refreshes every 30 seconds</span>
+        <Button
+          kind="tertiary"
+          size="small"
+          icon={Settings}
+          iconDescription="Configure Server"
+          on:click={() => configModalOpen = true}
+        >
+          Configure Server
+        </Button>
       </div>
+      <span class="refresh-note">Auto-refreshes every 30 seconds</span>
     {:else if errorMessage}
       <div class="error-state">
         <Error size={32} />
@@ -239,6 +251,9 @@
     {/if}
   </div>
 </Modal>
+
+<!-- Server Configuration Modal -->
+<ServerConfigModal bind:open={configModalOpen} />
 
 <style>
   .status-panel {
@@ -357,10 +372,10 @@
     color: var(--cds-support-error, #da1e28);
   }
 
-  .refresh-section {
+  .actions-section {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     margin-top: 1.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--cds-border-subtle-01);
@@ -369,6 +384,7 @@
   .refresh-note {
     font-size: 0.75rem;
     color: var(--cds-text-03);
+    margin-top: 0.5rem;
   }
 
   .error-state {
