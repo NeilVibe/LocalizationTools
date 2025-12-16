@@ -9,17 +9,15 @@ import { browser } from '$app/environment';
 
 // Default preferences
 const defaultPreferences = {
-  // Appearance
-  theme: 'dark', // 'light' | 'dark'
+  // Appearance (UI-001: Dark mode only - theme setting removed)
   fontSize: 'medium', // 'small' | 'medium' | 'large'
   fontWeight: 'normal', // 'normal' | 'bold'
 
   // Grid columns (LDM)
+  // UI-004: showTmResults removed - TM results only shown in edit modal
   showIndex: false,
   showStringId: false,
   showReference: false,
-  showTmResults: false,
-  showQaResults: false,
 
   // TM Settings
   activeTmId: null,
@@ -72,10 +70,9 @@ function createPreferencesStore() {
   // Auto-save on changes
   subscribe(prefs => {
     savePreferences(prefs);
-
-    // Apply theme to document
-    if (browser && prefs.theme) {
-      document.documentElement.setAttribute('data-theme', prefs.theme);
+    // UI-001: Dark mode only - always enforce dark theme
+    if (browser) {
+      document.documentElement.setAttribute('data-theme', 'dark');
     }
   });
 
@@ -84,17 +81,7 @@ function createPreferencesStore() {
     set,
     update,
 
-    // Theme actions
-    setTheme: (theme) => {
-      update(prefs => ({ ...prefs, theme }));
-    },
-
-    toggleTheme: () => {
-      update(prefs => ({
-        ...prefs,
-        theme: prefs.theme === 'dark' ? 'light' : 'dark'
-      }));
-    },
+    // UI-001: Theme actions removed (dark mode only)
 
     // Font actions
     setFontSize: (fontSize) => {
@@ -143,7 +130,7 @@ function createPreferencesStore() {
 export const preferences = createPreferencesStore();
 
 // Derived stores for specific preference groups
-export const theme = derived(preferences, $prefs => $prefs.theme);
+// UI-001: theme export removed (dark mode only)
 export const fontSize = derived(preferences, $prefs => $prefs.fontSize);
 export const fontWeight = derived(preferences, $prefs => $prefs.fontWeight);
 
@@ -159,9 +146,8 @@ export function getFontSizeValue(size) {
   return fontSizeMap[size] || fontSizeMap.medium;
 }
 
-// Initialize theme on page load
+// Initialize theme on page load (UI-001: Dark mode only)
 if (browser) {
-  // Apply saved theme immediately
-  const prefs = loadPreferences();
-  document.documentElement.setAttribute('data-theme', prefs.theme || 'dark');
+  // Always apply dark theme
+  document.documentElement.setAttribute('data-theme', 'dark');
 }

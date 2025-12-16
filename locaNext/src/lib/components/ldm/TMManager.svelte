@@ -17,10 +17,12 @@
     Renew,
     CheckmarkFilled,
     WarningAlt,
-    InProgress
+    InProgress,
+    Power
   } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
+  import { preferences } from "$lib/stores/preferences.js";
   import TMUploadModal from "./TMUploadModal.svelte";
 
   const dispatch = createEventDispatcher();
@@ -41,6 +43,34 @@
   let buildingIndexes = $state(new Set());
   let buildConfirmOpen = $state(false);
   let tmToBuild = $state(null);
+
+  // UI-003: Active TM state
+  let activeTmId = $state(null);
+
+  // Load active TM from preferences
+  function loadActiveTm() {
+    const prefs = $preferences;
+    activeTmId = prefs.activeTmId;
+  }
+
+  // UI-003: Activate/Deactivate TM
+  function toggleActiveTm(tm) {
+    if (activeTmId === tm.id) {
+      // Deactivate
+      activeTmId = null;
+      preferences.setActiveTm(null);
+      logger.userAction("TM deactivated", { tmId: tm.id, name: tm.name });
+    } else {
+      // Activate (only if ready)
+      if (tm.status !== 'ready') {
+        errorMessage = "Cannot activate TM - indexes not built yet. Build indexes first.";
+        return;
+      }
+      activeTmId = tm.id;
+      preferences.setActiveTm(tm.id);
+      logger.userAction("TM activated", { tmId: tm.id, name: tm.name });
+    }
+  }
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -194,9 +224,10 @@
     tmToBuild = null;
   }
 
-  // Svelte 5: Effect - Load TMs when modal opens
+  // Svelte 5: Effect - Load TMs and active TM when modal opens
   $effect(() => {
     if (open) {
+      loadActiveTm();
       loadTMs();
     }
   });
@@ -273,12 +304,20 @@
           <tbody>
             {#each tms as tm}
               {@const TMStatusIcon = getStatusIcon(tm.status)}
-              <tr>
+              {@const isActive = activeTmId === tm.id}
+              <tr class:active-row={isActive}>
                 <td class="name-cell">
-                  <span class="tm-name">{tm.name}</span>
-                  {#if tm.description}
-                    <span class="tm-description">{tm.description}</span>
-                  {/if}
+                  <div class="name-with-indicator">
+                    {#if isActive}
+                      <CheckmarkFilled size={16} class="active-indicator" />
+                    {/if}
+                    <div>
+                      <span class="tm-name">{tm.name}</span>
+                      {#if tm.description}
+                        <span class="tm-description">{tm.description}</span>
+                      {/if}
+                    </div>
+                  </div>
                 </td>
                 <td class="count-cell">{formatCount(tm.entry_count)}</td>
                 <td class="lang-cell">
@@ -296,6 +335,16 @@
                 </td>
                 <td class="date-cell">{formatDate(tm.created_at)}</td>
                 <td class="actions-cell">
+                  <!-- UI-003: Activate/Deactivate button -->
+                  <Button
+                    kind={isActive ? "primary" : "ghost"}
+                    size="small"
+                    icon={Power}
+                    iconDescription={isActive ? "Deactivate TM" : "Activate TM"}
+                    on:click={() => toggleActiveTm(tm)}
+                  >
+                    {isActive ? "Active" : "Activate"}
+                  </Button>
                   {#if tm.status === 'pending' || tm.status === 'error'}
                     <Button
                       kind="ghost"
@@ -438,6 +487,28 @@
 
   .name-cell {
     max-width: 200px;
+  }
+
+  /* UI-003: Active TM row styling */
+  .active-row {
+    background: var(--cds-layer-02) !important;
+    border-left: 3px solid var(--cds-interactive-01);
+  }
+
+  .active-row:hover {
+    background: var(--cds-layer-03) !important;
+  }
+
+  .name-with-indicator {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .name-with-indicator :global(.active-indicator) {
+    color: var(--cds-interactive-01);
+    flex-shrink: 0;
+    margin-top: 2px;
   }
 
   .tm-name {

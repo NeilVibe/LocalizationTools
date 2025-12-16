@@ -5,13 +5,15 @@
     Button,
     Tag
   } from "carbon-components-svelte";
-  import { DataBase, Settings, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload } from "carbon-icons-svelte";
+  import { DataBase, Settings, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document } from "carbon-icons-svelte";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import FileExplorer from "$lib/components/ldm/FileExplorer.svelte";
   import VirtualGrid from "$lib/components/ldm/VirtualGrid.svelte";
   import TMManager from "$lib/components/ldm/TMManager.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
+  import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
+  import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
   import ServerStatus from "$lib/components/ServerStatus.svelte";
   // Old DataGrid kept for reference (VirtualGrid replaces it for 1M+ rows)
   // import DataGrid from "$lib/components/ldm/DataGrid.svelte";
@@ -21,6 +23,12 @@
 
   // Preferences modal state
   let showPreferences = $state(false);
+
+  // Grid columns modal state
+  let showGridColumns = $state(false);
+
+  // Reference settings modal state
+  let showReferenceSettings = $state(false);
 
   // Server status modal state
   let showServerStatus = $state(false);
@@ -637,8 +645,22 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
               iconDescription="Translation Memories"
               on:click={() => showTMManager = true}
             >
-              TM Manager
+              TM
             </Button>
+            <Button
+              kind="ghost"
+              size="small"
+              icon={Column}
+              iconDescription="Grid Columns"
+              on:click={() => showGridColumns = true}
+            />
+            <Button
+              kind="ghost"
+              size="small"
+              icon={Document}
+              iconDescription="Reference Settings"
+              on:click={() => showReferenceSettings = true}
+            />
             <Button
               kind="ghost"
               size="small"
@@ -650,7 +672,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
               kind="ghost"
               size="small"
               icon={Settings}
-              iconDescription="Preferences"
+              iconDescription="Display Settings"
               on:click={() => showPreferences = true}
             />
           </div>
@@ -690,7 +712,13 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
   <!-- TM Manager Modal -->
   <TMManager bind:open={showTMManager} />
 
-  <!-- Preferences Modal -->
+  <!-- Grid Columns Modal -->
+  <GridColumnsModal bind:open={showGridColumns} />
+
+  <!-- Reference Settings Modal -->
+  <ReferenceSettingsModal bind:open={showReferenceSettings} />
+
+  <!-- Preferences Modal (Display Settings) -->
   <PreferencesModal bind:open={showPreferences} />
 
   <!-- Server Status Modal -->
