@@ -1,19 +1,25 @@
 # Session Context - Claude Handoff Document
 
-**Updated:** 2025-12-16 14:30 KST | **Build:** 292 ✅ PASSING
+**Updated:** 2025-12-16 15:00 KST | **Build:** 293 ⏳ IN PROGRESS
 
 ---
 
 ## TL;DR FOR NEXT SESSION
 
-**CI PIPELINE FIXED + PLAYGROUND TESTED!**
+**BUILD 293 IN PROGRESS - BUG-012 FIX**
 
 | Build | Status | Time | Notes |
 |-------|--------|------|-------|
-| **292** | ✅ | ~7m | **PASSING** - Full release created |
+| **293** | ⏳ | - | **IN PROGRESS** - BUG-012 Server Config UI |
+| **292** | ✅ | ~7m | PASSING - Playground tested |
 | 291 | ❌ | 2m | Server startup hang (transient) |
 | 290 | ❌ | 5m | NSIS SetDetailsPrint error |
-| 289-284 | ❌ | - | Various issues |
+
+**What's in Build 293:**
+- BUG-012 Fix: Server Configuration UI
+- Users can now configure PostgreSQL connection via UI
+- New: `ServerConfigModal.svelte`, `/api/server-config` endpoints
+- CI test: `test_server_config.py`
 
 **Release Created:**
 - **Version:** v25.1216.1251
@@ -100,10 +106,15 @@ locaNext/src/lib/components/ServerStatus.svelte     # Added button
 tests/integration/test_server_config.py             # NEW CI test
 ```
 
-**Next Steps:**
-1. Build new version
-2. Test in Playground
-3. Verify Server Configuration UI works
+**Build 293 Commit:** `59f83e1` - Pushed to Gitea, CI running
+
+**After Build 293 Passes:**
+1. Install to Playground: `./scripts/playground_install.sh --launch`
+2. Open Server Status → Click "Configure Server"
+3. Enter central PostgreSQL credentials
+4. Click "Test Connection" → Should succeed
+5. Click "Save Configuration" → Creates config file
+6. Restart app → Should connect to PostgreSQL
 
 ---
 
