@@ -1,7 +1,7 @@
 # Issues To Fix
 
 **Purpose:** Track known bugs, UI issues, and improvements across LocaNext
-**Last Updated:** 2025-12-16 12:30 KST
+**Last Updated:** 2025-12-16 13:00 KST
 
 ---
 
@@ -13,21 +13,21 @@
 | LDM Connection | 0 | 3 | 3 |
 | LDM UI/UX | 4 | 16 | 20 |
 | LDM WebSocket | 0 | 2 | 2 |
-| Installer | 0 | 2 | 2 |
+| Installer | 0 | 3 | 3 |
 | Navigation | 0 | 1 | 1 |
-| Infrastructure | 0 | 6 | 6 |
-| **Total** | **4** | **31** | **35** |
+| Infrastructure | 0 | 7 | 7 |
+| **Total** | **4** | **33** | **37** |
 
 **Open Issues:** 4 (0 HIGH, 4 MEDIUM)
 
-### Session 2025-12-16 (continued) Summary
-- **FIXED:** CI test isolation - unit tests were dropping CI database tables
+### Session 2025-12-16 - BUILD 292 PASSED
+- **BUILD 292:** ✅ **PASSING** - Full release created (v25.1216.1251)
+- **FIXED:** NSIS `SetDetailsPrint` error - moved from `customHeader` to `customInstall`
+- **FIXED:** CI test isolation - unit tests use SQLite, don't drop CI database
 - **FIXED:** CI test bloat - Gitea runs ~273 tests in 5 min (not 1000+ in 23 min)
-- **FIXED:** Connectivity tests included (`test_database_connectivity.py` - 26 tests)
-- **BUILD 290:** Tests PASSED in 5m7s, but overall FAILED
-- **CRITICAL:** 7 consecutive failures since Build 284 (Svelte 5 migration)
-- **ISSUE:** Windows build step failing - runner may be down or Electron build broken
-- **LAST PASSING:** Build 283 (22m48s)
+- **VERIFIED:** Connectivity tests coverage (26 tests) - timeout/failover scenarios
+- **Release:** `LocaNext_v25.1216.1251_Light_Setup.exe`
+- **Note:** Build 291 had transient server startup hang, Build 292 passed clean
 
 ### Session 2025-12-16 Summary (earlier)
 - **FIXED:** BUG-011 - App stuck at "Connecting to LDM..." (Svelte 5 reactivity)

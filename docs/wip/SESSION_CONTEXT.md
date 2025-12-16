@@ -1,38 +1,43 @@
 # Session Context - Claude Handoff Document
 
-**Updated:** 2025-12-16 12:45 KST | **Build:** 290 (FAILED - Windows build)
+**Updated:** 2025-12-16 13:00 KST | **Build:** 292 ✅ PASSING
 
 ---
 
 ## TL;DR FOR NEXT SESSION
 
-**CRITICAL: 7 consecutive build failures since Build 284 (Svelte 5 migration)**
+**CI PIPELINE FIXED - Build 292 Passed!**
 
-| Build | Status | Time | What Failed |
-|-------|--------|------|-------------|
-| 290 | ❌ | 5m7s | Tests pass, Windows build fails |
-| 289 | ❌ | 5m31s | Tests pass, Windows build fails |
-| 288 | ❌ | 23m4s | Unit tests dropped DB tables |
-| 287 | ❌ | 2m29s | Server crash |
-| 286 | ❌ | 13m | Windows build |
-| 285 | ❌ | - | Windows build |
-| 284 | ❌ | - | P35 Svelte 5 (broke something) |
-| **283** | ✅ | 22m | **LAST PASSING BUILD** |
+| Build | Status | Time | Notes |
+|-------|--------|------|-------|
+| **292** | ✅ | ~7m | **PASSING** - Full release created |
+| 291 | ❌ | 2m | Server startup hang (transient) |
+| 290 | ❌ | 5m | NSIS SetDetailsPrint error |
+| 289-284 | ❌ | - | Various issues |
+| **283** | ✅ | 22m | Previous passing build |
 
-**What We Fixed:**
-1. ✅ Test isolation - unit tests use SQLite, don't drop CI database
-2. ✅ Test bloat - Gitea runs ~273 tests in 5 min (not 1000+ in 23 min)
-3. ✅ Connectivity tests included - `test_database_connectivity.py` (26 tests)
+**Release Created:**
+- **Version:** v25.1216.1251
+- **Installer:** `LocaNext_v25.1216.1251_Light_Setup.exe`
+- **URL:** http://localhost:3000/neilvibe/LocaNext/releases/tag/v25.1216.1251
 
-**What's Still Broken:**
-- ❌ **Windows build step** - Tests pass but Windows installer build fails
-- This has been broken since Build 284 (Svelte 5 migration)
-- Need to check Windows runner or diagnose Windows build errors
+**What Was Fixed This Session:**
+1. ✅ **NSIS error** - moved `SetDetailsPrint` from `customHeader` to `customInstall` in `installer-ui.nsh`
+2. ✅ **Test isolation** - unit tests use SQLite, don't drop CI database
+3. ✅ **Test bloat** - Gitea runs ~273 tests in 5 min (not 1000+ in 23 min)
+4. ✅ **Connectivity tests** - `test_database_connectivity.py` (26 tests) covers timeout/failover scenarios
+
+**Connectivity Test Coverage:**
+- ✅ PostgreSQL reachability check with 3s timeout
+- ✅ Unreachable host fallback (192.0.2.1 TEST-NET-1)
+- ✅ Timeout verification (<3s for unreachable hosts)
+- ✅ Auto-fallback to SQLite (DATABASE_MODE=auto)
+- ✅ /api/status and /api/go-online endpoints
+- ✅ Full connectivity workflow simulation
 
 **What To Do Next:**
-1. **Check Windows runner** - Is it running? Check in browser: http://localhost:3000/neilvibe/LocaNext/actions/runs/290
-2. **View build logs** - See what error occurs in Windows build step
-3. **Compare to Build 283** - What changed that broke Windows build?
+1. **Test the installer** - Download and run `LocaNext_v25.1216.1251_Light_Setup.exe`
+2. **Continue P33** - Offline mode + CI overhaul refinements
 
 **Quick Commands:**
 ```bash
