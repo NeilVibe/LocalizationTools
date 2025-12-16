@@ -168,6 +168,19 @@ Gitea URL:         http://172.28.150.120:3000/neilvibe/LocaNext
 
 ---
 
+## GITEA RELEASES (CLEANED)
+
+Old releases deleted to save space (~1GB freed).
+
+| Release | Status | Size |
+|---------|--------|------|
+| **v25.1216.1449** | ✅ Latest (Build 294) - Online mode | 163MB |
+| v25.1216.1251 | Backup (Build 292) | 163MB |
+
+**Download URL:** `http://172.28.150.120:3000/neilvibe/LocaNext/releases`
+
+---
+
 ## NEXT STEPS
 
 1. Test WebSocket sync in online mode
@@ -177,4 +190,4 @@ Gitea URL:         http://172.28.150.120:3000/neilvibe/LocaNext
 
 ---
 
-*Last updated: 2025-12-16 15:30 KST - Online Mode Working!*
+*Last updated: 2025-12-16 15:45 KST - Online Mode Working + Releases Cleaned!*
