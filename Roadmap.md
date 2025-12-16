@@ -41,7 +41,7 @@ LocaNext v25.1217.0100 (Build 296 released)
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | E2E testing + validation | ✅ **COMPLETE** |
-| Phase 2 | Backend + TM Merge | **NEXT** |
+| Phase 2 | Backend + TM Merge | ✅ **PLANNED** - Ready to implement |
 | Phase 3 | Pretranslation Modal UI | Pending |
 | Phase 4 | Integration + testing | Pending |
 

@@ -1,6 +1,6 @@
 # P36: Unified Pretranslation System
 
-**Priority:** P36 | **Status:** Phase 1 COMPLETE ✅ | **Created:** 2025-12-16
+**Priority:** P36 | **Status:** Phase 1 COMPLETE ✅, Phase 2 PLANNED | **Created:** 2025-12-16 | **Updated:** 2025-12-17
 
 ---
 
@@ -402,31 +402,229 @@ tests/fixtures/pretranslation/
 └── test_real_patterns.py        # 13 patterns ✅
 ```
 
-### Phase 2: Backend
-- [ ] Unify embedding generation (single code path)
-- [ ] Implement mode-specific post-processing
-- [ ] TM Merge API endpoints
+### Phase 2: Backend - DETAILED PLAN
+
+#### 2.1 Unified API Endpoint
+
+**NEW FILE:** `server/api/pretranslate.py`
+
+```python
+@router.post("/api/ldm/pretranslate")
+async def pretranslate_file(
+    file_id: int,
+    engine: str,  # "standard" | "xls_transfer" | "kr_similar"
+    dictionary_id: int,
+    threshold: float = 0.92,
+    skip_existing: bool = True,
+    background_tasks: BackgroundTasks
+) -> PretranslateResponse
+```
+
+**Source Reference:** `server/api/xlstransfer_async.py:160-189` (background task pattern)
+
+#### 2.2 Engine Selection (Mode Router)
+
+**NEW FILE:** `server/tools/ldm/pretranslate.py`
+
+```python
+class PretranslationEngine:
+    """Unified pretranslation with engine selection"""
+
+    def pretranslate(self, rows, engine: str, dictionary_id: int, threshold: float):
+        if engine == "standard":
+            return self._standard_tm_search(rows, dictionary_id, threshold)
+        elif engine == "xls_transfer":
+            return self._xls_transfer_search(rows, dictionary_id, threshold)
+        elif engine == "kr_similar":
+            return self._kr_similar_search(rows, dictionary_id, threshold)
+```
+
+**Source References:**
+- Standard TM: `server/tools/ldm/tm_indexer.py` (5-tier cascade)
+- XLS Transfer: `server/tools/xlstransfer/translation.py:24-200`
+- KR Similar: `server/tools/kr_similar/searcher.py:275-450`
+
+#### 2.3 Batch Processing with Queue System
+
+**EXISTING:** `server/tasks/celery_app.py` (Celery + Redis)
+
+```python
+# Configuration (already exists)
+broker = redis://localhost:6379/1
+result_backend = redis://localhost:6379/2
+task_time_limit = 3600  # 1 hour hard limit
+task_soft_time_limit = 3000  # 50 min soft limit
+```
+
+**NEW TASK:** Add to `server/tasks/background_tasks.py`
+
+```python
+@celery_app.task(bind=True)
+def pretranslate_batch(self, batch_data: dict):
+    """
+    Process large batches asynchronously.
+    - batch_data: {file_id, engine, dictionary_id, threshold, row_ids}
+    - Progress callback via WebSocket
+    - Chunked processing (500 rows per chunk)
+    """
+```
+
+**Source Reference:** `server/tasks/background_tasks.py:84-105` (process_large_batch pattern)
+
+#### 2.4 Smart Translation Upgrade (Standard 5-Tier Enhancement)
+
+**UPGRADE TO:** `server/tools/ldm/tm_indexer.py`
+
+**New Features from WebTranslatorNew:**
+
+| Feature | Source | Implementation |
+|---------|--------|----------------|
+| Dual Threshold | `WebTranslatorNew/TEXT_SEARCH.md:73-84` | `cascade_threshold=0.92`, `context_threshold=0.49` |
+| Line-Level Embeddings | `WebTranslatorNew/DATA_PREPROCESSING.md:136-181` | `should_create_line_entries()`, `create_line_entries()` |
+| Incremental Updates | `WebTranslatorNew/DATA_PREPROCESSING.md:206-242` | `update_embeddings_incremental()` |
+| N-gram Fallback | `WebTranslatorNew/TEXT_SEARCH.md:57-69` | Tier 5: 1,2,3-word n-grams |
+
+**Dual Threshold System:**
+```python
+# From WebTranslatorNew/TEXT_SEARCH.md:73-84
+cascade_threshold = 0.92    # High confidence - auto-apply
+context_threshold = 0.49    # Useful guidance - show as suggestion
+
+# Returns:
+# - primary_matches (>= 92%): Can auto-apply
+# - context_matches (49-92%): Show to user as suggestions
+```
+
+#### 2.5 Dynamic Auto-Glossary Creation
+
+**SOURCE:** `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py`
+
+**Key Features:**
+- 13-language support (KOR, ENG, FRA, GER, SPA, ITA, POR, RUS, POL, TUR, THA, JPN, CHS, CHT)
+- Aho-Corasick automaton for O(n) multi-pattern matching
+- Smart filtering rules (max 15 chars, min 2 occurrences, no punctuation)
+
+**NEW FILE:** `server/tools/ldm/glossary_extractor.py`
+
+```python
+class GlossaryExtractor:
+    """Extract glossary terms from TM entries"""
+
+    def extract_terms(self, tm_entries: List[dict]) -> List[GlossaryTerm]:
+        """
+        1. Filter by rules (from glossary_sniffer_1124.py:42-47)
+        2. Count occurrences
+        3. Build Aho-Corasick automaton
+        4. Return extracted terms with translations
+        """
+```
+
+**Source Reference:** `glossary_sniffer_1124.py:83-176` (extract_multilanguage_glossary)
+
+#### 2.6 Data Preprocessing Pipeline
+
+**SOURCE:** `WebTranslatorNew/DATA_PREPROCESSING.md`
+
+```
+Raw Data (Excel/XML/TXT)
+    ↓
+1. Remove Empty Cells
+    ↓
+2. Clean Control Characters (_x000D_ removal)
+    ↓
+3. Resolve Duplicates (majority voting)
+    ↓
+4. Filter Database Duplicates (skip existing)
+    ↓
+Cleaned Data → Embedding Pipeline
+```
+
+**Integration Point:** `server/tools/ldm/tm_indexer.py` before embedding generation
 
 ### Phase 3: UI
 - [ ] Pretranslation modal component
 - [ ] TM Merge modal component
-- [ ] Progress tracking
+- [ ] Progress tracking (WebSocket updates)
+- [ ] Dual threshold display (primary vs context matches)
 
 ### Phase 4: Integration
 - [ ] Connect to file context menu
 - [ ] Test with real files
 - [ ] Performance optimization
+- [ ] Glossary extraction UI
+
+---
+
+## Source Code References
+
+### Queue System (Batch Processing)
+
+| File | Lines | What |
+|------|-------|------|
+| `server/tasks/celery_app.py` | 1-41 | Celery + Redis config |
+| `server/tasks/background_tasks.py` | 84-105 | `process_large_batch()` pattern |
+| `server/api/xlstransfer_async.py` | 160-189 | BackgroundTasks usage |
+| `server/api/kr_similar_async.py` | 399-451 | Async operation pattern |
+
+### Smart Translation
+
+| File | Lines | What |
+|------|-------|------|
+| `server/tools/xlstransfer/translation.py` | 24-96 | `find_best_match()` |
+| `server/tools/xlstransfer/translation.py` | 103-146 | `process_batch()` |
+| `server/tools/xlstransfer/translation.py` | 153-200 | `translate_text_multi_mode()` |
+| `server/tools/kr_similar/searcher.py` | 275-450 | `auto_translate()` |
+| `server/tools/kr_similar/core.py` | 17-89 | `adapt_structure()` |
+
+### Auto-Glossary
+
+| File | Lines | What |
+|------|-------|------|
+| `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py` | 83-176 | `extract_multilanguage_glossary()` |
+| `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py` | 42-47 | Filtering rules |
+| `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py` | 292-316 | Aho-Corasick automaton |
+
+### TM Indexer (5-Tier Cascade)
+
+| File | Lines | What |
+|------|-------|------|
+| `server/tools/ldm/tm_indexer.py` | 40-46 | FAISS HNSW config |
+| `server/tools/ldm/tm_indexer.py` | 49-112 | Normalization functions |
+| `server/tools/ldm/tm_indexer.py` | 115-200 | TMIndexer class |
+| `server/tools/kr_similar/embeddings.py` | 38-127 | EmbeddingsManager |
+
+### WebTranslatorNew Documentation
+
+| File | What |
+|------|------|
+| `RessourcesForCodingTheProject/WebTranslatorNew/TEXT_SEARCH.md` | 5-Tier Cascade, Dual Threshold |
+| `RessourcesForCodingTheProject/WebTranslatorNew/EMBEDDINGS.md` | FAISS HNSW, Batch Embedding |
+| `RessourcesForCodingTheProject/WebTranslatorNew/DATA_PREPROCESSING.md` | Deduplication, Line-Level Processing |
+| `RessourcesForCodingTheProject/WebTranslatorNew/FUZZY_SEARCH.md` | RapidFuzz for target search |
 
 ---
 
 ## Files to Modify
 
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `server/api/pretranslate.py` | Unified pretranslation API endpoint |
+| `server/tools/ldm/pretranslate.py` | Engine selection + pretranslation logic |
+| `server/tools/ldm/glossary_extractor.py` | Auto-glossary extraction |
+| `server/tools/ldm/data_preprocessor.py` | Data cleaning pipeline |
+| `locaNext/src/lib/components/ldm/PretranslateModal.svelte` | Pretranslation UI |
+| `locaNext/src/lib/components/ldm/GlossaryExtractModal.svelte` | Glossary extraction UI |
+
+### Existing Files to Update
+
 | File | Changes |
 |------|---------|
-| `server/tools/ldm/tm_indexer.py` | Add mode parameter to search |
-| `server/tools/ldm/pretranslate.py` | NEW - Unified pretranslation logic |
-| `server/api/ldm_async.py` | Add pretranslate endpoint |
-| `locaNext/src/lib/components/ldm/PretranslateModal.svelte` | NEW - UI |
+| `server/tools/ldm/tm_indexer.py` | Add dual threshold, line-level embeddings |
+| `server/tasks/background_tasks.py` | Add `pretranslate_batch()` task |
+| `server/api/ldm_async.py` | Register pretranslate router |
+| `server/main.py` | Register new routers |
 | `locaNext/src/lib/components/ldm/FileExplorer.svelte` | Add context menu option |
 
 ---
@@ -442,4 +640,12 @@ tests/fixtures/pretranslation/
 ---
 
 *Created: 2025-12-16*
-*Updated: 2025-12-17 - Phase 1 COMPLETE. 2,172 E2E tests passed. QWEN+FAISS verified for text similarity. Ready for Phase 2.*
+*Updated: 2025-12-17 02:45 KST*
+
+**Phase 1:** COMPLETE - 2,172 E2E tests passed. QWEN+FAISS verified.
+**Phase 2:** PLANNED - Detailed plan with source references added. Ready to implement:
+- Unified API endpoint (`/api/ldm/pretranslate`)
+- Engine selection (Standard/XLS Transfer/KR Similar)
+- Batch processing with Celery queue
+- Smart translation upgrades (dual threshold, line-level embeddings)
+- Auto-glossary extraction (Aho-Corasick)

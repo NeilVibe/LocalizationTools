@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff
 
-**Updated:** 2025-12-17 02:20 KST | **Build:** 296 ✅
+**Updated:** 2025-12-17 02:50 KST | **Build:** 296 ✅
 
 ---
 
@@ -9,11 +9,11 @@
 | Status | Value |
 |--------|-------|
 | **Build** | 296 ✅ (v25.1217.0136) |
-| **Latest Commit** | `e3c5ac3` - Playground PostgreSQL auto-config |
+| **Latest Commit** | Pending - Phase 2 detailed plan |
 | **Open Issues** | 0 |
 | **Playground** | ✅ ONLINE (PostgreSQL 172.28.150.120:5432) |
-| **Current** | Session complete - all docs updated |
-| **Next** | Phase 2 Backend (API endpoints) |
+| **Current** | P36 Phase 2 PLANNED with full source references |
+| **Next** | Implement unified API endpoint + engine selection |
 
 ---
 
@@ -56,6 +56,38 @@ $jsonContent = $config | ConvertTo-Json
 **Also fixed:** Reset PostgreSQL password for `localization_admin` to match config.
 
 **Verified:** App now connects to PostgreSQL and shows `database_type: postgresql` in health check.
+
+### P36 Phase 2 Detailed Planning ✅
+
+**Extracted knowledge from WebTranslatorNew and existing codebase:**
+
+#### 1. Batch Processing - Queue System
+- **Celery + Redis** already exists at `server/tasks/celery_app.py`
+- Pattern: `server/tasks/background_tasks.py:84-105` (`process_large_batch()`)
+- Integration: FastAPI BackgroundTasks at `server/api/xlstransfer_async.py:160-189`
+
+#### 2. Smart Translation Upgrades
+- **Dual Threshold System** from WebTranslatorNew:
+  - `cascade_threshold = 0.92` (auto-apply)
+  - `context_threshold = 0.49` (show as suggestion)
+- **Line-Level Embeddings**: `should_create_line_entries()`, `create_line_entries()`
+- **Incremental Updates**: `update_embeddings_incremental()` - don't rebuild from scratch
+- **N-gram Fallback**: Tier 5 with 1,2,3-word n-grams
+
+#### 3. Auto-Glossary Creation
+- **Source**: `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py`
+- **Features**:
+  - 13-language support
+  - Aho-Corasick automaton for O(n) search
+  - Smart filtering (max 15 chars, min 2 occurrences)
+
+#### 4. Data Preprocessing Pipeline
+- Remove empty cells
+- Clean control characters (`_x000D_`)
+- Resolve duplicates (majority voting)
+- Filter database duplicates (skip existing)
+
+**Full details:** [P36_PRETRANSLATION_STACK.md](P36_PRETRANSLATION_STACK.md)
 
 ---
 
@@ -243,14 +275,18 @@ One edge case documented:
 ## Next Steps
 
 1. **Phase 1 COMPLETE** - All E2E tests passing (2,133 tests) ✅
-2. **Commit `480e7fc`** - E2E test suite + doc cleanup pushed ✅
+2. **Phase 2 PLANNED** - Detailed plan with source references ✅
 3. **NEXT:** Phase 2 Backend implementation
-   - API endpoint for pretranslation (`/api/ldm/pretranslate`)
-   - Engine selection (Standard TM / XLS Transfer / KR Similar)
-   - Batch processing support
+   - **2.1** Unified API endpoint (`/api/ldm/pretranslate`)
+   - **2.2** Engine selection (Standard TM / XLS Transfer / KR Similar)
+   - **2.3** Batch processing with Celery queue
+   - **2.4** Smart translation upgrades (dual threshold, line-level embeddings)
+   - **2.5** Auto-glossary extraction (Aho-Corasick)
+   - **2.6** Data preprocessing pipeline
 4. **AFTER:** Phase 3 Pretranslation Modal UI
    - Right-click file → "Pretranslate..."
    - Engine selection, threshold slider, options
+   - Dual threshold display (primary vs context matches)
 
 ---
 
@@ -288,4 +324,4 @@ python3 tests/fixtures/pretranslation/test_real_patterns.py
 
 ---
 
-*Last: 2025-12-17 02:25 KST - Commit e3c5ac3 pushed. Playground PostgreSQL auto-config working. Ready for Phase 2 Backend.*
+*Last: 2025-12-17 02:50 KST - P36 Phase 2 fully planned with source references. Ready to implement unified API, engine selection, batch processing, smart translation upgrades, and auto-glossary.*
