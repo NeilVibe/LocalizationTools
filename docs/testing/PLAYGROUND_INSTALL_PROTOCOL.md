@@ -47,6 +47,7 @@ Options:
   --launch        Launch app after install with CDP enabled
   --skip-clean    Don't clean Playground first
   --cdp-port PORT CDP debugging port (default: 9222)
+  --auto-login    Auto-login as neil/neil after First Time Setup
 ```
 
 ### PowerShell Parameters
@@ -63,6 +64,9 @@ Parameters:
   -CDPPort         CDP port (default: 9222)
   -SkipDownload    Skip download (use cached installer)
   -SkipClean       Don't clean Playground
+  -AutoLogin       Auto-login after First Time Setup (default: neil/neil)
+  -LoginUsername   Username for auto-login (default: neil)
+  -LoginPassword   Password for auto-login (default: neil)
 ```
 
 ---
@@ -276,29 +280,22 @@ Invoke-RestMethod -Uri "http://localhost:8888/health"
 # local_mode: True
 ```
 
-### Configuring Central Server Access
+### Auto-Login Feature
 
-To connect to a central PostgreSQL server:
+Use `--auto-login` to automatically log in after First Time Setup completes:
 
-1. **Modify bundled config** (for testing):
-   ```
-   <Playground>\LocaNext\resources\server\config.py
-   ```
-   Change:
-   ```python
-   POSTGRES_HOST = os.getenv("POSTGRES_HOST", "172.28.150.120")  # Central server
-   POSTGRES_USER = os.getenv("POSTGRES_USER", "locanext")
-   POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "your_password")
-   POSTGRES_DB = os.getenv("POSTGRES_DB", "locanext")
-   ```
+```bash
+# Full install with auto-login
+./scripts/playground_install.sh --launch --auto-login
+```
 
-2. **Restart app** - environment changes require restart
+This will:
+1. Wait for First Time Setup to complete (downloads model ~2.3GB)
+2. Wait for login page to appear
+3. Login via backend API as neil/neil
+4. Report success/failure
 
-3. **Verify connection**:
-   ```powershell
-   Invoke-RestMethod -Uri "http://localhost:8888/health"
-   # Should show: database_type: postgresql
-   ```
+The app auto-connects to the central PostgreSQL server at `172.28.150.120:5432`.
 
 ### WSL Network Limitations
 

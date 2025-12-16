@@ -1,6 +1,6 @@
 # LocaNext - Roadmap & Navigation Hub
 
-**Build:** 295 ✅ | **Updated:** 2025-12-17 07:00 KST | **Status:** 98% Complete | **Open Issues:** 0
+**Build:** 296 ✅ | **Updated:** 2025-12-17 01:15 KST | **Status:** 98% Complete | **Open Issues:** 0
 
 ---
 
@@ -19,13 +19,14 @@
 ## Current Status
 
 ```
-LocaNext v25.1216.1626 (Build 295 released)
+LocaNext v25.1217.0100 (Build 296 released)
 ├── Backend:     ✅ PostgreSQL + SQLite offline
 ├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar, LDM
 ├── CI/CD:       ✅ ~273 tests in ~5min (PostgreSQL verified)
-├── Offline:     ✅ Auto-fallback + indicator + Server Config UI
+├── Offline:     ✅ Auto-fallback + status indicator
 ├── UI:          ✅ Compartmentalized modals (UI-001 to UI-004)
+├── Security:    ✅ Removed Server Config UI (no dev data exposed)
 └── Installer:   ✅ NSIS fixed, release available
 ```
 

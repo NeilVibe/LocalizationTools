@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512170700 | **Build:** 295 ✅ | **Status:** 98% | **Issues:** 0
+**Version:** 2512170115 | **Build:** 296 ✅ | **Status:** 98% | **Issues:** 0
 
 > **KEEP THIS FILE COMPACT.** Details in linked docs.
 
@@ -78,8 +78,8 @@ cd locaNext && npm run electron:dev
 # Trigger build
 echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git push origin main && git push gitea main
 
-# Playground install
-./scripts/playground_install.sh --launch
+# Playground install (with auto-login)
+./scripts/playground_install.sh --launch --auto-login
 ```
 
 ---
@@ -134,12 +134,12 @@ docs/
 
 ## Stats
 
-- **Build:** 295 (v25.1216.1626)
+- **Build:** 296 (v25.1217.0100)
 - **Tests:** ~273 in CI
-- **Endpoints:** 63+
+- **Endpoints:** 63+ (removed server-config endpoints)
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
 - **Open Issues:** 0
 
 ---
 
-*Last updated: 2025-12-17 | Hub file - details in linked docs*
+*Last updated: 2025-12-17 01:15 KST | Hub file - details in linked docs*
