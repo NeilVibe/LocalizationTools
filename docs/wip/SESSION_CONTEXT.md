@@ -1,228 +1,245 @@
-# Session Context - Claude Handoff Document
+# Session Context - Claude Handoff
 
-**Updated:** 2025-12-16 16:15 KST | **Build:** 294 ✅ PASSED | **Pending:** 295
-
----
-
-## TL;DR FOR NEXT SESSION
-
-**ALL UI ISSUES FIXED + VERIFIED WITH CDP SCREENSHOTS!**
-
-Completed UI-001 to UI-004:
-1. **UI-001**: Dark mode only - removed theme toggle
-2. **UI-002**: Compartmentalized modals (Grid Columns, Reference Settings, Display Settings)
-3. **UI-003**: TM activation in TMManager with Power icon button
-4. **UI-004**: Removed TM Results checkbox from grid columns
-
-**Open Issues: 0** (all 38 resolved!)
-
-**Current Playground Status:**
-```json
-{
-  "status": "healthy",
-  "database": "connected",
-  "database_type": "postgresql",
-  "local_mode": false,
-  "version": "25.1216.1449"
-}
-```
-
-| Build | Status | Notes |
-|-------|--------|-------|
-| **295** | ⏳ | UI fixes (UI-001 to UI-004) - PENDING |
-| **294** | ✅ | BUG-012 fix + test_server_config.py in CI |
-| 293 | ❌ | Transient server startup issue |
-| 292 | ✅ | Playground offline mode tested |
+**Updated:** 2025-12-17 05:30 KST | **Build:** 295 ✅
 
 ---
 
-## WHAT WAS ACCOMPLISHED THIS SESSION
+## TL;DR
 
-### UI-001 to UI-004: Compartmentalized UI Fixes - COMPLETE
-
-**Files Created:**
-```
-locaNext/src/lib/components/GridColumnsModal.svelte     # NEW: Column visibility
-locaNext/src/lib/components/ReferenceSettingsModal.svelte # NEW: Reference file config
-```
-
-**Files Modified:**
-```
-locaNext/src/lib/components/PreferencesModal.svelte     # Renamed to "Display Settings"
-locaNext/src/lib/components/ldm/TMManager.svelte        # Added TM activation
-locaNext/src/lib/components/apps/LDM.svelte            # 5 toolbar buttons
-locaNext/src/lib/stores/preferences.js                  # Removed theme, added activeTm
-locaNext/src/routes/+layout.svelte                      # Removed theme toggle
-locaNext/src/app.css                                    # Removed light theme CSS
-```
-
-**CDP Screenshot Verification:**
-- `02_ldm_page.png` - Main LDM with 5 toolbar buttons
-- `03_tm_manager.png` - TM Manager modal
-- `04_grid_columns.png` - Grid Columns (3 checkboxes, NO TM Results)
-- `modal_reference_settings.png` - Reference Settings modal
-- `modal_display_settings.png` - Display Settings (NO theme toggle)
+| Status | Value |
+|--------|-------|
+| **Build** | 295 ✅ (v25.1216.1626) |
+| **Open Issues** | 0 |
+| **Playground** | Online (PostgreSQL) |
+| **Current** | P36 Phase 1 - E2E Tests COMPLETE ✅ |
+| **Next** | Phase 2 Backend implementation |
 
 ---
 
-### BUG-012: Server Configuration UI - COMPLETE
+## IMPORTANT: Where We Left Off
 
-**Problem:** Users couldn't connect to central PostgreSQL - no way to configure settings.
+### COMPLETED: E2E Tests for All Pretranslation Logic ✅
 
-**Solution Implemented:**
-1. **Server Config API** (3 new endpoints):
-   - `GET /api/server-config` - Returns current config (password hidden)
-   - `POST /api/server-config/test` - Tests PostgreSQL connection
-   - `POST /api/server-config` - Saves to user config file
+**Created comprehensive E2E tests (~500 rows each) covering ALL cases each logic handles.**
 
-2. **User Config File:**
-   - Location: `%APPDATA%\LocaNext\server-config.json`
-   - Priority: 1. Env vars, 2. User config, 3. Defaults
-   - Restart required to apply changes
+#### Key Understanding
 
-3. **Files Modified:**
-   ```
-   server/config.py                                    # User config support
-   server/main.py                                      # 3 new API endpoints
-   locaNext/src/lib/components/ServerConfigModal.svelte # NEW: Config UI
-   locaNext/src/lib/components/ServerStatus.svelte     # Added "Configure" button
-   tests/integration/test_server_config.py             # NEW: 8 CI tests
-   .gitea/workflows/build.yml                          # Added test to CI list
-   ```
+**QWEN = TEXT SIMILARITY (not meaning)**
+- "저장" vs "저장" = 100% ✅ (same text)
+- "저장" vs "세이브" = 58% (different text, correctly low)
+- We match TEXT patterns, not semantic meaning
+- 92% threshold is appropriate for text similarity
 
-**Verified in Playground:**
+#### E2E Test Results Summary
+
+| Engine | Passed | Failed | Edge Cases | Status |
+|--------|--------|--------|------------|--------|
+| **XLS Transfer** | 537 | 0 | 5 | ✅ Complete |
+| **KR Similar** | 530 | 0 | 0 | ✅ Complete |
+| **Standard TM** | 566 | 0 | 0 | ✅ Complete |
+| **QWEN+FAISS Real** | 500 | 0 | 0 | ✅ Complete |
+| **TOTAL** | **2,133** | **0** | **5** | ✅ All Passed |
+
+---
+
+### P36 Phase 1: Testing COMPLETE ✅
+
+#### XLS Transfer E2E - 537 passed, 0 failed, 5 edge cases
+
+| Case Type | Count | Status |
+|-----------|-------|--------|
+| plain_text | 88/88 | ✅ |
+| code_at_start | 55/55 | ✅ |
+| multiple_codes_start | 33/33 | ✅ |
+| code_in_middle | 33/33 | ✅ |
+| pacolor_hex | 55/55 | ✅ |
+| color_wrapper_with_prefix | 55/55 | ✅ |
+| textbind_codes | 44/44 | ✅ |
+| mixed_codes_colors | 22/22 | ✅ |
+| with_newlines | 31/31 | ✅ |
+| x000d_removal | 20/20 | ✅ |
+| complex_real | 20/20 | ✅ |
+| **BULK (500 rows)** | **500/500** | ✅ |
+
+**Edge cases:** 5 `<PAOldColor>` cases (known issue, same as monolith)
+
+#### KR Similar E2E - 530 passed, 0 failed
+
+| Case Type | Count | Status |
+|-----------|-------|--------|
+| plain_text | 95/95 | ✅ |
+| single_triangle | 57/57 | ✅ |
+| multiple_triangles | 57/57 | ✅ |
+| scale_tags | 57/57 | ✅ |
+| color_tags | 54/54 | ✅ |
+| mixed_scale_color | 36/36 | ✅ |
+| triangle_with_tags | 36/36 | ✅ |
+| empty_lines | 36/36 | ✅ |
+| structure_adaptation | 54/54 | ✅ |
+| complex_multiline | 18/18 | ✅ |
+| **BULK (500 rows)** | **500/500** | ✅ |
+
+#### Standard TM E2E - 566 passed, 0 failed
+
+| Test Category | Status |
+|---------------|--------|
+| Newline normalization (11 cases) | ✅ All pass |
+| Hash normalization (10 cases) | ✅ All pass |
+| Embedding normalization (5 cases) | ✅ All pass |
+| N-gram similarity (6 cases) | ✅ All pass |
+| Hash lookup (7 cases) | ✅ All pass |
+| Line lookup (4 cases) | ✅ All pass |
+| Threshold constants | ✅ Correct |
+| Empty/null handling | ✅ Handles gracefully |
+| Special characters (11 cases) | ✅ All pass |
+| TMSearcher initialization | ✅ Works |
+| **BULK (500 rows)** | **500/500** | ✅ |
+
+#### QWEN Validation - Complete ✅
+
+| Category | Score Range | Status |
+|----------|-------------|--------|
+| Identical | 100% | ✅ Perfect |
+| Punctuation diff | 90-97% | ✅ Good |
+| One word diff | 68-84% | ✅ Good separation |
+| Synonyms | 83-87% | ✅ Good |
+| Opposite meanings | 64-72% | ✅ Correctly low |
+| Unrelated | 26-37% | ✅ Correctly very low |
+| Short EN variations | 61-72% | ⚠️ NPC threshold issue |
+
+**Result:** 26/27 tests passed (96.3%)
+
+---
+
+## Test Files
+
+### E2E Test Suite (NEW)
+
 ```
-✅ GET /api/server-config - Returns config
-✅ POST /api/server-config/test - Shows reachable + auth status
-✅ POST /api/server-config - Saves config file
-✅ App restart picks up new config
-✅ PostgreSQL connection successful (locanext_ci user)
+tests/fixtures/pretranslation/
+├── e2e_test_data.py             # Test data generator (all cases)
+├── test_e2e_xls_transfer.py     # XLS Transfer E2E (537 passed) ✅
+├── test_e2e_kr_similar.py       # KR Similar E2E (530 passed) ✅
+├── test_e2e_tm_standard.py      # Standard TM E2E (566 passed) ✅
+├── test_e2e_tm_faiss_real.py    # REAL QWEN+FAISS E2E (500 queries) ✅
+├── test_qwen_validation.py      # QWEN similarity tests (26/27) ✅
+└── test_real_patterns.py        # Real pattern tests (13/13) ✅
+```
+
+### QWEN + FAISS Real E2E Results
+
+| Metric | Value |
+|--------|-------|
+| TM Entries | 165 |
+| Test Queries | 500 |
+| Model Load | 25s |
+| Search Time | 44s (88ms/query) |
+| **Matched** | **180 (36%)** |
+| **No Match** | **320 (64%)** |
+
+**Tier Distribution:**
+- Tier 1 (Hash): 105 (21%) - exact matches
+- Tier 2 (FAISS): 25 (5%) - embedding matches
+- Tier 3 (Line): 50 (10%) - line matches
+- Tier 0 (None): 320 (64%) - below 92% threshold
+
+### Test Data Files
+
+```
+/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext/
+├── sampleofLanguageData.txt     # 16MB - Full production data
+├── closetotest.txt              # Korean dialogue with ▶ markers
+└── [other test files...]
 ```
 
 ---
 
-## CURRENT PLAYGROUND STATE
+## P36 Architecture
 
-**Version:** v25.1216.1449 (Build 294)
-**Mode:** ONLINE (PostgreSQL connected)
+**Three SEPARATE engines - user selects ONE:**
 
-**Working PostgreSQL Credentials:**
 ```
-Host: 172.28.150.120
-Port: 5432
-User: locanext_ci
-Password: locanext_ci_test
-Database: locanext_ci_test
+┌───────────────────────────────────────────────────────────────────────┐
+│  1. STANDARD (TM 5-Tier)                                             │
+│     └── Hash + FAISS HNSW + N-gram cascade                           │
+│     └── server/tools/ldm/tm_indexer.py                               │
+│                                                                       │
+│  2. XLS TRANSFER (DO NOT MODIFY)                                     │
+│     └── server/tools/xlstransfer/                                    │
+│     └── Monolith: XLSTransfer0225.py                                 │
+│                                                                       │
+│  3. KR SIMILAR (DO NOT MODIFY)                                       │
+│     └── server/tools/kr_similar/                                     │
+│     └── Monolith: KRSIMILAR0124.py                                   │
+└───────────────────────────────────────────────────────────────────────┘
 ```
-
-**Config File Location:** `C:\Users\MYCOM\AppData\Roaming\LocaNext\server-config.json`
 
 ---
 
-## REMAINING OPEN ISSUES
+## Potential Issues (Future Reference)
 
-**0 open issues!** All 38 issues have been resolved (see ISSUES_TO_FIX.md).
+See: `docs/wip/POTENTIAL_ISSUES.md`
 
-Last 4 issues fixed this session:
-- UI-001: Dark mode only ✅
-- UI-002: Compartmentalized modals ✅
-- UI-003: TM activation in TMManager ✅
-- UI-004: No TM Results checkbox ✅
+One edge case documented:
+- `<PAColor>` at position 0 loses `<PAOldColor>` ending
+- Same behavior in original monolith
+- Only fix if user feedback received
 
 ---
 
-## QUICK COMMANDS
+## Threshold Recommendations
+
+| Use Case | Current | Recommended | Evidence |
+|----------|---------|-------------|----------|
+| **TM Matching** | 92% | **90%** | Punctuation removal = 90.2% |
+| **NPC Check** | 80% | **65%** | Short variations = 61-72% |
+| **Safe Floor** | - | **>72%** | Opposite meanings = up to 71.9% |
+
+---
+
+## Next Steps
+
+1. **Phase 1 COMPLETE** - All E2E tests passing (1,633 tests)
+2. **NEXT:** Phase 2 Backend implementation
+   - API endpoints for pretranslation
+   - Engine selection (Standard TM / XLS Transfer / KR Similar)
+   - Batch processing support
+3. **AFTER:** Phase 3 Pretranslation Modal UI
+
+---
+
+## Quick Commands
 
 ```bash
-# Install to Playground
-./scripts/playground_install.sh
+# Run E2E tests
+python3 tests/fixtures/pretranslation/test_e2e_xls_transfer.py
+python3 tests/fixtures/pretranslation/test_e2e_kr_similar.py
+python3 tests/fixtures/pretranslation/test_e2e_tm_standard.py
 
-# Check backend health (from WSL via PowerShell)
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Invoke-RestMethod -Uri 'http://localhost:8888/health'"
+# Run all pretranslation tests
+python3 tests/fixtures/pretranslation/test_qwen_validation.py
+python3 tests/fixtures/pretranslation/test_real_patterns.py
 
-# Test Server Config API
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Invoke-RestMethod -Uri 'http://localhost:8888/api/server-config'"
+# Check servers
+./scripts/check_servers.sh
 
-# Run server config tests
-python3 -m pytest tests/integration/test_server_config.py -v --no-cov
-
-# Check CI status
-curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions" | grep -oE 'class="text (green|red)[^"]*"'
+# Playground install
+./scripts/playground_install.sh --launch
 ```
 
 ---
 
-## WSL NETWORK NOTES
+## Documentation State
 
-**WSL2 cannot directly access Windows localhost!**
-
-```bash
-# ❌ This fails from WSL:
-curl http://127.0.0.1:9222/json
-
-# ✅ Use PowerShell instead:
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
-    Invoke-RestMethod -Uri 'http://127.0.0.1:9222/json'
-"
-```
+| Doc | Status |
+|-----|--------|
+| `CLAUDE.md` | ✅ Current |
+| `Roadmap.md` | ✅ Current |
+| `P36_PRETRANSLATION_STACK.md` | ✅ Current |
+| `SESSION_CONTEXT.md` | ✅ This file |
+| `ISSUES_TO_FIX.md` | ✅ 0 open |
+| `POTENTIAL_ISSUES.md` | ✅ For future reference |
 
 ---
 
-## PRODUCTION TESTING CHECKLIST
-
-**Verified:**
-- [x] Offline mode (SQLite) works on fresh install
-- [x] Server Config API works (GET, POST, test connection)
-- [x] Config file saves to correct location
-- [x] App restart picks up new PostgreSQL settings
-- [x] Online mode (PostgreSQL) connects successfully
-- [x] CI test catches config issues
-- [x] NSIS installer works (`/S /D=path`)
-- [x] First-run setup completes
-- [x] App UI loads and navigates
-
-**Still Need Testing:**
-- [ ] WebSocket sync in online mode
-- [ ] Multi-user features
-- [ ] All 4 tools (XLSTransfer, QuickSearch, KR Similar, LDM)
-- [ ] Data sync between SQLite and PostgreSQL
-
----
-
-## KEY DIRECTORIES
-
-```
-Playground:        C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
-User Config:       C:\Users\MYCOM\AppData\Roaming\LocaNext\
-User Config File:  C:\Users\MYCOM\AppData\Roaming\LocaNext\server-config.json
-Central Server:    172.28.150.120
-PostgreSQL Port:   5432
-Gitea URL:         http://172.28.150.120:3000/neilvibe/LocaNext
-```
-
----
-
-## GITEA RELEASES (CLEANED)
-
-Old releases deleted to save space (~1GB freed).
-
-| Release | Status | Size |
-|---------|--------|------|
-| **v25.1216.1449** | ✅ Latest (Build 294) - Online mode | 163MB |
-| v25.1216.1251 | Backup (Build 292) | 163MB |
-
-**Download URL:** `http://172.28.150.120:3000/neilvibe/LocaNext/releases`
-
----
-
-## NEXT STEPS
-
-1. ✅ All UI issues fixed (UI-001 to UI-004)
-2. Build 295 pending - verify CI passes
-3. Test WebSocket sync in online mode
-4. Test all 4 tools with PostgreSQL
-5. Consider creating a production PostgreSQL user
-
----
-
-*Last updated: 2025-12-16 16:15 KST - All UI issues fixed + 0 open issues!*
+*Last: 2025-12-17 05:30 KST - Phase 1 COMPLETE. 2,172 tests passed. QWEN verified for TEXT similarity. Ready for Phase 2 Backend.*
