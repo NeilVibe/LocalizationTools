@@ -22,8 +22,8 @@ LocaNext v25.1216.0900
 ├── Backend:     ✅ PostgreSQL + SQLite offline
 ├── Frontend:    ✅ Electron 39 + Svelte 5 + Vite 7
 ├── Tools:       ✅ XLSTransfer, QuickSearch, KR Similar, LDM
-├── CI/CD:       ✅ 255 tests + smoke tests (GitHub + Gitea)
-├── Offline:     🔴 No auto-fallback (BUG-007)
+├── CI/CD:       ✅ 285 tests + smoke tests (GitHub + Gitea)
+├── Offline:     ✅ Auto-fallback + indicator (needs prod test)
 └── Installer:   ⚠️ Fixes ready, need build
 ```
 
@@ -31,15 +31,17 @@ LocaNext v25.1216.0900
 
 ## Priority Queue
 
-### NOW: Bug Fixes (8 Open)
+### NOW: Bug Fixes (6 Open)
 
 | Priority | Issue | Description |
 |----------|-------|-------------|
-| CRITICAL | BUG-007 | Offline mode auto-fallback |
-| CRITICAL | BUG-008 | Online/Offline indicator |
 | HIGH | BUG-009 | Installer no details (fix ready) |
 | HIGH | BUG-010 | First-run window stuck (fix ready) |
 | MEDIUM | UI-001 to UI-004 | UI/UX cleanup |
+
+**Recently Implemented (Need Production Testing):**
+- BUG-007: Offline auto-fallback (3s timeout, SQLite fallback)
+- BUG-008: Online/Offline indicator + "Go Online" button
 
 **Details:** [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md)
 
@@ -57,11 +59,12 @@ LocaNext v25.1216.0900
 
 | What | When | Details |
 |------|------|---------|
+| Connectivity Tests | 2025-12-16 | 26 new tests for offline/online mode |
 | P35 Svelte 5 Migration | 2025-12-16 | Fixed BUG-011 (connection issue) |
 | CI Smoke Tests | 2025-12-16 | Svelte 5 + **PostgreSQL verification** |
 | P34 Resource Protocol | 2025-12-16 | Zombie cleanup docs |
-| CI Unification | 2025-12-15 | 255 tests, GitHub + Gitea |
-| P33 Offline Mode | 2025-12-15 | SQLite fallback (CI only) |
+| CI Unification | 2025-12-15 | 285 tests, GitHub + Gitea |
+| P33 Offline Mode | 2025-12-15 | SQLite fallback + auto-fallback |
 | P32 Code Review | 2025-12-15 | 9/11 issues fixed |
 | P28 NSIS Installer | 2025-12-14 | electron-builder NSIS |
 
