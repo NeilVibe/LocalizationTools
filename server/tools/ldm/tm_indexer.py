@@ -220,12 +220,13 @@ class TMIndexer:
 
             logger.info(f"Loaded {len(entries):,} entries")
 
-            # Convert to list of dicts
+            # Convert to list of dicts (include string_id for StringID mode)
             entry_list = [
                 {
                     "id": e.id,
                     "source_text": e.source_text,
-                    "target_text": e.target_text
+                    "target_text": e.target_text,
+                    "string_id": e.string_id  # Include StringID metadata
                 }
                 for e in entries
             ]
@@ -323,6 +324,9 @@ class TMIndexer:
 
         Maps normalized source text to entry info.
         O(1) lookup time.
+
+        For StringID mode: stores list of variations for same source text.
+        For Standard mode: stores single entry (first one wins).
         """
         logger.info("Building whole_text_lookup...")
         lookup = {}
@@ -334,21 +338,51 @@ class TMIndexer:
 
             # Primary key: normalized text
             normalized = normalize_for_hash(source)
-            if normalized and normalized not in lookup:
-                lookup[normalized] = {
-                    "entry_id": entry["id"],
-                    "source_text": source,
-                    "target_text": entry["target_text"]
-                }
+            if not normalized:
+                continue
 
-            # Also index stripped version
+            entry_data = {
+                "entry_id": entry["id"],
+                "source_text": source,
+                "target_text": entry["target_text"],
+                "string_id": entry.get("string_id")  # Include StringID metadata
+            }
+
+            if normalized not in lookup:
+                # First entry for this source - store as single or list
+                if entry.get("string_id"):
+                    # StringID mode: store as list of variations
+                    lookup[normalized] = {
+                        "variations": [entry_data],
+                        "source_text": source
+                    }
+                else:
+                    # Standard mode: store single entry
+                    lookup[normalized] = entry_data
+            else:
+                # Additional entry for same source
+                existing = lookup[normalized]
+                if "variations" in existing:
+                    # Already in variations mode - append
+                    existing["variations"].append(entry_data)
+                elif entry.get("string_id"):
+                    # Convert to variations mode
+                    lookup[normalized] = {
+                        "variations": [existing, entry_data],
+                        "source_text": source
+                    }
+                # else: Standard mode - keep first entry only
+
+            # Also index stripped version (same logic)
             stripped = normalized.strip()
             if stripped and stripped != normalized and stripped not in lookup:
-                lookup[stripped] = {
-                    "entry_id": entry["id"],
-                    "source_text": source,
-                    "target_text": entry["target_text"]
-                }
+                if entry.get("string_id"):
+                    lookup[stripped] = {
+                        "variations": [entry_data],
+                        "source_text": source
+                    }
+                else:
+                    lookup[stripped] = entry_data
 
         logger.info(f"Built whole_text_lookup: {len(lookup):,} entries")
         return lookup
@@ -392,7 +426,8 @@ class TMIndexer:
                         "source_line": line,
                         "target_line": target_line,
                         "line_num": i,
-                        "total_lines": len(source_lines)
+                        "total_lines": len(source_lines),
+                        "string_id": entry.get("string_id")  # Include StringID metadata
                     }
 
         logger.info(f"Built line_lookup: {len(lookup):,} entries")
@@ -436,7 +471,8 @@ class TMIndexer:
                 mapping.append({
                     "entry_id": entry["id"],
                     "source_text": source,
-                    "target_text": entry["target_text"]
+                    "target_text": entry["target_text"],
+                    "string_id": entry.get("string_id")  # Include StringID metadata
                 })
 
         if not texts:
@@ -515,7 +551,8 @@ class TMIndexer:
                     "entry_id": entry["id"],
                     "line_num": i,
                     "source_line": line,
-                    "target_line": target_line
+                    "target_line": target_line,
+                    "string_id": entry.get("string_id")  # Include StringID metadata
                 })
 
         if not texts:
@@ -581,12 +618,27 @@ class TMIndexer:
         whole_embeddings = np.load(tm_path / "embeddings" / "whole.npy")
         whole_mapping = self._load_pickle(tm_path / "embeddings" / "whole_mapping.pkl")
 
-        line_embeddings = np.load(tm_path / "embeddings" / "line.npy")
-        line_mapping = self._load_pickle(tm_path / "embeddings" / "line_mapping.pkl")
+        # Line embeddings are optional (may not exist if TM has no multi-line entries)
+        line_npy_path = tm_path / "embeddings" / "line.npy"
+        line_mapping_path = tm_path / "embeddings" / "line_mapping.pkl"
+        if line_npy_path.exists():
+            line_embeddings = np.load(line_npy_path)
+            line_mapping = self._load_pickle(line_mapping_path)
+        else:
+            line_embeddings = None
+            line_mapping = []
+            logger.debug(f"No line embeddings for TM {tm_id} (optional)")
 
         # Load FAISS indexes
         whole_index = faiss.read_index(str(tm_path / "faiss" / "whole.index"))
-        line_index = faiss.read_index(str(tm_path / "faiss" / "line.index"))
+
+        # Line FAISS index is optional
+        line_index_path = tm_path / "faiss" / "line.index"
+        if line_index_path.exists():
+            line_index = faiss.read_index(str(line_index_path))
+        else:
+            line_index = None
+            logger.debug(f"No line FAISS index for TM {tm_id} (optional)")
 
         logger.success(f"Loaded all indexes for TM {tm_id}")
 
@@ -785,17 +837,36 @@ class TMSearcher:
         if query_normalized in self.whole_lookup:
             match = self.whole_lookup[query_normalized]
             logger.debug(f"Tier 1 match: {query[:50]}...")
+
+            # Handle both standard and variations structures
+            if "variations" in match:
+                # StringID mode: return all variations
+                results = []
+                for var in match["variations"]:
+                    results.append({
+                        "entry_id": var["entry_id"],
+                        "source_text": var["source_text"],
+                        "target_text": var["target_text"],
+                        "string_id": var.get("string_id"),
+                        "score": 1.0,
+                        "match_type": "perfect_whole"
+                    })
+            else:
+                # Standard mode: single entry
+                results = [{
+                    "entry_id": match["entry_id"],
+                    "source_text": match["source_text"],
+                    "target_text": match["target_text"],
+                    "string_id": match.get("string_id"),
+                    "score": 1.0,
+                    "match_type": "perfect_whole"
+                }]
+
             return {
                 "tier": 1,
                 "tier_name": "perfect_whole",
                 "perfect_match": True,
-                "results": [{
-                    "entry_id": match["entry_id"],
-                    "source_text": match["source_text"],
-                    "target_text": match["target_text"],
-                    "score": 1.0,
-                    "match_type": "perfect_whole"
-                }]
+                "results": results
             }
 
         # =====================================================================
@@ -828,6 +899,7 @@ class TMSearcher:
                     "entry_id": match["entry_id"],
                     "source_text": match["source_text"],
                     "target_text": match["target_text"],
+                    "string_id": match.get("string_id"),
                     "score": float(score),
                     "match_type": "whole_embedding"
                 })
@@ -861,6 +933,7 @@ class TMSearcher:
                     "entry_id": match["entry_id"],
                     "source_line": match["source_line"],
                     "target_line": match["target_line"],
+                    "string_id": match.get("string_id"),
                     "query_line_num": i,
                     "tm_line_num": match["line_num"],
                     "score": 1.0,
@@ -911,6 +984,7 @@ class TMSearcher:
                         "entry_id": match["entry_id"],
                         "source_line": match["source_line"],
                         "target_line": match["target_line"],
+                        "string_id": match.get("string_id"),
                         "query_line_num": i,
                         "tm_line_num": match["line_num"],
                         "score": float(score),

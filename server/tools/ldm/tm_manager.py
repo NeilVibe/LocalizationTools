@@ -55,7 +55,12 @@ class TMManager:
         source_lang: str = "ko",
         target_lang: str = "en",
         description: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, int], None]] = None
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+        mode: str = "standard",
+        source_col: int = 0,
+        target_col: int = 1,
+        stringid_col: Optional[int] = None,
+        has_header: bool = True
     ) -> Dict:
         """
         Upload and parse a TM file.
@@ -69,6 +74,11 @@ class TMManager:
             target_lang: Target language code (default: en)
             description: Optional TM description
             progress_callback: Optional callback for progress updates
+            mode: "standard" (duplicates merged) or "stringid" (all variations)
+            source_col: Source column index for Excel (default: 0 = A)
+            target_col: Target column index for Excel (default: 1 = B)
+            stringid_col: StringID column index for Excel (None = 2-column mode)
+            has_header: Whether Excel has header row
 
         Returns:
             Dict with tm_id, entry_count, status, time_seconds
@@ -78,7 +88,7 @@ class TMManager:
         # Determine file type and parse
         file_ext = Path(filename).suffix.lower()
 
-        logger.info(f"Uploading TM: {name} ({filename}) - {len(file_content):,} bytes")
+        logger.info(f"Uploading TM: {name} ({filename}) - {len(file_content):,} bytes, mode={mode}")
 
         try:
             # Parse file based on type
@@ -87,7 +97,14 @@ class TMManager:
             elif file_ext == '.xml':
                 entries = self._parse_xml_for_tm(file_content, filename)
             elif file_ext in ['.xlsx', '.xls']:
-                entries = self._parse_excel_for_tm(file_content, filename)
+                entries = self._parse_excel_for_tm(
+                    file_content, filename,
+                    source_col=source_col,
+                    target_col=target_col,
+                    stringid_col=stringid_col,
+                    has_header=has_header,
+                    mode=mode
+                )
             else:
                 raise ValueError(f"Unsupported file format: {file_ext}")
 
@@ -104,7 +121,8 @@ class TMManager:
                 source_lang=source_lang,
                 target_lang=target_lang,
                 entry_count=0,  # Will be updated after insert
-                status="indexing"
+                status="indexing",
+                mode=mode
             )
             self.db.add(tm)
             self.db.commit()
@@ -195,17 +213,26 @@ class TMManager:
         file_content: bytes,
         filename: str,
         source_col: int = 0,
-        target_col: int = 1
+        target_col: int = 1,
+        stringid_col: Optional[int] = None,
+        has_header: bool = True,
+        mode: str = "standard"
     ) -> List[Dict]:
         """
         Parse Excel file for TM entries.
-        Simple parser: Column A (0) = Source, Column B (1) = Target.
+
+        Supports two modes:
+        - standard: Source + Target (duplicates merged to most frequent)
+        - stringid: Source + Target + StringID (all variations kept)
 
         Args:
             file_content: Raw Excel bytes
             filename: For logging
             source_col: Source column index (default: 0 = Column A)
             target_col: Target column index (default: 1 = Column B)
+            stringid_col: StringID column index (None = 2-column mode)
+            has_header: Whether first row is header (skip it)
+            mode: "standard" or "stringid"
         """
         try:
             import openpyxl
@@ -215,22 +242,39 @@ class TMManager:
             ws = wb.active
 
             entries = []
+            required_cols = max(source_col, target_col)
+            if stringid_col is not None:
+                required_cols = max(required_cols, stringid_col)
+
             for row_idx, row in enumerate(ws.iter_rows(min_row=1, values_only=True), start=1):
-                if not row or len(row) <= max(source_col, target_col):
+                # Skip header row if specified
+                if row_idx == 1 and has_header:
+                    continue
+
+                if not row or len(row) <= required_cols:
                     continue
 
                 source = str(row[source_col] or "").strip()
                 target = str(row[target_col] or "").strip()
 
                 # TM entries need both source and target
-                if source and target:
-                    entries.append({
-                        "source_text": source,
-                        "target_text": target
-                    })
+                if not source or not target:
+                    continue
+
+                entry = {
+                    "source_text": source,
+                    "target_text": target
+                }
+
+                # Add StringID if in stringid mode
+                if mode == "stringid" and stringid_col is not None:
+                    string_id = str(row[stringid_col] or "").strip() if len(row) > stringid_col else None
+                    entry["string_id"] = string_id if string_id else None
+
+                entries.append(entry)
 
             wb.close()
-            logger.info(f"Parsed Excel {filename}: {len(entries)} TM entries")
+            logger.info(f"Parsed Excel {filename}: {len(entries)} TM entries, mode={mode}")
             return entries
 
         except ImportError:
@@ -367,7 +411,8 @@ class TMManager:
         owner_id: int,
         source_lang: str = "ko",
         target_lang: str = "en",
-        description: Optional[str] = None
+        description: Optional[str] = None,
+        mode: str = "standard"
     ) -> LDMTranslationMemory:
         """
         Create a new empty TM record.
@@ -378,6 +423,7 @@ class TMManager:
             source_lang: Source language code
             target_lang: Target language code
             description: Optional description
+            mode: "standard" (duplicates merged) or "stringid" (all variations kept)
 
         Returns:
             Created TM model object
@@ -389,7 +435,8 @@ class TMManager:
             source_lang=source_lang,
             target_lang=target_lang,
             entry_count=0,
-            status="pending"
+            status="pending",
+            mode=mode
         )
         self.db.add(tm)
         self.db.commit()
@@ -421,15 +468,20 @@ class TMManager:
         if not tm:
             raise ValueError(f"TM not found: id={tm_id}")
 
-        # Convert to expected format (source_text, target_text)
-        formatted_entries = [
-            {
-                "source_text": e.get("source") or e.get("source_text"),
-                "target_text": e.get("target") or e.get("target_text")
-            }
-            for e in entries
-            if (e.get("source") or e.get("source_text")) and (e.get("target") or e.get("target_text"))
-        ]
+        # Convert to expected format (source_text, target_text, string_id)
+        formatted_entries = []
+        for e in entries:
+            source = e.get("source") or e.get("source_text")
+            target = e.get("target") or e.get("target_text")
+            if source and target:
+                entry = {
+                    "source_text": source,
+                    "target_text": target
+                }
+                # Include string_id if present (for stringid mode)
+                if "string_id" in e:
+                    entry["string_id"] = e.get("string_id")
+                formatted_entries.append(entry)
 
         if not formatted_entries:
             logger.warning(f"No valid entries to add to TM {tm_id}")
@@ -522,3 +574,560 @@ class TMManager:
             }
             for e in entries
         ]
+
+    # =========================================================================
+    # TM Viewer - Paginated Entries (FEAT-003)
+    # =========================================================================
+
+    def get_entries_paginated(
+        self,
+        tm_id: int,
+        page: int = 1,
+        limit: int = 100,
+        sort_by: str = "id",
+        sort_order: str = "asc",
+        search: Optional[str] = None,
+        metadata_field: str = "string_id"
+    ) -> Dict:
+        """
+        Get paginated TM entries with sorting and search.
+
+        Args:
+            tm_id: TM ID
+            page: Page number (1-indexed)
+            limit: Items per page (max 500)
+            sort_by: Field to sort by (id, source_text, target_text, string_id, created_at)
+            sort_order: Sort order (asc, desc)
+            search: Optional search term (searches source and target)
+            metadata_field: Which metadata field to include (string_id, created_at, etc.)
+
+        Returns:
+            Dict with entries, total, page, limit, total_pages
+        """
+        from sqlalchemy import func, or_
+
+        # Validate and cap limit
+        limit = min(limit, 500)
+        page = max(page, 1)
+        offset = (page - 1) * limit
+
+        # Base query
+        query = self.db.query(LDMTMEntry).filter(LDMTMEntry.tm_id == tm_id)
+
+        # Apply search filter
+        if search:
+            search_pattern = f"%{search}%"
+            query = query.filter(
+                or_(
+                    LDMTMEntry.source_text.ilike(search_pattern),
+                    LDMTMEntry.target_text.ilike(search_pattern),
+                    LDMTMEntry.string_id.ilike(search_pattern)
+                )
+            )
+
+        # Get total count (before pagination)
+        total = query.count()
+
+        # Apply sorting (BUG-020: added is_confirmed, updated_at, confirmed_at)
+        sort_column = {
+            "id": LDMTMEntry.id,
+            "source_text": LDMTMEntry.source_text,
+            "target_text": LDMTMEntry.target_text,
+            "string_id": LDMTMEntry.string_id,
+            "created_at": LDMTMEntry.created_at,
+            "is_confirmed": LDMTMEntry.is_confirmed,
+            "updated_at": LDMTMEntry.updated_at,
+            "confirmed_at": LDMTMEntry.confirmed_at
+        }.get(sort_by, LDMTMEntry.id)
+
+        if sort_order.lower() == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+
+        # Apply pagination
+        entries = query.offset(offset).limit(limit).all()
+
+        # Format entries (BUG-020: include confirmation metadata)
+        formatted_entries = []
+        for e in entries:
+            entry_data = {
+                "id": e.id,
+                "source_text": e.source_text,
+                "target_text": e.target_text,
+                "string_id": e.string_id,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+                "created_by": e.created_by,
+                "updated_at": e.updated_at.isoformat() if e.updated_at else None,
+                "updated_by": e.updated_by,
+                "is_confirmed": e.is_confirmed,
+                "confirmed_at": e.confirmed_at.isoformat() if e.confirmed_at else None,
+                "confirmed_by": e.confirmed_by
+            }
+            formatted_entries.append(entry_data)
+
+        total_pages = (total + limit - 1) // limit  # Ceiling division
+
+        return {
+            "entries": formatted_entries,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "search": search
+        }
+
+    def update_entry(
+        self,
+        tm_id: int,
+        entry_id: int,
+        source_text: Optional[str] = None,
+        target_text: Optional[str] = None,
+        string_id: Optional[str] = None,
+        updated_by: Optional[str] = None
+    ) -> Optional[Dict]:
+        """
+        Update a single TM entry (for inline editing).
+
+        Args:
+            tm_id: TM ID (for validation)
+            entry_id: Entry ID to update
+            source_text: New source text (optional)
+            target_text: New target text (optional)
+            string_id: New string ID (optional)
+            updated_by: Username of user making the update (optional)
+
+        Returns:
+            Updated entry dict or None if not found
+        """
+        entry = self.db.query(LDMTMEntry).filter(
+            LDMTMEntry.id == entry_id,
+            LDMTMEntry.tm_id == tm_id
+        ).first()
+
+        if not entry:
+            return None
+
+        # Update fields if provided
+        if source_text is not None:
+            entry.source_text = source_text
+            # Recalculate hash
+            import hashlib
+            from server.database.db_utils import normalize_text_for_hash
+            normalized = normalize_text_for_hash(source_text)
+            entry.source_hash = hashlib.sha256(normalized.encode('utf-8')).hexdigest()
+
+        if target_text is not None:
+            entry.target_text = target_text
+
+        if string_id is not None:
+            entry.string_id = string_id
+
+        # BUG-020: Track who made the update
+        entry.updated_at = datetime.utcnow()
+        if updated_by:
+            entry.updated_by = updated_by
+
+        # Mark TM as updated (triggers index rebuild on next pretranslate)
+        tm = self.db.query(LDMTranslationMemory).filter(
+            LDMTranslationMemory.id == tm_id
+        ).first()
+        if tm:
+            tm.updated_at = datetime.utcnow()
+
+        self.db.commit()
+
+        logger.info(f"Updated TM entry: tm_id={tm_id}, entry_id={entry_id}, by={updated_by}")
+
+        return {
+            "id": entry.id,
+            "source_text": entry.source_text,
+            "target_text": entry.target_text,
+            "string_id": entry.string_id,
+            "created_at": entry.created_at.isoformat() if entry.created_at else None,
+            "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
+            "updated_by": entry.updated_by,
+            "is_confirmed": entry.is_confirmed,
+            "confirmed_at": entry.confirmed_at.isoformat() if entry.confirmed_at else None,
+            "confirmed_by": entry.confirmed_by
+        }
+
+    def delete_entry(self, tm_id: int, entry_id: int) -> bool:
+        """
+        Delete a single TM entry.
+
+        Args:
+            tm_id: TM ID (for validation)
+            entry_id: Entry ID to delete
+
+        Returns:
+            True if deleted, False if not found
+        """
+        entry = self.db.query(LDMTMEntry).filter(
+            LDMTMEntry.id == entry_id,
+            LDMTMEntry.tm_id == tm_id
+        ).first()
+
+        if not entry:
+            return False
+
+        self.db.delete(entry)
+
+        # Update TM entry count and updated_at
+        tm = self.db.query(LDMTranslationMemory).filter(
+            LDMTranslationMemory.id == tm_id
+        ).first()
+        if tm:
+            tm.entry_count = max(0, (tm.entry_count or 0) - 1)
+            tm.updated_at = datetime.utcnow()
+
+        self.db.commit()
+
+        logger.info(f"Deleted TM entry: tm_id={tm_id}, entry_id={entry_id}")
+        return True
+
+    def confirm_entry(
+        self,
+        tm_id: int,
+        entry_id: int,
+        confirmed_by: str,
+        confirm: bool = True
+    ) -> Optional[Dict]:
+        """
+        BUG-020: Confirm or unconfirm a TM entry (memoQ-style workflow).
+
+        When user approves a translation, it gets marked as confirmed with metadata.
+
+        Args:
+            tm_id: TM ID (for validation)
+            entry_id: Entry ID to confirm
+            confirmed_by: Username of user confirming
+            confirm: True to confirm, False to unconfirm
+
+        Returns:
+            Updated entry dict or None if not found
+        """
+        entry = self.db.query(LDMTMEntry).filter(
+            LDMTMEntry.id == entry_id,
+            LDMTMEntry.tm_id == tm_id
+        ).first()
+
+        if not entry:
+            return None
+
+        if confirm:
+            entry.is_confirmed = True
+            entry.confirmed_at = datetime.utcnow()
+            entry.confirmed_by = confirmed_by
+        else:
+            entry.is_confirmed = False
+            entry.confirmed_at = None
+            entry.confirmed_by = None
+
+        self.db.commit()
+
+        logger.info(f"{'Confirmed' if confirm else 'Unconfirmed'} TM entry: tm_id={tm_id}, entry_id={entry_id}, by={confirmed_by}")
+
+        return {
+            "id": entry.id,
+            "source_text": entry.source_text,
+            "target_text": entry.target_text,
+            "string_id": entry.string_id,
+            "created_at": entry.created_at.isoformat() if entry.created_at else None,
+            "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
+            "updated_by": entry.updated_by,
+            "is_confirmed": entry.is_confirmed,
+            "confirmed_at": entry.confirmed_at.isoformat() if entry.confirmed_at else None,
+            "confirmed_by": entry.confirmed_by
+        }
+
+    def bulk_confirm_entries(
+        self,
+        tm_id: int,
+        entry_ids: List[int],
+        confirmed_by: str,
+        confirm: bool = True
+    ) -> Dict:
+        """
+        BUG-020: Bulk confirm/unconfirm multiple TM entries.
+
+        Args:
+            tm_id: TM ID (for validation)
+            entry_ids: List of entry IDs to confirm
+            confirmed_by: Username of user confirming
+            confirm: True to confirm, False to unconfirm
+
+        Returns:
+            Dict with count of updated entries
+        """
+        now = datetime.utcnow()
+
+        if confirm:
+            updated = self.db.query(LDMTMEntry).filter(
+                LDMTMEntry.tm_id == tm_id,
+                LDMTMEntry.id.in_(entry_ids)
+            ).update({
+                LDMTMEntry.is_confirmed: True,
+                LDMTMEntry.confirmed_at: now,
+                LDMTMEntry.confirmed_by: confirmed_by
+            }, synchronize_session=False)
+        else:
+            updated = self.db.query(LDMTMEntry).filter(
+                LDMTMEntry.tm_id == tm_id,
+                LDMTMEntry.id.in_(entry_ids)
+            ).update({
+                LDMTMEntry.is_confirmed: False,
+                LDMTMEntry.confirmed_at: None,
+                LDMTMEntry.confirmed_by: None
+            }, synchronize_session=False)
+
+        self.db.commit()
+
+        logger.info(f"Bulk {'confirmed' if confirm else 'unconfirmed'} {updated} TM entries: tm_id={tm_id}, by={confirmed_by}")
+
+        return {
+            "updated_count": updated,
+            "action": "confirmed" if confirm else "unconfirmed"
+        }
+
+    # =========================================================================
+    # TM Export (FEAT-002)
+    # =========================================================================
+
+    def export_tm(
+        self,
+        tm_id: int,
+        format: str = "text",
+        columns: Optional[List[str]] = None
+    ) -> Dict:
+        """
+        Export TM entries in specified format.
+
+        Args:
+            tm_id: TM ID to export
+            format: Export format - "text" (TSV), "excel" (.xlsx), or "tmx"
+            columns: List of columns to include (default: source_text, target_text)
+                     Available: source_text, target_text, string_id, created_at, created_by
+
+        Returns:
+            Dict with content (bytes), filename, and mime_type
+        """
+        tm = self.db.query(LDMTranslationMemory).filter(
+            LDMTranslationMemory.id == tm_id
+        ).first()
+
+        if not tm:
+            raise ValueError(f"TM not found: id={tm_id}")
+
+        # Default columns if not specified
+        if not columns:
+            columns = ["source_text", "target_text"]
+
+        # Always include source and target
+        if "source_text" not in columns:
+            columns.insert(0, "source_text")
+        if "target_text" not in columns:
+            columns.insert(1, "target_text")
+
+        # Get all entries
+        entries = self.db.query(LDMTMEntry).filter(
+            LDMTMEntry.tm_id == tm_id
+        ).order_by(LDMTMEntry.id).all()
+
+        logger.info(f"Exporting TM {tm_id} ({tm.name}): {len(entries)} entries, format={format}")
+
+        if format == "text":
+            return self._export_text(tm, entries, columns)
+        elif format == "excel":
+            return self._export_excel(tm, entries, columns)
+        elif format == "tmx":
+            return self._export_tmx(tm, entries)
+        else:
+            raise ValueError(f"Unsupported export format: {format}")
+
+    def _export_text(
+        self,
+        tm: LDMTranslationMemory,
+        entries: List[LDMTMEntry],
+        columns: List[str]
+    ) -> Dict:
+        """Export TM as TSV (tab-separated values)."""
+        lines = []
+
+        # Header row
+        header_map = {
+            "source_text": "Source",
+            "target_text": "Target",
+            "string_id": "StringID",
+            "created_at": "Created At",
+            "created_by": "Created By"
+        }
+        headers = [header_map.get(col, col) for col in columns]
+        lines.append("\t".join(headers))
+
+        # Data rows
+        for entry in entries:
+            row = []
+            for col in columns:
+                value = getattr(entry, col, "")
+                if col == "created_at" and value:
+                    value = value.strftime("%Y-%m-%d %H:%M:%S")
+                row.append(str(value or ""))
+            lines.append("\t".join(row))
+
+        content = "\n".join(lines).encode("utf-8")
+
+        # Clean filename
+        safe_name = "".join(c for c in tm.name if c.isalnum() or c in "._- ")
+        filename = f"{safe_name}_export.txt"
+
+        return {
+            "content": content,
+            "filename": filename,
+            "mime_type": "text/tab-separated-values",
+            "entry_count": len(entries)
+        }
+
+    def _export_excel(
+        self,
+        tm: LDMTranslationMemory,
+        entries: List[LDMTMEntry],
+        columns: List[str]
+    ) -> Dict:
+        """Export TM as Excel (.xlsx)."""
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment
+            from io import BytesIO
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "TM Export"
+
+            # Header styling
+            header_font = Font(bold=True)
+            header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            header_font_white = Font(bold=True, color="FFFFFF")
+
+            # Column headers
+            header_map = {
+                "source_text": "Source",
+                "target_text": "Target",
+                "string_id": "StringID",
+                "created_at": "Created At",
+                "created_by": "Created By"
+            }
+
+            for col_idx, col in enumerate(columns, start=1):
+                cell = ws.cell(row=1, column=col_idx)
+                cell.value = header_map.get(col, col)
+                cell.font = header_font_white
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal="center")
+
+            # Data rows
+            for row_idx, entry in enumerate(entries, start=2):
+                for col_idx, col in enumerate(columns, start=1):
+                    value = getattr(entry, col, "")
+                    if col == "created_at" and value:
+                        value = value.strftime("%Y-%m-%d %H:%M:%S")
+                    ws.cell(row=row_idx, column=col_idx).value = str(value or "")
+
+            # Auto-width columns
+            for col_idx, col in enumerate(columns, start=1):
+                max_length = len(header_map.get(col, col))
+                for row in range(2, min(102, len(entries) + 2)):  # Sample first 100 rows
+                    cell = ws.cell(row=row, column=col_idx)
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)[:50]))
+                ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = min(max_length + 2, 50)
+
+            # Freeze header row
+            ws.freeze_panes = "A2"
+
+            # Save to bytes
+            output = BytesIO()
+            wb.save(output)
+            content = output.getvalue()
+            output.close()
+
+            # Clean filename
+            safe_name = "".join(c for c in tm.name if c.isalnum() or c in "._- ")
+            filename = f"{safe_name}_export.xlsx"
+
+            return {
+                "content": content,
+                "filename": filename,
+                "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "entry_count": len(entries)
+            }
+
+        except ImportError:
+            logger.error("openpyxl not installed - cannot export Excel")
+            raise ValueError("Excel export requires openpyxl package")
+
+    def _export_tmx(
+        self,
+        tm: LDMTranslationMemory,
+        entries: List[LDMTMEntry]
+    ) -> Dict:
+        """Export TM as TMX (Translation Memory eXchange) format."""
+        import xml.etree.ElementTree as ET
+        from datetime import datetime
+
+        # Create root element
+        root = ET.Element("tmx", version="1.4")
+
+        # Header
+        header = ET.SubElement(root, "header")
+        header.set("creationtool", "LocaNext")
+        header.set("creationtoolversion", "1.0")
+        header.set("datatype", "plaintext")
+        header.set("segtype", "sentence")
+        header.set("adminlang", "en")
+        header.set("srclang", tm.source_lang or "ko")
+        header.set("creationdate", datetime.utcnow().strftime("%Y%m%dT%H%M%SZ"))
+
+        # Body
+        body = ET.SubElement(root, "body")
+
+        for entry in entries:
+            tu = ET.SubElement(body, "tu")
+
+            # Add StringID as property if available
+            if entry.string_id:
+                prop = ET.SubElement(tu, "prop", type="x-string-id")
+                prop.text = entry.string_id
+
+            # Source segment
+            tuv_src = ET.SubElement(tu, "tuv")
+            tuv_src.set("{http://www.w3.org/XML/1998/namespace}lang", tm.source_lang or "ko")
+            seg_src = ET.SubElement(tuv_src, "seg")
+            seg_src.text = entry.source_text
+
+            # Target segment
+            tuv_tgt = ET.SubElement(tu, "tuv")
+            tuv_tgt.set("{http://www.w3.org/XML/1998/namespace}lang", tm.target_lang or "en")
+            seg_tgt = ET.SubElement(tuv_tgt, "seg")
+            seg_tgt.text = entry.target_text
+
+        # Convert to string with XML declaration
+        tree = ET.ElementTree(root)
+        from io import BytesIO
+        output = BytesIO()
+        tree.write(output, encoding="utf-8", xml_declaration=True)
+        content = output.getvalue()
+        output.close()
+
+        # Clean filename
+        safe_name = "".join(c for c in tm.name if c.isalnum() or c in "._- ")
+        filename = f"{safe_name}_export.tmx"
+
+        return {
+            "content": content,
+            "filename": filename,
+            "mime_type": "application/x-tmx+xml",
+            "entry_count": len(entries)
+        }

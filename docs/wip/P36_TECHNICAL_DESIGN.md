@@ -12,6 +12,7 @@ This document covers the **foundational design decisions** for P36 Pretranslatio
 
 ## Table of Contents
 
+0. [Database Changes Required](#0-database-changes-required) ← **NEW**
 1. [Batch Processing Architecture](#1-batch-processing-architecture)
 2. [StringID Handling in Embeddings](#2-stringid-handling-in-embeddings)
 3. [Glossary Creation Flow](#3-glossary-creation-flow)
@@ -19,7 +20,141 @@ This document covers the **foundational design decisions** for P36 Pretranslatio
 
 ---
 
+## 0. Database Changes Required
+
+**Reviewed:** 2025-12-17 | **Status:** ⏳ TO IMPLEMENT
+
+### Current DB Model Analysis
+
+#### LDMRow (for Files) - ✅ HAS StringID
+```python
+# server/database/models.py:636-678
+class LDMRow(Base):
+    __tablename__ = "ldm_rows"
+    string_id = Column(String(255), nullable=True, index=True)  # ✅ EXISTS
+    source = Column(Text, nullable=True)
+    target = Column(Text, nullable=True)
+```
+
+#### LDMTMEntry (for TM) - ❌ MISSING StringID
+```python
+# server/database/models.py:795-831
+class LDMTMEntry(Base):
+    __tablename__ = "ldm_tm_entries"
+    source_text = Column(Text, nullable=False)
+    target_text = Column(Text, nullable=True)
+    source_hash = Column(String(64), nullable=False, index=True)
+    # ❌ NO string_id column!
+```
+
+#### LDMTranslationMemory - ❌ MISSING Mode
+```python
+# server/database/models.py:747-792
+class LDMTranslationMemory(Base):
+    __tablename__ = "ldm_translation_memories"
+    name = Column(String(255), nullable=False)
+    source_lang = Column(String(10), default="ko")
+    target_lang = Column(String(10), default="en")
+    # ❌ NO mode column (standard vs stringid)!
+```
+
+### Required Changes
+
+#### 1. Add `string_id` to `LDMTMEntry`
+```python
+# ADD to server/database/models.py LDMTMEntry class
+string_id = Column(String(255), nullable=True, index=True)
+```
+
+#### 2. Add `mode` to `LDMTranslationMemory`
+```python
+# ADD to server/database/models.py LDMTranslationMemory class
+mode = Column(String(20), default="standard")  # "standard" or "stringid"
+```
+
+#### 3. Update Indexes
+```python
+# In LDMTMEntry.__table_args__
+Index("idx_ldm_tm_entry_stringid", "string_id"),
+Index("idx_ldm_tm_entry_tm_hash_stringid", "tm_id", "source_hash", "string_id"),
+```
+
+#### 4. Migration Script
+```sql
+-- Alembic migration or manual SQL
+ALTER TABLE ldm_tm_entries ADD COLUMN string_id VARCHAR(255);
+CREATE INDEX idx_ldm_tm_entry_stringid ON ldm_tm_entries(string_id);
+
+ALTER TABLE ldm_translation_memories ADD COLUMN mode VARCHAR(20) DEFAULT 'standard';
+```
+
+### Excel Handler Update
+
+#### Current (`tm_manager.py:193-241`)
+```python
+def _parse_excel_for_tm(self, ..., source_col=0, target_col=1):
+    # Only 2 columns - NO StringID support
+```
+
+#### Required
+```python
+def _parse_excel_for_tm(self, ..., source_col=0, target_col=1, stringid_col=None, mode="standard"):
+    # Support optional StringID column
+    # Validate based on mode (strict for stringid, lenient for standard)
+```
+
+### Implementation Order
+
+1. ✅ DB model changes (add columns)
+2. ✅ Migration script
+3. ✅ Excel handler update
+4. ✅ API updates (accept mode + stringid_column params)
+5. ✅ PKL builder update (variations structure)
+6. ✅ Frontend modal (mode selection + column mapping)
+
+---
+
 ## 1. Batch Processing Architecture
+
+### Resource Usage: 100% LOCAL Processing
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PRETRANSLATION = LOCAL CPU POWER                          │
+│                                                                             │
+│  USER'S PC (LocaNext.exe)          CENTRAL SERVER (PostgreSQL)             │
+│  ════════════════════════          ════════════════════════════             │
+│  ✅ Qwen embeddings (2.3GB)        ❌ No compute                            │
+│  ✅ FAISS vector search            ✅ Data storage only                     │
+│  ✅ Hash lookups                   ✅ User auth                             │
+│  ✅ N-gram matching                ✅ Session management                    │
+│  ✅ Multiprocessing (4 workers)                                             │
+│  ✅ Celery + Redis (local)                                                  │
+│                                                                             │
+│  WHY LOCAL?                                                                 │
+│  ├── No network latency for millions of vector comparisons                 │
+│  ├── User's CPU is dedicated to their work                                 │
+│  ├── Server doesn't bottleneck under multi-user load                       │
+│  └── Offline mode works (SQLite fallback)                                  │
+│                                                                             │
+│  CPU USAGE:                                                                 │
+│  ├── Embedding generation: HIGH (Qwen model inference)                     │
+│  ├── FAISS search: MEDIUM-HIGH (vector similarity)                         │
+│  ├── Hash/N-gram: LOW                                                      │
+│  └── Workers: 4 (uses ~50% of CPU, leaves headroom)                        │
+│                                                                             │
+│  MEMORY USAGE:                                                              │
+│  ├── Qwen model: ~2.3GB (loaded once)                                      │
+│  ├── FAISS index: Varies by TM size (~100MB per 100k entries)              │
+│  └── Per chunk: ~50MB (500 rows × embeddings)                              │
+│                                                                             │
+│  EXPECTED PERFORMANCE:                                                      │
+│  ├── 10,000 rows: ~2 minutes                                               │
+│  ├── 100,000 rows: ~20 minutes                                             │
+│  └── Scales linearly with row count                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Current Infrastructure
 

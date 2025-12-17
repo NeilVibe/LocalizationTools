@@ -769,6 +769,9 @@ class LDMTranslationMemory(Base):
     status = Column(String(50), default="pending")
     error_message = Column(Text, nullable=True)
 
+    # TM Mode: "standard" (duplicates merged) or "stringid" (all variations kept)
+    mode = Column(String(20), default="standard")
+
     # Index storage paths (relative to TM storage root)
     storage_path = Column(String(500), nullable=True)  # Base path for this TM's files
     # Index files stored at: {storage_path}/whole.index, {storage_path}/line.index, etc.
@@ -809,12 +812,26 @@ class LDMTMEntry(Base):
     # Hash for exact lookup (SHA256 of normalized source)
     source_hash = Column(String(64), nullable=False, index=True)
 
+    # StringID for context-aware matching (same source, different targets based on context)
+    # Used in "stringid" mode TMs - allows same source to have multiple translations
+    string_id = Column(String(255), nullable=True, index=True)
+
     # Optional metadata from TMX
     created_by = Column(String(255), nullable=True)  # creationid from TMX
     change_date = Column(DateTime, nullable=True)    # changedate from TMX
 
     # Import timestamp
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # BUG-020: memoQ-style metadata for confirmation workflow
+    # Modification tracking (when entry edited in TM Viewer)
+    updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    updated_by = Column(String(255), nullable=True)
+
+    # Confirmation tracking (when user approves translation - memoQ workflow)
+    confirmed_at = Column(DateTime, nullable=True)
+    confirmed_by = Column(String(255), nullable=True)
+    is_confirmed = Column(Boolean, default=False, nullable=False)
 
     # Relationships
     tm = relationship("LDMTranslationMemory", back_populates="entries")
@@ -823,6 +840,9 @@ class LDMTMEntry(Base):
         Index("idx_ldm_tm_entry_tm", "tm_id"),
         Index("idx_ldm_tm_entry_hash", "source_hash"),
         Index("idx_ldm_tm_entry_tm_hash", "tm_id", "source_hash"),  # Composite for TM-specific lookup
+        Index("idx_ldm_tm_entry_stringid", "string_id"),  # For StringID mode lookups
+        Index("idx_ldm_tm_entry_tm_hash_stringid", "tm_id", "source_hash", "string_id"),  # Full composite
+        Index("idx_ldm_tm_entry_confirmed", "tm_id", "is_confirmed"),  # BUG-020: Filter by confirmation status
     )
 
     def __repr__(self):

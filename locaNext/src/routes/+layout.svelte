@@ -26,6 +26,7 @@
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
   import UpdateModal from "$lib/components/UpdateModal.svelte";
   import GlobalStatusBar from "$lib/components/GlobalStatusBar.svelte";
+  import GlobalToast from "$lib/components/GlobalToast.svelte";
   import { logger } from "$lib/utils/logger.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
@@ -305,6 +306,9 @@
 
     <!-- Global Status Bar (P18.5.5) - Shows active operations across all apps -->
     <GlobalStatusBar />
+
+    <!-- Global Toast Notifications (BUG-016) - Shows operation start/complete/fail -->
+    <GlobalToast />
   {/if}
 </Theme>
 

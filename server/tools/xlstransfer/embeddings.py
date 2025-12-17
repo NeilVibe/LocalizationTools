@@ -497,6 +497,320 @@ def process_excel_for_dictionary(
     return split_dict, whole_dict, split_embeddings, whole_embeddings
 
 
+# =============================================================================
+# EmbeddingsManager - Load TM data from PostgreSQL for LDM Pipeline
+# =============================================================================
+
+class EmbeddingsManager:
+    """
+    Manages TM-based embeddings for XLS Transfer pretranslation.
+
+    Loads TM entries from PostgreSQL and builds FAISS indexes for the
+    XLS Transfer translation pipeline.
+
+    Usage:
+        mgr = EmbeddingsManager()
+        if mgr.load_tm(tm_id):
+            translation = translate_text_multi_mode(
+                text,
+                split_index=mgr.split_index,
+                split_sentences=mgr.split_sentences,
+                split_dict=mgr.split_dict,
+                whole_index=mgr.whole_index,
+                whole_sentences=mgr.whole_sentences,
+                whole_dict=mgr.whole_dict,
+                threshold=0.92,
+                model=mgr.model
+            )
+    """
+
+    def __init__(self, data_dir: Optional[Path] = None):
+        """
+        Initialize EmbeddingsManager.
+
+        Args:
+            data_dir: Directory for caching indexes (default: server/data/ldm_tm)
+        """
+        self.model = None
+
+        # Set data directory
+        if data_dir:
+            self.data_dir = Path(data_dir)
+        else:
+            self.data_dir = Path(__file__).parent.parent.parent / "data" / "ldm_tm"
+
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Current loaded state
+        self.current_tm_id = None
+        self.split_index = None
+        self.split_sentences = None
+        self.split_dict = None
+        self.whole_index = None
+        self.whole_sentences = None
+        self.whole_dict = None
+
+        logger.info(f"XLS Transfer EmbeddingsManager initialized", {
+            "data_dir": str(self.data_dir)
+        })
+
+    def _ensure_model_loaded(self):
+        """Load the model if not already loaded."""
+        if self.model is None:
+            self.model = get_model()
+
+    def load_tm(self, tm_id: int, db_session=None) -> bool:
+        """
+        Load TM data from PostgreSQL and build indexes.
+
+        Uses existing PKL indexes if available (built by TMIndexer),
+        otherwise builds fresh indexes from TM entries.
+
+        Args:
+            tm_id: Translation Memory ID
+            db_session: Optional SQLAlchemy session (creates one if not provided)
+
+        Returns:
+            True if loaded successfully
+        """
+        if self.current_tm_id == tm_id and self.split_index is not None:
+            logger.info(f"TM {tm_id} already loaded")
+            return True
+
+        logger.info(f"Loading TM {tm_id} for XLS Transfer...")
+
+        tm_path = self.data_dir / str(tm_id)
+
+        # Try to load from existing PKL files (built by TMIndexer)
+        whole_mapping_path = tm_path / "embeddings" / "whole_mapping.pkl"
+        whole_emb_path = tm_path / "embeddings" / "whole.npy"
+
+        if whole_mapping_path.exists() and whole_emb_path.exists():
+            logger.info(f"Loading from existing PKL indexes...")
+            return self._load_from_pkl(tm_id, tm_path)
+
+        # Fall back to building from PostgreSQL
+        logger.info(f"Building indexes from PostgreSQL...")
+        return self._build_from_db(tm_id, db_session)
+
+    def _load_from_pkl(self, tm_id: int, tm_path: Path) -> bool:
+        """
+        Load indexes from existing PKL files.
+
+        Standard TM's TMIndexer creates these files - we reuse them.
+        """
+        try:
+            self._ensure_model_loaded()
+
+            # Load whole embeddings and mapping
+            whole_emb_path = tm_path / "embeddings" / "whole.npy"
+            whole_mapping_path = tm_path / "embeddings" / "whole_mapping.pkl"
+
+            embeddings = np.load(whole_emb_path)
+            with open(whole_mapping_path, 'rb') as f:
+                mapping = pickle.load(f)
+
+            # Build dictionaries and sentence lists
+            self.whole_sentences = []
+            self.whole_dict = {}
+            self.split_sentences = []
+            self.split_dict = {}
+
+            for entry in mapping:
+                source = entry.get("source_text", "")
+                target = entry.get("target_text", "")
+
+                if not source:
+                    continue
+
+                # For whole mode
+                self.whole_sentences.append(source)
+                self.whole_dict[source] = target
+
+                # For split mode (line by line)
+                source_lines = source.split('\n')
+                target_lines = (target or "").split('\n')
+
+                for i, src_line in enumerate(source_lines):
+                    src_line = src_line.strip()
+                    if src_line and src_line not in self.split_dict:
+                        tgt_line = target_lines[i].strip() if i < len(target_lines) else ""
+                        self.split_sentences.append(src_line)
+                        self.split_dict[src_line] = tgt_line
+
+            # Build FAISS indexes from embeddings
+            # Whole index already has normalized embeddings
+            dim = embeddings.shape[1]
+
+            self.whole_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
+            self.whole_index.hnsw.efConstruction = 400
+            self.whole_index.hnsw.efSearch = 500
+            self.whole_index.add(embeddings)
+
+            # Build split index from split sentences
+            if self.split_sentences:
+                logger.info(f"Encoding {len(self.split_sentences)} split sentences...")
+                split_embeddings = self.model.encode(
+                    self.split_sentences,
+                    batch_size=64,
+                    show_progress_bar=False
+                )
+                split_embeddings = np.array(split_embeddings, dtype=np.float32)
+                faiss.normalize_L2(split_embeddings)
+
+                self.split_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
+                self.split_index.hnsw.efConstruction = 400
+                self.split_index.hnsw.efSearch = 500
+                self.split_index.add(split_embeddings)
+
+            # Convert sentences to pd.Series for translate_text_multi_mode
+            self.split_sentences = pd.Series(self.split_sentences, dtype=str)
+            self.whole_sentences = pd.Series(self.whole_sentences, dtype=str)
+
+            self.current_tm_id = tm_id
+
+            logger.success(f"Loaded TM {tm_id}: {len(self.whole_dict)} whole, {len(self.split_dict)} split")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to load from PKL: {e}")
+            return False
+
+    def _build_from_db(self, tm_id: int, db_session=None) -> bool:
+        """
+        Build indexes directly from PostgreSQL TM entries.
+        """
+        try:
+            # Import here to avoid circular imports
+            from server.database.db_utils import get_db_session
+            from server.database.models import LDMTMEntry
+
+            # Get or create session
+            close_session = False
+            if db_session is None:
+                db_session = next(get_db_session())
+                close_session = True
+
+            try:
+                # Load TM entries
+                entries = db_session.query(LDMTMEntry).filter(
+                    LDMTMEntry.tm_id == tm_id
+                ).all()
+
+                if not entries:
+                    logger.warning(f"No entries found for TM {tm_id}")
+                    return False
+
+                logger.info(f"Loaded {len(entries)} entries from TM {tm_id}")
+
+                self._ensure_model_loaded()
+
+                # Build dictionaries
+                self.whole_sentences = []
+                self.whole_dict = {}
+                self.split_sentences = []
+                self.split_dict = {}
+
+                for entry in entries:
+                    source = entry.source_text
+                    target = entry.target_text or ""
+
+                    if not source:
+                        continue
+
+                    # Whole mode
+                    if source not in self.whole_dict:
+                        self.whole_sentences.append(source)
+                        self.whole_dict[source] = target
+
+                    # Split mode
+                    source_lines = source.split('\n')
+                    target_lines = target.split('\n')
+
+                    for i, src_line in enumerate(source_lines):
+                        src_line = src_line.strip()
+                        if src_line and src_line not in self.split_dict:
+                            tgt_line = target_lines[i].strip() if i < len(target_lines) else ""
+                            self.split_sentences.append(src_line)
+                            self.split_dict[src_line] = tgt_line
+
+                # Generate embeddings
+                logger.info(f"Generating embeddings for {len(self.whole_sentences)} whole, {len(self.split_sentences)} split...")
+
+                if self.whole_sentences:
+                    whole_emb = self.model.encode(
+                        self.whole_sentences,
+                        batch_size=64,
+                        show_progress_bar=False
+                    )
+                    whole_emb = np.array(whole_emb, dtype=np.float32)
+                    faiss.normalize_L2(whole_emb)
+
+                    dim = whole_emb.shape[1]
+                    self.whole_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
+                    self.whole_index.hnsw.efConstruction = 400
+                    self.whole_index.hnsw.efSearch = 500
+                    self.whole_index.add(whole_emb)
+
+                if self.split_sentences:
+                    split_emb = self.model.encode(
+                        self.split_sentences,
+                        batch_size=64,
+                        show_progress_bar=False
+                    )
+                    split_emb = np.array(split_emb, dtype=np.float32)
+                    faiss.normalize_L2(split_emb)
+
+                    dim = split_emb.shape[1]
+                    self.split_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
+                    self.split_index.hnsw.efConstruction = 400
+                    self.split_index.hnsw.efSearch = 500
+                    self.split_index.add(split_emb)
+
+                # Convert to pd.Series
+                self.split_sentences = pd.Series(self.split_sentences, dtype=str)
+                self.whole_sentences = pd.Series(self.whole_sentences, dtype=str)
+
+                self.current_tm_id = tm_id
+
+                logger.success(f"Built indexes for TM {tm_id}: {len(self.whole_dict)} whole, {len(self.split_dict)} split")
+                return True
+
+            finally:
+                if close_session:
+                    db_session.close()
+
+        except Exception as e:
+            logger.error(f"Failed to build from DB: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def load_dictionary(self, tm_id: int, db_session=None) -> bool:
+        """
+        Alias for load_tm() - maintains compatibility with pretranslate.py interface.
+
+        Args:
+            tm_id: Translation Memory ID
+            db_session: Optional SQLAlchemy session
+
+        Returns:
+            True if loaded successfully
+        """
+        return self.load_tm(tm_id, db_session)
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get current manager status."""
+        return {
+            "model_loaded": self.model is not None,
+            "current_tm_id": self.current_tm_id,
+            "whole_count": len(self.whole_dict) if self.whole_dict else 0,
+            "split_count": len(self.split_dict) if self.split_dict else 0,
+            "whole_index_ready": self.whole_index is not None,
+            "split_index_ready": self.split_index is not None
+        }
+
+
 # Example usage
 if __name__ == "__main__":
     # Test model loading

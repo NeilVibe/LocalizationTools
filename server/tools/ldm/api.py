@@ -156,6 +156,26 @@ class TMSuggestResponse(BaseModel):
     count: int
 
 
+class PretranslateRequest(BaseModel):
+    """Request for pretranslation."""
+    file_id: int
+    engine: str  # "standard" | "xls_transfer" | "kr_similar"
+    dictionary_id: int
+    threshold: float = 0.92
+    skip_existing: bool = True
+
+
+class PretranslateResponse(BaseModel):
+    """Response from pretranslation."""
+    file_id: int
+    engine: str
+    matched: int
+    skipped: int
+    total: int
+    threshold: float
+    time_seconds: float
+
+
 # ============================================================================
 # Router
 # ============================================================================
@@ -425,15 +445,23 @@ async def upload_file(
     project_id: int = Form(...),
     folder_id: Optional[int] = Form(None),
     file: UploadFile = File(...),
+    # Excel column mapping (optional, only used for Excel files)
+    source_col: Optional[int] = Form(None),      # Column index for source (0=A, 1=B, etc.)
+    target_col: Optional[int] = Form(None),      # Column index for target
+    stringid_col: Optional[int] = Form(None),    # Column index for StringID (None = 2-column mode)
+    has_header: Optional[bool] = Form(True),     # Whether first row is header
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Upload a localization file (TXT/XML), parse it, and store rows in database.
+    Upload a localization file (TXT/XML/Excel), parse it, and store rows in database.
 
     Supported formats:
     - TXT/TSV: Tab-delimited, columns 0-4=StringID, 5=Source(KR), 6=Target, 7+=extra
     - XML: LocStr elements with StringId, StrOrigin(source), Str(target), other attrs=extra
+    - Excel: User-defined columns via source_col, target_col, stringid_col parameters
+      - 2-column mode: Source + Target (default: A, B)
+      - 3-column mode: Source + Target + StringID (e.g., A, B, C)
 
     Full Structure Preservation:
     - File-level metadata stored in LDMFile.extra_data (encoding, root element, etc.)
@@ -480,10 +508,25 @@ async def upload_file(
         file_format = get_file_format()
         source_lang = get_source_language()
         file_metadata = get_file_metadata()
+    elif ext in ('xlsx', 'xls'):
+        from server.tools.ldm.file_handlers.excel_handler import parse_excel_file, get_file_format, get_source_language, get_file_metadata
+        file_content = await file.read()
+        # Use provided column mappings or defaults (A=0, B=1)
+        rows_data = parse_excel_file(
+            file_content,
+            filename,
+            source_col=source_col if source_col is not None else 0,
+            target_col=target_col if target_col is not None else 1,
+            stringid_col=stringid_col,  # None means 2-column mode
+            has_header=has_header if has_header is not None else True
+        )
+        file_format = get_file_format()
+        source_lang = get_source_language()
+        file_metadata = get_file_metadata()
     else:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file format: {ext}. Use TXT, TSV, or XML."
+            detail=f"Unsupported file format: {ext}. Use TXT, TSV, XML, or Excel (XLSX/XLS)."
         )
 
     if not rows_data:
@@ -492,39 +535,122 @@ async def upload_file(
             detail="No valid rows found in file"
         )
 
-    # Create file record (with file-level metadata for reconstruction)
-    new_file = LDMFile(
-        project_id=project_id,
-        folder_id=folder_id,
-        name=filename,
-        original_filename=filename,
-        format=file_format,
-        row_count=len(rows_data),
-        source_language=source_lang,
-        target_language=None,  # Set later based on project settings
-        extra_data=file_metadata  # File-level metadata for full reconstruction
-    )
-    db.add(new_file)
-    await db.flush()  # Get the file ID
+    # TASK-001: Add TrackedOperation for progress tracking on large files
+    # Run row insertion in thread with progress tracking
+    user_id = current_user["user_id"]
+    username = current_user.get("username", "unknown")
+    total_rows = len(rows_data)
 
-    # Create row records (with row-level extra data for reconstruction)
-    for row_data in rows_data:
-        row = LDMRow(
-            file_id=new_file.id,
-            row_num=row_data["row_num"],
-            string_id=row_data["string_id"],
-            source=row_data["source"],
-            target=row_data["target"],
-            status=row_data["status"],
-            extra_data=row_data.get("extra_data")  # Extra columns/attributes
+    def _insert_file_and_rows():
+        from server.utils.progress_tracker import TrackedOperation
+
+        sync_db = next(get_db())
+        try:
+            with TrackedOperation(
+                operation_name=f"Upload: {filename}",
+                user_id=user_id,
+                username=username,
+                tool_name="LDM",
+                function_name="upload_file",
+                parameters={"filename": filename, "row_count": total_rows}
+            ) as tracker:
+                # Create file record
+                new_file = LDMFile(
+                    project_id=project_id,
+                    folder_id=folder_id,
+                    name=filename,
+                    original_filename=filename,
+                    format=file_format,
+                    row_count=total_rows,
+                    source_language=source_lang,
+                    target_language=None,
+                    extra_data=file_metadata
+                )
+                sync_db.add(new_file)
+                sync_db.flush()  # Get the file ID
+
+                tracker.update(10, "File record created", 1, total_rows + 1)
+
+                # Create row records with progress
+                for i, row_data in enumerate(rows_data):
+                    row = LDMRow(
+                        file_id=new_file.id,
+                        row_num=row_data["row_num"],
+                        string_id=row_data["string_id"],
+                        source=row_data["source"],
+                        target=row_data["target"],
+                        status=row_data["status"],
+                        extra_data=row_data.get("extra_data")
+                    )
+                    sync_db.add(row)
+
+                    # Update progress every 100 rows
+                    if (i + 1) % 100 == 0 or i == total_rows - 1:
+                        progress_pct = 10 + ((i + 1) / total_rows) * 90
+                        tracker.update(progress_pct, f"Row {i + 1}/{total_rows}", i + 1, total_rows)
+
+                sync_db.commit()
+                sync_db.refresh(new_file)
+
+                return {
+                    "id": new_file.id,
+                    "project_id": new_file.project_id,
+                    "folder_id": new_file.folder_id,
+                    "name": new_file.name,
+                    "original_filename": new_file.original_filename,
+                    "format": new_file.format,
+                    "row_count": new_file.row_count,
+                    "source_language": new_file.source_language,
+                    "target_language": new_file.target_language,
+                    "created_at": new_file.created_at,
+                    "updated_at": new_file.updated_at
+                }
+        finally:
+            sync_db.close()
+
+    result = await asyncio.to_thread(_insert_file_and_rows)
+
+    logger.success(f"File uploaded: id={result['id']}, name='{filename}', rows={total_rows}, has_metadata={file_metadata is not None}")
+
+    # Return FileResponse-compatible dict
+    return result
+
+
+@router.post("/files/excel-preview")
+async def excel_preview(
+    file: UploadFile = File(...),
+    max_rows: int = Query(5, ge=1, le=20),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Get a preview of an Excel file for column mapping UI.
+
+    Returns:
+        - sheet_name: Name of the active sheet
+        - headers: Column headers (from first row)
+        - sample_rows: First N rows of data
+        - total_rows: Total row count
+
+    Use this before uploading to let users select which columns
+    are Source, Target, and StringID.
+    """
+    filename = file.filename or "unknown"
+    ext = filename.lower().split('.')[-1] if '.' in filename else ''
+
+    if ext not in ('xlsx', 'xls'):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Excel preview only supports XLSX/XLS files, got: {ext}"
         )
-        db.add(row)
 
-    await db.commit()
-    await db.refresh(new_file)
-
-    logger.success(f"File uploaded: id={new_file.id}, name='{filename}', rows={len(rows_data)}, has_metadata={file_metadata is not None}")
-    return new_file
+    try:
+        from server.tools.ldm.file_handlers.excel_handler import get_excel_preview
+        file_content = await file.read()
+        preview = get_excel_preview(file_content, max_rows=max_rows)
+        return preview
+    except Exception as e:
+        logger.error(f"Excel preview failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # ============================================================================
@@ -863,6 +989,13 @@ async def upload_tm(
     target_lang: str = Form("en"),
     description: Optional[str] = Form(None),
     file: UploadFile = File(...),
+    # TM mode: "standard" (duplicates merged) or "stringid" (all variations kept)
+    mode: str = Form("standard"),
+    # Excel column mapping (only used for Excel files)
+    source_col: Optional[int] = Form(None),      # Column index for source (0=A)
+    target_col: Optional[int] = Form(None),      # Column index for target (1=B)
+    stringid_col: Optional[int] = Form(None),    # Column index for StringID (2=C)
+    has_header: Optional[bool] = Form(True),     # Whether first row is header
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -871,7 +1004,11 @@ async def upload_tm(
     Supported formats:
     - TXT/TSV: Column 5 = Source, Column 6 = Target
     - XML: StrOrigin = Source, Str = Target
-    - XLSX: Column A = Source, Column B = Target
+    - XLSX: User-defined columns via source_col, target_col, stringid_col
+
+    Modes:
+    - standard: Duplicates merged (most frequent target wins)
+    - stringid: All variations kept (same source, different StringIDs)
 
     Performance: ~20,000+ entries/second bulk insert
     """
@@ -886,24 +1023,51 @@ async def upload_tm(
 
     logger.info(f"TM upload started: name={name}, file={filename}, user={current_user['user_id']}")
 
+    # TASK-001: Add TrackedOperation for progress tracking
+    user_id = current_user["user_id"]
+    username = current_user.get("username", "unknown")
+
     try:
         file_content = await file.read()
 
         # Run sync TMManager in threadpool to avoid blocking event loop
         def _upload_tm():
+            from server.utils.progress_tracker import TrackedOperation
+
             sync_db = next(get_db())
             try:
-                from server.tools.ldm.tm_manager import TMManager
-                tm_manager = TMManager(sync_db)
-                return tm_manager.upload_tm(
-                    file_content=file_content,
-                    filename=filename,
-                    name=name,
-                    owner_id=current_user["user_id"],
-                    source_lang=source_lang,
-                    target_lang=target_lang,
-                    description=description
-                )
+                with TrackedOperation(
+                    operation_name=f"Upload TM: {name}",
+                    user_id=user_id,
+                    username=username,
+                    tool_name="LDM",
+                    function_name="upload_tm",
+                    parameters={"name": name, "filename": filename, "mode": mode}
+                ) as tracker:
+                    tracker.update(10, "Parsing file...")
+
+                    from server.tools.ldm.tm_manager import TMManager
+                    tm_manager = TMManager(sync_db)
+
+                    tracker.update(30, "Inserting entries...")
+
+                    result = tm_manager.upload_tm(
+                        file_content=file_content,
+                        filename=filename,
+                        name=name,
+                        owner_id=user_id,
+                        source_lang=source_lang,
+                        target_lang=target_lang,
+                        description=description,
+                        mode=mode,
+                        source_col=source_col if source_col is not None else 0,
+                        target_col=target_col if target_col is not None else 1,
+                        stringid_col=stringid_col,
+                        has_header=has_header if has_header is not None else True
+                    )
+
+                    tracker.update(100, f"Complete: {result.entry_count} entries")
+                    return result
             finally:
                 sync_db.close()
 
@@ -979,6 +1143,354 @@ async def delete_tm(
 
     logger.info(f"Deleted TM: id={tm_id}, entries={entry_count}")
     return {"message": "Translation Memory deleted", "entries_deleted": entry_count}
+
+
+# =============================================================================
+# TM Viewer Endpoints (FEAT-003)
+# =============================================================================
+
+@router.get("/tm/{tm_id}/entries")
+async def get_tm_entries(
+    tm_id: int,
+    page: int = 1,
+    limit: int = 100,
+    sort_by: str = "id",
+    sort_order: str = "asc",
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Get paginated TM entries for TM Viewer.
+
+    Query params:
+    - page: Page number (1-indexed)
+    - limit: Items per page (max 500)
+    - sort_by: Field to sort by (id, source_text, target_text, string_id, created_at)
+    - sort_order: asc or desc
+    - search: Search term (searches source, target, and string_id)
+    """
+    from sqlalchemy import or_
+
+    # Verify TM ownership
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    tm = tm_result.scalar_one_or_none()
+    if not tm:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    # Validate and cap limit
+    limit = min(limit, 500)
+    page = max(page, 1)
+    offset = (page - 1) * limit
+
+    # Build query
+    query = select(LDMTMEntry).where(LDMTMEntry.tm_id == tm_id)
+
+    # Apply search filter
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.where(
+            or_(
+                LDMTMEntry.source_text.ilike(search_pattern),
+                LDMTMEntry.target_text.ilike(search_pattern),
+                LDMTMEntry.string_id.ilike(search_pattern)
+            )
+        )
+
+    # Get total count
+    count_query = select(func.count()).select_from(query.subquery())
+    count_result = await db.execute(count_query)
+    total = count_result.scalar()
+
+    # Apply sorting
+    sort_column = {
+        "id": LDMTMEntry.id,
+        "source_text": LDMTMEntry.source_text,
+        "target_text": LDMTMEntry.target_text,
+        "string_id": LDMTMEntry.string_id,
+        "created_at": LDMTMEntry.created_at
+    }.get(sort_by, LDMTMEntry.id)
+
+    if sort_order.lower() == "desc":
+        query = query.order_by(sort_column.desc())
+    else:
+        query = query.order_by(sort_column.asc())
+
+    # Apply pagination
+    query = query.offset(offset).limit(limit)
+
+    # Execute
+    result = await db.execute(query)
+    entries = result.scalars().all()
+
+    # Format entries
+    formatted_entries = [
+        {
+            "id": e.id,
+            "source_text": e.source_text,
+            "target_text": e.target_text,
+            "string_id": e.string_id,
+            "created_at": e.created_at.isoformat() if e.created_at else None
+        }
+        for e in entries
+    ]
+
+    total_pages = (total + limit - 1) // limit if total > 0 else 1
+
+    return {
+        "entries": formatted_entries,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "sort_by": sort_by,
+        "sort_order": sort_order,
+        "search": search,
+        "tm_name": tm.name
+    }
+
+
+@router.put("/tm/{tm_id}/entries/{entry_id}")
+async def update_tm_entry(
+    tm_id: int,
+    entry_id: int,
+    source_text: Optional[str] = None,
+    target_text: Optional[str] = None,
+    string_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Update a single TM entry (for inline editing in TM Viewer).
+    """
+    # Verify TM ownership
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    tm = tm_result.scalar_one_or_none()
+    if not tm:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    # Find entry
+    entry_result = await db.execute(
+        select(LDMTMEntry).where(
+            LDMTMEntry.id == entry_id,
+            LDMTMEntry.tm_id == tm_id
+        )
+    )
+    entry = entry_result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    # Update fields if provided
+    if source_text is not None:
+        entry.source_text = source_text
+        # Recalculate hash
+        normalized = normalize_text_for_hash(source_text)
+        entry.source_hash = hashlib.sha256(normalized.encode('utf-8')).hexdigest()
+
+    if target_text is not None:
+        entry.target_text = target_text
+
+    if string_id is not None:
+        entry.string_id = string_id
+
+    # BUG-020: Track who made the update
+    entry.updated_at = datetime.utcnow()
+    entry.updated_by = current_user.get("username", "unknown")
+
+    # Mark TM as updated (triggers index rebuild on next pretranslate)
+    tm.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(entry)
+
+    logger.info(f"Updated TM entry: tm_id={tm_id}, entry_id={entry_id}, by={current_user.get('username')}")
+
+    return {
+        "id": entry.id,
+        "source_text": entry.source_text,
+        "target_text": entry.target_text,
+        "string_id": entry.string_id,
+        "created_at": entry.created_at.isoformat() if entry.created_at else None,
+        "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
+        "updated_by": entry.updated_by,
+        "is_confirmed": entry.is_confirmed,
+        "confirmed_at": entry.confirmed_at.isoformat() if entry.confirmed_at else None,
+        "confirmed_by": entry.confirmed_by
+    }
+
+
+@router.delete("/tm/{tm_id}/entries/{entry_id}")
+async def delete_tm_entry(
+    tm_id: int,
+    entry_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Delete a single TM entry.
+    """
+    # Verify TM ownership
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    tm = tm_result.scalar_one_or_none()
+    if not tm:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    # Find entry
+    entry_result = await db.execute(
+        select(LDMTMEntry).where(
+            LDMTMEntry.id == entry_id,
+            LDMTMEntry.tm_id == tm_id
+        )
+    )
+    entry = entry_result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    await db.delete(entry)
+
+    # Update TM entry count and updated_at
+    tm.entry_count = max(0, (tm.entry_count or 0) - 1)
+    tm.updated_at = datetime.utcnow()
+
+    await db.commit()
+
+    logger.info(f"Deleted TM entry: tm_id={tm_id}, entry_id={entry_id}")
+    return {"message": "Entry deleted", "entry_id": entry_id}
+
+
+# BUG-020: Confirm/Unconfirm endpoints for memoQ-style workflow
+@router.post("/tm/{tm_id}/entries/{entry_id}/confirm")
+async def confirm_tm_entry(
+    tm_id: int,
+    entry_id: int,
+    confirm: bool = True,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    BUG-020: Confirm or unconfirm a TM entry (memoQ-style workflow).
+
+    When user approves a translation, it gets marked as confirmed with metadata.
+    """
+    # Verify TM ownership
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    if not tm_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    # Find entry
+    entry_result = await db.execute(
+        select(LDMTMEntry).where(
+            LDMTMEntry.id == entry_id,
+            LDMTMEntry.tm_id == tm_id
+        )
+    )
+    entry = entry_result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    username = current_user.get("username", "unknown")
+
+    if confirm:
+        entry.is_confirmed = True
+        entry.confirmed_at = datetime.utcnow()
+        entry.confirmed_by = username
+    else:
+        entry.is_confirmed = False
+        entry.confirmed_at = None
+        entry.confirmed_by = None
+
+    await db.commit()
+    await db.refresh(entry)
+
+    logger.info(f"{'Confirmed' if confirm else 'Unconfirmed'} TM entry: tm_id={tm_id}, entry_id={entry_id}, by={username}")
+
+    return {
+        "id": entry.id,
+        "source_text": entry.source_text,
+        "target_text": entry.target_text,
+        "string_id": entry.string_id,
+        "is_confirmed": entry.is_confirmed,
+        "confirmed_at": entry.confirmed_at.isoformat() if entry.confirmed_at else None,
+        "confirmed_by": entry.confirmed_by
+    }
+
+
+@router.post("/tm/{tm_id}/entries/bulk-confirm")
+async def bulk_confirm_tm_entries(
+    tm_id: int,
+    entry_ids: List[int],
+    confirm: bool = True,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    BUG-020: Bulk confirm/unconfirm multiple TM entries.
+    """
+    from sqlalchemy import update
+
+    # Verify TM ownership
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    if not tm_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    username = current_user.get("username", "unknown")
+    now = datetime.utcnow()
+
+    if confirm:
+        stmt = update(LDMTMEntry).where(
+            LDMTMEntry.tm_id == tm_id,
+            LDMTMEntry.id.in_(entry_ids)
+        ).values(
+            is_confirmed=True,
+            confirmed_at=now,
+            confirmed_by=username
+        )
+    else:
+        stmt = update(LDMTMEntry).where(
+            LDMTMEntry.tm_id == tm_id,
+            LDMTMEntry.id.in_(entry_ids)
+        ).values(
+            is_confirmed=False,
+            confirmed_at=None,
+            confirmed_by=None
+        )
+
+    result = await db.execute(stmt)
+    await db.commit()
+
+    updated_count = result.rowcount
+
+    logger.info(f"Bulk {'confirmed' if confirm else 'unconfirmed'} {updated_count} TM entries: tm_id={tm_id}, by={username}")
+
+    return {
+        "updated_count": updated_count,
+        "action": "confirmed" if confirm else "unconfirmed"
+    }
 
 
 @router.get("/tm/{tm_id}/search/exact")
@@ -1122,6 +1634,72 @@ async def add_tm_entry(
     return result
 
 
+@router.get("/tm/{tm_id}/export")
+async def export_tm(
+    tm_id: int,
+    format: str = Query("text", regex="^(text|excel|tmx)$"),
+    columns: Optional[str] = Query(None, description="Comma-separated list of columns: source_text,target_text,string_id,created_at"),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Export a Translation Memory in specified format.
+
+    Formats:
+    - text: Tab-separated values (TSV)
+    - excel: Excel spreadsheet (.xlsx)
+    - tmx: Translation Memory eXchange format
+
+    Columns (optional, comma-separated):
+    - source_text (required, always included)
+    - target_text (required, always included)
+    - string_id
+    - created_at
+
+    Returns file download.
+    """
+    from fastapi.responses import Response
+
+    logger.info(f"Exporting TM: tm_id={tm_id}, format={format}, columns={columns}")
+
+    # Verify TM ownership (async)
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    if not tm_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    # Parse columns if provided
+    column_list = None
+    if columns:
+        column_list = [c.strip() for c in columns.split(",") if c.strip()]
+
+    # Run export in threadpool (uses sync ORM)
+    def _export_tm():
+        sync_db = next(get_db())
+        try:
+            from server.tools.ldm.tm_manager import TMManager
+            tm_manager = TMManager(sync_db)
+            return tm_manager.export_tm(tm_id, format=format, columns=column_list)
+        finally:
+            sync_db.close()
+
+    result = await asyncio.to_thread(_export_tm)
+
+    logger.success(f"TM exported: tm_id={tm_id}, entries={result['entry_count']}, format={format}")
+
+    return Response(
+        content=result["content"],
+        media_type=result["mime_type"],
+        headers={
+            "Content-Disposition": f'attachment; filename="{result["filename"]}"'
+        }
+    )
+
+
 @router.post("/tm/{tm_id}/build-indexes")
 async def build_tm_indexes(
     tm_id: int,
@@ -1246,6 +1824,134 @@ async def get_tm_index_status(
             for idx in indexes
         ]
     }
+
+
+# ============================================================================
+# Pretranslation
+# ============================================================================
+
+@router.post("/pretranslate", response_model=PretranslateResponse)
+async def pretranslate_file(
+    request: PretranslateRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Pretranslate a file using selected engine.
+
+    Engines:
+    - standard: TM 5-tier cascade (hash + FAISS + ngram)
+    - xls_transfer: XLS Transfer logic with code preservation
+    - kr_similar: KR Similar logic with structure adaptation
+
+    All engines use LOCAL processing (Qwen embeddings + FAISS).
+    No external translation API required.
+
+    Args:
+        file_id: LDM file ID to pretranslate
+        engine: "standard" | "xls_transfer" | "kr_similar"
+        dictionary_id: TM ID (for standard) or dictionary ID (for xls/kr)
+        threshold: Similarity threshold (default 0.92)
+        skip_existing: Skip rows that already have translations (default True)
+
+    Returns:
+        PretranslateResponse with stats: matched, skipped, total, time_seconds
+    """
+    from server.tools.ldm.pretranslate import pretranslate_file as do_pretranslate
+
+    logger.info(f"Pretranslate request: file_id={request.file_id}, engine={request.engine}, "
+                f"dict_id={request.dictionary_id}, threshold={request.threshold}")
+
+    # Validate engine
+    valid_engines = ["standard", "xls_transfer", "kr_similar"]
+    if request.engine not in valid_engines:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid engine. Must be one of: {valid_engines}"
+        )
+
+    # Verify file ownership
+    file_result = await db.execute(
+        select(LDMFile).where(LDMFile.id == request.file_id)
+    )
+    file = file_result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Verify project ownership
+    project_result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == file.project_id,
+            LDMProject.owner_id == current_user["user_id"]
+        )
+    )
+    project = project_result.scalar_one_or_none()
+
+    if not project:
+        raise HTTPException(status_code=403, detail="Access denied to file's project")
+
+    # Run pretranslation in threadpool to avoid blocking
+    # TASK-001: Add TrackedOperation for progress tracking
+    file_name = file.name  # Capture for use in thread
+    user_id = current_user["user_id"]
+    username = current_user.get("username", "unknown")
+
+    def _do_pretranslate():
+        from server.utils.progress_tracker import TrackedOperation
+
+        sync_db = next(get_db())
+        try:
+            with TrackedOperation(
+                operation_name=f"Pretranslate: {file_name}",
+                user_id=user_id,
+                username=username,
+                tool_name="LDM",
+                function_name="pretranslate",
+                parameters={
+                    "file_id": request.file_id,
+                    "engine": request.engine,
+                    "dictionary_id": request.dictionary_id,
+                    "threshold": request.threshold
+                }
+            ) as tracker:
+                def progress_callback(current: int, total: int):
+                    progress_pct = (current / total) * 100 if total > 0 else 0
+                    tracker.update(progress_pct, f"Row {current}/{total}", current, total)
+
+                result = do_pretranslate(
+                    db=sync_db,
+                    file_id=request.file_id,
+                    engine=request.engine,
+                    dictionary_id=request.dictionary_id,
+                    threshold=request.threshold,
+                    skip_existing=request.skip_existing,
+                    progress_callback=progress_callback
+                )
+                return result
+        finally:
+            sync_db.close()
+
+    try:
+        result = await asyncio.to_thread(_do_pretranslate)
+
+        return PretranslateResponse(
+            file_id=result["file_id"],
+            engine=result["engine"],
+            matched=result["matched"],
+            skipped=result["skipped"],
+            total=result["total"],
+            threshold=result["threshold"],
+            time_seconds=result["time_seconds"]
+        )
+
+    except ValueError as e:
+        logger.error(f"Pretranslation validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Pretranslation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Pretranslation failed. Check server logs.")
 
 
 # ============================================================================

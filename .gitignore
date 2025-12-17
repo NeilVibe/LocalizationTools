@@ -124,6 +124,7 @@ server/data/*.sqlite
 # Server Data (user-generated, not tracked)
 server/data/outputs/
 server/data/cache/
+server/data/ldm_tm/
 !server/data/outputs/.gitkeep
 !server/data/cache/.gitkeep
 

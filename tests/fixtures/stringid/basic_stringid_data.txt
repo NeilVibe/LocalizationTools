@@ -1,0 +1,10 @@
+0	UI_BUTTON_SAVE	0	0	1	저장	Save	Current
+0	UI_MENU_SAVE	0	0	1	저장	Save Game	Current
+0	TECH_STORAGE	0	0	1	저장	Storage	Current
+0	UI_MENU_SETTINGS	0	0	1	설정	Settings	Current
+0	TECH_CONFIG	0	0	1	설정	Configuration	Current
+0	UI_BUTTON_OK	0	0	1	확인	OK	Current
+0	UI_BUTTON_CONFIRM	0	0	1	확인	Confirm	Current
+0	UI_BUTTON_OPEN	0	0	1	열기	Open	Current
+0	UI_MENU_OPEN_FILE	0	0	1	열기	Open File	Current
+0	UI_BUTTON_CANCEL	0	0	1	취소	Cancel	Current
