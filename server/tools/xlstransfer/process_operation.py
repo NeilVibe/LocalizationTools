@@ -15,10 +15,14 @@ import pandas as pd
 import openpyxl
 import shutil
 from pathlib import Path
-from sentence_transformers import SentenceTransformer
 import faiss
 from copy import copy
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+# Lazy import for SentenceTransformer (takes ~30s to load PyTorch)
+# Import only when model is actually needed, not at module load time
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -56,9 +60,10 @@ def create_dictionary(selections, operation_id: Optional[int] = None):
     all_kr_texts_whole = []
     all_fr_texts_whole = []
 
-    # Load model
+    # Load model (lazy import to avoid slow startup)
     tracker.update(5.0, "Loading Korean BERT model...")
     print("Loading Korean BERT model...", file=sys.stderr)
+    from sentence_transformers import SentenceTransformer
     model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
     tracker.log_milestone("Korean BERT model loaded successfully")
 
@@ -206,6 +211,7 @@ def translate_excel(selections, threshold, operation_id: Optional[int] = None):
 
     tracker.update(5.0, "Loading Korean BERT model...")
     print("Loading model and dictionary...", file=sys.stderr)
+    from sentence_transformers import SentenceTransformer
     model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
 
     tracker.update(10.0, "Loading translation dictionaries...")

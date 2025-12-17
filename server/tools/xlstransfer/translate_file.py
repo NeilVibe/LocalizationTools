@@ -14,8 +14,12 @@ import numpy as np
 import pandas as pd
 import re
 from pathlib import Path
-from sentence_transformers import SentenceTransformer
 import faiss
+from typing import TYPE_CHECKING
+
+# Lazy import for SentenceTransformer (takes ~30s to load PyTorch)
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -62,8 +66,9 @@ def main():
         file_path = sys.argv[1]
         threshold = float(sys.argv[2])
 
-        # Load model
+        # Load model (lazy import to avoid slow startup)
         print("Loading model...", file=sys.stderr)
+        from sentence_transformers import SentenceTransformer
         model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
 
         # Load dictionaries

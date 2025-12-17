@@ -5,12 +5,16 @@ Semantic similarity-based translation matching using FAISS.
 CLEAN, modular functions for finding best translation matches.
 """
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import faiss
-from sentence_transformers import SentenceTransformer
 from loguru import logger
+
+# Lazy import for SentenceTransformer (takes ~30s to load PyTorch)
+# Import only when model is actually needed, not at module load time
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 from server.tools.xlstransfer import config
 from server.tools.xlstransfer.core import clean_text, simple_number_replace
@@ -27,7 +31,7 @@ def find_best_match(
     kr_sentences: pd.Series,
     translation_dict: Dict[str, str],
     threshold: float = None,
-    model: Optional[SentenceTransformer] = None
+    model: Optional["SentenceTransformer"] = None
 ) -> Tuple[str, str, float]:
     """
     Find the best matching translation for a given text.
@@ -106,7 +110,7 @@ def process_batch(
     kr_sentences: pd.Series,
     translation_dict: Dict[str, str],
     threshold: float = None,
-    model: Optional[SentenceTransformer] = None,
+    model: Optional["SentenceTransformer"] = None,
     preserve_codes: bool = True
 ) -> List[Tuple[str, str, float]]:
     """
@@ -159,7 +163,7 @@ def translate_text_multi_mode(
     whole_sentences: Optional[pd.Series],
     whole_dict: Optional[Dict[str, str]],
     threshold: float = None,
-    model: Optional[SentenceTransformer] = None
+    model: Optional["SentenceTransformer"] = None
 ) -> str:
     """
     Translate text using multi-mode matching (whole first, then split fallback).
