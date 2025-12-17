@@ -1,84 +1,98 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-17 22:45 KST
+**Last Updated:** 2025-12-18 01:00 KST
 **Build:** 298 (v25.1217.2220) RELEASED
-**Session:** Ready for CDP Testing
+**Session:** Documentation & Roadmap Update
 
 ---
 
 ## Current State
 
-**Build 298 released and deployed to Playground. Ready for feature verification.**
+**Build 298 stable. Documentation organized. Roadmap updated with future vision.**
 
 | Item | Status |
 |------|--------|
-| Gitea Build | v25.1217.2220 released |
-| GitHub Build | Triggered, running |
-| Playground | Fresh install, ONLINE mode |
+| Build | 298 released |
 | Open Issues | 0 |
+| Playground | Ready, ONLINE mode |
+| CDP Toolkit | Organized |
 
 ---
 
-## Features to Test (CDP)
+## What Was Done This Session
 
-| Feature | Component | Test |
-|---------|-----------|------|
-| **TM Viewer** | LDM → TM Manager → View | Paginated grid, sort, search, inline edit |
-| **TM Confirm** | TM Viewer → Checkmark button | Confirm/unconfirm entries, green highlight |
-| **TM Export** | TM Manager → Download button | TEXT/Excel/TMX formats |
-| **Global Toasts** | Any page during operations | Start/complete/fail notifications |
-| **Metadata Dropdown** | TM Viewer → Metadata column | 7 options (StringID, Confirmed, dates, etc.) |
+### 1. CDP Testing Toolkit Organized
+- Created `testing_toolkit/cdp/README.md` - hub with selectors, navigation map
+- Organized test scripts into `tests/login/`, `tests/navigation/`, `tests/tm-viewer/`
+- Documented WSL2 constraint: cannot access Windows localhost:9222
+- Updated `docs/testing/CDP_TESTING_GUIDE.md` with constraint warning
+
+### 2. Documentation Wiring
+- Updated `CLAUDE.md` with CDP testing links
+- Fixed Documentation section (restored P36, P25, future/, history/)
+- Added "CDP/Playground testing?" to Quick Navigation
+
+### 3. Roadmap Updated with Future Vision
+- **LDM as Mother App** - progressively merge monolith features
+- Already merged: TM Management, Pretranslation, QA, Glossary extraction
+- Future: Legacy Menu for standalone tools (XLS Transfer, QuickSearch, KR Similar)
+- Slimmed down "done" content
 
 ---
 
-## What Was Fixed This Session
+## CDP Testing Toolkit
 
-### Build 298 Content
+**Location:** `testing_toolkit/cdp/` (hub: README.md)
 
-| ID | Description | Files |
-|----|-------------|-------|
-| **BUG-020** | memoQ-style metadata (5 columns, confirm workflow) | models.py, tm_manager.py, api.py, TMViewer.svelte |
-| **FEAT-001** | TM Metadata enhancement (7 dropdown options) | TMViewer.svelte |
-| **BUG-016** | Global Toast Notifications | toastStore.js, GlobalToast.svelte, +layout.svelte |
-| **FEAT-002** | TM Export (TEXT/Excel/TMX) | tm_manager.py, api.py, TMManager.svelte |
-| **FEAT-003** | TM Viewer (paginated, sort, search, inline edit) | TMViewer.svelte, tm_manager.py, api.py |
-| **Fix** | Lazy import SentenceTransformer (server startup hang) | translation.py, process_operation.py, translate_file.py |
+| Script | Purpose |
+|--------|---------|
+| `tests/login/cdp_login.js` | Auto-login |
+| `tests/navigation/quick_check.js` | Page state check |
+| `tests/tm-viewer/check_tm_status.js` | List TMs with status |
+| `tests/tm-viewer/test_tm_viewer_final.js` | TM Viewer & Confirm test |
 
-### memoQ Metadata Columns (BUG-020)
-```
-updated_at      - When entry was last modified
-updated_by      - Who modified it
-confirmed_at    - When entry was confirmed
-confirmed_by    - Who confirmed it
-is_confirmed    - Boolean status
-```
-
-### TM Metadata Options (FEAT-001)
-```
-1. StringID
-2. Confirmed (Yes/No)
-3. Created At
-4. Created By
-5. Updated At
-6. Confirmed At
-7. Confirmed By
+**Critical:** WSL cannot access Windows localhost:9222. Run scripts on Windows via PowerShell:
+```bash
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+  cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
+  node test_tm_viewer_final.js
+"
 ```
 
 ---
 
-## Pipeline Status
+## Build 298 Features (Reference)
 
-| Component | Status |
-|-----------|--------|
-| Standard TM | WORKS |
-| XLS Transfer | WORKS |
-| KR Similar | WORKS |
-| TM Auto-Update | WORKS (incremental) |
-| Task Manager | WORKS (22 operations) |
-| Toast Notifications | WORKS (global) |
-| TM Viewer | WORKS |
-| TM Export | WORKS |
-| memoQ Confirm | WORKS |
+| Feature | Status |
+|---------|--------|
+| TM Viewer (paginated, sort, search) | WORKS |
+| TM Confirm (memoQ-style) | WORKS |
+| TM Export (TEXT/Excel/TMX) | WORKS |
+| Global Toasts | WORKS |
+| Metadata Dropdown (7 options) | WORKS |
+| Task Manager (22 ops) | WORKS |
+
+---
+
+## Future Vision (from Roadmap)
+
+**Goal:** LDM becomes the "mother app" with all features merged from monolith.
+
+```
+Future:
+├── LDM ─────────── Mother app (all features)
+│   ├── TM Management (done)
+│   ├── Pretranslation (done)
+│   ├── QA Checks (done)
+│   ├── Glossary Extraction (done)
+│   ├── Batch Operations (future)
+│   └── Reports & Analytics (future)
+│
+└── Legacy Menu ─── Standalone tools
+    ├── XLS Transfer
+    ├── Quick Search
+    └── KR Similar
+```
 
 ---
 
@@ -88,33 +102,15 @@ is_confirmed    - Boolean status
 Version:  v25.1217.2220
 Path:     C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
 Mode:     ONLINE (PostgreSQL)
-User:     neil (auto-logged in)
 CDP:      http://127.0.0.1:9222
-Size:     3.8G
 ```
 
 ---
 
 ## Next Steps
 
-1. **CDP Testing** - Verify new features work in Playground
-2. **Check GitHub Build** - Wait for completion
-3. **Update docs** - If all features verified
-
----
-
-## Quick Commands
-
-```bash
-# Check Gitea build status
-curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions" | grep -B15 'runs/302'
-
-# Playground install (if needed)
-./scripts/playground_install.sh --launch --auto-login
-
-# Run CDP verification
-# (manual via browser DevTools at http://127.0.0.1:9222)
-```
+1. Run CDP tests to verify Build 298 features
+2. Continue merging monolith features into LDM as needed
 
 ---
 

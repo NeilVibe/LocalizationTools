@@ -1,7 +1,29 @@
 # CDP (Chrome DevTools Protocol) Testing Guide
 
 **Purpose:** Autonomous testing of LocaNext Electron app via Chrome DevTools Protocol
-**Last Updated:** 2025-12-13
+**Last Updated:** 2025-12-17 | **Build:** 298
+
+---
+
+## ⚠️ CRITICAL: WSL2 Network Constraint
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  WSL2 CANNOT ACCESS WINDOWS localhost:9222                                    ║
+║                                                                               ║
+║  ❌ WRONG: Running `node test.js` from WSL                                    ║
+║  ✅ RIGHT: Run via PowerShell on Windows side                                 ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+**All CDP test scripts MUST run on Windows side.** Use PowerShell from WSL:
+
+```bash
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+  cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
+  node test_script.js
+"
+```
 
 ---
 
@@ -14,6 +36,8 @@ CDP allows automated testing of the Electron app without manual interaction. Tes
 - Verify WebSocket events
 - Take screenshots
 
+**Detailed documentation:** [testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md)
+
 ---
 
 ## Quick Start
@@ -21,33 +45,53 @@ CDP allows automated testing of the Electron app without manual interaction. Tes
 ### 1. Start App with CDP Enabled
 
 ```bash
-# From WSL, launch app via PowerShell
+# From WSL, launch Playground app via PowerShell
 /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
-Start-Process 'C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject\\LocaNext\\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'
+  Start-Process 'C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext\LocaNext.exe' -ArgumentList '--remote-debugging-port=9222'
 "
 ```
 
-### 2. Run a Test
+### 2. Run a Test (MUST use PowerShell)
 
 ```bash
-cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
-node test_edit_final.js
+# From WSL - run on Windows side
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+  cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
+  node quick_check.js
+"
 ```
 
 ---
 
-## Test File Location
+## Test Scripts & Toolkit
 
-Test files are stored on Windows for CDP access:
+### CDP Testing Toolkit
+
+Organized test scripts in `testing_toolkit/cdp/`:
+
 ```
-C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\
-├── test_edit_final.js      # BUG-002 lock fix test
-├── test_lock_simple.js     # Simple lock check
-├── check_page.js           # Page state check
-├── find_buttons.js         # DOM button discovery
-├── debug_dom.js            # DOM class analysis
-└── test_ldm_full.js        # Full LDM test suite
+testing_toolkit/cdp/
+├── README.md                          ← Hub with navigation map, selectors
+├── utils/cdp-client.js                ← Reusable CDP client
+└── tests/
+    ├── login/cdp_login.js             ← Auto-login
+    ├── navigation/quick_check.js      ← Page state check
+    └── tm-viewer/
+        ├── check_tm_status.js         ← List TMs with status
+        ├── test_tm_viewer_final.js    ← TM Viewer test
+        └── explore_entries_table.js   ← Debug viewer structure
 ```
+
+### Windows Side Scripts
+
+Test scripts run from `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\`:
+
+| Script | Purpose |
+|--------|---------|
+| `quick_check.js` | Page state, test interfaces |
+| `cdp_login.js` | Auto-login as neil/neil |
+| `check_tm_status.js` | List TMs with status |
+| `test_tm_viewer_final.js` | TM Manager & Viewer test |
 
 ---
 
@@ -265,15 +309,46 @@ This helps correlate frontend actions with backend responses.
 
 ## WSL <-> Windows Considerations
 
-- WSL localhost != Windows localhost
-- CDP runs on Windows (port 9222)
-- Backend runs in WSL (port 8888)
-- App connects to WSL backend via localhost:8888 (works because Docker/WSL networking)
+### Network Architecture
 
-**Run tests from Windows side:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      WINDOWS HOST                           │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  LocaNext.exe (Electron)                            │   │
+│  │  └── CDP: localhost:9222  ←── Only Windows can access│   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                 │
+│                           │ HTTP (works both ways)         │
+│                           ↓                                 │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  WSL2                                               │   │
+│  │  └── Backend: localhost:8888                        │   │
+│  │  └── Test scripts: testing_toolkit/cdp/             │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Constraints
+
+| From | To | Works? |
+|------|-----|--------|
+| WSL | `localhost:8888` (backend) | ✅ Yes |
+| Windows | `localhost:8888` (backend) | ✅ Yes |
+| WSL | `localhost:9222` (CDP) | ❌ **NO** |
+| Windows | `localhost:9222` (CDP) | ✅ Yes |
+
+### Running CDP Tests
+
 ```bash
-# From WSL
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "cd C:\\NEIL_PROJECTS_WINDOWSBUILD\\LocaNextProject; node test.js"
+# WRONG - Won't work from WSL
+node test.js  # Error: ECONNREFUSED 127.0.0.1:9222
+
+# CORRECT - Run on Windows side via PowerShell
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+  cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
+  node test.js
+"
 ```
 
 ---
@@ -357,4 +432,16 @@ This helps correlate frontend actions with backend responses.
 
 ---
 
-*Created: 2025-12-12 | Part of LocaNext testing infrastructure*
+---
+
+## Related Documentation
+
+| Doc | Purpose |
+|-----|---------|
+| [testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md) | CDP toolkit hub with selectors, navigation map |
+| [PLAYGROUND_INSTALL_PROTOCOL.md](PLAYGROUND_INSTALL_PROTOCOL.md) | Install app to Playground |
+| [DEBUG_AND_TEST_HUB.md](DEBUG_AND_TEST_HUB.md) | Master testing guide |
+
+---
+
+*Updated: 2025-12-17 | Build 298 verified | Part of LocaNext testing infrastructure*
