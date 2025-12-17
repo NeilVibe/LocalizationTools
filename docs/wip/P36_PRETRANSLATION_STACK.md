@@ -1,6 +1,6 @@
 # P36: Unified Pretranslation System
 
-**Priority:** P36 | **Status:** Phase 1 COMPLETE ✅, Phase 2 PLANNED | **Created:** 2025-12-16 | **Updated:** 2025-12-17
+**Priority:** P36 | **Status:** ✅ COMPLETE (Build 298) | **Created:** 2025-12-16 | **Updated:** 2025-12-17 22:50 KST
 
 ---
 
@@ -1034,33 +1034,29 @@ BLOCKED BY: BUG-013 (EmbeddingsManager doesn't exist)
 ---
 
 *Created: 2025-12-16*
-*Updated: 2025-12-17 16:30 KST*
+*Updated: 2025-12-17 22:50 KST - All Phase 2E bugs fixed in Build 298*
 
 ## Current Status
 
 **Phase 1:** ✅ COMPLETE - 2,172 E2E tests passed. QWEN+FAISS verified.
 **Phase 2A-D:** ✅ COMPLETE - Excel editing, StringID, API code written
-**Phase 2E:** ❌ CRITICAL - 8 bugs found in code review, pipeline broken
+**Phase 2E:** ✅ COMPLETE - All 8 bugs fixed in Build 298
 
-### Phase 2E Priority Fix Order
+### Phase 2E Fixes (Build 298 - 2025-12-17)
 
 ```
-CRITICAL (Pipeline Crashes - Fix First):
-├── BUG-013: XLS Transfer EmbeddingsManager missing
-├── BUG-017: KR Similar wrong interface
-├── BUG-018: KR Similar search_multi_line missing
-└── BUG-019: KR Similar search_single missing
-
-HIGH (Works but incomplete):
-├── BUG-014: Staleness check
-└── BUG-015: Auto-update before pretranslation
-
-MEDIUM/LOW:
-├── BUG-016: Seamless updates during work
-└── BUG-020: Entry modified tracking
+ALL BUGS FIXED:
+├── BUG-013: XLS Transfer EmbeddingsManager → Created class ✅
+├── BUG-014: Staleness check → Added indexed_at < updated_at ✅
+├── BUG-015: Auto-update → Auto-rebuild when stale ✅
+├── BUG-016: Global Toasts → toastStore + GlobalToast component ✅
+├── BUG-017: KR Similar interface → Added load_tm(tm_id) ✅
+├── BUG-018: KR Similar search_multi_line → Refactored to find_similar() ✅
+├── BUG-019: KR Similar search_single → Refactored to find_similar() ✅
+└── BUG-020: memoQ metadata → 5 columns + confirm workflow ✅
 ```
 
-**Full issue details:** [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md)
+**Full history:** [ISSUES_HISTORY.md](../history/ISSUES_HISTORY.md)
 
 ---
 
