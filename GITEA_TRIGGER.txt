@@ -67,3 +67,4 @@ Build LIGHT - Build 296
 Build LIGHT - Build 296 retry
 Build LIGHT - Security fix + Auto-login
 Build LIGHT - CI fix
+Build LIGHT - Build 297 (BUG-020 memoQ + FEAT-001 TM Viewer + BUG-016 Global Toasts)
