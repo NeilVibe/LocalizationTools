@@ -1,6 +1,6 @@
 # LocaNext - Roadmap & Navigation Hub
 
-**Build:** 296 ✅ | **Updated:** 2025-12-17 02:25 KST | **Status:** 98% Complete | **Open Issues:** 0
+**Build:** 296 ✅ | **Updated:** 2025-12-17 12:00 KST | **Status:** 98% Complete | **Open Issues:** 0
 
 ---
 
@@ -41,9 +41,32 @@ LocaNext v25.1217.0100 (Build 296 released)
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | E2E testing + validation | ✅ **COMPLETE** |
-| Phase 2 | Backend + TM Merge | ✅ **PLANNED** - Ready to implement |
+| Phase 2 | Backend (Unified API + StringID Mode + Excel→TM) | ✅ **DOCUMENTED** |
 | Phase 3 | Pretranslation Modal UI | Pending |
 | Phase 4 | Integration + testing | Pending |
+
+**Phase 2 Key Features:**
+```
+Excel → TM Creation:
+├── Standard Mode: Source + Target (duplicates merged)
+├── StringID Mode: Source + Target + StringID (all variations kept)
+├── Data validation + TM name validation
+└── Right-click Excel → Create TM...
+
+StringID Benefits:
+├── Same source "저장" → multiple targets based on context
+├── UI_BUTTON_SAVE → "Save"
+├── UI_MENU_SAVE → "Save Game"
+└── Pretranslation matches by StringID first, then shows alternatives
+
+Technical: Embeddings for SOURCE only, StringID is metadata in PKL
+```
+
+**API-Dependent Features (FUTURE):** `docs/future/smart-translation/`
+- Smart Translation Pipeline (requires QWEN/Claude API)
+- Dynamic glossary translation
+
+**Details:** [P36_TECHNICAL_DESIGN.md](docs/wip/P36_TECHNICAL_DESIGN.md)
 
 **Phase 1 Complete - E2E Test Results:**
 ```
@@ -159,9 +182,11 @@ docs/
 ├── wip/                      # Active work
 │   ├── SESSION_CONTEXT.md    # ← Last session state
 │   ├── ISSUES_TO_FIX.md      # ← Bug tracker (0 open)
-│   ├── POTENTIAL_ISSUES.md   # ← Future reference
-│   ├── P36_PRETRANSLATION_STACK.md # ← Current work
-│   └── P25_LDM_UX_OVERHAUL.md # ← 85% done
+│   ├── P36_PRETRANSLATION_STACK.md  # ← P36 scope & plan
+│   ├── P36_TECHNICAL_DESIGN.md      # ← P36 technical details (NEW)
+│   └── P25_LDM_UX_OVERHAUL.md       # ← 85% done
+├── future/                   # API-dependent features (NEW)
+│   └── smart-translation/    # ← When API available
 ├── enterprise/               # Company deployment (14 files)
 │   └── HUB.md                # ← Start here for deploy
 ├── history/                  # Archives

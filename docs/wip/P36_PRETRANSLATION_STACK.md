@@ -402,9 +402,39 @@ tests/fixtures/pretranslation/
 └── test_real_patterns.py        # 13 patterns ✅
 ```
 
-### Phase 2: Backend - DETAILED PLAN
+### Phase 2: Backend - IMPLEMENTATION PLAN
 
-#### 2.1 Unified API Endpoint
+---
+
+## What Can Be Done NOW (No External API Required)
+
+P36 focuses on **pretranslation using EXISTING TM data** - matching source text against existing translations. This does NOT require external translation API calls.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    P36 SCOPE (No API Required)                               │
+│                                                                             │
+│  ✅ Standard TM Matching (5-tier cascade)                                   │
+│  ✅ XLS Transfer Engine (proven tool)                                       │
+│  ✅ KR Similar Engine (proven tool)                                         │
+│  ✅ Unified API Endpoint (engine selection)                                 │
+│  ✅ Batch Processing (Celery queue)                                         │
+│  ✅ Data Preprocessing (duplicate filtering)                                │
+│                                                                             │
+│  ❌ Smart Translation Pipeline → FUTURE (requires API)                      │
+│  ❌ Dynamic Glossary Auto-Creation → FUTURE (requires API)                  │
+│  ❌ Character-Based Translation → FUTURE (requires API)                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**API-dependent features are documented in:** `docs/future/smart-translation/`
+
+---
+
+## 📡 PRIORITY 1: Unified Pretranslation API
+
+### 1.1 API Endpoint
 
 **NEW FILE:** `server/api/pretranslate.py`
 
@@ -422,13 +452,13 @@ async def pretranslate_file(
 
 **Source Reference:** `server/api/xlstransfer_async.py:160-189` (background task pattern)
 
-#### 2.2 Engine Selection (Mode Router)
+### 1.2 Engine Selection (Mode Router)
 
 **NEW FILE:** `server/tools/ldm/pretranslate.py`
 
 ```python
 class PretranslationEngine:
-    """Unified pretranslation with engine selection"""
+    """Unified pretranslation with engine selection - uses EXISTING TM data"""
 
     def pretranslate(self, rows, engine: str, dictionary_id: int, threshold: float):
         if engine == "standard":
@@ -444,7 +474,7 @@ class PretranslationEngine:
 - XLS Transfer: `server/tools/xlstransfer/translation.py:24-200`
 - KR Similar: `server/tools/kr_similar/searcher.py:275-450`
 
-#### 2.3 Batch Processing with Queue System
+### 1.3 Batch Processing with Queue System
 
 **EXISTING:** `server/tasks/celery_app.py` (Celery + Redis)
 
@@ -471,75 +501,75 @@ def pretranslate_batch(self, batch_data: dict):
 
 **Source Reference:** `server/tasks/background_tasks.py:84-105` (process_large_batch pattern)
 
-#### 2.4 Smart Translation Upgrade (Standard 5-Tier Enhancement)
+---
 
-**UPGRADE TO:** `server/tools/ldm/tm_indexer.py`
+## 🔧 PRIORITY 2: Data Preprocessing
 
-**New Features from WebTranslatorNew:**
+**SOURCE:** `/home/neil1988/WebTranslatorNew/app/services/glossary/preprocessor.py`
 
-| Feature | Source | Implementation |
-|---------|--------|----------------|
-| Dual Threshold | `WebTranslatorNew/TEXT_SEARCH.md:73-84` | `cascade_threshold=0.92`, `context_threshold=0.49` |
-| Line-Level Embeddings | `WebTranslatorNew/DATA_PREPROCESSING.md:136-181` | `should_create_line_entries()`, `create_line_entries()` |
-| Incremental Updates | `WebTranslatorNew/DATA_PREPROCESSING.md:206-242` | `update_embeddings_incremental()` |
-| N-gram Fallback | `WebTranslatorNew/TEXT_SEARCH.md:57-69` | Tier 5: 1,2,3-word n-grams |
+**Class:** `DataPreprocessor`
 
-**Dual Threshold System:**
+**Why important:** Filter duplicates BEFORE expensive embedding generation.
+
+**Features (NO API required):**
+
+| Feature | Method | What It Does |
+|---------|--------|--------------|
+| Empty cell removal | `_remove_empty_cells()` | Remove rows with blank source/target |
+| Control char cleaning | `_clean_control_characters()` | Remove `_x000D_`, strip whitespace |
+| Duplicate resolution | `_resolve_duplicates()` | Keep most frequent target for duplicate sources |
+| **DB duplicate filter** | `_filter_database_duplicates()` | Skip exact matches BEFORE embedding |
+
+**Database Duplicate Filtering** (KEY FEATURE):
 ```python
-# From WebTranslatorNew/TEXT_SEARCH.md:73-84
-cascade_threshold = 0.92    # High confidence - auto-apply
-context_threshold = 0.49    # Useful guidance - show as suggestion
+# From preprocessor.py:180-228
+def _filter_database_duplicates(self, df, glossary_id):
+    # Get existing source+target pairs
+    existing_entries = GlossaryEntry.query.filter_by(glossary_id=glossary_id).all()
+    existing_pairs = {(entry.source_text.strip(), entry.target_text.strip())
+                      for entry in existing_entries}
 
-# Returns:
-# - primary_matches (>= 92%): Can auto-apply
-# - context_matches (49-92%): Show to user as suggestions
+    # Filter out exact duplicates BEFORE processing
+    mask = df.apply(lambda row: (row['source'], row['target']) not in existing_pairs, axis=1)
+    return df[mask]
 ```
 
-#### 2.5 Dynamic Auto-Glossary Creation
+**Benefit:** 477 entries → 422 exact duplicates filtered → 55 to process (massive speed gain)
 
-**SOURCE:** `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py`
+---
 
-**Key Features:**
-- 13-language support (KOR, ENG, FRA, GER, SPA, ITA, POR, RUS, POL, TUR, THA, JPN, CHS, CHT)
-- Aho-Corasick automaton for O(n) multi-pattern matching
-- Smart filtering rules (max 15 chars, min 2 occurrences, no punctuation)
+## 🔮 FUTURE: Smart Translation (Requires External API)
 
-**NEW FILE:** `server/tools/ldm/glossary_extractor.py`
+**Status:** Documented and ready for when API access is available.
 
-```python
-class GlossaryExtractor:
-    """Extract glossary terms from TM entries"""
+**Location:** `docs/future/smart-translation/`
 
-    def extract_terms(self, tm_entries: List[dict]) -> List[GlossaryTerm]:
-        """
-        1. Filter by rules (from glossary_sniffer_1124.py:42-47)
-        2. Count occurrences
-        3. Build Aho-Corasick automaton
-        4. Return extracted terms with translations
-        """
-```
+**Features (require QWEN/Claude API):**
+- Smart Translation Pipeline (2-stage system)
+- Dynamic Glossary Auto-Creation
+- Character-Based Phased Translation
+- Multi-line Refinement
+- Clustering Optimization
 
-**Source Reference:** `glossary_sniffer_1124.py:83-176` (extract_multilanguage_glossary)
+**Prerequisites:**
+- Translation API access (QWEN MT or Claude)
+- API key configuration
+- Budget for API calls (~$5-50 per 10,000 entries)
 
-#### 2.6 Data Preprocessing Pipeline
+---
 
-**SOURCE:** `WebTranslatorNew/DATA_PREPROCESSING.md`
+## ✅ What We Already Have (DO NOT Re-implement)
 
-```
-Raw Data (Excel/XML/TXT)
-    ↓
-1. Remove Empty Cells
-    ↓
-2. Clean Control Characters (_x000D_ removal)
-    ↓
-3. Resolve Duplicates (majority voting)
-    ↓
-4. Filter Database Duplicates (skip existing)
-    ↓
-Cleaned Data → Embedding Pipeline
-```
+**These features ALREADY EXIST in LocaNext:**
 
-**Integration Point:** `server/tools/ldm/tm_indexer.py` before embedding generation
+| Feature | Location | Status |
+|---------|----------|--------|
+| Dual Threshold (0.92/0.49) | `translation.py:399-400` | ✅ EXISTS |
+| Line-Level Embeddings | `tm_indexer.py:356-398` | ✅ EXISTS |
+| 5-Tier Cascade | `tm_indexer.py` | ✅ EXISTS |
+| N-gram Fallback | `tm_indexer.py` | ✅ EXISTS |
+| FAISS HNSW Index | `tm_indexer.py:40-46` | ✅ EXISTS |
+| Celery Queue System | `server/tasks/celery_app.py` | ✅ EXISTS |
 
 ### Phase 3: UI
 - [ ] Pretranslation modal component
@@ -557,50 +587,26 @@ Cleaned Data → Embedding Pipeline
 
 ## Source Code References
 
-### Queue System (Batch Processing)
+### LocaNext Existing Code (Already Implemented)
 
 | File | Lines | What |
 |------|-------|------|
-| `server/tasks/celery_app.py` | 1-41 | Celery + Redis config |
-| `server/tasks/background_tasks.py` | 84-105 | `process_large_batch()` pattern |
-| `server/api/xlstransfer_async.py` | 160-189 | BackgroundTasks usage |
-| `server/api/kr_similar_async.py` | 399-451 | Async operation pattern |
+| `server/tools/ldm/tm_indexer.py` | 40-46 | FAISS HNSW config (M=32) |
+| `server/tools/ldm/tm_indexer.py` | 356-398 | `_build_line_lookup()` - Line-level embeddings |
+| `server/tools/ldm/tm_indexer.py` | 691 | `DEFAULT_THRESHOLD = 0.92` |
+| `server/tasks/celery_app.py` | 1-41 | Celery + Redis queue (EXISTS) |
+| `server/tools/xlstransfer/translation.py` | 24-200 | XLS Transfer logic (DO NOT MODIFY) |
+| `server/tools/kr_similar/searcher.py` | 275-450 | KR Similar logic (DO NOT MODIFY) |
 
-### Smart Translation
-
-| File | Lines | What |
-|------|-------|------|
-| `server/tools/xlstransfer/translation.py` | 24-96 | `find_best_match()` |
-| `server/tools/xlstransfer/translation.py` | 103-146 | `process_batch()` |
-| `server/tools/xlstransfer/translation.py` | 153-200 | `translate_text_multi_mode()` |
-| `server/tools/kr_similar/searcher.py` | 275-450 | `auto_translate()` |
-| `server/tools/kr_similar/core.py` | 17-89 | `adapt_structure()` |
-
-### Auto-Glossary
-
-| File | Lines | What |
-|------|-------|------|
-| `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py` | 83-176 | `extract_multilanguage_glossary()` |
-| `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py` | 42-47 | Filtering rules |
-| `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py` | 292-316 | Aho-Corasick automaton |
-
-### TM Indexer (5-Tier Cascade)
-
-| File | Lines | What |
-|------|-------|------|
-| `server/tools/ldm/tm_indexer.py` | 40-46 | FAISS HNSW config |
-| `server/tools/ldm/tm_indexer.py` | 49-112 | Normalization functions |
-| `server/tools/ldm/tm_indexer.py` | 115-200 | TMIndexer class |
-| `server/tools/kr_similar/embeddings.py` | 38-127 | EmbeddingsManager |
-
-### WebTranslatorNew Documentation
+### Data Preprocessing (Can Port Now - No API Required)
 
 | File | What |
 |------|------|
-| `RessourcesForCodingTheProject/WebTranslatorNew/TEXT_SEARCH.md` | 5-Tier Cascade, Dual Threshold |
-| `RessourcesForCodingTheProject/WebTranslatorNew/EMBEDDINGS.md` | FAISS HNSW, Batch Embedding |
-| `RessourcesForCodingTheProject/WebTranslatorNew/DATA_PREPROCESSING.md` | Deduplication, Line-Level Processing |
-| `RessourcesForCodingTheProject/WebTranslatorNew/FUZZY_SEARCH.md` | RapidFuzz for target search |
+| `/home/neil1988/WebTranslatorNew/app/services/glossary/preprocessor.py` | `DataPreprocessor` class |
+
+### API-Dependent Features (FUTURE)
+
+See: `docs/future/smart-translation/` for complete documentation when API access is available.
 
 ---
 
@@ -612,16 +618,13 @@ Cleaned Data → Embedding Pipeline
 |------|---------|
 | `server/api/pretranslate.py` | Unified pretranslation API endpoint |
 | `server/tools/ldm/pretranslate.py` | Engine selection + pretranslation logic |
-| `server/tools/ldm/glossary_extractor.py` | Auto-glossary extraction |
-| `server/tools/ldm/data_preprocessor.py` | Data cleaning pipeline |
+| `server/tools/ldm/data_preprocessor.py` | Data cleaning pipeline (optional) |
 | `locaNext/src/lib/components/ldm/PretranslateModal.svelte` | Pretranslation UI |
-| `locaNext/src/lib/components/ldm/GlossaryExtractModal.svelte` | Glossary extraction UI |
 
 ### Existing Files to Update
 
 | File | Changes |
 |------|---------|
-| `server/tools/ldm/tm_indexer.py` | Add dual threshold, line-level embeddings |
 | `server/tasks/background_tasks.py` | Add `pretranslate_batch()` task |
 | `server/api/ldm_async.py` | Register pretranslate router |
 | `server/main.py` | Register new routers |
@@ -640,12 +643,25 @@ Cleaned Data → Embedding Pipeline
 ---
 
 *Created: 2025-12-16*
-*Updated: 2025-12-17 02:45 KST*
+*Updated: 2025-12-17 11:00 KST*
 
 **Phase 1:** COMPLETE - 2,172 E2E tests passed. QWEN+FAISS verified.
-**Phase 2:** PLANNED - Detailed plan with source references added. Ready to implement:
-- Unified API endpoint (`/api/ldm/pretranslate`)
-- Engine selection (Standard/XLS Transfer/KR Similar)
-- Batch processing with Celery queue
-- Smart translation upgrades (dual threshold, line-level embeddings)
-- Auto-glossary extraction (Aho-Corasick)
+**Phase 2:** READY TO IMPLEMENT (No external API required):
+
+```
+PRIORITY 1: Unified Pretranslation API
+├── Engine selection (Standard/XLS Transfer/KR Similar)
+├── Batch processing with Celery (already exists)
+└── Progress tracking via WebSocket
+
+PRIORITY 2: Data Preprocessing
+└── Duplicate filtering BEFORE embedding
+```
+
+**FUTURE (requires external translation API):**
+- Smart Translation Pipeline
+- Dynamic Glossary Auto-Creation
+- Character-Based Translation
+- See: `docs/future/smart-translation/`
+
+**NOTE:** We already have dual threshold, line-level embeddings, 5-tier cascade, FAISS HNSW, Celery queue. DO NOT re-implement.

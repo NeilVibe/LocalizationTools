@@ -309,6 +309,10 @@ When user right-clicks on a file in the File Explorer:
 │  ─────────────────────────────────  │
 │  📚 Upload as TM...                 │
 │     → Opens TM registration modal   │
+│  ─────────────────────────────────  │
+│  📝 Glossary Auto-Creation...       │
+│     → Extract terms & create        │
+│        glossary from this file      │
 └────────────────────────────────────┘
 ```
 
@@ -320,6 +324,7 @@ When user right-clicks on a file in the File Explorer:
 | **Run Full Line Check QA** | Run comprehensive line-level QA on entire file |
 | **Run Full Word Check QA** | Run comprehensive word-level QA on entire file |
 | **Upload as TM** | Register this file as a Translation Memory |
+| **Glossary Auto-Creation** | Extract unique terms from file, create glossary |
 
 ### Upload as TM Flow
 
@@ -393,6 +398,64 @@ TM ready for use
 - Clean, organized list
 - Each task shows: status icon, name, progress bar, details
 - User knows EXACTLY what's happening
+
+### Glossary Auto-Creation Flow (NEW - from QuickSearch/WebTranslatorNew)
+
+**Purpose:** Extract unique terms from a LanguageData file and create a glossary automatically.
+
+**Source:** WebTranslatorNew's Dynamic Glossary Auto-Creation (`glossary_original.py:71-237`)
+
+```
+Right-click → "Glossary Auto-Creation..."
+    ↓
+┌─────────────────────────────────────────────────────────┐
+│              GLOSSARY AUTO-CREATION                      │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  Source File: game_strings_2025.xlsx                   │
+│  Rows: 12,450                                          │
+│                                                         │
+│  ═══ EXTRACTION RULES ═══                              │
+│                                                         │
+│  Max length:    [ 26 ] characters                      │
+│  [ ] Include sentences (ending with . ! ?)             │
+│  [x] Exclude duplicates                                │
+│                                                         │
+│  ═══ OUTPUT ═══                                        │
+│                                                         │
+│  Glossary Name: [ game_strings_glossary            ]   │
+│                                                         │
+│  Preview:                                              │
+│  ┌───────────────────────────────────────────────┐    │
+│  │  Unique terms found: 2,340                     │    │
+│  │  After filtering: 1,892                        │    │
+│  └───────────────────────────────────────────────┘    │
+│                                                         │
+│                        [Cancel]  [Create Glossary]      │
+└─────────────────────────────────────────────────────────┘
+    ↓
+Processing in Tasks panel
+    ↓
+Glossary created and available for TM matching
+```
+
+**How it works (NO external API required):**
+```
+1. Extract all unique source texts from file
+2. Filter by rules (max length, no sentences, etc.)
+3. Check against existing glossaries (skip perfect matches >= 92%)
+4. Create glossary entries with SOURCE TEXT ONLY
+5. Generate embeddings for the glossary (local QWEN model)
+6. Glossary ready for TM matching (source-side)
+```
+
+**NOTE:** Target translation requires external API → see `docs/future/smart-translation/`
+
+**Use Case:**
+- User has a new game file with many unique terms
+- Extract those terms into a glossary (source text only)
+- LATER (when API available): Use Smart Translation to fill in targets
+- Glossary can still be used for similarity matching on source side
 
 ---
 
@@ -1177,6 +1240,25 @@ These are simple checks, not based on TM.
 - [ ] Run Full Line Check QA option
 - [ ] Run Full Word Check QA option
 - [x] Register as TM option ✅ DONE 2025-12-12
+- [ ] Glossary Auto-Creation option (NEW - from WebTranslatorNew)
+
+### Glossary Auto-Creation (NEW - Priority: MEDIUM)
+
+**NOTE:** This feature extracts terms and creates glossary entries (source text only). Translation requires external API - see `docs/future/smart-translation/`.
+
+- [ ] Right-click context menu entry
+- [ ] GlossaryAutoCreateModal.svelte component
+- [ ] Backend: Extract unique terms from file (NO API)
+- [ ] Backend: Filter by rules (max length, no sentences) (NO API)
+- [ ] Backend: Check against existing glossaries (skip >= 92% matches) (NO API)
+- [ ] Backend: Create glossary entries (source only) (NO API)
+- [ ] Backend: Generate embeddings (local QWEN model) (NO API)
+- [ ] Progress tracking in Tasks panel
+
+**What CAN be done now:** Extract + filter + create entries with source text only
+**What requires API:** Auto-translating those entries → see `docs/future/smart-translation/`
+
+**Source:** WebTranslatorNew `glossary_original.py:71-237`
 
 ### Reference Column
 - [x] Create Reference column component ✅ DONE 2025-12-12

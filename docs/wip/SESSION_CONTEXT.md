@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff
 
-**Updated:** 2025-12-17 02:50 KST | **Build:** 296 ✅
+**Updated:** 2025-12-17 12:00 KST | **Build:** 296 ✅
 
 ---
 
@@ -9,11 +9,11 @@
 | Status | Value |
 |--------|-------|
 | **Build** | 296 ✅ (v25.1217.0136) |
-| **Latest Commit** | Pending - Phase 2 detailed plan |
+| **Latest Commit** | Pending - P36 Technical Design complete |
 | **Open Issues** | 0 |
 | **Playground** | ✅ ONLINE (PostgreSQL 172.28.150.120:5432) |
-| **Current** | P36 Phase 2 PLANNED with full source references |
-| **Next** | Implement unified API endpoint + engine selection |
+| **Current** | P36 Phase 2 - FULLY DOCUMENTED, ready to implement |
+| **Next** | Implement Excel→TM flow with Standard/StringID modes |
 
 ---
 
@@ -57,37 +57,94 @@ $jsonContent = $config | ConvertTo-Json
 
 **Verified:** App now connects to PostgreSQL and shows `database_type: postgresql` in health check.
 
-### P36 Phase 2 Detailed Planning ✅
+### P36 Phase 2 - Scope Clarification ✅
 
-**Extracted knowledge from WebTranslatorNew and existing codebase:**
+**IMPORTANT:** Smart Translation features require external translation API (QWEN/Claude) which we don't have access to yet. Those features have been moved to `docs/future/smart-translation/`.
 
-#### 1. Batch Processing - Queue System
-- **Celery + Redis** already exists at `server/tasks/celery_app.py`
-- Pattern: `server/tasks/background_tasks.py:84-105` (`process_large_batch()`)
-- Integration: FastAPI BackgroundTasks at `server/api/xlstransfer_async.py:160-189`
+**P36 CURRENT SCOPE (No API Required):**
 
-#### 2. Smart Translation Upgrades
-- **Dual Threshold System** from WebTranslatorNew:
-  - `cascade_threshold = 0.92` (auto-apply)
-  - `context_threshold = 0.49` (show as suggestion)
-- **Line-Level Embeddings**: `should_create_line_entries()`, `create_line_entries()`
-- **Incremental Updates**: `update_embeddings_incremental()` - don't rebuild from scratch
-- **N-gram Fallback**: Tier 5 with 1,2,3-word n-grams
+```
+✅ Can implement NOW:
+├── Unified Pretranslation API (/api/ldm/pretranslate)
+├── Engine Selection (Standard TM / XLS Transfer / KR Similar)
+├── Batch Processing (Celery queue already exists)
+└── Data Preprocessing (duplicate filtering)
 
-#### 3. Auto-Glossary Creation
-- **Source**: `RessourcesForCodingTheProject/NewScripts/GlossarySniffer/glossary_sniffer_1124.py`
-- **Features**:
-  - 13-language support
-  - Aho-Corasick automaton for O(n) search
-  - Smart filtering (max 15 chars, min 2 occurrences)
+❌ FUTURE (requires external API):
+├── Smart Translation Pipeline
+├── Dynamic Glossary Auto-Creation
+├── Character-Based Translation
+└── See: docs/future/smart-translation/
+```
 
-#### 4. Data Preprocessing Pipeline
-- Remove empty cells
-- Clean control characters (`_x000D_`)
-- Resolve duplicates (majority voting)
-- Filter database duplicates (skip existing)
+#### What We ALREADY Have (DO NOT re-implement)
+
+| Feature | LocaNext Location |
+|---------|-------------------|
+| Dual Threshold (0.92/0.49) | `server/tools/ldm/tm_indexer.py` ✅ EXISTS |
+| Line-Level Embeddings | `server/tools/ldm/tm_indexer.py:356-398` ✅ EXISTS |
+| 5-Tier Cascade | `server/tools/ldm/tm_indexer.py` ✅ EXISTS |
+| FAISS HNSW Index | `server/tools/ldm/tm_indexer.py:40-46` ✅ EXISTS |
+| Celery Queue | `server/tasks/celery_app.py` ✅ EXISTS |
 
 **Full details:** [P36_PRETRANSLATION_STACK.md](P36_PRETRANSLATION_STACK.md)
+
+### P36 Technical Design COMPLETE ✅
+
+**NEW FILE:** `docs/wip/P36_TECHNICAL_DESIGN.md`
+
+Contains full technical specifications for:
+
+**1. Excel → TM Creation:**
+```
+Two Structures Supported:
+├── Standard Mode: Source + Target (general TM, duplicates merged)
+└── StringID Mode: Source + Target + StringID (precise, keeps variations)
+
+User Flow:
+├── Right-click Excel → "Create TM from this file..."
+├── Modal: Name TM, select mode, map columns
+├── Validation: Check data completeness
+└── Process: Background task with progress
+```
+
+**2. StringID Technical Implementation:**
+```
+KEY: Embeddings are for SOURCE only, StringID is metadata
+
+PKL Structure:
+{"저장": [
+    {"target": "Save", "string_id": "UI_BUTTON_SAVE"},
+    {"target": "Save Game", "string_id": "UI_MENU_SAVE"}
+]}
+
+Alignment: len(embeddings) == len(pkl.keys()) ✅
+One Korean → Multiple potential translations
+```
+
+**3. Data Preprocessing (Already Robust):**
+- XLS Transfer: `dropna()`, `clean_text()`, most frequent wins
+- LDM: Filter empty, skip invalid, normalize text
+
+**4. Batch Processing:**
+- Chunked (500 rows) + Multiprocessing (4 workers)
+- Progress via WebSocket
+
+### API-Dependent Features (FUTURE) ✅
+
+All Smart Translation features from WebTranslatorNew are documented and ready for when API access is available:
+
+**Location:** `docs/future/smart-translation/`
+
+**Contents:**
+- `SMART_TRANSLATION_PIPELINE.md` - Complete 2-stage pipeline with source refs
+- `WEBTRANSLATORNEW_REFERENCE.md` - How to navigate WebTranslatorNew source
+
+**Features documented:**
+- Smart Translation Pipeline (cluster preprocessing + character phases)
+- Dynamic Glossary Auto-Creation
+- Multi-line Refinement
+- Clustering Optimization
 
 ---
 
@@ -275,18 +332,27 @@ One edge case documented:
 ## Next Steps
 
 1. **Phase 1 COMPLETE** - All E2E tests passing (2,133 tests) ✅
-2. **Phase 2 PLANNED** - Detailed plan with source references ✅
-3. **NEXT:** Phase 2 Backend implementation
-   - **2.1** Unified API endpoint (`/api/ldm/pretranslate`)
-   - **2.2** Engine selection (Standard TM / XLS Transfer / KR Similar)
-   - **2.3** Batch processing with Celery queue
-   - **2.4** Smart translation upgrades (dual threshold, line-level embeddings)
-   - **2.5** Auto-glossary extraction (Aho-Corasick)
-   - **2.6** Data preprocessing pipeline
-4. **AFTER:** Phase 3 Pretranslation Modal UI
-   - Right-click file → "Pretranslate..."
-   - Engine selection, threshold slider, options
-   - Dual threshold display (primary vs context matches)
+2. **API-Dependent Features → FUTURE** - Moved to `docs/future/smart-translation/`
+3. **NEXT:** Phase 2 Implementation (No external API required):
+
+**PRIORITY 1: Unified Pretranslation API**
+```
+POST /api/ldm/pretranslate
+├── engine: "standard" | "xls_transfer" | "kr_similar"
+├── dictionary_id: int
+├── threshold: float (default 0.92)
+└── skip_existing: bool (default true)
+```
+
+**PRIORITY 2: Data Preprocessing**
+- Duplicate filtering BEFORE embedding
+- Source: WebTranslatorNew `preprocessor.py`
+
+4. **Phase 3:** Pretranslation Modal UI
+
+**FUTURE (when API available):** See `docs/future/smart-translation/`
+
+**REMINDER:** We already have dual threshold, line-level embeddings, 5-tier cascade. Don't re-implement!
 
 ---
 
@@ -324,4 +390,4 @@ python3 tests/fixtures/pretranslation/test_real_patterns.py
 
 ---
 
-*Last: 2025-12-17 02:50 KST - P36 Phase 2 fully planned with source references. Ready to implement unified API, engine selection, batch processing, smart translation upgrades, and auto-glossary.*
+*Last: 2025-12-17 12:00 KST - P36 Technical Design COMPLETE. Excel→TM with Standard/StringID modes fully documented. StringID allows same source→multiple targets (UI context). Embeddings for source only, StringID is metadata in PKL. Data preprocessing already robust (XLS Transfer + LDM). API-dependent features in `docs/future/smart-translation/`.*
