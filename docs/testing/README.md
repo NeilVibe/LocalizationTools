@@ -1,6 +1,6 @@
 # Testing & Debugging Documentation Hub
 
-**Last Updated**: 2025-12-06
+**Last Updated**: 2025-12-17 | **Build:** 298
 
 ---
 
@@ -51,10 +51,16 @@ docs/testing/
 │   └── All methods documented
 │   └── Quick reference commands
 │
-├── 🤖 AUTONOMOUS_WINDOWS_TESTING.md ── CDP + TEST MODE (NEW!)
+├── 📡 CDP_TESTING_GUIDE.md ──── Chrome DevTools Protocol
+│   └── ⚠️ Critical: WSL2 can't access Windows localhost:9222
+│   └── Must run tests on Windows side via PowerShell
+│
+├── 🖥️ PLAYGROUND_INSTALL_PROTOCOL.md ── Playground setup
+│   └── Fresh install, auto-login, CDP enable
+│
+├── 🤖 AUTONOMOUS_WINDOWS_TESTING.md ── CDP + TEST MODE
 │   └── Skips file dialogs automatically
 │   └── window.xlsTransferTest functions
-│   └── Multi-process issue solutions
 │
 ├── ⚡ QUICK_COMMANDS.md ────────── Copy-paste commands only
 │
@@ -68,6 +74,17 @@ docs/testing/
 │   └── VcXsrv setup, DISPLAY export
 │
 └── 🛠️ TOOLS_REFERENCE.md ──────── xdotool, ffmpeg, scrot
+```
+
+**CDP Testing Toolkit** (`testing_toolkit/cdp/`):
+```
+testing_toolkit/cdp/
+├── README.md ──────────────── Hub with selectors, navigation map
+├── utils/cdp-client.js ───── Reusable CDP client
+└── tests/
+    ├── login/ ────────────── Login automation
+    ├── navigation/ ───────── Page state checks
+    └── tm-viewer/ ────────── TM Viewer & Confirm tests
 ```
 
 **Related Docs (outside testing/):**

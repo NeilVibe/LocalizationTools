@@ -14,6 +14,7 @@
 | **Session context?** | [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
 | **Open bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 | **WIP docs?** | [docs/wip/README.md](docs/wip/README.md) |
+| **CDP/Playground testing?** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
 | **Enterprise deploy?** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
 | **All docs?** | [docs/README.md](docs/README.md) |
 
@@ -103,14 +104,20 @@ docs/
 │   ├── ISSUES_TO_FIX.md        ← Bug tracker (0 open)
 │   ├── P36_*.md                ← Pretranslation (complete)
 │   └── P25_LDM_UX_OVERHAUL.md  ← 85% done
+├── testing/              # Test guides
+│   ├── README.md               ← Testing hub
+│   └── CDP_TESTING_GUIDE.md    ← CDP protocol
 ├── future/               # API-dependent features
-│   └── smart-translation/   ← Smart Translation Pipeline
+│   └── smart-translation/
 ├── enterprise/           # Company deployment
-│   └── HUB.md               ← Start here
-├── history/              # Archives
-│   ├── wip-archive/         ← 16 completed P* files
-│   └── ISSUES_HISTORY.md    ← Fixed bugs (59)
-└── [other guides...]
+│   └── HUB.md
+└── history/              # Archives
+    ├── wip-archive/         ← Completed P* files
+    └── ISSUES_HISTORY.md    ← Fixed bugs
+
+testing_toolkit/cdp/      # CDP scripts (run on Windows!)
+├── README.md                ← Selectors, navigation map
+└── tests/                   ← Login, TM Viewer, etc.
 ```
 
 ---
@@ -144,4 +151,4 @@ docs/
 
 ---
 
-*Last updated: 2025-12-17 23:15 KST | Hub file - details in linked docs*
+*Last updated: 2025-12-18 00:30 KST | Hub file - details in linked docs*
