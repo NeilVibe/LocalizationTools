@@ -406,6 +406,196 @@ tests/fixtures/pretranslation/
 
 ---
 
+## 🎯 PHASE 2 CONSOLIDATED IMPLEMENTATION CHECKLIST
+
+**DB Note:** No migration needed - can FULLY REFRESH database.
+
+---
+
+### Excel Support Overview
+
+**Users can work with Excel files in TWO ways:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         EXCEL FILE WORKFLOWS                                 │
+│                                                                             │
+│  1. FILE EDITING (work directly on Excel in LDM grid)                       │
+│     └── Upload Excel → Edit in grid → Export back to Excel                  │
+│     └── Requires: excel_handler.py (NEW)                                    │
+│                                                                             │
+│  2. TM CREATION (create Translation Memory from Excel)                      │
+│     └── Upload Excel → Create TM → Use for pretranslation                  │
+│     └── Requires: tm_manager.py update (EXISTING)                          │
+│                                                                             │
+│  BOTH workflows support:                                                    │
+│  ├── 2-column: Source + Target                                              │
+│  └── 3-column: Source + Target + StringID                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Column Mapping:** User selects which columns are Source, Target, StringID via UI.
+
+---
+
+### Step 0: Excel Handler for File Editing ✅ COMPLETE
+**File:** `server/tools/ldm/file_handlers/excel_handler.py` (CREATED)
+
+- [x] Create `parse_excel_file()` function
+- [x] Support 2-column (Source + Target) structure
+- [x] Support 3-column (Source + Target + StringID) structure
+- [x] Accept column mapping parameters
+- [x] Store extra columns in `extra_data` for reconstruction
+- [x] Update `__init__.py` to export excel_handler
+
+```python
+# NEW: server/tools/ldm/file_handlers/excel_handler.py
+def parse_excel_file(
+    file_content: bytes,
+    filename: str,
+    source_col: int = 0,      # Column A
+    target_col: int = 1,      # Column B
+    stringid_col: int = None  # Column C (optional)
+) -> List[Dict]:
+    """
+    Parse Excel file for LDM editing.
+
+    Structures supported:
+    - 2-column: Source (A) + Target (B)
+    - 3-column: Source (A) + Target (B) + StringID (C)
+
+    Extra columns stored in extra_data for full reconstruction.
+    """
+```
+
+### Step 0.5: Update File Upload API ✅ COMPLETE
+**File:** `server/tools/ldm/api.py`
+
+- [x] Add Excel support to `/files/upload` endpoint
+- [x] Accept column mapping in request (source_col, target_col, stringid_col)
+- [x] Import and use excel_handler
+
+```python
+# UPDATE: server/tools/ldm/api.py upload_file()
+elif ext in ('xlsx', 'xls'):
+    from server.tools.ldm.file_handlers.excel_handler import parse_excel_file, get_file_format, get_source_language, get_file_metadata
+    file_content = await file.read()
+    rows_data = parse_excel_file(file_content, filename, source_col, target_col, stringid_col)
+    file_format = get_file_format()
+    source_lang = get_source_language()
+    file_metadata = get_file_metadata()
+```
+
+---
+
+### Step 1: DB Model Updates ✅ COMPLETE
+**File:** `server/database/models.py`
+**Details:** [P36_TECHNICAL_DESIGN.md Section 0](P36_TECHNICAL_DESIGN.md#0-database-changes-required)
+
+- [x] Add `string_id` column to `LDMTMEntry` (line ~806)
+- [x] Add `mode` column to `LDMTranslationMemory` (line ~769)
+- [x] Add index `idx_ldm_tm_entry_stringid`
+
+```python
+# LDMTMEntry - ADD:
+string_id = Column(String(255), nullable=True, index=True)
+
+# LDMTranslationMemory - ADD:
+mode = Column(String(20), default="standard")  # "standard" or "stringid"
+```
+
+### Step 2: Excel Handler Update ✅ COMPLETE
+**File:** `server/tools/ldm/tm_manager.py`
+**Details:** [P36_TECHNICAL_DESIGN.md Section 0](P36_TECHNICAL_DESIGN.md#excel-handler-update)
+
+- [x] Update `_parse_excel_for_tm()` to accept `stringid_col` parameter
+- [x] Add mode validation (strict for stringid, lenient for standard)
+- [x] Return `string_id` in entry dict
+
+```python
+def _parse_excel_for_tm(self, file_content, filename,
+                        source_col=0, target_col=1,
+                        stringid_col=None,  # NEW
+                        mode="standard"):   # NEW
+```
+
+### Step 3: PKL Builder Update (Variations Structure) ✅ COMPLETE
+**File:** `server/tools/ldm/tm_indexer.py`
+**Details:** [P36_TECHNICAL_DESIGN.md Section 2](P36_TECHNICAL_DESIGN.md#2-stringid-handling-in-embeddings)
+
+- [x] Update `_build_whole_lookup()` for variations structure
+- [x] Support `{source: {variations: [{target, string_id}, ...]}}` format
+- [x] Keep backward compatibility for standard mode
+- [x] Update `_build_line_lookup()` to include string_id
+- [x] Update `_build_whole_embeddings()` mapping to include string_id
+- [x] Update `_build_line_embeddings()` mapping to include string_id
+- [x] Update `build_indexes()` entry_list to fetch string_id from DB
+- [x] Update TMSearcher.search() to handle variations structure
+
+**Verified:** PKL files now contain StringID metadata and variations for same source text!
+
+### Step 4: Pretranslate API ✅ COMPLETE
+**Files:**
+- `server/tools/ldm/pretranslate.py` (NEW)
+- `server/tools/ldm/api.py` (updated)
+
+- [x] Create unified `/api/ldm/pretranslate` endpoint
+- [x] Engine selection (standard/xls_transfer/kr_similar)
+- [x] PretranslationEngine class with three engines
+- [x] Fixed TMIndexer.load_indexes() for optional line indexes
+
+### Step 5: TM Creation API Update ✅ COMPLETE
+**File:** `server/tools/ldm/api.py`
+
+- [x] Update TM upload endpoint to accept `mode` parameter
+- [x] Accept column mapping (source_col, target_col, stringid_col)
+- [x] Pass to `TMManager.upload_tm()`
+
+### Step 6: Frontend Modal
+**Files:**
+- `locaNext/src/lib/components/ldm/CreateTMModal.svelte` (NEW)
+- `locaNext/src/lib/components/ldm/PretranslateModal.svelte` (NEW)
+
+**Details:** [P36_TECHNICAL_DESIGN.md Section 3](P36_TECHNICAL_DESIGN.md#3-excel-to-tm-creation-flow)
+
+- [ ] TM Creation Modal with mode selection
+- [ ] Column mapping UI (Source, Target, StringID dropdowns)
+- [ ] Data validation display
+- [ ] Pretranslation Modal with engine selection
+
+### Implementation Order
+
+```
+PHASE 2A: Excel File Editing Support ✅ COMPLETE
+═════════════════════════════════════════════════
+0.  Excel Handler       → NEW excel_handler.py for file editing ✅
+0.5 File Upload API     → Add Excel to /files/upload endpoint ✅
+0.6 Upload Modal UI     → Column mapping for Excel uploads (⏳ Future)
+
+PHASE 2B: TM StringID Support ✅ COMPLETE
+═════════════════════════════════════════════════
+1. DB Models            → Add string_id + mode columns ✅
+2. TM Excel Handler     → Update tm_manager.py for StringID ✅
+3. TM API Updates       → Accept mode + columns ✅
+4. db_utils Update      → bulk_copy_tm_entries with string_id ✅
+5. TM Upload API        → /tm/upload with mode, stringid_col ✅
+
+PHASE 2C: Pretranslation ✅ COMPLETE
+═════════════════════════════════════════════════
+6. Pretranslate API     → /api/ldm/pretranslate ✅
+7. TMIndexer Fix        → Optional line indexes ✅
+8. Testing              → 4/5 rows matched ✅
+
+PHASE 2D: Frontend (⏳ Future)
+═════════════════════════════════════════════════
+9. Pretranslate Modal   → UI for pretranslation
+10. TM Creation Modal   → Mode selection UI
+11. Column Mapping UI   → Excel column selection
+```
+
+---
+
 ## What Can Be Done NOW (No External API Required)
 
 P36 focuses on **pretranslation using EXISTING TM data** - matching source text against existing translations. This does NOT require external translation API calls.
@@ -632,6 +822,206 @@ See: `docs/future/smart-translation/` for complete documentation when API access
 
 ---
 
+## 🔴 CRITICAL: Full Code Review Findings (2025-12-17 16:30 KST)
+
+### Pipeline Status Summary
+
+| Engine | Status | What Happens |
+|--------|--------|--------------|
+| **Standard TM** | ✅ WORKS | Pipeline functions, missing staleness check |
+| **XLS Transfer** | ❌ BROKEN | CRASHES on import - EmbeddingsManager missing |
+| **KR Similar** | ❌ BROKEN | CRASHES - wrong interface + missing methods |
+
+### All 8 Issues Found
+
+**CRITICAL (Pipeline Crashes):**
+1. **BUG-013:** XLS Transfer `EmbeddingsManager` class doesn't exist
+2. **BUG-017:** KR Similar `load_dictionary(dict_type: str)` takes STRING not INT
+3. **BUG-018:** KR Similar `search_multi_line()` method doesn't exist
+4. **BUG-019:** KR Similar `search_single()` method doesn't exist
+
+**HIGH (Missing Features):**
+5. **BUG-014:** No staleness check (indexed_at vs updated_at comparison)
+6. **BUG-015:** No automatic update before pretranslation
+
+**MEDIUM/LOW:**
+7. **BUG-016:** No seamless updates when TM modified during active use
+8. **BUG-020:** No TM entry updated_at tracking
+
+### The Core Problem
+
+When user selects a TM for pretranslation (right-click → Pretranslate → Select TM → Select Mode → OK):
+- XLS Transfer mode → CRASH (EmbeddingsManager doesn't exist)
+- KR Similar mode → CRASH (wrong method signatures)
+- Standard TM → Works but may use stale embeddings
+
+### Required Embedding Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      TM EMBEDDING STATE MACHINE                                  │
+│                                                                                 │
+│   Each TM has:                                                                  │
+│   ├── name: "BDO_EN_Main"                                                       │
+│   ├── mode: "standard" | "stringid"                                             │
+│   ├── entry_count: 45230                                                        │
+│   ├── last_modified_at: 2025-12-17 14:30:00     ← When TM content changed      │
+│   ├── embedding_built_at: 2025-12-17 10:00:00   ← When embeddings last built   │
+│   └── embedding_version: "v1.2.3-qwen"          ← Model version used           │
+│                                                                                 │
+│   STATE CHECK:                                                                  │
+│   ├── IF embedding_built_at IS NULL → NO EMBEDDINGS (build required)           │
+│   ├── IF last_modified_at > embedding_built_at → STALE (rebuild needed)        │
+│   └── IF last_modified_at <= embedding_built_at → UP-TO-DATE (proceed)         │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Automatic Update Behavior
+
+**For Pretranslation (CRITICAL - must have up-to-date TM):**
+
+```
+User clicks "Pretranslate" with TM selected
+    │
+    ├── Check: Does TM have embeddings?
+    │   ├── NO → Show warning "First time setup, this may take X minutes"
+    │   │        → Build embeddings with progress bar
+    │   │        → Then proceed with pretranslation
+    │   │
+    │   └── YES → Check: Is TM modified since embeddings built?
+    │             ├── YES (STALE) → Auto-rebuild silently OR with brief notice
+    │             │                 → Then proceed with pretranslation
+    │             └── NO (UP-TO-DATE) → Proceed immediately
+```
+
+**For Active TM Use (Seamless Updates):**
+
+```
+TM selected for active use in LDM
+    │
+    ├── User adds/edits/deletes TM entries
+    │   └── Mark TM as "dirty" (last_modified_at = now)
+    │
+    ├── OPTION A: Immediate rebuild (may be slow)
+    ├── OPTION B: Debounced rebuild (wait 5s after last edit, then rebuild)
+    └── OPTION C: Lazy rebuild (rebuild on next query) ← RECOMMENDED
+```
+
+**Recommended Approach:** Option C (Lazy rebuild) for performance
+- Mark TM as dirty on modification
+- Rebuild only when embeddings are actually needed
+- Show "Updating TM..." indicator if rebuild happens during query
+
+### Database Changes Required
+
+```sql
+-- Add to LDMTranslationMemory table
+ALTER TABLE ldm_translation_memories ADD COLUMN embedding_built_at TIMESTAMP NULL;
+ALTER TABLE ldm_translation_memories ADD COLUMN embedding_version VARCHAR(50) NULL;
+-- last_modified_at already exists via SQLAlchemy updated_at
+```
+
+### Implementation Checklist
+
+**Phase 2E: Fix Pretranslation Pipeline (8 BUGS)**
+
+```
+PRIORITY 1 - CRITICAL (Pipeline Crashes):
+═════════════════════════════════════════
+
+[ ] BUG-013: Create XLS Transfer EmbeddingsManager
+    └── server/tools/xlstransfer/embeddings.py
+    └── Add EmbeddingsManager class with:
+        ├── load_tm(tm_id: int) - Load TM from PostgreSQL
+        ├── split_index, split_sentences, split_dict
+        ├── whole_index, whole_sentences, whole_dict
+        └── model (SentenceTransformer)
+
+[ ] BUG-017: Fix KR Similar interface
+    └── server/tools/kr_similar/embeddings.py
+    └── Add load_tm(tm_id: int) method to EmbeddingsManager
+    └── Current takes dict_type: str ("BDO", "BDM", etc.)
+    └── Need to accept TM ID from database
+
+[ ] BUG-018: Add KR Similar search_multi_line()
+    └── server/tools/kr_similar/searcher.py
+    └── Either: Add search_multi_line() method
+    └── OR: Refactor pretranslate.py to use existing auto_translate()
+
+[ ] BUG-019: Add KR Similar search_single()
+    └── server/tools/kr_similar/searcher.py
+    └── Either: Add search_single() method
+    └── OR: Refactor pretranslate.py to use existing find_similar()
+
+PRIORITY 2 - HIGH (Missing Features):
+═════════════════════════════════════════
+
+[ ] BUG-014: Add embedding staleness check
+    └── server/tools/ldm/pretranslate.py:130-141
+    └── Compare tm.indexed_at vs tm.updated_at
+    └── If indexed_at < updated_at: rebuild indexes
+
+[ ] BUG-015: Auto-update before pretranslation
+    └── server/tools/ldm/pretranslate.py
+    └── Check state before routing to any engine
+    └── Build/rebuild if needed with progress reporting
+    └── First-time warning for large TMs
+
+PRIORITY 3 - MEDIUM/LOW:
+═════════════════════════════════════════
+
+[ ] BUG-016: Seamless updates during work
+    └── server/tools/ldm/tm_manager.py
+    └── Mark TM dirty on add/edit/delete
+    └── Lazy rebuild on next query (recommended)
+
+[ ] BUG-020: TM entry modified tracking (optional)
+    └── server/database/models.py
+    └── Add updated_at to LDMTMEntry
+    └── For future incremental indexing
+```
+
+### Local Storage for Embeddings
+
+```
+server/data/ldm_tm/
+├── tm_{id}/                      # Per-TM directory
+│   ├── whole_lookup.pkl          # {source: variations} mapping
+│   ├── whole_embeddings.npy      # Embeddings array
+│   ├── line_lookup.pkl           # Line-level lookup
+│   ├── line_embeddings.npy       # Line embeddings
+│   └── metadata.json             # Build info: timestamp, version, entry_count
+```
+
+---
+
+## 🧪 TRUE E2E Test Clarification (2025-12-17)
+
+### What We Tested vs What's Needed
+
+| Test | What It Tests | Status |
+|------|---------------|--------|
+| `true_e2e_standard.py` | Standard TM via PretranslationEngine.pretranslate() | ✅ 6/6 passed |
+| `true_e2e_xls_transfer.py` | **ISOLATED** XLS Transfer logic (translate_text_multi_mode) | ✅ 7/7 passed |
+| | NOT the full LDM pipeline with EmbeddingsManager | ⚠️ NOT TESTED |
+
+### Full Pipeline E2E Still Needed
+
+```
+TRUE Pipeline E2E (NOT YET TESTED):
+├── Right-click file → Pretranslate
+├── Select TM (e.g., BDO_EN_Main)
+├── Select Mode (XLS Transfer)
+├── System auto-checks/builds embeddings
+├── Runs _pretranslate_xls_transfer() via EmbeddingsManager
+└── Verifies codes preserved in result
+
+BLOCKED BY: BUG-013 (EmbeddingsManager doesn't exist)
+```
+
+---
+
 ## Success Criteria
 
 1. **Standard mode:** Matches existing 5-tier behavior
@@ -639,24 +1029,179 @@ See: `docs/future/smart-translation/` for complete documentation when API access
 3. **KR Similar mode:** Structure maintained in 95%+ of cases
 4. **Threshold 92%:** Achieves >90% acceptable translations
 5. **Performance:** <2 minutes for 10,000 rows
+6. **Embedding State:** Auto-update works seamlessly before pretranslation ← NEW
 
 ---
 
 *Created: 2025-12-16*
-*Updated: 2025-12-17 11:00 KST*
+*Updated: 2025-12-17 16:30 KST*
 
-**Phase 1:** COMPLETE - 2,172 E2E tests passed. QWEN+FAISS verified.
-**Phase 2:** READY TO IMPLEMENT (No external API required):
+## Current Status
+
+**Phase 1:** ✅ COMPLETE - 2,172 E2E tests passed. QWEN+FAISS verified.
+**Phase 2A-D:** ✅ COMPLETE - Excel editing, StringID, API code written
+**Phase 2E:** ❌ CRITICAL - 8 bugs found in code review, pipeline broken
+
+### Phase 2E Priority Fix Order
 
 ```
-PRIORITY 1: Unified Pretranslation API
-├── Engine selection (Standard/XLS Transfer/KR Similar)
-├── Batch processing with Celery (already exists)
-└── Progress tracking via WebSocket
+CRITICAL (Pipeline Crashes - Fix First):
+├── BUG-013: XLS Transfer EmbeddingsManager missing
+├── BUG-017: KR Similar wrong interface
+├── BUG-018: KR Similar search_multi_line missing
+└── BUG-019: KR Similar search_single missing
 
-PRIORITY 2: Data Preprocessing
-└── Duplicate filtering BEFORE embedding
+HIGH (Works but incomplete):
+├── BUG-014: Staleness check
+└── BUG-015: Auto-update before pretranslation
+
+MEDIUM/LOW:
+├── BUG-016: Seamless updates during work
+└── BUG-020: Entry modified tracking
 ```
+
+**Full issue details:** [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md)
+
+---
+
+## Progress Tracking System (EXISTS)
+
+**Location:** `server/utils/progress_tracker.py`
+
+Progress tracking is **already implemented** with:
+- `TrackedOperation` context manager
+- DB-backed (`active_operations` table)
+- WebSocket real-time updates to UI
+
+```python
+# How to use in pretranslation:
+with TrackedOperation("Pretranslation", user_id, tool_name="LDM") as op:
+    op.update(10, "Loading TM indexes...")
+    op.update(30, "Building embeddings...")
+    op.update(50, "Translating rows...")
+    op.update(100, "Complete")
+# Auto-completes on exit, auto-fails on exception
+```
+
+**UI Behavior:** All long-running operations (pretranslation, TM indexing, embedding updates) should **BLOCK the UI** until complete. Use the existing progress tracking system.
+
+---
+
+## TM Metadata Requirements (memoQ-style)
+
+### Current Schema (LDMTMEntry)
+
+```python
+# Already exists:
+source_text = Column(Text)
+target_text = Column(Text)
+string_id = Column(String(255))
+source_hash = Column(String(64))
+created_by = Column(String(255))  # From TMX creationid
+change_date = Column(DateTime)     # From TMX changedate
+created_at = Column(DateTime)
+```
+
+### Additional Metadata (FUTURE - memoQ-style)
+
+```python
+# To add for full memoQ-like TM:
+confirmed_by = Column(String(255))      # WHO confirmed the translation
+confirmed_at = Column(DateTime)          # WHEN confirmed
+project_name = Column(String(255))       # For what PROJECT
+context = Column(Text)                   # Context/notes
+domain = Column(String(100))             # Domain/category
+client = Column(String(255))             # Client name
+status = Column(String(50))              # draft/confirmed/reviewed
+quality_score = Column(Float)            # Optional quality rating
+```
+
+### TM Viewer Display
+
+Like memoQ TM Viewer, show:
+- Source | Target | StringID
+- Created by | Created at
+- Confirmed by | Confirmed at
+- Project | Domain | Client
+- (User can choose which columns to display)
+
+---
+
+## TM Export Options
+
+### Export Formats
+
+| Format | Extension | Description |
+|--------|-----------|-------------|
+| **TEXT** | `.txt` | Tab-separated values (TSV) |
+| **Excel** | `.xlsx` | Excel spreadsheet |
+| **TMX** | `.tmx` | Translation Memory eXchange (standard) |
+
+### Column Selection
+
+**Base columns (always included):**
+- Source
+- Target
+- StringID (if available)
+
+**Optional metadata columns (user selects):**
+- Created by
+- Created at
+- Confirmed by
+- Confirmed at
+- Project
+- Domain
+- Client
+- Context
+- Quality score
+
+### Export Modal UI
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         EXPORT TM                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  TM: BDO_EN_Main (45,230 entries)                                      │
+│                                                                         │
+│  ═══ FORMAT ═══                                                         │
+│                                                                         │
+│  ● TEXT (Tab-separated .txt)                                            │
+│  ○ Excel (.xlsx)                                                        │
+│  ○ TMX (.tmx)                                                           │
+│                                                                         │
+│  ═══ COLUMNS ═══                                                        │
+│                                                                         │
+│  [x] Source (required)                                                  │
+│  [x] Target (required)                                                  │
+│  [x] StringID                                                           │
+│  [ ] Created by                                                         │
+│  [ ] Created at                                                         │
+│  [ ] Confirmed by                                                       │
+│  [ ] Project                                                            │
+│  [ ] Domain                                                             │
+│                                                                         │
+│                           [Cancel]  [Export]                            │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## UI Blocking During Long Operations
+
+**Policy:** All embedding/indexing operations BLOCK the UI until complete.
+
+| Operation | Blocking | Progress |
+|-----------|----------|----------|
+| TM index build (first time) | YES | Show progress modal |
+| TM index rebuild (stale) | YES | Show "Updating TM..." |
+| Pretranslation | YES | Show row-by-row progress |
+| TM export | YES | Show progress |
+| File upload | YES | Show progress |
+
+**Implementation:** Use `TrackedOperation` context manager with WebSocket updates.
+
+---
 
 **FUTURE (requires external translation API):**
 - Smart Translation Pipeline

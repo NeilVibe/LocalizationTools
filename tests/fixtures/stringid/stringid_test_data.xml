@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <LocStr StringId="UI_BUTTON_SAVE" StrOrigin="저장" Str="Save" />
+    <LocStr StringId="UI_MENU_SAVE" StrOrigin="저장" Str="Save Game" />
+    <LocStr StringId="TECH_STORAGE" StrOrigin="저장" Str="Storage" />
+    <LocStr StringId="UI_MENU_SETTINGS" StrOrigin="설정" Str="Settings" />
+    <LocStr StringId="TECH_CONFIG" StrOrigin="설정" Str="Configuration" />
+    <LocStr StringId="UI_BUTTON_OK" StrOrigin="확인" Str="OK" />
+    <LocStr StringId="UI_BUTTON_CONFIRM" StrOrigin="확인" Str="Confirm" />
+    <LocStr StringId="UI_BUTTON_OPEN" StrOrigin="열기" Str="Open" />
+    <LocStr StringId="UI_MENU_OPEN_FILE" StrOrigin="열기" Str="Open File" />
+    <LocStr StringId="UI_BUTTON_CANCEL" StrOrigin="취소" Str="Cancel" />
+    <LocStr StringId="ITEM_DESC_001" StrOrigin="&lt;PAColor0xffe9bd23&gt;아이템 설명&lt;/PAOldColor&gt;" Str="&lt;PAColor0xffe9bd23&gt;Item Description&lt;/PAOldColor&gt;" />
+    <LocStr StringId="ITEM_DESC_002" StrOrigin="&lt;PAColor0xffe9bd23&gt;아이템 설명&lt;/PAOldColor&gt;" Str="&lt;PAColor0xffe9bd23&gt;Item Info&lt;/PAOldColor&gt;" />
+    <LocStr StringId="NPC_DIALOGUE_001" StrOrigin="&lt;PAColor0xff0000&gt;경고!&lt;/PAOldColor&gt; 위험합니다" Str="&lt;PAColor0xff0000&gt;Warning!&lt;/PAOldColor&gt; Danger ahead" />
+    <LocStr StringId="MULTI_COLOR_001" StrOrigin="&lt;PAColor0xff0000&gt;빨강&lt;/PAOldColor&gt; &lt;PAColor0x00ff00&gt;초록&lt;/PAOldColor&gt;" Str="&lt;PAColor0xff0000&gt;Red&lt;/PAOldColor&gt; &lt;PAColor0x00ff00&gt;Green&lt;/PAOldColor&gt;" />
+    <LocStr StringId="KEYBIND_RMB" StrOrigin="{TextBind:CLICK_ON_RMB_ONLY}를 눌러 공격" Str="Press {TextBind:CLICK_ON_RMB_ONLY} to attack" />
+    <LocStr StringId="KEYBIND_RMB_ALT" StrOrigin="{TextBind:CLICK_ON_RMB_ONLY}를 눌러 공격" Str="{TextBind:CLICK_ON_RMB_ONLY} for attack" />
+    <LocStr StringId="KEYBIND_INTERACT" StrOrigin="{TextBind:INTERACT}로 상호작용" Str="{TextBind:INTERACT} to interact" />
+    <LocStr StringId="MULTI_BIND_001" StrOrigin="{TextBind:ATTACK} 공격, {TextBind:DEFEND} 방어" Str="{TextBind:ATTACK} attack, {TextBind:DEFEND} defend" />
+    <LocStr StringId="MULTILINE_001" StrOrigin="첫 번째 줄
+두 번째 줄" Str="First line
+Second line" />
+    <LocStr StringId="MULTILINE_002" StrOrigin="첫 번째 줄
+두 번째 줄" Str="Line 1
+Line 2" />
+    <LocStr StringId="MULTILINE_COMPLEX" StrOrigin="제목
+
+본문 내용
+끝" Str="Title
+
+Body content
+End" />
+    <LocStr StringId="COMPLEX_001" StrOrigin="&lt;PAColor0xffe9bd23&gt;{TextBind:INTERACT}&lt;/PAOldColor&gt;를 눌러
+상호작용" Str="Press &lt;PAColor0xffe9bd23&gt;{TextBind:INTERACT}&lt;/PAOldColor&gt;
+to interact" />
+    <LocStr StringId="COMPLEX_002" StrOrigin="&lt;Scale:1.2&gt;&lt;PAColor0xff0000&gt;경고&lt;/PAOldColor&gt;&lt;/Scale&gt;
+{TextBind:ESCAPE}로 취소" Str="&lt;Scale:1.2&gt;&lt;PAColor0xff0000&gt;Warning&lt;/PAOldColor&gt;&lt;/Scale&gt;
+{TextBind:ESCAPE} to cancel" />
+    <LocStr StringId="KRSIM_001" StrOrigin="▶첫 번째 줄
+▶두 번째 줄" Str="▶First line
+▶Second line" />
+    <LocStr StringId="KRSIM_002" StrOrigin="▶첫 번째 줄
+▶두 번째 줄" Str="▶Line one
+▶Line two" />
+    <LocStr StringId="KRSIM_SCALE" StrOrigin="▶&lt;Scale:1.2&gt;큰 텍스트&lt;/Scale&gt;" Str="▶&lt;Scale:1.2&gt;Large text&lt;/Scale&gt;" />
+    <LocStr StringId="KRSIM_COLOR" StrOrigin="▶&lt;PAColor0xff0000&gt;빨간 텍스트&lt;/PAOldColor&gt;" Str="▶&lt;PAColor0xff0000&gt;Red text&lt;/PAOldColor&gt;" />
+    <LocStr StringId="XLS_CODE_START" StrOrigin="&lt;PAColor0xff0000&gt;아이템&lt;/PAOldColor&gt; 획득" Str="&lt;PAColor0xff0000&gt;Item&lt;/PAOldColor&gt; obtained" />
+    <LocStr StringId="XLS_CODE_MIDDLE" StrOrigin="당신은 &lt;PAColor0xff0000&gt;영웅&lt;/PAOldColor&gt;입니다" Str="You are a &lt;PAColor0xff0000&gt;hero&lt;/PAOldColor&gt;" />
+    <LocStr StringId="XLS_MULTI_CODE" StrOrigin="&lt;PAColor0xff0000&gt;빨강&lt;/PAOldColor&gt;과 &lt;PAColor0x00ff00&gt;초록&lt;/PAOldColor&gt;" Str="&lt;PAColor0xff0000&gt;Red&lt;/PAOldColor&gt; and &lt;PAColor0x00ff00&gt;Green&lt;/PAOldColor&gt;" />
+    <LocStr StringId="XLS_X000D" StrOrigin="첫줄_x000D_
+둘째줄" Str="First_x000D_
+Second" />
+    <LocStr StringId="한글ID_001" StrOrigin="테스트" Str="Test" />
+    <LocStr StringId="EMPTY_TARGET" StrOrigin="빈 타겟" Str="" />
+    <LocStr StringId="SHORT_001" StrOrigin="예" Str="Yes" />
+    <LocStr StringId="LONG_001" StrOrigin="이것은 매우 긴 소스 텍스트입니다. 여러 문장이 포함되어 있습니다. 테스트를 위한 긴 텍스트입니다." Str="This is a very long source text. It contains multiple sentences. Long text for testing." />
+</LanguageData>

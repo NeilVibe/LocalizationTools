@@ -1,0 +1,55 @@
+0	UI_BUTTON_SAVE	0	0	1	저장	Save	Current
+0	UI_MENU_SAVE	0	0	1	저장	Save Game	Current
+0	TECH_STORAGE	0	0	1	저장	Storage	Current
+0	UI_MENU_SETTINGS	0	0	1	설정	Settings	Current
+0	TECH_CONFIG	0	0	1	설정	Configuration	Current
+0	UI_BUTTON_OK	0	0	1	확인	OK	Current
+0	UI_BUTTON_CONFIRM	0	0	1	확인	Confirm	Current
+0	UI_BUTTON_OPEN	0	0	1	열기	Open	Current
+0	UI_MENU_OPEN_FILE	0	0	1	열기	Open File	Current
+0	UI_BUTTON_CANCEL	0	0	1	취소	Cancel	Current
+0	ITEM_DESC_001	0	0	1	<PAColor0xffe9bd23>아이템 설명</PAOldColor>	<PAColor0xffe9bd23>Item Description</PAOldColor>	Current
+0	ITEM_DESC_002	0	0	1	<PAColor0xffe9bd23>아이템 설명</PAOldColor>	<PAColor0xffe9bd23>Item Info</PAOldColor>	Current
+0	NPC_DIALOGUE_001	0	0	1	<PAColor0xff0000>경고!</PAOldColor> 위험합니다	<PAColor0xff0000>Warning!</PAOldColor> Danger ahead	Current
+0	MULTI_COLOR_001	0	0	1	<PAColor0xff0000>빨강</PAOldColor> <PAColor0x00ff00>초록</PAOldColor>	<PAColor0xff0000>Red</PAOldColor> <PAColor0x00ff00>Green</PAOldColor>	Current
+0	KEYBIND_RMB	0	0	1	{TextBind:CLICK_ON_RMB_ONLY}를 눌러 공격	Press {TextBind:CLICK_ON_RMB_ONLY} to attack	Current
+0	KEYBIND_RMB_ALT	0	0	1	{TextBind:CLICK_ON_RMB_ONLY}를 눌러 공격	{TextBind:CLICK_ON_RMB_ONLY} for attack	Current
+0	KEYBIND_INTERACT	0	0	1	{TextBind:INTERACT}로 상호작용	{TextBind:INTERACT} to interact	Current
+0	MULTI_BIND_001	0	0	1	{TextBind:ATTACK} 공격, {TextBind:DEFEND} 방어	{TextBind:ATTACK} attack, {TextBind:DEFEND} defend	Current
+0	MULTILINE_001	0	0	1	첫 번째 줄
+두 번째 줄	First line
+Second line	Current
+0	MULTILINE_002	0	0	1	첫 번째 줄
+두 번째 줄	Line 1
+Line 2	Current
+0	MULTILINE_COMPLEX	0	0	1	제목
+
+본문 내용
+끝	Title
+
+Body content
+End	Current
+0	COMPLEX_001	0	0	1	<PAColor0xffe9bd23>{TextBind:INTERACT}</PAOldColor>를 눌러
+상호작용	Press <PAColor0xffe9bd23>{TextBind:INTERACT}</PAOldColor>
+to interact	Current
+0	COMPLEX_002	0	0	1	<Scale:1.2><PAColor0xff0000>경고</PAOldColor></Scale>
+{TextBind:ESCAPE}로 취소	<Scale:1.2><PAColor0xff0000>Warning</PAOldColor></Scale>
+{TextBind:ESCAPE} to cancel	Current
+0	KRSIM_001	0	0	1	▶첫 번째 줄
+▶두 번째 줄	▶First line
+▶Second line	Current
+0	KRSIM_002	0	0	1	▶첫 번째 줄
+▶두 번째 줄	▶Line one
+▶Line two	Current
+0	KRSIM_SCALE	0	0	1	▶<Scale:1.2>큰 텍스트</Scale>	▶<Scale:1.2>Large text</Scale>	Current
+0	KRSIM_COLOR	0	0	1	▶<PAColor0xff0000>빨간 텍스트</PAOldColor>	▶<PAColor0xff0000>Red text</PAOldColor>	Current
+0	XLS_CODE_START	0	0	1	<PAColor0xff0000>아이템</PAOldColor> 획득	<PAColor0xff0000>Item</PAOldColor> obtained	Current
+0	XLS_CODE_MIDDLE	0	0	1	당신은 <PAColor0xff0000>영웅</PAOldColor>입니다	You are a <PAColor0xff0000>hero</PAOldColor>	Current
+0	XLS_MULTI_CODE	0	0	1	<PAColor0xff0000>빨강</PAOldColor>과 <PAColor0x00ff00>초록</PAOldColor>	<PAColor0xff0000>Red</PAOldColor> and <PAColor0x00ff00>Green</PAOldColor>	Current
+0	XLS_X000D	0	0	1	첫줄_x000D_
+둘째줄	First_x000D_
+Second	Current
+0	한글ID_001	0	0	1	테스트	Test	Current
+0	EMPTY_TARGET	0	0	1	빈 타겟		Current
+0	SHORT_001	0	0	1	예	Yes	Current
+0	LONG_001	0	0	1	이것은 매우 긴 소스 텍스트입니다. 여러 문장이 포함되어 있습니다. 테스트를 위한 긴 텍스트입니다.	This is a very long source text. It contains multiple sentences. Long text for testing.	Current

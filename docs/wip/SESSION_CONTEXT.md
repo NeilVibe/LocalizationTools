@@ -1,393 +1,319 @@
-# Session Context - Claude Handoff
+# Session Context - Claude Handoff Document
 
-**Updated:** 2025-12-17 12:00 KST | **Build:** 296 ✅
-
----
-
-## TL;DR
-
-| Status | Value |
-|--------|-------|
-| **Build** | 296 ✅ (v25.1217.0136) |
-| **Latest Commit** | Pending - P36 Technical Design complete |
-| **Open Issues** | 0 |
-| **Playground** | ✅ ONLINE (PostgreSQL 172.28.150.120:5432) |
-| **Current** | P36 Phase 2 - FULLY DOCUMENTED, ready to implement |
-| **Next** | Implement Excel→TM flow with Standard/StringID modes |
+**Last Updated:** 2025-12-18 11:30 KST
+**Build:** 297 (pending)
+**Session:** ALL ISSUES COMPLETE - BUG-020 + FEAT-001 Done
 
 ---
 
-## IMPORTANT: Session Changes (2025-12-17)
+## Current State Summary
 
-### Security Fix: Removed Server Config UI ✅
+**ALL critical and enhancement work is COMPLETE. No open issues.**
 
-**Problem:** Users could see "Configure Server" button exposing PostgreSQL settings.
-
-**Fixed:**
-1. ❌ Deleted `ServerConfigModal.svelte` (exposed DB credentials)
-2. ❌ Removed `/api/server-config/*` endpoints from backend
-3. ❌ Removed "Configure Server" button from ServerStatus.svelte
-4. ✅ App now auto-connects to central PostgreSQL (no user config needed)
-
-### Playground Auto-Login Feature ✅
-
-Added `--auto-login` flag to playground install:
-
-```bash
-# Full install with auto-login as neil/neil
-./scripts/playground_install.sh --launch --auto-login
-```
-
-This waits for First Time Setup, then logs in automatically via API.
-
-### Playground Auto-Config for PostgreSQL ✅
-
-**Problem:** App was falling back to SQLite (OFFLINE) even with server-config.json.
-
-**Root Cause:** PowerShell 5.x `Set-Content -Encoding UTF8` adds a UTF-8 BOM which breaks Python's JSON parsing. The config file was silently failing to load.
-
-**Fixed in `playground_install.ps1`:**
-```powershell
-# Write without BOM (PowerShell 5.x UTF8 adds BOM which breaks JSON parsing)
-$jsonContent = $config | ConvertTo-Json
-[System.IO.File]::WriteAllText($configPath, $jsonContent, [System.Text.UTF8Encoding]::new($false))
-```
-
-**Also fixed:** Reset PostgreSQL password for `localization_admin` to match config.
-
-**Verified:** App now connects to PostgreSQL and shows `database_type: postgresql` in health check.
-
-### P36 Phase 2 - Scope Clarification ✅
-
-**IMPORTANT:** Smart Translation features require external translation API (QWEN/Claude) which we don't have access to yet. Those features have been moved to `docs/future/smart-translation/`.
-
-**P36 CURRENT SCOPE (No API Required):**
-
-```
-✅ Can implement NOW:
-├── Unified Pretranslation API (/api/ldm/pretranslate)
-├── Engine Selection (Standard TM / XLS Transfer / KR Similar)
-├── Batch Processing (Celery queue already exists)
-└── Data Preprocessing (duplicate filtering)
-
-❌ FUTURE (requires external API):
-├── Smart Translation Pipeline
-├── Dynamic Glossary Auto-Creation
-├── Character-Based Translation
-└── See: docs/future/smart-translation/
-```
-
-#### What We ALREADY Have (DO NOT re-implement)
-
-| Feature | LocaNext Location |
-|---------|-------------------|
-| Dual Threshold (0.92/0.49) | `server/tools/ldm/tm_indexer.py` ✅ EXISTS |
-| Line-Level Embeddings | `server/tools/ldm/tm_indexer.py:356-398` ✅ EXISTS |
-| 5-Tier Cascade | `server/tools/ldm/tm_indexer.py` ✅ EXISTS |
-| FAISS HNSW Index | `server/tools/ldm/tm_indexer.py:40-46` ✅ EXISTS |
-| Celery Queue | `server/tasks/celery_app.py` ✅ EXISTS |
-
-**Full details:** [P36_PRETRANSLATION_STACK.md](P36_PRETRANSLATION_STACK.md)
-
-### P36 Technical Design COMPLETE ✅
-
-**NEW FILE:** `docs/wip/P36_TECHNICAL_DESIGN.md`
-
-Contains full technical specifications for:
-
-**1. Excel → TM Creation:**
-```
-Two Structures Supported:
-├── Standard Mode: Source + Target (general TM, duplicates merged)
-└── StringID Mode: Source + Target + StringID (precise, keeps variations)
-
-User Flow:
-├── Right-click Excel → "Create TM from this file..."
-├── Modal: Name TM, select mode, map columns
-├── Validation: Check data completeness
-└── Process: Background task with progress
-```
-
-**2. StringID Technical Implementation:**
-```
-KEY: Embeddings are for SOURCE only, StringID is metadata
-
-PKL Structure:
-{"저장": [
-    {"target": "Save", "string_id": "UI_BUTTON_SAVE"},
-    {"target": "Save Game", "string_id": "UI_MENU_SAVE"}
-]}
-
-Alignment: len(embeddings) == len(pkl.keys()) ✅
-One Korean → Multiple potential translations
-```
-
-**3. Data Preprocessing (Already Robust):**
-- XLS Transfer: `dropna()`, `clean_text()`, most frequent wins
-- LDM: Filter empty, skip invalid, normalize text
-
-**4. Batch Processing:**
-- Chunked (500 rows) + Multiprocessing (4 workers)
-- Progress via WebSocket
-
-### API-Dependent Features (FUTURE) ✅
-
-All Smart Translation features from WebTranslatorNew are documented and ready for when API access is available:
-
-**Location:** `docs/future/smart-translation/`
-
-**Contents:**
-- `SMART_TRANSLATION_PIPELINE.md` - Complete 2-stage pipeline with source refs
-- `WEBTRANSLATORNEW_REFERENCE.md` - How to navigate WebTranslatorNew source
-
-**Features documented:**
-- Smart Translation Pipeline (cluster preprocessing + character phases)
-- Dynamic Glossary Auto-Creation
-- Multi-line Refinement
-- Clustering Optimization
+| Category | Status |
+|----------|--------|
+| Pretranslation Engines | ✅ All 3 working (Standard, XLS Transfer, KR Similar) |
+| Task Manager | ✅ 22 operations tracked across 4 tools |
+| Toast Notifications | ✅ BUG-016 Complete - Global toasts on any page |
+| TM Viewer | ✅ FEAT-003 Complete - With confirm button |
+| TM Export | ✅ FEAT-002 Complete |
+| E2E Tests | ✅ 20 tests for all engines |
+| Auto-Update | ✅ Incremental sync (BUG-022 fixed) |
+| memoQ Metadata | ✅ BUG-020 Complete - Confirm workflow |
+| TM Metadata Options | ✅ FEAT-001 Complete - 7 dropdown options |
 
 ---
 
-## IMPORTANT: Where We Left Off
+## Completed This Session (2025-12-18)
 
-### COMPLETED: E2E Tests for All Pretranslation Logic ✅
+### BUG-020: memoQ-style TM Entry Metadata [COMPLETE]
 
-**Created comprehensive E2E tests (~500 rows each) covering ALL cases each logic handles.**
+**Implementation:**
+- Added 5 new columns to `LDMTMEntry` model:
+  - `updated_at`, `updated_by` - Track when/who edits entries
+  - `confirmed_at`, `confirmed_by`, `is_confirmed` - Confirmation workflow
+- Added index for filtering by confirmation status
+- Added `confirm_entry()` and `bulk_confirm_entries()` methods
+- Added confirm API endpoints
+- Added confirm button in TM Viewer (green check for confirmed)
 
-#### Key Understanding
+**Database Columns:**
+```python
+updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow)
+updated_by = Column(String(255), nullable=True)
+confirmed_at = Column(DateTime, nullable=True)
+confirmed_by = Column(String(255), nullable=True)
+is_confirmed = Column(Boolean, default=False, nullable=False)
+```
 
-**QWEN = TEXT SIMILARITY (not meaning)**
-- "저장" vs "저장" = 100% ✅ (same text)
-- "저장" vs "세이브" = 58% (different text, correctly low)
-- We match TEXT patterns, not semantic meaning
-- 92% threshold is appropriate for text similarity
+**API Endpoints:**
+- `POST /ldm/tm/{tm_id}/entries/{entry_id}/confirm` - Toggle confirm status
+- `POST /ldm/tm/{tm_id}/entries/bulk-confirm` - Bulk confirm entries
 
-#### E2E Test Results Summary
+**Frontend:**
+- Confirm button in TM Viewer actions column
+- Green row styling for confirmed entries
+- Checkmark icon for confirmed status
 
-| Engine | Passed | Failed | Edge Cases | Status |
-|--------|--------|--------|------------|--------|
-| **XLS Transfer** | 537 | 0 | 5 | ✅ Complete |
-| **KR Similar** | 530 | 0 | 0 | ✅ Complete |
-| **Standard TM** | 566 | 0 | 0 | ✅ Complete |
-| **QWEN+FAISS Real** | 500 | 0 | 0 | ✅ Complete |
-| **TOTAL** | **2,133** | **0** | **5** | ✅ All Passed |
+**Files Modified:**
+- `server/database/models.py` - 5 new columns + index
+- `server/tools/ldm/tm_manager.py` - confirm methods
+- `server/tools/ldm/api.py` - confirm endpoints
+- `locaNext/src/lib/components/ldm/TMViewer.svelte` - confirm UI
 
 ---
 
-### P36 Phase 1: Testing COMPLETE ✅
+### FEAT-001: TM Metadata Column Enhancement [COMPLETE]
 
-#### XLS Transfer E2E - 537 passed, 0 failed, 5 edge cases
+**Expanded from 3 to 7 metadata options:**
+1. StringID
+2. Confirmed (new)
+3. Created At
+4. Created By
+5. Updated At (new)
+6. Confirmed At (new)
+7. Confirmed By (new)
 
-| Case Type | Count | Status |
-|-----------|-------|--------|
-| plain_text | 88/88 | ✅ |
-| code_at_start | 55/55 | ✅ |
-| multiple_codes_start | 33/33 | ✅ |
-| code_in_middle | 33/33 | ✅ |
-| pacolor_hex | 55/55 | ✅ |
-| color_wrapper_with_prefix | 55/55 | ✅ |
-| textbind_codes | 44/44 | ✅ |
-| mixed_codes_colors | 22/22 | ✅ |
-| with_newlines | 31/31 | ✅ |
-| x000d_removal | 20/20 | ✅ |
-| complex_real | 20/20 | ✅ |
-| **BULK (500 rows)** | **500/500** | ✅ |
+**Implementation:**
+- Updated metadata dropdown in TMViewer.svelte
+- All new columns display properly with formatting
 
-**Edge cases:** 5 `<PAOldColor>` cases (known issue, same as monolith)
+---
 
-#### KR Similar E2E - 530 passed, 0 failed
+### BUG-016: Global Toast Notifications [COMPLETE]
 
-| Case Type | Count | Status |
-|-----------|-------|--------|
-| plain_text | 95/95 | ✅ |
-| single_triangle | 57/57 | ✅ |
-| multiple_triangles | 57/57 | ✅ |
-| scale_tags | 57/57 | ✅ |
-| color_tags | 54/54 | ✅ |
-| mixed_scale_color | 36/36 | ✅ |
-| triangle_with_tags | 36/36 | ✅ |
-| empty_lines | 36/36 | ✅ |
-| structure_adaptation | 54/54 | ✅ |
-| complex_multiline | 18/18 | ✅ |
-| **BULK (500 rows)** | **500/500** | ✅ |
+**Implementation:**
+- Created `toastStore.js` - Global toast state management with convenience functions
+- Created `GlobalToast.svelte` - Renders toasts anywhere in app, listens to WebSocket
+- Added to `+layout.svelte` - Toasts appear on ANY page
 
-#### Standard TM E2E - 566 passed, 0 failed
+**Features:**
+- Operation start: Info toast (3s) - "LDM Started: Pretranslate"
+- Operation complete: Success toast (5s) - "LDM Complete: Pretranslate (5s)"
+- Operation failed: Error toast (8s) - "LDM Failed: Pretranslate: File not found"
+- Slide-in animation
+- Auto-dismiss with different durations by type
 
-| Test Category | Status |
-|---------------|--------|
-| Newline normalization (11 cases) | ✅ All pass |
-| Hash normalization (10 cases) | ✅ All pass |
-| Embedding normalization (5 cases) | ✅ All pass |
-| N-gram similarity (6 cases) | ✅ All pass |
-| Hash lookup (7 cases) | ✅ All pass |
-| Line lookup (4 cases) | ✅ All pass |
-| Threshold constants | ✅ Correct |
-| Empty/null handling | ✅ Handles gracefully |
-| Special characters (11 cases) | ✅ All pass |
-| TMSearcher initialization | ✅ Works |
-| **BULK (500 rows)** | **500/500** | ✅ |
+**Files Created:**
+- `locaNext/src/lib/stores/toastStore.js` - NEW
+- `locaNext/src/lib/components/GlobalToast.svelte` - NEW
 
-#### QWEN Validation - Complete ✅
+**Files Modified:**
+- `locaNext/src/routes/+layout.svelte` - Added GlobalToast import/component
 
-| Category | Score Range | Status |
-|----------|-------------|--------|
-| Identical | 100% | ✅ Perfect |
-| Punctuation diff | 90-97% | ✅ Good |
-| One word diff | 68-84% | ✅ Good separation |
-| Synonyms | 83-87% | ✅ Good |
-| Opposite meanings | 64-72% | ✅ Correctly low |
-| Unrelated | 26-37% | ✅ Correctly very low |
-| Short EN variations | 61-72% | ⚠️ NPC threshold issue |
+---
 
-**Result:** 26/27 tests passed (96.3%)
+### FEAT-003: TM Viewer [COMPLETE]
+
+**Backend API:**
+- `GET /ldm/tm/{tm_id}/entries` - Paginated entries with sorting, search
+- `PUT /ldm/tm/{tm_id}/entries/{entry_id}` - Update single entry
+- `DELETE /ldm/tm/{tm_id}/entries/{entry_id}` - Delete single entry
+
+**Frontend:**
+- New `TMViewer.svelte` component
+- Paginated grid (50/100/200/500 per page)
+- Column sorting (click headers)
+- Search (source, target, StringID)
+- Metadata dropdown (7 options)
+- Inline editing (double-click)
+- Delete functionality
+- Confirm button with green styling
+
+**Files Modified:**
+- `server/tools/ldm/tm_manager.py` - `get_entries_paginated()`, `update_entry()`, `delete_entry()`, `confirm_entry()`
+- `server/tools/ldm/api.py` - TM Viewer API endpoints
+- `locaNext/src/lib/components/ldm/TMViewer.svelte` - NEW
+- `locaNext/src/lib/components/ldm/TMManager.svelte` - View button
+
+### FEAT-002: TM Export [COMPLETE]
+
+**Export Formats:**
+- TEXT (TSV) - Tab-separated values
+- Excel (.xlsx) - Formatted with headers, freeze panes
+- TMX - Industry standard with StringID as custom property
+
+**Column Selection:**
+- Source (required)
+- Target (required)
+- StringID (optional)
+- Created At (optional)
+
+**Files Modified:**
+- `server/tools/ldm/tm_manager.py` - `export_tm()`, `_export_text()`, `_export_excel()`, `_export_tmx()`
+- `server/tools/ldm/api.py` - `GET /ldm/tm/{tm_id}/export` endpoint
+- `locaNext/src/lib/components/ldm/TMManager.svelte` - Export button + modal
+
+### Task Manager Review [COMPLETE]
+
+**All 22 long-running operations are tracked:**
+
+| Tool | Count | Operations |
+|------|-------|------------|
+| LDM | 7 | upload_file, upload_tm, build_indexes, pretranslate, auto-sync (x3) |
+| XLSTransfer | 5 | create_dictionary, translate_excel, check_newlines, combine_excel, newline_auto_adapt |
+| KR Similar | 3 | find_similar, batch_search, build_index |
+| QuickSearch | 7 | search, batch_search, build_corpus, etc. |
+
+**Two tracking mechanisms (same underlying system):**
+1. `TrackedOperation` (`server/utils/progress_tracker.py`) - Used in LDM
+2. `BaseToolAPI.create_operation()` (`server/api/base_tool_api.py`) - Used in other tools
+
+Both write to `active_operations` table and emit WebSocket events.
+
+---
+
+## Previously Completed (2025-12-17)
+
+| Task | Description |
+|------|-------------|
+| TASK-002 | Full E2E tests for all 3 engines (20 tests) |
+| TASK-001 | TrackedOperation for ALL long processes |
+| BUG-022 | Incremental updates via TMSyncManager.sync() |
+| BUG-013-019 | 6 critical pipeline bugs fixed |
+
+---
+
+## What Remains
+
+```
+ALL ISSUES COMPLETE! ✅
+
+ONGOING (LOW PRIORITY):
+═══════════════════════════════════════════════
+├── P25: LDM UX Overhaul (85% done)
+└── BUG-021: Seamless UI during auto-update (optional - TrackedOperation handles it)
+```
+
+---
+
+## Pipeline Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Standard TM** | ✅ WORKS | Staleness check, StringID, incremental sync |
+| **XLS Transfer** | ✅ WORKS | EmbeddingsManager, code preservation |
+| **KR Similar** | ✅ WORKS | load_tm, find_similar, structure adaptation |
+| **TM Auto-Update** | ✅ FAST | TMSyncManager.sync() for incremental updates |
+| **Task Manager** | ✅ WORKS | 22 operations tracked |
+| **TM Viewer** | ✅ WORKS | Paginated, sortable, searchable, inline edit, confirm |
+| **TM Export** | ✅ WORKS | TEXT/Excel/TMX with column selection |
+| **memoQ Metadata** | ✅ WORKS | 5 columns, confirm workflow, TM Viewer button |
+
+---
+
+## Key Files
+
+### memoQ Metadata (BUG-020)
+```
+Database:
+└── server/database/models.py (LDMTMEntry - 5 new columns)
+
+Backend:
+├── server/tools/ldm/tm_manager.py (confirm_entry, bulk_confirm_entries)
+└── server/tools/ldm/api.py (confirm endpoints)
+
+Frontend:
+└── locaNext/src/lib/components/ldm/TMViewer.svelte (confirm button)
+```
+
+### TM Viewer (FEAT-003)
+```
+Frontend:
+├── locaNext/src/lib/components/ldm/TMViewer.svelte (NEW)
+└── locaNext/src/lib/components/ldm/TMManager.svelte (View button)
+
+Backend:
+├── server/tools/ldm/api.py (TM Viewer endpoints)
+└── server/tools/ldm/tm_manager.py (Viewer methods)
+```
+
+### TM Export (FEAT-002)
+```
+Frontend:
+└── locaNext/src/lib/components/ldm/TMManager.svelte (Export modal)
+
+Backend:
+├── server/tools/ldm/api.py (Export endpoint)
+└── server/tools/ldm/tm_manager.py (Export methods)
+```
+
+### Task Manager
+```
+LDM TrackedOperation:
+└── server/tools/ldm/api.py (upload_file, upload_tm, build_indexes, pretranslate)
+└── server/tools/ldm/pretranslate.py (auto-sync x3)
+
+Other Tools BaseToolAPI:
+└── server/api/xlstransfer_async.py
+└── server/api/kr_similar_async.py
+└── server/api/quicksearch_async.py
+
+Core:
+└── server/utils/progress_tracker.py (TrackedOperation)
+└── server/api/base_tool_api.py (BaseToolAPI.create_operation)
+└── server/api/progress_operations.py (Task Manager API)
+```
 
 ---
 
 ## Test Files
 
-### E2E Test Suite (NEW)
-
 ```
-tests/fixtures/pretranslation/
-├── e2e_test_data.py             # Test data generator (all cases)
-├── test_e2e_xls_transfer.py     # XLS Transfer E2E (537 passed) ✅
-├── test_e2e_kr_similar.py       # KR Similar E2E (530 passed) ✅
-├── test_e2e_tm_standard.py      # Standard TM E2E (566 passed) ✅
-├── test_e2e_tm_faiss_real.py    # REAL QWEN+FAISS E2E (500 queries) ✅
-├── test_qwen_validation.py      # QWEN similarity tests (26/27) ✅
-└── test_real_patterns.py        # Real pattern tests (13/13) ✅
-```
+tests/fixtures/stringid/
+├── true_e2e_standard.py         # 6 tests - StringID, fuzzy, fallback
+├── true_e2e_xls_transfer.py     # 7 tests - Code preservation
+├── true_e2e_kr_similar.py       # 7 tests - Triangle, structure
+├── test_e2e_1_tm_upload.py      # Basic TM upload (10)
+├── test_e2e_2_pkl_index.py      # PKL variations (8)
+├── test_e2e_3_tm_search.py      # TMSearcher (9)
+├── test_e2e_4_pretranslate.py   # Pretranslation (10)
+└── stringid_test_data.py        # Test data module
 
-### QWEN + FAISS Real E2E Results
-
-| Metric | Value |
-|--------|-------|
-| TM Entries | 165 |
-| Test Queries | 500 |
-| Model Load | 25s |
-| Search Time | 44s (88ms/query) |
-| **Matched** | **180 (36%)** |
-| **No Match** | **320 (64%)** |
-
-**Tier Distribution:**
-- Tier 1 (Hash): 105 (21%) - exact matches
-- Tier 2 (FAISS): 25 (5%) - embedding matches
-- Tier 3 (Line): 50 (10%) - line matches
-- Tier 0 (None): 320 (64%) - below 92% threshold
-
-### Test Data Files
-
-```
-/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext/
-├── sampleofLanguageData.txt     # 16MB - Full production data
-├── closetotest.txt              # Korean dialogue with ▶ markers
-└── [other test files...]
+Total: 20 TRUE E2E tests + 37 unit tests = 57 tests
 ```
 
 ---
 
-## P36 Architecture
-
-**Three SEPARATE engines - user selects ONE:**
-
-```
-┌───────────────────────────────────────────────────────────────────────┐
-│  1. STANDARD (TM 5-Tier)                                             │
-│     └── Hash + FAISS HNSW + N-gram cascade                           │
-│     └── server/tools/ldm/tm_indexer.py                               │
-│                                                                       │
-│  2. XLS TRANSFER (DO NOT MODIFY)                                     │
-│     └── server/tools/xlstransfer/                                    │
-│     └── Monolith: XLSTransfer0225.py                                 │
-│                                                                       │
-│  3. KR SIMILAR (DO NOT MODIFY)                                       │
-│     └── server/tools/kr_similar/                                     │
-│     └── Monolith: KRSIMILAR0124.py                                   │
-└───────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Potential Issues (Future Reference)
-
-See: `docs/wip/POTENTIAL_ISSUES.md`
-
-One edge case documented:
-- `<PAColor>` at position 0 loses `<PAOldColor>` ending
-- Same behavior in original monolith
-- Only fix if user feedback received
-
----
-
-## Threshold Recommendations
-
-| Use Case | Current | Recommended | Evidence |
-|----------|---------|-------------|----------|
-| **TM Matching** | 92% | **90%** | Punctuation removal = 90.2% |
-| **NPC Check** | 80% | **65%** | Short variations = 61-72% |
-| **Safe Floor** | - | **>72%** | Opposite meanings = up to 71.9% |
-
----
-
-## Next Steps
-
-1. **Phase 1 COMPLETE** - All E2E tests passing (2,133 tests) ✅
-2. **API-Dependent Features → FUTURE** - Moved to `docs/future/smart-translation/`
-3. **NEXT:** Phase 2 Implementation (No external API required):
-
-**PRIORITY 1: Unified Pretranslation API**
-```
-POST /api/ldm/pretranslate
-├── engine: "standard" | "xls_transfer" | "kr_similar"
-├── dictionary_id: int
-├── threshold: float (default 0.92)
-└── skip_existing: bool (default true)
-```
-
-**PRIORITY 2: Data Preprocessing**
-- Duplicate filtering BEFORE embedding
-- Source: WebTranslatorNew `preprocessor.py`
-
-4. **Phase 3:** Pretranslation Modal UI
-
-**FUTURE (when API available):** See `docs/future/smart-translation/`
-
-**REMINDER:** We already have dual threshold, line-level embeddings, 5-tier cascade. Don't re-implement!
-
----
-
-## Quick Commands
+## Quick Start for Next Session
 
 ```bash
-# Run E2E tests
-python3 tests/fixtures/pretranslation/test_e2e_xls_transfer.py
-python3 tests/fixtures/pretranslation/test_e2e_kr_similar.py
-python3 tests/fixtures/pretranslation/test_e2e_tm_standard.py
-
-# Run all pretranslation tests
-python3 tests/fixtures/pretranslation/test_qwen_validation.py
-python3 tests/fixtures/pretranslation/test_real_patterns.py
-
-# Check servers
+# 1. Check servers
 ./scripts/check_servers.sh
 
-# Playground install with auto-login
-./scripts/playground_install.sh --launch --auto-login
+# 2. Read documentation
+#    This file (SESSION_CONTEXT.md) - current state
+#    ISSUES_TO_FIX.md - all complete!
+#    WIP/README.md - priority order
+
+# 3. ALL ISSUES COMPLETE!
+#    Only P25 LDM UX Overhaul (85%) remains as ongoing work.
+
+# 4. To test memoQ confirm workflow:
+#    - Start app: cd locaNext && npm run electron:dev
+#    - Go to LDM → TM Manager
+#    - Click View button on any TM
+#    - Click checkmark to confirm/unconfirm entries
+#    - Confirmed entries show green background
+
+# 5. To test TM Export:
+#    - Click Download button on any TM
+#    - Select format (TEXT/Excel/TMX)
+#    - Select columns
+#    - Click Export
 ```
 
 ---
 
-## Documentation State
+## Open Issues Summary
 
-| Doc | Status |
-|-----|--------|
-| `CLAUDE.md` | ✅ Current |
-| `Roadmap.md` | ✅ Current |
-| `P36_PRETRANSLATION_STACK.md` | ✅ Current |
-| `SESSION_CONTEXT.md` | ✅ This file |
-| `ISSUES_TO_FIX.md` | ✅ 0 open |
-| `POTENTIAL_ISSUES.md` | ✅ For future reference |
+| ID | Priority | Description | Status |
+|----|----------|-------------|--------|
+| - | - | ALL COMPLETE | ✅ |
+
+**0 open issues. All features implemented.**
 
 ---
 
-*Last: 2025-12-17 12:00 KST - P36 Technical Design COMPLETE. Excel→TM with Standard/StringID modes fully documented. StringID allows same source→multiple targets (UI context). Embeddings for source only, StringID is metadata in PKL. Data preprocessing already robust (XLS Transfer + LDM). API-dependent features in `docs/future/smart-translation/`.*
+*This document is the source of truth for session handoff.*
+*BUG-020 + FEAT-001 COMPLETE - memoQ metadata and 7 metadata options implemented.*

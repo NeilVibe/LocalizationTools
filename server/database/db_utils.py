@@ -410,7 +410,7 @@ def bulk_copy_tm_entries(
     Args:
         db: Database session
         tm_id: Translation Memory ID
-        entries: List of dicts with 'source_text' and 'target_text'
+        entries: List of dicts with 'source_text', 'target_text', optional 'string_id'
         progress_callback: Optional callback for progress
 
     Returns:
@@ -419,7 +419,7 @@ def bulk_copy_tm_entries(
     Example:
         >>> entries = [
         >>>     {"source_text": "Hello", "target_text": "안녕"},
-        >>>     {"source_text": "World", "target_text": "세계"},
+        >>>     {"source_text": "Save", "target_text": "저장", "string_id": "UI_BUTTON_SAVE"},
         >>> ]
         >>> count = bulk_copy_tm_entries(db, tm_id=1, entries=entries)
     """
@@ -441,11 +441,12 @@ def bulk_copy_tm_entries(
             source,
             target,
             source_hash,
+            entry.get('string_id'),  # StringID for context-aware matching
             entry.get('created_by'),
             entry.get('change_date'),
         ))
 
-    columns = ['tm_id', 'source_text', 'target_text', 'source_hash', 'created_by', 'change_date']
+    columns = ['tm_id', 'source_text', 'target_text', 'source_hash', 'string_id', 'created_by', 'change_date']
 
     return bulk_copy(db, 'ldm_tm_entries', columns, rows, progress_callback)
 

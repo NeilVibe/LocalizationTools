@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <LocStr StringId="UI_BUTTON_SAVE" StrOrigin="저장" Str="Save" />
+    <LocStr StringId="UI_MENU_SAVE" StrOrigin="저장" Str="Save Game" />
+    <LocStr StringId="TECH_STORAGE" StrOrigin="저장" Str="Storage" />
+    <LocStr StringId="UI_MENU_SETTINGS" StrOrigin="설정" Str="Settings" />
+    <LocStr StringId="TECH_CONFIG" StrOrigin="설정" Str="Configuration" />
+    <LocStr StringId="UI_BUTTON_OK" StrOrigin="확인" Str="OK" />
+    <LocStr StringId="UI_BUTTON_CONFIRM" StrOrigin="확인" Str="Confirm" />
+    <LocStr StringId="UI_BUTTON_OPEN" StrOrigin="열기" Str="Open" />
+    <LocStr StringId="UI_MENU_OPEN_FILE" StrOrigin="열기" Str="Open File" />
+    <LocStr StringId="UI_BUTTON_CANCEL" StrOrigin="취소" Str="Cancel" />
+</LanguageData>

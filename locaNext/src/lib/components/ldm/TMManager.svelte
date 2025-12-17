@@ -18,12 +18,15 @@
     CheckmarkFilled,
     WarningAlt,
     InProgress,
-    Power
+    Power,
+    View,
+    Download
   } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { preferences } from "$lib/stores/preferences.js";
   import TMUploadModal from "./TMUploadModal.svelte";
+  import TMViewer from "./TMViewer.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -43,6 +46,17 @@
   let buildingIndexes = $state(new Set());
   let buildConfirmOpen = $state(false);
   let tmToBuild = $state(null);
+
+  // TM Viewer state
+  let showViewerModal = $state(false);
+  let tmToView = $state(null);
+
+  // TM Export state
+  let showExportModal = $state(false);
+  let tmToExport = $state(null);
+  let exportFormat = $state("text");
+  let exportColumns = $state(["source_text", "target_text", "string_id"]);
+  let exporting = $state(false);
 
   // UI-003: Active TM state
   let activeTmId = $state(null);
@@ -215,6 +229,93 @@
     buildConfirmOpen = true;
   }
 
+  // Open TM Viewer
+  function viewTM(tm) {
+    tmToView = tm;
+    showViewerModal = true;
+    logger.userAction("TM viewer opened", { tmId: tm.id, name: tm.name });
+  }
+
+  // Handle TM viewer updates (refresh list after edits)
+  function handleViewerUpdate() {
+    loadTMs();
+  }
+
+  // Open export modal
+  function openExportModal(tm) {
+    tmToExport = tm;
+    exportFormat = "text";
+    exportColumns = ["source_text", "target_text", "string_id"];
+    showExportModal = true;
+    logger.userAction("Export modal opened", { tmId: tm.id, name: tm.name });
+  }
+
+  // Close export modal
+  function closeExportModal() {
+    showExportModal = false;
+    tmToExport = null;
+    exporting = false;
+  }
+
+  // Toggle export column
+  function toggleExportColumn(column) {
+    if (column === "source_text" || column === "target_text") return; // Required
+    if (exportColumns.includes(column)) {
+      exportColumns = exportColumns.filter(c => c !== column);
+    } else {
+      exportColumns = [...exportColumns, column];
+    }
+  }
+
+  // Execute export
+  async function executeExport() {
+    if (!tmToExport) return;
+
+    exporting = true;
+    try {
+      const columnsParam = exportColumns.join(",");
+      const url = `${API_BASE}/api/ldm/tm/${tmToExport.id}/export?format=${exportFormat}&columns=${columnsParam}`;
+
+      const response = await fetch(url, {
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Export failed");
+      }
+
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `${tmToExport.name}_export.${exportFormat === 'excel' ? 'xlsx' : exportFormat === 'tmx' ? 'tmx' : 'txt'}`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match) {
+          filename = match[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
+      logger.success("TM exported", { name: tmToExport.name, format: exportFormat });
+      closeExportModal();
+    } catch (err) {
+      errorMessage = err.message;
+      logger.error("Export failed", { error: err.message });
+    } finally {
+      exporting = false;
+    }
+  }
+
   // Execute build after confirmation
   function executeBuildIndexes() {
     if (tmToBuild) {
@@ -335,6 +436,22 @@
                 </td>
                 <td class="date-cell">{formatDate(tm.created_at)}</td>
                 <td class="actions-cell">
+                  <!-- View TM entries -->
+                  <Button
+                    kind="ghost"
+                    size="small"
+                    icon={View}
+                    iconDescription="View Entries"
+                    on:click={() => viewTM(tm)}
+                  />
+                  <!-- Export TM -->
+                  <Button
+                    kind="ghost"
+                    size="small"
+                    icon={Download}
+                    iconDescription="Export TM"
+                    on:click={() => openExportModal(tm)}
+                  />
                   <!-- UI-003: Activate/Deactivate button -->
                   <Button
                     kind={isActive ? "primary" : "ghost"}
@@ -418,6 +535,89 @@
         <li>CPU/Memory usage will increase during processing</li>
       </ul>
       <p class="build-hint">Progress will be tracked in the Task Manager.</p>
+    </div>
+  {/if}
+</Modal>
+
+<!-- TM Viewer Modal -->
+<TMViewer
+  bind:open={showViewerModal}
+  tm={tmToView}
+  on:updated={handleViewerUpdate}
+/>
+
+<!-- TM Export Modal -->
+<Modal
+  bind:open={showExportModal}
+  modalHeading="Export Translation Memory"
+  primaryButtonText={exporting ? "Exporting..." : "Export"}
+  secondaryButtonText="Cancel"
+  primaryButtonDisabled={exporting}
+  on:click:button--primary={executeExport}
+  on:click:button--secondary={closeExportModal}
+>
+  {#if tmToExport}
+    <div class="export-modal">
+      <p>Export <strong>{tmToExport.name}</strong> ({formatCount(tmToExport.entry_count)} entries)</p>
+
+      <div class="export-section">
+        <h5>Format</h5>
+        <div class="format-options">
+          <label class="format-option">
+            <input type="radio" bind:group={exportFormat} value="text" />
+            <span class="format-label">
+              <strong>TEXT (TSV)</strong>
+              <small>Tab-separated values, editable in Excel</small>
+            </span>
+          </label>
+          <label class="format-option">
+            <input type="radio" bind:group={exportFormat} value="excel" />
+            <span class="format-label">
+              <strong>Excel (.xlsx)</strong>
+              <small>Formatted spreadsheet with headers</small>
+            </span>
+          </label>
+          <label class="format-option">
+            <input type="radio" bind:group={exportFormat} value="tmx" />
+            <span class="format-label">
+              <strong>TMX</strong>
+              <small>Industry standard for translation memories</small>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      {#if exportFormat !== "tmx"}
+        <div class="export-section">
+          <h5>Columns</h5>
+          <div class="column-options">
+            <label class="column-option disabled">
+              <input type="checkbox" checked disabled />
+              Source (required)
+            </label>
+            <label class="column-option disabled">
+              <input type="checkbox" checked disabled />
+              Target (required)
+            </label>
+            <label class="column-option">
+              <input
+                type="checkbox"
+                checked={exportColumns.includes("string_id")}
+                on:change={() => toggleExportColumn("string_id")}
+              />
+              StringID
+            </label>
+            <label class="column-option">
+              <input
+                type="checkbox"
+                checked={exportColumns.includes("created_at")}
+                on:change={() => toggleExportColumn("created_at")}
+              />
+              Created At
+            </label>
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </Modal>
@@ -596,5 +796,93 @@
     font-size: 0.75rem;
     color: var(--cds-text-02);
     font-style: italic;
+  }
+
+  /* Export Modal Styles */
+  .export-modal {
+    padding: 0.5rem 0;
+  }
+
+  .export-modal p {
+    margin: 0 0 1rem 0;
+  }
+
+  .export-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .export-section h5 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .format-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .format-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+
+  .format-option:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .format-option input[type="radio"] {
+    margin-top: 0.25rem;
+  }
+
+  .format-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .format-label strong {
+    font-size: 0.875rem;
+    color: var(--cds-text-01);
+  }
+
+  .format-label small {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+  }
+
+  .column-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .column-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 0.25rem;
+  }
+
+  .column-option.disabled {
+    color: var(--cds-text-03);
+    cursor: not-allowed;
+  }
+
+  .column-option input[type="checkbox"] {
+    cursor: pointer;
+  }
+
+  .column-option.disabled input[type="checkbox"] {
+    cursor: not-allowed;
   }
 </style>

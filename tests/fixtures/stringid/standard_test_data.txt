@@ -1,0 +1,5 @@
+0	0	0	0	1	저장	Save	Current
+0	0	0	0	1	설정	Settings	Current
+0	0	0	0	1	확인	OK	Current
+0	0	0	0	1	열기	Open	Current
+0	0	0	0	1	취소	Cancel	Current
