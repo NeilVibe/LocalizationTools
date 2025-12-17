@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated**: 2025-12-07 | **Total Docs**: 38+
+**Last Updated**: 2025-12-17 | **Total Docs**: 50+
 
 This is the **MASTER INDEX** for all LocaNext documentation.
 
@@ -36,6 +36,14 @@ docs/
 │   ├── BUILD_TROUBLESHOOTING.md      # Failed builds, GitHub Actions
 │   ├── BUILD_CHECKLIST.md            # Pre-release checklist
 │   └── PACKAGING_GUIDE.md            # Electron packaging
+│
+├── cicd/                             # CI/CD Pipeline (Gitea Actions)
+│   ├── CI_CD_HUB.md                  # CI/CD navigation hub
+│   ├── PIPELINE_ARCHITECTURE.md      # Workflow design
+│   ├── TROUBLESHOOTING.md            # Build failures, lazy imports
+│   ├── HOW_TO_BUILD.md               # Trigger builds
+│   ├── VERSION_SYSTEM.md             # Version format
+│   └── RUNNER_SERVICE_SETUP.md       # Runner configuration
 │
 ├── deployment/                       # Deploy & Operations
 │   ├── DEPLOYMENT.md                 # Production deployment
@@ -94,6 +102,7 @@ docs/
 | Debug Windows EXE | [troubleshooting/WINDOWS_TROUBLESHOOTING.md](troubleshooting/WINDOWS_TROUBLESHOOTING.md) |
 | Add a new tool | [development/ADD_NEW_APP_GUIDE.md](development/ADD_NEW_APP_GUIDE.md) |
 | Build the app | [build/BUILD_AND_DISTRIBUTION.md](build/BUILD_AND_DISTRIBUTION.md) |
+| **Fix CI/CD issues** | [cicd/TROUBLESHOOTING.md](cicd/TROUBLESHOOTING.md) |
 | Deploy to production | [deployment/DEPLOYMENT.md](deployment/DEPLOYMENT.md) |
 | Set up security | [security/SECURITY_HARDENING.md](security/SECURITY_HARDENING.md) |
 | Understand architecture | [architecture/README.md](architecture/README.md) |
@@ -110,6 +119,7 @@ docs/
 | Architecture | `architecture/` | 4 | README.md |
 | Development | `development/` | 6 | CODING_STANDARDS.md |
 | Build & Distribution | `build/` | 4 | BUILD_AND_DISTRIBUTION.md |
+| **CI/CD Pipeline** | `cicd/` | 6 | CI_CD_HUB.md |
 | Deployment | `deployment/` | 5 | DEPLOYMENT.md |
 | Security | `security/` | 2 | SECURITY_HARDENING.md |
 | Testing | `testing/` | 8 | DEBUG_AND_TEST_HUB.md |
@@ -117,7 +127,7 @@ docs/
 | Tool-Specific | `tools/` | 2 | XLSTRANSFER_GUIDE.md |
 | Company Setup | `company-setup/` | 6 | README.md |
 | History | `history/` | 1 | ROADMAP_ARCHIVE.md |
-| **Total** | | **44+** | |
+| **Total** | | **50+** | |
 
 ---
 

@@ -221,6 +221,39 @@ curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" |
 | `round(double precision, integer) does not exist` | Cast to Numeric: `func.round(cast(x, Numeric), 2)` |
 | `Cannot create symbolic link` | Add `sign: false` to package.json |
 | `No module named 'X'` | Add to requirements.txt |
+| Server hangs at "Loading XLSTransfer..." | Lazy import issue (see below) |
+
+### Server Startup Hang (Lazy Import)
+
+**Symptom:** Server hangs for 30+ seconds at startup, log shows:
+```
+Loading XLSTransfer core module...
+```
+
+**Root Cause:** Eager import of `SentenceTransformer` at module level. This loads PyTorch (~30s).
+
+**Bad:**
+```python
+from sentence_transformers import SentenceTransformer  # Module level = 30s hang
+```
+
+**Good:**
+```python
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer  # Type hints only
+
+def my_function():
+    from sentence_transformers import SentenceTransformer  # Import when needed
+    model = SentenceTransformer(...)
+```
+
+**Files to watch:**
+- `server/tools/xlstransfer/translation.py`
+- `server/tools/xlstransfer/process_operation.py`
+- `server/tools/xlstransfer/translate_file.py`
+
+**Fixed:** 2025-12-17 (Build 298)
 
 ---
 
@@ -346,4 +379,4 @@ BUILD FAILED
 
 ---
 
-*Last updated: 2025-12-13*
+*Last updated: 2025-12-17*

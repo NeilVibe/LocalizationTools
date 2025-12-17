@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512171800 | **Build:** 297 (pending) | **Status:** 97% | **Issues:** 2
+**Version:** 2512172220 | **Build:** 298 | **Status:** 100% | **Issues:** 0
 
 > **KEEP THIS FILE COMPACT.** Details in linked docs.
 
@@ -100,17 +100,16 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 docs/
 ├── wip/                  # Active work
 │   ├── SESSION_CONTEXT.md      ← Session state
-│   ├── ISSUES_TO_FIX.md        ← Bug tracker (2 open)
-│   ├── P36_PRETRANSLATION_STACK.md  ← Phase 2 checklist
-│   ├── P36_TECHNICAL_DESIGN.md      ← DB + StringID design
+│   ├── ISSUES_TO_FIX.md        ← Bug tracker (0 open)
+│   ├── P36_*.md                ← Pretranslation (complete)
 │   └── P25_LDM_UX_OVERHAUL.md  ← 85% done
 ├── future/               # API-dependent features
 │   └── smart-translation/   ← Smart Translation Pipeline
 ├── enterprise/           # Company deployment
 │   └── HUB.md               ← Start here
 ├── history/              # Archives
-│   ├── wip-archive/         ← 12 completed P* files
-│   └── ISSUES_HISTORY.md    ← Fixed bugs (44)
+│   ├── wip-archive/         ← 16 completed P* files
+│   └── ISSUES_HISTORY.md    ← Fixed bugs (59)
 └── [other guides...]
 ```
 
@@ -137,13 +136,12 @@ docs/
 
 ## Stats
 
-- **Build:** 297 (pending)
+- **Build:** 298 (v25.1217.2220)
 - **Tests:** ~273 in CI
-- **Endpoints:** 63+ (removed server-config endpoints)
+- **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
-- **Open Issues:** 2 (BUG-016 MEDIUM, BUG-020 LOW)
-- **Fixed This Session:** 6 critical bugs (BUG-013, 014, 015, 017, 018, 019)
+- **Open Issues:** 0
 
 ---
 
-*Last updated: 2025-12-17 18:00 KST | Hub file - details in linked docs*
+*Last updated: 2025-12-17 23:15 KST | Hub file - details in linked docs*
