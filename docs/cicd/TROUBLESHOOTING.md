@@ -223,37 +223,92 @@ curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" |
 | `No module named 'X'` | Add to requirements.txt |
 | Server hangs at "Loading XLSTransfer..." | Lazy import issue (see below) |
 
-### Server Startup Hang (Lazy Import)
+### Server Startup Hang / CI Timeout (Lazy Import) - RECURRING ISSUE!
 
-**Symptom:** Server hangs for 30+ seconds at startup, log shows:
+**⚠️ THIS IS A RECURRING BUG - CHECK THIS FIRST WHEN CI TIMES OUT!**
+
+**Symptom:** CI build fails with server startup timeout (30s exceeded). Log shows server stuck at one of:
+```
+QuickSearch API initialized
+```
+or
 ```
 Loading XLSTransfer core module...
 ```
 
-**Root Cause:** Eager import of `SentenceTransformer` at module level. This loads PyTorch (~30s).
+**Root Cause:** Eager import of `sentence_transformers` at module level. This loads PyTorch (3-30s depending on environment).
 
-**Bad:**
-```python
-from sentence_transformers import SentenceTransformer  # Module level = 30s hang
+**Impact:**
+| Environment | Import Time | CI Result |
+|-------------|-------------|-----------|
+| Local (cached) | 3s | Usually OK |
+| CI (first run) | 30+s | ❌ TIMEOUT |
+
+**Detection Command:**
+```bash
+# Find eager imports (should return NOTHING at module scope)
+grep -rn "^from sentence_transformers\|^import torch\|^from torch" server/ --include="*.py"
+
+# Check try-blocks at module level
+grep -rn "try:" -A3 server/ --include="*.py" | grep "sentence_transformers\|torch"
 ```
 
-**Good:**
+**Bad Pattern:**
 ```python
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from sentence_transformers import SentenceTransformer  # Type hints only
+# ❌ WRONG - Module level import (blocks startup!)
+try:
+    from sentence_transformers import SentenceTransformer
+    import torch
+    MODELS_AVAILABLE = True
+except ImportError:
+    MODELS_AVAILABLE = False
+```
 
-def my_function():
-    from sentence_transformers import SentenceTransformer  # Import when needed
-    model = SentenceTransformer(...)
+**Good Pattern:**
+```python
+# ✅ CORRECT - Lazy import
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+    import torch
+
+_models_available: Optional[bool] = None
+
+def _check_models_available() -> bool:
+    """Lazy check - cached after first call."""
+    global _models_available
+    if _models_available is None:
+        try:
+            import sentence_transformers
+            import torch
+            _models_available = True
+        except ImportError:
+            _models_available = False
+    return _models_available
+
+class MyManager:
+    def _ensure_model_loaded(self):
+        # LAZY IMPORT: Only when actually needed
+        from sentence_transformers import SentenceTransformer
+        import torch
+        self.model = SentenceTransformer(MODEL_NAME)
 ```
 
 **Files to watch:**
+- `server/tools/kr_similar/embeddings.py` ← Fixed Build 300
 - `server/tools/xlstransfer/translation.py`
 - `server/tools/xlstransfer/process_operation.py`
 - `server/tools/xlstransfer/translate_file.py`
+- `server/tools/shared/embedding_engine.py`
 
-**Fixed:** 2025-12-17 (Build 298)
+**History of occurrences:**
+| Build | File | Fix Date |
+|-------|------|----------|
+| 300 | `kr_similar/embeddings.py` | 2025-12-18 |
+| 298 | `xlstransfer/*.py` | 2025-12-17 |
+
+**Full documentation:** `docs/development/CODING_STANDARDS.md` → Pitfall #1
 
 ---
 
@@ -379,4 +434,4 @@ BUILD FAILED
 
 ---
 
-*Last updated: 2025-12-17*
+*Last updated: 2025-12-18*
