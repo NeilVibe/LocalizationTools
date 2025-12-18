@@ -70,3 +70,4 @@ Build LIGHT - CI fix
 Build LIGHT - Build 297 (BUG-020 memoQ + FEAT-001 TM Viewer + BUG-016 Global Toasts)
 Build LIGHT - Build 298 (Fix lazy import - server startup hang)
 Build 299: BUG-023 fix + Model2Vec multilingual
+Build 300: Lazy import fix
