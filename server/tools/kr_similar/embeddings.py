@@ -26,6 +26,7 @@ except ImportError:
     logger.warning("sentence_transformers/faiss not available - embeddings disabled")
 
 from server.tools.kr_similar.core import KRSimilarCore, normalize_text
+from server.tools.shared import FAISSManager
 
 
 # Supported dictionary types (games)
@@ -388,30 +389,22 @@ class EmbeddingsManager:
 
                 logger.info(f"Built {len(self.split_dict)} split, {len(self.whole_dict)} whole pairs")
 
-                # Generate embeddings and build indexes
+                # Generate embeddings and build indexes using FAISSManager
                 if self.split_dict:
                     split_texts = list(self.split_dict.keys())
                     logger.info(f"Encoding {len(split_texts)} split texts...")
                     self.split_embeddings = self.encode_texts(split_texts)
-                    faiss.normalize_L2(self.split_embeddings)
 
-                    dim = self.split_embeddings.shape[1]
-                    self.split_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
-                    self.split_index.hnsw.efConstruction = 400
-                    self.split_index.hnsw.efSearch = 500
-                    self.split_index.add(self.split_embeddings)
+                    self.split_index = FAISSManager.create_index(self.split_embeddings.shape[1])
+                    FAISSManager.add_vectors(self.split_index, self.split_embeddings, normalize=True)
 
                 if self.whole_dict:
                     whole_texts = list(self.whole_dict.keys())
                     logger.info(f"Encoding {len(whole_texts)} whole texts...")
                     self.whole_embeddings = self.encode_texts(whole_texts)
-                    faiss.normalize_L2(self.whole_embeddings)
 
-                    dim = self.whole_embeddings.shape[1]
-                    self.whole_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
-                    self.whole_index.hnsw.efConstruction = 400
-                    self.whole_index.hnsw.efSearch = 500
-                    self.whole_index.add(self.whole_embeddings)
+                    self.whole_index = FAISSManager.create_index(self.whole_embeddings.shape[1])
+                    FAISSManager.add_vectors(self.whole_index, self.whole_embeddings, normalize=True)
 
                 self.current_dict_type = f"tm_{tm_id}"
 
@@ -462,13 +455,9 @@ class EmbeddingsManager:
         with open(split_dict_file, 'rb') as f:
             self.split_dict = pickle.load(f)
 
-        # Normalize and create FAISS HNSW index for split (P20: WebTranslatorNew pattern)
-        faiss.normalize_L2(self.split_embeddings)
-        embedding_dim = self.split_embeddings.shape[1]  # AUTOMATIC dimension
-        self.split_index = faiss.IndexHNSWFlat(embedding_dim, 32, faiss.METRIC_INNER_PRODUCT)
-        self.split_index.hnsw.efConstruction = 400
-        self.split_index.hnsw.efSearch = 500
-        self.split_index.add(self.split_embeddings)
+        # Create FAISS HNSW index for split using FAISSManager
+        self.split_index = FAISSManager.create_index(self.split_embeddings.shape[1])
+        FAISSManager.add_vectors(self.split_index, self.split_embeddings, normalize=True)
 
         # Load whole embeddings if available
         if whole_embeddings_file.exists():
@@ -476,13 +465,9 @@ class EmbeddingsManager:
             with open(whole_dict_file, 'rb') as f:
                 self.whole_dict = pickle.load(f)
 
-            # P20: HNSW index for whole embeddings
-            faiss.normalize_L2(self.whole_embeddings)
-            embedding_dim = self.whole_embeddings.shape[1]  # AUTOMATIC dimension
-            self.whole_index = faiss.IndexHNSWFlat(embedding_dim, 32, faiss.METRIC_INNER_PRODUCT)
-            self.whole_index.hnsw.efConstruction = 400
-            self.whole_index.hnsw.efSearch = 500
-            self.whole_index.add(self.whole_embeddings)
+            # Create FAISS HNSW index for whole using FAISSManager
+            self.whole_index = FAISSManager.create_index(self.whole_embeddings.shape[1])
+            FAISSManager.add_vectors(self.whole_index, self.whole_embeddings, normalize=True)
         else:
             self.whole_embeddings = None
             self.whole_dict = None

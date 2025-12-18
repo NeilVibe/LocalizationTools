@@ -58,6 +58,13 @@
     isAppsMenuOpen = false;
   }
 
+  // BUG-025: Navigate to LDM when title is clicked
+  function goHome() {
+    logger.userAction("Home navigation (title clicked)");
+    currentApp.set('ldm');
+    currentView.set('app');
+  }
+
   function showTasks() {
     logger.userAction("Tasks view selected");
     currentView.set('tasks');
@@ -207,10 +214,13 @@
     <Login />
   {:else}
     <!-- Show main app if authenticated -->
+    <!-- BUG-025: Added href and on:click to make title clickable -->
     <Header
       company="LocaNext"
       platformName=""
       persistentHamburgerMenu={false}
+      href="#"
+      on:click={goHome}
     >
       <div slot="skip-to-content">
         <SkipToContent />
@@ -387,5 +397,14 @@
   .theme-toggle-button:focus {
     outline: 2px solid var(--cds-focus);
     outline-offset: -2px;
+  }
+
+  /* BUG-025: Make header title clickable */
+  :global(.bx--header__name) {
+    cursor: pointer !important;
+  }
+
+  :global(.bx--header__name:hover) {
+    text-decoration: underline;
   }
 </style>

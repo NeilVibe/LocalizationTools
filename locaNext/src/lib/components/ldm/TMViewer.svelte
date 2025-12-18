@@ -48,8 +48,9 @@
   let searchTerm = $state("");
   let searchDebounceTimer = null;
 
-  // Metadata dropdown (BUG-020: added confirmation metadata)
+  // Metadata dropdown (BUG-020: added confirmation metadata, BUG-024: added "none" option)
   const metadataOptions = [
+    { id: "none", text: "None (2 columns)" },
     { id: "string_id", text: "StringID" },
     { id: "is_confirmed", text: "Confirmed" },
     { id: "created_at", text: "Created At" },
@@ -58,7 +59,7 @@
     { id: "confirmed_at", text: "Confirmed At" },
     { id: "confirmed_by", text: "Confirmed By" }
   ];
-  let selectedMetadata = $state("string_id");
+  let selectedMetadata = $state("none"); // BUG-024: Default to 2 columns
 
   // Editing state
   let editingEntryId = $state(null);
@@ -404,16 +405,18 @@
                   {/if}
                 {/if}
               </th>
-              <th class="col-metadata" onclick={() => handleSort(selectedMetadata)}>
-                {getMetadataLabel()}
-                {#if sortBy === selectedMetadata}
-                  {#if sortOrder === "asc"}
-                    <ArrowUp size={12} />
-                  {:else}
-                    <ArrowDown size={12} />
+              {#if selectedMetadata !== "none"}
+                <th class="col-metadata" onclick={() => handleSort(selectedMetadata)}>
+                  {getMetadataLabel()}
+                  {#if sortBy === selectedMetadata}
+                    {#if sortOrder === "asc"}
+                      <ArrowUp size={12} />
+                    {:else}
+                      <ArrowDown size={12} />
+                    {/if}
                   {/if}
-                {/if}
-              </th>
+                </th>
+              {/if}
               <th class="col-actions"></th>
             </tr>
           </thead>
@@ -437,18 +440,20 @@
                       placeholder="Target text"
                     ></textarea>
                   </td>
-                  <td class="col-metadata">
-                    {#if selectedMetadata === "string_id"}
-                      <input
-                        type="text"
-                        class="edit-input-sm"
-                        bind:value={editStringId}
-                        placeholder="StringID"
-                      />
-                    {:else}
-                      {getMetadataValue(entry)}
-                    {/if}
-                  </td>
+                  {#if selectedMetadata !== "none"}
+                    <td class="col-metadata">
+                      {#if selectedMetadata === "string_id"}
+                        <input
+                          type="text"
+                          class="edit-input-sm"
+                          bind:value={editStringId}
+                          placeholder="StringID"
+                        />
+                      {:else}
+                        {getMetadataValue(entry)}
+                      {/if}
+                    </td>
+                  {/if}
                   <td class="col-actions">
                     <Button
                       kind="primary"
@@ -482,9 +487,11 @@
                   <td class="col-target">
                     <span class="cell-text">{entry.target_text}</span>
                   </td>
-                  <td class="col-metadata">
-                    <span class="cell-text metadata">{getMetadataValue(entry)}</span>
-                  </td>
+                  {#if selectedMetadata !== "none"}
+                    <td class="col-metadata">
+                      <span class="cell-text metadata">{getMetadataValue(entry)}</span>
+                    </td>
+                  {/if}
                   <td class="col-actions">
                     <Button
                       kind={entry.is_confirmed ? "secondary" : "primary"}

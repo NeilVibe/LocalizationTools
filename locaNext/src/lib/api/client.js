@@ -101,7 +101,12 @@ class APIClient {
     });
 
     this.setToken(response.access_token);
-    user.set(response.user);
+    // BUG-026 FIX: Token response has user fields directly, not nested in 'user' object
+    user.set({
+      user_id: response.user_id,
+      username: response.username,
+      role: response.role
+    });
     isAuthenticated.set(true);
 
     return response;

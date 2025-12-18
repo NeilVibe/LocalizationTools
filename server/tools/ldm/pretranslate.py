@@ -6,8 +6,12 @@ Routes pretranslation requests to the appropriate engine:
 - XLS Transfer: Whole/split matching with code preservation
 - KR Similar: Structure adaptation with triangle markers
 
-All engines use LOCAL processing (Qwen embeddings + FAISS).
-No external translation API required.
+Embedding Engine Usage:
+- Standard TM: User's choice (Model2Vec fast / Qwen deep) via UI toggle
+- XLS Transfer: Always Qwen (quality > speed for batch pretranslation)
+- KR Similar: Always Qwen (quality > speed for batch pretranslation)
+
+All engines use LOCAL processing (FAISS indexes). No external API required.
 """
 
 from typing import List, Dict, Any, Optional, Callable

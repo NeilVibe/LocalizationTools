@@ -1,116 +1,145 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-18 01:00 KST
-**Build:** 298 (v25.1217.2220) RELEASED
-**Session:** Documentation & Roadmap Update
+**Last Updated:** 2025-12-18 | **Build:** 298 (v25.1217.2220)
 
 ---
 
 ## Current State
 
-**Build 298 stable. Documentation organized. Roadmap updated with future vision.**
-
 | Item | Status |
 |------|--------|
-| Build | 298 released |
-| Open Issues | 0 |
-| Playground | Ready, ONLINE mode |
-| CDP Toolkit | Organized |
+| Build | 298 |
+| Open Bugs | **0** |
+| Code Complete (tested) | **4** (PERF-001, PERF-002, FEAT-005, BUG-023) |
+| Playground | ONLINE mode |
 
 ---
 
-## What Was Done This Session
+## Priority Order
 
-### 1. CDP Testing Toolkit Organized
-- Created `testing_toolkit/cdp/README.md` - hub with selectors, navigation map
-- Organized test scripts into `tests/login/`, `tests/navigation/`, `tests/tm-viewer/`
-- Documented WSL2 constraint: cannot access Windows localhost:9222
-- Updated `docs/testing/CDP_TESTING_GUIDE.md` with constraint warning
-
-### 2. Documentation Wiring
-- Updated `CLAUDE.md` with CDP testing links
-- Fixed Documentation section (restored P36, P25, future/, history/)
-- Added "CDP/Playground testing?" to Quick Navigation
-
-### 3. Roadmap Updated with Future Vision
-- **LDM as Mother App** - progressively merge monolith features
-- Already merged: TM Management, Pretranslation, QA, Glossary extraction
-- Future: Legacy Menu for standalone tools (XLS Transfer, QuickSearch, KR Similar)
-- Slimmed down "done" content
+1. ~~**Fix BUG-023** (TM status display bug)~~ ✅ FIXED
 
 ---
 
-## CDP Testing Toolkit
+## Recently Completed (This Session)
 
-**Location:** `testing_toolkit/cdp/` (hub: README.md)
+### FEAT-005: Model2Vec Default Engine - ✅ COMPLETE
 
-| Script | Purpose |
-|--------|---------|
-| `tests/login/cdp_login.js` | Auto-login |
-| `tests/navigation/quick_check.js` | Page state check |
-| `tests/tm-viewer/check_tm_status.js` | List TMs with status |
-| `tests/tm-viewer/test_tm_viewer_final.js` | TM Viewer & Confirm test |
+**What:** Model2Vec (79x faster) as default embedding engine with UI toggle.
 
-**Critical:** WSL cannot access Windows localhost:9222. Run scripts on Windows via PowerShell:
+**Files Created:**
+- `server/tools/shared/embedding_engine.py` - Engine abstraction
+- API endpoints: `/api/ldm/settings/embedding-engine*`
+
+**Files Modified:**
+- `server/tools/shared/__init__.py` - Exports
+- `server/tools/ldm/api.py` - API endpoints
+- `server/tools/ldm/tm_indexer.py` - Uses EmbeddingEngine
+- `locaNext/src/lib/components/ldm/TMManager.svelte` - UI toggle
+
+**UI:** TM Manager toolbar has Fast/Deep toggle for engine switching.
+
+---
+
+### PERF-001: Incremental HNSW - ✅ TESTED
+
+**What:** Add entries without full rebuild (~5x faster)
+
+**Test Results:**
+- Build 10k index: 5.9s
+- Incremental add 100 vectors: 1.25s vs 6.3s full rebuild = **5x faster**
+
+---
+
+### PERF-002: FAISS Factorization - ✅ TESTED
+
+**What:** 12 FAISS copies → 1 `FAISSManager` class
+
+**Test Results:**
+- All 3 tools import cleanly
+- All FAISS operations work correctly
+
+---
+
+## Completed (Build 298)
+
+| ID | Description | Status |
+|----|-------------|--------|
+| **FEAT-005** | Model2Vec default engine + UI toggle | ✅ Complete |
+| **PERF-001** | Incremental HNSW | ✅ Tested |
+| **PERF-002** | FAISS factorization | ✅ Tested |
+| BUG-027 | TM Viewer UI/UX overhaul | ✅ Tested |
+| FEAT-004 | TM Sync Protocol | ✅ Tested |
+| BUG-024 | File Viewer empty 3rd column | ✅ Fixed |
+| BUG-025 | Title not clickable | ✅ Fixed |
+| BUG-026 | User button shows "User" | ✅ Fixed |
+
+---
+
+## Architecture
+
+### Embedding Engine Usage by Tool
+
+| Tool | Engine | Why |
+|------|--------|-----|
+| **LDM TM Search** | Model2Vec (default) / Qwen (opt-in) | Real-time needs speed |
+| **LDM Standard Pretranslation** | Model2Vec / Qwen (user choice) | Follows user toggle |
+| **KR Similar Pretranslation** | **Qwen ONLY** | Quality > speed |
+| **XLS Transfer Pretranslation** | **Qwen ONLY** | Quality > speed |
+
+### Model2Vec Model: `potion-multilingual-128M`
+
+| Metric | Value |
+|--------|-------|
+| Languages | **101** (including Korean) |
+| Speed | **29,269 sentences/sec** |
+| Dimension | 256 |
+| License | MIT |
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  LDM TM Search Pipeline (Model2Vec/Qwen Selectable)              │
+│                                                                  │
+│  1. EXACT MATCH (hash) ← instant                                │
+│  2. CONTAINS (substring) ← fast                                  │
+│  3. SEMANTIC (Model2Vec + FAISS HNSW) ← DEFAULT                 │
+│     └── potion-multilingual-128M (Korean support)               │
+│     └── 29,269 texts/sec                                        │
+│     └── <1ms/query search                                       │
+│                                                                  │
+│  4. SEMANTIC DEEP (Qwen + FAISS) ← opt-in via UI                │
+│     └── Toggle: TM Manager → "Deep" button                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Quick Commands
+
 ```bash
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
-  cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
-  node test_tm_viewer_final.js
-"
+# Check servers
+./scripts/check_servers.sh
+
+# Start backend
+python3 server/main.py
+
+# Desktop app
+cd locaNext && npm run electron:dev
+
+# Playground install
+./scripts/playground_install.sh --launch --auto-login
 ```
 
 ---
 
-## Build 298 Features (Reference)
-
-| Feature | Status |
-|---------|--------|
-| TM Viewer (paginated, sort, search) | WORKS |
-| TM Confirm (memoQ-style) | WORKS |
-| TM Export (TEXT/Excel/TMX) | WORKS |
-| Global Toasts | WORKS |
-| Metadata Dropdown (7 options) | WORKS |
-| Task Manager (22 ops) | WORKS |
-
----
-
-## Future Vision (from Roadmap)
-
-**Goal:** LDM becomes the "mother app" with all features merged from monolith.
-
-```
-Future:
-├── LDM ─────────── Mother app (all features)
-│   ├── TM Management (done)
-│   ├── Pretranslation (done)
-│   ├── QA Checks (done)
-│   ├── Glossary Extraction (done)
-│   ├── Batch Operations (future)
-│   └── Reports & Analytics (future)
-│
-└── Legacy Menu ─── Standalone tools
-    ├── XLS Transfer
-    ├── Quick Search
-    └── KR Similar
-```
-
----
-
-## Playground Details
+## Playground
 
 ```
 Version:  v25.1217.2220
 Path:     C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
 Mode:     ONLINE (PostgreSQL)
-CDP:      http://127.0.0.1:9222
+Login:    neil/neil
 ```
-
----
-
-## Next Steps
-
-1. Run CDP tests to verify Build 298 features
-2. Continue merging monolith features into LDM as needed
 
 ---
 

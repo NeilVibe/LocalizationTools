@@ -1,12 +1,12 @@
 # LocaNext - Roadmap
 
-**Build:** 298 (v25.1217.2220) | **Updated:** 2025-12-18 | **Status:** 100% Complete | **Open Issues:** 0
+**Build:** 298 (v25.1217.2220) | **Updated:** 2025-12-18 | **Status:** 100% Complete
 
 ---
 
 ## Current Status
 
-All components operational. No active bugs.
+All components operational. All optimizations complete.
 
 | Component | Status |
 |-----------|--------|
@@ -17,51 +17,96 @@ All components operational. No active bugs.
 
 ---
 
+## Completed Items
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | PERF-001 + PERF-002 (FAISS optimization) | ✅ Tested |
+| 2 | FEAT-005 (Model2Vec for LDM TM) | ✅ Complete |
+| 3 | BUG-023 (TM status display) | ✅ Fixed |
+
+---
+
+## Architecture: Embedding Engines
+
+**Important:** Different tools use different engines for good reasons.
+
+| Tool | Engine | Why |
+|------|--------|-----|
+| **LDM TM Search** | Model2Vec (default) / Qwen (opt-in) | Real-time needs speed |
+| **LDM Standard Pretranslation** | Model2Vec / Qwen (user choice) | Follows user toggle |
+| **KR Similar Pretranslation** | **Qwen ONLY** | Quality > speed |
+| **XLS Transfer Pretranslation** | **Qwen ONLY** | Quality > speed |
+
+### Model2Vec: `potion-multilingual-128M`
+
+| Metric | Value |
+|--------|-------|
+| Languages | **101** (including Korean) |
+| Speed | **29,269 sentences/sec** |
+| Dimension | 256 |
+| License | MIT |
+
+> The Fast/Deep toggle affects LDM TM search AND standard pretranslation.
+> KR Similar / XLS Transfer pretranslation ALWAYS use Qwen.
+
+---
+
+## Completed Details
+
+### PERF-001 + PERF-002: FAISS Optimization - ✅ TESTED
+
+| ID | Description | Result |
+|----|-------------|--------|
+| PERF-001 | Incremental HNSW | 5x faster for small additions |
+| PERF-002 | FAISS factorization | 12 copies → 1 FAISSManager |
+
+---
+
+### FEAT-005: Model2Vec Default Engine - ✅ COMPLETE
+
+**Model:** `minishlab/potion-multilingual-128M` (101 languages incl Korean)
+
+| Metric | Model2Vec | Qwen |
+|--------|-----------|------|
+| Speed | 29,269/sec | ~600/sec |
+| Memory | ~128MB | ~2.3GB |
+
+**UI:** TM Manager toolbar → Fast/Deep toggle
+
+**Details:** [FAISS_OPTIMIZATION_PLAN.md](docs/wip/FAISS_OPTIMIZATION_PLAN.md)
+
+---
+
+### BUG-023: TM Status Shows "Pending" - ✅ FIXED
+
+**Culprit:** `MODEL_NAME` undefined in `tm_indexer.py` caused `NameError` during build.
+
+**Fix:** Replaced with `self._engine.name`
+
+---
+
 ## Future Vision: LDM as Mother App
 
 **Goal:** Progressively merge monolith features into LDM (Svelte 5).
 
 ```
-Current Architecture:
-┌─────────────────────────────────────────────────────┐
-│  LocaNext (Electron + Svelte 5)                     │
-│  ├── LDM ─────────── Main app (growing)             │
-│  ├── XLS Transfer ── Standalone tool                │
-│  ├── Quick Search ── Standalone tool                │
-│  └── KR Similar ──── Standalone tool                │
-└─────────────────────────────────────────────────────┘
+Current:
+├── LDM ─────────── Main app (growing)
+├── XLS Transfer ── Standalone tool
+├── Quick Search ── Standalone tool
+└── KR Similar ──── Standalone tool
 
-Future Architecture:
-┌─────────────────────────────────────────────────────┐
-│  LocaNext (Electron + Svelte 5)                     │
-│  ├── LDM ─────────── Mother app (all features)      │
-│  │   ├── File Management                            │
-│  │   ├── TM Management (done)                       │
-│  │   ├── Pretranslation (done)                      │
-│  │   ├── QA Checks (from QuickSearch - done)        │
-│  │   ├── Glossary Extraction (done)                 │
-│  │   ├── Batch Operations (future)                  │
-│  │   ├── Reports & Analytics (future)              │
-│  │   └── ... more monolith features                 │
-│  │                                                  │
-│  └── Legacy Menu ─── Access to standalone tools     │
-│      ├── XLS Transfer                               │
-│      ├── Quick Search                               │
-│      └── KR Similar                                 │
-└─────────────────────────────────────────────────────┘
+Future:
+├── LDM ─────────── Mother app (all features)
+│   ├── TM Management (done)
+│   ├── Pretranslation (done)
+│   ├── QA Checks (done)
+│   ├── Glossary Extraction (done)
+│   └── ... more monolith features
+│
+└── Legacy Menu ─── Access to standalone tools
 ```
-
-### Already Merged into LDM
-- TM Management (viewer, export, confirm)
-- Pretranslation pipeline (3 engines)
-- QA checks (from Quick Search)
-- Glossary extraction
-- Task Manager (22 operations)
-
-### Future Candidates
-- Batch file operations
-- Advanced reporting
-- More monolith functions as needed
 
 ---
 
@@ -69,11 +114,11 @@ Future Architecture:
 
 | Need | Go To |
 |------|-------|
-| **Session state?** | [SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
-| **Open bugs?** | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
-| **CDP Testing?** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
-| **Enterprise?** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
-| **History?** | [docs/history/](docs/history/) |
+| **Session state** | [SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
+| **Open bugs** | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
+| **FAISS/Model2Vec plan** | [FAISS_OPTIMIZATION_PLAN.md](docs/wip/FAISS_OPTIMIZATION_PLAN.md) |
+| **CDP Testing** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
+| **Enterprise** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
 
 ---
 
@@ -84,7 +129,8 @@ LocaNext.exe (User PC)           Central PostgreSQL
 ├─ Electron + Svelte 5       →   ├─ All text data
 ├─ Embedded Python Backend       ├─ Users, sessions
 ├─ FAISS indexes (local)         ├─ LDM rows, TM entries
-├─ Qwen model (local, 2.3GB)     └─ Logs
+├─ Model2Vec (~128MB) ← potion-multilingual-128M       └─ Logs
+├─ Qwen (2.3GB, opt-in)
 └─ File parsing (local)
 
 ONLINE:  PostgreSQL (multi-user, WebSocket sync)
@@ -98,6 +144,12 @@ OFFLINE: SQLite (single-user, auto-fallback)
 ```bash
 # Check servers
 ./scripts/check_servers.sh
+
+# Start backend
+python3 server/main.py
+
+# Desktop app
+cd locaNext && npm run electron:dev
 
 # Playground install
 ./scripts/playground_install.sh --launch --auto-login
@@ -118,4 +170,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Build 298 history: [SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)*
+*Build 298 | Updated 2025-12-19*
