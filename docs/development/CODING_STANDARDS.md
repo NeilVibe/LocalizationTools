@@ -306,7 +306,90 @@ tracker.complete()  # or tracker.fail("Error message")
 
 ## 🚨 COMMON PITFALLS TO AVOID
 
-### 1. Don't Mix Async and Sync DB Sessions
+### 1. LAZY IMPORTS FOR HEAVY ML LIBRARIES (RECURRING ISSUE!)
+
+**⚠️ THIS IS A RECURRING BUG - ALWAYS CHECK FOR THIS!**
+
+Heavy ML libraries (`sentence_transformers`, `torch`, `transformers`) take **3-30+ seconds to import**.
+Module-level imports cause:
+- CI build failures (30s timeout exceeded)
+- Slow server startup (3-7s → 30+s)
+- Poor user experience
+
+```python
+# ❌ WRONG - Module-level import (blocks startup!)
+from sentence_transformers import SentenceTransformer
+import torch
+
+MODELS_AVAILABLE = True  # This triggers import immediately!
+
+class MyManager:
+    def load_model(self):
+        self.model = SentenceTransformer(MODEL_NAME)  # SentenceTransformer already imported!
+
+
+# ✅ CORRECT - Lazy import pattern
+from typing import TYPE_CHECKING
+
+# Type hints only - no runtime import
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+    import torch
+
+# Lazy availability check
+_models_available: Optional[bool] = None
+
+def _check_models_available() -> bool:
+    """Lazy check if ML models are available. Cached after first call."""
+    global _models_available
+    if _models_available is None:
+        try:
+            import sentence_transformers  # noqa: F401
+            import torch  # noqa: F401
+            _models_available = True
+        except ImportError:
+            _models_available = False
+    return _models_available
+
+class MyManager:
+    def load_model(self):
+        # LAZY IMPORT: Only when actually needed
+        from sentence_transformers import SentenceTransformer
+        import torch
+
+        if not _check_models_available():
+            raise RuntimeError("ML libraries not available")
+
+        self.model = SentenceTransformer(MODEL_NAME)
+```
+
+**Impact of this pattern:**
+| Pattern | Import Time | CI Build |
+|---------|-------------|----------|
+| Eager import | 3-30s | ❌ Fails |
+| Lazy import | 0.1-0.8s | ✅ Passes |
+
+**Files that MUST use lazy imports:**
+- Any file importing `sentence_transformers`
+- Any file importing `torch` or `transformers`
+- Any file importing heavy ML/AI libraries
+
+**How to check for violations:**
+```bash
+# Find eager imports (should return nothing in module scope)
+grep -rn "^from sentence_transformers\|^import torch\|^from torch" server/ --include="*.py"
+
+# Check try-blocks at module level
+grep -rn "try:" -A3 server/ --include="*.py" | grep "sentence_transformers\|torch"
+```
+
+**History:** This bug has recurred multiple times:
+- Build 299: `kr_similar/embeddings.py` - Fixed 2025-12-18
+- (Add future occurrences here)
+
+---
+
+### 2. Don't Mix Async and Sync DB Sessions (was #1)
 
 ```python
 # ❌ WRONG

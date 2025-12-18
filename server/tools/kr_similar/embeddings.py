@@ -5,6 +5,9 @@ Handles Korean BERT model loading, embedding generation,
 and dictionary creation/loading for similarity search.
 
 Uses the same model as XLSTransfer: snunlp/KR-SBERT-V40K-klueNLI-augSTS
+
+IMPORTANT: Heavy ML libraries (sentence_transformers, torch) are imported LAZILY
+to avoid 3-30+ second startup delays. See docs/CODING_STANDARDS.md for details.
 """
 
 import os
@@ -12,18 +15,46 @@ import pickle
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, TYPE_CHECKING
 from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
 
-try:
+# LAZY IMPORT PATTERN: Heavy ML libraries imported only when needed
+# This prevents 3-30+ second startup delays (sentence_transformers loads PyTorch)
+# Type hints use TYPE_CHECKING to avoid runtime import
+if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
-    import faiss
     import torch
-    MODELS_AVAILABLE = True
-except ImportError:
-    MODELS_AVAILABLE = False
-    logger.warning("sentence_transformers/faiss not available - embeddings disabled")
+
+# Lazy availability check - don't import at module level
+_models_available: Optional[bool] = None
+
+
+def _check_models_available() -> bool:
+    """Lazy check if ML models are available. Cached after first call."""
+    global _models_available
+    if _models_available is None:
+        try:
+            import sentence_transformers  # noqa: F401
+            import faiss  # noqa: F401
+            import torch  # noqa: F401
+            _models_available = True
+        except ImportError:
+            _models_available = False
+            logger.warning("sentence_transformers/faiss not available - embeddings disabled")
+    return _models_available
+
+
+# For backwards compatibility with code that checks MODELS_AVAILABLE
+# Note: This is checked lazily on first access via _check_models_available()
+def _get_models_available():
+    """Wrapper for backwards compatibility."""
+    return _check_models_available()
+
+
+# Module-level constant for backwards compatibility
+# Use _check_models_available() for lazy checking
+MODELS_AVAILABLE = True  # Assume True, actual check done lazily in _ensure_model_loaded
 
 from server.tools.kr_similar.core import KRSimilarCore, normalize_text
 from server.tools.shared import FAISSManager
@@ -79,16 +110,19 @@ class EmbeddingsManager:
         self.current_dict_type = None
 
         logger.info(f"EmbeddingsManager initialized", {
-            "dictionaries_dir": str(self.dictionaries_dir),
-            "models_available": MODELS_AVAILABLE
+            "dictionaries_dir": str(self.dictionaries_dir)
         })
 
     def _ensure_model_loaded(self):
-        """Load the model if not already loaded."""
-        if not MODELS_AVAILABLE:
+        """Load the model if not already loaded. Uses lazy imports."""
+        if not _check_models_available():
             raise RuntimeError("sentence_transformers not available")
 
         if self.model is None:
+            # LAZY IMPORT: Import heavy ML libraries only when model is needed
+            from sentence_transformers import SentenceTransformer
+            import torch
+
             logger.info("Loading Korean BERT model...", {"model": MODEL_NAME})
             self.model = SentenceTransformer(MODEL_NAME)
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
