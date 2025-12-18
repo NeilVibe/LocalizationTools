@@ -11,6 +11,7 @@
   import FileExplorer from "$lib/components/ldm/FileExplorer.svelte";
   import VirtualGrid from "$lib/components/ldm/VirtualGrid.svelte";
   import TMManager from "$lib/components/ldm/TMManager.svelte";
+  import TMDataGrid from "$lib/components/ldm/TMDataGrid.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
@@ -686,18 +687,11 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
             fileName={selectedFileName}
           />
         {:else if viewMode === 'tm' && selectedTMId}
-          <!-- P33: TM View - placeholder for TM editing -->
-          <div class="tm-view-placeholder">
-            <DataBase size={48} />
-            <h3>Translation Memory: {selectedTMName}</h3>
-            <p>TM editing coming soon. Use TM Manager for now.</p>
-            <Button
-              kind="tertiary"
-              on:click={() => showTMManager = true}
-            >
-              Open TM Manager
-            </Button>
-          </div>
+          <!-- BUG-027: TM content displayed directly (like File Viewer) -->
+          <TMDataGrid
+            tmId={selectedTMId}
+            tmName={selectedTMName}
+          />
         {:else}
           <VirtualGrid
             bind:this={virtualGrid}
@@ -797,28 +791,5 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     font-style: italic;
   }
 
-  /* P33 Phase 3: TM View Placeholder */
-  .tm-view-placeholder {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 1rem;
-    padding: 2rem;
-    color: var(--cds-text-02);
-    text-align: center;
-  }
-
-  .tm-view-placeholder h3 {
-    margin: 0;
-    color: var(--cds-text-01);
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-
-  .tm-view-placeholder p {
-    margin: 0;
-    max-width: 400px;
-  }
+  /* BUG-027: TM View placeholder CSS removed - now using TMDataGrid */
 </style>

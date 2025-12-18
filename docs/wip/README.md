@@ -1,67 +1,67 @@
 # WIP - Work In Progress
 
-**Updated:** 2025-12-17 22:50 KST | **Build:** 298 (v25.1217.2220) | **Open Issues:** 0
+**Updated:** 2025-12-19 | **Build:** 298 (v25.1217.2220)
 
 ---
 
-## Status
+## Current Status
 
-**ALL COMPLETE. Build 298 released. Playground ready for CDP testing.**
+| Status | Count | Items |
+|--------|-------|-------|
+| **Open Bug** | 1 | BUG-023 |
+| **Code Complete** | 2 | PERF-001, PERF-002 (needs testing) |
+| **Not Started** | 1 | FEAT-005 |
 
 ---
 
 ## Active Files
 
-| File | Status | Purpose |
-|------|--------|---------|
-| `SESSION_CONTEXT.md` | Live | Session handoff state |
-| `ISSUES_TO_FIX.md` | Live | Bug tracker (0 open) |
-| `P25_LDM_UX_OVERHAUL.md` | 85% | LDM UX improvements |
-| `P36_PRETRANSLATION_STACK.md` | ✅ Complete | Pretranslation system |
-| `P36_TECHNICAL_DESIGN.md` | ✅ Complete | DB + StringID design |
-| `P36_STRINGID_TESTING_PLAN.md` | ✅ Complete | StringID test plan |
+| File | Purpose | Status |
+|------|---------|--------|
+| **SESSION_CONTEXT.md** | Session handoff state | Live |
+| **ISSUES_TO_FIX.md** | Bug/feature tracker | Live |
+| **FAISS_OPTIMIZATION_PLAN.md** | PERF-001, PERF-002, FEAT-005 details | Live |
+| **MODEL2VEC_BENCHMARK.md** | Model2Vec vs Qwen benchmark | Reference |
 
 ---
 
-## Reference Files
+## Completed Files (Keep for Reference)
 
-| File | Purpose |
-|------|---------|
-| `IDEAS_FUTURE.md` | Future feature ideas |
-| `POTENTIAL_ISSUES.md` | Observations for future reference |
-
----
-
-## Features to Verify (CDP)
-
-| Feature | How to Test |
-|---------|-------------|
-| TM Viewer | LDM → TM Manager → View button |
-| TM Confirm | TM Viewer → Click checkmark on entry |
-| TM Export | TM Manager → Download button → Select format |
-| Global Toasts | Start any operation, watch for notifications |
-| Metadata Dropdown | TM Viewer → Change metadata column |
+| File | Status | Notes |
+|------|--------|-------|
+| BUG-027_TM_VIEWER_OVERHAUL.md | ✅ Complete | TM Viewer implementation |
+| TM_SYNC_GAP_ANALYSIS.md | ✅ Complete | FEAT-004 sync protocol |
+| P36_PRETRANSLATION_STACK.md | ✅ Complete | Pretranslation system |
+| P36_TECHNICAL_DESIGN.md | ✅ Complete | DB + StringID design |
+| P25_LDM_UX_OVERHAUL.md | 85% | LDM UX improvements |
 
 ---
 
-## Recently Archived (2025-12-17)
+## Research Files (Not Chosen)
 
-Moved to `docs/history/wip-archive/`:
-
-| File | Reason |
-|------|--------|
-| P17_LDM_TASKS.md | Phase 7 tasks complete |
-| P23_DATA_FLOW_ARCHITECTURE.md | Architecture finalized |
-| P24_STATUS_DASHBOARD.md | Feature planning complete |
-| P34_RESOURCE_CHECK_PROTOCOL.md | Investigation complete |
+| File | Status | Notes |
+|------|--------|-------|
+| FAST_SEARCH_ALTERNATIVES.md | Research Only | RapidFuzz NOT chosen, Model2Vec chosen |
 
 ---
 
-## Ongoing (Low Priority)
+## Priority Order
 
-- P25: LDM UX Overhaul (85%)
-- BUG-021: Seamless UI during auto-update
+1. **Test PERF-001 + PERF-002** (code complete)
+2. **Implement FEAT-005** (Model2Vec default engine)
+3. **Fix BUG-023** (TM status display)
 
 ---
 
-*Updated 2025-12-17. Build 298 released.*
+## Quick Reference
+
+| Need | Go To |
+|------|-------|
+| Session state | SESSION_CONTEXT.md |
+| Open bugs | ISSUES_TO_FIX.md |
+| FAISS/Model2Vec plan | FAISS_OPTIMIZATION_PLAN.md |
+| Model2Vec benchmark | MODEL2VEC_BENCHMARK.md |
+
+---
+
+*Updated 2025-12-19 | Build 298*

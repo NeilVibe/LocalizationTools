@@ -1094,6 +1094,10 @@ async def list_tms(
     )
     tms = result.scalars().all()
 
+    # Debug: Log actual status values from DB
+    for tm in tms:
+        logger.debug(f"TM {tm.id} '{tm.name}': status='{tm.status}', entry_count={tm.entry_count}")
+
     logger.info(f"Listed {len(tms)} TMs for user {current_user['user_id']}")
     return tms
 
@@ -1824,6 +1828,154 @@ async def get_tm_index_status(
             for idx in indexes
         ]
     }
+
+
+# ============================================================================
+# FEAT-004: TM Sync Protocol (2025-12-18)
+# ============================================================================
+
+@router.get("/tm/{tm_id}/sync-status")
+async def get_tm_sync_status(
+    tm_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Check if TM indexes are stale (DB has newer changes than local indexes).
+
+    Returns:
+        - is_stale: True if DB was updated after last sync
+        - pending_changes: Estimated number of changes (0 if up-to-date)
+        - last_synced: When indexes were last synced
+        - tm_updated_at: When TM was last modified in DB
+    """
+    import json
+    from pathlib import Path
+
+    # Verify TM ownership
+    result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    tm = result.scalar_one_or_none()
+
+    if not tm:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    # Check local metadata
+    data_dir = Path(__file__).parent.parent.parent / "data" / "ldm_tm" / str(tm_id)
+    metadata_path = data_dir / "metadata.json"
+
+    last_synced = None
+    synced_entry_count = 0
+
+    if metadata_path.exists():
+        try:
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+            last_synced = metadata.get("synced_at")
+            synced_entry_count = metadata.get("entry_count", 0)
+        except Exception as e:
+            logger.warning(f"Failed to read TM metadata: {e}")
+
+    # Get current DB entry count
+    from sqlalchemy import func
+    result = await db.execute(
+        select(func.count()).select_from(LDMTMEntry).where(LDMTMEntry.tm_id == tm_id)
+    )
+    db_entry_count = result.scalar() or 0
+
+    # Determine if stale
+    is_stale = False
+    pending_changes = 0
+
+    if last_synced is None:
+        # Never synced
+        is_stale = True
+        pending_changes = db_entry_count
+    elif tm.updated_at:
+        # Compare timestamps
+        from datetime import datetime
+        try:
+            synced_dt = datetime.fromisoformat(last_synced.replace('Z', '+00:00'))
+            if tm.updated_at.replace(tzinfo=None) > synced_dt.replace(tzinfo=None):
+                is_stale = True
+                # Estimate pending changes (rough: diff in counts + assume some updates)
+                pending_changes = max(1, abs(db_entry_count - synced_entry_count))
+        except Exception:
+            is_stale = True
+            pending_changes = db_entry_count
+
+    return {
+        "tm_id": tm_id,
+        "is_stale": is_stale,
+        "pending_changes": pending_changes,
+        "last_synced": last_synced,
+        "tm_updated_at": tm.updated_at.isoformat() if tm.updated_at else None,
+        "db_entry_count": db_entry_count,
+        "synced_entry_count": synced_entry_count
+    }
+
+
+@router.post("/tm/{tm_id}/sync")
+async def sync_tm_indexes(
+    tm_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Smart sync TM indexes with DB.
+
+    Uses TMSyncManager for efficient sync:
+    - Only re-embeds INSERT/UPDATE entries
+    - Copies existing embeddings for UNCHANGED entries
+    - Rebuilds FAISS/hash indexes at the end
+
+    Returns:
+        Sync results including stats (insert, update, delete, unchanged)
+    """
+    from server.tools.ldm.tm_indexer import TMSyncManager
+
+    # Verify TM ownership
+    result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == current_user["user_id"]
+        )
+    )
+    tm = result.scalar_one_or_none()
+
+    if not tm:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    logger.info(f"Starting TM sync for TM {tm_id} (user: {current_user['username']})")
+
+    # Run sync in threadpool to avoid blocking
+    def _sync_tm():
+        sync_db = next(get_db())
+        try:
+            sync_manager = TMSyncManager(sync_db, tm_id)
+            result = sync_manager.sync()
+            return result
+        finally:
+            sync_db.close()
+
+    try:
+        result = await asyncio.to_thread(_sync_tm)
+
+        logger.success(
+            f"TM {tm_id} sync complete: "
+            f"INSERT={result['stats']['insert']}, UPDATE={result['stats']['update']}, "
+            f"UNCHANGED={result['stats']['unchanged']}, time={result['time_seconds']}s"
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"TM sync failed for TM {tm_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"TM sync failed: {str(e)}")
 
 
 # ============================================================================
@@ -2560,3 +2712,90 @@ async def sync_tm_to_central(
     except Exception as e:
         logger.error(f"TM sync to central failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="TM sync failed. Check server logs.")
+
+
+# ============================================================================
+# Embedding Engine Settings (FEAT-005)
+# ============================================================================
+
+class EmbeddingEngineInfo(BaseModel):
+    """Info about an available embedding engine."""
+    id: str
+    name: str
+    description: str
+    dimension: int
+    memory_mb: int
+    default: bool
+
+
+class EmbeddingEngineResponse(BaseModel):
+    """Response for current engine."""
+    current_engine: str
+    engine_name: str
+
+
+class SetEngineRequest(BaseModel):
+    """Request to change embedding engine."""
+    engine: str
+
+
+@router.get("/settings/embedding-engines", response_model=List[EmbeddingEngineInfo])
+async def list_embedding_engines(
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    List available embedding engines.
+
+    Returns info about each engine for UI display.
+    """
+    from server.tools.shared import get_available_engines
+    return get_available_engines()
+
+
+@router.get("/settings/embedding-engine", response_model=EmbeddingEngineResponse)
+async def get_current_embedding_engine(
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Get the currently selected embedding engine.
+    """
+    from server.tools.shared import get_current_engine_name, get_embedding_engine
+
+    engine_name = get_current_engine_name()
+    engine = get_embedding_engine(engine_name)
+
+    return EmbeddingEngineResponse(
+        current_engine=engine_name,
+        engine_name=engine.name
+    )
+
+
+@router.post("/settings/embedding-engine", response_model=EmbeddingEngineResponse)
+async def set_embedding_engine(
+    request: SetEngineRequest,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Change the embedding engine.
+
+    Options:
+    - "model2vec": Fast (79x), lightweight, good for real-time (DEFAULT)
+    - "qwen": Deep semantic, heavy, good for batch/quality work
+
+    Note: Changing engine requires re-indexing TMs for best results.
+    Existing indexes will still work but may have dimension mismatches.
+    """
+    from server.tools.shared import set_current_engine, get_embedding_engine, get_current_engine_name
+
+    try:
+        set_current_engine(request.engine)
+        engine = get_embedding_engine(request.engine)
+
+        logger.info(f"User {current_user['username']} switched embedding engine to: {request.engine}")
+
+        return EmbeddingEngineResponse(
+            current_engine=get_current_engine_name(),
+            engine_name=engine.name
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

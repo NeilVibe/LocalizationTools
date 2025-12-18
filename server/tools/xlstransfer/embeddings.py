@@ -15,6 +15,7 @@ from loguru import logger
 
 from server.tools.xlstransfer import config
 from server.tools.xlstransfer.core import clean_text, excel_column_to_index
+from server.tools.shared import FAISSManager
 # Factor Power: Use centralized progress tracker
 from server.utils.progress_tracker import ProgressTracker
 
@@ -168,18 +169,10 @@ def create_faiss_index(embeddings: np.ndarray) -> faiss.Index:
     """
     logger.info(f"Creating FAISS HNSW index for {len(embeddings)} embeddings")
 
-    # Normalize embeddings for cosine similarity
-    faiss.normalize_L2(embeddings)
-
-    # Create HNSW index (WebTranslatorNew pattern - P20 migration)
-    # M=32 connections per node, efConstruction=400 build quality, efSearch=500 search quality
-    embedding_dim = embeddings.shape[1]  # AUTOMATIC dimension
-    index = faiss.IndexHNSWFlat(embedding_dim, 32, faiss.METRIC_INNER_PRODUCT)
-    index.hnsw.efConstruction = 400
-    index.hnsw.efSearch = 500
-
-    # Add embeddings to index
-    index.add(embeddings)
+    # Create FAISS HNSW index using FAISSManager (handles normalization)
+    embedding_dim = embeddings.shape[1]
+    index = FAISSManager.create_index(embedding_dim)
+    FAISSManager.add_vectors(index, embeddings, normalize=True)
 
     logger.info(f"FAISS HNSW index created with {index.ntotal} vectors (dim={embedding_dim})")
 
@@ -638,14 +631,11 @@ class EmbeddingsManager:
                         self.split_sentences.append(src_line)
                         self.split_dict[src_line] = tgt_line
 
-            # Build FAISS indexes from embeddings
-            # Whole index already has normalized embeddings
+            # Build FAISS indexes from embeddings using FAISSManager
             dim = embeddings.shape[1]
 
-            self.whole_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
-            self.whole_index.hnsw.efConstruction = 400
-            self.whole_index.hnsw.efSearch = 500
-            self.whole_index.add(embeddings)
+            self.whole_index = FAISSManager.create_index(dim)
+            FAISSManager.add_vectors(self.whole_index, embeddings, normalize=True)
 
             # Build split index from split sentences
             if self.split_sentences:
@@ -656,12 +646,9 @@ class EmbeddingsManager:
                     show_progress_bar=False
                 )
                 split_embeddings = np.array(split_embeddings, dtype=np.float32)
-                faiss.normalize_L2(split_embeddings)
 
-                self.split_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
-                self.split_index.hnsw.efConstruction = 400
-                self.split_index.hnsw.efSearch = 500
-                self.split_index.add(split_embeddings)
+                self.split_index = FAISSManager.create_index(dim)
+                FAISSManager.add_vectors(self.split_index, split_embeddings, normalize=True)
 
             # Convert sentences to pd.Series for translate_text_multi_mode
             self.split_sentences = pd.Series(self.split_sentences, dtype=str)
@@ -744,13 +731,10 @@ class EmbeddingsManager:
                         show_progress_bar=False
                     )
                     whole_emb = np.array(whole_emb, dtype=np.float32)
-                    faiss.normalize_L2(whole_emb)
 
                     dim = whole_emb.shape[1]
-                    self.whole_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
-                    self.whole_index.hnsw.efConstruction = 400
-                    self.whole_index.hnsw.efSearch = 500
-                    self.whole_index.add(whole_emb)
+                    self.whole_index = FAISSManager.create_index(dim)
+                    FAISSManager.add_vectors(self.whole_index, whole_emb, normalize=True)
 
                 if self.split_sentences:
                     split_emb = self.model.encode(
@@ -759,13 +743,10 @@ class EmbeddingsManager:
                         show_progress_bar=False
                     )
                     split_emb = np.array(split_emb, dtype=np.float32)
-                    faiss.normalize_L2(split_emb)
 
                     dim = split_emb.shape[1]
-                    self.split_index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
-                    self.split_index.hnsw.efConstruction = 400
-                    self.split_index.hnsw.efSearch = 500
-                    self.split_index.add(split_emb)
+                    self.split_index = FAISSManager.create_index(dim)
+                    FAISSManager.add_vectors(self.split_index, split_emb, normalize=True)
 
                 # Convert to pd.Series
                 self.split_sentences = pd.Series(self.split_sentences, dtype=str)

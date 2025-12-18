@@ -101,7 +101,7 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 docs/
 ├── wip/                  # Active work
 │   ├── SESSION_CONTEXT.md      ← Session state
-│   ├── ISSUES_TO_FIX.md        ← Bug tracker (0 open)
+│   ├── ISSUES_TO_FIX.md        ← Bug tracker (4 open)
 │   ├── P36_*.md                ← Pretranslation (complete)
 │   └── P25_LDM_UX_OVERHAUL.md  ← 85% done
 ├── testing/              # Test guides
@@ -151,4 +151,4 @@ testing_toolkit/cdp/      # CDP scripts (run on Windows!)
 
 ---
 
-*Last updated: 2025-12-18 00:30 KST | Hub file - details in linked docs*
+*Last updated: 2025-12-18 | Hub file - details in linked docs*

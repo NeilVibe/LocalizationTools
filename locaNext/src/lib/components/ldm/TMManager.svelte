@@ -9,7 +9,9 @@
     InlineLoading,
     Tag,
     OverflowMenu,
-    OverflowMenuItem
+    OverflowMenuItem,
+    Dropdown,
+    Tooltip
   } from "carbon-components-svelte";
   import {
     Add,
@@ -20,7 +22,10 @@
     InProgress,
     Power,
     View,
-    Download
+    Download,
+    Settings,
+    Flash,
+    MachineLearning
   } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
@@ -61,6 +66,11 @@
   // UI-003: Active TM state
   let activeTmId = $state(null);
 
+  // FEAT-005: Embedding Engine state
+  let embeddingEngines = $state([]);
+  let currentEngine = $state("model2vec");
+  let engineLoading = $state(false);
+
   // Load active TM from preferences
   function loadActiveTm() {
     const prefs = $preferences;
@@ -90,6 +100,66 @@
   function getAuthHeaders() {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
+  // FEAT-005: Load available embedding engines
+  async function loadEmbeddingEngines() {
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/settings/embedding-engines`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        embeddingEngines = await response.json();
+        logger.info("Loaded embedding engines", { count: embeddingEngines.length });
+      }
+    } catch (err) {
+      logger.error("Error loading embedding engines", { error: err.message });
+    }
+  }
+
+  // FEAT-005: Get current engine
+  async function loadCurrentEngine() {
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/settings/embedding-engine`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        currentEngine = data.current_engine;
+        logger.info("Current embedding engine", { engine: currentEngine });
+      }
+    } catch (err) {
+      logger.error("Error loading current engine", { error: err.message });
+    }
+  }
+
+  // FEAT-005: Switch embedding engine
+  async function setEmbeddingEngine(engineId) {
+    engineLoading = true;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/settings/embedding-engine`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ engine: engineId })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        currentEngine = data.current_engine;
+        logger.success("Embedding engine changed", { engine: currentEngine, name: data.engine_name });
+      } else {
+        const error = await response.json();
+        errorMessage = error.detail || "Failed to change engine";
+        logger.error("Failed to change engine", { error: errorMessage });
+      }
+    } catch (err) {
+      errorMessage = err.message;
+      logger.error("Error changing engine", { error: err.message });
+    } finally {
+      engineLoading = false;
+    }
   }
 
   // Load TMs list
@@ -325,11 +395,13 @@
     tmToBuild = null;
   }
 
-  // Svelte 5: Effect - Load TMs and active TM when modal opens
+  // Svelte 5: Effect - Load TMs, active TM, and engines when modal opens
   $effect(() => {
     if (open) {
       loadActiveTm();
       loadTMs();
+      loadEmbeddingEngines();
+      loadCurrentEngine();
     }
   });
 
@@ -363,21 +435,58 @@
     {/if}
 
     <div class="tm-toolbar">
-      <Button
-        kind="primary"
-        size="small"
-        icon={Add}
-        on:click={() => showUploadModal = true}
-      >
-        Upload TM
-      </Button>
-      <Button
-        kind="ghost"
-        size="small"
-        icon={Renew}
-        iconDescription="Refresh"
-        on:click={loadTMs}
-      />
+      <div class="toolbar-left">
+        <Button
+          kind="primary"
+          size="small"
+          icon={Add}
+          on:click={() => showUploadModal = true}
+        >
+          Upload TM
+        </Button>
+        <Button
+          kind="ghost"
+          size="small"
+          icon={Renew}
+          iconDescription="Refresh"
+          on:click={loadTMs}
+        />
+      </div>
+
+      <!-- FEAT-005: Embedding Engine Selector -->
+      <div class="engine-selector">
+        <span class="engine-label">
+          {#if currentEngine === 'model2vec'}
+            <Flash size={16} />
+          {:else}
+            <MachineLearning size={16} />
+          {/if}
+          Search Engine:
+        </span>
+        <div class="engine-toggle">
+          <button
+            class="engine-btn"
+            class:active={currentEngine === 'model2vec'}
+            disabled={engineLoading}
+            on:click={() => setEmbeddingEngine('model2vec')}
+            title="79x faster, lightweight. Best for real-time search."
+          >
+            Fast
+          </button>
+          <button
+            class="engine-btn"
+            class:active={currentEngine === 'qwen'}
+            disabled={engineLoading}
+            on:click={() => setEmbeddingEngine('qwen')}
+            title="Deep semantic understanding. Best for batch/quality work."
+          >
+            Deep
+          </button>
+        </div>
+        {#if engineLoading}
+          <InlineLoading description="Switching..." />
+        {/if}
+      </div>
     </div>
 
     {#if loading}
@@ -634,6 +743,64 @@
     margin-bottom: 1rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* FEAT-005: Engine Selector Styles */
+  .engine-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .engine-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    white-space: nowrap;
+  }
+
+  .engine-toggle {
+    display: flex;
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .engine-btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: none;
+    background: var(--cds-field-01);
+    color: var(--cds-text-02);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .engine-btn:hover:not(:disabled) {
+    background: var(--cds-hover-ui);
+  }
+
+  .engine-btn.active {
+    background: var(--cds-interactive-01);
+    color: var(--cds-text-on-color);
+  }
+
+  .engine-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .engine-btn:first-child {
+    border-right: 1px solid var(--cds-border-strong-01);
   }
 
   .loading-container {
