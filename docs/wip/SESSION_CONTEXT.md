@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-18 | **Build:** 298 (v25.1217.2220)
+**Last Updated:** 2025-12-18 | **Build:** 299 (pending CI)
 
 ---
 
@@ -8,16 +8,26 @@
 
 | Item | Status |
 |------|--------|
-| Build | 298 |
+| Build | **299 pushed, waiting for CI** |
 | Open Bugs | **0** |
-| Code Complete (tested) | **4** (PERF-001, PERF-002, FEAT-005, BUG-023) |
-| Playground | ONLINE mode |
+| Code Complete | **5** (PERF-001, PERF-002, FEAT-005, BUG-023, Model2Vec upgrade) |
+| Playground | Has Build 298 (needs refresh after CI) |
 
 ---
 
-## Priority Order
+## NEXT SESSION: Refresh Playground
 
-1. ~~**Fix BUG-023** (TM status display bug)~~ ✅ FIXED
+1. **Wait for CI to build** - Check http://172.28.150.120:3000/neilvibe/LocaNext/actions
+2. **Once new release exists**, run: `./scripts/playground_install.sh --launch --auto-login`
+3. **Test BUG-023 fix** - TM status should show "ready" not "pending"
+
+---
+
+## Build 299 Changes (Pushed, Pending CI)
+
+- **BUG-023 FIX:** `MODEL_NAME` undefined → `self._engine.name` in `tm_indexer.py`
+- **Model2Vec Upgrade:** `potion-base-8M` → `potion-multilingual-128M` (101 languages, Korean support)
+- **Docs Updated:** All WIP docs clarify engine usage by tool
 
 ---
 
@@ -135,7 +145,8 @@ cd locaNext && npm run electron:dev
 ## Playground
 
 ```
-Version:  v25.1217.2220
+Current:  v25.1217.2220 (Build 298) ← NEEDS REFRESH
+Pending:  Build 299 (waiting for CI)
 Path:     C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
 Mode:     ONLINE (PostgreSQL)
 Login:    neil/neil
