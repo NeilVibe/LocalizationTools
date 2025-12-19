@@ -10,7 +10,7 @@
   import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
   import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate, ldmConnected } from "$lib/stores/ldm.js";
-  import { preferences } from "$lib/stores/preferences.js";
+  import { preferences, getFontSizeValue } from "$lib/stores/preferences.js";
   import { serverUrl } from "$lib/stores/app.js";
   import PresenceBar from "./PresenceBar.svelte";
 
@@ -87,6 +87,10 @@
 
   // Svelte 5: Derived - visible columns based on preferences
   let visibleColumns = $derived(getVisibleColumns($preferences));
+
+  // Svelte 5: Derived - font styles from preferences (UI-031, UI-032)
+  let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
+  let gridFontWeight = $derived($preferences.fontWeight === 'bold' ? '600' : '400');
 
   function getVisibleColumns(prefs) {
     const cols = [];
@@ -789,7 +793,7 @@
   });
 </script>
 
-<div class="virtual-grid">
+<div class="virtual-grid" style="--grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight};">
   {#if fileId}
     <div class="grid-header">
       <div class="header-left">
@@ -1164,7 +1168,8 @@
 
   .cell {
     padding: 0.5rem;
-    font-size: 0.8125rem;
+    font-size: var(--grid-font-size, 14px);
+    font-weight: var(--grid-font-weight, 400);
     border-right: 1px solid var(--cds-border-subtle-01);
     display: flex;
     align-items: flex-start;

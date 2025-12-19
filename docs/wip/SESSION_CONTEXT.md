@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-19 18:45 | **Build:** 303 (v25.1219.1829) | **Next:** 304
+**Last Updated:** 2025-12-19 | **Build:** 303 (v25.1219.1829) | **Next:** 304
 
 ---
 
@@ -11,6 +11,17 @@
 - ✅ CDP testing infrastructure working
 - ✅ BUG-028, BUG-029 verified fixed
 - ✅ BUG-030 FIXED - WebSocket now shows "connected"
+
+### Build 304 Pending Fixes (NOT YET BUILT)
+- ✅ UI-031: Font size setting now applies to grid (Svelte 5 `$derived` + CSS vars)
+- ✅ UI-032: Bold setting now applies to grid (same fix)
+- ✅ FONT-001: Full multilingual font stack (100+ languages)
+  - Latin, Cyrillic (Russian), Greek
+  - CJK (Korean, Chinese, Japanese)
+  - Thai, Arabic, Hebrew
+  - Indic (Hindi, Bengali, Tamil, Telugu)
+  - Georgian, Armenian
+  - Emoji support
 
 ### BUG-030 Fix Summary
 **Problem:** Server Status modal showed WebSocket as "disconnected" even when connected.
@@ -70,16 +81,18 @@ cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 | BUG-029 | ✅ FIXED | Upload as TM - verified in Build 301 |
 | BUG-030 | ✅ FIXED | WebSocket status - verified in Build 303 |
 | UI-033 | ✅ CLOSED | App Settings NOT empty |
-| UI-031 | 🔄 OPEN | Font size setting may not apply |
-| UI-032 | 🔄 OPEN | Bold setting may not apply |
+| UI-031 | ✅ FIXED | Font size → grid (Build 304) |
+| UI-032 | ✅ FIXED | Bold → grid (Build 304) |
+| FONT-001 | ✅ FIXED | CJK/multilingual fonts (Build 304) |
 | UI-034 | 🔄 OPEN | Tooltips cut off at window edge |
 | UI-027 | ❓ DECISION | Confirm button - keep or remove? |
 | Q-001 | ❓ DECISION | TM auto-sync vs manual sync? |
 
 ### Counts
 - **Fixed (verified):** 3 (BUG-028, BUG-029, BUG-030)
+- **Fixed (Build 304):** 3 (UI-031, UI-032, FONT-001)
 - **Closed:** 1 (UI-033)
-- **Open UI issues:** 3 (UI-031, UI-032, UI-034)
+- **Open UI issues:** 1 (UI-034)
 - **Decisions needed:** 2 (UI-027, Q-001)
 
 ---
@@ -133,11 +146,12 @@ node debug_panel.js        # Server status modal
 
 ## Remaining Work Priority
 
-1. **UI-031/032** - Test if Font/Bold settings actually work
-2. **UI-034** - Tooltip positioning fix
-3. **UI-027** - Decide: keep or remove Confirm button?
-4. **Q-001** - Decide: auto-sync or manual sync for TM?
+1. **Build 304** - Trigger build to deploy UI-031, UI-032, FONT-001 fixes
+2. **Verify** - Test font/bold/CJK in Build 304
+3. **UI-034** - Tooltip positioning fix
+4. **UI-027** - Decide: keep or remove Confirm button?
+5. **Q-001** - Decide: auto-sync or manual sync for TM?
 
 ---
 
-*Session handoff - Build 303 deployed, all bugs fixed, UI issues remain*
+*Session handoff - Build 303 deployed, Build 304 fixes ready (font settings + 100+ language support)*

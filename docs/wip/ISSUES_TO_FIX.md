@@ -9,8 +9,9 @@
 | Status | Count | Items |
 |--------|-------|-------|
 | **Fixed (verified)** | 3 | BUG-028, BUG-029, BUG-030 |
+| **Fixed (Build 304)** | 3 | UI-031, UI-032, FONT-001 |
 | **Closed** | 1 | UI-033 |
-| **Open UI Issues** | 3 | UI-031, UI-032, UI-034 |
+| **Open UI Issues** | 1 | UI-034 |
 | **Decisions Needed** | 2 | UI-027, Q-001 |
 
 ---
@@ -43,21 +44,72 @@ from server.utils.websocket import sio, connected_clients
 
 ## Open UI Issues
 
-### UI-031: Font Size Setting - NEEDS TESTING
+### UI-031: Font Size Setting - FIXED (Build 304)
 
-**Component:** Display Settings
-**Problem:** Changing font size may not affect the grid.
-**CDP Finding:** Font Size dropdown exists (Small 12px / Medium 14px / Large 16px).
-**Status:** Controls exist. Need to verify they actually apply to grid cells.
+**Component:** Display Settings → VirtualGrid
+**Problem:** Changing font size didn't affect the grid.
+**Root Cause:** `VirtualGrid.svelte` had hardcoded `font-size: 0.8125rem` in CSS, ignored preferences.
+
+**Fix Applied:**
+1. Added `$derived` values for font styles from preferences store
+2. Applied CSS custom properties `--grid-font-size` and `--grid-font-weight`
+3. Updated `.cell` CSS to use these variables
+
+**Files Changed:**
+- `locaNext/src/lib/components/ldm/VirtualGrid.svelte`
+
+**Status:** ✅ Fixed - awaiting Build 304 verification
 
 ---
 
-### UI-032: Bold Setting - NEEDS TESTING
+### UI-032: Bold Setting - FIXED (Build 304)
 
-**Component:** Display Settings
-**Problem:** Toggling bold may not affect the grid.
-**CDP Finding:** Bold radio buttons exist (Normal / Bold).
-**Status:** Controls exist. Need to verify they actually apply to grid cells.
+**Component:** Display Settings → VirtualGrid
+**Problem:** Toggling bold didn't affect the grid.
+**Root Cause:** Same as UI-031 - preferences not connected to grid CSS.
+
+**Fix Applied:** Same fix as UI-031 (both use `--grid-font-weight` CSS variable)
+
+**Status:** ✅ Fixed - awaiting Build 304 verification
+
+---
+
+### FONT-001: Multilingual Font Stack - FIXED (Build 304)
+
+**Component:** Global (app.css)
+**Problem:** IBM Plex Sans doesn't support CJK/Cyrillic/Indic glyphs natively.
+**Impact:** Non-Latin text might render with inconsistent fallback fonts.
+
+**Fix Applied:** Complete multilingual font stack in `app.css`:
+
+**Script Coverage:**
+
+| Script | Languages | Windows Font | Noto Fallback |
+|--------|-----------|--------------|---------------|
+| **Latin** | English, French, German, Spanish, Portuguese, Italian, Polish, Dutch, Indonesian, Vietnamese, etc. | Segoe UI | Noto Sans |
+| **Cyrillic** | Russian, Ukrainian, Bulgarian, Serbian, Macedonian, Belarusian | Segoe UI | Noto Sans |
+| **Greek** | Greek | Segoe UI | Noto Sans |
+| **CJK** | Korean | Malgun Gothic | Noto Sans CJK KR |
+| | Chinese (Simplified) | Microsoft YaHei | Noto Sans CJK SC |
+| | Chinese (Traditional) | Microsoft JhengHei | Noto Sans CJK TC |
+| | Japanese | Meiryo, Yu Gothic | Noto Sans CJK JP |
+| **Thai** | Thai | Leelawadee UI | Noto Sans Thai |
+| **Arabic** | Arabic, Persian, Urdu | Segoe UI | Noto Sans Arabic |
+| **Hebrew** | Hebrew | Segoe UI | Noto Sans Hebrew |
+| **Indic** | Hindi, Marathi, Sanskrit | Nirmala UI | Noto Sans Devanagari |
+| | Bengali | Nirmala UI | Noto Sans Bengali |
+| | Tamil | Nirmala UI | Noto Sans Tamil |
+| | Telugu | Nirmala UI | Noto Sans Telugu |
+| **Caucasian** | Georgian | Segoe UI | Noto Sans Georgian |
+| | Armenian | Segoe UI | Noto Sans Armenian |
+| **Emoji** | All | Segoe UI Emoji | Noto Color Emoji |
+
+**Total:** 100+ languages via system fonts + Noto fallbacks
+
+**Files Changed:**
+- `locaNext/src/app.css`
+
+**Status:** ✅ Fixed - awaiting Build 304 verification
 
 ---
 
