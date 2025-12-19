@@ -145,7 +145,8 @@ docs/
 - **Tests:** ~273 in CI
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
-- **Open Issues:** 5 (3 UI/UX, 2 decisions)
+- **Open Issues:** 3 (1 UI, 2 decisions)
+- **Languages:** 100+ (full Unicode support)
 
 ---
 

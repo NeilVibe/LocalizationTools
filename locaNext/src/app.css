@@ -68,7 +68,65 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+  /*
+   * MULTILINGUAL FONT STACK - Full Unicode Support
+   * LocaNext is a localization tool - must render ALL languages correctly
+   *
+   * Supported scripts: Latin, Cyrillic, CJK, Thai, Arabic, Hebrew,
+   * Devanagari, Greek, Vietnamese, and 100+ more via system fallbacks
+   */
+  font-family:
+    /* System fonts - best native rendering, broad Unicode coverage */
+    -apple-system,                /* macOS/iOS (full Unicode) */
+    BlinkMacSystemFont,           /* Chrome on macOS */
+    'Segoe UI',                   /* Windows (Latin, Cyrillic, Greek, Hebrew, Arabic) */
+
+    /* CJK - East Asian */
+    'Malgun Gothic',              /* Korean (Windows) */
+    'Microsoft YaHei',            /* Chinese Simplified (Windows) */
+    'Microsoft JhengHei',         /* Chinese Traditional (Windows) */
+    'Meiryo',                     /* Japanese (Windows) */
+    'Yu Gothic',                  /* Japanese (Windows modern) */
+
+    /* Cyrillic - Russian, Ukrainian, Bulgarian, etc. */
+    /* Segoe UI covers Cyrillic, these are fallbacks */
+
+    /* Indic scripts */
+    'Nirmala UI',                 /* Windows: Hindi, Bengali, Tamil, Telugu, etc. */
+
+    /* Thai */
+    'Leelawadee UI',              /* Thai (Windows) */
+
+    /* Arabic/Hebrew (RTL) */
+    /* Segoe UI covers these */
+
+    /* Universal fallbacks - Google Noto family covers ALL scripts */
+    'Noto Sans',                  /* Latin, Cyrillic, Greek */
+    'Noto Sans CJK KR',           /* Korean */
+    'Noto Sans CJK SC',           /* Chinese Simplified */
+    'Noto Sans CJK TC',           /* Chinese Traditional */
+    'Noto Sans CJK JP',           /* Japanese */
+    'Noto Sans Thai',             /* Thai */
+    'Noto Sans Arabic',           /* Arabic */
+    'Noto Sans Hebrew',           /* Hebrew */
+    'Noto Sans Devanagari',       /* Hindi, Marathi, Sanskrit */
+    'Noto Sans Bengali',          /* Bengali */
+    'Noto Sans Tamil',            /* Tamil */
+    'Noto Sans Telugu',           /* Telugu */
+    'Noto Sans Georgian',         /* Georgian */
+    'Noto Sans Armenian',         /* Armenian */
+
+    /* Generic fallbacks */
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif,
+
+    /* Emoji */
+    'Apple Color Emoji',          /* macOS emoji */
+    'Segoe UI Emoji',             /* Windows emoji */
+    'Noto Color Emoji';           /* Linux/Android emoji */
+
   background: var(--cds-background);
   color: var(--cds-text-01);
   overflow: hidden;
