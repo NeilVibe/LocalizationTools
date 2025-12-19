@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512190300 | **Build:** 301 | **Status:** QA | **Issues:** 12
+**Version:** 2512190400 | **Build:** 301 | **Status:** QA | **Issues:** 7
 
 > **KEEP THIS FILE COMPACT.** Details in linked docs.
 
@@ -142,7 +142,7 @@ testing_toolkit/cdp/      # CDP scripts (run from WSL or Windows)
 - **Tests:** ~273 in CI
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
-- **Open Issues:** 12 (1 medium bug, 10 UI/UX, 1 question)
+- **Open Issues:** 7 (1 medium bug, 5 UI/UX, 1 question)
 
 ---
 

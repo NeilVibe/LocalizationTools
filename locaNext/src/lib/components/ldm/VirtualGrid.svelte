@@ -3,11 +3,9 @@
     Search,
     InlineLoading,
     Tag,
-    Button,
-    OverflowMenu,
-    OverflowMenuItem
+    Button
   } from "carbon-components-svelte";
-  import { Edit, Locked, Download } from "carbon-icons-svelte";
+  import { Edit, Locked } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
   import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
@@ -719,51 +717,7 @@
     return total * avgHeight;
   }
 
-  // Download file
-  async function downloadFile(statusFilter = null) {
-    if (!fileId) return;
-
-    try {
-      let url = `${API_BASE}/api/ldm/files/${fileId}/download`;
-      if (statusFilter) {
-        url += `?status_filter=${statusFilter}`;
-      }
-
-      const response = await fetch(url, {
-        headers: getAuthHeaders()
-      });
-
-      if (!response.ok) {
-        throw new Error('Download failed');
-      }
-
-      // Get filename from Content-Disposition header
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let downloadName = 'export.txt';
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename=(.+)/);
-        if (match) {
-          downloadName = match[1];
-        }
-      }
-
-      // Create blob and download
-      const blob = await response.blob();
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = downloadName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
-
-      logger.info("File downloaded", { fileId, statusFilter });
-    } catch (err) {
-      logger.error("Download failed", { error: err.message });
-      alert("Download failed: " + err.message);
-    }
-  }
+  // UI-029: downloadFile removed - users download via right-click on FileExplorer
 
   // Pre-fetch TM on cell click
   let prefetchedRowId = null;
@@ -842,12 +796,8 @@
         <h4>{fileName || `File #${fileId}`}</h4>
         <span class="row-count">{total.toLocaleString()} rows</span>
       </div>
+      <!-- UI-029: Removed download menu - users download via right-click on file list -->
       <div class="header-right">
-        <OverflowMenu flipped iconDescription="Download options">
-          <OverflowMenuItem text="Download All" on:click={() => downloadFile()} />
-          <OverflowMenuItem text="Download Reviewed Only" on:click={() => downloadFile('reviewed')} />
-          <OverflowMenuItem text="Download Translated" on:click={() => downloadFile('translated')} />
-        </OverflowMenu>
         <PresenceBar />
       </div>
     </div>

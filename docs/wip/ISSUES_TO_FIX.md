@@ -10,9 +10,9 @@
 |--------|-------|-------|
 | **Critical Bugs** | **0** | - |
 | **Medium Bugs** | **1** | BUG-030 |
-| **UI/UX Issues** | **11** | UI-025 to UI-035 |
+| **UI/UX Issues** | **6** | UI-027, UI-031 to UI-035 |
 | **Questions** | **1** | Q-001 |
-| **Tested & Complete** | **9** | BUG-028, BUG-029, PERF-001, PERF-002, FEAT-005, BUG-023, UI-024, Lazy Import, Model2Vec |
+| **Tested & Complete** | **13** | BUG-028, BUG-029, UI-025, UI-026, UI-028, UI-029, UI-030, + 6 more |
 
 ---
 
@@ -27,57 +27,14 @@
 
 ---
 
-## UI/UX Issues - TM Viewer Minimalism
+## UI/UX Issues - TM Viewer
 
-> **Theme:** Remove all unnecessary UI elements. Implement lazy loading. Minimalistic design.
-
-### UI-025: Remove "Items Per Page" Selector
+### UI-027: Review "Confirm" Button - NEEDS DECISION
 
 **Component:** TM Viewer
-**Problem:** "Items per page" dropdown is unnecessary clutter.
-**Solution:** Implement lazy loading that matches window size. Auto-load more on scroll.
-
----
-
-### UI-026: Remove Pagination ("1 of 1 page")
-
-**Component:** TM Viewer
-**Problem:** "1 of 1" page indicator is useless with lazy load.
-**Solution:** Remove pagination entirely. Use infinite scroll with lazy loading.
-
----
-
-### UI-027: Remove "Confirm" Button
-
-**Component:** TM Viewer
-**Problem:** "Confirm" button purpose unclear / useless.
-**Solution:** Review code to understand what it does, then remove button AND all linked logic.
-
----
-
-### UI-028: Remove "Showing rows X-Y of Z"
-
-**Component:** TM Viewer
-**Problem:** "Showing rows 1-5 of 5" text is unnecessary with lazy load.
-**Solution:** Remove. Lazy load handles display naturally.
-
----
-
-## UI/UX Issues - File Viewer
-
-### UI-029: Remove Download Options from 3-Dot Menu
-
-**Component:** File Viewer (viewing info area)
-**Problem:** 3-dot menu next to "Viewing" has "Download review", "Download all" - useless options.
-**Solution:** Remove these options. Users download full file via right-click on file list.
-
----
-
-### UI-030: Remove "i" Info Button
-
-**Component:** File Viewer (viewing info area)
-**Problem:** The "i" info button next to viewing info is useless.
-**Solution:** Remove button AND all linked code/logic. Clean removal.
+**Status:** KEEP - This is memoQ-style workflow for confirming TM entries.
+**Notes:** After code review, this is useful for translation workflow (confirm/unconfirm entries).
+**Decision Needed:** Keep as is, or make optional via settings?
 
 ---
 
@@ -145,6 +102,11 @@ This IS the most powerful multilingual Model2Vec model available. ✅
 
 | ID | Description | Date |
 |----|-------------|------|
+| UI-025 | TM Viewer: Removed "Items per page" selector | 2025-12-19 |
+| UI-026 | TM Viewer: Removed pagination, added infinite scroll | 2025-12-19 |
+| UI-028 | TM Viewer: Removed "Showing rows X-Y" (replaced with scroll hint) | 2025-12-19 |
+| UI-029 | File Viewer: Removed download menu (use right-click instead) | 2025-12-19 |
+| UI-030 | File Viewer: Info button not found (may already be removed) | 2025-12-19 |
 | BUG-028 | Model2Vec missing from embedded Python pip install | 2025-12-19 |
 | BUG-029 | Upload as TM - context menu file ref lost | 2025-12-19 |
 | UI-024 | Dynamic engine name in build modal | 2025-12-19 |
@@ -161,13 +123,12 @@ This IS the most powerful multilingual Model2Vec model available. ✅
 
 ## Priority Order for Next Session
 
-1. **UI-025 to UI-028** - TM Viewer minimalism (batch together)
-2. **UI-029, UI-030** - File Viewer cleanup (batch together)
-3. **UI-034** - Tooltip positioning (affects entire app)
-4. **BUG-030** - WebSocket investigation
-5. **UI-031 to UI-033** - Settings cleanup (low priority)
-6. **Q-001** - Auto-sync decision
+1. **UI-034** - Tooltip positioning (affects entire app)
+2. **BUG-030** - WebSocket investigation
+3. **UI-031 to UI-033** - Settings cleanup (low priority)
+4. **UI-027** - Confirm button decision (keep or remove?)
+5. **Q-001** - Auto-sync decision
 
 ---
 
-*Updated 2025-12-19 | 0 critical bugs, 1 medium bug, 11 UI/UX issues*
+*Updated 2025-12-19 | 0 critical bugs, 1 medium bug, 6 UI/UX issues*
