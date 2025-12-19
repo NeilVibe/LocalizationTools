@@ -226,10 +226,33 @@ LocaNext.exe --remote-debugging-port=9222
 
 ## Troubleshooting
 
-### WSL Interop Broken
-Cannot execute Windows binaries from WSL. Run install from Windows directly:
+### WSL Interop Broken ("Exec format error")
+
+**Symptom:**
+```
+/mnt/c/.../powershell.exe: cannot execute binary file: Exec format error
+```
+
+**Cause:** `WSLInterop` handler missing from `/proc/sys/fs/binfmt_misc/`
+
+**Check:**
+```bash
+ls /proc/sys/fs/binfmt_misc/
+# Should show: WSLInterop, register, status
+# If WSLInterop missing = broken
+```
+
+**Fix:** Restart WSL from Windows CMD:
 ```cmd
-powershell -ExecutionPolicy Bypass -File scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP
+wsl --shutdown
+```
+Then reopen WSL terminal.
+
+**WARNING:** This kills everything in WSL including SSH servers. You'll lose your connection if SSH'd in.
+
+**Workaround (if can't restart):** Run install directly from Windows:
+```cmd
+powershell -ExecutionPolicy Bypass -File D:\LocalizationTools\scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP
 ```
 
 ### CDP Not Responding
