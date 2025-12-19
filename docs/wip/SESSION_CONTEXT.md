@@ -1,56 +1,101 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-19 | **Build:** 303 (v25.1219.1829) | **Next:** 304
+**Last Updated:** 2025-12-19 19:15 | **Build:** 304 (triggered) | **Next:** 305
 
 ---
 
 ## CURRENT STATE
 
-### Build 303 Status: INSTALLED & TESTED
-- ✅ Playground has Build 303 installed (v25.1219.1829)
-- ✅ CDP testing infrastructure working
-- ✅ BUG-028, BUG-029 verified fixed
-- ✅ BUG-030 FIXED - WebSocket now shows "connected"
-
-### Build 304 Pending Fixes (NOT YET BUILT)
-- ✅ UI-031: Font size setting now applies to grid (Svelte 5 `$derived` + CSS vars)
-- ✅ UI-032: Bold setting now applies to grid (same fix)
+### Build 304 Status: TRIGGERED - AWAITING CI
+Build 304 was triggered with the following fixes:
+- ✅ UI-031: Font size setting now applies to grid
+- ✅ UI-032: Bold setting now applies to grid
 - ✅ FONT-001: Full multilingual font stack (100+ languages)
-  - Latin, Cyrillic (Russian), Greek
-  - CJK (Korean, Chinese, Japanese)
-  - Thai, Arabic, Hebrew
-  - Indic (Hindi, Bengali, Tamil, Telugu)
-  - Georgian, Armenian
-  - Emoji support
 
-### BUG-030 Fix Summary
-**Problem:** Server Status modal showed WebSocket as "disconnected" even when connected.
-
-**Root Cause:** Nested try/except import structure in `get_websocket_stats()` was failing silently.
-
-**Fix Applied (Build 303):** Simplified import to single line:
-```python
-# Before (broken):
-from server.utils.websocket import sio
-# ...
-try:
-    from server.utils.websocket import connected_clients
-except: pass
-
-# After (working):
-from server.utils.websocket import sio, connected_clients
+**To check build status:**
+```bash
+curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq '.[0] | {status, conclusion}'
 ```
 
-**Verified:** Health API returns `"websocket": "connected"`, Server Status modal shows "connected".
-
-### Important: Hard Refresh After Install
-After installing a new build, always do a **hard refresh**:
-- **Windows:** `Ctrl+Shift+R` or `Ctrl+F5`
-- Clears cached frontend assets
+### Build 303 Status: VERIFIED
+- ✅ Playground has Build 303 installed (v25.1219.1829)
+- ✅ BUG-028, BUG-029, BUG-030 all verified fixed
 
 ---
 
-## CDP Testing (IMPORTANT)
+## WHAT WAS DONE THIS SESSION
+
+### 1. Tested UI-031/032 via CDP
+- Confirmed font size dropdown and bold toggle exist
+- Confirmed settings were NOT applying to VirtualGrid
+- Root cause: hardcoded CSS in VirtualGrid.svelte
+
+### 2. Fixed UI-031/032 (VirtualGrid.svelte)
+```javascript
+// Added Svelte 5 $derived for reactive font styles
+let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
+let gridFontWeight = $derived($preferences.fontWeight === 'bold' ? '600' : '400');
+```
+
+Applied via CSS custom properties:
+```svelte
+<div class="virtual-grid" style="--grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight};">
+```
+
+### 3. Fixed FONT-001 (app.css)
+Added full multilingual font stack supporting 100+ languages:
+
+| Script | Languages | Windows Font |
+|--------|-----------|--------------|
+| Latin | EN, FR, DE, ES, ID, VI... | Segoe UI |
+| Cyrillic | RU, UA, BG, SR... | Segoe UI |
+| CJK | KR, CN, TW, JP | Malgun, YaHei, JhengHei, Meiryo |
+| Thai | TH | Leelawadee UI |
+| Arabic | AR, FA, UR | Segoe UI |
+| Hebrew | HE | Segoe UI |
+| Indic | HI, BN, TA, TE... | Nirmala UI |
+| Caucasian | KA, HY | Segoe UI |
+| Emoji | All | Segoe UI Emoji |
+
+---
+
+## ISSUES SUMMARY
+
+| Issue | Status | Description |
+|-------|--------|-------------|
+| BUG-028 | ✅ VERIFIED | Model2Vec import (Build 301) |
+| BUG-029 | ✅ VERIFIED | Upload as TM (Build 301) |
+| BUG-030 | ✅ VERIFIED | WebSocket status (Build 303) |
+| UI-031 | ✅ FIXED | Font size → grid (Build 304) |
+| UI-032 | ✅ FIXED | Bold → grid (Build 304) |
+| FONT-001 | ✅ FIXED | 100+ language fonts (Build 304) |
+| UI-033 | ✅ CLOSED | App Settings NOT empty |
+| UI-034 | 🔄 OPEN | Tooltips cut off at window edge |
+| UI-027 | ❓ DECISION | Confirm button - keep or remove? |
+| Q-001 | ❓ DECISION | TM auto-sync vs manual sync? |
+
+### Counts
+- **Fixed & Verified:** 4 (BUG-028, BUG-029, BUG-030, UI-033)
+- **Fixed (Build 304):** 3 (UI-031, UI-032, FONT-001)
+- **Open:** 1 (UI-034)
+- **Decisions:** 2 (UI-027, Q-001)
+
+---
+
+## NEXT SESSION TODO
+
+1. **Wait for Build 304 to complete** (~15 min)
+2. **Install Build 304 to Playground:**
+   ```bash
+   ./scripts/playground_install.sh --launch --auto-login
+   ```
+3. **Verify UI-031/032/FONT-001 fixes via CDP**
+4. **Fix UI-034** (tooltip positioning)
+5. **Get decisions on UI-027 and Q-001**
+
+---
+
+## CDP TESTING (IMPORTANT)
 
 **WSL2 cannot reach Windows localhost.** CDP tests MUST run from Windows PowerShell.
 
@@ -60,8 +105,7 @@ After installing a new build, always do a **hard refresh**:
 Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
 node login.js              # Login as neil/neil
 node quick_check.js        # Check page state
-node test_server_status.js # Check server status
-node test_bug029.js        # Test Upload as TM
+node test_font_settings.js # Test font settings (UI-031/032)
 ```
 
 ### Launch App with CDP (from WSL)
@@ -73,85 +117,47 @@ cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 
 ---
 
-## Issues Summary
-
-| Issue | Status | Description |
-|-------|--------|-------------|
-| BUG-028 | ✅ FIXED | Model2Vec import - verified in Build 301 |
-| BUG-029 | ✅ FIXED | Upload as TM - verified in Build 301 |
-| BUG-030 | ✅ FIXED | WebSocket status - verified in Build 303 |
-| UI-033 | ✅ CLOSED | App Settings NOT empty |
-| UI-031 | ✅ FIXED | Font size → grid (Build 304) |
-| UI-032 | ✅ FIXED | Bold → grid (Build 304) |
-| FONT-001 | ✅ FIXED | CJK/multilingual fonts (Build 304) |
-| UI-034 | 🔄 OPEN | Tooltips cut off at window edge |
-| UI-027 | ❓ DECISION | Confirm button - keep or remove? |
-| Q-001 | ❓ DECISION | TM auto-sync vs manual sync? |
-
-### Counts
-- **Fixed (verified):** 3 (BUG-028, BUG-029, BUG-030)
-- **Fixed (Build 304):** 3 (UI-031, UI-032, FONT-001)
-- **Closed:** 1 (UI-033)
-- **Open UI issues:** 1 (UI-034)
-- **Decisions needed:** 2 (UI-027, Q-001)
-
----
-
-## Testing Workflow
-
-### Install New Build
-```bash
-./scripts/playground_install.sh --launch --auto-login
-```
-
-### After Install - HARD REFRESH
-Press `Ctrl+Shift+R` or `Ctrl+F5` to clear cached frontend assets.
-
-### CDP Tests (from Windows PowerShell)
-```powershell
-Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
-node login.js              # Login
-node quick_check.js        # Page state
-node debug_panel.js        # Server status modal
-```
-
----
-
-## Key Paths
+## KEY PATHS
 
 | What | Path |
 |------|------|
 | Playground | `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext` |
 | CDP Tests | `testing_toolkit/cdp/*.js` |
-| Health API | `server/api/health.py` |
-| WebSocket | `server/utils/websocket.py` |
-| Session Doc | `docs/wip/SESSION_CONTEXT.md` |
-| Issue List | `docs/wip/ISSUES_TO_FIX.md` |
+| VirtualGrid | `locaNext/src/lib/components/ldm/VirtualGrid.svelte` |
+| App CSS | `locaNext/src/app.css` |
+| Preferences Store | `locaNext/src/lib/stores/preferences.js` |
 
 ---
 
-## CDP Test Scripts
+## ARCHITECTURE REMINDER
 
-| Script | Purpose |
-|--------|---------|
-| `login.js` | Auto-login as neil/neil |
-| `quick_check.js` | Page state, test interfaces |
-| `check_server_status.js` | Server status panel (BUG-030) |
-| `test_bug029.js` | Upload as TM flow |
-| `test_server_status.js` | Server status + TM build |
-| `debug_websocket.js` | WebSocket debug info |
-| `check_network.js` | Network request debug |
+```
+LocaNext.exe (User PC)           Central PostgreSQL
+├─ Electron + Svelte 5       →   ├─ All text data
+├─ Embedded Python Backend       ├─ Users, sessions
+├─ FAISS indexes (local)         └─ TM entries, logs
+├─ Model2Vec (~128MB)
+├─ Qwen (2.3GB, opt-in)
+└─ File parsing (local)
 
----
-
-## Remaining Work Priority
-
-1. **Build 304** - Trigger build to deploy UI-031, UI-032, FONT-001 fixes
-2. **Verify** - Test font/bold/CJK in Build 304
-3. **UI-034** - Tooltip positioning fix
-4. **UI-027** - Decide: keep or remove Confirm button?
-5. **Q-001** - Decide: auto-sync or manual sync for TM?
+Preferences:
+├─ fontSize: 'small' | 'medium' | 'large'
+├─ fontWeight: 'normal' | 'bold'
+└─ Stored in localStorage, applied via CSS vars
+```
 
 ---
 
-*Session handoff - Build 303 deployed, Build 304 fixes ready (font settings + 100+ language support)*
+## FILES CHANGED THIS SESSION
+
+| File | Changes |
+|------|---------|
+| `VirtualGrid.svelte` | Added `$derived` for font styles, CSS vars |
+| `app.css` | Full multilingual font stack |
+| `ISSUES_TO_FIX.md` | Updated status for UI-031/032/FONT-001 |
+| `SESSION_CONTEXT.md` | This file |
+| `CLAUDE.md` | Updated stats |
+
+---
+
+*Session complete - Build 304 triggered, full font support for 100+ languages*
