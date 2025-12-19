@@ -74,3 +74,4 @@ Build 300: Lazy import fix
 Build 301 - BUG-028/029 fixes
 Build LIGHT
 Build LIGHT
+Build LIGHT - UI-031/032 font fixes + FONT-001 multilingual
