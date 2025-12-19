@@ -14,8 +14,8 @@
 | **Session context?** | [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
 | **Open bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 | **WIP docs?** | [docs/wip/README.md](docs/wip/README.md) |
-| **Build & test protocol?** | [testing_toolkit/BUILD_TEST_PROTOCOL.md](testing_toolkit/BUILD_TEST_PROTOCOL.md) |
-| **Node.js testing?** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
+| **Build → Test protocol?** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) ← START HERE |
+| **Node.js CDP tests?** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
 | **Enterprise deploy?** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
 | **All docs?** | [docs/README.md](docs/README.md) |
 
@@ -99,21 +99,23 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 ## Documentation
 
 ```
+testing_toolkit/          # ← PRIMARY TESTING DOCS
+├── MASTER_TEST_PROTOCOL.md  ← FULL WORKFLOW: Push→CI→Build→Install→Test
+├── cdp/                     # Node.js CDP tests
+│   ├── README.md               ← CDP test guide
+│   └── *.js                    ← Test scripts
+└── README.md                ← Testing overview
+
 docs/
 ├── wip/                  # Active work
 │   ├── SESSION_CONTEXT.md      ← Session state
-│   ├── ISSUES_TO_FIX.md        ← Bug tracker (14 open)
+│   ├── ISSUES_TO_FIX.md        ← Bug tracker
 │   └── P25_LDM_UX_OVERHAUL.md  ← 85% done
-├── testing/              # Test guides
-│   └── README.md               ← Testing hub
+├── testing/              # Detailed test guides
+│   └── PLAYGROUND_INSTALL_PROTOCOL.md
 ├── enterprise/           # Company deployment
 │   └── HUB.md
 └── history/              # Archives
-    └── wip-archive/            ← Completed P* files
-
-testing_toolkit/cdp/      # CDP scripts (run from WSL or Windows)
-├── README.md                ← Node.js CDP guide (primary)
-└── *.js                     ← Test scripts
 ```
 
 ---
