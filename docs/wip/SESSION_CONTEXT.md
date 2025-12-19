@@ -68,7 +68,7 @@ cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 |-------|--------|-------------|
 | BUG-028 | ✅ FIXED | Model2Vec import - verified in Build 301 |
 | BUG-029 | ✅ FIXED | Upload as TM - verified in Build 301 |
-| BUG-030 | 🔧 CODE FIXED | WebSocket "disconnected" - wrong import path |
+| BUG-030 | ✅ FIXED | WebSocket status - verified in Build 303 |
 | UI-033 | ✅ CLOSED | App Settings NOT empty |
 | UI-031 | 🔄 OPEN | Font size setting may not apply |
 | UI-032 | 🔄 OPEN | Bold setting may not apply |
@@ -77,47 +77,29 @@ cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 | Q-001 | ❓ DECISION | TM auto-sync vs manual sync? |
 
 ### Counts
-- **Fixed (verified):** 2 (BUG-028, BUG-029)
-- **Fixed (pending build):** 1 (BUG-030)
+- **Fixed (verified):** 3 (BUG-028, BUG-029, BUG-030)
 - **Closed:** 1 (UI-033)
 - **Open UI issues:** 3 (UI-031, UI-032, UI-034)
 - **Decisions needed:** 2 (UI-027, Q-001)
 
 ---
 
-## BUG-030 Fix Details
+## Testing Workflow
 
-**Problem:** Server status showed WebSocket as "disconnected" even when connected.
-
-**Root Cause:** `server/api/health.py` imported from non-existent file:
-```python
-# WRONG - file doesn't exist!
-from server.socket_manager import sio
-
-# CORRECT - actual location
-from server.utils.websocket import sio
+### Install New Build
+```bash
+./scripts/playground_install.sh --launch --auto-login
 ```
 
-**Fix Applied:**
-- Line 142: Fixed `sio` import path
-- Line 156: Fixed `connected_clients` import path
+### After Install - HARD REFRESH
+Press `Ctrl+Shift+R` or `Ctrl+F5` to clear cached frontend assets.
 
-**File:** `server/api/health.py`
-
----
-
-## Build 303 Triggered
-
-Waiting for build to complete (~12-15 min).
-
-After build completes:
-```bash
-# Install to Playground
-./scripts/playground_install.sh --launch --auto-login
-
-# Check logs for warning message
-# From Windows PowerShell:
-Get-Content 'C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/logs/locanext_app.log' -Tail 50 | Select-String "WebSocket stats"
+### CDP Tests (from Windows PowerShell)
+```powershell
+Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+node login.js              # Login
+node quick_check.js        # Page state
+node debug_panel.js        # Server status modal
 ```
 
 ---
@@ -151,12 +133,11 @@ Get-Content 'C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/l
 
 ## Remaining Work Priority
 
-1. **Build 302** - Deploy BUG-030 fix, verify WebSocket shows "connected"
-2. **UI-031/032** - Test if Font/Bold settings actually work
-3. **UI-034** - Tooltip positioning fix
-4. **UI-027** - Decide: keep or remove Confirm button?
-5. **Q-001** - Decide: auto-sync or manual sync for TM?
+1. **UI-031/032** - Test if Font/Bold settings actually work
+2. **UI-034** - Tooltip positioning fix
+3. **UI-027** - Decide: keep or remove Confirm button?
+4. **Q-001** - Decide: auto-sync or manual sync for TM?
 
 ---
 
-*Session handoff - BUG-030 fix ready, awaiting Build 302*
+*Session handoff - Build 303 deployed, all bugs fixed, UI issues remain*

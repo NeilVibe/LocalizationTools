@@ -138,4 +138,4 @@ This is the most powerful multilingual Model2Vec model available.
 
 ---
 
-*Updated 2025-12-19 17:55 | 0 critical, 1 fix pending, 3 UI open, 2 decisions*
+*Updated 2025-12-19 18:50 | 0 critical, 0 bugs open, 3 UI open, 2 decisions*
