@@ -45,12 +45,12 @@
 
 ## How Screenshots Were Captured
 
-Screenshots captured autonomously using CDP (Chrome DevTools Protocol) from WSL:
+Screenshots captured using CDP (Chrome DevTools Protocol) from WSL:
 
 ```bash
-# Run via PowerShell (CDP binds to Windows localhost)
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \
-  "cd C:\NEIL_PROJECTS_WINDOWSBUILD; node cdp_screenshot.js output.png"
+# WSL2 ports are shared - run Node.js directly
+cd testing_toolkit/cdp
+node cdp_screenshot.js output.png
 ```
 
-See `docs/troubleshooting/WINDOWS_TROUBLESHOOTING.md` for full CDP testing guide.
+See [testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md) for full CDP guide.
