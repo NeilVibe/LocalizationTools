@@ -226,9 +226,10 @@ Total: 8/8 passed
 | Doc | Description |
 |-----|-------------|
 | [cdp/README.md](cdp/README.md) | CDP testing guide (primary) |
+| [BUILD_TEST_PROTOCOL.md](BUILD_TEST_PROTOCOL.md) | Build → Test workflow |
 | [ADD_TEST_MODE_GUIDE.md](ADD_TEST_MODE_GUIDE.md) | Add TEST MODE to new apps |
+| [docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md](../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed install process |
 | [docs/testing/README.md](../docs/testing/README.md) | Testing overview |
-| [docs/testing/DEBUG_AND_TEST_HUB.md](../docs/testing/DEBUG_AND_TEST_HUB.md) | Quick reference |
 
 ---
 

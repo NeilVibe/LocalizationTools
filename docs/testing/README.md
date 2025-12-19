@@ -23,10 +23,11 @@ node test_bug029.js
 | Doc | Purpose |
 |-----|---------|
 | **[testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md)** | CDP testing (Windows app) - **START HERE** |
-| [DEBUG_AND_TEST_HUB.md](DEBUG_AND_TEST_HUB.md) | Multi-environment testing, Playwright, backend |
+| [testing_toolkit/BUILD_TEST_PROTOCOL.md](../../testing_toolkit/BUILD_TEST_PROTOCOL.md) | Build → Test workflow |
+| [PLAYGROUND_INSTALL_PROTOCOL.md](PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed Playground install |
+| [DEBUG_AND_TEST_HUB.md](DEBUG_AND_TEST_HUB.md) | Multi-environment quick reference |
 | [PYTEST_GUIDE.md](PYTEST_GUIDE.md) | Python backend tests |
 | [PLAYWRIGHT_GUIDE.md](PLAYWRIGHT_GUIDE.md) | Frontend E2E (dev server) |
-| [PLAYGROUND_INSTALL_PROTOCOL.md](PLAYGROUND_INSTALL_PROTOCOL.md) | Playground setup |
 
 ---
 

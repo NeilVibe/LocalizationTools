@@ -26,6 +26,8 @@ watch -n 30 'curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/
 ./scripts/playground_install.sh --launch --auto-login
 ```
 
+**Full install documentation:** [PLAYGROUND_INSTALL_PROTOCOL.md](../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md)
+
 ### 4. TEST (via CDP from WSL)
 ```bash
 cd testing_toolkit/cdp
@@ -74,6 +76,16 @@ You CANNOT:
 # Alias for .bashrc
 alias buildstatus='curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq ".[0] | {status, conclusion}"'
 ```
+
+---
+
+## Related Docs
+
+| Doc | Purpose |
+|-----|---------|
+| [PLAYGROUND_INSTALL_PROTOCOL.md](../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed install process |
+| [cdp/README.md](cdp/README.md) | CDP testing guide |
+| [README.md](README.md) | Testing toolkit overview |
 
 ---
 
