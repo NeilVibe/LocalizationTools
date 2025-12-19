@@ -104,6 +104,7 @@ def main():
         ("torch", "PyTorch AI framework (~2GB)"),
         ("transformers", "Hugging Face transformers"),
         ("sentence-transformers", "Sentence embeddings"),
+        ("model2vec", "Fast multilingual embeddings (Model2Vec)"),
         ("huggingface_hub", "Model downloading"),
         ("faiss-cpu", "Vector similarity search"),
 

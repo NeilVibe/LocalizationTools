@@ -1,0 +1,1000 @@
+1	1000	1	0	1	[0] 잘 지내세요?	[0] How are you?	None	Test Data
+1	1001	2	0	1	스킬을 배웠습니다	Learned new skill	None	Test Data
+1	1002	3	0	1	서버에 연결할 수 없습니다	Cannot connect to server	None	Test Data
+1	1003	4	0	1	[3] 열기	[3] Open	None	Test Data
+1	1004	5	0	1	실례합니다	Excuse me	None	Test Data
+1	1005	6	0	1	닫기	Close	None	Test Data
+1	1006	7	0	1	[6] 택시를 불러 주세요	[6] Please call a taxi	None	Test Data
+1	1007	8	0	1	복사	Copy	None	Test Data
+1	1008	9	0	1	축하합니다	Congratulations	None	Test Data
+1	1009	10	0	1	[9] 모두 선택	[9] Select All	None	Test Data
+1	1010	11	0	1	붙여넣기	Paste	None	Test Data
+1	1011	12	0	1	한국어로 말해 주세요	Please speak in Korean	None	Test Data
+1	1012	13	0	1	[12] 한국 음식이 맛있습니다	[12] Korean food is delicious	None	Test Data
+1	1013	14	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1014	15	0	1	복사	Copy	None	Test Data
+1	1015	16	0	1	[15] 얼마입니까?	[15] How much is it?	None	Test Data
+1	1016	17	0	1	이름이 무엇입니까?	What is your name?	None	Test Data
+1	1017	18	0	1	새해 복 많이 받으세요	Happy new year	None	Test Data
+1	1018	19	0	1	[18] 얼마입니까?	[18] How much is it?	None	Test Data
+1	1019	20	0	1	조금만 기다려 주세요	Please wait a moment	None	Test Data
+1	1020	21	0	1	삭제	Delete	None	Test Data
+1	1021	22	0	1	[21] 확인	[21] Confirm	None	Test Data
+1	1022	23	0	1	지금 몇 시입니까?	What time is it now?	None	Test Data
+1	1023	24	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1024	25	0	1	[24] 도와주세요	[24] Please help me	None	Test Data
+1	1025	26	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1026	27	0	1	아니요, 틀립니다	No, that's wrong	None	Test Data
+1	1027	28	0	1	[27] 조금만 기다려 주세요	[27] Please wait a moment	None	Test Data
+1	1028	29	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1029	30	0	1	취소	Cancel	None	Test Data
+1	1030	31	0	1	[30] 오늘은 월요일입니다	[30] Today is Monday	None	Test Data
+1	1031	32	0	1	약국이 어디입니까?	Where is the pharmacy?	None	Test Data
+1	1032	33	0	1	축하합니다	Congratulations	None	Test Data
+1	1033	34	0	1	[33] 한국 음식이 맛있습니다	[33] Korean food is delicious	None	Test Data
+1	1034	35	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1035	36	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1036	37	0	1	[36] 게임을 종료하시겠습니까?	[36] Exit game?	None	Test Data
+1	1037	38	0	1	편집	Edit	None	Test Data
+1	1038	39	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1039	40	0	1	[39] 저장되었습니다	[39] Saved	None	Test Data
+1	1040	41	0	1	로딩 중입니다	Loading	None	Test Data
+1	1041	42	0	1	체력이 회복되었습니다	Health restored	None	Test Data
+1	1042	43	0	1	[42] 스킬을 배웠습니다	[42] Learned new skill	None	Test Data
+1	1043	44	0	1	잘 지내세요?	How are you?	None	Test Data
+1	1044	45	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1045	46	0	1	[45] 알겠습니다	[45] I understand	None	Test Data
+1	1046	47	0	1	실례합니다	Excuse me	None	Test Data
+1	1047	48	0	1	로딩 중입니다	Loading	None	Test Data
+1	1048	49	0	1	[48] 실례합니다	[48] Excuse me	None	Test Data
+1	1049	50	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1050	51	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1051	52	0	1	[51] 설정	[51] Settings	None	Test Data
+1	1052	53	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1053	54	0	1	바꾸기	Replace	None	Test Data
+1	1054	55	0	1	[54] 체력이 회복되었습니다	[54] Health restored	None	Test Data
+1	1055	56	0	1	취소	Cancel	None	Test Data
+1	1056	57	0	1	실례합니다	Excuse me	None	Test Data
+1	1057	58	0	1	[57] 다시 시도해 주세요	[57] Please try again	None	Test Data
+1	1058	59	0	1	잘라내기	Cut	None	Test Data
+1	1059	60	0	1	도움말	Help	None	Test Data
+1	1060	61	0	1	[60] 모두 선택	[60] Select All	None	Test Data
+1	1061	62	0	1	잘 지내세요?	How are you?	None	Test Data
+1	1062	63	0	1	공격력이 증가했습니다	Attack power increased	None	Test Data
+1	1063	64	0	1	[63] 피곤합니다	[63] I'm tired	None	Test Data
+1	1064	65	0	1	붙여넣기	Paste	None	Test Data
+1	1065	66	0	1	닫기	Close	None	Test Data
+1	1066	67	0	1	[66] 옵션	[66] Options	None	Test Data
+1	1067	68	0	1	실례합니다	Excuse me	None	Test Data
+1	1068	69	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1069	70	0	1	[69] 취소	[69] Cancel	None	Test Data
+1	1070	71	0	1	얼마입니까?	How much is it?	None	Test Data
+1	1071	72	0	1	이것 주세요	Give me this please	None	Test Data
+1	1072	73	0	1	[72] 편집	[72] Edit	None	Test Data
+1	1073	74	0	1	지금 몇 시입니까?	What time is it now?	None	Test Data
+1	1074	75	0	1	안녕하세요	Hello	None	Test Data
+1	1075	76	0	1	[75] 잘 지내세요?	[75] How are you?	None	Test Data
+1	1076	77	0	1	새로 만들기	New	None	Test Data
+1	1077	78	0	1	화장실이 어디입니까?	Where is the restroom?	None	Test Data
+1	1078	79	0	1	[78] 옵션	[78] Options	None	Test Data
+1	1079	80	0	1	도와주세요	Please help me	None	Test Data
+1	1080	81	0	1	잠시만요	Just a moment	None	Test Data
+1	1081	82	0	1	[81] 붙여넣기	[81] Paste	None	Test Data
+1	1082	83	0	1	지금 몇 시입니까?	What time is it now?	None	Test Data
+1	1083	84	0	1	잘 지내세요?	How are you?	None	Test Data
+1	1084	85	0	1	[84] 저장	[84] Save	None	Test Data
+1	1085	86	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1086	87	0	1	바꾸기	Replace	None	Test Data
+1	1087	88	0	1	[87] 여기 앉아도 됩니까?	[87] May I sit here?	None	Test Data
+1	1088	89	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1089	90	0	1	공격력이 증가했습니다	Attack power increased	None	Test Data
+1	1090	91	0	1	[90] 계속하시겠습니까?	[90] Do you want to continue?	None	Test Data
+1	1091	92	0	1	체력이 회복되었습니다	Health restored	None	Test Data
+1	1092	93	0	1	병원에 가고 싶습니다	I want to go to the hospital	None	Test Data
+1	1093	94	0	1	[93] 다시 한번 말해 주세요	[93] Please say it again	None	Test Data
+1	1094	95	0	1	실례합니다	Excuse me	None	Test Data
+1	1095	96	0	1	확인	Confirm	None	Test Data
+1	1096	97	0	1	[96] 찾기	[96] Find	None	Test Data
+1	1097	98	0	1	찾기	Find	None	Test Data
+1	1098	99	0	1	여기 앉아도 됩니까?	May I sit here?	None	Test Data
+1	1099	100	0	1	[99] 설정	[99] Settings	None	Test Data
+1	1100	101	0	1	축하합니다	Congratulations	None	Test Data
+1	1101	102	0	1	옵션	Options	None	Test Data
+1	1102	103	0	1	[102] 잠시만요	[102] Just a moment	None	Test Data
+1	1103	104	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1104	105	0	1	계속하시겠습니까?	Do you want to continue?	None	Test Data
+1	1105	106	0	1	[105] 기다려 주세요	[105] Please wait	None	Test Data
+1	1106	107	0	1	다시 한번 말해 주세요	Please say it again	None	Test Data
+1	1107	108	0	1	삭제	Delete	None	Test Data
+1	1108	109	0	1	[108] 모르겠습니다	[108] I don't understand	None	Test Data
+1	1109	110	0	1	서버에 연결할 수 없습니다	Cannot connect to server	None	Test Data
+1	1110	111	0	1	다시 실행	Redo	None	Test Data
+1	1111	112	0	1	[111] 감사합니다	[111] Thank you	None	Test Data
+1	1112	113	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1113	114	0	1	실례합니다	Excuse me	None	Test Data
+1	1114	115	0	1	[114] 저장되었습니다	[114] Saved	None	Test Data
+1	1115	116	0	1	인벤토리가 가득 찼습니다	Inventory full	None	Test Data
+1	1116	117	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1117	118	0	1	[117] 확인	[117] Confirm	None	Test Data
+1	1118	119	0	1	좋은 저녁입니다	Good evening	None	Test Data
+1	1119	120	0	1	편집	Edit	None	Test Data
+1	1120	121	0	1	[120] 기다려 주세요	[120] Please wait	None	Test Data
+1	1121	122	0	1	병원에 가고 싶습니다	I want to go to the hospital	None	Test Data
+1	1122	123	0	1	내일 만나요	See you tomorrow	None	Test Data
+1	1123	124	0	1	[123] 삭제	[123] Delete	None	Test Data
+1	1124	125	0	1	게임을 종료하시겠습니까?	Exit game?	None	Test Data
+1	1125	126	0	1	물 주세요	Water please	None	Test Data
+1	1126	127	0	1	[126] 확인	[126] Confirm	None	Test Data
+1	1127	128	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1128	129	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1129	130	0	1	[129] 새로 만들기	[129] New	None	Test Data
+1	1130	131	0	1	저는 잘 지냅니다	I'm doing well	None	Test Data
+1	1131	132	0	1	취소	Cancel	None	Test Data
+1	1132	133	0	1	[132] 삭제	[132] Delete	None	Test Data
+1	1133	134	0	1	생일 축하합니다	Happy birthday	None	Test Data
+1	1134	135	0	1	지금 몇 시입니까?	What time is it now?	None	Test Data
+1	1135	136	0	1	[135] 퀘스트를 완료했습니다	[135] Quest completed	None	Test Data
+1	1136	137	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1137	138	0	1	도움말	Help	None	Test Data
+1	1138	139	0	1	[138] 어디에서 왔습니까?	[138] Where are you from?	None	Test Data
+1	1139	140	0	1	잠시만요	Just a moment	None	Test Data
+1	1140	141	0	1	삭제	Delete	None	Test Data
+1	1141	142	0	1	[141] 모두 선택	[141] Select All	None	Test Data
+1	1142	143	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1143	144	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1144	145	0	1	[144] 다른 이름으로 저장	[144] Save As	None	Test Data
+1	1145	146	0	1	물 주세요	Water please	None	Test Data
+1	1146	147	0	1	이것 주세요	Give me this please	None	Test Data
+1	1147	148	0	1	[147] 배가 고픕니다	[147] I'm hungry	None	Test Data
+1	1148	149	0	1	기다려 주세요	Please wait	None	Test Data
+1	1149	150	0	1	편집	Edit	None	Test Data
+1	1150	151	0	1	[150] 게임을 종료하시겠습니까?	[150] Exit game?	None	Test Data
+1	1151	152	0	1	화장실이 어디입니까?	Where is the restroom?	None	Test Data
+1	1152	153	0	1	다시 시도해 주세요	Please try again	None	Test Data
+1	1153	154	0	1	[153] 어디에서 왔습니까?	[153] Where are you from?	None	Test Data
+1	1154	155	0	1	체력이 회복되었습니다	Health restored	None	Test Data
+1	1155	156	0	1	새해 복 많이 받으세요	Happy new year	None	Test Data
+1	1156	157	0	1	[156] 아니요, 틀립니다	[156] No, that's wrong	None	Test Data
+1	1157	158	0	1	인쇄	Print	None	Test Data
+1	1158	159	0	1	병원에 가고 싶습니다	I want to go to the hospital	None	Test Data
+1	1159	160	0	1	[159] 닫기	[159] Close	None	Test Data
+1	1160	161	0	1	만나서 반갑습니다	Nice to meet you	None	Test Data
+1	1161	162	0	1	체력이 회복되었습니다	Health restored	None	Test Data
+1	1162	163	0	1	[162] 저는 한국어를 공부합니다	[162] I study Korean	None	Test Data
+1	1163	164	0	1	저는 잘 지냅니다	I'm doing well	None	Test Data
+1	1164	165	0	1	잠시만요	Just a moment	None	Test Data
+1	1165	166	0	1	[165] 스킬을 배웠습니다	[165] Learned new skill	None	Test Data
+1	1166	167	0	1	축하합니다	Congratulations	None	Test Data
+1	1167	168	0	1	로딩 중입니다	Loading	None	Test Data
+1	1168	169	0	1	[168] 배가 고픕니다	[168] I'm hungry	None	Test Data
+1	1169	170	0	1	아니요, 틀립니다	No, that's wrong	None	Test Data
+1	1170	171	0	1	물 주세요	Water please	None	Test Data
+1	1171	172	0	1	[171] 여기 앉아도 됩니까?	[171] May I sit here?	None	Test Data
+1	1172	173	0	1	약국이 어디입니까?	Where is the pharmacy?	None	Test Data
+1	1173	174	0	1	이해했습니다	I understand	None	Test Data
+1	1174	175	0	1	[174] 저는 커피를 좋아합니다	[174] I like coffee	None	Test Data
+1	1175	176	0	1	퀘스트를 완료했습니다	Quest completed	None	Test Data
+1	1176	177	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1177	178	0	1	[177] 인쇄	[177] Print	None	Test Data
+1	1178	179	0	1	편집	Edit	None	Test Data
+1	1179	180	0	1	병원에 가고 싶습니다	I want to go to the hospital	None	Test Data
+1	1180	181	0	1	[180] 배가 고픕니다	[180] I'm hungry	None	Test Data
+1	1181	182	0	1	얼마입니까?	How much is it?	None	Test Data
+1	1182	183	0	1	약국이 어디입니까?	Where is the pharmacy?	None	Test Data
+1	1183	184	0	1	[183] 택시를 불러 주세요	[183] Please call a taxi	None	Test Data
+1	1184	185	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1185	186	0	1	인벤토리가 가득 찼습니다	Inventory full	None	Test Data
+1	1186	187	0	1	[186] 보기	[186] View	None	Test Data
+1	1187	188	0	1	다시 한번 말해 주세요	Please say it again	None	Test Data
+1	1188	189	0	1	종료	Exit	None	Test Data
+1	1189	190	0	1	[189] 이름이 무엇입니까?	[189] What is your name?	None	Test Data
+1	1190	191	0	1	스킬을 배웠습니다	Learned new skill	None	Test Data
+1	1191	192	0	1	새로 만들기	New	None	Test Data
+1	1192	193	0	1	[192] 좋은 아침입니다	[192] Good morning	None	Test Data
+1	1193	194	0	1	만나서 반갑습니다	Nice to meet you	None	Test Data
+1	1194	195	0	1	다시 시도해 주세요	Please try again	None	Test Data
+1	1195	196	0	1	[195] 파일	[195] File	None	Test Data
+1	1196	197	0	1	저는 잘 지냅니다	I'm doing well	None	Test Data
+1	1197	198	0	1	아니요, 틀립니다	No, that's wrong	None	Test Data
+1	1198	199	0	1	[198] 확인	[198] Confirm	None	Test Data
+1	1199	200	0	1	다른 이름으로 저장	Save As	None	Test Data
+1	1200	201	0	1	저는 회사원입니다	I am an office worker	None	Test Data
+1	1201	202	0	1	[201] 서버에 연결할 수 없습니다	[201] Cannot connect to server	None	Test Data
+1	1202	203	0	1	물 주세요	Water please	None	Test Data
+1	1203	204	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1204	205	0	1	[204] 한국어로 말해 주세요	[204] Please speak in Korean	None	Test Data
+1	1205	206	0	1	얼마입니까?	How much is it?	None	Test Data
+1	1206	207	0	1	저는 커피를 좋아합니다	I like coffee	None	Test Data
+1	1207	208	0	1	[207] 붙여넣기	[207] Paste	None	Test Data
+1	1208	209	0	1	얼마입니까?	How much is it?	None	Test Data
+1	1209	210	0	1	인쇄	Print	None	Test Data
+1	1210	211	0	1	[210] 천천히 말해 주세요	[210] Please speak slowly	None	Test Data
+1	1211	212	0	1	서버에 연결할 수 없습니다	Cannot connect to server	None	Test Data
+1	1212	213	0	1	생일 축하합니다	Happy birthday	None	Test Data
+1	1213	214	0	1	[213] 오늘은 월요일입니다	[213] Today is Monday	None	Test Data
+1	1214	215	0	1	확인	Confirm	None	Test Data
+1	1215	216	0	1	취소	Cancel	None	Test Data
+1	1216	217	0	1	[216] 배가 고픕니다	[216] I'm hungry	None	Test Data
+1	1217	218	0	1	화장실이 어디입니까?	Where is the restroom?	None	Test Data
+1	1218	219	0	1	배가 고픕니다	I'm hungry	None	Test Data
+1	1219	220	0	1	[219] 새로 만들기	[219] New	None	Test Data
+1	1220	221	0	1	저는 한국어를 공부합니다	I study Korean	None	Test Data
+1	1221	222	0	1	접속 중입니다	Connecting	None	Test Data
+1	1222	223	0	1	[222] 다시 실행	[222] Redo	None	Test Data
+1	1223	224	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1224	225	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1225	226	0	1	[225] 축하합니다	[225] Congratulations	None	Test Data
+1	1226	227	0	1	보기	View	None	Test Data
+1	1227	228	0	1	로딩 중입니다	Loading	None	Test Data
+1	1228	229	0	1	[228] 마나가 부족합니다	[228] Not enough mana	None	Test Data
+1	1229	230	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1230	231	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1231	232	0	1	[231] 지금 몇 시입니까?	[231] What time is it now?	None	Test Data
+1	1232	233	0	1	인쇄	Print	None	Test Data
+1	1233	234	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1234	235	0	1	[234] 스킬을 배웠습니다	[234] Learned new skill	None	Test Data
+1	1235	236	0	1	저장되었습니다	Saved	None	Test Data
+1	1236	237	0	1	종료	Exit	None	Test Data
+1	1237	238	0	1	[237] 보기	[237] View	None	Test Data
+1	1238	239	0	1	편집	Edit	None	Test Data
+1	1239	240	0	1	계속하시겠습니까?	Do you want to continue?	None	Test Data
+1	1240	241	0	1	[240] 사랑합니다	[240] I love you	None	Test Data
+1	1241	242	0	1	안녕하세요	Hello	None	Test Data
+1	1242	243	0	1	한국 음식이 맛있습니다	Korean food is delicious	None	Test Data
+1	1243	244	0	1	[243] 한국어로 말해 주세요	[243] Please speak in Korean	None	Test Data
+1	1244	245	0	1	다시 한번 말해 주세요	Please say it again	None	Test Data
+1	1245	246	0	1	로딩 중입니다	Loading	None	Test Data
+1	1246	247	0	1	[246] 저는 학생입니다	[246] I am a student	None	Test Data
+1	1247	248	0	1	모두 선택	Select All	None	Test Data
+1	1248	249	0	1	병원에 가고 싶습니다	I want to go to the hospital	None	Test Data
+1	1249	250	0	1	[249] 다른 이름으로 저장	[249] Save As	None	Test Data
+1	1250	251	0	1	오늘은 월요일입니다	Today is Monday	None	Test Data
+1	1251	252	0	1	병원에 가고 싶습니다	I want to go to the hospital	None	Test Data
+1	1252	253	0	1	[252] 잘 지내세요?	[252] How are you?	None	Test Data
+1	1253	254	0	1	아니요, 틀립니다	No, that's wrong	None	Test Data
+1	1254	255	0	1	공격력이 증가했습니다	Attack power increased	None	Test Data
+1	1255	256	0	1	[255] 저는 학생입니다	[255] I am a student	None	Test Data
+1	1256	257	0	1	기다려 주세요	Please wait	None	Test Data
+1	1257	258	0	1	게임을 종료하시겠습니까?	Exit game?	None	Test Data
+1	1258	259	0	1	[258] 복사	[258] Copy	None	Test Data
+1	1259	260	0	1	도와주세요	Please help me	None	Test Data
+1	1260	261	0	1	사진 찍어도 됩니까?	May I take a photo?	None	Test Data
+1	1261	262	0	1	[261] 파일	[261] File	None	Test Data
+1	1262	263	0	1	도와주세요	Please help me	None	Test Data
+1	1263	264	0	1	복사	Copy	None	Test Data
+1	1264	265	0	1	[264] 조금만 기다려 주세요	[264] Please wait a moment	None	Test Data
+1	1265	266	0	1	사랑합니다	I love you	None	Test Data
+1	1266	267	0	1	접속 중입니다	Connecting	None	Test Data
+1	1267	268	0	1	[267] 접속 중입니다	[267] Connecting	None	Test Data
+1	1268	269	0	1	실례합니다	Excuse me	None	Test Data
+1	1269	270	0	1	만나서 반갑습니다	Nice to meet you	None	Test Data
+1	1270	271	0	1	[270] 화장실이 어디입니까?	[270] Where is the restroom?	None	Test Data
+1	1271	272	0	1	방어력이 증가했습니다	Defense increased	None	Test Data
+1	1272	273	0	1	파일	File	None	Test Data
+1	1273	274	0	1	[273] 체력이 회복되었습니다	[273] Health restored	None	Test Data
+1	1274	275	0	1	공격력이 증가했습니다	Attack power increased	None	Test Data
+1	1275	276	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1276	277	0	1	[276] 잠시만요	[276] Just a moment	None	Test Data
+1	1277	278	0	1	파일	File	None	Test Data
+1	1278	279	0	1	생일 축하합니다	Happy birthday	None	Test Data
+1	1279	280	0	1	[279] 피곤합니다	[279] I'm tired	None	Test Data
+1	1280	281	0	1	안녕하세요	Hello	None	Test Data
+1	1281	282	0	1	물 주세요	Water please	None	Test Data
+1	1282	283	0	1	[282] 좋은 저녁입니다	[282] Good evening	None	Test Data
+1	1283	284	0	1	사랑합니다	I love you	None	Test Data
+1	1284	285	0	1	오늘 날씨가 좋습니다	The weather is nice today	None	Test Data
+1	1285	286	0	1	[285] 좋은 아침입니다	[285] Good morning	None	Test Data
+1	1286	287	0	1	여기 앉아도 됩니까?	May I sit here?	None	Test Data
+1	1287	288	0	1	설정	Settings	None	Test Data
+1	1288	289	0	1	[288] 새로운 아이템을 획득했습니다	[288] Acquired new item	None	Test Data
+1	1289	290	0	1	저장	Save	None	Test Data
+1	1290	291	0	1	모두 선택	Select All	None	Test Data
+1	1291	292	0	1	[291] 한국어로 말해 주세요	[291] Please speak in Korean	None	Test Data
+1	1292	293	0	1	좋은 저녁입니다	Good evening	None	Test Data
+1	1293	294	0	1	저는 커피를 좋아합니다	I like coffee	None	Test Data
+1	1294	295	0	1	[294] 실행 취소	[294] Undo	None	Test Data
+1	1295	296	0	1	접속 중입니다	Connecting	None	Test Data
+1	1296	297	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1297	298	0	1	[297] 다시 한번 말해 주세요	[297] Please say it again	None	Test Data
+1	1298	299	0	1	여기 앉아도 됩니까?	May I sit here?	None	Test Data
+1	1299	300	0	1	저는 한국어를 공부합니다	I study Korean	None	Test Data
+1	1300	301	0	1	[300] 오늘 날씨가 좋습니다	[300] The weather is nice today	None	Test Data
+1	1301	302	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1302	303	0	1	아니요, 틀립니다	No, that's wrong	None	Test Data
+1	1303	304	0	1	[303] 오늘 날씨가 좋습니다	[303] The weather is nice today	None	Test Data
+1	1304	305	0	1	옵션	Options	None	Test Data
+1	1305	306	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1306	307	0	1	[306] 잘 가세요	[306] Goodbye	None	Test Data
+1	1307	308	0	1	저는 한국어를 공부합니다	I study Korean	None	Test Data
+1	1308	309	0	1	저장	Save	None	Test Data
+1	1309	310	0	1	[309] 모두 선택	[309] Select All	None	Test Data
+1	1310	311	0	1	삭제	Delete	None	Test Data
+1	1311	312	0	1	기다려 주세요	Please wait	None	Test Data
+1	1312	313	0	1	[312] 인벤토리가 가득 찼습니다	[312] Inventory full	None	Test Data
+1	1313	314	0	1	저장	Save	None	Test Data
+1	1314	315	0	1	찾기	Find	None	Test Data
+1	1315	316	0	1	[315] 새해 복 많이 받으세요	[315] Happy new year	None	Test Data
+1	1316	317	0	1	새로 만들기	New	None	Test Data
+1	1317	318	0	1	복사	Copy	None	Test Data
+1	1318	319	0	1	[318] 방어력이 증가했습니다	[318] Defense increased	None	Test Data
+1	1319	320	0	1	축하합니다	Congratulations	None	Test Data
+1	1320	321	0	1	이름이 무엇입니까?	What is your name?	None	Test Data
+1	1321	322	0	1	[321] 죄송합니다	[321] I'm sorry	None	Test Data
+1	1322	323	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1323	324	0	1	한국 음식이 맛있습니다	Korean food is delicious	None	Test Data
+1	1324	325	0	1	[324] 확인	[324] Confirm	None	Test Data
+1	1325	326	0	1	잠시만요	Just a moment	None	Test Data
+1	1326	327	0	1	로딩 중입니다	Loading	None	Test Data
+1	1327	328	0	1	[327] 한국어로 말해 주세요	[327] Please speak in Korean	None	Test Data
+1	1328	329	0	1	저장	Save	None	Test Data
+1	1329	330	0	1	모두 선택	Select All	None	Test Data
+1	1330	331	0	1	[330] 다시 실행	[330] Redo	None	Test Data
+1	1331	332	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1332	333	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1333	334	0	1	[333] 취소	[333] Cancel	None	Test Data
+1	1334	335	0	1	공격력이 증가했습니다	Attack power increased	None	Test Data
+1	1335	336	0	1	옵션	Options	None	Test Data
+1	1336	337	0	1	[336] 병원에 가고 싶습니다	[336] I want to go to the hospital	None	Test Data
+1	1337	338	0	1	닫기	Close	None	Test Data
+1	1338	339	0	1	이것 주세요	Give me this please	None	Test Data
+1	1339	340	0	1	[339] 체력이 회복되었습니다	[339] Health restored	None	Test Data
+1	1340	341	0	1	이름이 무엇입니까?	What is your name?	None	Test Data
+1	1341	342	0	1	보기	View	None	Test Data
+1	1342	343	0	1	[342] 저장	[342] Save	None	Test Data
+1	1343	344	0	1	만나서 반갑습니다	Nice to meet you	None	Test Data
+1	1344	345	0	1	다시 실행	Redo	None	Test Data
+1	1345	346	0	1	[345] 사진 찍어도 됩니까?	[345] May I take a photo?	None	Test Data
+1	1346	347	0	1	로딩 중입니다	Loading	None	Test Data
+1	1347	348	0	1	배가 고픕니다	I'm hungry	None	Test Data
+1	1348	349	0	1	[348] 열기	[348] Open	None	Test Data
+1	1349	350	0	1	찾기	Find	None	Test Data
+1	1350	351	0	1	체력이 회복되었습니다	Health restored	None	Test Data
+1	1351	352	0	1	[351] 영어로 말해 주세요	[351] Please speak in English	None	Test Data
+1	1352	353	0	1	다시 한번 말해 주세요	Please say it again	None	Test Data
+1	1353	354	0	1	저는 잘 지냅니다	I'm doing well	None	Test Data
+1	1354	355	0	1	[354] 내일 만나요	[354] See you tomorrow	None	Test Data
+1	1355	356	0	1	잠시만요	Just a moment	None	Test Data
+1	1356	357	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1357	358	0	1	[357] 게임을 종료하시겠습니까?	[357] Exit game?	None	Test Data
+1	1358	359	0	1	지금 몇 시입니까?	What time is it now?	None	Test Data
+1	1359	360	0	1	화장실이 어디입니까?	Where is the restroom?	None	Test Data
+1	1360	361	0	1	[360] 기다려 주세요	[360] Please wait	None	Test Data
+1	1361	362	0	1	오늘은 월요일입니다	Today is Monday	None	Test Data
+1	1362	363	0	1	물 주세요	Water please	None	Test Data
+1	1363	364	0	1	[363] 이해했습니다	[363] I understand	None	Test Data
+1	1364	365	0	1	삭제	Delete	None	Test Data
+1	1365	366	0	1	열기	Open	None	Test Data
+1	1366	367	0	1	[366] 저는 학생입니다	[366] I am a student	None	Test Data
+1	1367	368	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1368	369	0	1	옵션	Options	None	Test Data
+1	1369	370	0	1	[369] 편집	[369] Edit	None	Test Data
+1	1370	371	0	1	접속 중입니다	Connecting	None	Test Data
+1	1371	372	0	1	감사합니다	Thank you	None	Test Data
+1	1372	373	0	1	[372] 게임을 종료하시겠습니까?	[372] Exit game?	None	Test Data
+1	1373	374	0	1	기다려 주세요	Please wait	None	Test Data
+1	1374	375	0	1	인쇄	Print	None	Test Data
+1	1375	376	0	1	[375] 생일 축하합니다	[375] Happy birthday	None	Test Data
+1	1376	377	0	1	공격력이 증가했습니다	Attack power increased	None	Test Data
+1	1377	378	0	1	새로 만들기	New	None	Test Data
+1	1378	379	0	1	[378] 저는 커피를 좋아합니다	[378] I like coffee	None	Test Data
+1	1379	380	0	1	모두 선택	Select All	None	Test Data
+1	1380	381	0	1	취소	Cancel	None	Test Data
+1	1381	382	0	1	[381] 알겠습니다	[381] I understand	None	Test Data
+1	1382	383	0	1	파일	File	None	Test Data
+1	1383	384	0	1	스킬을 배웠습니다	Learned new skill	None	Test Data
+1	1384	385	0	1	[384] 실행 취소	[384] Undo	None	Test Data
+1	1385	386	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1386	387	0	1	감사합니다	Thank you	None	Test Data
+1	1387	388	0	1	[387] 아니요, 틀립니다	[387] No, that's wrong	None	Test Data
+1	1388	389	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1389	390	0	1	서버에 연결할 수 없습니다	Cannot connect to server	None	Test Data
+1	1390	391	0	1	[390] 네, 맞습니다	[390] Yes, that's right	None	Test Data
+1	1391	392	0	1	도움말	Help	None	Test Data
+1	1392	393	0	1	새해 복 많이 받으세요	Happy new year	None	Test Data
+1	1393	394	0	1	[393] 도와주세요	[393] Please help me	None	Test Data
+1	1394	395	0	1	도움말	Help	None	Test Data
+1	1395	396	0	1	새해 복 많이 받으세요	Happy new year	None	Test Data
+1	1396	397	0	1	[396] 마나가 부족합니다	[396] Not enough mana	None	Test Data
+1	1397	398	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1398	399	0	1	이해했습니다	I understand	None	Test Data
+1	1399	400	0	1	[399] 저는 한국어를 공부합니다	[399] I study Korean	None	Test Data
+1	1400	401	0	1	병원에 가고 싶습니다	I want to go to the hospital	None	Test Data
+1	1401	402	0	1	복사	Copy	None	Test Data
+1	1402	403	0	1	[402] 접속 중입니다	[402] Connecting	None	Test Data
+1	1403	404	0	1	조금만 기다려 주세요	Please wait a moment	None	Test Data
+1	1404	405	0	1	생일 축하합니다	Happy birthday	None	Test Data
+1	1405	406	0	1	[405] 마나가 부족합니다	[405] Not enough mana	None	Test Data
+1	1406	407	0	1	도와주세요	Please help me	None	Test Data
+1	1407	408	0	1	복사	Copy	None	Test Data
+1	1408	409	0	1	[408] 알겠습니다	[408] I understand	None	Test Data
+1	1409	410	0	1	스킬을 배웠습니다	Learned new skill	None	Test Data
+1	1410	411	0	1	옵션	Options	None	Test Data
+1	1411	412	0	1	[411] 레벨이 올랐습니다	[411] Level up	None	Test Data
+1	1412	413	0	1	다시 실행	Redo	None	Test Data
+1	1413	414	0	1	다른 이름으로 저장	Save As	None	Test Data
+1	1414	415	0	1	[414] 오늘 날씨가 좋습니다	[414] The weather is nice today	None	Test Data
+1	1415	416	0	1	붙여넣기	Paste	None	Test Data
+1	1416	417	0	1	새해 복 많이 받으세요	Happy new year	None	Test Data
+1	1417	418	0	1	[417] 아니요, 틀립니다	[417] No, that's wrong	None	Test Data
+1	1418	419	0	1	물 주세요	Water please	None	Test Data
+1	1419	420	0	1	새로 만들기	New	None	Test Data
+1	1420	421	0	1	[420] 복사	[420] Copy	None	Test Data
+1	1421	422	0	1	이해했습니다	I understand	None	Test Data
+1	1422	423	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1423	424	0	1	[423] 확인	[423] Confirm	None	Test Data
+1	1424	425	0	1	인쇄	Print	None	Test Data
+1	1425	426	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1426	427	0	1	[426] 편집	[426] Edit	None	Test Data
+1	1427	428	0	1	화장실이 어디입니까?	Where is the restroom?	None	Test Data
+1	1428	429	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1429	430	0	1	[429] 내일 만나요	[429] See you tomorrow	None	Test Data
+1	1430	431	0	1	로딩 중입니다	Loading	None	Test Data
+1	1431	432	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1432	433	0	1	[432] 붙여넣기	[432] Paste	None	Test Data
+1	1433	434	0	1	서버에 연결할 수 없습니다	Cannot connect to server	None	Test Data
+1	1434	435	0	1	감사합니다	Thank you	None	Test Data
+1	1435	436	0	1	[435] 오늘 날씨가 좋습니다	[435] The weather is nice today	None	Test Data
+1	1436	437	0	1	생일 축하합니다	Happy birthday	None	Test Data
+1	1437	438	0	1	저는 한국어를 공부합니다	I study Korean	None	Test Data
+1	1438	439	0	1	[438] 잘라내기	[438] Cut	None	Test Data
+1	1439	440	0	1	인벤토리가 가득 찼습니다	Inventory full	None	Test Data
+1	1440	441	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1441	442	0	1	[441] 복사	[441] Copy	None	Test Data
+1	1442	443	0	1	배가 고픕니다	I'm hungry	None	Test Data
+1	1443	444	0	1	편집	Edit	None	Test Data
+1	1444	445	0	1	[444] 도와주세요	[444] Please help me	None	Test Data
+1	1445	446	0	1	영어로 말해 주세요	Please speak in English	None	Test Data
+1	1446	447	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1447	448	0	1	[447] 어디에서 왔습니까?	[447] Where are you from?	None	Test Data
+1	1448	449	0	1	모두 선택	Select All	None	Test Data
+1	1449	450	0	1	영어로 말해 주세요	Please speak in English	None	Test Data
+1	1450	451	0	1	[450] 사랑합니다	[450] I love you	None	Test Data
+1	1451	452	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1452	453	0	1	새해 복 많이 받으세요	Happy new year	None	Test Data
+1	1453	454	0	1	[453] 설정	[453] Settings	None	Test Data
+1	1454	455	0	1	이것 주세요	Give me this please	None	Test Data
+1	1455	456	0	1	스킬을 배웠습니다	Learned new skill	None	Test Data
+1	1456	457	0	1	[456] 열기	[456] Open	None	Test Data
+1	1457	458	0	1	물 주세요	Water please	None	Test Data
+1	1458	459	0	1	방어력이 증가했습니다	Defense increased	None	Test Data
+1	1459	460	0	1	[459] 계속하시겠습니까?	[459] Do you want to continue?	None	Test Data
+1	1460	461	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1461	462	0	1	물 주세요	Water please	None	Test Data
+1	1462	463	0	1	[462] 약국이 어디입니까?	[462] Where is the pharmacy?	None	Test Data
+1	1463	464	0	1	안녕하세요	Hello	None	Test Data
+1	1464	465	0	1	확인	Confirm	None	Test Data
+1	1465	466	0	1	[465] 접속 중입니다	[465] Connecting	None	Test Data
+1	1466	467	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1467	468	0	1	잠시만요	Just a moment	None	Test Data
+1	1468	469	0	1	[468] 파일	[468] File	None	Test Data
+1	1469	470	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1470	471	0	1	접속 중입니다	Connecting	None	Test Data
+1	1471	472	0	1	[471] 내일 만나요	[471] See you tomorrow	None	Test Data
+1	1472	473	0	1	로딩 중입니다	Loading	None	Test Data
+1	1473	474	0	1	피곤합니다	I'm tired	None	Test Data
+1	1474	475	0	1	[474] 피곤합니다	[474] I'm tired	None	Test Data
+1	1475	476	0	1	열기	Open	None	Test Data
+1	1476	477	0	1	인쇄	Print	None	Test Data
+1	1477	478	0	1	[477] 저장	[477] Save	None	Test Data
+1	1478	479	0	1	실례합니다	Excuse me	None	Test Data
+1	1479	480	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1480	481	0	1	[480] 찾기	[480] Find	None	Test Data
+1	1481	482	0	1	붙여넣기	Paste	None	Test Data
+1	1482	483	0	1	실례합니다	Excuse me	None	Test Data
+1	1483	484	0	1	[483] 스킬을 배웠습니다	[483] Learned new skill	None	Test Data
+1	1484	485	0	1	다시 한번 말해 주세요	Please say it again	None	Test Data
+1	1485	486	0	1	새로 만들기	New	None	Test Data
+1	1486	487	0	1	[486] 실례합니다	[486] Excuse me	None	Test Data
+1	1487	488	0	1	내일 만나요	See you tomorrow	None	Test Data
+1	1488	489	0	1	오늘은 월요일입니다	Today is Monday	None	Test Data
+1	1489	490	0	1	[489] 인벤토리가 가득 찼습니다	[489] Inventory full	None	Test Data
+1	1490	491	0	1	조금만 기다려 주세요	Please wait a moment	None	Test Data
+1	1491	492	0	1	오늘 날씨가 좋습니다	The weather is nice today	None	Test Data
+1	1492	493	0	1	[492] 삭제	[492] Delete	None	Test Data
+1	1493	494	0	1	찾기	Find	None	Test Data
+1	1494	495	0	1	화장실이 어디입니까?	Where is the restroom?	None	Test Data
+1	1495	496	0	1	[495] 저는 한국어를 공부합니다	[495] I study Korean	None	Test Data
+1	1496	497	0	1	찾기	Find	None	Test Data
+1	1497	498	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1498	499	0	1	[498] 확인	[498] Confirm	None	Test Data
+1	1499	500	0	1	기다려 주세요	Please wait	None	Test Data
+1	1500	501	0	1	오늘은 월요일입니다	Today is Monday	None	Test Data
+1	1501	502	0	1	[501] 영어로 말해 주세요	[501] Please speak in English	None	Test Data
+1	1502	503	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1503	504	0	1	오늘은 월요일입니다	Today is Monday	None	Test Data
+1	1504	505	0	1	[504] 공격력이 증가했습니다	[504] Attack power increased	None	Test Data
+1	1505	506	0	1	새로 만들기	New	None	Test Data
+1	1506	507	0	1	실례합니다	Excuse me	None	Test Data
+1	1507	508	0	1	[507] 여기 앉아도 됩니까?	[507] May I sit here?	None	Test Data
+1	1508	509	0	1	도와주세요	Please help me	None	Test Data
+1	1509	510	0	1	접속 중입니다	Connecting	None	Test Data
+1	1510	511	0	1	[510] 게임을 종료하시겠습니까?	[510] Exit game?	None	Test Data
+1	1511	512	0	1	서버에 연결할 수 없습니다	Cannot connect to server	None	Test Data
+1	1512	513	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1513	514	0	1	[513] 지금 몇 시입니까?	[513] What time is it now?	None	Test Data
+1	1514	515	0	1	이름이 무엇입니까?	What is your name?	None	Test Data
+1	1515	516	0	1	오늘은 월요일입니다	Today is Monday	None	Test Data
+1	1516	517	0	1	[516] 천천히 말해 주세요	[516] Please speak slowly	None	Test Data
+1	1517	518	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1518	519	0	1	사랑합니다	I love you	None	Test Data
+1	1519	520	0	1	[519] 축하합니다	[519] Congratulations	None	Test Data
+1	1520	521	0	1	취소	Cancel	None	Test Data
+1	1521	522	0	1	화장실이 어디입니까?	Where is the restroom?	None	Test Data
+1	1522	523	0	1	[522] 이것 주세요	[522] Give me this please	None	Test Data
+1	1523	524	0	1	잘 가세요	Goodbye	None	Test Data
+1	1524	525	0	1	축하합니다	Congratulations	None	Test Data
+1	1525	526	0	1	[525] 잘 지내세요?	[525] How are you?	None	Test Data
+1	1526	527	0	1	저는 커피를 좋아합니다	I like coffee	None	Test Data
+1	1527	528	0	1	닫기	Close	None	Test Data
+1	1528	529	0	1	[528] 새로운 아이템을 획득했습니다	[528] Acquired new item	None	Test Data
+1	1529	530	0	1	배가 고픕니다	I'm hungry	None	Test Data
+1	1530	531	0	1	붙여넣기	Paste	None	Test Data
+1	1531	532	0	1	[531] 내일 만나요	[531] See you tomorrow	None	Test Data
+1	1532	533	0	1	저는 회사원입니다	I am an office worker	None	Test Data
+1	1533	534	0	1	감사합니다	Thank you	None	Test Data
+1	1534	535	0	1	[534] 약국이 어디입니까?	[534] Where is the pharmacy?	None	Test Data
+1	1535	536	0	1	저장	Save	None	Test Data
+1	1536	537	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1537	538	0	1	[537] 안녕하세요	[537] Hello	None	Test Data
+1	1538	539	0	1	파일	File	None	Test Data
+1	1539	540	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1540	541	0	1	[540] 기다려 주세요	[540] Please wait	None	Test Data
+1	1541	542	0	1	저는 잘 지냅니다	I'm doing well	None	Test Data
+1	1542	543	0	1	잠시만요	Just a moment	None	Test Data
+1	1543	544	0	1	[543] 삭제	[543] Delete	None	Test Data
+1	1544	545	0	1	새해 복 많이 받으세요	Happy new year	None	Test Data
+1	1545	546	0	1	배가 고픕니다	I'm hungry	None	Test Data
+1	1546	547	0	1	[546] 종료	[546] Exit	None	Test Data
+1	1547	548	0	1	한국 음식이 맛있습니다	Korean food is delicious	None	Test Data
+1	1548	549	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1549	550	0	1	[549] 다른 이름으로 저장	[549] Save As	None	Test Data
+1	1550	551	0	1	피곤합니다	I'm tired	None	Test Data
+1	1551	552	0	1	취소	Cancel	None	Test Data
+1	1552	553	0	1	[552] 스킬을 배웠습니다	[552] Learned new skill	None	Test Data
+1	1553	554	0	1	열기	Open	None	Test Data
+1	1554	555	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1555	556	0	1	[555] 닫기	[555] Close	None	Test Data
+1	1556	557	0	1	물 주세요	Water please	None	Test Data
+1	1557	558	0	1	저는 커피를 좋아합니다	I like coffee	None	Test Data
+1	1558	559	0	1	[558] 조금만 기다려 주세요	[558] Please wait a moment	None	Test Data
+1	1559	560	0	1	저장	Save	None	Test Data
+1	1560	561	0	1	저장	Save	None	Test Data
+1	1561	562	0	1	[561] 오늘은 월요일입니다	[561] Today is Monday	None	Test Data
+1	1562	563	0	1	찾기	Find	None	Test Data
+1	1563	564	0	1	좋은 저녁입니다	Good evening	None	Test Data
+1	1564	565	0	1	[564] 파일	[564] File	None	Test Data
+1	1565	566	0	1	잘라내기	Cut	None	Test Data
+1	1566	567	0	1	퀘스트를 완료했습니다	Quest completed	None	Test Data
+1	1567	568	0	1	[567] 저장되었습니다	[567] Saved	None	Test Data
+1	1568	569	0	1	종료	Exit	None	Test Data
+1	1569	570	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1570	571	0	1	[570] 다시 한번 말해 주세요	[570] Please say it again	None	Test Data
+1	1571	572	0	1	파일	File	None	Test Data
+1	1572	573	0	1	서버에 연결할 수 없습니다	Cannot connect to server	None	Test Data
+1	1573	574	0	1	[573] 한국어로 말해 주세요	[573] Please speak in Korean	None	Test Data
+1	1574	575	0	1	영어로 말해 주세요	Please speak in English	None	Test Data
+1	1575	576	0	1	피곤합니다	I'm tired	None	Test Data
+1	1576	577	0	1	[576] 잠시만요	[576] Just a moment	None	Test Data
+1	1577	578	0	1	생일 축하합니다	Happy birthday	None	Test Data
+1	1578	579	0	1	잘 가세요	Goodbye	None	Test Data
+1	1579	580	0	1	[579] 알겠습니다	[579] I understand	None	Test Data
+1	1580	581	0	1	바꾸기	Replace	None	Test Data
+1	1581	582	0	1	도와주세요	Please help me	None	Test Data
+1	1582	583	0	1	[582] 저는 한국어를 공부합니다	[582] I study Korean	None	Test Data
+1	1583	584	0	1	영어로 말해 주세요	Please speak in English	None	Test Data
+1	1584	585	0	1	영어로 말해 주세요	Please speak in English	None	Test Data
+1	1585	586	0	1	[585] 도와주세요	[585] Please help me	None	Test Data
+1	1586	587	0	1	인쇄	Print	None	Test Data
+1	1587	588	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1588	589	0	1	[588] 안녕하세요	[588] Hello	None	Test Data
+1	1589	590	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1590	591	0	1	한국 음식이 맛있습니다	Korean food is delicious	None	Test Data
+1	1591	592	0	1	[591] 좋은 아침입니다	[591] Good morning	None	Test Data
+1	1592	593	0	1	찾기	Find	None	Test Data
+1	1593	594	0	1	확인	Confirm	None	Test Data
+1	1594	595	0	1	[594] 오늘 날씨가 좋습니다	[594] The weather is nice today	None	Test Data
+1	1595	596	0	1	사랑합니다	I love you	None	Test Data
+1	1596	597	0	1	좋은 저녁입니다	Good evening	None	Test Data
+1	1597	598	0	1	[597] 오늘은 월요일입니다	[597] Today is Monday	None	Test Data
+1	1598	599	0	1	이해했습니다	I understand	None	Test Data
+1	1599	600	0	1	계속하시겠습니까?	Do you want to continue?	None	Test Data
+1	1600	601	0	1	[600] 종료	[600] Exit	None	Test Data
+1	1601	602	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1602	603	0	1	지금 몇 시입니까?	What time is it now?	None	Test Data
+1	1603	604	0	1	[603] 피곤합니다	[603] I'm tired	None	Test Data
+1	1604	605	0	1	내일 만나요	See you tomorrow	None	Test Data
+1	1605	606	0	1	다른 이름으로 저장	Save As	None	Test Data
+1	1606	607	0	1	[606] 여기가 어디입니까?	[606] Where is this?	None	Test Data
+1	1607	608	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1608	609	0	1	오늘은 월요일입니다	Today is Monday	None	Test Data
+1	1609	610	0	1	[609] 다시 실행	[609] Redo	None	Test Data
+1	1610	611	0	1	좋은 저녁입니다	Good evening	None	Test Data
+1	1611	612	0	1	열기	Open	None	Test Data
+1	1612	613	0	1	[612] 삭제	[612] Delete	None	Test Data
+1	1613	614	0	1	다시 실행	Redo	None	Test Data
+1	1614	615	0	1	안녕하세요	Hello	None	Test Data
+1	1615	616	0	1	[615] 삭제	[615] Delete	None	Test Data
+1	1616	617	0	1	축하합니다	Congratulations	None	Test Data
+1	1617	618	0	1	취소	Cancel	None	Test Data
+1	1618	619	0	1	[618] 새로 만들기	[618] New	None	Test Data
+1	1619	620	0	1	새해 복 많이 받으세요	Happy new year	None	Test Data
+1	1620	621	0	1	내일 만나요	See you tomorrow	None	Test Data
+1	1621	622	0	1	[621] 여기가 어디입니까?	[621] Where is this?	None	Test Data
+1	1622	623	0	1	오늘 날씨가 좋습니다	The weather is nice today	None	Test Data
+1	1623	624	0	1	편집	Edit	None	Test Data
+1	1624	625	0	1	[624] 붙여넣기	[624] Paste	None	Test Data
+1	1625	626	0	1	잘 지내세요?	How are you?	None	Test Data
+1	1626	627	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1627	628	0	1	[627] 로딩 중입니다	[627] Loading	None	Test Data
+1	1628	629	0	1	저는 한국어를 공부합니다	I study Korean	None	Test Data
+1	1629	630	0	1	알겠습니다	I understand	None	Test Data
+1	1630	631	0	1	[630] 만나서 반갑습니다	[630] Nice to meet you	None	Test Data
+1	1631	632	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1632	633	0	1	물 주세요	Water please	None	Test Data
+1	1633	634	0	1	[633] 약국이 어디입니까?	[633] Where is the pharmacy?	None	Test Data
+1	1634	635	0	1	옵션	Options	None	Test Data
+1	1635	636	0	1	삭제	Delete	None	Test Data
+1	1636	637	0	1	[636] 보기	[636] View	None	Test Data
+1	1637	638	0	1	저장되었습니다	Saved	None	Test Data
+1	1638	639	0	1	다시 시도해 주세요	Please try again	None	Test Data
+1	1639	640	0	1	[639] 새해 복 많이 받으세요	[639] Happy new year	None	Test Data
+1	1640	641	0	1	실행 취소	Undo	None	Test Data
+1	1641	642	0	1	접속 중입니다	Connecting	None	Test Data
+1	1642	643	0	1	[642] 물 주세요	[642] Water please	None	Test Data
+1	1643	644	0	1	한국 음식이 맛있습니다	Korean food is delicious	None	Test Data
+1	1644	645	0	1	계속하시겠습니까?	Do you want to continue?	None	Test Data
+1	1645	646	0	1	[645] 죄송합니다	[645] I'm sorry	None	Test Data
+1	1646	647	0	1	새로운 아이템을 획득했습니다	Acquired new item	None	Test Data
+1	1647	648	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1648	649	0	1	[648] 내일 만나요	[648] See you tomorrow	None	Test Data
+1	1649	650	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1650	651	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1651	652	0	1	[651] 새로운 아이템을 획득했습니다	[651] Acquired new item	None	Test Data
+1	1652	653	0	1	잘 지내세요?	How are you?	None	Test Data
+1	1653	654	0	1	저장되었습니다	Saved	None	Test Data
+1	1654	655	0	1	[654] 한국 음식이 맛있습니다	[654] Korean food is delicious	None	Test Data
+1	1655	656	0	1	잘 지내세요?	How are you?	None	Test Data
+1	1656	657	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1657	658	0	1	[657] 내일 만나요	[657] See you tomorrow	None	Test Data
+1	1658	659	0	1	조금만 기다려 주세요	Please wait a moment	None	Test Data
+1	1659	660	0	1	삭제	Delete	None	Test Data
+1	1660	661	0	1	[660] 새로운 아이템을 획득했습니다	[660] Acquired new item	None	Test Data
+1	1661	662	0	1	얼마입니까?	How much is it?	None	Test Data
+1	1662	663	0	1	취소	Cancel	None	Test Data
+1	1663	664	0	1	[663] 게임을 종료하시겠습니까?	[663] Exit game?	None	Test Data
+1	1664	665	0	1	스킬을 배웠습니다	Learned new skill	None	Test Data
+1	1665	666	0	1	종료	Exit	None	Test Data
+1	1666	667	0	1	[666] 여기가 어디입니까?	[666] Where is this?	None	Test Data
+1	1667	668	0	1	설정	Settings	None	Test Data
+1	1668	669	0	1	취소	Cancel	None	Test Data
+1	1669	670	0	1	[669] 사랑합니다	[669] I love you	None	Test Data
+1	1670	671	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1671	672	0	1	피곤합니다	I'm tired	None	Test Data
+1	1672	673	0	1	[672] 서버에 연결할 수 없습니다	[672] Cannot connect to server	None	Test Data
+1	1673	674	0	1	감사합니다	Thank you	None	Test Data
+1	1674	675	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1675	676	0	1	[675] 잠시만요	[675] Just a moment	None	Test Data
+1	1676	677	0	1	저장	Save	None	Test Data
+1	1677	678	0	1	찾기	Find	None	Test Data
+1	1678	679	0	1	[678] 내일 만나요	[678] See you tomorrow	None	Test Data
+1	1679	680	0	1	만나서 반갑습니다	Nice to meet you	None	Test Data
+1	1680	681	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1681	682	0	1	[681] 퀘스트를 완료했습니다	[681] Quest completed	None	Test Data
+1	1682	683	0	1	게임을 종료하시겠습니까?	Exit game?	None	Test Data
+1	1683	684	0	1	병원에 가고 싶습니다	I want to go to the hospital	None	Test Data
+1	1684	685	0	1	[684] 저는 한국어를 공부합니다	[684] I study Korean	None	Test Data
+1	1685	686	0	1	게임을 종료하시겠습니까?	Exit game?	None	Test Data
+1	1686	687	0	1	저장되었습니다	Saved	None	Test Data
+1	1687	688	0	1	[687] 실례합니다	[687] Excuse me	None	Test Data
+1	1688	689	0	1	기다려 주세요	Please wait	None	Test Data
+1	1689	690	0	1	퀘스트를 완료했습니다	Quest completed	None	Test Data
+1	1690	691	0	1	[690] 서버에 연결할 수 없습니다	[690] Cannot connect to server	None	Test Data
+1	1691	692	0	1	이름이 무엇입니까?	What is your name?	None	Test Data
+1	1692	693	0	1	약국이 어디입니까?	Where is the pharmacy?	None	Test Data
+1	1693	694	0	1	[693] 확인	[693] Confirm	None	Test Data
+1	1694	695	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1695	696	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1696	697	0	1	[696] 좋은 아침입니다	[696] Good morning	None	Test Data
+1	1697	698	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1698	699	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1699	700	0	1	[699] 퀘스트를 완료했습니다	[699] Quest completed	None	Test Data
+1	1700	701	0	1	내일 만나요	See you tomorrow	None	Test Data
+1	1701	702	0	1	지금 몇 시입니까?	What time is it now?	None	Test Data
+1	1702	703	0	1	[702] 붙여넣기	[702] Paste	None	Test Data
+1	1703	704	0	1	잠시만요	Just a moment	None	Test Data
+1	1704	705	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1705	706	0	1	[705] 파일	[705] File	None	Test Data
+1	1706	707	0	1	축하합니다	Congratulations	None	Test Data
+1	1707	708	0	1	실행 취소	Undo	None	Test Data
+1	1708	709	0	1	[708] 다시 한번 말해 주세요	[708] Please say it again	None	Test Data
+1	1709	710	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1710	711	0	1	내일 만나요	See you tomorrow	None	Test Data
+1	1711	712	0	1	[711] 죄송합니다	[711] I'm sorry	None	Test Data
+1	1712	713	0	1	한국어로 말해 주세요	Please speak in Korean	None	Test Data
+1	1713	714	0	1	사랑합니다	I love you	None	Test Data
+1	1714	715	0	1	[714] 다시 실행	[714] Redo	None	Test Data
+1	1715	716	0	1	내일 만나요	See you tomorrow	None	Test Data
+1	1716	717	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1717	718	0	1	[717] 오늘 날씨가 좋습니다	[717] The weather is nice today	None	Test Data
+1	1718	719	0	1	계속하시겠습니까?	Do you want to continue?	None	Test Data
+1	1719	720	0	1	배가 고픕니다	I'm hungry	None	Test Data
+1	1720	721	0	1	[720] 저는 학생입니다	[720] I am a student	None	Test Data
+1	1721	722	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1722	723	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1723	724	0	1	[723] 공격력이 증가했습니다	[723] Attack power increased	None	Test Data
+1	1724	725	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1725	726	0	1	저는 회사원입니다	I am an office worker	None	Test Data
+1	1726	727	0	1	[726] 공격력이 증가했습니다	[726] Attack power increased	None	Test Data
+1	1727	728	0	1	이것 주세요	Give me this please	None	Test Data
+1	1728	729	0	1	로딩 중입니다	Loading	None	Test Data
+1	1729	730	0	1	[729] 안녕하세요	[729] Hello	None	Test Data
+1	1730	731	0	1	사진 찍어도 됩니까?	May I take a photo?	None	Test Data
+1	1731	732	0	1	복사	Copy	None	Test Data
+1	1732	733	0	1	[732] 잘 가세요	[732] Goodbye	None	Test Data
+1	1733	734	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1734	735	0	1	취소	Cancel	None	Test Data
+1	1735	736	0	1	[735] 내일 만나요	[735] See you tomorrow	None	Test Data
+1	1736	737	0	1	한국 음식이 맛있습니다	Korean food is delicious	None	Test Data
+1	1737	738	0	1	옵션	Options	None	Test Data
+1	1738	739	0	1	[738] 다른 이름으로 저장	[738] Save As	None	Test Data
+1	1739	740	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1740	741	0	1	여기 앉아도 됩니까?	May I sit here?	None	Test Data
+1	1741	742	0	1	[741] 어디에서 왔습니까?	[741] Where are you from?	None	Test Data
+1	1742	743	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1743	744	0	1	저장	Save	None	Test Data
+1	1744	745	0	1	[744] 이것 주세요	[744] Give me this please	None	Test Data
+1	1745	746	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1746	747	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1747	748	0	1	[747] 실례합니다	[747] Excuse me	None	Test Data
+1	1748	749	0	1	한국어로 말해 주세요	Please speak in Korean	None	Test Data
+1	1749	750	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1750	751	0	1	[750] 붙여넣기	[750] Paste	None	Test Data
+1	1751	752	0	1	편집	Edit	None	Test Data
+1	1752	753	0	1	잘 지내세요?	How are you?	None	Test Data
+1	1753	754	0	1	[753] 다시 시도해 주세요	[753] Please try again	None	Test Data
+1	1754	755	0	1	오늘 날씨가 좋습니다	The weather is nice today	None	Test Data
+1	1755	756	0	1	조금만 기다려 주세요	Please wait a moment	None	Test Data
+1	1756	757	0	1	[756] 택시를 불러 주세요	[756] Please call a taxi	None	Test Data
+1	1757	758	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1758	759	0	1	어디에서 왔습니까?	Where are you from?	None	Test Data
+1	1759	760	0	1	[759] 잘 지내세요?	[759] How are you?	None	Test Data
+1	1760	761	0	1	축하합니다	Congratulations	None	Test Data
+1	1761	762	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1762	763	0	1	[762] 마나가 부족합니다	[762] Not enough mana	None	Test Data
+1	1763	764	0	1	알겠습니다	I understand	None	Test Data
+1	1764	765	0	1	취소	Cancel	None	Test Data
+1	1765	766	0	1	[765] 붙여넣기	[765] Paste	None	Test Data
+1	1766	767	0	1	옵션	Options	None	Test Data
+1	1767	768	0	1	물 주세요	Water please	None	Test Data
+1	1768	769	0	1	[768] 사랑합니다	[768] I love you	None	Test Data
+1	1769	770	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1770	771	0	1	저는 잘 지냅니다	I'm doing well	None	Test Data
+1	1771	772	0	1	[771] 계속하시겠습니까?	[771] Do you want to continue?	None	Test Data
+1	1772	773	0	1	내일 만나요	See you tomorrow	None	Test Data
+1	1773	774	0	1	보기	View	None	Test Data
+1	1774	775	0	1	[774] 좋은 아침입니다	[774] Good morning	None	Test Data
+1	1775	776	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1776	777	0	1	오늘은 월요일입니다	Today is Monday	None	Test Data
+1	1777	778	0	1	[777] 방어력이 증가했습니다	[777] Defense increased	None	Test Data
+1	1778	779	0	1	사랑합니다	I love you	None	Test Data
+1	1779	780	0	1	물 주세요	Water please	None	Test Data
+1	1780	781	0	1	[780] 다시 실행	[780] Redo	None	Test Data
+1	1781	782	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1782	783	0	1	인쇄	Print	None	Test Data
+1	1783	784	0	1	[783] 저장	[783] Save	None	Test Data
+1	1784	785	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1785	786	0	1	로딩 중입니다	Loading	None	Test Data
+1	1786	787	0	1	[786] 다른 이름으로 저장	[786] Save As	None	Test Data
+1	1787	788	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1788	789	0	1	확인	Confirm	None	Test Data
+1	1789	790	0	1	[789] 서버에 연결할 수 없습니다	[789] Cannot connect to server	None	Test Data
+1	1790	791	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1791	792	0	1	알겠습니다	I understand	None	Test Data
+1	1792	793	0	1	[792] 네, 맞습니다	[792] Yes, that's right	None	Test Data
+1	1793	794	0	1	안녕하세요	Hello	None	Test Data
+1	1794	795	0	1	잘 가세요	Goodbye	None	Test Data
+1	1795	796	0	1	[795] 다시 실행	[795] Redo	None	Test Data
+1	1796	797	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1797	798	0	1	모르겠습니다	I don't understand	None	Test Data
+1	1798	799	0	1	[798] 잘라내기	[798] Cut	None	Test Data
+1	1799	800	0	1	화장실이 어디입니까?	Where is the restroom?	None	Test Data
+1	1800	801	0	1	영어로 말해 주세요	Please speak in English	None	Test Data
+1	1801	802	0	1	[801] 죄송합니다	[801] I'm sorry	None	Test Data
+1	1802	803	0	1	한국 음식이 맛있습니다	Korean food is delicious	None	Test Data
+1	1803	804	0	1	바꾸기	Replace	None	Test Data
+1	1804	805	0	1	[804] 열기	[804] Open	None	Test Data
+1	1805	806	0	1	종료	Exit	None	Test Data
+1	1806	807	0	1	잘 지내세요?	How are you?	None	Test Data
+1	1807	808	0	1	[807] 약국이 어디입니까?	[807] Where is the pharmacy?	None	Test Data
+1	1808	809	0	1	다시 한번 말해 주세요	Please say it again	None	Test Data
+1	1809	810	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1810	811	0	1	[810] 이것 주세요	[810] Give me this please	None	Test Data
+1	1811	812	0	1	이것 주세요	Give me this please	None	Test Data
+1	1812	813	0	1	좋은 저녁입니다	Good evening	None	Test Data
+1	1813	814	0	1	[813] 편집	[813] Edit	None	Test Data
+1	1814	815	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1815	816	0	1	실례합니다	Excuse me	None	Test Data
+1	1816	817	0	1	[816] 저장	[816] Save	None	Test Data
+1	1817	818	0	1	얼마입니까?	How much is it?	None	Test Data
+1	1818	819	0	1	복사	Copy	None	Test Data
+1	1819	820	0	1	[819] 죄송합니다	[819] I'm sorry	None	Test Data
+1	1820	821	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1821	822	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1822	823	0	1	[822] 영어로 말해 주세요	[822] Please speak in English	None	Test Data
+1	1823	824	0	1	다시 한번 말해 주세요	Please say it again	None	Test Data
+1	1824	825	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1825	826	0	1	[825] 파일	[825] File	None	Test Data
+1	1826	827	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1827	828	0	1	아니요, 틀립니다	No, that's wrong	None	Test Data
+1	1828	829	0	1	[828] 실례합니다	[828] Excuse me	None	Test Data
+1	1829	830	0	1	실행 취소	Undo	None	Test Data
+1	1830	831	0	1	배가 고픕니다	I'm hungry	None	Test Data
+1	1831	832	0	1	[831] 물 주세요	[831] Water please	None	Test Data
+1	1832	833	0	1	사진 찍어도 됩니까?	May I take a photo?	None	Test Data
+1	1833	834	0	1	이것 주세요	Give me this please	None	Test Data
+1	1834	835	0	1	[834] 접속 중입니다	[834] Connecting	None	Test Data
+1	1835	836	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1836	837	0	1	도움말	Help	None	Test Data
+1	1837	838	0	1	[837] 퀘스트를 완료했습니다	[837] Quest completed	None	Test Data
+1	1838	839	0	1	만나서 반갑습니다	Nice to meet you	None	Test Data
+1	1839	840	0	1	종료	Exit	None	Test Data
+1	1840	841	0	1	[840] 어디에서 왔습니까?	[840] Where are you from?	None	Test Data
+1	1841	842	0	1	도움말	Help	None	Test Data
+1	1842	843	0	1	서버에 연결할 수 없습니다	Cannot connect to server	None	Test Data
+1	1843	844	0	1	[843] 편집	[843] Edit	None	Test Data
+1	1844	845	0	1	실행 취소	Undo	None	Test Data
+1	1845	846	0	1	종료	Exit	None	Test Data
+1	1846	847	0	1	[846] 종료	[846] Exit	None	Test Data
+1	1847	848	0	1	로딩 중입니다	Loading	None	Test Data
+1	1848	849	0	1	새로 만들기	New	None	Test Data
+1	1849	850	0	1	[849] 감사합니다	[849] Thank you	None	Test Data
+1	1850	851	0	1	화장실이 어디입니까?	Where is the restroom?	None	Test Data
+1	1851	852	0	1	축하합니다	Congratulations	None	Test Data
+1	1852	853	0	1	[852] 붙여넣기	[852] Paste	None	Test Data
+1	1853	854	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1854	855	0	1	약국이 어디입니까?	Where is the pharmacy?	None	Test Data
+1	1855	856	0	1	[855] 좋은 아침입니다	[855] Good morning	None	Test Data
+1	1856	857	0	1	오늘 날씨가 좋습니다	The weather is nice today	None	Test Data
+1	1857	858	0	1	계속하시겠습니까?	Do you want to continue?	None	Test Data
+1	1858	859	0	1	[858] 다시 한번 말해 주세요	[858] Please say it again	None	Test Data
+1	1859	860	0	1	인벤토리가 가득 찼습니다	Inventory full	None	Test Data
+1	1860	861	0	1	병원에 가고 싶습니다	I want to go to the hospital	None	Test Data
+1	1861	862	0	1	[861] 잠시만요	[861] Just a moment	None	Test Data
+1	1862	863	0	1	아니요, 틀립니다	No, that's wrong	None	Test Data
+1	1863	864	0	1	한국어로 말해 주세요	Please speak in Korean	None	Test Data
+1	1864	865	0	1	[864] 다시 한번 말해 주세요	[864] Please say it again	None	Test Data
+1	1865	866	0	1	얼마입니까?	How much is it?	None	Test Data
+1	1866	867	0	1	다시 시도해 주세요	Please try again	None	Test Data
+1	1867	868	0	1	[867] 도와주세요	[867] Please help me	None	Test Data
+1	1868	869	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1869	870	0	1	파일	File	None	Test Data
+1	1870	871	0	1	[870] 사진 찍어도 됩니까?	[870] May I take a photo?	None	Test Data
+1	1871	872	0	1	저는 한국어를 공부합니다	I study Korean	None	Test Data
+1	1872	873	0	1	이것 주세요	Give me this please	None	Test Data
+1	1873	874	0	1	[873] 알겠습니다	[873] I understand	None	Test Data
+1	1874	875	0	1	잘 지내세요?	How are you?	None	Test Data
+1	1875	876	0	1	인쇄	Print	None	Test Data
+1	1876	877	0	1	[876] 다른 이름으로 저장	[876] Save As	None	Test Data
+1	1877	878	0	1	축하합니다	Congratulations	None	Test Data
+1	1878	879	0	1	다시 실행	Redo	None	Test Data
+1	1879	880	0	1	[879] 어디에서 왔습니까?	[879] Where are you from?	None	Test Data
+1	1880	881	0	1	새로운 아이템을 획득했습니다	Acquired new item	None	Test Data
+1	1881	882	0	1	체력이 회복되었습니다	Health restored	None	Test Data
+1	1882	883	0	1	[882] 새해 복 많이 받으세요	[882] Happy new year	None	Test Data
+1	1883	884	0	1	도와주세요	Please help me	None	Test Data
+1	1884	885	0	1	계속하시겠습니까?	Do you want to continue?	None	Test Data
+1	1885	886	0	1	[885] 오늘은 월요일입니다	[885] Today is Monday	None	Test Data
+1	1886	887	0	1	새해 복 많이 받으세요	Happy new year	None	Test Data
+1	1887	888	0	1	다시 실행	Redo	None	Test Data
+1	1888	889	0	1	[888] 물 주세요	[888] Water please	None	Test Data
+1	1889	890	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1890	891	0	1	여기 앉아도 됩니까?	May I sit here?	None	Test Data
+1	1891	892	0	1	[891] 좋은 저녁입니다	[891] Good evening	None	Test Data
+1	1892	893	0	1	한국어로 말해 주세요	Please speak in Korean	None	Test Data
+1	1893	894	0	1	실행 취소	Undo	None	Test Data
+1	1894	895	0	1	[894] 저는 잘 지냅니다	[894] I'm doing well	None	Test Data
+1	1895	896	0	1	피곤합니다	I'm tired	None	Test Data
+1	1896	897	0	1	기다려 주세요	Please wait	None	Test Data
+1	1897	898	0	1	[897] 약국이 어디입니까?	[897] Where is the pharmacy?	None	Test Data
+1	1898	899	0	1	만나서 반갑습니다	Nice to meet you	None	Test Data
+1	1899	900	0	1	붙여넣기	Paste	None	Test Data
+1	1900	901	0	1	[900] 도움말	[900] Help	None	Test Data
+1	1901	902	0	1	조금만 기다려 주세요	Please wait a moment	None	Test Data
+1	1902	903	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1903	904	0	1	[903] 잘라내기	[903] Cut	None	Test Data
+1	1904	905	0	1	체력이 회복되었습니다	Health restored	None	Test Data
+1	1905	906	0	1	다시 한번 말해 주세요	Please say it again	None	Test Data
+1	1906	907	0	1	[906] 영어로 말해 주세요	[906] Please speak in English	None	Test Data
+1	1907	908	0	1	설정	Settings	None	Test Data
+1	1908	909	0	1	이것 주세요	Give me this please	None	Test Data
+1	1909	910	0	1	[909] 오늘 날씨가 좋습니다	[909] The weather is nice today	None	Test Data
+1	1910	911	0	1	새로 만들기	New	None	Test Data
+1	1911	912	0	1	확인	Confirm	None	Test Data
+1	1912	913	0	1	[912] 내일 만나요	[912] See you tomorrow	None	Test Data
+1	1913	914	0	1	모두 선택	Select All	None	Test Data
+1	1914	915	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1915	916	0	1	[915] 이해했습니다	[915] I understand	None	Test Data
+1	1916	917	0	1	알겠습니다	I understand	None	Test Data
+1	1917	918	0	1	인쇄	Print	None	Test Data
+1	1918	919	0	1	[918] 스킬을 배웠습니다	[918] Learned new skill	None	Test Data
+1	1919	920	0	1	접속 중입니다	Connecting	None	Test Data
+1	1920	921	0	1	사진 찍어도 됩니까?	May I take a photo?	None	Test Data
+1	1921	922	0	1	[921] 모두 선택	[921] Select All	None	Test Data
+1	1922	923	0	1	서버에 연결할 수 없습니다	Cannot connect to server	None	Test Data
+1	1923	924	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1924	925	0	1	[924] 레벨이 올랐습니다	[924] Level up	None	Test Data
+1	1925	926	0	1	저는 잘 지냅니다	I'm doing well	None	Test Data
+1	1926	927	0	1	다른 이름으로 저장	Save As	None	Test Data
+1	1927	928	0	1	[927] 이해했습니다	[927] I understand	None	Test Data
+1	1928	929	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1929	930	0	1	사진 찍어도 됩니까?	May I take a photo?	None	Test Data
+1	1930	931	0	1	[930] 잘 지내세요?	[930] How are you?	None	Test Data
+1	1931	932	0	1	종료	Exit	None	Test Data
+1	1932	933	0	1	사진 찍어도 됩니까?	May I take a photo?	None	Test Data
+1	1933	934	0	1	[933] 얼마입니까?	[933] How much is it?	None	Test Data
+1	1934	935	0	1	사진 찍어도 됩니까?	May I take a photo?	None	Test Data
+1	1935	936	0	1	공격력이 증가했습니다	Attack power increased	None	Test Data
+1	1936	937	0	1	[936] 다시 실행	[936] Redo	None	Test Data
+1	1937	938	0	1	다시 실행	Redo	None	Test Data
+1	1938	939	0	1	여기가 어디입니까?	Where is this?	None	Test Data
+1	1939	940	0	1	[939] 퀘스트를 완료했습니다	[939] Quest completed	None	Test Data
+1	1940	941	0	1	마나가 부족합니다	Not enough mana	None	Test Data
+1	1941	942	0	1	모두 선택	Select All	None	Test Data
+1	1942	943	0	1	[942] 영어로 말해 주세요	[942] Please speak in English	None	Test Data
+1	1943	944	0	1	안녕하세요	Hello	None	Test Data
+1	1944	945	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1945	946	0	1	[945] 잘 가세요	[945] Goodbye	None	Test Data
+1	1946	947	0	1	네, 맞습니다	Yes, that's right	None	Test Data
+1	1947	948	0	1	레벨이 올랐습니다	Level up	None	Test Data
+1	1948	949	0	1	[948] 마나가 부족합니다	[948] Not enough mana	None	Test Data
+1	1949	950	0	1	저는 회사원입니다	I am an office worker	None	Test Data
+1	1950	951	0	1	저는 잘 지냅니다	I'm doing well	None	Test Data
+1	1951	952	0	1	[951] 저는 잘 지냅니다	[951] I'm doing well	None	Test Data
+1	1952	953	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1953	954	0	1	기다려 주세요	Please wait	None	Test Data
+1	1954	955	0	1	[954] 공격력이 증가했습니다	[954] Attack power increased	None	Test Data
+1	1955	956	0	1	생일 축하합니다	Happy birthday	None	Test Data
+1	1956	957	0	1	바꾸기	Replace	None	Test Data
+1	1957	958	0	1	[957] 인쇄	[957] Print	None	Test Data
+1	1958	959	0	1	약국이 어디입니까?	Where is the pharmacy?	None	Test Data
+1	1959	960	0	1	붙여넣기	Paste	None	Test Data
+1	1960	961	0	1	[960] 네, 맞습니다	[960] Yes, that's right	None	Test Data
+1	1961	962	0	1	종료	Exit	None	Test Data
+1	1962	963	0	1	죄송합니다	I'm sorry	None	Test Data
+1	1963	964	0	1	[963] 모두 선택	[963] Select All	None	Test Data
+1	1964	965	0	1	저장	Save	None	Test Data
+1	1965	966	0	1	택시를 불러 주세요	Please call a taxi	None	Test Data
+1	1966	967	0	1	[966] 새로 만들기	[966] New	None	Test Data
+1	1967	968	0	1	인벤토리가 가득 찼습니다	Inventory full	None	Test Data
+1	1968	969	0	1	영어로 말해 주세요	Please speak in English	None	Test Data
+1	1969	970	0	1	[969] 죄송합니다	[969] I'm sorry	None	Test Data
+1	1970	971	0	1	사랑합니다	I love you	None	Test Data
+1	1971	972	0	1	설정	Settings	None	Test Data
+1	1972	973	0	1	[972] 잘라내기	[972] Cut	None	Test Data
+1	1973	974	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1974	975	0	1	파일	File	None	Test Data
+1	1975	976	0	1	[975] 잠시만요	[975] Just a moment	None	Test Data
+1	1976	977	0	1	천천히 말해 주세요	Please speak slowly	None	Test Data
+1	1977	978	0	1	다시 한번 말해 주세요	Please say it again	None	Test Data
+1	1978	979	0	1	[978] 저는 회사원입니다	[978] I am an office worker	None	Test Data
+1	1979	980	0	1	게임을 종료하시겠습니까?	Exit game?	None	Test Data
+1	1980	981	0	1	실례합니다	Excuse me	None	Test Data
+1	1981	982	0	1	[981] 저는 학생입니다	[981] I am a student	None	Test Data
+1	1982	983	0	1	다시 시도해 주세요	Please try again	None	Test Data
+1	1983	984	0	1	저는 커피를 좋아합니다	I like coffee	None	Test Data
+1	1984	985	0	1	[984] 화장실이 어디입니까?	[984] Where is the restroom?	None	Test Data
+1	1985	986	0	1	저는 학생입니다	I am a student	None	Test Data
+1	1986	987	0	1	약국이 어디입니까?	Where is the pharmacy?	None	Test Data
+1	1987	988	0	1	[987] 다른 이름으로 저장	[987] Save As	None	Test Data
+1	1988	989	0	1	붙여넣기	Paste	None	Test Data
+1	1989	990	0	1	체력이 회복되었습니다	Health restored	None	Test Data
+1	1990	991	0	1	[990] 사진 찍어도 됩니까?	[990] May I take a photo?	None	Test Data
+1	1991	992	0	1	한국 음식이 맛있습니다	Korean food is delicious	None	Test Data
+1	1992	993	0	1	편집	Edit	None	Test Data
+1	1993	994	0	1	[993] 공격력이 증가했습니다	[993] Attack power increased	None	Test Data
+1	1994	995	0	1	열기	Open	None	Test Data
+1	1995	996	0	1	잘 가세요	Goodbye	None	Test Data
+1	1996	997	0	1	[996] 취소	[996] Cancel	None	Test Data
+1	1997	998	0	1	조금만 기다려 주세요	Please wait a moment	None	Test Data
+1	1998	999	0	1	좋은 아침입니다	Good morning	None	Test Data
+1	1999	1000	0	1	[999] 좋은 저녁입니다	[999] Good evening	None	Test Data

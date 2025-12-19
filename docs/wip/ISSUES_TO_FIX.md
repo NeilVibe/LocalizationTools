@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-18 | **Build:** 298 (v25.1217.2220)
+**Last Updated:** 2025-12-19 | **Build:** 301 (pending)
 
 ---
 
@@ -8,133 +8,166 @@
 
 | Status | Count | Items |
 |--------|-------|-------|
-| **Open Bugs** | **0** | - |
-| **Tested & Complete** | **4** | PERF-001, PERF-002, FEAT-005, BUG-023 |
-| Fixed (archived) | 63+ | See history |
+| **Critical Bugs** | **0** | - |
+| **Medium Bugs** | **1** | BUG-030 |
+| **UI/UX Issues** | **11** | UI-025 to UI-035 |
+| **Questions** | **1** | Q-001 |
+| **Tested & Complete** | **9** | BUG-028, BUG-029, PERF-001, PERF-002, FEAT-005, BUG-023, UI-024, Lazy Import, Model2Vec |
 
 ---
 
-## Recently Fixed
+## Medium Priority Bugs
 
-### BUG-023: TM Status Shows "Pending" - ✅ FIXED
+### BUG-030: WebSocket Shows Disconnected - MEDIUM
 
-**Culprit:** `MODEL_NAME` variable referenced but never defined in `tm_indexer.py`.
-
-**Impact:** `NameError` during index build → status never set to "ready".
-
-**Fix:** Replaced `MODEL_NAME` with `self._engine.name` at lines 280, 1730, 1977.
-
----
-
-## Performance Improvements
-
-### PERF-001: Incremental HNSW - ✅ CODE COMPLETE (Needs Testing)
-
-**Priority:** HIGH | **Component:** FAISS index sync
-
-**What:** Add 1 entry to 500k TM in ~0.1s instead of ~10s full rebuild.
-
-**Solution:** `_incremental_sync()` method in `TMSyncManager`:
-- Detects INSERT-only changes
-- Loads existing FAISS index
-- Adds only new vectors
-- Falls back to full rebuild for UPDATE/DELETE
-
-**Files:** `tm_indexer.py`, `shared/faiss_manager.py`
-
-**Test:** Add entry → Sync → Check logs for "incremental" vs "full rebuild"
+**Priority:** MEDIUM | **Component:** Server Status
+**Problem:** Server status shows "DB connected" but "WebSocket: disconnected".
+**Expected:** WebSocket should connect for real-time sync.
+**Notes:** May be normal if WebSocket only connects on-demand. Needs investigation.
 
 ---
 
-### PERF-002: FAISS Code Factorization - ✅ CODE COMPLETE (Needs Testing)
+## UI/UX Issues - TM Viewer Minimalism
 
-**Priority:** MEDIUM | **Component:** Code architecture
+> **Theme:** Remove all unnecessary UI elements. Implement lazy loading. Minimalistic design.
 
-**What:** 12 FAISS copies → 1 `FAISSManager` class.
+### UI-025: Remove "Items Per Page" Selector
 
-**Files Created:**
-```
-server/tools/shared/
-├── __init__.py
-└── faiss_manager.py    # Single source of truth
-```
-
-**Files Modified:**
-- `ldm/tm_indexer.py` → Uses FAISSManager
-- `kr_similar/embeddings.py` → Uses FAISSManager
-- `xlstransfer/embeddings.py` → Uses FAISSManager
-
-**Test:** Server starts, all FAISS operations work.
+**Component:** TM Viewer
+**Problem:** "Items per page" dropdown is unnecessary clutter.
+**Solution:** Implement lazy loading that matches window size. Auto-load more on scroll.
 
 ---
 
-## Feature: Model2Vec Default Engine
+### UI-026: Remove Pagination ("1 of 1 page")
 
-### FEAT-005: Model2Vec + FAISS HNSW - ✅ COMPLETE
+**Component:** TM Viewer
+**Problem:** "1 of 1" page indicator is useless with lazy load.
+**Solution:** Remove pagination entirely. Use infinite scroll with lazy loading.
 
-**What:** Model2Vec as default for LDM TM Search with UI toggle.
+---
+
+### UI-027: Remove "Confirm" Button
+
+**Component:** TM Viewer
+**Problem:** "Confirm" button purpose unclear / useless.
+**Solution:** Review code to understand what it does, then remove button AND all linked logic.
+
+---
+
+### UI-028: Remove "Showing rows X-Y of Z"
+
+**Component:** TM Viewer
+**Problem:** "Showing rows 1-5 of 5" text is unnecessary with lazy load.
+**Solution:** Remove. Lazy load handles display naturally.
+
+---
+
+## UI/UX Issues - File Viewer
+
+### UI-029: Remove Download Options from 3-Dot Menu
+
+**Component:** File Viewer (viewing info area)
+**Problem:** 3-dot menu next to "Viewing" has "Download review", "Download all" - useless options.
+**Solution:** Remove these options. Users download full file via right-click on file list.
+
+---
+
+### UI-030: Remove "i" Info Button
+
+**Component:** File Viewer (viewing info area)
+**Problem:** The "i" info button next to viewing info is useless.
+**Solution:** Remove button AND all linked code/logic. Clean removal.
+
+---
+
+## UI/UX Issues - Settings
+
+### UI-031: Font Size Setting Not Working
+
+**Component:** Display Settings
+**Problem:** Changing font size does nothing.
+**Solution:** Fix font size application or remove broken setting.
+
+---
+
+### UI-032: Bold Setting Not Working
+
+**Component:** Display Settings
+**Problem:** Toggling bold does nothing.
+**Solution:** Fix bold application or remove broken setting.
+
+---
+
+### UI-033: App Settings Empty
+
+**Component:** App Settings
+**Problem:** Settings menu is nearly empty - just leads to Preferences which only has font settings.
+**Solution:** Either add useful settings or remove empty menu items.
+
+---
+
+## UI/UX Issues - Global
+
+### UI-034: Tooltips Cut Off at Window Edge
+
+**Component:** Global (all tooltips/hover bubbles)
+**Problem:** White tooltip bubbles get cut off when near window edge (especially right side).
+**Example:** Settings button tooltip on far right is cut off.
+**Solution:** Implement smart tooltip positioning (Svelte 5 has solutions for this). Auto-adjust placement so tooltip is always fully visible.
+
+---
+
+## Questions / Clarifications
+
+### Q-001: TM Sync - Automatic or Manual?
+
+**Question:** Should TM sync be automatic or require manual "Sync Indexes" button press?
+**User Opinion:** Should be automatic for Model2Vec (fast, cheap).
+**Current:** Appears to be manual.
+**Decision Needed:** Implement auto-sync on TM changes? Or keep manual?
+
+---
+
+## Model2Vec Confirmation
 
 **Model:** `minishlab/potion-multilingual-128M`
-- **101 languages** (including Korean)
+- **101 languages** including Korean ✅
 - **29,269 sentences/sec**
-- 256 dimensions, MIT license
+- **256 dimensions**
+- MIT license
 
-**Engine Usage by Tool:**
-
-| Tool | Engine | Reason |
-|------|--------|--------|
-| **LDM TM Search** | Model2Vec (default) / Qwen (opt-in) | Real-time needs speed |
-| **LDM Standard Pretranslation** | Model2Vec / Qwen (user choice) | Follows user toggle |
-| **KR Similar Pretranslation** | **Qwen ONLY** | Quality > speed |
-| **XLS Transfer Pretranslation** | **Qwen ONLY** | Quality > speed |
-
-> The Fast/Deep toggle affects LDM TM search AND standard pretranslation.
-> KR Similar / XLS Transfer pretranslation ALWAYS use Qwen.
-
-**Files Created:**
-- `server/tools/shared/embedding_engine.py` - Engine abstraction
-- API: `GET/POST /api/ldm/settings/embedding-engine`
-
-**UI:** TM Manager toolbar → Fast/Deep toggle
-
-**Details:** [FAISS_OPTIMIZATION_PLAN.md](FAISS_OPTIMIZATION_PLAN.md)
+This IS the most powerful multilingual Model2Vec model available. ✅
 
 ---
 
-## Recently Fixed (Build 298)
+## Completed (Build 301)
 
 | ID | Description | Date |
 |----|-------------|------|
-| BUG-027 | TM Viewer UI/UX overhaul | 2025-12-18 |
-| FEAT-004 | TM Sync Protocol | 2025-12-18 |
-| BUG-024 | File Viewer empty 3rd column | 2025-12-18 |
-| BUG-025 | Title not clickable | 2025-12-18 |
-| BUG-026 | User button shows "User" | 2025-12-18 |
-| BUG-020 | memoQ-style metadata | 2025-12-17 |
+| BUG-028 | Model2Vec missing from embedded Python pip install | 2025-12-19 |
+| BUG-029 | Upload as TM - context menu file ref lost | 2025-12-19 |
+| UI-024 | Dynamic engine name in build modal | 2025-12-19 |
+| BUG-023 | MODEL_NAME NameError fix | 2025-12-18 |
+| FEAT-005 | Model2Vec default engine | 2025-12-18 |
+| PERF-001 | Incremental HNSW | 2025-12-18 |
+| PERF-002 | FAISS factorization | 2025-12-18 |
+| Lazy Import | CI timeout fix (kr_similar) | 2025-12-19 |
+| Model2Vec | Upgrade to potion-128M | 2025-12-18 |
 
 **Full history:** [ISSUES_HISTORY.md](../history/ISSUES_HISTORY.md)
 
 ---
 
-## Ongoing (Low Priority)
+## Priority Order for Next Session
 
-| Item | Status | Description |
-|------|--------|-------------|
-| P25 | 85% | LDM UX Overhaul |
-| BUG-021 | Optional | Seamless UI during auto-update |
-
----
-
-## How to Add Issues
-
-```markdown
-### BUG-XXX: Title
-**Priority:** CRITICAL/HIGH/MEDIUM/LOW
-**Component:** Where the bug is
-**Problem:** What's wrong
-**Expected:** What should happen
-```
+1. **UI-025 to UI-028** - TM Viewer minimalism (batch together)
+2. **UI-029, UI-030** - File Viewer cleanup (batch together)
+3. **UI-034** - Tooltip positioning (affects entire app)
+4. **BUG-030** - WebSocket investigation
+5. **UI-031 to UI-033** - Settings cleanup (low priority)
+6. **Q-001** - Auto-sync decision
 
 ---
 
-*Updated 2025-12-18 | 0 bugs, all complete*
+*Updated 2025-12-19 | 0 critical bugs, 1 medium bug, 11 UI/UX issues*

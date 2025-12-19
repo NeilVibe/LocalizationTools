@@ -225,11 +225,11 @@ Total: 8/8 passed
 
 | Doc | Description |
 |-----|-------------|
+| [cdp/README.md](cdp/README.md) | CDP testing guide (primary) |
 | [ADD_TEST_MODE_GUIDE.md](ADD_TEST_MODE_GUIDE.md) | Add TEST MODE to new apps |
 | [docs/testing/README.md](../docs/testing/README.md) | Testing overview |
-| [docs/testing/DEBUG_AND_TEST_HUB.md](../docs/testing/DEBUG_AND_TEST_HUB.md) | Master testing hub |
-| [docs/wip/P20_MODEL_MIGRATION.md](../docs/wip/P20_MODEL_MIGRATION.md) | Qwen migration details |
+| [docs/testing/DEBUG_AND_TEST_HUB.md](../docs/testing/DEBUG_AND_TEST_HUB.md) | Quick reference |
 
 ---
 
-*Updated: 2025-12-11 | Multi-dimensional testing + Qwen/FAISS test added*
+*Updated: 2025-12-19 | Build 300*

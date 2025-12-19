@@ -375,7 +375,7 @@ def _process_files_background(self, operation_id, user_info, file_paths, thresho
 
 ## Testing Your New App
 
-Use the autonomous testing pattern (see `docs/CLAUDE_AUTONOMOUS_TESTING.md`):
+Use the autonomous testing pattern (see `testing_toolkit/cdp/README.md`):
 
 ```python
 #!/usr/bin/env python3

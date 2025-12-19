@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512172220 | **Build:** 298 | **Status:** 100% | **Issues:** 0
+**Version:** 2512190300 | **Build:** 301 | **Status:** QA | **Issues:** 12
 
 > **KEEP THIS FILE COMPACT.** Details in linked docs.
 
@@ -56,7 +56,7 @@ OFFLINE: SQLite (single-user, auto-fallback)
 2. **No Backend Mods** - Only wrapper layers (API, GUI)
 3. **Logger Only** - Never `print()`, always `logger`
 4. **Dual Push** - `git push origin main && git push gitea main`
-5. **WSL ≠ Windows** - Use PowerShell for CDP access
+5. **WSL ↔ Windows** - Ports shared, CDP works from WSL via 127.0.0.1:9222
 6. **Fix Everything** - No defer, no excuses, fix all issues
 
 ---
@@ -101,23 +101,18 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 docs/
 ├── wip/                  # Active work
 │   ├── SESSION_CONTEXT.md      ← Session state
-│   ├── ISSUES_TO_FIX.md        ← Bug tracker (4 open)
-│   ├── P36_*.md                ← Pretranslation (complete)
+│   ├── ISSUES_TO_FIX.md        ← Bug tracker (14 open)
 │   └── P25_LDM_UX_OVERHAUL.md  ← 85% done
 ├── testing/              # Test guides
-│   ├── README.md               ← Testing hub
-│   └── CDP_TESTING_GUIDE.md    ← CDP protocol
-├── future/               # API-dependent features
-│   └── smart-translation/
+│   └── README.md               ← Testing hub
 ├── enterprise/           # Company deployment
 │   └── HUB.md
 └── history/              # Archives
-    ├── wip-archive/         ← Completed P* files
-    └── ISSUES_HISTORY.md    ← Fixed bugs
+    └── wip-archive/            ← Completed P* files
 
-testing_toolkit/cdp/      # CDP scripts (run on Windows!)
-├── README.md                ← Selectors, navigation map
-└── tests/                   ← Login, TM Viewer, etc.
+testing_toolkit/cdp/      # CDP scripts (run from WSL or Windows)
+├── README.md                ← Node.js CDP guide (primary)
+└── *.js                     ← Test scripts
 ```
 
 ---
@@ -143,12 +138,12 @@ testing_toolkit/cdp/      # CDP scripts (run on Windows!)
 
 ## Stats
 
-- **Build:** 298 (v25.1217.2220)
+- **Build:** 301 (pending)
 - **Tests:** ~273 in CI
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
-- **Open Issues:** 0
+- **Open Issues:** 12 (1 medium bug, 10 UI/UX, 1 question)
 
 ---
 
-*Last updated: 2025-12-18 | Hub file - details in linked docs*
+*Last updated: 2025-12-19 | Hub file - details in linked docs*

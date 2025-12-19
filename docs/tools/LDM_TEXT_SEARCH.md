@@ -7,7 +7,7 @@
 
 > Complete documentation for the 5-Tier Cascade Search system used in LDM Translation Memory.
 > **Model:** Qwen/Qwen3-Embedding-0.6B (1024-dim) - unified across all tools (P20).
-> **See Also:** [P17_TM_ARCHITECTURE.md](../wip/P17_TM_ARCHITECTURE.md) - Full 9-tier technical implementation.
+> **See Also:** [P17_TM_ARCHITECTURE.md](../history/wip-archive/P17_TM_ARCHITECTURE.md) - Full 9-tier technical implementation (archived).
 
 ---
 

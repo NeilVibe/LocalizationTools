@@ -1,6 +1,6 @@
 # LocaNext - Roadmap
 
-**Build:** 298 (v25.1217.2220) | **Updated:** 2025-12-18 | **Status:** 100% Complete
+**Build:** 300 (v25.1218.2204) | **Updated:** 2025-12-19 | **Status:** QA
 
 ---
 
@@ -170,4 +170,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Build 298 | Updated 2025-12-19*
+*Build 300 | Updated 2025-12-19*
