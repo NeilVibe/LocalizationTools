@@ -6,51 +6,78 @@
 
 ---
 
+## CRITICAL: Run Tests from Windows, NOT WSL
+
+**LocaNext is a Windows app.** CDP binds to Windows `127.0.0.1:9222`. WSL2 cannot reach Windows localhost.
+
+```
+✅ Windows PowerShell  →  127.0.0.1:9222  →  WORKS
+❌ WSL curl/node       →  127.0.0.1:9222  →  Connection refused
+```
+
+**Always run CDP tests from Windows PowerShell:**
+```powershell
+Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+node quick_check.js
+```
+
+---
+
 ## How It Works
 
 ```
 LocaNext.exe --remote-debugging-port=9222
        ↓
-   CDP (port 9222)
+   CDP (port 9222) - WINDOWS LOCALHOST ONLY
        ↓
-   Node.js scripts (ws + http)
+   Node.js scripts (ws + http) - RUN FROM WINDOWS
        ↓
    WebSocket → Runtime.evaluate → DOM interaction
 ```
 
 All tests are **pure Node.js** using `ws` and `http` modules. No Playwright. No PowerShell wrappers.
 
-**WSL ↔ Windows:** Ports are shared. WSL's `127.0.0.1:9222` reaches the Windows app.
-
 ---
 
 ## Quick Start
 
-### From Windows (CMD/PowerShell)
+### Step 1: Launch App with CDP (from WSL)
 
-```cmd
-REM 1. Launch app with CDP
-cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
-LocaNext.exe --remote-debugging-port=9222
+```bash
+# Kill existing and launch fresh
+/mnt/c/Windows/System32/taskkill.exe /F /IM "LocaNext.exe" /T 2>/dev/null
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
+./LocaNext.exe --remote-debugging-port=9222 &
+sleep 10
+```
 
-REM 2. Run test (new terminal)
-cd C:\path\to\LocalizationTools\testing_toolkit\cdp
+### Step 2: Run Tests (from Windows PowerShell)
+
+```powershell
+# Access test scripts via UNC path (reaches WSL filesystem)
+Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+
+# Login first (if at login screen)
+node login.js
+
+# Run tests
+node quick_check.js
+node test_server_status.js
 node test_bug029.js
 ```
 
-### From WSL
+### Alternative: All from Windows
 
-```bash
-# 1. Launch app (from WSL, runs on Windows)
-cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
-./LocaNext.exe --remote-debugging-port=9222 &
+```cmd
+REM 1. Launch app
+cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
+start "" LocaNext.exe --remote-debugging-port=9222
 
-# 2. Wait for startup
-sleep 30
-
-# 3. Run test
-cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
-node test_bug029.js
+REM 2. Wait, then run tests
+timeout 10
+cd D:\LocalizationTools\testing_toolkit\cdp
+node login.js
+node quick_check.js
 ```
 
 ---
@@ -59,6 +86,7 @@ node test_bug029.js
 
 | Script | Purpose |
 |--------|---------|
+| `login.js` | **Run first!** Login as neil/neil via CDP |
 | `quick_check.js` | Page state, URL, available test interfaces |
 | `test_bug023.js` | TM status check (pending vs ready) |
 | `test_bug023_build.js` | Trigger TM index build, check for errors |
@@ -265,8 +293,8 @@ curl http://127.0.0.1:9222/json
 cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 ./LocaNext.exe --remote-debugging-port=9222 &
 
-# Verify
-curl -s http://127.0.0.1:9222/json | head -20
+# Verify CDP is listening (use Windows curl, NOT WSL curl!)
+/mnt/c/Windows/System32/curl.exe -s http://127.0.0.1:9222/json
 ```
 
 ### Windows Paths
@@ -359,7 +387,7 @@ cd locaNext && npm test
 
 | Doc | Purpose |
 |-----|---------|
-| [BUILD_TEST_PROTOCOL.md](../BUILD_TEST_PROTOCOL.md) | Build → Wait → Install → Test workflow |
+| [MASTER_TEST_PROTOCOL.md](../MASTER_TEST_PROTOCOL.md) | Complete Build → Install → Test workflow |
 | [PLAYGROUND_INSTALL_PROTOCOL.md](../../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed Playground install process |
 | [../README.md](../README.md) | Testing toolkit overview |
 

@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-19 | **Build:** 301 (pending)
+**Last Updated:** 2025-12-19 17:55 | **Build:** 301 | **Next:** 302
 
 ---
 
@@ -8,127 +8,138 @@
 
 | Status | Count | Items |
 |--------|-------|-------|
-| **Critical Bugs** | **0** | - |
-| **Medium Bugs** | **1** | BUG-030 |
-| **UI/UX Issues** | **6** | UI-027, UI-031 to UI-035 |
-| **Questions** | **1** | Q-001 |
-| **Tested & Complete** | **13** | BUG-028, BUG-029, UI-025, UI-026, UI-028, UI-029, UI-030, + 6 more |
+| **Fixed (verified)** | 2 | BUG-028, BUG-029 |
+| **Fixed (pending build)** | 1 | BUG-030 |
+| **Closed** | 1 | UI-033 |
+| **Open UI Issues** | 3 | UI-031, UI-032, UI-034 |
+| **Decisions Needed** | 2 | UI-027, Q-001 |
 
 ---
 
-## Medium Priority Bugs
+## Fixed - Pending Build 302
 
-### BUG-030: WebSocket Shows Disconnected - MEDIUM
+### BUG-030: WebSocket Shows Disconnected - FIXED
 
-**Priority:** MEDIUM | **Component:** Server Status
-**Problem:** Server status shows "DB connected" but "WebSocket: disconnected".
-**Expected:** WebSocket should connect for real-time sync.
-**Notes:** May be normal if WebSocket only connects on-demand. Needs investigation.
+**Component:** Server Status Panel
+**Problem:** Always showed "WebSocket: disconnected" even when connected.
+
+**Root Cause:** Wrong import path in `server/api/health.py`:
+```python
+# Line 142 - WRONG (file doesn't exist!)
+from server.socket_manager import sio
+
+# Line 156 - WRONG
+from server.socket_manager import connection_manager
+```
+
+**Fix Applied:**
+```python
+# Line 142 - CORRECT
+from server.utils.websocket import sio
+
+# Line 156 - CORRECT
+from server.utils.websocket import connected_clients
+```
+
+**Status:** Code fixed, awaiting Build 302 to verify.
 
 ---
 
-## UI/UX Issues - TM Viewer
+## Open UI Issues
 
-### UI-027: Review "Confirm" Button - NEEDS DECISION
-
-**Component:** TM Viewer
-**Status:** KEEP - This is memoQ-style workflow for confirming TM entries.
-**Notes:** After code review, this is useful for translation workflow (confirm/unconfirm entries).
-**Decision Needed:** Keep as is, or make optional via settings?
-
----
-
-## UI/UX Issues - Settings
-
-### UI-031: Font Size Setting Not Working
+### UI-031: Font Size Setting - NEEDS TESTING
 
 **Component:** Display Settings
-**Problem:** Changing font size does nothing.
-**Solution:** Fix font size application or remove broken setting.
+**Problem:** Changing font size may not affect the grid.
+**CDP Finding:** Font Size dropdown exists (Small 12px / Medium 14px / Large 16px).
+**Status:** Controls exist. Need to verify they actually apply to grid cells.
 
 ---
 
-### UI-032: Bold Setting Not Working
+### UI-032: Bold Setting - NEEDS TESTING
 
 **Component:** Display Settings
-**Problem:** Toggling bold does nothing.
-**Solution:** Fix bold application or remove broken setting.
+**Problem:** Toggling bold may not affect the grid.
+**CDP Finding:** Bold radio buttons exist (Normal / Bold).
+**Status:** Controls exist. Need to verify they actually apply to grid cells.
 
 ---
-
-### UI-033: App Settings Empty
-
-**Component:** App Settings
-**Problem:** Settings menu is nearly empty - just leads to Preferences which only has font settings.
-**Solution:** Either add useful settings or remove empty menu items.
-
----
-
-## UI/UX Issues - Global
 
 ### UI-034: Tooltips Cut Off at Window Edge
 
-**Component:** Global (all tooltips/hover bubbles)
+**Component:** Global (all tooltips)
 **Problem:** White tooltip bubbles get cut off when near window edge (especially right side).
 **Example:** Settings button tooltip on far right is cut off.
-**Solution:** Implement smart tooltip positioning (Svelte 5 has solutions for this). Auto-adjust placement so tooltip is always fully visible.
+**Solution:** Implement smart tooltip positioning - auto-adjust placement so tooltip is always fully visible.
 
 ---
 
-## Questions / Clarifications
+## Decisions Needed
+
+### UI-027: Confirm Button - Keep or Remove?
+
+**Component:** TM Viewer
+**Current Status:** KEEP - memoQ-style workflow for confirming TM entries.
+**Question:** Is this useful for your workflow, or just clutter?
+
+Options:
+1. Keep as-is
+2. Remove entirely
+3. Make optional via settings
+
+---
 
 ### Q-001: TM Sync - Automatic or Manual?
 
-**Question:** Should TM sync be automatic or require manual "Sync Indexes" button press?
+**Question:** Should TM indexes auto-sync when TM changes?
+**Current:** Manual "Sync Indexes" button.
 **User Opinion:** Should be automatic for Model2Vec (fast, cheap).
-**Current:** Appears to be manual.
-**Decision Needed:** Implement auto-sync on TM changes? Or keep manual?
 
----
-
-## Model2Vec Confirmation
-
-**Model:** `minishlab/potion-multilingual-128M`
-- **101 languages** including Korean ✅
-- **29,269 sentences/sec**
-- **256 dimensions**
-- MIT license
-
-This IS the most powerful multilingual Model2Vec model available. ✅
+Options:
+1. Auto-sync on any TM change
+2. Keep manual button
+3. Auto-sync with debounce (wait for user to stop editing)
 
 ---
 
 ## Completed (Build 301)
 
-| ID | Description | Date |
-|----|-------------|------|
-| UI-025 | TM Viewer: Removed "Items per page" selector | 2025-12-19 |
-| UI-026 | TM Viewer: Removed pagination, added infinite scroll | 2025-12-19 |
-| UI-028 | TM Viewer: Removed "Showing rows X-Y" (replaced with scroll hint) | 2025-12-19 |
-| UI-029 | File Viewer: Removed download menu (use right-click instead) | 2025-12-19 |
-| UI-030 | File Viewer: Info button not found (may already be removed) | 2025-12-19 |
-| BUG-028 | Model2Vec missing from embedded Python pip install | 2025-12-19 |
-| BUG-029 | Upload as TM - context menu file ref lost | 2025-12-19 |
-| UI-024 | Dynamic engine name in build modal | 2025-12-19 |
-| BUG-023 | MODEL_NAME NameError fix | 2025-12-18 |
-| FEAT-005 | Model2Vec default engine | 2025-12-18 |
-| PERF-001 | Incremental HNSW | 2025-12-18 |
-| PERF-002 | FAISS factorization | 2025-12-18 |
-| Lazy Import | CI timeout fix (kr_similar) | 2025-12-19 |
-| Model2Vec | Upgrade to potion-128M | 2025-12-18 |
-
-**Full history:** [ISSUES_HISTORY.md](../history/ISSUES_HISTORY.md)
+| ID | Description | Verified |
+|----|-------------|----------|
+| BUG-028 | Model2Vec pip install in build.yml | ✅ CDP tested |
+| BUG-029 | Upload as TM context menu fix | ✅ CDP tested |
+| UI-025 | Removed "Items per page" selector | ✅ |
+| UI-026 | Removed pagination, added infinite scroll | ✅ |
+| UI-028 | Removed "Showing rows X-Y" | ✅ |
+| UI-029 | Removed download menu from VirtualGrid | ✅ |
+| UI-030 | Info button removal (was already removed) | ✅ |
+| UI-033 | App Settings NOT empty (has Preferences) | ✅ Closed |
 
 ---
 
-## Priority Order for Next Session
+## Completed (Earlier Builds)
 
-1. **UI-034** - Tooltip positioning (affects entire app)
-2. **BUG-030** - WebSocket investigation
-3. **UI-031 to UI-033** - Settings cleanup (low priority)
-4. **UI-027** - Confirm button decision (keep or remove?)
-5. **Q-001** - Auto-sync decision
+| ID | Description | Build |
+|----|-------------|-------|
+| BUG-023 | MODEL_NAME NameError fix | 300 |
+| FEAT-005 | Model2Vec default engine | 300 |
+| PERF-001 | Incremental HNSW | 300 |
+| PERF-002 | FAISS factorization | 300 |
+| UI-024 | Dynamic engine name in build modal | 300 |
+| Lazy Import | CI timeout fix (kr_similar) | 300 |
 
 ---
 
-*Updated 2025-12-19 | 0 critical bugs, 1 medium bug, 6 UI/UX issues*
+## Model2Vec Info
+
+**Model:** `minishlab/potion-multilingual-128M`
+- 101 languages (Korean ✅)
+- 29,269 sentences/sec
+- 256 dimensions
+- MIT license
+
+This is the most powerful multilingual Model2Vec model available.
+
+---
+
+*Updated 2025-12-19 17:55 | 0 critical, 1 fix pending, 3 UI open, 2 decisions*

@@ -73,41 +73,37 @@ testing_toolkit/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### NEW: Multi-Dimensional Tests
+**CRITICAL:** CDP tests must run from **Windows PowerShell**, not WSL. CDP binds to Windows localhost which WSL2 cannot reach.
+
+### Step 1: Launch App (from WSL)
 
 ```bash
-# Install dependencies
-cd testing_toolkit/cdp
-npm install ws
-
-# Test LDM file upload in DEV mode (API only)
-node apps/ldm/test_file_upload.js dev
-
-# Test in APP mode (need electron:dev + CDP)
-cd locaNext && npm run electron:dev -- --remote-debugging-port=9222 &
-cd testing_toolkit/cdp
-node apps/ldm/test_file_upload.js app
-
-# Test in EXE mode (need LocaNext.exe + CDP)
-cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext
+# Kill existing and launch
+/mnt/c/Windows/System32/taskkill.exe /F /IM "LocaNext.exe" /T 2>/dev/null
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 ./LocaNext.exe --remote-debugging-port=9222 &
-cd ~/LocalizationTools/testing_toolkit/cdp
-node apps/ldm/test_file_upload.js exe
 ```
 
-### Legacy Tests (still work)
+### Step 2: Run CDP Tests (from Windows PowerShell)
 
-```bash
-cd testing_toolkit/scripts
-npm install
+```powershell
+# Access test scripts via UNC path
+Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
 
-# Run all tests
-bash ../setup/launch_and_test.sh
+# Login and test
+node login.js
+node quick_check.js
+node test_server_status.js
+node test_bug029.js
+```
 
-# Run specific test
-node run_test.js xlsTransfer.createDictionary
+### Alternative: Pure Windows
+
+```cmd
+cd D:\LocalizationTools\testing_toolkit\cdp
+node login.js && node quick_check.js
 ```
 
 ---
@@ -165,26 +161,26 @@ const result = await evaluate(cdp, 'window.ldmTest.getStatus()');
 
 ---
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### CDP not accessible
-```bash
-# Check if app is running with CDP
-curl http://localhost:9222/json
+```powershell
+# From Windows PowerShell (NOT WSL!)
+curl http://127.0.0.1:9222/json
+
+# Or from WSL, use Windows curl:
+/mnt/c/Windows/System32/curl.exe -s http://127.0.0.1:9222/json
 ```
 
 ### Kill stuck processes
 ```bash
-# WSL
-pkill -f LocaNext
-
-# Windows
-/mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe
+# From WSL
+/mnt/c/Windows/System32/taskkill.exe /F /IM LocaNext.exe /T
 ```
 
 ### Test files not found
 ```bash
-ls -la /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/TestFilesForLocaNext/
+ls -la /mnt/d/TestFilesForLocaNext/
 ```
 
 ---
@@ -221,15 +217,14 @@ Total: 8/8 passed
 
 ---
 
-## 📚 Related Docs
+## Related Docs
 
 | Doc | Description |
 |-----|-------------|
 | [cdp/README.md](cdp/README.md) | CDP testing guide (primary) |
-| [BUILD_TEST_PROTOCOL.md](BUILD_TEST_PROTOCOL.md) | Build → Test workflow |
+| [MASTER_TEST_PROTOCOL.md](MASTER_TEST_PROTOCOL.md) | Complete Build → Install → Test workflow |
 | [ADD_TEST_MODE_GUIDE.md](ADD_TEST_MODE_GUIDE.md) | Add TEST MODE to new apps |
 | [docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md](../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed install process |
-| [docs/testing/README.md](../docs/testing/README.md) | Testing overview |
 
 ---
 
