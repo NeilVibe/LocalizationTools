@@ -6,7 +6,6 @@
     Button,
     Search,
     Dropdown,
-    Pagination,
     Tag
   } from "carbon-components-svelte";
   import {
@@ -36,9 +35,11 @@
   let loading = $state(false);
   let errorMessage = $state("");
 
-  // Pagination
+  // UI-025/026/028: Removed pagination - use infinite scroll instead
   let page = $state(1);
-  let pageSize = $state(100);
+  let pageSize = $state(200); // Load more per batch
+  let hasMore = $state(true);
+  let loadingMore = $state(false);
 
   // Sorting
   let sortBy = $state("id");
@@ -74,12 +75,56 @@
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   }
 
-  // Load entries
+  // Load entries (initial load or after filter change)
   async function loadEntries() {
     if (!tm?.id) return;
 
     loading = true;
     errorMessage = "";
+    page = 1; // Reset to first page
+
+    try {
+      const params = new URLSearchParams({
+        page: '1',
+        limit: pageSize.toString(),
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        metadata_field: selectedMetadata
+      });
+
+      if (searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
+      }
+
+      const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.id}/entries?${params}`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        entries = data.entries;
+        total = data.total;
+        hasMore = entries.length < total;
+        logger.info("Loaded TM entries", { count: entries.length, total });
+      } else {
+        const error = await response.json();
+        errorMessage = error.detail || "Failed to load entries";
+        logger.error("Failed to load TM entries", { error: errorMessage });
+      }
+    } catch (err) {
+      errorMessage = err.message;
+      logger.error("Error loading TM entries", { error: err.message });
+    } finally {
+      loading = false;
+    }
+  }
+
+  // UI-025/026/028: Load more entries (infinite scroll)
+  async function loadMoreEntries() {
+    if (!tm?.id || loadingMore || !hasMore) return;
+
+    loadingMore = true;
+    page += 1;
 
     try {
       const params = new URLSearchParams({
@@ -100,19 +145,24 @@
 
       if (response.ok) {
         const data = await response.json();
-        entries = data.entries;
-        total = data.total;
-        logger.info("Loaded TM entries", { count: entries.length, total, page });
-      } else {
-        const error = await response.json();
-        errorMessage = error.detail || "Failed to load entries";
-        logger.error("Failed to load TM entries", { error: errorMessage });
+        entries = [...entries, ...data.entries];
+        hasMore = entries.length < total;
+        logger.info("Loaded more TM entries", { loaded: entries.length, total });
       }
     } catch (err) {
-      errorMessage = err.message;
-      logger.error("Error loading TM entries", { error: err.message });
+      logger.error("Error loading more entries", { error: err.message });
+      page -= 1; // Revert page on error
     } finally {
-      loading = false;
+      loadingMore = false;
+    }
+  }
+
+  // Handle scroll for infinite loading
+  function handleScroll(event) {
+    const { scrollTop, scrollHeight, clientHeight } = event.target;
+    // Load more when scrolled to 80% of content
+    if (scrollTop + clientHeight >= scrollHeight * 0.8 && hasMore && !loadingMore) {
+      loadMoreEntries();
     }
   }
 
@@ -143,12 +193,6 @@
     loadEntries();
   }
 
-  // Handle pagination
-  function handlePageChange(event) {
-    page = event.detail.page;
-    pageSize = event.detail.pageSize;
-    loadEntries();
-  }
 
   // Start editing entry
   function startEdit(entry) {
@@ -361,8 +405,8 @@
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="entries-table">
+    <!-- Table with infinite scroll -->
+    <div class="entries-table" onscroll={handleScroll}>
       {#if loading && entries.length === 0}
         <div class="loading-container">
           <InlineLoading description="Loading entries..." />
@@ -526,21 +570,19 @@
             <InlineLoading description="Loading..." />
           </div>
         {/if}
+
+        <!-- UI-025/026/028: Infinite scroll loading indicator -->
+        {#if loadingMore}
+          <div class="loading-bar">
+            <InlineLoading description="Loading more..." />
+          </div>
+        {:else if hasMore && entries.length > 0}
+          <div class="load-more-hint">
+            Scroll for more ({entries.length} of {total.toLocaleString()})
+          </div>
+        {/if}
       {/if}
     </div>
-
-    <!-- Pagination -->
-    {#if total > 0}
-      <div class="pagination-container">
-        <Pagination
-          totalItems={total}
-          pageSize={pageSize}
-          pageSizes={[50, 100, 200, 500]}
-          page={page}
-          on:change={handlePageChange}
-        />
-      </div>
-    {/if}
   </div>
 </Modal>
 
@@ -755,9 +797,13 @@
     border-top: 1px solid var(--cds-border-subtle-01);
   }
 
-  .pagination-container {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
+  /* UI-025/026/028: Infinite scroll hint */
+  .load-more-hint {
+    padding: 0.5rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    background: var(--cds-layer-02);
     border-top: 1px solid var(--cds-border-subtle-01);
   }
 </style>
