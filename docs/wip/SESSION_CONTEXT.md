@@ -32,6 +32,11 @@ from server.utils.websocket import sio, connected_clients
 
 **Verified:** Health API returns `"websocket": "connected"`, Server Status modal shows "connected".
 
+### Important: Hard Refresh After Install
+After installing a new build, always do a **hard refresh**:
+- **Windows:** `Ctrl+Shift+R` or `Ctrl+F5`
+- Clears cached frontend assets
+
 ---
 
 ## CDP Testing (IMPORTANT)
