@@ -139,7 +139,7 @@ testing_toolkit/cdp/      # CDP scripts (run from WSL or Windows)
 
 ## Stats
 
-- **Build:** 301 (pending)
+- **Build:** 301 (v25.1219.1118)
 - **Tests:** ~273 in CI
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
