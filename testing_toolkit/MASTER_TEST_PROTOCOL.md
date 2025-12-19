@@ -95,11 +95,15 @@ curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limi
 
 ## Phase 4: Install to Playground
 
-### Option A: From WSL (when interop works)
+**IMPORTANT:** Installation requires running a Windows NSIS installer. There is NO pure-WSL method.
+
+### Option A: From WSL (calls PowerShell via interop)
 
 ```bash
 ./scripts/playground_install.sh --launch --auto-login
 ```
+
+If you get "cannot execute binary file: Exec format error", WSL interop is broken. Use Option B or C.
 
 ### Option B: From Windows PowerShell
 
@@ -114,6 +118,11 @@ cd D:\LocalizationTools
 cd D:\LocalizationTools
 powershell -ExecutionPolicy Bypass -File scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP -AutoLogin
 ```
+
+### Why No Pure-WSL Install?
+- NSIS installer is a Windows .exe
+- Windows binaries require WSL interop to execute
+- If interop broken, MUST run from Windows directly
 
 ### What Install Does:
 1. Fetches latest release from Gitea API
