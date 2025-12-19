@@ -14,7 +14,8 @@
 | **Session context?** | [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
 | **Open bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 | **WIP docs?** | [docs/wip/README.md](docs/wip/README.md) |
-| **CDP/Playground testing?** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
+| **Build & test protocol?** | [testing_toolkit/BUILD_TEST_PROTOCOL.md](testing_toolkit/BUILD_TEST_PROTOCOL.md) |
+| **CDP testing?** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
 | **Enterprise deploy?** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
 | **All docs?** | [docs/README.md](docs/README.md) |
 
