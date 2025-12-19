@@ -1,7 +1,8 @@
-# CDP Testing - LocaNext Windows App
+# Node.js CDP Testing - LocaNext Windows App
 
-**Purpose:** Automated testing of LocaNext.exe via Chrome DevTools Protocol
-**Updated:** 2025-12-19 | **Build:** 300
+**Pure Node.js testing via Chrome DevTools Protocol. No Playwright. No PowerShell.**
+
+**Updated:** 2025-12-19 | **Build:** 301
 
 ---
 
