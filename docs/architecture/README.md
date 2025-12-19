@@ -85,7 +85,7 @@ docs/architecture/
 
 - [DEPLOYMENT_ARCHITECTURE.md](../deployment/DEPLOYMENT_ARCHITECTURE.md) - Full deployment model
 - [PROJECT_STRUCTURE.md](../getting-started/PROJECT_STRUCTURE.md) - Complete file tree
-- [P21_DATABASE_POWERHOUSE.md](../wip/P21_DATABASE_POWERHOUSE.md) - Database performance
+- [P21_DATABASE_POWERHOUSE.md](../history/wip-archive/P21_DATABASE_POWERHOUSE.md) - Database performance (archived)
 
 ---
 

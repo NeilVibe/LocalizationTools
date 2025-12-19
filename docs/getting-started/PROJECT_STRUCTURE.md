@@ -108,9 +108,9 @@ LocalizationTools/
         ├── testing/ - Test procedures
         ├── tools/ - Tool-specific docs
         ├── wip/ - Work in progress
-        │   ├── P17_LDM_TASKS.md - LDM task tracking
-        │   ├── P17_TM_ARCHITECTURE.md - TM system design
-        │   └── P21_DATABASE_POWERHOUSE.md ⭐ DB performance
+        │   ├── SESSION_CONTEXT.md - Session state
+        │   └── ISSUES_TO_FIX.md - Bug tracker
+        ├── history/wip-archive/ - Completed projects
         └── troubleshooting/ - Debug guides
 ```
 
@@ -206,5 +206,4 @@ LocaNext Desktop App
 
 - **CLAUDE.md** - Master navigation hub
 - **DEPLOYMENT_ARCHITECTURE.md** - Full architecture
-- **P21_DATABASE_POWERHOUSE.md** - Database performance
 - **ADD_NEW_APP_GUIDE.md** - Adding new tools

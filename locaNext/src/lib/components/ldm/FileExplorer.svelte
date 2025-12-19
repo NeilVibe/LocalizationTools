@@ -66,6 +66,7 @@
   let tmProjectId = $state(null);
   let tmLanguage = $state("en");
   let tmDescription = $state("");
+  let tmRegistrationFile = $state(null); // BUG-029 fix: Store file ref before closing context menu
 
   // P33 Phase 5: Upload to Server modal state
   let showUploadToServerModal = $state(false);
@@ -444,24 +445,28 @@
   // Open TM Registration modal
   function openTMRegistration() {
     if (!contextMenuFile) return;
+
+    // BUG-029 fix: Store file reference BEFORE closing context menu
+    tmRegistrationFile = contextMenuFile;
     closeContextMenu();
 
     // Pre-fill TM name from file name
-    tmName = contextMenuFile.name.replace(/\.[^.]+$/, '') + "_TM";
+    tmName = tmRegistrationFile.name.replace(/\.[^.]+$/, '') + "_TM";
     tmProjectId = selectedProjectId;
     tmLanguage = "en";
     tmDescription = "";
     showTMModal = true;
 
-    logger.info("TM Registration opened", { file: contextMenuFile.name });
+    logger.info("TM Registration opened", { file: tmRegistrationFile.name });
   }
 
   // Register file as TM
   async function registerAsTM() {
-    if (!contextMenuFile || !tmName.trim()) return;
+    // BUG-029 fix: Use tmRegistrationFile instead of contextMenuFile
+    if (!tmRegistrationFile || !tmName.trim()) return;
 
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/files/${contextMenuFile.id}/register-as-tm`, {
+      const response = await fetch(`${API_BASE}/api/ldm/files/${tmRegistrationFile.id}/register-as-tm`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
@@ -484,9 +489,12 @@
         dispatch('tmRegistered', {
           tmId: result.tm_id,
           name: tmName,
-          fileId: contextMenuFile.id,
-          fileName: contextMenuFile.name
+          fileId: tmRegistrationFile.id,
+          fileName: tmRegistrationFile.name
         });
+
+        // Clear the registration file reference
+        tmRegistrationFile = null;
       } else {
         const error = await response.json();
         logger.error("TM registration failed", { error: error.detail });

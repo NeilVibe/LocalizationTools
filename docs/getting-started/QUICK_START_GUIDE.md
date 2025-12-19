@@ -260,7 +260,7 @@ After getting everything running:
 1. **Read Core Documentation:**
    - `CLAUDE.md` - Master navigation hub
    - `DEPLOYMENT_ARCHITECTURE.md` - Understand architecture
-   - `P21_DATABASE_POWERHOUSE.md` - Database performance
+   - `docs/wip/SESSION_CONTEXT.md` - Current session state
 
 2. **Explore the Codebase:**
    - `server/main.py` - Server entry point
@@ -278,6 +278,6 @@ After getting everything running:
 
 - **CLAUDE.md** - Master navigation hub (start here!)
 - **PROJECT_STRUCTURE.md** - Complete file tree
-- **TESTING_GUIDE.md** - Comprehensive testing procedures
-- **P21_DATABASE_POWERHOUSE.md** - Database configuration
+- **testing/README.md** - Testing hub
+- **deployment/POSTGRESQL_SETUP.md** - Database configuration
 - **BUILD_AND_DISTRIBUTION.md** - Build system

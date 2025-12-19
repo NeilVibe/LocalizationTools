@@ -183,7 +183,7 @@ COMPUTED FILES → Local disk (heavy, rebuildable from DB)
 - **PostgreSQL + PgBouncer:** 1000 connections, real-time sync
   - Required for multi-user collaboration
   - See: `docs/deployment/POSTGRESQL_SETUP.md`
-  - See: `docs/wip/P21_DATABASE_POWERHOUSE.md`
+  - See: `docs/history/wip-archive/P21_DATABASE_POWERHOUSE.md`
 
 - **Redis:** Optional caching layer
   - To enable: Set `REDIS_ENABLED=true`
@@ -514,4 +514,4 @@ threshold = config.get('threshold', DEFAULT_THRESHOLD)
 - **ASYNC_PATTERNS.md** - Async architecture patterns
 - **BACKEND_PRINCIPLES.md** - Backend design principles
 - **BEST_PRACTICES.md** - Additional best practices
-- **TESTING_GUIDE.md** - Testing procedures
+- **testing/README.md** - Testing hub

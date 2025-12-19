@@ -1,91 +1,194 @@
-# CDP Testing Toolkit
+# CDP Testing - LocaNext Windows App
 
-**Purpose:** Chrome DevTools Protocol testing for LocaNext Electron app
-**Updated:** 2025-12-17 | **Tested:** Build 298
+**Purpose:** Automated testing of LocaNext.exe via Chrome DevTools Protocol
+**Updated:** 2025-12-19 | **Build:** 300
+
+---
+
+## How It Works
+
+```
+LocaNext.exe --remote-debugging-port=9222
+       ↓
+   CDP (port 9222)
+       ↓
+   Node.js scripts (ws + http)
+       ↓
+   WebSocket → Runtime.evaluate → DOM interaction
+```
+
+All tests are **pure Node.js** using `ws` and `http` modules. No Playwright. No PowerShell wrappers.
+
+**WSL ↔ Windows:** Ports are shared. WSL's `127.0.0.1:9222` reaches the Windows app.
 
 ---
 
 ## Quick Start
 
-```bash
-# From WSL - Run on Windows side (REQUIRED - WSL can't access Windows localhost)
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
-  cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
-  node quick_check.js
-"
+### From Windows (CMD/PowerShell)
+
+```cmd
+REM 1. Launch app with CDP
+cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
+LocaNext.exe --remote-debugging-port=9222
+
+REM 2. Run test (new terminal)
+cd C:\path\to\LocalizationTools\testing_toolkit\cdp
+node test_bug029.js
 ```
 
----
+### From WSL
 
-## Critical Constraints
+```bash
+# 1. Launch app (from WSL, runs on Windows)
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
+./LocaNext.exe --remote-debugging-port=9222 &
 
-| Constraint | Details |
-|------------|---------|
-| **WSL2 ↔ Windows** | WSL cannot access `localhost:9222`. Must run Node.js on Windows side. |
-| **CDP Port** | 9222 (default). App must be launched with `--remote-debugging-port=9222` |
-| **Scripts Location** | Run from `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\` |
-| **ws Module** | Required: `npm install ws` in Windows project folder |
+# 2. Wait for startup
+sleep 30
+
+# 3. Run test
+cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
+node test_bug029.js
+```
 
 ---
 
 ## Test Scripts
 
-| Script | Purpose | Location |
-|--------|---------|----------|
-| `quick_check.js` | Page state check (login, interfaces) | Windows side |
-| `cdp_login.js` | Auto-login as neil/neil | Windows side |
-| `test_tm_viewer_final.js` | TM Manager & Viewer test | Windows side |
-| `check_tm_status.js` | List all TMs with status | Windows side |
-| `explore_entries_table.js` | Debug TM Viewer structure | Windows side |
+| Script | Purpose |
+|--------|---------|
+| `quick_check.js` | Page state, URL, available test interfaces |
+| `test_bug023.js` | TM status check (pending vs ready) |
+| `test_bug023_build.js` | Trigger TM index build, check for errors |
+| `test_bug029.js` | Right-click "Upload as TM" flow |
+| `test_clean_slate.js` | Clear TMs and check file state |
+| `test_server_status.js` | Server status panel, TM build buttons |
 
-### Running Tests
+---
 
-```bash
-# Always run from WSL using PowerShell
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
-  cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
-  node <script_name>.js
-"
+## Test Pattern
+
+Every test follows this structure:
+
+```javascript
+const WebSocket = require('ws');
+const http = require('http');
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function main() {
+    // 1. Get CDP targets
+    const targets = await new Promise((resolve, reject) => {
+        http.get('http://127.0.0.1:9222/json', (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => resolve(JSON.parse(data)));
+        }).on('error', reject);
+    });
+
+    // 2. Connect to page
+    const page = targets.find(t => t.type === 'page');
+    const ws = new WebSocket(page.webSocketDebuggerUrl);
+
+    // 3. Helper to send CDP commands
+    let id = 1;
+    const send = (method, params = {}) => new Promise((resolve) => {
+        const msgId = id++;
+        ws.on('message', function handler(data) {
+            const msg = JSON.parse(data.toString());
+            if (msg.id === msgId) {
+                ws.off('message', handler);
+                resolve(msg);
+            }
+        });
+        ws.send(JSON.stringify({ id: msgId, method, params }));
+    });
+
+    // 4. Helper to evaluate JS in page
+    const evaluate = async (expression) => {
+        const result = await send('Runtime.evaluate', {
+            expression,
+            returnByValue: true,
+            awaitPromise: true
+        });
+        return result.result?.result?.value;
+    };
+
+    // 5. Wait for connection
+    await new Promise(resolve => ws.on('open', resolve));
+
+    // 6. Your test code
+    const pageText = await evaluate('document.body.innerText.substring(0, 500)');
+    console.log('Page:', pageText);
+
+    // 7. Cleanup
+    ws.close();
+}
+
+main().catch(console.error);
 ```
 
 ---
 
-## UI Navigation Map
+## Common Operations
 
-### LDM (Language Data Manager)
-
+### Click a button
+```javascript
+await evaluate(`
+    const btn = Array.from(document.querySelectorAll('button'))
+        .find(b => b.textContent.includes('Files'));
+    if (btn) btn.click();
+`);
 ```
-Login Page
-│
-├── [Login] → Main App
-│   │
-│   ├── Sidebar: Files | TM tabs
-│   │
-│   ├── [Files Tab] (default)
-│   │   └── Project list → File grid
-│   │
-│   └── [TM Tab]
-│       ├── TM List (tm-item buttons)
-│       │   └── Select TM → "Open TM Manager" button appears
-│       │
-│       └── [Open TM Manager] → Modal with TM table
-│           │
-│           ├── Columns: Name | Entries | Languages | Status | Created
-│           ├── Status: ready | indexing | error | pending
-│           │
-│           └── Row Actions:
-│               ├── [View Entries] → TM Viewer Modal
-│               ├── [Export TM]
-│               ├── [Activate]
-│               └── [Delete TM]
 
-TM Viewer Modal (when View Entries clicked)
-├── viewer-toolbar
-│   ├── Metadata dropdown (StringID, Confirmed, etc.)
-│   └── Search input
-└── entries-table
-    ├── Columns: Source | Target | Metadata | Actions
-    └── Row Actions: Confirm | Edit | Delete
+### Right-click (context menu)
+```javascript
+await evaluate(`
+    const el = document.querySelector('.tree-node');
+    const event = new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+        button: 2
+    });
+    el.dispatchEvent(event);
+`);
+```
+
+### Wait for element
+```javascript
+async function waitFor(selector, timeout = 10000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        const exists = await evaluate(`!!document.querySelector('${selector}')`);
+        if (exists) return true;
+        await sleep(200);
+    }
+    return false;
+}
+```
+
+### Get element text
+```javascript
+const text = await evaluate(`
+    document.querySelector('.tm-item')?.innerText || 'not found'
+`);
+```
+
+### Check for errors
+```javascript
+const hasError = await evaluate(`
+    document.body.innerText.includes('Error') ||
+    document.body.innerText.includes('NameError')
+`);
+```
+
+### Take screenshot
+```javascript
+const result = await send('Page.captureScreenshot', { format: 'png' });
+require('fs').writeFileSync('screenshot.png', Buffer.from(result.result.data, 'base64'));
 ```
 
 ---
@@ -93,206 +196,162 @@ TM Viewer Modal (when View Entries clicked)
 ## Element Selectors
 
 ### Navigation
-
 | Element | Selector |
 |---------|----------|
-| TM Tab | `button.tab-button` containing "TM" |
-| Files Tab | `button.tab-button` containing "Files" |
+| Files Tab | `button` with text "Files" |
+| TM Tab | `button` with text "TM" |
+| Settings Tab | `button` with text "Settings" |
+
+### File Explorer
+| Element | Selector |
+|---------|----------|
+| Project Item | `.project-item` |
+| Tree Node | `.tree-node` |
+| Context Menu | `.context-menu` |
+| Menu Item | `.context-menu-item` |
+
+### TM Manager
+| Element | Selector |
+|---------|----------|
 | TM Item | `.tm-item` |
-| Open TM Manager | `button` containing "Open TM Manager" |
+| Status Badge | `.badge`, `[class*="status"]` |
 
-### TM Manager Modal
-
+### Modals
 | Element | Selector |
 |---------|----------|
-| TM Table | `table` inside `.tm-manager` |
-| View Entries Button | `button` containing "View Entries" |
-| TM Status Cell | `td:nth-child(4)` in table row |
-
-### TM Viewer Modal
-
-| Element | Selector |
-|---------|----------|
-| Viewer Container | `.tm-viewer` |
-| Entries Table | `.entries-table` |
-| Viewer Toolbar | `.viewer-toolbar` |
-| Search Input | `input[placeholder*="Search"]` |
-| Metadata Dropdown | `.bx--dropdown` or `.bx--list-box` |
-
-### Global UI
-
-| Element | Selector |
-|---------|----------|
-| Toast Container | `.global-toast-container` |
-| Modal (visible) | `.bx--modal.is-visible` |
-| Active Toasts | `[class*="toast"]:not([class*="container"])` |
+| Visible Modal | `.bx--modal.is-visible` |
+| Modal Heading | `.bx--modal-header__heading` |
+| Primary Button | `.bx--btn--primary` |
 
 ---
 
-## Test Interfaces
+## Windows-Specific Testing
 
-LocaNext exposes test interfaces on `window`:
+### Running Tests Directly on Windows
 
-| Interface | App | Available After |
-|-----------|-----|-----------------|
-| `navTest` | All | Login |
-| `ldmTest` | LDM | Navigate to LDM |
-| `xlsTransferTest` | XLS Transfer | Navigate to XLS Transfer |
-| `quickSearchTest` | Quick Search | Navigate to Quick Search |
-| `krSimilarTest` | KR Similar | Navigate to KR Similar |
+Node.js works the same on Windows. From CMD or PowerShell:
 
-Check availability:
-```javascript
-JSON.stringify({
-    navTest: typeof window.navTest !== 'undefined',
-    ldmTest: typeof window.ldmTest !== 'undefined',
-    // ... etc
-})
+```cmd
+REM Install ws module (one time)
+cd C:\path\to\LocalizationTools\testing_toolkit\cdp
+npm install ws
+
+REM Run any test
+node test_bug029.js
 ```
 
----
+### Process Management (Windows)
 
-## CDP Patterns
+```cmd
+REM Kill existing LocaNext processes
+taskkill /F /IM LocaNext.exe /T
 
-### Basic Connection
+REM Launch with CDP
+cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
+start "" LocaNext.exe --remote-debugging-port=9222
 
-```javascript
-const WebSocket = require('ws');
-const http = require('http');
-
-// Get CDP target
-const targets = await new Promise((resolve, reject) => {
-    http.get('http://127.0.0.1:9222/json', (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => resolve(JSON.parse(data)));
-    }).on('error', reject);
-});
-
-const page = targets.find(t => t.type === 'page');
-const ws = new WebSocket(page.webSocketDebuggerUrl);
+REM Check CDP is responding
+curl http://127.0.0.1:9222/json
 ```
 
-### Evaluate JavaScript
+### Process Management (WSL → Windows)
 
-```javascript
-async function evaluate(expression) {
-    const result = await send('Runtime.evaluate', {
-        expression,
-        returnByValue: true,
-        awaitPromise: true
-    });
-    return result.result?.result?.value;
-}
+```bash
+# Kill existing (use full path)
+/mnt/c/Windows/System32/taskkill.exe /F /IM "LocaNext.exe" /T
 
-// Usage
-const bodyText = await evaluate('document.body.innerText.substring(0, 200)');
+# Launch (runs on Windows, controlled from WSL)
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
+./LocaNext.exe --remote-debugging-port=9222 &
+
+# Verify
+curl -s http://127.0.0.1:9222/json | head -20
 ```
 
-### Click Element
+### Windows Paths
+
+| What | Windows Path | WSL Path |
+|------|--------------|----------|
+| Playground App | `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext` | `/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext` |
+| Test Files | `D:\TestFilesForLocaNext` | `/mnt/d/TestFilesForLocaNext` |
+| CDP Scripts | `testing_toolkit\cdp\` | `testing_toolkit/cdp/` |
+| App Logs | `%LOCALAPPDATA%\LocaNext\logs\` | `/mnt/c/Users/.../AppData/Local/LocaNext/logs/` |
+
+### TEST MODE (Skip File Dialogs)
+
+The app exposes test functions that bypass native file dialogs:
 
 ```javascript
-await evaluate(`
-    const btn = document.querySelector('button.my-button');
-    if (btn) btn.click();
-`);
+// Available on window object
+window.xlsTransferTest.createDictionary()  // Uses test file
+window.xlsTransferTest.getStatus()         // Returns {isProcessing, statusMessage, ...}
+window.quickSearchTest.loadDictionary()
+window.krSimilarTest.search()
 ```
 
-### Wait for Element
-
-```javascript
-async function waitFor(selector, timeout = 10000) {
-    const start = Date.now();
-    while (Date.now() - start < timeout) {
-        const exists = await evaluate(`!!document.querySelector('${selector}')`);
-        if (exists) return true;
-        await new Promise(r => setTimeout(r, 200));
-    }
-    return false;
-}
-```
-
----
-
-## TM Status Reference
-
-| Status | Meaning | Can View Entries? |
-|--------|---------|-------------------|
-| `ready` | Indexed and ready | ✅ Yes |
-| `active` | Currently in use | ✅ Yes |
-| `indexing` | Building index | ❌ No (wait) |
-| `pending` | Waiting to process | ❌ No |
-| `error` | Processing failed | ❌ No |
+Test files location: `D:\TestFilesForLocaNext\`
 
 ---
 
 ## Troubleshooting
 
-### WSL can't connect to CDP
-
-```bash
-# WRONG - Won't work from WSL
-node test.js  # Error: ECONNREFUSED 127.0.0.1:9222
-
-# CORRECT - Run on Windows side
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
-  cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
-  node test.js
-"
+### "No page found"
+App not running or CDP not enabled:
+```cmd
+LocaNext.exe --remote-debugging-port=9222
 ```
 
-### CDP not responding
+### Connection refused
+Port 9222 not listening. Check app is running with CDP flag.
 
+### WebSocket error
+Multiple connections to same target. Close other DevTools windows.
+
+### Test timeout
+- App stuck on login screen → Login first manually
+- Slow machine → Increase sleep() times in test
+
+### "ws module not found"
 ```bash
-# Check if app is running
-/mnt/c/Windows/System32/tasklist.exe | grep -i locanext
-
-# Check CDP port
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
-  Test-NetConnection -ComputerName localhost -Port 9222
-"
-
-# Restart app with CDP
-/mnt/c/Windows/System32/taskkill.exe /F /IM "LocaNext.exe" /T
+cd testing_toolkit/cdp && npm install ws
 ```
 
-### No ws module
-
+### Port 9222 already in use
 ```bash
-# Install on Windows side
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
-  cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject
-  npm install ws
-"
+# WSL
+fuser -k 9222/tcp
+
+# Windows
+netstat -ano | findstr :9222
+taskkill /PID <pid> /F
 ```
 
-### TM entries won't load
+---
 
-1. Check TM status (must be `ready` or `active`)
-2. Check backend logs: `tail -f /tmp/locatools_server.log`
-3. Try different TM
+## Other Testing Methods
+
+### Backend API (pytest)
+```bash
+python -m pytest tests/unit/ tests/integration/ -v
+```
+
+### Playwright (Dev Server)
+For testing against localhost:5173 during development:
+```bash
+cd locaNext && npm test
+```
 
 ---
 
 ## File Locations
 
-| What | Windows Path | WSL Path |
-|------|--------------|----------|
-| Playground App | `C:\...\Playground\LocaNext\` | `/mnt/c/.../Playground/LocaNext/` |
-| Test Scripts | `C:\...\LocaNextProject\` | `/mnt/c/.../LocaNextProject/` |
-| CDP Toolkit | N/A (WSL only) | `testing_toolkit/cdp/` |
-| Backend Logs | N/A | `/tmp/locatools_server.log` |
+| What | Path |
+|------|------|
+| CDP Tests | `testing_toolkit/cdp/*.js` |
+| Playwright Tests | `locaNext/tests/*.spec.ts` |
+| Backend Tests | `tests/unit/`, `tests/integration/` |
+| Playground App | `C:\...\Playground\LocaNext\LocaNext.exe` |
 
 ---
 
-## Related Docs
-
-| Doc | Purpose |
-|-----|---------|
-| [PLAYGROUND_INSTALL_PROTOCOL.md](../../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md) | Install app to Playground |
-| [CDP_TESTING_GUIDE.md](../../docs/testing/CDP_TESTING_GUIDE.md) | High-level CDP guide |
-| [DEBUG_AND_TEST_HUB.md](../../docs/testing/DEBUG_AND_TEST_HUB.md) | Master testing guide |
-
----
-
-*Last updated: 2025-12-17 - Build 298 verified*
+*Last updated: 2025-12-19 | Pure Node.js CDP testing for Windows*

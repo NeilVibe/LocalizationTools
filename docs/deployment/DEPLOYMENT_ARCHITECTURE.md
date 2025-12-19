@@ -145,6 +145,6 @@ DATABASE_TYPE=postgresql
 ## Related Documentation
 
 - **POSTGRESQL_SETUP.md** - PostgreSQL + PgBouncer configuration
-- **P21_DATABASE_POWERHOUSE.md** - Database performance tuning
+- **history/wip-archive/P21_DATABASE_POWERHOUSE.md** - Database performance (archived)
 - **DEPLOYMENT.md** - Production deployment procedures
 - **ENTERPRISE_DEPLOYMENT.md** - Enterprise-scale deployment

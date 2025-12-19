@@ -352,5 +352,5 @@ async def test_async_endpoint():
 
 - **BACKEND_PRINCIPLES.md** - Backend design principles
 - **CODING_STANDARDS.md** - Coding rules and patterns
-- **TESTING_GUIDE.md** - Testing async code
+- **testing/PYTEST_GUIDE.md** - Testing async code
 - **PERFORMANCE.md** - Performance optimization

@@ -638,7 +638,7 @@
         <strong>Resource Warning:</strong></p>
       <ul>
         <li>Processing <strong>{formatCount(tmToBuild.entry_count)}</strong> entries</li>
-        <li>Uses AI model (Qwen) for embeddings</li>
+        <li>Uses {currentEngine === 'model2vec' ? 'Fast (Model2Vec)' : 'Deep (Qwen)'} embedding engine</li>
         <li>Creates FAISS vector index</li>
         <li>May take several minutes for large TMs</li>
         <li>CPU/Memory usage will increase during processing</li>

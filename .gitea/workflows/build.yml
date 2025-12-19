@@ -1037,7 +1037,8 @@ jobs:
               PyJWT python-jose passlib python-dotenv bcrypt `
               pydantic pydantic-settings email-validator `
               pandas openpyxl xlrd `
-              httpx requests loguru tqdm pyyaml huggingface_hub
+              httpx requests loguru tqdm pyyaml huggingface_hub `
+              model2vec
 
             $size = [math]::Round((Get-ChildItem $targetDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
             Write-Host "[OK] Python + packages installed: $size MB"
