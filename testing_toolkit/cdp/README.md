@@ -354,4 +354,14 @@ cd locaNext && npm test
 
 ---
 
+## Related Docs
+
+| Doc | Purpose |
+|-----|---------|
+| [BUILD_TEST_PROTOCOL.md](../BUILD_TEST_PROTOCOL.md) | Build → Wait → Install → Test workflow |
+| [PLAYGROUND_INSTALL_PROTOCOL.md](../../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed Playground install process |
+| [../README.md](../README.md) | Testing toolkit overview |
+
+---
+
 *Last updated: 2025-12-19 | Pure Node.js CDP testing for Windows*
