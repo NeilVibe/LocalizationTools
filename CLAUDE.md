@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512190400 | **Build:** 301 | **Status:** QA | **Issues:** 7
+**Version:** 2512191755 | **Build:** 301 | **Next:** 302 | **Issues:** 6
 
 > **KEEP THIS FILE COMPACT.** Details in linked docs.
 
@@ -57,7 +57,7 @@ OFFLINE: SQLite (single-user, auto-fallback)
 2. **No Backend Mods** - Only wrapper layers (API, GUI)
 3. **Logger Only** - Never `print()`, always `logger`
 4. **Dual Push** - `git push origin main && git push gitea main`
-5. **WSL ↔ Windows** - Ports shared, CDP works from WSL via 127.0.0.1:9222
+5. **WSL ↔ Windows** - CDP tests run from Windows PowerShell (WSL2 can't reach Windows localhost)
 6. **Fix Everything** - No defer, no excuses, fix all issues
 
 ---
@@ -141,12 +141,12 @@ docs/
 
 ## Stats
 
-- **Build:** 301 (v25.1219.1118)
+- **Build:** 301 (v25.1219.1118) | Next: 302
 - **Tests:** ~273 in CI
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
-- **Open Issues:** 7 (1 medium bug, 5 UI/UX, 1 question)
+- **Open Issues:** 6 (1 fix pending, 3 UI/UX, 2 decisions)
 
 ---
 
-*Last updated: 2025-12-19 | Hub file - details in linked docs*
+*Last updated: 2025-12-19 17:55 | Hub file - details in linked docs*

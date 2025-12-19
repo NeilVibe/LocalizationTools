@@ -364,14 +364,21 @@ This will:
 
 The app auto-connects to the central PostgreSQL server at `172.28.150.120:5432`.
 
-### WSL2 Port Sharing
+### WSL2 Network Limitation
 
-**WSL2 ports are shared with Windows.** CDP testing works directly from WSL:
+**WSL2 CANNOT reach Windows localhost.** CDP binds to Windows 127.0.0.1 which is inaccessible from WSL.
 
 ```bash
-# From WSL - this WORKS:
-curl http://127.0.0.1:9222/json              # Check CDP
-cd testing_toolkit/cdp && node test_bug029.js # Run tests
+# From WSL - this does NOT work:
+curl http://127.0.0.1:9222/json              # Connection refused!
+```
+
+**Run CDP tests from Windows PowerShell instead:**
+
+```powershell
+Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+node login.js
+node quick_check.js
 ```
 
 See [testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md) for full CDP testing guide.

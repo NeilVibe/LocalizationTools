@@ -139,13 +139,16 @@ powershell -ExecutionPolicy Bypass -File scripts\playground_install.ps1 -LaunchA
 
 ## Phase 5: Run Node.js CDP Tests
 
-**From WSL** (ports are shared with Windows):
+**IMPORTANT:** CDP tests must run from Windows PowerShell (not WSL). CDP binds to Windows localhost which WSL2 cannot reach.
 
-```bash
-cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
+**From Windows PowerShell:**
 
-# Verify CDP is ready
-curl -s http://127.0.0.1:9222/json | jq '.[0].url'
+```powershell
+# Access test scripts via UNC path
+Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+
+# Login first (if at login screen)
+node login.js
 
 # Run tests
 node quick_check.js           # Basic page state
@@ -154,12 +157,12 @@ node test_bug029.js           # Upload as TM
 node test_bug023.js           # TM status
 ```
 
-**From Windows:**
+**Alternative - Pure Windows paths:**
 
 ```cmd
 cd D:\LocalizationTools\testing_toolkit\cdp
+node login.js
 node quick_check.js
-node test_server_status.js
 ```
 
 ---
@@ -169,20 +172,21 @@ node test_server_status.js
 ### Full Flow Commands
 
 ```bash
-# 1. PUSH
+# 1. PUSH (from WSL)
 git push origin main && git push gitea main
 
-# 2. WAIT & MONITOR
+# 2. WAIT & MONITOR (from WSL)
 watch -n 30 'curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq ".[0] | {status, conclusion}"'
 
-# 3. CHECK RELEASE
+# 3. CHECK RELEASE (from WSL)
 curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r '.[0].tag_name'
 
-# 4. INSTALL (from Windows)
-# powershell: .\scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP -AutoLogin
+# 4. INSTALL (from Windows PowerShell)
+.\scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP -AutoLogin
 
-# 5. TEST (from WSL)
-cd testing_toolkit/cdp && node test_server_status.js
+# 5. TEST (from Windows PowerShell - NOT WSL!)
+Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+node login.js && node test_server_status.js
 ```
 
 ### Just Launch (Already Installed)
@@ -233,27 +237,17 @@ LocaNext.exe --remote-debugging-port=9222
 /mnt/c/.../powershell.exe: cannot execute binary file: Exec format error
 ```
 
-**Cause:** `WSLInterop` handler missing from `/proc/sys/fs/binfmt_misc/`
-
-**Check:**
+**Quick Fix (no restart needed):**
 ```bash
-ls /proc/sys/fs/binfmt_misc/
-# Should show: WSLInterop, register, status
-# If WSLInterop missing = broken
+sudo sh -c 'echo ":WSLInterop:M::MZ::/init:PF" > /proc/sys/fs/binfmt_misc/register'
 ```
 
-**Fix:** Restart WSL from Windows CMD:
-```cmd
-wsl --shutdown
+**Verify:**
+```bash
+ls /proc/sys/fs/binfmt_misc/WSLInterop && cmd.exe /c echo "Works!"
 ```
-Then reopen WSL terminal.
 
-**WARNING:** This kills everything in WSL including SSH servers. You'll lose your connection if SSH'd in.
-
-**Workaround (if can't restart):** Run install directly from Windows:
-```cmd
-powershell -ExecutionPolicy Bypass -File D:\LocalizationTools\scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP
-```
+**Full details:** See [docs/wip/WSL_INTEROP.md](../docs/wip/WSL_INTEROP.md)
 
 ### CDP Not Responding
 ```bash

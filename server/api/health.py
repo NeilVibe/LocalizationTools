@@ -139,7 +139,7 @@ def get_system_stats() -> Dict[str, Any]:
 def get_websocket_stats() -> Dict[str, Any]:
     """Get WebSocket connection stats."""
     try:
-        from server.socket_manager import sio
+        from server.utils.websocket import sio
 
         # Count connected clients
         active_rooms = 0
@@ -151,11 +151,10 @@ def get_websocket_stats() -> Dict[str, Any]:
             if rooms:
                 active_rooms = len(rooms)
 
-        # Try to get from socket manager if available
+        # Get connected clients count
         try:
-            from server.socket_manager import connection_manager
-            if hasattr(connection_manager, 'active_connections'):
-                active_connections = len(connection_manager.active_connections)
+            from server.utils.websocket import connected_clients
+            active_connections = len(connected_clients)
         except Exception:
             pass
 
