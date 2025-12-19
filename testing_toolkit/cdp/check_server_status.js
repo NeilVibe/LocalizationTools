@@ -48,18 +48,35 @@ async function main() {
 
     // Get full server status content
     const content = await evaluate(`
-        // Find the server status panel content
+        // Find the server status panel content - try multiple selectors
         const panel = document.querySelector('[class*="server-status"]') ||
                       document.querySelector('[class*="ServerStatus"]') ||
+                      document.querySelector('[class*="status-panel"]') ||
+                      document.querySelector('[class*="StatusPanel"]') ||
+                      // Try finding by structure - look for collapsible panel content after Server Status button
+                      (() => {
+                          const btn = Array.from(document.querySelectorAll('button'))
+                              .find(b => b.textContent.includes('Server Status'));
+                          if (btn) {
+                              // Get the parent collapsible and find the content
+                              let el = btn.parentElement;
+                              for (let i = 0; i < 5 && el; i++) {
+                                  const content = el.querySelector('[class*="content"], [class*="panel"], [class*="collapse"]');
+                                  if (content && content.innerText) return content;
+                                  el = el.parentElement;
+                              }
+                          }
+                          return null;
+                      })() ||
                       document.body;
-        panel.innerText;
+        panel ? panel.innerText : 'Panel not found';
     `);
 
     console.log('Full Panel Content:');
-    console.log(content);
+    console.log(content || '(empty)');
     console.log('\n--- Filtered Status Lines ---');
 
-    const lines = content.split('\n').filter(l =>
+    const lines = (content || '').split('\n').filter(l =>
         l.includes('API') || l.includes('Database') || l.includes('WebSocket') ||
         l.includes('connected') || l.includes('disconnected') || l.includes('Online') ||
         l.includes('Offline') || l.includes('Status') || l.includes('Server')
@@ -67,12 +84,15 @@ async function main() {
     lines.forEach(l => console.log('  ', l.trim()));
 
     // Check for specific status indicators
-    const hasWebSocketDisconnected = content.includes('WebSocket') && content.includes('disconnected');
-    const hasDbConnected = content.includes('Database') && content.includes('connected');
+    const c = content || '';
+    const hasWebSocketDisconnected = c.includes('WebSocket') && c.includes('disconnected');
+    const hasWebSocketConnected = c.includes('WebSocket') && c.includes('connected') && !c.includes('disconnected');
+    const hasDbConnected = c.includes('Database') && c.includes('connected');
 
     console.log('\n--- Analysis ---');
     console.log('Database connected:', hasDbConnected ? 'YES' : 'NO');
-    console.log('WebSocket disconnected:', hasWebSocketDisconnected ? 'YES (BUG-030)' : 'NO');
+    console.log('WebSocket connected:', hasWebSocketConnected ? 'YES (BUG-030 FIXED!)' : 'NO');
+    console.log('WebSocket disconnected:', hasWebSocketDisconnected ? 'YES (BUG-030 NOT FIXED)' : 'NO');
 
     ws.close();
 }
