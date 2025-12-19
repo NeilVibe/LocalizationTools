@@ -1,37 +1,124 @@
-# Build & Test Protocol
+# Build → Install → Test Protocol
 
-**Quick Reference for Build → Test Workflow**
+**Complete workflow from code push to test execution**
+
+**Updated:** 2025-12-19 | **Build:** 301
 
 ---
 
-## The Protocol
+## Full Protocol Flow
 
-### 1. PUSH (triggers build)
+```
+PUSH → WAIT → CHECK → INSTALL → LAUNCH → TEST
+```
+
+| Step | Action | Time |
+|------|--------|------|
+| 1. PUSH | Trigger build | Instant |
+| 2. WAIT | Build compiles | ~12-15 min |
+| 3. CHECK | Verify release exists | 10 sec |
+| 4. INSTALL | Download + install to Playground | ~2 min |
+| 5. LAUNCH | Start app with CDP | ~30 sec |
+| 6. TEST | Run Node.js CDP tests | ~1 min |
+
+---
+
+## Step 1: PUSH (Trigger Build)
+
 ```bash
+# From WSL
 git push origin main && git push gitea main
 ```
 
-### 2. WAIT (build takes ~12-15 min)
-```bash
-# Check build status
-curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq '.[0] | {status, conclusion, created_at}'
+Build starts automatically on Gitea CI.
 
-# Or watch it
+---
+
+## Step 2: WAIT (Build Running)
+
+**DO NOT** refresh app or install during build.
+
+Check status:
+```bash
+# One-liner status check
+curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" 2>/dev/null | jq -r '.[0] | "\(.status) - \(.conclusion // "running")"'
+
+# Watch mode
 watch -n 30 'curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq ".[0] | {status, conclusion}"'
 ```
 
-### 3. INSTALL (only after build completes)
+Expected: `completed - success`
+
+---
+
+## Step 3: CHECK (Verify Release)
+
 ```bash
-# Downloads latest release and installs to Playground
+# Get latest release tag
+curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r '.[0].tag_name'
+```
+
+Expected: New version tag (e.g., `v25.1219.1118`)
+
+---
+
+## Step 4 & 5: INSTALL + LAUNCH
+
+### Option A: WSL Script (when interop works)
+
+```bash
 ./scripts/playground_install.sh --launch --auto-login
 ```
 
-**Full install documentation:** [PLAYGROUND_INSTALL_PROTOCOL.md](../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md)
+### Option B: Windows CMD (when WSL interop broken)
 
-### 4. TEST (via CDP from WSL)
+Run these in **Windows CMD or PowerShell**:
+
+```cmd
+REM Kill existing
+taskkill /F /IM LocaNext.exe /T 2>nul
+
+REM Run install script
+cd C:\path\to\LocalizationTools
+powershell -ExecutionPolicy Bypass -File scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP
+
+REM Or manual install:
+REM 1. Download latest from http://172.28.150.120:3000/neilvibe/LocaNext/releases
+REM 2. Run installer: LocaNext_v*.exe /S /D=C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
+REM 3. Launch: LocaNext.exe --remote-debugging-port=9222
+```
+
+### Option C: Just Launch (if already installed)
+
+**Windows:**
+```cmd
+cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
+LocaNext.exe --remote-debugging-port=9222
+```
+
+**WSL (when interop works):**
 ```bash
-cd testing_toolkit/cdp
-node test_server_status.js
+/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/LocaNext.exe --remote-debugging-port=9222 &
+```
+
+---
+
+## Step 6: TEST (Node.js CDP)
+
+**From WSL** (ports are shared with Windows):
+
+```bash
+# Wait for CDP to be ready
+sleep 30
+
+# Verify CDP responding
+curl -s http://127.0.0.1:9222/json | jq '.[0].url'
+
+# Run tests
+cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
+node quick_check.js           # Basic page check
+node test_server_status.js    # Server/backend status
+node test_bug029.js           # Upload as TM test
 ```
 
 ---
@@ -40,41 +127,37 @@ node test_server_status.js
 
 | Rule | Why |
 |------|-----|
-| **Never refresh app during build** | Old code + new expectations = confusion |
-| **Never install mid-build** | Partial/corrupt artifacts |
-| **Always verify build success first** | Failed builds = wasted testing |
-| **One install per build** | Clean state for testing |
+| **Never install during build** | Partial artifacts cause errors |
+| **Always verify release first** | Avoid testing old code |
+| **Wait 30s after launch** | App needs startup time |
+| **Use Node.js from WSL** | Ports shared, Node.js works |
 
 ---
 
-## Build Status Check (One-liner)
+## WSL Interop Status
 
+WSL can execute Windows binaries when interop is enabled. Sometimes it breaks.
+
+**Check:**
 ```bash
-curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" 2>/dev/null | jq -r '.[0] | "\(.status) - \(.conclusion // "running") - \(.created_at)"' || echo "Cannot reach Gitea"
+/mnt/c/Windows/System32/cmd.exe /c "echo test"
 ```
 
----
-
-## Workflow During Build
-
-While waiting for build, you CAN:
-- Write more code (don't push yet)
-- Review docs
-- Plan next tasks
-- Write CDP test scripts
-
-You CANNOT:
-- Test the pushed changes
-- Refresh Playground app
-- Run `playground_install.sh`
+**If broken:**
+- Run install/launch commands directly from Windows CMD
+- Node.js CDP tests still work from WSL (ports are shared)
 
 ---
 
-## Quick Status Commands
+## Quick Reference
 
 ```bash
-# Alias for .bashrc
-alias buildstatus='curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq ".[0] | {status, conclusion}"'
+# Full flow (when everything works)
+git push origin main && git push gitea main
+# Wait 12-15 min...
+./scripts/playground_install.sh --launch
+sleep 30
+cd testing_toolkit/cdp && node test_server_status.js
 ```
 
 ---
@@ -83,10 +166,10 @@ alias buildstatus='curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/Loc
 
 | Doc | Purpose |
 |-----|---------|
-| [PLAYGROUND_INSTALL_PROTOCOL.md](../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed install process |
-| [cdp/README.md](cdp/README.md) | CDP testing guide |
+| [PLAYGROUND_INSTALL_PROTOCOL.md](../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed install options |
+| [cdp/README.md](cdp/README.md) | Node.js CDP testing guide |
 | [README.md](README.md) | Testing toolkit overview |
 
 ---
 
-*Protocol added 2025-12-19*
+*Protocol: Push → Wait → Check → Install → Launch → Test*
