@@ -135,6 +135,11 @@ powershell -ExecutionPolicy Bypass -File scripts\playground_install.ps1 -LaunchA
 8. Waits for First Time Setup (~2-5 min first run)
 9. Auto-login as neil/neil
 
+### After Install: HARD REFRESH REQUIRED
+After installing a new build, do a **hard refresh** in the app:
+- **Windows:** `Ctrl+Shift+R` or `Ctrl+F5`
+- This clears cached frontend assets and loads the new version
+
 ---
 
 ## Phase 5: Run Node.js CDP Tests
