@@ -139,24 +139,22 @@ def get_system_stats() -> Dict[str, Any]:
 def get_websocket_stats() -> Dict[str, Any]:
     """Get WebSocket connection stats."""
     try:
-        from server.utils.websocket import sio
+        from server.utils.websocket import sio, connected_clients
 
         # Count connected clients
         active_rooms = 0
-        active_connections = 0
+        active_connections = len(connected_clients) if connected_clients else 0
 
-        if hasattr(sio, 'manager'):
-            # Get all rooms from the manager
-            rooms = sio.manager.get_rooms(namespace='/')
-            if rooms:
-                active_rooms = len(rooms)
+        if hasattr(sio, 'manager') and sio.manager:
+            try:
+                # Get all rooms from the manager
+                rooms = sio.manager.get_rooms(namespace='/')
+                if rooms:
+                    active_rooms = len(rooms)
+            except Exception as room_err:
+                logger.debug(f"Failed to get rooms: {room_err}")
 
-        # Get connected clients count
-        try:
-            from server.utils.websocket import connected_clients
-            active_connections = len(connected_clients)
-        except Exception:
-            pass
+        logger.debug(f"WebSocket stats: connections={active_connections}, rooms={active_rooms}")
 
         return {
             "status": "active",
@@ -165,7 +163,7 @@ def get_websocket_stats() -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.debug(f"WebSocket stats unavailable: {e}")
+        logger.warning(f"WebSocket stats unavailable: {e}")
         return {
             "status": "unknown",
             "connections": 0,
