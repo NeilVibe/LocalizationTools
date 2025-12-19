@@ -1,17 +1,28 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-19 02:00 | **Build:** 300 ✅
+**Last Updated:** 2025-12-19 14:00 | **Build:** 301 (v25.1219.1118)
 
 ---
 
-## NEXT SESSION: Fix Critical Bugs + UI/UX Minimalism
+## CURRENT SESSION: Test Build 301
 
-### Priority 1: Critical Bugs (Must Fix First)
+### Fixes Applied in Build 301:
+- **BUG-028:** Added `model2vec` to build.yml pip install
+- **BUG-029:** Fixed FileExplorer.svelte - `tmRegistrationFile` preserves file ref before `closeContextMenu()` nullifies it
+- **UI-025/026/028:** TMViewer infinite scroll, removed pagination
+- **UI-029:** Removed download menu from VirtualGrid
+
+### Pending: Test These Fixes
+1. Install Build 301 to Playground
+2. Run Node.js CDP tests
+3. Verify BUG-028 (model2vec import)
+4. Verify BUG-029 (Upload as TM)
+
+### Remaining Bugs (Not Yet Fixed)
 
 | Bug | Problem | Investigation |
 |-----|---------|---------------|
-| **BUG-028** | "No module named model2vec" on Sync | Check PyInstaller includes model2vec |
-| **BUG-029** | Right-click "Upload as TM" broken | Check context menu handler + API |
+| **BUG-030** | WebSocket disconnected | Investigate if normal |
 
 ### Priority 2: TM Viewer Minimalism (Batch)
 
@@ -172,13 +183,28 @@ If Time (Polish):
 ## Playground Info
 
 ```
-Version:  v25.1218.2204 (Build 300)
+Target:   v25.1219.1118 (Build 301) ← NEEDS INSTALL
 Path:     C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext
 Mode:     ONLINE (PostgreSQL)
 Login:    neil/neil
 CDP:      http://127.0.0.1:9222
 ```
 
+## Installation Note
+
+**WSL interop may be broken.** If `./scripts/playground_install.sh` fails with "Exec format error":
+
+Run from Windows PowerShell:
+```powershell
+cd D:\LocalizationTools
+.\scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP -AutoLogin
+```
+
+Then Node.js CDP tests run from WSL (ports shared):
+```bash
+cd testing_toolkit/cdp && node test_server_status.js
+```
+
 ---
 
-*Session handoff document - Next: Critical bugs then UI minimalism*
+*Session handoff document - Build 301 ready, needs install + test*
