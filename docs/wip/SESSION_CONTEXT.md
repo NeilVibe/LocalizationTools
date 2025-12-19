@@ -1,20 +1,36 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-19 17:55 | **Build:** 301 (v25.1219.1118) | **Next:** 302
+**Last Updated:** 2025-12-19 18:45 | **Build:** 303 (v25.1219.1829) | **Next:** 304
 
 ---
 
 ## CURRENT STATE
 
-### Build 301 Status: INSTALLED & TESTED
-- ✅ Playground has Build 301 installed
+### Build 303 Status: INSTALLED & TESTED
+- ✅ Playground has Build 303 installed (v25.1219.1829)
 - ✅ CDP testing infrastructure working
 - ✅ BUG-028, BUG-029 verified fixed
-- 🔧 BUG-030 fix ready (code changed, needs Build 302)
+- ✅ BUG-030 FIXED - WebSocket now shows "connected"
 
-### Pending Build 302
-Code changes ready to deploy:
-- **BUG-030 FIX:** WebSocket import path fixed in `server/api/health.py`
+### BUG-030 Fix Summary
+**Problem:** Server Status modal showed WebSocket as "disconnected" even when connected.
+
+**Root Cause:** Nested try/except import structure in `get_websocket_stats()` was failing silently.
+
+**Fix Applied (Build 303):** Simplified import to single line:
+```python
+# Before (broken):
+from server.utils.websocket import sio
+# ...
+try:
+    from server.utils.websocket import connected_clients
+except: pass
+
+# After (working):
+from server.utils.websocket import sio, connected_clients
+```
+
+**Verified:** Health API returns `"websocket": "connected"`, Server Status modal shows "connected".
 
 ---
 
@@ -85,25 +101,18 @@ from server.utils.websocket import sio
 
 ---
 
-## Trigger Build 302
+## Build 303 Triggered
 
-```bash
-# From WSL:
-git add -A && git commit -m "Fix: BUG-030 WebSocket import path in health.py"
-echo "Build LIGHT" >> GITEA_TRIGGER.txt
-git add GITEA_TRIGGER.txt && git commit --amend --no-edit
-git push origin main && git push gitea main
-```
+Waiting for build to complete (~12-15 min).
 
-After build completes (~12-15 min):
+After build completes:
 ```bash
 # Install to Playground
 ./scripts/playground_install.sh --launch --auto-login
 
-# Verify fix (from Windows PowerShell)
-Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
-node login.js
-node check_server_status.js  # Should show WebSocket: connected
+# Check logs for warning message
+# From Windows PowerShell:
+Get-Content 'C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/logs/locanext_app.log' -Tail 50 | Select-String "WebSocket stats"
 ```
 
 ---

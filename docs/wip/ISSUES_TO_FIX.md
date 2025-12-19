@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-19 17:55 | **Build:** 301 | **Next:** 302
+**Last Updated:** 2025-12-19 18:45 | **Build:** 303 | **Next:** 304
 
 ---
 
@@ -8,40 +8,36 @@
 
 | Status | Count | Items |
 |--------|-------|-------|
-| **Fixed (verified)** | 2 | BUG-028, BUG-029 |
-| **Fixed (pending build)** | 1 | BUG-030 |
+| **Fixed (verified)** | 3 | BUG-028, BUG-029, BUG-030 |
 | **Closed** | 1 | UI-033 |
 | **Open UI Issues** | 3 | UI-031, UI-032, UI-034 |
 | **Decisions Needed** | 2 | UI-027, Q-001 |
 
 ---
 
-## Fixed - Pending Build 302
+## Fixed - Build 303
 
-### BUG-030: WebSocket Shows Disconnected - FIXED
+### BUG-030: WebSocket Shows Disconnected - VERIFIED FIXED
 
 **Component:** Server Status Panel
 **Problem:** Always showed "WebSocket: disconnected" even when connected.
 
-**Root Cause:** Wrong import path in `server/api/health.py`:
-```python
-# Line 142 - WRONG (file doesn't exist!)
-from server.socket_manager import sio
+**Root Cause:** Nested try/except import structure in `get_websocket_stats()` failed silently.
 
-# Line 156 - WRONG
-from server.socket_manager import connection_manager
-```
-
-**Fix Applied:**
+**Fix Applied (Build 303):**
 ```python
-# Line 142 - CORRECT
+# Before (broken):
 from server.utils.websocket import sio
+# ...
+try:
+    from server.utils.websocket import connected_clients
+except: pass
 
-# Line 156 - CORRECT
-from server.utils.websocket import connected_clients
+# After (working):
+from server.utils.websocket import sio, connected_clients
 ```
 
-**Status:** Code fixed, awaiting Build 302 to verify.
+**Status:** ✅ Verified fixed in Build 303 (v25.1219.1829)
 
 ---
 
