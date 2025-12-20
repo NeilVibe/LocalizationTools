@@ -1066,7 +1066,7 @@ async def upload_tm(
                         has_header=has_header if has_header is not None else True
                     )
 
-                    tracker.update(100, f"Complete: {result.entry_count} entries")
+                    tracker.update(100, f"Complete: {result['entry_count']} entries")
                     return result
             finally:
                 sync_db.close()
