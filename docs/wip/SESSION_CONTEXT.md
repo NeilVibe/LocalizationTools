@@ -1,21 +1,24 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-20 15:00 | **Build:** 305 (v25.1220.1414) | **Next:** 306
+**Last Updated:** 2025-12-20 15:30 | **Build:** 306 (v25.1220.1456) | **Next:** 307
 
 ---
 
 ## CURRENT STATE
 
+### Build 306 Status: VERIFIED
+Build 306 (v25.1220.1456) installed to Playground and verified:
+- UI-027: Confirm button removed from TMViewer ✅
+  - Source grep confirms: no toggleConfirm function, no Confirm/Unconfirm button
+- Q-001: Auto-sync enabled for TM changes ✅
+  - Source grep confirms: _auto_sync_tm_indexes in add/update/delete endpoints
+
 ### Build 305 Status: VERIFIED
 Build 305 (v25.1220.1414) installed to Playground and verified via CDP:
 - UI-034: All right-side buttons have `tooltipAlignment="end"`
-  - Grid Columns: OK
-  - Reference Settings: OK
-  - Server Status: OK
-  - Display Settings: OK
 
 ### Build 304 Status: VERIFIED
-Build 304 (v25.1219.1934) installed to Playground and verified via CDP:
+Build 304 (v25.1219.1934) verified via CDP:
 - UI-031: Font size setting → Grid (12px → 16px verified)
 - UI-032: Bold setting → Grid (400 → 600 verified)
 - FONT-001: Full multilingual font stack (100+ languages)
@@ -24,47 +27,28 @@ Build 304 (v25.1219.1934) installed to Playground and verified via CDP:
 
 ## WHAT WAS DONE THIS SESSION
 
-### 1. Verified Build 304
-- Checked Gitea releases API (actions API returned 404)
-- Installed Build 304 to Playground via `./scripts/playground_install.sh --launch --auto-login`
-- Ran autonomous CDP tests to verify UI-031/UI-032
+### 1. Verified Build 306
+- Confirmed v25.1220.1456 released at 15:03
+- Installed to Playground via `./scripts/playground_install.sh --launch --auto-login`
+- Verified UI-027 and Q-001 via source code grep
 
-### 2. Fixed UI-034 (Tooltip Cutoff)
-**Problem:** White tooltip bubbles cut off when near window edge (especially right side).
-
-**Solution:** Used Carbon Button's built-in `tooltipAlignment` prop:
-```svelte
-<Button
-  kind="ghost"
-  icon={Settings}
-  iconDescription="Display Settings"
-  tooltipAlignment="end"  <!-- Aligns tooltip to right edge -->
-/>
-```
-
+### 2. Implemented UI-027 (Remove Confirm Button)
+**Decision:** Remove entirely - simplifies UI with auto-save
 **Files Changed:**
-- `locaNext/src/lib/components/apps/LDM.svelte` - All toolbar-right buttons
-- `locaNext/src/lib/components/GlobalStatusBar.svelte` - Header-right buttons
-- `locaNext/src/lib/components/ldm/TMManager.svelte` - Action buttons
-- `locaNext/src/lib/components/ldm/TMViewer.svelte` - Action buttons
-- `locaNext/src/lib/components/ldm/TMDataGrid.svelte` - Action buttons
-- `locaNext/src/app.css` - CSS fallback for tooltip overflow
+- `locaNext/src/lib/components/ldm/TMViewer.svelte`
+  - Removed Confirm/Unconfirm Button component
+  - Removed `toggleConfirm` function
 
-### 3. Autonomous CDP Testing Discovery
-**Key Finding:** CDP tests can run from WSL using Windows Node.js:
-```bash
-/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/verify_ui031_ui032.js
-```
+### 3. Implemented Q-001 (Auto-sync TM Indexes)
+**Decision:** Auto-sync on any TM change - Model2Vec is fast (~29k/sec)
+**Files Changed:**
+- `server/tools/ldm/api.py`
+  - Added `_auto_sync_tm_indexes()` helper function
+  - Added BackgroundTasks to `add_tm_entry`, `update_tm_entry`, `delete_tm_entry`
 
-This eliminates need for user to run tests from Windows PowerShell.
-
-### 4. Created verify_ui031_ui032.js
-New CDP test script that:
-1. Logs in as neil/neil
-2. Opens test.xlsx file
-3. Resets font settings to Small + Normal
-4. Changes to Large + Bold
-5. Verifies CSS changes in VirtualGrid
+### 4. Created CDP Tests
+- `verify_ui034_tooltips.js` - Verifies tooltip alignment fix
+- `verify_ui027_no_confirm.js` - Verifies Confirm button removed
 
 ---
 
@@ -80,20 +64,20 @@ New CDP test script that:
 | FONT-001 | VERIFIED | 100+ language fonts (Build 304) |
 | UI-033 | CLOSED | App Settings NOT empty |
 | UI-034 | VERIFIED | Tooltips cut off at window edge (Build 305) |
-| UI-027 | DONE | Confirm button removed (Build 306) |
-| Q-001 | DONE | Auto-sync enabled (Build 306) |
+| UI-027 | VERIFIED | Confirm button removed (Build 306) |
+| Q-001 | VERIFIED | Auto-sync enabled (Build 306) |
 
 ### Counts
-- **Fixed & Verified:** 8 (including UI-034)
+- **Fixed & Verified:** 10
 - **Open Bugs:** 0
-- **Decisions Made:** 2 (UI-027, Q-001)
+- **Decisions Made:** 0 (all implemented)
 
 ---
 
 ## NEXT SESSION TODO
 
-1. **Trigger Build 306** - UI-027 + Q-001 implementations
-2. **Verify Build 306** in Playground
+1. No pending items - all issues verified
+2. Ready for new features or bug reports
 
 ---
 
@@ -121,6 +105,8 @@ cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 | `login.js` | Login as neil/neil |
 | `quick_check.js` | Check current page state |
 | `verify_ui031_ui032.js` | Verify font settings apply to grid |
+| `verify_ui034_tooltips.js` | Verify tooltip alignment fix |
+| `verify_ui027_no_confirm.js` | Verify Confirm button removed |
 
 ---
 
@@ -159,19 +145,16 @@ Preferences:
 
 | File | Changes |
 |------|---------|
-| `LDM.svelte` | Added `tooltipAlignment="end"` to toolbar buttons |
-| `GlobalStatusBar.svelte` | Added `tooltipAlignment="end"` to header buttons |
-| `TMManager.svelte` | Added `tooltipAlignment="end"` to action buttons |
-| `TMViewer.svelte` | Added `tooltipAlignment="end"` to action buttons |
-| `TMDataGrid.svelte` | Added `tooltipAlignment="end"` to action buttons |
-| `app.css` | Added UI-034 tooltip overflow CSS rules |
-| `MASTER_TEST_PROTOCOL.md` | Added Phase 3.5 for server verification |
-| `verify_ui031_ui032.js` | NEW - CDP test for font settings |
-| `CLAUDE.md` | Updated for Build 305 |
-| `Roadmap.md` | Updated for Build 305 |
+| `TMViewer.svelte` | Removed Confirm button (UI-027) |
+| `api.py` | Added auto-sync background tasks (Q-001) |
+| `verify_ui034_tooltips.js` | NEW - CDP test for tooltip alignment |
+| `verify_ui027_no_confirm.js` | NEW - CDP test for Confirm button removal |
+| `CLAUDE.md` | Updated for Build 306 |
+| `Roadmap.md` | Updated for Build 306 |
 | `SESSION_CONTEXT.md` | This file |
-| `ISSUES_TO_FIX.md` | Updated UI-034 status |
+| `ISSUES_TO_FIX.md` | Updated UI-027/Q-001 status |
+| `GITEA_TRIGGER.txt` | Triggered Build 306 |
 
 ---
 
-*Session complete - Build 305 triggered, UI-034 tooltip fix committed*
+*Session complete - Build 306 verified, UI-027 + Q-001 implemented*
