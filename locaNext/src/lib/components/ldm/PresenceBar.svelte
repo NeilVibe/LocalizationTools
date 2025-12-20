@@ -1,5 +1,5 @@
 <script>
-  import { Tag, Tooltip } from "carbon-components-svelte";
+  import { Tag } from "carbon-components-svelte";
   import { User, UserMultiple, View } from "carbon-icons-svelte";
   import { fileViewers, viewerCount, ldmConnected } from "$lib/stores/ldm.js";
 
@@ -40,17 +40,14 @@
   {#if $fileViewers.length > 0}
     <div class="avatars">
       {#each $fileViewers.slice(0, 5) as viewer (viewer.user_id)}
-        <Tooltip triggerText="" direction="bottom">
-          <div
-            class="avatar"
-            style="background-color: {getAvatarColor(viewer.username)}"
-          >
-            {getInitials(viewer.username)}
-          </div>
-          <svelte:fragment slot="body">
-            <p>{viewer.username}</p>
-          </svelte:fragment>
-        </Tooltip>
+        <!-- UI-040: Use title instead of Tooltip with empty triggerText -->
+        <div
+          class="avatar"
+          style="background-color: {getAvatarColor(viewer.username)}"
+          title={viewer.username}
+        >
+          {getInitials(viewer.username)}
+        </div>
       {/each}
 
       {#if $fileViewers.length > 5}

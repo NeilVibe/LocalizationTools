@@ -1944,8 +1944,11 @@ def _auto_sync_tm_indexes(tm_id: int, user_id: int):
     """
     Background task to auto-sync TM indexes after entry modifications.
     Model2Vec is fast (~29k sentences/sec), so this runs quickly.
+
+    BUG-032/BUG-034: Now also updates TM status to 'ready' after successful sync.
     """
     from server.tools.ldm.tm_indexer import TMSyncManager
+    from datetime import datetime
 
     sync_db = next(get_db())
     try:
@@ -1963,9 +1966,14 @@ def _auto_sync_tm_indexes(tm_id: int, user_id: int):
         sync_manager = TMSyncManager(sync_db, tm_id)
         result = sync_manager.sync()
 
+        # BUG-032/BUG-034: Update TM status to 'ready' after successful sync
+        tm.status = "ready"
+        tm.updated_at = datetime.utcnow()
+        sync_db.commit()
+
         logger.info(
             f"Auto-sync TM {tm_id}: INSERT={result['stats']['insert']}, "
-            f"UPDATE={result['stats']['update']}, time={result['time_seconds']:.2f}s"
+            f"UPDATE={result['stats']['update']}, time={result['time_seconds']:.2f}s, status=ready"
         )
     except Exception as e:
         logger.error(f"Auto-sync failed for TM {tm_id}: {e}")
@@ -2007,11 +2015,23 @@ async def sync_tm_indexes(
     logger.info(f"Starting TM sync for TM {tm_id} (user: {current_user['username']})")
 
     # Run sync in threadpool to avoid blocking
+    # BUG-033: Also update TM status after successful sync
     def _sync_tm():
         sync_db = next(get_db())
         try:
             sync_manager = TMSyncManager(sync_db, tm_id)
             result = sync_manager.sync()
+
+            # BUG-033/BUG-034: Update TM status to 'ready' after successful sync
+            from server.database.models import LDMTranslationMemory
+            tm_record = sync_db.query(LDMTranslationMemory).filter(
+                LDMTranslationMemory.id == tm_id
+            ).first()
+            if tm_record:
+                tm_record.status = "ready"
+                tm_record.updated_at = datetime.utcnow()
+                sync_db.commit()
+
             return result
         finally:
             sync_db.close()
@@ -2022,7 +2042,7 @@ async def sync_tm_indexes(
         logger.success(
             f"TM {tm_id} sync complete: "
             f"INSERT={result['stats']['insert']}, UPDATE={result['stats']['update']}, "
-            f"UNCHANGED={result['stats']['unchanged']}, time={result['time_seconds']}s"
+            f"UNCHANGED={result['stats']['unchanged']}, time={result['time_seconds']}s, status=ready"
         )
 
         return result

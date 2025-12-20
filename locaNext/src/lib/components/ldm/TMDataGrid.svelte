@@ -5,7 +5,6 @@
     Button,
     Search,
     Dropdown,
-    Pagination,
     Tag,
     Modal,
     TextArea,
@@ -18,7 +17,6 @@
     TrashCan,
     Checkmark,
     CheckmarkFilled,
-    Close,
     DataBase,
     Renew,
     Warning
@@ -42,9 +40,11 @@
   let loading = $state(false);
   let errorMessage = $state("");
 
-  // Pagination
+  // UI-035: Infinite scroll instead of pagination
   let page = $state(1);
-  let pageSize = $state(100);
+  let pageSize = $state(200); // Load more per batch
+  let hasMore = $state(true);
+  let loadingMore = $state(false);
 
   // Sorting
   let sortBy = $state("id");
@@ -91,7 +91,7 @@
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   }
 
-  // Load entries
+  // UI-035: Load entries (initial load, resets list)
   async function loadEntries() {
     if (!tmId) return;
 
@@ -104,6 +104,51 @@
 
     loading = true;
     errorMessage = "";
+    page = 1;
+    hasMore = true;
+
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: pageSize.toString(),
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        metadata_field: selectedMetadata
+      });
+
+      if (searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
+      }
+
+      const response = await fetch(`${API_BASE}/api/ldm/tm/${tmId}/entries?${params}`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        entries = data.entries;
+        total = data.total;
+        hasMore = entries.length < total;
+        logger.info("Loaded TM entries", { count: entries.length, total, hasMore });
+      } else {
+        const error = await response.json();
+        errorMessage = error.detail || "Failed to load entries";
+        logger.error("Failed to load TM entries", { error: errorMessage });
+      }
+    } catch (err) {
+      errorMessage = err.message;
+      logger.error("Error loading TM entries", { error: err.message });
+    } finally {
+      loading = false;
+    }
+  }
+
+  // UI-035: Load more entries (infinite scroll)
+  async function loadMoreEntries() {
+    if (!tmId || loadingMore || !hasMore) return;
+
+    loadingMore = true;
+    page += 1;
 
     try {
       const params = new URLSearchParams({
@@ -124,19 +169,23 @@
 
       if (response.ok) {
         const data = await response.json();
-        entries = data.entries;
-        total = data.total;
-        logger.info("Loaded TM entries", { count: entries.length, total, page });
-      } else {
-        const error = await response.json();
-        errorMessage = error.detail || "Failed to load entries";
-        logger.error("Failed to load TM entries", { error: errorMessage });
+        entries = [...entries, ...data.entries];
+        hasMore = entries.length < data.total;
+        logger.info("Loaded more TM entries", { count: data.entries.length, total: entries.length, hasMore });
       }
     } catch (err) {
-      errorMessage = err.message;
-      logger.error("Error loading TM entries", { error: err.message });
+      logger.error("Error loading more TM entries", { error: err.message });
     } finally {
-      loading = false;
+      loadingMore = false;
+    }
+  }
+
+  // UI-035: Handle scroll for infinite loading
+  function handleScroll(event) {
+    const { scrollTop, scrollHeight, clientHeight } = event.target;
+    // Load more when scrolled to 80% of content
+    if (scrollTop + clientHeight >= scrollHeight * 0.8 && hasMore && !loadingMore) {
+      loadMoreEntries();
     }
   }
 
@@ -256,12 +305,7 @@
     loadEntries();
   }
 
-  // Handle pagination
-  function handlePageChange(event) {
-    page = event.detail.page;
-    pageSize = event.detail.pageSize;
-    loadEntries();
-  }
+  // UI-035: Removed handlePageChange - using infinite scroll instead
 
   // BUG-027: Open Edit Modal (not inline editing)
   function startEdit(entry) {
@@ -330,31 +374,7 @@
     }
   }
 
-  // Toggle confirm (quick action from table)
-  async function toggleConfirm(entry) {
-    const newConfirmState = !entry.is_confirmed;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/ldm/tm/${tmId}/entries/${entry.id}/confirm?confirm=${newConfirmState}`, {
-        method: 'POST',
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        logger.success(`TM entry ${newConfirmState ? 'confirmed' : 'unconfirmed'}`, { entryId: entry.id });
-        await loadEntries();
-        markAsStale(); // FEAT-004: Mark indexes as stale
-        dispatch('updated');
-      } else {
-        const error = await response.json();
-        errorMessage = error.detail || "Failed to confirm entry";
-        logger.error("Failed to confirm TM entry", { error: errorMessage });
-      }
-    } catch (err) {
-      errorMessage = err.message;
-      logger.error("Error confirming TM entry", { error: err.message });
-    }
-  }
+  // UI-036: Removed toggleConfirm - no longer needed in TM grid
 
   // Delete entry
   async function deleteEntry(entry) {
@@ -533,8 +553,8 @@
     </div>
   </div>
 
-  <!-- Table -->
-  <div class="entries-table">
+  <!-- Table with infinite scroll (UI-035) -->
+  <div class="entries-table" onscroll={handleScroll}>
     {#if loading && entries.length === 0}
       <div class="loading-container">
         <InlineLoading description="Loading entries..." />
@@ -620,14 +640,7 @@
                 </td>
               {/if}
               <td class="col-actions">
-                <Button
-                  kind={entry.is_confirmed ? "secondary" : "primary"}
-                  size="small"
-                  icon={entry.is_confirmed ? Close : CheckmarkFilled}
-                  iconDescription={entry.is_confirmed ? "Unconfirm" : "Confirm"}
-                  tooltipAlignment="end"
-                  on:click={() => toggleConfirm(entry)}
-                />
+                <!-- UI-036: Removed Confirm button -->
                 <Button
                   kind="ghost"
                   size="small"
@@ -658,16 +671,14 @@
     {/if}
   </div>
 
-  <!-- Pagination -->
-  {#if total > 0}
-    <div class="pagination-container">
-      <Pagination
-        totalItems={total}
-        pageSize={pageSize}
-        pageSizes={[50, 100, 200, 500]}
-        page={page}
-        on:change={handlePageChange}
-      />
+  <!-- UI-035: Infinite scroll loading indicator -->
+  {#if loadingMore}
+    <div class="loading-bar">
+      <InlineLoading description="Loading more..." />
+    </div>
+  {:else if hasMore && entries.length > 0}
+    <div class="scroll-hint">
+      Scroll for more ({entries.length} of {total.toLocaleString()})
     </div>
   {/if}
 </div>
@@ -948,9 +959,13 @@
     border-top: 1px solid var(--cds-border-subtle-01);
   }
 
-  .pagination-container {
-    padding: 0.5rem 1rem;
-    background: var(--cds-layer-01);
+  /* UI-035: Removed pagination-container, added scroll-hint */
+  .scroll-hint {
+    text-align: center;
+    padding: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    background: var(--cds-layer-02);
     border-top: 1px solid var(--cds-border-subtle-01);
   }
 

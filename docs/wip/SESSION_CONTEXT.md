@@ -1,115 +1,105 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-20 16:30 | **Build:** 307 (v25.1220.1551) | **Next:** 308
+**Last Updated:** 2025-12-20 19:15 | **Build:** 308 (pending) | **Previous:** 307
 
 ---
 
 ## CURRENT STATE
 
+### Build 308: IN PROGRESS
+Major UI/UX cleanup session - 10 issues fixed:
+- Removed all garbage UI elements (pagination, footers, "No email", etc.)
+- Fixed sync functionality (auto-sync + manual sync now update TM status)
+- Added user profile modal
+- Cleaned up column logic (2 columns default in file viewer)
+
 ### Build 307 Status: VERIFIED
-Build 307 (v25.1220.1551) installed to Playground and verified:
-- TM upload bug fix (`result['entry_count']`) ✅
-- Q-001: Auto-sync tested LIVE ✅
-  - Backend logs show: `Auto-sync TM 131: INSERT=6, UPDATE=0, time=13.05s`
-- Full cleanup verified (AppData + Playground)
-
-### Build 306 Status: VERIFIED
-Build 306 (v25.1220.1456) verified:
-- UI-027: Confirm button removed from TMViewer ✅
-- Q-001: Auto-sync enabled for TM changes ✅
-
-### Build 305 Status: VERIFIED
-Build 305 (v25.1220.1414) installed to Playground and verified via CDP:
-- UI-034: All right-side buttons have `tooltipAlignment="end"`
-
-### Build 304 Status: VERIFIED
-Build 304 (v25.1219.1934) verified via CDP:
-- UI-031: Font size setting → Grid (12px → 16px verified)
-- UI-032: Bold setting → Grid (400 → 600 verified)
-- FONT-001: Full multilingual font stack (100+ languages)
+- TM upload bug fix
+- Q-001 auto-sync live-tested
 
 ---
 
 ## WHAT WAS DONE THIS SESSION
 
-### 1. Verified Build 307
-- Confirmed v25.1220.1551 released at 15:58
-- Installed to Playground with full cleanup
-- Tested Q-001 auto-sync LIVE with real TM upload
+### 1. Major UI Cleanup (6 fixes)
 
-### 2. Fixed TM Upload Bug
-**Problem:** `AttributeError: 'dict' object has no attribute 'entry_count'`
-**Fix:** Changed `result.entry_count` to `result['entry_count']` in api.py line 1069
+| Issue | What Was Removed/Fixed |
+|-------|------------------------|
+| **UI-035** | Pagination from TMDataGrid (infinite scroll now) |
+| **UI-036** | Confirm button from TMDataGrid |
+| **UI-037** | "No email" text from user menu |
+| **UI-040** | Useless "i" button in PresenceBar (empty Tooltip trigger) |
+| **UI-041** | "Showing rows X-Y of Z" footer from VirtualGrid |
+| **UI-039** | Third column logic - only StringID/Reference available |
 
-### 3. Live-Tested Q-001 Auto-sync
-- Uploaded test TM (5 entries) via API
-- Added entry via API
-- Backend logs confirmed: `Auto-sync TM 131: INSERT=6, UPDATE=0, time=13.05s`
-- Model2Vec loaded and synced successfully
+### 2. Added User Profile Modal (UI-038)
 
-### 4. Created CDP Tests
-- `verify_ui034_tooltips.js` - Verifies tooltip alignment fix
-- `verify_ui027_no_confirm.js` - Verifies Confirm button removed
-- `test_auto_sync.js` - Tests Q-001 auto-sync feature
+- Click username in user menu → opens profile modal
+- Shows: Full Name, Username, Team, Department, Language, Role
+- Created `UserProfileModal.svelte`
+
+### 3. Fixed Sync Issues (3 bugs, 1 root cause)
+
+| Issue | Problem | Fix |
+|-------|---------|-----|
+| **BUG-032** | Auto-sync not updating TM status | Added `tm.status = "ready"` |
+| **BUG-033** | Manual sync not updating TM status | Added `tm.status = "ready"` |
+| **BUG-034** | TMs stuck as "pending" | Same fix - status now updates |
+
+---
+
+## FILES CHANGED THIS SESSION
+
+| File | Changes |
+|------|---------|
+| `TMDataGrid.svelte` | Removed pagination, Confirm button; added infinite scroll |
+| `VirtualGrid.svelte` | Removed footer, TM Results column |
+| `PresenceBar.svelte` | Fixed Tooltip trigger (removed empty triggerText) |
+| `+layout.svelte` | Removed "No email", added profile modal |
+| `UserProfileModal.svelte` | NEW - user profile display |
+| `api.py` | Fixed auto-sync and manual sync to update TM status |
+| `ISSUES_TO_FIX.md` | Updated with all fixes |
+| `SESSION_CONTEXT.md` | This file |
 
 ---
 
 ## ISSUES SUMMARY
 
-| Issue | Status | Description |
-|-------|--------|-------------|
-| BUG-028 | VERIFIED | Model2Vec import (Build 301) |
-| BUG-029 | VERIFIED | Upload as TM (Build 301) |
-| BUG-030 | VERIFIED | WebSocket status (Build 303) |
-| UI-031 | VERIFIED | Font size → grid (Build 304) |
-| UI-032 | VERIFIED | Bold → grid (Build 304) |
-| FONT-001 | VERIFIED | 100+ language fonts (Build 304) |
-| UI-033 | CLOSED | App Settings NOT empty |
-| UI-034 | VERIFIED | Tooltips cut off at window edge (Build 305) |
-| UI-027 | VERIFIED | Confirm button removed (Build 306) |
-| Q-001 | VERIFIED | Auto-sync enabled (Build 306), live-tested (Build 307) |
-| BUG-031 | VERIFIED | TM upload response fix (Build 307) |
+### Fixed This Session (Build 308)
+| Issue | Description |
+|-------|-------------|
+| UI-035 | Removed pagination from TMDataGrid |
+| UI-036 | Removed Confirm button from TMDataGrid |
+| UI-037 | Removed "No email" text |
+| UI-038 | Added user profile modal |
+| UI-039 | Fixed third column logic |
+| UI-040 | Fixed PresenceBar tooltip trigger |
+| UI-041 | Removed VirtualGrid footer |
+| BUG-032 | Fixed auto-sync status update |
+| BUG-033 | Fixed manual sync status update |
+| BUG-034 | Fixed pending status issue |
 
 ### Counts
-- **Fixed & Verified:** 11
+- **Fixed This Session:** 10
 - **Open Bugs:** 0
-- **Decisions Made:** 0 (all implemented)
+
+---
+
+## COLUMN CONFIGURATION
+
+| Viewer | Default | Optional |
+|--------|---------|----------|
+| **File Viewer** | Source, Target | StringID (left), Reference (right) |
+| **TM Viewer** | Source, Target, Metadata | - |
+| **TM Grid** | Source, Target, Actions | - |
 
 ---
 
 ## NEXT SESSION TODO
 
-1. No pending items - all issues verified
-2. Ready for new features or bug reports
-
----
-
-## CDP TESTING (AUTONOMOUS FROM WSL)
-
-**Key Discovery:** WSL can run CDP tests via Windows Node.js!
-
-### Launch App with CDP (from WSL)
-```bash
-/mnt/c/Windows/System32/taskkill.exe /F /IM "LocaNext.exe" /T 2>/dev/null
-cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
-./LocaNext.exe --remote-debugging-port=9222 &
-```
-
-### Run CDP Tests (from WSL)
-```bash
-/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/login.js
-/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/quick_check.js
-/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/verify_ui031_ui032.js
-```
-
-### Available CDP Tests
-| Test | Purpose |
-|------|---------|
-| `login.js` | Login as neil/neil |
-| `quick_check.js` | Check current page state |
-| `verify_ui031_ui032.js` | Verify font settings apply to grid |
-| `verify_ui034_tooltips.js` | Verify tooltip alignment fix |
-| `verify_ui027_no_confirm.js` | Verify Confirm button removed |
+1. Verify Build 308 in Playground
+2. Test all 10 fixes work correctly
+3. Ready for new features or bug reports
 
 ---
 
@@ -118,44 +108,12 @@ cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 | What | Path |
 |------|------|
 | Playground | `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext` |
-| CDP Tests | `testing_toolkit/cdp/*.js` |
+| TMDataGrid | `locaNext/src/lib/components/ldm/TMDataGrid.svelte` |
 | VirtualGrid | `locaNext/src/lib/components/ldm/VirtualGrid.svelte` |
-| App CSS | `locaNext/src/app.css` |
-| Preferences Store | `locaNext/src/lib/stores/preferences.js` |
+| PresenceBar | `locaNext/src/lib/components/ldm/PresenceBar.svelte` |
+| Layout | `locaNext/src/routes/+layout.svelte` |
+| Backend API | `server/tools/ldm/api.py` |
 
 ---
 
-## ARCHITECTURE REMINDER
-
-```
-LocaNext.exe (User PC)           Central PostgreSQL
-├─ Electron + Svelte 5       →   ├─ All text data
-├─ Embedded Python Backend       ├─ Users, sessions
-├─ FAISS indexes (local)         └─ TM entries, logs
-├─ Model2Vec (~128MB)
-├─ Qwen (2.3GB, opt-in)
-└─ File parsing (local)
-
-Preferences:
-├─ fontSize: 'small' | 'medium' | 'large'
-├─ fontWeight: 'normal' | 'bold'
-└─ Stored in localStorage, applied via CSS vars
-```
-
----
-
-## FILES CHANGED THIS SESSION
-
-| File | Changes |
-|------|---------|
-| `api.py` | Fixed TM upload bug (BUG-031) |
-| `test_auto_sync.js` | NEW - CDP test for auto-sync |
-| `CLAUDE.md` | Updated for Build 307 |
-| `Roadmap.md` | Updated for Build 307 |
-| `SESSION_CONTEXT.md` | This file |
-| `ISSUES_TO_FIX.md` | Added BUG-031 |
-| `GITEA_TRIGGER.txt` | Triggered Build 307 |
-
----
-
-*Session complete - Build 307 verified, Q-001 live-tested, TM upload fix confirmed*
+*Session in progress - Build 308 pending verification*

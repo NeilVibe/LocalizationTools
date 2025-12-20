@@ -1,212 +1,133 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-20 16:30 | **Build:** 307 (v25.1220.1551) | **Next:** 308
+**Last Updated:** 2025-12-20 19:00 | **Build:** 308 (pending) | **Previous:** 307
 
 ---
 
 ## Quick Summary
 
-| Status | Count | Items |
-|--------|-------|-------|
-| **Fixed (verified)** | 10 | BUG-028, BUG-029, BUG-030, BUG-031, UI-031, UI-032, FONT-001, UI-034, UI-027, Q-001 |
-| **Closed** | 1 | UI-033 |
-| **Open** | 0 | None |
+| Status | Count |
+|--------|-------|
+| **OPEN** | 0 |
+| **FIXED (This Session)** | 10 |
 
 ---
 
-## Fixed - Build 303
+## FIXED - BUILD 308
 
-### BUG-030: WebSocket Shows Disconnected - VERIFIED FIXED
+### UI-035: Removed Pagination from TMDataGrid
 
-**Component:** Server Status Panel
-**Problem:** Always showed "WebSocket: disconnected" even when connected.
-
-**Root Cause:** Nested try/except import structure in `get_websocket_stats()` failed silently.
-
-**Fix Applied (Build 303):**
-```python
-# Before (broken):
-from server.utils.websocket import sio
-# ...
-try:
-    from server.utils.websocket import connected_clients
-except: pass
-
-# After (working):
-from server.utils.websocket import sio, connected_clients
-```
-
-**Status:** ✅ Verified fixed in Build 303 (v25.1219.1829)
+- **Problem:** "Items per page 100" dropdown and "1 of 1" pagination
+- **Fix:** Replaced with infinite scroll (like TMViewer)
+- **File:** `TMDataGrid.svelte`
+- **Status:** FIXED
 
 ---
 
-## Open UI Issues
+### UI-036: Removed Confirm Button from TMDataGrid
 
-### UI-031: Font Size Setting - ✅ VERIFIED (Build 304)
-
-**Component:** Display Settings → VirtualGrid
-**Problem:** Changing font size didn't affect the grid.
-**Root Cause:** `VirtualGrid.svelte` had hardcoded `font-size: 0.8125rem` in CSS, ignored preferences.
-
-**Fix Applied:**
-1. Added `$derived` values for font styles from preferences store
-2. Applied CSS custom properties `--grid-font-size` and `--grid-font-weight`
-3. Updated `.cell` CSS to use these variables
-
-**Verified:** 2025-12-20 via CDP test
-- Small: 12px → Large: 16px ✅
+- **Problem:** Confirm/Unconfirm button on each TM entry row
+- **Fix:** Removed button and toggleConfirm function
+- **File:** `TMDataGrid.svelte`
+- **Status:** FIXED
 
 ---
 
-### UI-032: Bold Setting - ✅ VERIFIED (Build 304)
+### UI-037: Removed "No email" Text
 
-**Component:** Display Settings → VirtualGrid
-**Problem:** Toggling bold didn't affect the grid.
-**Root Cause:** Same as UI-031 - preferences not connected to grid CSS.
-
-**Fix Applied:** Same fix as UI-031 (both use `--grid-font-weight` CSS variable)
-
-**Verified:** 2025-12-20 via CDP test
-- Normal: 400 → Bold: 600 ✅
+- **Problem:** User menu showed "No email" when user had no email set
+- **Fix:** Only show email line if email exists
+- **File:** `+layout.svelte`
+- **Status:** FIXED
 
 ---
 
-### FONT-001: Multilingual Font Stack - ✅ VERIFIED (Build 304)
+### UI-038: Added User Profile Modal
 
-**Component:** Global (app.css)
-**Problem:** IBM Plex Sans doesn't support CJK/Cyrillic/Indic glyphs natively.
-**Impact:** Non-Latin text might render with inconsistent fallback fonts.
-
-**Fix Applied:** Complete multilingual font stack in `app.css`:
-
-**Script Coverage:**
-
-| Script | Languages | Windows Font | Noto Fallback |
-|--------|-----------|--------------|---------------|
-| **Latin** | English, French, German, Spanish, Portuguese, Italian, Polish, Dutch, Indonesian, Vietnamese, etc. | Segoe UI | Noto Sans |
-| **Cyrillic** | Russian, Ukrainian, Bulgarian, Serbian, Macedonian, Belarusian | Segoe UI | Noto Sans |
-| **Greek** | Greek | Segoe UI | Noto Sans |
-| **CJK** | Korean | Malgun Gothic | Noto Sans CJK KR |
-| | Chinese (Simplified) | Microsoft YaHei | Noto Sans CJK SC |
-| | Chinese (Traditional) | Microsoft JhengHei | Noto Sans CJK TC |
-| | Japanese | Meiryo, Yu Gothic | Noto Sans CJK JP |
-| **Thai** | Thai | Leelawadee UI | Noto Sans Thai |
-| **Arabic** | Arabic, Persian, Urdu | Segoe UI | Noto Sans Arabic |
-| **Hebrew** | Hebrew | Segoe UI | Noto Sans Hebrew |
-| **Indic** | Hindi, Marathi, Sanskrit | Nirmala UI | Noto Sans Devanagari |
-| | Bengali | Nirmala UI | Noto Sans Bengali |
-| | Tamil | Nirmala UI | Noto Sans Tamil |
-| | Telugu | Nirmala UI | Noto Sans Telugu |
-| **Caucasian** | Georgian | Segoe UI | Noto Sans Georgian |
-| | Armenian | Segoe UI | Noto Sans Armenian |
-| **Emoji** | All | Segoe UI Emoji | Noto Color Emoji |
-
-**Total:** 100+ languages via system fonts + Noto fallbacks
-
-**Files Changed:**
-- `locaNext/src/app.css`
-
-**Status:** ✅ VERIFIED - Build 304 installed, fonts render correctly
+- **Problem:** Clicking username should open profile modal with user details
+- **Fix:** Created UserProfileModal.svelte, shows name/team/department/language/role
+- **Files:** `UserProfileModal.svelte`, `+layout.svelte`
+- **Status:** FIXED
 
 ---
 
-### UI-034: Tooltips Cut Off at Window Edge - ✅ FIXED (Build 305)
+### UI-039: Fixed Third Column Logic
 
-**Component:** Global (all tooltips)
-**Problem:** White tooltip bubbles get cut off when near window edge (especially right side).
-**Example:** Settings button tooltip on far right is cut off.
-
-**Fix Applied:**
-1. Added `tooltipAlignment="end"` to all right-side buttons:
-   - LDM toolbar buttons (TM, Grid Columns, Reference Settings, Server Status, Display Settings)
-   - GlobalStatusBar action buttons
-   - TMManager, TMViewer, TMDataGrid action buttons
-2. Added CSS rules to constrain tooltips to viewport
-
-**Files Changed:**
-- `locaNext/src/lib/components/apps/LDM.svelte`
-- `locaNext/src/lib/components/GlobalStatusBar.svelte`
-- `locaNext/src/lib/components/ldm/TMManager.svelte`
-- `locaNext/src/lib/components/ldm/TMViewer.svelte`
-- `locaNext/src/lib/components/ldm/TMDataGrid.svelte`
-- `locaNext/src/app.css`
-
-**Status:** ✅ VERIFIED - Build 305 (v25.1220.1414)
-**Verified:** 2025-12-20 via CDP test - all right-side buttons have `tooltipAlignment="end"`
+- **Problem:** Extra columns showing when they shouldn't
+- **Fix:** Removed TM Results column - only StringID (left) and Reference (right) available as third column options
+- **File:** `VirtualGrid.svelte`
+- **Default:** File viewer shows 2 columns only (Source, Target)
+- **Status:** FIXED
 
 ---
 
-## Verified (Build 306)
+### UI-040: Fixed PresenceBar Tooltip Trigger
 
-### UI-027: Confirm Button - ✅ VERIFIED REMOVED
-
-**Decision:** Remove entirely
-**Reason:** Simplifies UI - auto-save without confirmation step
-**Implementation:** Removed Confirm/Unconfirm button from TMViewer.svelte
-**Verified:** 2025-12-20 via source grep - no toggleConfirm function, no Confirm button
+- **Problem:** Empty "i" button/trigger next to viewer avatars
+- **Fix:** Removed `triggerText=""` from Tooltip, use native title attribute instead
+- **File:** `PresenceBar.svelte`
+- **Status:** FIXED
 
 ---
 
-### Q-001: TM Sync - ✅ VERIFIED AUTO-SYNC (LIVE-TESTED)
+### UI-041: Removed VirtualGrid Footer
 
-**Decision:** Auto-sync on any TM change
-**Reason:** Model2Vec is fast (~29k sentences/sec) - sync automatically
-**Implementation:** Added background task auto-sync to:
-- `add_tm_entry` endpoint
-- `update_tm_entry` endpoint
-- `delete_tm_entry` endpoint
-**Verified:** 2025-12-20 via source grep - _auto_sync_tm_indexes in all three endpoints
-**Live-Tested:** 2025-12-20 - Backend logs show: `Auto-sync TM 131: INSERT=6, UPDATE=0, time=13.05s`
+- **Problem:** "Showing rows X-Y of Z" footer in file viewer
+- **Fix:** Removed grid-footer div and CSS
+- **File:** `VirtualGrid.svelte`
+- **Status:** FIXED
 
 ---
 
-### BUG-031: TM Upload Response Error - ✅ FIXED (Build 307)
+### BUG-032: Fixed Auto-Sync
 
-**Problem:** `AttributeError: 'dict' object has no attribute 'entry_count'`
-**Root Cause:** In `api.py` line 1069, `result.entry_count` was used but `result` is a dict.
-**Fix:** Changed to `result['entry_count']`
-**Verified:** 2025-12-20 - TM upload works, auto-sync triggers correctly
-
----
-
-## Completed (Build 301)
-
-| ID | Description | Verified |
-|----|-------------|----------|
-| BUG-028 | Model2Vec pip install in build.yml | ✅ CDP tested |
-| BUG-029 | Upload as TM context menu fix | ✅ CDP tested |
-| UI-025 | Removed "Items per page" selector | ✅ |
-| UI-026 | Removed pagination, added infinite scroll | ✅ |
-| UI-028 | Removed "Showing rows X-Y" | ✅ |
-| UI-029 | Removed download menu from VirtualGrid | ✅ |
-| UI-030 | Info button removal (was already removed) | ✅ |
-| UI-033 | App Settings NOT empty (has Preferences) | ✅ Closed |
+- **Problem:** Auto-sync after TM entry edit wasn't updating TM status
+- **Fix:** Added `tm.status = "ready"` after successful sync
+- **File:** `api.py` (_auto_sync_tm_indexes function)
+- **Status:** FIXED
 
 ---
 
-## Completed (Earlier Builds)
+### BUG-033: Fixed Manual Sync
+
+- **Problem:** Manual sync wasn't updating TM status to "ready"
+- **Fix:** Added status update after sync_tm_indexes completes
+- **File:** `api.py` (sync_tm_indexes endpoint)
+- **Status:** FIXED
+
+---
+
+### BUG-034: Fixed Pending Status
+
+- **Problem:** TMs stayed "pending" even after indexes were built/synced
+- **Root Cause:** Status wasn't being updated after sync operations
+- **Fix:** Both auto-sync and manual sync now update status to "ready"
+- **File:** `api.py`
+- **Status:** FIXED
+
+---
+
+## Column Configuration Summary
+
+| Viewer | Default Columns | Optional Columns |
+|--------|-----------------|------------------|
+| **File Viewer** | Source, Target | StringID (left), Reference (right) |
+| **TM Viewer** | Source, Target, Metadata | - |
+| **TM Grid** | Source, Target, Actions | - |
+
+---
+
+## History
+
+### Previous Builds (Verified)
 
 | ID | Description | Build |
 |----|-------------|-------|
-| BUG-023 | MODEL_NAME NameError fix | 300 |
-| FEAT-005 | Model2Vec default engine | 300 |
-| PERF-001 | Incremental HNSW | 300 |
-| PERF-002 | FAISS factorization | 300 |
-| UI-024 | Dynamic engine name in build modal | 300 |
-| Lazy Import | CI timeout fix (kr_similar) | 300 |
+| UI-025-028 | TMViewer infinite scroll, no pagination | 301-304 |
+| BUG-028-031 | Model2Vec, upload, WebSocket, TM upload | 301-307 |
+| UI-031-034 | Font size, bold, tooltips | 304-305 |
+| FONT-001 | Multilingual font support | 304 |
 
 ---
 
-## Model2Vec Info
-
-**Model:** `minishlab/potion-multilingual-128M`
-- 101 languages (Korean ✅)
-- 29,269 sentences/sec
-- 256 dimensions
-- MIT license
-
-This is the most powerful multilingual Model2Vec model available.
-
----
-
-*Updated 2025-12-20 16:30 | 0 critical, 0 bugs open, 0 UI open, all verified*
+*Updated 2025-12-20 19:00 | 0 OPEN issues, 10 fixed this session*

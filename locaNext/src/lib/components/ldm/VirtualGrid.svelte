@@ -109,15 +109,12 @@
     cols.push(allColumns.source);
     cols.push(allColumns.target);
 
-    // Optional: Reference column
+    // Optional: Reference column (on the right)
     if (prefs.showReference) {
       cols.push(allColumns.reference);
     }
 
-    // Optional: TM Results column
-    if (prefs.showTmResults) {
-      cols.push(allColumns.tm_result);
-    }
+    // UI-039: Removed TM Results column - only StringID (left) and Reference (right) are supported
 
     return cols;
   }
@@ -921,27 +918,7 @@
                   </div>
                 {/if}
 
-                <!-- TM Result Column (conditional - Phase 9) -->
-                {#if $preferences.showTmResults}
-                  {@const tmResult = getTMResultForRow(row)}
-                  <div
-                    class="cell tm-result"
-                    class:has-match={tmResult}
-                    class:high-match={tmResult && tmResult.similarity >= 0.9}
-                    class:medium-match={tmResult && tmResult.similarity >= 0.7 && tmResult.similarity < 0.9}
-                    class:low-match={tmResult && tmResult.similarity < 0.7}
-                    style="width: {allColumns.tm_result.width}px;"
-                    title={tmResult ? `${Math.round(tmResult.similarity * 100)}% match` : 'No TM match'}
-                    onmouseenter={() => fetchTMResultForRow(row)}
-                  >
-                    {#if tmResult}
-                      <span class="tm-similarity">{Math.round(tmResult.similarity * 100)}%</span>
-                      <span class="cell-content">{formatGridText(tmResult.target)}</span>
-                    {:else}
-                      <span class="cell-content no-match">-</span>
-                    {/if}
-                  </div>
-                {/if}
+                <!-- UI-039: Removed TM Result Column - only StringID (left) and Reference (right) are third column options -->
               {/if}
             </div>
           {/each}
@@ -955,9 +932,7 @@
       </div>
     {/if}
 
-    <div class="grid-footer">
-      <span>Showing rows {visibleStart + 1} - {Math.min(visibleEnd, total)} of {total.toLocaleString()}</span>
-    </div>
+    <!-- UI-041: Removed grid-footer (useless "Showing rows X-Y of Z") -->
   {:else}
     <div class="empty-state">
       <p>Select a file from the explorer to view its contents</p>
@@ -1351,13 +1326,7 @@
     border-top: 1px solid var(--cds-border-subtle-01);
   }
 
-  .grid-footer {
-    padding: 0.5rem 1rem;
-    background: var(--cds-layer-01);
-    border-top: 1px solid var(--cds-border-subtle-01);
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-  }
+  /* UI-041: Removed .grid-footer CSS */
 
   .empty-state {
     display: flex;
