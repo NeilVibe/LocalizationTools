@@ -504,6 +504,7 @@
                       size="small"
                       icon={Checkmark}
                       iconDescription="Save"
+                      tooltipAlignment="end"
                       disabled={saving}
                       on:click={() => saveEntry(entry.id)}
                     />
@@ -512,6 +513,7 @@
                       size="small"
                       icon={Close}
                       iconDescription="Cancel"
+                      tooltipAlignment="end"
                       on:click={cancelEdit}
                     />
                   </td>
@@ -542,6 +544,7 @@
                       size="small"
                       icon={entry.is_confirmed ? Close : CheckmarkFilled}
                       iconDescription={entry.is_confirmed ? "Unconfirm" : "Confirm"}
+                      tooltipAlignment="end"
                       on:click={() => toggleConfirm(entry)}
                     />
                     <Button
@@ -549,6 +552,7 @@
                       size="small"
                       icon={Edit}
                       iconDescription="Edit"
+                      tooltipAlignment="end"
                       on:click={() => startEdit(entry)}
                     />
                     <Button
@@ -556,6 +560,7 @@
                       size="small"
                       icon={TrashCan}
                       iconDescription="Delete"
+                      tooltipAlignment="end"
                       on:click={() => deleteEntry(entry.id)}
                     />
                   </td>

@@ -291,3 +291,20 @@ a.bx--header__menu-item::after {
 .bx--tooltip__trigger.bx--tooltip--visible::after {
   position: fixed !important;
 }
+
+/* UI-034: Prevent tooltips from being cut off at window edges */
+.bx--assistive-text,
+.bx--tooltip__trigger::before,
+.bx--btn--icon-only.bx--tooltip__trigger::before {
+  max-width: calc(100vw - 20px) !important;
+  word-wrap: break-word !important;
+  white-space: normal !important;
+}
+
+/* Ensure tooltips on right-aligned buttons don't overflow */
+.bx--btn--icon-only.bx--tooltip--align-end::before,
+.bx--btn--icon-only.bx--tooltip--align-end::after {
+  right: 0 !important;
+  left: auto !important;
+  transform: translateX(0) !important;
+}

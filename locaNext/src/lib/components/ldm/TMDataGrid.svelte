@@ -625,6 +625,7 @@
                   size="small"
                   icon={entry.is_confirmed ? Close : CheckmarkFilled}
                   iconDescription={entry.is_confirmed ? "Unconfirm" : "Confirm"}
+                  tooltipAlignment="end"
                   on:click={() => toggleConfirm(entry)}
                 />
                 <Button
@@ -632,6 +633,7 @@
                   size="small"
                   icon={Edit}
                   iconDescription="Edit"
+                  tooltipAlignment="end"
                   on:click={() => startEdit(entry)}
                 />
                 <Button
@@ -639,6 +641,7 @@
                   size="small"
                   icon={TrashCan}
                   iconDescription="Delete"
+                  tooltipAlignment="end"
                   on:click={() => deleteEntry(entry)}
                 />
               </td>

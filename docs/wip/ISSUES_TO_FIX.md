@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-19 18:45 | **Build:** 303 | **Next:** 304
+**Last Updated:** 2025-12-20 13:55 | **Build:** 304 | **Next:** 305
 
 ---
 
@@ -8,10 +8,9 @@
 
 | Status | Count | Items |
 |--------|-------|-------|
-| **Fixed (verified)** | 3 | BUG-028, BUG-029, BUG-030 |
-| **Fixed (Build 304)** | 3 | UI-031, UI-032, FONT-001 |
+| **Fixed (verified)** | 6 | BUG-028, BUG-029, BUG-030, UI-031, UI-032, FONT-001 |
+| **Fixed (Build 305)** | 1 | UI-034 |
 | **Closed** | 1 | UI-033 |
-| **Open UI Issues** | 1 | UI-034 |
 | **Decisions Needed** | 2 | UI-027, Q-001 |
 
 ---
@@ -44,7 +43,7 @@ from server.utils.websocket import sio, connected_clients
 
 ## Open UI Issues
 
-### UI-031: Font Size Setting - FIXED (Build 304)
+### UI-031: Font Size Setting - ✅ VERIFIED (Build 304)
 
 **Component:** Display Settings → VirtualGrid
 **Problem:** Changing font size didn't affect the grid.
@@ -55,14 +54,12 @@ from server.utils.websocket import sio, connected_clients
 2. Applied CSS custom properties `--grid-font-size` and `--grid-font-weight`
 3. Updated `.cell` CSS to use these variables
 
-**Files Changed:**
-- `locaNext/src/lib/components/ldm/VirtualGrid.svelte`
-
-**Status:** ✅ Fixed - awaiting Build 304 verification
+**Verified:** 2025-12-20 via CDP test
+- Small: 12px → Large: 16px ✅
 
 ---
 
-### UI-032: Bold Setting - FIXED (Build 304)
+### UI-032: Bold Setting - ✅ VERIFIED (Build 304)
 
 **Component:** Display Settings → VirtualGrid
 **Problem:** Toggling bold didn't affect the grid.
@@ -70,11 +67,12 @@ from server.utils.websocket import sio, connected_clients
 
 **Fix Applied:** Same fix as UI-031 (both use `--grid-font-weight` CSS variable)
 
-**Status:** ✅ Fixed - awaiting Build 304 verification
+**Verified:** 2025-12-20 via CDP test
+- Normal: 400 → Bold: 600 ✅
 
 ---
 
-### FONT-001: Multilingual Font Stack - FIXED (Build 304)
+### FONT-001: Multilingual Font Stack - ✅ VERIFIED (Build 304)
 
 **Component:** Global (app.css)
 **Problem:** IBM Plex Sans doesn't support CJK/Cyrillic/Indic glyphs natively.
@@ -109,16 +107,32 @@ from server.utils.websocket import sio, connected_clients
 **Files Changed:**
 - `locaNext/src/app.css`
 
-**Status:** ✅ Fixed - awaiting Build 304 verification
+**Status:** ✅ VERIFIED - Build 304 installed, fonts render correctly
 
 ---
 
-### UI-034: Tooltips Cut Off at Window Edge
+### UI-034: Tooltips Cut Off at Window Edge - ✅ FIXED (Build 305)
 
 **Component:** Global (all tooltips)
 **Problem:** White tooltip bubbles get cut off when near window edge (especially right side).
 **Example:** Settings button tooltip on far right is cut off.
-**Solution:** Implement smart tooltip positioning - auto-adjust placement so tooltip is always fully visible.
+
+**Fix Applied:**
+1. Added `tooltipAlignment="end"` to all right-side buttons:
+   - LDM toolbar buttons (TM, Grid Columns, Reference Settings, Server Status, Display Settings)
+   - GlobalStatusBar action buttons
+   - TMManager, TMViewer, TMDataGrid action buttons
+2. Added CSS rules to constrain tooltips to viewport
+
+**Files Changed:**
+- `locaNext/src/lib/components/apps/LDM.svelte`
+- `locaNext/src/lib/components/GlobalStatusBar.svelte`
+- `locaNext/src/lib/components/ldm/TMManager.svelte`
+- `locaNext/src/lib/components/ldm/TMViewer.svelte`
+- `locaNext/src/lib/components/ldm/TMDataGrid.svelte`
+- `locaNext/src/app.css`
+
+**Status:** ✅ Fixed - awaiting Build 305 verification
 
 ---
 

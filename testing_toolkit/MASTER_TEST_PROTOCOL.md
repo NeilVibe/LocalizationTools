@@ -79,17 +79,39 @@ git push origin main && git push gitea main
 ## Phase 3: Monitor Build
 
 ```bash
-# Check status
-curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq '.[0] | {status, conclusion}'
+# Check if build completed (via releases API)
+curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r '.[0] | {tag_name, created_at, name}'
 
-# Watch mode
-watch -n 30 'curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq ".[0] | {status, conclusion}"'
-
-# Get latest release
-curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r '.[0].tag_name'
+# Watch mode (check every 30s)
+watch -n 30 'curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r ".[0].tag_name"'
 ```
 
-**DO NOT install/test until:** `status: completed, conclusion: success`
+**DO NOT install/test until:** A new release with expected version appears.
+
+---
+
+## Phase 3.5: Verify Servers Online (REQUIRED)
+
+**Before installing, ensure all servers are running:**
+
+```bash
+./scripts/check_servers.sh
+```
+
+Or manually:
+
+```bash
+# PostgreSQL (central database)
+pg_isready -h 172.28.150.120 -p 5432 && echo "PostgreSQL: ✅" || echo "PostgreSQL: ❌"
+
+# Gitea (releases/CI)
+curl -s -o /dev/null -w "%{http_code}" http://172.28.150.120:3000/api/v1/version | grep -q 200 && echo "Gitea: ✅" || echo "Gitea: ❌"
+
+# Backend (if running locally for dev)
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/health | grep -q 200 && echo "Backend: ✅" || echo "Backend: ❌"
+```
+
+**All servers must be ✅ before proceeding.**
 
 ---
 

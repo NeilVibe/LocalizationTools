@@ -76,6 +76,7 @@
             size="small"
             icon={TaskView}
             iconDescription="View in Task Manager"
+            tooltipAlignment="end"
             on:click={goToTaskManager}
           />
           <Button
@@ -83,6 +84,7 @@
             size="small"
             icon={expanded ? ChevronDown : ChevronUp}
             iconDescription={expanded ? "Collapse" : "Expand"}
+            tooltipAlignment="end"
             on:click={toggleExpand}
           />
           <Button
@@ -90,6 +92,7 @@
             size="small"
             icon={Close}
             iconDescription="Hide (progress continues)"
+            tooltipAlignment="end"
             on:click={hideStatusBar}
           />
         </div>
