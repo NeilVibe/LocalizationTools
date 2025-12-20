@@ -4,16 +4,28 @@
   import { fileViewers, viewerCount, ldmConnected } from "$lib/stores/ldm.js";
   import { user } from "$lib/stores/app.js";
 
-  // UI-042: Simplified presence bar - just "X viewing" with hover tooltip
-  // Build viewer list for tooltip - filter out undefined/empty usernames
-  $: viewerNames = $fileViewers
-    .map(v => v.username || v.user_id || "Unknown")
-    .filter(name => name && name !== "Unknown");
+  // UI-042/UI-045: Simplified presence bar - just "X viewing" with hover tooltip
+  // Build viewer list for tooltip - filter out invalid usernames
+  // Filter out: undefined, null, empty, "Unknown", "?", "LOCAL"
+  const isValidUsername = (name) => {
+    if (!name) return false;
+    const invalid = ["Unknown", "?", "LOCAL", "undefined", "null", ""];
+    return !invalid.includes(name);
+  };
 
-  // If no viewers from WebSocket yet, show current user
+  $: viewerNames = $fileViewers
+    .map(v => v.username || v.user_id || "")
+    .filter(isValidUsername);
+
+  // Get current user's display name with robust fallback
+  $: currentUsername = isValidUsername($user?.username)
+    ? $user.username
+    : ($user?.user_id && isValidUsername($user.user_id) ? $user.user_id : "You");
+
+  // If no valid viewers from WebSocket, show current user
   $: viewerList = viewerNames.length > 0
     ? viewerNames.join(", ")
-    : ($user?.username || "You");
+    : currentUsername;
 </script>
 
 <!-- UI-042: Simplified - just "X viewing" with hover tooltip showing viewer names -->

@@ -8,8 +8,21 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 0 |
+| **OPEN** | 1 |
 | **FIXED (This Session)** | 13 |
+
+---
+
+## OPEN - TO FIX
+
+### UI-045: PresenceBar Tooltip Shows "?" Instead of Username
+
+- **Problem:** Hovering over "X viewing" shows "?" instead of the current user's name
+- **Expected:** When hovering, should show the username (e.g., "neil") even when only one viewer
+- **Root Cause:** Invalid usernames ("?", "Unknown", "LOCAL") weren't being filtered
+- **Fix:** Added `isValidUsername()` function to filter out invalid names, robust fallback chain
+- **File:** `PresenceBar.svelte`
+- **Status:** FIXED (pending Build 312 verification)
 
 ---
 
