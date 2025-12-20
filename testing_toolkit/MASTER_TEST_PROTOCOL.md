@@ -2,7 +2,7 @@
 
 **Complete workflow from code to validated build**
 
-**Updated:** 2025-12-19 | **Build:** 301
+**Updated:** 2025-12-21 | **Build:** 311
 
 ---
 
@@ -191,6 +191,114 @@ cd D:\LocalizationTools\testing_toolkit\cdp
 node login.js
 node quick_check.js
 ```
+
+---
+
+## Phase 6: AI Visual Verification Protocol
+
+**This protocol ensures UI/UX fixes are VERIFIED with screenshot proof before marking as complete.**
+
+### Mindset: Be Demanding
+
+1. **Never trust code changes alone** - Always verify visually
+2. **Take screenshots at every step** - Build evidence
+3. **Compare before/after** - Understand what changed
+4. **Don't mark VERIFIED until screenshot proves it**
+
+### Step-by-Step Protocol
+
+```bash
+# 1. Take screenshot via CDP (from WSL)
+/mnt/c/Program\ Files/nodejs/node.exe -e "
+const CDP = require('chrome-remote-interface');
+const fs = require('fs');
+
+(async () => {
+    const client = await CDP({ port: 9222 });
+    const { Page } = client;
+    await Page.enable();
+
+    const screenshot = await Page.captureScreenshot({ format: 'png' });
+    const buffer = Buffer.from(screenshot.data, 'base64');
+    fs.writeFileSync('C:\\\\path\\\\to\\\\screenshot.png', buffer);
+    console.log('Screenshot saved');
+
+    await client.close();
+})();
+"
+
+# 2. View screenshot (Claude can read images)
+# Use the Read tool on the .png file
+
+# 3. Analyze and verify the fix is visible
+```
+
+### What to Verify Visually
+
+| Issue Type | What to Look For |
+|------------|------------------|
+| **Column layout** | No overlap, proper separator lines, columns fill width |
+| **Removed elements** | Element NOT visible in DOM/UI |
+| **Added elements** | Element IS visible and correct |
+| **Responsive layout** | Columns adapt to container width |
+| **Text/labels** | Correct text, no "?" or "undefined" |
+
+### Svelte 5 UIUX Verification
+
+When implementing UI fixes with Svelte 5:
+
+1. **Verify `$state()` reactivity** - Change state, verify UI updates
+2. **Verify percentage widths** - Resize window, verify auto-adaptation
+3. **Verify no hardcoded pixels** - Columns should flex, not fixed
+
+### Screenshot Evidence Pattern
+
+```
+Build XXX Verification:
+1. build{XXX}_dashboard.png - Initial state
+2. build{XXX}_fileview.png - File viewer opened
+3. build{XXX}_detail.png - Close-up of specific fix
+4. build{XXX}_verified.png - Final proof screenshot
+```
+
+### Example: UI-044 Verification
+
+```
+Issue: Source/Target columns overlapping
+Fix: Added 2px border + percentage-based widths
+
+Verification Steps:
+1. Open file with content (sampleofLanguageData.txt)
+2. Screenshot shows:
+   - Clear vertical line between SOURCE (KR) and TARGET
+   - Both columns fill available width
+   - No empty 3rd column on right
+3. Status: VERIFIED ✅
+```
+
+### Documentation After Verification
+
+Update these files:
+1. **ISSUES_TO_FIX.md** - Mark status as VERIFIED, add screenshot reference
+2. **SESSION_CONTEXT.md** - Document what was verified and how
+3. **GITEA_TRIGGER.txt** - Add build description
+
+### AI State of Mind Principles
+
+1. **Be skeptical** - Code changes don't prove UI works
+2. **Be visual** - Screenshots reveal what users actually see
+3. **Be thorough** - Test multiple scenarios, not just happy path
+4. **Be precise** - Document exactly what was fixed and how
+5. **Be demanding** - Don't accept "probably works", need proof
+
+### Common Verification Failures
+
+| Symptom | Likely Cause |
+|---------|--------------|
+| Screenshot shows old UI | Browser cache - need hard refresh |
+| Element still visible | CSS specificity issue or wrong selector |
+| Text shows "?" or "undefined" | Reactive binding not working |
+| Layout broken at edges | Missing min-width or flex constraints |
 
 ---
 

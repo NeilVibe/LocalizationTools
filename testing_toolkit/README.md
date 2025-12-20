@@ -217,6 +217,60 @@ Total: 8/8 passed
 
 ---
 
+## 🎨 Svelte 5 UIUX Testing
+
+### Philosophy: Auto-Adaptive UI
+
+Modern UI should **adapt automatically** - no hardcoded pixel widths for main content.
+
+| Principle | Implementation | Verification |
+|-----------|----------------|--------------|
+| **Percentage widths** | `style="flex: 0 0 {percent}%"` | Resize window, columns adapt |
+| **Reactive state** | `let width = $state(50)` | Change state, UI updates instantly |
+| **Clear separators** | `border-right: 2px solid` | Visible line between columns |
+| **No clutter** | Remove pagination, footers | Screenshot shows clean UI |
+
+### Visual Verification Protocol
+
+**See:** [MASTER_TEST_PROTOCOL.md - Phase 6](MASTER_TEST_PROTOCOL.md#phase-6-ai-visual-verification-protocol)
+
+1. **Take screenshot** via CDP
+2. **Read image** (Claude can analyze PNGs)
+3. **Verify fix** is visible
+4. **Document proof** in ISSUES_TO_FIX.md
+
+### AI State of Mind
+
+When verifying UIUX fixes:
+
+```
+1. Be skeptical  - Code changes ≠ working UI
+2. Be visual     - Screenshots reveal user experience
+3. Be thorough   - Test edge cases
+4. Be precise    - Document exactly what changed
+5. Be demanding  - Require proof before marking VERIFIED
+```
+
+### Example: Column Layout Test
+
+```javascript
+// Get layout info via CDP
+const layoutInfo = await Runtime.evaluate({
+    expression: `
+        const cells = document.querySelectorAll('.cell');
+        return Array.from(cells).map(c => ({
+            class: c.className,
+            left: c.getBoundingClientRect().left,
+            width: c.getBoundingClientRect().width
+        }));
+    `
+});
+
+// Verify: columns adjacent, no gaps, fill width
+```
+
+---
+
 ## Related Docs
 
 | Doc | Description |
@@ -228,4 +282,4 @@ Total: 8/8 passed
 
 ---
 
-*Updated: 2025-12-19 | Build 300*
+*Updated: 2025-12-21 | Build 311*
