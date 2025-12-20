@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-20 13:55 | **Build:** 304 | **Next:** 305
+**Last Updated:** 2025-12-20 14:45 | **Build:** 305 (v25.1220.1414) | **Next:** 306
 
 ---
 
@@ -8,8 +8,7 @@
 
 | Status | Count | Items |
 |--------|-------|-------|
-| **Fixed (verified)** | 6 | BUG-028, BUG-029, BUG-030, UI-031, UI-032, FONT-001 |
-| **Fixed (Build 305)** | 1 | UI-034 |
+| **Fixed (verified)** | 7 | BUG-028, BUG-029, BUG-030, UI-031, UI-032, FONT-001, UI-034 |
 | **Closed** | 1 | UI-033 |
 | **Decisions Needed** | 2 | UI-027, Q-001 |
 
@@ -132,7 +131,8 @@ from server.utils.websocket import sio, connected_clients
 - `locaNext/src/lib/components/ldm/TMDataGrid.svelte`
 - `locaNext/src/app.css`
 
-**Status:** ✅ Fixed - awaiting Build 305 verification
+**Status:** ✅ VERIFIED - Build 305 (v25.1220.1414)
+**Verified:** 2025-12-20 via CDP test - all right-side buttons have `tooltipAlignment="end"`
 
 ---
 
@@ -204,4 +204,4 @@ This is the most powerful multilingual Model2Vec model available.
 
 ---
 
-*Updated 2025-12-19 18:50 | 0 critical, 0 bugs open, 3 UI open, 2 decisions*
+*Updated 2025-12-20 14:45 | 0 critical, 0 bugs open, 0 UI open, 2 decisions*

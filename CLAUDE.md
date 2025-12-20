@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512201400 | **Build:** 304 | **Next:** 305 | **Issues:** 3
+**Version:** 2512201430 | **Build:** 305 (triggered) | **Next:** 306 | **Issues:** 2
 
 > **KEEP THIS FILE COMPACT.** Details in linked docs.
 
@@ -57,7 +57,7 @@ OFFLINE: SQLite (single-user, auto-fallback)
 2. **No Backend Mods** - Only wrapper layers (API, GUI)
 3. **Logger Only** - Never `print()`, always `logger`
 4. **Dual Push** - `git push origin main && git push gitea main`
-5. **WSL ↔ Windows** - CDP tests run from Windows PowerShell (WSL2 can't reach Windows localhost)
+5. **WSL ↔ Windows** - CDP tests can run from WSL via `/mnt/c/Program\ Files/nodejs/node.exe`
 6. **Fix Everything** - No defer, no excuses, fix all issues
 
 ---
@@ -141,13 +141,13 @@ docs/
 
 ## Stats
 
-- **Build:** 304 (v25.1219.1934) | Next: 305
+- **Build:** 305 (v25.1220.1414) VERIFIED | Previous: 304
 - **Tests:** ~273 in CI
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
-- **Open Issues:** 3 (1 UI, 2 decisions)
+- **Open Issues:** 0 bugs, 2 decisions pending (UI-027, Q-001)
 - **Languages:** 100+ (full Unicode support)
 
 ---
 
-*Last updated: 2025-12-20 14:00 | Hub file - details in linked docs*
+*Last updated: 2025-12-20 14:30 | Hub file - details in linked docs*
