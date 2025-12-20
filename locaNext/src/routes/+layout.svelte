@@ -27,6 +27,7 @@
   import UpdateModal from "$lib/components/UpdateModal.svelte";
   import GlobalStatusBar from "$lib/components/GlobalStatusBar.svelte";
   import GlobalToast from "$lib/components/GlobalToast.svelte";
+  import UserProfileModal from "$lib/components/UserProfileModal.svelte";
   import { logger } from "$lib/utils/logger.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
@@ -38,6 +39,7 @@
   let isAppsMenuOpen = $state(false);
   let isSettingsMenuOpen = $state(false);
   let isUserMenuOpen = $state(false);
+  let isUserProfileOpen = $state(false); // UI-038
   let showChangePassword = $state(false);
   let showAbout = $state(false);
   let showPreferences = $state(false);
@@ -280,10 +282,11 @@
         text={$user?.username || "User"}
       >
         <HeaderPanelLinks>
-          <HeaderPanelLink>
-            <div style="font-weight: 600;">{$user?.full_name || $user?.username || 'User'}</div>
+          <!-- UI-038: Click to open user profile modal -->
+          <HeaderPanelLink on:click={() => { isUserProfileOpen = true; isUserMenuOpen = false; }}>
+            <div style="font-weight: 600; cursor: pointer;">{$user?.full_name || $user?.username || 'User'}</div>
             <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
-              {$user?.email || 'No email'}
+              View Profile
             </div>
           </HeaderPanelLink>
           <HeaderPanelDivider />
@@ -306,6 +309,9 @@
 
     <!-- Preferences Modal -->
     <PreferencesModal bind:open={showPreferences} />
+
+    <!-- UI-038: User Profile Modal -->
+    <UserProfileModal bind:open={isUserProfileOpen} />
 
     <!-- Update Modal (auto-opens when update available) -->
     <UpdateModal />
