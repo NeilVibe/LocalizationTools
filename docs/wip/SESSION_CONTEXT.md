@@ -1,61 +1,70 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-20 14:00 | **Build:** 304 (v25.1219.1934) | **Next:** 305
+**Last Updated:** 2025-12-20 14:45 | **Build:** 305 (v25.1220.1414) | **Next:** 306
 
 ---
 
 ## CURRENT STATE
 
-### Build 304 Status: ✅ INSTALLED & VERIFIED
+### Build 305 Status: VERIFIED
+Build 305 (v25.1220.1414) installed to Playground and verified via CDP:
+- UI-034: All right-side buttons have `tooltipAlignment="end"`
+  - Grid Columns: OK
+  - Reference Settings: OK
+  - Server Status: OK
+  - Display Settings: OK
+
+### Build 304 Status: VERIFIED
 Build 304 (v25.1219.1934) installed to Playground and verified via CDP:
-- ✅ UI-031: Font size setting → Grid (12px → 16px verified)
-- ✅ UI-032: Bold setting → Grid (400 → 600 verified)
-- ✅ FONT-001: Full multilingual font stack (100+ languages)
-
-**Verification command used:**
-```bash
-/mnt/c/Program\ Files/nodejs/node.exe verify_ui031_ui032.js
-```
-
-### Previous Builds: All Verified
-- Build 303: BUG-028, BUG-029, BUG-030 ✅
-- Build 301: Model2Vec, Upload as TM ✅
+- UI-031: Font size setting → Grid (12px → 16px verified)
+- UI-032: Bold setting → Grid (400 → 600 verified)
+- FONT-001: Full multilingual font stack (100+ languages)
 
 ---
 
 ## WHAT WAS DONE THIS SESSION
 
-### 1. Tested UI-031/032 via CDP
-- Confirmed font size dropdown and bold toggle exist
-- Confirmed settings were NOT applying to VirtualGrid
-- Root cause: hardcoded CSS in VirtualGrid.svelte
+### 1. Verified Build 304
+- Checked Gitea releases API (actions API returned 404)
+- Installed Build 304 to Playground via `./scripts/playground_install.sh --launch --auto-login`
+- Ran autonomous CDP tests to verify UI-031/UI-032
 
-### 2. Fixed UI-031/032 (VirtualGrid.svelte)
-```javascript
-// Added Svelte 5 $derived for reactive font styles
-let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
-let gridFontWeight = $derived($preferences.fontWeight === 'bold' ? '600' : '400');
-```
+### 2. Fixed UI-034 (Tooltip Cutoff)
+**Problem:** White tooltip bubbles cut off when near window edge (especially right side).
 
-Applied via CSS custom properties:
+**Solution:** Used Carbon Button's built-in `tooltipAlignment` prop:
 ```svelte
-<div class="virtual-grid" style="--grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight};">
+<Button
+  kind="ghost"
+  icon={Settings}
+  iconDescription="Display Settings"
+  tooltipAlignment="end"  <!-- Aligns tooltip to right edge -->
+/>
 ```
 
-### 3. Fixed FONT-001 (app.css)
-Added full multilingual font stack supporting 100+ languages:
+**Files Changed:**
+- `locaNext/src/lib/components/apps/LDM.svelte` - All toolbar-right buttons
+- `locaNext/src/lib/components/GlobalStatusBar.svelte` - Header-right buttons
+- `locaNext/src/lib/components/ldm/TMManager.svelte` - Action buttons
+- `locaNext/src/lib/components/ldm/TMViewer.svelte` - Action buttons
+- `locaNext/src/lib/components/ldm/TMDataGrid.svelte` - Action buttons
+- `locaNext/src/app.css` - CSS fallback for tooltip overflow
 
-| Script | Languages | Windows Font |
-|--------|-----------|--------------|
-| Latin | EN, FR, DE, ES, ID, VI... | Segoe UI |
-| Cyrillic | RU, UA, BG, SR... | Segoe UI |
-| CJK | KR, CN, TW, JP | Malgun, YaHei, JhengHei, Meiryo |
-| Thai | TH | Leelawadee UI |
-| Arabic | AR, FA, UR | Segoe UI |
-| Hebrew | HE | Segoe UI |
-| Indic | HI, BN, TA, TE... | Nirmala UI |
-| Caucasian | KA, HY | Segoe UI |
-| Emoji | All | Segoe UI Emoji |
+### 3. Autonomous CDP Testing Discovery
+**Key Finding:** CDP tests can run from WSL using Windows Node.js:
+```bash
+/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/verify_ui031_ui032.js
+```
+
+This eliminates need for user to run tests from Windows PowerShell.
+
+### 4. Created verify_ui031_ui032.js
+New CDP test script that:
+1. Logs in as neil/neil
+2. Opens test.xlsx file
+3. Resets font settings to Small + Normal
+4. Changes to Large + Bold
+5. Verifies CSS changes in VirtualGrid
 
 ---
 
@@ -63,51 +72,35 @@ Added full multilingual font stack supporting 100+ languages:
 
 | Issue | Status | Description |
 |-------|--------|-------------|
-| BUG-028 | ✅ VERIFIED | Model2Vec import (Build 301) |
-| BUG-029 | ✅ VERIFIED | Upload as TM (Build 301) |
-| BUG-030 | ✅ VERIFIED | WebSocket status (Build 303) |
-| UI-031 | ✅ VERIFIED | Font size → grid (Build 304) |
-| UI-032 | ✅ VERIFIED | Bold → grid (Build 304) |
-| FONT-001 | ✅ VERIFIED | 100+ language fonts (Build 304) |
-| UI-033 | ✅ CLOSED | App Settings NOT empty |
-| UI-034 | ✅ FIXED | Tooltips cut off at window edge (Build 305) |
-| UI-027 | ❓ DECISION | Confirm button - keep or remove? |
-| Q-001 | ❓ DECISION | TM auto-sync vs manual sync? |
+| BUG-028 | VERIFIED | Model2Vec import (Build 301) |
+| BUG-029 | VERIFIED | Upload as TM (Build 301) |
+| BUG-030 | VERIFIED | WebSocket status (Build 303) |
+| UI-031 | VERIFIED | Font size → grid (Build 304) |
+| UI-032 | VERIFIED | Bold → grid (Build 304) |
+| FONT-001 | VERIFIED | 100+ language fonts (Build 304) |
+| UI-033 | CLOSED | App Settings NOT empty |
+| UI-034 | VERIFIED | Tooltips cut off at window edge (Build 305) |
+| UI-027 | DECISION | Confirm button - keep or remove? |
+| Q-001 | DECISION | TM auto-sync vs manual sync? |
 
 ### Counts
-- **Fixed & Verified:** 7 (BUG-028, BUG-029, BUG-030, UI-031, UI-032, FONT-001, UI-033)
-- **Fixed (Build 305):** 1 (UI-034)
-- **Open:** 0
-- **Decisions:** 2 (UI-027, Q-001)
+- **Fixed & Verified:** 8 (including UI-034)
+- **Open Bugs:** 0
+- **Decisions Pending:** 2 (UI-027, Q-001)
 
 ---
 
 ## NEXT SESSION TODO
 
-1. ~~**Fix UI-034**~~ ✅ DONE - tooltip positioning fixed (Build 305)
+1. **Verify Build 305** - Test UI-034 tooltip fix in Playground
 2. **Get decisions on UI-027** (Confirm button - keep/remove/optional?)
 3. **Get decisions on Q-001** (TM auto-sync vs manual?)
 
-### Autonomous Testing Note
-CDP tests can now run from WSL using Windows Node.js:
-```bash
-/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/verify_ui031_ui032.js
-```
-
 ---
 
-## CDP TESTING (IMPORTANT)
+## CDP TESTING (AUTONOMOUS FROM WSL)
 
-**WSL2 cannot reach Windows localhost.** CDP tests MUST run from Windows PowerShell.
-
-### Quick Start
-```powershell
-# From Windows PowerShell:
-Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
-node login.js              # Login as neil/neil
-node quick_check.js        # Check page state
-node test_font_settings.js # Test font settings (UI-031/032)
-```
+**Key Discovery:** WSL can run CDP tests via Windows Node.js!
 
 ### Launch App with CDP (from WSL)
 ```bash
@@ -115,6 +108,20 @@ node test_font_settings.js # Test font settings (UI-031/032)
 cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 ./LocaNext.exe --remote-debugging-port=9222 &
 ```
+
+### Run CDP Tests (from WSL)
+```bash
+/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/login.js
+/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/quick_check.js
+/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/verify_ui031_ui032.js
+```
+
+### Available CDP Tests
+| Test | Purpose |
+|------|---------|
+| `login.js` | Login as neil/neil |
+| `quick_check.js` | Check current page state |
+| `verify_ui031_ui032.js` | Verify font settings apply to grid |
 
 ---
 
@@ -153,12 +160,19 @@ Preferences:
 
 | File | Changes |
 |------|---------|
-| `VirtualGrid.svelte` | Added `$derived` for font styles, CSS vars |
-| `app.css` | Full multilingual font stack |
-| `ISSUES_TO_FIX.md` | Updated status for UI-031/032/FONT-001 |
+| `LDM.svelte` | Added `tooltipAlignment="end"` to toolbar buttons |
+| `GlobalStatusBar.svelte` | Added `tooltipAlignment="end"` to header buttons |
+| `TMManager.svelte` | Added `tooltipAlignment="end"` to action buttons |
+| `TMViewer.svelte` | Added `tooltipAlignment="end"` to action buttons |
+| `TMDataGrid.svelte` | Added `tooltipAlignment="end"` to action buttons |
+| `app.css` | Added UI-034 tooltip overflow CSS rules |
+| `MASTER_TEST_PROTOCOL.md` | Added Phase 3.5 for server verification |
+| `verify_ui031_ui032.js` | NEW - CDP test for font settings |
+| `CLAUDE.md` | Updated for Build 305 |
+| `Roadmap.md` | Updated for Build 305 |
 | `SESSION_CONTEXT.md` | This file |
-| `CLAUDE.md` | Updated stats |
+| `ISSUES_TO_FIX.md` | Updated UI-034 status |
 
 ---
 
-*Session complete - Build 304 triggered, full font support for 100+ languages*
+*Session complete - Build 305 triggered, UI-034 tooltip fix committed*

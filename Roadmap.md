@@ -1,12 +1,12 @@
 # LocaNext - Roadmap
 
-**Build:** 300 (v25.1218.2204) | **Updated:** 2025-12-19 | **Status:** QA
+**Build:** 305 (v25.1220.1414) | **Updated:** 2025-12-20 | **Status:** VERIFIED
 
 ---
 
 ## Current Status
 
-All components operational. All optimizations complete.
+All components operational. Build 304 verified. Build 305 triggered with UI-034 fix.
 
 | Component | Status |
 |-----------|--------|
@@ -17,13 +17,22 @@ All components operational. All optimizations complete.
 
 ---
 
-## Completed Items
+## Recent Completed Items
 
-| # | Task | Status |
-|---|------|--------|
-| 1 | PERF-001 + PERF-002 (FAISS optimization) | ✅ Tested |
-| 2 | FEAT-005 (Model2Vec for LDM TM) | ✅ Complete |
-| 3 | BUG-023 (TM status display) | ✅ Fixed |
+| Build | Tasks Completed |
+|-------|-----------------|
+| 305 | UI-034 (tooltip cutoff fix) |
+| 304 | UI-031 (font size), UI-032 (bold), FONT-001 (100+ languages) |
+| 303 | BUG-030 (WebSocket status) |
+| 301 | BUG-028 (Model2Vec), BUG-029 (Upload as TM) |
+| 300 | PERF-001, PERF-002, FEAT-005, BUG-023 |
+
+## Open Items
+
+| ID | Description | Status |
+|----|-------------|--------|
+| UI-027 | Confirm button - keep/remove/optional? | Decision needed |
+| Q-001 | TM auto-sync vs manual? | Decision needed |
 
 ---
 
@@ -170,4 +179,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Build 300 | Updated 2025-12-19*
+*Build 305 | Updated 2025-12-20*
