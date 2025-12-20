@@ -80,3 +80,4 @@ Build 306 - UI-027 Confirm removed + Q-001 Auto-sync
 Build 307 - TM upload fix
 Build 308
 Build 309 - UI-042 Remove avatar icons from presence bar
+Build 310 - UI-043 Fix 3rd column + tooltip
