@@ -76,3 +76,4 @@ Build LIGHT
 Build LIGHT
 Build LIGHT - UI-031/032 font fixes + FONT-001 multilingual
 Build LIGHT
+Build 306 - UI-027 Confirm removed + Q-001 Auto-sync
