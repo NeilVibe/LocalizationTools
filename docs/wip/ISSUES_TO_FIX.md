@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-20 23:30 | **Build:** 309 (pending) | **Previous:** 308
+**Last Updated:** 2025-12-21 | **Build:** 311 (pending) | **Previous:** 310
 
 ---
 
@@ -13,14 +13,28 @@
 
 ---
 
-## FIXED - BUILD 309
+## FIXED - BUILD 311 (pending)
+
+### UI-044: Resizable Columns + Clear Separator
+
+- **Problem:** Source/Target columns had no clear visual separation; couldn't resize columns like Excel
+- **Fix:**
+  - Added 2px visible border between source and target columns
+  - Added draggable resize handle to adjust column widths (20%-80% range)
+  - Header and cells use matching percentage-based widths
+- **Files:** `VirtualGrid.svelte`
+- **Status:** PENDING
+
+---
+
+## FIXED - BUILD 310 (VERIFIED)
 
 ### UI-042: Simplified PresenceBar (Remove Avatars)
 
 - **Problem:** Avatar icons (colored circles with initials) cluttering presence indicator
 - **Fix:** Removed avatars, kept only "X viewing" text with hover tooltip showing viewer names
 - **File:** `PresenceBar.svelte`
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 ---
 
@@ -31,7 +45,7 @@
   - Made Source/Target columns flex to fill available width
   - Fixed tooltip to show current user when viewer list not available
 - **Files:** `VirtualGrid.svelte`, `PresenceBar.svelte`
-- **Status:** FIXED
+- **Status:** VERIFIED
 
 ---
 

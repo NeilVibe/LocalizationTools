@@ -67,6 +67,12 @@
   let tmSuggestions = $state([]);
   let tmLoading = $state(false);
 
+  // UI-044: Resizable columns state
+  let sourceWidthPercent = $state(50); // Source column takes 50% by default
+  let isResizing = $state(false);
+  let resizeStartX = $state(0);
+  let resizeStartPercent = $state(50);
+
   // Table column definitions (widths will be calculated dynamically)
   // Note: Status column REMOVED - using cell colors instead
   const allColumns = {
@@ -737,6 +743,39 @@
     }
   }
 
+  // UI-044: Column resize handlers
+  function startResize(event) {
+    event.preventDefault();
+    isResizing = true;
+    resizeStartX = event.clientX;
+    resizeStartPercent = sourceWidthPercent;
+
+    // Add global listeners for drag
+    document.addEventListener('mousemove', handleResize);
+    document.addEventListener('mouseup', stopResize);
+  }
+
+  function handleResize(event) {
+    if (!isResizing) return;
+
+    const headerEl = document.querySelector('.table-header');
+    if (!headerEl) return;
+
+    const headerRect = headerEl.getBoundingClientRect();
+    const headerWidth = headerRect.width;
+    const deltaX = event.clientX - resizeStartX;
+    const deltaPercent = (deltaX / headerWidth) * 100;
+
+    // Clamp between 20% and 80%
+    sourceWidthPercent = Math.max(20, Math.min(80, resizeStartPercent + deltaPercent));
+  }
+
+  function stopResize() {
+    isResizing = false;
+    document.removeEventListener('mousemove', handleResize);
+    document.removeEventListener('mouseup', stopResize);
+  }
+
   // Svelte 5: Derived - Get visible rows for rendering
   let visibleRows = $derived(Array.from({ length: visibleEnd - visibleStart }, (_, i) => {
     const index = visibleStart + i;
@@ -814,11 +853,22 @@
     </div>
 
     <!-- Table Header -->
-    <!-- UI-043: Source and Target columns use flex, others use fixed width -->
+    <!-- UI-043/UI-044: Source and Target columns with resizable divider -->
     <div class="table-header">
       {#each visibleColumns as col}
-        {#if col.key === 'source' || col.key === 'target'}
-          <div class="th th-flex">
+        {#if col.key === 'source'}
+          <div class="th th-source" style="flex: 0 0 {sourceWidthPercent}%;">
+            {col.label}
+            <!-- Resize handle -->
+            <div
+              class="resize-handle"
+              onmousedown={startResize}
+              role="separator"
+              aria-label="Resize columns"
+            ></div>
+          </div>
+        {:else if col.key === 'target'}
+          <div class="th th-target" style="flex: 0 0 {100 - sourceWidthPercent}%;">
             {col.label}
           </div>
         {:else}
@@ -874,17 +924,18 @@
                 {/if}
 
                 <!-- Source (always visible, full content with newline symbols) -->
-                <!-- UI-043: Removed fixed width - uses flex to fill space -->
+                <!-- UI-044: Uses percentage width matching header -->
                 <div
                   class="cell source"
                   class:cell-hover={selectedRowId === row.id}
+                  style="flex: 0 0 {sourceWidthPercent}%;"
                 >
                   <span class="cell-content">{formatGridText(row.source) || ""}</span>
                 </div>
 
                 <!-- Target (always visible, editable, full content with newline symbols) -->
                 <!-- Cell color indicates status: default=pending, translated=teal, confirmed=green -->
-                <!-- UI-043: Removed fixed width - uses flex to fill space -->
+                <!-- UI-044: Uses percentage width matching header -->
                 <div
                   class="cell target"
                   class:locked={rowLock}
@@ -892,6 +943,7 @@
                   class:status-translated={row.status === 'translated'}
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
+                  style="flex: 0 0 {100 - sourceWidthPercent}%;"
                   ondblclick={() => openEditModal(row)}
                   role="button"
                   tabindex="0"
@@ -1101,10 +1153,38 @@
     text-overflow: ellipsis;
   }
 
-  /* UI-043: Flex columns for source/target to fill available space */
-  .th-flex {
-    flex: 1 1 auto;
+  /* UI-044: Minimum width for source/target headers */
+  .th-source,
+  .th-target {
     min-width: 150px;
+  }
+
+  /* UI-044: Source column header has visible right border and resize handle */
+  .th-source {
+    position: relative;
+    border-right: 2px solid var(--cds-border-strong-01, #525252);
+  }
+
+  .th-target {
+    /* Target header - no special border needed */
+  }
+
+  /* UI-044: Resize handle for column resizing */
+  .resize-handle {
+    position: absolute;
+    right: -4px;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    background: transparent;
+    z-index: 10;
+    transition: background-color 0.2s;
+  }
+
+  .resize-handle:hover,
+  .resize-handle:active {
+    background: var(--cds-interactive-01, #0f62fe);
   }
 
   .scroll-container {
@@ -1165,11 +1245,8 @@
     min-width: 0;
   }
 
-  /* UI-043: Source and Target cells fill available space */
-  .cell.source,
-  .cell.target {
-    flex: 1 1 auto;
-  }
+  /* UI-044: Source and Target cells use percentage widths (set via inline style) */
+  /* flex is controlled by inline style, no default flex here */
 
   .cell-content {
     word-break: break-word;
@@ -1196,6 +1273,8 @@
     background: var(--cds-layer-02);
     color: var(--cds-text-02);
     transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    /* UI-044: Add visible right border to separate from target */
+    border-right: 2px solid var(--cds-border-strong-01, #525252);
   }
 
   .cell.source.cell-hover {
