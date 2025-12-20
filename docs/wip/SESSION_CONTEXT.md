@@ -1,50 +1,96 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-20 19:15 | **Build:** 308 (pending) | **Previous:** 307
+**Last Updated:** 2025-12-21 00:50 | **Build:** 311 (VERIFIED) | **Previous:** 310
 
 ---
 
 ## CURRENT STATE
 
-### Build 308: IN PROGRESS
-Major UI/UX cleanup session - 10 issues fixed:
-- Removed all garbage UI elements (pagination, footers, "No email", etc.)
-- Fixed sync functionality (auto-sync + manual sync now update TM status)
-- Added user profile modal
-- Cleaned up column logic (2 columns default in file viewer)
+### Build 311: VERIFIED
+- UI-044: Resizable columns + clear separator between Source/Target
+- Screenshot verified: build311_coord.png
 
-### Build 307 Status: VERIFIED
-- TM upload bug fix
-- Q-001 auto-sync live-tested
+### Build 310: VERIFIED
+- UI-042: Simplified PresenceBar (removed avatars)
+- UI-043: Fixed empty 3rd column + tooltip
+
+### Build 308-309: VERIFIED
+- Major UI/UX cleanup (10 fixes)
+
+---
+
+## UIUX PHILOSOPHY - Svelte 5 Power
+
+### Core Principles
+
+1. **Auto-Adaptive Layout**
+   - No hardcoded pixel widths for main content columns
+   - Use percentage-based widths that adapt to container
+   - Svelte 5 `$state()` for reactive dimensions
+
+2. **Clean Grid Design**
+   - 2 columns by default: Source + Target
+   - Optional columns: StringID (left), Reference (right)
+   - Clear visual separation between columns (2px border)
+   - No pagination, no footers, no row counts
+
+3. **Minimal UI**
+   - Remove clutter: no "X viewing" avatars, just text
+   - No "No email" text, no useless tooltips
+   - Infinite scroll > pagination
+   - Hover tooltips for detailed info
+
+4. **Svelte 5 Runes**
+   - `$state()` for reactive state (column widths, resize state)
+   - `$derived()` for computed values
+   - `$effect()` for side effects
+   - Inline style bindings for reactive layouts
+
+### Column Resize Implementation (UI-044)
+
+```svelte
+// State
+let sourceWidthPercent = $state(50);
+let isResizing = $state(false);
+
+// Header template
+<div class="th th-source" style="flex: 0 0 {sourceWidthPercent}%;">
+  {col.label}
+  <div class="resize-handle" onmousedown={startResize}></div>
+</div>
+<div class="th th-target" style="flex: 0 0 {100 - sourceWidthPercent}%;">
+  {col.label}
+</div>
+
+// Cell template
+<div class="cell source" style="flex: 0 0 {sourceWidthPercent}%;">...</div>
+<div class="cell target" style="flex: 0 0 {100 - sourceWidthPercent}%;">...</div>
+```
 
 ---
 
 ## WHAT WAS DONE THIS SESSION
 
-### 1. Major UI Cleanup (6 fixes)
+### Builds 309-311: Column Fixes
 
-| Issue | What Was Removed/Fixed |
-|-------|------------------------|
-| **UI-035** | Pagination from TMDataGrid (infinite scroll now) |
-| **UI-036** | Confirm button from TMDataGrid |
-| **UI-037** | "No email" text from user menu |
-| **UI-040** | Useless "i" button in PresenceBar (empty Tooltip trigger) |
-| **UI-041** | "Showing rows X-Y of Z" footer from VirtualGrid |
-| **UI-039** | Third column logic - only StringID/Reference available |
+| Issue | Fix | Status |
+|-------|-----|--------|
+| **UI-042** | Removed avatar icons from PresenceBar | VERIFIED |
+| **UI-043** | Fixed empty 3rd column, tooltip shows username | VERIFIED |
+| **UI-044** | Resizable columns + clear separator | VERIFIED |
 
-### 2. Added User Profile Modal (UI-038)
+### Key Changes
 
-- Click username in user menu → opens profile modal
-- Shows: Full Name, Username, Team, Department, Language, Role
-- Created `UserProfileModal.svelte`
+1. **VirtualGrid.svelte**
+   - Added `sourceWidthPercent` state for column width ratio
+   - Added resize handlers (startResize, handleResize, stopResize)
+   - Added 2px visible border between source/target
+   - Header and cells use percentage-based flex widths
 
-### 3. Fixed Sync Issues (3 bugs, 1 root cause)
-
-| Issue | Problem | Fix |
-|-------|---------|-----|
-| **BUG-032** | Auto-sync not updating TM status | Added `tm.status = "ready"` |
-| **BUG-033** | Manual sync not updating TM status | Added `tm.status = "ready"` |
-| **BUG-034** | TMs stuck as "pending" | Same fix - status now updates |
+2. **PresenceBar.svelte**
+   - Removed avatar icons (colored circles with initials)
+   - Just "X viewing" text with hover tooltip
+   - Tooltip shows current user when viewer list empty
 
 ---
 
@@ -52,36 +98,19 @@ Major UI/UX cleanup session - 10 issues fixed:
 
 | File | Changes |
 |------|---------|
-| `TMDataGrid.svelte` | Removed pagination, Confirm button; added infinite scroll |
-| `VirtualGrid.svelte` | Removed footer, TM Results column |
-| `PresenceBar.svelte` | Fixed Tooltip trigger (removed empty triggerText) |
-| `+layout.svelte` | Removed "No email", added profile modal |
-| `UserProfileModal.svelte` | NEW - user profile display |
-| `api.py` | Fixed auto-sync and manual sync to update TM status |
-| `ISSUES_TO_FIX.md` | Updated with all fixes |
-| `SESSION_CONTEXT.md` | This file |
+| `VirtualGrid.svelte` | Resizable columns, clear separator, percentage widths |
+| `PresenceBar.svelte` | Simplified to text only, fixed tooltip |
+| `ISSUES_TO_FIX.md` | Updated with UI-042, UI-043, UI-044 |
+| `GITEA_TRIGGER.txt` | Builds 309, 310, 311 |
 
 ---
 
-## ISSUES SUMMARY
+## VERIFICATION SCREENSHOTS
 
-### Fixed This Session (Build 308)
-| Issue | Description |
-|-------|-------------|
-| UI-035 | Removed pagination from TMDataGrid |
-| UI-036 | Removed Confirm button from TMDataGrid |
-| UI-037 | Removed "No email" text |
-| UI-038 | Added user profile modal |
-| UI-039 | Fixed third column logic |
-| UI-040 | Fixed PresenceBar tooltip trigger |
-| UI-041 | Removed VirtualGrid footer |
-| BUG-032 | Fixed auto-sync status update |
-| BUG-033 | Fixed manual sync status update |
-| BUG-034 | Fixed pending status issue |
-
-### Counts
-- **Fixed This Session:** 10
-- **Open Bugs:** 0
+| Build | File | What It Shows |
+|-------|------|---------------|
+| 311 | `build311_coord.png` | Clear column separator, no 3rd column |
+| 310 | `build310_detail.png` | "1 viewing" without avatars |
 
 ---
 
@@ -89,16 +118,18 @@ Major UI/UX cleanup session - 10 issues fixed:
 
 | Viewer | Default | Optional |
 |--------|---------|----------|
-| **File Viewer** | Source, Target | StringID (left), Reference (right) |
+| **File Viewer** | Source (50%), Target (50%) | StringID (left), Reference (right) |
 | **TM Viewer** | Source, Target, Metadata | - |
 | **TM Grid** | Source, Target, Actions | - |
+
+**Resizable:** Source/Target columns can be resized by dragging the border (20%-80% range)
 
 ---
 
 ## NEXT SESSION TODO
 
-1. Verify Build 308 in Playground
-2. Test all 10 fixes work correctly
+1. Test column resize functionality manually
+2. Consider saving column width preference
 3. Ready for new features or bug reports
 
 ---
@@ -108,12 +139,31 @@ Major UI/UX cleanup session - 10 issues fixed:
 | What | Path |
 |------|------|
 | Playground | `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext` |
-| TMDataGrid | `locaNext/src/lib/components/ldm/TMDataGrid.svelte` |
 | VirtualGrid | `locaNext/src/lib/components/ldm/VirtualGrid.svelte` |
 | PresenceBar | `locaNext/src/lib/components/ldm/PresenceBar.svelte` |
-| Layout | `locaNext/src/routes/+layout.svelte` |
+| TMDataGrid | `locaNext/src/lib/components/ldm/TMDataGrid.svelte` |
 | Backend API | `server/tools/ldm/api.py` |
 
 ---
 
-*Session in progress - Build 308 pending verification*
+## SVELTE 5 PATTERNS USED
+
+```svelte
+// Reactive state
+let value = $state(50);
+
+// Derived values
+let computed = $derived(value * 2);
+
+// Effects
+$effect(() => {
+  console.log('value changed:', value);
+});
+
+// Inline reactive styles
+<div style="width: {value}%;">...</div>
+```
+
+---
+
+*Build 311 verified - all UI fixes working*
