@@ -1,25 +1,25 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-19 19:15 | **Build:** 304 (triggered) | **Next:** 305
+**Last Updated:** 2025-12-20 14:00 | **Build:** 304 (v25.1219.1934) | **Next:** 305
 
 ---
 
 ## CURRENT STATE
 
-### Build 304 Status: TRIGGERED - AWAITING CI
-Build 304 was triggered with the following fixes:
-- ✅ UI-031: Font size setting now applies to grid
-- ✅ UI-032: Bold setting now applies to grid
+### Build 304 Status: ✅ INSTALLED & VERIFIED
+Build 304 (v25.1219.1934) installed to Playground and verified via CDP:
+- ✅ UI-031: Font size setting → Grid (12px → 16px verified)
+- ✅ UI-032: Bold setting → Grid (400 → 600 verified)
 - ✅ FONT-001: Full multilingual font stack (100+ languages)
 
-**To check build status:**
+**Verification command used:**
 ```bash
-curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq '.[0] | {status, conclusion}'
+/mnt/c/Program\ Files/nodejs/node.exe verify_ui031_ui032.js
 ```
 
-### Build 303 Status: VERIFIED
-- ✅ Playground has Build 303 installed (v25.1219.1829)
-- ✅ BUG-028, BUG-029, BUG-030 all verified fixed
+### Previous Builds: All Verified
+- Build 303: BUG-028, BUG-029, BUG-030 ✅
+- Build 301: Model2Vec, Upload as TM ✅
 
 ---
 
@@ -66,32 +66,33 @@ Added full multilingual font stack supporting 100+ languages:
 | BUG-028 | ✅ VERIFIED | Model2Vec import (Build 301) |
 | BUG-029 | ✅ VERIFIED | Upload as TM (Build 301) |
 | BUG-030 | ✅ VERIFIED | WebSocket status (Build 303) |
-| UI-031 | ✅ FIXED | Font size → grid (Build 304) |
-| UI-032 | ✅ FIXED | Bold → grid (Build 304) |
-| FONT-001 | ✅ FIXED | 100+ language fonts (Build 304) |
+| UI-031 | ✅ VERIFIED | Font size → grid (Build 304) |
+| UI-032 | ✅ VERIFIED | Bold → grid (Build 304) |
+| FONT-001 | ✅ VERIFIED | 100+ language fonts (Build 304) |
 | UI-033 | ✅ CLOSED | App Settings NOT empty |
-| UI-034 | 🔄 OPEN | Tooltips cut off at window edge |
+| UI-034 | ✅ FIXED | Tooltips cut off at window edge (Build 305) |
 | UI-027 | ❓ DECISION | Confirm button - keep or remove? |
 | Q-001 | ❓ DECISION | TM auto-sync vs manual sync? |
 
 ### Counts
-- **Fixed & Verified:** 4 (BUG-028, BUG-029, BUG-030, UI-033)
-- **Fixed (Build 304):** 3 (UI-031, UI-032, FONT-001)
-- **Open:** 1 (UI-034)
+- **Fixed & Verified:** 7 (BUG-028, BUG-029, BUG-030, UI-031, UI-032, FONT-001, UI-033)
+- **Fixed (Build 305):** 1 (UI-034)
+- **Open:** 0
 - **Decisions:** 2 (UI-027, Q-001)
 
 ---
 
 ## NEXT SESSION TODO
 
-1. **Wait for Build 304 to complete** (~15 min)
-2. **Install Build 304 to Playground:**
-   ```bash
-   ./scripts/playground_install.sh --launch --auto-login
-   ```
-3. **Verify UI-031/032/FONT-001 fixes via CDP**
-4. **Fix UI-034** (tooltip positioning)
-5. **Get decisions on UI-027 and Q-001**
+1. ~~**Fix UI-034**~~ ✅ DONE - tooltip positioning fixed (Build 305)
+2. **Get decisions on UI-027** (Confirm button - keep/remove/optional?)
+3. **Get decisions on Q-001** (TM auto-sync vs manual?)
+
+### Autonomous Testing Note
+CDP tests can now run from WSL using Windows Node.js:
+```bash
+/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/verify_ui031_ui032.js
+```
 
 ---
 

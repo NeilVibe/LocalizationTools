@@ -551,6 +551,7 @@
                     size="small"
                     icon={View}
                     iconDescription="View Entries"
+                    tooltipAlignment="end"
                     on:click={() => viewTM(tm)}
                   />
                   <!-- Export TM -->
@@ -559,6 +560,7 @@
                     size="small"
                     icon={Download}
                     iconDescription="Export TM"
+                    tooltipAlignment="end"
                     on:click={() => openExportModal(tm)}
                   />
                   <!-- UI-003: Activate/Deactivate button -->
@@ -567,6 +569,7 @@
                     size="small"
                     icon={Power}
                     iconDescription={isActive ? "Deactivate TM" : "Activate TM"}
+                    tooltipAlignment="end"
                     on:click={() => toggleActiveTm(tm)}
                   >
                     {isActive ? "Active" : "Activate"}
@@ -577,6 +580,7 @@
                       size="small"
                       icon={Renew}
                       iconDescription="Build Indexes"
+                      tooltipAlignment="end"
                       disabled={buildingIndexes.has(tm.id)}
                       on:click={() => confirmBuildIndexes(tm)}
                     />
@@ -586,6 +590,7 @@
                     size="small"
                     icon={TrashCan}
                     iconDescription="Delete TM"
+                    tooltipAlignment="end"
                     on:click={() => confirmDelete(tm)}
                   />
                 </td>

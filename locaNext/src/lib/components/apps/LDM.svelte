@@ -644,6 +644,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
               size="small"
               icon={DataBase}
               iconDescription="Translation Memories"
+              tooltipAlignment="end"
               on:click={() => showTMManager = true}
             >
               TM
@@ -653,6 +654,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
               size="small"
               icon={Column}
               iconDescription="Grid Columns"
+              tooltipAlignment="end"
               on:click={() => showGridColumns = true}
             />
             <Button
@@ -660,6 +662,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
               size="small"
               icon={Document}
               iconDescription="Reference Settings"
+              tooltipAlignment="end"
               on:click={() => showReferenceSettings = true}
             />
             <Button
@@ -667,6 +670,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
               size="small"
               icon={ServerProxy}
               iconDescription="Server Status"
+              tooltipAlignment="end"
               on:click={() => showServerStatus = true}
             />
             <Button
@@ -674,6 +678,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
               size="small"
               icon={Settings}
               iconDescription="Display Settings"
+              tooltipAlignment="end"
               on:click={() => showPreferences = true}
             />
           </div>
