@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-20 14:45 | **Build:** 305 (v25.1220.1414) | **Next:** 306
+**Last Updated:** 2025-12-20 15:30 | **Build:** 306 (v25.1220.1456) | **Next:** 307
 
 ---
 
@@ -8,9 +8,9 @@
 
 | Status | Count | Items |
 |--------|-------|-------|
-| **Fixed (verified)** | 7 | BUG-028, BUG-029, BUG-030, UI-031, UI-032, FONT-001, UI-034 |
+| **Fixed (verified)** | 9 | BUG-028, BUG-029, BUG-030, UI-031, UI-032, FONT-001, UI-034, UI-027, Q-001 |
 | **Closed** | 1 | UI-033 |
-| **Decisions Made** | 2 | UI-027 (removed), Q-001 (auto-sync) |
+| **Open** | 0 | None |
 
 ---
 
@@ -136,17 +136,18 @@ from server.utils.websocket import sio, connected_clients
 
 ---
 
-## Decisions Made (Build 306)
+## Verified (Build 306)
 
-### UI-027: Confirm Button - REMOVED
+### UI-027: Confirm Button - ✅ VERIFIED REMOVED
 
 **Decision:** Remove entirely
 **Reason:** Simplifies UI - auto-save without confirmation step
 **Implementation:** Removed Confirm/Unconfirm button from TMViewer.svelte
+**Verified:** 2025-12-20 via source grep - no toggleConfirm function, no Confirm button
 
 ---
 
-### Q-001: TM Sync - AUTO-SYNC ENABLED
+### Q-001: TM Sync - ✅ VERIFIED AUTO-SYNC
 
 **Decision:** Auto-sync on any TM change
 **Reason:** Model2Vec is fast (~29k sentences/sec) - sync automatically
@@ -154,6 +155,7 @@ from server.utils.websocket import sio, connected_clients
 - `add_tm_entry` endpoint
 - `update_tm_entry` endpoint
 - `delete_tm_entry` endpoint
+**Verified:** 2025-12-20 via source grep - _auto_sync_tm_indexes in all three endpoints
 
 ---
 
@@ -197,4 +199,4 @@ This is the most powerful multilingual Model2Vec model available.
 
 ---
 
-*Updated 2025-12-20 15:00 | 0 critical, 0 bugs open, 0 UI open, 0 decisions pending*
+*Updated 2025-12-20 15:30 | 0 critical, 0 bugs open, 0 UI open, all verified*

@@ -1,12 +1,12 @@
 # LocaNext - Roadmap
 
-**Build:** 305 (v25.1220.1414) | **Updated:** 2025-12-20 | **Status:** VERIFIED
+**Build:** 306 (v25.1220.1456) | **Updated:** 2025-12-20 | **Status:** VERIFIED
 
 ---
 
 ## Current Status
 
-All components operational. Build 304 verified. Build 305 triggered with UI-034 fix.
+All components operational. Build 306 verified. UI-027 + Q-001 implemented.
 
 | Component | Status |
 |-----------|--------|
@@ -21,18 +21,21 @@ All components operational. Build 304 verified. Build 305 triggered with UI-034 
 
 | Build | Tasks Completed |
 |-------|-----------------|
+| 306 | UI-027 (Confirm removed), Q-001 (auto-sync enabled) |
 | 305 | UI-034 (tooltip cutoff fix) |
 | 304 | UI-031 (font size), UI-032 (bold), FONT-001 (100+ languages) |
 | 303 | BUG-030 (WebSocket status) |
 | 301 | BUG-028 (Model2Vec), BUG-029 (Upload as TM) |
-| 300 | PERF-001, PERF-002, FEAT-005, BUG-023 |
 
-## Decisions Made (Build 306)
+## All Issues Verified (Build 306)
 
-| ID | Decision | Implementation |
-|----|----------|----------------|
-| UI-027 | Remove Confirm button | Simplified TMViewer UI |
-| Q-001 | Enable auto-sync | Background sync after TM changes |
+| ID | Description | Status |
+|----|-------------|--------|
+| UI-027 | Confirm button removed | ✅ VERIFIED |
+| Q-001 | Auto-sync on TM changes | ✅ VERIFIED |
+| UI-034 | Tooltip cutoff fix | ✅ VERIFIED |
+| UI-031/032 | Font size/bold settings | ✅ VERIFIED |
+| FONT-001 | 100+ language fonts | ✅ VERIFIED |
 
 ---
 
@@ -179,4 +182,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Build 305 | Updated 2025-12-20*
+*Build 306 | Updated 2025-12-20*
