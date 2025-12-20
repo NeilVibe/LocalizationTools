@@ -1,17 +1,22 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-20 15:30 | **Build:** 306 (v25.1220.1456) | **Next:** 307
+**Last Updated:** 2025-12-20 16:30 | **Build:** 307 (v25.1220.1551) | **Next:** 308
 
 ---
 
 ## CURRENT STATE
 
+### Build 307 Status: VERIFIED
+Build 307 (v25.1220.1551) installed to Playground and verified:
+- TM upload bug fix (`result['entry_count']`) ✅
+- Q-001: Auto-sync tested LIVE ✅
+  - Backend logs show: `Auto-sync TM 131: INSERT=6, UPDATE=0, time=13.05s`
+- Full cleanup verified (AppData + Playground)
+
 ### Build 306 Status: VERIFIED
-Build 306 (v25.1220.1456) installed to Playground and verified:
+Build 306 (v25.1220.1456) verified:
 - UI-027: Confirm button removed from TMViewer ✅
-  - Source grep confirms: no toggleConfirm function, no Confirm/Unconfirm button
 - Q-001: Auto-sync enabled for TM changes ✅
-  - Source grep confirms: _auto_sync_tm_indexes in add/update/delete endpoints
 
 ### Build 305 Status: VERIFIED
 Build 305 (v25.1220.1414) installed to Playground and verified via CDP:
@@ -27,28 +32,25 @@ Build 304 (v25.1219.1934) verified via CDP:
 
 ## WHAT WAS DONE THIS SESSION
 
-### 1. Verified Build 306
-- Confirmed v25.1220.1456 released at 15:03
-- Installed to Playground via `./scripts/playground_install.sh --launch --auto-login`
-- Verified UI-027 and Q-001 via source code grep
+### 1. Verified Build 307
+- Confirmed v25.1220.1551 released at 15:58
+- Installed to Playground with full cleanup
+- Tested Q-001 auto-sync LIVE with real TM upload
 
-### 2. Implemented UI-027 (Remove Confirm Button)
-**Decision:** Remove entirely - simplifies UI with auto-save
-**Files Changed:**
-- `locaNext/src/lib/components/ldm/TMViewer.svelte`
-  - Removed Confirm/Unconfirm Button component
-  - Removed `toggleConfirm` function
+### 2. Fixed TM Upload Bug
+**Problem:** `AttributeError: 'dict' object has no attribute 'entry_count'`
+**Fix:** Changed `result.entry_count` to `result['entry_count']` in api.py line 1069
 
-### 3. Implemented Q-001 (Auto-sync TM Indexes)
-**Decision:** Auto-sync on any TM change - Model2Vec is fast (~29k/sec)
-**Files Changed:**
-- `server/tools/ldm/api.py`
-  - Added `_auto_sync_tm_indexes()` helper function
-  - Added BackgroundTasks to `add_tm_entry`, `update_tm_entry`, `delete_tm_entry`
+### 3. Live-Tested Q-001 Auto-sync
+- Uploaded test TM (5 entries) via API
+- Added entry via API
+- Backend logs confirmed: `Auto-sync TM 131: INSERT=6, UPDATE=0, time=13.05s`
+- Model2Vec loaded and synced successfully
 
 ### 4. Created CDP Tests
 - `verify_ui034_tooltips.js` - Verifies tooltip alignment fix
 - `verify_ui027_no_confirm.js` - Verifies Confirm button removed
+- `test_auto_sync.js` - Tests Q-001 auto-sync feature
 
 ---
 
@@ -65,10 +67,11 @@ Build 304 (v25.1219.1934) verified via CDP:
 | UI-033 | CLOSED | App Settings NOT empty |
 | UI-034 | VERIFIED | Tooltips cut off at window edge (Build 305) |
 | UI-027 | VERIFIED | Confirm button removed (Build 306) |
-| Q-001 | VERIFIED | Auto-sync enabled (Build 306) |
+| Q-001 | VERIFIED | Auto-sync enabled (Build 306), live-tested (Build 307) |
+| BUG-031 | VERIFIED | TM upload response fix (Build 307) |
 
 ### Counts
-- **Fixed & Verified:** 10
+- **Fixed & Verified:** 11
 - **Open Bugs:** 0
 - **Decisions Made:** 0 (all implemented)
 
@@ -145,16 +148,14 @@ Preferences:
 
 | File | Changes |
 |------|---------|
-| `TMViewer.svelte` | Removed Confirm button (UI-027) |
-| `api.py` | Added auto-sync background tasks (Q-001) |
-| `verify_ui034_tooltips.js` | NEW - CDP test for tooltip alignment |
-| `verify_ui027_no_confirm.js` | NEW - CDP test for Confirm button removal |
-| `CLAUDE.md` | Updated for Build 306 |
-| `Roadmap.md` | Updated for Build 306 |
+| `api.py` | Fixed TM upload bug (BUG-031) |
+| `test_auto_sync.js` | NEW - CDP test for auto-sync |
+| `CLAUDE.md` | Updated for Build 307 |
+| `Roadmap.md` | Updated for Build 307 |
 | `SESSION_CONTEXT.md` | This file |
-| `ISSUES_TO_FIX.md` | Updated UI-027/Q-001 status |
-| `GITEA_TRIGGER.txt` | Triggered Build 306 |
+| `ISSUES_TO_FIX.md` | Added BUG-031 |
+| `GITEA_TRIGGER.txt` | Triggered Build 307 |
 
 ---
 
-*Session complete - Build 306 verified, UI-027 + Q-001 implemented*
+*Session complete - Build 307 verified, Q-001 live-tested, TM upload fix confirmed*

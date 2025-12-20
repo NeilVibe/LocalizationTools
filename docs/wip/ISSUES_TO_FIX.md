@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-20 15:30 | **Build:** 306 (v25.1220.1456) | **Next:** 307
+**Last Updated:** 2025-12-20 16:30 | **Build:** 307 (v25.1220.1551) | **Next:** 308
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Status | Count | Items |
 |--------|-------|-------|
-| **Fixed (verified)** | 9 | BUG-028, BUG-029, BUG-030, UI-031, UI-032, FONT-001, UI-034, UI-027, Q-001 |
+| **Fixed (verified)** | 10 | BUG-028, BUG-029, BUG-030, BUG-031, UI-031, UI-032, FONT-001, UI-034, UI-027, Q-001 |
 | **Closed** | 1 | UI-033 |
 | **Open** | 0 | None |
 
@@ -147,7 +147,7 @@ from server.utils.websocket import sio, connected_clients
 
 ---
 
-### Q-001: TM Sync - ✅ VERIFIED AUTO-SYNC
+### Q-001: TM Sync - ✅ VERIFIED AUTO-SYNC (LIVE-TESTED)
 
 **Decision:** Auto-sync on any TM change
 **Reason:** Model2Vec is fast (~29k sentences/sec) - sync automatically
@@ -156,6 +156,16 @@ from server.utils.websocket import sio, connected_clients
 - `update_tm_entry` endpoint
 - `delete_tm_entry` endpoint
 **Verified:** 2025-12-20 via source grep - _auto_sync_tm_indexes in all three endpoints
+**Live-Tested:** 2025-12-20 - Backend logs show: `Auto-sync TM 131: INSERT=6, UPDATE=0, time=13.05s`
+
+---
+
+### BUG-031: TM Upload Response Error - ✅ FIXED (Build 307)
+
+**Problem:** `AttributeError: 'dict' object has no attribute 'entry_count'`
+**Root Cause:** In `api.py` line 1069, `result.entry_count` was used but `result` is a dict.
+**Fix:** Changed to `result['entry_count']`
+**Verified:** 2025-12-20 - TM upload works, auto-sync triggers correctly
 
 ---
 
@@ -199,4 +209,4 @@ This is the most powerful multilingual Model2Vec model available.
 
 ---
 
-*Updated 2025-12-20 15:30 | 0 critical, 0 bugs open, 0 UI open, all verified*
+*Updated 2025-12-20 16:30 | 0 critical, 0 bugs open, 0 UI open, all verified*
