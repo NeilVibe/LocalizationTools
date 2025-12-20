@@ -814,11 +814,18 @@
     </div>
 
     <!-- Table Header -->
+    <!-- UI-043: Source and Target columns use flex, others use fixed width -->
     <div class="table-header">
       {#each visibleColumns as col}
-        <div class="th" style="width: {col.width}px; min-width: {col.width}px;">
-          {col.label}
-        </div>
+        {#if col.key === 'source' || col.key === 'target'}
+          <div class="th th-flex">
+            {col.label}
+          </div>
+        {:else}
+          <div class="th" style="flex: 0 0 {col.width}px;">
+            {col.label}
+          </div>
+        {/if}
       {/each}
     </div>
 
@@ -867,16 +874,17 @@
                 {/if}
 
                 <!-- Source (always visible, full content with newline symbols) -->
+                <!-- UI-043: Removed fixed width - uses flex to fill space -->
                 <div
                   class="cell source"
                   class:cell-hover={selectedRowId === row.id}
-                  style="width: {allColumns.source.width}px;"
                 >
                   <span class="cell-content">{formatGridText(row.source) || ""}</span>
                 </div>
 
                 <!-- Target (always visible, editable, full content with newline symbols) -->
                 <!-- Cell color indicates status: default=pending, translated=teal, confirmed=green -->
+                <!-- UI-043: Removed fixed width - uses flex to fill space -->
                 <div
                   class="cell target"
                   class:locked={rowLock}
@@ -884,7 +892,6 @@
                   class:status-translated={row.status === 'translated'}
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
-                  style="width: {allColumns.target.width}px;"
                   ondblclick={() => openEditModal(row)}
                   role="button"
                   tabindex="0"
@@ -1094,6 +1101,12 @@
     text-overflow: ellipsis;
   }
 
+  /* UI-043: Flex columns for source/target to fill available space */
+  .th-flex {
+    flex: 1 1 auto;
+    min-width: 150px;
+  }
+
   .scroll-container {
     flex: 1;
     overflow-y: auto;
@@ -1149,6 +1162,13 @@
     display: flex;
     align-items: flex-start;
     overflow: hidden;
+    min-width: 0;
+  }
+
+  /* UI-043: Source and Target cells fill available space */
+  .cell.source,
+  .cell.target {
+    flex: 1 1 auto;
   }
 
   .cell-content {
@@ -1162,12 +1182,14 @@
     align-items: center;
     color: var(--cds-text-02);
     font-size: 0.75rem;
+    flex: 0 0 60px;
   }
 
   .cell.string-id {
     font-family: monospace;
     font-size: 0.75rem;
     word-break: break-all;
+    flex: 0 0 150px;
   }
 
   .cell.source {
@@ -1249,6 +1271,7 @@
     background: var(--cds-layer-02);
     color: var(--cds-text-02);
     font-size: 0.8rem;
+    flex: 0 0 300px;
   }
 
   .cell.reference.has-match {

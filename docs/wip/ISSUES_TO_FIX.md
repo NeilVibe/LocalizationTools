@@ -9,7 +9,7 @@
 | Status | Count |
 |--------|-------|
 | **OPEN** | 0 |
-| **FIXED (This Session)** | 11 |
+| **FIXED (This Session)** | 12 |
 
 ---
 
@@ -20,6 +20,17 @@
 - **Problem:** Avatar icons (colored circles with initials) cluttering presence indicator
 - **Fix:** Removed avatars, kept only "X viewing" text with hover tooltip showing viewer names
 - **File:** `PresenceBar.svelte`
+- **Status:** FIXED
+
+---
+
+### UI-043: Fix Empty 3rd Column + Tooltip
+
+- **Problem:** Empty dark space showing as 3rd column; hover tooltip showing "?"
+- **Fix:**
+  - Made Source/Target columns flex to fill available width
+  - Fixed tooltip to show current user when viewer list not available
+- **Files:** `VirtualGrid.svelte`, `PresenceBar.svelte`
 - **Status:** FIXED
 
 ---

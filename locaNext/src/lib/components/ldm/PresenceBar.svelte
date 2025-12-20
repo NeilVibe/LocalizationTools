@@ -2,17 +2,25 @@
   import { Tag } from "carbon-components-svelte";
   import { View } from "carbon-icons-svelte";
   import { fileViewers, viewerCount, ldmConnected } from "$lib/stores/ldm.js";
+  import { user } from "$lib/stores/app.js";
 
   // UI-042: Simplified presence bar - just "X viewing" with hover tooltip
-  // Build viewer list for tooltip
-  $: viewerList = $fileViewers.map(v => v.username).join(", ") || "No viewers";
+  // Build viewer list for tooltip - filter out undefined/empty usernames
+  $: viewerNames = $fileViewers
+    .map(v => v.username || v.user_id || "Unknown")
+    .filter(name => name && name !== "Unknown");
+
+  // If no viewers from WebSocket yet, show current user
+  $: viewerList = viewerNames.length > 0
+    ? viewerNames.join(", ")
+    : ($user?.username || "You");
 </script>
 
 <!-- UI-042: Simplified - just "X viewing" with hover tooltip showing viewer names -->
 <div class="presence-bar" class:connected={$ldmConnected}>
   <div class="presence-indicator" title={viewerList}>
     <View size={16} />
-    <span class="viewer-count">{$viewerCount}</span>
+    <span class="viewer-count">{$viewerCount || 1}</span>
     <span class="label">viewing</span>
   </div>
 
