@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-20 19:00 | **Build:** 308 (pending) | **Previous:** 307
+**Last Updated:** 2025-12-20 23:30 | **Build:** 309 (pending) | **Previous:** 308
 
 ---
 
@@ -9,7 +9,18 @@
 | Status | Count |
 |--------|-------|
 | **OPEN** | 0 |
-| **FIXED (This Session)** | 10 |
+| **FIXED (This Session)** | 11 |
+
+---
+
+## FIXED - BUILD 309
+
+### UI-042: Simplified PresenceBar (Remove Avatars)
+
+- **Problem:** Avatar icons (colored circles with initials) cluttering presence indicator
+- **Fix:** Removed avatars, kept only "X viewing" text with hover tooltip showing viewer names
+- **File:** `PresenceBar.svelte`
+- **Status:** FIXED
 
 ---
 
