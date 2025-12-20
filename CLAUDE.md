@@ -145,7 +145,7 @@ docs/
 - **Tests:** ~273 in CI
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
-- **Open Issues:** 0 bugs, 2 decisions pending (UI-027, Q-001)
+- **Open Issues:** 0 bugs, 0 decisions (all resolved)
 - **Languages:** 100+ (full Unicode support)
 
 ---

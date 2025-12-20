@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-20 14:45 | **Build:** 305 (v25.1220.1414) | **Next:** 306
+**Last Updated:** 2025-12-20 15:00 | **Build:** 305 (v25.1220.1414) | **Next:** 306
 
 ---
 
@@ -80,21 +80,20 @@ New CDP test script that:
 | FONT-001 | VERIFIED | 100+ language fonts (Build 304) |
 | UI-033 | CLOSED | App Settings NOT empty |
 | UI-034 | VERIFIED | Tooltips cut off at window edge (Build 305) |
-| UI-027 | DECISION | Confirm button - keep or remove? |
-| Q-001 | DECISION | TM auto-sync vs manual sync? |
+| UI-027 | DONE | Confirm button removed (Build 306) |
+| Q-001 | DONE | Auto-sync enabled (Build 306) |
 
 ### Counts
 - **Fixed & Verified:** 8 (including UI-034)
 - **Open Bugs:** 0
-- **Decisions Pending:** 2 (UI-027, Q-001)
+- **Decisions Made:** 2 (UI-027, Q-001)
 
 ---
 
 ## NEXT SESSION TODO
 
-1. **Verify Build 305** - Test UI-034 tooltip fix in Playground
-2. **Get decisions on UI-027** (Confirm button - keep/remove/optional?)
-3. **Get decisions on Q-001** (TM auto-sync vs manual?)
+1. **Trigger Build 306** - UI-027 + Q-001 implementations
+2. **Verify Build 306** in Playground
 
 ---
 
