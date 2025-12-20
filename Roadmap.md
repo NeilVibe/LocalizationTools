@@ -1,12 +1,12 @@
 # LocaNext - Roadmap
 
-**Build:** 306 (v25.1220.1456) | **Updated:** 2025-12-20 | **Status:** VERIFIED
+**Build:** 307 (v25.1220.1551) | **Updated:** 2025-12-20 | **Status:** VERIFIED
 
 ---
 
 ## Current Status
 
-All components operational. Build 306 verified. UI-027 + Q-001 implemented.
+All components operational. Build 307 verified. Q-001 auto-sync live-tested.
 
 | Component | Status |
 |-----------|--------|
@@ -21,18 +21,19 @@ All components operational. Build 306 verified. UI-027 + Q-001 implemented.
 
 | Build | Tasks Completed |
 |-------|-----------------|
+| 307 | BUG-031 (TM upload fix), Q-001 live-tested |
 | 306 | UI-027 (Confirm removed), Q-001 (auto-sync enabled) |
 | 305 | UI-034 (tooltip cutoff fix) |
 | 304 | UI-031 (font size), UI-032 (bold), FONT-001 (100+ languages) |
 | 303 | BUG-030 (WebSocket status) |
-| 301 | BUG-028 (Model2Vec), BUG-029 (Upload as TM) |
 
-## All Issues Verified (Build 306)
+## All Issues Verified (Build 307)
 
 | ID | Description | Status |
 |----|-------------|--------|
+| BUG-031 | TM upload response fix | ✅ VERIFIED |
+| Q-001 | Auto-sync on TM changes | ✅ LIVE-TESTED |
 | UI-027 | Confirm button removed | ✅ VERIFIED |
-| Q-001 | Auto-sync on TM changes | ✅ VERIFIED |
 | UI-034 | Tooltip cutoff fix | ✅ VERIFIED |
 | UI-031/032 | Font size/bold settings | ✅ VERIFIED |
 | FONT-001 | 100+ language fonts | ✅ VERIFIED |
@@ -182,4 +183,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Build 306 | Updated 2025-12-20*
+*Build 307 | Updated 2025-12-20*
