@@ -10,7 +10,7 @@
 |--------|-------|-------|
 | **Fixed (verified)** | 7 | BUG-028, BUG-029, BUG-030, UI-031, UI-032, FONT-001, UI-034 |
 | **Closed** | 1 | UI-033 |
-| **Decisions Needed** | 2 | UI-027, Q-001 |
+| **Decisions Made** | 2 | UI-027 (removed), Q-001 (auto-sync) |
 
 ---
 
@@ -136,31 +136,24 @@ from server.utils.websocket import sio, connected_clients
 
 ---
 
-## Decisions Needed
+## Decisions Made (Build 306)
 
-### UI-027: Confirm Button - Keep or Remove?
+### UI-027: Confirm Button - REMOVED
 
-**Component:** TM Viewer
-**Current Status:** KEEP - memoQ-style workflow for confirming TM entries.
-**Question:** Is this useful for your workflow, or just clutter?
-
-Options:
-1. Keep as-is
-2. Remove entirely
-3. Make optional via settings
+**Decision:** Remove entirely
+**Reason:** Simplifies UI - auto-save without confirmation step
+**Implementation:** Removed Confirm/Unconfirm button from TMViewer.svelte
 
 ---
 
-### Q-001: TM Sync - Automatic or Manual?
+### Q-001: TM Sync - AUTO-SYNC ENABLED
 
-**Question:** Should TM indexes auto-sync when TM changes?
-**Current:** Manual "Sync Indexes" button.
-**User Opinion:** Should be automatic for Model2Vec (fast, cheap).
-
-Options:
-1. Auto-sync on any TM change
-2. Keep manual button
-3. Auto-sync with debounce (wait for user to stop editing)
+**Decision:** Auto-sync on any TM change
+**Reason:** Model2Vec is fast (~29k sentences/sec) - sync automatically
+**Implementation:** Added background task auto-sync to:
+- `add_tm_entry` endpoint
+- `update_tm_entry` endpoint
+- `delete_tm_entry` endpoint
 
 ---
 
@@ -204,4 +197,4 @@ This is the most powerful multilingual Model2Vec model available.
 
 ---
 
-*Updated 2025-12-20 14:45 | 0 critical, 0 bugs open, 0 UI open, 2 decisions*
+*Updated 2025-12-20 15:00 | 0 critical, 0 bugs open, 0 UI open, 0 decisions pending*

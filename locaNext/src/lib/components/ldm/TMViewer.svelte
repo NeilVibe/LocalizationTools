@@ -271,31 +271,6 @@
     }
   }
 
-  // BUG-020: Confirm/unconfirm entry (memoQ-style workflow)
-  async function toggleConfirm(entry) {
-    const newConfirmState = !entry.is_confirmed;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.id}/entries/${entry.id}/confirm?confirm=${newConfirmState}`, {
-        method: 'POST',
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        logger.success(`TM entry ${newConfirmState ? 'confirmed' : 'unconfirmed'}`, { entryId: entry.id });
-        await loadEntries();
-        dispatch('updated');
-      } else {
-        const error = await response.json();
-        errorMessage = error.detail || "Failed to confirm entry";
-        logger.error("Failed to confirm TM entry", { error: errorMessage });
-      }
-    } catch (err) {
-      errorMessage = err.message;
-      logger.error("Error confirming TM entry", { error: err.message });
-    }
-  }
-
   // Format date
   function formatDate(dateStr) {
     if (!dateStr) return "-";
@@ -539,14 +514,6 @@
                     </td>
                   {/if}
                   <td class="col-actions">
-                    <Button
-                      kind={entry.is_confirmed ? "secondary" : "primary"}
-                      size="small"
-                      icon={entry.is_confirmed ? Close : CheckmarkFilled}
-                      iconDescription={entry.is_confirmed ? "Unconfirm" : "Confirm"}
-                      tooltipAlignment="end"
-                      on:click={() => toggleConfirm(entry)}
-                    />
                     <Button
                       kind="ghost"
                       size="small"

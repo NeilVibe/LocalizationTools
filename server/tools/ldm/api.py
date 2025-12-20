@@ -1266,11 +1266,13 @@ async def update_tm_entry(
     source_text: Optional[str] = None,
     target_text: Optional[str] = None,
     string_id: Optional[str] = None,
+    background_tasks: BackgroundTasks = None,
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Update a single TM entry (for inline editing in TM Viewer).
+    Q-001: Auto-syncs TM indexes after update.
     """
     # Verify TM ownership
     tm_result = await db.execute(
@@ -1319,6 +1321,10 @@ async def update_tm_entry(
 
     logger.info(f"Updated TM entry: tm_id={tm_id}, entry_id={entry_id}, by={current_user.get('username')}")
 
+    # Q-001: Auto-sync indexes in background
+    if background_tasks:
+        background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
+
     return {
         "id": entry.id,
         "source_text": entry.source_text,
@@ -1337,11 +1343,13 @@ async def update_tm_entry(
 async def delete_tm_entry(
     tm_id: int,
     entry_id: int,
+    background_tasks: BackgroundTasks = None,
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Delete a single TM entry.
+    Q-001: Auto-syncs TM indexes after delete.
     """
     # Verify TM ownership
     tm_result = await db.execute(
@@ -1374,6 +1382,11 @@ async def delete_tm_entry(
     await db.commit()
 
     logger.info(f"Deleted TM entry: tm_id={tm_id}, entry_id={entry_id}")
+
+    # Q-001: Auto-sync indexes in background
+    if background_tasks:
+        background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
+
     return {"message": "Entry deleted", "entry_id": entry_id}
 
 
@@ -1599,6 +1612,7 @@ async def add_tm_entry(
     tm_id: int,
     source_text: str = Form(...),
     target_text: str = Form(...),
+    background_tasks: BackgroundTasks = None,
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -1606,6 +1620,7 @@ async def add_tm_entry(
     Add a single entry to a Translation Memory (Adaptive TM).
 
     Used to add translations as they're created during editing.
+    Q-001: Auto-syncs TM indexes after add.
     """
     logger.info(f"Adding TM entry: tm_id={tm_id}, source={source_text[:30]}...")
 
@@ -1635,6 +1650,11 @@ async def add_tm_entry(
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     logger.success(f"TM entry added: tm_id={tm_id}, total entries={result['entry_count']}")
+
+    # Q-001: Auto-sync indexes in background
+    if background_tasks:
+        background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
+
     return result
 
 
@@ -1917,6 +1937,40 @@ async def get_tm_sync_status(
         "db_entry_count": db_entry_count,
         "synced_entry_count": synced_entry_count
     }
+
+
+# Q-001: Auto-sync helper for background task
+def _auto_sync_tm_indexes(tm_id: int, user_id: int):
+    """
+    Background task to auto-sync TM indexes after entry modifications.
+    Model2Vec is fast (~29k sentences/sec), so this runs quickly.
+    """
+    from server.tools.ldm.tm_indexer import TMSyncManager
+
+    sync_db = next(get_db())
+    try:
+        # Verify TM still belongs to user
+        from server.database.models import LDMTranslationMemory
+        tm = sync_db.query(LDMTranslationMemory).filter(
+            LDMTranslationMemory.id == tm_id,
+            LDMTranslationMemory.owner_id == user_id
+        ).first()
+
+        if not tm:
+            logger.warning(f"Auto-sync skipped: TM {tm_id} not found or not owned by user {user_id}")
+            return
+
+        sync_manager = TMSyncManager(sync_db, tm_id)
+        result = sync_manager.sync()
+
+        logger.info(
+            f"Auto-sync TM {tm_id}: INSERT={result['stats']['insert']}, "
+            f"UPDATE={result['stats']['update']}, time={result['time_seconds']:.2f}s"
+        )
+    except Exception as e:
+        logger.error(f"Auto-sync failed for TM {tm_id}: {e}")
+    finally:
+        sync_db.close()
 
 
 @router.post("/tm/{tm_id}/sync")

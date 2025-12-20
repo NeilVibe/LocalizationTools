@@ -27,12 +27,12 @@ All components operational. Build 304 verified. Build 305 triggered with UI-034 
 | 301 | BUG-028 (Model2Vec), BUG-029 (Upload as TM) |
 | 300 | PERF-001, PERF-002, FEAT-005, BUG-023 |
 
-## Open Items
+## Decisions Made (Build 306)
 
-| ID | Description | Status |
-|----|-------------|--------|
-| UI-027 | Confirm button - keep/remove/optional? | Decision needed |
-| Q-001 | TM auto-sync vs manual? | Decision needed |
+| ID | Decision | Implementation |
+|----|----------|----------------|
+| UI-027 | Remove Confirm button | Simplified TMViewer UI |
+| Q-001 | Enable auto-sync | Background sync after TM changes |
 
 ---
 
