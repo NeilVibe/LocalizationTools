@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-21 | **Build:** 311 (pending) | **Previous:** 310
+**Last Updated:** 2025-12-21 00:45 | **Build:** 311 (VERIFIED) | **Previous:** 310
 
 ---
 
@@ -9,21 +9,27 @@
 | Status | Count |
 |--------|-------|
 | **OPEN** | 0 |
-| **FIXED (This Session)** | 12 |
+| **FIXED (This Session)** | 13 |
 
 ---
 
-## FIXED - BUILD 311 (pending)
+## FIXED - BUILD 311 (VERIFIED)
 
 ### UI-044: Resizable Columns + Clear Separator
 
 - **Problem:** Source/Target columns had no clear visual separation; couldn't resize columns like Excel
 - **Fix:**
-  - Added 2px visible border between source and target columns
+  - Added 2px visible border between source and target columns (`--cds-border-strong-01`)
   - Added draggable resize handle to adjust column widths (20%-80% range)
-  - Header and cells use matching percentage-based widths
+  - Header and cells use matching percentage-based widths via Svelte 5 `$state()`
+  - Auto-adaptive layout using reactive percentage widths
 - **Files:** `VirtualGrid.svelte`
-- **Status:** PENDING
+- **Svelte 5 Features:**
+  - `$state()` for sourceWidthPercent, isResizing state
+  - Inline style bindings for reactive column widths
+  - Mouse event handlers for drag-to-resize
+- **Screenshot Verified:** 2025-12-21 00:45 (build311_coord.png)
+- **Status:** VERIFIED
 
 ---
 
