@@ -189,6 +189,7 @@ def upgrade_schema(engine):
     # Format: (table_name, column_name, column_type, default_value)
     missing_columns = [
         ("ldm_translation_memories", "mode", "VARCHAR(20)", "'standard'"),
+        ("ldm_tm_entries", "string_id", "VARCHAR(255)", "NULL"),
     ]
 
     with engine.connect() as conn:
