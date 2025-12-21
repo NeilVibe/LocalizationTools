@@ -840,9 +840,11 @@ class TMSearcher:
         # =====================================================================
         # TIER 1: Perfect Whole Match (Hash Lookup)
         # =====================================================================
+        # DEBUG: Log Tier 1 attempt
+        logger.info(f"DEBUG Tier1: query='{query[:30]}', normalized='{query_normalized[:30]}', lookup_size={len(self.whole_lookup)}")
         if query_normalized in self.whole_lookup:
             match = self.whole_lookup[query_normalized]
-            logger.debug(f"Tier 1 match: {query[:50]}...")
+            logger.info(f"DEBUG Tier1: MATCH FOUND! has_variations={'variations' in match}")
 
             # Handle both standard and variations structures
             if "variations" in match:
@@ -1649,7 +1651,8 @@ class TMSyncManager:
             new_mapping_entries.append({
                 "entry_id": entry["id"],
                 "source_text": entry["source_text"],
-                "target_text": entry["target_text"]
+                "target_text": entry["target_text"],
+                "string_id": entry.get("string_id")  # Include StringID for variations
             })
 
         # Append new embeddings to existing
@@ -1891,7 +1894,8 @@ class TMSyncManager:
                         new_mapping.append({
                             "entry_id": entry["id"],
                             "source_text": entry["source_text"],
-                            "target_text": entry["target_text"]
+                            "target_text": entry["target_text"],
+                            "string_id": entry.get("string_id")  # Include StringID for variations
                         })
 
         # Then generate new embeddings for INSERT/UPDATE
@@ -1917,7 +1921,8 @@ class TMSyncManager:
                         new_mapping.append({
                             "entry_id": entry["id"],
                             "source_text": entry["source_text"],
-                            "target_text": entry["target_text"]
+                            "target_text": entry["target_text"],
+                            "string_id": entry.get("string_id")  # Include StringID for variations
                         })
 
         if progress_callback:
