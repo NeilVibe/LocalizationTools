@@ -1,17 +1,42 @@
 # Windows Runner Setup for Gitea Actions
 
-**Version:** 2512090410
-**Status:** ✅ PRODUCTION READY - Patched Runner v15 (NUL Byte Fix)
+**Version:** 2512211600
+**Status:** PRODUCTION READY - Patched Runner v15 (NUL Byte Fix)
+
+---
+
+## Current Production Setup
+
+```
+Binary:     C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner_patched_v15.exe
+Mode:       DAEMON (persistent, picks up jobs continuously)
+Parameters: -c config.yaml daemon
+Service:    GiteaActRunner (via NSSM)
+Auto-start: Yes (SERVICE_AUTO_START)
+```
+
+**We use DAEMON mode, NOT ephemeral mode.** The v15 patch fixes Windows issues without needing ephemeral restarts.
+
+---
+
+## Quick Reference
+
+| What | Command |
+|------|---------|
+| Status | `Get-Service GiteaActRunner` |
+| Stop | `Stop-Service GiteaActRunner` |
+| Start | `Start-Service GiteaActRunner` |
+| Restart | `Restart-Service GiteaActRunner` |
+| Rebuild | See `runner/README.md` |
 
 ---
 
 ## Overview
 
-This guide documents how to set up a **production-ready Windows runner** for Gitea Actions using a **patched act_runner**:
+This guide documents how to set up a **production-ready Windows runner** for Gitea Actions:
 - Runs as a Windows Service (auto-start on boot)
-- **Ephemeral mode**: Fresh runner for each job (like GitHub Actions)
+- **Daemon mode**: Persistent runner, picks up jobs continuously
 - **Patched v15**: Fixes Windows PowerShell NUL byte issue in GITHUB_OUTPUT
-- No cleanup issues - runner exits after each job, handles released
 - Has Git properly installed in system PATH
 
 ---
@@ -19,8 +44,9 @@ This guide documents how to set up a **production-ready Windows runner** for Git
 ## Prerequisites
 
 1. **Windows machine** with admin access
-2. **WSL** installed (for running commands from Linux)
+2. **WSL** installed (for building patched runner)
 3. **Gitea server** running (default: http://localhost:3000)
+4. **Go 1.21+** installed in WSL (for building)
 
 ---
 
@@ -42,11 +68,6 @@ From **Admin PowerShell**:
 choco install git -y --params "/GitAndUnixToolsOnPath /WindowsTerminal"
 ```
 
-This installs Git to `C:\Program Files\Git` with:
-- Git added to system PATH
-- Unix tools available
-- Windows Terminal integration
-
 **Verify:**
 ```powershell
 git --version  # Should show: git version 2.52.0.windows.1 or similar
@@ -56,9 +77,7 @@ git --version  # Should show: git version 2.52.0.windows.1 or similar
 
 ## Step 3: Install NSSM (Service Manager)
 
-Regular executables (like `act_runner.exe`) cannot be registered as Windows Services directly - they require a `ServiceMain` entry point.
-
-**NSSM** (Non-Sucking Service Manager) wraps any executable as a proper Windows Service.
+**NSSM** (Non-Sucking Service Manager) wraps console apps as Windows Services.
 
 From **Admin PowerShell**:
 ```powershell
@@ -69,87 +88,65 @@ NSSM installs to: `C:\ProgramData\chocolatey\lib\NSSM\tools\nssm.exe`
 
 ---
 
-## Step 4: Download and Register act_runner
+## Step 4: Build the Patched Runner
 
-### 4.1 Download act_runner
+The stock act_runner fails on Windows due to PowerShell NUL byte bugs. We have a patch.
 
-```powershell
-# Create directory
-mkdir C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
+From **WSL**:
+```bash
+cd /path/to/LocalizationTools/runner/scripts
+chmod +x build_patched_runner.sh
+./build_patched_runner.sh
 
-# Download act_runner (check https://gitea.com/gitea/act_runner/releases for latest)
-Invoke-WebRequest -Uri "https://gitea.com/gitea/act_runner/releases/download/v0.2.11/act_runner-0.2.11-windows-amd64.exe" -OutFile "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner.exe"
+# Deploy to Windows
+cp ~/act_runner_build/act_runner/act_runner_patched_v15.exe \
+   /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/GiteaRunner/
 ```
 
-### 4.2 Register with Gitea
+See `runner/README.md` for full details.
 
+---
+
+## Step 5: Register with Gitea
+
+From **Windows PowerShell**:
 ```powershell
 cd C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
 
-# Generate config
-.\act_runner.exe generate-config > config.yaml
+# Generate config (one-time)
+.\act_runner_patched_v15.exe generate-config > config.yaml
 
-# Register runner (get token from Gitea → Settings → Actions → Runners)
-.\act_runner.exe register --instance http://YOUR_GITEA_IP:3000 --token YOUR_RUNNER_TOKEN --labels windows-latest,windows --name windows-runner
+# Register runner (get token from Gitea -> Settings -> Actions -> Runners)
+.\act_runner_patched_v15.exe register `
+    --instance http://YOUR_GITEA_IP:3000 `
+    --token YOUR_RUNNER_TOKEN `
+    --labels "windows-latest:host,windows:host,self-hosted:host,x64:host" `
+    --name "windows-runner"
 ```
+
+**Important:** Do NOT use `--ephemeral` flag. We use persistent daemon mode.
 
 ---
 
-## Step 5: Create Ephemeral Wrapper Script
-
-Create `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\run_ephemeral.bat`:
-
-```batch
-@echo off
-setlocal EnableDelayedExpansion
-
-set "RUNNER_DIR=C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
-set "GITEA_URL=http://YOUR_GITEA_IP:3000"
-set "RUNNER_NAME=windows-ephemeral"
-set "RUNNER_LABELS=windows:host,windows-latest:host,self-hosted:host,x64:host"
-
-cd /d "%RUNNER_DIR%"
-
-:loop
-echo [%TIME%] Starting ephemeral runner cycle...
-
-REM Remove old registration
-if exist ".runner" del /f /q ".runner"
-
-REM Register as ephemeral (single-use)
-act_runner.exe register --no-interactive --ephemeral ^
-    --instance "%GITEA_URL%" ^
-    --token "%GITEA_RUNNER_TOKEN%" ^
-    --name "%RUNNER_NAME%" ^
-    --labels "%RUNNER_LABELS%"
-
-REM Run ONE job then exit
-act_runner.exe -c config.yaml daemon
-
-echo [%TIME%] Job complete, re-registering...
-timeout /t 5 /nobreak >nul
-goto loop
-```
-
-Create `registration_token.txt` with your Gitea runner token.
-
----
-
-## Step 6: Create Windows Service with NSSM
+## Step 6: Create Windows Service (DAEMON Mode)
 
 From **Admin PowerShell**:
 ```powershell
 $nssm = "C:\ProgramData\chocolatey\lib\NSSM\tools\nssm.exe"
+$runnerDir = "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
+$runnerExe = "act_runner_patched_v15.exe"
 
 # Remove old service if exists
 sc.exe stop GiteaActRunner 2>$null
 sc.exe delete GiteaActRunner 2>$null
 Start-Sleep -Seconds 2
 
-# Install service with EPHEMERAL wrapper
-& $nssm install GiteaActRunner "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\run_ephemeral.bat"
-& $nssm set GiteaActRunner AppDirectory "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
+# Install service - DAEMON MODE (persistent)
+& $nssm install GiteaActRunner "$runnerDir\$runnerExe" "-c config.yaml daemon"
+& $nssm set GiteaActRunner AppDirectory $runnerDir
 & $nssm set GiteaActRunner Start SERVICE_AUTO_START
+& $nssm set GiteaActRunner DisplayName "Gitea Actions Runner (Patched v15)"
+& $nssm set GiteaActRunner Description "Patched act_runner with NUL byte fix - DAEMON mode"
 
 # Start service
 & $nssm start GiteaActRunner
@@ -167,81 +164,49 @@ StartType : Automatic
 
 ---
 
-## Why Ephemeral Mode?
-
-**Problem (P13.11):** In persistent daemon mode, act_runner's cleanup fails on Windows due to Go process holding file handles. Jobs show "failed" even when build succeeds.
-
-**Solution:** Ephemeral mode - runner exits after each job, releasing all handles. Fresh registration for next job.
-
-| Mode | How it works | Cleanup |
-|------|--------------|---------|
-| Persistent (old) | Runner stays running | ❌ Fails on Windows |
-| Ephemeral (new) | Runner exits after job | ✅ Handles released |
-
----
-
-## Running Commands from WSL (Admin Elevation)
-
-To run Admin PowerShell commands from WSL:
-
-```bash
-# Create script
-cat > /mnt/c/temp/my_script.ps1 << 'EOF'
-# Your PowerShell commands here
-Write-Host "Running as Admin!"
-EOF
-
-# Execute with admin elevation
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile \
-  -Command "Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File C:\temp\my_script.ps1'"
-```
-
----
-
-## Full Installation Script (One-Shot)
-
-Save as `C:\temp\install_runner.ps1` and run as Admin:
+## Verify It's Working
 
 ```powershell
-Write-Host "=== GITEA WINDOWS RUNNER FULL INSTALLATION ===" -ForegroundColor Cyan
+# Check service
+Get-Service GiteaActRunner
 
-# 1. Install Git
-Write-Host "`n[1/4] Installing Git..." -ForegroundColor Yellow
-choco install git -y --params "/GitAndUnixToolsOnPath /WindowsTerminal"
+# Check process
+Get-Process act_runner* | Format-Table Id,ProcessName,StartTime
 
-# 2. Install NSSM
-Write-Host "`n[2/4] Installing NSSM..." -ForegroundColor Yellow
-choco install nssm -y
-
-# 3. Setup runner directory (assumes act_runner.exe already downloaded and registered)
-Write-Host "`n[3/4] Configuring service..." -ForegroundColor Yellow
+# Check NSSM config (should show daemon, NOT ephemeral)
 $nssm = "C:\ProgramData\chocolatey\lib\NSSM\tools\nssm.exe"
-$runnerPath = "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
-
-# Remove old service
-sc.exe stop GiteaActRunner 2>$null
-sc.exe delete GiteaActRunner 2>$null
-Start-Sleep -Seconds 2
-
-# Create service
-& $nssm install GiteaActRunner "$runnerPath\act_runner.exe" "daemon"
-& $nssm set GiteaActRunner AppDirectory $runnerPath
-& $nssm set GiteaActRunner Start SERVICE_AUTO_START
-& $nssm start GiteaActRunner
-
-# 4. Verify
-Write-Host "`n[4/4] Verification..." -ForegroundColor Yellow
-Write-Host "`nGit:" -ForegroundColor Green
-git --version
-
-Write-Host "`nService:" -ForegroundColor Green
-Get-Service GiteaActRunner | Format-List Name,Status,StartType
-
-Write-Host "`nProcess:" -ForegroundColor Green
-Get-Process act_runner | Format-Table Id,ProcessName,StartTime
-
-Write-Host "`n=== INSTALLATION COMPLETE ===" -ForegroundColor Cyan
+& $nssm get GiteaActRunner Application
+& $nssm get GiteaActRunner AppParameters  # Should show: -c config.yaml daemon
 ```
+
+Also check Gitea -> Settings -> Actions -> Runners - should show as "Idle" or "Running".
+
+---
+
+## The v15 Patch (NUL Byte Fix)
+
+### The Problem
+
+Windows PowerShell writes NUL bytes (`\x00`) to GITHUB_OUTPUT files:
+```
+name=value\x00\x00
+```
+
+This causes:
+- `invalid format '\x00'` errors
+- `exec: environment variable contains NUL` errors
+- "Job failed" even when all build steps succeed
+
+### The Solution
+
+Our patch strips NUL bytes when parsing env files:
+
+```go
+// V15-PATCH: Strip NUL bytes from line (Windows PowerShell bug)
+line = strings.ReplaceAll(line, "\x00", "")
+```
+
+Patch location: `runner/patches/v15_nul_byte_fix.patch`
 
 ---
 
@@ -249,44 +214,31 @@ Write-Host "`n=== INSTALLATION COMPLETE ===" -ForegroundColor Cyan
 
 ### Service won't start
 ```powershell
-# Check NSSM logs
 & "C:\ProgramData\chocolatey\lib\NSSM\tools\nssm.exe" status GiteaActRunner
-
-# Check Windows Event Viewer → Application logs for "nssm" source
+# Check Windows Event Viewer -> Application logs for "nssm" source
 ```
 
 ### Git not in PATH
 ```powershell
-# Refresh environment (new PowerShell session needed after Git install)
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
-# Or verify directly
-& "C:\Program Files\Git\cmd\git.exe" --version
 ```
 
-### Chocolatey lock file error
-```powershell
-# Remove lock files and retry
-Remove-Item "C:\ProgramData\chocolatey\lib\*" -Include "*.lock" -Recurse -Force
-Remove-Item "C:\ProgramData\chocolatey\lib-bad" -Recurse -Force -ErrorAction SilentlyContinue
-choco install nssm -y
-```
+### Runner not picking up jobs
+1. Check Gitea -> Settings -> Actions -> Runners
+2. Verify runner shows as "Idle" not "Offline"
+3. Check labels match workflow `runs-on:`
 
 ---
 
-## Service Management Commands
+## Service Management
 
 ```powershell
 # Status
 Get-Service GiteaActRunner
 
-# Stop
+# Stop/Start/Restart
 Stop-Service GiteaActRunner
-
-# Start
 Start-Service GiteaActRunner
-
-# Restart
 Restart-Service GiteaActRunner
 
 # Disable auto-start
@@ -300,80 +252,6 @@ $nssm = "C:\ProgramData\chocolatey\lib\NSSM\tools\nssm.exe"
 
 ---
 
-## Patched Runner (v15) - NUL Byte Fix
-
-The stock act_runner v0.2.11 fails on Windows due to PowerShell writing NUL bytes (`\x00`) to GITHUB_OUTPUT files. This causes:
-- `invalid format '\x00'` errors
-- `exec: environment variable contains NUL` errors
-- "Job failed" even when all build steps succeed
-
-### The Problem
-
-Windows PowerShell's `Add-Content` and `>>` operators write NUL bytes to files, especially with certain encodings. When act_runner parses GITHUB_OUTPUT:
-
-```
-name=value\x00\x00
-```
-
-The NUL bytes cause Go's `os/exec` to reject environment variables.
-
-### The Solution (v15 Patch)
-
-Patch file: `~/act_runner_patch/act/pkg/container/parse_env_file.go`
-
-```go
-// V15-PATCH: Strip NUL bytes from line (Windows PowerShell bug)
-line = strings.ReplaceAll(line, "\x00", "")
-trimmed := strings.TrimSpace(line)
-if trimmed == "" {
-    continue
-}
-```
-
-### Building the Patched Runner
-
-```bash
-# Clone repositories
-mkdir -p ~/act_runner_patch && cd ~/act_runner_patch
-git clone https://github.com/nektos/act.git
-git clone https://gitea.com/gitea/act_runner.git
-
-# Apply patch to act/pkg/container/parse_env_file.go
-# (Insert lines after `line := s.Text()` in ParseEnvFile function)
-
-# Configure go.mod to use local act
-cd act_runner
-echo 'replace github.com/nektos/act => ../act' >> go.mod
-
-# Build
-GOOS=windows GOARCH=amd64 go build -o act_runner_patched_v15.exe
-
-# Deploy to Windows
-cp act_runner_patched_v15.exe /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/GiteaRunner/
-```
-
-### Using the Patched Runner
-
-Update `run_ephemeral.bat` to use the patched version:
-
-```batch
-REM Replace:
-act_runner.exe register ...
-act_runner.exe daemon ...
-
-REM With:
-act_runner_patched_v15.exe register ...
-act_runner_patched_v15.exe daemon ...
-```
-
-### Verification
-
-Look for these markers in build logs:
-- `[V10-PATCHED] Cleaning up container...` - Confirms patch is active
-- `Job succeeded` - No more false positive failures
-
----
-
 ## Key Files & Locations
 
 | Item | Path |
@@ -381,19 +259,15 @@ Look for these markers in build logs:
 | Git | `C:\Program Files\Git` |
 | NSSM | `C:\ProgramData\chocolatey\lib\NSSM\tools\nssm.exe` |
 | Runner | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner_patched_v15.exe` |
-| Runner Config | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\.runner` |
-| Runner Work Dir | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner` |
-| Patch Source | `~/act_runner_patch/act/pkg/container/parse_env_file.go` |
+| Runner Config | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\config.yaml` |
+| Registration | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\.runner` |
+| Rebuild Kit | `runner/` (in repo) |
 
 ---
 
 ## Why NSSM Instead of sc.exe?
 
-Windows Services created with `sc.exe create` require:
-- A `ServiceMain` entry point in the executable
-- Proper Windows Service API integration
-
-`act_runner.exe` is a **regular console application** - it doesn't have these.
+Windows Services require a `ServiceMain` entry point. `act_runner.exe` is a console app without this.
 
 **NSSM solves this by:**
 1. Creating a proper Windows Service wrapper
@@ -403,5 +277,14 @@ Windows Services created with `sc.exe create` require:
 
 ---
 
-*Last updated: 2025-12-09*
+## Historical Note: Ephemeral Mode
+
+We previously tried ephemeral mode (runner exits after each job) to work around cleanup issues. The v15 patch makes this unnecessary - daemon mode now works reliably.
+
+**Current mode: DAEMON (persistent)**
+
+---
+
+*Last updated: 2025-12-21*
+*Mode: DAEMON (NOT ephemeral)*
 *Tested on: Windows 11, Git 2.52.0, act_runner 0.2.11 (patched v15), NSSM 2.24*

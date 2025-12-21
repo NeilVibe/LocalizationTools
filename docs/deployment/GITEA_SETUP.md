@@ -1,7 +1,7 @@
 # Gitea CI/CD Complete Setup Guide
 
 **Version:** 2512101235
-**Status:** PRODUCTION READY - Fully Working with Non-Ephemeral Runner
+**Status:** PRODUCTION READY - Patched Runner v15 (DAEMON Mode)
 
 ---
 
@@ -41,7 +41,7 @@ This guide documents the complete setup of **Gitea** as a self-hosted Git server
 ├──────────────────────────┤    ├──────────────────────────────────┤
 │  Name: locanext-runner    │    │  Name: windows-runner             │
 │  Jobs: safety-checks,     │    │  Jobs: build-windows              │
-│        create-release     │    │  Mode: Non-Ephemeral (persistent) │
+│        create-release     │    │  Mode: DAEMON (persistent)        │
 │  Binary: act_runner       │    │  Binary: act_runner_patched_v15   │
 │  (stock, no patch needed) │    │  (PATCHED for NUL byte fix)       │
 └──────────────────────────┘    └──────────────────────────────────┘
@@ -279,69 +279,19 @@ cp act_runner_patched_v15.exe /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/GiteaRunner/
 
 ```
 C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\
-├── act_runner_patched_v15.exe    # Patched runner binary
-├── run_ephemeral.bat             # Ephemeral wrapper script
-├── registration_token.txt        # Gitea runner token
+├── act_runner_patched_v15.exe    # Patched runner binary (DAEMON mode)
 ├── config.yaml                   # Runner configuration
-├── install_service.ps1           # Service installer
+├── .runner                       # Registration file (auto-created)
 └── _work\                        # Job workspace (auto-created)
 ```
 
-### 4.5 Ephemeral Wrapper Script
+### 4.5 Install as Windows Service (DAEMON Mode)
 
-**run_ephemeral.bat:**
-```batch
-@echo off
-setlocal EnableDelayedExpansion
+**Current approach - DAEMON mode (recommended):**
 
-set "RUNNER_DIR=C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
-set "GITEA_URL=http://172.28.150.120:3000"
-set "RUNNER_NAME=windows-ephemeral"
-set "RUNNER_LABELS=windows:host,windows-latest:host,self-hosted:host,x64:host"
-set "CONFIG_FILE=config.yaml"
-
-if not defined GITEA_RUNNER_TOKEN (
-    if exist "%RUNNER_DIR%\registration_token.txt" (
-        set /p GITEA_RUNNER_TOKEN=<"%RUNNER_DIR%\registration_token.txt"
-    ) else (
-        echo [ERROR] Token not found
-        exit /b 1
-    )
-)
-
-cd /d "%RUNNER_DIR%"
-
-:loop
-echo [%TIME%] === Starting new ephemeral runner cycle ===
-
-if exist ".runner" del /f /q ".runner" 2>nul
-
-act_runner_patched_v15.exe register --no-interactive ^
-    --ephemeral ^
-    --instance "%GITEA_URL%" ^
-    --token "%GITEA_RUNNER_TOKEN%" ^
-    --name "%RUNNER_NAME%" ^
-    --labels "%RUNNER_LABELS%"
-
-if errorlevel 1 (
-    echo [%TIME%] Registration failed, retrying in 30s...
-    timeout /t 30 /nobreak >nul
-    goto loop
-)
-
-echo [%TIME%] Starting daemon (ephemeral mode)...
-act_runner_patched_v15.exe -c "%CONFIG_FILE%" daemon
-
-echo [%TIME%] Daemon exited, re-registering in 5s...
-timeout /t 5 /nobreak >nul
-goto loop
-```
-
-### 4.6 Install as Windows Service
-
-**install_service.ps1:**
 ```powershell
 $runnerDir = "C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner"
+$runnerExe = "act_runner_patched_v15.exe"
 $nssm = "C:\ProgramData\chocolatey\lib\NSSM\tools\nssm.exe"
 
 # Remove old service
@@ -349,26 +299,19 @@ sc.exe stop GiteaActRunner 2>$null
 sc.exe delete GiteaActRunner 2>$null
 Start-Sleep -Seconds 2
 
-# Install new service
-& $nssm install GiteaActRunner "$runnerDir\run_ephemeral.bat"
+# Install service - DAEMON MODE (runs binary directly, no wrapper script)
+& $nssm install GiteaActRunner "$runnerDir\$runnerExe" "-c config.yaml daemon"
 & $nssm set GiteaActRunner AppDirectory $runnerDir
 & $nssm set GiteaActRunner Start SERVICE_AUTO_START
-
-# Load token
-$token = (Get-Content "$runnerDir\registration_token.txt" -Raw).Trim()
-& $nssm set GiteaActRunner AppEnvironmentExtra "GITEA_RUNNER_TOKEN=$token"
+& $nssm set GiteaActRunner DisplayName "Gitea Actions Runner (Patched v15)"
 
 # Start
 & $nssm start GiteaActRunner
 ```
 
-Run as Administrator:
-```powershell
-cd C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
-.\install_service.ps1
-```
+Run as Administrator. See also: `runner/scripts/install_windows.ps1` in repo.
 
-### 4.7 Prerequisites (Windows)
+### 4.6 Prerequisites (Windows)
 
 ```powershell
 # Install Chocolatey (if not installed)
@@ -538,7 +481,7 @@ Restart-Service GiteaActRunner       # Restart
 | SSH connection refused | Wrong port/username | Use `neil1988@host:2222` not `git@host` |
 | Build timeout | Service not running | Install as Windows Service |
 | Windows runner won't connect | NSSM service stopped | Start service manually (see 7.4) |
-| Ephemeral token expiration | Ephemeral mode re-registers each job | Use non-ephemeral (see 7.5) |
+| Token expiration | Registration token expired | Re-register runner (see 7.5) |
 | curl.exe JSON parse error | UTF-8 BOM character (`ï`) | Use `Invoke-RestMethod` instead |
 
 ### 7.4 Windows Runner Service Issues (CRITICAL!)
@@ -573,52 +516,15 @@ Restart-Service GiteaActRunner       # Restart
 **Why this happens:**
 - NSSM restarts the service, but registration can fail silently
 - Network changes can disconnect the runner from Gitea
-- Token expiration (especially in ephemeral mode)
+- Token expiration (re-register if needed)
 
-### 7.5 Ephemeral vs Non-Ephemeral Mode
+### 7.5 Runner Mode
 
-**Ephemeral Mode (NOT RECOMMENDED):**
-- Runner re-registers with a new token after each job
-- If token expires between jobs → registration fails → service loops
-- NSSM runs `run_ephemeral.bat` which re-registers each cycle
+**Current Setup: DAEMON mode** - Persistent runner, picks up jobs continuously.
 
-**Non-Ephemeral Mode (RECOMMENDED):**
-- Runner registers ONCE with a persistent token
-- Token valid for 6 months (configurable in Gitea)
-- More stable, fewer moving parts
-
-**How to Switch to Non-Ephemeral:**
-
-1. **Generate a long-lived token in Gitea:**
-   - Gitea → Settings → Actions → Runners → Create new Runner
-   - Copy the registration token
-
-2. **Register the runner once (no `--ephemeral` flag):**
-   ```powershell
-   cd C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner
-   .\act_runner_patched_v15.exe register --no-interactive `
-       --instance "http://172.28.150.120:3000" `
-       --token "YOUR_TOKEN" `
-       --name "windows-runner" `
-       --labels "windows:host,windows-latest:host,self-hosted:host,x64:host"
-   ```
-
-3. **Reconfigure NSSM to run daemon directly (no bat file):**
-   ```bash
-   # From WSL
-   /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
-     nssm stop GiteaActRunner
-     nssm set GiteaActRunner Application 'C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner_patched_v15.exe'
-     nssm set GiteaActRunner AppParameters '-c config.yaml daemon'
-     nssm set GiteaActRunner AppDirectory 'C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner'
-     nssm start GiteaActRunner
-   "
-   ```
-
-4. **Verify:**
-   ```bash
-   /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "Get-Service GiteaActRunner"
-   ```
+For full setup details, see:
+- `docs/deployment/WINDOWS_RUNNER_SETUP.md` - Complete Windows runner guide
+- `runner/README.md` - Rebuild kit with patch and scripts
 
 ### 7.6 Release API Issues (curl.exe vs Invoke-RestMethod)
 
@@ -796,5 +702,5 @@ strings $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1) | 
 
 ---
 
-*Last updated: 2025-12-10*
-*Gitea: v1.22.3 | act_runner: v0.2.11 (patched v15) | Mode: Non-Ephemeral | Status: PRODUCTION READY*
+*Last updated: 2025-12-21*
+*Gitea: v1.22.3 | act_runner: v0.2.11 (patched v15) | Mode: DAEMON | Status: PRODUCTION READY*

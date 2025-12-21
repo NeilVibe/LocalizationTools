@@ -1,0 +1,54 @@
+# act_runner Configuration Template
+# Copy to config.yaml and customize for your environment
+
+log:
+  level: info
+
+runner:
+  # File where the runner stores its registration info
+  file: .runner
+
+  # Fetch interval (how often to check for new jobs)
+  fetch_interval: 2s
+
+  # Fetch timeout
+  fetch_timeout: 5s
+
+  # Maximum concurrent jobs
+  capacity: 1
+
+  # Environment variables passed to jobs
+  envs:
+    # Add any environment variables your workflows need
+    # MY_VAR: my_value
+
+  # Labels for this runner
+  # Set during registration, but can be overridden here
+  # labels:
+  #   - windows-latest:host
+  #   - windows:host
+  #   - self-hosted:host
+  #   - x64:host
+
+cache:
+  # Enable artifact caching (optional)
+  enabled: false
+  # dir: ~/.cache/act
+
+container:
+  # Not applicable for Windows host runners
+  # network: ""
+
+  # Privileged mode (Linux only)
+  privileged: false
+
+  # Options (Linux container mode only)
+  options: ""
+
+  # Working directory for actions
+  workdir_parent: ""
+
+host:
+  # For host runners (not containers), workspace directory
+  # Leave empty to use default (runner directory + _work)
+  workdir_parent: ""
