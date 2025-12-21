@@ -231,11 +231,21 @@ class TrackedOperation:
     AUTO-completes on clean exit.
     AUTO-fails on exception.
 
+    Args:
+        silent: If True, frontend should NOT show toast notifications.
+                Use for quick auto-updates (FAISS add, auto-embedding).
+                Operation is still tracked in Task Manager.
+
     Usage:
+        # Normal operation (shows toast)
         with TrackedOperation("Process TM", user_id, tool_name="LDM") as op:
             op.update(25, "Step 1...")
             op.update(75, "Step 2...")
         # Done - auto-completed
+
+        # Silent operation (NO toast)
+        with TrackedOperation("FAISS Auto-Add", user_id, tool_name="LDM", silent=True) as op:
+            op.update(100, "Done")
     """
 
     def __init__(
@@ -247,7 +257,8 @@ class TrackedOperation:
         function_name: str = "process",
         total_steps: Optional[int] = None,
         file_info: Optional[dict] = None,
-        parameters: Optional[dict] = None
+        parameters: Optional[dict] = None,
+        silent: bool = False  # If True, frontend should NOT show toast (for quick auto-updates)
     ):
         self.operation_name = operation_name
         self.user_id = user_id
@@ -257,6 +268,7 @@ class TrackedOperation:
         self.total_steps = total_steps
         self.file_info = file_info
         self.parameters = parameters
+        self.silent = silent  # Pass to WebSocket events for frontend toast decision
 
         self.operation_id = None
         self._tracker = None
@@ -314,7 +326,8 @@ class TrackedOperation:
                     'operation_name': self.operation_name,
                     'status': 'running',
                     'progress_percentage': 0,
-                    'started_at': datetime.utcnow().isoformat() + 'Z'
+                    'started_at': datetime.utcnow().isoformat() + 'Z',
+                    'silent': self.silent  # If True, frontend should NOT show toast
                 }))
 
             self._tracker = ProgressTracker(self.operation_id)
@@ -350,7 +363,12 @@ def track_operation(operation_name: str, user_id: int, **kwargs) -> TrackedOpera
     Convenience function to create a TrackedOperation.
 
     Usage:
+        # Normal operation (shows toast)
         with track_operation("Process TM", user_id, tool_name="LDM") as op:
             op.update(50, "Working...")
+
+        # Silent operation (NO toast, still tracked in Task Manager)
+        with track_operation("FAISS Update", user_id, tool_name="LDM", silent=True) as op:
+            op.update(100, "Done")
     """
     return TrackedOperation(operation_name, user_id, **kwargs)

@@ -10,11 +10,20 @@ All components operational. CI/CD cleaned up and enhanced. GitHub build in progr
 
 | Component | Status |
 |-----------|--------|
-| LDM (Language Data Manager) | WORKS |
+| LDM (Language Data Manager) | WORKS (feature gap found) |
 | XLS Transfer | WORKS |
 | Quick Search | WORKS |
 | KR Similar | WORKS |
 | CI/CD (Gitea + GitHub) | ENHANCED |
+
+### ⚠️ Feature Gap Discovered
+
+**Auto-add to TM on cell confirm is NOT IMPLEMENTED!**
+
+When user confirms a cell (Ctrl+S → status='reviewed'), it should auto-add to linked TM. Currently it only saves to DB.
+
+- **Location:** `server/tools/ldm/api.py:728-798` (`update_row`)
+- **Details:** [P36_COVERAGE_GAPS.md](docs/wip/P36_COVERAGE_GAPS.md)
 
 ---
 
@@ -34,30 +43,38 @@ All components operational. CI/CD cleaned up and enhanced. GitHub build in progr
 
 ## CI/CD Build Modes
 
-### Current Modes
-
-| Mode | Trigger | What It Does |
-|------|---------|--------------|
-| `Build LIGHT` | Daily dev | ~285 tests, ~150MB installer, model downloads on first launch |
-| `Build FULL` | Releases | ~285 tests, ~2GB installer, includes AI model |
-| `TROUBLESHOOT` | Debug | Resume from checkpoint, iterative fixing |
-
-### Proposed Enhancement (TODO)
+### The 4 Modes
 
 | Mode | Tests | Installer | Use Case |
 |------|-------|-----------|----------|
-| `Build LIGHT` | ~285 essential | ~150MB | Daily development |
-| `Build FULL` | ~285 essential | ~2GB+ | **OFFLINE-READY** - All deps + model + everything bundled |
-| `Build TEST` | ALL (1500+) | No installer | Pre-release QA, comprehensive coverage |
+| `LIGHT` | Essential (~285) | ~150MB | Daily dev + releases |
+| `FULL` | Essential (~285) | ~2GB+ | **TRUE OFFLINE** - zero internet |
+| `QA-LIGHT` | **ALL 1500+** | ~150MB | Pre-release verification |
+| `QA-FULL` | **ALL 1500+** | ~2GB+ | **PRISTINE** offline release |
 
-**`Build FULL` Goal:** True offline installer - NO internet needed after install:
-- All Python dependencies bundled
-- Qwen model (2.3GB) included
-- Model2Vec included
-- VC++ Redistributable bundled
-- Everything runs immediately, zero downloads
+### LIGHT vs FULL
 
-**`Build TEST` Goal:** Run every single test for maximum quality assurance before releases.
+| | LIGHT | FULL |
+|--|-------|------|
+| Installer | ~150MB | ~2GB+ |
+| First launch | Downloads deps | Ready immediately |
+| Internet | Yes (first run) | **NO - zero internet** |
+
+**FULL bundles EVERYTHING:** All Python deps, Qwen model, Model2Vec, VC++ Redistributable
+
+### QA Modes
+
+**QA = Same build, PRISTINE validation first** - All 1500+ tests must pass before creating installer
+
+### Implementation Status
+
+| Mode | Status |
+|------|--------|
+| `LIGHT` | DONE (current) |
+| `FULL` | TODO |
+| `QA-LIGHT` | TODO |
+| `QA-FULL` | TODO |
+| `TROUBLESHOOT` | DONE (debug mode) |
 
 ---
 

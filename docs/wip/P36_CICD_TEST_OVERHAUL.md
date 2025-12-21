@@ -160,11 +160,12 @@ pytest tests/blocks/ -m unit -v
 
 ### Build Modes
 
-| Mode | What Runs | Time |
-|------|-----------|------|
-| `Build LIGHT` | Essential blocks (~285 tests) | ~5 min |
-| `Build TEST` | ALL blocks (1357+ tests) | ~30 min |
-| `Build FULL` | Essential + creates offline installer | ~15 min |
+| Mode | Tests | Installer | Time |
+|------|-------|-----------|------|
+| `LIGHT` | Essential (~285) | ~150MB | ~5 min |
+| `FULL` | Essential (~285) | ~2GB+ offline | ~15 min |
+| `QA-LIGHT` | **ALL 1500+** | ~150MB | ~30 min |
+| `QA-FULL` | **ALL 1500+** | ~2GB+ offline | ~45 min |
 
 ### Pipeline Visualization
 
@@ -205,67 +206,99 @@ pytest tests/blocks/ -m unit -v
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 
-BUILD LIGHT: Phase 1 + Phase 2 (skip Phase 3, 4)     → ~5 min
-BUILD TEST:  Phase 1 + Phase 2 + Phase 3 + Phase 4   → ~30 min
-BUILD FULL:  Phase 1 + Phase 2 + Offline Installer   → ~15 min
+LIGHT:    Phase 1 + Phase 2 (essential tests)           → ~5 min
+FULL:     Phase 1 + Phase 2 + Offline Installer         → ~15 min
+QA-LIGHT: Phase 1 + Phase 2 + Phase 3 + Phase 4         → ~30 min
+QA-FULL:  Phase 1 + Phase 2 + Phase 3 + Phase 4 + Full  → ~45 min
 ```
+
+---
+
+## Planning Documents (COMPLETED)
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| [P36_TEST_MAPPING.md](P36_TEST_MAPPING.md) | Current → Proposed test mapping | DONE |
+| [P36_VALIDATION_CHECKLIST.md](P36_VALIDATION_CHECKLIST.md) | Validation checks per block | DONE |
+
+---
+
+## Inventory Summary
+
+| Current | Proposed Blocks | Tests |
+|---------|-----------------|-------|
+| 78 files scattered | 11 domain blocks | ~780 existing |
+| Mixed by type | Organized by domain | +36 new needed |
+
+**New Blocks Added:**
+- LDM Workflow (cell states, auto-TM sync)
+- UI State (explorer persistence)
+
+### Block Breakdown
+
+| Block | Files | Tests | Status |
+|-------|-------|-------|--------|
+| DB | 4 | ~32 | Map existing |
+| AUTH | 6 | ~41 | Map existing |
+| NETWORK | 4 | ~23 | Map existing |
+| SECURITY | 4 | ~43 | Map existing + 3 new |
+| API | 9 | ~57 | Map existing + 3 new |
+| BACKEND | 8 | ~54 | Map existing |
+| PROCESSING | 6 | ~48 | Map existing + 2 new |
+| TOOLS | 8 | ~64 | Map existing |
+| LOGGING | 1 | ~8 | Map existing + 2 new |
+| PERFORMANCE | 0 | 7 | **CREATE NEW** |
+| **LDM WORKFLOW** | 0 | 9 | **CREATE NEW** |
+| **UI STATE** | 0 | 4 | **CREATE NEW** |
 
 ---
 
 ## Work Required
 
-### Phase 1: Audit (2-3 hours)
-- [ ] Review all 78 test files
-- [ ] Identify duplicates
-- [ ] Map coverage gaps
-- [ ] List tests to delete/merge
+### Phase 1: Structure (READY TO EXECUTE)
+- [ ] Create `tests/blocks/` directory structure
+- [ ] Create `tests/performance/` directory
+- [ ] Create `tests/blocks/ldm_workflow/` directory
+- [ ] Create `tests/blocks/ui_state/` directory
 
-### Phase 2: Reorganize (4-6 hours)
-- [ ] Create `tests/blocks/` structure
-- [ ] Move tests to appropriate blocks
-- [ ] Add pytest markers (`@pytest.mark.db`, etc.)
+### Phase 2: Migration
+- [ ] Move files per [P36_TEST_MAPPING.md](P36_TEST_MAPPING.md)
+- [ ] Add pytest markers
 - [ ] Update imports
 
-### Phase 3: Fill Gaps (4-8 hours)
-- [ ] Write missing performance tests
-- [ ] Write missing error handling tests
-- [ ] Write missing logging tests
-- [ ] Improve network tests
+### Phase 3: New Tests (36 total)
+- [ ] Create 9 LDM workflow tests (**CRITICAL** - cell states, auto-TM)
+- [ ] Create 7 performance tests (HIGH priority)
+- [ ] Create 4 UI state tests (MEDIUM priority)
+- [ ] Create 3 security tests (HIGH priority)
+- [ ] Create 3 API tests (MEDIUM priority)
+- [ ] Create 10 other tests (logging, network, etc.)
 
-### Phase 4: CI/CD Integration (2-3 hours)
-- [ ] Update Gitea workflow for `Build TEST`
+### Phase 4: CI/CD
+- [ ] Update Gitea workflow for QA modes
 - [ ] Update GitHub workflow
 - [ ] Add block-by-block reporting
-- [ ] Add health badges
 
 ---
 
 ## Success Criteria
 
-1. **Clear structure** - Any dev can find/add tests easily
+1. **Clear structure** - 9 domain blocks, easy to find/add tests
 2. **No duplicates** - Each scenario tested once
-3. **Full coverage** - All components have test block
-4. **Fast feedback** - LIGHT build in 5 min
-5. **Comprehensive QA** - TEST build covers everything
-6. **Beautiful pipeline** - Visual block-by-block status
+3. **Full coverage** - All blocks have comprehensive tests
+4. **LIGHT build** - 5 min, essential tests
+5. **QA build** - 30 min, PRISTINE validation
+6. **Beautiful pipeline** - Block-by-block status display
 
 ---
 
-## Questions to Resolve
+## Related Documents
 
-1. Should CDP tests (JavaScript) be integrated into Python pipeline?
-2. Should we use coverage tools (pytest-cov)?
-3. Should we add mutation testing?
-4. How to handle tests that need real model (2.3GB)?
-
----
-
-## Related
-
+- [P36_TEST_MAPPING.md](P36_TEST_MAPPING.md) - Detailed test mapping
+- [P36_VALIDATION_CHECKLIST.md](P36_VALIDATION_CHECKLIST.md) - Validation checks
 - [Roadmap.md](../../Roadmap.md) - CI/CD Build Modes
 - [SESSION_CONTEXT.md](SESSION_CONTEXT.md) - Current session
-- [CI_CD_HUB.md](../cicd/CI_CD_HUB.md) - CI/CD documentation
 
 ---
 
-*Created: 2025-12-21 | P36: CI/CD Test Overhaul*
+*P36: CI/CD Test Overhaul | Updated: 2025-12-21 | Status: PLANNING COMPLETE*

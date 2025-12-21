@@ -4,14 +4,16 @@ Gitea Build Trigger File - LocaNext Local CI/CD
 USAGE: Add build line, commit & push to trigger CI.
 
 FORMATS:
-  Build LIGHT  - Light installer (~150MB, no model)
-  Build FULL   - Full installer (~2GB, with model)
+  Build LIGHT     - Essential tests (~285), light installer (~150MB)
+  Build FULL      - Essential tests (~285), full installer (~2GB)
+  Build QA-LIGHT  - ALL tests (~1000+), light installer (~30min)
+  Build QA-FULL   - ALL tests (~1000+), full installer (~45min)
 
 Build History (last 5):
 -----------------------
-Build 310 - UI-043 Fix 3rd column + tooltip
 Build 311 - UI-044 Resizable columns + clear separator
 Build 312 - UI-045 Fix tooltip showing "?" instead of username
 Build 313 - Full docs update + AI Visual Verification Protocol
 Build 314 - UI-047 Fix TM status display (Pending→Ready)
-Build LIGHT
+Build 315 - FEAT-001 + Task Tracking + QA Mode
+Build QA-LIGHT

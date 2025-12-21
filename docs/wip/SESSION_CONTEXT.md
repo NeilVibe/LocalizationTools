@@ -1,187 +1,256 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-21 14:30 | **Build:** 315 (PENDING) | **Previous:** 314
+**Last Updated:** 2025-12-21 21:30 | **Build:** 315 (PENDING) | **Previous:** 314
 
 ---
 
-## CURRENT STATE
+## CURRENT TASK: QA BUILD IMPLEMENTATION ✅ DONE
 
-### Build 315: CI/CD Cleanup & Fresh Start (PENDING)
-- **Problem:** Tags and releases out of sync (7 tags, 20+ releases)
-- **Root Cause:** Old cleanup deleted releases but not tags (orphaned)
-- **Fix:**
-  1. Gitea: Changed MAX_RELEASES from 20 → 10
-  2. GitHub: Added cleanup step (was completely missing!)
-  3. Nuked all releases/tags on both platforms (fresh start)
-  4. Fixed `test_npc.py` - was using read-only property setter
-- **Status:** GitHub building, Gitea built `v25.1221.1427`
+**Goal:** Implement `QA-LIGHT` build mode for thorough testing before Build 315 release.
 
-### CI/CD Discovery: Test Coverage Difference!
-| Platform | Test Strategy | Tests Run |
-|----------|---------------|-----------|
-| **Gitea** | Curated essential list | ~285 tests |
-| **GitHub** | All unit/integration/e2e | ~500+ tests |
+**Plan:** [P36_CICD_TEST_OVERHAUL.md](P36_CICD_TEST_OVERHAUL.md)
 
-GitHub caught broken `test_npc.py` that Gitea skipped!
+| Build Type | Tests | Status |
+|------------|-------|--------|
+| `LIGHT` | ~285 essential | ✅ Working |
+| `FULL` | ~285 + model | ✅ Working |
+| `QA-LIGHT` | ALL tests (6 stages) | ✅ IMPLEMENTED |
+| `QA-FULL` | ALL + model | ✅ IMPLEMENTED |
+
+### QA-LIGHT Optimal Staged Testing
+```
+╔════════════════════════════════════════════════════════════╗
+║         QA MODE: OPTIMAL STAGED TESTING                    ║
+╚════════════════════════════════════════════════════════════╝
+
+Stage 1: UNIT TESTS        (~400 tests)  ← Fast feedback
+Stage 2: INTEGRATION       (~200 tests)  ← Component validation
+Stage 3: E2E               (~100 tests)  ← Full workflows
+Stage 4: API               (~150 tests)  ← Endpoint validation
+Stage 5: SECURITY          (~50 tests)   ← Security checks
+Stage 6: FIXTURES          (~200 tests)  ← Edge cases
+```
+
+### New Tests Added This Session
+
+| Test File | Coverage | Tests |
+|-----------|----------|-------|
+| `tests/api/test_feat001_tm_link.py` | FEAT-001 API | 15 tests |
+| `tests/unit/test_progress_tracker_silent.py` | Silent tracking | 8 tests |
+| `tests/unit/test_tm_dimension_mismatch.py` | Dimension handling | 10 tests |
+
+**FEAT-001 API Tests (`test_feat001_tm_link.py`):**
+- `TestTMLinkEndpoints`: Link/unlink TM to project (7 tests)
+- `TestAutoAddToTM`: Auto-add on cell confirm (4 tests)
+- `TestEmbeddingEngineWarning`: Qwen warning (4 tests)
+- `TestTMSyncEndpoints`: Manual sync (2 tests)
+
+**Silent Tracking Tests (`test_progress_tracker_silent.py`):**
+- Default silent flag is False
+- Silent flag stored correctly
+- Silent flag in WebSocket events
+- Use case documentation
+
+**Dimension Mismatch Tests (`test_tm_dimension_mismatch.py`):**
+- Model2Vec vs Qwen dimension detection
+- Re-embed trigger on mismatch
+- FAISS index rebuild requirement
+- Engine switching scenarios
 
 ---
 
-## CI/CD ENHANCEMENT IDEA (Future)
+## COMPLETED: FEAT-001 FRONTEND
 
-### Current State
-- **Gitea:** Fast builds (~285 tests, ~5 min)
-- **GitHub:** More comprehensive (~500+ tests)
+### Session Progress
 
-### Proposed Enhancement
+| Task | Status | Notes |
+|------|--------|-------|
+| FEAT-001 Frontend: TM Link UI | ✅ DONE | FileExplorer.svelte |
+| Add `silent` flag to TrackedOperation | ✅ DONE | For no-toast auto-updates |
+| Track auto-sync with `silent=True` | ✅ DONE | `_auto_sync_tm_indexes()` |
+| Track manual sync with toast | ✅ DONE | `sync_tm_indexes()` |
+| Qwen engine warning | ✅ DONE | Response includes warning message |
+| FEAT-001 Backend | ✅ VERIFIED | Previous session |
 
-| Mode | Tests | Installer | When to Use |
-|------|-------|-----------|-------------|
-| `Build LIGHT` | ~285 essential | ~150MB | Daily development |
-| `Build FULL` | ~285 essential | ~2GB+ | **OFFLINE-READY** release |
-| `Build TEST` | ALL (1500+) | None | Pre-release QA |
+### Files Changed This Session
+```
+locaNext/src/lib/components/ldm/FileExplorer.svelte
+  - Lines 78-81: Added linkedTM, showLinkTMModal, selectedLinkTMId state
+  - Lines 176-254: Added loadLinkedTM(), linkTMToProject(), unlinkTMFromProject(), openLinkTMModal()
+  - Lines 772-786: Added linked-tm-bar UI (shows linked TM or "Link a TM")
+  - Lines 941-987: Added Link TM Modal with dropdown + unlink button
+  - Lines 1309-1352: Added CSS for linked-tm-bar
 
-**`Build FULL` = True Offline Installer:**
-- All Python dependencies bundled
-- Qwen model (2.3GB) included
-- Model2Vec included
-- VC++ Redistributable bundled
-- Everything runs immediately - ZERO internet needed
+server/utils/progress_tracker.py
+  - Lines 251: Added `silent` parameter to TrackedOperation
+  - Lines 320: Pass `silent` to WebSocket events
+  - Lines 361: Updated docstring with silent example
 
-**`Build TEST` = Maximum Quality:**
-- Run every single test (1500+)
-- ~30 min runtime
-- Comprehensive coverage before releases
-
-**TODO:**
-1. Implement `Build TEST` mode in Gitea workflow
-2. Enhance `Build FULL` for true offline capability
-3. **P36: CI/CD Test Overhaul** - Reorganize tests into blocks
+server/tools/ldm/api.py
+  - Lines 2156-2207: _auto_sync_tm_indexes() with TrackedOperation(silent=True)
+  - Lines 2210-2302: sync_tm_indexes() with TrackedOperation (shows toast)
+  - Lines 3035: Added `warning` field to EmbeddingEngineResponse
+  - Lines 3074-3116: set_embedding_engine() with Qwen warning
+```
 
 ---
 
-## P36: CI/CD Test Overhaul (NEW)
+## TASK TRACKING ARCHITECTURE
 
-### Current Test Inventory
-- **78 test files**, **1357 test functions**
-- Scattered across: unit/, integration/, e2e/, security/, api/, fixtures/
-
-### Proposed: Hybrid Test Structure
-
-**Approach:** Blocks by component + pytest markers for test type
+### Silent vs Non-Silent Operations
 
 ```
-tests/
-├── blocks/                    # By COMPONENT
-│   ├── db/                    # @pytest.mark.unit + integration
-│   ├── auth/                  # @pytest.mark.unit + integration
-│   ├── network/               # @pytest.mark.unit + integration
-│   ├── security/              # @pytest.mark.unit + integration
-│   ├── processing/            # @pytest.mark.unit + integration
-│   ├── tools/                 # @pytest.mark.unit + integration
-│   ├── logging/               # @pytest.mark.unit + integration
-│   ├── ui/                    # @pytest.mark.unit + integration
-│   └── performance/           # @pytest.mark.slow (NEW)
-│
-├── e2e/                       # Cross-block workflows (SEPARATE)
-│   └── test_*.py              # @pytest.mark.e2e
-│
-└── legacy/                    # Old tests to review/delete
+┌─────────────────────────────────────────────────────────────────────┐
+│                    TASK TRACKING (TrackedOperation)                  │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  SILENT (silent=True) - NO TOAST:                                  │
+│    ├── Auto-sync after cell confirm                                │
+│    ├── FAISS incremental add                                       │
+│    ├── Auto-embedding on-the-fly                                   │
+│    └── Still tracked in Task Manager!                              │
+│                                                                     │
+│  NON-SILENT (silent=False, default) - SHOWS TOAST:                 │
+│    ├── Manual TM sync                                              │
+│    ├── Bulk operations                                             │
+│    ├── File upload/processing                                      │
+│    └── User-initiated operations                                   │
+│                                                                     │
+│  ALL operations tracked in:                                         │
+│    ├── active_operations table (DB)                                │
+│    ├── Task Manager (UI)                                           │
+│    └── Dashboard logs (analytics)                                  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Pipeline Phases
-```
-Phase 1: UNIT (fast, parallel)      → All blocks unit tests
-Phase 2: INTEGRATION (medium)       → All blocks integration tests
-Phase 3: E2E (slow, full system)    → Cross-block workflows
-Phase 4: PERFORMANCE (optional)     → Latency, throughput
-```
+### Usage Example
+```python
+# Silent operation (no toast, but tracked)
+with TrackedOperation(
+    "Auto-sync TM",
+    user_id,
+    tool_name="LDM",
+    silent=True  # <-- NO toast
+) as op:
+    op.update(50, "Working...")
 
-### Work Required
-1. **Audit** - Review 78 files, find duplicates, map gaps
-2. **Reorganize** - Create blocks/, move tests, add markers
-3. **Fill Gaps** - Performance tests, error handling
-4. **Integrate** - Update CI/CD for `Build TEST`
-
-**Details:** [P36_CICD_TEST_OVERHAUL.md](P36_CICD_TEST_OVERHAUL.md)
+# Normal operation (shows toast)
+with TrackedOperation(
+    "Manual TM Sync",
+    user_id,
+    tool_name="LDM"
+    # silent=False is default
+) as op:
+    op.update(50, "Working...")
+```
 
 ---
 
-## P37: Preserve Runner Setup (DONE)
+## QWEN ENGINE WARNING
 
-Runner rebuild kit committed to `runner/` folder (~5KB total).
-
-### What's Committed
-
-```
-runner/
-├── patches/
-│   └── v15_nul_byte_fix.patch    # The NUL byte fix
-│
-├── scripts/
-│   ├── build_patched_runner.sh   # Clone repos, apply patch, build
-│   └── install_windows.ps1       # Windows service setup (NSSM)
-│
-├── configs/
-│   └── config.yaml.template      # Runner config template
-│
-└── README.md                     # Quick start guide
+When switching to Qwen engine, API returns warning:
+```json
+{
+  "current_engine": "qwen",
+  "engine_name": "Qwen3-Embedding-0.6B",
+  "warning": "⚠️ Qwen engine is ~30x slower than Model2Vec. Syncing large TMs may take significantly longer. Recommended for batch processing or when quality is critical."
+}
 ```
 
-### Quick Rebuild
+---
+
+## EMBEDDING ENGINES
+
+### Two Models Available
+
+| Engine | Model | Dim | Speed | Memory | Use Case |
+|--------|-------|-----|-------|--------|----------|
+| **Model2Vec** | potion-multilingual-128M | 256 | 29,269/sec | ~128MB | DEFAULT (real-time) |
+| **Qwen** | Qwen3-Embedding-0.6B | 1024 | ~1,000/sec | ~2.3GB | OPT-IN (quality) |
+
+### Engine Switching
 ```bash
-cd runner/scripts && ./build_patched_runner.sh
-cp ~/act_runner_build/act_runner/act_runner_patched_v15.exe /mnt/c/.../GiteaRunner/
-# Windows: Restart-Service GiteaActRunner
+# Get current engine
+GET /api/ldm/settings/embedding-engine
+# → {"current_engine": "model2vec", "engine_name": "Model2Vec (Fast)"}
+
+# Switch engine (returns warning for Qwen)
+POST /api/ldm/settings/embedding-engine
+{"engine": "qwen"}
+# → {"current_engine": "qwen", "engine_name": "...", "warning": "⚠️ ..."}
 ```
 
-### Status: DONE
-- [x] Extract patch file from docs
-- [x] Create build script
-- [x] Create install scripts
-- [x] README with full instructions
+### Smart Sync Behavior
+- Sync ALWAYS uses the currently ACTIVE engine
+- If cached embeddings have different dimension → re-embed ALL entries
+- Log: `Embedding dimension mismatch: cached=1024, model=256. Re-embedding all entries.`
 
 ---
 
-## WHAT WAS DONE THIS SESSION
+## FEAT-001: AUTO-ADD TO TM (PREVIOUS SESSION)
 
-### CI/CD Overhaul
+**Problem:** When user confirms cell (Ctrl+S → status='reviewed'), should auto-add to linked TM.
 
-| Task | Status |
-|------|--------|
-| Analyze tags vs releases | DONE |
-| Gitea: 20 → 10 releases | DONE |
-| GitHub: Add cleanup (was missing!) | DONE |
-| Nuke all releases/tags | DONE (42 releases, 14 tags) |
-| Fix test_npc.py | DONE |
-| Trigger fresh builds | DONE |
+**Solution:** IMPLEMENTED & E2E VERIFIED
 
-### Files Changed
-
-| File | Changes |
-|------|---------|
-| `.gitea/workflows/build.yml` | MAX_RELEASES 20→10 |
-| `.github/workflows/build-electron.yml` | Added cleanup step |
-| `tests/unit/test_npc.py` | Fixed: use `_engine` not `model` property |
-| `scripts/check_releases_status.sh` | NEW: Check sync status |
-| `scripts/cleanup_all_releases_and_tags.sh` | NEW: Nuclear cleanup |
-
-### Current Sync Status
-```
-Platform   Releases  Tags   Synced?
----------  --------  ----   -------
-GitHub     0→1       0→1    Building...
-Gitea      1         1      ✅ v25.1221.1427
-Local      0         0      ✅ (tags created by CI)
-```
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `POST /projects/{id}/link-tm` | ✅ DONE | Links TM to project |
+| `DELETE /projects/{id}/link-tm/{tm_id}` | ✅ DONE | Unlinks TM |
+| `GET /projects/{id}/linked-tms` | ✅ DONE | Lists linked TMs |
+| `_get_project_linked_tm()` helper | ✅ DONE | Gets priority TM |
+| Auto-add in `update_row()` | ✅ DONE | With BackgroundTasks |
+| Dimension mismatch fix | ✅ DONE | Re-embeds if dim differs |
+| E2E DB test | ✅ VERIFIED | Entry count 10→12 |
+| FAISS sync | ✅ VERIFIED | Both engines work |
 
 ---
 
-## PREVIOUS SESSION: Build 314
+## TODO: REMAINING WORK
 
-### UI-047 TM Status Display Fix (VERIFIED)
-- **Problem:** TM sidebar showed "Pending" even when database had `status = "ready"`
-- **Fix:** Changed `tm.is_indexed` to `tm.status === 'ready'` in FileExplorer.svelte
-- **Status:** VERIFIED
+### Phase 3: Frontend TM Link UI ✅ DONE
+- [x] Add TM link dropdown to FileExplorer.svelte
+- [x] Load linked TM on project expand
+- [x] Show linked TM indicator badge
+
+### Phase 4: Dashboard Improvements
+- [ ] Dashboard updates for cleaner UX
+- [ ] Log all events to dashboard for analytics
+- [ ] Operation history view
+
+### Phase 5: Tests
+- [ ] Unit tests for link/unlink
+- [ ] Integration test: confirm → TM add
+- [ ] E2E test: Link TM → Confirm cell → Check TM entry added
+
+---
+
+## SMART FAISS SYNC STRATEGY
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                SMART SYNC STRATEGY (TMSyncManager)                  │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  IF INSERT only (no UPDATE, no DELETE):                            │
+│    🚀 SUPER FAST INCREMENTAL (~30-50ms)                            │
+│    └── FAISSManager.incremental_add()                              │
+│    └── Model2Vec.encode() - 79x faster than Qwen                   │
+│                                                                     │
+│  IF UPDATE or DELETE:                                               │
+│    📦 SMART REBUILD (~2-10s)                                       │
+│    └── Detect dimension mismatch → re-embed all                    │
+│    └── Keep unchanged embeddings if dim matches                    │
+│    └── Only re-embed changed entries                               │
+│                                                                     │
+│  IF dimension mismatch (e.g., Qwen→Model2Vec):                     │
+│    🔄 FULL RE-EMBED                                                │
+│    └── Detected automatically                                       │
+│    └── Re-embeds all entries with current engine                   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -189,37 +258,54 @@ Local      0         0      ✅ (tags created by CI)
 
 | What | Path |
 |------|------|
-| Gitea Workflow | `.gitea/workflows/build.yml` |
-| GitHub Workflow | `.github/workflows/build-electron.yml` |
-| Release Status Script | `scripts/check_releases_status.sh` |
-| Cleanup Script | `scripts/cleanup_all_releases_and_tags.sh` |
-
----
-
-## NEXT SESSION TODO
-
-1. **Monitor GitHub build** - Should pass now with test fix
-2. **Consider `Build TEST` mode** - Comprehensive testing option
-3. Ready for new features or bug reports
-4. 0 open issues
+| **TrackedOperation** | `server/utils/progress_tracker.py:226` |
+| **Auto-sync (silent)** | `server/tools/ldm/api.py:2156-2207` |
+| **Manual sync (toast)** | `server/tools/ldm/api.py:2210-2302` |
+| **Qwen warning** | `server/tools/ldm/api.py:3100-3108` |
+| **FEAT-001 Design** | `docs/wip/FEAT-001_AUTO_TM_DESIGN.md` |
+| **update_row function** | `server/tools/ldm/api.py:750-855` |
+| **TM link endpoints** | `server/tools/ldm/api.py:936-1089` |
+| **Dimension mismatch fix** | `server/tools/ldm/tm_indexer.py:1854-1878` |
+| **FAISS incremental add** | `server/tools/shared/faiss_manager.py:216` |
 
 ---
 
 ## QUICK COMMANDS
 
 ```bash
-# Check release/tag sync status
-./scripts/check_releases_status.sh
+# Start backend
+python3 server/main.py
 
-# Nuclear cleanup (if needed)
-./scripts/cleanup_all_releases_and_tags.sh --force
+# Link TM to project
+curl -X POST "http://localhost:8888/api/ldm/projects/2/link-tm" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tm_id": 1, "priority": 0}'
 
-# Trigger builds
-echo "Build LIGHT" >> GITEA_TRIGGER.txt   # Gitea
-echo "Build LIGHT" >> BUILD_TRIGGER.txt   # GitHub
-git add -A && git commit -m "Build" && git push origin main && git push gitea main
+# Check current engine
+curl "http://localhost:8888/api/ldm/settings/embedding-engine" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Switch to Qwen (shows warning)
+curl -X POST "http://localhost:8888/api/ldm/settings/embedding-engine" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"engine": "qwen"}'
+
+# Manual TM sync (shows toast in UI)
+curl -X POST "http://localhost:8888/api/ldm/tm/1/sync" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
 
-*Build 315 pending - CI/CD cleanup complete, fresh start with synced tags/releases*
+## NEXT SESSION PRIORITIES
+
+1. **Frontend UI** - TM link dropdown in FileExplorer.svelte
+2. **Dashboard** - Clean UX for viewing operation logs
+3. **Frontend Toast Handling** - Check `silent` flag in WebSocket events
+4. **Tests** - Unit/integration tests for TM link + auto-add
+
+---
+
+*TASK-002 COMPLETE | TrackedOperation silent flag | Qwen warning | Manual sync tracking*
