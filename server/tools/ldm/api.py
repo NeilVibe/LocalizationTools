@@ -2298,8 +2298,15 @@ async def sync_tm_indexes(
         return result
 
     except Exception as e:
-        logger.error(f"TM sync failed for TM {tm_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"TM sync failed: {str(e)}")
+        import traceback
+        error_detail = f"TM sync failed: {str(e)}"
+        error_traceback = traceback.format_exc()
+        logger.error(f"TM sync failed for TM {tm_id}: {e}\n{error_traceback}")
+        # Include traceback in response for debugging (CI can see this in test output)
+        raise HTTPException(
+            status_code=500,
+            detail=f"{error_detail}\n\nTraceback:\n{error_traceback}"
+        )
 
 
 # ============================================================================
