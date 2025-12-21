@@ -45,11 +45,17 @@ from server.tools.ldm.tm_indexer import (
     TMSearcher,
     DEFAULT_THRESHOLD,
     NPC_THRESHOLD,
-    MODEL_NAME,
-    HNSW_M,
-    HNSW_EF_CONSTRUCTION,
-    HNSW_EF_SEARCH,
 )
+from server.tools.shared import FAISSManager
+from server.tools.shared.embedding_engine import Model2VecEngine
+
+# Constants from FAISSManager
+HNSW_M = FAISSManager.HNSW_M
+HNSW_EF_CONSTRUCTION = FAISSManager.HNSW_EF_CONSTRUCTION
+HNSW_EF_SEARCH = FAISSManager.HNSW_EF_SEARCH
+
+# Model name from embedding engine
+MODEL_NAME = Model2VecEngine.MODEL_NAME
 
 
 # =============================================================================
