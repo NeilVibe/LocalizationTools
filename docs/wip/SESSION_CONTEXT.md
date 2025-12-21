@@ -65,18 +65,35 @@ GitHub caught broken `test_npc.py` that Gitea skipped!
 - **78 test files**, **1357 test functions**
 - Scattered across: unit/, integration/, e2e/, security/, api/, fixtures/
 
-### Proposed: Beautiful Test Blocks
+### Proposed: Hybrid Test Structure
+
+**Approach:** Blocks by component + pytest markers for test type
+
 ```
-tests/blocks/
-├── db/           # Database
-├── auth/         # Authentication
-├── network/      # WebSocket, HTTP
-├── security/     # JWT, CORS, XSS
-├── processing/   # TM, embeddings, FAISS
-├── tools/        # KR Similar, QuickSearch, XLS
-├── logging/      # Server/client logs
-├── ui/           # API responses
-└── performance/  # Latency tests (NEW)
+tests/
+├── blocks/                    # By COMPONENT
+│   ├── db/                    # @pytest.mark.unit + integration
+│   ├── auth/                  # @pytest.mark.unit + integration
+│   ├── network/               # @pytest.mark.unit + integration
+│   ├── security/              # @pytest.mark.unit + integration
+│   ├── processing/            # @pytest.mark.unit + integration
+│   ├── tools/                 # @pytest.mark.unit + integration
+│   ├── logging/               # @pytest.mark.unit + integration
+│   ├── ui/                    # @pytest.mark.unit + integration
+│   └── performance/           # @pytest.mark.slow (NEW)
+│
+├── e2e/                       # Cross-block workflows (SEPARATE)
+│   └── test_*.py              # @pytest.mark.e2e
+│
+└── legacy/                    # Old tests to review/delete
+```
+
+### Pipeline Phases
+```
+Phase 1: UNIT (fast, parallel)      → All blocks unit tests
+Phase 2: INTEGRATION (medium)       → All blocks integration tests
+Phase 3: E2E (slow, full system)    → Cross-block workflows
+Phase 4: PERFORMANCE (optional)     → Latency, throughput
 ```
 
 ### Work Required

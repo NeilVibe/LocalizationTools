@@ -36,84 +36,122 @@ Create a beautiful, organized CI/CD testing pipeline with clear **test blocks** 
 
 ## Proposed Test Blocks Architecture
 
-### Block Structure
+### Block Structure (Hybrid Approach)
+
+**Why Hybrid?**
+- Unit/Integration tests live in block folders with pytest markers
+- E2E tests stay separate (they span multiple blocks)
+- Clear separation of "isolated" vs "full system" tests
 
 ```
 tests/
-├── blocks/                    # NEW: Organized test blocks
+├── blocks/                    # Organized by COMPONENT
+│   │
 │   ├── db/                    # Database block
-│   │   ├── test_connectivity.py
-│   │   ├── test_migrations.py
-│   │   ├── test_queries.py
-│   │   └── test_sqlite_fallback.py
+│   │   ├── test_utils.py           # @pytest.mark.unit
+│   │   ├── test_queries.py         # @pytest.mark.unit
+│   │   ├── test_connectivity.py    # @pytest.mark.integration
+│   │   └── test_sqlite_fallback.py # @pytest.mark.integration
 │   │
 │   ├── auth/                  # Authentication block
-│   │   ├── test_jwt.py
-│   │   ├── test_sessions.py
-│   │   ├── test_permissions.py
-│   │   └── test_rate_limiting.py
+│   │   ├── test_jwt.py             # @pytest.mark.unit
+│   │   ├── test_token_logic.py     # @pytest.mark.unit
+│   │   ├── test_sessions.py        # @pytest.mark.integration
+│   │   ├── test_permissions.py     # @pytest.mark.integration
+│   │   └── test_rate_limiting.py   # @pytest.mark.integration
 │   │
 │   ├── network/               # Network block
-│   │   ├── test_websocket.py
-│   │   ├── test_http_endpoints.py
-│   │   ├── test_cors.py
-│   │   └── test_timeouts.py
+│   │   ├── test_message_parsing.py # @pytest.mark.unit
+│   │   ├── test_websocket.py       # @pytest.mark.integration
+│   │   ├── test_http_endpoints.py  # @pytest.mark.integration
+│   │   └── test_cors.py            # @pytest.mark.integration
 │   │
 │   ├── security/              # Security block
-│   │   ├── test_jwt_security.py
-│   │   ├── test_ip_filter.py
-│   │   ├── test_audit_logging.py
-│   │   ├── test_input_validation.py
-│   │   └── test_xss_prevention.py
+│   │   ├── test_jwt_security.py    # @pytest.mark.unit
+│   │   ├── test_input_validation.py# @pytest.mark.unit
+│   │   ├── test_ip_filter.py       # @pytest.mark.integration
+│   │   ├── test_audit_logging.py   # @pytest.mark.integration
+│   │   └── test_xss_prevention.py  # @pytest.mark.unit
 │   │
 │   ├── processing/            # Data processing block
-│   │   ├── test_file_parsing.py
-│   │   ├── test_tm_operations.py
-│   │   ├── test_embeddings.py
-│   │   └── test_faiss_index.py
+│   │   ├── test_file_parsing.py    # @pytest.mark.unit
+│   │   ├── test_tm_normalizer.py   # @pytest.mark.unit
+│   │   ├── test_tm_operations.py   # @pytest.mark.integration
+│   │   ├── test_embeddings.py      # @pytest.mark.integration
+│   │   └── test_faiss_index.py     # @pytest.mark.integration
 │   │
 │   ├── tools/                 # Tools block
-│   │   ├── test_kr_similar.py
-│   │   ├── test_quicksearch.py
-│   │   ├── test_xlstransfer.py
-│   │   └── test_ldm.py
+│   │   ├── test_kr_similar.py      # @pytest.mark.unit + integration
+│   │   ├── test_quicksearch.py     # @pytest.mark.unit + integration
+│   │   ├── test_xlstransfer.py     # @pytest.mark.unit + integration
+│   │   └── test_ldm.py             # @pytest.mark.integration
 │   │
 │   ├── logging/               # Logging block
-│   │   ├── test_server_logging.py
-│   │   ├── test_client_logging.py
-│   │   └── test_remote_logging.py
+│   │   ├── test_server_logging.py  # @pytest.mark.unit
+│   │   ├── test_client_logging.py  # @pytest.mark.unit
+│   │   └── test_remote_logging.py  # @pytest.mark.integration
 │   │
-│   ├── ui/                    # UI block (Python side)
-│   │   ├── test_api_responses.py
-│   │   └── test_websocket_events.py
+│   ├── ui/                    # UI block (API responses)
+│   │   ├── test_api_responses.py   # @pytest.mark.unit
+│   │   └── test_websocket_events.py# @pytest.mark.integration
 │   │
 │   └── performance/           # Performance block (NEW)
-│       ├── test_api_latency.py
-│       ├── test_db_query_speed.py
-│       └── test_embedding_throughput.py
+│       ├── test_api_latency.py     # @pytest.mark.slow
+│       ├── test_db_query_speed.py  # @pytest.mark.slow
+│       └── test_embedding_throughput.py # @pytest.mark.slow
 │
-├── e2e/                       # End-to-end (keep as-is)
-└── legacy/                    # Old tests (to review/migrate)
+├── e2e/                       # Cross-block workflows (SEPARATE)
+│   ├── test_full_user_flow.py      # Auth + DB + UI
+│   ├── test_tm_sync_workflow.py    # DB + Processing + Network
+│   ├── test_pretranslation.py      # Tools + Processing + DB
+│   └── test_complete_simulation.py # EVERYTHING
+│
+└── legacy/                    # Old tests (to review/delete)
 ```
+
+### Test Type Definitions
+
+| Type | Marker | Speed | Dependencies | Scope |
+|------|--------|-------|--------------|-------|
+| **Unit** | `@pytest.mark.unit` | Fast (<1s) | None/mocked | Single function |
+| **Integration** | `@pytest.mark.integration` | Medium (1-5s) | Real DB/server | Component |
+| **E2E** | `@pytest.mark.e2e` | Slow (5-30s) | Everything | Full workflow |
+| **Slow** | `@pytest.mark.slow` | Very slow | Varies | Performance |
 
 ---
 
 ## Test Block Commands
 
 ```bash
-# Run specific block
-pytest tests/blocks/db/ -v           # Database only
-pytest tests/blocks/security/ -v     # Security only
-pytest tests/blocks/network/ -v      # Network only
+# ============================================================
+# BY BLOCK (Component)
+# ============================================================
+pytest tests/blocks/db/ -v           # All DB tests
+pytest tests/blocks/auth/ -v         # All Auth tests
+pytest tests/blocks/security/ -v     # All Security tests
+pytest tests/blocks/network/ -v      # All Network tests
+pytest tests/blocks/processing/ -v   # All Processing tests
+pytest tests/blocks/tools/ -v        # All Tools tests
 
-# Run all blocks (Build TEST)
-pytest tests/blocks/ -v              # All blocks
+# ============================================================
+# BY TYPE (Speed/Depth)
+# ============================================================
+pytest tests/blocks/ -m unit -v           # Fast unit tests only
+pytest tests/blocks/ -m integration -v    # Integration tests
+pytest tests/e2e/ -v                      # E2E workflows
+pytest tests/blocks/ -m slow -v           # Performance tests
 
-# Run with markers
-pytest -m "db" -v                    # All DB-tagged tests
-pytest -m "security" -v              # All security-tagged tests
-pytest -m "fast" -v                  # All fast tests
-pytest -m "slow" -v                  # All slow tests
+# ============================================================
+# BUILD MODES
+# ============================================================
+# Build LIGHT (~5 min) - Essential tests
+pytest tests/blocks/ -m "unit or integration" --ignore=tests/blocks/performance/
+
+# Build TEST (~30 min) - EVERYTHING
+pytest tests/blocks/ tests/e2e/ -v
+
+# Quick smoke test (~1 min)
+pytest tests/blocks/ -m unit -v
 ```
 
 ---
@@ -131,39 +169,45 @@ pytest -m "slow" -v                  # All slow tests
 ### Pipeline Visualization
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    CI/CD TEST PIPELINE                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐            │
-│  │   DB    │  │  AUTH   │  │ NETWORK │  │SECURITY │            │
-│  │  Block  │  │  Block  │  │  Block  │  │  Block  │            │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘            │
-│       │            │            │            │                  │
-│       ▼            ▼            ▼            ▼                  │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐            │
-│  │PROCESS- │  │  TOOLS  │  │ LOGGING │  │   UI    │            │
-│  │  ING    │  │  Block  │  │  Block  │  │  Block  │            │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘            │
-│       │            │            │            │                  │
-│       └────────────┴─────┬──────┴────────────┘                  │
-│                          ▼                                      │
-│                   ┌─────────────┐                               │
-│                   │ PERFORMANCE │  (Optional, slow)             │
-│                   │    Block    │                               │
-│                   └──────┬──────┘                               │
-│                          ▼                                      │
-│                   ┌─────────────┐                               │
-│                   │    E2E      │  (Full workflows)             │
-│                   │   Tests     │                               │
-│                   └──────┬──────┘                               │
-│                          ▼                                      │
-│                   ┌─────────────┐                               │
-│                   │   BUILD     │  (If all pass)                │
-│                   │  INSTALLER  │                               │
-│                   └─────────────┘                               │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                       CI/CD TEST PIPELINE                                │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  PHASE 1: UNIT TESTS (Fast, Parallel) ─────────────────────────────────  │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐      │
+│  │   DB   │ │  AUTH  │ │NETWORK │ │SECURITY│ │PROCESS │ │ TOOLS  │      │
+│  │  unit  │ │  unit  │ │  unit  │ │  unit  │ │  unit  │ │  unit  │      │
+│  └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘      │
+│      │          │          │          │          │          │            │
+│      └──────────┴──────────┴────┬─────┴──────────┴──────────┘            │
+│                                 ▼                                        │
+│  PHASE 2: INTEGRATION TESTS (Medium, Sequential) ─────────────────────   │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐      │
+│  │   DB   │ │  AUTH  │ │NETWORK │ │SECURITY│ │PROCESS │ │ TOOLS  │      │
+│  │  integ │→│  integ │→│  integ │→│  integ │→│  integ │→│  integ │      │
+│  └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘      │
+│      │          │          │          │          │          │            │
+│      └──────────┴──────────┴────┬─────┴──────────┴──────────┘            │
+│                                 ▼                                        │
+│  PHASE 3: E2E TESTS (Slow, Full System) ───────────────────────────────  │
+│  ┌──────────────────────────────────────────────────────────────┐       │
+│  │  E2E: Full User Flow │ TM Sync │ Pretranslation │ Simulation │       │
+│  └─────────────────────────────────┬────────────────────────────┘       │
+│                                    ▼                                     │
+│  PHASE 4: PERFORMANCE (Optional, Build TEST only) ─────────────────────  │
+│  ┌──────────────────────────────────────────────────────────────┐       │
+│  │  PERF: API Latency │ DB Query Speed │ Embedding Throughput   │       │
+│  └─────────────────────────────────┬────────────────────────────┘       │
+│                                    ▼                                     │
+│                          ┌─────────────────┐                             │
+│                          │  BUILD INSTALLER │  (If all pass)             │
+│                          └─────────────────┘                             │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+BUILD LIGHT: Phase 1 + Phase 2 (skip Phase 3, 4)     → ~5 min
+BUILD TEST:  Phase 1 + Phase 2 + Phase 3 + Phase 4   → ~30 min
+BUILD FULL:  Phase 1 + Phase 2 + Offline Installer   → ~15 min
 ```
 
 ---
