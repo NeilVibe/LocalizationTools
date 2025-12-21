@@ -1,87 +1,16 @@
 Gitea Build Trigger File - LocaNext Local CI/CD
 ================================================
 
-USAGE:
-------
-Add a line with the build command, then commit & push to GITEA ONLY.
-Gitea Actions will automatically build when it detects the new line.
-
-IMPORTANT: This file is for GITEA BUILDS ONLY!
-- Push to Gitea:  git push gitea main
-- DO NOT push to GitHub when testing Gitea builds
+USAGE: Add build line, commit & push to trigger CI.
 
 FORMATS:
-  Build LIGHT v[version]  - Build LIGHT installer (~100-150MB, no model)
-  Build FULL v[version]   - Build FULL installer (~2GB, model bundled)
+  Build LIGHT  - Light installer (~150MB, no model)
+  Build FULL   - Full installer (~2GB, with model)
 
-EXAMPLES:
-  Build LIGHT v2512071800   - LIGHT installer test
-  Build FULL v2512071800    - FULL installer test
-
-WORKFLOW:
-1. Update VERSION in version.py
-2. Run: python3 scripts/check_version_unified.py
-3. Add build command below
-4. Commit changes
-5. Push to Gitea ONLY: git push gitea main
-
-Build History (last 10):
-------------------------
-Build LIGHT v2512142235 - Fix version passing to release
-Build LIGHT v2512142330 - Fix electron paths (server/python in resources/)
-Build LIGHT v2512150035
-Build LIGHT v2512150039 - Cache cleared
-Build LIGHT v2512150043 - Original script
-Build LIGHT v2512150050 - Fix dotenv override (CI uses correct DB)
-Build LIGHT v2512150100 - Full Review PASSED + CPU Terror Fix
-Build LIGHT v2512150204 - P30 CI Optimization + Smoke Test
-Build LIGHT v2512150230 - P30 Smoke Test Fix (no-DB CI compatible)
-Build LIGHT v2512151547
-Build LIGHT v2512151734
-Build LIGHT v2512151747 - SQLite smoke test
-Build LIGHT v2512151800 - Auto-detect smoke test
-Build LIGHT v2512151820 - Fix smoke test cleanup
-Build LIGHT v2512151905 - Full backend smoke test
-Build LIGHT v2512151920 - Fix env var passing
-Build LIGHT v2512151934 - Debug backend
-Build LIGHT v2512151951 - Better debug
-Build LIGHT v2512152010 - SQLite login fix
-Build LIGHT v2512152027 - Fix circular import
-Build LIGHT v2512152043 - Permanent offline auto-login
-Build LIGHT v2512152141 - P32 Code Review + P33 Smoke Fix
-Build LIGHT v2512152244 - Unified CI config
-Build LIGHT v2512160900 - P35 CI Verification
-Build LIGHT v2512160915 - PostgreSQL smoke test
-Build LIGHT v2512161029
-Build LIGHT v2512161046
-Build LIGHT v2512161115 - Debug server startup
-Build LIGHT v2512161138 - Fix test database isolation (don't drop CI tables)
-Build LIGHT v2512161210 - Fix Gitea test bloat (273 tests, not 900)
-Build LIGHT v2512161242 - Fix NSIS SetDetailsPrint error
-Build LIGHT v2512161250 - Retry after server startup hang
-Build BUG-012 Fix - Server Config UI 2512161434
-Build LIGHT v2512161450 - Add test_server_config.py to CI + retry
-Build LIGHT v2512161624 - UI-001 to UI-004 fixes (compartmentalized modals)
-Build LIGHT - P36 E2E tests
-Build LIGHT - Build 296
-Build LIGHT - Build 296 retry
-Build LIGHT - Security fix + Auto-login
-Build LIGHT - CI fix
-Build LIGHT - Build 297 (BUG-020 memoQ + FEAT-001 TM Viewer + BUG-016 Global Toasts)
-Build LIGHT - Build 298 (Fix lazy import - server startup hang)
-Build 299: BUG-023 fix + Model2Vec multilingual
-Build 300: Lazy import fix
-Build 301 - BUG-028/029 fixes
-Build LIGHT
-Build LIGHT
-Build LIGHT - UI-031/032 font fixes + FONT-001 multilingual
-Build LIGHT
-Build 306 - UI-027 Confirm removed + Q-001 Auto-sync
-Build 307 - TM upload fix
-Build 308
-Build 309 - UI-042 Remove avatar icons from presence bar
+Build History (last 5):
+-----------------------
 Build 310 - UI-043 Fix 3rd column + tooltip
 Build 311 - UI-044 Resizable columns + clear separator
 Build 312 - UI-045 Fix tooltip showing "?" instead of username
 Build 313 - Full docs update + AI Visual Verification Protocol
-Build 314: UI-047 Fix TM status display (Pending→Ready)
+Build 314 - UI-047 Fix TM status display (Pending→Ready)
