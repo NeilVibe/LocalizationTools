@@ -182,8 +182,12 @@ def upgrade_schema(engine):
     """
     from sqlalchemy import inspect
 
-    inspector = inspect(engine)
+    logger.info("=" * 50)
+    logger.info("SCHEMA UPGRADE: Checking for missing columns...")
+
     is_sqlite = str(engine.url).startswith("sqlite")
+    db_type = "SQLite" if is_sqlite else "PostgreSQL"
+    logger.info(f"Database type: {db_type}")
 
     # Define columns that may be missing in older databases
     # Format: (table_name, column_name, column_type, default_value)
@@ -192,32 +196,61 @@ def upgrade_schema(engine):
         ("ldm_tm_entries", "string_id", "VARCHAR(255)", "NULL"),
     ]
 
+    columns_added = 0
+    columns_skipped = 0
+
     with engine.connect() as conn:
+        # Create inspector inside the connection to ensure fresh metadata
+        inspector = inspect(conn)
+        table_names = inspector.get_table_names()
+        logger.info(f"Found {len(table_names)} tables in database")
+
         for table_name, column_name, column_type, default_value in missing_columns:
             # Check if table exists
-            if table_name not in inspector.get_table_names():
+            if table_name not in table_names:
+                logger.debug(f"Table '{table_name}' not found, skipping column '{column_name}'")
                 continue
 
             # Check if column exists
             existing_columns = [col["name"] for col in inspector.get_columns(table_name)]
             if column_name in existing_columns:
+                logger.debug(f"Column '{column_name}' already exists in '{table_name}'")
+                columns_skipped += 1
                 continue
 
             # Add missing column
             try:
-                if is_sqlite:
-                    # SQLite requires simpler syntax
-                    sql = f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default_value}'
-                else:
-                    # PostgreSQL syntax
-                    sql = f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default_value}'
+                sql = f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default_value}'
+                logger.info(f"Executing: {sql}")
 
                 conn.execute(text(sql))
                 conn.commit()
-                logger.info(f"Schema upgrade: Added column '{column_name}' to '{table_name}'")
+                columns_added += 1
+                logger.success(f"Schema upgrade: Added column '{column_name}' to '{table_name}'")
+
+                # Verify the column was added by refreshing inspector
+                inspector = inspect(conn)
+                new_columns = [col["name"] for col in inspector.get_columns(table_name)]
+                if column_name in new_columns:
+                    logger.info(f"Verified: Column '{column_name}' now exists in '{table_name}'")
+                else:
+                    logger.error(f"VERIFICATION FAILED: Column '{column_name}' not found after ALTER TABLE!")
+
             except Exception as e:
                 # Column might already exist (race condition) or other issue
                 logger.warning(f"Schema upgrade: Could not add column '{column_name}' to '{table_name}': {e}")
+                # Try to check if column exists anyway (might have been added by another process)
+                try:
+                    inspector = inspect(conn)
+                    check_cols = [col["name"] for col in inspector.get_columns(table_name)]
+                    if column_name in check_cols:
+                        logger.info(f"Column '{column_name}' exists in '{table_name}' (added by another process?)")
+                        columns_skipped += 1
+                except Exception:
+                    pass
+
+    logger.info(f"Schema upgrade complete: {columns_added} added, {columns_skipped} already existed")
+    logger.info("=" * 50)
 
 
 # ============================================================================
