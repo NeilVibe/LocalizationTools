@@ -167,6 +167,59 @@ def create_postgresql_engine(echo: bool = False):
 
 
 # ============================================================================
+# Schema Upgrade (Add Missing Columns)
+# ============================================================================
+
+def upgrade_schema(engine):
+    """
+    Add missing columns to existing tables.
+
+    SQLAlchemy's create_all() only creates new tables, it doesn't alter
+    existing tables to add new columns. This function handles schema
+    evolution without requiring formal migrations.
+
+    This is a lightweight alternative to Alembic for simple column additions.
+    """
+    from sqlalchemy import inspect
+
+    inspector = inspect(engine)
+    is_sqlite = str(engine.url).startswith("sqlite")
+
+    # Define columns that may be missing in older databases
+    # Format: (table_name, column_name, column_type, default_value)
+    missing_columns = [
+        ("ldm_translation_memories", "mode", "VARCHAR(20)", "'standard'"),
+    ]
+
+    with engine.connect() as conn:
+        for table_name, column_name, column_type, default_value in missing_columns:
+            # Check if table exists
+            if table_name not in inspector.get_table_names():
+                continue
+
+            # Check if column exists
+            existing_columns = [col["name"] for col in inspector.get_columns(table_name)]
+            if column_name in existing_columns:
+                continue
+
+            # Add missing column
+            try:
+                if is_sqlite:
+                    # SQLite requires simpler syntax
+                    sql = f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default_value}'
+                else:
+                    # PostgreSQL syntax
+                    sql = f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type} DEFAULT {default_value}'
+
+                conn.execute(text(sql))
+                conn.commit()
+                logger.info(f"Schema upgrade: Added column '{column_name}' to '{table_name}'")
+            except Exception as e:
+                # Column might already exist (race condition) or other issue
+                logger.warning(f"Schema upgrade: Could not add column '{column_name}' to '{table_name}': {e}")
+
+
+# ============================================================================
 # Database Initialization
 # ============================================================================
 
@@ -186,6 +239,9 @@ def initialize_database(engine, drop_existing: bool = False):
     logger.info("Creating database tables...")
     Base.metadata.create_all(engine)
     logger.success("Database tables created successfully")
+
+    # Upgrade schema: add any missing columns to existing tables
+    upgrade_schema(engine)
 
     # Log created tables
     table_names = Base.metadata.tables.keys()

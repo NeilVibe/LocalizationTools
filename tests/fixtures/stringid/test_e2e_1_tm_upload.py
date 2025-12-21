@@ -17,8 +17,7 @@ import os
 import sys
 import pytest
 
-# Skip entire module - requires DB migration for 'mode' column
-pytestmark = pytest.mark.skip(reason="Requires 'mode' column migration in CI database")
+# Note: db_setup.py's upgrade_schema() auto-adds the 'mode' column if missing
 from pathlib import Path
 from io import BytesIO
 

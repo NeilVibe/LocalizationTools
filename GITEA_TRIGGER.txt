@@ -11,15 +11,9 @@ FORMATS:
 
 Build History (last 5):
 -----------------------
-Build 311 - UI-044 Resizable columns + clear separator
-Build 312 - UI-045 Fix tooltip showing "?" instead of username
-Build 313 - Full docs update + AI Visual Verification Protocol
-Build 314 - UI-047 Fix TM status display (Pending→Ready)
-Build 315 - FEAT-001 + Task Tracking + QA Mode
-Build QA-LIGHT
-Build 316 - QA-LIGHT 7-Stage Pipeline Verification
 Build 317 - Fix flaky timeout test
 Build 318 - Fix 5 API test failures
 Build 319 - Fix MODEL_NAME import error
 Build 320 - Fix async session datetime race condition
 Build 321 - Skip stringid tests (pending DB migration)
+Build 322 - Schema upgrade (auto-add mode column) + Enable stringid tests
