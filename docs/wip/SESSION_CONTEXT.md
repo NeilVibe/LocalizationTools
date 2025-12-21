@@ -36,23 +36,69 @@ The sync endpoint `/api/ldm/tm/{id}/sync` is returning 500. Possible causes:
 2. Model loading failure
 3. File I/O issues
 
-### Fix Applied: Enhanced Schema Upgrade Logging (Build 325)
+---
 
-Added comprehensive logging to `upgrade_schema()` to diagnose if columns are being added:
-- Logs database type (SQLite/PostgreSQL)
-- Logs table count
-- Logs each ALTER TABLE execution
-- Verifies columns after adding
-- Reports summary (added/skipped count)
+## CI DEBUGGING TECHNIQUES
+
+### 1. Schema Upgrade Logging (Build 325)
+
+Added comprehensive logging to `upgrade_schema()` in `server/database/db_setup.py`:
 
 ```python
-# server/database/db_setup.py
-def upgrade_schema(engine):
-    logger.info("SCHEMA UPGRADE: Checking for missing columns...")
-    logger.info(f"Database type: {db_type}")
-    logger.info(f"Found {len(table_names)} tables in database")
-    # ... detailed logging for each column check/add
-    logger.info(f"Schema upgrade complete: {columns_added} added, {columns_skipped} already existed")
+logger.info("SCHEMA UPGRADE: Checking for missing columns...")
+logger.info(f"Database type: {db_type}")
+logger.info(f"Found {len(table_names)} tables in database")
+logger.info(f"Executing: {sql}")
+logger.success(f"Schema upgrade: Added column '{column_name}' to '{table_name}'")
+logger.info(f"Verified: Column '{column_name}' now exists in '{table_name}'")
+logger.info(f"Schema upgrade complete: {columns_added} added, {columns_skipped} already existed")
+```
+
+**Look for in CI logs:** `SCHEMA UPGRADE:` messages
+
+### 2. Full Traceback in 500 Responses (Build 327)
+
+Added full Python traceback to 500 error responses in `server/tools/ldm/api.py:2300-2309`:
+
+```python
+except Exception as e:
+    import traceback
+    error_traceback = traceback.format_exc()
+    raise HTTPException(
+        status_code=500,
+        detail=f"TM sync failed: {str(e)}\n\nTraceback:\n{error_traceback}"
+    )
+```
+
+**Why:** Test assertions show `Failed: {r.text}` - now includes full traceback!
+
+### 3. Testing Model Loading Locally
+
+```bash
+python3 -c "
+from server.tools.shared import get_embedding_engine, get_current_engine_name
+engine = get_embedding_engine(get_current_engine_name())
+engine.load()
+print(f'Loaded: {engine.name}, dim={engine.dimension}')
+"
+```
+
+### 4. Testing Schema Upgrade Locally
+
+```bash
+python3 -c "from server.database.db_setup import setup_database; setup_database()"
+```
+
+### 5. Running pip-audit
+
+```bash
+pip-audit  # Shows all Python package vulnerabilities
+```
+
+### 6. Running npm audit
+
+```bash
+cd locaNext && npm audit  # Shows npm vulnerabilities
 ```
 
 ---

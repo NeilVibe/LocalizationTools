@@ -53,6 +53,39 @@
 
 ---
 
+## CI DEBUGGING TOOLKIT
+
+### When 500 Errors Occur in CI
+
+1. **Check test output** - Now includes full traceback (Build 327)
+2. **Look for `SCHEMA UPGRADE:` logs** - Shows if columns are being added
+3. **Check `MODELS_AVAILABLE`** - faiss import status
+
+### Key Debug Logging Locations
+
+| Component | File | What to Look For |
+|-----------|------|------------------|
+| Schema upgrade | `db_setup.py:185-253` | `SCHEMA UPGRADE:` messages |
+| Sync errors | `api.py:2300-2309` | Full traceback in 500 response |
+| Model loading | `embedding_engine.py:121-128` | `Loading Model2Vec engine` |
+| TM indexing | `tm_indexer.py` | `MODELS_AVAILABLE: True/False` |
+
+### Local Debug Commands
+
+```bash
+# Test model loading
+python3 -c "from server.tools.shared import get_embedding_engine; e=get_embedding_engine('model2vec'); e.load(); print(e.dimension)"
+
+# Test schema upgrade
+python3 -c "from server.database.db_setup import setup_database; setup_database()"
+
+# Security audits
+pip-audit          # Python vulnerabilities
+cd locaNext && npm audit  # npm vulnerabilities
+```
+
+---
+
 ## FIXED - BUILD 322 (PENDING VERIFICATION)
 
 ### CI-001: Schema Upgrade Mechanism (REAL FIX)
