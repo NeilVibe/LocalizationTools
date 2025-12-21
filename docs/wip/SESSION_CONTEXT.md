@@ -1,12 +1,12 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-21 10:30 | **Build:** 313 | **Previous:** 312
+**Last Updated:** 2025-12-21 10:45 | **Build:** 314 (VERIFIED) | **Previous:** 312
 
 ---
 
 ## CURRENT STATE
 
-### Build 313: UI-047 TM Status Display Fix
+### Build 314: UI-047 TM Status Display Fix (VERIFIED)
 - **Problem:** TM sidebar showed "Pending" even when database had `status = "ready"`
 - **Investigation:**
   - Database: ALL TMs have `status = "ready"` ✓
@@ -15,7 +15,9 @@
   - Frontend bug: `FileExplorer.svelte` checked `tm.is_indexed` instead of `tm.status`
 - **Fix:** Changed line 755-759 to check `tm.status === 'ready'`
 - **File:** `FileExplorer.svelte`
-- **Status:** FIXED, pending verification
+- **Verification:** Screenshot shows all TMs with green "Ready" tags
+- **CDP Test:** `test_ui047_tm_status.js` - PASS (5 Ready, 0 Pending)
+- **Status:** VERIFIED
 
 ### Build 312: VERIFIED
 - UI-045: PresenceBar tooltip shows username instead of "?"
