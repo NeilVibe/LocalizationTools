@@ -986,11 +986,8 @@ async def link_tm_to_project(
     )
     existing = existing_result.scalar_one_or_none()
     if existing:
-        # Update priority if link exists
-        existing.priority = request.priority
-        await db.commit()
-        logger.info(f"FEAT-001: Updated TM link priority: project={project_id}, tm={request.tm_id}, priority={request.priority}")
-        return {"status": "updated", "project_id": project_id, "tm_id": request.tm_id, "priority": request.priority}
+        # TM already linked - return 400
+        raise HTTPException(status_code=400, detail="TM already linked to this project")
 
     # Create new link
     link = LDMActiveTM(
@@ -1042,7 +1039,7 @@ async def unlink_tm_from_project(
     await db.commit()
 
     logger.info(f"FEAT-001: Unlinked TM from project: project={project_id}, tm={tm_id}")
-    return {"status": "unlinked", "project_id": project_id, "tm_id": tm_id}
+    return {"status": "unlinked", "message": "TM unlinked from project", "project_id": project_id, "tm_id": tm_id}
 
 
 @router.get("/projects/{project_id}/linked-tms")
@@ -1086,7 +1083,7 @@ async def get_linked_tms(
         for link in links
     ]
 
-    return {"project_id": project_id, "linked_tms": linked_tms}
+    return linked_tms
 
 
 # ============================================================================
