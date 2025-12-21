@@ -90,26 +90,23 @@ let isResizing = $state(false);
 
 ## WHAT WAS DONE THIS SESSION
 
-### Builds 309-311: Column Fixes
+### Build 314: TM Status Fix
 
 | Issue | Fix | Status |
 |-------|-----|--------|
-| **UI-042** | Removed avatar icons from PresenceBar | VERIFIED |
-| **UI-043** | Fixed empty 3rd column, tooltip shows username | VERIFIED |
-| **UI-044** | Resizable columns + clear separator | VERIFIED |
+| **UI-047** | TM sidebar shows "Ready" instead of "Pending" | VERIFIED |
 
 ### Key Changes
 
-1. **VirtualGrid.svelte**
-   - Added `sourceWidthPercent` state for column width ratio
-   - Added resize handlers (startResize, handleResize, stopResize)
-   - Added 2px visible border between source/target
-   - Header and cells use percentage-based flex widths
+1. **FileExplorer.svelte** (lines 755-759)
+   - Changed `tm.is_indexed` to `tm.status === 'ready'`
+   - TM sidebar now correctly shows sync status
 
-2. **PresenceBar.svelte**
-   - Removed avatar icons (colored circles with initials)
-   - Just "X viewing" text with hover tooltip
-   - Tooltip shows current user when viewer list empty
+2. **Verification:**
+   - DB query: All TMs have `status = "ready"`
+   - App UI: All TMs show green "Ready" tags
+   - Entry counts: DB = App (exact match)
+   - CDP test: `test_ui047_tm_status.js` PASS
 
 ---
 
@@ -118,10 +115,8 @@ let isResizing = $state(false);
 | File | Changes |
 |------|---------|
 | `FileExplorer.svelte` | UI-047: Fixed TM status check from `is_indexed` to `status === 'ready'` |
-| `VirtualGrid.svelte` | Resizable columns, clear separator, percentage widths |
-| `PresenceBar.svelte` | Simplified to text only, fixed tooltip |
-| `ISSUES_TO_FIX.md` | Updated with UI-042, UI-043, UI-044, UI-047 |
-| `GITEA_TRIGGER.txt` | Builds 309, 310, 311, 313 |
+| `test_ui047_tm_status.js` | New CDP test for TM status verification |
+| `test_full_tm_sync.js` | New E2E test for full TM sync workflow |
 
 ---
 
@@ -129,8 +124,9 @@ let isResizing = $state(false);
 
 | Build | File | What It Shows |
 |-------|------|---------------|
-| 311 | `build311_coord.png` | Clear column separator, no 3rd column |
-| 310 | `build310_detail.png` | "1 viewing" without avatars |
+| 314 | `ui047_02_tm_status_tags.png` | All TMs show green "Ready" tags |
+| 312 | `build312_VERIFIED.png` | Tooltip shows username |
+| 311 | `build311_coord.png` | Clear column separator |
 
 ---
 
@@ -148,9 +144,9 @@ let isResizing = $state(false);
 
 ## NEXT SESSION TODO
 
-1. Test column resize functionality manually
-2. Consider saving column width preference
-3. Ready for new features or bug reports
+1. Ready for new features or bug reports
+2. All sync issues resolved (BUG-032/033/034 + UI-047)
+3. 0 open issues
 
 ---
 
@@ -186,4 +182,4 @@ $effect(() => {
 
 ---
 
-*Build 311 verified - all UI fixes working*
+*Build 314 verified - TM sync status display fixed, DB = App data confirmed*
