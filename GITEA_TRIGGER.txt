@@ -17,3 +17,4 @@ Build 313 - Full docs update + AI Visual Verification Protocol
 Build 314 - UI-047 Fix TM status display (Pending→Ready)
 Build 315 - FEAT-001 + Task Tracking + QA Mode
 Build QA-LIGHT
+Build 316 - QA-LIGHT 7-Stage Pipeline Verification
