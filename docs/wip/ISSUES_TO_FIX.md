@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-21 10:30 | **Build:** 313 | **Previous:** 312
+**Last Updated:** 2025-12-21 10:45 | **Build:** 314 (VERIFIED) | **Previous:** 312
 
 ---
 
@@ -13,9 +13,9 @@
 
 ---
 
-## FIXED - BUILD 313
+## VERIFIED - BUILD 314
 
-### UI-047: TM Sidebar Shows "Pending" When Status is "Ready"
+### UI-047: TM Sidebar Shows "Pending" When Status is "Ready" (VERIFIED)
 
 - **Problem:** TM list in sidebar always showed "Pending" tag even when TM was fully synced
 - **Root Cause:** `FileExplorer.svelte` checked `tm.is_indexed` instead of `tm.status === 'ready'`
@@ -26,7 +26,9 @@
   - Frontend bug: Wrong field being checked
 - **Fix:** Changed condition from `tm.is_indexed` to `tm.status === 'ready'`
 - **File:** `FileExplorer.svelte` (lines 755-759)
-- **Status:** FIXED
+- **Screenshot:** `ui047_02_tm_status_tags.png` - All TMs show green "Ready" tags
+- **Verification:** CDP test `test_ui047_tm_status.js` - PASS (5 Ready, 0 Pending)
+- **Status:** VERIFIED
 
 ---
 
