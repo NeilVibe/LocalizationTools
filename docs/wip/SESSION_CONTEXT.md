@@ -106,64 +106,39 @@ Phase 4: PERFORMANCE (optional)     → Latency, throughput
 
 ---
 
-## P37: Preserve Runner Setup (TODO)
+## P37: Preserve Runner Setup (DONE)
 
-### The Problem
-We spent 2 months patching the Windows runner (NUL byte fix, ephemeral mode, 706% CPU fix). The work is documented but **not rebuildable from repo**.
+Runner rebuild kit committed to `runner/` folder (~5KB total).
 
-### What to Commit (LIGHT, ~50KB total)
+### What's Committed
 
 ```
 runner/
 ├── patches/
-│   └── parse_env_file.patch      # The v15 NUL byte fix (few lines)
+│   └── v15_nul_byte_fix.patch    # The NUL byte fix
 │
 ├── scripts/
 │   ├── build_patched_runner.sh   # Clone repos, apply patch, build
-│   ├── install_windows.ps1       # Windows service setup
-│   └── install_linux.sh          # Linux systemd setup
+│   └── install_windows.ps1       # Windows service setup (NSSM)
 │
 ├── configs/
-│   ├── config.yaml.template      # Runner config template
-│   ├── run_ephemeral.bat         # Windows wrapper script
-│   ├── gitea.service             # Linux Gitea systemd unit
-│   └── gitea-runner.service      # Linux runner systemd unit
+│   └── config.yaml.template      # Runner config template
 │
 └── README.md                     # Quick start guide
 ```
 
-### What NOT to Commit
-- ❌ `act_runner_patched_v15.exe` (20MB binary)
-- ❌ `act_runner` source code (use git clone)
-- ❌ `.runner` registration files (machine-specific)
-
-### Build Flow
+### Quick Rebuild
 ```bash
-# 1. Clone official repos
-git clone https://github.com/nektos/act.git
-git clone https://gitea.com/gitea/act_runner.git
-
-# 2. Apply our patch
-patch -p1 < runner/patches/parse_env_file.patch
-
-# 3. Build
-GOOS=windows GOARCH=amd64 go build -o act_runner_patched.exe
-
-# 4. Deploy
-./runner/scripts/install_windows.ps1
+cd runner/scripts && ./build_patched_runner.sh
+cp ~/act_runner_build/act_runner/act_runner_patched_v15.exe /mnt/c/.../GiteaRunner/
+# Windows: Restart-Service GiteaActRunner
 ```
 
-### Benefits
-- Repo stays light (~50KB vs 20MB)
-- Can rebuild anytime
-- Works for enterprise deployment
-- All the "beautiful work" preserved
-
-### Status: TODO
-- [ ] Extract patch file from docs
-- [ ] Create build script
-- [ ] Create install scripts
-- [ ] Test rebuild flow
+### Status: DONE
+- [x] Extract patch file from docs
+- [x] Create build script
+- [x] Create install scripts
+- [x] README with full instructions
 
 ---
 

@@ -1,0 +1,18 @@
+--- a/pkg/container/parse_env_file.go
++++ b/pkg/container/parse_env_file.go
+@@ -42,6 +42,12 @@ func ParseEnvFile(envFile string) (map[string]string, error) {
+ 	s := bufio.NewScanner(file)
+ 	for s.Scan() {
+ 		line := s.Text()
++
++		// V15-PATCH: Strip NUL bytes from line (Windows PowerShell bug)
++		// PowerShell writes NUL bytes to GITHUB_OUTPUT which crashes Go's os/exec
++		line = strings.ReplaceAll(line, "\x00", "")
++		trimmed := strings.TrimSpace(line)
++		if trimmed == "" {
++			continue
++		}
++
+ 		if strings.HasPrefix(line, "#") || strings.TrimSpace(line) == "" {
+ 			continue
+ 		}
