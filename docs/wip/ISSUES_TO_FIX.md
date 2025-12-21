@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-22 | **Build:** 322 (PENDING) | **Previous:** 321
+**Last Updated:** 2025-12-22 | **Build:** 325 (PENDING) | **Previous:** 324
 
 ---
 
@@ -8,15 +8,48 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 0 |
-| **FIXED (This Session)** | 5 |
+| **OPEN** | 1 |
+| **FIXED (This Session)** | 6 |
 
-### This Session: CI Fixes + Schema Upgrade
+### Open Issues
+- **CI-006** - `test_01_manual_sync_tm` returns 500 (investigating)
+
+### This Session: CI Fixes + Schema Upgrade + Security Audit
 - **CI-001** - Schema upgrade mechanism (auto-add missing columns)
 - **CI-002** - Removed stringid test skip markers
 - **CI-003** - Fixed flaky timeout test (mocked socket)
 - **CI-004** - Fixed datetime race condition
 - **CI-005** - Fixed MODEL_NAME import error
+- **SEC-001** - Security audit: Updated 5 packages with CVE fixes
+
+---
+
+## SECURITY AUDIT (2025-12-22)
+
+### npm audit: 3 low severity
+- `cookie` package vulnerability (affects @sveltejs/kit)
+- **Fix:** `npm audit fix --force` (breaks @sveltejs/kit, defer)
+
+### pip audit: 28 vulnerabilities in 13 packages
+
+| Package | Old | New | CVE |
+|---------|-----|-----|-----|
+| requests | 2.32.3 | >=2.32.4 | CVE-2024-47081 |
+| python-multipart | 0.0.9 | >=0.0.18 | CVE-2024-53981 |
+| python-socketio | 5.11.0 | >=5.14.0 | CVE-2025-61765 |
+| python-jose | 3.3.0 | >=3.4.0 | PYSEC-2024-232/233 |
+| setuptools | 74.0.0 | >=78.1.1 | PYSEC-2025-49 |
+
+**Deferred (may break compatibility):**
+- torch 2.3.1 (multiple CVEs, GPU support fragile)
+- starlette 0.38.6 (pinned by FastAPI)
+- urllib3 1.26.5 (system package)
+- twisted 22.1.0 (system package)
+
+### Node.js Version Warning
+- Current: v20.18.3
+- Required: ^20.19 || ^22.12 (by vite, svelte plugins)
+- **Status:** Warnings only, not blocking
 
 ---
 
