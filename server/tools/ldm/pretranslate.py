@@ -208,14 +208,21 @@ class PretranslationEngine:
 
                 # If row has StringID, try to find matching variation
                 if row.string_id:
+                    # DEBUG: Log StringID matching
+                    result_string_ids = [m.get("string_id") for m in result["results"]]
+                    logger.debug(f"DEBUG StringID: Looking for '{row.string_id}' in {result_string_ids}")
+
                     for match in result["results"]:
                         if match.get("string_id") == row.string_id:
                             best_match = match
+                            logger.debug(f"DEBUG StringID: Matched! target='{best_match['target_text']}'")
                             break
 
                 # Fallback to first result if no StringID match
                 if not best_match:
                     best_match = result["results"][0]
+                    if row.string_id:
+                        logger.warning(f"DEBUG StringID: No match found for '{row.string_id}', using fallback")
 
                 row.target = best_match["target_text"]
                 matched += 1
