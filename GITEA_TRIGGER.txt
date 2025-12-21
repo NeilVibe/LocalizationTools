@@ -11,9 +11,9 @@ FORMATS:
 
 Build History (last 5):
 -----------------------
-Build 328 - Fix ldm_tm_entries missing columns (updated_at, updated_by, etc.)
 Build 329 - Fix KeyError: time_seconds in sync early return
 Build 330 - Fix StringID not stored in DB (bulk_insert + get_db_entries)
 Build 331 - Fix TM link API response format (linked-tms returns list, link-tm returns 400 on dupe)
 Build 332 - Debug logging for StringID matching (trace data flow)
+Build 333 - More debug: Show what string_ids are in lookup and search results
 Build QA-LIGHT

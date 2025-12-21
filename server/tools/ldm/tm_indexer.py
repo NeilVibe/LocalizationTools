@@ -385,7 +385,17 @@ class TMIndexer:
                 else:
                     lookup[stripped] = entry_data
 
-        logger.info(f"Built whole_text_lookup: {len(lookup):,} entries")
+        # DEBUG: Log variations with string_ids
+        variations_count = sum(1 for v in lookup.values() if "variations" in v)
+        logger.info(f"Built whole_text_lookup: {len(lookup):,} entries, {variations_count} with variations")
+
+        # Sample first entry with variations to verify string_id stored
+        for key, val in lookup.items():
+            if "variations" in val:
+                sample_sids = [v.get("string_id") for v in val["variations"]]
+                logger.info(f"DEBUG: Sample variations for '{key[:20]}...': string_ids={sample_sids}")
+                break
+
         return lookup
 
     def _build_line_lookup(self, entries: List[Dict]) -> Dict[str, Dict]:

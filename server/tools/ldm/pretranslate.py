@@ -208,9 +208,9 @@ class PretranslationEngine:
 
                 # If row has StringID, try to find matching variation
                 if row.string_id:
-                    # DEBUG: Log StringID matching
+                    # DEBUG: Log StringID matching (INFO level to see in CI)
                     result_string_ids = [m.get("string_id") for m in result["results"]]
-                    logger.debug(f"DEBUG StringID: Looking for '{row.string_id}' in {result_string_ids}")
+                    logger.info(f"DEBUG StringID: Looking for '{row.string_id}' in {result_string_ids}")
 
                     for match in result["results"]:
                         if match.get("string_id") == row.string_id:
