@@ -84,3 +84,4 @@ Build 310 - UI-043 Fix 3rd column + tooltip
 Build 311 - UI-044 Resizable columns + clear separator
 Build 312 - UI-045 Fix tooltip showing "?" instead of username
 Build 313 - Full docs update + AI Visual Verification Protocol
+Build 314: UI-047 Fix TM status display (Pending→Ready)

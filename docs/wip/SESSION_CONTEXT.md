@@ -1,10 +1,21 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-21 08:50 | **Build:** 312 (VERIFIED) | **Previous:** 311
+**Last Updated:** 2025-12-21 10:30 | **Build:** 313 | **Previous:** 312
 
 ---
 
 ## CURRENT STATE
+
+### Build 313: UI-047 TM Status Display Fix
+- **Problem:** TM sidebar showed "Pending" even when database had `status = "ready"`
+- **Investigation:**
+  - Database: ALL TMs have `status = "ready"` ✓
+  - Server log: Shows `status=ready` after sync ✓
+  - API response: Returns `"status": "ready"` ✓
+  - Frontend bug: `FileExplorer.svelte` checked `tm.is_indexed` instead of `tm.status`
+- **Fix:** Changed line 755-759 to check `tm.status === 'ready'`
+- **File:** `FileExplorer.svelte`
+- **Status:** FIXED, pending verification
 
 ### Build 312: VERIFIED
 - UI-045: PresenceBar tooltip shows username instead of "?"
@@ -104,10 +115,11 @@ let isResizing = $state(false);
 
 | File | Changes |
 |------|---------|
+| `FileExplorer.svelte` | UI-047: Fixed TM status check from `is_indexed` to `status === 'ready'` |
 | `VirtualGrid.svelte` | Resizable columns, clear separator, percentage widths |
 | `PresenceBar.svelte` | Simplified to text only, fixed tooltip |
-| `ISSUES_TO_FIX.md` | Updated with UI-042, UI-043, UI-044 |
-| `GITEA_TRIGGER.txt` | Builds 309, 310, 311 |
+| `ISSUES_TO_FIX.md` | Updated with UI-042, UI-043, UI-044, UI-047 |
+| `GITEA_TRIGGER.txt` | Builds 309, 310, 311, 313 |
 
 ---
 

@@ -752,8 +752,8 @@
               <span class="tm-name">{tm.name}</span>
               <span class="tm-meta">{tm.entry_count || 0} entries</span>
             </div>
-            {#if tm.is_indexed}
-              <Tag type="green" size="sm">Indexed</Tag>
+            {#if tm.status === 'ready'}
+              <Tag type="green" size="sm">Ready</Tag>
             {:else}
               <Tag type="outline" size="sm">Pending</Tag>
             {/if}
