@@ -11,7 +11,7 @@ Run with: python3 -m pytest tests/unit/test_progress_tracker_silent.py -v
 import pytest
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -26,92 +26,82 @@ pytestmark = [
 class TestTrackedOperationSilentFlag:
     """Test TrackedOperation silent flag functionality."""
 
-    def test_default_silent_is_false(self):
+    @pytest.fixture(autouse=True)
+    def mock_db_and_websocket(self):
+        """Mock database and websocket for all tests."""
+        with patch('server.utils.progress_tracker.DB_AVAILABLE', False):
+            with patch('server.utils.progress_tracker._emit_async'):
+                yield
+
+    def test_default_silent_is_false(self, mock_db_and_websocket):
         """Default silent value should be False."""
         from server.utils.progress_tracker import TrackedOperation
 
-        with patch('server.utils.progress_tracker._emit_async'):
-            with patch('server.utils.progress_tracker.get_db_session'):
-                op = TrackedOperation(
-                    "Test Operation",
-                    user_id=1,
-                    tool_name="Test"
-                )
-                assert op.silent is False
+        op = TrackedOperation(
+            "Test Operation",
+            user_id=1,
+            tool_name="Test"
+        )
+        assert op.silent is False
 
-    def test_silent_true_is_stored(self):
+    def test_silent_true_is_stored(self, mock_db_and_websocket):
         """silent=True should be stored on the operation."""
         from server.utils.progress_tracker import TrackedOperation
 
-        with patch('server.utils.progress_tracker._emit_async'):
-            with patch('server.utils.progress_tracker.get_db_session'):
-                op = TrackedOperation(
-                    "Test Operation",
-                    user_id=1,
-                    tool_name="Test",
-                    silent=True
-                )
-                assert op.silent is True
+        op = TrackedOperation(
+            "Test Operation",
+            user_id=1,
+            tool_name="Test",
+            silent=True
+        )
+        assert op.silent is True
 
-    def test_silent_false_explicit(self):
+    def test_silent_false_explicit(self, mock_db_and_websocket):
         """silent=False explicit should work."""
         from server.utils.progress_tracker import TrackedOperation
 
-        with patch('server.utils.progress_tracker._emit_async'):
-            with patch('server.utils.progress_tracker.get_db_session'):
-                op = TrackedOperation(
-                    "Test Operation",
-                    user_id=1,
-                    tool_name="Test",
-                    silent=False
-                )
-                assert op.silent is False
+        op = TrackedOperation(
+            "Test Operation",
+            user_id=1,
+            tool_name="Test",
+            silent=False
+        )
+        assert op.silent is False
 
 
 class TestSilentFlagInEvents:
     """Test that silent flag is passed to WebSocket events."""
 
-    def test_silent_flag_in_start_event(self):
-        """Silent flag should be included in operation start event."""
+    @pytest.fixture(autouse=True)
+    def mock_db_and_websocket(self):
+        """Mock database and websocket for all tests."""
+        with patch('server.utils.progress_tracker.DB_AVAILABLE', False):
+            with patch('server.utils.progress_tracker._emit_async'):
+                yield
+
+    def test_silent_flag_stored_correctly(self, mock_db_and_websocket):
+        """Silent flag should be stored on TrackedOperation."""
         from server.utils.progress_tracker import TrackedOperation
 
-        captured_events = []
-
-        def capture_emit(event_data):
-            captured_events.append(event_data)
-
-        with patch('server.utils.progress_tracker._emit_async', side_effect=capture_emit):
-            with patch('server.utils.progress_tracker.get_db_session'):
-                with patch('server.utils.progress_tracker.ActiveOperation'):
-                    op = TrackedOperation(
-                        "Test Silent Op",
-                        user_id=1,
-                        tool_name="Test",
-                        silent=True
-                    )
-                    # Trigger __enter__
-                    try:
-                        op.__enter__()
-                    except Exception:
-                        pass  # Ignore DB errors in unit test
-
-        # Check if silent flag was in any captured event
-        # Note: Due to mocking, we verify the TrackedOperation stores it correctly
+        op = TrackedOperation(
+            "Test Silent Op",
+            user_id=1,
+            tool_name="Test",
+            silent=True
+        )
         assert op.silent is True
 
-    def test_non_silent_flag_in_start_event(self):
-        """Non-silent flag should be included in operation start event."""
+    def test_non_silent_flag_stored_correctly(self, mock_db_and_websocket):
+        """Non-silent flag should be stored correctly."""
         from server.utils.progress_tracker import TrackedOperation
 
-        with patch('server.utils.progress_tracker._emit_async'):
-            with patch('server.utils.progress_tracker.get_db_session'):
-                op = TrackedOperation(
-                    "Test Non-Silent Op",
-                    user_id=1,
-                    tool_name="Test",
-                    silent=False
-                )
-                assert op.silent is False
+        op = TrackedOperation(
+            "Test Non-Silent Op",
+            user_id=1,
+            tool_name="Test",
+            silent=False
+        )
+        assert op.silent is False
 
 
 class TestSilentUseCases:
@@ -155,47 +145,44 @@ class TestSilentUseCases:
 class TestProgressTrackerIntegration:
     """Integration tests for progress tracker with silent flag."""
 
-    def test_tracked_operation_with_update(self):
-        """TrackedOperation.update() should work with silent flag."""
+    @pytest.fixture(autouse=True)
+    def mock_db_and_websocket(self):
+        """Mock database and websocket for all tests."""
+        with patch('server.utils.progress_tracker.DB_AVAILABLE', False):
+            with patch('server.utils.progress_tracker._emit_async'):
+                yield
+
+    def test_tracked_operation_initialization(self, mock_db_and_websocket):
+        """TrackedOperation should initialize with silent flag."""
         from server.utils.progress_tracker import TrackedOperation
 
-        with patch('server.utils.progress_tracker._emit_async'):
-            with patch('server.utils.progress_tracker.get_db_session'):
-                with patch('server.utils.progress_tracker.ActiveOperation'):
-                    op = TrackedOperation(
-                        "Test Update Op",
-                        user_id=1,
-                        tool_name="Test",
-                        silent=True,
-                        total_steps=100
-                    )
-                    op.operation_id = "test-123"  # Mock ID
+        op = TrackedOperation(
+            "Test Update Op",
+            user_id=1,
+            tool_name="Test",
+            silent=True,
+            total_steps=100
+        )
 
-                    # Should not raise
-                    try:
-                        op.update(50, "Halfway there")
-                    except Exception:
-                        pass  # DB/emit errors expected in unit test
+        assert op.silent is True
+        assert op.operation_name == "Test Update Op"
+        assert op.user_id == 1
+        assert op.tool_name == "Test"
 
-                    assert op.silent is True
-
-    def test_tracked_operation_preserves_silent_through_lifecycle(self):
+    def test_tracked_operation_preserves_silent_through_lifecycle(self, mock_db_and_websocket):
         """Silent flag should be preserved through operation lifecycle."""
         from server.utils.progress_tracker import TrackedOperation
 
-        with patch('server.utils.progress_tracker._emit_async'):
-            with patch('server.utils.progress_tracker.get_db_session'):
-                with patch('server.utils.progress_tracker.ActiveOperation'):
-                    op = TrackedOperation(
-                        "Lifecycle Test",
-                        user_id=1,
-                        tool_name="Test",
-                        silent=True
-                    )
+        op = TrackedOperation(
+            "Lifecycle Test",
+            user_id=1,
+            tool_name="Test",
+            silent=True
+        )
 
-                    # Before enter
-                    assert op.silent is True
+        # Before enter
+        assert op.silent is True
 
-                    # The silent flag should never change
-                    op.silent = True  # Re-verify
-                    assert op.silent is True
+        # The silent flag should never change
+        op.silent = True  # Re-verify
+        assert op.silent is True

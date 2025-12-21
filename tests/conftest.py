@@ -542,6 +542,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "api: API endpoint tests")
     config.addinivalue_line("markers", "security: security validation tests")
     config.addinivalue_line("markers", "slow: long-running tests")
+    config.addinivalue_line("markers", "performance: performance benchmark tests")
 
     # Component markers
     config.addinivalue_line("markers", "client: client-side tests")
