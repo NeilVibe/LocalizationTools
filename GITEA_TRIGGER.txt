@@ -11,9 +11,9 @@ FORMATS:
 
 Build History (last 5):
 -----------------------
-Build 326 - Security audit fixes (5 CVEs patched)
 Build 327 - Add traceback to sync 500 error response (debug CI)
 Build 328 - Fix ldm_tm_entries missing columns (updated_at, updated_by, etc.)
 Build 329 - Fix KeyError: time_seconds in sync early return
 Build 330 - Fix StringID not stored in DB (bulk_insert + get_db_entries)
+Build 331 - Fix TM link API response format (linked-tms returns list, link-tm returns 400 on dupe)
 Build QA-LIGHT
