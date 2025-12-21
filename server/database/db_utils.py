@@ -350,6 +350,7 @@ def bulk_insert_tm_entries(
             'source_text': source,
             'target_text': target,
             'source_hash': source_hash,
+            'string_id': entry.get('string_id'),  # StringID for context-aware matching
             'created_by': entry.get('created_by'),
             'change_date': entry.get('change_date'),
         })
