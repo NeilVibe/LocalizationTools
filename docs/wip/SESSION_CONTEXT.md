@@ -55,6 +55,37 @@ GitHub caught broken `test_npc.py` that Gitea skipped!
 **TODO:**
 1. Implement `Build TEST` mode in Gitea workflow
 2. Enhance `Build FULL` for true offline capability
+3. **P36: CI/CD Test Overhaul** - Reorganize tests into blocks
+
+---
+
+## P36: CI/CD Test Overhaul (NEW)
+
+### Current Test Inventory
+- **78 test files**, **1357 test functions**
+- Scattered across: unit/, integration/, e2e/, security/, api/, fixtures/
+
+### Proposed: Beautiful Test Blocks
+```
+tests/blocks/
+├── db/           # Database
+├── auth/         # Authentication
+├── network/      # WebSocket, HTTP
+├── security/     # JWT, CORS, XSS
+├── processing/   # TM, embeddings, FAISS
+├── tools/        # KR Similar, QuickSearch, XLS
+├── logging/      # Server/client logs
+├── ui/           # API responses
+└── performance/  # Latency tests (NEW)
+```
+
+### Work Required
+1. **Audit** - Review 78 files, find duplicates, map gaps
+2. **Reorganize** - Create blocks/, move tests, add markers
+3. **Fill Gaps** - Performance tests, error handling
+4. **Integrate** - Update CI/CD for `Build TEST`
+
+**Details:** [P36_CICD_TEST_OVERHAUL.md](P36_CICD_TEST_OVERHAUL.md)
 
 ---
 
