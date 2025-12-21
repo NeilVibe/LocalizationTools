@@ -61,6 +61,29 @@ All components operational. CI/CD cleaned up and enhanced. GitHub build in progr
 
 ---
 
+## P36: CI/CD Test Overhaul (TODO)
+
+Reorganize tests into **beautiful blocks** for clear pipeline visualization.
+
+| Block | Purpose | Status |
+|-------|---------|--------|
+| `db/` | Database tests | TODO |
+| `auth/` | Authentication | TODO |
+| `network/` | WebSocket, HTTP | TODO |
+| `security/` | JWT, CORS, XSS | EXISTS |
+| `processing/` | TM, embeddings, FAISS | TODO |
+| `tools/` | KR Similar, QuickSearch, XLS | TODO |
+| `logging/` | Server/client logging | TODO |
+| `ui/` | API responses, events | TODO |
+| `performance/` | Latency, throughput | NEW |
+
+**Current:** 78 files, 1357 tests (scattered)
+**Goal:** Organized blocks with clear coverage
+
+**Details:** [P36_CICD_TEST_OVERHAUL.md](docs/wip/P36_CICD_TEST_OVERHAUL.md)
+
+---
+
 ## CI/CD Discovery (Build 315)
 
 | Platform | Test Strategy | Tests Run |
