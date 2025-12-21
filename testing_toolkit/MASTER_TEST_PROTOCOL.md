@@ -2,7 +2,7 @@
 
 **Complete workflow from code to validated build**
 
-**Updated:** 2025-12-21 | **Build:** 311
+**Updated:** 2025-12-21 | **Build:** 312 (VERIFIED)
 
 ---
 
@@ -198,12 +198,31 @@ node quick_check.js
 
 **This protocol ensures UI/UX fixes are VERIFIED with screenshot proof before marking as complete.**
 
-### Mindset: Be Demanding
+### Mindset: Be DEMANDING (CRITICAL)
 
-1. **Never trust code changes alone** - Always verify visually
-2. **Take screenshots at every step** - Build evidence
-3. **Compare before/after** - Understand what changed
-4. **Don't mark VERIFIED until screenshot proves it**
+**TAKE MULTIPLE SCREENSHOTS. CHECK AGAIN AND AGAIN AND AGAIN.**
+
+1. **Never trust code changes alone** - PROVE IT with screenshots
+2. **Take MULTIPLE screenshots** - One is NOT enough
+3. **Check AGAIN and AGAIN** - Until you are 100% CERTAIN
+4. **Compare before/after** - Understand what changed
+5. **Don't mark VERIFIED until you have EXACT PROOF**
+6. **If ANY doubt remains** - Take ANOTHER screenshot
+
+```
+The Verification Loop:
+┌─────────────────────────────────────────┐
+│  1. Take screenshot                      │
+│  2. Read image - analyze what you see    │
+│  3. Is this EXACTLY what we need?        │
+│     │                                    │
+│     ├─ YES (100% certain) → VERIFIED ✅  │
+│     │                                    │
+│     └─ ANY doubt → Go back to step 1     │
+│        Take ANOTHER screenshot           │
+│        Check AGAIN. And AGAIN.           │
+└─────────────────────────────────────────┘
+```
 
 ### Step-by-Step Protocol
 

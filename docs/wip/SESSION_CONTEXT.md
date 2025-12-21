@@ -1,10 +1,16 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-21 00:50 | **Build:** 311 (VERIFIED) | **Previous:** 310
+**Last Updated:** 2025-12-21 08:50 | **Build:** 312 (VERIFIED) | **Previous:** 311
 
 ---
 
 ## CURRENT STATE
+
+### Build 312: VERIFIED
+- UI-045: PresenceBar tooltip shows username instead of "?"
+- CDP verified: `title="neil"` confirmed
+- Screenshot: build312_VERIFIED.png
+- Minor: cursor shows "?" (cosmetic, noted for future)
 
 ### Build 311: VERIFIED
 - UI-044: Resizable columns + clear separator between Source/Target

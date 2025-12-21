@@ -1,6 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512201630 | **Build:** 307 (v25.1220.1551) | **Next:** 308 | **Issues:** 0
+**Version:** 2512210845 | **Build:** 312 (v25.1221.0012) | **Next:** 313 | **Issues:** 0
 
 > **KEEP THIS FILE COMPACT.** Details in linked docs.
 

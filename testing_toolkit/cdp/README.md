@@ -2,7 +2,7 @@
 
 **Pure Node.js testing via Chrome DevTools Protocol. No Playwright. No PowerShell.**
 
-**Updated:** 2025-12-19 | **Build:** 301
+**Updated:** 2025-12-21 | **Build:** 312 (VERIFIED)
 
 ---
 

@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-21 00:45 | **Build:** 311 (VERIFIED) | **Previous:** 310
+**Last Updated:** 2025-12-21 08:45 | **Build:** 312 (VERIFIED) | **Previous:** 311
 
 ---
 
@@ -8,21 +8,34 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 1 |
-| **FIXED (This Session)** | 13 |
+| **OPEN** | 0 |
+| **FIXED (This Session)** | 14 |
 
 ---
 
-## OPEN - TO FIX
+## VERIFIED - BUILD 312
 
-### UI-045: PresenceBar Tooltip Shows "?" Instead of Username
+### UI-045: PresenceBar Tooltip Shows Username (VERIFIED)
 
-- **Problem:** Hovering over "X viewing" shows "?" instead of the current user's name
-- **Expected:** When hovering, should show the username (e.g., "neil") even when only one viewer
-- **Root Cause:** Invalid usernames ("?", "Unknown", "LOCAL") weren't being filtered
-- **Fix:** Added `isValidUsername()` function to filter out invalid names, robust fallback chain
+- **Problem:** Hovering over "X viewing" showed "?" instead of the current user's name
+- **Fix:** Added `isValidUsername()` function to filter out invalid names ("?", "Unknown", "LOCAL"), robust fallback chain
 - **File:** `PresenceBar.svelte`
-- **Status:** FIXED (pending Build 312 verification)
+- **Verification:** CDP query confirmed `title="neil"` - tooltip shows username
+- **Screenshot:** build312_VERIFIED.png (2025-12-21 08:40)
+- **Status:** VERIFIED
+
+---
+
+## MINOR - FUTURE (Low Priority)
+
+### UI-046: PresenceBar Cursor Shows "?" Instead of Normal Pointer
+
+- **Problem:** When hovering over "1 viewing", the cursor shows a "?" (help cursor) instead of normal pointer
+- **Root Cause:** CSS `cursor: help` style on `.presence-indicator`
+- **Fix:** Change to `cursor: default` or `cursor: pointer`
+- **File:** `PresenceBar.svelte` (CSS)
+- **Priority:** Very Low - cosmetic only, tooltip works correctly
+- **Status:** NOTED (not urgent)
 
 ---
 
