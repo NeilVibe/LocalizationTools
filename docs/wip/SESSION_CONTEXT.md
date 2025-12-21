@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-21 10:45 | **Build:** 314 (VERIFIED) | **Previous:** 312
+**Last Updated:** 2025-12-21 11:15 | **Build:** 314 (VERIFIED) | **Previous:** 312
 
 ---
 
@@ -108,6 +108,21 @@ let isResizing = $state(false);
    - Entry counts: DB = App (exact match)
    - CDP test: `test_ui047_tm_status.js` PASS
 
+### Repo Cleanup
+
+| Item | Before | After |
+|------|--------|-------|
+| GITEA_TRIGGER.txt | 87 lines | 16 lines |
+| Local tags | 16 | 7 |
+| GitHub tags | 22 | 7 |
+| Gitea tags | 26 | 7 |
+| Gitea releases | 20+ | 7 |
+
+**Note:** GitHub and Gitea have separate CI systems:
+- `BUILD_TRIGGER.txt` → GitHub Actions (last: Dec 17)
+- `GITEA_TRIGGER.txt` → Gitea Actions (current: Build 314)
+- TODO: Sync GitHub builds if needed
+
 ---
 
 ## FILES CHANGED THIS SESSION
@@ -182,4 +197,4 @@ $effect(() => {
 
 ---
 
-*Build 314 verified - TM sync status display fixed, DB = App data confirmed*
+*Build 314 verified - TM sync fixed, repo cleaned up, 0 open issues*
