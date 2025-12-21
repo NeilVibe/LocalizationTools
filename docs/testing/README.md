@@ -1,6 +1,40 @@
 # Testing Documentation
 
-**Updated:** 2025-12-19 | **Build:** 300
+**Updated:** 2025-12-21 | **Build:** 312 (VERIFIED)
+
+---
+
+## AI Visual Verification Protocol (NEW)
+
+**CRITICAL:** All UI/UX fixes MUST be verified with screenshot proof.
+
+**Full Protocol:** [testing_toolkit/MASTER_TEST_PROTOCOL.md - Phase 6](../../testing_toolkit/MASTER_TEST_PROTOCOL.md#phase-6-ai-visual-verification-protocol)
+
+### Quick Summary
+
+```
+1. Take screenshot via CDP
+2. Read image (Claude can analyze PNGs)
+3. Verify fix is visible
+4. Don't mark VERIFIED until screenshot proves it
+```
+
+### AI State of Mind
+
+| Principle | Meaning |
+|-----------|---------|
+| **Be skeptical** | Code changes ≠ working UI |
+| **Be visual** | Screenshots reveal user experience |
+| **Be thorough** | Test edge cases |
+| **Be precise** | Document exactly what changed |
+| **Be demanding** | Require proof before marking VERIFIED |
+
+### Svelte 5 UIUX Testing
+
+- **Auto-adaptive UI** - percentage widths, not hardcoded pixels
+- **`$state()` reactivity** - verify UI updates when state changes
+- **Clear separators** - visible borders between columns
+- **No clutter** - remove pagination, footers, useless elements
 
 ---
 

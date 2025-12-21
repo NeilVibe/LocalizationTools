@@ -1,6 +1,42 @@
 # Debug & Test Hub
 
-**Updated:** 2025-12-19 | **Build:** 300
+**Updated:** 2025-12-21 | **Build:** 312
+
+---
+
+## AI Visual Verification Protocol (CRITICAL)
+
+**NEVER trust code changes alone.** ALWAYS verify with MULTIPLE screenshots.
+
+### The Verification Loop
+
+```
+1. Take screenshot
+2. Read image - analyze what you see
+3. Is this EXACTLY what we need?
+4. If ANY doubt → take ANOTHER screenshot
+5. Check AGAIN and AGAIN until 100% certain
+6. Only mark VERIFIED when you have EXACT PROOF
+```
+
+### AI State of Mind
+
+| Principle | Meaning |
+|-----------|---------|
+| **Be skeptical** | Code changes ≠ working UI. Prove it. |
+| **Be visual** | Screenshots reveal the REAL user experience |
+| **Be thorough** | Check edge cases, hover states, all states |
+| **Be precise** | Document exactly what changed |
+| **Be DEMANDING** | Require MULTIPLE screenshots as proof |
+| **Be iterative** | Again. Again. Again. Until CERTAIN. |
+
+### What to Verify with Screenshots
+
+- Column widths and separators
+- Text rendering (no overlap, proper spacing)
+- Hover states (tooltips, highlights)
+- Responsive behavior at different widths
+- Empty states and edge cases
 
 ---
 
@@ -16,6 +52,7 @@ Claude:     Build → Test → Fix → Rebuild → Report
 **Claude has full authority to:**
 - Build/deploy/test independently
 - Run CDP tests via remote debugging
+- Take MULTIPLE screenshots for verification
 - Read logs, fix issues, iterate
 
 ---
