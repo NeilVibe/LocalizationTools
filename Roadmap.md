@@ -1,12 +1,12 @@
 # LocaNext - Roadmap
 
-**Build:** 307 (v25.1220.1551) | **Updated:** 2025-12-20 | **Status:** VERIFIED
+**Build:** 315 (PENDING) | **Updated:** 2025-12-21 | **Status:** CI/CD Overhaul
 
 ---
 
 ## Current Status
 
-All components operational. Build 307 verified. Q-001 auto-sync live-tested.
+All components operational. CI/CD cleaned up and enhanced. GitHub build in progress.
 
 | Component | Status |
 |-----------|--------|
@@ -14,6 +14,7 @@ All components operational. Build 307 verified. Q-001 auto-sync live-tested.
 | XLS Transfer | WORKS |
 | Quick Search | WORKS |
 | KR Similar | WORKS |
+| CI/CD (Gitea + GitHub) | ENHANCED |
 
 ---
 
@@ -21,22 +22,53 @@ All components operational. Build 307 verified. Q-001 auto-sync live-tested.
 
 | Build | Tasks Completed |
 |-------|-----------------|
+| 315 | CI/CD cleanup, fresh start, test fix |
+| 314 | UI-047 (TM status fix) |
+| 312 | UI-045 (PresenceBar tooltip) |
+| 311 | UI-044 (resizable columns) |
+| 310 | UI-042/043 (simplified PresenceBar) |
+| 308-309 | Major UI/UX cleanup (10 fixes) |
 | 307 | BUG-031 (TM upload fix), Q-001 live-tested |
-| 306 | UI-027 (Confirm removed), Q-001 (auto-sync enabled) |
-| 305 | UI-034 (tooltip cutoff fix) |
-| 304 | UI-031 (font size), UI-032 (bold), FONT-001 (100+ languages) |
-| 303 | BUG-030 (WebSocket status) |
 
-## All Issues Verified (Build 307)
+---
 
-| ID | Description | Status |
-|----|-------------|--------|
-| BUG-031 | TM upload response fix | ✅ VERIFIED |
-| Q-001 | Auto-sync on TM changes | ✅ LIVE-TESTED |
-| UI-027 | Confirm button removed | ✅ VERIFIED |
-| UI-034 | Tooltip cutoff fix | ✅ VERIFIED |
-| UI-031/032 | Font size/bold settings | ✅ VERIFIED |
-| FONT-001 | 100+ language fonts | ✅ VERIFIED |
+## CI/CD Build Modes
+
+### Current Modes
+
+| Mode | Trigger | What It Does |
+|------|---------|--------------|
+| `Build LIGHT` | Daily dev | ~285 tests, ~150MB installer, model downloads on first launch |
+| `Build FULL` | Releases | ~285 tests, ~2GB installer, includes AI model |
+| `TROUBLESHOOT` | Debug | Resume from checkpoint, iterative fixing |
+
+### Proposed Enhancement (TODO)
+
+| Mode | Tests | Installer | Use Case |
+|------|-------|-----------|----------|
+| `Build LIGHT` | ~285 essential | ~150MB | Daily development |
+| `Build FULL` | ~285 essential | ~2GB+ | **OFFLINE-READY** - All deps + model + everything bundled |
+| `Build TEST` | ALL (1500+) | No installer | Pre-release QA, comprehensive coverage |
+
+**`Build FULL` Goal:** True offline installer - NO internet needed after install:
+- All Python dependencies bundled
+- Qwen model (2.3GB) included
+- Model2Vec included
+- VC++ Redistributable bundled
+- Everything runs immediately, zero downloads
+
+**`Build TEST` Goal:** Run every single test for maximum quality assurance before releases.
+
+---
+
+## CI/CD Discovery (Build 315)
+
+| Platform | Test Strategy | Tests Run |
+|----------|---------------|-----------|
+| **Gitea** | Curated essential list | ~285 tests |
+| **GitHub** | All unit/integration/e2e | ~500+ tests |
+
+GitHub runs more comprehensive tests - caught broken `test_npc.py` that Gitea skipped!
 
 ---
 
@@ -62,40 +94,6 @@ All components operational. Build 307 verified. Q-001 auto-sync live-tested.
 
 > The Fast/Deep toggle affects LDM TM search AND standard pretranslation.
 > KR Similar / XLS Transfer pretranslation ALWAYS use Qwen.
-
----
-
-## Completed Details
-
-### PERF-001 + PERF-002: FAISS Optimization - ✅ TESTED
-
-| ID | Description | Result |
-|----|-------------|--------|
-| PERF-001 | Incremental HNSW | 5x faster for small additions |
-| PERF-002 | FAISS factorization | 12 copies → 1 FAISSManager |
-
----
-
-### FEAT-005: Model2Vec Default Engine - ✅ COMPLETE
-
-**Model:** `minishlab/potion-multilingual-128M` (101 languages incl Korean)
-
-| Metric | Model2Vec | Qwen |
-|--------|-----------|------|
-| Speed | 29,269/sec | ~600/sec |
-| Memory | ~128MB | ~2.3GB |
-
-**UI:** TM Manager toolbar → Fast/Deep toggle
-
-**Details:** [FAISS_OPTIMIZATION_PLAN.md](docs/wip/FAISS_OPTIMIZATION_PLAN.md)
-
----
-
-### BUG-023: TM Status Shows "Pending" - ✅ FIXED
-
-**Culprit:** `MODEL_NAME` undefined in `tm_indexer.py` caused `NameError` during build.
-
-**Fix:** Replaced with `self._engine.name`
 
 ---
 
@@ -129,7 +127,7 @@ Future:
 |------|-------|
 | **Session state** | [SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
 | **Open bugs** | [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
-| **FAISS/Model2Vec plan** | [FAISS_OPTIMIZATION_PLAN.md](docs/wip/FAISS_OPTIMIZATION_PLAN.md) |
+| **CI/CD docs** | [docs/cicd/CI_CD_HUB.md](docs/cicd/CI_CD_HUB.md) |
 | **CDP Testing** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
 | **Enterprise** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
 
@@ -142,7 +140,7 @@ LocaNext.exe (User PC)           Central PostgreSQL
 ├─ Electron + Svelte 5       →   ├─ All text data
 ├─ Embedded Python Backend       ├─ Users, sessions
 ├─ FAISS indexes (local)         ├─ LDM rows, TM entries
-├─ Model2Vec (~128MB) ← potion-multilingual-128M       └─ Logs
+├─ Model2Vec (~128MB)            └─ Logs
 ├─ Qwen (2.3GB, opt-in)
 └─ File parsing (local)
 
@@ -158,6 +156,9 @@ OFFLINE: SQLite (single-user, auto-fallback)
 # Check servers
 ./scripts/check_servers.sh
 
+# Check release/tag sync
+./scripts/check_releases_status.sh
+
 # Start backend
 python3 server/main.py
 
@@ -167,8 +168,10 @@ cd locaNext && npm run electron:dev
 # Playground install
 ./scripts/playground_install.sh --launch --auto-login
 
-# Trigger build
-echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git push origin main && git push gitea main
+# Trigger builds
+echo "Build LIGHT" >> GITEA_TRIGGER.txt   # Gitea
+echo "Build LIGHT" >> BUILD_TRIGGER.txt   # GitHub
+git add -A && git commit -m "Build" && git push origin main && git push gitea main
 ```
 
 ---
@@ -183,4 +186,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Build 307 | Updated 2025-12-20*
+*Build 315 | Updated 2025-12-21 | CI/CD Enhanced*
