@@ -98,10 +98,10 @@ class TestNPCEdgeCases:
         indexes = {"whole_lookup": {}, "line_lookup": {}}
         searcher = TMSearcher(indexes)
 
-        # Mock the model to avoid loading it
+        # Mock the engine (model property returns _engine)
         mock_model = MagicMock()
         mock_model.encode = MagicMock(return_value=np.random.randn(1, 512).astype(np.float32))
-        searcher.model = mock_model
+        searcher._engine = mock_model
 
         tm_matches = [
             {"entry_id": 1, "target_text": ""},
@@ -122,9 +122,9 @@ class TestNPCLogic:
         indexes = {"whole_lookup": {}, "line_lookup": {}}
         searcher = TMSearcher(indexes)
 
-        # Create mock model
+        # Create mock model (set _engine, not model property)
         mock_model = MagicMock()
-        searcher.model = mock_model
+        searcher._engine = mock_model
 
         return searcher, mock_model
 
@@ -283,14 +283,14 @@ class TestSearchWithNPC:
         }
         searcher = TMSearcher(indexes)
 
-        # Mock model for NPC
+        # Mock model for NPC (set _engine, not model property)
         mock_model = MagicMock()
         user_emb = np.array([[1.0, 0.0, 0.0]], dtype=np.float32)
         tm_emb = np.array([[0.95, 0.1, 0.0]], dtype=np.float32)
         user_emb /= np.linalg.norm(user_emb)
         tm_emb /= np.linalg.norm(tm_emb)
         mock_model.encode = MagicMock(side_effect=[user_emb, tm_emb])
-        searcher.model = mock_model
+        searcher._engine = mock_model
 
         result = searcher.search_with_npc("저장하기", "Save")
 
