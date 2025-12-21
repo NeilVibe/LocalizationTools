@@ -1849,7 +1849,7 @@ jobs:
           Write-Host "  CLEANING UP OLD RELEASES" -ForegroundColor Cyan
           Write-Host "============================================" -ForegroundColor Cyan
 
-          $MAX_RELEASES = 20  # Keep last 20 releases (~2GB max for LIGHT builds)
+          $MAX_RELEASES = 10  # Keep last 10 releases (~1GB max for LIGHT builds)
           $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
           $GITEA_REPO = "neilvibe/LocaNext"
 
