@@ -1373,7 +1373,8 @@ class TMSyncManager:
             {
                 "id": e.id,
                 "source_text": e.source_text,
-                "target_text": e.target_text
+                "target_text": e.target_text,
+                "string_id": e.string_id  # Include StringID for variations
             }
             for e in entries
         ]
