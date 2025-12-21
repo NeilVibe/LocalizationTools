@@ -24,7 +24,7 @@ from server.utils.dependencies import get_async_db, get_current_active_user_asyn
 from server.database.db_utils import normalize_text_for_hash
 from server.database.models import (
     User, LDMProject, LDMFolder, LDMFile, LDMRow, LDMEditHistory, LDMActiveSession,
-    LDMTranslationMemory, LDMTMEntry
+    LDMTranslationMemory, LDMTMEntry, LDMActiveTM
 )
 from server.tools.ldm.websocket import broadcast_cell_update
 
@@ -725,10 +725,33 @@ async def list_rows(
     )
 
 
+# ============================================================================
+# FEAT-001: Helper for Auto-Add to TM
+# ============================================================================
+
+async def _get_project_linked_tm(db: AsyncSession, project_id: int, user_id: int) -> Optional[int]:
+    """
+    FEAT-001: Get the highest-priority linked TM for a project.
+    Returns tm_id or None if no TM linked.
+    """
+    result = await db.execute(
+        select(LDMActiveTM.tm_id)
+        .join(LDMTranslationMemory, LDMActiveTM.tm_id == LDMTranslationMemory.id)
+        .where(
+            LDMActiveTM.project_id == project_id,
+            LDMTranslationMemory.owner_id == user_id  # User must own the TM
+        )
+        .order_by(LDMActiveTM.priority)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 @router.put("/rows/{row_id}", response_model=RowResponse)
 async def update_row(
     row_id: int,
     update: RowUpdate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -793,8 +816,42 @@ async def update_row(
         # WebSocket broadcast failure shouldn't fail the API call
         logger.warning(f"WebSocket broadcast failed for row {row_id}: {e}")
 
+    # FEAT-001: Auto-add to linked TM if status is 'reviewed'
+    tm_updated = False
+    if row.status == "reviewed" and row.source and row.target:
+        try:
+            # Get project's linked TM
+            project_id = row.file.project_id
+            linked_tm_id = await _get_project_linked_tm(db, project_id, current_user["user_id"])
+
+            if linked_tm_id:
+                # Add entry to TM in background thread
+                def _add_to_tm():
+                    sync_db = next(get_db())
+                    try:
+                        from server.tools.ldm.tm_manager import TMManager
+                        tm_manager = TMManager(sync_db)
+                        return tm_manager.add_entry(linked_tm_id, row.source, row.target)
+                    finally:
+                        sync_db.close()
+
+                result = await asyncio.to_thread(_add_to_tm)
+
+                if result:
+                    # Trigger index rebuild in background
+                    background_tasks.add_task(
+                        _auto_sync_tm_indexes,
+                        linked_tm_id,
+                        current_user["user_id"]
+                    )
+                    tm_updated = True
+                    logger.info(f"FEAT-001: Auto-added to TM {linked_tm_id}: row_id={row_id}")
+        except Exception as e:
+            # Don't fail the row update, just log warning
+            logger.warning(f"FEAT-001: Auto-add to TM failed: {e}")
+
     user_id = current_user["user_id"]
-    logger.info(f"Row updated: id={row_id}, user={user_id}")
+    logger.info(f"Row updated: id={row_id}, user={user_id}, tm_updated={tm_updated}")
     return row
 
 
@@ -874,6 +931,162 @@ async def get_project_tree(
         },
         "tree": build_tree(None)
     }
+
+
+# ============================================================================
+# FEAT-001: Project-TM Linking API
+# ============================================================================
+
+class LinkTMRequest(BaseModel):
+    tm_id: int
+    priority: int = 0
+
+
+@router.post("/projects/{project_id}/link-tm")
+async def link_tm_to_project(
+    project_id: int,
+    request: LinkTMRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    FEAT-001: Link a TM to a project for auto-add on confirm.
+    All confirmed cells (Ctrl+S) in this project will auto-add to this TM.
+    """
+    user_id = current_user["user_id"]
+
+    # Verify project ownership
+    project_result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == project_id,
+            LDMProject.owner_id == user_id
+        )
+    )
+    project = project_result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Verify TM ownership
+    tm_result = await db.execute(
+        select(LDMTranslationMemory).where(
+            LDMTranslationMemory.id == request.tm_id,
+            LDMTranslationMemory.owner_id == user_id
+        )
+    )
+    tm = tm_result.scalar_one_or_none()
+    if not tm:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+    # Check if link already exists
+    existing_result = await db.execute(
+        select(LDMActiveTM).where(
+            LDMActiveTM.project_id == project_id,
+            LDMActiveTM.tm_id == request.tm_id
+        )
+    )
+    existing = existing_result.scalar_one_or_none()
+    if existing:
+        # Update priority if link exists
+        existing.priority = request.priority
+        await db.commit()
+        logger.info(f"FEAT-001: Updated TM link priority: project={project_id}, tm={request.tm_id}, priority={request.priority}")
+        return {"status": "updated", "project_id": project_id, "tm_id": request.tm_id, "priority": request.priority}
+
+    # Create new link
+    link = LDMActiveTM(
+        tm_id=request.tm_id,
+        project_id=project_id,
+        priority=request.priority,
+        activated_by=user_id
+    )
+    db.add(link)
+    await db.commit()
+
+    logger.info(f"FEAT-001: Linked TM to project: project={project_id}, tm={request.tm_id}, priority={request.priority}")
+    return {"status": "linked", "project_id": project_id, "tm_id": request.tm_id, "tm_name": tm.name, "priority": request.priority}
+
+
+@router.delete("/projects/{project_id}/link-tm/{tm_id}")
+async def unlink_tm_from_project(
+    project_id: int,
+    tm_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """FEAT-001: Remove TM link from project."""
+    user_id = current_user["user_id"]
+
+    # Verify project ownership
+    project_result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == project_id,
+            LDMProject.owner_id == user_id
+        )
+    )
+    project = project_result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Find and delete link
+    link_result = await db.execute(
+        select(LDMActiveTM).where(
+            LDMActiveTM.project_id == project_id,
+            LDMActiveTM.tm_id == tm_id
+        )
+    )
+    link = link_result.scalar_one_or_none()
+    if not link:
+        raise HTTPException(status_code=404, detail="TM link not found")
+
+    await db.delete(link)
+    await db.commit()
+
+    logger.info(f"FEAT-001: Unlinked TM from project: project={project_id}, tm={tm_id}")
+    return {"status": "unlinked", "project_id": project_id, "tm_id": tm_id}
+
+
+@router.get("/projects/{project_id}/linked-tms")
+async def get_linked_tms(
+    project_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """FEAT-001: Get all TMs linked to a project, ordered by priority."""
+    user_id = current_user["user_id"]
+
+    # Verify project ownership
+    project_result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == project_id,
+            LDMProject.owner_id == user_id
+        )
+    )
+    project = project_result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Get all linked TMs with TM details
+    result = await db.execute(
+        select(LDMActiveTM, LDMTranslationMemory)
+        .join(LDMTranslationMemory, LDMActiveTM.tm_id == LDMTranslationMemory.id)
+        .where(LDMActiveTM.project_id == project_id)
+        .order_by(LDMActiveTM.priority)
+    )
+    links = result.all()
+
+    linked_tms = [
+        {
+            "tm_id": link.LDMActiveTM.tm_id,
+            "tm_name": link.LDMTranslationMemory.name,
+            "priority": link.LDMActiveTM.priority,
+            "status": link.LDMTranslationMemory.status,
+            "entry_count": link.LDMTranslationMemory.entry_count,
+            "linked_at": link.LDMActiveTM.activated_at.isoformat() if link.LDMActiveTM.activated_at else None
+        }
+        for link in links
+    ]
+
+    return {"project_id": project_id, "linked_tms": linked_tms}
 
 
 # ============================================================================
@@ -1946,8 +2159,10 @@ def _auto_sync_tm_indexes(tm_id: int, user_id: int):
     Model2Vec is fast (~29k sentences/sec), so this runs quickly.
 
     BUG-032/BUG-034: Now also updates TM status to 'ready' after successful sync.
+    TASK-002: Tracked in active_operations with silent=True (no toast).
     """
     from server.tools.ldm.tm_indexer import TMSyncManager
+    from server.utils.progress_tracker import TrackedOperation
     from datetime import datetime
 
     sync_db = next(get_db())
@@ -1963,13 +2178,24 @@ def _auto_sync_tm_indexes(tm_id: int, user_id: int):
             logger.warning(f"Auto-sync skipped: TM {tm_id} not found or not owned by user {user_id}")
             return
 
-        sync_manager = TMSyncManager(sync_db, tm_id)
-        result = sync_manager.sync()
+        # TASK-002: Track auto-sync with silent=True (no toast, but visible in Task Manager)
+        with TrackedOperation(
+            f"Auto-sync TM: {tm.name}",
+            user_id,
+            tool_name="LDM",
+            function_name="auto_sync_tm",
+            silent=True,  # NO toast for quick auto-updates
+            parameters={"tm_id": tm_id, "tm_name": tm.name}
+        ) as op:
+            sync_manager = TMSyncManager(sync_db, tm_id)
+            result = sync_manager.sync()
 
-        # BUG-032/BUG-034: Update TM status to 'ready' after successful sync
-        tm.status = "ready"
-        tm.updated_at = datetime.utcnow()
-        sync_db.commit()
+            # BUG-032/BUG-034: Update TM status to 'ready' after successful sync
+            tm.status = "ready"
+            tm.updated_at = datetime.utcnow()
+            sync_db.commit()
+
+            op.update(100, f"Synced: +{result['stats']['insert']} entries")
 
         logger.info(
             f"Auto-sync TM {tm_id}: INSERT={result['stats']['insert']}, "
@@ -1995,10 +2221,13 @@ async def sync_tm_indexes(
     - Copies existing embeddings for UNCHANGED entries
     - Rebuilds FAISS/hash indexes at the end
 
+    TASK-002: Tracked with toast (manual operation).
+
     Returns:
         Sync results including stats (insert, update, delete, unchanged)
     """
     from server.tools.ldm.tm_indexer import TMSyncManager
+    from server.utils.progress_tracker import TrackedOperation
 
     # Verify TM ownership
     result = await db.execute(
@@ -2012,25 +2241,46 @@ async def sync_tm_indexes(
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    logger.info(f"Starting TM sync for TM {tm_id} (user: {current_user['username']})")
+    tm_name = tm.name
+    user_id = current_user["user_id"]
+    username = current_user["username"]
+
+    logger.info(f"Starting TM sync for TM {tm_id} (user: {username})")
 
     # Run sync in threadpool to avoid blocking
     # BUG-033: Also update TM status after successful sync
+    # TASK-002: Track with TrackedOperation (shows toast for manual operations)
     def _sync_tm():
         sync_db = next(get_db())
         try:
-            sync_manager = TMSyncManager(sync_db, tm_id)
-            result = sync_manager.sync()
+            # TASK-002: Track manual sync (NOT silent - shows toast)
+            with TrackedOperation(
+                f"Sync TM: {tm_name}",
+                user_id,
+                username=username,
+                tool_name="LDM",
+                function_name="sync_tm_indexes",
+                # silent=False (default) - shows toast for manual operations
+                parameters={"tm_id": tm_id, "tm_name": tm_name}
+            ) as op:
+                op.update(10, "Loading TM data...")
+                sync_manager = TMSyncManager(sync_db, tm_id)
 
-            # BUG-033/BUG-034: Update TM status to 'ready' after successful sync
-            from server.database.models import LDMTranslationMemory
-            tm_record = sync_db.query(LDMTranslationMemory).filter(
-                LDMTranslationMemory.id == tm_id
-            ).first()
-            if tm_record:
-                tm_record.status = "ready"
-                tm_record.updated_at = datetime.utcnow()
-                sync_db.commit()
+                op.update(30, "Computing changes...")
+                result = sync_manager.sync()
+
+                op.update(90, "Updating TM status...")
+                # BUG-033/BUG-034: Update TM status to 'ready' after successful sync
+                from server.database.models import LDMTranslationMemory
+                tm_record = sync_db.query(LDMTranslationMemory).filter(
+                    LDMTranslationMemory.id == tm_id
+                ).first()
+                if tm_record:
+                    tm_record.status = "ready"
+                    tm_record.updated_at = datetime.utcnow()
+                    sync_db.commit()
+
+                op.update(100, f"Synced: +{result['stats']['insert']}, ~{result['stats']['update']}")
 
             return result
         finally:
@@ -2806,6 +3056,7 @@ class EmbeddingEngineResponse(BaseModel):
     """Response for current engine."""
     current_engine: str
     engine_name: str
+    warning: Optional[str] = None  # Warning message when switching to slower engine
 
 
 class SetEngineRequest(BaseModel):
@@ -2858,18 +3109,32 @@ async def set_embedding_engine(
 
     Note: Changing engine requires re-indexing TMs for best results.
     Existing indexes will still work but may have dimension mismatches.
+
+    TASK-002: Returns warning when switching to Qwen (slower engine).
     """
     from server.tools.shared import set_current_engine, get_embedding_engine, get_current_engine_name
 
     try:
+        previous_engine = get_current_engine_name()
         set_current_engine(request.engine)
         engine = get_embedding_engine(request.engine)
 
-        logger.info(f"User {current_user['username']} switched embedding engine to: {request.engine}")
+        logger.info(f"User {current_user['username']} switched embedding engine: {previous_engine} → {request.engine}")
+
+        # TASK-002: Add warning when switching to Qwen (slower engine)
+        warning = None
+        if request.engine.lower() == "qwen":
+            warning = (
+                "⚠️ Qwen engine is ~30x slower than Model2Vec. "
+                "Syncing large TMs may take significantly longer. "
+                "Recommended for batch processing or when quality is critical."
+            )
+            logger.warning(f"User {current_user['username']} switched to Qwen engine (slower)")
 
         return EmbeddingEngineResponse(
             current_engine=get_current_engine_name(),
-            engine_name=engine.name
+            engine_name=engine.name,
+            warning=warning
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

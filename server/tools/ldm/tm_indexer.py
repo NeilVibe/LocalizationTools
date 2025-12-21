@@ -1851,18 +1851,31 @@ class TMSyncManager:
         new_embeddings = []
         new_mapping = []
 
-        # First, copy unchanged embeddings
-        for entry in diff["unchanged"]:
-            src_norm = entry.get("source_normalized") or normalize_for_hash(entry["source_text"])
-            if src_norm in pkl_source_to_idx and pkl_state["embeddings"] is not None:
-                idx = pkl_source_to_idx[src_norm]
-                if idx < len(pkl_state["embeddings"]):
-                    new_embeddings.append(pkl_state["embeddings"][idx])
-                    new_mapping.append({
-                        "entry_id": entry["id"],
-                        "source_text": entry["source_text"],
-                        "target_text": entry["target_text"]
-                    })
+        # Check if cached embeddings are compatible with current model dimension
+        expected_dim = self.model.dimension if hasattr(self.model, 'dimension') else 256
+        cached_dim = None
+        if pkl_state and pkl_state.get("embeddings") is not None and len(pkl_state["embeddings"]) > 0:
+            cached_dim = pkl_state["embeddings"][0].shape[0] if hasattr(pkl_state["embeddings"][0], 'shape') else len(pkl_state["embeddings"][0])
+
+        use_cached = cached_dim is not None and cached_dim == expected_dim
+
+        if not use_cached and cached_dim is not None:
+            logger.warning(f"Embedding dimension mismatch: cached={cached_dim}, model={expected_dim}. Re-embedding all entries.")
+            # Add unchanged entries to needs_embedding for re-embedding
+            needs_embedding = diff["unchanged"] + diff["insert"] + diff["update"]
+        else:
+            # First, copy unchanged embeddings (dimensions match)
+            for entry in diff["unchanged"]:
+                src_norm = entry.get("source_normalized") or normalize_for_hash(entry["source_text"])
+                if src_norm in pkl_source_to_idx and pkl_state["embeddings"] is not None:
+                    idx = pkl_source_to_idx[src_norm]
+                    if idx < len(pkl_state["embeddings"]):
+                        new_embeddings.append(pkl_state["embeddings"][idx])
+                        new_mapping.append({
+                            "entry_id": entry["id"],
+                            "source_text": entry["source_text"],
+                            "target_text": entry["target_text"]
+                        })
 
         # Then generate new embeddings for INSERT/UPDATE
         if needs_embedding:

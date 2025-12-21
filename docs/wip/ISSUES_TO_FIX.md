@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-21 10:45 | **Build:** 314 (VERIFIED) | **Previous:** 312
+**Last Updated:** 2025-12-21 | **Build:** 315 (PENDING) | **Previous:** 314
 
 ---
 
@@ -9,7 +9,43 @@
 | Status | Count |
 |--------|-------|
 | **OPEN** | 0 |
-| **FIXED (This Session)** | 15 |
+| **FIXED (This Session)** | 17 |
+
+### This Session
+- **FEAT-001 COMPLETE** - TM Link UI in FileExplorer.svelte
+- **TASK-002** - TrackedOperation silent flag, Qwen warning
+
+---
+
+## DONE - FEAT-001 COMPLETE
+
+### FEAT-001: Auto-Add to TM on Cell Confirm (COMPLETE!)
+
+**Problem:** When user confirms a cell (Ctrl+S → status='reviewed'), it should auto-add to linked TM.
+
+**Solution:** FULLY IMPLEMENTED - Backend + Frontend
+
+| Phase | Task | Status |
+|-------|------|--------|
+| 1 | Backend: Add `link_tm_to_project` API | ✅ DONE |
+| 1 | Backend: Add `unlink_tm_from_project` API | ✅ DONE |
+| 1 | Backend: Add `get_linked_tms` API | ✅ DONE |
+| 2 | Backend: Add `_get_project_linked_tm` helper | ✅ DONE |
+| 2 | Backend: Update `update_row` with auto-add | ✅ DONE |
+| 3 | Frontend: TM link UI in FileExplorer | ✅ DONE |
+| 4 | Tests: Unit + Integration + E2E | TODO (low priority) |
+
+**Files Modified:**
+- `server/tools/ldm/api.py` - 3 endpoints, helper, update_row auto-add
+- `locaNext/src/lib/components/ldm/FileExplorer.svelte` - TM link UI
+
+**Status:** COMPLETE - Tests remaining (low priority)
+
+**E2E Test Result:**
+```
+Confirm row 804 → TM entry count: 10 → 11 ✅
+Server log: "FEAT-001: Auto-added to TM 1: row_id=804"
+```
 
 ---
 

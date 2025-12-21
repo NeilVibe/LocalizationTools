@@ -534,13 +534,29 @@ def timer():
 # ============================================
 
 def pytest_configure(config):
-    """Configure custom markers."""
-    config.addinivalue_line(
-        "markers", "requires_model: mark test as requiring ML model"
-    )
-    config.addinivalue_line(
-        "markers", "requires_server: mark test as requiring running server"
-    )
+    """Configure custom markers for optimal test organization."""
+    # Test type markers
+    config.addinivalue_line("markers", "unit: fast isolated unit tests")
+    config.addinivalue_line("markers", "integration: component integration tests")
+    config.addinivalue_line("markers", "e2e: end-to-end workflow tests")
+    config.addinivalue_line("markers", "api: API endpoint tests")
+    config.addinivalue_line("markers", "security: security validation tests")
+    config.addinivalue_line("markers", "slow: long-running tests")
+
+    # Component markers
+    config.addinivalue_line("markers", "client: client-side tests")
+    config.addinivalue_line("markers", "server: server-side tests")
+    config.addinivalue_line("markers", "db: database tests")
+    config.addinivalue_line("markers", "auth: authentication tests")
+    config.addinivalue_line("markers", "tm: translation memory tests")
+
+    # Feature markers
+    config.addinivalue_line("markers", "feat001: FEAT-001 auto-add to TM tests")
+    config.addinivalue_line("markers", "task002: TASK-002 silent tracking tests")
+
+    # Requirement markers
+    config.addinivalue_line("markers", "requires_model: requires ML model loaded")
+    config.addinivalue_line("markers", "requires_server: requires running server")
 
 
 # ============================================
@@ -553,17 +569,55 @@ def pytest_collection_modifyitems(config, items):
     Add markers automatically based on test location.
     """
     for item in items:
-        # Auto-add markers based on path
-        if "unit/client" in str(item.fspath):
+        path_str = str(item.fspath)
+
+        # ═══════════════════════════════════════════════════════════
+        # AUTO-MARKERS BY DIRECTORY
+        # ═══════════════════════════════════════════════════════════
+
+        # Unit tests
+        if "/unit/" in path_str:
             item.add_marker(pytest.mark.unit)
-            item.add_marker(pytest.mark.client)
-        elif "unit/server" in str(item.fspath):
-            item.add_marker(pytest.mark.unit)
-            item.add_marker(pytest.mark.server)
-        elif "integration" in str(item.fspath):
+            if "unit/client" in path_str:
+                item.add_marker(pytest.mark.client)
+            elif "unit/server" in path_str:
+                item.add_marker(pytest.mark.server)
+
+        # Integration tests
+        elif "/integration/" in path_str:
             item.add_marker(pytest.mark.integration)
-        elif "e2e" in str(item.fspath):
+
+        # E2E tests
+        elif "/e2e/" in path_str:
             item.add_marker(pytest.mark.e2e)
+
+        # API tests
+        elif "/api/" in path_str:
+            item.add_marker(pytest.mark.api)
+
+        # Security tests
+        elif "/security/" in path_str:
+            item.add_marker(pytest.mark.security)
+
+        # ═══════════════════════════════════════════════════════════
+        # AUTO-MARKERS BY FILENAME
+        # ═══════════════════════════════════════════════════════════
+
+        # TM-related tests
+        if "_tm_" in path_str or "test_tm" in path_str:
+            item.add_marker(pytest.mark.tm)
+
+        # Auth-related tests
+        if "_auth" in path_str or "test_auth" in path_str:
+            item.add_marker(pytest.mark.auth)
+
+        # DB-related tests
+        if "_db_" in path_str or "test_db" in path_str or "database" in path_str:
+            item.add_marker(pytest.mark.db)
+
+        # FEAT-001 tests
+        if "feat001" in path_str.lower():
+            item.add_marker(pytest.mark.feat001)
 
 
 # ============================================

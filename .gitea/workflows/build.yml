@@ -1,10 +1,12 @@
 # ============================================================================
 # LocaNext Build Pipeline - Gitea Actions
 # ============================================================================
-# 4 MODES:
-#   - Build LIGHT: Full official build (~200MB)
-#   - Build FULL:  Same + bundled AI model (~2GB)
-#   - TROUBLESHOOT: Smart checkpoint mode (resume from last failure)
+# 6 MODES:
+#   - Build LIGHT:    Essential tests (~285), light installer (~200MB)
+#   - Build FULL:     Essential tests (~285), full installer (~2GB)
+#   - Build QA-LIGHT: ALL tests (~1000+), light installer (~200MB) ~30min
+#   - Build QA-FULL:  ALL tests (~1000+), full installer (~2GB) ~45min
+#   - TROUBLESHOOT:   Smart checkpoint mode (resume from last failure)
 #   - TROUBLESHOOT_WINDOWS: Skip Linux tests, run Windows build only
 #
 # VERSION: Auto-generated YY.MMDD.HHMM format (Pipeline Executive Power)
@@ -38,6 +40,7 @@ jobs:
       skip_build: ${{ steps.check.outputs.skip_build }}
       skip_linux: ${{ steps.check.outputs.skip_linux }}
       build_type: ${{ steps.check.outputs.build_type }}
+      qa_mode: ${{ steps.check.outputs.qa_mode }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,7 +48,7 @@ jobs:
       - name: Check GITEA_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build (LIGHT|FULL)|^TROUBLESHOOT|^TROUBLESHOOT_WINDOWS" | tail -1)
+          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build (QA-LIGHT|QA-FULL|LIGHT|FULL)|^TROUBLESHOOT|^TROUBLESHOOT_WINDOWS" | tail -1)
           echo "Trigger line: $TRIGGER"
 
           if [ -n "$TRIGGER" ]; then
@@ -77,8 +80,16 @@ jobs:
               echo "[OFFICIAL] Full clean build"
             fi
 
-            # Detect FULL vs LIGHT
-            if echo "$TRIGGER" | grep -q "^Build FULL"; then
+            # Detect QA mode
+            if echo "$TRIGGER" | grep -q "^Build QA"; then
+              echo "qa_mode=true" >> $GITHUB_OUTPUT
+              echo "[QA MODE] Running ALL tests (~1000+)"
+            else
+              echo "qa_mode=false" >> $GITHUB_OUTPUT
+            fi
+
+            # Detect FULL vs LIGHT (including QA variants)
+            if echo "$TRIGGER" | grep -q "FULL"; then
               echo "build_type=FULL" >> $GITHUB_OUTPUT
             else
               echo "build_type=LIGHT" >> $GITHUB_OUTPUT
@@ -102,6 +113,7 @@ jobs:
     env:
       CI: "true"
       BUILD_MODE: ${{ needs.check-build-trigger.outputs.mode }}
+      QA_MODE: ${{ needs.check-build-trigger.outputs.qa_mode }}
       POSTGRES_USER: locanext_ci
       POSTGRES_PASSWORD: locanext_ci_test
       POSTGRES_DB: locanext_ci_test
@@ -503,8 +515,130 @@ jobs:
           else
             echo "=== OFFICIAL MODE: Full clean build ==="
             rm -f "$CHECKPOINT_FILE"  # Clear any stale checkpoint
-            python3.11 -m pytest $TEST_DIRS $DESELECTS -v --tb=short --no-cov -x
-            echo "[OK] All tests passed"
+
+            # ============================================================
+            # QA MODE: OPTIMAL STAGED TESTING (~1000+ functions)
+            # Stage 1: Unit Tests (fast feedback)
+            # Stage 2: Integration Tests (component validation)
+            # Stage 3: E2E Tests (full workflows)
+            # Stage 4: API Tests (server required)
+            # ============================================================
+            if [ "$QA_MODE" = "true" ]; then
+              echo "╔════════════════════════════════════════════════════════════╗"
+              echo "║         QA MODE: OPTIMAL STAGED TESTING                    ║"
+              echo "║  Running tests in optimal order for fast feedback          ║"
+              echo "╚════════════════════════════════════════════════════════════╝"
+              echo ""
+
+              # Collect test counts for each stage
+              echo "=== Collecting test inventory ==="
+              UNIT_COUNT=$(python3.11 -m pytest tests/unit/ $DESELECTS --collect-only -q 2>/dev/null | grep "::" | wc -l || echo "0")
+              INTEG_COUNT=$(python3.11 -m pytest tests/integration/ $DESELECTS --collect-only -q 2>/dev/null | grep "::" | wc -l || echo "0")
+              E2E_COUNT=$(python3.11 -m pytest tests/e2e/ $DESELECTS --collect-only -q 2>/dev/null | grep "::" | wc -l || echo "0")
+              API_COUNT=$(python3.11 -m pytest tests/api/ $DESELECTS --collect-only -q 2>/dev/null | grep "::" | wc -l || echo "0")
+              SEC_COUNT=$(python3.11 -m pytest tests/security/ $DESELECTS --collect-only -q 2>/dev/null | grep "::" | wc -l || echo "0")
+              FIX_COUNT=$(python3.11 -m pytest tests/fixtures/ $DESELECTS --collect-only -q 2>/dev/null | grep "::" | wc -l || echo "0")
+
+              echo "┌──────────────────────────────────────────────────┐"
+              echo "│              TEST INVENTORY                       │"
+              echo "├──────────────────────────────────────────────────┤"
+              echo "│  Stage 1 - Unit:        $UNIT_COUNT tests              │"
+              echo "│  Stage 2 - Integration: $INTEG_COUNT tests              │"
+              echo "│  Stage 3 - E2E:         $E2E_COUNT tests              │"
+              echo "│  Stage 4 - API:         $API_COUNT tests              │"
+              echo "│  Stage 5 - Security:    $SEC_COUNT tests              │"
+              echo "│  Stage 6 - Fixtures:    $FIX_COUNT tests              │"
+              echo "└──────────────────────────────────────────────────┘"
+              echo ""
+
+              # ═══════════════════════════════════════════════════════════
+              # STAGE 1: UNIT TESTS (Fast feedback, ~2 min)
+              # ═══════════════════════════════════════════════════════════
+              echo "╔════════════════════════════════════════════════════════════╗"
+              echo "║  STAGE 1/6: UNIT TESTS                                     ║"
+              echo "║  Fast isolated tests - if these fail, something is broken  ║"
+              echo "╚════════════════════════════════════════════════════════════╝"
+              python3.11 -m pytest tests/unit/ $DESELECTS -v --tb=short --no-cov
+              echo "✅ STAGE 1 PASSED: Unit tests"
+              echo ""
+
+              # ═══════════════════════════════════════════════════════════
+              # STAGE 2: INTEGRATION TESTS (~5 min)
+              # ═══════════════════════════════════════════════════════════
+              echo "╔════════════════════════════════════════════════════════════╗"
+              echo "║  STAGE 2/6: INTEGRATION TESTS                              ║"
+              echo "║  Component interactions - DB, server, auth                 ║"
+              echo "╚════════════════════════════════════════════════════════════╝"
+              python3.11 -m pytest tests/integration/ $DESELECTS -v --tb=short --no-cov
+              echo "✅ STAGE 2 PASSED: Integration tests"
+              echo ""
+
+              # ═══════════════════════════════════════════════════════════
+              # STAGE 3: E2E TESTS (~10 min)
+              # ═══════════════════════════════════════════════════════════
+              echo "╔════════════════════════════════════════════════════════════╗"
+              echo "║  STAGE 3/6: E2E TESTS                                      ║"
+              echo "║  Full workflow simulations                                 ║"
+              echo "╚════════════════════════════════════════════════════════════╝"
+              python3.11 -m pytest tests/e2e/ $DESELECTS -v --tb=short --no-cov
+              echo "✅ STAGE 3 PASSED: E2E tests"
+              echo ""
+
+              # ═══════════════════════════════════════════════════════════
+              # STAGE 4: API TESTS (~5 min)
+              # ═══════════════════════════════════════════════════════════
+              echo "╔════════════════════════════════════════════════════════════╗"
+              echo "║  STAGE 4/6: API TESTS                                      ║"
+              echo "║  Endpoint validation, error handling                       ║"
+              echo "╚════════════════════════════════════════════════════════════╝"
+              python3.11 -m pytest tests/api/ $DESELECTS -v --tb=short --no-cov
+              echo "✅ STAGE 4 PASSED: API tests"
+              echo ""
+
+              # ═══════════════════════════════════════════════════════════
+              # STAGE 5: SECURITY TESTS (~2 min)
+              # ═══════════════════════════════════════════════════════════
+              echo "╔════════════════════════════════════════════════════════════╗"
+              echo "║  STAGE 5/6: SECURITY TESTS                                 ║"
+              echo "║  JWT, CORS, audit logging, IP filtering                    ║"
+              echo "╚════════════════════════════════════════════════════════════╝"
+              python3.11 -m pytest tests/security/ $DESELECTS -v --tb=short --no-cov
+              echo "✅ STAGE 5 PASSED: Security tests"
+              echo ""
+
+              # ═══════════════════════════════════════════════════════════
+              # STAGE 6: FIXTURES & SPECIAL TESTS (~5 min)
+              # ═══════════════════════════════════════════════════════════
+              echo "╔════════════════════════════════════════════════════════════╗"
+              echo "║  STAGE 6/6: FIXTURES & SPECIAL TESTS                       ║"
+              echo "║  Pretranslation, StringID, edge cases                      ║"
+              echo "╚════════════════════════════════════════════════════════════╝"
+              python3.11 -m pytest tests/fixtures/ $DESELECTS -v --tb=short --no-cov
+              echo "✅ STAGE 6 PASSED: Fixtures tests"
+              echo ""
+
+              # ═══════════════════════════════════════════════════════════
+              # ALL STAGES COMPLETE
+              # ═══════════════════════════════════════════════════════════
+              echo ""
+              echo "╔════════════════════════════════════════════════════════════╗"
+              echo "║                                                            ║"
+              echo "║   ✅ ✅ ✅  ALL QA STAGES PASSED  ✅ ✅ ✅                  ║"
+              echo "║                                                            ║"
+              echo "║   Stage 1: Unit Tests        ✅                            ║"
+              echo "║   Stage 2: Integration       ✅                            ║"
+              echo "║   Stage 3: E2E               ✅                            ║"
+              echo "║   Stage 4: API               ✅                            ║"
+              echo "║   Stage 5: Security          ✅                            ║"
+              echo "║   Stage 6: Fixtures          ✅                            ║"
+              echo "║                                                            ║"
+              echo "╚════════════════════════════════════════════════════════════╝"
+              echo "[OK] ALL QA tests passed!"
+            else
+              # Standard mode: Essential tests only (~285)
+              python3.11 -m pytest $TEST_DIRS $DESELECTS -v --tb=short --no-cov -x
+              echo "[OK] All tests passed"
+            fi
           fi
 
       - name: Stop Server

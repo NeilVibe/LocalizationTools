@@ -13,7 +13,7 @@
     TextArea,
     Tag
   } from "carbon-components-svelte";
-  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload } from "carbon-icons-svelte";
+  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
@@ -74,6 +74,11 @@
   let uploadToServerDestination = $state(null); // project id
   let uploadToServerLoading = $state(false);
   let uploadToServerProjects = $state([]); // Central server projects list
+
+  // FEAT-001: TM Link state
+  let linkedTM = $state(null); // {tm_id, tm_name, priority} or null
+  let showLinkTMModal = $state(false);
+  let selectedLinkTMId = $state(null); // TM id selected in modal
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -159,11 +164,93 @@
         treeNodes = buildTreeNodes(projectTree.tree);
         logger.info("Loaded project tree", { projectId, nodes: treeNodes.length });
       }
+      // FEAT-001: Also load linked TM
+      await loadLinkedTM(projectId);
     } catch (err) {
       logger.error("Failed to load project tree", { error: err.message });
     } finally {
       loading = false;
     }
+  }
+
+  // FEAT-001: Load linked TM for a project
+  async function loadLinkedTM(projectId) {
+    if (!projectId) {
+      linkedTM = null;
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/projects/${projectId}/linked-tms`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Get the first (highest priority) linked TM
+        linkedTM = data.linked_tms && data.linked_tms.length > 0 ? data.linked_tms[0] : null;
+        logger.info("Loaded linked TM", { projectId, linkedTM });
+      }
+    } catch (err) {
+      logger.error("Failed to load linked TM", { error: err.message });
+      linkedTM = null;
+    }
+  }
+
+  // FEAT-001: Link a TM to the current project
+  async function linkTMToProject() {
+    if (!selectedProjectId || !selectedLinkTMId) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/projects/${selectedProjectId}/link-tm`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tm_id: selectedLinkTMId, priority: 0 })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        logger.success("TM linked to project", { projectId: selectedProjectId, tmId: selectedLinkTMId });
+        // Reload linked TM
+        await loadLinkedTM(selectedProjectId);
+        showLinkTMModal = false;
+        selectedLinkTMId = null;
+      } else {
+        const error = await response.json();
+        logger.error("Failed to link TM", { error: error.detail });
+      }
+    } catch (err) {
+      logger.error("Failed to link TM", { error: err.message });
+    }
+  }
+
+  // FEAT-001: Unlink TM from the current project
+  async function unlinkTMFromProject() {
+    if (!selectedProjectId || !linkedTM) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/projects/${selectedProjectId}/link-tm/${linkedTM.tm_id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        logger.success("TM unlinked from project", { projectId: selectedProjectId, tmId: linkedTM.tm_id });
+        linkedTM = null;
+      } else {
+        const error = await response.json();
+        logger.error("Failed to unlink TM", { error: error.detail });
+      }
+    } catch (err) {
+      logger.error("Failed to unlink TM", { error: err.message });
+    }
+  }
+
+  // FEAT-001: Open link TM modal
+  function openLinkTMModal() {
+    // Make sure TM list is loaded
+    if (tmList.length === 0) {
+      loadTMList();
+    }
+    selectedLinkTMId = linkedTM ? linkedTM.tm_id : null;
+    showLinkTMModal = true;
   }
 
   // Build tree nodes for TreeView
@@ -682,6 +769,22 @@
           </div>
         </div>
 
+        <!-- FEAT-001: Linked TM indicator -->
+        <div class="linked-tm-bar">
+          {#if linkedTM}
+            <button class="linked-tm-button has-tm" onclick={openLinkTMModal}>
+              <Link size={14} />
+              <span class="linked-tm-name">{linkedTM.tm_name}</span>
+              <Tag type="green" size="sm">Linked</Tag>
+            </button>
+          {:else}
+            <button class="linked-tm-button no-tm" onclick={openLinkTMModal}>
+              <Unlink size={14} />
+              <span>Link a TM for auto-add</span>
+            </button>
+          {/if}
+        </div>
+
         {#if treeNodes.length > 0}
           <div class="custom-tree" oncontextmenu={(e) => e.preventDefault()}>
             {#each treeNodes as node}
@@ -833,6 +936,54 @@
     labelText="Folder Name"
     placeholder="Game Assets"
   />
+</Modal>
+
+<!-- FEAT-001: Link TM Modal -->
+<Modal
+  bind:open={showLinkTMModal}
+  modalHeading="Link Translation Memory"
+  primaryButtonText={linkedTM ? "Update Link" : "Link TM"}
+  secondaryButtonText="Cancel"
+  on:click:button--primary={linkTMToProject}
+  on:click:button--secondary={() => showLinkTMModal = false}
+>
+  <p style="margin-bottom: 1rem; color: var(--cds-text-02); font-size: 0.875rem;">
+    When you confirm a translation (Ctrl+S), it will be auto-added to the linked TM.
+  </p>
+
+  <Select
+    bind:selected={selectedLinkTMId}
+    labelText="Select Translation Memory"
+  >
+    <SelectItem value={null} text="-- No TM linked --" />
+    {#each tmList as tm}
+      <SelectItem value={tm.id} text="{tm.name} ({tm.entry_count || 0} entries)" />
+    {/each}
+  </Select>
+
+  {#if linkedTM && selectedLinkTMId !== linkedTM.tm_id}
+    <InlineNotification
+      kind="info"
+      title="Changing TM"
+      subtitle="This will replace the current linked TM."
+      hideCloseButton
+      lowContrast
+      style="margin-top: 1rem;"
+    />
+  {/if}
+
+  {#if linkedTM}
+    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--cds-border-subtle-01);">
+      <Button
+        kind="danger-tertiary"
+        size="small"
+        icon={Unlink}
+        on:click={() => { unlinkTMFromProject(); showLinkTMModal = false; }}
+      >
+        Unlink TM
+      </Button>
+    </div>
+  {/if}
 </Modal>
 
 <!-- Upload File Modal -->
@@ -1153,6 +1304,51 @@
   .tree-actions {
     display: flex;
     gap: 0.25rem;
+  }
+
+  /* FEAT-001: Linked TM bar */
+  .linked-tm-bar {
+    padding: 0.5rem 1rem;
+    background: var(--cds-layer-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .linked-tm-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: var(--cds-field-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    color: var(--cds-text-primary);
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .linked-tm-button:hover {
+    background: var(--cds-layer-hover-01);
+    border-color: var(--cds-border-strong-01);
+  }
+
+  .linked-tm-button.has-tm {
+    background: var(--cds-layer-selected-01);
+  }
+
+  .linked-tm-button.no-tm {
+    color: var(--cds-text-02);
+    border-style: dashed;
+  }
+
+  .linked-tm-name {
+    flex: 1;
+    text-align: left;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .empty-message {
