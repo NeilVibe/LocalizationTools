@@ -59,6 +59,51 @@ Stage 6: FIXTURES          (~200 tests)  ← Edge cases
 
 ---
 
+## CI/CD FUTURE IMPROVEMENTS (P36 Roadmap)
+
+| Feature | Priority | Status | Notes |
+|---------|----------|--------|-------|
+| **Parallel execution** | HIGH | 🔜 TODO | `pytest-xdist -n 4` (safe, 2-3x faster) |
+| **Code coverage** | HIGH | 🔜 TODO | `pytest-cov` reports |
+| **Performance tests** | MEDIUM | 🔜 TODO | API latency, embedding throughput |
+| **Block reorganization** | LOW | 📋 PLANNED | P36 tests/blocks/ structure |
+| **Test caching** | SKIP | ❌ NO | Too risky, could miss bugs |
+
+### Parallel Execution Plan
+```bash
+# Install
+pip install pytest-xdist
+
+# Usage (safe, 4 workers max)
+pytest tests/ -n 4 -v
+
+# Auto-detect cores (still safe)
+pytest tests/ -n auto -v
+```
+
+### Code Coverage Plan
+```bash
+# Install
+pip install pytest-cov
+
+# Usage
+pytest tests/ --cov=server --cov-report=html
+
+# Output: htmlcov/index.html
+```
+
+### Performance Tests Plan
+```python
+# tests/performance/test_api_latency.py
+def test_api_response_under_100ms():
+    start = time.time()
+    response = client.get("/api/health")
+    elapsed = (time.time() - start) * 1000
+    assert elapsed < 100, f"API too slow: {elapsed}ms"
+```
+
+---
+
 ## COMPLETED: FEAT-001 FRONTEND
 
 ### Session Progress

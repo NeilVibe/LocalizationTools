@@ -1,6 +1,6 @@
 # P36: CI/CD Test Overhaul - Beautiful Test Blocks
 
-**Status:** PLANNING | **Priority:** HIGH | **Created:** 2025-12-21
+**Status:** IN PROGRESS | **Priority:** HIGH | **Created:** 2025-12-21 | **Updated:** 2025-12-21
 
 ---
 
@@ -255,40 +255,54 @@ QA-FULL:  Phase 1 + Phase 2 + Phase 3 + Phase 4 + Full  → ~45 min
 
 ## Work Required
 
-### Phase 1: Structure (READY TO EXECUTE)
-- [ ] Create `tests/blocks/` directory structure
-- [ ] Create `tests/performance/` directory
-- [ ] Create `tests/blocks/ldm_workflow/` directory
-- [ ] Create `tests/blocks/ui_state/` directory
+### Phase 1: 6-Stage Pipeline ✅ DONE (Build 315)
+- [x] Optimal staged testing (unit → integration → e2e → api → security → fixtures)
+- [x] Beautiful stage banners with test inventory
+- [x] QA-LIGHT and QA-FULL modes in Gitea workflow
+- [x] Pytest markers in conftest.py
 
-### Phase 2: Migration
+### Phase 2: Quick Wins 🔜 NEXT
+- [ ] **Parallel execution** - `pytest-xdist -n 4` (2-3x faster, safe)
+- [ ] **Code coverage** - `pytest-cov` with HTML reports
+- [ ] **Performance tests** - API latency, embedding throughput
+
+### Phase 3: Block Reorganization 📋 LATER
+- [ ] Create `tests/blocks/` directory structure
 - [ ] Move files per [P36_TEST_MAPPING.md](P36_TEST_MAPPING.md)
-- [ ] Add pytest markers
 - [ ] Update imports
 
-### Phase 3: New Tests (36 total)
-- [ ] Create 9 LDM workflow tests (**CRITICAL** - cell states, auto-TM)
-- [ ] Create 7 performance tests (HIGH priority)
-- [ ] Create 4 UI state tests (MEDIUM priority)
-- [ ] Create 3 security tests (HIGH priority)
-- [ ] Create 3 API tests (MEDIUM priority)
-- [ ] Create 10 other tests (logging, network, etc.)
+### Phase 4: New Tests 📋 LATER
+- [ ] Create 7 performance tests
+- [ ] Create 4 UI state tests
+- [ ] Create remaining gap tests
 
-### Phase 4: CI/CD
-- [ ] Update Gitea workflow for QA modes
-- [ ] Update GitHub workflow
-- [ ] Add block-by-block reporting
+### ❌ NOT DOING
+- Test caching - Too risky, could miss regressions
+
+---
+
+## Current Progress
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| 6-Stage Pipeline | ✅ DONE | Build 315 |
+| FEAT-001 Tests | ✅ DONE | 35+ new tests |
+| Pytest Markers | ✅ DONE | Auto-applied by path |
+| Parallel Execution | 🔜 TODO | pytest-xdist |
+| Code Coverage | 🔜 TODO | pytest-cov |
+| Performance Tests | 🔜 TODO | New test directory |
+| Block Reorganization | 📋 LATER | 2-4 hours work |
 
 ---
 
 ## Success Criteria
 
-1. **Clear structure** - 9 domain blocks, easy to find/add tests
-2. **No duplicates** - Each scenario tested once
-3. **Full coverage** - All blocks have comprehensive tests
-4. **LIGHT build** - 5 min, essential tests
-5. **QA build** - 30 min, PRISTINE validation
-6. **Beautiful pipeline** - Block-by-block status display
+1. ~~**Clear structure** - 9 domain blocks~~ → LATER
+2. ~~**No duplicates** - Each scenario tested once~~ → LATER
+3. **Full coverage** - ✅ All blocks have tests (35+ new added)
+4. **LIGHT build** - ✅ 5 min, essential tests
+5. **QA build** - ✅ 30 min, 6-stage validation
+6. **Beautiful pipeline** - ✅ Stage-by-stage status display
 
 ---
 
@@ -301,4 +315,4 @@ QA-FULL:  Phase 1 + Phase 2 + Phase 3 + Phase 4 + Full  → ~45 min
 
 ---
 
-*P36: CI/CD Test Overhaul | Updated: 2025-12-21 | Status: PLANNING COMPLETE*
+*P36: CI/CD Test Overhaul | Updated: 2025-12-21 | Phase 1 COMPLETE*
