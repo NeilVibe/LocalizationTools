@@ -228,6 +228,10 @@ class TMIndexer:
                 for e in entries
             ]
 
+            # DEBUG: Log StringID presence for troubleshooting
+            stringid_count = sum(1 for e in entry_list if e.get("string_id"))
+            logger.info(f"DEBUG: {stringid_count}/{len(entry_list)} entries have string_id")
+
             # Create storage directory
             tm_path = self.get_tm_path(tm_id)
             tm_path.mkdir(parents=True, exist_ok=True)
