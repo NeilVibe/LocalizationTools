@@ -1786,10 +1786,12 @@ class TMSyncManager:
         db_entries = self.get_db_entries()
         if not db_entries:
             logger.warning(f"No entries in DB for TM {self.tm_id}")
+            elapsed = (datetime.now() - start_time).total_seconds()
             return {
                 "tm_id": self.tm_id,
                 "status": "empty",
-                "stats": {"insert": 0, "update": 0, "delete": 0, "unchanged": 0}
+                "stats": {"insert": 0, "update": 0, "delete": 0, "unchanged": 0},
+                "time_seconds": round(elapsed, 2)
             }
 
         # 2. Load current PKL state
