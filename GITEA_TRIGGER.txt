@@ -17,4 +17,5 @@ Build 319 - Fix MODEL_NAME import error
 Build 320 - Fix async session datetime race condition
 Build 321 - Skip stringid tests (pending DB migration)
 Build 322 - Schema upgrade (auto-add mode column) + Enable stringid tests
-Build LIGHT
+Build 323 - QA-LIGHT Full Verification
+Build QA-LIGHT
