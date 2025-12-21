@@ -843,3 +843,41 @@ jobs:
             artifacts/windows/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ============================================================
+      # CLEANUP: Keep only last 10 releases to save space
+      # ============================================================
+      - name: Cleanup Old Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=============================================="
+          echo "  CLEANING UP OLD RELEASES"
+          echo "=============================================="
+
+          MAX_RELEASES=10
+
+          # Get all releases sorted by date (newest first)
+          RELEASES=$(gh release list --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[].tagName')
+          RELEASE_COUNT=$(echo "$RELEASES" | wc -l)
+
+          echo "Found $RELEASE_COUNT releases (keeping last $MAX_RELEASES)"
+
+          if [ "$RELEASE_COUNT" -le "$MAX_RELEASES" ]; then
+            echo "[OK] No cleanup needed ($RELEASE_COUNT <= $MAX_RELEASES)"
+            exit 0
+          fi
+
+          # Get releases to delete (skip first MAX_RELEASES)
+          TO_DELETE=$(echo "$RELEASES" | tail -n +$((MAX_RELEASES + 1)))
+
+          echo "Deleting $((RELEASE_COUNT - MAX_RELEASES)) old releases..."
+
+          for TAG in $TO_DELETE; do
+            echo "  Deleting: $TAG"
+            # Delete release (this also deletes the tag)
+            gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          done
+
+          echo ""
+          echo "[OK] Cleanup complete. Kept last $MAX_RELEASES releases."
