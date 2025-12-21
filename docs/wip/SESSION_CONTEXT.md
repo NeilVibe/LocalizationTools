@@ -44,27 +44,31 @@
 
 ## CI DEBUGGING TECHNIQUES
 
-### 0. Accessing Gitea CI Logs (IMPORTANT!)
+### 0. Accessing Gitea CI Logs (CRITICAL - READ THIS FIRST!)
 
-**Log Location:**
+**DO NOT ask user about CI logs. You CAN access them directly.**
+
+**Step 1: Find latest log**
 ```bash
-/home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log
+ls -lt /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -3
 ```
 
-**Find latest log:**
+**Step 2: Search for failures**
 ```bash
-ls -lt /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -5
+grep -i "failed\|error\|exception" <latest_log_path> | tail -30
 ```
 
-**Read specific log:**
+**Step 3: Look for traceback** (500 errors now include full Python traceback)
 ```bash
-cat /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/0f/783.log
+grep -A5 "Traceback\|KeyError\|AssertionError" <latest_log_path>
 ```
 
-**Search for errors:**
-```bash
-grep -i "error\|fail\|exception" /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/0f/783.log
-```
+**Automated Debug Loop:**
+1. Push fix → wait 5 min → check logs → repeat
+2. Use `sleep 300` between checks (CI takes ~2-4 min)
+
+**Log file naming:** Files are in hex subdirs (0a, 0b, 0c..., 10, 11...)
+Example: `/home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/11/785.log`
 
 ### 1. Schema Upgrade Logging (Build 325)
 
