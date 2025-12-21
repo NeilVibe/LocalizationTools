@@ -8,11 +8,11 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 1 |
-| **FIXED (This Session)** | 6 |
+| **OPEN** | 0 |
+| **FIXED (This Session)** | 7 |
 
 ### Open Issues
-- **CI-006** - `test_01_manual_sync_tm` returns 500 (investigating)
+- ~~**CI-006** - `test_01_manual_sync_tm` returns 500~~ → FIXED (Build 328)
 
 ### This Session: CI Fixes + Schema Upgrade + Security Audit
 - **CI-001** - Schema upgrade mechanism (auto-add missing columns)
@@ -20,6 +20,7 @@
 - **CI-003** - Fixed flaky timeout test (mocked socket)
 - **CI-004** - Fixed datetime race condition
 - **CI-005** - Fixed MODEL_NAME import error
+- **CI-006** - Fixed missing columns in ldm_tm_entries (updated_at, updated_by, etc.)
 - **SEC-001** - Security audit: Updated 5 packages with CVE fixes
 
 ---

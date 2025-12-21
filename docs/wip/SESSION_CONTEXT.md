@@ -10,11 +10,11 @@
 
 | Build | Status | Issue |
 |-------|--------|-------|
-| 326 | PENDING | Security audit fixes (5 CVEs) |
-| 325 | PENDING | Enhanced schema upgrade logging |
+| 328 | PENDING | Fix ldm_tm_entries missing columns |
+| 327 | PASS | Traceback in 500 response (revealed root cause) |
+| 326 | PASS | Security audit fixes (5 CVEs) |
+| 325 | PASS | Enhanced schema upgrade logging |
 | 324 | FAILED | `test_01_manual_sync_tm` 500 error |
-| 323 | FAILED | `string_id` column missing |
-| 322 | PASS | LIGHT build passed |
 
 ### Security Audit Completed (2025-12-22)
 
@@ -29,16 +29,42 @@
 
 **Node.js warnings:** v20.18.3 < required ^20.19 (warnings only, not blocking)
 
-### Issue Being Fixed: test_01_manual_sync_tm 500 Error
+### Issue FIXED: test_01_manual_sync_tm 500 Error
 
-The sync endpoint `/api/ldm/tm/{id}/sync` is returning 500. Possible causes:
-1. Schema upgrade not executing properly
-2. Model loading failure
-3. File I/O issues
+**Root Cause Found (from CI logs):** `column ldm_tm_entries.updated_at does not exist`
+
+**Fix:** Added 5 missing columns to `upgrade_schema()` in `db_setup.py`:
+- `updated_at` (TIMESTAMP NULL)
+- `updated_by` (VARCHAR(255) NULL)
+- `confirmed_at` (TIMESTAMP NULL)
+- `confirmed_by` (VARCHAR(255) NULL)
+- `is_confirmed` (BOOLEAN DEFAULT FALSE)
 
 ---
 
 ## CI DEBUGGING TECHNIQUES
+
+### 0. Accessing Gitea CI Logs (IMPORTANT!)
+
+**Log Location:**
+```bash
+/home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log
+```
+
+**Find latest log:**
+```bash
+ls -lt /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -5
+```
+
+**Read specific log:**
+```bash
+cat /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/0f/783.log
+```
+
+**Search for errors:**
+```bash
+grep -i "error\|fail\|exception" /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/0f/783.log
+```
 
 ### 1. Schema Upgrade Logging (Build 325)
 

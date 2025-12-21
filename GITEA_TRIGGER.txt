@@ -11,10 +11,9 @@ FORMATS:
 
 Build History (last 5):
 -----------------------
-Build 322 - Schema upgrade (auto-add mode column) + Enable stringid tests
-Build 323 - QA-LIGHT Full Verification
 Build 324 - Add string_id column to upgrade_schema
 Build 325 - Enhanced schema upgrade logging for CI debugging
 Build 326 - Security audit fixes (5 CVEs patched)
 Build 327 - Add traceback to sync 500 error response (debug CI)
+Build 328 - Fix ldm_tm_entries missing columns (updated_at, updated_by, confirmed_at, confirmed_by, is_confirmed)
 Build QA-LIGHT

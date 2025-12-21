@@ -191,9 +191,18 @@ def upgrade_schema(engine):
 
     # Define columns that may be missing in older databases
     # Format: (table_name, column_name, column_type, default_value)
+    # NOTE: These columns were identified from CI failures where PostgreSQL
+    # database was created before these columns were added to models.py
     missing_columns = [
+        # ldm_translation_memories table
         ("ldm_translation_memories", "mode", "VARCHAR(20)", "'standard'"),
+        # ldm_tm_entries table - all potentially missing columns
         ("ldm_tm_entries", "string_id", "VARCHAR(255)", "NULL"),
+        ("ldm_tm_entries", "updated_at", "TIMESTAMP", "NULL"),
+        ("ldm_tm_entries", "updated_by", "VARCHAR(255)", "NULL"),
+        ("ldm_tm_entries", "confirmed_at", "TIMESTAMP", "NULL"),
+        ("ldm_tm_entries", "confirmed_by", "VARCHAR(255)", "NULL"),
+        ("ldm_tm_entries", "is_confirmed", "BOOLEAN", "FALSE"),
     ]
 
     columns_added = 0
