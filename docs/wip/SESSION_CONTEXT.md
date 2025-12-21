@@ -106,6 +106,67 @@ Phase 4: PERFORMANCE (optional)     → Latency, throughput
 
 ---
 
+## P37: Preserve Runner Setup (TODO)
+
+### The Problem
+We spent 2 months patching the Windows runner (NUL byte fix, ephemeral mode, 706% CPU fix). The work is documented but **not rebuildable from repo**.
+
+### What to Commit (LIGHT, ~50KB total)
+
+```
+runner/
+├── patches/
+│   └── parse_env_file.patch      # The v15 NUL byte fix (few lines)
+│
+├── scripts/
+│   ├── build_patched_runner.sh   # Clone repos, apply patch, build
+│   ├── install_windows.ps1       # Windows service setup
+│   └── install_linux.sh          # Linux systemd setup
+│
+├── configs/
+│   ├── config.yaml.template      # Runner config template
+│   ├── run_ephemeral.bat         # Windows wrapper script
+│   ├── gitea.service             # Linux Gitea systemd unit
+│   └── gitea-runner.service      # Linux runner systemd unit
+│
+└── README.md                     # Quick start guide
+```
+
+### What NOT to Commit
+- ❌ `act_runner_patched_v15.exe` (20MB binary)
+- ❌ `act_runner` source code (use git clone)
+- ❌ `.runner` registration files (machine-specific)
+
+### Build Flow
+```bash
+# 1. Clone official repos
+git clone https://github.com/nektos/act.git
+git clone https://gitea.com/gitea/act_runner.git
+
+# 2. Apply our patch
+patch -p1 < runner/patches/parse_env_file.patch
+
+# 3. Build
+GOOS=windows GOARCH=amd64 go build -o act_runner_patched.exe
+
+# 4. Deploy
+./runner/scripts/install_windows.ps1
+```
+
+### Benefits
+- Repo stays light (~50KB vs 20MB)
+- Can rebuild anytime
+- Works for enterprise deployment
+- All the "beautiful work" preserved
+
+### Status: TODO
+- [ ] Extract patch file from docs
+- [ ] Create build script
+- [ ] Create install scripts
+- [ ] Test rebuild flow
+
+---
+
 ## WHAT WAS DONE THIS SESSION
 
 ### CI/CD Overhaul
