@@ -445,9 +445,10 @@ def bulk_copy_tm_entries(
             entry.get('string_id'),  # StringID for context-aware matching
             entry.get('created_by'),
             entry.get('change_date'),
+            entry.get('is_confirmed', False),  # Default to False for bulk inserts
         ))
 
-    columns = ['tm_id', 'source_text', 'target_text', 'source_hash', 'string_id', 'created_by', 'change_date']
+    columns = ['tm_id', 'source_text', 'target_text', 'source_hash', 'string_id', 'created_by', 'change_date', 'is_confirmed']
 
     return bulk_copy(db, 'ldm_tm_entries', columns, rows, progress_callback)
 
