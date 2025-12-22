@@ -11,9 +11,9 @@ FORMATS:
 
 Build History (last 5):
 -----------------------
-Build 331 - Fix TM link API response format (linked-tms returns list, link-tm returns 400 on dupe)
 Build 332 - Debug logging for StringID matching (trace data flow)
 Build 333 - More debug: Show what string_ids are in lookup and search results
 Build 334 - Fix string_id missing from FAISS mapping + debug Tier1
 Build 335 - Fix whole_lookup variations in sync paths (both incremental and full sync)
+Build 336 - Debug trace PKL save/load (track where variations are lost)
 Build QA-LIGHT

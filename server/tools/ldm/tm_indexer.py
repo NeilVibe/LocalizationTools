@@ -609,6 +609,10 @@ class TMIndexer:
         whole_lookup = self._load_pickle(tm_path / "hash" / "whole_lookup.pkl")
         line_lookup = self._load_pickle(tm_path / "hash" / "line_lookup.pkl")
 
+        # DEBUG: Log variations count when loading
+        var_count = sum(1 for v in whole_lookup.values() if isinstance(v, dict) and "variations" in v)
+        logger.info(f"DEBUG load_indexes: whole_lookup has {var_count} entries with variations")
+
         # Load embeddings and mappings
         whole_embeddings = np.load(tm_path / "embeddings" / "whole.npy")
         whole_mapping = self._load_pickle(tm_path / "embeddings" / "whole_mapping.pkl")
@@ -711,6 +715,10 @@ class TMIndexer:
 
     def _save_pickle(self, data: Any, path: Path):
         """Save data as pickle file."""
+        # DEBUG: Log variations count when saving whole_lookup
+        if "whole_lookup" in str(path) and isinstance(data, dict):
+            var_count = sum(1 for v in data.values() if isinstance(v, dict) and "variations" in v)
+            logger.info(f"DEBUG _save_pickle: whole_lookup has {var_count} entries with variations")
         with open(path, 'wb') as f:
             pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
