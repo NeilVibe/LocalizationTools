@@ -47,7 +47,7 @@
 |------|--------|
 | `LIGHT` | ✅ DONE (current) |
 | `FULL` | TODO |
-| `QA-LIGHT` | ✅ DONE (Build 342 testing) |
+| `QA-LIGHT` | ✅ DONE (Build 343 verified) |
 | `QA-FULL` | TODO |
 | `TROUBLESHOOT` | ✅ DONE (debug mode) |
 
@@ -109,10 +109,10 @@ All large files (>500 lines) are well-organized, not true monoliths.
 
 ## CI/CD
 
-| Platform | Tests | Notes |
-|----------|-------|-------|
-| **Gitea** | ~285 essential | Fast daily builds |
-| **GitHub** | 830+ full suite | Comprehensive |
+| Platform | Tests | Status |
+|----------|-------|--------|
+| **Gitea** | 950+ (QA-LIGHT) | ✅ VERIFIED |
+| **GitHub** | 1068 | ✅ VERIFIED (Build 343) |
 
 ### Build Modes
 
@@ -238,4 +238,4 @@ git add -A && git commit -m "Build" && git push origin main && git push gitea ma
 
 ---
 
-*Strategic Roadmap | Updated 2025-12-22*
+*Strategic Roadmap | Updated 2025-12-22 (Build 343)*

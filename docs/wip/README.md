@@ -1,6 +1,6 @@
 # WIP - Work In Progress
 
-**Updated:** 2025-12-22 | **Build:** 341
+**Updated:** 2025-12-22 | **Build:** 343
 
 ---
 
@@ -12,12 +12,33 @@
 
 ## Current Status
 
-| Status | Count |
+| Status | Value |
 |--------|-------|
 | **Open Issues** | 0 |
-| **Tests Passing** | 1071 |
+| **Tests Passing** | 1068 (GitHub) / 950+ (Gitea) |
 | **Coverage** | 47% (target 70%) |
 | **Monoliths** | 0 |
+| **CI/CD** | Both platforms verified |
+
+---
+
+## What's Left To Do
+
+| Priority | Task | Status |
+|----------|------|--------|
+| **P36** | Coverage 47% → 70% | IN PROGRESS |
+| **CI/CD** | Implement FULL mode | TODO |
+| **CI/CD** | Implement QA-FULL mode | TODO |
+| **P25** | LDM UX Overhaul | 85% done |
+
+### P36 Coverage Gaps (Priority Files)
+
+| File | Current | Target |
+|------|---------|--------|
+| `sync_manager.py` | 22% | 70% |
+| `routes/files.py` | 11% | 70% |
+| `routes/rows.py` | 16% | 70% |
+| `routes/tm_indexes.py` | 15% | 70% |
 
 ---
 
@@ -52,14 +73,6 @@
 | FEAT-001_AUTO_TM_DESIGN.md | Design doc for Auto-TM |
 | P25_LDM_UX_OVERHAUL.md | 85% done |
 | IDEAS_FUTURE.md | Future ideas |
-
----
-
-## What's Next
-
-1. **Coverage:** Write tests for low-coverage LDM routes (11-22% → 70%)
-2. **CI/CD:** Implement QA-LIGHT mode (all 1500+ tests)
-3. **Features:** Continue P25 LDM UX improvements
 
 ---
 
