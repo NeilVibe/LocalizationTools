@@ -286,9 +286,10 @@ class TMIndexer:
             }
             self._save_json(metadata, tm_path / "metadata.json")
 
-            # Update TM status
+            # Update TM status and indexed_at
             tm.status = "ready"
             tm.storage_path = str(tm_path)
+            tm.indexed_at = datetime.now()  # Mark as indexed to prevent unnecessary sync
             self.db.commit()
 
             elapsed = (datetime.now() - start_time).total_seconds()
@@ -1546,7 +1547,8 @@ class TMSyncManager:
                 "id": row.get("id_db") or row.get("id"),
                 "source_text": row.get("source_text_db") or row.get("source_text"),
                 "target_text": row.get("target_text_db") or row.get("target_text"),
-                "source_normalized": row["source_normalized"]
+                "source_normalized": row["source_normalized"],
+                "string_id": row.get("string_id_db") or row.get("string_id")  # Include StringID
             })
 
         update_list = []
@@ -1556,7 +1558,8 @@ class TMSyncManager:
                 "source_text": row.get("source_text_db"),
                 "target_text": row.get("target_text_db"),
                 "source_normalized": row["source_normalized"],
-                "old_target": row.get("target_text_pkl")
+                "old_target": row.get("target_text_pkl"),
+                "string_id": row.get("string_id_db")  # Include StringID
             })
 
         delete_list = []
@@ -1574,7 +1577,8 @@ class TMSyncManager:
                 "id": row.get("id_db"),
                 "source_text": row.get("source_text_db"),
                 "target_text": row.get("target_text_db"),
-                "source_normalized": row["source_normalized"]
+                "source_normalized": row["source_normalized"],
+                "string_id": row.get("string_id_db")  # Include StringID for variations
             })
 
         return {
