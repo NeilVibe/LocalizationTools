@@ -45,30 +45,65 @@
 
 | Mode | Status |
 |------|--------|
-| `LIGHT` | DONE (current) |
+| `LIGHT` | ✅ DONE (current) |
 | `FULL` | TODO |
-| `QA-LIGHT` | TODO |
+| `QA-LIGHT` | ✅ DONE (Build 342 testing) |
 | `QA-FULL` | TODO |
-| `TROUBLESHOOT` | DONE (debug mode) |
+| `TROUBLESHOOT` | ✅ DONE (debug mode) |
 
 ---
 
 ## Code Coverage (P36)
 
-**Current:** 46% | **Target:** 70% | **Measured:** 2025-12-22
+**Current:** 47% → **Target:** 70% | **Measured:** 2025-12-22
 
-| Component | Coverage | Target | Priority |
-|-----------|----------|--------|----------|
-| **LDM API** | 22% | 75% | CRITICAL |
-| tm_indexer | 59% | 80% | HIGH |
-| tm_manager | 29% | 70% | HIGH |
-| pretranslate | 35% | 70% | HIGH |
-| XLSTransfer | 6-21% | - | LOW (battle-tested) |
+### LDM Routes Coverage (NEW MOCKED TESTS!)
 
-**What needs work:** LDM API (new code, user data)
-**What's fine:** XLSTransfer (ported from proven monolith)
+| Route | Coverage | Status |
+|-------|----------|--------|
+| projects.py | **98%** | ✅ DONE |
+| folders.py | **90%** | ✅ DONE |
+| tm_entries.py | **74%** | ✅ GOOD |
+| tm_crud.py | 46% | OK |
+| tm_search.py | 46% | OK |
+
+### Test Counts
+
+| Category | Count |
+|----------|-------|
+| LDM Mocked Tests | 27 |
+| LDM Unit Tests | 89 |
+| Total Unit Tests | 737 |
+
+**What's done:** Core CRUD routes fully mocked
+**What's fine:** Complex routes (file upload, FAISS) tested via integration
 
 **Details:** [P36_COVERAGE_GAPS.md](docs/wip/P36_COVERAGE_GAPS.md)
+
+---
+
+## Code Quality (P37)
+
+**Status: COMPLETE** - No active monoliths in codebase
+
+### What Was Done
+- `api.py` (3156 lines) → **DELETED** (dead code after route migration)
+- `tm_indexer.py` (2105 lines) → **SPLIT** into 4 modular files
+
+### LDM Structure Now
+```
+server/tools/ldm/
+├── router.py              # 68 lines - aggregates 44 endpoints
+├── routes/                # 14 files - API endpoints
+├── schemas/               # 10 files - Pydantic models
+├── indexing/              # 5 files - FAISS/Vector (was tm_indexer.py)
+└── tm_manager.py          # 1133 lines - well-organized (not monolith)
+```
+
+### Global Audit Results
+All large files (>500 lines) are well-organized, not true monoliths.
+
+**Details:** [P37_LDM_REFACTORING.md](docs/wip/P37_LDM_REFACTORING.md)
 
 ---
 

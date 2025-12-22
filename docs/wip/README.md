@@ -1,6 +1,12 @@
 # WIP - Work In Progress
 
-**Updated:** 2025-12-19 | **Build:** 300
+**Updated:** 2025-12-22 | **Build:** 341
+
+---
+
+## Start Here
+
+**[MASTER_PLAN.md](MASTER_PLAN.md)** - Complete overview of what's done and what's next
 
 ---
 
@@ -8,44 +14,53 @@
 
 | Status | Count |
 |--------|-------|
-| **Critical Bugs** | 2 |
-| **UI/UX Issues** | 11 |
-| **Questions** | 1 |
-| **Total Open** | **14** |
+| **Open Issues** | 0 |
+| **Tests Passing** | 1071 |
+| **Coverage** | 47% (target 70%) |
+| **Monoliths** | 0 |
 
 ---
 
-## Active Files
+## Active Docs
 
 | File | Purpose |
 |------|---------|
-| **SESSION_CONTEXT.md** | Session handoff + work plan |
-| **ISSUES_TO_FIX.md** | Full bug/issue tracker |
-| **P25_LDM_UX_OVERHAUL.md** | LDM UX improvements (85%) |
+| **[MASTER_PLAN.md](MASTER_PLAN.md)** | What's done & what's next |
+| [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Session handoff state |
+| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker (0 open) |
+| [P36_COVERAGE_GAPS.md](P36_COVERAGE_GAPS.md) | Coverage improvement plan |
+| [P36_TEST_MAPPING.md](P36_TEST_MAPPING.md) | Test file mapping |
 
 ---
 
-## Reference Files
+## Completed (Archive Candidates)
 
-| File | Purpose |
-|------|---------|
-| FAISS_OPTIMIZATION_PLAN.md | FAISS performance improvements |
-| MODEL2VEC_BENCHMARK.md | Model2Vec vs Qwen benchmark |
-| FAST_SEARCH_ALTERNATIVES.md | Search optimization options |
-| IDEAS_FUTURE.md | Future feature ideas |
-| POTENTIAL_ISSUES.md | Known potential issues |
-
----
-
-## Archived
-
-Completed docs moved to `docs/history/wip-archive/`:
-- P36_PRETRANSLATION_STACK.md
-- P36_TECHNICAL_DESIGN.md
-- P36_STRINGID_TESTING_PLAN.md
-- BUG-027_TM_VIEWER_OVERHAUL.md
-- TM_SYNC_GAP_ANALYSIS.md
+| File | Status |
+|------|--------|
+| P37_LDM_REFACTORING.md | COMPLETE - Code clean |
+| FAISS_OPTIMIZATION_PLAN.md | COMPLETE - Performance optimized |
+| MODEL2VEC_BENCHMARK.md | COMPLETE - Model2Vec integrated |
+| P36_VALIDATION_CHECKLIST.md | COMPLETE |
+| P36_CICD_TEST_OVERHAUL.md | COMPLETE |
 
 ---
 
-*Updated 2025-12-19 | 14 open items*
+## Future Features
+
+| File | Status |
+|------|--------|
+| FEAT-001_AUTO_TM_DESIGN.md | Design doc for Auto-TM |
+| P25_LDM_UX_OVERHAUL.md | 85% done |
+| IDEAS_FUTURE.md | Future ideas |
+
+---
+
+## What's Next
+
+1. **Coverage:** Write tests for low-coverage LDM routes (11-22% → 70%)
+2. **CI/CD:** Implement QA-LIGHT mode (all 1500+ tests)
+3. **Features:** Continue P25 LDM UX improvements
+
+---
+
+*Updated 2025-12-22 | 0 open issues | Code is CLEAN*

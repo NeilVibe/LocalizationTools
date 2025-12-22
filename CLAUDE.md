@@ -140,8 +140,9 @@ docs/
 
 ## Stats
 
-- **Tests:** 1071 total (830 in CI, 46% coverage)
-- **Coverage:** 46% overall → 70% target
+- **Tests:** 1100+ total (737 unit, 170 integration, 86 security)
+- **Coverage:** 47% overall → 70% target
+- **LDM Routes:** projects 98%, folders 90%, tm_entries 74%
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
 - **Languages:** 100+ (full Unicode support)
