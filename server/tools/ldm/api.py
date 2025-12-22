@@ -1,6 +1,18 @@
 """
 LDM (LanguageData Manager) API Endpoints
 
+!!! LEGACY FILE - PRESERVED FOR REFERENCE !!!
+
+This 3144-line file has been refactored into:
+- router.py          - Main router (aggregates 13 sub-routers)
+- routes/*.py        - 14 modular route files (30-632 lines each)
+- schemas/*.py       - 9 Pydantic model files
+
+main.py now imports from router.py, NOT this file.
+This file is kept for reference during transition period.
+Consider deleting after verification period (Build 350+).
+
+Original description:
 REST API for managing localization projects, folders, files, and rows.
 Supports real-time collaboration via WebSocket (see websocket.py).
 """
