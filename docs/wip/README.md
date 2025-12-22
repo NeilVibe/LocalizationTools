@@ -27,8 +27,7 @@
 | Priority | Task | Status |
 |----------|------|--------|
 | **P36** | Coverage (56 mocked tests) | ✅ SUFFICIENT |
-| **CI/CD** | Implement FULL mode | TODO |
-| **CI/CD** | Implement QA-FULL mode | TODO |
+| **CI/CD** | Implement QA FULL mode | TODO (Gitea only) |
 | **P25** | LDM UX Overhaul | 85% done |
 
 ### P36 Coverage Status

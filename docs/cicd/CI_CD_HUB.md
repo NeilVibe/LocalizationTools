@@ -29,13 +29,58 @@
 
 ---
 
-## 3 Build Modes
+## Build Modes
 
-| Mode | Trigger | Description |
-|------|---------|-------------|
-| **Build LIGHT** | `Build LIGHT - desc` | Full official build (~200MB) |
-| **Build FULL** | `Build FULL - desc` | Same + bundled AI model (~2GB) |
-| **TROUBLESHOOT** | `TROUBLESHOOT` | Smart checkpoint mode |
+| Mode | Trigger | Platform | Description |
+|------|---------|----------|-------------|
+| **QA** | `Build QA` | Both | ALL tests + light installer (~150MB) |
+| **QA FULL** | `Build QA FULL` | Gitea only | ALL tests + offline installer (~2GB) [TODO] |
+| **TROUBLESHOOT** | `TROUBLESHOOT` | Both | Smart checkpoint mode |
+
+**QA is the default.** Workers technology makes 1000+ tests fast.
+
+---
+
+## QA FULL Implementation Plan (TODO)
+
+**Goal:** True offline installer (~2GB) for deployments with no internet.
+
+### What Gets Bundled
+
+| Component | Size | Notes |
+|-----------|------|-------|
+| Qwen model | ~2.3GB | `Qwen/Qwen2.5-0.5B-Instruct` |
+| Python deps | ~200MB | All pip packages pre-installed |
+| VC++ Redist | ~20MB | Visual C++ runtime |
+| Base app | ~150MB | Same as QA |
+
+### Implementation Steps
+
+1. **Detect mode in CI**
+   - Parse `Build QA FULL` from trigger file
+   - Set `FULL_MODE=true` environment variable
+
+2. **Download Qwen model during build**
+   - Use `huggingface-hub` to download model
+   - Cache in `models/qwen/` directory
+   - Include in installer
+
+3. **Bundle VC++ Redistributable**
+   - Download `vc_redist.x64.exe`
+   - Include in installer, run silently on install
+
+4. **Skip model download on user PC**
+   - If model exists locally, skip HuggingFace download
+   - Detect via `models/qwen/config.json` presence
+
+5. **Update NSIS installer script**
+   - Add model files to installer
+   - Add VC++ silent install step
+
+### Platform Restriction
+
+- **Gitea only** - GitHub has LFS bandwidth limits
+- Add check in GitHub workflow to reject QA FULL triggers
 
 ---
 
@@ -55,7 +100,7 @@ Smart checkpoint that **persists across CI runs**:
    ↓
 5. Repeat until all pass
    ↓
-6. Do Build LIGHT for official release
+6. Do Build QA for official release
 ```
 
 **Checkpoint location:** `/home/neil1988/.locanext_checkpoint`
@@ -112,8 +157,8 @@ Smart checkpoint that **persists across CI runs**:
 ## Quick Start
 
 ```bash
-# Official build
-echo "Build LIGHT - feature X" >> GITEA_TRIGGER.txt
+# QA build (default - all tests)
+echo "Build QA" >> GITEA_TRIGGER.txt
 git add -A && git commit -m "Build" && git push origin main && git push gitea main
 
 # Troubleshoot mode
@@ -138,4 +183,4 @@ cat ~/.locanext_checkpoint
 
 ---
 
-*Last updated: 2025-12-14*
+*Last updated: 2025-12-22*

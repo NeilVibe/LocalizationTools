@@ -4,10 +4,9 @@ Gitea Build Trigger File - LocaNext Local CI/CD
 USAGE: Add build line, commit & push to trigger CI.
 
 FORMATS:
-  Build LIGHT     - Essential tests (~285), light installer (~150MB)
-  Build FULL      - Essential tests (~285), full installer (~2GB)
-  Build QA-LIGHT  - ALL tests (~1000+), light installer (~30min)
-  Build QA-FULL   - ALL tests (~1000+), full installer (~45min)
+  Build QA        - ALL tests (~1000+), light installer (~150MB) [DEFAULT]
+  Build QA FULL   - ALL tests (~1000+), offline installer (~2GB) [TODO]
+  Build TROUBLESHOOT - Resume failed build, debug mode
 
 Build History (last 5):
 -----------------------

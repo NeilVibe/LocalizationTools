@@ -18,38 +18,38 @@
 
 ## CI/CD Build Modes
 
-### The 4 Modes
+### Strategy (2025-12-22)
 
-| Mode | Tests | Installer | Use Case |
+**QA is the ONLY mode.** Workers technology makes full test suite fast.
+
+| Platform | Default | Offline | Notes |
+|----------|---------|---------|-------|
+| **GitHub** | QA | N/A | LFS limits prevent offline bundle |
+| **Gitea** | QA | QA FULL | Self-hosted, no limits |
+
+### Build Modes
+
+| Mode | Tests | Installer | Platform |
 |------|-------|-----------|----------|
-| `LIGHT` | Essential (~285) | ~150MB | Daily dev + releases |
-| `FULL` | Essential (~285) | ~2GB+ | **TRUE OFFLINE** - zero internet |
-| `QA-LIGHT` | **ALL 1500+** | ~150MB | Pre-release verification |
-| `QA-FULL` | **ALL 1500+** | ~2GB+ | **PRISTINE** offline release |
+| `QA` | **ALL 1000+** | ~150MB | Both (default) |
+| `QA FULL` | **ALL 1000+** | ~2GB+ | Gitea only |
+| `TROUBLESHOOT` | Resume | Debug | Both |
 
-### LIGHT vs FULL
+### QA FULL Mode (Gitea Only)
 
-| | LIGHT | FULL |
-|--|-------|------|
-| Installer | ~150MB | ~2GB+ |
-| First launch | Downloads deps | Ready immediately |
-| Internet | Yes (first run) | **NO - zero internet** |
-
-**FULL bundles EVERYTHING:** All Python deps, Qwen model, Model2Vec, VC++ Redistributable
-
-### QA Modes
-
-**QA = Same build, PRISTINE validation first** - All 1500+ tests must pass before creating installer
+For TRUE OFFLINE deployments:
+- Bundles Qwen model (2.3GB)
+- All Python deps pre-installed
+- VC++ Redistributable included
+- **Zero internet required on user PC**
 
 ### Implementation Status
 
-| Mode | Status |
-|------|--------|
-| `LIGHT` | ✅ DONE (current) |
-| `FULL` | TODO |
-| `QA-LIGHT` | ✅ DONE (Build 343 verified) |
-| `QA-FULL` | TODO |
-| `TROUBLESHOOT` | ✅ DONE (debug mode) |
+| Mode | Status | Platform |
+|------|--------|----------|
+| `QA` | ✅ DONE | Both |
+| `QA FULL` | TODO | Gitea only |
+| `TROUBLESHOOT` | ✅ DONE | Both |
 
 ---
 
@@ -111,16 +111,15 @@ All large files (>500 lines) are well-organized, not true monoliths.
 
 | Platform | Tests | Status |
 |----------|-------|--------|
-| **Gitea** | 950+ (QA-LIGHT) | ✅ VERIFIED |
-| **GitHub** | 1068 | ✅ VERIFIED (Build 343) |
+| **Gitea** | 1076 (QA) | ✅ Build 344 |
+| **GitHub** | 1068 (QA) | ✅ Build 345 |
 
-### Build Modes
+### Build Strategy
 
-| Mode | Tests | Installer |
-|------|-------|-----------|
-| `LIGHT` | Essential | ~150MB ✅ |
-| `FULL` | Essential | ~2GB (offline) |
-| `TROUBLESHOOT` | Resume from failure | Debug mode ✅ |
+| Platform | Default | Offline |
+|----------|---------|---------|
+| **GitHub** | QA (~150MB) | N/A (LFS limits) |
+| **Gitea** | QA (~150MB) | QA FULL (~2GB) TODO |
 
 ---
 
