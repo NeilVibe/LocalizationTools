@@ -17,3 +17,4 @@ Build 336 - Debug trace PKL save/load (track where variations are lost)
 Build 337 - ROOT CAUSE: compute_diff missing string_id + indexed_at not set
 Build 338 - Fix is_confirmed NOT NULL in bulk_copy_tm_entries
 Build QA-LIGHT
+Build 339
