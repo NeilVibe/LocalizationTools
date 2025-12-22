@@ -1332,7 +1332,9 @@ jobs:
           $hasModels = $pkg.build.extraResources | Where-Object { $_.to -eq "models" }
           if (!$hasModels) {
             $pkg.build.extraResources += $modelsResource
-            $pkg | ConvertTo-Json -Depth 10 | Set-Content $pkgPath -Encoding UTF8
+            # Write without BOM (Set-Content adds BOM in PowerShell 5.x which breaks electron-builder)
+            $json = $pkg | ConvertTo-Json -Depth 10
+            [System.IO.File]::WriteAllText($pkgPath, $json)
             Write-Host "[OK] Added models to extraResources" -ForegroundColor Green
           } else {
             Write-Host "[SKIP] Models already in extraResources" -ForegroundColor Yellow

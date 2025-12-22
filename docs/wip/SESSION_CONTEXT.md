@@ -60,13 +60,15 @@ Auto-cleanup deletes old releases to prevent disk bloat.
 
 ---
 
-## LAST SESSION (2025-12-22)
+## LAST SESSION (2025-12-23)
 
-- [x] Project cleanup: consolidated archive folders
-- [x] Moved stray root files to archive/
-- [x] Archived 5 completed WIP docs
-- [x] Deleted screenshotsForClaude/
-- [x] Updated WIP docs (README, MASTER_PLAN)
+- [x] Implemented QA FULL mode (offline installer)
+- [x] Simplified CI to 3 modes (Build, Build QA FULL, TROUBLESHOOT)
+- [x] DEV mode is dead - QA is now default
+- [x] Added disk terrorism prevention (FULL: 3 releases, LIGHT: 10)
+- [x] GitHub rejects QA FULL (LFS limits)
+- [x] App detects bundled model, skips download
+- [ ] Build 346 running - testing simplified workflow
 
 ---
 
