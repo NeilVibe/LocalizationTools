@@ -106,11 +106,12 @@ testing_toolkit/          # ← PRIMARY TESTING DOCS
 
 docs/
 ├── wip/                  # Active work
-│   ├── SESSION_CONTEXT.md      ← Session state
-│   ├── ISSUES_TO_FIX.md        ← Bug tracker
-│   └── P25_LDM_UX_OVERHAUL.md  ← 85% done
-├── testing/              # Detailed test guides
-│   └── PLAYGROUND_INSTALL_PROTOCOL.md
+│   ├── SESSION_CONTEXT.md      ← Current state + next steps
+│   ├── ISSUES_TO_FIX.md        ← Bug tracker (0 open)
+│   └── P36_COVERAGE_GAPS.md    ← Coverage analysis + test plan
+├── cicd/                 # CI/CD documentation
+│   ├── CI_CD_HUB.md            ← Pipeline overview
+│   └── TROUBLESHOOTING.md      ← Debug techniques
 ├── enterprise/           # Company deployment
 │   └── HUB.md
 └── history/              # Archives
@@ -139,7 +140,8 @@ docs/
 
 ## Stats
 
-- **Tests:** ~750+ in CI (Unit: 648, Integration: 170, Security: 86, Performance: 12)
+- **Tests:** 1071 total (830 in CI, 46% coverage)
+- **Coverage:** 46% overall → 70% target
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
 - **Languages:** 100+ (full Unicode support)

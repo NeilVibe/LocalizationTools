@@ -1,298 +1,129 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-22 10:15 | **Build:** 339 | **Next:** 340
+**Last Updated:** 2025-12-22 11:00 | **Build:** 339 | **Next:** 340
 
 ---
 
-## CURRENT SESSION: BUILD 339 FULL SUCCESS
+## CURRENT STATE
 
-### Build Status
+### Build 339: FULL SUCCESS ✅
 
-| Build | Status | Issue |
-|-------|--------|-------|
-| 339 | FULL PASS ✅ | All 3 jobs: Tests (830), Security, Windows Installer |
-| 338 | 2 ERRORS | Fix is_confirmed NOT NULL in bulk_copy (76 passed, 2 errors) |
-| 337 | PASS | ROOT CAUSE FIX: compute_diff missing string_id + indexed_at |
+| Job | Status | Details |
+|-----|--------|---------|
+| Check Build Trigger | ✅ | Mode: official |
+| Safety Checks | ✅ | 830 passed, 34 skipped |
+| Windows Installer | ✅ | 7 minutes, installer created |
 
-### Build 339 Details
-- **Tests:** 830 passed, 34 skipped
-- **Windows Build:** 7 minutes, installer created
-- **Fix:** Renamed `test_*` to `run_*` in standalone script (pytest was incorrectly discovering them)
+### Code Coverage: 46%
 
-### MAJOR FIX: StringID Pretranslation Tests NOW PASSING!
+| Component | Coverage | Target | Priority |
+|-----------|----------|--------|----------|
+| **LDM API** | 22% | 75% | **CRITICAL** |
+| tm_indexer | 59% | 80% | HIGH |
+| tm_manager | 29% | 70% | HIGH |
+| pretranslate | 35% | 70% | HIGH |
+| XLSTransfer | 6-21% | - | LOW (battle-tested) |
 
-**All 10 StringID pretranslation tests PASSED in Build 337/338:**
-- `test_pre_03_stringid_different` ✓
-- `test_pre_09_stringid_storage` ✓
-- `test_pre_10_multirow_stringid_matching` ✓
-
-**Root Cause Found (Build 336 debug):**
-1. `build_indexes()` wasn't setting `tm.indexed_at`
-2. So pretranslation thought TM was never indexed → called `sync()`
-3. `sync()` rebuilt whole_lookup WITHOUT string_id in entries
-4. `compute_diff()` was missing `string_id` in insert/update/unchanged lists
-
-**Fixes Applied (Build 337):**
-- Added `tm.indexed_at = datetime.now()` to `build_indexes()` (tm_indexer.py:292)
-- Added `string_id` to `insert_list`, `update_list`, `unchanged_list` in `compute_diff()` (tm_indexer.py:1550, 1561, 1578)
-
-**Fix Applied (Build 338):**
-- Added `is_confirmed` to `bulk_copy_tm_entries()` columns (db_utils.py:448, 451)
-
-### NEXT STEPS FOR NEW CLAUDE:
-
-1. Check Build 338 logs for the 2 remaining errors:
-   ```bash
-   ls -lt /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -3
-   grep -E "ERROR|error" <latest_log> | tail -20
-   ```
-
-2. If errors persist, use the AUTONOMOUS DEBUG LOOP (see below)
-
-3. Once all tests pass, update CLAUDE.md with new build number
+**Details:** [P36_COVERAGE_GAPS.md](P36_COVERAGE_GAPS.md)
 
 ---
 
-## PREVIOUS FIXES
+## WHAT'S NEXT
 
-### Security Audit (Build 326)
+### Priority 1: LDM API Tests (22% → 75%)
 
-**pip audit:** Fixed 5 packages with CVEs:
-- requests >=2.32.4 (CVE-2024-47081)
-- python-multipart >=0.0.18 (CVE-2024-53981)
-- python-socketio >=5.14.0 (CVE-2025-61765)
-- python-jose >=3.4.0 (PYSEC-2024-232/233)
-- setuptools >=78.1.1 (PYSEC-2025-49)
+The main gap. 1153 lines, only 256 covered. New code handling user data.
 
-### Schema Upgrade (Build 328)
+**Endpoints needing tests:**
+```
+POST /ldm/projects - Create project
+GET /ldm/projects - List projects
+POST /ldm/files/upload - Upload file
+GET /ldm/files/{id}/rows - Get rows
+PUT /ldm/rows/{id} - Update row
+POST /ldm/tm - Create TM
+POST /ldm/tm/{id}/entries - Add TM entry
+POST /ldm/tm/{id}/sync - Sync TM indexes
+GET /ldm/tm/{id}/search - Search TM
+POST /ldm/pretranslate - Run pretranslation
+```
 
-Added 5 missing columns to `upgrade_schema()` in `db_setup.py`:
-- `updated_at`, `updated_by`, `confirmed_at`, `confirmed_by`, `is_confirmed`
+### Priority 2: TM Indexer Tests (59% → 80%)
+
+Data integrity critical. Functions: `build_indexes()`, `sync()`, `compute_diff()`, `search()`
+
+### Don't Bother: XLSTransfer
+
+6-21% coverage but LOW priority - code ported from battle-tested monolith.
 
 ---
 
-## CI DEBUGGING TECHNIQUES
+## RECENT FIXES
 
-### 0. Accessing Gitea CI Logs (CRITICAL - READ THIS FIRST!)
+| Build | Fix |
+|-------|-----|
+| 339 | Renamed `test_*` to `run_*` in standalone script (pytest fixture error) |
+| 338 | Added `is_confirmed` to `bulk_copy_tm_entries()` |
+| 337 | ROOT CAUSE: `compute_diff()` missing string_id + `indexed_at` not set |
 
-**DO NOT ask user about CI logs. You CAN access them directly.**
+---
 
-**Step 1: Find latest log**
+## CI DEBUGGING
+
+### Check Build Status (Quick)
+
+```bash
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 1')
+r = c.fetchone()
+print(f'Run {r[0]}: {\"SUCCESS\" if r[1]==1 else \"FAILURE\"} - {r[2]}')"
+```
+
+### Check Job Status
+
+```bash
+python3 -c "
+import sqlite3
+conn = sqlite3.connect('/home/neil1988/gitea/data/gitea.db')
+c = conn.cursor()
+c.execute('SELECT name, status, stopped FROM action_run_job WHERE run_id = (SELECT MAX(id) FROM action_run)')
+for job in c.fetchall():
+    status = 'SUCCESS' if job[1] == 1 else 'FAILURE' if job[1] == 2 else f'status={job[1]}'
+    done = '✅' if job[2] else '⏳'
+    print(f'{done} {job[0]}: {status}')"
+```
+
+### Find Latest Log
+
 ```bash
 ls -lt /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -3
 ```
 
-**Step 2: Search for failures**
-```bash
-grep -i "failed\|error\|exception" <latest_log_path> | tail -30
-```
-
-**Step 3: Look for traceback** (500 errors now include full Python traceback)
-```bash
-grep -A5 "Traceback\|KeyError\|AssertionError" <latest_log_path>
-```
-
-### AUTONOMOUS CI DEBUG LOOP (CRITICAL!)
-
-When debugging CI failures, Claude should run this loop **autonomously** without asking user:
+### Autonomous Debug Loop
 
 ```
 1. Analyze failure in logs
 2. Fix the code
 3. Commit & push: git add -A && git commit -m "Build N: Fix X" && git push origin main && git push gitea main
-4. Sleep 5 minutes: sleep 300
-5. Check new logs: ls -lt .../actions_log/.../LocaNext/*/*.log | head -3
-6. Grep for failures: grep -i "failed\|error" <new_log>
-7. If still failing → GOTO step 1
-8. If passing → Done!
-```
-
-**Key Commands:**
-```bash
-# Sleep between checks (CI takes ~3-4 min)
-sleep 300
-
-# Find latest log
-ls -lt /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -3
-
-# Check test results
-grep -E "passed|failed|FAILED" <log_path> | tail -20
-
-# Trace specific issues
-grep -E "DEBUG|Traceback|Error" <log_path> | head -50
-```
-
-**Pro Tips:**
-- Add debug logging to trace data flow (e.g., `logger.info(f"DEBUG: {variable}")`)
-- Check timestamps in logs to find what happens between operations
-- The user said: "fix, commit, push, SLEEP, check logs, repeat" - do this autonomously!
-
-**Log file naming:** Files are in hex subdirs (0a, 0b, 0c..., 10, 11...)
-Example: `/home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/11/785.log`
-
-### 1. Schema Upgrade Logging (Build 325)
-
-Added comprehensive logging to `upgrade_schema()` in `server/database/db_setup.py`:
-
-```python
-logger.info("SCHEMA UPGRADE: Checking for missing columns...")
-logger.info(f"Database type: {db_type}")
-logger.info(f"Found {len(table_names)} tables in database")
-logger.info(f"Executing: {sql}")
-logger.success(f"Schema upgrade: Added column '{column_name}' to '{table_name}'")
-logger.info(f"Verified: Column '{column_name}' now exists in '{table_name}'")
-logger.info(f"Schema upgrade complete: {columns_added} added, {columns_skipped} already existed")
-```
-
-**Look for in CI logs:** `SCHEMA UPGRADE:` messages
-
-### 2. Full Traceback in 500 Responses (Build 327)
-
-Added full Python traceback to 500 error responses in `server/tools/ldm/api.py:2300-2309`:
-
-```python
-except Exception as e:
-    import traceback
-    error_traceback = traceback.format_exc()
-    raise HTTPException(
-        status_code=500,
-        detail=f"TM sync failed: {str(e)}\n\nTraceback:\n{error_traceback}"
-    )
-```
-
-**Why:** Test assertions show `Failed: {r.text}` - now includes full traceback!
-
-### 3. Testing Model Loading Locally
-
-```bash
-python3 -c "
-from server.tools.shared import get_embedding_engine, get_current_engine_name
-engine = get_embedding_engine(get_current_engine_name())
-engine.load()
-print(f'Loaded: {engine.name}, dim={engine.dimension}')
-"
-```
-
-### 4. Testing Schema Upgrade Locally
-
-```bash
-python3 -c "from server.database.db_setup import setup_database; setup_database()"
-```
-
-### 5. Running pip-audit
-
-```bash
-pip-audit  # Shows all Python package vulnerabilities
-```
-
-### 6. Running npm audit
-
-```bash
-cd locaNext && npm audit  # Shows npm vulnerabilities
+4. Trigger: echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Trigger" && git push origin main && git push gitea main
+5. Sleep 5 min: sleep 300
+6. Check status (use commands above)
+7. If failing → GOTO step 1
 ```
 
 ---
 
-## SCHEMA UPGRADE MECHANISM
+## KEY DOCS
 
-The `upgrade_schema()` function in `server/database/db_setup.py` automatically adds missing columns:
-
-```python
-missing_columns = [
-    ("ldm_translation_memories", "mode", "VARCHAR(20)", "'standard'"),
-    ("ldm_tm_entries", "string_id", "VARCHAR(255)", "NULL"),
-]
-```
-
-**Key Points:**
-- Runs during `initialize_database()` after `create_all()`
-- Inspector created INSIDE connection for fresh metadata
-- Verifies columns after adding
-- Handles race conditions gracefully
+| Doc | Purpose |
+|-----|---------|
+| [Roadmap.md](../../Roadmap.md) | Strategic priorities |
+| [P36_COVERAGE_GAPS.md](P36_COVERAGE_GAPS.md) | Coverage analysis & test plan |
+| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Open bugs (currently 0) |
+| [TROUBLESHOOTING.md](../cicd/TROUBLESHOOTING.md) | CI debug techniques |
 
 ---
 
-## OFFLINE MODE (P33) - LOCAL Authentication
-
-**How it works:**
-1. SQLite mode creates `LOCAL` user (username: "LOCAL", no password)
-2. Health endpoint returns `auto_token` for auto-login
-3. Frontend calls `tryAutoLogin()` which uses the token
-4. **No credentials needed** - fully automatic
-
----
-
-## DEV_MODE Auto-Authentication (CI Behavior)
-
-In CI, `DEV_MODE=true` enables auto-authentication on localhost:
-
-```python
-# server/utils/dependencies.py:313-317
-if config.DEV_MODE and _is_localhost(request):
-    if not credentials:
-        logger.debug("DEV_MODE: Auto-authenticating as dev_admin")
-        return _get_dev_user()  # user_id=1, username="dev_admin"
-```
-
----
-
-## FILES CHANGED THIS SESSION
-
-```
-server/database/db_setup.py
-  - Lines 173-253: Enhanced upgrade_schema() with verbose logging
-  - Adds 'mode' column to ldm_translation_memories
-  - Adds 'string_id' column to ldm_tm_entries
-```
-
----
-
-## BUILD HISTORY (Recent)
-
-| Build | Status | Issue | Fix |
-|-------|--------|-------|-----|
-| 325 | PENDING | Enhanced logging | See above |
-| 324 | FAILED | Sync 500 error | string_id added but sync fails |
-| 323 | FAILED | string_id missing | Added to upgrade_schema |
-| 322 | PASS | LIGHT build | Schema upgrade working |
-| 321 | PASS | Skip marker removed | StringID tests enabled |
-
----
-
-## KEY PATHS
-
-| What | Path |
-|------|------|
-| **Schema upgrade** | `server/database/db_setup.py:173-253` |
-| **Sync endpoint** | `server/tools/ldm/api.py:2211-2303` |
-| **TMSyncManager** | `server/tools/ldm/tm_indexer.py:1296-1920` |
-| **DEV_MODE auth** | `server/utils/dependencies.py:313-317` |
-| **TrackedOperation** | `server/utils/progress_tracker.py:226` |
-
----
-
-## QUICK COMMANDS
-
-```bash
-# Start backend
-python3 server/main.py
-
-# Trigger QA-LIGHT build
-echo "Build QA-LIGHT" >> GITEA_TRIGGER.txt
-git add -A && git commit -m "Build 325" && git push origin main && git push gitea main
-
-# Test schema upgrade locally
-python3 -c "from server.database.db_setup import setup_database; setup_database()"
-```
-
----
-
-## NEXT STEPS
-
-1. **Trigger Build 325** - Enhanced logging will show if schema upgrade executes
-2. **Analyze CI logs** - Look for "SCHEMA UPGRADE" messages
-3. **Identify root cause** - Determine why sync returns 500
-
----
-
-*Session focus: CI debugging, schema upgrade verification*
+*Session: Build 339 passed, coverage analyzed, next is LDM API tests*
