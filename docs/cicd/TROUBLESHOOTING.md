@@ -6,13 +6,26 @@
 
 ```bash
 # Get latest run number
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oP 'runs/\d+' | head -1
+curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions" | grep -oE 'actions/runs/[0-9]+' | head -1
+# Output: actions/runs/346
 
-# Stream live logs (replace 221 with run number)
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/221/jobs/1/logs" | tail -50
+# Stream live logs (replace 346 with run number, job 0=trigger, 1=tests, 2=windows)
+curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions/runs/346/jobs/1/logs" | tail -50
 
 # Filter for test results only
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/221/jobs/1/logs" | grep -E "(PASSED|FAILED|remaining)" | tail -30
+curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions/runs/346/jobs/1/logs" | grep -E "(PASSED|FAILED|passed|failed)" | tail -30
+```
+
+### Quick Build Status Check
+
+```bash
+# One-liner: Check if latest build passed
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 1')
+r = c.fetchone()
+print(f'Run {r[0]}: {\"SUCCESS\" if r[1]==1 else \"FAILURE\"} - {r[2]}')"
 ```
 
 ### Last Fail Log (After Completion) - USE DISK
