@@ -22,3 +22,4 @@ Build 341: TM search test fix
 Build QA-LIGHT
 Build 344: Verify 56 mocked tests
 Build
+Build 346: Test QA simplified workflow
