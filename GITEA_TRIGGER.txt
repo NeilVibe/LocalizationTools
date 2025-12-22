@@ -23,3 +23,4 @@ Build QA-LIGHT
 Build 344: Verify 56 mocked tests
 Build
 Build 346: Test QA simplified workflow
+Build QA FULL
