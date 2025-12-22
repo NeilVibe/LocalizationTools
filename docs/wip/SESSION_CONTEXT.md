@@ -1,22 +1,58 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-22 | **Build:** 325 (PENDING) | **Next:** 326
+**Last Updated:** 2025-12-22 09:35 | **Build:** 338 | **Next:** 339
 
 ---
 
-## CURRENT SESSION: CI FIX INVESTIGATION
+## CURRENT SESSION: STRINGID PRETRANSLATION FIX (COMPLETED!)
 
 ### Build Status
 
 | Build | Status | Issue |
 |-------|--------|-------|
-| 328 | PENDING | Fix ldm_tm_entries missing columns |
-| 327 | PASS | Traceback in 500 response (revealed root cause) |
-| 326 | PASS | Security audit fixes (5 CVEs) |
-| 325 | PASS | Enhanced schema upgrade logging |
-| 324 | FAILED | `test_01_manual_sync_tm` 500 error |
+| 338 | 2 ERRORS | Fix is_confirmed NOT NULL in bulk_copy (76 passed, 2 errors) |
+| 337 | PASS | ROOT CAUSE FIX: compute_diff missing string_id + indexed_at |
+| 336 | FAILED | Debug trace PKL save/load (found root cause!) |
+| 335 | FAILED | Fix whole_lookup variations in sync paths |
+| 334 | FAILED | Fix string_id in FAISS mapping |
 
-### Security Audit Completed (2025-12-22)
+### MAJOR FIX: StringID Pretranslation Tests NOW PASSING!
+
+**All 10 StringID pretranslation tests PASSED in Build 337/338:**
+- `test_pre_03_stringid_different` ✓
+- `test_pre_09_stringid_storage` ✓
+- `test_pre_10_multirow_stringid_matching` ✓
+
+**Root Cause Found (Build 336 debug):**
+1. `build_indexes()` wasn't setting `tm.indexed_at`
+2. So pretranslation thought TM was never indexed → called `sync()`
+3. `sync()` rebuilt whole_lookup WITHOUT string_id in entries
+4. `compute_diff()` was missing `string_id` in insert/update/unchanged lists
+
+**Fixes Applied (Build 337):**
+- Added `tm.indexed_at = datetime.now()` to `build_indexes()` (tm_indexer.py:292)
+- Added `string_id` to `insert_list`, `update_list`, `unchanged_list` in `compute_diff()` (tm_indexer.py:1550, 1561, 1578)
+
+**Fix Applied (Build 338):**
+- Added `is_confirmed` to `bulk_copy_tm_entries()` columns (db_utils.py:448, 451)
+
+### NEXT STEPS FOR NEW CLAUDE:
+
+1. Check Build 338 logs for the 2 remaining errors:
+   ```bash
+   ls -lt /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -3
+   grep -E "ERROR|error" <latest_log> | tail -20
+   ```
+
+2. If errors persist, use the AUTONOMOUS DEBUG LOOP (see below)
+
+3. Once all tests pass, update CLAUDE.md with new build number
+
+---
+
+## PREVIOUS FIXES
+
+### Security Audit (Build 326)
 
 **pip audit:** Fixed 5 packages with CVEs:
 - requests >=2.32.4 (CVE-2024-47081)
@@ -25,20 +61,10 @@
 - python-jose >=3.4.0 (PYSEC-2024-232/233)
 - setuptools >=78.1.1 (PYSEC-2025-49)
 
-**npm audit:** 3 low severity (deferred, would break @sveltejs/kit)
+### Schema Upgrade (Build 328)
 
-**Node.js warnings:** v20.18.3 < required ^20.19 (warnings only, not blocking)
-
-### Issue FIXED: test_01_manual_sync_tm 500 Error
-
-**Root Cause Found (from CI logs):** `column ldm_tm_entries.updated_at does not exist`
-
-**Fix:** Added 5 missing columns to `upgrade_schema()` in `db_setup.py`:
-- `updated_at` (TIMESTAMP NULL)
-- `updated_by` (VARCHAR(255) NULL)
-- `confirmed_at` (TIMESTAMP NULL)
-- `confirmed_by` (VARCHAR(255) NULL)
-- `is_confirmed` (BOOLEAN DEFAULT FALSE)
+Added 5 missing columns to `upgrade_schema()` in `db_setup.py`:
+- `updated_at`, `updated_by`, `confirmed_at`, `confirmed_by`, `is_confirmed`
 
 ---
 
