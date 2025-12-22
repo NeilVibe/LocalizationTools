@@ -357,19 +357,19 @@ class TestLDMTMSearch:
         """GET /api/ldm/tm/{id}/search/exact should search."""
         response = client.get(
             f"/api/ldm/tm/{tm_id}/search/exact",
-            params={"query": "테스트"}
+            params={"source": "테스트"}  # Route expects 'source', not 'query'
         )
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, (list, dict))
 
-    def test_semantic_search(self, client, tm_id):
-        """GET /api/ldm/tm/{id}/search should do semantic search."""
+    def test_pattern_search(self, client, tm_id):
+        """GET /api/ldm/tm/{id}/search should do pattern search."""
         response = client.get(
             f"/api/ldm/tm/{tm_id}/search",
-            params={"query": "테스트", "limit": 5}
+            params={"pattern": "테스트", "limit": 5}  # Route expects 'pattern', not 'query'
         )
-        # May fail if no index built - that's ok
+        # May fail if TM not found - that's ok
         assert response.status_code in [200, 400, 404, 500]
 
 
