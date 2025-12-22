@@ -1689,18 +1689,45 @@ class TMSyncManager:
             with open(line_lookup_path, 'rb') as f:
                 line_lookup = pickle.load(f)
 
-        # Add new entries to whole lookup
+        # Add new entries to whole lookup (with variations support for StringID mode)
         for entry in insert_entries:
             src = entry["source_text"]
             if not src:
                 continue
             normalized = normalize_for_hash(src)
-            if normalized and normalized not in whole_lookup:
-                whole_lookup[normalized] = {
-                    "entry_id": entry["id"],
-                    "source_text": src,
-                    "target_text": entry["target_text"]
-                }
+            if not normalized:
+                continue
+
+            entry_data = {
+                "entry_id": entry["id"],
+                "source_text": src,
+                "target_text": entry["target_text"],
+                "string_id": entry.get("string_id")
+            }
+
+            if normalized not in whole_lookup:
+                # First entry for this source
+                if entry.get("string_id"):
+                    # StringID mode: store as list of variations
+                    whole_lookup[normalized] = {
+                        "variations": [entry_data],
+                        "source_text": src
+                    }
+                else:
+                    # Standard mode: store single entry
+                    whole_lookup[normalized] = entry_data
+            else:
+                # Additional entry for same source
+                existing = whole_lookup[normalized]
+                if "variations" in existing:
+                    # Already in variations mode - append
+                    existing["variations"].append(entry_data)
+                elif entry.get("string_id"):
+                    # Convert to variations mode
+                    whole_lookup[normalized] = {
+                        "variations": [existing, entry_data],
+                        "source_text": src
+                    }
 
         # Add new entries to line lookup
         for entry in insert_entries:
@@ -1954,18 +1981,45 @@ class TMSyncManager:
                 normalize=True
             )
 
-            # Rebuild hash lookup
+            # Rebuild hash lookup (with variations support for StringID mode)
             for entry in final_entries:
                 src = entry["source_text"]
                 if not src:
                     continue
                 normalized = normalize_for_hash(src)
-                if normalized and normalized not in whole_lookup:
-                    whole_lookup[normalized] = {
-                        "entry_id": entry["id"],
-                        "source_text": src,
-                        "target_text": entry["target_text"]
-                    }
+                if not normalized:
+                    continue
+
+                entry_data = {
+                    "entry_id": entry["id"],
+                    "source_text": src,
+                    "target_text": entry["target_text"],
+                    "string_id": entry.get("string_id")
+                }
+
+                if normalized not in whole_lookup:
+                    # First entry for this source
+                    if entry.get("string_id"):
+                        # StringID mode: store as list of variations
+                        whole_lookup[normalized] = {
+                            "variations": [entry_data],
+                            "source_text": src
+                        }
+                    else:
+                        # Standard mode: store single entry
+                        whole_lookup[normalized] = entry_data
+                else:
+                    # Additional entry for same source
+                    existing = whole_lookup[normalized]
+                    if "variations" in existing:
+                        # Already in variations mode - append
+                        existing["variations"].append(entry_data)
+                    elif entry.get("string_id"):
+                        # Convert to variations mode
+                        whole_lookup[normalized] = {
+                            "variations": [existing, entry_data],
+                            "source_text": src
+                        }
             with open(self.tm_path / "hash" / "whole_lookup.pkl", 'wb') as f:
                 pickle.dump(whole_lookup, f, protocol=pickle.HIGHEST_PROTOCOL)
 
