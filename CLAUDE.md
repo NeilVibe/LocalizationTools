@@ -1,8 +1,6 @@
 # CLAUDE.md - LocaNext Navigation Hub
 
-**Version:** 2512212240 | **Build:** 315 (v25.1221.2240) | **Next:** 316 | **Issues:** 0
-
-> **KEEP THIS FILE COMPACT.** Details in linked docs.
+> **KEEP THIS FILE COMPACT.** Details in linked docs. Fast-moving info lives in SESSION_CONTEXT.md.
 
 ---
 
@@ -141,13 +139,11 @@ docs/
 
 ## Stats
 
-- **Build:** 314 (v25.1221.0012) VERIFIED | Previous: 313
 - **Tests:** ~750+ in CI (Unit: 648, Integration: 170, Security: 86, Performance: 12)
 - **Endpoints:** 65+
 - **Tools:** 4 (XLSTransfer, QuickSearch, KR Similar, LDM)
-- **Open Issues:** 0 (all verified)
 - **Languages:** 100+ (full Unicode support)
 
 ---
 
-*Last updated: 2025-12-20 16:30 | Hub file - details in linked docs*
+*Hub file - details in linked docs*
