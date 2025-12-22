@@ -53,37 +53,39 @@
 
 ---
 
-## P36: CI/CD Test Overhaul (TODO)
+## Code Coverage (P36)
 
-Reorganize tests into **beautiful blocks** for clear pipeline visualization.
+**Current:** 46% | **Target:** 70% | **Measured:** 2025-12-22
 
-| Block | Purpose | Status |
-|-------|---------|--------|
-| `db/` | Database tests | TODO |
-| `auth/` | Authentication | TODO |
-| `network/` | WebSocket, HTTP | TODO |
-| `security/` | JWT, CORS, XSS | EXISTS |
-| `processing/` | TM, embeddings, FAISS | TODO |
-| `tools/` | KR Similar, QuickSearch, XLS | TODO |
-| `logging/` | Server/client logging | TODO |
-| `ui/` | API responses, events | TODO |
-| `performance/` | Latency, throughput | NEW |
+| Component | Coverage | Target | Priority |
+|-----------|----------|--------|----------|
+| **LDM API** | 22% | 75% | CRITICAL |
+| tm_indexer | 59% | 80% | HIGH |
+| tm_manager | 29% | 70% | HIGH |
+| pretranslate | 35% | 70% | HIGH |
+| XLSTransfer | 6-21% | - | LOW (battle-tested) |
 
-**Current:** 78 files, 1357 tests (scattered)
-**Goal:** Organized blocks with clear coverage
+**What needs work:** LDM API (new code, user data)
+**What's fine:** XLSTransfer (ported from proven monolith)
 
-**Details:** [P36_CICD_TEST_OVERHAUL.md](docs/wip/P36_CICD_TEST_OVERHAUL.md)
+**Details:** [P36_COVERAGE_GAPS.md](docs/wip/P36_COVERAGE_GAPS.md)
 
 ---
 
-## CI/CD Discovery (Build 315)
+## CI/CD
 
-| Platform | Test Strategy | Tests Run |
-|----------|---------------|-----------|
-| **Gitea** | Curated essential list | ~285 tests |
-| **GitHub** | All unit/integration/e2e | ~500+ tests |
+| Platform | Tests | Notes |
+|----------|-------|-------|
+| **Gitea** | ~285 essential | Fast daily builds |
+| **GitHub** | 830+ full suite | Comprehensive |
 
-GitHub runs more comprehensive tests - caught broken `test_npc.py` that Gitea skipped!
+### Build Modes
+
+| Mode | Tests | Installer |
+|------|-------|-----------|
+| `LIGHT` | Essential | ~150MB ✅ |
+| `FULL` | Essential | ~2GB (offline) |
+| `TROUBLESHOOT` | Resume from failure | Debug mode ✅ |
 
 ---
 
@@ -201,4 +203,4 @@ git add -A && git commit -m "Build" && git push origin main && git push gitea ma
 
 ---
 
-*Build 315 | Updated 2025-12-21 | CI/CD Enhanced*
+*Strategic Roadmap | Updated 2025-12-22*
