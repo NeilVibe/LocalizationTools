@@ -1,43 +1,18 @@
 # LocaNext - Roadmap
 
-**Build:** 315 (PENDING) | **Updated:** 2025-12-21 | **Status:** CI/CD Overhaul
+> Strategic priorities and architecture. Fast-moving session info in [SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md).
 
 ---
 
-## Current Status
-
-All components operational. CI/CD cleaned up and enhanced. GitHub build in progress.
+## Component Status
 
 | Component | Status |
 |-----------|--------|
-| LDM (Language Data Manager) | WORKS (feature gap found) |
+| LDM (Language Data Manager) | WORKS |
 | XLS Transfer | WORKS |
 | Quick Search | WORKS |
 | KR Similar | WORKS |
-| CI/CD (Gitea + GitHub) | ENHANCED |
-
-### ⚠️ Feature Gap Discovered
-
-**Auto-add to TM on cell confirm is NOT IMPLEMENTED!**
-
-When user confirms a cell (Ctrl+S → status='reviewed'), it should auto-add to linked TM. Currently it only saves to DB.
-
-- **Location:** `server/tools/ldm/api.py:728-798` (`update_row`)
-- **Details:** [P36_COVERAGE_GAPS.md](docs/wip/P36_COVERAGE_GAPS.md)
-
----
-
-## Recent Completed Items
-
-| Build | Tasks Completed |
-|-------|-----------------|
-| 315 | CI/CD cleanup, fresh start, test fix |
-| 314 | UI-047 (TM status fix) |
-| 312 | UI-045 (PresenceBar tooltip) |
-| 311 | UI-044 (resizable columns) |
-| 310 | UI-042/043 (simplified PresenceBar) |
-| 308-309 | Major UI/UX cleanup (10 fixes) |
-| 307 | BUG-031 (TM upload fix), Q-001 live-tested |
+| CI/CD (Gitea + GitHub) | WORKS |
 
 ---
 

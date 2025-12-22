@@ -246,7 +246,7 @@ class FullLogicValidator:
         return float(np.dot(embeddings[0], embeddings[1]))
 
 
-def test_long_phrases(validator: FullLogicValidator) -> Tuple[int, int]:
+def run_long_phrases(validator: FullLogicValidator) -> Tuple[int, int]:
     """Test QWEN with longer phrases."""
     print("\n" + "="*80)
     print(" PART 1: LONGER PHRASE TESTS (QWEN)")
@@ -275,7 +275,7 @@ def test_long_phrases(validator: FullLogicValidator) -> Tuple[int, int]:
     return passed, failed
 
 
-def test_xls_transfer_logic() -> Tuple[int, int]:
+def run_xls_transfer_logic() -> Tuple[int, int]:
     """Test XLS Transfer code preservation."""
     print("\n" + "="*80)
     print(" PART 2: XLS TRANSFER LOGIC TESTS")
@@ -315,7 +315,7 @@ def test_xls_transfer_logic() -> Tuple[int, int]:
     return passed, failed
 
 
-def test_kr_similar_logic() -> Tuple[int, int]:
+def run_kr_similar_logic() -> Tuple[int, int]:
     """Test KR Similar structure adaptation."""
     print("\n" + "="*80)
     print(" PART 3: KR SIMILAR LOGIC TESTS")
@@ -357,7 +357,7 @@ def test_kr_similar_logic() -> Tuple[int, int]:
     return passed, failed
 
 
-def test_combined_scenarios(validator: FullLogicValidator) -> Tuple[int, int]:
+def run_combined_scenarios(validator: FullLogicValidator) -> Tuple[int, int]:
     """Test realistic combined scenarios."""
     print("\n" + "="*80)
     print(" PART 4: COMBINED REALISTIC SCENARIOS")
@@ -449,22 +449,22 @@ def main():
     total_failed = 0
 
     # Part 1: Long phrases
-    p, f = test_long_phrases(validator)
+    p, f = run_long_phrases(validator)
     total_passed += p
     total_failed += f
 
     # Part 2: XLS Transfer
-    p, f = test_xls_transfer_logic()
+    p, f = run_xls_transfer_logic()
     total_passed += p
     total_failed += f
 
     # Part 3: KR Similar
-    p, f = test_kr_similar_logic()
+    p, f = run_kr_similar_logic()
     total_passed += p
     total_failed += f
 
     # Part 4: Combined scenarios
-    p, f = test_combined_scenarios(validator)
+    p, f = run_combined_scenarios(validator)
     total_passed += p
     total_failed += f
 
