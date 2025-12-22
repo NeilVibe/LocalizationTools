@@ -1,64 +1,45 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-22 18:30 | **Build:** 345 | **Next:** 346
+**Last Updated:** 2025-12-22 22:10 | **Build:** 345 | **Next:** 346
 
 ---
 
 ## CURRENT STATE: ALL GREEN ✅
 
-### CI/CD: BOTH PLATFORMS VERIFIED
-
-| Platform | Build | Tests | Status |
-|----------|-------|-------|--------|
-| **GitHub** | 345 | 1068 passed | ✅ PASS |
-| **Gitea** | 344 | 1076 passed | ✅ PASS |
-
-### P36 COVERAGE: SUFFICIENT ✅
-
-| Route | Coverage | Status |
-|-------|----------|--------|
-| projects.py | **98%** | ✅ |
-| folders.py | **90%** | ✅ |
-| tm_entries.py | **74%** | ✅ |
-| rows.py | **68%** | ✅ |
-| tm_indexes.py | 52% | OK |
-| Complex routes | 17-52% | OK (145+ E2E) |
-
-**Mocked Tests:** 56 in `test_mocked_full.py`
-
-### P37 REFACTORING: COMPLETE ✅
-
-- No active monoliths
-- `api.py` deleted, `tm_indexer.py` split
+| Status | Value |
+|--------|-------|
+| **Open Issues** | 0 |
+| **Tests** | 1068 (GitHub) / 1076 (Gitea) |
+| **Coverage** | 47% |
+| **CI/CD** | Both verified (Build 345) |
 
 ---
 
 ## WHAT'S LEFT TO DO
 
-| Priority | Task | Status | Notes |
-|----------|------|--------|-------|
-| 1 | **CI/CD QA FULL mode** | TODO | Gitea only, offline installer (~2GB) |
-| 2 | **P25 LDM UX** | 85% done | Remaining UI polish |
+| Priority | Task | Status |
+|----------|------|--------|
+| 1 | **CI/CD QA FULL mode** | TODO |
+| 2 | **P25 LDM UX** | 85% done |
 
 ### CI/CD QA FULL Mode (Gitea Only)
-- Bundle Qwen model + all deps
+- Bundle Qwen model (~2.3GB)
 - Zero internet required on user PC
 - ~2GB installer (vs ~150MB QA)
-- All 1000+ tests run before build
 
-### P25 LDM UX (Priority 2)
-- Remaining UI improvements
+### P25 LDM UX
+- Remaining UI polish
 - 85% complete
 
 ---
 
-## COMPLETED THIS SESSION
+## LAST SESSION (2025-12-22)
 
-- [x] P36: 56 mocked tests (core routes 68-98%)
-- [x] GitHub CI fix for clean DB environments
-- [x] Build 344 verified on Gitea
-- [x] Build 345 verified on GitHub
-- [x] All docs updated
+- [x] Project cleanup: consolidated archive folders
+- [x] Moved stray root files to archive/
+- [x] Archived 5 completed WIP docs
+- [x] Deleted screenshotsForClaude/
+- [x] Updated WIP docs (README, MASTER_PLAN)
 
 ---
 
@@ -67,9 +48,9 @@
 | Doc | Purpose |
 |-----|---------|
 | [Roadmap.md](../../Roadmap.md) | Strategic priorities |
-| [P36_COVERAGE_GAPS.md](P36_COVERAGE_GAPS.md) | Coverage status |
+| [MASTER_PLAN.md](MASTER_PLAN.md) | What's done & next |
 | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Open bugs (0) |
 
 ---
 
-*Session: P36 DONE. 56 mocked tests. Build 345 verified on both platforms. Next: CI/CD FULL mode.*
+*Clean state. Next: CI/CD QA FULL mode or P25 UX polish.*

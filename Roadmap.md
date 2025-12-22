@@ -71,14 +71,12 @@ For TRUE OFFLINE deployments:
 
 | Category | Count |
 |----------|-------|
-| LDM Mocked Tests | 27 |
-| LDM Unit Tests | 89 |
+| LDM Mocked Tests | 56 |
 | Total Unit Tests | 737 |
+| Total Tests | 1068+ |
 
-**What's done:** Core CRUD routes fully mocked
-**What's fine:** Complex routes (file upload, FAISS) tested via integration
-
-**Details:** [P36_COVERAGE_GAPS.md](docs/wip/P36_COVERAGE_GAPS.md)
+**What's done:** Core CRUD routes fully mocked (68-98% coverage)
+**What's fine:** Complex routes tested via 145+ E2E tests
 
 ---
 
@@ -102,8 +100,6 @@ server/tools/ldm/
 
 ### Global Audit Results
 All large files (>500 lines) are well-organized, not true monoliths.
-
-**Details:** [P37_LDM_REFACTORING.md](docs/wip/P37_LDM_REFACTORING.md)
 
 ---
 
@@ -220,9 +216,7 @@ cd locaNext && npm run electron:dev
 ./scripts/playground_install.sh --launch --auto-login
 
 # Trigger builds
-echo "Build LIGHT" >> GITEA_TRIGGER.txt   # Gitea
-echo "Build LIGHT" >> BUILD_TRIGGER.txt   # GitHub
-git add -A && git commit -m "Build" && git push origin main && git push gitea main
+echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git push origin main && git push gitea main
 ```
 
 ---
@@ -237,4 +231,4 @@ git add -A && git commit -m "Build" && git push origin main && git push gitea ma
 
 ---
 
-*Strategic Roadmap | Updated 2025-12-22 (Build 343)*
+*Strategic Roadmap | Updated 2025-12-22 (Build 345)*
