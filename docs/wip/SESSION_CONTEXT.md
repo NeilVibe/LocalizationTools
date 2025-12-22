@@ -1,18 +1,20 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-22 17:35 | **Build:** 339 | **Next:** 340
+**Last Updated:** 2025-12-22 17:55 | **Build:** 341 | **Next:** 342
 
 ---
 
 ## CURRENT STATE
 
-### Build 339: FULL SUCCESS ✅
+### Build 341: FULL SUCCESS ✅
 
 | Job | Status | Details |
 |-----|--------|---------|
 | Check Build Trigger | ✅ | Mode: official |
-| Safety Checks | ✅ | 830 passed, 34 skipped |
-| Windows Installer | ✅ | 7 minutes, installer created |
+| Safety Checks | ✅ | All tests passed |
+| Windows Installer | ✅ | Installer created |
+
+P37 Router Wiring complete. Build 340 failed due to test param mismatch - fixed in 341.
 
 ### Code Coverage: 46%
 
@@ -108,6 +110,8 @@ Data integrity critical. Functions: `build_indexes()`, `sync()`, `compute_diff()
 
 | Build | Fix |
 |-------|-----|
+| 341 | Fixed TM search test param names (`source` and `pattern` vs `query`) |
+| 340 | P37 Router Wiring Complete - main.py uses modular router.py |
 | 339 | Renamed `test_*` to `run_*` in standalone script (pytest fixture error) |
 | 338 | Added `is_confirmed` to `bulk_copy_tm_entries()` |
 | 337 | ROOT CAUSE: `compute_diff()` missing string_id + `indexed_at` not set |
