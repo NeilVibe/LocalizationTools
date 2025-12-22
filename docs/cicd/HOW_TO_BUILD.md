@@ -4,21 +4,23 @@
 
 ---
 
-## 3 Build Modes
+## Build Modes
 
-| Mode | Trigger | Description |
-|------|---------|-------------|
-| **Build LIGHT** | `Build LIGHT - desc` | Full official build (~200MB) |
-| **Build FULL** | `Build FULL - desc` | Same + bundled AI model (~2GB) |
-| **TROUBLESHOOT** | `TROUBLESHOOT` | Smart checkpoint: resume from last failure |
+| Mode | Trigger | Platform | Description |
+|------|---------|----------|-------------|
+| **QA** | `Build QA` | Both | ALL tests + light installer (~150MB) |
+| **QA FULL** | `Build QA FULL` | Gitea only | ALL tests + offline installer (~2GB) [TODO] |
+| **TROUBLESHOOT** | `TROUBLESHOOT` | Both | Smart checkpoint: resume from last failure |
+
+**QA is the default.** Workers technology makes 1000+ tests fast.
 
 ---
 
 ## Quick Start
 
 ```bash
-# Official build
-echo "Build LIGHT - feature X" >> GITEA_TRIGGER.txt
+# QA build (default - all tests)
+echo "Build QA" >> GITEA_TRIGGER.txt
 git add -A && git commit -m "Build" && git push origin main && git push gitea main
 
 # Troubleshoot mode (saves checkpoint on failure)
@@ -53,7 +55,7 @@ git add -A && git commit -m "Troubleshoot" && git push origin main && git push g
 │     ↓                                                            │
 │  6. Repeat 3-5 until all tests pass                              │
 │     ↓                                                            │
-│  7. When done: Build LIGHT (official clean build)                │
+│  7. When done: Build QA (official clean build)                   │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -66,8 +68,8 @@ git add -A && git commit -m "Troubleshoot" && git push origin main && git push g
 
 | Mode | Checkpoint | Build Artifact | Use Case |
 |------|------------|----------------|----------|
-| Build LIGHT | Clears | Yes (ZIP) | Official release |
-| Build FULL | Clears | Yes (ZIP+model) | Full release |
+| QA | Clears | Yes (~150MB) | Official release |
+| QA FULL | Clears | Yes (~2GB) | Offline release (Gitea only) |
 | TROUBLESHOOT | Saves/Resumes | No | Fast debugging iteration |
 
 ---
@@ -75,15 +77,15 @@ git add -A && git commit -m "Troubleshoot" && git push origin main && git push g
 ## What Happens
 
 ```
-You push "Build LIGHT"
+You push "Build QA"
          ↓
 Pipeline generates version: 25.1213.1640
          ↓
 Injects into all files automatically
          ↓
-Runs 900+ tests
+Runs 1000+ tests
          ↓
-Builds Windows portable ZIP
+Builds Windows installer (.exe)
          ↓
 Done! Artifact in installer_output/
 ```
@@ -114,4 +116,4 @@ cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep -E "FAILED|
 
 ---
 
-*Last updated: 2025-12-13*
+*Last updated: 2025-12-22*

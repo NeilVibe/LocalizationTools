@@ -37,20 +37,16 @@
 
 | Priority | Task | Status | Notes |
 |----------|------|--------|-------|
-| 1 | **CI/CD FULL mode** | TODO | Offline installer (~2GB) |
-| 2 | **CI/CD QA-FULL mode** | TODO | All tests + offline installer |
-| 3 | **P25 LDM UX** | 85% done | Remaining UI polish |
+| 1 | **CI/CD QA FULL mode** | TODO | Gitea only, offline installer (~2GB) |
+| 2 | **P25 LDM UX** | 85% done | Remaining UI polish |
 
-### CI/CD FULL Mode (Priority 1)
+### CI/CD QA FULL Mode (Gitea Only)
 - Bundle Qwen model + all deps
 - Zero internet required on user PC
-- ~2GB installer vs ~150MB LIGHT
+- ~2GB installer (vs ~150MB QA)
+- All 1000+ tests run before build
 
-### CI/CD QA-FULL Mode (Priority 2)
-- All 1500+ tests before FULL build
-- PRISTINE offline release
-
-### P25 LDM UX (Priority 3)
+### P25 LDM UX (Priority 2)
 - Remaining UI improvements
 - 85% complete
 
