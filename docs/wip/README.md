@@ -1,6 +1,6 @@
 # WIP - Work In Progress
 
-**Updated:** 2025-12-22 | **Build:** 343
+**Updated:** 2025-12-22 | **Build:** 345
 
 ---
 
@@ -15,7 +15,7 @@
 | Status | Value |
 |--------|-------|
 | **Open Issues** | 0 |
-| **Tests Passing** | 1068 (GitHub) / 950+ (Gitea) |
+| **Tests Passing** | 1068 (GitHub) / 1076 (Gitea) |
 | **Coverage** | 47% (target 70%) |
 | **Monoliths** | 0 |
 | **CI/CD** | Both platforms verified |
@@ -26,19 +26,8 @@
 
 | Priority | Task | Status |
 |----------|------|--------|
-| **P36** | Coverage (56 mocked tests) | ✅ SUFFICIENT |
 | **CI/CD** | Implement QA FULL mode | TODO (Gitea only) |
 | **P25** | LDM UX Overhaul | 85% done |
-
-### P36 Coverage Status
-
-| Route | Coverage | Status |
-|-------|----------|--------|
-| projects.py | 98% | ✅ |
-| folders.py | 90% | ✅ |
-| tm_entries.py | 74% | ✅ |
-| rows.py | 68% | ✅ |
-| Complex routes | 17-52% | OK (E2E covered) |
 
 ---
 
@@ -49,30 +38,39 @@
 | **[MASTER_PLAN.md](MASTER_PLAN.md)** | What's done & what's next |
 | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Session handoff state |
 | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker (0 open) |
-| [P36_COVERAGE_GAPS.md](P36_COVERAGE_GAPS.md) | Coverage improvement plan |
+| [P36_COVERAGE_GAPS.md](P36_COVERAGE_GAPS.md) | Coverage status |
 | [P36_TEST_MAPPING.md](P36_TEST_MAPPING.md) | Test file mapping |
-
----
-
-## Completed (Archive Candidates)
-
-| File | Status |
-|------|--------|
-| P37_LDM_REFACTORING.md | COMPLETE - Code clean |
-| FAISS_OPTIMIZATION_PLAN.md | COMPLETE - Performance optimized |
-| MODEL2VEC_BENCHMARK.md | COMPLETE - Model2Vec integrated |
-| P36_VALIDATION_CHECKLIST.md | COMPLETE |
-| P36_CICD_TEST_OVERHAUL.md | COMPLETE |
 
 ---
 
 ## Future Features
 
-| File | Status |
-|------|--------|
-| FEAT-001_AUTO_TM_DESIGN.md | Design doc for Auto-TM |
-| P25_LDM_UX_OVERHAUL.md | 85% done |
-| IDEAS_FUTURE.md | Future ideas |
+| File | Purpose |
+|------|---------|
+| [P25_LDM_UX_OVERHAUL.md](P25_LDM_UX_OVERHAUL.md) | 85% done - UI polish |
+| [IDEAS_FUTURE.md](IDEAS_FUTURE.md) | NPC feature (approved) |
+| [FEAT-001_AUTO_TM_DESIGN.md](FEAT-001_AUTO_TM_DESIGN.md) | Auto-TM design (implemented) |
+
+---
+
+## Reference Docs
+
+| File | Purpose |
+|------|---------|
+| [FAST_SEARCH_ALTERNATIVES.md](FAST_SEARCH_ALTERNATIVES.md) | Search tech options |
+| [WSL_INTEROP.md](WSL_INTEROP.md) | WSL/Windows interop |
+| [POTENTIAL_ISSUES.md](POTENTIAL_ISSUES.md) | Known edge cases |
+
+---
+
+## Archived
+
+Completed docs moved to `docs/history/wip-archive/`:
+- P37_LDM_REFACTORING.md
+- FAISS_OPTIMIZATION_PLAN.md
+- MODEL2VEC_BENCHMARK.md
+- P36_VALIDATION_CHECKLIST.md
+- P36_CICD_TEST_OVERHAUL.md
 
 ---
 
