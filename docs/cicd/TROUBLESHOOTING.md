@@ -421,6 +421,75 @@ If it only passes in isolation, the fix is incomplete.
 
 ---
 
+## Check Job Status via Database (When Logs Are Missing)
+
+When log files haven't appeared yet or you need to check if jobs are running/waiting/blocked:
+
+### Query Job Status Directly
+
+```bash
+python3 -c "
+import sqlite3
+conn = sqlite3.connect('/home/neil1988/gitea/data/gitea.db')
+cursor = conn.cursor()
+
+# Get latest runs
+cursor.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
+print('Recent runs:')
+for row in cursor.fetchall():
+    status_map = {1: 'success', 2: 'failure', 3: 'cancelled', 4: 'skipped'}
+    print(f'  Run {row[0]}: {status_map.get(row[1], f\"status={row[1]}\")} - {row[2]}')
+conn.close()
+"
+```
+
+### Check Individual Job Status
+
+```bash
+python3 -c "
+import sqlite3
+conn = sqlite3.connect('/home/neil1988/gitea/data/gitea.db')
+cursor = conn.cursor()
+
+# Replace 346 with your run ID
+run_id = 346
+cursor.execute('SELECT name, status, started, stopped FROM action_run_job WHERE run_id = ?', (run_id,))
+print(f'Jobs for run {run_id}:')
+for job in cursor.fetchall():
+    status_map = {1: 'success', 2: 'failure', 4: 'skipped'}
+    has_run = 'completed' if job[3] else ('running' if job[2] else 'waiting')
+    print(f'  {job[0]}: {status_map.get(job[1], f\"status={job[1]}\")} ({has_run})')
+conn.close()
+"
+```
+
+### When to Use This
+
+| Scenario | Use |
+|----------|-----|
+| Log file not appearing | Check if job is queued/running |
+| Windows build status unclear | Check if job completed |
+| Run seems stuck | Verify job state in database |
+
+### Status Values
+
+| Run Status | Meaning |
+|------------|---------|
+| 1 | Success / In Progress |
+| 2 | Failure |
+| 3 | Cancelled |
+| 4 | Skipped |
+
+| Job Status | Meaning |
+|------------|---------|
+| 1 | Success |
+| 2 | Failure |
+| 4 | Skipped |
+
+**Tip:** Check `started` and `stopped` timestamps - if both exist, job completed.
+
+---
+
 ## Quick Diagnosis
 
 ```
@@ -434,4 +503,4 @@ BUILD FAILED
 
 ---
 
-*Last updated: 2025-12-18*
+*Last updated: 2025-12-22*
