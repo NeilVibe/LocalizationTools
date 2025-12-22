@@ -48,3 +48,4 @@ Build LIGHT
 Build LIGHT - Test fix
 Build LIGHT
 Build LIGHT - Fix GitHub CI for clean DB environments
+Build LIGHT - Verify 56 mocked tests
