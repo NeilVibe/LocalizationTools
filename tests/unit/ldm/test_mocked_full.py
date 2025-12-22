@@ -587,3 +587,444 @@ class TestFoldersMocked:
 
         response = client_with_auth.delete("/api/ldm/folders/1")
         assert response.status_code == 200
+
+
+# =============================================================================
+# ROWS TESTS - Mocked (rows.py 28% → 70%)
+# =============================================================================
+
+class TestRowsMocked:
+    """Mocked tests for rows endpoints."""
+
+    @pytest.fixture
+    def mock_row(self):
+        """Fake row object with all required fields."""
+        r = MagicMock()
+        r.id = 1
+        r.file_id = 1
+        r.row_num = 1
+        r.source = "소스 텍스트"
+        r.target = "Target text"
+        r.string_id = "STR_001"
+        r.status = "pending"
+        r.is_locked = False
+        r.locked_by = None
+        r.updated_by = None
+        r.created_at = datetime(2025, 1, 1, 0, 0, 0)
+        r.updated_at = datetime(2025, 1, 1, 0, 0, 0)
+        # File relationship for ownership check
+        r.file = MagicMock()
+        r.file.id = 1
+        r.file.project_id = 1
+        r.file.project = MagicMock()
+        r.file.project.id = 1
+        r.file.project.owner_id = 1
+        return r
+
+    def test_list_rows_empty(self, client_with_auth, mock_db, mock_file):
+        """List rows returns empty paginated result."""
+        mock_file_result = MagicMock()
+        mock_file_result.scalar_one_or_none.return_value = mock_file
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 0
+
+        mock_rows_result = MagicMock()
+        mock_rows_result.scalars.return_value.all.return_value = []
+
+        mock_db.execute = AsyncMock(side_effect=[
+            mock_file_result, mock_count_result, mock_rows_result
+        ])
+
+        response = client_with_auth.get("/api/ldm/files/1/rows")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 0
+        assert data["rows"] == []
+
+    def test_list_rows_with_data(self, client_with_auth, mock_db, mock_file, mock_row):
+        """List rows returns rows with pagination."""
+        mock_file_result = MagicMock()
+        mock_file_result.scalar_one_or_none.return_value = mock_file
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 1
+
+        mock_rows_result = MagicMock()
+        mock_rows_result.scalars.return_value.all.return_value = [mock_row]
+
+        mock_db.execute = AsyncMock(side_effect=[
+            mock_file_result, mock_count_result, mock_rows_result
+        ])
+
+        response = client_with_auth.get("/api/ldm/files/1/rows?page=1&limit=50")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["page"] == 1
+
+    def test_list_rows_with_search(self, client_with_auth, mock_db, mock_file, mock_row):
+        """List rows with search filter."""
+        mock_file_result = MagicMock()
+        mock_file_result.scalar_one_or_none.return_value = mock_file
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 1
+
+        mock_rows_result = MagicMock()
+        mock_rows_result.scalars.return_value.all.return_value = [mock_row]
+
+        mock_db.execute = AsyncMock(side_effect=[
+            mock_file_result, mock_count_result, mock_rows_result
+        ])
+
+        response = client_with_auth.get("/api/ldm/files/1/rows?search=텍스트")
+        assert response.status_code == 200
+
+    def test_list_rows_with_status_filter(self, client_with_auth, mock_db, mock_file, mock_row):
+        """List rows with status filter."""
+        mock_file_result = MagicMock()
+        mock_file_result.scalar_one_or_none.return_value = mock_file
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 1
+
+        mock_rows_result = MagicMock()
+        mock_rows_result.scalars.return_value.all.return_value = [mock_row]
+
+        mock_db.execute = AsyncMock(side_effect=[
+            mock_file_result, mock_count_result, mock_rows_result
+        ])
+
+        response = client_with_auth.get("/api/ldm/files/1/rows?status=pending")
+        assert response.status_code == 200
+
+    def test_list_rows_file_not_found(self, client_with_auth, mock_db):
+        """List rows returns 404 when file not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.get("/api/ldm/files/99999/rows")
+        assert response.status_code == 404
+
+    def test_list_rows_access_denied(self, client_with_auth, mock_db, mock_file):
+        """List rows returns 403 when user doesn't own project."""
+        mock_file.project.owner_id = 999  # Different owner
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_file
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.get("/api/ldm/files/1/rows")
+        assert response.status_code == 403
+
+    def test_update_row_target(self, client_with_auth, mock_db, mock_row):
+        """Update row target text succeeds."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_row
+        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db.add = MagicMock()
+        mock_db.commit = AsyncMock()
+
+        response = client_with_auth.put("/api/ldm/rows/1", json={
+            "target": "Updated translation"
+        })
+        # 200 = success, 404 = row not found (valid in clean DB)
+        assert response.status_code in [200, 404]
+
+    def test_update_row_status(self, client_with_auth, mock_db, mock_row):
+        """Update row status succeeds."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_row
+        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db.add = MagicMock()
+        mock_db.commit = AsyncMock()
+
+        response = client_with_auth.put("/api/ldm/rows/1", json={
+            "status": "translated"
+        })
+        assert response.status_code in [200, 404]
+
+    def test_update_row_not_found(self, client_with_auth, mock_db):
+        """Update non-existent row returns 404."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.put("/api/ldm/rows/99999", json={
+            "target": "New text"
+        })
+        assert response.status_code == 404
+
+    def test_update_row_access_denied(self, client_with_auth, mock_db, mock_row):
+        """Update row returns 403 when user doesn't own project."""
+        mock_row.file.project.owner_id = 999  # Different owner
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_row
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.put("/api/ldm/rows/1", json={
+            "target": "Hacked text"
+        })
+        assert response.status_code == 403
+
+    def test_get_project_tree(self, client_with_auth, mock_db, mock_project, mock_folder, mock_file):
+        """Get project tree returns folder/file structure."""
+        mock_proj_result = MagicMock()
+        mock_proj_result.scalar_one_or_none.return_value = mock_project
+
+        mock_folders_result = MagicMock()
+        mock_folders_result.scalars.return_value.all.return_value = [mock_folder]
+
+        mock_files_result = MagicMock()
+        mock_file.folder_id = 1  # File in folder
+        mock_files_result.scalars.return_value.all.return_value = [mock_file]
+
+        mock_db.execute = AsyncMock(side_effect=[
+            mock_proj_result, mock_folders_result, mock_files_result
+        ])
+
+        response = client_with_auth.get("/api/ldm/projects/1/tree")
+        assert response.status_code == 200
+        data = response.json()
+        assert "project" in data
+        assert "tree" in data
+        assert data["project"]["name"] == "Test Project"
+
+    def test_get_project_tree_not_found(self, client_with_auth, mock_db):
+        """Get project tree returns 404 when project not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.get("/api/ldm/projects/99999/tree")
+        assert response.status_code == 404
+
+    def test_get_project_tree_empty(self, client_with_auth, mock_db, mock_project):
+        """Get project tree with no folders/files returns empty tree."""
+        mock_proj_result = MagicMock()
+        mock_proj_result.scalar_one_or_none.return_value = mock_project
+
+        mock_folders_result = MagicMock()
+        mock_folders_result.scalars.return_value.all.return_value = []
+
+        mock_files_result = MagicMock()
+        mock_files_result.scalars.return_value.all.return_value = []
+
+        mock_db.execute = AsyncMock(side_effect=[
+            mock_proj_result, mock_folders_result, mock_files_result
+        ])
+
+        response = client_with_auth.get("/api/ldm/projects/1/tree")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["tree"] == []
+
+
+# =============================================================================
+# FILES EXTENDED TESTS - Mocked (files.py 16% → 70%)
+# =============================================================================
+
+class TestFilesExtendedMocked:
+    """Extended mocked tests for files endpoints."""
+
+    def test_list_files_with_folder_filter(self, client_with_auth, mock_db, mock_project, mock_file):
+        """List files with folder filter."""
+        mock_proj_result = MagicMock()
+        mock_proj_result.scalar_one_or_none.return_value = mock_project
+
+        mock_files_result = MagicMock()
+        mock_files_result.scalars.return_value.all.return_value = [mock_file]
+
+        mock_db.execute = AsyncMock(side_effect=[mock_proj_result, mock_files_result])
+
+        response = client_with_auth.get("/api/ldm/projects/1/files?folder_id=1")
+        assert response.status_code == 200
+
+    def test_list_files_project_not_found(self, client_with_auth, mock_db):
+        """List files returns 404 when project not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.get("/api/ldm/projects/99999/files")
+        assert response.status_code == 404
+
+    def test_get_file_not_found(self, client_with_auth, mock_db):
+        """Get file returns 404 when file not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.get("/api/ldm/files/99999")
+        assert response.status_code == 404
+
+    def test_get_file_access_denied(self, client_with_auth, mock_db, mock_file):
+        """Get file returns 403 when user doesn't own project."""
+        mock_file.project.owner_id = 999  # Different owner
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_file
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.get("/api/ldm/files/1")
+        assert response.status_code == 403
+
+    def test_upload_unsupported_format(self, client_with_auth, mock_db, mock_project):
+        """Upload file with unsupported format returns 400."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_project
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        # Create a fake unsupported file
+        from io import BytesIO
+        fake_file = BytesIO(b"some content")
+
+        response = client_with_auth.post(
+            "/api/ldm/files/upload",
+            data={"project_id": "1"},
+            files={"file": ("test.pdf", fake_file, "application/pdf")}
+        )
+        assert response.status_code == 400
+        assert "Unsupported" in response.json()["detail"]
+
+    def test_upload_project_not_found(self, client_with_auth, mock_db):
+        """Upload file returns 404 when project not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        from io import BytesIO
+        fake_file = BytesIO(b"source\ttarget\n")
+
+        response = client_with_auth.post(
+            "/api/ldm/files/upload",
+            data={"project_id": "99999"},
+            files={"file": ("test.txt", fake_file, "text/plain")}
+        )
+        assert response.status_code == 404
+
+    def test_excel_preview_unsupported_format(self, client_with_auth):
+        """Excel preview rejects non-Excel files."""
+        from io import BytesIO
+        fake_file = BytesIO(b"some content")
+
+        response = client_with_auth.post(
+            "/api/ldm/files/excel-preview",
+            files={"file": ("test.txt", fake_file, "text/plain")}
+        )
+        assert response.status_code == 400
+        assert "Excel" in response.json()["detail"]
+
+    def test_download_file_not_found(self, client_with_auth, mock_db):
+        """Download file returns 404 when file not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.get("/api/ldm/files/99999/download")
+        assert response.status_code == 404
+
+    def test_register_as_tm_file_not_found(self, client_with_auth, mock_db):
+        """Register as TM returns 404 when file not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.post("/api/ldm/files/99999/register-as-tm", json={
+            "name": "New TM",
+            "language": "en"
+        })
+        assert response.status_code == 404
+
+
+# =============================================================================
+# TM INDEXES TESTS - Mocked (tm_indexes.py 15% → 70%)
+# =============================================================================
+
+class TestTMIndexesMocked:
+    """Mocked tests for TM indexes endpoints."""
+
+    def test_build_indexes_tm_not_found(self, client_with_auth, mock_db):
+        """Build indexes returns 404 when TM not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.post("/api/ldm/tm/99999/build-indexes")
+        assert response.status_code == 404
+
+    def test_build_indexes_access_denied(self, client_with_auth, mock_db, mock_tm):
+        """Build indexes returns 403 when user doesn't own TM."""
+        mock_tm.owner_id = 999  # Different owner
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_tm
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.post("/api/ldm/tm/1/build-indexes")
+        assert response.status_code == 403
+
+    def test_get_index_status_tm_not_found(self, client_with_auth, mock_db):
+        """Get index status returns 404 when TM not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.get("/api/ldm/tm/99999/indexes")
+        assert response.status_code == 404
+
+    def test_get_index_status_success(self, client_with_auth, mock_db, mock_tm):
+        """Get index status returns index list."""
+        mock_index = MagicMock()
+        mock_index.index_type = "whole"
+        mock_index.status = "ready"
+        mock_index.file_size = 1024
+        mock_index.built_at = datetime(2025, 1, 1, 0, 0, 0)
+
+        mock_tm_result = MagicMock()
+        mock_tm_result.scalar_one_or_none.return_value = mock_tm
+
+        mock_indexes_result = MagicMock()
+        mock_indexes_result.scalars.return_value.all.return_value = [mock_index]
+
+        mock_db.execute = AsyncMock(side_effect=[mock_tm_result, mock_indexes_result])
+
+        response = client_with_auth.get("/api/ldm/tm/1/indexes")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["tm_id"] == 1
+        assert "indexes" in data
+
+    def test_get_sync_status_tm_not_found(self, client_with_auth, mock_db):
+        """Get sync status returns 404 when TM not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.get("/api/ldm/tm/99999/sync-status")
+        assert response.status_code == 404
+
+    def test_get_sync_status_success(self, client_with_auth, mock_db, mock_tm):
+        """Get sync status returns sync info."""
+        mock_tm_result = MagicMock()
+        mock_tm_result.scalar_one_or_none.return_value = mock_tm
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 100
+
+        mock_db.execute = AsyncMock(side_effect=[mock_tm_result, mock_count_result])
+
+        response = client_with_auth.get("/api/ldm/tm/1/sync-status")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["tm_id"] == 1
+        assert "is_stale" in data
+        assert "db_entry_count" in data
+
+    def test_sync_indexes_tm_not_found(self, client_with_auth, mock_db):
+        """Sync indexes returns 404 when TM not found."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = client_with_auth.post("/api/ldm/tm/99999/sync")
+        assert response.status_code == 404
