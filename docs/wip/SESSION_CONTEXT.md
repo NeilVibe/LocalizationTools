@@ -1,20 +1,18 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-22 09:35 | **Build:** 338 | **Next:** 339
+**Last Updated:** 2025-12-22 10:15 | **Build:** 339 | **Next:** 340
 
 ---
 
-## CURRENT SESSION: STRINGID PRETRANSLATION FIX (COMPLETED!)
+## CURRENT SESSION: CI FIX COMPLETE
 
 ### Build Status
 
 | Build | Status | Issue |
 |-------|--------|-------|
+| 339 | PASS ✅ | Fix pytest fixture error - renamed test_* to run_* in standalone script |
 | 338 | 2 ERRORS | Fix is_confirmed NOT NULL in bulk_copy (76 passed, 2 errors) |
 | 337 | PASS | ROOT CAUSE FIX: compute_diff missing string_id + indexed_at |
-| 336 | FAILED | Debug trace PKL save/load (found root cause!) |
-| 335 | FAILED | Fix whole_lookup variations in sync paths |
-| 334 | FAILED | Fix string_id in FAISS mapping |
 
 ### MAJOR FIX: StringID Pretranslation Tests NOW PASSING!
 
