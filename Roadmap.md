@@ -18,14 +18,15 @@
 
 ## CI/CD Build Modes
 
-### Strategy (2025-12-22)
+### Strategy (2025-12-23)
 
-**QA is the ONLY mode.** Workers technology makes full test suite fast.
+**DEV mode is DEAD.** Workers technology made full test suite so fast that we now run ALL 1000+ tests on every build. No more skipping tests.
 
-| Platform | Default | Offline | Notes |
-|----------|---------|---------|-------|
-| **GitHub** | QA | N/A | LFS limits prevent offline bundle |
-| **Gitea** | QA | QA FULL | Self-hosted, no limits |
+| What Changed | Before | After |
+|--------------|--------|-------|
+| **Default mode** | DEV (skip tests) | QA (all tests) |
+| **Test time** | "Too slow" | Fast (workers) |
+| **Modes** | DEV, QA, TROUBLESHOOT | QA, QA FULL, TROUBLESHOOT |
 
 ### Build Modes
 
@@ -35,7 +36,16 @@
 | `QA FULL` | **ALL 1000+** | ~2GB+ | Gitea only |
 | `TROUBLESHOOT` | Resume | Debug | Both |
 
-### QA FULL Mode (Gitea Only)
+### Platform Summary
+
+| Platform | Default | Offline | Notes |
+|----------|---------|---------|-------|
+| **GitHub** | QA | N/A | LFS limits prevent offline bundle |
+| **Gitea** | QA | QA FULL | Self-hosted, no limits |
+
+### QA FULL Mode
+
+**GITEA ONLY. Never GitHub.** Too complicated + LFS bandwidth limits.
 
 For TRUE OFFLINE deployments:
 - Bundles Qwen model (2.3GB)
@@ -231,4 +241,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2025-12-22 (Build 345)*
+*Strategic Roadmap | Updated 2025-12-23 (Build 345)*

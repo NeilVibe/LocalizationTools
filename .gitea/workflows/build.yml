@@ -1,13 +1,15 @@
 # ============================================================================
 # LocaNext Build Pipeline - Gitea Actions
 # ============================================================================
-# 6 MODES:
-#   - Build LIGHT:    Essential tests (~285), light installer (~200MB)
-#   - Build FULL:     Essential tests (~285), full installer (~2GB)
-#   - Build QA-LIGHT: ALL tests (~1000+), light installer (~200MB) ~30min
-#   - Build QA-FULL:  ALL tests (~1000+), full installer (~2GB) ~45min
-#   - TROUBLESHOOT:   Smart checkpoint mode (resume from last failure)
-#   - TROUBLESHOOT_WINDOWS: Skip Linux tests, run Windows build only
+# DEV MODE IS DEAD. Workers make all tests fast. QA is now the only mode.
+#
+# 3 MODES:
+#   - Build / Build QA:  ALL tests (~1000+), light installer (~150MB) - DEFAULT
+#   - Build QA FULL:     ALL tests (~1000+), offline installer (~2GB) - GITEA ONLY
+#   - TROUBLESHOOT:      Smart checkpoint mode (resume from last failure)
+#
+# QA FULL bundles: Qwen model (2.3GB) + VC++ Redist + all deps
+# GitHub CANNOT run QA FULL (LFS limits). Gitea only.
 #
 # VERSION: Auto-generated YY.MMDD.HHMM format (Pipeline Executive Power)
 # CHECKPOINT: Stored at /home/neil1988/.locanext_checkpoint (persistent)
@@ -48,7 +50,13 @@ jobs:
       - name: Check GITEA_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build (QA-LIGHT|QA-FULL|LIGHT|FULL)|^TROUBLESHOOT|^TROUBLESHOOT_WINDOWS" | tail -1)
+          # ============================================================
+          # DEV MODE IS DEAD. QA is now the only mode.
+          # - "Build" or "Build QA" = QA mode (all tests, light installer)
+          # - "Build QA FULL" = QA FULL mode (all tests, offline installer)
+          # - "TROUBLESHOOT" = checkpoint mode
+          # ============================================================
+          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build( QA)?( FULL)?$|^TROUBLESHOOT" | tail -1)
           echo "Trigger line: $TRIGGER"
 
           if [ -n "$TRIGGER" ]; then
@@ -60,15 +68,10 @@ jobs:
             echo "[OK] Auto-generated version: $VERSION"
 
             # ============================================================
-            # 4 MODES: Build LIGHT, Build FULL, TROUBLESHOOT, TROUBLESHOOT_WINDOWS
+            # 3 MODES: Build (QA), Build QA FULL, TROUBLESHOOT
             # ============================================================
 
-            if echo "$TRIGGER" | grep -q "^TROUBLESHOOT_WINDOWS"; then
-              echo "mode=troubleshoot_windows" >> $GITHUB_OUTPUT
-              echo "skip_build=yes" >> $GITHUB_OUTPUT
-              echo "skip_linux=yes" >> $GITHUB_OUTPUT
-              echo "[TROUBLESHOOT_WINDOWS] Skip Linux tests, Windows build only"
-            elif echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
+            if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
               echo "skip_build=yes" >> $GITHUB_OUTPUT
               echo "skip_linux=no" >> $GITHUB_OUTPUT
@@ -80,19 +83,17 @@ jobs:
               echo "[OFFICIAL] Full clean build"
             fi
 
-            # Detect QA mode
-            if echo "$TRIGGER" | grep -q "^Build QA"; then
-              echo "qa_mode=true" >> $GITHUB_OUTPUT
-              echo "[QA MODE] Running ALL tests (~1000+)"
-            else
-              echo "qa_mode=false" >> $GITHUB_OUTPUT
-            fi
+            # QA MODE IS ALWAYS ON (DEV mode is dead)
+            echo "qa_mode=true" >> $GITHUB_OUTPUT
+            echo "[QA MODE] Running ALL tests (~1000+) - this is now the default"
 
-            # Detect FULL vs LIGHT (including QA variants)
-            if echo "$TRIGGER" | grep -q "FULL"; then
+            # Detect QA FULL (offline installer with bundled model)
+            if echo "$TRIGGER" | grep -q "QA FULL"; then
               echo "build_type=FULL" >> $GITHUB_OUTPUT
+              echo "[QA FULL] Building offline installer (~2GB) with bundled Qwen model"
             else
               echo "build_type=LIGHT" >> $GITHUB_OUTPUT
+              echo "[QA] Building light installer (~150MB)"
             fi
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
@@ -1307,6 +1308,42 @@ jobs:
         shell: powershell
 
       # ============================================================
+      # STEP 2.6: Add Models to extraResources (FULL BUILD ONLY)
+      # Modifies package.json to include bundled model in installer
+      # ============================================================
+      - name: Add Models to extraResources (FULL only)
+        if: needs.check-build-trigger.outputs.build_type == 'FULL'
+        run: |
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host "  ADDING MODELS TO INSTALLER (FULL BUILD)" -ForegroundColor Cyan
+          Write-Host "============================================" -ForegroundColor Cyan
+
+          $pkgPath = "locaNext/package.json"
+          $pkg = Get-Content $pkgPath -Raw | ConvertFrom-Json
+
+          # Add models to extraResources
+          $modelsResource = @{
+            from = "../models"
+            to = "models"
+            filter = @("**/*")
+          }
+
+          # Check if models already in extraResources
+          $hasModels = $pkg.build.extraResources | Where-Object { $_.to -eq "models" }
+          if (!$hasModels) {
+            $pkg.build.extraResources += $modelsResource
+            $pkg | ConvertTo-Json -Depth 10 | Set-Content $pkgPath -Encoding UTF8
+            Write-Host "[OK] Added models to extraResources" -ForegroundColor Green
+          } else {
+            Write-Host "[SKIP] Models already in extraResources" -ForegroundColor Yellow
+          }
+
+          # Verify model size
+          $modelSize = [math]::Round((Get-ChildItem "models" -Recurse | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+          Write-Host "[INFO] Model bundle size: $modelSize GB" -ForegroundColor Cyan
+        shell: powershell
+
+      # ============================================================
       # STEP 3: Build Electron app
       # ============================================================
       - name: Install Node Dependencies
@@ -2012,7 +2049,16 @@ jobs:
           Write-Host "  CLEANING UP OLD RELEASES" -ForegroundColor Cyan
           Write-Host "============================================" -ForegroundColor Cyan
 
-          $MAX_RELEASES = 10  # Keep last 10 releases (~1GB max for LIGHT builds)
+          # DISK TERRORISM PREVENTION
+          # FULL builds are ~2GB each, LIGHT builds are ~150MB each
+          # Keep fewer FULL releases to prevent disk bloat
+          $buildType = "${{ needs.check-build-trigger.outputs.build_type }}"
+          if ($buildType -eq "FULL") {
+            $MAX_RELEASES = 3   # 3 x 2GB = 6GB max for FULL releases
+            Write-Host "[QA FULL] Keeping only 3 releases (2GB each = 6GB max)" -ForegroundColor Yellow
+          } else {
+            $MAX_RELEASES = 10  # 10 x 150MB = 1.5GB max for LIGHT releases
+          }
           $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
           $GITEA_REPO = "neilvibe/LocaNext"
 

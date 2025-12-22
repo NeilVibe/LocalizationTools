@@ -453,13 +453,21 @@ export async function runFirstRunSetup(paths) {
       sendProgress('deps', 'done', 100, 'Skipped (not found)');
     }
 
-    // Step 2: Download AI model
-    const downloadModelScript = path.join(toolsDir, 'download_model.py');
-    if (fs.existsSync(downloadModelScript)) {
-      await runPythonScript(pythonExe, downloadModelScript, 'model');
+    // Step 2: Download AI model (skip if bundled in QA FULL build)
+    const modelConfig = path.join(paths.modelsPath, 'qwen-embedding', 'config.json');
+    if (fs.existsSync(modelConfig)) {
+      // QA FULL build: model already bundled, skip download
+      logger.info('Model already bundled (QA FULL build), skipping download');
+      sendProgress('model', 'done', 100, 'Model bundled (offline installer)');
     } else {
-      logger.warning('download_model.py not found, skipping');
-      sendProgress('model', 'done', 100, 'Skipped (not found)');
+      // LIGHT build: need to download model
+      const downloadModelScript = path.join(toolsDir, 'download_model.py');
+      if (fs.existsSync(downloadModelScript)) {
+        await runPythonScript(pythonExe, downloadModelScript, 'model');
+      } else {
+        logger.warning('download_model.py not found, skipping');
+        sendProgress('model', 'done', 100, 'Skipped (not found)');
+      }
     }
 
     // Step 3: Verify installation

@@ -26,7 +26,7 @@
 
 | Priority | Task | Status |
 |----------|------|--------|
-| **CI/CD** | Implement QA FULL mode | TODO (Gitea only) |
+| **CI/CD** | [QA FULL mode](QA_FULL_IMPLEMENTATION.md) | IN PROGRESS |
 | **P25** | LDM UX Overhaul | 85% done |
 
 ---
@@ -36,6 +36,7 @@
 | File | Purpose |
 |------|---------|
 | **[MASTER_PLAN.md](MASTER_PLAN.md)** | What's done & what's next |
+| **[QA_FULL_IMPLEMENTATION.md](QA_FULL_IMPLEMENTATION.md)** | QA FULL mode checklist |
 | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Session handoff state |
 | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker (0 open) |
 | [P36_COVERAGE_GAPS.md](P36_COVERAGE_GAPS.md) | Coverage status |
