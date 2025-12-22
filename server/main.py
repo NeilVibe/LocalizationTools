@@ -228,8 +228,10 @@ from server.api import health
 app.include_router(health.router)
 
 # Include LDM (LanguageData Manager) API - Real-time collaborative CAT tool
-from server.tools.ldm import api as ldm_api
-app.include_router(ldm_api.router)
+# P37 Refactoring: Using modular router.py (aggregates 13 sub-routers, 44 endpoints)
+# Legacy api.py (3144 lines) preserved for reference
+from server.tools.ldm.router import router as ldm_router
+app.include_router(ldm_router)
 
 # Socket.IO will be mounted at the end after all setup is complete
 
