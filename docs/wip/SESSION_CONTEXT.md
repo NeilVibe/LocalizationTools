@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-22 22:10 | **Build:** 345 | **Next:** 346
+**Last Updated:** 2025-12-23 | **Build:** 345 | **Next:** 346
 
 ---
 
@@ -15,21 +15,48 @@
 
 ---
 
-## WHAT'S LEFT TO DO
+## BUILD MODE: QA ONLY
 
-| Priority | Task | Status |
-|----------|------|--------|
-| 1 | **CI/CD QA FULL mode** | TODO |
-| 2 | **P25 LDM UX** | 85% done |
+**DEV mode is gone.** Workers technology made full test suite so fast that QA is now the only mode.
 
-### CI/CD QA FULL Mode (Gitea Only)
-- Bundle Qwen model (~2.3GB)
-- Zero internet required on user PC
-- ~2GB installer (vs ~150MB QA)
+| Mode | Tests | Installer | Platform |
+|------|-------|-----------|----------|
+| **QA** | ALL 1000+ | ~150MB | Both (default) |
+| **QA FULL** | ALL 1000+ | ~2GB | Gitea only (TODO) |
+| **TROUBLESHOOT** | Resume | Debug | Both |
 
-### P25 LDM UX
-- Remaining UI polish
-- 85% complete
+---
+
+## QA FULL MODE: IMPLEMENTED
+
+**GITEA ONLY. Never GitHub.** Too complicated + LFS limits.
+
+**Status:** All 5 phases complete. Ready to test.
+
+**WIP Doc:** [QA_FULL_IMPLEMENTATION.md](QA_FULL_IMPLEMENTATION.md)
+
+### What Gets Bundled
+| Component | Size |
+|-----------|------|
+| Qwen model | ~2.3GB |
+| Python deps | ~200MB |
+| VC++ Redist | ~20MB |
+| Base app | ~150MB |
+
+### How to Trigger
+```bash
+# QA FULL (Gitea only)
+echo "Build QA FULL" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Build QA FULL" && git push gitea main
+```
+
+### Disk Terrorism Prevention
+| Build Type | Max Releases | Max Disk |
+|------------|--------------|----------|
+| **QA FULL** | 3 | ~6GB |
+| **QA (LIGHT)** | 10 | ~1.5GB |
+
+Auto-cleanup deletes old releases to prevent disk bloat.
 
 ---
 

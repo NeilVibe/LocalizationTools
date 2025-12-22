@@ -31,17 +31,27 @@
 
 ## Build Modes
 
+**DEV mode is DEAD.** Workers technology made full test suite so fast that QA is now the only mode.
+
 | Mode | Trigger | Platform | Description |
 |------|---------|----------|-------------|
-| **QA** | `Build QA` | Both | ALL tests + light installer (~150MB) |
-| **QA FULL** | `Build QA FULL` | Gitea only | ALL tests + offline installer (~2GB) [TODO] |
+| **QA** | `Build QA` or `Build` | Both | ALL 1000+ tests + light installer (~150MB) |
+| **QA FULL** | `Build QA FULL` | Gitea only | ALL 1000+ tests + offline installer (~2GB) [TODO] |
 | **TROUBLESHOOT** | `TROUBLESHOOT` | Both | Smart checkpoint mode |
 
-**QA is the default.** Workers technology makes 1000+ tests fast.
+### Why QA Only?
+
+| Before | After |
+|--------|-------|
+| DEV mode skipped tests | No more DEV mode |
+| "Tests too slow" | Workers = fast |
+| Risk of shipping untested code | ALL tests, every build |
 
 ---
 
 ## QA FULL Implementation Plan (TODO)
+
+**GITEA ONLY. Never GitHub.** Too complicated + LFS bandwidth limits.
 
 **Goal:** True offline installer (~2GB) for deployments with no internet.
 

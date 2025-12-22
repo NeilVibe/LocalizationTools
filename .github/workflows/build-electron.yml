@@ -1,10 +1,17 @@
-name: Build LocaNext LIGHT Installer
+name: Build LocaNext Installer
 
-# LIGHT Build Strategy (2025-12-01)
-# - NO model bundled in build (saves LFS bandwidth)
-# - Standalone download_model.exe built with PyInstaller (NO Python needed on user PC!)
-# - Model downloaded post-install via safe Hugging Face pipeline
-# - Build size: ~150-200MB instead of ~2GB
+# ============================================================================
+# DEV MODE IS DEAD. Workers make all tests fast. QA is now the only mode.
+#
+# GitHub supports:
+#   - Build / Build QA: ALL tests (~1000+), light installer (~150MB)
+#   - TROUBLESHOOT: Smart checkpoint mode
+#
+# GitHub REJECTS:
+#   - Build QA FULL: REJECTED (LFS bandwidth limits, use Gitea instead)
+#
+# QA FULL is GITEA ONLY. Never GitHub.
+# ============================================================================
 
 on:
   push:
@@ -32,8 +39,28 @@ jobs:
       - name: Check BUILD_TRIGGER.txt
         id: check
         run: |
-          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "^Build (LIGHT|FULL)|^TROUBLESHOOT" | tail -1)
+          # ============================================================
+          # DEV MODE IS DEAD. QA is now the only mode.
+          # GitHub REJECTS QA FULL (use Gitea for offline builds)
+          # ============================================================
+          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "^Build( QA)?( FULL)?$|^TROUBLESHOOT" | tail -1)
           echo "Trigger line: $TRIGGER"
+
+          # REJECT QA FULL on GitHub (LFS bandwidth limits)
+          if echo "$TRIGGER" | grep -q "QA FULL"; then
+            echo ""
+            echo "============================================"
+            echo "[REJECTED] QA FULL is GITEA ONLY"
+            echo "============================================"
+            echo "GitHub has LFS bandwidth limits."
+            echo "QA FULL builds (~2GB) must use Gitea."
+            echo ""
+            echo "Use: git push gitea main"
+            echo "============================================"
+            echo ""
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
           if [ -n "$TRIGGER" ]; then
             echo "should_build=true" >> $GITHUB_OUTPUT
@@ -51,7 +78,7 @@ jobs:
             else
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=no" >> $GITHUB_OUTPUT
-              echo "[OFFICIAL] Full build mode"
+              echo "[QA MODE] Running ALL tests (~1000+) - this is now the default"
             fi
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
