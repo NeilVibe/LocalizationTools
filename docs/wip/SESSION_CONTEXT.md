@@ -63,9 +63,40 @@ grep -i "failed\|error\|exception" <latest_log_path> | tail -30
 grep -A5 "Traceback\|KeyError\|AssertionError" <latest_log_path>
 ```
 
-**Automated Debug Loop:**
-1. Push fix → wait 5 min → check logs → repeat
-2. Use `sleep 300` between checks (CI takes ~2-4 min)
+### AUTONOMOUS CI DEBUG LOOP (CRITICAL!)
+
+When debugging CI failures, Claude should run this loop **autonomously** without asking user:
+
+```
+1. Analyze failure in logs
+2. Fix the code
+3. Commit & push: git add -A && git commit -m "Build N: Fix X" && git push origin main && git push gitea main
+4. Sleep 5 minutes: sleep 300
+5. Check new logs: ls -lt .../actions_log/.../LocaNext/*/*.log | head -3
+6. Grep for failures: grep -i "failed\|error" <new_log>
+7. If still failing → GOTO step 1
+8. If passing → Done!
+```
+
+**Key Commands:**
+```bash
+# Sleep between checks (CI takes ~3-4 min)
+sleep 300
+
+# Find latest log
+ls -lt /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -3
+
+# Check test results
+grep -E "passed|failed|FAILED" <log_path> | tail -20
+
+# Trace specific issues
+grep -E "DEBUG|Traceback|Error" <log_path> | head -50
+```
+
+**Pro Tips:**
+- Add debug logging to trace data flow (e.g., `logger.info(f"DEBUG: {variable}")`)
+- Check timestamps in logs to find what happens between operations
+- The user said: "fix, commit, push, SLEEP, check logs, repeat" - do this autonomously!
 
 **Log file naming:** Files are in hex subdirs (0a, 0b, 0c..., 10, 11...)
 Example: `/home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/11/785.log`
