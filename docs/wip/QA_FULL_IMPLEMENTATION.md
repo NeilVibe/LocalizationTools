@@ -21,15 +21,15 @@ GitHub workflow rejects `Build QA FULL` triggers with clear message.
 
 **Problem:** Some enterprise deployments have zero internet access.
 
-**Solution:** Bundle everything into a ~2GB installer that works completely offline.
+**Solution:** Bundle everything into a large installer that works completely offline.
 
 | Component | Size | Location After Install |
 |-----------|------|------------------------|
-| Qwen model | ~2.3GB | `resources/models/qwen-embedding/` |
-| Python deps | ~200MB | `resources/tools/python/` |
+| Qwen model | ~900MB (compressed) | `resources/models/qwen-embedding/` |
+| Python deps | included | `resources/tools/python/` |
 | VC++ Redist | ~20MB | Silent install |
-| Base app | ~150MB | Same as QA |
-| **Total** | **~2.7GB** | |
+| Base app | ~170MB | Same as QA |
+| **Actual Total** | **1,177 MB** | |
 
 ---
 
@@ -112,11 +112,19 @@ git add -A && git commit -m "Build" && git push origin main && git push gitea ma
 
 ## Testing Plan
 
-1. **CI Test:** Trigger QA FULL on Gitea, verify ~2GB installer created
-2. **Install Test:** Install on clean Windows VM with no internet
-3. **Function Test:** Verify Qwen model loads without download
+1. **CI Test:** ✅ PASSED - v25.1223.0811 (1,177 MB)
+2. **Install Test:** TODO - Need `playground_FULL.sh` script
+3. **Function Test:** TODO - Verify Qwen model loads without download
 4. **Reject Test:** Trigger QA FULL on GitHub, verify rejection
 5. **Cleanup Test:** Verify old FULL releases are deleted (max 3 kept)
+
+### Future: playground_FULL.sh
+
+Script to test FULL installer in Playground (when needed):
+- Download FULL installer from Gitea
+- Install to Playground
+- Verify bundled model detected
+- Test offline mode (no model download)
 
 ---
 
