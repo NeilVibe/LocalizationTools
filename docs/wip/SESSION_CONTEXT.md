@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-23 | **Build:** 345 | **Next:** 346
+**Last Updated:** 2025-12-23 | **Build:** v25.1223.0811 (FULL) | **Latest LIGHT:** v25.1223.0130
 
 ---
 
@@ -21,27 +21,25 @@
 
 | Mode | Tests | Installer | Platform |
 |------|-------|-----------|----------|
-| **QA** | ALL 1000+ | ~150MB | Both (default) |
-| **QA FULL** | ALL 1000+ | ~2GB | Gitea only (TODO) |
+| **QA** | ALL 1000+ | ~170MB | Both (default) |
+| **QA FULL** | ALL 1000+ | ~1.2GB | Gitea only ✅ |
 | **TROUBLESHOOT** | Resume | Debug | Both |
 
 ---
 
-## QA FULL MODE: IMPLEMENTED
+## QA FULL MODE: VERIFIED ✅
 
 **GITEA ONLY. Never GitHub.** Too complicated + LFS limits.
 
-**Status:** All 5 phases complete. Ready to test.
+**Status:** Build succeeded - v25.1223.0811 (1,177 MB)
 
 **WIP Doc:** [QA_FULL_IMPLEMENTATION.md](QA_FULL_IMPLEMENTATION.md)
 
-### What Gets Bundled
-| Component | Size |
-|-----------|------|
-| Qwen model | ~2.3GB |
-| Python deps | ~200MB |
-| VC++ Redist | ~20MB |
-| Base app | ~150MB |
+### Actual vs Expected
+| Component | Expected | Actual |
+|-----------|----------|--------|
+| FULL installer | ~2GB | **1,177 MB** |
+| LIGHT installer | ~150MB | **170 MB** |
 
 ### How to Trigger
 ```bash
@@ -68,7 +66,15 @@ Auto-cleanup deletes old releases to prevent disk bloat.
 - [x] Added disk terrorism prevention (FULL: 3 releases, LIGHT: 10)
 - [x] GitHub rejects QA FULL (LFS limits)
 - [x] App detects bundled model, skips download
-- [ ] Build 346 running - testing simplified workflow
+- [x] **QA FULL build verified** - v25.1223.0811 (1,177 MB)
+
+---
+
+## FUTURE WORK
+
+| Task | Priority | Notes |
+|------|----------|-------|
+| **playground_FULL.sh** | Low | Test script for FULL installer (offline mode verification) |
 
 ---
 
@@ -82,4 +88,4 @@ Auto-cleanup deletes old releases to prevent disk bloat.
 
 ---
 
-*Clean state. Next: CI/CD QA FULL mode or P25 UX polish.*
+*QA FULL verified. Future: playground_FULL.sh for offline testing.*
