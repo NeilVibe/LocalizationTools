@@ -203,6 +203,9 @@ def upgrade_schema(engine):
         ("ldm_tm_entries", "confirmed_at", "TIMESTAMP", "NULL"),
         ("ldm_tm_entries", "confirmed_by", "VARCHAR(255)", "NULL"),
         ("ldm_tm_entries", "is_confirmed", "BOOLEAN", "FALSE"),
+        # ldm_rows table - P2 Auto-LQA columns
+        ("ldm_rows", "qa_checked_at", "TIMESTAMP", "NULL"),
+        ("ldm_rows", "qa_flag_count", "INTEGER", "0"),
     ]
 
     columns_added = 0
