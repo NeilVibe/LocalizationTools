@@ -14,6 +14,9 @@ class RowResponse(BaseModel):
     target: Optional[str]
     status: str
     updated_at: datetime
+    # QA fields (P2: Auto-LQA)
+    qa_checked_at: Optional[datetime] = None
+    qa_flag_count: int = 0
 
     class Config:
         from_attributes = True

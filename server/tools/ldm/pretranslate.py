@@ -253,9 +253,11 @@ class PretranslationEngine:
         Preserves game codes ({ItemID}, <PAColor>, etc.).
         Includes staleness check and incremental sync (BUG-014, BUG-015, BUG-022).
         """
+        # Factor Power: Import from centralized utils where possible
+        from server.utils.code_patterns import simple_number_replace
+        # ML components still from xlstransfer (TODO: move to utils when ready)
         from server.tools.xlstransfer.translation import translate_text_multi_mode
         from server.tools.xlstransfer.embeddings import EmbeddingsManager
-        from server.tools.xlstransfer.core import simple_number_replace
         from datetime import datetime
 
         # BUG-014/BUG-015: Staleness check before loading
@@ -350,9 +352,12 @@ class PretranslationEngine:
         Handles structure adaptation and triangle markers.
         Includes staleness check and incremental sync (BUG-014, BUG-015, BUG-022).
         """
+        # Factor Power: Import from centralized utils where possible
+        from server.utils.code_patterns import adapt_structure
+        from server.utils.text_utils import normalize_korean_text as normalize_text
+        # ML components still from kr_similar (TODO: move to utils when ready)
         from server.tools.kr_similar.searcher import SimilaritySearcher
         from server.tools.kr_similar.embeddings import EmbeddingsManager
-        from server.tools.kr_similar.core import adapt_structure, normalize_text
         from datetime import datetime
 
         # BUG-014/BUG-015: Staleness check before loading

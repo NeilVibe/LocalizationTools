@@ -58,7 +58,7 @@ For TRUE OFFLINE deployments:
 | Mode | Status | Platform |
 |------|--------|----------|
 | `QA` | ✅ DONE | Both |
-| `QA FULL` | TODO | Gitea only |
+| `QA FULL` | ✅ DONE | Gitea only |
 | `TROUBLESHOOT` | ✅ DONE | Both |
 
 ---
@@ -125,7 +125,7 @@ All large files (>500 lines) are well-organized, not true monoliths.
 | Platform | Default | Offline |
 |----------|---------|---------|
 | **GitHub** | QA (~150MB) | N/A (LFS limits) |
-| **Gitea** | QA (~150MB) | QA FULL (~2GB) TODO |
+| **Gitea** | QA (~150MB) | QA FULL (~1.2GB) ✅ |
 
 ---
 
@@ -154,28 +154,153 @@ All large files (>500 lines) are well-organized, not true monoliths.
 
 ---
 
-## Future Vision: LDM as Mother App
+## Current Priorities
 
-**Goal:** Progressively merge monolith features into LDM (Svelte 5).
+| Priority | Feature | Effort | WIP Doc |
+|----------|---------|--------|---------|
+| **P1** | Auto-LQA System | High | [AUTO_LQA_IMPLEMENTATION.md](docs/wip/AUTO_LQA_IMPLEMENTATION.md) |
+| **P2** | LanguageTool (Spelling/Grammar) | High | [LANGUAGETOOL_IMPLEMENTATION.md](docs/wip/LANGUAGETOOL_IMPLEMENTATION.md) |
+
+### P1: Auto-LQA System
+- **LIVE Mode:** Auto-check on cell confirm (like "Use TM" toggle)
+- **Full File QA:** Right-click → Run QA → QA Menu report
+- **Checks:** Line, Term, Pattern, Character (all from `qa_tools.py`)
+- **Features:** QA flags on cells, row filtering, Edit Modal QA panel
+- **Battle-test with CDP E2E before adding LanguageTool**
+
+---
+
+## LDM Absorption Status
+
+**Goal:** LDM absorbs ALL features → Legacy apps become redundant → Single unified LocaNext
+
+### Absorption Tracker
+
+| Legacy App | Feature | LDM Status | Notes |
+|------------|---------|------------|-------|
+| **XLS Transfer** | Dictionary/TM creation | ✅ ABSORBED | TM Management |
+| **XLS Transfer** | Pretranslation | ✅ ABSORBED | Works in LDM |
+| **XLS Transfer** | Excel import/export | ✅ ABSORBED | File parsing |
+| **Quick Search** | Glossary extraction | ✅ ABSORBED | Context menu |
+| **Quick Search** | Line Check | ✅ ABSORBED | Auto-LQA P2 |
+| **Quick Search** | Term Check | 🔄 P5 | LanguageTool |
+| **Quick Search** | Pattern Check | ✅ ABSORBED | Auto-LQA P2 |
+| **Quick Search** | Character Check | ✅ ABSORBED | Auto-LQA P2 |
+| **KR Similar** | Similarity search | ✅ ABSORBED | TM search |
+| **KR Similar** | Pretranslation | ✅ ABSORBED | Deep mode |
+| **All** | Spelling/Grammar | 🔄 P2 | LanguageTool |
+
+### Remaining Features (After P1/P2)
+
+| Feature | Source | Priority |
+|---------|--------|----------|
+| Character Limit Extract | `characterlimit.py` | Future |
+| XML → Excel | `tmxtransfer11.py` | Future |
+| Excel → XML | `tmxtransfer11.py` | Future |
+| Excel ↔ TMX | `tmxtransfer11.py` | Future |
+| Merge File | New | Future |
+
+### End State Vision
 
 ```
-Current:
+CURRENT (4 apps):
 ├── LDM ─────────── Main app (growing)
-├── XLS Transfer ── Standalone tool
-├── Quick Search ── Standalone tool
-└── KR Similar ──── Standalone tool
+├── XLS Transfer ── Standalone
+├── Quick Search ── Standalone
+└── KR Similar ──── Standalone
 
-Future:
-├── LDM ─────────── Mother app (all features)
-│   ├── TM Management (done)
-│   ├── Pretranslation (done)
-│   ├── QA Checks (done)
-│   ├── Glossary Extraction (done in QuickSearch)
-│   ├── Glossary Context Menu (DONE) ← right-click file → Excel
-│   └── ... more monolith features
-│
-└── Legacy Menu ─── Access to standalone tools
+AFTER P1/P2 (transition):
+├── LocaNext LDM ── All features absorbed
+└── Legacy Menu ─── Button to access old UIs (deprecation period)
+
+FINAL (1 app):
+└── LocaNext ────── Single unified app (legacy menu removed)
 ```
+
+### Tech Debt: LDM Independence
+
+LDM currently imports from legacy apps (violates Rule #0):
+
+| File | Bad Import | Fix |
+|------|------------|-----|
+| `pretranslate.py` | `xlstransfer/`, `kr_similar/` | Move to `server/utils/` |
+| `tm.py` | `kr_similar/` | Move to `server/utils/` |
+
+**Status:** Will fix during P1 implementation
+
+---
+
+## Current Priorities
+
+| Priority | Feature | Description | Status |
+|----------|---------|-------------|--------|
+| **P1** | Factorization | Move shared code to `server/utils/`, LDM independence | ✅ DONE |
+| **P2** | Auto-LQA System | LIVE QA + per-file QA + QA Menu | ✅ DONE |
+| **P3** | MERGE System | Right-click → Merge confirmed cells to main LanguageData | 🔄 NEXT |
+| **P4** | File Conversions | Right-click → Convert (XML↔Excel, Excel→TMX, etc.) | - |
+| **P5** | LanguageTool | Spelling/Grammar via central server | - |
+| **Future** | UIUX Overhaul | Legacy Apps menu, single LocaNext | - |
+
+### P1: Factorization (LDM Independence) ✅ COMPLETE
+- Moved shared code to `server/utils/` (qa_helpers.py, code_patterns.py)
+- LDM no longer imports from legacy apps
+- 785 tests passed after migration
+
+### P2: Auto-LQA System ✅ COMPLETE (2025-12-25)
+- **Backend:** LDMQAResult model, 7 API endpoints, 17 unit tests
+- **LIVE Mode:** "QA On/Off" toggle → auto-check on cell confirm
+- **QA Menu:** Slide-out panel with summary cards + issue list
+- **Features:** QA flags on cells, row filtering dropdown, Edit Modal QA panel
+- **Checks:** Pattern (code), Character (symbol count), Line (inconsistency)
+
+### P3: MERGE System (CRUCIAL)
+- **Purpose:** Merge confirmed cells back to main LanguageData (synced with mainbranch)
+- **Flow:** Right-click file → "Merge to LanguageData" → Confirmed cells merged
+- **Result:** User commits merged LanguageData to SVN/Perforce manually
+- **Future:** Perforce API integration to create changelist directly (noted below)
+
+### P4: File Conversions
+- Right-click file → "Convert" → Modal to select format
+- **Possible conversions:**
+  - XML → Excel ✅
+  - Excel → XML ✅
+  - Excel → TMX ✅
+  - TMX → Excel ✅
+  - Text → XML ✅ (can concatenate StringID)
+  - Text → Excel ✅
+- **NOT possible (StringID issue):**
+  - XML → Text ❌
+  - Excel → Text ❌
+
+### P5: LanguageTool
+- Central server (172.28.150.120:8081)
+- Spelling/Grammar/Style checking
+- Added to QA Menu as additional tab
+
+---
+
+## Future Ideas (Backlog)
+
+### Perforce API Integration
+**Context:** Game company uses SVN and Perforce for version control.
+- SVN: No API, manual commit after merge (nothing we can do)
+- Perforce: Has API, could create changelist directly after merge
+
+**Potential Flow:**
+```
+1. User merges confirmed cells to LanguageData (P3)
+2. User clicks "Submit to Perforce"
+3. LocaNext calls Perforce API
+4. Changelist created automatically
+5. User reviews and submits in P4V
+```
+
+**Status:** Future consideration after P3 (MERGE) is working
+
+### Other Future Features
+- Character Limit Extract (from `characterlimit.py`)
+- Batch operations on multiple files
+- Advanced search/filter in TM
 
 ---
 
@@ -242,4 +367,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2025-12-23 (Build 345)*
+*Strategic Roadmap | Updated 2025-12-25 | LDM Absorption in Progress*

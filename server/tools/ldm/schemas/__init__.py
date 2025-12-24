@@ -19,6 +19,12 @@ from .sync import (
 )
 from .settings import EmbeddingEngineInfo, EmbeddingEngineResponse, SetEngineRequest
 from .common import DeleteResponse
+from .qa import (
+    QACheckRequest, QAResolveRequest,
+    QAIssue, QAIssueWithRow,
+    RowQACheckResponse, FileQACheckResponse,
+    FileQAResultsResponse, RowQAResultsResponse, QASummary
+)
 
 __all__ = [
     # Project
@@ -41,4 +47,9 @@ __all__ = [
     "EmbeddingEngineInfo", "EmbeddingEngineResponse", "SetEngineRequest",
     # Common
     "DeleteResponse",
+    # QA (P2: Auto-LQA)
+    "QACheckRequest", "QAResolveRequest",
+    "QAIssue", "QAIssueWithRow",
+    "RowQACheckResponse", "FileQACheckResponse",
+    "FileQAResultsResponse", "RowQAResultsResponse", "QASummary",
 ]

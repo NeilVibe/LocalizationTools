@@ -17,6 +17,7 @@ from .tm_linking import router as tm_linking_router
 from .pretranslate import router as pretranslate_router
 from .sync import router as sync_router
 from .settings import router as settings_router
+from .qa import router as qa_router
 
 __all__ = [
     "health_router",
@@ -32,4 +33,5 @@ __all__ = [
     "pretranslate_router",
     "sync_router",
     "settings_router",
+    "qa_router",
 ]

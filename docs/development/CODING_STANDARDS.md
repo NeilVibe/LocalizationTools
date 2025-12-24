@@ -6,6 +6,25 @@
 
 ## 🎨 CRITICAL RULES (MUST FOLLOW!)
 
+### 0. LDM ABSORBS, NEVER DEPENDS
+
+**LDM is the future. Legacy apps will be deprecated.**
+
+```
+WRONG:  LDM imports from xlstransfer/, quicksearch/, kr_similar/
+RIGHT:  Shared code lives in server/utils/, everyone imports from there
+```
+
+When absorbing features into LDM:
+1. **Move shared logic** to `server/utils/` (embeddings, text processing, QA helpers)
+2. **LDM imports from utils/** - never from legacy app folders
+3. **Legacy apps also import from utils/** - until they're deprecated
+4. **When ready:** Delete legacy app folders, LDM remains untouched
+
+**LDM must be fully independent. No imports from legacy apps.**
+
+---
+
 ### 1. CLEAN PROJECT ALWAYS
 - No temporary files in project root
 - Archive unused code to `archive/`
