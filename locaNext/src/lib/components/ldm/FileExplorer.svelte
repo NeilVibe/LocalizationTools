@@ -508,6 +508,44 @@
     }
   }
 
+  // Extract glossary from file
+  async function extractGlossary() {
+    if (!contextMenuFile) return;
+    closeContextMenu();
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/files/${contextMenuFile.id}/extract-glossary`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = contextMenuFile.name.replace(/\.[^.]+$/, '') + '_glossary.xlsx';
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="(.+)"/);
+          if (match) filename = match[1];
+        }
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+
+        logger.success("Glossary extracted", { name: filename });
+      } else {
+        const error = await response.json().catch(() => ({}));
+        logger.error("Glossary extraction failed", { status: response.status, detail: error.detail });
+      }
+    } catch (err) {
+      logger.error("Glossary extraction error", { error: err.message });
+    }
+  }
+
   // Run Line Check QA
   async function runLineCheckQA() {
     if (!contextMenuFile) return;
@@ -895,6 +933,10 @@
     <button class="context-menu-item" onclick={openTMRegistration} role="menuitem">
       <DataBase size={16} />
       <span>Upload as TM...</span>
+    </button>
+    <button class="context-menu-item" onclick={extractGlossary} role="menuitem">
+      <Translate size={16} />
+      <span>Create Glossary</span>
     </button>
     {#if connectionMode === 'offline'}
       <div class="context-menu-divider"></div>
