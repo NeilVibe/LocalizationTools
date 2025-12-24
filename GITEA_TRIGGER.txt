@@ -27,3 +27,4 @@ Build QA FULL
 Build QA FULL - Test 2
 Build QA FULL - Fix BOM
 Build
+Build QA
