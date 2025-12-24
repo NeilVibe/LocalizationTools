@@ -64,22 +64,6 @@ class TestRunQAChecks:
         assert len(pattern_issues) == 0
 
     @pytest.mark.asyncio
-    async def test_character_check_detects_mismatch(self):
-        """Character check should detect special char count mismatches."""
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.file_id = 1
-        mock_row.source = "{name}의 {stat}"  # 2 pairs of braces
-        mock_row.target = "{name}'s stat"   # Only 1 pair
-
-        mock_db = AsyncMock()
-        issues = await _run_qa_checks(mock_db, mock_row, ["character"], None)
-
-        assert len(issues) == 1
-        assert issues[0]["check_type"] == "character"
-        assert issues[0]["severity"] == "error"
-
-    @pytest.mark.asyncio
     async def test_line_check_detects_inconsistency(self):
         """Line check should detect same source with different translations."""
         mock_row = MagicMock()
@@ -119,7 +103,7 @@ class TestRunQAChecks:
 
         mock_db = AsyncMock()
         issues = await _run_qa_checks(
-            mock_db, mock_row, ["pattern", "character"], None
+            mock_db, mock_row, ["pattern"], None
         )
 
         assert len(issues) == 0
@@ -135,7 +119,7 @@ class TestRunQAChecks:
 
         mock_db = AsyncMock()
         issues = await _run_qa_checks(
-            mock_db, mock_row, ["pattern", "character"], None
+            mock_db, mock_row, ["pattern"], None
         )
 
         assert len(issues) == 0
@@ -152,9 +136,8 @@ class TestQASchemas:
         """QACheckRequest should have default checks."""
         request = QACheckRequest()
         assert "line" in request.checks
-        assert "term" in request.checks
         assert "pattern" in request.checks
-        assert "character" in request.checks
+        # term needs glossary, character removed
         assert request.force is False
 
     def test_qa_check_request_custom_checks(self):
@@ -194,42 +177,6 @@ class TestPatternMatch:
         result = check_pattern_match(
             source="{0}의 {1}",
             target="{0} of {1}"
-        )
-
-        assert result is None
-
-
-# =============================================================================
-# Test check_character_count from qa_helpers
-# =============================================================================
-
-class TestCharacterCount:
-    """Test character count checking from centralized qa_helpers."""
-
-    def test_detects_brace_mismatch(self):
-        """Should detect brace count mismatch."""
-        from server.utils.qa_helpers import check_character_count
-
-        result = check_character_count(
-            source="{a}{b}{c}",
-            target="{a}{b}",
-            symbols=["{", "}"]
-        )
-
-        assert result is not None
-        assert "symbol" in result
-        assert "source_count" in result
-        assert "target_count" in result
-        assert result["source_count"] > result["target_count"]
-
-    def test_passes_matching_counts(self):
-        """Should pass when counts match."""
-        from server.utils.qa_helpers import check_character_count
-
-        result = check_character_count(
-            source="{a}{b}",
-            target="{x}{y}",
-            symbols=["{", "}"]
         )
 
         assert result is None
@@ -351,14 +298,14 @@ class TestMultipleChecks:
         mock_row.file_id = 1
         mock_row.row_num = 1
         mock_row.source = "{0}의 {1}"
-        mock_row.target = "of the"  # Missing patterns AND character mismatch
+        mock_row.target = "of the"  # Missing patterns
 
         mock_db = AsyncMock()
         issues = await _run_qa_checks(
-            mock_db, mock_row, ["pattern", "character"], None
+            mock_db, mock_row, ["pattern"], None
         )
 
-        # Should have both pattern and character issues
+        # Should have pattern issue
         check_types = [i["check_type"] for i in issues]
-        assert "pattern" in check_types or "character" in check_types
+        assert "pattern" in check_types
         assert len(issues) >= 1

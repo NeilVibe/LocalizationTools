@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 class QACheckRequest(BaseModel):
     """Request to run QA checks on a row or file."""
-    checks: List[str] = ["line", "term", "pattern", "character"]  # Check types to run
+    checks: List[str] = ["line", "pattern"]  # Check types to run (term needs glossary, character removed)
     force: bool = False  # True = re-check all, False = skip already checked
 
 

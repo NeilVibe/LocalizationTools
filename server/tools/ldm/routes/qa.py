@@ -30,10 +30,7 @@ from server.tools.ldm.schemas import (
 )
 
 # Import QA check functions from centralized utils
-from server.utils.qa_helpers import (
-    check_pattern_match,
-    check_character_count,
-)
+from server.utils.qa_helpers import check_pattern_match
 
 router = APIRouter(tags=["LDM-QA"])
 
@@ -89,26 +86,7 @@ async def _run_qa_checks(
                 "details": pattern_issue
             })
 
-    # 2. Character Check - Special character counts must match
-    if "character" in checks:
-        # Default symbols to check
-        symbols = ["{", "}", "<", ">", "[", "]", "(", ")", "\\n"]
-        char_issue = check_character_count(row.source, row.target, symbols)
-        if char_issue:
-            # Generate message from details
-            symbol = char_issue.get("symbol", "?")
-            source_count = char_issue.get("source_count", 0)
-            target_count = char_issue.get("target_count", 0)
-            message = f"Character '{symbol}' count mismatch: source={source_count}, target={target_count}"
-
-            issues.append({
-                "check_type": "character",
-                "severity": "error",
-                "message": message,
-                "details": char_issue
-            })
-
-    # 3. Line Check - Same source with different translations
+    # 2. Line Check - Same source with different translations
     if "line" in checks and file_rows:
         source_normalized = row.source.strip().lower()
         for other_row in file_rows:
