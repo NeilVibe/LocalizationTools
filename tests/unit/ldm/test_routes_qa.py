@@ -92,6 +92,46 @@ class TestRunQAChecks:
         assert "row 2" in issues[0]["message"]
 
     @pytest.mark.asyncio
+    async def test_term_check_detects_missing_term(self):
+        """Term check should detect missing glossary terms."""
+        mock_row = MagicMock()
+        mock_row.id = 1
+        mock_row.file_id = 1
+        mock_row.source = "공격력 증가"  # Contains glossary term "공격"
+        mock_row.target = "Increase power"  # Missing "Attack"
+
+        mock_db = AsyncMock()
+        glossary_terms = [("공격", "Attack"), ("방어", "Defense")]
+
+        issues = await _run_qa_checks(
+            mock_db, mock_row, ["term"], None, glossary_terms
+        )
+
+        assert len(issues) == 1
+        assert issues[0]["check_type"] == "term"
+        assert issues[0]["severity"] == "warning"
+        assert "Attack" in issues[0]["message"]
+
+    @pytest.mark.asyncio
+    async def test_term_check_passes_when_term_present(self):
+        """Term check should pass when glossary term is in translation."""
+        mock_row = MagicMock()
+        mock_row.id = 1
+        mock_row.file_id = 1
+        mock_row.source = "공격력 증가"
+        mock_row.target = "Attack power increase"  # Contains "Attack"
+
+        mock_db = AsyncMock()
+        glossary_terms = [("공격", "Attack")]
+
+        issues = await _run_qa_checks(
+            mock_db, mock_row, ["term"], None, glossary_terms
+        )
+
+        term_issues = [i for i in issues if i["check_type"] == "term"]
+        assert len(term_issues) == 0
+
+    @pytest.mark.asyncio
     async def test_no_issues_for_clean_row(self):
         """Clean row should have no issues."""
         mock_row = MagicMock()
@@ -137,7 +177,7 @@ class TestQASchemas:
         request = QACheckRequest()
         assert "line" in request.checks
         assert "pattern" in request.checks
-        # term needs glossary, character removed
+        assert "term" in request.checks
         assert request.force is False
 
     def test_qa_check_request_custom_checks(self):
