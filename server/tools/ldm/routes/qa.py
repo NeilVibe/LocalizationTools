@@ -21,7 +21,7 @@ from sqlalchemy.orm import selectinload
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import LDMRow, LDMFile, LDMQAResult, User
+from server.database.models import LDMRow, LDMFile, LDMQAResult, User, LDMActiveTM, LDMTMEntry
 from server.tools.ldm.schemas import (
     QACheckRequest,
     RowQACheckResponse, FileQACheckResponse,
@@ -39,11 +39,64 @@ router = APIRouter(tags=["LDM-QA"])
 # QA Check Logic
 # =============================================================================
 
+async def _get_glossary_terms(
+    db: AsyncSession,
+    file_id: int,
+    max_length: int = 20
+) -> List[tuple]:
+    """
+    Get glossary terms from the project's linked TM.
+
+    Uses short TM entries (source < max_length chars) as glossary.
+
+    Args:
+        db: Database session
+        file_id: File ID to get project from
+        max_length: Max source length for glossary terms
+
+    Returns:
+        List of (source, target) tuples
+    """
+    # Get file to find project_id
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.id == file_id)
+    )
+    file = result.scalar_one_or_none()
+    if not file:
+        return []
+
+    # Get linked TMs for project
+    result = await db.execute(
+        select(LDMActiveTM.tm_id)
+        .where(LDMActiveTM.project_id == file.project_id)
+        .order_by(LDMActiveTM.priority)
+    )
+    tm_ids = [row[0] for row in result.all()]
+
+    if not tm_ids:
+        return []
+
+    # Get short TM entries as glossary
+    result = await db.execute(
+        select(LDMTMEntry.source, LDMTMEntry.target)
+        .where(
+            LDMTMEntry.tm_id.in_(tm_ids),
+            func.length(LDMTMEntry.source) <= max_length,
+            LDMTMEntry.source.isnot(None),
+            LDMTMEntry.target.isnot(None)
+        )
+        .limit(1000)  # Limit to prevent performance issues
+    )
+
+    return [(row[0], row[1]) for row in result.all()]
+
+
 async def _run_qa_checks(
     db: AsyncSession,
     row: LDMRow,
     checks: List[str],
-    file_rows: Optional[List[LDMRow]] = None
+    file_rows: Optional[List[LDMRow]] = None,
+    glossary_terms: Optional[List[tuple]] = None
 ) -> List[dict]:
     """
     Run QA checks on a single row.
@@ -53,6 +106,7 @@ async def _run_qa_checks(
         row: The row to check
         checks: List of check types to run
         file_rows: All rows in the file (needed for line check)
+        glossary_terms: List of (source, target) tuples for term check
 
     Returns:
         List of issue dicts
@@ -109,10 +163,28 @@ async def _run_qa_checks(
                     })
                     break  # Only report first conflict
 
-    # 4. Term Check - Glossary terms (placeholder - needs glossary integration)
-    # TODO: Implement term check when glossary system is ready
-    # if "term" in checks:
-    #     pass
+    # 3. Term Check - Glossary terms must be present in translation
+    # Uses TM entries as glossary (short entries < 20 chars)
+    if "term" in checks and glossary_terms:
+        row_source_lower = row.source.lower()
+        row_target_lower = row.target.lower()
+
+        for term_source, term_target in glossary_terms:
+            # Check if glossary source term appears in row source
+            if term_source.lower() in row_source_lower:
+                # Check if expected translation appears in row target
+                if term_target.lower() not in row_target_lower:
+                    issues.append({
+                        "check_type": "term",
+                        "severity": "warning",
+                        "message": f"Missing term '{term_target}' for '{term_source}'",
+                        "details": {
+                            "glossary_source": term_source,
+                            "glossary_target": term_target
+                        }
+                    })
+                    # Only report first missing term per row to avoid spam
+                    break
 
     return issues
 
@@ -194,8 +266,13 @@ async def check_row_qa(
         )
         file_rows = result.scalars().all()
 
+    # Get glossary terms for term check
+    glossary_terms = None
+    if "term" in request.checks:
+        glossary_terms = await _get_glossary_terms(db, row.file_id)
+
     # Run checks
-    issues = await _run_qa_checks(db, row, request.checks, file_rows)
+    issues = await _run_qa_checks(db, row, request.checks, file_rows, glossary_terms)
 
     # Save results
     qa_results = await _save_qa_results(db, row, issues)
@@ -290,6 +367,11 @@ async def check_file_qa(
     )
     rows = result.scalars().all()
 
+    # Get glossary terms for term check (once for all rows)
+    glossary_terms = None
+    if "term" in request.checks:
+        glossary_terms = await _get_glossary_terms(db, file_id)
+
     # Summary counters
     summary = {
         check: {"issue_count": 0, "severity": "ok"}
@@ -305,7 +387,7 @@ async def check_file_qa(
             continue
 
         # Run checks
-        issues = await _run_qa_checks(db, row, request.checks, rows)
+        issues = await _run_qa_checks(db, row, request.checks, rows, glossary_terms)
 
         # Save results
         await _save_qa_results(db, row, issues)
