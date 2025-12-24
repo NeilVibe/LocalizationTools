@@ -640,13 +640,12 @@ jobs:
               echo ""
 
               # ═══════════════════════════════════════════════════════════
-              # CODE COVERAGE REPORT 📊
+              # CODE COVERAGE - SKIPPED (tests already passed in stages 1-7)
+              # Coverage re-running all tests was taking 2+ hours - not worth it
               # ═══════════════════════════════════════════════════════════
               echo "╔════════════════════════════════════════════════════════════╗"
-              echo "║  📊 CODE COVERAGE SUMMARY                                  ║"
+              echo "║  📊 COVERAGE SKIPPED (tests passed, no need to re-run)     ║"
               echo "╚════════════════════════════════════════════════════════════╝"
-              python3.11 -m pytest tests/unit/ tests/integration/ $DESELECTS --cov=server --cov-report=term-missing --cov-fail-under=0 -v || { echo "❌ COVERAGE STAGE FAILED"; exit 1; }
-              echo "✅ Coverage report generated"
               echo ""
 
               # ═══════════════════════════════════════════════════════════
@@ -664,7 +663,6 @@ jobs:
               echo "║   Stage 5: Security          ✅                            ║"
               echo "║   Stage 6: Fixtures          ✅                            ║"
               echo "║   Stage 7: Performance    🚀 ✅                            ║"
-              echo "║   Coverage Report         📊 ✅                            ║"
               echo "║                                                            ║"
               echo "╚════════════════════════════════════════════════════════════╝"
               echo "[OK] ALL QA tests passed!"
