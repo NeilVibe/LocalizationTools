@@ -32,9 +32,6 @@ from server.tools.ldm.schemas import (
 # Import QA check functions from centralized utils
 from server.utils.qa_helpers import (
     check_pattern_match,
-    is_korean,
-    is_sentence,
-    has_punctuation,
     is_isolated,
 )
 
@@ -155,70 +152,73 @@ async def _run_qa_checks(
             })
 
     # 2. Line Check - Same source with different translations
-    # Logic from QuickSearch: filter sentences, punctuation, Korean targets
+    # Simple: compare all entries, flag inconsistencies
     if "line" in checks and file_rows:
         source_text = row.source.strip()
         target_text = row.target.strip()
 
-        # Skip sentences and entries with punctuation (glossary-like only)
-        if not is_sentence(source_text) and not has_punctuation(source_text):
-            # Skip if target contains Korean (likely not translated)
-            if not is_korean(target_text):
-                # Only check short entries (glossary threshold)
-                if len(source_text) <= 15:
-                    source_normalized = source_text.lower()
-                    for other_row in file_rows:
-                        if other_row.id == row.id:
-                            continue
-                        if not other_row.source or not other_row.target:
-                            continue
+        for other_row in file_rows:
+            if other_row.id == row.id:
+                continue
+            if not other_row.source or not other_row.target:
+                continue
 
-                        other_source = other_row.source.strip()
-                        other_target = other_row.target.strip()
+            other_source = other_row.source.strip()
+            other_target = other_row.target.strip()
 
-                        # Apply same filters to other row
-                        if is_sentence(other_source) or has_punctuation(other_source):
-                            continue
-                        if is_korean(other_target):
-                            continue
-
-                        if other_source.lower() == source_normalized:
-                            # Same source, check if target differs
-                            if other_target != target_text:
-                                issues.append({
-                                    "check_type": "line",
-                                    "severity": "warning",
-                                    "message": f"Inconsistent: '{target_text}' vs '{other_target[:50]}' at row {other_row.row_num}",
-                                    "details": {
-                                        "other_row_id": other_row.id,
-                                        "other_row_num": other_row.row_num,
-                                        "other_target": other_target[:100]
-                                    }
-                                })
-                                break  # Only report first conflict
+            if other_source == source_text:
+                # Same source, check if target differs
+                if other_target != target_text:
+                    issues.append({
+                        "check_type": "line",
+                        "severity": "warning",
+                        "message": f"Inconsistent: '{target_text[:50]}' vs '{other_target[:50]}' at row {other_row.row_num}",
+                        "details": {
+                            "other_row_id": other_row.id,
+                            "other_row_num": other_row.row_num,
+                            "other_target": other_target[:100]
+                        }
+                    })
+                    break  # Only report first conflict
 
     # 3. Term Check - Glossary terms must be present in translation
-    # Logic from QuickSearch: Aho-Corasick matching with word isolation
+    # Uses Aho-Corasick matching with word isolation
     if "term" in checks and glossary_terms:
         source_text = row.source.strip()
         target_text = row.target.strip()
 
-        # Skip sentences (term check is for glossary-like entries)
-        if not is_sentence(source_text):
-            if HAS_AHOCORASICK:
-                # Build automaton for efficient multi-pattern matching
-                automaton = ahocorasick.Automaton()
-                for idx, (term_source, term_target) in enumerate(glossary_terms):
-                    automaton.add_word(term_source, (idx, term_source, term_target))
-                automaton.make_automaton()
+        if HAS_AHOCORASICK:
+            # Build automaton for efficient multi-pattern matching
+            automaton = ahocorasick.Automaton()
+            for idx, (term_source, term_target) in enumerate(glossary_terms):
+                automaton.add_word(term_source, (idx, term_source, term_target))
+            automaton.make_automaton()
 
-                # Find all glossary terms in source
-                for end_index, (idx, term_source, term_target) in automaton.iter(source_text):
-                    start_index = end_index - len(term_source) + 1
+            # Find all glossary terms in source
+            for end_index, (idx, term_source, term_target) in automaton.iter(source_text):
+                start_index = end_index - len(term_source) + 1
 
-                    # Check if match is isolated (whole word)
-                    if is_isolated(source_text, start_index, end_index + 1):
-                        # Check if expected translation is in target
+                # Check if match is isolated (whole word)
+                if is_isolated(source_text, start_index, end_index + 1):
+                    # Check if expected translation is in target
+                    if term_target.lower() not in target_text.lower():
+                        issues.append({
+                            "check_type": "term",
+                            "severity": "warning",
+                            "message": f"Missing term '{term_target}' for '{term_source}'",
+                            "details": {
+                                "glossary_source": term_source,
+                                "glossary_target": term_target
+                            }
+                        })
+                        break  # Only report first missing term
+        else:
+            # Fallback: simple substring matching
+            for term_source, term_target in glossary_terms:
+                pos = source_text.find(term_source)
+                if pos != -1:
+                    # Check isolation
+                    if is_isolated(source_text, pos, pos + len(term_source)):
                         if term_target.lower() not in target_text.lower():
                             issues.append({
                                 "check_type": "term",
@@ -229,25 +229,7 @@ async def _run_qa_checks(
                                     "glossary_target": term_target
                                 }
                             })
-                            break  # Only report first missing term
-            else:
-                # Fallback: simple substring matching
-                for term_source, term_target in glossary_terms:
-                    pos = source_text.find(term_source)
-                    if pos != -1:
-                        # Check isolation
-                        if is_isolated(source_text, pos, pos + len(term_source)):
-                            if term_target.lower() not in target_text.lower():
-                                issues.append({
-                                    "check_type": "term",
-                                    "severity": "warning",
-                                    "message": f"Missing term '{term_target}' for '{term_source}'",
-                                    "details": {
-                                        "glossary_source": term_source,
-                                        "glossary_target": term_target
-                                    }
-                                })
-                                break
+                            break
 
     return issues
 
