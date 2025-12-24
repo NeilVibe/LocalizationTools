@@ -1,13 +1,14 @@
 """
 Tests for LDM Files Route
 
-Tests: routes/files.py (6 endpoints)
+Tests: routes/files.py (7 endpoints)
 - GET /files - list files in folder
 - GET /files/{file_id} - get file info
 - POST /files/upload - upload file
 - GET /files/{file_id}/download - download file
 - GET /files/{file_id}/rows - get file rows (paginated)
 - DELETE /files/{file_id} - delete file
+- GET /files/{file_id}/extract-glossary - extract glossary to Excel
 """
 
 import pytest
@@ -92,4 +93,13 @@ class TestRegisterAsTM:
     def test_register_as_tm_requires_auth(self, client):
         """Register file as TM requires authentication."""
         response = client.post("/api/ldm/files/1/register-as-tm")
+        assert response.status_code == 401
+
+
+class TestExtractGlossary:
+    """Test GET /api/ldm/files/{file_id}/extract-glossary."""
+
+    def test_extract_glossary_requires_auth(self, client):
+        """Extract glossary requires authentication."""
+        response = client.get("/api/ldm/files/1/extract-glossary")
         assert response.status_code == 401

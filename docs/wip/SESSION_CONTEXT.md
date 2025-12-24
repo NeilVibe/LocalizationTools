@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-23 | **Build:** v25.1223.0811 (FULL) | **Latest LIGHT:** v25.1223.0130
+**Last Updated:** 2025-12-24 | **Build:** v25.1223.0811 (FULL) | **Latest LIGHT:** v25.1223.0130
 
 ---
 
@@ -58,7 +58,17 @@ Auto-cleanup deletes old releases to prevent disk bloat.
 
 ---
 
-## LAST SESSION (2025-12-23)
+## LAST SESSION (2025-12-24)
+
+- [x] **LDM Glossary Context Menu** - Right-click file → "Create Glossary" → Excel export
+  - Backend: `GET /api/ldm/files/{id}/extract-glossary`
+  - Frontend: Context menu item in FileExplorer.svelte
+  - Rules: ≤21 chars, ≥2 occurrences, no `.?!` endings
+  - Tested locally ✅
+
+---
+
+## PREVIOUS SESSION (2025-12-23)
 
 - [x] Implemented QA FULL mode (offline installer)
 - [x] Simplified CI to 3 modes (Build, Build QA FULL, TROUBLESHOOT)
@@ -88,4 +98,4 @@ Auto-cleanup deletes old releases to prevent disk bloat.
 
 ---
 
-*QA FULL verified. Future: playground_FULL.sh for offline testing.*
+*Glossary Context Menu done. Triggering build for Playground test.*

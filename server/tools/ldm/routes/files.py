@@ -468,6 +468,116 @@ async def download_file(
     )
 
 
+@router.get("/files/{file_id}/extract-glossary")
+async def extract_glossary(
+    file_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Extract glossary terms from a file and download as Excel.
+
+    Filtering rules:
+    - Length ≤ 21 characters
+    - Minimum 2 occurrences
+    - No punctuation endings (.?!)
+
+    Returns Excel with Source/Target columns.
+    """
+    from collections import Counter
+
+    # Get file info
+    result = await db.execute(
+        select(LDMFile).options(selectinload(LDMFile.project)).where(
+            LDMFile.id == file_id
+        )
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if file.project.owner_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get all rows for this file
+    result = await db.execute(
+        select(LDMRow).where(
+            LDMRow.file_id == file_id,
+            LDMRow.source.isnot(None),
+            LDMRow.source != ""
+        )
+    )
+    rows = result.scalars().all()
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="No rows found in file")
+
+    # Count occurrences of each source term
+    source_counts = Counter(row.source.strip() for row in rows if row.source)
+
+    # Build source → target mapping (first occurrence wins)
+    source_to_target = {}
+    for row in rows:
+        source = row.source.strip() if row.source else ""
+        if source and source not in source_to_target:
+            source_to_target[source] = row.target.strip() if row.target else ""
+
+    # Filter glossary terms
+    glossary = []
+    for source, count in source_counts.items():
+        # Rule 1: Length ≤ 21 characters
+        if len(source) > 21:
+            continue
+        # Rule 2: Minimum 2 occurrences
+        if count < 2:
+            continue
+        # Rule 3: No punctuation endings
+        if source.endswith(('.', '?', '!')):
+            continue
+
+        target = source_to_target.get(source, "")
+        glossary.append((source, target, count))
+
+    if not glossary:
+        raise HTTPException(status_code=404, detail="No glossary terms found (check filtering rules)")
+
+    # Sort by frequency (most common first)
+    glossary.sort(key=lambda x: -x[2])
+
+    # Build Excel file
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Glossary"
+
+    # Header row
+    ws.cell(row=1, column=1, value="Source")
+    ws.cell(row=1, column=2, value="Target")
+
+    # Data rows
+    for idx, (source, target, _count) in enumerate(glossary, start=2):
+        ws.cell(row=idx, column=1, value=source)
+        ws.cell(row=idx, column=2, value=target)
+
+    # Save to bytes
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # Create filename
+    base_name = file.original_filename.rsplit('.', 1)[0] if '.' in file.original_filename else file.original_filename
+    download_name = f"{base_name}_glossary.xlsx"
+
+    logger.info(f"LDM: Extracted glossary from file {file_id}: {len(glossary)} terms")
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={download_name}"}
+    )
+
+
 # =============================================================================
 # File Builder Helpers
 # =============================================================================

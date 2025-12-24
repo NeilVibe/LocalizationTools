@@ -170,7 +170,8 @@ Future:
 │   ├── TM Management (done)
 │   ├── Pretranslation (done)
 │   ├── QA Checks (done)
-│   ├── Glossary Extraction (done)
+│   ├── Glossary Extraction (done in QuickSearch)
+│   ├── Glossary Context Menu (DONE) ← right-click file → Excel
 │   └── ... more monolith features
 │
 └── Legacy Menu ─── Access to standalone tools
