@@ -486,5 +486,9 @@ class TestActiveOperations:
 
         test_db.commit()
 
-        running = test_db.query(ActiveOperation).filter_by(status="running").all()
+        # Filter by user to avoid counting operations from other tests/background tasks
+        running = test_db.query(ActiveOperation).filter_by(
+            status="running",
+            user_id=test_user.user_id
+        ).all()
         assert len(running) == 3
