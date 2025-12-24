@@ -366,7 +366,7 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          checks: ["line", "pattern", "character"],
+          checks: ["line", "pattern", "term"],
           force: true
         })
       });

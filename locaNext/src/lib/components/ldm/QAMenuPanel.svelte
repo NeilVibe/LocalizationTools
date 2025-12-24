@@ -31,8 +31,8 @@
   const checkTypes = [
     { id: "all", label: "All" },
     { id: "pattern", label: "Pattern" },
-    { id: "character", label: "Character" },
-    { id: "line", label: "Line" }
+    { id: "line", label: "Line" },
+    { id: "term", label: "Term" }
   ];
 
   // Helper to get auth headers
@@ -102,7 +102,7 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          checks: ["line", "pattern", "character"],
+          checks: ["line", "pattern", "term"],
           force: true
         })
       });
@@ -210,13 +210,13 @@
           <span class="count">{summary.pattern}</span>
           <span class="label">Pattern</span>
         </div>
-        <div class="summary-card" class:has-issues={summary.character > 0}>
-          <span class="count">{summary.character}</span>
-          <span class="label">Character</span>
-        </div>
         <div class="summary-card" class:has-issues={summary.line > 0}>
           <span class="count">{summary.line}</span>
           <span class="label">Line</span>
+        </div>
+        <div class="summary-card" class:has-issues={summary.term > 0}>
+          <span class="count">{summary.term}</span>
+          <span class="label">Term</span>
         </div>
       </div>
     {:else if loading}

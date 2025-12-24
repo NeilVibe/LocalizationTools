@@ -79,14 +79,35 @@ def has_punctuation(text: str) -> bool:
     return any(ch in string.punctuation for ch in text) or '…' in text
 
 
-def extract_code_patterns(text: str) -> Set[str]:
+def normalize_staticinfo_pattern(code: str) -> str:
+    """
+    Normalize Staticinfo:Knowledge patterns by ignoring content after '#'.
+
+    From xmlchecker2.py: If code contains 'Staticinfo:Knowledge:' AND a '#',
+    only compare the part up to (and including) the '#'.
+
+    Example:
+        >>> normalize_staticinfo_pattern("{Staticinfo:Knowledge:Armor#123}")
+        '{Staticinfo:Knowledge:Armor#}'
+        >>> normalize_staticinfo_pattern("{ItemID:456}")
+        '{ItemID:456}'
+    """
+    if re.search(r'\{[^{}]*Staticinfo:[^{}]*#', code, re.I):
+        before_hash = code.split('#', 1)[0]
+        return before_hash + '#}'
+    return code
+
+
+def extract_code_patterns(text: str, normalize: bool = True) -> Set[str]:
     """
     Extract {code} patterns from text using non-greedy matching.
 
     Finds all patterns like {variable}, {ItemID:123}, etc.
+    Optionally normalizes Staticinfo:Knowledge patterns (from xmlchecker2.py).
 
     Args:
         text: Text containing code patterns
+        normalize: If True, normalize Staticinfo:Knowledge patterns
 
     Returns:
         Set of unique code patterns found
@@ -99,7 +120,10 @@ def extract_code_patterns(text: str) -> Set[str]:
     """
     if not isinstance(text, str):
         return set()
-    return set(re.findall(r'\{.*?\}', text))
+    raw_patterns = set(re.findall(r'\{.*?\}', text))
+    if normalize:
+        return {normalize_staticinfo_pattern(p) for p in raw_patterns}
+    return raw_patterns
 
 
 def preprocess_text_for_char_count(text: str) -> str:

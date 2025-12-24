@@ -557,14 +557,13 @@
     dispatch('runQA', { fileId: contextMenuFile.id, type: 'line', fileName: contextMenuFile.name });
   }
 
-  // Run Word Check QA
-  async function runWordCheckQA() {
+  // Run Term Check QA
+  async function runTermCheckQA() {
     if (!contextMenuFile) return;
     closeContextMenu();
 
-    logger.info("Word Check QA started", { file: contextMenuFile.name });
-    // TODO: Implement full word check QA
-    dispatch('runQA', { fileId: contextMenuFile.id, type: 'word', fileName: contextMenuFile.name });
+    logger.info("Term Check QA started", { file: contextMenuFile.name });
+    dispatch('runQA', { fileId: contextMenuFile.id, type: 'term', fileName: contextMenuFile.name });
   }
 
   // Open TM Registration modal
@@ -925,9 +924,9 @@
       <Search size={16} />
       <span>Run Full Line Check QA</span>
     </button>
-    <button class="context-menu-item" onclick={runWordCheckQA} role="menuitem">
+    <button class="context-menu-item" onclick={runTermCheckQA} role="menuitem">
       <TextCreation size={16} />
-      <span>Run Full Word Check QA</span>
+      <span>Run Full Term Check QA</span>
     </button>
     <div class="context-menu-divider"></div>
     <button class="context-menu-item" onclick={openTMRegistration} role="menuitem">
