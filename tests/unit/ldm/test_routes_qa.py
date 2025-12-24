@@ -97,7 +97,7 @@ class TestRunQAChecks:
         mock_row = MagicMock()
         mock_row.id = 1
         mock_row.file_id = 1
-        mock_row.source = "공격력 증가"  # Contains glossary term "공격"
+        mock_row.source = "공격 증가"  # Contains isolated glossary term "공격"
         mock_row.target = "Increase power"  # Missing "Attack"
 
         mock_db = AsyncMock()
@@ -118,8 +118,8 @@ class TestRunQAChecks:
         mock_row = MagicMock()
         mock_row.id = 1
         mock_row.file_id = 1
-        mock_row.source = "공격력 증가"
-        mock_row.target = "Attack power increase"  # Contains "Attack"
+        mock_row.source = "공격 증가"  # Contains isolated glossary term "공격"
+        mock_row.target = "Attack increase"  # Contains "Attack"
 
         mock_db = AsyncMock()
         glossary_terms = [("공격", "Attack")]

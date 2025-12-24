@@ -127,6 +127,26 @@ def preprocess_text_for_char_count(text: str) -> str:
     return text
 
 
+def is_isolated(text: str, start: int, end: int) -> bool:
+    """
+    Check if match is isolated (not part of larger word).
+
+    Used for term matching to avoid partial matches.
+
+    Args:
+        text: Full text
+        start: Start index of match
+        end: End index of match
+
+    Returns:
+        True if match is isolated (word boundary on both sides)
+    """
+    before = text[start - 1] if start > 0 else ""
+    after = text[end] if end < len(text) else ""
+    # Not isolated if adjacent to word char or Korean
+    return (not re.match(r'[\w가-힣]', before)) and (not re.match(r'[\w가-힣]', after))
+
+
 def check_pattern_match(source: str, target: str) -> Optional[dict]:
     """
     Check if {code} patterns match between source and target.
