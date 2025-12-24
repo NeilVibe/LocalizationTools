@@ -1,70 +1,48 @@
-# Master Plan - What's Done & What's Next
+# Master Plan - Navigation Hub
 
-**Last Updated:** 2025-12-22 | **Build:** 345
-
----
-
-## WHAT'S LEFT TO DO
-
-### 1. CI/CD QA FULL Mode - TODO
-
-Gitea-only offline installer (~2GB) with bundled Qwen model.
-
-| Mode | Status | Platform |
-|------|--------|----------|
-| `QA` | ✅ DONE | Both |
-| `QA FULL` | TODO | Gitea only |
-
-### 2. P25 LDM UX Overhaul - 85% DONE
-
-Remaining UX polish for LDM interface.
+**Updated:** 2025-12-25
 
 ---
 
-## COMPLETED
+## Current Priorities
 
-### P37: Code Quality ✅
-- `api.py` deleted (dead code)
-- `tm_indexer.py` split into 4 modular files
-- No active monoliths
-
-### P36: Mocked Tests ✅
-- 56 mocked tests
-- Core routes: 68-98% coverage
-- GitHub CI fix for clean DB
-
-### Infrastructure ✅
-- CI/CD working (Gitea + GitHub)
-- Security audit completed
-- 0 open issues
+| Priority | Feature | WIP Doc |
+|----------|---------|---------|
+| **P1** | Auto-LQA System | [AUTO_LQA_IMPLEMENTATION.md](AUTO_LQA_IMPLEMENTATION.md) |
+| **P2** | LanguageTool (Grammar) | [LANGUAGETOOL_IMPLEMENTATION.md](LANGUAGETOOL_IMPLEMENTATION.md) |
 
 ---
 
-## QUICK COMMANDS
+## Quick Links
 
-```bash
-# Run tests
-python3 -m pytest tests/ -v
-
-# With coverage
-python3 -m pytest tests/ --cov=server/tools/ldm --cov-report=html
-
-# Trigger build
-echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git push origin main && git push gitea main
-```
+| Need | Go To |
+|------|-------|
+| **Priorities & WIPs** | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) |
+| **Strategic Roadmap** | [Roadmap.md](../../Roadmap.md) |
+| **Open Bugs** | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) |
+| **Coverage Status** | [P36_COVERAGE_GAPS.md](P36_COVERAGE_GAPS.md) |
 
 ---
 
-## SUMMARY
+## System Status
 
-| Category | Status |
-|----------|--------|
-| **Code Quality** | CLEAN |
-| **Tests** | 1068 (GitHub) / 1076 (Gitea) |
-| **Coverage** | 47% |
+| Status | Value |
+|--------|-------|
 | **Open Issues** | 0 |
+| **Tests** | 1068 (GitHub) / 1076 (Gitea) |
+| **Coverage** | 47% (target 70%) |
 | **CI/CD** | Both verified |
+| **QA FULL Mode** | DONE (Gitea) |
 
 ---
 
-*Updated 2025-12-22*
+## Completed
+
+- P37: Code Quality (no monoliths)
+- P36: Mocked Tests (56 tests, 68-98% coverage on core routes)
+- QA FULL Mode (offline installer, Gitea only)
+- Glossary Context Menu
+
+---
+
+*Hub file - details in linked WIPs*

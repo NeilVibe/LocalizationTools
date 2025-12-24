@@ -1,90 +1,158 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-24 | **Build:** v25.1223.0811 (FULL) | **Latest LIGHT:** v25.1223.0130
+**Last Updated:** 2025-12-25 | **Build:** v25.1223.0811 (FULL) | **Latest LIGHT:** v25.1223.0130
 
 ---
 
-## CURRENT STATE: ALL GREEN ✅
+## CURRENT STATE: ALL GREEN
 
 | Status | Value |
 |--------|-------|
 | **Open Issues** | 0 |
-| **Tests** | 1068 (GitHub) / 1076 (Gitea) |
+| **Tests** | 1085+ (136 LDM, 17 new QA) |
 | **Coverage** | 47% |
 | **CI/CD** | Both verified (Build 345) |
+| **QA FULL** | DONE (Gitea, 1.2GB) |
 
 ---
 
-## BUILD MODE: QA ONLY
+## CURRENT PRIORITIES
 
-**DEV mode is gone.** Workers technology made full test suite so fast that QA is now the only mode.
+| Priority | Feature | Status | Description |
+|----------|---------|--------|-------------|
+| **P1** | Factorization | ✅ DONE | Moved shared code to `server/utils/`, LDM independence |
+| **P2** | Auto-LQA System | ✅ DONE | Backend + Frontend complete (5 phases) |
+| **P3** | MERGE System | 🔄 NEXT | Merge confirmed cells to main LanguageData (CRUCIAL) |
+| **P4** | File Conversions | Pending | XML↔Excel, Excel↔TMX, Text→XML/Excel |
+| **P5** | LanguageTool | Pending | Spelling/Grammar via central server |
+| **Future** | UIUX Overhaul | Pending | Legacy Apps menu → Single LocaNext |
+
+---
+
+## P2: Auto-LQA System - ✅ COMPLETE (2025-12-25)
+
+**All 5 phases implemented. 136 LDM tests passing (17 QA-specific).**
+
+### Backend (Phase 1)
+
+| Component | Status |
+|-----------|--------|
+| `LDMQAResult` model | ✅ Created |
+| `qa_checked_at`, `qa_flag_count` on rows | ✅ Added |
+| QA schemas (`schemas/qa.py`) | ✅ Created |
+| `routes/qa.py` (7 endpoints) | ✅ Created |
+| Row filter by `qa_flagged` | ✅ Added |
+| 17 unit tests | ✅ Passing |
+
+### API Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /rows/{id}/check-qa` | LIVE mode single row |
+| `GET /rows/{id}/qa-results` | Row issues (Edit Modal) |
+| `POST /files/{id}/check-qa` | Full file QA |
+| `GET /files/{id}/qa-results` | File report (QA Menu) |
+| `GET /files/{id}/qa-summary` | Summary counts |
+| `POST /qa-results/{id}/resolve` | Dismiss issue |
+| `GET /files/{id}/rows?filter=qa_flagged` | Filter rows |
+
+### Frontend (Phases 2-5)
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 2 | LIVE QA Mode (toggle, auto-check on confirm) | ✅ Done |
+| 3 | Edit Modal QA Panel (show issues, dismiss) | ✅ Done |
+| 4 | Row Filtering UI (search + dropdown) | ✅ Done |
+| 5 | QA Menu (slide-out panel, summary, jump to row) | ✅ Done |
+
+### Files Created/Modified
+
+| File | Type |
+|------|------|
+| `server/tools/ldm/routes/qa.py` | NEW |
+| `server/tools/ldm/schemas/qa.py` | NEW |
+| `tests/unit/ldm/test_routes_qa.py` | NEW (17 tests) |
+| `locaNext/src/lib/components/ldm/QAMenuPanel.svelte` | NEW |
+| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | Modified |
+| `locaNext/src/lib/components/apps/LDM.svelte` | Modified |
+
+### QA Checks Implemented
+
+| Check | Description | Severity |
+|-------|-------------|----------|
+| Pattern | `{code}` mismatches between source/target | Error |
+| Character | Special char count mismatches (`{}[]<>`) | Error |
+| Line | Same source → different translations | Warning |
+
+---
+
+## P3: MERGE System (NEXT PRIORITY)
+
+**Purpose:** Merge confirmed cells back to main LanguageData
+
+### Flow
+```
+1. Work on file in LocaNext (translate, confirm cells)
+2. Right-click file → "Merge to LanguageData"
+3. Select target LanguageData file (synced with mainbranch)
+4. Confirmed cells merged (edit if match, add if new)
+5. User commits to SVN/Perforce manually
+```
+
+### Implementation Needs
+- Backend: Merge logic (match by StringID, update target)
+- Frontend: Right-click menu option, modal to select target file
+- Export: Generate merged file for download
+
+### Future: Perforce API
+- Could create changelist directly after merge
+- User reviews in P4V and submits
+
+---
+
+## P1: Factorization - ✅ COMPLETE
+
+**785 tests passed** - no breakage.
+
+### Created in server/utils/
+
+| File | Functions |
+|------|-----------|
+| `qa_helpers.py` | `is_korean`, `is_sentence`, `check_pattern_match`, `check_character_count` |
+| `code_patterns.py` | `simple_number_replace`, `extract_code_blocks`, `adapt_structure` |
+| `text_utils.py` | `normalize_korean_text` (already existed) |
+
+---
+
+## BUILD MODES
 
 | Mode | Tests | Installer | Platform |
 |------|-------|-----------|----------|
 | **QA** | ALL 1000+ | ~170MB | Both (default) |
-| **QA FULL** | ALL 1000+ | ~1.2GB | Gitea only ✅ |
+| **QA FULL** | ALL 1000+ | ~1.2GB | Gitea only |
 | **TROUBLESHOOT** | Resume | Debug | Both |
 
----
-
-## QA FULL MODE: VERIFIED ✅
-
-**GITEA ONLY. Never GitHub.** Too complicated + LFS limits.
-
-**Status:** Build succeeded - v25.1223.0811 (1,177 MB)
-
-**WIP Doc:** [QA_FULL_IMPLEMENTATION.md](QA_FULL_IMPLEMENTATION.md)
-
-### Actual vs Expected
-| Component | Expected | Actual |
-|-----------|----------|--------|
-| FULL installer | ~2GB | **1,177 MB** |
-| LIGHT installer | ~150MB | **170 MB** |
-
-### How to Trigger
 ```bash
+# QA (default)
+echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git push origin main && git push gitea main
+
 # QA FULL (Gitea only)
-echo "Build QA FULL" >> GITEA_TRIGGER.txt
-git add -A && git commit -m "Build QA FULL" && git push gitea main
+echo "Build QA FULL" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build QA FULL" && git push gitea main
 ```
 
-### Disk Terrorism Prevention
-| Build Type | Max Releases | Max Disk |
-|------------|--------------|----------|
-| **QA FULL** | 3 | ~6GB |
-| **QA (LIGHT)** | 10 | ~1.5GB |
-
-Auto-cleanup deletes old releases to prevent disk bloat.
-
 ---
 
-## LAST SESSION (2025-12-24)
+## TESTING RECOMMENDATIONS
 
-- [x] **LDM Glossary Context Menu** - Right-click file → "Create Glossary" → Excel export
-  - Backend: `GET /api/ldm/files/{id}/extract-glossary`
-  - Frontend: Context menu item in FileExplorer.svelte
-  - Rules: ≤21 chars, ≥2 occurrences, no `.?!` endings
-  - Tested locally ✅
+### Before Next Build
+1. Run `python3 -m pytest tests/unit/ldm/ -v` (136 tests)
+2. Test on Playground: QA toggle, QA Menu, filter dropdown
+3. Verify QA flags appear on rows with issues
 
----
-
-## PREVIOUS SESSION (2025-12-23)
-
-- [x] Implemented QA FULL mode (offline installer)
-- [x] Simplified CI to 3 modes (Build, Build QA FULL, TROUBLESHOOT)
-- [x] DEV mode is dead - QA is now default
-- [x] Added disk terrorism prevention (FULL: 3 releases, LIGHT: 10)
-- [x] GitHub rejects QA FULL (LFS limits)
-- [x] App detects bundled model, skips download
-- [x] **QA FULL build verified** - v25.1223.0811 (1,177 MB)
-
----
-
-## FUTURE WORK
-
-| Task | Priority | Notes |
-|------|----------|-------|
-| **playground_FULL.sh** | Low | Test script for FULL installer (offline mode verification) |
+### CDP E2E Tests (Future)
+- Test LIVE QA mode (toggle on, edit cell, verify check runs)
+- Test QA Menu (open, run full QA, click issue to jump to row)
+- Test row filtering (select "QA Flagged", verify only flagged rows shown)
 
 ---
 
@@ -92,10 +160,11 @@ Auto-cleanup deletes old releases to prevent disk bloat.
 
 | Doc | Purpose |
 |-----|---------|
-| [Roadmap.md](../../Roadmap.md) | Strategic priorities |
-| [MASTER_PLAN.md](MASTER_PLAN.md) | What's done & next |
+| [Roadmap.md](../../Roadmap.md) | Absorption tracker + strategic view |
+| [AUTO_LQA_IMPLEMENTATION.md](AUTO_LQA_IMPLEMENTATION.md) | P2 detailed plan (COMPLETE) |
+| [LANGUAGETOOL_IMPLEMENTATION.md](LANGUAGETOOL_IMPLEMENTATION.md) | P5 detailed plan |
 | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Open bugs (0) |
 
 ---
 
-*Glossary Context Menu done. Triggering build for Playground test.*
+*Next: P3 MERGE System → P4 File Conversions → P5 LanguageTool*

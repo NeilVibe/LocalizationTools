@@ -3,7 +3,8 @@
     Search,
     InlineLoading,
     Tag,
-    Button
+    Button,
+    Dropdown
   } from "carbon-components-svelte";
   import { Edit, Locked } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
@@ -11,6 +12,7 @@
   import { logger } from "$lib/utils/logger.js";
   import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate, ldmConnected } from "$lib/stores/ldm.js";
   import { preferences, getFontSizeValue } from "$lib/stores/preferences.js";
+  import { WarningAltFilled } from "carbon-icons-svelte";
   import { serverUrl } from "$lib/stores/app.js";
   import PresenceBar from "./PresenceBar.svelte";
 
@@ -41,6 +43,15 @@
   let searchTerm = $state("");
   let searchDebounceTimer = null;
 
+  // P2: Filter state
+  let activeFilter = $state("all"); // 'all' | 'confirmed' | 'unconfirmed' | 'qa_flagged'
+  const filterOptions = [
+    { id: "all", text: "All Rows" },
+    { id: "confirmed", text: "Confirmed" },
+    { id: "unconfirmed", text: "Unconfirmed" },
+    { id: "qa_flagged", text: "QA Flagged" }
+  ];
+
   // Svelte 5: Virtual scroll state
   let containerEl = $state(null);
   let scrollTop = $state(0);
@@ -66,6 +77,10 @@
   // TM suggestions state
   let tmSuggestions = $state([]);
   let tmLoading = $state(false);
+
+  // P2: QA state
+  let qaLoading = $state(false);
+  let lastQaResult = $state(null); // Latest QA check result for edit modal
 
   // UI-044: Resizable columns state
   let sourceWidthPercent = $state(50); // Source column takes 50% by default
@@ -197,6 +212,10 @@
       if (searchTerm) {
         params.append('search', searchTerm);
       }
+      // P2: Add filter param
+      if (activeFilter && activeFilter !== 'all') {
+        params.append('filter', activeFilter);
+      }
 
       const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
         headers: getAuthHeaders()
@@ -277,6 +296,15 @@
     }, 300);
   }
 
+  // P2: Handle filter change
+  function handleFilterChange(event) {
+    activeFilter = event.detail.selectedId;
+    loadedPages.clear();
+    rows = [];
+    loadRows();
+    logger.userAction("Filter changed", { filter: activeFilter });
+  }
+
   // Go to specific row - REMOVED (BUG-001 - not useful)
 
   // Fetch TM suggestions for a source text
@@ -321,6 +349,78 @@
       source: suggestion.source.substring(0, 30),
       similarity: suggestion.similarity
     });
+  }
+
+  // P2: Run QA check on a row
+  async function runQACheck(rowId) {
+    if (!rowId) return null;
+
+    qaLoading = true;
+    lastQaResult = null;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${rowId}/check-qa`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          checks: ["line", "pattern", "character"],
+          force: true
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        lastQaResult = result;
+
+        // Update row's qa_flag_count in cache
+        const rowIndex = rows.findIndex(r => r && r.id.toString() === rowId.toString());
+        if (rowIndex >= 0) {
+          rows[rowIndex] = {
+            ...rows[rowIndex],
+            qa_flag_count: result.issue_count,
+            qa_checked_at: result.checked_at
+          };
+          rows = [...rows];
+        }
+
+        if (result.issue_count > 0) {
+          logger.warning("QA issues found", { rowId, count: result.issue_count });
+        } else {
+          logger.success("QA check passed", { rowId });
+        }
+
+        return result;
+      }
+    } catch (err) {
+      logger.error("QA check failed", { rowId, error: err.message });
+    } finally {
+      qaLoading = false;
+    }
+
+    return null;
+  }
+
+  // P2: Get QA results for a row (for edit modal)
+  async function fetchQAResults(rowId) {
+    if (!rowId) return [];
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${rowId}/qa-results`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.issues || [];
+      }
+    } catch (err) {
+      logger.error("Failed to fetch QA results", { rowId, error: err.message });
+    }
+
+    return [];
   }
 
   // =========================================================================
@@ -597,6 +697,20 @@
         }
 
         logger.success("Row updated", { rowId });
+
+        // P2: Run QA check if LIVE QA is enabled
+        if ($preferences.enableLiveQa) {
+          const qaResult = await runQACheck(rowId);
+          if (qaResult && qaResult.issue_count > 0) {
+            // Keep modal open to show QA issues
+            lastQaResult = qaResult;
+            logger.warning("QA issues detected after save", { count: qaResult.issue_count });
+            // Don't close modal - let user see the issues
+            dispatch('rowUpdate', { rowId });
+            return; // Exit without closing modal
+          }
+        }
+
         closeEditModal();
         dispatch('rowUpdate', { rowId });
       } else {
@@ -842,14 +956,27 @@
       </div>
     </div>
 
-    <div class="search-bar">
-      <Search
-        bind:value={searchTerm}
-        on:clear={() => { searchTerm = ""; handleSearch(); }}
-        on:input={handleSearch}
-        placeholder="Search source, target, or StringID... (Press Enter)"
-        size="sm"
-      />
+    <div class="search-filter-bar">
+      <div class="search-wrapper">
+        <Search
+          bind:value={searchTerm}
+          on:clear={() => { searchTerm = ""; handleSearch(); }}
+          on:input={handleSearch}
+          placeholder="Search source, target, or StringID..."
+          size="sm"
+        />
+      </div>
+      <!-- P2: Filter Dropdown -->
+      <div class="filter-wrapper">
+        <Dropdown
+          size="sm"
+          selectedId={activeFilter}
+          items={filterOptions}
+          on:select={handleFilterChange}
+          titleText=""
+          hideLabel
+        />
+      </div>
     </div>
 
     <!-- Table Header -->
@@ -936,6 +1063,7 @@
                 <!-- Target (always visible, editable, full content with newline symbols) -->
                 <!-- Cell color indicates status: default=pending, translated=teal, confirmed=green -->
                 <!-- UI-044: Uses percentage width matching header -->
+                <!-- P2: QA flag shown when qa_flag_count > 0 -->
                 <div
                   class="cell target"
                   class:locked={rowLock}
@@ -943,6 +1071,7 @@
                   class:status-translated={row.status === 'translated'}
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
+                  class:qa-flagged={row.qa_flag_count > 0}
                   style="flex: 0 0 {100 - sourceWidthPercent}%;"
                   ondblclick={() => openEditModal(row)}
                   role="button"
@@ -950,6 +1079,11 @@
                   onkeydown={(e) => e.key === 'Enter' && openEditModal(row)}
                 >
                   <span class="cell-content">{formatGridText(row.target) || ""}</span>
+                  {#if row.qa_flag_count > 0}
+                    <span class="qa-icon" title="{row.qa_flag_count} QA issue(s)">
+                      <WarningAltFilled size={14} />
+                    </span>
+                  {/if}
                   {#if rowLock}
                     <span class="lock-icon"><Locked size={12} /></span>
                   {:else}
@@ -1039,6 +1173,40 @@
 
         <!-- Right column: TM Suggestions -->
         <div class="edit-right">
+          <!-- P2: QA Results Panel (shown when issues exist) -->
+          {#if lastQaResult && lastQaResult.issue_count > 0}
+            <div class="qa-section">
+              <div class="qa-header-bar">
+                <span class="section-label qa-label">
+                  <WarningAltFilled size={14} />
+                  QA ISSUES ({lastQaResult.issue_count})
+                </span>
+                {#if qaLoading}
+                  <InlineLoading description="" />
+                {/if}
+              </div>
+              <div class="qa-list">
+                {#each lastQaResult.issues as issue}
+                  <div class="qa-item" class:error={issue.severity === 'error'} class:warning={issue.severity === 'warning'}>
+                    <div class="qa-item-header">
+                      <Tag type={issue.severity === 'error' ? 'red' : 'magenta'} size="sm">
+                        {issue.check_type}
+                      </Tag>
+                    </div>
+                    <div class="qa-item-message">{issue.message}</div>
+                  </div>
+                {/each}
+                <button
+                  class="qa-dismiss-btn"
+                  onclick={() => { lastQaResult = null; closeEditModal(); }}
+                >
+                  Dismiss & Close
+                </button>
+              </div>
+            </div>
+          {/if}
+
+          <!-- TM Matches Section -->
           <div class="tm-section">
             <div class="tm-header-bar">
               <span class="section-label">TM MATCHES</span>
@@ -1115,24 +1283,44 @@
     color: var(--cds-text-02);
   }
 
-  /* Search bar - always expanded, clean styling */
-  .search-bar {
+  /* P2: Search + Filter bar layout */
+  .search-filter-bar {
+    display: flex;
+    gap: 0.75rem;
     padding: 0.5rem 1rem;
     background: var(--cds-layer-01);
     border-bottom: 1px solid var(--cds-border-subtle-01);
+    align-items: center;
   }
 
-  .search-bar :global(.bx--search) {
+  .search-wrapper {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .search-wrapper :global(.bx--search) {
     background: var(--cds-field-01);
   }
 
-  .search-bar :global(.bx--search-input) {
+  .search-wrapper :global(.bx--search-input) {
     background: var(--cds-field-01);
     border-bottom: 1px solid var(--cds-border-strong-01);
   }
 
-  .search-bar :global(.bx--search-input:focus) {
+  .search-wrapper :global(.bx--search-input:focus) {
     border-bottom: 2px solid var(--cds-interactive-01);
+  }
+
+  .filter-wrapper {
+    flex: 0 0 160px;
+  }
+
+  .filter-wrapper :global(.bx--dropdown) {
+    background: var(--cds-field-01);
+  }
+
+  .filter-wrapper :global(.bx--list-box__field) {
+    height: 2rem;
   }
 
   .table-header {
@@ -1341,6 +1529,23 @@
   .cell.target.locked .lock-icon {
     opacity: 0.8;
     color: var(--cds-support-03);
+  }
+
+  /* P2: QA Flag Styles */
+  .cell.target.qa-flagged {
+    border-left: 3px solid var(--cds-support-01, #da1e28);
+    background: rgba(218, 30, 40, 0.08);
+  }
+
+  .qa-icon {
+    position: absolute;
+    right: 1.5rem;
+    color: var(--cds-support-01, #da1e28);
+    opacity: 1;
+  }
+
+  .cell.target.qa-flagged:hover {
+    background: rgba(218, 30, 40, 0.12);
   }
 
   /* ========================================
@@ -1702,5 +1907,74 @@
     color: var(--cds-text-02);
     font-size: 0.8125rem;
     font-style: italic;
+  }
+
+  /* P2: QA Panel Styles */
+  .qa-section {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    background: rgba(218, 30, 40, 0.05);
+  }
+
+  .qa-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(218, 30, 40, 0.12);
+    border-bottom: 1px solid rgba(218, 30, 40, 0.2);
+  }
+
+  .qa-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--cds-support-01, #da1e28);
+  }
+
+  .qa-list {
+    padding: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .qa-item {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    background: var(--cds-layer-01);
+    border-left: 3px solid var(--cds-support-01, #da1e28);
+  }
+
+  .qa-item.warning {
+    border-left-color: var(--cds-support-03, #f1c21b);
+  }
+
+  .qa-item-header {
+    margin-bottom: 0.25rem;
+  }
+
+  .qa-item-message {
+    font-size: 0.8125rem;
+    color: var(--cds-text-01);
+    line-height: 1.4;
+  }
+
+  .qa-dismiss-btn {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 4px;
+    background: var(--cds-layer-01);
+    color: var(--cds-text-01);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .qa-dismiss-btn:hover {
+    background: var(--cds-layer-hover-01);
   }
 </style>

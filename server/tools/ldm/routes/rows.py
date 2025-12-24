@@ -104,10 +104,18 @@ async def list_rows(
     limit: int = Query(50, ge=1, le=200),
     search: Optional[str] = None,
     status: Optional[str] = None,
+    filter: Optional[str] = Query(None, description="Filter: all, confirmed, unconfirmed, qa_flagged"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Get paginated rows for a file."""
+    """Get paginated rows for a file.
+
+    Filters:
+    - all: All rows (default)
+    - confirmed: status = 'approved' or 'reviewed'
+    - unconfirmed: status = 'pending' or 'translated'
+    - qa_flagged: qa_flag_count > 0
+    """
     # Verify file access
     result = await db.execute(
         select(LDMFile).options(selectinload(LDMFile.project)).where(
@@ -142,6 +150,17 @@ async def list_rows(
     if status:
         query = query.where(LDMRow.status == status)
         count_query = count_query.where(LDMRow.status == status)
+
+    # P2: Auto-LQA - Additional filters
+    if filter == "confirmed":
+        query = query.where(LDMRow.status.in_(["approved", "reviewed"]))
+        count_query = count_query.where(LDMRow.status.in_(["approved", "reviewed"]))
+    elif filter == "unconfirmed":
+        query = query.where(LDMRow.status.in_(["pending", "translated"]))
+        count_query = count_query.where(LDMRow.status.in_(["pending", "translated"]))
+    elif filter == "qa_flagged":
+        query = query.where(LDMRow.qa_flag_count > 0)
+        count_query = count_query.where(LDMRow.qa_flag_count > 0)
 
     # Get total count
     total_result = await db.execute(count_query)

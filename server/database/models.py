@@ -661,17 +661,23 @@ class LDMRow(Base):
     updated_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # QA tracking (P2: Auto-LQA)
+    qa_checked_at = Column(DateTime, nullable=True)  # Last QA check timestamp
+    qa_flag_count = Column(Integer, default=0)  # Number of unresolved QA issues
+
     # Extra data for FULL file reconstruction (preserves ALL original data)
     extra_data = Column(FlexibleJSON, nullable=True)
 
     # Relationships
     file = relationship("LDMFile", back_populates="rows")
     editor = relationship("User")
+    qa_results = relationship("LDMQAResult", back_populates="row", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_ldm_row_file_rownum", "file_id", "row_num"),
         Index("idx_ldm_row_file_stringid", "file_id", "string_id"),
         Index("idx_ldm_row_status", "status"),
+        Index("idx_ldm_row_qa_flagged", "file_id", "qa_flag_count"),  # P2: QA filter
     )
 
     def __repr__(self):
@@ -706,6 +712,51 @@ class LDMEditHistory(Base):
 
     def __repr__(self):
         return f"<LDMEditHistory(id={self.id}, row_id={self.row_id}, edited_at='{self.edited_at}')>"
+
+
+class LDMQAResult(Base):
+    """
+    LDM QA Result - Individual QA issue on a row.
+
+    P2: Auto-LQA System
+    Stores QA check results (line, term, pattern, character, grammar).
+    Each row can have multiple QA results from different check types.
+    """
+    __tablename__ = "ldm_qa_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    row_id = Column(Integer, ForeignKey("ldm_rows.id", ondelete="CASCADE"), nullable=False, index=True)
+    file_id = Column(Integer, ForeignKey("ldm_files.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Check info
+    check_type = Column(String(50), nullable=False)  # 'line', 'term', 'pattern', 'character', 'grammar'
+    severity = Column(String(20), default="warning")  # 'error', 'warning', 'info'
+    message = Column(Text, nullable=False)  # Human-readable issue description
+    details = Column(FlexibleJSON, nullable=True)  # Check-specific data (e.g., expected term, pattern details)
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)  # NULL = unresolved
+
+    # Resolution info
+    resolved_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    row = relationship("LDMRow", back_populates="qa_results")
+    file = relationship("LDMFile")
+    resolver = relationship("User")
+
+    __table_args__ = (
+        Index("idx_qa_result_row", "row_id"),
+        Index("idx_qa_result_file", "file_id"),
+        Index("idx_qa_result_file_type", "file_id", "check_type"),
+        Index("idx_qa_result_unresolved", "file_id", "resolved_at"),  # Filter unresolved
+        # Prevent duplicate identical issues on same row
+        Index("idx_qa_result_unique", "row_id", "check_type", "message", unique=True),
+    )
+
+    def __repr__(self):
+        return f"<LDMQAResult(id={self.id}, row_id={self.row_id}, type='{self.check_type}', severity='{self.severity}')>"
 
 
 class LDMActiveSession(Base):

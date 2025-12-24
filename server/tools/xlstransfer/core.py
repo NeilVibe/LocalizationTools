@@ -3,6 +3,10 @@ XLSTransfer Core Utilities
 
 Text processing, column conversion, and code pattern handling.
 CLEAN, modular functions extracted from original XLSTransfer script.
+
+NOTE: Code pattern functions (simple_number_replace, extract_code_blocks, analyze_code_patterns)
+      are now centralized in server/utils/code_patterns.py
+      Re-exported here for backwards compatibility.
 """
 
 from typing import Optional, Dict, Set, Tuple, List, Any
@@ -13,6 +17,18 @@ try:
     from server.tools.xlstransfer import config
 except ImportError:
     import config  # Standalone mode (Windows build)
+
+# Factor Power: Import centralized code pattern functions from utils
+# Re-export for backwards compatibility
+try:
+    from server.utils.code_patterns import (
+        simple_number_replace,
+        extract_code_blocks,
+        analyze_code_patterns,
+    )
+except ImportError:
+    # Standalone mode - functions defined below
+    pass
 
 
 # ============================================

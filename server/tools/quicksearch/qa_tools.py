@@ -7,18 +7,29 @@ Migrated from QuickSearch0818.py (lines 2152-3100):
 3. Term Check - Find missing terms in translations
 4. Pattern Sequence Check - Match {code} patterns between source and translation
 5. Character Count Check - Check special character count matching
+
+NOTE: Helper functions (is_korean, is_sentence, etc.) are now in server/utils/qa_helpers.py
+      Imported here for backwards compatibility.
 """
 
 import os
 import re
 import csv
-import string
 from typing import List, Tuple, Dict, Optional, Set, Callable
 from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
 from loguru import logger
+
+# Factor Power: Import centralized helpers from utils
+from server.utils.qa_helpers import (
+    is_korean,
+    is_sentence,
+    has_punctuation,
+    extract_code_patterns,
+    preprocess_text_for_char_count,
+)
 
 # Try to import lxml (optional - only needed for XML parsing in QA tools)
 try:
@@ -36,47 +47,6 @@ try:
 except ImportError:
     HAS_AHOCORASICK = False
     logger.warning("ahocorasick not installed - using fallback matching (slower)")
-
-
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-
-def is_korean(text: str) -> bool:
-    """Returns True if text contains any Korean syllable (U+AC00-U+D7A3)."""
-    if not isinstance(text, str):
-        return False
-    return bool(re.search(r'[\uac00-\ud7a3]', text))
-
-
-def is_sentence(text: str) -> bool:
-    """Returns True if text ends with sentence-ending punctuation."""
-    if not isinstance(text, str):
-        return False
-    return bool(re.search(r'[.?!]\s*$', text.strip()))
-
-
-def has_punctuation(text: str) -> bool:
-    """Returns True if text contains any punctuation or special ellipsis."""
-    if not isinstance(text, str):
-        return False
-    return any(ch in string.punctuation for ch in text) or '…' in text
-
-
-def extract_code_patterns(text: str) -> Set[str]:
-    """Extract {code} patterns from text, non-greedy."""
-    if not isinstance(text, str):
-        return set()
-    return set(re.findall(r'\{.*?\}', text))
-
-
-def preprocess_text_for_char_count(text: str) -> str:
-    """Remove formatting codes that may interfere with character counting."""
-    if not isinstance(text, str):
-        return ""
-    text = re.sub(r'<color:.*?>', '', text)
-    text = re.sub(r'<PAColor.*?>|<PAOldColor>', '', text)
-    return text
 
 
 def extract_all_pairs_from_files(

@@ -5,13 +5,15 @@
     Button,
     Tag
   } from "carbon-components-svelte";
-  import { DataBase, Settings, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document } from "carbon-icons-svelte";
+  import { DataBase, Settings, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document, Checkmark, WarningAlt, Report } from "carbon-icons-svelte";
+  import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import FileExplorer from "$lib/components/ldm/FileExplorer.svelte";
   import VirtualGrid from "$lib/components/ldm/VirtualGrid.svelte";
   import TMManager from "$lib/components/ldm/TMManager.svelte";
   import TMDataGrid from "$lib/components/ldm/TMDataGrid.svelte";
+  import QAMenuPanel from "$lib/components/ldm/QAMenuPanel.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
@@ -33,6 +35,9 @@
 
   // Server status modal state
   let showServerStatus = $state(false);
+
+  // P2: QA Menu panel state
+  let showQAMenu = $state(false);
 
   // API base URL
   const API_BASE = 'http://localhost:8888';
@@ -236,6 +241,25 @@
     selectedFileName = "";
     viewMode = 'tm';
     logger.userAction("TM selected", { tmId, name: tm.name });
+  }
+
+  /**
+   * P2: Handle go to row from QA Menu
+   */
+  function handleGoToRow(event) {
+    const { rowId, rowNum } = event.detail;
+    // Scroll to the row in VirtualGrid
+    if (virtualGrid) {
+      const container = document.querySelector('.scroll-container');
+      if (container) {
+        // Estimate row position (40px per row is average)
+        const scrollPos = (rowNum - 1) * 40;
+        container.scrollTop = scrollPos;
+        logger.userAction("Scrolled to row from QA", { rowNum, scrollPos });
+      }
+    }
+    // Close QA menu after navigation
+    showQAMenu = false;
   }
 
   // ================================
@@ -639,6 +663,29 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
             {/if}
           </div>
           <div class="toolbar-right">
+            <!-- P2: QA Toggle Button -->
+            <Button
+              kind={$preferences.enableLiveQa ? "secondary" : "ghost"}
+              size="small"
+              icon={$preferences.enableLiveQa ? Checkmark : WarningAlt}
+              iconDescription={$preferences.enableLiveQa ? "QA Enabled - Click to disable" : "QA Disabled - Click to enable"}
+              tooltipAlignment="end"
+              on:click={() => preferences.setQaSetting('enableLiveQa', !$preferences.enableLiveQa)}
+            >
+              {$preferences.enableLiveQa ? "QA On" : "QA Off"}
+            </Button>
+            <!-- P2: QA Menu Button -->
+            <Button
+              kind="ghost"
+              size="small"
+              icon={Report}
+              iconDescription="QA Report"
+              tooltipAlignment="end"
+              disabled={!selectedFileId}
+              on:click={() => showQAMenu = true}
+            >
+              QA
+            </Button>
             <Button
               kind="ghost"
               size="small"
@@ -722,6 +769,14 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
 
   <!-- Server Status Modal -->
   <ServerStatus bind:open={showServerStatus} />
+
+  <!-- P2: QA Menu Panel -->
+  <QAMenuPanel
+    bind:open={showQAMenu}
+    fileId={selectedFileId}
+    fileName={selectedFileName}
+    on:goToRow={handleGoToRow}
+  />
 </div>
 
 <style>

@@ -3,90 +3,20 @@ KR Similar Core Module
 
 Provides text normalization and utility functions for Korean similarity search.
 Extracted from KRSIMILAR0124.py source script.
+
+NOTE: Core functions are now centralized in server/utils/:
+      - normalize_text -> server/utils/text_utils.py
+      - adapt_structure -> server/utils/code_patterns.py
+      Re-exported here for backwards compatibility.
 """
 
-import re
 from typing import Optional
 
 import pandas as pd
 
-# Factor Power: Use centralized text utils
+# Factor Power: Use centralized utils
 from server.utils.text_utils import normalize_korean_text as normalize_text
-
-
-def adapt_structure(kr_text: str, translation: str) -> str:
-    """
-    Adapt translation structure to match Korean text line structure.
-
-    Used when auto-translating to maintain line breaks and formatting.
-
-    Args:
-        kr_text: Original Korean text with line breaks
-        translation: Translation text to adapt
-
-    Returns:
-        Adapted translation matching Korean structure
-    """
-    kr_lines = kr_text.split('\\n')
-    total_lines = len(kr_lines)
-    non_empty_lines = sum(1 for line in kr_lines if line.strip())
-
-    if not translation.strip():
-        return '\\n'.join([''] * total_lines)
-
-    ideal_length = len(translation) / non_empty_lines if non_empty_lines > 0 else len(translation)
-    threshold = int(ideal_length * 1.5)  # 50% over ideal length
-
-    end_punct_pattern = r'[.!?]|\.\.\.'
-    all_punct_pattern = r'[.!?,;:]|\.\.\.'
-
-    adapted_lines = []
-    start = 0
-
-    for line in kr_lines:
-        if line.strip():
-            if start >= len(translation):
-                adapted_lines.append('')
-                continue
-
-            # Find phrase-ending punctuations within threshold
-            matches = list(re.finditer(end_punct_pattern, translation[start:start + threshold]))
-
-            if matches:
-                # Find punctuation closest to ideal length
-                closest_match = min(matches, key=lambda m: abs(m.end() - ideal_length))
-                end = start + closest_match.end()
-            else:
-                # Fallback to any punctuation
-                matches = list(re.finditer(all_punct_pattern, translation[start:start + threshold]))
-                if matches:
-                    closest_match = min(matches, key=lambda m: abs(m.end() - ideal_length))
-                    end = start + closest_match.end()
-                else:
-                    # Break at closest word to ideal length
-                    last_space = translation.rfind(' ', start + int(ideal_length) - 10, start + int(ideal_length) + 10)
-                    if last_space != -1:
-                        end = last_space + 1
-                    else:
-                        end = start + int(ideal_length)
-
-            # Don't break in middle of ellipsis
-            if translation[end-3:end] == '...':
-                end += 1
-
-            adapted_lines.append(translation[start:end].strip())
-            start = end
-        else:
-            adapted_lines.append('')
-
-    # Add remaining text to last non-empty line
-    if start < len(translation):
-        for i in range(len(adapted_lines) - 1, -1, -1):
-            if adapted_lines[i]:
-                adapted_lines[i] += ' ' + translation[start:].strip()
-                break
-
-    return '\\n'.join(adapted_lines)
+from server.utils.code_patterns import adapt_structure
 
 
 class KRSimilarCore:

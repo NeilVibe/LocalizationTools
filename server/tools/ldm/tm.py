@@ -10,9 +10,11 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-# Import from KR Similar for semantic matching
+# Factor Power: Import from centralized utils
+from server.utils.text_utils import normalize_korean_text as normalize_text
+
+# Import ML components from KR Similar (TODO: move to utils when ready)
 try:
-    from server.tools.kr_similar.core import normalize_text
     from server.tools.kr_similar.embeddings import EmbeddingsManager
     from server.tools.kr_similar.searcher import SimilaritySearcher
     KR_SIMILAR_AVAILABLE = True
