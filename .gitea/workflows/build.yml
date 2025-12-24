@@ -356,7 +356,7 @@ jobs:
           POSTGRES_PORT: "5432"
         run: |
           echo "=== Creating admin user for tests ==="
-          python3.11 scripts/create_admin.py || echo "Admin may already exist"
+          python3.11 scripts/create_admin.py
           echo "[OK] Admin user ready"
 
       # ---- PYTHON TESTS ----
@@ -562,7 +562,10 @@ jobs:
               echo "║  Fast isolated tests with 4 parallel workers               ║"
               echo "╚════════════════════════════════════════════════════════════╝"
               # Try parallel first, fallback to sequential if xdist not available
-              python3.11 -m pytest tests/unit/ $DESELECTS -n 4 -v --tb=short --no-cov 2>/dev/null || python3.11 -m pytest tests/unit/ $DESELECTS -v --tb=short --no-cov
+              if ! python3.11 -m pytest tests/unit/ $DESELECTS -n 4 -v --tb=short --no-cov 2>&1; then
+                echo "Parallel failed, trying sequential..."
+                python3.11 -m pytest tests/unit/ $DESELECTS -v --tb=short --no-cov || { echo "❌ STAGE 1 FAILED"; exit 1; }
+              fi
               echo "✅ STAGE 1 PASSED: Unit tests (parallel)"
               echo ""
 
@@ -573,7 +576,7 @@ jobs:
               echo "║  STAGE 2/7: INTEGRATION TESTS                              ║"
               echo "║  Component interactions - DB, server, auth                 ║"
               echo "╚════════════════════════════════════════════════════════════╝"
-              python3.11 -m pytest tests/integration/ $DESELECTS -v --tb=short --no-cov
+              python3.11 -m pytest tests/integration/ $DESELECTS -v --tb=short --no-cov || { echo "❌ STAGE 2 FAILED"; exit 1; }
               echo "✅ STAGE 2 PASSED: Integration tests"
               echo ""
 
@@ -584,7 +587,7 @@ jobs:
               echo "║  STAGE 3/7: E2E TESTS                                      ║"
               echo "║  Full workflow simulations                                 ║"
               echo "╚════════════════════════════════════════════════════════════╝"
-              python3.11 -m pytest tests/e2e/ $DESELECTS -v --tb=short --no-cov
+              python3.11 -m pytest tests/e2e/ $DESELECTS -v --tb=short --no-cov || { echo "❌ STAGE 3 FAILED"; exit 1; }
               echo "✅ STAGE 3 PASSED: E2E tests"
               echo ""
 
@@ -595,7 +598,7 @@ jobs:
               echo "║  STAGE 4/7: API TESTS                                      ║"
               echo "║  Endpoint validation, error handling                       ║"
               echo "╚════════════════════════════════════════════════════════════╝"
-              python3.11 -m pytest tests/api/ $DESELECTS -v --tb=short --no-cov
+              python3.11 -m pytest tests/api/ $DESELECTS -v --tb=short --no-cov || { echo "❌ STAGE 4 FAILED"; exit 1; }
               echo "✅ STAGE 4 PASSED: API tests"
               echo ""
 
@@ -606,7 +609,7 @@ jobs:
               echo "║  STAGE 5/7: SECURITY TESTS                                 ║"
               echo "║  JWT, CORS, audit logging, IP filtering                    ║"
               echo "╚════════════════════════════════════════════════════════════╝"
-              python3.11 -m pytest tests/security/ $DESELECTS -v --tb=short --no-cov
+              python3.11 -m pytest tests/security/ $DESELECTS -v --tb=short --no-cov || { echo "❌ STAGE 5 FAILED"; exit 1; }
               echo "✅ STAGE 5 PASSED: Security tests"
               echo ""
 
@@ -617,7 +620,7 @@ jobs:
               echo "║  STAGE 6/7: FIXTURES & SPECIAL TESTS                       ║"
               echo "║  Pretranslation, StringID, edge cases                      ║"
               echo "╚════════════════════════════════════════════════════════════╝"
-              python3.11 -m pytest tests/fixtures/ $DESELECTS -v --tb=short --no-cov
+              python3.11 -m pytest tests/fixtures/ $DESELECTS -v --tb=short --no-cov || { echo "❌ STAGE 6 FAILED"; exit 1; }
               echo "✅ STAGE 6 PASSED: Fixtures tests"
               echo ""
 
@@ -629,7 +632,7 @@ jobs:
               echo "║  API latency, embedding throughput, memory usage           ║"
               echo "╚════════════════════════════════════════════════════════════╝"
               if [ -d "tests/performance" ]; then
-                python3.11 -m pytest tests/performance/ -v --tb=short --no-cov || echo "⚠️ Some performance tests skipped (expected)"
+                python3.11 -m pytest tests/performance/ -v --tb=short --no-cov || { echo "❌ STAGE 7 FAILED"; exit 1; }
                 echo "✅ STAGE 7 PASSED: Performance tests"
               else
                 echo "⚠️  STAGE 7 SKIPPED: No performance tests directory"
@@ -642,7 +645,8 @@ jobs:
               echo "╔════════════════════════════════════════════════════════════╗"
               echo "║  📊 CODE COVERAGE SUMMARY                                  ║"
               echo "╚════════════════════════════════════════════════════════════╝"
-              python3.11 -m pytest tests/unit/ tests/integration/ $DESELECTS --cov=server --cov-report=term-missing --cov-fail-under=0 -q 2>/dev/null || echo "Coverage report generated"
+              python3.11 -m pytest tests/unit/ tests/integration/ $DESELECTS --cov=server --cov-report=term-missing --cov-fail-under=0 -v || { echo "❌ COVERAGE STAGE FAILED"; exit 1; }
+              echo "✅ Coverage report generated"
               echo ""
 
               # ═══════════════════════════════════════════════════════════
