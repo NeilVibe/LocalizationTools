@@ -58,3 +58,4 @@ Build 889: Perf fix - static placeholder instead of InlineLoading
 Build 890: Perf fix - use cached row_count (avoid COUNT(*) on 500K rows)
 Build 891: Fix mock tests for row_count optimization
 Build
+Build 893
