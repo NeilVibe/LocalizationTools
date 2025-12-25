@@ -59,6 +59,12 @@ OFFLINE: SQLite (single-user, auto-fallback)
 4. **Dual Push** - `git push origin main && git push gitea main`
 5. **WSL ↔ Windows** - CDP tests can run from WSL via `/mnt/c/Program\ Files/nodejs/node.exe`
 6. **Fix Everything** - No defer, no excuses, fix all issues
+7. **NEVER RESTART** - Restarting does NOT solve issues. ALWAYS follow this workflow:
+   1. STOP everything
+   2. CLEAN resources (kill zombie processes)
+   3. INVESTIGATE root cause
+   4. FIX the actual issue
+   5. Only THEN start fresh
 
 ---
 

@@ -5,6 +5,31 @@
 
 ---
 
+## CRITICAL: NEVER RESTART
+
+**Restarting does NOT solve issues.** ALWAYS follow this workflow:
+
+1. **STOP** everything
+2. **CLEAN** resources
+3. **INVESTIGATE** root cause
+4. **FIX** the actual issue
+5. Only **THEN** start fresh
+
+---
+
+## Config Warning: fetch_interval
+
+**IMPORTANT:** The `config.yaml` must have a reasonable `fetch_interval`.
+
+```yaml
+runner:
+  fetch_interval: 30s  # ← MUST be 30s or higher, NOT 2s!
+```
+
+**2s = 43,200 requests/day = 650% CPU on Gitea**
+
+---
+
 ## Current Production Setup
 
 ```

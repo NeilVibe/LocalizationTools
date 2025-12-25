@@ -29,6 +29,23 @@
 
 ---
 
+## CRITICAL: NEVER RESTART
+
+**Restarting does NOT solve issues.** ALWAYS follow this workflow:
+
+1. **STOP** everything (cancel builds, stop services)
+2. **CLEAN** resources (kill zombie processes)
+3. **INVESTIGATE** root cause (logs, CPU, memory)
+4. **FIX** the actual issue
+5. Only **THEN** start fresh
+
+**Examples of proper fixes:**
+- Runner polling too fast → Fix `config.yaml` fetch_interval
+- Gitea 650% CPU → Find polling loop, fix config
+- Build stuck → Find which step, check logs, fix code
+
+---
+
 ## Build Modes
 
 **DEV mode is DEAD.** Workers technology made full test suite so fast that QA is now the only mode.

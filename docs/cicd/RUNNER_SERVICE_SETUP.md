@@ -4,6 +4,18 @@
 
 ---
 
+## CRITICAL: NEVER RESTART
+
+**Restarting does NOT solve issues.** ALWAYS follow this workflow:
+
+1. **STOP** everything
+2. **CLEAN** resources
+3. **INVESTIGATE** root cause
+4. **FIX** the actual issue
+5. Only **THEN** start fresh
+
+---
+
 ## The Problem We're Solving
 
 An undocumented systemd service with `Restart=always` caused 506 restarts and 706% CPU usage.

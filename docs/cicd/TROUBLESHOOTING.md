@@ -1,5 +1,19 @@
 # CI/CD Troubleshooting Guide
 
+## CRITICAL: NEVER RESTART
+
+**Restarting does NOT solve issues.** ALWAYS follow this workflow:
+
+1. **STOP** everything (cancel builds, stop services)
+2. **CLEAN** resources (kill zombie processes)
+3. **INVESTIGATE** root cause (check logs, find the actual problem)
+4. **FIX** the actual issue
+5. Only **THEN** start fresh
+
+**NEVER restart the runner while a build is in progress.** This will cause Gitea to spin at 700% CPU trying to communicate with a disconnected runner.
+
+---
+
 ## Checking Logs
 
 ### Live Logs (While Running) - USE CURL

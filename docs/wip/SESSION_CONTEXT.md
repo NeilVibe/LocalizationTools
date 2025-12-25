@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-25 21:55 | **Build:** 889 (pending) | **CI:** Passing
+**Last Updated:** 2025-12-25 22:45 | **Build:** 890 (pending) | **CI:** Fixed runner config
 
 ---
 
@@ -17,6 +17,7 @@
 | `getTotalHeight()` | O(1) | O(1) | Per-render: 10000 → 1 op |
 | Placeholder rows | InlineLoading (animated) | Static CSS | No jank from 30+ spinners |
 | Row count query | COUNT(*) every page | Cached file.row_count | 500K rows: ~500ms → ~0ms |
+| Runner polling | 2s (43K req/day) | 30s (2.8K req/day) | Gitea CPU: 650% → normal |
 
 ### Architecture (Documented)
 
