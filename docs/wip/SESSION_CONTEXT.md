@@ -1,6 +1,85 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-25 22:45 | **Build:** 890 (pending) | **CI:** Fixed runner config
+**Last Updated:** 2025-12-26 00:10 | **Build:** 892 (stable-892) | **CI:** ✅ Healthy | **Issues:** 3 OPEN
+
+> **Gitea Status:** Upgraded 1.22.3 → 1.25.3, GOGC=200, 30s runner polling. CPU now ~0-10% idle.
+
+### Gitea Fixes Applied (2025-12-26)
+| Fix | Before | After |
+|-----|--------|-------|
+| Version | 1.22.3 | 1.25.3 |
+| GOGC | default (100) | 200 (less GC) |
+| Runner polling | 2s | 30s |
+| CPU idle | 85% | ~0-10% |
+
+### Future Gitea Solutions (if needed)
+- Restart Gitea daily via cron (`0 4 * * * pkill -f "gitea web" && /home/neil1988/gitea/start.sh`)
+- Disable indexer if code search not needed (`REPO_INDEXER_ENABLED = false`)
+- Upgrade to newer versions when released
+
+---
+
+## PERFORMANCE TEST RESULTS (Build 892)
+
+**Date:** 2025-12-25 23:35 | **Status:** ✅ ALL PASS
+
+### Linux Dev (Backend API - 10K row file)
+| Operation | Time | Status |
+|-----------|------|--------|
+| Projects list | 55ms | ✅ |
+| Files list | <50ms | ✅ |
+| Row load (100 rows) | 17ms | ✅ |
+| Scroll (5 pages avg) | 16ms | ✅ |
+
+### Windows Playground (Fresh Install v25.1225.2310)
+| Metric | Time | Status |
+|--------|------|--------|
+| DOM Interactive | 153ms | ✅ |
+| DOM Content Loaded | 153ms | ✅ |
+| Load Complete | 153ms | ✅ |
+| First Paint | 388ms | ✅ |
+| JS Heap | 10MB | ✅ |
+
+**Conclusion:** Both Linux backend and Windows app performing excellently.
+
+---
+
+## CRITICAL ISSUES FOUND (2025-12-25)
+
+### Issue 1: PERF-003 - Lazy Loading Not Working
+
+**Severity:** HIGH | **Status:** OPEN
+
+- App loads ALL rows at once instead of 100 by 100
+- Expected: Lazy load 100 rows, fetch more on scroll
+- **Investigation needed:**
+  1. Review VirtualGrid.svelte lazy loading
+  2. Verify smart indexing operational
+  3. Check hashtable/index lookups optimal
+  4. Review Svelte 5 reactivity
+  5. Ensure pagination API called correctly
+
+### Issue 2: BUG-036 - Duplicate Names Allowed
+
+**Severity:** HIGH | **Status:** OPEN
+
+- 3 projects with same name "QA Test Project 10K"
+- 2 empty, 1 has 3 identical 10K files
+- **Fix needed:** UNIQUE constraints on:
+  - (project_name + parent_id)
+  - (file_name + folder_id)
+  - (folder_name + parent_folder_id)
+
+### Issue 3: BUG-037 - QA Check Incomplete
+
+**Severity:** MEDIUM | **Status:** OPEN
+
+- QA should run ALL checks (pattern, line, term, character)
+- Missing: Double-click QA issue → Open cell edit modal
+- **Fix needed:**
+  1. Run all check types by default
+  2. Add double-click handler on QA issues
+  3. Open EditModal at corresponding row
 
 ---
 
@@ -8,7 +87,7 @@
 
 **Target:** 500K+ row files must load and scroll seamlessly.
 
-### Performance Fixes Applied (Build 881-890)
+### Performance Fixes Applied (Build 881-892)
 
 | Fix | Before | After | Impact |
 |-----|--------|-------|--------|
@@ -17,7 +96,7 @@
 | `getTotalHeight()` | O(1) | O(1) | Per-render: 10000 → 1 op |
 | Placeholder rows | InlineLoading (animated) | Static CSS | No jank from 30+ spinners |
 | Row count query | COUNT(*) every page | Cached file.row_count | 500K rows: ~500ms → ~0ms |
-| Runner polling | 2s (43K req/day) | 30s (2.8K req/day) | Gitea CPU: 650% → normal |
+| Runner polling | 2s (43K req/day) | 30s (2.8K req/day) | Gitea CPU: 650% → ~85% (known Gitea bug) |
 
 ### Architecture (Documented)
 
@@ -44,18 +123,23 @@ Before any VirtualGrid change, verify:
 
 ---
 
-## CURRENT STATE: TEST SUITE VERIFIED ✅
+## CURRENT STATE: 3 CRITICAL ISSUES
 
 | Status | Value |
 |--------|-------|
-| **Open Issues** | 1 (QA frontend bug BUG-035) |
+| **Open Issues** | 3 critical + 1 low |
 | **CDP Tests** | 24 unique tests (cleaned up from 29) |
 | **Playwright Tests** | 12 spec files |
 | **Tests (Linux)** | 1,399 (7 stages, ~4 min) |
 | **Tests (Windows)** | 62 pytest + CDP integration tests |
 | **Coverage** | 47% |
-| **CI/CD** | ✅ Linux passing, Windows CDP passing |
+| **CI/CD** | ✅ Build 892 passing |
 | **Backend** | ✅ Running (healthy) |
+
+### Next Steps
+1. Fix PERF-003: Lazy loading (review VirtualGrid.svelte)
+2. Fix BUG-036: Add UNIQUE constraints for names
+3. Fix BUG-037: Complete QA checks + double-click edit
 
 ---
 
@@ -174,9 +258,12 @@ A row object becomes `undefined` during Svelte 5 reactivity cycle after QA resul
 
 ## PRIORITIES
 
-| Priority | Feature | Status |
-|----------|---------|--------|
-| **BUG** | QA frontend `.id` error | 🔄 Investigating |
+| Priority | Issue | Status |
+|----------|-------|--------|
+| **P0** | PERF-003: Fix lazy loading (loads all rows) | 🔴 OPEN |
+| **P0** | BUG-036: Prevent duplicate names | 🔴 OPEN |
+| **P1** | BUG-037: Complete QA checks + double-click edit | 🟡 OPEN |
+| **P2** | BUG-035: QA frontend `.id` error | 🟢 Low (not reproduced) |
 | **P3** | MERGE System | Pending |
 | **P4** | File Conversions | Pending |
 | **P5** | LanguageTool | Pending |
