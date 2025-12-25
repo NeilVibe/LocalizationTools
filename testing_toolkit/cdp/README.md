@@ -2,7 +2,7 @@
 
 **Pure Node.js testing via Chrome DevTools Protocol. No Playwright. No PowerShell.**
 
-**Updated:** 2025-12-21 | **Build:** 312 (VERIFIED)
+**Updated:** 2025-12-25 | **Build:** 880 (Windows CI + Gitea Secrets)
 
 ---
 
@@ -86,13 +86,33 @@ node quick_check.js
 
 | Script | Purpose |
 |--------|---------|
-| `login.js` | **Run first!** Login as neil/neil via CDP |
+| `login.js` | **Run first!** Login via CDP (requires env credentials) |
 | `quick_check.js` | Page state, URL, available test interfaces |
 | `test_bug023.js` | TM status check (pending vs ready) |
 | `test_bug023_build.js` | Trigger TM index build, check for errors |
 | `test_bug029.js` | Right-click "Upload as TM" flow |
 | `test_clean_slate.js` | Clear TMs and check file state |
 | `test_server_status.js` | Server status panel, TM build buttons |
+
+### Credential Security (Build 880+)
+
+**login.js requires environment variables - no hardcoded credentials!**
+
+```bash
+# For local testing
+export CDP_TEST_USER=your_username
+export CDP_TEST_PASS=your_password
+node login.js
+
+# For CI - uses Gitea secrets automatically
+# CI_TEST_USER → CDP_TEST_USER
+# CI_TEST_PASS → CDP_TEST_PASS
+```
+
+| Mode | Credentials From |
+|------|------------------|
+| CI (Gitea) | Gitea secrets (CI_TEST_USER, CI_TEST_PASS) |
+| Local dev | Environment variables (CDP_TEST_USER, CDP_TEST_PASS) |
 
 ---
 
@@ -393,4 +413,4 @@ cd locaNext && npm test
 
 ---
 
-*Last updated: 2025-12-19 | Pure Node.js CDP testing for Windows*
+*Last updated: 2025-12-25 | Pure Node.js CDP testing for Windows + CI Integration*

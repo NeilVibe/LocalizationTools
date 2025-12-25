@@ -193,4 +193,74 @@ cat ~/.locanext_checkpoint
 
 ---
 
-*Last updated: 2025-12-22*
+## Windows CI Testing (Build 879+)
+
+**Full 3-tier Windows testing with CDP integration.**
+
+### Test Pipeline
+
+```
+Windows CI Pipeline:
+├── Tier 1: pytest (62 tests in windows_tests/)
+│   └── Paths, encoding, Excel, models, server connectivity
+├── Tier 2: Smoke Test
+│   └── Silent NSIS install + file verification + health check
+└── Tier 3: CDP Integration Tests
+    ├── TEST 1: SQLite (offline) mode
+    │   └── Launch app → quick_check.js
+    └── TEST 2: PostgreSQL (online) mode
+        └── Launch app → login.js → quick_check.js → test_server_status.js
+```
+
+### Gitea Secrets (REQUIRED for Online Tests)
+
+| Secret | Purpose | Value |
+|--------|---------|-------|
+| `CI_DB_HOST` | PostgreSQL server address | `172.28.150.120` |
+| `CI_TEST_USER` | Test user (role=user, NOT admin) | `ci_tester` |
+| `CI_TEST_PASS` | Test user password | (encrypted in Gitea) |
+
+**To configure:** Gitea repo → Settings → Secrets → Add
+
+**SECURITY:** Uses `ci_tester` with limited `user` role, NOT super admin.
+
+### pytest Tests (windows_tests/)
+
+| File | Count | What It Tests |
+|------|-------|---------------|
+| `test_windows_paths.py` | 15 | AppData, UserProfile, Downloads |
+| `test_windows_server.py` | 12 | Server, DB, socket connectivity |
+| `test_windows_encoding.py` | 14 | UTF-8, BOM, Korean |
+| `test_windows_excel.py` | 11 | openpyxl, Korean, large files |
+| `test_windows_models.py` | 10 | PKL, FAISS, numpy |
+
+### CDP Tests (testing_toolkit/cdp/)
+
+| Script | Mode | What It Does |
+|--------|------|--------------|
+| `quick_check.js` | Both | Page state, URL, DOM verification |
+| `login.js` | Online | Login with env credentials |
+| `test_server_status.js` | Online | Server panel, DB connection |
+
+### Environment Variables
+
+```yaml
+# Passed from Gitea secrets to CDP scripts
+CDP_TEST_USER: ${{ secrets.CI_TEST_USER }}
+CDP_TEST_PASS: ${{ secrets.CI_TEST_PASS }}
+```
+
+### CI Fix History
+
+| Build | Fix |
+|-------|-----|
+| 852-855 | PowerShell syntax fixes |
+| 858-874 | conftest.py isolation → moved to windows_tests/ |
+| 877 | CI edge cases (SYSTEM user, socket errors) |
+| 878 | Added basic CDP tests (SQLite only) |
+| 879 | Dual-mode CDP tests (SQLite + PostgreSQL) |
+| 880 | Security: Removed neil/neil fallback, require env credentials |
+
+---
+
+*Last updated: 2025-12-25*
