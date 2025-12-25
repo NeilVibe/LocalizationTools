@@ -942,14 +942,23 @@ jobs:
           & $pythonExe -m pip install pytest 2>&1 | Out-Null
           $ErrorActionPreference = 'Stop'
 
-          # Run Windows tests from windows_tests/ (outside tests/ to avoid conftest.py loading)
+          # Run Windows tests from windows_tests\ (outside tests\ to avoid conftest.py loading)
           Write-Host ""
           Write-Host "Running Windows PATH tests..." -ForegroundColor Yellow
-          $testResult = & $pythonExe -m pytest windows_tests/ -v --tb=short -p no:cacheprovider 2>&1
-          $testExitCode = $LASTEXITCODE
 
-          # Show output
-          $testResult | ForEach-Object { Write-Host $_ }
+          # First verify the test directory exists
+          $testDir = Join-Path $PWD "windows_tests"
+          if (-not (Test-Path $testDir)) {
+            Write-Host "[ERROR] Test directory not found: $testDir" -ForegroundColor Red
+            exit 1
+          }
+          Write-Host "[INFO] Test directory: $testDir" -ForegroundColor Cyan
+
+          # Run pytest with explicit path
+          $ErrorActionPreference = 'SilentlyContinue'
+          & $pythonExe -m pytest $testDir -v --tb=short
+          $testExitCode = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
 
           if ($testExitCode -eq 0) {
             Write-Host ""
