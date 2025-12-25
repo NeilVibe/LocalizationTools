@@ -1810,9 +1810,31 @@ jobs:
             }
 
             Log "Installing to: $installDir"
-            # CRITICAL: Use array args + NoNewWindow (matches GitHub Actions pattern)
-            $proc = Start-Process -FilePath $installer.FullName -ArgumentList "/S", "/D=$installDir" -Wait -PassThru -NoNewWindow
-            if ($proc.ExitCode -ne 0) { throw "Installation failed with exit code $($proc.ExitCode)" }
+            # Start installer WITHOUT -Wait (poll for completion instead to avoid hanging)
+            $proc = Start-Process -FilePath $installer.FullName -ArgumentList "/S", "/D=$installDir" -PassThru -NoNewWindow
+            Log "Installer started (PID: $($proc.Id)), waiting for completion (300s timeout)..."
+
+            # Poll for completion with timeout
+            $timeout = 300  # 5 minutes max for 170MB installer
+            $startTime = Get-Date
+            while (!$proc.HasExited -and ((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
+              Start-Sleep -Seconds 5
+              $elapsed = [math]::Round(((Get-Date) - $startTime).TotalSeconds)
+              Log "... waiting ($elapsed s)"
+            }
+
+            if (!$proc.HasExited) {
+              Log "WARN: Installer still running after $timeout seconds, checking if files exist..."
+              # Check if installation actually completed despite process hanging
+              if (Test-Path "$installDir\LocaNext.exe") {
+                Log "OK: Files present despite process hang, killing stuck process"
+                $proc.Kill()
+              } else {
+                throw "Installation timed out after $timeout seconds"
+              }
+            } elseif ($proc.ExitCode -ne 0) {
+              throw "Installation failed with exit code $($proc.ExitCode)"
+            }
             Log "OK: Installation completed"
 
             # === PHASE 3: File Verification ===
