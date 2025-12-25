@@ -47,3 +47,4 @@ Build 878: Add CDP integration tests to Windows CI
 Build 879: Full Windows CI overhaul - dual-mode CDP tests + Gitea secrets
 Build 880: Verify online CDP tests with ci_tester credentials
 Build
+Build 882: Smart indexing + prefetch optimization
