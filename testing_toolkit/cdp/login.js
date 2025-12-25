@@ -12,9 +12,16 @@ const http = require('http');
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// Get credentials from environment or use defaults
-const TEST_USER = process.env.CDP_TEST_USER || 'neil';
-const TEST_PASS = process.env.CDP_TEST_PASS || 'neil';
+// Get credentials from environment (REQUIRED - no fallback for security)
+const TEST_USER = process.env.CDP_TEST_USER;
+const TEST_PASS = process.env.CDP_TEST_PASS;
+
+if (!TEST_USER || !TEST_PASS) {
+    console.error('ERROR: CDP_TEST_USER and CDP_TEST_PASS environment variables are required');
+    console.error('For CI: Configure Gitea secrets (CI_TEST_USER, CI_TEST_PASS)');
+    console.error('For local: export CDP_TEST_USER=username CDP_TEST_PASS=password');
+    process.exit(1);
+}
 
 async function main() {
     // Get CDP targets
