@@ -954,9 +954,9 @@ jobs:
           }
           Write-Host "[INFO] Test directory: $testDir" -ForegroundColor Cyan
 
-          # Run pytest with explicit path
+          # Run pytest with explicit path (override addopts to skip coverage from pytest.ini)
           $ErrorActionPreference = 'SilentlyContinue'
-          & $pythonExe -m pytest $testDir -v --tb=short
+          & $pythonExe -m pytest $testDir -v --tb=short -o "addopts="
           $testExitCode = $LASTEXITCODE
           $ErrorActionPreference = 'Stop'
 

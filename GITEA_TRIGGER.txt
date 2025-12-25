@@ -41,3 +41,4 @@ Build 862: Run tests from windows dir
 Build 865: --noconftest
 Build 868: Fix conftest isolation - move tests to windows_tests/
 Build 871: Fix Windows test path with Join-Path
+Build 874: Override pytest.ini addopts for Windows

@@ -1,24 +1,39 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-25 | **Build:** v25.1225.0833 | **CI:** Build 848
+**Last Updated:** 2025-12-25 14:50 | **Build:** v25.1225.1450 | **CI:** Build 871 (WIP)
 
 ---
 
-## CURRENT STATE: ALL GREEN
+## CURRENT STATE: WINDOWS TESTS IN PROGRESS
 
 | Status | Value |
 |--------|-------|
 | **Open Issues** | 0 |
-| **Tests (Linux)** | 1,399 (7 stages) |
-| **Tests (Windows)** | 0 - PATH tests needed |
+| **Tests (Linux)** | 1,399 (7 stages, ~4 min) |
+| **Tests (Windows)** | 62 tests written (CI integration WIP) |
 | **Coverage** | 47% |
-| **CI/CD** | ✅ Build 848 (~4 min) |
+| **CI/CD** | ✅ Linux passing, Windows tests debugging |
 | **QA FULL** | DONE (Gitea, 1.2GB) |
 
-### CI Improvements (2025-12-25)
-- Removed redundant coverage stage (was 2.5+ hours)
-- Fixed error masking (`|| echo` → `exit 1`)
-- Build time: 2.5h → 4 minutes
+### Windows Tests Added (2025-12-25)
+
+| Test File | Count | Categories |
+|-----------|-------|------------|
+| `test_windows_paths.py` | 15 | AppData, UserProfile, Downloads, Korean, Unicode |
+| `test_windows_server.py` | 12 | Server, DB, socket, Python imports |
+| `test_windows_encoding.py` | 14 | UTF-8, BOM, Korean filenames, JSON |
+| `test_windows_excel.py` | 11 | openpyxl, Korean, large files |
+| `test_windows_models.py` | 10 | PKL, FAISS, numpy, cache dirs |
+| **TOTAL** | **62** | |
+
+**Location:** `windows_tests/` (outside `tests/` to avoid conftest.py)
+
+### CI Fix History (Builds 852-871)
+- **852**: PowerShell `!` syntax error → removed special chars
+- **855**: pip stderr as error → `$ErrorActionPreference = 'SilentlyContinue'`
+- **858-864**: conftest.py imports failing → moved to `windows_tests/`
+- **867**: `--noconftest` doesn't exist → removed invalid option
+- **871**: Fixed path with `Join-Path` (current)
 
 ---
 
@@ -117,34 +132,35 @@
 
 ---
 
-## WINDOWS PATH TESTS (CRITICAL)
+## WINDOWS PATH TESTS - ✅ IMPLEMENTED
 
-**Problem:** All 1,399 tests run on Linux. Windows-specific bugs slip through.
+**62 tests written, CI integration in progress.**
 
-### Tests Needed
+### Test Categories Covered
 
-| Category | What to Test | Priority |
-|----------|--------------|----------|
-| **Download Path** | File export goes to correct folder | HIGH |
-| **Upload Path** | File import works from Windows paths | HIGH |
-| **Model Path** | Qwen/embeddings load from `%APPDATA%` | HIGH |
-| **PKL Path** | FAISS indexes save/load correctly | HIGH |
-| **Embeddings Path** | Vector indexes stored properly | HIGH |
-| **Install Path** | App in `Program Files`, data in `AppData` | MEDIUM |
-| **Merge Path** | Merged files export correctly | P3 |
+| Category | Tests | Status |
+|----------|-------|--------|
+| AppData/UserProfile/Downloads | 15 | ✅ Written |
+| Server/DB/socket connectivity | 12 | ✅ Written |
+| UTF-8/BOM/Korean encoding | 14 | ✅ Written |
+| Excel/openpyxl operations | 11 | ✅ Written |
+| Models/PKL/FAISS/numpy | 10 | ✅ Written |
 
-### Implementation Plan
-1. Add Python PATH tests to `build-windows` CI job
-2. Test critical paths before building installer
-3. Fail build if paths broken
+### CI Integration Status
 
-### Key Windows Paths
+| Build | Issue | Fix |
+|-------|-------|-----|
+| 852-855 | PowerShell syntax | Fixed |
+| 858-867 | conftest.py loading | Moved to `windows_tests/` |
+| 871 | Path parsing | Using `Join-Path` |
+
+### Key Windows Paths Tested
 ```
 Install:     C:\Program Files\LocaNext\
 AppData:     %APPDATA%\LocaNext\
 Models:      %APPDATA%\LocaNext\models\
 Indexes:     %APPDATA%\LocaNext\indexes\
-Downloads:   %USERPROFILE%\Downloads\ (or user-selected)
+Downloads:   %USERPROFILE%\Downloads\
 ```
 
 ---
