@@ -51,3 +51,4 @@ Build 882: Smart indexing + prefetch optimization
 Build 883: Fix NSIS silent install (array args + NoNewWindow)
 Build 884: Poll-based installer with timeout (avoid hanging)
 Build 885: Test after runner restart + revert
+Build 886: Test with Windows Defender exclusions
