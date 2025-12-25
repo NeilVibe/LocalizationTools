@@ -132,39 +132,57 @@ async def list_rows(
 
     # Build query
     query = select(LDMRow).where(LDMRow.file_id == file_id)
-    count_query = select(func.count(LDMRow.id)).where(LDMRow.file_id == file_id)
+
+    # PERF: Track if we need to run COUNT query or can use cached row_count
+    needs_count_query = False
 
     if search:
+        needs_count_query = True
         search_pattern = f"%{search}%"
         query = query.where(
             (LDMRow.source.ilike(search_pattern)) |
             (LDMRow.target.ilike(search_pattern)) |
             (LDMRow.string_id.ilike(search_pattern))
         )
-        count_query = count_query.where(
-            (LDMRow.source.ilike(search_pattern)) |
-            (LDMRow.target.ilike(search_pattern)) |
-            (LDMRow.string_id.ilike(search_pattern))
-        )
 
     if status:
+        needs_count_query = True
         query = query.where(LDMRow.status == status)
-        count_query = count_query.where(LDMRow.status == status)
 
     # P2: Auto-LQA - Additional filters
     if filter == "confirmed":
+        needs_count_query = True
         query = query.where(LDMRow.status.in_(["approved", "reviewed"]))
-        count_query = count_query.where(LDMRow.status.in_(["approved", "reviewed"]))
     elif filter == "unconfirmed":
+        needs_count_query = True
         query = query.where(LDMRow.status.in_(["pending", "translated"]))
-        count_query = count_query.where(LDMRow.status.in_(["pending", "translated"]))
     elif filter == "qa_flagged":
+        needs_count_query = True
         query = query.where(LDMRow.qa_flag_count > 0)
-        count_query = count_query.where(LDMRow.qa_flag_count > 0)
 
-    # Get total count
-    total_result = await db.execute(count_query)
-    total = total_result.scalar()
+    # PERF: Use cached row_count when no filters, avoid slow COUNT(*) on 500K+ rows
+    if needs_count_query:
+        count_query = select(func.count(LDMRow.id)).where(LDMRow.file_id == file_id)
+        if search:
+            search_pattern = f"%{search}%"
+            count_query = count_query.where(
+                (LDMRow.source.ilike(search_pattern)) |
+                (LDMRow.target.ilike(search_pattern)) |
+                (LDMRow.string_id.ilike(search_pattern))
+            )
+        if status:
+            count_query = count_query.where(LDMRow.status == status)
+        if filter == "confirmed":
+            count_query = count_query.where(LDMRow.status.in_(["approved", "reviewed"]))
+        elif filter == "unconfirmed":
+            count_query = count_query.where(LDMRow.status.in_(["pending", "translated"]))
+        elif filter == "qa_flagged":
+            count_query = count_query.where(LDMRow.qa_flag_count > 0)
+        total_result = await db.execute(count_query)
+        total = total_result.scalar()
+    else:
+        # PERF: Use cached count - O(1) instead of COUNT(*) on 500K rows
+        total = file.row_count
 
     # Get paginated rows
     offset = (page - 1) * limit
