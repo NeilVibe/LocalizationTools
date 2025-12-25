@@ -623,17 +623,15 @@ class TestRowsMocked:
 
     def test_list_rows_empty(self, client_with_auth, mock_db, mock_file):
         """List rows returns empty paginated result."""
+        mock_file.row_count = 0  # PERF: Uses cached row_count (no COUNT query)
         mock_file_result = MagicMock()
         mock_file_result.scalar_one_or_none.return_value = mock_file
-
-        mock_count_result = MagicMock()
-        mock_count_result.scalar.return_value = 0
 
         mock_rows_result = MagicMock()
         mock_rows_result.scalars.return_value.all.return_value = []
 
         mock_db.execute = AsyncMock(side_effect=[
-            mock_file_result, mock_count_result, mock_rows_result
+            mock_file_result, mock_rows_result  # No count query when no filters
         ])
 
         response = client_with_auth.get("/api/ldm/files/1/rows")
@@ -644,17 +642,15 @@ class TestRowsMocked:
 
     def test_list_rows_with_data(self, client_with_auth, mock_db, mock_file, mock_row):
         """List rows returns rows with pagination."""
+        mock_file.row_count = 1  # PERF: Uses cached row_count (no COUNT query)
         mock_file_result = MagicMock()
         mock_file_result.scalar_one_or_none.return_value = mock_file
-
-        mock_count_result = MagicMock()
-        mock_count_result.scalar.return_value = 1
 
         mock_rows_result = MagicMock()
         mock_rows_result.scalars.return_value.all.return_value = [mock_row]
 
         mock_db.execute = AsyncMock(side_effect=[
-            mock_file_result, mock_count_result, mock_rows_result
+            mock_file_result, mock_rows_result  # No count query when no filters
         ])
 
         response = client_with_auth.get("/api/ldm/files/1/rows?page=1&limit=50")
