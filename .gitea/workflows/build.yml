@@ -1756,6 +1756,19 @@ jobs:
       # Phase 4+ (Backend) = OPTIONAL (CI has no PostgreSQL)
       # NOTE: Full backend testing requires manual validation with DB
       # ============================================================
+
+      # Install 7-Zip for NSIS extraction (NSIS /S flag broken in Session 0)
+      - name: Install 7-Zip
+        shell: powershell
+        run: |
+          if (!(Test-Path "C:\Program Files\7-Zip\7z.exe")) {
+            Write-Host "Installing 7-Zip via Chocolatey..."
+            choco install 7zip -y --no-progress
+            Write-Host "7-Zip installed successfully"
+          } else {
+            Write-Host "7-Zip already installed"
+          }
+
       - name: Smoke Test - Installer Verification
         shell: powershell
         run: |
@@ -1810,8 +1823,33 @@ jobs:
             }
 
             Log "Installing to: $installDir"
-            $proc = Start-Process -FilePath $installer.FullName -Args "/S /D=$installDir" -Wait -PassThru
-            if ($proc.ExitCode -ne 0) { throw "Installation failed with exit code $($proc.ExitCode)" }
+
+            # Use 7-Zip extraction instead of NSIS /S flag (broken in Session 0)
+            # NSIS installers are self-extracting archives that 7-Zip can unpack
+            $7zPath = "C:\Program Files\7-Zip\7z.exe"
+            if (!(Test-Path $7zPath)) {
+              # Try chocolatey path
+              $7zPath = "C:\ProgramData\chocolatey\bin\7z.exe"
+            }
+            if (!(Test-Path $7zPath)) {
+              throw "7-Zip not found - required for installer extraction"
+            }
+            Log "OK: Using 7-Zip at $7zPath"
+
+            # Extract installer contents
+            $extractArgs = "x `"$($installer.FullName)`" -o`"$installDir`" -y"
+            Log "Extracting: 7z $extractArgs"
+            $proc = Start-Process -FilePath $7zPath -ArgumentList $extractArgs -Wait -PassThru -NoNewWindow
+            if ($proc.ExitCode -ne 0) { throw "Extraction failed with exit code $($proc.ExitCode)" }
+            Log "OK: Extraction completed"
+
+            # NSIS extracts to $INSTDIR which becomes root, check structure
+            $appExe = Get-ChildItem -Path $installDir -Filter "LocaNext.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($appExe -and $appExe.DirectoryName -ne $installDir) {
+              # Files are in a subdirectory, move them up
+              Log "Moving files from $($appExe.DirectoryName) to $installDir"
+              Get-ChildItem -Path $appExe.DirectoryName | Move-Item -Destination $installDir -Force
+            }
             Log "OK: Installation completed"
 
             # === PHASE 3: File Verification ===
