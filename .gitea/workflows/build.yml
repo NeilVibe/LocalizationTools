@@ -914,6 +914,47 @@ jobs:
         shell: powershell
 
       # ============================================================
+      # WINDOWS PATH TESTS - Critical path validation before build
+      # Tests: AppData, Downloads, Models, Indexes, Unicode paths
+      # ============================================================
+      - name: Run Windows PATH Tests
+        run: |
+          Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+          Write-Host "║  WINDOWS PATH TESTS - Critical Validation                  ║" -ForegroundColor Cyan
+          Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+
+          # Find Python
+          $pythonExe = $null
+          foreach ($path in @("C:\Python313\python.exe", "C:\Python311\python.exe", "C:\Python310\python.exe")) {
+            if (Test-Path $path) { $pythonExe = $path; break }
+          }
+          if (-not $pythonExe) { $pythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source }
+
+          if (-not $pythonExe) {
+            Write-Host "[SKIP] Python not found - skipping PATH tests" -ForegroundColor Yellow
+            exit 0
+          }
+
+          # Install pytest if needed
+          & $pythonExe -m pip install pytest --quiet 2>$null
+
+          # Run Windows PATH tests
+          Write-Host ""
+          Write-Host "Running Windows PATH tests..." -ForegroundColor Yellow
+          & $pythonExe -m pytest tests/windows/test_windows_paths.py -v --tb=short
+
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host ""
+            Write-Host "✅ WINDOWS PATH TESTS PASSED" -ForegroundColor Green
+          } else {
+            Write-Host ""
+            Write-Host "❌ WINDOWS PATH TESTS FAILED" -ForegroundColor Red
+            Write-Host "Fix path issues before building installer!" -ForegroundColor Red
+            exit 1
+          }
+        shell: powershell
+
+      # ============================================================
       # SMART BUILD CACHE SYSTEM
       # Cache location: C:\BuildCache\
       # Auto-invalidates when versions/hashes change

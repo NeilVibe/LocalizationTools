@@ -77,13 +77,18 @@ For TRUE OFFLINE deployments:
 | tm_crud.py | 46% | OK |
 | tm_search.py | 46% | OK |
 
-### Test Counts
+### Test Counts (Build 848)
 
-| Category | Count |
-|----------|-------|
-| LDM Mocked Tests | 56 |
-| Total Unit Tests | 737 |
-| Total Tests | 1068+ |
+| Stage | Tests |
+|-------|-------|
+| Unit Tests | 801 |
+| Integration | 198 |
+| E2E | 97 |
+| API | 131 |
+| Security | 86 |
+| Fixtures | 74 |
+| Performance | 12 |
+| **Total** | **1,399** |
 
 **What's done:** Core CRUD routes fully mocked (68-98% coverage)
 **What's fine:** Complex routes tested via 145+ E2E tests
@@ -117,8 +122,25 @@ All large files (>500 lines) are well-organized, not true monoliths.
 
 | Platform | Tests | Status |
 |----------|-------|--------|
-| **Gitea** | 1076 (QA) | ✅ Build 344 |
-| **GitHub** | 1068 (QA) | ✅ Build 345 |
+| **Gitea (Linux)** | 1,399 | ✅ Build 848 |
+| **Gitea (Windows)** | TBD | 🔄 PATH tests needed |
+| **GitHub** | 1,399 | ✅ Synced |
+
+### Windows PATH Tests (CRITICAL)
+
+**Why:** All tests run on Linux. Windows-specific path bugs slip through.
+
+| Test Category | Description | Status |
+|---------------|-------------|--------|
+| Download Path | File downloads go to correct location | Pending |
+| Upload Path | File uploads work from Windows paths | Pending |
+| Model Path | Qwen/embeddings load from AppData | Pending |
+| PKL Path | Index files save/load correctly | Pending |
+| Embeddings Path | Vector indexes stored properly | Pending |
+| Install Path | App installs to Program Files | Pending |
+| Merge Path | Merged files export to correct location | Pending (P3) |
+
+**Implementation:** Add to `build-windows` job in CI workflow.
 
 ### Build Strategy
 

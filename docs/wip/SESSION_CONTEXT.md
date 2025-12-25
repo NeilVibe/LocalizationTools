@@ -1,6 +1,6 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-25 | **Build:** v25.1223.0811 (FULL) | **Latest LIGHT:** v25.1223.0130
+**Last Updated:** 2025-12-25 | **Build:** v25.1225.0833 | **CI:** Build 848
 
 ---
 
@@ -9,10 +9,16 @@
 | Status | Value |
 |--------|-------|
 | **Open Issues** | 0 |
-| **Tests** | 1085+ (136 LDM, 17 new QA) |
+| **Tests (Linux)** | 1,399 (7 stages) |
+| **Tests (Windows)** | 0 - PATH tests needed |
 | **Coverage** | 47% |
-| **CI/CD** | Both verified (Build 345) |
+| **CI/CD** | ✅ Build 848 (~4 min) |
 | **QA FULL** | DONE (Gitea, 1.2GB) |
+
+### CI Improvements (2025-12-25)
+- Removed redundant coverage stage (was 2.5+ hours)
+- Fixed error masking (`|| echo` → `exit 1`)
+- Build time: 2.5h → 4 minutes
 
 ---
 
@@ -103,10 +109,43 @@
 - Backend: Merge logic (match by StringID, update target)
 - Frontend: Right-click menu option, modal to select target file
 - Export: Generate merged file for download
+- **PATH handling:** Windows path for merged file export
 
 ### Future: Perforce API
 - Could create changelist directly after merge
 - User reviews in P4V and submits
+
+---
+
+## WINDOWS PATH TESTS (CRITICAL)
+
+**Problem:** All 1,399 tests run on Linux. Windows-specific bugs slip through.
+
+### Tests Needed
+
+| Category | What to Test | Priority |
+|----------|--------------|----------|
+| **Download Path** | File export goes to correct folder | HIGH |
+| **Upload Path** | File import works from Windows paths | HIGH |
+| **Model Path** | Qwen/embeddings load from `%APPDATA%` | HIGH |
+| **PKL Path** | FAISS indexes save/load correctly | HIGH |
+| **Embeddings Path** | Vector indexes stored properly | HIGH |
+| **Install Path** | App in `Program Files`, data in `AppData` | MEDIUM |
+| **Merge Path** | Merged files export correctly | P3 |
+
+### Implementation Plan
+1. Add Python PATH tests to `build-windows` CI job
+2. Test critical paths before building installer
+3. Fail build if paths broken
+
+### Key Windows Paths
+```
+Install:     C:\Program Files\LocaNext\
+AppData:     %APPDATA%\LocaNext\
+Models:      %APPDATA%\LocaNext\models\
+Indexes:     %APPDATA%\LocaNext\indexes\
+Downloads:   %USERPROFILE%\Downloads\ (or user-selected)
+```
 
 ---
 
