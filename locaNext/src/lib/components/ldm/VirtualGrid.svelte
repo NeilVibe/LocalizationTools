@@ -31,6 +31,7 @@
   const LINE_HEIGHT = 20; // Height per line of text
   const BUFFER_ROWS = 10; // Extra rows to render above/below viewport
   const PAGE_SIZE = 100; // Rows per page to fetch
+  const PREFETCH_PAGES = 2; // Number of pages to prefetch ahead/behind
 
   // Real-time subscription
   let cellUpdateUnsubscribe = null;
@@ -62,6 +63,20 @@
   // Page cache - track which pages we've loaded
   let loadedPages = $state(new Set());
   let loadingPages = $state(new Set());
+
+  // SMART INDEXING: Row index map for O(1) lookups by row_id
+  let rowIndexById = $state(new Map()); // row_id -> array index
+
+  // SMART INDEXING: O(1) row lookup by ID
+  function getRowById(rowId) {
+    const index = rowIndexById.get(rowId.toString());
+    return index !== undefined ? rows[index] : null;
+  }
+
+  // SMART INDEXING: O(1) row index lookup
+  function getRowIndexById(rowId) {
+    return rowIndexById.get(rowId.toString());
+  }
 
   // Go to row state - REMOVED (BUG-001 - not useful)
 
@@ -181,16 +196,20 @@
     ensureRowsLoaded(visibleStart, visibleEnd);
   }
 
-  // Ensure rows in range are loaded
+  // SMART INDEXING: Ensure rows in range are loaded + prefetch ahead
   async function ensureRowsLoaded(start, end) {
     const startPage = Math.floor(start / PAGE_SIZE) + 1;
     const endPage = Math.floor(end / PAGE_SIZE) + 1;
 
+    // Load visible pages (blocking)
     for (let page = startPage; page <= endPage; page++) {
       if (!loadedPages.has(page) && !loadingPages.has(page)) {
         await loadPage(page);
       }
     }
+
+    // SMART PREFETCH: Load adjacent pages in background (non-blocking)
+    prefetchAdjacentPages(endPage);
   }
 
   // Load a specific page of rows
@@ -222,18 +241,22 @@
         total = data.total;
 
         // Store rows by their row_num for sparse array access
+        // SMART INDEXING: Also build index map for O(1) lookups
         data.rows.forEach(row => {
-          rows[row.row_num - 1] = {
+          const index = row.row_num - 1;
+          const rowData = {
             ...row,
             id: row.id.toString()
           };
+          rows[index] = rowData;
+          rowIndexById.set(row.id.toString(), index); // O(1) lookup index
         });
 
         // Force reactivity
         rows = [...rows];
 
         loadedPages.add(page);
-        logger.info("Loaded page", { page, count: data.rows.length, total });
+        logger.info("SMART LOAD: Page loaded", { page, count: data.rows.length, total, indexSize: rowIndexById.size });
       }
     } catch (err) {
       logger.error("Failed to load page", { page, error: err.message });
@@ -244,37 +267,74 @@
     }
   }
 
-  // Initial load
+  // SMART INDEXING: Initial load with instant display
   export async function loadRows() {
     if (!fileId) return;
 
-    // Reset state
+    // Reset state INSTANTLY - don't wait for API
     rows = [];
     loadedPages.clear();
     loadingPages.clear();
+    rowIndexById.clear(); // SMART INDEXING: Clear index map
     total = 0;
     initialLoading = true;
 
-    // First, get the total count
+    // OPTIMIZATION: Single API call for first page + count (not 2 calls)
+    // The first page response includes total count
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?page=1&limit=1`, {
+      const params = new URLSearchParams({
+        page: '1',
+        limit: PAGE_SIZE.toString()
+      });
+
+      const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
         headers: getAuthHeaders()
       });
+
       if (response.ok) {
         const data = await response.json();
         total = data.total;
-        logger.info("Got total rows", { total });
+
+        // INSTANT: Store rows immediately + build index
+        data.rows.forEach(row => {
+          const index = row.row_num - 1;
+          const rowData = {
+            ...row,
+            id: row.id.toString()
+          };
+          rows[index] = rowData;
+          rowIndexById.set(row.id.toString(), index); // O(1) lookup
+        });
+        rows = [...rows];
+        loadedPages.add(1);
+
+        logger.info("SMART LOAD: Initial page loaded", { total, loaded: data.rows.length, indexSize: rowIndexById.size });
+
+        // PREFETCH: Start loading adjacent pages in background (non-blocking)
+        prefetchAdjacentPages(1);
       }
     } catch (err) {
-      logger.error("Failed to get total", { error: err.message });
+      logger.error("Failed to load rows", { error: err.message });
+    } finally {
+      initialLoading = false;
     }
 
-    // Load first page
-    await loadPage(1);
-
-    // Calculate visible range after initial load
+    // Calculate visible range immediately
     await tick();
     calculateVisibleRange();
+  }
+
+  // SMART INDEXING: Prefetch pages in background for smooth scrolling
+  function prefetchAdjacentPages(currentPage) {
+    // Prefetch next pages in background (non-blocking)
+    for (let i = 1; i <= PREFETCH_PAGES; i++) {
+      const nextPage = currentPage + i;
+      const maxPage = Math.ceil(total / PAGE_SIZE);
+      if (nextPage <= maxPage && !loadedPages.has(nextPage) && !loadingPages.has(nextPage)) {
+        // Use setTimeout to not block the main thread
+        setTimeout(() => loadPage(nextPage), i * 50);
+      }
+    }
   }
 
   // Handle scroll
@@ -372,8 +432,9 @@
         lastQaResult = result;
 
         // Update row's qa_flag_count in cache
-        const rowIndex = rows.findIndex(r => r && r.id.toString() === rowId.toString());
-        if (rowIndex >= 0) {
+        // SMART INDEXING: O(1) lookup instead of O(n) findIndex
+        const rowIndex = getRowIndexById(rowId);
+        if (rowIndex !== undefined && rows[rowIndex]) {
           rows[rowIndex] = {
             ...rows[rowIndex],
             qa_flag_count: result.issue_count,
@@ -721,11 +782,12 @@
   }
 
   // Handle real-time cell updates from other users
+  // SMART INDEXING: Uses O(1) lookup instead of O(n) findIndex
   function handleCellUpdates(updates) {
     updates.forEach(update => {
-      // Find and update the row in our cache
-      const rowIndex = rows.findIndex(r => r && parseInt(r.id) === update.row_id);
-      if (rowIndex >= 0) {
+      // O(1) lookup using index map
+      const rowIndex = getRowIndexById(update.row_id);
+      if (rowIndex !== undefined && rows[rowIndex]) {
         rows[rowIndex] = {
           ...rows[rowIndex],
           target: update.target,
