@@ -261,6 +261,7 @@ CDP_TEST_PASS: ${{ secrets.CI_TEST_PASS }}
 | 879 | Dual-mode CDP tests (SQLite + PostgreSQL) |
 | 880 | Security: Removed neil/neil fallback, require env credentials |
 | 887 | Fix: Use 7-Zip extraction instead of NSIS /S (broken in Session 0) |
+| 888 | Fix: Two-step 7z extraction (NSIS → app-64.7z → app files) ✅ |
 
 ---
 

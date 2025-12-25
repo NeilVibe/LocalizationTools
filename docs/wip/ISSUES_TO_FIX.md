@@ -39,11 +39,12 @@
 - **Test Results:** CDP comprehensive QA test ran successfully, error not detected
 - **Next Steps:** Monitor for recurrence, may require specific data conditions
 
-### This Session: Smoke Test Fix (Build 887)
+### This Session: Smoke Test Fix (Build 888) ✅
 - **CI-007** - NSIS /S flag broken in Session 0 (LocalSystem service)
   - Root cause: Silent install exits immediately with 0 files extracted
-  - Fix: Use 7-Zip extraction instead of NSIS /S flag
+  - Fix: Two-step 7-Zip extraction (NSIS wrapper → app-64.7z → app files)
   - Added chocolatey 7zip install step before smoke test
+  - **VERIFIED:** Build 888 passed, release v25.1225.2048 created
 
 ### Previous Session: Test Suite Cleanup + Verification
 - **SEC-002** - Removed hardcoded credentials from `tests/` subfolder
