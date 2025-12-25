@@ -1810,7 +1810,8 @@ jobs:
             }
 
             Log "Installing to: $installDir"
-            $proc = Start-Process -FilePath $installer.FullName -Args "/S /D=$installDir" -Wait -PassThru
+            # CRITICAL: Use array args + NoNewWindow (matches GitHub Actions pattern)
+            $proc = Start-Process -FilePath $installer.FullName -ArgumentList "/S", "/D=$installDir" -Wait -PassThru -NoNewWindow
             if ($proc.ExitCode -ne 0) { throw "Installation failed with exit code $($proc.ExitCode)" }
             Log "OK: Installation completed"
 
