@@ -1,6 +1,36 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-25 18:30 | **Build:** v25.1225.1553 (Build 880) | **CI:** Passing
+**Last Updated:** 2025-12-25 21:55 | **Build:** 889 (pending) | **CI:** Passing
+
+---
+
+## ⚡ PERFORMANCE IS CRITICAL
+
+**Target:** 500K+ row files must load and scroll seamlessly.
+
+### Performance Fixes Applied (Build 881-889)
+
+| Fix | Before | After | Impact |
+|-----|--------|-------|--------|
+| `getRowTop()` | O(n) | O(1) | 10K rows: 10000 → 1 op |
+| `calculateVisibleRange()` | O(n) | O(1) | Per-scroll: 10000 → 1 op |
+| `getTotalHeight()` | O(n) | O(1) | Per-render: 10000 → 1 op |
+| Placeholder rows | InlineLoading (animated) | Static CSS | No jank from 30+ spinners |
+
+### Performance Monitoring Checklist
+
+Before any VirtualGrid change, verify:
+1. **Load test:** 10K row file loads in <3 seconds
+2. **Scroll test:** Smooth 60fps scrolling (no jank)
+3. **Memory:** No memory leaks on file switch
+4. **CPU:** <5% CPU idle, <30% during scroll
+
+### Key Files for Performance
+
+| File | Critical Functions |
+|------|-------------------|
+| `VirtualGrid.svelte` | `getRowTop()`, `calculateVisibleRange()`, `getTotalHeight()` |
+| `ldm.js` store | `isRowLocked()` - must be O(1) |
 
 ---
 
