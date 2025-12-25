@@ -28,10 +28,12 @@
 | Status | Value |
 |--------|-------|
 | **Open Issues** | 0 |
-| **Tests** | 1068 (GitHub) / 1076 (Gitea) |
+| **Tests (Linux)** | 1,399 (7 stages, ~4 min) |
+| **Tests (Windows)** | 62 pytest + CDP integration |
 | **Coverage** | 47% (target 70%) |
-| **CI/CD** | Both verified |
-| **QA FULL** | DONE (Gitea) |
+| **CI/CD** | ✅ Linux + Windows passing |
+| **QA FULL** | DONE (Gitea, 1.2GB) |
+| **Windows CI** | Build 880+ (Gitea secrets) |
 
 ---
 
