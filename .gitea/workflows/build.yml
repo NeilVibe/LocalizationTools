@@ -942,10 +942,10 @@ jobs:
           & $pythonExe -m pip install pytest 2>&1 | Out-Null
           $ErrorActionPreference = 'Stop'
 
-          # Run Windows PATH tests
+          # Run Windows PATH tests (use confcutdir to prevent loading main conftest)
           Write-Host ""
           Write-Host "Running Windows PATH tests..." -ForegroundColor Yellow
-          $testResult = & $pythonExe -m pytest tests/windows/ -v --tb=short 2>&1
+          $testResult = & $pythonExe -m pytest tests/windows/ -v --tb=short --confcutdir=tests/windows -p no:cacheprovider 2>&1
           $testExitCode = $LASTEXITCODE
 
           # Show output
