@@ -43,3 +43,4 @@ Build 868: Fix conftest isolation - move tests to windows_tests/
 Build 871: Fix Windows test path with Join-Path
 Build 874: Override pytest.ini addopts for Windows
 Build 877: Fix CI-specific test edge cases
+Build 878: Add CDP integration tests to Windows CI

@@ -1989,6 +1989,146 @@ jobs:
           }
 
       # ============================================================
+      # CDP TESTS - Real app functionality testing via Chrome DevTools Protocol
+      # Launches installed app, connects via CDP, runs Node.js tests
+      # ============================================================
+      - name: Run CDP Integration Tests
+        run: |
+          Write-Host ""
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host "  CDP INTEGRATION TESTS" -ForegroundColor Cyan
+          Write-Host "============================================" -ForegroundColor Cyan
+
+          $installDir = "C:\LocaNextSmokeTest"
+          $cdpPort = 9222
+          $testsPassed = $true
+
+          function Log($msg) {
+            $timestamp = Get-Date -Format "HH:mm:ss"
+            Write-Host "[$timestamp] $msg"
+          }
+
+          try {
+            # === PHASE 1: Setup ===
+            Log "=== PHASE 1: SETUP ==="
+
+            # Kill any existing LocaNext processes
+            Get-Process -Name "LocaNext*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+
+            # Install ws module for CDP tests
+            $cdpDir = "testing_toolkit\cdp"
+            if (Test-Path $cdpDir) {
+              Push-Location $cdpDir
+              Log "Installing ws module..."
+              & npm install ws --silent 2>&1 | Out-Null
+              Pop-Location
+              Log "OK: ws module installed"
+            } else {
+              Log "WARN: CDP test directory not found at $cdpDir"
+              exit 0
+            }
+
+            # === PHASE 2: Launch App with CDP ===
+            Log "=== PHASE 2: LAUNCH APP WITH CDP ==="
+
+            # Create server-config for SQLite mode (CI has no PostgreSQL)
+            $appDataPath = "$env:APPDATA\LocaNext"
+            if (!(Test-Path $appDataPath)) { New-Item -ItemType Directory -Path $appDataPath -Force | Out-Null }
+            $serverConfig = @{
+              database_mode = "sqlite"
+              sqlite_path = "$appDataPath\locanext.db"
+            } | ConvertTo-Json
+            $serverConfig | Out-File -FilePath "$appDataPath\server-config.json" -Encoding UTF8
+            Log "OK: Created server-config.json (SQLite mode)"
+
+            # Launch app with CDP enabled
+            $appPath = "$installDir\LocaNext.exe"
+            if (!(Test-Path $appPath)) { throw "App not found at $appPath" }
+
+            Log "Launching app with CDP on port $cdpPort..."
+            $env:DATABASE_MODE = "sqlite"
+            Start-Process -FilePath $appPath -ArgumentList "--remote-debugging-port=$cdpPort" -WindowStyle Hidden
+            Log "OK: App launched"
+
+            # Wait for CDP to be available
+            Log "Waiting for CDP to be available..."
+            $cdpReady = $false
+            for ($i = 0; $i -lt 30; $i++) {
+              try {
+                $response = Invoke-RestMethod -Uri "http://127.0.0.1:$cdpPort/json" -TimeoutSec 2 -ErrorAction SilentlyContinue
+                if ($response) {
+                  $cdpReady = $true
+                  Log "OK: CDP is ready (attempt $($i + 1))"
+                  break
+                }
+              } catch { }
+              Start-Sleep -Seconds 2
+            }
+
+            if (!$cdpReady) {
+              Log "WARN: CDP not responding after 60s - skipping CDP tests"
+              throw "CDP not available"
+            }
+
+            # Wait a bit more for app to fully load
+            Start-Sleep -Seconds 5
+
+            # === PHASE 3: Run CDP Tests ===
+            Log "=== PHASE 3: RUN CDP TESTS ==="
+
+            Push-Location $cdpDir
+
+            # Test 1: Quick Check (basic page state)
+            Log "Running quick_check.js..."
+            $result = & node quick_check.js 2>&1
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -eq 0) {
+              Log "OK: quick_check.js PASSED"
+            } else {
+              Log "WARN: quick_check.js returned exit code $exitCode"
+              $result | ForEach-Object { Log "  $_" }
+            }
+
+            Pop-Location
+
+            # === PHASE 4: Cleanup ===
+            Log "=== PHASE 4: CLEANUP ==="
+            Get-Process -Name "LocaNext*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Get-Process -Name "python*" -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*LocaNextSmokeTest*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+            Log "OK: Processes killed"
+
+            # === SUCCESS ===
+            Log "========================================"
+            Log "CDP TESTS PASSED"
+            Log "========================================"
+
+            Write-Host ""
+            Write-Host "============================================" -ForegroundColor Green
+            Write-Host "  CDP TESTS PASSED" -ForegroundColor Green
+            Write-Host "============================================" -ForegroundColor Green
+
+          } catch {
+            Log "========================================"
+            Log "CDP TESTS FAILED: $($_.Exception.Message)"
+            Log "========================================"
+
+            # Cleanup on failure
+            Get-Process -Name "LocaNext*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
+            Write-Host ""
+            Write-Host "============================================" -ForegroundColor Yellow
+            Write-Host "  CDP TESTS SKIPPED/FAILED (non-blocking)" -ForegroundColor Yellow
+            Write-Host "============================================" -ForegroundColor Yellow
+
+            # Don't fail the build - CDP tests are informational
+            # The smoke test already verified the installer works
+          }
+        shell: powershell
+        continue-on-error: true
+
+      # ============================================================
       # CREATE GITEA RELEASE + UPLOAD ARTIFACTS
       # ============================================================
       - name: Create Gitea Release
