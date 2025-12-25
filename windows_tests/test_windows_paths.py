@@ -59,9 +59,12 @@ class TestWindowsPathResolution:
         test_file.unlink()  # Cleanup
 
     def test_downloads_path_exists(self):
-        """Downloads folder should exist."""
+        """Downloads folder should exist (skipped for SYSTEM user in CI)."""
         userprofile = os.environ.get("USERPROFILE")
         downloads = Path(userprofile) / "Downloads"
+        # CI runs as SYSTEM user which has no Downloads folder
+        if "systemprofile" in str(userprofile).lower():
+            pytest.skip("SYSTEM user has no Downloads folder (CI environment)")
         assert downloads.exists(), f"Downloads folder does not exist: {downloads}"
 
 

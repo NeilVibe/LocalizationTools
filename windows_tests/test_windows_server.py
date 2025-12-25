@@ -37,8 +37,9 @@ class TestServerConnectivity:
             # Try to connect - connection refused is OK (no server)
             # Only network errors are problems
             result = sock.connect_ex(("127.0.0.1", 8888))
-            # 0 = connected, 10061 = connection refused (Windows), both OK
-            assert result in [0, 10061, 111], f"Unexpected socket error: {result}"
+            # 0 = connected, 10061 = connection refused (Windows)
+            # 10035 = WSAEWOULDBLOCK (operation in progress), 111 = Linux refused
+            assert result in [0, 10061, 10035, 111], f"Unexpected socket error: {result}"
         finally:
             sock.close()
 
