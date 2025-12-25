@@ -162,21 +162,17 @@
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   }
 
-  // Calculate which rows are visible (with dynamic heights)
+  // PERFORMANCE FIX: Calculate visible range with O(1) complexity
+  // Uses constant row height for consistent, fast scroll calculations
   function calculateVisibleRange() {
     if (!containerEl) return;
 
     containerHeight = containerEl.clientHeight;
     scrollTop = containerEl.scrollTop;
 
-    // Use average height for estimation
-    const loadedRows = rows.filter(r => r && !r.placeholder);
-    const avgHeight = loadedRows.length > 0
-      ? loadedRows.reduce((sum, r) => sum + estimateRowHeight(r), 0) / loadedRows.length
-      : MIN_ROW_HEIGHT;
-
-    const startRow = Math.floor(scrollTop / avgHeight);
-    const endRow = Math.ceil((scrollTop + containerHeight) / avgHeight);
+    // O(1) calculation using constant row height
+    const startRow = Math.floor(scrollTop / MIN_ROW_HEIGHT);
+    const endRow = Math.ceil((scrollTop + containerHeight) / MIN_ROW_HEIGHT);
 
     visibleStart = Math.max(0, startRow - BUFFER_ROWS);
     visibleEnd = Math.min(total, endRow + BUFFER_ROWS);
@@ -811,31 +807,16 @@
     return Math.min(estimatedHeight, MAX_ROW_HEIGHT);
   }
 
-  // Calculate cumulative heights for virtual scroll positioning
+  // PERFORMANCE FIX: Use constant row height for positioning (O(1) instead of O(n))
+  // Dynamic heights are only used for visual display, not scroll positioning
+  // This fixes the O(n²) bug that caused 10K+ row files to freeze
   function getRowTop(index) {
-    let top = 0;
-    for (let i = 0; i < index; i++) {
-      const row = rows[i];
-      top += estimateRowHeight(row);
-    }
-    return top;
+    return index * MIN_ROW_HEIGHT;
   }
 
-  // Calculate total content height
+  // PERFORMANCE FIX: Simple O(1) total height calculation
   function getTotalHeight() {
-    // For performance, use average height estimation
-    const loadedRowCount = rows.filter(r => r && !r.placeholder).length;
-    if (loadedRowCount === 0) return total * MIN_ROW_HEIGHT;
-
-    let totalLoadedHeight = 0;
-    rows.forEach(row => {
-      if (row && !row.placeholder) {
-        totalLoadedHeight += estimateRowHeight(row);
-      }
-    });
-
-    const avgHeight = totalLoadedHeight / loadedRowCount;
-    return total * avgHeight;
+    return total * MIN_ROW_HEIGHT;
   }
 
   // UI-029: downloadFile removed - users download via right-click on FileExplorer

@@ -84,15 +84,54 @@ node quick_check.js
 
 ## Test Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `login.js` | **Run first!** Login via CDP (requires env credentials) |
-| `quick_check.js` | Page state, URL, available test interfaces |
-| `test_bug023.js` | TM status check (pending vs ready) |
-| `test_bug023_build.js` | Trigger TM index build, check for errors |
-| `test_bug029.js` | Right-click "Upload as TM" flow |
-| `test_clean_slate.js` | Clear TMs and check file state |
-| `test_server_status.js` | Server status panel, TM build buttons |
+### Master Runner
+```powershell
+# Run ALL tests in sequence
+$env:CDP_TEST_USER="user"; $env:CDP_TEST_PASS="pass"
+node run_all_tests.js           # Full suite
+node run_all_tests.js --quick   # Essential tests only
+node run_all_tests.js --verbose # Show all output
+```
+
+### Individual Tests
+
+| Script | Category | Purpose |
+|--------|----------|---------|
+| **Essential** | | |
+| `login.js` | auth | Login via CDP (requires env credentials) |
+| `quick_check.js` | debug | Page state, URL, test interfaces |
+| **Core Functionality** | | |
+| `test_qa.js` | qa | Basic QA check |
+| `test_qa_comprehensive.js` | qa | Full QA with console monitoring |
+| `create_project_upload.js` | files | Create project + upload |
+| `upload_file.js` | files | File upload test |
+| `test_file_download.js` | files | File/TM download test |
+| **TM Tests** | | |
+| `test_full_tm_sync.js` | tm | End-to-end TM sync |
+| `test_auto_sync.js` | tm | Auto-sync functionality |
+| `test_ui047_tm_status.js` | tm | TM status display |
+| **Bug Verification** | | |
+| `test_bug023_build.js` | bugs | Bug 023 - TM index build |
+| `test_bug029.js` | bugs | Bug 029 - Upload as TM |
+| `test_clean_slate.js` | cleanup | Reset state |
+| **UI Verification** | | |
+| `verify_ui031_ui032.js` | ui | Font size/bold |
+| `verify_ui034_tooltips.js` | ui | Tooltip alignment |
+| `verify_ui027_no_confirm.js` | ui | Confirm button removal |
+| **Debug Utilities** | | |
+| `check_all_settings.js` | debug | Settings panel |
+| `check_console_errors.js` | debug | Console error capture |
+| `check_network.js` | debug | Network monitoring |
+| `debug_websocket.js` | debug | WebSocket debugging |
+
+### Archived (Duplicates)
+Duplicate/stale tests moved to `archived_duplicates/`:
+- `test_font_settings.js` → replaced by `verify_ui031_ui032.js`
+- `verify_font_fix.js` → replaced by `verify_ui031_ui032.js`
+- `test_bug023.js` → replaced by `test_bug023_build.js`
+- `check_server_status.js` → replaced by `test_server_status.js`
+- `check_display_settings.js` → replaced by `check_all_settings.js`
+- `tests/` subfolder → had hardcoded credentials (security issue)
 
 ### Credential Security (Build 880+)
 

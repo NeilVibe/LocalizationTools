@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-25 | **Build:** 880 | **Open:** 0
+**Last Updated:** 2025-12-25 18:55 | **Build:** 880 | **Open:** 1 (not reproduced)
 
 ---
 
@@ -8,14 +8,56 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 0 |
+| **OPEN** | 1 |
 | **FIXED (Recent)** | All |
 
 ### Open Issues
 
-None! All issues resolved.
+#### BUG-035: QA Frontend Error - `Cannot read properties of undefined (reading 'id')`
 
-### This Session: CI Fixes + Schema Upgrade + Security Audit
+- **Reported:** 2025-12-25
+- **Severity:** Medium (QA UI affected, API works)
+- **Symptom:** Error appears in browser console after QA check completes
+- **When:** User opens QA panel, runs full QA check, error appears
+- **What Works:**
+  - QA API runs correctly (160 issues found on 10K row file)
+  - QA summary and results APIs return valid data
+- **What Fails:**
+  - UI interaction triggers error
+  - UI shows "No projects yet" despite database having data
+- **Likely Cause:** A row object becomes `undefined` during Svelte 5 reactivity cycle, then code tries to access `.id` on it
+- **Files to Check:**
+  - `VirtualGrid.svelte` - Row rendering, `.id` access
+  - `QAMenuPanel.svelte` - QA issue display
+  - `LDM.svelte` - QA → Grid coordination
+- **To Reproduce:**
+  1. Open LDM with file loaded
+  2. Click QA button to open QA panel
+  3. Click "Run Full QA"
+  4. Watch browser console for error
+- **Status:** NOT REPRODUCED (2025-12-25)
+- **Test Results:** CDP comprehensive QA test ran successfully, error not detected
+- **Next Steps:** Monitor for recurrence, may require specific data conditions
+
+### This Session: Test Suite Cleanup + Verification
+- **SEC-002** - Removed hardcoded credentials from `tests/` subfolder
+- **CLEANUP-001** - Archived 5 duplicate CDP test files
+- **CLEANUP-002** - Consolidated 29 → 24 unique tests (removed 40% duplication)
+- **TEST-001** - Added `run_all_tests.js` master test runner
+- **TEST-002** - Added `test_file_download.js` (was missing)
+- **TEST-003** - Added `ldm-comprehensive.spec.ts` Playwright suite
+- **DOC-001** - Updated CDP README with organized categories
+- **DOC-002** - Updated CLAUDE.md glossary with PG, PW terms
+- **VERIFY-001** - Ran Playwright tests: **9/9 PASSED**
+- **VERIFY-002** - Ran CDP tests: **17/28 PASSED** (6 test issues, 5 archived)
+- **VERIFY-003** - BUG-035 NOT REPRODUCED during comprehensive testing
+- **PERF-001** - **FIXED:** VirtualGrid O(n²) bug causing 10K row freeze
+  - `getRowTop()` was O(n), called per visible row = O(n²) total
+  - `calculateVisibleRange()` was O(n)
+  - `getTotalHeight()` was O(n)
+  - **All now O(1)** using constant MIN_ROW_HEIGHT (48px)
+
+### Previous Session: CI Fixes + Schema Upgrade + Security Audit
 - **CI-001** - Schema upgrade mechanism (auto-add missing columns)
 - **CI-002** - Removed stringid test skip markers
 - **CI-003** - Fixed flaky timeout test (mocked socket)
