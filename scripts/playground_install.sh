@@ -17,6 +17,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# Load local credentials (git-ignored, only on dev machines)
+if [ -f "$PROJECT_ROOT/.env.local" ]; then
+    echo "Loading local credentials from .env.local"
+    set -a
+    source "$PROJECT_ROOT/.env.local"
+    set +a
+fi
+
 # Convert WSL path to Windows path
 SCRIPT_WIN_PATH=$(wslpath -w "$SCRIPT_DIR/playground_install.ps1")
 
