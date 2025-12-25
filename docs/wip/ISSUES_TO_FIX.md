@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-25 18:35 | **Build:** 881 | **Open:** 1 (not reproduced)
+**Last Updated:** 2025-12-25 | **Build:** 887 | **Open:** 1 (not reproduced)
 
 ---
 
@@ -39,7 +39,13 @@
 - **Test Results:** CDP comprehensive QA test ran successfully, error not detected
 - **Next Steps:** Monitor for recurrence, may require specific data conditions
 
-### This Session: Test Suite Cleanup + Verification
+### This Session: Smoke Test Fix (Build 887)
+- **CI-007** - NSIS /S flag broken in Session 0 (LocalSystem service)
+  - Root cause: Silent install exits immediately with 0 files extracted
+  - Fix: Use 7-Zip extraction instead of NSIS /S flag
+  - Added chocolatey 7zip install step before smoke test
+
+### Previous Session: Test Suite Cleanup + Verification
 - **SEC-002** - Removed hardcoded credentials from `tests/` subfolder
 - **CLEANUP-001** - Archived 5 duplicate CDP test files
 - **CLEANUP-002** - Consolidated 29 → 24 unique tests (removed 40% duplication)
