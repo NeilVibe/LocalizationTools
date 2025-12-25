@@ -44,3 +44,4 @@ Build 871: Fix Windows test path with Join-Path
 Build 874: Override pytest.ini addopts for Windows
 Build 877: Fix CI-specific test edge cases
 Build 878: Add CDP integration tests to Windows CI
+Build 879: Full Windows CI overhaul - dual-mode CDP tests + Gitea secrets

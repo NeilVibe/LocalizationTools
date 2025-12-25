@@ -5,12 +5,16 @@
  *   Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
  *   node login.js
  *
- * Credentials: neil/neil
+ * Credentials: Uses CDP_TEST_USER/CDP_TEST_PASS env vars, or defaults to neil/neil
  */
 const WebSocket = require('ws');
 const http = require('http');
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Get credentials from environment or use defaults
+const TEST_USER = process.env.CDP_TEST_USER || 'neil';
+const TEST_PASS = process.env.CDP_TEST_PASS || 'neil';
 
 async function main() {
     // Get CDP targets
@@ -59,12 +63,14 @@ async function main() {
         return;
     }
 
+    console.log(`Logging in as: ${TEST_USER}`);
+
     // Fill username
     await evaluate(`
         const inputs = document.querySelectorAll('input');
         const usernameInput = inputs[0];
         if (usernameInput) {
-            usernameInput.value = 'neil';
+            usernameInput.value = '${TEST_USER}';
             usernameInput.dispatchEvent(new Event('input', {bubbles: true}));
         }
     `);
@@ -74,7 +80,7 @@ async function main() {
     await evaluate(`
         const passwordInput = document.querySelector('input[type="password"]');
         if (passwordInput) {
-            passwordInput.value = 'neil';
+            passwordInput.value = '${TEST_PASS}';
             passwordInput.dispatchEvent(new Event('input', {bubbles: true}));
         }
     `);

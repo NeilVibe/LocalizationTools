@@ -1,39 +1,60 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-25 14:50 | **Build:** v25.1225.1450 | **CI:** Build 871 (WIP)
+**Last Updated:** 2025-12-25 16:00 | **Build:** v25.1225.1600 | **CI:** Build 879+ (CDP Tests)
 
 ---
 
-## CURRENT STATE: WINDOWS TESTS IN PROGRESS
+## CURRENT STATE: WINDOWS CDP TESTS IMPLEMENTED
 
 | Status | Value |
 |--------|-------|
 | **Open Issues** | 0 |
 | **Tests (Linux)** | 1,399 (7 stages, ~4 min) |
-| **Tests (Windows)** | 62 tests written (CI integration WIP) |
+| **Tests (Windows)** | 62 pytest + CDP integration tests |
 | **Coverage** | 47% |
-| **CI/CD** | ✅ Linux passing, Windows tests debugging |
+| **CI/CD** | ✅ Linux passing, Windows CDP tests added |
 | **QA FULL** | DONE (Gitea, 1.2GB) |
 
-### Windows Tests Added (2025-12-25)
+### Windows CI Testing Pipeline (Build 879+)
 
-| Test File | Count | Categories |
-|-----------|-------|------------|
-| `test_windows_paths.py` | 15 | AppData, UserProfile, Downloads, Korean, Unicode |
-| `test_windows_server.py` | 12 | Server, DB, socket, Python imports |
-| `test_windows_encoding.py` | 14 | UTF-8, BOM, Korean filenames, JSON |
-| `test_windows_excel.py` | 11 | openpyxl, Korean, large files |
-| `test_windows_models.py` | 10 | PKL, FAISS, numpy, cache dirs |
-| **TOTAL** | **62** | |
+```
+Windows CI Pipeline:
+├── Smoke Test (install + health check) ✅
+├── pytest tests (62 tests in windows_tests/) ✅
+└── CDP Integration Tests (NEW!)
+    ├── TEST 1: SQLite (offline) mode
+    │   └── Launch app → quick_check.js
+    └── TEST 2: PostgreSQL (online) mode
+        └── Launch app → login.js → quick_check.js → test_server_status.js
+```
 
-**Location:** `windows_tests/` (outside `tests/` to avoid conftest.py)
+### Gitea Secrets for CI (SECURITY)
 
-### CI Fix History (Builds 852-871)
-- **852**: PowerShell `!` syntax error → removed special chars
-- **855**: pip stderr as error → `$ErrorActionPreference = 'SilentlyContinue'`
-- **858-864**: conftest.py imports failing → moved to `windows_tests/`
-- **867**: `--noconftest` doesn't exist → removed invalid option
-- **871**: Fixed path with `Join-Path` (current)
+| Secret | Purpose | Required |
+|--------|---------|----------|
+| `CI_DB_HOST` | PostgreSQL server address | For online tests |
+| `CI_TEST_USER` | Test user (NOT super admin) | For login tests |
+| `CI_TEST_PASS` | Test user password | For login tests |
+
+**To configure:** Gitea repo → Settings → Secrets → Add
+
+**IMPORTANT:** Use a limited `user` role account, NOT super admin.
+
+### Environment Portability
+
+| Location | PostgreSQL Host | Notes |
+|----------|-----------------|-------|
+| Home/Dev | 172.28.150.120 | Current setup |
+| Company | TBD | Update `CI_DB_HOST` secret |
+
+When moving to company server, just update the Gitea secret - no code changes needed.
+
+### CI Fix History (Builds 852-879)
+- **852-855**: PowerShell syntax fixes
+- **858-874**: conftest.py isolation → moved to `windows_tests/`
+- **877**: Fixed CI edge cases (SYSTEM user, socket errors)
+- **878**: Added basic CDP tests (SQLite only)
+- **879+**: Dual-mode CDP tests (SQLite + PostgreSQL)
 
 ---
 
@@ -132,35 +153,43 @@
 
 ---
 
-## WINDOWS PATH TESTS - ✅ IMPLEMENTED
+## WINDOWS TESTING - ✅ COMPLETE
 
-**62 tests written, CI integration in progress.**
+**3-tier testing: pytest (62) + Smoke Test + CDP Integration**
 
-### Test Categories Covered
+### Test Tiers
 
-| Category | Tests | Status |
-|----------|-------|--------|
-| AppData/UserProfile/Downloads | 15 | ✅ Written |
-| Server/DB/socket connectivity | 12 | ✅ Written |
-| UTF-8/BOM/Korean encoding | 14 | ✅ Written |
-| Excel/openpyxl operations | 11 | ✅ Written |
-| Models/PKL/FAISS/numpy | 10 | ✅ Written |
+| Tier | Type | Tests | What It Validates |
+|------|------|-------|-------------------|
+| 1 | pytest | 62 | Paths, encoding, Excel, models |
+| 2 | Smoke Test | 1 | Silent install, file verification, backend health |
+| 3 | CDP | 3+ | App launch, login, UI functionality |
 
-### CI Integration Status
+### pytest Tests (`windows_tests/`)
 
-| Build | Issue | Fix |
-|-------|-------|-----|
-| 852-855 | PowerShell syntax | Fixed |
-| 858-867 | conftest.py loading | Moved to `windows_tests/` |
-| 871 | Path parsing | Using `Join-Path` |
+| File | Count | Categories |
+|------|-------|------------|
+| `test_windows_paths.py` | 15 | AppData, UserProfile, Downloads |
+| `test_windows_server.py` | 12 | Server, DB, socket connectivity |
+| `test_windows_encoding.py` | 14 | UTF-8, BOM, Korean |
+| `test_windows_excel.py` | 11 | openpyxl, Korean, large files |
+| `test_windows_models.py` | 10 | PKL, FAISS, numpy |
 
-### Key Windows Paths Tested
+### CDP Integration Tests
+
+| Test | Mode | What It Does |
+|------|------|--------------|
+| `quick_check.js` | Both | Page state, URL, DOM verification |
+| `login.js` | Online | Login with credentials from Gitea secrets |
+| `test_server_status.js` | Online | Server panel, DB connection status |
+
+### Key Windows Paths
 ```
 Install:     C:\Program Files\LocaNext\
 AppData:     %APPDATA%\LocaNext\
 Models:      %APPDATA%\LocaNext\models\
 Indexes:     %APPDATA%\LocaNext\indexes\
-Downloads:   %USERPROFILE%\Downloads\
+CI Temp:     C:\LocaNextSmokeTest\
 ```
 
 ---
