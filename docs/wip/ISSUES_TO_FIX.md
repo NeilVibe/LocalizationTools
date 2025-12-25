@@ -39,11 +39,16 @@
 - **Test Results:** CDP comprehensive QA test ran successfully, error not detected
 - **Next Steps:** Monitor for recurrence, may require specific data conditions
 
-### This Session: Smoke Test Fix (Build 888) ✅
-- **CI-007** - NSIS /S flag broken in Session 0 (LocalSystem service)
+### This Session: Performance + CI Fixes (Build 888-889) ✅
+
+- **PERF-002** - Placeholder row animation causing jank (Build 889)
+  - Root cause: InlineLoading component in each placeholder row = 30+ animated spinners
+  - Fix: Static CSS placeholder (no animation)
+  - Status: Committed, CI pending
+
+- **CI-007** - NSIS /S flag broken in Session 0 (Build 888) ✅
   - Root cause: Silent install exits immediately with 0 files extracted
   - Fix: Two-step 7-Zip extraction (NSIS wrapper → app-64.7z → app files)
-  - Added chocolatey 7zip install step before smoke test
   - **VERIFIED:** Build 888 passed, release v25.1225.2048 created
 
 ### Previous Session: Test Suite Cleanup + Verification
