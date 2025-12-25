@@ -40,6 +40,62 @@ Windows CI Pipeline:
 
 **IMPORTANT:** Use a limited `user` role account, NOT super admin.
 
+---
+
+## ACTION PLAN: CI Credential Security
+
+### Current Problem - SOLVED
+- ~~`login.js` has `neil/neil` as fallback (visible in code)~~ **REMOVED**
+- ~~neil is super admin with full privileges~~ **Now uses ci_tester (role=user)**
+- ~~Anyone reading code can see credentials~~ **Credentials in Gitea secrets only**
+
+### TODO (In Order)
+
+| Step | Task | Status |
+|------|------|--------|
+| 1 | Wait for build 879 to complete | ✅ Done |
+| 2 | Create `ci_tester` user in PostgreSQL (role=user) | ✅ Done |
+| 3 | Add secrets to Gitea (CI_DB_HOST, CI_TEST_USER, CI_TEST_PASS) | ✅ Done |
+| 4 | Remove neil/neil fallback from login.js | ✅ Done |
+| 5 | Trigger build 880 to verify online tests work | 🔄 In Progress |
+
+### Commands to Execute
+
+```bash
+# Step 2: Create ci_tester in database
+python3 -c "
+from server.database.db_setup import get_db_session
+from server.database.models import User
+from server.utils.auth import hash_password
+
+session = get_db_session()
+ci_user = User(
+    username='ci_tester',
+    password_hash=hash_password('CI_TEST_SECURE_2025'),
+    role='user',
+    must_change_password=False
+)
+session.add(ci_user)
+session.commit()
+print('Created ci_tester')
+"
+
+# Step 3: Add Gitea secrets (manual via UI)
+# Gitea → neilvibe/LocaNext → Settings → Secrets → New Secret
+# - CI_DB_HOST = 172.28.150.120
+# - CI_TEST_USER = ci_tester
+# - CI_TEST_PASS = CI_TEST_SECURE_2025
+```
+
+### After Implementation
+
+| Item | Before | After |
+|------|--------|-------|
+| Credentials in code | `neil/neil` visible | Only fallback, not used |
+| CI uses | neil (super admin) | ci_tester (user role) |
+| Password storage | In git history | In Gitea secrets only |
+| Risk | High (anyone can login as admin) | Low (limited user, secret password) |
+
 ### Environment Portability
 
 | Location | PostgreSQL Host | Notes |
