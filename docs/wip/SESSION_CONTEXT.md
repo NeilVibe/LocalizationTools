@@ -8,14 +8,23 @@
 
 **Target:** 500K+ row files must load and scroll seamlessly.
 
-### Performance Fixes Applied (Build 881-889)
+### Performance Fixes Applied (Build 881-890)
 
 | Fix | Before | After | Impact |
 |-----|--------|-------|--------|
 | `getRowTop()` | O(n) | O(1) | 10K rows: 10000 → 1 op |
 | `calculateVisibleRange()` | O(n) | O(1) | Per-scroll: 10000 → 1 op |
-| `getTotalHeight()` | O(n) | O(1) | Per-render: 10000 → 1 op |
+| `getTotalHeight()` | O(1) | O(1) | Per-render: 10000 → 1 op |
 | Placeholder rows | InlineLoading (animated) | Static CSS | No jank from 30+ spinners |
+| Row count query | COUNT(*) every page | Cached file.row_count | 500K rows: ~500ms → ~0ms |
+
+### Architecture (Documented)
+
+| Layer | Feature |
+|-------|---------|
+| **Frontend** | Virtual scroll (30 rows visible), lazy load (100/page), prefetch (2 pages) |
+| **Backend** | Paginated queries, async sessions, cached counts |
+| **Database** | Composite indexes: (file_id, row_num), (file_id, string_id) |
 
 ### Performance Monitoring Checklist
 
