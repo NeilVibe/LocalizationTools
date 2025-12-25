@@ -37,3 +37,4 @@ Build 849: Windows PATH tests
 Build 853: More Windows tests
 Build 856: Fix PowerShell pip stderr
 Build 859: Fix conftest loading
+Build 862: Run tests from windows dir
