@@ -29,7 +29,9 @@
 | **LDM** | Language Data Manager (CAT tool, App #4) |
 | **TM** | Translation Memory |
 | **FAISS** | Vector index for semantic search |
-| **CDP** | Chrome DevTools Protocol |
+| **CDP** | Chrome DevTools Protocol - browser automation via DevTools |
+| **PG** | Playground - Windows test environment |
+| **PW** | Playwright - browser automation framework for testing |
 | **Playground** | Windows test: `/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground` |
 
 ---
