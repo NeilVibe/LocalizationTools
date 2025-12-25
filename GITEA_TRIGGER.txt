@@ -59,3 +59,4 @@ Build 890: Perf fix - use cached row_count (avoid COUNT(*) on 500K rows)
 Build 891: Fix mock tests for row_count optimization
 Build
 Build 893
+Build 894: Verify zstd fix for Gitea 1.25.3
