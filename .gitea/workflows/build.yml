@@ -935,21 +935,28 @@ jobs:
             exit 0
           }
 
-          # Install pytest if needed
-          & $pythonExe -m pip install pytest --quiet 2>$null
+          Write-Host "[INFO] Using Python: $pythonExe" -ForegroundColor Cyan
+
+          # Install pytest (ignore stderr from pip)
+          $ErrorActionPreference = 'SilentlyContinue'
+          & $pythonExe -m pip install pytest 2>&1 | Out-Null
+          $ErrorActionPreference = 'Stop'
 
           # Run Windows PATH tests
           Write-Host ""
           Write-Host "Running Windows PATH tests..." -ForegroundColor Yellow
-          & $pythonExe -m pytest tests/windows/ -v --tb=short
+          $testResult = & $pythonExe -m pytest tests/windows/ -v --tb=short 2>&1
+          $testExitCode = $LASTEXITCODE
 
-          if ($LASTEXITCODE -eq 0) {
+          # Show output
+          $testResult | ForEach-Object { Write-Host $_ }
+
+          if ($testExitCode -eq 0) {
             Write-Host ""
             Write-Host "[OK] WINDOWS PATH TESTS PASSED" -ForegroundColor Green
           } else {
             Write-Host ""
-            Write-Host "[FAIL] WINDOWS PATH TESTS FAILED" -ForegroundColor Red
-            Write-Host "Fix path issues before building installer" -ForegroundColor Red
+            Write-Host "[FAIL] WINDOWS PATH TESTS FAILED (exit code: $testExitCode)" -ForegroundColor Red
             exit 1
           }
         shell: powershell

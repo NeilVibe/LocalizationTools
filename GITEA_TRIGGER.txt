@@ -35,3 +35,4 @@ Build
 Build 363: Skip redundant coverage stage
 Build 849: Windows PATH tests
 Build 853: More Windows tests
+Build 856: Fix PowerShell pip stderr
