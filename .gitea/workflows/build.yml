@@ -919,9 +919,9 @@ jobs:
       # ============================================================
       - name: Run Windows PATH Tests
         run: |
-          Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-          Write-Host "║  WINDOWS PATH TESTS - Critical Validation                  ║" -ForegroundColor Cyan
-          Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+          Write-Host "========================================" -ForegroundColor Cyan
+          Write-Host "  WINDOWS PATH TESTS - Critical Check   " -ForegroundColor Cyan
+          Write-Host "========================================" -ForegroundColor Cyan
 
           # Find Python
           $pythonExe = $null
@@ -941,15 +941,15 @@ jobs:
           # Run Windows PATH tests
           Write-Host ""
           Write-Host "Running Windows PATH tests..." -ForegroundColor Yellow
-          & $pythonExe -m pytest tests/windows/test_windows_paths.py -v --tb=short
+          & $pythonExe -m pytest tests/windows/ -v --tb=short
 
           if ($LASTEXITCODE -eq 0) {
             Write-Host ""
-            Write-Host "✅ WINDOWS PATH TESTS PASSED" -ForegroundColor Green
+            Write-Host "[OK] WINDOWS PATH TESTS PASSED" -ForegroundColor Green
           } else {
             Write-Host ""
-            Write-Host "❌ WINDOWS PATH TESTS FAILED" -ForegroundColor Red
-            Write-Host "Fix path issues before building installer!" -ForegroundColor Red
+            Write-Host "[FAIL] WINDOWS PATH TESTS FAILED" -ForegroundColor Red
+            Write-Host "Fix path issues before building installer" -ForegroundColor Red
             exit 1
           }
         shell: powershell
