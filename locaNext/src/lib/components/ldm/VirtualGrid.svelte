@@ -1076,7 +1076,8 @@
               {#if row.placeholder}
                 <div class="cell" style="width: {visibleColumns[0]?.width || 60}px;">{row.row_num}</div>
                 <div class="cell loading-cell" style="flex: 1;">
-                  <InlineLoading description="" />
+                  <!-- PERF: Static placeholder instead of animated InlineLoading -->
+                  <div class="placeholder-shimmer"></div>
                 </div>
               {:else}
                 <!-- Row number (conditional) -->
@@ -1668,6 +1669,14 @@
 
   .loading-cell {
     justify-content: center;
+  }
+
+  /* PERF: Static placeholder - no animation for smooth scrolling */
+  .placeholder-shimmer {
+    width: 60%;
+    height: 16px;
+    background: #3a3a3a;
+    border-radius: 4px;
   }
 
   .loading-bar {
