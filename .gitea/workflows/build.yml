@@ -1825,10 +1825,9 @@ jobs:
             Log "Installing to: $installDir"
 
             # Use 7-Zip extraction instead of NSIS /S flag (broken in Session 0)
-            # NSIS installers are self-extracting archives that 7-Zip can unpack
+            # Electron-builder NSIS has nested structure: installer.exe → $PLUGINSDIR/app-64.7z → app files
             $7zPath = "C:\Program Files\7-Zip\7z.exe"
             if (!(Test-Path $7zPath)) {
-              # Try chocolatey path
               $7zPath = "C:\ProgramData\chocolatey\bin\7z.exe"
             }
             if (!(Test-Path $7zPath)) {
@@ -1836,20 +1835,26 @@ jobs:
             }
             Log "OK: Using 7-Zip at $7zPath"
 
-            # Extract installer contents
-            $extractArgs = "x `"$($installer.FullName)`" -o`"$installDir`" -y"
-            Log "Extracting: 7z $extractArgs"
+            # Step 1: Extract NSIS outer layer to temp dir
+            $tempDir = "$installDir\__temp__"
+            New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+            $extractArgs = "x `"$($installer.FullName)`" -o`"$tempDir`" -y"
+            Log "Step 1: Extracting NSIS wrapper..."
             $proc = Start-Process -FilePath $7zPath -ArgumentList $extractArgs -Wait -PassThru -NoNewWindow
-            if ($proc.ExitCode -ne 0) { throw "Extraction failed with exit code $($proc.ExitCode)" }
-            Log "OK: Extraction completed"
+            if ($proc.ExitCode -ne 0) { throw "NSIS extraction failed with exit code $($proc.ExitCode)" }
 
-            # NSIS extracts to $INSTDIR which becomes root, check structure
-            $appExe = Get-ChildItem -Path $installDir -Filter "LocaNext.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($appExe -and $appExe.DirectoryName -ne $installDir) {
-              # Files are in a subdirectory, move them up
-              Log "Moving files from $($appExe.DirectoryName) to $installDir"
-              Get-ChildItem -Path $appExe.DirectoryName | Move-Item -Destination $installDir -Force
+            # Step 2: Extract app-64.7z (contains actual app files)
+            $app7z = Get-ChildItem -Path "$tempDir\`$PLUGINSDIR" -Filter "app-64.7z" -ErrorAction SilentlyContinue
+            if (!$app7z) {
+              throw "Could not find app-64.7z in extracted NSIS installer"
             }
+            Log "Step 2: Extracting app-64.7z..."
+            $extractArgs = "x `"$($app7z.FullName)`" -o`"$installDir`" -y"
+            $proc = Start-Process -FilePath $7zPath -ArgumentList $extractArgs -Wait -PassThru -NoNewWindow
+            if ($proc.ExitCode -ne 0) { throw "App extraction failed with exit code $($proc.ExitCode)" }
+
+            # Cleanup temp dir
+            Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
             Log "OK: Installation completed"
 
             # === PHASE 3: File Verification ===

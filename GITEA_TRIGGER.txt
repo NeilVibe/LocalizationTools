@@ -53,3 +53,4 @@ Build 884: Poll-based installer with timeout (avoid hanging)
 Build 885: Test after runner restart + revert
 Build 886: Test with Windows Defender exclusions
 Build 887: Fix smoke test - use 7-Zip instead of broken NSIS /S flag
+Build 888: Fix 2-step extraction (NSIS wrapper → app-64.7z → app files)
