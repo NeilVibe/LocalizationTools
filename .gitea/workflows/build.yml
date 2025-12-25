@@ -942,13 +942,11 @@ jobs:
           & $pythonExe -m pip install pytest 2>&1 | Out-Null
           $ErrorActionPreference = 'Stop'
 
-          # Run Windows PATH tests from tests/windows directory
+          # Run Windows PATH tests (--noconftest to avoid loading main conftest with missing deps)
           Write-Host ""
           Write-Host "Running Windows PATH tests..." -ForegroundColor Yellow
-          Push-Location tests/windows
-          $testResult = & $pythonExe -m pytest . -v --tb=short -p no:cacheprovider 2>&1
+          $testResult = & $pythonExe -m pytest tests/windows/ -v --tb=short --noconftest -p no:cacheprovider 2>&1
           $testExitCode = $LASTEXITCODE
-          Pop-Location
 
           # Show output
           $testResult | ForEach-Object { Write-Host $_ }
