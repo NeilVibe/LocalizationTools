@@ -262,6 +262,20 @@
     showQAMenu = false;
   }
 
+  /**
+   * BUG-037: Handle open edit modal from QA Menu (double-click)
+   */
+  async function handleOpenEditModal(event) {
+    const { rowId, rowNum } = event.detail;
+    // First scroll to the row
+    handleGoToRow(event);
+    // Then open the edit modal
+    if (virtualGrid) {
+      await virtualGrid.openEditModalByRowId(rowId);
+      logger.userAction("Opened edit modal from QA", { rowId, rowNum });
+    }
+  }
+
   // ================================
   // TEST MODE FUNCTIONS
   // ================================
@@ -776,6 +790,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     fileId={selectedFileId}
     fileName={selectedFileName}
     on:goToRow={handleGoToRow}
+    on:openEditModal={handleOpenEditModal}
   />
 </div>
 

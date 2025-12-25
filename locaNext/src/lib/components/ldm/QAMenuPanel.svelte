@@ -133,10 +133,16 @@
     loadIssues(checkType);
   }
 
-  // Jump to row in grid
+  // Jump to row in grid (single click)
   function goToRow(rowId, rowNum) {
     dispatch('goToRow', { rowId, rowNum });
     logger.userAction("Jump to row from QA menu", { rowId, rowNum });
+  }
+
+  // BUG-037: Open edit modal on double-click
+  function openEditModal(rowId, rowNum) {
+    dispatch('openEditModal', { rowId, rowNum });
+    logger.userAction("Open edit modal from QA menu", { rowId, rowNum });
   }
 
   // Close panel
@@ -180,7 +186,7 @@
         size="small"
         icon={Close}
         iconDescription="Close"
-        on:click={closePanel}
+        onclick={closePanel}
       />
     </div>
 
@@ -193,7 +199,7 @@
         icon={Renew}
         iconDescription="Run Full QA"
         disabled={runningFullQa}
-        on:click={runFullQA}
+        onclick={runFullQA}
       >
         {runningFullQa ? 'Checking...' : 'Run Full QA'}
       </Button>
@@ -253,6 +259,8 @@
           <button
             class="issue-item"
             onclick={() => goToRow(issue.row_id, issue.row_num)}
+            ondblclick={() => openEditModal(issue.row_id, issue.row_num)}
+            title="Click to jump, double-click to edit"
           >
             <div class="issue-header">
               <Tag type={getSeverityType(issue.severity)} size="sm">

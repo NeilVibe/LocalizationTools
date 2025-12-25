@@ -11,7 +11,7 @@ import uuid
 
 from sqlalchemy import (
     Column, Integer, BigInteger, String, Text, Float, Boolean, DateTime,
-    ForeignKey, Index, Enum as SQLEnum, JSON
+    ForeignKey, Index, Enum as SQLEnum, JSON, UniqueConstraint
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -559,6 +559,8 @@ class LDMProject(Base):
 
     __table_args__ = (
         Index("idx_ldm_project_owner", "owner_id"),
+        # BUG-036: Prevent duplicate project names per user
+        UniqueConstraint("name", "owner_id", name="uq_ldm_project_name_owner"),
     )
 
     def __repr__(self):
@@ -585,6 +587,8 @@ class LDMFolder(Base):
 
     __table_args__ = (
         Index("idx_ldm_folder_project_parent", "project_id", "parent_id"),
+        # BUG-036: Prevent duplicate folder names in same parent
+        UniqueConstraint("name", "project_id", "parent_id", name="uq_ldm_folder_name_parent"),
     )
 
     def __repr__(self):
@@ -627,6 +631,8 @@ class LDMFile(Base):
 
     __table_args__ = (
         Index("idx_ldm_file_project_folder", "project_id", "folder_id"),
+        # BUG-036: Prevent duplicate file names in same folder
+        UniqueConstraint("name", "project_id", "folder_id", name="uq_ldm_file_name_folder"),
     )
 
     def __repr__(self):

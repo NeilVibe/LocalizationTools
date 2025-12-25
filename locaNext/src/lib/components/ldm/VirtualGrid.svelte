@@ -185,6 +185,17 @@
     containerHeight = containerEl.clientHeight;
     scrollTop = containerEl.scrollTop;
 
+    // Sanity check: container height shouldn't be larger than viewport
+    // BUG-036-FIX: Detect incorrect container sizing
+    if (containerHeight > 5000) {
+      logger.warning("Container height unusually large", {
+        containerHeight,
+        windowHeight: typeof window !== 'undefined' ? window.innerHeight : 0
+      });
+      // Cap to reasonable max
+      containerHeight = Math.min(containerHeight, 1200);
+    }
+
     // O(1) calculation using constant row height
     const startRow = Math.floor(scrollTop / MIN_ROW_HEIGHT);
     const endRow = Math.ceil((scrollTop + containerHeight) / MIN_ROW_HEIGHT);
@@ -197,19 +208,53 @@
   }
 
   // SMART INDEXING: Ensure rows in range are loaded + prefetch ahead
+  // Throttled to prevent excessive API calls during fast scrolling
+  let ensureRowsThrottleTimer = null;
+  let lastEnsureRowsTime = 0;
+  const ENSURE_ROWS_THROTTLE_MS = 100; // Max 10 API batches per second
+
   async function ensureRowsLoaded(start, end) {
+    const now = Date.now();
+
+    // Throttle API calls during fast scrolling
+    if (now - lastEnsureRowsTime < ENSURE_ROWS_THROTTLE_MS) {
+      if (!ensureRowsThrottleTimer) {
+        ensureRowsThrottleTimer = setTimeout(() => {
+          ensureRowsThrottleTimer = null;
+          ensureRowsLoadedImmediate(start, end);
+        }, ENSURE_ROWS_THROTTLE_MS);
+      }
+      return;
+    }
+
+    lastEnsureRowsTime = now;
+    await ensureRowsLoadedImmediate(start, end);
+  }
+
+  async function ensureRowsLoadedImmediate(start, end) {
     const startPage = Math.floor(start / PAGE_SIZE) + 1;
     const endPage = Math.floor(end / PAGE_SIZE) + 1;
 
+    // BUG-036-FIX: Prevent loading too many pages at once (max 3 pages visible)
+    const MAX_PAGES_TO_LOAD = 3;
+    const limitedEndPage = Math.min(endPage, startPage + MAX_PAGES_TO_LOAD - 1);
+
+    if (endPage > limitedEndPage) {
+      logger.warning("Prevented excessive page load", {
+        startPage, endPage, limitedTo: limitedEndPage,
+        visibleRange: { start, end }
+      });
+    }
+
     // Load visible pages (blocking)
-    for (let page = startPage; page <= endPage; page++) {
+    for (let page = startPage; page <= limitedEndPage; page++) {
       if (!loadedPages.has(page) && !loadingPages.has(page)) {
         await loadPage(page);
       }
     }
 
     // SMART PREFETCH: Load adjacent pages in background (non-blocking)
-    prefetchAdjacentPages(endPage);
+    prefetchAdjacentPages(limitedEndPage);
   }
 
   // Load a specific page of rows
@@ -268,6 +313,17 @@
   }
 
   // SMART INDEXING: Initial load with instant display
+  // BUG-037: Export function to open edit modal by row ID (for QA panel integration)
+  export async function openEditModalByRowId(rowId) {
+    // Find the row in our loaded rows
+    const row = rows.find(r => r && r.id === rowId);
+    if (row) {
+      await openEditModal(row);
+    } else {
+      logger.warning("Row not loaded yet", { rowId });
+    }
+  }
+
   export async function loadRows() {
     if (!fileId) return;
 
@@ -337,7 +393,8 @@
     }
   }
 
-  // Handle scroll
+  // Handle scroll - update visible range immediately for smooth scrolling
+  // API calls are throttled inside ensureRowsLoaded
   function handleScroll() {
     calculateVisibleRange();
   }
@@ -497,8 +554,9 @@
     logger.info("Loading reference file", { fileId: refFileId });
 
     try {
-      // Fetch all rows from reference file
-      const response = await fetch(`${API_BASE}/api/ldm/files/${refFileId}/rows?limit=50000`, {
+      // Fetch reference file rows (limit to 10K for performance)
+      // Reference matching is by string_id, so we need enough rows to match
+      const response = await fetch(`${API_BASE}/api/ldm/files/${refFileId}/rows?limit=10000`, {
         headers: getAuthHeaders()
       });
 
