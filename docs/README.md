@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Updated**: 2025-12-19 | **Build:** 300
+**Updated**: 2025-12-26 | **Build:** 896
 
 ---
 
@@ -12,7 +12,7 @@ docs/
 │
 ├── wip/                              # Active work
 │   ├── SESSION_CONTEXT.md            # Session handoff
-│   ├── ISSUES_TO_FIX.md              # Bug tracker (14 open)
+│   ├── ISSUES_TO_FIX.md              # Bug tracker (0 open)
 │   └── P25_LDM_UX_OVERHAUL.md        # Current project
 │
 ├── testing/                          # Test guides
@@ -20,9 +20,12 @@ docs/
 │   ├── DEBUG_AND_TEST_HUB.md         # Quick reference
 │   └── PYTEST_GUIDE.md               # Backend tests
 │
-├── cicd/                             # CI/CD Pipeline
+├── cicd/                             # CI/CD Pipeline (ALL CI/CD HERE)
 │   ├── CI_CD_HUB.md                  # CI/CD navigation
-│   └── TROUBLESHOOTING.md            # Build failures
+│   ├── TROUBLESHOOTING.md            # ⭐ EFFECTIVE DEBUGGING
+│   ├── GITEA_SAFETY_PROTOCOL.md      # CPU issues, runner safety
+│   ├── HOW_TO_BUILD.md               # Trigger builds
+│   └── RUNNER_SERVICE_SETUP.md       # Runner config
 │
 ├── build/                            # Build & Distribution
 │   ├── BUILD_AND_DISTRIBUTION.md     # Versioning, builds

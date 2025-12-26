@@ -72,7 +72,7 @@ sudo systemctl enable gitea-runner.service
 sudo systemctl start gitea-runner.service
 ```
 
-**Full guide:** [docs/cicd/RUNNER_SERVICE_SETUP.md](../cicd/RUNNER_SERVICE_SETUP.md)
+**Full guide:** [RUNNER_SERVICE_SETUP.md](RUNNER_SERVICE_SETUP.md)
 
 ---
 
@@ -165,6 +165,26 @@ ps aux | grep -E "gitea|act_runner" | grep -v grep
 | CPU > 50% | Runner polling loop |
 | Memory climbing | Stuck webhook/action |
 | FetchTask spam in logs | Runner can't find task |
+
+---
+
+## Resource Optimization: On-Demand Gitea
+
+Gitea uses ~7% CPU even when idle (background tasks, Go runtime). To save resources, run Gitea only when needed:
+
+```bash
+# START Gitea + Runner (before commit/push/build)
+cd ~/gitea && GOGC=200 ./gitea web > /tmp/gitea.log 2>&1 &
+sleep 3 && ./act_runner daemon --config runner_config.yaml > /tmp/act_runner.log 2>&1 &
+
+# STOP Gitea + Runner (when done)
+pkill -f "act_runner" && sleep 2 && pkill -f "gitea web"
+```
+
+| When to START | When to STOP |
+|---------------|--------------|
+| Before `git push gitea main` | After build completes |
+| Before triggering CI builds | When done pushing for the day |
 
 ---
 

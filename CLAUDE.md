@@ -13,6 +13,7 @@
 | **Open bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 | **WIP docs?** | [docs/wip/README.md](docs/wip/README.md) |
 | **Build → Test protocol?** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) ← START HERE |
+| **CI/CD debug?** | [docs/cicd/TROUBLESHOOTING.md](docs/cicd/TROUBLESHOOTING.md) ← EFFECTIVE DEBUGGING |
 | **Node.js CDP tests?** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
 | **Enterprise deploy?** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
 | **All docs?** | [docs/README.md](docs/README.md) |
@@ -117,9 +118,12 @@ docs/
 │   ├── SESSION_CONTEXT.md      ← Current state + next steps
 │   ├── ISSUES_TO_FIX.md        ← Bug tracker (0 open)
 │   └── P36_COVERAGE_GAPS.md    ← Coverage analysis + test plan
-├── cicd/                 # CI/CD documentation
+├── cicd/                 # CI/CD documentation (ALL CI/CD HERE)
 │   ├── CI_CD_HUB.md            ← Pipeline overview
-│   └── TROUBLESHOOTING.md      ← Debug techniques
+│   ├── TROUBLESHOOTING.md      ← ⭐ EFFECTIVE DEBUGGING (use this!)
+│   ├── GITEA_SAFETY_PROTOCOL.md ← CPU issues, runner safety
+│   ├── HOW_TO_BUILD.md         ← Trigger builds
+│   └── RUNNER_SERVICE_SETUP.md ← Runner config
 ├── enterprise/           # Company deployment
 │   └── HUB.md
 └── history/              # Archives
