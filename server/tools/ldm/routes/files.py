@@ -468,6 +468,155 @@ async def download_file(
     )
 
 
+# =============================================================================
+# File Merge (P3: MERGE System)
+# =============================================================================
+
+@router.post("/files/{file_id}/merge")
+async def merge_file(
+    file_id: int,
+    original_file: UploadFile = File(..., description="Original file to merge into"),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Merge reviewed translations from LDM back into original file.
+
+    Flow:
+    1. User uploads original file (from LanguageData)
+    2. System gets reviewed rows from LDM database
+    3. Matches by StringID + Source
+    4. EDIT: Updates target for matches
+    5. ADD: Appends new rows not in original
+    6. Returns merged file for download
+
+    Supported formats: TXT, XML (Excel not supported - no StringID)
+    """
+    from server.tools.ldm.file_handlers.txt_handler import parse_txt_file
+    from server.tools.ldm.file_handlers.xml_handler import parse_xml_file
+
+    # Get LDM file info
+    result = await db.execute(
+        select(LDMFile).options(selectinload(LDMFile.project)).where(
+            LDMFile.id == file_id
+        )
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if file.project.owner_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Check format compatibility
+    format_lower = file.format.lower() if file.format else ""
+    if format_lower not in ["txt", "xml"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Merge not supported for format: {file.format}. Only TXT and XML supported."
+        )
+
+    # Read original file content
+    original_content = await original_file.read()
+    original_filename = original_file.filename or "merged_file"
+
+    # Determine format from original file extension
+    original_ext = original_filename.rsplit('.', 1)[-1].lower() if '.' in original_filename else ""
+
+    # Validate format match
+    if original_ext == "txt" and format_lower != "txt":
+        raise HTTPException(status_code=400, detail="Format mismatch: LDM file is XML, original is TXT")
+    if original_ext == "xml" and format_lower != "xml":
+        raise HTTPException(status_code=400, detail="Format mismatch: LDM file is TXT, original is XML")
+
+    # Parse original file
+    if format_lower == "txt":
+        original_rows = parse_txt_file(original_content, original_filename)
+    else:  # xml
+        original_rows = parse_xml_file(original_content, original_filename)
+
+    if not original_rows:
+        raise HTTPException(status_code=400, detail="Could not parse original file or file is empty")
+
+    # Get reviewed rows from LDM database
+    result = await db.execute(
+        select(LDMRow).where(
+            LDMRow.file_id == file_id,
+            LDMRow.status.in_(["reviewed", "approved"])
+        ).order_by(LDMRow.row_num)
+    )
+    db_rows = result.scalars().all()
+
+    if not db_rows:
+        raise HTTPException(status_code=400, detail="No reviewed rows to merge")
+
+    # Build lookup from DB rows: (string_id, source) -> row
+    db_lookup = {}
+    for row in db_rows:
+        key = (row.string_id or "", row.source or "")
+        db_lookup[key] = row
+
+    # Track merge statistics
+    edited_count = 0
+    added_count = 0
+    original_keys = set()
+
+    # Merge: Update original rows with reviewed translations
+    merged_rows = []
+    for orig in original_rows:
+        key = (orig.get("string_id") or "", orig.get("source") or "")
+        original_keys.add(key)
+
+        if key in db_lookup:
+            # EDIT: Replace target with reviewed translation
+            db_row = db_lookup[key]
+            orig["target"] = db_row.target
+            orig["extra_data"] = db_row.extra_data or orig.get("extra_data")
+            edited_count += 1
+
+        merged_rows.append(orig)
+
+    # ADD: Append new rows from DB that don't exist in original
+    for key, db_row in db_lookup.items():
+        if key not in original_keys:
+            merged_rows.append({
+                "row_num": len(merged_rows) + 1,
+                "string_id": db_row.string_id,
+                "source": db_row.source,
+                "target": db_row.target,
+                "extra_data": db_row.extra_data
+            })
+            added_count += 1
+
+    # Build merged file content
+    if format_lower == "txt":
+        content = _build_txt_file_from_dicts(merged_rows, file.extra_data or {})
+        media_type = "text/plain"
+        extension = ".txt"
+    else:  # xml
+        content = _build_xml_file_from_dicts(merged_rows, file.extra_data or {})
+        media_type = "application/xml"
+        extension = ".xml"
+
+    # Create filename
+    base_name = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
+    download_name = f"{base_name}_merged{extension}"
+
+    logger.info(f"LDM MERGE: file_id={file_id}, edited={edited_count}, added={added_count}, total={len(merged_rows)}")
+
+    return StreamingResponse(
+        BytesIO(content),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f"attachment; filename={download_name}",
+            "X-Merge-Edited": str(edited_count),
+            "X-Merge-Added": str(added_count),
+            "X-Merge-Total": str(len(merged_rows))
+        }
+    )
+
+
 @router.get("/files/{file_id}/extract-glossary")
 async def extract_glossary(
     file_id: int,
@@ -739,3 +888,92 @@ def _build_excel_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
     output.seek(0)
 
     return output.read()
+
+
+# =============================================================================
+# Dict-based File Builders (for Merge)
+# =============================================================================
+
+def _build_txt_file_from_dicts(rows: List[dict], file_metadata: dict = None) -> bytes:
+    """
+    Build TXT file from dict rows (used by merge).
+
+    Same as _build_txt_file but works with dicts instead of LDMRow objects.
+    """
+    file_metadata = file_metadata or {}
+    lines = []
+
+    for row in rows:
+        # Reconstruct string_id parts
+        string_id = row.get("string_id") or ""
+        string_id_parts = string_id.split(' ') if string_id else [""] * 5
+
+        # Ensure we have 5 parts
+        while len(string_id_parts) < 5:
+            string_id_parts.append("")
+
+        source = row.get("source") or ""
+        target = row.get("target") or ""
+
+        # Replace newline markers
+        source = source.replace("↵", "\n")
+        target = target.replace("↵", "\n")
+
+        # Start with standard 7 columns
+        parts = string_id_parts[:5] + [source, target]
+
+        # Add extra columns
+        extra_data = row.get("extra_data")
+        if extra_data:
+            total_cols = file_metadata.get("total_columns", 7)
+            for i in range(7, total_cols):
+                col_key = f"col{i}"
+                parts.append(extra_data.get(col_key, ""))
+
+        line = "\t".join(parts)
+        lines.append(line)
+
+    content = "\n".join(lines)
+    encoding = file_metadata.get("encoding", "utf-8")
+    return content.encode(encoding)
+
+
+def _build_xml_file_from_dicts(rows: List[dict], file_metadata: dict = None) -> bytes:
+    """
+    Build XML file from dict rows (used by merge).
+
+    Same as _build_xml_file but works with dicts instead of LDMRow objects.
+    """
+    import xml.etree.ElementTree as ET
+    from xml.dom import minidom
+
+    file_metadata = file_metadata or {}
+
+    root_tag = file_metadata.get("root_element", "LangData")
+    root = ET.Element(root_tag)
+
+    root_attribs = file_metadata.get("root_attributes")
+    if root_attribs:
+        for key, val in root_attribs.items():
+            root.set(key, val)
+
+    element_tag = file_metadata.get("element_tag", "String")
+
+    for row in rows:
+        string_elem = ET.SubElement(root, element_tag)
+
+        string_elem.set("stringid", row.get("string_id") or "")
+        string_elem.set("strorigin", row.get("source") or "")
+        string_elem.set("str", row.get("target") or "")
+
+        extra_data = row.get("extra_data")
+        if extra_data:
+            for attr_name, attr_val in extra_data.items():
+                string_elem.set(attr_name, attr_val or "")
+
+    encoding = file_metadata.get("encoding", "UTF-8")
+    xml_str = ET.tostring(root, encoding='unicode')
+    dom = minidom.parseString(xml_str)
+    pretty_xml = dom.toprettyxml(indent="  ", encoding=encoding)
+
+    return pretty_xml
