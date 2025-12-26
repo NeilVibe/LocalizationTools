@@ -1,8 +1,8 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-26 12:15 | **Build:** 897 | **Open:** 0
+**Last Updated:** 2025-12-27 02:45 | **Build:** 395 (pending) | **Open:** 3
 
-> **Note:** Gitea 1.25.3 fully working. zstd installed, runners cleaned, Windows runner re-registered (ID 96).
+> **Note:** 3 file viewer issues found during iPad remote testing. Fixes pushed in Build 395.
 
 ---
 
@@ -10,8 +10,58 @@
 
 | Status | Count |
 |--------|-------|
+| **OPEN (Pending Verification)** | 3 |
 | **FIXED (This Session)** | 4 |
-| **OPEN** | 0 |
+
+---
+
+## OPEN - PENDING VERIFICATION (2025-12-27)
+
+### UI-048: Hover Highlighting Ugly - FIX PUSHED
+
+- **Reported:** 2025-12-27 (iPad testing)
+- **Severity:** MEDIUM (UX)
+- **Status:** FIX PUSHED (Build 395) | **PENDING VERIFICATION**
+- **Problem:** Row/cell hover had ugly box-shadow creating weird yellowish-green highlight
+- **Root Cause:** Double box-shadow effects on `.virtual-row:hover` and `.cell-hover` classes
+- **Fix:** Removed all `box-shadow` from hover states, kept only background color change
+- **File:** `VirtualGrid.svelte`
+- **Expected:** Clean, minimal, slick background color shift on hover
+
+---
+
+### UI-049: Cell Height Too Small - FIX PUSHED
+
+- **Reported:** 2025-12-27 (iPad testing)
+- **Severity:** MEDIUM (UX)
+- **Status:** FIX PUSHED (Build 395) | **PENDING VERIFICATION**
+- **Problem:** Cells don't resize according to text content, multi-line content cut off
+- **Root Cause:** `MAX_ROW_HEIGHT = 120` (only ~3-4 lines), cells have `overflow: hidden`
+- **Fix:**
+  1. Increased `MAX_ROW_HEIGHT` from 120px to 200px (~8 lines)
+  2. Added `overflow-y: auto` to cells so content can scroll if exceeds max
+  3. Added `max-height: 200px` to cells
+- **File:** `VirtualGrid.svelte`
+- **Expected:** Cells show up to ~8 lines, scroll internally if more
+
+---
+
+### UI-050: Lazy Loading Broken (Scroll Shows Black) - FIX PUSHED
+
+- **Reported:** 2025-12-27 (iPad testing)
+- **Severity:** HIGH (Functionality)
+- **Status:** FIX PUSHED (Build 395) | **PENDING VERIFICATION**
+- **Problem:** First rows load, but scrolling down shows empty black space - no more rows appear
+- **Root Cause:**
+  1. No ResizeObserver - container height changes not detected
+  2. Svelte 5 `bind:this` timing issue - `onMount` runs before element available
+  3. Scroll listener not properly attached
+- **Fix:**
+  1. Added ResizeObserver to recalculate visible range when container size changes
+  2. Changed from `onMount` to `$effect` for scroll listener setup (more reliable with Svelte 5)
+  3. Added `min-height: 200px` to scroll-container
+- **File:** `VirtualGrid.svelte`
+- **Expected:** Rows load when scrolling, no empty black space
 
 ---
 

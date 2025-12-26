@@ -1,8 +1,8 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-26 18:45 | **Build:** 897 ✅ | **CI:** ✅ Working | **Issues:** 0 OPEN
+**Last Updated:** 2025-12-27 02:45 | **Build:** 395 (PENDING) | **CI:** Running | **Issues:** 3 OPEN
 
-> **SESSION END:** P1-P5 complete. User testing app manually.
+> **SESSION END:** iPad remote testing setup complete. 3 file viewer bugs found, fixes pushed.
 
 ---
 
@@ -10,58 +10,61 @@
 
 | Item | Status |
 |------|--------|
-| **Open Issues** | 0 |
-| **P3 MERGE** | ✅ COMPLETE |
-| **P4 CONVERT** | ✅ COMPLETE |
-| **P5 LANGUAGETOOL** | ✅ COMPLETE |
-| **CI/CD** | ✅ Build 897 passed |
+| **Open Issues** | 3 (UI-048, UI-049, UI-050) |
+| **Build 395** | RUNNING (fixes pushed) |
+| **iPad Remote** | Chrome Remote Desktop (web version) working |
+| **Playground** | v25.1226.1801 (needs update when build completes) |
 
 ---
 
-## JUST COMPLETED: P5 LanguageTool (2025-12-26)
+## TODAY'S SESSION (2025-12-27)
 
-### What Was Built
+### 1. iPad Remote Access Setup
 
-**Server:** LanguageTool 6.6 on 172.28.150.120:8081
-- Java 17 installed
-- systemd service for auto-start
-- ~937MB RAM, minimal CPU
+**Goal:** Test LocaNext from iPad remotely
 
-**Backend:**
-- `server/utils/languagetool.py` - LT client wrapper
-- `server/tools/ldm/routes/grammar.py` - Grammar endpoints
-- `/grammar/status`, `/files/{id}/check-grammar`, `/rows/{id}/check-grammar`
+**Solution:** Chrome Remote Desktop (web version in Safari)
+- iOS app discontinued by Google in 2025
+- Web version works: `remotedesktop.google.com` in Safari
+- Full screen control, not just browser
+- Setup guide: `docs/IPAD-REMOTE-ACCESS-GUIDE.md`
 
-**Frontend:** Right-click → "Check Spelling/Grammar"
-- Loading spinner, summary stats, error list with suggestions
+### 2. Claude Confusion Traps Documented
 
-### Language Support
+Added to `docs/cicd/TROUBLESHOOTING.md`:
 
-| Supported | Not Supported |
-|-----------|---------------|
-| EN, FR, DE, ES, IT, PL, RU, JA, PT-BR, ZH | Turkish (tr) |
+**Trap #1: Git Log != CI/CD Builds**
+- `git log` shows commits, NOT builds
+- ALWAYS check database `action_run` table for builds
+- File timestamps don't equal build times
 
-**Spanish:** Use `es` for all variants (es-ES, es-MX, es-AR identical rules)
-**Chinese:** Use `zh` for both Simplified and Traditional (limited detection)
+**Trap #2: Date Filtering Pitfall**
+- `git log --since="2025-12-27"` returns empty at 2 AM
+- Work at 11 PM shows as "yesterday" but is TODAY's work
+- NEVER use date filters, always use count: `git log -10`
 
-### CDP Tests
+### 3. File Viewer Bugs Found (User Testing)
 
-- `test_p5_grammar.js` - 11/11 fixtures pass
-- Detects: spelling, contractions, articles, possessives, modal verbs
-- Does NOT detect: tense shifts, their/they're, subjunctive
+| ID | Issue | Status |
+|----|-------|--------|
+| UI-048 | Hover highlighting ugly (box-shadow) | FIX PUSHED |
+| UI-049 | Cell height too small (max 120px) | FIX PUSHED |
+| UI-050 | Lazy loading broken (scroll shows black) | FIX PUSHED |
+
+**Fixes in Build 395:**
+- Removed box-shadow from hover (clean background only)
+- MAX_ROW_HEIGHT: 120px -> 200px (~8 lines)
+- Added ResizeObserver for container size changes
+- Used $effect for reliable scroll listener in Svelte 5
 
 ---
 
-## COMPLETED THIS SESSION
+## PENDING VERIFICATION
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| P3 MERGE | ✅ | Right-click → Merge to LanguageData |
-| P4 CONVERT | ✅ | Right-click → Convert (TXT→Excel/XML/TMX) |
-| P5 GRAMMAR | ✅ | Right-click → Check Spelling/Grammar |
-| BUG-036 | ✅ | Duplicate names rejected |
-| BUG-037 | ✅ | QA Panel X button works |
-| PERF-003 | ✅ | No request flooding |
+Build 395 running - needs testing when complete:
+1. Is hover clean/minimal?
+2. Do cells show ~8 lines max?
+3. Does scrolling load more rows?
 
 ---
 
@@ -69,11 +72,8 @@
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| ~~P1~~ | Factorization | ✅ DONE |
-| ~~P2~~ | Auto-LQA System | ✅ DONE |
-| ~~P3~~ | MERGE System | ✅ DONE |
-| ~~P4~~ | File Conversions | ✅ DONE |
-| ~~P5~~ | LanguageTool | ✅ DONE |
+| ~~P1-P5~~ | Complete | Done |
+| **UI Bugs** | File viewer fixes | Build 395 pending |
 | **Future** | UIUX Overhaul | Pending |
 | **Future** | Perforce API | Pending |
 
@@ -83,36 +83,33 @@
 
 | Topic | Doc |
 |-------|-----|
-| P5 Report | `docs/wip/P5_LANGUAGETOOL_REPORT.md` |
-| CI/CD | `docs/cicd/CI_CD_HUB.md` |
-| Build Logs | `ssh neil1988@172.28.150.120 "zstd -d -c ~/gitea/data/actions_log/neilvibe/LocaNext/*/933.log.zst \| tail -30"` |
-
----
-
-## CLAUDE.md UPDATE
-
-Added **DOCS FIRST** as Critical Rule #1:
-> Before trying ANY approach, READ the relevant docs. Never guess or try random methods.
+| iPad Remote | `docs/IPAD-REMOTE-ACCESS-GUIDE.md` |
+| Claude Confusion Traps | `docs/cicd/TROUBLESHOOTING.md` |
+| Build Status | Database: `action_run` table |
 
 ---
 
 ## QUICK COMMANDS
 
 ```bash
-# Check build status (DOCS FIRST - from CI_CD_HUB.md)
-ssh neil1988@172.28.150.120 "ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5"
-ssh neil1988@172.28.150.120 "zstd -d -c ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log.zst | tail -30"
+# Check build status (CORRECT WAY - database)
+python3 -c "
+import sqlite3
+from datetime import datetime
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title, started FROM action_run ORDER BY id DESC LIMIT 5')
+status_map = {0: 'UNK', 1: 'OK', 2: 'FAIL', 3: 'CANCEL', 4: 'SKIP', 5: 'WAIT', 6: 'RUN'}
+for r in c.fetchall():
+    when = datetime.fromtimestamp(r[3]).strftime('%H:%M') if r[3] else 'N/A'
+    print(f'Run {r[0]}: {status_map.get(r[1], r[1]):6} | {when} | {r[2][:45]}')"
 
-# Check LanguageTool server
-curl -s http://172.28.150.120:8081/v2/languages | head -20
+# Update Playground after build completes
+./scripts/playground_install.sh --launch --auto-login
 
-# Run CDP tests
-node testing_toolkit/cdp/test_p5_grammar.js
-
-# Push changes
-git push origin main && git push gitea main
+# Check recent commits (NO date filter!)
+git log --oneline -10
 ```
 
 ---
 
-*Next: Future priorities (UIUX Overhaul, Perforce API) or user request*
+*Next: Test Build 395 fixes on iPad, then continue with user feedback*
