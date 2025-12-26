@@ -10,22 +10,11 @@ const LT_URL = 'http://172.28.150.120:8081/v2/check';
 
 // Test fixtures: text with known errors and expected detections
 const FIXTURES = [
+    // === BASIC ERRORS (should all be detected) ===
     {
-        name: 'Spelling error',
+        name: 'Spelling: tset',
         text: 'This is a tset sentence.',
-        expectedError: 'tset',  // should detect "tset" as misspelled
-        language: 'en-US'
-    },
-    {
-        name: 'Grammar: dont vs don\'t',
-        text: 'I dont know what to do.',
-        expectedError: 'dont',
-        language: 'en-US'
-    },
-    {
-        name: 'Grammar: double negative',
-        text: 'He dont know nothing.',
-        expectedError: 'dont',
+        expectedError: 'tset',
         language: 'en-US'
     },
     {
@@ -35,15 +24,61 @@ const FIXTURES = [
         language: 'en-US'
     },
     {
-        name: 'Grammar: a vs an',
-        text: 'This is a amazing story.',
-        expectedError: 'a amazing',
+        name: 'Contraction: dont',
+        text: 'I dont know what to do.',
+        expectedError: 'dont',
         language: 'en-US'
     },
     {
+        name: 'Article: a vs an',
+        text: 'This is a amazing story.',
+        expectedError: 'a',
+        language: 'en-US'
+    },
+
+    // === ADVANCED ERRORS (LanguageTool detects these) ===
+    {
+        name: 'Advanced: could of → could have',
+        text: 'I could of done that.',
+        expectedError: 'of',
+        language: 'en-US'
+    },
+    {
+        name: 'Advanced: its vs it\'s',
+        text: 'Its a beautiful day.',
+        expectedError: 'Its',
+        language: 'en-US'
+    },
+    {
+        name: 'Advanced: your vs you\'re',
+        text: 'Your the best.',
+        expectedError: 'Your',
+        language: 'en-US'
+    },
+    {
+        name: 'Advanced: between you and me',
+        text: 'Between you and I, this is wrong.',
+        expectedError: 'I',
+        language: 'en-US'
+    },
+    {
+        name: 'Advanced: me and him → he and I',
+        text: 'Me and him went to the store.',
+        expectedError: 'Me',
+        language: 'en-US'
+    },
+    {
+        name: 'Advanced: would have in if-clause',
+        text: 'If I would have known, I would have come.',
+        expectedError: 'would have',
+        language: 'en-US'
+    },
+
+    // === CLEAN TEXT (no errors expected) ===
+    {
         name: 'Clean text (no errors)',
         text: 'This is a correct sentence with no errors.',
-        expectedError: null,  // should find NO errors
+        expectedError: null,
         language: 'en-US'
     }
 ];
