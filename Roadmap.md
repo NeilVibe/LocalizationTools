@@ -258,8 +258,8 @@ LDM currently imports from legacy apps (violates Rule #0):
 |----------|---------|-------------|--------|
 | **P1** | Factorization | Move shared code to `server/utils/`, LDM independence | ✅ DONE |
 | **P2** | Auto-LQA System | LIVE QA + per-file QA + QA Menu | ✅ DONE |
-| **P3** | MERGE System | Right-click → Merge confirmed cells to main LanguageData | 🔄 NEXT |
-| **P4** | File Conversions | Right-click → Convert (XML↔Excel, Excel→TMX, etc.) | - |
+| **P3** | MERGE System | Right-click → Merge confirmed cells to main LanguageData | ✅ DONE |
+| **P4** | File Conversions | Right-click → Convert (XML↔Excel, Excel→TMX, etc.) | 🔄 NEXT |
 | **P5** | LanguageTool | Spelling/Grammar via central server | - |
 | **Future** | UIUX Overhaul | Legacy Apps menu, single LocaNext | - |
 
@@ -275,11 +275,13 @@ LDM currently imports from legacy apps (violates Rule #0):
 - **Features:** QA flags on cells, row filtering dropdown, Edit Modal QA panel
 - **Checks:** Pattern (code), Character (symbol count), Line (inconsistency)
 
-### P3: MERGE System (CRUCIAL)
-- **Purpose:** Merge confirmed cells back to main LanguageData (synced with mainbranch)
-- **Flow:** Right-click file → "Merge to LanguageData" → Confirmed cells merged
-- **Result:** User commits merged LanguageData to SVN/Perforce manually
-- **Future:** Perforce API integration to create changelist directly (noted below)
+### P3: MERGE System ✅ COMPLETE (2025-12-26)
+- **Backend:** `POST /api/ldm/files/{file_id}/merge` endpoint
+- **Frontend:** Right-click → "Merge to LanguageData..." context menu
+- **Logic:** Match by StringID + Source → EDIT (update target) or ADD (append new)
+- **Formats:** TXT and XML supported (Excel has no StringID)
+- **Result:** User downloads merged file, commits to SVN/Perforce manually
+- **Future:** Perforce API integration to create changelist directly
 
 ### P4: File Conversions
 - Right-click file → "Convert" → Modal to select format
