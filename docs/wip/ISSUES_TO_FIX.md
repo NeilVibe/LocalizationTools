@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-26 09:45 | **Build:** 896 | **Open:** 0
+**Last Updated:** 2025-12-26 12:15 | **Build:** 897 | **Open:** 0
 
 > **Note:** Gitea 1.25.3 fully working. zstd installed, runners cleaned, Windows runner re-registered (ID 96).
 
@@ -17,11 +17,11 @@
 
 ## FIXED THIS SESSION (2025-12-26)
 
-### PERF-003: Lazy Loading + Scroll Lag - FIXED
+### PERF-003: Lazy Loading + Scroll Lag - FIXED + VERIFIED
 
 - **Reported:** 2025-12-25
 - **Severity:** HIGH (10K file loading all rows, constant lag on scroll)
-- **Status:** FIXED (2025-12-26)
+- **Status:** FIXED (2025-12-26) | **VERIFIED:** Build 897 (CDP test_perf003.js)
 - **Root Cause:**
   - Container height miscalculation → huge visible range
   - No scroll throttling → API call on every scroll pixel
@@ -31,6 +31,9 @@
   2. Container height cap at 1200px - Prevents huge visible range
   3. **API throttling (100ms)** - Max 10 API batches per second during scroll
   4. Reduced reference file loading from 50K to 10K rows
+- **Verification:**
+  - Test: `test_perf003.js` - Opens 10K row file, counts rendered DOM rows
+  - Result: ✅ PASS - Rendered 35 rows (0.4%) instead of 10,000
 - **Result:**
   - Initial load: 300 rows max (3 pages)
   - Fast scroll: Shows placeholders, loads when stopped
@@ -52,18 +55,22 @@
 
 ---
 
-### BUG-037: QA Panel Issues - FIXED
+### BUG-037: QA Panel Issues - FIXED + VERIFIED
 
 - **Reported:** 2025-12-25
 - **Severity:** MEDIUM-HIGH
-- **Status:** FIXED (2025-12-26)
+- **Status:** FIXED (2025-12-26) | **VERIFIED:** Build 897 (CDP test_bug037.js)
+- **Root Cause:** Carbon Components Svelte still requires Svelte 4 event binding syntax
 - **Fixes Applied:**
-  1. ✅ Fixed X button: Changed `on:click` to `onclick` (Svelte 5 syntax)
-  2. ✅ Fixed Run Full QA button: Changed `on:click` to `onclick`
+  1. ✅ Fixed X button: Changed `onclick` to `on:click` (Carbon requires Svelte 4 syntax)
+  2. ✅ Fixed Run Full QA button: Changed `onclick` to `on:click`
   3. ✅ Added double-click handler on QA issues to open edit modal
   4. ✅ Added `openEditModalByRowId()` export to VirtualGrid
   5. ✅ Added `handleOpenEditModal()` handler in LDM.svelte
   6. ✅ Added tooltip "Click to jump, double-click to edit"
+- **Verification:**
+  - Test: `test_bug037.js` - Opens panel, clicks X, verifies panel closes
+  - Result: ✅ PASS (Build 897)
 - **Files Modified:**
   - `QAMenuPanel.svelte` - Fixed button syntax, added dblclick handler
   - `VirtualGrid.svelte` - Added openEditModalByRowId export
