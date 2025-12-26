@@ -600,6 +600,57 @@
     }
   }
 
+  // P4: Convert file to different format
+  async function convertFile(targetFormat) {
+    if (!contextMenuFile) return;
+
+    const fileId = contextMenuFile.id;
+    const fileName = contextMenuFile.name;
+    const sourceFormat = contextMenuFile.format?.toLowerCase() || '';
+
+    closeContextMenu();
+
+    logger.info("Converting file", { fileId, fileName, sourceFormat, targetFormat });
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/convert?format=${targetFormat}`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        // Get conversion info from headers
+        const rowCount = response.headers.get('X-Row-Count') || '0';
+
+        // Download converted file
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = fileName.replace(/\.[^.]+$/, '') + '_converted.' + targetFormat;
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="(.+)"/);
+          if (match) filename = match[1];
+        }
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+
+        logger.success("File converted", { filename, rowCount });
+      } else {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        logger.error("Conversion failed", { status: response.status, error: error.detail });
+        alert(`Conversion failed: ${error.detail}`);
+      }
+    } catch (err) {
+      logger.error("Conversion error", { error: err.message });
+      alert(`Conversion error: ${err.message}`);
+    }
+  }
+
   // Extract glossary from file
   async function extractGlossary() {
     if (!contextMenuFile) return;
@@ -1024,6 +1075,33 @@
       <Merge size={16} />
       <span>Merge to LanguageData...</span>
     </button>
+    <!-- P4: Convert submenu -->
+    <div class="context-menu-submenu">
+      <button class="context-menu-item has-submenu" role="menuitem">
+        <Renew size={16} />
+        <span>Convert to...</span>
+      </button>
+      <div class="submenu">
+        {#if contextMenuFile?.format?.toLowerCase() !== 'xlsx'}
+          <button class="context-menu-item" onclick={() => convertFile('xlsx')} role="menuitem">
+            <span>Excel (.xlsx)</span>
+          </button>
+        {/if}
+        {#if contextMenuFile?.format?.toLowerCase() !== 'xml'}
+          <button class="context-menu-item" onclick={() => convertFile('xml')} role="menuitem">
+            <span>XML</span>
+          </button>
+        {/if}
+        {#if contextMenuFile?.format?.toLowerCase() === 'txt'}
+          <!-- TXT can convert to anything -->
+        {:else}
+          <!-- XML/Excel cannot convert to TXT (StringID loss) -->
+        {/if}
+        <button class="context-menu-item" onclick={() => convertFile('tmx')} role="menuitem">
+          <span>TMX (Translation Memory)</span>
+        </button>
+      </div>
+    </div>
     <div class="context-menu-divider"></div>
     <button class="context-menu-item" onclick={runLineCheckQA} role="menuitem">
       <Search size={16} />
@@ -1598,6 +1676,39 @@
     height: 1px;
     background: var(--cds-border-subtle-01);
     margin: 0.25rem 0;
+  }
+
+  /* P4: Submenu styles */
+  .context-menu-submenu {
+    position: relative;
+  }
+
+  .context-menu-submenu .has-submenu::after {
+    content: "▶";
+    font-size: 0.6rem;
+    margin-left: auto;
+    opacity: 0.6;
+  }
+
+  .context-menu-submenu .submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: 0;
+    min-width: 160px;
+    background: var(--cds-layer-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10001;
+  }
+
+  .context-menu-submenu:hover .submenu {
+    display: block;
+  }
+
+  .context-menu-submenu .submenu .context-menu-item {
+    padding: 0.4rem 0.75rem;
   }
 
   /* TM Form Styles */

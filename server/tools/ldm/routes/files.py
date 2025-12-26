@@ -617,6 +617,109 @@ async def merge_file(
     )
 
 
+# =============================================================================
+# File Format Conversion (P4)
+# =============================================================================
+
+@router.get("/files/{file_id}/convert")
+async def convert_file(
+    file_id: int,
+    format: str = Query(..., regex="^(xlsx|xml|txt|tmx)$", description="Target format"),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Convert a file to a different format.
+
+    Supported conversions:
+    - TXT → Excel, XML, TMX
+    - XML → Excel, TMX
+    - Excel → XML, TMX
+
+    NOT supported (StringID loss):
+    - XML → TXT
+    - Excel → TXT
+    """
+    # Get file info
+    result = await db.execute(
+        select(LDMFile).options(selectinload(LDMFile.project)).where(
+            LDMFile.id == file_id
+        )
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if file.project.owner_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    source_format = file.format.lower() if file.format else ""
+    target_format = format.lower()
+
+    # Validate conversion is allowed
+    if target_format == "txt" and source_format in ["xml", "xlsx", "excel"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot convert to TXT: StringID information would be lost"
+        )
+
+    if source_format == target_format:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File is already in {target_format.upper()} format. Use Download instead."
+        )
+
+    # Get all rows for this file
+    result = await db.execute(
+        select(LDMRow).where(LDMRow.file_id == file_id).order_by(LDMRow.row_num)
+    )
+    rows = result.scalars().all()
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="No rows found for this file")
+
+    # Get file metadata
+    file_metadata = file.extra_data or {}
+
+    # Build file in target format
+    if target_format == "xlsx":
+        content = _build_excel_file(rows, file_metadata)
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        extension = ".xlsx"
+    elif target_format == "xml":
+        content = _build_xml_file(rows, file_metadata)
+        media_type = "application/xml"
+        extension = ".xml"
+    elif target_format == "txt":
+        content = _build_txt_file(rows, file_metadata)
+        media_type = "text/plain"
+        extension = ".txt"
+    elif target_format == "tmx":
+        content = _build_tmx_file(rows, file_metadata, file)
+        media_type = "application/x-tmx+xml"
+        extension = ".tmx"
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
+
+    # Create filename
+    base_name = file.original_filename.rsplit('.', 1)[0] if '.' in file.original_filename else file.original_filename
+    download_name = f"{base_name}_converted{extension}"
+
+    logger.info(f"LDM CONVERT: file_id={file_id}, {source_format} → {target_format}, {len(rows)} rows")
+
+    return StreamingResponse(
+        BytesIO(content),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f"attachment; filename={download_name}",
+            "X-Source-Format": source_format,
+            "X-Target-Format": target_format,
+            "X-Row-Count": str(len(rows))
+        }
+    )
+
+
 @router.get("/files/{file_id}/extract-glossary")
 async def extract_glossary(
     file_id: int,
@@ -977,3 +1080,82 @@ def _build_xml_file_from_dicts(rows: List[dict], file_metadata: dict = None) -> 
     pretty_xml = dom.toprettyxml(indent="  ", encoding=encoding)
 
     return pretty_xml
+
+
+# =============================================================================
+# TMX Builder (P4: File Conversions)
+# =============================================================================
+
+def _build_tmx_file(rows: List[LDMRow], file_metadata: dict = None, file: LDMFile = None) -> bytes:
+    """
+    Build TMX (Translation Memory eXchange) file from rows.
+
+    TMX format:
+    <?xml version="1.0" encoding="UTF-8"?>
+    <tmx version="1.4">
+      <header ... />
+      <body>
+        <tu>
+          <prop type="x-string-id">StringID</prop>
+          <tuv xml:lang="ko"><seg>Source</seg></tuv>
+          <tuv xml:lang="en"><seg>Target</seg></tuv>
+        </tu>
+      </body>
+    </tmx>
+    """
+    import xml.etree.ElementTree as ET
+    from datetime import datetime
+
+    file_metadata = file_metadata or {}
+
+    # Determine languages
+    source_lang = file.source_language if file else "ko"
+    target_lang = file.target_language if file else "en"
+
+    # Create root element
+    root = ET.Element("tmx", version="1.4")
+
+    # Header
+    header = ET.SubElement(root, "header")
+    header.set("creationtool", "LocaNext")
+    header.set("creationtoolversion", "1.0")
+    header.set("datatype", "plaintext")
+    header.set("segtype", "sentence")
+    header.set("adminlang", "en")
+    header.set("srclang", source_lang or "ko")
+    header.set("creationdate", datetime.utcnow().strftime("%Y%m%dT%H%M%SZ"))
+
+    # Body
+    body = ET.SubElement(root, "body")
+
+    for row in rows:
+        tu = ET.SubElement(body, "tu")
+
+        # Add StringID as property if available
+        string_id = row.string_id if hasattr(row, 'string_id') else row.get("string_id")
+        if string_id:
+            prop = ET.SubElement(tu, "prop", type="x-string-id")
+            prop.text = string_id
+
+        # Source segment
+        tuv_src = ET.SubElement(tu, "tuv")
+        tuv_src.set("{http://www.w3.org/XML/1998/namespace}lang", source_lang or "ko")
+        seg_src = ET.SubElement(tuv_src, "seg")
+        source = row.source if hasattr(row, 'source') else row.get("source")
+        seg_src.text = source or ""
+
+        # Target segment
+        tuv_tgt = ET.SubElement(tu, "tuv")
+        tuv_tgt.set("{http://www.w3.org/XML/1998/namespace}lang", target_lang or "en")
+        seg_tgt = ET.SubElement(tuv_tgt, "seg")
+        target = row.target if hasattr(row, 'target') else row.get("target")
+        seg_tgt.text = target or ""
+
+    # Convert to bytes with XML declaration
+    tree = ET.ElementTree(root)
+    output = BytesIO()
+    tree.write(output, encoding="utf-8", xml_declaration=True)
+    content = output.getvalue()
+    output.close()
+
+    return content
