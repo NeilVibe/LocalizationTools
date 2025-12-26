@@ -186,7 +186,7 @@
         size="small"
         icon={Close}
         iconDescription="Close"
-        onclick={closePanel}
+        on:click={closePanel}
       />
     </div>
 
@@ -199,7 +199,7 @@
         icon={Renew}
         iconDescription="Run Full QA"
         disabled={runningFullQa}
-        onclick={runFullQA}
+        on:click={runFullQA}
       >
         {runningFullQa ? 'Checking...' : 'Run Full QA'}
       </Button>
