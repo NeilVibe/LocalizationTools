@@ -1,8 +1,8 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-26 00:45 | **Build:** 892 | **Open:** 0
+**Last Updated:** 2025-12-26 09:45 | **Build:** 896 | **Open:** 0
 
-> **Note:** Gitea upgraded 1.22.3 → 1.25.3 (CPU fix). All issues fixed this session.
+> **Note:** Gitea 1.25.3 fully working. zstd installed, runners cleaned, Windows runner re-registered (ID 96).
 
 ---
 

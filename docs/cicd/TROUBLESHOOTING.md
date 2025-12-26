@@ -530,4 +530,247 @@ BUILD FAILED
 
 ---
 
-*Last updated: 2025-12-22*
+---
+
+## Gitea Version Upgrade Issues
+
+### Issue: Gitea 1.25.x Requires zstd for Action Logs
+
+**Discovery Date:** 2025-12-26 | **Affected Versions:** 1.25.x+
+
+**Symptoms:**
+- Build runs but shows FAILURE instantly
+- Task steps show status=FAILURE with log_length=0
+- Gitea log shows: `dbfs open "actions_log/.../XXX.log.zst": file does not exist`
+- 500 Internal Server Error when accessing logs via web
+
+**Root Cause:**
+Gitea 1.25.x changed action log storage to use zstd compression (`.log.zst` files), but the `zstd` binary was not installed on the system.
+
+**Effective Debug Steps (Use These Exact Commands):**
+
+```bash
+# STEP 1: Check latest runs in database (NOT curl - database is truth)
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title, started, stopped FROM action_run ORDER BY id DESC LIMIT 3')
+for r in c.fetchall():
+    status_map = {0: 'UNKNOWN', 1: 'SUCCESS', 2: 'FAILURE', 3: 'CANCELLED', 4: 'SKIPPED', 5: 'WAITING', 6: 'RUNNING'}
+    print(f'Run {r[0]}: {status_map.get(r[1], r[1])} - {r[2][:50]}')"
+
+# STEP 2: Check Gitea's main log for errors (NOT /tmp/gitea.log)
+tail -50 /home/neil1988/gitea/log/gitea.log | grep -E "(error|Error|Warning|cannot|does not exist)"
+
+# STEP 3: Check task step details for failed run
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, name, status, log_length FROM action_task_step WHERE task_id=(SELECT MAX(id) FROM action_task)')
+for r in c.fetchall():
+    print(f'Step {r[0]}: {r[1]}, status={r[2]}, log_length={r[3]}')"
+
+# STEP 4: Verify zstd is installed
+which zstd && zstd --version
+# If missing: sudo apt-get install -y zstd
+```
+
+**Fix:**
+```bash
+sudo apt-get update && sudo apt-get install -y zstd
+```
+
+**After Fix - Clean Restart (REQUIRED):**
+```bash
+# 1. Stop runner first
+pkill -f "act_runner"
+
+# 2. Stop Gitea
+pkill -f "gitea web"
+
+# 3. Wait for clean shutdown
+sleep 3
+
+# 4. Verify clean state
+ps aux | grep -E "(gitea|act_runner)" | grep -v grep  # Should be empty
+
+# 5. Start Gitea with GOGC=200
+cd /home/neil1988/gitea && GOGC=200 GITEA_WORK_DIR="/home/neil1988/gitea" nohup ./gitea web > /tmp/gitea.log 2>&1 &
+
+# 6. Wait for Gitea to initialize
+sleep 5
+
+# 7. Start runner
+cd /home/neil1988/gitea && nohup ./act_runner daemon --config runner_config.yaml > /tmp/act_runner.log 2>&1 &
+
+# 8. Retrigger build
+echo "Build NNN: Verify fix" >> /path/to/GITEA_TRIGGER.txt
+git add -A && git commit -m "Build NNN: Verify fix" && git push gitea main
+```
+
+**Verification:**
+```bash
+# Check if .zst files are being created
+find /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/ -name "*.zst" -mmin -5
+# Should show recent .zst files
+
+# Verify logs accessible via curl (no 500 error)
+curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions/runs/XXX/jobs/0/logs" | head -10
+# Should show log content, not HTML error page
+```
+
+---
+
+## ⚡ EFFECTIVE CI/CD DEBUGGING (CRITICAL - READ FIRST)
+
+**For Claude Code agents - AVOID these time-wasters, get straight to the meat:**
+
+### Common Mistakes That Waste Time
+
+| ❌ WRONG | ✅ CORRECT | Why |
+|----------|-----------|-----|
+| `tail /tmp/gitea.log` | `tail /home/neil1988/gitea/log/gitea.log` | /tmp may be empty or stale |
+| `curl .../jobs/0/logs` (for debugging) | Query database directly | curl returns 500 if storage broken |
+| `grep -r "error"` everywhere | Check specific log files first | Too many false positives |
+| Restart immediately | Stop → Clean → Investigate → Fix → Start | Restart masks the real issue |
+| Check old log folders | `ls -lt` to find NEWEST folder | Old folders have old irrelevant logs |
+
+### The 60-Second Debug Path
+
+**ALWAYS do these in order:**
+
+```bash
+# 1. PROCESSES (5 sec) - Are services even running?
+ps aux | grep -E "(gitea|act_runner)" | grep -v grep
+
+# 2. DATABASE (10 sec) - What's the REAL status?
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 3')
+status_map = {0:'UNK', 1:'OK', 2:'FAIL', 3:'CANCEL', 4:'SKIP', 5:'WAIT', 6:'RUN'}
+for r in c.fetchall(): print(f'{r[0]}: {status_map.get(r[1], r[1])} - {r[2][:40]}')"
+
+# 3. ERRORS (15 sec) - What went wrong?
+tail -30 /home/neil1988/gitea/log/gitea.log | grep -iE "(error|fail|cannot|does not)"
+
+# 4. RUNNER (5 sec) - Is runner picking up jobs?
+tail -10 /tmp/act_runner.log
+```
+
+**If run is FAILURE with no logs (log_length=0):**
+```bash
+# Check for storage/dependency issues
+grep "dbfs\|zstd\|file does not exist" /home/neil1988/gitea/log/gitea.log | tail -5
+```
+
+### Quick Decision Tree
+
+```
+Run status WAITING?
+  → Check runner: cat /tmp/act_runner.log | tail -10
+  → If "declared successfully" but no tasks: wait 30s (polling interval)
+
+Run status FAILURE, log_length=0?
+  → Storage/dependency issue
+  → Check: which zstd (must be installed for Gitea 1.25+)
+  → Check: grep "file does not exist" gitea.log
+
+Run status FAILURE, has logs?
+  → Normal failure - read the logs
+  → curl .../jobs/X/logs or check disk: ls -lt actions_log/
+
+500 errors on curl?
+  → DON'T keep retrying curl
+  → Check gitea.log for the actual error
+```
+
+---
+
+## Effective CI/CD Debugging Protocol
+
+### Phase 1: Identify State (30 seconds)
+
+```bash
+# 1. Check process state
+ps aux | grep -E "(gitea|act_runner)" | grep -v grep
+
+# 2. Get latest runs from database (source of truth)
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 3')
+status_map = {0: 'UNKNOWN', 1: 'SUCCESS', 2: 'FAILURE', 3: 'CANCELLED', 4: 'SKIPPED', 5: 'WAITING', 6: 'RUNNING'}
+for r in c.fetchall():
+    print(f'Run {r[0]}: {status_map.get(r[1], r[1])} - {r[2][:50]}')"
+```
+
+### Phase 2: Check Errors (30 seconds)
+
+```bash
+# Main Gitea log (NOT /tmp/gitea.log which may be empty)
+tail -30 /home/neil1988/gitea/log/gitea.log | grep -E "(error|Error|Warning|cannot|failed|500)"
+
+# Runner log
+cat /tmp/act_runner.log | tail -20
+```
+
+### Phase 3: Deep Dive into Specific Run
+
+```bash
+# Get jobs for a specific run (replace XXX with run ID)
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, name, status FROM action_run_job WHERE run_id=XXX')
+status_map = {0: 'UNKNOWN', 1: 'SUCCESS', 2: 'FAILURE', 3: 'CANCELLED', 4: 'SKIPPED', 5: 'WAITING', 6: 'RUNNING', 7: 'BLOCKED'}
+for r in c.fetchall():
+    print(f'Job {r[0]}: {r[1]}, status={status_map.get(r[2], r[2])}')"
+```
+
+### Key Rules for Effective Debugging
+
+| DO | DON'T |
+|----|-------|
+| Check database directly (source of truth) | Rely solely on curl (can return 500s) |
+| Check /home/neil1988/gitea/log/gitea.log | Check only /tmp/gitea.log (may be empty) |
+| Stop runner BEFORE stopping Gitea | Kill Gitea while runner is mid-job |
+| Clean restart with 3s+ delays | Rapid restart without cleanup |
+| Verify fix with new build trigger | Assume fix worked without test |
+
+### Common Issues Quick Reference
+
+| Symptom | Likely Cause | Check Command |
+|---------|--------------|---------------|
+| Run WAITING forever | Runner not connected | `cat /tmp/act_runner.log` |
+| Run FAILURE with log_length=0 | Missing dependency (zstd) | `which zstd` |
+| 500 errors on log access | Storage issue | Check gitea.log for "dbfs" errors |
+| Runner "declared successfully" but no jobs | Labels mismatch | Check workflow runs-on vs runner labels |
+
+---
+
+## Cleanup: Remove Stale Ephemeral Runners
+
+Ephemeral runners accumulate in database. Clean them periodically:
+
+```bash
+python3 -c "
+import sqlite3
+import time
+for attempt in range(3):
+    try:
+        c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db', timeout=10)
+        c.execute('PRAGMA busy_timeout = 5000')
+        cursor = c.cursor()
+        cursor.execute(\"DELETE FROM action_runner WHERE name LIKE '%ephemeral%'\")
+        c.commit()
+        print(f'Deleted {cursor.rowcount} ephemeral runners')
+        break
+    except sqlite3.OperationalError as e:
+        print(f'Attempt {attempt+1}: {e}')
+        time.sleep(2)"
+```
+
+---
+
+*Last updated: 2025-12-26*
