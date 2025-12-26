@@ -1,16 +1,50 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-26 00:10 | **Build:** 892 (stable-892) | **CI:** ✅ Healthy | **Issues:** 3 OPEN
+**Last Updated:** 2025-12-26 09:45 | **Build:** 896 (testing) | **CI:** ✅ Fixed | **Issues:** 0 OPEN
 
-> **Gitea Status:** Upgraded 1.22.3 → 1.25.3, GOGC=200, 30s runner polling. CPU now ~0-10% idle.
+> **Gitea Status:** All fixed. zstd installed, runners cleaned, Windows runner re-registered (ID 96).
 
-### Gitea Fixes Applied (2025-12-26)
+---
+
+## CRITICAL FIX APPLIED: Gitea 1.25.3 + zstd (2025-12-26)
+
+### Root Cause Found
+Gitea 1.25.x uses zstd compression for action logs (`.log.zst` files). The `zstd` binary was missing, causing:
+- Builds to FAIL instantly with log_length=0
+- 500 errors when accessing logs via web
+- Error in gitea.log: `dbfs open "...log.zst": file does not exist`
+
+### Fix Applied
+```bash
+sudo apt-get install -y zstd
+# Then clean restart of Gitea and runner
+```
+
+### All Gitea Fixes (2025-12-26)
 | Fix | Before | After |
 |-----|--------|-------|
 | Version | 1.22.3 | 1.25.3 |
 | GOGC | default (100) | 200 (less GC) |
 | Runner polling | 2s | 30s |
+| zstd | NOT INSTALLED | Installed |
 | CPU idle | 85% | ~0-10% |
+| Ephemeral runners | 90+ stale | Cleaned (⚠️ accidentally deleted Runner 95!) |
+
+### Cleanup Complete (2025-12-26 09:45)
+| Item | Status | Action Taken |
+|------|--------|--------------|
+| Workflow files | ✅ OK | Only 2 active workflows |
+| Linux runner (ID 1) | ✅ ONLINE | Working |
+| Windows runner (ID 96) | ✅ REGISTERED | Re-registered via gsudo from WSL |
+| Stale runners (2, 86-88) | 🗑️ DELETED | Removed from DB |
+| Stale "Running" entries | 🗑️ CLEANED | 322 old runs set to Stopped |
+
+### Documentation Updated
+- **TROUBLESHOOTING.md** - Added "⚡ EFFECTIVE CI/CD DEBUGGING" section with:
+  - Common mistakes that waste time (wrong logs, wrong commands)
+  - The 60-second debug path
+  - Quick decision tree
+  - zstd fix documentation
 
 ### Future Gitea Solutions (if needed)
 - Restart Gitea daily via cron (`0 4 * * * pkill -f "gitea web" && /home/neil1988/gitea/start.sh`)
@@ -44,42 +78,39 @@
 
 ---
 
-## CRITICAL ISSUES FOUND (2025-12-25)
+## ISSUES STATUS (2025-12-26)
 
-### Issue 1: PERF-003 - Lazy Loading Not Working
+### Fixed This Session
 
-**Severity:** HIGH | **Status:** OPEN
+| Issue | Fix Applied |
+|-------|-------------|
+| PERF-003 | MAX_PAGES_TO_LOAD=3, height cap 1200px, API throttling 100ms |
+| BUG-036 | UniqueConstraint on Project/Folder/File names |
+| BUG-037 | Fixed Svelte 5 onclick syntax, added double-click edit |
+| BUG-035 | Closed - cannot reproduce (code has safeguards) |
 
-- App loads ALL rows at once instead of 100 by 100
-- Expected: Lazy load 100 rows, fetch more on scroll
-- **Investigation needed:**
-  1. Review VirtualGrid.svelte lazy loading
-  2. Verify smart indexing operational
-  3. Check hashtable/index lookups optimal
-  4. Review Svelte 5 reactivity
-  5. Ensure pagination API called correctly
+### Open Issues
 
-### Issue 2: BUG-036 - Duplicate Names Allowed
+None. All issues resolved.
 
-**Severity:** HIGH | **Status:** OPEN
+### CLEANUP-001: Windows Runner - FIXED
 
-- 3 projects with same name "QA Test Project 10K"
-- 2 empty, 1 has 3 identical 10K files
-- **Fix needed:** UNIQUE constraints on:
-  - (project_name + parent_id)
-  - (file_name + folder_id)
-  - (folder_name + parent_folder_id)
+**Priority:** HIGH | **Status:** ✅ FIXED (2025-12-26 09:40)
 
-### Issue 3: BUG-037 - QA Check Incomplete
+**What happened:** Accidentally deleted active Windows runner (ID 95) during ephemeral cleanup.
 
-**Severity:** MEDIUM | **Status:** OPEN
+**Fix applied (2025-12-26 09:40):**
+1. Generated new registration token via Gitea DB
+2. Used `gsudo` from WSL to stop Windows service
+3. Removed old `.runner` file
+4. Re-registered runner as ID 96
+5. Started service - now running
 
-- QA should run ALL checks (pattern, line, term, character)
-- Missing: Double-click QA issue → Open cell edit modal
-- **Fix needed:**
-  1. Run all check types by default
-  2. Add double-click handler on QA issues
-  3. Open EditModal at corresponding row
+**Also cleaned:**
+- Deleted stale runners (IDs 2, 86, 87, 88)
+- Updated 322 stale "Running" DB entries to "Stopped"
+
+**Lesson:** Don't delete runners by name pattern without checking which are active!
 
 ---
 
