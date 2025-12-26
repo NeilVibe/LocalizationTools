@@ -18,6 +18,7 @@ Structure:
 - routes/sync.py         - Offline-to-online sync
 - routes/settings.py     - Embedding engine settings
 - routes/qa.py           - QA checks (P2: Auto-LQA)
+- routes/grammar.py      - Grammar/spelling check (P5: LanguageTool)
 """
 
 from fastapi import APIRouter
@@ -43,6 +44,7 @@ from .routes.pretranslate import router as pretranslate_router
 from .routes.sync import router as sync_router
 from .routes.settings import router as settings_router
 from .routes.qa import router as qa_router
+from .routes.grammar import router as grammar_router
 
 # =============================================================================
 # Include all routers
@@ -62,6 +64,7 @@ router.include_router(pretranslate_router)
 router.include_router(sync_router)
 router.include_router(settings_router)
 router.include_router(qa_router)
+router.include_router(grammar_router)
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)
