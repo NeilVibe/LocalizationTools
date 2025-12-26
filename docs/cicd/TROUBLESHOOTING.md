@@ -621,6 +621,112 @@ curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions/runs/XXX/jobs/0/lo
 
 ---
 
+## ⚠️ CLAUDE CONFUSION TRAP: Git Log ≠ CI/CD Builds
+
+**This is a documented pitfall - Claude has made this mistake before!**
+
+### The Mistake
+
+When asked "did we build today?" or "is there a new build?", Claude incorrectly checks:
+
+| ❌ WRONG | Why It's Wrong |
+|----------|----------------|
+| `git log --since="today"` | Shows commits, NOT builds. Builds run on Gitea, not local git. |
+| `ls -lt *.exe` | File timestamps show when file was COPIED, not when build RAN |
+| `stat LocaNext_latest.exe` | Same problem - file modification time ≠ build time |
+
+### The Correct Approach
+
+**ALWAYS check the database - it's the source of truth:**
+
+```bash
+# Check recent builds (CORRECT WAY)
+python3 -c "
+import sqlite3
+from datetime import datetime
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title, started FROM action_run ORDER BY id DESC LIMIT 5')
+status_map = {0: 'UNK', 1: 'OK', 2: 'FAIL', 3: 'CANCEL', 4: 'SKIP', 5: 'WAIT', 6: 'RUN'}
+for r in c.fetchall():
+    when = datetime.fromtimestamp(r[3]).strftime('%b %d %H:%M') if r[3] else 'N/A'
+    print(f'Run {r[0]}: {status_map.get(r[1], r[1]):6} | {when} | {r[2][:45]}')"
+```
+
+### Why This Matters
+
+- **Git commits** = code changes pushed to repo
+- **CI/CD builds** = automated jobs that compile, test, and package
+- A commit triggers a build, but they are SEPARATE events
+- Multiple builds can run from one commit (retries, manual triggers)
+- Builds have their own IDs, timestamps, and status in the database
+
+### Quick Reference
+
+| Question | Check This |
+|----------|-----------|
+| "Any new builds?" | Database: `action_run` table |
+| "Any new commits?" | Git: `git log --oneline -5` |
+| "Is Playground up to date?" | Compare: Playground install time vs latest successful build time |
+
+---
+
+## ⚠️ CLAUDE CONFUSION TRAP #2: Date Filtering Pitfall
+
+**Another documented pitfall - Claude has made this mistake too!**
+
+### The Mistake
+
+When checking for "today's" activity, Claude uses strict date filters:
+
+```bash
+# ❌ WRONG - This misses recent work!
+git log --since="2025-12-27"   # Returns nothing at 2 AM on Dec 27
+```
+
+**Problem:** If it's 2 AM on Dec 27 and work happened at 11 PM on Dec 26, the filter excludes it. Claude then wrongly concludes "no activity today."
+
+### The Correct Approach
+
+**NEVER use date filters. Always show recent activity by count:**
+
+```bash
+# ✅ CORRECT - Show last N commits regardless of date
+git log --oneline -10
+
+# ✅ CORRECT - Show commits with timestamps for context
+git log --oneline --format="%h | %ci | %s" -10
+```
+
+### Why This Matters
+
+- Users work late nights - "today" spans midnight
+- Work sessions don't follow calendar dates
+- A commit at 11:53 PM is "today's work" even if technically yesterday
+- Empty result from date filter ≠ no activity
+
+### The Chain Reaction of Wrong Conclusions
+
+```
+❌ git log --since="today" returns empty
+    ↓
+❌ Claude concludes "no commits today"
+    ↓
+❌ Claude assumes "no builds either"
+    ↓
+❌ Claude tells user "Playground is up to date"
+    ↓
+❌ User confused - they KNOW they worked today!
+```
+
+### Rule: When Asked "Any Recent Activity?"
+
+1. **First:** `git log --oneline -10` (no date filter)
+2. **Then:** Database query for builds
+3. **Compare:** Timestamps to understand what's recent
+4. **Never:** Assume empty filtered result = no activity
+
+---
+
 ## ⚡ EFFECTIVE CI/CD DEBUGGING (CRITICAL - READ FIRST)
 
 **For Claude Code agents - AVOID these time-wasters, get straight to the meat:**
