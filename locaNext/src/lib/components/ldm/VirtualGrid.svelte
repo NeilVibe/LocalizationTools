@@ -26,7 +26,7 @@
 
   // Virtual scrolling constants
   const MIN_ROW_HEIGHT = 48; // Minimum row height
-  const MAX_ROW_HEIGHT = 120; // Maximum row height (prevents huge rows)
+  const MAX_ROW_HEIGHT = 200; // Maximum row height (~8 lines max per user request)
   const CHARS_PER_LINE = 50; // Estimated chars per line for height calc
   const LINE_HEIGHT = 20; // Height per line of text
   const BUFFER_ROWS = 10; // Extra rows to render above/below viewport
@@ -1019,24 +1019,50 @@
     }
   });
 
-  // Setup scroll listener on mount
-  onMount(() => {
+  // ResizeObserver to handle container size changes
+  let resizeObserver = null;
+
+  // Svelte 5: Effect - Setup scroll listener when container element is available
+  // This is more reliable than onMount for bind:this elements
+  $effect(() => {
     if (containerEl) {
+      // Add scroll listener
       containerEl.addEventListener('scroll', handleScroll);
+      calculateVisibleRange();
+
+      // Add resize observer to recalculate when container size changes
+      if (!resizeObserver) {
+        resizeObserver = new ResizeObserver(() => {
+          calculateVisibleRange();
+        });
+      }
+      resizeObserver.observe(containerEl);
+
+      // Cleanup function returned from $effect
+      return () => {
+        containerEl.removeEventListener('scroll', handleScroll);
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+        }
+      };
+    }
+  });
+
+  // Keep onMount for backward compatibility but also handle via effect
+  onMount(() => {
+    // Initial calculation in case effect hasn't run yet
+    if (containerEl) {
       calculateVisibleRange();
     }
   });
 
-  // Cleanup on destroy
+  // Cleanup on destroy (scroll/resize cleanup handled in $effect above)
   onDestroy(() => {
     if (fileId) {
       leaveFile(fileId);
     }
     if (cellUpdateUnsubscribe) {
       cellUpdateUnsubscribe();
-    }
-    if (containerEl) {
-      containerEl.removeEventListener('scroll', handleScroll);
     }
     if (searchDebounceTimer) {
       clearTimeout(searchDebounceTimer);
@@ -1482,6 +1508,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     position: relative;
+    min-height: 200px; /* Ensure minimum height for scrolling */
   }
 
   .scroll-content {
@@ -1503,17 +1530,15 @@
     display: flex;
     border-bottom: 1px solid var(--cds-border-subtle-01);
     background: var(--cds-layer-01);
-    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    transition: background-color 0.15s ease;
   }
 
   .virtual-row:hover {
     background: var(--cds-layer-hover-01);
-    box-shadow: inset 0 0 0 1px var(--cds-border-interactive);
   }
 
   .virtual-row.selected {
     background: var(--cds-layer-selected-01);
-    box-shadow: inset 0 0 0 2px var(--cds-border-interactive);
   }
 
   .virtual-row.placeholder {
@@ -1533,6 +1558,9 @@
     align-items: flex-start;
     overflow: hidden;
     min-width: 0;
+    /* Allow cells to expand with content up to max-height */
+    max-height: 200px;
+    overflow-y: auto;
   }
 
   /* UI-044: Source and Target cells use percentage widths (set via inline style) */
@@ -1562,21 +1590,20 @@
   .cell.source {
     background: var(--cds-layer-02);
     color: var(--cds-text-02);
-    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    transition: background-color 0.15s ease;
     /* UI-044: Add visible right border to separate from target */
     border-right: 2px solid var(--cds-border-strong-01, #525252);
   }
 
   .cell.source.cell-hover {
     background: var(--cds-layer-hover-02);
-    box-shadow: inset 0 0 0 2px var(--cds-border-interactive);
   }
 
   .cell.target {
     position: relative;
     cursor: pointer;
     padding-right: 1.5rem;
-    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    transition: background-color 0.15s ease;
   }
 
   .cell.target:hover {
@@ -1585,7 +1612,6 @@
 
   .cell.target.cell-hover {
     background: var(--cds-layer-selected-01);
-    box-shadow: inset 0 0 0 2px var(--cds-border-interactive);
   }
 
   .cell.target.locked {
