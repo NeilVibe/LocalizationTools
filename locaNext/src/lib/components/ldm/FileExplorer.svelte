@@ -13,7 +13,7 @@
     TextArea,
     Tag
   } from "carbon-components-svelte";
-  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink, Merge } from "carbon-icons-svelte";
+  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink, Merge, TextMining } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
@@ -83,6 +83,12 @@
   let linkedTM = $state(null); // {tm_id, tm_name, priority} or null
   let showLinkTMModal = $state(false);
   let selectedLinkTMId = $state(null); // TM id selected in modal
+
+  // P5: Grammar Check state
+  let showGrammarModal = $state(false);
+  let grammarCheckLoading = $state(false);
+  let grammarCheckResult = $state(null);
+  let grammarCheckError = $state(null);
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -709,6 +715,47 @@
     dispatch('runQA', { fileId: contextMenuFile.id, type: 'term', fileName: contextMenuFile.name });
   }
 
+  // P5: Run Grammar/Spelling Check
+  async function runGrammarCheck() {
+    if (!contextMenuFile) return;
+    const fileId = contextMenuFile.id;
+    const fileName = contextMenuFile.name;
+    closeContextMenu();
+
+    grammarCheckLoading = true;
+    grammarCheckResult = null;
+    grammarCheckError = null;
+    showGrammarModal = true;
+
+    logger.info("Grammar check started", { file: fileName });
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/check-grammar?language=en-US`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        grammarCheckResult = await response.json();
+        logger.info("Grammar check complete", {
+          file: fileName,
+          errors: grammarCheckResult.total_errors,
+          rowsWithErrors: grammarCheckResult.rows_with_errors
+        });
+      } else if (response.status === 503) {
+        grammarCheckError = "LanguageTool server is not available. Please ensure the central server is running.";
+      } else {
+        const data = await response.json();
+        grammarCheckError = data.detail || "Failed to check grammar";
+      }
+    } catch (err) {
+      logger.error("Grammar check failed", { error: err.message });
+      grammarCheckError = "Failed to connect to server";
+    } finally {
+      grammarCheckLoading = false;
+    }
+  }
+
   // Open TM Registration modal
   function openTMRegistration() {
     if (!contextMenuFile) return;
@@ -1111,6 +1158,10 @@
       <TextCreation size={16} />
       <span>Run Full Term Check QA</span>
     </button>
+    <button class="context-menu-item" onclick={runGrammarCheck} role="menuitem">
+      <TextMining size={16} />
+      <span>Check Spelling/Grammar</span>
+    </button>
     <div class="context-menu-divider"></div>
     <button class="context-menu-item" onclick={openTMRegistration} role="menuitem">
       <DataBase size={16} />
@@ -1365,6 +1416,82 @@
     <p class="upload-info">
       Once uploaded, this file will be visible to all users with access to the selected project.
     </p>
+  </div>
+</Modal>
+
+<!-- P5: Grammar Check Modal -->
+<Modal
+  bind:open={showGrammarModal}
+  modalHeading="Spelling & Grammar Check"
+  passiveModal={true}
+  size="lg"
+  on:close={() => { showGrammarModal = false; grammarCheckResult = null; grammarCheckError = null; }}
+>
+  <div class="grammar-modal-content">
+    {#if grammarCheckLoading}
+      <div class="grammar-loading">
+        <div class="loading-spinner"></div>
+        <p>Checking spelling and grammar...</p>
+        <p class="loading-hint">This may take a few minutes for large files.</p>
+      </div>
+    {:else if grammarCheckError}
+      <div class="grammar-error">
+        <p>{grammarCheckError}</p>
+      </div>
+    {:else if grammarCheckResult}
+      <div class="grammar-summary">
+        <div class="summary-stat">
+          <span class="stat-value">{grammarCheckResult.total_rows}</span>
+          <span class="stat-label">Total Rows</span>
+        </div>
+        <div class="summary-stat">
+          <span class="stat-value">{grammarCheckResult.rows_checked}</span>
+          <span class="stat-label">Rows Checked</span>
+        </div>
+        <div class="summary-stat {grammarCheckResult.total_errors > 0 ? 'has-errors' : 'no-errors'}">
+          <span class="stat-value">{grammarCheckResult.total_errors}</span>
+          <span class="stat-label">Issues Found</span>
+        </div>
+        <div class="summary-stat">
+          <span class="stat-value">{grammarCheckResult.rows_with_errors}</span>
+          <span class="stat-label">Rows with Issues</span>
+        </div>
+      </div>
+
+      {#if grammarCheckResult.errors.length > 0}
+        <div class="grammar-errors-list">
+          <h4>Issues ({grammarCheckResult.errors.length})</h4>
+          <div class="errors-scroll">
+            {#each grammarCheckResult.errors.slice(0, 100) as error}
+              <div class="error-item">
+                <div class="error-header">
+                  <span class="error-row">Row {error.row_num}</span>
+                  <span class="error-category">{error.category}</span>
+                </div>
+                <div class="error-message">{error.message}</div>
+                <div class="error-context">
+                  <code>{error.text.substring(Math.max(0, error.offset - 20), error.offset)}<mark>{error.text.substring(error.offset, error.offset + error.length)}</mark>{error.text.substring(error.offset + error.length, error.offset + error.length + 20)}</code>
+                </div>
+                {#if error.replacements.length > 0}
+                  <div class="error-suggestions">
+                    Suggestions: {error.replacements.slice(0, 3).join(', ')}
+                  </div>
+                {/if}
+              </div>
+            {/each}
+            {#if grammarCheckResult.errors.length > 100}
+              <div class="more-errors">
+                ...and {grammarCheckResult.errors.length - 100} more issues
+              </div>
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <div class="no-errors-message">
+          <span>✓</span> No spelling or grammar issues found!
+        </div>
+      {/if}
+    {/if}
   </div>
 </Modal>
 
@@ -1789,5 +1916,161 @@
 
   .context-menu-item.upload-to-server {
     color: var(--cds-support-info);
+  }
+
+  /* P5: Grammar Check Modal Styles */
+  .grammar-modal-content {
+    padding: 1rem 0;
+  }
+
+  .grammar-loading {
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .grammar-loading .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--cds-border-subtle-01);
+    border-top-color: var(--cds-interactive-01);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .grammar-loading .loading-hint {
+    font-size: 0.8125rem;
+    color: var(--cds-text-02);
+  }
+
+  .grammar-error {
+    padding: 1rem;
+    background: var(--cds-support-error-inverse);
+    border-radius: 4px;
+    color: var(--cds-text-on-color);
+  }
+
+  .grammar-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .summary-stat {
+    text-align: center;
+    padding: 1rem;
+    background: var(--cds-layer-02);
+    border-radius: 4px;
+  }
+
+  .summary-stat .stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .summary-stat .stat-label {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+  }
+
+  .summary-stat.has-errors .stat-value {
+    color: var(--cds-support-error);
+  }
+
+  .summary-stat.no-errors .stat-value {
+    color: var(--cds-support-success);
+  }
+
+  .grammar-errors-list h4 {
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .errors-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .error-item {
+    padding: 0.75rem;
+    background: var(--cds-layer-02);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+
+  .error-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+  }
+
+  .error-row {
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .error-category {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    padding: 0.125rem 0.5rem;
+    background: var(--cds-layer-accent-01);
+    border-radius: 2px;
+  }
+
+  .error-message {
+    color: var(--cds-support-error);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .error-context {
+    font-size: 0.8125rem;
+    color: var(--cds-text-02);
+  }
+
+  .error-context code {
+    background: var(--cds-layer-01);
+    padding: 0.25rem 0.5rem;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .error-context mark {
+    background: var(--cds-support-warning);
+    color: var(--cds-text-01);
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+
+  .error-suggestions {
+    font-size: 0.75rem;
+    color: var(--cds-support-success);
+    margin-top: 0.25rem;
+  }
+
+  .more-errors {
+    text-align: center;
+    padding: 0.5rem;
+    color: var(--cds-text-02);
+    font-size: 0.8125rem;
+  }
+
+  .no-errors-message {
+    text-align: center;
+    padding: 2rem;
+    color: var(--cds-support-success);
+    font-size: 1.125rem;
+  }
+
+  .no-errors-message span {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
   }
 </style>
