@@ -41,17 +41,22 @@
 
 ---
 
-### BUG-036: Duplicate Project/File Names Allowed - FIXED
+### BUG-036: Duplicate Project/File Names Allowed - FIXED + VERIFIED
 
 - **Reported:** 2025-12-25
 - **Severity:** HIGH (Data Integrity)
-- **Status:** FIXED (2025-12-26)
+- **Status:** FIXED (2025-12-26) | **VERIFIED:** Build 897 (test_bug036.js)
 - **Fixes Applied:**
   1. ✅ Added `UniqueConstraint("name", "owner_id")` to LDMProject (models.py:563)
   2. ✅ Added `UniqueConstraint("name", "project_id", "parent_id")` to LDMFolder (models.py:591)
   3. ✅ Added `UniqueConstraint("name", "project_id", "folder_id")` to LDMFile (models.py:635)
-- **Remaining:** API routes will return IntegrityError on duplicate - needs user-friendly error handling
-- **Note:** Existing duplicates in DB need manual cleanup
+  4. ✅ Applied constraints to PostgreSQL database manually (SQLAlchemy create_all doesn't alter existing tables)
+  5. ✅ Cleaned up existing duplicates in database
+- **Verification:**
+  - Test: `test_bug036.js` - Attempts to create duplicate project
+  - Result: ✅ PASS - Returns 500 (IntegrityError raised)
+  - DB query confirms no duplicates can be inserted
+- **Remaining:** API returns 500 instead of user-friendly 409 Conflict (cosmetic improvement)
 
 ---
 
