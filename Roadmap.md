@@ -259,8 +259,8 @@ LDM currently imports from legacy apps (violates Rule #0):
 | **P1** | Factorization | Move shared code to `server/utils/`, LDM independence | ✅ DONE |
 | **P2** | Auto-LQA System | LIVE QA + per-file QA + QA Menu | ✅ DONE |
 | **P3** | MERGE System | Right-click → Merge confirmed cells to main LanguageData | ✅ DONE |
-| **P4** | File Conversions | Right-click → Convert (XML↔Excel, Excel→TMX, etc.) | 🔄 NEXT |
-| **P5** | LanguageTool | Spelling/Grammar via central server | - |
+| **P4** | File Conversions | Right-click → Convert (XML↔Excel, Excel→TMX, etc.) | ✅ DONE |
+| **P5** | LanguageTool | Spelling/Grammar via central server | 🔄 NEXT |
 | **Future** | UIUX Overhaul | Legacy Apps menu, single LocaNext | - |
 
 ### P1: Factorization (LDM Independence) ✅ COMPLETE
@@ -283,18 +283,11 @@ LDM currently imports from legacy apps (violates Rule #0):
 - **Result:** User downloads merged file, commits to SVN/Perforce manually
 - **Future:** Perforce API integration to create changelist directly
 
-### P4: File Conversions
-- Right-click file → "Convert" → Modal to select format
-- **Possible conversions:**
-  - XML → Excel ✅
-  - Excel → XML ✅
-  - Excel → TMX ✅
-  - TMX → Excel ✅
-  - Text → XML ✅ (can concatenate StringID)
-  - Text → Excel ✅
-- **NOT possible (StringID issue):**
-  - XML → Text ❌
-  - Excel → Text ❌
+### P4: File Conversions ✅ COMPLETE (2025-12-26)
+- **Backend:** `GET /api/ldm/files/{file_id}/convert?format=xlsx|xml|txt|tmx`
+- **Frontend:** Right-click → "Convert to..." submenu with format options
+- **Supported:** TXT→Excel/XML/TMX, XML→Excel/TMX, Excel→XML/TMX
+- **NOT supported:** XML/Excel→TXT (StringID loss)
 
 ### P5: LanguageTool
 - Central server (172.28.150.120:8081)
