@@ -260,7 +260,7 @@ LDM currently imports from legacy apps (violates Rule #0):
 | **P2** | Auto-LQA System | LIVE QA + per-file QA + QA Menu | ✅ DONE |
 | **P3** | MERGE System | Right-click → Merge confirmed cells to main LanguageData | ✅ DONE |
 | **P4** | File Conversions | Right-click → Convert (XML↔Excel, Excel→TMX, etc.) | ✅ DONE |
-| **P5** | LanguageTool | Spelling/Grammar via central server | 🔄 NEXT |
+| **P5** | LanguageTool | Spelling/Grammar via central server | ✅ DONE |
 | **Future** | UIUX Overhaul | Legacy Apps menu, single LocaNext | - |
 
 ### P1: Factorization (LDM Independence) ✅ COMPLETE
@@ -289,10 +289,13 @@ LDM currently imports from legacy apps (violates Rule #0):
 - **Supported:** TXT→Excel/XML/TMX, XML→Excel/TMX, Excel→XML/TMX
 - **NOT supported:** XML/Excel→TXT (StringID loss)
 
-### P5: LanguageTool
-- Central server (172.28.150.120:8081)
-- Spelling/Grammar/Style checking
-- Added to QA Menu as additional tab
+### P5: LanguageTool ✅ COMPLETE (2025-12-26)
+- **Server:** LanguageTool 6.6 on 172.28.150.120:8081 (systemd auto-start)
+- **Backend:** `/api/ldm/grammar/status`, `/files/{id}/check-grammar`, `/rows/{id}/check-grammar`
+- **Frontend:** Right-click → "Check Spelling/Grammar" context menu
+- **Modal:** Loading spinner, summary stats, error list with suggestions
+- **Performance:** ~43ms/row, 937MB RAM, minimal CPU
+- **Languages:** 30+ supported (EN, DE, FR, ES, etc. - Korean NOT supported)
 
 ---
 
