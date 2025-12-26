@@ -13,7 +13,7 @@
     TextArea,
     Tag
   } from "carbon-components-svelte";
-  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink } from "carbon-icons-svelte";
+  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink, Merge } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
@@ -74,6 +74,10 @@
   let uploadToServerDestination = $state(null); // project id
   let uploadToServerLoading = $state(false);
   let uploadToServerProjects = $state([]); // Central server projects list
+
+  // P3: Merge state
+  let mergeFileInput = $state(null); // File input element ref
+  let mergeTargetFile = $state(null); // LDM file to merge into
 
   // FEAT-001: TM Link state
   let linkedTM = $state(null); // {tm_id, tm_name, priority} or null
@@ -508,6 +512,94 @@
     }
   }
 
+  // P3: Merge - Open file picker to select original file
+  function openMergeFilePicker() {
+    if (!contextMenuFile) return;
+
+    // Check format compatibility (only TXT and XML supported)
+    const format = contextMenuFile.format?.toLowerCase() || '';
+    if (!['txt', 'xml'].includes(format)) {
+      logger.warning("Merge not supported for this format", { format });
+      alert(`Merge is only supported for TXT and XML files. This file is ${format.toUpperCase()}.`);
+      closeContextMenu();
+      return;
+    }
+
+    // Store the target file before closing menu
+    mergeTargetFile = contextMenuFile;
+    closeContextMenu();
+
+    // Trigger file picker
+    if (mergeFileInput) {
+      // Set accept based on format
+      mergeFileInput.accept = format === 'txt' ? '.txt,.tsv' : '.xml';
+      mergeFileInput.click();
+    }
+  }
+
+  // P3: Merge - Handle file selection and call API
+  async function handleMergeFileSelected(event) {
+    const file = event.target.files?.[0];
+    if (!file || !mergeTargetFile) {
+      mergeTargetFile = null;
+      return;
+    }
+
+    logger.info("Merge started", { ldmFile: mergeTargetFile.name, originalFile: file.name });
+
+    try {
+      const formData = new FormData();
+      formData.append('original_file', file);
+
+      const response = await fetch(`${API_BASE}/api/ldm/files/${mergeTargetFile.id}/merge`, {
+        method: 'POST',
+        headers: {
+          'Authorization': getAuthHeaders().Authorization
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        // Get merge stats from headers
+        const edited = response.headers.get('X-Merge-Edited') || '0';
+        const added = response.headers.get('X-Merge-Added') || '0';
+        const total = response.headers.get('X-Merge-Total') || '0';
+
+        // Download merged file
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = file.name.replace(/\.[^.]+$/, '') + '_merged' + (mergeTargetFile.format === 'txt' ? '.txt' : '.xml');
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="(.+)"/);
+          if (match) filename = match[1];
+        }
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+
+        logger.success("Merge complete", { filename, edited, added, total });
+        alert(`Merge complete!\n\nEdited: ${edited} rows\nAdded: ${added} rows\nTotal: ${total} rows\n\nFile downloaded: ${filename}`);
+      } else {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        logger.error("Merge failed", { status: response.status, error: error.detail });
+        alert(`Merge failed: ${error.detail}`);
+      }
+    } catch (err) {
+      logger.error("Merge error", { error: err.message });
+      alert(`Merge error: ${err.message}`);
+    } finally {
+      // Reset
+      mergeTargetFile = null;
+      if (mergeFileInput) mergeFileInput.value = '';
+    }
+  }
+
   // Extract glossary from file
   async function extractGlossary() {
     if (!contextMenuFile) return;
@@ -907,6 +999,15 @@
   {/if}
 </div>
 
+<!-- Hidden file input for P3 Merge -->
+<input
+  type="file"
+  bind:this={mergeFileInput}
+  onchange={handleMergeFileSelected}
+  style="display: none;"
+  accept=".txt,.tsv,.xml"
+/>
+
 <!-- Context Menu -->
 {#if showContextMenu}
   <div
@@ -918,6 +1019,10 @@
     <button class="context-menu-item" onclick={downloadFile} role="menuitem">
       <Download size={16} />
       <span>Download File</span>
+    </button>
+    <button class="context-menu-item" onclick={openMergeFilePicker} role="menuitem">
+      <Merge size={16} />
+      <span>Merge to LanguageData...</span>
     </button>
     <div class="context-menu-divider"></div>
     <button class="context-menu-item" onclick={runLineCheckQA} role="menuitem">
