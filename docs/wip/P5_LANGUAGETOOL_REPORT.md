@@ -77,6 +77,113 @@
 
 ---
 
+## Spanish Variants (Detailed Analysis)
+
+### Available Variants
+
+| Code | Name | Description |
+|------|------|-------------|
+| es | Spanish | Generic Spanish (recommended) |
+| es-AR | Spanish (voseo) | Argentine Spanish with voseo conjugations |
+| es-ES | Spanish | Spain/Castilian Spanish |
+
+### Testing Results
+
+**Key Finding:** All Spanish variants (es, es-AR, es-ES) use **identical grammar rules**. No functional difference in error detection.
+
+| Test Sentence | Error Type | Detection |
+|--------------|------------|-----------|
+| "El agua esta fria." | Missing accents (está, fría) | ✅ Detected (2 errors) |
+| "Voy ha comprar." | ha/a confusion | ✅ Detected |
+| "Havía muchas personas." | Spelling (Había) | ✅ Detected |
+| "Yo soy mas alto." | Missing accent (más) | ✅ Detected |
+| "Tu eres mi amigo." | Missing accent (Tú) | ✅ Detected |
+| "Ayer yo compro pan." | Tense error (compré) | ❌ NOT detected |
+
+### Voseo Detection (es-AR)
+
+| Sentence | es-AR | es-ES | Notes |
+|----------|-------|-------|-------|
+| "Vos tenés razón." | ✅ 0 errors | ✅ 0 errors | Voseo accepted by both |
+| "Vos tenes razón." | ❌ 1 error | ❌ 1 error | Accent error detected by both |
+| "Vos sabés mucho." | ✅ 0 errors | ✅ 0 errors | Correct voseo |
+| "Tú tienes razón." | ✅ 0 errors | ✅ 0 errors | Standard form accepted |
+
+**Conclusion:** es-AR recognizes voseo conjugations but enforces same rules as es-ES.
+
+### Regional Vocabulary
+
+| Sentence | Region | Detection |
+|----------|--------|-----------|
+| "Voy a manejar el carro." | Mexico/LATAM | ✅ No false positive |
+| "Voy a conducir el coche." | Spain | ✅ No false positive |
+| "Necesito la computadora." | LATAM | ✅ No false positive |
+| "Necesito el ordenador." | Spain | ✅ No false positive |
+
+**Conclusion:** Regional vocabulary differences (carro/coche, computadora/ordenador) are all accepted.
+
+### Recommendation
+
+| Your Need | Use Code |
+|-----------|----------|
+| Spain/Castilian Spanish | `es` or `es-ES` |
+| Mexico/Latin America | `es` |
+| Argentina (voseo) | `es-AR` |
+| Any Spanish | `es` (safest) |
+
+---
+
+## Chinese Variants (Detailed Analysis)
+
+### Available Variants
+
+| Code | Name | Status |
+|------|------|--------|
+| zh-CN | Chinese (Simplified) | ✅ Supported |
+| zh | Chinese (base) | ✅ Works (same as zh-CN) |
+| zh-TW | Chinese (Traditional) | ❌ **NOT SUPPORTED** |
+
+### Testing Results
+
+**Key Finding:** LanguageTool has **very limited** Chinese support. Only zh-CN exists, with minimal grammar rules.
+
+| Test Sentence | Script | Detection |
+|--------------|--------|-----------|
+| "我很開心。" | Traditional (開) | 0 errors (accepted) |
+| "我很开心。" | Simplified (开) | 0 errors (accepted) |
+| "這個東西很好。" | Traditional (這, 東) | 0 errors (accepted) |
+| "这个东西很好。" | Simplified (这, 东) | 0 errors (accepted) |
+| "電腦非常好用。" | Traditional (電腦) | 0 errors (accepted) |
+| "电脑非常好用。" | Simplified (电脑) | 0 errors (accepted) |
+
+### Key Observations
+
+1. **Traditional Characters Accepted:** zh-CN accepts Traditional Chinese characters without flagging them as errors
+2. **No Script Enforcement:** Will not catch if you mix Simplified/Traditional in same document
+3. **Limited Rules:** Chinese grammar rules are very basic - mostly punctuation and spacing
+
+### Practical Implications
+
+| Scenario | Result |
+|----------|--------|
+| Check Simplified Chinese text | Works (limited rules) |
+| Check Traditional Chinese text | Works with `zh-CN` (limited rules) |
+| Enforce Simplified-only | ❌ Cannot do this |
+| Enforce Traditional-only | ❌ Cannot do this |
+| Detect character typos | ❌ Very limited |
+
+### Recommendation
+
+| Your Need | Use Code | Notes |
+|-----------|----------|-------|
+| Simplified Chinese | `zh` or `zh-CN` | Basic support |
+| Traditional Chinese | `zh` or `zh-CN` | Same engine, no dedicated rules |
+| Strict script checking | ❌ Not possible | LanguageTool limitation |
+
+**Bottom Line:** For Chinese, LanguageTool provides basic spelling/punctuation checks only. For serious Chinese QA, consider supplementary tools.
+
+---
+
 ## All 60 Supported Languages
 
 LanguageTool supports these languages:
