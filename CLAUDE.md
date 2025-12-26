@@ -54,13 +54,14 @@ OFFLINE: SQLite (single-user, auto-fallback)
 
 ## Critical Rules
 
-1. **Monolith is Sacred** - Copy `RessourcesForCodingTheProject/` logic exactly
-2. **No Backend Mods** - Only wrapper layers (API, GUI)
-3. **Logger Only** - Never `print()`, always `logger`
-4. **Dual Push** - `git push origin main && git push gitea main`
-5. **WSL ↔ Windows** - CDP tests can run from WSL via `/mnt/c/Program\ Files/nodejs/node.exe`
-6. **Fix Everything** - No defer, no excuses, fix all issues
-7. **NEVER RESTART** - Restarting does NOT solve issues. ALWAYS follow this workflow:
+1. **DOCS FIRST** - Before trying ANY approach, READ the relevant docs. Never guess or try random methods.
+2. **Monolith is Sacred** - Copy `RessourcesForCodingTheProject/` logic exactly
+3. **No Backend Mods** - Only wrapper layers (API, GUI)
+4. **Logger Only** - Never `print()`, always `logger`
+5. **Dual Push** - `git push origin main && git push gitea main`
+6. **WSL ↔ Windows** - CDP tests can run from WSL via `/mnt/c/Program\ Files/nodejs/node.exe`
+7. **Fix Everything** - No defer, no excuses, fix all issues
+8. **NEVER RESTART** - Restarting does NOT solve issues. ALWAYS follow this workflow:
    1. STOP everything
    2. CLEAN resources (kill zombie processes)
    3. INVESTIGATE root cause
