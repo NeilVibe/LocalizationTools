@@ -1,12 +1,38 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-27 18:30 | **Build:** 402 (DONE) | **CI:** Online | **Issues:** 15 OPEN
+**Last Updated:** 2025-12-27 19:15 | **Build:** 403 (STABLE) | **CI:** Online | **Issues:** 15 OPEN
 
-> **SESSION STATUS:** Build 402 COMPLETED. Updater.js fixed to default to Gitea. Need Build 403 to test smart update.
+> **SESSION STATUS:** Build 403 VERIFIED. UIUX Stable baseline established.
 
 ---
 
-## CRITICAL - AUTO-UPDATE FIXED
+## UIUX STABLE BASELINE - BUILD 403
+
+| Item | Value |
+|------|-------|
+| **Build** | 403 (v25.1227.1820) |
+| **Tag** | UIUX_STABLE |
+| **Date** | 2025-12-27 |
+| **Verified** | CDP test + visual inspection |
+
+### What's Working (DO NOT BREAK)
+- **Variable-height rows**: Cells expand based on content (59px → 125px)
+- **Hover system**: Source cells gray, Target cells blue accent + edit icon
+- **Virtual scrolling**: Container ~847px, not 480,000px
+- **Grid layout**: Clean, readable, professional look
+- **Row heights verified**: 59px (single-line), 81px (2-line), 125px (multi-line)
+
+### Screenshot Reference
+- `docs/wip/BUILD_403_UIUX_STABLE.png` - Visual proof of working UIUX
+
+### If Future Changes Break UIUX
+1. Compare with Build 403 screenshot
+2. Check `VirtualGrid.svelte` changes
+3. Restore from commit: `dc13938` (Build 403)
+
+---
+
+## AUTO-UPDATE FIXED
 
 **Problem Found:** `electron/updater.js` defaulted to GitHub, but builds go to Gitea.
 
@@ -116,11 +142,10 @@ const GITEA_URL = 'http://172.28.150.120:3000';
 
 ## WHAT NEXT SESSION MUST DO
 
-1. **Trigger Build 403** - Deploy the updater.js fix
-2. **Wait for Build 403 to complete**
-3. **Install Build 403 on Playground** (full install since update won't work yet)
-4. **Test Smart Update** - Then trigger Build 404, see if delta download works
-5. **Continue with remaining issues** (15 open)
+1. ~~**Trigger Build 403**~~ - DONE
+2. ~~**Install Build 403 on Playground**~~ - DONE, UIUX verified stable
+3. **Test Smart Update** - Trigger Build 404, see if delta download works
+4. **Continue with remaining issues** (15 open - see ISSUES_TO_FIX.md)
 
 ---
 
@@ -162,4 +187,4 @@ for r in c.fetchall():
 
 ---
 
-*Next: Build 403 -> Install on Playground -> Test Smart Update*
+*Build 403 = UIUX STABLE BASELINE | Next: Test Smart Update with Build 404*
