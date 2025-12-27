@@ -69,3 +69,4 @@ Build 20251227-1253
 Build 397: UI-055 Modal Bloat + UI-057 Hover Colors (THE HARD WAY)
 Build 398: UI-057 Hover color fix (correct CSS variable)
 Build 399: Smart update blockmap
+Build 400: UI-057 Increase row height to 72px

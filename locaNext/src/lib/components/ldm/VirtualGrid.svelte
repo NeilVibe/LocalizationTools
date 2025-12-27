@@ -25,7 +25,8 @@
   let { fileId = $bindable(null), fileName = "" } = $props();
 
   // Virtual scrolling constants
-  const MIN_ROW_HEIGHT = 48; // Minimum row height
+  // UI-057: Increased from 48 to 72 for better readability (fits 2-3 lines)
+  const MIN_ROW_HEIGHT = 72; // Minimum row height
   const MAX_ROW_HEIGHT = 200; // Maximum row height (~8 lines max per user request)
   const CHARS_PER_LINE = 50; // Estimated chars per line for height calc
   const LINE_HEIGHT = 20; // Height per line of text
