@@ -1577,6 +1577,16 @@ jobs:
           $size = (Get-Item "$outDir\$newName").Length / 1MB
           $sizeStr = if ($size -gt 1024) { "$([math]::Round($size/1024, 2)) GB" } else { "$([math]::Round($size, 1)) MB" }
           Write-Host "[OK] Installer ready: $newName ($sizeStr)" -ForegroundColor Green
+
+          # Copy blockmap for differential updates (SMART UPDATE)
+          $blockmap = Get-ChildItem "locaNext\dist-electron\*.blockmap" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($blockmap) {
+            $blockmapNewName = $newName -replace '\.exe$', '.exe.blockmap'
+            Copy-Item $blockmap.FullName -Destination "$outDir\$blockmapNewName"
+            Write-Host "[OK] Blockmap ready: $blockmapNewName (enables smart/differential updates)" -ForegroundColor Green
+          } else {
+            Write-Host "[WARN] No blockmap found - differential updates won't work" -ForegroundColor Yellow
+          }
         shell: powershell
 
       - name: Verify NSIS Installer
@@ -2336,6 +2346,19 @@ jobs:
               -H "Content-Type: application/octet-stream" `
               --data-binary "@$ymlFile" | Out-Null
             Write-Host "  [OK] latest.yml uploaded" -ForegroundColor Green
+          }
+
+          # Upload blockmap for SMART/DIFFERENTIAL updates
+          $blockmap = Get-ChildItem "installer_output\*.blockmap" | Select-Object -First 1
+          if ($blockmap) {
+            Write-Host "  Uploading: $($blockmap.Name) (enables smart updates)"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$RELEASE_ID/assets?name=$($blockmap.Name)" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$($blockmap.FullName)" | Out-Null
+            Write-Host "  [OK] Blockmap uploaded - SMART UPDATES ENABLED" -ForegroundColor Green
+          } else {
+            Write-Host "  [WARN] No blockmap found - full download required for updates" -ForegroundColor Yellow
           }
 
           Write-Host ""
