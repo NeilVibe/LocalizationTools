@@ -14,7 +14,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { BrowserWindow, ipcMain, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import { logger } from './logger.js';
 
 // ESM dirname equivalent (import.meta.dirname is undefined in Node 18)
@@ -26,20 +26,34 @@ let setupWindow = null;
 let isSetupRunning = false;
 
 /**
+ * Get the flag file path in AppData (survives reinstalls/updates)
+ */
+function getFlagFilePath() {
+  const appDataPath = app.getPath('userData');  // %APPDATA%/LocaNext
+  return path.join(appDataPath, 'first_run_complete.flag');
+}
+
+/**
  * Check if first-run setup is needed
+ * Flag file is stored in AppData so it survives installer updates
  */
 export function isFirstRunNeeded(appRoot) {
-  const flagFile = path.join(appRoot, 'first_run_complete.flag');
+  const flagFile = getFlagFilePath();
   const exists = fs.existsSync(flagFile);
   logger.info('First-run check', { flagFile, exists, needed: !exists });
   return !exists;
 }
 
 /**
- * Create the setup complete flag file
+ * Create the setup complete flag file in AppData
  */
 function createFlagFile(appRoot) {
-  const flagFile = path.join(appRoot, 'first_run_complete.flag');
+  const flagFile = getFlagFilePath();
+  // Ensure directory exists
+  const dir = path.dirname(flagFile);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   const content = JSON.stringify({
     completedAt: new Date().toISOString(),
     version: process.env.npm_package_version || 'unknown'
