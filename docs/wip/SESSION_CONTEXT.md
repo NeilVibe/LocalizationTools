@@ -213,13 +213,105 @@ const GITEA_URL = 'http://172.28.150.120:3000';
 
 ---
 
-## WHAT NEXT SESSION MUST DO
+## AUTO-UPDATE FIX - DETAILED EXPLANATION
 
-1. ~~**Trigger Build 403**~~ - DONE
-2. ~~**Install Build 403 on Playground**~~ - DONE, UIUX verified stable
-3. **Test Smart Update** - Trigger Build 404, see if delta download works
-4. **Update ISSUES_TO_FIX.md** - Mark UI-060 as NOT A BUG
-5. **Consider feature ideas** above for future roadmap
+### THE BUG (ESM Import Issue)
+
+**File:** `locaNext/electron/main.js`
+
+**BROKEN CODE (Builds ≤407):**
+```javascript
+const { autoUpdater: updater } = await import('electron-updater');
+autoUpdater = updater;  // updater = undefined!!!
+```
+
+**WHY IT FAILED:**
+- `electron-updater` is a CommonJS module
+- When you dynamic import a CJS module in ESM, it becomes `{ default: <module> }`
+- Destructuring `{ autoUpdater: updater }` gets `undefined` because there's no named export
+- GitHub issue: https://github.com/electron-userland/electron-builder/issues/7976
+
+**FIXED CODE (Build 408):**
+```javascript
+const electronUpdater = await import('electron-updater');
+autoUpdater = electronUpdater.default?.autoUpdater || electronUpdater.autoUpdater;
+```
+
+**WHY THIS WORKS:**
+- Import the whole module
+- Access `.default.autoUpdater` (ESM wrapper) or `.autoUpdater` (CJS fallback)
+- Now `autoUpdater` is the actual object, not `undefined`
+
+---
+
+### CURRENT STATE
+
+| Item | Status |
+|------|--------|
+| **Build 408** | BUILDING (Windows job running) |
+| **Playground** | Has Build 406 or 407 (OLD, has the bug) |
+| **Gitea releases** | Will have Build 408 when done |
+
+---
+
+### TEST PLAN (WIP)
+
+| Step | Task | Status |
+|------|------|--------|
+| WIP-1 | Wait for Build 408 to finish | IN PROGRESS |
+| WIP-2 | Install Build 408 to Playground | PENDING |
+| WIP-3 | Check logs: `hasAutoUpdater: true` | PENDING |
+| WIP-4 | Create mock release (v99.0.0) on Gitea | PENDING |
+| WIP-5 | Launch app, verify it detects v99.0.0 | PENDING |
+| WIP-6 | Done - auto-update detection proven | PENDING |
+
+**WIP-1: Wait for Build 408** ⏳
+```bash
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT status FROM action_run WHERE id=408')
+print('DONE' if c.fetchone()[0]==1 else 'BUILDING')"
+```
+
+**WIP-2: Install Build 408** 📦
+```bash
+./scripts/playground_install.sh --launch --auto-login
+```
+
+**WIP-3: Check logs for fix** ✅
+```bash
+grep "hasAutoUpdater" /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/logs/locanext_app.log
+```
+- Expected: `hasAutoUpdater: true`
+
+**WIP-4: Trigger Build 409** 🎭
+```bash
+echo "Build 409: Test auto-update detection" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Build 409: Test auto-update" && git push origin main && git push gitea main
+```
+
+**WIP-5: Wait for Build 409** ⏳
+```bash
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT status FROM action_run WHERE id=409')
+print('DONE' if c.fetchone()[0]==1 else 'BUILDING')"
+```
+
+**WIP-6: Launch app, test detection** 🎯
+- Launch Build 408 app (currently installed)
+- Should show: "Update available: Build 409"
+- Click update → verify download and install
+
+---
+
+### SUCCESS CRITERIA
+
+1. ✅ `hasAutoUpdater: true` in logs (ESM fix works)
+2. ✅ App detects mock v99.0.0 release (updater works)
+3. ✅ First-run skipped (flag in AppData works)
 
 ---
 

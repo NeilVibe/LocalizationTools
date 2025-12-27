@@ -879,4 +879,45 @@ for attempt in range(3):
 
 ---
 
-*Last updated: 2025-12-26*
+## ⚠️ CLAUDE CONFUSION TRAP #3: Checking Runner Status
+
+**Another documented pitfall - Claude tried the wrong approach!**
+
+### The Mistake
+
+When checking if builds are running, Claude incorrectly tries:
+
+| ❌ WRONG | Why It's Wrong |
+|----------|----------------|
+| `find /mnt/c -name "runner.db"` | Slow, searches all of C: drive |
+| `Get-Service gitea-runner` via PowerShell | Service may not be a Windows service |
+| `curl` the Gitea API | Requires authentication token |
+| `ls /home/neil1988/gitea-runner/runner.db` | Wrong path |
+
+### The Correct Approach
+
+**ALWAYS use the documented SQL command:**
+
+```bash
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
+status_map = {0:'UNK', 1:'OK', 2:'FAIL', 3:'CANCEL', 4:'SKIP', 5:'WAIT', 6:'RUN'}
+for r in c.fetchall(): print(f'{r[0]}: {status_map.get(r[1], r[1])} - {r[2][:50]}')"
+```
+
+**Key points:**
+- Database path: `/home/neil1988/gitea/data/gitea.db`
+- This shows build status directly from source of truth
+- No authentication, curl, or complex paths needed
+
+### Rule: When Asked "Is the Build Running?"
+
+1. **Use SQL** - Query the database directly
+2. **Database is truth** - Not curl, not file timestamps, not PowerShell
+3. **READ THE DOCS** - TROUBLESHOOTING.md has the exact commands
+
+---
+
+*Last updated: 2025-12-27*
