@@ -799,8 +799,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     height: 100%;
     display: flex;
     flex-direction: column;
-    /* Changed from overflow: hidden to allow tooltips to escape */
-    overflow: visible;
+    /* UI-053 FIX: Restored overflow: hidden - required for virtual scroll height constraint */
+    /* Tooltips should use position: fixed or portal rendering instead */
+    overflow: hidden;
     position: relative;
   }
 
@@ -818,9 +819,11 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
   .ldm-layout {
     display: flex;
     flex: 1;
-    /* Changed from overflow: hidden to allow tooltips to escape */
-    overflow: visible;
+    /* UI-053 FIX: Restored overflow: hidden - required for virtual scroll height constraint */
+    overflow: hidden;
     position: relative;
+    /* Ensure flex children can't exceed this container */
+    min-height: 0;
   }
 
   .ldm-main {

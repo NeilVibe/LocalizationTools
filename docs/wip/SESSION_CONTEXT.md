@@ -1,8 +1,8 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-27 02:45 | **Build:** 395 (PENDING) | **CI:** Running | **Issues:** 3 OPEN
+**Last Updated:** 2025-12-27 11:35 | **Build:** 395 | **CI:** Online | **Issues:** 24 OPEN
 
-> **SESSION END:** iPad remote testing setup complete. 3 file viewer bugs found, fixes pushed.
+> **SESSION STATUS:** Full CDP audit complete. Build 395 fixes FAILED. 24 issues documented including 5 CRITICAL blocking issues.
 
 ---
 
@@ -10,72 +10,124 @@
 
 | Item | Status |
 |------|--------|
-| **Open Issues** | 3 (UI-048, UI-049, UI-050) |
-| **Build 395** | RUNNING (fixes pushed) |
-| **iPad Remote** | Chrome Remote Desktop (web version) working |
-| **Playground** | v25.1226.1801 (needs update when build completes) |
+| **Open Issues** | 24 (5 CRITICAL, 8 HIGH, 7 MEDIUM, 4 LOW) |
+| **Build 395** | SUCCESS but fixes NOT working |
+| **Edit Modal** | BROKEN - cannot close (softlock) |
+| **Virtual Scroll** | BROKEN - container 480K px tall |
+| **TM Loading** | BROKEN - infinite spinner |
 
 ---
 
 ## TODAY'S SESSION (2025-12-27)
 
-### 1. iPad Remote Access Setup
-
-**Goal:** Test LocaNext from iPad remotely
+### 1. iPad Remote Access Setup (DONE)
 
 **Solution:** Chrome Remote Desktop (web version in Safari)
 - iOS app discontinued by Google in 2025
 - Web version works: `remotedesktop.google.com` in Safari
-- Full screen control, not just browser
 - Setup guide: `docs/IPAD-REMOTE-ACCESS-GUIDE.md`
 
-### 2. Claude Confusion Traps Documented
+### 2. User Testing via iPad - ISSUES FOUND
 
-Added to `docs/cicd/TROUBLESHOOTING.md`:
+User tested the app remotely and found multiple issues:
+- Source text not selectable
+- Target cells not expanding (compressed)
+- Hover shows split 2 colors
+- Cell edit modal cannot be closed (softlock!)
+- TM loading forever
+- 1500+ console errors reported
 
-**Trap #1: Git Log != CI/CD Builds**
-- `git log` shows commits, NOT builds
-- ALWAYS check database `action_run` table for builds
-- File timestamps don't equal build times
+### 3. CDP Comprehensive Audit - COMPLETED
 
-**Trap #2: Date Filtering Pitfall**
-- `git log --since="2025-12-27"` returns empty at 2 AM
-- Work at 11 PM shows as "yesterday" but is TODAY's work
-- NEVER use date filters, always use count: `git log -10`
+Full automated audit using Chrome DevTools Protocol:
+- 23 screenshots captured
+- DOM analysis performed
+- Network/memory checked
 
-### 3. File Viewer Bugs Found (User Testing)
+**Key Findings:**
+| Finding | Value | Impact |
+|---------|-------|--------|
+| Total Modals | 171 | Massive DOM bloat |
+| Scroll Container | 480,136px tall | Virtual scroll broken |
+| Loading Spinners | 6 visible | TM stuck loading |
+| Console Errors | 3 | Routing issues |
+| Failed Requests | 1 | version.json |
+| CSS Overflow Issues | 20+ | Visual bugs |
 
-| ID | Issue | Status |
-|----|-------|--------|
-| UI-048 | Hover highlighting ugly (box-shadow) | FIX PUSHED |
-| UI-049 | Cell height too small (max 120px) | FIX PUSHED |
-| UI-050 | Lazy loading broken (scroll shows black) | FIX PUSHED |
+### 4. Root Cause Analysis
 
-**Fixes in Build 395:**
-- Removed box-shadow from hover (clean background only)
-- MAX_ROW_HEIGHT: 120px -> 200px (~8 lines)
-- Added ResizeObserver for container size changes
-- Used $effect for reliable scroll listener in Svelte 5
+**UI-051 (Modal Softlock):**
+- Close button uses `onclick={closeEditModal}`
+- Carbon Components require `on:click` (Svelte 4 events)
+- Same root cause as BUG-037
+
+**UI-053 (Virtual Scroll):**
+- `.scroll-container` has `flex: 1` but no height constraint
+- Container expands to content height (480K px)
+- `canScroll: false` - scrolling disabled
+
+**UI-054 (Cells Compressed):**
+- `estimateRowHeight()` calculates variable heights
+- `getRowTop()` uses constant MIN_ROW_HEIGHT (48px)
+- Conflict between variable height and fixed positioning
+
+**UI-055 (171 Modals):**
+- Carbon Components modals not destroyed on close
+- CSS hiding instead of DOM removal
+- Memory leak accumulating
 
 ---
 
-## PENDING VERIFICATION
+## 24 DOCUMENTED ISSUES
 
-Build 395 running - needs testing when complete:
-1. Is hover clean/minimal?
-2. Do cells show ~8 lines max?
-3. Does scrolling load more rows?
+### CRITICAL (5) - Blocking
+| ID | Issue | Root Cause |
+|----|-------|------------|
+| UI-051 | Modal cannot close | `onclick` vs `on:click` |
+| UI-052 | TM infinite loading | API/network issue |
+| UI-053 | Virtual scroll broken | Container height not constrained |
+| UI-054 | Cells compressed | Height calculation conflict |
+| UI-055 | 171 modals in DOM | Modals not destroyed |
+
+### HIGH (8) - Major UX
+| ID | Issue |
+|----|-------|
+| UI-056 | Source text not selectable |
+| UI-057 | Split 2-color hover |
+| UI-058 | Build 395 fixes not working |
+| UI-059 | Row selection inconsistent |
+| UI-060 | Source click opens edit |
+| UI-061 | Routing error on load |
+| UI-062 | version.json not found |
+
+### MEDIUM (7) - UX Issues
+| ID | Issue |
+|----|-------|
+| UI-063 | 20+ CSS overflow issues |
+| UI-064 | Status colors conflict hover |
+| UI-065 | Edit icon visibility |
+| UI-066 | Placeholder column count |
+| UI-067 | Filter dropdown height |
+| UI-068 | Resize handle invisible |
+| UI-069 | QA/Edit icon overlap |
+
+### LOW (4) - Cosmetic
+| ID | Issue |
+|----|-------|
+| UI-070 | 9 empty divs |
+| UI-071 | Reference "No match" styling |
+| UI-072 | TM empty message styling |
+| UI-073 | Shortcut bar space |
 
 ---
 
-## PRIORITIES - WHAT'S NEXT
+## FIX PRIORITY
 
-| Priority | Feature | Status |
-|----------|---------|--------|
-| ~~P1-P5~~ | Complete | Done |
-| **UI Bugs** | File viewer fixes | Build 395 pending |
-| **Future** | UIUX Overhaul | Pending |
-| **Future** | Perforce API | Pending |
+1. **UI-051** - Modal softlock (users stuck!)
+2. **UI-053** - Virtual scroll (affects everything)
+3. **UI-054** - Cells compressed (content unreadable)
+4. **UI-052** - TM loading (edit unusable)
+5. **UI-055** - DOM bloat (performance)
 
 ---
 
@@ -83,16 +135,17 @@ Build 395 running - needs testing when complete:
 
 | Topic | Doc |
 |-------|-----|
+| Full Issue List | `docs/wip/ISSUES_TO_FIX.md` |
 | iPad Remote | `docs/IPAD-REMOTE-ACCESS-GUIDE.md` |
-| Claude Confusion Traps | `docs/cicd/TROUBLESHOOTING.md` |
-| Build Status | Database: `action_run` table |
+| CDP Audit Report | `screenshots/audit_1766802366478/AUDIT_REPORT.json` |
+| Troubleshooting | `docs/cicd/TROUBLESHOOTING.md` |
 
 ---
 
 ## QUICK COMMANDS
 
 ```bash
-# Check build status (CORRECT WAY - database)
+# Check build status
 python3 -c "
 import sqlite3
 from datetime import datetime
@@ -103,13 +156,27 @@ for r in c.fetchall():
     when = datetime.fromtimestamp(r[3]).strftime('%H:%M') if r[3] else 'N/A'
     print(f'Run {r[0]}: {status_map.get(r[1], r[1]):6} | {when} | {r[2][:45]}')"
 
-# Update Playground after build completes
-./scripts/playground_install.sh --launch --auto-login
+# Run CDP audit
+/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/comprehensive_ui_audit.js
 
-# Check recent commits (NO date filter!)
-git log --oneline -10
+# Restart Gitea (if needed)
+cd ~/gitea && ./gitea web &
+cd ~/gitea && ./act_runner daemon --config runner_config.yaml &
 ```
 
 ---
 
-*Next: Test Build 395 fixes on iPad, then continue with user feedback*
+## INVESTIGATION QUESTIONS
+
+1. **Why did Build 395 fixes not work?**
+   - Build shows SUCCESS in database
+   - Playground updated to v25.1227.0231
+   - But UI still has all original issues
+
+2. **Why is TM loading infinitely?**
+   - 2VEC model should be fast
+   - Need to check `/api/ldm/tm/suggest` directly
+
+---
+
+*Next: Fix UI-051 (modal softlock) first - change onclick to on:click*

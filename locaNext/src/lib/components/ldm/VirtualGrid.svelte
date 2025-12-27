@@ -714,13 +714,30 @@
 
   // Close edit modal and release lock
   function closeEditModal() {
-    if (editingRow && fileId) {
-      unlockRow(fileId, parseInt(editingRow.id));
+    logger.info("closeEditModal called", {
+      hasEditingRow: !!editingRow,
+      fileId,
+      showEditModal
+    });
+
+    try {
+      if (editingRow && fileId) {
+        // Fire and forget - don't let unlock failure block modal close
+        unlockRow(fileId, parseInt(editingRow.id)).catch(err => {
+          logger.warning("Failed to unlock row", { error: err.message });
+        });
+      }
+    } catch (err) {
+      logger.error("Error in unlockRow", { error: err.message });
     }
+
+    // These MUST execute regardless of unlock status
     showEditModal = false;
     editingRow = null;
     tmSuggestions = [];
     tmLoading = false;
+
+    logger.info("closeEditModal complete", { showEditModal });
   }
 
   // Save and move to next row
@@ -1276,7 +1293,7 @@
           <span class="shortcut"><kbd>Tab</kbd> Apply TM</span>
           <span class="shortcut"><kbd>Esc</kbd> Cancel</span>
         </div>
-        <button class="close-btn" onclick={closeEditModal} title="Close (Esc)">×</button>
+        <button class="close-btn" type="button" onclick={closeEditModal} title="Close (Esc)">×</button>
       </div>
 
       <!-- Two-column layout -->
@@ -1326,6 +1343,7 @@
                 {/each}
                 <button
                   class="qa-dismiss-btn"
+                  type="button"
                   onclick={() => { lastQaResult = null; closeEditModal(); }}
                 >
                   Dismiss & Close
@@ -1377,6 +1395,8 @@
     flex-direction: column;
     overflow: hidden;
     background: var(--cds-background);
+    /* UI-053 FIX: min-height: 0 allows flex child to shrink below content size */
+    min-height: 0;
   }
 
   .grid-header {
@@ -1508,7 +1528,10 @@
     overflow-y: auto;
     overflow-x: hidden;
     position: relative;
-    min-height: 200px; /* Ensure minimum height for scrolling */
+    /* UI-053 FIX: Critical - height: 0 + flex: 1 forces container to respect parent height */
+    /* Without this, flex child expands to content height, breaking virtual scroll */
+    height: 0;
+    min-height: 200px; /* Minimum for usability */
   }
 
   .scroll-content {
@@ -1848,6 +1871,9 @@
     background: transparent;
     border: none;
     font-size: 1.5rem;
+    pointer-events: auto;
+    z-index: 100;
+    position: relative;
     color: var(--cds-text-02);
     cursor: pointer;
     width: 2rem;
