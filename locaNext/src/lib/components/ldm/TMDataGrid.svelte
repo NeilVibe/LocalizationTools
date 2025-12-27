@@ -683,9 +683,10 @@
   {/if}
 </div>
 
-<!-- BUG-027: Spacious Edit Modal (same pattern as DataGrid) -->
+<!-- BUG-027: Spacious Edit Modal (same pattern as DataGrid) - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showEditModal}
 <Modal
-  bind:open={showEditModal}
+  open={true}
   modalHeading="Edit TM Entry"
   primaryButtonText={saving ? "Saving..." : "Save"}
   secondaryButtonText="Cancel"
@@ -740,6 +741,7 @@
     </div>
   {/if}
 </Modal>
+{/if}
 
 <style>
   .tm-data-grid {

@@ -1618,6 +1618,11 @@
     border-right: 2px solid var(--cds-border-strong-01, #525252);
   }
 
+  /* UI-057 FIX: Add hover state to source cell (matching target) */
+  .cell.source:hover {
+    background: var(--cds-layer-hover-02);
+  }
+
   .cell.source.cell-hover {
     background: var(--cds-layer-hover-02);
   }
