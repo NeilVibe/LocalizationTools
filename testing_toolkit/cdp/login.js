@@ -5,22 +5,23 @@
  *   Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
  *   node login.js
  *
- * Credentials: Uses CDP_TEST_USER/CDP_TEST_PASS env vars, or defaults to neil/neil
+ * Credentials:
+ *   - CI: Uses CDP_TEST_USER/CDP_TEST_PASS env vars (from Gitea secrets)
+ *   - Local: Defaults to admin/admin123 (superadmin)
  */
 const WebSocket = require('ws');
 const http = require('http');
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// Get credentials from environment (REQUIRED - no fallback for security)
-const TEST_USER = process.env.CDP_TEST_USER;
-const TEST_PASS = process.env.CDP_TEST_PASS;
+// Get credentials: ENV vars for CI, or admin/admin123 for local testing
+const TEST_USER = process.env.CDP_TEST_USER || 'admin';
+const TEST_PASS = process.env.CDP_TEST_PASS || 'admin123';
 
-if (!TEST_USER || !TEST_PASS) {
-    console.error('ERROR: CDP_TEST_USER and CDP_TEST_PASS environment variables are required');
-    console.error('For CI: Configure Gitea secrets (CI_TEST_USER, CI_TEST_PASS)');
-    console.error('For local: export CDP_TEST_USER=username CDP_TEST_PASS=password');
-    process.exit(1);
+// Only warn if env vars not set (but still proceed with defaults)
+if (!process.env.CDP_TEST_USER || !process.env.CDP_TEST_PASS) {
+    console.log(`INFO: Using default credentials (${TEST_USER})`);
+    console.log('      Set CDP_TEST_USER/CDP_TEST_PASS env vars to override');
 }
 
 async function main() {
