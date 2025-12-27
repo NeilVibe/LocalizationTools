@@ -15,6 +15,7 @@
   import { WarningAltFilled } from "carbon-icons-svelte";
   import { serverUrl } from "$lib/stores/app.js";
   import PresenceBar from "./PresenceBar.svelte";
+  import ColorText from "./ColorText.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -48,6 +49,8 @@
   let total = $state(0);
   let searchTerm = $state("");
   let searchDebounceTimer = null;
+
+  // Note: Clear button directly manipulates both searchTerm and DOM input value
 
   // P2: Filter state
   let activeFilter = $state("all"); // 'all' | 'confirmed' | 'unconfirmed' | 'qa_flagged'
@@ -365,6 +368,12 @@
         limit: PAGE_SIZE.toString()
       });
 
+      // Add search term if present
+      if (searchTerm && searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
+        logger.info("loadRows with search", { searchTerm });
+      }
+
       const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
         headers: getAuthHeaders()
       });
@@ -425,9 +434,11 @@
   }
 
   // Handle search with debounce
-  function handleSearch() {
+  function handleSearch(event) {
+    logger.info("handleSearch triggered", { searchTerm, event: event?.type || 'no event' });
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
+      logger.info("handleSearch executing search", { searchTerm });
       loadedPages.clear();
       rows = [];
       loadRows();
@@ -1131,11 +1142,27 @@
     }
   });
 
-  // Svelte 5: Effect - Watch file changes
+  // Svelte 5: Effect - Watch file changes (only when fileId actually changes)
+  let previousFileId = $state(null);
   $effect(() => {
-    if (fileId) {
+    if (fileId && fileId !== previousFileId) {
+      logger.info("fileId changed - resetting search", { from: previousFileId, to: fileId });
+      previousFileId = fileId;
       searchTerm = "";
       loadRows();
+    }
+  });
+
+  // Svelte 5: Effect - Watch searchTerm changes
+  // Simple effect - triggers on any searchTerm change
+  $effect(() => {
+    // Access searchTerm to establish dependency
+    const term = searchTerm;
+    logger.info("searchTerm effect triggered", { searchTerm: term, hasFileId: !!fileId });
+
+    // Only search if we have a file loaded
+    if (fileId && term !== undefined) {
+      handleSearch();
     }
   });
 
@@ -1205,13 +1232,35 @@
 
     <div class="search-filter-bar">
       <div class="search-wrapper">
-        <Search
-          bind:value={searchTerm}
-          on:clear={() => { searchTerm = ""; handleSearch(); }}
-          on:input={handleSearch}
-          placeholder="Search source, target, or StringID..."
-          size="sm"
-        />
+        <!-- Using native input with oninput only - NO value binding to avoid Svelte reactivity reset -->
+        <div class="bx--search bx--search--sm">
+          <input
+            type="text"
+            id="ldm-search-input"
+            class="bx--search-input"
+            placeholder="Search source, target, or StringID..."
+            oninput={(e) => {
+              searchTerm = e.target.value;
+              logger.info("Search oninput", { value: searchTerm });
+            }}
+          />
+          {#if searchTerm}
+            <button
+              type="button"
+              class="bx--search-close"
+              onclick={() => {
+                searchTerm = "";
+                const inputEl = document.getElementById('ldm-search-input');
+                if (inputEl) inputEl.value = "";
+              }}
+              aria-label="Clear search"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16">
+                <path d="M12 4.7L11.3 4 8 7.3 4.7 4 4 4.7 7.3 8 4 11.3 4.7 12 8 8.7 11.3 12 12 11.3 8.7 8z"/>
+              </svg>
+            </button>
+          {/if}
+        </div>
       </div>
       <!-- P2: Filter Dropdown -->
       <div class="filter-wrapper">
@@ -1311,7 +1360,7 @@
                   style="flex: 0 0 {sourceWidthPercent}%;"
                   onmouseenter={() => handleCellMouseEnter(row, 'source')}
                 >
-                  <span class="cell-content">{formatGridText(row.source) || ""}</span>
+                  <span class="cell-content"><ColorText text={formatGridText(row.source) || ""} /></span>
                 </div>
 
                 <!-- Target (always visible, EDITABLE) -->
@@ -1335,7 +1384,7 @@
                   tabindex="0"
                   onkeydown={(e) => e.key === 'Enter' && openEditModal(row)}
                 >
-                  <span class="cell-content">{formatGridText(row.target) || ""}</span>
+                  <span class="cell-content"><ColorText text={formatGridText(row.target) || ""} /></span>
                   {#if row.qa_flag_count > 0}
                     <span class="qa-icon" title="{row.qa_flag_count} QA issue(s)">
                       <WarningAltFilled size={14} />

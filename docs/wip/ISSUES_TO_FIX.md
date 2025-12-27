@@ -1,8 +1,8 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-27 19:30 | **Build:** 403 | **Open:** 14
+**Last Updated:** 2025-12-28 02:35 | **Build:** 404+ | **Open:** 13
 
-> **STATUS:** Build 403 = UIUX STABLE. UI-060 verified NOT A BUG. Variable-height rows working.
+> **STATUS:** UI-076 SEARCH BUG FIXED! Core search functionality working.
 
 ---
 
@@ -10,12 +10,12 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 9 |
+| **FIXED/CLOSED** | 10 |
 | **CRITICAL (Blocking)** | 0 |
-| **HIGH (Major UX)** | 4 |
+| **HIGH (Major UX)** | 3 |
 | **MEDIUM (UX Issues)** | 7 |
 | **LOW (Cosmetic)** | 4 |
-| **Total Open** | 15 |
+| **Total Open** | 14 |
 
 ---
 
@@ -70,6 +70,50 @@
 ### UI-060: Click on Source Cell Opens Edit Modal ✅ NOT A BUG
 - **Tested:** 2025-12-27 - Double-click on TARGET opens modal (correct)
 - **Source cell:** Single/double click does NOT open modal (correct)
+
+---
+
+## CRITICAL - BLOCKING ISSUES
+
+*No critical issues*
+
+---
+
+## FIXED - 2025-12-28
+
+### UI-076: Search Bar Not Filtering Rows ✅ FIXED
+- **Reported:** 2025-12-28
+- **Fixed:** 2025-12-28
+- **Severity:** CRITICAL (Core feature broken)
+- **Status:** FIXED
+- **Problem:** Typing in search bar didn't filter rows
+- **Root Cause:** THREE compounding issues:
+  1. TypeScript syntax in non-TS Svelte file caused silent compile error
+  2. `bind:value` with `$state()` caused Svelte to reset input values
+  3. Effect was resetting searchTerm to "" on every run (not just fileId change)
+- **Fix:**
+  1. Removed TypeScript casts from `<script>` block
+  2. Changed to `oninput` handler instead of `bind:value`
+  3. Added previous value tracking to fileId effect
+- **Verified:** Playwright test: 10,000 rows -> 4 rows with search "5000"
+- **File:** VirtualGrid.svelte lines 53-65, 1145-1154, 1245-1254
+
+### UI-077: Duplicate File Names Allowed
+- **Reported:** 2025-12-28
+- **Severity:** HIGH (Data integrity)
+- **Status:** OPEN
+- **Problem:** 3 files named "test 10k.txt" exist in same project
+- **Evidence:** Screenshot shows 3 identical file names in file tree
+- **Fix Required:** Add unique constraint or validation on file upload
+- **File:** server/tools/ldm/routes/files.py upload endpoint
+
+### UI-078: Color Tags Not Rendering (Wrong Format)
+- **Reported:** 2025-12-28
+- **Severity:** MEDIUM (Feature incomplete)
+- **Status:** OPEN
+- **Problem:** test_10k.txt uses `{Color(#67d173)}` format, ColorText expects `<PAColor0xff...>`
+- **Evidence:** Screenshot shows raw tags instead of colored text
+- **Fix:** Either update ColorText to handle both formats, or use proper test data
 
 ---
 

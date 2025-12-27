@@ -320,7 +320,31 @@ LDM currently imports from legacy apps (violates Rule #0):
 ### Other Future Features
 - Character Limit Extract (from `characterlimit.py`)
 - Batch operations on multiple files
-- Advanced search/filter in TM
+
+---
+
+## Current Priorities (NEW)
+
+| Priority | Feature | WIP Doc | Status |
+|----------|---------|---------|--------|
+| **NOW** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | PLANNING |
+| **NOW** | Color Tag Display | [COLOR_TAG_DISPLAY.md](docs/wip/COLOR_TAG_DISPLAY.md) | TESTING |
+| **P6** | File Delete + Recycle Bin | TBD | BACKLOG |
+| **P7** | Font Settings UI | TBD | BACKLOG |
+
+### Advanced Search (NOW)
+Add search mode options: Contain, Exact, Not Contain, Fuzzy (Model2Vec semantic)
+- Search by: StringID, Source, Target (extensible for future metadata)
+
+### Color Tag Display (NOW)
+Display `<PAColor0xffe9bd23>text<PAOldColor>` with actual colors (hide tags)
+- Parser: `locaNext/src/lib/utils/colorParser.js`
+- Component: `locaNext/src/lib/components/ldm/ColorText.svelte`
+
+### File Delete + Recycle Bin (P6)
+- Right-click → Delete file
+- Deleted files go to "Bin" (soft delete)
+- Bin view to recover or permanently delete
 
 ---
 
