@@ -1,8 +1,25 @@
-# Node.js CDP Testing - LocaNext Windows App
+# Node.js CDP Testing - LocaNext
 
-**Pure Node.js testing via Chrome DevTools Protocol. No Playwright. No PowerShell.**
+**Testing via Chrome DevTools Protocol + Playwright headless browser automation.**
 
-**Updated:** 2025-12-25 | **Build:** 880 (Windows CI + Gitea Secrets)
+**Updated:** 2025-12-27 | **Philosophy:** ALWAYS CHOOSE HARD
+
+---
+
+## Testing Philosophy: ALWAYS CHOOSE HARD
+
+Between EASY/MEDIUM/HARD approaches, we ALWAYS choose HARD:
+
+| Approach | Result |
+|----------|--------|
+| **EASY** | Quick fix, breaks later, technical debt, embarrassing |
+| **HARD** | Proper fix, survives forever, professional, verified |
+
+**Example from 2025-12-27:**
+- EASY: `overflow: visible` → Broke virtual scroll (480,000px container!)
+- HARD: `overflow: hidden` + `min-height: 0` + flexbox → Perfect 847px container
+
+**Every fix MUST be verified with automated tests. No assumptions.**
 
 ---
 
@@ -23,7 +40,9 @@ node quick_check.js
 
 ---
 
-## How It Works
+## Two Testing Modes
+
+### Mode 1: CDP for Windows App (Production Testing)
 
 ```
 LocaNext.exe --remote-debugging-port=9222
@@ -35,7 +54,39 @@ LocaNext.exe --remote-debugging-port=9222
    WebSocket → Runtime.evaluate → DOM interaction
 ```
 
-All tests are **pure Node.js** using `ws` and `http` modules. No Playwright. No PowerShell wrappers.
+### Mode 2: Playwright Headless for Dev Server (Instant Testing)
+
+```
+npm run dev (localhost:5173)
+       ↓
+   Playwright (headless Chromium)
+       ↓
+   Page interactions + Screenshots + DOM queries
+       ↓
+   INSTANT verification with visual evidence
+```
+
+**Playwright Headless Benefits:**
+- Runs from WSL (no Windows dependency)
+- Takes screenshots at every step
+- Tests both API endpoints + UI components
+- Instant feedback during development
+- Automated visual regression testing
+
+**Example: verify_ui_fixes.js**
+```bash
+cd testing_toolkit/cdp
+node verify_ui_fixes.js
+```
+
+Output:
+```
+✓ UI-051 PASS: Modal close button works
+✓ UI-052 PASS: TM suggest endpoint works
+✓ UI-053 PASS: Scroll container 847px (was 480,000px!)
+✓ UI-074 PASS: Files endpoint returns array
+Screenshots: /tmp/verify_*.png
+```
 
 ---
 

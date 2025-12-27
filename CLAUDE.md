@@ -55,18 +55,23 @@ OFFLINE: SQLite (single-user, auto-fallback)
 ## Critical Rules
 
 1. **DOCS FIRST** - Before trying ANY approach, READ the relevant docs. Never guess or try random methods.
-2. **Monolith is Sacred** - Copy `RessourcesForCodingTheProject/` logic exactly
-3. **No Backend Mods** - Only wrapper layers (API, GUI)
-4. **Logger Only** - Never `print()`, always `logger`
-5. **Dual Push** - `git push origin main && git push gitea main`
-6. **WSL ↔ Windows** - CDP tests can run from WSL via `/mnt/c/Program\ Files/nodejs/node.exe`
-7. **Fix Everything** - No defer, no excuses, fix all issues
-8. **NEVER RESTART** - Restarting does NOT solve issues. ALWAYS follow this workflow:
+2. **ALWAYS CHOOSE HARD** - Between EASY/MEDIUM/HARD, ALWAYS choose HARD. No shortcuts. No workarounds. No quick fixes.
+   - EASY WAY = Technical debt, breaks later, embarrassing
+   - HARD WAY = Proper fix, survives forever, professional
+   - Example: `overflow: visible` (easy) broke 480,000px scroll → `overflow: hidden` + flexbox constraints (hard) = perfect
+3. **Monolith is Sacred** - Copy `RessourcesForCodingTheProject/` logic exactly
+4. **No Backend Mods** - Only wrapper layers (API, GUI)
+5. **Logger Only** - Never `print()`, always `logger`
+6. **Dual Push** - `git push origin main && git push gitea main`
+7. **WSL ↔ Windows** - CDP tests can run from WSL via `/mnt/c/Program\ Files/nodejs/node.exe`
+8. **Fix Everything** - No defer, no excuses, fix all issues
+9. **NEVER RESTART** - Restarting does NOT solve issues. ALWAYS follow this workflow:
    1. STOP everything
    2. CLEAN resources (kill zombie processes)
    3. INVESTIGATE root cause
    4. FIX the actual issue
    5. Only THEN start fresh
+10. **VERIFY WITH TESTS** - Never assume fixes work. Run headless Playwright tests. Take screenshots. Get HARD EVIDENCE.
 
 ---
 
