@@ -140,12 +140,57 @@ const GITEA_URL = 'http://172.28.150.120:3000';
 
 ---
 
+## TEST RESULTS (2025-12-27 Evening)
+
+### Issues Verified
+- **UI-060: Source Cell Opens Edit** → **NOT A BUG** - Source cell click correctly does NOT open modal. Double-click on TARGET opens edit (expected).
+- **UI-055: Modal DOM Bloat** → **FIXED** - Only 10 hidden modals (acceptable)
+- **Network errors** → 1 failed request (version.json) - minor
+- **Console errors** → 0 during normal operation
+
+### Remaining Real Issues
+- UI-062: version.json not found (minor)
+- UI-063: CSS text overflow (cosmetic)
+- UI-059/UI-064/UI-065: Selection/hover states (cosmetic polish)
+
+---
+
+## FEATURE IDEAS (User Request)
+
+### 1. Rich Code Tag Display
+**Problem:** Tags like `{AudioVoice(NPC_VCE_2645)}`, `{Color(#67d173)}`, `{ChangeScene(...)}` clutter the text.
+
+**Proposed Solution:**
+- **Color codes:** Render `{Color(#hex)}text` as actual colored text (hide the tag)
+- **Special codes:** Show compact badges/icons for `{AudioVoice}`, `{ChangeScene}`, `{Scale}`, etc.
+- Example: `{AudioVoice(NPC_81)}` → [🔊 NPC_81] badge
+
+### 2. Apply Colors from Source
+- User can select text in TARGET
+- Right-click → "Apply Color" → Shows colors available in SOURCE
+- Inserts appropriate `{Color(...)}` tag
+
+### 3. Font Settings
+**Already exists:** `locaNext/src/lib/stores/preferences.js`
+- `fontSize: 'small' | 'medium' | 'large'` ✅ EXISTS
+- `fontWeight: 'normal' | 'bold'` ✅ EXISTS
+
+**Could add:**
+- Font family selection (monospace, sans-serif, etc.)
+- Text color for source/target columns
+- Display Settings UI to expose these options
+
+**Priority:** Future enhancement after UIUX stable
+
+---
+
 ## WHAT NEXT SESSION MUST DO
 
 1. ~~**Trigger Build 403**~~ - DONE
 2. ~~**Install Build 403 on Playground**~~ - DONE, UIUX verified stable
 3. **Test Smart Update** - Trigger Build 404, see if delta download works
-4. **Continue with remaining issues** (15 open - see ISSUES_TO_FIX.md)
+4. **Update ISSUES_TO_FIX.md** - Mark UI-060 as NOT A BUG
+5. **Consider feature ideas** above for future roadmap
 
 ---
 

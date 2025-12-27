@@ -1,8 +1,8 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-27 13:00 | **Build:** 396+ | **Open:** 15
+**Last Updated:** 2025-12-27 19:30 | **Build:** 403 | **Open:** 14
 
-> **STATUS:** Build 396 verified working. UI-051, UI-052, UI-053, UI-054, UI-056 FIXED. UI-055 and UI-057 fixed in this session.
+> **STATUS:** Build 403 = UIUX STABLE. UI-060 verified NOT A BUG. Variable-height rows working.
 
 ---
 
@@ -10,9 +10,9 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED (This Session)** | 7 |
+| **FIXED (This Session)** | 8 |
 | **CRITICAL (Blocking)** | 0 |
-| **HIGH (Major UX)** | 6 |
+| **HIGH (Major UX)** | 5 |
 | **MEDIUM (UX Issues)** | 7 |
 | **LOW (Cosmetic)** | 4 |
 
@@ -77,13 +77,11 @@
 - **Problem:** Selected row state conflicts with hover state
 - **File:** VirtualGrid.svelte CSS line 1540-1542
 
-### UI-060: Click on Source Cell Opens Edit Modal
+### UI-060: Click on Source Cell Opens Edit Modal ✅ NOT A BUG
 - **Reported:** 2025-12-27
-- **Severity:** HIGH (Unexpected behavior)
-- **Status:** OPEN
-- **Problem:** Clicking source cell can trigger edit modal
-- **Expected:** Source cell should be read-only
-- **File:** VirtualGrid.svelte lines 947-959, 1157
+- **Status:** CLOSED - Working as designed
+- **Tested:** 2025-12-27 - Single/double click on source does NOT open modal
+- **Behavior:** Double-click on TARGET opens edit modal (correct)
 
 ### UI-061: Routing Error on Page Load
 - **Reported:** 2025-12-27
