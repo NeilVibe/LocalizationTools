@@ -75,3 +75,4 @@ Build 402: Variable-height rows + hover system overhaul
 Build 403: Auto-update default to Gitea
 Build 404
 Build 405: Fix first-run flag location (AppData survives updates)
+Build 406: Test auto-update flow
