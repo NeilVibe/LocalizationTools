@@ -1,8 +1,8 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-27 02:45 | **Build:** 395 (pending) | **Open:** 3
+**Last Updated:** 2025-12-27 12:15 | **Build:** 395 | **Open:** 26
 
-> **Note:** 3 file viewer issues found during iPad remote testing. Fixes pushed in Build 395.
+> **CRITICAL:** Full UI audit + console analysis revealed 26 issues. Build 395 fixes DID NOT WORK. Found EASY WORKAROUNDS that broke virtual scrolling. Missing API endpoint causing 5x 404 errors.
 
 ---
 
@@ -10,524 +10,437 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN (Pending Verification)** | 3 |
-| **FIXED (This Session)** | 4 |
+| **CRITICAL (Blocking)** | 5 |
+| **HIGH (Major UX)** | 10 |
+| **MEDIUM (UX Issues)** | 7 |
+| **LOW (Cosmetic)** | 4 |
 
 ---
 
-## OPEN - PENDING VERIFICATION (2025-12-27)
+## CRITICAL - BLOCKING ISSUES
 
-### UI-048: Hover Highlighting Ugly - FIX PUSHED
+### UI-051: Edit Modal Softlock - Cannot Close
 
-- **Reported:** 2025-12-27 (iPad testing)
-- **Severity:** MEDIUM (UX)
-- **Status:** FIX PUSHED (Build 395) | **PENDING VERIFICATION**
-- **Problem:** Row/cell hover had ugly box-shadow creating weird yellowish-green highlight
-- **Root Cause:** Double box-shadow effects on `.virtual-row:hover` and `.cell-hover` classes
-- **Fix:** Removed all `box-shadow` from hover states, kept only background color change
-- **File:** `VirtualGrid.svelte`
-- **Expected:** Clean, minimal, slick background color shift on hover
-
----
-
-### UI-049: Cell Height Too Small - FIX PUSHED
-
-- **Reported:** 2025-12-27 (iPad testing)
-- **Severity:** MEDIUM (UX)
-- **Status:** FIX PUSHED (Build 395) | **PENDING VERIFICATION**
-- **Problem:** Cells don't resize according to text content, multi-line content cut off
-- **Root Cause:** `MAX_ROW_HEIGHT = 120` (only ~3-4 lines), cells have `overflow: hidden`
-- **Fix:**
-  1. Increased `MAX_ROW_HEIGHT` from 120px to 200px (~8 lines)
-  2. Added `overflow-y: auto` to cells so content can scroll if exceeds max
-  3. Added `max-height: 200px` to cells
-- **File:** `VirtualGrid.svelte`
-- **Expected:** Cells show up to ~8 lines, scroll internally if more
+- **Reported:** 2025-12-27 (iPad + CDP audit)
+- **Severity:** CRITICAL (App unusable)
+- **Status:** OPEN
+- **Problem:** Clicking target cell opens edit modal, but:
+  1. X button doesn't close modal
+  2. ESC key doesn't close modal
+  3. Clicking overlay doesn't close modal
+  4. User is completely softlocked
+- **Evidence:** CDP screenshots show modal still open after X button click
+- **Root Cause Analysis:**
+  - Close button uses `onclick={closeEditModal}` (VirtualGrid.svelte:1279)
+  - Carbon Components require `on:click` syntax (Svelte 4 events)
+  - Same issue as BUG-037 (QA Panel X button)
+- **File:** `VirtualGrid.svelte` lines 1268-1279
+- **Fix Required:** Change `onclick` to `on:click` for close button and overlay
 
 ---
 
-### UI-050: Lazy Loading Broken (Scroll Shows Black) - FIX PUSHED
+### UI-052: TM Suggestions Infinite Loading
+
+- **Reported:** 2025-12-27 (iPad + CDP audit)
+- **Severity:** CRITICAL (Edit modal unusable)
+- **Status:** OPEN
+- **Problem:** TM MATCHES panel shows loading spinner forever, never loads suggestions
+- **Evidence:** CDP audit captured 6 loading spinners visible simultaneously
+- **Root Cause Analysis:**
+  - `fetchTMSuggestions()` may be failing silently
+  - Network request might be blocked or timing out
+  - API endpoint may not be responding
+- **File:** `VirtualGrid.svelte` lines 424-456
+- **Investigation Needed:** Check TM suggest API, network logs, error handling
+
+---
+
+### UI-053: Virtual Scrolling Completely Broken
+
+- **Reported:** 2025-12-27 (CDP audit)
+- **Severity:** CRITICAL (Performance, UX)
+- **Status:** OPEN
+- **Problem:** Scroll container expands to full content height instead of staying fixed
+- **Evidence:** CDP audit showed `clientHeight = scrollHeight = 480136px`
+  - This means container is 480,136px tall (matches content)
+  - `canScroll: false` - scrolling disabled
+  - Virtual scrolling is completely bypassed
+  - Only first ~30 rows load, nothing else loads on scroll
+- **ROOT CAUSE FOUND (EASY WORKAROUND DETECTED):**
+  ```css
+  /* LDM.svelte lines 802-803, 822-823 */
+  .ldm-app {
+    overflow: visible;  /* Changed from overflow: hidden to allow tooltips to escape */
+  }
+  .ldm-layout {
+    overflow: visible;  /* Changed from overflow: hidden to allow tooltips to escape */
+  }
+  ```
+  - Someone changed `overflow: hidden` → `overflow: visible` for tooltips
+  - This BROKE the height constraint chain
+  - Children can now expand beyond parent bounds
+  - Scroll container grows to content height = 480K px
+  - No scroll events fire → no lazy loading triggered
+- **Files:**
+  - `LDM.svelte` lines 802-803, 822-823 (overflow: visible)
+  - `VirtualGrid.svelte` lines 1506-1512 (scroll-container)
+- **Fix Required:**
+  1. Revert `overflow: visible` back to `overflow: hidden` in LDM.svelte
+  2. Fix tooltips using portals or fixed positioning instead
+  3. Add `height: 0` to `.scroll-container` for proper flex behavior
+  4. Test that lazy loading works after fix
+
+---
+
+### UI-054: Cells Not Expanding (Content Compressed)
 
 - **Reported:** 2025-12-27 (iPad testing)
-- **Severity:** HIGH (Functionality)
-- **Status:** FIX PUSHED (Build 395) | **PENDING VERIFICATION**
-- **Problem:** First rows load, but scrolling down shows empty black space - no more rows appear
+- **Severity:** CRITICAL (Content unreadable)
+- **Status:** OPEN
+- **Problem:** Cells show compressed text, not expanding to show content
+- **Expected:** Cells should expand up to 200px (~8 lines) per UI-049 fix
+- **Evidence:** User reports all cells compressed, Build 395 fix not working
+- **Root Cause Analysis:**
+  - `estimateRowHeight()` calculates height but virtual scroll uses MIN_ROW_HEIGHT (48px)
+  - `getRowTop()` uses constant MIN_ROW_HEIGHT for positioning
+  - Variable height and fixed positioning conflict
+- **File:** `VirtualGrid.svelte` lines 907-939
+- **Fix Required:** Either:
+  1. Use actual heights for positioning (complex, O(n) performance)
+  2. OR make all cells same height with internal scroll (simpler)
+
+---
+
+### UI-055: 171+ Hidden Modals in DOM (Memory Bloat)
+
+- **Reported:** 2025-12-27 (CDP audit)
+- **Severity:** CRITICAL (Performance, Memory)
+- **Status:** OPEN
+- **Problem:** 171 modal elements in DOM, most hidden
+- **Evidence:** CDP audit: `totalModals: 171`, `closeButtonCount: 47`
+- **Root Cause Analysis:**
+  - Carbon Components create modals that aren't destroyed
+  - Multiple modal instances accumulating
+  - Each modal has ~10 child elements = 1700+ unnecessary DOM nodes
+- **Impact:**
+  - Memory leak
+  - Slow DOM queries
+  - Event listener accumulation
+- **Fix Required:**
+  1. Use `{#if}` to conditionally render modals instead of CSS hiding
+  2. Ensure modals are destroyed when closed
+  3. Investigate Carbon Components modal lifecycle
+
+---
+
+## HIGH - MAJOR UX ISSUES
+
+### UI-056: Source Text Not Selectable
+
+- **Reported:** 2025-12-27 (iPad testing)
+- **Severity:** HIGH (UX inconsistency)
+- **Status:** OPEN
+- **Problem:** Source column text cannot be selected/highlighted by user
+- **Expected:** Same selection behavior as target column
+- **Root Cause:** Source cell lacks interactive states, no click handler
+- **File:** `VirtualGrid.svelte` lines 1182-1189
+- **Fix Required:** Add `user-select: text` to `.cell.source` CSS
+
+---
+
+### UI-057: Hover Highlight Split Colors (Two-Tone Bug)
+
+- **Reported:** 2025-12-27 (iPad testing)
+- **Severity:** HIGH (Visual confusion)
+- **Status:** OPEN
+- **Problem:** Hovering sometimes shows ONE color, sometimes shows split 2-color highlight
+- **Description:** Weird interaction where highlight becomes 2 colors at once
+- **Root Cause Analysis:**
+  - Multiple hover states overlapping:
+    - `.virtual-row:hover` (row background)
+    - `.cell-hover` (cell background)
+    - `.status-translated/:reviewed/:approved` (status colors)
+  - When row hover + cell hover + status color all active = 3 conflicting colors
+- **File:** `VirtualGrid.svelte` CSS lines 1536-1644
+- **Fix Required:**
+  1. Remove row-level hover, keep only cell-level
+  2. OR use single unified hover state
+  3. Ensure status colors don't conflict with hover states
+
+---
+
+### UI-058: Previous Fixes Not Applied (Build 395 Ineffective)
+
+- **Reported:** 2025-12-27 (verification)
+- **Severity:** HIGH (Process issue)
+- **Status:** OPEN
+- **Problem:** UI-048, UI-049, UI-050 fixes from Build 395 are NOT working:
+  - UI-048: Hover still ugly (split colors)
+  - UI-049: Cells still not expanding
+  - UI-050: Lazy loading still broken
+- **Possible Causes:**
+  1. Build didn't complete successfully
+  2. Playground not updated with new build
+  3. Code changes not deployed correctly
+  4. CSS specificity issues overriding fixes
+- **Investigation:** Verify Build 395 artifacts, check deployed code
+
+---
+
+### UI-059: Row Selection State Inconsistent
+
+- **Reported:** 2025-12-27 (CDP audit)
+- **Severity:** HIGH (UX)
+- **Status:** OPEN
+- **Problem:** Selected row state conflicts with hover state
+- **Evidence:** CDP audit shows `selectedRowId` changes on click but visual feedback inconsistent
+- **Root Cause:** `.virtual-row.selected` CSS competing with cell-level states
+- **File:** `VirtualGrid.svelte` CSS line 1540-1542
+
+---
+
+### UI-060: Click on Source Cell Opens Edit Modal
+
+- **Reported:** 2025-12-27 (CDP audit)
+- **Severity:** HIGH (Unexpected behavior)
+- **Status:** OPEN
+- **Problem:** Clicking source cell triggers row selection and can open edit modal
+- **Expected:** Source cell should be read-only, only target editable
+- **Root Cause:** `handleCellClick()` handles all cells, `ondblclick` on row not cell
+- **File:** `VirtualGrid.svelte` lines 947-959, 1157
+
+---
+
+### UI-061: Routing Error on Page Load
+
+- **Reported:** 2025-12-27 (CDP audit)
+- **Severity:** HIGH (Error)
+- **Status:** OPEN
+- **Problem:** Console error: `Error: Not found: /C:/NEIL_PROJECTS.../index.html`
+- **Evidence:** CDP captured error from `app.BX2D2d46.js:2`
+- **Root Cause:** SvelteKit router trying to resolve file path as route
+- **Impact:** May cause navigation issues
+
+---
+
+### UI-062: Failed Network Request (version.json)
+
+- **Reported:** 2025-12-27 (CDP audit)
+- **Severity:** HIGH (Missing resource)
+- **Status:** OPEN
+- **Problem:** `net::ERR_FILE_NOT_FOUND` for `file:///C:/_app/version.json`
+- **Root Cause:** App looking for version.json in wrong path
+- **Impact:** May affect version checking, auto-update
+
+---
+
+### UI-074: Missing API Endpoint /api/ldm/files (5x 404 Errors)
+
+- **Reported:** 2025-12-27 (Console logs)
+- **Severity:** HIGH (API error)
+- **Status:** OPEN
+- **Problem:** Frontend calls `/api/ldm/files?limit=100` which doesn't exist
+- **Evidence:** Console shows `localhost:8888/api/ldm/files?limit=100 - 404 (Not Found)` x5
 - **Root Cause:**
-  1. No ResizeObserver - container height changes not detected
-  2. Svelte 5 `bind:this` timing issue - `onMount` runs before element available
-  3. Scroll listener not properly attached
-- **Fix:**
-  1. Added ResizeObserver to recalculate visible range when container size changes
-  2. Changed from `onMount` to `$effect` for scroll listener setup (more reliable with Svelte 5)
-  3. Added `min-height: 200px` to scroll-container
-- **File:** `VirtualGrid.svelte`
-- **Expected:** Rows load when scrolling, no empty black space
+  - `ReferenceSettingsModal.svelte:46` calls `/api/ldm/files?limit=100`
+  - Backend only has `/projects/{project_id}/files` (needs project ID)
+  - NO `/api/ldm/files` endpoint exists!
+- **Files:**
+  - `ReferenceSettingsModal.svelte` line 46 (frontend call)
+  - `server/tools/ldm/routes/files.py` (missing endpoint)
+- **Fix Required:**
+  1. Either create `/api/ldm/files` endpoint to list all files
+  2. OR change ReferenceSettingsModal to use project-scoped endpoint
+  3. Consider which approach fits the UX better
 
 ---
 
-## FIXED THIS SESSION (2025-12-26)
+### UI-075: Console Error Objects Being Logged
 
-### PERF-003: Lazy Loading + Scroll Lag - FIXED + VERIFIED
-
-- **Reported:** 2025-12-25
-- **Severity:** HIGH (10K file loading all rows, constant lag on scroll)
-- **Status:** FIXED (2025-12-26) | **VERIFIED:** Build 897 (CDP test_perf003.js)
-- **Root Cause:**
-  - Container height miscalculation → huge visible range
-  - No scroll throttling → API call on every scroll pixel
-  - `ensureRowsLoaded()` loaded ALL 100 pages repeatedly
-- **Fixes Applied:**
-  1. `MAX_PAGES_TO_LOAD = 3` - Never load more than 3 pages at once
-  2. Container height cap at 1200px - Prevents huge visible range
-  3. **API throttling (100ms)** - Max 10 API batches per second during scroll
-  4. Reduced reference file loading from 50K to 10K rows
-- **Verification:**
-  - Test: `test_perf003.js` - Opens 10K row file, counts rendered DOM rows
-  - Result: ✅ PASS - Rendered 35 rows (0.4%) instead of 10,000
-- **Result:**
-  - Initial load: 300 rows max (3 pages)
-  - Fast scroll: Shows placeholders, loads when stopped
-  - No more constant API flooding
+- **Reported:** 2025-12-27 (Console logs)
+- **Severity:** HIGH (Hidden errors)
+- **Status:** OPEN
+- **Problem:** Console shows `[ERROR] Console Error Object` multiple times
+- **Evidence:** Errors logged from `By0xOlty.js:8` (minified logger)
+- **Root Cause:** Application is catching and logging error objects but not showing details
+- **File:** Logger implementation in built app
+- **Investigation:** Need to find what's being caught and logged as `[ERROR] Console Error Object`
 
 ---
 
-### BUG-036: Duplicate Project/File Names Allowed - FIXED + VERIFIED
+---
 
-- **Reported:** 2025-12-25
-- **Severity:** HIGH (Data Integrity)
-- **Status:** FIXED (2025-12-26) | **VERIFIED:** Build 897 (test_bug036.js)
-- **Fixes Applied:**
-  1. ✅ Added `UniqueConstraint("name", "owner_id")` to LDMProject (models.py:563)
-  2. ✅ Added `UniqueConstraint("name", "project_id", "parent_id")` to LDMFolder (models.py:591)
-  3. ✅ Added `UniqueConstraint("name", "project_id", "folder_id")` to LDMFile (models.py:635)
-  4. ✅ Applied constraints to PostgreSQL database manually (SQLAlchemy create_all doesn't alter existing tables)
-  5. ✅ Cleaned up existing duplicates in database
-- **Verification:**
-  - Test: `test_bug036.js` - Attempts to create duplicate project
-  - Result: ✅ PASS - Returns 500 (IntegrityError raised)
-  - DB query confirms no duplicates can be inserted
-- **Remaining:** API returns 500 instead of user-friendly 409 Conflict (cosmetic improvement)
+## MEDIUM - UX ISSUES
+
+### UI-063: CSS Text Overflow Issues (20+ Elements)
+
+- **Reported:** 2025-12-27 (CDP audit)
+- **Severity:** MEDIUM (Visual)
+- **Status:** OPEN
+- **Problem:** 20+ elements have text overflow without ellipsis
+- **Evidence:** CDP audit detected:
+  - `bx--toggle-input__label`
+  - `file-explorer`
+  - `ldm-toolbar`
+  - Multiple tooltip triggers
+- **Fix Required:** Add `text-overflow: ellipsis` to affected elements
 
 ---
 
-### BUG-037: QA Panel Issues - FIXED + VERIFIED
+### UI-064: Target Cell Status Colors Conflict with Hover
 
-- **Reported:** 2025-12-25
-- **Severity:** MEDIUM-HIGH
-- **Status:** FIXED (2025-12-26) | **VERIFIED:** Build 897 (CDP test_bug037.js)
-- **Root Cause:** Carbon Components Svelte still requires Svelte 4 event binding syntax
-- **Fixes Applied:**
-  1. ✅ Fixed X button: Changed `onclick` to `on:click` (Carbon requires Svelte 4 syntax)
-  2. ✅ Fixed Run Full QA button: Changed `onclick` to `on:click`
-  3. ✅ Added double-click handler on QA issues to open edit modal
-  4. ✅ Added `openEditModalByRowId()` export to VirtualGrid
-  5. ✅ Added `handleOpenEditModal()` handler in LDM.svelte
-  6. ✅ Added tooltip "Click to jump, double-click to edit"
-- **Verification:**
-  - Test: `test_bug037.js` - Opens panel, clicks X, verifies panel closes
-  - Result: ✅ PASS (Build 897)
-- **Files Modified:**
-  - `QAMenuPanel.svelte` - Fixed button syntax, added dblclick handler
-  - `VirtualGrid.svelte` - Added openEditModalByRowId export
-  - `LDM.svelte` - Added handleOpenEditModal handler
+- **Reported:** 2025-12-27 (code analysis)
+- **Severity:** MEDIUM (Visual)
+- **Status:** OPEN
+- **Problem:** Status colors (translated/reviewed/approved) conflict with hover
+- **Evidence:** CSS shows separate hover overrides per status type
+- **File:** `VirtualGrid.svelte` lines 1639-1643
 
 ---
 
-## CLOSED - CANNOT REPRODUCE
+### UI-065: Edit Icon Visibility Inconsistent
 
-### BUG-035: QA Frontend Error - CANNOT REPRODUCE
-
-- **Reported:** 2025-12-25
-- **Severity:** LOW (Cannot reproduce)
-- **Status:** CLOSED (2025-12-26)
-- **Investigation:**
-  - CDP comprehensive QA test: PASSED
-  - Code review: All `row.id` accesses have safeguards
-  - VirtualGrid.svelte line 1099: `row.id ? isRowLocked(...) : null`
-  - VirtualGrid.svelte line 599: `if (!row.id) return null;`
-- **Conclusion:** Issue was likely transient, possibly caused by stale state. Monitor for recurrence.
-
-### This Session: Performance + CI Fixes (Build 888-889) ✅
-
-- **PERF-002** - Placeholder row animation causing jank (Build 889)
-  - Root cause: InlineLoading component in each placeholder row = 30+ animated spinners
-  - Fix: Static CSS placeholder (no animation)
-  - Status: Committed, CI pending
-
-- **CI-007** - NSIS /S flag broken in Session 0 (Build 888) ✅
-  - Root cause: Silent install exits immediately with 0 files extracted
-  - Fix: Two-step 7-Zip extraction (NSIS wrapper → app-64.7z → app files)
-  - **VERIFIED:** Build 888 passed, release v25.1225.2048 created
-
-### Previous Session: Test Suite Cleanup + Verification
-- **SEC-002** - Removed hardcoded credentials from `tests/` subfolder
-- **CLEANUP-001** - Archived 5 duplicate CDP test files
-- **CLEANUP-002** - Consolidated 29 → 24 unique tests (removed 40% duplication)
-- **TEST-001** - Added `run_all_tests.js` master test runner
-- **TEST-002** - Added `test_file_download.js` (was missing)
-- **TEST-003** - Added `ldm-comprehensive.spec.ts` Playwright suite
-- **DOC-001** - Updated CDP README with organized categories
-- **DOC-002** - Updated CLAUDE.md glossary with PG, PW terms
-- **VERIFY-001** - Ran Playwright tests: **9/9 PASSED**
-- **VERIFY-002** - Ran CDP tests: **17/28 PASSED** (6 test issues, 5 archived)
-- **VERIFY-003** - BUG-035 NOT REPRODUCED during comprehensive testing
-- **PERF-001** - **FIXED + CI VERIFIED (Build 881):** VirtualGrid O(n²) bug causing 10K row freeze
-  - `getRowTop()` was O(n), called per visible row = O(n²) total
-  - `calculateVisibleRange()` was O(n)
-  - `getTotalHeight()` was O(n)
-  - **All now O(1)** using constant MIN_ROW_HEIGHT (48px)
-  - CI: 303 tests passed (131 fixtures + 86 security + 74 integration + 12 windows)
-
-### Previous Session: CI Fixes + Schema Upgrade + Security Audit
-- **CI-001** - Schema upgrade mechanism (auto-add missing columns)
-- **CI-002** - Removed stringid test skip markers
-- **CI-003** - Fixed flaky timeout test (mocked socket)
-- **CI-004** - Fixed datetime race condition
-- **CI-005** - Fixed MODEL_NAME import error
-- **CI-006** - Fixed missing columns in ldm_tm_entries (updated_at, updated_by, etc.)
-- **SEC-001** - Security audit: Updated 5 packages with CVE fixes
+- **Reported:** 2025-12-27 (code analysis)
+- **Severity:** MEDIUM (UX)
+- **Status:** OPEN
+- **Problem:** Edit icon only visible on hover, not on selected cell
+- **File:** `VirtualGrid.svelte` lines 1645-1660
 
 ---
 
-## SECURITY AUDIT (2025-12-22)
+### UI-066: Placeholder Rows Have Wrong Column Count
 
-### npm audit: 3 low severity
-- `cookie` package vulnerability (affects @sveltejs/kit)
-- **Fix:** `npm audit fix --force` (breaks @sveltejs/kit, defer)
-
-### pip audit: 28 vulnerabilities in 13 packages
-
-| Package | Old | New | CVE |
-|---------|-----|-----|-----|
-| requests | 2.32.3 | >=2.32.4 | CVE-2024-47081 |
-| python-multipart | 0.0.9 | >=0.0.18 | CVE-2024-53981 |
-| python-socketio | 5.11.0 | >=5.14.0 | CVE-2025-61765 |
-| python-jose | 3.3.0 | >=3.4.0 | PYSEC-2024-232/233 |
-| setuptools | 74.0.0 | >=78.1.1 | PYSEC-2025-49 |
-
-**Deferred (may break compatibility):**
-- torch 2.3.1 (multiple CVEs, GPU support fragile)
-- starlette 0.38.6 (pinned by FastAPI)
-- urllib3 1.26.5 (system package)
-- twisted 22.1.0 (system package)
-
-### Node.js Version Warning
-- Current: v20.18.3
-- Required: ^20.19 || ^22.12 (by vite, svelte plugins)
-- **Status:** Warnings only, not blocking
+- **Reported:** 2025-12-27 (code analysis)
+- **Severity:** MEDIUM (Visual)
+- **Status:** OPEN
+- **Problem:** Placeholder rows show single shimmer instead of matching column layout
+- **File:** `VirtualGrid.svelte` lines 1161-1165
 
 ---
 
-## CI DEBUGGING TOOLKIT
+### UI-067: Filter Dropdown Styling Inconsistent
 
-### When 500 Errors Occur in CI
-
-1. **Check test output** - Now includes full traceback (Build 327)
-2. **Look for `SCHEMA UPGRADE:` logs** - Shows if columns are being added
-3. **Check `MODELS_AVAILABLE`** - faiss import status
-
-### Key Debug Logging Locations
-
-| Component | File | What to Look For |
-|-----------|------|------------------|
-| Schema upgrade | `db_setup.py:185-253` | `SCHEMA UPGRADE:` messages |
-| Sync errors | `api.py:2300-2309` | Full traceback in 500 response |
-| Model loading | `embedding_engine.py:121-128` | `Loading Model2Vec engine` |
-| TM indexing | `tm_indexer.py` | `MODELS_AVAILABLE: True/False` |
-
-### Local Debug Commands
-
-```bash
-# Test model loading
-python3 -c "from server.tools.shared import get_embedding_engine; e=get_embedding_engine('model2vec'); e.load(); print(e.dimension)"
-
-# Test schema upgrade
-python3 -c "from server.database.db_setup import setup_database; setup_database()"
-
-# Security audits
-pip-audit          # Python vulnerabilities
-cd locaNext && npm audit  # npm vulnerabilities
-```
+- **Reported:** 2025-12-27 (CDP audit)
+- **Severity:** MEDIUM (Visual)
+- **Status:** OPEN
+- **Problem:** Filter dropdown height doesn't match search input
+- **File:** `VirtualGrid.svelte` CSS lines 1443-1448
 
 ---
 
-## FIXED - BUILD 322 (PENDING VERIFICATION)
+### UI-068: Resize Handle Not Visible Until Hover
 
-### CI-001: Schema Upgrade Mechanism (REAL FIX)
-
-- **Problem:** CI database missing `mode` column in `ldm_translation_memories` table
-- **Root Cause:** SQLAlchemy's `create_all()` doesn't ALTER existing tables to add new columns
-- **Fix:** Added `upgrade_schema()` function to `db_setup.py` that auto-adds missing columns
-- **File:** `server/database/db_setup.py:169-219`
-- **Status:** FIXED (proper solution, no workarounds)
-
-### CI-002: Removed StringID Test Skip Markers
-
-- **Problem:** StringID tests were skipped due to missing `mode` column
-- **Fix:** Removed skip markers now that schema upgrade handles the column
-- **File:** `tests/fixtures/stringid/test_e2e_1_tm_upload.py`
-- **Status:** FIXED
-
-### CI-003: Fixed Flaky Timeout Test
-
-- **Problem:** `test_timeout_is_respected` took 8.8s instead of 3s (flaky)
-- **Root Cause:** Real network call to TEST-NET-1 (192.0.2.1)
-- **Fix:** Mocked socket to return ETIMEDOUT instantly
-- **File:** `tests/integration/test_database_connectivity.py`
-- **Status:** FIXED
-
-### CI-004: Fixed Datetime Race Condition
-
-- **Problem:** `test_async_session_update` failed due to timing issue
-- **Root Cause:** `last_activity >= original_activity` failed when times equal
-- **Fix:** Removed flaky comparison, just verify activity is not None
-- **File:** `tests/integration/server_tests/test_async_sessions.py`
-- **Status:** FIXED
-
-### CI-005: Fixed MODEL_NAME Import Error
-
-- **Problem:** `ImportError: cannot import name 'MODEL_NAME' from 'tm_indexer'`
-- **Root Cause:** Constants moved to FAISSManager and Model2VecEngine
-- **Fix:** Updated imports to use new locations
-- **File:** `tests/fixtures/pretranslation/test_e2e_tm_faiss_real.py`
-- **Status:** FIXED
+- **Reported:** 2025-12-27 (code analysis)
+- **Severity:** MEDIUM (Discoverability)
+- **Status:** OPEN
+- **Problem:** Column resize handle invisible until mouse hovers over exact position
+- **File:** `VirtualGrid.svelte` CSS lines 1489-1504
 
 ---
 
-## DONE - FEAT-001 COMPLETE
+### UI-069: QA Icon Position Conflicts with Edit Icon
 
-### FEAT-001: Auto-Add to TM on Cell Confirm (COMPLETE!)
-
-**Problem:** When user confirms a cell (Ctrl+S → status='reviewed'), it should auto-add to linked TM.
-
-**Solution:** FULLY IMPLEMENTED - Backend + Frontend
-
-| Phase | Task | Status |
-|-------|------|--------|
-| 1 | Backend: Add `link_tm_to_project` API | ✅ DONE |
-| 1 | Backend: Add `unlink_tm_from_project` API | ✅ DONE |
-| 1 | Backend: Add `get_linked_tms` API | ✅ DONE |
-| 2 | Backend: Add `_get_project_linked_tm` helper | ✅ DONE |
-| 2 | Backend: Update `update_row` with auto-add | ✅ DONE |
-| 3 | Frontend: TM link UI in FileExplorer | ✅ DONE |
-| 4 | Tests: Unit + Integration + E2E | TODO (low priority) |
-
-**Files Modified:**
-- `server/tools/ldm/api.py` - 3 endpoints, helper, update_row auto-add
-- `locaNext/src/lib/components/ldm/FileExplorer.svelte` - TM link UI
-
-**Status:** COMPLETE - Tests remaining (low priority)
-
-**E2E Test Result:**
-```
-Confirm row 804 → TM entry count: 10 → 11 ✅
-Server log: "FEAT-001: Auto-added to TM 1: row_id=804"
-```
+- **Reported:** 2025-12-27 (code analysis)
+- **Severity:** MEDIUM (Visual)
+- **Status:** OPEN
+- **Problem:** QA warning icon at `right: 1.5rem`, edit icon at `right: 0.25rem` - can overlap
+- **File:** `VirtualGrid.svelte` CSS lines 1668-1672, 1645-1660
 
 ---
 
-## VERIFIED - BUILD 314
+---
 
-### UI-047: TM Sidebar Shows "Pending" When Status is "Ready" (VERIFIED)
+## LOW - COSMETIC ISSUES
 
-- **Problem:** TM list in sidebar always showed "Pending" tag even when TM was fully synced
-- **Root Cause:** `FileExplorer.svelte` checked `tm.is_indexed` instead of `tm.status === 'ready'`
-- **Investigation:**
-  - Database query: ALL TMs have `status = "ready"` ✓
-  - Server log: Shows `status=ready` after sync ✓
-  - API response: Returns `"status": "ready"` ✓
-  - Frontend bug: Wrong field being checked
-- **Fix:** Changed condition from `tm.is_indexed` to `tm.status === 'ready'`
-- **File:** `FileExplorer.svelte` (lines 755-759)
-- **Screenshot:** `ui047_02_tm_status_tags.png` - All TMs show green "Ready" tags
-- **Verification:** CDP test `test_ui047_tm_status.js` - PASS (5 Ready, 0 Pending)
-- **Status:** VERIFIED
+### UI-070: Empty Divs in DOM (9 Found)
+
+- **Reported:** 2025-12-27 (CDP audit)
+- **Severity:** LOW (Cleanup)
+- **Status:** OPEN
+- **Problem:** 9 empty div elements in DOM
+- **Impact:** Minor DOM bloat
 
 ---
 
-## VERIFIED - BUILD 312
+### UI-071: Reference Column "No match" Styling
 
-### UI-045: PresenceBar Tooltip Shows Username (VERIFIED)
-
-- **Problem:** Hovering over "X viewing" showed "?" instead of the current user's name
-- **Fix:** Added `isValidUsername()` function to filter out invalid names ("?", "Unknown", "LOCAL"), robust fallback chain
-- **File:** `PresenceBar.svelte`
-- **Verification:** CDP query confirmed `title="neil"` - tooltip shows username
-- **Screenshot:** build312_VERIFIED.png (2025-12-21 08:40)
-- **Status:** VERIFIED
+- **Reported:** 2025-12-27 (code analysis)
+- **Severity:** LOW (Visual)
+- **Status:** OPEN
+- **Problem:** "No match" text in reference column could be clearer
+- **File:** `VirtualGrid.svelte` lines 1698-1701
 
 ---
 
-## MINOR - FUTURE (Low Priority)
+### UI-072: TM Empty Message Styling
 
-### UI-046: PresenceBar Cursor Shows "?" Instead of Normal Pointer
-
-- **Problem:** When hovering over "1 viewing", the cursor shows a "?" (help cursor) instead of normal pointer
-- **Root Cause:** CSS `cursor: help` style on `.presence-indicator`
-- **Fix:** Change to `cursor: default` or `cursor: pointer`
-- **File:** `PresenceBar.svelte` (CSS)
-- **Priority:** Very Low - cosmetic only, tooltip works correctly
-- **Status:** NOTED (not urgent)
+- **Reported:** 2025-12-27 (code analysis)
+- **Severity:** LOW (Visual)
+- **Status:** OPEN
+- **Problem:** "No similar translations found" message styling could be improved
+- **File:** `VirtualGrid.svelte` lines 2040-2046
 
 ---
 
-## FIXED - BUILD 311 (VERIFIED)
+### UI-073: Shortcut Bar Takes Vertical Space
 
-### UI-044: Resizable Columns + Clear Separator
-
-- **Problem:** Source/Target columns had no clear visual separation; couldn't resize columns like Excel
-- **Fix:**
-  - Added 2px visible border between source and target columns (`--cds-border-strong-01`)
-  - Added draggable resize handle to adjust column widths (20%-80% range)
-  - Header and cells use matching percentage-based widths via Svelte 5 `$state()`
-  - Auto-adaptive layout using reactive percentage widths
-- **Files:** `VirtualGrid.svelte`
-- **Svelte 5 Features:**
-  - `$state()` for sourceWidthPercent, isResizing state
-  - Inline style bindings for reactive column widths
-  - Mouse event handlers for drag-to-resize
-- **Screenshot Verified:** 2025-12-21 00:45 (build311_coord.png)
-- **Status:** VERIFIED
+- **Reported:** 2025-12-27 (code analysis)
+- **Severity:** LOW (Space efficiency)
+- **Status:** OPEN
+- **Problem:** Shortcut hints bar in edit modal could be more compact
+- **File:** `VirtualGrid.svelte` lines 1271-1280
 
 ---
 
-## FIXED - BUILD 310 (VERIFIED)
+---
 
-### UI-042: Simplified PresenceBar (Remove Avatars)
+## INVESTIGATION NEEDED
 
-- **Problem:** Avatar icons (colored circles with initials) cluttering presence indicator
-- **Fix:** Removed avatars, kept only "X viewing" text with hover tooltip showing viewer names
-- **File:** `PresenceBar.svelte`
-- **Status:** VERIFIED
+### INV-001: Why Build 395 Fixes Don't Work
+
+- **Question:** Did Build 395 deploy correctly?
+- **Check:**
+  1. Verify Gitea shows build 395 as SUCCESS
+  2. Check Playground version matches build
+  3. Inspect deployed VirtualGrid.svelte for fix code
+  4. Check if CSS changes are present in built artifacts
+
+### INV-002: TM Suggest API Performance
+
+- **Question:** Why is TM loading infinitely?
+- **Check:**
+  1. Test `/api/ldm/tm/suggest` endpoint directly
+  2. Check 2VEC model status
+  3. Check FAISS index status
+  4. Network timing analysis
 
 ---
 
-### UI-043: Fix Empty 3rd Column + Tooltip
+## FIX PRIORITY ORDER
 
-- **Problem:** Empty dark space showing as 3rd column; hover tooltip showing "?"
-- **Fix:**
-  - Made Source/Target columns flex to fill available width
-  - Fixed tooltip to show current user when viewer list not available
-- **Files:** `VirtualGrid.svelte`, `PresenceBar.svelte`
-- **Status:** VERIFIED
-
----
-
-## FIXED - BUILD 308
-
-### UI-035: Removed Pagination from TMDataGrid
-
-- **Problem:** "Items per page 100" dropdown and "1 of 1" pagination
-- **Fix:** Replaced with infinite scroll (like TMViewer)
-- **File:** `TMDataGrid.svelte`
-- **Status:** FIXED
+1. **UI-051** - Modal softlock (CRITICAL - users stuck)
+2. **UI-053** - Virtual scroll broken (CRITICAL - affects all users)
+3. **UI-054** - Cells not expanding (CRITICAL - content unreadable)
+4. **UI-052** - TM infinite loading (CRITICAL - edit unusable)
+5. **UI-055** - DOM bloat 171 modals (CRITICAL - performance)
+6. **UI-057** - Split color hover (HIGH - confusing)
+7. **UI-056** - Source not selectable (HIGH - UX)
+8. **UI-058** - Verify Build 395 (HIGH - process)
 
 ---
 
-### UI-036: Removed Confirm Button from TMDataGrid
+## FIXED PREVIOUSLY (Reference)
 
-- **Problem:** Confirm/Unconfirm button on each TM entry row
-- **Fix:** Removed button and toggleConfirm function
-- **File:** `TMDataGrid.svelte`
-- **Status:** FIXED
+<details>
+<summary>Previous Session Fixes (2025-12-26)</summary>
 
----
+- PERF-003: Lazy Loading + Scroll Lag - FIXED + VERIFIED
+- BUG-036: Duplicate Names - FIXED + VERIFIED
+- BUG-037: QA Panel X Button - FIXED + VERIFIED
+- PERF-001: O(n^2) VirtualGrid bug - FIXED + VERIFIED
 
-### UI-037: Removed "No email" Text
-
-- **Problem:** User menu showed "No email" when user had no email set
-- **Fix:** Only show email line if email exists
-- **File:** `+layout.svelte`
-- **Status:** FIXED
+</details>
 
 ---
 
-### UI-038: Added User Profile Modal
-
-- **Problem:** Clicking username should open profile modal with user details
-- **Fix:** Created UserProfileModal.svelte, shows name/team/department/language/role
-- **Files:** `UserProfileModal.svelte`, `+layout.svelte`
-- **Status:** FIXED
-
----
-
-### UI-039: Fixed Third Column Logic
-
-- **Problem:** Extra columns showing when they shouldn't
-- **Fix:** Removed TM Results column - only StringID (left) and Reference (right) available as third column options
-- **File:** `VirtualGrid.svelte`
-- **Default:** File viewer shows 2 columns only (Source, Target)
-- **Status:** FIXED
-
----
-
-### UI-040: Fixed PresenceBar Tooltip Trigger
-
-- **Problem:** Empty "i" button/trigger next to viewer avatars
-- **Fix:** Removed `triggerText=""` from Tooltip, use native title attribute instead
-- **File:** `PresenceBar.svelte`
-- **Status:** FIXED
-
----
-
-### UI-041: Removed VirtualGrid Footer
-
-- **Problem:** "Showing rows X-Y of Z" footer in file viewer
-- **Fix:** Removed grid-footer div and CSS
-- **File:** `VirtualGrid.svelte`
-- **Status:** FIXED
-
----
-
-### BUG-032: Fixed Auto-Sync
-
-- **Problem:** Auto-sync after TM entry edit wasn't updating TM status
-- **Fix:** Added `tm.status = "ready"` after successful sync
-- **File:** `api.py` (_auto_sync_tm_indexes function)
-- **Status:** FIXED
-
----
-
-### BUG-033: Fixed Manual Sync
-
-- **Problem:** Manual sync wasn't updating TM status to "ready"
-- **Fix:** Added status update after sync_tm_indexes completes
-- **File:** `api.py` (sync_tm_indexes endpoint)
-- **Status:** FIXED
-
----
-
-### BUG-034: Fixed Pending Status
-
-- **Problem:** TMs stayed "pending" even after indexes were built/synced
-- **Root Cause:** Status wasn't being updated after sync operations
-- **Fix:** Both auto-sync and manual sync now update status to "ready"
-- **File:** `api.py`
-- **Status:** FIXED
-
----
-
-## Column Configuration Summary
-
-| Viewer | Default Columns | Optional Columns |
-|--------|-----------------|------------------|
-| **File Viewer** | Source, Target | StringID (left), Reference (right) |
-| **TM Viewer** | Source, Target, Metadata | - |
-| **TM Grid** | Source, Target, Actions | - |
-
----
-
-## History
-
-### Previous Builds (Verified)
-
-| ID | Description | Build |
-|----|-------------|-------|
-| UI-025-028 | TMViewer infinite scroll, no pagination | 301-304 |
-| BUG-028-031 | Model2Vec, upload, WebSocket, TM upload | 301-307 |
-| UI-031-034 | Font size, bold, tooltips | 304-305 |
-| FONT-001 | Multilingual font support | 304 |
-
----
-
-*Updated 2025-12-26 | 0 OPEN issues | All fixed this session*
+*Updated 2025-12-27 11:30 | CDP Audit Complete | 24 OPEN Issues*

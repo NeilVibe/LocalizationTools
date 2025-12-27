@@ -55,8 +55,10 @@ router.include_router(projects_router)
 router.include_router(folders_router)
 router.include_router(files_router)
 router.include_router(rows_router)
-router.include_router(tm_crud_router)
-router.include_router(tm_search_router)
+# UI-052 FIX: tm_search_router MUST come before tm_crud_router
+# because /tm/suggest must be matched before /tm/{tm_id}
+router.include_router(tm_search_router)  # Has /tm/suggest - specific route first
+router.include_router(tm_crud_router)    # Has /tm/{tm_id} - generic route after
 router.include_router(tm_entries_router)
 router.include_router(tm_indexes_router)
 router.include_router(tm_linking_router)

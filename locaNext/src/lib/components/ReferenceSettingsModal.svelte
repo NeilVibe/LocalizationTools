@@ -48,7 +48,8 @@
       });
       if (response.ok) {
         const data = await response.json();
-        availableFiles = data.files || [];
+        // UI-074 FIX: API returns array directly, not {files: [...]}
+        availableFiles = Array.isArray(data) ? data : (data.files || []);
       }
     } catch (err) {
       console.error('Failed to load files:', err);

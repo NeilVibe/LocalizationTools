@@ -53,6 +53,41 @@ async def list_files(
     return files
 
 
+@router.get("/files", response_model=List[FileResponse])
+async def list_all_files(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    UI-074 FIX: List all files across all projects owned by the current user.
+    Used by ReferenceSettingsModal to show available reference files.
+    """
+    # Get all projects owned by user
+    projects_result = await db.execute(
+        select(LDMProject.id).where(LDMProject.owner_id == current_user["user_id"])
+    )
+    project_ids = [p for p in projects_result.scalars().all()]
+
+    if not project_ids:
+        return []
+
+    # Get files from all user's projects
+    query = (
+        select(LDMFile)
+        .where(LDMFile.project_id.in_(project_ids))
+        .order_by(LDMFile.updated_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+
+    result = await db.execute(query)
+    files = result.scalars().all()
+
+    return files
+
+
 @router.get("/files/{file_id}", response_model=FileResponse)
 async def get_file(
     file_id: int,
