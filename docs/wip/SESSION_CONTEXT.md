@@ -1,8 +1,8 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-27 14:00 | **Build:** 397 (in progress) | **CI:** Online | **Issues:** 15 OPEN
+**Last Updated:** 2025-12-27 15:10 | **Build:** 398 (in progress) | **CI:** Online | **Issues:** 15 OPEN
 
-> **SESSION STATUS:** Build 397 triggered with UI-055 (modal bloat) and UI-057 (hover colors) fixes. Waiting for build completion before install and verify.
+> **SESSION STATUS:** Build 398 triggered with UI-057 hover fix (correct CSS variable). Created documentation overhaul: CONFUSION_HISTORY.md, SMART_UPDATE_PROTOCOL.md.
 
 ---
 
@@ -11,71 +11,63 @@
 | Item | Status |
 |------|--------|
 | **Open Issues** | 15 (6 HIGH, 7 MEDIUM, 4 LOW) |
-| **Build 396** | SUCCESS - verified working |
-| **Build 397** | IN PROGRESS (UI-055 + UI-057 fixes) |
-| **FIXED This Session** | UI-055 (modal bloat), UI-057 (hover colors) |
-| **FIXED in Build 396** | UI-051, UI-052, UI-053, UI-054, UI-056 |
+| **Build 397** | SUCCESS - deployed but hover fix was wrong CSS variable |
+| **Build 398** | IN PROGRESS (correct hover CSS fix) |
+| **New Docs** | CONFUSION_HISTORY.md, SMART_UPDATE_PROTOCOL.md |
 
 ---
 
-## WHAT I DID (2025-12-27)
+## WHAT I DID (2025-12-27 Continued)
 
-### 1. Fixed UI-055: Modal DOM Bloat
-- Wrapped ALL 16 Carbon Modals with `{#if}` conditionals
-- Files modified:
-  - FileExplorer.svelte: 7 modals
-  - TMManager.svelte: 5 modals
-  - DataGrid.svelte: 1 modal
-  - TMDataGrid.svelte: 1 modal
-  - TMUploadModal.svelte: Added dispatch('close')
-  - TMViewer.svelte: Added dispatch('close')
-- **Result:** Modals only render when needed (was 22+ always in DOM)
+### 1. Discovered UI-057 Fix Was Wrong
+- Build 397 deployed successfully BUT hover still mismatched
+- Root cause: I used `--cds-layer-hover-02` for source, but target uses `--cds-layer-hover-01`
+- **Fix:** Changed source hover to use same `--cds-layer-hover-01` as target
+- Triggered Build 398 with correct fix
 
-### 2. Fixed UI-057: Split Hover Colors
-- Added `.cell.source:hover` CSS rule matching target cell
-- File: VirtualGrid.svelte line 1621-1624
+### 2. Created CONFUSION_HISTORY.md
+- Documents all confusions from this session
+- Prevents repeating mistakes
+- Location: `docs/wip/CONFUSION_HISTORY.md`
 
-### 3. Updated Documentation THE HARD WAY
-- Added "Claude Work Protocol" to CLAUDE.md
-- Key principle: **I DO THE WORK** - never tell user to do things
-- Updated this SESSION_CONTEXT.md
+### 3. Created SMART_UPDATE_PROTOCOL.md
+- Three refresh methods: Hot Reload, Auto-Update, Full Reinstall
+- Claude should use Auto-Update instead of full reinstall
+- Location: `docs/wip/SMART_UPDATE_PROTOCOL.md`
 
-### 4. MISTAKE ACKNOWLEDGED
-- I pushed Build 397 WITHOUT testing with Playwright first
-- I said "You" + "Verb" to user - WRONG
-- I was confused about workflow, background tasks, auto-login
-- I took the EASY way instead of HARD way
+### 4. Learned Key Facts
+- **Credentials:** admin/admin123 works, NOT neil/neil
+- **CDP Tests:** Must run from Windows, not WSL
+- **Env Vars:** Don't pass from WSL to Windows node
+- **CSS Verify:** Always extract app.asar to verify CSS is deployed
 
 ---
 
-## WHAT I MUST DO NEXT
+## UI-055 STATUS (Modal Bloat)
 
-1. **Wait for Build 397** to complete
-2. **I run** `./scripts/playground_install.sh --launch --auto-login`
-3. **I verify** with CDP tests and screenshots
-4. **If auto-login fails**, I debug it (not tell user to login)
-5. **Take screenshots** as proof
+**VERIFIED WORKING in Build 397:**
+- FileExplorer: 0 modals when closed (was 7)
+- TMManager: 0 modals when closed (was 5)
+- 10 modals still exist from Settings panel (not fixed yet)
 
----
-
-## VERIFIED FIXES (Build 396)
-
-| Issue | Fix | Verified |
-|-------|-----|----------|
-| UI-051 | Custom modal with close button | CDP test confirms |
-| UI-052 | Fixed `/api/ldm/tm/suggest` routing | API works |
-| UI-053 | CSS constraints on scroll container | 847px (was 480K) |
-| UI-054 | Variable height in `estimateRowHeight()` | Heights vary |
-| UI-056 | `user-select: text` on source cells | Text selectable |
+**Settings Panel Modals Still Need Fix:**
+- ChangePassword.svelte
+- AboutModal.svelte
+- PreferencesModal.svelte (Display Settings x2)
+- UserProfileModal.svelte
+- UpdateModal.svelte
+- GridColumnsModal.svelte
+- ReferenceSettingsModal.svelte
+- ServerStatus.svelte
 
 ---
 
-## PENDING FIXES (Build 397)
+## UI-057 STATUS (Hover Colors)
 
-| Issue | Fix | Needs Verification |
-|-------|-----|----------|
-| UI-055 | Wrapped 16 modals with `{#if}` | Need to test |
-| UI-057 | Added `.cell.source:hover` CSS | Need to test |
+| Build | Status | Issue |
+|-------|--------|-------|
+| 397 | WRONG | Used `--cds-layer-hover-02` (different from target) |
+| 398 | PENDING | Uses `--cds-layer-hover-01` (same as target) |
 
 ---
 
@@ -106,7 +98,18 @@
 
 ---
 
-## BUILD STATUS CHECK COMMAND
+## WHAT I MUST DO NEXT
+
+1. **Wait for Build 398** to complete
+2. **Use Auto-Update** (not full reinstall) - see SMART_UPDATE_PROTOCOL.md
+3. **Login as admin/admin123** (not neil/neil)
+4. **Verify hover CSS** by extracting app.asar
+5. **Take screenshots** as proof
+6. **Fix remaining Settings panel modals** (UI-055 incomplete)
+
+---
+
+## BUILD STATUS CHECK
 
 ```bash
 python3 -c "
@@ -122,16 +125,27 @@ for r in c.fetchall():
 
 ---
 
-## KEY DOCS
+## KEY DOCS (Updated)
 
 | Topic | Doc |
 |-------|-----|
 | Full Issue List | `docs/wip/ISSUES_TO_FIX.md` |
+| **Confusion History** | `docs/wip/CONFUSION_HISTORY.md` (NEW) |
+| **Smart Update** | `docs/wip/SMART_UPDATE_PROTOCOL.md` (NEW) |
 | Test Protocol | `testing_toolkit/MASTER_TEST_PROTOCOL.md` |
-| Claude Work Protocol | `CLAUDE.md` → Claude Work Protocol section |
 | CDP Testing | `testing_toolkit/cdp/README.md` |
 | Troubleshooting | `docs/cicd/TROUBLESHOOTING.md` |
 
 ---
 
-*Next: Wait for Build 397, then I install, I login, I verify, I take screenshots*
+## CREDENTIALS
+
+| User | Password | Use For |
+|------|----------|---------|
+| admin | admin123 | Superadmin login (WORKS) |
+| neil | ??? | User exists but password unknown |
+| ci_tester | ci_test_pass_2024 | CI tests (Gitea secrets) |
+
+---
+
+*Next: Wait Build 398 -> Auto-Update -> Login admin/admin123 -> Verify -> Screenshot*
