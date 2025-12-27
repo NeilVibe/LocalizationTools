@@ -222,6 +222,39 @@ const UPDATE_SERVER = process.env.UPDATE_SERVER || 'github';
 
 ---
 
+### Confusion 12: Rate Limiting Blocking Tests
+**What happened:**
+- Ran Playwright test in dev mode to verify grid hover/selection states
+- Test failed with "Too many failed login attempts. Please try again in 15 minutes."
+- Didn't realize rate limiting was enabled in the backend
+- Kept running tests, which just made the lockout last longer
+
+**Root cause:**
+- Backend has rate limiting: 5 failed attempts → 15 minute lockout
+- Multiple test runs exceeded the limit
+- Didn't know that `DEV_MODE=true` disables rate limiting
+- Didn't check the auth module documentation
+
+**The code:**
+```javascript
+// server/api/auth_async.py
+MAX_FAILED_LOGINS = 5   // Max attempts per IP
+LOCKOUT_MINUTES = 15    // Time window
+
+// Rate limiting is DISABLED when:
+// - DEV_MODE=true
+// - PYTEST_CURRENT_TEST is set
+// - CI=true
+// - client_ip === "testclient"
+```
+
+**Fix:**
+- Start backend with `DEV_MODE=true` for testing: `DEV_MODE=true python3 server/main.py`
+- Or wait for lockout to expire
+- Know that production has rate limiting, dev/test should disable it
+
+---
+
 ## Patterns Identified
 
 1. **Documentation Trust Problem:** I trust documentation/summaries without verifying
@@ -234,6 +267,7 @@ const UPDATE_SERVER = process.env.UPDATE_SERVER || 'github';
 8. **Configuration Assumption:** I assume config is correct without checking actual values
 9. **Passive Testing:** I launch apps and wait instead of actively interacting
 10. **Background Task Neglect:** I don't monitor/clean background tasks
+11. **Security Feature Ignorance:** I don't check for rate limiting, auth requirements before testing
 
 ---
 
@@ -244,7 +278,8 @@ const UPDATE_SERVER = process.env.UPDATE_SERVER || 'github';
 3. **NEVER trust env var passing** from WSL to Windows
 4. **ALWAYS use known credentials** (admin/admin123)
 5. **ALWAYS take screenshots** as proof of fixes
+6. **ALWAYS start backend with `DEV_MODE=true`** for testing to disable rate limiting
 
 ---
 
-*Created: 2025-12-27 | Purpose: Prevent Claude from repeating mistakes*
+*Created: 2025-12-27 | Updated: 2025-12-27 | Purpose: Prevent Claude from repeating mistakes*

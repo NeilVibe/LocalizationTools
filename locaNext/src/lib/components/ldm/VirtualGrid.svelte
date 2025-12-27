@@ -1307,6 +1307,7 @@
                   class="cell source"
                   class:source-hovered={hoveredRowId === row.id && hoveredCell === 'source'}
                   class:row-active={hoveredRowId === row.id || selectedRowId === row.id}
+                  class:cell-selected={selectedRowId === row.id}
                   style="flex: 0 0 {sourceWidthPercent}%;"
                   onmouseenter={() => handleCellMouseEnter(row, 'source')}
                 >
@@ -1322,6 +1323,7 @@
                   class:locked={rowLock}
                   class:target-hovered={hoveredRowId === row.id && hoveredCell === 'target'}
                   class:row-active={hoveredRowId === row.id || selectedRowId === row.id}
+                  class:cell-selected={selectedRowId === row.id}
                   class:status-translated={row.status === 'translated'}
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
@@ -1676,6 +1678,8 @@
 
   .virtual-row.selected {
     background: var(--cds-layer-selected-01);
+    /* UI-059: Make selection more prominent with left border */
+    border-left: 3px solid var(--cds-interactive-01, #0f62fe);
   }
 
   .virtual-row.placeholder {
@@ -1816,6 +1820,29 @@
   }
 
   .cell.target:hover .edit-icon {
+    opacity: 1;
+  }
+
+  /* UI-059 & UI-065: Selected cell states */
+  .cell.cell-selected {
+    background: var(--cds-layer-selected-01);
+  }
+
+  .cell.target.cell-selected {
+    /* Selected target cell - subtle blue tint */
+    background: rgba(69, 137, 255, 0.1);
+    border-left: 3px solid var(--cds-interactive-01, #0f62fe);
+  }
+
+  /* UI-065: Show edit icon on selected cells (not just hover) */
+  .cell.target.cell-selected .edit-icon {
+    opacity: 0.7;
+    color: var(--cds-interactive-01, #0f62fe);
+  }
+
+  /* Selected + hovered - full opacity */
+  .cell.target.cell-selected:hover .edit-icon,
+  .cell.target.cell-selected.target-hovered .edit-icon {
     opacity: 1;
   }
 
