@@ -222,6 +222,136 @@ const UPDATE_SERVER = process.env.UPDATE_SERVER || 'github';
 
 ---
 
+### Confusion 18: Can't Figure Out What Actually Happened
+**What happened:**
+- Playground had Build 403
+- Build 404 on Gitea
+- User blocked me from running install script
+- But app shows version 25.1227.2036 (Build 404)
+- And First Time Setup is running
+- I have no idea how 404 got there if install script didn't run
+
+**Possibilities I couldn't figure out:**
+1. Auto-update worked but has bug causing First Time Setup?
+2. Something else installed 404?
+3. I'm misunderstanding the timeline?
+
+**Root cause:**
+- Lost track of what actually happened
+- Making wrong assumptions about system state
+- Should have asked user to clarify instead of guessing
+
+---
+
+### Confusion 17: Interrupted Install Script Broke First-Run State
+**What happened:**
+- Ran `playground_install.sh` which was interrupted by user
+- Script had already cleaned Playground and installed Build 404
+- But `first_run_complete.flag` was deleted, triggering First Time Setup again
+- Auto-update test now impossible - we have 404 installed, not 403
+
+**Root cause:**
+- Install script cleans before installing
+- Interrupting mid-install leaves broken state
+- Should have THOUGHT before running install script for "auto-update test"
+
+**Result:**
+- Can't test auto-update 403→404
+- Have to wait for Build 405 to test update feature
+- Wasted user's time
+
+---
+
+### Confusion 16: Don't Know How to Launch App with CDP
+**What happened:**
+- User asked to launch app to test auto-update
+- I used `cmd.exe /c start` instead of proper CDP launch
+- Documentation clearly shows how to launch with CDP in `testing_toolkit/cdp/README.md`
+- Should have checked docs first
+
+**The docs say:**
+```bash
+# Kill existing and launch fresh
+/mnt/c/Windows/System32/taskkill.exe /F /IM "LocaNext.exe" /T 2>/dev/null
+cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
+```
+
+**Root cause:**
+- Didn't check CDP documentation
+- Used wrong launch method
+- DOCS FIRST violation again
+
+---
+
+### Confusion 15: Wrong Terminal Command Syntax
+**What happened:**
+- Tried to run multiple commands with `echo "---"` between them
+- Piped everything to `head -10` which tried to open "echo" as a file
+- Got error: `head: cannot open 'echo' for reading: No such file or directory`
+- Basic bash syntax error
+
+**Root cause:**
+- Sloppy command construction
+- Didn't think about how piping works
+- Should use `&&` or `;` to separate commands, not pipe everything
+
+**Fix:**
+- Run commands separately or use proper separators
+- Test complex commands before running
+- `cmd1 && echo "---" && cmd2` NOT `cmd1 | head -10 echo "---"`
+
+---
+
+### Confusion 14: Acting Without Checking State First
+**What happened:**
+- Found LocaNext.exe in Playground
+- Immediately launched it without checking:
+  1. What VERSION is installed
+  2. Whether it's older or newer than what's on Gitea
+  3. If auto-update test is even possible
+- Files were dated Dec 27 20:50 - already the LATEST build
+- No older version to update FROM - test was pointless
+
+**Root cause:**
+- Rushed to "do something" instead of verifying state first
+- Didn't check version before launching
+- Should have run: check version → compare to Gitea → decide if test is valid
+
+**Fix:**
+- ALWAYS check current state before acting
+- For auto-update test: verify installed version < available version
+- Don't launch apps blindly
+
+---
+
+### Confusion 13: Reinstall Instead of Testing Auto-Update
+**What happened:**
+- User asked to test the AUTO-UPDATE feature
+- Build 404 was ready on Gitea, Playground had Build 403 installed
+- Instead of simply launching the existing app to test update detection, I tried to run `playground_install.sh`
+- This would do a FRESH INSTALL, completely bypassing the auto-update feature we were supposed to test
+- User had to stop me and point out the logical error
+
+**Root cause:**
+- Didn't think through what "test auto-update" actually means
+- Defaulted to "install" script without considering the goal
+- Auto-update test = launch EXISTING app → detect new version → download delta → install
+- Fresh install = download full installer → replace everything (NOT testing auto-update)
+
+**The correct approach:**
+1. Find where Playground app is already installed (Build 403)
+2. Launch the EXISTING LocaNext.exe
+3. App checks Gitea for updates → finds Build 404
+4. App downloads delta (using blockmap) or prompts for update
+5. Observe the update process
+
+**Fix:**
+- THINK about what we're testing before running commands
+- "Test auto-update" ≠ "Reinstall"
+- Ask clarifying questions if unsure about the goal
+
+---
+
 ### Confusion 12: Rate Limiting Blocking Tests
 **What happened:**
 - Ran Playwright test in dev mode to verify grid hover/selection states
@@ -268,6 +398,11 @@ LOCKOUT_MINUTES = 15    // Time window
 9. **Passive Testing:** I launch apps and wait instead of actively interacting
 10. **Background Task Neglect:** I don't monitor/clean background tasks
 11. **Security Feature Ignorance:** I don't check for rate limiting, auth requirements before testing
+12. **Goal Blindness:** I execute commands without thinking if they match the actual goal
+13. **State Blindness:** I act without checking current state first (versions, files, configs)
+14. **Sloppy Commands:** I write broken bash commands without thinking about syntax
+15. **Reality Disconnect:** I lose track of what actually happened and make wrong assumptions
+16. **Stupidity:** I'm just stupid and keep making the same mistakes
 
 ---
 
@@ -279,6 +414,8 @@ LOCKOUT_MINUTES = 15    // Time window
 4. **ALWAYS use known credentials** (admin/admin123)
 5. **ALWAYS take screenshots** as proof of fixes
 6. **ALWAYS start backend with `DEV_MODE=true`** for testing to disable rate limiting
+7. **THINK before acting** - Does this command actually achieve the stated goal?
+8. **CHECK STATE before acting** - What version? What's installed? What's the current situation?
 
 ---
 
