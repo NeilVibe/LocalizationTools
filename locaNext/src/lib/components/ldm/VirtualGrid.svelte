@@ -25,14 +25,18 @@
   let { fileId = $bindable(null), fileName = "" } = $props();
 
   // Virtual scrolling constants
-  // UI-057: Increased from 48 to 72 for better readability (fits 2-3 lines)
-  const MIN_ROW_HEIGHT = 72; // Minimum row height
-  const MAX_ROW_HEIGHT = 200; // Maximum row height (~8 lines max per user request)
-  const CHARS_PER_LINE = 50; // Estimated chars per line for height calc
-  const LINE_HEIGHT = 20; // Height per line of text
-  const BUFFER_ROWS = 10; // Extra rows to render above/below viewport
+  const MIN_ROW_HEIGHT = 48; // Minimum row height (base)
+  const MAX_ROW_HEIGHT = 300; // Maximum row height for very long content
+  const CHARS_PER_LINE = 45; // Estimated chars per line for height calc
+  const LINE_HEIGHT = 22; // Height per line of text (including line-height)
+  const CELL_PADDING = 16; // Vertical padding in cells (0.5rem * 2)
+  const BUFFER_ROWS = 8; // Extra rows to render above/below viewport
   const PAGE_SIZE = 100; // Rows per page to fetch
   const PREFETCH_PAGES = 2; // Number of pages to prefetch ahead/behind
+
+  // VARIABLE HEIGHT VIRTUALIZATION: Height cache and cumulative positions
+  let rowHeightCache = $state(new Map()); // row_index -> estimated height
+  let cumulativeHeights = $state([]); // cumulativeHeights[i] = position of row i
 
   // Real-time subscription
   let cellUpdateUnsubscribe = null;
@@ -87,8 +91,12 @@
   let editTarget = $state("");
   let editStatus = $state("");
 
-  // Selected row state
+  // Selected row state (click-based)
   let selectedRowId = $state(null);
+
+  // HOVER SYSTEM: Track actual mouse hover (not click)
+  let hoveredRowId = $state(null);
+  let hoveredCell = $state(null); // 'source' | 'target' | null
 
   // TM suggestions state
   let tmSuggestions = $state([]);
@@ -178,8 +186,8 @@
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   }
 
-  // PERFORMANCE FIX: Calculate visible range with O(1) complexity
-  // Uses constant row height for consistent, fast scroll calculations
+  // VARIABLE HEIGHT: Calculate visible range using binary search
+  // O(log n) complexity for finding start row, O(k) for visible rows
   function calculateVisibleRange() {
     if (!containerEl) return;
 
@@ -187,20 +195,26 @@
     scrollTop = containerEl.scrollTop;
 
     // Sanity check: container height shouldn't be larger than viewport
-    // BUG-036-FIX: Detect incorrect container sizing
     if (containerHeight > 5000) {
       logger.warning("Container height unusually large", {
         containerHeight,
         windowHeight: typeof window !== 'undefined' ? window.innerHeight : 0
       });
-      // Cap to reasonable max
       containerHeight = Math.min(containerHeight, 1200);
     }
 
-    // O(1) calculation using constant row height
-    const startRow = Math.floor(scrollTop / MIN_ROW_HEIGHT);
-    const endRow = Math.ceil((scrollTop + containerHeight) / MIN_ROW_HEIGHT);
+    // Use binary search to find first visible row
+    const startRow = findRowAtPosition(scrollTop);
 
+    // Find end row by scanning forward until we exceed viewport
+    let endRow = startRow;
+    const viewportBottom = scrollTop + containerHeight;
+
+    while (endRow < total && getRowTop(endRow) < viewportBottom) {
+      endRow++;
+    }
+
+    // Add buffer rows
     visibleStart = Math.max(0, startRow - BUFFER_ROWS);
     visibleEnd = Math.min(total, endRow + BUFFER_ROWS);
 
@@ -296,10 +310,15 @@
           };
           rows[index] = rowData;
           rowIndexById.set(row.id.toString(), index); // O(1) lookup index
+          // Clear height cache for this row (will be recalculated)
+          rowHeightCache.delete(index);
         });
 
         // Force reactivity
         rows = [...rows];
+
+        // VARIABLE HEIGHT: Rebuild cumulative heights after loading new rows
+        rebuildCumulativeHeights();
 
         loadedPages.add(page);
         logger.info("SMART LOAD: Page loaded", { page, count: data.rows.length, total, indexSize: rowIndexById.size });
@@ -333,6 +352,8 @@
     loadedPages.clear();
     loadingPages.clear();
     rowIndexById.clear(); // SMART INDEXING: Clear index map
+    rowHeightCache.clear(); // VARIABLE HEIGHT: Clear height cache
+    cumulativeHeights = [0]; // VARIABLE HEIGHT: Reset cumulative heights
     total = 0;
     initialLoading = true;
 
@@ -364,6 +385,9 @@
         });
         rows = [...rows];
         loadedPages.add(1);
+
+        // VARIABLE HEIGHT: Build cumulative heights for positioning
+        rebuildCumulativeHeights();
 
         logger.info("SMART LOAD: Initial page loaded", { total, loaded: data.rows.length, indexSize: rowIndexById.size });
 
@@ -922,9 +946,15 @@
     return actualNewlines + escapedNewlines + xmlNewlines;
   }
 
-  // Estimate row height based on content length
-  function estimateRowHeight(row) {
+  // VARIABLE HEIGHT: Estimate row height based on content
+  // This is used for both display AND positioning (proper virtualization)
+  function estimateRowHeight(row, index) {
     if (!row || row.placeholder) return MIN_ROW_HEIGHT;
+
+    // Check cache first
+    if (rowHeightCache.has(index)) {
+      return rowHeightCache.get(index);
+    }
 
     // Get the longest text (source or target)
     const sourceLen = (row.source || "").length;
@@ -936,25 +966,80 @@
     const targetNewlines = countNewlines(row.target);
     const maxNewlines = Math.max(sourceNewlines, targetNewlines);
 
-    // Estimate lines needed
-    const wrapLines = Math.ceil(maxLen / CHARS_PER_LINE);
+    // Estimate lines needed (consider column width is ~50% of viewport)
+    const effectiveCharsPerLine = Math.floor(CHARS_PER_LINE * 0.9); // Account for column width
+    const wrapLines = Math.ceil(maxLen / effectiveCharsPerLine);
     const totalLines = Math.max(1, wrapLines + maxNewlines);
 
-    // Calculate height
-    const estimatedHeight = MIN_ROW_HEIGHT + (totalLines - 1) * LINE_HEIGHT;
-    return Math.min(estimatedHeight, MAX_ROW_HEIGHT);
+    // Calculate height: base padding + lines * line height
+    const contentHeight = totalLines * LINE_HEIGHT;
+    const estimatedHeight = Math.max(MIN_ROW_HEIGHT, contentHeight + CELL_PADDING);
+    const finalHeight = Math.min(estimatedHeight, MAX_ROW_HEIGHT);
+
+    // Cache the result
+    rowHeightCache.set(index, finalHeight);
+
+    return finalHeight;
   }
 
-  // PERFORMANCE FIX: Use constant row height for positioning (O(1) instead of O(n))
-  // Dynamic heights are only used for visual display, not scroll positioning
-  // This fixes the O(n²) bug that caused 10K+ row files to freeze
+  // VARIABLE HEIGHT: Rebuild cumulative heights for all loaded rows
+  // Called when rows change or on initial load
+  function rebuildCumulativeHeights() {
+    const newCumulative = [0]; // First row starts at position 0
+
+    for (let i = 0; i < total; i++) {
+      const row = rows[i];
+      const height = row ? estimateRowHeight(row, i) : MIN_ROW_HEIGHT;
+      newCumulative[i + 1] = newCumulative[i] + height;
+    }
+
+    cumulativeHeights = newCumulative;
+  }
+
+  // VARIABLE HEIGHT: Get row position using cumulative heights
   function getRowTop(index) {
+    // If we have cumulative heights calculated, use them
+    if (cumulativeHeights.length > index) {
+      return cumulativeHeights[index];
+    }
+    // Fallback: estimate based on MIN_ROW_HEIGHT (for rows not yet calculated)
     return index * MIN_ROW_HEIGHT;
   }
 
-  // PERFORMANCE FIX: Simple O(1) total height calculation
+  // VARIABLE HEIGHT: Get height of a specific row
+  function getRowHeight(index) {
+    const row = rows[index];
+    return row ? estimateRowHeight(row, index) : MIN_ROW_HEIGHT;
+  }
+
+  // VARIABLE HEIGHT: Total height is last cumulative value
   function getTotalHeight() {
+    if (cumulativeHeights.length > total) {
+      return cumulativeHeights[total];
+    }
+    // Fallback: estimate
     return total * MIN_ROW_HEIGHT;
+  }
+
+  // VARIABLE HEIGHT: Binary search to find row at scroll position
+  function findRowAtPosition(scrollPos) {
+    if (cumulativeHeights.length === 0) {
+      return Math.floor(scrollPos / MIN_ROW_HEIGHT);
+    }
+
+    let low = 0;
+    let high = total - 1;
+
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (cumulativeHeights[mid + 1] <= scrollPos) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+
+    return Math.max(0, low);
   }
 
   // UI-029: downloadFile removed - users download via right-click on FileExplorer
@@ -974,6 +1059,23 @@
       fetchTMSuggestions(row.source, row.id);
       logger.info("Pre-fetching TM for row", { rowId: row.id });
     }
+  }
+
+  // HOVER SYSTEM: Track mouse enter/leave on cells
+  function handleCellMouseEnter(row, cellType) {
+    if (!row || row.placeholder) return;
+    hoveredRowId = row.id;
+    hoveredCell = cellType; // 'source' or 'target'
+  }
+
+  function handleCellMouseLeave() {
+    hoveredRowId = null;
+    hoveredCell = null;
+  }
+
+  function handleRowMouseLeave() {
+    hoveredRowId = null;
+    hoveredCell = null;
   }
 
   // UI-044: Column resize handlers
@@ -1162,8 +1264,9 @@
         <div class="scroll-content" style="height: {totalHeight}px;">
           <!-- Rendered rows -->
           {#each visibleRows as row, i (row.row_num)}
-            {@const rowTop = getRowTop(visibleStart + i)}
-            {@const rowHeight = estimateRowHeight(row)}
+            {@const rowIndex = visibleStart + i}
+            {@const rowTop = getRowTop(rowIndex)}
+            {@const rowHeight = getRowHeight(rowIndex)}
             {@const rowLock = $ldmConnected && row.id ? isRowLocked(parseInt(row.id)) : null}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
@@ -1171,8 +1274,10 @@
               class:placeholder={row.placeholder}
               class:locked={rowLock}
               class:selected={selectedRowId === row.id}
-              style="top: {rowTop}px; min-height: {rowHeight}px;"
+              class:row-hovered={hoveredRowId === row.id}
+              style="top: {rowTop}px; height: {rowHeight}px;"
               onclick={(e) => handleCellClick(row, e)}
+              onmouseleave={handleRowMouseLeave}
               role="row"
             >
               {#if row.placeholder}
@@ -1196,29 +1301,33 @@
                   </div>
                 {/if}
 
-                <!-- Source (always visible, full content with newline symbols) -->
+                <!-- Source (always visible, READ-ONLY) -->
                 <!-- UI-044: Uses percentage width matching header -->
                 <div
                   class="cell source"
-                  class:cell-hover={selectedRowId === row.id}
+                  class:source-hovered={hoveredRowId === row.id && hoveredCell === 'source'}
+                  class:row-active={hoveredRowId === row.id || selectedRowId === row.id}
                   style="flex: 0 0 {sourceWidthPercent}%;"
+                  onmouseenter={() => handleCellMouseEnter(row, 'source')}
                 >
                   <span class="cell-content">{formatGridText(row.source) || ""}</span>
                 </div>
 
-                <!-- Target (always visible, editable, full content with newline symbols) -->
+                <!-- Target (always visible, EDITABLE) -->
                 <!-- Cell color indicates status: default=pending, translated=teal, confirmed=green -->
                 <!-- UI-044: Uses percentage width matching header -->
                 <!-- P2: QA flag shown when qa_flag_count > 0 -->
                 <div
                   class="cell target"
                   class:locked={rowLock}
-                  class:cell-hover={selectedRowId === row.id}
+                  class:target-hovered={hoveredRowId === row.id && hoveredCell === 'target'}
+                  class:row-active={hoveredRowId === row.id || selectedRowId === row.id}
                   class:status-translated={row.status === 'translated'}
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
                   class:qa-flagged={row.qa_flag_count > 0}
                   style="flex: 0 0 {100 - sourceWidthPercent}%;"
+                  onmouseenter={() => handleCellMouseEnter(row, 'target')}
                   ondblclick={() => openEditModal(row)}
                   role="button"
                   tabindex="0"
@@ -1555,9 +1664,13 @@
     border-bottom: 1px solid var(--cds-border-subtle-01);
     background: var(--cds-layer-01);
     transition: background-color 0.15s ease;
+    /* VARIABLE HEIGHT: Row height is set via inline style, content can expand */
+    box-sizing: border-box;
   }
 
-  .virtual-row:hover {
+  /* HOVER SYSTEM: Row-level hover (subtle background) */
+  .virtual-row:hover,
+  .virtual-row.row-hovered {
     background: var(--cds-layer-hover-01);
   }
 
@@ -1580,10 +1693,12 @@
     border-right: 1px solid var(--cds-border-subtle-01);
     display: flex;
     align-items: flex-start;
-    /* UI-057 FIX: Changed from overflow:hidden to allow content to show */
-    overflow: visible;
+    /* VARIABLE HEIGHT: Cells expand to fit content */
+    overflow: hidden;
+    text-overflow: ellipsis;
     min-width: 0;
-    /* Row height is now controlled by MIN_ROW_HEIGHT (72px) */
+    min-height: 100%; /* Fill row height */
+    box-sizing: border-box;
   }
 
   /* UI-044: Source and Target cells use percentage widths (set via inline style) */
@@ -1593,6 +1708,10 @@
     word-break: break-word;
     white-space: pre-wrap;
     line-height: 1.4;
+    /* VARIABLE HEIGHT: Content wraps naturally */
+    width: 100%;
+    max-height: 100%;
+    overflow-y: auto; /* Scroll if content exceeds calculated height */
   }
 
   .cell.row-num {
@@ -1616,28 +1735,48 @@
     transition: background-color 0.15s ease;
     /* UI-044: Add visible right border to separate from target */
     border-right: 2px solid var(--cds-border-strong-01, #525252);
+    /* Source is READ-ONLY - cursor indicates this */
+    cursor: default;
   }
 
-  /* UI-057 FIX: Add hover state to source cell (SAME as target: hover-01) */
-  .cell.source:hover,
-  .cell.source.cell-hover {
+  /* HOVER SYSTEM: Source cell - subtle hover (read-only indicator) */
+  .cell.source.row-active {
     background: var(--cds-layer-hover-01);
+  }
+
+  .cell.source.source-hovered {
+    /* Slightly more prominent when directly hovered, but still subtle */
+    background: var(--cds-layer-accent-hover-01, var(--cds-layer-hover-01));
+    /* Subtle left border to show focus */
+    border-left: 2px solid var(--cds-border-subtle-02, #525252);
   }
 
   .cell.target {
     position: relative;
     cursor: pointer;
     padding-right: 1.5rem;
-    transition: background-color 0.15s ease;
+    transition: all 0.15s ease;
   }
 
-  .cell.target:hover {
+  /* HOVER SYSTEM: Target cell - when row is active but source is hovered */
+  .cell.target.row-active {
     background: var(--cds-layer-hover-01);
   }
 
-  /* UI-057 FIX: Use same hover color as source (was layer-selected-01) */
-  .cell.target.cell-hover {
-    background: var(--cds-layer-hover-01);
+  /* HOVER SYSTEM: Target cell - prominent when directly hovered (EDITABLE) */
+  .cell.target.target-hovered {
+    background: var(--cds-interactive-02, #4589ff);
+    background: rgba(69, 137, 255, 0.15);
+    /* Blue left border indicates editable/active */
+    border-left: 3px solid var(--cds-interactive-01, #0f62fe);
+    /* Slight shadow for depth */
+    box-shadow: inset 0 0 0 1px rgba(15, 98, 254, 0.3);
+  }
+
+  /* Show edit icon when target is hovered */
+  .cell.target.target-hovered .edit-icon {
+    opacity: 1;
+    color: var(--cds-interactive-01, #0f62fe);
   }
 
   .cell.target.locked {

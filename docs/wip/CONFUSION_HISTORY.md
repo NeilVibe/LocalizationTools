@@ -107,6 +107,55 @@
 
 ---
 
+### Confusion 7: X Display and Playwright Testing
+**What happened:**
+- User said to test with "Linux Playwright dev build"
+- I tried to run `npm run dev` which starts Electron
+- Got "Missing X server or $DISPLAY" error
+- Assumed testing was impossible without X server
+- Didn't check the documentation
+
+**Root cause:**
+- Didn't read `docs/testing/X_SERVER_SETUP.md` or `docs/testing/QUICK_COMMANDS.md`
+- Assumed Electron/Playwright requires X display
+- Documentation clearly states: "Playwright tests work headless without X server"
+
+**The docs say:**
+- `cd locaNext && npm test` - runs headless (no X needed)
+- `DISPLAY=:0` prefix only needed for visual operations (screenshots, headed mode)
+- VcXsrv can be started from WSL if visual testing needed
+
+**Fix:**
+- READ THE DOCS FIRST before assuming something won't work
+- Playwright headless works fine without X display
+- For visual testing: `DISPLAY=:0 npm run test:headed`
+
+---
+
+### Confusion 8: Smart Update Already Deployed
+**What happened:**
+- User asked if smart update was tested
+- I said "we can't test without doing a Gitea build"
+- But Build 399+ already has blockmap uploaded to Gitea
+- Playground already has a build with smart update capability installed
+
+**Root cause:**
+- Forgot that Build 399 was already completed with blockmap
+- Thought we needed to build AGAIN to test the feature
+- The feature is already deployed and testable NOW
+
+**The reality:**
+- Build 399: blockmap uploaded ✓
+- Build 401: also has blockmap ✓
+- Playground: has smart-update-capable build installed
+- Testing: Can trigger update check NOW to verify delta download
+
+**Fix:**
+- Track what features are already deployed
+- Don't assume we need to rebuild when feature is already live
+
+---
+
 ## Patterns Identified
 
 1. **Documentation Trust Problem:** I trust documentation/summaries without verifying
@@ -114,6 +163,8 @@
 3. **Verification Gap:** I mark things as "FIXED" before visual verification
 4. **Path Confusion:** Script paths change and I don't verify they exist
 5. **Credential Confusion:** Multiple users exist, unclear which to use
+6. **DOCS FIRST Violation:** I assume things won't work instead of checking docs first
+7. **Deployment Amnesia:** I forget what's already deployed and think I need to rebuild
 
 ---
 
