@@ -77,3 +77,4 @@ Build 404
 Build 405: Fix first-run flag location (AppData survives updates)
 Build 406: Test auto-update flow
 Build 407: Add auto-updater debug logging
+Build 408: Fix ESM import for electron-updater
