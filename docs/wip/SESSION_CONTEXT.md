@@ -1,8 +1,23 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-27 15:50 | **Build:** 399 (DONE) | **CI:** Online | **Issues:** 15 OPEN
+**Last Updated:** 2025-12-27 18:30 | **Build:** 402 (DONE) | **CI:** Online | **Issues:** 15 OPEN
 
-> **SESSION STATUS:** Build 399 COMPLETED with blockmap. SMART UPDATES NOW WORK.
+> **SESSION STATUS:** Build 402 COMPLETED. Updater.js fixed to default to Gitea. Need Build 403 to test smart update.
+
+---
+
+## CRITICAL - AUTO-UPDATE FIXED
+
+**Problem Found:** `electron/updater.js` defaulted to GitHub, but builds go to Gitea.
+
+**Fix Applied:** Changed default from 'github' to 'gitea' in updater.js:
+```javascript
+// OLD: const UPDATE_SERVER = process.env.UPDATE_SERVER || 'github';
+// NEW: const UPDATE_SERVER = process.env.UPDATE_SERVER || 'gitea';
+const GITEA_URL = 'http://172.28.150.120:3000';
+```
+
+**Next:** Build 403 to deploy the fix. Then Playground will find Gitea updates.
 
 ---
 
@@ -11,68 +26,64 @@
 | Item | Status |
 |------|--------|
 | **Open Issues** | 15 (6 HIGH, 7 MEDIUM, 4 LOW) |
-| **Build 399** | SUCCESS - blockmap verified (0.2 MB) |
-| **Smart Update** | FULLY ENABLED - differential downloads work |
-| **Docs Fixed** | Credentials corrected to admin/admin123 |
-| **New Docs** | CONFUSION_HISTORY.md, SMART_UPDATE_PROTOCOL.md |
+| **Build 402** | SUCCESS - Variable-height rows + hover system |
+| **Smart Update** | NOT TESTED - updater was pointing to wrong server |
+| **Updater.js Fix** | DONE - Now defaults to Gitea |
+| **Confusion History** | 11 confusions documented today |
 
 ---
 
-## WHAT I DID (2025-12-27 Continued)
+## WHAT I DID (2025-12-27 Evening Session)
 
-### 1. Discovered UI-057 Fix Was Wrong
-- Build 397 deployed successfully BUT hover still mismatched
-- Root cause: I used `--cds-layer-hover-02` for source, but target uses `--cds-layer-hover-01`
-- **Fix:** Changed source hover to use same `--cds-layer-hover-01` as target
-- Triggered Build 398 with correct fix - **COMPLETED**
+### 1. Variable-Height Virtualization (COMPLETED)
+- Rows now expand based on content (60px -> 126px verified)
+- Uses cumulative height tracking + binary search for visible range
+- `rowHeightCache`, `cumulativeHeights`, `rebuildCumulativeHeights()`
+- File: `locaNext/src/lib/components/ldm/VirtualGrid.svelte`
 
-### 2. Enabled Smart/Differential Updates
-- Modified `build.yml` to copy and upload blockmap files
-- **Line 1581-1588:** Copies `.blockmap` from dist-electron to installer_output
-- **Line 2351-2361:** Uploads `.blockmap` to Gitea release
-- **Result:** electron-updater downloads only changed blocks (5-15MB vs 173MB)
-- **Effective from:** Build 399+
+### 2. Hover System Overhaul (COMPLETED)
+- Added `hoveredRowId` and `hoveredCell` state tracking
+- Source cells: subtle gray hover (read-only)
+- Target cells: prominent blue accent + edit icon (editable)
+- File: `locaNext/src/lib/components/ldm/VirtualGrid.svelte`
 
-### 3. Created Documentation
-- `docs/wip/CONFUSION_HISTORY.md` - Prevents repeating mistakes
-- `docs/wip/SMART_UPDATE_PROTOCOL.md` - Three refresh methods
-- `testing_toolkit/cdp/trigger_update.js` - Triggers auto-update via CDP
-- Fixed `testing_toolkit/cdp/login.js` - Defaults to admin/admin123
+### 3. Fixed Updater Configuration (COMPLETED)
+- Changed default UPDATE_SERVER from 'github' to 'gitea'
+- Hardcoded GITEA_URL to `http://172.28.150.120:3000`
+- File: `locaNext/electron/updater.js`
 
-### 4. Learned Key Facts
-- **Credentials:** admin/admin123 works, NOT neil/neil
-- **CDP Tests:** Must run from Windows, not WSL
-- **Env Vars:** Don't pass from WSL to Windows node
-- **CSS Verify:** Always extract app.asar to verify CSS is deployed
-- **Smart Update:** Requires blockmap file alongside installer
+### 4. Fixed TaskManager Test (COMPLETED)
+- `taskmanager.spec.ts` Refresh button test was fragile
+- Changed to use `button:has-text("Refresh"):visible` + fallback
+- All 143 Playwright tests pass
 
----
-
-## UI-055 STATUS (Modal Bloat)
-
-**VERIFIED WORKING in Build 397:**
-- FileExplorer: 0 modals when closed (was 7)
-- TMManager: 0 modals when closed (was 5)
-- 10 modals still exist from Settings panel (not fixed yet)
-
-**Settings Panel Modals Still Need Fix:**
-- ChangePassword.svelte
-- AboutModal.svelte
-- PreferencesModal.svelte (Display Settings x2)
-- UserProfileModal.svelte
-- UpdateModal.svelte
-- GridColumnsModal.svelte
-- ReferenceSettingsModal.svelte
-- ServerStatus.svelte
+### 5. Documented 11 Confusions
+- See `docs/wip/CONFUSION_HISTORY.md`
+- Key patterns: passive testing, config assumption, background task neglect
 
 ---
 
-## UI-057 STATUS (Hover Colors)
+## CONFUSIONS FROM THIS SESSION
 
-| Build | Status | Issue |
-|-------|--------|-------|
-| 397 | WRONG | Used `--cds-layer-hover-02` (different from target) |
-| 398 | PENDING | Uses `--cds-layer-hover-01` (same as target) |
+1. Auto-Login Process (WSL env vars)
+2. Build 397 Missing Changes (wrong CSS var)
+3. Playground Refresh vs Reinstall
+4. Where Scripts Live
+5. neil/neil Credentials
+6. First Time Setup Duration
+7. X Display and Playwright Testing
+8. Smart Update Already Deployed
+9. Launch Without Login + Passive Testing
+10. Stale Background Tasks
+11. Auto-Update Not Configured for Gitea
+
+**Patterns Identified:**
+- Documentation Trust Problem
+- Environment Assumption
+- Verification Gap
+- Configuration Assumption
+- Passive Testing
+- Background Task Neglect
 
 ---
 
@@ -103,13 +114,13 @@
 
 ---
 
-## WHAT I MUST DO NEXT
+## WHAT NEXT SESSION MUST DO
 
-1. **Install Build 398** (one-time full install to get hover fix)
-2. **Login as admin/admin123** (not neil/neil)
-3. **Verify hover CSS** is correct (source and target use same color)
-4. **After Build 399:** Smart updates work - use trigger_update.js
-5. **Fix remaining Settings panel modals** (UI-055 incomplete)
+1. **Trigger Build 403** - Deploy the updater.js fix
+2. **Wait for Build 403 to complete**
+3. **Install Build 403 on Playground** (full install since update won't work yet)
+4. **Test Smart Update** - Then trigger Build 404, see if delta download works
+5. **Continue with remaining issues** (15 open)
 
 ---
 
@@ -129,13 +140,13 @@ for r in c.fetchall():
 
 ---
 
-## KEY DOCS (Updated)
+## KEY DOCS
 
 | Topic | Doc |
 |-------|-----|
 | Full Issue List | `docs/wip/ISSUES_TO_FIX.md` |
-| **Confusion History** | `docs/wip/CONFUSION_HISTORY.md` (NEW) |
-| **Smart Update** | `docs/wip/SMART_UPDATE_PROTOCOL.md` (NEW) |
+| **Confusion History** | `docs/wip/CONFUSION_HISTORY.md` (11 entries) |
+| Smart Update Protocol | `docs/wip/SMART_UPDATE_PROTOCOL.md` |
 | Test Protocol | `testing_toolkit/MASTER_TEST_PROTOCOL.md` |
 | CDP Testing | `testing_toolkit/cdp/README.md` |
 | Troubleshooting | `docs/cicd/TROUBLESHOOTING.md` |
@@ -147,9 +158,8 @@ for r in c.fetchall():
 | User | Password | Use For |
 |------|----------|---------|
 | admin | admin123 | Superadmin login (WORKS) |
-| neil | ??? | User exists but password unknown |
 | ci_tester | ci_test_pass_2024 | CI tests (Gitea secrets) |
 
 ---
 
-*Next: Wait Build 398 -> Auto-Update -> Login admin/admin123 -> Verify -> Screenshot*
+*Next: Build 403 -> Install on Playground -> Test Smart Update*

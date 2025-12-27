@@ -156,6 +156,72 @@
 
 ---
 
+### Confusion 9: Launch Without Login + Passive Testing
+**What happened:**
+- User asked me to test the smart update on Playground
+- I just launched LocaNext.exe and waited
+- Didn't attempt to login or interact with the app
+- User had to login manually
+- Even after login, no update appeared (Confusion #11 - wrong server)
+
+**Root cause:**
+- Passive approach: "just launch and see what happens"
+- Didn't use CDP to actively login
+- Didn't check if update feature was configured correctly
+- Multiple confusions stacked: passive testing + wrong server config
+
+**Fix:**
+- When testing app behavior, ACTIVELY interact (login, navigate)
+- Use CDP automation for login: `testing_toolkit/cdp/cdp_login.js`
+- Verify configuration BEFORE launching (check what server app points to)
+- Check logs for errors instead of just waiting
+
+---
+
+### Confusion 10: Stale Background Tasks
+**What happened:**
+- Had 5 stale background tasks running (find commands searching /mnt/c)
+- Kept starting new commands instead of cleaning up first
+- User had to tell me to check background tasks
+
+**Root cause:**
+- Not monitoring background tasks
+- Starting slow commands without checking if they're needed
+
+**Fix:**
+- Check and clean up background tasks regularly
+- Kill stale processes before starting new operations
+
+---
+
+### Confusion 11: Auto-Update Not Configured for Gitea
+**What happened:**
+- User tested app, no auto-update triggered
+- I didn't realize auto-update was pointing to GitHub by default
+- Gitea builds won't be found if app is looking at GitHub
+
+**Root cause:**
+- `electron/updater.js` defaults to GitHub: `UPDATE_SERVER = 'github'`
+- For Gitea updates to work, app needs `UPDATE_SERVER=gitea` env var
+- The Playground installed app doesn't have this configured
+
+**The config:**
+```javascript
+// Default is github!
+const UPDATE_SERVER = process.env.UPDATE_SERVER || 'github';
+
+// For Gitea to work, need:
+// UPDATE_SERVER=gitea
+// GITEA_URL=http://172.28.150.120:3000
+```
+
+**Fix needed:**
+1. Either build with `UPDATE_SERVER=gitea` hardcoded for internal builds
+2. Or set env vars before launching for testing
+3. Or push releases to GitHub as well (dual push)
+
+---
+
 ## Patterns Identified
 
 1. **Documentation Trust Problem:** I trust documentation/summaries without verifying
@@ -165,6 +231,9 @@
 5. **Credential Confusion:** Multiple users exist, unclear which to use
 6. **DOCS FIRST Violation:** I assume things won't work instead of checking docs first
 7. **Deployment Amnesia:** I forget what's already deployed and think I need to rebuild
+8. **Configuration Assumption:** I assume config is correct without checking actual values
+9. **Passive Testing:** I launch apps and wait instead of actively interacting
+10. **Background Task Neglect:** I don't monitor/clean background tasks
 
 ---
 
