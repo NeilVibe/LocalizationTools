@@ -1,8 +1,8 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-27 15:10 | **Build:** 398 (in progress) | **CI:** Online | **Issues:** 15 OPEN
+**Last Updated:** 2025-12-27 15:30 | **Build:** 398 (DONE) | **CI:** Online | **Issues:** 15 OPEN
 
-> **SESSION STATUS:** Build 398 triggered with UI-057 hover fix (correct CSS variable). Created documentation overhaul: CONFUSION_HISTORY.md, SMART_UPDATE_PROTOCOL.md.
+> **SESSION STATUS:** Build 398 COMPLETED. Smart update (blockmap) enabled for Build 399+. Ready to install and test.
 
 ---
 
@@ -11,8 +11,9 @@
 | Item | Status |
 |------|--------|
 | **Open Issues** | 15 (6 HIGH, 7 MEDIUM, 4 LOW) |
-| **Build 397** | SUCCESS - deployed but hover fix was wrong CSS variable |
-| **Build 398** | IN PROGRESS (correct hover CSS fix) |
+| **Build 398** | SUCCESS - correct hover CSS fix, ready to install |
+| **Build 399** | PENDING - will have blockmap for smart updates |
+| **Smart Update** | ENABLED in CI, first smart update from Build 399 |
 | **New Docs** | CONFUSION_HISTORY.md, SMART_UPDATE_PROTOCOL.md |
 
 ---
@@ -23,23 +24,27 @@
 - Build 397 deployed successfully BUT hover still mismatched
 - Root cause: I used `--cds-layer-hover-02` for source, but target uses `--cds-layer-hover-01`
 - **Fix:** Changed source hover to use same `--cds-layer-hover-01` as target
-- Triggered Build 398 with correct fix
+- Triggered Build 398 with correct fix - **COMPLETED**
 
-### 2. Created CONFUSION_HISTORY.md
-- Documents all confusions from this session
-- Prevents repeating mistakes
-- Location: `docs/wip/CONFUSION_HISTORY.md`
+### 2. Enabled Smart/Differential Updates
+- Modified `build.yml` to copy and upload blockmap files
+- **Line 1581-1588:** Copies `.blockmap` from dist-electron to installer_output
+- **Line 2351-2361:** Uploads `.blockmap` to Gitea release
+- **Result:** electron-updater downloads only changed blocks (5-15MB vs 173MB)
+- **Effective from:** Build 399+
 
-### 3. Created SMART_UPDATE_PROTOCOL.md
-- Three refresh methods: Hot Reload, Auto-Update, Full Reinstall
-- Claude should use Auto-Update instead of full reinstall
-- Location: `docs/wip/SMART_UPDATE_PROTOCOL.md`
+### 3. Created Documentation
+- `docs/wip/CONFUSION_HISTORY.md` - Prevents repeating mistakes
+- `docs/wip/SMART_UPDATE_PROTOCOL.md` - Three refresh methods
+- `testing_toolkit/cdp/trigger_update.js` - Triggers auto-update via CDP
+- Fixed `testing_toolkit/cdp/login.js` - Defaults to admin/admin123
 
 ### 4. Learned Key Facts
 - **Credentials:** admin/admin123 works, NOT neil/neil
 - **CDP Tests:** Must run from Windows, not WSL
 - **Env Vars:** Don't pass from WSL to Windows node
 - **CSS Verify:** Always extract app.asar to verify CSS is deployed
+- **Smart Update:** Requires blockmap file alongside installer
 
 ---
 
@@ -100,12 +105,11 @@
 
 ## WHAT I MUST DO NEXT
 
-1. **Wait for Build 398** to complete
-2. **Use Auto-Update** (not full reinstall) - see SMART_UPDATE_PROTOCOL.md
-3. **Login as admin/admin123** (not neil/neil)
-4. **Verify hover CSS** by extracting app.asar
-5. **Take screenshots** as proof
-6. **Fix remaining Settings panel modals** (UI-055 incomplete)
+1. **Install Build 398** (one-time full install to get hover fix)
+2. **Login as admin/admin123** (not neil/neil)
+3. **Verify hover CSS** is correct (source and target use same color)
+4. **After Build 399:** Smart updates work - use trigger_update.js
+5. **Fix remaining Settings panel modals** (UI-055 incomplete)
 
 ---
 

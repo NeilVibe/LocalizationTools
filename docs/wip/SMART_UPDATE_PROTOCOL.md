@@ -2,6 +2,23 @@
 
 **Purpose:** Fast update workflow without full reinstall
 
+**Status:** ENABLED as of Build 399+
+
+---
+
+## How Smart Updates Work
+
+electron-updater uses **blockmap differential downloads**:
+
+1. **Blockmap file** (`.exe.blockmap`) uploaded alongside installer
+2. When updating, electron-updater compares blocks
+3. **Only downloads changed blocks** (typically 5-15MB vs 173MB full)
+4. Applies changes in-place
+
+**CI changes (build.yml):**
+- Line 1581-1588: Copies blockmap from dist-electron to installer_output
+- Line 2351-2361: Uploads blockmap to Gitea release
+
 ---
 
 ## Overview

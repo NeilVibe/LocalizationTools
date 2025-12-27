@@ -1,0 +1,406 @@
+{
+  "timestamp": "2025-12-27T02:27:46.253Z",
+  "summary": {
+    "totalMessages": 63,
+    "totalErrors": 3,
+    "totalWarnings": 0,
+    "uniqueErrors": 3,
+    "uniqueWarnings": 0
+  },
+  "errors": [
+    {
+      "text": "Error: Not found: /C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/index.html",
+      "count": 1,
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/entry/app.BX2D2d46.js"
+    },
+    {
+      "text": "Ee: Not found: /C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/index.html\n    at K (file:///C:/NEIL_PROJEC",
+      "count": 1
+    },
+    {
+      "text": "Failed to load resource: net::ERR_FILE_NOT_FOUND",
+      "count": 1,
+      "url": "file:///C:/_app/version.json"
+    }
+  ],
+  "warnings": [],
+  "allMessages": [
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "LocaNext preload script loaded",
+      "line": 266
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "LocaNext preload script loaded"
+    },
+    {
+      "source": "Console",
+      "level": "error",
+      "text": "Error: Not found: /C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/index.html",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/entry/app.BX2D2d46.js",
+      "line": 2
+    },
+    {
+      "source": "Runtime",
+      "level": "error",
+      "text": "Ee: Not found: /C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/index.html\n    at K (file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/DLBIEnWZ.js:1:16752)\n    at async Module.ln (file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/DLBIEnWZ.js:1:9604)"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Logger initialized | {\"mode\":\"electron\",\"logToConsole\":true,\"logToFile\":{}} color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Logger initialized | {\"mode\":\"electron\",\"logToConsole\":true,\"logToFile\":{}} color: #0066cc"
+    },
+    {
+      "source": "Log",
+      "level": "error",
+      "text": "Failed to load resource: net::ERR_FILE_NOT_FOUND",
+      "url": "file:///C:/_app/version.json"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "[INFO] Remote logger initialized with global error handlers [object Object]",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "[INFO] Remote logger initialized with global error handlers Object"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Component: Layout - mounted color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Component: Layout - mounted color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Checking authentication status color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Checking authentication status color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Token found - verifying with server color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Token found - verifying with server color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | API GET /api/users/me color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | API GET /api/users/me color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Test navigation helper exposed on window.navTest color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Test navigation helper exposed on window.navTest color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | SUCCESS  | Authentication verified | {\"username\":\"admin\",\"role\":\"superadmin\",\"elapsed_ms\":\"318.20\"} color: #008800; font-weight: bold",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | SUCCESS  | Authentication verified | {\"username\":\"admin\",\"role\":\"superadmin\",\"elapsed_ms\":\"318.20\"} color: #008800; font-weight: bold"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | TEST MODE: window.ldmTest interface exposed color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | TEST MODE: window.ldmTest interface exposed color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | User Action: Column visibility changed | {\"column\":\"showIndex\",\"visible\":false} color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | User Action: Column visibility changed | {\"column\":\"showIndex\",\"visible\":false} color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | User Action: Column visibility changed | {\"column\":\"showStringId\",\"visible\":false} color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | User Action: Column visibility changed | {\"column\":\"showStringId\",\"visible\":false} color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | User Action: Column visibility changed | {\"column\":\"showReference\",\"visible\":false} color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | User Action: Column visibility changed | {\"column\":\"showReference\",\"visible\":false} color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | User Action: Reference match mode changed | {\"mode\":\"stringIdOnly\"} color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | User Action: Reference match mode changed | {\"mode\":\"stringIdOnly\"} color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Component: LDM - mounted color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Component: LDM - mounted color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | API GET /api/ldm/health color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | API GET /api/ldm/health color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | +error.svelte acting as main page (Electron file:// workaround) color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | +error.svelte acting as main page (Electron file:// workaround) color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "[Electron] SvelteKit routing error (expected in file:// mode): Not Found",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/nodes/1.DbAsMoiA.js",
+      "line": 1
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "[Electron] SvelteKit routing error (expected in file:// mode): Not Found"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | GlobalToast: Setting up WebSocket listeners for toast notifications color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | GlobalToast: Setting up WebSocket listeners for toast notifications color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "Connecting to WebSocket: http://localhost:8888 (with auth)",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "Connecting to WebSocket: http://localhost:8888 (with auth)"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Connecting WebSocket after authentication color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Connecting WebSocket after authentication color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "Connecting to WebSocket: http://localhost:8888 (with auth)",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "Connecting to WebSocket: http://localhost:8888 (with auth)"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | UpdateModal: Got current version | {\"version\":\"25.1227.0231\"} color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | UpdateModal: Got current version | {\"version\":\"25.1227.0231\"} color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | UpdateModal: Registered update event listeners color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | UpdateModal: Registered update event listeners color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | SUCCESS  | LDM health check passed | {\"status\":\"ok\",\"module\":\"LDM (LanguageData Manager)\",\"version\":\"1.0.0\",\"features\":{\"projects\":true,\"folders\":true,\"files\":true,\"tm\":true,\"pretranslation\":true,\"websocket\":true}} color: #008800; font-weight: bold",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | SUCCESS  | LDM health check passed | {\"status\":\"ok\",\"module\":\"LDM (LanguageData Manager)\",\"version\":\"1.0.0\",\"features\":{\"projects\":true,\"folders\":true,\"files\":true,\"tm\":true,\"pretranslation\":true,\"websocket\":true}} color: #008800; font-weight: bold"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Connection status | {\"mode\":\"online\",\"canSync\":true,\"dbType\":\"postgresql\"} color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Connection status | {\"mode\":\"online\",\"canSync\":true,\"dbType\":\"postgresql\"} color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | FileExplorer mounted, loading projects... color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | FileExplorer mounted, loading projects... color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Loaded projects | {\"count\":1} color: #0066cc",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "%c2025-12-27 02:27:31 | INFO     | Loaded projects | {\"count\":1} color: #0066cc"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "WebSocket connected",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "WebSocket connected"
+    },
+    {
+      "source": "Console",
+      "level": "log",
+      "text": "WebSocket connected",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "source": "Runtime",
+      "level": "log",
+      "text": "WebSocket connected"
+    }
+  ]
+}
