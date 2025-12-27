@@ -10,11 +10,12 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED (This Session)** | 8 |
+| **FIXED/CLOSED** | 9 |
 | **CRITICAL (Blocking)** | 0 |
-| **HIGH (Major UX)** | 5 |
+| **HIGH (Major UX)** | 4 |
 | **MEDIUM (UX Issues)** | 7 |
 | **LOW (Cosmetic)** | 4 |
+| **Total Open** | 15 |
 
 ---
 
@@ -63,12 +64,16 @@
 - **Solution:** Added `.cell.source:hover` CSS rule matching target
 - **File:** VirtualGrid.svelte line 1621-1624
 
+### UI-058: Previous Fixes Not Applied ✅ RESOLVED
+- **Status:** RESOLVED - Build 396 contains all fixes, verified working
+
+### UI-060: Click on Source Cell Opens Edit Modal ✅ NOT A BUG
+- **Tested:** 2025-12-27 - Double-click on TARGET opens modal (correct)
+- **Source cell:** Single/double click does NOT open modal (correct)
+
 ---
 
 ## HIGH - MAJOR UX ISSUES
-
-### UI-058: Previous Fixes Not Applied (Build 395 Ineffective)
-- **Status:** RESOLVED - Build 396 contains all fixes, verified working
 
 ### UI-059: Row Selection State Inconsistent
 - **Reported:** 2025-12-27
@@ -76,12 +81,6 @@
 - **Status:** OPEN
 - **Problem:** Selected row state conflicts with hover state
 - **File:** VirtualGrid.svelte CSS line 1540-1542
-
-### UI-060: Click on Source Cell Opens Edit Modal ✅ NOT A BUG
-- **Reported:** 2025-12-27
-- **Status:** CLOSED - Working as designed
-- **Tested:** 2025-12-27 - Single/double click on source does NOT open modal
-- **Behavior:** Double-click on TARGET opens edit modal (correct)
 
 ### UI-061: Routing Error on Page Load
 - **Reported:** 2025-12-27

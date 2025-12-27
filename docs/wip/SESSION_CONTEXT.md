@@ -158,19 +158,48 @@ const GITEA_URL = 'http://172.28.150.120:3000';
 ## FEATURE IDEAS (User Request)
 
 ### 1. Rich Code Tag Display
-**Problem:** Tags like `{AudioVoice(NPC_VCE_2645)}`, `{Color(#67d173)}`, `{ChangeScene(...)}` clutter the text.
 
-**Proposed Solution:**
-- **Color codes:** Render `{Color(#hex)}text` as actual colored text (hide the tag)
-- **Special codes:** Show compact badges/icons for `{AudioVoice}`, `{ChangeScene}`, `{Scale}`, etc.
-- Example: `{AudioVoice(NPC_81)}` → [🔊 NPC_81] badge
+**Code Patterns Found** (from `tests/fixtures/sample_language_data.txt`):
 
-### 2. Apply Colors from Source
-- User can select text in TARGET
-- Right-click → "Apply Color" → Shows colors available in SOURCE
-- Inserts appropriate `{Color(...)}` tag
+| Type | Pattern | Example |
+|------|---------|---------|
+| **Color (HTML)** | `<color=XXX>text</color>` | `<color=red>Warning</color>` |
+| **Color (Game)** | `{PAColor(#HEX)}text{PAOldColor}` | `{PAColor(#FF0000)}Red{PAOldColor}` |
+| **Scale** | `{Scale(N)}text{/Scale}` | `{Scale(1.2)}Special{/Scale}` |
+| **AudioVoice** | `{AudioVoice(ID)}` | `{AudioVoice(NPC_VCE_8513)}` |
+| **ChangeScene** | `{ChangeScene(ID)}` | `{ChangeScene(Battle_001)}` |
+| **Generic** | `{TagName}` | `{Tag1}`, `{Mid1}` |
 
-### 3. Font Settings
+**Implementation Plan - Color Tags:**
+
+1. **Parse color balises** in cell renderer:
+   - Detect `<color=XXX>text</color>` pattern
+   - Detect `{PAColor(#HEX)}text{PAOldColor}` pattern
+   - Extract: color value, text content
+
+2. **Render colored text:**
+   - Hide the opening/closing tags
+   - Apply `style="color: #HEX"` to the text between
+   - Show small color indicator on hover (optional)
+
+3. **Apply color from source:**
+   - User selects text in TARGET cell
+   - Right-click → "Apply Color" submenu
+   - Shows colors found in SOURCE text
+   - Inserts appropriate `{PAColor}...{PAOldColor}` tags
+
+**Implementation Plan - Code Badges:**
+
+1. **Parse special codes** (no closing tag):
+   - `{AudioVoice(XXX)}` → 🔊 badge
+   - `{ChangeScene(XXX)}` → 🎬 badge
+   - Generic `{XXX}` → [XXX] compact badge
+
+2. **Hover to expand:**
+   - Badge shows abbreviated name
+   - Hover shows full code
+
+### 2. Font Settings
 **Already exists:** `locaNext/src/lib/stores/preferences.js`
 - `fontSize: 'small' | 'medium' | 'large'` ✅ EXISTS
 - `fontWeight: 'normal' | 'bold'` ✅ EXISTS
@@ -180,7 +209,7 @@ const GITEA_URL = 'http://172.28.150.120:3000';
 - Text color for source/target columns
 - Display Settings UI to expose these options
 
-**Priority:** Future enhancement after UIUX stable
+**Priority:** P6 - After UIUX stable baseline
 
 ---
 
