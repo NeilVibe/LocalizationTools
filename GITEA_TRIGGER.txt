@@ -72,3 +72,4 @@ Build 399: Smart update blockmap
 Build 400: UI-057 Increase row height to 72px
 Build 401: Full UI-057 fix (overflow, hover)
 Build 402: Variable-height rows + hover system overhaul
+Build 403: Auto-update default to Gitea
