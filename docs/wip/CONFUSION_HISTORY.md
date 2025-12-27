@@ -88,6 +88,25 @@
 
 ---
 
+### Confusion 6: First Time Setup Duration
+**What happened:**
+- Install script showed "Waiting for First Time Setup to complete..."
+- I assumed it would take ~5 minutes (2.3GB model download)
+- Started a 2-minute sleep to wait
+- User said "its done already"
+
+**Root cause:**
+- Assumed First Time Setup ALWAYS takes 5 minutes
+- Didn't check if model might be cached elsewhere
+- Started waiting blindly instead of checking CDP immediately
+
+**Fix:**
+- Check CDP state immediately after install
+- Don't assume duration - check actual state
+- Model might be cached outside of AppData
+
+---
+
 ## Patterns Identified
 
 1. **Documentation Trust Problem:** I trust documentation/summaries without verifying
