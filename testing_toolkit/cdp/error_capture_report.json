@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-12-27T10:36:40.364Z",
+  "totalErrors": 12,
+  "totalWarnings": 0,
+  "errors": [
+    {
+      "text": "[ERROR] Window Error [object Object]",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "text": "[ERROR] Window Error Object"
+    },
+    {
+      "text": "[ERROR] Window Error [object Object]",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "text": "[ERROR] Window Error Object"
+    },
+    {
+      "text": "[ERROR] Console Error [object Object]",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "text": "[ERROR] Console Error Object"
+    },
+    {
+      "text": "Test error 1: Cannot read properties of undefined (reading 'click')",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "text": "Test error 1: Cannot read properties of undefined (reading 'click')"
+    },
+    {
+      "text": "[ERROR] Console Error [object Object]",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "text": "[ERROR] Console Error Object"
+    },
+    {
+      "text": "Test error 2: Cannot read properties of null (reading 'click')",
+      "url": "file:///C:/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar/build/_app/immutable/chunks/By0xOlty.js",
+      "line": 8
+    },
+    {
+      "text": "Test error 2: Cannot read properties of null (reading 'click')"
+    }
+  ],
+  "warnings": []
+}
