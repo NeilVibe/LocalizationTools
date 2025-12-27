@@ -1,7 +1,10 @@
 # Autonomous Playground Install Protocol
 
 **Purpose:** Clean install LocaNext to Playground for testing
-**Last Updated:** 2025-12-17
+**Last Updated:** 2025-12-27
+
+> **NOTE:** For updating an existing install, use **SMART_UPDATE_PROTOCOL.md** instead.
+> This doc is for FRESH installs only.
 
 ---
 
@@ -47,7 +50,7 @@ Options:
   --launch        Launch app after install with CDP enabled
   --skip-clean    Don't clean Playground first
   --cdp-port PORT CDP debugging port (default: 9222)
-  --auto-login    Auto-login as neil/neil after First Time Setup
+  --auto-login    Auto-login as admin/admin123 after First Time Setup
 ```
 
 ### PowerShell Parameters
@@ -64,9 +67,9 @@ Parameters:
   -CDPPort         CDP port (default: 9222)
   -SkipDownload    Skip download (use cached installer)
   -SkipClean       Don't clean Playground
-  -AutoLogin       Auto-login after First Time Setup (default: neil/neil)
-  -LoginUsername   Username for auto-login (default: neil)
-  -LoginPassword   Password for auto-login (default: neil)
+  -AutoLogin       Auto-login after First Time Setup (default: admin/admin123)
+  -LoginUsername   Username for auto-login (default: admin)
+  -LoginPassword   Password for auto-login (default: admin123)
 ```
 
 ---
@@ -116,7 +119,7 @@ Parameters:
 │  8. AUTO-LOGIN (optional)                                   │
 │     └─> Wait for First Time Setup (~5 min on first run)     │
 │     └─> Login via API: POST /api/auth/login                 │
-│     └─> User: neil / Password: neil                         │
+│     └─> User: admin / Password: admin123                    │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -359,7 +362,7 @@ Use `--auto-login` to automatically log in after First Time Setup completes:
 This will:
 1. Wait for First Time Setup to complete (downloads model ~2.3GB)
 2. Wait for login page to appear
-3. Login via backend API as neil/neil
+3. Login via backend API as admin/admin123
 4. Report success/failure
 
 The app auto-connects to the central PostgreSQL server at `172.28.150.120:5432`.
@@ -397,7 +400,7 @@ See [testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md) for ful
 | First-time setup | ✅ | Dependencies and model loaded |
 | Offline mode (SQLite) | ✅ | Embedded backend working |
 | **Online mode (PostgreSQL)** | ✅ | Auto-configured via server-config.json |
-| Auto-login | ✅ | neil/neil via API after First Time Setup |
+| Auto-login | ✅ | admin/admin123 via API after First Time Setup |
 | App UI | ✅ | LDM loaded, navigation works |
 
 ### Complete Flow
@@ -408,7 +411,7 @@ See [testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md) for ful
 3. Launch (CDP enabled)
 4. First Time Setup (~5 min on first run)
 5. Backend connects to PostgreSQL (172.28.150.120:5432)
-6. Auto-login as neil/neil
+6. Auto-login as admin/admin123
 7. App ready in ONLINE mode
 ```
 
@@ -422,4 +425,4 @@ See [testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md) for ful
 
 ---
 
-*Created: 2025-12-16 | Updated: 2025-12-17 | Tested with Build 296 (v25.1217.0100)*
+*Created: 2025-12-16 | Updated: 2025-12-27 | Credentials: admin/admin123*
