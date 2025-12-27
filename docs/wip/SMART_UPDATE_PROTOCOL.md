@@ -114,6 +114,65 @@ Start-Sleep -Seconds 90
 
 ---
 
+## Playground Location
+
+```
+Windows Path: C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext\
+WSL Path:     /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/
+
+Key Files:
+├── LocaNext.exe                    # Main executable
+├── resources/
+│   └── app.asar                    # Bundled frontend (extract to verify CSS)
+└── resources/server/               # Python backend
+
+Shortcuts:
+- Playground: /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/
+- App exe:    Playground/LocaNext/LocaNext.exe
+```
+
+---
+
+## Complete Playground Refresh Workflow
+
+### Scenario 1: App Already Running + New Build Ready
+
+```bash
+# 1. Check if app is running on CDP port
+/mnt/c/Windows/System32/curl.exe -s http://127.0.0.1:9222/json > /dev/null && echo "Running"
+
+# 2. Trigger update via CDP script
+cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
+/mnt/c/Program\ Files/nodejs/node.exe trigger_update.js
+
+# 3. App downloads update and restarts automatically
+# 4. Login via CDP
+/mnt/c/Program\ Files/nodejs/node.exe login.js
+```
+
+### Scenario 2: App Not Running + New Build Ready
+
+```bash
+# 1. Launch app with CDP enabled
+"/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/LocaNext.exe" --remote-debugging-port=9222 &
+
+# 2. Wait for startup
+sleep 10
+
+# 3. Login via CDP
+cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
+/mnt/c/Program\ Files/nodejs/node.exe login.js
+```
+
+### Scenario 3: First Install (No Existing App)
+
+```bash
+# Use scripts/playground_install.sh (downloads and installs latest from Gitea)
+./scripts/playground_install.sh --launch --auto-login
+```
+
+---
+
 ## Claude Workflow: After Build Completes
 
 1. **Wait for Build** (via Gitea DB check)
@@ -199,6 +258,34 @@ cd /tmp && npx asar extract "/mnt/c/.../app.asar" app && grep "my-fix" app/**/*.
 
 ---
 
+## Critical Notes for Claude
+
+### WSL vs Windows
+- **CDP scripts MUST run with Windows Node.js**, not WSL node
+- Use: `/mnt/c/Program\ Files/nodejs/node.exe script.js`
+- NOT: `node script.js` (WSL node can't reach Windows localhost)
+
+### Environment Variables
+- Env vars from WSL **DO NOT pass** to Windows processes
+- CDP scripts use defaults (admin/admin123) - no env vars needed
+
+### Credentials
+| User | Password | Notes |
+|------|----------|-------|
+| admin | admin123 | Superadmin - ALWAYS WORKS |
+| neil | ??? | Exists but password unknown |
+| ci_tester | ci_test_pass_2024 | CI only (Gitea secrets) |
+
+### Verify CSS Deployed
+```bash
+# Extract app.asar and check CSS
+cd /tmp
+npx asar extract "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext/resources/app.asar" app
+grep "cds-layer-hover" app/build/_app/immutable/**/*.css
+```
+
+---
+
 ## Troubleshooting
 
 | Problem | Solution |
@@ -208,7 +295,9 @@ cd /tmp && npx asar extract "/mnt/c/.../app.asar" app && grep "my-fix" app/**/*.
 | App won't start after update | Delete %APPDATA%\LocaNext, reinstall |
 | Old version still showing | Hard refresh (Ctrl+Shift+R) |
 | Login fails | Use admin/admin123, not neil/neil |
+| CDP timeout | App not started with `--remote-debugging-port=9222` |
+| ECONNREFUSED | App not running on Windows |
 
 ---
 
-*Created: 2025-12-27 | Purpose: Fast iteration without full reinstalls*
+*Created: 2025-12-27 | Updated: 2025-12-27 | Purpose: Fast iteration without full reinstalls*
