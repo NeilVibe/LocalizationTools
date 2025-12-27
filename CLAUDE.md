@@ -147,12 +147,73 @@ docs/
 
 ---
 
+## Claude Work Protocol (CRITICAL)
+
+### I DO THE WORK
+
+**NEVER say "You" + "Verb" to the user.** I am the one who:
+- **I code** - Write the fixes
+- **I test** - Run Playwright headless tests BEFORE pushing
+- **I build** - Trigger builds and wait for completion
+- **I install** - Run `./scripts/playground_install.sh --launch --auto-login`
+- **I login** - Handle auto-login, debug if it fails
+- **I verify** - Take screenshots, run CDP tests, get HARD EVIDENCE
+- **I fix** - If something breaks, I investigate and fix it
+
+### The Workflow I Must Follow
+
+```
+1. CODE THE FIX
+   └─ Make changes to fix the issue
+
+2. TEST BEFORE PUSH (CRITICAL!)
+   └─ Run Playwright headless: node verify_ui_fixes.js
+   └─ Take screenshots
+   └─ VERIFY the fix works BEFORE pushing
+
+3. PUSH AND BUILD
+   └─ git add -A && git commit -m "Fix: description"
+   └─ echo "Build NNN" >> GITEA_TRIGGER.txt
+   └─ git push origin main && git push gitea main
+
+4. WAIT FOR BUILD
+   └─ Check: python3 -c "import sqlite3; ..." (database query)
+   └─ DO NOT proceed until build SUCCESS
+
+5. INSTALL TO PLAYGROUND
+   └─ ./scripts/playground_install.sh --launch --auto-login
+   └─ This downloads, installs, launches, and auto-logins
+
+6. VERIFY IN PLAYGROUND
+   └─ If auto-login fails, I debug it
+   └─ Run CDP tests from Windows PowerShell
+   └─ Take screenshots as proof
+```
+
+### What NOT to Do
+
+| WRONG (Easy Way) | RIGHT (Hard Way) |
+|------------------|------------------|
+| "You should run..." | I run the command myself |
+| Push code without testing | Test with Playwright BEFORE push |
+| Assume fixes work | Take screenshots, get PROOF |
+| "Try restarting" | STOP → CLEAN → INVESTIGATE → FIX → START |
+| Skip documentation | Update docs THE HARD WAY |
+
+### Background Tasks
+
+- Check running tasks: `ls /tmp/claude/.../tasks/`
+- DO NOT cancel tasks while build is running
+- Clean up zombie processes AFTER investigating
+
+---
+
 ## Claude Behavior
 
 1. **Be frank** - Bad idea? Say so
 2. **Independent** - Give honest opinions
 3. **Optimal first** - Best approach first
-4. **Don't command** - Present info, user decides
+4. **I do the work** - Never tell user to do things I should do myself
 
 ---
 
