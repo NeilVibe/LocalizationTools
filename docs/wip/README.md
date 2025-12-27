@@ -1,25 +1,54 @@
 # WIP - Work In Progress
 
-**Updated:** 2025-12-25
+**Updated:** 2025-12-28
+
+---
+
+## ACTIVE NOW
+
+### Advanced Search - PLANNING
+**Goal:** Add search modes (Contain, Exact, Not Contain, Fuzzy) + field selectors
+
+| Step | Task | Status |
+|------|------|--------|
+| 1 | Create WIP doc | DONE |
+| 2 | Add search mode dropdown to UI | PENDING |
+| 3 | Add field selector to UI | PENDING |
+| 4 | Extend backend API | PENDING |
+| 5 | Implement fuzzy search (Model2Vec) | PENDING |
+
+**WIP Doc:** [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md)
+
+---
+
+### Color Tag Display - TESTING
+**Goal:** Display `<PAColor0xffe9bd23>text<PAOldColor>` with actual colors
+
+| Step | Task | Status |
+|------|------|--------|
+| 1 | Create colorParser.js | DONE |
+| 2 | Create ColorText.svelte | DONE |
+| 3 | Integrate into VirtualGrid | DONE |
+| 4 | Test in browser | PENDING |
+
+**Test Data:** `tests/fixtures/sample_language_data.txt` (20 rows with real color tags)
+
+**WIP Doc:** [COLOR_TAG_DISPLAY.md](COLOR_TAG_DISPLAY.md)
+
+---
+
+## BACKLOG
+
+| Priority | Feature | Status |
+|----------|---------|--------|
+| P6 | File Delete + Recycle Bin | BACKLOG |
+| P7 | Font Settings UI | BACKLOG |
 
 ---
 
 ## Start Here
 
-**[SESSION_CONTEXT.md](SESSION_CONTEXT.md)** - Current state + all priorities
-
----
-
-## Current Priorities
-
-| Priority | Feature | WIP Doc |
-|----------|---------|---------|
-| **P1** | Factorization | SESSION_CONTEXT.md |
-| **P2** | Auto-LQA System | [AUTO_LQA_IMPLEMENTATION.md](AUTO_LQA_IMPLEMENTATION.md) |
-| **P3** | MERGE System | SESSION_CONTEXT.md |
-| **P4** | File Conversions | SESSION_CONTEXT.md |
-| **P5** | LanguageTool | [LANGUAGETOOL_IMPLEMENTATION.md](LANGUAGETOOL_IMPLEMENTATION.md) |
-| **Future** | UIUX Overhaul | [UIUX_OVERHAUL_LEGACY_MENU.md](UIUX_OVERHAUL_LEGACY_MENU.md) |
+**[SESSION_CONTEXT.md](SESSION_CONTEXT.md)** - Current state + next steps
 
 ---
 
@@ -28,12 +57,9 @@
 | Status | Value |
 |--------|-------|
 | **Open Issues** | 0 |
-| **Tests (Linux)** | 1,399 (7 stages, ~4 min) |
-| **Tests (Windows)** | 62 pytest + CDP integration |
-| **Coverage** | 47% (target 70%) |
-| **CI/CD** | ✅ Linux + Windows passing |
-| **QA FULL** | DONE (Gitea, 1.2GB) |
-| **Windows CI** | Build 880+ (Gitea secrets) |
+| **Tests (Linux)** | 1,399 |
+| **Build** | 409 |
+| **Auto-Update** | VERIFIED WORKING |
 
 ---
 
@@ -41,22 +67,11 @@
 
 | File | Purpose |
 |------|---------|
-| [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | All priorities + session state |
-| [AUTO_LQA_IMPLEMENTATION.md](AUTO_LQA_IMPLEMENTATION.md) | P2: Full QA system |
-| [LANGUAGETOOL_IMPLEMENTATION.md](LANGUAGETOOL_IMPLEMENTATION.md) | P5: Grammar check |
-| [UIUX_OVERHAUL_LEGACY_MENU.md](UIUX_OVERHAUL_LEGACY_MENU.md) | Future: Legacy menu + single LocaNext |
-| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker (0 open) |
+| [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Session state |
+| [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | Search modes feature |
+| [COLOR_TAG_DISPLAY.md](COLOR_TAG_DISPLAY.md) | Color tag display |
+| [CONFUSION_HISTORY.md](CONFUSION_HISTORY.md) | Mistake tracker (SHORTENED) |
 
 ---
 
-## Reference Docs
-
-| File | Purpose |
-|------|---------|
-| [../../Roadmap.md](../../Roadmap.md) | Absorption tracker + strategic view |
-| [../development/CODING_STANDARDS.md](../development/CODING_STANDARDS.md) | Rule #0 + all standards |
-| [QA_FULL_IMPLEMENTATION.md](QA_FULL_IMPLEMENTATION.md) | CI/CD offline mode (DONE) |
-
----
-
-*Hub file - all details in SESSION_CONTEXT.md*
+*Hub file - details in SESSION_CONTEXT.md*
