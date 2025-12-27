@@ -8,15 +8,14 @@
 
 | Need | Go To |
 |------|-------|
+| **DEV Testing (PRIMARY!)** | [testing_toolkit/DEV_MODE_PROTOCOL.md](testing_toolkit/DEV_MODE_PROTOCOL.md) ← USE THIS |
 | **Current task?** | [Roadmap.md](Roadmap.md) |
 | **Session context?** | [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
 | **Open bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
 | **WIP docs?** | [docs/wip/README.md](docs/wip/README.md) |
-| **Build → Test protocol?** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) ← START HERE |
-| **CI/CD debug?** | [docs/cicd/TROUBLESHOOTING.md](docs/cicd/TROUBLESHOOTING.md) ← EFFECTIVE DEBUGGING |
-| **Node.js CDP tests?** | [testing_toolkit/cdp/README.md](testing_toolkit/cdp/README.md) |
+| **Build → Test (Windows)** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) |
+| **CI/CD debug?** | [docs/cicd/TROUBLESHOOTING.md](docs/cicd/TROUBLESHOOTING.md) |
 | **Enterprise deploy?** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
-| **All docs?** | [docs/README.md](docs/README.md) |
 
 ---
 
@@ -49,6 +48,41 @@ LocaNext.exe (User PC)          Central PostgreSQL
 ONLINE:  PostgreSQL (multi-user, WebSocket sync)
 OFFLINE: SQLite (single-user, auto-fallback)
 ```
+
+---
+
+## Development Protocol (CRITICAL!)
+
+### DEV TESTING = PRIMARY WORKFLOW
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  DEV TESTING FIRST - BUILD ONLY WHEN TIME IS RIGHT         │
+├─────────────────────────────────────────────────────────────┤
+│  1. Code changes in locaNext/                               │
+│  2. Test via localhost:5173 (Vite dev server)               │
+│  3. Run Playwright tests: npx playwright test               │
+│  4. Fix issues, repeat until VERIFIED working               │
+│  5. Push to Git (GitHub + Gitea)                            │
+│  6. Only BUILD when significant milestone reached           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**DEV Testing Location:** `testing_toolkit/DEV_MODE_PROTOCOL.md`
+
+**Helpers Location:** `testing_toolkit/dev_tests/helpers/`
+
+**Test Data:** `tests/fixtures/sample_language_data.txt` (63 rows, real Korean data with PAColor tags)
+
+### Why DEV Testing First?
+
+| DEV Testing | Windows Build |
+|-------------|---------------|
+| Instant feedback (<1s) | 15+ min build cycle |
+| HMR updates | Must rebuild |
+| Easy debugging | Hard to debug |
+| Playwright works | CDP needed |
+| Use for: All UI work | Use for: Final validation |
 
 ---
 
