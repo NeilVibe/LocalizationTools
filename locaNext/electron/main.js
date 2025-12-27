@@ -59,13 +59,14 @@ logger.info('Process info', {
 });
 
 // Auto-updater (only in production builds)
+// ESM workaround: https://github.com/electron-userland/electron-builder/issues/7976
 let autoUpdater = null;
 logger.info('Auto-updater module loading', { NODE_ENV: process.env.NODE_ENV });
 if (!process.env.NODE_ENV?.includes('development')) {
   try {
-    const { autoUpdater: updater } = await import('electron-updater');
-    autoUpdater = updater;
-    logger.info('electron-updater loaded successfully');
+    const electronUpdater = await import('electron-updater');
+    autoUpdater = electronUpdater.default?.autoUpdater || electronUpdater.autoUpdater;
+    logger.info('electron-updater loaded successfully', { hasAutoUpdater: !!autoUpdater });
   } catch (e) {
     // electron-updater not installed, skip auto-updates
     logger.warning('electron-updater not available', { error: e.message });
