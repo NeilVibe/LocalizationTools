@@ -1,8 +1,8 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-27 11:35 | **Build:** 395 | **CI:** Online | **Issues:** 24 OPEN
+**Last Updated:** 2025-12-27 14:00 | **Build:** 397 (in progress) | **CI:** Online | **Issues:** 15 OPEN
 
-> **SESSION STATUS:** Full CDP audit complete. Build 395 fixes FAILED. 24 issues documented including 5 CRITICAL blocking issues.
+> **SESSION STATUS:** Build 397 triggered with UI-055 (modal bloat) and UI-057 (hover colors) fixes. Waiting for build completion before install and verify.
 
 ---
 
@@ -10,142 +10,105 @@
 
 | Item | Status |
 |------|--------|
-| **Open Issues** | 24 (5 CRITICAL, 8 HIGH, 7 MEDIUM, 4 LOW) |
-| **Build 395** | SUCCESS but fixes NOT working |
-| **Edit Modal** | BROKEN - cannot close (softlock) |
-| **Virtual Scroll** | BROKEN - container 480K px tall |
-| **TM Loading** | BROKEN - infinite spinner |
+| **Open Issues** | 15 (6 HIGH, 7 MEDIUM, 4 LOW) |
+| **Build 396** | SUCCESS - verified working |
+| **Build 397** | IN PROGRESS (UI-055 + UI-057 fixes) |
+| **FIXED This Session** | UI-055 (modal bloat), UI-057 (hover colors) |
+| **FIXED in Build 396** | UI-051, UI-052, UI-053, UI-054, UI-056 |
 
 ---
 
-## TODAY'S SESSION (2025-12-27)
+## WHAT I DID (2025-12-27)
 
-### 1. iPad Remote Access Setup (DONE)
+### 1. Fixed UI-055: Modal DOM Bloat
+- Wrapped ALL 16 Carbon Modals with `{#if}` conditionals
+- Files modified:
+  - FileExplorer.svelte: 7 modals
+  - TMManager.svelte: 5 modals
+  - DataGrid.svelte: 1 modal
+  - TMDataGrid.svelte: 1 modal
+  - TMUploadModal.svelte: Added dispatch('close')
+  - TMViewer.svelte: Added dispatch('close')
+- **Result:** Modals only render when needed (was 22+ always in DOM)
 
-**Solution:** Chrome Remote Desktop (web version in Safari)
-- iOS app discontinued by Google in 2025
-- Web version works: `remotedesktop.google.com` in Safari
-- Setup guide: `docs/IPAD-REMOTE-ACCESS-GUIDE.md`
+### 2. Fixed UI-057: Split Hover Colors
+- Added `.cell.source:hover` CSS rule matching target cell
+- File: VirtualGrid.svelte line 1621-1624
 
-### 2. User Testing via iPad - ISSUES FOUND
+### 3. Updated Documentation THE HARD WAY
+- Added "Claude Work Protocol" to CLAUDE.md
+- Key principle: **I DO THE WORK** - never tell user to do things
+- Updated this SESSION_CONTEXT.md
 
-User tested the app remotely and found multiple issues:
-- Source text not selectable
-- Target cells not expanding (compressed)
-- Hover shows split 2 colors
-- Cell edit modal cannot be closed (softlock!)
-- TM loading forever
-- 1500+ console errors reported
-
-### 3. CDP Comprehensive Audit - COMPLETED
-
-Full automated audit using Chrome DevTools Protocol:
-- 23 screenshots captured
-- DOM analysis performed
-- Network/memory checked
-
-**Key Findings:**
-| Finding | Value | Impact |
-|---------|-------|--------|
-| Total Modals | 171 | Massive DOM bloat |
-| Scroll Container | 480,136px tall | Virtual scroll broken |
-| Loading Spinners | 6 visible | TM stuck loading |
-| Console Errors | 3 | Routing issues |
-| Failed Requests | 1 | version.json |
-| CSS Overflow Issues | 20+ | Visual bugs |
-
-### 4. Root Cause Analysis
-
-**UI-051 (Modal Softlock):**
-- Close button uses `onclick={closeEditModal}`
-- Carbon Components require `on:click` (Svelte 4 events)
-- Same root cause as BUG-037
-
-**UI-053 (Virtual Scroll):**
-- `.scroll-container` has `flex: 1` but no height constraint
-- Container expands to content height (480K px)
-- `canScroll: false` - scrolling disabled
-
-**UI-054 (Cells Compressed):**
-- `estimateRowHeight()` calculates variable heights
-- `getRowTop()` uses constant MIN_ROW_HEIGHT (48px)
-- Conflict between variable height and fixed positioning
-
-**UI-055 (171 Modals):**
-- Carbon Components modals not destroyed on close
-- CSS hiding instead of DOM removal
-- Memory leak accumulating
+### 4. MISTAKE ACKNOWLEDGED
+- I pushed Build 397 WITHOUT testing with Playwright first
+- I said "You" + "Verb" to user - WRONG
+- I was confused about workflow, background tasks, auto-login
+- I took the EASY way instead of HARD way
 
 ---
 
-## 24 DOCUMENTED ISSUES
+## WHAT I MUST DO NEXT
 
-### CRITICAL (5) - Blocking
-| ID | Issue | Root Cause |
-|----|-------|------------|
-| UI-051 | Modal cannot close | `onclick` vs `on:click` |
-| UI-052 | TM infinite loading | API/network issue |
-| UI-053 | Virtual scroll broken | Container height not constrained |
-| UI-054 | Cells compressed | Height calculation conflict |
-| UI-055 | 171 modals in DOM | Modals not destroyed |
-
-### HIGH (8) - Major UX
-| ID | Issue |
-|----|-------|
-| UI-056 | Source text not selectable |
-| UI-057 | Split 2-color hover |
-| UI-058 | Build 395 fixes not working |
-| UI-059 | Row selection inconsistent |
-| UI-060 | Source click opens edit |
-| UI-061 | Routing error on load |
-| UI-062 | version.json not found |
-
-### MEDIUM (7) - UX Issues
-| ID | Issue |
-|----|-------|
-| UI-063 | 20+ CSS overflow issues |
-| UI-064 | Status colors conflict hover |
-| UI-065 | Edit icon visibility |
-| UI-066 | Placeholder column count |
-| UI-067 | Filter dropdown height |
-| UI-068 | Resize handle invisible |
-| UI-069 | QA/Edit icon overlap |
-
-### LOW (4) - Cosmetic
-| ID | Issue |
-|----|-------|
-| UI-070 | 9 empty divs |
-| UI-071 | Reference "No match" styling |
-| UI-072 | TM empty message styling |
-| UI-073 | Shortcut bar space |
+1. **Wait for Build 397** to complete
+2. **I run** `./scripts/playground_install.sh --launch --auto-login`
+3. **I verify** with CDP tests and screenshots
+4. **If auto-login fails**, I debug it (not tell user to login)
+5. **Take screenshots** as proof
 
 ---
 
-## FIX PRIORITY
+## VERIFIED FIXES (Build 396)
 
-1. **UI-051** - Modal softlock (users stuck!)
-2. **UI-053** - Virtual scroll (affects everything)
-3. **UI-054** - Cells compressed (content unreadable)
-4. **UI-052** - TM loading (edit unusable)
-5. **UI-055** - DOM bloat (performance)
-
----
-
-## KEY DOCS
-
-| Topic | Doc |
-|-------|-----|
-| Full Issue List | `docs/wip/ISSUES_TO_FIX.md` |
-| iPad Remote | `docs/IPAD-REMOTE-ACCESS-GUIDE.md` |
-| CDP Audit Report | `screenshots/audit_1766802366478/AUDIT_REPORT.json` |
-| Troubleshooting | `docs/cicd/TROUBLESHOOTING.md` |
+| Issue | Fix | Verified |
+|-------|-----|----------|
+| UI-051 | Custom modal with close button | CDP test confirms |
+| UI-052 | Fixed `/api/ldm/tm/suggest` routing | API works |
+| UI-053 | CSS constraints on scroll container | 847px (was 480K) |
+| UI-054 | Variable height in `estimateRowHeight()` | Heights vary |
+| UI-056 | `user-select: text` on source cells | Text selectable |
 
 ---
 
-## QUICK COMMANDS
+## PENDING FIXES (Build 397)
+
+| Issue | Fix | Needs Verification |
+|-------|-----|----------|
+| UI-055 | Wrapped 16 modals with `{#if}` | Need to test |
+| UI-057 | Added `.cell.source:hover` CSS | Need to test |
+
+---
+
+## REMAINING ISSUES (15 OPEN)
+
+### HIGH (6)
+- UI-059: Row selection state inconsistent
+- UI-060: Click on source cell opens edit
+- UI-061: Routing error on page load
+- UI-062: version.json not found
+- UI-074: Missing /api/ldm/files endpoint
+- UI-075: Console error objects logged
+
+### MEDIUM (7)
+- UI-063: CSS text overflow (20+ elements)
+- UI-064: Status colors conflict with hover
+- UI-065: Edit icon visibility
+- UI-066: Placeholder row column count
+- UI-067: Filter dropdown height
+- UI-068: Resize handle invisible
+- UI-069: QA/Edit icon overlap
+
+### LOW (4)
+- UI-070: Empty divs (9)
+- UI-071: Reference "No match" styling
+- UI-072: TM empty message styling
+- UI-073: Shortcut bar space
+
+---
+
+## BUILD STATUS CHECK COMMAND
 
 ```bash
-# Check build status
 python3 -c "
 import sqlite3
 from datetime import datetime
@@ -155,28 +118,20 @@ status_map = {0: 'UNK', 1: 'OK', 2: 'FAIL', 3: 'CANCEL', 4: 'SKIP', 5: 'WAIT', 6
 for r in c.fetchall():
     when = datetime.fromtimestamp(r[3]).strftime('%H:%M') if r[3] else 'N/A'
     print(f'Run {r[0]}: {status_map.get(r[1], r[1]):6} | {when} | {r[2][:45]}')"
-
-# Run CDP audit
-/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/comprehensive_ui_audit.js
-
-# Restart Gitea (if needed)
-cd ~/gitea && ./gitea web &
-cd ~/gitea && ./act_runner daemon --config runner_config.yaml &
 ```
 
 ---
 
-## INVESTIGATION QUESTIONS
+## KEY DOCS
 
-1. **Why did Build 395 fixes not work?**
-   - Build shows SUCCESS in database
-   - Playground updated to v25.1227.0231
-   - But UI still has all original issues
-
-2. **Why is TM loading infinitely?**
-   - 2VEC model should be fast
-   - Need to check `/api/ldm/tm/suggest` directly
+| Topic | Doc |
+|-------|-----|
+| Full Issue List | `docs/wip/ISSUES_TO_FIX.md` |
+| Test Protocol | `testing_toolkit/MASTER_TEST_PROTOCOL.md` |
+| Claude Work Protocol | `CLAUDE.md` → Claude Work Protocol section |
+| CDP Testing | `testing_toolkit/cdp/README.md` |
+| Troubleshooting | `docs/cicd/TROUBLESHOOTING.md` |
 
 ---
 
-*Next: Fix UI-051 (modal softlock) first - change onclick to on:click*
+*Next: Wait for Build 397, then I install, I login, I verify, I take screenshots*
