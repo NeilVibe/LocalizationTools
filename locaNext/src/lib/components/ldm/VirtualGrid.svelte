@@ -1580,11 +1580,10 @@
     border-right: 1px solid var(--cds-border-subtle-01);
     display: flex;
     align-items: flex-start;
-    overflow: hidden;
+    /* UI-057 FIX: Changed from overflow:hidden to allow content to show */
+    overflow: visible;
     min-width: 0;
-    /* Allow cells to expand with content up to max-height */
-    max-height: 200px;
-    overflow-y: auto;
+    /* Row height is now controlled by MIN_ROW_HEIGHT (72px) */
   }
 
   /* UI-044: Source and Target cells use percentage widths (set via inline style) */
@@ -1636,8 +1635,9 @@
     background: var(--cds-layer-hover-01);
   }
 
+  /* UI-057 FIX: Use same hover color as source (was layer-selected-01) */
   .cell.target.cell-hover {
-    background: var(--cds-layer-selected-01);
+    background: var(--cds-layer-hover-01);
   }
 
   .cell.target.locked {
