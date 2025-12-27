@@ -65,3 +65,4 @@ Build 896: Clean state test
 Build 897: Fix BUG-037 QA Panel X button
 Build 897: P5 report complete
 Build LIGHT: Fix file viewer - hover bug, cell height, lazy loading
+Build 20251227-1253
