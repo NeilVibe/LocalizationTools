@@ -653,6 +653,75 @@ python3 -c "import sqlite3; ..."
 
 ---
 
+## Phase 11: Testing Utilities Library
+
+### Location: `testing_toolkit/dev_tests/helpers/`
+
+### Available Helpers
+
+| File | Purpose |
+|------|---------|
+| `login.ts` | Login, get API token, navigate to LDM |
+| `ldm-actions.ts` | Select project/file, search, edit modal |
+| `database.py` | Direct DB access (uses server config) |
+| `api.py` | REST API helper with auth |
+
+### Playwright Test Example
+
+```typescript
+import { test } from '@playwright/test';
+import { loginAndGoToLDM } from '../helpers/login';
+import { selectFirstProject, selectFirstFile, typeSearch, getRowCount } from '../helpers/ldm-actions';
+
+test('search filters rows', async ({ page }) => {
+  await loginAndGoToLDM(page);
+  await selectFirstProject(page);
+  await selectFirstFile(page);
+
+  const before = await getRowCount(page);
+  await typeSearch(page, 'Valencia');
+  const after = await getRowCount(page);
+
+  console.log(`Filtered: ${before} -> ${after}`);
+});
+```
+
+### Database Access (Python)
+
+```python
+# CORRECT: Use server config
+from helpers.database import get_db_connection, get_files_for_project
+
+files = get_files_for_project(8)
+for f in files:
+    print(f"  ID: {f[0]}, Name: {f[1]}")
+```
+
+### API Access (Python)
+
+```python
+from helpers.api import LDMApi
+
+api = LDMApi()
+api.login()
+projects = api.get_projects()
+files = api.get_files(project_id=8)
+```
+
+### Common Patterns
+
+| Action | Helper |
+|--------|--------|
+| Login | `login(page)` |
+| Go to LDM | `navigateToLDM(page)` |
+| Select file | `selectFirstFile(page)` |
+| Type search | `typeSearch(page, 'term')` |
+| Get row count | `getRowCount(page)` |
+| Open edit | `openEditModal(page, rowIndex)` |
+| Screenshot | `screenshot(page, 'label')` |
+
+---
+
 ## Resource Management
 
 ### Background Task Cleanup

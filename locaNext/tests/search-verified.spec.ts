@@ -31,7 +31,7 @@ test.describe('Search Verification Test', () => {
     // Type search term
     const searchInput = page.locator('#ldm-search-input');
     await searchInput.focus();
-    await page.keyboard.type('5000', { delay: 50 }); // Search for a number that should match some rows
+    await page.keyboard.type('Valencia', { delay: 50 }); // Search in real Korean/French data
     await page.waitForTimeout(2000); // Wait for debounce + API
 
     // Get filtered count

@@ -1,6 +1,6 @@
 # Session Context
 
-**Updated:** 2025-12-28 02:45 | **Build:** 409+ | **Issues:** UI-077 duplicate names OPEN
+**Updated:** 2025-12-28 03:00 | **Build:** 409+ | **Issues:** UI-077 duplicate names OPEN
 
 ---
 
@@ -24,15 +24,21 @@
 
 ---
 
-### Test Data Cleanup - DONE
+### Test Data Setup - DONE
 
 - Deleted 3 duplicate `test_10k.txt` files (30,000 rows)
-- Project 8 now empty, ready for real test data
-- Real data: `tests/fixtures/sample_language_data.txt` (63 rows, proper PAColor tags)
+- Uploaded real test data: `sample_language_data.txt` (63 rows, PAColor tags)
+- File ID: 118 in Project 8 "Playwright Test Project"
+
+### Duplicate Name Prevention - CONFIRMED MISSING
+
+- **UI-077:** Verified - duplicates ARE allowed (bad)
+- **No validation** on file upload, folder creation, or project creation
+- **Needs fix** in `server/tools/ldm/routes/files.py`, `folders.py`, `projects.py`
 
 ---
 
-### DEV Mode Testing Protocol
+### DEV Mode Testing Protocol - READY
 
 **Location:** `testing_toolkit/DEV_MODE_PROTOCOL.md`
 
@@ -40,11 +46,13 @@
 - Phase 9: Svelte 5 Debugging (CRITICAL)
 - Phase 9.8: Case Study - Search Bar Bug Fix
 - Phase 10: Git Push Protocol (Gitea on/off)
+- Phase 11: Testing Utilities Library
 
-**Needs More:**
-- Testing utilities (login helper, click helpers)
-- Database access patterns (use server config, not hardcoded)
-- Proper injector scripts
+**Helpers Created:** `testing_toolkit/dev_tests/helpers/`
+- `login.ts` - Login, navigate, get API token
+- `ldm-actions.ts` - Select project/file, search, edit modal
+- `database.py` - DB access using server config
+- `api.py` - REST API helper with auth
 
 ---
 
