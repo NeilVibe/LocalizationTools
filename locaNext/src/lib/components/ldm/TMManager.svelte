@@ -603,21 +603,26 @@
   </div>
 </Modal>
 
-<!-- TM Upload Modal -->
+<!-- TM Upload Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showUploadModal}
 <TMUploadModal
-  bind:open={showUploadModal}
+  open={true}
   on:uploaded={handleUploadComplete}
+  on:close={() => showUploadModal = false}
 />
+{/if}
 
-<!-- Delete Confirmation Modal -->
+<!-- Delete Confirmation Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if deleteConfirmOpen}
 <Modal
-  bind:open={deleteConfirmOpen}
+  open={true}
   modalHeading="Delete Translation Memory"
   primaryButtonText="Delete"
   secondaryButtonText="Cancel"
   danger
   on:click:button--primary={deleteTM}
   on:click:button--secondary={() => { deleteConfirmOpen = false; tmToDelete = null; }}
+  on:close={() => { deleteConfirmOpen = false; tmToDelete = null; }}
 >
   {#if tmToDelete}
     <p>Are you sure you want to delete <strong>{tmToDelete.name}</strong>?</p>
@@ -626,15 +631,18 @@
     </p>
   {/if}
 </Modal>
+{/if}
 
-<!-- Build Indexes Confirmation Modal -->
+<!-- Build Indexes Confirmation Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if buildConfirmOpen}
 <Modal
-  bind:open={buildConfirmOpen}
+  open={true}
   modalHeading="Build TM Indexes"
   primaryButtonText="Start Processing"
   secondaryButtonText="Cancel"
   on:click:button--primary={executeBuildIndexes}
   on:click:button--secondary={() => { buildConfirmOpen = false; tmToBuild = null; }}
+  on:close={() => { buildConfirmOpen = false; tmToBuild = null; }}
 >
   {#if tmToBuild}
     <p>Build semantic search indexes for <strong>{tmToBuild.name}</strong>?</p>
@@ -652,23 +660,29 @@
     </div>
   {/if}
 </Modal>
+{/if}
 
-<!-- TM Viewer Modal -->
+<!-- TM Viewer Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showViewerModal}
 <TMViewer
-  bind:open={showViewerModal}
+  open={true}
   tm={tmToView}
   on:updated={handleViewerUpdate}
+  on:close={() => showViewerModal = false}
 />
+{/if}
 
-<!-- TM Export Modal -->
+<!-- TM Export Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showExportModal}
 <Modal
-  bind:open={showExportModal}
+  open={true}
   modalHeading="Export Translation Memory"
   primaryButtonText={exporting ? "Exporting..." : "Export"}
   secondaryButtonText="Cancel"
   primaryButtonDisabled={exporting}
   on:click:button--primary={executeExport}
   on:click:button--secondary={closeExportModal}
+  on:close={closeExportModal}
 >
   {#if tmToExport}
     <div class="export-modal">
@@ -735,6 +749,7 @@
     </div>
   {/if}
 </Modal>
+{/if}
 
 <style>
   .tm-manager {

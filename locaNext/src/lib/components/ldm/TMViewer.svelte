@@ -211,6 +211,13 @@
     editStringId = "";
   }
 
+  // UI-055 FIX: Handle modal close with event dispatch for parent control
+  function handleModalClose() {
+    open = false;
+    cancelEdit();
+    dispatch('close');
+  }
+
   // Save entry
   async function saveEntry(entryId) {
     saving = true;
@@ -343,7 +350,7 @@
   modalHeading={tm ? `TM Viewer: ${tm.name}` : "TM Viewer"}
   passiveModal
   size="lg"
-  on:close={() => { open = false; cancelEdit(); }}
+  on:close={handleModalClose}
 >
   <div class="tm-viewer">
     {#if errorMessage}

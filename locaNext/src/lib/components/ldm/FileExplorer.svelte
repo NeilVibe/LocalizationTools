@@ -1181,14 +1181,16 @@
   </div>
 {/if}
 
-<!-- New Project Modal -->
+<!-- New Project Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showNewProjectModal}
 <Modal
-  bind:open={showNewProjectModal}
+  open={true}
   modalHeading="New Project"
   primaryButtonText="Create"
   secondaryButtonText="Cancel"
   on:click:button--primary={createProject}
   on:click:button--secondary={() => showNewProjectModal = false}
+  on:close={() => showNewProjectModal = false}
 >
   <TextInput
     bind:value={newProjectName}
@@ -1196,15 +1198,18 @@
     placeholder="My Translation Project"
   />
 </Modal>
+{/if}
 
-<!-- New Folder Modal -->
+<!-- New Folder Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showNewFolderModal}
 <Modal
-  bind:open={showNewFolderModal}
+  open={true}
   modalHeading="New Folder"
   primaryButtonText="Create"
   secondaryButtonText="Cancel"
   on:click:button--primary={createFolder}
   on:click:button--secondary={() => showNewFolderModal = false}
+  on:close={() => showNewFolderModal = false}
 >
   <TextInput
     bind:value={newFolderName}
@@ -1212,15 +1217,18 @@
     placeholder="Game Assets"
   />
 </Modal>
+{/if}
 
-<!-- FEAT-001: Link TM Modal -->
+<!-- FEAT-001: Link TM Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showLinkTMModal}
 <Modal
-  bind:open={showLinkTMModal}
+  open={true}
   modalHeading="Link Translation Memory"
   primaryButtonText={linkedTM ? "Update Link" : "Link TM"}
   secondaryButtonText="Cancel"
   on:click:button--primary={linkTMToProject}
   on:click:button--secondary={() => showLinkTMModal = false}
+  on:close={() => showLinkTMModal = false}
 >
   <p style="margin-bottom: 1rem; color: var(--cds-text-02); font-size: 0.875rem;">
     When you confirm a translation (Ctrl+S), it will be auto-added to the linked TM.
@@ -1260,16 +1268,19 @@
     </div>
   {/if}
 </Modal>
+{/if}
 
-<!-- Upload File Modal -->
+<!-- Upload File Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showUploadModal}
 <Modal
-  bind:open={showUploadModal}
+  open={true}
   modalHeading="Upload File"
   primaryButtonText={uploadStatus === "uploading" ? "Uploading..." : "Upload"}
   primaryButtonDisabled={uploadStatus === "uploading"}
   secondaryButtonText="Cancel"
   on:click:button--primary={uploadFile}
   on:click:button--secondary={() => { showUploadModal = false; uploadFiles = []; uploadStatus = ""; uploadProgress = 0; }}
+  on:close={() => { showUploadModal = false; uploadFiles = []; uploadStatus = ""; uploadProgress = 0; }}
 >
   {#if uploadStatus === "uploading"}
     <ProgressBar
@@ -1303,15 +1314,18 @@
     />
   {/if}
 </Modal>
+{/if}
 
-<!-- TM Registration Modal -->
+<!-- TM Registration Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showTMModal}
 <Modal
-  bind:open={showTMModal}
+  open={true}
   modalHeading="Register as Translation Memory"
   primaryButtonText="Register TM"
   secondaryButtonText="Cancel"
   on:click:button--primary={registerAsTM}
   on:click:button--secondary={() => showTMModal = false}
+  on:close={() => showTMModal = false}
 >
   <div class="tm-form">
     <TextInput
@@ -1359,16 +1373,19 @@
     </p>
   </div>
 </Modal>
+{/if}
 
-<!-- P33 Phase 5: Upload to Central Server Modal -->
+<!-- P33 Phase 5: Upload to Central Server Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showUploadToServerModal}
 <Modal
-  bind:open={showUploadToServerModal}
+  open={true}
   modalHeading="Upload to Central Server"
   primaryButtonText={uploadToServerLoading ? "Uploading..." : "Upload"}
   primaryButtonDisabled={!uploadToServerDestination || uploadToServerLoading}
   secondaryButtonText="Cancel"
   on:click:button--primary={executeUploadToServer}
   on:click:button--secondary={() => showUploadToServerModal = false}
+  on:close={() => showUploadToServerModal = false}
 >
   <div class="upload-server-form">
     {#if uploadToServerFile}
@@ -1418,10 +1435,12 @@
     </p>
   </div>
 </Modal>
+{/if}
 
-<!-- P5: Grammar Check Modal -->
+<!-- P5: Grammar Check Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
+{#if showGrammarModal}
 <Modal
-  bind:open={showGrammarModal}
+  open={true}
   modalHeading="Spelling & Grammar Check"
   passiveModal={true}
   size="lg"
@@ -1494,6 +1513,7 @@
     {/if}
   </div>
 </Modal>
+{/if}
 
 <style>
   .file-explorer {

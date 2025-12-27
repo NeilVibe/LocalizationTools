@@ -145,11 +145,12 @@
     }
   }
 
-  // Handle modal close
+  // Handle modal close - UI-055 FIX: Dispatch 'close' event for parent control
   function handleClose() {
     if (uploadStatus !== "uploading") {
       resetForm();
       open = false;
+      dispatch('close');
     }
   }
 
