@@ -1,8 +1,8 @@
 # Session Context - Claude Handoff Document
 
-**Last Updated:** 2025-12-27 15:30 | **Build:** 398 (DONE) | **CI:** Online | **Issues:** 15 OPEN
+**Last Updated:** 2025-12-27 15:50 | **Build:** 399 (DONE) | **CI:** Online | **Issues:** 15 OPEN
 
-> **SESSION STATUS:** Build 398 COMPLETED. Smart update (blockmap) enabled for Build 399+. Ready to install and test.
+> **SESSION STATUS:** Build 399 COMPLETED with blockmap. SMART UPDATES NOW WORK.
 
 ---
 
@@ -11,9 +11,9 @@
 | Item | Status |
 |------|--------|
 | **Open Issues** | 15 (6 HIGH, 7 MEDIUM, 4 LOW) |
-| **Build 398** | SUCCESS - correct hover CSS fix, ready to install |
-| **Build 399** | PENDING - will have blockmap for smart updates |
-| **Smart Update** | ENABLED in CI, first smart update from Build 399 |
+| **Build 399** | SUCCESS - blockmap verified (0.2 MB) |
+| **Smart Update** | FULLY ENABLED - differential downloads work |
+| **Docs Fixed** | Credentials corrected to admin/admin123 |
 | **New Docs** | CONFUSION_HISTORY.md, SMART_UPDATE_PROTOCOL.md |
 
 ---
