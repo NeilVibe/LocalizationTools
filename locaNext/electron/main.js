@@ -60,14 +60,18 @@ logger.info('Process info', {
 
 // Auto-updater (only in production builds)
 let autoUpdater = null;
+logger.info('Auto-updater module loading', { NODE_ENV: process.env.NODE_ENV });
 if (!process.env.NODE_ENV?.includes('development')) {
   try {
     const { autoUpdater: updater } = await import('electron-updater');
     autoUpdater = updater;
+    logger.info('electron-updater loaded successfully');
   } catch (e) {
     // electron-updater not installed, skip auto-updates
-    logger.warning('electron-updater not available, auto-updates disabled');
+    logger.warning('electron-updater not available', { error: e.message });
   }
+} else {
+  logger.info('Skipping auto-updater (development mode)');
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -270,8 +274,18 @@ function stopBackendServer() {
  * Setup auto-updater to check for updates from your server
  */
 function setupAutoUpdater() {
+  logger.info('Auto-updater check', {
+    autoUpdaterLoaded: !!autoUpdater,
+    isAutoUpdateEnabled,
+    NODE_ENV: process.env.NODE_ENV
+  });
+
   if (!autoUpdater || !isAutoUpdateEnabled) {
-    logger.info('Auto-updater disabled (development mode or not installed)');
+    logger.info('Auto-updater disabled', {
+      reason: !autoUpdater ? 'module not loaded' : 'disabled by config',
+      autoUpdaterLoaded: !!autoUpdater,
+      isAutoUpdateEnabled
+    });
     return;
   }
 
