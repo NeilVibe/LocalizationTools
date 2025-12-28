@@ -14,6 +14,7 @@
   import TMManager from "$lib/components/ldm/TMManager.svelte";
   import TMDataGrid from "$lib/components/ldm/TMDataGrid.svelte";
   import QAMenuPanel from "$lib/components/ldm/QAMenuPanel.svelte";
+  import TMQAPanel from "$lib/components/ldm/TMQAPanel.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
@@ -38,6 +39,15 @@
 
   // P2: QA Menu panel state
   let showQAMenu = $state(false);
+
+  // Phase 1: MemoQ-style side panel state
+  let sidePanelCollapsed = $state(false);
+  let sidePanelWidth = $state(300);
+  let sidePanelSelectedRow = $state(null);
+  let sidePanelTMMatches = $state([]);
+  let sidePanelQAIssues = $state([]);
+  let sidePanelTMLoading = $state(false);
+  let sidePanelQALoading = $state(false);
 
   // API base URL from store (never hardcode!)
   import { get } from "svelte/store";
@@ -257,6 +267,86 @@
     }
     // Close QA menu after modal opens
     showQAMenu = false;
+  }
+
+  /**
+   * Phase 1: Handle row selection - load TM matches for side panel
+   */
+  async function handleRowSelect(event) {
+    const { row } = event.detail;
+    if (!row || !row.source) {
+      sidePanelSelectedRow = null;
+      sidePanelTMMatches = [];
+      return;
+    }
+
+    sidePanelSelectedRow = row;
+
+    // Fetch TM matches for this row
+    await loadTMMatchesForRow(row);
+  }
+
+  /**
+   * Phase 1: Load TM matches for a row
+   */
+  async function loadTMMatchesForRow(row) {
+    if (!row?.source || !selectedFileId) return;
+
+    sidePanelTMLoading = true;
+    sidePanelTMMatches = [];
+
+    try {
+      // Get active TMs for this file
+      const activeTMsResponse = await fetch(`${API_BASE}/api/ldm/files/${selectedFileId}/active-tms`, {
+        headers: getAuthHeaders()
+      });
+
+      if (!activeTMsResponse.ok) {
+        logger.warning('Failed to get active TMs');
+        return;
+      }
+
+      const activeTMs = await activeTMsResponse.json();
+      if (!activeTMs.length) {
+        return;
+      }
+
+      // Search TM for matches
+      const tmIds = activeTMs.map(tm => tm.id);
+      const searchResponse = await fetch(`${API_BASE}/api/ldm/tm/search`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          source_text: row.source,
+          tm_ids: tmIds,
+          limit: 5,
+          min_similarity: 0.5
+        })
+      });
+
+      if (searchResponse.ok) {
+        const results = await searchResponse.json();
+        sidePanelTMMatches = results.matches || [];
+        logger.info('TM matches loaded for side panel', { count: sidePanelTMMatches.length });
+      }
+    } catch (err) {
+      logger.error('Failed to load TM matches', { error: err.message });
+    } finally {
+      sidePanelTMLoading = false;
+    }
+  }
+
+  /**
+   * Phase 1: Handle apply TM from side panel
+   */
+  function handleApplyTMFromPanel(event) {
+    const match = event.detail;
+    // This will be wired up in Phase 2 for inline editing
+    logger.userAction('TM apply requested from side panel', { similarity: match.similarity });
+    // For now, just log - in Phase 2 this will apply to the active edit cell
   }
 
   // ================================
@@ -728,26 +818,45 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
           </div>
         </div>
 
-        <!-- Virtual Grid Main Area (handles 1M+ rows) -->
-        {#if viewMode === 'file'}
+        <!-- Phase 1: Grid + Side Panel Layout -->
+        <div class="grid-with-panel">
+          <!-- Virtual Grid Main Area (handles 1M+ rows) -->
+          {#if viewMode === 'file'}
+            <VirtualGrid
+              bind:this={virtualGrid}
+              fileId={selectedFileId}
+              fileName={selectedFileName}
+              on:rowSelect={handleRowSelect}
+            />
+          {:else if viewMode === 'tm' && selectedTMId}
+            <!-- BUG-027: TM content displayed directly (like File Viewer) -->
+            <TMDataGrid
+              tmId={selectedTMId}
+              tmName={selectedTMName}
+            />
+          {:else}
           <VirtualGrid
             bind:this={virtualGrid}
             fileId={selectedFileId}
             fileName={selectedFileName}
+            on:rowSelect={handleRowSelect}
           />
-        {:else if viewMode === 'tm' && selectedTMId}
-          <!-- BUG-027: TM content displayed directly (like File Viewer) -->
-          <TMDataGrid
-            tmId={selectedTMId}
-            tmName={selectedTMName}
-          />
-        {:else}
-          <VirtualGrid
-            bind:this={virtualGrid}
-            fileId={selectedFileId}
-            fileName={selectedFileName}
-          />
-        {/if}
+          {/if}
+
+          <!-- Phase 1: TM/QA Side Panel (only show in file view mode) -->
+          {#if viewMode === 'file'}
+            <TMQAPanel
+              bind:collapsed={sidePanelCollapsed}
+              bind:width={sidePanelWidth}
+              selectedRow={sidePanelSelectedRow}
+              tmMatches={sidePanelTMMatches}
+              qaIssues={sidePanelQAIssues}
+              tmLoading={sidePanelTMLoading}
+              qaLoading={sidePanelQALoading}
+              on:applyTM={handleApplyTMFromPanel}
+            />
+          {/if}
+        </div>
       </div>
     </div>
   {/if}
@@ -813,6 +922,20 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  /* Phase 1: Grid + Side Panel Layout */
+  .grid-with-panel {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Ensure VirtualGrid takes remaining space */
+  .grid-with-panel > :global(.virtual-grid) {
+    flex: 1;
+    min-width: 0;
   }
 
   .ldm-toolbar {
