@@ -1,27 +1,51 @@
 # WIP - Work In Progress
 
-**Updated:** 2025-12-28
+**Updated:** 2025-12-28 | **Build:** 415 (STABLE)
 
 ---
 
-## ACTIVE NOW
+## NEW - Priority Features
 
-### Advanced Search - PLANNING
-**Goal:** Add search modes (Contain, Exact, Not Contain, Fuzzy) + field selectors
+| Priority | Feature | WIP Doc | Status |
+|----------|---------|---------|--------|
+| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | PLANNING |
+| **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | PLANNING |
+| **P2** | Gitea Clean Kill Protocol | [GITEA_CLEAN_KILL_PROTOCOL.md](GITEA_CLEAN_KILL_PROTOCOL.md) | IMPLEMENTED |
+| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | PLANNING |
+| **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | DOCUMENTED |
+| **P5** | Advanced Search | [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | PLANNING |
+| **P5** | LanguageTool Lazy Load | [LANGUAGETOOL_LAZY_LOAD.md](LANGUAGETOOL_LAZY_LOAD.md) | IDEA |
 
-| Step | Task | Status |
-|------|------|--------|
-| 1 | Create WIP doc | DONE |
-| 2 | Add search mode dropdown to UI | PENDING |
-| 3 | Add field selector to UI | PENDING |
-| 4 | Extend backend API | PENDING |
-| 5 | Implement fuzzy search (Model2Vec) | PENDING |
+### P1: QA UIUX Overhaul
+**CRITICAL** - Fix QA panel stability:
+- Softlock / can't close panel
+- Empty results display
+- No cancel mechanism
+- Add timeout for API requests
 
-**WIP Doc:** [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md)
+### P2: Font Settings Enhancement
+Add missing font options:
+- Font Family (System, Inter, Noto Sans, Source Han CJK, Consolas)
+- Font Color (Default, Black, Dark Gray, Blue, Green)
+- Settings dropdown menu UX
+
+### P2: Gitea Clean Kill Protocol ✅ DONE
+Management script: `./scripts/gitea_control.sh`
+- `status` - Check CPU/RAM/Build status
+- `restart` - Fix high CPU issues
+- `monitor` - Live monitoring
+
+### P3: Offline/Online Mode (COMPLEX)
+Work offline when server unavailable:
+- Auto-sync on reconnect
+- Conflict resolution (reviewed rows protected)
+- Merge modes (full vs edit-only)
 
 ---
 
-### Color Tag Display - TESTING
+## ACTIVE - In Development
+
+### Color Tag Display - WORKING
 **Goal:** Display `<PAColor0xffe9bd23>text<PAOldColor>` with actual colors
 
 | Step | Task | Status |
@@ -29,9 +53,7 @@
 | 1 | Create colorParser.js | DONE |
 | 2 | Create ColorText.svelte | DONE |
 | 3 | Integrate into VirtualGrid | DONE |
-| 4 | Test in browser | PENDING |
-
-**Test Data:** `tests/fixtures/sample_language_data.txt` (20 rows with real color tags)
+| 4 | Test in browser | DONE |
 
 **WIP Doc:** [COLOR_TAG_DISPLAY.md](COLOR_TAG_DISPLAY.md)
 
@@ -42,7 +64,6 @@
 | Priority | Feature | Status |
 |----------|---------|--------|
 | P6 | File Delete + Recycle Bin | BACKLOG |
-| P7 | Font Settings UI | BACKLOG |
 
 ---
 
@@ -58,7 +79,7 @@
 |--------|-------|
 | **Open Issues** | 0 |
 | **Tests (Linux)** | 1,399 |
-| **Build** | 409 |
+| **Build** | 415 (STABLE) |
 | **Auto-Update** | VERIFIED WORKING |
 
 ---
@@ -68,9 +89,15 @@
 | File | Purpose |
 |------|---------|
 | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Session state |
-| [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | Search modes feature |
-| [COLOR_TAG_DISPLAY.md](COLOR_TAG_DISPLAY.md) | Color tag display |
-| [CONFUSION_HISTORY.md](CONFUSION_HISTORY.md) | Mistake tracker (SHORTENED) |
+| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker (0 critical) |
+| [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | P1 - QA panel fixes |
+| [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | P2 - Font options |
+| [GITEA_CLEAN_KILL_PROTOCOL.md](GITEA_CLEAN_KILL_PROTOCOL.md) | P2 - Gitea management |
+| [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | P3 - Offline work |
+| [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | P4 - Color format guide |
+| [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | P5 - Search modes |
+| [COLOR_TAG_DISPLAY.md](COLOR_TAG_DISPLAY.md) | Color tag display (DONE) |
+| [CONFUSION_HISTORY.md](CONFUSION_HISTORY.md) | Mistake tracker |
 
 ---
 
