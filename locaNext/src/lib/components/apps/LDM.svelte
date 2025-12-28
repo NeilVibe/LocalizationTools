@@ -273,20 +273,24 @@
   }
 
   /**
-   * Phase 1: Handle row selection - load TM matches for side panel
+   * Phase 1: Handle row selection - load TM matches and QA issues for side panel
    */
   async function handleRowSelect(event) {
     const { row } = event.detail;
     if (!row || !row.source) {
       sidePanelSelectedRow = null;
       sidePanelTMMatches = [];
+      sidePanelQAIssues = [];
       return;
     }
 
     sidePanelSelectedRow = row;
 
-    // Fetch TM matches for this row
-    await loadTMMatchesForRow(row);
+    // Fetch TM matches and QA issues for this row in parallel
+    await Promise.all([
+      loadTMMatchesForRow(row),
+      loadQAIssuesForRow(row)
+    ]);
   }
 
   /**
@@ -343,6 +347,32 @@
   }
 
   /**
+   * Phase 1: Load QA issues for a row
+   */
+  async function loadQAIssuesForRow(row) {
+    if (!row?.id) return;
+
+    sidePanelQALoading = true;
+    sidePanelQAIssues = [];
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}/qa-results`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const results = await response.json();
+        sidePanelQAIssues = results.issues || [];
+        logger.info('QA issues loaded for side panel', { count: sidePanelQAIssues.length });
+      }
+    } catch (err) {
+      logger.error('Failed to load QA issues', { error: err.message });
+    } finally {
+      sidePanelQALoading = false;
+    }
+  }
+
+  /**
    * Phase 1: Handle apply TM from side panel
    */
   function handleApplyTMFromPanel(event) {
@@ -390,13 +420,64 @@
 
   /**
    * Phase 2: Handle dismiss QA issues (Ctrl+D)
+   * Resolves all QA issues for the row via API and updates visual state
    */
-  function handleDismissQA(event) {
+  async function handleDismissQA(event) {
     const { rowId } = event.detail;
     logger.userAction('QA issues dismissed (Ctrl+D)', { rowId });
-    // Clear QA issues from side panel if this row is selected
+
+    // Get QA issues to resolve (from side panel or fetch them)
+    let issuesToResolve = [];
+    if (sidePanelSelectedRow && sidePanelSelectedRow.id === rowId) {
+      issuesToResolve = [...sidePanelQAIssues];
+    } else {
+      // Fetch QA issues for this row
+      try {
+        const response = await fetch(`${API_BASE}/api/ldm/rows/${rowId}/qa-results`, {
+          headers: getAuthHeaders()
+        });
+        if (response.ok) {
+          const results = await response.json();
+          issuesToResolve = results.issues || [];
+        }
+      } catch (err) {
+        logger.error('Failed to fetch QA issues for dismissal', { error: err.message });
+        return;
+      }
+    }
+
+    if (issuesToResolve.length === 0) {
+      logger.info('No QA issues to dismiss', { rowId });
+      return;
+    }
+
+    // Resolve each QA issue via API
+    let resolvedCount = 0;
+    for (const issue of issuesToResolve) {
+      try {
+        const response = await fetch(`${API_BASE}/api/ldm/qa-results/${issue.id}/resolve`, {
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+        if (response.ok) {
+          resolvedCount++;
+        }
+      } catch (err) {
+        logger.error('Failed to resolve QA issue', { issueId: issue.id, error: err.message });
+      }
+    }
+
+    logger.success(`Dismissed ${resolvedCount}/${issuesToResolve.length} QA issues`, { rowId });
+
+    // Clear side panel QA issues
     if (sidePanelSelectedRow && sidePanelSelectedRow.id === rowId) {
       sidePanelQAIssues = [];
+    }
+
+    // Dispatch event to update row's visual state in VirtualGrid
+    // The VirtualGrid needs to update the row's qa_flag_count to 0
+    if (virtualGrid) {
+      virtualGrid.updateRowQAFlag(rowId, 0);
     }
   }
 

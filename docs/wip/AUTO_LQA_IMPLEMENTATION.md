@@ -1,6 +1,12 @@
-# Auto-LQA (Localization Quality Assurance) - WIP
+# Auto-LQA (Localization Quality Assurance) - IMPLEMENTED
 
-**Status:** PRIORITY 1 | **Effort:** High | **Created:** 2025-12-25
+**Status:** IMPLEMENTED | **Updated:** 2025-12-29 | **Created:** 2025-12-25
+
+> **NOTE:** This feature is now IMPLEMENTED. The backend QA system (routes/qa.py) and frontend QAMenuPanel.svelte are fully functional.
+> - Pattern, Line, and Term checks work via `/api/ldm/rows/{id}/check-qa` and `/api/ldm/files/{id}/check-qa`
+> - QA results are stored in `qa_results` table
+> - Ctrl+D dismisses QA issues via `/api/ldm/qa-results/{id}/resolve`
+> - Side panel loads QA issues when a row is selected
 
 ---
 
