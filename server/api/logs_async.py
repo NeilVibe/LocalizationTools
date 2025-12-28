@@ -40,49 +40,50 @@ async def submit_logs(
     try:
         logs_created = 0
 
-        async with db.begin():
-            for log_data in submission.logs:
-                # Get user ID from username (async)
-                result = await db.execute(
-                    select(User).where(User.username == log_data.username)
-                )
-                user = result.scalar_one_or_none()
+        # Note: get_async_db() already manages transaction (auto-commit/rollback)
+        # Do NOT use db.begin() here - it conflicts with dependency transaction
+        for log_data in submission.logs:
+            # Get user ID from username (async)
+            result = await db.execute(
+                select(User).where(User.username == log_data.username)
+            )
+            user = result.scalar_one_or_none()
 
-                if not user:
-                    logger.warning(f"Log submitted for non-existent user: {log_data.username}")
-                    user_id = None
-                else:
-                    user_id = user.user_id
+            if not user:
+                logger.warning(f"Log submitted for non-existent user: {log_data.username}")
+                user_id = None
+            else:
+                user_id = user.user_id
 
-                # Create log entry
-                log_entry = LogEntry(
-                    user_id=user_id,
-                    session_id=submission.session_id,
-                    username=log_data.username,
-                    machine_id=log_data.machine_id,
-                    tool_name=log_data.tool_name,
-                    function_name=log_data.function_name,
-                    timestamp=datetime.utcnow(),
-                    duration_seconds=log_data.duration_seconds,
-                    status=log_data.status,
-                    error_message=log_data.error_message,
-                    file_info=log_data.file_info,
-                    parameters=log_data.parameters
-                )
+            # Create log entry
+            log_entry = LogEntry(
+                user_id=user_id,
+                session_id=submission.session_id,
+                username=log_data.username,
+                machine_id=log_data.machine_id,
+                tool_name=log_data.tool_name,
+                function_name=log_data.function_name,
+                timestamp=datetime.utcnow(),
+                duration_seconds=log_data.duration_seconds,
+                status=log_data.status,
+                error_message=log_data.error_message,
+                file_info=log_data.file_info,
+                parameters=log_data.parameters
+            )
 
-                db.add(log_entry)
-                logs_created += 1
+            db.add(log_entry)
+            logs_created += 1
 
-                # Emit WebSocket event for real-time updates
-                await emit_log_entry({
-                    'user_id': user_id,
-                    'username': log_data.username,
-                    'tool_name': log_data.tool_name,
-                    'function_name': log_data.function_name,
-                    'status': log_data.status,
-                    'duration_seconds': log_data.duration_seconds,
-                    'timestamp': datetime.utcnow().isoformat()
-                })
+            # Emit WebSocket event for real-time updates
+            await emit_log_entry({
+                'user_id': user_id,
+                'username': log_data.username,
+                'tool_name': log_data.tool_name,
+                'function_name': log_data.function_name,
+                'status': log_data.status,
+                'duration_seconds': log_data.duration_seconds,
+                'timestamp': datetime.utcnow().isoformat()
+            })
 
         logger.info(f"Received {logs_created} log entries from user {current_user['username']}")
 
@@ -112,23 +113,23 @@ async def submit_error_report(
     Records detailed error information for debugging.
     """
     try:
-        async with db.begin():
-            error_log = ErrorLog(
-                timestamp=datetime.utcnow(),
-                user_id=current_user["user_id"],
-                machine_id=error.machine_id,
-                tool_name=error.tool_name,
-                function_name=error.function_name,
-                error_type=error.error_type,
-                error_message=error.error_message,
-                stack_trace=error.stack_trace,
-                app_version=error.app_version,
-                context=error.context
-            )
+        # Note: get_async_db() already manages transaction (auto-commit/rollback)
+        error_log = ErrorLog(
+            timestamp=datetime.utcnow(),
+            user_id=current_user["user_id"],
+            machine_id=error.machine_id,
+            tool_name=error.tool_name,
+            function_name=error.function_name,
+            error_type=error.error_type,
+            error_message=error.error_message,
+            stack_trace=error.stack_trace,
+            app_version=error.app_version,
+            context=error.context
+        )
 
-            db.add(error_log)
-            await db.flush()  # Flush to get the ID
-            error_id = error_log.error_id
+        db.add(error_log)
+        await db.flush()  # Flush to get the ID
+        error_id = error_log.error_id
 
         # Emit WebSocket event for real-time error notifications
         await emit_error_report({

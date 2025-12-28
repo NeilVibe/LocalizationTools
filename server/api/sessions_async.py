@@ -36,21 +36,21 @@ async def start_session(
     Creates a new session record when user opens the application.
     """
     try:
-        async with db.begin():
-            # Create new session
-            new_session = Session(
-                user_id=current_user["user_id"],
-                machine_id=session_data.machine_id,
-                ip_address=session_data.ip_address,
-                app_version=session_data.app_version,
-                session_start=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
-                is_active=True
-            )
+        # Note: get_async_db() already manages transaction (auto-commit/rollback)
+        # Do NOT use db.begin() here - it conflicts with dependency transaction
+        new_session = Session(
+            user_id=current_user["user_id"],
+            machine_id=session_data.machine_id,
+            ip_address=session_data.ip_address,
+            app_version=session_data.app_version,
+            session_start=datetime.utcnow(),
+            last_activity=datetime.utcnow(),
+            is_active=True
+        )
 
-            db.add(new_session)
-            await db.flush()  # Flush to get the session_id
-            await db.refresh(new_session)
+        db.add(new_session)
+        await db.flush()  # Flush to get the session_id
+        await db.refresh(new_session)
 
         # Emit WebSocket event for session start
         await emit_session_update({
