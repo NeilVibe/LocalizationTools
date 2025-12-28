@@ -107,6 +107,9 @@
   let selectedTMName = $state("");
   let viewMode = $state('file'); // 'file' | 'tm' - what's displayed in VirtualGrid
 
+  // FEAT-001: Linked TM for current project (auto-add entries on confirm)
+  let linkedTM = $state(null); // {tm_id, tm_name, priority} or null
+
   // P33 Phase 4: Connection status
   let connectionStatus = $state({
     mode: 'unknown', // 'online' | 'offline' | 'unknown'
@@ -347,6 +350,54 @@
     // This will be wired up in Phase 2 for inline editing
     logger.userAction('TM apply requested from side panel', { similarity: match.similarity });
     // For now, just log - in Phase 2 this will apply to the active edit cell
+  }
+
+  /**
+   * Phase 2: Handle confirm translation (Ctrl+S) - marks as reviewed and adds to TM
+   * Automatically adds entry to linked TM if one is configured for the project
+   */
+  async function handleConfirmTranslation(event) {
+    const { rowId, source, target } = event.detail;
+    logger.userAction('Translation confirmed (Ctrl+S)', { rowId, source: source?.substring(0, 30), target: target?.substring(0, 30) });
+
+    // Add to linked TM if available
+    if (linkedTM && linkedTM.tm_id && source && target) {
+      try {
+        const formData = new FormData();
+        formData.append('source_text', source);
+        formData.append('target_text', target);
+
+        const response = await fetch(`${API_BASE}/api/ldm/tm/${linkedTM.tm_id}/entries`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          logger.success('Entry added to TM', { tmId: linkedTM.tm_id, tmName: linkedTM.tm_name, entryCount: result.entry_count });
+        } else {
+          const error = await response.json();
+          logger.error('Failed to add entry to TM', { error: error.detail });
+        }
+      } catch (err) {
+        logger.error('Error adding to TM', { error: err.message });
+      }
+    } else if (!linkedTM) {
+      logger.info('No linked TM - entry not added to TM');
+    }
+  }
+
+  /**
+   * Phase 2: Handle dismiss QA issues (Ctrl+D)
+   */
+  function handleDismissQA(event) {
+    const { rowId } = event.detail;
+    logger.userAction('QA issues dismissed (Ctrl+D)', { rowId });
+    // Clear QA issues from side panel if this row is selected
+    if (sidePanelSelectedRow && sidePanelSelectedRow.id === rowId) {
+      sidePanelQAIssues = [];
+    }
   }
 
   // ================================
@@ -707,6 +758,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
         bind:selectedProjectId
         bind:selectedFileId
         bind:selectedTMId
+        bind:linkedTM
         connectionMode={connectionStatus.mode}
         on:fileSelect={handleFileSelect}
         on:projectSelect={handleProjectSelect}
@@ -827,6 +879,8 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
               fileId={selectedFileId}
               fileName={selectedFileName}
               on:rowSelect={handleRowSelect}
+              on:confirmTranslation={handleConfirmTranslation}
+              on:dismissQA={handleDismissQA}
             />
           {:else if viewMode === 'tm' && selectedTMId}
             <!-- BUG-027: TM content displayed directly (like File Viewer) -->
@@ -840,6 +894,8 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
             fileId={selectedFileId}
             fileName={selectedFileName}
             on:rowSelect={handleRowSelect}
+            on:confirmTranslation={handleConfirmTranslation}
+            on:dismissQA={handleDismissQA}
           />
           {/if}
 

@@ -10,7 +10,7 @@
     InlineLoading,
     ToastNotification
   } from "carbon-components-svelte";
-  import { TrashCan, Renew, WarningAlt } from "carbon-icons-svelte";
+  import { TrashCan, Renew } from "carbon-icons-svelte";
   import { onMount, onDestroy } from "svelte";
   import { get } from "svelte/store";
   import { api } from "$lib/api/client.js";
@@ -312,19 +312,38 @@
   }
 
   /**
-   * Clear completed and failed tasks (both frontend history and backend)
+   * Clear all tasks: completed, failed, AND zombie running tasks (>60 min)
    */
   async function clearHistory() {
     const startTime = performance.now();
-    // Get backend tasks to delete
-    const backendToDelete = backendTasks.filter(t => t.status === 'completed' || t.status === 'failed');
+
+    // Identify zombie tasks: running for over 60 minutes
+    const zombieThresholdMs = 60 * 60 * 1000; // 60 minutes
+    const now = Date.now();
+
+    const isZombie = (task) => {
+      if (task.status !== 'running') return false;
+      // Parse duration string like "1962m 49s"
+      if (task.duration?.includes('m')) {
+        const minutes = parseInt(task.duration.split('m')[0]) || 0;
+        return minutes >= 60;
+      }
+      return false;
+    };
+
+    // Get backend tasks to delete: completed, failed, OR zombie running
+    const backendToDelete = backendTasks.filter(t =>
+      t.status === 'completed' || t.status === 'failed' || isZombie(t)
+    );
+
     // Count frontend history
     const frontendHistoryCount = $completedHistory.length;
     const totalToDelete = backendToDelete.length + frontendHistoryCount;
 
-    logger.userAction("Clear History button clicked", {
+    logger.userAction("Clear All button clicked", {
       backend_tasks: backendToDelete.length,
-      frontend_history: frontendHistoryCount
+      frontend_history: frontendHistoryCount,
+      zombies: backendToDelete.filter(isZombie).length
     });
 
     if (totalToDelete === 0) {
@@ -343,7 +362,7 @@
       // Clear frontend history first
       clearCompletedHistory();
 
-      // Delete backend tasks
+      // Delete backend tasks (including zombies)
       if (backendToDelete.length > 0) {
         const token = localStorage.getItem('auth_token');
         for (const task of backendToDelete) {
@@ -354,39 +373,46 @@
             }
           });
         }
-        // Remove from local array
-        backendTasks = backendTasks.filter(t => t.status === 'running');
+        // Remove deleted tasks from local array
+        const deletedIds = new Set(backendToDelete.map(t => t.id));
+        backendTasks = backendTasks.filter(t => !deletedIds.has(t.id));
       }
 
       const elapsed = performance.now() - startTime;
 
-      logger.success("Task history cleared", {
+      logger.success("All tasks cleared", {
         deleted_count: totalToDelete,
         remaining_count: backendTasks.length,
         elapsed_ms: elapsed.toFixed(2)
       });
 
-      showNotificationMessage(`Cleared ${totalToDelete} tasks`, 'success');
+      showNotificationMessage(`Cleared ${totalToDelete} tasks (including zombies)`, 'success');
+
+      // Refresh to ensure UI is in sync
+      await fetchTasks();
     } catch (error) {
       const elapsed = performance.now() - startTime;
 
-      logger.error("Failed to clear history", {
+      logger.error("Failed to clear tasks", {
         error: error.message,
         error_type: error.name,
         tasks_to_delete: totalToDelete,
         elapsed_ms: elapsed.toFixed(2)
       });
 
-      showNotificationMessage('Failed to clear history', 'error');
+      showNotificationMessage('Failed to clear tasks', 'error');
     } finally {
       isLoading = false;
     }
   }
 
+  // REMOVED: cleanupStaleTasks function - functionality merged into clearHistory
+  // The "Clean Stale" button was confusing and redundant. Now "Clear All" handles everything.
+
   /**
-   * Cleanup stale running tasks (running for > 60 minutes)
+   * DEPRECATED - left for reference, functionality merged into clearHistory
    */
-  async function cleanupStaleTasks() {
+  async function cleanupStaleTasks_DEPRECATED() {
     const startTime = performance.now();
     const staleRunningTasks = backendTasks.filter(t =>
       t.status === 'running' && t.duration && t.duration.includes('m')
@@ -640,19 +666,12 @@
           Refresh
         </Button>
         <Button
-          icon={WarningAlt}
-          kind="tertiary"
-          on:click={cleanupStaleTasks}
-          title="Mark tasks running over 60min as failed"
-        >
-          Clean Stale
-        </Button>
-        <Button
           icon={TrashCan}
           kind="danger-tertiary"
           on:click={clearHistory}
+          title="Clear completed, failed, and zombie tasks"
         >
-          Clear History
+          Clear All
         </Button>
       </ToolbarContent>
     </Toolbar>
