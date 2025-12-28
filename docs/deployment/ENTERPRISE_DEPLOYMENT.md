@@ -1,281 +1,234 @@
 # LocaNext - Enterprise Self-Hosted Deployment
 
-## 🏢 **For Companies with Strict Network Security**
+## For Companies with Strict Network Security
 
-This guide is for deploying LocaNext **entirely within your company network** with NO external dependencies. Perfect for organizations that require:
-- ✅ No external internet required (internal network only)
-- ✅ No GitHub or external services
-- ✅ Central PostgreSQL for multi-user collaboration
-- ✅ All updates distributed internally via Gitea
-- ✅ Maximum security and control
+Deploy LocaNext **entirely within your company network** with NO external dependencies.
+
+- No external internet required (internal network only)
+- No GitHub or external services
+- Central PostgreSQL for multi-user collaboration
+- All updates distributed internally via Gitea
+- Maximum security and control
 
 ---
 
-## 📊 **Architecture Overview**
+## Architecture Overview
 
 ```
 YOUR COMPANY NETWORK (Closed/Isolated)
 │
-├── YOUR COMPUTER (192.168.1.100)
-│   ├── FastAPI Server (port 8888)
-│   │   ├── Backend API
-│   │   ├── Admin Dashboard (port 5175)
-│   │   └── /updates endpoint (serves .exe files)
-│   │
-│   └── Build LocaNext.exe here
+├── CENTRAL SERVER (192.168.1.100)
+│   ├── PostgreSQL:5432      ← All user data
+│   ├── Gitea:3000           ← Auto-updates, CI/CD
+│   └── LanguageTool:8081    ← Grammar checking (optional)
 │
 └── EMPLOYEE COMPUTERS (192.168.1.x)
-    └── Install LocaNext.exe
-        └── Auto-checks for updates from YOUR computer
+    └── LocaNext.exe
+        ├── Embedded Python backend (localhost:8888)
+        ├── Connects to central PostgreSQL
+        └── Auto-checks Gitea for updates
 ```
 
 **Key Points:**
-- Your computer runs the FastAPI server (backend + update server)
-- Employees' LocaNext apps connect to YOUR computer's IP
-- No external services needed - everything stays inside your network
-- You control ALL updates - build and push from your machine
+- Each PC runs its own embedded backend (localhost:8888)
+- Central services are configured via **environment variables**
+- **No source code changes needed** - just set env vars
 
 ---
 
-## 🚀 **Complete Setup Workflow**
+## Configuration (Environment Variables)
 
-### **Step 1: Configure Your Server IP**
+**Set these in a `.env` file or system environment variables:**
 
-First, find your computer's local IP:
-```bash
-# On Windows:
-ipconfig
-# Look for "IPv4 Address" (e.g., 192.168.1.100)
+### Essential for Company Deployment
 
-# On Linux/Mac:
-ifconfig
-# Look for inet address
-```
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `POSTGRES_HOST` | `192.168.1.100` | Central PostgreSQL server |
+| `POSTGRES_PORT` | `5432` | PostgreSQL port |
+| `POSTGRES_USER` | `localization_admin` | Database username |
+| `POSTGRES_PASSWORD` | `your_secure_password` | Database password |
+| `POSTGRES_DB` | `localizationtools` | Database name |
+| `LANGUAGETOOL_URL` | `http://192.168.1.100:8081/v2/check` | Grammar server |
+| `GITEA_URL` | `http://192.168.1.100:3000` | Auto-update server |
 
-Let's say your IP is: `192.168.1.100`
-
-### **Step 2: Configure LocaNext to Use Your Server**
-
-Edit `/locaNext/electron/main.js`:
-
-```javascript
-const { app, BrowserWindow } = require('electron');
-const { autoUpdater } = require('electron-updater');
-
-// Configure auto-updater to use YOUR server
-autoUpdater.setFeedURL({
-  provider: 'generic',
-  url: 'http://192.168.1.100:8888/updates'  // YOUR COMPUTER'S IP
-});
-
-app.on('ready', () => {
-  createWindow();
-
-  // Check for updates on startup
-  autoUpdater.checkForUpdatesAndNotify();
-});
-
-autoUpdater.on('update-available', (info) => {
-  console.log('Update available:', info.version);
-});
-
-autoUpdater.on('update-downloaded', (info) => {
-  console.log('Update downloaded. Will install on restart.');
-});
-```
-
-Edit `/locaNext/src/lib/api/client.js` (line 6):
-
-```javascript
-// Change from localhost to YOUR IP
-const API_BASE_URL = 'http://192.168.1.100:8888/api/v2';
-```
-
-### **Step 3: Build the Windows Installer**
+### Example .env File
 
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext
-npm run build
-npm run build:electron
+# Place this in the project root or set as system env vars
+
+# Database (Central PostgreSQL)
+POSTGRES_HOST=192.168.1.100
+POSTGRES_PORT=5432
+POSTGRES_USER=localization_admin
+POSTGRES_PASSWORD=your_secure_password
+POSTGRES_DB=localizationtools
+
+# Grammar Check Server (optional)
+LANGUAGETOOL_URL=http://192.168.1.100:8081/v2/check
+
+# Auto-Update Server
+GITEA_URL=http://192.168.1.100:3000
 ```
 
-This creates:
-- `dist-electron/LocaNext Setup 1.0.0.exe` - Windows installer
-- `dist-electron/latest.yml` - Update manifest
+### All Available Variables
 
-### **Step 4: Deploy to Updates Folder**
+**Server:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_HOST` | `127.0.0.1` | Local backend bind address |
+| `SERVER_PORT` | `8888` | Local backend port |
+
+**Database:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_MODE` | `auto` | `auto`, `postgres`, or `sqlite` |
+| `POSTGRES_HOST` | `localhost` | PostgreSQL host |
+| `POSTGRES_PORT` | `5432` | PostgreSQL port |
+| `POSTGRES_USER` | `localization_admin` | PostgreSQL user |
+| `POSTGRES_PASSWORD` | `change_this_password` | PostgreSQL password |
+| `POSTGRES_DB` | `localizationtools` | PostgreSQL database |
+| `POSTGRES_CONNECT_TIMEOUT` | `3` | Connection timeout (seconds) |
+
+**External Services:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LANGUAGETOOL_URL` | `http://localhost:8081/v2/check` | Grammar server |
+| `CENTRAL_SERVER_URL` | (empty) | Telemetry server (optional) |
+
+**Security:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SECRET_KEY` | `dev-secret-key-...` | JWT signing key (CHANGE!) |
+| `ALLOWED_IP_RANGE` | (empty) | IP whitelist (CIDR format) |
+
+**Logging:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `INFO` | DEBUG, INFO, WARNING, ERROR |
+| `LOG_RETENTION_DAYS` | `90` | Log retention (days) |
+
+---
+
+## Setup Workflow
+
+### Step 1: Server Setup
+
+On your central server (192.168.1.100):
 
 ```bash
-# Copy files to updates directory
-cp dist-electron/"LocaNext Setup 1.0.0.exe" ../updates/
-cp dist-electron/latest.yml ../updates/
+# Install PostgreSQL
+sudo apt install postgresql postgresql-contrib
+
+# Create database and user
+sudo -u postgres psql
+CREATE USER localization_admin WITH PASSWORD 'your_secure_password';
+CREATE DATABASE localizationtools OWNER localization_admin;
+\q
+
+# Allow network connections (edit pg_hba.conf)
+# Add: host all all 192.168.1.0/24 md5
+
+# Restart PostgreSQL
+sudo systemctl restart postgresql
 ```
 
-Edit `updates/latest.yml` to point to your server:
-
-```yaml
-version: 1.0.0
-releaseDate: '2025-11-08T00:00:00.000Z'
-files:
-  - url: http://192.168.1.100:8888/updates/download/LocaNext-Setup-1.0.0.exe
-    sha512: [auto-generated hash]
-    size: [file size in bytes]
-path: http://192.168.1.100:8888/updates/download/LocaNext-Setup-1.0.0.exe
-sha512: [auto-generated hash]
-releaseDate: '2025-11-08T00:00:00.000Z'
-```
-
-### **Step 5: Start Your Server**
+### Step 2: Install Gitea (Update Server)
 
 ```bash
-cd /home/neil1988/LocalizationTools
-python3 server/main.py
+# Download and install Gitea
+wget https://dl.gitea.io/gitea/1.21/gitea-1.21-linux-amd64
+chmod +x gitea-1.21-linux-amd64
+sudo mv gitea-1.21-linux-amd64 /usr/local/bin/gitea
+
+# Create service and start
+sudo systemctl enable gitea
+sudo systemctl start gitea
 ```
 
-Your server is now serving:
-- Backend API: `http://192.168.1.100:8888`
-- Admin Dashboard: `http://192.168.1.100:5175`
-- Updates: `http://192.168.1.100:8888/updates/latest.yml`
+### Step 3: Configure .env
 
-### **Step 6: Distribute to Employees**
-
-**First Time Installation:**
-1. Copy `LocaNext Setup 1.0.0.exe` to employee computers (USB, shared drive, email)
-2. Employees run the installer
-3. LocaNext installs and auto-connects to YOUR server
-
-**Future Updates:**
-1. Build new version on your computer
-2. Copy `.exe` and `latest.yml` to `updates/` folder
-3. When employees open LocaNext, it auto-detects the update
-4. They click "Update" and it downloads from YOUR server
-5. Done!
-
----
-
-## 🔄 **Pushing Updates Workflow**
-
-When you want to release a new version:
+Create `.env` in project root:
 
 ```bash
-# 1. Update version in package.json
-cd locaNext
-# Edit package.json: "version": "1.0.1"
+POSTGRES_HOST=192.168.1.100
+POSTGRES_PASSWORD=your_secure_password
+LANGUAGETOOL_URL=http://192.168.1.100:8081/v2/check
+GITEA_URL=http://192.168.1.100:3000
+SECRET_KEY=your-very-secure-random-key
+```
 
-# 2. Build new version
-npm run build
-npm run build:electron
+### Step 4: Build Installer
 
-# 3. Deploy to updates folder
-cp dist-electron/"LocaNext Setup 1.0.1.exe" ../updates/
-cp dist-electron/latest.yml ../updates/
+```bash
+# Push to Gitea - CI/CD builds automatically
+git push company main
 
-# 4. Edit latest.yml URLs to point to your IP
-nano ../updates/latest.yml
-# Change: http://192.168.1.100:8888/updates/download/LocaNext-Setup-1.0.1.exe
+# Or build manually
+cd locaNext && npm run build && npm run build:electron
+```
 
-# 5. Done! Employees will auto-detect the update
+### Step 5: Distribute to Employees
+
+1. Employees download installer from Gitea releases
+2. Install LocaNext.exe
+3. App reads env vars or config file, connects to central server
+4. Auto-updates work via Gitea
+
+---
+
+## How Configuration Works
+
+```
+Priority Order:
+1. Environment Variables (highest)
+2. .env file in project root
+3. %APPDATA%\LocaNext\server-config.json (user config)
+4. Default values in server/config.py (lowest)
+```
+
+**For employees:** App reads `server-config.json` which stores server IP after first login.
+
+**For build:** Set env vars in CI/CD or `.env` file before building.
+
+---
+
+## Security Benefits
+
+- **No external network access** - everything stays in company network
+- **You control updates** - build, approve, distribute
+- **Auditable** - security team can inspect all traffic
+- **Configurable** - all settings via environment variables, no source code changes
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Can't connect to PostgreSQL | Check `POSTGRES_HOST`, firewall, `pg_hba.conf` |
+| Updates not detected | Check `GITEA_URL` env var, Gitea running |
+| "Offline mode" showing | Check network, `POSTGRES_HOST` reachable |
+| Wrong server after install | Check `server-config.json` in %APPDATA% |
+
+**Test connection:**
+```bash
+# From employee PC
+ping 192.168.1.100
+curl http://192.168.1.100:3000/api/v1/version
+psql -h 192.168.1.100 -U localization_admin -d localizationtools
 ```
 
 ---
 
-## 🔒 **Security Benefits**
+## Summary
 
-✅ **No external network access needed**
-- Everything stays within your company network
-- No data leaves your network
-- No external services or GitHub
+| What | How |
+|------|-----|
+| **Configure servers** | Set environment variables (no source changes) |
+| **Build** | Push to Gitea or `npm run build:electron` |
+| **Distribute** | Employees download from Gitea releases |
+| **Updates** | Automatic via Gitea |
+| **Security** | 100% internal network |
 
-✅ **You control everything**
-- You build the updates
-- You approve the updates
-- You distribute the updates
-
-✅ **Simple and auditable**
-- Just `.exe` files served from your computer
-- Security team can inspect the update server
-- All traffic is within your network
-
----
-
-## 📝 **Configuration Files Reference**
-
-### `locaNext/package.json`:
-```json
-{
-  "name": "locanext",
-  "version": "1.0.0",
-  "build": {
-    "appId": "com.locanext.app",
-    "productName": "LocaNext",
-    "publish": null,  // No external publisher
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
-    }
-  }
-}
-```
-
-### `locaNext/electron/main.js`:
-```javascript
-autoUpdater.setFeedURL({
-  provider: 'generic',
-  url: 'http://YOUR_IP:8888/updates'
-});
-```
-
-### `updates/latest.yml`:
-```yaml
-version: 1.0.0
-files:
-  - url: http://YOUR_IP:8888/updates/download/LocaNext-Setup-1.0.0.exe
-path: http://YOUR_IP:8888/updates/download/LocaNext-Setup-1.0.0.exe
-```
-
----
-
-## 🎯 **Advantages Over GitHub Releases**
-
-| Feature | GitHub Releases | Self-Hosted (Your Setup) |
-|---------|----------------|--------------------------|
-| **External Access** | ❌ Requires internet | ✅ Internal network only |
-| **Security Control** | ❌ Data goes to GitHub | ✅ 100% internal |
-| **Company Policy** | ❌ May not be allowed | ✅ Fully compliant |
-| **Setup Complexity** | Easy | Easy (we built it!) |
-| **Cost** | Free | Free |
-| **Control** | Limited | ✅ Full control |
-
----
-
-## 🆘 **Troubleshooting**
-
-**Problem:** Employees can't connect to server
-- **Solution:** Check firewall - allow port 8888 on your computer
-- Windows: `Control Panel → Windows Firewall → Allow an app`
-
-**Problem:** Updates not detected
-- **Solution:** Check `latest.yml` URLs point to correct IP
-- Test: Open `http://YOUR_IP:8888/updates/latest.yml` in browser
-
-**Problem:** Can't download update
-- **Solution:** Check file exists in `updates/` folder
-- Check file permissions (readable)
-
----
-
-## ✅ **Summary**
-
-**What you have:**
-- Self-hosted update server (FastAPI `/updates` endpoint) ✅
-- Auto-update system (electron-updater) ✅
-- No external dependencies ✅
-- Full control over distribution ✅
-
-**What you do:**
-1. Build `.exe` on your computer
-2. Copy to `updates/` folder
-3. Employees auto-download from YOUR server
-4. No GitHub, no external services needed!
-
-**This is exactly what GitHub does, but 100% internal!** 🎉
+**The app picks up environment variables automatically on startup - no code changes needed!**
