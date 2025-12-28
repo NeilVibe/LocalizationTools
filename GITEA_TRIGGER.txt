@@ -85,3 +85,4 @@ Build 411: DOC-001 Install vs Update documentation
 Build 412: Fix mocked tests for UI-077 duplicate validation
 Build 413: TEST-001 Fix async transaction conflicts
 Build 414: Fix test fixture data expectations
+Build 415: Fix remaining db.begin() in session endpoints
