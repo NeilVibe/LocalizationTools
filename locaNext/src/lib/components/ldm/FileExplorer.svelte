@@ -30,6 +30,7 @@
     selectedProjectId = $bindable(null),
     selectedFileId = $bindable(null),
     selectedTMId = $bindable(null),
+    linkedTM = $bindable(null), // FEAT-001: Linked TM for current project {tm_id, tm_name, priority}
     connectionMode = 'unknown' // P33 Phase 5: 'online' | 'offline' | 'unknown'
   } = $props();
 
@@ -81,8 +82,7 @@
   let mergeFileInput = $state(null); // File input element ref
   let mergeTargetFile = $state(null); // LDM file to merge into
 
-  // FEAT-001: TM Link state
-  let linkedTM = $state(null); // {tm_id, tm_name, priority} or null
+  // FEAT-001: TM Link state (linkedTM is now a prop)
   let showLinkTMModal = $state(false);
   let selectedLinkTMId = $state(null); // TM id selected in modal
 
@@ -91,6 +91,16 @@
   let grammarCheckLoading = $state(false);
   let grammarCheckResult = $state(null);
   let grammarCheckError = $state(null);
+
+  // Drag-and-drop state for file moving
+  let draggedFile = $state(null); // File being dragged
+  let dropTargetFolder = $state(null); // Folder to drop into
+
+  // Folder context menu state
+  let showFolderContextMenu = $state(false);
+  let folderContextMenuX = $state(0);
+  let folderContextMenuY = $state(0);
+  let contextMenuFolder = $state(null); // {id, name, type}
 
   // Helper to get auth headers
   function getAuthHeaders() {
@@ -454,20 +464,28 @@
 
   // ============== Context Menu Functions ==============
 
-  // Show context menu on right-click
-  function handleContextMenu(event, file) {
+  // Show context menu on right-click (for files or folders)
+  function handleContextMenu(event, item) {
     event.preventDefault();
     event.stopPropagation();
 
-    // Only show for files, not folders
-    if (file.type !== 'file') return;
+    // Handle folder context menu
+    if (item.type === 'folder') {
+      contextMenuFolder = item;
+      folderContextMenuX = event.clientX;
+      folderContextMenuY = event.clientY;
+      showFolderContextMenu = true;
+      logger.info("Folder context menu opened", { folder: item.name });
+      return;
+    }
 
-    contextMenuFile = file;
+    // Handle file context menu
+    contextMenuFile = item;
     contextMenuX = event.clientX;
     contextMenuY = event.clientY;
     showContextMenu = true;
 
-    logger.info("Context menu opened", { file: file.name });
+    logger.info("Context menu opened", { file: item.name });
   }
 
   // Close context menu
@@ -476,10 +494,117 @@
     contextMenuFile = null;
   }
 
+  // Close folder context menu
+  function closeFolderContextMenu() {
+    showFolderContextMenu = false;
+    contextMenuFolder = null;
+  }
+
+  // ============== Drag and Drop Functions ==============
+
+  // Start dragging a file
+  function handleDragStart(event, file) {
+    if (file.type !== 'file') return;
+    draggedFile = file;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', JSON.stringify(file));
+    logger.info("Drag started", { file: file.name });
+  }
+
+  // Allow drop on folder
+  function handleDragOver(event, folder) {
+    if (!draggedFile || folder.type !== 'folder') return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    dropTargetFolder = folder;
+  }
+
+  // Handle drop on folder - move file to folder
+  async function handleDrop(event, folder) {
+    event.preventDefault();
+    if (!draggedFile || folder.type !== 'folder') {
+      dropTargetFolder = null;
+      return;
+    }
+
+    logger.info("Moving file to folder", { file: draggedFile.name, folder: folder.name });
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/files/${draggedFile.id}/move`, {
+        method: 'PATCH',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ folder_id: folder.id })
+      });
+
+      if (response.ok) {
+        logger.success("File moved", { file: draggedFile.name, folder: folder.name });
+        // Reload tree to show updated structure
+        await loadProjectTree(selectedProjectId);
+      } else {
+        const error = await response.json();
+        logger.error("Failed to move file", { error: error.detail });
+      }
+    } catch (err) {
+      logger.error("Error moving file", { error: err.message });
+    } finally {
+      draggedFile = null;
+      dropTargetFolder = null;
+    }
+  }
+
+  // Create subfolder in folder
+  async function createSubfolder() {
+    if (!contextMenuFolder) return;
+    const folderName = prompt("Enter subfolder name:");
+    if (!folderName?.trim()) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/folders`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: folderName.trim(),
+          project_id: selectedProjectId,
+          parent_id: contextMenuFolder.id
+        })
+      });
+
+      if (response.ok) {
+        logger.success("Subfolder created", { name: folderName, parent: contextMenuFolder.name });
+        await loadProjectTree(selectedProjectId);
+      } else {
+        const error = await response.json();
+        logger.error("Failed to create subfolder", { error: error.detail });
+      }
+    } catch (err) {
+      logger.error("Error creating subfolder", { error: err.message });
+    } finally {
+      closeFolderContextMenu();
+    }
+  }
+
+  // Import file to folder
+  function importFileToFolder() {
+    if (!contextMenuFolder) return;
+    // Set the selectedFolderId for upload modal
+    selectedFolderId = contextMenuFolder.id;
+    closeFolderContextMenu();
+    showUploadModal = true;
+  }
+
   // Handle click outside to close menu
   function handleClickOutside(event) {
     if (showContextMenu) {
       closeContextMenu();
+    }
+    if (showFolderContextMenu) {
+      closeFolderContextMenu();
     }
   }
 
@@ -1015,38 +1140,41 @@
         </div>
 
         {#if treeNodes.length > 0}
+          <!-- Recursive tree node snippet for infinite nesting -->
+          {#snippet renderTreeNode(node, depth = 0)}
+            {@const NodeIcon = node.icon}
+            <div
+              class="tree-node"
+              class:selected={node.data.type === 'file' && selectedFileId === node.data.id}
+              class:folder={node.data.type === 'folder'}
+              style="padding-left: {depth * 16}px;"
+              onclick={() => handleNodeClick(node)}
+              oncontextmenu={(e) => handleContextMenu(e, node.data)}
+              ondragover={(e) => node.data.type === 'folder' && handleDragOver(e, node.data)}
+              ondrop={(e) => node.data.type === 'folder' && handleDrop(e, node.data)}
+              ondragstart={(e) => node.data.type === 'file' && handleDragStart(e, node.data)}
+              draggable={node.data.type === 'file' ? 'true' : 'false'}
+              role="button"
+              tabindex="0"
+            >
+              <NodeIcon size={16} />
+              <span class="node-text">{node.text}</span>
+              {#if node.data.type === 'folder'}
+                <span class="folder-count">({node.children?.length || 0})</span>
+              {/if}
+            </div>
+            {#if node.children && node.children.length > 0}
+              <div class="tree-children">
+                {#each node.children as child}
+                  {@render renderTreeNode(child, depth + 1)}
+                {/each}
+              </div>
+            {/if}
+          {/snippet}
+
           <div class="custom-tree" oncontextmenu={(e) => e.preventDefault()}>
             {#each treeNodes as node}
-              {@const NodeIcon = node.icon}
-              <div
-                class="tree-node"
-                class:selected={node.data.type === 'file' && selectedFileId === node.data.id}
-                onclick={() => handleNodeClick(node)}
-                oncontextmenu={(e) => handleContextMenu(e, node.data)}
-                role="button"
-                tabindex="0"
-              >
-                <NodeIcon size={16} />
-                <span class="node-text">{node.text}</span>
-              </div>
-              {#if node.children && node.children.length > 0}
-                <div class="tree-children">
-                  {#each node.children as child}
-                    {@const ChildIcon = child.icon}
-                    <div
-                      class="tree-node"
-                      class:selected={child.data.type === 'file' && selectedFileId === child.data.id}
-                      onclick={() => handleNodeClick(child)}
-                      oncontextmenu={(e) => handleContextMenu(e, child.data)}
-                      role="button"
-                      tabindex="0"
-                    >
-                      <ChildIcon size={16} />
-                      <span class="node-text">{child.text}</span>
-                    </div>
-                  {/each}
-                </div>
-              {/if}
+              {@render renderTreeNode(node, 0)}
             {/each}
           </div>
         {:else}
@@ -1180,6 +1308,25 @@
         <span>Upload to Central Server...</span>
       </button>
     {/if}
+  </div>
+{/if}
+
+<!-- Folder Context Menu -->
+{#if showFolderContextMenu}
+  <div
+    class="context-menu"
+    style="left: {folderContextMenuX}px; top: {folderContextMenuY}px;"
+    onclick={(e) => e.stopPropagation()}
+    role="menu"
+  >
+    <button class="context-menu-item" onclick={importFileToFolder} role="menuitem">
+      <Upload size={16} />
+      <span>Import File Here...</span>
+    </button>
+    <button class="context-menu-item" onclick={createSubfolder} role="menuitem">
+      <FolderAdd size={16} />
+      <span>Create Subfolder...</span>
+    </button>
   </div>
 {/if}
 

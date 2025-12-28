@@ -88,16 +88,11 @@
 
   // Go to row state - REMOVED (BUG-001 - not useful)
 
-  // Svelte 5: Edit modal state (DEPRECATED - replaced by inline editing)
-  let showEditModal = $state(false);
-  let editingRow = $state(null);
-  let editTarget = $state("");
-  let editStatus = $state("");
-
-  // Phase 2: Inline editing state (MemoQ-style)
+  // Phase 2: Inline editing state (MemoQ-style) - replaces modal editing
   let inlineEditingRowId = $state(null);
   let inlineEditValue = $state("");
   let inlineEditTextarea = $state(null);
+  let isCancellingEdit = $state(false); // Flag to prevent blur-save race condition
 
   // Selected row state (click-based)
   let selectedRowId = $state(null);
@@ -112,7 +107,7 @@
 
   // P2: QA state
   let qaLoading = $state(false);
-  let lastQaResult = $state(null); // Latest QA check result for edit modal
+  let lastQaResult = $state(null); // Latest QA check result (for QA badge updates)
 
   // UI-044: Resizable columns state
   let sourceWidthPercent = $state(50); // Source column takes 50% by default
@@ -390,7 +385,8 @@
     return scrollToRowById(row.id);
   }
 
-  // BUG-037: Export function to open edit modal by row ID (for QA panel integration)
+  // BUG-037: Export function to navigate to row and start editing (for QA panel integration)
+  // Phase 2: Now uses inline editing instead of modal
   export async function openEditModalByRowId(rowId) {
     // First scroll to and highlight the row
     scrollToRowById(rowId);
@@ -398,7 +394,8 @@
     // Use O(1) lookup
     const row = getRowById(rowId);
     if (row) {
-      await openEditModal(row);
+      // Phase 2: Use inline editing instead of modal
+      await startInlineEdit(row);
     } else {
       logger.warning("Row not loaded yet", { rowId });
     }
@@ -553,14 +550,8 @@
     }
   }
 
-  // Apply a TM suggestion
-  function applyTMSuggestion(suggestion) {
-    editTarget = suggestion.target;
-    logger.userAction("TM suggestion applied", {
-      source: suggestion.source.substring(0, 30),
-      similarity: suggestion.similarity
-    });
-  }
+  // Phase 2: applyTMSuggestion REMOVED - TM application now handled via
+  // TMQAPanel.svelte 'applyTM' event -> LDM.svelte -> applyTMToRow()
 
   // P2: Run QA check on a row
   async function runQACheck(rowId) {
@@ -797,8 +788,12 @@
 
     // Set inline editing state
     inlineEditingRowId = row.id;
-    inlineEditValue = row.target || "";
+    // Convert file-format linebreaks to actual \n for editing
+    inlineEditValue = formatTextForDisplay(row.target || "");
     selectedRowId = row.id;
+
+    // Push initial state to undo stack
+    pushUndoState(row.id, row.target || "");
 
     logger.userAction("Inline edit started", { rowId: row.id });
 
@@ -815,7 +810,8 @@
    * Save inline edit and move to next row (or just save)
    */
   async function saveInlineEdit(moveToNext = false) {
-    if (!inlineEditingRowId) return;
+    // Don't save if we're intentionally cancelling (Escape key)
+    if (!inlineEditingRowId || isCancellingEdit) return;
 
     const row = getRowById(inlineEditingRowId);
     if (!row) {
@@ -823,8 +819,11 @@
       return;
     }
 
-    // Only save if value changed
-    if (inlineEditValue !== row.target) {
+    // Convert to file format for save (handles linebreaks)
+    const textToSave = formatTextForSave(inlineEditValue);
+
+    // Only save if value changed (compare formatted values)
+    if (textToSave !== row.target) {
       try {
         const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
           method: 'PATCH',
@@ -833,14 +832,14 @@
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            target: inlineEditValue,
+            target: textToSave,
             status: 'translated' // Mark as translated when edited
           })
         });
 
         if (response.ok) {
-          // Update local row data
-          row.target = inlineEditValue;
+          // Update local row data with file-format text
+          row.target = textToSave;
           row.status = 'translated';
           logger.success("Inline edit saved", { rowId: row.id });
           dispatch('rowUpdate', { rowId: row.id });
@@ -852,11 +851,9 @@
       }
     }
 
-    // Release lock
+    // Release lock (fire-and-forget)
     if (fileId) {
-      unlockRow(fileId, parseInt(row.id)).catch(err => {
-        logger.warning("Failed to unlock row after inline edit", { error: err.message });
-      });
+      unlockRow(fileId, parseInt(row.id));
     }
 
     // Clear inline editing state
@@ -887,25 +884,182 @@
 
     const rowId = inlineEditingRowId;
 
-    // Release lock
+    // Set flag to prevent blur handler from saving
+    isCancellingEdit = true;
+
+    // Release lock (fire-and-forget, no return value)
     if (fileId) {
-      unlockRow(fileId, parseInt(rowId)).catch(err => {
-        logger.warning("Failed to unlock row after cancel", { error: err.message });
-      });
+      unlockRow(fileId, parseInt(rowId));
     }
 
     inlineEditingRowId = null;
     inlineEditValue = "";
     logger.userAction("Inline edit cancelled", { rowId });
+
+    // Reset cancel flag after DOM update
+    setTimeout(() => { isCancellingEdit = false; }, 0);
+  }
+
+  /**
+   * Handle keyboard events at grid level (selection mode - single click on row)
+   * Works when a row is selected but NOT being edited
+   */
+  function handleGridKeydown(e) {
+    // Skip if in edit mode (textarea handles its own keys)
+    if (inlineEditingRowId) return;
+
+    // Skip if no row selected
+    if (!selectedRowId) return;
+
+    // Skip if focus is in search/filter inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    const row = getRowById(selectedRowId);
+    if (!row) return;
+
+    // Ctrl+S: Confirm selected row
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      confirmSelectedRow(row);
+      return;
+    }
+
+    // Ctrl+D: Dismiss QA for selected row
+    if (e.ctrlKey && e.key === 'd') {
+      e.preventDefault();
+      dismissQAIssues();
+      return;
+    }
+
+    // Enter: Start editing selected row
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const lock = isRowLocked(parseInt(row.id));
+      if (!lock) {
+        startInlineEdit(row);
+      }
+      return;
+    }
+
+    // Escape: Clear selection
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      selectedRowId = null;
+      return;
+    }
+
+    // Arrow Down: Move to next row
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const currentIndex = getRowIndexById(selectedRowId);
+      if (currentIndex !== undefined && rows[currentIndex + 1]) {
+        selectedRowId = rows[currentIndex + 1].id;
+        dispatch('rowSelect', { row: rows[currentIndex + 1] });
+      }
+      return;
+    }
+
+    // Arrow Up: Move to previous row
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const currentIndex = getRowIndexById(selectedRowId);
+      if (currentIndex !== undefined && currentIndex > 0 && rows[currentIndex - 1]) {
+        selectedRowId = rows[currentIndex - 1].id;
+        dispatch('rowSelect', { row: rows[currentIndex - 1] });
+      }
+      return;
+    }
+  }
+
+  /**
+   * Confirm selected row (mark as reviewed + add to TM) without editing
+   */
+  async function confirmSelectedRow(row) {
+    if (!row) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
+        method: 'PATCH',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: 'reviewed'
+        })
+      });
+
+      if (response.ok) {
+        row.status = 'reviewed';
+        logger.success("Row confirmed (selection mode)", { rowId: row.id });
+
+        // Dispatch event to add to linked TM
+        dispatch('confirmTranslation', {
+          rowId: row.id,
+          source: row.source,
+          target: row.target
+        });
+
+        dispatch('rowUpdate', { rowId: row.id });
+
+        // Move to next row
+        const currentIndex = getRowIndexById(row.id);
+        if (currentIndex !== undefined && rows[currentIndex + 1]) {
+          selectedRowId = rows[currentIndex + 1].id;
+          dispatch('rowSelect', { row: rows[currentIndex + 1] });
+        }
+      }
+    } catch (err) {
+      logger.error("Error confirming row", { error: err.message });
+    }
   }
 
   /**
    * Handle keyboard events during inline edit
+   * Hotkeys:
+   * - Escape: Cancel edit
+   * - Enter: Save and move to next
+   * - Tab: Save and move to next
+   * - Shift+Enter: New line
+   * - Ctrl+S: Confirm (save as reviewed + add to TM)
+   * - Ctrl+D: Dismiss QA issue for current row
+   * - Ctrl+Z: Undo last edit
+   * - Ctrl+Y: Redo
    */
   function handleInlineEditKeydown(e) {
+    // Ctrl+S: Confirm (save as reviewed status + add to TM)
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      confirmInlineEdit();
+      return;
+    }
+
+    // Ctrl+D: Dismiss QA issues for current row
+    if (e.ctrlKey && e.key === 'd') {
+      e.preventDefault();
+      dismissQAIssues();
+      return;
+    }
+
+    // Ctrl+Z: Undo
+    if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undoEdit();
+      return;
+    }
+
+    // Ctrl+Y or Ctrl+Shift+Z: Redo
+    if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+      e.preventDefault();
+      redoEdit();
+      return;
+    }
+
     if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
       cancelInlineEdit();
+      return;
     } else if (e.key === 'Enter' && !e.shiftKey) {
       // Enter without shift = save and move to next
       e.preventDefault();
@@ -918,194 +1072,154 @@
     // Shift+Enter = newline (default behavior, don't prevent)
   }
 
-  // ============================================
-  // Modal Editing (DEPRECATED - kept for reference)
-  // ============================================
+  /**
+   * Confirm translation: Save as "reviewed" status and add to linked TM
+   */
+  async function confirmInlineEdit() {
+    if (!inlineEditingRowId) return;
 
-  // Open edit modal with row locking
-  async function openEditModal(row) {
-    if (!row) return;
-
-    // Check if row is locked by another user
-    const lock = isRowLocked(parseInt(row.id));
-    // Only block if there's a valid lock with a username (null = stale/invalid lock)
-    if (lock && lock.locked_by) {
-      logger.warning("Row locked by another user", { rowId: row.id, lockedBy: lock.locked_by });
-      alert(`This row is being edited by ${lock.locked_by}`);
+    const row = getRowById(inlineEditingRowId);
+    if (!row) {
+      cancelInlineEdit();
       return;
     }
 
-    // Request row lock for editing
-    if (fileId) {
-      const granted = await lockRow(fileId, parseInt(row.id));
-      if (!granted) {
-        logger.warning("Could not acquire lock", { rowId: row.id });
-        alert("Could not acquire lock. Row may be in use by another user.");
-        return;
-      }
-    }
-
-    editingRow = row;
-    // Format target for editing (convert escapes to real newlines)
-    editTarget = formatGridText(row.target || "");
-    editStatus = row.status || "pending";
-    showEditModal = true;
-    logger.userAction("Edit modal opened", { rowId: row.id });
-
-    // Fetch TM suggestions in background
-    fetchTMSuggestions(row.source, row.id);
-
-    // Auto-focus textarea after modal renders (fixes BUG-005: keyboard shortcuts not working)
-    await tick();
-    const textarea = document.querySelector('.target-textarea');
-    if (textarea) {
-      textarea.focus();
-    }
-  }
-
-  // Close edit modal and release lock
-  function closeEditModal() {
-    logger.info("closeEditModal called", {
-      hasEditingRow: !!editingRow,
-      fileId,
-      showEditModal
-    });
+    // Convert to file format for save (handles linebreaks)
+    const textToSave = formatTextForSave(inlineEditValue);
 
     try {
-      if (editingRow && fileId) {
-        // Fire and forget - don't let unlock failure block modal close
-        unlockRow(fileId, parseInt(editingRow.id)).catch(err => {
-          logger.warning("Failed to unlock row", { error: err.message });
-        });
-      }
-    } catch (err) {
-      logger.error("Error in unlockRow", { error: err.message });
-    }
-
-    // These MUST execute regardless of unlock status
-    showEditModal = false;
-    editingRow = null;
-    tmSuggestions = [];
-    tmLoading = false;
-
-    logger.info("closeEditModal complete", { showEditModal });
-  }
-
-  // Save and move to next row
-  async function saveAndNext() {
-    if (!editingRow) return;
-
-    const currentRowNum = editingRow.row_num;
-    await saveEdit();
-
-    // After save, find and edit next row
-    await tick();
-    const nextRow = rows[currentRowNum]; // row_num is 1-indexed, array is 0-indexed
-    if (nextRow && !nextRow.placeholder) {
-      setTimeout(() => openEditModal(nextRow), 100);
-    }
-  }
-
-  // Handle keyboard shortcuts in edit modal
-  function handleEditKeydown(event) {
-    // Ctrl+S: Save as Confirmed (Reviewed status)
-    if (event.ctrlKey && event.key === 's') {
-      event.preventDefault();
-      editStatus = 'reviewed';
-      saveEdit();
-      return;
-    }
-
-    // Ctrl+T: Save as Translated only (not confirmed)
-    if (event.ctrlKey && event.key === 't') {
-      event.preventDefault();
-      editStatus = 'translated';
-      saveEdit();
-      return;
-    }
-
-    // Ctrl+Enter: Save and next (legacy, keeps current status)
-    if (event.ctrlKey && event.key === 'Enter') {
-      event.preventDefault();
-      saveAndNext();
-      return;
-    }
-
-    // Tab: Apply first TM suggestion (if available)
-    if (event.key === 'Tab' && !event.shiftKey && tmSuggestions.length > 0) {
-      event.preventDefault();
-      applyTMSuggestion(tmSuggestions[0]);
-      return;
-    }
-
-    // Escape: Cancel edit
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeEditModal();
-      return;
-    }
-  }
-
-  // Save edit
-  async function saveEdit() {
-    if (!editingRow) return;
-    loading = true;
-    try {
-      const rowId = editingRow.id;
-      // Convert newlines based on file type before saving
-      const targetToSave = formatTextForSave(editTarget);
-
-      const response = await fetch(`${API_BASE}/api/ldm/rows/${rowId}`, {
-        method: 'PUT',
+      // Save with "reviewed" status
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
+        method: 'PATCH',
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          target: targetToSave,
-          status: editStatus
+          target: textToSave,
+          status: 'reviewed'  // Confirmed = reviewed status
         })
       });
 
       if (response.ok) {
-        // Update local cache with the saved format
-        const rowIndex = editingRow.row_num - 1;
-        if (rows[rowIndex]) {
-          rows[rowIndex] = {
-            ...rows[rowIndex],
-            target: targetToSave,
-            status: editStatus
-          };
-          rows = [...rows];
-        }
+        // Update local row data with file-format text
+        row.target = textToSave;
+        row.status = 'reviewed';
+        logger.success("Translation confirmed", { rowId: row.id, status: 'reviewed' });
 
-        logger.success("Row updated", { rowId });
+        // Dispatch event to add to linked TM (handled by LDM.svelte)
+        dispatch('confirmTranslation', {
+          rowId: row.id,
+          source: row.source,
+          target: textToSave
+        });
 
-        // P2: Run QA check if LIVE QA is enabled
-        if ($preferences.enableLiveQa) {
-          const qaResult = await runQACheck(rowId);
-          if (qaResult && qaResult.issue_count > 0) {
-            // Keep modal open to show QA issues
-            lastQaResult = qaResult;
-            logger.warning("QA issues detected after save", { count: qaResult.issue_count });
-            // Don't close modal - let user see the issues
-            dispatch('rowUpdate', { rowId });
-            return; // Exit without closing modal
-          }
-        }
-
-        closeEditModal();
-        dispatch('rowUpdate', { rowId });
+        dispatch('rowUpdate', { rowId: row.id });
       } else {
-        const error = await response.json();
-        logger.error("Update failed", { error: error.detail });
+        logger.error("Failed to confirm translation", { status: response.status });
       }
     } catch (err) {
-      logger.error("Save error", { error: err.message });
-    } finally {
-      loading = false;
+      logger.error("Error confirming translation", { error: err.message });
+    }
+
+    // Release lock (fire-and-forget)
+    if (fileId) {
+      unlockRow(fileId, parseInt(row.id));
+    }
+
+    const currentRowId = inlineEditingRowId;
+    inlineEditingRowId = null;
+    inlineEditValue = "";
+
+    // Move to next row
+    const currentIndex = getRowIndexById(currentRowId);
+    if (currentIndex !== undefined && rows[currentIndex + 1]) {
+      const nextRow = rows[currentIndex + 1];
+      if (nextRow && !nextRow.placeholder) {
+        selectedRowId = nextRow.id;
+        dispatch('rowSelect', { row: nextRow });
+        await startInlineEdit(nextRow);
+      }
     }
   }
+
+  /**
+   * Dismiss QA issues for current row
+   */
+  function dismissQAIssues() {
+    // Works in both edit mode and selection mode
+    const targetRowId = inlineEditingRowId || selectedRowId;
+    if (!targetRowId) return;
+
+    const row = getRowById(targetRowId);
+    if (!row) return;
+
+    dispatch('dismissQA', { rowId: row.id });
+    logger.userAction("QA issues dismissed", { rowId: row.id });
+  }
+
+  // Undo/Redo state
+  let undoStack = $state([]);
+  let redoStack = $state([]);
+  const MAX_UNDO_HISTORY = 50;
+
+  /**
+   * Push current state to undo stack (called before making changes)
+   */
+  function pushUndoState(rowId, oldValue) {
+    undoStack = [...undoStack.slice(-MAX_UNDO_HISTORY + 1), { rowId, value: oldValue }];
+    redoStack = []; // Clear redo when new edit is made
+  }
+
+  /**
+   * Undo last edit
+   */
+  function undoEdit() {
+    if (undoStack.length === 0) {
+      logger.info("Nothing to undo");
+      return;
+    }
+
+    const lastState = undoStack[undoStack.length - 1];
+    undoStack = undoStack.slice(0, -1);
+
+    // Save current value to redo stack
+    if (inlineEditingRowId) {
+      redoStack = [...redoStack, { rowId: inlineEditingRowId, value: inlineEditValue }];
+    }
+
+    // Restore the previous value
+    inlineEditValue = lastState.value;
+    logger.userAction("Undo", { rowId: lastState.rowId });
+  }
+
+  /**
+   * Redo last undone edit
+   */
+  function redoEdit() {
+    if (redoStack.length === 0) {
+      logger.info("Nothing to redo");
+      return;
+    }
+
+    const redoState = redoStack[redoStack.length - 1];
+    redoStack = redoStack.slice(0, -1);
+
+    // Save current value to undo stack
+    if (inlineEditingRowId) {
+      undoStack = [...undoStack, { rowId: inlineEditingRowId, value: inlineEditValue }];
+    }
+
+    // Restore the redo value
+    inlineEditValue = redoState.value;
+    logger.userAction("Redo", { rowId: redoState.rowId });
+  }
+
+  // ============================================
+  // Phase 2: Modal Editing REMOVED
+  // Replaced by inline editing (startInlineEdit, saveInlineEdit, cancelInlineEdit)
+  // TM/QA display moved to TMQAPanel.svelte (side panel)
+  // ============================================
 
   // Handle real-time cell updates from other users
   // SMART INDEXING: Uses O(1) lookup instead of O(n) findIndex
@@ -1147,17 +1261,40 @@
     return formatted;
   }
 
-  // Convert newlines back for saving based on file type
-  // XML files use &lt;br/&gt;, TXT files use \n
+  /**
+   * Convert file-format linebreaks to actual newlines for display in textarea
+   * Handles: \\n (escaped), &lt;br/&gt; (XML escaped), <br/> (XML), <br> (Excel)
+   */
+  function formatTextForDisplay(text) {
+    if (!text) return "";
+    let result = text;
+    // 1. XML escaped: &lt;br/&gt; → \n
+    result = result.replace(/&lt;br\s*\/&gt;/gi, '\n');
+    // 2. XML unescaped: <br/> or <br /> → \n
+    result = result.replace(/<br\s*\/?>/gi, '\n');
+    // 3. Escaped newlines: \\n → \n (literal backslash-n in text files)
+    result = result.replace(/\\n/g, '\n');
+    return result;
+  }
+
+  /**
+   * Convert actual newlines back to file-format for saving
+   * XML files use &lt;br/&gt;, TXT files keep \n
+   */
   function formatTextForSave(text) {
     if (!text) return "";
     // Determine file type from fileName
     const isXML = fileName.toLowerCase().endsWith('.xml');
+    const isExcel = fileName.toLowerCase().endsWith('.xlsx') || fileName.toLowerCase().endsWith('.xls');
+
     if (isXML) {
-      // XML: convert actual newlines to &lt;br/&gt;
+      // XML: convert actual newlines to &lt;br/&gt; (escaped for XML content)
       return text.replace(/\n/g, '&lt;br/&gt;');
+    } else if (isExcel) {
+      // Excel: convert actual newlines to <br> (unescaped)
+      return text.replace(/\n/g, '<br>');
     } else {
-      // TXT and others: keep actual newlines (backend will handle)
+      // TXT and others: keep actual newlines
       return text;
     }
   }
@@ -1435,7 +1572,12 @@
   });
 </script>
 
-<div class="virtual-grid" style="--grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight};">
+<div
+  class="virtual-grid"
+  style="--grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight};"
+  onkeydown={handleGridKeydown}
+  tabindex="-1"
+>
   {#if fileId}
     <div class="grid-header">
       <div class="header-left">
@@ -1491,6 +1633,16 @@
           hideLabel
         />
       </div>
+    </div>
+
+    <!-- Hotkey Reference Bar -->
+    <div class="hotkey-bar">
+      <span class="hotkey"><kbd>Enter</kbd> Save & Next</span>
+      <span class="hotkey"><kbd>Ctrl+S</kbd> Confirm</span>
+      <span class="hotkey"><kbd>Esc</kbd> Cancel</span>
+      <span class="hotkey"><kbd>Ctrl+D</kbd> Dismiss QA</span>
+      <span class="hotkey"><kbd>Ctrl+Z</kbd> Undo</span>
+      <span class="hotkey"><kbd>Ctrl+Y</kbd> Redo</span>
     </div>
 
     <!-- Table Header -->
@@ -1600,7 +1752,7 @@
                   ondblclick={() => !rowLock && startInlineEdit(row)}
                   role="button"
                   tabindex="0"
-                  onkeydown={(e) => e.key === 'Enter' && !rowLock && startInlineEdit(row)}
+                  onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && !rowLock && !inlineEditingRowId && startInlineEdit(row)}
                 >
                   {#if inlineEditingRowId === row.id}
                     <!-- Inline editing textarea -->
@@ -1670,115 +1822,10 @@
   {/if}
 </div>
 
-<!-- Edit Modal - BIG, Clean, Space-Optimized -->
-{#if showEditModal && editingRow}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="edit-modal-overlay" onclick={closeEditModal} role="presentation">
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="edit-modal" role="dialog" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={handleEditKeydown}>
-      <!-- Shortcut bar at top -->
-      <div class="shortcut-bar">
-        <div class="shortcuts">
-          <span class="shortcut"><kbd>Ctrl+S</kbd> Confirm (Reviewed)</span>
-          <span class="shortcut"><kbd>Ctrl+T</kbd> Translate Only</span>
-          <span class="shortcut"><kbd>Tab</kbd> Apply TM</span>
-          <span class="shortcut"><kbd>Esc</kbd> Cancel</span>
-        </div>
-        <button class="close-btn" type="button" onclick={closeEditModal} title="Close (Esc)">×</button>
-      </div>
-
-      <!-- Two-column layout -->
-      <div class="edit-content">
-        <!-- Left column: Source + Target -->
-        <div class="edit-left">
-          <div class="source-section">
-            <span class="section-label">SOURCE (Korean)</span>
-            <div class="source-text">{formatGridText(editingRow.source) || "-"}</div>
-          </div>
-
-          <div class="target-section">
-            <label class="section-label" for="target-edit-textarea">TARGET (Translation)</label>
-            <textarea
-              id="target-edit-textarea"
-              class="target-textarea"
-              bind:value={editTarget}
-              placeholder="Enter translation..."
-            ></textarea>
-          </div>
-        </div>
-
-        <!-- Right column: TM Suggestions -->
-        <div class="edit-right">
-          <!-- P2: QA Results Panel (shown when issues exist) -->
-          {#if lastQaResult && lastQaResult.issue_count > 0}
-            <div class="qa-section">
-              <div class="qa-header-bar">
-                <span class="section-label qa-label">
-                  <WarningAltFilled size={14} />
-                  QA ISSUES ({lastQaResult.issue_count})
-                </span>
-                {#if qaLoading}
-                  <InlineLoading description="" />
-                {/if}
-              </div>
-              <div class="qa-list">
-                {#each lastQaResult.issues as issue}
-                  <div class="qa-item" class:error={issue.severity === 'error'} class:warning={issue.severity === 'warning'}>
-                    <div class="qa-item-header">
-                      <Tag type={issue.severity === 'error' ? 'red' : 'magenta'} size="sm">
-                        {issue.check_type}
-                      </Tag>
-                    </div>
-                    <div class="qa-item-message">{issue.message}</div>
-                  </div>
-                {/each}
-                <button
-                  class="qa-dismiss-btn"
-                  type="button"
-                  onclick={() => { lastQaResult = null; closeEditModal(); }}
-                >
-                  Dismiss & Close
-                </button>
-              </div>
-            </div>
-          {/if}
-
-          <!-- TM Matches Section -->
-          <div class="tm-section">
-            <div class="tm-header-bar">
-              <span class="section-label">TM MATCHES</span>
-              {#if tmLoading}
-                <InlineLoading description="" />
-              {/if}
-            </div>
-
-            <div class="tm-list">
-              {#if tmSuggestions.length > 0}
-                {#each tmSuggestions as suggestion, idx}
-                  <button
-                    class="tm-item"
-                    onclick={() => applyTMSuggestion(suggestion)}
-                    title="Click to apply (Tab = apply first)"
-                  >
-                    <div class="tm-item-header">
-                      <Tag type="teal" size="sm">{Math.round(suggestion.similarity * 100)}%</Tag>
-                      {#if idx === 0}<span class="tm-hint">Tab</span>{/if}
-                    </div>
-                    <div class="tm-item-source">{suggestion.source}</div>
-                    <div class="tm-item-target">{suggestion.target}</div>
-                  </button>
-                {/each}
-              {:else if !tmLoading}
-                <div class="tm-empty-msg">No similar translations found</div>
-              {/if}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-{/if}
+<!-- Phase 2: Edit Modal REMOVED - replaced by inline editing
+     Double-click Target cell = inline edit
+     TM matches displayed in side panel (TMQAPanel.svelte)
+-->
 
 <style>
   .virtual-grid {
@@ -1861,6 +1908,37 @@
 
   .filter-wrapper :global(.bx--list-box__field) {
     height: 2rem;
+  }
+
+  /* Hotkey Reference Bar */
+  .hotkey-bar {
+    display: flex;
+    gap: 1rem;
+    padding: 0.35rem 1rem;
+    background: var(--cds-layer-accent-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    font-size: 0.7rem;
+    color: var(--cds-text-02);
+    flex-wrap: wrap;
+  }
+
+  .hotkey {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .hotkey kbd {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    background: var(--cds-field-01);
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 3px;
+    font-family: var(--cds-code-01);
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--cds-text-01);
+    box-shadow: 0 1px 0 var(--cds-border-subtle-01);
   }
 
   .table-header {
@@ -2296,340 +2374,9 @@
   }
 
   /* ========================================
-     NEW EDIT MODAL - BIG, Clean, Spacious
+     Phase 2: EDIT MODAL CSS REMOVED
+     Replaced by:
+     - Inline editing (double-click Target cell)
+     - TMQAPanel.svelte (side panel for TM/QA)
      ======================================== */
-
-  .edit-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-    backdrop-filter: blur(2px);
-  }
-
-  .edit-modal {
-    width: 85%;
-    height: 85%;
-    max-width: 1400px;
-    max-height: 900px;
-    background: var(--cds-layer-01);
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-  }
-
-  /* Shortcut bar at top */
-  .shortcut-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    background: var(--cds-layer-accent-01);
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-  }
-
-  .shortcuts {
-    display: flex;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-  }
-
-  .shortcut {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-  }
-
-  .shortcut kbd {
-    background: var(--cds-layer-02);
-    border: 1px solid var(--cds-border-strong-01);
-    border-radius: 3px;
-    padding: 0.15rem 0.4rem;
-    font-family: monospace;
-    font-size: 0.7rem;
-    color: var(--cds-text-01);
-  }
-
-  .close-btn {
-    background: transparent;
-    border: none;
-    font-size: 1.5rem;
-    pointer-events: auto;
-    z-index: 100;
-    position: relative;
-    color: var(--cds-text-02);
-    cursor: pointer;
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: background 0.15s, color 0.15s;
-  }
-
-  .close-btn:hover {
-    background: var(--cds-layer-hover-01);
-    color: var(--cds-text-01);
-  }
-
-  /* Two-column layout */
-  .edit-content {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .edit-left {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 1rem;
-    gap: 1rem;
-    overflow: hidden;
-  }
-
-  .edit-right {
-    width: 320px;
-    min-width: 280px;
-    border-left: 1px solid var(--cds-border-subtle-01);
-    background: var(--cds-layer-02);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* Section labels */
-  .section-label {
-    display: block;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--cds-text-02);
-    margin-bottom: 0.5rem;
-  }
-
-  /* Source section */
-  .source-section {
-    flex: 0 0 auto;
-    max-height: 40%;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .source-text {
-    flex: 1;
-    background: var(--cds-layer-02);
-    padding: 1rem;
-    border-radius: 4px;
-    font-size: 0.9375rem;
-    line-height: 1.5;
-    color: var(--cds-text-02);
-    white-space: pre-wrap;
-    overflow-y: auto;
-    border: 1px solid var(--cds-border-subtle-01);
-  }
-
-  /* Target section */
-  .target-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  .target-textarea {
-    flex: 1;
-    width: 100%;
-    padding: 1rem;
-    border: 2px solid var(--cds-border-strong-01);
-    border-radius: 4px;
-    background: var(--cds-field-01);
-    color: var(--cds-text-01);
-    font-size: 0.9375rem;
-    line-height: 1.5;
-    resize: none;
-    font-family: inherit;
-  }
-
-  .target-textarea:focus {
-    outline: none;
-    border-color: var(--cds-interactive-01);
-    box-shadow: 0 0 0 1px var(--cds-interactive-01);
-  }
-
-  .target-textarea::placeholder {
-    color: var(--cds-text-placeholder);
-  }
-
-  /* TM section (right column) */
-  .tm-section {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .tm-header-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    background: var(--cds-layer-accent-01);
-  }
-
-  .tm-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.5rem;
-  }
-
-  .tm-item {
-    display: block;
-    width: 100%;
-    padding: 0.75rem;
-    margin-bottom: 0.5rem;
-    border: 1px solid var(--cds-border-subtle-01);
-    border-radius: 4px;
-    background: var(--cds-layer-01);
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, transform 0.1s;
-  }
-
-  .tm-item:hover {
-    background: var(--cds-layer-hover-01);
-    border-color: var(--cds-border-interactive);
-    transform: translateY(-1px);
-  }
-
-  .tm-item:active {
-    transform: translateY(0);
-  }
-
-  .tm-item-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .tm-hint {
-    font-size: 0.625rem;
-    color: var(--cds-text-02);
-    background: var(--cds-layer-02);
-    padding: 0.1rem 0.3rem;
-    border-radius: 2px;
-    font-family: monospace;
-  }
-
-  .tm-item-source {
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-    margin-bottom: 0.25rem;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .tm-item-target {
-    font-size: 0.8125rem;
-    color: var(--cds-text-01);
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .tm-empty-msg {
-    padding: 2rem 1rem;
-    text-align: center;
-    color: var(--cds-text-02);
-    font-size: 0.8125rem;
-    font-style: italic;
-  }
-
-  /* P2: QA Panel Styles */
-  .qa-section {
-    display: flex;
-    flex-direction: column;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    background: rgba(218, 30, 40, 0.05);
-  }
-
-  .qa-header-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    background: rgba(218, 30, 40, 0.12);
-    border-bottom: 1px solid rgba(218, 30, 40, 0.2);
-  }
-
-  .qa-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--cds-support-01, #da1e28);
-  }
-
-  .qa-list {
-    padding: 0.5rem;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .qa-item {
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.5rem;
-    border-radius: 4px;
-    background: var(--cds-layer-01);
-    border-left: 3px solid var(--cds-support-01, #da1e28);
-  }
-
-  .qa-item.warning {
-    border-left-color: var(--cds-support-03, #f1c21b);
-  }
-
-  .qa-item-header {
-    margin-bottom: 0.25rem;
-  }
-
-  .qa-item-message {
-    font-size: 0.8125rem;
-    color: var(--cds-text-01);
-    line-height: 1.4;
-  }
-
-  .qa-dismiss-btn {
-    width: 100%;
-    padding: 0.5rem;
-    margin-top: 0.5rem;
-    border: 1px solid var(--cds-border-strong-01);
-    border-radius: 4px;
-    background: var(--cds-layer-01);
-    color: var(--cds-text-01);
-    font-size: 0.8125rem;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-
-  .qa-dismiss-btn:hover {
-    background: var(--cds-layer-hover-01);
-  }
 </style>

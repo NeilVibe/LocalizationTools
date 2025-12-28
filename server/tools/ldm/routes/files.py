@@ -306,6 +306,59 @@ async def upload_file(
     return result
 
 
+@router.patch("/files/{file_id}/move")
+async def move_file_to_folder(
+    file_id: int,
+    folder_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Move a file to a different folder (or root of project if folder_id is None).
+
+    Used for drag-and-drop file organization in FileExplorer.
+    """
+    from pydantic import BaseModel
+
+    # Get file
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.id == file_id)
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Verify project ownership
+    result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == file.project_id,
+            LDMProject.owner_id == current_user["user_id"]
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="Not authorized to modify this file")
+
+    # If folder_id provided, verify folder exists and belongs to same project
+    if folder_id is not None:
+        result = await db.execute(
+            select(LDMFolder).where(
+                LDMFolder.id == folder_id,
+                LDMFolder.project_id == file.project_id
+            )
+        )
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Target folder not found or invalid")
+
+    # Update file's folder_id
+    file.folder_id = folder_id
+    await db.commit()
+
+    logger.success(f"File moved: id={file_id}, new_folder={folder_id}")
+
+    return {"success": True, "file_id": file_id, "folder_id": folder_id}
+
+
 @router.post("/files/excel-preview")
 async def excel_preview(
     file: UploadFile = File(...),

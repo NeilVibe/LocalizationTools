@@ -988,6 +988,37 @@ EOF
 
 ---
 
+### CS-008: Fire-and-Forget Functions
+
+**Never call `.catch()` on a function that doesn't return a Promise.**
+
+```javascript
+// ldm.js - unlockRow is fire-and-forget
+export function unlockRow(fileId, rowId) {
+  websocket.send('ldm_unlock_row', { ... });
+  // NO RETURN - returns undefined
+}
+
+// WRONG - crashes silently with TypeError
+unlockRow(fileId, rowId).catch(() => {});
+// TypeError: Cannot read properties of undefined (reading 'catch')
+
+// RIGHT - just call it
+unlockRow(fileId, rowId);
+```
+
+**Symptoms:**
+- Function appears to do nothing
+- No visible error (TypeError hidden)
+- Code after the `.catch()` call doesn't execute
+
+**Debug Approach:**
+1. Add console.log at every line
+2. Wrap in try-catch to expose hidden TypeError
+3. Check if function returns Promise or undefined
+
+---
+
 ### Quick Reference Card
 
 | Problem | Solution |
@@ -998,6 +1029,7 @@ EOF
 | DB auth fails | Use server config, not hardcoded |
 | "Not working" claim | Get screenshots, get PROOF |
 | Search shows count but empty cells | Check array indexing (row_num vs sequential) |
+| Function appears to do nothing | Check if calling `.catch()` on non-Promise |
 
 ---
 
