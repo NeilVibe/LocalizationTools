@@ -1,9 +1,9 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-28 12:15 | **Build:** 409 | **Open:** 7 (all LOW priority)
+**Last Updated:** 2025-12-28 14:00 | **Build:** 412 (FAILED) | **Open:** 8 (1 CRITICAL)
 
-> **STATUS:** 10 FIXES TODAY! UI-059/062/065/074/075/076/077/078/079/080 all FIXED.
-> **ANALYSIS COMPLETE:** All issues reviewed. 2 marked NOT A BUG/BY DESIGN.
+> **PRIORITY 1:** TEST-001 Async Event Loop - BLOCKING BUILDS
+> **STATUS:** Build 412 failed. Must fix before next build.
 
 ---
 
@@ -13,11 +13,42 @@
 |--------|-------|
 | **FIXED/CLOSED** | 19 |
 | **NOT A BUG/BY DESIGN** | 2 |
-| **CRITICAL (Blocking)** | 0 |
+| **CRITICAL (Blocking)** | 1 ← NEW |
 | **HIGH (Major UX)** | 0 |
 | **MEDIUM (Low Priority)** | 5 |
 | **LOW (Cosmetic)** | 4 |
-| **Total Open** | 7 (all low priority) |
+| **Total Open** | 8 |
+
+---
+
+## CRITICAL - BLOCKING BUILDS
+
+### TEST-001: Async Event Loop Test Failures ⚠️ PRIORITY 1
+
+- **Reported:** 2025-12-28
+- **Severity:** CRITICAL (Blocking CI builds)
+- **Status:** OPEN - Must fix before next build
+
+**Problem:** Tests fail with `RuntimeError: got Future attached to a different loop` when run after 100+ other tests.
+
+**Failing tests:**
+- `test_submit_logs_with_auth`
+- `test_start_session`
+- `test_get_latest_version`
+
+**Root Cause:** `_async_session_maker` in `server/utils/dependencies.py` tied to event loop at initialization. After 100+ tests, loop state is corrupted.
+
+**Full Plan:** See [SESSION_CONTEXT.md](SESSION_CONTEXT.md) for complete action plan.
+
+**Quick Fix Options:**
+1. **Option A:** Convert endpoints to sync db (recommended for simple endpoints)
+2. **Option B:** Reset async engine between test modules
+3. **Option C:** Configure pytest-asyncio for separate loops
+
+**Files to check:**
+- `server/utils/dependencies.py` - async session maker
+- `server/api/*.py` - endpoints using `get_async_db`
+- `tests/conftest.py` - test fixtures
 
 ---
 
