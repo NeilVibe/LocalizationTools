@@ -3,7 +3,7 @@
  * GLOBAL ERROR HANDLERS MUST BE SET UP IMMEDIATELY AFTER IMPORTS
  */
 
-import { app, BrowserWindow, Menu, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, dialog, shell, protocol, session } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
@@ -510,6 +510,23 @@ function createWindow() {
   } else {
     const buildPath = path.join(__dirname, '../build/index.html');
     logger.info('Loading production build', { path: buildPath, DEBUG_MODE });
+
+    // UI-062 FIX: Intercept SvelteKit's version.json request in file:// protocol
+    // SvelteKit tries to fetch /_app/version.json which becomes file:///C:/_app/version.json
+    // We intercept this and redirect to the correct path in the build folder
+    session.defaultSession.webRequest.onBeforeRequest(
+      { urls: ['file:///*/_app/version.json', 'file:///C:/_app/version.json'] },
+      (details, callback) => {
+        // Get the correct path to version.json in the build folder
+        const correctPath = path.join(__dirname, '../build/_app/version.json');
+        logger.info('[UI-062] Intercepted version.json request', {
+          original: details.url,
+          redirectTo: `file://${correctPath.replace(/\\/g, '/')}`
+        });
+        callback({ redirectURL: `file://${correctPath.replace(/\\/g, '/')}` });
+      }
+    );
+
     mainWindow.loadFile(buildPath);
 
     // Open DevTools in production if DEBUG_MODE is enabled

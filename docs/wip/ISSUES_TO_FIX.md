@@ -1,9 +1,9 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-28 11:45 | **Build:** 407 | **Open:** 8 (all LOW priority)
+**Last Updated:** 2025-12-28 12:15 | **Build:** 409 | **Open:** 7 (all LOW priority)
 
-> **STATUS:** 9 FIXES TODAY! UI-059/065/074/075/076/077/078/079/080 all FIXED.
-> **ANALYSIS COMPLETE:** All issues reviewed. 3 marked NOT A BUG/WONTFIX/BY DESIGN.
+> **STATUS:** 10 FIXES TODAY! UI-059/062/065/074/075/076/077/078/079/080 all FIXED.
+> **ANALYSIS COMPLETE:** All issues reviewed. 2 marked NOT A BUG/BY DESIGN.
 
 ---
 
@@ -11,13 +11,13 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 18 |
-| **NOT A BUG/WONTFIX** | 3 |
+| **FIXED/CLOSED** | 19 |
+| **NOT A BUG/BY DESIGN** | 2 |
 | **CRITICAL (Blocking)** | 0 |
 | **HIGH (Major UX)** | 0 |
 | **MEDIUM (Low Priority)** | 5 |
 | **LOW (Cosmetic)** | 4 |
-| **Total Open** | 8 (all low priority) |
+| **Total Open** | 7 (all low priority) |
 
 ---
 
@@ -209,16 +209,18 @@
   - App works correctly despite the console message
 - **File:** `locaNext/src/routes/+error.svelte`
 
-### UI-062: Failed Network Request (version.json) 🔄 IN PROGRESS
+### UI-062: Failed Network Request (version.json) ✅ FIXED
 - **Reported:** 2025-12-27
-- **Assessed:** 2025-12-28
+- **Fixed:** 2025-12-28
 - **Severity:** LOW (Cosmetic console error)
-- **Status:** IN PROGRESS - Fix planned
+- **Status:** FIXED
 - **Problem:** `net::ERR_FILE_NOT_FOUND` for `file:///C:/_app/version.json`
 - **Root Cause:** SvelteKit runtime fetches `/_app/version.json` which becomes `C:/_app/version.json` in file:// mode
-- **Solution:** Intercept fetch in `electron/preload.js` to return mock response
-- **Plan:** See [UI-062_SVELTEKIT_VERSION_JSON_FIX.md](UI-062_SVELTEKIT_VERSION_JSON_FIX.md)
-- **Why Fixable:** Electron preload runs before page content, can patch window.fetch
+- **Solution:** Used `session.webRequest.onBeforeRequest` to intercept and redirect to correct path
+- **Implementation:** `electron/main.js` lines 514-528
+  - Intercepts `file:///*/_app/version.json` and `file:///C:/_app/version.json`
+  - Redirects to `build/_app/version.json` in the app directory
+- **Documentation:** [UI-062_SVELTEKIT_VERSION_JSON_FIX.md](UI-062_SVELTEKIT_VERSION_JSON_FIX.md)
 
 ### UI-074: Missing API Endpoint /api/ldm/files ✅ FIXED
 - **Reported:** 2025-12-27
