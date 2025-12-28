@@ -1121,6 +1121,9 @@
     // Select the row
     selectedRowId = row.id;
 
+    // Phase 1: Dispatch rowSelect event for side panel
+    dispatch('rowSelect', { row });
+
     // Pre-fetch TM suggestions if not already fetched
     if (prefetchedRowId !== row.id && row.source) {
       prefetchedRowId = row.id;
