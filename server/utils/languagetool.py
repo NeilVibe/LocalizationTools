@@ -1,6 +1,6 @@
 """
 LanguageTool client for grammar/spelling checking.
-Connects to central LanguageTool server at 172.28.150.120:8081
+Connects to LanguageTool server (configured in config.py).
 
 LAZY LOAD: Server starts on-demand and stops after idle timeout (5 min).
 Saves ~900MB RAM when grammar check not in use.
@@ -13,7 +13,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from loguru import logger
 
-LANGUAGETOOL_URL = "http://172.28.150.120:8081/v2/check"
+# Import URL from central config (never hardcode!)
+from server.config import LANGUAGETOOL_URL
 IDLE_TIMEOUT_SECONDS = 300  # 5 minutes
 STARTUP_TIMEOUT_SECONDS = 30  # Max wait for server to start
 STARTUP_CHECK_INTERVAL = 1.0  # Check every second during startup
