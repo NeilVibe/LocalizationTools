@@ -39,8 +39,10 @@
   // P2: QA Menu panel state
   let showQAMenu = $state(false);
 
-  // API base URL
-  const API_BASE = 'http://localhost:8888';
+  // API base URL from store (never hardcode!)
+  import { get } from "svelte/store";
+  import { serverUrl } from "$lib/stores/app.js";
+  const API_BASE = get(serverUrl);
 
   // ================================
   // TEST MODE CONFIGURATION

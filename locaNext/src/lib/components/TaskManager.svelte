@@ -12,9 +12,13 @@
   } from "carbon-components-svelte";
   import { TrashCan, Renew, WarningAlt } from "carbon-icons-svelte";
   import { onMount, onDestroy } from "svelte";
+  import { get } from "svelte/store";
   import { api } from "$lib/api/client.js";
   import { websocket } from "$lib/api/websocket.js";
-  import { isAuthenticated, user } from "$lib/stores/app.js";
+  import { isAuthenticated, user, serverUrl } from "$lib/stores/app.js";
+
+  // API base URL from store (never hardcode!)
+  const API_BASE = get(serverUrl);
   import { logger } from "$lib/utils/logger.js";
   import {
     activeOperations as frontendOperations,
@@ -194,7 +198,7 @@
     try {
       // Fetch ALL recent operations (not just running)
       // This shows users their task history including completed/failed tasks
-      const response = await fetch('http://localhost:8888/api/progress/operations', {
+      const response = await fetch(`${API_BASE}/api/progress/operations`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -343,7 +347,7 @@
       if (backendToDelete.length > 0) {
         const token = localStorage.getItem('auth_token');
         for (const task of backendToDelete) {
-          await fetch(`http://localhost:8888/api/progress/operations/${task.id}`, {
+          await fetch(`${API_BASE}/api/progress/operations/${task.id}`, {
             method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${token}`
@@ -401,7 +405,7 @@
     try {
       // Call backend to mark stale running tasks as failed
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8888/api/progress/operations/cleanup/stale?minutes_old=60', {
+      const response = await fetch(`${API_BASE}/api/progress/operations/cleanup/stale?minutes_old=60`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

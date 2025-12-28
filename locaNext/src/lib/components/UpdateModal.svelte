@@ -8,7 +8,12 @@
   } from "carbon-components-svelte";
   import { Renew, Checkmark, Close, Download, Restart } from "carbon-icons-svelte";
   import { onMount, onDestroy } from "svelte";
+  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
+  import { serverUrl } from "$lib/stores/app.js";
+
+  // API base URL from store (never hardcode!)
+  const API_BASE = get(serverUrl);
 
   // Svelte 5: Modal state
   let open = $state(false);
@@ -38,7 +43,7 @@
   // Fetch current version on mount
   onMount(async () => {
     try {
-      const response = await fetch('http://localhost:8888/health');
+      const response = await fetch(`${API_BASE}/health`);
       if (response.ok) {
         const health = await response.json();
         currentVersion = health.version || '';

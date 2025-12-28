@@ -29,13 +29,15 @@
   } from "carbon-components-svelte";
   import { Upload, Search, FolderOpen, View, ViewOff, DocumentExport, CheckmarkOutline, WarningAlt, CharacterPatterns, StringInteger } from "carbon-icons-svelte";
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
   import { api } from "$lib/api/client.js";
   import { telemetry } from "$lib/utils/telemetry.js";
   import { createTracker } from "$lib/utils/trackedOperation.js";
+  import { serverUrl } from "$lib/stores/app.js";
 
-  // API base URL
-  const API_BASE = 'http://localhost:8888';
+  // API base URL from store (never hardcode!)
+  const API_BASE = get(serverUrl);
 
   // Helper to get auth headers
   function getAuthHeaders() {

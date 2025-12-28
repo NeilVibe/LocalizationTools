@@ -10,7 +10,12 @@
     ToastNotification
   } from "carbon-components-svelte";
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import { api } from "$lib/api/client.js";
+  import { serverUrl } from "$lib/stores/app.js";
+
+  // API base URL from store (never hardcode!)
+  const API_BASE = get(serverUrl);
   import { logger } from "$lib/utils/logger.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
@@ -1396,7 +1401,7 @@
                 try {
                   const token = localStorage.getItem('token');
                   const downloadResponse = await fetch(
-                    `http://localhost:8888/api/download/operation/${data.operation_id}`,
+                    `${API_BASE}/api/download/operation/${data.operation_id}`,
                     {
                       headers: { 'Authorization': `Bearer ${token}` }
                     }

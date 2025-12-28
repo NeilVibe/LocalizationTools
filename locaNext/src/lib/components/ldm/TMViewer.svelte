@@ -19,12 +19,14 @@
     Download
   } from "carbon-icons-svelte";
   import { createEventDispatcher, tick } from "svelte";
+  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
+  import { serverUrl } from "$lib/stores/app.js";
 
   const dispatch = createEventDispatcher();
 
-  // API base URL
-  const API_BASE = 'http://localhost:8888';
+  // API base URL from store (never hardcode!)
+  const API_BASE = get(serverUrl);
 
   // Svelte 5: Props
   let { open = $bindable(false), tm = null } = $props();
