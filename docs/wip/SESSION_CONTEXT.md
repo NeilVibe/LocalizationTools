@@ -1,179 +1,100 @@
 # Session Context
 
-**Updated:** 2025-12-28 18:30 | **Build:** 415 (STABLE) | **Status:** ✅ ALL TESTS PASS
+**Updated:** 2025-12-28 21:10 | **Build:** 415 (STABLE) | **Status:** QA + LanguageTool DONE
 
 ---
 
 ## Current State
 
-**Build 415 is STABLE.** All tests pass. CI pipeline operational.
+**Build 415 is STABLE.** Major fixes completed this session.
 
-### New WIP Documents Created
+### Completed This Session
 
-| Document | Description |
-|----------|-------------|
-| [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | P1 - Fix QA panel stability issues |
-| [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | P2 - Add font family/color, settings dropdown |
-| [GITEA_CLEAN_KILL_PROTOCOL.md](GITEA_CLEAN_KILL_PROTOCOL.md) | P2 - Clean shutdown, monitoring |
-| [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | P3 - Offline work + auto-merge |
-| [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | P4 - Guide for adding color formats |
+| Task | Status | Details |
+|------|--------|---------|
+| QA Panel Stability | DONE | Fixed freeze, added timeout, error UI |
+| LanguageTool Lazy Load | DONE | Auto start/stop, saves 900MB RAM |
+| Gitea Management | DONE | `gitea_control.sh` script |
+| View Mode Settings | DOCUMENTED | New feature planned |
 
-### Priority Summary
+---
+
+## QA Panel Fixes (DONE)
+
+### Issues Fixed
+- **Freeze on click**: Simplified AbortController logic
+- **"Cannot read properties of undefined"**: Added safe getter for checkType
+- **No timeout**: Added 30s timeout on all API calls
+- **No error display**: Added InlineNotification with retry
+- **No cancel**: Added cancel button during QA run
+- **Softlock**: Close button always works now
+
+### Files Changed
+- `locaNext/src/lib/components/ldm/QAMenuPanel.svelte`
+
+---
+
+## LanguageTool Lazy Load (DONE)
+
+### How It Works
+```
+User clicks "Check Grammar"
+  → Backend checks if server running
+  → If not: starts via systemctl (30s timeout)
+  → Performs check
+  → After 5 min idle: auto-stops
+```
+
+### RAM Savings
+- OFF (default): Saves ~900MB
+- ON (when needed): Starts automatically
+
+### Files Changed
+- `server/utils/languagetool.py`
+
+---
+
+## NEW: View Mode Settings (PLANNED)
+
+### Feature
+Add Settings > General > View Mode toggle:
+- **Modal Mode** (current): Double-click opens edit modal
+- **Inline Mode** (MemoQ-style): Edit directly in grid
+
+### Additional Features
+- TM/QA side panel on single-click (inline mode)
+- Optional TM/QA column in grid
+- See [VIEW_MODE_SETTINGS.md](VIEW_MODE_SETTINGS.md)
+
+---
+
+## Priority Summary
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| **P1** | QA UIUX Overhaul | PLANNING |
-| **P2** | Font Settings Enhancement | PLANNING |
-| **P2** | Gitea Clean Kill Protocol | PLANNING |
+| **P1** | QA UIUX Overhaul | DONE |
+| **P2** | View Mode Settings | PLANNING |
+| **P2** | Font Settings | PLANNING |
+| **P2** | Gitea Protocol | DONE |
+| **P2** | LanguageTool Lazy Load | DONE |
 | **P3** | Offline/Online Mode | PLANNING |
-| **P4** | Color Parser Extension | DOCUMENTED |
-| **P5** | Advanced Search | PLANNING |
-
----
-
-## COMPLETED: Async Transaction Fix (Build 415)
-
-### Problem (Was)
-
-Build 412-414 failed with "A transaction is already begun on this Session" error.
-
-**Initial misleading diagnosis:** "RuntimeError: Task got Future attached to a different loop"
-
-**Actual root cause:** `db.begin()` calls inside async endpoints conflicted with `get_async_db()` which already manages transactions (auto-commit/rollback pattern).
-
-### Solution (Build 415)
-
-Removed redundant `db.begin()` calls from:
-- `logs_async.py` - `submit_logs`
-- `sessions_async.py` - `start_session`, `session_heartbeat`, `end_session`
-
-Added `_check_async_engine_loop()` for test isolation (bonus fix).
-
-**Result:** All tests pass. Build 415 SUCCESS.
-
-### Full Plan of Action
-
-#### Phase 1: Understand the Problem (30 min)
-
-1. **Read the code:**
-   - `server/utils/dependencies.py` - Find `_async_session_maker` and how it's initialized
-   - `server/main.py` - Check how async sessions are used
-   - Failing test files in `tests/integration/server_tests/`
-
-2. **Understand the pattern:**
-   - Why does it work in isolation but fail after 100+ tests?
-   - What creates new event loops during test runs?
-   - How does pytest-asyncio handle event loops?
-
-#### Phase 2: Research Solutions (30 min)
-
-3. **Check existing fixes:**
-   - Per TROUBLESHOOTING.md, `/api/announcements` was fixed by switching to sync db
-   - Look at how that fix was done
-
-4. **Identify all affected endpoints:**
-   - Grep for `Depends(get_async_db)` in all route files
-   - Identify which can be safely switched to sync
-
-#### Phase 3: Implement Fix (1-2 hours)
-
-**Option A: Convert to Sync (Recommended for simple endpoints)**
-```python
-# BEFORE (async - causes issues)
-@router.get("/logs")
-async def get_logs(db: AsyncSession = Depends(get_async_db)):
-    ...
-
-# AFTER (sync - stable)
-@router.get("/logs")
-def get_logs(db: Session = Depends(get_db)):
-    ...
-```
-
-**Option B: Reset async engine between test modules**
-```python
-# In conftest.py
-@pytest.fixture(autouse=True, scope="module")
-def reset_async_engine():
-    from server.utils.dependencies import reset_async_session_maker
-    reset_async_session_maker()
-    yield
-```
-
-**Option C: Use separate event loop per test**
-```python
-# pytest.ini or conftest.py
-[tool:pytest]
-asyncio_mode = auto
-```
-
-5. **For each failing endpoint:**
-   - Assess if it needs async (most don't)
-   - If not, convert to sync
-   - If yes, implement Option B or C
-
-#### Phase 4: Test the Fix (30 min)
-
-6. **Run tests locally:**
-   ```bash
-   python3 -m pytest tests/integration/server_tests/test_api_endpoints.py -v
-   ```
-
-7. **Run full test suite to verify no regressions:**
-   ```bash
-   python3 -m pytest tests/ -v --tb=short
-   ```
-
-#### Phase 5: Deploy and Verify (15 min)
-
-8. **Push and trigger build:**
-   ```bash
-   echo "Build 413: Fix async event loop test failures" >> GITEA_TRIGGER.txt
-   git add -A && git commit -m "Fix: Async event loop test isolation"
-   git push origin main && git push gitea main
-   ```
-
-9. **Monitor with timeout protocol:**
-   - Stage timeout: Tests = 10 min max
-   - RAM: Should be <5GB
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| `server/utils/dependencies.py` | Add reset function or fix session maker |
-| `server/api/*.py` | Convert simple endpoints to sync |
-| `tests/conftest.py` | Add event loop reset fixture if needed |
-
-### Success Criteria
-
-- [ ] All 3 failing tests pass
-- [ ] Full test suite passes (1000+ tests)
-- [ ] No new test failures introduced
-- [ ] Build completes in <15 min
-
----
-
-## Completed This Session
-
-### Build 411-412 Fixes
-
-| Item | Status |
-|------|--------|
-| UI-077 mocked tests broken | ✅ FIXED (3 tests updated) |
-| Confusion #21 documented | ✅ DONE (infinite wait issue) |
-| BUILD TIMEOUT PROTOCOL added | ✅ DONE (per-stage monitoring) |
-
-### Documentation Updated
-
-- `TROUBLESHOOTING.md` - Added BUILD TIMEOUT ALERT PROTOCOL
-- `CONFUSION_HISTORY.md` - Added Confusion #21 (infinite wait)
 
 ---
 
 ## Quick Reference
 
-### Check Build Status (SQL)
+### Check Gitea Status
+```bash
+/home/neil1988/LocalizationTools/scripts/gitea_control.sh status
+```
+
+### Stop LanguageTool (lazy load)
+```bash
+sudo systemctl stop languagetool
+# Will auto-start when grammar check requested
+```
+
+### Check Build Status
 ```bash
 python3 -c "
 import sqlite3, time
@@ -185,20 +106,14 @@ status_map = {1: 'SUCCESS', 2: 'FAILURE', 6: 'RUNNING'}
 print(f'Run {r[0]}: {status_map.get(r[1], r[1])} | {elapsed//60}m')"
 ```
 
-### Per-Stage Monitoring
-```bash
-python3 -c "
-import sqlite3, time
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
-c.execute('''SELECT name, status, started FROM action_run_job
-    WHERE run_id=(SELECT MAX(id) FROM action_run) AND status=6''')
-r = c.fetchone()
-if r:
-    elapsed = int(time.time()) - r[2]
-    print(f'{r[0][:30]}: {elapsed//60}m')
-    if elapsed > 600: print('⚠️ STUCK!')"
-```
+---
+
+## Next Steps
+
+1. **Test QA panel** in browser (refresh localhost:5173)
+2. **Implement View Mode** when ready
+3. **Font Settings** enhancement
 
 ---
 
-*PRIORITY 1: Fix async event loop before next build*
+*Session focus: QA stability + LanguageTool optimization*

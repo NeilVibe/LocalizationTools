@@ -1,6 +1,6 @@
 # LanguageTool Lazy Load
 
-**Priority:** P2 | **Status:** IDEA | **Created:** 2025-12-28
+**Priority:** P2 | **Status:** IMPLEMENTED | **Created:** 2025-12-28
 
 ---
 
@@ -142,4 +142,48 @@ pkill -f languagetool
 
 ---
 
-*Nice-to-have optimization for RAM-constrained users*
+## Implementation (2025-12-28)
+
+**Implemented Option A** - Auto start/stop on demand:
+
+### How It Works
+
+```
+User clicks "Check Grammar"
+  → Backend calls languagetool.check()
+  → languagetool.ensure_running() checks if server is up
+  → If not running: starts via systemctl (waits up to 30s)
+  → Performs grammar check
+  → Starts 5-minute idle timer
+  → After 5 min idle: automatically stops server
+```
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `server/utils/languagetool.py` | Added lazy load logic |
+
+### Key Features
+
+- **Auto-start**: Server starts when grammar check requested
+- **Auto-stop**: Server stops after 5 minutes idle
+- **Startup wait**: Up to 30 seconds for server to become ready
+- **RAM savings**: ~900MB when grammar not in use
+
+### Manual Control
+
+```bash
+# Stop LanguageTool (it will auto-start when needed)
+sudo systemctl stop languagetool
+
+# Check if running
+systemctl status languagetool
+
+# Force start (if needed)
+sudo systemctl start languagetool
+```
+
+---
+
+*Optimization complete - saves ~900MB RAM when grammar check not in use*
