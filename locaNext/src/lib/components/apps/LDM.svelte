@@ -244,27 +244,11 @@
   }
 
   /**
-   * P2: Handle go to row from QA Menu (single-click)
-   * Scrolls to the row and highlights it
-   */
-  function handleGoToRow(event) {
-    const { rowId, rowNum } = event.detail;
-    // Use VirtualGrid's scrollToRowById for accurate positioning and highlighting
-    if (virtualGrid) {
-      virtualGrid.scrollToRowById(rowId);
-      logger.userAction("Scrolled to row from QA", { rowId, rowNum });
-    }
-    // Close QA menu after navigation
-    showQAMenu = false;
-  }
-
-  /**
-   * BUG-037: Handle open edit modal from QA Menu (double-click)
-   * Scrolls to row, highlights it, and opens edit modal
+   * Handle click on QA issue: scroll to row, highlight, and open edit modal
    */
   async function handleOpenEditModal(event) {
     const { rowId, rowNum } = event.detail;
-    // openEditModalByRowId now handles scroll + highlight + open modal
+    // openEditModalByRowId handles scroll + highlight + open modal
     if (virtualGrid) {
       await virtualGrid.openEditModalByRowId(rowId);
       logger.userAction("Opened edit modal from QA", { rowId, rowNum });
@@ -786,7 +770,6 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     bind:open={showQAMenu}
     fileId={selectedFileId}
     fileName={selectedFileName}
-    on:goToRow={handleGoToRow}
     on:openEditModal={handleOpenEditModal}
   />
 </div>

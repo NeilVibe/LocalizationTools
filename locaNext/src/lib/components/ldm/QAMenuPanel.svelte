@@ -195,16 +195,10 @@
     loadIssues(getCurrentCheckType());
   }
 
-  // Jump to row in grid (single click)
-  function goToRow(rowId, rowNum) {
-    dispatch('goToRow', { rowId, rowNum });
-    logger.userAction("Jump to row from QA menu", { rowId, rowNum });
-  }
-
-  // BUG-037: Open edit modal on double-click
-  function openEditModal(rowId, rowNum) {
+  // Click on issue: scroll to row, highlight, and open edit modal
+  function handleIssueClick(rowId, rowNum) {
     dispatch('openEditModal', { rowId, rowNum });
-    logger.userAction("Open edit modal from QA menu", { rowId, rowNum });
+    logger.userAction("Open row from QA menu", { rowId, rowNum });
   }
 
   // Close panel - always works
@@ -369,9 +363,8 @@
         {#each issues as issue}
           <button
             class="issue-item"
-            onclick={() => goToRow(issue.row_id, issue.row_num)}
-            ondblclick={() => openEditModal(issue.row_id, issue.row_num)}
-            title="Click to jump, double-click to edit"
+            onclick={() => handleIssueClick(issue.row_id, issue.row_num)}
+            title="Click to edit row"
           >
             <div class="issue-header">
               <Tag type={getSeverityType(issue.severity)} size="sm">
