@@ -340,9 +340,52 @@
     }
   }
 
-  // SMART INDEXING: Initial load with instant display
+  // BUG-037: Export function to scroll to a row and highlight it
+  export function scrollToRowById(rowId) {
+    // Find the row by ID
+    const row = rows.find(r => r && r.id === rowId);
+    if (!row) {
+      logger.warning("Row not found for scroll", { rowId });
+      return false;
+    }
+
+    // Get row index (row_num is 1-based)
+    const index = row.row_num - 1;
+
+    // Set selected to highlight the row
+    selectedRowId = row.id;
+
+    // Scroll to row position
+    if (containerEl) {
+      const scrollPos = getRowTop(index);
+      // Center the row in view (subtract half container height)
+      const centeredPos = Math.max(0, scrollPos - (containerHeight / 2) + 20);
+      containerEl.scrollTop = centeredPos;
+      logger.userAction("Scrolled to row", { rowId, rowNum: row.row_num, scrollPos: centeredPos });
+    }
+
+    return true;
+  }
+
+  // BUG-037: Export function to scroll to a row by row number
+  export function scrollToRowNum(rowNum) {
+    // Row number is 1-based, find by index
+    const index = rowNum - 1;
+    const row = rows[index];
+
+    if (!row) {
+      logger.warning("Row not found for scroll", { rowNum });
+      return false;
+    }
+
+    return scrollToRowById(row.id);
+  }
+
   // BUG-037: Export function to open edit modal by row ID (for QA panel integration)
   export async function openEditModalByRowId(rowId) {
+    // First scroll to and highlight the row
+    scrollToRowById(rowId);
+
     // Find the row in our loaded rows
     const row = rows.find(r => r && r.id === rowId);
     if (row) {
