@@ -96,7 +96,13 @@ OFFLINE: SQLite (single-user, auto-fallback)
 3. **Monolith is Sacred** - Copy `RessourcesForCodingTheProject/` logic exactly
 4. **No Backend Mods** - Only wrapper layers (API, GUI)
 5. **Logger Only** - Never `print()`, always `logger`
-6. **Dual Push** - `git push origin main && git push gitea main`
+6. **Dual Push Protocol** - Push to both GitHub and Gitea:
+   ```
+   git push origin main                           # GitHub (always on)
+   ./scripts/gitea_control.sh start               # Start Gitea
+   git push gitea main                            # Push to Gitea
+   ./scripts/gitea_control.sh stop                # Stop Gitea (save resources)
+   ```
 7. **WSL ↔ Windows** - CDP tests can run from WSL via `/mnt/c/Program\ Files/nodejs/node.exe`
 8. **Fix Everything** - No defer, no excuses, fix all issues
 9. **NEVER RESTART** - Restarting does NOT solve issues. ALWAYS follow this workflow:
