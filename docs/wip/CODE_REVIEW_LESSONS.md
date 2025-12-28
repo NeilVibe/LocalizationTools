@@ -230,4 +230,42 @@ dispatch('eventName', data);
 
 ---
 
+## Lesson 8: Never Hardcode URLs
+
+**Issue:** Multiple components had hardcoded `http://localhost:8888`
+
+**Root Cause:**
+```javascript
+// BAD: Hardcoded URL copied everywhere
+const API_BASE = 'http://localhost:8888';
+
+// GOOD: Import from central store
+import { get } from "svelte/store";
+import { serverUrl } from "$lib/stores/app.js";
+const API_BASE = get(serverUrl);
+```
+
+**Architecture:**
+```
+locaNext/src/lib/stores/app.js  ← Central config store
+└── serverUrl = writable('http://localhost:8888')  ← SINGLE SOURCE OF TRUTH
+```
+
+**Rule:** Never copy URLs. Always import from the central store.
+
+---
+
+## Summary: Critical Rules
+
+1. **O(1) Lookups** - Use helper functions, not `array.find()`
+2. **ID Type Safety** - Use `.toString()` for ID comparisons
+3. **No Double-Click** - Use single-click when UI closes
+4. **Simple AbortController** - Per-request, with timeout
+5. **$effect() Guards** - It runs on mount too
+6. **Safe Property Access** - Use `?.` and `??`
+7. **Cleanup Stale Processes** - Always have a way
+8. **Never Hardcode URLs** - Import from central store
+
+---
+
 *Updated after each debugging session*

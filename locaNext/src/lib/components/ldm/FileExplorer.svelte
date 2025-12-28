@@ -15,12 +15,14 @@
   } from "carbon-components-svelte";
   import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink, Merge, TextMining } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
+  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
+  import { serverUrl } from "$lib/stores/app.js";
 
   const dispatch = createEventDispatcher();
 
-  // API base URL
-  const API_BASE = 'http://localhost:8888';
+  // API base URL from store (never hardcode!)
+  const API_BASE = get(serverUrl);
 
   // Svelte 5: Props
   let {

@@ -1,6 +1,9 @@
 // Remote Logger - Send browser console logs to backend
+import { get } from 'svelte/store';
+import { serverUrl } from '$lib/stores/app.js';
 
-const BACKEND_URL = 'http://localhost:8888';
+// API base URL from store (never hardcode!)
+const BACKEND_URL = get(serverUrl);
 
 // Store original console methods
 const originalConsoleError = console.error;
