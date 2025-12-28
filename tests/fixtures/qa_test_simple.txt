@@ -1,0 +1,20 @@
+0	1	0	0	1	Hello World	Bonjour le monde	Current
+0	2	0	0	1	Good morning	Bonjour	Current
+0	3	0	0	1	Hello World	Bonjour tout le monde	Current
+0	4	0	0	1	Good morning	Bon matin	Current
+0	5	0	0	1	Thank you	Merci	Current
+0	6	0	0	1	Hello World	Bonjour monde	Current
+0	7	0	0	1	Good evening	Bonne soirée	Current
+0	8	0	0	1	Please wait	Veuillez patienter	Current
+0	9	0	0	1	Thank you	Merci beaucoup	Current
+0	10	0	0	1	Click here	Cliquez ici	Current
+0	11	0	0	1	Submit	Soumettre	Current
+0	12	0	0	1	Cancel	Annuler	Current
+0	13	0	0	1	Hello World	Salut le monde	Current
+0	14	0	0	1	Please wait	Attendez svp	Current
+0	15	0	0	1	Yes	Oui	Current
+0	16	0	0	1	No	Non	Current
+0	17	0	0	1	OK	OK	Current
+0	18	0	0	1	Save	Enregistrer	Current
+0	19	0	0	1	Delete	Supprimer	Current
+0	20	0	0	1	Edit	Modifier	Current

@@ -8,20 +8,29 @@
 
 | Priority | Feature | WIP Doc | Status |
 |----------|---------|---------|--------|
-| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | PLANNING |
+| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | DONE |
+| **P2** | View Mode Settings | [VIEW_MODE_SETTINGS.md](VIEW_MODE_SETTINGS.md) | PLANNING |
 | **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | PLANNING |
 | **P2** | Gitea Clean Kill Protocol | [GITEA_CLEAN_KILL_PROTOCOL.md](GITEA_CLEAN_KILL_PROTOCOL.md) | IMPLEMENTED |
+| **P2** | LanguageTool Lazy Load | [LANGUAGETOOL_LAZY_LOAD.md](LANGUAGETOOL_LAZY_LOAD.md) | IMPLEMENTED |
 | **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | PLANNING |
 | **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | DOCUMENTED |
 | **P5** | Advanced Search | [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | PLANNING |
-| **P5** | LanguageTool Lazy Load | [LANGUAGETOOL_LAZY_LOAD.md](LANGUAGETOOL_LAZY_LOAD.md) | IDEA |
 
-### P1: QA UIUX Overhaul
-**CRITICAL** - Fix QA panel stability:
-- Softlock / can't close panel
-- Empty results display
-- No cancel mechanism
-- Add timeout for API requests
+### P1: QA UIUX Overhaul ✅ DONE
+Fixed QA panel stability:
+- Added 30s timeout on API calls
+- Added error UI with retry button
+- Added cancel button during QA check
+- Close button always works
+- Fixed freeze bug (safe getter for checkType)
+
+### P2: View Mode Settings (NEW)
+MemoQ-style inline editing option:
+- Modal Mode (current) - double-click opens modal
+- Inline Mode - edit directly in grid
+- TM/QA side panel on single-click
+- Optional TM/QA column in grid
 
 ### P2: Font Settings Enhancement
 Add missing font options:
@@ -34,6 +43,12 @@ Management script: `./scripts/gitea_control.sh`
 - `status` - Check CPU/RAM/Build status
 - `restart` - Fix high CPU issues
 - `monitor` - Live monitoring
+
+### P2: LanguageTool Lazy Load ✅ DONE
+Auto start/stop on demand:
+- Saves ~900MB RAM when not in use
+- Auto-starts when grammar check requested
+- Auto-stops after 5 min idle
 
 ### P3: Offline/Online Mode (COMPLEX)
 Work offline when server unavailable:
@@ -90,9 +105,11 @@ Work offline when server unavailable:
 |------|---------|
 | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Session state |
 | [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker (0 critical) |
-| [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | P1 - QA panel fixes |
+| [VIEW_MODE_SETTINGS.md](VIEW_MODE_SETTINGS.md) | P2 - Modal vs Inline editing |
+| [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | P1 - QA panel fixes (DONE) |
 | [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | P2 - Font options |
-| [GITEA_CLEAN_KILL_PROTOCOL.md](GITEA_CLEAN_KILL_PROTOCOL.md) | P2 - Gitea management |
+| [GITEA_CLEAN_KILL_PROTOCOL.md](GITEA_CLEAN_KILL_PROTOCOL.md) | P2 - Gitea management (DONE) |
+| [LANGUAGETOOL_LAZY_LOAD.md](LANGUAGETOOL_LAZY_LOAD.md) | P2 - Grammar lazy load (DONE) |
 | [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | P3 - Offline work |
 | [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | P4 - Color format guide |
 | [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | P5 - Search modes |

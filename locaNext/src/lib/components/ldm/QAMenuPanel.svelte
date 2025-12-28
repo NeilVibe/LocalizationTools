@@ -4,10 +4,11 @@
     Tag,
     InlineLoading,
     ContentSwitcher,
-    Switch
+    Switch,
+    InlineNotification
   } from "carbon-components-svelte";
-  import { Close, WarningAltFilled, Renew, ArrowRight } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
+  import { Close, WarningAltFilled, Renew, ArrowRight, StopFilled } from "carbon-icons-svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { serverUrl } from "$lib/stores/app.js";
   import { get } from "svelte/store";
@@ -26,6 +27,10 @@
   let summary = $state(null);
   let issues = $state([]);
   let selectedCheckType = $state(0); // Index for ContentSwitcher
+  let errorMessage = $state(null); // UI-visible error state
+
+  // Timeout for API calls (30 seconds)
+  const API_TIMEOUT_MS = 30000;
 
   // Check types with labels
   const checkTypes = [
@@ -35,28 +40,68 @@
     { id: "term", label: "Term" }
   ];
 
+  // Safe getter for current check type
+  function getCurrentCheckType() {
+    const index = selectedCheckType ?? 0;
+    const type = checkTypes[index];
+    return type?.id ?? "all";
+  }
+
   // Helper to get auth headers
   function getAuthHeaders() {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   }
 
+  // Cancel running operations (for close button)
+  function cancelOperations() {
+    loading = false;
+    runningFullQa = false;
+  }
+
+  // Simple fetch with timeout
+  async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      throw err;
+    }
+  }
+
   // Load QA summary for file
   async function loadSummary() {
     if (!fileId) return;
     loading = true;
+    errorMessage = null;
 
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/qa-summary`, {
+      const response = await fetchWithTimeout(`${API_BASE}/api/ldm/files/${fileId}/qa-summary`, {
         headers: getAuthHeaders()
       });
 
       if (response.ok) {
         summary = await response.json();
         logger.info("QA summary loaded", { fileId, total: summary.total });
+      } else {
+        throw new Error(`Server returned ${response.status}`);
       }
     } catch (err) {
-      logger.error("Failed to load QA summary", { error: err.message });
+      if (err.name === 'AbortError') {
+        logger.info("QA summary request aborted");
+      } else {
+        const msg = err.message.includes('abort') ? 'Request timed out' : err.message;
+        errorMessage = `Failed to load summary: ${msg}`;
+        logger.error("Failed to load QA summary", { error: err.message });
+      }
     } finally {
       loading = false;
     }
@@ -66,6 +111,7 @@
   async function loadIssues(checkType = null) {
     if (!fileId) return;
     loading = true;
+    errorMessage = null;
 
     try {
       let url = `${API_BASE}/api/ldm/files/${fileId}/qa-results`;
@@ -73,7 +119,7 @@
         url += `?check_type=${checkType}`;
       }
 
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         headers: getAuthHeaders()
       });
 
@@ -81,9 +127,17 @@
         const data = await response.json();
         issues = data.issues || [];
         logger.info("QA issues loaded", { fileId, count: issues.length, checkType });
+      } else {
+        throw new Error(`Server returned ${response.status}`);
       }
     } catch (err) {
-      logger.error("Failed to load QA issues", { error: err.message });
+      if (err.name === 'AbortError') {
+        logger.info("QA issues request aborted");
+      } else {
+        const msg = err.message.includes('abort') ? 'Request timed out' : err.message;
+        errorMessage = `Failed to load issues: ${msg}`;
+        logger.error("Failed to load QA issues", { error: err.message });
+      }
     } finally {
       loading = false;
     }
@@ -93,9 +147,10 @@
   async function runFullQA() {
     if (!fileId) return;
     runningFullQa = true;
+    errorMessage = null;
 
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/check-qa`, {
+      const response = await fetchWithTimeout(`${API_BASE}/api/ldm/files/${fileId}/check-qa`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
@@ -117,10 +172,18 @@
 
         // Refresh data
         await loadSummary();
-        await loadIssues(checkTypes[selectedCheckType].id);
+        await loadIssues(getCurrentCheckType());
+      } else {
+        throw new Error(`Server returned ${response.status}`);
       }
     } catch (err) {
-      logger.error("Full QA check failed", { error: err.message });
+      if (err.name === 'AbortError') {
+        logger.info("Full QA check aborted");
+      } else {
+        const msg = err.message.includes('abort') ? 'Request timed out (30s)' : err.message;
+        errorMessage = `QA check failed: ${msg}`;
+        logger.error("Full QA check failed", { error: err.message });
+      }
     } finally {
       runningFullQa = false;
     }
@@ -128,9 +191,8 @@
 
   // Handle check type switch
   function handleCheckTypeChange(event) {
-    selectedCheckType = event.detail.index;
-    const checkType = checkTypes[selectedCheckType].id;
-    loadIssues(checkType);
+    selectedCheckType = event.detail.index ?? 0;
+    loadIssues(getCurrentCheckType());
   }
 
   // Jump to row in grid (single click)
@@ -145,8 +207,10 @@
     logger.userAction("Open edit modal from QA menu", { rowId, rowNum });
   }
 
-  // Close panel
+  // Close panel - always works
   function closePanel() {
+    cancelOperations();
+    errorMessage = null;
     open = false;
   }
 
@@ -155,11 +219,23 @@
     return severity === 'error' ? 'red' : 'magenta';
   }
 
+  // Dismiss error message
+  function dismissError() {
+    errorMessage = null;
+  }
+
+  // Retry loading after error
+  function retryLoad() {
+    errorMessage = null;
+    loadSummary();
+    loadIssues(getCurrentCheckType());
+  }
+
   // Load data when file changes or panel opens
   $effect(() => {
     if (open && fileId) {
       loadSummary();
-      loadIssues(checkTypes[selectedCheckType].id);
+      loadIssues(getCurrentCheckType());
     }
   });
 </script>
@@ -193,17 +269,52 @@
     <!-- File info -->
     <div class="qa-file-info">
       <span class="file-name">{fileName || `File #${fileId}`}</span>
-      <Button
-        kind="tertiary"
-        size="small"
-        icon={Renew}
-        iconDescription="Run Full QA"
-        disabled={runningFullQa}
-        on:click={runFullQA}
-      >
-        {runningFullQa ? 'Checking...' : 'Run Full QA'}
-      </Button>
+      <div class="qa-actions">
+        {#if runningFullQa}
+          <Button
+            kind="danger-tertiary"
+            size="small"
+            icon={StopFilled}
+            iconDescription="Cancel QA Check"
+            on:click={cancelOperations}
+          >
+            Cancel
+          </Button>
+        {:else}
+          <Button
+            kind="tertiary"
+            size="small"
+            icon={Renew}
+            iconDescription="Run Full QA"
+            disabled={loading}
+            on:click={runFullQA}
+          >
+            Run Full QA
+          </Button>
+        {/if}
+      </div>
     </div>
+
+    <!-- Error notification -->
+    {#if errorMessage}
+      <div class="qa-error">
+        <InlineNotification
+          kind="error"
+          title="Error"
+          subtitle={errorMessage}
+          lowContrast
+          on:close={dismissError}
+        />
+        <Button
+          kind="ghost"
+          size="small"
+          icon={Renew}
+          on:click={retryLoad}
+        >
+          Retry
+        </Button>
+      </div>
+    {/if}
 
     <!-- Summary Cards -->
     {#if summary}
@@ -363,6 +474,27 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 200px;
+  }
+
+  .qa-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .qa-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--cds-layer-02);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .qa-error :global(.bx--inline-notification) {
+    max-width: none;
+    flex: 1;
+    margin: 0;
   }
 
   .qa-summary {
