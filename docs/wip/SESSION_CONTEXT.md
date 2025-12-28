@@ -1,6 +1,6 @@
 # Session Context
 
-**Updated:** 2025-12-28 03:00 | **Build:** 409+ | **Issues:** UI-077 duplicate names OPEN
+**Updated:** 2025-12-28 03:15 | **Build:** 409+ | **Issues:** UI-077 duplicates OPEN
 
 ---
 
@@ -30,11 +30,27 @@
 - Uploaded real test data: `sample_language_data.txt` (63 rows, PAColor tags)
 - File ID: 118 in Project 8 "Playwright Test Project"
 
+### Color Display - VERIFIED WORKING
+
+- 23 colored spans rendered
+- 21 gold spans (`<PAColor0xffe9bd23>`)
+- 0 raw tags visible
+- **UI-078 FIXED**
+
 ### Duplicate Name Prevention - CONFIRMED MISSING
 
-- **UI-077:** Verified - duplicates ARE allowed (bad)
-- **No validation** on file upload, folder creation, or project creation
-- **Needs fix** in `server/tools/ldm/routes/files.py`, `folders.py`, `projects.py`
+- **UI-077 OPEN:** Verified - duplicates ARE allowed
+- **Files:** DUPLICATES ALLOWED (needs fix)
+- **Folders:** DUPLICATES ALLOWED (needs fix)
+- **Projects:** Blocked by DB constraint (but returns 500, not clean 400)
+- **Needs fix** in `files.py`, `folders.py`, `projects.py`
+
+### DEV Testing Efficiency - ASSESSED
+
+- **20-30x faster** than Windows build cycle
+- Code change → Test: 15 seconds
+- Full debug cycle: 30 seconds
+- See: `testing_toolkit/dev_tests/EFFICIENCY_REPORT.md`
 
 ---
 

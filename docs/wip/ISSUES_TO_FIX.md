@@ -98,22 +98,32 @@
 - **Verified:** Playwright test: 10,000 rows -> 4 rows with search "5000"
 - **File:** VirtualGrid.svelte lines 53-65, 1145-1154, 1245-1254
 
-### UI-077: Duplicate File Names Allowed
+### UI-077: Duplicate Names Allowed (Files + Folders)
 - **Reported:** 2025-12-28
 - **Severity:** HIGH (Data integrity)
 - **Status:** OPEN
-- **Problem:** 3 files named "test 10k.txt" exist in same project
-- **Evidence:** Screenshot shows 3 identical file names in file tree
-- **Fix Required:** Add unique constraint or validation on file upload
-- **File:** server/tools/ldm/routes/files.py upload endpoint
+- **Problem:** Duplicate names allowed for files AND folders in same project
+- **Tested:** 2025-12-28 03:10
+  - Files: DUPLICATES ALLOWED
+  - Folders: DUPLICATES ALLOWED
+  - Projects: Blocked (500 error - DB constraint, not clean validation)
+- **Fix Required:**
+  1. Add unique validation in `files.py` upload endpoint
+  2. Add unique validation in `folders.py` create endpoint
+  3. Clean up project validation (return 400 with message, not 500)
+- **Files to modify:**
+  - `server/tools/ldm/routes/files.py`
+  - `server/tools/ldm/routes/folders.py`
+  - `server/tools/ldm/routes/projects.py`
 
-### UI-078: Color Tags Not Rendering (Wrong Format)
+### UI-078: Color Tags Not Rendering ✅ FIXED
 - **Reported:** 2025-12-28
+- **Fixed:** 2025-12-28
 - **Severity:** MEDIUM (Feature incomplete)
-- **Status:** OPEN
-- **Problem:** test_10k.txt uses `{Color(#67d173)}` format, ColorText expects `<PAColor0xff...>`
-- **Evidence:** Screenshot shows raw tags instead of colored text
-- **Fix:** Either update ColorText to handle both formats, or use proper test data
+- **Status:** FIXED
+- **Problem:** test_10k.txt used wrong `{Color(#67d173)}` format
+- **Solution:** Deleted synthetic data, using real `sample_language_data.txt` with correct `<PAColor0xff...>` format
+- **Verified:** Playwright test found 23 colored spans, 21 gold, 0 raw tags visible
 
 ---
 
