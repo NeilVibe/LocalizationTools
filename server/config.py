@@ -219,6 +219,17 @@ POSTGRES_CONNECT_TIMEOUT = int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "3"))
 DB_ECHO = os.getenv("DB_ECHO", "False").lower() == "true"  # Log all SQL queries
 
 # ============================================
+# External Services
+# ============================================
+
+# LanguageTool Grammar Server
+# Central server for grammar/spelling checks
+# Default: localhost for development, set LANGUAGETOOL_URL for production
+LANGUAGETOOL_HOST = os.getenv("LANGUAGETOOL_HOST", "localhost")
+LANGUAGETOOL_PORT = int(os.getenv("LANGUAGETOOL_PORT", "8081"))
+LANGUAGETOOL_URL = os.getenv("LANGUAGETOOL_URL", f"http://{LANGUAGETOOL_HOST}:{LANGUAGETOOL_PORT}/v2/check")
+
+# ============================================
 # Security Settings
 # ============================================
 
