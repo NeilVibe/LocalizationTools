@@ -56,6 +56,25 @@ async def create_folder(
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Project not found")
 
+    # UI-077 FIX: Check for duplicate folder name in same project + parent
+    duplicate_query = select(LDMFolder).where(
+        LDMFolder.project_id == folder.project_id,
+        LDMFolder.name == folder.name
+    )
+    if folder.parent_id:
+        duplicate_query = duplicate_query.where(LDMFolder.parent_id == folder.parent_id)
+    else:
+        duplicate_query = duplicate_query.where(LDMFolder.parent_id.is_(None))
+
+    result = await db.execute(duplicate_query)
+    existing_folder = result.scalar_one_or_none()
+    if existing_folder:
+        parent_info = f" in parent folder {folder.parent_id}" if folder.parent_id else " in project root"
+        raise HTTPException(
+            status_code=400,
+            detail=f"A folder named '{folder.name}' already exists{parent_info}. Please use a different name."
+        )
+
     new_folder = LDMFolder(
         project_id=folder.project_id,
         parent_id=folder.parent_id,

@@ -40,6 +40,20 @@ async def create_project(
     user_id = current_user["user_id"]
     logger.info(f"Creating project '{project.name}' for user {user_id}")
 
+    # UI-077 FIX: Check for duplicate project name for this user
+    result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.owner_id == user_id,
+            LDMProject.name == project.name
+        )
+    )
+    existing_project = result.scalar_one_or_none()
+    if existing_project:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A project named '{project.name}' already exists. Please use a different name."
+        )
+
     new_project = LDMProject(
         name=project.name,
         description=project.description,

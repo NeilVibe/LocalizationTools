@@ -1,8 +1,8 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-28 02:35 | **Build:** 404+ | **Open:** 13
+**Last Updated:** 2025-12-28 09:45 | **Build:** 404+ | **Open:** 11
 
-> **STATUS:** UI-076 SEARCH BUG FIXED! Core search functionality working.
+> **STATUS:** UI-076, UI-077, UI-080 FIXED! Search + Duplicate prevention working.
 
 ---
 
@@ -10,12 +10,12 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 10 |
+| **FIXED/CLOSED** | 13 |
 | **CRITICAL (Blocking)** | 0 |
-| **HIGH (Major UX)** | 3 |
-| **MEDIUM (UX Issues)** | 7 |
+| **HIGH (Major UX)** | 4 |
+| **MEDIUM (UX Issues)** | 8 |
 | **LOW (Cosmetic)** | 4 |
-| **Total Open** | 14 |
+| **Total Open** | 11 |
 
 ---
 
@@ -98,23 +98,37 @@
 - **Verified:** Playwright test: 10,000 rows -> 4 rows with search "5000"
 - **File:** VirtualGrid.svelte lines 53-65, 1145-1154, 1245-1254
 
-### UI-077: Duplicate Names Allowed (Files + Folders)
+### UI-080: Search Results Show Empty Cells ✅ FIXED
 - **Reported:** 2025-12-28
+- **Fixed:** 2025-12-28
+- **Severity:** HIGH (Search broken visually)
+- **Status:** FIXED
+- **Problem:** Search filtered correctly (count changed) but cells showed shimmer/empty
+- **Root Cause:** Array indexing bug
+  - API returns original `row_num` values (e.g., 4, 11 for "proue" search)
+  - Frontend stored at `rows[row_num - 1]` (indices 3, 10)
+  - Virtual scroll renders indices 0, 1, 2... which were EMPTY
+- **Fix:** Use sequential indices for search results:
+  ```javascript
+  const index = isSearching ? pageIndex : (row.row_num - 1);
+  ```
+- **Verified:** Playwright test: "proue" search shows 2 rows with correct content
+- **File:** VirtualGrid.svelte loadRows() and loadPage() functions
+
+### UI-077: Duplicate Names Allowed (Files + Folders) ✅ FIXED
+- **Reported:** 2025-12-28
+- **Fixed:** 2025-12-28
 - **Severity:** HIGH (Data integrity)
-- **Status:** OPEN
+- **Status:** FIXED
 - **Problem:** Duplicate names allowed for files AND folders in same project
-- **Tested:** 2025-12-28 03:10
-  - Files: DUPLICATES ALLOWED
-  - Folders: DUPLICATES ALLOWED
-  - Projects: Blocked (500 error - DB constraint, not clean validation)
-- **Fix Required:**
-  1. Add unique validation in `files.py` upload endpoint
-  2. Add unique validation in `folders.py` create endpoint
-  3. Clean up project validation (return 400 with message, not 500)
-- **Files to modify:**
-  - `server/tools/ldm/routes/files.py`
-  - `server/tools/ldm/routes/folders.py`
-  - `server/tools/ldm/routes/projects.py`
+- **Fix:** Added duplicate name validation in all three endpoints:
+  1. `files.py`: Check for duplicate file name in same project + folder before upload
+  2. `folders.py`: Check for duplicate folder name in same project + parent before create
+  3. `projects.py`: Check for duplicate project name for user before create (returns 400 not 500)
+- **Files modified:**
+  - `server/tools/ldm/routes/files.py` - Line 163-181
+  - `server/tools/ldm/routes/folders.py` - Line 59-76
+  - `server/tools/ldm/routes/projects.py` - Line 43-55
 
 ### UI-078: Color Tags Not Rendering ✅ FIXED
 - **Reported:** 2025-12-28
@@ -124,6 +138,19 @@
 - **Problem:** test_10k.txt used wrong `{Color(#67d173)}` format
 - **Solution:** Deleted synthetic data, using real `sample_language_data.txt` with correct `<PAColor0xff...>` format
 - **Verified:** Playwright test found 23 colored spans, 21 gold, 0 raw tags visible
+
+---
+
+## MEDIUM - UX IMPROVEMENTS
+
+### UI-079: Grid Lines Not Visible Enough
+- **Reported:** 2025-12-28
+- **Severity:** MEDIUM (Visual)
+- **Status:** OPEN
+- **Problem:** Cell separator lines are not visible - grid lacks definition
+- **Current:** Cells blend together without clear borders
+- **Desired:** Subtle but visible grid lines between cells
+- **File:** VirtualGrid.svelte CSS for `.cell` borders
 
 ---
 

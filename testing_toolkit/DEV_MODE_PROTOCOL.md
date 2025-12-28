@@ -780,5 +780,278 @@ See: `dev_tests/EFFICIENCY_REPORT.md` for full details.
 
 ---
 
+## Phase 13: CRITICAL SOLUTIONS (Life-Changing Insights)
+
+> **MEMORIZE THESE.** Each solution represents hours of debugging pain condensed into a single rule.
+
+### ⚠️ CS-001: Svelte 5 Input Handling
+
+**NEVER use `bind:value` with `$state()` in Playwright tests.**
+
+```svelte
+<!-- WRONG - Playwright fill() fails -->
+<input bind:value={searchTerm} />
+
+<!-- RIGHT - Works with Playwright -->
+<input oninput={(e) => { searchTerm = e.target.value; }} />
+```
+
+**Why:** Svelte 5's reactive binding fights with Playwright's synthetic events. The state resets immediately.
+
+---
+
+### ⚠️ CS-002: Effect Previous Value Tracking
+
+**ALWAYS track previous values in effects that reset state.**
+
+```javascript
+// WRONG - Resets on every effect run
+$effect(() => {
+  if (fileId) {
+    searchTerm = "";  // DISASTER: runs on ANY state change
+    loadRows();
+  }
+});
+
+// RIGHT - Only reset when value actually changes
+let previousFileId = $state(null);
+$effect(() => {
+  if (fileId && fileId !== previousFileId) {
+    previousFileId = fileId;
+    searchTerm = "";
+    loadRows();
+  }
+});
+```
+
+**Why:** Effects re-run when ANY tracked dependency changes. Without previous value tracking, unrelated state changes trigger unwanted resets.
+
+---
+
+### ⚠️ CS-003: No TypeScript in Non-TS Files
+
+**NEVER use TypeScript syntax in plain `<script>` blocks.**
+
+```svelte
+<!-- WRONG - Causes silent compile error -->
+<script>
+  const value = (e.target as HTMLInputElement).value;
+</script>
+
+<!-- RIGHT - Plain JavaScript -->
+<script>
+  const value = e.target.value;
+</script>
+
+<!-- OR use TypeScript properly -->
+<script lang="ts">
+  const value = (e.target as HTMLInputElement).value;
+</script>
+```
+
+**Why:** Vite silently fails. No error in console. Code just doesn't execute.
+
+---
+
+### ⚠️ CS-004: Database Access Pattern
+
+**NEVER hardcode database credentials.**
+
+```python
+# WRONG - Will fail with wrong password
+from sqlalchemy import create_engine
+engine = create_engine("postgresql://admin:admin123@localhost:5432/localization")
+
+# RIGHT - Use server config
+import sys
+sys.path.insert(0, '/home/neil1988/LocalizationTools/server')
+from config import DATABASE_URL
+engine = create_engine(DATABASE_URL)
+```
+
+**Why:** Server config contains actual credentials. Hardcoding leads to authentication failures.
+
+---
+
+### ⚠️ CS-005: Trust the Evidence
+
+**ALWAYS verify with HARD EVIDENCE before assuming something is broken.**
+
+| Evidence Type | How to Get It |
+|---------------|---------------|
+| Screenshot | `await page.screenshot({ path: '/tmp/test.png' })` |
+| Console log | `page.on('console', msg => ...)` |
+| Row count | `await page.textContent('.row-count')` |
+| DOM state | `await page.evaluate(() => document.querySelector(...))` |
+
+**Case Study (2025-12-28):**
+- User said "search is not working"
+- Deep debug test showed: 63 rows → 9 rows with "Valencia" search
+- Screenshot confirmed filtered results
+- **Search WAS working.** Evidence proved it.
+
+**Why:** Don't trust feelings. Don't trust assumptions. Get screenshots. Get numbers. Get PROOF.
+
+---
+
+### ⚠️ CS-006: Deep Debug Test Pattern
+
+When something "isn't working," use this comprehensive test pattern:
+
+```javascript
+test('deep debug feature', async ({ page }) => {
+  // 1. Capture ALL console logs
+  const allLogs = [];
+  page.on('console', msg => allLogs.push(`[${msg.type()}] ${msg.text()}`));
+
+  // 2. Take screenshots at EVERY step
+  await page.screenshot({ path: '/tmp/debug_01_step.png' });
+
+  // 3. Get NUMERIC evidence
+  const before = await page.textContent('.row-count');
+  // ... do action ...
+  const after = await page.textContent('.row-count');
+
+  // 4. Check DOM state directly
+  const state = await page.evaluate(() => {
+    const input = document.getElementById('my-input');
+    return { value: input?.value, id: input?.id };
+  });
+
+  // 5. Print summary with NUMBERS
+  console.log(`Before: ${before}, After: ${after}`);
+  console.log(`Logs related to feature:`, allLogs.filter(l => l.includes('feature')));
+});
+```
+
+**Why:** Comprehensive evidence gathering finds the real issue faster than guessing.
+
+---
+
+### ⚠️ CS-007: Search Results Empty Cells Bug
+
+**When search filters correctly but cells show shimmer/empty, check array indexing.**
+
+**Symptoms:**
+- Search shows "2 rows" ✓
+- But cells are empty (shimmer placeholders)
+- DOM query finds 0 matches for search term
+
+**Root Cause:** API returns original `row_num` values (e.g., 4, 11), but frontend stores at those indices:
+```javascript
+// WRONG - search results stored at wrong indices
+const index = row.row_num - 1;  // row_num=4 → index=3, row_num=11 → index=10
+rows[index] = rowData;          // But virtual scroll renders index 0, 1...
+```
+
+**Fix:** Use sequential indices for search results:
+```javascript
+const isSearching = searchTerm && searchTerm.trim();
+const pageStartIndex = (page - 1) * PAGE_SIZE;
+data.rows.forEach((row, pageIndex) => {
+  // For search: sequential index (0, 1, 2...)
+  // For normal: original row_num - 1
+  const index = isSearching ? (pageStartIndex + pageIndex) : (row.row_num - 1);
+  rows[index] = rowData;
+});
+```
+
+**Debug Steps That Found This:**
+```bash
+# 1. Run targeted Playwright test with console capture
+npx playwright test tests/search-proue.spec.ts --reporter=list
+
+# 2. Query database to see actual row_num values
+python3 << 'EOF'
+import sys
+sys.path.insert(0, 'server')
+from sqlalchemy import create_engine, text
+from config import DATABASE_URL
+engine = create_engine(DATABASE_URL)
+with engine.connect() as conn:
+    result = conn.execute(text("""
+        SELECT id, row_num, target FROM ldm_rows
+        WHERE file_id = 118
+        AND LOWER(target) LIKE '%proue%'
+    """))
+    for r in result.fetchall():
+        print(f"row_num: {r[1]}, target: {r[2][:50]}")
+EOF
+
+# 3. Compare: API returns row_num=4,11 but frontend expects 0,1
+```
+
+**Key Insight:** When debugging "data not rendering" issues:
+1. Check if filtering works (count changes) ✓
+2. Check if data exists (database query) ✓
+3. Check WHERE data is stored (array indices) ← THIS WAS THE BUG
+
+---
+
+### Quick Reference Card
+
+| Problem | Solution |
+|---------|----------|
+| Playwright can't fill input | Use `oninput` not `bind:value` |
+| State resets unexpectedly | Track previous value in effect |
+| Code silently fails | Check for TS syntax in non-TS file |
+| DB auth fails | Use server config, not hardcoded |
+| "Not working" claim | Get screenshots, get PROOF |
+| Search shows count but empty cells | Check array indexing (row_num vs sequential) |
+
+---
+
+## Phase 14: Effective Debug Commands
+
+### DO: Targeted Database Queries
+```bash
+# Query specific data to understand what API returns
+python3 << 'EOF'
+import sys
+sys.path.insert(0, 'server')
+from sqlalchemy import create_engine, text
+from config import DATABASE_URL
+engine = create_engine(DATABASE_URL)
+with engine.connect() as conn:
+    # Your query here
+    result = conn.execute(text("SELECT * FROM ldm_rows WHERE ... LIMIT 5"))
+    for r in result.fetchall():
+        print(r)
+EOF
+```
+
+### DO: Playwright Tests with Full Evidence
+```javascript
+// Capture console, screenshot at every step, query DOM state
+const allLogs = [];
+page.on('console', msg => allLogs.push(`[${msg.type()}] ${msg.text()}`));
+
+await page.screenshot({ path: '/tmp/debug_01.png' });
+
+// Check DOM state directly
+const state = await page.evaluate(() => {
+  return document.querySelectorAll('.cell.target').length;
+});
+```
+
+### DON'T: Guess or Assume
+```bash
+# DON'T just restart and hope it works
+# DON'T assume the bug is where you think it is
+# DON'T skip database verification
+```
+
+### DON'T: Hardcode Credentials
+```python
+# WRONG
+engine = create_engine("postgresql://admin:wrongpassword@localhost:5432/db")
+
+# RIGHT
+from config import DATABASE_URL
+engine = create_engine(DATABASE_URL)
+```
+
+---
+
 *Dev Mode Protocol | Fast UI Testing | No Build Required*
-*Updated: 2025-12-28 with Svelte 5 debugging + efficiency assessment*
+*Updated: 2025-12-28 with CS-007 Search Indexing Bug + Phase 14 Debug Commands*

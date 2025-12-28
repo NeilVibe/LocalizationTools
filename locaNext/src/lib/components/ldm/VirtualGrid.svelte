@@ -303,10 +303,15 @@
         const data = await response.json();
         total = data.total;
 
-        // Store rows by their row_num for sparse array access
+        // Store rows by their index position
         // SMART INDEXING: Also build index map for O(1) lookups
-        data.rows.forEach(row => {
-          const index = row.row_num - 1;
+        // BUG FIX: When searching, use sequential indices not original row_num
+        const isSearching = searchTerm && searchTerm.trim();
+        const pageStartIndex = (page - 1) * PAGE_SIZE;
+        data.rows.forEach((row, pageIndex) => {
+          // For search: use sequential index based on page position
+          // For normal: use row_num - 1 (preserves position for pagination)
+          const index = isSearching ? (pageStartIndex + pageIndex) : (row.row_num - 1);
           const rowData = {
             ...row,
             id: row.id.toString()
@@ -383,8 +388,13 @@
         total = data.total;
 
         // INSTANT: Store rows immediately + build index
-        data.rows.forEach(row => {
-          const index = row.row_num - 1;
+        // BUG FIX: When searching, use sequential indices (0, 1, 2...) not original row_num
+        // Original row_num is kept in row data for display, but storage index must be sequential
+        const isSearching = searchTerm && searchTerm.trim();
+        data.rows.forEach((row, pageIndex) => {
+          // For search: use sequential index (page 1 = 0-49)
+          // For normal: use row_num - 1 (preserves position for pagination)
+          const index = isSearching ? pageIndex : (row.row_num - 1);
           const rowData = {
             ...row,
             id: row.id.toString()

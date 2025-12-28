@@ -160,8 +160,27 @@ async def upload_file(
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Folder not found")
 
-    # Determine file type and parse
+    # UI-077 FIX: Check for duplicate file name in same project + folder
     filename = file.filename or "unknown"
+    duplicate_query = select(LDMFile).where(
+        LDMFile.project_id == project_id,
+        LDMFile.name == filename
+    )
+    if folder_id:
+        duplicate_query = duplicate_query.where(LDMFile.folder_id == folder_id)
+    else:
+        duplicate_query = duplicate_query.where(LDMFile.folder_id.is_(None))
+
+    result = await db.execute(duplicate_query)
+    existing_file = result.scalar_one_or_none()
+    if existing_file:
+        folder_info = f" in folder {folder_id}" if folder_id else " in project root"
+        raise HTTPException(
+            status_code=400,
+            detail=f"A file named '{filename}' already exists{folder_info}. Please rename the file or delete the existing one."
+        )
+
+    # Determine file type and parse
     ext = filename.lower().split('.')[-1] if '.' in filename else ''
 
     file_metadata = None
