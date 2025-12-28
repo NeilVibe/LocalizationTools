@@ -1,85 +1,72 @@
 # Session Context
 
-**Updated:** 2025-12-28 09:50 | **Build:** 404+ | **Status:** STABLE REVISION
+**Updated:** 2025-12-28 10:15 | **Build:** 406 | **Status:** STABLE REVISION
 
 ---
 
-## STABLE REVISION - 2025-12-28
+## STABLE REVISION - 2025-12-28 (Build 406)
 
-### Fixes Completed This Session
+### 7 Fixes Completed This Session
 
 | Issue | Description | Status |
 |-------|-------------|--------|
+| **UI-059** | Row selection state inconsistent | ✅ FIXED |
+| **UI-065** | Edit icon visibility on selected | ✅ FIXED |
 | **UI-076** | Search bar not filtering rows | ✅ FIXED |
-| **UI-077** | Duplicate names allowed (files/folders/projects) | ✅ FIXED |
+| **UI-077** | Duplicate names allowed | ✅ FIXED |
 | **UI-078** | Color tags not rendering | ✅ FIXED |
-| **UI-080** | Search results showing empty cells (shimmer) | ✅ FIXED |
+| **UI-079** | Grid lines not visible | ✅ FIXED |
+| **UI-080** | Search results empty cells | ✅ FIXED |
 
-### Key Code Changes
+### Code Changes
 
 | File | Change |
 |------|--------|
-| `VirtualGrid.svelte` | Search fix: `oninput` handler, sequential indexing for search results |
+| `VirtualGrid.svelte` | Search fix, grid lines, selection priority |
 | `files.py` | Duplicate file name validation |
 | `folders.py` | Duplicate folder name validation |
-| `projects.py` | Duplicate project name validation (400 not 500) |
+| `projects.py` | Duplicate project name validation |
 
 ### Documentation Updated
 
 | Doc | Content |
 |-----|---------|
-| `DEV_MODE_PROTOCOL.md` | Added CS-001 to CS-007 (Critical Solutions), Phase 14 Debug Commands |
-| `CONFUSION_HISTORY.md` | Added confusions 10-15 (DB tables, columns, directories) |
-| `TERMINAL_COMMAND_GUIDE.md` | NEW - Correct commands reference |
-| `ISSUES_TO_FIX.md` | Updated with 4 fixed issues |
+| `DEV_MODE_PROTOCOL.md` | CS-001 to CS-007 Critical Solutions, Phase 14 Debug Commands |
+| `CONFUSION_HISTORY.md` | Confusions 10-15 (DB/terminal mistakes) |
+| `TERMINAL_COMMAND_GUIDE.md` | NEW - Commands + Gitea Protocol |
+| `ISSUES_TO_FIX.md` | 7 issues fixed, 8 remaining |
 
 ---
 
-## Critical Solutions Documented (DEV_MODE_PROTOCOL.md)
+## Gitea Protocol Followed
 
-| Code | Solution |
-|------|----------|
-| CS-001 | Use `oninput` not `bind:value` with Svelte 5 |
-| CS-002 | Track previous values in effects |
-| CS-003 | No TypeScript in plain `<script>` blocks |
-| CS-004 | Use server config for DB credentials |
-| CS-005 | Always get HARD EVIDENCE (screenshots, proof) |
-| CS-006 | Deep debug test pattern |
-| CS-007 | Search indexing: sequential for search, row_num-1 for normal |
+```
+1. START:  sudo systemctl start gitea
+2. COMMIT: git add -A && git commit -m "Build XXX: ..."
+3. PUSH:   git push origin main && git push gitea main
+4. STOP:   sudo systemctl stop gitea
+```
 
 ---
 
-## Test Data
-
-- **File:** `sample_language_data.txt` (63 rows, real PAColor tags)
-- **Location:** Project 8 "Playwright Test Project"
-- **Features:** PAColor tags, TextBind, Korean/French
-
----
-
-## Open Issues (11 remaining)
+## Open Issues (8 remaining)
 
 ### HIGH Priority
-- UI-059: Row selection state inconsistent
 - UI-061: Routing error on page load
 - UI-062: version.json network error
 - UI-074: Missing /api/ldm/files endpoint
 
 ### MEDIUM Priority
-- UI-079: Grid lines not visible enough
-- UI-063 to UI-069: Various UX issues
+- UI-063: CSS text overflow
+- UI-064: Status colors conflict with hover
+- UI-066: Placeholder column count
+- UI-067: Filter dropdown styling
+- UI-068: Resize handle visibility
+- UI-069: QA/Edit icon overlap
 
 ### LOW Priority
 - UI-070 to UI-073: Cosmetic issues
 
 ---
 
-## Next Tasks
-
-1. **UI-079**: Grid lines not visible (user mentioned)
-2. **UI-059**: Row selection state inconsistent
-3. **UI-074**: Missing API endpoint
-
----
-
-*Stable revision ready for commit*
+*Build 406 - Stable Revision*

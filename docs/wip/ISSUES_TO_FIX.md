@@ -1,8 +1,8 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-28 09:45 | **Build:** 404+ | **Open:** 11
+**Last Updated:** 2025-12-28 10:10 | **Build:** 405+ | **Open:** 8
 
-> **STATUS:** UI-076, UI-077, UI-080 FIXED! Search + Duplicate prevention working.
+> **STATUS:** 7 FIXES TODAY! UI-059/065/076/077/078/079/080 all FIXED.
 
 ---
 
@@ -10,12 +10,12 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 13 |
+| **FIXED/CLOSED** | 16 |
 | **CRITICAL (Blocking)** | 0 |
-| **HIGH (Major UX)** | 4 |
-| **MEDIUM (UX Issues)** | 8 |
+| **HIGH (Major UX)** | 3 |
+| **MEDIUM (UX Issues)** | 5 |
 | **LOW (Cosmetic)** | 4 |
-| **Total Open** | 11 |
+| **Total Open** | 8 |
 
 ---
 
@@ -143,25 +143,32 @@
 
 ## MEDIUM - UX IMPROVEMENTS
 
-### UI-079: Grid Lines Not Visible Enough
+### UI-079: Grid Lines Not Visible Enough ✅ FIXED
 - **Reported:** 2025-12-28
+- **Fixed:** 2025-12-28
 - **Severity:** MEDIUM (Visual)
-- **Status:** OPEN
-- **Problem:** Cell separator lines are not visible - grid lacks definition
-- **Current:** Cells blend together without clear borders
-- **Desired:** Subtle but visible grid lines between cells
-- **File:** VirtualGrid.svelte CSS for `.cell` borders
+- **Status:** FIXED
+- **Problem:** Cell separator lines were not visible - grid lacked definition
+- **Fix:** Changed border color from `border-subtle-01` to `border-strong-01` (#525252)
+  - `.cell` border-right: stronger vertical lines between columns
+  - `.virtual-row` border-bottom: stronger horizontal row separators
+- **File:** VirtualGrid.svelte lines 1726, 1757
 
 ---
 
 ## HIGH - MAJOR UX ISSUES
 
-### UI-059: Row Selection State Inconsistent
+### UI-059: Row Selection State Inconsistent ✅ FIXED
 - **Reported:** 2025-12-27
+- **Fixed:** 2025-12-28
 - **Severity:** HIGH (UX)
-- **Status:** OPEN
+- **Status:** FIXED
 - **Problem:** Selected row state conflicts with hover state
-- **File:** VirtualGrid.svelte CSS line 1540-1542
+- **Fix:**
+  - Added `!important` to selected background to take priority over hover
+  - Added `box-shadow` for visual depth
+  - Added `.selected:hover` rule for combined state
+- **File:** VirtualGrid.svelte lines 1739-1752
 
 ### UI-061: Routing Error on Page Load
 - **Reported:** 2025-12-27
@@ -202,9 +209,11 @@
 - **Status:** OPEN
 - **Problem:** Status colors conflict with hover states
 
-### UI-065: Edit Icon Visibility Inconsistent
-- **Status:** OPEN
+### UI-065: Edit Icon Visibility Inconsistent ✅ FIXED
+- **Fixed:** 2025-12-28 (verified existing CSS)
+- **Status:** FIXED
 - **Problem:** Edit icon only visible on hover, not on selected cell
+- **Fix:** CSS already exists at line 1908 showing edit icon at 0.7 opacity on selected cells
 
 ### UI-066: Placeholder Rows Have Wrong Column Count
 - **Status:** OPEN

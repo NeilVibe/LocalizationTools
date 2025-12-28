@@ -1722,7 +1722,8 @@
     left: 0;
     right: 0;
     display: flex;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
+    /* UI-079: More visible row separator lines */
+    border-bottom: 1px solid var(--cds-border-strong-01, #525252);
     background: var(--cds-layer-01);
     transition: background-color 0.15s ease;
     /* VARIABLE HEIGHT: Row height is set via inline style, content can expand */
@@ -1735,10 +1736,19 @@
     background: var(--cds-layer-hover-01);
   }
 
+  /* UI-059 FIX: Selected row takes priority over hover */
   .virtual-row.selected {
-    background: var(--cds-layer-selected-01);
-    /* UI-059: Make selection more prominent with left border */
+    background: var(--cds-layer-selected-01) !important;
+    /* Make selection more prominent with left border */
     border-left: 3px solid var(--cds-interactive-01, #0f62fe);
+    /* Subtle shadow for depth */
+    box-shadow: inset 0 0 0 1px rgba(15, 98, 254, 0.2);
+  }
+
+  /* UI-059: Selected + hovered - slightly different to show both states */
+  .virtual-row.selected:hover,
+  .virtual-row.selected.row-hovered {
+    background: var(--cds-layer-selected-hover-01, rgba(15, 98, 254, 0.18)) !important;
   }
 
   .virtual-row.placeholder {
@@ -1753,7 +1763,8 @@
     padding: 0.5rem;
     font-size: var(--grid-font-size, 14px);
     font-weight: var(--grid-font-weight, 400);
-    border-right: 1px solid var(--cds-border-subtle-01);
+    /* UI-079: More visible grid lines - use stronger border color */
+    border-right: 1px solid var(--cds-border-strong-01, #525252);
     display: flex;
     align-items: flex-start;
     /* VARIABLE HEIGHT: Cells expand to fit content */
