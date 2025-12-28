@@ -80,12 +80,16 @@ Transform LDM from modal-based to **inline editing** like memoQ.
 
 ---
 
-## Open Questions
+## Decisions Made
 
-1. **Drop Edit Modal?** User ready to go full non-modal
-2. **Settings Toggle?** Or just switch entirely?
-3. **TM Panel Width?** Fixed 300px or resizable?
-4. **When Load TM?** On select or prefetch?
+| Question | Decision |
+|----------|----------|
+| Single Click | Load TM/QA info for row |
+| Double Click | Activate inline editing |
+| Ctrl+Click | Open Edit Modal (fallback) |
+| TM Panel | Resizable (user draggable) |
+| Grid Columns | Resizable (Excel-style) |
+| Edit Modal | Keep as fallback, remove if inline works well |
 
 ---
 

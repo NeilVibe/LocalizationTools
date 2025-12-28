@@ -150,41 +150,55 @@ Settings > General > Editing Mode
 
 ---
 
-## Implementation Plan
+## Implementation Plan (FINALIZED)
 
 ### Phase 1: Layout Foundation
-1. Add fixed right column to VirtualGrid
-2. Make it collapsible (show/hide button)
-3. Basic TM matches display
+1. Add resizable right column to VirtualGrid (~300px default)
+2. Excel-style column resize handles (hover to resize any column)
+3. Collapsible TM/QA panel (show/hide button)
+4. Basic TM matches display
 
-### Phase 2: Inline Editing
-1. Click-to-edit Target cells
-2. Auto-save on blur
-3. Keyboard navigation (Tab, Enter, Escape)
+### Phase 2: Click Behaviors
+1. **Single Click** → Select row, load TM/QA in right panel
+2. **Double Click** → Activate inline editing in Target cell
+3. **Ctrl+Click** → Open Edit Modal (fallback)
+4. Auto-save on blur
 
-### Phase 3: TM Metadata
-1. Add metadata fields to TM entry model
-2. Track creation source (manual, review, auto, import)
-3. Display in TM panel
+### Phase 3: Keyboard Navigation
+1. Tab → Next row
+2. Enter → Confirm edit, move to next
+3. Escape → Cancel edit
+4. Arrow keys → Navigate rows
 
-### Phase 4: QA Integration
-1. Show QA issues in right panel
-2. LanguageTool integration
-3. Click issue → highlight in cell
+### Phase 4: TM Metadata
+1. Add fields to TM model: `source_type`, `created_by`, `source_project`, `created_at`
+2. Track creation source (Manual, Review, Auto-TM, Import)
+3. Display metadata under each TM match in panel
 
-### Phase 5: Polish
-1. Settings toggle (optional)
-2. Performance optimization
-3. Mobile responsive
+### Phase 5: QA Integration
+1. Show QA issues in right panel (below TM)
+2. LanguageTool grammar checks
+3. Built-in checks (numbers, tags, consistency)
+4. Click issue → highlight error in Target cell
+
+### Phase 6: Polish & Cleanup
+1. Performance optimization (prefetch TM for nearby rows)
+2. Remove Edit Modal entirely (if inline editing satisfactory)
+3. Mobile/responsive behavior
 
 ---
 
-## Open Questions
+## Decisions Made
 
-1. **Drop Modal Completely?** User says ready to go full non-modal
-2. **TM Panel Width?** 250px? 300px? User resizable?
-3. **Grammar Provider?** Stick with LanguageTool or explore alternatives?
-4. **When to Load TM?** On row select? Prefetch nearby rows?
+| Question | Decision |
+|----------|----------|
+| **Drop Modal?** | Keep as Ctrl+Click fallback during development |
+| **Single Click** | Load TM/QA info for selected row |
+| **Double Click** | Activate inline editing mode |
+| **TM Panel** | Resizable (user draggable) |
+| **Grid Columns** | Resizable (Excel-style hover to resize) |
+| **Grammar Provider** | Stick with LanguageTool (31 languages) |
+| **When Load TM?** | On single-click (row select) |
 
 ---
 
@@ -226,12 +240,14 @@ Settings > General > Editing Mode
 
 ---
 
-## Next Actions
+## Status
 
-1. Document this feature request in Roadmap.md
-2. Create prototype of fixed right column
-3. Test inline editing with current VirtualGrid
-4. Decide: Setting toggle or full non-modal?
+**PREPARATION PHASE COMPLETE** - Ready to begin Phase 1 implementation.
+
+### Next Actions
+1. Begin Phase 1: Add resizable right column to VirtualGrid
+2. Implement Excel-style column resize handles
+3. Create TM/QA panel component
 
 ---
 
