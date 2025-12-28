@@ -52,6 +52,21 @@ async def upload_tm(
     filename = file.filename or "unknown"
     ext = filename.lower().split('.')[-1] if '.' in filename else ''
 
+    # UI-077 FIX: Check for duplicate TM name for this user
+    sync_db = next(get_db())
+    try:
+        existing_tm = sync_db.query(LDMTranslationMemory).filter(
+            LDMTranslationMemory.owner_id == current_user["user_id"],
+            LDMTranslationMemory.name == name
+        ).first()
+        if existing_tm:
+            raise HTTPException(
+                status_code=400,
+                detail=f"A Translation Memory named '{name}' already exists. Please use a different name."
+            )
+    finally:
+        sync_db.close()
+
     if ext not in ('txt', 'tsv', 'xml', 'xlsx', 'xls'):
         raise HTTPException(
             status_code=400,

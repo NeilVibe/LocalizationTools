@@ -13,7 +13,7 @@
 | **UI-059** | Row selection state inconsistent | ✅ FIXED |
 | **UI-065** | Edit icon visibility on selected | ✅ FIXED |
 | **UI-076** | Search bar not filtering rows | ✅ FIXED |
-| **UI-077** | Duplicate names allowed | ✅ FIXED |
+| **UI-077** | Duplicate names (Files/Folders/Projects/TM) | ✅ FIXED |
 | **UI-078** | Color tags not rendering | ✅ FIXED |
 | **UI-079** | Grid lines not visible | ✅ FIXED |
 | **UI-080** | Search results empty cells | ✅ FIXED |
@@ -26,6 +26,7 @@
 | `files.py` | Duplicate file name validation |
 | `folders.py` | Duplicate folder name validation |
 | `projects.py` | Duplicate project name validation |
+| `tm_crud.py` | Duplicate TM name validation |
 
 ### Documentation Updated
 
