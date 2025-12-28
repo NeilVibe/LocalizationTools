@@ -232,9 +232,9 @@ dispatch('eventName', data);
 
 ## Lesson 8: Never Hardcode URLs
 
-**Issue:** Multiple components had hardcoded `http://localhost:8888`
+**Issue:** Multiple components had hardcoded URLs
 
-**Root Cause:**
+**Frontend (Svelte):**
 ```javascript
 // BAD: Hardcoded URL copied everywhere
 const API_BASE = 'http://localhost:8888';
@@ -245,13 +245,29 @@ import { serverUrl } from "$lib/stores/app.js";
 const API_BASE = get(serverUrl);
 ```
 
-**Architecture:**
-```
-locaNext/src/lib/stores/app.js  ← Central config store
-└── serverUrl = writable('http://localhost:8888')  ← SINGLE SOURCE OF TRUTH
+**Backend (Python):**
+```python
+# BAD: Hardcoded URL
+LANGUAGETOOL_URL = "http://172.28.150.120:8081/v2/check"
+
+# GOOD: Import from config (configurable via env vars)
+from server.config import LANGUAGETOOL_URL
 ```
 
-**Rule:** Never copy URLs. Always import from the central store.
+**Architecture:**
+```
+Frontend:
+locaNext/src/lib/stores/app.js  ← Central config store
+└── serverUrl = writable('http://localhost:8888')
+
+Backend:
+server/config.py  ← Central config (env vars)
+├── LANGUAGETOOL_URL = os.getenv("LANGUAGETOOL_URL", ...)
+├── CENTRAL_SERVER_URL = os.getenv("CENTRAL_SERVER_URL", ...)
+└── All external service URLs
+```
+
+**Rule:** Never copy URLs. Always import from central config (frontend: app.js store, backend: config.py).
 
 ---
 
