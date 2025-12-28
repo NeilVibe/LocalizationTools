@@ -88,11 +88,16 @@
 
   // Go to row state - REMOVED (BUG-001 - not useful)
 
-  // Svelte 5: Edit modal state
+  // Svelte 5: Edit modal state (DEPRECATED - replaced by inline editing)
   let showEditModal = $state(false);
   let editingRow = $state(null);
   let editTarget = $state("");
   let editStatus = $state("");
+
+  // Phase 2: Inline editing state (MemoQ-style)
+  let inlineEditingRowId = $state(null);
+  let inlineEditValue = $state("");
+  let inlineEditTextarea = $state(null);
 
   // Selected row state (click-based)
   let selectedRowId = $state(null);
@@ -764,6 +769,159 @@
     }
   });
 
+  // ============================================
+  // Phase 2: Inline Editing (MemoQ-style)
+  // ============================================
+
+  /**
+   * Start inline editing on a cell (double-click)
+   */
+  async function startInlineEdit(row) {
+    if (!row) return;
+
+    // Check if row is locked by another user
+    const lock = isRowLocked(parseInt(row.id));
+    if (lock && lock.locked_by) {
+      logger.warning("Row locked by another user", { rowId: row.id, lockedBy: lock.locked_by });
+      return;
+    }
+
+    // Request row lock for editing
+    if (fileId) {
+      const granted = await lockRow(fileId, parseInt(row.id));
+      if (!granted) {
+        logger.warning("Could not acquire lock for inline edit", { rowId: row.id });
+        return;
+      }
+    }
+
+    // Set inline editing state
+    inlineEditingRowId = row.id;
+    inlineEditValue = row.target || "";
+    selectedRowId = row.id;
+
+    logger.userAction("Inline edit started", { rowId: row.id });
+
+    // Focus the textarea after render
+    await tick();
+    if (inlineEditTextarea) {
+      inlineEditTextarea.focus();
+      // Move cursor to end
+      inlineEditTextarea.selectionStart = inlineEditTextarea.value.length;
+    }
+  }
+
+  /**
+   * Save inline edit and move to next row (or just save)
+   */
+  async function saveInlineEdit(moveToNext = false) {
+    if (!inlineEditingRowId) return;
+
+    const row = getRowById(inlineEditingRowId);
+    if (!row) {
+      cancelInlineEdit();
+      return;
+    }
+
+    // Only save if value changed
+    if (inlineEditValue !== row.target) {
+      try {
+        const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
+          method: 'PATCH',
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            target: inlineEditValue,
+            status: 'translated' // Mark as translated when edited
+          })
+        });
+
+        if (response.ok) {
+          // Update local row data
+          row.target = inlineEditValue;
+          row.status = 'translated';
+          logger.success("Inline edit saved", { rowId: row.id });
+          dispatch('rowUpdate', { rowId: row.id });
+        } else {
+          logger.error("Failed to save inline edit", { status: response.status });
+        }
+      } catch (err) {
+        logger.error("Error saving inline edit", { error: err.message });
+      }
+    }
+
+    // Release lock
+    if (fileId) {
+      unlockRow(fileId, parseInt(row.id)).catch(err => {
+        logger.warning("Failed to unlock row after inline edit", { error: err.message });
+      });
+    }
+
+    // Clear inline editing state
+    const currentRowId = inlineEditingRowId;
+    inlineEditingRowId = null;
+    inlineEditValue = "";
+
+    // Move to next row if requested
+    if (moveToNext) {
+      const currentIndex = getRowIndexById(currentRowId);
+      if (currentIndex !== undefined && rows[currentIndex + 1]) {
+        const nextRow = rows[currentIndex + 1];
+        if (nextRow && !nextRow.placeholder) {
+          selectedRowId = nextRow.id;
+          dispatch('rowSelect', { row: nextRow });
+          // Auto-start editing on next row
+          await startInlineEdit(nextRow);
+        }
+      }
+    }
+  }
+
+  /**
+   * Cancel inline edit without saving
+   */
+  function cancelInlineEdit() {
+    if (!inlineEditingRowId) return;
+
+    const rowId = inlineEditingRowId;
+
+    // Release lock
+    if (fileId) {
+      unlockRow(fileId, parseInt(rowId)).catch(err => {
+        logger.warning("Failed to unlock row after cancel", { error: err.message });
+      });
+    }
+
+    inlineEditingRowId = null;
+    inlineEditValue = "";
+    logger.userAction("Inline edit cancelled", { rowId });
+  }
+
+  /**
+   * Handle keyboard events during inline edit
+   */
+  function handleInlineEditKeydown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelInlineEdit();
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      // Enter without shift = save and move to next
+      e.preventDefault();
+      saveInlineEdit(true);
+    } else if (e.key === 'Tab') {
+      // Tab = save and move to next
+      e.preventDefault();
+      saveInlineEdit(true);
+    }
+    // Shift+Enter = newline (default behavior, don't prevent)
+  }
+
+  // ============================================
+  // Modal Editing (DEPRECATED - kept for reference)
+  // ============================================
+
   // Open edit modal with row locking
   async function openEditModal(row) {
     if (!row) return;
@@ -1424,36 +1582,49 @@
                 </div>
 
                 <!-- Target (always visible, EDITABLE) -->
+                <!-- Phase 2: Inline editing on double-click -->
                 <!-- Cell color indicates status: default=pending, translated=teal, confirmed=green -->
-                <!-- UI-044: Uses percentage width matching header -->
-                <!-- P2: QA flag shown when qa_flag_count > 0 -->
                 <div
                   class="cell target"
                   class:locked={rowLock}
                   class:target-hovered={hoveredRowId === row.id && hoveredCell === 'target'}
                   class:row-active={hoveredRowId === row.id || selectedRowId === row.id}
                   class:cell-selected={selectedRowId === row.id}
+                  class:inline-editing={inlineEditingRowId === row.id}
                   class:status-translated={row.status === 'translated'}
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
                   class:qa-flagged={row.qa_flag_count > 0}
                   style="flex: 0 0 {100 - sourceWidthPercent}%;"
                   onmouseenter={() => handleCellMouseEnter(row, 'target')}
-                  ondblclick={() => openEditModal(row)}
+                  ondblclick={() => !rowLock && startInlineEdit(row)}
                   role="button"
                   tabindex="0"
-                  onkeydown={(e) => e.key === 'Enter' && openEditModal(row)}
+                  onkeydown={(e) => e.key === 'Enter' && !rowLock && startInlineEdit(row)}
                 >
-                  <span class="cell-content"><ColorText text={formatGridText(row.target) || ""} /></span>
-                  {#if row.qa_flag_count > 0}
-                    <span class="qa-icon" title="{row.qa_flag_count} QA issue(s)">
-                      <WarningAltFilled size={14} />
-                    </span>
-                  {/if}
-                  {#if rowLock}
-                    <span class="lock-icon"><Locked size={12} /></span>
+                  {#if inlineEditingRowId === row.id}
+                    <!-- Inline editing textarea -->
+                    <textarea
+                      bind:this={inlineEditTextarea}
+                      bind:value={inlineEditValue}
+                      class="inline-edit-textarea"
+                      onkeydown={handleInlineEditKeydown}
+                      onblur={() => saveInlineEdit(false)}
+                      placeholder="Enter translation..."
+                    ></textarea>
                   {:else}
-                    <span class="edit-icon"><Edit size={12} /></span>
+                    <!-- Display mode -->
+                    <span class="cell-content"><ColorText text={formatGridText(row.target) || ""} /></span>
+                    {#if row.qa_flag_count > 0}
+                      <span class="qa-icon" title="{row.qa_flag_count} QA issue(s)">
+                        <WarningAltFilled size={14} />
+                      </span>
+                    {/if}
+                    {#if rowLock}
+                      <span class="lock-icon"><Locked size={12} /></span>
+                    {:else}
+                      <span class="edit-icon"><Edit size={12} /></span>
+                    {/if}
                   {/if}
                 </div>
 
@@ -1906,6 +2077,39 @@
   .cell.target.locked {
     cursor: not-allowed;
     background: var(--cds-layer-02);
+  }
+
+  /* Phase 2: Inline editing mode */
+  .cell.target.inline-editing {
+    padding: 0;
+    background: var(--cds-field-01);
+    border: 2px solid var(--cds-interactive-01);
+    box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.3);
+  }
+
+  .inline-edit-textarea {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    padding: 0.5rem;
+    border: none;
+    background: var(--cds-field-01);
+    color: var(--cds-text-01);
+    font-family: inherit;
+    font-size: var(--grid-font-size, 0.875rem);
+    font-weight: var(--grid-font-weight, 400);
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+  }
+
+  .inline-edit-textarea:focus {
+    outline: none;
+  }
+
+  .inline-edit-textarea::placeholder {
+    color: var(--cds-text-02);
+    font-style: italic;
   }
 
   /* Status-based cell colors (replaces Status column) */
