@@ -148,6 +148,40 @@ def initialize_async_database():
         logger.info("Async database initialized: PostgreSQL")
 
 
+def _check_async_engine_loop():
+    """
+    Check if the async engine was created in a different event loop.
+    If so, reset it so it gets recreated in the current loop.
+
+    This fixes test isolation issues where pytest creates new event loops
+    after running 100+ tests.
+    """
+    import asyncio
+    global _async_engine, _async_session_maker, _async_engine_loop
+
+    # Skip for SQLite mode
+    if config.ACTIVE_DATABASE_TYPE == "sqlite":
+        return
+
+    # If no engine exists, nothing to check
+    if _async_engine is None:
+        return
+
+    # Get current event loop
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop - can't check
+        return
+
+    # If engine was created in a different loop, reset it
+    if _async_engine_loop is not None and _async_engine_loop != current_loop:
+        logger.debug("Event loop changed - resetting async engine for test isolation")
+        _async_engine = None
+        _async_session_maker = None
+        _async_engine_loop = None
+
+
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency to get async database session.
@@ -168,6 +202,9 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
         >>>     result = await db.execute(select(User))
         >>>     return result.scalars().all()  # Auto-commits after return
     """
+    # Check if event loop changed (fixes test isolation after 100+ tests)
+    _check_async_engine_loop()
+
     if _async_session_maker is None:
         initialize_async_database()
 
