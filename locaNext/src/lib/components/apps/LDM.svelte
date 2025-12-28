@@ -244,19 +244,15 @@
   }
 
   /**
-   * P2: Handle go to row from QA Menu
+   * P2: Handle go to row from QA Menu (single-click)
+   * Scrolls to the row and highlights it
    */
   function handleGoToRow(event) {
     const { rowId, rowNum } = event.detail;
-    // Scroll to the row in VirtualGrid
+    // Use VirtualGrid's scrollToRowById for accurate positioning and highlighting
     if (virtualGrid) {
-      const container = document.querySelector('.scroll-container');
-      if (container) {
-        // Estimate row position (40px per row is average)
-        const scrollPos = (rowNum - 1) * 40;
-        container.scrollTop = scrollPos;
-        logger.userAction("Scrolled to row from QA", { rowNum, scrollPos });
-      }
+      virtualGrid.scrollToRowById(rowId);
+      logger.userAction("Scrolled to row from QA", { rowId, rowNum });
     }
     // Close QA menu after navigation
     showQAMenu = false;
@@ -264,16 +260,17 @@
 
   /**
    * BUG-037: Handle open edit modal from QA Menu (double-click)
+   * Scrolls to row, highlights it, and opens edit modal
    */
   async function handleOpenEditModal(event) {
     const { rowId, rowNum } = event.detail;
-    // First scroll to the row
-    handleGoToRow(event);
-    // Then open the edit modal
+    // openEditModalByRowId now handles scroll + highlight + open modal
     if (virtualGrid) {
       await virtualGrid.openEditModalByRowId(rowId);
       logger.userAction("Opened edit modal from QA", { rowId, rowNum });
     }
+    // Close QA menu after modal opens
+    showQAMenu = false;
   }
 
   // ================================
