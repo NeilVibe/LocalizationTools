@@ -115,20 +115,22 @@
 - **Verified:** Playwright test: "proue" search shows 2 rows with correct content
 - **File:** VirtualGrid.svelte loadRows() and loadPage() functions
 
-### UI-077: Duplicate Names Allowed (Files + Folders) ✅ FIXED
+### UI-077: Duplicate Names Allowed (Files + Folders + TM) ✅ FIXED
 - **Reported:** 2025-12-28
 - **Fixed:** 2025-12-28
 - **Severity:** HIGH (Data integrity)
 - **Status:** FIXED
-- **Problem:** Duplicate names allowed for files AND folders in same project
-- **Fix:** Added duplicate name validation in all three endpoints:
+- **Problem:** Duplicate names allowed for files, folders, projects, AND TMs
+- **Fix:** Added duplicate name validation in ALL FOUR endpoints:
   1. `files.py`: Check for duplicate file name in same project + folder before upload
   2. `folders.py`: Check for duplicate folder name in same project + parent before create
   3. `projects.py`: Check for duplicate project name for user before create (returns 400 not 500)
+  4. `tm_crud.py`: Check for duplicate TM name for user before upload
 - **Files modified:**
   - `server/tools/ldm/routes/files.py` - Line 163-181
   - `server/tools/ldm/routes/folders.py` - Line 59-76
   - `server/tools/ldm/routes/projects.py` - Line 43-55
+  - `server/tools/ldm/routes/tm_crud.py` - Line 55-68
 
 ### UI-078: Color Tags Not Rendering ✅ FIXED
 - **Reported:** 2025-12-28
