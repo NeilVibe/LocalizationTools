@@ -8,15 +8,15 @@
     InlineNotification
   } from "carbon-components-svelte";
   import { Close, WarningAltFilled, Renew, ArrowRight, StopFilled } from "carbon-icons-svelte";
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { serverUrl } from "$lib/stores/app.js";
   import { get } from "svelte/store";
 
   const dispatch = createEventDispatcher();
 
-  // Svelte 5: Derived - API base URL
-  let API_BASE = $derived(get(serverUrl));
+  // API base URL (constant - doesn't change at runtime)
+  const API_BASE = get(serverUrl);
 
   // Props
   let { open = $bindable(false), fileId = null, fileName = "" } = $props();
