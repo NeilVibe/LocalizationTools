@@ -205,6 +205,10 @@ class TestProjectsMocked:
 
     def test_create_project_valid(self, client_with_auth, mock_db):
         """Create project with valid data."""
+        # UI-077: Now checks for duplicate project name first
+        mock_duplicate_result = MagicMock()
+        mock_duplicate_result.scalar_one_or_none.return_value = None  # No duplicate
+        mock_db.execute = AsyncMock(return_value=mock_duplicate_result)
         mock_db.add = MagicMock()
         mock_db.commit = AsyncMock()
 
@@ -558,9 +562,15 @@ class TestFoldersMocked:
 
     def test_create_folder_valid(self, client_with_auth, mock_db, mock_project):
         """Create folder with valid data."""
+        # First query: project ownership check
         mock_proj_result = MagicMock()
         mock_proj_result.scalar_one_or_none.return_value = mock_project
-        mock_db.execute = AsyncMock(return_value=mock_proj_result)
+
+        # Second query (UI-077): duplicate folder name check
+        mock_duplicate_result = MagicMock()
+        mock_duplicate_result.scalar_one_or_none.return_value = None  # No duplicate
+
+        mock_db.execute = AsyncMock(side_effect=[mock_proj_result, mock_duplicate_result])
         mock_db.add = MagicMock()
         mock_db.commit = AsyncMock()
 
@@ -867,9 +877,15 @@ class TestFilesExtendedMocked:
 
     def test_upload_unsupported_format(self, client_with_auth, mock_db, mock_project):
         """Upload file with unsupported format returns 400."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_project
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        # First query: project ownership check
+        mock_proj_result = MagicMock()
+        mock_proj_result.scalar_one_or_none.return_value = mock_project
+
+        # Second query (UI-077): duplicate file name check
+        mock_duplicate_result = MagicMock()
+        mock_duplicate_result.scalar_one_or_none.return_value = None  # No duplicate
+
+        mock_db.execute = AsyncMock(side_effect=[mock_proj_result, mock_duplicate_result])
 
         # Create a fake unsupported file
         from io import BytesIO
