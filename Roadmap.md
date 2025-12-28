@@ -327,21 +327,52 @@ LDM currently imports from legacy apps (violates Rule #0):
 
 | Priority | Feature | WIP Doc | Status |
 |----------|---------|---------|--------|
-| **NOW** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | PLANNING |
-| **NOW** | Color Tag Display | [COLOR_TAG_DISPLAY.md](docs/wip/COLOR_TAG_DISPLAY.md) | TESTING |
+| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | PLANNING |
+| **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](docs/wip/FONT_SETTINGS_ENHANCEMENT.md) | PLANNING |
+| **P2** | Gitea Clean Kill Protocol | [GITEA_CLEAN_KILL_PROTOCOL.md](docs/wip/GITEA_CLEAN_KILL_PROTOCOL.md) | IMPLEMENTED |
+| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | PLANNING |
+| **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](docs/wip/COLOR_PARSER_EXTENSION.md) | DOCUMENTED |
+| **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | PLANNING |
 | **P6** | File Delete + Recycle Bin | TBD | BACKLOG |
-| **P7** | Font Settings UI | TBD | BACKLOG |
 
-### Advanced Search (NOW)
+### P1: QA UIUX Overhaul
+**CRITICAL** - Current QA panel has stability issues:
+- Softlock / can't close panel
+- Empty results with "issues found" message
+- No cancel mechanism for "Run Full QA"
+- No timeout for API requests
+
+### P2: Font Settings Enhancement
+Add missing font customization:
+- Font Family: System, Inter, Roboto, Noto Sans, Source Han (CJK), Consolas, Monaco
+- Font Color: Default, Black, Dark Gray, Blue, Green
+- Settings dropdown menu instead of direct modal
+
+### P2: Gitea Clean Kill Protocol ✅ IMPLEMENTED
+Prevent zombie processes and stuck builds:
+- `./scripts/gitea_control.sh` - unified management script
+- Commands: `status`, `stop`, `kill`, `start`, `restart`, `monitor`
+- Fixed 52% idle CPU issue with simple restart
+- Proper systemd + daemon management
+
+### P3: Offline/Online Mode (COMPLEX)
+Work offline when central server unavailable:
+- Local SQLite for changes while offline
+- Auto-sync and merge when reconnecting
+- Conflict resolution (reviewed rows protected)
+- Merge modes: Full (add + edit) vs Edit-only
+
+### P4: Color Parser Extension
+Current parser supports PAColor format only. Document how to add:
+- `{Color(#hex)}text{/Color}` format
+- `<color=name>text</color>` format
+- Auto-detection of format per file
+
+### P5: Advanced Search
 Add search mode options: Contain, Exact, Not Contain, Fuzzy (Model2Vec semantic)
 - Search by: StringID, Source, Target (extensible for future metadata)
 
-### Color Tag Display (NOW)
-Display `<PAColor0xffe9bd23>text<PAOldColor>` with actual colors (hide tags)
-- Parser: `locaNext/src/lib/utils/colorParser.js`
-- Component: `locaNext/src/lib/components/ldm/ColorText.svelte`
-
-### File Delete + Recycle Bin (P6)
+### P6: File Delete + Recycle Bin
 - Right-click → Delete file
 - Deleted files go to "Bin" (soft delete)
 - Bin view to recover or permanently delete
@@ -412,4 +443,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2025-12-26 | P1-P5 Complete*
+*Strategic Roadmap | Updated 2025-12-28 | Build 415 STABLE | P1-P5 Complete, NEW priorities added*
