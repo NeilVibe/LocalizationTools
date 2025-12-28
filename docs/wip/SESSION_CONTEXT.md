@@ -1,70 +1,70 @@
 # Session Context
 
-**Updated:** 2025-12-28 21:10 | **Build:** 415 (STABLE) | **Status:** QA + LanguageTool DONE
+**Updated:** 2025-12-28 22:30 | **Build:** 415 (STABLE) | **Status:** Planning MemoQ-Style Update
 
 ---
 
 ## Current State
 
-**Build 415 is STABLE.** Major fixes completed this session.
+**All previous bugs fixed.** Now planning major UX upgrade.
 
 ### Completed This Session
 
 | Task | Status | Details |
 |------|--------|---------|
-| QA Panel Stability | DONE | Fixed freeze, added timeout, error UI |
-| LanguageTool Lazy Load | DONE | Auto start/stop, saves 900MB RAM |
-| Gitea Management | DONE | `gitea_control.sh` script |
-| View Mode Settings | DOCUMENTED | New feature planned |
+| QA Panel Stability | DONE | Fixed freeze, timeout, error UI |
+| QA Click Navigation | DONE | O(1 lookup, proper row highlight |
+| Stale Task Cleanup | DONE | Backend endpoint + UI button |
+| LanguageTool Config | DONE | Moved to config.py (env vars) |
+| Hardcoded URLs | DONE | All frontend + backend fixed |
+| Code Review Docs | DONE | 8 lessons documented |
+| Enterprise Docs | DONE | Updated for env var config |
 
 ---
 
-## QA Panel Fixes (DONE)
+## Next: MemoQ-Style Non-Modal Editing (MAJOR)
 
-### Issues Fixed
-- **Freeze on click**: Simplified AbortController logic
-- **"Cannot read properties of undefined"**: Added safe getter for checkType
-- **No timeout**: Added 30s timeout on all API calls
-- **No error display**: Added InlineNotification with retry
-- **No cancel**: Added cancel button during QA run
-- **Softlock**: Close button always works now
+### Vision
+Transform LDM from modal-based to **inline editing** like memoQ.
 
-### Files Changed
-- `locaNext/src/lib/components/ldm/QAMenuPanel.svelte`
+### Key Features
+1. **Inline Cell Editing** - Click target cell, edit directly
+2. **Fixed TM/QA Column** - Right side panel (~300px)
+3. **TM Metadata** - Show origin, creator, date for each match
+4. **QA Integration** - LanguageTool + built-in checks in panel
+5. **Keyboard Nav** - Tab, Enter, Arrow keys
 
----
-
-## LanguageTool Lazy Load (DONE)
-
-### How It Works
+### Layout
 ```
-User clicks "Check Grammar"
-  → Backend checks if server running
-  → If not: starts via systemctl (30s timeout)
-  → Performs check
-  → After 5 min idle: auto-stops
+┌──────────────────────────────────────────────────────────────────┐
+│ # │ Source              │ Target (editable)    │ TM/QA Panel    │
+├───┼─────────────────────┼──────────────────────┼────────────────┤
+│ 1 │ Hello world         │ Bonjour le monde     │ TM MATCHES     │
+│ 2 │ Click here          │ [editing cursor]     │ 100% Bonjour...|
+│ 3 │ Save changes        │ Enregistrer          │ QA ISSUES      │
+└───┴─────────────────────┴──────────────────────┴────────────────┘
 ```
 
-### RAM Savings
-- OFF (default): Saves ~900MB
-- ON (when needed): Starts automatically
+### TM Metadata to Display
+- Match percentage (100%, fuzzy)
+- Source project/file
+- Creation type (Manual, Review, Auto-TM, Import)
+- Created by (username)
+- Created date
 
-### Files Changed
-- `server/utils/languagetool.py`
+### Full Spec: [MEMOQ_STYLE_EDITING.md](MEMOQ_STYLE_EDITING.md)
 
 ---
 
-## NEW: View Mode Settings (PLANNED)
+## Grammar Checker Research
 
-### Feature
-Add Settings > General > View Mode toggle:
-- **Modal Mode** (current): Double-click opens edit modal
-- **Inline Mode** (MemoQ-style): Edit directly in grid
+| Option | Languages | RAM | Status |
+|--------|-----------|-----|--------|
+| **LanguageTool** | 31 | ~900MB | Current, best multilingual |
+| **Harper** | English only | ~18MB | Fast, Rust, offline |
+| **HuggingFace T5** | 4-7 | ~500MB-2GB | Research phase |
 
-### Additional Features
-- TM/QA side panel on single-click (inline mode)
-- Optional TM/QA column in grid
-- See [VIEW_MODE_SETTINGS.md](VIEW_MODE_SETTINGS.md)
+**Verdict:** Stick with LanguageTool for 30+ language support.
 
 ---
 
@@ -72,27 +72,24 @@ Add Settings > General > View Mode toggle:
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| **P1** | QA UIUX Overhaul | DONE |
-| **P2** | View Mode Settings | PLANNING |
-| **P2** | Font Settings | PLANNING |
-| **P2** | Gitea Protocol | DONE |
-| **P2** | LanguageTool Lazy Load | DONE |
-| **P3** | Offline/Online Mode | PLANNING |
+| **P1** | MemoQ-Style Non-Modal | PLANNING |
+| **P2** | TM Metadata Display | PLANNING |
+| **P2** | QA in Side Panel | PLANNING |
+| **P3** | Font Settings | DEFERRED |
+| **P3** | Offline/Online Toggle | DEFERRED |
+
+---
+
+## Open Questions
+
+1. **Drop Edit Modal?** User ready to go full non-modal
+2. **Settings Toggle?** Or just switch entirely?
+3. **TM Panel Width?** Fixed 300px or resizable?
+4. **When Load TM?** On select or prefetch?
 
 ---
 
 ## Quick Reference
-
-### Check Gitea Status
-```bash
-/home/neil1988/LocalizationTools/scripts/gitea_control.sh status
-```
-
-### Stop LanguageTool (lazy load)
-```bash
-sudo systemctl stop languagetool
-# Will auto-start when grammar check requested
-```
 
 ### Check Build Status
 ```bash
@@ -106,14 +103,11 @@ status_map = {1: 'SUCCESS', 2: 'FAILURE', 6: 'RUNNING'}
 print(f'Run {r[0]}: {status_map.get(r[1], r[1])} | {elapsed//60}m')"
 ```
 
----
-
-## Next Steps
-
-1. **Test QA panel** in browser (refresh localhost:5173)
-2. **Implement View Mode** when ready
-3. **Font Settings** enhancement
+### Check Servers
+```bash
+./scripts/check_servers.sh
+```
 
 ---
 
-*Session focus: QA stability + LanguageTool optimization*
+*Session focus: Planning MemoQ-style UX overhaul*
