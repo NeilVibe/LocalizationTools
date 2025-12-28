@@ -517,6 +517,97 @@ conn.close()
 
 ---
 
+## BUILD TIMEOUT ALERT PROTOCOL (CRITICAL!)
+
+**⚠️ Normal STAGE times - MEMORIZE THESE:**
+
+| Stage | Normal Time | STUCK if > | Action |
+|-------|-------------|------------|--------|
+| Trigger job | <1 min | 2 min | Check runner |
+| Tests (pytest) | 5-10 min | 10 min | Check RAM, kill if >8GB |
+| Windows build | 5-15 min | 20 min | Check Windows runner |
+
+**Key: Monitor per-STAGE, not total build!**
+
+### Per-Stage Monitoring
+
+```bash
+# GET CURRENT STAGE AND TIME
+python3 -c "
+import sqlite3, time
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('''
+    SELECT j.name, j.status, j.started
+    FROM action_run_job j
+    WHERE j.run_id = (SELECT MAX(id) FROM action_run)
+    AND j.status = 6  -- RUNNING
+''')
+r = c.fetchone()
+if r:
+    elapsed = int(time.time()) - r[2] if r[2] else 0
+    print(f'Stage: {r[0][:30]}')
+    print(f'Time: {elapsed//60} min {elapsed%60} sec')
+    if 'Tests' in r[0] and elapsed > 600:
+        print('⚠️ ALERT: Tests stuck >10 min!')
+    elif 'Windows' in r[0] and elapsed > 1200:
+        print('⚠️ ALERT: Windows stuck >20 min!')
+else:
+    print('No running stage')"
+```
+
+### ASSESSMENT Protocol (When Stage is STUCK)
+
+```
+1. CHECK RAM: free -h
+   - Tests: should be <5GB
+   - If >8GB → pytest is STUCK → pkill -f pytest
+
+2. CHECK PROCESS: ps aux | grep -E 'pytest|electron-builder'
+   - Is process using CPU? (good)
+   - Is process using 0% CPU but high MEM? (stuck)
+
+3. CHECK LOGS: curl live logs or check disk
+   - Any error messages?
+   - Is progress % increasing?
+
+4. DECISION:
+   - Progress increasing + RAM normal → wait
+   - Progress stuck OR RAM >8GB → KILL and investigate
+```
+
+### Quick Alert Commands
+
+```bash
+# Check if build is stuck (ran > 10 min)
+python3 -c "
+import sqlite3, time
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, started FROM action_run ORDER BY id DESC LIMIT 1')
+r = c.fetchone()
+elapsed = int(time.time()) - r[2] if r[2] else 0
+if r[1] == 6 and elapsed > 600:  # RUN for >10 min
+    print(f'⚠️ ALERT: Run {r[0]} stuck for {elapsed//60} min!')
+else:
+    print(f'Run {r[0]}: OK ({elapsed//60} min elapsed)')"
+
+# Kill stuck pytest
+pkill -f "pytest tests/"
+
+# Force-fail stuck build (via database)
+# UPDATE action_run SET status=2 WHERE id=XXX
+```
+
+### What NOT to Do
+
+| ❌ WRONG | ✅ RIGHT |
+|----------|----------|
+| Wait indefinitely | Set timeout alerts at 5, 10, 15 min |
+| Keep polling "is it done?" | Kill process if stuck |
+| Let failed builds run | Push fixes immediately, don't wait |
+| Ignore RAM usage | Monitor: <5GB normal, >8GB = problem |
+
+---
+
 ## Quick Diagnosis
 
 ```

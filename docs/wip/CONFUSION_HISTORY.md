@@ -171,6 +171,66 @@ sudo systemctl start gitea
 
 ---
 
+### Confusion 21: INFINITE BUILD WAIT (CRITICAL)
+
+**Date:** 2025-12-28 13:30 KST
+
+**What went wrong:**
+```
+1. Build 411 started - knew it would fail (had unfixed tests)
+2. Instead of pushing fixes immediately, waited for it to complete
+3. Tests ran for 25+ MINUTES consuming 11GB+ RAM
+4. Kept polling "is it done?" every 60-90 seconds
+5. Build was STUCK, not failing - infinite resource consumption
+6. Wasted 25+ minutes waiting for a guaranteed failure
+```
+
+**Evidence:**
+```
+pytest PID 920886: 92% CPU, 28% MEM (11GB), time: 15:44+
+Build 411 status: RUN (never changed to FAIL)
+Infinite wait loop instead of action
+```
+
+**Correct workflow:**
+```bash
+# BUILD TIMEOUT PROTOCOL
+# Normal build times:
+#   - Trigger job: <1 min
+#   - Safety checks (tests): 5-10 min
+#   - Windows build: 5-15 min
+# TOTAL: ~15-20 min MAX
+
+# CHECK #1: After 5 min of tests running
+if [ tests_running_time > 5 min ]; then
+    check_progress  # Should be >30%
+fi
+
+# CHECK #2: After 10 min of tests running
+if [ tests_running_time > 10 min ]; then
+    check_memory    # Should be <5GB for tests
+    if [ memory > 8GB ]; then
+        ALERT: "Tests consuming too much memory!"
+        pkill -f pytest
+    fi
+fi
+
+# CHECK #3: After 15 min TOTAL
+if [ build_time > 15 min ]; then
+    ALERT: "Build exceeded normal time!"
+    investigate_immediately
+    DO NOT keep waiting
+fi
+```
+
+**Key lesson:**
+- **NEVER wait indefinitely** - builds have known timeframes
+- **If build will fail, push fixes NOW** - don't wait for failure
+- **Monitor resources** during builds (RAM, CPU)
+- **Kill stuck processes** - don't let them consume resources
+
+---
+
 ## Prevention Rules
 
 1. **Verify paths exist** before running scripts

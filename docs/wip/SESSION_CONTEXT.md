@@ -1,99 +1,174 @@
 # Session Context
 
-**Updated:** 2025-12-28 14:30 | **Build:** 409 | **Status:** STABLE REVISION + DOC-001 COMPLETE
+**Updated:** 2025-12-28 14:00 | **Build:** 412 (FAILED) | **Status:** PRIORITY 1 - ASYNC EVENT LOOP FIX
 
 ---
 
-## DOC-001: INSTALL vs UPDATE Confusion - RESOLVED
+## PRIORITY 1: Async Event Loop Test Failures (BLOCKING)
 
-### Critical Documentation Overhaul
+### Problem
 
-**Problem:** Claude (and documentation) conflated INSTALL and UPDATE operations, causing:
-- Wrong advice (telling user to "install" when app already installed)
-- Wasted time (full reinstall takes 2-5 min, auto-update takes 30 sec)
-- Wrong testing scenarios
+Build 412 failed due to **async event loop pollution** - tests fail when run after 100+ other tests:
 
-**Resolution:** Complete documentation overhaul:
+```
+RuntimeError: Task got Future attached to a different loop
+```
 
-| Doc | Change |
-|-----|--------|
-| `CLAUDE.md` | Added "INSTALL vs UPDATE" section |
-| `MASTER_TEST_PROTOCOL.md` | Added critical distinction section + updated Phase 4 |
-| `HOW_TO_BUILD.md` | Added "After Build: INSTALL vs UPDATE" section |
-| `CONFUSION_HISTORY.md` | Added Confusion #16 with full details |
-| `DOC-001_INSTALL_VS_UPDATE_CONFUSION.md` | Created comprehensive reference |
+**Failing tests:**
+- `test_submit_logs_with_auth`
+- `test_start_session`
+- `test_get_latest_version`
 
----
+**Root cause:** `_async_session_maker` in `server/utils/dependencies.py` gets tied to an event loop at initialization. After 100+ tests, the loop state is corrupted.
 
-## STABLE REVISION - 2025-12-28 (Build 409)
+### Full Plan of Action
 
-### 10 Fixes Completed This Session
+#### Phase 1: Understand the Problem (30 min)
 
-| Issue | Description | Status |
-|-------|-------------|--------|
-| **UI-059** | Row selection state inconsistent | ✅ FIXED |
-| **UI-062** | version.json file:// protocol error | ✅ FIXED (webRequest intercept) |
-| **UI-065** | Edit icon visibility on selected | ✅ FIXED |
-| **UI-074** | Missing /api/ldm/files endpoint | ✅ VERIFIED (already existed) |
-| **UI-075** | Console error objects not showing | ✅ FIXED (Error serialization) |
-| **UI-076** | Search bar not filtering rows | ✅ FIXED |
-| **UI-077** | Duplicate names (Files/Folders/Projects/TM) | ✅ FIXED |
-| **UI-078** | Color tags not rendering | ✅ FIXED |
-| **UI-079** | Grid lines not visible | ✅ FIXED |
-| **UI-080** | Search results empty cells | ✅ FIXED |
+1. **Read the code:**
+   - `server/utils/dependencies.py` - Find `_async_session_maker` and how it's initialized
+   - `server/main.py` - Check how async sessions are used
+   - Failing test files in `tests/integration/server_tests/`
 
-### Code Changes
+2. **Understand the pattern:**
+   - Why does it work in isolation but fail after 100+ tests?
+   - What creates new event loops during test runs?
+   - How does pytest-asyncio handle event loops?
+
+#### Phase 2: Research Solutions (30 min)
+
+3. **Check existing fixes:**
+   - Per TROUBLESHOOTING.md, `/api/announcements` was fixed by switching to sync db
+   - Look at how that fix was done
+
+4. **Identify all affected endpoints:**
+   - Grep for `Depends(get_async_db)` in all route files
+   - Identify which can be safely switched to sync
+
+#### Phase 3: Implement Fix (1-2 hours)
+
+**Option A: Convert to Sync (Recommended for simple endpoints)**
+```python
+# BEFORE (async - causes issues)
+@router.get("/logs")
+async def get_logs(db: AsyncSession = Depends(get_async_db)):
+    ...
+
+# AFTER (sync - stable)
+@router.get("/logs")
+def get_logs(db: Session = Depends(get_db)):
+    ...
+```
+
+**Option B: Reset async engine between test modules**
+```python
+# In conftest.py
+@pytest.fixture(autouse=True, scope="module")
+def reset_async_engine():
+    from server.utils.dependencies import reset_async_session_maker
+    reset_async_session_maker()
+    yield
+```
+
+**Option C: Use separate event loop per test**
+```python
+# pytest.ini or conftest.py
+[tool:pytest]
+asyncio_mode = auto
+```
+
+5. **For each failing endpoint:**
+   - Assess if it needs async (most don't)
+   - If not, convert to sync
+   - If yes, implement Option B or C
+
+#### Phase 4: Test the Fix (30 min)
+
+6. **Run tests locally:**
+   ```bash
+   python3 -m pytest tests/integration/server_tests/test_api_endpoints.py -v
+   ```
+
+7. **Run full test suite to verify no regressions:**
+   ```bash
+   python3 -m pytest tests/ -v --tb=short
+   ```
+
+#### Phase 5: Deploy and Verify (15 min)
+
+8. **Push and trigger build:**
+   ```bash
+   echo "Build 413: Fix async event loop test failures" >> GITEA_TRIGGER.txt
+   git add -A && git commit -m "Fix: Async event loop test isolation"
+   git push origin main && git push gitea main
+   ```
+
+9. **Monitor with timeout protocol:**
+   - Stage timeout: Tests = 10 min max
+   - RAM: Should be <5GB
+
+### Files to Modify
 
 | File | Change |
 |------|--------|
-| `VirtualGrid.svelte` | Search fix, grid lines, selection priority |
-| `files.py` | Duplicate file name validation |
-| `folders.py` | Duplicate folder name validation |
-| `projects.py` | Duplicate project name validation |
-| `tm_crud.py` | Duplicate TM name validation |
+| `server/utils/dependencies.py` | Add reset function or fix session maker |
+| `server/api/*.py` | Convert simple endpoints to sync |
+| `tests/conftest.py` | Add event loop reset fixture if needed |
+
+### Success Criteria
+
+- [ ] All 3 failing tests pass
+- [ ] Full test suite passes (1000+ tests)
+- [ ] No new test failures introduced
+- [ ] Build completes in <15 min
+
+---
+
+## Completed This Session
+
+### Build 411-412 Fixes
+
+| Item | Status |
+|------|--------|
+| UI-077 mocked tests broken | ✅ FIXED (3 tests updated) |
+| Confusion #21 documented | ✅ DONE (infinite wait issue) |
+| BUILD TIMEOUT PROTOCOL added | ✅ DONE (per-stage monitoring) |
 
 ### Documentation Updated
 
-| Doc | Content |
-|-----|---------|
-| `DEV_MODE_PROTOCOL.md` | CS-001 to CS-007 Critical Solutions, Phase 14 Debug Commands |
-| `CONFUSION_HISTORY.md` | Confusions 10-16 (now includes INSTALL vs UPDATE) |
-| `TERMINAL_COMMAND_GUIDE.md` | NEW - Commands + Gitea Protocol |
-| `ISSUES_TO_FIX.md` | 7 issues fixed, 8 remaining |
-| `DOC-001_INSTALL_VS_UPDATE_CONFUSION.md` | NEW - Critical distinction documentation |
-| `CLAUDE.md` | Added INSTALL vs UPDATE section |
-| `MASTER_TEST_PROTOCOL.md` | Added INSTALL vs UPDATE section + updated Phase 4 |
-| `HOW_TO_BUILD.md` | Added After Build section |
+- `TROUBLESHOOTING.md` - Added BUILD TIMEOUT ALERT PROTOCOL
+- `CONFUSION_HISTORY.md` - Added Confusion #21 (infinite wait)
 
 ---
 
-## Gitea Protocol Followed
+## Quick Reference
 
-```
-1. START:  sudo systemctl start gitea
-2. COMMIT: git add -A && git commit -m "Build XXX: ..."
-3. PUSH:   git push origin main && git push gitea main
-4. STOP:   sudo systemctl stop gitea
+### Check Build Status (SQL)
+```bash
+python3 -c "
+import sqlite3, time
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, started FROM action_run ORDER BY id DESC LIMIT 1')
+r = c.fetchone()
+elapsed = int(time.time()) - r[2] if r[2] else 0
+status_map = {1: 'SUCCESS', 2: 'FAILURE', 6: 'RUNNING'}
+print(f'Run {r[0]}: {status_map.get(r[1], r[1])} | {elapsed//60}m')"
 ```
 
----
-
-## Open Issues (7 remaining - all LOW priority)
-
-### MEDIUM (Low Priority)
-- UI-063: CSS text overflow
-- UI-066: Placeholder column count
-- UI-067: Filter dropdown styling
-- UI-068: Resize handle visibility
-- UI-069: QA/Edit icon overlap
-
-### LOW (Cosmetic)
-- UI-070 to UI-073: Cosmetic issues
-
-### NOT A BUG / BY DESIGN (Closed)
-- UI-061: Routing error (handled in +error.svelte)
-- UI-064: Status colors on hover (intentional)
+### Per-Stage Monitoring
+```bash
+python3 -c "
+import sqlite3, time
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('''SELECT name, status, started FROM action_run_job
+    WHERE run_id=(SELECT MAX(id) FROM action_run) AND status=6''')
+r = c.fetchone()
+if r:
+    elapsed = int(time.time()) - r[2]
+    print(f'{r[0][:30]}: {elapsed//60}m')
+    if elapsed > 600: print('⚠️ STUCK!')"
+```
 
 ---
 
-*Build 409 - Stable Revision*
+*PRIORITY 1: Fix async event loop before next build*
