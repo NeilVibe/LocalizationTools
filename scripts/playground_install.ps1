@@ -1,7 +1,15 @@
 # ============================================================================
 # AUTONOMOUS PLAYGROUND INSTALL SCRIPT
 # ============================================================================
-# Purpose: Clean install LocaNext to Playground for testing
+# Purpose: FRESH INSTALL of LocaNext to Playground for testing
+#
+# ⚠️  INSTALL vs UPDATE - CRITICAL DISTINCTION:
+#     - INSTALL (this script): Fresh .exe installation, 2-5 min
+#     - UPDATE: Just open the app, it auto-updates, 30 sec - 2 min
+#
+#     If app is ALREADY INSTALLED, use UPDATE instead (just open the app!)
+#     See docs/wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md for details.
+#
 # Usage: Run from PowerShell on Windows
 #        .\scripts\playground_install.ps1
 # ============================================================================

@@ -35,6 +35,11 @@
 | 13 | **Playwright test from root instead of locaNext** | Run from `/home/neil1988/LocalizationTools/locaNext` |
 | 14 | **Hardcoded wrong DB credentials** | Use `from config import DATABASE_URL` |
 | 15 | **ModuleNotFoundError for config** | Must run from LocalizationTools dir with `sys.path.insert` |
+| 16 | **INSTALL vs UPDATE confusion** | INSTALL = fresh from .exe, UPDATE = auto-updater. See DOC-001 |
+| 17 | **Pushed to Gitea without checking state** | Check `ps aux | grep gitea` + `free -h` BEFORE pushing |
+| 18 | **Started Gitea manually (./gitea web)** | ALWAYS use `sudo systemctl start/stop gitea` |
+| 19 | **Didn't stop Gitea after push** | ALWAYS `sudo systemctl stop gitea` after pushing |
+| 20 | **Triggered CI without resource check** | Check `free -h` + `uptime` before triggering builds |
 
 ---
 
@@ -80,6 +85,89 @@ SELECT id, row_num, source, target FROM ldm_rows
 # RIGHT: Run Playwright from locaNext directory
 cd /home/neil1988/LocalizationTools/locaNext && npx playwright test tests/xxx.spec.ts
 ```
+
+---
+
+### Confusion 16: INSTALL vs UPDATE (CRITICAL)
+
+**What went wrong:**
+```bash
+# WRONG: Told user to run install when app was already installed
+./scripts/playground_install.sh --launch --auto-login  # Wasted 5 minutes!
+
+# User asked: "install? we don't use the update feature?"
+# This revealed GRAVE documentation confusion
+```
+
+**The difference:**
+
+| INSTALL | UPDATE |
+|---------|--------|
+| Fresh installation from .exe | Auto-updater downloads new version |
+| First time, clean slate, testing first-run | App already installed, just need new code |
+| 2-5 min (includes Python setup) | 30 sec - 2 min |
+| `./scripts/playground_install.sh` | Just open the app, it auto-updates |
+
+**Correct approach:**
+
+```
+1. Is app already installed in Playground?
+   ├── NO → Use INSTALL (./scripts/playground_install.sh)
+   └── YES → Use UPDATE (just open the app)
+
+2. Do you need to test first-run experience?
+   ├── YES → Use INSTALL
+   └── NO → Use UPDATE
+
+3. Do you need a clean slate?
+   ├── YES → Use INSTALL
+   └── NO → Use UPDATE
+```
+
+**See [DOC-001_INSTALL_VS_UPDATE_CONFUSION.md](DOC-001_INSTALL_VS_UPDATE_CONFUSION.md) for full details.**
+
+---
+
+### Confusion 17-20: GITEA RESOURCE CRISIS (CRITICAL)
+
+**Date:** 2025-12-28 13:02 KST
+
+**What went wrong:**
+```
+1. Started Gitea manually (./gitea web) on Dec 27
+2. Never killed it - zombie held port 3000
+3. Pushed to Gitea without checking state
+4. CI Run 410 started - pytest consumed 36.5GB RAM
+5. System froze - only 280MB free of 39GB
+6. Gitea in crash loop (72 restarts!)
+```
+
+**Evidence:**
+```
+PID 859420: Zombie from Dec 27, holding port 3000
+PID 913123: pytest using 93% memory (36.5GB!)
+Run 410: status=3 (stuck), started 12:36, never finished
+```
+
+**Correct workflow:**
+```bash
+# BEFORE pushing to Gitea:
+free -h                           # Check memory (need >2GB free)
+uptime                            # Check load (should be <3)
+ps aux | grep gitea | grep -v grep  # Check for zombies
+sudo systemctl status gitea       # Check service state
+
+# Push workflow:
+sudo systemctl start gitea
+git push origin main && git push gitea main
+sudo systemctl stop gitea         # ALWAYS STOP AFTER!
+
+# If zombies found:
+kill -9 <zombie_pid>
+sudo systemctl start gitea
+```
+
+**See [ALERT-001_GITEA_RESOURCE_CRISIS.md](ALERT-001_GITEA_RESOURCE_CRISIS.md) for full details.**
 
 ---
 

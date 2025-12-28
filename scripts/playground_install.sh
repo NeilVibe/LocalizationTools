@@ -2,7 +2,15 @@
 # ============================================================================
 # AUTONOMOUS PLAYGROUND INSTALL - WSL Wrapper
 # ============================================================================
-# Purpose: Run Playground installation from WSL
+# Purpose: FRESH INSTALL of LocaNext to Playground from WSL
+#
+# ⚠️  INSTALL vs UPDATE - CRITICAL DISTINCTION:
+#     - INSTALL (this script): Fresh .exe installation, 2-5 min
+#     - UPDATE: Just open the app, it auto-updates, 30 sec - 2 min
+#
+#     If app is ALREADY INSTALLED, use UPDATE instead (just open the app!)
+#     See docs/wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md for details.
+#
 # Usage: ./scripts/playground_install.sh [options]
 #
 # Options:

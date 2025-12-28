@@ -9,12 +9,61 @@
 ## Overview
 
 ```
-CODE → CI TESTS → BUILD → SMOKE TEST → RELEASE → INSTALL → CDP TESTS
-  ↓        ↓         ↓         ↓           ↓         ↓          ↓
-Push    Python    Windows   Backend    Gitea    Playground  Node.js
-        ~285      NSIS      SQLite     Upload   PostgreSQL  WebSocket
-        tests     Installer  Mode               Mode
+CODE → CI TESTS → BUILD → SMOKE TEST → RELEASE → INSTALL/UPDATE → CDP TESTS
+  ↓        ↓         ↓         ↓           ↓            ↓              ↓
+Push    Python    Windows   Backend    Gitea     Playground       Node.js
+        ~285      NSIS      SQLite     Upload    PostgreSQL       WebSocket
+        tests     Installer  Mode                Mode
 ```
+
+---
+
+## ⚠️ CRITICAL: INSTALL vs UPDATE
+
+**These are COMPLETELY DIFFERENT operations. Using the wrong one wastes time and tests the wrong thing.**
+
+| | INSTALL | UPDATE |
+|--|---------|--------|
+| **What** | Fresh installation from .exe | Auto-updater downloads new version |
+| **When** | First time, clean slate, testing first-run | App already installed, just need new code |
+| **Time** | 2-5 min (includes Python setup) | 30 sec - 2 min |
+| **Command** | `./scripts/playground_install.sh` | Just open the app, it auto-updates |
+| **Tests** | First-run experience, clean install | Upgrade path, existing user experience |
+
+### Decision Guide
+
+| Scenario | Use |
+|----------|-----|
+| App not installed yet | INSTALL |
+| App installed, testing new fix | **UPDATE** (just open app) |
+| Testing first-run setup | INSTALL |
+| Testing auto-updater | **UPDATE** |
+| Clean slate needed | INSTALL |
+| Quick verification of fix | **UPDATE** |
+| User reported bug | **UPDATE** |
+
+### UPDATE Flow (Most Common)
+
+```
+1. Push code → CI builds → Release on Gitea
+2. Open LocaNext (already installed)
+3. App auto-checks on startup OR Menu → Help → Check for Updates
+4. Download notification appears
+5. Click "Download" → "Install & Restart"
+6. App restarts with new version
+7. Test the fix
+```
+
+### INSTALL Flow (Less Common)
+
+```
+1. Push code → CI builds → Release on Gitea
+2. Run: ./scripts/playground_install.sh --launch --auto-login
+3. Wait for First Time Setup (~2-5 min)
+4. Test in clean environment
+```
+
+**See [DOC-001: Install vs Update Confusion](../docs/wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md) for full details.**
 
 ---
 
@@ -115,7 +164,24 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/health | grep -q 20
 
 ---
 
-## Phase 4: Install to Playground
+## Phase 4: Get New Version to Playground
+
+**Choose based on your testing needs:**
+
+### Option 1: UPDATE (Most Common - 30 sec to 2 min)
+
+If app is already installed and you just need the new code:
+
+1. Open LocaNext (from Playground or Start Menu)
+2. App auto-checks for updates on startup
+3. When notification appears: Download → Install & Restart
+4. App restarts with new version - ready to test
+
+**Skip to Phase 5 for CDP testing.**
+
+### Option 2: INSTALL (Fresh Install - 2-5 min)
+
+Only use if: first time, testing first-run, or need clean slate.
 
 **IMPORTANT:** Installation requires running a Windows NSIS installer. There is NO pure-WSL method.
 

@@ -116,4 +116,41 @@ cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep -E "FAILED|
 
 ---
 
-*Last updated: 2025-12-22*
+## After Build: INSTALL vs UPDATE
+
+**⚠️ These are COMPLETELY DIFFERENT operations.**
+
+| | UPDATE | INSTALL |
+|--|--------|---------|
+| **What** | Auto-updater downloads new version | Fresh installation from .exe |
+| **When** | App already installed (most common!) | First time, clean slate, testing first-run |
+| **Time** | 30 sec - 2 min | 2-5 min |
+| **How** | Open app → notification → Download → Restart | `./scripts/playground_install.sh` |
+
+### UPDATE (Most Common)
+
+```
+1. Open LocaNext (already installed in Playground)
+2. App auto-checks on startup
+3. Download notification appears
+4. Click "Download" → "Install & Restart"
+5. App restarts with new version
+```
+
+### INSTALL (Only When Needed)
+
+```bash
+./scripts/playground_install.sh --launch --auto-login
+```
+
+Use INSTALL only for:
+- First time setup
+- Testing first-run experience
+- Clean slate testing
+- Major version upgrades
+
+**See [DOC-001: Install vs Update Confusion](../wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md) for details.**
+
+---
+
+*Last updated: 2025-12-28*

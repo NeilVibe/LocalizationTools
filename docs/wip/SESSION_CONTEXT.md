@@ -1,6 +1,27 @@
 # Session Context
 
-**Updated:** 2025-12-28 12:15 | **Build:** 409 | **Status:** STABLE REVISION
+**Updated:** 2025-12-28 14:30 | **Build:** 409 | **Status:** STABLE REVISION + DOC-001 COMPLETE
+
+---
+
+## DOC-001: INSTALL vs UPDATE Confusion - RESOLVED
+
+### Critical Documentation Overhaul
+
+**Problem:** Claude (and documentation) conflated INSTALL and UPDATE operations, causing:
+- Wrong advice (telling user to "install" when app already installed)
+- Wasted time (full reinstall takes 2-5 min, auto-update takes 30 sec)
+- Wrong testing scenarios
+
+**Resolution:** Complete documentation overhaul:
+
+| Doc | Change |
+|-----|--------|
+| `CLAUDE.md` | Added "INSTALL vs UPDATE" section |
+| `MASTER_TEST_PROTOCOL.md` | Added critical distinction section + updated Phase 4 |
+| `HOW_TO_BUILD.md` | Added "After Build: INSTALL vs UPDATE" section |
+| `CONFUSION_HISTORY.md` | Added Confusion #16 with full details |
+| `DOC-001_INSTALL_VS_UPDATE_CONFUSION.md` | Created comprehensive reference |
 
 ---
 
@@ -36,9 +57,13 @@
 | Doc | Content |
 |-----|---------|
 | `DEV_MODE_PROTOCOL.md` | CS-001 to CS-007 Critical Solutions, Phase 14 Debug Commands |
-| `CONFUSION_HISTORY.md` | Confusions 10-15 (DB/terminal mistakes) |
+| `CONFUSION_HISTORY.md` | Confusions 10-16 (now includes INSTALL vs UPDATE) |
 | `TERMINAL_COMMAND_GUIDE.md` | NEW - Commands + Gitea Protocol |
 | `ISSUES_TO_FIX.md` | 7 issues fixed, 8 remaining |
+| `DOC-001_INSTALL_VS_UPDATE_CONFUSION.md` | NEW - Critical distinction documentation |
+| `CLAUDE.md` | Added INSTALL vs UPDATE section |
+| `MASTER_TEST_PROTOCOL.md` | Added INSTALL vs UPDATE section + updated Phase 4 |
+| `HOW_TO_BUILD.md` | Added After Build section |
 
 ---
 
