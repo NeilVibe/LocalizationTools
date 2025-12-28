@@ -314,9 +314,9 @@ class TestKRSimilarE2E:
         # Fixture now has 48 rows covering complete universe of test cases
         assert len(df) >= 40, f"Fixture should have 40+ rows (universe coverage), got {len(df)}"
 
-        # Verify some expected content
+        # Verify some expected content - first row is alchemy skill text
         first_korean = df.iloc[0]['Korean']
-        assert '안녕하세요' in first_korean, "First row should contain greeting"
+        assert '연금' in first_korean, "First row should contain alchemy skill text"
 
         print(f"Parsed fixture file: {len(df)} rows (complete universe coverage)")
 
