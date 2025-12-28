@@ -108,8 +108,9 @@ async def session_heartbeat(
         )
 
     # Update last activity
-    async with db.begin():
-        session.last_activity = datetime.utcnow()
+    # Note: get_async_db() already manages transaction (auto-commit/rollback)
+    # Do NOT use db.begin() here - it conflicts with dependency transaction
+    session.last_activity = datetime.utcnow()
 
     return {"message": "Session updated", "last_activity": session.last_activity}
 
@@ -145,9 +146,10 @@ async def end_session(
         )
 
     # Mark session as inactive
-    async with db.begin():
-        session.is_active = False
-        session.last_activity = datetime.utcnow()
+    # Note: get_async_db() already manages transaction (auto-commit/rollback)
+    # Do NOT use db.begin() here - it conflicts with dependency transaction
+    session.is_active = False
+    session.last_activity = datetime.utcnow()
 
     # Emit WebSocket event for session end
     await emit_session_update({
