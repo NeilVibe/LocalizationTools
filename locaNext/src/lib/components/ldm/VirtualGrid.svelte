@@ -401,6 +401,21 @@
     }
   }
 
+  // Phase 2: Export function to update a row's QA flag count (for Ctrl+D dismiss)
+  export function updateRowQAFlag(rowId, flagCount) {
+    const rowIndex = getRowIndexById(rowId);
+    if (rowIndex !== undefined && rows[rowIndex]) {
+      rows[rowIndex] = {
+        ...rows[rowIndex],
+        qa_flag_count: flagCount
+      };
+      rows = [...rows]; // Trigger reactivity
+      logger.info('Updated row QA flag', { rowId, flagCount });
+    } else {
+      logger.warning("Row not found for QA flag update", { rowId });
+    }
+  }
+
   export async function loadRows() {
     if (!fileId) return;
 

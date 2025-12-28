@@ -15,9 +15,12 @@
 | Hotkey Bug Fix | FIXED | `unlockRow()` returning undefined broke `.catch()` |
 | Selection Mode Hotkeys | NEW | Ctrl+S/D, Enter, Escape, Arrow keys work on selected row |
 | Shift+Enter Line Break | FIXED | Parent div was capturing Shift+Enter |
-| Ctrl+D Dismiss QA | FIXED | Now works in both edit and selection modes |
+| Ctrl+D Dismiss QA | FIXED | Now actually calls resolve API + updates visual state |
 | Arrow Key Navigation | NEW | Arrow Up/Down to move between rows in selection mode |
 | Linebreak Auto-Transform | DONE | Display `\n`, save as file format |
+| QA Side Panel Loading | NEW | QA issues now load when row is selected |
+| Stale Docs Cleanup | DONE | AUTO_LQA_IMPLEMENTATION.md marked as IMPLEMENTED |
+| Gitea Protocol | FIXED | Now using `./scripts/gitea_control.sh` properly |
 
 ---
 
@@ -86,11 +89,24 @@ if (!targetRowId) return;
 
 ## New Functions Added
 
-### `handleGridKeydown(e)`
+### `handleGridKeydown(e)` - VirtualGrid.svelte
 Grid-level keyboard handler for selection mode. Handles Ctrl+S, Ctrl+D, Enter, Escape, Arrow keys when row is selected but not being edited.
 
-### `confirmSelectedRow(row)`
+### `confirmSelectedRow(row)` - VirtualGrid.svelte
 Confirms a selected row (marks as reviewed + adds to TM) without entering edit mode.
+
+### `loadQAIssuesForRow(row)` - LDM.svelte
+Fetches QA issues for a row from `/api/ldm/rows/{id}/qa-results` and populates the side panel.
+
+### `updateRowQAFlag(rowId, flagCount)` - VirtualGrid.svelte
+Exported function to update a row's `qa_flag_count` for visual state changes (e.g., after Ctrl+D dismiss).
+
+### `handleDismissQA(event)` - LDM.svelte (Updated)
+Now fully implemented:
+1. Fetches QA issues for the row (if not already in side panel)
+2. Calls `/api/ldm/qa-results/{id}/resolve` for each issue
+3. Updates side panel to clear QA issues
+4. Calls `virtualGrid.updateRowQAFlag(rowId, 0)` to update visual state
 
 ---
 
