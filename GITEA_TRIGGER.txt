@@ -79,3 +79,5 @@ Build 406: Test auto-update flow
 Build 407: Add auto-updater debug logging
 Build 408: Fix ESM import for electron-updater
 Build 409: Test auto-update detection
+Build 1766892977
+Build 1766892983
