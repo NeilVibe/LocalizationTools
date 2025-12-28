@@ -1,17 +1,18 @@
 # Session Context
 
-**Updated:** 2025-12-28 10:15 | **Build:** 406 | **Status:** STABLE REVISION
+**Updated:** 2025-12-28 11:20 | **Build:** 407 | **Status:** STABLE REVISION
 
 ---
 
-## STABLE REVISION - 2025-12-28 (Build 406)
+## STABLE REVISION - 2025-12-28 (Build 407)
 
-### 7 Fixes Completed This Session
+### 8 Fixes Completed This Session
 
 | Issue | Description | Status |
 |-------|-------------|--------|
 | **UI-059** | Row selection state inconsistent | ✅ FIXED |
 | **UI-065** | Edit icon visibility on selected | ✅ FIXED |
+| **UI-074** | Missing /api/ldm/files endpoint | ✅ VERIFIED (already existed) |
 | **UI-076** | Search bar not filtering rows | ✅ FIXED |
 | **UI-077** | Duplicate names (Files/Folders/Projects/TM) | ✅ FIXED |
 | **UI-078** | Color tags not rendering | ✅ FIXED |
@@ -50,12 +51,12 @@
 
 ---
 
-## Open Issues (8 remaining)
+## Open Issues (7 remaining)
 
 ### HIGH Priority
 - UI-061: Routing error on page load
 - UI-062: version.json network error
-- UI-074: Missing /api/ldm/files endpoint
+- UI-075: Console error objects being logged
 
 ### MEDIUM Priority
 - UI-063: CSS text overflow

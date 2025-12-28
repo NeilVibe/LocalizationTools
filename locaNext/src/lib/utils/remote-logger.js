@@ -86,10 +86,20 @@ export const remoteLogger = {
         return;
       }
 
+      // UI-075 FIX: Properly serialize Error objects
       this.error('Console Error', {
-        args: args.map(arg =>
-          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-        )
+        args: args.map(arg => {
+          if (arg instanceof Error) {
+            return { message: arg.message, stack: arg.stack, name: arg.name };
+          } else if (typeof arg === 'object' && arg !== null) {
+            try {
+              return JSON.stringify(arg);
+            } catch {
+              return String(arg);
+            }
+          }
+          return String(arg);
+        })
       });
       originalConsoleError.apply(console, args);
     };
