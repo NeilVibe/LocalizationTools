@@ -342,15 +342,19 @@
 
   // BUG-037: Export function to scroll to a row and highlight it
   export function scrollToRowById(rowId) {
-    // Find the row by ID
-    const row = rows.find(r => r && r.id === rowId);
+    // Use O(1) lookup via rowIndexById map
+    const row = getRowById(rowId);
     if (!row) {
-      logger.warning("Row not found for scroll", { rowId });
+      logger.warning("Row not found for scroll", { rowId, loadedRows: rows.filter(r => r).length });
       return false;
     }
 
-    // Get row index (row_num is 1-based)
-    const index = row.row_num - 1;
+    // Get row index from map (more reliable than row_num - 1)
+    const index = getRowIndexById(rowId);
+    if (index === undefined) {
+      logger.warning("Row index not found", { rowId });
+      return false;
+    }
 
     // Set selected to highlight the row
     selectedRowId = row.id;
@@ -361,7 +365,7 @@
       // Center the row in view (subtract half container height)
       const centeredPos = Math.max(0, scrollPos - (containerHeight / 2) + 20);
       containerEl.scrollTop = centeredPos;
-      logger.userAction("Scrolled to row", { rowId, rowNum: row.row_num, scrollPos: centeredPos });
+      logger.userAction("Scrolled to row", { rowId, index, scrollPos: centeredPos });
     }
 
     return true;
@@ -386,8 +390,8 @@
     // First scroll to and highlight the row
     scrollToRowById(rowId);
 
-    // Find the row in our loaded rows
-    const row = rows.find(r => r && r.id === rowId);
+    // Use O(1) lookup
+    const row = getRowById(rowId);
     if (row) {
       await openEditModal(row);
     } else {

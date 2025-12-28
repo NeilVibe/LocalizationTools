@@ -10,7 +10,7 @@
     InlineLoading,
     ToastNotification
   } from "carbon-components-svelte";
-  import { TrashCan, Renew } from "carbon-icons-svelte";
+  import { TrashCan, Renew, WarningAlt } from "carbon-icons-svelte";
   import { onMount, onDestroy } from "svelte";
   import { api } from "$lib/api/client.js";
   import { websocket } from "$lib/api/websocket.js";
@@ -380,6 +380,58 @@
   }
 
   /**
+   * Cleanup stale running tasks (running for > 60 minutes)
+   */
+  async function cleanupStaleTasks() {
+    const startTime = performance.now();
+    const staleRunningTasks = backendTasks.filter(t =>
+      t.status === 'running' && t.duration && t.duration.includes('m')
+    );
+
+    if (staleRunningTasks.length === 0) {
+      showNotificationMessage('No stale running tasks found', 'info');
+      return;
+    }
+
+    logger.userAction("Cleanup stale tasks clicked", {
+      stale_count: staleRunningTasks.length
+    });
+
+    isLoading = true;
+    try {
+      // Call backend to mark stale running tasks as failed
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('http://localhost:8888/api/progress/operations/cleanup/stale?minutes_old=60', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const elapsed = performance.now() - startTime;
+      logger.success("Stale tasks cleaned up", {
+        marked_failed: data.marked_failed_count,
+        elapsed_ms: elapsed.toFixed(2)
+      });
+
+      showNotificationMessage(`Marked ${data.marked_failed_count} stale tasks as failed`, 'success');
+
+      // Refresh tasks
+      await fetchTasks();
+    } catch (error) {
+      logger.error("Failed to cleanup stale tasks", { error: error.message });
+      showNotificationMessage('Failed to cleanup stale tasks', 'error');
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  /**
    * Refresh tasks from backend
    */
   function refreshTasks() {
@@ -582,6 +634,14 @@
           on:click={refreshTasks}
         >
           Refresh
+        </Button>
+        <Button
+          icon={WarningAlt}
+          kind="tertiary"
+          on:click={cleanupStaleTasks}
+          title="Mark tasks running over 60min as failed"
+        >
+          Clean Stale
         </Button>
         <Button
           icon={TrashCan}

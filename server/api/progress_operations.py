@@ -394,3 +394,54 @@ async def cleanup_completed_operations(
 
 # Missing import for cleanup endpoint
 from datetime import timedelta
+
+
+@router.delete("/operations/cleanup/stale", status_code=status.HTTP_200_OK)
+async def cleanup_stale_running_operations(
+    minutes_old: int = 60,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Cleanup stale running operations.
+
+    Operations that have been "running" for longer than minutes_old
+    are likely stuck and should be marked as failed.
+
+    Default: 60 minutes
+    """
+    logger.info(f"Cleaning up stale running operations older than {minutes_old} minutes for user {current_user['username']}")
+
+    try:
+        cutoff_time = datetime.utcnow() - timedelta(minutes=minutes_old)
+
+        # First, mark them as failed
+        update_query = (
+            update(ActiveOperation)
+            .where(
+                ActiveOperation.user_id == current_user["user_id"],
+                ActiveOperation.status == "running",
+                ActiveOperation.started_at < cutoff_time
+            )
+            .values(
+                status="failed",
+                error_message=f"Automatically marked as failed (stale after {minutes_old} minutes)",
+                completed_at=datetime.utcnow()
+            )
+        )
+
+        result = await db.execute(update_query)
+        await db.commit()
+
+        marked_count = result.rowcount
+        logger.success(f"Marked {marked_count} stale operations as failed for user {current_user['username']}")
+
+        return {"marked_failed_count": marked_count, "minutes_old": minutes_old}
+
+    except Exception as e:
+        logger.error(f"Failed to cleanup stale operations: {e}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cleanup stale operations: {str(e)}"
+        )
