@@ -1,6 +1,6 @@
 # UI-062: SvelteKit version.json Fix
 
-**Created:** 2025-12-28 | **Status:** PLANNING
+**Created:** 2025-12-28 | **Status:** ✅ FIXED
 
 ---
 
@@ -139,12 +139,42 @@ Reasons:
 3. Verify no console error
 4. Document findings
 
+## Actual Implementation (2025-12-28)
+
+**Chose Option 1 variant using `session.webRequest`** (not preload due to contextIsolation)
+
+### Code Added to `electron/main.js` (lines 514-528):
+
+```javascript
+// UI-062 FIX: Intercept SvelteKit's version.json request in file:// protocol
+session.defaultSession.webRequest.onBeforeRequest(
+  { urls: ['file:///*/_app/version.json', 'file:///C:/_app/version.json'] },
+  (details, callback) => {
+    const correctPath = path.join(__dirname, '../build/_app/version.json');
+    logger.info('[UI-062] Intercepted version.json request', {
+      original: details.url,
+      redirectTo: `file://${correctPath.replace(/\\/g, '/')}`
+    });
+    callback({ redirectURL: `file://${correctPath.replace(/\\/g, '/')}` });
+  }
+);
+```
+
+### Why This Approach?
+
+1. `contextIsolation: true` prevents preload from modifying `window.fetch`
+2. `session.webRequest` works at Chromium network layer
+3. Redirects to actual file (not mocking) - keeps version checking functional
+4. Logs the intercept for debugging visibility
+
+---
+
 ## Success Criteria
 
-- [ ] No `net::ERR_FILE_NOT_FOUND` for version.json
-- [ ] App functions normally
-- [ ] Update checking (via electron-updater) still works
-- [ ] No performance impact
+- [x] No `net::ERR_FILE_NOT_FOUND` for version.json
+- [x] App functions normally
+- [x] Update checking (via electron-updater) still works
+- [x] No performance impact
 
 ---
 
