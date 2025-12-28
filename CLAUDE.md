@@ -106,6 +106,7 @@ OFFLINE: SQLite (single-user, auto-fallback)
    4. FIX the actual issue
    5. Only THEN start fresh
 10. **VERIFY WITH TESTS** - Never assume fixes work. Run headless Playwright tests. Take screenshots. Get HARD EVIDENCE.
+11. **GITEA: STOP/START > RESTART** - Never use restart. Always CLEAN STOP → CLEAN START when needed → CLEAN STOP when done. Gitea uses ~60% CPU idle - don't leave running!
 
 ---
 

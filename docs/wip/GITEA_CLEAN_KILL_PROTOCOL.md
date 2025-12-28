@@ -38,15 +38,54 @@
 | Force kill without graceful first | Database corruption risk |
 | Restart too quickly | Port conflicts, startup failures |
 
+### Resource Management Philosophy
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  STOP/START > RESTART                                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  DON'T:  restart (risky, can leave zombies)                     │
+│                                                                 │
+│  DO:     CLEAN STOP → wait → CLEAN START (when needed)          │
+│                                                                 │
+│  WHY?                                                           │
+│  • Restart can leave orphaned processes                         │
+│  • Stop gives clean slate, verifiable state                     │
+│  • Start only when actually needed (saves resources)            │
+│  • Gitea uses ~60% CPU when idle - stop when not building!      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Recommended Workflow
+
+```
+DAILY WORKFLOW:
+1. Need to build?  → START
+2. Build done?     → STOP
+3. Not building?   → Keep STOPPED (saves CPU/RAM)
+
+NOT RECOMMENDED:
+- Leaving Gitea running 24/7
+- Using "restart" command
+- Starting and forgetting
+```
+
 ### Safe Sequence (ALWAYS FOLLOW)
 
 ```
+STOP:
 1. CHECK    → ./scripts/gitea_control.sh status
-2. STOP     → ./scripts/gitea_control.sh stop (graceful first!)
-3. WAIT     → Give it 5-10 seconds
-4. VERIFY   → ./scripts/gitea_control.sh status (confirm stopped)
-5. START    → ./scripts/gitea_control.sh start
-6. VERIFY   → ./scripts/gitea_control.sh status (confirm running)
+2. STOP     → ./scripts/gitea_control.sh stop
+3. VERIFY   → ./scripts/gitea_control.sh status (confirm stopped)
+
+START (when needed):
+1. CHECK    → ./scripts/gitea_control.sh status
+2. START    → ./scripts/gitea_control.sh start
+3. VERIFY   → ./scripts/gitea_control.sh status (confirm running)
+4. DO WORK  → Push, build, etc.
+5. STOP     → ./scripts/gitea_control.sh stop (when done!)
 ```
 
 ---
