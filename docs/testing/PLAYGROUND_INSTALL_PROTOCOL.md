@@ -1,7 +1,27 @@
 # Autonomous Playground Install Protocol
 
-**Purpose:** Clean install LocaNext to Playground for testing
-**Last Updated:** 2025-12-27
+**Purpose:** FRESH INSTALL of LocaNext to Playground for testing
+**Last Updated:** 2025-12-28
+
+---
+
+## ⚠️ INSTALL vs UPDATE - READ THIS FIRST
+
+| | INSTALL (this doc) | UPDATE |
+|--|---------|--------|
+| **What** | Fresh .exe installation | Auto-updater downloads new version |
+| **When** | First time, clean slate, testing first-run | App already installed |
+| **Time** | 2-5 min | 30 sec - 2 min |
+| **Command** | `./scripts/playground_install.sh` | Just open the app |
+
+**If app is ALREADY INSTALLED, use UPDATE instead:**
+1. Open LocaNext
+2. App auto-checks for updates on startup
+3. Download → Install & Restart
+
+**See [DOC-001: Install vs Update Confusion](../wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md) for full details.**
+
+---
 
 > **NOTE:** For updating an existing install, use **SMART_UPDATE_PROTOCOL.md** instead.
 > This doc is for FRESH installs only.

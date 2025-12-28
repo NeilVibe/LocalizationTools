@@ -81,3 +81,4 @@ Build 408: Fix ESM import for electron-updater
 Build 409: Test auto-update detection
 Build 1766892977
 Build 1766892983
+Build 411: DOC-001 Install vs Update documentation

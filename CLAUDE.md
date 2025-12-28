@@ -127,9 +127,45 @@ cd locaNext && npm run electron:dev
 # Trigger build
 echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git push origin main && git push gitea main
 
-# Playground install (with auto-login)
+# Playground install (FRESH install only!)
 ./scripts/playground_install.sh --launch --auto-login
 ```
+
+---
+
+## INSTALL vs UPDATE (CRITICAL DISTINCTION!)
+
+| | INSTALL | UPDATE |
+|--|---------|--------|
+| **What** | Fresh installation from .exe | Auto-updater downloads new version |
+| **When** | First time, clean slate, testing first-run | App already installed, just need new code |
+| **Time** | 2-5 min (includes Python setup) | 30 sec - 2 min |
+| **Command** | `./scripts/playground_install.sh` | Just open the app, it auto-updates |
+
+### Decision: Which To Use?
+
+```
+App NOT installed yet?          → INSTALL
+App installed, testing new fix? → UPDATE (just open the app!)
+Testing first-run experience?   → INSTALL (after uninstall)
+Testing auto-updater itself?    → UPDATE
+Quick verification of fix?      → UPDATE
+```
+
+### UPDATE Flow (Most Common!)
+1. Push code to Gitea → Build completes
+2. Open LocaNext on Windows (already installed)
+3. App auto-checks for updates on startup
+4. Notification appears → Download → Restart
+5. Verify fix in new version
+
+### INSTALL Flow (Rare!)
+1. Uninstall existing app (if any)
+2. Run `./scripts/playground_install.sh --launch --auto-login`
+3. Wait for first-run setup (Python deps, model)
+4. App launches fresh
+
+**DOC-001:** See [docs/wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md](docs/wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md)
 
 ---
 

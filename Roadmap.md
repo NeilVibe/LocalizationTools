@@ -392,7 +392,8 @@ python3 server/main.py
 # Desktop app
 cd locaNext && npm run electron:dev
 
-# Playground install
+# Playground INSTALL (fresh install only - use UPDATE for existing app!)
+# See CLAUDE.md "INSTALL vs UPDATE" section for when to use each
 ./scripts/playground_install.sh --launch --auto-login
 
 # Trigger builds
