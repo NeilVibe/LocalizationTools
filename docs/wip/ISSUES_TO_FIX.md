@@ -1,9 +1,9 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-28 14:00 | **Build:** 412 (FAILED) | **Open:** 8 (1 CRITICAL)
+**Last Updated:** 2025-12-28 17:30 | **Build:** 415 (SUCCESS) | **Open:** 7 (0 CRITICAL)
 
-> **PRIORITY 1:** TEST-001 Async Event Loop - BLOCKING BUILDS
-> **STATUS:** Build 412 failed. Must fix before next build.
+> ✅ TEST-001 FIXED in Build 415
+> All tests pass. CI pipeline operational.
 
 ---
 
@@ -11,44 +11,41 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 19 |
+| **FIXED/CLOSED** | 20 |
 | **NOT A BUG/BY DESIGN** | 2 |
-| **CRITICAL (Blocking)** | 1 ← NEW |
+| **CRITICAL (Blocking)** | 0 ✅ |
 | **HIGH (Major UX)** | 0 |
 | **MEDIUM (Low Priority)** | 5 |
 | **LOW (Cosmetic)** | 4 |
-| **Total Open** | 8 |
+| **Total Open** | 7 |
 
 ---
 
 ## CRITICAL - BLOCKING BUILDS
 
-### TEST-001: Async Event Loop Test Failures ⚠️ PRIORITY 1
+*No critical issues* ✅
+
+### TEST-001: Async Transaction Conflicts ✅ FIXED
 
 - **Reported:** 2025-12-28
-- **Severity:** CRITICAL (Blocking CI builds)
-- **Status:** OPEN - Must fix before next build
+- **Fixed:** 2025-12-28 (Build 415)
+- **Severity:** CRITICAL (Was blocking CI builds)
+- **Status:** FIXED
 
-**Problem:** Tests fail with `RuntimeError: got Future attached to a different loop` when run after 100+ other tests.
+**Problem:** Tests failed with "A transaction is already begun on this Session" (NOT the misleading "Future attached to different loop" error).
 
-**Failing tests:**
-- `test_submit_logs_with_auth`
-- `test_start_session`
-- `test_get_latest_version`
+**Actual Root Cause:** `db.begin()` calls inside endpoints conflicted with `get_async_db()` which already manages transactions (auto-commit/rollback pattern).
 
-**Root Cause:** `_async_session_maker` in `server/utils/dependencies.py` tied to event loop at initialization. After 100+ tests, loop state is corrupted.
+**Fix:**
+- Removed redundant `db.begin()` calls from:
+  - `logs_async.py` - `submit_logs` endpoint
+  - `sessions_async.py` - `start_session`, `session_heartbeat`, `end_session` endpoints
+- Added `_check_async_engine_loop()` in `dependencies.py` for test isolation
 
-**Full Plan:** See [SESSION_CONTEXT.md](SESSION_CONTEXT.md) for complete action plan.
-
-**Quick Fix Options:**
-1. **Option A:** Convert endpoints to sync db (recommended for simple endpoints)
-2. **Option B:** Reset async engine between test modules
-3. **Option C:** Configure pytest-asyncio for separate loops
-
-**Files to check:**
-- `server/utils/dependencies.py` - async session maker
-- `server/api/*.py` - endpoints using `get_async_db`
-- `tests/conftest.py` - test fixtures
+**Files modified:**
+- `server/api/logs_async.py`
+- `server/api/sessions_async.py`
+- `server/utils/dependencies.py`
 
 ---
 

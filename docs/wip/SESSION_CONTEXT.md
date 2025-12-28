@@ -1,25 +1,28 @@
 # Session Context
 
-**Updated:** 2025-12-28 14:00 | **Build:** 412 (FAILED) | **Status:** PRIORITY 1 - ASYNC EVENT LOOP FIX
+**Updated:** 2025-12-28 17:30 | **Build:** 415 (SUCCESS) | **Status:** ✅ ALL TESTS PASS
 
 ---
 
-## PRIORITY 1: Async Event Loop Test Failures (BLOCKING)
+## COMPLETED: Async Transaction Fix (Build 415)
 
-### Problem
+### Problem (Was)
 
-Build 412 failed due to **async event loop pollution** - tests fail when run after 100+ other tests:
+Build 412-414 failed with "A transaction is already begun on this Session" error.
 
-```
-RuntimeError: Task got Future attached to a different loop
-```
+**Initial misleading diagnosis:** "RuntimeError: Task got Future attached to a different loop"
 
-**Failing tests:**
-- `test_submit_logs_with_auth`
-- `test_start_session`
-- `test_get_latest_version`
+**Actual root cause:** `db.begin()` calls inside async endpoints conflicted with `get_async_db()` which already manages transactions (auto-commit/rollback pattern).
 
-**Root cause:** `_async_session_maker` in `server/utils/dependencies.py` gets tied to an event loop at initialization. After 100+ tests, the loop state is corrupted.
+### Solution (Build 415)
+
+Removed redundant `db.begin()` calls from:
+- `logs_async.py` - `submit_logs`
+- `sessions_async.py` - `start_session`, `session_heartbeat`, `end_session`
+
+Added `_check_async_engine_loop()` for test isolation (bonus fix).
+
+**Result:** All tests pass. Build 415 SUCCESS.
 
 ### Full Plan of Action
 
