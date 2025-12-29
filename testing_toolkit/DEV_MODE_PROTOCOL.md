@@ -1166,6 +1166,48 @@ fetch(`/api/ldm/rows/${id}`, { method: 'PUT', ... });
 
 ---
 
+### ⚠️ CS-013: Gitea Runner Startup Race Condition (2025-12-29)
+
+**Runners must wait for Gitea HTTP, not just systemctl active.**
+
+**Problem:**
+```bash
+./scripts/gitea_control.sh start
+# [ERROR] Failed to start Linux Runner  ← Random failures!
+```
+
+**Root Cause:**
+- `systemctl is-active gitea` returns true immediately
+- But Gitea HTTP endpoint (port 3000) takes 2-5 seconds to be ready
+- Runners try to connect before HTTP is ready → fail
+
+**Solution Added:**
+```bash
+wait_for_gitea_http() {
+    # Wait up to 15 sec for HTTP endpoint
+    local max_attempts=15
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s --connect-timeout 2 http://localhost:3000 >/dev/null; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+```
+
+**Key Insight:** Service "active" ≠ Service "ready"
+- systemctl active = process started
+- HTTP ready = actually accepting connections
+
+**The robust startup order:**
+1. Start Gitea Server (systemctl)
+2. **Wait for HTTP endpoint** ← NEW
+3. Start Linux Runner
+4. Start Windows Runner
+
+---
+
 ### Quick Reference Card
 
 | Problem | Solution |
@@ -1182,6 +1224,7 @@ fetch(`/api/ldm/rows/${id}`, { method: 'PUT', ... });
 | Row updates don't persist | Check PATCH vs PUT mismatch (CS-011) |
 | Confirmed filter shows 0 | Row status must be 'reviewed' or 'approved' |
 | Row colors confusing | Gray=unconfirmed, Teal=confirmed (simple!) |
+| Gitea runner random fail | HTTP not ready - use wait_for_gitea_http() |
 
 ---
 
