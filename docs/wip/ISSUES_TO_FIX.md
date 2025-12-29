@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 2 (0 CRITICAL)
+**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 0 ✅
 
 > ✅ TEST-001 FIXED in Build 415
 > All tests pass. CI pipeline operational.
@@ -11,13 +11,13 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 26 |
+| **FIXED/CLOSED** | 28 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **CRITICAL (Blocking)** | 0 ✅ |
 | **HIGH (Major UX)** | 0 |
 | **MEDIUM (Low Priority)** | 0 |
-| **LOW (Cosmetic)** | 2 |
-| **Total Open** | 2 |
+| **LOW (Cosmetic)** | 0 ✅ |
+| **Total Open** | 0 ✅ |
 
 ---
 
@@ -353,17 +353,25 @@
 - **Was:** 9 empty divs → **Now:** 4 (acceptable)
 - **Impact:** Reduced DOM bloat
 
-### UI-071: Reference Column "No match" Styling
-- **Status:** OPEN (COSMETIC)
+### UI-071: Reference Column "No match" Styling ✅ FIXED
+- **Status:** FIXED
 - **Assessed:** 2025-12-28
-- **Problem:** "No match" text could be clearer
-- **Impact:** Minor UX improvement opportunity
+- **Fixed:** 2025-12-29
+- **Problem:** "No match" text could be clearer (was just "-")
+- **Fix:** Changed "-" to "No match" with smaller italic text and 0.7 opacity
+- **File:** VirtualGrid.svelte lines 1824-1825, 2332-2338
 
-### UI-072: TM Empty Message Styling
-- **Status:** OPEN (COSMETIC)
+### UI-072: TM Empty Message Styling ✅ FIXED
+- **Status:** FIXED
 - **Assessed:** 2025-12-28
-- **Problem:** "No similar translations found" styling
-- **Impact:** Minor UX improvement opportunity
+- **Fixed:** 2025-12-29
+- **Problem:** Empty state messages lacked visual hierarchy
+- **Fix:** Added icons to all empty states in TMQAPanel:
+  - TM: Search icon + "Select a row to see TM matches"
+  - TM empty: Search icon + "No TM matches found" (muted)
+  - QA: Warning icon + "Select a row to see QA issues"
+  - QA clean: Checkmark icon + "No QA issues" (green)
+- **File:** TMQAPanel.svelte lines 110-114, 143-147, 166-169, 180-183
 
 ### UI-073: Shortcut Bar Takes Vertical Space ✅ FIXED
 - **Status:** FIXED
@@ -398,4 +406,4 @@
 
 ---
 
-*Updated 2025-12-29 | 26 Issues FIXED | 2 OPEN Issues*
+*Updated 2025-12-29 | 28 Issues FIXED | 0 OPEN Issues ✅*

@@ -1821,7 +1821,8 @@
                     {:else if refText}
                       <span class="cell-content ref-match">{formatGridText(refText)}</span>
                     {:else}
-                      <span class="cell-content no-match">-</span>
+                      <!-- UI-071: Clearer "No match" styling -->
+                      <span class="cell-content no-match">No match</span>
                     {/if}
                   </div>
                 {/if}
@@ -2328,9 +2329,12 @@
     color: var(--cds-text-01);
   }
 
+  /* UI-071: Clearer "No match" styling */
   .cell.reference .no-match {
     color: var(--cds-text-03);
     font-style: italic;
+    font-size: 0.75rem;
+    opacity: 0.7;
   }
 
   /* ========================================
