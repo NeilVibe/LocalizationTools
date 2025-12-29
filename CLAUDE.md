@@ -26,6 +26,7 @@
 | **RM** | Roadmap.md - global priorities |
 | **WIP** | docs/wip/*.md - active task files |
 | **IL** | Issue List (ISSUES_TO_FIX.md) |
+| **TDL** | To Do List (TodoWrite tool tracking) |
 | **LDM** | Language Data Manager (CAT tool, App #4) |
 | **TM** | Translation Memory |
 | **FAISS** | Vector index for semantic search |
@@ -172,7 +173,7 @@ Quick verification of fix?      → UPDATE
 3. Wait for first-run setup (Python deps, model)
 4. App launches fresh
 
-**DOC-001:** See [docs/wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md](docs/wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md)
+**DOC-001:** See [docs/history/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md](docs/history/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md)
 
 ---
 
@@ -199,7 +200,7 @@ testing_toolkit/          # ← PRIMARY TESTING DOCS
 docs/
 ├── wip/                  # Active work
 │   ├── SESSION_CONTEXT.md      ← Current state + next steps
-│   ├── ISSUES_TO_FIX.md        ← Bug tracker (0 open)
+│   ├── ISSUES_TO_FIX.md        ← Bug tracker (7 open, 0 critical)
 │   └── P36_COVERAGE_GAPS.md    ← Coverage analysis + test plan
 ├── cicd/                 # CI/CD documentation (ALL CI/CD HERE)
 │   ├── CI_CD_HUB.md            ← Pipeline overview

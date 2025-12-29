@@ -15,14 +15,13 @@
   } from "carbon-components-svelte";
   import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink, Merge, TextMining } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
-  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
-  import { serverUrl } from "$lib/stores/app.js";
+  import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
 
   const dispatch = createEventDispatcher();
 
-  // API base URL from store (never hardcode!)
-  const API_BASE = get(serverUrl);
+  // API base URL - centralized in api.js
+  const API_BASE = getApiBase();
 
   // Svelte 5: Props
   let {
@@ -101,12 +100,6 @@
   let folderContextMenuX = $state(0);
   let folderContextMenuY = $state(0);
   let contextMenuFolder = $state(null); // {id, name, type}
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  }
 
   // Load projects list
   export async function loadProjects() {

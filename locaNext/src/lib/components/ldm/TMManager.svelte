@@ -28,17 +28,16 @@
     MachineLearning
   } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount } from "svelte";
-  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
   import { preferences } from "$lib/stores/preferences.js";
-  import { serverUrl } from "$lib/stores/app.js";
+  import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import TMUploadModal from "./TMUploadModal.svelte";
   import TMViewer from "./TMViewer.svelte";
 
   const dispatch = createEventDispatcher();
 
-  // API base URL from store (never hardcode!)
-  const API_BASE = get(serverUrl);
+  // API base URL - centralized in api.js
+  const API_BASE = getApiBase();
 
   // Svelte 5: Props
   let { open = $bindable(false) } = $props();
@@ -96,12 +95,6 @@
       preferences.setActiveTm(tm.id);
       logger.userAction("TM activated", { tmId: tm.id, name: tm.name });
     }
-  }
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
   }
 
   // FEAT-005: Load available embedding engines

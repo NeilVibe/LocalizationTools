@@ -19,14 +19,13 @@
     Download
   } from "carbon-icons-svelte";
   import { createEventDispatcher, tick } from "svelte";
-  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
-  import { serverUrl } from "$lib/stores/app.js";
+  import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
 
   const dispatch = createEventDispatcher();
 
-  // API base URL from store (never hardcode!)
-  const API_BASE = get(serverUrl);
+  // API base URL - centralized in api.js
+  const API_BASE = getApiBase();
 
   // Svelte 5: Props
   let { open = $bindable(false), tm = null } = $props();
@@ -70,12 +69,6 @@
   let editTarget = $state("");
   let editStringId = $state("");
   let saving = $state(false);
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  }
 
   // Load entries (initial load or after filter change)
   async function loadEntries() {

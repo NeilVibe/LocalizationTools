@@ -9,6 +9,7 @@
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
+  import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import FileExplorer from "$lib/components/ldm/FileExplorer.svelte";
   import VirtualGrid from "$lib/components/ldm/VirtualGrid.svelte";
   import TMManager from "$lib/components/ldm/TMManager.svelte";
@@ -19,8 +20,6 @@
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
   import ServerStatus from "$lib/components/ServerStatus.svelte";
-  // Old DataGrid kept for reference (VirtualGrid replaces it for 1M+ rows)
-  // import DataGrid from "$lib/components/ldm/DataGrid.svelte";
 
   // TM Manager state
   let showTMManager = $state(false);
@@ -49,10 +48,8 @@
   let sidePanelTMLoading = $state(false);
   let sidePanelQALoading = $state(false);
 
-  // API base URL from store (never hardcode!)
-  import { get } from "svelte/store";
-  import { serverUrl } from "$lib/stores/app.js";
-  const API_BASE = get(serverUrl);
+  // API base URL - centralized in api.js
+  const API_BASE = getApiBase();
 
   // ================================
   // TEST MODE CONFIGURATION
@@ -120,12 +117,6 @@
   // Component refs (Svelte 5 requires $state for bindable refs)
   let fileExplorer = $state(null);
   let virtualGrid = $state(null);
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  }
 
   /**
    * Check LDM API health

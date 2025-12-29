@@ -10,17 +10,17 @@
   import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
   import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
+  import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate, ldmConnected } from "$lib/stores/ldm.js";
-  import { preferences, getFontSizeValue } from "$lib/stores/preferences.js";
+  import { preferences, getFontSizeValue, getFontFamilyValue, getFontColorValue } from "$lib/stores/preferences.js";
   import { WarningAltFilled } from "carbon-icons-svelte";
-  import { serverUrl } from "$lib/stores/app.js";
   import PresenceBar from "./PresenceBar.svelte";
   import ColorText from "./ColorText.svelte";
 
   const dispatch = createEventDispatcher();
 
-  // Svelte 5: Derived - API base URL from store
-  let API_BASE = $derived(get(serverUrl));
+  // API base URL - centralized in api.js
+  let API_BASE = $derived(getApiBase());
 
   // Svelte 5: Props
   let { fileId = $bindable(null), fileName = "" } = $props();
@@ -136,9 +136,11 @@
   // Svelte 5: Derived - visible columns based on preferences
   let visibleColumns = $derived(getVisibleColumns($preferences));
 
-  // Svelte 5: Derived - font styles from preferences (UI-031, UI-032)
+  // Svelte 5: Derived - font styles from preferences (UI-031, UI-032, P2)
   let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
   let gridFontWeight = $derived($preferences.fontWeight === 'bold' ? '600' : '400');
+  let gridFontFamily = $derived(getFontFamilyValue($preferences.fontFamily));
+  let gridFontColor = $derived(getFontColorValue($preferences.fontColor));
 
   function getVisibleColumns(prefs) {
     const cols = [];
@@ -182,12 +184,6 @@
     { value: "reviewed", label: "Reviewed" },
     { value: "approved", label: "Approved" }
   ];
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  }
 
   // VARIABLE HEIGHT: Calculate visible range using binary search
   // O(log n) complexity for finding start row, O(k) for visible rows
@@ -1589,7 +1585,7 @@
 
 <div
   class="virtual-grid"
-  style="--grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight};"
+  style="--grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight}; --grid-font-family: {gridFontFamily}; --grid-font-color: {gridFontColor};"
   onkeydown={handleGridKeydown}
   tabindex="-1"
 >
@@ -2077,6 +2073,8 @@
     padding: 0.5rem;
     font-size: var(--grid-font-size, 14px);
     font-weight: var(--grid-font-weight, 400);
+    font-family: var(--grid-font-family, inherit);
+    color: var(--grid-font-color, var(--cds-text-01));
     /* UI-079: More visible grid lines - use stronger border color */
     border-right: 1px solid var(--cds-border-strong-01, #525252);
     display: flex;
@@ -2187,8 +2185,8 @@
     padding: 0.5rem;
     border: none;
     background: var(--cds-field-01);
-    color: var(--cds-text-01);
-    font-family: inherit;
+    color: var(--grid-font-color, var(--cds-text-01));
+    font-family: var(--grid-font-family, inherit);
     font-size: var(--grid-font-size, 0.875rem);
     font-weight: var(--grid-font-weight, 400);
     line-height: 1.5;

@@ -18,7 +18,7 @@
     InlineNotification
   } from "carbon-components-svelte";
   import { logger } from "$lib/utils/logger.js";
-  import { preferences, fontSize, fontWeight } from "$lib/stores/preferences.js";
+  import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
 
   // Svelte 5 Runes
@@ -30,6 +30,8 @@
   // Font settings
   let currentFontSize = $state('medium');
   let currentFontWeight = $state('normal');
+  let currentFontFamily = $state('system');
+  let currentFontColor = $state('default');
 
   // Font size options
   const fontSizes = [
@@ -38,11 +40,30 @@
     { value: 'large', label: 'Large (16px)' }
   ];
 
+  // Font family options (P2: includes CJK-friendly fonts)
+  const fontFamilies = [
+    { value: 'system', label: 'System Default' },
+    { value: 'inter', label: 'Inter' },
+    { value: 'roboto', label: 'Roboto' },
+    { value: 'noto-sans', label: 'Noto Sans (CJK)' },
+    { value: 'source-han', label: 'Source Han Sans (CJK)' },
+    { value: 'consolas', label: 'Consolas (Mono)' }
+  ];
+
+  // Font color options (P2: contrast levels)
+  const fontColors = [
+    { value: 'default', label: 'Default' },
+    { value: 'high-contrast', label: 'High Contrast' },
+    { value: 'soft', label: 'Soft' }
+  ];
+
   // Load from store
   function loadFromStore() {
     const prefs = $preferences;
     currentFontSize = prefs.fontSize || 'medium';
     currentFontWeight = prefs.fontWeight || 'normal';
+    currentFontFamily = prefs.fontFamily || 'system';
+    currentFontColor = prefs.fontColor || 'default';
   }
 
   // Handle font size change
@@ -61,6 +82,24 @@
     preferences.setFontWeight(weight);
     showSaved();
     logger.userAction("Font weight changed", { fontWeight: weight });
+  }
+
+  // Handle font family change (P2)
+  function handleFontFamilyChange(e) {
+    const family = e.target.value;
+    currentFontFamily = family;
+    preferences.setFontFamily(family);
+    showSaved();
+    logger.userAction("Font family changed", { fontFamily: family });
+  }
+
+  // Handle font color change (P2)
+  function handleFontColorChange(e) {
+    const color = e.target.value;
+    currentFontColor = color;
+    preferences.setFontColor(color);
+    showSaved();
+    logger.userAction("Font color changed", { fontColor: color });
   }
 
   function showSaved() {
@@ -128,8 +167,32 @@
       />
     </div>
 
+    <div class="form-section">
+      <Select
+        labelText="Font Family"
+        selected={currentFontFamily}
+        on:change={handleFontFamilyChange}
+      >
+        {#each fontFamilies as family}
+          <SelectItem value={family.value} text={family.label} />
+        {/each}
+      </Select>
+    </div>
+
+    <div class="form-section">
+      <Select
+        labelText="Text Contrast"
+        selected={currentFontColor}
+        on:change={handleFontColorChange}
+      >
+        {#each fontColors as color}
+          <SelectItem value={color.value} text={color.label} />
+        {/each}
+      </Select>
+    </div>
+
     <p class="hint">
-      These settings apply to the grid and edit modal.
+      CJK fonts recommended for Korean/Chinese/Japanese text.
     </p>
   </div>
 </Modal>

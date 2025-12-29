@@ -29,24 +29,14 @@
   } from "carbon-components-svelte";
   import { Upload, Search, FolderOpen, View, ViewOff, DocumentExport, CheckmarkOutline, WarningAlt, CharacterPatterns, StringInteger } from "carbon-icons-svelte";
   import { onMount } from "svelte";
-  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
   import { api } from "$lib/api/client.js";
   import { telemetry } from "$lib/utils/telemetry.js";
   import { createTracker } from "$lib/utils/trackedOperation.js";
-  import { serverUrl } from "$lib/stores/app.js";
+  import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
 
-  // API base URL from store (never hardcode!)
-  const API_BASE = get(serverUrl);
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    if (token) {
-      return { 'Authorization': `Bearer ${token}` };
-    }
-    return {};
-  }
+  // API base URL - centralized in api.js
+  const API_BASE = getApiBase();
 
   // Games and Languages (from original QuickSearch)
   const GAMES = ['BDO', 'BDM', 'BDC', 'CD'];

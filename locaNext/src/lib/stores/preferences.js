@@ -12,6 +12,8 @@ const defaultPreferences = {
   // Appearance (UI-001: Dark mode only - theme setting removed)
   fontSize: 'medium', // 'small' | 'medium' | 'large'
   fontWeight: 'normal', // 'normal' | 'bold'
+  fontFamily: 'system', // 'system' | 'inter' | 'roboto' | 'noto-sans' | 'source-han' | 'consolas'
+  fontColor: 'default', // 'default' | 'high-contrast' | 'soft'
 
   // Grid columns (LDM)
   // UI-004: showTmResults removed - TM results only shown in edit modal
@@ -92,6 +94,14 @@ function createPreferencesStore() {
       update(prefs => ({ ...prefs, fontWeight }));
     },
 
+    setFontFamily: (fontFamily) => {
+      update(prefs => ({ ...prefs, fontFamily }));
+    },
+
+    setFontColor: (fontColor) => {
+      update(prefs => ({ ...prefs, fontColor }));
+    },
+
     // Column toggles
     toggleColumn: (column) => {
       update(prefs => ({ ...prefs, [column]: !prefs[column] }));
@@ -133,6 +143,8 @@ export const preferences = createPreferencesStore();
 // UI-001: theme export removed (dark mode only)
 export const fontSize = derived(preferences, $prefs => $prefs.fontSize);
 export const fontWeight = derived(preferences, $prefs => $prefs.fontWeight);
+export const fontFamily = derived(preferences, $prefs => $prefs.fontFamily);
+export const fontColor = derived(preferences, $prefs => $prefs.fontColor);
 
 // Font size CSS values
 export const fontSizeMap = {
@@ -141,9 +153,36 @@ export const fontSizeMap = {
   large: '16px'
 };
 
+// Font family CSS values (P2: Font Settings Enhancement)
+export const fontFamilyMap = {
+  system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  inter: '"Inter", -apple-system, sans-serif',
+  roboto: '"Roboto", -apple-system, sans-serif',
+  'noto-sans': '"Noto Sans", "Noto Sans KR", sans-serif',
+  'source-han': '"Source Han Sans", "Noto Sans CJK KR", sans-serif',
+  consolas: '"Consolas", "Monaco", monospace'
+};
+
+// Font color CSS values (P2: Font Settings Enhancement)
+export const fontColorMap = {
+  default: 'var(--cds-text-01)',
+  'high-contrast': '#ffffff',
+  soft: 'var(--cds-text-02)'
+};
+
 // Helper to get font size CSS
 export function getFontSizeValue(size) {
   return fontSizeMap[size] || fontSizeMap.medium;
+}
+
+// Helper to get font family CSS
+export function getFontFamilyValue(family) {
+  return fontFamilyMap[family] || fontFamilyMap.system;
+}
+
+// Helper to get font color CSS
+export function getFontColorValue(color) {
+  return fontColorMap[color] || fontColorMap.default;
 }
 
 // Initialize theme on page load (UI-001: Dark mode only)

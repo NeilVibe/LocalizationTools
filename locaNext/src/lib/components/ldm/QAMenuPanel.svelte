@@ -10,13 +10,12 @@
   import { Close, WarningAltFilled, Renew, ArrowRight, StopFilled } from "carbon-icons-svelte";
   import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
-  import { serverUrl } from "$lib/stores/app.js";
-  import { get } from "svelte/store";
+  import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
 
   const dispatch = createEventDispatcher();
 
-  // API base URL (constant - doesn't change at runtime)
-  const API_BASE = get(serverUrl);
+  // API base URL - centralized in api.js
+  const API_BASE = getApiBase();
 
   // Props
   let { open = $bindable(false), fileId = null, fileName = "" } = $props();
@@ -28,9 +27,13 @@
   let issues = $state([]);
   let selectedCheckType = $state(0); // Index for ContentSwitcher
   let errorMessage = $state(null); // UI-visible error state
+  let qaHasBeenRun = $state(false); // Track if QA has ever been run for this file
 
   // Timeout for API calls (30 seconds)
   const API_TIMEOUT_MS = 30000;
+
+  // Shared AbortController for cancellation - allows Cancel button to abort in-flight requests
+  let currentAbortController = $state(null);
 
   // Check types with labels
   const checkTypes = [
@@ -47,21 +50,23 @@
     return type?.id ?? "all";
   }
 
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  }
-
-  // Cancel running operations (for close button)
+  // Cancel running operations (for close button AND cancel button)
+  // Actually aborts in-flight fetch requests
   function cancelOperations() {
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+      logger.info("QA operations cancelled by user");
+    }
     loading = false;
     runningFullQa = false;
   }
 
-  // Simple fetch with timeout
+  // Fetch with timeout AND cancellation support via shared AbortController
   async function fetchWithTimeout(url, options = {}) {
+    // Create new controller and store it for potential cancellation
     const controller = new AbortController();
+    currentAbortController = controller;
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
     try {
@@ -70,9 +75,11 @@
         signal: controller.signal
       });
       clearTimeout(timeoutId);
+      currentAbortController = null; // Clear on success
       return response;
     } catch (err) {
       clearTimeout(timeoutId);
+      currentAbortController = null; // Clear on error
       throw err;
     }
   }
@@ -90,7 +97,9 @@
 
       if (response.ok) {
         summary = await response.json();
-        logger.info("QA summary loaded", { fileId, total: summary.total });
+        // Track if QA has ever been run - check if we have last_checked timestamp
+        qaHasBeenRun = !!summary.last_checked;
+        logger.info("QA summary loaded", { fileId, total: summary.total, hasBeenRun: qaHasBeenRun });
       } else {
         throw new Error(`Server returned ${response.status}`);
       }
@@ -164,6 +173,7 @@
 
       if (response.ok) {
         const result = await response.json();
+        qaHasBeenRun = true; // Mark QA as run
         logger.success("Full QA check complete", {
           fileId,
           rowsChecked: result.rows_checked,
@@ -208,6 +218,15 @@
     open = false;
   }
 
+  // Handle keyboard events on panel (Escape to close)
+  function handlePanelKeydown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closePanel();
+    }
+  }
+
   // Get severity color
   function getSeverityType(severity) {
     return severity === 'error' ? 'red' : 'magenta';
@@ -228,6 +247,9 @@
   // Load data when file changes or panel opens
   $effect(() => {
     if (open && fileId) {
+      // Reset state when file changes
+      qaHasBeenRun = false;
+      errorMessage = null;
       loadSummary();
       loadIssues(getCurrentCheckType());
     }
@@ -243,8 +265,14 @@
     role="presentation"
   ></div>
 
-  <!-- Slide-out panel -->
-  <div class="qa-panel" role="dialog" aria-label="QA Menu">
+  <!-- Slide-out panel - tabindex allows focus for keyboard events -->
+  <div
+    class="qa-panel"
+    role="dialog"
+    aria-label="QA Menu"
+    tabindex="-1"
+    onkeydown={handlePanelKeydown}
+  >
     <!-- Header -->
     <div class="qa-panel-header">
       <div class="header-title">
@@ -356,8 +384,20 @@
         </div>
       {:else if issues.length === 0}
         <div class="no-issues">
-          <WarningAltFilled size={24} />
-          <p>No issues found</p>
+          {#if qaHasBeenRun}
+            <!-- QA was run and found no issues - this is good! -->
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="currentColor" class="check-icon">
+              <path d="M14 21.414l-5-5.001L10.413 15 14 18.586 21.585 11 23 12.415 14 21.414z"/>
+              <path d="M16 2a14 14 0 1014 14A14 14 0 0016 2zm0 26a12 12 0 1112-12 12 12 0 01-12 12z"/>
+            </svg>
+            <p>No issues found</p>
+            <span class="no-issues-hint">All checks passed!</span>
+          {:else}
+            <!-- QA has not been run yet -->
+            <WarningAltFilled size={24} />
+            <p>QA not run yet</p>
+            <span class="no-issues-hint">Click "Run Full QA" to check this file</span>
+          {/if}
         </div>
       {:else}
         {#each issues as issue}
@@ -565,7 +605,18 @@
 
   .no-issues p {
     margin: 0;
+    font-weight: 500;
+  }
+
+  .no-issues-hint {
+    font-size: 0.75rem;
+    color: var(--cds-text-03);
     font-style: italic;
+    margin-top: 0.25rem;
+  }
+
+  .no-issues .check-icon {
+    color: var(--cds-support-success, #24a148);
   }
 
   .issue-item {
