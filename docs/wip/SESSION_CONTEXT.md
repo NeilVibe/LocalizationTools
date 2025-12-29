@@ -6,15 +6,14 @@
 
 ## BUILD 416 SUCCESS (Dec 29)
 
-**All 28 UI issues fixed, verified in CI/CD build.**
+**All 28 UI issues fixed, verified on BOTH platforms.**
 
-| Stage | Result |
-|-------|--------|
-| Trigger Check | ✅ OK |
-| Tests + Security (7 stages) | ✅ OK |
-| Windows Installer | ✅ OK |
+| Platform | Tests | Windows Build | Release | Time |
+|----------|-------|---------------|---------|------|
+| **Gitea** | ✅ 7 stages | ✅ OK | N/A | ~14m |
+| **GitHub** | ✅ 7 stages | ✅ OK | ✅ Created | 15m13s |
 
-**Pushed to:** Gitea ✅ + GitHub ✅
+**Artifact:** `LocaNext-Windows-LIGHT-Setup`
 
 ---
 
