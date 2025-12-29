@@ -125,6 +125,25 @@ DEV_MODE=true disables rate limiting entirely for CI/testing.
 ./scripts/gitea_control.sh status|start|stop|kill
 ```
 
+### Test Data Files
+
+| Location | File | Lines | Use |
+|----------|------|-------|-----|
+| Local | `tests/fixtures/sample_language_data.txt` | 63 | Real KO→FR with PAColor tags |
+| Windows | `TestFilesForLocaNext/sampleofLanguageData.txt` | 103,499 | Large test bank |
+| Windows | `test_10k.txt` | 10,000 | Medium performance test |
+| Windows | `TestFilesForLocaNext/languagedata_fr PC 1012 1813.txt` | Huge (198MB) | Full production data |
+
+**Windows path:** `/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/`
+
+### Existing Filter Feature
+
+VirtualGrid already has row filtering (lines 56-61):
+- **All** - Show all rows
+- **Confirmed** - Only confirmed/reviewed rows
+- **Unconfirmed** - Only pending rows
+- **QA Flagged** - Only rows with QA issues
+
 ---
 
 ## COMPLETED (Earlier Dec 29)
