@@ -212,7 +212,10 @@ test('check 5 MEDIUM issues with loaded grid', async ({ page, request }) => {
         const sourceCells = document.querySelectorAll('.cell.source');
         const targetCells = document.querySelectorAll('.cell.target');
         const searchInput = document.querySelector('#ldm-search-input');
-        const filterDropdown = document.querySelector('.filter-wrapper select, .bx--dropdown, select');
+        // Measure the actual visible dropdown button, not the wrapper
+        const filterDropdown = document.querySelector('.filter-wrapper .bx--list-box__field') ||
+                              document.querySelector('.filter-wrapper button') ||
+                              document.querySelector('.filter-wrapper');
         const resizeHandles = document.querySelectorAll('[class*="resize"], .resize-handle');
         const qaFlagged = document.querySelectorAll('.qa-flagged, [class*="qa-flag"]');
         const editIcons = document.querySelectorAll('.edit-icon, [class*="edit-icon"]');
