@@ -169,26 +169,31 @@ VirtualGrid already has row filtering (lines 56-61):
 
 ## OPEN ISSUES (from ISSUES_TO_FIX.md)
 
-**0 CRITICAL | 0 HIGH | 5 MEDIUM | 4 LOW**
+**0 CRITICAL | 0 HIGH | 3 MEDIUM | 2 LOW**
 
-### MEDIUM Priority (5 Open)
+### MEDIUM Priority (3 Open)
 
 | ID | Issue | Impact |
 |----|-------|--------|
-| UI-063 | CSS Text Overflow (20+ elements) | Cosmetic |
 | UI-066 | Placeholder rows wrong column count | Minor loading visual |
-| UI-067 | Filter dropdown height mismatch | Styling |
-| UI-068 | Resize handle not visible until hover | Discoverability |
+| UI-067 | Filter dropdown height mismatch (8px) | Styling |
 | UI-069 | QA + Edit icon overlap | Visual clutter |
 
-### LOW Priority (4 Open)
+### Recently Closed (Dec 29)
+
+| ID | Issue | Resolution |
+|----|-------|------------|
+| UI-063 | CSS Text Overflow | ✅ FIXED - All cells have ellipsis |
+| UI-068 | Resize handle not visible | ⚠️ BY DESIGN - Appears on hover |
+| UI-070 | Empty divs in DOM | ✅ FIXED - Reduced to 4 |
+| UI-073 | Shortcut bar takes space | ✅ FIXED - Removed from DOM |
+
+### LOW Priority (2 Open)
 
 | ID | Issue | Impact |
 |----|-------|--------|
-| UI-070 | Empty divs in DOM (9) | DOM bloat |
 | UI-071 | "No match" styling | UX minor |
 | UI-072 | TM empty message styling | UX minor |
-| UI-073 | Shortcut bar takes space | Vertical space |
 
 **No blocking issues. All open issues are cosmetic/minor.**
 

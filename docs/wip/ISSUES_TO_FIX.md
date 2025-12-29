@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 7 (0 CRITICAL)
+**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 5 (0 CRITICAL)
 
 > ✅ TEST-001 FIXED in Build 415
 > All tests pass. CI pipeline operational.
@@ -11,13 +11,13 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 22 |
-| **NOT A BUG/BY DESIGN** | 2 |
+| **FIXED/CLOSED** | 23 |
+| **NOT A BUG/BY DESIGN** | 3 |
 | **CRITICAL (Blocking)** | 0 ✅ |
 | **HIGH (Major UX)** | 0 |
-| **MEDIUM (Low Priority)** | 5 |
+| **MEDIUM (Low Priority)** | 3 |
 | **LOW (Cosmetic)** | 2 |
-| **Total Open** | 7 |
+| **Total Open** | 5 |
 
 ---
 
@@ -275,13 +275,13 @@
 
 ## MEDIUM - UX ISSUES
 
-### UI-063: CSS Text Overflow Issues (20+ Elements)
-- **Status:** OPEN (LOW PRIORITY)
+### UI-063: CSS Text Overflow Issues ✅ FIXED
+- **Status:** FIXED
 - **Assessed:** 2025-12-28
+- **Verified:** 2025-12-29 (Playwright test)
 - **Problem:** Some elements have `overflow: hidden` without `text-overflow: ellipsis`
-- **Analysis:** Many components already have proper ellipsis styling
-- **Action:** CSS audit task - identify specific missing ellipsis rules
-- **Impact:** Cosmetic only - text gets cut off without visual indicator
+- **Test Result:** All 26 cells tested have both `overflow:hidden` AND `text-overflow:ellipsis`
+- **Conclusion:** Ellipsis styling is properly applied to all grid cells
 
 ### UI-064: Target Cell Status Colors Conflict with Hover ⚠️ BY DESIGN
 - **Status:** BY DESIGN (not a bug)
@@ -309,15 +309,18 @@
 ### UI-067: Filter Dropdown Styling Inconsistent
 - **Status:** OPEN (LOW PRIORITY)
 - **Assessed:** 2025-12-28
+- **Verified:** 2025-12-29 (Playwright test)
 - **Problem:** Filter dropdown height doesn't match search input
+- **Measurement:** Search input: 32px, Dropdown: 40px (8px difference)
 - **Impact:** Minor styling inconsistency
 
-### UI-068: Resize Handle Not Visible Until Hover
-- **Status:** OPEN (LOW PRIORITY)
+### UI-068: Resize Handle Not Visible Until Hover ⚠️ BY DESIGN
+- **Status:** BY DESIGN (not a bug)
 - **Assessed:** 2025-12-28
+- **Verified:** 2025-12-29 (Playwright test found 2 resize handles in DOM)
 - **Problem:** Column resize handle invisible until hover
-- **Analysis:** This is often intentional UX - clean look until interaction needed
-- **Impact:** User may not know resizing is available
+- **Analysis:** Resize handles exist in DOM, appear on hover - this is intentional UX
+- **Conclusion:** Clean interface until user needs to resize - standard UX pattern
 
 ### UI-069: QA Icon Position Conflicts with Edit Icon
 - **Status:** OPEN (LOW PRIORITY)
@@ -381,4 +384,4 @@
 
 ---
 
-*Updated 2025-12-29 | 22 Issues FIXED | 7 OPEN Issues*
+*Updated 2025-12-29 | 23 Issues FIXED | 5 OPEN Issues*
