@@ -340,11 +340,16 @@ span[style*="color: rgb"]
 |-------|-------|-----|
 | Port 5173 in use | Previous vite running | `pkill -f vite` |
 | Port 8888 in use | Previous backend | `pkill -f "python3 server/main"` |
-| Rate limited | DEV_MODE not set | Restart with `DEV_MODE=true` |
+| Rate limited (429) | Too many login attempts | Clear audit log (see below) |
 | Login fails | Backend not running | Start backend first |
 | No files in LDM | No data imported | Upload test file |
 | Search not working | Bug in VirtualGrid | Check console for errors |
 | Colors not rendering | ColorText bug | Check console logs |
+
+**Rate Limiting Fix:** The rate limiter uses `server/data/logs/security_audit.log` with a 15-min window. To reset immediately:
+```bash
+echo "" > /home/neil1988/LocalizationTools/server/data/logs/security_audit.log
+```
 
 ### 7.2 Kill Everything
 
@@ -1019,6 +1024,62 @@ unlockRow(fileId, rowId);
 
 ---
 
+### ⚠️ CS-009: Rate Limiting State Persistence (2025-12-29)
+
+**Server restart does NOT clear rate limits. State is in a file, not memory.**
+
+**Symptoms:**
+- Login returns 429 Too Many Requests
+- Restarting backend doesn't help
+- Clearing browser cache doesn't help
+- Waiting 15+ minutes works (but wastes time)
+
+**Root Cause:** Rate limiter stores failed login attempts in `server/data/logs/security_audit.log`, not in memory.
+
+**Instant Fix:**
+```bash
+echo "" > /home/neil1988/LocalizationTools/server/data/logs/security_audit.log
+```
+
+**Key Insight:** When debugging "server-side state" issues:
+1. **Memory state** = clears on restart
+2. **File state** = persists through restarts
+3. **Database state** = persists through restarts
+
+**Always ask:** "Where is this state stored?" Don't assume memory.
+
+---
+
+### ⚠️ CS-010: Playwright Selector Reliability (2025-12-29)
+
+**NEVER use generic type selectors. Use semantic selectors.**
+
+```javascript
+// WRONG - Fragile, may not find input
+await page.fill('input[type="text"]', 'value');
+
+// RIGHT - Reliable, uses actual placeholder text
+await page.getByPlaceholder('Enter your username').fill('value');
+
+// ALSO RIGHT - Uses accessible role
+await page.getByRole('textbox', { name: /username/i }).fill('value');
+```
+
+**Selector Reliability Hierarchy:**
+1. `getByTestId('my-id')` - Best (explicit test ID)
+2. `getByPlaceholder('...')` - Great (visible text)
+3. `getByRole('button', { name: /submit/i })` - Great (semantic)
+4. `getByText('Submit')` - Good (visible text)
+5. `locator('#my-id')` - OK (ID selector)
+6. `locator('input[type="text"]')` - **AVOID** (fragile)
+
+**Why generic selectors fail:**
+- Multiple inputs of same type on page
+- Type attribute may not exist
+- Framework may use different attributes
+
+---
+
 ### Quick Reference Card
 
 | Problem | Solution |
@@ -1030,6 +1091,8 @@ unlockRow(fileId, rowId);
 | "Not working" claim | Get screenshots, get PROOF |
 | Search shows count but empty cells | Check array indexing (row_num vs sequential) |
 | Function appears to do nothing | Check if calling `.catch()` on non-Promise |
+| Rate limit 429 after restart | Clear `security_audit.log` (state in file!) |
+| Selector timeout | Use `getByPlaceholder` or `getByRole` |
 
 ---
 

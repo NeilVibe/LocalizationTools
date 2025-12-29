@@ -176,7 +176,7 @@ async def upload_file(
     if existing_file:
         folder_info = f" in folder {folder_id}" if folder_id else " in project root"
         raise HTTPException(
-            status_code=400,
+            status_code=409,  # 409 Conflict - proper status for duplicate resource
             detail=f"A file named '{filename}' already exists{folder_info}. Please rename the file or delete the existing one."
         )
 

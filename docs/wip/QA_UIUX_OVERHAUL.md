@@ -31,6 +31,7 @@
 | Task | Status | Notes |
 |------|--------|-------|
 | Empty State Clarity | DONE | "QA not run" vs "No issues found" |
+| Ctrl+D QA Dismiss | DONE | Dismisses all QA issues on selected row |
 | Loading Skeleton | PENDING | Show skeleton cards while loading |
 | Progress Indicator | PENDING | "Checking row X of Y..." |
 
@@ -73,6 +74,8 @@
 | File | Changes |
 |------|---------|
 | `QAMenuPanel.svelte` | Shared AbortController, Escape handler, Empty state UI |
+| `LDM.svelte` | Ctrl+D handler calls resolve API, updates visual state |
+| `VirtualGrid.svelte` | Added `updateRowQAFlag()` for dismiss visual feedback |
 
 ---
 
