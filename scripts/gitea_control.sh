@@ -234,6 +234,21 @@ stop_force() {
     fi
 }
 
+wait_for_gitea_http() {
+    # Wait for Gitea HTTP endpoint to be ready (not just systemctl active)
+    local max_attempts=15
+    local attempt=1
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s --connect-timeout 2 http://localhost:3000 >/dev/null 2>&1; then
+            return 0
+        fi
+        echo -n "."
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+    return 1
+}
+
 start() {
     echo "=== Starting Services (All Components) ==="
 
@@ -243,7 +258,7 @@ start() {
     if ! systemctl is-active --quiet gitea; then
         echo "Starting Gitea Server..."
         sudo systemctl start gitea
-        sleep 3
+        sleep 2
 
         if systemctl is-active --quiet gitea; then
             print_status "Gitea Server started"
@@ -255,6 +270,15 @@ start() {
         echo "Gitea Server already running"
     fi
 
+    # Wait for Gitea HTTP to be ready before starting runners
+    echo -n "Waiting for Gitea HTTP"
+    if wait_for_gitea_http; then
+        echo " ready"
+    else
+        print_error "Gitea HTTP not responding after 15 seconds"
+        return 1
+    fi
+
     # --- LINUX RUNNER ---
     echo ""
     echo -e "${BLUE}[LINUX RUNNER]${NC}"
@@ -262,12 +286,13 @@ start() {
         echo "Starting Linux Runner..."
         cd "$GITEA_DIR"
         nohup ./act_runner daemon --config runner_config.yaml > /tmp/act_runner.log 2>&1 &
-        sleep 2
+        sleep 3  # Increased from 2 to 3 seconds
 
         if pgrep -f "act_runner daemon" > /dev/null; then
             print_status "Linux Runner started"
         else
             print_error "Failed to start Linux Runner"
+            echo "Check log: tail /tmp/act_runner.log"
             return 1
         fi
     else
