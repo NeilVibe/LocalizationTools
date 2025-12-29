@@ -2224,24 +2224,28 @@
     font-style: italic;
   }
 
-  /* Status-based cell colors (replaces Status column) */
-  .cell.target.status-translated {
-    background: rgba(0, 157, 154, 0.15); /* teal - translated */
+  /* Status-based cell colors (replaces Status column)
+   * Simple 2-state scheme:
+   * - Unconfirmed (pending, translated) = Gray (default, no styling)
+   * - Confirmed (reviewed, approved) = Teal highlight
+   */
+
+  /* Unconfirmed: No special styling - just default gray background */
+  /* .cell.target.status-translated - intentionally unstyled */
+
+  /* Confirmed: Teal highlight for reviewed rows */
+  .cell.target.status-reviewed {
+    background: rgba(0, 157, 154, 0.15); /* teal - confirmed */
     border-left: 3px solid var(--cds-support-04);
   }
 
-  .cell.target.status-reviewed {
-    background: rgba(15, 98, 254, 0.15); /* blue - reviewed */
-    border-left: 3px solid var(--cds-support-01);
-  }
-
+  /* Confirmed: Teal highlight for approved rows (same as reviewed) */
   .cell.target.status-approved {
-    background: rgba(36, 161, 72, 0.15); /* green - approved/confirmed */
-    border-left: 3px solid var(--cds-support-02);
+    background: rgba(0, 157, 154, 0.15); /* teal - confirmed */
+    border-left: 3px solid var(--cds-support-04);
   }
 
-  /* Status hover overrides for colored cells */
-  .cell.target.status-translated:hover,
+  /* Status hover overrides for confirmed cells */
   .cell.target.status-reviewed:hover,
   .cell.target.status-approved:hover {
     filter: brightness(1.1);

@@ -1141,24 +1141,28 @@ fetch(`/api/ldm/rows/${id}`, { method: 'PUT', ... });
 
 ### ⚠️ CS-012: Row Status Color Scheme (2025-12-29)
 
-**Know what each color means in LDM grid:**
+**Simple 2-state color scheme for LDM grid:**
 
-| Status | Color | CSS Class | How User Gets This |
-|--------|-------|-----------|-------------------|
-| `pending` | Gray (default) | (none) | New row, never edited |
-| `translated` | **Teal** | `.status-translated` | Edited + saved (Enter/Tab) |
-| `reviewed` | **Blue** | `.status-reviewed` | Confirmed (Ctrl+S) |
-| `approved` | **Green** | `.status-approved` | Supervisor approval (future) |
+| State | Color | Statuses | How User Gets This |
+|-------|-------|----------|-------------------|
+| **Unconfirmed** | Gray (default) | `pending`, `translated` | New row or edited (Enter/Tab) |
+| **Confirmed** | **Teal** | `reviewed`, `approved` | Confirmed (Ctrl+S) |
+
+**Visual:**
+- Gray = "I haven't reviewed this yet"
+- Teal = "I confirmed this is correct"
 
 **Filter Mapping:**
 | Filter | Shows Status |
 |--------|--------------|
 | All | All rows |
-| Confirmed | `reviewed` + `approved` |
-| Unconfirmed | `pending` + `translated` |
+| Confirmed | `reviewed` + `approved` (teal) |
+| Unconfirmed | `pending` + `translated` (gray) |
 | QA Flagged | `qa_flag_count > 0` |
 
-**Common Confusion:** Teal may look greenish on some monitors. It's NOT green - green is reserved for `approved` status.
+**CSS Classes:**
+- `.status-reviewed` and `.status-approved` → Teal background
+- `.status-translated` → No styling (gray default)
 
 ---
 
@@ -1177,7 +1181,7 @@ fetch(`/api/ldm/rows/${id}`, { method: 'PUT', ... });
 | Selector timeout | Use `getByPlaceholder` or `getByRole` |
 | Row updates don't persist | Check PATCH vs PUT mismatch (CS-011) |
 | Confirmed filter shows 0 | Row status must be 'reviewed' or 'approved' |
-| Row colors confusing | Teal=translated, Blue=reviewed, Green=approved |
+| Row colors confusing | Gray=unconfirmed, Teal=confirmed (simple!) |
 
 ---
 
