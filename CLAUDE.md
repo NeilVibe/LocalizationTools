@@ -120,17 +120,26 @@ OFFLINE: SQLite (single-user, auto-fallback)
 ## Quick Commands
 
 ```bash
-# Check servers
+# Check DEV servers + rate limit status
 ./scripts/check_servers.sh
 
-# Start all
+# Start DEV servers (with DEV_MODE, auto-clears rate limit)
 ./scripts/start_all_servers.sh
 
-# Backend only
-python3 server/main.py
+# Start with Vite dev server
+./scripts/start_all_servers.sh --with-vite
+
+# Clear rate limit lockout
+./scripts/check_servers.sh --clear-ratelimit
+
+# Backend only (DEV_MODE recommended)
+DEV_MODE=true python3 server/main.py
 
 # Desktop app
 cd locaNext && npm run electron:dev
+
+# Gitea CI/CD (separate from DEV servers)
+./scripts/gitea_control.sh start
 
 # Trigger build
 echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git push origin main && git push gitea main

@@ -1,12 +1,14 @@
 #!/bin/bash
 # ============================================================================
-# LocaNext Server Startup Script
+# LocaNext DEV Server Startup Script
 # ============================================================================
-# Starts all servers as background processes that persist after logout.
+# Starts DEV servers with DEV_MODE=true (no rate limiting).
 # Servers run independently - no tmux session required.
 #
-# Usage: ./scripts/start_all_servers.sh
+# Usage: ./scripts/start_all_servers.sh [--with-vite]
 # Stop:  ./scripts/stop_all_servers.sh
+#
+# NOTE: For Gitea CI/CD, use: ./scripts/gitea_control.sh start
 # ============================================================================
 
 set -e
@@ -17,16 +19,23 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 PROJECT_DIR="/home/neil1988/LocalizationTools"
-GITEA_DIR="/home/neil1988/gitea"
 LOG_DIR="/tmp/locanext"
+AUDIT_LOG="$PROJECT_DIR/server/data/logs/security_audit.log"
 
 echo "=============================================="
-echo "  LocaNext Server Startup"
+echo "  LocaNext DEV Server Startup"
 echo "=============================================="
 echo ""
 
 # Create log directory
 mkdir -p $LOG_DIR
+
+# Clear rate limit on startup (for DEV convenience)
+if [ -f "$AUDIT_LOG" ]; then
+    grep -v "LOGIN_FAILURE.*127.0.0.1" "$AUDIT_LOG" > /tmp/audit_clean.log 2>/dev/null || true
+    mv /tmp/audit_clean.log "$AUDIT_LOG" 2>/dev/null || true
+    echo -e "${GREEN}✓ Rate limit cleared${NC}"
+fi
 
 # ----------------------------------------------------------------------------
 # 1. PostgreSQL (system service)
@@ -47,7 +56,7 @@ else
 fi
 
 # ----------------------------------------------------------------------------
-# 2. Backend API (8888)
+# 2. Backend API (8888) - DEV_MODE=true (no rate limiting!)
 # ----------------------------------------------------------------------------
 echo -n "Backend API (8888)... "
 if curl -s --connect-timeout 1 http://localhost:8888/health >/dev/null 2>&1; then
@@ -57,15 +66,15 @@ else
     PID=$(lsof -t -i:8888 2>/dev/null || true)
     [ -n "$PID" ] && kill -9 $PID 2>/dev/null || true
 
-    # Start backend
+    # Start backend with DEV_MODE=true (disables rate limiting)
     cd $PROJECT_DIR
-    nohup python3 server/main.py > $LOG_DIR/backend.log 2>&1 &
+    DEV_MODE=true nohup python3 server/main.py > $LOG_DIR/backend.log 2>&1 &
     disown
 
     # Wait for ready
     for i in {1..30}; do
         if curl -s --connect-timeout 1 http://localhost:8888/health >/dev/null 2>&1; then
-            echo -e "${GREEN}✓ Started${NC}"
+            echo -e "${GREEN}✓ Started${NC} [DEV_MODE]"
             break
         fi
         sleep 1
@@ -74,28 +83,30 @@ else
 fi
 
 # ----------------------------------------------------------------------------
-# 3. Gitea (3000)
+# 3. Vite Dev Server (5173) - Optional with --with-vite
 # ----------------------------------------------------------------------------
-echo -n "Gitea (3000)... "
-if curl -s --connect-timeout 1 http://localhost:3000 >/dev/null 2>&1; then
-    echo -e "${GREEN}✓ Already running${NC}"
-else
-    cd $GITEA_DIR
-    GITEA_WORK_DIR=$GITEA_DIR nohup ./gitea web > $LOG_DIR/gitea.log 2>&1 &
-    disown
+if [ "$1" == "--with-vite" ]; then
+    echo -n "Vite Dev (5173)... "
+    if curl -s --connect-timeout 1 http://localhost:5173 >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Already running${NC}"
+    else
+        cd $PROJECT_DIR/locaNext
+        nohup npm run dev > $LOG_DIR/vite.log 2>&1 &
+        disown
 
-    for i in {1..15}; do
-        if curl -s --connect-timeout 1 http://localhost:3000 >/dev/null 2>&1; then
-            echo -e "${GREEN}✓ Started${NC}"
-            break
-        fi
-        sleep 1
-        [ $i -eq 15 ] && echo -e "${YELLOW}~ Starting (slow)${NC}"
-    done
+        for i in {1..15}; do
+            if curl -s --connect-timeout 1 http://localhost:5173 >/dev/null 2>&1; then
+                echo -e "${GREEN}✓ Started${NC}"
+                break
+            fi
+            sleep 1
+            [ $i -eq 15 ] && echo -e "${YELLOW}~ Starting (slow)${NC}"
+        done
+    fi
 fi
 
 # ----------------------------------------------------------------------------
-# 4. Admin Dashboard (5175)
+# 4. Admin Dashboard (5175) - Optional
 # ----------------------------------------------------------------------------
 echo -n "Admin Dashboard (5175)... "
 if curl -s --connect-timeout 1 http://localhost:5175 >/dev/null 2>&1; then
@@ -120,22 +131,28 @@ fi
 # ----------------------------------------------------------------------------
 echo ""
 echo "=============================================="
-echo -e "  ${GREEN}ALL SERVERS STARTED${NC}"
+echo -e "  ${GREEN}DEV SERVERS STARTED${NC}"
 echo "=============================================="
 echo ""
 echo "Services:"
 echo "  • PostgreSQL:      localhost:5432"
-echo "  • Backend API:     localhost:8888"
+echo "  • Backend API:     localhost:8888 [DEV_MODE - no rate limit]"
 echo "  • API Docs:        localhost:8888/docs"
-echo "  • Gitea:           localhost:3000"
+if [ "$1" == "--with-vite" ]; then
+echo "  • Vite Dev:        localhost:5173"
+fi
 echo "  • Admin Dashboard: localhost:5175"
 echo ""
 echo "Logs: $LOG_DIR/"
 echo "  • tail -f $LOG_DIR/backend.log"
-echo "  • tail -f $LOG_DIR/gitea.log"
+if [ "$1" == "--with-vite" ]; then
+echo "  • tail -f $LOG_DIR/vite.log"
+fi
 echo "  • tail -f $LOG_DIR/admin.log"
 echo ""
 echo "Commands:"
-echo "  • Check: ./scripts/check_servers.sh"
-echo "  • Stop:  ./scripts/stop_all_servers.sh"
+echo "  • Check:     ./scripts/check_servers.sh"
+echo "  • Stop:      ./scripts/stop_all_servers.sh"
+echo "  • Gitea:     ./scripts/gitea_control.sh start"
+echo "  • With Vite: ./scripts/start_all_servers.sh --with-vite"
 echo ""

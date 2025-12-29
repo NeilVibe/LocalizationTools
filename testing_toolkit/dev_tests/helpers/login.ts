@@ -18,6 +18,9 @@ export const API_URL = 'http://localhost:8888';
 
 /**
  * Login to the application
+ *
+ * NOTE: LocaNext login form uses labels (Username, Password) not placeholders.
+ * The form has two inputs: first is username, second is password (type="password").
  */
 export async function login(
   page: Page,
@@ -27,17 +30,20 @@ export async function login(
   const { timeout = 10000, screenshot } = options;
 
   await page.goto(DEV_URL);
-  await page.waitForSelector('input[placeholder*="username"]', { timeout });
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(1000);
 
-  await page.fill('input[placeholder*="username"]', credentials.username);
-  await page.fill('input[placeholder*="password"]', credentials.password);
-  await page.click('button[type="submit"]');
+  // LocaNext uses label-based form, not placeholders
+  // First input is username, second (type=password) is password
+  await page.locator('input').first().fill(credentials.username);
+  await page.locator('input[type="password"]').fill(credentials.password);
+  await page.locator('button:has-text("Login")').click();
 
   // Wait for login to complete
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(3000);
 
   if (screenshot) {
-    await page.screenshot({ path: screenshot });
+    await page.screenshot({ path: screenshot }).catch(() => {});
   }
 }
 
