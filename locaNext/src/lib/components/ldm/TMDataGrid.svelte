@@ -5,10 +5,7 @@
     Button,
     Search,
     Dropdown,
-    Tag,
-    Modal,
-    TextArea,
-    Toggle
+    Tag
   } from "carbon-components-svelte";
   import {
     ArrowUp,
@@ -22,14 +19,13 @@
     Warning
   } from "carbon-icons-svelte";
   import { createEventDispatcher } from "svelte";
-  import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
-  import { serverUrl } from "$lib/stores/app.js";
+  import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
 
   const dispatch = createEventDispatcher();
 
-  // API base URL from store (like DataGrid)
-  let API_BASE = $derived(get(serverUrl));
+  // API base URL - centralized in api.js
+  let API_BASE = $derived(getApiBase());
 
   // Svelte 5: Props
   let { tmId = null, tmName = "" } = $props();
@@ -67,13 +63,10 @@
   ];
   let selectedMetadata = $state("none"); // BUG-024: Default to 2 columns
 
-  // Edit Modal state (BUG-027: spacious modal instead of inline editing)
-  let showEditModal = $state(false);
-  let editingEntry = $state(null);
+  // Inline editing state (converted from modal)
+  let editingEntryId = $state(null);
   let editSource = $state("");
   let editTarget = $state("");
-  let editStringId = $state("");
-  let editConfirmed = $state(false);
   let saving = $state(false);
 
   // FEAT-004: Sync status state
@@ -84,12 +77,6 @@
     loading: false
   });
   let syncing = $state(false);
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  }
 
   // UI-035: Load entries (initial load, resets list)
   async function loadEntries() {
@@ -307,34 +294,39 @@
 
   // UI-035: Removed handlePageChange - using infinite scroll instead
 
-  // BUG-027: Open Edit Modal (not inline editing)
+  // Start inline editing (double-click on row)
   function startEdit(entry) {
-    editingEntry = entry;
+    editingEntryId = entry.id;
     editSource = entry.source_text || "";
     editTarget = entry.target_text || "";
-    editStringId = entry.string_id || "";
-    editConfirmed = entry.is_confirmed || false;
-    showEditModal = true;
-    logger.userAction("Edit TM entry modal opened", { entryId: entry.id });
+    logger.userAction("Inline edit TM entry started", { entryId: entry.id });
   }
 
-  // Close Edit Modal
-  function closeEditModal() {
-    showEditModal = false;
-    editingEntry = null;
+  // Cancel inline editing
+  function cancelEdit() {
+    editingEntryId = null;
     editSource = "";
     editTarget = "";
-    editStringId = "";
-    editConfirmed = false;
   }
 
-  // Save entry from modal
-  async function saveEdit() {
-    if (!editingEntry) return;
+  // Handle keyboard in inline edit
+  function handleEditKeydown(event, entry) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelEdit();
+    } else if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      saveEdit(entry);
+    }
+  }
+
+  // Save inline edit
+  async function saveEdit(entry) {
+    if (!editingEntryId || !entry) return;
 
     saving = true;
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/tm/${tmId}/entries/${editingEntry.id}`, {
+      const response = await fetch(`${API_BASE}/api/ldm/tm/${tmId}/entries/${entry.id}`, {
         method: 'PUT',
         headers: {
           ...getAuthHeaders(),
@@ -343,22 +335,25 @@
         body: JSON.stringify({
           source_text: editSource,
           target_text: editTarget,
-          string_id: editStringId || null
+          string_id: entry.string_id || null
         })
       });
 
       if (response.ok) {
-        // If confirmed status changed, update that too
-        if (editConfirmed !== editingEntry.is_confirmed) {
-          await fetch(`${API_BASE}/api/ldm/tm/${tmId}/entries/${editingEntry.id}/confirm?confirm=${editConfirmed}`, {
-            method: 'POST',
-            headers: getAuthHeaders()
-          });
+        logger.success("TM entry updated", { entryId: entry.id });
+
+        // Update local state immediately for instant feedback
+        const idx = entries.findIndex(e => e.id === entry.id);
+        if (idx !== -1) {
+          entries[idx] = {
+            ...entries[idx],
+            source_text: editSource,
+            target_text: editTarget
+          };
+          entries = [...entries]; // Trigger reactivity
         }
 
-        logger.success("TM entry updated", { entryId: editingEntry.id });
-        closeEditModal();
-        await loadEntries();
+        cancelEdit();
         markAsStale(); // FEAT-004: Mark indexes as stale
         dispatch('updated');
       } else {
@@ -443,6 +438,41 @@
     return option?.text || "Metadata";
   }
 
+  // MemoQ-style compact metadata (always visible below target)
+  function formatCompactMeta(entry) {
+    // Priority: confirmed > updated > created
+    if (entry.is_confirmed && entry.confirmed_at) {
+      const who = entry.confirmed_by || "Unknown";
+      const when = formatShortDate(entry.confirmed_at);
+      return { icon: "✓", text: `${who} · ${when}`, type: "confirmed" };
+    }
+    if (entry.updated_at) {
+      const who = entry.updated_by || "Unknown";
+      const when = formatShortDate(entry.updated_at);
+      return { icon: "✏️", text: `${who} · ${when}`, type: "updated" };
+    }
+    if (entry.created_at) {
+      const who = entry.created_by || "";
+      const when = formatShortDate(entry.created_at);
+      const prefix = who ? `${who} · ` : "";
+      return { icon: "📥", text: `${prefix}${when}`, type: "created" };
+    }
+    return null;
+  }
+
+  // Short date format for metadata (compact)
+  function formatShortDate(dateStr) {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const isThisYear = date.getFullYear() === now.getFullYear();
+
+    if (isThisYear) {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
   // Svelte 5: Effect - Load entries and sync status when TM changes
   $effect(() => {
     if (tmId) {
@@ -462,14 +492,10 @@
     }
   });
 
-  // Handle keyboard shortcuts
+  // Handle global keyboard shortcuts
   function handleKeydown(event) {
-    if (event.key === 'Escape' && showEditModal) {
-      closeEditModal();
-      event.preventDefault();
-    }
-    if (event.key === 's' && (event.ctrlKey || event.metaKey) && showEditModal) {
-      saveEdit();
+    if (event.key === 'Escape' && editingEntryId) {
+      cancelEdit();
       event.preventDefault();
     }
   }
@@ -619,8 +645,9 @@
         <tbody>
           {#each entries as entry (entry.id)}
             <tr
-              ondblclick={() => startEdit(entry)}
+              ondblclick={() => !editingEntryId && startEdit(entry)}
               class:confirmed={entry.is_confirmed}
+              class:editing={editingEntryId === entry.id}
             >
               <td class="col-id">
                 {entry.id}
@@ -629,10 +656,36 @@
                 {/if}
               </td>
               <td class="col-source">
-                <span class="cell-text">{entry.source_text}</span>
+                {#if editingEntryId === entry.id}
+                  <textarea
+                    class="inline-edit"
+                    bind:value={editSource}
+                    onkeydown={(e) => handleEditKeydown(e, entry)}
+                    onblur={() => saveEdit(entry)}
+                  ></textarea>
+                {:else}
+                  <span class="cell-text">{entry.source_text}</span>
+                {/if}
               </td>
               <td class="col-target">
-                <span class="cell-text">{entry.target_text}</span>
+                {#if editingEntryId === entry.id}
+                  <textarea
+                    class="inline-edit"
+                    bind:value={editTarget}
+                    onkeydown={(e) => handleEditKeydown(e, entry)}
+                    onblur={() => saveEdit(entry)}
+                  ></textarea>
+                {:else}
+                  <span class="cell-text">{entry.target_text}</span>
+                  <!-- MemoQ-style compact metadata -->
+                  {@const meta = formatCompactMeta(entry)}
+                  {#if meta}
+                    <div class="entry-meta {meta.type}">
+                      <span class="meta-icon">{meta.icon}</span>
+                      <span class="meta-text">{meta.text}</span>
+                    </div>
+                  {/if}
+                {/if}
               </td>
               {#if selectedMetadata !== "none"}
                 <td class="col-metadata">
@@ -683,65 +736,7 @@
   {/if}
 </div>
 
-<!-- BUG-027: Spacious Edit Modal (same pattern as DataGrid) - UI-055 FIX: Use {#if} to prevent DOM bloat -->
-{#if showEditModal}
-<Modal
-  open={true}
-  modalHeading="Edit TM Entry"
-  primaryButtonText={saving ? "Saving..." : "Save"}
-  secondaryButtonText="Cancel"
-  primaryButtonDisabled={saving}
-  on:click:button--primary={saveEdit}
-  on:click:button--secondary={closeEditModal}
-  on:close={closeEditModal}
-  size="lg"
->
-  {#if editingEntry}
-    <div class="edit-form">
-      <div class="edit-hint">
-        <span>Ctrl+S to save</span>
-        <span>Esc to cancel</span>
-      </div>
-
-      <div class="field">
-        <label>Entry ID</label>
-        <div class="readonly-value">{editingEntry.id}</div>
-      </div>
-
-      <div class="field">
-        <label>StringID</label>
-        <input
-          type="text"
-          class="text-input"
-          bind:value={editStringId}
-          placeholder="StringID (optional)"
-        />
-      </div>
-
-      <div class="field">
-        <label>Source - Read Only</label>
-        <div class="source-preview">{editingEntry.source_text}</div>
-      </div>
-
-      <TextArea
-        bind:value={editTarget}
-        labelText="Target (Translation)"
-        placeholder="Enter translation..."
-        rows={4}
-      />
-
-      <div class="confirm-toggle">
-        <Toggle
-          bind:toggled={editConfirmed}
-          labelText="Confirmed"
-          labelA="No"
-          labelB="Yes"
-        />
-      </div>
-    </div>
-  {/if}
-</Modal>
-{/if}
+<!-- Inline editing - no modal needed -->
 
 <style>
   .tm-data-grid {
@@ -905,6 +900,31 @@
     background: rgba(36, 161, 72, 0.15);
   }
 
+  /* Inline editing row */
+  tr.editing {
+    background: var(--cds-layer-02);
+  }
+
+  .inline-edit {
+    width: 100%;
+    min-height: 60px;
+    padding: 0.5rem;
+    border: 2px solid var(--cds-focus);
+    border-radius: 4px;
+    background: var(--cds-field-01);
+    color: var(--cds-text-01);
+    font-family: inherit;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    resize: vertical;
+  }
+
+  .inline-edit:focus {
+    outline: none;
+    border-color: var(--cds-interactive-01);
+    box-shadow: 0 0 0 2px var(--cds-focus);
+  }
+
   .col-id {
     width: 70px;
     text-align: center;
@@ -926,6 +946,46 @@
   .col-target {
     width: 35%;
     min-width: 150px;
+  }
+
+  /* MemoQ-style compact metadata below target */
+  .entry-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.35rem;
+    padding: 0.15rem 0.35rem;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    border-radius: 3px;
+    width: fit-content;
+    opacity: 0.8;
+  }
+
+  .entry-meta.confirmed {
+    background: var(--cds-support-02-subtle, rgba(36, 161, 72, 0.1));
+    color: var(--cds-support-02);
+  }
+
+  .entry-meta.updated {
+    background: var(--cds-support-03-subtle, rgba(246, 194, 62, 0.1));
+    color: var(--cds-support-03);
+  }
+
+  .entry-meta.created {
+    background: var(--cds-layer-02);
+    color: var(--cds-text-02);
+  }
+
+  .meta-icon {
+    font-size: 0.75rem;
+  }
+
+  .meta-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
   }
 
   .col-metadata {

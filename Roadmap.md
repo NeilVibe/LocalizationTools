@@ -176,22 +176,6 @@ All large files (>500 lines) are well-organized, not true monoliths.
 
 ---
 
-## Current Priorities
-
-| Priority | Feature | Effort | WIP Doc |
-|----------|---------|--------|---------|
-| **P1** | Auto-LQA System | High | [AUTO_LQA_IMPLEMENTATION.md](docs/wip/AUTO_LQA_IMPLEMENTATION.md) |
-| **P2** | LanguageTool (Spelling/Grammar) | High | [LANGUAGETOOL_IMPLEMENTATION.md](docs/wip/LANGUAGETOOL_IMPLEMENTATION.md) |
-
-### P1: Auto-LQA System
-- **LIVE Mode:** Auto-check on cell confirm (like "Use TM" toggle)
-- **Full File QA:** Right-click → Run QA → QA Menu report
-- **Checks:** Line, Term, Pattern, Character (all from `qa_tools.py`)
-- **Features:** QA flags on cells, row filtering, Edit Modal QA panel
-- **Battle-test with CDP E2E before adding LanguageTool**
-
----
-
 ## LDM Absorption Status
 
 **Goal:** LDM absorbs ALL features → Legacy apps become redundant → Single unified LocaNext
@@ -252,7 +236,7 @@ LDM currently imports from legacy apps (violates Rule #0):
 
 ---
 
-## Current Priorities
+## Completed Milestones (P1-P5)
 
 | Priority | Feature | Description | Status |
 |----------|---------|-------------|--------|
@@ -261,7 +245,6 @@ LDM currently imports from legacy apps (violates Rule #0):
 | **P3** | MERGE System | Right-click → Merge confirmed cells to main LanguageData | ✅ DONE |
 | **P4** | File Conversions | Right-click → Convert (XML↔Excel, Excel→TMX, etc.) | ✅ DONE |
 | **P5** | LanguageTool | Spelling/Grammar via central server | ✅ DONE |
-| **Future** | UIUX Overhaul | Legacy Apps menu, single LocaNext | - |
 
 ### P1: Factorization (LDM Independence) ✅ COMPLETE
 - Moved shared code to `server/utils/` (qa_helpers.py, code_patterns.py)
@@ -323,13 +306,12 @@ LDM currently imports from legacy apps (violates Rule #0):
 
 ---
 
-## Current Priorities (NEW)
+## Current Priorities
 
 | Priority | Feature | WIP Doc | Status |
 |----------|---------|---------|--------|
-| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | PLANNING |
-| **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](docs/wip/FONT_SETTINGS_ENHANCEMENT.md) | PLANNING |
-| **P2** | Gitea Clean Kill Protocol | [GITEA_CLEAN_KILL_PROTOCOL.md](docs/wip/GITEA_CLEAN_KILL_PROTOCOL.md) | IMPLEMENTED |
+| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | Phase 1 DONE |
+| **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](docs/wip/FONT_SETTINGS_ENHANCEMENT.md) | ✅ DONE |
 | **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | PLANNING |
 | **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](docs/wip/COLOR_PARSER_EXTENSION.md) | DOCUMENTED |
 | **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | PLANNING |
@@ -342,18 +324,10 @@ LDM currently imports from legacy apps (violates Rule #0):
 - No cancel mechanism for "Run Full QA"
 - No timeout for API requests
 
-### P2: Font Settings Enhancement
-Add missing font customization:
-- Font Family: System, Inter, Roboto, Noto Sans, Source Han (CJK), Consolas, Monaco
-- Font Color: Default, Black, Dark Gray, Blue, Green
-- Settings dropdown menu instead of direct modal
-
-### P2: Gitea Clean Kill Protocol ✅ IMPLEMENTED
-Prevent zombie processes and stuck builds:
-- `./scripts/gitea_control.sh` - unified management script
-- Commands: `status`, `stop`, `kill`, `start`, `restart`, `monitor`
-- Fixed 52% idle CPU issue with simple restart
-- Proper systemd + daemon management
+### P2: Font Settings Enhancement ✅ COMPLETE
+Font customization now available:
+- Font Family: System, Inter, Roboto, Noto Sans (CJK), Source Han (CJK), Consolas
+- Text Contrast: Default, High Contrast, Soft
 
 ### P3: Offline/Online Mode (COMPLEX)
 Work offline when central server unavailable:

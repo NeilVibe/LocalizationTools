@@ -1,6 +1,6 @@
 # MemoQ-Style Non-Modal Editing
 
-**Created:** 2025-12-28 | **Priority:** P1 | **Status:** PLANNING
+**Created:** 2025-12-28 | **Priority:** P1 | **Status:** PARTIAL (Phases 2-3 Complete)
 
 ---
 
@@ -152,36 +152,40 @@ Settings > General > Editing Mode
 
 ## Implementation Plan (FINALIZED)
 
-### Phase 1: Layout Foundation
+### Phase 1: Layout Foundation - PENDING
 1. Add resizable right column to VirtualGrid (~300px default)
 2. Excel-style column resize handles (hover to resize any column)
 3. Collapsible TM/QA panel (show/hide button)
 4. Basic TM matches display
 
-### Phase 2: Click Behaviors
+### Phase 2: Click Behaviors - COMPLETE (Dec 29)
 1. **Single Click** → Select row, load TM/QA in right panel
 2. **Double Click** → Activate inline editing in Target cell
 3. **Ctrl+Click** → Open Edit Modal (fallback)
 4. Auto-save on blur
 
-### Phase 3: Keyboard Navigation
+### Phase 3: Keyboard Navigation - COMPLETE (Dec 29)
 1. Tab → Next row
 2. Enter → Confirm edit, move to next
 3. Escape → Cancel edit
 4. Arrow keys → Navigate rows
+5. Ctrl+S → Confirm (mark reviewed + add to TM)
+6. Ctrl+D → Dismiss QA issues
+7. Ctrl+Z/Y → Undo/Redo
+8. Shift+Enter → Insert line break
 
-### Phase 4: TM Metadata
+### Phase 4: TM Metadata - PENDING
 1. Add fields to TM model: `source_type`, `created_by`, `source_project`, `created_at`
 2. Track creation source (Manual, Review, Auto-TM, Import)
 3. Display metadata under each TM match in panel
 
-### Phase 5: QA Integration
-1. Show QA issues in right panel (below TM)
-2. LanguageTool grammar checks
-3. Built-in checks (numbers, tags, consistency)
-4. Click issue → highlight error in Target cell
+### Phase 5: QA Integration - PARTIAL
+1. Show QA issues in right panel (below TM) - DONE (TMQAPanel.svelte)
+2. LanguageTool grammar checks - DONE (P5 complete)
+3. Built-in checks (numbers, tags, consistency) - DONE
+4. Click issue → highlight error in Target cell - PENDING
 
-### Phase 6: Polish & Cleanup
+### Phase 6: Polish & Cleanup - PENDING
 1. Performance optimization (prefetch TM for nearby rows)
 2. Remove Edit Modal entirely (if inline editing satisfactory)
 3. Mobile/responsive behavior
@@ -242,12 +246,19 @@ Settings > General > Editing Mode
 
 ## Status
 
-**PREPARATION PHASE COMPLETE** - Ready to begin Phase 1 implementation.
+**Phases 2-3 COMPLETE** | **Phase 5 PARTIAL** | Updated: 2025-12-29
+
+### Completed
+- Inline editing (double-click Target cell)
+- All 14 keyboard shortcuts working in both modes
+- Selection mode navigation (Arrow keys)
+- QA side panel (TMQAPanel.svelte)
+- Ctrl+D dismiss calls API and updates visual state
 
 ### Next Actions
-1. Begin Phase 1: Add resizable right column to VirtualGrid
-2. Implement Excel-style column resize handles
-3. Create TM/QA panel component
+1. Phase 1: Add resizable right column to VirtualGrid
+2. Phase 4: Add TM metadata fields
+3. Phase 5: Click QA issue to highlight in Target cell
 
 ---
 

@@ -1,84 +1,57 @@
 # WIP - Work In Progress
 
-**Updated:** 2025-12-28 | **Build:** 415 (STABLE)
+**Updated:** 2025-12-29 | **Build:** 415 (STABLE)
 
 ---
 
-## NEW - Priority Features
+## Priority Features
 
 | Priority | Feature | WIP Doc | Status |
 |----------|---------|---------|--------|
-| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | DONE |
-| **P2** | View Mode Settings | [VIEW_MODE_SETTINGS.md](VIEW_MODE_SETTINGS.md) | PLANNING |
-| **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | PLANNING |
-| **P2** | Gitea Clean Kill Protocol | [GITEA_CLEAN_KILL_PROTOCOL.md](GITEA_CLEAN_KILL_PROTOCOL.md) | IMPLEMENTED |
-| **P2** | LanguageTool Lazy Load | [LANGUAGETOOL_LAZY_LOAD.md](LANGUAGETOOL_LAZY_LOAD.md) | IMPLEMENTED |
+| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | Phase 1 DONE |
+| **P2** | Font Settings | [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | ✅ DONE |
 | **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | PLANNING |
 | **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | DOCUMENTED |
 | **P5** | Advanced Search | [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | PLANNING |
-
-### P1: QA UIUX Overhaul ✅ DONE
-Fixed QA panel stability:
-- Added 30s timeout on API calls
-- Added error UI with retry button
-- Added cancel button during QA check
-- Close button always works
-- Fixed freeze bug (safe getter for checkType)
-
-### P2: View Mode Settings (NEW)
-MemoQ-style inline editing option:
-- Modal Mode (current) - double-click opens modal
-- Inline Mode - edit directly in grid
-- TM/QA side panel on single-click
-- Optional TM/QA column in grid
-
-### P2: Font Settings Enhancement
-Add missing font options:
-- Font Family (System, Inter, Noto Sans, Source Han CJK, Consolas)
-- Font Color (Default, Black, Dark Gray, Blue, Green)
-- Settings dropdown menu UX
-
-### P2: Gitea Clean Kill Protocol ✅ DONE
-Management script: `./scripts/gitea_control.sh`
-- `status` - Check CPU/RAM/Build status
-- `restart` - Fix high CPU issues
-- `monitor` - Live monitoring
-
-### P2: LanguageTool Lazy Load ✅ DONE
-Auto start/stop on demand:
-- Saves ~900MB RAM when not in use
-- Auto-starts when grammar check requested
-- Auto-stops after 5 min idle
-
-### P3: Offline/Online Mode (COMPLEX)
-Work offline when server unavailable:
-- Auto-sync on reconnect
-- Conflict resolution (reviewed rows protected)
-- Merge modes (full vs edit-only)
+| **P6** | File Delete + Recycle Bin | TBD | BACKLOG |
 
 ---
 
-## ACTIVE - In Development
+## System Status
 
-### Color Tag Display - WORKING
-**Goal:** Display `<PAColor0xffe9bd23>text<PAOldColor>` with actual colors
-
-| Step | Task | Status |
-|------|------|--------|
-| 1 | Create colorParser.js | DONE |
-| 2 | Create ColorText.svelte | DONE |
-| 3 | Integrate into VirtualGrid | DONE |
-| 4 | Test in browser | DONE |
-
-**WIP Doc:** [COLOR_TAG_DISPLAY.md](COLOR_TAG_DISPLAY.md)
+| Status | Value |
+|--------|-------|
+| **Open Issues** | 7 (0 critical) |
+| **Tests** | 1,399 |
+| **Build** | 415 (STABLE) |
 
 ---
 
-## BACKLOG
+## Active WIP Docs
 
-| Priority | Feature | Status |
-|----------|---------|--------|
-| P6 | File Delete + Recycle Bin | BACKLOG |
+| File | Purpose | Status |
+|------|---------|--------|
+| [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Current session state | ACTIVE |
+| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker | 7 open |
+| [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | P1 - QA panel fixes | Phase 1 DONE |
+| [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | P2 - Font options | ✅ DONE |
+| [MEMOQ_STYLE_EDITING.md](MEMOQ_STYLE_EDITING.md) | Inline editing design | Phases 2-3 DONE |
+| [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | P3 - Offline work | PLANNING |
+| [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | P4 - Color formats | DOCUMENTED |
+| [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | P5 - Search modes | PLANNING |
+
+---
+
+## Reference Docs (Not Active Work)
+
+| File | Purpose |
+|------|---------|
+| [CONFUSION_HISTORY.md](CONFUSION_HISTORY.md) | Mistake tracker |
+| [CODE_REVIEW_LESSONS.md](CODE_REVIEW_LESSONS.md) | Code review learnings |
+| [P36_COVERAGE_GAPS.md](P36_COVERAGE_GAPS.md) | Test coverage analysis |
+| [P36_TEST_MAPPING.md](P36_TEST_MAPPING.md) | Test mapping |
+| [POTENTIAL_ISSUES.md](POTENTIAL_ISSUES.md) | Known issues |
+| [IDEAS_FUTURE.md](IDEAS_FUTURE.md) | Future ideas |
 
 ---
 
@@ -88,34 +61,4 @@ Work offline when server unavailable:
 
 ---
 
-## System Status
-
-| Status | Value |
-|--------|-------|
-| **Open Issues** | 0 |
-| **Tests (Linux)** | 1,399 |
-| **Build** | 415 (STABLE) |
-| **Auto-Update** | VERIFIED WORKING |
-
----
-
-## Active WIP Docs
-
-| File | Purpose |
-|------|---------|
-| [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Session state |
-| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker (0 critical) |
-| [VIEW_MODE_SETTINGS.md](VIEW_MODE_SETTINGS.md) | P2 - Modal vs Inline editing |
-| [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | P1 - QA panel fixes (DONE) |
-| [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | P2 - Font options |
-| [GITEA_CLEAN_KILL_PROTOCOL.md](GITEA_CLEAN_KILL_PROTOCOL.md) | P2 - Gitea management (DONE) |
-| [LANGUAGETOOL_LAZY_LOAD.md](LANGUAGETOOL_LAZY_LOAD.md) | P2 - Grammar lazy load (DONE) |
-| [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | P3 - Offline work |
-| [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | P4 - Color format guide |
-| [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | P5 - Search modes |
-| [COLOR_TAG_DISPLAY.md](COLOR_TAG_DISPLAY.md) | Color tag display (DONE) |
-| [CONFUSION_HISTORY.md](CONFUSION_HISTORY.md) | Mistake tracker |
-
----
-
-*Hub file - details in SESSION_CONTEXT.md*
+*Updated 2025-12-29*
