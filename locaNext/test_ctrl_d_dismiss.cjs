@@ -46,10 +46,20 @@ const { chromium } = require('playwright');
 
     // 3. Click project and file
     console.log('3. Loading file...');
-    await page.locator('.tree-project, .project-item').first().click();
+    // Wait for projects to load
+    await page.waitForSelector('.project-item', { timeout: 10000 });
+
+    // Click first project to expand it
+    await page.locator('.project-item').first().click();
     await page.waitForTimeout(2000);
-    await page.locator('.tree-node:not(.folder)').first().click();
-    await page.waitForTimeout(2000);
+
+    // Look for file items under the project
+    const fileItems = await page.locator('.file-item').count();
+    console.log(`   Found ${fileItems} file items`);
+    if (fileItems > 0) {
+      await page.locator('.file-item').first().click();
+      await page.waitForTimeout(3000);
+    }
 
     const cellCount = await page.locator('.cell.target').count();
     console.log(`   ✓ Loaded ${cellCount} target cells`);

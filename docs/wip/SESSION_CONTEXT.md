@@ -169,14 +169,13 @@ VirtualGrid already has row filtering (lines 56-61):
 
 ## OPEN ISSUES (from ISSUES_TO_FIX.md)
 
-**0 CRITICAL | 0 HIGH | 3 MEDIUM | 2 LOW**
+**0 CRITICAL | 0 HIGH | 2 MEDIUM | 2 LOW**
 
-### MEDIUM Priority (3 Open)
+### MEDIUM Priority (2 Open)
 
 | ID | Issue | Impact |
 |----|-------|--------|
 | UI-066 | Placeholder rows wrong column count | Minor loading visual |
-| UI-067 | Filter dropdown height mismatch (8px) | Styling |
 | UI-069 | QA + Edit icon overlap | Visual clutter |
 
 ### Recently Closed (Dec 29)
@@ -184,6 +183,7 @@ VirtualGrid already has row filtering (lines 56-61):
 | ID | Issue | Resolution |
 |----|-------|------------|
 | UI-063 | CSS Text Overflow | ✅ FIXED - All cells have ellipsis |
+| UI-067 | Filter dropdown height | ✅ FIXED - Both now 32px |
 | UI-068 | Resize handle not visible | ⚠️ BY DESIGN - Appears on hover |
 | UI-070 | Empty divs in DOM | ✅ FIXED - Reduced to 4 |
 | UI-073 | Shortcut bar takes space | ✅ FIXED - Removed from DOM |

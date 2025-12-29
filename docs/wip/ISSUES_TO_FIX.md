@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 5 (0 CRITICAL)
+**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 4 (0 CRITICAL)
 
 > ✅ TEST-001 FIXED in Build 415
 > All tests pass. CI pipeline operational.
@@ -11,13 +11,13 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 23 |
+| **FIXED/CLOSED** | 24 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **CRITICAL (Blocking)** | 0 ✅ |
 | **HIGH (Major UX)** | 0 |
-| **MEDIUM (Low Priority)** | 3 |
+| **MEDIUM (Low Priority)** | 2 |
 | **LOW (Cosmetic)** | 2 |
-| **Total Open** | 5 |
+| **Total Open** | 4 |
 
 ---
 
@@ -306,13 +306,15 @@
 - **Analysis:** Line 1343-1347 shows row_num + single loading-cell with shimmer
 - **Impact:** Minor cosmetic during loading, doesn't affect functionality
 
-### UI-067: Filter Dropdown Styling Inconsistent
-- **Status:** OPEN (LOW PRIORITY)
+### UI-067: Filter Dropdown Styling Inconsistent ✅ FIXED
+- **Status:** FIXED
 - **Assessed:** 2025-12-28
-- **Verified:** 2025-12-29 (Playwright test)
+- **Fixed:** 2025-12-29
 - **Problem:** Filter dropdown height doesn't match search input
-- **Measurement:** Search input: 32px, Dropdown: 40px (8px difference)
-- **Impact:** Minor styling inconsistency
+- **Was:** Search input: 32px, Dropdown: 40px (8px difference)
+- **Fix:** Added explicit `height: 2rem` to `.bx--dropdown`, `.bx--list-box`, `.bx--list-box__field`
+- **Result:** Both elements now 32px - heights match
+- **File:** VirtualGrid.svelte lines 1916-1927
 
 ### UI-068: Resize Handle Not Visible Until Hover ⚠️ BY DESIGN
 - **Status:** BY DESIGN (not a bug)
@@ -384,4 +386,4 @@
 
 ---
 
-*Updated 2025-12-29 | 23 Issues FIXED | 5 OPEN Issues*
+*Updated 2025-12-29 | 24 Issues FIXED | 4 OPEN Issues*

@@ -1915,10 +1915,15 @@
 
   .filter-wrapper :global(.bx--dropdown) {
     background: var(--cds-field-01);
+    height: 2rem; /* Match search input height (32px) */
+  }
+
+  .filter-wrapper :global(.bx--list-box) {
+    height: 2rem; /* Match search input height (32px) */
   }
 
   .filter-wrapper :global(.bx--list-box__field) {
-    height: 2rem;
+    height: 2rem; /* Match search input height (32px) */
   }
 
   /* Hotkey Reference Bar */
