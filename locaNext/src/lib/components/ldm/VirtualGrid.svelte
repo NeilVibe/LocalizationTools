@@ -837,7 +837,7 @@
     if (textToSave !== row.target) {
       try {
         const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
-          method: 'PATCH',
+          method: 'PUT',
           headers: {
             ...getAuthHeaders(),
             'Content-Type': 'application/json'
@@ -990,7 +990,7 @@
 
     try {
       const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
@@ -1101,7 +1101,7 @@
     try {
       // Save with "reviewed" status
       const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'

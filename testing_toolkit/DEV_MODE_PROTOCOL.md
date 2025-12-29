@@ -35,7 +35,13 @@ WHEN NOT TO USE:
 ## Quick Start (30 seconds)
 
 ```bash
-# Terminal 1: Backend
+# Option A: One-liner (recommended)
+./scripts/start_all_servers.sh --with-vite
+# Browser: http://localhost:5173
+# Login: admin / admin123
+
+# Option B: Manual (two terminals)
+# Terminal 1: Backend (DEV_MODE disables rate limiting)
 cd /home/neil1988/LocalizationTools
 DEV_MODE=true python3 server/main.py
 
@@ -46,6 +52,17 @@ npm run dev
 # Browser: http://localhost:5173
 # Login: admin / admin123
 ```
+
+### Server Management Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `./scripts/start_all_servers.sh` | Start PostgreSQL + Backend (DEV_MODE) + Admin |
+| `./scripts/start_all_servers.sh --with-vite` | Above + Vite dev server |
+| `./scripts/stop_all_servers.sh` | Stop all DEV servers |
+| `./scripts/check_servers.sh` | Health check + rate limit status |
+| `./scripts/check_servers.sh --clear-ratelimit` | Clear rate limit lockout |
+| `./scripts/gitea_control.sh status` | Gitea CI/CD status (separate) |
 
 ---
 
@@ -348,7 +365,14 @@ span[style*="color: rgb"]
 
 **Rate Limiting Fix:** The rate limiter uses `server/data/logs/security_audit.log` with a 15-min window. To reset immediately:
 ```bash
+# Option A: Use the script (recommended)
+./scripts/check_servers.sh --clear-ratelimit
+
+# Option B: Manual clear
 echo "" > /home/neil1988/LocalizationTools/server/data/logs/security_audit.log
+
+# Option C: Start with DEV_MODE (auto-clears + disables rate limiting)
+./scripts/start_all_servers.sh
 ```
 
 ### 7.2 Kill Everything
@@ -1080,6 +1104,64 @@ await page.getByRole('textbox', { name: /username/i }).fill('value');
 
 ---
 
+### ⚠️ CS-011: HTTP Method Mismatch - PATCH vs PUT (2025-12-29)
+
+**Frontend fetch() must match backend route decorator.**
+
+**Symptoms:**
+- Row updates appear to work in UI (local state updates)
+- But database never changes (API returns 405 Method Not Allowed)
+- Filters show wrong results (e.g., "confirmed" filter shows 0 rows)
+- Ctrl+S confirms row locally but doesn't persist
+
+**Root Cause:**
+```javascript
+// WRONG - Frontend uses PATCH
+fetch(`/api/ldm/rows/${id}`, { method: 'PATCH', ... });
+
+// But backend only has PUT
+@router.put("/rows/{row_id}")  // <-- No PATCH handler!
+```
+
+**Fix:** Change frontend to match backend:
+```javascript
+// RIGHT - Match the backend route
+fetch(`/api/ldm/rows/${id}`, { method: 'PUT', ... });
+```
+
+**Debug Steps:**
+1. Check Network tab for 405 errors
+2. Verify backend route decorator (`@router.put` vs `@router.patch`)
+3. Search codebase for `method: 'PATCH'` and verify backend support
+
+**Files Fixed (2025-12-29):**
+- `locaNext/src/lib/components/ldm/VirtualGrid.svelte` (3 places)
+
+---
+
+### ⚠️ CS-012: Row Status Color Scheme (2025-12-29)
+
+**Know what each color means in LDM grid:**
+
+| Status | Color | CSS Class | How User Gets This |
+|--------|-------|-----------|-------------------|
+| `pending` | Gray (default) | (none) | New row, never edited |
+| `translated` | **Teal** | `.status-translated` | Edited + saved (Enter/Tab) |
+| `reviewed` | **Blue** | `.status-reviewed` | Confirmed (Ctrl+S) |
+| `approved` | **Green** | `.status-approved` | Supervisor approval (future) |
+
+**Filter Mapping:**
+| Filter | Shows Status |
+|--------|--------------|
+| All | All rows |
+| Confirmed | `reviewed` + `approved` |
+| Unconfirmed | `pending` + `translated` |
+| QA Flagged | `qa_flag_count > 0` |
+
+**Common Confusion:** Teal may look greenish on some monitors. It's NOT green - green is reserved for `approved` status.
+
+---
+
 ### Quick Reference Card
 
 | Problem | Solution |
@@ -1093,6 +1175,9 @@ await page.getByRole('textbox', { name: /username/i }).fill('value');
 | Function appears to do nothing | Check if calling `.catch()` on non-Promise |
 | Rate limit 429 after restart | Clear `security_audit.log` (state in file!) |
 | Selector timeout | Use `getByPlaceholder` or `getByRole` |
+| Row updates don't persist | Check PATCH vs PUT mismatch (CS-011) |
+| Confirmed filter shows 0 | Row status must be 'reviewed' or 'approved' |
+| Row colors confusing | Teal=translated, Blue=reviewed, Green=approved |
 
 ---
 
