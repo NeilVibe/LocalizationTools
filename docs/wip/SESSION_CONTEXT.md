@@ -199,11 +199,66 @@ node test_all_hotkeys.cjs
 
 ---
 
+## QA System Status
+
+### What's IMPLEMENTED
+- **Backend endpoints** in `server/tools/ldm/routes/qa.py`:
+  - `POST /rows/{id}/check-qa` - Run QA checks on single row
+  - `GET /rows/{id}/qa-results` - Get QA issues for row
+  - `POST /files/{id}/check-qa` - Run full file QA
+  - `GET /files/{id}/qa-results` - Get all QA issues for file
+  - `GET /files/{id}/qa-summary` - Get summary counts
+  - `POST /qa-results/{id}/resolve` - Dismiss/resolve a QA issue
+
+- **Frontend components**:
+  - `QAMenuPanel.svelte` - Slide-out panel for full file QA reports
+  - `TMQAPanel.svelte` - Side panel showing QA issues for selected row
+  - Ctrl+D dismiss wired up to call resolve API
+
+### What's NOT YET WORKING
+- **Local SQLite**: The `ldm_qa_results` table doesn't exist in local SQLite (only PostgreSQL). QA will show empty results in offline mode.
+- **QA checks not running automatically**: Need to run "Full QA" from context menu to populate QA issues
+- **No visual QA flags yet**: Test data has no QA issues created
+
+### Test Files Created
+```
+locaNext/
+├── test_all_hotkeys.cjs    # Comprehensive hotkey test (all modes)
+├── test_hotkeys.cjs        # Basic hotkey test
+└── test_ctrl_d_dismiss.cjs # Detailed Ctrl+D flow test with API logging
+```
+
+---
+
+## Important Protocols
+
+### Gitea Control (NEVER use raw systemctl!)
+```bash
+./scripts/gitea_control.sh status   # Check status
+./scripts/gitea_control.sh start    # Start all components
+./scripts/gitea_control.sh stop     # Clean stop
+./scripts/gitea_control.sh kill     # Force kill if needed
+```
+
+### Dual Push (GitHub + Gitea)
+```bash
+git push origin main && git push gitea main
+```
+
+### Stale WIP Document Check
+Before working on features, check if WIP docs are stale:
+- `AUTO_LQA_IMPLEMENTATION.md` - Now marked IMPLEMENTED (was incorrectly labeled WIP)
+- Always verify feature status by checking actual code, not just docs
+
+---
+
 ## Pending Tasks
 
 | Priority | Feature | Status |
 |----------|---------|--------|
 | **P2** | Sub-projects (master project structure) | PLANNED |
+| **P3** | QA table migration for SQLite | NEEDED for offline QA |
+| **P3** | Auto-run QA on cell confirm | PLANNED (when "Use QA" enabled) |
 
 ---
 
