@@ -82,6 +82,50 @@ Common Windows errors:
 
 ---
 
+## Runner Startup Issues
+
+### Linux Runner Fails to Start (Random)
+
+**Symptom:**
+```bash
+./scripts/gitea_control.sh start
+# [ERROR] Failed to start Linux Runner
+```
+
+**Cause:** Race condition - runner tries to connect before Gitea HTTP is ready.
+
+**Solution (Already Fixed):**
+The `gitea_control.sh` now includes `wait_for_gitea_http()` function that waits up to 15 seconds for Gitea's HTTP endpoint (port 3000) to be ready before starting runners.
+
+**Key Insight:**
+- `systemctl is-active gitea` = process started (immediate)
+- `curl http://localhost:3000` = HTTP accepting connections (2-5 seconds delay)
+
+**If it still fails:**
+```bash
+# Check runner log
+tail /tmp/act_runner.log
+
+# Manual retry
+./scripts/gitea_control.sh stop
+sleep 5
+./scripts/gitea_control.sh start
+```
+
+### Windows Runner Not Starting
+
+**Symptom:** Build hangs at "Windows Installer" stage forever.
+
+**Cause:** Windows Runner service not running.
+
+**Solution:**
+```bash
+./scripts/gitea_control.sh status  # Check if Windows Runner shows as Running
+./scripts/gitea_control.sh start   # Start all components including Windows Runner
+```
+
+---
+
 ## TROUBLESHOOT Mode
 
 Checkpoint system for iterative test fixing.
