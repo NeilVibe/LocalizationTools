@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 3 (0 CRITICAL)
+**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 2 (0 CRITICAL)
 
 > ✅ TEST-001 FIXED in Build 415
 > All tests pass. CI pipeline operational.
@@ -11,13 +11,13 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 25 |
+| **FIXED/CLOSED** | 26 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **CRITICAL (Blocking)** | 0 ✅ |
 | **HIGH (Major UX)** | 0 |
-| **MEDIUM (Low Priority)** | 1 |
+| **MEDIUM (Low Priority)** | 0 |
 | **LOW (Cosmetic)** | 2 |
-| **Total Open** | 3 |
+| **Total Open** | 2 |
 
 ---
 
@@ -299,12 +299,18 @@
 - **Problem:** Edit icon only visible on hover, not on selected cell
 - **Fix:** CSS already exists at line 1908 showing edit icon at 0.7 opacity on selected cells
 
-### UI-066: Placeholder Rows Have Wrong Column Count
-- **Status:** OPEN (LOW PRIORITY)
+### UI-066: Placeholder Rows Have Wrong Column Count ✅ FIXED
+- **Status:** FIXED
 - **Assessed:** 2025-12-28
+- **Fixed:** 2025-12-29
 - **Problem:** Placeholder rows show single shimmer instead of matching columns
-- **Analysis:** Line 1343-1347 shows row_num + single loading-cell with shimmer
-- **Impact:** Minor cosmetic during loading, doesn't affect functionality
+- **Fix:** Updated placeholder row to render same column structure as actual rows:
+  - Row number (conditional)
+  - StringID with shimmer (conditional)
+  - Source with shimmer
+  - Target with shimmer
+  - Reference with shimmer (conditional)
+- **File:** VirtualGrid.svelte lines 1713-1733
 
 ### UI-067: Filter Dropdown Styling Inconsistent ✅ FIXED
 - **Status:** FIXED
@@ -392,4 +398,4 @@
 
 ---
 
-*Updated 2025-12-29 | 25 Issues FIXED | 3 OPEN Issues*
+*Updated 2025-12-29 | 26 Issues FIXED | 2 OPEN Issues*

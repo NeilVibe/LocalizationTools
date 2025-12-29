@@ -1711,11 +1711,26 @@
               role="row"
             >
               {#if row.placeholder}
-                <div class="cell" style="width: {visibleColumns[0]?.width || 60}px;">{row.row_num}</div>
-                <div class="cell loading-cell" style="flex: 1;">
-                  <!-- PERF: Static placeholder instead of animated InlineLoading -->
+                <!-- UI-066: Placeholder rows match actual column structure -->
+                {#if $preferences.showIndex}
+                  <div class="cell row-num" style="width: {allColumns.row_num.width}px;">{row.row_num}</div>
+                {/if}
+                {#if $preferences.showStringId}
+                  <div class="cell string-id loading-cell" style="width: {allColumns.string_id.width}px;">
+                    <div class="placeholder-shimmer"></div>
+                  </div>
+                {/if}
+                <div class="cell source loading-cell" style="flex: 0 0 {sourceWidthPercent}%;">
                   <div class="placeholder-shimmer"></div>
                 </div>
+                <div class="cell target loading-cell" style="flex: 1;">
+                  <div class="placeholder-shimmer"></div>
+                </div>
+                {#if $preferences.showReference}
+                  <div class="cell reference loading-cell" style="width: {allColumns.reference.width}px;">
+                    <div class="placeholder-shimmer"></div>
+                  </div>
+                {/if}
               {:else}
                 <!-- Row number (conditional) -->
                 {#if $preferences.showIndex}

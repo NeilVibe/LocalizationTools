@@ -21,7 +21,7 @@
 
 | Status | Value |
 |--------|-------|
-| **Open Issues** | 3 (0 critical) |
+| **Open Issues** | 2 (0 critical) |
 | **Tests** | 1,399 |
 | **Build** | 415 (STABLE) |
 
@@ -32,7 +32,7 @@
 | File | Purpose | Status |
 |------|---------|--------|
 | [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Current session state | ACTIVE |
-| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker | 3 open |
+| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker | 2 open |
 | [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | P1 - QA panel fixes | Phase 1 DONE |
 | [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | P2 - Font options | ✅ DONE |
 | [MEMOQ_STYLE_EDITING.md](MEMOQ_STYLE_EDITING.md) | Inline editing design | Phases 2-3 DONE |
