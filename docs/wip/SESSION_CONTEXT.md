@@ -1,6 +1,6 @@
 # Session Context
 
-**Updated:** 2025-12-29 | **Build:** 415+ | **Status:** CODE AUDIT COMPLETE
+**Updated:** 2025-12-29 15:00 UTC | **Build:** 415+ | **Status:** ALL TESTS PASSING (158/158)
 
 ---
 
@@ -14,6 +14,8 @@
 | 2 | Convert TMDataGrid to inline editing | DONE | Modal → inline textareas |
 | 3 | Add TM metadata display (MemoQ-style) | DONE | Compact metadata below target |
 | 4 | Add TDL to CLAUDE.md glossary | DONE | TDL = To Do List |
+| 5 | Centralize formatDate to utils | DONE | New formatters.js |
+| 6 | Fix gitea_control.sh Windows runner | DONE | Full PowerShell path |
 
 ### P2: Font Settings Enhancement
 
@@ -43,6 +45,85 @@ MemoQ-style compact metadata now shows below each TM entry's target text:
 | Created | `📥 Dec 25` (gray) |
 
 **Files Changed:** `TMDataGrid.svelte`
+
+### Code Deduplication
+
+| Duplicate | Files | Fix |
+|-----------|-------|-----|
+| `formatDate()` | TMDataGrid, TMManager, TMViewer | ✅ New `formatters.js` |
+
+**New file:** `src/lib/utils/formatters.js`
+- `formatDate()` - full with time
+- `formatDateShort()` - date only
+- `formatDateCompact()` - smart short
+
+### Ctrl+D QA Dismiss Implementation
+
+**Status:** CODE COMPLETE - needs test data setup
+
+**What was implemented:**
+- `LDM.svelte`: Added `loadQAIssuesForRow()` - fetches QA issues when row selected
+- `LDM.svelte`: Updated `handleDismissQA()` - calls `/api/ldm/qa-results/{id}/resolve` for each issue
+- `VirtualGrid.svelte`: Added `updateRowQAFlag(rowId, flagCount)` - updates visual state after dismiss
+
+**API Flow:**
+1. User presses Ctrl+D on selected row
+2. Fetches QA issues via `GET /api/ldm/rows/{rowId}/qa-results`
+3. For each issue, calls `POST /api/ldm/qa-results/{issueId}/resolve`
+4. Updates row's `qa_flag_count` to 0 for visual update
+
+**Test Data Issue:**
+- Database has 242 unresolved QA issues
+- But files are orphaned (no folder_id set)
+- Projects have 0 files because file→folder→project chain is broken
+- Automated tests can't load a file grid to test Ctrl+D
+
+**To fix test data:**
+```sql
+-- Check orphaned files
+SELECT id, name, folder_id FROM ldm_files WHERE folder_id IS NULL;
+-- Link to a folder
+UPDATE ldm_files SET folder_id = <folder_id> WHERE id = <file_id>;
+```
+
+### Test Fixes (Dec 29)
+
+| Test | Problem | Fix |
+|------|---------|-----|
+| ldm-comprehensive file upload | 400 on duplicate (should be 409) | Changed `files.py` status 400 → 409 for duplicates |
+| qa-panel-verification login | `input[type="text"]` selector timeout | Changed to `getByPlaceholder()` |
+
+### Test Status
+
+| Result | Count |
+|--------|-------|
+| Passed | 158 |
+| Failed | 0 |
+
+### DEV Testing Tips
+
+**Rate Limiting:** Tests trigger login rate limits (429). Two options:
+
+1. **Clear the audit log:**
+```bash
+echo "" > server/data/logs/security_audit.log
+```
+The rate limiter uses a 15-min window counting LOGIN_FAILURE in `security_audit.log`.
+
+2. **Start backend with DEV_MODE (recommended for testing):**
+```bash
+cd server && DEV_MODE=true python3 main.py
+```
+DEV_MODE=true disables rate limiting entirely for CI/testing.
+
+**App Navigation:** The app uses stores (`currentApp`, `currentView`) not URL routes.
+- `/ldm` route doesn't exist - use `window.navTest.goToApp('ldm')` in tests
+- Test helper exposed at `window.navTest` after login
+
+**Gitea Control:** NEVER use raw systemctl commands. ALWAYS use:
+```bash
+./scripts/gitea_control.sh status|start|stop|kill
+```
 
 ---
 
@@ -236,4 +317,4 @@ npx playwright test --reporter=list
 
 ---
 
-*Code Audit Day COMPLETE - P2 Font Settings DONE. Next: P3 Offline/Online Mode.*
+*Code Audit Day COMPLETE - P2 Font Settings DONE - Ctrl+D QA Dismiss CODE COMPLETE (test data needs fixing). Next: P3 Offline/Online Mode.*

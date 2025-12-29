@@ -242,9 +242,9 @@ test.describe('QA Panel UI Tests', () => {
         // Navigate to the app
         await page.goto('/');
 
-        // Login
-        await page.fill('input[type="text"]', TEST_USER);
-        await page.fill('input[type="password"]', TEST_PASS);
+        // Login - use placeholder-based selectors for reliability
+        await page.getByPlaceholder('Enter your username').fill(TEST_USER);
+        await page.getByPlaceholder('Enter your password').fill(TEST_PASS);
         await page.getByRole('button', { name: /login/i }).click();
         await page.waitForTimeout(2000);
 

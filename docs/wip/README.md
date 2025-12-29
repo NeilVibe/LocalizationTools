@@ -21,7 +21,7 @@
 
 | Status | Value |
 |--------|-------|
-| **Open Issues** | 7 (0 critical) |
+| **Open Issues** | 9 (0 critical) |
 | **Tests** | 1,399 |
 | **Build** | 415 (STABLE) |
 
