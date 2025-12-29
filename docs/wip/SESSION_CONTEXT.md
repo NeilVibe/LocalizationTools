@@ -1,6 +1,47 @@
 # Session Context
 
-**Updated:** 2025-12-29 15:00 UTC | **Build:** 415+ | **Status:** ALL TESTS PASSING (158/158)
+**Updated:** 2025-12-29 18:30 UTC | **Build:** 416 ✅ | **Status:** ALL TESTS PASSING (159/159)
+
+---
+
+## BUILD 416 SUCCESS (Dec 29)
+
+**All 28 UI issues fixed, verified in CI/CD build.**
+
+| Stage | Result |
+|-------|--------|
+| Trigger Check | ✅ OK |
+| Tests + Security (7 stages) | ✅ OK |
+| Windows Installer | ✅ OK |
+
+**Pushed to:** Gitea ✅ + GitHub ✅
+
+---
+
+## CRITICAL: Gitea Runner Management
+
+**⚠️ ALWAYS use the shell wrapper - NEVER raw commands:**
+
+```bash
+# Check ALL runners (Gitea + Linux + Windows)
+./scripts/gitea_control.sh status
+
+# Start ALL runners
+./scripts/gitea_control.sh start
+
+# Stop ALL runners (graceful)
+./scripts/gitea_control.sh stop
+
+# Force kill (when stuck)
+./scripts/gitea_control.sh kill
+```
+
+**The wrapper manages 3 components:**
+1. **Gitea Server** - WSL systemd service
+2. **Linux Runner** - WSL act_runner daemon
+3. **Windows Runner** - Windows Service (GiteaActRunner via NSSM)
+
+**Common mistake:** Windows runner not started → build waits forever at "Windows Installer" stage. Use `status` to check!
 
 ---
 
@@ -340,4 +381,4 @@ npx playwright test --reporter=list
 
 ---
 
-*Code Audit Day COMPLETE - P2 Font Settings DONE - Ctrl+D QA Dismiss CODE COMPLETE (test data needs fixing). Next: P3 Offline/Online Mode.*
+*Build 416 SUCCESS - All 28 UI issues fixed - Code Audit Day COMPLETE. Next: P3 Offline/Online Mode.*
