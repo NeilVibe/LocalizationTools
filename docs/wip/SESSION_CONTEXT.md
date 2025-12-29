@@ -1,8 +1,8 @@
 # Session Context
 
-**Updated:** 2025-12-29 19:15 UTC | **Build:** 416 ✅ | **Status:** ALL TESTS PASSING (159/159)
+**Updated:** 2025-12-29 22:40 UTC | **Build:** 416 ✅ | **Status:** ALL TESTS PASSING
 
-**Git Sync:** `0c67504` on LOCAL = GITHUB = GITEA ✅
+**Git Sync:** `f303913` on LOCAL = GITHUB = GITEA ✅
 
 ---
 
@@ -48,7 +48,26 @@
 
 ## LATEST WORK (Dec 29)
 
-### Code Cleanup Tasks
+### Session 2: Bug Fixes + Server Scripts (Evening)
+
+| Task | Status | Commits |
+|------|--------|---------|
+| Fix row confirmation PATCH→PUT | ✅ DONE | `529ed5a` |
+| DEV server scripts (remove Gitea) | ✅ DONE | `529ed5a` |
+| Rate limit auto-clear on startup | ✅ DONE | `529ed5a` |
+| Simplify color scheme (Gray/Teal) | ✅ DONE | `f303913` |
+| Update docs (CS-011, CS-012) | ✅ DONE | Both commits |
+| Playwright tests for confirmation | ✅ DONE | `529ed5a` |
+
+**Key Fixes:**
+- `VirtualGrid.svelte`: PATCH→PUT (confirmation now persists)
+- `check_servers.sh`: Removed Gitea, added rate limit status
+- `start_all_servers.sh`: DEV_MODE default, --with-vite option
+- Color scheme: Gray=unconfirmed, Teal=confirmed (2-state)
+
+---
+
+### Session 1: Code Cleanup Tasks
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
