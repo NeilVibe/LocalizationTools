@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 9 (0 CRITICAL)
+**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 7 (0 CRITICAL)
 
 > ✅ TEST-001 FIXED in Build 415
 > All tests pass. CI pipeline operational.
@@ -11,13 +11,13 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 20 |
+| **FIXED/CLOSED** | 22 |
 | **NOT A BUG/BY DESIGN** | 2 |
 | **CRITICAL (Blocking)** | 0 ✅ |
 | **HIGH (Major UX)** | 0 |
 | **MEDIUM (Low Priority)** | 5 |
-| **LOW (Cosmetic)** | 4 |
-| **Total Open** | 9 |
+| **LOW (Cosmetic)** | 2 |
+| **Total Open** | 7 |
 
 ---
 
@@ -329,10 +329,12 @@
 
 ## LOW - COSMETIC ISSUES
 
-### UI-070: Empty Divs in DOM (9 Found)
-- **Status:** OPEN (COSMETIC)
+### UI-070: Empty Divs in DOM ✅ FIXED
+- **Status:** FIXED
 - **Assessed:** 2025-12-28
-- **Impact:** Minor DOM bloat - no functional impact
+- **Verified:** 2025-12-29
+- **Was:** 9 empty divs → **Now:** 4 (acceptable)
+- **Impact:** Reduced DOM bloat
 
 ### UI-071: Reference Column "No match" Styling
 - **Status:** OPEN (COSMETIC)
@@ -346,11 +348,12 @@
 - **Problem:** "No similar translations found" styling
 - **Impact:** Minor UX improvement opportunity
 
-### UI-073: Shortcut Bar Takes Vertical Space
-- **Status:** OPEN (COSMETIC)
+### UI-073: Shortcut Bar Takes Vertical Space ✅ FIXED
+- **Status:** FIXED
 - **Assessed:** 2025-12-28
-- **Problem:** Shortcut hints bar could be more compact
-- **Impact:** Minor vertical space usage
+- **Verified:** 2025-12-29
+- **Resolution:** Shortcut bar no longer present in DOM (0 elements found)
+- **Impact:** Vertical space recovered
 
 ---
 
@@ -378,4 +381,4 @@
 
 ---
 
-*Updated 2025-12-29 | 20 Issues FIXED | 9 OPEN Issues*
+*Updated 2025-12-29 | 22 Issues FIXED | 7 OPEN Issues*
