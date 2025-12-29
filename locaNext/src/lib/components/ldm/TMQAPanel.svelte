@@ -10,7 +10,7 @@
    * - QA issues display (future)
    */
   import { Tag, InlineLoading } from "carbon-components-svelte";
-  import { ChevronLeft, ChevronRight, WarningAltFilled } from "carbon-icons-svelte";
+  import { ChevronLeft, ChevronRight, WarningAltFilled, Search, Checkmark } from "carbon-icons-svelte";
   import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
 
@@ -107,7 +107,11 @@
 
         <div class="section-body">
           {#if !selectedRow}
-            <div class="empty-msg">Select a row to see TM matches</div>
+            <!-- UI-072: Improved empty state with icon -->
+            <div class="empty-msg">
+              <Search size={16} />
+              <span>Select a row to see TM matches</span>
+            </div>
           {:else if tmMatches.length > 0}
             {#each tmMatches as match, idx}
               <button
@@ -136,7 +140,11 @@
               </button>
             {/each}
           {:else if !tmLoading}
-            <div class="empty-msg">No TM matches found</div>
+            <!-- UI-072: Improved empty state with icon -->
+            <div class="empty-msg muted">
+              <Search size={16} />
+              <span>No TM matches found</span>
+            </div>
           {/if}
         </div>
       </div>
@@ -155,7 +163,10 @@
 
         <div class="section-body">
           {#if !selectedRow}
-            <div class="empty-msg">Select a row to see QA issues</div>
+            <div class="empty-msg">
+              <WarningAltFilled size={16} />
+              <span>Select a row to see QA issues</span>
+            </div>
           {:else if qaIssues.length > 0}
             {#each qaIssues as issue}
               <div class="qa-item" class:error={issue.severity === 'error'} class:warning={issue.severity === 'warning'}>
@@ -166,7 +177,10 @@
               </div>
             {/each}
           {:else if !qaLoading}
-            <div class="empty-msg success">No QA issues</div>
+            <div class="empty-msg success">
+              <Checkmark size={16} />
+              <span>No QA issues</span>
+            </div>
           {/if}
         </div>
       </div>
@@ -368,15 +382,25 @@
   }
 
   /* Empty states */
+  /* UI-072: Improved empty state styling */
   .empty-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     font-size: 0.75rem;
     color: var(--cds-text-02);
     font-style: italic;
-    padding: 8px;
+    padding: 12px 8px;
     text-align: center;
+  }
+
+  .empty-msg.muted {
+    opacity: 0.7;
   }
 
   .empty-msg.success {
     color: var(--cds-support-02);
+    font-style: normal;
   }
 </style>
