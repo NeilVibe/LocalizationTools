@@ -21,6 +21,7 @@
   import { createEventDispatcher, tick } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
+  import { formatDate } from "$lib/utils/formatters.js";
 
   const dispatch = createEventDispatcher();
 
@@ -271,19 +272,6 @@
       errorMessage = err.message;
       logger.error("Error deleting TM entry", { error: err.message });
     }
-  }
-
-  // Format date
-  function formatDate(dateStr) {
-    if (!dateStr) return "-";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   }
 
   // Get metadata value for display (BUG-020: added confirmation metadata)

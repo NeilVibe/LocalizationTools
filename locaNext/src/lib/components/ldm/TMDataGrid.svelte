@@ -21,6 +21,7 @@
   import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
+  import { formatDate, formatDateCompact } from "$lib/utils/formatters.js";
 
   const dispatch = createEventDispatcher();
 
@@ -397,19 +398,6 @@
     }
   }
 
-  // Format date
-  function formatDate(dateStr) {
-    if (!dateStr) return "-";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
-
   // Get metadata value for display
   function getMetadataValue(entry) {
     switch (selectedMetadata) {
@@ -443,34 +431,21 @@
     // Priority: confirmed > updated > created
     if (entry.is_confirmed && entry.confirmed_at) {
       const who = entry.confirmed_by || "Unknown";
-      const when = formatShortDate(entry.confirmed_at);
+      const when = formatDateCompact(entry.confirmed_at);
       return { icon: "✓", text: `${who} · ${when}`, type: "confirmed" };
     }
     if (entry.updated_at) {
       const who = entry.updated_by || "Unknown";
-      const when = formatShortDate(entry.updated_at);
+      const when = formatDateCompact(entry.updated_at);
       return { icon: "✏️", text: `${who} · ${when}`, type: "updated" };
     }
     if (entry.created_at) {
       const who = entry.created_by || "";
-      const when = formatShortDate(entry.created_at);
+      const when = formatDateCompact(entry.created_at);
       const prefix = who ? `${who} · ` : "";
       return { icon: "📥", text: `${prefix}${when}`, type: "created" };
     }
     return null;
-  }
-
-  // Short date format for metadata (compact)
-  function formatShortDate(dateStr) {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    const now = new Date();
-    const isThisYear = date.getFullYear() === now.getFullYear();
-
-    if (isThisYear) {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
   // Svelte 5: Effect - Load entries and sync status when TM changes

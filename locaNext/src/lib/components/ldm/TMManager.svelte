@@ -31,6 +31,7 @@
   import { logger } from "$lib/utils/logger.js";
   import { preferences } from "$lib/stores/preferences.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
+  import { formatDateShort } from "$lib/utils/formatters.js";
   import TMUploadModal from "./TMUploadModal.svelte";
   import TMViewer from "./TMViewer.svelte";
 
@@ -241,17 +242,6 @@
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
-  }
-
-  // Format date
-  function formatDate(dateStr) {
-    if (!dateStr) return "-";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
   }
 
   // Get status tag kind
@@ -538,7 +528,7 @@
                     {tm.status}
                   </Tag>
                 </td>
-                <td class="date-cell">{formatDate(tm.created_at)}</td>
+                <td class="date-cell">{formatDateShort(tm.created_at)}</td>
                 <td class="actions-cell">
                   <!-- View TM entries -->
                   <Button
