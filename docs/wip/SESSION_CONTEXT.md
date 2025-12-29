@@ -147,11 +147,12 @@ export function getApiBase() { ... }
 export async function apiFetch(endpoint, options) { ... }
 ```
 
-**Files Refactored (11):**
+**Files Refactored (10):**
 - VirtualGrid.svelte, TMManager.svelte, TMDataGrid.svelte
 - TMViewer.svelte, TMUploadModal.svelte, FileExplorer.svelte
-- DataGrid.svelte, QAMenuPanel.svelte, LDM.svelte
+- QAMenuPanel.svelte, LDM.svelte
 - QuickSearch.svelte, KRSimilar.svelte
+- (DataGrid.svelte was DELETED - dead code)
 
 **Tested:** Build SUCCESS + 27/28 Playwright tests passed
 
@@ -204,36 +205,15 @@ export async function apiFetch(endpoint, options) { ... }
 
 ---
 
-## Remaining Tasks
-
-### 8. Dead Code Scan - PENDING
-
-Need to check for:
-- Unused imports
-- Unreachable functions
-- Commented-out code blocks
-- Orphaned files
-
-### 9. Final Verification - PENDING
-
-Run full test suite:
-```bash
-npx playwright test --reporter=list
-```
-
----
-
 ## Active Priorities (from Roadmap.md)
 
 | Priority | Feature | WIP Doc | Status |
 |----------|---------|---------|--------|
 | P1 | QA UIUX Overhaul | QA_UIUX_OVERHAUL.md | Phase 1 DONE |
-| P2 | Font Settings | FONT_SETTINGS_ENHANCEMENT.md | PLANNING |
+| P2 | Font Settings | FONT_SETTINGS_ENHANCEMENT.md | ✅ DONE |
 | P3 | Offline/Online Mode | OFFLINE_ONLINE_MODE.md | PLANNING |
 | P4 | Color Parser Extension | COLOR_PARSER_EXTENSION.md | DOCUMENTED |
 | P5 | Advanced Search | ADVANCED_SEARCH.md | PLANNING |
-
-**Note:** VIEW_MODE_SETTINGS.md archived - we went FULL inline mode, no toggle needed.
 
 ---
 
@@ -256,4 +236,4 @@ npx playwright test --reporter=list
 
 ---
 
-*Maintenance Day COMPLETE - All tasks done. Ready for P2 features.*
+*Code Audit Day COMPLETE - P2 Font Settings DONE. Next: P3 Offline/Online Mode.*

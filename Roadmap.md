@@ -317,12 +317,11 @@ LDM currently imports from legacy apps (violates Rule #0):
 | **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | PLANNING |
 | **P6** | File Delete + Recycle Bin | TBD | BACKLOG |
 
-### P1: QA UIUX Overhaul
-**CRITICAL** - Current QA panel has stability issues:
-- Softlock / can't close panel
-- Empty results with "issues found" message
-- No cancel mechanism for "Run Full QA"
-- No timeout for API requests
+### P1: QA UIUX Overhaul ✅ Phase 1 DONE
+Fixed stability issues (2025-12-29):
+- ✅ Cancel button with AbortController
+- ✅ Escape key closes panel
+- ✅ Empty state: "QA not run" vs "No issues found"
 
 ### P2: Font Settings Enhancement ✅ COMPLETE
 Font customization now available:
@@ -417,4 +416,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2025-12-28 | Build 415 STABLE | P1-P5 Complete, NEW priorities added*
+*Strategic Roadmap | Updated 2025-12-29 | Build 415+ | P1 Phase 1 + P2 DONE*
