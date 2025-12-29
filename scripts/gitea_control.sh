@@ -13,6 +13,9 @@ GITEA_DIR="/home/neil1988/gitea"
 GITEA_DB="$GITEA_DIR/data/gitea.db"
 WIN_RUNNER_SERVICE="GiteaActRunner"
 
+# PowerShell path (full path required for WSL)
+POWERSHELL="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -22,7 +25,7 @@ NC='\033[0m' # No Color
 
 # Check if we can run PowerShell commands
 can_manage_windows() {
-    command -v powershell.exe &> /dev/null
+    [ -x "$POWERSHELL" ]
 }
 
 print_status() {
@@ -74,17 +77,34 @@ status() {
     echo ""
     echo -e "${BLUE}[WINDOWS RUNNER]${NC}"
     if can_manage_windows; then
-        WIN_STATUS=$(powershell.exe -Command "Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Status" 2>/dev/null | tr -d '\r')
+        WIN_STATUS=$($POWERSHELL -Command "Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Status" 2>/dev/null | tr -d '\r')
         if [ "$WIN_STATUS" = "Running" ]; then
-            WIN_PID=$(powershell.exe -Command "(Get-Process act_runner* -ErrorAction SilentlyContinue | Select-Object -First 1).Id" 2>/dev/null | tr -d '\r')
-            print_status "Windows Runner: Running (Service: $WIN_RUNNER_SERVICE, PID: $WIN_PID)"
+            # Get detailed process info
+            WIN_INFO=$($POWERSHELL -Command "
+                \$p = Get-Process -Name 'act_runner*' -ErrorAction SilentlyContinue | Select-Object -First 1
+                if (\$p) {
+                    \$ram = [math]::Round(\$p.WorkingSet64 / 1MB, 1)
+                    \$uptime = (Get-Date) - \$p.StartTime
+                    \$uptimeStr = if (\$uptime.Days -gt 0) { \"\$(\$uptime.Days)d \$(\$uptime.Hours)h\" } else { \"\$(\$uptime.Hours)h \$(\$uptime.Minutes)m\" }
+                    Write-Output \"PID:\$(\$p.Id)|RAM:\$ram MB|Uptime:\$uptimeStr\"
+                }
+            " 2>/dev/null | tr -d '\r')
+
+            if [ -n "$WIN_INFO" ]; then
+                WIN_PID=$(echo "$WIN_INFO" | cut -d'|' -f1 | cut -d':' -f2)
+                WIN_RAM=$(echo "$WIN_INFO" | cut -d'|' -f2 | cut -d':' -f2)
+                WIN_UPTIME=$(echo "$WIN_INFO" | cut -d'|' -f3 | cut -d':' -f2)
+                print_status "Windows Runner: Running (PID: $WIN_PID, RAM: $WIN_RAM, Uptime: $WIN_UPTIME)"
+            else
+                print_status "Windows Runner: Running (Service: $WIN_RUNNER_SERVICE)"
+            fi
         elif [ "$WIN_STATUS" = "Stopped" ]; then
             print_warning "Windows Runner: Stopped (Service exists but not running)"
         else
             print_error "Windows Runner: Service not found or error"
         fi
     else
-        echo "  (Cannot check - PowerShell not available from WSL)"
+        echo "  (Cannot check - PowerShell not available at $POWERSHELL)"
     fi
 
     # --- LATEST BUILD ---
@@ -117,10 +137,10 @@ stop_graceful() {
     echo ""
     echo -e "${BLUE}[WINDOWS RUNNER]${NC}"
     if can_manage_windows; then
-        WIN_STATUS=$(powershell.exe -Command "(Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue).Status" 2>/dev/null | tr -d '\r')
+        WIN_STATUS=$($POWERSHELL -Command "(Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue).Status" 2>/dev/null | tr -d '\r')
         if [ "$WIN_STATUS" = "Running" ]; then
             echo "Stopping Windows Runner service..."
-            powershell.exe -Command "Stop-Service $WIN_RUNNER_SERVICE -Force" 2>/dev/null
+            $POWERSHELL -Command "Stop-Service $WIN_RUNNER_SERVICE -Force" 2>/dev/null
             sleep 3
             print_status "Windows Runner stopped"
         else
@@ -174,8 +194,8 @@ stop_force() {
     echo -e "${BLUE}[WINDOWS RUNNER]${NC}"
     if can_manage_windows; then
         echo "Force stopping Windows Runner..."
-        powershell.exe -Command "Stop-Service $WIN_RUNNER_SERVICE -Force -ErrorAction SilentlyContinue" 2>/dev/null
-        powershell.exe -Command "Get-Process act_runner* -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null
+        $POWERSHELL -Command "Stop-Service $WIN_RUNNER_SERVICE -Force -ErrorAction SilentlyContinue" 2>/dev/null
+        $POWERSHELL -Command "Get-Process act_runner* -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null
         print_status "Windows Runner killed"
     fi
 
@@ -258,13 +278,13 @@ start() {
     echo ""
     echo -e "${BLUE}[WINDOWS RUNNER]${NC}"
     if can_manage_windows; then
-        WIN_STATUS=$(powershell.exe -Command "(Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue).Status" 2>/dev/null | tr -d '\r')
+        WIN_STATUS=$($POWERSHELL -Command "(Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue).Status" 2>/dev/null | tr -d '\r')
         if [ "$WIN_STATUS" != "Running" ]; then
             echo "Starting Windows Runner service..."
-            powershell.exe -Command "Start-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue" 2>/dev/null
+            $POWERSHELL -Command "Start-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue" 2>/dev/null
             sleep 3
 
-            WIN_STATUS=$(powershell.exe -Command "(Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue).Status" 2>/dev/null | tr -d '\r')
+            WIN_STATUS=$($POWERSHELL -Command "(Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue).Status" 2>/dev/null | tr -d '\r')
             if [ "$WIN_STATUS" = "Running" ]; then
                 print_status "Windows Runner started"
             else
