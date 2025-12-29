@@ -63,6 +63,7 @@ test('check 5 MEDIUM issues with loaded grid', async ({ page, request }) => {
 
     // Create test data with long strings to test overflow/ellipsis
     // Format: col0\tcol1\tcol2\tcol3\tcol4\tSource\tTarget (7+ columns required)
+    // Include some rows with {pattern} mismatches to trigger QA flags
     const lines: string[] = [];
     for (let i = 0; i < 100; i++) {
         const col0 = 'GAME';
@@ -70,16 +71,22 @@ test('check 5 MEDIUM issues with loaded grid', async ({ page, request }) => {
         const col2 = 'MENU';
         const col3 = String(i).padStart(4, '0');
         const col4 = 'TEXT';
-        const longSource = `Source text line ${i} with extra long content that should trigger text overflow behavior and ellipsis display when rendered in narrow cells ${i}`;
-        const longTarget = `Target translation ${i} with similarly long text content to verify ellipsis styling works correctly on both source and target columns ${i}`;
+        // Some rows have {pattern} mismatches to trigger QA (UI-069 test)
+        const hasMismatch = i % 5 === 0; // Every 5th row - missing {1} pattern
+        const longSource = `Source text line ${i} with code {0} and {1} that need matching in translation`;
+        const longTarget = hasMismatch
+            ? `Target line ${i} with only {0} here - no second pattern`  // Missing {1} -> QA flag
+            : `Target line ${i} with {0} and {1} matching the source correctly`;
         lines.push(`${col0}\t${col1}\t${col2}\t${col3}\t${col4}\t${longSource}\t${longTarget}`);
     }
     const syntheticData = lines.join('\n');
 
+    // Use unique filename with timestamp to force fresh upload
+    const testFileName = `qa_icon_test_${Date.now()}.txt`;
     const uploadResp = await request.post(`${API_URL}/api/ldm/files/upload`, {
         headers: { Authorization: `Bearer ${token}` },
         multipart: {
-            file: { name: 'medium_overflow_test.txt', mimeType: 'text/plain', buffer: Buffer.from(syntheticData) },
+            file: { name: testFileName, mimeType: 'text/plain', buffer: Buffer.from(syntheticData) },
             project_id: projectId.toString()
         }
     });
@@ -87,7 +94,7 @@ test('check 5 MEDIUM issues with loaded grid', async ({ page, request }) => {
     if (uploadResp.ok()) {
         const result = await uploadResp.json();
         fileId = result.id;
-        console.log(`✓ Uploaded file: medium_overflow_test.txt (ID: ${fileId})`);
+        console.log(`✓ Uploaded file: ${testFileName} (ID: ${fileId})`);
     } else if (uploadResp.status() === 409) {
         console.log('✓ File already exists (409), finding in tree...');
     } else {
@@ -140,6 +147,20 @@ test('check 5 MEDIUM issues with loaded grid', async ({ page, request }) => {
         return;
     }
 
+    // Run QA check to generate QA flags for UI-069 test
+    console.log('Running QA check to generate flags...');
+    const qaResp = await request.post(`${API_URL}/api/ldm/files/${fileId}/check-qa`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        data: { checks: ['pattern'], force: true },  // Pattern check finds {code} mismatches
+        timeout: 60000
+    });
+    if (qaResp.ok()) {
+        const qaResult = await qaResp.json();
+        console.log(`✓ QA check complete: ${qaResult.total_issues || 0} issues found`);
+    } else {
+        console.log(`⚠ QA check failed: ${qaResp.status()}`);
+    }
+
     // Step 2: Login via UI
     await page.goto('/');
     await page.getByPlaceholder('Enter your username').fill(TEST_USER);
@@ -182,15 +203,16 @@ test('check 5 MEDIUM issues with loaded grid', async ({ page, request }) => {
         console.log('✓ Expanded project');
     }
 
-    // Now click on the file
-    const fileItem = page.locator('text=medium_overflow_test.txt');
+    // Now click on the file - look for qa_icon_test or any .txt file
+    const fileItem = page.locator('text=/qa_icon_test.*\\.txt/').first();
     if (await fileItem.isVisible({ timeout: 3000 }).catch(() => false)) {
+        const fileName = await fileItem.textContent();
         await fileItem.click();
         await page.waitForTimeout(3000); // Wait for grid to load
-        console.log('✓ Clicked file: medium_overflow_test.txt');
+        console.log(`✓ Clicked file: ${fileName}`);
     } else {
         // Try clicking any visible .txt file
-        const anyFile = page.locator('text=/sample.*\\.txt|test.*\\.txt|medium.*\\.txt/').first();
+        const anyFile = page.locator('text=/.*\\.txt$/').first();
         if (await anyFile.isVisible({ timeout: 2000 }).catch(() => false)) {
             const fileName = await anyFile.textContent();
             await anyFile.click();
@@ -297,7 +319,51 @@ test('check 5 MEDIUM issues with loaded grid', async ({ page, request }) => {
     console.log('\n--- UI-069: QA + Edit Icon Overlap ---');
     console.log(`  QA flagged cells: ${domInfo.qaFlagged}`);
     console.log(`  Edit icons: ${domInfo.editIcons}`);
-    console.log('  (Check screenshot for visual overlap)');
+
+    // Check icon positions on QA-flagged cells
+    if (domInfo.qaFlagged > 0) {
+        const iconPositions = await page.evaluate(() => {
+            const qaFlaggedCell = document.querySelector('.cell.target.qa-flagged');
+            if (!qaFlaggedCell) return null;
+
+            const qaIcon = qaFlaggedCell.querySelector('.qa-icon');
+            const editIcon = qaFlaggedCell.querySelector('.edit-icon');
+
+            if (!qaIcon || !editIcon) return null;
+
+            const qaRect = qaIcon.getBoundingClientRect();
+            const editRect = editIcon.getBoundingClientRect();
+            const cellRect = qaFlaggedCell.getBoundingClientRect();
+
+            return {
+                qaIconRight: cellRect.right - qaRect.right,
+                editIconRight: cellRect.right - editRect.right,
+                qaIconWidth: qaRect.width,
+                editIconWidth: editRect.width,
+                gap: qaRect.left - editRect.right,
+                overlap: editRect.right > qaRect.left
+            };
+        });
+
+        if (iconPositions) {
+            console.log(`  QA icon: ${iconPositions.qaIconRight.toFixed(1)}px from right`);
+            console.log(`  Edit icon: ${iconPositions.editIconRight.toFixed(1)}px from right`);
+            console.log(`  Gap between icons: ${iconPositions.gap.toFixed(1)}px`);
+            console.log(`  Overlap: ${iconPositions.overlap ? '⚠ YES - icons overlap!' : '✓ NO - icons properly spaced'}`);
+        } else {
+            console.log('  ℹ Could not measure icon positions');
+        }
+    } else {
+        console.log('  ℹ No QA-flagged cells to test icon overlap');
+    }
+
+    // Hover test for QA-flagged cell to show both icons
+    if (domInfo.qaFlagged > 0) {
+        await page.locator('.cell.target.qa-flagged').first().hover();
+        await page.waitForTimeout(300);
+        await page.screenshot({ path: '/tmp/medium_04_qa_icons.png' });
+        console.log('  Screenshot: /tmp/medium_04_qa_icons.png (QA + Edit icons)');
+    }
 
     // Hover tests for resize handle visibility
     if (domInfo.headerCells > 0) {

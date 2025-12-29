@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 4 (0 CRITICAL)
+**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 3 (0 CRITICAL)
 
 > ✅ TEST-001 FIXED in Build 415
 > All tests pass. CI pipeline operational.
@@ -11,13 +11,13 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 24 |
+| **FIXED/CLOSED** | 25 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **CRITICAL (Blocking)** | 0 ✅ |
 | **HIGH (Major UX)** | 0 |
-| **MEDIUM (Low Priority)** | 2 |
+| **MEDIUM (Low Priority)** | 1 |
 | **LOW (Cosmetic)** | 2 |
-| **Total Open** | 4 |
+| **Total Open** | 3 |
 
 ---
 
@@ -324,11 +324,17 @@
 - **Analysis:** Resize handles exist in DOM, appear on hover - this is intentional UX
 - **Conclusion:** Clean interface until user needs to resize - standard UX pattern
 
-### UI-069: QA Icon Position Conflicts with Edit Icon
-- **Status:** OPEN (LOW PRIORITY)
+### UI-069: QA Icon Position Conflicts with Edit Icon ✅ FIXED
+- **Status:** FIXED
 - **Assessed:** 2025-12-28
+- **Fixed:** 2025-12-29
 - **Problem:** QA warning icon and edit icon can overlap
-- **Impact:** Visual clutter when both icons visible
+- **Fix:**
+  - Moved QA icon left: `right: 1.75rem` (was 1.5rem)
+  - Added `z-index: 1` to QA icon
+  - Added `.cell.target.qa-flagged .edit-icon { right: 0.35rem }` rule
+- **Result:** Icons now have ~10px gap, no overlap
+- **File:** VirtualGrid.svelte lines 2280-2291
 
 ---
 
@@ -386,4 +392,4 @@
 
 ---
 
-*Updated 2025-12-29 | 24 Issues FIXED | 4 OPEN Issues*
+*Updated 2025-12-29 | 25 Issues FIXED | 3 OPEN Issues*

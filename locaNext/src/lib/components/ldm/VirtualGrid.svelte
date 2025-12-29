@@ -2279,9 +2279,15 @@
 
   .qa-icon {
     position: absolute;
-    right: 1.5rem;
+    right: 1.75rem; /* UI-069: Moved left to avoid overlap with edit icon */
     color: var(--cds-support-01, #da1e28);
     opacity: 1;
+    z-index: 1; /* Below edit icon */
+  }
+
+  /* UI-069: When QA icon present, shift edit icon right to ensure no overlap */
+  .cell.target.qa-flagged .edit-icon {
+    right: 0.35rem;
   }
 
   .cell.target.qa-flagged:hover {
