@@ -49,7 +49,8 @@ async def get_tm_suggestions(
     Returns:
         List of TM suggestions with source, target, similarity, etc.
     """
-    logger.info(f"TM suggest: source={source[:30]}..., tm_id={tm_id}, file={file_id}")
+    # ENHANCED DEBUG LOGGING
+    logger.info(f"[TM-SUGGEST] START | source='{source[:50]}...' | tm_id={tm_id} | file_id={file_id} | threshold={threshold}")
 
     try:
         sql_params = {
@@ -57,22 +58,29 @@ async def get_tm_suggestions(
             'threshold': threshold,
             'max_results': max_results
         }
+        logger.debug(f"[TM-SUGGEST] SQL params: {sql_params}")
 
         # If tm_id is provided, search the TM entries table
         if tm_id:
+            logger.info(f"[TM-SUGGEST] MODE: TM entries search (tm_id={tm_id})")
             # Verify TM ownership
+            logger.debug(f"[TM-SUGGEST] Verifying TM ownership for user_id={current_user['user_id']}")
             tm_result = await db.execute(
                 select(LDMTranslationMemory).where(
                     LDMTranslationMemory.id == tm_id,
                     LDMTranslationMemory.owner_id == current_user["user_id"]
                 )
             )
-            if not tm_result.scalar_one_or_none():
+            tm = tm_result.scalar_one_or_none()
+            if not tm:
+                logger.warning(f"[TM-SUGGEST] TM {tm_id} not found or not owned by user {current_user['user_id']}")
                 raise HTTPException(status_code=404, detail="Translation Memory not found")
 
+            logger.debug(f"[TM-SUGGEST] TM verified: name='{tm.name}', entries={tm.entry_count}, status={tm.status}")
             sql_params['tm_id'] = tm_id
 
             # Search TM entries with pg_trgm similarity
+            logger.debug(f"[TM-SUGGEST] Executing TM entry search with pg_trgm...")
             sql = text("""
                 SELECT
                     e.id,
@@ -104,17 +112,22 @@ async def get_tm_suggestions(
                 for row in rows
             ]
 
-            logger.info(f"TM found {len(suggestions)} suggestions from TM {tm_id}")
+            logger.info(f"[TM-SUGGEST] SUCCESS | Found {len(suggestions)} matches from TM {tm_id}")
+            for i, s in enumerate(suggestions[:3]):  # Log first 3
+                logger.debug(f"[TM-SUGGEST] Match {i+1}: sim={s['similarity']:.2f} | src='{s['source'][:30]}...'")
             return {"suggestions": suggestions, "count": len(suggestions)}
 
         # Otherwise, search project rows (original behavior)
+        logger.info(f"[TM-SUGGEST] MODE: Project rows search (no tm_id)")
         conditions = ["r.target IS NOT NULL", "r.target != ''"]
         if file_id:
             conditions.append("r.file_id = :file_id")
             sql_params['file_id'] = file_id
+            logger.debug(f"[TM-SUGGEST] Filter: file_id={file_id}")
         elif project_id:
             conditions.append("f.project_id = :project_id")
             sql_params['project_id'] = project_id
+            logger.debug(f"[TM-SUGGEST] Filter: project_id={project_id}")
         if exclude_row_id:
             conditions.append("r.id != :exclude_row_id")
             sql_params['exclude_row_id'] = exclude_row_id
@@ -151,13 +164,15 @@ async def get_tm_suggestions(
             for row in rows
         ]
 
-        logger.info(f"TM found {len(suggestions)} suggestions (project rows)")
+        logger.info(f"[TM-SUGGEST] SUCCESS | Found {len(suggestions)} matches from project rows")
+        for i, s in enumerate(suggestions[:3]):  # Log first 3
+            logger.debug(f"[TM-SUGGEST] Match {i+1}: sim={s['similarity']:.2f} | file='{s['file_name']}' | src='{s['source'][:30]}...'")
         return {"suggestions": suggestions, "count": len(suggestions)}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"TM suggest failed: {e}", exc_info=True)
+        logger.error(f"[TM-SUGGEST] ERROR | {type(e).__name__}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="TM search failed. Check server logs.")
 
 

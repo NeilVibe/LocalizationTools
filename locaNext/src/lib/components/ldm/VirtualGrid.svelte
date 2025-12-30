@@ -811,10 +811,27 @@
    * Fetch TM result for a row and cache it
    */
   async function fetchTMResultForRow(row) {
-    if (!row.source || !$preferences.activeTmId) return;
+    // DEBUG: Enhanced logging for TM fetch
+    if (!row.source) {
+      logger.debug("[TM-FETCH] Skip: no source text", { rowId: row.id });
+      return;
+    }
+    if (!$preferences.activeTmId) {
+      logger.debug("[TM-FETCH] Skip: no active TM set");
+      return;
+    }
 
     const rowId = row.id;
-    if (tmResults.has(rowId)) return; // Already cached
+    if (tmResults.has(rowId)) {
+      logger.debug("[TM-FETCH] Skip: cached", { rowId });
+      return;
+    }
+
+    logger.info("[TM-FETCH] START", {
+      rowId,
+      tmId: $preferences.activeTmId,
+      source: row.source.substring(0, 30) + "..."
+    });
 
     try {
       const params = new URLSearchParams({
@@ -832,8 +849,17 @@
 
       if (response.ok) {
         const data = await response.json();
+        logger.info("[TM-FETCH] RESPONSE", {
+          rowId,
+          count: data.count,
+          hasMatches: data.suggestions?.length > 0
+        });
         if (data.suggestions && data.suggestions.length > 0) {
           const best = data.suggestions[0];
+          logger.debug("[TM-FETCH] Best match", {
+            similarity: best.similarity,
+            source: best.source?.substring(0, 30)
+          });
           tmResults.set(rowId, {
             target: best.target,
             similarity: best.similarity,
@@ -841,9 +867,14 @@
           });
           tmResults = tmResults; // Trigger reactivity
         }
+      } else {
+        logger.warning("[TM-FETCH] HTTP error", {
+          rowId,
+          status: response.status
+        });
       }
     } catch (err) {
-      // Silent fail - TM results are optional
+      logger.error("[TM-FETCH] Exception", { rowId, error: err.message });
     }
   }
 
