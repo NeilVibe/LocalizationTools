@@ -25,6 +25,23 @@
 - **Removed scrollbar** - Auto-expand based on content
 - **Active/Inactive indicator** - Green dot for active, plain text for inactive
 
+### TM Search Fix (BUG FIX!)
+
+- **Bug:** `/tm/suggest` endpoint ignored `tm_id` parameter - only searched project rows, not TM entries
+- **Fix:** Added `tm_id` parameter support - now searches `ldm_tm_entries` when TM is active
+- **Schema updated:** `TMSuggestion` now supports both row-based and TM-based suggestions
+
+### Toast Notifications Fix
+
+- **Max 3 toasts** visible at once (no stacking)
+- **Deduplication** - same toast filtered within 2s
+- **"Unknown operation"** toasts filtered out
+
+### Database Cleanup
+
+- Cleaned all test projects/files/TMs
+- Created fresh: 1 project, 1 file (10 rows), 1 TM (10 entries)
+
 ---
 
 ## What's Working
@@ -38,6 +55,8 @@
 | Rename (F2, double-click) | ✅ |
 | TM Manager modal | ✅ |
 | Active TM indicator | ✅ |
+| TM search with active TM | ✅ FIXED |
+| Toast notifications | ✅ FIXED |
 
 ---
 
