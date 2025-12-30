@@ -89,6 +89,47 @@ async def get_project(
     return project
 
 
+@router.patch("/projects/{project_id}/rename")
+async def rename_project(
+    project_id: int,
+    name: str,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """Rename a project."""
+    user_id = current_user["user_id"]
+
+    # Get project
+    result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == project_id,
+            LDMProject.owner_id == user_id
+        )
+    )
+    project = result.scalar_one_or_none()
+
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Check for duplicate name
+    result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.owner_id == user_id,
+            LDMProject.name == name,
+            LDMProject.id != project_id
+        )
+    )
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"A project named '{name}' already exists")
+
+    old_name = project.name
+    project.name = name
+    await db.commit()
+
+    logger.success(f"Project renamed: id={project_id}, '{old_name}' -> '{name}'")
+    return {"success": True, "project_id": project_id, "name": name}
+
+
 @router.delete("/projects/{project_id}", response_model=DeleteResponse)
 async def delete_project(
     project_id: int,

@@ -549,16 +549,19 @@
                     on:click={() => openExportModal(tm)}
                   />
                   <!-- UI-003: Activate/Deactivate button -->
-                  <Button
-                    kind={isActive ? "primary" : "ghost"}
-                    size="small"
-                    icon={Power}
-                    iconDescription={isActive ? "Deactivate TM" : "Activate TM"}
-                    tooltipAlignment="end"
+                  <button
+                    class="status-toggle"
+                    class:is-active={isActive}
+                    title={isActive ? "Click to deactivate" : "Click to activate"}
                     on:click={() => toggleActiveTm(tm)}
                   >
-                    {isActive ? "Active" : "Activate"}
-                  </Button>
+                    {#if isActive}
+                      <span class="status-dot active"></span>
+                      <span>Active</span>
+                    {:else}
+                      <span class="status-text-inactive">Inactive</span>
+                    {/if}
+                  </button>
                   {#if tm.status === 'pending' || tm.status === 'error'}
                     <Button
                       kind="ghost"
@@ -737,8 +740,15 @@
 {/if}
 
 <style>
+  /* Override Carbon Modal's fixed max-height to auto-expand */
+  :global(.bx--modal-container--lg .bx--modal-content) {
+    max-height: none;
+    overflow: visible;
+  }
+
   .tm-manager {
-    min-height: 300px;
+    /* No min-height - auto-expand based on content */
+    padding-bottom: 1rem;
   }
 
   .tm-toolbar {
@@ -1056,5 +1066,44 @@
 
   .column-option.disabled input[type="checkbox"] {
     cursor: not-allowed;
+  }
+
+  /* Status Toggle Button */
+  .status-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: transparent;
+    color: var(--cds-text-02);
+  }
+
+  .status-toggle:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .status-toggle.is-active {
+    color: var(--cds-support-success);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .status-dot.active {
+    background: var(--cds-support-success);
+    box-shadow: 0 0 4px var(--cds-support-success);
+  }
+
+  .status-text-inactive {
+    color: var(--cds-text-03);
   }
 </style>
