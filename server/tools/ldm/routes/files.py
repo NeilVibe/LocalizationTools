@@ -359,6 +359,56 @@ async def move_file_to_folder(
     return {"success": True, "file_id": file_id, "folder_id": folder_id}
 
 
+@router.patch("/files/{file_id}/rename")
+async def rename_file(
+    file_id: int,
+    name: str,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """Rename a file."""
+    # Get file
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.id == file_id)
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Verify project ownership
+    result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == file.project_id,
+            LDMProject.owner_id == current_user["user_id"]
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="Not authorized to modify this file")
+
+    # Check for duplicate name in same folder
+    duplicate_query = select(LDMFile).where(
+        LDMFile.project_id == file.project_id,
+        LDMFile.name == name,
+        LDMFile.id != file_id
+    )
+    if file.folder_id:
+        duplicate_query = duplicate_query.where(LDMFile.folder_id == file.folder_id)
+    else:
+        duplicate_query = duplicate_query.where(LDMFile.folder_id.is_(None))
+
+    result = await db.execute(duplicate_query)
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"A file named '{name}' already exists in this location")
+
+    old_name = file.name
+    file.name = name
+    await db.commit()
+
+    logger.success(f"File renamed: id={file_id}, '{old_name}' -> '{name}'")
+    return {"success": True, "file_id": file_id, "name": name}
+
+
 @router.post("/files/excel-preview")
 async def excel_preview(
     file: UploadFile = File(...),

@@ -13,7 +13,7 @@
     TextArea,
     Tag
   } from "carbon-components-svelte";
-  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink, Merge, TextMining } from "carbon-icons-svelte";
+  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink, Merge, TextMining, Edit, ChevronLeft, ChevronRight } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -100,6 +100,18 @@
   let folderContextMenuX = $state(0);
   let folderContextMenuY = $state(0);
   let contextMenuFolder = $state(null); // {id, name, type}
+
+  // Project context menu state (right-click on project header)
+  let showProjectContextMenuState = $state(false);
+  let projectContextMenuX = $state(0);
+  let projectContextMenuY = $state(0);
+
+  // Rename state (inline editing)
+  let editingItem = $state(null); // { type: 'project'|'folder'|'file', id: number, name: string }
+  let editingName = $state('');
+
+  // Folder expand/collapse state (accordion style)
+  let expandedFolders = $state(new Set()); // Set of folder IDs that are expanded
 
   // Load projects list
   export async function loadProjects() {
@@ -396,8 +408,19 @@
     selectedProjectId = projectId;
     selectedFileId = null;
     selectedFolderId = null;
-    loadProjectTree(projectId);
+    // NOTE: Don't call loadProjectTree here - $effect handles it
     dispatch('projectSelect', { projectId });
+  }
+
+  // Go back to projects list (deselect project)
+  function goBackToProjects() {
+    selectedProjectId = null;
+    selectedFileId = null;
+    selectedFolderId = null;
+    projectTree = null;
+    treeNodes = [];
+    expandedFolders = new Set(); // Reset expanded folders
+    dispatch('projectSelect', { projectId: null });
   }
 
   // Handle tree node selection (Carbon TreeView - deprecated)
@@ -433,6 +456,17 @@
     }
   }
 
+  // Toggle folder expand/collapse
+  function toggleFolder(folderId) {
+    const newExpanded = new Set(expandedFolders);
+    if (newExpanded.has(folderId)) {
+      newExpanded.delete(folderId);
+    } else {
+      newExpanded.add(folderId);
+    }
+    expandedFolders = newExpanded;
+  }
+
   // Handle custom tree node click
   function handleNodeClick(node) {
     const data = node.data;
@@ -442,9 +476,11 @@
       dispatch('fileSelect', { fileId: data.id, file: data });
       logger.info("File selected", { fileId: data.id, name: data.name });
     } else if (data.type === 'folder') {
+      // Toggle folder expand/collapse
+      toggleFolder(data.id);
       selectedFolderId = data.id;
       selectedFileId = null;
-      logger.info("Folder selected", { folderId: data.id, name: data.name });
+      logger.info("Folder toggled", { folderId: data.id, name: data.name, expanded: expandedFolders.has(data.id) });
     }
   }
 
@@ -512,40 +548,294 @@
     dropTargetFolder = folder;
   }
 
-  // Handle drop on folder - move file to folder
+  // Clear drop target when leaving folder
+  function handleDragLeave(event, folder) {
+    // Only clear if we're actually leaving this folder (not entering a child)
+    const relatedTarget = event.relatedTarget;
+    if (!relatedTarget || !event.currentTarget.contains(relatedTarget)) {
+      if (dropTargetFolder?.id === folder.id) {
+        dropTargetFolder = null;
+      }
+    }
+  }
+
+  // Clear drag state when drag ends (e.g., dropped outside or cancelled)
+  function handleDragEnd() {
+    draggedFile = null;
+    dropTargetFolder = null;
+  }
+
+  // Helper: Find and remove a node from tree by data id, returns the removed node
+  function removeNodeFromTree(nodes, fileId) {
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (node.data.type === 'file' && node.data.id === fileId) {
+        // Found it - remove and return
+        return nodes.splice(i, 1)[0];
+      }
+      if (node.children && node.children.length > 0) {
+        const found = removeNodeFromTree(node.children, fileId);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  // Helper: Find a folder node in tree by data id
+  function findFolderNode(nodes, folderId) {
+    for (const node of nodes) {
+      if (node.data.type === 'folder' && node.data.id === folderId) {
+        return node;
+      }
+      if (node.children && node.children.length > 0) {
+        const found = findFolderNode(node.children, folderId);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  // Handle drop on folder - move file to folder (OPTIMISTIC UI)
   async function handleDrop(event, folder) {
     event.preventDefault();
+
     if (!draggedFile || folder.type !== 'folder') {
       dropTargetFolder = null;
       return;
     }
 
-    logger.info("Moving file to folder", { file: draggedFile.name, folder: folder.name });
+    const movedFile = draggedFile;
+    const targetFolder = folder;
 
+    // Clear drag state immediately
+    draggedFile = null;
+    dropTargetFolder = null;
+
+    // === OPTIMISTIC UI UPDATE ===
+    // Move file in local tree state IMMEDIATELY (before API call)
+    const removedNode = removeNodeFromTree(treeNodes, movedFile.id);
+    if (!removedNode) {
+      logger.error("Could not find file in tree", { fileId: movedFile.id });
+      return;
+    }
+
+    const targetFolderNode = findFolderNode(treeNodes, targetFolder.id);
+    if (!targetFolderNode) {
+      logger.error("Could not find target folder in tree", { folderId: targetFolder.id });
+      // Revert - reload tree
+      await loadProjectTree(selectedProjectId);
+      return;
+    }
+
+    // Add file to target folder's children
+    if (!targetFolderNode.children) {
+      targetFolderNode.children = [];
+    }
+    targetFolderNode.children.push(removedNode);
+
+    // Force Svelte reactivity by reassigning treeNodes
+    treeNodes = [...treeNodes];
+
+    logger.info("File moved (optimistic)", { file: movedFile.name, folder: targetFolder.name });
+
+    // === BACKGROUND API CALL ===
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/files/${draggedFile.id}/move`, {
+      const url = `${API_BASE}/api/ldm/files/${movedFile.id}/move?folder_id=${targetFolder.id}`;
+      const response = await fetch(url, {
         method: 'PATCH',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ folder_id: folder.id })
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
-        logger.success("File moved", { file: draggedFile.name, folder: folder.name });
-        // Reload tree to show updated structure
-        await loadProjectTree(selectedProjectId);
+        logger.success("File moved (confirmed)", { file: movedFile.name, folder: targetFolder.name });
       } else {
         const error = await response.json();
-        logger.error("Failed to move file", { error: error.detail });
+        logger.error("Move failed - reverting", { error: error.detail });
+        // Revert: reload tree from server
+        await loadProjectTree(selectedProjectId);
       }
     } catch (err) {
-      logger.error("Error moving file", { error: err.message });
-    } finally {
-      draggedFile = null;
-      dropTargetFolder = null;
+      logger.error("Move error - reverting", { error: err.message });
+      // Revert: reload tree from server
+      await loadProjectTree(selectedProjectId);
     }
+  }
+
+  // ============== Rename Functions ==============
+
+  // Start inline editing
+  function startRename(type, id, currentName) {
+    editingItem = { type, id, name: currentName };
+    editingName = currentName;
+    // Close any open context menus
+    closeContextMenu();
+    closeFolderContextMenu();
+  }
+
+  // Cancel editing
+  function cancelRename() {
+    editingItem = null;
+    editingName = '';
+  }
+
+  // Save rename (called on Enter or blur)
+  async function saveRename() {
+    if (!editingItem || !editingName.trim()) {
+      cancelRename();
+      return;
+    }
+
+    const newName = editingName.trim();
+    if (newName === editingItem.name) {
+      cancelRename();
+      return;
+    }
+
+    const { type, id } = editingItem;
+    let url;
+    if (type === 'project') {
+      url = `${API_BASE}/api/ldm/projects/${id}/rename?name=${encodeURIComponent(newName)}`;
+    } else if (type === 'folder') {
+      url = `${API_BASE}/api/ldm/folders/${id}/rename?name=${encodeURIComponent(newName)}`;
+    } else if (type === 'file') {
+      url = `${API_BASE}/api/ldm/files/${id}/rename?name=${encodeURIComponent(newName)}`;
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        logger.success(`${type} renamed`, { id, newName });
+
+        // Update local state immediately (optimistic)
+        if (type === 'project') {
+          const project = projects.find(p => p.id === id);
+          if (project) project.name = newName;
+          projects = [...projects];
+          // Also update projectTree if it's the selected project
+          if (projectTree && projectTree.project.id === id) {
+            projectTree.project.name = newName;
+          }
+        } else {
+          // Folder or file - update in tree
+          updateNodeName(treeNodes, type, id, newName);
+          treeNodes = [...treeNodes];
+        }
+      } else {
+        const error = await response.json();
+        logger.error(`Failed to rename ${type}`, { error: error.detail });
+        alert(`Failed to rename: ${error.detail}`);
+      }
+    } catch (err) {
+      logger.error(`Error renaming ${type}`, { error: err.message });
+    } finally {
+      cancelRename();
+    }
+  }
+
+  // Helper: Update node name in tree
+  function updateNodeName(nodes, type, id, newName) {
+    for (const node of nodes) {
+      if (node.data.type === type && node.data.id === id) {
+        node.data.name = newName;
+        node.text = newName;
+        return true;
+      }
+      if (node.children?.length) {
+        if (updateNodeName(node.children, type, id, newName)) return true;
+      }
+    }
+    return false;
+  }
+
+  // Handle keydown in rename input
+  function handleRenameKeydown(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      saveRename();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelRename();
+    }
+  }
+
+  // Start rename from context menu
+  function renameFile() {
+    if (!contextMenuFile) return;
+    startRename('file', contextMenuFile.id, contextMenuFile.name);
+  }
+
+  function renameFolder() {
+    if (!contextMenuFolder) return;
+    startRename('folder', contextMenuFolder.id, contextMenuFolder.name);
+  }
+
+  // Project context menu (right-click on project header)
+  function showProjectContextMenu(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    projectContextMenuX = event.clientX;
+    projectContextMenuY = event.clientY;
+    showProjectContextMenuState = true;
+    // Close other menus
+    closeContextMenu();
+    closeFolderContextMenu();
+  }
+
+  function closeProjectContextMenu() {
+    showProjectContextMenuState = false;
+  }
+
+  // F2 hotkey for rename (like Windows Explorer)
+  function handleKeydown(event) {
+    // F2 to rename selected item
+    if (event.key === 'F2' && !editingItem) {
+      event.preventDefault();
+
+      // Check what's selected and start rename
+      if (selectedFileId) {
+        // Find the file in tree
+        const fileNode = findNodeById(treeNodes, 'file', selectedFileId);
+        if (fileNode) {
+          startRename('file', fileNode.data.id, fileNode.data.name);
+        }
+      } else if (selectedFolderId) {
+        // Find the folder in tree
+        const folderNode = findNodeById(treeNodes, 'folder', selectedFolderId);
+        if (folderNode) {
+          startRename('folder', folderNode.data.id, folderNode.data.name);
+        }
+      } else if (selectedProjectId) {
+        // Rename selected project
+        const project = projects.find(p => p.id === selectedProjectId);
+        if (project) {
+          startRename('project', project.id, project.name);
+        }
+      }
+    }
+
+    // Escape to cancel editing (backup handler)
+    if (event.key === 'Escape' && editingItem) {
+      event.preventDefault();
+      cancelRename();
+    }
+  }
+
+  // Helper: Find a node in tree by type and id
+  function findNodeById(nodes, type, id) {
+    for (const node of nodes) {
+      if (node.data.type === type && node.data.id === id) {
+        return node;
+      }
+      if (node.children?.length) {
+        const found = findNodeById(node.children, type, id);
+        if (found) return found;
+      }
+    }
+    return null;
   }
 
   // Create subfolder in folder
@@ -598,6 +888,9 @@
     }
     if (showFolderContextMenu) {
       closeFolderContextMenu();
+    }
+    if (showProjectContextMenuState) {
+      closeProjectContextMenu();
     }
   }
 
@@ -1040,7 +1333,7 @@
   });
 </script>
 
-<div class="file-explorer">
+<div class="file-explorer" tabindex="0" onkeydown={handleKeydown}>
   <!-- P33 Phase 3: Tab Bar -->
   <div class="tab-bar">
     <button
@@ -1063,100 +1356,117 @@
 
   <!-- Files Tab Content -->
   {#if activeTab === 'files'}
-    <div class="explorer-header">
-      <h4>Projects</h4>
-      <Button
-        kind="ghost"
-        size="small"
-        icon={Add}
-        iconDescription="New Project"
-        on:click={() => showNewProjectModal = true}
-      />
-    </div>
-
     {#if loading}
       <InlineLoading description="Loading..." />
     {:else}
-      <!-- Projects List -->
-      <div class="projects-list">
-        {#each projects as project}
-          <button
-            class="project-item"
-            class:selected={selectedProjectId === project.id}
-            onclick={() => selectProject(project.id)}
-          >
-            <Folder size={16} />
-            <span>{project.name}</span>
-          </button>
-        {/each}
-        {#if projects.length === 0}
-          <p class="empty-message">No projects yet</p>
-        {/if}
-      </div>
-
-      <!-- Project Tree -->
-      {#if selectedProjectId && projectTree}
-        <div class="tree-header">
-          <h5>{projectTree.project.name}</h5>
-          <div class="tree-actions">
-            <Button
-              kind="ghost"
-              size="small"
-              icon={FolderAdd}
-              iconDescription="New Folder"
-              on:click={() => showNewFolderModal = true}
-            />
-            <Button
-              kind="ghost"
-              size="small"
-              icon={Upload}
-              iconDescription="Upload File"
-              on:click={() => showUploadModal = true}
-            />
-          </div>
+      <!-- Accordion Style: Either show projects list OR project contents -->
+      {#if !selectedProjectId}
+        <!-- PROJECTS LIST VIEW (full height) -->
+        <div class="explorer-header">
+          <h4>Projects</h4>
+          <Button
+            kind="ghost"
+            size="small"
+            icon={Add}
+            iconDescription="New Project"
+            on:click={() => showNewProjectModal = true}
+          />
         </div>
-
-        <!-- FEAT-001: Linked TM indicator -->
-        <div class="linked-tm-bar">
-          {#if linkedTM}
-            <button class="linked-tm-button has-tm" onclick={openLinkTMModal}>
-              <Link size={14} />
-              <span class="linked-tm-name">{linkedTM.tm_name}</span>
-              <Tag type="green" size="sm">Linked</Tag>
+        <div class="projects-list-full">
+          {#each projects as project}
+            {@const isEditingProject = editingItem?.type === 'project' && editingItem?.id === project.id}
+            <button
+              class="project-item-full"
+              class:editing={isEditingProject}
+              onclick={() => !isEditingProject && selectProject(project.id)}
+              ondblclick={() => startRename('project', project.id, project.name)}
+            >
+              <Folder size={16} />
+              {#if isEditingProject}
+                <input
+                  type="text"
+                  class="rename-input"
+                  bind:value={editingName}
+                  onkeydown={handleRenameKeydown}
+                  onblur={saveRename}
+                  onclick={(e) => e.stopPropagation()}
+                  autofocus
+                />
+              {:else}
+                <span class="project-name">{project.name}</span>
+                <ChevronRight size={16} class="chevron-icon" />
+              {/if}
             </button>
-          {:else}
-            <button class="linked-tm-button no-tm" onclick={openLinkTMModal}>
-              <Unlink size={14} />
-              <span>Link a TM for auto-add</span>
-            </button>
+          {/each}
+          {#if projects.length === 0}
+            <p class="empty-message">No projects yet</p>
           {/if}
         </div>
+      {:else}
+        <!-- PROJECT CONTENTS VIEW (full height) -->
+        <div class="project-contents">
+          <!-- Back button + Project name header (right-click for actions) -->
+          <button
+            class="project-back-header"
+            onclick={goBackToProjects}
+            oncontextmenu={(e) => showProjectContextMenu(e)}
+          >
+            <ChevronLeft size={16} />
+            <Folder size={16} />
+            <span class="project-header-name">{projectTree?.project?.name || 'Loading...'}</span>
+            {#if linkedTM}
+              <Tag type="green" size="sm" title={linkedTM.tm_name}>TM</Tag>
+            {/if}
+          </button>
 
         {#if treeNodes.length > 0}
           <!-- Recursive tree node snippet for infinite nesting -->
           {#snippet renderTreeNode(node, depth = 0)}
             {@const NodeIcon = node.icon}
+            {@const isEditing = editingItem?.type === node.data.type && editingItem?.id === node.data.id}
             <div
               class="tree-node"
               class:selected={node.data.type === 'file' && selectedFileId === node.data.id}
               class:folder={node.data.type === 'folder'}
+              class:drop-target={node.data.type === 'folder' && dropTargetFolder?.id === node.data.id}
+              class:dragging={node.data.type === 'file' && draggedFile?.id === node.data.id}
+              class:editing={isEditing}
               style="padding-left: {depth * 16}px;"
-              onclick={() => handleNodeClick(node)}
+              onclick={() => !isEditing && handleNodeClick(node)}
               oncontextmenu={(e) => handleContextMenu(e, node.data)}
               ondragover={(e) => node.data.type === 'folder' && handleDragOver(e, node.data)}
+              ondragleave={(e) => node.data.type === 'folder' && handleDragLeave(e, node.data)}
               ondrop={(e) => node.data.type === 'folder' && handleDrop(e, node.data)}
               ondragstart={(e) => node.data.type === 'file' && handleDragStart(e, node.data)}
-              draggable={node.data.type === 'file' ? 'true' : 'false'}
+              ondragend={handleDragEnd}
+              draggable={node.data.type === 'file' && !isEditing ? 'true' : 'false'}
               role="button"
               tabindex="0"
             >
-              <NodeIcon size={16} />
-              <span class="node-text">{node.text}</span>
               {#if node.data.type === 'folder'}
-                <span class="folder-count">({node.children?.length || 0})</span>
+                <span class="folder-chevron" class:expanded={expandedFolders.has(node.data.id)}>
+                  <ChevronRight size={14} />
+                </span>
+              {/if}
+              <NodeIcon size={16} />
+              {#if isEditing}
+                <input
+                  type="text"
+                  class="rename-input"
+                  bind:value={editingName}
+                  onkeydown={handleRenameKeydown}
+                  onblur={saveRename}
+                  onclick={(e) => e.stopPropagation()}
+                  autofocus
+                />
+              {:else}
+                <span class="node-text">{node.text}</span>
+                {#if node.data.type === 'folder'}
+                  <span class="folder-count">({node.children?.length || 0})</span>
+                {/if}
               {/if}
             </div>
-            {#if node.children && node.children.length > 0}
+            {#if node.data.type === 'folder' && node.children && node.children.length > 0 && expandedFolders.has(node.data.id)}
               <div class="tree-children">
                 {#each node.children as child}
                   {@render renderTreeNode(child, depth + 1)}
@@ -1165,14 +1475,17 @@
             {/if}
           {/snippet}
 
-          <div class="custom-tree" oncontextmenu={(e) => e.preventDefault()}>
+          <div class="custom-tree" oncontextmenu={(e) => { e.preventDefault(); showProjectContextMenu(e); }}>
             {#each treeNodes as node}
               {@render renderTreeNode(node, 0)}
             {/each}
           </div>
         {:else}
-          <p class="empty-message">No files yet. Upload a TXT or XML file.</p>
+          <div class="empty-area" oncontextmenu={(e) => { e.preventDefault(); showProjectContextMenu(e); }}>
+            <p class="empty-message">No files yet. Right-click to import.</p>
+          </div>
         {/if}
+        </div>
       {/if}
     {/if}
   {/if}
@@ -1237,6 +1550,10 @@
     onclick={(e) => e.stopPropagation()}
     role="menu"
   >
+    <button class="context-menu-item" onclick={renameFile} role="menuitem">
+      <Edit size={16} />
+      <span>Rename</span>
+    </button>
     <button class="context-menu-item" onclick={downloadFile} role="menuitem">
       <Download size={16} />
       <span>Download File</span>
@@ -1312,6 +1629,10 @@
     onclick={(e) => e.stopPropagation()}
     role="menu"
   >
+    <button class="context-menu-item" onclick={renameFolder} role="menuitem">
+      <Edit size={16} />
+      <span>Rename</span>
+    </button>
     <button class="context-menu-item" onclick={importFileToFolder} role="menuitem">
       <Upload size={16} />
       <span>Import File Here...</span>
@@ -1319,6 +1640,40 @@
     <button class="context-menu-item" onclick={createSubfolder} role="menuitem">
       <FolderAdd size={16} />
       <span>Create Subfolder...</span>
+    </button>
+  </div>
+{/if}
+
+<!-- Project Context Menu (right-click on project header) -->
+{#if showProjectContextMenuState}
+  <div
+    class="context-menu"
+    style="left: {projectContextMenuX}px; top: {projectContextMenuY}px;"
+    onclick={(e) => e.stopPropagation()}
+    role="menu"
+  >
+    <button class="context-menu-item" onclick={() => { closeProjectContextMenu(); selectedFolderId = null; showUploadModal = true; }} role="menuitem">
+      <Upload size={16} />
+      <span>Import File...</span>
+    </button>
+    <button class="context-menu-item" onclick={() => { closeProjectContextMenu(); showNewFolderModal = true; }} role="menuitem">
+      <FolderAdd size={16} />
+      <span>New Folder...</span>
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" onclick={() => { closeProjectContextMenu(); openLinkTMModal(); }} role="menuitem">
+      {#if linkedTM}
+        <Unlink size={16} />
+        <span>Change Linked TM...</span>
+      {:else}
+        <Link size={16} />
+        <span>Link TM...</span>
+      {/if}
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" onclick={() => { closeProjectContextMenu(); startRename('project', selectedProjectId, projectTree?.project?.name); }} role="menuitem">
+      <Edit size={16} />
+      <span>Rename Project</span>
     </button>
   </div>
 {/if}
@@ -1720,11 +2075,96 @@
     font-weight: 600;
   }
 
+  /* OLD - replaced by accordion style */
   .projects-list {
-    padding: 0.5rem;
-    max-height: 150px;
+    display: none;
+  }
+
+  /* NEW: Accordion-style projects list (full height) */
+  .projects-list-full {
+    flex: 1;
     overflow-y: auto;
+    padding: 0.5rem;
+  }
+
+  .project-item-full {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 0.5rem;
+    background: transparent;
+    border: none;
     border-bottom: 1px solid var(--cds-border-subtle-01);
+    cursor: pointer;
+    text-align: left;
+    color: var(--cds-text-01);
+    transition: background-color 0.15s ease;
+  }
+
+  .project-item-full:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .project-item-full:last-child {
+    border-bottom: none;
+  }
+
+  .project-item-full .project-name {
+    flex: 1;
+    font-weight: 500;
+  }
+
+  .project-item-full .chevron-icon {
+    color: var(--cds-text-03);
+  }
+
+  .project-item-full.editing {
+    background: var(--cds-layer-selected-01);
+  }
+
+  /* NEW: Project contents view (full height) */
+  .project-contents {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: visible; /* Allow tooltips to show */
+  }
+
+  .project-back-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 0.5rem;
+    background: var(--cds-layer-01);
+    border: none;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    cursor: pointer;
+    text-align: left;
+    color: var(--cds-text-01);
+    transition: background-color 0.15s ease;
+  }
+
+  .project-back-header:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .project-header-name {
+    flex: 1;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .tree-actions-bar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    overflow: visible; /* Allow tooltips to show */
+    position: relative;
+    z-index: 10; /* Tooltips above other content */
   }
 
   /* P33 Phase 3: TM List Styles */
@@ -1800,6 +2240,14 @@
     background: var(--cds-layer-selected-01);
   }
 
+  .project-item.editing {
+    background: var(--cds-layer-selected-01);
+  }
+
+  .project-item .rename-input {
+    flex: 1;
+  }
+
   .tree-header {
     display: flex;
     justify-content: space-between;
@@ -1871,6 +2319,14 @@
     text-align: center;
   }
 
+  .empty-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+
   :global(.file-explorer .bx--tree-view) {
     flex: 1;
     overflow-y: auto;
@@ -1904,11 +2360,56 @@
     background: var(--cds-layer-selected-01);
   }
 
+  /* Drag and drop visual feedback */
+  .tree-node.drop-target {
+    background: rgba(15, 98, 254, 0.2);
+    outline: 2px dashed var(--cds-interactive-01, #0f62fe);
+    outline-offset: -2px;
+  }
+
+  .tree-node.dragging {
+    opacity: 0.5;
+  }
+
+  .tree-node.editing {
+    background: var(--cds-layer-selected-01);
+  }
+
+  .rename-input {
+    flex: 1;
+    background: var(--cds-field-01);
+    border: 1px solid var(--cds-interactive-01);
+    border-radius: 2px;
+    padding: 0.125rem 0.25rem;
+    font-size: 0.875rem;
+    color: var(--cds-text-01);
+    outline: none;
+    min-width: 0;
+  }
+
+  .rename-input:focus {
+    border-color: var(--cds-interactive-01);
+    box-shadow: 0 0 0 1px var(--cds-interactive-01);
+  }
+
   .tree-node .node-text {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* Folder expand/collapse chevron */
+  .folder-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+    color: var(--cds-text-03);
+  }
+
+  .folder-chevron.expanded {
+    transform: rotate(90deg);
   }
 
   .tree-children {

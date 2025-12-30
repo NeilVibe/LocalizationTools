@@ -89,6 +89,51 @@ async def create_folder(
     return new_folder
 
 
+@router.patch("/folders/{folder_id}/rename")
+async def rename_folder(
+    folder_id: int,
+    name: str,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """Rename a folder."""
+    # Get folder with project info
+    result = await db.execute(
+        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
+            LDMFolder.id == folder_id
+        )
+    )
+    folder = result.scalar_one_or_none()
+
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    if folder.project.owner_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Check for duplicate name in same parent
+    duplicate_query = select(LDMFolder).where(
+        LDMFolder.project_id == folder.project_id,
+        LDMFolder.name == name,
+        LDMFolder.id != folder_id
+    )
+    if folder.parent_id:
+        duplicate_query = duplicate_query.where(LDMFolder.parent_id == folder.parent_id)
+    else:
+        duplicate_query = duplicate_query.where(LDMFolder.parent_id.is_(None))
+
+    result = await db.execute(duplicate_query)
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"A folder named '{name}' already exists in this location")
+
+    old_name = folder.name
+    folder.name = name
+    await db.commit()
+
+    logger.success(f"Folder renamed: id={folder_id}, '{old_name}' -> '{name}'")
+    return {"success": True, "folder_id": folder_id, "name": name}
+
+
 @router.delete("/folders/{folder_id}", response_model=DeleteResponse)
 async def delete_folder(
     folder_id: int,

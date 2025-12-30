@@ -109,25 +109,93 @@
   let qaLoading = $state(false);
   let lastQaResult = $state(null); // Latest QA check result (for QA badge updates)
 
-  // UI-044: Resizable columns state
-  let sourceWidthPercent = $state(50); // Source column takes 50% by default
+  // ============================================================
+  // UNIFIED COLUMN RESIZE SYSTEM (UI-083)
+  // All columns use full-height resize bars, factorized logic
+  // ============================================================
+
+  // Column widths (px for fixed, % for source/target split)
+  let indexColumnWidth = $state(60);
+  let stringIdColumnWidth = $state(150);
+  let sourceWidthPercent = $state(50);
+  let referenceColumnWidth = $state(300);
+
+  // Column width limits (min, max)
+  const COLUMN_LIMITS = {
+    index: { min: 40, max: 120 },
+    stringId: { min: 80, max: 300 },
+    source: { min: 20, max: 80 }, // percentage
+    reference: { min: 150, max: 500 }
+  };
+
+  // Resize state (unified) - using simple variables to avoid reactivity issues
   let isResizing = $state(false);
+  let resizeColumn = $state(null);    // 'index' | 'stringId' | 'source' | 'reference'
   let resizeStartX = $state(0);
-  let resizeStartPercent = $state(50);
+  let resizeStartValue = $state(0);   // px or % depending on column
 
-  // UI-082: Individual column widths (resizable)
-  let indexColumnWidth = $state(60);      // Index/row_num column
-  let stringIdColumnWidth = $state(150);  // StringID column
-  let referenceColumnWidth = $state(300); // Reference column
-  let resizeColumn = $state(null);        // Which column is being resized
-  let resizeStartWidth = $state(0);       // Starting width for fixed column resize
-
-  // UI-081: Calculate fixed columns width before source (for resize bar positioning)
-  let fixedColumnsBeforeSource = $derived(() => {
+  // Calculate total fixed width before source column
+  function getFixedWidthBefore() {
     let width = 0;
     if ($preferences.showIndex) width += indexColumnWidth;
     if ($preferences.showStringId) width += stringIdColumnWidth;
     return width;
+  }
+
+  // Calculate total fixed width after target column
+  function getFixedWidthAfter() {
+    return $preferences.showReference ? referenceColumnWidth : 0;
+  }
+
+  // Container width for position calculations (reactive)
+  let containerWidth = $state(800);
+
+  // Update container width when it changes
+  function updateContainerWidth() {
+    if (containerEl) {
+      containerWidth = containerEl.clientWidth;
+    }
+  }
+
+  // Get visible resize bars based on preferences
+  let visibleResizeBars = $derived.by(() => {
+    const bars = [];
+    if ($preferences.showIndex) bars.push('index');
+    if ($preferences.showStringId) bars.push('stringId');
+    bars.push('source'); // Always visible (source/target split)
+    if ($preferences.showReference) bars.push('reference');
+    return bars;
+  });
+
+  // Pre-compute resize bar positions (REACTIVE)
+  let resizeBarPositions = $derived.by(() => {
+    const positions = {};
+    let pos = 0;
+
+    // Index bar position (at right edge of index column)
+    if ($preferences.showIndex) {
+      positions['index'] = indexColumnWidth;
+      pos += indexColumnWidth;
+    }
+
+    // StringID bar position (at right edge of stringId column)
+    if ($preferences.showStringId) {
+      positions['stringId'] = pos + stringIdColumnWidth;
+      pos += stringIdColumnWidth;
+    }
+
+    // Source bar position (between source and target, percentage-based)
+    const fixedAfter = $preferences.showReference ? referenceColumnWidth : 0;
+    const fixedTotal = pos + fixedAfter;
+    const flexWidth = containerWidth - fixedTotal;
+    positions['source'] = pos + (flexWidth * sourceWidthPercent / 100);
+
+    // Reference bar position (at left edge of reference column)
+    if ($preferences.showReference) {
+      positions['reference'] = containerWidth - referenceColumnWidth;
+    }
+
+    return positions;
   });
 
   // Table column definitions (base config, actual widths from state)
@@ -867,6 +935,14 @@
           // Update local row data with file-format text
           row.target = textToSave;
           row.status = 'translated';
+
+          // Invalidate height cache for this row (content changed, height may differ)
+          const rowIndex = getRowIndexById(row.id);
+          if (rowIndex !== undefined) {
+            rowHeightCache.delete(rowIndex);
+            rebuildCumulativeHeights(); // Recalculate all positions
+          }
+
           logger.success("Inline edit saved", { rowId: row.id });
           dispatch('rowUpdate', { rowId: row.id });
         } else {
@@ -1131,6 +1207,14 @@
         // Update local row data with file-format text
         row.target = textToSave;
         row.status = 'reviewed';
+
+        // Invalidate height cache for this row (content changed, height may differ)
+        const rowIndex = getRowIndexById(row.id);
+        if (rowIndex !== undefined) {
+          rowHeightCache.delete(rowIndex);
+          rebuildCumulativeHeights(); // Recalculate all positions
+        }
+
         logger.success("Translation confirmed", { rowId: row.id, status: 'reviewed' });
 
         // Dispatch event to add to linked TM (handled by LDM.svelte)
@@ -1250,6 +1334,7 @@
   // Handle real-time cell updates from other users
   // SMART INDEXING: Uses O(1) lookup instead of O(n) findIndex
   function handleCellUpdates(updates) {
+    let heightsChanged = false;
     updates.forEach(update => {
       // O(1) lookup using index map
       const rowIndex = getRowIndexById(update.row_id);
@@ -1259,8 +1344,14 @@
           target: update.target,
           status: update.status
         };
+        // Invalidate height cache for this row (content may have changed)
+        rowHeightCache.delete(rowIndex);
+        heightsChanged = true;
       }
     });
+    if (heightsChanged) {
+      rebuildCumulativeHeights();
+    }
     rows = [...rows];
     logger.info("Real-time updates applied", { count: updates.length });
   }
@@ -1470,78 +1561,60 @@
     hoveredCell = null;
   }
 
-  // UI-044: Column resize handlers (source/target percentage-based)
-  function startResize(event) {
-    event.preventDefault();
-    isResizing = true;
-    resizeColumn = 'source'; // Main resize bar is for source/target split
-    resizeStartX = event.clientX;
-    resizeStartPercent = sourceWidthPercent;
+  // ============================================================
+  // UI-083: UNIFIED RESIZE HANDLERS (factorized)
+  // Single entry point for all column resizing
+  // ============================================================
 
-    // Add global listeners for drag
-    document.addEventListener('mousemove', handleResize);
-    document.addEventListener('mouseup', stopResize);
-  }
-
-  // UI-082: Start resize for fixed-width columns
-  function startColumnResize(event, columnKey) {
+  function startResize(event, column = 'source') {
     event.preventDefault();
     event.stopPropagation();
-    isResizing = true;
-    resizeColumn = columnKey;
-    resizeStartX = event.clientX;
 
-    // Store starting width based on column
-    if (columnKey === 'index') {
-      resizeStartWidth = indexColumnWidth;
-    } else if (columnKey === 'stringId') {
-      resizeStartWidth = stringIdColumnWidth;
-    } else if (columnKey === 'reference') {
-      resizeStartWidth = referenceColumnWidth;
+    // Get starting value based on column type
+    if (column === 'source') {
+      resizeStartValue = sourceWidthPercent;
+    } else if (column === 'index') {
+      resizeStartValue = indexColumnWidth;
+    } else if (column === 'stringId') {
+      resizeStartValue = stringIdColumnWidth;
+    } else if (column === 'reference') {
+      resizeStartValue = referenceColumnWidth;
     }
+
+    isResizing = true;
+    resizeColumn = column;
+    resizeStartX = event.clientX;
 
     document.addEventListener('mousemove', handleResize);
     document.addEventListener('mouseup', stopResize);
   }
 
   function handleResize(event) {
-    if (!isResizing) return;
+    if (!isResizing || !containerEl) return;
 
     const deltaX = event.clientX - resizeStartX;
+    const limits = COLUMN_LIMITS[resizeColumn];
+    if (!limits) return;
 
-    // UI-082: Handle different column types
     if (resizeColumn === 'source') {
-      // Source/target split (percentage-based)
-      const scrollContainer = document.querySelector('.scroll-container');
-      if (!scrollContainer) return;
-
-      const containerRect = scrollContainer.getBoundingClientRect();
-      const containerWidth = containerRect.width;
-      const deltaPercent = (deltaX / containerWidth) * 100;
-
-      // UI-081: Calculate dynamic limits based on fixed columns
-      const fixedBefore = fixedColumnsBeforeSource();
-      let fixedAfter = 0;
-      if ($preferences.showReference) fixedAfter += referenceColumnWidth;
-
-      // Ensure source and target each have at least 100px
-      const minColumnWidth = 100;
-      const minPercent = Math.max(10, (minColumnWidth / containerWidth) * 100);
-      const maxPercent = Math.min(85, ((containerWidth - fixedBefore - fixedAfter - minColumnWidth) / containerWidth) * 100);
-
-      sourceWidthPercent = Math.max(minPercent, Math.min(maxPercent, resizeStartPercent + deltaPercent));
-    } else if (resizeColumn === 'index') {
-      // Index column (pixel-based)
-      const newWidth = Math.max(40, Math.min(120, resizeStartWidth + deltaX));
-      indexColumnWidth = newWidth;
-    } else if (resizeColumn === 'stringId') {
-      // StringID column (pixel-based)
-      const newWidth = Math.max(80, Math.min(300, resizeStartWidth + deltaX));
-      stringIdColumnWidth = newWidth;
+      // Source/Target split (percentage-based)
+      const cw = containerEl.clientWidth;
+      const fixedTotal = getFixedWidthBefore() + getFixedWidthAfter();
+      const flexWidth = cw - fixedTotal;
+      if (flexWidth <= 0) return;
+      const deltaPercent = (deltaX / flexWidth) * 100;
+      const newPercent = resizeStartValue + deltaPercent;
+      sourceWidthPercent = Math.max(limits.min, Math.min(limits.max, newPercent));
     } else if (resizeColumn === 'reference') {
-      // Reference column (pixel-based) - resizes from left edge
-      const newWidth = Math.max(150, Math.min(500, resizeStartWidth - deltaX));
-      referenceColumnWidth = newWidth;
+      // Reference resizes from LEFT edge (dragging left = bigger)
+      const newWidth = resizeStartValue - deltaX;
+      referenceColumnWidth = Math.max(limits.min, Math.min(limits.max, newWidth));
+    } else if (resizeColumn === 'index') {
+      const newWidth = resizeStartValue + deltaX;
+      indexColumnWidth = Math.max(limits.min, Math.min(limits.max, newWidth));
+    } else if (resizeColumn === 'stringId') {
+      const newWidth = resizeStartValue + deltaX;
+      stringIdColumnWidth = Math.max(limits.min, Math.min(limits.max, newWidth));
     }
   }
 
@@ -1611,9 +1684,11 @@
       if (!resizeObserver) {
         resizeObserver = new ResizeObserver(() => {
           calculateVisibleRange();
+          updateContainerWidth(); // UI-083: Update for resize bar positions
         });
       }
       resizeObserver.observe(containerEl);
+      updateContainerWidth(); // Initial width calculation
 
       // Cleanup function returned from $effect
       return () => {
@@ -1723,15 +1798,17 @@
     <!-- Virtual Scroll Container -->
     <!-- UI-081: Clean grid - no header, just data rows -->
     <div class="scroll-container" bind:this={containerEl}>
-      <!-- UI-081: Full-height column resize bar (easier to grab than tiny header) -->
-      <!-- Position accounts for fixed-width columns (Index, StringID) before source -->
-      <div
-        class="column-resize-bar"
-        style="left: calc({fixedColumnsBeforeSource()}px + {sourceWidthPercent}%);"
-        onmousedown={startResize}
-        role="separator"
-        aria-label="Resize columns"
-      ></div>
+      <!-- UI-083: Full-height resize bars for ALL resizable column boundaries -->
+      {#each visibleResizeBars as column (column)}
+        <div
+          class="column-resize-bar"
+          class:resize-active={isResizing && resizeColumn === column}
+          style="left: {resizeBarPositions[column] || 0}px;"
+          onmousedown={(e) => startResize(e, column)}
+          role="separator"
+          aria-label="Resize {column} column"
+        ></div>
+      {/each}
       {#if initialLoading}
         <div class="loading-overlay">
           <InlineLoading description="Loading rows..." />
@@ -1780,29 +1857,17 @@
                   </div>
                 {/if}
               {:else}
-                <!-- UI-082: Row number (conditional) with resize handle -->
+                <!-- UI-083: Row number (conditional) - resize via full-height bar -->
                 {#if $preferences.showIndex}
-                  <div class="cell row-num resizable-column" style="width: {indexColumnWidth}px;">
+                  <div class="cell row-num" style="width: {indexColumnWidth}px;">
                     {row.row_num}
-                    <div
-                      class="column-resize-handle"
-                      onmousedown={(e) => startColumnResize(e, 'index')}
-                      role="separator"
-                      aria-label="Resize index column"
-                    ></div>
                   </div>
                 {/if}
 
-                <!-- UI-082: StringID (conditional) with resize handle -->
+                <!-- UI-083: StringID (conditional) - resize via full-height bar -->
                 {#if $preferences.showStringId}
-                  <div class="cell string-id resizable-column" style="width: {stringIdColumnWidth}px;">
+                  <div class="cell string-id" style="width: {stringIdColumnWidth}px;">
                     {row.string_id || "-"}
-                    <div
-                      class="column-resize-handle"
-                      onmousedown={(e) => startColumnResize(e, 'stringId')}
-                      role="separator"
-                      aria-label="Resize StringID column"
-                    ></div>
                   </div>
                 {/if}
 
@@ -1866,23 +1931,16 @@
                   {/if}
                 </div>
 
-                <!-- Reference Column (conditional - Phase 8) -->
-                <!-- UI-082: Reference column with resize handle on left edge -->
+                <!-- UI-083: Reference Column (conditional) - resize via full-height bar -->
                 {#if $preferences.showReference}
                   {@const refText = getReferenceForRow(row, $preferences.referenceMatchMode)}
                   <div
-                    class="cell reference resizable-column"
+                    class="cell reference"
                     class:has-match={refText}
                     class:no-match={!refText}
                     style="width: {referenceColumnWidth}px;"
                     title={refText ? `Reference: ${refText}` : 'No reference match'}
                   >
-                    <div
-                      class="column-resize-handle left"
-                      onmousedown={(e) => startColumnResize(e, 'reference')}
-                      role="separator"
-                      aria-label="Resize reference column"
-                    ></div>
                     {#if referenceLoading}
                       <span class="cell-loading">Loading...</span>
                     {:else if refText}
@@ -2050,13 +2108,13 @@
     letter-spacing: 0.05em;
   }
 
-  /* UI-081: Full-height column resize bar */
+  /* UI-083: Full-height column resize bars (unified system) */
   .column-resize-bar {
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 8px;
-    margin-left: -4px; /* Center on the column boundary */
+    width: 10px;
+    margin-left: -5px; /* Center on the column boundary */
     cursor: col-resize;
     background: transparent;
     z-index: 20;
@@ -2064,42 +2122,11 @@
   }
 
   .column-resize-bar:hover {
-    background: rgba(15, 98, 254, 0.3);
+    background: rgba(15, 98, 254, 0.35);
   }
 
-  .column-resize-bar:active {
-    background: var(--cds-interactive-01, #0f62fe);
-  }
-
-  /* UI-082: Resizable column container */
-  .resizable-column {
-    position: relative;
-  }
-
-  /* UI-082: Column resize handle (for Index, StringID, Reference columns) */
-  .column-resize-handle {
-    position: absolute;
-    top: 0;
-    right: -3px; /* Position at right edge by default */
-    bottom: 0;
-    width: 6px;
-    cursor: col-resize;
-    background: transparent;
-    z-index: 15;
-    transition: background-color 0.15s;
-  }
-
-  /* Reference column has handle on left edge */
-  .column-resize-handle.left {
-    right: auto;
-    left: -3px;
-  }
-
-  .column-resize-handle:hover {
-    background: rgba(15, 98, 254, 0.4);
-  }
-
-  .column-resize-handle:active {
+  .column-resize-bar:active,
+  .column-resize-bar.resize-active {
     background: var(--cds-interactive-01, #0f62fe);
   }
 
@@ -2127,23 +2154,7 @@
     /* Target header - no special border needed */
   }
 
-  /* UI-044: Resize handle for column resizing */
-  .resize-handle {
-    position: absolute;
-    right: -4px;
-    top: 0;
-    bottom: 0;
-    width: 8px;
-    cursor: col-resize;
-    background: transparent;
-    z-index: 10;
-    transition: background-color 0.2s;
-  }
-
-  .resize-handle:hover,
-  .resize-handle:active {
-    background: var(--cds-interactive-01, #0f62fe);
-  }
+  /* NOTE: UI-083 removed .resize-handle - now using unified .column-resize-bar system */
 
   .scroll-container {
     flex: 1;
@@ -2249,14 +2260,14 @@
     align-items: center;
     color: var(--cds-text-02);
     font-size: 0.75rem;
-    flex: 0 0 60px;
+    flex: none; /* UI-083: Use inline width style, not fixed flex */
   }
 
   .cell.string-id {
     font-family: monospace;
     font-size: 0.75rem;
     word-break: break-all;
-    flex: 0 0 150px;
+    flex: none; /* UI-083: Use inline width style, not fixed flex */
   }
 
   .cell.source {
@@ -2444,7 +2455,7 @@
     background: var(--cds-layer-02);
     color: var(--cds-text-02);
     font-size: 0.8rem;
-    flex: 0 0 300px;
+    flex: none; /* UI-083: Use inline width style, not fixed flex */
   }
 
   .cell.reference.has-match {
