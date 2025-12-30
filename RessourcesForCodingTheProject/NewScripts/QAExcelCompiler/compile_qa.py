@@ -123,7 +123,7 @@ def get_or_create_master(category, template_file=None):
         print(f"  Creating new master from: {template_file.name}")
         wb = openpyxl.load_workbook(template_file)
 
-        # DELETE STATUS, COMMENT, SCREENSHOT columns entirely (CLEAN START)
+        # DELETE STATUS, COMMENT, SCREENSHOT, STRINGID columns entirely (CLEAN START)
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
 
@@ -133,6 +133,7 @@ def get_or_create_master(category, template_file=None):
             status_col = find_column_by_header(ws, "STATUS")
             comment_col = find_column_by_header(ws, "COMMENT")
             screenshot_col = find_column_by_header(ws, "SCREENSHOT")
+            stringid_col = find_column_by_header(ws, "STRINGID")
 
             if status_col:
                 cols_to_delete.append(status_col)
@@ -140,6 +141,8 @@ def get_or_create_master(category, template_file=None):
                 cols_to_delete.append(comment_col)
             if screenshot_col:
                 cols_to_delete.append(screenshot_col)
+            if stringid_col:
+                cols_to_delete.append(stringid_col)
 
             # Sort descending (delete from right to left)
             cols_to_delete.sort(reverse=True)
@@ -148,7 +151,7 @@ def get_or_create_master(category, template_file=None):
                 ws.delete_cols(col)
                 print(f"    Deleted column {col} from {sheet_name}")
 
-        print(f"    Master cleaned: STATUS/COMMENT/SCREENSHOT removed")
+        print(f"    Master cleaned: STATUS/COMMENT/SCREENSHOT/STRINGID removed")
         return wb, master_path
     else:
         print(f"  ERROR: No template file for {category}")
@@ -205,11 +208,11 @@ def get_or_create_user_comment_column(ws, username):
     return new_col
 
 
-def format_comment(new_comment, existing_comment=None):
+def format_comment(new_comment, string_id=None, existing_comment=None):
     """
-    Format comment with datetime, append to existing if present.
+    Format comment with StringID and datetime, append to existing if present.
 
-    Format: "comment text" (date: YYMMDD HHMM)
+    Format: "comment text" (stringid: 12345 // date: YYMMDD HHMM)
 
     Duplicate check: If the exact comment text already exists (ignoring date),
     we skip to avoid duplicating on re-runs.
@@ -228,7 +231,14 @@ def format_comment(new_comment, existing_comment=None):
             return existing_comment
 
     timestamp = datetime.now().strftime("%y%m%d %H%M")
-    formatted = f'"{new_text}" (date: {timestamp})'
+
+    # Build metadata string with stringid (if available) and date
+    if string_id and str(string_id).strip():
+        metadata = f"stringid: {str(string_id).strip()} // date: {timestamp}"
+    else:
+        metadata = f"date: {timestamp}"
+
+    formatted = f'"{new_text}" ({metadata})'
 
     if existing_comment and str(existing_comment).strip():
         # New on top, old below
@@ -299,9 +309,10 @@ def process_sheet(master_ws, qa_ws, username):
     Process a single sheet: copy COMMENT from QA to master, collect STATUS stats.
 
     ROBUST VERSION:
-    - Finds COMMENT/STATUS columns dynamically by header name
+    - Finds COMMENT/STATUS/STRINGID columns dynamically by header name
     - Uses MAX_COLUMN + 1 for user comment columns
     - Falls back to 2+ cell matching if row counts differ
+    - Applies beautiful styling to comment cells (blue fill + bold)
 
     Returns: Dict with {comments: n, stats: {issue: n, no_issue: n, blocked: n, total: n}}
     """
@@ -309,6 +320,7 @@ def process_sheet(master_ws, qa_ws, username):
     qa_status_col = find_column_by_header(qa_ws, "STATUS")
     qa_comment_col = find_column_by_header(qa_ws, "COMMENT")
     qa_screenshot_col = find_column_by_header(qa_ws, "SCREENSHOT")
+    qa_stringid_col = find_column_by_header(qa_ws, "STRINGID")
 
     # Build exclude set for row signature matching
     qa_exclude_cols = set()
@@ -318,6 +330,8 @@ def process_sheet(master_ws, qa_ws, username):
         qa_exclude_cols.add(qa_comment_col)
     if qa_screenshot_col:
         qa_exclude_cols.add(qa_screenshot_col)
+    if qa_stringid_col:
+        qa_exclude_cols.add(qa_stringid_col)
 
     # Find or create COMMENT_{username} in master (MAX_COLUMN + 1)
     master_comment_col = get_or_create_user_comment_column(master_ws, username)
@@ -377,16 +391,36 @@ def process_sheet(master_ws, qa_ws, username):
                 elif status_upper == "BLOCKED":
                     result["stats"]["blocked"] += 1
 
-        # Get QA COMMENT and copy to master
+        # Get QA COMMENT and STRINGID, copy to master with styling
         if qa_comment_col:
             qa_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
             if qa_comment and str(qa_comment).strip():
+                # Get StringID if available
+                string_id = None
+                if qa_stringid_col:
+                    string_id = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
+
                 # Get existing comment in master
                 existing = master_ws.cell(row=master_row, column=master_comment_col).value
 
-                # Format and update (appends if different)
-                new_value = format_comment(qa_comment, existing)
-                master_ws.cell(row=master_row, column=master_comment_col).value = new_value
+                # Format and update (appends if different, includes stringid)
+                new_value = format_comment(qa_comment, string_id, existing)
+
+                # Write comment with beautiful styling
+                cell = master_ws.cell(row=master_row, column=master_comment_col)
+                cell.value = new_value
+
+                # Apply styling: light blue fill + bold for visibility
+                cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
+                cell.font = Font(bold=True)
+                cell.alignment = Alignment(wrap_text=True, vertical='top')
+                cell.border = Border(
+                    left=Side(style='thin', color='87CEEB'),
+                    right=Side(style='thin', color='87CEEB'),
+                    top=Side(style='thin', color='87CEEB'),
+                    bottom=Side(style='thin', color='87CEEB')
+                )
+
                 result["comments"] += 1
 
     return result

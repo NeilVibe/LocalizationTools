@@ -458,4 +458,35 @@ def process_category(category, qa_files, master_path):
 
 ---
 
+## Future Features (TODO)
+
+### Category-Specific Column Deletion
+
+**Request:** Some QA files have too many columns. When creating master file, delete additional columns for SPECIFIC categories (e.g., Item, Quest).
+
+**Implementation Plan:**
+```python
+# Configuration dict for category-specific columns to delete
+CATEGORY_COLUMNS_TO_DELETE = {
+    "Item": ["ExtraCol1", "ExtraCol2"],
+    "Quest": ["UnneededCol"],
+    # Add more as needed
+}
+
+def get_or_create_master(category, template_file):
+    # ... existing code ...
+
+    # Category-specific column deletion
+    if category in CATEGORY_COLUMNS_TO_DELETE:
+        for col_name in CATEGORY_COLUMNS_TO_DELETE[category]:
+            col = find_column_by_header(ws, col_name)
+            if col:
+                ws.delete_cols(col)
+```
+
+**Status:** PLANNED - awaiting user specification of which columns to delete per category.
+
+---
+
 *WIP created 2025-12-30*
+*Updated 2025-12-30: Added StringID parsing, column styling, future features*
