@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-QA Excel Compiler
-=================
+QA Excel Compiler (Robust Version)
+===================================
 Compiles QA tester Excel files into master sheets.
+
+Works with ANY Excel structure - finds columns dynamically.
 
 Usage:
     python3 compile_qa.py
@@ -27,11 +29,6 @@ SCRIPT_DIR = Path(__file__).parent
 QA_FOLDER = SCRIPT_DIR / "QAfolder"
 MASTER_FOLDER = SCRIPT_DIR / "Masterfolder"
 CATEGORIES = ["Quest", "Knowledge", "Item", "Node", "System"]
-
-# Column indices (1-based for openpyxl)
-COL_STATUS = 5      # E
-COL_COMMENT = 6     # F
-COL_SCREENSHOT = 7  # G
 
 # Valid STATUS values (only these count as "filled")
 VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED"]
@@ -79,6 +76,30 @@ def ensure_master_folder():
     MASTER_FOLDER.mkdir(exist_ok=True)
 
 
+def find_column_by_header(ws, header_name, case_insensitive=True):
+    """
+    Find column index by header name.
+
+    Args:
+        ws: Worksheet
+        header_name: Header to search for
+        case_insensitive: Match case-insensitively
+
+    Returns: Column index (1-based) or None if not found
+    """
+    for col in range(1, ws.max_column + 1):
+        header = ws.cell(row=1, column=col).value
+        if header:
+            header_str = str(header).strip()
+            if case_insensitive:
+                if header_str.upper() == header_name.upper():
+                    return col
+            else:
+                if header_str == header_name:
+                    return col
+    return None
+
+
 def get_or_create_master(category, template_file=None):
     """
     Load existing master file or create from template.
@@ -98,13 +119,22 @@ def get_or_create_master(category, template_file=None):
         print(f"  Creating new master from: {template_file.name}")
         wb = openpyxl.load_workbook(template_file)
 
-        # Clear STATUS, COMMENT, SCREENSHOT columns (keep structure)
+        # Clear STATUS, COMMENT, SCREENSHOT columns dynamically (keep structure)
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
+
+            # Find columns dynamically
+            status_col = find_column_by_header(ws, "STATUS")
+            comment_col = find_column_by_header(ws, "COMMENT")
+            screenshot_col = find_column_by_header(ws, "SCREENSHOT")
+
             for row in range(2, ws.max_row + 1):
-                ws.cell(row=row, column=COL_STATUS).value = None
-                ws.cell(row=row, column=COL_COMMENT).value = None
-                ws.cell(row=row, column=COL_SCREENSHOT).value = None
+                if status_col:
+                    ws.cell(row=row, column=status_col).value = None
+                if comment_col:
+                    ws.cell(row=row, column=comment_col).value = None
+                if screenshot_col:
+                    ws.cell(row=row, column=screenshot_col).value = None
 
         return wb, master_path
     else:
@@ -112,9 +142,12 @@ def get_or_create_master(category, template_file=None):
         return None, master_path
 
 
-def get_comment_column(ws, username):
+def get_or_create_user_comment_column(ws, username):
     """
-    Find or create COMMENT_{username} column.
+    Find or create COMMENT_{username} column using MAX_COLUMN + 1.
+
+    ROBUST: Always adds new columns at the far right (max_column + 1).
+    Works with ANY Excel structure.
 
     Args:
         ws: Worksheet
@@ -127,22 +160,14 @@ def get_comment_column(ws, username):
     # Check if column already exists
     for col in range(1, ws.max_column + 1):
         header = ws.cell(row=1, column=col).value
-        if header == col_name:
+        if header and str(header).strip() == col_name:
             return col
 
-    # Find last COMMENT_ column or use position after base COMMENT column
-    last_col = COL_COMMENT
-    for col in range(1, ws.max_column + 1):
-        header = ws.cell(row=1, column=col).value
-        if header and str(header).startswith("COMMENT_"):
-            last_col = col
-
-    # Insert new column after last comment column
-    new_col = last_col + 1
-    ws.insert_cols(new_col)
+    # MAX_COLUMN + 1: Add new column at the far right
+    new_col = ws.max_column + 1
     ws.cell(row=1, column=new_col).value = col_name
 
-    print(f"    Created column: {col_name} at {get_column_letter(new_col)}")
+    print(f"    Created column: {col_name} at {get_column_letter(new_col)} (max_col+1)")
     return new_col
 
 
@@ -178,45 +203,157 @@ def format_comment(new_comment, existing_comment=None):
         return formatted
 
 
+def get_row_signature(ws, row, exclude_cols=None):
+    """
+    Get a signature for a row based on non-empty cells (excluding specified columns).
+    Used for fallback row matching.
+
+    Args:
+        ws: Worksheet
+        row: Row number
+        exclude_cols: Set of column indices to exclude (STATUS, COMMENT, SCREENSHOT)
+
+    Returns: Tuple of (col_index, value) for non-empty cells
+    """
+    if exclude_cols is None:
+        exclude_cols = set()
+
+    signature = []
+    for col in range(1, ws.max_column + 1):
+        if col in exclude_cols:
+            continue
+        val = ws.cell(row=row, column=col).value
+        if val and str(val).strip():
+            signature.append((col, str(val).strip()))
+
+    return tuple(signature)
+
+
+def find_matching_row_fallback(master_ws, qa_signature, exclude_cols, start_row=2):
+    """
+    Find a row in master that matches QA row by 2+ cell matching.
+
+    Args:
+        master_ws: Master worksheet
+        qa_signature: Signature from QA row
+        exclude_cols: Columns to exclude from matching
+        start_row: Start searching from this row
+
+    Returns: Row number or None
+    """
+    if len(qa_signature) < 2:
+        return None  # Need at least 2 cells to match
+
+    for row in range(start_row, master_ws.max_row + 1):
+        master_sig = get_row_signature(master_ws, row, exclude_cols)
+
+        # Count matching cells
+        matches = 0
+        for (col, val) in qa_signature:
+            if (col, val) in master_sig:
+                matches += 1
+
+        # 2+ cell match = found
+        if matches >= 2:
+            return row
+
+    return None
+
+
 def process_sheet(master_ws, qa_ws, username):
     """
     Process a single sheet: copy COMMENT from QA to master, collect STATUS stats.
 
+    ROBUST VERSION:
+    - Finds COMMENT/STATUS columns dynamically by header name
+    - Uses MAX_COLUMN + 1 for user comment columns
+    - Falls back to 2+ cell matching if row counts differ
+
     Returns: Dict with {comments: n, stats: {issue: n, no_issue: n, blocked: n, total: n}}
     """
-    # Get or create user's COMMENT column only (no STATUS column per user)
-    comment_col = get_comment_column(master_ws, username)
+    # Find columns dynamically in QA worksheet
+    qa_status_col = find_column_by_header(qa_ws, "STATUS")
+    qa_comment_col = find_column_by_header(qa_ws, "COMMENT")
+    qa_screenshot_col = find_column_by_header(qa_ws, "SCREENSHOT")
+
+    # Build exclude set for row signature matching
+    qa_exclude_cols = set()
+    if qa_status_col:
+        qa_exclude_cols.add(qa_status_col)
+    if qa_comment_col:
+        qa_exclude_cols.add(qa_comment_col)
+    if qa_screenshot_col:
+        qa_exclude_cols.add(qa_screenshot_col)
+
+    # Find or create COMMENT_{username} in master (MAX_COLUMN + 1)
+    master_comment_col = get_or_create_user_comment_column(master_ws, username)
+
+    # Build exclude set for master row matching
+    master_status_col = find_column_by_header(master_ws, "STATUS")
+    master_orig_comment_col = find_column_by_header(master_ws, "COMMENT")
+    master_screenshot_col = find_column_by_header(master_ws, "SCREENSHOT")
+
+    master_exclude_cols = set()
+    if master_status_col:
+        master_exclude_cols.add(master_status_col)
+    if master_orig_comment_col:
+        master_exclude_cols.add(master_orig_comment_col)
+    if master_screenshot_col:
+        master_exclude_cols.add(master_screenshot_col)
+    # Also exclude all COMMENT_* columns
+    for col in range(1, master_ws.max_column + 1):
+        header = master_ws.cell(row=1, column=col).value
+        if header and str(header).startswith("COMMENT_"):
+            master_exclude_cols.add(col)
 
     result = {
         "comments": 0,
-        "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "total": 0}
+        "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "total": 0},
+        "fallback_used": 0
     }
-    max_row = min(master_ws.max_row, qa_ws.max_row)
 
-    for row in range(2, max_row + 1):  # Skip header
+    # Determine if we need fallback matching
+    use_fallback = (master_ws.max_row != qa_ws.max_row)
+    if use_fallback:
+        print(f"      Row count differs (master:{master_ws.max_row}, qa:{qa_ws.max_row}), using fallback matching")
+
+    for qa_row in range(2, qa_ws.max_row + 1):  # Skip header
         result["stats"]["total"] += 1
 
+        # Determine master row (index match or fallback)
+        if use_fallback:
+            qa_sig = get_row_signature(qa_ws, qa_row, qa_exclude_cols)
+            master_row = find_matching_row_fallback(master_ws, qa_sig, master_exclude_cols)
+            if master_row is None:
+                # No match found, skip this row
+                continue
+            result["fallback_used"] += 1
+        else:
+            master_row = qa_row  # Direct index matching
+
         # Get QA STATUS (for stats only, not copied to master)
-        qa_status = qa_ws.cell(row=row, column=COL_STATUS).value
-        if qa_status:
-            status_upper = str(qa_status).strip().upper()
-            if status_upper == "ISSUE":
-                result["stats"]["issue"] += 1
-            elif status_upper == "NO ISSUE":
-                result["stats"]["no_issue"] += 1
-            elif status_upper == "BLOCKED":
-                result["stats"]["blocked"] += 1
+        if qa_status_col:
+            qa_status = qa_ws.cell(row=qa_row, column=qa_status_col).value
+            if qa_status:
+                status_upper = str(qa_status).strip().upper()
+                if status_upper == "ISSUE":
+                    result["stats"]["issue"] += 1
+                elif status_upper == "NO ISSUE":
+                    result["stats"]["no_issue"] += 1
+                elif status_upper == "BLOCKED":
+                    result["stats"]["blocked"] += 1
 
-        # Get QA COMMENT
-        qa_comment = qa_ws.cell(row=row, column=COL_COMMENT).value
-        if qa_comment and str(qa_comment).strip():
-            # Get existing comment in master
-            existing = master_ws.cell(row=row, column=comment_col).value
+        # Get QA COMMENT and copy to master
+        if qa_comment_col:
+            qa_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
+            if qa_comment and str(qa_comment).strip():
+                # Get existing comment in master
+                existing = master_ws.cell(row=master_row, column=master_comment_col).value
 
-            # Format and update (appends if different)
-            new_value = format_comment(qa_comment, existing)
-            master_ws.cell(row=row, column=comment_col).value = new_value
-            result["comments"] += 1
+                # Format and update (appends if different)
+                new_value = format_comment(qa_comment, existing)
+                master_ws.cell(row=master_row, column=master_comment_col).value = new_value
+                result["comments"] += 1
 
     return result
 
@@ -341,7 +478,8 @@ def process_category(category, qa_files):
             result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username)
             stats = result["stats"]
 
-            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked")
+            fallback_info = f", fallback:{result['fallback_used']}" if result.get('fallback_used', 0) > 0 else ""
+            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked{fallback_info}")
 
             # Aggregate stats for this user across all sheets
             user_stats[username]["total"] += stats["total"]
@@ -362,8 +500,13 @@ def process_category(category, qa_files):
 def main():
     """Main entry point."""
     print("="*60)
-    print("QA Excel Compiler")
+    print("QA Excel Compiler (Robust Version)")
     print("="*60)
+    print("Features:")
+    print("  - Dynamic column detection (finds STATUS/COMMENT by header)")
+    print("  - MAX_COLUMN + 1 for user columns (works with ANY structure)")
+    print("  - Fallback row matching (2+ cell match if row counts differ)")
+    print()
 
     # Ensure folders exist
     ensure_master_folder()
@@ -377,7 +520,7 @@ def main():
         print(f"Valid categories: {', '.join(CATEGORIES)}")
         return
 
-    print(f"\nFound {len(qa_files)} QA file(s)")
+    print(f"Found {len(qa_files)} QA file(s)")
 
     # Group by category
     by_category = defaultdict(list)
