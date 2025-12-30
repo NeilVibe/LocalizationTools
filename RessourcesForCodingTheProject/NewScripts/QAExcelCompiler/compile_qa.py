@@ -104,6 +104,10 @@ def get_or_create_master(category, template_file=None):
     """
     Load existing master file or create from template.
 
+    CLEAN START: When creating new master, DELETE STATUS/COMMENT/SCREENSHOT
+    columns entirely (not just clear values). Master starts clean with only
+    data columns, then COMMENT_{User} columns are added at MAX_COLUMN + 1.
+
     Args:
         category: Category name (Quest, Knowledge, etc.)
         template_file: Path to first QA file to use as template
@@ -119,23 +123,32 @@ def get_or_create_master(category, template_file=None):
         print(f"  Creating new master from: {template_file.name}")
         wb = openpyxl.load_workbook(template_file)
 
-        # Clear STATUS, COMMENT, SCREENSHOT columns dynamically (keep structure)
+        # DELETE STATUS, COMMENT, SCREENSHOT columns entirely (CLEAN START)
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
 
-            # Find columns dynamically
+            # Find columns to delete (must delete from right to left to preserve indices)
+            cols_to_delete = []
+
             status_col = find_column_by_header(ws, "STATUS")
             comment_col = find_column_by_header(ws, "COMMENT")
             screenshot_col = find_column_by_header(ws, "SCREENSHOT")
 
-            for row in range(2, ws.max_row + 1):
-                if status_col:
-                    ws.cell(row=row, column=status_col).value = None
-                if comment_col:
-                    ws.cell(row=row, column=comment_col).value = None
-                if screenshot_col:
-                    ws.cell(row=row, column=screenshot_col).value = None
+            if status_col:
+                cols_to_delete.append(status_col)
+            if comment_col:
+                cols_to_delete.append(comment_col)
+            if screenshot_col:
+                cols_to_delete.append(screenshot_col)
 
+            # Sort descending (delete from right to left)
+            cols_to_delete.sort(reverse=True)
+
+            for col in cols_to_delete:
+                ws.delete_cols(col)
+                print(f"    Deleted column {col} from {sheet_name}")
+
+        print(f"    Master cleaned: STATUS/COMMENT/SCREENSHOT removed")
         return wb, master_path
     else:
         print(f"  ERROR: No template file for {category}")
@@ -148,6 +161,8 @@ def get_or_create_user_comment_column(ws, username):
 
     ROBUST: Always adds new columns at the far right (max_column + 1).
     Works with ANY Excel structure.
+
+    BEAUTIFUL: Adds color, bold, and border formatting to header.
 
     Args:
         ws: Worksheet
@@ -165,9 +180,28 @@ def get_or_create_user_comment_column(ws, username):
 
     # MAX_COLUMN + 1: Add new column at the far right
     new_col = ws.max_column + 1
-    ws.cell(row=1, column=new_col).value = col_name
+    cell = ws.cell(row=1, column=new_col)
+    cell.value = col_name
 
-    print(f"    Created column: {col_name} at {get_column_letter(new_col)} (max_col+1)")
+    # Beautiful formatting for COMMENT_{User} header
+    # Light blue background
+    cell.fill = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
+    # Bold font
+    cell.font = Font(bold=True, color="000000")
+    # Center alignment
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    # Nice border
+    cell.border = Border(
+        left=Side(style='medium', color='4472C4'),
+        right=Side(style='medium', color='4472C4'),
+        top=Side(style='medium', color='4472C4'),
+        bottom=Side(style='medium', color='4472C4')
+    )
+
+    # Set column width for readability
+    ws.column_dimensions[get_column_letter(new_col)].width = 35
+
+    print(f"    Created column: {col_name} at {get_column_letter(new_col)} (styled)")
     return new_col
 
 
