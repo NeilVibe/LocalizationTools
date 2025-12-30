@@ -53,8 +53,13 @@
       websocket.socket.emit('subscribe', { events: ['progress'] });
     }
 
-    // Listen for operation_start
+    // Listen for operation_start - only show if we have valid data
     unsubscribeOperationStart = websocket.on('operation_start', (data) => {
+      // Skip if no meaningful operation name
+      if (!data.operation_name || data.operation_name === 'Unknown operation') {
+        return;
+      }
+
       logger.info("GlobalToast: Operation started", {
         operation_id: data.operation_id,
         operation_name: data.operation_name,
@@ -62,13 +67,18 @@
       });
 
       toast.operationStarted(
-        data.operation_name || 'Unknown operation',
-        data.tool_name || 'Unknown'
+        data.operation_name,
+        data.tool_name || 'LDM'
       );
     });
 
-    // Listen for operation_complete
+    // Listen for operation_complete - only show if we have valid data
     unsubscribeOperationComplete = websocket.on('operation_complete', (data) => {
+      // Skip if no meaningful operation name
+      if (!data.operation_name || data.operation_name === 'Unknown operation') {
+        return;
+      }
+
       logger.info("GlobalToast: Operation completed", {
         operation_id: data.operation_id,
         operation_name: data.operation_name,
@@ -77,13 +87,13 @@
 
       const duration = formatDuration(data.started_at, data.completed_at);
       toast.operationCompleted(
-        data.operation_name || 'Unknown operation',
-        data.tool_name || 'Unknown',
+        data.operation_name,
+        data.tool_name || 'LDM',
         duration
       );
     });
 
-    // Listen for operation_failed
+    // Listen for operation_failed - always show errors
     unsubscribeOperationFailed = websocket.on('operation_failed', (data) => {
       logger.error("GlobalToast: Operation failed", {
         operation_id: data.operation_id,
@@ -93,8 +103,8 @@
       });
 
       toast.operationFailed(
-        data.operation_name || 'Unknown operation',
-        data.tool_name || 'Unknown',
+        data.operation_name || 'Operation',
+        data.tool_name || 'LDM',
         data.error_message
       );
     });

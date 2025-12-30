@@ -741,14 +741,14 @@
 
 <style>
   /* Override Carbon Modal's fixed max-height to auto-expand */
-  :global(.bx--modal-container--lg .bx--modal-content) {
-    max-height: none;
-    overflow: visible;
+  :global(.bx--modal-container .bx--modal-content) {
+    max-height: none !important;
+    overflow-y: visible !important;
   }
 
   .tm-manager {
-    /* No min-height - auto-expand based on content */
-    padding-bottom: 1rem;
+    /* Clean spacing, no forced height */
+    padding-bottom: 0.5rem;
   }
 
   .tm-toolbar {
