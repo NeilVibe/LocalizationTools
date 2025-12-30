@@ -28,10 +28,14 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 SCRIPT_DIR = Path(__file__).parent
 QA_FOLDER = SCRIPT_DIR / "QAfolder"
 MASTER_FOLDER = SCRIPT_DIR / "Masterfolder"
+MASTER_UI_FOLDER = MASTER_FOLDER / "MasterUI"
 CATEGORIES = ["Quest", "Knowledge", "Item", "Node", "System"]
 
 # Valid STATUS values (only these count as "filled")
 VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED"]
+
+# Global collector for UI issues (rows with screenshots)
+UI_ISSUES = []
 
 
 def discover_qa_files():
@@ -72,8 +76,9 @@ def discover_qa_files():
 
 
 def ensure_master_folder():
-    """Create Masterfolder if it doesn't exist."""
+    """Create Masterfolder and MasterUI subfolder if they don't exist."""
     MASTER_FOLDER.mkdir(exist_ok=True)
+    MASTER_UI_FOLDER.mkdir(exist_ok=True)
 
 
 def find_column_by_header(ws, header_name, case_insensitive=True):
@@ -304,7 +309,7 @@ def find_matching_row_fallback(master_ws, qa_signature, exclude_cols, start_row=
     return None
 
 
-def process_sheet(master_ws, qa_ws, username):
+def process_sheet(master_ws, qa_ws, username, category):
     """
     Process a single sheet: copy COMMENT from QA to master, collect STATUS stats.
 
@@ -313,8 +318,9 @@ def process_sheet(master_ws, qa_ws, username):
     - Uses MAX_COLUMN + 1 for user comment columns
     - Falls back to 2+ cell matching if row counts differ
     - Applies beautiful styling to comment cells (blue fill + bold)
+    - Collects UI issues (rows with SCREENSHOT) for MasterUI
 
-    Returns: Dict with {comments: n, stats: {issue: n, no_issue: n, blocked: n, total: n}}
+    Returns: Dict with {comments: n, stats: {issue: n, no_issue: n, blocked: n, total: n}, ui_issues: n}
     """
     # Find columns dynamically in QA worksheet
     qa_status_col = find_column_by_header(qa_ws, "STATUS")
@@ -357,7 +363,8 @@ def process_sheet(master_ws, qa_ws, username):
     result = {
         "comments": 0,
         "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "total": 0},
-        "fallback_used": 0
+        "fallback_used": 0,
+        "ui_issues": 0
     }
 
     # Determine if we need fallback matching
@@ -423,6 +430,32 @@ def process_sheet(master_ws, qa_ws, username):
                     )
 
                     result["comments"] += 1
+
+        # Collect UI issues (rows with SCREENSHOT) for MasterUI
+        if qa_screenshot_col:
+            screenshot_cell = qa_ws.cell(row=qa_row, column=qa_screenshot_col)
+            screenshot_value = screenshot_cell.value
+            screenshot_hyperlink = screenshot_cell.hyperlink
+
+            if screenshot_value and str(screenshot_value).strip():
+                # Get comment for this row (formatted or raw)
+                comment_text = ""
+                if qa_comment_col:
+                    raw_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
+                    if raw_comment and str(raw_comment).strip():
+                        string_id = None
+                        if qa_stringid_col:
+                            string_id = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
+                        comment_text = format_comment(raw_comment, string_id, None)
+
+                # Add to UI_ISSUES collector
+                UI_ISSUES.append({
+                    "category": category,
+                    "comment": comment_text,
+                    "screenshot": screenshot_value,
+                    "hyperlink": screenshot_hyperlink
+                })
+                result["ui_issues"] += 1
 
     return result
 
@@ -504,6 +537,98 @@ def update_status_sheet(wb, users, user_stats):
     print(f"  Updated STATUS sheet with {len(users)} users (first tab, yellow header)")
 
 
+def write_master_ui():
+    """
+    Write MasterUI.xlsx with all collected UI issues (rows with screenshots).
+
+    Output: Masterfolder/MasterUI/MasterUI.xlsx
+    Columns: Category, COMMENT, SCREENSHOT (with hyperlink preserved)
+
+    Duplicate detection: Skips if same SCREENSHOT + COMMENT already exists.
+    """
+    master_ui_path = MASTER_UI_FOLDER / "MasterUI.xlsx"
+
+    # Load existing or create new
+    if master_ui_path.exists():
+        wb = openpyxl.load_workbook(master_ui_path)
+        ws = wb.active
+        print(f"\n  Loading existing MasterUI: {master_ui_path.name}")
+
+        # Build set of existing entries for duplicate detection
+        existing_entries = set()
+        for row in range(2, ws.max_row + 1):
+            comment = ws.cell(row=row, column=2).value or ""
+            screenshot = ws.cell(row=row, column=3).value or ""
+            existing_entries.add((str(comment).strip(), str(screenshot).strip()))
+    else:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "UI Issues"
+        existing_entries = set()
+
+        # Create headers with styling
+        headers = ["Category", "COMMENT", "SCREENSHOT"]
+        header_fill = PatternFill(start_color="FF6B6B", end_color="FF6B6B", fill_type="solid")  # Red/coral
+        header_font = Font(bold=True, color="FFFFFF")
+        border = Border(
+            left=Side(style='medium'),
+            right=Side(style='medium'),
+            top=Side(style='medium'),
+            bottom=Side(style='medium')
+        )
+
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.border = border
+            cell.alignment = Alignment(horizontal='center')
+
+        # Set column widths
+        ws.column_dimensions['A'].width = 15
+        ws.column_dimensions['B'].width = 50
+        ws.column_dimensions['C'].width = 40
+
+        print(f"\n  Creating new MasterUI: {master_ui_path.name}")
+
+    # Add new UI issues (skip duplicates)
+    added = 0
+    skipped = 0
+
+    for issue in UI_ISSUES:
+        comment = issue["comment"] or ""
+        screenshot = issue["screenshot"] or ""
+        key = (str(comment).strip(), str(screenshot).strip())
+
+        if key in existing_entries:
+            skipped += 1
+            continue
+
+        # Add new row
+        new_row = ws.max_row + 1
+        ws.cell(row=new_row, column=1, value=issue["category"])
+
+        # COMMENT cell with styling
+        comment_cell = ws.cell(row=new_row, column=2, value=comment)
+        comment_cell.fill = PatternFill(start_color="FFE6E6", end_color="FFE6E6", fill_type="solid")
+        comment_cell.font = Font(bold=True)
+        comment_cell.alignment = Alignment(wrap_text=True, vertical='top')
+
+        # SCREENSHOT cell with hyperlink preserved
+        screenshot_cell = ws.cell(row=new_row, column=3, value=screenshot)
+        if issue.get("hyperlink"):
+            screenshot_cell.hyperlink = issue["hyperlink"]
+            screenshot_cell.font = Font(color="0000FF", underline="single")
+
+        existing_entries.add(key)
+        added += 1
+
+    # Save
+    wb.save(master_ui_path)
+    print(f"  MasterUI: {added} added, {skipped} duplicates skipped")
+    print(f"  Saved: {master_ui_path}")
+
+
 def process_category(category, qa_files):
     """
     Process all QA files for one category.
@@ -544,11 +669,12 @@ def process_category(category, qa_files):
                 continue
 
             # Process sheet and collect stats
-            result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username)
+            result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username, category)
             stats = result["stats"]
 
             fallback_info = f", fallback:{result['fallback_used']}" if result.get('fallback_used', 0) > 0 else ""
-            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked{fallback_info}")
+            ui_info = f", ui:{result['ui_issues']}" if result.get('ui_issues', 0) > 0 else ""
+            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked{fallback_info}{ui_info}")
 
             # Aggregate stats for this user across all sheets
             user_stats[username]["total"] += stats["total"]
@@ -568,6 +694,8 @@ def process_category(category, qa_files):
 
 def main():
     """Main entry point."""
+    global UI_ISSUES
+
     print("="*60)
     print("QA Excel Compiler (Robust Version)")
     print("="*60)
@@ -575,7 +703,11 @@ def main():
     print("  - Dynamic column detection (finds STATUS/COMMENT by header)")
     print("  - MAX_COLUMN + 1 for user columns (works with ANY structure)")
     print("  - Fallback row matching (2+ cell match if row counts differ)")
+    print("  - MasterUI compilation (all screenshot issues in one file)")
     print()
+
+    # Clear UI issues collector
+    UI_ISSUES = []
 
     # Ensure folders exist
     ensure_master_folder()
@@ -602,6 +734,15 @@ def main():
             process_category(category, by_category[category])
         else:
             print(f"\nSKIP: No files for category '{category}'")
+
+    # Write MasterUI with all screenshot issues
+    if UI_ISSUES:
+        print(f"\n{'='*50}")
+        print(f"Processing: MasterUI ({len(UI_ISSUES)} UI issues collected)")
+        print(f"{'='*50}")
+        write_master_ui()
+    else:
+        print("\nNo UI issues (screenshots) found")
 
     print("\n" + "="*60)
     print("Compilation complete!")
