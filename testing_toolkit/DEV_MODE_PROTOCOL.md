@@ -1208,6 +1208,43 @@ wait_for_gitea_http() {
 
 ---
 
+### ⚠️ CS-014: Grid Header/Data Row Alignment (2025-12-30)
+
+**Header column dividers must align with data row dividers.**
+
+**Symptoms:**
+- Vertical line between SOURCE and TARGET columns in header is ~10-15px offset from data rows
+- More noticeable when scrolling or with many rows
+- Looks "off" visually
+
+**Root Cause:**
+```
+┌─────────────────────────────────────────────────┐
+│  HEADER (full container width)                  │
+│  SOURCE (KR)      │  TARGET                     │
+├─────────────────────────────────────────────────┤
+│  SCROLL-CONTAINER (width - scrollbar)          │█
+│  Korean text      │  French text               │█ ← scrollbar (~15px)
+└─────────────────────────────────────────────────┘
+```
+
+Both use `flex: 0 0 {percent}%` but:
+- Header: percentage of full width
+- Data rows: percentage of (width - scrollbar)
+
+**Fix:** Add `scrollbar-gutter: stable;` to reserve scrollbar space consistently:
+```css
+.scroll-container {
+  scrollbar-gutter: stable;  /* UI-080 FIX */
+}
+```
+
+**Browser Support:** Baseline 2024 - Chrome 94+, Firefox 97+, Safari 17+, Edge 94+. Electron (Chromium) fully supported.
+
+**Key Insight:** When header is outside scroll container and data rows are inside, percentage widths resolve to different pixel values due to scrollbar.
+
+---
+
 ### Quick Reference Card
 
 | Problem | Solution |
@@ -1225,6 +1262,7 @@ wait_for_gitea_http() {
 | Confirmed filter shows 0 | Row status must be 'reviewed' or 'approved' |
 | Row colors confusing | Gray=unconfirmed, Teal=confirmed (simple!) |
 | Gitea runner random fail | HTTP not ready - use wait_for_gitea_http() |
+| Header/row column misaligned | `scrollbar-gutter: stable;` on scroll container |
 
 ---
 

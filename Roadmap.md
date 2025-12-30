@@ -416,4 +416,37 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2025-12-29 | Build 415+ | P1 Phase 1 + P2 DONE*
+## Future Vision: Analytics & AI Integration
+
+> **Full details:** [docs/wip/ANALYTICS_AI_VISION.md](locaNext/docs/wip/ANALYTICS_AI_VISION.md)
+
+### Long-Term Roadmap (Post-Core Stability)
+
+| Phase | Feature | Description |
+|-------|---------|-------------|
+| **P6** | Preference Persistence | Save user settings (columns, fonts) locally + DB sync |
+| **P7** | Analytics Foundation | Translation activity logging, time tracking, edit distance |
+| **P8** | Productivity Dashboard | Words/day, translation type classification, trends |
+| **P9** | AI Translation | API integration (OpenAI, Claude, DeepL), file/cell translation |
+| **P10** | Intelligence | Smart suggestions, quality scoring, team analytics |
+
+### Key Concepts
+
+1. **Translation Type Classification**
+   - TRUE Translation (user typed from scratch)
+   - TM Match (confirmed as-is vs modified)
+   - AI Translation (confirmed as-is vs modified)
+
+2. **Productivity Metrics**
+   - Average time to confirm (relative to word count)
+   - Edit distance from pre-translation to final
+   - Daily TRUE translations vs assisted translations
+
+3. **AI Integration Points**
+   - Right-click file → Translate with AI
+   - Right-click cell → Translate this string
+   - Keyboard shortcut for inline AI translation
+
+---
+
+*Strategic Roadmap | Updated 2025-12-30 | Build 416+ | P1-P5 DONE*
