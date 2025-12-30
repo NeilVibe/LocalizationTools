@@ -11,7 +11,8 @@
 3. **Compiles** into master files with:
    - `COMMENT_{Username}` columns for each tester
    - `STATUS` sheet tracking completion % per user
-4. **Saves** to `Masterfolder/`
+4. **Compiles MasterUI** - All rows with screenshots into one file
+5. **Saves** to `Masterfolder/`
 
 ---
 
@@ -54,6 +55,7 @@ Output files:
 - `Master_Item.xlsx`
 - `Master_Node.xlsx`
 - `Master_System.xlsx`
+- `MasterUI/MasterUI.xlsx` - All screenshot issues combined
 
 ---
 
@@ -68,10 +70,12 @@ QAExcelCompiler/
 │   ├── John_Quest.xlsx
 │   ├── Alice_Quest.xlsx
 │   └── ...
-├── Masterfolder/         # OUTPUT GOES HERE (STATUS tab = first)
+├── Masterfolder/         # OUTPUT GOES HERE
 │   ├── Master_Quest.xlsx
 │   ├── Master_Knowledge.xlsx
-│   └── ...
+│   ├── ...
+│   └── MasterUI/         # UI ISSUES (screenshots)
+│       └── MasterUI.xlsx
 └── docs/
     ├── ROADMAP.md        # Project plan
     └── WIP.md            # Technical details
@@ -119,24 +123,50 @@ Each master file gets a `STATUS` sheet as the **first tab** (yellow header):
 - Running multiple times won't duplicate comments
 - New comments from QA files are appended
 - Existing comments preserved
+- **Team's custom formatting preserved** (colors added to cells won't be overwritten)
+
+### MasterUI - Screenshot Issues
+
+All rows with SCREENSHOT values are collected into one file: `MasterUI/MasterUI.xlsx`
+
+**Purpose:** Consolidate all UI-related issues (things requiring screenshots) from ALL categories into one place.
+
+**MasterUI columns:**
+
+| Category | COMMENT | SCREENSHOT |
+|----------|---------|------------|
+| Quest | "UI bug here" (stringid: X // date: Y) | screenshot.png |
+| Item | "Icon missing" (date: Y) | item_icon.png |
+
+**Features:**
+- Collects from ALL QA files across ALL categories
+- **Hyperlinks preserved** - Click to open screenshot
+- **Duplicate detection** - Same SCREENSHOT + COMMENT combo skipped on re-run
+- Red/coral header styling for visibility
+- Comment cells: pink fill + bold
 
 ---
 
 ## Input File Format
 
-QA files should have these columns:
+QA files should have these columns (detected dynamically by header name):
 
 | Column | Description | Used |
 |--------|-------------|------|
-| A - Original | Korean source | NO |
-| B - ENG | English translation | NO |
-| C - StringKey | Identifier | NO |
-| D - Command | Dev commands | NO |
-| E - STATUS | QA status | **YES** (stats only) |
-| F - COMMENT | QA feedback | **YES** (copied to COMMENT_{User}) |
-| G - SCREENSHOT | Hyperlink | NO (ignored) |
+| Original | Korean source | NO |
+| ENG | English translation | NO |
+| StringKey | Identifier | NO |
+| Command | Dev commands | NO |
+| STATUS | QA status | **YES** (stats only, deleted from master) |
+| COMMENT | QA feedback | **YES** (copied to COMMENT_{User}, deleted from master) |
+| STRINGID | String identifier | **YES** (parsed into comment format, deleted from master) |
+| SCREENSHOT | Hyperlink to image | **YES** (collected into MasterUI, deleted from master) |
+
+**Dynamic detection:** Column positions don't matter - the script finds columns by header name.
 
 **Row matching:** By row index (all QA files for same category have identical structure)
+
+**Columns deleted from master:** STATUS, COMMENT, SCREENSHOT, STRINGID are deleted when creating master files. Only COMMENT_{User} columns are added at the far right.
 
 **Note:** STATUS values are read for statistics (shown in STATUS tab) but NOT copied per-user. Only COMMENT gets individual columns.
 
@@ -182,9 +212,12 @@ QA files should have these columns:
 ## Technical Notes
 
 - Uses `openpyxl` for Excel handling (preserves formatting)
-- Row matching by index (not StringKey)
-- Columns inserted after existing COMMENT columns
-- STATUS sheet recreated on each run
+- **Dynamic column detection** - finds columns by header name, not fixed positions
+- Row matching by index (all QA files same structure per category)
+- COMMENT_{User} columns added at MAX_COLUMN + 1 (far right)
+- Fallback row matching: 2+ cell values from non-editable columns
+- STATUS sheet recreated on each run (always first tab)
+- MasterUI uses duplicate detection (SCREENSHOT + COMMENT combo)
 
 ---
 
