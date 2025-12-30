@@ -406,22 +406,23 @@ def process_sheet(master_ws, qa_ws, username):
                 # Format and update (appends if different, includes stringid)
                 new_value = format_comment(qa_comment, string_id, existing)
 
-                # Write comment with beautiful styling
-                cell = master_ws.cell(row=master_row, column=master_comment_col)
-                cell.value = new_value
+                # ONLY write if there's actually new content (preserve team's custom formatting!)
+                if new_value != existing:
+                    cell = master_ws.cell(row=master_row, column=master_comment_col)
+                    cell.value = new_value
 
-                # Apply styling: light blue fill + bold for visibility
-                cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
-                cell.font = Font(bold=True)
-                cell.alignment = Alignment(wrap_text=True, vertical='top')
-                cell.border = Border(
-                    left=Side(style='thin', color='87CEEB'),
-                    right=Side(style='thin', color='87CEEB'),
-                    top=Side(style='thin', color='87CEEB'),
-                    bottom=Side(style='thin', color='87CEEB')
-                )
+                    # Apply styling: light blue fill + bold for visibility
+                    cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
+                    cell.font = Font(bold=True)
+                    cell.alignment = Alignment(wrap_text=True, vertical='top')
+                    cell.border = Border(
+                        left=Side(style='thin', color='87CEEB'),
+                        right=Side(style='thin', color='87CEEB'),
+                        top=Side(style='thin', color='87CEEB'),
+                        bottom=Side(style='thin', color='87CEEB')
+                    )
 
-                result["comments"] += 1
+                    result["comments"] += 1
 
     return result
 
