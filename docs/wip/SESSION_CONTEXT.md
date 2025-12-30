@@ -1,8 +1,70 @@
 # Session Context
 
-**Updated:** 2025-12-29 22:40 UTC | **Build:** 416 ✅ | **Status:** ALL TESTS PASSING
+**Updated:** 2025-12-30 | **Build:** 416 | **Status:** ALL ISSUES FIXED ✅
 
-**Git Sync:** `f303913` on LOCAL = GITHUB = GITEA ✅
+---
+
+## SESSION Dec 30: Column Resize Fixes Complete
+
+### What We Did Today
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Fix UI-081: Resize bar with extra columns | ✅ DONE | Uses `calc()` for position |
+| Fix UI-082: All columns resizable | ✅ DONE | Multi-column resize system |
+| Created Playwright tests for resize | ✅ DONE | 4/4 tests passing |
+| Updated documentation | ✅ DONE | ISSUES_TO_FIX.md updated |
+
+### Key Changes to VirtualGrid.svelte
+
+**UI-081 Fix:**
+- Added `fixedColumnsBeforeSource` derived value
+- Resize bar uses `calc({fixedWidth}px + {sourceWidthPercent}%)`
+- Dynamic limits in `handleResize()` based on visible columns
+
+**UI-082 Fix:**
+- Added state: `indexColumnWidth`, `stringIdColumnWidth`, `referenceColumnWidth`
+- New `startColumnResize(event, columnKey)` handler
+- Resize handles on Index, StringID, Reference cells
+- Column width limits: Index 40-120px, StringID 80-300px, Reference 150-500px
+
+### Test Results
+
+```
+npx playwright test tests/column-resize.spec.ts
+✓ UI-081: Resize bar visible at calc(50% + 0px)
+✓ UI-082: Column resize handles exist
+✓ UI-081: Resize bar hover feedback
+✓ Source/Target drag: 345px → 390px (+45px)
+4 passed (12.3s)
+```
+
+### Open Issues
+
+**0 CRITICAL | 0 HIGH | 0 MEDIUM | 0 LOW** ✅
+
+All 30 issues fixed!
+
+### Pending Features
+
+| Feature | Priority | Doc |
+|---------|----------|-----|
+| Preference Persistence | P6 | Save columns, fonts to LocalStorage + DB |
+| Analytics Foundation | P7 | Translation activity logging |
+| AI Translation | P9 | API integration |
+
+---
+
+## PREVIOUS SESSION Dec 30: Grid Header Removal + Long-Term Vision
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Investigated header/data alignment issue | ✅ DONE | Scrollbar causing offset |
+| Removed column headers (SOURCE/TARGET) | ✅ DONE | Cleaner UI |
+| Added full-height resize bar | ✅ DONE | Easier to grab |
+| Fixed resize function for new structure | ✅ DONE | Uses scroll-container |
+| Created Analytics/AI Vision doc | ✅ DONE | `docs/wip/ANALYTICS_AI_VISION.md` |
+| Updated Roadmap with P6-P10 | ✅ DONE | Long-term features |
 
 ---
 

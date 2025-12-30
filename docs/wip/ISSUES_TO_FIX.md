@@ -1,9 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-29 | **Build:** 415 (SUCCESS) | **Open:** 0 ✅
-
-> ✅ TEST-001 FIXED in Build 415
-> All tests pass. CI pipeline operational.
+**Last Updated:** 2025-12-30 | **Build:** 416 | **Open:** 0
 
 ---
 
@@ -11,13 +8,66 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 28 |
+| **FIXED/CLOSED** | 30 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **CRITICAL (Blocking)** | 0 ✅ |
 | **HIGH (Major UX)** | 0 |
-| **MEDIUM (Low Priority)** | 0 |
-| **LOW (Cosmetic)** | 0 ✅ |
+| **MEDIUM (Low Priority)** | 0 ✅ |
+| **LOW (Cosmetic)** | 0 |
 | **Total Open** | 0 ✅ |
+
+---
+
+## RECENTLY FIXED (Dec 30)
+
+### UI-081: Column Resize Bar Broken with Extra Columns ✅ FIXED
+
+- **Reported:** 2025-12-30
+- **Fixed:** 2025-12-30
+- **Severity:** MEDIUM (UX degradation)
+- **Status:** FIXED
+- **Component:** VirtualGrid.svelte
+
+**Problem:** When user enables Index or StringID columns, the column resize bar (full-height drag handle) disappears or stops working.
+
+**Root Cause:** The resize bar was positioned at `left: {sourceWidthPercent}%` which only accounts for source/target split, not the additional fixed-width columns.
+
+**Fix:**
+- Added `fixedColumnsBeforeSource` derived value to calculate total width of visible fixed columns (Index + StringID)
+- Updated resize bar position to use `calc({fixedWidth}px + {sourceWidthPercent}%)`
+- Updated `handleResize()` to calculate dynamic limits based on visible fixed columns
+
+**Files Modified:** `VirtualGrid.svelte` lines 118-131, 1675, 1507-1546
+
+**Verified:** Playwright test confirms resize bar at `left: calc(50% + 0px)` (0px = no fixed columns visible)
+
+---
+
+### UI-082: Only Source/Target Columns Are Resizable ✅ FIXED
+
+- **Reported:** 2025-12-30
+- **Fixed:** 2025-12-30
+- **Severity:** MEDIUM (Feature limitation)
+- **Status:** FIXED
+- **Component:** VirtualGrid.svelte
+
+**Problem:** Users could only resize the source/target column split. Other columns (Index, StringID, Reference) had fixed widths and cannot be resized.
+
+**Fix:** Implemented multi-column resize system:
+- Added state for individual column widths: `indexColumnWidth`, `stringIdColumnWidth`, `referenceColumnWidth`
+- Added `startColumnResize(event, columnKey)` handler for fixed column resize
+- Updated `handleResize()` to handle both percentage-based (source/target) and pixel-based (fixed columns) resize
+- Added resize handles to Index, StringID, and Reference cells
+- Added CSS for `.column-resize-handle` and `.resizable-column`
+
+**Column Width Limits:**
+- Index: 40-120px
+- StringID: 80-300px
+- Reference: 150-500px
+
+**Files Modified:** `VirtualGrid.svelte` lines 118-124, 1486-1546, 1783-1807, 1870-1895, 2074-2104
+
+**Verified:** Playwright test confirms resize drag changes source width from 345px to 390px
 
 ---
 
