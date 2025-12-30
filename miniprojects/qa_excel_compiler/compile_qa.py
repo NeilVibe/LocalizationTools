@@ -32,6 +32,9 @@ COL_STATUS = 5      # E
 COL_COMMENT = 6     # F
 COL_SCREENSHOT = 7  # G
 
+# Valid STATUS values (only these count as "filled")
+VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED"]
+
 
 def discover_qa_files():
     """
@@ -108,13 +111,19 @@ def get_or_create_master(category, template_file=None):
         return None, master_path
 
 
-def get_comment_column(ws, username):
+def get_user_column(ws, username, col_type="COMMENT"):
     """
-    Find or create COMMENT_{username} column.
+    Find or create {col_type}_{username} column.
+
+    Args:
+        ws: Worksheet
+        username: User identifier
+        col_type: "COMMENT" or "STATUS"
 
     Returns: Column index (1-based)
     """
-    col_name = f"COMMENT_{username}"
+    col_name = f"{col_type}_{username}"
+    base_col = COL_STATUS if col_type == "STATUS" else COL_COMMENT
 
     # Check if column already exists
     for col in range(1, ws.max_column + 1):
@@ -122,15 +131,15 @@ def get_comment_column(ws, username):
         if header == col_name:
             return col
 
-    # Find last COMMENT_ column or use position after original COMMENT
-    last_comment_col = COL_COMMENT
+    # Find last column of this type or use position after base column
+    last_col = base_col
     for col in range(1, ws.max_column + 1):
         header = ws.cell(row=1, column=col).value
-        if header and str(header).startswith("COMMENT_"):
-            last_comment_col = col
+        if header and str(header).startswith(f"{col_type}_"):
+            last_col = col
 
-    # Insert new column after last comment column
-    new_col = last_comment_col + 1
+    # Insert new column after last column of this type
+    new_col = last_col + 1
     ws.insert_cols(new_col)
     ws.cell(row=1, column=new_col).value = col_name
 
@@ -172,35 +181,44 @@ def format_comment(new_comment, existing_comment=None):
 
 def process_sheet(master_ws, qa_ws, username):
     """
-    Process a single sheet: copy comments from QA to master.
+    Process a single sheet: copy STATUS and COMMENT from QA to master.
 
-    Returns: Number of comments added
+    Returns: Dict with counts {status: n, comments: n}
     """
-    # Get or create user's comment column
-    user_col = get_comment_column(master_ws, username)
+    # Get or create user's columns (STATUS first, then COMMENT)
+    status_col = get_user_column(master_ws, username, "STATUS")
+    comment_col = get_user_column(master_ws, username, "COMMENT")
 
-    comments_added = 0
+    counts = {"status": 0, "comments": 0}
     max_row = min(master_ws.max_row, qa_ws.max_row)
 
     for row in range(2, max_row + 1):  # Skip header
-        # Get QA comment
-        qa_comment = qa_ws.cell(row=row, column=COL_COMMENT).value
+        # Get QA STATUS
+        qa_status = qa_ws.cell(row=row, column=COL_STATUS).value
+        if qa_status and str(qa_status).strip().upper() in VALID_STATUS:
+            # Overwrite status (latest wins)
+            master_ws.cell(row=row, column=status_col).value = str(qa_status).strip().upper()
+            counts["status"] += 1
 
+        # Get QA COMMENT
+        qa_comment = qa_ws.cell(row=row, column=COL_COMMENT).value
         if qa_comment and str(qa_comment).strip():
             # Get existing comment in master
-            existing = master_ws.cell(row=row, column=user_col).value
+            existing = master_ws.cell(row=row, column=comment_col).value
 
-            # Format and update
+            # Format and update (appends if different)
             new_value = format_comment(qa_comment, existing)
-            master_ws.cell(row=row, column=user_col).value = new_value
-            comments_added += 1
+            master_ws.cell(row=row, column=comment_col).value = new_value
+            counts["comments"] += 1
 
-    return comments_added
+    return counts
 
 
-def calculate_completion(ws, user_col):
+def calculate_completion(ws, status_col):
     """
-    Calculate completion % for a user's column.
+    Calculate completion % based on STATUS column.
+
+    Completion = rows with valid STATUS (ISSUE/NO ISSUE/BLOCKED) / total rows
 
     Returns: Percentage (0-100)
     """
@@ -209,8 +227,8 @@ def calculate_completion(ws, user_col):
 
     for row in range(2, ws.max_row + 1):
         total += 1
-        value = ws.cell(row=row, column=user_col).value
-        if value and str(value).strip():
+        value = ws.cell(row=row, column=status_col).value
+        if value and str(value).strip().upper() in VALID_STATUS:
             filled += 1
 
     if total == 0:
@@ -299,12 +317,12 @@ def process_category(category, qa_files):
                 continue
 
             # Process sheet
-            comments = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username)
-            print(f"    {sheet_name}: {comments} comments")
+            counts = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username)
+            print(f"    {sheet_name}: {counts['status']} status, {counts['comments']} comments")
 
-            # Calculate completion
-            user_col = get_comment_column(master_wb[sheet_name], username)
-            pct = calculate_completion(master_wb[sheet_name], user_col)
+            # Calculate completion (based on STATUS column)
+            status_col = get_user_column(master_wb[sheet_name], username, "STATUS")
+            pct = calculate_completion(master_wb[sheet_name], status_col)
             sheet_stats[sheet_name][username] = pct
 
         qa_wb.close()
