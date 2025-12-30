@@ -37,13 +37,21 @@ class TMSearchResult(BaseModel):
 
 
 class TMSuggestion(BaseModel):
-    """Single TM suggestion."""
-    id: int
+    """Single TM suggestion.
+
+    For project row suggestions: id, file_id are set
+    For TM entry suggestions: entry_id, tm_id are set
+    """
     source: str
     target: str
-    file_id: int
-    file_name: str
     similarity: float
+    file_name: str
+    # Row-based suggestion fields
+    row_id: Optional[int] = None
+    file_id: Optional[int] = None
+    # TM-based suggestion fields
+    entry_id: Optional[int] = None
+    tm_id: Optional[int] = None
 
 
 class TMSuggestResponse(BaseModel):

@@ -22,10 +22,11 @@ router = APIRouter(tags=["LDM"])
 @router.get("/tm/suggest", response_model=TMSuggestResponse)
 async def get_tm_suggestions(
     source: str,
+    tm_id: Optional[int] = None,
     file_id: Optional[int] = None,
     project_id: Optional[int] = None,
     exclude_row_id: Optional[int] = None,
-    threshold: float = Query(0.70, ge=0.0, le=1.0, description="Similarity threshold (0.0-1.0)"),
+    threshold: float = Query(0.50, ge=0.0, le=1.0, description="Similarity threshold (0.0-1.0)"),
     max_results: int = Query(5, ge=1, le=50, description="Maximum suggestions to return"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
@@ -33,31 +34,80 @@ async def get_tm_suggestions(
     """
     Get Translation Memory suggestions for a source text.
 
-    Finds similar source texts in the database and returns their translations.
+    If tm_id is provided, searches the Translation Memory entries.
+    Otherwise, searches within project rows for similar texts.
 
     Args:
         source: Korean source text to find matches for
-        file_id: Optional - limit search to same file
-        project_id: Optional - limit search to same project
+        tm_id: Optional - search in specific Translation Memory
+        file_id: Optional - limit search to same file (if no tm_id)
+        project_id: Optional - limit search to same project (if no tm_id)
         exclude_row_id: Optional - exclude this row from results
-        threshold: Minimum similarity (0.0-1.0, default 0.70)
+        threshold: Minimum similarity (0.0-1.0, default 0.50)
         max_results: Maximum suggestions (default 5)
 
     Returns:
         List of TM suggestions with source, target, similarity, etc.
     """
-    logger.info(f"TM suggest: source={source[:30]}..., file={file_id}, project={project_id}")
+    logger.info(f"TM suggest: source={source[:30]}..., tm_id={tm_id}, file={file_id}")
 
     try:
-        # Use PostgreSQL pg_trgm similarity() for efficient fuzzy matching
-        # This is O(log n) with GIN index vs O(n) Python loop
         sql_params = {
             'search_text': source.strip(),
             'threshold': threshold,
             'max_results': max_results
         }
 
-        # Base conditions - use parameterized queries (NO f-strings for SQL!)
+        # If tm_id is provided, search the TM entries table
+        if tm_id:
+            # Verify TM ownership
+            tm_result = await db.execute(
+                select(LDMTranslationMemory).where(
+                    LDMTranslationMemory.id == tm_id,
+                    LDMTranslationMemory.owner_id == current_user["user_id"]
+                )
+            )
+            if not tm_result.scalar_one_or_none():
+                raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+            sql_params['tm_id'] = tm_id
+
+            # Search TM entries with pg_trgm similarity
+            sql = text("""
+                SELECT
+                    e.id,
+                    e.source_text as source,
+                    e.target_text as target,
+                    e.tm_id,
+                    similarity(lower(e.source_text), lower(:search_text)) as sim
+                FROM ldm_tm_entries e
+                WHERE e.tm_id = :tm_id
+                  AND e.target_text IS NOT NULL
+                  AND e.target_text != ''
+                  AND similarity(lower(e.source_text), lower(:search_text)) >= :threshold
+                ORDER BY sim DESC
+                LIMIT :max_results
+            """)
+
+            result = await db.execute(sql, sql_params)
+            rows = result.fetchall()
+
+            suggestions = [
+                {
+                    'source': row.source,
+                    'target': row.target,
+                    'similarity': round(float(row.sim), 3),
+                    'entry_id': row.id,
+                    'tm_id': row.tm_id,
+                    'file_name': 'TM'  # Mark as from TM
+                }
+                for row in rows
+            ]
+
+            logger.info(f"TM found {len(suggestions)} suggestions from TM {tm_id}")
+            return {"suggestions": suggestions, "count": len(suggestions)}
+
+        # Otherwise, search project rows (original behavior)
         conditions = ["r.target IS NOT NULL", "r.target != ''"]
         if file_id:
             conditions.append("r.file_id = :file_id")
@@ -71,8 +121,6 @@ async def get_tm_suggestions(
 
         where_clause = " AND ".join(conditions)
 
-        # Use pg_trgm similarity() for fuzzy matching
-        # Falls back to exact match if pg_trgm not available
         sql = text(f"""
             SELECT
                 r.id,
@@ -103,9 +151,11 @@ async def get_tm_suggestions(
             for row in rows
         ]
 
-        logger.info(f"TM found {len(suggestions)} suggestions (pg_trgm)")
+        logger.info(f"TM found {len(suggestions)} suggestions (project rows)")
         return {"suggestions": suggestions, "count": len(suggestions)}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"TM suggest failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="TM search failed. Check server logs.")
