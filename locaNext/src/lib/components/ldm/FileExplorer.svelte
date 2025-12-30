@@ -348,7 +348,63 @@
     }
   }
 
-  // Upload file with progress feedback
+  // Reference to hidden file input for direct upload
+  let fileInputRef = $state(null);
+
+  // Direct file upload - no modal, opens file dialog immediately
+  function triggerFileUpload(folderId = null) {
+    selectedFolderId = folderId;
+    if (fileInputRef) {
+      fileInputRef.click();
+    }
+  }
+
+  // Handle file selection from hidden input
+  async function handleFileInputChange(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0 || !selectedProjectId) return;
+
+    // Import toast for feedback
+    const { toast } = await import('$lib/stores/toastStore.js');
+
+    for (const file of files) {
+      toast.info(`Uploading ${file.name}...`, 'Import');
+
+      try {
+        const formData = new FormData();
+        formData.append('project_id', selectedProjectId);
+        if (selectedFolderId) {
+          formData.append('folder_id', selectedFolderId);
+        }
+        formData.append('file', file);
+
+        const response = await fetch(`${API_BASE}/api/ldm/files/upload`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          toast.success(`${file.name} imported (${result.row_count} rows)`, 'Import');
+          logger.success("File uploaded", { name: file.name, rows: result.row_count });
+        } else {
+          const error = await response.json();
+          toast.error(`Failed: ${error.detail || 'Unknown error'}`, 'Import');
+          logger.error("Upload failed", { name: file.name, error: error.detail });
+        }
+      } catch (err) {
+        toast.error(`Error: ${err.message}`, 'Import');
+        logger.error("Upload error", { error: err.message });
+      }
+    }
+
+    // Refresh tree and reset input
+    await loadProjectTree(selectedProjectId);
+    event.target.value = ''; // Reset input so same file can be selected again
+  }
+
+  // Upload file with progress feedback (legacy modal version)
   async function uploadFile() {
     if (!uploadFiles.length || !selectedProjectId) return;
 
@@ -872,13 +928,11 @@
     }
   }
 
-  // Import file to folder
+  // Import file to folder - direct upload, no modal
   function importFileToFolder() {
     if (!contextMenuFolder) return;
-    // Set the selectedFolderId for upload modal
-    selectedFolderId = contextMenuFolder.id;
     closeFolderContextMenu();
-    showUploadModal = true;
+    triggerFileUpload(contextMenuFolder.id);
   }
 
   // Handle click outside to close menu
@@ -1621,6 +1675,16 @@
   </div>
 {/if}
 
+<!-- Hidden file input for direct upload (no modal) -->
+<input
+  type="file"
+  bind:this={fileInputRef}
+  onchange={handleFileInputChange}
+  accept=".txt,.tsv,.xml"
+  multiple
+  style="display: none;"
+/>
+
 <!-- Folder Context Menu -->
 {#if showFolderContextMenu}
   <div
@@ -1652,7 +1716,7 @@
     onclick={(e) => e.stopPropagation()}
     role="menu"
   >
-    <button class="context-menu-item" onclick={() => { closeProjectContextMenu(); selectedFolderId = null; showUploadModal = true; }} role="menuitem">
+    <button class="context-menu-item" onclick={() => { closeProjectContextMenu(); triggerFileUpload(null); }} role="menuitem">
       <Upload size={16} />
       <span>Import File...</span>
     </button>
