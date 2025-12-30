@@ -19,7 +19,7 @@
 
 ```bash
 # 1. Navigate to project
-cd miniprojects/qa_excel_compiler
+cd RessourcesForCodingTheProject/NewScripts/QAExcelCompiler
 
 # 2. Install dependencies (just openpyxl)
 pip install -r requirements.txt
@@ -60,7 +60,7 @@ Output files:
 ## Folder Structure
 
 ```
-qa_excel_compiler/
+QAExcelCompiler/
 ├── compile_qa.py         # Main script (standalone)
 ├── requirements.txt      # Dependencies (openpyxl)
 ├── README.md             # This file
@@ -68,7 +68,7 @@ qa_excel_compiler/
 │   ├── John_Quest.xlsx
 │   ├── Alice_Quest.xlsx
 │   └── ...
-├── Masterfolder/         # OUTPUT GOES HERE
+├── Masterfolder/         # OUTPUT GOES HERE (STATUS tab = first)
 │   ├── Master_Quest.xlsx
 │   ├── Master_Knowledge.xlsx
 │   └── ...
@@ -98,14 +98,21 @@ Each user gets their own column: `COMMENT_John`, `COMMENT_Alice`, etc.
 
 ### Status Tracking
 
-Each master file gets a `STATUS` sheet:
+Each master file gets a `STATUS` sheet as the **first tab** (yellow header):
 
-| User  | Sheet1 | Sheet3 | Total |
-|-------|--------|--------|-------|
-| John  | 85%    | 100%   | 92.5% |
-| Alice | 50%    | 75%    | 62.5% |
+| User  | Completion % | Total Rows | ISSUE # | NO ISSUE % | BLOCKED % |
+|-------|--------------|------------|---------|------------|-----------|
+| John  | 80.0%        | 5          | 1       | 40.0%      | 20.0%     |
+| Mary  | 100.0%       | 5          | 1       | 80.0%      | 0.0%      |
 
-Completion % = rows with comments / total rows
+**Columns explained:**
+- **Completion %**: Rows with STATUS filled (ISSUE/NO ISSUE/BLOCKED) / Total rows
+- **Total Rows**: Number of rows in all sheets combined
+- **ISSUE #**: Raw count of ISSUE statuses
+- **NO ISSUE %**: Percentage of NO ISSUE statuses
+- **BLOCKED %**: Percentage of BLOCKED statuses
+
+**Valid STATUS values:** ISSUE, NO ISSUE, BLOCKED
 
 ### Re-run Safe
 
@@ -125,11 +132,13 @@ QA files should have these columns:
 | B - ENG | English translation | NO |
 | C - StringKey | Identifier | NO |
 | D - Command | Dev commands | NO |
-| E - STATUS | QA status | NO (future) |
-| F - COMMENT | QA feedback | **YES** |
+| E - STATUS | QA status | **YES** (stats only) |
+| F - COMMENT | QA feedback | **YES** (copied to COMMENT_{User}) |
 | G - SCREENSHOT | Hyperlink | NO (ignored) |
 
 **Row matching:** By row index (all QA files for same category have identical structure)
+
+**Note:** STATUS values are read for statistics (shown in STATUS tab) but NOT copied per-user. Only COMMENT gets individual columns.
 
 ---
 
