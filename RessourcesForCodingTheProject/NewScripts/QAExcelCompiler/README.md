@@ -124,6 +124,7 @@ Each master file gets a `STATUS` sheet as the **first tab** (yellow header):
 - New comments from QA files are appended
 - Existing comments preserved
 - **Team's custom formatting preserved** (colors added to cells won't be overwritten)
+- **Hidden columns stay hidden** (column visibility preserved on updates)
 
 ### MasterUI - Screenshot Issues
 

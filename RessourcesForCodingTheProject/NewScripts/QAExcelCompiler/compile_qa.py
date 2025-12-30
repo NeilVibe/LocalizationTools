@@ -206,8 +206,11 @@ def get_or_create_user_comment_column(ws, username):
         bottom=Side(style='medium', color='4472C4')
     )
 
-    # Set column width for readability
-    ws.column_dimensions[get_column_letter(new_col)].width = 35
+    # Set column width for readability (only width, preserve hidden state of other columns)
+    col_letter = get_column_letter(new_col)
+    ws.column_dimensions[col_letter].width = 35
+    # Explicitly ensure this new column is visible (don't inherit hidden state)
+    ws.column_dimensions[col_letter].hidden = False
 
     print(f"    Created column: {col_name} at {get_column_letter(new_col)} (styled)")
     return new_col
