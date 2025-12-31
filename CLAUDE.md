@@ -89,7 +89,17 @@ OFFLINE: SQLite (single-user, auto-fallback)
 
 ## Critical Rules
 
-1. **DOCS FIRST** - Before trying ANY approach, READ the relevant docs. Never guess or try random methods.
+1. **DOCS FIRST (MANDATORY!)** - Before ANY protocol task: **STOP → READ THE DOC → THEN ACT**.
+
+   ```
+   ⚠️ EVERY TIME you do something that "feels like a protocol":
+      1. STOP - Don't start doing it
+      2. FIND the relevant doc (Quick Navigation table above)
+      3. READ the exact commands/steps
+      4. THEN execute exactly as documented
+   ```
+
+   **Skipping docs = wrong approach = wasted time = user frustration**
 2. **ALWAYS CHOOSE HARD** - Between EASY/MEDIUM/HARD, ALWAYS choose HARD. No shortcuts. No workarounds. No quick fixes.
    - EASY WAY = Technical debt, breaks later, embarrassing
    - HARD WAY = Proper fix, survives forever, professional
