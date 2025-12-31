@@ -33,13 +33,15 @@ curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions/runs/346/jobs/1/lo
 ### Quick Build Status Check
 
 ```bash
-# One-liner: Check if latest build passed
+# One-liner: Check latest build status
 python3 -c "
 import sqlite3
 c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 1')
 r = c.fetchone()
-print(f'Run {r[0]}: {\"SUCCESS\" if r[1]==1 else \"FAILURE\"} - {r[2]}')"
+STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
+print(f'Run {r[0]}: {STATUS.get(r[1], r[1])} - {r[2]}')"
+# CRITICAL: 6=RUNNING means build is still in progress - WAIT!
 ```
 
 ### Last Fail Log (After Completion) - USE DISK

@@ -44,6 +44,24 @@
 | 22 | **Tried to connect Windows app to WSL backend** | Use `testing_toolkit/cdp/login.js` to login to Windows app |
 | 23 | **Confused DEV testing with Windows testing** | DEV = localhost:5173 + Playwright. Windows = CDP + login.js |
 | 24 | **Didn't know where user screenshots are** | `/mnt/c/Users/MYCOM/Pictures/Screenshots/` |
+| 25 | **Wrong status codes in SQL snippets** | STATUS_6 = RUNNING (not FAILURE!). Use full status_map |
+| 26 | **Investigated when build was still RUNNING** | STATUS_6 = RUNNING. Just WAIT, don't investigate runner health |
+| 27 | **Used `powershell.exe` without full path from WSL** | Full path: `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe` |
+
+---
+
+## 2025-12-31: Build Status Confusion (MAJOR)
+
+**Problem:** Saw SQL return `status=6`, assumed FAILURE, spent 10+ min investigating Windows runner.
+
+**Root Cause:** My own incorrect SQL snippets said `0=RUNNING` when actually `6=RUNNING`.
+
+**The Fix:**
+1. Fixed ALL docs with correct status_map
+2. Added rule 12 to CLAUDE.md: BUILD STATUS = SQLite
+3. Added rule 13: SW FIRST (use gitea_control.sh status)
+
+**LESSON:** STATUS 6 = RUNNING. Just wait.
 
 ---
 

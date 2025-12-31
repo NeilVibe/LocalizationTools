@@ -195,14 +195,27 @@ git add -A && git commit -m "Troubleshoot" && git push origin main && git push g
 
 ---
 
-## Log Locations
+## Check Build Status
+
+### Quick Status (SQL - PRIMARY METHOD)
 
 ```bash
-# Find latest build logs
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
+STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
+for r in c.fetchall():
+    print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')"
+```
 
-# Check for errors
-cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep -E "FAILED|error"
+**Status codes:** 0=UNKNOWN, 1=SUCCESS, 2=FAILURE, 3=CANCELLED, 4=SKIPPED, 5=WAITING, **6=RUNNING**, 7=BLOCKED
+
+### Backup Methods
+
+```bash
+# Log files (if SQL fails)
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
 
 # Check checkpoint
 cat ~/.locanext_checkpoint
