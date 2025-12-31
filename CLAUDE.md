@@ -85,6 +85,36 @@ OFFLINE: SQLite (single-user, auto-fallback)
 | Playwright works | CDP needed |
 | Use for: All UI work | Use for: Final validation |
 
+### Testing Matrix (MEMORIZE THIS)
+
+| What | Where | Login | How |
+|------|-------|-------|-----|
+| **DEV** | localhost:5173 | admin/admin123 | Playwright |
+| **Windows App** | Playground | admin/admin123 | `node testing_toolkit/cdp/login.js` |
+
+### WSL = FULL WINDOWS POWER
+
+```bash
+# USER SCREENSHOTS (Win+Shift+S) - CHECK HERE FIRST!
+ls -lt /mnt/c/Users/MYCOM/Pictures/Screenshots/*.png | head -3
+
+# Read user's latest screenshot
+cat "/mnt/c/Users/MYCOM/Pictures/Screenshots/$(ls -t /mnt/c/Users/MYCOM/Pictures/Screenshots/ | head -1)"
+
+# Node.js on Windows
+/mnt/c/Program\ Files/nodejs/node.exe script.js
+
+# PowerShell
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "..."
+
+# CDP login to Windows app
+/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/login.js
+```
+
+**USER SCREENSHOT LOCATION:** `/mnt/c/Users/MYCOM/Pictures/Screenshots/`
+
+**NOTHING IS IMPOSSIBLE FROM WSL.**
+
 ---
 
 ## Critical Rules

@@ -40,6 +40,16 @@
 | 18 | **Started Gitea manually (./gitea web)** | ALWAYS use `sudo systemctl start/stop gitea` |
 | 19 | **Didn't stop Gitea after push** | ALWAYS `sudo systemctl stop gitea` after pushing |
 | 20 | **Triggered CI without resource check** | Check `free -h` + `uptime` before triggering builds |
+| 21 | **Said "port forwarding needed" for Windows app** | Windows app has EMBEDDED backend - doesn't connect to WSL |
+| 22 | **Tried to connect Windows app to WSL backend** | Use `testing_toolkit/cdp/login.js` to login to Windows app |
+| 23 | **Confused DEV testing with Windows testing** | DEV = localhost:5173 + Playwright. Windows = CDP + login.js |
+| 24 | **Didn't know where user screenshots are** | `/mnt/c/Users/MYCOM/Pictures/Screenshots/` |
+
+---
+
+## 2025-12-31: Testing Confusion
+
+**See CLAUDE.md → "Testing Matrix" section.** Info is there now, not duplicated here.
 
 ---
 

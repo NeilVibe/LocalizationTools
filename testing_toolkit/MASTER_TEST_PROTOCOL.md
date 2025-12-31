@@ -262,6 +262,16 @@ node quick_check.js
 
 ## Phase 6: AI Visual Verification Protocol
 
+**USER SCREENSHOT LOCATION:** `/mnt/c/Users/MYCOM/Pictures/Screenshots/`
+
+```bash
+# Check user's latest screenshot (Win+Shift+S)
+ls -lt /mnt/c/Users/MYCOM/Pictures/Screenshots/*.png | head -3
+
+# Read the newest one
+cat "/mnt/c/Users/MYCOM/Pictures/Screenshots/$(ls -t /mnt/c/Users/MYCOM/Pictures/Screenshots/ | head -1)"
+```
+
 **This protocol ensures UI/UX fixes are VERIFIED with screenshot proof before marking as complete.**
 
 ### Mindset: Be DEMANDING (CRITICAL)
