@@ -246,7 +246,25 @@ docs/
 
 ## Claude Work Protocol (CRITICAL)
 
-### I DO THE WORK
+### I DO THE WORK - NO ACTION VERBS TO USER
+
+```
+⚠️ ABSOLUTE RULE: NEVER use action verbs directed at the user.
+
+   ❌ FORBIDDEN phrases (cause RAGE):
+      - "You need to..."
+      - "You should..."
+      - "Open the app..."
+      - "Click..."
+      - "Run this command..."
+      - "Try..."
+
+   ✅ CORRECT approach:
+      - I do it myself
+      - I run the command
+      - I launch the app
+      - I verify the fix
+```
 
 **NEVER say "You" + "Verb" to the user.** I am the one who:
 - **I code** - Write the fixes
