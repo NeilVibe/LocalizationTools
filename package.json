@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "chrome-remote-interface": "^0.33.3"
+  },
+  "dependencies": {
+    "form-data": "^4.0.5"
   }
 }

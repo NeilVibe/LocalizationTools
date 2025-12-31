@@ -27,10 +27,10 @@
 
   // Virtual scrolling constants
   const MIN_ROW_HEIGHT = 48; // Minimum row height (base)
-  const MAX_ROW_HEIGHT = 300; // Maximum row height for very long content
+  const MAX_ROW_HEIGHT = 800; // Allow cells to expand much more for long content
   const CHARS_PER_LINE = 45; // Estimated chars per line for height calc
-  const LINE_HEIGHT = 22; // Height per line of text (including line-height)
-  const CELL_PADDING = 16; // Vertical padding in cells (0.5rem * 2)
+  const LINE_HEIGHT = 26; // Height per line of text (14px * 1.6 line-height + buffer)
+  const CELL_PADDING = 24; // Vertical padding in cells (0.75rem * 2)
   const BUFFER_ROWS = 8; // Extra rows to render above/below viewport
   const PAGE_SIZE = 100; // Rows per page to fetch
   const PREFETCH_PAGES = 2; // Number of pages to prefetch ahead/behind
@@ -625,6 +625,10 @@
         threshold: '0.3',
         max_results: '5'
       });
+      // CRITICAL: Pass tm_id if active TM is set
+      if ($preferences.activeTmId) {
+        params.append('tm_id', $preferences.activeTmId.toString());
+      }
       if (fileId) params.append('file_id', fileId.toString());
       if (rowId) params.append('exclude_row_id', rowId.toString());
 
@@ -635,7 +639,7 @@
       if (response.ok) {
         const data = await response.json();
         tmSuggestions = data.suggestions || [];
-        logger.info("TM suggestions fetched", { count: tmSuggestions.length });
+        logger.info("TM suggestions fetched", { count: tmSuggestions.length, tmId: $preferences.activeTmId });
       }
     } catch (err) {
       logger.error("Failed to fetch TM suggestions", { error: err.message });
@@ -2025,7 +2029,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 1rem;
+    padding: 1rem 1.25rem; /* More spacious header */
     border-bottom: 1px solid var(--cds-border-subtle-01);
     background: var(--cds-layer-01);
   }
@@ -2132,11 +2136,12 @@
   .table-header {
     display: flex;
     background: var(--cds-layer-accent-01);
-    border-bottom: 2px solid var(--cds-border-strong-01);
-    font-weight: 600;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    font-weight: 500;
+    font-size: 0.8125rem;
+    text-transform: none; /* Cleaner look without uppercase */
+    letter-spacing: normal;
+    color: var(--cds-text-02);
   }
 
   /* UI-083: Full-height column resize bars (unified system) */
@@ -2162,7 +2167,7 @@
   }
 
   .th {
-    padding: 0.75rem 0.5rem;
+    padding: 0.875rem 1rem; /* Match cell padding for alignment */
     border-right: 1px solid var(--cds-border-subtle-01);
     white-space: nowrap;
     overflow: hidden;
@@ -2175,10 +2180,10 @@
     min-width: 150px;
   }
 
-  /* UI-044: Source column header has visible right border and resize handle */
+  /* Source column header - subtle divider */
   .th-source {
     position: relative;
-    border-right: 2px solid var(--cds-border-strong-01, #525252);
+    border-right: 1px solid var(--cds-border-subtle-02, #525252);
   }
 
   .th-target {
@@ -2218,8 +2223,8 @@
     left: 0;
     right: 0;
     display: flex;
-    /* UI-079: More visible row separator lines */
-    border-bottom: 1px solid var(--cds-border-strong-01, #525252);
+    /* Subtle row separator for cleaner look */
+    border-bottom: 1px solid var(--cds-border-subtle-01, #393939);
     background: var(--cds-layer-01);
     transition: background-color 0.15s ease;
     /* VARIABLE HEIGHT: Row height is set via inline style, content can expand */
@@ -2256,13 +2261,13 @@
   }
 
   .cell {
-    padding: 0.5rem;
+    padding: 0.75rem 1rem; /* More spacious padding for cleaner look */
     font-size: var(--grid-font-size, 14px);
     font-weight: var(--grid-font-weight, 400);
     font-family: var(--grid-font-family, inherit);
     color: var(--grid-font-color, var(--cds-text-01));
-    /* UI-079: More visible grid lines - use stronger border color */
-    border-right: 1px solid var(--cds-border-strong-01, #525252);
+    /* Subtle border for cleaner look */
+    border-right: 1px solid var(--cds-border-subtle-01, #393939);
     display: flex;
     align-items: flex-start;
     /* VARIABLE HEIGHT: Cells expand to fit content */
@@ -2279,11 +2284,9 @@
   .cell-content {
     word-break: break-word;
     white-space: pre-wrap;
-    line-height: 1.4;
-    /* VARIABLE HEIGHT: Content wraps naturally */
+    line-height: 1.6; /* More spacious line height for readability */
+    /* VARIABLE HEIGHT: Content expands fully - no scrollbar */
     width: 100%;
-    max-height: 100%;
-    overflow-y: auto; /* Scroll if content exceeds calculated height */
   }
 
   .cell.row-num {
@@ -2305,8 +2308,8 @@
     background: var(--cds-layer-02);
     color: var(--cds-text-02);
     transition: background-color 0.15s ease;
-    /* UI-044: Add visible right border to separate from target */
-    border-right: 2px solid var(--cds-border-strong-01, #525252);
+    /* Subtle divider between source and target */
+    border-right: 1px solid var(--cds-border-subtle-02, #525252);
     /* Source is READ-ONLY - cursor indicates this */
     cursor: default;
   }

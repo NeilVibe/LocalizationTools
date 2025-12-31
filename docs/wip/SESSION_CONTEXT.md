@@ -1,46 +1,75 @@
 # Session Context
 
-> Last Updated: 2025-12-31
+> Last Updated: 2025-12-31 (Session 2)
 
 ---
 
 ## Current State
 
 **Build:** 848+ (latest)
-**Status:** UI refinements complete, ready for next feature work
+**Status:** UI bugs fixed, cell expansion working, TM matches fixed
 
 ---
 
-## Recent Work (2025-12-31)
+## Recent Work (2025-12-31 - Session 2)
 
-### FileExplorer UI Refactor
+### BUG FIX: Grid Cells Not Expanding (Content Cut Off)
 
-- **Accordion navigation** - Full-height project list, drill-down into contents
-- **Context menus replace buttons** - Right-click for Import, New Folder, Link TM, Rename
-- **Rename support** - F2 hotkey, double-click, context menu
-- **Folders collapsed by default** - Click to expand/collapse
+**Problem:** Long content in cells was cut off with ugly internal scrollbar. Users had to scroll INSIDE the cell to see all content.
 
-### TM Manager Modal UX
+**Root Cause:**
+1. `MAX_ROW_HEIGHT = 300` capped cell height at 300px
+2. `overflow-y: auto` on `.cell-content` created internal scrollbar
 
-- **Removed scrollbar** - Auto-expand based on content
-- **Active/Inactive indicator** - Green dot for active, plain text for inactive
+**Fix:**
+- Increased `MAX_ROW_HEIGHT` from 300 to 800 in `VirtualGrid.svelte:30`
+- Removed `overflow-y: auto` and `max-height` from `.cell-content`
+- Updated `LINE_HEIGHT` (22 → 26) and `CELL_PADDING` (16 → 24) to match new spacing
 
-### TM Search Fix (BUG FIX!)
+### BUG FIX: TM Matches Panel Shows "No TM matches found"
 
-- **Bug:** `/tm/suggest` endpoint ignored `tm_id` parameter - only searched project rows, not TM entries
-- **Fix:** Added `tm_id` parameter support - now searches `ldm_tm_entries` when TM is active
-- **Schema updated:** `TMSuggestion` now supports both row-based and TM-based suggestions
+**Problem:** Even with active TM (1.2K entries), the TM MATCHES panel showed no results.
 
-### Toast Notifications Fix
+**Root Cause:** `fetchTMSuggestions()` function (line 612) was NOT passing `tm_id` to the API, while another function (line 830) was.
 
-- **Max 3 toasts** visible at once (no stacking)
-- **Deduplication** - same toast filtered within 2s
-- **"Unknown operation"** toasts filtered out
+**Fix:** Added `tm_id` parameter to `fetchTMSuggestions()`:
+```javascript
+if ($preferences.activeTmId) {
+  params.append('tm_id', $preferences.activeTmId.toString());
+}
+```
 
-### Database Cleanup
+### TM Modal More Spacious
 
-- Cleaned all test projects/files/TMs
-- Created fresh: 1 project, 1 file (10 rows), 1 TM (10 entries)
+- Increased padding: `padding: 1rem 0.5rem`
+- Table cell padding: `0.75rem → 1rem 0.75rem`
+- Header styling: lighter weight (500), smaller font (0.8125rem)
+- Name cell max-width: `200px → 280px` with `word-break: break-word`
+
+---
+
+## Recent Work (2025-12-31 - Session 1)
+
+### Direct File Upload (No Modal!)
+
+- **Removed upload modal** - Now opens native file picker directly
+- **Right-click → Import File** opens file dialog immediately
+- **Toast notifications** for upload progress/success/failure
+
+### Upload Performance Verified
+
+| File | Size | Time | Speed | Rows |
+|------|------|------|-------|------|
+| SMALL | 371 KB | 0.99s | 375 KB/s | 1,183 |
+| MEDIUM | 15.5 MB | 44.7s | 355 KB/s | 103,500 |
+| BIG | 189 MB | 8.5min | 381 KB/s | 1.1M rows |
+
+### UI Polish
+
+- Cell padding: `0.5rem → 0.75rem 1rem`
+- Line height: `1.4 → 1.6`
+- Subtler borders: `border-strong → border-subtle`
+- Header: removed uppercase, cleaner look
 
 ---
 
@@ -48,23 +77,22 @@
 
 | Feature | Status |
 |---------|--------|
+| Grid cells expand to fit content | ✅ FIXED |
+| No internal cell scrollbar | ✅ FIXED |
+| TM matches panel works | ✅ FIXED |
+| TM Modal spacious | ✅ FIXED |
+| Direct file upload (no modal) | ✅ |
+| Upload performance (tested) | ✅ |
+| Task Manager error handling | ✅ |
 | FileExplorer accordion style | ✅ |
-| Project context menu | ✅ |
-| Folder context menu | ✅ |
-| File context menu | ✅ |
-| Rename (F2, double-click) | ✅ |
-| TM Manager modal | ✅ |
-| Active TM indicator | ✅ |
-| TM search with active TM | ✅ FIXED |
-| Toast notifications | ✅ FIXED |
+| TM search with active TM | ✅ |
 
 ---
 
-## Next Steps
+## Key Files Modified (Session 2)
 
-1. **Testing** - Verify all context menu actions work correctly
-2. **Edge cases** - Test with many projects/files
-3. **P3: Offline/Online Mode** - Next major feature (see Roadmap.md)
+- `src/lib/components/ldm/VirtualGrid.svelte` - Cell expansion fix, TM matches fix
+- `src/lib/components/ldm/TMManager.svelte` - Modal spacing improvements
 
 ---
 
@@ -80,19 +108,29 @@ DEV_MODE=true python3 server/main.py
 # Frontend dev
 cd locaNext && npm run dev
 
-# Desktop app
-cd locaNext && npm run electron:dev
+# User screenshots location (IMPORTANT!)
+/mnt/c/Users/MYCOM/Pictures/Screenshots/
 ```
 
 ---
 
-## Key Files Modified
+## Debug Tips
 
-- `src/lib/components/ldm/FileExplorer.svelte` - Accordion + context menus
-- `src/lib/components/ldm/TMManager.svelte` - Modal UX fixes
-- `server/tools/ldm/routes/projects.py` - Rename endpoint
-- `server/tools/ldm/routes/folders.py` - Rename endpoint
-- `server/tools/ldm/routes/files.py` - Rename endpoint
+### User Screenshots Location
+**CRITICAL:** User takes screenshots at `C:\Users\MYCOM\Pictures\Screenshots`
+Access from WSL: `/mnt/c/Users/MYCOM/Pictures/Screenshots/`
+
+### Cell Content Issues
+If cells are cutting off content:
+1. Check `MAX_ROW_HEIGHT` constant - increase if needed
+2. Check `.cell-content` CSS - NO `overflow-y: auto` or `max-height`
+3. Verify `LINE_HEIGHT` and `CELL_PADDING` match actual CSS values
+
+### TM Not Working
+If TM panel shows "No matches" even with active TM:
+1. Check if `tm_id` is being passed to `/api/ldm/tm/suggest`
+2. Look for `$preferences.activeTmId` - must be passed in params
+3. Check server logs: `[TM-SUGGEST]` prefix shows what's happening
 
 ---
 

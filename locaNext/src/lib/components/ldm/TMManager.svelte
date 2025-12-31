@@ -747,8 +747,8 @@
   }
 
   .tm-manager {
-    /* Clean spacing, no forced height */
-    padding-bottom: 0.5rem;
+    /* More spacious padding for clean look */
+    padding: 1rem 0.5rem 1rem 0.5rem;
   }
 
   .tm-toolbar {
@@ -851,14 +851,15 @@
 
   .tm-table th {
     text-align: left;
-    padding: 0.75rem 0.5rem;
-    font-weight: 600;
-    border-bottom: 2px solid var(--cds-border-subtle-01);
-    color: var(--cds-text-01);
+    padding: 1rem 0.75rem;
+    font-weight: 500;
+    font-size: 0.8125rem;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    color: var(--cds-text-02);
   }
 
   .tm-table td {
-    padding: 0.75rem 0.5rem;
+    padding: 1rem 0.75rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
     vertical-align: middle;
   }
@@ -868,7 +869,8 @@
   }
 
   .name-cell {
-    max-width: 200px;
+    max-width: 280px;
+    word-break: break-word;
   }
 
   /* UI-003: Active TM row styling */
