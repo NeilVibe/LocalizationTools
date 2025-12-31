@@ -292,12 +292,16 @@ function setupAutoUpdater() {
 
   logger.info('Setting up auto-updater', { config: autoUpdaterConfig });
 
+  // SEAMLESS UPDATE: Auto-download in background, auto-install on quit
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
   // Configure update server
   autoUpdater.setFeedURL(autoUpdaterConfig);
 
-  // Update available
+  // Update available - auto-downloading (no user action needed)
   autoUpdater.on('update-available', (info) => {
-    logger.info('Update available', { version: info.version });
+    logger.info('Update available - auto-downloading', { version: info.version });
     mainWindow?.webContents.send('update-available', info);
   });
 
