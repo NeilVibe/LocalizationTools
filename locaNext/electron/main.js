@@ -3,7 +3,7 @@
  * GLOBAL ERROR HANDLERS MUST BE SET UP IMMEDIATELY AFTER IMPORTS
  */
 
-import { app, BrowserWindow, Menu, ipcMain, dialog, shell, protocol, session } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, dialog, shell, protocol, session, net } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
@@ -531,7 +531,8 @@ function createWindow() {
       }
     );
 
-    mainWindow.loadFile(buildPath);
+    // Use custom app:// protocol for clean URLs (fixes SvelteKit routing)
+    mainWindow.loadURL('app://./index.html');
 
     // Open DevTools in production if DEBUG_MODE is enabled
     if (DEBUG_MODE) {
@@ -899,6 +900,22 @@ ipcMain.handle('append-log', async (event, { logPath, message }) => {
 
 // ==================== APP LIFECYCLE ====================
 
+// Register custom protocol scheme BEFORE app is ready
+// This fixes SvelteKit routing issues with file:// protocol
+// The 'app' protocol serves files from build/ with clean URL paths
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true
+    }
+  }
+]);
+
 // App ready
 app.whenReady().then(async () => {
   logger.info('Electron app ready', {
@@ -908,6 +925,27 @@ app.whenReady().then(async () => {
     isDev,
     paths: paths
   });
+
+  // Register the 'app' protocol handler for serving build files
+  // This creates clean URLs (app://./path) instead of file:// URLs
+  // which fixes SvelteKit routing issues
+  const buildDir = path.join(__dirname, '../build');
+  protocol.handle('app', (request) => {
+    const url = new URL(request.url);
+    let filePath = url.pathname;
+
+    // Handle root path
+    if (filePath === '/' || filePath === '') {
+      filePath = '/index.html';
+    }
+
+    // Remove leading slash and resolve to build directory
+    const resolvedPath = path.join(buildDir, filePath.replace(/^\//, ''));
+    logger.info('[Protocol] Serving', { url: request.url, filePath: resolvedPath });
+
+    return net.fetch(`file://${resolvedPath}`);
+  });
+  logger.info('[Protocol] Custom app:// protocol registered', { buildDir });
 
   // Show splash screen immediately (production only)
   if (!isDev) {
