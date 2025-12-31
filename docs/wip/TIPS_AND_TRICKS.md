@@ -156,4 +156,97 @@ Tests SMALL (371KB), MEDIUM (15.5MB), BIG (189MB) files with detailed logging.
 
 ---
 
+## Build & Packaging Issues
+
+### 6. Missing Python Packages in Windows Build (CRITICAL!)
+
+**Symptoms:** App installed, but crashes on launch with `ModuleNotFoundError`
+
+**Root Cause (2025-12-31):** The `.gitea/workflows/build.yml` had a **HARDCODED** pip install list that was **OUT OF SYNC** with `requirements.txt`.
+
+```powershell
+# BAD - hardcoded list that drifts from requirements.txt
+& "$targetDir\python.exe" -m pip install fastapi uvicorn sqlalchemy...
+
+# GOOD - single source of truth
+& "$targetDir\python.exe" -m pip install -r requirements.txt
+```
+
+**Missing packages that caused crashes:**
+- `asyncpg` - **FATAL**: Async PostgreSQL driver (app crashes without it)
+- `faiss-cpu` - TM indexing disabled (graceful degradation)
+- `torch`, `transformers` - ML features disabled (graceful degradation)
+
+**THE FIX:**
+1. Changed build.yml line 1257 to use `pip install -r requirements.txt`
+2. Added graceful fallback in `server/utils/dependencies.py`:
+```python
+# Check if asyncpg is available before trying to use it
+try:
+    import asyncpg  # noqa: F401
+except ImportError:
+    logger.warning("Async database skipped: asyncpg not installed")
+    return  # Continue with sync-only mode instead of crashing
+```
+
+**LESSON:** Never hardcode package lists in multiple places. Use requirements.txt as single source of truth.
+
+---
+
+### 7. Debug Sequence for App Crash on Launch
+
+1. **Check processes:** Is the app running at all?
+   ```powershell
+   Get-Process | Where-Object {$_.ProcessName -like '*LocaNext*'}
+   ```
+
+2. **Launch with logging:** Capture stdout/stderr
+   ```powershell
+   & 'path\to\LocaNext.exe' 2>&1
+   ```
+
+3. **Look for these patterns:**
+   - `ModuleNotFoundError` → Missing Python package
+   - `Backend server failed to start` → Python backend crashed
+   - `CRITICAL | ERROR DIALOG` → Fatal error caught
+
+4. **Common fixes:**
+   - Missing package → Fix requirements.txt and rebuild
+   - Import error → Add try/except with graceful degradation
+   - Crash loop → Check if sync database falls back correctly
+
+---
+
+### 8. Smart Membrane Row Expansion
+
+**Symptoms:** Grid rows have excessive empty space OR content is cut off
+
+**Root Cause (2025-12-31):** Fixed height estimation with hardcoded constants.
+
+**THE FIX (VirtualGrid.svelte):**
+```javascript
+// 1. Use min-height instead of height for rows
+style="top: {rowTop}px; min-height: {rowHeight}px;"
+
+// 2. Measure actual DOM height after render
+function measureRowHeight(node, { index }) {
+  requestAnimationFrame(() => {
+    const actualHeight = node.scrollHeight;
+    const cachedHeight = rowHeightCache.get(index);
+    if (Math.abs(actualHeight - cachedHeight) > 10) {
+      rowHeightCache.set(index, actualHeight);
+      rebuildCumulativeHeights();
+    }
+  });
+}
+
+// 3. Use realistic estimation parameters
+const effectiveCharsPerLine = 55;  // Not 40
+const actualLineHeight = 22;       // Not 26
+```
+
+**LESSON:** Virtual scrolling with variable heights needs DOM measurement feedback loop, not just estimation.
+
+---
+
 *Updated: 2025-12-31*

@@ -1252,16 +1252,10 @@ jobs:
             & "$targetDir\python.exe" "$targetDir\get-pip.py" --no-warn-script-location
             Remove-Item "$targetDir\get-pip.py"
 
-            # Install all packages
-            Write-Host "Installing backend dependencies..."
-            & "$targetDir\python.exe" -m pip install --no-warn-script-location `
-              fastapi uvicorn python-multipart python-socketio `
-              sqlalchemy aiosqlite psycopg2-binary `
-              PyJWT python-jose passlib python-dotenv bcrypt `
-              pydantic pydantic-settings email-validator `
-              pandas openpyxl xlrd `
-              httpx requests loguru tqdm pyyaml huggingface_hub `
-              model2vec
+            # Install all packages from requirements.txt (SINGLE SOURCE OF TRUTH)
+            # This ensures build always matches requirements.txt - no more missing packages!
+            Write-Host "Installing backend dependencies from requirements.txt..."
+            & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
 
             $size = [math]::Round((Get-ChildItem $targetDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
             Write-Host "[OK] Python + packages installed: $size MB"
