@@ -229,16 +229,23 @@
     } catch (error) {
       const elapsed = performance.now() - startTime;
 
-      logger.error("Failed to fetch tasks", {
+      logger.warn("Task fetch failed (silent)", {
         error: error.message,
         error_type: error.name,
         elapsed_ms: elapsed.toFixed(2)
       });
 
-      // Don't show notification for auth errors (user might not be logged in yet)
-      if (!error.message.includes('401') && !error.message.includes('Unauthorized')) {
-        showNotificationMessage('Failed to load tasks', 'error');
+      // Silently fail for most errors - don't spam user with notifications
+      // Task manager is non-critical UI and will retry on next poll
+      // Only show notification for unexpected 500-level server errors
+      const isAuthError = error.message.includes('401') || error.message.includes('Unauthorized') || error.message.includes('403');
+      const isNetworkError = error.name === 'TypeError' || error.message.includes('fetch') || error.message.includes('network');
+      const isServerError = error.message.includes('500') || error.message.includes('502') || error.message.includes('503');
+
+      if (isServerError && !isAuthError && !isNetworkError) {
+        showNotificationMessage('Task manager temporarily unavailable', 'warning');
       }
+      // For other errors (network, auth), fail silently - user doesn't need to know
     } finally {
       if (showLoading) {
         isLoading = false;
