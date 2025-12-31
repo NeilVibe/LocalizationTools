@@ -94,3 +94,4 @@ Build 420: Custom app:// protocol fix
 Build 421: Smart membrane row expansion
 Build 422: Fix asyncpg missing - use requirements.txt
 Build 423
+Build 424: Fix cache validation - add faiss/lxml/asyncpg to ALL package lists

@@ -47,7 +47,7 @@ PACKAGE_TO_IMPORT = {
     "pytest-xdist": "xdist",
 }
 
-# CRITICAL packages - app CRASHES without these
+# CRITICAL packages - app CRASHES or major features BROKEN without these
 # NOTE: Include both with and without extras for matching
 CRITICAL_PACKAGES = {
     "fastapi",
@@ -62,6 +62,9 @@ CRITICAL_PACKAGES = {
     "passlib",
     "passlib[bcrypt]",
     "loguru",
+    # P36: Added - TM indexing and XML QA REQUIRE these (NOT optional!)
+    "faiss-cpu",       # TM semantic search - CORE feature
+    "lxml",            # XML QA tools - CORE feature
 }
 
 # OPTIONAL packages - app works without these (graceful degradation)
@@ -69,7 +72,6 @@ OPTIONAL_PACKAGES = {
     "torch",
     "transformers",
     "sentence-transformers",
-    "faiss-cpu",
     "model2vec",
     "plotly",
     "matplotlib",

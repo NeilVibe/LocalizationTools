@@ -1009,7 +1009,8 @@ jobs:
           } else {
             Write-Host "[WARN] requirements.txt not found - using package list hash" -ForegroundColor Yellow
             # Fallback: hash the pip install command packages
-            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite psycopg2-binary PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub"
+            # P36: Updated to include ALL critical packages (faiss-cpu, lxml, asyncpg)
+            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite psycopg2-binary asyncpg PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub faiss-cpu lxml"
             $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
           }
 
@@ -1179,12 +1180,14 @@ jobs:
           if (Test-Path "requirements.txt") {
             $reqHash = (Get-FileHash "requirements.txt" -Algorithm SHA256).Hash.Substring(0, 12)
           } else {
-            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite psycopg2-binary PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub"
+            # P36: Added asyncpg, faiss-cpu, lxml - CRITICAL packages
+            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite psycopg2-binary asyncpg PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub faiss-cpu lxml"
             $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
           }
 
           # List of required packages for existence validation (fallback check)
-          $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "huggingface_hub")
+          # P36: Added faiss, lxml, asyncpg - CORE packages that must be installed
+          $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "huggingface_hub", "faiss", "lxml", "asyncpg")
 
           # Load manifest to check cached hash
           $cachedReqHash = ""
@@ -1265,8 +1268,9 @@ jobs:
             & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
 
             # P36: Verify CRITICAL packages are installed (prevents asyncpg-style crashes)
+            # NOTE: faiss and lxml are REQUIRED for TM indexing and XML QA - NOT optional!
             Write-Host "Verifying critical packages..."
-            $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru")
+            $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru", "faiss", "lxml")
             $failed = @()
             foreach ($pkg in $criticalPackages) {
               $result = & "$targetDir\python.exe" -c "import $pkg" 2>&1

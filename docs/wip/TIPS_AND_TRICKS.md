@@ -174,8 +174,9 @@ Tests SMALL (371KB), MEDIUM (15.5MB), BIG (189MB) files with detailed logging.
 
 **Missing packages that caused crashes:**
 - `asyncpg` - **FATAL**: Async PostgreSQL driver (app crashes without it)
-- `faiss-cpu` - TM indexing disabled (graceful degradation)
-- `torch`, `transformers` - ML features disabled (graceful degradation)
+- `faiss-cpu` - **CRITICAL**: TM semantic search broken without it (NOT optional!)
+- `lxml` - **CRITICAL**: XML QA tools broken without it (NOT optional!)
+- `torch`, `transformers` - ML features disabled (graceful degradation OK)
 
 **THE FIX:**
 1. Changed build.yml line 1257 to use `pip install -r requirements.txt`
