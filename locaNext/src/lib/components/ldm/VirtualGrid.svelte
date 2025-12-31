@@ -1466,7 +1466,7 @@
   function estimateRowHeight(row, index) {
     if (!row || row.placeholder) return MIN_ROW_HEIGHT;
 
-    // Check cache first
+    // Check cache first - if we have a measured height, use it
     if (rowHeightCache.has(index)) {
       return rowHeightCache.get(index);
     }
@@ -1481,20 +1481,46 @@
     const targetNewlines = countNewlines(row.target);
     const maxNewlines = Math.max(sourceNewlines, targetNewlines);
 
-    // Estimate lines needed (consider column width is ~50% of viewport)
-    const effectiveCharsPerLine = Math.floor(CHARS_PER_LINE * 0.9); // Account for column width
+    // SMART ESTIMATION: Use larger chars per line for wider columns
+    // Column is ~45% of viewport, with ~8px per char at 14px font
+    const effectiveCharsPerLine = 55; // More realistic for actual column width
     const wrapLines = Math.ceil(maxLen / effectiveCharsPerLine);
     const totalLines = Math.max(1, wrapLines + maxNewlines);
 
-    // Calculate height: base padding + lines * line height
-    const contentHeight = totalLines * LINE_HEIGHT;
+    // Calculate height: use tighter line height (actual CSS is ~20px)
+    const actualLineHeight = 22; // Closer to real rendered line height
+    const contentHeight = totalLines * actualLineHeight;
     const estimatedHeight = Math.max(MIN_ROW_HEIGHT, contentHeight + CELL_PADDING);
     const finalHeight = Math.min(estimatedHeight, MAX_ROW_HEIGHT);
 
-    // Cache the result
+    // Cache the result (will be updated with actual measurement later)
     rowHeightCache.set(index, finalHeight);
 
     return finalHeight;
+  }
+
+  // SMART MEMBRANE: Measure actual row height after render and update cache
+  function measureRowHeight(node, { index }) {
+    // Wait for next frame to ensure content is rendered
+    requestAnimationFrame(() => {
+      const actualHeight = node.scrollHeight;
+      const cachedHeight = rowHeightCache.get(index);
+
+      // Only update if significantly different (>10px difference)
+      if (cachedHeight && Math.abs(actualHeight - cachedHeight) > 10) {
+        rowHeightCache.set(index, actualHeight);
+        // Trigger re-calculation of cumulative heights
+        rebuildCumulativeHeights();
+      } else if (!cachedHeight) {
+        rowHeightCache.set(index, actualHeight);
+      }
+    });
+
+    return {
+      destroy() {
+        // Cleanup if needed
+      }
+    };
   }
 
   // VARIABLE HEIGHT: Rebuild cumulative heights for all loaded rows
@@ -1864,7 +1890,8 @@
               class:locked={rowLock}
               class:selected={selectedRowId === row.id}
               class:row-hovered={hoveredRowId === row.id}
-              style="top: {rowTop}px; height: {rowHeight}px;"
+              style="top: {rowTop}px; min-height: {rowHeight}px;"
+              use:measureRowHeight={{ index: rowIndex }}
               onclick={(e) => handleCellClick(row, e)}
               onmouseleave={handleRowMouseLeave}
               role="row"
@@ -2274,7 +2301,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
-    min-height: 100%; /* Fill row height */
+    /* SMART MEMBRANE: Let content determine height, don't force 100% */
+    align-self: stretch;
     box-sizing: border-box;
   }
 
