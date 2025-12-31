@@ -695,10 +695,17 @@ echo "Build LIGHT v$(date '+%y%m%d%H%M')" >> GITEA_TRIGGER.txt
 git add -A && git commit -m "Trigger build" && git push gitea main
 ```
 
-### Check Build Status
+### Check Build Status (SQL - PRIMARY METHOD)
 ```bash
-strings $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1) | grep "Job"
+python3 -c "
+import sqlite3
+c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
+STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
+for r in c.fetchall():
+    print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')"
 ```
+**Status codes:** 0=UNKNOWN, 1=SUCCESS, 2=FAILURE, 5=WAITING, **6=RUNNING**, 7=BLOCKED
 
 ---
 

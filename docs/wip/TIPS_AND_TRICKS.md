@@ -249,4 +249,43 @@ const actualLineHeight = 22;       // Not 26
 
 ---
 
+### 9. CI Package Verification (P36)
+
+**Purpose:** Prevent app crashes from missing Python packages (like asyncpg in Build 421).
+
+**The Problem:**
+- `build.yml` had hardcoded pip install list
+- List drifted from `requirements.txt`
+- asyncpg was missing -> app crashed on launch
+
+**The Fix (Build 422):**
+1. Changed build.yml to use `pip install -r requirements.txt`
+2. Added `scripts/verify_requirements.py` to verify critical packages
+3. CI now fails FAST if critical package is missing
+
+**CI Verification Points:**
+1. **Linux (safety-checks):** `python3.11 scripts/verify_requirements.py --critical-only`
+2. **Windows (build-windows):** PowerShell loop imports each critical package
+
+**Critical Packages (app CRASHES without):**
+- fastapi, uvicorn, sqlalchemy, asyncpg
+- psycopg2, pydantic, jose, passlib, loguru
+
+**Optional Packages (graceful degradation):**
+- torch, transformers, sentence-transformers
+- faiss-cpu, model2vec, plotly
+
+**Run locally:**
+```bash
+# Check critical packages only
+python3 scripts/verify_requirements.py --critical-only
+
+# Check ALL packages
+python3 scripts/verify_requirements.py
+```
+
+**LESSON:** Single source of truth (requirements.txt) + verification = no more missing package surprises.
+
+---
+
 *Updated: 2025-12-31*

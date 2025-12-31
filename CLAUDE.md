@@ -23,6 +23,8 @@
 
 | Term | Meaning |
 |------|---------|
+| **CCAD** | **Check Claude.md And Docs** - When confused, ALWAYS check docs first! |
+| **SW** | Shell Wrapper - `./scripts/gitea_control.sh` for Gitea management |
 | **RM** | Roadmap.md - global priorities |
 | **WIP** | docs/wip/*.md - active task files |
 | **IL** | Issue List (ISSUES_TO_FIX.md) |
@@ -154,6 +156,17 @@ cat "/mnt/c/Users/MYCOM/Pictures/Screenshots/$(ls -t /mnt/c/Users/MYCOM/Pictures
    5. Only THEN start fresh
 10. **VERIFY WITH TESTS** - Never assume fixes work. Run headless Playwright tests. Take screenshots. Get HARD EVIDENCE.
 11. **GITEA: STOP/START > RESTART** - Never use restart. Always CLEAN STOP → CLEAN START when needed → CLEAN STOP when done. Gitea uses ~60% CPU idle - don't leave running!
+12. **BUILD STATUS = SQLite** - ALWAYS use SQLite query for build status, NEVER guess:
+    ```bash
+    python3 -c "
+    import sqlite3
+    c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+    c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 3')
+    STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
+    for r in c.fetchall(): print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')"
+    ```
+    **CRITICAL: STATUS 6 = RUNNING - just WAIT, don't investigate!**
+13. **SW FIRST** - When checking Gitea, use Shell Wrapper first: `./scripts/gitea_control.sh status`
 
 ---
 

@@ -162,6 +162,13 @@ jobs:
           python3.11 -m pip install -r requirements.txt
           python3.11 -m pip install pytest pip-audit
 
+      # ---- P36: PACKAGE VERIFICATION (prevents asyncpg-style crashes) ----
+      - name: Verify Critical Packages Installed
+        run: |
+          echo "=== Verifying all critical packages from requirements.txt ==="
+          python3.11 scripts/verify_requirements.py --critical-only
+          echo "[OK] All critical packages verified"
+
       - name: Install Node Dependencies
         run: |
           cd locaNext && npm ci
@@ -1256,6 +1263,25 @@ jobs:
             # This ensures build always matches requirements.txt - no more missing packages!
             Write-Host "Installing backend dependencies from requirements.txt..."
             & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
+
+            # P36: Verify CRITICAL packages are installed (prevents asyncpg-style crashes)
+            Write-Host "Verifying critical packages..."
+            $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru")
+            $failed = @()
+            foreach ($pkg in $criticalPackages) {
+              $result = & "$targetDir\python.exe" -c "import $pkg" 2>&1
+              if ($LASTEXITCODE -ne 0) {
+                $failed += $pkg
+                Write-Host "  MISSING: $pkg" -ForegroundColor Red
+              } else {
+                Write-Host "  OK: $pkg" -ForegroundColor Green
+              }
+            }
+            if ($failed.Count -gt 0) {
+              Write-Host "FATAL: Missing critical packages: $($failed -join ', ')" -ForegroundColor Red
+              exit 1
+            }
+            Write-Host "[OK] All critical packages verified"
 
             $size = [math]::Round((Get-ChildItem $targetDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
             Write-Host "[OK] Python + packages installed: $size MB"
