@@ -90,3 +90,4 @@ Build 416: All UI issues fixed (28/28)
 Build QA
 Build 418
 Build 419: Fix file:// protocol routing
+Build 420: Custom app:// protocol fix
