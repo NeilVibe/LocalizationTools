@@ -99,6 +99,8 @@ def initialize_async_database():
     P33 Offline Mode:
     - SQLite: Skip async initialization (pysqlite is not async)
     - PostgreSQL: Initialize async engine with asyncpg
+
+    ROBUST: Gracefully degrades to sync-only mode if asyncpg is not installed.
     """
     import asyncio
     global _async_engine, _async_session_maker, _async_engine_loop
@@ -106,6 +108,14 @@ def initialize_async_database():
     # Skip async database for SQLite (pysqlite is not async)
     if config.ACTIVE_DATABASE_TYPE == "sqlite":
         logger.info("Async database skipped: SQLite mode (using sync database only)")
+        return
+
+    # Check if asyncpg is available (required for async PostgreSQL)
+    try:
+        import asyncpg  # noqa: F401
+    except ImportError:
+        logger.warning("Async database skipped: asyncpg not installed (using sync database only)")
+        logger.warning("To enable async database, install asyncpg: pip install asyncpg")
         return
 
     # Get current event loop
