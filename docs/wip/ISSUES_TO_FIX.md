@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-01 (Session 9 - Complete) | **Build:** 424 | **Open:** 14
+**Last Updated:** 2026-01-01 (Session 13 - CI/CD Fixes) | **Build:** 426 | **Open:** 12
 
 ---
 
@@ -26,6 +26,16 @@ See **[PHASE_10_MAJOR_UIUX_OVERHAUL.md](PHASE_10_MAJOR_UIUX_OVERHAUL.md)** for:
 - Windows/SharePoint-style File Explorer
 - TM Explorer with project-based TMs
 - Dashboard enhancements with stats hierarchy
+
+---
+
+## Session 13 Updates (CI/CD Fixes)
+
+| Issue | Root Cause | Fix | Status |
+|-------|------------|-----|--------|
+| CI-001 | SW lacked gsudo for Windows services | Added `gsudo` to `gitea_control.sh` | ✅ FIXED |
+| CI-002 | macOS build references non-existent config | Changed to inline config in package.json | ✅ FIXED |
+| CI-003 | TM similarity search 500 error | Added pg_trgm extension to both CI workflows | ✅ FIXED |
 
 ---
 
@@ -913,4 +923,4 @@ The following fixes have been coded but need manual DEV testing:
 
 ---
 
-*Updated 2026-01-01 | 40 Issues FIXED | 19 OPEN*
+*Updated 2026-01-01 | 43 Issues FIXED (incl. 3 CI/CD) | 12 OPEN*
