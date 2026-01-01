@@ -140,7 +140,7 @@ stop_graceful() {
         WIN_STATUS=$($POWERSHELL -Command "(Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue).Status" 2>/dev/null | tr -d '\r')
         if [ "$WIN_STATUS" = "Running" ]; then
             echo "Stopping Windows Runner service..."
-            $POWERSHELL -Command "Stop-Service $WIN_RUNNER_SERVICE -Force" 2>/dev/null
+            $POWERSHELL -Command "gsudo Stop-Service $WIN_RUNNER_SERVICE -Force" 2>/dev/null
             sleep 3
             print_status "Windows Runner stopped"
         else
@@ -194,8 +194,8 @@ stop_force() {
     echo -e "${BLUE}[WINDOWS RUNNER]${NC}"
     if can_manage_windows; then
         echo "Force stopping Windows Runner..."
-        $POWERSHELL -Command "Stop-Service $WIN_RUNNER_SERVICE -Force -ErrorAction SilentlyContinue" 2>/dev/null
-        $POWERSHELL -Command "Get-Process act_runner* -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null
+        $POWERSHELL -Command "gsudo Stop-Service $WIN_RUNNER_SERVICE -Force -ErrorAction SilentlyContinue" 2>/dev/null
+        $POWERSHELL -Command "gsudo Stop-Process -Name act_runner* -Force -ErrorAction SilentlyContinue" 2>/dev/null
         print_status "Windows Runner killed"
     fi
 
@@ -306,14 +306,14 @@ start() {
         WIN_STATUS=$($POWERSHELL -Command "(Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue).Status" 2>/dev/null | tr -d '\r')
         if [ "$WIN_STATUS" != "Running" ]; then
             echo "Starting Windows Runner service..."
-            $POWERSHELL -Command "Start-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue" 2>/dev/null
+            $POWERSHELL -Command "gsudo Start-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue" 2>/dev/null
             sleep 3
 
             WIN_STATUS=$($POWERSHELL -Command "(Get-Service $WIN_RUNNER_SERVICE -ErrorAction SilentlyContinue).Status" 2>/dev/null | tr -d '\r')
             if [ "$WIN_STATUS" = "Running" ]; then
                 print_status "Windows Runner started"
             else
-                print_warning "Failed to start Windows Runner (may need admin rights)"
+                print_warning "Failed to start Windows Runner (gsudo may have failed)"
             fi
         else
             echo "Windows Runner already running"
