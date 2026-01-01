@@ -2444,10 +2444,11 @@ jobs:
           # Create new 'latest' release
           Write-Host "Creating 'latest' release pointing to v$VERSION..."
 
-          # Build JSON and write to temp file (avoids PowerShell escaping issues with curl)
+          # Build JSON and write to temp file WITHOUT BOM (critical for curl)
           $jsonBody = "{`"tag_name`":`"latest`",`"target_commitish`":`"$COMMIT_SHA`",`"name`":`"Latest Release (v$VERSION)`",`"body`":`"Auto-updater release. Current version: v$VERSION.`",`"draft`":false,`"prerelease`":false}"
           $jsonFile = "latest_release.json"
-          $jsonBody | Out-File -FilePath $jsonFile -Encoding UTF8 -NoNewline
+          # Use .NET to write without BOM (Out-File -Encoding UTF8 adds BOM which breaks curl)
+          [System.IO.File]::WriteAllText($jsonFile, $jsonBody)
 
           Write-Host "JSON Body: $jsonBody"
 
