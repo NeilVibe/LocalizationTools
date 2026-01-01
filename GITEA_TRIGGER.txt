@@ -100,3 +100,4 @@ Build 426
 Build 427: Fix semver for auto-updater
 Build 428: Simplified version check
 Build 429: Add latest release for auto-updater
+Build 430: Fix latest release API (add target_commitish)
