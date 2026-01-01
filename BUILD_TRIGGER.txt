@@ -46,3 +46,4 @@ Build 416: All UI issues fixed (28/28)
 Build QA
 Build 424: macOS build test
 Build 425: Fix macOS build
+Build 426: macOS fix + gsudo
