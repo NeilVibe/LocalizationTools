@@ -98,3 +98,4 @@ Build 424: Fix cache validation - add faiss/lxml/asyncpg to ALL package lists
 Build 424
 Build 426
 Build 427: Fix semver for auto-updater
+Build 428: Simplified version check
