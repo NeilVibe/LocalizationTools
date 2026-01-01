@@ -2444,23 +2444,17 @@ jobs:
           # Create new 'latest' release
           Write-Host "Creating 'latest' release pointing to v$VERSION..."
 
-          # Build JSON - use PowerShell hashtable then convert
-          $releaseData = @{
-            tag_name = "latest"
-            target_commitish = $COMMIT_SHA
-            name = "Latest Release (v$VERSION)"
-            body = "Auto-updater release. Current version: v$VERSION."
-            draft = $false
-            prerelease = $false
-          }
-          $jsonBody = $releaseData | ConvertTo-Json -Compress
+          # Build JSON and write to temp file (avoids PowerShell escaping issues with curl)
+          $jsonBody = "{`"tag_name`":`"latest`",`"target_commitish`":`"$COMMIT_SHA`",`"name`":`"Latest Release (v$VERSION)`",`"body`":`"Auto-updater release. Current version: v$VERSION.`",`"draft`":false,`"prerelease`":false}"
+          $jsonFile = "latest_release.json"
+          $jsonBody | Out-File -FilePath $jsonFile -Encoding UTF8 -NoNewline
 
           Write-Host "JSON Body: $jsonBody"
 
           $response = curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases" `
             -H "Authorization: token $env:GITEA_TOKEN" `
             -H "Content-Type: application/json" `
-            -d $jsonBody
+            -d "@$jsonFile"
 
           Write-Host "API Response: $response"
 
