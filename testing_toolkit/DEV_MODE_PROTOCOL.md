@@ -1264,6 +1264,8 @@ Both use `flex: 0 0 {percent}%` but:
 | Gitea runner random fail | HTTP not ready - use wait_for_gitea_http() |
 | Header/row column misaligned | `scrollbar-gutter: stable;` on scroll container |
 | **BROWSER FREEZE (CRITICAL)** | **Effect calling function without previousValue tracking** |
+| Bash `$()` syntax errors | Use heredoc + separate commands (CS-017) |
+| TM "active" but "No active TM" | Check if assignment has NULL scope IDs (CS-018) |
 
 ---
 
@@ -1361,5 +1363,172 @@ engine = create_engine(DATABASE_URL)
 
 ---
 
+## Phase 15: Image Analysis Protocol (CRITICAL)
+
+> **Lesson Learned (2026-01-01):** Claude falsely reported "grid IS expanding to fill the available space" when there was obvious empty space on the right. This protocol prevents such hallucinations.
+
+### The Problem
+
+When verifying fixes via screenshots, Claude:
+1. Looked for expected elements (grid, side panel)
+2. Found them → declared "working"
+3. **IGNORED** obvious empty/wasted space
+4. Confirmed own bias instead of analyzing the full image
+
+### Image Analysis Protocol
+
+**MANDATORY STEPS when analyzing screenshots:**
+
+```
+1. SCAN EDGES FIRST
+   - Check TOP edge - any cut off content?
+   - Check BOTTOM edge - does content reach bottom?
+   - Check LEFT edge - does content start at edge?
+   - Check RIGHT edge - does content reach edge?
+
+2. CHECK FOR EMPTY/WASTED SPACE
+   - Look for gray/blank areas
+   - Look for unexpected gaps
+   - Ask: "Is every pixel used?"
+
+3. MEASURE PROPORTIONS
+   - Does grid fill expected width?
+   - Does content fill expected height?
+   - Are side panels the right size?
+
+4. THEN DESCRIBE CONTENT
+   - Only AFTER layout check passes
+   - Describe what IS there, not what SHOULD be
+
+5. ASK "WHAT'S WRONG?"
+   - Don't ask "Is my fix there?"
+   - Look for problems, not confirmations
+```
+
+### Quick Checklist
+
+| Check | Pass | Fail |
+|-------|------|------|
+| Left edge has content? | ✓ | Empty space |
+| Right edge has content? | ✓ | Empty space |
+| Top edge correct? | ✓ | Cut off |
+| Bottom edge correct? | ✓ | Cut off |
+| No wasted gray space? | ✓ | Gray areas |
+
+### Example Analysis
+
+**WRONG (confirmation bias):**
+> "I see the grid with Korean text and side panel. Grid IS expanding correctly."
+
+**RIGHT (systematic analysis):**
+> "Edges: Left OK, Right has ~200px empty gray space. Layout bug - grid not filling width."
+
+### When User Asks "Is X Normal?"
+
+**This is a HINT something is wrong.**
+
+User would not ask if everything looked fine. When asked "is the empty space normal?":
+1. STOP assuming your fix worked
+2. RE-ANALYZE the image systematically
+3. Look for what prompted the question
+4. Give honest assessment
+
+---
+
+### ⚠️ CS-016: Image Analysis Hallucination (2026-01-01)
+
+**NEVER confirm a fix worked without systematic image analysis.**
+
+**What Happened:**
+```
+User: check the screenshot
+Claude: "Grid IS expanding to fill available space. This is working correctly."
+User: is the empty space on the right normal?
+Claude: "No. That empty gray space on the right is a bug."
+```
+
+**Root Cause:**
+- Claude's todo list said "VERIFIED WORKING"
+- Claude looked for the grid (found it) → declared success
+- Claude ignored the ~200px empty gray space on right
+
+**Fix Applied:**
+- Added `width: 100%` to `.ldm-pages`, `.grid-page`, `.grid-with-panel`
+- VirtualGrid now properly fills available width (1620px with 300px side panel)
+
+**Lesson:** Don't trust your own verification. Analyze images systematically.
+
+---
+
+### ⚠️ CS-017: Bash Command Substitution Mangling (2026-01-01)
+
+**NEVER use `$()` command substitution in complex bash commands.**
+
+```bash
+# WRONG - Gets mangled, produces syntax errors
+TOKEN=$(curl -s ... | python3 -c '...')
+curl -H "Authorization: Bearer $TOKEN" ...
+
+# RIGHT - Use separate commands
+curl -s ... > /tmp/login.json
+TOKEN="paste_token_here"
+curl -H "Authorization: Bearer $TOKEN" ...
+
+# RIGHT - Use heredoc for Python database queries
+python3 << 'EOF'
+import sys
+sys.path.insert(0, '/home/neil1988/LocalizationTools/server')
+from config import DATABASE_URL
+# ... query ...
+EOF
+```
+
+**Symptoms:**
+- `syntax error near unexpected token`
+- Commands appear to run but produce wrong results
+- Subshell outputs get escaped/mangled
+
+**Why:** The Bash tool escapes special characters. Complex `$()` substitutions get corrupted.
+
+**Debugging Approach:**
+1. Use simple, separate commands
+2. Use heredoc (`<< 'EOF'`) for multi-line Python
+3. Store intermediate results in `/tmp/` files
+4. Check table names first (`ldm_projects` not `projects`)
+
+---
+
+### ⚠️ CS-018: TM Activation Without Scope (2026-01-01)
+
+**A TM can be "active" but have no scope assigned - invisible to hierarchy resolution.**
+
+**Symptoms:**
+- TM shows "active" in TM Explorer
+- File viewer shows "No active TM"
+- API `/files/{id}/active-tms` returns empty `[]`
+
+**Root Cause:**
+```sql
+-- TM assignment with all NULLs but is_active=True
+SELECT * FROM ldm_tm_assignments WHERE tm_id = 498;
+-- platform_id: NULL, project_id: NULL, folder_id: NULL, is_active: TRUE
+```
+
+**Debug Steps:**
+```bash
+python3 << 'EOF'
+# Check TM assignment scope
+result = conn.execute(text("""
+    SELECT tm_id, platform_id, project_id, folder_id, is_active
+    FROM ldm_tm_assignments WHERE tm_id = 498
+"""))
+# If all scope IDs are NULL but is_active=True → BUG
+EOF
+```
+
+**Fix:** Backend now validates scope before activation (line 254-256 in tm_assignment.py).
+
+---
+
 *Dev Mode Protocol | Fast UI Testing | No Build Required*
-*Updated: 2025-12-28 with CS-007 Search Indexing Bug + Phase 14 Debug Commands*
+*Updated: 2026-01-01 with CS-017 Bash Mangling + CS-018 TM Scope Validation*

@@ -54,6 +54,38 @@ See `docs/wip/ISSUES_TO_FIX.md` for full implementation details.
 
 ---
 
+## MAJOR FEATURE: TM Hierarchy System
+
+**Status:** PLANNED | **Priority:** HIGH | **Doc:** `docs/wip/TM_HIERARCHY_PLAN.md`
+
+### Core Concept
+
+```
+File Explorer (structure owner)     TM Explorer (READ-ONLY mirror)
+├── Platform: PC                    ├── [Unassigned] ← TM-only
+│   └── Project: Game1              ├── Platform: PC
+│       └── Folder: French          │   └── Project: Game1
+│           └── file.txt            │       └── Folder: French
+│                                   │           └── french.tm [ACTIVE]
+```
+
+### Key Rules
+
+1. **TM Explorer = READ-ONLY mirror** of File Explorer structure
+2. **You NEVER create folders in TM Explorer** - only place/activate TMs
+3. **Unassigned exists ONLY in TM Explorer** - safety net for orphaned TMs
+4. **Hierarchical activation** - TM at folder level applies to all files in folder
+
+### Implementation (5 Sprints)
+
+1. Database: platforms table, tm_assignments
+2. Backend: TM resolution logic (cascade inheritance)
+3. Frontend: TM Explorer tree UI
+4. Frontend: File viewer TM indicator
+5. Frontend: Platform management
+
+---
+
 ## MAJOR FEATURE: Offline/Online Sync System
 
 **Status:** PLANNED | **Priority:** HIGH | **Doc:** `docs/wip/OFFLINE_ONLINE_SYNC.md`

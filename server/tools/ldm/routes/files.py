@@ -409,6 +409,40 @@ async def rename_file(
     return {"success": True, "file_id": file_id, "name": name}
 
 
+@router.delete("/files/{file_id}")
+async def delete_file(
+    file_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """Delete a file and all its rows."""
+    # Get file
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.id == file_id)
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Verify project ownership
+    result = await db.execute(
+        select(LDMProject).where(
+            LDMProject.id == file.project_id,
+            LDMProject.owner_id == current_user["user_id"]
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="Not authorized to delete this file")
+
+    file_name = file.name
+    await db.delete(file)
+    await db.commit()
+
+    logger.info(f"File deleted: id={file_id}, name='{file_name}'")
+    return {"message": "File deleted", "file_id": file_id}
+
+
 @router.post("/files/excel-preview")
 async def excel_preview(
     file: UploadFile = File(...),
