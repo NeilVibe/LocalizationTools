@@ -96,3 +96,4 @@ Build 422: Fix asyncpg missing - use requirements.txt
 Build 423
 Build 424: Fix cache validation - add faiss/lxml/asyncpg to ALL package lists
 Build 424
+Build 426
