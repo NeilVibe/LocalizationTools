@@ -178,31 +178,120 @@ Data can be viewed at different scales:
 
 ## 7. Implementation Phases
 
+## IMPLEMENTATION PLAN (Detailed)
+
+### Approach: Recycle 90%, Restructure 10%
+
+**RECYCLE (keep as-is):**
+| Component | Reuse | Notes |
+|-----------|-------|-------|
+| `FileExplorer.svelte` | 95% | Tree, context menu, drag/drop, upload |
+| `VirtualGrid.svelte` | 100% | Grid viewer unchanged |
+| TM tab content | 90% | Extract to TMPage |
+| All API calls | 100% | Already working |
+| Context menus | 100% | Already working |
+| Modals (Pretranslate, etc.) | 100% | Keep as-is |
+
+**NEW/RESTRUCTURE:**
+| Task | Type | Effort |
+|------|------|--------|
+| Navigation store | NEW | ~20 lines |
+| LocaNext dropdown | NEW | ~50 lines |
+| FilesPage.svelte | WRAPPER | Wraps FileExplorer |
+| TMPage.svelte | EXTRACT | Move TM content |
+| LDM.svelte | RESTRUCTURE | Page switching |
+
+---
+
+### Step 1: Navigation Foundation
+```
+- Create stores/navigation.js (currentPage: 'files' | 'tm' | 'grid')
+- Add LocaNext dropdown in +layout.svelte
+- Wire basic page switching
+```
+
+### Step 2: Extract Pages (Keep Current Behavior)
+```
+src/lib/components/pages/
+├── FilesPage.svelte      ← Wraps FileExplorer, full width
+├── TMPage.svelte         ← Extract TM tab content
+└── GridPage.svelte       ← Grid viewer when file open
+
+LDM.svelte refactor:
+- Remove left column
+- Add page switching logic
+- Full width for each page
+```
+
+### Step 3: Transform Files to Windows/SharePoint Explorer
+```
+BEFORE (tree view):              AFTER (Windows Explorer):
+┌─────────────────────┐         ┌─────────────────────────────────┐
+│ [▼ Select Project]  │         │ 📁 Projects > BDO_EN > Strings  │ ← Breadcrumb
+│ ├── 📁 Folder1      │   →     ├─────────────────────────────────┤
+│ │   └── 📄 file.txt │         │ Name          Size    Modified  │
+│ └── 📄 other.txt    │         │ 📁 Folder1    3 items  2h ago   │
+└─────────────────────┘         │ 📄 file.txt   1.2K    1h ago    │
+                                └─────────────────────────────────┘
+```
+
+**Windows Explorer Behaviors:**
+| Action | Behavior |
+|--------|----------|
+| Double-click folder | ENTER folder (not expand tree) |
+| Double-click file | OPEN in grid viewer |
+| Breadcrumb click | Navigate back to that level |
+| Right-click | Context menu (existing) |
+| Drag & drop | Move items (existing) |
+| Empty space right-click | New folder/project |
+| Backspace key | Go up one level |
+
+### Step 4: Transform TM to Explorer Pattern
+```
+┌─────────────────────────────────────────┐
+│ 📚 Translation Memories                 │
+├─────────────────────────────────────────┤
+│ Name              Entries   Status      │
+│ 📚 BDO_Main_TM    45,230   ● ACTIVE    │
+│ 📚 BDO_Legacy     12,100   ○ inactive  │
+└─────────────────────────────────────────┘
+Double-click: View entries
+Right-click: Activate, Export, Delete
+```
+
+### Step 5: Polish & Enhance
+```
+- Properties panel (file/folder metadata)
+- "Who's working" real-time indicator
+- Activity log
+- Keyboard shortcuts (Enter, Backspace, Delete, F2)
+```
+
+---
+
+## Legacy Phases (Reference)
+
 ### Phase 10.1: Navigation & Layout (Foundation)
-1. Create Files page route (`/files`)
-2. Create TM page route (`/tm`)
-3. Add LocaNext dropdown menu
-4. Remove left column from LDM
-5. Merge User into Settings
+1. Create navigation store
+2. Add LocaNext dropdown menu
+3. Remove left column from LDM
+4. Merge User into Settings
 
 ### Phase 10.2: File Explorer Redesign
-1. Windows-style folder navigation
-2. Drag & drop file moving
-3. Context menus for all actions
+1. Windows-style folder navigation (grid view, not tree)
+2. Breadcrumb navigation
+3. Double-click = enter/open
 4. Properties panel
-5. Breadcrumb navigation
 
 ### Phase 10.3: TM Explorer
-1. TMs inside projects structure
-2. TM Explorer page
-3. Per-project TM activation
-4. Remove global TM list approach
+1. TM Explorer page (separate from Files)
+2. Per-project TM organization
+3. TM grid view with status indicators
 
 ### Phase 10.4: Dashboard & Monitoring
 1. Project-level stats
 2. Activity monitoring
-3. User/Team/Language views
-4. Real-time presence indicators
+3. Real-time presence indicators
 
 ---
 
