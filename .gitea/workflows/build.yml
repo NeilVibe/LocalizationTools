@@ -162,6 +162,13 @@ jobs:
           python3.11 -m pip install -r requirements.txt
           python3.11 -m pip install pytest pip-audit
 
+      # ---- ENABLE PG_TRGM EXTENSION (required for TM similarity search) ----
+      - name: Enable PostgreSQL Extensions
+        run: |
+          echo "=== Enabling pg_trgm extension for TM search ==="
+          sudo -u postgres psql -d locanext_ci_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+          echo "[OK] pg_trgm extension enabled"
+
       # ---- P36: PACKAGE VERIFICATION (prevents asyncpg-style crashes) ----
       - name: Verify Critical Packages Installed
         run: |
