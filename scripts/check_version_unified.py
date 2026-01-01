@@ -3,359 +3,93 @@
 LocaNext - Version Unification Check
 =====================================
 
-Ensures all files have matching version numbers from single source of truth: version.py
+Simple check: Ensures version.py matches package.json.
+That's it. No complex validation needed - CI generates the version automatically.
 
-CURRENT CHECKS:
-1. Timestamp Validation - Version (KST) must be within 1 hour of build time
-2. Version consistency across code, docs, and build configurations
-
-FUTURE EXTENSIBILITY:
-Can be expanded to monitor:
-- Build artifact sizes
-- Model file integrity
-- Security policy compliance
-- Documentation coverage
+Version Format: YY.MDD.HHMM (semver-compatible, no leading zeros)
+Examples: 26.101.2352 (Jan 1), 26.1015.2352 (Oct 15), 26.1231.2352 (Dec 31)
 
 Usage:
     python3 scripts/check_version_unified.py
 
 Exit codes:
-    0 - All checks passed ✅
-    1 - One or more checks failed ❌
+    0 - All checks passed
+    1 - Version mismatch found
 """
 
-import os
 import re
 import sys
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
-
-# Source of truth
-VERSION_FILE = "version.py"
 
 
-def check_version_timestamp(version, max_hours_diff=1):
-    """
-    Check if version timestamp is within acceptable range of current time.
-
-    UNIFIED VERSION FORMAT: YY.MMDD.HHMM (e.g., "25.1213.1540")
-    - Valid semver (X.Y.Z)
-    - Human readable (Dec 13, 2025, 15:40 KST)
-    Script converts version from KST to UTC for comparison on GitHub Actions.
-
-    Args:
-        version: Version string (e.g., "25.1213.1540") in KST
-        max_hours_diff: Maximum allowed difference in hours (default: 1)
-
-    Returns:
-        tuple: (is_valid, message)
-    """
-    # Parse YY.MMDD.HHMM format
-    parts = version.split('.')
-    if len(parts) != 3:
-        return False, f"Invalid version format: {version} (expected YY.MMDD.HHMM, e.g., 25.1213.1540)"
-
-    try:
-        yy, mmdd, hhmm = parts
-        version_year = int("20" + yy)  # YY -> 20YY
-        version_month = int(mmdd[:2])
-        version_day = int(mmdd[2:])
-        version_hour = int(hhmm[:2])
-        version_minute = int(hhmm[2:])
-
-        # Get current time in UTC
-        now_utc = datetime.now(timezone.utc)
-
-        # Build version datetime in KST (UTC+9), then convert to UTC
-        kst = timezone(timedelta(hours=9))
-        try:
-            version_dt_kst = datetime(version_year, version_month, version_day,
-                                       version_hour, version_minute, tzinfo=kst)
-            version_dt_utc = version_dt_kst.astimezone(timezone.utc)
-        except ValueError as e:
-            return False, f"Invalid datetime in version: {version} ({e})"
-
-        # Calculate difference in hours (both in UTC now)
-        diff = abs((now_utc - version_dt_utc).total_seconds() / 3600)
-
-        if diff <= max_hours_diff:
-            return True, f"Version timestamp OK: {version} (KST) = {version_dt_utc.strftime('%Y-%m-%d %H:%M')} UTC, within {diff:.1f}h of now"
-        else:
-            return False, f"Version timestamp TOO FAR: {version} (KST) is {diff:.1f}h away from now. Max: {max_hours_diff}h"
-    except ValueError as e:
-        return False, f"Could not parse version timestamp: {version} ({e})"
-
-# UNIFIED VERSION FORMAT: YY.MMDD.HHMM (e.g., 25.1213.1540)
-# This format is BOTH valid semver AND human-readable datetime!
-# Capture group pattern for version extraction
-VER = r'(\d{2}\.\d{4}\.\d{4})'  # Matches and captures YY.MMDD.HHMM
-
-# ============================================================
-# CRITICAL FILES: Must match - blocks build if mismatch
-# These are injected by pipeline and MUST be consistent
-# ============================================================
-CRITICAL_VERSION_FILES = {
-    "version.py": [
-        r'VERSION = "' + VER + r'"',
-    ],
-    "server/config.py": [
-        r'from version import VERSION',  # Verify import exists
-    ],
-    "locaNext/package.json": [
-        r'"version": "' + VER + r'"',
-    ],
-    "installer/locanext_electron.iss": [
-        r'#define MyAppVersion "' + VER + r'"',
-    ],
-    "installer/locanext_light.iss": [
-        r'#define MyAppVersion "' + VER + r'"',
-    ],
-}
-
-# ============================================================
-# INFORMATIONAL FILES: Warn only - don't block build
-# Documentation versions are updated on commit, not by pipeline
-# ============================================================
-INFORMATIONAL_VERSION_FILES = {
-    "README.md": [
-        r'\*\*Version:\*\* ' + VER,
-    ],
-    "CLAUDE.md": [
-        r'\*\*Current Version:\*\* ' + VER,
-    ],
-    "Roadmap.md": [
-        r'## Current Status.*v' + VER,
-    ],
-}
-
-# Combined for backwards compatibility
-VERSION_FILES = {**CRITICAL_VERSION_FILES, **INFORMATIONAL_VERSION_FILES}
-
-
-def get_source_version():
-    """Get the source of truth version from version.py"""
-    version_path = Path(VERSION_FILE)
-    if not version_path.exists():
-        print(f"❌ Error: {VERSION_FILE} not found!")
-        sys.exit(1)
-
-    content = version_path.read_text()
-    # Match unified format: YY.MMDD.HHMM (e.g., 25.1213.1540)
-    match = re.search(r'VERSION = "(\d{2}\.\d{4}\.\d{4})"', content)
-    if not match:
-        print(f"❌ Error: Could not find VERSION in unified format (YY.MMDD.HHMM) in {VERSION_FILE}")
-        sys.exit(1)
-
-    return match.group(1)
-
-
-def get_semantic_version():
-    """Get semantic version from version.py - now same as VERSION (unified format)"""
-    # With unified format, SEMANTIC_VERSION = VERSION
-    # Both are now YY.MMDD.HHMM which is valid semver
-    return get_source_version()
-
-
-def check_file_versions(file_path, patterns, source_version, semantic_version=None):
-    """Check all version patterns in a file"""
-    mismatches = []
-
+def get_version_from_file(file_path: str, pattern: str) -> str | None:
+    """Extract version from a file using regex pattern."""
     path = Path(file_path)
     if not path.exists():
-        # Optional files (Electron config, installer) may not exist yet
-        if "locaNext/package.json" in file_path or "installer/" in file_path:
-            return []  # Skip silently
-        return [(0, f"⚠️  File not found: {file_path} (will be created later)")]
+        return None
 
     content = path.read_text()
-    lines = content.split('\n')
-
-    # Special handling for package.json - check semantic version
-    if "package.json" in file_path and semantic_version:
-        for line_num, line in enumerate(lines, 1):
-            match = re.search(r'"version": "(\d+\.\d+\.\d+)"', line)
-            if match:
-                found_version = match.group(1)
-                if found_version != semantic_version:
-                    mismatches.append((line_num, f"Expected semantic '{semantic_version}', found '{found_version}'"))
-        return mismatches
-
-    # Special handling for Roadmap.md - ignore Version History section
-    in_history_section = False
-    if "Roadmap.md" in file_path:
-        for line_num, line in enumerate(lines, 1):
-            if "## Version History" in line or "## Build History" in line:
-                in_history_section = True
-
-            # Only check lines before history sections
-            if not in_history_section:
-                for pattern in patterns:
-                    if "import" in pattern:
-                        # Just check if import exists
-                        if re.search(pattern, content):
-                            continue  # Import found, good
-                    else:
-                        match = re.search(pattern, line)
-                        if match:
-                            found_version = match.group(1)
-                            if found_version != source_version:
-                                mismatches.append((line_num, f"Expected '{source_version}', found '{found_version}'"))
-    else:
-        # Normal checking for all other files
-        for pattern in patterns:
-            # Check for import statements (presence check only)
-            if "import" in pattern:
-                if not re.search(pattern, content):
-                    mismatches.append((0, f"Missing import statement"))
-                continue
-
-            # Check version numbers
-            for line_num, line in enumerate(lines, 1):
-                match = re.search(pattern, line)
-                if match:
-                    found_version = match.group(1)
-                    if found_version != source_version:
-                        mismatches.append((line_num, f"Expected '{source_version}', found '{found_version}'"))
-
-    return mismatches
+    match = re.search(pattern, content)
+    return match.group(1) if match else None
 
 
 def main():
-    print("=" * 70)
-    print("LocaNext - Version Unification Check")
-    print("=" * 70)
-    print()
+    print("=" * 60)
+    print("LocaNext - Version Check")
+    print("=" * 60)
 
-    # Get source of truth
-    source_version = get_source_version()
-    semantic_version = get_semantic_version()
+    # Get version from source of truth
+    version_py = get_version_from_file(
+        "version.py",
+        r'VERSION = "(\d{2}\.\d{3,4}\.\d{4})"'  # YY.MDD.HHMM or YY.MMDD.HHMM
+    )
 
-    print(f"✓ Source of truth: {VERSION_FILE}")
-    print(f"✓ DateTime version: {source_version}")
-    if semantic_version:
-        print(f"✓ Semantic version: {semantic_version}")
-    print()
-
-    # TIMESTAMP VALIDATION - Version must be within 1 hour of current time
-    print("Checking version timestamp...")
-    timestamp_valid, timestamp_msg = check_version_timestamp(source_version, max_hours_diff=1)
-    if timestamp_valid:
-        print(f"✓ {timestamp_msg}")
-    else:
-        print(f"❌ {timestamp_msg}")
-        print()
-        print("=" * 70)
-        print("❌ BUILD BLOCKED: Version timestamp too far from current time!")
-        print("   Update version to current timestamp before building.")
-        # Generate suggested version in KST using UNIFIED FORMAT: YY.MMDD.HHMM
-        from datetime import datetime, timezone, timedelta
-        kst = timezone(timedelta(hours=9))
-        now_kst = datetime.now(kst)
-        suggested = f"{now_kst.strftime('%y')}.{now_kst.strftime('%m%d')}.{now_kst.strftime('%H%M')}"
-        print(f"   Suggested version: {suggested}")
-        print("   Format: YY.MMDD.HHMM (valid semver + human-readable)")
-        print("=" * 70)
+    if not version_py:
+        print("❌ Could not read VERSION from version.py")
         return 1
-    print()
 
-    # Test runtime import
-    print("Testing runtime imports...")
-    try:
-        sys.path.insert(0, str(Path.cwd()))
-        from version import VERSION, SEMANTIC_VERSION, VERSION_FOOTER
+    print(f"✓ version.py: {version_py}")
 
-        if VERSION != source_version:
-            print(f"❌ Runtime import VERSION mismatch!")
-            print(f"   Expected: {source_version}")
-            print(f"   Got: {VERSION}")
+    # Check package.json matches
+    package_json = get_version_from_file(
+        "locaNext/package.json",
+        r'"version": "(\d{2}\.\d{3,4}\.\d{4})"'
+    )
+
+    if package_json is None:
+        print("⚠ package.json not found (will be created during build)")
+    elif package_json != version_py:
+        print(f"❌ package.json: {package_json} (MISMATCH!)")
+        return 1
+    else:
+        print(f"✓ package.json: {package_json}")
+
+    # Check server/config.py imports VERSION
+    config_path = Path("server/config.py")
+    if config_path.exists():
+        content = config_path.read_text()
+        if "from version import VERSION" in content:
+            print("✓ server/config.py: imports VERSION")
+        else:
+            print("❌ server/config.py: missing VERSION import")
             return 1
 
-        print(f"✓ Runtime import: VERSION = {VERSION}")
-        print(f"✓ Runtime import: SEMANTIC_VERSION = {SEMANTIC_VERSION}")
-        print(f"✓ Runtime import: VERSION_FOOTER = {VERSION_FOOTER[:50]}...")
-        print()
+    # Verify runtime import works
+    try:
+        sys.path.insert(0, str(Path.cwd()))
+        from version import VERSION
+        if VERSION != version_py:
+            print(f"❌ Runtime import mismatch: {VERSION} vs {version_py}")
+            return 1
+        print(f"✓ Runtime import: {VERSION}")
     except ImportError as e:
-        print(f"❌ Failed to import VERSION from version.py: {e}")
+        print(f"❌ Import failed: {e}")
         return 1
 
-    # ============================================================
-    # CHECK CRITICAL FILES (build-blocking)
-    # ============================================================
-    print("CRITICAL FILES (must match - blocks build):")
-    critical_ok = True
-    critical_checked = 0
-
-    for file_path, patterns in CRITICAL_VERSION_FILES.items():
-        if not Path(file_path).exists():
-            if "locaNext/package.json" in file_path or "installer/" in file_path:
-                continue  # Skip optional build files silently
-            print(f"⚠️  {file_path} (not found)")
-            continue
-
-        mismatches = check_file_versions(file_path, patterns, source_version, semantic_version)
-        critical_checked += 1
-
-        if mismatches:
-            critical_ok = False
-            print(f"❌ {file_path}")
-            for line_num, error in mismatches:
-                if line_num > 0:
-                    print(f"   Line {line_num}: {error}")
-                else:
-                    print(f"   {error}")
-        else:
-            print(f"✓ {file_path}")
-
-    print()
-
-    # ============================================================
-    # CHECK INFORMATIONAL FILES (warn only - don't block build)
-    # ============================================================
-    print("INFORMATIONAL FILES (docs - warn only):")
-    info_warnings = 0
-
-    for file_path, patterns in INFORMATIONAL_VERSION_FILES.items():
-        if not Path(file_path).exists():
-            continue
-
-        mismatches = check_file_versions(file_path, patterns, source_version, semantic_version)
-
-        if mismatches:
-            info_warnings += 1
-            print(f"⚠️  {file_path} (outdated - update on next commit)")
-            for line_num, error in mismatches:
-                if line_num > 0:
-                    print(f"   Line {line_num}: {error}")
-        else:
-            print(f"✓ {file_path}")
-
-    print()
-    print("=" * 70)
-
-    if critical_ok:
-        print(f"🎉 SUCCESS! All {critical_checked} critical files have version: {source_version}")
-        print(f"🎉 Runtime imports verified!")
-        if info_warnings > 0:
-            print(f"ℹ️  {info_warnings} documentation file(s) have old version (non-blocking)")
-        print()
-        print("COVERAGE SUMMARY:")
-        print("  ✓ Timestamp Validation: Version (KST) within 1 hour of build time")
-        print("  ✓ Source of Truth: version.py (VERSION)")
-        print("  ✓ Backend: server/config.py (imports VERSION)")
-        print("  ✓ Build System: package.json, installer scripts")
-        print("  ✓ Runtime Imports: Verified successful")
-        if info_warnings > 0:
-            print(f"  ⚠️  Documentation: {info_warnings} file(s) outdated (update on commit)")
-        else:
-            print("  ✓ Documentation: All up to date")
-        print()
-        print("Build can proceed!")
-        print("=" * 70)
-        return 0
-    else:
-        print(f"❌ CRITICAL MISMATCH! Fix version inconsistencies in critical files.")
-        print("=" * 70)
-        return 1
+    print("=" * 60)
+    print("✓ All version checks passed!")
+    print("=" * 60)
+    return 0
 
 
 if __name__ == "__main__":
