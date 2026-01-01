@@ -44,3 +44,4 @@ Build LIGHT - Verify 56 mocked tests
 Build
 Build 416: All UI issues fixed (28/28)
 Build QA
+Build 424: macOS build test
