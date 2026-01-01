@@ -841,7 +841,8 @@ jobs:
           npm run build
 
           # Build electron for macOS (unsigned for now)
-          npx electron-builder --mac --config electron-builder.json
+          # Config is in package.json under "build" key, not separate file
+          npx electron-builder --mac --publish never
 
           echo "[OK] macOS build complete"
           ls -la dist-electron/
