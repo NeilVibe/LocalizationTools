@@ -9,6 +9,7 @@
 | Need | Go To |
 |------|-------|
 | **DEV Testing (PRIMARY!)** | [testing_toolkit/DEV_MODE_PROTOCOL.md](testing_toolkit/DEV_MODE_PROTOCOL.md) ← USE THIS |
+| **Endpoint testing?** | [testing_toolkit/ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) |
 | **Current task?** | [Roadmap.md](Roadmap.md) |
 | **Session context?** | [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
 | **Open bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |

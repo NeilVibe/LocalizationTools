@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2025-12-30 | **Build:** 416 | **Open:** 0
+**Last Updated:** 2026-01-01 (Session 9 - Complete) | **Build:** 424 | **Open:** 14
 
 ---
 
@@ -8,13 +8,458 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 30 |
+| **FIXED/CLOSED** | 55 |
 | **NOT A BUG/BY DESIGN** | 3 |
-| **CRITICAL (Blocking)** | 0 ✅ |
-| **HIGH (Major UX)** | 0 |
-| **MEDIUM (Low Priority)** | 0 ✅ |
-| **LOW (Cosmetic)** | 0 |
-| **Total Open** | 0 ✅ |
+| **SUPERSEDED BY PHASE 10** | 2 |
+| **HIGH (Endpoint Coverage)** | 6 |
+| **MEDIUM (UI/UX)** | 4 |
+| **LOW (Cleanup/Accessibility)** | 3 |
+| **Total Open** | 12 |
+
+---
+
+## FUTURE: Phase 10 Major UI/UX Overhaul
+
+See **[PHASE_10_MAJOR_UIUX_OVERHAUL.md](PHASE_10_MAJOR_UIUX_OVERHAUL.md)** for:
+- LocaNext dropdown navigation
+- Files/TM as separate pages (not left column)
+- Windows/SharePoint-style File Explorer
+- TM Explorer with project-based TMs
+- Dashboard enhancements with stats hierarchy
+
+---
+
+## Session 9 Updates
+
+**FIXED This Session:**
+- ~~UI-087: Dropdown Position~~ → CSS fix in +layout.svelte (wrapper divs + positioning)
+- ~~UI-094: TM Toolbar Button~~ → Removed button, added "Manage" to TM tab
+- ~~UI-095: QA Buttons~~ → Removed from toolbar, QA in context menu only
+- ~~UI-096: Reference File Picker~~ → Created FilePickerDialog.svelte for browsing
+- ~~UI-097: Consolidate Settings~~ → Removed Settings from LDM toolbar, use top nav
+- ~~TM-UI-001: Pretranslation Modal~~ → Created PretranslateModal.svelte + context menu
+- ~~TM-UI-002: Unified TM Panel~~ → Enhanced TM tab with upload/delete/export/activate
+- ~~TM-UI-003: Threshold Selector~~ → Slider in TM tab (50-100%), stored in preferences
+
+**CLOSED (Already Working):**
+- ~~FEAT-003: 5-Tier Cascade TM~~ → `server/tools/ldm/indexing/searcher.py` (380 lines)
+- ~~FEAT-004: Create Glossary~~ → FileExplorer context menu → `/api/ldm/files/{id}/extract-glossary`
+- ~~FEAT-005/006/007: Pretranslate~~ → Backend complete, frontend done via TM-UI-001
+
+---
+
+## ~~CRITICAL - UI OVERHAUL~~ ✅ ALL FIXED (Session 9)
+
+### ~~UI-094: Remove TM Button from Toolbar~~ ✅ FIXED
+- **Fixed:** 2026-01-01 (Session 9)
+- **Solution:** Removed TM button from toolbar, added "Manage" button to TM tab
+- **Files Modified:** `LDM.svelte`, `FileExplorer.svelte`
+
+---
+
+### ~~UI-095: Remove QA Buttons + Simplify~~ ✅ FIXED
+- **Fixed:** 2026-01-01 (Session 9)
+- **Solution:** Removed QA On/Off and QA button from toolbar. QA now via context menu.
+- **Files Modified:** `LDM.svelte`, `FileExplorer.svelte`
+
+---
+
+### ~~UI-096: Reference File Picker Overhaul~~ ✅ FIXED
+- **Fixed:** 2026-01-01 (Session 9)
+- **Solution:** Created `FilePickerDialog.svelte` with hierarchical project/folder browsing.
+- **Files Created:** `FilePickerDialog.svelte`
+- **Files Modified:** `ReferenceSettingsModal.svelte`
+
+---
+
+### ~~UI-097: Consolidate Settings~~ ✅ FIXED
+- **Fixed:** 2026-01-01 (Session 9)
+- **Solution:** Removed Settings gear from LDM toolbar. Users use top nav → Settings → Preferences.
+- **Files Modified:** `LDM.svelte`
+
+---
+
+## ~~HIGH - TM UI/UX OVERHAUL~~ ✅ ALL FIXED (Session 9)
+
+### ~~TM-UI-001: Pretranslation Modal~~ ✅ FIXED
+- **Fixed:** 2026-01-01 (Session 9)
+- **Solution:** Created `PretranslateModal.svelte` with TM selector, engine selection (Standard/XLS/KR Similar), threshold slider, progress bar. Added "Pretranslate..." to FileExplorer context menu.
+- **Files Created:** `PretranslateModal.svelte`
+- **Files Modified:** `FileExplorer.svelte`
+
+---
+
+### ~~TM-UI-002: Unified TM Panel~~ ✅ FIXED
+- **Fixed:** 2026-01-01 (Session 9)
+- **Solution:** Enhanced TM tab in FileExplorer with:
+  - Upload button (opens TMUploadModal)
+  - Context menu: View Entries, Export TM, Activate/Deactivate, Delete
+  - Active TM visual indicator (checkmark, "ACTIVE" badge, blue border)
+  - Settings button for embedding engine config
+- **Files Modified:** `FileExplorer.svelte`
+
+---
+
+### ~~TM-UI-003: User-Selectable Threshold~~ ✅ FIXED
+- **Fixed:** 2026-01-01 (Session 9)
+- **Solution:** Added `tmThreshold` to preferences store (default 0.92). Slider in TM tab (50-100%) with real-time percentage display. All TM suggest calls now use user's threshold preference.
+- **Files Modified:** `FileExplorer.svelte`, `preferences.js`, `LDM.svelte`, `VirtualGrid.svelte`
+
+---
+
+## CLOSED - ALREADY WORKING (Session 9 Audit)
+
+### FEAT-003: 5-Tier Cascade TM ✅ ALREADY IMPLEMENTED
+- **Closed:** 2026-01-01 (Session 9)
+- **Location:** `server/tools/ldm/indexing/searcher.py` (380 lines)
+- **Tiers:** Hash whole → FAISS whole → Hash line → FAISS line → N-gram
+
+### FEAT-004: Create Glossary ✅ ALREADY WORKING
+- **Closed:** 2026-01-01 (Session 9)
+- **Backend:** `server/tools/ldm/routes/files.py:880-981`
+- **Frontend:** FileExplorer → right-click → "Create Glossary"
+- **Endpoint:** `GET /api/ldm/files/{id}/extract-glossary`
+
+### FEAT-005/006/007: Pretranslate ✅ BACKEND COMPLETE
+- **Closed:** 2026-01-01 (Session 9)
+- **Reclassified as:** TM-UI-001 (frontend only)
+- **Backend:** `server/tools/ldm/pretranslate.py` (520 lines)
+- **API:** `POST /api/ldm/pretranslate`
+- **Engines:** Standard (5-tier), XLS Transfer, KR Similar
+
+---
+
+## OPEN ISSUES - UI/UX (HIGH)
+
+### UI-088: Need Single "Run QA" Button
+- **Reported:** 2026-01-01
+- **Severity:** HIGH
+- **Component:** LDM UI
+- **Status:** OPEN
+
+**Problem:** Currently have separate buttons:
+- "Run Full Term QA"
+- "Run Full Line QA"
+
+**Requirement:** One single "Run QA" button that does EVERYTHING:
+- Term QA
+- Line QA
+- Pattern check
+- Spelling check
+- Grammar check
+- All other QA checks
+
+---
+
+### UI-089/090/091: Missing Delete Buttons
+- **Reported:** 2026-01-01
+- **Severity:** HIGH
+- **Component:** FileExplorer UI
+- **Status:** OPEN
+
+**Problem:** Cannot find buttons to:
+- UI-089: Delete File
+- UI-090: Delete Folder
+- UI-091: Delete Project
+
+**Action:** Add delete functionality with confirmation dialogs.
+
+---
+
+## OPEN ISSUES - ENDPOINT COVERAGE (HIGH)
+
+### EP-001: LDM Core Coverage at 57%
+- **Reported:** 2026-01-01
+- **Severity:** HIGH
+- **Status:** OPEN
+
+**Current:** 35/61 LDM endpoints tested (57%)
+
+**Action:** Write tests for remaining 26 LDM endpoints.
+
+---
+
+### EP-002: Auth Login Coverage at 25%
+- **Reported:** 2026-01-01
+- **Severity:** HIGH
+- **Status:** OPEN
+
+**Current:** 6/24 Auth endpoints tested (25%)
+
+**Action:** Write tests for remaining 18 Auth endpoints.
+
+---
+
+### EP-003: Admin Stats Coverage at 0%
+- **Reported:** 2026-01-01
+- **Severity:** HIGH
+- **Status:** OPEN
+
+**Current:** 0/16 Admin Stats endpoints tested (0%)
+
+**User note:** "Admin stats is important we need those"
+
+**Action:** Write tests for all 16 Admin Stats endpoints.
+
+---
+
+### EP-004: XLSTransfer Coverage Low
+- **Reported:** 2026-01-01
+- **Severity:** HIGH
+- **Status:** OPEN
+
+**Current:** 1/13 XLSTransfer endpoints tested (7%)
+
+**Action:** Write tests for remaining 12 XLSTransfer endpoints.
+
+---
+
+### EP-005: QuickSearch Needs Audit
+- **Reported:** 2026-01-01
+- **Severity:** MEDIUM
+- **Status:** NEEDS INVESTIGATION
+
+**Question:** Has QuickSearch been fully absorbed into LDM?
+
+**User says:** "I think we fully absorbed everything from it so I think we can get rid of it"
+
+**Action:**
+1. Compare QuickSearch features vs LDM features
+2. If fully absorbed → remove QuickSearch app
+3. If not absorbed → document what's missing
+
+---
+
+### EP-006: KR Similar Needs Audit
+- **Reported:** 2026-01-01
+- **Severity:** MEDIUM
+- **Status:** NEEDS INVESTIGATION
+
+**Question:** Has KR Similar been fully absorbed?
+
+**User says:** "KR similar too I guess?"
+
+**Action:**
+1. Compare KR Similar features vs LDM features
+2. If fully absorbed → remove KR Similar app
+3. If not absorbed → document what's missing
+
+---
+
+## OPEN ISSUES - UI/UX (MEDIUM)
+
+### UI-087: Apps Dropdown Position Wrong
+- **Reported:** 2026-01-01
+- **Severity:** MEDIUM
+- **Component:** AppBar/Navigation
+- **Status:** OPEN
+
+**Problem:** Apps dropdown menu appears on the far right instead of directly below the Apps button.
+
+**Expected:** Dropdown should grow right below the Apps button.
+
+**User says:** "the app button could have a slicker dropdown that grow right below the app button not on the far right"
+
+---
+
+### UI-092: Cannot Right-Click Closed Project
+- **Reported:** 2026-01-01
+- **Severity:** MEDIUM
+- **Component:** FileExplorer
+- **Status:** OPEN
+
+**Problem:** Right-clicking a project when it's collapsed/closed doesn't work.
+
+**Expected:** Right-click context menu should work on closed projects.
+
+---
+
+### UI-098: Threshold Slider UI/UX Issues
+- **Reported:** 2026-01-01
+- **Severity:** MEDIUM → **SUPERSEDED**
+- **Component:** FileExplorer TM tab
+- **Status:** SUPERSEDED BY PHASE 10
+
+**Problem:** Threshold slider has visual issues (cramped, text cutting off).
+
+**Resolution:** Will be properly implemented in Phase 10 TM Explorer page with dedicated space.
+
+---
+
+### UI-099: Remove TM Settings Modal
+- **Reported:** 2026-01-01
+- **Severity:** MEDIUM → **SUPERSEDED**
+- **Component:** FileExplorer, TMManager
+- **Status:** SUPERSEDED BY PHASE 10
+
+**Problem:** TM Settings modal is redundant. Most options not useful.
+
+**Resolution:** Phase 10 TM Explorer will have proper settings integrated into the page.
+
+---
+
+### UI-100: Skip to Main Content URL Artifact
+- **Reported:** 2026-01-01
+- **Severity:** LOW
+- **Component:** +layout.svelte, accessibility
+- **Status:** OPEN
+
+**Problem:**
+- URL shows `#main-content` when navigating
+- LocaNext button has "Skip to Main Content" when tabbed (accessibility feature but weird UX)
+
+**Fix:** Review Carbon Components accessibility, hide visual artifact while keeping accessibility.
+
+---
+
+### UI-101: Merge User Button into Settings
+- **Reported:** 2026-01-01
+- **Severity:** MEDIUM
+- **Component:** AppBar.svelte
+- **Status:** OPEN
+
+**Problem:** Separate "admin/user" button and "Settings" button - confusing duplication.
+
+**Fix:** One "Settings" entry containing: Profile, Preferences, Admin (if admin), Logout.
+
+---
+
+## OPEN ISSUES - CLEANUP (LOW)
+
+### CLEANUP-001: Remove QuickSearch if Absorbed
+- **Reported:** 2026-01-01
+- **Severity:** LOW
+- **Status:** BLOCKED (waiting on EP-005 audit)
+
+**Action:** If EP-005 confirms QuickSearch is fully absorbed, remove the app.
+
+---
+
+### CLEANUP-002: Remove KR Similar if Absorbed
+- **Reported:** 2026-01-01
+- **Severity:** LOW
+- **Status:** BLOCKED (waiting on EP-006 audit)
+
+**Action:** If EP-006 confirms KR Similar is fully absorbed, remove the app
+
+---
+
+## VERIFICATION NEEDED
+
+The following fixes have been coded but need manual DEV testing:
+
+| Issue | Code Status | Verification |
+|-------|-------------|--------------|
+| UI-084: TM Matches | ✅ FIXED | Click row → check side panel |
+| UI-085: Cell Height | ✅ FIXED | Load file with color tags → check heights |
+| FEAT-002: Color Picker | ✅ ADDED | Edit mode → select text → right-click |
+
+**To verify:** Start DEV servers, login, test each feature manually.
+
+---
+
+## RECENTLY FIXED (Dec 31)
+
+### UI-084: TM Matches Not Showing in Side Panel ✅ FIXED
+
+- **Reported:** 2025-12-31
+- **Fixed:** 2025-12-31
+- **Severity:** HIGH (Core feature broken)
+- **Status:** FIXED
+- **Component:** LDM.svelte
+
+**Problem:** Clicking on a row didn't show TM matches in the TMQAPanel.
+
+**Root Cause:** `loadTMMatchesForRow()` was calling non-existent API endpoints:
+- `GET /api/ldm/files/{id}/active-tms` → 404
+- `POST /api/ldm/tm/search` → 405
+
+**Fix:** Updated to use working `GET /api/ldm/tm/suggest` endpoint (same as VirtualGrid).
+
+**File:** `locaNext/src/lib/components/apps/LDM.svelte` lines 287-337
+
+---
+
+### UI-086: ColorText Not Rendering in Target Cell ✅ FIXED
+
+- **Reported:** 2026-01-01
+- **Fixed:** 2026-01-01
+- **Severity:** HIGH
+- **Status:** FIXED
+- **Component:** colorParser.js
+
+**Problem:** Target column showed raw `<PAColor0xfff3d900>` tags instead of colored text.
+
+**Root Causes Found:**
+1. HTML-escaped tags: `&lt;PAColor...&gt;` not being unescaped before parsing
+2. Unclosed tags: `<PAColor...>text` without closing `<PAOldColor>` tag
+
+**Fix:** Updated `colorParser.js` to:
+1. Unescape HTML entities (`&lt;` → `<`) before parsing
+2. Handle unclosed color tags (color extends to end of text)
+
+**File:** `locaNext/src/lib/utils/colorParser.js`
+
+---
+
+### BUG-001: Browser Freeze - WebSocket Infinite Loop ✅ FIXED
+
+- **Reported:** 2026-01-01
+- **Fixed:** 2026-01-01
+- **Severity:** CRITICAL (Chrome freezes, RAM/CPU spike)
+- **Status:** FIXED
+- **Component:** VirtualGrid.svelte:1782-1790
+
+**Problem:** `$effect` at line 1782 called `joinFile(fileId)` without tracking previous value. Ran on EVERY state change → infinite WebSocket spam → browser freeze.
+
+**Symptoms:**
+- Chrome tab freezes
+- RAM/CPU 100%
+- Backend logs: `[WS] Not connected! Cannot send: ldm_join_file` (repeating)
+
+**Fix:** Merged with the effect at line 1793 that already had `previousFileId` tracking. Now both operations (search reset + WebSocket subscribe) only run when `fileId` actually changes.
+
+**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte` lines 1781-1802
+
+**Safeguard:** Added CS-015 to DEV_MODE_PROTOCOL.md
+
+---
+
+### UI-085: Cell Height Not Accounting for Color Tags ✅ FIXED
+
+- **Reported:** 2025-12-31
+- **Fixed:** 2025-12-31
+- **Severity:** MEDIUM (Visual)
+- **Status:** FIXED
+- **Component:** VirtualGrid.svelte
+
+**Problem:** Cell height was estimated using raw text length including color tags, but rendered text is shorter.
+
+**Fix:** Import `stripColorTags` and strip color tags before calculating text length in `estimateRowHeight()`.
+
+**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte` lines 19, 1475-1481
+
+---
+
+### FEAT-002: Color Code Editing in Edit Mode ✅ ADDED
+
+- **Reported:** 2025-12-31
+- **Implemented:** 2025-12-31
+- **Severity:** ENHANCEMENT
+- **Status:** DONE
+- **Component:** VirtualGrid.svelte
+
+**Feature:**
+1. Live color preview below textarea when editing cells with color tags
+2. Right-click context menu to apply color codes to selected text
+3. 8 PAColor options: Gold, Green, Blue, Red, Purple, Orange, Cyan, Pink
+
+**How to Use:**
+1. Double-click target cell to edit
+2. Select text → right-click → pick color
+3. Color tag automatically wraps selected text
+
+**Files:** VirtualGrid.svelte lines 98-113, 1058-1118, 2053-2072, 2131-2160, 2547-2665
 
 ---
 
@@ -442,6 +887,18 @@
 
 ---
 
+## FIXED THIS SESSION (2026-01-01)
+
+| Issue | Fix |
+|-------|-----|
+| BUG-001 | Browser freeze - WebSocket infinite loop fixed |
+| UI-086 | ColorText in target - escaped/unclosed tags handled |
+| UI-093 | Preview removed from edit mode |
+| WYSIWYG | Colors visible during editing (no raw tags) |
+| Cursor | I-beam cursor in edit mode |
+
+---
+
 ## FIXED PREVIOUSLY (Reference)
 
 <details>
@@ -456,4 +913,4 @@
 
 ---
 
-*Updated 2025-12-29 | 28 Issues FIXED | 0 OPEN Issues ✅*
+*Updated 2026-01-01 | 40 Issues FIXED | 19 OPEN*

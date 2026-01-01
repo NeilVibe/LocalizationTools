@@ -228,25 +228,27 @@
         <SkipToContent />
       </div>
 
-      <!-- Apps Dropdown -->
-      <HeaderAction
-        bind:isOpen={isAppsMenuOpen}
-        icon={Apps}
-        closeIcon={Apps}
-        text="Apps"
-      >
-        <HeaderPanelLinks>
-          {#each apps as app}
-            <HeaderPanelLink on:click={() => selectApp(app.id)}>
-              {app.name}
-              <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
-                {app.description}
-              </div>
-            </HeaderPanelLink>
-            <HeaderPanelDivider />
-          {/each}
-        </HeaderPanelLinks>
-      </HeaderAction>
+      <!-- Apps Dropdown - UI-087: wrapped for positioning -->
+      <div class="header-dropdown apps-dropdown">
+        <HeaderAction
+          bind:isOpen={isAppsMenuOpen}
+          icon={Apps}
+          closeIcon={Apps}
+          text="Apps"
+        >
+          <HeaderPanelLinks>
+            {#each apps as app}
+              <HeaderPanelLink on:click={() => selectApp(app.id)}>
+                {app.name}
+                <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
+                  {app.description}
+                </div>
+              </HeaderPanelLink>
+              <HeaderPanelDivider />
+            {/each}
+          </HeaderPanelLinks>
+        </HeaderAction>
+      </div>
 
       <!-- Tasks Button (styled like other nav items with icon) -->
       <button class="tasks-button" onclick={showTasks}>
@@ -256,49 +258,53 @@
 
       <!-- UI-001: Theme Toggle Button removed (dark mode only) -->
 
-      <!-- Settings Dropdown -->
-      <HeaderAction
-        bind:isOpen={isSettingsMenuOpen}
-        icon={Settings}
-        closeIcon={Settings}
-        text="Settings"
-      >
-        <HeaderPanelLinks>
-          <HeaderPanelLink on:click={openAbout}>
-            About LocaNext
-          </HeaderPanelLink>
-          <HeaderPanelDivider />
-          <HeaderPanelLink on:click={openPreferences}>
-            Preferences
-          </HeaderPanelLink>
-        </HeaderPanelLinks>
-      </HeaderAction>
+      <!-- Settings Dropdown - UI-087: wrapped for positioning -->
+      <div class="header-dropdown settings-dropdown">
+        <HeaderAction
+          bind:isOpen={isSettingsMenuOpen}
+          icon={Settings}
+          closeIcon={Settings}
+          text="Settings"
+        >
+          <HeaderPanelLinks>
+            <HeaderPanelLink on:click={openAbout}>
+              About LocaNext
+            </HeaderPanelLink>
+            <HeaderPanelDivider />
+            <HeaderPanelLink on:click={openPreferences}>
+              Preferences
+            </HeaderPanelLink>
+          </HeaderPanelLinks>
+        </HeaderAction>
+      </div>
 
-      <!-- User Menu -->
-      <HeaderAction
-        bind:isOpen={isUserMenuOpen}
-        icon={UserAvatar}
-        closeIcon={UserAvatar}
-        text={$user?.username || "User"}
-      >
-        <HeaderPanelLinks>
-          <!-- UI-038: Click to open user profile modal -->
-          <HeaderPanelLink on:click={() => { isUserProfileOpen = true; isUserMenuOpen = false; }}>
-            <div style="font-weight: 600; cursor: pointer;">{$user?.full_name || $user?.username || 'User'}</div>
-            <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
-              View Profile
-            </div>
-          </HeaderPanelLink>
-          <HeaderPanelDivider />
-          <HeaderPanelLink on:click={openChangePassword}>
-            Change Password
-          </HeaderPanelLink>
-          <HeaderPanelDivider />
-          <HeaderPanelLink on:click={handleLogout}>
-            Logout
-          </HeaderPanelLink>
-        </HeaderPanelLinks>
-      </HeaderAction>
+      <!-- User Menu - UI-087: wrapped for positioning -->
+      <div class="header-dropdown user-dropdown">
+        <HeaderAction
+          bind:isOpen={isUserMenuOpen}
+          icon={UserAvatar}
+          closeIcon={UserAvatar}
+          text={$user?.username || "User"}
+        >
+          <HeaderPanelLinks>
+            <!-- UI-038: Click to open user profile modal -->
+            <HeaderPanelLink on:click={() => { isUserProfileOpen = true; isUserMenuOpen = false; }}>
+              <div style="font-weight: 600; cursor: pointer;">{$user?.full_name || $user?.username || 'User'}</div>
+              <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
+                View Profile
+              </div>
+            </HeaderPanelLink>
+            <HeaderPanelDivider />
+            <HeaderPanelLink on:click={openChangePassword}>
+              Change Password
+            </HeaderPanelLink>
+            <HeaderPanelDivider />
+            <HeaderPanelLink on:click={handleLogout}>
+              Logout
+            </HeaderPanelLink>
+          </HeaderPanelLinks>
+        </HeaderAction>
+      </div>
     </Header>
 
     <!-- Change Password Modal -->
@@ -412,5 +418,41 @@
 
   :global(.bx--header__name:hover) {
     text-decoration: underline;
+  }
+
+  /* UI-087: Fix dropdown position - wrapper classes for header dropdowns */
+  .header-dropdown {
+    position: relative;
+    display: contents; /* Don't affect layout, just provide positioning context */
+  }
+
+  /* Base panel styling - appear below header, not as side panel */
+  :global(.bx--header-panel) {
+    position: fixed !important;
+    top: 48px !important;
+    width: 256px !important;
+    max-height: calc(100vh - 48px) !important;
+    overflow-y: auto !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid var(--cds-border-subtle-01) !important;
+    border-radius: 0 0 4px 4px !important;
+  }
+
+  /* Apps dropdown - positioned from right edge */
+  :global(.apps-dropdown .bx--header-panel) {
+    right: calc(48px + 48px + 120px) !important; /* user + settings + tasks button width */
+    left: auto !important;
+  }
+
+  /* Settings dropdown */
+  :global(.settings-dropdown .bx--header-panel) {
+    right: calc(48px + 80px) !important; /* user button + some margin */
+    left: auto !important;
+  }
+
+  /* User dropdown - align to right edge */
+  :global(.user-dropdown .bx--header-panel) {
+    right: 0 !important;
+    left: auto !important;
   }
 </style>

@@ -10,9 +10,94 @@
 |-----------|--------|
 | LDM (Language Data Manager) | WORKS |
 | XLS Transfer | WORKS |
-| Quick Search | WORKS |
-| KR Similar | WORKS |
+| Quick Search | WORKS (may remove - audit needed) |
+| KR Similar | WORKS (may remove - audit needed) |
 | CI/CD (Gitea + GitHub) | WORKS |
+
+---
+
+## NEXT PRIORITY: UI Overhaul (Session 9+)
+
+**Status:** PLANNED | **Issues:** UI-094 to UI-097 + UI-087
+
+The LDM toolbar has redundant/confusing buttons. Clean it up.
+
+### Priority Order
+
+| # | Issue | Task | Complexity |
+|---|-------|------|------------|
+| 1 | UI-094 | Remove TM button → use left panel only | Medium |
+| 2 | UI-095 | Remove QA buttons → use right-click | Medium |
+| 3 | UI-097 | Consolidate Settings → one page | High |
+| 4 | UI-096 | Reference file picker → FileExplorer dialog | High |
+| 5 | UI-087 | Fix dropdown position → below button | Low |
+
+### What's Changing
+
+**Before (Cluttered):**
+- TM button in toolbar + TM tab in left panel (duplicate)
+- QA On/Off toggle + QA button (2 buttons, confusing)
+- Settings in top nav + Settings gear in LDM toolbar (duplicate)
+- Admin dropdown unclear
+- Dropdowns appear far right
+
+**After (Clean):**
+- TM: Left panel only
+- QA: Right-click context menu → results in grid + right panel
+- Settings: One consolidated page
+- User menu: Shows username, contains Profile/Settings/Logout
+- Dropdowns: Appear below clicked button
+
+### Detailed Plans
+
+See `docs/wip/ISSUES_TO_FIX.md` for full implementation details.
+
+---
+
+## MAJOR FEATURE: Offline/Online Sync System
+
+**Status:** PLANNED | **Priority:** HIGH | **Doc:** `docs/wip/OFFLINE_ONLINE_SYNC.md`
+
+Manual on-demand synchronization between Online (PostgreSQL) and Offline (SQLite) modes.
+
+### Core Concept
+
+```
+┌─────────────────┐                     ┌─────────────────┐
+│   ONLINE MODE   │  ◄── Manual Sync ──►│  OFFLINE MODE   │
+│   PostgreSQL    │                     │     SQLite      │
+│   (Central)     │                     │     (Local)     │
+└─────────────────┘                     └─────────────────┘
+        │                                       │
+        └───────── Same UI, Different DB ───────┘
+```
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Mode Toggle** | Switch between Online/Offline in UI |
+| **Sync to Offline** | Right-click file → download to SQLite |
+| **Sync to Online** | Right-click file → upload to PostgreSQL |
+| **Merge** | Combine changes from both directions |
+| **Fully Offline** | Use LocaNext without any server connection |
+
+### Implementation Phases
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| Phase 1 | Mode toggle + basic file sync | PLANNED |
+| Phase 2 | Folder sync with progress | PLANNED |
+| Phase 3 | Smart merge + conflict resolution | PLANNED |
+| Phase 4 | TM sync between modes | PLANNED |
+
+### Use Cases
+
+1. **Field Translator** - Download files, work offline, sync back
+2. **Solo User** - Use offline-only, no server needed
+3. **Team Collaboration** - Central server + individual offline work
+
+See full specification: `docs/wip/OFFLINE_ONLINE_SYNC.md`
 
 ---
 
@@ -77,7 +162,7 @@ For TRUE OFFLINE deployments:
 | tm_crud.py | 46% | OK |
 | tm_search.py | 46% | OK |
 
-### Test Counts (Build 848)
+### Test Counts (Build 424)
 
 | Stage | Tests |
 |-------|-------|
@@ -92,6 +177,13 @@ For TRUE OFFLINE deployments:
 
 **What's done:** Core CRUD routes fully mocked (68-98% coverage)
 **What's fine:** Complex routes tested via 145+ E2E tests
+
+### CI Package Verification (Build 424)
+
+Windows build cache now validates critical packages before reuse:
+- `$requiredPackages`: fastapi, uvicorn, sqlalchemy, pandas, pydantic, huggingface_hub, **faiss, lxml, asyncpg**
+- If ANY package directory missing → cache invalidated → fresh install
+- `scripts/verify_requirements.py`: Verifies critical packages post-install
 
 ---
 
@@ -118,13 +210,48 @@ All large files (>500 lines) are well-organized, not true monoliths.
 
 ---
 
+## Endpoint Audit (2026-01-01)
+
+**Status:** COMPLETE | **Tests:** 187 | **Endpoints:** 118 | **Runtime:** 20 seconds
+
+Full API connectivity audit to prevent orphan endpoint bugs (like UI-084).
+
+| Category | Endpoints | Tests |
+|----------|-----------|-------|
+| LDM (CAT Tool) | 56 | 80+ |
+| Tools (XLS/QS/KR) | 7 | 7 |
+| Admin/Stats | 29 | 29 |
+| Core/Auth/Health | 26 | 50+ |
+
+| Phase | Status | Result |
+|-------|--------|--------|
+| Backend Collection | ✅ DONE | 118 endpoints verified |
+| Frontend Collection | ✅ DONE | 100+ API calls mapped |
+| Cross-Reference | ✅ DONE | 2 orphan calls found & fixed |
+| CI Tests | ✅ DONE | 132 tests in `tests/api/` |
+| Documentation | ✅ DONE | `docs/wip/ENDPOINT_AUDIT.md` |
+
+**Test Coverage:**
+```
+tests/api/test_all_endpoints.py      - 159 tests (comprehensive suite)
+tests/api/test_endpoint_existence.py - 28 tests (critical paths)
+Total: 187 tests in ~20 seconds
+```
+
+**CI Integration:** Gitea Stage 4 (API Tests) automatically runs all `tests/api/*.py`
+
+**Why:** LDM.svelte was calling non-existent endpoints (UI-084). These tests catch orphan endpoints on every build.
+
+---
+
 ## CI/CD
 
 | Platform | Tests | Status |
 |----------|-------|--------|
-| **Gitea (Linux)** | 1,399 | ✅ Build 848 |
-| **Gitea (Windows)** | TBD | 🔄 PATH tests needed |
+| **Gitea (Linux)** | 1,399 | ✅ Build 424 |
+| **Gitea (Windows)** | Verified | ✅ Cache validation fixed |
 | **GitHub** | 1,399 | ✅ Synced |
+| **Endpoint Tests** | 28 | ✅ All passing |
 
 ### Windows PATH Tests (CRITICAL)
 
@@ -316,6 +443,18 @@ LDM currently imports from legacy apps (violates Rule #0):
 | **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](docs/wip/COLOR_PARSER_EXTENSION.md) | DOCUMENTED |
 | **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | PLANNING |
 | **P6** | File Delete + Recycle Bin | TBD | BACKLOG |
+| **P7** | Endpoint Audit System | [ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) | ✅ DONE |
+
+### P7: Endpoint Audit System ✅ COMPLETE
+Full automated endpoint lifecycle management (2026-01-01):
+- ✅ `scripts/endpoint_audit.py` - Comprehensive audit tool v2.0
+- ✅ Coverage report (206 endpoints, 34% tested)
+- ✅ Documentation quality check (100% have summaries)
+- ✅ Security audit (8 intentional unprotected endpoints)
+- ✅ Auto-generate test stubs (135 tests created)
+- ✅ HTML dashboard (`docs/endpoint_audit_report.html`)
+- ✅ CI/CD JSON output for pipelines
+- ✅ Strict mode (fails if < 80% coverage)
 
 ### P1: QA UIUX Overhaul ✅ Phase 1 DONE
 Fixed stability issues (2025-12-29):
@@ -449,4 +588,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2025-12-30 | Build 416+ | P1-P5 DONE*
+*Strategic Roadmap | Updated 2025-12-31 | Build 424 | P1-P5 DONE*

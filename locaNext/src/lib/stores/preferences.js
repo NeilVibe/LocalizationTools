@@ -24,6 +24,7 @@ const defaultPreferences = {
   // TM Settings
   activeTmId: null,
   showTmSuggestions: true,
+  tmThreshold: 0.92, // TM-UI-003: User-selectable threshold (50-100%, default 92%)
 
   // QA Settings
   enableLiveQa: false,
@@ -114,6 +115,13 @@ function createPreferencesStore() {
     // TM settings
     setActiveTm: (tmId) => {
       update(prefs => ({ ...prefs, activeTmId: tmId }));
+    },
+
+    // TM-UI-003: Set TM match threshold
+    setTmThreshold: (threshold) => {
+      // Clamp to valid range 0.50 - 1.00
+      const clamped = Math.max(0.50, Math.min(1.00, threshold));
+      update(prefs => ({ ...prefs, tmThreshold: clamped }));
     },
 
     // QA settings

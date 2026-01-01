@@ -16,6 +16,7 @@
   import { WarningAltFilled } from "carbon-icons-svelte";
   import PresenceBar from "./PresenceBar.svelte";
   import ColorText from "./ColorText.svelte";
+  import { stripColorTags, paColorToHtml, htmlToPaColor, hexToCSS } from "$lib/utils/colorParser.js";
 
   const dispatch = createEventDispatcher();
 
@@ -93,6 +94,23 @@
   let inlineEditValue = $state("");
   let inlineEditTextarea = $state(null);
   let isCancellingEdit = $state(false); // Flag to prevent blur-save race condition
+
+  // Color picker state for inline editing
+  let showColorPicker = $state(false);
+  let colorPickerPosition = $state({ x: 0, y: 0 });
+  let textSelection = $state({ start: 0, end: 0, text: "" });
+
+  // Available colors for PAColor format
+  const PAColors = [
+    { name: "Gold", hex: "0xffe9bd23", css: "#e9bd23" },
+    { name: "Green", hex: "0xff67d173", css: "#67d173" },
+    { name: "Blue", hex: "0xff4a90d9", css: "#4a90d9" },
+    { name: "Red", hex: "0xffff4444", css: "#ff4444" },
+    { name: "Purple", hex: "0xffb88fdc", css: "#b88fdc" },
+    { name: "Orange", hex: "0xffff9500", css: "#ff9500" },
+    { name: "Cyan", hex: "0xff00bcd4", css: "#00bcd4" },
+    { name: "Pink", hex: "0xffe91e63", css: "#e91e63" }
+  ];
 
   // Selected row state (click-based)
   let selectedRowId = $state(null);
@@ -620,9 +638,10 @@
     tmSuggestions = [];
 
     try {
+      // TM-UI-003: Use user-selected threshold from preferences
       const params = new URLSearchParams({
         source: sourceText,
-        threshold: '0.3',
+        threshold: $preferences.tmThreshold.toString(),
         max_results: '5'
       });
       // CRITICAL: Pass tm_id if active TM is set
@@ -838,9 +857,10 @@
     });
 
     try {
+      // TM-UI-003: Use user-selected threshold from preferences
       const params = new URLSearchParams({
         source: row.source,
-        threshold: '0.5',
+        threshold: $preferences.tmThreshold.toString(),
         max_results: '1'
       });
       if ($preferences.activeTmId) {
@@ -917,8 +937,9 @@
 
     // Set inline editing state
     inlineEditingRowId = row.id;
-    // Convert file-format linebreaks to actual \n for editing
-    inlineEditValue = formatTextForDisplay(row.target || "");
+    // Convert file-format linebreaks to actual \n for editing, then to HTML for WYSIWYG
+    const rawText = formatTextForDisplay(row.target || "");
+    inlineEditValue = paColorToHtml(rawText);
     selectedRowId = row.id;
 
     // Push initial state to undo stack
@@ -926,12 +947,17 @@
 
     logger.userAction("Inline edit started", { rowId: row.id });
 
-    // Focus the textarea after render
+    // Focus the contenteditable after render
     await tick();
     if (inlineEditTextarea) {
       inlineEditTextarea.focus();
-      // Move cursor to end
-      inlineEditTextarea.selectionStart = inlineEditTextarea.value.length;
+      // Move cursor to end using selection API
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(inlineEditTextarea);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
     }
   }
 
@@ -948,8 +974,9 @@
       return;
     }
 
-    // Convert to file format for save (handles linebreaks)
-    const textToSave = formatTextForSave(inlineEditValue);
+    // Convert from HTML (contenteditable) back to PAColor format, then to file format
+    const rawText = htmlToPaColor(inlineEditValue);
+    const textToSave = formatTextForSave(rawText);
 
     // Only save if value changed (compare formatted values)
     if (textToSave !== row.target) {
@@ -1035,6 +1062,91 @@
 
     // Reset cancel flag after DOM update
     setTimeout(() => { isCancellingEdit = false; }, 0);
+  }
+
+  /**
+   * Handle right-click in contenteditable to show color picker
+   */
+  let savedRange = null; // Store selection range for color picker
+
+  function handleEditContextMenu(e) {
+    if (!inlineEditTextarea) return;
+
+    // Get text selection from contenteditable
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    const range = sel.getRangeAt(0);
+    const selectedText = sel.toString();
+
+    // Only show color picker if text is selected
+    if (selectedText.length > 0) {
+      e.preventDefault();
+      // Save the range so we can restore it when applying color
+      savedRange = range.cloneRange();
+      textSelection = {
+        start: 0,
+        end: selectedText.length,
+        text: selectedText
+      };
+      colorPickerPosition = { x: e.clientX, y: e.clientY };
+      showColorPicker = true;
+      logger.userAction("Color picker opened", { selectedText: selectedText });
+    }
+  }
+
+  /**
+   * Apply color to selected text in contenteditable
+   */
+  function applyColor(color) {
+    if (!inlineEditTextarea || !savedRange || textSelection.text.length === 0) {
+      closeColorPicker();
+      return;
+    }
+
+    // Focus the contenteditable
+    inlineEditTextarea.focus();
+
+    // Restore the saved selection
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+
+    // Create a colored span to wrap the selection
+    const coloredSpan = document.createElement('span');
+    coloredSpan.style.color = hexToCSS(color.hex);
+    coloredSpan.setAttribute('data-pacolor', color.hex);
+
+    // Extract contents and wrap in span
+    coloredSpan.appendChild(savedRange.extractContents());
+    savedRange.insertNode(coloredSpan);
+
+    // Update inlineEditValue with new HTML
+    inlineEditValue = inlineEditTextarea.innerHTML;
+
+    logger.userAction("Applied color to text", { color: color.name, text: textSelection.text });
+    closeColorPicker();
+
+    // Move cursor after the colored span
+    tick().then(() => {
+      if (inlineEditTextarea) {
+        inlineEditTextarea.focus();
+        const range = document.createRange();
+        range.setStartAfter(coloredSpan);
+        range.collapse(true);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    });
+  }
+
+  /**
+   * Close color picker
+   */
+  function closeColorPicker() {
+    showColorPicker = false;
+    textSelection = { start: 0, end: 0, text: "" };
   }
 
   /**
@@ -1471,14 +1583,17 @@
       return rowHeightCache.get(index);
     }
 
-    // Get the longest text (source or target)
-    const sourceLen = (row.source || "").length;
-    const targetLen = (row.target || "").length;
+    // FIX: Strip color tags before calculating length (tags are not rendered)
+    // This gives accurate length of what's actually displayed
+    const sourceText = stripColorTags(row.source || "");
+    const targetText = stripColorTags(row.target || "");
+    const sourceLen = sourceText.length;
+    const targetLen = targetText.length;
     const maxLen = Math.max(sourceLen, targetLen);
 
-    // Count all newlines (actual, escaped, XML)
-    const sourceNewlines = countNewlines(row.source);
-    const targetNewlines = countNewlines(row.target);
+    // Count all newlines (actual, escaped, XML) - use stripped text
+    const sourceNewlines = countNewlines(sourceText);
+    const targetNewlines = countNewlines(targetText);
     const maxNewlines = Math.max(sourceNewlines, targetNewlines);
 
     // SMART ESTIMATION: Use larger chars per line for wider columns
@@ -1695,24 +1810,25 @@
   // Svelte 5: Derived - Total scroll height (reactive to rows changes)
   let totalHeight = $derived(getTotalHeight());
 
-  // Svelte 5: Effect - Subscribe to real-time updates when file changes
+  // Svelte 5: Effect - Watch file changes AND subscribe to real-time updates
+  // CRITICAL: Must track previousFileId to prevent infinite loop (BUG-001)
+  let previousFileId = $state(null);
   $effect(() => {
-    if (fileId) {
+    if (fileId && fileId !== previousFileId) {
+      logger.info("fileId changed - resetting and subscribing", { from: previousFileId, to: fileId });
+      previousFileId = fileId;
+
+      // Reset search
+      searchTerm = "";
+
+      // Subscribe to WebSocket updates (was causing infinite loop without previousFileId check!)
       joinFile(fileId);
       if (cellUpdateUnsubscribe) {
         cellUpdateUnsubscribe();
       }
       cellUpdateUnsubscribe = onCellUpdate(handleCellUpdates);
-    }
-  });
 
-  // Svelte 5: Effect - Watch file changes (only when fileId actually changes)
-  let previousFileId = $state(null);
-  $effect(() => {
-    if (fileId && fileId !== previousFileId) {
-      logger.info("fileId changed - resetting search", { from: previousFileId, to: fileId });
-      previousFileId = fileId;
-      searchTerm = "";
+      // Load rows
       loadRows();
     }
   });
@@ -1968,15 +2084,19 @@
                   onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && !rowLock && !inlineEditingRowId && startInlineEdit(row)}
                 >
                   {#if inlineEditingRowId === row.id}
-                    <!-- Inline editing textarea -->
-                    <textarea
-                      bind:this={inlineEditTextarea}
-                      bind:value={inlineEditValue}
-                      class="inline-edit-textarea"
-                      onkeydown={handleInlineEditKeydown}
-                      onblur={() => saveInlineEdit(false)}
-                      placeholder="Enter translation..."
-                    ></textarea>
+                    <!-- WYSIWYG inline editing - colors render directly -->
+                    <div class="inline-edit-container">
+                      <div
+                        bind:this={inlineEditTextarea}
+                        contenteditable="true"
+                        class="inline-edit-textarea"
+                        onkeydown={handleInlineEditKeydown}
+                        onblur={() => saveInlineEdit(false)}
+                        oncontextmenu={handleEditContextMenu}
+                        oninput={(e) => { inlineEditValue = e.target.innerHTML; }}
+                        data-placeholder="Enter translation..."
+                      >{@html inlineEditValue}</div>
+                    </div>
                   {:else}
                     <!-- Display mode -->
                     <span class="cell-content"><ColorText text={formatGridText(row.target) || ""} /></span>
@@ -2032,6 +2152,37 @@
   {:else}
     <div class="empty-state">
       <p>Select a file from the explorer to view its contents</p>
+    </div>
+  {/if}
+
+  <!-- Color Picker Context Menu -->
+  {#if showColorPicker}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="color-picker-overlay" onclick={closeColorPicker}></div>
+    <div
+      class="color-picker-menu"
+      style="left: {colorPickerPosition.x}px; top: {colorPickerPosition.y}px;"
+    >
+      <div class="color-picker-header">
+        <span>Apply Color</span>
+        <button class="close-btn" onclick={closeColorPicker}>×</button>
+      </div>
+      <div class="color-picker-colors">
+        {#each PAColors as color}
+          <button
+            class="color-swatch"
+            style="background-color: {color.css};"
+            title={color.name}
+            onclick={() => applyColor(color)}
+          >
+            <span class="color-name">{color.name}</span>
+          </button>
+        {/each}
+      </div>
+      <div class="color-picker-preview">
+        <span class="preview-text">"{textSelection.text}"</span>
+      </div>
     </div>
   {/if}
 </div>
@@ -2407,16 +2558,126 @@
     font-size: var(--grid-font-size, 0.875rem);
     font-weight: var(--grid-font-weight, 400);
     line-height: 1.5;
-    resize: none;
     outline: none;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    cursor: text;
   }
 
   .inline-edit-textarea:focus {
     outline: none;
   }
 
-  .inline-edit-textarea::placeholder {
+  /* Placeholder for contenteditable */
+  .inline-edit-textarea:empty:before {
+    content: attr(data-placeholder);
     color: var(--cds-text-02);
+    font-style: italic;
+    pointer-events: none;
+  }
+
+  /* Inline edit container for textarea + preview */
+  .inline-edit-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+  }
+
+  .inline-edit-container .inline-edit-textarea {
+    flex: 1;
+    min-height: 60px;
+  }
+
+  /* Color Picker Context Menu */
+  .color-picker-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+  }
+
+  .color-picker-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 200px;
+    background: var(--cds-layer-02);
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+  }
+
+  .color-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: var(--cds-layer-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .color-picker-header .close-btn {
+    background: none;
+    border: none;
+    color: var(--cds-text-02);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .color-picker-header .close-btn:hover {
+    color: var(--cds-text-01);
+  }
+
+  .color-picker-colors {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 0.5rem;
+  }
+
+  .color-swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+
+  .color-swatch:hover {
+    transform: scale(1.1);
+    border-color: var(--cds-border-strong-01);
+  }
+
+  .color-swatch .color-name {
+    font-size: 0.5rem;
+    color: #000;
+    text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+    font-weight: 600;
+  }
+
+  .color-picker-preview {
+    padding: 0.5rem 0.75rem;
+    background: var(--cds-layer-01);
+    border-top: 1px solid var(--cds-border-subtle-01);
+    font-size: 0.7rem;
+    color: var(--cds-text-02);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .color-picker-preview .preview-text {
     font-style: italic;
   }
 

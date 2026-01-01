@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Endpoint Audit Report</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        .stats { display: flex; gap: 20px; margin: 20px 0; }
+        .stat-card { background: #f8f9fa; padding: 20px; border-radius: 8px; flex: 1; text-align: center; }
+        .stat-value { font-size: 36px; font-weight: bold; color: #4CAF50; }
+        .stat-label { color: #666; margin-top: 5px; }
+        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 20px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f5f5f5; font-weight: 600; }
+        tr:hover { background: #f9f9f9; }
+        .tested { color: #4CAF50; }
+        .untested { color: #f44336; }
+        .badge { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-get { background: #61affe; color: white; }
+        .badge-post { background: #49cc90; color: white; }
+        .badge-put { background: #fca130; color: white; }
+        .badge-delete { background: #f93e3e; color: white; }
+        .badge-patch { background: #50e3c2; color: white; }
+        .timestamp { color: #999; font-size: 12px; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Endpoint Audit Report</h1>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">206</div>
+                <div class="stat-label">Total Endpoints</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">34%</div>
+                <div class="stat-label">Test Coverage</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Documentation</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">8</div>
+                <div class="stat-label">Security Issues</div>
+            </div>
+        </div>
+
+        <h2>Test Coverage</h2>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: 34%"></div>
+        </div>
+        <p>71 of 206 endpoints tested</p>
+
+        <h2>All Endpoints</h2>
+        <table>
+            <tr>
+                <th>Method</th>
+                <th>Path</th>
+                <th>Summary</th>
+                <th>Auth</th>
+                <th>Tested</th>
+                <th>Doc Score</th>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/</code></td>
+                <td>Root</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/announcements</code></td>
+                <td>Get Announcements</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/auth/admin/users</code></td>
+                <td>Admin Create User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>70%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/auth/admin/users/{user_id}</code></td>
+                <td>Admin Delete User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/auth/admin/users/{user_id}</code></td>
+                <td>Admin Update User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/auth/admin/users/{user_id}/reset-password</code></td>
+                <td>Admin Reset Password</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/auth/login</code></td>
+                <td>Login</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/auth/me</code></td>
+                <td>Get Current User Info</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/auth/me/password</code></td>
+                <td>Change Password</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/auth/register</code></td>
+                <td>Register</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>70%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/auth/users</code></td>
+                <td>List Users</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/auth/users/{user_id}</code></td>
+                <td>Get User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/auth/users/{user_id}/activate</code></td>
+                <td>Activate User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/auth/users/{user_id}/deactivate</code></td>
+                <td>Deactivate User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/download/operation/{operation_id}</code></td>
+                <td>Download Operation Result</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/go-online</code></td>
+                <td>Go Online</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/health/ping</code></td>
+                <td>Ping</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/health/simple</code></td>
+                <td>Get Simple Health</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/health/status</code></td>
+                <td>Get Detailed Health</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/files</code></td>
+                <td>List All Files</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/files/excel-preview</code></td>
+                <td>Excel Preview</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/files/upload</code></td>
+                <td>Upload File</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/files/{file_id}</code></td>
+                <td>Get File</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/files/{file_id}/check-grammar</code></td>
+                <td>Check Grammar</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/files/{file_id}/check-qa</code></td>
+                <td>Check File Qa</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/files/{file_id}/convert</code></td>
+                <td>Convert File</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/files/{file_id}/download</code></td>
+                <td>Download File</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/files/{file_id}/extract-glossary</code></td>
+                <td>Extract Glossary</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/files/{file_id}/merge</code></td>
+                <td>Merge File</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-patch">PATCH</span></td>
+                <td><code>/api/ldm/files/{file_id}/move</code></td>
+                <td>Move File To Folder</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/files/{file_id}/qa-results</code></td>
+                <td>Get File Qa Results</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/files/{file_id}/qa-summary</code></td>
+                <td>Get File Qa Summary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/files/{file_id}/register-as-tm</code></td>
+                <td>Register File As Tm</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-patch">PATCH</span></td>
+                <td><code>/api/ldm/files/{file_id}/rename</code></td>
+                <td>Rename File</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/files/{file_id}/rows</code></td>
+                <td>List Rows</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/folders</code></td>
+                <td>Create Folder</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/ldm/folders/{folder_id}</code></td>
+                <td>Delete Folder</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-patch">PATCH</span></td>
+                <td><code>/api/ldm/folders/{folder_id}/rename</code></td>
+                <td>Rename Folder</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/grammar/status</code></td>
+                <td>Grammar Status</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/health</code></td>
+                <td>Health</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/pretranslate</code></td>
+                <td>Pretranslate File</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/projects</code></td>
+                <td>List Projects</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/projects</code></td>
+                <td>Create Project</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/ldm/projects/{project_id}</code></td>
+                <td>Delete Project</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/projects/{project_id}</code></td>
+                <td>Get Project</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/projects/{project_id}/files</code></td>
+                <td>List Files</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/projects/{project_id}/folders</code></td>
+                <td>List Folders</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/projects/{project_id}/link-tm</code></td>
+                <td>Link Tm To Project</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/ldm/projects/{project_id}/link-tm/{tm_id}</code></td>
+                <td>Unlink Tm From Project</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/projects/{project_id}/linked-tms</code></td>
+                <td>Get Linked Tms</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-patch">PATCH</span></td>
+                <td><code>/api/ldm/projects/{project_id}/rename</code></td>
+                <td>Rename Project</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/projects/{project_id}/tree</code></td>
+                <td>Get Project Tree</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/qa-results/{result_id}/resolve</code></td>
+                <td>Resolve Qa Issue</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/ldm/rows/{row_id}</code></td>
+                <td>Update Row</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/rows/{row_id}/check-grammar</code></td>
+                <td>Check Row Grammar</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/rows/{row_id}/check-qa</code></td>
+                <td>Check Row Qa</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/rows/{row_id}/qa-results</code></td>
+                <td>Get Row Qa Results</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/settings/embedding-engine</code></td>
+                <td>Get Current Embedding Engine</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/settings/embedding-engine</code></td>
+                <td>Set Embedding Engine</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/settings/embedding-engines</code></td>
+                <td>List Embedding Engines</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/sync-to-central</code></td>
+                <td>Sync File To Central</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/tm</code></td>
+                <td>List Tms</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/tm/suggest</code></td>
+                <td>Get Tm Suggestions</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/tm/sync-to-central</code></td>
+                <td>Sync Tm To Central</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/tm/upload</code></td>
+                <td>Upload Tm</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/ldm/tm/{tm_id}</code></td>
+                <td>Delete Tm</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/tm/{tm_id}</code></td>
+                <td>Get Tm</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/build-indexes</code></td>
+                <td>Build Tm Indexes</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/entries</code></td>
+                <td>Get Tm Entries</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/entries</code></td>
+                <td>Add Tm Entry</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/entries/bulk-confirm</code></td>
+                <td>Bulk Confirm Tm Entries</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/entries/{entry_id}</code></td>
+                <td>Delete Tm Entry</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/entries/{entry_id}</code></td>
+                <td>Update Tm Entry</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/entries/{entry_id}/confirm</code></td>
+                <td>Confirm Tm Entry</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/export</code></td>
+                <td>Export Tm</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/indexes</code></td>
+                <td>Get Tm Index Status</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/search</code></td>
+                <td>Search Tm</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/search/exact</code></td>
+                <td>Search Tm Exact</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/sync</code></td>
+                <td>Sync Tm Indexes</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/ldm/tm/{tm_id}/sync-status</code></td>
+                <td>Get Tm Sync Status</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/logs/error</code></td>
+                <td>Submit Error Report</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/logs/errors</code></td>
+                <td>Get Recent Errors</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/logs/recent</code></td>
+                <td>Get Recent Logs</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/logs/stats/by-tool</code></td>
+                <td>Get Stats By Tool</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/logs/stats/summary</code></td>
+                <td>Get Log Stats Summary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/logs/submit</code></td>
+                <td>Submit Logs</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/logs/user/{user_id}</code></td>
+                <td>Get User Logs</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/progress/operations</code></td>
+                <td>Get Operations</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/progress/operations</code></td>
+                <td>Create Operation</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>70%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/progress/operations/cleanup/completed</code></td>
+                <td>Cleanup Completed Operations</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/progress/operations/cleanup/stale</code></td>
+                <td>Cleanup Stale Running Operations</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/progress/operations/{operation_id}</code></td>
+                <td>Delete Operation</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>70%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/progress/operations/{operation_id}</code></td>
+                <td>Get Operation</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/progress/operations/{operation_id}</code></td>
+                <td>Update Operation</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/sessions/active</code></td>
+                <td>Get Active Sessions</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/sessions/start</code></td>
+                <td>Start Session</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>70%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/sessions/user/{user_id}</code></td>
+                <td>Get User Sessions</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/sessions/{session_id}/end</code></td>
+                <td>End Session</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/sessions/{session_id}/heartbeat</code></td>
+                <td>Session Heartbeat</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/status</code></td>
+                <td>Get Status</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v1/remote-logs/frontend</code></td>
+                <td>Log Frontend</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v1/remote-logs/health</code></td>
+                <td>Remote Logging Health</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v1/remote-logs/installations</code></td>
+                <td>List Installations</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v1/remote-logs/register</code></td>
+                <td>Register Installation</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v1/remote-logs/sessions/end</code></td>
+                <td>End Session</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v1/remote-logs/sessions/heartbeat</code></td>
+                <td>Session Heartbeat</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v1/remote-logs/sessions/start</code></td>
+                <td>Start Session</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v1/remote-logs/status/{installation_id}</code></td>
+                <td>Get Installation Status</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v1/remote-logs/submit</code></td>
+                <td>Submit Logs</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/db/health</code></td>
+                <td>Get Db Health</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/db/stats</code></td>
+                <td>Get Db Stats</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/rankings/apps</code></td>
+                <td>Get App Rankings</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/rankings/functions</code></td>
+                <td>Get Function Rankings</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/rankings/functions/by-time</code></td>
+                <td>Get Function Rankings By Time</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/rankings/top</code></td>
+                <td>Get Top Rankings</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/rankings/users</code></td>
+                <td>Get User Rankings</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/rankings/users/by-time</code></td>
+                <td>Get User Rankings By Time</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/analytics/by-language</code></td>
+                <td>Get Stats By Language</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/analytics/by-team</code></td>
+                <td>Get Stats By Team</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/analytics/user-rankings</code></td>
+                <td>Get User Rankings</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/daily</code></td>
+                <td>Get Daily Stats</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/database</code></td>
+                <td>Get Database Stats</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/errors/rate</code></td>
+                <td>Get Error Rate</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/errors/top</code></td>
+                <td>Get Top Errors</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/monthly</code></td>
+                <td>Get Monthly Stats</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/overview</code></td>
+                <td>Get Overview Stats</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/performance/fastest</code></td>
+                <td>Get Fastest Functions</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/performance/slowest</code></td>
+                <td>Get Slowest Functions</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/server</code></td>
+                <td>Get Server Stats</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/server-logs</code></td>
+                <td>Get Server Logs</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/tools/popularity</code></td>
+                <td>Get Tool Popularity</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/tools/{tool_name}/functions</code></td>
+                <td>Get Function Stats</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/stats/weekly</code></td>
+                <td>Get Weekly Stats</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/telemetry/installations</code></td>
+                <td>Get Installations</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/telemetry/installations/{installation_id}</code></td>
+                <td>Get Installation Detail</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/telemetry/logs</code></td>
+                <td>Get Remote Logs</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/telemetry/logs/errors</code></td>
+                <td>Get Error Logs</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/telemetry/overview</code></td>
+                <td>Get Telemetry Overview</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/telemetry/sessions</code></td>
+                <td>Get Sessions</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/telemetry/stats/by-installation</code></td>
+                <td>Get Stats By Installation</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/admin/telemetry/stats/daily</code></td>
+                <td>Get Daily Telemetry Stats</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/auth/admin/users</code></td>
+                <td>Admin Create User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>70%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/v2/auth/admin/users/{user_id}</code></td>
+                <td>Admin Delete User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/v2/auth/admin/users/{user_id}</code></td>
+                <td>Admin Update User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/v2/auth/admin/users/{user_id}/reset-password</code></td>
+                <td>Admin Reset Password</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/auth/login</code></td>
+                <td>Login</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/auth/me</code></td>
+                <td>Get Current User Info</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/v2/auth/me/password</code></td>
+                <td>Change Password</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/auth/register</code></td>
+                <td>Register</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>70%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/auth/users</code></td>
+                <td>List Users</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/auth/users/{user_id}</code></td>
+                <td>Get User</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/v2/auth/users/{user_id}/activate</code></td>
+                <td>Activate User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/v2/auth/users/{user_id}/deactivate</code></td>
+                <td>Deactivate User</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/kr-similar/auto-translate</code></td>
+                <td>Auto Translate</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-delete">DELETE</span></td>
+                <td><code>/api/v2/kr-similar/clear</code></td>
+                <td>Clear Dictionary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/kr-similar/create-dictionary</code></td>
+                <td>Create Dictionary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/kr-similar/extract-similar</code></td>
+                <td>Extract Similar</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/kr-similar/health</code></td>
+                <td>Health</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/kr-similar/list-dictionaries</code></td>
+                <td>List Dictionaries</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/kr-similar/load-dictionary</code></td>
+                <td>Load Dictionary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/kr-similar/search</code></td>
+                <td>Search Similar</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/kr-similar/status</code></td>
+                <td>Status</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/logs/error</code></td>
+                <td>Submit Error Report</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/logs/errors</code></td>
+                <td>Get Recent Errors</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/logs/recent</code></td>
+                <td>Get Recent Logs</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/logs/stats/by-tool</code></td>
+                <td>Get Stats By Tool</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/logs/stats/summary</code></td>
+                <td>Get Log Stats Summary</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/logs/submit</code></td>
+                <td>Submit Logs</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/logs/user/{user_id}</code></td>
+                <td>Get User Logs</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/create-dictionary</code></td>
+                <td>Create Dictionary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/quicksearch/health</code></td>
+                <td>Health</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/quicksearch/list-dictionaries</code></td>
+                <td>List Dictionaries</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/load-dictionary</code></td>
+                <td>Load Dictionary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/qa/character-count</code></td>
+                <td>Qa Character Count</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/qa/extract-glossary</code></td>
+                <td>Qa Extract Glossary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/qa/line-check</code></td>
+                <td>Qa Line Check</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/qa/pattern-check</code></td>
+                <td>Qa Pattern Check</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/qa/term-check</code></td>
+                <td>Qa Term Check</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/search</code></td>
+                <td>Search</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/search-multiline</code></td>
+                <td>Search Multiline</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/set-reference</code></td>
+                <td>Set Reference</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/quicksearch/toggle-reference</code></td>
+                <td>Toggle Reference</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/sessions/active</code></td>
+                <td>Get Active Sessions</td>
+                <td>🔒</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/sessions/start</code></td>
+                <td>Start Session</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>70%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/sessions/user/{user_id}</code></td>
+                <td>Get User Sessions</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/v2/sessions/{session_id}/end</code></td>
+                <td>End Session</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-put">PUT</span></td>
+                <td><code>/api/v2/sessions/{session_id}/heartbeat</code></td>
+                <td>Session Heartbeat</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/xlstransfer/health</code></td>
+                <td>Health</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/check-newlines</code></td>
+                <td>Check Newlines</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/combine-excel</code></td>
+                <td>Combine Excel</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/create-dictionary</code></td>
+                <td>Create Dictionary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/get-sheets</code></td>
+                <td>Get Sheets</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/load-dictionary</code></td>
+                <td>Load Dictionary</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/newline-auto-adapt</code></td>
+                <td>Newline Auto Adapt</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/simple/analyze</code></td>
+                <td>Simple Analyze</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/simple/execute</code></td>
+                <td>Simple Execute</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/v2/xlstransfer/test/status</code></td>
+                <td>Status</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/translate-excel</code></td>
+                <td>Translate Excel</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/translate-file</code></td>
+                <td>Translate File</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/api/v2/xlstransfer/test/translate-text</code></td>
+                <td>Translate Text</td>
+                <td>🔒</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/api/version/latest</code></td>
+                <td>Get Latest Version</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/health</code></td>
+                <td>Health Check</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/updates/download/{filename}</code></td>
+                <td>Download Installer</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/updates/latest.yml</code></td>
+                <td>Get Latest Manifest</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-post">POST</span></td>
+                <td><code>/updates/upload</code></td>
+                <td>Upload Update</td>
+                <td>🔓</td>
+                <td class="untested">❌</td>
+                <td>100%</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-get">GET</span></td>
+                <td><code>/updates/version</code></td>
+                <td>Get Current Version</td>
+                <td>🔓</td>
+                <td class="tested">✅</td>
+                <td>100%</td>
+            </tr>
+        </table>
+
+        <p class="timestamp">Generated: 2026-01-01 01:39:31</p>
+    </div>
+</body>
+</html>
