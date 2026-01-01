@@ -34,11 +34,32 @@ Manual on-demand sync between Online (PostgreSQL) and Offline (SQLite):
 | Merge | Combine changes from both directions |
 | Fully Offline | Use without any server connection |
 
-**Phases:**
-1. Mode toggle + basic file sync
-2. Folder sync with progress
-3. Smart merge + conflict resolution
-4. TM sync between modes
+---
+
+### ACTIVE: Phase 10 UI Overhaul
+
+**Status:** IN PROGRESS | **Doc:** `docs/wip/PHASE_10_MAJOR_UIUX_OVERHAUL.md`
+
+**Approach:** Recycle 90%, Restructure 10%
+
+**Implementation Steps:**
+| Step | Task | Status |
+|------|------|--------|
+| 1 | Navigation store + LocaNext dropdown | 🔲 TODO |
+| 2 | Extract FilesPage, TMPage, GridPage | 🔲 TODO |
+| 3 | Transform Files → Windows Explorer style | 🔲 TODO |
+| 4 | Transform TM → Explorer pattern | 🔲 TODO |
+| 5 | Polish (Properties, keyboard shortcuts) | 🔲 TODO |
+
+**Key Transformation:**
+```
+BEFORE (tree view):              AFTER (Windows Explorer):
+┌─────────────────────┐         ┌─────────────────────────────────┐
+│ Left panel + Grid   │   →     │ Full-page explorer OR grid      │
+│ (cramped)           │         │ Breadcrumb navigation           │
+└─────────────────────┘         │ Double-click = enter/open       │
+                                └─────────────────────────────────┘
+```
 
 ---
 
