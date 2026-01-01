@@ -1,13 +1,49 @@
 # Session Context
 
-> Last Updated: 2026-01-01 (Session 12 - UI Fixes + Confirm-to-TM)
+> Last Updated: 2026-01-01 (Session 13 - CI/CD Fixes)
 
 ---
 
 ## Current State
 
-**Build:** 424
-**Status:** Session 12 - UI polish + critical bug fixes
+**Build:** 426
+**Status:** Session 13 - CI/CD infrastructure fixes
+
+---
+
+## SESSION 13 UPDATES (2026-01-01)
+
+### CI/CD Fixes (Session 13)
+
+| Issue | Root Cause | Fix | Status |
+|-------|------------|-----|--------|
+| Windows Runner offline | SW lacked admin rights for Windows services | Added `gsudo` to `gitea_control.sh` lines 143, 197-198, 309 | ✅ FIXED |
+| GitHub macOS build fail | `--config electron-builder.json` file doesn't exist | Changed to `npx electron-builder --mac --publish never` | ✅ FIXED |
+| TM tests failing (500) | `similarity()` requires pg_trgm extension | Added `CREATE EXTENSION pg_trgm` to both CI workflows | ✅ FIXED |
+
+### Files Modified (Session 13)
+
+| File | Change |
+|------|--------|
+| `scripts/gitea_control.sh` | Added gsudo for Windows service Start/Stop commands |
+| `.github/workflows/build-electron.yml` | Fixed macOS build + added pg_trgm extension |
+| `.gitea/workflows/build.yml` | Added pg_trgm extension step |
+
+### Key Learnings (Session 13)
+
+| CS | Issue | Solution |
+|----|-------|----------|
+| CS-019 | SW can't start Windows services | Use gsudo: `$POWERSHELL -Command "gsudo Start-Service..."` |
+| CS-020 | electron-builder config | Config lives in `package.json` under "build" key, not separate file |
+| CS-021 | TM similarity search | Requires `pg_trgm` PostgreSQL extension in CI database |
+
+### Build Status (Session 13)
+
+| Platform | Build | Status | Notes |
+|----------|-------|--------|-------|
+| Gitea | 426 | RUNNING | Has all fixes (gsudo, pg_trgm) |
+| GitHub | 426 | RUNNING | Missing pg_trgm fix (pushed after trigger) |
+| GitHub | 427 | PENDING | Will trigger after 426 fails |
 
 ---
 

@@ -62,10 +62,11 @@ jobs:
           if [ -n "$TRIGGER" ]; then
             echo "should_build=true" >> $GITHUB_OUTPUT
 
-            # AUTO-GENERATE VERSION: YY.MMDD.HHMM format
-            VERSION=$(TZ='Asia/Seoul' date '+%y.%m%d.%H%M')
+            # AUTO-GENERATE VERSION: YY.MDD.HHMM format (semver-compatible, no leading zeros)
+            # electron-updater requires valid semver: MAJOR.MINOR.PATCH (no leading zeros)
+            VERSION=$(TZ='Asia/Seoul' date '+%y.%-m%d.%H%M')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "[OK] Auto-generated version: $VERSION"
+            echo "[OK] Auto-generated version: $VERSION (semver-compatible)"
 
             # ============================================================
             # 3 MODES: Build (QA), Build QA FULL, TROUBLESHOOT

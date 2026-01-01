@@ -280,10 +280,18 @@ Total: 187 tests in ~20 seconds
 
 | Platform | Tests | Status |
 |----------|-------|--------|
-| **Gitea (Linux)** | 1,399 | ✅ Build 424 |
+| **Gitea (Linux)** | 1,399 | ✅ Build 426 |
 | **Gitea (Windows)** | Verified | ✅ Cache validation fixed |
-| **GitHub** | 1,399 | ✅ Synced |
+| **GitHub** | 1,399 | ✅ Build 426 (macOS enabled) |
 | **Endpoint Tests** | 28 | ✅ All passing |
+
+### Session 13 Fixes (2026-01-01)
+
+| Fix | Issue | Resolution |
+|-----|-------|------------|
+| gsudo for SW | Windows Runner offline | Added `gsudo` to `gitea_control.sh` |
+| macOS build | `electron-builder.json` not found | Config in `package.json`, not separate file |
+| pg_trgm | TM similarity search 500 error | Added extension to both CI workflows |
 
 ### Windows PATH Tests (CRITICAL)
 
@@ -620,4 +628,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2025-12-31 | Build 424 | P1-P5 DONE*
+*Strategic Roadmap | Updated 2026-01-01 | Build 426 | P1-P7 DONE*
