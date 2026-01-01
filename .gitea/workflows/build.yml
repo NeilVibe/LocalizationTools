@@ -2437,23 +2437,37 @@ jobs:
           # Get version from version.py
           $VERSION = (Select-String -Path "version.py" -Pattern 'VERSION = "([^"]+)"').Matches.Groups[1].Value
 
+          # Get current commit SHA for target_commitish
+          $COMMIT_SHA = git rev-parse HEAD
+          Write-Host "Current commit: $COMMIT_SHA"
+
           # Create new 'latest' release
           Write-Host "Creating 'latest' release pointing to v$VERSION..."
-          $releaseBody = @{
-            tag_name = "latest"
-            name = "Latest Release (v$VERSION)"
-            body = "Auto-updater release. Current version: v$VERSION`n`nThis release is automatically updated with each build."
-            draft = $false
-            prerelease = $false
-          } | ConvertTo-Json
 
-          $latestRelease = curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases" `
+          # Build JSON manually to avoid escaping issues
+          $jsonBody = @"
+{
+  "tag_name": "latest",
+  "target_commitish": "$COMMIT_SHA",
+  "name": "Latest Release (v$VERSION)",
+  "body": "Auto-updater release. Current version: v$VERSION. This release is automatically updated with each build.",
+  "draft": false,
+  "prerelease": false
+}
+"@
+
+          $response = curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases" `
             -H "Authorization: token $env:GITEA_TOKEN" `
             -H "Content-Type: application/json" `
-            -d $releaseBody | ConvertFrom-Json
+            -d $jsonBody
+
+          Write-Host "API Response: $response"
+
+          $latestRelease = $response | ConvertFrom-Json
 
           if (-not $latestRelease.id) {
             Write-Host "[ERROR] Failed to create 'latest' release" -ForegroundColor Red
+            Write-Host "Response was: $response"
             exit 1
           }
 
