@@ -2398,6 +2398,107 @@ jobs:
         shell: powershell
 
       # ============================================================
+      # CREATE/UPDATE 'latest' RELEASE FOR AUTO-UPDATER
+      # electron-updater with generic provider expects files at /releases/download/latest/
+      # ============================================================
+      - name: Create Latest Release (for Auto-Updater)
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          Write-Host ""
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host "  CREATING 'latest' RELEASE FOR AUTO-UPDATER" -ForegroundColor Cyan
+          Write-Host "============================================" -ForegroundColor Cyan
+
+          $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
+          $GITEA_REPO = "neilvibe/LocaNext"
+
+          if (-not $env:GITEA_TOKEN) {
+            Write-Host "[SKIP] No GITEA_TOKEN - skipping latest release" -ForegroundColor Yellow
+            exit 0
+          }
+
+          # Delete existing 'latest' release if it exists
+          Write-Host "Checking for existing 'latest' release..."
+          $existingRelease = curl.exe -s "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/tags/latest" `
+            -H "Authorization: token $env:GITEA_TOKEN" | ConvertFrom-Json
+
+          if ($existingRelease.id) {
+            Write-Host "  Deleting existing 'latest' release (ID: $($existingRelease.id))..."
+            curl.exe -s -X DELETE "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$($existingRelease.id)" `
+              -H "Authorization: token $env:GITEA_TOKEN" | Out-Null
+
+            # Also delete the tag
+            Write-Host "  Deleting 'latest' tag..."
+            curl.exe -s -X DELETE "$GITEA_URL/api/v1/repos/$GITEA_REPO/tags/latest" `
+              -H "Authorization: token $env:GITEA_TOKEN" | Out-Null
+          }
+
+          # Get version from version.py
+          $VERSION = (Select-String -Path "version.py" -Pattern 'VERSION = "([^"]+)"').Matches.Groups[1].Value
+
+          # Create new 'latest' release
+          Write-Host "Creating 'latest' release pointing to v$VERSION..."
+          $releaseBody = @{
+            tag_name = "latest"
+            name = "Latest Release (v$VERSION)"
+            body = "Auto-updater release. Current version: v$VERSION`n`nThis release is automatically updated with each build."
+            draft = $false
+            prerelease = $false
+          } | ConvertTo-Json
+
+          $latestRelease = curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases" `
+            -H "Authorization: token $env:GITEA_TOKEN" `
+            -H "Content-Type: application/json" `
+            -d $releaseBody | ConvertFrom-Json
+
+          if (-not $latestRelease.id) {
+            Write-Host "[ERROR] Failed to create 'latest' release" -ForegroundColor Red
+            exit 1
+          }
+
+          $LATEST_RELEASE_ID = $latestRelease.id
+          Write-Host "[OK] 'latest' release created (ID: $LATEST_RELEASE_ID)" -ForegroundColor Green
+
+          # Upload assets to 'latest' release
+          Write-Host "Uploading assets to 'latest' release..."
+
+          # Upload Installer
+          $installer = Get-ChildItem "installer_output\*Setup*.exe" | Select-Object -First 1
+          if ($installer) {
+            Write-Host "  Uploading: $($installer.Name)"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$LATEST_RELEASE_ID/assets?name=$($installer.Name)" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$($installer.FullName)" | Out-Null
+          }
+
+          # Upload latest.yml (CRITICAL for auto-updater)
+          $ymlFile = "installer_output\latest.yml"
+          if (Test-Path $ymlFile) {
+            Write-Host "  Uploading: latest.yml"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$LATEST_RELEASE_ID/assets?name=latest.yml" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$ymlFile" | Out-Null
+          }
+
+          # Upload blockmap
+          $blockmap = Get-ChildItem "installer_output\*.blockmap" | Select-Object -First 1
+          if ($blockmap) {
+            Write-Host "  Uploading: $($blockmap.Name)"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$LATEST_RELEASE_ID/assets?name=$($blockmap.Name)" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$($blockmap.FullName)" | Out-Null
+          }
+
+          Write-Host ""
+          Write-Host "[SUCCESS] 'latest' release ready for auto-updater" -ForegroundColor Green
+          Write-Host "URL: $GITEA_URL/$GITEA_REPO/releases/tag/latest" -ForegroundColor Cyan
+        shell: powershell
+
+      # ============================================================
       # CLEANUP: Keep only last N releases to save disk space
       # LIGHT builds ~100MB each, 20 releases = ~2GB max
       # ============================================================
