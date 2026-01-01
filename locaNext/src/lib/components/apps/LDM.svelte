@@ -5,7 +5,7 @@
     Button,
     Tag
   } from "carbon-components-svelte";
-  import { DataBase, Settings, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document, Checkmark, WarningAlt, Report } from "carbon-icons-svelte";
+  import { DataBase, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document } from "carbon-icons-svelte";
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
@@ -16,7 +16,7 @@
   import TMDataGrid from "$lib/components/ldm/TMDataGrid.svelte";
   import QAMenuPanel from "$lib/components/ldm/QAMenuPanel.svelte";
   import TMQAPanel from "$lib/components/ldm/TMQAPanel.svelte";
-  import PreferencesModal from "$lib/components/PreferencesModal.svelte";
+  // UI-097: PreferencesModal removed - use top nav Settings > Preferences
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
   import ServerStatus from "$lib/components/ServerStatus.svelte";
@@ -24,8 +24,7 @@
   // TM Manager state
   let showTMManager = $state(false);
 
-  // Preferences modal state
-  let showPreferences = $state(false);
+  // UI-097: showPreferences removed - use top nav Settings > Preferences
 
   // Grid columns modal state
   let showGridColumns = $state(false);
@@ -236,6 +235,22 @@
   }
 
   /**
+   * UI-095: Handle QA run from file context menu
+   * Opens QAMenuPanel with the specified file and check type
+   */
+  function handleRunQA(event) {
+    const { fileId, type, fileName } = event.detail;
+    logger.userAction("QA triggered from context menu", { fileId, type, fileName });
+
+    // Set the file context for QAMenuPanel
+    selectedFileId = fileId;
+    selectedFileName = fileName;
+
+    // Open QA panel
+    showQAMenu = true;
+  }
+
+  /**
    * P33 Phase 3: Handle TM selection from explorer
    */
   function handleTMSelect(event) {
@@ -286,6 +301,7 @@
 
   /**
    * Phase 1: Load TM matches for a row
+   * Uses GET /api/ldm/tm/suggest endpoint (same as VirtualGrid)
    */
   async function loadTMMatchesForRow(row) {
     if (!row?.source || !selectedFileId) return;
@@ -294,41 +310,40 @@
     sidePanelTMMatches = [];
 
     try {
-      // Get active TMs for this file
-      const activeTMsResponse = await fetch(`${API_BASE}/api/ldm/files/${selectedFileId}/active-tms`, {
+      // Build query params for TM suggest endpoint
+      // TM-UI-003: Use user-selected threshold from preferences
+      const params = new URLSearchParams({
+        source: row.source,
+        threshold: $preferences.tmThreshold.toString(),
+        max_results: '5'
+      });
+
+      // Use active TM from preferences if set
+      if ($preferences.activeTmId) {
+        params.append('tm_id', $preferences.activeTmId.toString());
+      }
+
+      // Add file context
+      params.append('file_id', selectedFileId.toString());
+
+      // Exclude current row from results
+      if (row.id) {
+        params.append('exclude_row_id', row.id.toString());
+      }
+
+      const response = await fetch(`${API_BASE}/api/ldm/tm/suggest?${params}`, {
         headers: getAuthHeaders()
       });
 
-      if (!activeTMsResponse.ok) {
-        logger.warning('Failed to get active TMs');
-        return;
-      }
-
-      const activeTMs = await activeTMsResponse.json();
-      if (!activeTMs.length) {
-        return;
-      }
-
-      // Search TM for matches
-      const tmIds = activeTMs.map(tm => tm.id);
-      const searchResponse = await fetch(`${API_BASE}/api/ldm/tm/search`, {
-        method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          source_text: row.source,
-          tm_ids: tmIds,
-          limit: 5,
-          min_similarity: 0.5
-        })
-      });
-
-      if (searchResponse.ok) {
-        const results = await searchResponse.json();
-        sidePanelTMMatches = results.matches || [];
-        logger.info('TM matches loaded for side panel', { count: sidePanelTMMatches.length });
+      if (response.ok) {
+        const data = await response.json();
+        sidePanelTMMatches = data.suggestions || [];
+        logger.info('TM matches loaded for side panel', {
+          count: sidePanelTMMatches.length,
+          tmId: $preferences.activeTmId
+        });
+      } else {
+        logger.warning('TM suggest failed', { status: response.status });
       }
     } catch (err) {
       logger.error('Failed to load TM matches', { error: err.message });
@@ -835,7 +850,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
         on:fileSelect={handleFileSelect}
         on:projectSelect={handleProjectSelect}
         on:tmSelect={handleTMSelect}
+        on:manageTMs={() => showTMManager = true}
         on:uploadToServer={(e) => logger.info("Upload to server requested", e.detail)}
+        on:runQA={handleRunQA}
       />
 
       <!-- Main Content Area -->
@@ -874,39 +891,8 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
             {/if}
           </div>
           <div class="toolbar-right">
-            <!-- P2: QA Toggle Button -->
-            <Button
-              kind={$preferences.enableLiveQa ? "secondary" : "ghost"}
-              size="small"
-              icon={$preferences.enableLiveQa ? Checkmark : WarningAlt}
-              iconDescription={$preferences.enableLiveQa ? "QA Enabled - Click to disable" : "QA Disabled - Click to enable"}
-              tooltipAlignment="end"
-              on:click={() => preferences.setQaSetting('enableLiveQa', !$preferences.enableLiveQa)}
-            >
-              {$preferences.enableLiveQa ? "QA On" : "QA Off"}
-            </Button>
-            <!-- P2: QA Menu Button -->
-            <Button
-              kind="ghost"
-              size="small"
-              icon={Report}
-              iconDescription="QA Report"
-              tooltipAlignment="end"
-              disabled={!selectedFileId}
-              on:click={() => showQAMenu = true}
-            >
-              QA
-            </Button>
-            <Button
-              kind="ghost"
-              size="small"
-              icon={DataBase}
-              iconDescription="Translation Memories"
-              tooltipAlignment="end"
-              on:click={() => showTMManager = true}
-            >
-              TM
-            </Button>
+            <!-- UI-095: QA buttons removed - use file context menu for QA -->
+            <!-- UI-094: TM button removed - use left panel TM tab + Manage button instead -->
             <Button
               kind="ghost"
               size="small"
@@ -931,14 +917,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
               tooltipAlignment="end"
               on:click={() => showServerStatus = true}
             />
-            <Button
-              kind="ghost"
-              size="small"
-              icon={Settings}
-              iconDescription="Display Settings"
-              tooltipAlignment="end"
-              on:click={() => showPreferences = true}
-            />
+            <!-- UI-097: Display Settings button removed - use top nav Settings > Preferences instead -->
           </div>
         </div>
 
@@ -998,8 +977,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
   <!-- Reference Settings Modal -->
   <ReferenceSettingsModal bind:open={showReferenceSettings} />
 
-  <!-- Preferences Modal (Display Settings) -->
-  <PreferencesModal bind:open={showPreferences} />
+  <!-- UI-097: PreferencesModal removed - use top nav Settings > Preferences -->
 
   <!-- Server Status Modal -->
   <ServerStatus bind:open={showServerStatus} />

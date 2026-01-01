@@ -1263,6 +1263,49 @@ Both use `flex: 0 0 {percent}%` but:
 | Row colors confusing | Gray=unconfirmed, Teal=confirmed (simple!) |
 | Gitea runner random fail | HTTP not ready - use wait_for_gitea_http() |
 | Header/row column misaligned | `scrollbar-gutter: stable;` on scroll container |
+| **BROWSER FREEZE (CRITICAL)** | **Effect calling function without previousValue tracking** |
+
+---
+
+### ⚠️ CS-015: Svelte 5 Effect Infinite Loop - BROWSER KILLER (2026-01-01)
+
+**NEVER call functions in `$effect` without tracking previous value.**
+
+```javascript
+// WRONG - KILLS BROWSER (infinite loop)
+$effect(() => {
+  if (fileId) {
+    joinFile(fileId);  // Runs on EVERY state change!
+  }
+});
+
+// RIGHT - Only runs when fileId actually changes
+let wsFileId = $state(null);
+$effect(() => {
+  if (fileId && fileId !== wsFileId) {
+    wsFileId = fileId;
+    joinFile(fileId);
+  }
+});
+```
+
+**Symptoms:**
+- Chrome tab freezes completely
+- RAM/CPU spikes to 100%
+- Cannot close tab
+- Backend logs show repeated errors (same message 1000s of times)
+
+**Why:** Effects re-run when ANY tracked dependency changes. Without previous value check, function calls may trigger state changes → effect re-runs → infinite loop.
+
+**Debug:** Check backend logs for spam:
+```bash
+tail -f /tmp/locanext/backend.log | grep -i "error\|warn"
+```
+
+**Emergency Kill:**
+```bash
+pkill -9 -f "vite"; pkill -9 -f "python3 server/main"
+```
 
 ---
 

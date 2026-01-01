@@ -11,12 +11,17 @@
     Select,
     SelectItem,
     TextArea,
-    Tag
+    Tag,
+    Slider
   } from "carbon-components-svelte";
-  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink, Merge, TextMining, Edit, ChevronLeft, ChevronRight } from "carbon-icons-svelte";
+  import { preferences } from "$lib/stores/preferences.js";
+  import { Folder, Document, Add, TrashCan, Upload, FolderAdd, Download, Search, TextCreation, DataBase, Translate, Renew, CloudUpload, Link, Unlink, Merge, TextMining, Edit, ChevronLeft, ChevronRight, View, Power, CheckmarkFilled, Flash } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
+  import TMUploadModal from "./TMUploadModal.svelte";
+  import TMViewer from "./TMViewer.svelte";
+  import PretranslateModal from "./PretranslateModal.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -101,6 +106,22 @@
   let folderContextMenuY = $state(0);
   let contextMenuFolder = $state(null); // {id, name, type}
 
+  // TM-UI-002: TM context menu and operation states
+  let showTmContextMenu = $state(false);
+  let tmContextMenuX = $state(0);
+  let tmContextMenuY = $state(0);
+  let contextMenuTm = $state(null); // {id, name, status, entry_count, ...}
+  let showTmUploadModal = $state(false);
+  let showTmViewerModal = $state(false);
+  let tmToView = $state(null);
+  let deleteTmConfirmOpen = $state(false);
+  let tmToDelete = $state(null);
+  let activeTmId = $state(null); // Currently active TM from preferences
+
+  // TM-UI-001: Pretranslate modal state
+  let showPretranslateModal = $state(false);
+  let pretranslateFile = $state(null); // {id, name, row_count, format}
+
   // Project context menu state (right-click on project header)
   let showProjectContextMenuState = $state(false);
   let projectContextMenuX = $state(0);
@@ -167,6 +188,7 @@
   // Switch to TM tab and load TMs
   function switchToTMTab() {
     activeTab = 'tm';
+    loadActiveTm(); // TM-UI-002: Load active TM state
     if (tmList.length === 0) {
       loadTMList();
     }
@@ -176,6 +198,180 @@
   function switchToFilesTab() {
     activeTab = 'files';
     selectedTMId = null;
+  }
+
+  // TM-UI-002: Load active TM from preferences
+  function loadActiveTm() {
+    const prefs = $preferences;
+    activeTmId = prefs.activeTmId;
+  }
+
+  // TM-UI-002: Toggle TM activation
+  function toggleActiveTm(tm) {
+    if (activeTmId === tm.id) {
+      // Deactivate
+      activeTmId = null;
+      preferences.setActiveTm(null);
+      logger.userAction("TM deactivated", { tmId: tm.id, name: tm.name });
+    } else {
+      // Activate (only if ready)
+      if (tm.status !== 'ready') {
+        logger.warn("Cannot activate TM - not ready", { status: tm.status });
+        return;
+      }
+      activeTmId = tm.id;
+      preferences.setActiveTm(tm.id);
+      logger.userAction("TM activated", { tmId: tm.id, name: tm.name });
+    }
+    closeTmContextMenu();
+  }
+
+  // TM-UI-002: Open TM context menu
+  function openTmContextMenu(event, tm) {
+    event.preventDefault();
+    event.stopPropagation();
+    contextMenuTm = tm;
+    tmContextMenuX = event.clientX;
+    tmContextMenuY = event.clientY;
+    showTmContextMenu = true;
+    // Close other menus
+    showContextMenu = false;
+    showFolderContextMenu = false;
+    showProjectContextMenuState = false;
+  }
+
+  // TM-UI-002: Close TM context menu
+  function closeTmContextMenu() {
+    showTmContextMenu = false;
+    contextMenuTm = null;
+  }
+
+  // TM-UI-002: View TM entries
+  function viewTmEntries() {
+    if (contextMenuTm) {
+      tmToView = contextMenuTm;
+      showTmViewerModal = true;
+      logger.userAction("TM viewer opened", { tmId: contextMenuTm.id, name: contextMenuTm.name });
+    }
+    closeTmContextMenu();
+  }
+
+  // TM-UI-002: Export TM
+  async function exportTm() {
+    if (!contextMenuTm) return;
+    const tm = contextMenuTm;
+    closeTmContextMenu();
+
+    try {
+      const url = `${API_BASE}/api/ldm/tm/${tm.id}/export?format=text`;
+      const response = await fetch(url, { headers: getAuthHeaders() });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Export failed");
+      }
+
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `${tm.name}_export.txt`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match) filename = match[1];
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
+      logger.success("TM exported", { name: tm.name });
+    } catch (err) {
+      logger.error("Export failed", { error: err.message });
+    }
+  }
+
+  // TM-UI-002: Confirm delete TM
+  function confirmDeleteTm() {
+    if (contextMenuTm) {
+      tmToDelete = contextMenuTm;
+      deleteTmConfirmOpen = true;
+    }
+    closeTmContextMenu();
+  }
+
+  // TM-UI-002: Execute delete TM
+  async function executeDeleteTm() {
+    if (!tmToDelete) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/tm/${tmToDelete.id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        logger.success("TM deleted", { name: tmToDelete.name, id: tmToDelete.id });
+        await loadTMList();
+        // Clear active if deleted
+        if (activeTmId === tmToDelete.id) {
+          activeTmId = null;
+          preferences.setActiveTm(null);
+        }
+      } else {
+        const error = await response.json();
+        logger.error("Failed to delete TM", { error: error.detail });
+      }
+    } catch (err) {
+      logger.error("Error deleting TM", { error: err.message });
+    } finally {
+      deleteTmConfirmOpen = false;
+      tmToDelete = null;
+    }
+  }
+
+  // TM-UI-002: Handle TM upload complete
+  function handleTmUploadComplete(event) {
+    showTmUploadModal = false;
+    loadTMList();
+    dispatch('tmUploaded', event.detail);
+    logger.success("TM upload complete", event.detail);
+  }
+
+  // TM-UI-002: Handle TM viewer updates
+  function handleTmViewerUpdate() {
+    loadTMList();
+  }
+
+  // TM-UI-001: Open pretranslate modal
+  function openPretranslateModal() {
+    if (!contextMenuFile) return;
+    // Store file reference before closing menu
+    pretranslateFile = {
+      id: contextMenuFile.id,
+      name: contextMenuFile.name,
+      row_count: contextMenuFile.row_count || 0,
+      format: contextMenuFile.format || 'txt'
+    };
+    showPretranslateModal = true;
+    closeContextMenu();
+    logger.userAction("Pretranslate modal opened", { file: pretranslateFile.name });
+  }
+
+  // TM-UI-001: Handle pretranslation complete
+  function handlePretranslateComplete(event) {
+    showPretranslateModal = false;
+    pretranslateFile = null;
+    dispatch('pretranslateComplete', event.detail);
+    // Refresh file to show new translations
+    if (selectedFileId) {
+      dispatch('fileSelect', { fileId: selectedFileId });
+    }
   }
 
   // Load project tree
@@ -946,22 +1142,28 @@
     if (showProjectContextMenuState) {
       closeProjectContextMenu();
     }
+    // TM-UI-002: Close TM context menu on outside click
+    if (showTmContextMenu) {
+      closeTmContextMenu();
+    }
   }
 
   // Download file
   async function downloadFile() {
     if (!contextMenuFile) return;
+    // Store file reference before closing menu (closeContextMenu sets contextMenuFile = null)
+    const file = { ...contextMenuFile };
     closeContextMenu();
 
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/files/${contextMenuFile.id}/download`, {
+      const response = await fetch(`${API_BASE}/api/ldm/files/${file.id}/download`, {
         headers: getAuthHeaders()
       });
 
       if (response.ok) {
         const blob = await response.blob();
         const contentDisposition = response.headers.get('Content-Disposition');
-        let filename = contextMenuFile.name || 'download';
+        let filename = file.name || 'download';
         if (contentDisposition) {
           const match = contentDisposition.match(/filename="(.+)"/);
           if (match) filename = match[1];
@@ -1127,17 +1329,19 @@
   // Extract glossary from file
   async function extractGlossary() {
     if (!contextMenuFile) return;
+    // Store file reference before closing menu (closeContextMenu sets contextMenuFile = null)
+    const file = { ...contextMenuFile };
     closeContextMenu();
 
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/files/${contextMenuFile.id}/extract-glossary`, {
+      const response = await fetch(`${API_BASE}/api/ldm/files/${file.id}/extract-glossary`, {
         headers: getAuthHeaders()
       });
 
       if (response.ok) {
         const blob = await response.blob();
         const contentDisposition = response.headers.get('Content-Disposition');
-        let filename = contextMenuFile.name.replace(/\.[^.]+$/, '') + '_glossary.xlsx';
+        let filename = file.name.replace(/\.[^.]+$/, '') + '_glossary.xlsx';
         if (contentDisposition) {
           const match = contentDisposition.match(/filename="(.+)"/);
           if (match) filename = match[1];
@@ -1165,21 +1369,35 @@
   // Run Line Check QA
   async function runLineCheckQA() {
     if (!contextMenuFile) return;
+    // Store file reference before closing menu
+    const file = { ...contextMenuFile };
     closeContextMenu();
 
-    logger.info("Line Check QA started", { file: contextMenuFile.name });
-    // TODO: Implement full line check QA
-    // This will dispatch an event or open a modal to show progress
-    dispatch('runQA', { fileId: contextMenuFile.id, type: 'line', fileName: contextMenuFile.name });
+    logger.info("Line Check QA started", { file: file.name });
+    dispatch('runQA', { fileId: file.id, type: 'line', fileName: file.name });
   }
 
   // Run Term Check QA
   async function runTermCheckQA() {
     if (!contextMenuFile) return;
+    // Store file reference before closing menu
+    const file = { ...contextMenuFile };
     closeContextMenu();
 
-    logger.info("Term Check QA started", { file: contextMenuFile.name });
-    dispatch('runQA', { fileId: contextMenuFile.id, type: 'term', fileName: contextMenuFile.name });
+    logger.info("Term Check QA started", { file: file.name });
+    dispatch('runQA', { fileId: file.id, type: 'term', fileName: file.name });
+  }
+
+  // UI-095: Single "Run QA" that runs all QA checks
+  async function runAllQA() {
+    if (!contextMenuFile) return;
+    // Store file reference before closing menu
+    const file = { ...contextMenuFile };
+    closeContextMenu();
+
+    logger.info("Full QA started", { file: file.name });
+    // Dispatch 'all' type to run line check, term check, and grammar together
+    dispatch('runQA', { fileId: file.id, type: 'all', fileName: file.name });
   }
 
   // P5: Run Grammar/Spelling Check
@@ -1544,17 +1762,34 @@
     {/if}
   {/if}
 
-  <!-- TM Tab Content (P33 Phase 3) -->
+  <!-- TM Tab Content (P33 Phase 3) - TM-UI-002: Enhanced unified TM panel -->
   {#if activeTab === 'tm'}
     <div class="explorer-header">
       <h4>Translation Memories</h4>
-      <Button
-        kind="ghost"
-        size="small"
-        icon={Renew}
-        iconDescription="Refresh TM List"
-        on:click={refreshTMList}
-      />
+      <div class="header-actions">
+        <Button
+          kind="ghost"
+          size="small"
+          icon={Renew}
+          iconDescription="Refresh TM List"
+          on:click={refreshTMList}
+        />
+        <Button
+          kind="ghost"
+          size="small"
+          icon={Upload}
+          iconDescription="Upload TM"
+          on:click={() => showTmUploadModal = true}
+        />
+        <Button
+          kind="primary"
+          size="small"
+          icon={DataBase}
+          on:click={() => dispatch('manageTMs')}
+        >
+          Settings
+        </Button>
+      </div>
     </div>
 
     {#if tmLoading}
@@ -1562,15 +1797,27 @@
     {:else}
       <div class="tm-list">
         {#each tmList as tm}
+          {@const isActive = activeTmId === tm.id}
           <button
             class="tm-item"
             class:selected={selectedTMId === tm.id}
+            class:active-tm={isActive}
             onclick={() => selectTM(tm)}
+            oncontextmenu={(e) => openTmContextMenu(e, tm)}
           >
-            <DataBase size={16} />
+            {#if isActive}
+              <CheckmarkFilled size={16} class="active-icon" />
+            {:else}
+              <DataBase size={16} />
+            {/if}
             <div class="tm-info">
               <span class="tm-name">{tm.name}</span>
-              <span class="tm-meta">{tm.entry_count || 0} entries</span>
+              <span class="tm-meta">
+                {tm.entry_count || 0} entries
+                {#if isActive}
+                  <span class="active-badge">ACTIVE</span>
+                {/if}
+              </span>
             </div>
             {#if tm.status === 'ready'}
               <Tag type="green" size="sm">Ready</Tag>
@@ -1580,8 +1827,25 @@
           </button>
         {/each}
         {#if tmList.length === 0}
-          <p class="empty-message">No TMs yet. Register a file as TM from Files tab.</p>
+          <p class="empty-message">No TMs yet. Click Upload to add one.</p>
         {/if}
+      </div>
+
+      <!-- TM-UI-003: Threshold Settings -->
+      <div class="tm-settings">
+        <div class="settings-header">
+          <span class="settings-label">Match Threshold</span>
+          <span class="settings-value">{Math.round($preferences.tmThreshold * 100)}%</span>
+        </div>
+        <Slider
+          min={50}
+          max={100}
+          value={Math.round($preferences.tmThreshold * 100)}
+          step={1}
+          hideTextInput={true}
+          on:change={(e) => preferences.setTmThreshold(e.detail / 100)}
+        />
+        <p class="settings-hint">Minimum similarity for TM matches (default: 92%)</p>
       </div>
     {/if}
   {/if}
@@ -1614,7 +1878,7 @@
     </button>
     <button class="context-menu-item" onclick={openMergeFilePicker} role="menuitem">
       <Merge size={16} />
-      <span>Merge to LanguageData...</span>
+      <span>Merge...</span>
     </button>
     <!-- P4: Convert submenu -->
     <div class="context-menu-submenu">
@@ -1644,17 +1908,16 @@
       </div>
     </div>
     <div class="context-menu-divider"></div>
-    <button class="context-menu-item" onclick={runLineCheckQA} role="menuitem">
+    <!-- TM-UI-001: Pretranslate option -->
+    <button class="context-menu-item pretranslate" onclick={openPretranslateModal} role="menuitem">
+      <Flash size={16} />
+      <span>Pretranslate...</span>
+    </button>
+    <div class="context-menu-divider"></div>
+    <!-- UI-095: Single consolidated QA button -->
+    <button class="context-menu-item" onclick={runAllQA} role="menuitem">
       <Search size={16} />
-      <span>Run Full Line Check QA</span>
-    </button>
-    <button class="context-menu-item" onclick={runTermCheckQA} role="menuitem">
-      <TextCreation size={16} />
-      <span>Run Full Term Check QA</span>
-    </button>
-    <button class="context-menu-item" onclick={runGrammarCheck} role="menuitem">
-      <TextMining size={16} />
-      <span>Check Spelling/Grammar</span>
+      <span>Run QA</span>
     </button>
     <div class="context-menu-divider"></div>
     <button class="context-menu-item" onclick={openTMRegistration} role="menuitem">
@@ -2076,6 +2339,85 @@
 </Modal>
 {/if}
 
+<!-- TM-UI-002: TM Context Menu -->
+{#if showTmContextMenu}
+  <div
+    class="context-menu"
+    style="left: {tmContextMenuX}px; top: {tmContextMenuY}px;"
+    onclick={(e) => e.stopPropagation()}
+    role="menu"
+  >
+    <button class="context-menu-item" onclick={viewTmEntries} role="menuitem">
+      <View size={16} />
+      <span>View Entries</span>
+    </button>
+    <button class="context-menu-item" onclick={exportTm} role="menuitem">
+      <Download size={16} />
+      <span>Export TM</span>
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" onclick={() => toggleActiveTm(contextMenuTm)} role="menuitem">
+      <Power size={16} />
+      <span>{activeTmId === contextMenuTm?.id ? 'Deactivate' : 'Activate'}</span>
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item danger" onclick={confirmDeleteTm} role="menuitem">
+      <TrashCan size={16} />
+      <span>Delete TM</span>
+    </button>
+  </div>
+{/if}
+
+<!-- TM-UI-002: TM Upload Modal -->
+{#if showTmUploadModal}
+<TMUploadModal
+  open={true}
+  on:uploaded={handleTmUploadComplete}
+  on:close={() => showTmUploadModal = false}
+/>
+{/if}
+
+<!-- TM-UI-002: TM Viewer Modal -->
+{#if showTmViewerModal}
+<TMViewer
+  open={true}
+  tm={tmToView}
+  on:updated={handleTmViewerUpdate}
+  on:close={() => showTmViewerModal = false}
+/>
+{/if}
+
+<!-- TM-UI-002: Delete TM Confirmation Modal -->
+{#if deleteTmConfirmOpen}
+<Modal
+  open={true}
+  modalHeading="Delete Translation Memory"
+  primaryButtonText="Delete"
+  secondaryButtonText="Cancel"
+  danger
+  on:click:button--primary={executeDeleteTm}
+  on:click:button--secondary={() => { deleteTmConfirmOpen = false; tmToDelete = null; }}
+  on:close={() => { deleteTmConfirmOpen = false; tmToDelete = null; }}
+>
+  {#if tmToDelete}
+    <p>Are you sure you want to delete <strong>{tmToDelete.name}</strong>?</p>
+    <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--cds-text-02);">
+      This will permanently delete {(tmToDelete.entry_count || 0).toLocaleString()} entries and all associated indexes.
+    </p>
+  {/if}
+</Modal>
+{/if}
+
+<!-- TM-UI-001: Pretranslate Modal -->
+{#if showPretranslateModal}
+<PretranslateModal
+  open={true}
+  file={pretranslateFile}
+  on:completed={handlePretranslateComplete}
+  on:close={() => { showPretranslateModal = false; pretranslateFile = null; }}
+/>
+{/if}
+
 <style>
   .file-explorer {
     width: 280px;
@@ -2137,6 +2479,58 @@
     margin: 0;
     font-size: 0.875rem;
     font-weight: 600;
+  }
+
+  /* UI-094: Header actions container */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* TM-UI-003: Threshold settings */
+  .tm-settings {
+    padding: 1rem;
+    border-top: 1px solid var(--cds-border-subtle-01);
+    margin-top: auto;
+  }
+
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .settings-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--cds-text-02);
+  }
+
+  .settings-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .settings-hint {
+    font-size: 0.6875rem;
+    color: var(--cds-text-03);
+    margin: 0.5rem 0 0 0;
+  }
+
+  /* Slider customization */
+  .tm-settings :global(.bx--slider-container) {
+    min-width: 100%;
+  }
+
+  .tm-settings :global(.bx--slider__track) {
+    background: var(--cds-border-subtle-01);
+  }
+
+  .tm-settings :global(.bx--slider__filled-track) {
+    background: var(--cds-interactive-01);
   }
 
   /* OLD - replaced by accordion style */
@@ -2279,6 +2673,55 @@
   .tm-meta {
     font-size: 0.75rem;
     color: var(--cds-text-02);
+  }
+
+  /* TM-UI-002: Active TM styling */
+  .tm-item.active-tm {
+    background: var(--cds-layer-02);
+    border-left: 3px solid var(--cds-interactive-01);
+    padding-left: calc(0.75rem - 3px);
+  }
+
+  .tm-item.active-tm:hover {
+    background: var(--cds-layer-03);
+  }
+
+  .tm-item :global(.active-icon) {
+    color: var(--cds-interactive-01);
+  }
+
+  .active-badge {
+    display: inline-block;
+    padding: 0.125rem 0.375rem;
+    margin-left: 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    background: var(--cds-interactive-01);
+    color: var(--cds-text-on-color);
+    border-radius: 2px;
+    vertical-align: middle;
+  }
+
+  /* TM-UI-002: Context menu danger item */
+  .context-menu-item.danger {
+    color: var(--cds-support-error);
+  }
+
+  .context-menu-item.danger:hover {
+    background: var(--cds-support-error);
+    color: var(--cds-text-on-color);
+  }
+
+  /* TM-UI-001: Pretranslate context menu item */
+  .context-menu-item.pretranslate {
+    color: var(--cds-interactive-01);
+    font-weight: 500;
+  }
+
+  .context-menu-item.pretranslate:hover {
+    background: var(--cds-interactive-01);
+    color: var(--cds-text-on-color);
   }
 
   .project-item {
@@ -2519,7 +2962,11 @@
   }
 
   .context-menu-item:hover {
-    background: var(--cds-layer-hover-01);
+    background: var(--cds-layer-hover-01, rgba(255, 255, 255, 0.1));
+  }
+
+  .context-menu-item:active {
+    background: var(--cds-layer-active-01, rgba(255, 255, 255, 0.15));
   }
 
   .context-menu-item span {

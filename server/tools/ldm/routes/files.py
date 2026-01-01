@@ -1046,19 +1046,18 @@ def _build_txt_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
 
 def _build_xml_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
     """
-    Rebuild XML file from rows with FULL structure preservation.
+    Rebuild XML file from rows.
 
     XML format:
     <?xml version="1.0" encoding="UTF-8"?>
-    <RootElement rootAttr="...">
-        <ElementTag stringid="ID" strorigin="source" str="target" otherAttr="..."/>
-    </RootElement>
+    <LangData>
+        <String StrOrigin="source" Str="target" StringId="ID"/>
+    </LangData>
 
-    Uses:
-    - file_metadata.root_element: Original root element tag name
-    - file_metadata.root_attributes: Original root element attributes
-    - file_metadata.element_tag: Original localization element tag name
-    - row.extra_data: Extra attributes beyond stringid/strorigin/str
+    Output format (order matters):
+    - StrOrigin: Source text
+    - Str: Target/translated text
+    - StringId: Concatenated without spaces
     """
     import xml.etree.ElementTree as ET
     from xml.dom import minidom
@@ -1069,27 +1068,20 @@ def _build_xml_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
     root_tag = file_metadata.get("root_element", "LangData")
     root = ET.Element(root_tag)
 
-    # Add original root attributes if preserved
-    root_attribs = file_metadata.get("root_attributes")
-    if root_attribs:
-        for key, val in root_attribs.items():
-            root.set(key, val)
-
     # Use original element tag or default to String
     element_tag = file_metadata.get("element_tag", "String")
 
     for row in rows:
         string_elem = ET.SubElement(root, element_tag)
 
-        # Set core attributes
-        string_elem.set("stringid", row.string_id or "")
-        string_elem.set("strorigin", row.source or "")
-        string_elem.set("str", row.target or "")
+        # Set attributes in order: StrOrigin, Str, StringId (PascalCase)
+        # StringId should be concatenated without spaces
+        string_id = (row.string_id or "").replace(" ", "")
 
-        # Add extra attributes from extra_data
-        if row.extra_data:
-            for attr_name, attr_val in row.extra_data.items():
-                string_elem.set(attr_name, attr_val or "")
+        # Use ordered dict approach - XML attributes are ordered in Python 3.7+
+        string_elem.set("StrOrigin", row.source or "")
+        string_elem.set("Str", row.target or "")
+        string_elem.set("StringId", string_id)
 
     # Pretty print with original encoding
     encoding = file_metadata.get("encoding", "UTF-8")

@@ -1,6 +1,6 @@
 # WIP - Work In Progress
 
-**Updated:** 2025-12-29 | **Build:** 415 (STABLE)
+**Updated:** 2026-01-01 | **Build:** 424
 
 ---
 
@@ -8,9 +8,11 @@
 
 | Priority | Feature | WIP Doc | Status |
 |----------|---------|---------|--------|
+| **P10** | Major UI/UX Overhaul | [PHASE_10_MAJOR_UIUX_OVERHAUL.md](PHASE_10_MAJOR_UIUX_OVERHAUL.md) | **PLANNING** |
+| **P11** | **Offline/Online Sync** | [OFFLINE_ONLINE_SYNC.md](OFFLINE_ONLINE_SYNC.md) | **NEW - PLANNING** |
 | **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | Phase 1 DONE |
 | **P2** | Font Settings | [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | ✅ DONE |
-| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | PLANNING |
+| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | → See P11 |
 | **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | DOCUMENTED |
 | **P5** | Advanced Search | [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | PLANNING |
 | **P6** | File Delete + Recycle Bin | TBD | BACKLOG |
@@ -21,9 +23,9 @@
 
 | Status | Value |
 |--------|-------|
-| **Open Issues** | 0 ✅ |
-| **Tests** | 1,399 |
-| **Build** | 415 (STABLE) |
+| **Open Issues** | 10 |
+| **Tests** | 1,399+ |
+| **Build** | 424 |
 
 ---
 
@@ -31,12 +33,14 @@
 
 | File | Purpose | Status |
 |------|---------|--------|
-| [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Current session state | ACTIVE |
-| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker | 0 open ✅ |
+| [SESSION_CONTEXT.md](SESSION_CONTEXT.md) | Current session state | Session 10 |
+| [ISSUES_TO_FIX.md](ISSUES_TO_FIX.md) | Bug tracker | 10 open |
+| [PHASE_10_MAJOR_UIUX_OVERHAUL.md](PHASE_10_MAJOR_UIUX_OVERHAUL.md) | **P10 - Major UI/UX Overhaul** | **PLANNING** |
+| [OFFLINE_ONLINE_SYNC.md](OFFLINE_ONLINE_SYNC.md) | **P11 - Offline/Online Sync** | **NEW** |
 | [QA_UIUX_OVERHAUL.md](QA_UIUX_OVERHAUL.md) | P1 - QA panel fixes | Phase 1 DONE |
 | [FONT_SETTINGS_ENHANCEMENT.md](FONT_SETTINGS_ENHANCEMENT.md) | P2 - Font options | ✅ DONE |
 | [MEMOQ_STYLE_EDITING.md](MEMOQ_STYLE_EDITING.md) | Inline editing design | Phases 2-3 DONE |
-| [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | P3 - Offline work | PLANNING |
+| [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) | P3 - Offline work | → See P11 |
 | [COLOR_PARSER_EXTENSION.md](COLOR_PARSER_EXTENSION.md) | P4 - Color formats | DOCUMENTED |
 | [ADVANCED_SEARCH.md](ADVANCED_SEARCH.md) | P5 - Search modes | PLANNING |
 

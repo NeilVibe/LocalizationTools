@@ -1,6 +1,8 @@
 # P36: Code Coverage Assessment
 
-**Last Updated:** 2025-12-22 | **Build:** 343 | **Mocked Tests:** 56
+**Last Updated:** 2025-12-31 | **Build:** 424 | **Mocked Tests:** 56
+
+> **Note (Build 424):** Added CI package verification (`scripts/verify_requirements.py`) and cache validation fix. See SESSION_CONTEXT.md for details.
 
 ---
 
