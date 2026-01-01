@@ -24,7 +24,7 @@
   let API_BASE = $derived(getApiBase());
 
   // Svelte 5: Props
-  let { fileId = $bindable(null), fileName = "" } = $props();
+  let { fileId = $bindable(null), fileName = "", activeTMs = [] } = $props();
 
   // Virtual scrolling constants
   const MIN_ROW_HEIGHT = 48; // Minimum row height (base)
@@ -627,9 +627,15 @@
 
   // Go to specific row - REMOVED (BUG-001 - not useful)
 
-  // Fetch TM suggestions for a source text
+  // Fetch TM suggestions for a source text - USES HIERARCHY TMs
   async function fetchTMSuggestions(sourceText, rowId) {
     if (!sourceText || !sourceText.trim()) {
+      tmSuggestions = [];
+      return;
+    }
+
+    // Only search if we have active TMs from hierarchy
+    if (!activeTMs || activeTMs.length === 0) {
       tmSuggestions = [];
       return;
     }
@@ -638,16 +644,12 @@
     tmSuggestions = [];
 
     try {
-      // TM-UI-003: Use user-selected threshold from preferences
       const params = new URLSearchParams({
         source: sourceText,
         threshold: $preferences.tmThreshold.toString(),
-        max_results: '5'
+        max_results: '5',
+        tm_id: activeTMs[0].tm_id.toString()  // Use hierarchy TM, not preferences
       });
-      // CRITICAL: Pass tm_id if active TM is set
-      if ($preferences.activeTmId) {
-        params.append('tm_id', $preferences.activeTmId.toString());
-      }
       if (fileId) params.append('file_id', fileId.toString());
       if (rowId) params.append('exclude_row_id', rowId.toString());
 
@@ -658,7 +660,7 @@
       if (response.ok) {
         const data = await response.json();
         tmSuggestions = data.suggestions || [];
-        logger.info("TM suggestions fetched", { count: tmSuggestions.length, tmId: $preferences.activeTmId });
+        logger.info("TM suggestions fetched", { count: tmSuggestions.length, tmId: activeTMs[0].tm_id });
       }
     } catch (err) {
       logger.error("Failed to fetch TM suggestions", { error: err.message });
@@ -831,7 +833,7 @@
   }
 
   /**
-   * Fetch TM result for a row and cache it
+   * Fetch TM result for a row and cache it - USES HIERARCHY TMs
    */
   async function fetchTMResultForRow(row) {
     // DEBUG: Enhanced logging for TM fetch
@@ -839,8 +841,9 @@
       logger.debug("[TM-FETCH] Skip: no source text", { rowId: row.id });
       return;
     }
-    if (!$preferences.activeTmId) {
-      logger.debug("[TM-FETCH] Skip: no active TM set");
+    // Use hierarchy TMs, not preferences
+    if (!activeTMs || activeTMs.length === 0) {
+      logger.debug("[TM-FETCH] Skip: no active TM in hierarchy");
       return;
     }
 
@@ -850,22 +853,20 @@
       return;
     }
 
+    const tmId = activeTMs[0].tm_id;
     logger.info("[TM-FETCH] START", {
       rowId,
-      tmId: $preferences.activeTmId,
+      tmId,
       source: row.source.substring(0, 30) + "..."
     });
 
     try {
-      // TM-UI-003: Use user-selected threshold from preferences
       const params = new URLSearchParams({
         source: row.source,
         threshold: $preferences.tmThreshold.toString(),
-        max_results: '1'
+        max_results: '1',
+        tm_id: tmId.toString()  // Use hierarchy TM
       });
-      if ($preferences.activeTmId) {
-        params.append('tm_id', $preferences.activeTmId.toString());
-      }
 
       const response = await fetch(`${API_BASE}/api/ldm/tm/suggest?${params}`, {
         headers: getAuthHeaders()
@@ -902,9 +903,12 @@
     }
   }
 
-  // Svelte 5: Effect - Clear TM cache when active TM changes
+  // Svelte 5: Effect - Clear TM cache when activeTMs changes
+  let prevActiveTMId = $state(null);
   $effect(() => {
-    if ($preferences.activeTmId !== undefined) {
+    const currentTMId = activeTMs?.[0]?.tm_id || null;
+    if (currentTMId !== prevActiveTMId) {
+      prevActiveTMId = currentTMId;
       tmResults = new Map();
     }
   });

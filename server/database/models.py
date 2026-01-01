@@ -538,12 +538,16 @@ class TelemetrySummary(Base):
 # LDM (LanguageData Manager) Tables
 # ============================================================================
 
-class LDMProject(Base):
+class LDMPlatform(Base):
     """
-    LDM Project - Top-level container for organizing localization files.
-    Each user can have multiple projects.
+    LDM Platform - Top-level organization above Projects.
+
+    Used to group projects by platform (PC, Mobile, Console, etc.)
+    TM Explorer mirrors this structure for hierarchical TM assignment.
+
+    Special platform_id=1 is reserved for "Unassigned" (TM safety net).
     """
-    __tablename__ = "ldm_projects"
+    __tablename__ = "ldm_platforms"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(200), nullable=False)
@@ -554,11 +558,41 @@ class LDMProject(Base):
 
     # Relationships
     owner = relationship("User")
+    projects = relationship("LDMProject", back_populates="platform", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_ldm_platform_owner", "owner_id"),
+        UniqueConstraint("name", "owner_id", name="uq_ldm_platform_name_owner"),
+    )
+
+    def __repr__(self):
+        return f"<LDMPlatform(id={self.id}, name='{self.name}')>"
+
+
+class LDMProject(Base):
+    """
+    LDM Project - Container for organizing localization files.
+    Now belongs to a Platform for hierarchical organization.
+    """
+    __tablename__ = "ldm_projects"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(200), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    platform_id = Column(Integer, ForeignKey("ldm_platforms.id", ondelete="SET NULL"), nullable=True, index=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    owner = relationship("User")
+    platform = relationship("LDMPlatform", back_populates="projects")
     folders = relationship("LDMFolder", back_populates="project", cascade="all, delete-orphan")
     files = relationship("LDMFile", back_populates="project", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_ldm_project_owner", "owner_id"),
+        Index("idx_ldm_project_platform", "platform_id"),
         # BUG-036: Prevent duplicate project names per user
         UniqueConstraint("name", "owner_id", name="uq_ldm_project_name_owner"),
     )
@@ -943,6 +977,72 @@ class LDMActiveTM(Base):
     def __repr__(self):
         target = f"project={self.project_id}" if self.project_id else f"file={self.file_id}"
         return f"<LDMActiveTM(tm_id={self.tm_id}, {target}, priority={self.priority})>"
+
+
+class LDMTMAssignment(Base):
+    """
+    LDM TM Assignment - Hierarchical TM assignment to Platform/Project/Folder.
+
+    TM Hierarchy System:
+    - TMs can be assigned to Platform, Project, or Folder level
+    - Only ONE scope should be set (others NULL) - or ALL NULL for "Unassigned"
+    - Activation cascades down: TM active at Project applies to all folders/files
+    - TM Explorer mirrors File Explorer structure (read-only)
+
+    Scope Resolution (for file):
+    1. Check folder-level TMs (walk up to root)
+    2. Check project-level TMs
+    3. Check platform-level TMs
+    All active TMs in chain contribute matches.
+    """
+    __tablename__ = "ldm_tm_assignments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tm_id = Column(Integer, ForeignKey("ldm_translation_memories.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Scope: Only ONE should be set (NULL = unassigned)
+    platform_id = Column(Integer, ForeignKey("ldm_platforms.id", ondelete="SET NULL"), nullable=True, index=True)
+    project_id = Column(Integer, ForeignKey("ldm_projects.id", ondelete="SET NULL"), nullable=True, index=True)
+    folder_id = Column(Integer, ForeignKey("ldm_folders.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Activation status
+    is_active = Column(Boolean, default=False, nullable=False)
+
+    # Priority (lower = higher priority when multiple TMs at same scope)
+    priority = Column(Integer, default=0)
+
+    # Metadata
+    assigned_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    assigned_at = Column(DateTime, default=datetime.utcnow)
+    activated_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    tm = relationship("LDMTranslationMemory")
+    platform = relationship("LDMPlatform")
+    project = relationship("LDMProject")
+    folder = relationship("LDMFolder")
+
+    __table_args__ = (
+        Index("idx_tm_assignment_tm", "tm_id"),
+        Index("idx_tm_assignment_platform", "platform_id"),
+        Index("idx_tm_assignment_project", "project_id"),
+        Index("idx_tm_assignment_folder", "folder_id"),
+        Index("idx_tm_assignment_active", "is_active"),
+        # Each TM can only be assigned to one scope at a time
+        UniqueConstraint("tm_id", name="uq_tm_assignment_tm"),
+    )
+
+    def __repr__(self):
+        if self.folder_id:
+            scope = f"folder={self.folder_id}"
+        elif self.project_id:
+            scope = f"project={self.project_id}"
+        elif self.platform_id:
+            scope = f"platform={self.platform_id}"
+        else:
+            scope = "unassigned"
+        active = "ACTIVE" if self.is_active else "inactive"
+        return f"<LDMTMAssignment(tm_id={self.tm_id}, {scope}, {active})>"
 
 
 # =============================================================================

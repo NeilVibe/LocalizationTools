@@ -45,12 +45,16 @@ from .routes.sync import router as sync_router
 from .routes.settings import router as settings_router
 from .routes.qa import router as qa_router
 from .routes.grammar import router as grammar_router
+from .routes.platforms import router as platforms_router
+from .routes.tm_assignment import router as tm_assignment_router
 
 # =============================================================================
 # Include all routers
 # =============================================================================
 
 router.include_router(health_router)
+router.include_router(platforms_router)  # Platforms before projects (TM Hierarchy)
+router.include_router(tm_assignment_router)  # TM assignment (TM Hierarchy)
 router.include_router(projects_router)
 router.include_router(folders_router)
 router.include_router(files_router)

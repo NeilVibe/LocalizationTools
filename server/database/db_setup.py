@@ -206,6 +206,8 @@ def upgrade_schema(engine):
         # ldm_rows table - P2 Auto-LQA columns
         ("ldm_rows", "qa_checked_at", "TIMESTAMP", "NULL"),
         ("ldm_rows", "qa_flag_count", "INTEGER", "0"),
+        # ldm_projects table - TM Hierarchy System (platform support)
+        ("ldm_projects", "platform_id", "INTEGER", "NULL"),
     ]
 
     columns_added = 0

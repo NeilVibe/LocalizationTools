@@ -7,15 +7,20 @@
   } from "carbon-components-svelte";
   import { DataBase, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document } from "carbon-icons-svelte";
   import { preferences } from "$lib/stores/preferences.js";
+  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid } from "$lib/stores/navigation.js";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
-  import FileExplorer from "$lib/components/ldm/FileExplorer.svelte";
+  // FileExplorer removed - replaced by FilesPage (Phase 10)
   import VirtualGrid from "$lib/components/ldm/VirtualGrid.svelte";
   import TMManager from "$lib/components/ldm/TMManager.svelte";
   import TMDataGrid from "$lib/components/ldm/TMDataGrid.svelte";
   import QAMenuPanel from "$lib/components/ldm/QAMenuPanel.svelte";
   import TMQAPanel from "$lib/components/ldm/TMQAPanel.svelte";
+  // Phase 10: Page components
+  import FilesPage from "$lib/components/pages/FilesPage.svelte";
+  import TMPage from "$lib/components/pages/TMPage.svelte";
+  import GridPage from "$lib/components/pages/GridPage.svelte";
   // UI-097: PreferencesModal removed - use top nav Settings > Preferences
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
@@ -213,13 +218,16 @@
    * Handle file selection from explorer
    */
   function handleFileSelect(event) {
-    const { fileId, file } = event.detail;
+    const { fileId, file, filesState } = event.detail;
     selectedFileId = fileId;
     selectedFileName = file.name;
     // P33: Clear TM selection when file is selected
     selectedTMId = null;
     selectedTMName = "";
     viewMode = 'file';
+    // Phase 10: Update navigation store to show grid view
+    // Pass filesState so we can restore folder location on back
+    openFileInGrid(file, filesState);
     logger.userAction("File selected", { fileId, name: file.name });
   }
 
@@ -806,6 +814,24 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     logger.info('TEST MODE: window.ldmTest interface exposed');
   }
 
+  // Phase 10: React to navigation changes from header dropdown
+  $effect(() => {
+    const page = $currentPage;
+    logger.info("Navigation page changed", { page });
+
+    // When navigating to 'files' page, clear grid selection
+    if (page === 'files') {
+      // User clicked "Files" in dropdown - show file explorer view
+      selectedFileId = null;
+      selectedFileName = "";
+      viewMode = 'file';
+    } else if (page === 'tm') {
+      // User clicked "TM" in dropdown - switch to TM view
+      viewMode = 'tm';
+    }
+    // 'grid' page is set when a file is opened via handleFileSelect
+  });
+
   onMount(async () => {
     logger.component("LDM", "mounted");
     loading = true;
@@ -837,134 +863,74 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
       <InlineLoading description="Connecting to LDM..." />
     </div>
   {:else}
-    <div class="ldm-layout">
-      <!-- File Explorer Sidebar (P33: Now with Files/TM tabs) -->
-      <FileExplorer
-        bind:this={fileExplorer}
-        bind:projects
-        bind:selectedProjectId
-        bind:selectedFileId
-        bind:selectedTMId
-        bind:linkedTM
-        connectionMode={connectionStatus.mode}
-        on:fileSelect={handleFileSelect}
-        on:projectSelect={handleProjectSelect}
-        on:tmSelect={handleTMSelect}
-        on:manageTMs={() => showTMManager = true}
-        on:uploadToServer={(e) => logger.info("Upload to server requested", e.detail)}
-        on:runQA={handleRunQA}
-      />
-
-      <!-- Main Content Area -->
-      <div class="ldm-main">
-        <!-- Quick Access Toolbar -->
-        <div class="ldm-toolbar">
-          <div class="toolbar-left">
-            <span class="toolbar-title">LanguageData Manager</span>
-            <!-- P33 Phase 4-5: Online/Offline Status Badge + Go Online Button -->
-            {#if connectionStatus.mode === 'online'}
-              <Tag type="green" size="sm">
-                <Cloud size={12} style="margin-right: 4px;" />
-                Online
-              </Tag>
-            {:else if connectionStatus.mode === 'offline'}
-              <Tag type="outline" size="sm">
-                <CloudOffline size={12} style="margin-right: 4px;" />
-                Offline
-              </Tag>
-              <!-- P33 Phase 5: Go Online button -->
-              <Button
-                kind="ghost"
-                size="small"
-                icon={Renew}
-                iconDescription="Try to reconnect to server"
-                disabled={goingOnline}
-                on:click={handleGoOnline}
-              >
-                {goingOnline ? 'Checking...' : 'Go Online'}
-              </Button>
-              {#if goOnlineMessage}
-                <span class="go-online-message">{goOnlineMessage}</span>
-              {/if}
-            {:else}
-              <Tag type="gray" size="sm">...</Tag>
-            {/if}
+    <!-- Phase 10: Page-based layout -->
+    <div class="ldm-pages">
+      {#if $currentPage === 'files'}
+        <!-- Files Page: Full-width file explorer -->
+        <FilesPage
+          bind:projects
+          bind:selectedProjectId
+          bind:selectedFileId
+          bind:selectedTMId
+          bind:linkedTM
+          connectionMode={connectionStatus.mode}
+          on:fileSelect={handleFileSelect}
+          on:projectSelect={handleProjectSelect}
+          on:tmSelect={handleTMSelect}
+          on:manageTMs={() => showTMManager = true}
+          on:uploadToServer={(e) => logger.info("Upload to server requested", e.detail)}
+          on:runQA={handleRunQA}
+        />
+      {:else if $currentPage === 'tm'}
+        <!-- TM Page: Full-width TM management -->
+        <TMPage
+          bind:selectedTMId
+          on:tmSelect={handleTMSelect}
+        />
+      {:else if $currentPage === 'grid'}
+        <!-- Grid Page: File viewer with side panel -->
+        <GridPage
+          fileId={selectedFileId}
+          fileName={selectedFileName}
+          {linkedTM}
+          onShowGridColumns={() => showGridColumns = true}
+          onShowReferenceSettings={() => showReferenceSettings = true}
+          on:dismissQA={handleDismissQA}
+        />
+      {:else if $currentPage === 'tm-entries'}
+        <!-- TM Entries Page: Full-page TM entries viewer -->
+        <div class="tm-entries-page">
+          <div class="tm-entries-header">
+            <button class="back-button" onclick={() => closeTMGrid()}>
+              ← Back to TMs
+            </button>
+            <h2>{$openTM?.name || 'TM Entries'}</h2>
+            <span class="entry-count">{$openTM?.entry_count?.toLocaleString() || 0} entries</span>
           </div>
-          <div class="toolbar-right">
-            <!-- UI-095: QA buttons removed - use file context menu for QA -->
-            <!-- UI-094: TM button removed - use left panel TM tab + Manage button instead -->
-            <Button
-              kind="ghost"
-              size="small"
-              icon={Column}
-              iconDescription="Grid Columns"
-              tooltipAlignment="end"
-              on:click={() => showGridColumns = true}
-            />
-            <Button
-              kind="ghost"
-              size="small"
-              icon={Document}
-              iconDescription="Reference Settings"
-              tooltipAlignment="end"
-              on:click={() => showReferenceSettings = true}
-            />
-            <Button
-              kind="ghost"
-              size="small"
-              icon={ServerProxy}
-              iconDescription="Server Status"
-              tooltipAlignment="end"
-              on:click={() => showServerStatus = true}
-            />
-            <!-- UI-097: Display Settings button removed - use top nav Settings > Preferences instead -->
-          </div>
-        </div>
-
-        <!-- Phase 1: Grid + Side Panel Layout -->
-        <div class="grid-with-panel">
-          <!-- Virtual Grid Main Area (handles 1M+ rows) -->
-          {#if viewMode === 'file'}
-            <VirtualGrid
-              bind:this={virtualGrid}
-              fileId={selectedFileId}
-              fileName={selectedFileName}
-              on:rowSelect={handleRowSelect}
-              on:confirmTranslation={handleConfirmTranslation}
-              on:dismissQA={handleDismissQA}
-            />
-          {:else if viewMode === 'tm' && selectedTMId}
-            <!-- BUG-027: TM content displayed directly (like File Viewer) -->
+          <div class="tm-entries-content">
             <TMDataGrid
-              tmId={selectedTMId}
-              tmName={selectedTMName}
+              tmId={$openTM?.id}
+              tmName={$openTM?.name}
             />
-          {:else}
-          <VirtualGrid
-            bind:this={virtualGrid}
-            fileId={selectedFileId}
-            fileName={selectedFileName}
-            on:rowSelect={handleRowSelect}
-            on:confirmTranslation={handleConfirmTranslation}
-            on:dismissQA={handleDismissQA}
-          />
-          {/if}
-
-          <!-- Phase 1: TM/QA Side Panel (only show in file view mode) -->
-          {#if viewMode === 'file'}
-            <TMQAPanel
-              bind:collapsed={sidePanelCollapsed}
-              bind:width={sidePanelWidth}
-              selectedRow={sidePanelSelectedRow}
-              tmMatches={sidePanelTMMatches}
-              qaIssues={sidePanelQAIssues}
-              tmLoading={sidePanelTMLoading}
-              qaLoading={sidePanelQALoading}
-              on:applyTM={handleApplyTMFromPanel}
-            />
-          {/if}
+          </div>
         </div>
-      </div>
+      {:else}
+        <!-- Fallback: Show files page -->
+        <FilesPage
+          bind:projects
+          bind:selectedProjectId
+          bind:selectedFileId
+          bind:selectedTMId
+          bind:linkedTM
+          connectionMode={connectionStatus.mode}
+          on:fileSelect={handleFileSelect}
+          on:projectSelect={handleProjectSelect}
+          on:tmSelect={handleTMSelect}
+          on:manageTMs={() => showTMManager = true}
+          on:uploadToServer={(e) => logger.info("Upload to server requested", e.detail)}
+          on:runQA={handleRunQA}
+        />
+      {/if}
     </div>
   {/if}
 
@@ -1021,6 +987,68 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     position: relative;
     /* Ensure flex children can't exceed this container */
     min-height: 0;
+  }
+
+  /* Phase 10: Page-based layout container */
+  .ldm-pages {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* TM Entries Page - Full-page TM viewer */
+  .tm-entries-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .tm-entries-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--cds-layer-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    flex-shrink: 0;
+  }
+
+  .tm-entries-header .back-button {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 4px;
+    color: var(--cds-text-01);
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+
+  .tm-entries-header .back-button:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .tm-entries-header h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .tm-entries-header .entry-count {
+    font-size: 0.875rem;
+    color: var(--cds-text-02);
+  }
+
+  .tm-entries-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .ldm-main {

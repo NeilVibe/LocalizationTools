@@ -1,6 +1,6 @@
 """Folder CRUD endpoints."""
 
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -89,6 +89,58 @@ async def create_folder(
     return new_folder
 
 
+@router.get("/folders/{folder_id}")
+async def get_folder_contents(
+    folder_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """Get folder details and its contents (subfolders + files)."""
+    from server.database.models import LDMFile
+
+    # Get folder with project info
+    result = await db.execute(
+        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
+            LDMFolder.id == folder_id
+        )
+    )
+    folder = result.scalar_one_or_none()
+
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    if folder.project.owner_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get subfolders
+    result = await db.execute(
+        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
+    )
+    subfolders = result.scalars().all()
+
+    # Get files in this folder
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.folder_id == folder_id)
+    )
+    files = result.scalars().all()
+
+    return {
+        "id": folder.id,
+        "name": folder.name,
+        "project_id": folder.project_id,
+        "parent_id": folder.parent_id,
+        "subfolders": [
+            {"id": f.id, "name": f.name, "created_at": f.created_at.isoformat() if f.created_at else None}
+            for f in subfolders
+        ],
+        "files": [
+            {"id": f.id, "name": f.name, "format": f.format, "row_count": f.row_count,
+             "created_at": f.created_at.isoformat() if f.created_at else None}
+            for f in files
+        ]
+    }
+
+
 @router.patch("/folders/{folder_id}/rename")
 async def rename_folder(
     folder_id: int,
@@ -132,6 +184,68 @@ async def rename_folder(
 
     logger.success(f"Folder renamed: id={folder_id}, '{old_name}' -> '{name}'")
     return {"success": True, "folder_id": folder_id, "name": name}
+
+
+@router.patch("/folders/{folder_id}/move")
+async def move_folder(
+    folder_id: int,
+    parent_folder_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Move a folder to a different parent folder (or root of project if parent_folder_id is None).
+
+    Used for drag-and-drop folder organization in FileExplorer.
+    """
+    # Get folder with project info
+    result = await db.execute(
+        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
+            LDMFolder.id == folder_id
+        )
+    )
+    folder = result.scalar_one_or_none()
+
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    if folder.project.owner_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Prevent moving folder into itself or its descendants
+    if parent_folder_id is not None:
+        # Check if target is the folder itself
+        if parent_folder_id == folder_id:
+            raise HTTPException(status_code=400, detail="Cannot move folder into itself")
+
+        # Check if target folder exists and belongs to same project
+        result = await db.execute(
+            select(LDMFolder).where(
+                LDMFolder.id == parent_folder_id,
+                LDMFolder.project_id == folder.project_id
+            )
+        )
+        target_folder = result.scalar_one_or_none()
+        if not target_folder:
+            raise HTTPException(status_code=404, detail="Target folder not found or invalid")
+
+        # Check if target is a descendant of the folder being moved
+        # (prevent circular references)
+        current_parent = target_folder.parent_id
+        while current_parent is not None:
+            if current_parent == folder_id:
+                raise HTTPException(status_code=400, detail="Cannot move folder into its own subfolder")
+            result = await db.execute(
+                select(LDMFolder.parent_id).where(LDMFolder.id == current_parent)
+            )
+            current_parent = result.scalar_one_or_none()
+
+    # Update folder's parent_id
+    folder.parent_id = parent_folder_id
+    await db.commit()
+
+    logger.success(f"Folder moved: id={folder_id}, new_parent={parent_folder_id}")
+    return {"success": True, "folder_id": folder_id, "parent_folder_id": parent_folder_id}
 
 
 @router.delete("/folders/{folder_id}", response_model=DeleteResponse)

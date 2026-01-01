@@ -3,21 +3,16 @@
   import "../app.css";
   import {
     Header,
-    HeaderNav,
-    HeaderNavItem,
-    HeaderAction,
-    HeaderPanelLinks,
-    HeaderPanelDivider,
-    HeaderPanelLink,
     SkipToContent,
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase } from "carbon-icons-svelte";
   // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
+  import { currentPage, goToFiles, goToTM } from "$lib/stores/navigation.js";
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
@@ -37,8 +32,7 @@
 
   // Svelte 5: State
   let isAppsMenuOpen = $state(false);
-  let isSettingsMenuOpen = $state(false);
-  let isUserMenuOpen = $state(false);
+  let isSettingsMenuOpen = $state(false);  // Unified user/settings dropdown
   let isUserProfileOpen = $state(false); // UI-038
   let showChangePassword = $state(false);
   let showAbout = $state(false);
@@ -46,11 +40,11 @@
   let checkingAuth = $state(true);
 
   // Available apps
+  // Apps menu - LDM removed since Files/TM tabs are always visible
   const apps = [
     { id: 'xlstransfer', name: 'XLSTransfer', description: 'Excel translation tools' },
     { id: 'quicksearch', name: 'QuickSearch', description: 'Dictionary search tool' },
-    { id: 'krsimilar', name: 'KR Similar', description: 'Korean semantic similarity' },
-    { id: 'ldm', name: 'LDM', description: 'LanguageData Manager - CAT tool' }
+    { id: 'krsimilar', name: 'KR Similar', description: 'Korean semantic similarity' }
   ];
 
   function selectApp(appId) {
@@ -58,13 +52,25 @@
     currentApp.set(appId);
     currentView.set('app');
     isAppsMenuOpen = false;
+    isSettingsMenuOpen = false;
   }
 
-  // BUG-025: Navigate to LDM when title is clicked
-  function goHome() {
-    logger.userAction("Home navigation (title clicked)");
+
+  // Phase 10: LDM page navigation (clean tabs, always accessible from anywhere)
+  function navigateToFiles() {
+    logger.userAction("Navigate to Files page");
+    // Always ensure we're in LDM app view
     currentApp.set('ldm');
     currentView.set('app');
+    goToFiles();
+  }
+
+  function navigateToTM() {
+    logger.userAction("Navigate to TM page");
+    // Always ensure we're in LDM app view
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToTM();
   }
 
   function showTasks() {
@@ -75,7 +81,7 @@
   function openChangePassword() {
     logger.userAction("Change password modal opened");
     showChangePassword = true;
-    isUserMenuOpen = false;
+    isSettingsMenuOpen = false;
   }
 
   function openAbout() {
@@ -88,6 +94,16 @@
     logger.userAction("Preferences modal opened");
     showPreferences = true;
     isSettingsMenuOpen = false;
+  }
+
+  // Close dropdown when clicking outside
+  function handleGlobalClick(event) {
+    // Don't close if clicking on a dropdown button or menu
+    if (event.target.closest('.compact-dropdown')) {
+      return;
+    }
+    isSettingsMenuOpen = false;
+    isAppsMenuOpen = false;
   }
 
   /**
@@ -216,38 +232,55 @@
     <Login />
   {:else}
     <!-- Show main app if authenticated -->
-    <!-- BUG-025: Added href and on:click to make title clickable -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="app-wrapper" onclick={handleGlobalClick}>
+    <!-- Header - LocaNext title (non-clickable, just branding) -->
     <Header
       company="LocaNext"
       platformName=""
       persistentHamburgerMenu={false}
-      href="#"
-      on:click={goHome}
     >
       <div slot="skip-to-content">
         <SkipToContent />
       </div>
 
-      <!-- Apps Dropdown - UI-087: wrapped for positioning -->
-      <div class="header-dropdown apps-dropdown">
-        <HeaderAction
-          bind:isOpen={isAppsMenuOpen}
-          icon={Apps}
-          closeIcon={Apps}
-          text="Apps"
+      <!-- LDM Navigation - Always visible, works from anywhere -->
+      <div class="ldm-nav-tabs">
+        <button
+          class="ldm-nav-tab"
+          class:active={$currentApp === 'ldm' && ($currentPage === 'files' || $currentPage === 'grid')}
+          onclick={navigateToFiles}
         >
-          <HeaderPanelLinks>
+          <Folder size={16} />
+          <span>Files</span>
+        </button>
+        <button
+          class="ldm-nav-tab"
+          class:active={$currentApp === 'ldm' && ($currentPage === 'tm' || $currentPage === 'tm-entries')}
+          onclick={navigateToTM}
+        >
+          <DataBase size={16} />
+          <span>TM</span>
+        </button>
+      </div>
+
+      <!-- Apps Menu - Clean compact dropdown -->
+      <div class="compact-dropdown">
+        <button class="compact-dropdown-btn" onclick={() => { isAppsMenuOpen = !isAppsMenuOpen; isSettingsMenuOpen = false; }}>
+          <Apps size={20} />
+          <span>Apps</span>
+        </button>
+        {#if isAppsMenuOpen}
+          <div class="compact-dropdown-menu apps-menu">
             {#each apps as app}
-              <HeaderPanelLink on:click={() => selectApp(app.id)}>
-                {app.name}
-                <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
-                  {app.description}
-                </div>
-              </HeaderPanelLink>
-              <HeaderPanelDivider />
+              <button class="compact-dropdown-item" onclick={() => selectApp(app.id)}>
+                <span class="item-title">{app.name}</span>
+                <span class="item-desc">{app.description}</span>
+              </button>
             {/each}
-          </HeaderPanelLinks>
-        </HeaderAction>
+          </div>
+        {/if}
       </div>
 
       <!-- Tasks Button (styled like other nav items with icon) -->
@@ -256,54 +289,40 @@
         <span>Tasks</span>
       </button>
 
-      <!-- UI-001: Theme Toggle Button removed (dark mode only) -->
-
-      <!-- Settings Dropdown - UI-087: wrapped for positioning -->
-      <div class="header-dropdown settings-dropdown">
-        <HeaderAction
-          bind:isOpen={isSettingsMenuOpen}
-          icon={Settings}
-          closeIcon={Settings}
-          text="Settings"
-        >
-          <HeaderPanelLinks>
-            <HeaderPanelLink on:click={openAbout}>
-              About LocaNext
-            </HeaderPanelLink>
-            <HeaderPanelDivider />
-            <HeaderPanelLink on:click={openPreferences}>
-              Preferences
-            </HeaderPanelLink>
-          </HeaderPanelLinks>
-        </HeaderAction>
-      </div>
-
-      <!-- User Menu - UI-087: wrapped for positioning -->
-      <div class="header-dropdown user-dropdown">
-        <HeaderAction
-          bind:isOpen={isUserMenuOpen}
-          icon={UserAvatar}
-          closeIcon={UserAvatar}
-          text={$user?.username || "User"}
-        >
-          <HeaderPanelLinks>
-            <!-- UI-038: Click to open user profile modal -->
-            <HeaderPanelLink on:click={() => { isUserProfileOpen = true; isUserMenuOpen = false; }}>
-              <div style="font-weight: 600; cursor: pointer;">{$user?.full_name || $user?.username || 'User'}</div>
-              <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
-                View Profile
+      <!-- Settings Menu - Cogwheel with user info + settings inside -->
+      <div class="compact-dropdown">
+        <button class="compact-dropdown-btn" onclick={() => { isSettingsMenuOpen = !isSettingsMenuOpen; isAppsMenuOpen = false; }}>
+          <Settings size={20} />
+          <span>Settings</span>
+        </button>
+        {#if isSettingsMenuOpen}
+          <div class="compact-dropdown-menu">
+            <!-- User Section -->
+            <button class="compact-dropdown-item user-item" onclick={() => { isUserProfileOpen = true; isSettingsMenuOpen = false; }}>
+              <UserAvatar size={16} />
+              <div class="user-info">
+                <span class="item-title">{$user?.full_name || $user?.username || 'User'}</span>
+                <span class="item-desc">{$user?.role || 'User'}</span>
               </div>
-            </HeaderPanelLink>
-            <HeaderPanelDivider />
-            <HeaderPanelLink on:click={openChangePassword}>
+            </button>
+            <div class="compact-dropdown-divider"></div>
+            <!-- Settings Section -->
+            <button class="compact-dropdown-item" onclick={openPreferences}>
+              Preferences
+            </button>
+            <button class="compact-dropdown-item" onclick={openAbout}>
+              About LocaNext
+            </button>
+            <div class="compact-dropdown-divider"></div>
+            <!-- Account Section -->
+            <button class="compact-dropdown-item" onclick={openChangePassword}>
               Change Password
-            </HeaderPanelLink>
-            <HeaderPanelDivider />
-            <HeaderPanelLink on:click={handleLogout}>
+            </button>
+            <button class="compact-dropdown-item logout" onclick={handleLogout}>
               Logout
-            </HeaderPanelLink>
-          </HeaderPanelLinks>
-        </HeaderAction>
+            </button>
+          </div>
+        {/if}
       </div>
     </Header>
 
@@ -331,6 +350,7 @@
 
     <!-- Global Toast Notifications (BUG-016) - Shows operation start/complete/fail -->
     <GlobalToast />
+    </div>
   {/if}
 </Theme>
 
@@ -411,48 +431,163 @@
     outline-offset: -2px;
   }
 
-  /* BUG-025: Make header title clickable */
+  /* Header title - non-clickable branding */
   :global(.bx--header__name) {
-    cursor: pointer !important;
+    cursor: default !important;
   }
 
-  :global(.bx--header__name:hover) {
-    text-decoration: underline;
-  }
-
-  /* UI-087: Fix dropdown position - wrapper classes for header dropdowns */
-  .header-dropdown {
+  /* Compact Dropdown - Clean, minimal dropdowns */
+  .compact-dropdown {
     position: relative;
-    display: contents; /* Don't affect layout, just provide positioning context */
+    display: flex;
+    align-items: center;
   }
 
-  /* Base panel styling - appear below header, not as side panel */
-  :global(.bx--header-panel) {
-    position: fixed !important;
-    top: 48px !important;
-    width: 256px !important;
-    max-height: calc(100vh - 48px) !important;
-    overflow-y: auto !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-    border: 1px solid var(--cds-border-subtle-01) !important;
-    border-radius: 0 0 4px 4px !important;
+  .compact-dropdown-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: transparent;
+    border: none;
+    color: var(--cds-text-02);
+    cursor: pointer;
+    transition: all 0.15s ease;
   }
 
-  /* Apps dropdown - positioned from right edge */
-  :global(.apps-dropdown .bx--header-panel) {
-    right: calc(48px + 48px + 120px) !important; /* user + settings + tasks button width */
-    left: auto !important;
+  .compact-dropdown-btn:hover {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-01);
   }
 
-  /* Settings dropdown */
-  :global(.settings-dropdown .bx--header-panel) {
-    right: calc(48px + 80px) !important; /* user button + some margin */
-    left: auto !important;
+  .compact-dropdown-btn:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
   }
 
-  /* User dropdown - align to right edge */
-  :global(.user-dropdown .bx--header-panel) {
-    right: 0 !important;
-    left: auto !important;
+  .user-name {
+    font-size: 0.875rem;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .compact-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 200px;
+    background: var(--cds-layer-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    z-index: 9100;
+    overflow: hidden;
+  }
+
+
+  .compact-dropdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    color: var(--cds-text-01);
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+  }
+
+  .compact-dropdown-item:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .compact-dropdown-item.logout {
+    color: var(--cds-support-error);
+  }
+
+  .compact-dropdown-item.logout:hover {
+    background: rgba(218, 30, 40, 0.1);
+  }
+
+  .compact-dropdown-item .item-title {
+    font-weight: 600;
+  }
+
+  .compact-dropdown-item .item-desc {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    margin-top: 0.125rem;
+  }
+
+  .compact-dropdown-divider {
+    height: 1px;
+    background: var(--cds-border-subtle-01);
+    margin: 0.25rem 0;
+  }
+
+  /* User item with avatar */
+  .compact-dropdown-item.user-item {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: var(--cds-layer-02);
+  }
+
+  .compact-dropdown-item.user-item .user-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+
+  /* Phase 10: LDM Navigation - Clean segmented tabs */
+  .ldm-nav-tabs {
+    display: flex;
+    align-items: center;
+    margin-left: 1rem;
+    background: var(--cds-layer-01);
+    border-radius: 4px;
+    border: 1px solid var(--cds-border-subtle-01);
+    overflow: hidden;
+  }
+
+  .ldm-nav-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: none;
+    color: var(--cds-text-02);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+  }
+
+  .ldm-nav-tab:first-child {
+    border-right: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .ldm-nav-tab:hover:not(.active) {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-01);
+  }
+
+  .ldm-nav-tab.active {
+    background: var(--cds-interactive);
+    color: var(--cds-text-on-color);
+  }
+
+  .ldm-nav-tab:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+    z-index: 1;
   }
 </style>
