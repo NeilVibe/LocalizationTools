@@ -11,10 +11,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
+from server.database.db_utils import is_postgresql
 from server.database.models import (
     LDMProject, LDMFile, LDMFolder, LDMRow, LDMEditHistory,
     LDMActiveTM, LDMTranslationMemory
@@ -28,6 +29,144 @@ router = APIRouter(tags=["LDM"])
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
+# P5: Fuzzy search threshold (0.0-1.0, lower = more fuzzy)
+FUZZY_SEARCH_THRESHOLD = 0.3
+
+
+async def _fuzzy_search_rows(
+    db: AsyncSession,
+    file_id: int,
+    search: str,
+    fields: list,
+    page: int,
+    limit: int
+) -> tuple:
+    """
+    Perform fuzzy search using PostgreSQL pg_trgm similarity.
+
+    Uses trigram matching for fuzzy text search with similarity ranking.
+    Falls back to ILIKE for SQLite.
+
+    Args:
+        db: Async database session
+        file_id: File ID to search within
+        search: Search term
+        fields: List of field names to search (source, target, string_id)
+        page: Page number (1-indexed)
+        limit: Results per page
+
+    Returns:
+        Tuple of (rows, total_count)
+    """
+    offset = (page - 1) * limit
+
+    if not is_postgresql():
+        # SQLite fallback: Use ILIKE (contain mode)
+        logger.debug(f"Fuzzy search fallback to ILIKE for SQLite")
+        from sqlalchemy import or_
+
+        query = select(LDMRow).where(LDMRow.file_id == file_id)
+        field_conditions = []
+        search_pattern = f"%{search}%"
+
+        for field in fields:
+            column = getattr(LDMRow, field, None)
+            if column:
+                field_conditions.append(column.ilike(search_pattern))
+
+        if field_conditions:
+            query = query.where(or_(*field_conditions))
+
+        # Count
+        count_query = select(func.count(LDMRow.id)).where(LDMRow.file_id == file_id)
+        if field_conditions:
+            count_query = count_query.where(or_(*field_conditions))
+        count_result = await db.execute(count_query)
+        total = count_result.scalar()
+
+        # Paginated results
+        query = query.order_by(LDMRow.row_num).offset(offset).limit(limit)
+        result = await db.execute(query)
+        rows = result.scalars().all()
+
+        return rows, total
+
+    # PostgreSQL: Use pg_trgm similarity
+    logger.debug(f"Fuzzy search using pg_trgm similarity, threshold={FUZZY_SEARCH_THRESHOLD}")
+
+    # Build similarity conditions for each field
+    sim_expressions = []
+    for field in fields:
+        if field == "source":
+            sim_expressions.append(f"similarity(lower(source), lower(:search))")
+        elif field == "target":
+            sim_expressions.append(f"similarity(lower(target), lower(:search))")
+        elif field == "string_id":
+            sim_expressions.append(f"similarity(lower(string_id), lower(:search))")
+
+    if not sim_expressions:
+        sim_expressions = ["similarity(lower(source), lower(:search))"]
+
+    # Use GREATEST to get max similarity across fields
+    max_sim = f"GREATEST({', '.join(sim_expressions)})"
+
+    # Count query
+    count_sql = text(f"""
+        SELECT COUNT(*) FROM ldm_rows
+        WHERE file_id = :file_id
+        AND {max_sim} >= :threshold
+    """)
+
+    count_result = await db.execute(count_sql, {
+        "file_id": file_id,
+        "search": search,
+        "threshold": FUZZY_SEARCH_THRESHOLD
+    })
+    total = count_result.scalar()
+
+    # Main query - order by similarity DESC
+    search_sql = text(f"""
+        SELECT id, file_id, row_num, string_id, source, target, status,
+               qa_flag_count, updated_at, updated_by,
+               {max_sim} as sim_score
+        FROM ldm_rows
+        WHERE file_id = :file_id
+        AND {max_sim} >= :threshold
+        ORDER BY sim_score DESC, row_num ASC
+        OFFSET :offset LIMIT :limit
+    """)
+
+    result = await db.execute(search_sql, {
+        "file_id": file_id,
+        "search": search,
+        "threshold": FUZZY_SEARCH_THRESHOLD,
+        "offset": offset,
+        "limit": limit
+    })
+
+    # Convert raw results to LDMRow-like objects
+    raw_rows = result.fetchall()
+    rows = []
+    for r in raw_rows:
+        # Create a simple object with the row data
+        row = LDMRow(
+            id=r.id,
+            file_id=r.file_id,
+            row_num=r.row_num,
+            string_id=r.string_id,
+            source=r.source,
+            target=r.target,
+            status=r.status,
+            qa_flag_count=r.qa_flag_count,
+            updated_at=r.updated_at,
+            updated_by=r.updated_by
+        )
+        rows.append(row)
+
+    logger.info(f"Fuzzy search found {len(rows)} rows (total={total}) for '{search}'")
+    return rows, total
+
 
 async def _get_project_linked_tm(db: AsyncSession, project_id: int, user_id: int) -> Optional[int]:
     """
@@ -116,7 +255,7 @@ async def list_rows(
     - contain: Text contains search term (default, case-insensitive)
     - exact: Exact match only (case-insensitive)
     - not_contain: Exclude rows containing term
-    - fuzzy: Semantic search using Model2Vec (falls back to contain if not available)
+    - fuzzy: Trigram similarity search using pg_trgm (ranked by similarity)
 
     Search Fields:
     - string_id, source, target (comma-separated)
@@ -140,6 +279,27 @@ async def list_rows(
 
     if file.project.owner_id != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # P5: Fuzzy search - use dedicated pg_trgm similarity search
+    if search and search_mode == "fuzzy":
+        # Parse search fields
+        fields = [f.strip() for f in (search_fields or "source,target").split(",")]
+        valid_fields = {"string_id", "source", "target"}
+        fields = [f for f in fields if f in valid_fields]
+        if not fields:
+            fields = ["source", "target"]
+
+        # Use dedicated fuzzy search function
+        rows, total = await _fuzzy_search_rows(db, file_id, search, fields, page, limit)
+        total_pages = (total + limit - 1) // limit
+
+        return PaginatedRows(
+            rows=rows,
+            total=total,
+            page=page,
+            limit=limit,
+            total_pages=total_pages
+        )
 
     # Build query
     query = select(LDMRow).where(LDMRow.file_id == file_id)
@@ -170,11 +330,6 @@ async def list_rows(
                 # Does not contain (case-insensitive)
                 search_pattern = f"%{search}%"
                 field_conditions.append(~column.ilike(search_pattern))
-            elif search_mode == "fuzzy":
-                # Fuzzy/semantic search - for now fallback to contain
-                # TODO: Implement Model2Vec semantic search
-                search_pattern = f"%{search}%"
-                field_conditions.append(column.ilike(search_pattern))
             else:  # "contain" (default)
                 search_pattern = f"%{search}%"
                 field_conditions.append(column.ilike(search_pattern))
@@ -226,7 +381,7 @@ async def list_rows(
                 elif search_mode == "not_contain":
                     search_pattern = f"%{search}%"
                     field_conditions.append(~column.ilike(search_pattern))
-                else:  # contain, fuzzy
+                else:  # contain (fuzzy handled separately above)
                     search_pattern = f"%{search}%"
                     field_conditions.append(column.ilike(search_pattern))
 

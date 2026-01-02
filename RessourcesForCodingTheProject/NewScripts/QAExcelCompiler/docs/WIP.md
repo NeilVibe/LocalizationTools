@@ -150,26 +150,42 @@ def ensure_comment_column(df, username):
 ```python
 from datetime import datetime
 
-def update_comment(existing_comment, new_comment):
+def format_comment(new_comment, string_id=None, existing_comment=None, file_mod_time=None):
     """
-    Append new comment with datetime, keeping history.
+    Format comment with StringID and file modification time.
 
-    Format:
-    "New comment text" (date: YYMMDD HHMM)
+    Format (with stringid):
+        <comment text>
+        ---
+        stringid:
+        <stringid value>
+        (updated: YYMMDD HHMM)
 
-    "Old comment text" (date: YYMMDD HHMM)
+    Format (without stringid):
+        <comment text>
+        ---
+        (updated: YYMMDD HHMM)
+
+    REPLACE MODE: New comments replace old entirely.
+    DUPLICATE CHECK: Split on '---' delimiter to compare original text.
     """
-    if pd.isna(new_comment) or str(new_comment).strip() == "":
+    if not new_comment or str(new_comment).strip() == "":
         return existing_comment
 
-    timestamp = datetime.now().strftime("%y%m%d %H%M")
-    formatted_new = f'"{new_comment}" (date: {timestamp})'
+    new_text = str(new_comment).strip()
 
-    if pd.isna(existing_comment) or str(existing_comment).strip() == "":
-        return formatted_new
+    # Check for duplicate by splitting on --- delimiter
+    if existing_comment and "\n---\n" in str(existing_comment):
+        existing_original = str(existing_comment).split("\n---\n")[0].strip()
+        if existing_original == new_text:
+            return existing_comment  # Skip duplicate
+
+    timestamp = file_mod_time.strftime("%y%m%d %H%M") if file_mod_time else datetime.now().strftime("%y%m%d %H%M")
+
+    if string_id and str(string_id).strip():
+        return f"{new_text}\n---\nstringid:\n{str(string_id).strip()}\n(updated: {timestamp})"
     else:
-        # New on top, old below
-        return f"{formatted_new}\n\n{existing_comment}"
+        return f"{new_text}\n---\n(updated: {timestamp})"
 ```
 
 ### 5. Status Calculation
@@ -412,8 +428,8 @@ def process_category(category, qa_files, master_path):
 **Master_Quest.xlsx - Sheet1:**
 | Original | ENG | StringKey | Command | COMMENT_John | COMMENT_Alice |
 |----------|-----|-----------|---------|--------------|---------------|
-| 기습 | Ambush | 10001 | | "Looks good" (date: 251230 1500) | |
-| 낯선 땅 | Strange Lands | 1000157 | | "Typo here" (date: 251230 1500) | "Fixed now" (date: 251230 1502) |
+| 기습 | Ambush | 10001 | | Looks good\n---\nstringid:\n10001\n(updated: 251230 1500) | |
+| 낯선 땅 | Strange Lands | 1000157 | | Typo here\n---\nstringid:\n1000157\n(updated: 251230 1500) | Fixed now\n---\nstringid:\n1000157\n(updated: 251230 1502) |
 
 **Master_Quest.xlsx - STATUS:**
 | User | Sheet1 | Sheet3 | Total |
@@ -794,3 +810,4 @@ def discover_qa_folders(qa_folder):
 *WIP created 2025-12-30*
 *Updated 2025-12-30: Added StringID parsing, column styling, future features*
 *Updated 2026-01-02: Added IMAGE COMPILATION SYSTEM - folder-based input, centralized Images/ output, duplicate naming strategy*
+*Updated 2026-01-03: Clean comment format with --- delimiter, improved duplicate detection*

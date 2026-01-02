@@ -21,8 +21,8 @@ Categories: Quest, Knowledge, Item, Node, System
 Comment Handling:
 - REPLACE mode: New comments replace old (no append/concatenation)
 - Timestamp: Uses file's last modified time (not current time)
-- Format: "comment text"\\n(stringid: 12345 | updated: YYMMDD HHMM)
-- Duplicate check: Skips if exact same comment text already exists
+- Format: comment text\\n---\\nstringid:\\n<value>\\n(updated: YYMMDD HHMM)
+- Duplicate check: Splits on '---' delimiter to compare original comment text
 """
 
 import os
@@ -344,12 +344,20 @@ def format_comment(new_comment, string_id=None, existing_comment=None, file_mod_
     """
     Format comment with StringID and file modification time.
 
-    Format:
-        "comment text"
-        (stringid: 12345 | updated: YYMMDD HHMM)
+    Format (with stringid):
+        <comment text>
+        ---
+        stringid:
+        <stringid value>
+        (updated: YYMMDD HHMM)
+
+    Format (without stringid):
+        <comment text>
+        ---
+        (updated: YYMMDD HHMM)
 
     REPLACE MODE: If comment text differs, REPLACE entirely (no append).
-    DUPLICATE CHECK: If exact comment text already exists, skip to avoid re-updating on re-runs.
+    DUPLICATE CHECK: Split on '---' delimiter to extract original comment for comparison.
     """
     if not new_comment or str(new_comment).strip() == "":
         return existing_comment  # Return existing if no new comment
@@ -359,9 +367,11 @@ def format_comment(new_comment, string_id=None, existing_comment=None, file_mod_
     # Check if this exact comment text already exists (avoid re-update on re-run)
     if existing_comment:
         existing_str = str(existing_comment)
-        # If the quoted text already exists, skip (no update needed)
-        if f'"{new_text}"' in existing_str:
-            return existing_comment
+        # Split on --- delimiter to extract original comment
+        if "\n---\n" in existing_str:
+            existing_original = existing_str.split("\n---\n")[0].strip()
+            if existing_original == new_text:
+                return existing_comment  # Duplicate, skip
 
     # Format timestamp from file modification time (or fallback to now)
     if file_mod_time:
@@ -369,15 +379,13 @@ def format_comment(new_comment, string_id=None, existing_comment=None, file_mod_
     else:
         timestamp = datetime.now().strftime("%y%m%d %H%M")
 
-    # Build metadata string with stringid (if available) and timestamp
+    # Build formatted comment: text + delimiter + metadata
     if string_id and str(string_id).strip():
-        metadata = f"stringid: {str(string_id).strip()} | updated: {timestamp}"
+        # With stringid: comment -> --- -> stringid: -> value -> (updated)
+        return f"{new_text}\n---\nstringid:\n{str(string_id).strip()}\n(updated: {timestamp})"
     else:
-        metadata = f"updated: {timestamp}"
-
-    # Comment on top, metadata at bottom with linebreak
-    # REPLACE mode: return only new comment (not appended to old)
-    return f'"{new_text}"\n({metadata})'
+        # Without stringid: comment -> --- -> (updated)
+        return f"{new_text}\n---\n(updated: {timestamp})"
 
 
 def get_row_signature(ws, row, exclude_cols=None):

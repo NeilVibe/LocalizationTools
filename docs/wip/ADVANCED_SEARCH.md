@@ -127,8 +127,10 @@ Use existing Model2Vec (potion-multilingual-128M) for semantic search:
 **Frontend (VirtualGrid.svelte):**
 - Added `searchMode` state: contain, exact, not_contain, fuzzy
 - Added `searchFields` state: array of string_id, source, target
-- Search mode dropdown next to search input
-- Checkbox row for field selection
+- **New UI (Session 16):** Combined search control with settings popover
+  - Mode indicator button with icon (⊃ = Contains, = = Exact, ≠ = Excludes, ≈ = Similar)
+  - Click to open settings popover with mode grid + field toggles
+  - Cleaner, more compact design
 - API calls include `search_mode` and `search_fields` params
 
 **Backend (rows.py):**
@@ -137,9 +139,11 @@ Use existing Model2Vec (potion-multilingual-128M) for semantic search:
 - Not contain: `~column.ilike(pattern)` with AND logic
 - Contain/Fuzzy: `column.ilike(pattern)` with OR logic
 
-**Fuzzy (TODO):**
-- Currently falls back to "contain" mode
-- Future: Integrate Model2Vec semantic search
+**Fuzzy (IMPLEMENTED - Session 16):**
+- Uses PostgreSQL pg_trgm extension for trigram similarity
+- Threshold: 0.3 (configurable in rows.py)
+- Results ordered by similarity score
+- Falls back to ILIKE (contain mode) on SQLite
 
 ---
 
