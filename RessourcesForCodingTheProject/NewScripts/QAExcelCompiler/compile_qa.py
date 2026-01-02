@@ -595,8 +595,13 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
 
             if screenshot_value and str(screenshot_value).strip():
                 master_screenshot_cell = master_ws.cell(row=master_row, column=master_screenshot_col)
+                existing_screenshot = master_screenshot_cell.value
 
-                # Determine the hyperlink target
+                # Determine the new value and hyperlink target
+                new_screenshot_value = None
+                new_screenshot_target = None
+                is_warning = False  # Orange for missing images
+
                 if screenshot_hyperlink and screenshot_hyperlink.target:
                     # Extract original filename from hyperlink target
                     original_target = screenshot_hyperlink.target
@@ -605,39 +610,47 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                     # Transform to new path if image was copied
                     if original_name in image_mapping:
                         new_name = image_mapping[original_name]
-                        new_target = f"Images/{new_name}"
-
-                        # Set hyperlink with transformed path
-                        master_screenshot_cell.hyperlink = new_target
-                        master_screenshot_cell.value = new_name
-                        master_screenshot_cell.font = Font(color="0000FF", underline="single")
+                        new_screenshot_value = new_name
+                        new_screenshot_target = f"Images/{new_name}"
                     else:
                         # Image not found in mapping, preserve original
-                        master_screenshot_cell.hyperlink = original_target
-                        master_screenshot_cell.value = screenshot_value
-                        master_screenshot_cell.font = Font(color="FF6600", underline="single")  # Orange = warning
+                        new_screenshot_value = screenshot_value
+                        new_screenshot_target = original_target
+                        is_warning = True
                 else:
                     # No hyperlink, just copy value (might be just text)
                     original_name = str(screenshot_value).strip()
                     if original_name in image_mapping:
                         new_name = image_mapping[original_name]
-                        new_target = f"Images/{new_name}"
-                        master_screenshot_cell.hyperlink = new_target
-                        master_screenshot_cell.value = new_name
-                        master_screenshot_cell.font = Font(color="0000FF", underline="single")
+                        new_screenshot_value = new_name
+                        new_screenshot_target = f"Images/{new_name}"
                     else:
-                        master_screenshot_cell.value = screenshot_value
+                        new_screenshot_value = screenshot_value
 
-                # Apply styling
-                master_screenshot_cell.alignment = Alignment(horizontal='left', vertical='center')
-                master_screenshot_cell.border = Border(
-                    left=Side(style='thin', color='90EE90'),
-                    right=Side(style='thin', color='90EE90'),
-                    top=Side(style='thin', color='90EE90'),
-                    bottom=Side(style='thin', color='90EE90')
-                )
+                # ONLY write if value changed (preserve team's custom formatting!)
+                if new_screenshot_value != existing_screenshot:
+                    master_screenshot_cell.value = new_screenshot_value
+                    if new_screenshot_target:
+                        master_screenshot_cell.hyperlink = new_screenshot_target
 
-                result["screenshots"] += 1
+                    # Apply styling: blue fill + blue border (matching COMMENT style)
+                    master_screenshot_cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
+                    master_screenshot_cell.alignment = Alignment(horizontal='left', vertical='center')
+                    master_screenshot_cell.border = Border(
+                        left=Side(style='thin', color='87CEEB'),
+                        right=Side(style='thin', color='87CEEB'),
+                        top=Side(style='thin', color='87CEEB'),
+                        bottom=Side(style='thin', color='87CEEB')
+                    )
+
+                    # Hyperlink font: blue for valid, orange for warning
+                    if new_screenshot_target:
+                        if is_warning:
+                            master_screenshot_cell.font = Font(color="FF6600", underline="single")  # Orange = warning
+                        else:
+                            master_screenshot_cell.font = Font(color="0000FF", underline="single")  # Blue = valid
+
+                    result["screenshots"] += 1
 
     return result
 
