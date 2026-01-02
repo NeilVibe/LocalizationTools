@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-03 (Session 16 - 100% Coverage!) | **Build:** 436 | **Open:** 0 🎉
+**Last Updated:** 2026-01-03 (Session 17) | **Build:** 437 | **Open:** 2
 
 ---
 
@@ -11,12 +11,58 @@
 | **FIXED/CLOSED** | 69 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
-| **HIGH (Endpoint Coverage)** | 0 ✅ |
-| **MEDIUM (Audits)** | 0 ✅ |
-| **LOW (Accessibility)** | 0 ✅ |
-| **Total Open** | 0 🎉 |
+| **HIGH (Design Issues)** | 1 |
+| **MEDIUM (UI)** | 1 |
+| **Total Open** | 2 |
 
-### 🎉 CLEAN SLATE ACHIEVED!
+---
+
+## OPEN ISSUES
+
+### DESIGN-001: Remove owner_id Filtering from LDM Queries
+- **Reported:** 2026-01-03
+- **Severity:** HIGH (Design flaw)
+- **Status:** OPEN
+- **Component:** All LDM routes (platforms, projects, files, TMs)
+
+**Problem:** Currently all LDM data is filtered by `owner_id`, so each user only sees their own data. This is wrong for a team/company tool - everyone should see the same data.
+
+**Current behavior:**
+- User A uploads a file → only User A sees it
+- User B has empty LDM
+
+**Expected behavior:**
+- User A uploads a file → ALL users see it
+- Shared workspace
+
+**Future enhancement (optional):**
+- Platform-level permissions (some platforms restricted to certain users)
+- For now: remove all `owner_id` filtering
+
+**Files to modify:**
+- `server/tools/ldm/routes/platforms.py`
+- `server/tools/ldm/routes/projects.py`
+- `server/tools/ldm/routes/files.py`
+- `server/tools/ldm/routes/folders.py`
+- `server/tools/ldm/routes/tm_crud.py`
+
+---
+
+### UI-102: P5 Search Bar Too Small
+- **Reported:** 2026-01-03
+- **Severity:** MEDIUM (UI regression)
+- **Status:** FIXED (partial)
+- **Component:** VirtualGrid.svelte
+
+**Problem:** P5 Advanced Search added `max-width: 400px` to `.search-control`, making search bar too restrictive.
+
+**Fix applied:** Removed `max-width`, added `min-width: 200px` to match old behavior.
+
+**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte` line 2372
+
+---
+
+### 🎉 CLEAN SLATE (Session 16)
 
 **Endpoint Coverage:** 220/220 (100%)
 - Generated 149 test stubs covering all untested endpoints
