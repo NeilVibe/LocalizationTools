@@ -769,11 +769,19 @@ def discover_qa_folders(qa_folder):
 | Case | Handling |
 |------|----------|
 | No images in folder | Process xlsx normally, no image copying |
-| Image in xlsx not found in folder | Log warning, skip hyperlink update |
+| Image in xlsx not found in folder | Log warning, skip hyperlink update (orange color) |
 | Hyperlink to external URL | Skip (only process local file paths) |
 | Very long image filename | Truncate original name, keep prefix |
 | Image already exists in Images/ | Overwrite (same user re-submitting) |
 | Broken hyperlink in xlsx | Log warning, preserve as-is |
+| Unlinked images in folder | **Currently copied anyway** (see Future Improvements) |
+
+### Future Improvements
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| Smart image copying | Only copy images that are actually hyperlinked in xlsx | LOW |
+| CLI arguments | `--dry-run`, `--backup` flags | LOW |
 
 ### MasterUI Removal
 
