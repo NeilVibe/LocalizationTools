@@ -182,6 +182,16 @@
     logger.component("Layout", "mounted");
     checkAuth();
 
+    // UI-100: Clean up #main-content hash from URL (accessibility artifact)
+    // SkipToContent adds #main-content for screen readers, but we hide it from URL
+    const cleanupHash = () => {
+      if (window.location.hash === '#main-content') {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    };
+    cleanupHash(); // Clean on mount if already present
+    window.addEventListener('hashchange', cleanupHash);
+
     // TEST MODE: Expose navigation helper for CDP testing
     // This allows automated tests to navigate between apps without DOM clicks
     window.navTest = {

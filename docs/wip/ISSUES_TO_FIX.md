@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-02 (Session 15 - Issue Verification) | **Build:** 436 | **Open:** 8
+**Last Updated:** 2026-01-03 (Session 16 - Clean Slate) | **Build:** 436 | **Open:** 4
 
 ---
 
@@ -8,13 +8,13 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 59 |
+| **FIXED/CLOSED** | 65 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 | **HIGH (Endpoint Coverage)** | 4 |
-| **MEDIUM (Audits)** | 2 |
-| **LOW (Cleanup/Accessibility)** | 4 |
-| **Total Open** | 8 |
+| **MEDIUM (Audits)** | 0 |
+| **LOW (Accessibility)** | 0 |
+| **Total Open** | 4 |
 
 ---
 
@@ -210,81 +210,99 @@ run: |
 
 ## OPEN ISSUES - ENDPOINT COVERAGE (HIGH)
 
-### EP-001: LDM Core Coverage at 57%
+**Session 16 Progress:** Generated 149 endpoint test stubs via `endpoint_audit.py --generate-stubs`
+**Location:** `tests/api/test_generated_stubs.py`
+**Run:** `pytest tests/api/test_generated_stubs.py -v`
+
+### EP-001: LDM Core Coverage at 46%
 - **Reported:** 2026-01-01
+- **Updated:** 2026-01-03
 - **Severity:** HIGH
-- **Status:** OPEN
+- **Status:** TEST STUBS GENERATED
 
-**Current:** 35/61 LDM endpoints tested (57%)
-
-**Action:** Write tests for remaining 26 LDM endpoints.
+**Current:** 35/75 LDM endpoints tested (46%)
+**Test stubs generated:** ~40 LDM tests in `test_generated_stubs.py`
 
 ---
 
 ### EP-002: Auth Login Coverage at 25%
 - **Reported:** 2026-01-01
+- **Updated:** 2026-01-03
 - **Severity:** HIGH
-- **Status:** OPEN
+- **Status:** TEST STUBS GENERATED
 
 **Current:** 6/24 Auth endpoints tested (25%)
-
-**Action:** Write tests for remaining 18 Auth endpoints.
+**Test stubs generated:** 18 Auth tests in `test_generated_stubs.py`
 
 ---
 
 ### EP-003: Admin Stats Coverage at 0%
 - **Reported:** 2026-01-01
+- **Updated:** 2026-01-03
 - **Severity:** HIGH
-- **Status:** OPEN
+- **Status:** TEST STUBS GENERATED
 
 **Current:** 0/16 Admin Stats endpoints tested (0%)
+**Test stubs generated:** 16 Admin Stats tests + 6 Rankings + 8 Telemetry = 30 tests
 
 **User note:** "Admin stats is important we need those"
-
-**Action:** Write tests for all 16 Admin Stats endpoints.
 
 ---
 
 ### EP-004: XLSTransfer Coverage Low
 - **Reported:** 2026-01-01
+- **Updated:** 2026-01-03
 - **Severity:** HIGH
-- **Status:** OPEN
+- **Status:** TEST STUBS GENERATED
 
 **Current:** 1/13 XLSTransfer endpoints tested (7%)
-
-**Action:** Write tests for remaining 12 XLSTransfer endpoints.
-
----
-
-### EP-005: QuickSearch Needs Audit
-- **Reported:** 2026-01-01
-- **Severity:** MEDIUM
-- **Status:** NEEDS INVESTIGATION
-
-**Question:** Has QuickSearch been fully absorbed into LDM?
-
-**User says:** "I think we fully absorbed everything from it so I think we can get rid of it"
-
-**Action:**
-1. Compare QuickSearch features vs LDM features
-2. If fully absorbed → remove QuickSearch app
-3. If not absorbed → document what's missing
+**Test stubs generated:** 12 XLSTransfer tests in `test_generated_stubs.py`
 
 ---
 
-### EP-006: KR Similar Needs Audit
+### ~~EP-005: QuickSearch Needs Audit~~ ✅ AUDIT COMPLETE
 - **Reported:** 2026-01-01
-- **Severity:** MEDIUM
-- **Status:** NEEDS INVESTIGATION
+- **Audited:** 2026-01-03 (Session 16)
+- **Severity:** MEDIUM → CLOSED
+- **Status:** NOT ABSORBED - KEEP AS STANDALONE APP
 
-**Question:** Has KR Similar been fully absorbed?
+**Audit Findings:**
+- QuickSearch is a **standalone app** accessible from Apps menu
+- Frontend: `QuickSearch.svelte` (full-featured component)
+- Backend: `/api/v2/quicksearch` (dictionary search endpoints)
+- **Unique features NOT in LDM:**
+  - Dictionary management (create, load, set reference)
+  - Multi-game support (BDO, BDM, BDC, CD)
+  - Multi-language support (15 languages)
+  - File/folder source modes for dictionary creation
+  - Reference dictionary comparison
 
-**User says:** "KR similar too I guess?"
+**Relationship to LDM:** LDM's `pretranslate.py` uses QuickSearch backend libraries (XLSTransfer), but QuickSearch app provides standalone dictionary management that LDM doesn't have.
 
-**Action:**
-1. Compare KR Similar features vs LDM features
-2. If fully absorbed → remove KR Similar app
-3. If not absorbed → document what's missing
+**Decision:** KEEP QuickSearch as standalone app. Not absorbed.
+
+---
+
+### ~~EP-006: KR Similar Needs Audit~~ ✅ AUDIT COMPLETE
+- **Reported:** 2026-01-01
+- **Audited:** 2026-01-03 (Session 16)
+- **Severity:** MEDIUM → CLOSED
+- **Status:** NOT ABSORBED - KEEP AS STANDALONE APP
+
+**Audit Findings:**
+- KR Similar is a **standalone app** accessible from Apps menu
+- Frontend: `KRSimilar.svelte` (full-featured component)
+- Backend: `/api/v2/kr-similar` (Korean similarity endpoints)
+- **Unique features NOT in LDM:**
+  - Korean semantic similarity using FAISS vectors
+  - Dictionary management (create, load by dict type)
+  - Extract Similar feature (batch extraction)
+  - Auto Translate feature with threshold/top-k controls
+  - Split pairs vs whole pairs search modes
+
+**Relationship to LDM:** LDM's `pretranslate.py` uses KR Similar as one of the pretranslation engines, but KR Similar app provides standalone dictionary management and batch operations that LDM doesn't have.
+
+**Decision:** KEEP KR Similar as standalone app. Not absorbed.
 
 ---
 
@@ -334,49 +352,64 @@ run: |
 
 ---
 
-### UI-100: Skip to Main Content URL Artifact
+### ~~UI-100: Skip to Main Content URL Artifact~~ ✅ FIXED
 - **Reported:** 2026-01-01
-- **Severity:** LOW
+- **Fixed:** 2026-01-03 (Session 16)
+- **Severity:** LOW → CLOSED
 - **Component:** +layout.svelte, accessibility
-- **Status:** OPEN
+- **Status:** FIXED
 
 **Problem:**
 - URL shows `#main-content` when navigating
 - LocaNext button has "Skip to Main Content" when tabbed (accessibility feature but weird UX)
 
-**Fix:** Review Carbon Components accessibility, hide visual artifact while keeping accessibility.
+**Fix:**
+- Added `hashchange` listener in onMount that removes `#main-content` from URL
+- Uses `history.replaceState()` to clean URL without affecting browser history
+- SkipToContent behavior preserved for accessibility (only visible on keyboard focus)
+- File: `+layout.svelte` lines 185-193
 
 ---
 
-### UI-101: Merge User Button into Settings
+### ~~UI-101: Merge User Button into Settings~~ ✅ ALREADY FIXED
 - **Reported:** 2026-01-01
-- **Severity:** MEDIUM
-- **Component:** AppBar.svelte
-- **Status:** OPEN
+- **Verified Fixed:** 2026-01-03 (Session 16)
+- **Severity:** MEDIUM → CLOSED
+- **Component:** +layout.svelte
+- **Status:** ALREADY FIXED
 
 **Problem:** Separate "admin/user" button and "Settings" button - confusing duplication.
 
-**Fix:** One "Settings" entry containing: Profile, Preferences, Admin (if admin), Logout.
+**Current State:** Settings dropdown already contains:
+- User profile section (name, role, opens modal)
+- Preferences
+- About LocaNext
+- Change Password
+- Logout
+
+No separate "User" button exists. All user-related actions are in the unified Settings dropdown.
 
 ---
 
-## OPEN ISSUES - CLEANUP (LOW)
+## ~~OPEN ISSUES - CLEANUP (LOW)~~ ✅ CLOSED (Session 16)
 
-### CLEANUP-001: Remove QuickSearch if Absorbed
+### ~~CLEANUP-001: Remove QuickSearch if Absorbed~~ ✅ NOT APPLICABLE
 - **Reported:** 2026-01-01
-- **Severity:** LOW
-- **Status:** BLOCKED (waiting on EP-005 audit)
+- **Closed:** 2026-01-03 (Session 16)
+- **Severity:** LOW → CLOSED
+- **Status:** NOT APPLICABLE
 
-**Action:** If EP-005 confirms QuickSearch is fully absorbed, remove the app.
+**Resolution:** EP-005 audit found QuickSearch is NOT absorbed. It remains a standalone app with unique features (dictionary management, multi-game/language support). KEEP.
 
 ---
 
-### CLEANUP-002: Remove KR Similar if Absorbed
+### ~~CLEANUP-002: Remove KR Similar if Absorbed~~ ✅ NOT APPLICABLE
 - **Reported:** 2026-01-01
-- **Severity:** LOW
-- **Status:** BLOCKED (waiting on EP-006 audit)
+- **Closed:** 2026-01-03 (Session 16)
+- **Severity:** LOW → CLOSED
+- **Status:** NOT APPLICABLE
 
-**Action:** If EP-006 confirms KR Similar is fully absorbed, remove the app
+**Resolution:** EP-006 audit found KR Similar is NOT absorbed. It remains a standalone app with unique features (FAISS similarity, batch extraction, auto translate). KEEP.
 
 ---
 

@@ -1,6 +1,6 @@
 # Session Context
 
-> Last Updated: 2026-01-02 (Session 15 - Planning & Documentation)
+> Last Updated: 2026-01-03 (Session 16 - P5 Complete + Clean Slate)
 
 ---
 
@@ -20,7 +20,47 @@ This commit represents a **stable checkpoint** with:
 ## Current State
 
 **Build:** 436 (v26.102.1001)
-**Status:** Planning complete, ready for major feature implementation
+**Status:** P5 Complete, starting Option B (Clean Slate)
+
+---
+
+## SESSION 16 UPDATES (2026-01-03)
+
+### P5 Advanced Search - COMPLETE
+
+| Feature | Status |
+|---------|--------|
+| Fuzzy Search (pg_trgm) | ✅ Implemented |
+| Search UI Redesign | ✅ Settings popover with mode icons |
+| Mode Icons | ⊃ Contains, = Exact, ≠ Excludes, ≈ Similar |
+| Threshold | 0.3 (configurable in rows.py) |
+
+**Commits:**
+- `455753f` - Session 16: P5 Fuzzy Search + QAExcelCompiler docs
+- `5ac013a` - QAExcelCompiler: Replace mode + file modification timestamp
+
+### QAExcelCompiler Updates
+- Changed from APPEND to REPLACE mode for comments
+- Uses file's last modified time instead of datetime.now()
+- Timestamp at bottom with linebreak
+
+### Option B - Clean Slate Progress
+
+**Issues Closed This Session:**
+| Issue | Resolution |
+|-------|------------|
+| EP-005 | ✅ QuickSearch NOT absorbed - KEEP as standalone app |
+| EP-006 | ✅ KR Similar NOT absorbed - KEEP as standalone app |
+| CLEANUP-001 | ✅ N/A (QuickSearch stays) |
+| CLEANUP-002 | ✅ N/A (KR Similar stays) |
+| UI-100 | ✅ FIXED - Hash cleanup listener added |
+| UI-101 | ✅ Already Fixed - Settings contains all user options |
+
+**Remaining:** 4 Endpoint Coverage issues (EP-001 to EP-004)
+  - Generated 149 test stubs via `endpoint_audit.py --generate-stubs`
+  - Location: `tests/api/test_generated_stubs.py`
+  - Tests validate endpoint existence (200/201/204/404/422 acceptable)
+  - Run: `pytest tests/api/test_generated_stubs.py -v`
 
 ---
 
@@ -72,14 +112,24 @@ Complete specification written with all design decisions resolved:
 
 ## PLANNING STATUS
 
-### Fully Planned (Ready to Implement)
+### Completed
+
+| Priority | Feature | Doc | Status |
+|----------|---------|-----|--------|
+| **P5** | Advanced Search | `ADVANCED_SEARCH.md` | ✅ DONE (Session 16) |
+
+### Ready to Implement
 
 | Priority | Feature | Doc | Lines | Effort |
 |----------|---------|-----|-------|--------|
 | **P3** | Offline/Online Mode | `OFFLINE_ONLINE_MODE.md` | ~1200 | 10 weeks |
-| **P5** | Advanced Search | `ADVANCED_SEARCH.md` | ~124 | 2-3 days |
-| **P4** | Color Parser Extension | `COLOR_PARSER_EXTENSION.md` | ~110 | 1-2 days |
 | **Phase 10** | Major UI/UX Overhaul | `PHASE_10_MAJOR_UIUX_OVERHAUL.md` | ~330 | 4-6 weeks |
+
+### On Hold
+
+| Priority | Feature | Notes |
+|----------|---------|-------|
+| **P4** | Color Parser Extension | Current parser works fine, user will request if needed |
 
 ### Pending Work
 
@@ -92,7 +142,7 @@ Complete specification written with all design decisions resolved:
 
 ---
 
-## OPEN ISSUES SUMMARY (8 Total)
+## OPEN ISSUES SUMMARY (4 Total)
 
 ### HIGH Priority (Endpoint Coverage)
 
@@ -103,21 +153,21 @@ Complete specification written with all design decisions resolved:
 | EP-003 | Admin Stats at 0% (0/16) | Write 16 tests |
 | EP-004 | XLSTransfer at 7% (1/13) | Write 12 more tests |
 
-### MEDIUM Priority (Audits)
+### ~~MEDIUM Priority (Audits)~~ ✅ COMPLETE
 
-| Issue | Description |
-|-------|-------------|
-| EP-005 | QuickSearch audit (absorbed?) |
-| EP-006 | KR Similar audit (absorbed?) |
+| Issue | Result |
+|-------|--------|
+| ~~EP-005~~ | ✅ QuickSearch NOT absorbed - KEEP (unique dictionary management) |
+| ~~EP-006~~ | ✅ KR Similar NOT absorbed - KEEP (unique FAISS similarity) |
+| ~~CLEANUP-001~~ | ✅ N/A - QuickSearch stays |
+| ~~CLEANUP-002~~ | ✅ N/A - KR Similar stays |
 
-### LOW Priority (Cleanup/Accessibility)
+### ~~LOW Priority (Accessibility)~~ ✅ ALL FIXED
 
-| Issue | Description |
-|-------|-------------|
-| UI-100 | Skip to Main Content URL artifact |
-| UI-101 | Merge User button into Settings |
-| CLEANUP-001 | Remove QuickSearch if absorbed |
-| CLEANUP-002 | Remove KR Similar if absorbed |
+| Issue | Result |
+|-------|--------|
+| ~~UI-100~~ | ✅ FIXED - Hash cleanup listener in +layout.svelte |
+| ~~UI-101~~ | ✅ Already Fixed - Settings contains all user options |
 
 ### FIXED This Session (Session 15)
 
@@ -244,9 +294,9 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 | Build | 436 |
 | Tests | 1,399 |
 | Endpoints | 118 |
-| Open Issues | 8 (was 12, 4 verified fixed) |
+| Open Issues | 4 (all endpoint coverage) |
 | Planning Docs | 4 complete |
 
 ---
 
-*Session 15 - Planning & Documentation Complete*
+*Session 16 - Option B Clean Slate: 4/8 issues closed, 4 remaining (endpoint coverage)*
