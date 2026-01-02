@@ -49,26 +49,18 @@ When absorbing features into LDM:
 - Each function does ONE thing
 - Type hints required
 
-### 5. DON'T PARSE WHAT YOU ALREADY HAVE (AU-006 LESSON)
+### 5. IS IT STUPID OR ELEGANT?
 
-**BEFORE writing regex, parsing, or extraction code - ASK:**
-- Does this value already exist somewhere?
-- Is there a variable/output I can use directly?
-- Am I duplicating logic that exists elsewhere?
+**Before writing ANY code, ask: Is this STUPID or ELEGANT?**
 
-**BAD (AU-006):**
-```powershell
-# Regex to extract version from version.py... WHY??
-if ($content -match 'VERSION\s*=\s*"([^"]+)"') { $version = $Matches[1] }
-```
+- **STUPID** = Unnecessary, fragile, solves problems that don't exist, breaks on edge cases
+- **ELEGANT** = Right solution for the problem, robust, maintainable, survives changes
 
-**GOOD:**
-```powershell
-# CI already has the version - just use it
-$version = $env:VERSION  # from ${{ needs.job.outputs.version }}
-```
+**Don't fix stupid code - DELETE it and find the elegant way.**
 
-**The Rule:** If the data exists, use it directly. Don't create a second path to the same data.
+**Example (AU-006):** Regex to parse version from file when CI already had the version as a variable. The regex wasn't wrong because it was "complex" - it was wrong because it was **STUPID**. The variable already existed. We were solving a problem that didn't need solving.
+
+**The question isn't "is this simple?" - it's "is this the RIGHT solution?"**
 
 ### 5. ASYNC BY DEFAULT (Backend)
 - All new endpoints should be async
