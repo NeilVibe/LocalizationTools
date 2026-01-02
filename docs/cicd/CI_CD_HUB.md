@@ -295,4 +295,94 @@ CDP_TEST_PASS: ${{ secrets.CI_TEST_PASS }}
 
 ---
 
-*Last updated: 2025-12-25*
+## Release System: 2-Tag Methodology
+
+**Each successful build creates TWO releases on Gitea:**
+
+| Tag | Example | Purpose |
+|-----|---------|---------|
+| **Versioned** | `v26.102.1001` | Permanent history, rollback target |
+| **Latest** | `latest` | Auto-updater endpoint (always current) |
+
+### Why 2 Tags?
+
+```
+PROBLEM: electron-updater needs a FIXED URL to check for updates
+SOLUTION: 'latest' tag always points to current version
+
+Auto-updater flow:
+1. App checks: http://gitea/releases/download/latest/latest.yml
+2. Gets version number from latest.yml
+3. Compares with installed version
+4. If newer → downloads installer from same 'latest' release
+```
+
+### CI Release Flow
+
+```
+Build Success:
+    ↓
+1. Create versioned release (v26.102.1001)
+   - Upload: installer.exe, blockmap, latest.yml
+   - Tag: v26.102.1001
+    ↓
+2. Delete existing 'latest' release (if exists)
+    ↓
+3. Create new 'latest' release
+   - Copy same assets from versioned release
+   - Tag: latest
+   - Points to SAME commit
+    ↓
+4. Cleanup old releases (keep last 5)
+```
+
+### package.json Auto-Updater Config
+
+```json
+"publish": {
+  "provider": "generic",
+  "url": "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest"
+}
+```
+
+**KEY:** URL points to `/releases/download/latest` - this is WHY we need the `latest` tag!
+
+### latest.yml Format
+
+```yaml
+version: 26.102.1001
+files:
+  - url: LocaNext_v26.102.1001_Light_Setup.exe
+    sha512: 95cf134cce7d522f...
+    size: 624194414
+path: LocaNext_v26.102.1001_Light_Setup.exe
+sha512: 95cf134cce7d522f...
+releaseDate: '2026-01-02T10:20:06.387Z'
+```
+
+### Testing Auto-Updater
+
+```bash
+# List current releases
+./scripts/release_manager.sh list
+
+# Create mock v99.999.9999 to test auto-update
+./scripts/release_manager.sh mock-update
+
+# Restore real version after testing
+./scripts/release_manager.sh restore
+```
+
+### Troubleshooting Auto-Updater
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| App checks GitHub | Wrong provider in package.json | Set `provider: generic` with Gitea URL |
+| No update detected | 'latest' tag missing | CI creates it automatically, or run manual release |
+| Version compare fails | Semver format issue | Use `%-m%d` format (no leading zeros) |
+
+See `docs/cicd/TROUBLESHOOTING.md` for detailed auto-updater debugging.
+
+---
+
+*Last updated: 2026-01-02*
