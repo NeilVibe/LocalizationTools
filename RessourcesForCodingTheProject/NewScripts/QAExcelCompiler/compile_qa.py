@@ -317,18 +317,18 @@ def get_or_create_user_screenshot_column(ws, username, after_comment_col):
     cell = ws.cell(row=1, column=new_col)
     cell.value = col_name
 
-    # Light green background for screenshot columns
-    cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+    # Light blue background for screenshot columns (matching COMMENT style)
+    cell.fill = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
     # Bold font
     cell.font = Font(bold=True, color="000000")
     # Center alignment
     cell.alignment = Alignment(horizontal='center', vertical='center')
-    # Nice border
+    # Nice border (matching COMMENT style)
     cell.border = Border(
-        left=Side(style='medium', color='228B22'),
-        right=Side(style='medium', color='228B22'),
-        top=Side(style='medium', color='228B22'),
-        bottom=Side(style='medium', color='228B22')
+        left=Side(style='medium', color='4472C4'),
+        right=Side(style='medium', color='4472C4'),
+        top=Side(style='medium', color='4472C4'),
+        bottom=Side(style='medium', color='4472C4')
     )
 
     # Set column width

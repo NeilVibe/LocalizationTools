@@ -12,6 +12,7 @@
 | **Input** | `QAfolder/{Username}_{Category}/` (folder with xlsx + images) |
 | **Output** | `Masterfolder/Master_{Category}.xlsx` + `Masterfolder/Images/` |
 | **Key Features** | Paired COMMENT/SCREENSHOT columns, Image consolidation, Hyperlink transformation, Status tracking |
+| **Styling** | Unified blue theme for COMMENT/SCREENSHOT (headers + cells), preserves custom colors on re-runs |
 
 ---
 
@@ -187,6 +188,24 @@ def format_comment(new_comment, string_id=None, existing_comment=None, file_mod_
     else:
         return f"{new_text}\n---\n(updated: {timestamp})"
 ```
+
+### 4.1 Cell Styling
+
+**Unified blue theme** for both COMMENT and SCREENSHOT columns:
+
+| Element | Color | Code |
+|---------|-------|------|
+| Header fill | Light blue | `87CEEB` |
+| Header border | Blue | `4472C4` |
+| Cell fill (on update) | Light blue | `E6F3FF` |
+| Cell border | Sky blue | `87CEEB` |
+| Hyperlink font | Blue | `0000FF` |
+| Warning font (missing image) | Orange | `FF6600` |
+
+**Custom color protection:**
+- Styling only applies when value is NEW (different from existing)
+- If team manually colors a cell, it won't be overwritten on re-runs
+- Duplicate detection prevents unnecessary updates
 
 ### 5. Status Calculation
 
@@ -810,4 +829,4 @@ def discover_qa_folders(qa_folder):
 *WIP created 2025-12-30*
 *Updated 2025-12-30: Added StringID parsing, column styling, future features*
 *Updated 2026-01-02: Added IMAGE COMPILATION SYSTEM - folder-based input, centralized Images/ output, duplicate naming strategy*
-*Updated 2026-01-03: Clean comment format with --- delimiter, improved duplicate detection*
+*Updated 2026-01-03: Clean comment format with --- delimiter, unified blue styling for COMMENT/SCREENSHOT*
