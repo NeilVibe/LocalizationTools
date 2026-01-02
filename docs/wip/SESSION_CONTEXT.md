@@ -1,13 +1,73 @@
 # Session Context
 
-> Last Updated: 2026-01-01 (Session 13 - CI/CD Fixes)
+> Last Updated: 2026-01-02 (Session 14 - Auto-Updater Fix)
 
 ---
 
 ## Current State
 
-**Build:** 426
-**Status:** Session 13 - CI/CD infrastructure fixes
+**Build:** 436 (v26.102.1001)
+**Status:** Auto-updater fully working with Gitea
+
+---
+
+## SESSION 14 UPDATES (2026-01-02)
+
+### Auto-Updater Fixes
+
+| Issue | Root Cause | Fix | Status |
+|-------|------------|-----|--------|
+| AU-001 Semver leading zeros | `%m%d` format | Changed to `%-m%d` (no leading zero) | ✅ FIXED |
+| AU-002 Missing latest tag | No `latest` release for electron-updater | Added step to create `latest` release | ✅ FIXED |
+| AU-003 YAML heredoc | PowerShell heredoc broke YAML | Use ConvertTo-Json | ✅ FIXED |
+| AU-004 JSON escaping | curl JSON encoding issues | Write to file, use @file | ✅ FIXED |
+| AU-005 UTF-8 BOM | PowerShell Out-File adds BOM | Use `[System.IO.File]::WriteAllText()` | ✅ FIXED |
+| AU-006 Stupid regex | Parsed version.py when CI had variable | Use `${{ needs.job.outputs.version }}` directly | ✅ FIXED |
+| AU-007 Wrong provider | package.json had `github` provider | Changed to `generic` with Gitea URL | ✅ FIXED |
+
+### Files Modified (Session 14)
+
+| File | Change |
+|------|--------|
+| `locaNext/package.json` | Changed publish provider from `github` to `generic` with Gitea URL |
+| `.gitea/workflows/build.yml` | Fixed latest.yml generation, removed regex, use CI version directly |
+| `docs/development/CODING_STANDARDS.md` | Added rule 5: "STUPID vs ELEGANT" |
+| `CLAUDE.md` | Added rule 14: "STUPID vs ELEGANT" |
+| `docs/cicd/TROUBLESHOOTING.md` | Added Gitea API Token documentation |
+
+### Files Created (Session 14)
+
+| File | Purpose |
+|------|---------|
+| `scripts/release_manager.sh` | Release management (list, cleanup, mock-update, restore) |
+| `testing_toolkit/cdp/check_update.js` | Test auto-update connectivity |
+| `testing_toolkit/cdp/auto_update_test.js` | Full auto-update debug test |
+
+### Key Learnings (Session 14)
+
+| CS | Issue | Solution |
+|----|-------|----------|
+| CS-022 | STUPID vs ELEGANT | Don't fix broken complexity - DELETE it. Ask "is this the RIGHT solution?" |
+| CS-023 | Auto-updater provider | electron-updater `generic` provider requires URL to directory with `latest.yml` |
+| CS-024 | Gitea token location | Stored in `~/.bashrc` as `GITEA_TOKEN` |
+
+### Cleanup Done (Session 14)
+
+- Deleted 8 old releases (all had broken GitHub auto-updater)
+- Only 2 releases remain: `latest` + `v26.102.1001`
+- Verified auto-update with mock v99.999.9999 test
+
+### Auto-Update Test Proof
+
+```
+Server: v99.999.9999 (mock) vs Installed: v26.102.1001
+
+Result:
+├── Connected to Gitea ✓
+├── Detected newer version ✓
+├── Downloaded 624MB installer ✓
+└── Created pending/update-info.json ✓
+```
 
 ---
 
