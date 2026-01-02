@@ -104,3 +104,4 @@ Build 430: Fix latest release API (add target_commitish)
 Build 431: Fix YAML syntax (no heredoc)
 Build 432: Fix curl JSON escaping (use @file)
 Build 433: Fix UTF-8 BOM in JSON file
+Build 434: Use CI version directly
