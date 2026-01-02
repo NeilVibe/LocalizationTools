@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 """
-QA Excel Compiler (Robust Version)
-===================================
-Compiles QA tester Excel files into master sheets.
+QA Excel Compiler (Robust Version with Image Compilation)
+==========================================================
+Compiles QA tester Excel files into master sheets with image consolidation.
 
 Works with ANY Excel structure - finds columns dynamically.
 
 Usage:
     python3 compile_qa.py
 
-Input:  QAfolder/{Username}_{Category}.xlsx
+Input:  QAfolder/{Username}_{Category}/
+        - One .xlsx file per folder
+        - Images referenced in SCREENSHOT column
+
 Output: Masterfolder/Master_{Category}.xlsx
+        Masterfolder/Images/{Username}_{Category}_{original}.png
 
 Categories: Quest, Knowledge, Item, Node, System
 """
 
 import os
+import shutil
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
@@ -28,57 +33,117 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 SCRIPT_DIR = Path(__file__).parent
 QA_FOLDER = SCRIPT_DIR / "QAfolder"
 MASTER_FOLDER = SCRIPT_DIR / "Masterfolder"
-MASTER_UI_FOLDER = MASTER_FOLDER / "MasterUI"
+IMAGES_FOLDER = MASTER_FOLDER / "Images"
 CATEGORIES = ["Quest", "Knowledge", "Item", "Node", "System"]
+
+# Supported image extensions
+IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 
 # Valid STATUS values (only these count as "filled")
 VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED"]
 
-# Global collector for UI issues (rows with screenshots)
-UI_ISSUES = []
 
-
-def discover_qa_files():
+def discover_qa_folders():
     """
-    Find all QA Excel files and parse their metadata.
+    Find all QA folders and parse their metadata.
 
-    Returns: List of dicts with {filepath, username, category}
+    Folder format: {Username}_{Category}/
+    Each folder contains: one .xlsx file + images
+
+    Returns: List of dicts with {folder_path, xlsx_path, username, category, images}
     """
-    files = []
+    results = []
 
     if not QA_FOLDER.exists():
         print(f"ERROR: QAfolder not found: {QA_FOLDER}")
-        return files
+        return results
 
-    for f in QA_FOLDER.glob("*.xlsx"):
-        # Skip temp files
-        if f.name.startswith("~$"):
+    for folder in QA_FOLDER.iterdir():
+        if not folder.is_dir():
             continue
 
-        # Parse: Username_Category.xlsx
-        parts = f.stem.split("_")
-        if len(parts) >= 2:
-            username = parts[0]
-            category = parts[1]
+        # Skip hidden/temp folders
+        if folder.name.startswith('.') or folder.name.startswith('~'):
+            continue
 
-            if category in CATEGORIES:
-                files.append({
-                    "filepath": f,
-                    "username": username,
-                    "category": category
-                })
-            else:
-                print(f"WARN: Unknown category '{category}' in {f.name}")
-        else:
-            print(f"WARN: Invalid filename format: {f.name} (expected: Username_Category.xlsx)")
+        # Parse folder name: {Username}_{Category}
+        parts = folder.name.split("_")
+        if len(parts) < 2:
+            print(f"WARN: Invalid folder name format: {folder.name} (expected: Username_Category)")
+            continue
 
-    return files
+        username = parts[0]
+        category = "_".join(parts[1:])  # Handle categories with underscores (though unlikely)
+
+        if category not in CATEGORIES:
+            print(f"WARN: Unknown category '{category}' in folder {folder.name}")
+            continue
+
+        # Find xlsx file (must be exactly 1)
+        xlsx_files = list(folder.glob("*.xlsx"))
+        xlsx_files = [f for f in xlsx_files if not f.name.startswith("~$")]
+
+        if len(xlsx_files) == 0:
+            print(f"WARN: No xlsx in folder: {folder.name}")
+            continue
+        if len(xlsx_files) > 1:
+            print(f"WARN: Multiple xlsx in folder: {folder.name}, using first: {xlsx_files[0].name}")
+
+        xlsx_path = xlsx_files[0]
+
+        # Find images
+        images = [f for f in folder.iterdir()
+                  if f.is_file() and f.suffix.lower() in IMAGE_EXTENSIONS]
+
+        results.append({
+            "folder_path": folder,
+            "xlsx_path": xlsx_path,
+            "username": username,
+            "category": category,
+            "images": images
+        })
+
+    return results
 
 
 def ensure_master_folder():
-    """Create Masterfolder and MasterUI subfolder if they don't exist."""
+    """Create Masterfolder and Images subfolder if they don't exist."""
     MASTER_FOLDER.mkdir(exist_ok=True)
-    MASTER_UI_FOLDER.mkdir(exist_ok=True)
+    IMAGES_FOLDER.mkdir(exist_ok=True)
+
+
+def copy_images_with_unique_names(qa_folder_info):
+    """
+    Copy images from QA folder to Images/ with unique names.
+
+    Naming: {Username}_{Category}_{original_filename}
+
+    Args:
+        qa_folder_info: Dict with {folder_path, username, category, images}
+
+    Returns: Dict mapping original_name -> new_name
+    """
+    username = qa_folder_info["username"]
+    category = qa_folder_info["category"]
+    images = qa_folder_info["images"]
+
+    image_mapping = {}
+
+    for img_path in images:
+        original_name = img_path.name
+        new_name = f"{username}_{category}_{original_name}"
+
+        dest_path = IMAGES_FOLDER / new_name
+
+        # Copy image (overwrite if same user re-submits)
+        shutil.copy2(img_path, dest_path)
+
+        image_mapping[original_name] = new_name
+
+    if image_mapping:
+        print(f"    Copied {len(image_mapping)} images to Images/")
+
+    return image_mapping
 
 
 def find_column_by_header(ws, header_name, case_insensitive=True):
@@ -216,6 +281,59 @@ def get_or_create_user_comment_column(ws, username):
     return new_col
 
 
+def get_or_create_user_screenshot_column(ws, username, after_comment_col):
+    """
+    Find or create SCREENSHOT_{username} column immediately after COMMENT_{username}.
+
+    Args:
+        ws: Worksheet
+        username: User identifier
+        after_comment_col: Column index of COMMENT_{username} (screenshot goes right after)
+
+    Returns: Column index (1-based)
+    """
+    col_name = f"SCREENSHOT_{username}"
+
+    # Check if column already exists
+    for col in range(1, ws.max_column + 1):
+        header = ws.cell(row=1, column=col).value
+        if header and str(header).strip() == col_name:
+            return col
+
+    # Insert new column right after COMMENT_{username}
+    new_col = after_comment_col + 1
+
+    # If there's already data after the comment column, we need to insert
+    # Actually, since we're using MAX_COLUMN + 1 for COMMENT, SCREENSHOT should be MAX_COLUMN + 1 now
+    # But to be safe, let's just use max_column + 1 for screenshot too
+    new_col = ws.max_column + 1
+
+    cell = ws.cell(row=1, column=new_col)
+    cell.value = col_name
+
+    # Light green background for screenshot columns
+    cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+    # Bold font
+    cell.font = Font(bold=True, color="000000")
+    # Center alignment
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    # Nice border
+    cell.border = Border(
+        left=Side(style='medium', color='228B22'),
+        right=Side(style='medium', color='228B22'),
+        top=Side(style='medium', color='228B22'),
+        bottom=Side(style='medium', color='228B22')
+    )
+
+    # Set column width
+    col_letter = get_column_letter(new_col)
+    ws.column_dimensions[col_letter].width = 40
+    ws.column_dimensions[col_letter].hidden = False
+
+    print(f"    Created column: {col_name} at {get_column_letter(new_col)} (styled)")
+    return new_col
+
+
 def format_comment(new_comment, string_id=None, existing_comment=None):
     """
     Format comment with StringID and datetime, append to existing if present.
@@ -312,19 +430,29 @@ def find_matching_row_fallback(master_ws, qa_signature, exclude_cols, start_row=
     return None
 
 
-def process_sheet(master_ws, qa_ws, username, category):
+def process_sheet(master_ws, qa_ws, username, category, image_mapping=None):
     """
-    Process a single sheet: copy COMMENT from QA to master, collect STATUS stats.
+    Process a single sheet: copy COMMENT and SCREENSHOT from QA to master, collect STATUS stats.
 
     ROBUST VERSION:
-    - Finds COMMENT/STATUS/STRINGID columns dynamically by header name
-    - Uses MAX_COLUMN + 1 for user comment columns
+    - Finds COMMENT/STATUS/STRINGID/SCREENSHOT columns dynamically by header name
+    - Uses MAX_COLUMN + 1 for user comment and screenshot columns
     - Falls back to 2+ cell matching if row counts differ
     - Applies beautiful styling to comment cells (blue fill + bold)
-    - Collects UI issues (rows with SCREENSHOT) for MasterUI
+    - Transfers screenshots with hyperlink path transformation
 
-    Returns: Dict with {comments: n, stats: {issue: n, no_issue: n, blocked: n, total: n}, ui_issues: n}
+    Args:
+        master_ws: Master worksheet
+        qa_ws: QA worksheet
+        username: User identifier
+        category: Category name
+        image_mapping: Dict mapping original_name -> new_name (for hyperlink transformation)
+
+    Returns: Dict with {comments: n, screenshots: n, stats: {...}, fallback_used: n}
     """
+    if image_mapping is None:
+        image_mapping = {}
+
     # Find columns dynamically in QA worksheet
     qa_status_col = find_column_by_header(qa_ws, "STATUS")
     qa_comment_col = find_column_by_header(qa_ws, "COMMENT")
@@ -345,29 +473,32 @@ def process_sheet(master_ws, qa_ws, username, category):
     # Find or create COMMENT_{username} in master (MAX_COLUMN + 1)
     master_comment_col = get_or_create_user_comment_column(master_ws, username)
 
+    # Find or create SCREENSHOT_{username} in master (right after COMMENT_{username})
+    master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_comment_col)
+
     # Build exclude set for master row matching
     master_status_col = find_column_by_header(master_ws, "STATUS")
     master_orig_comment_col = find_column_by_header(master_ws, "COMMENT")
-    master_screenshot_col = find_column_by_header(master_ws, "SCREENSHOT")
+    master_orig_screenshot_col = find_column_by_header(master_ws, "SCREENSHOT")
 
     master_exclude_cols = set()
     if master_status_col:
         master_exclude_cols.add(master_status_col)
     if master_orig_comment_col:
         master_exclude_cols.add(master_orig_comment_col)
-    if master_screenshot_col:
-        master_exclude_cols.add(master_screenshot_col)
-    # Also exclude all COMMENT_* columns
+    if master_orig_screenshot_col:
+        master_exclude_cols.add(master_orig_screenshot_col)
+    # Also exclude all COMMENT_* and SCREENSHOT_* columns
     for col in range(1, master_ws.max_column + 1):
         header = master_ws.cell(row=1, column=col).value
-        if header and str(header).startswith("COMMENT_"):
+        if header and (str(header).startswith("COMMENT_") or str(header).startswith("SCREENSHOT_")):
             master_exclude_cols.add(col)
 
     result = {
         "comments": 0,
+        "screenshots": 0,
         "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "total": 0},
-        "fallback_used": 0,
-        "ui_issues": 0
+        "fallback_used": 0
     }
 
     # Determine if we need fallback matching
@@ -434,31 +565,57 @@ def process_sheet(master_ws, qa_ws, username, category):
 
                     result["comments"] += 1
 
-        # Collect UI issues (rows with SCREENSHOT) for MasterUI
+        # Transfer SCREENSHOT to SCREENSHOT_{username} with hyperlink transformation
         if qa_screenshot_col:
-            screenshot_cell = qa_ws.cell(row=qa_row, column=qa_screenshot_col)
-            screenshot_value = screenshot_cell.value
-            screenshot_hyperlink = screenshot_cell.hyperlink
+            qa_screenshot_cell = qa_ws.cell(row=qa_row, column=qa_screenshot_col)
+            screenshot_value = qa_screenshot_cell.value
+            screenshot_hyperlink = qa_screenshot_cell.hyperlink
 
             if screenshot_value and str(screenshot_value).strip():
-                # Get comment for this row (formatted or raw)
-                comment_text = ""
-                if qa_comment_col:
-                    raw_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
-                    if raw_comment and str(raw_comment).strip():
-                        string_id = None
-                        if qa_stringid_col:
-                            string_id = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
-                        comment_text = format_comment(raw_comment, string_id, None)
+                master_screenshot_cell = master_ws.cell(row=master_row, column=master_screenshot_col)
 
-                # Add to UI_ISSUES collector
-                UI_ISSUES.append({
-                    "category": category,
-                    "comment": comment_text,
-                    "screenshot": screenshot_value,
-                    "hyperlink": screenshot_hyperlink
-                })
-                result["ui_issues"] += 1
+                # Determine the hyperlink target
+                if screenshot_hyperlink and screenshot_hyperlink.target:
+                    # Extract original filename from hyperlink target
+                    original_target = screenshot_hyperlink.target
+                    original_name = os.path.basename(original_target)
+
+                    # Transform to new path if image was copied
+                    if original_name in image_mapping:
+                        new_name = image_mapping[original_name]
+                        new_target = f"Images/{new_name}"
+
+                        # Set hyperlink with transformed path
+                        master_screenshot_cell.hyperlink = new_target
+                        master_screenshot_cell.value = new_name
+                        master_screenshot_cell.font = Font(color="0000FF", underline="single")
+                    else:
+                        # Image not found in mapping, preserve original
+                        master_screenshot_cell.hyperlink = original_target
+                        master_screenshot_cell.value = screenshot_value
+                        master_screenshot_cell.font = Font(color="FF6600", underline="single")  # Orange = warning
+                else:
+                    # No hyperlink, just copy value (might be just text)
+                    original_name = str(screenshot_value).strip()
+                    if original_name in image_mapping:
+                        new_name = image_mapping[original_name]
+                        new_target = f"Images/{new_name}"
+                        master_screenshot_cell.hyperlink = new_target
+                        master_screenshot_cell.value = new_name
+                        master_screenshot_cell.font = Font(color="0000FF", underline="single")
+                    else:
+                        master_screenshot_cell.value = screenshot_value
+
+                # Apply styling
+                master_screenshot_cell.alignment = Alignment(horizontal='left', vertical='center')
+                master_screenshot_cell.border = Border(
+                    left=Side(style='thin', color='90EE90'),
+                    right=Side(style='thin', color='90EE90'),
+                    top=Side(style='thin', color='90EE90'),
+                    bottom=Side(style='thin', color='90EE90')
+                )
+
+                result["screenshots"] += 1
 
     return result
 
@@ -540,109 +697,21 @@ def update_status_sheet(wb, users, user_stats):
     print(f"  Updated STATUS sheet with {len(users)} users (first tab, yellow header)")
 
 
-def write_master_ui():
+def process_category(category, qa_folders):
     """
-    Write MasterUI.xlsx with all collected UI issues (rows with screenshots).
+    Process all QA folders for one category.
 
-    Output: Masterfolder/MasterUI/MasterUI.xlsx
-    Columns: Category, COMMENT, SCREENSHOT (with hyperlink preserved)
-
-    Duplicate detection: Skips if same SCREENSHOT + COMMENT already exists.
-    """
-    master_ui_path = MASTER_UI_FOLDER / "MasterUI.xlsx"
-
-    # Load existing or create new
-    if master_ui_path.exists():
-        wb = openpyxl.load_workbook(master_ui_path)
-        ws = wb.active
-        print(f"\n  Loading existing MasterUI: {master_ui_path.name}")
-
-        # Build set of existing entries for duplicate detection
-        existing_entries = set()
-        for row in range(2, ws.max_row + 1):
-            comment = ws.cell(row=row, column=2).value or ""
-            screenshot = ws.cell(row=row, column=3).value or ""
-            existing_entries.add((str(comment).strip(), str(screenshot).strip()))
-    else:
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "UI Issues"
-        existing_entries = set()
-
-        # Create headers with styling
-        headers = ["Category", "COMMENT", "SCREENSHOT"]
-        header_fill = PatternFill(start_color="FF6B6B", end_color="FF6B6B", fill_type="solid")  # Red/coral
-        header_font = Font(bold=True, color="FFFFFF")
-        border = Border(
-            left=Side(style='medium'),
-            right=Side(style='medium'),
-            top=Side(style='medium'),
-            bottom=Side(style='medium')
-        )
-
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.border = border
-            cell.alignment = Alignment(horizontal='center')
-
-        # Set column widths
-        ws.column_dimensions['A'].width = 15
-        ws.column_dimensions['B'].width = 50
-        ws.column_dimensions['C'].width = 40
-
-        print(f"\n  Creating new MasterUI: {master_ui_path.name}")
-
-    # Add new UI issues (skip duplicates)
-    added = 0
-    skipped = 0
-
-    for issue in UI_ISSUES:
-        comment = issue["comment"] or ""
-        screenshot = issue["screenshot"] or ""
-        key = (str(comment).strip(), str(screenshot).strip())
-
-        if key in existing_entries:
-            skipped += 1
-            continue
-
-        # Add new row
-        new_row = ws.max_row + 1
-        ws.cell(row=new_row, column=1, value=issue["category"])
-
-        # COMMENT cell with styling
-        comment_cell = ws.cell(row=new_row, column=2, value=comment)
-        comment_cell.fill = PatternFill(start_color="FFE6E6", end_color="FFE6E6", fill_type="solid")
-        comment_cell.font = Font(bold=True)
-        comment_cell.alignment = Alignment(wrap_text=True, vertical='top')
-
-        # SCREENSHOT cell with hyperlink preserved
-        screenshot_cell = ws.cell(row=new_row, column=3, value=screenshot)
-        if issue.get("hyperlink"):
-            screenshot_cell.hyperlink = issue["hyperlink"]
-            screenshot_cell.font = Font(color="0000FF", underline="single")
-
-        existing_entries.add(key)
-        added += 1
-
-    # Save
-    wb.save(master_ui_path)
-    print(f"  MasterUI: {added} added, {skipped} duplicates skipped")
-    print(f"  Saved: {master_ui_path}")
-
-
-def process_category(category, qa_files):
-    """
-    Process all QA files for one category.
+    Args:
+        category: Category name (Quest, Knowledge, etc.)
+        qa_folders: List of dicts with {folder_path, xlsx_path, username, category, images}
     """
     print(f"\n{'='*50}")
-    print(f"Processing: {category} ({len(qa_files)} files)")
+    print(f"Processing: {category} ({len(qa_folders)} folders)")
     print(f"{'='*50}")
 
     # Get or create master
-    first_file = qa_files[0]["filepath"]
-    master_wb, master_path = get_or_create_master(category, first_file)
+    first_xlsx = qa_folders[0]["xlsx_path"]
+    master_wb, master_path = get_or_create_master(category, first_xlsx)
 
     if master_wb is None:
         return
@@ -650,16 +719,24 @@ def process_category(category, qa_files):
     # Track users and aggregated stats
     all_users = set()
     user_stats = defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0})
+    total_images = 0
+    total_screenshots = 0
 
-    # Process each QA file
-    for qf in qa_files:
+    # Process each QA folder
+    for qf in qa_folders:
         username = qf["username"]
-        filepath = qf["filepath"]
+        xlsx_path = qf["xlsx_path"]
+        folder_path = qf["folder_path"]
         all_users.add(username)
 
-        print(f"\n  File: {filepath.name}")
+        print(f"\n  Folder: {folder_path.name}")
 
-        qa_wb = openpyxl.load_workbook(filepath)
+        # Copy images with unique names
+        image_mapping = copy_images_with_unique_names(qf)
+        total_images += len(image_mapping)
+
+        # Load xlsx
+        qa_wb = openpyxl.load_workbook(xlsx_path)
 
         for sheet_name in qa_wb.sheetnames:
             # Skip STATUS sheets
@@ -671,13 +748,15 @@ def process_category(category, qa_files):
                 print(f"    WARN: Sheet '{sheet_name}' not in master, skipping")
                 continue
 
-            # Process sheet and collect stats
-            result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username, category)
+            # Process sheet with image mapping for hyperlink transformation
+            result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username, category, image_mapping)
             stats = result["stats"]
 
             fallback_info = f", fallback:{result['fallback_used']}" if result.get('fallback_used', 0) > 0 else ""
-            ui_info = f", ui:{result['ui_issues']}" if result.get('ui_issues', 0) > 0 else ""
-            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked{fallback_info}{ui_info}")
+            screenshot_info = f", screenshots:{result['screenshots']}" if result.get('screenshots', 0) > 0 else ""
+            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked{fallback_info}{screenshot_info}")
+
+            total_screenshots += result.get('screenshots', 0)
 
             # Aggregate stats for this user across all sheets
             user_stats[username]["total"] += stats["total"]
@@ -693,42 +772,48 @@ def process_category(category, qa_files):
     # Save master
     master_wb.save(master_path)
     print(f"\n  Saved: {master_path}")
+    if total_images > 0:
+        print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
 
 
 def main():
     """Main entry point."""
-    global UI_ISSUES
-
     print("="*60)
-    print("QA Excel Compiler (Robust Version)")
+    print("QA Excel Compiler (with Image Compilation)")
     print("="*60)
     print("Features:")
-    print("  - Dynamic column detection (finds STATUS/COMMENT by header)")
-    print("  - MAX_COLUMN + 1 for user columns (works with ANY structure)")
+    print("  - Folder-based input: QAfolder/{Username}_{Category}/")
+    print("  - Dynamic column detection (finds STATUS/COMMENT/SCREENSHOT by header)")
+    print("  - Paired COMMENT_{User} + SCREENSHOT_{User} columns")
+    print("  - Image consolidation to Masterfolder/Images/")
+    print("  - Hyperlink transformation with unique naming")
     print("  - Fallback row matching (2+ cell match if row counts differ)")
-    print("  - MasterUI compilation (all screenshot issues in one file)")
     print()
-
-    # Clear UI issues collector
-    UI_ISSUES = []
 
     # Ensure folders exist
     ensure_master_folder()
 
-    # Discover QA files
-    qa_files = discover_qa_files()
+    # Discover QA folders
+    qa_folders = discover_qa_folders()
 
-    if not qa_files:
-        print("\nNo valid QA files found in QAfolder/")
-        print("Expected format: Username_Category.xlsx")
+    if not qa_folders:
+        print("\nNo valid QA folders found in QAfolder/")
+        print("Expected format: QAfolder/{Username}_{Category}/")
+        print("  - Each folder should contain one .xlsx file")
+        print("  - Images should be in the same folder")
         print(f"Valid categories: {', '.join(CATEGORIES)}")
         return
 
-    print(f"Found {len(qa_files)} QA file(s)")
+    print(f"Found {len(qa_folders)} QA folder(s)")
+
+    # Count total images
+    total_images = sum(len(qf["images"]) for qf in qa_folders)
+    if total_images > 0:
+        print(f"Total images to process: {total_images}")
 
     # Group by category
     by_category = defaultdict(list)
-    for qf in qa_files:
+    for qf in qa_folders:
         by_category[qf["category"]].append(qf)
 
     # Process each category
@@ -736,19 +821,13 @@ def main():
         if category in by_category:
             process_category(category, by_category[category])
         else:
-            print(f"\nSKIP: No files for category '{category}'")
-
-    # Write MasterUI with all screenshot issues
-    if UI_ISSUES:
-        print(f"\n{'='*50}")
-        print(f"Processing: MasterUI ({len(UI_ISSUES)} UI issues collected)")
-        print(f"{'='*50}")
-        write_master_ui()
-    else:
-        print("\nNo UI issues (screenshots) found")
+            print(f"\nSKIP: No folders for category '{category}'")
 
     print("\n" + "="*60)
     print("Compilation complete!")
+    print(f"Output: {MASTER_FOLDER}")
+    if total_images > 0:
+        print(f"Images: {IMAGES_FOLDER}")
     print("="*60)
 
 

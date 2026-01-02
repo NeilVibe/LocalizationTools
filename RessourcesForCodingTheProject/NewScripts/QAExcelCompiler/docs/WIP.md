@@ -488,5 +488,296 @@ def get_or_create_master(category, template_file):
 
 ---
 
+## IMAGE COMPILATION SYSTEM (NEW)
+
+### Overview
+
+**Change:** Remove MasterUI logic. Instead, compile ALL images from QA folders into a centralized `Masterfolder/Images/` folder with proper hyperlink management.
+
+### New Input Structure
+
+```
+QAfolder/
+├── John_Quest/                    # Folder name = {Username}_{Category}
+│   ├── LQA_Quest.xlsx             # Only 1 xlsx per folder (any name)
+│   ├── 10034.png                  # Images referenced in xlsx
+│   ├── 919193.png
+│   └── screenshot_ui.png
+├── Alice_Quest/
+│   ├── LQA_Quest.xlsx
+│   ├── 10034.png                  # SAME NAME as John's! (duplicate)
+│   └── bug_report.png
+├── John_Knowledge/
+│   ├── LQA_Knowledge.xlsx
+│   └── 55221.png
+└── Bob_Item/
+    ├── LQA_Item.xlsx
+    └── item_bug.png
+```
+
+**Key Points:**
+- Folder name format: `{Username}_{Category}`
+- Exactly 1 `.xlsx` file per folder (name doesn't matter)
+- Images are hyperlinked in xlsx with **RELATIVE paths** (e.g., `10034.png` or `./10034.png`)
+- Same image filename can exist in different user folders (duplicates)
+
+### New Output Structure
+
+```
+Masterfolder/
+├── Master_Quest.xlsx              # Hyperlinks point to Images/
+├── Master_Knowledge.xlsx
+├── Master_Item.xlsx
+├── Master_Node.xlsx
+├── Master_System.xlsx
+└── Images/                        # ALL images consolidated here
+    ├── John_Quest_10034.png       # Renamed: {Username}_{Category}_{Original}
+    ├── John_Quest_919193.png
+    ├── John_Quest_screenshot_ui.png
+    ├── Alice_Quest_10034.png      # Alice's 10034.png (no collision)
+    ├── Alice_Quest_bug_report.png
+    ├── John_Knowledge_55221.png
+    └── Bob_Item_item_bug.png
+```
+
+### Duplicate Image Naming Strategy
+
+**Problem:** Multiple users may have images with the same filename (e.g., `10034.png`).
+
+**Solution:** Prefix every image with `{Username}_{Category}_`
+
+```python
+def get_unique_image_name(username, category, original_filename):
+    """
+    Generate unique image filename to avoid collisions.
+
+    Input:  "10034.png" from John_Quest folder
+    Output: "John_Quest_10034.png"
+    """
+    return f"{username}_{category}_{original_filename}"
+```
+
+**Why this works:**
+- Username + Category is always unique per QA file
+- Preserves original filename for traceability
+- No collision possible even with 100+ testers
+
+### Paired Columns: COMMENT + SCREENSHOT per User
+
+**Master file structure:**
+```
+Original | ENG | ... | COMMENT_John | SCREENSHOT_John | COMMENT_Alice | SCREENSHOT_Alice | ...
+```
+
+**Why paired:**
+- Comment and screenshot are related (user explains issue + shows it)
+- One hyperlink per cell (Excel limitation)
+- Easy to see who reported what with visual evidence
+
+**Column creation order:**
+1. Find or create `COMMENT_{User}` column
+2. Create `SCREENSHOT_{User}` immediately after it
+
+### Hyperlink Transformation Logic
+
+**Before (in QA xlsx):** Relative path to local folder
+```
+=HYPERLINK("10034.png", "View")
+=HYPERLINK("./screenshot.png", "View")
+```
+
+**After (in Master xlsx):** Relative path to Images/ folder
+```
+=HYPERLINK("Images/John_Quest_10034.png", "View")
+=HYPERLINK("Images/John_Quest_screenshot.png", "View")
+```
+
+**Implementation:**
+
+```python
+import os
+import shutil
+from openpyxl.worksheet.hyperlink import Hyperlink
+
+def process_images_and_hyperlinks(qa_folder_path, username, category, master_ws, images_folder):
+    """
+    1. Find all images in QA folder
+    2. Copy to Images/ with unique names
+    3. Update hyperlinks in master worksheet
+    """
+    qa_folder = Path(qa_folder_path)
+    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
+
+    # Build mapping: original_name -> new_name
+    image_mapping = {}
+
+    for img_file in qa_folder.iterdir():
+        if img_file.suffix.lower() in image_extensions:
+            original_name = img_file.name
+            new_name = f"{username}_{category}_{original_name}"
+
+            # Copy image to Images/ folder
+            dest_path = images_folder / new_name
+            shutil.copy2(img_file, dest_path)
+
+            image_mapping[original_name] = new_name
+
+    # Update hyperlinks in worksheet
+    update_hyperlinks(master_ws, image_mapping)
+
+    return image_mapping
+
+
+def update_hyperlinks(ws, image_mapping):
+    """
+    Scan worksheet for hyperlinks pointing to images.
+    Update them to point to Images/{new_name}.
+    """
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.hyperlink:
+                target = cell.hyperlink.target
+                if target:
+                    # Extract filename from relative path
+                    original_name = os.path.basename(target)
+
+                    if original_name in image_mapping:
+                        new_name = image_mapping[original_name]
+                        cell.hyperlink.target = f"Images/{new_name}"
+```
+
+### File Discovery Changes
+
+**Old logic:** Look for `{Username}_{Category}.xlsx` files directly
+
+**New logic:** Look for `{Username}_{Category}/` folders, find xlsx inside
+
+```python
+def discover_qa_folders(qa_folder):
+    """
+    Find all QA folders and extract metadata.
+
+    Returns: List of dicts with {folder_path, xlsx_path, username, category, images}
+    """
+    results = []
+
+    for folder in Path(qa_folder).iterdir():
+        if not folder.is_dir():
+            continue
+
+        # Skip hidden/temp folders
+        if folder.name.startswith('.') or folder.name.startswith('~'):
+            continue
+
+        # Parse folder name: {Username}_{Category}
+        parts = folder.name.split('_')
+        if len(parts) < 2:
+            print(f"WARN: Invalid folder name format: {folder.name}")
+            continue
+
+        username = parts[0]
+        category = '_'.join(parts[1:])  # Handle categories with underscores
+
+        # Find xlsx file (must be exactly 1)
+        xlsx_files = list(folder.glob("*.xlsx"))
+        xlsx_files = [f for f in xlsx_files if not f.name.startswith("~$")]
+
+        if len(xlsx_files) == 0:
+            print(f"WARN: No xlsx in folder: {folder.name}")
+            continue
+        if len(xlsx_files) > 1:
+            print(f"WARN: Multiple xlsx in folder: {folder.name}, using first")
+
+        xlsx_path = xlsx_files[0]
+
+        # Find images
+        image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
+        images = [f for f in folder.iterdir()
+                  if f.suffix.lower() in image_extensions]
+
+        results.append({
+            "folder_path": folder,
+            "xlsx_path": xlsx_path,
+            "username": username,
+            "category": category,
+            "images": images
+        })
+
+    return results
+```
+
+### Updated Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           INPUT                                      │
+├─────────────────────────────────────────────────────────────────────┤
+│  QAfolder/                                                           │
+│  ├── John_Quest/           ─┐                                       │
+│  │   ├── LQA.xlsx           │                                       │
+│  │   └── *.png              ├─→ Group by Category                   │
+│  ├── Alice_Quest/          ─┘                                       │
+│  │   ├── LQA.xlsx                                                   │
+│  │   └── *.png                                                      │
+│  └── ...                                                            │
+└─────────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         PROCESSING                                   │
+├─────────────────────────────────────────────────────────────────────┤
+│  For each category:                                                  │
+│                                                                      │
+│  1. Load/Create Master_{Category}.xlsx                              │
+│  2. Create Masterfolder/Images/ if not exists                       │
+│  3. For each QA folder in category:                                 │
+│     a. Extract username from folder name                            │
+│     b. Find xlsx and images in folder                               │
+│     c. Copy images → Images/{Username}_{Category}_{filename}        │
+│     d. Process xlsx:                                                │
+│        - Update COMMENT_{user} columns                              │
+│        - Transform hyperlinks to new image paths                    │
+│     e. Calculate completion stats                                   │
+│  4. Create/Update STATUS sheet                                      │
+│  5. Save Master file                                                │
+└─────────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                           OUTPUT                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│  Masterfolder/                                                       │
+│  ├── Master_Quest.xlsx      # Hyperlinks → Images/John_Quest_*.png  │
+│  ├── Master_Knowledge.xlsx                                          │
+│  ├── Master_Item.xlsx                                               │
+│  ├── Master_Node.xlsx                                               │
+│  ├── Master_System.xlsx                                             │
+│  └── Images/                # ALL images with unique names           │
+│      ├── John_Quest_10034.png                                       │
+│      ├── Alice_Quest_10034.png                                      │
+│      └── ...                                                        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Edge Cases
+
+| Case | Handling |
+|------|----------|
+| No images in folder | Process xlsx normally, no image copying |
+| Image in xlsx not found in folder | Log warning, skip hyperlink update |
+| Hyperlink to external URL | Skip (only process local file paths) |
+| Very long image filename | Truncate original name, keep prefix |
+| Image already exists in Images/ | Overwrite (same user re-submitting) |
+| Broken hyperlink in xlsx | Log warning, preserve as-is |
+
+### MasterUI Removal
+
+**REMOVED:** The MasterUI feature that collected all screenshot issues into a separate file.
+
+**Reason:** No longer needed. All images are now properly compiled into `Images/` folder with hyperlinks preserved in their respective master files.
+
+---
+
 *WIP created 2025-12-30*
 *Updated 2025-12-30: Added StringID parsing, column styling, future features*
+*Updated 2026-01-02: Added IMAGE COMPILATION SYSTEM - folder-based input, centralized Images/ output, duplicate naming strategy*

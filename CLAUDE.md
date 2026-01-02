@@ -17,6 +17,7 @@
 | **Build → Test (Windows)** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) |
 | **CI/CD debug?** | [docs/cicd/TROUBLESHOOTING.md](docs/cicd/TROUBLESHOOTING.md) |
 | **Enterprise deploy?** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
+| **Mini-projects?** | [RessourcesForCodingTheProject/NewScripts/README.md](RessourcesForCodingTheProject/NewScripts/README.md) |
 
 ---
 
@@ -37,6 +38,8 @@
 | **PG** | Playground - Windows test environment |
 | **PW** | Playwright - browser automation framework for testing |
 | **Playground** | Windows test: `/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground` |
+| **RFC** | `RessourcesForCodingTheProject/` - Monolith reference scripts |
+| **NewScripts** | `RFC/NewScripts/` - Mini-projects (personal tools, potential LocaNext apps) |
 
 ---
 
@@ -137,7 +140,7 @@ cat "/mnt/c/Users/MYCOM/Pictures/Screenshots/$(ls -t /mnt/c/Users/MYCOM/Pictures
    - EASY WAY = Technical debt, breaks later, embarrassing
    - HARD WAY = Proper fix, survives forever, professional
    - Example: `overflow: visible` (easy) broke 480,000px scroll → `overflow: hidden` + flexbox constraints (hard) = perfect
-3. **Monolith is Sacred** - Copy `RessourcesForCodingTheProject/` logic exactly
+3. **Sacred Scripts** - XLSTransfer, KR Similar, QuickSearch are battle-tested perfection (never change a byte). Rest of `RessourcesForCodingTheProject/` = monolith reference scripts to copy patterns from
 4. **No Backend Mods** - Only wrapper layers (API, GUI)
 5. **Logger Only** - Never `print()`, always `logger`
 6. **Dual Push Protocol** - Push to both GitHub and Gitea:

@@ -1,0 +1,10 @@
+# Test data - don't commit
+QAfolder/
+Masterfolder/
+
+# Python
+__pycache__/
+*.pyc
+
+# Excel temp files
+~$*.xlsx
