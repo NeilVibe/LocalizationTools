@@ -168,7 +168,7 @@ cat "/mnt/c/Users/MYCOM/Pictures/Screenshots/$(ls -t /mnt/c/Users/MYCOM/Pictures
     ```
     **CRITICAL: STATUS 6 = RUNNING - just WAIT, don't investigate!**
 13. **SW FIRST** - When checking Gitea, use Shell Wrapper first: `./scripts/gitea_control.sh status`
-14. **DON'T PARSE WHAT YOU ALREADY HAVE** - Before writing regex/parsing code, CHECK if the value already exists as a variable or output. AU-006: Used regex to parse version from file when CI already had `${{ outputs.version }}`. STUPID. Use existing data directly.
+14. **STUPID vs ELEGANT** - Before writing code, ask: Is this STUPID or ELEGANT? STUPID = unnecessary, fragile, solves problems that don't exist. ELEGANT = right solution, robust, survives changes. Don't fix stupid code - DELETE it and find the elegant way.
 
 ---
 
