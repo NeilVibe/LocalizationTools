@@ -104,29 +104,6 @@ for (const segment of segments) {
 
 **File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte:1593-1650`
 
-### FUTURE: Cell Height Accuracy Improvements
-
-Current algorithm uses hardcoded `55 chars per line`. This can overestimate for wide columns.
-
-**Option 2: Dynamic chars-per-line (Recommended)**
-```javascript
-// Use tracked column widths instead of hardcoded 55
-const charsPerLine = Math.floor(Math.max(sourceWidth, targetWidth) / 8);
-```
-- ✅ Automatically adjusts on column resize
-- ✅ More accurate for different screen sizes
-- ✅ Almost zero cost (just division)
-
-**Option 3: Increase constant (Simplest)**
-```javascript
-// Change from 55 to 70-75
-const charsPerLine = 70;
-```
-- ✅ Zero performance cost
-- ⚠️ Less accurate but good enough
-
-**Graceful overflow:** Added `overflow: hidden` to `.virtual-row` so content clips instead of bleeding.
-
 ---
 
 ## SESSION 16 UPDATES (2026-01-03)
