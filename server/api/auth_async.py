@@ -190,22 +190,21 @@ async def register(
     # Hash password
     password_hash = hash_password(user_data.password)
 
-    # Create new user
-    async with db.begin():
-        new_user = User(
-            username=user_data.username,
-            password_hash=password_hash,
-            email=user_data.email,
-            full_name=user_data.full_name,
-            department=user_data.department,
-            role="user",  # Default role
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
+    # Create new user (no db.begin() - get_async_db handles transaction)
+    new_user = User(
+        username=user_data.username,
+        password_hash=password_hash,
+        email=user_data.email,
+        full_name=user_data.full_name,
+        department=user_data.department,
+        role="user",  # Default role
+        is_active=True,
+        created_at=datetime.utcnow()
+    )
 
-        db.add(new_user)
-        await db.flush()  # Flush to get the user_id
-        await db.refresh(new_user)
+    db.add(new_user)
+    await db.flush()  # Flush to get the user_id
+    await db.refresh(new_user)
 
     logger.info(f"New user registered: {new_user.username} (ID: {new_user.user_id}) by admin: {admin['username']}")
 
@@ -303,8 +302,9 @@ async def activate_user(
             detail="User not found"
         )
 
-    async with db.begin():
-        user.is_active = True
+    # No db.begin() - get_async_db handles transaction
+    user.is_active = True
+    await db.commit()
 
     logger.info(f"User {user.username} activated by admin {admin['username']}")
 
@@ -338,8 +338,9 @@ async def deactivate_user(
             detail="Cannot deactivate your own account"
         )
 
-    async with db.begin():
-        user.is_active = False
+    # No db.begin() - get_async_db handles transaction
+    user.is_active = False
+    await db.commit()
 
     logger.info(f"User {user.username} deactivated by admin {admin['username']}")
 
