@@ -1,32 +1,108 @@
 # Session Context
 
-> Last Updated: 2026-01-03 (Session 16 - CLEAN SLATE ACHIEVED!)
+> Last Updated: 2026-01-03 (Session 17 - Bug Fixes Complete)
 
 ---
 
 ## STABLE CHECKPOINT
 
-**Commit:** `0e436c6` | **Date:** 2026-01-03 | **Tag:** Clean Slate - 100% Coverage
+**Pre-P5 Stable:** `b6f2561` (Session 14) | **Date:** 2026-01-02 | **Tag:** Auto-updater verified
 
-This commit represents a **stable checkpoint** with:
-- All 8 open issues closed (CLEAN SLATE!)
-- 100% endpoint coverage (220/220 endpoints tested)
-- 149 new endpoint tests added
-- 4 Auth bugs fixed
+Use this if you need to go back to BEFORE P5 Advanced Search changes.
 
-**To restore:** `git checkout 0e436c6`
+**Post-P5 Stable:** `0e436c6` | **Date:** 2026-01-03 | **Tag:** Clean Slate - 100% Coverage
 
 ---
 
 ## Current State
 
-**Build:** 437 (building) | Previous: 436 (v26.102.1001)
-**Status:** CLEAN SLATE ACHIEVED! Ready for major features
+**Build:** 437 | **Open Issues:** 1
+**Status:** Two major bugs fixed, one design issue pending
 
-### NEXT SESSION OPTIONS
-1. **P3 Offline/Online Mode** - Major feature (~10 weeks) - see `OFFLINE_ONLINE_MODE.md`
-2. **Phase 10 UI Overhaul** - Major UI redesign (~4-6 weeks) - see `PHASE_10_MAJOR_UIUX_OVERHAUL.md`
-3. **Code Review Cycle 2** - Quality pass on codebase
+### Open Issues
+
+1. **DESIGN-001: Remove owner_id filtering** - MEDIUM
+   - All LDM data filtered by owner, wrong for team tool
+   - All users should see same data
+
+### Fixed This Session
+
+1. ✅ **UI-102: Search bar fixed** - removed restrictive `max-width: 400px`
+2. ✅ **BUG: Color disappears after edit** - fixed regex in `htmlToPaColor()`
+3. ✅ **BUG: Cell height too big** - fixed double-counting in height calculation
+
+### Database State (Clean)
+
+| Item | Count |
+|------|-------|
+| Platforms | 1 (Main Platform) |
+| Projects | 1 (Main Project) |
+| Folders | 1 (Main Folder) |
+| Files | 1 (sample.txt, 3 rows) |
+| TMs | 1 (Main TM, ko→en) |
+
+---
+
+## SESSION 17 UPDATES (2026-01-03)
+
+### Issues Discovered
+
+1. Database was bloated with test data
+2. `owner_id` filtering prevents shared workspace
+3. P5 search bar was too small (max-width: 400px)
+4. Database sequences not reset after manual inserts (caused IntegrityError)
+5. Manual sample data used 0-indexed row_num (real uploads use 1-indexed)
+6. Cell height calculated with RAW color codes instead of rendered text
+
+### Actions Taken
+
+1. ✅ Reset database to clean state (1 platform, 1 project, 1 folder, 1 file, 1 TM)
+2. ✅ Fixed search bar width (removed max-width: 400px)
+3. ✅ Documented DESIGN-001 issue
+4. ✅ Fixed database sequences (setval to MAX(id)+1)
+5. ✅ Fixed row_num to be 1-indexed
+6. ⏳ Need to fix owner_id filtering
+7. ✅ Fixed cell height calculation (new algorithm)
+8. ✅ Fixed color disappearing after edit
+
+### FIXED: Color Disappears After Edit Mode
+
+**Root Cause:** Line 280 in `colorParser.js`:
+```javascript
+result.replace(/<[^>]+>/g, '');  // WRONG: strips ALL HTML tags including PAColor!
+```
+
+**Fix:** Use negative lookahead to preserve PAColor tags:
+```javascript
+result.replace(/<(?!\/?PA(?:Color|OldColor))[^>]+>/g, '');  // CORRECT
+```
+
+**File:** `locaNext/src/lib/utils/colorParser.js:280`
+
+### FIXED: Cell Height Too Big
+
+**Root Cause:** Old algorithm DOUBLE-COUNTED lines:
+```javascript
+// OLD (buggy):
+const wrapLines = Math.ceil(maxLen / 55);     // Assumed all chars in one block
+const totalLines = wrapLines + maxNewlines;   // Added newlines ON TOP = WRONG
+```
+
+**Fix:** New `countDisplayLines()` function properly splits by newlines FIRST, then calculates wrap per segment:
+```javascript
+// NEW (correct):
+const segments = normalized.split('\n');
+let totalLines = 0;
+for (const segment of segments) {
+  totalLines += Math.max(1, Math.ceil(segment.length / 55));
+}
+```
+
+**Example:** Text with 620 chars and 9 newlines:
+- OLD: 12 wrap + 9 newlines = 21 lines = 486px ❌
+- NEW: 17 lines (proper segment wrap) = 398px ✅
+
+**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte:1593-1650`
 
 ---
 

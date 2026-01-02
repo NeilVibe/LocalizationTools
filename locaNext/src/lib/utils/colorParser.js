@@ -275,8 +275,9 @@ export function htmlToPaColor(html) {
     .replace(/&gt;/g, '>');
 
   // Remove any remaining HTML tags (divs from contenteditable, etc)
+  // BUT preserve PAColor/PAOldColor tags using negative lookahead
   result = result.replace(/<\/?div>/gi, '\n');
-  result = result.replace(/<[^>]+>/g, '');
+  result = result.replace(/<(?!\/?PA(?:Color|OldColor))[^>]+>/g, '');
 
   // Clean up multiple newlines
   result = result.replace(/\n{3,}/g, '\n\n');
