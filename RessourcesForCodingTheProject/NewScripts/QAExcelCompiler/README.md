@@ -117,6 +117,12 @@ Each user gets **paired columns**: `COMMENT_John` + `SCREENSHOT_John`, etc.
 - Comment: QA feedback text (with timestamp)
 - Screenshot: Hyperlink to `Images/{User}_{Category}_{filename}.png`
 
+**Unified blue styling:**
+- Both COMMENT and SCREENSHOT cells use light blue fill + blue border
+- Headers: Light blue (`87CEEB`) with bold text
+- Cells: Light blue fill (`E6F3FF`) when updated
+- Only applies on NEW updates (preserves custom colors on re-runs)
+
 **Comment format with timestamp:**
 ```
 The translation is wrong
@@ -262,4 +268,4 @@ QA files should have these columns (detected dynamically by header name):
 ---
 
 *Created: 2025-12-30*
-*Updated: 2026-01-03 - Clean comment format with --- delimiter, improved duplicate detection*
+*Updated: 2026-01-03 - Clean comment format, unified blue styling for COMMENT/SCREENSHOT*
