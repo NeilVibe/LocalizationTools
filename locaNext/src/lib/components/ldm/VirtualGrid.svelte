@@ -1590,14 +1590,29 @@
     }
   }
 
-  // Count all types of newlines in text
-  function countNewlines(text) {
-    if (!text) return 0;
-    // Count actual \n, escaped \\n, and XML &lt;br/&gt;
-    const actualNewlines = (text.match(/\n/g) || []).length;
-    const escapedNewlines = (text.match(/\\n/g) || []).length;
-    const xmlNewlines = (text.match(/&lt;br\/&gt;/g) || []).length;
-    return actualNewlines + escapedNewlines + xmlNewlines;
+  // Calculate display lines for text (accounts for newlines AND wrapping per segment)
+  // Each segment (split by newlines) is measured for wrapping, then summed
+  function countDisplayLines(text, charsPerLine = 55) {
+    if (!text) return 1;
+
+    // First, convert all newline types to actual newlines for consistent splitting
+    let normalized = text
+      .replace(/&lt;br\s*\/&gt;/gi, '\n')  // XML escaped
+      .replace(/<br\s*\/?>/gi, '\n')       // HTML
+      .replace(/\\n/g, '\n');              // Escaped \n
+
+    // Split by newlines to get segments
+    const segments = normalized.split('\n');
+
+    // Calculate wrap lines for EACH segment, then sum
+    let totalLines = 0;
+    for (const segment of segments) {
+      // Each segment takes at least 1 line, plus extra for wrapping
+      const segmentLines = Math.max(1, Math.ceil(segment.length / charsPerLine));
+      totalLines += segmentLines;
+    }
+
+    return totalLines;
   }
 
   // VARIABLE HEIGHT: Estimate row height based on content
@@ -1614,20 +1629,13 @@
     // This gives accurate length of what's actually displayed
     const sourceText = stripColorTags(row.source || "");
     const targetText = stripColorTags(row.target || "");
-    const sourceLen = sourceText.length;
-    const targetLen = targetText.length;
-    const maxLen = Math.max(sourceLen, targetLen);
 
-    // Count all newlines (actual, escaped, XML) - use stripped text
-    const sourceNewlines = countNewlines(sourceText);
-    const targetNewlines = countNewlines(targetText);
-    const maxNewlines = Math.max(sourceNewlines, targetNewlines);
-
-    // SMART ESTIMATION: Use larger chars per line for wider columns
-    // Column is ~45% of viewport, with ~8px per char at 14px font
-    const effectiveCharsPerLine = 55; // More realistic for actual column width
-    const wrapLines = Math.ceil(maxLen / effectiveCharsPerLine);
-    const totalLines = Math.max(1, wrapLines + maxNewlines);
+    // FIXED: Calculate display lines properly - accounts for both newlines AND wrapping
+    // Old bug: was adding wrapLines + newlines which double-counted
+    const effectiveCharsPerLine = 55; // ~45% viewport width, ~8px per char
+    const sourceLines = countDisplayLines(sourceText, effectiveCharsPerLine);
+    const targetLines = countDisplayLines(targetText, effectiveCharsPerLine);
+    const totalLines = Math.max(sourceLines, targetLines);
 
     // Calculate height: use tighter line height (actual CSS is ~20px)
     const actualLineHeight = 22; // Closer to real rendered line height
@@ -2056,10 +2064,10 @@
       <span class="hotkey"><kbd>Ctrl+Y</kbd> Redo</span>
     </div>
 
-    <!-- Virtual Scroll Container -->
+    <!-- Virtual Scroll Container with Resize Overlay -->
     <!-- UI-081: Clean grid - no header, just data rows -->
-    <div class="scroll-container" bind:this={containerEl}>
-      <!-- UI-083: Full-height resize bars for ALL resizable column boundaries -->
+    <div class="scroll-wrapper">
+      <!-- UI-083: Full-height resize bars - OUTSIDE scroll container so they don't scroll -->
       {#each visibleResizeBars as column (column)}
         <div
           class="column-resize-bar"
@@ -2070,6 +2078,7 @@
           aria-label="Resize {column} column"
         ></div>
       {/each}
+      <div class="scroll-container" bind:this={containerEl}>
       {#if initialLoading}
         <div class="loading-overlay">
           <InlineLoading description="Loading rows..." />
@@ -2224,6 +2233,7 @@
           {/each}
         </div>
       {/if}
+      </div>
     </div>
 
     {#if loading && !initialLoading}
@@ -2369,7 +2379,8 @@
     display: flex;
     align-items: center;
     flex: 1;
-    max-width: 400px;
+    min-width: 200px;
+    /* Removed max-width: 400px - was too restrictive, matching old search-wrapper behavior */
     position: relative;
   }
 
@@ -2643,6 +2654,16 @@
   }
 
   /* NOTE: UI-083 removed .resize-handle - now using unified .column-resize-bar system */
+
+  /* FIX: Wrapper for scroll container + resize bars overlay */
+  .scroll-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    min-height: 0;
+    height: 0; /* Critical for flex to work */
+  }
 
   .scroll-container {
     flex: 1;
