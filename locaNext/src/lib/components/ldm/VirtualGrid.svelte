@@ -2702,6 +2702,8 @@
     transition: background-color 0.15s ease;
     /* VARIABLE HEIGHT: Row height is set via inline style, content can expand */
     box-sizing: border-box;
+    /* FIX: Clip content that exceeds estimated height - prevents bleeding into other rows */
+    overflow: hidden;
   }
 
   /* HOVER SYSTEM: Row-level hover (subtle background) */
