@@ -17,6 +17,12 @@ Output: Masterfolder/Master_{Category}.xlsx
         Masterfolder/Images/{Username}_{Category}_{original}.png
 
 Categories: Quest, Knowledge, Item, Node, System
+
+Comment Handling:
+- REPLACE mode: New comments replace old (no append/concatenation)
+- Timestamp: Uses file's last modified time (not current time)
+- Format: "comment text"\\n(stringid: 12345 | updated: YYMMDD HHMM)
+- Duplicate check: Skips if exact same comment text already exists
 """
 
 import os
@@ -334,43 +340,44 @@ def get_or_create_user_screenshot_column(ws, username, after_comment_col):
     return new_col
 
 
-def format_comment(new_comment, string_id=None, existing_comment=None):
+def format_comment(new_comment, string_id=None, existing_comment=None, file_mod_time=None):
     """
-    Format comment with StringID and datetime, append to existing if present.
+    Format comment with StringID and file modification time.
 
-    Format: "comment text" (stringid: 12345 // date: YYMMDD HHMM)
+    Format:
+        "comment text"
+        (stringid: 12345 | updated: YYMMDD HHMM)
 
-    Duplicate check: If the exact comment text already exists (ignoring date),
-    we skip to avoid duplicating on re-runs.
+    REPLACE MODE: If comment text differs, REPLACE entirely (no append).
+    DUPLICATE CHECK: If exact comment text already exists, skip to avoid re-updating on re-runs.
     """
     if not new_comment or str(new_comment).strip() == "":
-        return existing_comment
+        return existing_comment  # Return existing if no new comment
 
     new_text = str(new_comment).strip()
 
-    # Check if this exact comment already exists (avoid duplicates on re-run)
+    # Check if this exact comment text already exists (avoid re-update on re-run)
     if existing_comment:
         existing_str = str(existing_comment)
-        # Extract comment texts (between quotes) from existing
+        # If the quoted text already exists, skip (no update needed)
         if f'"{new_text}"' in existing_str:
-            # Comment already exists, skip
             return existing_comment
 
-    timestamp = datetime.now().strftime("%y%m%d %H%M")
+    # Format timestamp from file modification time (or fallback to now)
+    if file_mod_time:
+        timestamp = file_mod_time.strftime("%y%m%d %H%M")
+    else:
+        timestamp = datetime.now().strftime("%y%m%d %H%M")
 
-    # Build metadata string with stringid (if available) and date
+    # Build metadata string with stringid (if available) and timestamp
     if string_id and str(string_id).strip():
-        metadata = f"stringid: {str(string_id).strip()} // date: {timestamp}"
+        metadata = f"stringid: {str(string_id).strip()} | updated: {timestamp}"
     else:
-        metadata = f"date: {timestamp}"
+        metadata = f"updated: {timestamp}"
 
-    formatted = f'"{new_text}" ({metadata})'
-
-    if existing_comment and str(existing_comment).strip():
-        # New on top, old below
-        return f"{formatted}\n\n{existing_comment}"
-    else:
-        return formatted
+    # Comment on top, metadata at bottom with linebreak
+    # REPLACE mode: return only new comment (not appended to old)
+    return f'"{new_text}"\n({metadata})'
 
 
 def get_row_signature(ws, row, exclude_cols=None):
@@ -430,7 +437,7 @@ def find_matching_row_fallback(master_ws, qa_signature, exclude_cols, start_row=
     return None
 
 
-def process_sheet(master_ws, qa_ws, username, category, image_mapping=None):
+def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx_path=None):
     """
     Process a single sheet: copy COMMENT and SCREENSHOT from QA to master, collect STATUS stats.
 
@@ -440,6 +447,7 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None):
     - Falls back to 2+ cell matching if row counts differ
     - Applies beautiful styling to comment cells (blue fill + bold)
     - Transfers screenshots with hyperlink path transformation
+    - Uses file modification time for comment timestamps
 
     Args:
         master_ws: Master worksheet
@@ -447,11 +455,17 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None):
         username: User identifier
         category: Category name
         image_mapping: Dict mapping original_name -> new_name (for hyperlink transformation)
+        xlsx_path: Path to QA xlsx file (for file modification time)
 
     Returns: Dict with {comments: n, screenshots: n, stats: {...}, fallback_used: n}
     """
     if image_mapping is None:
         image_mapping = {}
+
+    # Get file modification time for timestamp
+    file_mod_time = None
+    if xlsx_path:
+        file_mod_time = datetime.fromtimestamp(xlsx_path.stat().st_mtime)
 
     # Find columns dynamically in QA worksheet
     qa_status_col = find_column_by_header(qa_ws, "STATUS")
@@ -544,8 +558,8 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None):
                 # Get existing comment in master
                 existing = master_ws.cell(row=master_row, column=master_comment_col).value
 
-                # Format and update (appends if different, includes stringid)
-                new_value = format_comment(qa_comment, string_id, existing)
+                # Format and update (REPLACE mode, includes stringid + file mod time)
+                new_value = format_comment(qa_comment, string_id, existing, file_mod_time)
 
                 # ONLY write if there's actually new content (preserve team's custom formatting!)
                 if new_value != existing:
@@ -748,8 +762,8 @@ def process_category(category, qa_folders):
                 print(f"    WARN: Sheet '{sheet_name}' not in master, skipping")
                 continue
 
-            # Process sheet with image mapping for hyperlink transformation
-            result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username, category, image_mapping)
+            # Process sheet with image mapping for hyperlink transformation + xlsx_path for mod time
+            result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username, category, image_mapping, xlsx_path)
             stats = result["stats"]
 
             fallback_info = f", fallback:{result['fallback_used']}" if result.get('fallback_used', 0) > 0 else ""
@@ -785,6 +799,8 @@ def main():
     print("  - Folder-based input: QAfolder/{Username}_{Category}/")
     print("  - Dynamic column detection (finds STATUS/COMMENT/SCREENSHOT by header)")
     print("  - Paired COMMENT_{User} + SCREENSHOT_{User} columns")
+    print("  - REPLACE mode: New comments replace old (no append)")
+    print("  - Timestamp: Uses file's last modified time")
     print("  - Image consolidation to Masterfolder/Images/")
     print("  - Hyperlink transformation with unique naming")
     print("  - Fallback row matching (2+ cell match if row counts differ)")
