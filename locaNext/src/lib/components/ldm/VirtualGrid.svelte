@@ -2702,16 +2702,12 @@
     transition: background-color 0.15s ease;
     /* VARIABLE HEIGHT: Row height is set via inline style, content can expand */
     box-sizing: border-box;
-    /* FIX: Clip content that exceeds estimated height - prevents bleeding into other rows */
-    overflow: hidden;
   }
 
   /* HOVER SYSTEM: Row-level hover (subtle background) */
   .virtual-row:hover,
   .virtual-row.row-hovered {
     background: var(--cds-layer-hover-01);
-    /* FIX: Ensure hovered row stacks on top to cover any overflow artifacts */
-    z-index: 1;
   }
 
   /* UI-059 FIX: Selected row takes priority over hover */
