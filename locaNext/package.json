@@ -101,10 +101,8 @@
       "category": "Development"
     },
     "publish": {
-      "provider": "github",
-      "owner": "NeilVibe",
-      "repo": "LocalizationTools",
-      "releaseType": "release"
+      "provider": "generic",
+      "url": "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest"
     }
   }
 }
