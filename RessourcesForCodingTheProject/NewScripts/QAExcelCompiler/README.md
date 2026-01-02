@@ -119,14 +119,16 @@ Each user gets **paired columns**: `COMMENT_John` + `SCREENSHOT_John`, etc.
 
 **Comment format with timestamp:**
 ```
-"The translation is wrong" (date: 251230 1445)
-
-"Previous comment" (date: 251229 1000)
+The translation is wrong
+---
+stringid:
+10001
+(updated: 251230 1445)
 ```
 
-- New comments appear on top
-- Old comments preserved below
-- Duplicate detection prevents re-adding same comment
+- Clean format: comment text, delimiter, metadata
+- `---` delimiter separates comment from metadata
+- Duplicate detection: splits on `---` to compare original text
 
 ### Status Tracking
 
@@ -223,8 +225,8 @@ QA files should have these columns (detected dynamically by header name):
 `Master_Quest.xlsx`:
 | Original | ENG | COMMENT_John | SCREENSHOT_John | COMMENT_Alice | SCREENSHOT_Alice |
 |----------|-----|--------------|-----------------|---------------|------------------|
-| 기습 | Ambush | "Looks good" (date: 251230 1500) | | | |
-| 낯선 땅 | Strange Lands | "Typo here" (date: 251230 1500) | [Images/John_Quest_typo.png] | "Fixed now" (date: 251230 1502) | [Images/Alice_Quest_fixed.png] |
+| 기습 | Ambush | Looks good\n---\nstringid:\n10001\n(updated: 251230 1500) | | | |
+| 낯선 땅 | Strange Lands | Typo here\n---\nstringid:\n10002\n(updated: 251230 1500) | [John_Quest_typo.png] | Fixed now\n---\nstringid:\n10002\n(updated: 251230 1502) | [Alice_Quest_fixed.png] |
 
 `Masterfolder/Images/` contains:
 - `John_Quest_typo.png`
@@ -260,4 +262,4 @@ QA files should have these columns (detected dynamically by header name):
 ---
 
 *Created: 2025-12-30*
-*Updated: 2026-01-02 - Folder-based input, paired COMMENT+SCREENSHOT columns, Images/ consolidation*
+*Updated: 2026-01-03 - Clean comment format with --- delimiter, improved duplicate detection*

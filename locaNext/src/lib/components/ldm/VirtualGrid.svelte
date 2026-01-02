@@ -6,7 +6,7 @@
     Button,
     Dropdown
   } from "carbon-components-svelte";
-  import { Edit, Locked } from "carbon-icons-svelte";
+  import { Edit, Locked, Settings, ChevronDown } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
   import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
@@ -65,18 +65,21 @@
   // P5: Advanced Search state
   let searchMode = $state("contain"); // 'contain' | 'exact' | 'not_contain' | 'fuzzy'
   const searchModeOptions = [
-    { id: "contain", text: "Contains" },
-    { id: "exact", text: "Exact Match" },
-    { id: "not_contain", text: "Does Not Contain" },
-    { id: "fuzzy", text: "Fuzzy (Semantic)" }
+    { id: "contain", text: "Contains", icon: "⊃" },
+    { id: "exact", text: "Exact", icon: "=" },
+    { id: "not_contain", text: "Excludes", icon: "≠" },
+    { id: "fuzzy", text: "Similar", icon: "≈" }
   ];
 
   let searchFields = $state(["source", "target"]); // Default search in source and target
   const searchFieldOptions = [
-    { id: "string_id", text: "StringID" },
+    { id: "string_id", text: "ID" },
     { id: "source", text: "Source" },
     { id: "target", text: "Target" }
   ];
+
+  // P5: Search settings popover state
+  let showSearchSettings = $state(false);
 
   // Svelte 5: Virtual scroll state
   let containerEl = $state(null);
@@ -1942,25 +1945,25 @@
     </div>
 
     <div class="search-filter-bar">
-      <!-- P5: Search Mode Dropdown -->
-      <div class="search-mode-wrapper">
-        <Dropdown
-          size="sm"
-          selectedId={searchMode}
-          items={searchModeOptions}
-          on:select={(e) => { searchMode = e.detail.selectedId; if (searchTerm) handleSearch(); }}
-          titleText=""
-          hideLabel
-        />
-      </div>
-      <div class="search-wrapper">
-        <!-- Using native input with oninput only - NO value binding to avoid Svelte reactivity reset -->
-        <div class="bx--search bx--search--sm">
+      <!-- P5: Combined Search Control -->
+      <div class="search-control">
+        <!-- Mode indicator button -->
+        <button
+          class="search-mode-btn"
+          onclick={() => showSearchSettings = !showSearchSettings}
+          title="Search settings"
+        >
+          <span class="mode-icon">{searchModeOptions.find(m => m.id === searchMode)?.icon || "⊃"}</span>
+          <ChevronDown size={12} />
+        </button>
+
+        <!-- Search input -->
+        <div class="search-input-wrapper">
           <input
             type="text"
             id="ldm-search-input"
-            class="bx--search-input"
-            placeholder="Search..."
+            class="search-input"
+            placeholder="Search {searchFields.join(', ')}..."
             oninput={(e) => {
               searchTerm = e.target.value;
               logger.info("Search oninput", { value: searchTerm });
@@ -1969,7 +1972,7 @@
           {#if searchTerm}
             <button
               type="button"
-              class="bx--search-close"
+              class="search-clear"
               onclick={() => {
                 searchTerm = "";
                 const inputEl = document.getElementById('ldm-search-input');
@@ -1977,33 +1980,59 @@
               }}
               aria-label="Clear search"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16">
+              <svg width="14" height="14" viewBox="0 0 16 16">
                 <path d="M12 4.7L11.3 4 8 7.3 4.7 4 4 4.7 7.3 8 4 11.3 4.7 12 8 8.7 11.3 12 12 11.3 8.7 8z"/>
               </svg>
             </button>
           {/if}
         </div>
+
+        <!-- Settings popover -->
+        {#if showSearchSettings}
+          <div class="search-settings-popover">
+            <div class="settings-section">
+              <div class="settings-label">Mode</div>
+              <div class="mode-buttons">
+                {#each searchModeOptions as mode}
+                  <button
+                    class="mode-option {searchMode === mode.id ? 'active' : ''}"
+                    onclick={() => { searchMode = mode.id; if (searchTerm) handleSearch(); }}
+                    title={mode.text}
+                  >
+                    <span class="mode-option-icon">{mode.icon}</span>
+                    <span class="mode-option-text">{mode.text}</span>
+                  </button>
+                {/each}
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">Fields</div>
+              <div class="field-toggles">
+                {#each searchFieldOptions as field}
+                  <label class="field-toggle {searchFields.includes(field.id) ? 'active' : ''}">
+                    <input
+                      type="checkbox"
+                      checked={searchFields.includes(field.id)}
+                      onchange={(e) => {
+                        if (e.target.checked) {
+                          searchFields = [...searchFields, field.id];
+                        } else {
+                          searchFields = searchFields.filter(f => f !== field.id);
+                        }
+                        if (searchTerm) handleSearch();
+                      }}
+                    />
+                    <span>{field.text}</span>
+                  </label>
+                {/each}
+              </div>
+            </div>
+          </div>
+          <!-- Backdrop to close popover -->
+          <div class="settings-backdrop" onclick={() => showSearchSettings = false}></div>
+        {/if}
       </div>
-      <!-- P5: Search Fields Multi-select -->
-      <div class="search-fields-wrapper">
-        {#each searchFieldOptions as field}
-          <label class="search-field-checkbox">
-            <input
-              type="checkbox"
-              checked={searchFields.includes(field.id)}
-              onchange={(e) => {
-                if (e.target.checked) {
-                  searchFields = [...searchFields, field.id];
-                } else {
-                  searchFields = searchFields.filter(f => f !== field.id);
-                }
-                if (searchTerm) handleSearch();
-              }}
-            />
-            <span>{field.text}</span>
-          </label>
-        {/each}
-      </div>
+
       <!-- P2: Filter Dropdown -->
       <div class="filter-wrapper">
         <Dropdown
@@ -2335,53 +2364,194 @@
     height: 2rem; /* Match search input height (32px) */
   }
 
-  /* P5: Search Mode Dropdown */
-  .search-mode-wrapper {
-    flex: 0 0 140px;
-  }
-
-  .search-mode-wrapper :global(.bx--dropdown) {
-    background: var(--cds-field-01);
-    height: 2rem;
-  }
-
-  .search-mode-wrapper :global(.bx--list-box) {
-    height: 2rem;
-  }
-
-  .search-mode-wrapper :global(.bx--list-box__field) {
-    height: 2rem;
-  }
-
-  /* P5: Search Fields Checkboxes */
-  .search-fields-wrapper {
+  /* P5: Combined Search Control */
+  .search-control {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0 0.5rem;
-    border-left: 1px solid var(--cds-border-subtle-01);
-    border-right: 1px solid var(--cds-border-subtle-01);
+    flex: 1;
+    max-width: 400px;
+    position: relative;
   }
 
-  .search-field-checkbox {
+  .search-mode-btn {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
+    gap: 2px;
+    padding: 0 8px;
+    height: 2rem;
+    background: var(--cds-field-02);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-right: none;
+    border-radius: 4px 0 0 4px;
     cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .search-field-checkbox input[type="checkbox"] {
-    width: 14px;
-    height: 14px;
-    accent-color: var(--cds-interactive-01);
-    cursor: pointer;
-  }
-
-  .search-field-checkbox:hover {
     color: var(--cds-text-01);
+    font-size: 0.875rem;
+    transition: background 0.15s;
+  }
+
+  .search-mode-btn:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .mode-icon {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .search-input-wrapper {
+    flex: 1;
+    position: relative;
+  }
+
+  .search-input {
+    width: 100%;
+    height: 2rem;
+    padding: 0 2rem 0 0.75rem;
+    background: var(--cds-field-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 0 4px 4px 0;
+    color: var(--cds-text-01);
+    font-size: 0.875rem;
+    outline: none;
+  }
+
+  .search-input:focus {
+    border-color: var(--cds-focus);
+    box-shadow: inset 0 0 0 1px var(--cds-focus);
+  }
+
+  .search-input::placeholder {
+    color: var(--cds-text-05);
+  }
+
+  .search-clear {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--cds-text-02);
+    border-radius: 2px;
+  }
+
+  .search-clear:hover {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-01);
+  }
+
+  /* Search Settings Popover */
+  .search-settings-popover {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 1000;
+    background: var(--cds-layer-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    min-width: 280px;
+  }
+
+  .settings-section {
+    margin-bottom: 12px;
+  }
+
+  .settings-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .settings-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--cds-text-02);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .mode-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+  }
+
+  .mode-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--cds-field-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--cds-text-02);
+  }
+
+  .mode-option:hover {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-01);
+  }
+
+  .mode-option.active {
+    background: var(--cds-interactive-01);
+    border-color: var(--cds-interactive-01);
+    color: var(--cds-text-on-color);
+  }
+
+  .mode-option-icon {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .mode-option-text {
+    font-size: 0.8rem;
+  }
+
+  .field-toggles {
+    display: flex;
+    gap: 6px;
+  }
+
+  .field-toggle {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    background: var(--cds-field-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.8rem;
+    color: var(--cds-text-02);
+  }
+
+  .field-toggle:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .field-toggle.active {
+    background: var(--cds-interactive-02);
+    border-color: var(--cds-interactive-02);
+    color: var(--cds-text-on-color);
+  }
+
+  .field-toggle input[type="checkbox"] {
+    display: none;
+  }
+
+  .settings-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
   }
 
   /* Hotkey Reference Bar */

@@ -177,23 +177,30 @@ Master_Quest.xlsx
 
 ---
 
-## Comment Update Logic
+## Comment Format
 
-### Scenario: User updates an existing comment
-
-**Before:**
+**Format (with stringid):**
 ```
-COMMENT_John: "Translation issue" (date: 251204 1030)
-```
-
-**After (user adds new comment):**
-```
-COMMENT_John: "Fixed now" (date: 251230 1445)
-
-"Translation issue" (date: 251204 1030)
+COMMENT_John:
+Translation issue
+---
+stringid:
+10001
+(updated: 251204 1030)
 ```
 
-**Format:** Latest comment on top, older below, separated by blank line.
+**Format (without stringid):**
+```
+COMMENT_John:
+Translation issue
+---
+(updated: 251204 1030)
+```
+
+**Key points:**
+- Clean format: comment text, `---` delimiter, metadata
+- REPLACE mode: New comments replace old entirely (no append)
+- Duplicate detection: Splits on `---` to compare original text
 
 ---
 
