@@ -1,6 +1,6 @@
 # Advanced Search Feature
 
-**Created:** 2025-12-28 | **Priority:** NOW | **Status:** PLANNING
+**Created:** 2025-12-28 | **Updated:** 2026-01-02 | **Priority:** P5 | **Status:** ✅ IMPLEMENTED
 
 ---
 
@@ -120,4 +120,27 @@ Use existing Model2Vec (potion-multilingual-128M) for semantic search:
 
 ---
 
-*WIP doc for Advanced Search feature*
+---
+
+## Implementation Notes (Session 15)
+
+**Frontend (VirtualGrid.svelte):**
+- Added `searchMode` state: contain, exact, not_contain, fuzzy
+- Added `searchFields` state: array of string_id, source, target
+- Search mode dropdown next to search input
+- Checkbox row for field selection
+- API calls include `search_mode` and `search_fields` params
+
+**Backend (rows.py):**
+- Added `search_mode` and `search_fields` query params
+- Exact: `func.lower(column) == func.lower(search)`
+- Not contain: `~column.ilike(pattern)` with AND logic
+- Contain/Fuzzy: `column.ilike(pattern)` with OR logic
+
+**Fuzzy (TODO):**
+- Currently falls back to "contain" mode
+- Future: Integrate Model2Vec semantic search
+
+---
+
+*Implemented 2026-01-02 by Claude*
