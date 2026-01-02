@@ -37,6 +37,40 @@ See **[PHASE_10_MAJOR_UIUX_OVERHAUL.md](PHASE_10_MAJOR_UIUX_OVERHAUL.md)** for:
 | CI-002 | macOS build references non-existent config | Changed to inline config in package.json | ✅ FIXED |
 | CI-003 | TM similarity search 500 error | Added pg_trgm extension to both CI workflows | ✅ FIXED |
 
+## Session 14 Updates (Auto-Updater Fix)
+
+| Issue | Root Cause | Fix | Status |
+|-------|------------|-----|--------|
+| AU-001 | Semver leading zeros | Changed `%m%d` → `%-m%d` (26.0102 → 26.102) | ✅ FIXED |
+| AU-002 | No `latest` release tag | Added step to create `latest` release for updater | ✅ FIXED |
+| AU-003 | YAML heredoc broke parsing | Use ConvertTo-Json instead | ✅ FIXED |
+| AU-004 | PowerShell curl JSON escaping | Write JSON to file, use @file | ✅ FIXED |
+| AU-005 | UTF-8 BOM in JSON file | Use WriteAllText() instead of Out-File | ✅ FIXED |
+| AU-006 | **STUPID REGEX** | Regex to extract version when CI already had it | ✅ FIXED |
+
+### AU-006: The Regex Idiocy (LESSON LEARNED)
+
+**Problem:** `latest.yml` generation used regex to parse version from `version.py`:
+```powershell
+if ($versionContent -match 'VERSION\s*=\s*"(\d{2}\.\d{4}\.\d{4})"') {
+```
+
+**Why This Was Stupid:**
+1. CI already generates the version and stores it in `${{ needs.check-build-trigger.outputs.version }}`
+2. Regex was fragile - broke when version format changed from `MMDD` to `MDD`
+3. Had a silent fallback `25.0101.0000` that masked the failure
+4. Duplicated logic = multiple places to break
+
+**Proper Fix:**
+```powershell
+env:
+  VERSION: ${{ needs.check-build-trigger.outputs.version }}
+run: |
+  $version = $env:VERSION  # Just use it directly
+```
+
+**Rule:** Don't parse what you already have. Question old code that does unnecessary work.
+
 ---
 
 ## Session 9 Updates
