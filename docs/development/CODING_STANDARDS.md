@@ -49,6 +49,27 @@ When absorbing features into LDM:
 - Each function does ONE thing
 - Type hints required
 
+### 5. DON'T PARSE WHAT YOU ALREADY HAVE (AU-006 LESSON)
+
+**BEFORE writing regex, parsing, or extraction code - ASK:**
+- Does this value already exist somewhere?
+- Is there a variable/output I can use directly?
+- Am I duplicating logic that exists elsewhere?
+
+**BAD (AU-006):**
+```powershell
+# Regex to extract version from version.py... WHY??
+if ($content -match 'VERSION\s*=\s*"([^"]+)"') { $version = $Matches[1] }
+```
+
+**GOOD:**
+```powershell
+# CI already has the version - just use it
+$version = $env:VERSION  # from ${{ needs.job.outputs.version }}
+```
+
+**The Rule:** If the data exists, use it directly. Don't create a second path to the same data.
+
 ### 5. ASYNC BY DEFAULT (Backend)
 - All new endpoints should be async
 - Use `AsyncSession` for database
