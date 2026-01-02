@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-01 (Session 13 - CI/CD Fixes) | **Build:** 426 | **Open:** 12
+**Last Updated:** 2026-01-02 (Session 15 - Issue Verification) | **Build:** 436 | **Open:** 8
 
 ---
 
@@ -8,13 +8,13 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 55 |
+| **FIXED/CLOSED** | 59 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
-| **HIGH (Endpoint Coverage)** | 6 |
-| **MEDIUM (UI/UX)** | 4 |
-| **LOW (Cleanup/Accessibility)** | 3 |
-| **Total Open** | 12 |
+| **HIGH (Endpoint Coverage)** | 4 |
+| **MEDIUM (Audits)** | 2 |
+| **LOW (Cleanup/Accessibility)** | 4 |
+| **Total Open** | 8 |
 
 ---
 
@@ -47,6 +47,19 @@ See **[PHASE_10_MAJOR_UIUX_OVERHAUL.md](PHASE_10_MAJOR_UIUX_OVERHAUL.md)** for:
 | AU-004 | PowerShell curl JSON escaping | Write JSON to file, use @file | ✅ FIXED |
 | AU-005 | UTF-8 BOM in JSON file | Use WriteAllText() instead of Out-File | ✅ FIXED |
 | AU-006 | **STUPID REGEX** | Regex to extract version when CI already had it | ✅ FIXED |
+
+## Session 15 Updates (Issue Verification)
+
+Verified open issues - found 4 were already fixed:
+
+| Issue | Was | Now | Status |
+|-------|-----|-----|--------|
+| UI-087 | Apps dropdown on far right | CSS fixed: centered below button | ✅ FIXED |
+| UI-088 | Separate QA buttons | Now single "Run QA" in context menu | ✅ FIXED |
+| UI-089/090/091 | Missing Delete buttons | Delete exists for File/Folder/Project/Platform | ✅ FIXED |
+| UI-092 | Can't right-click closed project | ExplorerGrid (Windows-style), all items clickable | ✅ FIXED |
+
+**Open issues reduced from 12 to 8.**
 
 ### AU-006: The Regex Idiocy (LESSON LEARNED)
 
@@ -173,40 +186,25 @@ run: |
 
 ---
 
-## OPEN ISSUES - UI/UX (HIGH)
+## ~~OPEN ISSUES - UI/UX (HIGH)~~ ✅ ALL FIXED (Session 15)
 
-### UI-088: Need Single "Run QA" Button
+### ~~UI-088: Need Single "Run QA" Button~~ ✅ FIXED
 - **Reported:** 2026-01-01
-- **Severity:** HIGH
-- **Component:** LDM UI
-- **Status:** OPEN
+- **Fixed:** 2026-01-02 (Session 15 verification)
+- **Status:** FIXED
 
-**Problem:** Currently have separate buttons:
-- "Run Full Term QA"
-- "Run Full Line QA"
-
-**Requirement:** One single "Run QA" button that does EVERYTHING:
-- Term QA
-- Line QA
-- Pattern check
-- Spelling check
-- Grammar check
-- All other QA checks
+**Was:** Separate "Run Full Term QA" and "Run Full Line QA" buttons
+**Now:** Single "Run QA" button in context menu (FilesPage.svelte:1133)
 
 ---
 
-### UI-089/090/091: Missing Delete Buttons
+### ~~UI-089/090/091: Missing Delete Buttons~~ ✅ FIXED
 - **Reported:** 2026-01-01
-- **Severity:** HIGH
-- **Component:** FileExplorer UI
-- **Status:** OPEN
+- **Fixed:** 2026-01-02 (Session 15 verification)
+- **Status:** FIXED
 
-**Problem:** Cannot find buttons to:
-- UI-089: Delete File
-- UI-090: Delete Folder
-- UI-091: Delete Project
-
-**Action:** Add delete functionality with confirmation dialogs.
+**Was:** No delete buttons visible
+**Now:** Delete in context menu for File, Folder, Project, Platform (FilesPage.svelte:1141-1156)
 
 ---
 
@@ -290,31 +288,25 @@ run: |
 
 ---
 
-## OPEN ISSUES - UI/UX (MEDIUM)
+## ~~OPEN ISSUES - UI/UX (MEDIUM)~~ ✅ PARTIALLY FIXED (Session 15)
 
-### UI-087: Apps Dropdown Position Wrong
+### ~~UI-087: Apps Dropdown Position Wrong~~ ✅ FIXED
 - **Reported:** 2026-01-01
-- **Severity:** MEDIUM
-- **Component:** AppBar/Navigation
-- **Status:** OPEN
+- **Fixed:** 2026-01-02 (Session 15 verification)
+- **Status:** FIXED
 
-**Problem:** Apps dropdown menu appears on the far right instead of directly below the Apps button.
-
-**Expected:** Dropdown should grow right below the Apps button.
-
-**User says:** "the app button could have a slicker dropdown that grow right below the app button not on the far right"
+**Was:** Apps dropdown appears on far right
+**Now:** CSS fixed with `top: 100%`, `left: 50%`, `transform: translateX(-50%)` - centered below button
 
 ---
 
-### UI-092: Cannot Right-Click Closed Project
+### ~~UI-092: Cannot Right-Click Closed Project~~ ✅ FIXED
 - **Reported:** 2026-01-01
-- **Severity:** MEDIUM
-- **Component:** FileExplorer
-- **Status:** OPEN
+- **Fixed:** 2026-01-02 (Session 15 verification)
+- **Status:** FIXED
 
-**Problem:** Right-clicking a project when it's collapsed/closed doesn't work.
-
-**Expected:** Right-click context menu should work on closed projects.
+**Was:** Tree view with collapsed projects, right-click didn't work
+**Now:** ExplorerGrid (Windows-style grid view), all items have context menu via `oncontextmenu`
 
 ---
 
