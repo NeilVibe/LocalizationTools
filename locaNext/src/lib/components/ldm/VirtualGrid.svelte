@@ -2089,8 +2089,6 @@
           <!-- Rendered rows -->
           {#each visibleRows as row, i (row.row_num)}
             {@const rowIndex = visibleStart + i}
-            {@const rowTop = getRowTop(rowIndex)}
-            {@const rowHeight = getRowHeight(rowIndex)}
             {@const rowLock = $ldmConnected && row.id ? isRowLocked(parseInt(row.id)) : null}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
@@ -2099,7 +2097,7 @@
               class:locked={rowLock}
               class:selected={selectedRowId === row.id}
               class:row-hovered={hoveredRowId === row.id}
-              style="top: {rowTop}px; min-height: {rowHeight}px;"
+              style="top: {getRowTop(rowIndex)}px; min-height: {getRowHeight(rowIndex)}px;"
               use:measureRowHeight={{ index: rowIndex }}
               onclick={(e) => handleCellClick(row, e)}
               onmouseleave={handleRowMouseLeave}
