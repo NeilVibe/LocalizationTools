@@ -1634,6 +1634,8 @@ jobs:
       # STEP 5: Generate latest.yml for Auto-Update
       # ============================================================
       - name: Generate latest.yml for Auto-Update
+        env:
+          VERSION: ${{ needs.check-build-trigger.outputs.version }}
         run: |
           Write-Host "=== Generating latest.yml for electron-updater ==="
 
@@ -1643,22 +1645,16 @@ jobs:
           $fileName = $installer.Name
           $fileSize = $installer.Length
           $hash = (Get-FileHash -Path $installer.FullName -Algorithm SHA512).Hash.ToLower()
-
-          # Extract VERSION (unified format: YY.MMDD.HHMM - valid semver + datetime)
-          $versionContent = Get-Content "version.py" -Raw
-          if ($versionContent -match 'VERSION\s*=\s*"(\d{2}\.\d{4}\.\d{4})"') {
-            $semanticVersion = $Matches[1]
-            Write-Host "[OK] Extracted unified VERSION: $semanticVersion (YY.MMDD.HHMM format)"
-          } else {
-            $semanticVersion = "25.0101.0000"  # Fallback with unified format
-            Write-Host "[WARN] Could not extract VERSION, using fallback: $semanticVersion"
-          }
-
           $releaseDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
 
-          $latestYml = "version: $semanticVersion`nfiles:`n  - url: $fileName`n    sha512: $hash`n    size: $fileSize`npath: $fileName`nsha512: $hash`nreleaseDate: '$releaseDate'"
+          # Use version directly from CI (no regex parsing needed)
+          $version = $env:VERSION
+          Write-Host "[OK] Version from CI: $version"
 
-          $latestYml | Out-File -FilePath "installer_output\latest.yml" -Encoding UTF8 -NoNewline
+          $latestYml = "version: $version`nfiles:`n  - url: $fileName`n    sha512: $hash`n    size: $fileSize`npath: $fileName`nsha512: $hash`nreleaseDate: '$releaseDate'"
+
+          # Write WITHOUT BOM
+          [System.IO.File]::WriteAllText("installer_output\latest.yml", $latestYml)
           Write-Host "[OK] latest.yml generated"
           Get-Content "installer_output\latest.yml"
         shell: powershell
