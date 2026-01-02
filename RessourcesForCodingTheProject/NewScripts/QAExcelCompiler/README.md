@@ -30,14 +30,24 @@ pip install -r requirements.txt
 
 ## Usage
 
-### 1. Drop QA files into `QAfolder/`
+### 1. Drop QA folders into `QAfolder/`
 
-**Filename format:** `{Username}_{Category}.xlsx`
+**Folder format:** `{Username}_{Category}/` containing xlsx + images
 
 Examples:
-- `John_Quest.xlsx`
-- `Alice_Knowledge.xlsx`
-- `Bob_Item.xlsx`
+```
+QAfolder/
+├── John_Quest/
+│   ├── LQA_Quest.xlsx      # Any xlsx name works (only 1 per folder)
+│   ├── 10034.png           # Images referenced in xlsx
+│   └── screenshot.png
+├── Alice_Quest/
+│   ├── LQA_Quest.xlsx
+│   └── 10034.png           # Same name OK - will be renamed
+└── Bob_Item/
+    ├── LQA_Item.xlsx
+    └── bug.png
+```
 
 **Valid categories:** Quest, Knowledge, Item, Node, System
 
@@ -49,13 +59,19 @@ python3 compile_qa.py
 
 ### 3. Check `Masterfolder/` for results
 
-Output files:
-- `Master_Quest.xlsx`
-- `Master_Knowledge.xlsx`
-- `Master_Item.xlsx`
-- `Master_Node.xlsx`
-- `Master_System.xlsx`
-- `MasterUI/MasterUI.xlsx` - All screenshot issues combined
+Output structure:
+```
+Masterfolder/
+├── Master_Quest.xlsx         # Hyperlinks point to Images/
+├── Master_Knowledge.xlsx
+├── Master_Item.xlsx
+├── Master_Node.xlsx
+├── Master_System.xlsx
+└── Images/                   # ALL images consolidated here
+    ├── John_Quest_10034.png  # Renamed: {User}_{Category}_{original}
+    ├── Alice_Quest_10034.png # No collision with John's
+    └── ...
+```
 
 ---
 
@@ -66,16 +82,21 @@ QAExcelCompiler/
 ├── compile_qa.py         # Main script (standalone)
 ├── requirements.txt      # Dependencies (openpyxl)
 ├── README.md             # This file
-├── QAfolder/             # DROP QA FILES HERE
-│   ├── John_Quest.xlsx
-│   ├── Alice_Quest.xlsx
+├── QAfolder/             # DROP QA FOLDERS HERE
+│   ├── John_Quest/       # {Username}_{Category}/
+│   │   ├── LQA.xlsx      # 1 xlsx per folder
+│   │   └── *.png         # Images with relative hyperlinks
+│   ├── Alice_Quest/
+│   │   ├── LQA.xlsx
+│   │   └── *.png
 │   └── ...
 ├── Masterfolder/         # OUTPUT GOES HERE
 │   ├── Master_Quest.xlsx
 │   ├── Master_Knowledge.xlsx
 │   ├── ...
-│   └── MasterUI/         # UI ISSUES (screenshots)
-│       └── MasterUI.xlsx
+│   └── Images/           # ALL images consolidated
+│       ├── John_Quest_10034.png
+│       └── Alice_Quest_10034.png
 └── docs/
     ├── ROADMAP.md        # Project plan
     └── WIP.md            # Technical details
@@ -85,9 +106,16 @@ QAExcelCompiler/
 
 ## Features
 
-### Comment Compilation
+### Comment + Screenshot Compilation
 
-Each user gets their own column: `COMMENT_John`, `COMMENT_Alice`, etc.
+Each user gets **paired columns**: `COMMENT_John` + `SCREENSHOT_John`, etc.
+
+```
+... | COMMENT_John | SCREENSHOT_John | COMMENT_Alice | SCREENSHOT_Alice | ...
+```
+
+- Comment: QA feedback text (with timestamp)
+- Screenshot: Hyperlink to `Images/{User}_{Category}_{filename}.png`
 
 **Comment format with timestamp:**
 ```
@@ -126,25 +154,22 @@ Each master file gets a `STATUS` sheet as the **first tab** (yellow header):
 - **Team's custom formatting preserved** (colors added to cells won't be overwritten)
 - **Hidden columns stay hidden** (column visibility preserved on updates)
 
-### MasterUI - Screenshot Issues
+### Image Consolidation
 
-All rows with SCREENSHOT values are collected into one file: `MasterUI/MasterUI.xlsx`
+All images from QA folders are copied to `Masterfolder/Images/` with unique names:
 
-**Purpose:** Consolidate all UI-related issues (things requiring screenshots) from ALL categories into one place.
-
-**MasterUI columns:**
-
-| Category | COMMENT | SCREENSHOT |
-|----------|---------|------------|
-| Quest | "UI bug here" (stringid: X // date: Y) | screenshot.png |
-| Item | "Icon missing" (date: Y) | item_icon.png |
+```
+Images/
+├── John_Quest_10034.png       # {User}_{Category}_{original}
+├── Alice_Quest_10034.png      # No collision with John's file
+├── John_Quest_screenshot.png
+└── ...
+```
 
 **Features:**
-- Collects from ALL QA files across ALL categories
-- **Hyperlinks preserved** - Click to open screenshot
-- **Duplicate detection** - Same SCREENSHOT + COMMENT combo skipped on re-run
-- Red/coral header styling for visibility
-- Comment cells: pink fill + bold
+- **Unique naming** - `{Username}_{Category}_{original}` prevents duplicates
+- **Hyperlinks updated** - Automatically point to new `Images/` location
+- **Click to open** - Hyperlinks work directly from master file
 
 ---
 
@@ -161,41 +186,49 @@ QA files should have these columns (detected dynamically by header name):
 | STATUS | QA status | **YES** (stats only, deleted from master) |
 | COMMENT | QA feedback | **YES** (copied to COMMENT_{User}, deleted from master) |
 | STRINGID | String identifier | **YES** (parsed into comment format, deleted from master) |
-| SCREENSHOT | Hyperlink to image | **YES** (collected into MasterUI, deleted from master) |
+| SCREENSHOT | Hyperlink to image | **YES** (copied to SCREENSHOT_{User}, hyperlink updated) |
 
 **Dynamic detection:** Column positions don't matter - the script finds columns by header name.
 
 **Row matching:** By row index (all QA files for same category have identical structure)
 
-**Columns deleted from master:** STATUS, COMMENT, SCREENSHOT, STRINGID are deleted when creating master files. Only COMMENT_{User} columns are added at the far right.
+**Columns deleted from master:** STATUS, COMMENT, SCREENSHOT, STRINGID are deleted when creating master files. Paired `COMMENT_{User}` + `SCREENSHOT_{User}` columns are added at the far right.
 
-**Note:** STATUS values are read for statistics (shown in STATUS tab) but NOT copied per-user. Only COMMENT gets individual columns.
+**Note:** STATUS values are read for statistics (shown in STATUS tab) but NOT copied per-user. COMMENT and SCREENSHOT get paired individual columns.
 
 ---
 
 ## Example
 
-**Before (QA files):**
+**Before (QA folders):**
 
-`John_Quest.xlsx`:
-| Original | ENG | COMMENT |
-|----------|-----|---------|
-| 기습 | Ambush | Looks good |
-| 낯선 땅 | Strange Lands | Typo here |
+`John_Quest/LQA.xlsx`:
+| Original | ENG | COMMENT | SCREENSHOT |
+|----------|-----|---------|------------|
+| 기습 | Ambush | Looks good | |
+| 낯선 땅 | Strange Lands | Typo here | typo.png |
 
-`Alice_Quest.xlsx`:
-| Original | ENG | COMMENT |
-|----------|-----|---------|
-| 기습 | Ambush | |
-| 낯선 땅 | Strange Lands | Fixed now |
+`John_Quest/` also contains: `typo.png`
+
+`Alice_Quest/LQA.xlsx`:
+| Original | ENG | COMMENT | SCREENSHOT |
+|----------|-----|---------|------------|
+| 기습 | Ambush | | |
+| 낯선 땅 | Strange Lands | Fixed now | fixed.png |
+
+`Alice_Quest/` also contains: `fixed.png`
 
 **After (Master file):**
 
 `Master_Quest.xlsx`:
-| Original | ENG | COMMENT_John | COMMENT_Alice |
-|----------|-----|--------------|---------------|
-| 기습 | Ambush | "Looks good" (date: 251230 1500) | |
-| 낯선 땅 | Strange Lands | "Typo here" (date: 251230 1500) | "Fixed now" (date: 251230 1502) |
+| Original | ENG | COMMENT_John | SCREENSHOT_John | COMMENT_Alice | SCREENSHOT_Alice |
+|----------|-----|--------------|-----------------|---------------|------------------|
+| 기습 | Ambush | "Looks good" (date: 251230 1500) | | | |
+| 낯선 땅 | Strange Lands | "Typo here" (date: 251230 1500) | [Images/John_Quest_typo.png] | "Fixed now" (date: 251230 1502) | [Images/Alice_Quest_fixed.png] |
+
+`Masterfolder/Images/` contains:
+- `John_Quest_typo.png`
+- `Alice_Quest_fixed.png`
 
 ---
 
@@ -203,10 +236,12 @@ QA files should have these columns (detected dynamically by header name):
 
 | Issue | Solution |
 |-------|----------|
-| "No valid QA files found" | Check filename format: `Username_Category.xlsx` |
+| "No valid QA folders found" | Check folder format: `Username_Category/` |
+| "No xlsx in folder" | Each folder needs exactly 1 `.xlsx` file |
 | "Unknown category" | Use: Quest, Knowledge, Item, Node, System |
 | ModuleNotFoundError | Run: `pip install -r requirements.txt` |
 | Permission error | Close Excel files before running |
+| Hyperlink not working | Check image exists in `Images/` folder |
 
 ---
 
@@ -214,12 +249,15 @@ QA files should have these columns (detected dynamically by header name):
 
 - Uses `openpyxl` for Excel handling (preserves formatting)
 - **Dynamic column detection** - finds columns by header name, not fixed positions
+- **Folder-based input** - each user submits `{Username}_{Category}/` folder with xlsx + images
 - Row matching by index (all QA files same structure per category)
-- COMMENT_{User} columns added at MAX_COLUMN + 1 (far right)
+- Paired `COMMENT_{User}` + `SCREENSHOT_{User}` columns added at far right
 - Fallback row matching: 2+ cell values from non-editable columns
 - STATUS sheet recreated on each run (always first tab)
-- MasterUI uses duplicate detection (SCREENSHOT + COMMENT combo)
+- **Image unique naming** - `{Username}_{Category}_{original}` prevents collisions
+- **Hyperlink transformation** - relative paths updated to point to `Images/` folder
 
 ---
 
 *Created: 2025-12-30*
+*Updated: 2026-01-02 - Folder-based input, paired COMMENT+SCREENSHOT columns, Images/ consolidation*
