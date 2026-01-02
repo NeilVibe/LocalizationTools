@@ -1,290 +1,239 @@
 # Session Context
 
-> Last Updated: 2026-01-02 (Session 14 - Auto-Updater Fix)
+> Last Updated: 2026-01-02 (Session 15 - Planning & Documentation)
 
 ---
 
 ## Current State
 
 **Build:** 436 (v26.102.1001)
-**Status:** Auto-updater fully working with Gitea
+**Status:** Planning complete, ready for major feature implementation
 
 ---
 
-## SESSION 14 UPDATES (2026-01-02)
+## SESSION 15 UPDATES (2026-01-02)
 
-### Auto-Updater Fixes
+### Planning & Documentation Sprint
 
-| Issue | Root Cause | Fix | Status |
-|-------|------------|-----|--------|
-| AU-001 Semver leading zeros | `%m%d` format | Changed to `%-m%d` (no leading zero) | ✅ FIXED |
-| AU-002 Missing latest tag | No `latest` release for electron-updater | Added step to create `latest` release | ✅ FIXED |
-| AU-003 YAML heredoc | PowerShell heredoc broke YAML | Use ConvertTo-Json | ✅ FIXED |
-| AU-004 JSON escaping | curl JSON encoding issues | Write to file, use @file | ✅ FIXED |
-| AU-005 UTF-8 BOM | PowerShell Out-File adds BOM | Use `[System.IO.File]::WriteAllText()` | ✅ FIXED |
-| AU-006 Stupid regex | Parsed version.py when CI had variable | Use `${{ needs.job.outputs.version }}` directly | ✅ FIXED |
-| AU-007 Wrong provider | package.json had `github` provider | Changed to `generic` with Gitea URL | ✅ FIXED |
+Comprehensive planning session to prepare for major features.
 
-### Files Modified (Session 14)
+### Documents Updated/Created
 
-| File | Change |
-|------|--------|
-| `locaNext/package.json` | Changed publish provider from `github` to `generic` with Gitea URL |
-| `.gitea/workflows/build.yml` | Fixed latest.yml generation, removed regex, use CI version directly |
-| `docs/development/CODING_STANDARDS.md` | Added rule 5: "STUPID vs ELEGANT" |
-| `CLAUDE.md` | Added rule 14: "STUPID vs ELEGANT" |
-| `docs/cicd/TROUBLESHOOTING.md` | Added Gitea API Token + Auto-Updater System sections |
-| `docs/cicd/CI_CD_HUB.md` | Added "Release System: 2-Tag Methodology" section |
+| Document | Lines | Status |
+|----------|-------|--------|
+| `docs/wip/OFFLINE_ONLINE_MODE.md` | ~1200 | ✅ COMPLETE SPEC |
+| `docs/wip/SESSION_CONTEXT.md` | This file | ✅ UPDATED |
 
-### Files Created (Session 14)
+### P3 Offline/Online Mode - FULLY SPECIFIED
+
+Complete specification written with all design decisions resolved:
+
+| Decision | Resolution |
+|----------|------------|
+| Auto-connect | ✅ YES - Online if possible, auto-fallback to offline |
+| Sync method | Manual only - Right-click → Download/Sync |
+| Merge type | Add/Edit only - NO deletions synced |
+| TM sync | Same as file sync (right-click) |
+| File expiry | NO - Keep forever until user removes |
+| Recycle Bin | ✅ YES - 30-day soft delete |
+| Sync reminder | Toast + Info bar on files |
+| Dashboard | Click mode indicator → Sync Dashboard Modal |
+
+### Key Sections in OFFLINE_ONLINE_MODE.md
+
+1. **Mode Indicator** - 🟢🔴🟡🟠 always visible top-right
+2. **Sync Dashboard Modal** - Full overview on click
+3. **Auto-Connect Behavior** - Toast notifications on mode change
+4. **Sync Reminder** - Toast + info bar on pending files
+5. **Right-Click Menus** - Download/Sync/Refresh options
+6. **File Status Icons** - ☁️💾🔄⬆️⚠️
+7. **Recycle Bin** - 30-day expiry, restore anytime
+8. **TM Sync** - Same pattern as files
+9. **User Flows** - 4 detailed flows with mockups
+10. **Conflict Resolution** - Both Edited, Reviewed Lock, Deleted
+11. **Database Schema** - SQLite tables for offline + bin
+12. **API Endpoints** - 8 sync + 6 bin endpoints
+13. **Implementation Phases** - 6 phases, ~10 weeks
+
+---
+
+## PLANNING STATUS
+
+### Fully Planned (Ready to Implement)
+
+| Priority | Feature | Doc | Lines | Effort |
+|----------|---------|-----|-------|--------|
+| **P3** | Offline/Online Mode | `OFFLINE_ONLINE_MODE.md` | ~1200 | 10 weeks |
+| **P5** | Advanced Search | `ADVANCED_SEARCH.md` | ~124 | 2-3 days |
+| **P4** | Color Parser Extension | `COLOR_PARSER_EXTENSION.md` | ~110 | 1-2 days |
+| **Phase 10** | Major UI/UX Overhaul | `PHASE_10_MAJOR_UIUX_OVERHAUL.md` | ~330 | 4-6 weeks |
+
+### Pending Work
+
+| Item | Source | Priority |
+|------|--------|----------|
+| 12 Open Issues | ISSUES_TO_FIX.md | Mixed |
+| Code Review Cycle 2 | SESSION_CONTEXT.md | Medium |
+| Fast/Deep model selector | Feature request | Medium |
+| Threading/responsiveness | Bug | Medium |
+
+---
+
+## OPEN ISSUES SUMMARY (8 Total)
+
+### HIGH Priority (Endpoint Coverage)
+
+| Issue | Description | Action |
+|-------|-------------|--------|
+| EP-001 | LDM Core at 57% (35/61) | Write 26 more tests |
+| EP-002 | Auth at 25% (6/24) | Write 18 more tests |
+| EP-003 | Admin Stats at 0% (0/16) | Write 16 tests |
+| EP-004 | XLSTransfer at 7% (1/13) | Write 12 more tests |
+
+### MEDIUM Priority (Audits)
+
+| Issue | Description |
+|-------|-------------|
+| EP-005 | QuickSearch audit (absorbed?) |
+| EP-006 | KR Similar audit (absorbed?) |
+
+### LOW Priority (Cleanup/Accessibility)
+
+| Issue | Description |
+|-------|-------------|
+| UI-100 | Skip to Main Content URL artifact |
+| UI-101 | Merge User button into Settings |
+| CLEANUP-001 | Remove QuickSearch if absorbed |
+| CLEANUP-002 | Remove KR Similar if absorbed |
+
+### FIXED This Session (Session 15)
+
+| Issue | Was | Now |
+|-------|-----|-----|
+| ~~UI-087~~ | Apps dropdown on far right | ✅ CSS fixed, centered below button |
+| ~~UI-088~~ | Separate QA buttons | ✅ Single "Run QA" in context menu |
+| ~~UI-089/090/091~~ | No delete buttons | ✅ Delete in context menu |
+| ~~UI-092~~ | Can't right-click closed project | ✅ ExplorerGrid, all clickable |
+
+---
+
+## PREVIOUS SESSIONS SUMMARY
+
+### Session 14 (2026-01-02) - Auto-Updater Fix
+- Fixed 7 auto-updater issues (AU-001 to AU-007)
+- Changed from GitHub to Gitea generic provider
+- Created 2-tag release system (versioned + `latest`)
+- Auto-updater verified working
+
+### Session 13 (2026-01-01) - CI/CD Fixes
+- Added gsudo for Windows service control
+- Fixed macOS build (electron-builder config)
+- Added pg_trgm extension to CI workflows
+
+### Session 12 (2026-01-01) - UI Polish
+- Fixed CTRL+S not adding to TM
+- Added TM indicator with scope
+- Unified Settings/User menu
+- Replaced dropdown with segmented tabs
+
+### Session 11 (2026-01-01) - TM Hierarchy Complete
+- All 5 sprints complete
+- Database schema, backend, frontend all working
+- Platform management UI done
+
+---
+
+## KEY FILES
+
+### Planning Documents
 
 | File | Purpose |
 |------|---------|
-| `scripts/release_manager.sh` | Release management (list, cleanup, mock-update, restore) |
-| `testing_toolkit/cdp/check_update.js` | Test auto-update connectivity |
-| `testing_toolkit/cdp/auto_update_test.js` | Full auto-update debug test |
+| `docs/wip/OFFLINE_ONLINE_MODE.md` | P3 complete spec |
+| `docs/wip/PHASE_10_MAJOR_UIUX_OVERHAUL.md` | Phase 10 plan |
+| `docs/wip/ADVANCED_SEARCH.md` | P5 plan |
+| `docs/wip/COLOR_PARSER_EXTENSION.md` | P4 guide |
+| `docs/wip/ISSUES_TO_FIX.md` | 12 open issues |
 
-### Key Learnings (Session 14)
-
-| CS | Issue | Solution |
-|----|-------|----------|
-| CS-022 | STUPID vs ELEGANT | Don't fix broken complexity - DELETE it. Ask "is this the RIGHT solution?" |
-| CS-023 | Auto-updater provider | electron-updater `generic` provider requires URL to directory with `latest.yml` |
-| CS-024 | Gitea token location | Stored in `~/.bashrc` as `GITEA_TOKEN` |
-| CS-025 | 2-Tag release system | Each build needs versioned (`v26.102.1001`) + `latest` tag for auto-updater fixed URL |
-
-### Cleanup Done (Session 14)
-
-- Deleted 8 old releases (all had broken GitHub auto-updater)
-- Only 2 releases remain: `latest` + `v26.102.1001`
-- Verified auto-update with mock v99.999.9999 test
-
-### Auto-Update Test Proof
-
-```
-Server: v99.999.9999 (mock) vs Installed: v26.102.1001
-
-Result:
-├── Connected to Gitea ✓
-├── Detected newer version ✓
-├── Downloaded 624MB installer ✓
-└── Created pending/update-info.json ✓
-```
-
----
-
-## SESSION 13 UPDATES (2026-01-01)
-
-### CI/CD Fixes (Session 13)
-
-| Issue | Root Cause | Fix | Status |
-|-------|------------|-----|--------|
-| Windows Runner offline | SW lacked admin rights for Windows services | Added `gsudo` to `gitea_control.sh` lines 143, 197-198, 309 | ✅ FIXED |
-| GitHub macOS build fail | `--config electron-builder.json` file doesn't exist | Changed to `npx electron-builder --mac --publish never` | ✅ FIXED |
-| TM tests failing (500) | `similarity()` requires pg_trgm extension | Added `CREATE EXTENSION pg_trgm` to both CI workflows | ✅ FIXED |
-
-### Files Modified (Session 13)
-
-| File | Change |
-|------|--------|
-| `scripts/gitea_control.sh` | Added gsudo for Windows service Start/Stop commands |
-| `.github/workflows/build-electron.yml` | Fixed macOS build + added pg_trgm extension |
-| `.gitea/workflows/build.yml` | Added pg_trgm extension step |
-
-### Key Learnings (Session 13)
-
-| CS | Issue | Solution |
-|----|-------|----------|
-| CS-019 | SW can't start Windows services | Use gsudo: `$POWERSHELL -Command "gsudo Start-Service..."` |
-| CS-020 | electron-builder config | Config lives in `package.json` under "build" key, not separate file |
-| CS-021 | TM similarity search | Requires `pg_trgm` PostgreSQL extension in CI database |
-
-### Build Status (Session 13)
-
-| Platform | Build | Status | Notes |
-|----------|-------|--------|-------|
-| Gitea | 426 | RUNNING | Has all fixes (gsudo, pg_trgm) |
-| GitHub | 426 | RUNNING | Missing pg_trgm fix (pushed after trigger) |
-| GitHub | 427 | PENDING | Will trigger after 426 fails |
-
----
-
-## SESSION 12 UPDATES (2026-01-01)
-
-### Bug Fixes (Session 12)
-
-| Bug | Issue | Fix | Status |
-|-----|-------|-----|--------|
-| CTRL+S not adding to TM | Event destructuring wrong: expected `{row}` but got `{rowId, source, target}` | Fixed destructuring in `GridPage.svelte:152` | ✅ FIXED |
-| Double event handler | LDM.svelte still had old `linkedTM` handler | Removed `on:confirmTranslation` from LDM.svelte | ✅ FIXED |
-| TM indicator unclear | User wanted "TM ACTIVE:" prefix | Added label prefix in GridPage toolbar | ✅ FIXED |
-| Ugly dropdown | Files/TM dropdown looked bad | Replaced with clean segmented tabs | ✅ FIXED |
-
-### UI Changes (Session 12)
-
-| Component | Change |
-|-----------|--------|
-| TM Indicator | Now shows "TM ACTIVE: [name] (scope: scope_name)" |
-| LDM Navigation | Changed from dropdown to clean segmented tabs |
-| TM info width | Increased max-width from 350px to 400px |
-| **Settings/User Menu** | **UNIFIED** - Single dropdown with user profile, preferences, about, logout |
-| **Header Dropdowns** | Replaced ugly Carbon side-panels with compact custom dropdowns |
-| **Files/TM Tabs** | Always visible - works from anywhere (Task Manager, other apps) |
-
-### Pending Issues (Session 12)
-
-| Issue | Description | Priority |
-|-------|-------------|----------|
-| Fast/Deep model selector | No UI to choose TM model type | Medium |
-| Threading lag | Heavy processing blocks UI responsiveness | High |
-
----
-
-## SESSION 11 UPDATES (2026-01-01)
-
-### TM Hierarchy System - COMPLETE
-
-| Sprint | Feature | Status |
-|--------|---------|--------|
-| Sprint 1 | Database schema (platforms, tm_assignments) | ✅ DONE |
-| Sprint 2 | Backend TM resolution (cascade inheritance) | ✅ DONE |
-| Sprint 3 | TM Explorer UI (tree view) | ✅ DONE |
-| Sprint 4 | File Viewer TM indicator | ✅ DONE |
-| Sprint 5 | Platform Management UI | ✅ DONE |
-
-### Key Learnings (CS-017, CS-018)
-
-| CS | Issue | Solution |
-|----|-------|----------|
-| CS-017 | Bash `$()` gets mangled | Use heredoc `python3 << 'EOF'` + separate commands |
-| CS-018 | TM "active" but no scope | Check if assignment has NULL platform_id/project_id/folder_id |
-
----
-
-## TM System Current State
-
-### FAISS Implementation
-
-| Setting | Value | Notes |
-|---------|-------|-------|
-| Index Type | HNSW | State-of-the-art nearest neighbor |
-| HNSW_M | 32 | Connections per layer |
-| efConstruction | 400 | Build accuracy |
-| efSearch | 500 | Search accuracy |
-| Auto-sync | ✅ ENABLED | Background task on add/update/delete |
-
-### Sync Behavior
-
-| Operation | Sync Type | Speed |
-|-----------|-----------|-------|
-| ADD entry | Incremental | Fast (vectors appended) |
-| UPDATE entry | Full rebuild | Slower |
-| DELETE entry | Full rebuild | Slower |
-
-### Auto-Add Flow (CTRL+S Confirm)
-
-```
-1. User presses CTRL+S in VirtualGrid
-2. VirtualGrid.confirmInlineEdit() dispatches {rowId, source, target}
-3. GridPage.handleConfirmTranslation() receives event
-4. If activeTMs.length > 0:
-   - POST to /api/ldm/tm/{tm_id}/entries (FormData)
-   - Backend auto-syncs via _auto_sync_tm_indexes()
-   - Entry embedded + added to FAISS incrementally
-```
-
----
-
-## Key Files
-
-### TM Hierarchy
+### Core Implementation Files
 
 | File | Purpose |
 |------|---------|
-| `server/tools/ldm/routes/tm_assignment.py` | TM assignment & activation |
-| `server/tools/ldm/routes/tm_entries.py` | TM entry CRUD with auto-sync |
-| `server/tools/ldm/indexing/sync_manager.py` | PKL/FAISS sync logic |
-| `server/tools/shared/faiss_manager.py` | Centralized FAISS operations |
-
-### Frontend
-
-| File | Purpose |
-|------|---------|
-| `src/lib/components/pages/GridPage.svelte` | File viewer with TM indicator + auto-add |
-| `src/lib/components/ldm/VirtualGrid.svelte` | Grid with TM matching |
-| `src/routes/+layout.svelte` | App layout with LDM tabs |
+| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | Main grid |
+| `locaNext/src/lib/components/ldm/FileExplorer.svelte` | File tree |
+| `locaNext/src/routes/+layout.svelte` | App layout |
+| `server/tools/ldm/routes/*.py` | LDM API endpoints |
 
 ---
 
-## Next Steps
+## RECOMMENDED NEXT STEPS
 
-1. **FULL CODE REVIEW** - Review Cycle 2 (PRIORITY)
-2. Add Fast/Deep model selector in TM menu
-3. Fix threading/responsiveness during heavy processing
+### Option A: Quick Wins First (1-2 days)
+1. P5 Advanced Search (small, impactful)
+2. Fix high-priority UI issues (UI-088, UI-092)
 
----
+### Option B: Clean Slate (2-3 days)
+1. Fix all 12 open issues
+2. Code Review Cycle 2
+3. Then start P3
 
-## Code Review Cycle 2 (2026-01-01)
+### Option C: Big Feature (10 weeks)
+1. Start P3 Offline/Online Mode
+2. Phase 1: Foundation (2 weeks)
+3. Continue through all 6 phases
 
-**Issue File:** `docs/code-review/ISSUES_20260101.md`
-**Protocol:** `docs/code-review/CODE_REVIEW_PROTOCOL.md`
-**Last Review:** 2025-12-12 to 2025-12-13 (~2.5 weeks ago)
-
-### Review Progress
-
-| Session | Module | Status |
-|---------|--------|--------|
-| Quick Scan | Automated scans | PENDING |
-| 1 | Database & Models | PENDING |
-| 2 | Utils & Core | PENDING |
-| 3 | Auth & Security | PENDING |
-| 4 | LDM Backend | PENDING |
-| 5 | XLSTransfer | PENDING |
-| 6 | QuickSearch | PENDING |
-| 7 | KR Similar | PENDING |
-| 8 | API Layer | PENDING |
-| 9 | Frontend - Core | PENDING |
-| 10 | Frontend - LDM | PENDING |
-| 11 | Admin Dashboard | PENDING |
-| 12 | Scripts & Config | PENDING |
-| 13 | CI/CD Workflows | PENDING |
-| 13B | CI/CD Infrastructure | PENDING |
-| 14 | Tests | PENDING |
-| 15 | Electron/Desktop | PENDING |
-| 16 | Installer | PENDING |
-
-### Key Rules (REMEMBER!)
-
-1. **REVIEW ALL FIRST, FIX LATER** - Document issues, don't fix during review
-2. **FIX EVERYTHING. NO EXCUSES. NO DEFER.**
-3. One issue file for entire review cycle
-4. Pass 2 = Full re-review after fixes
+### Option D: UI Overhaul (4-6 weeks)
+1. Start Phase 10
+2. Navigation restructure
+3. Windows-style explorer
 
 ---
 
-## Quick Commands
+## ARCHITECTURE REMINDER
+
+```
+LocaNext.exe (User PC)           Central PostgreSQL
+├─ Electron + Svelte 5       →   ├─ All text data
+├─ Embedded Python Backend       ├─ Users, sessions
+├─ FAISS indexes (local)         ├─ LDM rows, TM entries
+├─ Model2Vec (~128MB)            └─ Logs
+├─ Qwen (2.3GB, opt-in)
+└─ File parsing (local)
+
+ONLINE:  PostgreSQL (multi-user, WebSocket sync)
+OFFLINE: SQLite (single-user, auto-fallback) ← P3 enhances this
+```
+
+---
+
+## QUICK COMMANDS
 
 ```bash
 # DEV servers
 ./scripts/start_all_servers.sh --with-vite
 
-# Check TM assignment in DB
-python3 << 'EOF'
-import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools/server')
-from sqlalchemy import create_engine, text
-from config import DATABASE_URL
-engine = create_engine(DATABASE_URL)
-with engine.connect() as conn:
-    result = conn.execute(text("SELECT * FROM ldm_tm_assignments WHERE is_active = true"))
-    for r in result.fetchall():
-        print(r)
-EOF
+# Check servers
+./scripts/check_servers.sh
 
-# Test TM hierarchy
-node testing_toolkit/dev_tests/test_clean_hierarchy.mjs
+# Build trigger
+echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git push origin main && git push gitea main
+
+# Playground install
+./scripts/playground_install.sh --launch --auto-login
 ```
 
 ---
 
-*Session 12 - UI polish + Confirm-to-TM fix*
+## STATS
+
+| Metric | Value |
+|--------|-------|
+| Build | 436 |
+| Tests | 1,399 |
+| Endpoints | 118 |
+| Open Issues | 8 (was 12, 4 verified fixed) |
+| Planning Docs | 4 complete |
+
+---
+
+*Session 15 - Planning & Documentation Complete*
