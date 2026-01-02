@@ -2710,6 +2710,8 @@
   .virtual-row:hover,
   .virtual-row.row-hovered {
     background: var(--cds-layer-hover-01);
+    /* FIX: Ensure hovered row stacks on top to cover any overflow artifacts */
+    z-index: 1;
   }
 
   /* UI-059 FIX: Selected row takes priority over hover */
