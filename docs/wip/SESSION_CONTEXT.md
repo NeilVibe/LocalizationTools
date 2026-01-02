@@ -33,7 +33,8 @@
 | `.gitea/workflows/build.yml` | Fixed latest.yml generation, removed regex, use CI version directly |
 | `docs/development/CODING_STANDARDS.md` | Added rule 5: "STUPID vs ELEGANT" |
 | `CLAUDE.md` | Added rule 14: "STUPID vs ELEGANT" |
-| `docs/cicd/TROUBLESHOOTING.md` | Added Gitea API Token documentation |
+| `docs/cicd/TROUBLESHOOTING.md` | Added Gitea API Token + Auto-Updater System sections |
+| `docs/cicd/CI_CD_HUB.md` | Added "Release System: 2-Tag Methodology" section |
 
 ### Files Created (Session 14)
 
@@ -50,6 +51,7 @@
 | CS-022 | STUPID vs ELEGANT | Don't fix broken complexity - DELETE it. Ask "is this the RIGHT solution?" |
 | CS-023 | Auto-updater provider | electron-updater `generic` provider requires URL to directory with `latest.yml` |
 | CS-024 | Gitea token location | Stored in `~/.bashrc` as `GITEA_TOKEN` |
+| CS-025 | 2-Tag release system | Each build needs versioned (`v26.102.1001`) + `latest` tag for auto-updater fixed URL |
 
 ### Cleanup Done (Session 14)
 

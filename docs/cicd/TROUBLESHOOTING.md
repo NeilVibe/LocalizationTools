@@ -1126,4 +1126,115 @@ for r in c.fetchall(): print(f'{r[0]}: {status_map.get(r[1], r[1])} - {r[2][:50]
 
 ---
 
-*Last updated: 2025-12-27*
+## Auto-Updater System
+
+The LocaNext desktop app uses electron-updater with a **2-tag release system** on Gitea.
+
+### Release System Overview
+
+Each build creates **two releases** on Gitea:
+
+| Tag | Example | Purpose |
+|-----|---------|---------|
+| **Versioned** | `v26.102.1001` | Permanent history, rollback capability |
+| **Latest** | `latest` | Fixed endpoint for auto-updater |
+
+**Why 2 tags?** electron-updater needs a FIXED URL to check. The `latest` tag always points to the current version.
+
+### Auto-Update Flow
+
+```
+1. App launches
+2. Checks: http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest/latest.yml
+3. Compares version in latest.yml with installed version
+4. If newer → Downloads installer from 'latest' release
+5. Prompts user to restart
+```
+
+### Key Configuration: package.json
+
+```json
+"publish": {
+  "provider": "generic",
+  "url": "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest"
+}
+```
+
+**CRITICAL:** If `provider` is `github`, the app checks GitHub instead of Gitea!
+
+### Verifying Auto-Updater Config
+
+After a fresh install, check `app-update.yml` in the installed app:
+
+```bash
+# Check installed config (Windows path via WSL)
+cat "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/resources/app-update.yml"
+```
+
+**Correct output:**
+```yaml
+provider: generic
+url: http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest
+```
+
+**Wrong output (old broken config):**
+```yaml
+provider: github
+owner: NeilVibe
+repo: LocalizationTools
+```
+
+### Testing Auto-Updater
+
+Use the release manager script to test without waiting for a real update:
+
+```bash
+# Create mock v99.999.9999 release
+./scripts/release_manager.sh mock-update
+
+# Launch app - should detect update
+/mnt/c/Program\ Files/nodejs/node.exe testing_toolkit/cdp/auto_update_test.js
+
+# Restore real version
+./scripts/release_manager.sh restore
+```
+
+### Common Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| App checks GitHub | `provider: github` in package.json | Change to `provider: generic` with Gitea URL |
+| No update detected | 'latest' release missing | CI creates it automatically on every build |
+| Version compare fails | Leading zeros in month (e.g., `01` instead of `1`) | Use `%-m%d` format (no leading zero) |
+| Download fails | latest.yml has wrong filename | Check CI step generates correct filename |
+
+### Manual Release Creation
+
+If 'latest' release is missing:
+
+```bash
+source ~/.bashrc  # Load GITEA_TOKEN
+
+# Create latest release pointing to current version
+VERSION=$(grep -oP 'VERSION = "\K[^"]+' version.py)
+curl -s -X POST "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases" \
+  -H "Authorization: token $GITEA_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"tag_name\":\"latest\",\"name\":\"Latest Release (v$VERSION)\"}"
+
+# Then upload latest.yml from versioned release
+```
+
+### CI Pipeline: How Releases Are Created
+
+1. **Build Windows installer** → generates `latest.yml`
+2. **Create versioned release** (`v26.102.1001`) → upload installer + latest.yml
+3. **Delete existing 'latest' release** (if exists)
+4. **Create new 'latest' release** → upload same assets
+5. **Cleanup old releases** (keep last 5)
+
+See `docs/cicd/CI_CD_HUB.md` → "Release System: 2-Tag Methodology" for full details.
+
+---
+
+*Last updated: 2026-01-02*
