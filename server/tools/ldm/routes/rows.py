@@ -103,12 +103,23 @@ async def list_rows(
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
     search: Optional[str] = None,
+    search_mode: Optional[str] = Query("contain", description="Search mode: contain, exact, not_contain, fuzzy"),
+    search_fields: Optional[str] = Query("source,target", description="Comma-separated fields: string_id, source, target"),
     status: Optional[str] = None,
     filter: Optional[str] = Query(None, description="Filter: all, confirmed, unconfirmed, qa_flagged"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """Get paginated rows for a file.
+
+    Search Modes:
+    - contain: Text contains search term (default, case-insensitive)
+    - exact: Exact match only (case-insensitive)
+    - not_contain: Exclude rows containing term
+    - fuzzy: Semantic search using Model2Vec (falls back to contain if not available)
+
+    Search Fields:
+    - string_id, source, target (comma-separated)
 
     Filters:
     - all: All rows (default)
@@ -138,12 +149,46 @@ async def list_rows(
 
     if search:
         needs_count_query = True
-        search_pattern = f"%{search}%"
-        query = query.where(
-            (LDMRow.source.ilike(search_pattern)) |
-            (LDMRow.target.ilike(search_pattern)) |
-            (LDMRow.string_id.ilike(search_pattern))
-        )
+        # Parse search fields
+        fields = [f.strip() for f in (search_fields or "source,target").split(",")]
+        valid_fields = {"string_id", "source", "target"}
+        fields = [f for f in fields if f in valid_fields]
+        if not fields:
+            fields = ["source", "target"]  # Default fallback
+
+        # Build field conditions based on search mode
+        field_conditions = []
+        for field in fields:
+            column = getattr(LDMRow, field, None)
+            if column is None:
+                continue
+
+            if search_mode == "exact":
+                # Exact match (case-insensitive)
+                field_conditions.append(func.lower(column) == func.lower(search))
+            elif search_mode == "not_contain":
+                # Does not contain (case-insensitive)
+                search_pattern = f"%{search}%"
+                field_conditions.append(~column.ilike(search_pattern))
+            elif search_mode == "fuzzy":
+                # Fuzzy/semantic search - for now fallback to contain
+                # TODO: Implement Model2Vec semantic search
+                search_pattern = f"%{search}%"
+                field_conditions.append(column.ilike(search_pattern))
+            else:  # "contain" (default)
+                search_pattern = f"%{search}%"
+                field_conditions.append(column.ilike(search_pattern))
+
+        # Combine conditions: OR for contain/exact/fuzzy, AND for not_contain
+        if field_conditions:
+            if search_mode == "not_contain":
+                # For "not contain", ALL fields must not contain the term
+                from sqlalchemy import and_
+                query = query.where(and_(*field_conditions))
+            else:
+                # For other modes, ANY field can match
+                from sqlalchemy import or_
+                query = query.where(or_(*field_conditions))
 
     if status:
         needs_count_query = True
@@ -164,12 +209,34 @@ async def list_rows(
     if needs_count_query:
         count_query = select(func.count(LDMRow.id)).where(LDMRow.file_id == file_id)
         if search:
-            search_pattern = f"%{search}%"
-            count_query = count_query.where(
-                (LDMRow.source.ilike(search_pattern)) |
-                (LDMRow.target.ilike(search_pattern)) |
-                (LDMRow.string_id.ilike(search_pattern))
-            )
+            # Rebuild same search conditions for count query
+            fields = [f.strip() for f in (search_fields or "source,target").split(",")]
+            valid_fields = {"string_id", "source", "target"}
+            fields = [f for f in fields if f in valid_fields]
+            if not fields:
+                fields = ["source", "target"]
+
+            field_conditions = []
+            for field in fields:
+                column = getattr(LDMRow, field, None)
+                if column is None:
+                    continue
+                if search_mode == "exact":
+                    field_conditions.append(func.lower(column) == func.lower(search))
+                elif search_mode == "not_contain":
+                    search_pattern = f"%{search}%"
+                    field_conditions.append(~column.ilike(search_pattern))
+                else:  # contain, fuzzy
+                    search_pattern = f"%{search}%"
+                    field_conditions.append(column.ilike(search_pattern))
+
+            if field_conditions:
+                if search_mode == "not_contain":
+                    from sqlalchemy import and_
+                    count_query = count_query.where(and_(*field_conditions))
+                else:
+                    from sqlalchemy import or_
+                    count_query = count_query.where(or_(*field_conditions))
         if status:
             count_query = count_query.where(LDMRow.status == status)
         if filter == "confirmed":

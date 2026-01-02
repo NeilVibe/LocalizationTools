@@ -62,6 +62,22 @@
     { id: "qa_flagged", text: "QA Flagged" }
   ];
 
+  // P5: Advanced Search state
+  let searchMode = $state("contain"); // 'contain' | 'exact' | 'not_contain' | 'fuzzy'
+  const searchModeOptions = [
+    { id: "contain", text: "Contains" },
+    { id: "exact", text: "Exact Match" },
+    { id: "not_contain", text: "Does Not Contain" },
+    { id: "fuzzy", text: "Fuzzy (Semantic)" }
+  ];
+
+  let searchFields = $state(["source", "target"]); // Default search in source and target
+  const searchFieldOptions = [
+    { id: "string_id", text: "StringID" },
+    { id: "source", text: "Source" },
+    { id: "target", text: "Target" }
+  ];
+
   // Svelte 5: Virtual scroll state
   let containerEl = $state(null);
   let scrollTop = $state(0);
@@ -386,6 +402,8 @@
       });
       if (searchTerm) {
         params.append('search', searchTerm);
+        params.append('search_mode', searchMode);
+        params.append('search_fields', searchFields.join(','));
       }
       // P2: Add filter param
       if (activeFilter && activeFilter !== 'all') {
@@ -537,7 +555,9 @@
       // Add search term if present
       if (searchTerm && searchTerm.trim()) {
         params.append('search', searchTerm.trim());
-        logger.info("loadRows with search", { searchTerm });
+        params.append('search_mode', searchMode);
+        params.append('search_fields', searchFields.join(','));
+        logger.info("loadRows with search", { searchTerm, searchMode, searchFields });
       }
 
       const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
@@ -1922,6 +1942,17 @@
     </div>
 
     <div class="search-filter-bar">
+      <!-- P5: Search Mode Dropdown -->
+      <div class="search-mode-wrapper">
+        <Dropdown
+          size="sm"
+          selectedId={searchMode}
+          items={searchModeOptions}
+          on:select={(e) => { searchMode = e.detail.selectedId; if (searchTerm) handleSearch(); }}
+          titleText=""
+          hideLabel
+        />
+      </div>
       <div class="search-wrapper">
         <!-- Using native input with oninput only - NO value binding to avoid Svelte reactivity reset -->
         <div class="bx--search bx--search--sm">
@@ -1929,7 +1960,7 @@
             type="text"
             id="ldm-search-input"
             class="bx--search-input"
-            placeholder="Search source, target, or StringID..."
+            placeholder="Search..."
             oninput={(e) => {
               searchTerm = e.target.value;
               logger.info("Search oninput", { value: searchTerm });
@@ -1952,6 +1983,26 @@
             </button>
           {/if}
         </div>
+      </div>
+      <!-- P5: Search Fields Multi-select -->
+      <div class="search-fields-wrapper">
+        {#each searchFieldOptions as field}
+          <label class="search-field-checkbox">
+            <input
+              type="checkbox"
+              checked={searchFields.includes(field.id)}
+              onchange={(e) => {
+                if (e.target.checked) {
+                  searchFields = [...searchFields, field.id];
+                } else {
+                  searchFields = searchFields.filter(f => f !== field.id);
+                }
+                if (searchTerm) handleSearch();
+              }}
+            />
+            <span>{field.text}</span>
+          </label>
+        {/each}
       </div>
       <!-- P2: Filter Dropdown -->
       <div class="filter-wrapper">
@@ -2282,6 +2333,55 @@
 
   .filter-wrapper :global(.bx--list-box__field) {
     height: 2rem; /* Match search input height (32px) */
+  }
+
+  /* P5: Search Mode Dropdown */
+  .search-mode-wrapper {
+    flex: 0 0 140px;
+  }
+
+  .search-mode-wrapper :global(.bx--dropdown) {
+    background: var(--cds-field-01);
+    height: 2rem;
+  }
+
+  .search-mode-wrapper :global(.bx--list-box) {
+    height: 2rem;
+  }
+
+  .search-mode-wrapper :global(.bx--list-box__field) {
+    height: 2rem;
+  }
+
+  /* P5: Search Fields Checkboxes */
+  .search-fields-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 0.5rem;
+    border-left: 1px solid var(--cds-border-subtle-01);
+    border-right: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .search-field-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .search-field-checkbox input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--cds-interactive-01);
+    cursor: pointer;
+  }
+
+  .search-field-checkbox:hover {
+    color: var(--cds-text-01);
   }
 
   /* Hotkey Reference Bar */
