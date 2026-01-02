@@ -66,6 +66,75 @@ ssh neil1988@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/
 | Build still running? | `curl` live logs |
 | Build finished, find last fail? | `ssh` + disk logs |
 
+---
+
+## Gitea API Token (Release Management)
+
+The `GITEA_TOKEN` is required for managing releases via API (cleanup, mock releases for testing, etc.).
+
+### Token Location
+
+The token is stored in `~/.bashrc`:
+
+```bash
+# Load token
+source ~/.bashrc
+echo $GITEA_TOKEN
+```
+
+### Creating a New Token
+
+If token is missing or expired:
+
+1. Go to: http://172.28.150.120:3000/user/settings/applications
+2. Click "Generate New Token"
+3. Name: `release-manager` (or any name)
+4. Permissions: Select "write:repository"
+5. Click "Generate Token"
+6. Add to `~/.bashrc`:
+   ```bash
+   echo 'export GITEA_TOKEN="your_token_here"' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+
+### Release Manager Script
+
+Use the release manager script for common operations:
+
+```bash
+# List all releases
+./scripts/release_manager.sh list
+
+# Cleanup old releases (keeps latest + current version)
+./scripts/release_manager.sh cleanup
+
+# Create mock release for auto-update testing
+./scripts/release_manager.sh mock-update
+
+# Restore real version after testing
+./scripts/release_manager.sh restore
+```
+
+### Manual API Commands
+
+```bash
+# List releases
+curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases" \
+  -H "Authorization: token $GITEA_TOKEN" | python3 -c "import sys,json; [print(f\"{r['id']}: {r['tag_name']}\") for r in json.load(sys.stdin)]"
+
+# Delete a release
+curl -s -X DELETE "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases/RELEASE_ID" \
+  -H "Authorization: token $GITEA_TOKEN"
+
+# Upload asset to release
+curl -s -X POST "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases/RELEASE_ID/assets?name=FILE_NAME" \
+  -H "Authorization: token $GITEA_TOKEN" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @/path/to/file
+```
+
+---
+
 ### Windows Build Logs
 
 Windows builds run on a separate runner. Check these logs for Windows-specific failures:
