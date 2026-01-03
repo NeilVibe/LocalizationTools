@@ -112,3 +112,4 @@ Build 438
 Build 438: Reactive row positioning fix
 Build 440: P3 complete with merge logic
 Build 441: Fix mocked tests for DESIGN-001 permissions
+Build 442: Fix permission existence check
