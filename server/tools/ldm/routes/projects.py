@@ -105,8 +105,9 @@ async def get_project(
 ):
     """Get a project by ID."""
     # DESIGN-001: Check access using permission helper
+    # Returns False for both non-existent AND no access (security: don't reveal existence)
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Project not found")
 
     result = await db.execute(
         select(LDMProject).where(LDMProject.id == project_id)
@@ -128,8 +129,9 @@ async def rename_project(
 ):
     """Rename a project."""
     # DESIGN-001: Check access using permission helper
+    # Returns False for both non-existent AND no access (security: don't reveal existence)
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Project not found")
 
     result = await db.execute(
         select(LDMProject).where(LDMProject.id == project_id)
@@ -165,8 +167,9 @@ async def delete_project(
 ):
     """Delete a project and all its contents."""
     # DESIGN-001: Check access using permission helper
+    # Returns False for both non-existent AND no access (security: don't reveal existence)
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Project not found")
 
     result = await db.execute(
         select(LDMProject).where(LDMProject.id == project_id)

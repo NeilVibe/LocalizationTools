@@ -63,7 +63,7 @@ async def get_tm_assignment(
     """Get the current assignment for a TM."""
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get TM
     result = await db.execute(
@@ -142,7 +142,7 @@ async def assign_tm(
     """
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get TM
     result = await db.execute(
@@ -162,7 +162,7 @@ async def assign_tm(
     if folder_id:
         from server.tools.ldm.permissions import can_access_folder
         if not await can_access_folder(db, folder_id, current_user):
-            raise HTTPException(status_code=403, detail="Access denied to folder")
+            raise HTTPException(status_code=403, detail="Folder not found")
         result = await db.execute(
             select(LDMFolder).where(LDMFolder.id == folder_id)
         )
@@ -172,11 +172,11 @@ async def assign_tm(
         scope_name = f"folder:{folder.name}"
     elif project_id:
         if not await can_access_project(db, project_id, current_user):
-            raise HTTPException(status_code=403, detail="Access denied to project")
+            raise HTTPException(status_code=403, detail="Project not found")
         scope_name = f"project:{project_id}"
     elif platform_id:
         if not await can_access_platform(db, platform_id, current_user):
-            raise HTTPException(status_code=403, detail="Access denied to platform")
+            raise HTTPException(status_code=403, detail="Platform not found")
         scope_name = f"platform:{platform_id}"
 
     # Get or create assignment
@@ -228,7 +228,7 @@ async def activate_tm(
     """Activate or deactivate a TM at its assigned scope."""
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get assignment
     result = await db.execute(
@@ -289,7 +289,7 @@ async def get_active_tms_for_file(
 
     # Verify file access (DESIGN-001: Public by default)
     if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     active_tms = []
 

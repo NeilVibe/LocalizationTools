@@ -70,7 +70,7 @@ async def pretranslate_file(
 
     # Verify project access (DESIGN-001: Public by default)
     if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied to file's project")
+        raise HTTPException(status_code=403, detail="File not found")
 
     # Run pretranslation in threadpool to avoid blocking
     # TASK-001: Add TrackedOperation for progress tracking

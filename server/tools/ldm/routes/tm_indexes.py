@@ -48,7 +48,7 @@ async def build_tm_indexes(
 
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get TM
     tm_result = await db.execute(
@@ -112,7 +112,7 @@ async def get_tm_index_status(
     """
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get TM
     result = await db.execute(
@@ -165,7 +165,7 @@ async def get_tm_sync_status(
     """
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get TM
     result = await db.execute(
@@ -253,7 +253,7 @@ async def sync_tm_indexes(
 
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get TM
     result = await db.execute(

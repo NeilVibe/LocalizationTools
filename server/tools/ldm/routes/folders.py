@@ -31,7 +31,7 @@ async def list_folders(
 
     # Check access permission
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     result = await db.execute(
         select(LDMFolder).where(LDMFolder.project_id == project_id)
@@ -57,7 +57,7 @@ async def create_folder(
 
     # Check access permission
     if not await can_access_project(db, folder.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # DESIGN-001: Check for globally unique folder name (no duplicates anywhere)
     duplicate_query = select(LDMFolder).where(LDMFolder.name == folder.name)
@@ -104,7 +104,7 @@ async def get_folder_contents(
         raise HTTPException(status_code=404, detail="Folder not found")
 
     if not await can_access_project(db, folder.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get subfolders
     result = await db.execute(
@@ -155,7 +155,7 @@ async def rename_folder(
         raise HTTPException(status_code=404, detail="Folder not found")
 
     if not await can_access_project(db, folder.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # DESIGN-001: Check for globally unique folder name (no duplicates anywhere)
     duplicate_query = select(LDMFolder).where(
@@ -198,7 +198,7 @@ async def move_folder(
         raise HTTPException(status_code=404, detail="Folder not found")
 
     if not await can_access_project(db, folder.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Prevent moving folder into itself or its descendants
     if parent_folder_id is not None:
@@ -254,7 +254,7 @@ async def delete_folder(
         raise HTTPException(status_code=404, detail="Folder not found")
 
     if not await can_access_project(db, folder.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     await db.delete(folder)
     await db.commit()

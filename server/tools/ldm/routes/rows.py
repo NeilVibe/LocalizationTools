@@ -269,7 +269,7 @@ async def list_rows(
     """
     # Verify file access (DESIGN-001: Public by default)
     if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     result = await db.execute(
         select(LDMFile).options(selectinload(LDMFile.project)).where(
@@ -447,7 +447,7 @@ async def update_row(
 
     # Verify file access (DESIGN-001: Public by default)
     if not await can_access_file(db, row.file_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Save history before update
     old_target = row.target
@@ -547,7 +547,7 @@ async def get_project_tree(
     """Get full project tree structure (folders + files) for File Explorer."""
     # Verify project access (DESIGN-001: Public by default)
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     result = await db.execute(
         select(LDMProject).where(LDMProject.id == project_id)

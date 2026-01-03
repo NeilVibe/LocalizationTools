@@ -142,7 +142,7 @@ async def get_platform(
     """Get a specific platform by ID."""
     # DESIGN-001: Check access using permission helper
     if not await can_access_platform(db, platform_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     result = await db.execute(
         select(LDMPlatform)
@@ -174,7 +174,7 @@ async def update_platform(
     """Update a platform (name or description)."""
     # DESIGN-001: Check access using permission helper
     if not await can_access_platform(db, platform_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     result = await db.execute(
         select(LDMPlatform)
@@ -228,7 +228,7 @@ async def delete_platform(
     """
     # DESIGN-001: Check access using permission helper
     if not await can_access_platform(db, platform_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     result = await db.execute(
         select(LDMPlatform)
@@ -273,7 +273,7 @@ async def assign_project_to_platform(
 
     # DESIGN-001: Check project access
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     result = await db.execute(
         select(LDMProject).where(LDMProject.id == project_id)
@@ -286,7 +286,7 @@ async def assign_project_to_platform(
     # DESIGN-001: Check platform access if assigning
     if platform_id is not None:
         if not await can_access_platform(db, platform_id, current_user):
-            raise HTTPException(status_code=403, detail="Access denied to platform")
+            raise HTTPException(status_code=403, detail="Platform not found")
 
         result = await db.execute(
             select(LDMPlatform).where(LDMPlatform.id == platform_id)
