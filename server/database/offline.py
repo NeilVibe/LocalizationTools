@@ -384,6 +384,192 @@ class OfflineDatabase:
             return True
 
     # =========================================================================
+    # Merge Operations (P3: Last-write-wins sync)
+    # =========================================================================
+
+    def get_row_by_server_id(self, server_id: int) -> Optional[Dict]:
+        """Get a local row by its server ID."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM offline_rows WHERE server_id = ?",
+                (server_id,)
+            ).fetchone()
+            if row:
+                d = dict(row)
+                if d.get("extra_data"):
+                    d["extra_data"] = json.loads(d["extra_data"])
+                return d
+            return None
+
+    def get_modified_rows(self, file_id: int) -> List[Dict]:
+        """Get all locally modified rows for a file."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """SELECT * FROM offline_rows
+                   WHERE file_id = ? AND sync_status = 'modified'
+                   ORDER BY row_num""",
+                (file_id,)
+            ).fetchall()
+            result = []
+            for row in rows:
+                d = dict(row)
+                if d.get("extra_data"):
+                    d["extra_data"] = json.loads(d["extra_data"])
+                result.append(d)
+            return result
+
+    def get_new_rows(self, file_id: int) -> List[Dict]:
+        """Get all locally created rows for a file."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """SELECT * FROM offline_rows
+                   WHERE file_id = ? AND sync_status = 'new'
+                   ORDER BY row_num""",
+                (file_id,)
+            ).fetchall()
+            result = []
+            for row in rows:
+                d = dict(row)
+                if d.get("extra_data"):
+                    d["extra_data"] = json.loads(d["extra_data"])
+                result.append(d)
+            return result
+
+    def merge_row(self, server_row: Dict, file_id: int) -> str:
+        """
+        Merge a server row with local data using last-write-wins.
+
+        Returns: 'updated', 'skipped', 'inserted'
+        """
+        local_row = self.get_row_by_server_id(server_row["id"])
+
+        if local_row is None:
+            # New row from server - insert it
+            self._insert_row(server_row, file_id)
+            return 'inserted'
+
+        # Row exists locally
+        if local_row["sync_status"] == 'synced':
+            # No local changes - take server version
+            self._update_row_from_server(server_row, local_row["id"])
+            return 'updated'
+
+        elif local_row["sync_status"] in ('modified', 'new'):
+            # Local has changes - compare timestamps
+            server_updated = server_row.get("updated_at") or ""
+            local_updated = local_row.get("updated_at") or ""
+
+            if server_updated > local_updated:
+                # Server is newer - server wins, discard local changes
+                self._update_row_from_server(server_row, local_row["id"])
+                self._discard_local_changes(local_row["id"])
+                logger.debug(f"Server wins for row {server_row['id']} (server: {server_updated} > local: {local_updated})")
+                return 'updated'
+            else:
+                # Local is newer - keep local, will push later
+                logger.debug(f"Local wins for row {server_row['id']} (local: {local_updated} >= server: {server_updated})")
+                return 'skipped'
+
+        return 'skipped'
+
+    def _insert_row(self, row: Dict, file_id: int):
+        """Insert a new row from server."""
+        extra_data = json.dumps(row.get("extra_data")) if row.get("extra_data") else None
+        with self._get_connection() as conn:
+            conn.execute(
+                """INSERT INTO offline_rows
+                   (id, server_id, file_id, server_file_id, row_num, string_id,
+                    source, target, memo, status, extra_data, created_at, updated_at,
+                    downloaded_at, sync_status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'synced')""",
+                (
+                    row["id"],
+                    row["id"],
+                    file_id,
+                    file_id,
+                    row.get("row_num", 0),
+                    row.get("string_id"),
+                    row.get("source"),
+                    row.get("target"),
+                    row.get("memo"),
+                    row.get("status", "normal"),
+                    extra_data,
+                    row.get("created_at"),
+                    row.get("updated_at"),
+                )
+            )
+            conn.commit()
+
+    def _update_row_from_server(self, server_row: Dict, local_id: int):
+        """Update local row with server data."""
+        extra_data = json.dumps(server_row.get("extra_data")) if server_row.get("extra_data") else None
+        with self._get_connection() as conn:
+            conn.execute(
+                """UPDATE offline_rows SET
+                   source = ?, target = ?, memo = ?, status = ?,
+                   extra_data = ?, updated_at = ?, sync_status = 'synced',
+                   downloaded_at = datetime('now')
+                   WHERE id = ?""",
+                (
+                    server_row.get("source"),
+                    server_row.get("target"),
+                    server_row.get("memo"),
+                    server_row.get("status", "normal"),
+                    extra_data,
+                    server_row.get("updated_at"),
+                    local_id,
+                )
+            )
+            conn.commit()
+
+    def _discard_local_changes(self, local_row_id: int):
+        """Discard pending local changes for a row (server won)."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """UPDATE local_changes
+                   SET sync_status = 'discarded'
+                   WHERE entity_type = 'row' AND entity_id = ? AND sync_status = 'pending'""",
+                (local_row_id,)
+            )
+            conn.commit()
+
+    def mark_row_synced(self, row_id: int):
+        """Mark a row as synced after pushing to server."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """UPDATE offline_rows
+                   SET sync_status = 'synced'
+                   WHERE id = ?""",
+                (row_id,)
+            )
+            conn.commit()
+
+    def delete_row(self, server_id: int):
+        """Delete a local row (server deleted it)."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "DELETE FROM offline_rows WHERE server_id = ?",
+                (server_id,)
+            )
+            # Also discard any pending changes
+            conn.execute(
+                """UPDATE local_changes
+                   SET sync_status = 'discarded'
+                   WHERE entity_type = 'row' AND server_id = ? AND sync_status = 'pending'""",
+                (server_id,)
+            )
+            conn.commit()
+
+    def get_local_row_server_ids(self, file_id: int) -> set:
+        """Get set of server IDs for all local rows in a file."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT server_id FROM offline_rows WHERE file_id = ?",
+                (file_id,)
+            ).fetchall()
+            return {row["server_id"] for row in rows}
+
+    # =========================================================================
     # Change Tracking
     # =========================================================================
 
