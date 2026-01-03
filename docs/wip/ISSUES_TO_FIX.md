@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-03 (Session 21 Complete) | **Build:** 444 | **Open:** 3
+**Last Updated:** 2026-01-04 (Session 21 Continued) | **Build:** 444 | **Open:** 2
 
 ---
 
@@ -8,29 +8,14 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 3 |
-| **FIXED/CLOSED** | 86 |
+| **OPEN** | 2 |
+| **FIXED/CLOSED** | 88 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
 ## OPEN ISSUES - SESSION 20
-
-### SYNC-005: Only Files Can Be Synced
-
-- **Reported:** 2026-01-03 (Session 20)
-- **Severity:** HIGH
-- **Status:** OPEN
-- **Component:** sync.py, FilesPage.svelte
-
-**Problem:** User can only sync files. Should support:
-- Platform (sync all projects/folders/files under it)
-- Project (sync all folders/files under it)
-- Folder (sync all files under it)
-- File (current - works)
-
----
 
 ### SYNC-008: TM Sync Not Supported
 
@@ -1054,6 +1039,54 @@ The following fixes have been coded but need manual DEV testing:
 - **Root Cause:** Source/Target cells used `flex: 0 0 {percent}%` which took percentage of FULL container, not remaining space after fixed columns. This caused resize bar position mismatch.
 - **Fix:** Changed to flex-grow ratios `flex: {ratio} 1 0` so cells share remaining space proportionally
 - **File:** VirtualGrid.svelte lines 2118-2122, 2152, 2172
+- **Tests:** 156 passed, 14 skipped
+
+### SYNC-005: Hierarchy Sync (Platform/Project/Folder) ✅ FIXED
+- **Reported:** 2026-01-03 (Session 20)
+- **Fixed:** 2026-01-04
+- **Severity:** HIGH
+- **Status:** FIXED
+- **Component:** sync.py
+- **Problem:** Only files could be synced. Path hierarchy (platform/project/folder) was missing in offline mode.
+- **Root Cause:** `_sync_file_to_offline()` only saved file + rows, not parent entities.
+- **Fix:**
+  - File sync now syncs Platform → Project → Folder → File (in order)
+  - Added `_sync_folder_to_offline()` for folder sync with all files
+  - Added `_sync_folder_hierarchy()` for recursive parent folder sync
+  - Updated `_sync_project_to_offline()` to include all folders
+  - Added "folder" entity type to subscribe handler
+- **Rule Added:** Server = source of truth for PATH. Offline structure edits revert on sync.
+- **File:** sync.py lines 510-600, 785-848
+- **Docs:** OFFLINE_ONLINE_MODE.md updated with Path Hierarchy Rule
+- **Tests:** 156 passed, 14 skipped
+
+### UI-091: Sync Registry Delete Flickers ✅ FIXED (Svelte 5 Pattern)
+- **Reported:** 2026-01-04 (Session 21)
+- **Fixed:** 2026-01-04
+- **Severity:** LOW
+- **Status:** FIXED
+- **Component:** SyncStatusPanel.svelte
+- **Problem:** Delete item from sync registry → item reappears briefly → gone on refresh
+- **Root Cause:** Missing Svelte 5 proper patterns:
+  1. No key in `{#each}` loop → bad DOM diffing
+  2. Optimistic delete conflicted with store-triggered re-renders
+- **Fix (Svelte 5 Best Practices):**
+  ```svelte
+  // 1. Track deleting items with $state Set
+  let deletingIds = $state(new Set());
+
+  // 2. Use $derived for filtered list
+  let visibleSubscriptions = $derived(
+    subscriptions.filter(s => !deletingIds.has(s.id))
+  );
+
+  // 3. Use key in {#each} for proper diffing
+  {#each visibleSubscriptions as sub (sub.id)}
+
+  // 4. Use Svelte 5 array mutation (splice)
+  subscriptions.splice(index, 1);
+  ```
+- **File:** SyncStatusPanel.svelte lines 40, 132-160, 251
 - **Tests:** 156 passed, 14 skipped
 
 ---

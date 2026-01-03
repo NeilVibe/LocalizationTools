@@ -69,16 +69,26 @@ Use this checkpoint to go back to BEFORE Session 21 changes.
 - **Fix:** Changed to flex-grow ratios `flex: {ratio} 1 0` so cells properly share remaining space
 - **File:** VirtualGrid.svelte lines 2118-2122, 2152, 2172
 
+### SYNC-005: Hierarchy Sync - FIXED
+- **Problem:** Only files could be synced, path tree (platform/project/folder) was missing
+- **Root Cause:** `_sync_file_to_offline()` only saved file + rows, not parent hierarchy
+- **Fix:**
+  - File sync now syncs Platform → Project → Folder → File (in order)
+  - Added `_sync_folder_to_offline()` for folder sync with all files
+  - Updated project sync to include all folders
+  - Added "folder" entity type to subscribe handler
+- **Rule Added:** Server = source of truth for PATH. Offline edits to structure revert on sync.
+- **Files:** `sync.py` (lines 510-600, 785-848), `OFFLINE_ONLINE_MODE.md`
+
 ### Test Results
 - **156 passed** | 14 skipped | 0 failed
 
 ---
 
-## OPEN ISSUES (3 remaining)
+## OPEN ISSUES (2 remaining)
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| SYNC-005 | HIGH | OPEN - hierarchy sync (folder/project/platform) |
 | SYNC-008 | MEDIUM | OPEN - TM sync not supported |
 | P3-PHASE4-6 | MEDIUM | OPEN - conflict resolution, polish |
 

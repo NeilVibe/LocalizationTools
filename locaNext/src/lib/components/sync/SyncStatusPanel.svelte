@@ -37,6 +37,7 @@
   let reconnecting = $state(false);
   let subscriptions = $state([]);
   let loadingSubscriptions = $state(false);
+  let deletingIds = $state(new Set());  // Track items being deleted (prevents flicker)
 
   // Get icon component based on status
   function getStatusIcon(status) {
@@ -128,20 +129,35 @@
     await loadSubscriptions();
   }
 
-  // Remove subscription - OPTIMISTIC UI (instant removal)
+  // Remove subscription - Svelte 5 proper pattern
+  // Uses deletingIds to hide item immediately and prevent flicker on re-render
   async function removeSubscription(sub) {
-    // 1. Remove from UI IMMEDIATELY (optimistic)
-    const originalSubscriptions = [...subscriptions];
-    subscriptions = subscriptions.filter(s => s.id !== sub.id);
+    // 1. Mark as deleting IMMEDIATELY (hides from UI via derived filter)
+    deletingIds = new Set([...deletingIds, sub.id]);
 
-    // 2. Then call server in background
+    // 2. Call server
     try {
       await unsubscribeFromOffline(sub.entity_type, sub.entity_id);
+      // 3. Success - remove from actual array using Svelte 5 splice
+      const index = subscriptions.findIndex(s => s.id === sub.id);
+      if (index !== -1) {
+        subscriptions.splice(index, 1);
+      }
     } catch (e) {
-      // Server failed - restore the item
-      subscriptions = originalSubscriptions;
+      // Server failed - show the item again by removing from deletingIds
+      console.error('Unsubscribe failed:', e);
+    } finally {
+      // Clean up deletingIds
+      const newSet = new Set(deletingIds);
+      newSet.delete(sub.id);
+      deletingIds = newSet;
     }
   }
+
+  // Derived: visible subscriptions (excludes items being deleted)
+  let visibleSubscriptions = $derived(
+    subscriptions.filter(s => !deletingIds.has(s.id))
+  );
 
   // Format last sync time
   function formatLastSync(timestamp) {
@@ -219,19 +235,20 @@
     <div class="subscriptions-section">
       <div class="section-header">
         <span class="section-title">Synced for Offline</span>
-        <span class="section-count">{subscriptions.length}</span>
+        <span class="section-count">{visibleSubscriptions.length}</span>
       </div>
 
       {#if loadingSubscriptions}
         <div class="loading-text">Loading...</div>
-      {:else if subscriptions.length === 0}
+      {:else if visibleSubscriptions.length === 0}
         <div class="empty-text">
           No items synced for offline.
           Right-click any file, project, or platform to enable offline sync.
         </div>
       {:else}
         <div class="subscriptions-list">
-          {#each subscriptions as sub}
+          <!-- Svelte 5: Use key (sub.id) for proper DOM diffing -->
+          {#each visibleSubscriptions as sub (sub.id)}
             <div class="subscription-item">
               <span class="sub-icon">
                 <svelte:component this={getEntityIcon(sub.entity_type)} size={16} />
@@ -273,7 +290,7 @@
           kind="primary"
           size="small"
           icon={Renew}
-          disabled={$isSyncing || subscriptions.length === 0}
+          disabled={$isSyncing || visibleSubscriptions.length === 0}
           on:click={handleSync}
         >
           {$isSyncing ? 'Syncing...' : 'Sync Now'}

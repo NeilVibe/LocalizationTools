@@ -25,9 +25,33 @@
 | **File-Level Granularity** | Sync individual files, not entire database |
 | **Add/Edit Only** | Merge adds new rows and edits existing - NO DELETE |
 | **Path-Aware** | Files matched by full path (platform/project/folder/file) |
+| **Server = Path Truth** | Online DB decides file location. Moving files offline reverts on sync. |
 | **Visible Mode** | Online/Offline status always clearly visible |
 | **Graceful Degradation** | 90% features work offline |
 | **Recycle Bin** | Deleted files go to Bin, 30-day expiry before permanent deletion |
+
+### Path Hierarchy Rule (CRITICAL)
+
+**Server is the source of truth for file paths/structure.**
+
+```
+ALLOWED offline:
+  ✅ Edit file content (target, memo, status)
+  ✅ Add new rows to existing files
+
+NOT ALLOWED offline (reverts on sync):
+  ❌ Move file to different folder
+  ❌ Move folder to different project
+  ❌ Rename platform/project/folder
+  ❌ Create new platforms/projects/folders
+
+WHY: Prevents merge conflicts on structure. Content can merge, structure cannot.
+```
+
+When syncing:
+1. Server path is always applied
+2. Local path changes are discarded
+3. File content (rows) is merged normally
 
 ---
 

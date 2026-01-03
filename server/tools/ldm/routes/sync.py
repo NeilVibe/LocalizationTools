@@ -84,7 +84,7 @@ class SubscriptionsResponse(BaseModel):
 
 
 class SubscribeRequest(BaseModel):
-    entity_type: str  # platform, project, file
+    entity_type: str  # platform, project, folder, file
     entity_id: int
     entity_name: str
     auto_subscribed: bool = False  # True if auto-synced on file open
@@ -251,13 +251,16 @@ async def subscribe_for_offline(
 
         # Trigger initial sync based on entity type
         if request.entity_type == "file":
-            # Download single file
+            # Download single file (includes path hierarchy)
             await _sync_file_to_offline(db, request.entity_id, offline_db)
+        elif request.entity_type == "folder":
+            # Download folder and all files in it (includes path hierarchy)
+            await _sync_folder_to_offline(db, request.entity_id, offline_db)
         elif request.entity_type == "project":
-            # Download all files in project
+            # Download all folders and files in project (includes platform)
             await _sync_project_to_offline(db, request.entity_id, offline_db)
         elif request.entity_type == "platform":
-            # Download all projects in platform
+            # Download all projects, folders, and files in platform
             await _sync_platform_to_offline(db, request.entity_id, offline_db)
 
         # Mark subscription as synced
@@ -507,9 +510,104 @@ async def sync_subscription(
 # Internal Sync Helpers
 # =============================================================================
 
+async def _sync_folder_hierarchy(db: AsyncSession, folder, offline_db):
+    """
+    Sync a folder and its parent folders recursively.
+    Ensures the full path exists in offline storage.
+    """
+    from server.database.models import LDMFolder
+
+    # If folder has a parent, sync parent first (recursive)
+    if folder.parent_id:
+        parent_result = await db.execute(select(LDMFolder).where(LDMFolder.id == folder.parent_id))
+        parent = parent_result.scalar_one_or_none()
+        if parent:
+            await _sync_folder_hierarchy(db, parent, offline_db)
+
+    # Now save this folder
+    offline_db.save_folder({
+        "id": folder.id,
+        "name": folder.name,
+        "project_id": folder.project_id,
+        "parent_id": folder.parent_id,
+        "created_at": folder.created_at.isoformat() if folder.created_at else None
+    })
+    logger.debug(f"Synced folder: {folder.name}")
+
+
+async def _sync_folder_to_offline(db: AsyncSession, folder_id: int, offline_db):
+    """
+    Sync a folder and all its files to offline storage.
+    Also syncs parent hierarchy (platform/project/parent folders).
+    """
+    from server.database.models import LDMPlatform, LDMFolder
+
+    # Get folder
+    result = await db.execute(select(LDMFolder).where(LDMFolder.id == folder_id))
+    folder = result.scalar_one_or_none()
+    if not folder:
+        raise HTTPException(status_code=404, detail=f"Folder {folder_id} not found")
+
+    # Get and sync project
+    project_result = await db.execute(select(LDMProject).where(LDMProject.id == folder.project_id))
+    project = project_result.scalar_one_or_none()
+    if project:
+        # Get and sync platform
+        platform_result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == project.platform_id))
+        platform = platform_result.scalar_one_or_none()
+        if platform:
+            offline_db.save_platform({
+                "id": platform.id,
+                "name": platform.name,
+                "description": platform.description,
+                "owner_id": platform.owner_id,
+                "is_restricted": platform.is_restricted,
+                "created_at": platform.created_at.isoformat() if platform.created_at else None,
+                "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
+            })
+
+        # Save project
+        offline_db.save_project({
+            "id": project.id,
+            "name": project.name,
+            "description": project.description,
+            "platform_id": project.platform_id,
+            "owner_id": project.owner_id,
+            "is_restricted": project.is_restricted,
+            "created_at": project.created_at.isoformat() if project.created_at else None,
+            "updated_at": project.updated_at.isoformat() if project.updated_at else None
+        })
+
+    # Sync folder hierarchy (including this folder and parents)
+    await _sync_folder_hierarchy(db, folder, offline_db)
+
+    # Sync all files in this folder
+    files_result = await db.execute(
+        select(LDMFile).where(LDMFile.folder_id == folder_id)
+    )
+    files = files_result.scalars().all()
+
+    for file in files:
+        await _sync_file_to_offline(db, file.id, offline_db)
+
+    # Sync subfolders recursively
+    subfolders_result = await db.execute(
+        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
+    )
+    subfolders = subfolders_result.scalars().all()
+
+    for subfolder in subfolders:
+        await _sync_folder_to_offline(db, subfolder.id, offline_db)
+
+    logger.info(f"Synced folder {folder.name} with {len(files)} files and {len(subfolders)} subfolders")
+
+
 async def _sync_file_to_offline(db: AsyncSession, file_id: int, offline_db):
     """
     Sync a single file to offline storage with merge logic.
+
+    IMPORTANT: Server is source of truth for PATH (platform/project/folder).
+    This function syncs the full path hierarchy before syncing file content.
 
     Merge Rules (last-write-wins):
     - Local synced + server newer → take server
@@ -518,10 +616,61 @@ async def _sync_file_to_offline(db: AsyncSession, file_id: int, offline_db):
     - Server has row we don't → insert
     - We have row server deleted → delete local
     """
+    from server.database.models import LDMPlatform, LDMFolder
+
     result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
     file = result.scalar_one_or_none()
     if not file:
         raise HTTPException(status_code=404, detail=f"File {file_id} not found")
+
+    # =========================================================================
+    # SYNC PATH HIERARCHY FIRST (Server = Source of Truth for structure)
+    # Order: Platform → Project → Folder → File
+    # =========================================================================
+
+    # 1. Get and sync Project (required)
+    project_result = await db.execute(select(LDMProject).where(LDMProject.id == file.project_id))
+    project = project_result.scalar_one_or_none()
+    if project:
+        # 2. Get and sync Platform (required for project)
+        platform_result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == project.platform_id))
+        platform = platform_result.scalar_one_or_none()
+        if platform:
+            offline_db.save_platform({
+                "id": platform.id,
+                "name": platform.name,
+                "description": platform.description,
+                "owner_id": platform.owner_id,
+                "is_restricted": platform.is_restricted,
+                "created_at": platform.created_at.isoformat() if platform.created_at else None,
+                "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
+            })
+            logger.debug(f"Synced platform: {platform.name}")
+
+        # Save project
+        offline_db.save_project({
+            "id": project.id,
+            "name": project.name,
+            "description": project.description,
+            "platform_id": project.platform_id,
+            "owner_id": project.owner_id,
+            "is_restricted": project.is_restricted,
+            "created_at": project.created_at.isoformat() if project.created_at else None,
+            "updated_at": project.updated_at.isoformat() if project.updated_at else None
+        })
+        logger.debug(f"Synced project: {project.name}")
+
+    # 3. Get and sync Folder (optional - file may be at project root)
+    if file.folder_id:
+        folder_result = await db.execute(select(LDMFolder).where(LDMFolder.id == file.folder_id))
+        folder = folder_result.scalar_one_or_none()
+        if folder:
+            # Sync parent folders recursively if nested
+            await _sync_folder_hierarchy(db, folder, offline_db)
+
+    # =========================================================================
+    # SYNC FILE CONTENT
+    # =========================================================================
 
     # Get server rows
     rows_result = await db.execute(
@@ -637,12 +786,31 @@ async def _push_local_changes_for_file(db: AsyncSession, file_id: int, offline_d
 
 
 async def _sync_project_to_offline(db: AsyncSession, project_id: int, offline_db):
-    """Sync all files in a project to offline storage."""
+    """
+    Sync all folders and files in a project to offline storage.
+    Also syncs the parent platform.
+    """
+    from server.database.models import LDMPlatform, LDMFolder
+
     # Get project
     result = await db.execute(select(LDMProject).where(LDMProject.id == project_id))
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+    # Sync platform first
+    platform_result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == project.platform_id))
+    platform = platform_result.scalar_one_or_none()
+    if platform:
+        offline_db.save_platform({
+            "id": platform.id,
+            "name": platform.name,
+            "description": platform.description,
+            "owner_id": platform.owner_id,
+            "is_restricted": platform.is_restricted,
+            "created_at": platform.created_at.isoformat() if platform.created_at else None,
+            "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
+        })
 
     # Save project
     offline_db.save_project({
@@ -656,16 +824,31 @@ async def _sync_project_to_offline(db: AsyncSession, project_id: int, offline_db
         "updated_at": project.updated_at.isoformat() if project.updated_at else None
     })
 
-    # Get all files in project
-    files_result = await db.execute(
-        select(LDMFile).where(LDMFile.project_id == project_id)
+    # Sync all root folders in project (which recursively sync subfolders and files)
+    folders_result = await db.execute(
+        select(LDMFolder).where(LDMFolder.project_id == project_id, LDMFolder.parent_id == None)
     )
-    files = files_result.scalars().all()
+    root_folders = folders_result.scalars().all()
 
-    for file in files:
+    for folder in root_folders:
+        await _sync_folder_to_offline(db, folder.id, offline_db)
+
+    # Sync files at project root (no folder)
+    files_result = await db.execute(
+        select(LDMFile).where(LDMFile.project_id == project_id, LDMFile.folder_id == None)
+    )
+    root_files = files_result.scalars().all()
+
+    for file in root_files:
         await _sync_file_to_offline(db, file.id, offline_db)
 
-    logger.info(f"Synced project {project.name} with {len(files)} files")
+    # Count total files synced
+    all_files_result = await db.execute(
+        select(LDMFile).where(LDMFile.project_id == project_id)
+    )
+    all_files = all_files_result.scalars().all()
+
+    logger.info(f"Synced project {project.name} with {len(root_folders)} folders and {len(all_files)} files")
 
 
 async def _sync_platform_to_offline(db: AsyncSession, platform_id: int, offline_db):
