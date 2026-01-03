@@ -43,7 +43,7 @@ async def list_files(
 
     # Check access permission
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     query = select(LDMFile).where(LDMFile.project_id == project_id)
     if folder_id is not None:
@@ -106,7 +106,7 @@ async def get_file(
         raise HTTPException(status_code=404, detail="File not found")
 
     if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     return file
 
@@ -148,7 +148,7 @@ async def upload_file(
 
     # Check access permission
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Verify folder exists (if provided)
     if folder_id:
@@ -476,7 +476,7 @@ async def register_file_as_tm(
 
     # Check access permission
     if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     logger.info(f"Converting file to TM: file_id={file_id}, name={request.name}")
 
@@ -579,7 +579,7 @@ async def download_file(
 
     # Check access permission
     if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get file-level metadata for reconstruction
     file_metadata = file.extra_data or {}
@@ -675,7 +675,7 @@ async def merge_file(
         raise HTTPException(status_code=404, detail="File not found")
 
     if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Check format compatibility
     format_lower = file.format.lower() if file.format else ""
@@ -820,7 +820,7 @@ async def convert_file(
         raise HTTPException(status_code=404, detail="File not found")
 
     if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     source_format = file.format.lower() if file.format else ""
     target_format = format.lower()
@@ -918,7 +918,7 @@ async def extract_glossary(
         raise HTTPException(status_code=404, detail="File not found")
 
     if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get all rows for this file
     result = await db.execute(

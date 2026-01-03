@@ -60,7 +60,7 @@ async def link_tm_to_project(
 
     # Verify project access (DESIGN-001: Public by default)
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get project for response
     project_result = await db.execute(
@@ -72,7 +72,7 @@ async def link_tm_to_project(
 
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, request.tm_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied to TM")
+        raise HTTPException(status_code=403, detail="TM not found")
 
     # Get TM for response
     tm_result = await db.execute(
@@ -120,7 +120,7 @@ async def unlink_tm_from_project(
 
     # Verify project access (DESIGN-001: Public by default)
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Find and delete link
     link_result = await db.execute(
@@ -151,7 +151,7 @@ async def get_linked_tms(
 
     # Verify project access (DESIGN-001: Public by default)
     if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get all linked TMs with TM details
     result = await db.execute(
