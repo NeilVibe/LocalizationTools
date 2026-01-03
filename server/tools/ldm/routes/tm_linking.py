@@ -72,7 +72,7 @@ async def link_tm_to_project(
 
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, request.tm_id, current_user):
-        raise HTTPException(status_code=403, detail="TM not found")
+        raise HTTPException(status_code=404, detail="TM not found")
 
     # Get TM for response
     tm_result = await db.execute(

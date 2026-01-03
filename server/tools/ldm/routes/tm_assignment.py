@@ -162,7 +162,7 @@ async def assign_tm(
     if folder_id:
         from server.tools.ldm.permissions import can_access_folder
         if not await can_access_folder(db, folder_id, current_user):
-            raise HTTPException(status_code=403, detail="Folder not found")
+            raise HTTPException(status_code=404, detail="Folder not found")
         result = await db.execute(
             select(LDMFolder).where(LDMFolder.id == folder_id)
         )
@@ -172,11 +172,11 @@ async def assign_tm(
         scope_name = f"folder:{folder.name}"
     elif project_id:
         if not await can_access_project(db, project_id, current_user):
-            raise HTTPException(status_code=403, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Project not found")
         scope_name = f"project:{project_id}"
     elif platform_id:
         if not await can_access_platform(db, platform_id, current_user):
-            raise HTTPException(status_code=403, detail="Platform not found")
+            raise HTTPException(status_code=404, detail="Platform not found")
         scope_name = f"platform:{platform_id}"
 
     # Get or create assignment
