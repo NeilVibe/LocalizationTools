@@ -2,7 +2,7 @@
 Tests for DESIGN-001: Public by Default Permission Model
 
 Tests:
-1. Uniqueness - No duplicate names for platforms, projects, folders, files, TMs
+1. Uniqueness - DB-002: Per-parent unique with auto-rename (platforms global, rest per-parent)
 2. Restriction - Admin can toggle restriction on platforms/projects
 3. Access Control - Admin can grant/revoke user access
 4. Public by Default - All resources visible to all users initially
@@ -72,7 +72,7 @@ def user2_headers():
 
 
 class TestUniqueness:
-    """Test globally unique name constraints."""
+    """Test name uniqueness constraints (DB-002: per-parent unique with auto-rename)."""
 
     def test_duplicate_platform_rejected(self, admin_headers):
         """Cannot create two platforms with same name."""
@@ -99,8 +99,8 @@ class TestUniqueness:
         # Cleanup
         httpx.delete(f"{BASE_URL}/api/ldm/platforms/{platform_id}", headers=admin_headers)
 
-    def test_duplicate_project_rejected(self, admin_headers):
-        """Cannot create two projects with same name."""
+    def test_duplicate_project_auto_renamed(self, admin_headers):
+        """DB-002: Duplicate project names are auto-renamed with _1, _2 suffix."""
         unique_name = f"TestProject_Unique_{pytest.importorskip('time').time()}"
 
         # Create first project
@@ -111,21 +111,28 @@ class TestUniqueness:
         )
         assert r1.status_code in [200, 201], f"First project failed: {r1.text}"
         project_id = r1.json()["id"]
+        project_name = r1.json()["name"]
+        assert project_name == unique_name, "First project should have exact name"
 
-        # Try to create duplicate
+        # Create duplicate - should succeed with auto-renamed name
         r2 = httpx.post(
             f"{BASE_URL}/api/ldm/projects",
             json={"name": unique_name},
             headers=admin_headers
         )
-        assert r2.status_code == 400, f"Duplicate project should be rejected, got: {r2.text}"
-        assert "already exists" in r2.json().get("detail", "").lower()
+        assert r2.status_code in [200, 201], f"Duplicate project should succeed with auto-rename, got: {r2.text}"
+        project2_id = r2.json()["id"]
+        project2_name = r2.json()["name"]
+        # Auto-renamed with _1 suffix
+        assert project2_name != unique_name, f"Duplicate should be auto-renamed, got: {project2_name}"
+        assert unique_name in project2_name, "Auto-renamed name should contain original name"
 
         # Cleanup
         httpx.delete(f"{BASE_URL}/api/ldm/projects/{project_id}", headers=admin_headers)
+        httpx.delete(f"{BASE_URL}/api/ldm/projects/{project2_id}", headers=admin_headers)
 
-    def test_duplicate_folder_rejected(self, admin_headers):
-        """Cannot create two folders with same name (even in different projects)."""
+    def test_folder_same_name_different_projects_allowed(self, admin_headers):
+        """DB-002: Same folder name in different projects is allowed (per-parent unique)."""
         import time
         ts = time.time()
         folder_name = f"TestFolder_Unique_{ts}"
@@ -151,20 +158,68 @@ class TestUniqueness:
             headers=admin_headers
         )
         assert f1.status_code in [200, 201], f"First folder failed: {f1.text}"
-        folder_id = f1.json()["id"]
+        folder1_id = f1.json()["id"]
+        folder1_name = f1.json()["name"]
+        assert folder1_name == folder_name, "First folder should have exact name"
 
-        # Try to create folder with same name in project 2
+        # Create folder with same name in project 2 - should succeed (different parent)
         f2 = httpx.post(
             f"{BASE_URL}/api/ldm/folders",
             json={"name": folder_name, "project_id": project2_id},
             headers=admin_headers
         )
-        assert f2.status_code == 400, f"Duplicate folder should be rejected, got: {f2.text}"
+        assert f2.status_code in [200, 201], f"Same folder name in different project should work, got: {f2.text}"
+        folder2_id = f2.json()["id"]
+        folder2_name = f2.json()["name"]
+        # Same name allowed in different projects
+        assert folder2_name == folder_name, f"Folder in different project should have exact name, got: {folder2_name}"
 
         # Cleanup
-        httpx.delete(f"{BASE_URL}/api/ldm/folders/{folder_id}", headers=admin_headers)
+        httpx.delete(f"{BASE_URL}/api/ldm/folders/{folder1_id}", headers=admin_headers)
+        httpx.delete(f"{BASE_URL}/api/ldm/folders/{folder2_id}", headers=admin_headers)
         httpx.delete(f"{BASE_URL}/api/ldm/projects/{project1_id}", headers=admin_headers)
         httpx.delete(f"{BASE_URL}/api/ldm/projects/{project2_id}", headers=admin_headers)
+
+    def test_duplicate_folder_same_project_auto_renamed(self, admin_headers):
+        """DB-002: Duplicate folder in same project is auto-renamed."""
+        import time
+        ts = time.time()
+        folder_name = f"TestFolder_Same_{ts}"
+
+        # Create project
+        p = httpx.post(
+            f"{BASE_URL}/api/ldm/projects",
+            json={"name": f"Project_Same_{ts}"},
+            headers=admin_headers
+        )
+        project_id = p.json()["id"]
+
+        # Create first folder
+        f1 = httpx.post(
+            f"{BASE_URL}/api/ldm/folders",
+            json={"name": folder_name, "project_id": project_id},
+            headers=admin_headers
+        )
+        assert f1.status_code in [200, 201], f"First folder failed: {f1.text}"
+        folder1_id = f1.json()["id"]
+        folder1_name = f1.json()["name"]
+
+        # Create duplicate in same project - should auto-rename
+        f2 = httpx.post(
+            f"{BASE_URL}/api/ldm/folders",
+            json={"name": folder_name, "project_id": project_id},
+            headers=admin_headers
+        )
+        assert f2.status_code in [200, 201], f"Duplicate folder should succeed with auto-rename, got: {f2.text}"
+        folder2_id = f2.json()["id"]
+        folder2_name = f2.json()["name"]
+        assert folder2_name != folder_name, f"Duplicate should be auto-renamed, got: {folder2_name}"
+        assert folder_name in folder2_name, "Auto-renamed name should contain original name"
+
+        # Cleanup
+        httpx.delete(f"{BASE_URL}/api/ldm/folders/{folder1_id}", headers=admin_headers)
+        httpx.delete(f"{BASE_URL}/api/ldm/folders/{folder2_id}", headers=admin_headers)
+        httpx.delete(f"{BASE_URL}/api/ldm/projects/{project_id}", headers=admin_headers)
 
     def test_duplicate_tm_rejected(self, admin_headers):
         """Cannot create two TMs with same name (via database constraint)."""
