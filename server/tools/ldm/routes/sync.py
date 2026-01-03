@@ -67,6 +67,34 @@ class OfflineFilesResponse(BaseModel):
     total_count: int
 
 
+class SyncSubscription(BaseModel):
+    id: int
+    entity_type: str
+    entity_id: int
+    entity_name: str
+    auto_subscribed: bool
+    sync_status: str
+    last_sync_at: Optional[str]
+    created_at: Optional[str]
+
+
+class SubscriptionsResponse(BaseModel):
+    subscriptions: list[SyncSubscription]
+    total_count: int
+
+
+class SubscribeRequest(BaseModel):
+    entity_type: str  # platform, project, file
+    entity_id: int
+    entity_name: str
+
+
+class SubscribeResponse(BaseModel):
+    success: bool
+    subscription_id: int
+    message: str
+
+
 # =============================================================================
 # Offline Status & Files
 # =============================================================================
@@ -148,6 +176,246 @@ async def list_offline_files(
     except Exception as e:
         logger.error(f"Failed to list offline files: {e}")
         return OfflineFilesResponse(files=[], total_count=0)
+
+
+# =============================================================================
+# Sync Subscriptions
+# =============================================================================
+
+@router.get("/offline/subscriptions", response_model=SubscriptionsResponse)
+async def list_subscriptions(
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    List all active sync subscriptions.
+
+    Shows what platforms/projects/files are enabled for offline sync.
+    """
+    try:
+        offline_db = get_offline_db()
+        subs = offline_db.get_subscriptions()
+
+        subscriptions = [
+            SyncSubscription(
+                id=s["id"],
+                entity_type=s["entity_type"],
+                entity_id=s["entity_id"],
+                entity_name=s["entity_name"],
+                auto_subscribed=bool(s.get("auto_subscribed", 0)),
+                sync_status=s.get("sync_status", "pending"),
+                last_sync_at=s.get("last_sync_at"),
+                created_at=s.get("created_at")
+            )
+            for s in subs
+        ]
+
+        return SubscriptionsResponse(
+            subscriptions=subscriptions,
+            total_count=len(subscriptions)
+        )
+    except Exception as e:
+        logger.error(f"Failed to list subscriptions: {e}")
+        return SubscriptionsResponse(subscriptions=[], total_count=0)
+
+
+@router.post("/offline/subscribe", response_model=SubscribeResponse)
+async def subscribe_for_offline(
+    request: SubscribeRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Enable offline sync for a platform, project, or file.
+
+    This creates a subscription and triggers initial download.
+    Subsequent syncs happen automatically.
+    """
+    from server.config import ACTIVE_DATABASE_TYPE
+
+    logger.info(f"Subscribe for offline: {request.entity_type}={request.entity_id}")
+
+    if ACTIVE_DATABASE_TYPE != "postgresql":
+        raise HTTPException(status_code=400, detail="Already in offline mode")
+
+    try:
+        offline_db = get_offline_db()
+
+        # Create subscription
+        sub_id = offline_db.add_subscription(
+            entity_type=request.entity_type,
+            entity_id=request.entity_id,
+            entity_name=request.entity_name,
+            auto_subscribed=False
+        )
+
+        # Trigger initial sync based on entity type
+        if request.entity_type == "file":
+            # Download single file
+            await _sync_file_to_offline(db, request.entity_id, offline_db)
+        elif request.entity_type == "project":
+            # Download all files in project
+            await _sync_project_to_offline(db, request.entity_id, offline_db)
+        elif request.entity_type == "platform":
+            # Download all projects in platform
+            await _sync_platform_to_offline(db, request.entity_id, offline_db)
+
+        # Mark subscription as synced
+        offline_db.update_subscription_status(
+            request.entity_type, request.entity_id, "synced"
+        )
+
+        return SubscribeResponse(
+            success=True,
+            subscription_id=sub_id,
+            message=f"Enabled offline sync for {request.entity_type}: {request.entity_name}"
+        )
+
+    except Exception as e:
+        logger.error(f"Subscribe failed: {e}", exc_info=True)
+        # Mark as error
+        try:
+            offline_db.update_subscription_status(
+                request.entity_type, request.entity_id, "error", str(e)
+            )
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/offline/subscribe/{entity_type}/{entity_id}")
+async def unsubscribe_from_offline(
+    entity_type: str,
+    entity_id: int,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Disable offline sync for an entity.
+
+    Removes the subscription. Local data is NOT deleted (user may want to keep it).
+    """
+    try:
+        offline_db = get_offline_db()
+        offline_db.remove_subscription(entity_type, entity_id)
+
+        return {"success": True, "message": f"Disabled offline sync for {entity_type} {entity_id}"}
+    except Exception as e:
+        logger.error(f"Unsubscribe failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# Internal Sync Helpers
+# =============================================================================
+
+async def _sync_file_to_offline(db: AsyncSession, file_id: int, offline_db):
+    """Sync a single file to offline storage."""
+    result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
+    file = result.scalar_one_or_none()
+    if not file:
+        raise HTTPException(status_code=404, detail=f"File {file_id} not found")
+
+    # Get rows
+    rows_result = await db.execute(
+        select(LDMRow).where(LDMRow.file_id == file_id).order_by(LDMRow.row_num)
+    )
+    rows = rows_result.scalars().all()
+
+    # Save to offline DB
+    offline_db.save_file({
+        "id": file.id,
+        "name": file.name,
+        "original_filename": file.original_filename,
+        "format": file.format,
+        "row_count": file.row_count,
+        "source_language": file.source_language,
+        "target_language": file.target_language,
+        "project_id": file.project_id,
+        "folder_id": file.folder_id,
+        "extra_data": file.extra_data,
+        "created_at": file.created_at.isoformat() if file.created_at else None,
+        "updated_at": file.updated_at.isoformat() if file.updated_at else None
+    })
+
+    row_data = [{
+        "id": row.id,
+        "row_num": row.row_num,
+        "string_id": row.string_id,
+        "source": row.source,
+        "target": row.target,
+        "memo": row.memo if hasattr(row, 'memo') else None,
+        "status": row.status,
+        "extra_data": row.extra_data,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None
+    } for row in rows]
+
+    offline_db.save_rows(file.id, row_data)
+    logger.info(f"Synced file {file.name} with {len(rows)} rows")
+
+
+async def _sync_project_to_offline(db: AsyncSession, project_id: int, offline_db):
+    """Sync all files in a project to offline storage."""
+    # Get project
+    result = await db.execute(select(LDMProject).where(LDMProject.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+    # Save project
+    offline_db.save_project({
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "platform_id": project.platform_id,
+        "owner_id": project.owner_id,
+        "is_restricted": project.is_restricted,
+        "created_at": project.created_at.isoformat() if project.created_at else None,
+        "updated_at": project.updated_at.isoformat() if project.updated_at else None
+    })
+
+    # Get all files in project
+    files_result = await db.execute(
+        select(LDMFile).where(LDMFile.project_id == project_id)
+    )
+    files = files_result.scalars().all()
+
+    for file in files:
+        await _sync_file_to_offline(db, file.id, offline_db)
+
+    logger.info(f"Synced project {project.name} with {len(files)} files")
+
+
+async def _sync_platform_to_offline(db: AsyncSession, platform_id: int, offline_db):
+    """Sync all projects in a platform to offline storage."""
+    from server.database.models import LDMPlatform
+
+    # Get platform
+    result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == platform_id))
+    platform = result.scalar_one_or_none()
+    if not platform:
+        raise HTTPException(status_code=404, detail=f"Platform {platform_id} not found")
+
+    # Save platform
+    offline_db.save_platform({
+        "id": platform.id,
+        "name": platform.name,
+        "description": platform.description,
+        "owner_id": platform.owner_id,
+        "is_restricted": platform.is_restricted,
+        "created_at": platform.created_at.isoformat() if platform.created_at else None,
+        "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
+    })
+
+    # Get all projects in platform
+    projects_result = await db.execute(
+        select(LDMProject).where(LDMProject.platform_id == platform_id)
+    )
+    projects = projects_result.scalars().all()
+
+    for project in projects:
+        await _sync_project_to_offline(db, project.id, offline_db)
+
+    logger.info(f"Synced platform {platform.name} with {len(projects)} projects")
 
 
 # =============================================================================

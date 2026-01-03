@@ -185,42 +185,125 @@ export async function tryReconnect() {
 // =============================================================================
 
 /**
- * Download a file for offline use
- * @param {number} fileId - Server file ID
+ * Subscribe an entity for offline sync
+ * @param {string} entityType - 'platform', 'project', or 'file'
+ * @param {number} entityId - Entity ID
+ * @param {string} entityName - Entity name for display
  * @returns {Promise<{success: boolean, message: string}>}
  */
-export async function downloadFileForOffline(fileId) {
+export async function subscribeForOffline(entityType, entityId, entityName) {
   const url = getApiBase();
 
   try {
     isSyncing.set(true);
 
-    const response = await fetch(`${url}/api/ldm/files/${fileId}/download-for-offline`, {
+    const response = await fetch(`${url}/api/ldm/offline/subscribe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...getAuthHeaders()
-      }
+      },
+      body: JSON.stringify({
+        entity_type: entityType,
+        entity_id: entityId,
+        entity_name: entityName
+      })
     });
 
     if (response.ok) {
       const result = await response.json();
-      logger.success('File downloaded for offline', {
-        fileId,
-        fileName: result.file_name,
-        rows: result.row_count
-      });
+      logger.success('Enabled offline sync', { entityType, entityId, entityName });
       offlineAvailable.set(true);
+      await refreshOfflineStatus();
       return { success: true, message: result.message };
     } else {
       const error = await response.json();
-      throw new Error(error.detail || 'Download failed');
+      throw new Error(error.detail || 'Subscribe failed');
     }
   } catch (error) {
-    logger.error('Download for offline failed', { fileId, error: error.message });
+    logger.error('Subscribe for offline failed', { entityType, entityId, error: error.message });
     throw error;
   } finally {
     isSyncing.set(false);
+  }
+}
+
+/**
+ * Unsubscribe an entity from offline sync
+ * @param {string} entityType - 'platform', 'project', or 'file'
+ * @param {number} entityId - Entity ID
+ * @returns {Promise<{success: boolean}>}
+ */
+export async function unsubscribeFromOffline(entityType, entityId) {
+  const url = getApiBase();
+
+  try {
+    const response = await fetch(`${url}/api/ldm/offline/subscribe/${entityType}/${entityId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+
+    if (response.ok) {
+      logger.success('Disabled offline sync', { entityType, entityId });
+      await refreshOfflineStatus();
+      return { success: true };
+    } else {
+      const error = await response.json();
+      throw new Error(error.detail || 'Unsubscribe failed');
+    }
+  } catch (error) {
+    logger.error('Unsubscribe failed', { entityType, entityId, error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * Check if an entity is subscribed for offline sync
+ * @param {string} entityType - 'platform', 'project', or 'file'
+ * @param {number} entityId - Entity ID
+ * @returns {Promise<boolean>}
+ */
+export async function isSubscribed(entityType, entityId) {
+  const url = getApiBase();
+
+  try {
+    const response = await fetch(`${url}/api/ldm/offline/subscriptions`, {
+      headers: getAuthHeaders()
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.subscriptions.some(
+        s => s.entity_type === entityType && s.entity_id === entityId
+      );
+    }
+    return false;
+  } catch (error) {
+    logger.debug('Could not check subscription', { error: error.message });
+    return false;
+  }
+}
+
+/**
+ * Get all sync subscriptions
+ * @returns {Promise<Array>}
+ */
+export async function getSubscriptions() {
+  const url = getApiBase();
+
+  try {
+    const response = await fetch(`${url}/api/ldm/offline/subscriptions`, {
+      headers: getAuthHeaders()
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.subscriptions;
+    }
+    return [];
+  } catch (error) {
+    logger.debug('Could not get subscriptions', { error: error.message });
+    return [];
   }
 }
 

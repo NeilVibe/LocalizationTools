@@ -417,6 +417,85 @@ class OfflineDatabase:
             conn.commit()
 
     # =========================================================================
+    # Sync Subscriptions
+    # =========================================================================
+
+    def add_subscription(self, entity_type: str, entity_id: int, entity_name: str,
+                         auto_subscribed: bool = False) -> int:
+        """Add or update a sync subscription."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """INSERT OR REPLACE INTO sync_subscriptions
+                   (entity_type, entity_id, entity_name, server_id, auto_subscribed, enabled, sync_status)
+                   VALUES (?, ?, ?, ?, ?, 1, 'pending')""",
+                (entity_type, entity_id, entity_name, entity_id, 1 if auto_subscribed else 0)
+            )
+            conn.commit()
+            row = conn.execute(
+                "SELECT id FROM sync_subscriptions WHERE entity_type = ? AND entity_id = ?",
+                (entity_type, entity_id)
+            ).fetchone()
+            return row["id"] if row else 0
+
+    def remove_subscription(self, entity_type: str, entity_id: int) -> bool:
+        """Remove a sync subscription."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "DELETE FROM sync_subscriptions WHERE entity_type = ? AND entity_id = ?",
+                (entity_type, entity_id)
+            )
+            conn.commit()
+            return True
+
+    def get_subscriptions(self, entity_type: Optional[str] = None) -> List[Dict]:
+        """Get all active sync subscriptions."""
+        with self._get_connection() as conn:
+            if entity_type:
+                rows = conn.execute(
+                    """SELECT * FROM sync_subscriptions
+                       WHERE entity_type = ? AND enabled = 1
+                       ORDER BY created_at DESC""",
+                    (entity_type,)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """SELECT * FROM sync_subscriptions
+                       WHERE enabled = 1
+                       ORDER BY entity_type, created_at DESC"""
+                ).fetchall()
+            return [dict(row) for row in rows]
+
+    def is_subscribed(self, entity_type: str, entity_id: int) -> bool:
+        """Check if an entity is subscribed for offline sync."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """SELECT id FROM sync_subscriptions
+                   WHERE entity_type = ? AND entity_id = ? AND enabled = 1""",
+                (entity_type, entity_id)
+            ).fetchone()
+            return row is not None
+
+    def update_subscription_status(self, entity_type: str, entity_id: int,
+                                   status: str, error: Optional[str] = None):
+        """Update sync status for a subscription."""
+        with self._get_connection() as conn:
+            if status == 'synced':
+                conn.execute(
+                    """UPDATE sync_subscriptions
+                       SET sync_status = ?, last_sync_at = datetime('now'), error_message = NULL
+                       WHERE entity_type = ? AND entity_id = ?""",
+                    (status, entity_type, entity_id)
+                )
+            else:
+                conn.execute(
+                    """UPDATE sync_subscriptions
+                       SET sync_status = ?, error_message = ?
+                       WHERE entity_type = ? AND entity_id = ?""",
+                    (status, error, entity_type, entity_id)
+                )
+            conn.commit()
+
+    # =========================================================================
     # Utility
     # =========================================================================
 
