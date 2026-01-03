@@ -22,17 +22,39 @@
 - **Reported:** 2026-01-03 (Session 20)
 - **Severity:** MEDIUM
 - **Status:** OPEN
-- **Component:** sync.py, TMManager
+- **Component:** sync.py, offline.py
 
-**Problem:** Translation Memory should also be syncable for offline use.
+**Problem:** TM should auto-sync when file/project/folder syncs.
+
+**What's needed:**
+1. `_sync_tm_to_offline()` function - sync TM entries to SQLite
+2. Auto-trigger TM sync when parent entity syncs
+3. TM merge logic (mostly INSERT - additive)
+
+**TM linkage:** `ldm_tm_assignment` table links TMs to Platform/Project/Folder.
 
 ---
 
-### P3-PHASE4-6: Conflict Resolution & Polish
+### ~~P3-PHASE4-6: Conflict Resolution & Polish~~ → MOSTLY DONE
 
 - **Reported:** 2026-01-03 (Session 20)
-- **Severity:** MEDIUM
-- **Status:** OPEN
+- **Revised:** 2026-01-04 (Session 21)
+- **Severity:** LOW (was MEDIUM)
+- **Status:** ✅ MOSTLY DONE
+
+**What the doc said:** Complex conflict resolution UI with dialogs.
+
+**Reality:** `merge_row()` already implements **last-write-wins** by timestamp:
+```python
+if server_updated > local_updated:
+    # Server wins automatically
+else:
+    # Local wins, will push later
+```
+
+**Remaining edge cases (LOW PRIORITY):**
+- "Reviewed" row protection (don't auto-overwrite reviewed translations)
+- New file path selection (only for files created offline - rare use case)
 - **Component:** sync.js, sync.py
 
 **Problem:** Phases 4-6 of P3 Offline/Online Mode not implemented:
