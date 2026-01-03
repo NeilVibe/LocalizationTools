@@ -52,12 +52,9 @@ async def can_access_platform(
     - User owns the platform
     - User has explicit access grant
     """
-    if is_admin(user):
-        return True
-
     user_id = user["user_id"]
 
-    # Get platform info with single query
+    # Get platform info - check existence FIRST (before admin shortcut)
     result = await db.execute(
         select(LDMPlatform.is_restricted, LDMPlatform.owner_id)
         .where(LDMPlatform.id == platform_id)
@@ -66,6 +63,10 @@ async def can_access_platform(
 
     if not row:
         return False  # Platform doesn't exist
+
+    # Admin shortcut AFTER existence check
+    if is_admin(user):
+        return True
 
     is_restricted, owner_id = row
 
@@ -153,12 +154,9 @@ async def can_access_project(
     Checks both project-level restriction AND platform inheritance.
     If project's platform is restricted, user must have platform access too.
     """
-    if is_admin(user):
-        return True
-
     user_id = user["user_id"]
 
-    # Get project with platform info
+    # Get project with platform info - check existence FIRST (before admin shortcut)
     result = await db.execute(
         select(
             LDMProject.is_restricted,
@@ -171,6 +169,10 @@ async def can_access_project(
 
     if not row:
         return False  # Project doesn't exist
+
+    # Admin shortcut AFTER existence check
+    if is_admin(user):
+        return True
 
     is_restricted, owner_id, platform_id = row
 
@@ -289,10 +291,7 @@ async def can_access_file(
     """
     Check if user can access a file via its project.
     """
-    if is_admin(user):
-        return True
-
-    # Get project_id from file
+    # Get project_id from file - check existence FIRST (before admin shortcut)
     result = await db.execute(
         select(LDMFile.project_id)
         .where(LDMFile.id == file_id)
@@ -300,7 +299,11 @@ async def can_access_file(
     row = result.first()
 
     if not row:
-        return False
+        return False  # File doesn't exist
+
+    # Admin shortcut AFTER existence check
+    if is_admin(user):
+        return True
 
     return await can_access_project(db, row[0], user)
 
@@ -313,10 +316,7 @@ async def can_access_folder(
     """
     Check if user can access a folder via its project.
     """
-    if is_admin(user):
-        return True
-
-    # Get project_id from folder
+    # Get project_id from folder - check existence FIRST (before admin shortcut)
     result = await db.execute(
         select(LDMFolder.project_id)
         .where(LDMFolder.id == folder_id)
@@ -324,7 +324,11 @@ async def can_access_folder(
     row = result.first()
 
     if not row:
-        return False
+        return False  # Folder doesn't exist
+
+    # Admin shortcut AFTER existence check
+    if is_admin(user):
+        return True
 
     return await can_access_project(db, row[0], user)
 
@@ -344,12 +348,9 @@ async def can_access_tm(
     TMs inherit access from their assigned project/platform via LDMTMAssignment.
     If TM is not assigned anywhere, only owner and admins can access.
     """
-    if is_admin(user):
-        return True
-
     user_id = user["user_id"]
 
-    # Get TM owner
+    # Get TM owner - check existence FIRST (before admin shortcut)
     result = await db.execute(
         select(LDMTranslationMemory.owner_id)
         .where(LDMTranslationMemory.id == tm_id)
@@ -358,6 +359,10 @@ async def can_access_tm(
 
     if not row:
         return False  # TM doesn't exist
+
+    # Admin shortcut AFTER existence check
+    if is_admin(user):
+        return True
 
     owner_id = row[0]
 
