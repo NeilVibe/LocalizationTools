@@ -1,6 +1,6 @@
 # Session Context
 
-> Last Updated: 2026-01-03 (Session 19 - P3 In Progress)
+> Last Updated: 2026-01-03 (Session 19 - P3 Complete)
 
 ---
 
@@ -10,14 +10,14 @@
 
 Use this checkpoint to go back to BEFORE P3 Offline/Online changes.
 
-**Latest Commit:** `0dd2c43` | **Date:** 2026-01-03 | **Tag:** P3-2 Sync subscription model
+**Latest Commit:** `1cb346f` | **Date:** 2026-01-03 | **Tag:** P3 Complete
 
 ---
 
 ## Current State
 
 **Build:** 439 | **Open Issues:** 0
-**Status:** Session 19 - P3 Offline/Online Mode Phase 2 Complete
+**Status:** Session 19 - P3 Offline/Online Mode COMPLETE
 
 ### P3 Progress
 
@@ -25,8 +25,8 @@ Use this checkpoint to go back to BEFORE P3 Offline/Online changes.
 |-------|--------|-------------|
 | P3-1 | ✅ DONE | Download for offline infrastructure |
 | P3-2 | ✅ DONE | Sync subscription model + dashboard |
-| P3-3 | ⏳ TODO | Auto-sync file on open |
-| P3-4 | ⏳ TODO | Continuous sync mechanism |
+| P3-3 | ✅ DONE | Auto-sync file on open |
+| P3-4 | ✅ DONE | Continuous sync mechanism |
 
 ---
 
@@ -72,7 +72,26 @@ GET /api/ldm/offline/subscriptions        - List all subscriptions
 GET /api/ldm/offline/status               - Get offline status (mode, stats)
 GET /api/ldm/offline/files                - List downloaded files
 POST /api/ldm/files/{id}/download-for-offline - Download single file
+POST /api/ldm/offline/sync-subscription   - Sync a single subscription (continuous sync)
 ```
+
+### P3-3: Auto-sync on File Open (COMPLETE)
+
+When a user opens a file:
+- `autoSyncFileOnOpen()` runs in background
+- Checks if already subscribed
+- If not, subscribes with `auto_subscribed: true` flag
+- File data synced to SQLite for offline use
+- Non-blocking - doesn't delay file opening
+
+### P3-4: Continuous Sync (COMPLETE)
+
+- Background periodic sync every 60 seconds
+- `syncAllSubscriptions()` iterates all subscriptions
+- Each subscription calls `/api/ldm/offline/sync-subscription`
+- Server re-downloads latest data from PostgreSQL to SQLite
+- "Sync Now" button in dashboard for manual trigger
+- `startContinuousSync()` / `stopContinuousSync()` control
 
 ### Sync Dashboard UI
 

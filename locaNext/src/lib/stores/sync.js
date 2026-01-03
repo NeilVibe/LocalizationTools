@@ -376,6 +376,124 @@ export function getFileSyncStatus(fileId) {
 }
 
 // =============================================================================
+// Continuous Sync
+// =============================================================================
+
+let continuousSyncInterval = null;
+const CONTINUOUS_SYNC_INTERVAL = 60000; // 60 seconds
+
+/**
+ * Sync all subscribed items (background refresh)
+ * This keeps offline data fresh with server changes.
+ */
+export async function syncAllSubscriptions() {
+  const url = getApiBase();
+
+  // Don't sync if offline or already syncing
+  let currentMode;
+  connectionMode.subscribe(v => currentMode = v)();
+  if (currentMode === 'offline') {
+    logger.debug('Skipping sync - offline mode');
+    return;
+  }
+
+  let syncing;
+  isSyncing.subscribe(v => syncing = v)();
+  if (syncing) {
+    logger.debug('Skipping sync - already syncing');
+    return;
+  }
+
+  try {
+    isSyncing.set(true);
+
+    // Get all subscriptions
+    const subs = await getSubscriptions();
+    if (subs.length === 0) {
+      logger.debug('No subscriptions to sync');
+      return;
+    }
+
+    logger.info(`Syncing ${subs.length} subscriptions...`);
+
+    // Sync each subscription
+    for (const sub of subs) {
+      try {
+        const response = await fetch(`${url}/api/ldm/offline/sync-subscription`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify({
+            entity_type: sub.entity_type,
+            entity_id: sub.entity_id
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          logger.debug(`Synced ${sub.entity_type}:${sub.entity_id}`, {
+            updated: result.updated_count
+          });
+        } else {
+          logger.warn(`Failed to sync ${sub.entity_type}:${sub.entity_id}`);
+        }
+      } catch (error) {
+        logger.warn(`Sync error for ${sub.entity_type}:${sub.entity_id}`, {
+          error: error.message
+        });
+      }
+    }
+
+    // Update last sync time
+    lastSync.set(new Date().toISOString());
+    await refreshOfflineStatus();
+
+    logger.success(`Continuous sync complete: ${subs.length} subscriptions`);
+  } catch (error) {
+    logger.error('Continuous sync failed', { error: error.message });
+  } finally {
+    isSyncing.set(false);
+  }
+}
+
+/**
+ * Start continuous background sync
+ */
+export function startContinuousSync() {
+  if (continuousSyncInterval) return;
+
+  // Initial sync after 5 seconds
+  setTimeout(() => {
+    syncAllSubscriptions();
+  }, 5000);
+
+  // Periodic sync
+  continuousSyncInterval = setInterval(syncAllSubscriptions, CONTINUOUS_SYNC_INTERVAL);
+  logger.info('Continuous sync started', { interval: CONTINUOUS_SYNC_INTERVAL / 1000 + 's' });
+}
+
+/**
+ * Stop continuous background sync
+ */
+export function stopContinuousSync() {
+  if (continuousSyncInterval) {
+    clearInterval(continuousSyncInterval);
+    continuousSyncInterval = null;
+    logger.info('Continuous sync stopped');
+  }
+}
+
+/**
+ * Manually trigger a sync of all subscriptions
+ */
+export async function manualSync() {
+  logger.info('Manual sync triggered');
+  await syncAllSubscriptions();
+}
+
+// =============================================================================
 // Initialize
 // =============================================================================
 
@@ -386,6 +504,7 @@ export async function initSync() {
   logger.info('Initializing sync system');
   startHealthChecks();
   await refreshOfflineStatus();
+  startContinuousSync();
 }
 
 /**
@@ -421,4 +540,5 @@ export async function refreshOfflineStatus() {
  */
 export function cleanupSync() {
   stopHealthChecks();
+  stopContinuousSync();
 }

@@ -242,6 +242,55 @@ class TestOfflineFiles:
         assert isinstance(data["files"], list)
 
 
+class TestContinuousSync:
+    """Test continuous sync mechanism."""
+
+    def test_sync_subscription_requires_subscription(self, admin_headers):
+        """Test that sync-subscription fails without subscription."""
+        response = httpx.post(
+            f"{BASE_URL}/api/ldm/offline/sync-subscription",
+            headers=admin_headers,
+            json={
+                "entity_type": "file",
+                "entity_id": 99999  # Non-existent
+            },
+            timeout=30.0
+        )
+        # Should return 404 (subscription not found) or 500 (file not found)
+        assert response.status_code in [404, 500]
+
+    def test_sync_subscription_with_project(self, admin_headers, test_project_id):
+        """Test syncing a project subscription."""
+        # First subscribe
+        sub_response = httpx.post(
+            f"{BASE_URL}/api/ldm/offline/subscribe",
+            headers=admin_headers,
+            json={
+                "entity_type": "project",
+                "entity_id": test_project_id,
+                "entity_name": "Test Project"
+            },
+            timeout=60.0
+        )
+        assert sub_response.status_code == 200
+
+        # Now sync
+        response = httpx.post(
+            f"{BASE_URL}/api/ldm/offline/sync-subscription",
+            headers=admin_headers,
+            json={
+                "entity_type": "project",
+                "entity_id": test_project_id
+            },
+            timeout=60.0
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["success"] is True
+        assert "updated_count" in data
+
+
 class TestHealthChecks:
     """Quick health checks for P3 endpoints."""
 
