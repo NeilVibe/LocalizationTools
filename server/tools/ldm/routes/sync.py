@@ -304,6 +304,88 @@ async def unsubscribe_from_offline(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class SyncSubscriptionRequest(BaseModel):
+    entity_type: str
+    entity_id: int
+
+
+class SyncSubscriptionResponse(BaseModel):
+    success: bool
+    entity_type: str
+    entity_id: int
+    updated_count: int
+    message: str
+
+
+@router.post("/offline/sync-subscription", response_model=SyncSubscriptionResponse)
+async def sync_subscription(
+    request: SyncSubscriptionRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Sync a single subscription (refresh from server).
+
+    This endpoint is called periodically by the continuous sync mechanism
+    to keep offline data fresh with server changes.
+    """
+    from server.config import ACTIVE_DATABASE_TYPE
+
+    logger.debug(f"Sync subscription: {request.entity_type}={request.entity_id}")
+
+    if ACTIVE_DATABASE_TYPE != "postgresql":
+        raise HTTPException(status_code=400, detail="Already in offline mode")
+
+    try:
+        offline_db = get_offline_db()
+
+        # Check if subscription exists
+        if not offline_db.is_subscribed(request.entity_type, request.entity_id):
+            raise HTTPException(status_code=404, detail="Subscription not found")
+
+        updated_count = 0
+
+        # Re-sync based on entity type
+        if request.entity_type == "file":
+            await _sync_file_to_offline(db, request.entity_id, offline_db)
+            updated_count = 1
+        elif request.entity_type == "project":
+            # Count files in project
+            files_result = await db.execute(
+                select(LDMFile).where(LDMFile.project_id == request.entity_id)
+            )
+            files = files_result.scalars().all()
+            updated_count = len(files)
+            await _sync_project_to_offline(db, request.entity_id, offline_db)
+        elif request.entity_type == "platform":
+            # Count projects in platform
+            projects_result = await db.execute(
+                select(LDMProject).where(LDMProject.platform_id == request.entity_id)
+            )
+            projects = projects_result.scalars().all()
+            updated_count = len(projects)
+            await _sync_platform_to_offline(db, request.entity_id, offline_db)
+
+        # Update subscription status
+        offline_db.update_subscription_status(
+            request.entity_type, request.entity_id, "synced"
+        )
+
+        return SyncSubscriptionResponse(
+            success=True,
+            entity_type=request.entity_type,
+            entity_id=request.entity_id,
+            updated_count=updated_count,
+            message=f"Synced {request.entity_type} {request.entity_id}"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Sync subscription failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # =============================================================================
 # Internal Sync Helpers
 # =============================================================================

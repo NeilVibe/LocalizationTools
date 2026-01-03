@@ -26,7 +26,8 @@
     tryReconnect,
     goOffline,
     getSubscriptions,
-    unsubscribeFromOffline
+    unsubscribeFromOffline,
+    manualSync
   } from '$lib/stores/sync.js';
 
   // Dashboard modal state
@@ -72,6 +73,12 @@
     reconnecting = true;
     await tryReconnect();
     reconnecting = false;
+  }
+
+  // Handle manual sync
+  async function handleSync() {
+    await manualSync();
+    await loadSubscriptions();
   }
 
   // Load subscriptions
@@ -225,6 +232,15 @@
           {reconnecting ? 'Connecting...' : 'Try Reconnect'}
         </Button>
       {:else}
+        <Button
+          kind="primary"
+          size="small"
+          icon={Renew}
+          disabled={$isSyncing || subscriptions.length === 0}
+          on:click={handleSync}
+        >
+          {$isSyncing ? 'Syncing...' : 'Sync Now'}
+        </Button>
         <Button
           kind="secondary"
           size="small"
