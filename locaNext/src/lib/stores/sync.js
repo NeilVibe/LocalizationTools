@@ -308,6 +308,50 @@ export async function getSubscriptions() {
 }
 
 /**
+ * Auto-sync a file when opened (background, non-blocking)
+ * Only syncs if not already subscribed
+ * @param {number} fileId - File ID
+ * @param {string} fileName - File name for display
+ */
+export function autoSyncFileOnOpen(fileId, fileName) {
+  // Run in background - don't block file opening
+  (async () => {
+    try {
+      // Check if already subscribed
+      const alreadySubscribed = await isSubscribed('file', fileId);
+      if (alreadySubscribed) {
+        logger.debug('File already synced for offline', { fileId });
+        return;
+      }
+
+      // Subscribe with auto flag
+      const url = getApiBase();
+      const response = await fetch(`${url}/api/ldm/offline/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          entity_type: 'file',
+          entity_id: fileId,
+          entity_name: fileName,
+          auto_subscribed: true
+        })
+      });
+
+      if (response.ok) {
+        logger.debug('Auto-synced file for offline', { fileId, fileName });
+        offlineAvailable.set(true);
+      }
+    } catch (error) {
+      // Silent fail - auto-sync is best effort
+      logger.debug('Auto-sync failed (non-critical)', { fileId, error: error.message });
+    }
+  })();
+}
+
+/**
  * Sync local changes to server
  * @param {number} fileId - File ID to sync
  */

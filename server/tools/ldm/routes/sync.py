@@ -87,6 +87,7 @@ class SubscribeRequest(BaseModel):
     entity_type: str  # platform, project, file
     entity_id: int
     entity_name: str
+    auto_subscribed: bool = False  # True if auto-synced on file open
 
 
 class SubscribeResponse(BaseModel):
@@ -245,7 +246,7 @@ async def subscribe_for_offline(
             entity_type=request.entity_type,
             entity_id=request.entity_id,
             entity_name=request.entity_name,
-            auto_subscribed=False
+            auto_subscribed=request.auto_subscribed
         )
 
         # Trigger initial sync based on entity type
