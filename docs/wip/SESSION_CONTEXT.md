@@ -1,49 +1,128 @@
 # Session Context
 
-> Last Updated: 2026-01-03 (Session 18 - Complete)
+> Last Updated: 2026-01-03 (Session 19 - P3 In Progress)
 
 ---
 
 ## STABLE CHECKPOINT
 
-**Pre-P5 Stable:** `b6f2561` (Session 14) | **Date:** 2026-01-02 | **Tag:** Auto-updater verified
-
-Use this if you need to go back to BEFORE P5 Advanced Search changes.
-
-**Post-Session 17 Stable:** `3b7108e` | **Date:** 2026-01-03 | **Tag:** Build 438 - All bugs fixed
-
-**Post-Session 18 Stable:** `d3f82c4` | **Date:** 2026-01-03 | **Tag:** DESIGN-001 Complete
-
-**Pre-P3 Stable:** `d3f82c4` | **Date:** 2026-01-03 | **Tag:** Ready for Offline/Online Mode
+**Pre-P3 Stable:** `ed1d4d3` | **Date:** 2026-01-03 | **Tag:** Ready for Offline/Online Mode
 
 Use this checkpoint to go back to BEFORE P3 Offline/Online changes.
+
+**Latest Commit:** `0dd2c43` | **Date:** 2026-01-03 | **Tag:** P3-2 Sync subscription model
 
 ---
 
 ## Current State
 
 **Build:** 439 | **Open Issues:** 0
-**Status:** Session 19 - Starting P3 Offline/Online Mode
+**Status:** Session 19 - P3 Offline/Online Mode Phase 2 Complete
 
-### Open Issues
+### P3 Progress
 
-*No open issues!*
-
-### Database State (Clean)
-
-| Item | Count |
-|------|-------|
-| Platforms | 1 (Main Platform) |
-| Projects | 1 (Main Project) |
-| Folders | 1 (Main Folder) |
-| Files | 1 (sample.txt, 3 rows) |
-| TMs | 1 (Main TM, ko→en) |
+| Phase | Status | Description |
+|-------|--------|-------------|
+| P3-1 | ✅ DONE | Download for offline infrastructure |
+| P3-2 | ✅ DONE | Sync subscription model + dashboard |
+| P3-3 | ⏳ TODO | Auto-sync file on open |
+| P3-4 | ⏳ TODO | Continuous sync mechanism |
 
 ---
 
-## SESSION 18 SUMMARY (2026-01-03)
+## SESSION 19 SUMMARY (2026-01-03)
 
-### DESIGN-001: Public by Default Permission Model - COMPLETE
+### P3-1: Download Infrastructure (COMPLETE)
+
+| Task | Status |
+|------|--------|
+| SQLite schema (`offline_schema.sql`) | ✅ |
+| OfflineDatabase class (`offline.py`) | ✅ |
+| Sync store (`sync.js`) | ✅ |
+| Mode indicator UI | ✅ |
+| Download API endpoint | ✅ |
+
+### P3-2: Sync Subscription Model (COMPLETE)
+
+| Task | Status |
+|------|--------|
+| `sync_subscriptions` table | ✅ |
+| Subscribe/Unsubscribe endpoints | ✅ |
+| Context menu: Enable/Disable Offline Sync | ✅ |
+| Sync Dashboard with subscriptions list | ✅ |
+| Remove subscription from dashboard | ✅ |
+
+### Key Files Created/Modified
+
+| File | Purpose |
+|------|---------|
+| `server/database/offline_schema.sql` | SQLite tables for offline + sync_subscriptions |
+| `server/database/offline.py` | OfflineDatabase class with subscription methods |
+| `server/tools/ldm/routes/sync.py` | Sync API endpoints (subscribe, list, download) |
+| `locaNext/src/lib/stores/sync.js` | Sync state + subscription functions |
+| `locaNext/src/lib/components/sync/SyncStatusPanel.svelte` | Mode indicator + dashboard |
+| `locaNext/src/lib/components/pages/FilesPage.svelte` | Context menu with sync toggle |
+
+### New API Endpoints
+
+```
+POST /api/ldm/offline/subscribe           - Subscribe for offline sync
+DELETE /api/ldm/offline/subscribe/{type}/{id} - Unsubscribe
+GET /api/ldm/offline/subscriptions        - List all subscriptions
+GET /api/ldm/offline/status               - Get offline status (mode, stats)
+GET /api/ldm/offline/files                - List downloaded files
+POST /api/ldm/files/{id}/download-for-offline - Download single file
+```
+
+### Sync Dashboard UI
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    SYNC DASHBOARD                           │
+│  ─────────────────────────────────────────────────────────  │
+│  🟢 Online                                                  │
+│  ─────────────────────────────────────────────────────────  │
+│  Last Sync: 2 min ago    │   Pending Changes: 0            │
+│  ─────────────────────────────────────────────────────────  │
+│  Synced for Offline (3)                                     │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ 📁 Game_Localization     project     ✓    [🗑]    │   │
+│  │ 📁 Mobile_Strings        project     ✓    [🗑]    │   │
+│  │ 📄 manual_fixes.txt      file        ✓    [🗑]    │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                    [ Go Offline ]                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Context Menu Options
+
+Files, Projects, and Platforms now have:
+- **Enable Offline Sync** - Subscribe and download for offline
+- **Disable Offline Sync** - Remove subscription (data kept locally)
+
+### Remaining for P3
+
+| Task | Description |
+|------|-------------|
+| Auto-sync on file open | When user opens a file, auto-subscribe it |
+| Continuous sync | Background periodic sync for subscribed items |
+
+---
+
+## Key Commits (Session 19)
+
+| Commit | Description |
+|--------|-------------|
+| `649a315` | P3-1.1: SQLite schema |
+| `da5d74f` | P3-1.2/1.3: Sync store + mode indicator |
+| `d47e246` | P3-1.4-1.7: Complete Phase 1 |
+| `0dd2c43` | P3-2: Sync subscription model + dashboard |
+
+---
+
+## PREVIOUS SESSION SUMMARIES
+
+### Session 18 (2026-01-03) - DESIGN-001 Complete
 
 | Change | Description |
 |--------|-------------|
@@ -52,260 +131,57 @@ Use this checkpoint to go back to BEFORE P3 Offline/Online changes.
 | **Globally unique names** | No duplicate names anywhere |
 | **Access grants** | Admins assign users to restricted resources |
 
-### Key Files Created/Modified
+### Session 17 (2026-01-03) - All Bugs Fixed
 
-| File | Purpose |
-|------|---------|
-| `server/tools/ldm/permissions.py` | NEW: Central permission logic |
-| `server/database/models.py` | Added `is_restricted`, `LDMResourceAccess` |
-| 13 route files | Replaced owner_id filtering with permission helpers |
-| `docs/wip/PUBLIC_PERMISSIONS_SPEC.md` | NEW: Full specification |
-
-### New API Endpoints
-
-```
-PUT /platforms/{id}/restriction  - Toggle restriction (admin)
-GET /platforms/{id}/access       - List access grants (admin)
-POST /platforms/{id}/access      - Grant access (admin)
-DELETE /platforms/{id}/access/{user_id} - Revoke access (admin)
-
-# Same for projects
-```
-
-### Frontend Implemented
-
-| Component | Description |
-|-----------|-------------|
-| `ExplorerGrid.svelte` | Lock icon badge for restricted platforms/projects |
-| `FilesPage.svelte` | "Manage Access..." context menu option (admin only) |
-| `AccessControl.svelte` | NEW: Admin modal for restriction toggle + user access grants |
-
----
-
-## NEXT PHASE: P3 Offline/Online Mode
-
-**Priority:** HIGH | **Effort:** 10 weeks | **Doc:** `OFFLINE_ONLINE_MODE.md`
-
-### Quick Summary
-
-| Feature | Description |
-|---------|-------------|
-| **Auto-Connect** | Always online if server reachable, auto-fallback to offline |
-| **Manual Sync** | Right-click → Download/Sync (user controls WHAT and WHEN) |
-| **Add/Edit Only** | No deletions synced between modes |
-| **Recycle Bin** | 30-day soft delete before permanent removal |
-| **Beautiful UI** | Sync Dashboard, Toast notifications, Status icons |
-
-### Implementation Phases
-
-| Phase | Scope | Weeks |
-|-------|-------|-------|
-| **Phase 1** | Foundation - Basic offline viewing/editing | 1-2 |
-| **Phase 2** | Change Tracking - Track all local changes | 3-4 |
-| **Phase 3** | Sync Engine - Push local changes to server | 5-6 |
-| **Phase 4** | Conflict Resolution - Handle conflicts gracefully | 7-8 |
-| **Phase 5** | File Dialog - Path selection for new files | 9 |
-| **Phase 6** | Polish & Edge Cases - Production-ready | 10 |
-
-### Key Files to Create/Modify
-
-| File | Purpose |
-|------|---------|
-| `server/database/offline_schema.sql` | SQLite tables for offline |
-| `server/api/sync.py` | Sync API endpoints |
-| `server/sync/differ.py` | Diff algorithm |
-| `server/sync/merger.py` | Merge logic |
-| `SyncStatusPanel.svelte` | Mode indicator + dashboard |
-| `SyncPreviewDialog.svelte` | Show what will sync |
-| `ConflictResolver.svelte` | Conflict resolution UI |
-| `SyncFileDialog.svelte` | Windows-style path selector |
-
----
-
-## SESSION 17 SUMMARY (2026-01-03)
-
-### All Bugs Fixed
-
-| Bug | Root Cause | Fix |
-|-----|------------|-----|
-| **Color disappears after edit** | Regex stripped PAColor tags | Negative lookahead regex |
-| **Cell height too big** | Double-counting newlines + wrap | New `countDisplayLines()` algorithm |
-| **Resize bar scroll issue** | Bars inside scroll container | Moved to wrapper outside scroll |
-| **Text bleeding/zombie rows** | `{@const}` not reactive | Call `getRowTop()`/`getRowHeight()` directly |
-
-### Key Commits
-
-| Commit | Description |
-|--------|-------------|
-| `f252d06` | Color fix + Cell height fix + Resize bar wrapper |
-| `17067b8` | **ROOT CAUSE FIX:** Reactive row positioning |
-| `3b7108e` | Build 438: Reactive row positioning fix |
-
-### Build 438 - SUCCESS
-
-| Platform | Status | Duration |
-|----------|--------|----------|
-| **Gitea** (Windows) | ✅ SUCCESS | 22m 23s |
-| **GitHub** (Win/Mac/Linux) | ✅ SUCCESS | 15m 15s |
-
-### FIXED: Text Bleeding / Zombie Rows (ROOT CAUSE)
-
-**Problem:** After scrolling or resizing columns, rows would overlap or "zombie" rows would appear.
-
-**Root Cause:** Svelte's `{@const}` creates a non-reactive constant:
-```svelte
-<!-- OLD (buggy) - rowTop evaluated ONCE, never updates -->
-{@const rowTop = getRowTop(rowIndex)}
-<div style="top: {rowTop}px">
-```
-
-When `cumulativeHeights` state changed (after measuring actual row heights), the `rowTop` variable didn't update because `{@const}` is not reactive.
-
-**Fix:** Call the function directly in the style binding:
-```svelte
-<!-- NEW (correct) - reactive, recalculates when state changes -->
-<div style="top: {getRowTop(rowIndex)}px; min-height: {getRowHeight(rowIndex)}px;">
-```
-
-**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte:2100`
-
-**Performance:** O(1) lookups from pre-computed `cumulativeHeights` array, negligible overhead.
-
-### FIXED: Color Disappears After Edit Mode
-
-**Root Cause:** Line 280 in `colorParser.js`:
-```javascript
-result.replace(/<[^>]+>/g, '');  // WRONG: strips ALL HTML tags including PAColor!
-```
-
-**Fix:** Use negative lookahead to preserve PAColor tags:
-```javascript
-result.replace(/<(?!\/?PA(?:Color|OldColor))[^>]+>/g, '');  // CORRECT
-```
-
-**File:** `locaNext/src/lib/utils/colorParser.js:280`
-
-### FIXED: Cell Height Too Big
-
-**Root Cause:** Old algorithm DOUBLE-COUNTED lines:
-```javascript
-// OLD (buggy):
-const wrapLines = Math.ceil(maxLen / 55);     // Assumed all chars in one block
-const totalLines = wrapLines + maxNewlines;   // Added newlines ON TOP = WRONG
-```
-
-**Fix:** New `countDisplayLines()` function splits by newlines FIRST:
-```javascript
-// NEW (correct):
-const segments = normalized.split('\n');
-let totalLines = 0;
-for (const segment of segments) {
-  totalLines += Math.max(1, Math.ceil(segment.length / 55));
-}
-```
-
-**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte:1593-1650`
-
-### FIXED: Resize Bar Not Working After Scroll
-
-**Problem:** Column resize bar disappeared or didn't work after scrolling.
-
-**Fix:** Moved resize bars outside scroll-container into a new `scroll-wrapper` div.
-
-**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte:2069-2081`
-
----
-
-## SESSION 16 SUMMARY (2026-01-03)
-
-### P5 Advanced Search - COMPLETE
-
-| Feature | Status |
-|---------|--------|
-| Fuzzy Search (pg_trgm) | ✅ Implemented |
-| Search UI Redesign | ✅ Settings popover with mode icons |
-| Mode Icons | ⊃ Contains, = Exact, ≠ Excludes, ≈ Similar |
-| Threshold | 0.3 (configurable in rows.py) |
-
-### 100% ENDPOINT COVERAGE ACHIEVED
-
-**All 220 endpoints tested!**
-- Generated 149 test stubs via `endpoint_audit.py --generate-stubs`
-- Fixed 4 Auth bugs (activate/deactivate user transaction conflict)
-- Location: `tests/api/test_generated_stubs.py`
-
----
-
-## PREVIOUS SESSIONS
-
-### Session 15 (2026-01-02) - P3 Planning
-- Complete specification for Offline/Online Mode (~1200 lines)
-- All design decisions resolved
-
-### Session 14 (2026-01-02) - Auto-Updater Fix
-- Fixed 7 auto-updater issues (AU-001 to AU-007)
-- Changed from GitHub to Gitea generic provider
-- Created 2-tag release system (versioned + `latest`)
-
-### Session 13 (2026-01-01) - CI/CD Fixes
-- Added gsudo for Windows service control
-- Fixed macOS build (electron-builder config)
-- Added pg_trgm extension to CI workflows
-
-### Session 12 (2026-01-01) - UI Polish
-- Fixed CTRL+S not adding to TM
-- Added TM indicator with scope
-- Unified Settings/User menu
-
-### Session 11 (2026-01-01) - TM Hierarchy Complete
-- All 5 sprints complete
-- Database schema, backend, frontend all working
+| Bug | Fix |
+|-----|-----|
+| Color disappears after edit | Negative lookahead regex |
+| Cell height too big | New `countDisplayLines()` algorithm |
+| Resize bar scroll issue | Moved to wrapper outside scroll |
+| Text bleeding/zombie rows | Reactive row positioning |
 
 ---
 
 ## KEY FILES
 
-### P3 Implementation
+### P3 Implementation (Current)
 
 | File | Purpose |
 |------|---------|
-| `docs/wip/OFFLINE_ONLINE_MODE.md` | **Complete spec (~1200 lines)** |
+| `server/database/offline_schema.sql` | SQLite tables |
+| `server/database/offline.py` | OfflineDatabase class |
+| `server/tools/ldm/routes/sync.py` | Sync API endpoints |
+| `locaNext/src/lib/stores/sync.js` | Sync state management |
+| `locaNext/src/lib/components/sync/SyncStatusPanel.svelte` | Mode indicator + dashboard |
 
-### Core Implementation Files
-
-| File | Purpose |
-|------|---------|
-| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | Main grid (fixed) |
-| `locaNext/src/lib/utils/colorParser.js` | Color parsing (fixed) |
-| `locaNext/src/lib/components/ldm/FileExplorer.svelte` | File tree |
-| `locaNext/src/routes/+layout.svelte` | App layout |
-| `server/tools/ldm/routes/*.py` | LDM API endpoints |
-
-### Planning Documents
+### Core Implementation
 
 | File | Purpose |
 |------|---------|
-| `docs/wip/OFFLINE_ONLINE_MODE.md` | P3 complete spec |
-| `docs/wip/PHASE_10_MAJOR_UIUX_OVERHAUL.md` | Phase 10 plan |
-| `docs/wip/ADVANCED_SEARCH.md` | P5 plan (DONE) |
-| `docs/wip/COLOR_PARSER_EXTENSION.md` | P4 guide |
-| `docs/wip/ISSUES_TO_FIX.md` | Bug tracker |
+| `locaNext/src/lib/components/ldm/VirtualGrid.svelte` | Main grid |
+| `locaNext/src/lib/components/pages/FilesPage.svelte` | File explorer |
+| `server/tools/ldm/permissions.py` | Permission helpers |
 
 ---
 
-## ARCHITECTURE REMINDER
+## ARCHITECTURE
 
 ```
 LocaNext.exe (User PC)           Central PostgreSQL
 ├─ Electron + Svelte 5       →   ├─ All text data
 ├─ Embedded Python Backend       ├─ Users, sessions
-├─ FAISS indexes (local)         ├─ LDM rows, TM entries
-├─ Model2Vec (~128MB)            └─ Logs
-├─ Qwen (2.3GB, opt-in)
-└─ File parsing (local)
+├─ SQLite (offline storage)  ←   ├─ LDM rows, TM entries
+├─ FAISS indexes (local)         └─ Logs
+└─ Qwen model (optional)
 
 ONLINE:  PostgreSQL (multi-user, WebSocket sync)
-OFFLINE: SQLite (single-user, auto-fallback) ← P3 enhances this
+OFFLINE: SQLite (single-user, subscribed data only)
+
+SYNC FLOW:
+1. User subscribes (platform/project/file)
+2. Initial download to SQLite
+3. Continuous sync keeps data fresh
+4. Changes tracked for push back
 ```
 
 ---
@@ -324,14 +200,6 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 # Playground install
 ./scripts/playground_install.sh --launch --auto-login
-
-# Check build status (SQL)
-python3 -c "
-import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
-c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 3')
-STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
-for r in c.fetchall(): print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')"
 ```
 
 ---
@@ -340,12 +208,11 @@ for r in c.fetchall(): print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')
 
 | Metric | Value |
 |--------|-------|
-| Build | 438 |
-| Tests | 1,548 (+149) |
-| Endpoints | 220 (100% tested!) |
-| Open Issues | 1 (DESIGN-001) |
-| Planning Docs | 4 complete |
+| Build | 439 |
+| Tests | 1,548 |
+| Endpoints | 220+ (P3 adds 6) |
+| Open Issues | 0 |
 
 ---
 
-*Session 17 Complete - All bugs fixed, Build 438 SUCCESS, Ready for P3 Offline/Online Mode*
+*Session 19 - P3 Phase 2 Complete, Ready for Phase 3 (Auto-sync + Continuous sync)*
