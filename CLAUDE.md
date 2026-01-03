@@ -13,6 +13,7 @@
 | **Current task?** | [Roadmap.md](Roadmap.md) |
 | **Session context?** | [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
 | **Open bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
+| **P3 Offline/Online spec?** | [docs/wip/OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) ← NEXT PHASE |
 | **WIP docs?** | [docs/wip/README.md](docs/wip/README.md) |
 | **Build → Test (Windows)** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) |
 | **CI/CD debug?** | [docs/cicd/TROUBLESHOOTING.md](docs/cicd/TROUBLESHOOTING.md) |

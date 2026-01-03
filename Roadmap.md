@@ -477,13 +477,42 @@ LDM currently imports from legacy apps (violates Rule #0):
 
 | Priority | Feature | WIP Doc | Status |
 |----------|---------|---------|--------|
-| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | Phase 1 DONE |
+| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | ✅ Phase 1 DONE |
 | **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](docs/wip/FONT_SETTINGS_ENHANCEMENT.md) | ✅ DONE |
-| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | PLANNING |
-| **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](docs/wip/COLOR_PARSER_EXTENSION.md) | DOCUMENTED |
-| **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | PLANNING |
-| **P6** | File Delete + Recycle Bin | TBD | BACKLOG |
+| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | **NEXT** |
+| **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](docs/wip/COLOR_PARSER_EXTENSION.md) | ON HOLD |
+| **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | ✅ DONE (Session 16) |
+| **P6** | File Delete + Recycle Bin | (Included in P3) | MERGED INTO P3 |
 | **P7** | Endpoint Audit System | [ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) | ✅ DONE |
+
+### P3: Offline/Online Mode (NEXT - 10 weeks)
+
+**Status:** FULLY SPECIFIED | **Doc:** `docs/wip/OFFLINE_ONLINE_MODE.md` (~1200 lines)
+
+**Key Features:**
+- Auto-connect: Online if possible, auto-fallback to offline
+- Manual sync: Right-click → Download/Sync (user controls WHAT and WHEN)
+- Add/Edit only: No deletions synced between modes
+- Recycle Bin: 30-day soft delete before permanent removal (P6 absorbed)
+- Beautiful UI: Sync Dashboard, Toast notifications, Status icons
+
+**Implementation Phases:**
+| Phase | Scope | Weeks |
+|-------|-------|-------|
+| Phase 1 | Foundation - Basic offline viewing/editing | 1-2 |
+| Phase 2 | Change Tracking - Track all local changes | 3-4 |
+| Phase 3 | Sync Engine - Push local changes to server | 5-6 |
+| Phase 4 | Conflict Resolution - Handle conflicts gracefully | 7-8 |
+| Phase 5 | File Dialog - Path selection for new files | 9 |
+| Phase 6 | Polish & Edge Cases - Production-ready | 10 |
+
+### P5: Advanced Search ✅ COMPLETE (Session 16)
+
+Fuzzy search with 4 modes:
+- ⊃ Contains (default)
+- = Exact match
+- ≠ Excludes
+- ≈ Similar (pg_trgm fuzzy, 0.3 threshold)
 
 ### P7: Endpoint Audit System ✅ COMPLETE
 Full automated endpoint lifecycle management (2026-01-01):
@@ -628,4 +657,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-01 | Build 426 | P1-P7 DONE*
+*Strategic Roadmap | Updated 2026-01-03 | Build 438 | P5 DONE, P3 NEXT*

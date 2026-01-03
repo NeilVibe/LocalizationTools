@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-03 (Session 17) | **Build:** 437 | **Open:** 2
+**Last Updated:** 2026-01-03 (Session 17 Complete) | **Build:** 438 | **Open:** 1
 
 ---
 
@@ -8,12 +8,115 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 69 |
+| **FIXED/CLOSED** | 73 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 | **HIGH (Design Issues)** | 1 |
-| **MEDIUM (UI)** | 1 |
-| **Total Open** | 2 |
+| **Total Open** | 1 |
+
+---
+
+## SESSION 17 FIXES (2026-01-03)
+
+### UI-103: Text Bleeding / Zombie Rows After Scroll ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Build 438)
+- **Severity:** HIGH
+- **Status:** FIXED
+- **Component:** VirtualGrid.svelte
+
+**Problem:** After scrolling or resizing columns, rows would overlap or "zombie" rows would appear.
+
+**Root Cause:** Svelte's `{@const}` creates a non-reactive constant:
+```svelte
+<!-- OLD (buggy) - rowTop evaluated ONCE, never updates -->
+{@const rowTop = getRowTop(rowIndex)}
+<div style="top: {rowTop}px">
+```
+
+When `cumulativeHeights` state changed (after measuring actual row heights), the `rowTop` variable didn't update because `{@const}` is not reactive.
+
+**Fix:** Call the function directly in the style binding:
+```svelte
+<!-- NEW (correct) - reactive, recalculates when state changes -->
+<div style="top: {getRowTop(rowIndex)}px; min-height: {getRowHeight(rowIndex)}px;">
+```
+
+**Commit:** `17067b8`
+**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte:2100`
+
+---
+
+### UI-104: Color Disappears After Edit Mode ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Build 438)
+- **Severity:** HIGH
+- **Status:** FIXED
+- **Component:** colorParser.js
+
+**Problem:** After editing a cell with PAColor tags and exiting edit mode, the colors would disappear.
+
+**Root Cause:** `htmlToPaColor()` used a regex that stripped ALL HTML tags including PAColor:
+```javascript
+result.replace(/<[^>]+>/g, '');  // WRONG: strips PAColor too!
+```
+
+**Fix:** Use negative lookahead to preserve PAColor tags:
+```javascript
+result.replace(/<(?!\/?PA(?:Color|OldColor))[^>]+>/g, '');  // CORRECT
+```
+
+**Commit:** `f252d06`
+**File:** `locaNext/src/lib/utils/colorParser.js:280`
+
+---
+
+### UI-105: Cell Height Too Big for Multi-line Content ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Build 438)
+- **Severity:** MEDIUM
+- **Status:** FIXED
+- **Component:** VirtualGrid.svelte
+
+**Problem:** Cells with multi-line content were too tall (e.g., 486px instead of 398px).
+
+**Root Cause:** Old algorithm DOUBLE-COUNTED lines:
+```javascript
+const wrapLines = Math.ceil(maxLen / 55);     // Assumed all chars in one block
+const totalLines = wrapLines + maxNewlines;   // Added newlines ON TOP = WRONG
+```
+
+**Fix:** New `countDisplayLines()` function splits by newlines FIRST:
+```javascript
+const segments = normalized.split('\n');
+let totalLines = 0;
+for (const segment of segments) {
+  totalLines += Math.max(1, Math.ceil(segment.length / 55));
+}
+```
+
+**Commit:** `f252d06`
+**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte:1593-1650`
+
+---
+
+### UI-106: Resize Bar Not Working After Scroll ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Build 438)
+- **Severity:** MEDIUM
+- **Status:** FIXED
+- **Component:** VirtualGrid.svelte
+
+**Problem:** Column resize bar disappeared or didn't work after scrolling.
+
+**Fix:** Moved resize bars outside scroll-container into a new `scroll-wrapper` div.
+
+**Commit:** `f252d06`
+**File:** `locaNext/src/lib/components/ldm/VirtualGrid.svelte:2069-2081`
 
 ---
 
