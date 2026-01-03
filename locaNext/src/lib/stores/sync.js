@@ -11,7 +11,7 @@
  */
 
 import { writable, derived } from 'svelte/store';
-import { getApiBase } from '$lib/utils/api.js';
+import { getApiBase, getAuthHeaders } from '$lib/utils/api.js';
 import { logger } from '$lib/utils/logger.js';
 
 // =============================================================================
@@ -187,11 +187,41 @@ export async function tryReconnect() {
 /**
  * Download a file for offline use
  * @param {number} fileId - Server file ID
+ * @returns {Promise<{success: boolean, message: string}>}
  */
 export async function downloadFileForOffline(fileId) {
-  // Will be implemented in Phase 1.5
-  logger.info('Download for offline requested', { fileId });
-  // TODO: Call download API and store in SQLite
+  const url = getApiBase();
+
+  try {
+    isSyncing.set(true);
+
+    const response = await fetch(`${url}/api/ldm/files/${fileId}/download-for-offline`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      }
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      logger.success('File downloaded for offline', {
+        fileId,
+        fileName: result.file_name,
+        rows: result.row_count
+      });
+      offlineAvailable.set(true);
+      return { success: true, message: result.message };
+    } else {
+      const error = await response.json();
+      throw new Error(error.detail || 'Download failed');
+    }
+  } catch (error) {
+    logger.error('Download for offline failed', { fileId, error: error.message });
+    throw error;
+  } finally {
+    isSyncing.set(false);
+  }
 }
 
 /**
@@ -225,9 +255,38 @@ export function getFileSyncStatus(fileId) {
 /**
  * Initialize sync system
  */
-export function initSync() {
+export async function initSync() {
   logger.info('Initializing sync system');
   startHealthChecks();
+  await refreshOfflineStatus();
+}
+
+/**
+ * Refresh offline status from server
+ */
+export async function refreshOfflineStatus() {
+  const url = getApiBase();
+
+  try {
+    const response = await fetch(`${url}/api/ldm/offline/status`, {
+      headers: getAuthHeaders()
+    });
+
+    if (response.ok) {
+      const status = await response.json();
+      offlineAvailable.set(status.offline_available);
+      pendingChanges.set(status.pending_changes);
+      if (status.last_sync) {
+        lastSync.set(status.last_sync);
+      }
+      logger.debug('Offline status refreshed', {
+        files: status.file_count,
+        pending: status.pending_changes
+      });
+    }
+  } catch (error) {
+    logger.debug('Could not refresh offline status', { error: error.message });
+  }
 }
 
 /**

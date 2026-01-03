@@ -13,7 +13,7 @@
    */
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { Modal, TextInput, Select, SelectItem, TextArea, ProgressBar, InlineLoading } from 'carbon-components-svelte';
-  import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, Edit, TrashCan, Merge, Application, Archive, Locked } from 'carbon-icons-svelte';
+  import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, CloudDownload, Edit, TrashCan, Merge, Application, Archive, Locked } from 'carbon-icons-svelte';
   import ExplorerGrid from '$lib/components/ldm/ExplorerGrid.svelte';
   import PretranslateModal from '$lib/components/ldm/PretranslateModal.svelte';
   import InputModal from '$lib/components/common/InputModal.svelte';
@@ -24,6 +24,7 @@
   import { savedFilesState } from '$lib/stores/navigation.js';
   import { user } from '$lib/stores/app.js';
   import AccessControl from '$lib/components/admin/AccessControl.svelte';
+  import { downloadFileForOffline, connectionMode as syncConnectionMode } from '$lib/stores/sync.js';
 
   const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
@@ -502,6 +503,20 @@
       }
     } catch (err) {
       logger.error('Download error', { error: err.message });
+    }
+  }
+
+  // P3: Download for Offline
+  async function handleDownloadForOffline() {
+    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
+    const file = { ...contextMenuItem };
+    closeMenus();
+
+    try {
+      await downloadFileForOffline(file.id);
+      logger.success('File downloaded for offline use', { name: file.name });
+    } catch (err) {
+      logger.error('Offline download failed', { error: err.message });
     }
   }
 
@@ -1158,6 +1173,9 @@
     {#if contextMenuItem.type === 'file'}
       <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
       <button class="context-menu-item" onclick={downloadFile}><Download size={16} /> Download</button>
+      {#if $syncConnectionMode === 'online'}
+        <button class="context-menu-item" onclick={handleDownloadForOffline}><CloudDownload size={16} /> Download for Offline</button>
+      {/if}
       <button class="context-menu-item" onclick={openMerge}><Merge size={16} /> Merge...</button>
       <div class="context-menu-divider"></div>
       <button class="context-menu-item" onclick={() => convertFile('xlsx')}><Renew size={16} /> Convert to XLSX</button>
