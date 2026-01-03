@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-04 (Session 21 Continued) | **Build:** 444 | **Open:** 2
+**Last Updated:** 2026-01-04 (Session 21 Continued) | **Build:** 444 | **Open:** 4
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 2 |
+| **OPEN** | 4 |
 | **FIXED/CLOSED** | 88 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
@@ -29,9 +29,50 @@
 **What's needed:**
 1. `_sync_tm_to_offline()` function - sync TM entries to SQLite
 2. Auto-trigger TM sync when parent entity syncs
-3. TM merge logic (mostly INSERT - additive)
+3. TM merge: Last-write-wins (same as rows, by timestamp)
 
 **TM linkage:** `ldm_tm_assignment` table links TMs to Platform/Project/Folder.
+
+---
+
+### DB-002: Duplicate Name Rules (Per-Parent Unique)
+
+- **Reported:** 2026-01-04 (Session 21)
+- **Severity:** LOW
+- **Status:** OPEN (requires DB refresh)
+- **Component:** models.py, route validation
+
+**Current:** Globally unique names (`UniqueConstraint("name")`)
+**Proposed:** Per-parent unique (`UniqueConstraint("parent_id", "name")`)
+
+**What's needed:**
+1. Change DB constraints in models.py:
+   - `LDMFile`: `UniqueConstraint("folder_id", "name")`
+   - `LDMFolder`: `UniqueConstraint("project_id", "parent_id", "name")`
+   - `LDMProject`: `UniqueConstraint("platform_id", "name")`
+   - `LDMPlatform`: Keep globally unique (top level)
+2. Update route validation to check per-parent uniqueness
+3. Add auto-rename logic (XXX_1, XXX_2) when duplicate detected
+4. DB refresh (no migration - just fresh data)
+
+---
+
+### EXPLORER-001: Ctrl+C/V and Ctrl+X/V File Operations
+
+- **Reported:** 2026-01-04 (Session 21)
+- **Severity:** LOW (nice-to-have)
+- **Status:** OPEN (future feature)
+- **Component:** FilesPage.svelte, ExplorerGrid.svelte
+
+**Feature:** Windows-style copy/cut/paste for files and folders.
+
+**What's needed:**
+1. Clipboard state management in Svelte store
+2. Ctrl+C handler - copy to clipboard
+3. Ctrl+X handler - cut to clipboard (gray out source)
+4. Ctrl+V handler - paste at current location
+5. Auto-rename if duplicate name
+6. API endpoints for move/copy operations
 
 ---
 
