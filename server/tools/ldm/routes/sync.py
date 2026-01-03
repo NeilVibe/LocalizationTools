@@ -391,19 +391,28 @@ async def sync_subscription(
 # =============================================================================
 
 async def _sync_file_to_offline(db: AsyncSession, file_id: int, offline_db):
-    """Sync a single file to offline storage."""
+    """
+    Sync a single file to offline storage with merge logic.
+
+    Merge Rules (last-write-wins):
+    - Local synced + server newer → take server
+    - Local modified + server newer → server wins, discard local
+    - Local modified + local newer → keep local, push later
+    - Server has row we don't → insert
+    - We have row server deleted → delete local
+    """
     result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
     file = result.scalar_one_or_none()
     if not file:
         raise HTTPException(status_code=404, detail=f"File {file_id} not found")
 
-    # Get rows
+    # Get server rows
     rows_result = await db.execute(
         select(LDMRow).where(LDMRow.file_id == file_id).order_by(LDMRow.row_num)
     )
-    rows = rows_result.scalars().all()
+    server_rows = rows_result.scalars().all()
 
-    # Save to offline DB
+    # Save/update file metadata
     offline_db.save_file({
         "id": file.id,
         "name": file.name,
@@ -419,20 +428,95 @@ async def _sync_file_to_offline(db: AsyncSession, file_id: int, offline_db):
         "updated_at": file.updated_at.isoformat() if file.updated_at else None
     })
 
-    row_data = [{
-        "id": row.id,
-        "row_num": row.row_num,
-        "string_id": row.string_id,
-        "source": row.source,
-        "target": row.target,
-        "memo": row.memo if hasattr(row, 'memo') else None,
-        "status": row.status,
-        "extra_data": row.extra_data,
-        "updated_at": row.updated_at.isoformat() if row.updated_at else None
-    } for row in rows]
+    # Track merge stats
+    stats = {"inserted": 0, "updated": 0, "skipped": 0, "deleted": 0}
+    server_row_ids = set()
 
-    offline_db.save_rows(file.id, row_data)
-    logger.info(f"Synced file {file.name} with {len(rows)} rows")
+    # Merge each server row
+    for row in server_rows:
+        server_row_ids.add(row.id)
+        row_data = {
+            "id": row.id,
+            "row_num": row.row_num,
+            "string_id": row.string_id,
+            "source": row.source,
+            "target": row.target,
+            "memo": row.memo if hasattr(row, 'memo') else None,
+            "status": row.status,
+            "extra_data": row.extra_data,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None
+        }
+        result = offline_db.merge_row(row_data, file.id)
+        stats[result] += 1
+
+    # Delete local rows that no longer exist on server
+    local_row_ids = offline_db.get_local_row_server_ids(file.id)
+    deleted_ids = local_row_ids - server_row_ids
+    for deleted_id in deleted_ids:
+        offline_db.delete_row(deleted_id)
+        stats["deleted"] += 1
+
+    # Push local changes to server
+    pushed = await _push_local_changes_for_file(db, file_id, offline_db)
+
+    logger.info(f"Synced file {file.name}: inserted={stats['inserted']}, updated={stats['updated']}, "
+                f"skipped={stats['skipped']}, deleted={stats['deleted']}, pushed={pushed}")
+
+
+async def _push_local_changes_for_file(db: AsyncSession, file_id: int, offline_db) -> int:
+    """
+    Push local changes for a file to the server.
+
+    Returns: number of rows pushed
+    """
+    pushed_count = 0
+
+    # Get modified rows
+    modified_rows = offline_db.get_modified_rows(file_id)
+    for local_row in modified_rows:
+        server_id = local_row.get("server_id")
+        if server_id:
+            # Update existing row on server
+            await db.execute(
+                LDMRow.__table__.update()
+                .where(LDMRow.id == server_id)
+                .values(
+                    target=local_row.get("target"),
+                    memo=local_row.get("memo"),
+                    status=local_row.get("status"),
+                )
+            )
+            offline_db.mark_row_synced(local_row["id"])
+            pushed_count += 1
+
+    # Get new rows (created offline)
+    new_rows = offline_db.get_new_rows(file_id)
+    for local_row in new_rows:
+        # Create new row on server
+        new_row = LDMRow(
+            file_id=file_id,
+            row_num=local_row.get("row_num", 0),
+            string_id=local_row.get("string_id"),
+            source=local_row.get("source"),
+            target=local_row.get("target"),
+            status=local_row.get("status", "normal"),
+            extra_data=local_row.get("extra_data"),
+        )
+        db.add(new_row)
+        await db.flush()
+
+        # Update local row with new server ID
+        offline_db.mark_row_synced(local_row["id"])
+        pushed_count += 1
+
+    if pushed_count > 0:
+        await db.commit()
+        # Mark changes as synced
+        for change in offline_db.get_pending_changes():
+            if change.get("entity_type") == "row":
+                offline_db.mark_change_synced(change["id"])
+
+    return pushed_count
 
 
 async def _sync_project_to_offline(db: AsyncSession, project_id: int, offline_db):
@@ -511,16 +595,12 @@ async def download_file_for_offline(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Download a file from PostgreSQL to local SQLite for offline use.
+    Download/sync a file from PostgreSQL to local SQLite for offline use.
 
-    This endpoint:
-    1. Reads file metadata + all rows from PostgreSQL (central server)
-    2. Stores them in local SQLite database
-    3. Returns success with row count
-
-    Use this when:
-    - User wants to work on a file while offline
-    - User is about to go offline and wants to prepare files
+    Uses merge logic (last-write-wins):
+    - Server rows are merged with local (doesn't overwrite local changes)
+    - Local changes are pushed to server if newer
+    - Deleted rows on server are removed locally
     """
     from server.config import ACTIVE_DATABASE_TYPE
 
@@ -544,14 +624,6 @@ async def download_file_for_offline(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Get all rows for this file
-    rows_result = await db.execute(
-        select(LDMRow)
-        .where(LDMRow.file_id == file_id)
-        .order_by(LDMRow.row_num)
-    )
-    rows = rows_result.scalars().all()
-
     # Get the project info
     project_result = await db.execute(select(LDMProject).where(LDMProject.id == file.project_id))
     project = project_result.scalar_one_or_none()
@@ -573,50 +645,20 @@ async def download_file_for_offline(
                 "updated_at": project.updated_at.isoformat() if project.updated_at else None
             })
 
-        # Save file
-        offline_db.save_file({
-            "id": file.id,
-            "name": file.name,
-            "original_filename": file.original_filename,
-            "format": file.format,
-            "row_count": file.row_count,
-            "source_language": file.source_language,
-            "target_language": file.target_language,
-            "project_id": file.project_id,
-            "folder_id": file.folder_id,
-            "extra_data": file.extra_data,
-            "created_at": file.created_at.isoformat() if file.created_at else None,
-            "updated_at": file.updated_at.isoformat() if file.updated_at else None
-        })
-
-        # Save all rows
-        row_data = []
-        for row in rows:
-            row_data.append({
-                "id": row.id,
-                "row_num": row.row_num,
-                "string_id": row.string_id,
-                "source": row.source,
-                "target": row.target,
-                "memo": row.memo if hasattr(row, 'memo') else None,
-                "status": row.status,
-                "extra_data": row.extra_data,
-                "updated_at": row.updated_at.isoformat() if row.updated_at else None
-            })
-
-        offline_db.save_rows(file.id, row_data)
+        # Use merge-aware sync
+        await _sync_file_to_offline(db, file_id, offline_db)
 
         # Update sync metadata
         offline_db.set_last_sync()
 
-        logger.success(f"Downloaded for offline: file={file.name}, rows={len(rows)}")
+        logger.success(f"Downloaded for offline: file={file.name}")
 
         return DownloadForOfflineResponse(
             success=True,
             file_id=file.id,
             file_name=file.name,
-            row_count=len(rows),
-            message=f"Downloaded {file.name} with {len(rows)} rows for offline use"
+            row_count=file.row_count,
+            message=f"Synced {file.name} for offline use (merge applied)"
         )
 
     except Exception as e:
