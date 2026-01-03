@@ -117,3 +117,4 @@ Build 443: Return 404 for all access denied
 Build 444: Complete 403->404 migration
 Build 445: P3 Complete - TM sync + per-parent unique names
 Build 446: Fix test expectations for DB-002
+Build 447: Relax test assertion
