@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-03 (Session 17 Complete) | **Build:** 438 | **Open:** 1
+**Last Updated:** 2026-01-03 (Session 18 Complete) | **Build:** 439 | **Open:** 0
 
 ---
 
@@ -8,11 +8,10 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 73 |
+| **FIXED/CLOSED** | 74 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
-| **HIGH (Design Issues)** | 1 |
-| **Total Open** | 1 |
+| **Total Open** | 0 |
 
 ---
 
@@ -122,32 +121,37 @@ for (const segment of segments) {
 
 ## OPEN ISSUES
 
-### DESIGN-001: Remove owner_id Filtering from LDM Queries
+*No open issues!*
+
+---
+
+## SESSION 18 FIXES (2026-01-03)
+
+### DESIGN-001: Public by Default Permission Model ✅ FIXED
+
 - **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Session 18)
 - **Severity:** HIGH (Design flaw)
-- **Status:** OPEN
+- **Status:** FIXED
 - **Component:** All LDM routes (platforms, projects, files, TMs)
 
-**Problem:** Currently all LDM data is filtered by `owner_id`, so each user only sees their own data. This is wrong for a team/company tool - everyone should see the same data.
+**Problem:** All LDM data was filtered by `owner_id`, so each user only saw their own data. Wrong for a team tool.
 
-**Current behavior:**
-- User A uploads a file → only User A sees it
-- User B has empty LDM
+**Solution:** Implemented "Public by Default" permission model:
+- **Default:** All resources PUBLIC (everyone sees everything)
+- **Optional:** Admins can RESTRICT specific platforms/projects
+- **Globally unique names:** No duplicate names anywhere
+- **Access grants:** Admins can assign users to restricted resources
 
-**Expected behavior:**
-- User A uploads a file → ALL users see it
-- Shared workspace
+**Changes Made:**
+- Added `is_restricted` column to LDMPlatform and LDMProject
+- Created `LDMResourceAccess` table for explicit access grants
+- Updated unique constraints to be globally unique (no duplicates)
+- Created `server/tools/ldm/permissions.py` with helper functions
+- Updated 13 route files (77+ locations) to use permission helpers
+- Added admin endpoints for restriction management
 
-**Future enhancement (optional):**
-- Platform-level permissions (some platforms restricted to certain users)
-- For now: remove all `owner_id` filtering
-
-**Files to modify:**
-- `server/tools/ldm/routes/platforms.py`
-- `server/tools/ldm/routes/projects.py`
-- `server/tools/ldm/routes/files.py`
-- `server/tools/ldm/routes/folders.py`
-- `server/tools/ldm/routes/tm_crud.py`
+**Spec:** See `docs/wip/PUBLIC_PERMISSIONS_SPEC.md`
 
 ---
 

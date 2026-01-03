@@ -403,6 +403,28 @@ LDM currently imports from legacy apps (violates Rule #0):
 
 ---
 
+## Completed: DESIGN-001 Public Permissions (Session 18)
+
+**Status:** COMPLETE | **Date:** 2026-01-03 | **Doc:** `docs/wip/PUBLIC_PERMISSIONS_SPEC.md`
+
+Transformed LDM from "private by default" to "public by default with optional restrictions":
+
+| Feature | Description |
+|---------|-------------|
+| **Public by Default** | All resources visible to all users |
+| **Optional Restriction** | Admins can restrict platforms/projects |
+| **Globally Unique Names** | No duplicate names anywhere |
+| **Access Grants** | Admins assign users to restricted resources |
+
+### Key Changes
+- Added `is_restricted` column to LDMPlatform and LDMProject
+- Created `LDMResourceAccess` table for access grants
+- Created `server/tools/ldm/permissions.py` with helper functions
+- Updated 13 route files (77+ locations)
+- Added admin endpoints for restriction management
+
+---
+
 ## Completed Milestones (P1-P5)
 
 | Priority | Feature | Description | Status |
@@ -657,4 +679,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-03 | Build 438 | P5 DONE, P3 NEXT*
+*Strategic Roadmap | Updated 2026-01-03 | Build 439 | DESIGN-001 DONE, P3 NEXT*

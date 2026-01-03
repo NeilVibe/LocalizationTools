@@ -18,6 +18,7 @@ class ProjectResponse(BaseModel):
     platform_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
+    is_restricted: bool = False  # DESIGN-001
 
     class Config:
         from_attributes = True

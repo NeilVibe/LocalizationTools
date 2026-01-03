@@ -1,6 +1,6 @@
 # Session Context
 
-> Last Updated: 2026-01-03 (Session 17 - Complete)
+> Last Updated: 2026-01-03 (Session 18 - Complete)
 
 ---
 
@@ -12,18 +12,18 @@ Use this if you need to go back to BEFORE P5 Advanced Search changes.
 
 **Post-Session 17 Stable:** `3b7108e` | **Date:** 2026-01-03 | **Tag:** Build 438 - All bugs fixed
 
+**Post-Session 18 Stable:** (pending commit) | **Date:** 2026-01-03 | **Tag:** Build 439 - DESIGN-001 Public Permissions
+
 ---
 
 ## Current State
 
-**Build:** 438 | **Open Issues:** 1 (DESIGN-001)
-**Status:** Session 17 complete - All bugs fixed, ready for P3
+**Build:** 439 | **Open Issues:** 0
+**Status:** Session 18 complete - DESIGN-001 implemented, ready for P3
 
 ### Open Issues
 
-1. **DESIGN-001: Remove owner_id filtering** - MEDIUM
-   - All LDM data filtered by owner, wrong for team tool
-   - All users should see same data
+*No open issues!*
 
 ### Database State (Clean)
 
@@ -34,6 +34,47 @@ Use this if you need to go back to BEFORE P5 Advanced Search changes.
 | Folders | 1 (Main Folder) |
 | Files | 1 (sample.txt, 3 rows) |
 | TMs | 1 (Main TM, ko→en) |
+
+---
+
+## SESSION 18 SUMMARY (2026-01-03)
+
+### DESIGN-001: Public by Default Permission Model - COMPLETE
+
+| Change | Description |
+|--------|-------------|
+| **Default behavior** | All resources PUBLIC (everyone sees everything) |
+| **Optional restriction** | Admins can restrict platforms/projects |
+| **Globally unique names** | No duplicate names anywhere |
+| **Access grants** | Admins assign users to restricted resources |
+
+### Key Files Created/Modified
+
+| File | Purpose |
+|------|---------|
+| `server/tools/ldm/permissions.py` | NEW: Central permission logic |
+| `server/database/models.py` | Added `is_restricted`, `LDMResourceAccess` |
+| 13 route files | Replaced owner_id filtering with permission helpers |
+| `docs/wip/PUBLIC_PERMISSIONS_SPEC.md` | NEW: Full specification |
+
+### New API Endpoints
+
+```
+PUT /platforms/{id}/restriction  - Toggle restriction (admin)
+GET /platforms/{id}/access       - List access grants (admin)
+POST /platforms/{id}/access      - Grant access (admin)
+DELETE /platforms/{id}/access/{user_id} - Revoke access (admin)
+
+# Same for projects
+```
+
+### Frontend Implemented
+
+| Component | Description |
+|-----------|-------------|
+| `ExplorerGrid.svelte` | Lock icon badge for restricted platforms/projects |
+| `FilesPage.svelte` | "Manage Access..." context menu option (admin only) |
+| `AccessControl.svelte` | NEW: Admin modal for restriction toggle + user access grants |
 
 ---
 

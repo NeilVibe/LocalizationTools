@@ -208,6 +208,9 @@ def upgrade_schema(engine):
         ("ldm_rows", "qa_flag_count", "INTEGER", "0"),
         # ldm_projects table - TM Hierarchy System (platform support)
         ("ldm_projects", "platform_id", "INTEGER", "NULL"),
+        # DESIGN-001: Public by Default Permission Model
+        ("ldm_platforms", "is_restricted", "BOOLEAN", "FALSE"),
+        ("ldm_projects", "is_restricted", "BOOLEAN", "FALSE"),
     ]
 
     columns_added = 0
@@ -264,6 +267,34 @@ def upgrade_schema(engine):
                     pass
 
     logger.info(f"Schema upgrade complete: {columns_added} added, {columns_skipped} already existed")
+
+    # DESIGN-001: Create ldm_resource_access table if missing
+    with engine.connect() as conn:
+        inspector = inspect(conn)
+        table_names = inspector.get_table_names()
+
+        if "ldm_resource_access" not in table_names:
+            logger.info("Creating ldm_resource_access table (DESIGN-001)...")
+            create_sql = """
+            CREATE TABLE ldm_resource_access (
+                id SERIAL PRIMARY KEY,
+                platform_id INTEGER REFERENCES ldm_platforms(id) ON DELETE CASCADE,
+                project_id INTEGER REFERENCES ldm_projects(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+                access_level VARCHAR(20) DEFAULT 'full',
+                granted_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+                granted_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE (platform_id, user_id),
+                UNIQUE (project_id, user_id)
+            )
+            """
+            try:
+                conn.execute(text(create_sql))
+                conn.commit()
+                logger.success("Created ldm_resource_access table")
+            except Exception as e:
+                logger.warning(f"Could not create ldm_resource_access: {e}")
+
     logger.info("=" * 50)
 
 

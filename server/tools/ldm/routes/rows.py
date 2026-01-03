@@ -22,6 +22,7 @@ from server.database.models import (
 )
 from server.tools.ldm.schemas import PaginatedRows, RowResponse, RowUpdate
 from server.tools.ldm.websocket import broadcast_cell_update
+from server.tools.ldm.permissions import can_access_file, can_access_project
 
 router = APIRouter(tags=["LDM"])
 
@@ -266,7 +267,10 @@ async def list_rows(
     - unconfirmed: status = 'pending' or 'translated'
     - qa_flagged: qa_flag_count > 0
     """
-    # Verify file access
+    # Verify file access (DESIGN-001: Public by default)
+    if not await can_access_file(db, file_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     result = await db.execute(
         select(LDMFile).options(selectinload(LDMFile.project)).where(
             LDMFile.id == file_id
@@ -276,9 +280,6 @@ async def list_rows(
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    if file.project.owner_id != current_user["user_id"]:
-        raise HTTPException(status_code=403, detail="Access denied")
 
     # P5: Fuzzy search - use dedicated pg_trgm similarity search
     if search and search_mode == "fuzzy":
@@ -444,7 +445,8 @@ async def update_row(
     if not row:
         raise HTTPException(status_code=404, detail="Row not found")
 
-    if row.file.project.owner_id != current_user["user_id"]:
+    # Verify file access (DESIGN-001: Public by default)
+    if not await can_access_file(db, row.file_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Save history before update
@@ -543,12 +545,12 @@ async def get_project_tree(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """Get full project tree structure (folders + files) for File Explorer."""
-    # Verify project ownership
+    # Verify project access (DESIGN-001: Public by default)
+    if not await can_access_project(db, project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
+        select(LDMProject).where(LDMProject.id == project_id)
     )
     project = result.scalar_one_or_none()
 

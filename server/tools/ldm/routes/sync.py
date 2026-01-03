@@ -20,6 +20,7 @@ from server.tools.ldm.schemas import (
     SyncFileToCentralRequest, SyncFileToCentralResponse,
     SyncTMToCentralRequest, SyncTMToCentralResponse
 )
+from server.tools.ldm.permissions import can_access_project, get_accessible_projects
 
 router = APIRouter(tags=["LDM"])
 
@@ -57,15 +58,9 @@ async def sync_file_to_central(
             detail="Cannot sync to central server while in offline mode. Connect to server first."
         )
 
-    # Verify destination project exists and user has access
-    project_result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == request.destination_project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
-    )
-    if not project_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Destination project not found or access denied")
+    # Verify destination project access (DESIGN-001: Public by default)
+    if not await can_access_project(db, request.destination_project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied to destination project")
 
     # Read from local SQLite database
     # The SQLite file is at server/data/locanext.db

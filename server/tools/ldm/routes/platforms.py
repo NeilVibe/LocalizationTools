@@ -8,8 +8,15 @@ from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.dependencies import get_async_db, get_current_active_user_async, require_admin_async
 from server.database.models import LDMPlatform, LDMProject
+from server.tools.ldm.permissions import (
+    get_accessible_platforms,
+    can_access_platform,
+    grant_platform_access,
+    revoke_platform_access,
+    get_platform_access_list,
+)
 
 router = APIRouter(tags=["LDM"])
 
@@ -33,6 +40,8 @@ class PlatformResponse(BaseModel):
     name: str
     description: Optional[str] = None
     project_count: int = 0
+    is_restricted: bool = False  # DESIGN-001
+    owner_id: Optional[int] = None  # For admin UI
 
     class Config:
         from_attributes = True
@@ -41,6 +50,20 @@ class PlatformResponse(BaseModel):
 class PlatformListResponse(BaseModel):
     platforms: List[PlatformResponse]
     total: int
+
+
+class AccessGrantRequest(BaseModel):
+    """Request to grant access to users."""
+    user_ids: List[int]
+
+
+class AccessUserResponse(BaseModel):
+    """User with access to a resource."""
+    user_id: int
+    username: str
+    full_name: Optional[str] = None
+    access_level: str = "full"
+    granted_at: Optional[str] = None
 
 
 # =============================================================================
@@ -53,23 +76,20 @@ async def list_platforms(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    List all platforms for the current user.
-    Includes project count for each platform.
+    List all platforms the user can access.
+    DESIGN-001: Public by default - shows all public + owned + granted platforms.
     """
-    result = await db.execute(
-        select(LDMPlatform)
-        .options(selectinload(LDMPlatform.projects))
-        .where(LDMPlatform.owner_id == current_user["user_id"])
-        .order_by(LDMPlatform.name)
-    )
-    platforms = result.scalars().all()
+    # Use permission helper to get accessible platforms
+    platforms = await get_accessible_platforms(db, current_user, include_projects=True)
 
     platform_list = [
         PlatformResponse(
             id=p.id,
             name=p.name,
             description=p.description,
-            project_count=len(p.projects) if p.projects else 0
+            project_count=len(p.projects) if p.projects else 0,
+            is_restricted=p.is_restricted,
+            owner_id=p.owner_id
         )
         for p in platforms
     ]
@@ -84,12 +104,9 @@ async def create_platform(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """Create a new platform."""
-    # Check for duplicate name
+    # DESIGN-001: Check for globally unique name (no duplicates anywhere)
     result = await db.execute(
-        select(LDMPlatform).where(
-            LDMPlatform.owner_id == current_user["user_id"],
-            LDMPlatform.name == platform.name
-        )
+        select(LDMPlatform).where(LDMPlatform.name == platform.name)
     )
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail=f"Platform '{platform.name}' already exists")
@@ -97,7 +114,8 @@ async def create_platform(
     new_platform = LDMPlatform(
         name=platform.name,
         description=platform.description,
-        owner_id=current_user["user_id"]
+        owner_id=current_user["user_id"],
+        is_restricted=False  # DESIGN-001: Public by default
     )
     db.add(new_platform)
     await db.commit()
@@ -109,7 +127,9 @@ async def create_platform(
         id=new_platform.id,
         name=new_platform.name,
         description=new_platform.description,
-        project_count=0
+        project_count=0,
+        is_restricted=new_platform.is_restricted,
+        owner_id=new_platform.owner_id
     )
 
 
@@ -120,13 +140,14 @@ async def get_platform(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """Get a specific platform by ID."""
+    # DESIGN-001: Check access using permission helper
+    if not await can_access_platform(db, platform_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     result = await db.execute(
         select(LDMPlatform)
         .options(selectinload(LDMPlatform.projects))
-        .where(
-            LDMPlatform.id == platform_id,
-            LDMPlatform.owner_id == current_user["user_id"]
-        )
+        .where(LDMPlatform.id == platform_id)
     )
     platform = result.scalar_one_or_none()
 
@@ -137,7 +158,9 @@ async def get_platform(
         id=platform.id,
         name=platform.name,
         description=platform.description,
-        project_count=len(platform.projects) if platform.projects else 0
+        project_count=len(platform.projects) if platform.projects else 0,
+        is_restricted=platform.is_restricted,
+        owner_id=platform.owner_id
     )
 
 
@@ -149,24 +172,24 @@ async def update_platform(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """Update a platform (name or description)."""
+    # DESIGN-001: Check access using permission helper
+    if not await can_access_platform(db, platform_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     result = await db.execute(
         select(LDMPlatform)
         .options(selectinload(LDMPlatform.projects))
-        .where(
-            LDMPlatform.id == platform_id,
-            LDMPlatform.owner_id == current_user["user_id"]
-        )
+        .where(LDMPlatform.id == platform_id)
     )
     platform = result.scalar_one_or_none()
 
     if not platform:
         raise HTTPException(status_code=404, detail="Platform not found")
 
-    # Check for duplicate name if renaming
+    # DESIGN-001: Check for globally unique name if renaming
     if update.name and update.name != platform.name:
         result = await db.execute(
             select(LDMPlatform).where(
-                LDMPlatform.owner_id == current_user["user_id"],
                 LDMPlatform.name == update.name,
                 LDMPlatform.id != platform_id
             )
@@ -187,7 +210,9 @@ async def update_platform(
         id=platform.id,
         name=platform.name,
         description=platform.description,
-        project_count=len(platform.projects) if platform.projects else 0
+        project_count=len(platform.projects) if platform.projects else 0,
+        is_restricted=platform.is_restricted,
+        owner_id=platform.owner_id
     )
 
 
@@ -201,13 +226,14 @@ async def delete_platform(
     Delete a platform.
     Projects under this platform will have their platform_id set to NULL (unassigned).
     """
+    # DESIGN-001: Check access using permission helper
+    if not await can_access_platform(db, platform_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     result = await db.execute(
         select(LDMPlatform)
         .options(selectinload(LDMPlatform.projects))
-        .where(
-            LDMPlatform.id == platform_id,
-            LDMPlatform.owner_id == current_user["user_id"]
-        )
+        .where(LDMPlatform.id == platform_id)
     )
     platform = result.scalar_one_or_none()
 
@@ -243,25 +269,27 @@ async def assign_project_to_platform(
     """
     Assign a project to a platform (or unassign if platform_id is None).
     """
-    # Get project
+    from server.tools.ldm.permissions import can_access_project
+
+    # DESIGN-001: Check project access
+    if not await can_access_project(db, project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
+        select(LDMProject).where(LDMProject.id == project_id)
     )
     project = result.scalar_one_or_none()
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Verify platform exists if assigning
+    # DESIGN-001: Check platform access if assigning
     if platform_id is not None:
+        if not await can_access_platform(db, platform_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to platform")
+
         result = await db.execute(
-            select(LDMPlatform).where(
-                LDMPlatform.id == platform_id,
-                LDMPlatform.owner_id == current_user["user_id"]
-            )
+            select(LDMPlatform).where(LDMPlatform.id == platform_id)
         )
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Platform not found")
@@ -276,4 +304,109 @@ async def assign_project_to_platform(
         "success": True,
         "project_id": project_id,
         "platform_id": platform_id
+    }
+
+
+# =============================================================================
+# DESIGN-001: Platform Restriction Management (Admin Only)
+# =============================================================================
+
+@router.put("/platforms/{platform_id}/restriction")
+async def set_platform_restriction(
+    platform_id: int,
+    is_restricted: bool,
+    db: AsyncSession = Depends(get_async_db),
+    admin: dict = Depends(require_admin_async)
+):
+    """
+    Toggle restriction on a platform. Admin only.
+    When restricted, only assigned users can access.
+    """
+    result = await db.execute(
+        select(LDMPlatform).where(LDMPlatform.id == platform_id)
+    )
+    platform = result.scalar_one_or_none()
+
+    if not platform:
+        raise HTTPException(status_code=404, detail="Platform not found")
+
+    platform.is_restricted = is_restricted
+    await db.commit()
+
+    status = "restricted" if is_restricted else "public"
+    logger.success(f"Platform {platform_id} set to {status} by admin {admin['username']}")
+
+    return {
+        "success": True,
+        "platform_id": platform_id,
+        "is_restricted": is_restricted
+    }
+
+
+@router.get("/platforms/{platform_id}/access", response_model=List[AccessUserResponse])
+async def list_platform_access(
+    platform_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    admin: dict = Depends(require_admin_async)
+):
+    """
+    List users with access to a restricted platform. Admin only.
+    """
+    result = await db.execute(
+        select(LDMPlatform).where(LDMPlatform.id == platform_id)
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Platform not found")
+
+    access_list = await get_platform_access_list(db, platform_id)
+    return [AccessUserResponse(**item) for item in access_list]
+
+
+@router.post("/platforms/{platform_id}/access")
+async def grant_platform_access_endpoint(
+    platform_id: int,
+    request: AccessGrantRequest,
+    db: AsyncSession = Depends(get_async_db),
+    admin: dict = Depends(require_admin_async)
+):
+    """
+    Grant users access to a restricted platform. Admin only.
+    """
+    result = await db.execute(
+        select(LDMPlatform).where(LDMPlatform.id == platform_id)
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Platform not found")
+
+    count = await grant_platform_access(db, platform_id, request.user_ids, admin["user_id"])
+
+    return {
+        "success": True,
+        "platform_id": platform_id,
+        "users_granted": count
+    }
+
+
+@router.delete("/platforms/{platform_id}/access/{user_id}")
+async def revoke_platform_access_endpoint(
+    platform_id: int,
+    user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    admin: dict = Depends(require_admin_async)
+):
+    """
+    Revoke user access from a restricted platform. Admin only.
+    """
+    result = await db.execute(
+        select(LDMPlatform).where(LDMPlatform.id == platform_id)
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Platform not found")
+
+    revoked = await revoke_platform_access(db, platform_id, user_id)
+
+    return {
+        "success": revoked,
+        "platform_id": platform_id,
+        "user_id": user_id
     }

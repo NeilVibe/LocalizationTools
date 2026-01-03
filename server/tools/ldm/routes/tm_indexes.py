@@ -15,6 +15,7 @@ from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
 from server.database.models import LDMTranslationMemory, LDMTMEntry, LDMTMIndex
+from server.tools.ldm.permissions import can_access_tm
 
 router = APIRouter(tags=["LDM"])
 
@@ -45,19 +46,18 @@ async def build_tm_indexes(
 
     logger.info(f"Building TM indexes: tm_id={tm_id}, user={current_user['user_id']}")
 
-    # Verify TM ownership (async)
+    # Verify TM access (DESIGN-001: Public by default)
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get TM
     tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = tm_result.scalar_one_or_none()
 
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
-
-    if tm.owner_id != current_user["user_id"]:
-        raise HTTPException(status_code=403, detail="Access denied")
 
     tm_name = tm.name  # Capture for use in executor
 
@@ -110,12 +110,13 @@ async def get_tm_index_status(
 
     Returns list of indexes and their status.
     """
-    # Verify TM ownership
+    # Verify TM access (DESIGN-001: Public by default)
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get TM
     result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = result.scalar_one_or_none()
 
@@ -162,12 +163,13 @@ async def get_tm_sync_status(
         - last_synced: When indexes were last synced
         - tm_updated_at: When TM was last modified in DB
     """
-    # Verify TM ownership
+    # Verify TM access (DESIGN-001: Public by default)
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get TM
     result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = result.scalar_one_or_none()
 
@@ -249,12 +251,13 @@ async def sync_tm_indexes(
     from server.tools.ldm.tm_indexer import TMSyncManager
     from server.utils.progress_tracker import TrackedOperation
 
-    # Verify TM ownership
+    # Verify TM access (DESIGN-001: Public by default)
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get TM
     result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = result.scalar_one_or_none()
 
