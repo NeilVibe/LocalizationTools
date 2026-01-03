@@ -12,7 +12,7 @@
    * - 🟠 Pending: Has local changes
    */
   import { Modal, Button, ProgressBar, Tag } from 'carbon-components-svelte';
-  import { Cloud, CloudOffline, Sync, Warning, Checkmark, Download, Upload } from 'carbon-icons-svelte';
+  import { Cloud, CloudOffline, Renew, Warning, Checkmark, Download, Upload } from 'carbon-icons-svelte';
   import {
     connectionMode,
     displayStatus,
@@ -35,7 +35,7 @@
     switch (status) {
       case 'online': return Cloud;
       case 'offline': return CloudOffline;
-      case 'syncing': return Sync;
+      case 'syncing': return Renew;
       case 'pending': return Warning;
       default: return Cloud;
     }
