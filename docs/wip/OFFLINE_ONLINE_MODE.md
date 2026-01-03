@@ -390,7 +390,7 @@ The info bar appears at the top of the grid when viewing a file with pending cha
 | Real-time collab | WebSocket sync | Not needed |
 | Conflict risk | Higher | Lower (additive) |
 
-**TM sync is mostly additive** - new entries added, rarely edited. Conflicts are rare.
+**TM sync uses same last-write-wins rule as rows.** Latest entry wins by timestamp.
 
 **TM Status Icons:**
 | Icon | Status | Meaning |
@@ -630,76 +630,51 @@ Before any sync executes, user sees exactly what will happen:
 
 ---
 
-## Conflict Resolution
+## Conflict Resolution - AUTOMATIC (Last-Write-Wins)
 
-### Conflict Types
+**No UI needed!** Conflicts are auto-resolved by timestamp.
 
-| Type | Cause | Resolution Options |
-|------|-------|-------------------|
-| **Both Edited** | Same row edited locally AND on server | Keep Local / Keep Server / Merge |
-| **Reviewed Lock** | Server row marked "Reviewed" | Keep Server / Request Re-review |
-| **Deleted on Server** | Local edit, but row deleted on server | Re-add Row / Discard Local |
+### How It Works
 
-### Conflict Resolution Dialog
+```python
+# PostgreSQL model - auto-updates timestamp on ANY change:
+updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Resolve Conflicts                                        [X]   │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Conflict 1 of 2: Row 102                                       │
-│  ─────────────────────────────────────────────────────────────  │
-│                                                                 │
-│  Source: "Welcome to the game"                                  │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ SERVER VERSION                                          │   │
-│  │ "게임에 오신 것을 환영합니다"                              │   │
-│  │ Modified by: Kim (2 hours ago)                          │   │
-│  │ Status: Pending                                         │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ YOUR VERSION                                            │   │
-│  │ "게임에 오신걸 환영해요"                                   │   │
-│  │ Modified: 30 minutes ago                                │   │
-│  │ Status: Modified locally                                │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  [Keep Server]    [Keep Mine]    [Edit & Merge]                 │
-│                                                                 │
-│  ─────────────────────────────────────────────────────────────  │
-│  │ ☐ Apply this choice to all "Both Edited" conflicts       │  │
-│  ─────────────────────────────────────────────────────────────  │
-│                                                                 │
-│  [← Previous]                                    [Next →]       │
-└─────────────────────────────────────────────────────────────────┘
+# In offline.py merge_row():
+if server_updated > local_updated:
+    # Server wins - ALL fields (target, status, memo, etc.)
+else:
+    # Local wins - will push to server later
 ```
 
-### "Edit & Merge" Option
+### What Gets Auto-Resolved
 
-Opens inline editor to manually combine both versions:
+| Field | Behavior |
+|-------|----------|
+| Target text | Latest edit wins |
+| Status (pending/confirmed/reviewed) | Latest change wins |
+| Memo | Latest edit wins |
+| Any other field | Latest change wins |
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Manual Merge: Row 102                                    [X]   │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Source: "Welcome to the game"                                  │
-│                                                                 │
-│  Server: "게임에 오신 것을 환영합니다"         [Copy to Editor] │
-│  Yours:  "게임에 오신걸 환영해요"              [Copy to Editor] │
-│                                                                 │
-│  ─────────────────────────────────────────────────────────────  │
-│  │ Final Version:                                            │  │
-│  │ ┌─────────────────────────────────────────────────────┐  │  │
-│  │ │ 게임에 오신 것을 환영해요                            │  │  │
-│  │ └─────────────────────────────────────────────────────┘  │  │
-│  ─────────────────────────────────────────────────────────────  │
-│                                                                 │
-│  [Cancel]                                          [Save Merge] │
-└─────────────────────────────────────────────────────────────────┘
-```
+### Example: Confirmation Conflict
+
+| Time | User A (Online) | User B (Offline) | Result |
+|------|-----------------|------------------|--------|
+| 10:00 | Confirms row 5 | - | Server: `updated_at=10:00` |
+| 10:30 | - | Confirms row 5 | Local: `updated_at=10:30` |
+| 11:00 | - | Syncs | **User B wins** (10:30 > 10:00) |
+
+### Precision
+
+- Timestamp: Second-level (`datetime.utcnow`)
+- Same-second conflicts: Extremely rare, server wins by default
+
+### Why No UI?
+
+1. **Simple rule** - Latest write wins, period
+2. **No ambiguity** - Clear winner every time
+3. **Fast sync** - No user intervention needed
+4. **Consistent** - Same rule for all field types
 
 ---
 
@@ -720,8 +695,21 @@ LOCAL PATH:   PC/BDO_EN/Korean/quest_strings.xlsx
 ONLINE PATH:  (none)
 LOCAL PATH:   Uncategorized/new_file.xlsx
               ↓
-              NO MATCH → File Dialog to choose destination
+              NO MATCH → Auto-place in "Offline Storage" folder
 ```
+
+### Path Conflict Auto-Resolution
+
+**No UI needed!** Path conflicts are auto-resolved:
+
+| Scenario | Result |
+|----------|--------|
+| Path still exists online | File syncs to that path ✅ |
+| Path no longer exists online | File goes to "Offline Storage" |
+| New file created offline | Goes to "Offline Storage" |
+
+**Offline Storage** is a special folder (per-project or global) that holds orphaned files.
+User can later move files from Offline Storage to proper location using Ctrl+X/Ctrl+V.
 
 ### Rule 2: Row Matching
 
@@ -1198,11 +1186,61 @@ Response:
 | **Offline editing works** | Can edit downloaded files with no network |
 | **Sync is manual** | No automatic background sync ever |
 | **Add/Edit only** | Deletions never synced |
-| **Conflicts resolved** | All conflict types have resolution UI |
-| **Path selection works** | New files can be placed anywhere |
+| **Conflicts auto-resolved** | Last-write-wins, no UI needed |
+| **Path auto-resolved** | Orphan files go to Offline Storage |
 | **Mode visible** | User always knows online/offline status |
 | **90% features offline** | Only LanguageTool + collab require server |
 | **No data loss** | All local changes preserved until synced |
+
+---
+
+## File Naming Rules
+
+### Duplicate Names - Per-Parent Unique (Like Windows/Linux)
+
+Names can be duplicated at different depths:
+
+```
+✅ ALLOWED:
+  Project1/Folder1/test.txt
+  Project1/Folder2/test.txt   ← Same name, different parent = OK
+
+❌ NOT ALLOWED:
+  Project1/Folder1/test.txt
+  Project1/Folder1/test.txt   ← Same name, same parent = Conflict
+```
+
+**DB Constraint:** `UniqueConstraint("parent_id", "name")` not `UniqueConstraint("name")`
+
+### Auto-Rename Duplicates (XXX_1, XXX_2)
+
+When creating or pasting a file with a duplicate name:
+
+```
+Original:   test.txt
+Duplicate:  test_1.txt   ← Auto-renamed
+Again:      test_2.txt   ← Increments
+```
+
+Same behavior as Windows Explorer - no user intervention needed.
+
+---
+
+## Future: Explorer File Operations
+
+### Ctrl+C / Ctrl+V (Copy)
+- Select file/folder → Ctrl+C → navigate → Ctrl+V
+- Creates copy with auto-rename if duplicate name
+
+### Ctrl+X / Ctrl+V (Cut/Move)
+- Select file/folder → Ctrl+X → navigate → Ctrl+V
+- Moves file to new location
+- Source shows grayed out until paste completes
+- Perfect for moving files from Offline Storage to proper location
+
+### Clipboard State
+- Clipboard persists while navigating explorer
+- Clear on: new copy/cut, paste, or Esc
 
 ---
 
