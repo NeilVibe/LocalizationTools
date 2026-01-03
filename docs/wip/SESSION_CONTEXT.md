@@ -12,14 +12,18 @@ Use this if you need to go back to BEFORE P5 Advanced Search changes.
 
 **Post-Session 17 Stable:** `3b7108e` | **Date:** 2026-01-03 | **Tag:** Build 438 - All bugs fixed
 
-**Post-Session 18 Stable:** (pending commit) | **Date:** 2026-01-03 | **Tag:** Build 439 - DESIGN-001 Public Permissions
+**Post-Session 18 Stable:** `d3f82c4` | **Date:** 2026-01-03 | **Tag:** DESIGN-001 Complete
+
+**Pre-P3 Stable:** `d3f82c4` | **Date:** 2026-01-03 | **Tag:** Ready for Offline/Online Mode
+
+Use this checkpoint to go back to BEFORE P3 Offline/Online changes.
 
 ---
 
 ## Current State
 
 **Build:** 439 | **Open Issues:** 0
-**Status:** Session 18 complete - DESIGN-001 implemented, ready for P3
+**Status:** Session 19 - Starting P3 Offline/Online Mode
 
 ### Open Issues
 
