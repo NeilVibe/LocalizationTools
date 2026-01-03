@@ -71,19 +71,15 @@ async def create_project(
     user_id = current_user["user_id"]
     logger.info(f"Creating project '{project.name}' for user {user_id}")
 
-    # DESIGN-001: Check for globally unique project name
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.name == project.name)
+    # DB-002: Per-parent unique names with auto-rename
+    from server.tools.ldm.utils.naming import generate_unique_name
+    project_name = await generate_unique_name(
+        db, LDMProject, project.name,
+        platform_id=project.platform_id if hasattr(project, 'platform_id') else None
     )
-    existing_project = result.scalar_one_or_none()
-    if existing_project:
-        raise HTTPException(
-            status_code=400,
-            detail=f"A project named '{project.name}' already exists. Please use a different name."
-        )
 
     new_project = LDMProject(
-        name=project.name,
+        name=project_name,  # DB-002: Use auto-renamed name
         description=project.description,
         owner_id=current_user["user_id"],
         is_restricted=False  # DESIGN-001: Public by default
@@ -141,15 +137,14 @@ async def rename_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # DESIGN-001: Check for globally unique name
-    result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.name == name,
-            LDMProject.id != project_id
-        )
-    )
-    if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail=f"A project named '{name}' already exists")
+    # DB-002: Per-parent unique names
+    from server.tools.ldm.utils.naming import check_name_exists
+    if await check_name_exists(
+        db, LDMProject, name,
+        platform_id=project.platform_id,
+        exclude_id=project_id
+    ):
+        raise HTTPException(status_code=400, detail=f"A project named '{name}' already exists in this platform")
 
     old_name = project.name
     project.name = name

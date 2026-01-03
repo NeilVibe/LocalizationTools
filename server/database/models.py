@@ -602,8 +602,8 @@ class LDMProject(Base):
     __table_args__ = (
         Index("idx_ldm_project_owner", "owner_id"),
         Index("idx_ldm_project_platform", "platform_id"),
-        # DESIGN-001: Globally unique names (was per-owner, BUG-036)
-        UniqueConstraint("name", name="uq_ldm_project_name"),
+        # DB-002: Per-parent unique names (same name allowed in different platforms)
+        UniqueConstraint("platform_id", "name", name="uq_ldm_project_platform_name"),
     )
 
     def __repr__(self):
@@ -630,8 +630,8 @@ class LDMFolder(Base):
 
     __table_args__ = (
         Index("idx_ldm_folder_project_parent", "project_id", "parent_id"),
-        # DESIGN-001: Globally unique folder names (no duplicates anywhere)
-        UniqueConstraint("name", name="uq_ldm_folder_name"),
+        # DB-002: Per-parent unique names (same name allowed in different folders)
+        UniqueConstraint("project_id", "parent_id", "name", name="uq_ldm_folder_parent_name"),
     )
 
     def __repr__(self):
@@ -674,8 +674,8 @@ class LDMFile(Base):
 
     __table_args__ = (
         Index("idx_ldm_file_project_folder", "project_id", "folder_id"),
-        # DESIGN-001: Globally unique file names (no duplicates anywhere)
-        UniqueConstraint("name", name="uq_ldm_file_name"),
+        # DB-002: Per-parent unique names (same name allowed in different folders)
+        UniqueConstraint("project_id", "folder_id", "name", name="uq_ldm_file_folder_name"),
     )
 
     def __repr__(self):

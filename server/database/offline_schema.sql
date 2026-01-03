@@ -145,12 +145,93 @@ CREATE INDEX IF NOT EXISTS idx_offline_rows_file ON offline_rows(file_id);
 CREATE INDEX IF NOT EXISTS idx_offline_rows_string_id ON offline_rows(string_id);
 
 -- -----------------------------------------------------------------------------
+-- Translation Memories (mirrors ldm_translation_memories)
+-- SYNC-008: TM offline sync support
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS offline_tms (
+    id INTEGER PRIMARY KEY,
+    server_id INTEGER NOT NULL,       -- Server's TM ID
+    name TEXT NOT NULL,
+    description TEXT,
+    source_lang TEXT DEFAULT 'ko',
+    target_lang TEXT DEFAULT 'en',
+    entry_count INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'ready',      -- pending, indexing, ready, error
+    mode TEXT DEFAULT 'standard',     -- standard, stringid
+    owner_id INTEGER,
+    created_at TEXT,
+    updated_at TEXT,
+    indexed_at TEXT,
+    downloaded_at TEXT DEFAULT (datetime('now')),
+    sync_status TEXT DEFAULT 'synced'
+);
+
+CREATE INDEX IF NOT EXISTS idx_offline_tms_server_id ON offline_tms(server_id);
+
+-- -----------------------------------------------------------------------------
+-- TM Entries (mirrors ldm_tm_entries)
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS offline_tm_entries (
+    id INTEGER PRIMARY KEY,
+    server_id INTEGER NOT NULL,       -- Server's entry ID
+    tm_id INTEGER NOT NULL,           -- Local TM ID
+    server_tm_id INTEGER NOT NULL,    -- Server's TM ID
+    source_text TEXT NOT NULL,
+    target_text TEXT,
+    source_hash TEXT NOT NULL,        -- SHA256 for O(1) lookup
+    string_id TEXT,                   -- For stringid mode
+    created_by TEXT,
+    change_date TEXT,
+    updated_at TEXT,
+    updated_by TEXT,
+    is_confirmed INTEGER DEFAULT 0,
+    confirmed_by TEXT,
+    confirmed_at TEXT,
+    downloaded_at TEXT DEFAULT (datetime('now')),
+    sync_status TEXT DEFAULT 'synced',
+    FOREIGN KEY (tm_id) REFERENCES offline_tms(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_offline_tm_entries_server_id ON offline_tm_entries(server_id);
+CREATE INDEX IF NOT EXISTS idx_offline_tm_entries_tm ON offline_tm_entries(tm_id);
+CREATE INDEX IF NOT EXISTS idx_offline_tm_entries_hash ON offline_tm_entries(source_hash);
+CREATE INDEX IF NOT EXISTS idx_offline_tm_entries_string_id ON offline_tm_entries(string_id);
+
+-- -----------------------------------------------------------------------------
+-- TM Assignments (mirrors ldm_tm_assignments)
+-- Links TMs to Platform/Project/Folder scope
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS offline_tm_assignments (
+    id INTEGER PRIMARY KEY,
+    server_id INTEGER NOT NULL,
+    tm_id INTEGER NOT NULL,
+    server_tm_id INTEGER NOT NULL,
+    platform_id INTEGER,
+    project_id INTEGER,
+    folder_id INTEGER,
+    is_active INTEGER DEFAULT 1,
+    priority INTEGER DEFAULT 0,
+    assigned_by INTEGER,
+    assigned_at TEXT,
+    activated_at TEXT,
+    downloaded_at TEXT DEFAULT (datetime('now')),
+    sync_status TEXT DEFAULT 'synced',
+    FOREIGN KEY (tm_id) REFERENCES offline_tms(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_offline_tm_assignments_tm ON offline_tm_assignments(tm_id);
+CREATE INDEX IF NOT EXISTS idx_offline_tm_assignments_scope ON offline_tm_assignments(platform_id, project_id, folder_id);
+
+-- -----------------------------------------------------------------------------
 -- Local Changes (for tracking edits to sync back)
 -- -----------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS local_changes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    entity_type TEXT NOT NULL,        -- platform, project, folder, file, row
+    entity_type TEXT NOT NULL,        -- platform, project, folder, file, row, tm, tm_entry
     entity_id INTEGER NOT NULL,       -- Local entity ID
     server_id INTEGER,                -- Server entity ID (null for new)
     change_type TEXT NOT NULL,        -- add, edit, delete
@@ -172,7 +253,7 @@ CREATE INDEX IF NOT EXISTS idx_local_changes_pending ON local_changes(sync_statu
 
 CREATE TABLE IF NOT EXISTS sync_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    entity_type TEXT NOT NULL,        -- platform, project, file
+    entity_type TEXT NOT NULL,        -- platform, project, folder, file, tm
     entity_id INTEGER NOT NULL,
     entity_name TEXT NOT NULL,        -- For display in dashboard
     server_id INTEGER NOT NULL,       -- Server's entity ID
@@ -237,4 +318,4 @@ CREATE TABLE IF NOT EXISTS schema_version (
     applied_at TEXT DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO schema_version (version) VALUES (1);
+INSERT OR IGNORE INTO schema_version (version) VALUES (2);  -- SYNC-008: Added TM tables

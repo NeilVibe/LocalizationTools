@@ -59,20 +59,18 @@ async def create_folder(
     if not await can_access_project(db, folder.project_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # DESIGN-001: Check for globally unique folder name (no duplicates anywhere)
-    duplicate_query = select(LDMFolder).where(LDMFolder.name == folder.name)
-    result = await db.execute(duplicate_query)
-    existing_folder = result.scalar_one_or_none()
-    if existing_folder:
-        raise HTTPException(
-            status_code=400,
-            detail=f"A folder named '{folder.name}' already exists. Please use a different name."
-        )
+    # DB-002: Per-parent unique names with auto-rename
+    from server.tools.ldm.utils.naming import generate_unique_name
+    folder_name = await generate_unique_name(
+        db, LDMFolder, folder.name,
+        project_id=folder.project_id,
+        parent_id=folder.parent_id
+    )
 
     new_folder = LDMFolder(
         project_id=folder.project_id,
         parent_id=folder.parent_id,
-        name=folder.name
+        name=folder_name  # DB-002: Use auto-renamed name
     )
 
     db.add(new_folder)
@@ -157,14 +155,15 @@ async def rename_folder(
     if not await can_access_project(db, folder.project_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # DESIGN-001: Check for globally unique folder name (no duplicates anywhere)
-    duplicate_query = select(LDMFolder).where(
-        LDMFolder.name == name,
-        LDMFolder.id != folder_id
-    )
-    result = await db.execute(duplicate_query)
-    if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail=f"A folder named '{name}' already exists. Please use a different name.")
+    # DB-002: Per-parent unique names
+    from server.tools.ldm.utils.naming import check_name_exists
+    if await check_name_exists(
+        db, LDMFolder, name,
+        project_id=folder.project_id,
+        parent_id=folder.parent_id,
+        exclude_id=folder_id
+    ):
+        raise HTTPException(status_code=400, detail=f"A folder named '{name}' already exists in this location. Please use a different name.")
 
     old_name = folder.name
     folder.name = name

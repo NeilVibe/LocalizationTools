@@ -501,32 +501,38 @@ Transformed LDM from "private by default" to "public by default with optional re
 |----------|---------|---------|--------|
 | **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | ✅ Phase 1 DONE |
 | **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](docs/wip/FONT_SETTINGS_ENHANCEMENT.md) | ✅ DONE |
-| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | **NEXT** |
+| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | **MOSTLY DONE** |
 | **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](docs/wip/COLOR_PARSER_EXTENSION.md) | ON HOLD |
 | **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | ✅ DONE (Session 16) |
 | **P6** | File Delete + Recycle Bin | (Included in P3) | MERGED INTO P3 |
 | **P7** | Endpoint Audit System | [ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) | ✅ DONE |
 
-### P3: Offline/Online Mode (NEXT - 10 weeks)
+### P3: Offline/Online Mode (MOSTLY DONE)
 
-**Status:** FULLY SPECIFIED | **Doc:** `docs/wip/OFFLINE_ONLINE_MODE.md` (~1200 lines)
+**Status:** MOSTLY COMPLETE | **Doc:** `docs/wip/OFFLINE_ONLINE_MODE.md`
 
 **Key Features:**
-- Auto-connect: Online if possible, auto-fallback to offline
-- Manual sync: Right-click → Download/Sync (user controls WHAT and WHEN)
-- Add/Edit only: No deletions synced between modes
-- Recycle Bin: 30-day soft delete before permanent removal (P6 absorbed)
-- Beautiful UI: Sync Dashboard, Toast notifications, Status icons
+- Auto-connect: Online if possible, auto-fallback to offline ✅
+- Manual sync: Right-click → Download/Sync ✅
+- Push changes: Local → Server sync ✅
+- Last-write-wins: Automatic conflict resolution ✅
+- Hierarchy sync: Platform → Project → Folder → File ✅
+- Beautiful UI: Sync Dashboard, Status icons ✅
 
-**Implementation Phases:**
-| Phase | Scope | Weeks |
-|-------|-------|-------|
-| Phase 1 | Foundation - Basic offline viewing/editing | 1-2 |
-| Phase 2 | Change Tracking - Track all local changes | 3-4 |
-| Phase 3 | Sync Engine - Push local changes to server | 5-6 |
-| Phase 4 | Conflict Resolution - Handle conflicts gracefully | 7-8 |
-| Phase 5 | File Dialog - Path selection for new files | 9 |
-| Phase 6 | Polish & Edge Cases - Production-ready | 10 |
+**Phase Status:**
+| Phase | Scope | Status |
+|-------|-------|--------|
+| Phase 1 | Foundation - Basic offline viewing/editing | ✅ DONE |
+| Phase 2 | Change Tracking - Track all local changes | ✅ DONE |
+| Phase 3 | Sync Engine - Push local changes to server | ✅ DONE |
+| Phase 4 | Conflict Resolution | ✅ DONE (last-write-wins, automatic) |
+| Phase 5 | File Path Selection | ✅ DONE (auto-place in Offline Storage) |
+| Phase 6 | Polish & Edge Cases | ⚠️ TM sync pending |
+
+**Remaining:**
+- SYNC-008: TM sync to offline
+- DB-002: Per-parent unique names + auto-rename
+- EXPLORER-001: Ctrl+C/V file operations (future)
 
 ### P5: Advanced Search ✅ COMPLETE (Session 16)
 
@@ -679,4 +685,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-03 | Build 439 | DESIGN-001 DONE, P3 NEXT*
+*Strategic Roadmap | Updated 2026-01-04 | Build 444 | P3 MOSTLY DONE, TM Sync Pending*

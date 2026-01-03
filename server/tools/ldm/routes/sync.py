@@ -262,6 +262,9 @@ async def subscribe_for_offline(
         elif request.entity_type == "platform":
             # Download all projects, folders, and files in platform
             await _sync_platform_to_offline(db, request.entity_id, offline_db)
+        elif request.entity_type == "tm":
+            # SYNC-008: Download TM and all entries (with last-write-wins merge)
+            await _sync_tm_to_offline(db, request.entity_id, offline_db)
 
         # Mark subscription as synced
         offline_db.update_subscription_status(
@@ -485,6 +488,14 @@ async def sync_subscription(
             projects = projects_result.scalars().all()
             updated_count = len(projects)
             await _sync_platform_to_offline(db, request.entity_id, offline_db)
+        elif request.entity_type == "tm":
+            # SYNC-008: Sync TM with entries
+            entries_result = await db.execute(
+                select(LDMTMEntry).where(LDMTMEntry.tm_id == request.entity_id)
+            )
+            entries = entries_result.scalars().all()
+            updated_count = len(entries)
+            await _sync_tm_to_offline(db, request.entity_id, offline_db)
 
         # Update subscription status
         offline_db.update_subscription_status(
@@ -882,6 +893,138 @@ async def _sync_platform_to_offline(db: AsyncSession, platform_id: int, offline_
         await _sync_project_to_offline(db, project.id, offline_db)
 
     logger.info(f"Synced platform {platform.name} with {len(projects)} projects")
+
+
+async def _sync_tm_to_offline(db: AsyncSession, tm_id: int, offline_db):
+    """
+    Sync a Translation Memory to offline storage with merge logic.
+
+    SYNC-008: TM offline sync support with last-write-wins merge.
+
+    Merge Rules (same as file rows):
+    - Local synced + server newer → take server
+    - Local modified + server newer → server wins
+    - Local modified + local newer → keep local
+    - Server has entry we don't → insert
+    - We have entry server deleted → delete local
+    """
+    # Get TM from PostgreSQL
+    result = await db.execute(
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
+    )
+    tm = result.scalar_one_or_none()
+    if not tm:
+        raise HTTPException(status_code=404, detail=f"Translation Memory {tm_id} not found")
+
+    # Get all entries for this TM
+    entries_result = await db.execute(
+        select(LDMTMEntry).where(LDMTMEntry.tm_id == tm_id)
+    )
+    server_entries = entries_result.scalars().all()
+
+    # Save TM metadata to offline storage
+    local_tm_id = offline_db.save_tm({
+        "id": tm.id,
+        "name": tm.name,
+        "description": tm.description,
+        "source_lang": tm.source_lang,
+        "target_lang": tm.target_lang,
+        "entry_count": tm.entry_count,
+        "status": tm.status,
+        "mode": tm.mode if hasattr(tm, 'mode') else 'standard',
+        "owner_id": tm.owner_id,
+        "created_at": tm.created_at.isoformat() if tm.created_at else None,
+        "updated_at": tm.updated_at.isoformat() if tm.updated_at else None,
+        "indexed_at": tm.indexed_at.isoformat() if tm.indexed_at else None
+    })
+
+    # Track merge stats
+    stats = {"inserted": 0, "updated": 0, "skipped": 0, "deleted": 0}
+    server_entry_ids = set()
+
+    # Merge each server entry using last-write-wins
+    for entry in server_entries:
+        server_entry_ids.add(entry.id)
+        entry_data = {
+            "id": entry.id,
+            "source_text": entry.source_text,
+            "target_text": entry.target_text,
+            "source_hash": entry.source_hash,
+            "string_id": entry.string_id if hasattr(entry, 'string_id') else None,
+            "created_by": entry.created_by,
+            "change_date": entry.change_date.isoformat() if entry.change_date else None,
+            "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
+            "updated_by": entry.updated_by if hasattr(entry, 'updated_by') else None,
+            "is_confirmed": entry.is_confirmed if hasattr(entry, 'is_confirmed') else False,
+            "confirmed_by": entry.confirmed_by if hasattr(entry, 'confirmed_by') else None,
+            "confirmed_at": entry.confirmed_at.isoformat() if hasattr(entry, 'confirmed_at') and entry.confirmed_at else None
+        }
+        result = offline_db.merge_tm_entry(entry_data, local_tm_id)
+        stats[result] += 1
+
+    # Delete local entries that no longer exist on server
+    local_entry_ids = offline_db.get_local_tm_entry_server_ids(local_tm_id)
+    deleted_ids = local_entry_ids - server_entry_ids
+    for deleted_id in deleted_ids:
+        offline_db.delete_tm_entry(deleted_id)
+        stats["deleted"] += 1
+
+    # Push local TM entry changes to server
+    pushed = await _push_tm_changes_to_server(db, local_tm_id, tm_id, offline_db)
+
+    logger.info(f"Synced TM {tm.name}: inserted={stats['inserted']}, updated={stats['updated']}, "
+                f"skipped={stats['skipped']}, deleted={stats['deleted']}, pushed={pushed}")
+
+
+async def _push_tm_changes_to_server(db: AsyncSession, local_tm_id: int, server_tm_id: int, offline_db) -> int:
+    """
+    Push local TM entry changes to the server.
+
+    Returns: number of entries pushed
+    """
+    pushed_count = 0
+
+    # Get modified entries
+    modified_entries = offline_db.get_modified_tm_entries(local_tm_id)
+    for local_entry in modified_entries:
+        server_id = local_entry.get("server_id")
+        if server_id:
+            # Update existing entry on server
+            await db.execute(
+                LDMTMEntry.__table__.update()
+                .where(LDMTMEntry.id == server_id)
+                .values(
+                    target_text=local_entry.get("target_text"),
+                    is_confirmed=local_entry.get("is_confirmed", False),
+                    confirmed_by=local_entry.get("confirmed_by"),
+                )
+            )
+            offline_db.mark_tm_entry_synced(local_entry["id"])
+            pushed_count += 1
+
+    # Get new entries (created offline)
+    new_entries = offline_db.get_new_tm_entries(local_tm_id)
+    for local_entry in new_entries:
+        # Create new entry on server
+        import hashlib
+        source_hash = hashlib.sha256(local_entry.get("source_text", "").encode()).hexdigest()
+        new_entry = LDMTMEntry(
+            tm_id=server_tm_id,
+            source_text=local_entry.get("source_text"),
+            target_text=local_entry.get("target_text"),
+            source_hash=source_hash,
+            created_by=local_entry.get("created_by"),
+        )
+        db.add(new_entry)
+        await db.flush()
+
+        offline_db.mark_tm_entry_synced(local_entry["id"])
+        pushed_count += 1
+
+    if pushed_count > 0:
+        await db.commit()
+
+    return pushed_count
 
 
 # =============================================================================
