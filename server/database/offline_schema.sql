@@ -167,6 +167,28 @@ CREATE INDEX IF NOT EXISTS idx_local_changes_status ON local_changes(sync_status
 CREATE INDEX IF NOT EXISTS idx_local_changes_pending ON local_changes(sync_status) WHERE sync_status = 'pending';
 
 -- -----------------------------------------------------------------------------
+-- Sync Subscriptions (what's enabled for offline sync)
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS sync_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_type TEXT NOT NULL,        -- platform, project, file
+    entity_id INTEGER NOT NULL,
+    entity_name TEXT NOT NULL,        -- For display in dashboard
+    server_id INTEGER NOT NULL,       -- Server's entity ID
+    enabled INTEGER DEFAULT 1,        -- 1 = active, 0 = paused
+    auto_subscribed INTEGER DEFAULT 0, -- 1 = auto (file opened), 0 = manual
+    created_at TEXT DEFAULT (datetime('now')),
+    last_sync_at TEXT,
+    sync_status TEXT DEFAULT 'pending', -- pending, syncing, synced, error
+    error_message TEXT,
+    UNIQUE(entity_type, entity_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_subscriptions_type ON sync_subscriptions(entity_type);
+CREATE INDEX IF NOT EXISTS idx_sync_subscriptions_enabled ON sync_subscriptions(enabled);
+
+-- -----------------------------------------------------------------------------
 -- Download Queue (for batch downloads)
 -- -----------------------------------------------------------------------------
 

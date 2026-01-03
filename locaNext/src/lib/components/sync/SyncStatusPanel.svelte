@@ -11,8 +11,9 @@
    * - 🟡 Syncing: Sync in progress
    * - 🟠 Pending: Has local changes
    */
+  import { onMount } from 'svelte';
   import { Modal, Button, ProgressBar, Tag } from 'carbon-components-svelte';
-  import { Cloud, CloudOffline, Renew, Warning, Checkmark, Download, Upload } from 'carbon-icons-svelte';
+  import { Cloud, CloudOffline, Renew, Warning, TrashCan, Folder, Document, Application } from 'carbon-icons-svelte';
   import {
     connectionMode,
     displayStatus,
@@ -23,12 +24,16 @@
     connectionError,
     offlineAvailable,
     tryReconnect,
-    goOffline
+    goOffline,
+    getSubscriptions,
+    unsubscribeFromOffline
   } from '$lib/stores/sync.js';
 
   // Dashboard modal state
   let showDashboard = $state(false);
   let reconnecting = $state(false);
+  let subscriptions = $state([]);
+  let loadingSubscriptions = $state(false);
 
   // Get icon component based on status
   function getStatusIcon(status) {
@@ -52,11 +57,49 @@
     }
   }
 
+  // Get entity icon
+  function getEntityIcon(type) {
+    switch (type) {
+      case 'platform': return Application;
+      case 'project': return Folder;
+      case 'file': return Document;
+      default: return Document;
+    }
+  }
+
   // Handle reconnect attempt
   async function handleReconnect() {
     reconnecting = true;
     await tryReconnect();
     reconnecting = false;
+  }
+
+  // Load subscriptions
+  async function loadSubscriptions() {
+    loadingSubscriptions = true;
+    try {
+      subscriptions = await getSubscriptions();
+    } catch (e) {
+      subscriptions = [];
+    } finally {
+      loadingSubscriptions = false;
+    }
+  }
+
+  // Open dashboard and load subscriptions
+  async function openDashboard() {
+    showDashboard = true;
+    await loadSubscriptions();
+  }
+
+  // Remove subscription
+  async function removeSubscription(sub) {
+    try {
+      await unsubscribeFromOffline(sub.entity_type, sub.entity_id);
+      subscriptions = subscriptions.filter(s => s.id !== sub.id);
+    } catch (e) {
+      // Error logged in store
+    }
   }
 
   // Format last sync time
@@ -82,7 +125,7 @@
   class="sync-status-button"
   class:syncing={$displayStatus === 'syncing'}
   style="--status-color: {statusColor}"
-  onclick={() => showDashboard = true}
+  onclick={openDashboard}
   title="Click to open Sync Dashboard"
 >
   <span class="status-icon">
@@ -128,6 +171,47 @@
       </div>
     </div>
 
+    <!-- Synced for Offline Section -->
+    <div class="subscriptions-section">
+      <div class="section-header">
+        <span class="section-title">Synced for Offline</span>
+        <span class="section-count">{subscriptions.length}</span>
+      </div>
+
+      {#if loadingSubscriptions}
+        <div class="loading-text">Loading...</div>
+      {:else if subscriptions.length === 0}
+        <div class="empty-text">
+          No items synced for offline.
+          Right-click any file, project, or platform to enable offline sync.
+        </div>
+      {:else}
+        <div class="subscriptions-list">
+          {#each subscriptions as sub}
+            <div class="subscription-item">
+              <span class="sub-icon">
+                <svelte:component this={getEntityIcon(sub.entity_type)} size={16} />
+              </span>
+              <div class="sub-info">
+                <span class="sub-name">{sub.entity_name}</span>
+                <span class="sub-type">{sub.entity_type}</span>
+              </div>
+              <span class="sub-status" class:synced={sub.sync_status === 'synced'}>
+                {sub.sync_status === 'synced' ? '✓' : sub.sync_status}
+              </span>
+              <button
+                class="sub-remove"
+                onclick={() => removeSubscription(sub)}
+                title="Remove from offline sync"
+              >
+                <TrashCan size={14} />
+              </button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
     <!-- Actions -->
     <div class="actions-section">
       {#if $connectionMode === 'offline'}
@@ -157,7 +241,7 @@
       <div class="info-section">
         <Tag type="blue">Offline Mode</Tag>
         <p class="info-text">
-          You can view and edit downloaded files.
+          You can view and edit synced files.
           Changes will sync when you reconnect.
         </p>
       </div>
@@ -292,6 +376,112 @@
 
   .stat-value.has-pending {
     color: var(--cds-support-warning);
+  }
+
+  /* Subscriptions section */
+  .subscriptions-section {
+    background: var(--cds-layer-02);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+  }
+
+  .section-count {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    background: var(--cds-layer-01);
+    padding: 0.125rem 0.5rem;
+    border-radius: 10px;
+  }
+
+  .loading-text, .empty-text {
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    text-align: center;
+    padding: 1rem 0;
+  }
+
+  .subscriptions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .subscription-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--cds-layer-01);
+    border-radius: 4px;
+  }
+
+  .sub-icon {
+    display: flex;
+    color: var(--cds-text-02);
+  }
+
+  .sub-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sub-name {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--cds-text-01);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sub-type {
+    font-size: 0.625rem;
+    color: var(--cds-text-02);
+    text-transform: capitalize;
+  }
+
+  .sub-status {
+    font-size: 0.625rem;
+    color: var(--cds-text-02);
+  }
+
+  .sub-status.synced {
+    color: var(--cds-support-success);
+  }
+
+  .sub-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--cds-text-02);
+    transition: all 0.15s;
+  }
+
+  .sub-remove:hover {
+    background: var(--cds-support-error);
+    color: white;
   }
 
   .actions-section {

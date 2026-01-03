@@ -24,7 +24,7 @@
   import { savedFilesState } from '$lib/stores/navigation.js';
   import { user } from '$lib/stores/app.js';
   import AccessControl from '$lib/components/admin/AccessControl.svelte';
-  import { downloadFileForOffline, connectionMode as syncConnectionMode } from '$lib/stores/sync.js';
+  import { subscribeForOffline, unsubscribeFromOffline, isSubscribed, connectionMode as syncConnectionMode } from '$lib/stores/sync.js';
 
   const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
@@ -432,6 +432,8 @@
     contextMenuY = e.clientY;
     showContextMenu = true;
     showBackgroundMenu = false;
+    // Check if this item is subscribed for offline
+    checkContextItemSubscription();
   }
 
   function handleBackgroundContextMenu(event) {
@@ -506,17 +508,33 @@
     }
   }
 
-  // P3: Download for Offline
-  async function handleDownloadForOffline() {
-    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
-    const file = { ...contextMenuItem };
+  // P3: Enable/Disable Offline Sync
+  async function handleToggleOfflineSync() {
+    if (!contextMenuItem) return;
+    const item = { ...contextMenuItem };
     closeMenus();
 
     try {
-      await downloadFileForOffline(file.id);
-      logger.success('File downloaded for offline use', { name: file.name });
+      const subscribed = await isSubscribed(item.type, item.id);
+      if (subscribed) {
+        await unsubscribeFromOffline(item.type, item.id);
+        logger.success('Disabled offline sync', { type: item.type, name: item.name });
+      } else {
+        await subscribeForOffline(item.type, item.id, item.name);
+        logger.success('Enabled offline sync', { type: item.type, name: item.name });
+      }
     } catch (err) {
-      logger.error('Offline download failed', { error: err.message });
+      logger.error('Offline sync toggle failed', { error: err.message });
+    }
+  }
+
+  // Track subscription status for context menu items
+  let contextItemSubscribed = $state(false);
+
+  // Check subscription when context menu opens
+  async function checkContextItemSubscription() {
+    if (contextMenuItem) {
+      contextItemSubscribed = await isSubscribed(contextMenuItem.type, contextMenuItem.id);
     }
   }
 
@@ -1174,7 +1192,10 @@
       <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
       <button class="context-menu-item" onclick={downloadFile}><Download size={16} /> Download</button>
       {#if $syncConnectionMode === 'online'}
-        <button class="context-menu-item" onclick={handleDownloadForOffline}><CloudDownload size={16} /> Download for Offline</button>
+        <button class="context-menu-item" onclick={handleToggleOfflineSync}>
+          <CloudDownload size={16} />
+          {contextItemSubscribed ? 'Disable Offline Sync' : 'Enable Offline Sync'}
+        </button>
       {/if}
       <button class="context-menu-item" onclick={openMerge}><Merge size={16} /> Merge...</button>
       <div class="context-menu-divider"></div>
@@ -1201,6 +1222,12 @@
     {:else if contextMenuItem.type === 'project'}
       <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
       <button class="context-menu-item" onclick={openAssignPlatform}><Application size={16} /> Assign to Platform...</button>
+      {#if $syncConnectionMode === 'online'}
+        <button class="context-menu-item" onclick={handleToggleOfflineSync}>
+          <CloudDownload size={16} />
+          {contextItemSubscribed ? 'Disable Offline Sync' : 'Enable Offline Sync'}
+        </button>
+      {/if}
       {#if isAdmin}
         <div class="context-menu-divider"></div>
         <button class="context-menu-item" onclick={openAccessControl}><Locked size={16} /> Manage Access...</button>
@@ -1209,6 +1236,12 @@
       <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
     {:else if contextMenuItem.type === 'platform'}
       <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
+      {#if $syncConnectionMode === 'online'}
+        <button class="context-menu-item" onclick={handleToggleOfflineSync}>
+          <CloudDownload size={16} />
+          {contextItemSubscribed ? 'Disable Offline Sync' : 'Enable Offline Sync'}
+        </button>
+      {/if}
       {#if isAdmin}
         <div class="context-menu-divider"></div>
         <button class="context-menu-item" onclick={openAccessControl}><Locked size={16} /> Manage Access...</button>
