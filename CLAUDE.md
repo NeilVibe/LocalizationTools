@@ -42,6 +42,46 @@
 | **RFC** | `RessourcesForCodingTheProject/` - Monolith reference scripts |
 | **NewScripts** | `RFC/NewScripts/` - Mini-projects (personal tools, potential LocaNext apps) |
 | **Optimistic UI** | **MANDATORY!** UI updates INSTANTLY on user action, server syncs in background. If server fails, revert. Never make user wait for server response on UI changes. |
+| **Svelte 5** | **WE USE SVELTE 5 RUNES!** Use `$state`, `$derived`, `$effect`. Always use keys in `{#each}`. See Svelte 5 section below. |
+
+---
+
+## Svelte 5 Runes (CRITICAL!)
+
+**LocaNext uses Svelte 5 with Runes.** Not Svelte 4. Follow these patterns:
+
+```svelte
+// ✅ State
+let count = $state(0);
+let items = $state([]);
+
+// ✅ Derived (computed values)
+let doubled = $derived(count * 2);
+let filtered = $derived(items.filter(x => x.active));
+
+// ✅ Effects (side effects)
+$effect(() => {
+  console.log('Count changed:', count);
+});
+
+// ✅ Array mutations (Svelte 5 proxies them)
+items.push(newItem);      // Works!
+items.splice(index, 1);   // Works!
+items = items.filter(...); // Also works
+
+// ✅ ALWAYS use keys in {#each}
+{#each items as item (item.id)}  // Good
+{#each items as item}            // Bad - no key!
+
+// ✅ Async + State: Use tracking sets for optimistic UI
+let deletingIds = $state(new Set());
+let visible = $derived(items.filter(i => !deletingIds.has(i.id)));
+```
+
+**Common Mistakes:**
+- Using `export let` instead of `$state` for local state
+- Forgetting keys in `{#each}` loops → flicker on updates
+- Using `$:` reactive statements (Svelte 4) → use `$derived`/`$effect`
 
 ---
 
