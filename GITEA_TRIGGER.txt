@@ -110,3 +110,4 @@ Build 436: Fix auto-updater to use Gitea instead of GitHub
 Build 437 - Session 16 Clean Slate
 Build 438
 Build 438: Reactive row positioning fix
+Build 440: P3 complete with merge logic
