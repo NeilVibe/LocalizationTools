@@ -161,16 +161,14 @@ async def upload_file(
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Folder not found")
 
-    # DESIGN-001: Check for globally unique file name (no duplicates anywhere)
+    # DB-002: Per-parent unique names with auto-rename
+    from server.tools.ldm.utils.naming import generate_unique_name
     filename = file.filename or "unknown"
-    duplicate_query = select(LDMFile).where(LDMFile.name == filename)
-    result = await db.execute(duplicate_query)
-    existing_file = result.scalar_one_or_none()
-    if existing_file:
-        raise HTTPException(
-            status_code=409,  # 409 Conflict - proper status for duplicate resource
-            detail=f"A file named '{filename}' already exists. Please use a different name."
-        )
+    filename = await generate_unique_name(
+        db, LDMFile, filename,
+        project_id=project_id,
+        folder_id=folder_id
+    )
 
     # Determine file type and parse
     ext = filename.lower().split('.')[-1] if '.' in filename else ''
@@ -366,15 +364,15 @@ async def rename_file(
     if not await can_access_project(db, file.project_id, current_user):
         raise HTTPException(status_code=403, detail="Not authorized to modify this file")
 
-    # Check for duplicate name in same folder
-    # DESIGN-001: Check for globally unique file name (no duplicates anywhere)
-    duplicate_query = select(LDMFile).where(
-        LDMFile.name == name,
-        LDMFile.id != file_id
-    )
-    result = await db.execute(duplicate_query)
-    if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail=f"A file named '{name}' already exists. Please use a different name.")
+    # DB-002: Per-parent unique names
+    from server.tools.ldm.utils.naming import check_name_exists
+    if await check_name_exists(
+        db, LDMFile, name,
+        project_id=file.project_id,
+        folder_id=file.folder_id,
+        exclude_id=file_id
+    ):
+        raise HTTPException(status_code=400, detail=f"A file named '{name}' already exists in this folder. Please use a different name.")
 
     old_name = file.name
     file.name = name

@@ -1,6 +1,6 @@
 # Session Context
 
-> Last Updated: 2026-01-03 (Session 21 - Test Fixes + P3 Planning)
+> Last Updated: 2026-01-04 (Session 21 Continued - P3 Completion)
 
 ---
 
@@ -14,9 +14,9 @@ Use this checkpoint to go back to BEFORE Session 21 changes.
 
 ## Current State
 
-**Build:** 444 | **Open Issues:** 3 (was 5)
+**Build:** 444 | **Open Issues:** 4
 **Tests:** 156 passed, 14 skipped, 0 failed
-**Status:** Session 21 - Tests Fixed, P3 Phase 3 Complete
+**Status:** Session 21 - P3 Nearly Complete (TM sync + naming rules pending)
 
 ---
 
@@ -85,12 +85,14 @@ Use this checkpoint to go back to BEFORE Session 21 changes.
 
 ---
 
-## OPEN ISSUES (2 remaining)
+## OPEN ISSUES (4 remaining)
 
 | Issue | Severity | Status |
 |-------|----------|--------|
 | SYNC-008 | MEDIUM | OPEN - TM sync not supported |
-| P3-PHASE4-6 | MEDIUM | OPEN - conflict resolution, polish |
+| DB-002 | LOW | OPEN - Per-parent unique names (requires DB refresh) |
+| EXPLORER-001 | LOW | OPEN - Ctrl+C/V file operations (future) |
+| P3-PHASE4-6 | LOW | MOSTLY DONE - edge cases only |
 
 ---
 
@@ -247,10 +249,11 @@ TMs are linked to Platform/Project/Folder via `ldm_tm_assignment` table.
 
 ## NEXT STEPS
 
-1. **Database refresh** - Clean all data, create fresh test structure
-2. **Run tests** - Verify all fixes with Playwright
-3. **Take screenshots** - Document working state
-4. **P3 Phase 3** - Implement push local changes to server
+1. **SYNC-008: TM Sync** - Implement `_sync_tm_to_offline()` with last-write-wins
+2. **DB-002: Naming Rules** - Change to per-parent unique + auto-rename
+3. **DB refresh** - Clean all data, create fresh test structure
+4. **Run tests** - Verify all fixes with Playwright
+5. **Build 445** - Commit, push, trigger build
 
 ---
 
@@ -269,7 +272,7 @@ OFFLINE: SQLite (single-user, subscribed data only)
 
 SYNC FLOW (Current):
   Server → Local: ✅ WORKS (download for offline)
-  Local → Server: ❌ NOT IMPLEMENTED (placeholder)
+  Local → Server: ✅ WORKS (push local changes)
 ```
 
 ---
@@ -295,4 +298,4 @@ echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN:
 
 ---
 
-*Session 20 Complete - Bugs Fixed, DB Refresh Pending, P3 Phase 3 Next*
+*Session 21 - P3 Nearly Complete, TM Sync + Naming Rules Pending*

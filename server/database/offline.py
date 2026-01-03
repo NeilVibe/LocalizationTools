@@ -682,6 +682,255 @@ class OfflineDatabase:
             conn.commit()
 
     # =========================================================================
+    # Translation Memory (SYNC-008)
+    # =========================================================================
+
+    def save_tm(self, tm: Dict[str, Any]) -> int:
+        """Save or update a TM. Returns local ID."""
+        server_id = tm.get("server_id", tm.get("id"))
+        with self._get_connection() as conn:
+            # Check if TM already exists
+            existing = conn.execute(
+                "SELECT id FROM offline_tms WHERE server_id = ?",
+                (server_id,)
+            ).fetchone()
+
+            if existing:
+                conn.execute("""
+                    UPDATE offline_tms SET
+                        name = ?, description = ?, source_lang = ?, target_lang = ?,
+                        entry_count = ?, status = ?, mode = ?, owner_id = ?,
+                        created_at = ?, updated_at = ?, indexed_at = ?,
+                        downloaded_at = datetime('now')
+                    WHERE server_id = ?
+                """, (
+                    tm["name"], tm.get("description"), tm.get("source_lang", "ko"),
+                    tm.get("target_lang", "en"), tm.get("entry_count", 0),
+                    tm.get("status", "ready"), tm.get("mode", "standard"),
+                    tm.get("owner_id"), tm.get("created_at"), tm.get("updated_at"),
+                    tm.get("indexed_at"), server_id
+                ))
+                conn.commit()
+                return existing["id"]
+            else:
+                cursor = conn.execute("""
+                    INSERT INTO offline_tms (
+                        server_id, name, description, source_lang, target_lang,
+                        entry_count, status, mode, owner_id, created_at, updated_at, indexed_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    server_id, tm["name"], tm.get("description"),
+                    tm.get("source_lang", "ko"), tm.get("target_lang", "en"),
+                    tm.get("entry_count", 0), tm.get("status", "ready"),
+                    tm.get("mode", "standard"), tm.get("owner_id"),
+                    tm.get("created_at"), tm.get("updated_at"), tm.get("indexed_at")
+                ))
+                conn.commit()
+                return cursor.lastrowid
+
+    def get_tms(self) -> List[Dict]:
+        """Get all downloaded TMs."""
+        with self._get_connection() as conn:
+            rows = conn.execute("SELECT * FROM offline_tms ORDER BY name").fetchall()
+            return [dict(row) for row in rows]
+
+    def get_tm(self, server_id: int) -> Optional[Dict]:
+        """Get a specific TM by server ID."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM offline_tms WHERE server_id = ?",
+                (server_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def save_tm_entry(self, entry: Dict[str, Any], local_tm_id: int) -> int:
+        """Save a single TM entry. Returns local ID."""
+        with self._get_connection() as conn:
+            cursor = conn.execute("""
+                INSERT OR REPLACE INTO offline_tm_entries (
+                    server_id, tm_id, server_tm_id, source_text, target_text,
+                    source_hash, string_id, created_by, change_date,
+                    updated_at, updated_by, is_confirmed, confirmed_by, confirmed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                entry["server_id"], local_tm_id, entry["server_tm_id"],
+                entry["source_text"], entry.get("target_text"),
+                entry["source_hash"], entry.get("string_id"),
+                entry.get("created_by"), entry.get("change_date"),
+                entry.get("updated_at"), entry.get("updated_by"),
+                1 if entry.get("is_confirmed") else 0,
+                entry.get("confirmed_by"), entry.get("confirmed_at")
+            ))
+            conn.commit()
+            return cursor.lastrowid
+
+    def save_tm_entries_bulk(self, entries: List[Dict], local_tm_id: int, server_tm_id: int):
+        """Bulk save TM entries for efficiency."""
+        with self._get_connection() as conn:
+            for entry in entries:
+                conn.execute("""
+                    INSERT OR REPLACE INTO offline_tm_entries (
+                        server_id, tm_id, server_tm_id, source_text, target_text,
+                        source_hash, string_id, created_by, change_date,
+                        updated_at, updated_by, is_confirmed, confirmed_by, confirmed_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    entry.get("id"), local_tm_id, server_tm_id,
+                    entry.get("source_text"), entry.get("target_text"),
+                    entry.get("source_hash"), entry.get("string_id"),
+                    entry.get("created_by"), entry.get("change_date"),
+                    entry.get("updated_at"), entry.get("updated_by"),
+                    1 if entry.get("is_confirmed") else 0,
+                    entry.get("confirmed_by"), entry.get("confirmed_at")
+                ))
+            conn.commit()
+            logger.debug(f"Bulk saved {len(entries)} TM entries for TM {local_tm_id}")
+
+    def get_tm_entries(self, local_tm_id: int) -> List[Dict]:
+        """Get all entries for a TM."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM offline_tm_entries WHERE tm_id = ?",
+                (local_tm_id,)
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    def get_tm_entry_count(self, local_tm_id: int) -> int:
+        """Get entry count for a TM."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) as count FROM offline_tm_entries WHERE tm_id = ?",
+                (local_tm_id,)
+            ).fetchone()
+            return row["count"]
+
+    def merge_tm_entry(self, server_entry: Dict, local_tm_id: int) -> str:
+        """
+        Merge a TM entry using last-write-wins.
+        Returns: 'updated', 'skipped', 'inserted'
+        """
+        with self._get_connection() as conn:
+            # Check if entry exists locally
+            local_entry = conn.execute(
+                "SELECT * FROM offline_tm_entries WHERE server_id = ?",
+                (server_entry.get("id"),)
+            ).fetchone()
+
+            if not local_entry:
+                # New entry - insert
+                self.save_tm_entry({
+                    "server_id": server_entry.get("id"),
+                    "server_tm_id": server_entry.get("tm_id"),
+                    "source_text": server_entry.get("source_text"),
+                    "target_text": server_entry.get("target_text"),
+                    "source_hash": server_entry.get("source_hash"),
+                    "string_id": server_entry.get("string_id"),
+                    "created_by": server_entry.get("created_by"),
+                    "change_date": server_entry.get("change_date"),
+                    "updated_at": server_entry.get("updated_at"),
+                    "updated_by": server_entry.get("updated_by"),
+                    "is_confirmed": server_entry.get("is_confirmed"),
+                    "confirmed_by": server_entry.get("confirmed_by"),
+                    "confirmed_at": server_entry.get("confirmed_at")
+                }, local_tm_id)
+                return "inserted"
+
+            local_entry = dict(local_entry)
+            local_sync_status = local_entry.get("sync_status", "synced")
+
+            # If local is synced, always take server
+            if local_sync_status == "synced":
+                conn.execute("""
+                    UPDATE offline_tm_entries SET
+                        source_text = ?, target_text = ?, source_hash = ?,
+                        updated_at = ?, updated_by = ?, is_confirmed = ?,
+                        confirmed_by = ?, confirmed_at = ?, sync_status = 'synced',
+                        downloaded_at = datetime('now')
+                    WHERE server_id = ?
+                """, (
+                    server_entry.get("source_text"), server_entry.get("target_text"),
+                    server_entry.get("source_hash"), server_entry.get("updated_at"),
+                    server_entry.get("updated_by"), 1 if server_entry.get("is_confirmed") else 0,
+                    server_entry.get("confirmed_by"), server_entry.get("confirmed_at"),
+                    server_entry.get("id")
+                ))
+                conn.commit()
+                return "updated"
+
+            # If local is modified, compare timestamps (last-write-wins)
+            server_updated = server_entry.get("updated_at", "")
+            local_updated = local_entry.get("updated_at", "")
+
+            if server_updated > local_updated:
+                # Server is newer - take server, discard local changes
+                conn.execute("""
+                    UPDATE offline_tm_entries SET
+                        source_text = ?, target_text = ?, source_hash = ?,
+                        updated_at = ?, updated_by = ?, is_confirmed = ?,
+                        confirmed_by = ?, confirmed_at = ?, sync_status = 'synced',
+                        downloaded_at = datetime('now')
+                    WHERE server_id = ?
+                """, (
+                    server_entry.get("source_text"), server_entry.get("target_text"),
+                    server_entry.get("source_hash"), server_entry.get("updated_at"),
+                    server_entry.get("updated_by"), 1 if server_entry.get("is_confirmed") else 0,
+                    server_entry.get("confirmed_by"), server_entry.get("confirmed_at"),
+                    server_entry.get("id")
+                ))
+                conn.commit()
+                return "updated"
+            else:
+                # Local is newer - keep local, will push later
+                return "skipped"
+
+    def get_modified_tm_entries(self, local_tm_id: int) -> List[Dict]:
+        """Get TM entries with pending changes."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """SELECT * FROM offline_tm_entries
+                   WHERE tm_id = ? AND sync_status = 'modified'""",
+                (local_tm_id,)
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    def mark_tm_entry_synced(self, entry_id: int):
+        """Mark a TM entry as synced."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE offline_tm_entries SET sync_status = 'synced' WHERE id = ?",
+                (entry_id,)
+            )
+            conn.commit()
+
+    def get_local_tm_entry_server_ids(self, local_tm_id: int) -> set:
+        """Get set of server IDs for all local TM entries in a TM."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT server_id FROM offline_tm_entries WHERE tm_id = ?",
+                (local_tm_id,)
+            ).fetchall()
+            return {row["server_id"] for row in rows}
+
+    def delete_tm_entry(self, server_id: int):
+        """Delete a local TM entry (server deleted it)."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "DELETE FROM offline_tm_entries WHERE server_id = ?",
+                (server_id,)
+            )
+            conn.commit()
+
+    def get_new_tm_entries(self, local_tm_id: int) -> List[Dict]:
+        """Get TM entries created locally (not yet on server)."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """SELECT * FROM offline_tm_entries
+                   WHERE tm_id = ? AND sync_status = 'new'""",
+                (local_tm_id,)
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    # =========================================================================
     # Utility
     # =========================================================================
 
