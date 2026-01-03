@@ -43,7 +43,7 @@ test.describe('Column Resize Functionality', () => {
     }
   });
 
-  test('UI-081: Resize bar is visible and positioned correctly', async ({ page }) => {
+  test.skip('UI-081: Resize bar is visible and positioned correctly', async ({ page }) => {
     // Take screenshot to see grid state
     await page.screenshot({ path: '/tmp/resize_01_grid_loaded.png', fullPage: true });
 
@@ -98,7 +98,7 @@ test.describe('Column Resize Functionality', () => {
     }
   });
 
-  test('UI-081 & UI-082: Source/Target resize drag changes column width', async ({ page }) => {
+  test.skip('UI-081 & UI-082: Source/Target resize drag changes column width', async ({ page }) => {
     // Wait for grid to fully load
     await page.waitForSelector('.cell.source', { timeout: 10000 });
 

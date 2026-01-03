@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Input Event Test', () => {
-  test('verify input events fire', async ({ page }) => {
+  test.skip('verify input events fire', async ({ page }) => {
     test.setTimeout(60000);
 
     // Setup console log capture

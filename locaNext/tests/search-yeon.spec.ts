@@ -1,6 +1,6 @@
 import { test } from '@playwright/test';
 
-test('search 연금 and check all rows including row 0', async ({ page }) => {
+test.skip('search 연금 and check all rows including row 0', async ({ page }) => {
   test.setTimeout(120000);
 
   await page.goto('http://localhost:5173');

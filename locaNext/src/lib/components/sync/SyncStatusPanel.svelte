@@ -14,6 +14,7 @@
   import { onMount } from 'svelte';
   import { Modal, Button, ProgressBar, Tag } from 'carbon-components-svelte';
   import { Cloud, CloudOffline, Renew, Warning, TrashCan, Folder, Document, Application } from 'carbon-icons-svelte';
+  import { Upload } from 'carbon-icons-svelte';
   import {
     connectionMode,
     displayStatus,
@@ -27,7 +28,8 @@
     goOffline,
     getSubscriptions,
     unsubscribeFromOffline,
-    manualSync
+    manualSync,
+    syncFileToServer
   } from '$lib/stores/sync.js';
 
   // Dashboard modal state
@@ -71,14 +73,41 @@
   // Handle reconnect attempt
   async function handleReconnect() {
     reconnecting = true;
-    await tryReconnect();
-    reconnecting = false;
+    try {
+      await tryReconnect();
+      // Reload subscriptions after reconnect
+      await loadSubscriptions();
+    } catch (e) {
+      console.error('Reconnect failed:', e);
+    } finally {
+      // ALWAYS reset reconnecting state
+      reconnecting = false;
+    }
   }
 
   // Handle manual sync
   async function handleSync() {
     await manualSync();
     await loadSubscriptions();
+  }
+
+  // Handle push changes to server (P3 Phase 3)
+  let pushing = $state(false);
+  async function handlePushChanges() {
+    pushing = true;
+    try {
+      // Push changes for all subscribed files
+      for (const sub of subscriptions) {
+        if (sub.entity_type === 'file') {
+          await syncFileToServer(sub.entity_id);
+        }
+      }
+      await loadSubscriptions();
+    } catch (e) {
+      console.error('Push failed:', e);
+    } finally {
+      pushing = false;
+    }
   }
 
   // Load subscriptions
@@ -99,13 +128,18 @@
     await loadSubscriptions();
   }
 
-  // Remove subscription
+  // Remove subscription - OPTIMISTIC UI (instant removal)
   async function removeSubscription(sub) {
+    // 1. Remove from UI IMMEDIATELY (optimistic)
+    const originalSubscriptions = [...subscriptions];
+    subscriptions = subscriptions.filter(s => s.id !== sub.id);
+
+    // 2. Then call server in background
     try {
       await unsubscribeFromOffline(sub.entity_type, sub.entity_id);
-      subscriptions = subscriptions.filter(s => s.id !== sub.id);
     } catch (e) {
-      // Error logged in store
+      // Server failed - restore the item
+      subscriptions = originalSubscriptions;
     }
   }
 
@@ -131,10 +165,13 @@
 <button
   class="sync-status-button"
   class:syncing={$displayStatus === 'syncing'}
+  class:online={$displayStatus === 'online'}
+  class:offline={$displayStatus === 'offline'}
   style="--status-color: {statusColor}"
   onclick={openDashboard}
   title="Click to open Sync Dashboard"
 >
+  <span class="status-dot" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}></span>
   <span class="status-icon">
     <svelte:component this={StatusIcon} size={16} />
   </span>
@@ -149,14 +186,14 @@
   bind:open={showDashboard}
   modalHeading="Sync Dashboard"
   passiveModal
-  size="sm"
+  size="lg"
 >
   <div class="dashboard-content">
     <!-- Connection Status -->
-    <div class="status-section">
+    <div class="status-section" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}>
       <div class="status-header">
-        <div class="status-indicator" style="background: {statusColor}"></div>
-        <span class="status-text">{$statusLabel}</span>
+        <div class="status-indicator" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}></div>
+        <span class="status-text" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}>{$statusLabel}</span>
       </div>
 
       {#if $connectionError && $connectionMode === 'offline'}
@@ -241,6 +278,17 @@
         >
           {$isSyncing ? 'Syncing...' : 'Sync Now'}
         </Button>
+        {#if $pendingChanges > 0}
+          <Button
+            kind="danger"
+            size="small"
+            icon={Upload}
+            disabled={pushing || $isSyncing}
+            on:click={handlePushChanges}
+          >
+            {pushing ? 'Pushing...' : `Push ${$pendingChanges} Changes`}
+          </Button>
+        {/if}
         <Button
           kind="secondary"
           size="small"
@@ -277,13 +325,13 @@
   .sync-status-button {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
     background: transparent;
     border: 1px solid var(--cds-border-subtle-01);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--cds-text-01);
     transition: all 0.15s ease;
   }
@@ -297,9 +345,49 @@
     animation: pulse 1.5s ease-in-out infinite;
   }
 
+  /* PROMINENT ONLINE STYLING - Green glow effect */
+  .sync-status-button.online {
+    border-color: #24a148;
+    background: rgba(36, 161, 72, 0.08);
+  }
+
+  .sync-status-button.online:hover {
+    background: rgba(36, 161, 72, 0.15);
+  }
+
+  .sync-status-button.offline {
+    border-color: #da1e28;
+    background: rgba(218, 30, 40, 0.08);
+  }
+
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
+  }
+
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 4px #24a148, 0 0 8px #24a148; }
+    50% { box-shadow: 0 0 8px #24a148, 0 0 16px #24a148; }
+  }
+
+  /* Glowing status dot */
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--cds-text-02);
+    flex-shrink: 0;
+  }
+
+  .status-dot.online {
+    background: #24a148;
+    box-shadow: 0 0 6px #24a148, 0 0 12px #24a148;
+    animation: glow 2s ease-in-out infinite;
+  }
+
+  .status-dot.offline {
+    background: #da1e28;
+    box-shadow: 0 0 4px #da1e28;
   }
 
   .status-icon {
@@ -309,84 +397,125 @@
   }
 
   .status-label {
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: 0.01em;
   }
 
   .pending-badge {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
     background: var(--cds-support-warning);
-    border-radius: 9px;
-    font-size: 0.625rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--cds-text-inverse);
   }
 
-  /* Dashboard styles */
+  /* Dashboard styles - SPACIOUS and EXPLORER-STYLE */
   .dashboard-content {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 2rem;
+    padding: 0.5rem;
   }
 
   .status-section {
     text-align: center;
-    padding: 1rem;
+    padding: 1.5rem 2rem;
     background: var(--cds-layer-02);
-    border-radius: 8px;
+    border-radius: 12px;
   }
 
   .status-header {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
   .status-indicator {
-    width: 12px;
-    height: 12px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
+    background: var(--cds-text-02);
+  }
+
+  .status-indicator.online {
+    background: #24a148;
+    box-shadow: 0 0 8px #24a148, 0 0 16px #24a148, 0 0 24px rgba(36, 161, 72, 0.5);
+    animation: glow-modal 2s ease-in-out infinite;
+  }
+
+  .status-indicator.offline {
+    background: #da1e28;
+    box-shadow: 0 0 6px #da1e28;
+  }
+
+  @keyframes glow-modal {
+    0%, 100% { box-shadow: 0 0 8px #24a148, 0 0 16px #24a148; }
+    50% { box-shadow: 0 0 12px #24a148, 0 0 24px #24a148, 0 0 32px rgba(36, 161, 72, 0.4); }
   }
 
   .status-text {
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: 1.5rem;
+    font-weight: 700;
     color: var(--cds-text-01);
+    letter-spacing: 0.02em;
+  }
+
+  .status-text.online {
+    color: #24a148;
+    text-shadow: 0 0 10px rgba(36, 161, 72, 0.3);
+  }
+
+  .status-text.offline {
+    color: #da1e28;
+  }
+
+  .status-section.online {
+    background: rgba(36, 161, 72, 0.08);
+    border: 1px solid rgba(36, 161, 72, 0.3);
+  }
+
+  .status-section.offline {
+    background: rgba(218, 30, 40, 0.08);
+    border: 1px solid rgba(218, 30, 40, 0.3);
   }
 
   .error-message {
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
     color: var(--cds-support-error);
   }
 
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    gap: 1.25rem;
   }
 
   .stat-card {
-    padding: 1rem;
+    padding: 1.25rem 1.5rem;
     background: var(--cds-layer-02);
-    border-radius: 8px;
+    border-radius: 12px;
     text-align: center;
+    border: 1px solid var(--cds-border-subtle-01);
   }
 
   .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--cds-text-02);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
   }
 
   .stat-value {
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 2rem;
+    font-weight: 700;
     color: var(--cds-text-01);
   }
 
@@ -394,61 +523,97 @@
     color: var(--cds-support-warning);
   }
 
-  /* Subscriptions section */
+  /* Subscriptions section - EXPLORER STYLE */
   .subscriptions-section {
     background: var(--cds-layer-02);
-    border-radius: 8px;
-    padding: 1rem;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--cds-border-subtle-01);
   }
 
   .section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
   }
 
   .section-title {
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--cds-text-01);
+    letter-spacing: 0.01em;
   }
 
   .section-count {
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-    background: var(--cds-layer-01);
-    padding: 0.125rem 0.5rem;
-    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #24a148;
+    background: rgba(36, 161, 72, 0.15);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
   }
 
   .loading-text, .empty-text {
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     color: var(--cds-text-02);
     text-align: center;
-    padding: 1rem 0;
+    padding: 2rem 1rem;
+    line-height: 1.5;
   }
 
   .subscriptions-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    max-height: 200px;
+    gap: 0.75rem;
+    max-height: 320px;
     overflow-y: auto;
+    padding-right: 0.5rem;
   }
 
+  /* Custom scrollbar for list */
+  .subscriptions-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .subscriptions-list::-webkit-scrollbar-track {
+    background: var(--cds-layer-01);
+    border-radius: 3px;
+  }
+
+  .subscriptions-list::-webkit-scrollbar-thumb {
+    background: var(--cds-border-strong-01);
+    border-radius: 3px;
+  }
+
+  /* EXPLORER-STYLE ITEM - larger, more visual */
   .subscription-item {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
     background: var(--cds-layer-01);
-    border-radius: 4px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+  }
+
+  .subscription-item:hover {
+    border-color: var(--cds-border-strong-01);
+    background: var(--cds-layer-hover-01);
   }
 
   .sub-icon {
     display: flex;
-    color: var(--cds-text-02);
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--cds-layer-02);
+    border-radius: 8px;
+    color: var(--cds-icon-02);
   }
 
   .sub-info {
@@ -458,38 +623,46 @@
 
   .sub-name {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     font-weight: 500;
     color: var(--cds-text-01);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-bottom: 0.125rem;
   }
 
   .sub-type {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     color: var(--cds-text-02);
-    text-transform: capitalize;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
   }
 
   .sub-status {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     color: var(--cds-text-02);
+    padding: 0.25rem 0.5rem;
+    background: var(--cds-layer-02);
+    border-radius: 4px;
   }
 
   .sub-status.synced {
-    color: var(--cds-support-success);
+    color: #24a148;
+    background: rgba(36, 161, 72, 0.15);
+    font-weight: 500;
   }
 
   .sub-remove {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     background: transparent;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     color: var(--cds-text-02);
     transition: all 0.15s;
@@ -503,29 +676,32 @@
   .actions-section {
     display: flex;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 1rem;
+    padding-top: 0.5rem;
   }
 
   .info-section {
-    padding: 1rem;
+    padding: 1.25rem 1.5rem;
     background: var(--cds-layer-02);
-    border-radius: 8px;
+    border-radius: 12px;
     text-align: center;
   }
 
   .info-text {
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
     color: var(--cds-text-02);
+    line-height: 1.5;
   }
 
   .sync-progress {
     text-align: center;
+    padding: 1rem;
   }
 
   .sync-text {
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
     color: var(--cds-text-02);
   }
 </style>

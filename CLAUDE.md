@@ -41,6 +41,7 @@
 | **Playground** | Windows test: `/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground` |
 | **RFC** | `RessourcesForCodingTheProject/` - Monolith reference scripts |
 | **NewScripts** | `RFC/NewScripts/` - Mini-projects (personal tools, potential LocaNext apps) |
+| **Optimistic UI** | **MANDATORY!** UI updates INSTANTLY on user action, server syncs in background. If server fails, revert. Never make user wait for server response on UI changes. |
 
 ---
 

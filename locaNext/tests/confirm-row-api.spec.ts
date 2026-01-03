@@ -8,6 +8,7 @@ const API_BASE = 'http://localhost:8888';
 
 test.describe('Row Confirmation API', () => {
   let authToken: string;
+  let testFileId: number;
 
   test.beforeAll(async ({ request }) => {
     // Get auth token
@@ -17,13 +18,23 @@ test.describe('Row Confirmation API', () => {
     const data = await response.json();
     authToken = data.access_token;
     console.log('Got auth token');
+
+    // Get first available file with rows
+    const filesResponse = await request.get(`${API_BASE}/api/ldm/files`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const files = await filesResponse.json();
+    // Find a file with rows (row_count > 0)
+    const fileWithRows = files.find((f: any) => f.row_count > 0);
+    testFileId = fileWithRows?.id || 5; // fallback to 5
+    console.log(`Using file ID: ${testFileId}`);
   });
 
   test('PUT /api/ldm/rows/{id} updates status to reviewed', async ({ request }) => {
     // 1. Get current status distribution
     console.log('=== STEP 1: Get initial status distribution ===');
     const initialResponse = await request.get(
-      `${API_BASE}/api/ldm/files/118/rows?limit=5`,
+      `${API_BASE}/api/ldm/files/${testFileId}/rows?limit=5`,
       { headers: { 'Authorization': `Bearer ${authToken}` } }
     );
     const initialData = await initialResponse.json();
@@ -37,7 +48,7 @@ test.describe('Row Confirmation API', () => {
     // 2. Find an unconfirmed row
     console.log('\n=== STEP 2: Find unconfirmed row ===');
     const unconfirmedResponse = await request.get(
-      `${API_BASE}/api/ldm/files/118/rows?filter=unconfirmed&limit=1`,
+      `${API_BASE}/api/ldm/files/${testFileId}/rows?filter=unconfirmed&limit=1`,
       { headers: { 'Authorization': `Bearer ${authToken}` } }
     );
     const unconfirmedData = await unconfirmedResponse.json();
@@ -69,7 +80,7 @@ test.describe('Row Confirmation API', () => {
     // 4. Verify via filter
     console.log('\n=== STEP 4: Verify via confirmed filter ===');
     const confirmedResponse = await request.get(
-      `${API_BASE}/api/ldm/files/118/rows?filter=confirmed`,
+      `${API_BASE}/api/ldm/files/${testFileId}/rows?filter=confirmed`,
       { headers: { 'Authorization': `Bearer ${authToken}` } }
     );
     const confirmedData = await confirmedResponse.json();

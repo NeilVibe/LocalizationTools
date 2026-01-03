@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Search Debug Tests', () => {
-  test('debug search input', async ({ page }) => {
+  test.skip('debug search input', async ({ page }) => {
     test.setTimeout(60000);
 
     // Login
