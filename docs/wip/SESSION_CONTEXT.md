@@ -112,28 +112,103 @@ Use this checkpoint to go back to BEFORE Session 21 changes.
 
 ## P3 OFFLINE/ONLINE STATUS
 
-| Phase | Status | Description |
-|-------|--------|-------------|
-| Phase 1 | ✅ DONE | Basic offline viewing/editing |
-| Phase 2 | ✅ DONE | Sync subscription model + dashboard |
-| Phase 3 | ✅ DONE | Push local changes to server |
-| Phase 4 | ❌ NOT DONE | Conflict resolution |
-| Phase 5 | ❌ NOT DONE | File dialog path selection |
-| Phase 6 | ❌ NOT DONE | Polish & edge cases |
+### Phase Status (REVISED)
 
-**What works:**
-- Download files FROM server for offline use
-- Auto-sync file on open
-- Sync dashboard shows subscribed items
-- Online/offline mode toggle
-- Green/red status indicators
-- **Push local changes TO server** (Session 21)
-- "Push Changes" button in Sync Dashboard
+| Phase | Status | Description | Notes |
+|-------|--------|-------------|-------|
+| Phase 1 | ✅ DONE | Basic offline viewing/editing | Works |
+| Phase 2 | ✅ DONE | Sync subscription + dashboard | Works |
+| Phase 3 | ✅ DONE | Push local changes to server | Works |
+| Phase 4 | ✅ MOSTLY DONE | Conflict resolution | **Last-write-wins auto-resolves** |
+| Phase 5 | ⚠️ EDGE CASE | File dialog path selection | Only for NEW files created offline |
+| Phase 6 | ⚠️ MINOR | Polish & edge cases | TM sync |
 
-**What doesn't work:**
-- TM sync
-- Hierarchy sync (folder/project/platform)
-- Conflict resolution UI
+### What's ACTUALLY Done vs What Doc Says
+
+| Feature | Doc Says | Reality | Verdict |
+|---------|----------|---------|---------|
+| **Conflict Resolution** | Complex UI with dialogs | `merge_row()` uses **last-write-wins** by timestamp | ✅ AUTO-RESOLVED |
+| **Hierarchy Sync** | Files only | Platform → Project → Folder → File all sync | ✅ FIXED Session 21 |
+| **File Dialog Path Selection** | Needed for sync | Only for NEW files created offline (rare) | ⚠️ EDGE CASE |
+| **TM Sync** | Same as files | Not implemented yet | ❌ TODO |
+
+### Conflict Resolution - ALREADY WORKS ✅
+
+```python
+# PostgreSQL model - auto-updates timestamp on ANY change:
+updated_at = Column(DateTime, onupdate=datetime.utcnow)
+
+# In offline.py merge_row():
+if server_updated > local_updated:
+    # Server wins - ALL fields including status
+else:
+    # Local wins - will push later
+```
+
+**Last-write-wins applies to EVERYTHING:**
+- Target text changes
+- Status changes (confirmed, reviewed, approved)
+- Memo changes
+- Any field modification
+
+**Example - Confirmation Conflict:**
+| Time | User A (Online) | User B (Offline) | Result |
+|------|-----------------|------------------|--------|
+| 10:00 | Confirms row 5 | - | Server: `updated_at=10:00` |
+| 10:30 | - | Confirms row 5 | Local: `updated_at=10:30` |
+| 11:00 | - | Syncs | **User B wins** (10:30 > 10:00) |
+
+**Timestamp precision:** Second-level (`datetime.utcnow`). Same-second conflicts are extremely rare.
+
+### File Dialog Path Selection - WHAT IT ACTUALLY IS
+
+**Scenario:** User creates a NEW file while OFFLINE, then wants to sync it.
+
+```
+1. User is OFFLINE
+2. Creates new file "my_translations.txt" (not from server)
+3. Goes ONLINE
+4. Clicks "Sync"
+5. System asks: "Where should this new file go?"
+   → Opens folder browser to pick: Platform/Project/Folder
+```
+
+**This is RARE.** Most users:
+- Download existing files from server ✅ (works)
+- Edit them offline ✅ (works)
+- Push changes back ✅ (works)
+
+Creating brand new files offline is edge case.
+
+### TM Sync - WHAT'S NEEDED
+
+TMs are linked to Platform/Project/Folder via `ldm_tm_assignment` table.
+
+**Expected behavior:**
+- When file syncs → auto-sync linked TMs
+- TM entries are additive (rarely conflict)
+
+**What needs implementing:**
+1. `_sync_tm_to_offline()` function
+2. Auto-sync TM when file/project/folder syncs
+3. TM merge logic (simpler than rows - mostly INSERT)
+
+### Current State Summary
+
+| Feature | Status |
+|---------|--------|
+| Download file for offline | ✅ Works |
+| Auto-sync on file open | ✅ Works |
+| Sync dashboard | ✅ Works |
+| Push changes to server | ✅ Works |
+| Hierarchy sync (platform/project/folder) | ✅ Works |
+| Last-write-wins merge | ✅ Works |
+| Online/offline toggle | ✅ Works |
+| Green/red indicators | ✅ Works |
+| Svelte 5 optimistic UI | ✅ Works |
+| TM sync | ❌ Not implemented |
+| New file path selection | ❌ Not implemented (edge case) |
+| "Reviewed" row protection | ❌ Not implemented (low priority) |
 
 ---
 
