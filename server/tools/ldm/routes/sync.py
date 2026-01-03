@@ -346,7 +346,6 @@ async def _sync_file_to_offline(db: AsyncSession, file_id: int, offline_db):
         "memo": row.memo if hasattr(row, 'memo') else None,
         "status": row.status,
         "extra_data": row.extra_data,
-        "created_at": row.created_at.isoformat() if row.created_at else None,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None
     } for row in rows]
 
@@ -520,7 +519,6 @@ async def download_file_for_offline(
                 "memo": row.memo if hasattr(row, 'memo') else None,
                 "status": row.status,
                 "extra_data": row.extra_data,
-                "created_at": row.created_at.isoformat() if row.created_at else None,
                 "updated_at": row.updated_at.isoformat() if row.updated_at else None
             })
 

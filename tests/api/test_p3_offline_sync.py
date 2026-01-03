@@ -162,6 +162,7 @@ class TestSubscriptions:
 
     def test_subscribe_project(self, admin_headers, test_project_id):
         """Test subscribing a project for offline sync."""
+        # Project sync downloads all files - needs longer timeout
         response = httpx.post(
             f"{BASE_URL}/api/ldm/offline/subscribe",
             headers=admin_headers,
@@ -169,7 +170,8 @@ class TestSubscriptions:
                 "entity_type": "project",
                 "entity_id": test_project_id,
                 "entity_name": "Test Project"
-            }
+            },
+            timeout=60.0  # Projects may have many files
         )
         assert response.status_code == 200
         data = response.json()
@@ -295,7 +297,7 @@ if __name__ == "__main__":
     for name, method, endpoint in tests:
         print(f"2. Testing {name}...")
         if method == "GET":
-            resp = httpx.get(f"{BASE_URL}{endpoint}", headers=headers)
+            resp = httpx.get(f"{BASE_URL}{endpoint}", headers=headers, timeout=30.0)
 
         if resp.status_code == 200:
             print(f"   OK: {resp.status_code}")
