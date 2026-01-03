@@ -26,6 +26,8 @@
   import { logger } from "$lib/utils/logger.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
+  import SyncStatusPanel from "$lib/components/sync/SyncStatusPanel.svelte";
+  import { initSync, cleanupSync } from "$lib/stores/sync.js";
 
   // Svelte 5: SvelteKit layout props
   let { data, children } = $props();
@@ -179,6 +181,9 @@
     // Initialize global error monitoring
     remoteLogger.init();
 
+    // P3: Initialize sync system
+    initSync();
+
     logger.component("Layout", "mounted");
     checkAuth();
 
@@ -298,6 +303,9 @@
         <TaskComplete size={20} />
         <span>Tasks</span>
       </button>
+
+      <!-- P3: Sync Status Indicator -->
+      <SyncStatusPanel />
 
       <!-- Settings Menu - Cogwheel with user info + settings inside -->
       <div class="compact-dropdown">
