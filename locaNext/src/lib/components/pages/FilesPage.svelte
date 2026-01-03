@@ -24,7 +24,7 @@
   import { savedFilesState } from '$lib/stores/navigation.js';
   import { user } from '$lib/stores/app.js';
   import AccessControl from '$lib/components/admin/AccessControl.svelte';
-  import { subscribeForOffline, unsubscribeFromOffline, isSubscribed, connectionMode as syncConnectionMode } from '$lib/stores/sync.js';
+  import { subscribeForOffline, unsubscribeFromOffline, isSubscribed, autoSyncFileOnOpen, connectionMode as syncConnectionMode } from '$lib/stores/sync.js';
 
   const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
@@ -406,6 +406,12 @@
   function handleOpenFile(event) {
     const file = event.detail.item;
     selectedFileId = file.id;
+
+    // P3: Auto-sync file for offline when opened (background, non-blocking)
+    if ($syncConnectionMode === 'online') {
+      autoSyncFileOnOpen(file.id, file.name);
+    }
+
     // Include current navigation state so we can restore on back
     const filesState = {
       path: [...currentPath],
