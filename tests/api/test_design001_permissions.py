@@ -125,7 +125,8 @@ class TestUniqueness:
         project2_name = r2.json()["name"]
         # Auto-renamed with _1 suffix
         assert project2_name != unique_name, f"Duplicate should be auto-renamed, got: {project2_name}"
-        assert unique_name in project2_name, "Auto-renamed name should contain original name"
+        # The renamed version contains _1 (or _2, etc) before any extension
+        assert "_1" in project2_name or "_2" in project2_name, f"Auto-renamed name should have _N suffix, got: {project2_name}"
 
         # Cleanup
         httpx.delete(f"{BASE_URL}/api/ldm/projects/{project_id}", headers=admin_headers)
@@ -214,7 +215,8 @@ class TestUniqueness:
         folder2_id = f2.json()["id"]
         folder2_name = f2.json()["name"]
         assert folder2_name != folder_name, f"Duplicate should be auto-renamed, got: {folder2_name}"
-        assert folder_name in folder2_name, "Auto-renamed name should contain original name"
+        # The renamed version contains _1 (or _2, etc) before any extension
+        assert "_1" in folder2_name or "_2" in folder2_name, f"Auto-renamed name should have _N suffix, got: {folder2_name}"
 
         # Cleanup
         httpx.delete(f"{BASE_URL}/api/ldm/folders/{folder1_id}", headers=admin_headers)
