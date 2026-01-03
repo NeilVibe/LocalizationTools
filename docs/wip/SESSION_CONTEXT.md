@@ -27,6 +27,7 @@ Use this checkpoint to go back to BEFORE P3 Offline/Online changes.
 | P3-2 | ✅ DONE | Sync subscription model + dashboard |
 | P3-3 | ✅ DONE | Auto-sync file on open |
 | P3-4 | ✅ DONE | Continuous sync mechanism |
+| P3-5 | ✅ DONE | Merge logic (last-write-wins) |
 
 ---
 
@@ -93,6 +94,28 @@ When a user opens a file:
 - "Sync Now" button in dashboard for manual trigger
 - `startContinuousSync()` / `stopContinuousSync()` control
 
+### P3-5: Merge Logic (COMPLETE)
+
+**Last-write-wins automatic merge (no conflict UI):**
+
+| Scenario | Action |
+|----------|--------|
+| Local = `synced`, server changed | **Server wins** → update local |
+| Local = `modified`, server newer | **Server wins** → discard local changes |
+| Local = `modified`, local newer | **Local wins** → push to server |
+| Local = `new` (created offline) | **Push** → create on server |
+| Server deleted row | **Delete local** → remove from SQLite |
+
+**Key Functions (offline.py):**
+```python
+merge_row(server_row, file_id)      # Apply merge logic per row
+get_modified_rows(file_id)          # Get locally edited rows
+get_new_rows(file_id)               # Get rows created offline
+_push_local_changes_for_file()      # Push local edits to server
+```
+
+**Timestamp comparison:** Uses `updated_at` field - most recent edit wins.
+
 ### Sync Dashboard UI
 
 ```
@@ -118,13 +141,6 @@ When a user opens a file:
 Files, Projects, and Platforms now have:
 - **Enable Offline Sync** - Subscribe and download for offline
 - **Disable Offline Sync** - Remove subscription (data kept locally)
-
-### Remaining for P3
-
-| Task | Description |
-|------|-------------|
-| Auto-sync on file open | When user opens a file, auto-subscribe it |
-| Continuous sync | Background periodic sync for subscribed items |
 
 ---
 
