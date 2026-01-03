@@ -136,11 +136,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
 // Expose auto-update API
 contextBridge.exposeInMainWorld('electronUpdate', {
   /**
+   * Get current update state (check on mount to catch pending updates)
+   * Solves the race condition where update is found before UI mounts
+   * @returns {Promise<{state, updateInfo, hasUpdate}>}
+   */
+  getUpdateState: () => ipcRenderer.invoke('get-update-state'),
+
+  /**
    * Listen for update available event
    * @param {function} callback - Receives { version, releaseNotes, releaseDate }
    */
   onUpdateAvailable: (callback) => {
     ipcRenderer.on('update-available', (event, info) => callback(info));
+  },
+
+  /**
+   * Listen for update not available event
+   * @param {function} callback - Receives { version }
+   */
+  onUpdateNotAvailable: (callback) => {
+    ipcRenderer.on('update-not-available', (event, info) => callback(info));
   },
 
   /**
@@ -188,6 +203,7 @@ contextBridge.exposeInMainWorld('electronUpdate', {
    */
   removeListeners: () => {
     ipcRenderer.removeAllListeners('update-available');
+    ipcRenderer.removeAllListeners('update-not-available');
     ipcRenderer.removeAllListeners('update-progress');
     ipcRenderer.removeAllListeners('update-downloaded');
     ipcRenderer.removeAllListeners('update-error');

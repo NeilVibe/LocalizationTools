@@ -62,6 +62,8 @@ async function uploadTestFile(request: any, token: string, projectId: number, fo
     const fileContent = fs.readFileSync(TEST_FILE_PATH);
 
     // Use multipart form data (as required by the upload endpoint)
+    // Use unique filename to avoid conflicts
+    const uniqueFilename = `qa_test_${Date.now()}.txt`;
     const response = await request.post(`${API_URL}/api/ldm/files/upload`, {
         headers: {
             Authorization: `Bearer ${token}`
@@ -69,7 +71,7 @@ async function uploadTestFile(request: any, token: string, projectId: number, fo
         multipart: {
             project_id: projectId.toString(),
             file: {
-                name: 'qa_test_simple.txt',
+                name: uniqueFilename,
                 mimeType: 'text/plain',
                 buffer: fileContent
             }

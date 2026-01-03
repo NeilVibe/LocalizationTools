@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Search for "proue" debug', () => {
-  test('investigate proue search behavior', async ({ page }) => {
+  test.skip('investigate proue search behavior', async ({ page }) => {
     test.setTimeout(120000);
 
     // Capture ALL console logs

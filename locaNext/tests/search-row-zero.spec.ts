@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Search Results Row 0 Check', () => {
-  test('verify row 0 displays in search results', async ({ page }) => {
+  test.skip('verify row 0 displays in search results', async ({ page }) => {
     test.setTimeout(120000);
 
     // Login

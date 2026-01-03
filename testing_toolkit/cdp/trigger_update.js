@@ -91,23 +91,23 @@ async function main() {
     `);
     console.log('   Current: v' + currentVersion);
 
-    // 4. Check if electronAPI is available
-    console.log('\n4. Checking electronAPI...');
-    const hasElectronAPI = await evaluate(`typeof window.electronAPI !== 'undefined'`);
-    if (!hasElectronAPI) {
-        console.log('   electronAPI not available (might be dev server)');
+    // 4. Check if electronUpdate API is available (CORRECT API name)
+    console.log('\n4. Checking electronUpdate API...');
+    const hasElectronUpdate = await evaluate(`typeof window.electronUpdate !== 'undefined'`);
+    if (!hasElectronUpdate) {
+        console.log('   electronUpdate not available (might be dev server)');
         console.log('   Auto-update only works in production builds');
         ws.close();
         process.exit(1);
     }
-    console.log('   electronAPI available');
+    console.log('   electronUpdate available');
 
     // 5. Trigger update check
     console.log('\n5. Triggering update check...');
     const updateResult = await evaluate(`
         new Promise((resolve) => {
-            if (window.electronAPI && window.electronAPI.checkForUpdates) {
-                window.electronAPI.checkForUpdates()
+            if (window.electronUpdate && window.electronUpdate.checkForUpdates) {
+                window.electronUpdate.checkForUpdates()
                     .then(result => resolve(JSON.stringify(result)))
                     .catch(err => resolve(JSON.stringify({ error: err.message })));
             } else {

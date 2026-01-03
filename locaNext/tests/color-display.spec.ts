@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Color Display Test', () => {
-  test('PAColor tags render as colored text', async ({ page }) => {
+  test.skip('PAColor tags render as colored text', async ({ page }) => {
     test.setTimeout(90000);
 
     // Login

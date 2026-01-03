@@ -1360,8 +1360,9 @@
       return;
     }
 
-    // Convert to file format for save (handles linebreaks)
-    const textToSave = formatTextForSave(inlineEditValue);
+    // CRITICAL: Convert HTML spans back to PAColor tags FIRST, then format for file
+    const rawText = htmlToPaColor(inlineEditValue);
+    const textToSave = formatTextForSave(rawText);
 
     try {
       // Save with "reviewed" status
@@ -2114,10 +2115,11 @@
                     <div class="placeholder-shimmer"></div>
                   </div>
                 {/if}
-                <div class="cell source loading-cell" style="flex: 0 0 {sourceWidthPercent}%;">
+                <!-- UI-090: Use flex-grow ratios to share remaining space after fixed columns -->
+                <div class="cell source loading-cell" style="flex: {sourceWidthPercent} 1 0;">
                   <div class="placeholder-shimmer"></div>
                 </div>
-                <div class="cell target loading-cell" style="flex: 1;">
+                <div class="cell target loading-cell" style="flex: {100 - sourceWidthPercent} 1 0;">
                   <div class="placeholder-shimmer"></div>
                 </div>
                 {#if $preferences.showReference}
@@ -2141,13 +2143,13 @@
                 {/if}
 
                 <!-- Source (always visible, READ-ONLY) -->
-                <!-- UI-044: Uses percentage width matching header -->
+                <!-- UI-090: Uses flex-grow ratio to share remaining space after fixed columns -->
                 <div
                   class="cell source"
                   class:source-hovered={hoveredRowId === row.id && hoveredCell === 'source'}
                   class:row-active={hoveredRowId === row.id || selectedRowId === row.id}
                   class:cell-selected={selectedRowId === row.id}
-                  style="flex: 0 0 {sourceWidthPercent}%;"
+                  style="flex: {sourceWidthPercent} 1 0;"
                   onmouseenter={() => handleCellMouseEnter(row, 'source')}
                 >
                   <span class="cell-content"><ColorText text={formatGridText(row.source) || ""} /></span>
@@ -2167,7 +2169,7 @@
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
                   class:qa-flagged={row.qa_flag_count > 0}
-                  style="flex: 0 0 {100 - sourceWidthPercent}%;"
+                  style="flex: {100 - sourceWidthPercent} 1 0;"
                   onmouseenter={() => handleCellMouseEnter(row, 'target')}
                   ondblclick={() => !rowLock && startInlineEdit(row)}
                   role="button"
@@ -2750,7 +2752,8 @@
     box-sizing: border-box;
   }
 
-  /* UI-044: Source and Target cells use percentage widths (set via inline style) */
+  /* UI-090: Source and Target cells use flex-grow ratios to share remaining space */
+  /* After fixed columns (index, stringId), source/target divide what's left */
   /* flex is controlled by inline style, no default flex here */
 
   .cell-content {

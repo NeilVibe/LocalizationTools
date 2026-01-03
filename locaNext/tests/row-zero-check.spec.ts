@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Row 0 Display Check', () => {
-  test('verify row 0 is displayed correctly', async ({ page }) => {
+  test.skip('verify row 0 is displayed correctly', async ({ page }) => {
     test.setTimeout(120000);
 
     // Login

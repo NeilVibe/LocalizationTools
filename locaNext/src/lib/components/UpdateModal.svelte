@@ -17,7 +17,7 @@
 
   // Svelte 5: Modal state
   let open = $state(false);
-  let updateState = $state('idle'); // 'idle' | 'available' | 'downloading' | 'downloaded' | 'error'
+  let updateState = $state('idle'); // 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error'
 
   // Svelte 5: Update info
   let updateInfo = $state({
@@ -40,8 +40,9 @@
   // Svelte 5: Current version (from backend health)
   let currentVersion = $state('');
 
-  // Fetch current version on mount
+  // Fetch current version on mount AND check for pending updates
   onMount(async () => {
+    // Get current version from backend
     try {
       const response = await fetch(`${API_BASE}/health`);
       if (response.ok) {
@@ -53,8 +54,30 @@
       logger.warning('UpdateModal: Could not fetch current version', { error: err.message });
     }
 
-    // Listen for update events from Electron
+    // Check for Electron update API
     if (typeof window !== 'undefined' && window.electronUpdate) {
+      // CRITICAL: Check for pending updates FIRST (solves race condition)
+      // Main process may have already found an update before this component mounted
+      try {
+        const state = await window.electronUpdate.getUpdateState();
+        logger.info('UpdateModal: Got update state on mount', state);
+
+        if (state.hasUpdate) {
+          // Update was already found before we mounted - show modal immediately
+          updateInfo = {
+            version: state.updateInfo?.version || '',
+            releaseNotes: state.updateInfo?.releaseNotes || '',
+            releaseDate: state.updateInfo?.releaseDate || ''
+          };
+          updateState = state.state; // 'available' or 'downloaded'
+          open = true;
+          logger.info('UpdateModal: Found pending update, showing modal', { version: state.updateInfo?.version });
+        }
+      } catch (err) {
+        logger.warning('UpdateModal: Could not get update state', { error: err.message });
+      }
+
+      // Register event listeners for future updates
       window.electronUpdate.onUpdateAvailable(handleUpdateAvailable);
       window.electronUpdate.onUpdateProgress(handleUpdateProgress);
       window.electronUpdate.onUpdateDownloaded(handleUpdateDownloaded);
@@ -64,9 +87,10 @@
   });
 
   onDestroy(() => {
-    // Clean up listeners
+    // Clean up all update event listeners
     if (typeof window !== 'undefined' && window.electronUpdate) {
       window.electronUpdate.removeListeners();
+      logger.info('UpdateModal: Cleaned up update event listeners');
     }
   });
 

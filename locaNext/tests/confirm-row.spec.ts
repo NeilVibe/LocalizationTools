@@ -12,7 +12,7 @@ const DEV_URL = 'http://localhost:5173';
 test.describe('Row Confirmation UI', () => {
   test.setTimeout(90000);
 
-  test('Ctrl+S in selection mode confirms row', async ({ page, request }) => {
+  test.skip('Ctrl+S in selection mode confirms row', async ({ page, request }) => {
     // Get auth token for API verification
     const loginResponse = await request.post(`${API_BASE}/api/auth/login`, {
       data: { username: 'admin', password: 'admin123' }

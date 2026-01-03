@@ -159,12 +159,18 @@ export function stopHealthChecks() {
   }
 }
 
+// Track if reconnect is in progress (prevent rapid toggles)
+let isReconnecting = false;
+
 /**
  * Force switch to offline mode
  */
 export function goOffline() {
+  // Cancel any pending reconnect
+  isReconnecting = false;
   stopHealthChecks();
   connectionMode.set('offline');
+  connectionError.set(null);
   logger.info('Switched to offline mode');
 }
 
@@ -172,12 +178,23 @@ export function goOffline() {
  * Try to reconnect to server
  */
 export async function tryReconnect() {
-  const connected = await checkConnection();
-  if (connected) {
-    startHealthChecks();
-    logger.info('Reconnected to server');
+  // Prevent rapid toggles
+  if (isReconnecting) {
+    logger.debug('Reconnect already in progress, skipping');
+    return false;
   }
-  return connected;
+
+  isReconnecting = true;
+  try {
+    const connected = await checkConnection();
+    if (connected) {
+      startHealthChecks();
+      logger.info('Reconnected to server');
+    }
+    return connected;
+  } finally {
+    isReconnecting = false;
+  }
 }
 
 // =============================================================================
@@ -352,13 +369,72 @@ export function autoSyncFileOnOpen(fileId, fileName) {
 }
 
 /**
- * Sync local changes to server
+ * Get preview of changes to push for a file
+ * @param {number} fileId - File ID
+ * @returns {Promise<{file_id: number, file_name: string, modified_rows: number, new_rows: number, total_changes: number}>}
+ */
+export async function getPushPreview(fileId) {
+  const url = getApiBase();
+
+  try {
+    const response = await fetch(`${url}/api/ldm/offline/push-preview/${fileId}`, {
+      headers: getAuthHeaders()
+    });
+
+    if (response.ok) {
+      return await response.json();
+    } else {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to get push preview');
+    }
+  } catch (error) {
+    logger.error('Get push preview failed', { fileId, error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * Sync local changes to server (P3 Phase 3)
  * @param {number} fileId - File ID to sync
+ * @returns {Promise<{success: boolean, rows_pushed: number, message: string}>}
  */
 export async function syncFileToServer(fileId) {
-  // Will be implemented in Phase 3
-  logger.info('Sync to server requested', { fileId });
-  // TODO: Push local changes to server
+  const url = getApiBase();
+
+  try {
+    isSyncing.set(true);
+    logger.info('Pushing changes to server', { fileId });
+
+    const response = await fetch(`${url}/api/ldm/offline/push-changes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ file_id: fileId })
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      logger.success('Changes pushed to server', {
+        fileId,
+        rowsPushed: result.rows_pushed
+      });
+
+      // Refresh offline status
+      await refreshOfflineStatus();
+
+      return result;
+    } else {
+      const error = await response.json();
+      throw new Error(error.detail || 'Push failed');
+    }
+  } catch (error) {
+    logger.error('Push to server failed', { fileId, error: error.message });
+    throw error;
+  } finally {
+    isSyncing.set(false);
+  }
 }
 
 /**

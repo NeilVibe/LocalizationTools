@@ -317,6 +317,123 @@ class SyncSubscriptionResponse(BaseModel):
     message: str
 
 
+# =============================================================================
+# Push Local Changes to Server (P3 Phase 3)
+# =============================================================================
+
+class PushChangesRequest(BaseModel):
+    file_id: int
+
+
+class PushChangesPreview(BaseModel):
+    file_id: int
+    file_name: str
+    modified_rows: int
+    new_rows: int
+    total_changes: int
+
+
+class PushChangesResponse(BaseModel):
+    success: bool
+    file_id: int
+    rows_pushed: int
+    message: str
+
+
+@router.get("/offline/push-preview/{file_id}", response_model=PushChangesPreview)
+async def get_push_preview(
+    file_id: int,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Preview what changes will be pushed for a file.
+
+    Returns count of modified and new rows that will be synced.
+    Call this before push-changes to show user what will happen.
+    """
+    try:
+        offline_db = get_offline_db()
+
+        # Get file info
+        file_info = offline_db.get_file(file_id)
+        if not file_info:
+            raise HTTPException(status_code=404, detail="File not found in offline storage")
+
+        # Count changes
+        modified_rows = offline_db.get_modified_rows(file_id)
+        new_rows = offline_db.get_new_rows(file_id)
+
+        return PushChangesPreview(
+            file_id=file_id,
+            file_name=file_info.get("name", "Unknown"),
+            modified_rows=len(modified_rows),
+            new_rows=len(new_rows),
+            total_changes=len(modified_rows) + len(new_rows)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Push preview failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/offline/push-changes", response_model=PushChangesResponse)
+async def push_changes_to_server(
+    request: PushChangesRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Push local changes for a file to the server (P3 Phase 3).
+
+    This endpoint:
+    1. Gets modified rows from local SQLite
+    2. Pushes them to PostgreSQL
+    3. Marks local rows as synced
+
+    Use this when user clicks "Sync to Server" on a file with pending changes.
+    """
+    from server.config import ACTIVE_DATABASE_TYPE
+
+    logger.info(f"Push changes to server: file_id={request.file_id}")
+
+    # Verify we're online
+    if ACTIVE_DATABASE_TYPE != "postgresql":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot push to server while in offline mode. Connect to server first."
+        )
+
+    try:
+        offline_db = get_offline_db()
+
+        # Get file info
+        file_info = offline_db.get_file(request.file_id)
+        if not file_info:
+            raise HTTPException(status_code=404, detail="File not found in offline storage")
+
+        # Push changes
+        pushed_count = await _push_local_changes_for_file(db, request.file_id, offline_db)
+
+        # Update last sync time
+        offline_db.set_last_sync()
+
+        logger.success(f"Pushed {pushed_count} changes for file {request.file_id}")
+
+        return PushChangesResponse(
+            success=True,
+            file_id=request.file_id,
+            rows_pushed=pushed_count,
+            message=f"Successfully pushed {pushed_count} changes to server"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Push changes failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/offline/sync-subscription", response_model=SyncSubscriptionResponse)
 async def sync_subscription(
     request: SyncSubscriptionRequest,

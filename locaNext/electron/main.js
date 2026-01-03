@@ -271,8 +271,20 @@ function stopBackendServer() {
 
 // ==================== AUTO-UPDATER ====================
 
+// ==================== AUTO-UPDATER STATE ====================
+// Store update info so it can be retrieved by renderer on mount
+let pendingUpdateInfo = null;
+let updateState = 'idle'; // 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error'
+
 /**
- * Setup auto-updater to check for updates from your server
+ * Setup auto-updater with STAGED update flow
+ *
+ * DESIGN: User-controlled updates (no silent downloads)
+ * 1. Check for updates on app start
+ * 2. If available → Store info and notify renderer
+ * 3. Wait for user to click "Download"
+ * 4. Show progress during download
+ * 5. Show "Restart Now" / "Later" when complete
  */
 function setupAutoUpdater() {
   logger.info('Auto-updater check', {
@@ -290,54 +302,79 @@ function setupAutoUpdater() {
     return;
   }
 
-  logger.info('Setting up auto-updater', { config: autoUpdaterConfig });
+  logger.info('Setting up auto-updater (STAGED MODE)', { config: autoUpdaterConfig });
 
-  // SEAMLESS UPDATE: Auto-download in background, auto-install on quit
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  // STAGED UPDATE: User must confirm before download
+  // This prevents the race condition where download finishes before UI is ready
+  autoUpdater.autoDownload = false;  // CRITICAL: Don't auto-download
+  autoUpdater.autoInstallOnAppQuit = true;  // Install when user quits after download
 
   // Configure update server
   autoUpdater.setFeedURL(autoUpdaterConfig);
 
-  // Update available - auto-downloading (no user action needed)
+  // Update available - STORE and NOTIFY (don't download yet!)
   autoUpdater.on('update-available', (info) => {
-    logger.info('Update available - auto-downloading', { version: info.version });
+    logger.info('Update available (waiting for user confirmation)', { version: info.version });
+    pendingUpdateInfo = info;
+    updateState = 'available';
+    // Notify renderer - it will show the modal
     mainWindow?.webContents.send('update-available', info);
   });
 
   // No update available
   autoUpdater.on('update-not-available', (info) => {
     logger.info('App is up to date', { version: info.version });
+    updateState = 'idle';
+    pendingUpdateInfo = null;
+    mainWindow?.webContents.send('update-not-available', info);
   });
 
   // Download progress
   autoUpdater.on('download-progress', (progressObj) => {
     logger.info('Download progress', {
-      percent: progressObj.percent,
+      percent: progressObj.percent?.toFixed(1),
       transferred: progressObj.transferred,
       total: progressObj.total
     });
+    updateState = 'downloading';
     mainWindow?.webContents.send('update-progress', progressObj);
   });
 
-  // Update downloaded - send to renderer (custom UI will handle it)
+  // Update downloaded - ready to install
   autoUpdater.on('update-downloaded', (info) => {
-    logger.success('Update downloaded', { version: info.version });
+    logger.success('Update downloaded - ready to install', { version: info.version });
+    updateState = 'downloaded';
+    pendingUpdateInfo = info;
     mainWindow?.webContents.send('update-downloaded', info);
-    // No system dialog - the UpdateModal in renderer will show restart options
   });
 
-  // Error - send to renderer
+  // Error handling
   autoUpdater.on('error', (err) => {
     logger.error('Auto-updater error', { error: err.message });
+    updateState = 'error';
     mainWindow?.webContents.send('update-error', err.message);
   });
 
-  // Check for updates (silently)
+  // Check for updates (don't download yet - just check)
+  updateState = 'checking';
+  logger.info('Checking for updates...');
   autoUpdater.checkForUpdates().catch((err) => {
     logger.warning('Failed to check for updates', { error: err.message });
+    updateState = 'idle';
   });
 }
+
+/**
+ * IPC: Get current update state (for renderer to check on mount)
+ * This solves the race condition - renderer can check if update is already available
+ */
+ipcMain.handle('get-update-state', async () => {
+  return {
+    state: updateState,
+    updateInfo: pendingUpdateInfo,
+    hasUpdate: updateState === 'available' || updateState === 'downloaded'
+  };
+});
 
 /**
  * IPC: Download update

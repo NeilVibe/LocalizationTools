@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-03 (Session 18 Complete) | **Build:** 439 | **Open:** 0
+**Last Updated:** 2026-01-03 (Session 21 Complete) | **Build:** 444 | **Open:** 3
 
 ---
 
@@ -8,10 +8,209 @@
 
 | Status | Count |
 |--------|-------|
-| **FIXED/CLOSED** | 74 |
+| **OPEN** | 3 |
+| **FIXED/CLOSED** | 86 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
-| **Total Open** | 0 |
+
+---
+
+## OPEN ISSUES - SESSION 20
+
+### SYNC-005: Only Files Can Be Synced
+
+- **Reported:** 2026-01-03 (Session 20)
+- **Severity:** HIGH
+- **Status:** OPEN
+- **Component:** sync.py, FilesPage.svelte
+
+**Problem:** User can only sync files. Should support:
+- Platform (sync all projects/folders/files under it)
+- Project (sync all folders/files under it)
+- Folder (sync all files under it)
+- File (current - works)
+
+---
+
+### SYNC-008: TM Sync Not Supported
+
+- **Reported:** 2026-01-03 (Session 20)
+- **Severity:** MEDIUM
+- **Status:** OPEN
+- **Component:** sync.py, TMManager
+
+**Problem:** Translation Memory should also be syncable for offline use.
+
+---
+
+### P3-PHASE4-6: Conflict Resolution & Polish
+
+- **Reported:** 2026-01-03 (Session 20)
+- **Severity:** MEDIUM
+- **Status:** OPEN
+- **Component:** sync.js, sync.py
+
+**Problem:** Phases 4-6 of P3 Offline/Online Mode not implemented:
+- Phase 4: Conflict resolution UI
+- Phase 5: File dialog path selection
+- Phase 6: Polish & edge cases
+
+---
+
+## FIXED IN SESSION 21
+
+### DB-001: Database Needs Full Cleanup - FIXED
+
+- **Fixed:** 2026-01-03 (Session 21)
+- Created fresh: Platform 27, Project 23, Folder 8, File 5
+- Uploaded clean sample_language_data.txt (63 rows)
+
+### P3-PHASE3: Push Local Changes to Server - FIXED
+
+- **Fixed:** 2026-01-03 (Session 21)
+- Added `GET /api/ldm/offline/push-preview/{file_id}` endpoint
+- Added `POST /api/ldm/offline/push-changes` endpoint
+- Implemented `syncFileToServer()` in frontend
+- Added "Push Changes" button in Sync Dashboard
+
+---
+
+## SESSION 20 FIXES (2026-01-03)
+
+### AU-007: Auto-Updater Race Condition ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Session 20)
+- **Severity:** HIGH
+- **Status:** FIXED
+
+**Problem:** User didn't see auto-update UI because `autoDownload=true` started download before UpdateModal mounted.
+
+**Fix:**
+1. Changed `autoDownload = false` in main.js
+2. Added state storage (`pendingUpdateInfo`, `updateState`)
+3. Added `get-update-state` IPC handler
+4. UpdateModal checks for pending updates on mount
+
+**Files:** `electron/main.js`, `electron/preload.js`, `UpdateModal.svelte`
+
+---
+
+### COLOR-001: Color Code Corruption on Confirm ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Session 20)
+- **Severity:** HIGH
+- **Status:** FIXED
+
+**Problem:** `confirmInlineEdit()` saved HTML spans instead of PAColor tags:
+```
+SAVED: <span style="color:#e9bd23">text</span>
+SHOULD BE: <PAColor0xffe9bd23>text<PAOldColor>
+```
+
+**Root Cause:** Used `formatTextForSave(inlineEditValue)` directly without converting HTML to PAColor first.
+
+**Fix:** Added `htmlToPaColor()` conversion before formatting:
+```javascript
+// OLD (BROKEN)
+const textToSave = formatTextForSave(inlineEditValue);
+
+// NEW (CORRECT)
+const rawText = htmlToPaColor(inlineEditValue);
+const textToSave = formatTextForSave(rawText);
+```
+
+**File:** `VirtualGrid.svelte:1363-1365`
+
+---
+
+### TOGGLE-001: Offline/Online Toggle Freeze ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Session 20)
+- **Severity:** HIGH
+- **Status:** FIXED
+
+**Problem:** Toggling offline → online → offline → online caused "Connecting..." to get stuck.
+
+**Root Cause:** Race condition - rapid toggles caused concurrent reconnect attempts.
+
+**Fix:**
+1. Added `isReconnecting` flag in sync.js
+2. Added try/finally to always reset `reconnecting` state in SyncStatusPanel.svelte
+3. `goOffline()` now clears error state and cancels pending reconnects
+
+**Files:** `sync.js:162-197`, `SyncStatusPanel.svelte:71-84`
+
+---
+
+### SYNC-001: Auto-sync on File Open ✅ VERIFIED WORKING
+
+- **Reported:** 2026-01-03
+- **Verified:** 2026-01-03 (Session 20)
+- **Status:** CLOSED - Was already working
+
+Playwright test confirmed auto-sync registers files correctly.
+
+---
+
+### SYNC-002: Right-Click Register Sync ✅ VERIFIED WORKING
+
+- **Reported:** 2026-01-03
+- **Verified:** 2026-01-03 (Session 20)
+- **Status:** CLOSED - Was already working
+
+Playwright test confirmed right-click sync option works.
+
+---
+
+### SYNC-003: Sync Modal Shows Items ✅ VERIFIED WORKING
+
+- **Reported:** 2026-01-03
+- **Verified:** 2026-01-03 (Session 20)
+- **Status:** CLOSED - Was already working
+
+Playwright test found 3 subscription items in modal.
+
+---
+
+### SYNC-004: Sync Modal Layout ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Session 20)
+- **Severity:** MEDIUM
+- **Status:** FIXED
+
+**Fix:** Changed modal size from "sm" to "lg", increased padding/gaps, added explorer-style items with icon boxes.
+
+**File:** `SyncStatusPanel.svelte`
+
+---
+
+### SYNC-006: Online Status Indicator ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Session 20)
+- **Severity:** MEDIUM
+- **Status:** FIXED
+
+**Fix:** Added glowing green dot with animation, green border on button, green text in modal.
+
+**File:** `SyncStatusPanel.svelte` (CSS)
+
+---
+
+### SYNC-007: Explorer-Type View ✅ FIXED
+
+- **Reported:** 2026-01-03
+- **Fixed:** 2026-01-03 (Session 20)
+- **Severity:** MEDIUM
+- **Status:** FIXED
+
+**Fix:** Added 36x36px icon boxes, larger item padding, uppercase type labels, hover effects.
+
+**File:** `SyncStatusPanel.svelte` (CSS)
 
 ---
 
@@ -840,6 +1039,22 @@ The following fixes have been coded but need manual DEV testing:
 ## CRITICAL - BLOCKING ISSUES
 
 *No critical issues*
+
+---
+
+## FIXED - 2026-01-03 (Session 21)
+
+### UI-090: Column Resize Breaks After Adding Custom Column ✅ FIXED
+- **Reported:** 2026-01-03 (Session 21)
+- **Fixed:** 2026-01-03
+- **Severity:** MEDIUM
+- **Status:** FIXED
+- **Component:** VirtualGrid.svelte
+- **Problem:** After adding a custom column (index, stringId), original Source/Target columns couldn't be resized
+- **Root Cause:** Source/Target cells used `flex: 0 0 {percent}%` which took percentage of FULL container, not remaining space after fixed columns. This caused resize bar position mismatch.
+- **Fix:** Changed to flex-grow ratios `flex: {ratio} 1 0` so cells share remaining space proportionally
+- **File:** VirtualGrid.svelte lines 2118-2122, 2152, 2172
+- **Tests:** 156 passed, 14 skipped
 
 ---
 
