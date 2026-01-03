@@ -286,7 +286,7 @@ async def assign_project_to_platform(
     # DESIGN-001: Check platform access if assigning
     if platform_id is not None:
         if not await can_access_platform(db, platform_id, current_user):
-            raise HTTPException(status_code=403, detail="Platform not found")
+            raise HTTPException(status_code=404, detail="Platform not found")
 
         result = await db.execute(
             select(LDMPlatform).where(LDMPlatform.id == platform_id)

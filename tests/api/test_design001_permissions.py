@@ -384,9 +384,9 @@ class TestRestrictedAccess:
         platform_ids = [p["id"] for p in list_r.json()["platforms"]]
         assert platform_id not in platform_ids, "User2 should NOT see restricted platform"
 
-        # User2 should get 403 when trying to access directly
+        # User2 should get 404 when trying to access directly (security: don't reveal existence)
         direct_r = httpx.get(f"{BASE_URL}/api/ldm/platforms/{platform_id}", headers=user2_headers)
-        assert direct_r.status_code == 403, "Direct access to restricted platform should be denied"
+        assert direct_r.status_code == 404, "Restricted platform should appear as not found to unauthorized users"
 
         # Cleanup
         httpx.delete(f"{BASE_URL}/api/ldm/platforms/{platform_id}", headers=admin_headers)

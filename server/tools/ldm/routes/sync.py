@@ -701,7 +701,7 @@ async def sync_file_to_central(
 
     # Verify destination project access (DESIGN-001: Public by default)
     if not await can_access_project(db, request.destination_project_id, current_user):
-        raise HTTPException(status_code=403, detail="Destination project not found")
+        raise HTTPException(status_code=404, detail="Destination project not found")
 
     # Read from local SQLite database
     # The SQLite file is at server/data/locanext.db
