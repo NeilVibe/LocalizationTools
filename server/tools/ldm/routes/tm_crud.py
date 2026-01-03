@@ -15,6 +15,7 @@ from loguru import logger
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
 from server.database.models import LDMTranslationMemory
 from server.tools.ldm.schemas import TMResponse, TMUploadResponse, DeleteResponse
+from server.tools.ldm.permissions import can_access_tm, get_accessible_tms
 
 router = APIRouter(tags=["LDM"])
 
@@ -52,11 +53,10 @@ async def upload_tm(
     filename = file.filename or "unknown"
     ext = filename.lower().split('.')[-1] if '.' in filename else ''
 
-    # UI-077 FIX: Check for duplicate TM name for this user
+    # UI-077 FIX: Check for duplicate TM name (globally unique - DESIGN-001)
     sync_db = next(get_db())
     try:
         existing_tm = sync_db.query(LDMTranslationMemory).filter(
-            LDMTranslationMemory.owner_id == current_user["user_id"],
             LDMTranslationMemory.name == name
         ).first()
         if existing_tm:
@@ -138,13 +138,9 @@ async def list_tms(
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """List all Translation Memories for current user."""
-    result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        ).order_by(LDMTranslationMemory.created_at.desc())
-    )
-    tms = result.scalars().all()
+    """List all Translation Memories accessible to current user (DESIGN-001: Public by default)."""
+    # DESIGN-001: Use permission helper for accessible TMs
+    tms = await get_accessible_tms(db, current_user)
 
     # Debug: Log actual status values from DB
     for tm in tms:
@@ -160,12 +156,13 @@ async def get_tm(
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Get a Translation Memory by ID."""
+    """Get a Translation Memory by ID (DESIGN-001: Public by default)."""
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
     result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = result.scalar_one_or_none()
 
@@ -181,12 +178,13 @@ async def delete_tm(
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Delete a Translation Memory and all its entries."""
+    """Delete a Translation Memory and all its entries (DESIGN-001: Public by default)."""
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
     result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = result.scalar_one_or_none()
 
@@ -210,7 +208,7 @@ async def export_tm(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Export a Translation Memory in specified format.
+    Export a Translation Memory in specified format (DESIGN-001: Public by default).
 
     Formats:
     - text: Tab-separated values (TSV)
@@ -227,14 +225,8 @@ async def export_tm(
     """
     logger.info(f"Exporting TM: tm_id={tm_id}, format={format}, columns={columns}")
 
-    # Verify TM ownership (async)
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
-    )
-    if not tm_result.scalar_one_or_none():
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Parse columns if provided

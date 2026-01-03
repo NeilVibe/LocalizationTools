@@ -10,6 +10,7 @@ from loguru import logger
 from server.utils.dependencies import get_async_db, get_current_active_user_async
 from server.database.models import LDMProject, LDMFolder
 from server.tools.ldm.schemas import FolderCreate, FolderResponse, DeleteResponse
+from server.tools.ldm.permissions import can_access_project, can_access_folder
 
 router = APIRouter(tags=["LDM"])
 
@@ -21,15 +22,16 @@ async def list_folders(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """List all folders in a project."""
-    # Verify project ownership
+    # Verify project exists
     result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
+        select(LDMProject).where(LDMProject.id == project_id)
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Check access permission
+    if not await can_access_project(db, project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     result = await db.execute(
         select(LDMFolder).where(LDMFolder.project_id == project_id)
@@ -46,33 +48,25 @@ async def create_folder(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """Create a new folder in a project."""
-    # Verify project ownership
+    # Verify project exists
     result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == folder.project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
+        select(LDMProject).where(LDMProject.id == folder.project_id)
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # UI-077 FIX: Check for duplicate folder name in same project + parent
-    duplicate_query = select(LDMFolder).where(
-        LDMFolder.project_id == folder.project_id,
-        LDMFolder.name == folder.name
-    )
-    if folder.parent_id:
-        duplicate_query = duplicate_query.where(LDMFolder.parent_id == folder.parent_id)
-    else:
-        duplicate_query = duplicate_query.where(LDMFolder.parent_id.is_(None))
+    # Check access permission
+    if not await can_access_project(db, folder.project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
 
+    # DESIGN-001: Check for globally unique folder name (no duplicates anywhere)
+    duplicate_query = select(LDMFolder).where(LDMFolder.name == folder.name)
     result = await db.execute(duplicate_query)
     existing_folder = result.scalar_one_or_none()
     if existing_folder:
-        parent_info = f" in parent folder {folder.parent_id}" if folder.parent_id else " in project root"
         raise HTTPException(
             status_code=400,
-            detail=f"A folder named '{folder.name}' already exists{parent_info}. Please use a different name."
+            detail=f"A folder named '{folder.name}' already exists. Please use a different name."
         )
 
     new_folder = LDMFolder(
@@ -109,7 +103,7 @@ async def get_folder_contents(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if folder.project.owner_id != current_user["user_id"]:
+    if not await can_access_project(db, folder.project_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Get subfolders
@@ -160,23 +154,17 @@ async def rename_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if folder.project.owner_id != current_user["user_id"]:
+    if not await can_access_project(db, folder.project_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Check for duplicate name in same parent
+    # DESIGN-001: Check for globally unique folder name (no duplicates anywhere)
     duplicate_query = select(LDMFolder).where(
-        LDMFolder.project_id == folder.project_id,
         LDMFolder.name == name,
         LDMFolder.id != folder_id
     )
-    if folder.parent_id:
-        duplicate_query = duplicate_query.where(LDMFolder.parent_id == folder.parent_id)
-    else:
-        duplicate_query = duplicate_query.where(LDMFolder.parent_id.is_(None))
-
     result = await db.execute(duplicate_query)
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail=f"A folder named '{name}' already exists in this location")
+        raise HTTPException(status_code=400, detail=f"A folder named '{name}' already exists. Please use a different name.")
 
     old_name = folder.name
     folder.name = name
@@ -209,7 +197,7 @@ async def move_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if folder.project.owner_id != current_user["user_id"]:
+    if not await can_access_project(db, folder.project_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Prevent moving folder into itself or its descendants
@@ -265,7 +253,7 @@ async def delete_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if folder.project.owner_id != current_user["user_id"]:
+    if not await can_access_project(db, folder.project_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     await db.delete(folder)

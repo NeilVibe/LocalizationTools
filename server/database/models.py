@@ -556,13 +556,18 @@ class LDMPlatform(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # DESIGN-001: Public by default permission model
+    # False = public (all users can access), True = restricted (only assigned users)
+    is_restricted = Column(Boolean, default=False, nullable=False)
+
     # Relationships
     owner = relationship("User")
     projects = relationship("LDMProject", back_populates="platform", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_ldm_platform_owner", "owner_id"),
-        UniqueConstraint("name", "owner_id", name="uq_ldm_platform_name_owner"),
+        # DESIGN-001: Globally unique names (was per-owner)
+        UniqueConstraint("name", name="uq_ldm_platform_name"),
     )
 
     def __repr__(self):
@@ -584,6 +589,10 @@ class LDMProject(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # DESIGN-001: Public by default permission model
+    # False = public (all users can access), True = restricted (only assigned users)
+    is_restricted = Column(Boolean, default=False, nullable=False)
+
     # Relationships
     owner = relationship("User")
     platform = relationship("LDMPlatform", back_populates="projects")
@@ -593,8 +602,8 @@ class LDMProject(Base):
     __table_args__ = (
         Index("idx_ldm_project_owner", "owner_id"),
         Index("idx_ldm_project_platform", "platform_id"),
-        # BUG-036: Prevent duplicate project names per user
-        UniqueConstraint("name", "owner_id", name="uq_ldm_project_name_owner"),
+        # DESIGN-001: Globally unique names (was per-owner, BUG-036)
+        UniqueConstraint("name", name="uq_ldm_project_name"),
     )
 
     def __repr__(self):
@@ -621,8 +630,8 @@ class LDMFolder(Base):
 
     __table_args__ = (
         Index("idx_ldm_folder_project_parent", "project_id", "parent_id"),
-        # BUG-036: Prevent duplicate folder names in same parent
-        UniqueConstraint("name", "project_id", "parent_id", name="uq_ldm_folder_name_parent"),
+        # DESIGN-001: Globally unique folder names (no duplicates anywhere)
+        UniqueConstraint("name", name="uq_ldm_folder_name"),
     )
 
     def __repr__(self):
@@ -665,8 +674,8 @@ class LDMFile(Base):
 
     __table_args__ = (
         Index("idx_ldm_file_project_folder", "project_id", "folder_id"),
-        # BUG-036: Prevent duplicate file names in same folder
-        UniqueConstraint("name", "project_id", "folder_id", name="uq_ldm_file_name_folder"),
+        # DESIGN-001: Globally unique file names (no duplicates anywhere)
+        UniqueConstraint("name", name="uq_ldm_file_name"),
     )
 
     def __repr__(self):
@@ -880,6 +889,8 @@ class LDMTranslationMemory(Base):
     __table_args__ = (
         Index("idx_ldm_tm_owner", "owner_id"),
         Index("idx_ldm_tm_status", "status"),
+        # DESIGN-001: Globally unique TM names (no duplicates anywhere)
+        UniqueConstraint("name", name="uq_ldm_tm_name"),
     )
 
     def __repr__(self):
@@ -1177,3 +1188,56 @@ class LDMTMIndex(Base):
 
     def __repr__(self):
         return f"<LDMTMIndex(tm_id={self.tm_id}, type='{self.index_type}', status='{self.status}')>"
+
+
+# =============================================================================
+# LDM Resource Access Control (DESIGN-001)
+# =============================================================================
+
+class LDMResourceAccess(Base):
+    """
+    LDM Resource Access - Explicit access grants for restricted platforms/projects.
+
+    DESIGN-001: Public by Default Permission Model
+    - Only needed for restricted resources (is_restricted=True)
+    - Public resources (is_restricted=False) are accessible to all users
+    - Admins bypass restrictions entirely
+    - Owner of a resource always has access
+
+    Only ONE of platform_id or project_id should be set (not both).
+    """
+    __tablename__ = "ldm_resource_access"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Resource being accessed (only ONE should be set)
+    platform_id = Column(Integer, ForeignKey("ldm_platforms.id", ondelete="CASCADE"), nullable=True, index=True)
+    project_id = Column(Integer, ForeignKey("ldm_projects.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # User granted access
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Access level (for future expansion: read, write, admin)
+    access_level = Column(String(20), default="full")
+
+    # Audit fields
+    granted_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    granted_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    platform = relationship("LDMPlatform", foreign_keys=[platform_id])
+    project = relationship("LDMProject", foreign_keys=[project_id])
+    user = relationship("User", foreign_keys=[user_id])
+    granter = relationship("User", foreign_keys=[granted_by])
+
+    __table_args__ = (
+        Index("idx_resource_access_platform", "platform_id", "user_id"),
+        Index("idx_resource_access_project", "project_id", "user_id"),
+        # Prevent duplicate grants
+        UniqueConstraint("platform_id", "user_id", name="uq_resource_access_platform_user"),
+        UniqueConstraint("project_id", "user_id", name="uq_resource_access_project_user"),
+    )
+
+    def __repr__(self):
+        resource = f"platform_id={self.platform_id}" if self.platform_id else f"project_id={self.project_id}"
+        return f"<LDMResourceAccess({resource}, user_id={self.user_id})>"

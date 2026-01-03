@@ -16,6 +16,7 @@ from loguru import logger
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
 from server.database.db_utils import normalize_text_for_hash
 from server.database.models import LDMTranslationMemory, LDMTMEntry
+from server.tools.ldm.permissions import can_access_tm
 
 router = APIRouter(tags=["LDM"])
 
@@ -31,20 +32,21 @@ def _auto_sync_tm_indexes(tm_id: int, user_id: int):
 
     BUG-032/BUG-034: Now also updates TM status to 'ready' after successful sync.
     TASK-002: Tracked in active_operations with silent=True (no toast).
+    DESIGN-001: Access check is done before calling this task.
     """
     from server.tools.ldm.tm_indexer import TMSyncManager
     from server.utils.progress_tracker import TrackedOperation
 
     sync_db = next(get_db())
     try:
-        # Verify TM still belongs to user
+        # DESIGN-001: Access check done before this task is called
+        # Just verify TM still exists
         tm = sync_db.query(LDMTranslationMemory).filter(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == user_id
+            LDMTranslationMemory.id == tm_id
         ).first()
 
         if not tm:
-            logger.warning(f"Auto-sync skipped: TM {tm_id} not found or not owned by user {user_id}")
+            logger.warning(f"Auto-sync skipped: TM {tm_id} not found")
             return
 
         # TASK-002: Track auto-sync with silent=True (no toast, but visible in Task Manager)
@@ -92,7 +94,7 @@ async def get_tm_entries(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Get paginated TM entries for TM Viewer.
+    Get paginated TM entries for TM Viewer (DESIGN-001: Public by default).
 
     Query params:
     - page: Page number (1-indexed)
@@ -101,12 +103,12 @@ async def get_tm_entries(
     - sort_order: asc or desc
     - search: Search term (searches source, target, and string_id)
     """
-    # Verify TM ownership
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
     tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = tm_result.scalar_one_or_none()
     if not tm:
@@ -194,21 +196,15 @@ async def add_tm_entry(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Add a single entry to a Translation Memory (Adaptive TM).
+    Add a single entry to a Translation Memory (Adaptive TM, DESIGN-001: Public by default).
 
     Used to add translations as they're created during editing.
     Q-001: Auto-syncs TM indexes after add.
     """
     logger.info(f"Adding TM entry: tm_id={tm_id}, source={source_text[:30]}...")
 
-    # Verify TM ownership (async)
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
-    )
-    if not tm_result.scalar_one_or_none():
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Run sync bulk_copy in threadpool to avoid blocking event loop
@@ -247,15 +243,15 @@ async def update_tm_entry(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Update a single TM entry (for inline editing in TM Viewer).
+    Update a single TM entry (for inline editing in TM Viewer, DESIGN-001: Public by default).
     Q-001: Auto-syncs TM indexes after update.
     """
-    # Verify TM ownership
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
     tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = tm_result.scalar_one_or_none()
     if not tm:
@@ -324,15 +320,15 @@ async def delete_tm_entry(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Delete a single TM entry.
+    Delete a single TM entry (DESIGN-001: Public by default).
     Q-001: Auto-syncs TM indexes after delete.
     """
-    # Verify TM ownership
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
+
     tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = tm_result.scalar_one_or_none()
     if not tm:
@@ -379,18 +375,12 @@ async def confirm_tm_entry(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    BUG-020: Confirm or unconfirm a TM entry (memoQ-style workflow).
+    BUG-020: Confirm or unconfirm a TM entry (memoQ-style workflow, DESIGN-001: Public by default).
 
     When user approves a translation, it gets marked as confirmed with metadata.
     """
-    # Verify TM ownership
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
-    )
-    if not tm_result.scalar_one_or_none():
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Find entry
@@ -440,16 +430,10 @@ async def bulk_confirm_tm_entries(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    BUG-020: Bulk confirm/unconfirm multiple TM entries.
+    BUG-020: Bulk confirm/unconfirm multiple TM entries (DESIGN-001: Public by default).
     """
-    # Verify TM ownership
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
-    )
-    if not tm_result.scalar_one_or_none():
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     username = current_user.get("username", "unknown")

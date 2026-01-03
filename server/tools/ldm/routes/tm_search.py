@@ -15,6 +15,7 @@ from server.utils.dependencies import get_async_db, get_current_active_user_asyn
 from server.database.db_utils import normalize_text_for_hash
 from server.database.models import LDMTranslationMemory, LDMTMEntry
 from server.tools.ldm.schemas import TMSuggestResponse
+from server.tools.ldm.permissions import can_access_tm
 
 router = APIRouter(tags=["LDM"])
 
@@ -63,17 +64,18 @@ async def get_tm_suggestions(
         # If tm_id is provided, search the TM entries table
         if tm_id:
             logger.info(f"[TM-SUGGEST] MODE: TM entries search (tm_id={tm_id})")
-            # Verify TM ownership
-            logger.debug(f"[TM-SUGGEST] Verifying TM ownership for user_id={current_user['user_id']}")
+            # DESIGN-001: Use permission helper for TM access check
+            logger.debug(f"[TM-SUGGEST] Verifying TM access for user_id={current_user['user_id']}")
+            if not await can_access_tm(db, tm_id, current_user):
+                logger.warning(f"[TM-SUGGEST] TM {tm_id} not accessible by user {current_user['user_id']}")
+                raise HTTPException(status_code=404, detail="Translation Memory not found")
+
             tm_result = await db.execute(
-                select(LDMTranslationMemory).where(
-                    LDMTranslationMemory.id == tm_id,
-                    LDMTranslationMemory.owner_id == current_user["user_id"]
-                )
+                select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
             )
             tm = tm_result.scalar_one_or_none()
             if not tm:
-                logger.warning(f"[TM-SUGGEST] TM {tm_id} not found or not owned by user {current_user['user_id']}")
+                logger.warning(f"[TM-SUGGEST] TM {tm_id} not found")
                 raise HTTPException(status_code=404, detail="Translation Memory not found")
 
             logger.debug(f"[TM-SUGGEST] TM verified: name='{tm.name}', entries={tm.entry_count}, status={tm.status}")
@@ -184,20 +186,14 @@ async def search_tm_exact(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Search for exact match in a Translation Memory.
+    Search for exact match in a Translation Memory (DESIGN-001: Public by default).
 
     Uses hash-based O(1) lookup for maximum speed.
     """
     logger.info(f"TM exact search: tm_id={tm_id}, source={source[:30]}...")
 
-    # Verify TM ownership (async)
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
-    )
-    if not tm_result.scalar_one_or_none():
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Generate hash for O(1) lookup (async query)
@@ -235,20 +231,14 @@ async def search_tm(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Search a Translation Memory using LIKE pattern.
+    Search a Translation Memory using LIKE pattern (DESIGN-001: Public by default).
 
     For fuzzy/similar text searching (not exact match).
     """
     logger.info(f"TM search: tm_id={tm_id}, pattern={pattern[:30]}...")
 
-    # Verify TM ownership (async)
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
-    )
-    if not tm_result.scalar_one_or_none():
+    # DESIGN-001: Use permission helper for TM access check
+    if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Async LIKE search

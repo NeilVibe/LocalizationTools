@@ -15,7 +15,7 @@
    * - Home/End: Go to first/last item
    */
   import { createEventDispatcher } from 'svelte';
-  import { Folder, Document, DocumentBlank, Table, Code, Application } from 'carbon-icons-svelte';
+  import { Folder, Document, DocumentBlank, Table, Code, Application, Locked } from 'carbon-icons-svelte';
 
   // Props
   let {
@@ -420,6 +420,11 @@
           <div class="grid-cell name-cell" role="gridcell">
             <Icon size={20} class="item-icon" />
             <span class="item-name">{item.name}</span>
+            {#if item.is_restricted}
+              <span class="restricted-badge" title="Restricted - Admin managed access">
+                <Locked size={14} />
+              </span>
+            {/if}
           </div>
           <div class="grid-cell size-cell" role="gridcell">
             {formatSize(item)}
@@ -610,6 +615,23 @@
   .grid-row.project .item-name,
   .grid-row.platform .item-name {
     font-weight: 500;
+  }
+
+  /* Restricted badge */
+  .restricted-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.5rem;
+    padding: 2px;
+    color: var(--cds-text-02);
+    opacity: 0.7;
+    cursor: help;
+  }
+
+  .restricted-badge:hover {
+    opacity: 1;
+    color: var(--cds-support-warning);
   }
 
   /* Responsive - hide columns on smaller screens */

@@ -13,7 +13,7 @@
    */
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { Modal, TextInput, Select, SelectItem, TextArea, ProgressBar, InlineLoading } from 'carbon-components-svelte';
-  import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, Edit, TrashCan, Merge, Application, Archive } from 'carbon-icons-svelte';
+  import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, Edit, TrashCan, Merge, Application, Archive, Locked } from 'carbon-icons-svelte';
   import ExplorerGrid from '$lib/components/ldm/ExplorerGrid.svelte';
   import PretranslateModal from '$lib/components/ldm/PretranslateModal.svelte';
   import InputModal from '$lib/components/common/InputModal.svelte';
@@ -22,6 +22,8 @@
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import { preferences } from '$lib/stores/preferences.js';
   import { savedFilesState } from '$lib/stores/navigation.js';
+  import { user } from '$lib/stores/app.js';
+  import AccessControl from '$lib/components/admin/AccessControl.svelte';
 
   const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
@@ -90,6 +92,13 @@
   let mergeTargetFile = $state(null);
   let uploadTargetFolderId = $state(null);
 
+  // DESIGN-001: Access control modal
+  let showAccessControlModal = $state(false);
+  let accessControlResource = $state(null);  // { type, id, name }
+
+  // Check if current user is admin
+  let isAdmin = $derived($user?.role === 'admin' || $user?.role === 'superadmin');
+
   // ============== Navigation ==============
 
   // Load root level: platforms + unassigned projects
@@ -125,7 +134,8 @@
           id: p.id,
           name: p.name,
           description: p.description,
-          project_count: p.project_count || 0
+          project_count: p.project_count || 0,
+          is_restricted: p.is_restricted || false
         });
       });
 
@@ -141,7 +151,8 @@
             file_count: p.file_count || 0,
             platform_id: null,
             created_at: p.created_at,
-            updated_at: p.updated_at
+            updated_at: p.updated_at,
+            is_restricted: p.is_restricted || false
           });
         });
       }
@@ -182,7 +193,8 @@
           file_count: p.file_count || 0,
           platform_id: p.platform_id,
           created_at: p.created_at,
-          updated_at: p.updated_at
+          updated_at: p.updated_at,
+          is_restricted: p.is_restricted || false
         }));
         currentPath = [{ type: 'platform', id: platformId, name: platformName }];
         selectedPlatformId = platformId;
@@ -433,6 +445,29 @@
     showContextMenu = false;
     showBackgroundMenu = false;
     contextMenuItem = null;
+  }
+
+  // DESIGN-001: Open access control modal
+  function openAccessControl() {
+    if (!contextMenuItem) return;
+    if (contextMenuItem.type !== 'platform' && contextMenuItem.type !== 'project') return;
+    accessControlResource = {
+      type: contextMenuItem.type,
+      id: contextMenuItem.id,
+      name: contextMenuItem.name
+    };
+    closeMenus();
+    showAccessControlModal = true;
+  }
+
+  // Handle access control change (refresh view when restriction toggled)
+  async function handleAccessControlChange(event) {
+    // Refresh current view to update lock icons
+    if (currentPath.length === 0) {
+      await loadRoot();
+    } else if (currentPath[0]?.type === 'platform' && currentPath.length === 1) {
+      await loadPlatformContents(currentPath[0].id, currentPath[0].name);
+    }
   }
 
   // ============== File Operations ==============
@@ -1148,10 +1183,18 @@
     {:else if contextMenuItem.type === 'project'}
       <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
       <button class="context-menu-item" onclick={openAssignPlatform}><Application size={16} /> Assign to Platform...</button>
+      {#if isAdmin}
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" onclick={openAccessControl}><Locked size={16} /> Manage Access...</button>
+      {/if}
       <div class="context-menu-divider"></div>
       <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
     {:else if contextMenuItem.type === 'platform'}
       <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
+      {#if isAdmin}
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" onclick={openAccessControl}><Locked size={16} /> Manage Access...</button>
+      {/if}
       <div class="context-menu-divider"></div>
       <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
     {/if}
@@ -1300,6 +1343,18 @@
     </Select>
   {/if}
 </Modal>
+
+<!-- DESIGN-001: Access Control Modal -->
+{#if accessControlResource}
+  <AccessControl
+    bind:open={showAccessControlModal}
+    resourceType={accessControlResource.type}
+    resourceId={accessControlResource.id}
+    resourceName={accessControlResource.name}
+    on:change={handleAccessControlChange}
+    on:close={() => { showAccessControlModal = false; accessControlResource = null; }}
+  />
+{/if}
 
 <style>
   .files-page {

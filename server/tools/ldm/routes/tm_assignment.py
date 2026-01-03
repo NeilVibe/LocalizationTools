@@ -14,6 +14,7 @@ from server.database.models import (
     LDMTranslationMemory, LDMTMAssignment, LDMPlatform,
     LDMProject, LDMFolder, LDMFile
 )
+from server.tools.ldm.permissions import can_access_platform, can_access_project, can_access_tm, can_access_file
 
 router = APIRouter(tags=["LDM"])
 
@@ -60,12 +61,13 @@ async def get_tm_assignment(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """Get the current assignment for a TM."""
-    # Verify TM ownership
+    # Verify TM access (DESIGN-001: Public by default)
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get TM
     result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = result.scalar_one_or_none()
     if not tm:
@@ -138,12 +140,13 @@ async def assign_tm(
     Only ONE scope can be set - others must be None.
     If all are None, TM is moved to "Unassigned".
     """
-    # Verify TM ownership
+    # Verify TM access (DESIGN-001: Public by default)
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get TM
     result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
     )
     tm = result.scalar_one_or_none()
     if not tm:
@@ -154,35 +157,26 @@ async def assign_tm(
     if scope_count > 1:
         raise HTTPException(status_code=400, detail="Only one scope can be set (platform, project, or folder)")
 
-    # Validate scope exists and belongs to user
+    # Validate scope exists and user has access (DESIGN-001: Public by default)
     scope_name = "unassigned"
     if folder_id:
+        from server.tools.ldm.permissions import can_access_folder
+        if not await can_access_folder(db, folder_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to folder")
         result = await db.execute(
-            select(LDMFolder).options(selectinload(LDMFolder.project)).where(LDMFolder.id == folder_id)
+            select(LDMFolder).where(LDMFolder.id == folder_id)
         )
         folder = result.scalar_one_or_none()
-        if not folder or folder.project.owner_id != current_user["user_id"]:
+        if not folder:
             raise HTTPException(status_code=404, detail="Folder not found")
         scope_name = f"folder:{folder.name}"
     elif project_id:
-        result = await db.execute(
-            select(LDMProject).where(
-                LDMProject.id == project_id,
-                LDMProject.owner_id == current_user["user_id"]
-            )
-        )
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=404, detail="Project not found")
+        if not await can_access_project(db, project_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to project")
         scope_name = f"project:{project_id}"
     elif platform_id:
-        result = await db.execute(
-            select(LDMPlatform).where(
-                LDMPlatform.id == platform_id,
-                LDMPlatform.owner_id == current_user["user_id"]
-            )
-        )
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=404, detail="Platform not found")
+        if not await can_access_platform(db, platform_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to platform")
         scope_name = f"platform:{platform_id}"
 
     # Get or create assignment
@@ -232,15 +226,9 @@ async def activate_tm(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """Activate or deactivate a TM at its assigned scope."""
-    # Verify TM ownership
-    result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == current_user["user_id"]
-        )
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="TM not found")
+    # Verify TM access (DESIGN-001: Public by default)
+    if not await can_access_tm(db, tm_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     # Get assignment
     result = await db.execute(
@@ -299,7 +287,8 @@ async def get_active_tms_for_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    if file.project.owner_id != current_user["user_id"]:
+    # Verify file access (DESIGN-001: Public by default)
+    if not await can_access_file(db, file_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     active_tms = []
@@ -397,9 +386,13 @@ async def get_tm_tree(
     - Platforms with their projects and folders (only those with TMs assigned)
     - Each node shows assigned TMs and their activation status
     """
-    user_id = current_user["user_id"]
+    from server.tools.ldm.permissions import get_accessible_platforms, get_accessible_tms
 
-    # Get all TM assignments for this user's TMs
+    # DESIGN-001: Get accessible TMs for this user (not just owned)
+    accessible_tms = await get_accessible_tms(db, current_user)
+    accessible_tm_ids = {tm.id for tm in accessible_tms}
+
+    # Get all TM assignments for accessible TMs
     result = await db.execute(
         select(LDMTMAssignment)
         .options(
@@ -409,20 +402,13 @@ async def get_tm_tree(
             selectinload(LDMTMAssignment.folder)
         )
         .join(LDMTranslationMemory)
-        .where(LDMTranslationMemory.owner_id == user_id)
+        .where(LDMTranslationMemory.id.in_(accessible_tm_ids))
     )
     assignments = result.scalars().all()
 
     # Get TMs without assignments (truly unassigned)
-    result = await db.execute(
-        select(LDMTranslationMemory)
-        .outerjoin(LDMTMAssignment)
-        .where(
-            LDMTranslationMemory.owner_id == user_id,
-            LDMTMAssignment.id == None
-        )
-    )
-    unassigned_tms = result.scalars().all()
+    assigned_tm_ids = {a.tm_id for a in assignments}
+    unassigned_tms = [tm for tm in accessible_tms if tm.id not in assigned_tm_ids]
 
     # Also get TMs with assignment but all scope fields NULL
     unassigned_from_assignments = [
@@ -450,14 +436,8 @@ async def get_tm_tree(
         "platforms": []
     }
 
-    # Get all platforms
-    result = await db.execute(
-        select(LDMPlatform)
-        .options(selectinload(LDMPlatform.projects).selectinload(LDMProject.folders))
-        .where(LDMPlatform.owner_id == user_id)
-        .order_by(LDMPlatform.name)
-    )
-    platforms = result.scalars().all()
+    # DESIGN-001: Get accessible platforms (not just owned)
+    platforms = await get_accessible_platforms(db, current_user, include_projects=True)
 
     for platform in platforms:
         platform_data = {

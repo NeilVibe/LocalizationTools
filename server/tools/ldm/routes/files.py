@@ -17,6 +17,7 @@ from loguru import logger
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
 from server.database.models import LDMProject, LDMFile, LDMFolder, LDMRow
 from server.tools.ldm.schemas import FileResponse, FileToTMRequest
+from server.tools.ldm.permissions import can_access_project, can_access_file
 
 router = APIRouter(tags=["LDM"])
 
@@ -33,15 +34,16 @@ async def list_files(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """List files in a project, optionally filtered by folder."""
-    # Verify project ownership
+    # Verify project exists
     result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
+        select(LDMProject).where(LDMProject.id == project_id)
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Check access permission
+    if not await can_access_project(db, project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     query = select(LDMFile).where(LDMFile.project_id == project_id)
     if folder_id is not None:
@@ -61,19 +63,19 @@ async def list_all_files(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    UI-074 FIX: List all files across all projects owned by the current user.
+    UI-074 FIX: List all files across all accessible projects.
     Used by ReferenceSettingsModal to show available reference files.
     """
-    # Get all projects owned by user
-    projects_result = await db.execute(
-        select(LDMProject.id).where(LDMProject.owner_id == current_user["user_id"])
-    )
-    project_ids = [p for p in projects_result.scalars().all()]
+    from server.tools.ldm.permissions import get_accessible_projects
+
+    # Get all accessible projects for user
+    accessible_projects = await get_accessible_projects(db, current_user)
+    project_ids = [p.id for p in accessible_projects]
 
     if not project_ids:
         return []
 
-    # Get files from all user's projects
+    # Get files from all accessible projects
     query = (
         select(LDMFile)
         .where(LDMFile.project_id.in_(project_ids))
@@ -96,16 +98,14 @@ async def get_file(
 ):
     """Get file metadata by ID."""
     result = await db.execute(
-        select(LDMFile).options(selectinload(LDMFile.project)).where(
-            LDMFile.id == file_id
-        )
+        select(LDMFile).where(LDMFile.id == file_id)
     )
     file = result.scalar_one_or_none()
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    if file.project.owner_id != current_user["user_id"]:
+    if not await can_access_file(db, file_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     return file
@@ -139,15 +139,16 @@ async def upload_file(
     - Row-level extra data stored in LDMRow.extra_data (extra columns/attributes)
     - Enables FULL reconstruction of original file format
     """
-    # Verify project ownership
+    # Verify project exists
     result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
+        select(LDMProject).where(LDMProject.id == project_id)
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Check access permission
+    if not await can_access_project(db, project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     # Verify folder exists (if provided)
     if folder_id:
@@ -160,24 +161,15 @@ async def upload_file(
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Folder not found")
 
-    # UI-077 FIX: Check for duplicate file name in same project + folder
+    # DESIGN-001: Check for globally unique file name (no duplicates anywhere)
     filename = file.filename or "unknown"
-    duplicate_query = select(LDMFile).where(
-        LDMFile.project_id == project_id,
-        LDMFile.name == filename
-    )
-    if folder_id:
-        duplicate_query = duplicate_query.where(LDMFile.folder_id == folder_id)
-    else:
-        duplicate_query = duplicate_query.where(LDMFile.folder_id.is_(None))
-
+    duplicate_query = select(LDMFile).where(LDMFile.name == filename)
     result = await db.execute(duplicate_query)
     existing_file = result.scalar_one_or_none()
     if existing_file:
-        folder_info = f" in folder {folder_id}" if folder_id else " in project root"
         raise HTTPException(
             status_code=409,  # 409 Conflict - proper status for duplicate resource
-            detail=f"A file named '{filename}' already exists{folder_info}. Please rename the file or delete the existing one."
+            detail=f"A file named '{filename}' already exists. Please use a different name."
         )
 
     # Determine file type and parse
@@ -329,14 +321,8 @@ async def move_file_to_folder(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Verify project ownership
-    result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == file.project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
-    )
-    if not result.scalar_one_or_none():
+    # Check access permission
+    if not await can_access_project(db, file.project_id, current_user):
         raise HTTPException(status_code=403, detail="Not authorized to modify this file")
 
     # If folder_id provided, verify folder exists and belongs to same project
@@ -376,30 +362,19 @@ async def rename_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Verify project ownership
-    result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == file.project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
-    )
-    if not result.scalar_one_or_none():
+    # Check access permission
+    if not await can_access_project(db, file.project_id, current_user):
         raise HTTPException(status_code=403, detail="Not authorized to modify this file")
 
     # Check for duplicate name in same folder
+    # DESIGN-001: Check for globally unique file name (no duplicates anywhere)
     duplicate_query = select(LDMFile).where(
-        LDMFile.project_id == file.project_id,
         LDMFile.name == name,
         LDMFile.id != file_id
     )
-    if file.folder_id:
-        duplicate_query = duplicate_query.where(LDMFile.folder_id == file.folder_id)
-    else:
-        duplicate_query = duplicate_query.where(LDMFile.folder_id.is_(None))
-
     result = await db.execute(duplicate_query)
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail=f"A file named '{name}' already exists in this location")
+        raise HTTPException(status_code=400, detail=f"A file named '{name}' already exists. Please use a different name.")
 
     old_name = file.name
     file.name = name
@@ -425,14 +400,8 @@ async def delete_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Verify project ownership
-    result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == file.project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
-    )
-    if not result.scalar_one_or_none():
+    # Check access permission
+    if not await can_access_project(db, file.project_id, current_user):
         raise HTTPException(status_code=403, detail="Not authorized to delete this file")
 
     file_name = file.name
@@ -504,6 +473,10 @@ async def register_file_as_tm(
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
+
+    # Check access permission
+    if not await can_access_file(db, file_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     logger.info(f"Converting file to TM: file_id={file_id}, name={request.name}")
 
@@ -604,6 +577,10 @@ async def download_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
+    # Check access permission
+    if not await can_access_file(db, file_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     # Get file-level metadata for reconstruction
     file_metadata = file.extra_data or {}
 
@@ -697,7 +674,7 @@ async def merge_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    if file.project.owner_id != current_user["user_id"]:
+    if not await can_access_project(db, file.project_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Check format compatibility
@@ -842,7 +819,7 @@ async def convert_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    if file.project.owner_id != current_user["user_id"]:
+    if not await can_access_project(db, file.project_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     source_format = file.format.lower() if file.format else ""
@@ -940,7 +917,7 @@ async def extract_glossary(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    if file.project.owner_id != current_user["user_id"]:
+    if not await can_access_project(db, file.project_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Get all rows for this file

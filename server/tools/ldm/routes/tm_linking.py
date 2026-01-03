@@ -14,6 +14,7 @@ from loguru import logger
 from server.utils.dependencies import get_async_db, get_current_active_user_async
 from server.database.models import LDMProject, LDMTranslationMemory, LDMActiveTM
 from server.tools.ldm.schemas import LinkTMRequest
+from server.tools.ldm.permissions import can_access_project, can_access_tm
 
 router = APIRouter(tags=["LDM"])
 
@@ -57,23 +58,25 @@ async def link_tm_to_project(
     """
     user_id = current_user["user_id"]
 
-    # Verify project ownership
+    # Verify project access (DESIGN-001: Public by default)
+    if not await can_access_project(db, project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get project for response
     project_result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == project_id,
-            LDMProject.owner_id == user_id
-        )
+        select(LDMProject).where(LDMProject.id == project_id)
     )
     project = project_result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Verify TM ownership
+    # Verify TM access (DESIGN-001: Public by default)
+    if not await can_access_tm(db, request.tm_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied to TM")
+
+    # Get TM for response
     tm_result = await db.execute(
-        select(LDMTranslationMemory).where(
-            LDMTranslationMemory.id == request.tm_id,
-            LDMTranslationMemory.owner_id == user_id
-        )
+        select(LDMTranslationMemory).where(LDMTranslationMemory.id == request.tm_id)
     )
     tm = tm_result.scalar_one_or_none()
     if not tm:
@@ -115,16 +118,9 @@ async def unlink_tm_from_project(
     """FEAT-001: Remove TM link from project."""
     user_id = current_user["user_id"]
 
-    # Verify project ownership
-    project_result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == project_id,
-            LDMProject.owner_id == user_id
-        )
-    )
-    project = project_result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    # Verify project access (DESIGN-001: Public by default)
+    if not await can_access_project(db, project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     # Find and delete link
     link_result = await db.execute(
@@ -153,16 +149,9 @@ async def get_linked_tms(
     """FEAT-001: Get all TMs linked to a project, ordered by priority."""
     user_id = current_user["user_id"]
 
-    # Verify project ownership
-    project_result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == project_id,
-            LDMProject.owner_id == user_id
-        )
-    )
-    project = project_result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    # Verify project access (DESIGN-001: Public by default)
+    if not await can_access_project(db, project_id, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     # Get all linked TMs with TM details
     result = await db.execute(

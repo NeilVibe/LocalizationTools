@@ -13,6 +13,7 @@ from loguru import logger
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
 from server.database.models import LDMFile, LDMProject
 from server.tools.ldm.schemas import PretranslateRequest, PretranslateResponse
+from server.tools.ldm.permissions import can_access_project
 
 router = APIRouter(tags=["LDM"])
 
@@ -58,7 +59,7 @@ async def pretranslate_file(
             detail=f"Invalid engine. Must be one of: {valid_engines}"
         )
 
-    # Verify file ownership
+    # Verify file exists
     file_result = await db.execute(
         select(LDMFile).where(LDMFile.id == request.file_id)
     )
@@ -67,16 +68,8 @@ async def pretranslate_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Verify project ownership
-    project_result = await db.execute(
-        select(LDMProject).where(
-            LDMProject.id == file.project_id,
-            LDMProject.owner_id == current_user["user_id"]
-        )
-    )
-    project = project_result.scalar_one_or_none()
-
-    if not project:
+    # Verify project access (DESIGN-001: Public by default)
+    if not await can_access_project(db, file.project_id, current_user):
         raise HTTPException(status_code=403, detail="Access denied to file's project")
 
     # Run pretranslation in threadpool to avoid blocking
