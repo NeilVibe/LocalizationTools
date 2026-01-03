@@ -1,1 +1,0 @@
-Build 443: Return 404 for all access denied
