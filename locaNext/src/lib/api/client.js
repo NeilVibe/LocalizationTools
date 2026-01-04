@@ -149,6 +149,46 @@ class APIClient {
   }
 
   /**
+   * P9: Start offline mode without server authentication
+   * Creates a local session for offline work
+   * @returns {boolean} - true if offline mode started successfully
+   */
+  async startOfflineMode() {
+    console.log('[Auth] Starting offline mode');
+
+    try {
+      // First try to get an auto_token from health endpoint (if server is reachable)
+      try {
+        const health = await this.getHealth();
+        if (health.auto_token) {
+          this.setToken(health.auto_token);
+        } else {
+          // Generate a local-only token
+          this.setToken('OFFLINE_MODE_' + Date.now());
+        }
+      } catch {
+        // Server not reachable - generate local token
+        this.setToken('OFFLINE_MODE_' + Date.now());
+      }
+
+      // Set user info for offline mode
+      user.set({
+        user_id: 'OFFLINE',
+        username: 'Offline User',
+        role: 'admin',
+        email: 'offline@localhost'
+      });
+      isAuthenticated.set(true);
+
+      console.log('[Auth] Offline mode started successfully');
+      return true;
+    } catch (error) {
+      console.error('[Auth] Failed to start offline mode:', error);
+      return false;
+    }
+  }
+
+  /**
    * Get current user
    */
   async getCurrentUser() {

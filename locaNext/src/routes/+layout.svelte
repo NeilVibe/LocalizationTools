@@ -16,6 +16,7 @@
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
+  import Launcher from "$lib/components/Launcher.svelte";
   import ChangePassword from "$lib/components/ChangePassword.svelte";
   import AboutModal from "$lib/components/AboutModal.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
@@ -28,6 +29,7 @@
   import { websocket } from "$lib/api/websocket.js";
   import SyncStatusPanel from "$lib/components/sync/SyncStatusPanel.svelte";
   import { initSync, cleanupSync } from "$lib/stores/sync.js";
+  import { showLauncher, resetLauncher } from "$lib/stores/launcher.js";
 
   // Svelte 5: SvelteKit layout props
   let { data, children } = $props();
@@ -117,6 +119,8 @@
     isAuthenticated.set(false);
     user.set(null);
     websocket.disconnect();
+    // P9: Reset launcher to show it again
+    resetLauncher();
     logger.info("User logged out successfully");
   }
 
@@ -242,8 +246,11 @@
     <div class="auth-loading">
       <p>Loading...</p>
     </div>
+  {:else if $showLauncher}
+    <!-- P9: Show launcher as first screen (handles updates + offline/online choice) -->
+    <Launcher />
   {:else if !$isAuthenticated}
-    <!-- Show login screen if not authenticated -->
+    <!-- Fallback login screen (rarely hit since Launcher handles login) -->
     <Login />
   {:else}
     <!-- Show main app if authenticated -->
