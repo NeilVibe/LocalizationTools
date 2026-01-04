@@ -1660,6 +1660,64 @@ jobs:
         shell: powershell
 
       # ============================================================
+      # STEP 5b: Generate Patch Update Manifest (LAUNCHER-style)
+      # ============================================================
+      - name: Generate Patch Update Manifest
+        env:
+          VERSION: ${{ needs.check-build-trigger.outputs.version }}
+        run: |
+          Write-Host "=== Generating manifest.json for PATCH updates ==="
+
+          $resourcesDir = "locaNext\dist-electron\win-unpacked\resources"
+          $version = $env:VERSION
+
+          # Copy app.asar to installer_output for upload
+          $asarPath = "$resourcesDir\app.asar"
+          if (Test-Path $asarPath) {
+            Copy-Item $asarPath "installer_output\app.asar"
+            Write-Host "[OK] Copied app.asar to installer_output"
+
+            $asarSize = (Get-Item "installer_output\app.asar").Length
+            $asarHash = (Get-FileHash "installer_output\app.asar" -Algorithm SHA256).Hash.ToLower()
+
+            Write-Host "  Size: $([math]::Round($asarSize/1MB, 2)) MB"
+            Write-Host "  SHA256: $($asarHash.Substring(0,16))..."
+          } else {
+            Write-Host "[WARN] app.asar not found - patch updates will use fallback" -ForegroundColor Yellow
+            $asarSize = 0
+            $asarHash = ""
+          }
+
+          # Generate manifest.json
+          $manifest = @{
+            version = $version
+            buildDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            components = @{
+              "app.asar" = @{
+                version = $version
+                sha256 = $asarHash
+                size = $asarSize
+                url = "app.asar"
+                required = $true
+                restartRequired = $true
+                description = "Frontend application bundle"
+              }
+            }
+            releaseNotes = "LocaNext v$version"
+          }
+
+          $manifestJson = $manifest | ConvertTo-Json -Depth 5
+          [System.IO.File]::WriteAllText("installer_output\manifest.json", $manifestJson)
+          Write-Host "[OK] manifest.json generated"
+          Write-Host ""
+          Write-Host "=== PATCH UPDATE SAVINGS ==="
+          Write-Host "  app.asar: $([math]::Round($asarSize/1MB, 2)) MB"
+          Write-Host "  Full installer: ~624 MB"
+          Write-Host "  Savings: ~$([math]::Round((1 - $asarSize/624000000) * 100))%"
+          Write-Host "==========================="
+        shell: powershell
+
+      # ============================================================
       # POST-BUILD TESTS
       # Test using win-unpacked directory (same files as installer bundles)
       # ============================================================
@@ -2376,6 +2434,30 @@ jobs:
             Write-Host "  [OK] latest.yml uploaded" -ForegroundColor Green
           }
 
+          # Upload PATCH UPDATE assets (LAUNCHER-style)
+          # manifest.json - component checksums for delta updates
+          $manifestFile = "installer_output\manifest.json"
+          if (Test-Path $manifestFile) {
+            Write-Host "  Uploading: manifest.json (PATCH update manifest)"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$RELEASE_ID/assets?name=manifest.json" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$manifestFile" | Out-Null
+            Write-Host "  [OK] manifest.json uploaded" -ForegroundColor Green
+          }
+
+          # app.asar - frontend bundle for quick PATCH updates (~18MB vs 624MB installer)
+          $asarFile = "installer_output\app.asar"
+          if (Test-Path $asarFile) {
+            $asarSize = [math]::Round((Get-Item $asarFile).Length/1MB, 2)
+            Write-Host "  Uploading: app.asar ($asarSize MB - PATCH update component)"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$RELEASE_ID/assets?name=app.asar" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$asarFile" | Out-Null
+            Write-Host "  [OK] app.asar uploaded - PATCH UPDATES ENABLED (~97% smaller!)" -ForegroundColor Green
+          }
+
           # Upload blockmap for SMART/DIFFERENTIAL updates
           $blockmap = Get-ChildItem "installer_output\*.blockmap" | Select-Object -First 1
           if ($blockmap) {
@@ -2487,6 +2569,25 @@ jobs:
               -H "Authorization: token $env:GITEA_TOKEN" `
               -H "Content-Type: application/octet-stream" `
               --data-binary "@$ymlFile" | Out-Null
+          }
+
+          # Upload PATCH UPDATE assets to 'latest' release
+          $manifestFile = "installer_output\manifest.json"
+          if (Test-Path $manifestFile) {
+            Write-Host "  Uploading: manifest.json (PATCH update)"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$LATEST_RELEASE_ID/assets?name=manifest.json" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$manifestFile" | Out-Null
+          }
+
+          $asarFile = "installer_output\app.asar"
+          if (Test-Path $asarFile) {
+            Write-Host "  Uploading: app.asar (PATCH update - 97% smaller!)"
+            curl.exe -s -X POST "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases/$LATEST_RELEASE_ID/assets?name=app.asar" `
+              -H "Authorization: token $env:GITEA_TOKEN" `
+              -H "Content-Type: application/octet-stream" `
+              --data-binary "@$asarFile" | Out-Null
           }
 
           # Upload blockmap

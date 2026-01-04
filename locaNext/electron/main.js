@@ -11,6 +11,7 @@ import fs from 'fs';
 import http from 'http';
 import { logger } from './logger.js';
 import { autoUpdaterConfig, isAutoUpdateEnabled } from './updater.js';
+import { checkForPatchUpdate, applyPatchUpdate, initPatchUpdater } from './patch-updater.js';
 import { isFirstRunNeeded, runFirstRunSetup, setupFirstRunIPC } from './first-run-setup.js';
 import { performHealthCheck, quickHealthCheck, wasRecentlyRepaired, HealthStatus } from './health-check.js';
 import { runRepair } from './repair.js';
@@ -277,14 +278,15 @@ let pendingUpdateInfo = null;
 let updateState = 'idle'; // 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error'
 
 /**
- * Setup auto-updater with STAGED update flow
+ * Setup auto-updater with STAGED update flow + PATCH UPDATES
  *
- * DESIGN: User-controlled updates (no silent downloads)
- * 1. Check for updates on app start
- * 2. If available → Store info and notify renderer
- * 3. Wait for user to click "Download"
- * 4. Show progress during download
- * 5. Show "Restart Now" / "Later" when complete
+ * DESIGN: User-controlled updates with patch optimization
+ * 1. Check for PATCH updates first (manifest.json)
+ * 2. If patch available → Only download changed components (18MB vs 624MB)
+ * 3. If no patch → Fall back to full installer check
+ * 4. Wait for user to click "Download"
+ * 5. Show progress during download
+ * 6. Show "Restart Now" / "Later" when complete
  */
 function setupAutoUpdater() {
   logger.info('Auto-updater check', {
@@ -292,6 +294,14 @@ function setupAutoUpdater() {
     isAutoUpdateEnabled,
     NODE_ENV: process.env.NODE_ENV
   });
+
+  // Initialize patch updater (creates component-state.json if needed)
+  try {
+    const patchState = initPatchUpdater();
+    logger.info('Patch updater initialized', { version: patchState.version });
+  } catch (err) {
+    logger.warning('Patch updater init failed (will use full updates)', { error: err.message });
+  }
 
   if (!autoUpdater || !isAutoUpdateEnabled) {
     logger.info('Auto-updater disabled', {
@@ -302,7 +312,7 @@ function setupAutoUpdater() {
     return;
   }
 
-  logger.info('Setting up auto-updater (STAGED MODE)', { config: autoUpdaterConfig });
+  logger.info('Setting up auto-updater (STAGED MODE + PATCH)', { config: autoUpdaterConfig });
 
   // STAGED UPDATE: User must confirm before download
   // This prevents the race condition where download finishes before UI is ready
@@ -429,6 +439,68 @@ ipcMain.handle('check-for-updates', async () => {
   } catch (error) {
     return { success: false, error: error.message };
   }
+});
+
+// ==================== PATCH UPDATE IPC HANDLERS ====================
+
+/**
+ * IPC: Check for patch updates (LAUNCHER-style)
+ * Returns available components that need updating without downloading full installer
+ */
+ipcMain.handle('check-patch-update', async () => {
+  try {
+    const result = await checkForPatchUpdate();
+    logger.info('Patch update check result', {
+      available: result.available,
+      reason: result.reason,
+      version: result.version,
+      updateCount: result.updates?.length,
+      totalSize: result.totalSize
+    });
+    return { success: true, ...result };
+  } catch (error) {
+    logger.error('Patch update check failed', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * IPC: Download and apply patch updates
+ * Only downloads changed components (not full installer)
+ */
+ipcMain.handle('apply-patch-update', async (event, updates) => {
+  try {
+    logger.info('Starting patch update', { components: updates.map(u => u.name) });
+
+    const result = await applyPatchUpdate(updates, (progress) => {
+      // Send progress to renderer
+      mainWindow?.webContents.send('patch-update-progress', progress);
+    });
+
+    if (result.failed.length > 0) {
+      logger.warning('Patch update partially failed', { failed: result.failed });
+      return { success: false, partial: true, ...result };
+    }
+
+    logger.success('Patch update complete', { updated: result.success });
+    return { success: true, ...result };
+  } catch (error) {
+    logger.error('Patch update failed', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * IPC: Get update preference (patch vs full)
+ * Returns whether patch updates should be tried first
+ */
+ipcMain.handle('get-update-mode', async () => {
+  // Patch updates are preferred, fallback to full if not available
+  return {
+    preferPatch: true,
+    patchAvailable: true, // Will be set based on manifest availability
+    fullInstallerSize: 624 * 1024 * 1024 // ~624 MB
+  };
 });
 
 // ==================== REPAIR IPC HANDLERS ====================
