@@ -343,6 +343,98 @@ async def move_file_to_folder(
     return {"success": True, "file_id": file_id, "folder_id": folder_id}
 
 
+@router.post("/files/{file_id}/copy")
+async def copy_file(
+    file_id: int,
+    target_project_id: Optional[int] = None,
+    target_folder_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Copy a file to a different location.
+    EXPLORER-001: Ctrl+C/V file operations.
+
+    If target_project_id is None, copies to same project.
+    If target_folder_id is None, copies to project root.
+    Auto-renames if duplicate name exists.
+    """
+    # Get source file
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.id == file_id)
+    )
+    source_file = result.scalar_one_or_none()
+
+    if not source_file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Check access permission for source
+    if not await can_access_project(db, source_file.project_id, current_user):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Determine target project
+    dest_project_id = target_project_id or source_file.project_id
+
+    # Check access permission for destination
+    if target_project_id and target_project_id != source_file.project_id:
+        if not await can_access_project(db, target_project_id, current_user):
+            raise HTTPException(status_code=404, detail="Destination project not found")
+
+    # Generate unique name for copy
+    from server.tools.ldm.utils.naming import generate_unique_name
+    new_name = await generate_unique_name(
+        db, LDMFile, source_file.name,
+        project_id=dest_project_id,
+        folder_id=target_folder_id
+    )
+
+    # Create copy of file metadata
+    new_file = LDMFile(
+        name=new_name,
+        original_filename=source_file.original_filename,
+        format=source_file.format,
+        source_language=source_file.source_language,
+        target_language=source_file.target_language,
+        row_count=source_file.row_count,
+        project_id=dest_project_id,
+        folder_id=target_folder_id,
+        extra_data=source_file.extra_data
+    )
+    db.add(new_file)
+    await db.flush()
+
+    # Copy all rows
+    from server.database.models import LDMRow
+    result = await db.execute(
+        select(LDMRow).where(LDMRow.file_id == file_id)
+    )
+    source_rows = result.scalars().all()
+
+    for row in source_rows:
+        new_row = LDMRow(
+            file_id=new_file.id,
+            row_num=row.row_num,
+            string_id=row.string_id,
+            source=row.source,
+            target=row.target,
+            memo=row.memo,
+            status=row.status,
+            extra_data=row.extra_data
+        )
+        db.add(new_row)
+
+    await db.commit()
+    await db.refresh(new_file)
+
+    logger.success(f"File copied: {source_file.name} -> {new_file.name}, id={new_file.id}")
+    return {
+        "success": True,
+        "new_file_id": new_file.id,
+        "name": new_file.name,
+        "row_count": len(source_rows)
+    }
+
+
 @router.patch("/files/{file_id}/rename")
 async def rename_file(
     file_id: int,

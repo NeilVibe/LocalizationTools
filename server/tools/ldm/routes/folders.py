@@ -235,6 +235,215 @@ async def move_folder(
     return {"success": True, "folder_id": folder_id, "parent_folder_id": parent_folder_id}
 
 
+@router.post("/folders/{folder_id}/copy")
+async def copy_folder(
+    folder_id: int,
+    target_project_id: Optional[int] = None,
+    target_parent_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Copy a folder and all its contents to a different location.
+    EXPLORER-001: Ctrl+C/V folder operations.
+
+    If target_project_id is None, copies to same project.
+    If target_parent_id is None, copies to project root.
+    Auto-renames if duplicate name exists.
+    """
+    # Get source folder
+    result = await db.execute(
+        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
+            LDMFolder.id == folder_id
+        )
+    )
+    source_folder = result.scalar_one_or_none()
+
+    if not source_folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    if not await can_access_project(db, source_folder.project_id, current_user):
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Determine target project
+    dest_project_id = target_project_id or source_folder.project_id
+
+    # Check access permission for destination
+    if target_project_id and target_project_id != source_folder.project_id:
+        if not await can_access_project(db, target_project_id, current_user):
+            raise HTTPException(status_code=404, detail="Destination project not found")
+
+    # Generate unique name for copy
+    from server.tools.ldm.utils.naming import generate_unique_name
+    new_name = await generate_unique_name(
+        db, LDMFolder, source_folder.name,
+        project_id=dest_project_id,
+        parent_id=target_parent_id
+    )
+
+    # Create copy of folder
+    new_folder = LDMFolder(
+        name=new_name,
+        project_id=dest_project_id,
+        parent_id=target_parent_id
+    )
+    db.add(new_folder)
+    await db.flush()
+
+    # Copy all files in this folder
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.folder_id == folder_id)
+    )
+    files = result.scalars().all()
+
+    copied_files = 0
+    for file in files:
+        # Generate unique name for each file
+        file_name = await generate_unique_name(
+            db, LDMFile, file.name,
+            project_id=dest_project_id,
+            folder_id=new_folder.id
+        )
+
+        new_file = LDMFile(
+            name=file_name,
+            original_filename=file.original_filename,
+            format=file.format,
+            source_language=file.source_language,
+            target_language=file.target_language,
+            row_count=file.row_count,
+            project_id=dest_project_id,
+            folder_id=new_folder.id,
+            extra_data=file.extra_data
+        )
+        db.add(new_file)
+        await db.flush()
+
+        # Copy rows for this file
+        from server.database.models import LDMRow
+        result = await db.execute(
+            select(LDMRow).where(LDMRow.file_id == file.id)
+        )
+        rows = result.scalars().all()
+        for row in rows:
+            new_row = LDMRow(
+                file_id=new_file.id,
+                row_num=row.row_num,
+                string_id=row.string_id,
+                source=row.source,
+                target=row.target,
+                memo=row.memo,
+                status=row.status,
+                extra_data=row.extra_data
+            )
+            db.add(new_row)
+        copied_files += 1
+
+    # Recursively copy subfolders
+    result = await db.execute(
+        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
+    )
+    subfolders = result.scalars().all()
+
+    for subfolder in subfolders:
+        # Recursive copy (simplified - calls this same logic)
+        await _copy_folder_recursive(db, subfolder.id, dest_project_id, new_folder.id, current_user)
+
+    await db.commit()
+    await db.refresh(new_folder)
+
+    logger.success(f"Folder copied: {source_folder.name} -> {new_folder.name}, id={new_folder.id}, files={copied_files}")
+    return {
+        "success": True,
+        "new_folder_id": new_folder.id,
+        "name": new_folder.name,
+        "files_copied": copied_files
+    }
+
+
+async def _copy_folder_recursive(db, folder_id: int, dest_project_id: int, dest_parent_id: int, current_user: dict):
+    """Helper function to recursively copy folder contents."""
+    from server.tools.ldm.utils.naming import generate_unique_name
+    from server.database.models import LDMRow
+
+    result = await db.execute(
+        select(LDMFolder).where(LDMFolder.id == folder_id)
+    )
+    source_folder = result.scalar_one_or_none()
+    if not source_folder:
+        return
+
+    # Generate unique name
+    new_name = await generate_unique_name(
+        db, LDMFolder, source_folder.name,
+        project_id=dest_project_id,
+        parent_id=dest_parent_id
+    )
+
+    # Create copy
+    new_folder = LDMFolder(
+        name=new_name,
+        project_id=dest_project_id,
+        parent_id=dest_parent_id
+    )
+    db.add(new_folder)
+    await db.flush()
+
+    # Copy files
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.folder_id == folder_id)
+    )
+    files = result.scalars().all()
+
+    for file in files:
+        file_name = await generate_unique_name(
+            db, LDMFile, file.name,
+            project_id=dest_project_id,
+            folder_id=new_folder.id
+        )
+
+        new_file = LDMFile(
+            name=file_name,
+            original_filename=file.original_filename,
+            format=file.format,
+            source_language=file.source_language,
+            target_language=file.target_language,
+            row_count=file.row_count,
+            project_id=dest_project_id,
+            folder_id=new_folder.id,
+            extra_data=file.extra_data
+        )
+        db.add(new_file)
+        await db.flush()
+
+        # Copy rows
+        result = await db.execute(
+            select(LDMRow).where(LDMRow.file_id == file.id)
+        )
+        rows = result.scalars().all()
+        for row in rows:
+            new_row = LDMRow(
+                file_id=new_file.id,
+                row_num=row.row_num,
+                string_id=row.string_id,
+                source=row.source,
+                target=row.target,
+                memo=row.memo,
+                status=row.status,
+                extra_data=row.extra_data
+            )
+            db.add(new_row)
+
+    # Copy subfolders
+    result = await db.execute(
+        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
+    )
+    subfolders = result.scalars().all()
+
+    for subfolder in subfolders:
+        await _copy_folder_recursive(db, subfolder.id, dest_project_id, new_folder.id, current_user)
+
+
 @router.delete("/folders/{folder_id}", response_model=DeleteResponse)
 async def delete_folder(
     folder_id: int,

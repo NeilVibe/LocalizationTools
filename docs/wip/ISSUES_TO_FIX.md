@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-04 (Session 21 Continued) | **Build:** 444 | **Open:** 4
+**Last Updated:** 2026-01-04 (Session 21 Complete) | **Build:** 447 | **Open:** 2
 
 ---
 
@@ -8,54 +8,14 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 4 |
-| **FIXED/CLOSED** | 88 |
+| **OPEN** | 2 |
+| **FIXED/CLOSED** | 90 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
-## OPEN ISSUES - SESSION 20
-
-### SYNC-008: TM Sync Not Supported
-
-- **Reported:** 2026-01-03 (Session 20)
-- **Severity:** MEDIUM
-- **Status:** OPEN
-- **Component:** sync.py, offline.py
-
-**Problem:** TM should auto-sync when file/project/folder syncs.
-
-**What's needed:**
-1. `_sync_tm_to_offline()` function - sync TM entries to SQLite
-2. Auto-trigger TM sync when parent entity syncs
-3. TM merge: Last-write-wins (same as rows, by timestamp)
-
-**TM linkage:** `ldm_tm_assignment` table links TMs to Platform/Project/Folder.
-
----
-
-### DB-002: Duplicate Name Rules (Per-Parent Unique)
-
-- **Reported:** 2026-01-04 (Session 21)
-- **Severity:** LOW
-- **Status:** OPEN (requires DB refresh)
-- **Component:** models.py, route validation
-
-**Current:** Globally unique names (`UniqueConstraint("name")`)
-**Proposed:** Per-parent unique (`UniqueConstraint("parent_id", "name")`)
-
-**What's needed:**
-1. Change DB constraints in models.py:
-   - `LDMFile`: `UniqueConstraint("folder_id", "name")`
-   - `LDMFolder`: `UniqueConstraint("project_id", "parent_id", "name")`
-   - `LDMProject`: `UniqueConstraint("platform_id", "name")`
-   - `LDMPlatform`: Keep globally unique (top level)
-2. Update route validation to check per-parent uniqueness
-3. Add auto-rename logic (XXX_1, XXX_2) when duplicate detected
-4. DB refresh (no migration - just fresh data)
-
----
+## OPEN ISSUES - SESSION 21
 
 ### EXPLORER-001: Ctrl+C/V and Ctrl+X/V File Operations
 
@@ -76,36 +36,59 @@
 
 ---
 
-### ~~P3-PHASE4-6: Conflict Resolution & Polish~~ → MOSTLY DONE
+### P3-PHASE5: Offline Storage Fallback Container
 
-- **Reported:** 2026-01-03 (Session 20)
-- **Revised:** 2026-01-04 (Session 21)
-- **Severity:** LOW (was MEDIUM)
-- **Status:** ✅ MOSTLY DONE
+- **Reported:** 2026-01-04 (Session 21)
+- **Severity:** LOW (edge case)
+- **Status:** OPEN
+- **Component:** FilesPage.svelte, sync.js
 
-**What the doc said:** Complex conflict resolution UI with dialogs.
+**Scenario:** User creates file while offline with no matching server path, or server path was deleted.
 
-**Reality:** `merge_row()` already implements **last-write-wins** by timestamp:
-```python
-if server_updated > local_updated:
-    # Server wins automatically
-else:
-    # Local wins, will push later
-```
-
-**Remaining edge cases (LOW PRIORITY):**
-- "Reviewed" row protection (don't auto-overwrite reviewed translations)
-- New file path selection (only for files created offline - rare use case)
-- **Component:** sync.js, sync.py
-
-**Problem:** Phases 4-6 of P3 Offline/Online Mode not implemented:
-- Phase 4: Conflict resolution UI
-- Phase 5: File dialog path selection
-- Phase 6: Polish & edge cases
+**Solution (documented in OFFLINE_ONLINE_MODE.md):**
+- Create local "Offline Storage" container
+- Orphaned files auto-placed there on sync
+- User can Ctrl+X/V to move to proper location
 
 ---
 
 ## FIXED IN SESSION 21
+
+### SYNC-008: TM Sync Not Supported ✅ FIXED
+
+- **Reported:** 2026-01-03 (Session 20)
+- **Fixed:** 2026-01-04 (Build 447)
+- **Severity:** MEDIUM
+- **Status:** ✅ FIXED
+
+**Solution:** Implemented `_sync_tm_to_offline()` with:
+- TM metadata sync to `offline_tms` table
+- TM entries sync to `offline_tm_entries` table
+- Last-write-wins merge by timestamp
+- Auto-sync when parent entity (project/folder) syncs
+
+**Files:** `sync.py`, `offline.py`, `offline_schema.sql`
+
+---
+
+### DB-002: Per-Parent Unique Names ✅ FIXED
+
+- **Reported:** 2026-01-04 (Session 21)
+- **Fixed:** 2026-01-04 (Build 447)
+- **Severity:** LOW
+- **Status:** ✅ FIXED
+
+**Solution:**
+- Changed UniqueConstraints to per-parent in models.py
+- Created `server/tools/ldm/utils/naming.py` with `generate_unique_name()`
+- Auto-rename duplicates to `XXX_1`, `XXX_2`, etc.
+- Updated all route validation (files, folders, projects)
+
+**Files:** `models.py`, `naming.py`, `files.py`, `folders.py`, `projects.py`
+
+---
+
+## FIXED IN SESSION 21 (Previous)
 
 ### DB-001: Database Needs Full Cleanup - FIXED
 

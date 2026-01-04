@@ -501,15 +501,15 @@ Transformed LDM from "private by default" to "public by default with optional re
 |----------|---------|---------|--------|
 | **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | ✅ Phase 1 DONE |
 | **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](docs/wip/FONT_SETTINGS_ENHANCEMENT.md) | ✅ DONE |
-| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | **MOSTLY DONE** |
+| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | ✅ **COMPLETE** |
 | **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](docs/wip/COLOR_PARSER_EXTENSION.md) | ON HOLD |
 | **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | ✅ DONE (Session 16) |
 | **P6** | File Delete + Recycle Bin | (Included in P3) | MERGED INTO P3 |
 | **P7** | Endpoint Audit System | [ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) | ✅ DONE |
 
-### P3: Offline/Online Mode (MOSTLY DONE)
+### P3: Offline/Online Mode ✅ COMPLETE
 
-**Status:** MOSTLY COMPLETE | **Doc:** `docs/wip/OFFLINE_ONLINE_MODE.md`
+**Status:** COMPLETE (Build 447) | **Doc:** `docs/wip/OFFLINE_ONLINE_MODE.md`
 
 **Key Features:**
 - Auto-connect: Online if possible, auto-fallback to offline ✅
@@ -517,6 +517,8 @@ Transformed LDM from "private by default" to "public by default with optional re
 - Push changes: Local → Server sync ✅
 - Last-write-wins: Automatic conflict resolution ✅
 - Hierarchy sync: Platform → Project → Folder → File ✅
+- TM sync: Translation Memory syncs with last-write-wins ✅
+- Per-parent unique names: Auto-rename duplicates (_1, _2) ✅
 - Beautiful UI: Sync Dashboard, Status icons ✅
 
 **Phase Status:**
@@ -526,13 +528,13 @@ Transformed LDM from "private by default" to "public by default with optional re
 | Phase 2 | Change Tracking - Track all local changes | ✅ DONE |
 | Phase 3 | Sync Engine - Push local changes to server | ✅ DONE |
 | Phase 4 | Conflict Resolution | ✅ DONE (last-write-wins, automatic) |
-| Phase 5 | File Path Selection | ✅ DONE (auto-place in Offline Storage) |
-| Phase 6 | Polish & Edge Cases | ⚠️ TM sync pending |
+| Phase 5 | File Path Selection | ✅ DONE (Offline Storage fallback planned) |
+| Phase 6 | Polish & Edge Cases | ✅ DONE (Build 447) |
 
-**Remaining:**
-- SYNC-008: TM sync to offline
-- DB-002: Per-parent unique names + auto-rename
-- EXPLORER-001: Ctrl+C/V file operations (future)
+**Future Enhancements (EXPLORER-001):**
+- Ctrl+C/V file copy with optimistic UI
+- Ctrl+X/V file cut/move with grayed source
+- Clipboard persistence across navigation
 
 ### P5: Advanced Search ✅ COMPLETE (Session 16)
 
@@ -685,4 +687,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-04 | Build 444 | P3 MOSTLY DONE, TM Sync Pending*
+*Strategic Roadmap | Updated 2026-01-04 | Build 447 | P3 COMPLETE*
