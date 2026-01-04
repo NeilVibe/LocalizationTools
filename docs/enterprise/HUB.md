@@ -78,6 +78,53 @@ pg_dump -U postgres locanext | gzip > backup.sql.gz
 | Releases | `http://SERVER_IP:3000/locanext/LocaNext/releases` |
 | API Docs | `http://SERVER_IP:8888/docs` |
 | Health | `http://SERVER_IP:8888/health` |
+| Dashboard | `http://SERVER_IP:5173` |
+
+---
+
+## Friendly Hostnames (No IP Required)
+
+Instead of remembering IP addresses, set up friendly hostnames:
+
+### Option 1: Hosts File (FREE - Per Machine)
+
+Add to hosts file on each user's PC:
+
+**Windows:** `C:\Windows\System32\drivers\etc\hosts`
+**Linux/Mac:** `/etc/hosts`
+
+```
+# LocaNext Services
+192.168.1.100    locanext
+192.168.1.100    locanext-api
+192.168.1.100    locanext-dashboard
+192.168.1.100    locanext-gitea
+```
+
+Then access via:
+- `http://locanext:8888` (API)
+- `http://locanext-dashboard:5173` (Admin Dashboard)
+- `http://locanext-gitea:3000` (Gitea)
+
+### Option 2: Local DNS (FREE - Network-Wide)
+
+Configure on company router/DNS server. Works for all devices automatically.
+
+| Hostname | Points To | Port |
+|----------|-----------|------|
+| `locanext.company.local` | SERVER_IP | 8888 |
+| `dashboard.company.local` | SERVER_IP | 5173 |
+| `gitea.company.local` | SERVER_IP | 3000 |
+
+### Option 3: Domain (Paid - Internet Access)
+
+Only needed if accessing from outside company network:
+
+| What | Cost | Use Case |
+|------|------|----------|
+| Domain (e.g., `locanext.company.com`) | ~$10-15/year | Remote access, VPN users |
+
+**Recommendation:** Use hosts file for small teams (<20), local DNS for larger deployments.
 
 ---
 
