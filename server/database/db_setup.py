@@ -554,8 +554,27 @@ def setup_database(
         if len(counts) > 5:
             logger.info(f"  ... and {len(counts) - 5} more tables")
 
-        # P33: Create LOCAL user for SQLite offline mode
-        # This user enables auto-login without credentials in offline mode
+        # P33/P9: Create OFFLINE user for offline mode
+        # This user enables "Start Offline" from the launcher without credentials
+        # Works for both SQLite and PostgreSQL backends
+        existing_offline = SessionLocal.query(User).filter(User.username == "OFFLINE").first()
+        if not existing_offline:
+            logger.info("Creating OFFLINE user for offline mode...")
+            offline_user = User(
+                username="OFFLINE",
+                email="offline@localhost",
+                password_hash="OFFLINE_MODE_NO_PASSWORD",  # Never used - token-based auth
+                full_name="Offline User",
+                role="admin",
+                is_active=True
+            )
+            SessionLocal.add(offline_user)
+            SessionLocal.commit()
+            logger.success(f"OFFLINE user created (user_id={offline_user.user_id}) - launcher offline mode enabled")
+        else:
+            logger.info(f"OFFLINE user already exists (user_id={existing_offline.user_id})")
+
+        # Also keep LOCAL user for SQLite backward compatibility
         if use_sqlite:
             existing_local = SessionLocal.query(User).filter(User.username == "LOCAL").first()
             if not existing_local:
