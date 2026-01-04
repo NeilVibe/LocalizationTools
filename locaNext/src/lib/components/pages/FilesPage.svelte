@@ -250,7 +250,8 @@
   }
 
   // Load project contents (folders + files)
-  async function loadProjectContents(projectId) {
+  // preservePath: if true, append project to existing path (for platform > project navigation)
+  async function loadProjectContents(projectId, preservePath = false) {
     loading = true;
     try {
       const response = await fetch(`${API_BASE}/api/ldm/projects/${projectId}/tree`, {
@@ -270,9 +271,16 @@
           updated_at: item.updated_at
         }));
         currentItems = items;
-        currentPath = [{ type: 'project', id: projectId, name: data.project?.name || 'Project' }];
+        const projectCrumb = { type: 'project', id: projectId, name: data.project?.name || 'Project' };
+        if (preservePath) {
+          // Append project to existing path (keeps platform context)
+          currentPath = [...currentPath, projectCrumb];
+        } else {
+          // Replace path (direct project access from root)
+          currentPath = [projectCrumb];
+        }
         selectedProjectId = projectId;
-        logger.info('Loaded project contents', { projectId, items: items.length });
+        logger.info('Loaded project contents', { projectId, items: items.length, preservePath });
       }
     } catch (err) {
       logger.error('Failed to load project contents', { error: err.message });
@@ -281,7 +289,7 @@
     }
   }
 
-  // Load folder contents
+  // Load folder contents (navigates INTO folder - appends to path)
   async function loadFolderContents(folderId, folderName) {
     loading = true;
     try {
@@ -305,6 +313,28 @@
     }
   }
 
+  // Reload current folder contents (refresh only - does NOT modify path)
+  async function reloadCurrentFolderContents(folderId) {
+    loading = true;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/folders/${folderId}`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        currentItems = [
+          ...(data.subfolders || []).map(f => ({ type: 'folder', id: f.id, name: f.name, file_count: f.file_count || 0 })),
+          ...(data.files || []).map(f => ({ type: 'file', id: f.id, name: f.name, format: f.format, row_count: f.row_count }))
+        ];
+        logger.info('Reloaded folder contents', { folderId, items: currentItems.length });
+      }
+    } catch (err) {
+      logger.error('Failed to reload folder contents', { error: err.message });
+    } finally {
+      loading = false;
+    }
+  }
+
   // Navigate to breadcrumb
   function navigateTo(index) {
     if (index < 0) {
@@ -317,8 +347,10 @@
       // Go to project root
       loadProjectContents(currentPath[0].id);
     } else if (index === 1 && currentPath[0]?.type === 'platform' && currentPath[1]?.type === 'project') {
-      // Go to project inside platform
-      loadProjectContents(currentPath[1].id);
+      // Go to project inside platform - preserve platform context
+      const projectId = currentPath[1].id;
+      currentPath = [currentPath[0]]; // Keep platform only
+      loadProjectContents(projectId, true); // preservePath = true to append project
     } else {
       // Go to specific folder
       const target = currentPath[index];
@@ -474,14 +506,15 @@
 
       logger.success('Items moved', { count: items.length, target: targetFolder.name });
 
-      // Refresh current view
+      // Refresh current view (stay in context)
       if (currentPath.length === 0) {
-        await loadProjects();
+        await loadRoot();
       } else if (currentPath.length === 1) {
         await loadProjectContents(selectedProjectId);
       } else {
+        // Inside a folder - reload without modifying path
         const currentFolder = currentPath[currentPath.length - 1];
-        await loadFolderContents(currentFolder.id, currentFolder.name);
+        await reloadCurrentFolderContents(currentFolder.id);
       }
     } catch (err) {
       logger.error('Move error', { error: err.message });
@@ -527,13 +560,9 @@
     if (item.type === 'platform') {
       loadPlatformContents(item.id, item.name);
     } else if (item.type === 'project') {
-      // If inside a platform, include platform in path
-      if (currentPath.length > 0 && currentPath[0].type === 'platform') {
-        // Keep platform in path, add project
-        const platformCrumb = currentPath[0];
-        currentPath = [platformCrumb];
-      }
-      loadProjectContents(item.id);
+      // If inside a platform, preserve platform in breadcrumb path
+      const insidePlatform = currentPath.length > 0 && currentPath[0].type === 'platform';
+      loadProjectContents(item.id, insidePlatform);
     } else if (item.type === 'folder') {
       loadFolderContents(item.id, item.name);
     } else if (item.type === 'recycle-bin') {
@@ -1108,84 +1137,164 @@
 
   // ============== Create/Upload Operations ==============
 
-  // Create Project
+  /**
+   * OPTIMISTIC UI: Project appears immediately, rollback on failure
+   */
   async function createProject() {
     if (!newProjectName.trim()) return;
+
+    const projectName = newProjectName.trim();
+    const tempId = `temp_project_${Date.now()}`;
+
+    // OPTIMISTIC UI: Add project immediately with temp ID
+    const optimisticProject = {
+      type: 'project',
+      id: tempId,
+      name: projectName,
+      file_count: 0,
+      platform_id: selectedPlatformId,
+      _optimistic: true
+    };
+    currentItems = [...currentItems, optimisticProject];
+
+    // Close modal immediately for snappy feel
+    showCreateProjectModal = false;
+    newProjectName = '';
+
     try {
+      // Build request body - include platform_id if we're inside a platform
+      const requestBody = { name: projectName };
+      if (selectedPlatformId) {
+        requestBody.platform_id = selectedPlatformId;
+      }
+
       const response = await fetch(`${API_BASE}/api/ldm/projects`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newProjectName.trim() })
+        body: JSON.stringify(requestBody)
       });
+
       if (response.ok) {
-        logger.success('Project created', { name: newProjectName });
-        showCreateProjectModal = false;
-        newProjectName = '';
-        await loadProjects();
+        logger.success('Project created', { name: projectName, platformId: selectedPlatformId });
+        // Refresh to get real ID from server
+        if (selectedPlatformId && currentPath.length > 0 && currentPath[0].type === 'platform') {
+          await loadPlatformContents(selectedPlatformId, currentPath[0].name);
+        } else {
+          await loadRoot();
+        }
       } else {
+        // OPTIMISTIC UI: Rollback on failure
+        currentItems = currentItems.filter(item => item.id !== tempId);
         const error = await response.json();
         logger.error('Failed to create project', { error: error.detail });
       }
     } catch (err) {
+      // OPTIMISTIC UI: Rollback on error
+      currentItems = currentItems.filter(item => item.id !== tempId);
       logger.error('Error creating project', { error: err.message });
     }
   }
 
-  // Create Folder
+  /**
+   * OPTIMISTIC UI: Folder appears immediately, rollback on failure
+   */
   async function createFolder() {
     if (!newFolderName.trim() || !selectedProjectId) return;
+
+    const folderName = newFolderName.trim();
     const parentFolderId = currentPath.length > 1 ? currentPath[currentPath.length - 1].id : null;
+    const tempId = `temp_folder_${Date.now()}`;
+
+    // OPTIMISTIC UI: Add folder immediately with temp ID
+    const optimisticFolder = {
+      type: 'folder',
+      id: tempId,
+      name: folderName,
+      file_count: 0,
+      _optimistic: true
+    };
+    currentItems = [...currentItems, optimisticFolder];
+
+    // Close modal immediately for snappy feel
+    showCreateFolderModal = false;
+    newFolderName = '';
 
     try {
       const response = await fetch(`${API_BASE}/api/ldm/folders`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newFolderName.trim(),
+          name: folderName,
           project_id: selectedProjectId,
           parent_id: parentFolderId
         })
       });
+
       if (response.ok) {
-        logger.success('Folder created', { name: newFolderName });
-        showCreateFolderModal = false;
-        newFolderName = '';
-        // Refresh current view
+        logger.success('Folder created', { name: folderName });
+        // Refresh to get real ID from server
         if (currentPath.length === 1) {
           await loadProjectContents(selectedProjectId);
         } else {
           const currentFolder = currentPath[currentPath.length - 1];
-          currentPath = currentPath.slice(0, -1);
-          await loadFolderContents(currentFolder.id, currentFolder.name);
+          await reloadCurrentFolderContents(currentFolder.id);
         }
       } else {
+        // OPTIMISTIC UI: Rollback on failure
+        currentItems = currentItems.filter(item => item.id !== tempId);
         const error = await response.json();
         logger.error('Failed to create folder', { error: error.detail });
       }
     } catch (err) {
+      // OPTIMISTIC UI: Rollback on error
+      currentItems = currentItems.filter(item => item.id !== tempId);
       logger.error('Error creating folder', { error: err.message });
     }
   }
 
-  // Create Platform
+  /**
+   * OPTIMISTIC UI: Platform appears immediately, rollback on failure
+   */
   async function createPlatform() {
     if (!newPlatformName.trim()) return;
+
+    const platformName = newPlatformName.trim();
+    const tempId = `temp_platform_${Date.now()}`;
+
+    // OPTIMISTIC UI: Add platform immediately with temp ID
+    const optimisticPlatform = {
+      type: 'platform',
+      id: tempId,
+      name: platformName,
+      project_count: 0,
+      _optimistic: true
+    };
+    currentItems = [...currentItems, optimisticPlatform];
+
+    // Close modal immediately for snappy feel
+    showCreatePlatformModal = false;
+    newPlatformName = '';
+
     try {
       const response = await fetch(`${API_BASE}/api/ldm/platforms`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newPlatformName.trim() })
+        body: JSON.stringify({ name: platformName })
       });
+
       if (response.ok) {
-        logger.success('Platform created', { name: newPlatformName });
-        showCreatePlatformModal = false;
-        newPlatformName = '';
+        logger.success('Platform created', { name: platformName });
+        // Refresh to get real ID from server
         await loadRoot();
       } else {
+        // OPTIMISTIC UI: Rollback on failure
+        currentItems = currentItems.filter(item => item.id !== tempId);
         const error = await response.json();
         logger.error('Failed to create platform', { error: error.detail });
       }
     } catch (err) {
+      // OPTIMISTIC UI: Rollback on error
+      currentItems = currentItems.filter(item => item.id !== tempId);
       logger.error('Error creating platform', { error: err.message });
     }
   }
@@ -1266,13 +1375,13 @@
       }
     }
 
-    // Refresh current view
+    // Refresh current view (stay in context)
     if (currentPath.length === 1) {
       await loadProjectContents(selectedProjectId);
     } else if (currentPath.length > 1) {
+      // Inside a folder - reload without modifying path
       const currentFolder = currentPath[currentPath.length - 1];
-      currentPath = currentPath.slice(0, -1);
-      await loadFolderContents(currentFolder.id, currentFolder.name);
+      await reloadCurrentFolderContents(currentFolder.id);
     }
 
     if (fileInput) fileInput.value = '';
@@ -1918,8 +2027,14 @@
     } else if (currentPath.length === 1) {
       await loadProjectContents(selectedProjectId);
     } else {
-      const currentFolder = currentPath[currentPath.length - 1];
-      await loadFolderContents(currentFolder.id, currentFolder.name);
+      // Length > 1: could be project or folder at end
+      const lastItem = currentPath[currentPath.length - 1];
+      if (lastItem.type === 'folder') {
+        // Use reload (doesn't modify path) instead of load (appends to path)
+        await reloadCurrentFolderContents(lastItem.id);
+      } else if (lastItem.type === 'project') {
+        await loadProjectContents(lastItem.id);
+      }
     }
   }
 

@@ -207,6 +207,39 @@ contextBridge.exposeInMainWorld('electronUpdate', {
     ipcRenderer.removeAllListeners('update-progress');
     ipcRenderer.removeAllListeners('update-downloaded');
     ipcRenderer.removeAllListeners('update-error');
+    ipcRenderer.removeAllListeners('patch-update-progress');
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PATCH UPDATE API (LAUNCHER-style delta updates)
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Check for patch updates (component-based delta)
+   * Returns which components need updating and total size
+   * @returns {Promise<{success, available, version, updates, totalSize, reason, error}>}
+   */
+  checkPatchUpdate: () => ipcRenderer.invoke('check-patch-update'),
+
+  /**
+   * Apply patch updates (download and install changed components)
+   * @param {Array} updates - Array of update objects from checkPatchUpdate
+   * @returns {Promise<{success, results, error}>}
+   */
+  applyPatchUpdate: (updates) => ipcRenderer.invoke('apply-patch-update', updates),
+
+  /**
+   * Get update mode preference (patch vs full)
+   * @returns {Promise<{mode: 'patch'|'full', patchAvailable: boolean}>}
+   */
+  getUpdateMode: () => ipcRenderer.invoke('get-update-mode'),
+
+  /**
+   * Listen for patch update progress events
+   * @param {function} callback - Receives { component, componentProgress, overallProgress, transferred, total }
+   */
+  onPatchProgress: (callback) => {
+    ipcRenderer.on('patch-update-progress', (event, progress) => callback(progress));
   }
 });
 
