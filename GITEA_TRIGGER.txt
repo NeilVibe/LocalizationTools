@@ -121,3 +121,4 @@ Build 447: Relax test assertion
 Build 448: EXPLORER-001 - Ctrl+C/V/X file operations
 Build 450: Dashboard Overhaul Plan + P3-PHASE5
 Build QA
+Build 452: LAUNCHER-style patch update system
