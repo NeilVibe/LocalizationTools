@@ -328,6 +328,61 @@ sudo ufw allow from 10.10.100.0/24 to any port 5432
 
 ---
 
+## Friendly Hostnames (DNS Configuration)
+
+Use hostnames instead of IP addresses for easier access.
+
+### Option 1: Company DNS Server
+
+Add DNS records on your internal DNS server:
+
+| Hostname | Type | Points To |
+|----------|------|-----------|
+| `locanext.company.local` | A | 10.10.30.50 |
+| `dashboard.company.local` | A | 10.10.30.50 |
+| `gitea.company.local` | A | 10.10.30.50 |
+
+Users access via: `http://locanext.company.local:8888`
+
+### Option 2: Hosts File (Per Machine)
+
+For small deployments, add to each machine's hosts file:
+
+**Windows:** `C:\Windows\System32\drivers\etc\hosts`
+**Linux/Mac:** `/etc/hosts`
+
+```
+# LocaNext Services
+10.10.30.50    locanext
+10.10.30.50    dashboard
+10.10.30.50    gitea
+```
+
+### Option 3: Group Policy (Windows Domain)
+
+For Windows domains, deploy hosts entries via Group Policy:
+
+1. Create a batch script:
+   ```batch
+   echo 10.10.30.50    locanext >> C:\Windows\System32\drivers\etc\hosts
+   echo 10.10.30.50    dashboard >> C:\Windows\System32\drivers\etc\hosts
+   echo 10.10.30.50    gitea >> C:\Windows\System32\drivers\etc\hosts
+   ```
+
+2. Deploy via Group Policy > Computer Configuration > Scripts > Startup
+
+### Benefits
+
+| Method | Scope | Maintenance |
+|--------|-------|-------------|
+| DNS Server | All devices | Update once, applies everywhere |
+| Hosts File | Per machine | Must update each machine |
+| Group Policy | Windows domain | Automated, centralized |
+
+**Recommendation:** Use company DNS if available, otherwise Group Policy for Windows domains.
+
+---
+
 ## Emergency: Block Specific IP
 
 If compromised machine detected:
