@@ -13,7 +13,7 @@
    */
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { Modal, TextInput, Select, SelectItem, TextArea, ProgressBar, InlineLoading } from 'carbon-components-svelte';
-  import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, CloudDownload, Edit, TrashCan, Merge, Application, Archive, Locked } from 'carbon-icons-svelte';
+  import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, CloudDownload, Edit, TrashCan, Merge, Application, Archive, Locked, Copy, Cut } from 'carbon-icons-svelte';
   import ExplorerGrid from '$lib/components/ldm/ExplorerGrid.svelte';
   import PretranslateModal from '$lib/components/ldm/PretranslateModal.svelte';
   import InputModal from '$lib/components/common/InputModal.svelte';
@@ -25,6 +25,7 @@
   import { user } from '$lib/stores/app.js';
   import AccessControl from '$lib/components/admin/AccessControl.svelte';
   import { subscribeForOffline, unsubscribeFromOffline, isSubscribed, autoSyncFileOnOpen, connectionMode as syncConnectionMode } from '$lib/stores/sync.js';
+  import { clipboard, copyToClipboard, cutToClipboard, clearClipboard, getClipboard, isItemCut } from '$lib/stores/clipboard.js';
 
   const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
@@ -99,6 +100,15 @@
 
   // Check if current user is admin
   let isAdmin = $derived($user?.role === 'admin' || $user?.role === 'superadmin');
+
+  // Clipboard reactive state
+  let clipboardItems = $derived($clipboard.items);
+  let clipboardOperation = $derived($clipboard.operation);
+
+  // Check if item is cut (for visual feedback)
+  function checkItemCut(itemId) {
+    return isItemCut(itemId);
+  }
 
   // ============== Navigation ==============
 
@@ -1079,6 +1089,166 @@
     }
   }
 
+  // ============== Clipboard Operations (EXPLORER-001) ==============
+
+  /**
+   * Handle copy operation (Ctrl+C)
+   */
+  function handleCopy() {
+    const itemsToCopy = currentItems.filter(item => selectedIds.includes(item.id));
+    if (itemsToCopy.length === 0 && selectedItem) {
+      itemsToCopy.push(selectedItem);
+    }
+    if (itemsToCopy.length > 0) {
+      copyToClipboard(itemsToCopy);
+      logger.info('Copied to clipboard', { count: itemsToCopy.length, operation: 'copy' });
+    }
+  }
+
+  /**
+   * Handle cut operation (Ctrl+X)
+   */
+  function handleCut() {
+    const itemsToCut = currentItems.filter(item => selectedIds.includes(item.id));
+    if (itemsToCut.length === 0 && selectedItem) {
+      itemsToCut.push(selectedItem);
+    }
+    if (itemsToCut.length > 0) {
+      cutToClipboard(itemsToCut);
+      logger.info('Cut to clipboard', { count: itemsToCut.length, operation: 'cut' });
+    }
+  }
+
+  /**
+   * Handle paste operation (Ctrl+V)
+   * Copy: Creates duplicates with auto-rename
+   * Cut: Moves items to current location
+   */
+  async function handlePaste() {
+    const { items, operation } = getClipboard();
+    if (items.length === 0) return;
+
+    // Determine target folder/project
+    const targetFolderId = currentPath.length > 1 ? currentPath[currentPath.length - 1].id : null;
+    const targetProjectId = selectedProjectId;
+
+    if (!targetProjectId && currentPath.length > 0 && currentPath[0].type !== 'platform') {
+      logger.warning('Cannot paste here - no project context');
+      return;
+    }
+
+    try {
+      if (operation === 'cut') {
+        // Move operation
+        for (const item of items) {
+          let url;
+          if (item.type === 'file') {
+            const params = targetFolderId !== null ? `?folder_id=${targetFolderId}` : '';
+            url = `${API_BASE}/api/ldm/files/${item.id}/move${params}`;
+          } else if (item.type === 'folder') {
+            const params = targetFolderId !== null ? `?parent_folder_id=${targetFolderId}` : '';
+            url = `${API_BASE}/api/ldm/folders/${item.id}/move${params}`;
+          }
+
+          if (url) {
+            const response = await fetch(url, {
+              method: 'PATCH',
+              headers: getAuthHeaders()
+            });
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({}));
+              logger.error('Move failed', { item: item.name, error: error.detail });
+            }
+          }
+        }
+        logger.success('Items moved', { count: items.length });
+      } else if (operation === 'copy') {
+        // Copy operation
+        for (const item of items) {
+          let url;
+          let body = {};
+
+          if (item.type === 'file') {
+            url = `${API_BASE}/api/ldm/files/${item.id}/copy`;
+            body = {
+              target_project_id: targetProjectId,
+              target_folder_id: targetFolderId
+            };
+          } else if (item.type === 'folder') {
+            url = `${API_BASE}/api/ldm/folders/${item.id}/copy`;
+            body = {
+              target_project_id: targetProjectId,
+              target_parent_id: targetFolderId
+            };
+          }
+
+          if (url) {
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({}));
+              logger.error('Copy failed', { item: item.name, error: error.detail });
+            }
+          }
+        }
+        logger.success('Items copied', { count: items.length });
+      }
+
+      // Clear clipboard after paste
+      clearClipboard();
+
+      // Refresh current view
+      if (currentPath.length === 0) {
+        await loadProjects();
+      } else if (currentPath.length === 1) {
+        await loadProjectContents(selectedProjectId);
+      } else {
+        const currentFolder = currentPath[currentPath.length - 1];
+        await loadFolderContents(currentFolder.id, currentFolder.name);
+      }
+    } catch (err) {
+      logger.error('Paste error', { error: err.message });
+    }
+  }
+
+  /**
+   * Global keyboard handler for clipboard operations
+   */
+  function handleGlobalKeydown(event) {
+    // Ignore if typing in input/textarea
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+
+    // Escape clears clipboard
+    if (event.key === 'Escape') {
+      if ($clipboard.items.length > 0) {
+        clearClipboard();
+        logger.info('Clipboard cleared');
+      }
+      return;
+    }
+
+    // Ctrl/Cmd shortcuts
+    if (event.ctrlKey || event.metaKey) {
+      switch (event.key.toLowerCase()) {
+        case 'c':
+          event.preventDefault();
+          handleCopy();
+          break;
+        case 'x':
+          event.preventDefault();
+          handleCut();
+          break;
+        case 'v':
+          event.preventDefault();
+          handlePaste();
+          break;
+      }
+    }
+  }
+
   // ============== Background Menu Actions ==============
 
   function bgCreateProject() {
@@ -1124,10 +1294,13 @@
       loadProjects();
     }
     document.addEventListener('click', handleClickOutside);
+    // EXPLORER-001: Global keyboard handler for clipboard operations
+    document.addEventListener('keydown', handleGlobalKeydown);
   });
 
   onDestroy(() => {
     document.removeEventListener('click', handleClickOutside);
+    document.removeEventListener('keydown', handleGlobalKeydown);
   });
 
   // Expose methods
@@ -1167,6 +1340,19 @@
         <span>{crumb.name}</span>
       </button>
     {/each}
+
+    <!-- EXPLORER-001: Clipboard status indicator -->
+    {#if clipboardItems.length > 0}
+      <div class="clipboard-indicator">
+        {#if clipboardOperation === 'cut'}
+          <Cut size={14} />
+        {:else}
+          <Copy size={14} />
+        {/if}
+        <span>{clipboardItems.length} {clipboardOperation === 'cut' ? 'cut' : 'copied'}</span>
+        <button class="clipboard-clear" onclick={() => clearClipboard()} title="Clear clipboard (Esc)">×</button>
+      </div>
+    {/if}
   </div>
 
   <!-- Explorer Grid -->
@@ -1176,6 +1362,7 @@
       selectedId={selectedItem?.id}
       bind:selectedIds
       {loading}
+      isItemCut={checkItemCut}
       on:select={handleSelect}
       on:enterFolder={handleEnterFolder}
       on:openFile={handleOpenFile}
@@ -1195,6 +1382,12 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px" role="menu" onclick={(e) => e.stopPropagation()}>
     {#if contextMenuItem.type === 'file'}
+      <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
+      <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
+      {#if clipboardItems.length > 0}
+        <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>Paste (Ctrl+V)</button>
+      {/if}
+      <div class="context-menu-divider"></div>
       <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
       <button class="context-menu-item" onclick={downloadFile}><Download size={16} /> Download</button>
       {#if $syncConnectionMode === 'online'}
@@ -1220,6 +1413,12 @@
       <div class="context-menu-divider"></div>
       <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
     {:else if contextMenuItem.type === 'folder'}
+      <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
+      <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
+      {#if clipboardItems.length > 0}
+        <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>Paste Here (Ctrl+V)</button>
+      {/if}
+      <div class="context-menu-divider"></div>
       <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
       <button class="context-menu-item" onclick={bgUploadFile}><DocumentAdd size={16} /> Import File</button>
       <button class="context-menu-item" onclick={bgCreateFolder}><FolderAdd size={16} /> New Subfolder</button>
@@ -1271,6 +1470,12 @@
       <button class="context-menu-item" onclick={bgCreateProject}><FolderAdd size={16} /> New Project</button>
     {:else}
       <!-- Inside project/folder: upload file or create folder -->
+      {#if clipboardItems.length > 0}
+        <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>
+          Paste {clipboardItems.length} item{clipboardItems.length > 1 ? 's' : ''} (Ctrl+V)
+        </button>
+        <div class="context-menu-divider"></div>
+      {/if}
       <button class="context-menu-item" onclick={bgUploadFile}><DocumentAdd size={16} /> Upload File</button>
       <button class="context-menu-item" onclick={bgCreateFolder}><FolderAdd size={16} /> New Folder</button>
     {/if}
@@ -1459,6 +1664,47 @@
 
   :global(.breadcrumb-sep) {
     color: var(--cds-text-disabled);
+  }
+
+  /* EXPLORER-001: Clipboard status indicator */
+  .clipboard-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-left: auto;
+    padding: 0.25rem 0.625rem;
+    background: var(--cds-layer-02);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--cds-text-secondary);
+  }
+
+  .clipboard-indicator span {
+    white-space: nowrap;
+  }
+
+  .clipboard-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    margin-left: 0.25rem;
+    background: transparent;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--cds-text-secondary);
+    transition: background 0.1s ease, color 0.1s ease;
+  }
+
+  .clipboard-clear:hover {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-primary);
   }
 
   .grid-container {

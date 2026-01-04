@@ -22,7 +22,8 @@
     items = [],           // Array of { type: 'folder'|'file', id, name, ...metadata }
     selectedId = null,    // Currently selected item ID (single)
     selectedIds = $bindable([]), // Multi-select IDs
-    loading = false
+    loading = false,
+    isItemCut = () => false  // EXPLORER-001: Function to check if item is cut
   } = $props();
 
   const dispatch = createEventDispatcher();
@@ -405,6 +406,7 @@
           class:platform={item.type === 'platform'}
           class:drop-target={dropTargetId === item.id}
           class:dragging={isDragging && isSelected(item)}
+          class:cut={isItemCut(item.id)}
           role="row"
           draggable="true"
           onclick={(e) => handleClick(e, item)}
@@ -538,6 +540,26 @@
   .grid-row.dragging {
     opacity: 0.5;
     background: rgba(100, 100, 100, 0.3);
+  }
+
+  /* EXPLORER-001: Cut items (waiting for paste) */
+  .grid-row.cut {
+    opacity: 0.5;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(100, 100, 100, 0.1) 10px,
+      rgba(100, 100, 100, 0.1) 20px
+    );
+  }
+
+  .grid-row.cut:hover {
+    opacity: 0.6;
+  }
+
+  .grid-row.cut .item-name {
+    font-style: italic;
   }
 
   .grid-row.drop-target {
