@@ -1,7 +1,7 @@
 """Project CRUD endpoints."""
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
@@ -157,14 +157,23 @@ async def rename_project(
 @router.delete("/projects/{project_id}", response_model=DeleteResponse)
 async def delete_project(
     project_id: int,
+    permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Delete a project and all its contents."""
+    """
+    Delete a project and all its contents.
+    EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
+    EXPLORER-009: Requires 'delete_project' capability.
+    """
     # DESIGN-001: Check access using permission helper
     # Returns False for both non-existent AND no access (security: don't reveal existence)
     if not await can_access_project(db, project_id, current_user):
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # EXPLORER-009: Check capability for privileged operation
+    from ..permissions import require_capability
+    await require_capability(db, current_user, "delete_project")
 
     result = await db.execute(
         select(LDMProject).where(LDMProject.id == project_id)
@@ -174,11 +183,33 @@ async def delete_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    project_name = project.name
+
+    if not permanent:
+        # EXPLORER-008: Soft delete - move to trash
+        from .trash import move_to_trash, serialize_project_for_trash
+
+        # Serialize project data for restore
+        project_data = await serialize_project_for_trash(db, project)
+
+        # Move to trash
+        await move_to_trash(
+            db,
+            item_type="project",
+            item_id=project.id,
+            item_name=project.name,
+            item_data=project_data,
+            parent_project_id=None,
+            parent_folder_id=None,
+            deleted_by=current_user["user_id"]
+        )
+
     await db.delete(project)
     await db.commit()
 
-    logger.info(f"Project deleted: id={project_id}")
-    return {"message": "Project deleted"}
+    action = "permanently deleted" if permanent else "moved to trash"
+    logger.info(f"Project {action}: id={project_id}, name='{project_name}'")
+    return {"message": f"Project {action}"}
 
 
 # =============================================================================

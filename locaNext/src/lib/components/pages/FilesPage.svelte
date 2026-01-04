@@ -26,6 +26,8 @@
   import AccessControl from '$lib/components/admin/AccessControl.svelte';
   import { subscribeForOffline, unsubscribeFromOffline, isSubscribed, autoSyncFileOnOpen, connectionMode as syncConnectionMode } from '$lib/stores/sync.js';
   import { clipboard, copyToClipboard, cutToClipboard, clearClipboard, getClipboard, isItemCut } from '$lib/stores/clipboard.js';
+  import { pushAction, undo, redo, ActionTypes, undoStack, redoStack } from '$lib/stores/undoStack.js';
+  import ExplorerSearch from '$lib/components/ldm/ExplorerSearch.svelte';
 
   const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
@@ -68,6 +70,8 @@
   let showAssignPlatformModal = $state(false);
   let showRenameModal = $state(false);
   let showDeleteConfirm = $state(false);
+  let showMoveConfirm = $state(false);  // EXPLORER-006: Move confirmation
+  let pendingMoveOperation = $state(null);  // { items, targetProjectId, targetFolderId, operation }
   let showTMRegistrationModal = $state(false);
   let showPretranslateModal = $state(false);
   let showUploadToServerModal = $state(false);
@@ -116,10 +120,11 @@
   async function loadRoot() {
     loading = true;
     try {
-      // Fetch platforms and projects in parallel
-      const [platformsRes, projectsRes] = await Promise.all([
+      // Fetch platforms, projects, and orphaned file count in parallel
+      const [platformsRes, projectsRes, orphanedRes] = await Promise.all([
         fetch(`${API_BASE}/api/ldm/platforms`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/api/ldm/projects`, { headers: getAuthHeaders() })
+        fetch(`${API_BASE}/api/ldm/projects`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/api/ldm/offline/orphaned-file-count`, { headers: getAuthHeaders() }).catch(() => null)
       ]);
 
       let platformList = [];
@@ -135,8 +140,26 @@
         projects = projectList;
       }
 
+      // P3-PHASE5: Check for orphaned files
+      let orphanedCount = 0;
+      if (orphanedRes && orphanedRes.ok) {
+        const data = await orphanedRes.json();
+        orphanedCount = data.count || 0;
+      }
+
       // Build root items: Unassigned section + Platforms
       const items = [];
+
+      // P3-PHASE5: Add Offline Storage if there are orphaned files
+      if (orphanedCount > 0) {
+        items.push({
+          type: 'offline-storage',
+          id: 'offline-storage',
+          name: 'Offline Storage',
+          description: `${orphanedCount} file${orphanedCount !== 1 ? 's' : ''} need${orphanedCount === 1 ? 's' : ''} a destination`,
+          file_count: orphanedCount
+        });
+      }
 
       // Add platforms
       platformList.forEach(p => {
@@ -168,11 +191,19 @@
         });
       }
 
+      // EXPLORER-008: Add Recycle Bin at the end
+      items.push({
+        type: 'recycle-bin',
+        id: 'trash',
+        name: 'Recycle Bin',
+        description: 'Deleted items (30-day retention)'
+      });
+
       currentItems = items;
       currentPath = [];
       selectedProjectId = null;
       selectedPlatformId = null;
-      logger.info('Loaded root', { platforms: platformList.length, unassigned: unassignedProjects.length });
+      logger.info('Loaded root', { platforms: platformList.length, unassigned: unassignedProjects.length, orphaned: orphanedCount });
     } catch (err) {
       logger.error('Failed to load root', { error: err.message });
     } finally {
@@ -298,6 +329,101 @@
     }
   }
 
+  // EXPLORER-004: Navigate to search result path (Svelte 5 callback prop)
+  async function navigateToSearchResult(path) {
+    if (!path || path.length === 0) return;
+
+    const lastItem = path[path.length - 1];
+
+    // Build navigation path (exclude the target item itself if it's a file)
+    if (lastItem.type === 'file') {
+      // For files, navigate to parent folder/project then select the file
+      const parentPath = path.slice(0, -1);
+      await navigateToPath(parentPath);
+      // Select the file
+      selectedFileId = lastItem.id;
+      selectedItem = { ...lastItem, type: 'file' };
+    } else {
+      // For platforms/projects/folders, navigate directly
+      await navigateToPath(path);
+    }
+  }
+
+  async function navigateToPath(path) {
+    if (!path || path.length === 0) {
+      await loadRoot();
+      return;
+    }
+
+    const first = path[0];
+    if (first.type === 'platform') {
+      await loadPlatformContents(first.id, first.name);
+      if (path.length > 1) {
+        const project = path[1];
+        if (project.type === 'project') {
+          await loadProjectContents(project.id);
+          // Load subsequent folders
+          for (let i = 2; i < path.length; i++) {
+            const folder = path[i];
+            if (folder.type === 'folder') {
+              await loadFolderContents(folder.id, folder.name);
+            }
+          }
+        }
+      }
+    } else if (first.type === 'project') {
+      await loadProjectContents(first.id);
+      // Load subsequent folders
+      for (let i = 1; i < path.length; i++) {
+        const folder = path[i];
+        if (folder.type === 'folder') {
+          await loadFolderContents(folder.id, folder.name);
+        }
+      }
+    }
+  }
+
+  // EXPLORER-004: Search action handlers (Svelte 5 callback props)
+  function handleSearchCopy(item) {
+    copyToClipboard([item]);
+    logger.info('Copied from search', { name: item.name });
+  }
+
+  function handleSearchCut(item) {
+    cutToClipboard([item]);
+    logger.info('Cut from search', { name: item.name });
+  }
+
+  async function handleSearchDelete(item) {
+    const { type, id, name } = item;
+
+    // Build URL based on type
+    let url;
+    if (type === 'platform') {
+      url = `${API_BASE}/api/ldm/platforms/${id}`;
+    } else if (type === 'project') {
+      url = `${API_BASE}/api/ldm/projects/${id}`;
+    } else if (type === 'folder') {
+      url = `${API_BASE}/api/ldm/folders/${id}`;
+    } else if (type === 'file') {
+      url = `${API_BASE}/api/ldm/files/${id}`;
+    }
+
+    try {
+      const response = await fetch(url, { method: 'DELETE', headers: getAuthHeaders() });
+      if (response.ok) {
+        logger.success(`${type} deleted from search`, { name });
+        // Refresh current view if we're viewing the affected area
+        await refreshCurrentView();
+      } else {
+        const error = await response.json().catch(() => ({}));
+        logger.error('Delete from search failed', { error: error.detail });
+      }
+    } catch (err) {
+      logger.error('Delete from search error', { error: err.message });
+    }
+  }
+
   // ============== Grid Event Handlers ==============
 
   function handleSelect(event) {
@@ -410,6 +536,176 @@
       loadProjectContents(item.id);
     } else if (item.type === 'folder') {
       loadFolderContents(item.id, item.name);
+    } else if (item.type === 'recycle-bin') {
+      // EXPLORER-008: Enter Recycle Bin
+      loadTrashContents();
+    } else if (item.type === 'offline-storage') {
+      // P3-PHASE5: Enter Offline Storage
+      loadOfflineStorageContents();
+    }
+  }
+
+  // P3-PHASE5: Load Offline Storage contents (orphaned files)
+  async function loadOfflineStorageContents() {
+    loading = true;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/offline/orphaned-files`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Convert orphaned files to display format
+        currentItems = data.files.map(f => ({
+          type: 'orphaned-file',
+          id: f.id,
+          name: f.name,
+          format: f.format,
+          row_count: f.row_count,
+          error_message: f.error_message,
+          updated_at: f.updated_at
+        }));
+
+        currentPath = [{ type: 'offline-storage', id: 'offline-storage', name: 'Offline Storage' }];
+        selectedProjectId = null;
+        selectedPlatformId = null;
+
+        logger.info('Loaded offline storage', { count: data.total_count });
+      }
+    } catch (err) {
+      logger.error('Failed to load offline storage', { error: err.message });
+    } finally {
+      loading = false;
+    }
+  }
+
+  // EXPLORER-008: Load Recycle Bin contents
+  async function loadTrashContents() {
+    loading = true;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/trash`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Convert trash items to display format
+        currentItems = data.items.map(item => ({
+          type: 'trash-item',
+          id: item.id,
+          trash_id: item.id,
+          item_type: item.item_type,
+          item_id: item.item_id,
+          name: item.item_name,
+          deleted_at: item.deleted_at,
+          expires_at: item.expires_at,
+          parent_project_id: item.parent_project_id,
+          parent_folder_id: item.parent_folder_id
+        }));
+
+        currentPath = [{ type: 'recycle-bin', id: 'trash', name: 'Recycle Bin' }];
+        selectedProjectId = null;
+        selectedPlatformId = null;
+
+        logger.info('Loaded trash contents', { count: data.count });
+      }
+    } catch (err) {
+      logger.error('Failed to load trash', { error: err.message });
+    } finally {
+      loading = false;
+    }
+  }
+
+  /**
+   * EXPLORER-008: Restore item from trash
+   * OPTIMISTIC UI: Item disappears from trash immediately
+   */
+  async function restoreFromTrash(trashId) {
+    // OPTIMISTIC UI: Store original and remove immediately
+    const restoredItem = currentItems.find(item => item.id === trashId);
+    const originalItems = [...currentItems];
+    currentItems = currentItems.filter(item => item.id !== trashId);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/trash/${trashId}/restore`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        logger.success(`${result.item_type} restored`, { id: result.restored_id });
+      } else {
+        // OPTIMISTIC UI: Rollback on failure
+        currentItems = originalItems;
+        const error = await response.json();
+        logger.error('Restore failed', { error: error.detail });
+      }
+    } catch (err) {
+      // OPTIMISTIC UI: Rollback on error
+      currentItems = originalItems;
+      logger.error('Restore error', { error: err.message });
+    }
+  }
+
+  /**
+   * EXPLORER-008: Permanently delete from trash
+   * OPTIMISTIC UI: Item disappears immediately
+   */
+  async function permanentDeleteFromTrash(trashId) {
+    // OPTIMISTIC UI: Store original and remove immediately
+    const originalItems = [...currentItems];
+    currentItems = currentItems.filter(item => item.id !== trashId);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/trash/${trashId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        logger.success('Item permanently deleted');
+      } else {
+        // OPTIMISTIC UI: Rollback on failure
+        currentItems = originalItems;
+        const error = await response.json();
+        logger.error('Permanent delete failed', { error: error.detail });
+      }
+    } catch (err) {
+      // OPTIMISTIC UI: Rollback on error
+      currentItems = originalItems;
+      logger.error('Permanent delete error', { error: err.message });
+    }
+  }
+
+  /**
+   * EXPLORER-008: Empty entire trash
+   * OPTIMISTIC UI: All items disappear immediately
+   */
+  async function emptyTrash() {
+    // OPTIMISTIC UI: Store original and clear immediately
+    const originalItems = [...currentItems];
+    currentItems = [];
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/trash/empty`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        logger.success(result.message);
+      } else {
+        // OPTIMISTIC UI: Rollback on failure
+        currentItems = originalItems;
+        const error = await response.json();
+        logger.error('Empty trash failed', { error: error.detail });
+      }
+    } catch (err) {
+      // OPTIMISTIC UI: Rollback on error
+      currentItems = originalItems;
+      logger.error('Empty trash error', { error: err.message });
     }
   }
 
@@ -993,23 +1289,40 @@
     showRenameModal = true;
   }
 
+  /**
+   * OPTIMISTIC UI: Rename updates immediately, rollback on failure
+   */
   async function executeRename() {
     if (!contextMenuItem || !renameValue.trim()) return;
     const { type, id } = contextMenuItem;
+    const newName = renameValue.trim();
     let url;
     let method = 'PATCH';
     let body = null;
 
     if (type === 'platform') {
       url = `${API_BASE}/api/ldm/platforms/${id}`;
-      body = JSON.stringify({ name: renameValue.trim() });
+      body = JSON.stringify({ name: newName });
     } else if (type === 'project') {
-      url = `${API_BASE}/api/ldm/projects/${id}/rename?name=${encodeURIComponent(renameValue.trim())}`;
+      url = `${API_BASE}/api/ldm/projects/${id}/rename?name=${encodeURIComponent(newName)}`;
     } else if (type === 'folder') {
-      url = `${API_BASE}/api/ldm/folders/${id}/rename?name=${encodeURIComponent(renameValue.trim())}`;
+      url = `${API_BASE}/api/ldm/folders/${id}/rename?name=${encodeURIComponent(newName)}`;
     } else if (type === 'file') {
-      url = `${API_BASE}/api/ldm/files/${id}/rename?name=${encodeURIComponent(renameValue.trim())}`;
+      url = `${API_BASE}/api/ldm/files/${id}/rename?name=${encodeURIComponent(newName)}`;
     }
+
+    // OPTIMISTIC UI: Store original name for rollback
+    const originalName = contextMenuItem.name;
+
+    // OPTIMISTIC UI: Update item name immediately
+    currentItems = currentItems.map(item =>
+      item.id === id && item.type === type
+        ? { ...item, name: newName }
+        : item
+    );
+
+    // Close modal immediately
+    showRenameModal = false;
 
     try {
       const headers = body
@@ -1017,31 +1330,58 @@
         : getAuthHeaders();
       const response = await fetch(url, { method, headers, body });
       if (response.ok) {
-        logger.success(`${type} renamed`, { id, newName: renameValue });
-        showRenameModal = false;
-        // Refresh
-        if (currentPath.length === 0) {
-          await loadRoot();
-        } else if (currentPath[0]?.type === 'platform' && currentPath.length === 1) {
-          await loadPlatformContents(currentPath[0].id, currentPath[0].name);
-        } else if (currentPath.length === 1) {
-          await loadProjectContents(selectedProjectId);
-        } else {
-          const currentFolder = currentPath[currentPath.length - 1];
-          currentPath = currentPath.slice(0, -1);
-          await loadFolderContents(currentFolder.id, currentFolder.name);
-        }
+        logger.success(`${type} renamed`, { id, newName });
       } else {
+        // OPTIMISTIC UI: Rollback on failure
+        currentItems = currentItems.map(item =>
+          item.id === id && item.type === type
+            ? { ...item, name: originalName }
+            : item
+        );
         const error = await response.json();
         logger.error('Rename failed', { error: error.detail });
       }
     } catch (err) {
+      // OPTIMISTIC UI: Rollback on error
+      currentItems = currentItems.map(item =>
+        item.id === id && item.type === type
+          ? { ...item, name: originalName }
+          : item
+      );
       logger.error('Rename error', { error: err.message });
     }
   }
 
+  /**
+   * Generate type-aware delete confirmation message (EXPLORER-006)
+   */
+  function getDeleteConfirmMessage(item) {
+    // Multi-select delete
+    if (selectedIds.length > 1) {
+      const count = selectedIds.length;
+      return `Delete ${count} selected items? Items will be moved to the Recycle Bin.`;
+    }
+
+    if (!item) return 'Are you sure you want to delete this item?';
+
+    const name = item.name || 'this item';
+    switch (item.type) {
+      case 'platform':
+        return `Delete platform "${name}" and ALL projects, folders, and files inside?`;
+      case 'project':
+        return `Delete project "${name}" and ALL folders and files inside?`;
+      case 'folder':
+        return `Delete folder "${name}" and ALL its contents?`;
+      case 'file':
+        return `Delete file "${name}"?`;
+      default:
+        return `Delete "${name}"?`;
+    }
+  }
+
   function openDelete() {
-    if (!contextMenuItem) return;
+    // Allow delete if multi-select OR single context item
+    if (selectedIds.length === 0 && !contextMenuItem) return;
     // Don't clear contextMenuItem - needed for executeDelete
     showContextMenu = false;
     showBackgroundMenu = false;
@@ -1049,44 +1389,97 @@
   }
 
   async function executeDelete() {
-    if (!contextMenuItem) return;
-    const { type, id } = contextMenuItem;
-    let url;
-    if (type === 'platform') {
-      url = `${API_BASE}/api/ldm/platforms/${id}`;
-    } else if (type === 'project') {
-      url = `${API_BASE}/api/ldm/projects/${id}`;
-    } else if (type === 'folder') {
-      url = `${API_BASE}/api/ldm/folders/${id}`;
-    } else if (type === 'file') {
-      url = `${API_BASE}/api/ldm/files/${id}`;
+    // Determine items to delete: multi-select OR single context item
+    let itemsToDelete = [];
+
+    if (selectedIds.length > 1) {
+      // Multi-select delete
+      itemsToDelete = currentItems.filter(item => selectedIds.includes(item.id));
+    } else if (contextMenuItem) {
+      // Single item delete
+      itemsToDelete = [contextMenuItem];
     }
 
-    try {
-      const response = await fetch(url, { method: 'DELETE', headers: getAuthHeaders() });
-      if (response.ok) {
-        logger.success(`${type} deleted`, { id });
-        showDeleteConfirm = false;
-        contextMenuItem = null;
-        // Refresh
-        if (currentPath.length === 0) {
-          await loadRoot();
-        } else if (currentPath[0]?.type === 'platform' && currentPath.length === 1) {
-          await loadPlatformContents(currentPath[0].id, currentPath[0].name);
-        } else if (currentPath.length === 1) {
-          await loadProjectContents(selectedProjectId);
-        } else {
-          const currentFolder = currentPath[currentPath.length - 1];
-          currentPath = currentPath.slice(0, -1);
-          await loadFolderContents(currentFolder.id, currentFolder.name);
-        }
-      } else {
-        const error = await response.json();
-        logger.error('Delete failed', { error: error.detail });
+    if (itemsToDelete.length === 0) return;
+
+    // OPTIMISTIC UI: Remove all items immediately
+    const originalItems = [...currentItems];
+    const deleteIds = itemsToDelete.map(item => item.id);
+    currentItems = currentItems.filter(item => !deleteIds.includes(item.id));
+    showDeleteConfirm = false;
+
+    // Track failures for partial rollback
+    const failures = [];
+
+    // Delete all items in parallel
+    const deletePromises = itemsToDelete.map(async (item) => {
+      const { type, id, name } = item;
+      let url;
+      if (type === 'platform') {
+        url = `${API_BASE}/api/ldm/platforms/${id}`;
+      } else if (type === 'project') {
+        url = `${API_BASE}/api/ldm/projects/${id}`;
+      } else if (type === 'folder') {
+        url = `${API_BASE}/api/ldm/folders/${id}`;
+      } else if (type === 'file') {
+        url = `${API_BASE}/api/ldm/files/${id}`;
       }
-    } catch (err) {
-      logger.error('Delete error', { error: err.message });
+
+      try {
+        const response = await fetch(url, { method: 'DELETE', headers: getAuthHeaders() });
+        if (!response.ok) {
+          failures.push(item);
+          const error = await response.json().catch(() => ({}));
+          logger.error('Delete failed', { item: name, error: error.detail });
+        }
+      } catch (err) {
+        failures.push(item);
+        logger.error('Delete error', { item: name, error: err.message });
+      }
+    });
+
+    await Promise.all(deletePromises);
+
+    // Handle results
+    if (failures.length > 0) {
+      // OPTIMISTIC UI: Partial rollback - restore failed items
+      currentItems = [...currentItems, ...failures];
+      logger.warning(`${failures.length} item(s) failed to delete`);
     }
+
+    if (failures.length < itemsToDelete.length) {
+      const successCount = itemsToDelete.length - failures.length;
+      logger.success(`${successCount} item(s) deleted`);
+
+      // EXPLORER-007: Push undo action (for single delete only)
+      if (itemsToDelete.length === 1 && failures.length === 0) {
+        const { type, id, name } = itemsToDelete[0];
+        const trashResponse = await fetch(`${API_BASE}/api/ldm/trash`, { headers: getAuthHeaders() });
+        if (trashResponse.ok) {
+          const trashData = await trashResponse.json();
+          const trashItem = trashData.items.find(t =>
+            t.item_type === type && t.item_name === name
+          );
+          if (trashItem) {
+            pushAction({
+              type: ActionTypes.DELETE,
+              data: { trashId: trashItem.id, itemType: type, itemName: name },
+              description: `Delete ${type} "${name}"`,
+              undo: async () => {
+                await restoreFromTrash(trashItem.id);
+              },
+              redo: async () => {
+                logger.warning('Redo delete not supported');
+              }
+            });
+          }
+        }
+      }
+    }
+
+    // Clear selection
+    contextMenuItem = null;
+    selectedIds = [];
   }
 
   // ============== Clipboard Operations (EXPLORER-001) ==============
@@ -1120,13 +1513,208 @@
   }
 
   /**
+   * Validate paste target based on hierarchy rules (EXPLORER-002)
+   * Rules:
+   * - Platform: Cannot receive files/folders (only projects)
+   * - Project: Can only be pasted to platform or root
+   * - Folder: Can be pasted to project or folder
+   * - File: Can be pasted to project or folder
+   */
+  function validatePasteTarget(items, targetPath) {
+    // Rule 1: Files/Folders cannot paste into platform directly
+    if (targetPath.length === 1 && targetPath[0].type === 'platform') {
+      const hasFilesOrFolders = items.some(i => i.type === 'file' || i.type === 'folder');
+      if (hasFilesOrFolders) {
+        return { valid: false, reason: 'Files and folders cannot be placed directly in platforms. Move to a project instead.' };
+      }
+    }
+
+    // Rule 2: Projects can only go to platform or root (not inside folders)
+    const hasProjects = items.some(i => i.type === 'project');
+    if (hasProjects && targetPath.length > 1) {
+      const lastItem = targetPath[targetPath.length - 1];
+      if (lastItem.type === 'folder') {
+        return { valid: false, reason: 'Projects cannot be placed inside folders. Move to a platform or root.' };
+      }
+    }
+
+    // Rule 3: Cannot paste into self (circular reference)
+    const itemIds = items.map(i => i.id);
+    for (const crumb of targetPath) {
+      if (itemIds.includes(crumb.id)) {
+        return { valid: false, reason: 'Cannot paste an item into itself.' };
+      }
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Check if move operation needs confirmation (EXPLORER-006)
+   * Returns true for: project moves, cross-project folder/file moves
+   */
+  function needsMoveConfirmation(items, targetProjectId) {
+    // Project moves always need confirmation
+    if (items.some(i => i.type === 'project')) {
+      return true;
+    }
+
+    // Cross-project moves need confirmation
+    const crossProjectItems = items.filter(i =>
+      (i.type === 'folder' || i.type === 'file') &&
+      i.project_id && i.project_id !== targetProjectId
+    );
+    return crossProjectItems.length > 0;
+  }
+
+  /**
+   * Get the current project name from path for confirmation message
+   */
+  function getTargetProjectName() {
+    if (currentPath.length === 0) return 'root';
+    // Find the project in the path
+    for (const crumb of currentPath) {
+      if (crumb.type === 'project') {
+        return crumb.name;
+      }
+    }
+    return currentPath[0]?.name || 'this location';
+  }
+
+  /**
+   * Generate move confirmation message (EXPLORER-006)
+   */
+  function getMoveConfirmMessage(operation) {
+    if (!operation) return 'Are you sure you want to move these items?';
+
+    const { items, targetProjectName, isCrossProject } = operation;
+    const itemNames = items.map(i => i.name).join(', ');
+    const itemCount = items.length;
+
+    if (items.some(i => i.type === 'project')) {
+      // Project move
+      const projectNames = items.filter(i => i.type === 'project').map(i => i.name).join(', ');
+      return `Move project "${projectNames}" to "${targetProjectName}"? All files and folders will move with it.`;
+    }
+
+    if (isCrossProject) {
+      // Cross-project move
+      const sourceProject = items[0]?.project_name || 'source project';
+      return `Move ${itemCount} item(s) from "${sourceProject}" to "${targetProjectName}"? This is a cross-project move.`;
+    }
+
+    return `Move "${itemNames}" to "${targetProjectName}"?`;
+  }
+
+  /**
+   * Execute pending move operation after confirmation (EXPLORER-006)
+   * OPTIMISTIC UI: Items appear in destination immediately
+   */
+  async function executePendingMove() {
+    if (!pendingMoveOperation) return;
+
+    const { items, targetProjectId, targetFolderId, isCrossProject, operation } = pendingMoveOperation;
+
+    // Close modal immediately for snappy feel
+    showMoveConfirm = false;
+
+    // OPTIMISTIC UI: Store original state for rollback
+    const originalItems = [...currentItems];
+
+    // OPTIMISTIC UI: Add items to current view immediately
+    const optimisticItems = items.map(item => ({
+      ...item,
+      _optimistic: true,
+      project_id: targetProjectId,
+      folder_id: targetFolderId
+    }));
+    currentItems = [...currentItems, ...optimisticItems];
+
+    // Clear clipboard immediately
+    clearClipboard();
+
+    // Track failures
+    const failures = [];
+
+    try {
+      for (const item of items) {
+        let url;
+        let method = 'PATCH';
+        let body = null;
+
+        if (item.type === 'file') {
+          // EXPLORER-005: Check if cross-project move
+          if (isCrossProject && item.project_id && item.project_id !== targetProjectId) {
+            url = `${API_BASE}/api/ldm/files/${item.id}/move-cross-project?target_project_id=${targetProjectId}${targetFolderId !== null ? `&target_folder_id=${targetFolderId}` : ''}`;
+          } else {
+            const params = targetFolderId !== null ? `?folder_id=${targetFolderId}` : '';
+            url = `${API_BASE}/api/ldm/files/${item.id}/move${params}`;
+          }
+        } else if (item.type === 'folder') {
+          // EXPLORER-005: Check if cross-project move
+          if (isCrossProject && item.project_id && item.project_id !== targetProjectId) {
+            url = `${API_BASE}/api/ldm/folders/${item.id}/move-cross-project?target_project_id=${targetProjectId}${targetFolderId !== null ? `&target_parent_id=${targetFolderId}` : ''}`;
+          } else {
+            const params = targetFolderId !== null ? `?parent_folder_id=${targetFolderId}` : '';
+            url = `${API_BASE}/api/ldm/folders/${item.id}/move${params}`;
+          }
+        } else if (item.type === 'project') {
+          // Project move - update platform assignment
+          const targetPlatformId = currentPath[0]?.type === 'platform' ? currentPath[0].id : null;
+          url = `${API_BASE}/api/ldm/projects/${item.id}`;
+          body = JSON.stringify({ platform_id: targetPlatformId });
+        }
+
+        if (url) {
+          const response = await fetch(url, {
+            method,
+            headers: body ? { ...getAuthHeaders(), 'Content-Type': 'application/json' } : getAuthHeaders(),
+            body
+          });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            logger.error('Move failed', { item: item.name, error: error.detail });
+            failures.push(item.id);
+          }
+        }
+      }
+
+      // OPTIMISTIC UI: Handle failures
+      if (failures.length > 0) {
+        currentItems = currentItems.filter(item => !failures.includes(item.id));
+        logger.warning('Some items failed to move', { failed: failures.length });
+      } else {
+        logger.success('Items moved', { count: items.length });
+      }
+
+      // Refresh to get server state
+      await refreshCurrentView();
+
+    } catch (err) {
+      // OPTIMISTIC UI: Full rollback on error
+      logger.error('Move error', { error: err.message });
+      currentItems = originalItems;
+    } finally {
+      pendingMoveOperation = null;
+    }
+  }
+
+  /**
    * Handle paste operation (Ctrl+V)
    * Copy: Creates duplicates with auto-rename
    * Cut: Moves items to current location
+   * OPTIMISTIC UI: Items appear immediately before API completes
    */
   async function handlePaste() {
     const { items, operation } = getClipboard();
     if (items.length === 0) return;
+
+    // EXPLORER-002: Validate hierarchy rules
+    const validation = validatePasteTarget(items, currentPath);
+    if (!validation.valid) {
+      logger.warning('Paste rejected', { reason: validation.reason });
+      return;
+    }
 
     // Determine target folder/project
     const targetFolderId = currentPath.length > 1 ? currentPath[currentPath.length - 1].id : null;
@@ -1137,9 +1725,53 @@
       return;
     }
 
+    // EXPLORER-006: Check if move needs confirmation
+    if (operation === 'cut') {
+      const isCrossProject = items.some(i =>
+        (i.type === 'folder' || i.type === 'file') &&
+        i.project_id && i.project_id !== targetProjectId
+      );
+
+      if (needsMoveConfirmation(items, targetProjectId)) {
+        pendingMoveOperation = {
+          items,
+          targetProjectId,
+          targetFolderId,
+          targetProjectName: getTargetProjectName(),
+          isCrossProject,
+          operation
+        };
+        showMoveConfirm = true;
+        return; // Wait for user confirmation
+      }
+    }
+
+    // OPTIMISTIC UI: Store original state for rollback
+    const originalItems = [...currentItems];
+
+    // OPTIMISTIC UI: Add items to current view immediately
+    const tempIdBase = Date.now();
+    const optimisticItems = items.map((item, idx) => ({
+      ...item,
+      id: operation === 'copy' ? `temp_${tempIdBase}_${idx}` : item.id,
+      name: operation === 'copy' ? `${item.name} (copy)` : item.name,
+      _optimistic: true, // Mark as optimistic for visual feedback
+      project_id: targetProjectId,
+      folder_id: targetFolderId
+    }));
+
+    // Add optimistic items to current view
+    currentItems = [...currentItems, ...optimisticItems];
+
+    // Clear clipboard immediately for snappy feel
+    clearClipboard();
+
+    // Track failures for rollback
+    const failures = [];
+
     try {
       if (operation === 'cut') {
-        // Move operation
+        // Direct move (no confirmation needed for simple folder/file moves)
         for (const item of items) {
           let url;
           if (item.type === 'file') {
@@ -1158,13 +1790,17 @@
             if (!response.ok) {
               const error = await response.json().catch(() => ({}));
               logger.error('Move failed', { item: item.name, error: error.detail });
+              failures.push(item.id);
             }
           }
         }
-        logger.success('Items moved', { count: items.length });
+        if (failures.length === 0) {
+          logger.success('Items moved', { count: items.length });
+        }
       } else if (operation === 'copy') {
         // Copy operation
-        for (const item of items) {
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
           let url;
           let body = {};
 
@@ -1191,26 +1827,28 @@
             if (!response.ok) {
               const error = await response.json().catch(() => ({}));
               logger.error('Copy failed', { item: item.name, error: error.detail });
+              failures.push(`temp_${tempIdBase}_${i}`);
             }
           }
         }
-        logger.success('Items copied', { count: items.length });
+        if (failures.length === 0) {
+          logger.success('Items copied', { count: items.length });
+        }
       }
 
-      // Clear clipboard after paste
-      clearClipboard();
-
-      // Refresh current view
-      if (currentPath.length === 0) {
-        await loadProjects();
-      } else if (currentPath.length === 1) {
-        await loadProjectContents(selectedProjectId);
-      } else {
-        const currentFolder = currentPath[currentPath.length - 1];
-        await loadFolderContents(currentFolder.id, currentFolder.name);
+      // OPTIMISTIC UI: If any failures, remove failed items
+      if (failures.length > 0) {
+        currentItems = currentItems.filter(item => !failures.includes(item.id));
+        logger.warning('Some items failed to paste', { failed: failures.length });
       }
+
+      // Refresh to get real IDs and server state
+      await refreshCurrentView();
+
     } catch (err) {
+      // OPTIMISTIC UI: Full rollback on error
       logger.error('Paste error', { error: err.message });
+      currentItems = originalItems;
     }
   }
 
@@ -1245,7 +1883,43 @@
           event.preventDefault();
           handlePaste();
           break;
+        case 'z':
+          // EXPLORER-007: Undo (Ctrl+Z)
+          event.preventDefault();
+          undo().then(async (success) => {
+            if (success) {
+              // Refresh current view after undo
+              await refreshCurrentView();
+            }
+          });
+          break;
+        case 'y':
+          // EXPLORER-007: Redo (Ctrl+Y)
+          event.preventDefault();
+          redo().then(async (success) => {
+            if (success) {
+              // Refresh current view after redo
+              await refreshCurrentView();
+            }
+          });
+          break;
       }
+    }
+  }
+
+  // EXPLORER-007: Refresh current view helper
+  async function refreshCurrentView() {
+    if (currentPath.length === 0) {
+      await loadRoot();
+    } else if (currentPath[0]?.type === 'recycle-bin') {
+      await loadTrashContents();
+    } else if (currentPath[0]?.type === 'platform' && currentPath.length === 1) {
+      await loadPlatformContents(currentPath[0].id, currentPath[0].name);
+    } else if (currentPath.length === 1) {
+      await loadProjectContents(selectedProjectId);
+    } else {
+      const currentFolder = currentPath[currentPath.length - 1];
+      await loadFolderContents(currentFolder.id, currentFolder.name);
     }
   }
 
@@ -1304,18 +1978,7 @@
   });
 
   // Expose methods
-  export { loadProjects };
-  export function refreshCurrentView() {
-    if (currentPath.length === 0) {
-      loadProjects();
-    } else if (currentPath.length === 1) {
-      loadProjectContents(selectedProjectId);
-    } else {
-      const currentFolder = currentPath[currentPath.length - 1];
-      currentPath = currentPath.slice(0, -1);
-      loadFolderContents(currentFolder.id, currentFolder.name);
-    }
-  }
+  export { loadProjects, refreshCurrentView };
 </script>
 
 <!-- Hidden file inputs -->
@@ -1340,6 +2003,17 @@
         <span>{crumb.name}</span>
       </button>
     {/each}
+
+    <!-- EXPLORER-004: Search bar -->
+    <div class="search-wrapper">
+      <ExplorerSearch
+        apiBase={API_BASE}
+        onnavigate={navigateToSearchResult}
+        oncopy={handleSearchCopy}
+        oncut={handleSearchCut}
+        ondelete={handleSearchDelete}
+      />
+    </div>
 
     <!-- EXPLORER-001: Clipboard status indicator -->
     {#if clipboardItems.length > 0}
@@ -1425,6 +2099,12 @@
       <div class="context-menu-divider"></div>
       <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
     {:else if contextMenuItem.type === 'project'}
+      <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
+      <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
+      {#if clipboardItems.length > 0 && clipboardItems.every(i => i.type === 'project')}
+        <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>Paste Project Here</button>
+      {/if}
+      <div class="context-menu-divider"></div>
       <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
       <button class="context-menu-item" onclick={openAssignPlatform}><Application size={16} /> Assign to Platform...</button>
       {#if $syncConnectionMode === 'online'}
@@ -1453,6 +2133,15 @@
       {/if}
       <div class="context-menu-divider"></div>
       <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
+    {:else if contextMenuItem.type === 'trash-item'}
+      <!-- EXPLORER-008: Trash item context menu -->
+      <button class="context-menu-item" onclick={() => { restoreFromTrash(contextMenuItem.trash_id); closeMenus(); }}>
+        <Renew size={16} /> Restore
+      </button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item danger" onclick={() => { permanentDeleteFromTrash(contextMenuItem.trash_id); closeMenus(); }}>
+        <TrashCan size={16} /> Delete Permanently
+      </button>
     {/if}
   </div>
 {/if}
@@ -1465,6 +2154,11 @@
       <!-- At root: can create platform or project -->
       <button class="context-menu-item" onclick={bgCreatePlatform}><Application size={16} /> New Platform</button>
       <button class="context-menu-item" onclick={bgCreateProject}><FolderAdd size={16} /> New Project</button>
+    {:else if currentPath[0]?.type === 'recycle-bin'}
+      <!-- EXPLORER-008: Inside Recycle Bin -->
+      <button class="context-menu-item danger" onclick={() => { emptyTrash(); closeMenus(); }}>
+        <TrashCan size={16} /> Empty Recycle Bin
+      </button>
     {:else if currentPath[0]?.type === 'platform' && currentPath.length === 1}
       <!-- Inside a platform: can only create project -->
       <button class="context-menu-item" onclick={bgCreateProject}><FolderAdd size={16} /> New Project</button>
@@ -1547,11 +2241,22 @@
 <ConfirmModal
   bind:open={showDeleteConfirm}
   title="Delete {contextMenuItem?.type || 'item'}"
-  message="Are you sure you want to delete '{contextMenuItem?.name}'? This cannot be undone."
+  message={getDeleteConfirmMessage(contextMenuItem)}
   danger={true}
   confirmLabel="Delete"
   onConfirm={executeDelete}
   onCancel={() => { contextMenuItem = null; }}
+/>
+
+<!-- EXPLORER-006: Move Confirmation Modal -->
+<ConfirmModal
+  bind:open={showMoveConfirm}
+  title="Confirm Move"
+  message={getMoveConfirmMessage(pendingMoveOperation)}
+  danger={false}
+  confirmLabel="Move"
+  onConfirm={executePendingMove}
+  onCancel={() => { pendingMoveOperation = null; }}
 />
 
 <!-- TM Registration Modal -->
@@ -1664,6 +2369,16 @@
 
   :global(.breadcrumb-sep) {
     color: var(--cds-text-disabled);
+  }
+
+  /* EXPLORER-004: Search wrapper */
+  .search-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: 0 1rem;
+    max-width: 700px;
+    margin: 0 auto;
   }
 
   /* EXPLORER-001: Clipboard status indicator */

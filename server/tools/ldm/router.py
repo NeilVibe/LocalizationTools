@@ -47,6 +47,9 @@ from .routes.qa import router as qa_router
 from .routes.grammar import router as grammar_router
 from .routes.platforms import router as platforms_router
 from .routes.tm_assignment import router as tm_assignment_router
+from .routes.trash import router as trash_router  # EXPLORER-008: Recycle Bin
+from .routes.search import router as search_router  # EXPLORER-004: Explorer Search
+from .routes.capabilities import router as capabilities_router  # EXPLORER-009: Privileged Operations
 
 # =============================================================================
 # Include all routers
@@ -71,6 +74,9 @@ router.include_router(sync_router)
 router.include_router(settings_router)
 router.include_router(qa_router)
 router.include_router(grammar_router)
+router.include_router(trash_router)  # EXPLORER-008: Recycle Bin
+router.include_router(search_router)  # EXPLORER-004: Explorer Search
+router.include_router(capabilities_router)  # EXPLORER-009: Privileged Operations (Admin)
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)

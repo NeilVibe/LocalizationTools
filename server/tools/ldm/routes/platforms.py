@@ -1,7 +1,7 @@
 """Platform CRUD endpoints for TM Hierarchy System."""
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -219,16 +219,23 @@ async def update_platform(
 @router.delete("/platforms/{platform_id}")
 async def delete_platform(
     platform_id: int,
+    permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Delete a platform.
+    EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
     Projects under this platform will have their platform_id set to NULL (unassigned).
+    EXPLORER-009: Requires 'delete_platform' capability.
     """
     # DESIGN-001: Check access using permission helper
     if not await can_access_platform(db, platform_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
+
+    # EXPLORER-009: Check capability for privileged operation
+    from ..permissions import require_capability
+    await require_capability(db, current_user, "delete_platform")
 
     result = await db.execute(
         select(LDMPlatform)
@@ -240,13 +247,34 @@ async def delete_platform(
     if not platform:
         raise HTTPException(status_code=404, detail="Platform not found")
 
+    platform_name = platform.name
     project_count = len(platform.projects) if platform.projects else 0
+
+    if not permanent:
+        # EXPLORER-008: Soft delete - move to trash
+        from .trash import move_to_trash, serialize_platform_for_trash
+
+        # Serialize platform data for restore (includes project references)
+        platform_data = await serialize_platform_for_trash(db, platform)
+
+        # Move to trash
+        await move_to_trash(
+            db,
+            item_type="platform",
+            item_id=platform.id,
+            item_name=platform.name,
+            item_data=platform_data,
+            parent_project_id=None,
+            parent_folder_id=None,
+            deleted_by=current_user["user_id"]
+        )
 
     # Projects will be unassigned (platform_id set to NULL via ON DELETE SET NULL)
     await db.delete(platform)
     await db.commit()
 
-    logger.success(f"Platform deleted: id={platform_id}, name='{platform.name}', projects_unassigned={project_count}")
+    action = "permanently deleted" if permanent else "moved to trash"
+    logger.success(f"Platform {action}: id={platform_id}, name='{platform_name}', projects_unassigned={project_count}")
 
     return {
         "success": True,

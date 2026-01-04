@@ -343,6 +343,77 @@ async def move_file_to_folder(
     return {"success": True, "file_id": file_id, "folder_id": folder_id}
 
 
+@router.patch("/files/{file_id}/move-cross-project")
+async def move_file_cross_project(
+    file_id: int,
+    target_project_id: int,
+    target_folder_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    EXPLORER-005: Move a file to a different project.
+    EXPLORER-009: Requires 'cross_project_move' capability.
+    """
+    # Get file
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.id == file_id)
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Check access to source project
+    if not await can_access_project(db, file.project_id, current_user):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Check access to destination project
+    if not await can_access_project(db, target_project_id, current_user):
+        raise HTTPException(status_code=404, detail="Destination project not found")
+
+    # EXPLORER-009: Check capability for cross-project move
+    from ..permissions import require_capability
+    await require_capability(db, current_user, "cross_project_move")
+
+    # Validate target folder if specified
+    if target_folder_id is not None:
+        result = await db.execute(
+            select(LDMFolder).where(
+                LDMFolder.id == target_folder_id,
+                LDMFolder.project_id == target_project_id
+            )
+        )
+        target_folder = result.scalar_one_or_none()
+        if not target_folder:
+            raise HTTPException(status_code=404, detail="Target folder not found")
+
+    source_project_id = file.project_id
+
+    # DB-002: Check for naming conflicts and auto-rename if needed
+    from server.tools.ldm.utils.naming import generate_unique_name
+    new_name = await generate_unique_name(
+        db, LDMFile, file.name,
+        project_id=target_project_id,
+        folder_id=target_folder_id
+    )
+
+    # Update file
+    file.name = new_name
+    file.project_id = target_project_id
+    file.folder_id = target_folder_id
+    await db.commit()
+
+    logger.success(f"File moved cross-project: id={file_id}, from project {source_project_id} to {target_project_id}")
+    return {
+        "success": True,
+        "file_id": file_id,
+        "new_name": new_name,
+        "target_project_id": target_project_id,
+        "target_folder_id": target_folder_id
+    }
+
+
 @router.post("/files/{file_id}/copy")
 async def copy_file(
     file_id: int,
@@ -477,10 +548,14 @@ async def rename_file(
 @router.delete("/files/{file_id}")
 async def delete_file(
     file_id: int,
+    permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Delete a file and all its rows."""
+    """
+    Delete a file and all its rows.
+    EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
+    """
     # Get file
     result = await db.execute(
         select(LDMFile).where(LDMFile.id == file_id)
@@ -495,11 +570,33 @@ async def delete_file(
         raise HTTPException(status_code=403, detail="Not authorized to delete this file")
 
     file_name = file.name
+
+    if not permanent:
+        # EXPLORER-008: Soft delete - move to trash
+        from .trash import move_to_trash, serialize_file_for_trash
+
+        # Serialize file data for restore
+        file_data = await serialize_file_for_trash(db, file)
+
+        # Move to trash
+        await move_to_trash(
+            db,
+            item_type="file",
+            item_id=file.id,
+            item_name=file.name,
+            item_data=file_data,
+            parent_project_id=file.project_id,
+            parent_folder_id=file.folder_id,
+            deleted_by=current_user["user_id"]
+        )
+
+    # Hard delete the original
     await db.delete(file)
     await db.commit()
 
-    logger.info(f"File deleted: id={file_id}, name='{file_name}'")
-    return {"message": "File deleted", "file_id": file_id}
+    action = "permanently deleted" if permanent else "moved to trash"
+    logger.info(f"File {action}: id={file_id}, name='{file_name}'")
+    return {"message": f"File {action}", "file_id": file_id}
 
 
 @router.post("/files/excel-preview")

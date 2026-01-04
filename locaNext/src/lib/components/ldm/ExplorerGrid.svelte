@@ -15,7 +15,7 @@
    * - Home/End: Go to first/last item
    */
   import { createEventDispatcher } from 'svelte';
-  import { Folder, Document, DocumentBlank, Table, Code, Application, Locked } from 'carbon-icons-svelte';
+  import { Folder, Document, DocumentBlank, Table, Code, Application, Locked, TrashCan, CloudOffline } from 'carbon-icons-svelte';
 
   // Props
   let {
@@ -46,6 +46,18 @@
     if (item.type === 'platform') return Application;
     if (item.type === 'folder') return Folder;
     if (item.type === 'project') return Folder;
+    // EXPLORER-008: Recycle Bin types
+    if (item.type === 'recycle-bin') return TrashCan;
+    if (item.type === 'trash-item') {
+      // Show icon based on original item type
+      if (item.item_type === 'platform') return Application;
+      if (item.item_type === 'project') return Folder;
+      if (item.item_type === 'folder') return Folder;
+      return Document; // file
+    }
+    // P3-PHASE5: Offline Storage types
+    if (item.type === 'offline-storage') return CloudOffline;
+    if (item.type === 'orphaned-file') return Document;
 
     // File icons based on format
     const format = (item.format || item.name?.split('.').pop() || '').toLowerCase();
@@ -74,6 +86,21 @@
     if (item.type === 'folder' || item.type === 'project') {
       const count = item.file_count || item.children?.length || 0;
       return count === 1 ? '1 item' : `${count} items`;
+    }
+    // EXPLORER-008: Recycle Bin types
+    if (item.type === 'recycle-bin') {
+      return 'Deleted items';
+    }
+    if (item.type === 'trash-item') {
+      return `Deleted ${item.item_type}`;
+    }
+    // P3-PHASE5: Offline Storage types
+    if (item.type === 'offline-storage') {
+      const count = item.file_count || 0;
+      return count === 1 ? '1 orphaned file' : `${count} orphaned files`;
+    }
+    if (item.type === 'orphaned-file') {
+      return item.error_message || 'Needs destination';
     }
     if (item.row_count) {
       return `${item.row_count.toLocaleString()} rows`;
@@ -151,8 +178,11 @@
    * Handle double click (open/enter)
    */
   function handleDoubleClick(item) {
-    if (item.type === 'folder' || item.type === 'project' || item.type === 'platform') {
+    if (item.type === 'folder' || item.type === 'project' || item.type === 'platform' || item.type === 'recycle-bin' || item.type === 'offline-storage') {
       dispatch('enterFolder', { item });
+    } else if (item.type === 'trash-item' || item.type === 'orphaned-file') {
+      // EXPLORER-008/P3-PHASE5: Double-click on trash/orphaned item does nothing (use context menu to move)
+      return;
     } else {
       dispatch('openFile', { item });
     }
@@ -396,7 +426,7 @@
       onkeydown={handleGridKeydown}
       tabindex="-1"
     >
-      {#each items as item (item.id || item.name)}
+      {#each items as item (`${item.type}-${item.id}`)}
         {@const Icon = getIcon(item)}
         <button
           class="grid-row"

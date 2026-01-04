@@ -1147,6 +1147,42 @@ class LDMTrash(Base):
 
 
 # =============================================================================
+# EXPLORER-009: User Capabilities (Privileged Operations)
+# =============================================================================
+
+class UserCapability(Base):
+    """
+    User Capability Grants for privileged operations.
+
+    Capabilities:
+    - delete_platform: Can permanently delete platforms
+    - delete_project: Can permanently delete projects
+    - cross_project_move: Can move resources between projects
+    - empty_trash: Can permanently empty entire trash
+
+    Admins always have all capabilities (no explicit grant needed).
+    Regular users need explicit grants from an admin.
+    """
+    __tablename__ = "user_capabilities"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    capability_name = Column(String(50), nullable=False, index=True)
+
+    # Grant metadata
+    granted_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    granted_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)  # NULL = permanent grant
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "capability_name", name="uq_user_capability"),
+    )
+
+    def __repr__(self):
+        return f"<UserCapability(user_id={self.user_id}, capability='{self.capability_name}')>"
+
+
+# =============================================================================
 # LDM Index Tracking (for TM FAISS indexes)
 # =============================================================================
 

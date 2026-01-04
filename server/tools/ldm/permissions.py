@@ -35,6 +35,73 @@ def is_admin(user: dict) -> bool:
 
 
 # =============================================================================
+# EXPLORER-009: Capability Checks for Privileged Operations
+# =============================================================================
+
+# Available capabilities
+CAPABILITIES = {
+    "delete_platform": "Can permanently delete platforms",
+    "delete_project": "Can permanently delete projects",
+    "cross_project_move": "Can move resources between projects",
+    "empty_trash": "Can permanently empty entire trash",
+}
+
+
+async def has_capability(
+    db: AsyncSession,
+    user: dict,
+    capability_name: str
+) -> bool:
+    """
+    Check if user has a specific capability.
+
+    Returns True if:
+    - User is admin/superadmin (always has all capabilities)
+    - User has explicit capability grant that hasn't expired
+    """
+    # Admins always have all capabilities
+    if is_admin(user):
+        return True
+
+    user_id = user["user_id"]
+
+    from server.database.models import UserCapability
+    from datetime import datetime
+
+    result = await db.execute(
+        select(UserCapability).where(
+            UserCapability.user_id == user_id,
+            UserCapability.capability_name == capability_name,
+            or_(
+                UserCapability.expires_at.is_(None),  # Permanent grants
+                UserCapability.expires_at > datetime.utcnow()  # Not expired
+            )
+        )
+    )
+
+    return result.scalar_one_or_none() is not None
+
+
+async def require_capability(
+    db: AsyncSession,
+    user: dict,
+    capability_name: str
+) -> None:
+    """
+    Raise 403 if user lacks capability.
+
+    Use this at the start of privileged endpoints.
+    """
+    from fastapi import HTTPException
+
+    if not await has_capability(db, user, capability_name):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Requires '{capability_name}' capability. Contact an administrator."
+        )
+
+
+# =============================================================================
 # Platform Access
 # =============================================================================
 

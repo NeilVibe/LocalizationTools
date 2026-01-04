@@ -108,7 +108,8 @@ CREATE TABLE IF NOT EXISTS offline_files (
     created_at TEXT,
     updated_at TEXT,
     downloaded_at TEXT DEFAULT (datetime('now')),
-    sync_status TEXT DEFAULT 'synced',
+    sync_status TEXT DEFAULT 'synced',  -- 'synced', 'modified', 'new', 'orphaned'
+    error_message TEXT,                 -- P3-PHASE5: Reason for orphan status
     FOREIGN KEY (project_id) REFERENCES offline_projects(id) ON DELETE CASCADE,
     FOREIGN KEY (folder_id) REFERENCES offline_folders(id) ON DELETE SET NULL
 );
@@ -116,6 +117,7 @@ CREATE TABLE IF NOT EXISTS offline_files (
 CREATE INDEX IF NOT EXISTS idx_offline_files_server_id ON offline_files(server_id);
 CREATE INDEX IF NOT EXISTS idx_offline_files_project ON offline_files(project_id);
 CREATE INDEX IF NOT EXISTS idx_offline_files_folder ON offline_files(folder_id);
+CREATE INDEX IF NOT EXISTS idx_offline_files_sync_status ON offline_files(sync_status);  -- P3-PHASE5
 
 -- -----------------------------------------------------------------------------
 -- Rows (mirrors ldm_rows)
