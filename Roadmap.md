@@ -505,14 +505,82 @@ Transformed LDM from "private by default" to "public by default with optional re
 
 | Priority | Feature | WIP Doc | Status |
 |----------|---------|---------|--------|
-| **P1** | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | ✅ Phase 1 DONE |
-| **P2** | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](docs/wip/FONT_SETTINGS_ENHANCEMENT.md) | ✅ DONE |
-| **P3** | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | ✅ **COMPLETE** |
-| **P4** | Color Parser Extension | [COLOR_PARSER_EXTENSION.md](docs/wip/COLOR_PARSER_EXTENSION.md) | ON HOLD |
-| **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | ✅ DONE (Session 16) |
-| **P6** | File Delete + Recycle Bin | (Included in P3) | MERGED INTO P3 |
-| **P7** | Endpoint Audit System | [ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) | ✅ DONE |
-| **P8** | **Dashboard Overhaul** | [DASHBOARD_OVERHAUL_PLAN.md](docs/wip/DASHBOARD_OVERHAUL_PLAN.md) | 📋 PLANNED |
+| **P9** | **Launcher + Offline/Online** | [LAUNCHER_PLAN.md](docs/wip/LAUNCHER_PLAN.md) | ✅ COMPLETE |
+| P8 | Dashboard Overhaul | [DASHBOARD_OVERHAUL_PLAN.md](docs/wip/DASHBOARD_OVERHAUL_PLAN.md) | PLANNED |
+| P7 | Endpoint Audit System | [ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) | ✅ DONE |
+| P5 | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | ✅ DONE |
+| P3 | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | ✅ COMPLETE |
+| P2 | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](docs/wip/FONT_SETTINGS_ENHANCEMENT.md) | ✅ DONE |
+| P1 | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | ✅ DONE |
+
+---
+
+## P9: Launcher + Patch Updates + Mode Switching ✅ COMPLETE
+
+**Status:** COMPLETE | **Build:** 453 | **Doc:** `docs/wip/LAUNCHER_PLAN.md`
+
+Beautiful game-launcher style first screen with mode switching.
+
+### What Was Built
+
+| Component | File | Status |
+|-----------|------|--------|
+| Launcher Store | `src/lib/stores/launcher.js` | ✅ NEW |
+| Launcher UI | `src/lib/components/Launcher.svelte` | ✅ NEW |
+| Layout Integration | `src/routes/+layout.svelte` | ✅ MODIFIED |
+| Mode Switching | `src/lib/components/sync/SyncStatusPanel.svelte` | ✅ MODIFIED |
+| Tests | `tests/launcher.spec.js` | ✅ 8 TESTS |
+
+### Launcher Features
+
+```
+┌─────────────────────────────────────┐
+│              LocaNext               │  ← Gradient logo (Svelte 5)
+│    Professional Localization        │
+│           v25.1214.2330             │
+│                                     │
+│    ● Central Server Connected       │  ← Live status check
+│                                     │
+│   ╭─────────────╮ ╭─────────────╮   │
+│   │Start Offline│ │   Login     │   │  ← Two entry paths
+│   │ No account  │ │ Connect to  │   │
+│   │   needed    │ │   server    │   │
+│   ╰─────────────╯ ╰─────────────╯   │
+│                                     │
+├─────────────────────────────────────┤
+│  UPDATE PANEL (when available)      │  ← Industry-style progress
+│  ████████████░░░░░ 68% | 12/18 MB   │
+└─────────────────────────────────────┘
+```
+
+### Mode Switching (Offline → Online)
+
+1. Start Offline → Works without login (SQLite)
+2. Open Sync Dashboard → "Switch to Online" button
+3. Login form appears → Enter credentials
+4. Connect → Switches to Online mode (PostgreSQL)
+5. Full sync capabilities enabled
+
+### Tech Stack
+
+- **Svelte 5** runes (`$state`, `$derived`)
+- **Electron 39** (latest)
+- **Carbon Components** (IBM design system)
+- **8 Playwright tests** passing
+
+### What Works in Each Mode
+
+| Feature | Offline | Online |
+|---------|---------|--------|
+| XLSTransfer | ✅ | ✅ |
+| QuickSearch | ✅ | ✅ |
+| KR Similar | ✅ | ✅ |
+| LDM (local files) | ✅ | ✅ |
+| LDM (shared projects) | ❌ | ✅ |
+| Translation Memory (local) | ✅ | ✅ |
+| Translation Memory (shared) | ❌ | ✅ |
+| Qwen AI | ✅ | ✅ |
+| Real-time Sync | ❌ | ✅ |
 
 ### P8: Dashboard Overhaul (9 Phases)
 
@@ -733,4 +801,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-04 | Build 449 | EXPLORER COMPLETE*
+*Strategic Roadmap | Updated 2026-01-04 | Build 453 pending | P9 Launcher + Mode Switching COMPLETE*

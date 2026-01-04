@@ -10,6 +10,7 @@
 import { writable } from 'svelte/store';
 
 const LOG_LEVELS = {
+  DEBUG: 'DEBUG',
   INFO: 'INFO',
   SUCCESS: 'SUCCESS',
   WARNING: 'WARNING',
@@ -135,6 +136,15 @@ function log(level, message, data = null) {
  * Public API
  */
 export const logger = {
+  /**
+   * Log debug message (verbose, low-priority)
+   * @param {string} message - The message to log
+   * @param {object} data - Optional structured data
+   */
+  debug(message, data = null) {
+    log(LOG_LEVELS.DEBUG, message, data);
+  },
+
   /**
    * Log informational message
    * @param {string} message - The message to log

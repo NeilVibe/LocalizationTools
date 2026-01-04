@@ -12,8 +12,8 @@
    * - 🟠 Pending: Has local changes
    */
   import { onMount } from 'svelte';
-  import { Modal, Button, ProgressBar, Tag } from 'carbon-components-svelte';
-  import { Cloud, CloudOffline, Renew, Warning, TrashCan, Folder, Document, Application } from 'carbon-icons-svelte';
+  import { Modal, Button, ProgressBar, Tag, TextInput, PasswordInput, Checkbox, InlineNotification } from 'carbon-components-svelte';
+  import { Cloud, CloudOffline, Renew, Warning, TrashCan, Folder, Document, Application, Login } from 'carbon-icons-svelte';
   import { Upload } from 'carbon-icons-svelte';
   import {
     connectionMode,
@@ -31,6 +31,9 @@
     manualSync,
     syncFileToServer
   } from '$lib/stores/sync.js';
+  import { launcherMode, startOnline } from '$lib/stores/launcher.js';
+  import { api } from '$lib/api/client.js';
+  import { logger } from '$lib/utils/logger.js';
 
   // Dashboard modal state
   let showDashboard = $state(false);
@@ -38,6 +41,17 @@
   let subscriptions = $state([]);
   let loadingSubscriptions = $state(false);
   let deletingIds = $state(new Set());  // Track items being deleted (prevents flicker)
+
+  // P9: Switch to Online - Login form state
+  let showLoginForm = $state(false);
+  let loginUsername = $state('');
+  let loginPassword = $state('');
+  let loginRememberMe = $state(false);
+  let loginError = $state('');
+  let loginLoading = $state(false);
+
+  // P9: Check if we started in offline mode (from launcher)
+  let isLauncherOffline = $derived($launcherMode === 'offline');
 
   // Get icon component based on status
   function getStatusIcon(status) {
@@ -83,6 +97,59 @@
     } finally {
       // ALWAYS reset reconnecting state
       reconnecting = false;
+    }
+  }
+
+  // P9: Switch to Online Mode - Show login form
+  function handleSwitchToOnline() {
+    showLoginForm = true;
+    loginError = '';
+  }
+
+  // P9: Cancel login form
+  function handleCancelLogin() {
+    showLoginForm = false;
+    loginError = '';
+    loginUsername = '';
+    loginPassword = '';
+  }
+
+  // P9: Handle login for switching to online mode
+  async function handleLoginForOnline() {
+    loginError = '';
+    loginLoading = true;
+
+    try {
+      // Authenticate with server
+      await api.login(loginUsername, loginPassword);
+
+      // Save credentials if remember me
+      if (loginRememberMe && typeof localStorage !== 'undefined') {
+        localStorage.setItem('locanext_remember', 'true');
+        localStorage.setItem('locanext_creds', btoa(JSON.stringify({
+          username: loginUsername,
+          password: loginPassword
+        })));
+      }
+
+      logger.success('SyncPanel: Switched to online mode');
+
+      // Switch to online mode
+      connectionMode.set('online');
+      startOnline();
+
+      // Reset form and close
+      showLoginForm = false;
+      loginUsername = '';
+      loginPassword = '';
+
+      // Reload subscriptions
+      await loadSubscriptions();
+    } catch (err) {
+      loginError = err.message || 'Login failed';
+      logger.error('SyncPanel: Login failed', { error: err.message });
+    } finally {
+      loginLoading = false;
     }
   }
 
@@ -273,49 +340,119 @@
       {/if}
     </div>
 
-    <!-- Actions -->
-    <div class="actions-section">
-      {#if $connectionMode === 'offline'}
-        <Button
-          kind="primary"
-          size="small"
-          icon={Cloud}
-          disabled={reconnecting}
-          on:click={handleReconnect}
-        >
-          {reconnecting ? 'Connecting...' : 'Try Reconnect'}
-        </Button>
-      {:else}
-        <Button
-          kind="primary"
-          size="small"
-          icon={Renew}
-          disabled={$isSyncing || visibleSubscriptions.length === 0}
-          on:click={handleSync}
-        >
-          {$isSyncing ? 'Syncing...' : 'Sync Now'}
-        </Button>
-        {#if $pendingChanges > 0}
+    <!-- P9: Login Form Overlay (for switching offline → online) -->
+    {#if showLoginForm}
+      <div class="login-overlay">
+        <div class="login-form-card">
+          <h3 class="login-title">Switch to Online Mode</h3>
+          <p class="login-subtitle">Login to connect to central server</p>
+
+          {#if loginError}
+            <InlineNotification
+              kind="error"
+              title="Login failed"
+              subtitle={loginError}
+              hideCloseButton
+            />
+          {/if}
+
+          <div class="login-fields">
+            <TextInput
+              bind:value={loginUsername}
+              labelText="Username"
+              placeholder="Enter username"
+              disabled={loginLoading}
+            />
+
+            <PasswordInput
+              bind:value={loginPassword}
+              labelText="Password"
+              placeholder="Enter password"
+              disabled={loginLoading}
+              on:keydown={(e) => e.key === 'Enter' && handleLoginForOnline()}
+            />
+
+            <Checkbox
+              bind:checked={loginRememberMe}
+              labelText="Remember me"
+              disabled={loginLoading}
+            />
+          </div>
+
+          <div class="login-actions">
+            <Button kind="secondary" size="small" onclick={handleCancelLogin} disabled={loginLoading}>
+              Cancel
+            </Button>
+            <Button
+              kind="primary"
+              size="small"
+              icon={Login}
+              onclick={handleLoginForOnline}
+              disabled={loginLoading || !loginUsername || !loginPassword}
+            >
+              {loginLoading ? 'Connecting...' : 'Connect'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    {:else}
+      <!-- Actions -->
+      <div class="actions-section">
+        {#if $connectionMode === 'offline'}
+          {#if isLauncherOffline}
+            <!-- P9: Started in offline mode - show Switch to Online -->
+            <Button
+              kind="primary"
+              size="small"
+              icon={Login}
+              onclick={handleSwitchToOnline}
+            >
+              Switch to Online
+            </Button>
+          {:else}
+            <!-- Regular offline - just try reconnect -->
+            <Button
+              kind="primary"
+              size="small"
+              icon={Cloud}
+              disabled={reconnecting}
+              onclick={handleReconnect}
+            >
+              {reconnecting ? 'Connecting...' : 'Try Reconnect'}
+            </Button>
+          {/if}
+        {:else}
           <Button
-            kind="danger"
+            kind="primary"
             size="small"
-            icon={Upload}
-            disabled={pushing || $isSyncing}
-            on:click={handlePushChanges}
+            icon={Renew}
+            disabled={$isSyncing || visibleSubscriptions.length === 0}
+            onclick={handleSync}
           >
-            {pushing ? 'Pushing...' : `Push ${$pendingChanges} Changes`}
+            {$isSyncing ? 'Syncing...' : 'Sync Now'}
+          </Button>
+          {#if $pendingChanges > 0}
+            <Button
+              kind="danger"
+              size="small"
+              icon={Upload}
+              disabled={pushing || $isSyncing}
+              onclick={handlePushChanges}
+            >
+              {pushing ? 'Pushing...' : `Push ${$pendingChanges} Changes`}
+            </Button>
+          {/if}
+          <Button
+            kind="secondary"
+            size="small"
+            icon={CloudOffline}
+            onclick={goOffline}
+          >
+            Go Offline
           </Button>
         {/if}
-        <Button
-          kind="secondary"
-          size="small"
-          icon={CloudOffline}
-          on:click={goOffline}
-        >
-          Go Offline
-        </Button>
-      {/if}
-    </div>
+      </div>
+    {/if}
 
     <!-- Offline Info -->
     {#if $connectionMode === 'offline'}
@@ -720,5 +857,49 @@
     margin-top: 0.75rem;
     font-size: 0.9rem;
     color: var(--cds-text-02);
+  }
+
+  /* P9: Login Form Overlay Styles */
+  .login-overlay {
+    padding: 1rem;
+  }
+
+  .login-form-card {
+    background: var(--cds-layer-02);
+    border-radius: 12px;
+    padding: 2rem;
+    border: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .login-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+    text-align: center;
+  }
+
+  .login-subtitle {
+    margin: 0 0 1.5rem;
+    font-size: 0.875rem;
+    color: var(--cds-text-02);
+    text-align: center;
+  }
+
+  .login-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .login-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+  }
+
+  .login-form-card :global(.bx--inline-notification) {
+    margin-bottom: 1rem;
   }
 </style>
