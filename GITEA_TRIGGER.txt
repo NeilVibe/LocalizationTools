@@ -123,3 +123,4 @@ Build 450: Dashboard Overhaul Plan + P3-PHASE5
 Build QA
 Build 452: LAUNCHER-style patch update system
 Build 453: P9 Launcher + Mode Switching
+Build 454: Fix P9 Offline mode authentication
