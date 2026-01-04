@@ -931,6 +931,65 @@ class OfflineDatabase:
             return [dict(row) for row in rows]
 
     # =========================================================================
+    # Orphaned Files (P3-PHASE5: Offline Storage Fallback)
+    # =========================================================================
+
+    def mark_file_orphaned(self, file_id: int, reason: str = None):
+        """
+        Mark a file as orphaned (server path doesn't exist).
+
+        This happens when:
+        - File was created offline and has no server path
+        - Server path was deleted while user was offline
+        - Push failed to find destination
+        """
+        with self._get_connection() as conn:
+            conn.execute(
+                """UPDATE offline_files
+                   SET sync_status = 'orphaned', error_message = ?, updated_at = datetime('now')
+                   WHERE id = ?""",
+                (reason, file_id)
+            )
+            conn.commit()
+            logger.info(f"Marked file {file_id} as orphaned: {reason}")
+
+    def get_orphaned_files(self) -> List[Dict]:
+        """Get all orphaned files (files without valid server path)."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """SELECT * FROM offline_files
+                   WHERE sync_status = 'orphaned'
+                   ORDER BY name"""
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    def get_orphaned_file_count(self) -> int:
+        """Get count of orphaned files."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) as count FROM offline_files WHERE sync_status = 'orphaned'"
+            ).fetchone()
+            return row["count"]
+
+    def unorphan_file(self, file_id: int, project_id: int, folder_id: int = None):
+        """
+        Move file out of orphaned state to a proper location.
+        Called when user moves file from Offline Storage to a real folder.
+        """
+        with self._get_connection() as conn:
+            conn.execute(
+                """UPDATE offline_files
+                   SET project_id = ?, server_project_id = ?,
+                       folder_id = ?, server_folder_id = ?,
+                       sync_status = 'modified', error_message = NULL,
+                       updated_at = datetime('now')
+                   WHERE id = ?""",
+                (project_id, project_id, folder_id, folder_id, file_id)
+            )
+            conn.commit()
+            logger.info(f"Unorphaned file {file_id} to project {project_id}, folder {folder_id}")
+
+    # =========================================================================
     # Utility
     # =========================================================================
 

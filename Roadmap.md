@@ -10,47 +10,53 @@
 |-----------|--------|
 | LDM (Language Data Manager) | WORKS |
 | XLS Transfer | WORKS |
-| Quick Search | WORKS (may remove - audit needed) |
-| KR Similar | WORKS (may remove - audit needed) |
+| Quick Search | WORKS (KEEP - unique dictionary features) |
+| KR Similar | WORKS (KEEP - unique FAISS similarity) |
 | CI/CD (Gitea + GitHub) | WORKS |
 
 ---
 
-## NEXT PRIORITY: UI Overhaul (Session 9+)
+## COMPLETED: UI Overhaul (Session 9) ✅
 
-**Status:** PLANNED | **Issues:** UI-094 to UI-097 + UI-087
+**Status:** COMPLETE | **Issues:** UI-094 to UI-097 + UI-087
 
-The LDM toolbar has redundant/confusing buttons. Clean it up.
+All UI cleanup tasks completed:
+- UI-087: Dropdown position → ✅ FIXED
+- UI-094: Remove TM button → ✅ FIXED
+- UI-095: Remove QA buttons → ✅ FIXED
+- UI-096: Reference file picker → ✅ FIXED
+- UI-097: Consolidate Settings → ✅ FIXED
 
-### Priority Order
+---
 
-| # | Issue | Task | Complexity |
-|---|-------|------|------------|
-| 1 | UI-094 | Remove TM button → use left panel only | Medium |
-| 2 | UI-095 | Remove QA buttons → use right-click | Medium |
-| 3 | UI-097 | Consolidate Settings → one page | High |
-| 4 | UI-096 | Reference file picker → FileExplorer dialog | High |
-| 5 | UI-087 | Fix dropdown position → below button | Low |
+## COMPLETED: EXPLORER Features (Sessions 21-24) ✅
 
-### What's Changing
+**Status:** COMPLETE | **Build:** 448
 
-**Before (Cluttered):**
-- TM button in toolbar + TM tab in left panel (duplicate)
-- QA On/Off toggle + QA button (2 buttons, confusing)
-- Settings in top nav + Settings gear in LDM toolbar (duplicate)
-- Admin dropdown unclear
-- Dropdowns appear far right
+Windows-style file management:
+- EXPLORER-001: Ctrl+C/V/X clipboard → ✅ FIXED
+- EXPLORER-002: Hierarchy validation → ✅ FIXED
+- EXPLORER-003/006: Confirmation modals → ✅ FIXED
+- EXPLORER-004: Explorer search like "Everything" → ✅ FIXED
+- EXPLORER-005: Cross-project move → ✅ FIXED
+- EXPLORER-007: Undo/Redo (Ctrl+Z/Y) → ✅ FIXED
+- EXPLORER-008: Recycle Bin (soft delete) → ✅ FIXED
+- EXPLORER-009: Privileged operations → ✅ FIXED (Session 24)
 
-**After (Clean):**
-- TM: Left panel only
-- QA: Right-click context menu → results in grid + right panel
-- Settings: One consolidated page
-- User menu: Shows username, contains Profile/Settings/Logout
-- Dropdowns: Appear below clicked button
+---
 
-### Detailed Plans
+## COMPLETED: EXPLORER-009 Privileged Operations ✅
 
-See `docs/wip/ISSUES_TO_FIX.md` for full implementation details.
+**Status:** COMPLETE (Session 24) | **Priority:** LOW (enterprise feature)
+
+Implemented capability system:
+- `delete_platform`: Required for platform deletion
+- `delete_project`: Required for project deletion
+- `cross_project_move`: Required for cross-project moves
+- `empty_trash`: Required for emptying recycle bin
+
+Admin endpoints at `/api/ldm/admin/capabilities/*` for grant management.
+Admins always have all capabilities automatically.
 
 ---
 
@@ -506,6 +512,49 @@ Transformed LDM from "private by default" to "public by default with optional re
 | **P5** | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | ✅ DONE (Session 16) |
 | **P6** | File Delete + Recycle Bin | (Included in P3) | MERGED INTO P3 |
 | **P7** | Endpoint Audit System | [ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) | ✅ DONE |
+| **P8** | **Dashboard Overhaul** | [DASHBOARD_OVERHAUL_PLAN.md](docs/wip/DASHBOARD_OVERHAUL_PLAN.md) | 📋 PLANNED |
+
+### P8: Dashboard Overhaul (9 Phases)
+
+**Status:** PLANNED | **Doc:** `docs/wip/DASHBOARD_OVERHAUL_PLAN.md`
+
+Comprehensive admin dashboard upgrade with translation/QA analytics.
+
+**Key Decisions:**
+- Keep `adminDashboard/` separate (web access valuable)
+- Upgrade Svelte 4.2.8 → 5.0.0
+- Client-side metrics calculation (server just stores)
+- Metrics-only payloads (~100 bytes, no text duplication)
+
+**Phases:**
+| Phase | Task | Complexity |
+|-------|------|------------|
+| 1 | Svelte 5 Upgrade | MEDIUM |
+| 2 | Capability Assignment UI | LOW |
+| 3 | UI/UX Improvements (spacious, customizable) | MEDIUM |
+| 4 | Database Changes (2 new tables) | LOW |
+| 5 | Translation Activity Logging (client-side difflib) | MEDIUM |
+| 6 | QA Usage Logging | LOW |
+| 7 | Translation Stats Page | MEDIUM |
+| 8 | QA Analytics Page | LOW |
+| 9 | Custom Report Builder | HIGH |
+
+**Database:**
+- 2 NEW tables: `translation_activity`, `qa_usage_log`
+- 4 NEW columns on `ldm_rows` for pretranslation tracking
+- 6 EXISTING tables already handle sessions/login/tool usage
+- Storage: ~62 MB/year for 100 users
+
+**Architecture:**
+```
+Client (Electron)              Server (FastAPI)
+├─ difflib word-level diff     ├─ Validate metrics
+├─ Calculate similarity %      ├─ INSERT to database
+├─ Count words changed         └─ ~1ms response
+└─ Send metrics only (~100B)
+
+Dashboard aggregates data only when admin views.
+```
 
 ### P3: Offline/Online Mode ✅ COMPLETE
 
@@ -528,13 +577,10 @@ Transformed LDM from "private by default" to "public by default with optional re
 | Phase 2 | Change Tracking - Track all local changes | ✅ DONE |
 | Phase 3 | Sync Engine - Push local changes to server | ✅ DONE |
 | Phase 4 | Conflict Resolution | ✅ DONE (last-write-wins, automatic) |
-| Phase 5 | File Path Selection | ✅ DONE (Offline Storage fallback planned) |
+| Phase 5 | File Path Selection | ✅ DONE (Offline Storage fallback) |
 | Phase 6 | Polish & Edge Cases | ✅ DONE (Build 447) |
 
-**Future Enhancements (EXPLORER-001):**
-- Ctrl+C/V file copy with optimistic UI
-- Ctrl+X/V file cut/move with grayed source
-- Clipboard persistence across navigation
+**All P3 Phases COMPLETE!**
 
 ### P5: Advanced Search ✅ COMPLETE (Session 16)
 
@@ -687,4 +733,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-04 | Build 447 | P3 COMPLETE*
+*Strategic Roadmap | Updated 2026-01-04 | Build 449 | EXPLORER COMPLETE*

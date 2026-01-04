@@ -1,7 +1,7 @@
 """Folder CRUD endpoints."""
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -235,6 +235,110 @@ async def move_folder(
     return {"success": True, "folder_id": folder_id, "parent_folder_id": parent_folder_id}
 
 
+@router.patch("/folders/{folder_id}/move-cross-project")
+async def move_folder_cross_project(
+    folder_id: int,
+    target_project_id: int,
+    target_parent_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    EXPLORER-005: Move a folder to a different project.
+    Updates the folder and all its contents (subfolders, files) to the new project.
+    EXPLORER-009: Requires 'cross_project_move' capability.
+    """
+    from server.database.models import LDMFile, LDMRow
+
+    # Get source folder
+    result = await db.execute(
+        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
+            LDMFolder.id == folder_id
+        )
+    )
+    folder = result.scalar_one_or_none()
+
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Check access to source project
+    if not await can_access_project(db, folder.project_id, current_user):
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Check access to destination project
+    if not await can_access_project(db, target_project_id, current_user):
+        raise HTTPException(status_code=404, detail="Destination project not found")
+
+    # EXPLORER-009: Check capability for cross-project move
+    from ..permissions import require_capability
+    await require_capability(db, current_user, "cross_project_move")
+
+    # Validate target parent folder if specified
+    if target_parent_id is not None:
+        result = await db.execute(
+            select(LDMFolder).where(
+                LDMFolder.id == target_parent_id,
+                LDMFolder.project_id == target_project_id
+            )
+        )
+        target_folder = result.scalar_one_or_none()
+        if not target_folder:
+            raise HTTPException(status_code=404, detail="Target parent folder not found")
+
+    source_project_id = folder.project_id
+
+    # DB-002: Check for naming conflicts and auto-rename if needed
+    from server.tools.ldm.utils.naming import generate_unique_name
+    new_name = await generate_unique_name(
+        db, LDMFolder, folder.name,
+        project_id=target_project_id,
+        parent_id=target_parent_id
+    )
+
+    # Update the folder
+    folder.name = new_name
+    folder.project_id = target_project_id
+    folder.parent_id = target_parent_id
+
+    # Recursively update all subfolders and files
+    await _update_folder_project_recursive(db, folder_id, target_project_id)
+
+    await db.commit()
+
+    logger.success(f"Folder moved cross-project: id={folder_id}, from project {source_project_id} to {target_project_id}")
+    return {
+        "success": True,
+        "folder_id": folder_id,
+        "new_name": new_name,
+        "target_project_id": target_project_id,
+        "target_parent_id": target_parent_id
+    }
+
+
+async def _update_folder_project_recursive(db, folder_id: int, new_project_id: int):
+    """
+    Recursively update all subfolders and files to the new project.
+    """
+    from server.database.models import LDMFile
+
+    # Update all files in this folder
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.folder_id == folder_id)
+    )
+    files = result.scalars().all()
+    for file in files:
+        file.project_id = new_project_id
+
+    # Get subfolders and recursively update
+    result = await db.execute(
+        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
+    )
+    subfolders = result.scalars().all()
+    for subfolder in subfolders:
+        subfolder.project_id = new_project_id
+        await _update_folder_project_recursive(db, subfolder.id, new_project_id)
+
+
 @router.post("/folders/{folder_id}/copy")
 async def copy_folder(
     folder_id: int,
@@ -447,10 +551,14 @@ async def _copy_folder_recursive(db, folder_id: int, dest_project_id: int, dest_
 @router.delete("/folders/{folder_id}", response_model=DeleteResponse)
 async def delete_folder(
     folder_id: int,
+    permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Delete a folder and all its contents."""
+    """
+    Delete a folder and all its contents.
+    EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
+    """
     result = await db.execute(
         select(LDMFolder).options(selectinload(LDMFolder.project)).where(
             LDMFolder.id == folder_id
@@ -464,8 +572,30 @@ async def delete_folder(
     if not await can_access_project(db, folder.project_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
+    folder_name = folder.name
+
+    if not permanent:
+        # EXPLORER-008: Soft delete - move to trash
+        from .trash import move_to_trash, serialize_folder_for_trash
+
+        # Serialize folder data for restore
+        folder_data = await serialize_folder_for_trash(db, folder)
+
+        # Move to trash
+        await move_to_trash(
+            db,
+            item_type="folder",
+            item_id=folder.id,
+            item_name=folder.name,
+            item_data=folder_data,
+            parent_project_id=folder.project_id,
+            parent_folder_id=folder.parent_id,
+            deleted_by=current_user["user_id"]
+        )
+
     await db.delete(folder)
     await db.commit()
 
-    logger.info(f"Folder deleted: id={folder_id}")
-    return {"message": "Folder deleted"}
+    action = "permanently deleted" if permanent else "moved to trash"
+    logger.info(f"Folder {action}: id={folder_id}, name='{folder_name}'")
+    return {"message": f"Folder {action}"}

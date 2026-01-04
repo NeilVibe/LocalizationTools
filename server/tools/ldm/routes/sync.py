@@ -1028,6 +1028,73 @@ async def _push_tm_changes_to_server(db: AsyncSession, local_tm_id: int, server_
 
 
 # =============================================================================
+# Orphaned Files (P3-PHASE5: Offline Storage Fallback)
+# =============================================================================
+
+class OrphanedFileInfo(BaseModel):
+    id: int
+    name: str
+    format: str
+    row_count: int
+    error_message: Optional[str]
+    updated_at: Optional[str]
+
+
+class OrphanedFilesResponse(BaseModel):
+    files: list[OrphanedFileInfo]
+    total_count: int
+
+
+@router.get("/offline/orphaned-files", response_model=OrphanedFilesResponse)
+async def list_orphaned_files(
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    List orphaned files (files whose server path doesn't exist).
+
+    These files are displayed in the "Offline Storage" virtual folder.
+    User can move them to proper locations via Ctrl+X/V.
+    """
+    try:
+        offline_db = get_offline_db()
+        orphaned = offline_db.get_orphaned_files()
+
+        files = [
+            OrphanedFileInfo(
+                id=f["id"],
+                name=f["name"],
+                format=f.get("format", "txt"),
+                row_count=f.get("row_count", 0),
+                error_message=f.get("error_message"),
+                updated_at=f.get("updated_at")
+            )
+            for f in orphaned
+        ]
+
+        return OrphanedFilesResponse(
+            files=files,
+            total_count=len(files)
+        )
+    except Exception as e:
+        logger.error(f"Failed to list orphaned files: {e}")
+        return OrphanedFilesResponse(files=[], total_count=0)
+
+
+@router.get("/offline/orphaned-file-count")
+async def get_orphaned_file_count(
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """Get count of orphaned files (for UI indicator)."""
+    try:
+        offline_db = get_offline_db()
+        count = offline_db.get_orphaned_file_count()
+        return {"count": count}
+    except Exception as e:
+        logger.error(f"Failed to get orphaned file count: {e}")
+        return {"count": 0}
+
+
+# =============================================================================
 # Download for Offline
 # =============================================================================
 

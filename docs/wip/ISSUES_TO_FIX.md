@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-04 (Session 21 Complete) | **Build:** 447 | **Open:** 2
+**Last Updated:** 2026-01-04 (Session 24) | **Build:** 449 (pending) | **Open:** 1
 
 ---
 
@@ -8,33 +8,14 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 2 |
-| **FIXED/CLOSED** | 90 |
+| **OPEN** | 1 |
+| **FIXED/CLOSED** | 99 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
-## OPEN ISSUES - SESSION 21
-
-### EXPLORER-001: Ctrl+C/V and Ctrl+X/V File Operations
-
-- **Reported:** 2026-01-04 (Session 21)
-- **Severity:** LOW (nice-to-have)
-- **Status:** OPEN (future feature)
-- **Component:** FilesPage.svelte, ExplorerGrid.svelte
-
-**Feature:** Windows-style copy/cut/paste for files and folders.
-
-**What's needed:**
-1. Clipboard state management in Svelte store
-2. Ctrl+C handler - copy to clipboard
-3. Ctrl+X handler - cut to clipboard (gray out source)
-4. Ctrl+V handler - paste at current location
-5. Auto-rename if duplicate name
-6. API endpoints for move/copy operations
-
----
+## OPEN ISSUES
 
 ### P3-PHASE5: Offline Storage Fallback Container
 
@@ -52,7 +33,95 @@
 
 ---
 
+### EXPLORER-009: Privileged Operations ✅ FIXED
+
+- **Reported:** 2026-01-04 (Session 21)
+- **Fixed:** 2026-01-04 (Session 24)
+- **Severity:** LOW (enterprise feature)
+- **Status:** ✅ FIXED
+- **Component:** permissions.py, models.py, capabilities.py
+
+**Implemented capability system:**
+- `delete_platform`: Required for platform deletion
+- `delete_project`: Required for project deletion
+- `cross_project_move`: Required for cross-project moves
+- `empty_trash`: Required for emptying recycle bin
+
+**Admin endpoints:**
+- `GET /api/ldm/admin/capabilities/available` - List capability types
+- `POST /api/ldm/admin/capabilities` - Grant capability to user
+- `DELETE /api/ldm/admin/capabilities/{id}` - Revoke capability
+- `GET /api/ldm/admin/capabilities` - List all grants
+- `GET /api/ldm/admin/capabilities/user/{id}` - List user's capabilities
+
+**Rule:** Admins always have all capabilities automatically.
+
+---
+
 ## FIXED IN SESSION 21
+
+### EXPLORER-001: Ctrl+C/V/X File Operations ✅ FIXED
+
+- **Reported:** 2026-01-04 (Session 21)
+- **Fixed:** 2026-01-04 (Build 448)
+- **Severity:** LOW
+- **Status:** ✅ FIXED
+
+**Solution:** Full clipboard implementation:
+- `clipboard.js` store with persistence across navigation
+- Ctrl+C (copy), Ctrl+X (cut), Ctrl+V (paste), Escape (clear)
+- Cut items shown grayed with diagonal stripes (optimistic UI)
+- Clipboard indicator in breadcrumb bar
+- Context menu Copy/Cut/Paste options
+- Backend: `/files/{id}/copy` and `/folders/{id}/copy` endpoints
+- Auto-rename using `generate_unique_name()` for duplicates
+
+**Files:** `clipboard.js`, `FilesPage.svelte`, `ExplorerGrid.svelte`, `files.py`, `folders.py`
+
+---
+
+## FIXED IN SESSIONS 22-24 (EXPLORER Features)
+
+### EXPLORER-002: Hierarchy Validation ✅ FIXED
+- **Fixed:** 2026-01-04 (Session 22)
+- Platforms cannot be copied/cut (removed from context menu)
+- `validatePasteTarget()` validates hierarchy rules
+- Files/folders cannot be placed in platforms, projects can only go to platform/root
+
+### EXPLORER-003: Project Move Confirmation ✅ FIXED
+- **Fixed:** 2026-01-04 (Session 22)
+- Merged into EXPLORER-006 (Confirmation Modals)
+
+### EXPLORER-004: Explorer Search ✅ FIXED
+- **Fixed:** 2026-01-04 (Session 23)
+- Backend: `/api/ldm/search?q=term` with full path building
+- Frontend: `ExplorerSearch.svelte` with keyboard navigation, right-click menu
+- Like "Everything" - fast, beautiful Linux-style paths
+
+### EXPLORER-005: Cross-Project Move ✅ FIXED
+- **Fixed:** 2026-01-04 (Session 22)
+- Endpoints: `/folders/{id}/move-cross-project`, `/files/{id}/move-cross-project`
+- Updates all children recursively to new project_id
+
+### EXPLORER-006: Confirmation Modals ✅ FIXED
+- **Fixed:** 2026-01-04 (Session 22)
+- Delete platform/project/folder shows confirmation
+- Move project/cross-project shows confirmation
+
+### EXPLORER-007: Undo/Redo ✅ FIXED
+- **Fixed:** 2026-01-04 (Session 22)
+- `undoStack.js` with 50-action history
+- Ctrl+Z undoes, Ctrl+Y redoes
+- Works with Recycle Bin for delete undo
+
+### EXPLORER-008: Recycle Bin ✅ FIXED
+- **Fixed:** 2026-01-04 (Session 22)
+- Uses existing `LDMTrash` table (30-day retention)
+- Soft delete moves to trash
+- Recycle Bin in explorer root
+- Context menu: Restore, Delete Permanently, Empty Recycle Bin
+
+---
 
 ### SYNC-008: TM Sync Not Supported ✅ FIXED
 

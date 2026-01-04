@@ -1,22 +1,250 @@
 # Session Context
 
-> Last Updated: 2026-01-04 (Session 21 Complete - P3 DONE)
+> Last Updated: 2026-01-04 (Session 25 - Dashboard Overhaul Plan)
 
 ---
 
 ## STABLE CHECKPOINT
 
-**Post-Session 21:** `fd08f21` | **Date:** 2026-01-04 | **Tag:** Build 447
+**Post-Session 25:** Pending | **Date:** 2026-01-04 | **Tag:** Build 450 (pending)
 
-P3 Offline/Online Mode is COMPLETE. Build 447 passes all tests.
+ALL EXPLORER features (1-9) COMPLETE + P3-PHASE5 COMPLETE + Dashboard Overhaul PLANNED.
 
 ---
 
 ## Current State
 
-**Build:** 447 | **Open Issues:** 2 (EXPLORER-001, P3-PHASE5 edge case)
+**Build:** 450 (pending) | **Open Issues:** 0
 **Tests:** 156 Playwright + 486 API passed, 0 failed
-**Status:** P3 COMPLETE - TM sync + per-parent unique names DONE
+**Status:** P3-PHASE5 done. Dashboard overhaul plan complete (9 phases).
+
+---
+
+## SESSION 25 COMPLETED (Dashboard Overhaul Planning)
+
+### P3-PHASE5: Offline Storage Fallback ✅ COMPLETE
+
+Implemented "Offline Storage" virtual folder for orphaned files:
+- `offline.py`: Added `mark_file_orphaned()`, `get_orphaned_files()`, `unorphan_file()`
+- `sync.py`: Added `/offline/orphaned-files`, `/offline/orphaned-file-count` endpoints
+- `FilesPage.svelte`: Shows "Offline Storage" in root when orphaned files exist
+- `ExplorerGrid.svelte`: CloudOffline icon, orphaned file display
+
+### Dashboard Overhaul Assessment ✅ COMPLETE
+
+**Key Findings:**
+| Item | Finding |
+|------|---------|
+| Svelte Version | `adminDashboard/` uses Svelte 4.2.8 (OLD), `locaNext/` uses 5.0.0 |
+| Capability UI | Backend exists, frontend MISSING |
+| Translation Tracking | No DB table, no logging |
+| QA Tracking | No DB table, no logging |
+
+**Decision:** Keep `adminDashboard/` separate, upgrade to Svelte 5.
+
+**Plan Created:** `docs/wip/DASHBOARD_OVERHAUL_PLAN.md`
+
+### 9-Phase Implementation Plan
+
+| Phase | Task | Complexity |
+|-------|------|------------|
+| 1 | Svelte 5 Upgrade | MEDIUM |
+| 2 | Capability Assignment UI | LOW |
+| 3 | UI/UX Improvements | MEDIUM |
+| 4 | Database Changes | LOW |
+| 5 | Translation Activity Logging | MEDIUM |
+| 6 | QA Usage Logging | LOW |
+| 7 | Translation Stats Page | MEDIUM |
+| 8 | QA Analytics Page | LOW |
+| 9 | Custom Report Builder | HIGH |
+
+### Architecture Decisions (CRITICAL)
+
+**1. Client-Side Metrics Calculation**
+```
+Client calculates:               Server stores:
+- difflib word-level diff        - Just INSERT
+- similarity %                   - ~1ms response
+- words_changed count            - No CPU load
+- action classification
+```
+
+**2. Metrics-Only Payloads**
+- Send: `{ similarity: 95.7, words_changed: 1 }` (~100 bytes)
+- NOT: `{ old_text: "...", new_text: "..." }` (~1KB)
+- Text already exists in `ldm_rows` - no duplication
+
+**3. difflib SequenceMatcher (Word-Level Diff)**
+- Detects exact word changes: "save" → "store" = 1 word changed
+- Performance: 10-50μs for typical cells (imperceptible)
+- Precise: knows which words changed, not just character similarity
+
+**4. Database Optimization**
+- SMALLINT instead of INTEGER (2 bytes vs 4)
+- REAL instead of DOUBLE (4 bytes vs 8)
+- Enum codes instead of VARCHAR (2 bytes vs 20)
+- ~50 bytes/row (vs ~270 if stored text)
+- ~62 MB/year for 100 users
+
+**5. Existing Tables Already Handle:**
+- `sessions` - login/logout ✅
+- `log_entries` - tool usage ✅
+- `user_activity_summary` - daily stats ✅
+- `error_logs`, `performance_metrics` ✅
+
+**6. Only 2 NEW Tables Needed:**
+- `translation_activity` - pretrans acceptance, word counts
+- `qa_usage_log` - QA tool usage
+
+---
+
+## SESSION 24 COMPLETED (Svelte 5 + EXPLORER-009 Privileged Operations)
+
+### EXPLORER-009: Privileged Operations ✅ COMPLETE
+Implemented capability system for privileged operations:
+
+| Capability | Protects | Endpoint |
+|------------|----------|----------|
+| `delete_platform` | Platform deletion | DELETE /platforms/{id} |
+| `delete_project` | Project deletion | DELETE /projects/{id} |
+| `cross_project_move` | Cross-project moves | PATCH /files/move-cross-project, PATCH /folders/move-cross-project |
+| `empty_trash` | Emptying recycle bin | POST /trash/empty |
+
+**Admin Endpoints:**
+- `GET /api/ldm/admin/capabilities/available` - List capability types
+- `POST /api/ldm/admin/capabilities` - Grant capability to user
+- `DELETE /api/ldm/admin/capabilities/{id}` - Revoke capability
+- `GET /api/ldm/admin/capabilities` - List all grants
+- `GET /api/ldm/admin/capabilities/user/{id}` - List user's capabilities
+
+**Rule:** Admins always have all capabilities automatically.
+
+### Svelte 5 Runes Upgrade
+Migrated ExplorerSearch.svelte to full Svelte 5 patterns:
+- Removed `createEventDispatcher()` - replaced with callback props
+- Changed `on:navigate` → `onnavigate` (Svelte 5 event syntax)
+
+### Bug Fixes
+| Bug | Fix |
+|-----|-----|
+| `each_key_duplicate` error | Changed key to `${item.type}-${item.id}` |
+| Multi-delete not working | Fixed `executeDelete()` to handle `selectedIds` |
+| Stale documentation | Fixed ISSUES_TO_FIX.md and Roadmap.md |
+
+### Files Created/Modified
+| File | Changes |
+|------|---------|
+| `models.py` | NEW: `UserCapability` table |
+| `capabilities.py` | NEW: Admin capability endpoints |
+| `permissions.py` | Added `has_capability()`, `require_capability()` |
+| `platforms.py`, `projects.py`, `trash.py`, `files.py`, `folders.py` | Added capability checks |
+| `router.py` | Registered capabilities router |
+
+---
+
+## SESSION 23 COMPLETED (Search + Optimistic UI)
+
+### EXPLORER-004: Explorer Search ✅
+- New backend endpoint: `/api/ldm/search?q={query}`
+- Searches across platforms, projects, folders, files
+- Returns full navigation path for each result
+- Beautiful, spacious search component: `ExplorerSearch.svelte`
+- Keyboard navigation (Arrow Up/Down, Enter, Escape)
+- Type-colored results (purple=platform, blue=project, amber=folder, green=file)
+- Debounced search (300ms)
+
+### Optimistic UI Power Review ✅
+All explorer operations now use optimistic UI:
+- **executeDelete()** - Item removed instantly, rollback on failure
+- **handlePaste()** - Items appear instantly (copy/move)
+- **executePendingMove()** - Confirmed moves appear instantly
+- **executeRename()** - Name updates instantly, rollback on failure
+- **restoreFromTrash()** - Item removed from trash instantly
+- **permanentDeleteFromTrash()** - Item removed instantly
+- **emptyTrash()** - All items cleared instantly
+
+### Files Created/Modified
+| File | Changes |
+|------|---------|
+| `search.py` | NEW - Search endpoint with path building |
+| `ExplorerSearch.svelte` | NEW - Beautiful search component |
+| `router.py` | Register search router |
+| `FilesPage.svelte` | Optimistic UI for all operations, search integration |
+
+---
+
+## SESSION 22 COMPLETED (EXPLORER Features)
+
+### EXPLORER-002: Hierarchy Validation ✅
+- Platforms cannot be copied/cut (removed from context menu)
+- `validatePasteTarget()` validates hierarchy rules:
+  - Files/folders cannot be placed directly in platforms
+  - Projects can only go to platform or root
+  - Cannot paste into self
+
+### EXPLORER-006: Confirmation Modals ✅
+- Type-aware delete messages:
+  - Platform: "Delete platform X and ALL projects inside?"
+  - Project: "Delete project X and ALL files inside?"
+- Move confirmation for project moves and cross-project moves
+
+### EXPLORER-008: Recycle Bin (Soft Delete) ✅
+- Uses existing LDMTrash table (30-day retention)
+- Delete moves to trash instead of permanent delete
+- Recycle Bin visible in explorer root
+- Context menu: Restore, Delete Permanently
+- Background menu: Empty Recycle Bin
+- Backend endpoints: `/trash`, `/trash/{id}/restore`, `/trash/{id}` (DELETE), `/trash/empty`
+
+### EXPLORER-005: Cross-Project Move ✅
+- New endpoints: `/folders/{id}/move-cross-project`, `/files/{id}/move-cross-project`
+- Updates folder/file and all children to new project
+- DB-002: Auto-rename on naming conflicts
+
+### EXPLORER-007: Undo/Redo (Ctrl+Z/Y) ✅
+- New store: `undoStack.js` with 50-action history
+- Ctrl+Z: Undo last action (restores from trash for delete)
+- Ctrl+Y: Redo last undone action
+
+### Files Created/Modified
+| File | Changes |
+|------|---------|
+| `trash.py` | NEW - Trash endpoints (list, restore, delete, empty) |
+| `undoStack.js` | NEW - Undo/redo store |
+| `folders.py` | Cross-project move, soft delete |
+| `files.py` | Cross-project move, soft delete |
+| `projects.py` | Soft delete |
+| `platforms.py` | Soft delete |
+| `router.py` | Register trash router |
+| `FilesPage.svelte` | Hierarchy validation, confirmations, trash UI, undo/redo |
+| `ExplorerGrid.svelte` | Recycle Bin and trash item display |
+
+---
+
+## OPEN ISSUES (0)
+
+All issues resolved!
+
+---
+
+## SESSION 25 COMPLETED (P3-PHASE5 Offline Storage)
+
+### P3-PHASE5: Offline Storage Fallback ✅ COMPLETE
+Implemented virtual "Offline Storage" folder for orphaned files:
+
+| Component | Change |
+|-----------|--------|
+| `offline.py` | Added `mark_file_orphaned()`, `get_orphaned_files()`, `unorphan_file()` |
+| `offline_schema.sql` | Added `error_message` column, `sync_status` index |
+| `sync.py` | Added `/offline/orphaned-files`, `/offline/orphaned-file-count` endpoints |
+| `FilesPage.svelte` | Shows "Offline Storage" in root when orphaned files exist |
+| `ExplorerGrid.svelte` | Added CloudOffline icon, orphaned file display |
+
+**User Flow:**
+1. File becomes orphaned (server path deleted, created offline without match)
+2. "Offline Storage" appears in explorer root
+3. User enters to see orphaned files
+4. User moves files to proper location via Ctrl+X/V
 
 ---
 
@@ -85,17 +313,18 @@ P3 Offline/Online Mode is COMPLETE. Build 447 passes all tests.
 
 ---
 
-## OPEN ISSUES (2 remaining)
+## OPEN ISSUES (1 remaining)
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| EXPLORER-001 | LOW | OPEN - Ctrl+C/V file operations (next) |
 | P3-PHASE5 | LOW | OPEN - Offline Storage fallback container (edge case) |
 
-## CLOSED THIS SESSION
+## CLOSED SESSIONS 21-24
 
 | Issue | Resolution |
 |-------|------------|
+| EXPLORER-001 | ✅ Ctrl+C/V/X clipboard operations |
+| EXPLORER-002-009 | ✅ All EXPLORER features complete |
 | SYNC-008 | ✅ TM sync implemented with last-write-wins merge |
 | DB-002 | ✅ Per-parent unique names with auto-rename (_1, _2) |
 
@@ -137,7 +366,7 @@ P3 Offline/Online Mode is COMPLETE. Build 447 passes all tests.
 | **Conflict Resolution** | Complex UI with dialogs | `merge_row()` uses **last-write-wins** by timestamp | ✅ AUTO-RESOLVED |
 | **Hierarchy Sync** | Files only | Platform → Project → Folder → File all sync | ✅ FIXED Session 21 |
 | **File Dialog Path Selection** | Needed for sync | Only for NEW files created offline (rare) | ⚠️ EDGE CASE |
-| **TM Sync** | Same as files | Not implemented yet | ❌ TODO |
+| **TM Sync** | Same as files | Implemented with last-write-wins | ✅ DONE (Build 447) |
 
 ### Conflict Resolution - ALREADY WORKS ✅
 
@@ -254,9 +483,11 @@ TMs are linked to Platform/Project/Folder via `ldm_tm_assignment` table.
 
 ## NEXT STEPS
 
-1. **EXPLORER-001: File Operations** - Implement Ctrl+C/V copy, Ctrl+X/V cut with optimistic UI
-2. **Offline Storage Fallback** - Local container for orphaned files (path conflicts)
-3. **Clipboard Persistence** - State survives folder navigation, clears on paste/Esc
+**All EXPLORER features COMPLETE!** Next priority:
+
+1. **P3-PHASE5** - Offline Storage Fallback (last open issue)
+2. **Dashboard** - User Management UI (admin endpoints exist)
+3. **Stats System** - Translation activity tracking
 
 ---
 
@@ -301,4 +532,4 @@ echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN:
 
 ---
 
-*Session 21 Complete - P3 DONE | Build 447 | EXPLORER-001 Next*
+*Session 25 | Build 449 | All EXPLORER complete, Dashboard planning next*
