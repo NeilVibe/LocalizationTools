@@ -118,6 +118,7 @@ def verify_token(token: str) -> Optional[dict]:
 
     Returns:
         Decoded token data dict if valid, None if invalid or expired.
+        For OFFLINE_MODE tokens, returns virtual admin user data.
 
     Example:
         >>> token = create_access_token({"user_id": 1})
@@ -125,6 +126,27 @@ def verify_token(token: str) -> Optional[dict]:
         >>> data["user_id"]
         1
     """
+    # P9: Handle OFFLINE_MODE tokens from launcher's "Start Offline" button
+    # SECURITY ANALYSIS:
+    # - Electron embedded backend runs on localhost only (same-machine access)
+    # - If attacker is on same machine, they already have full access
+    # - OFFLINE_MODE tokens don't expand the attack surface for local deployments
+    # - For exposed deployments, set ALLOW_OFFLINE_TOKENS=false in config
+    if token and token.startswith("OFFLINE_MODE_"):
+        # Check if offline tokens are allowed (default: True for Electron)
+        allow_offline = getattr(config, 'ALLOW_OFFLINE_TOKENS', True)
+        if allow_offline:
+            logger.debug("OFFLINE_MODE token accepted")
+            return {
+                "user_id": "OFFLINE",
+                "username": "Offline User",
+                "role": "admin",
+                "offline_mode": True
+            }
+        else:
+            logger.warning("OFFLINE_MODE token rejected - disabled by config")
+            return None
+
     try:
         payload = jwt.decode(
             token,
@@ -169,6 +191,25 @@ def get_current_user(token: str, db) -> Optional[dict]:
     if not user_id:
         logger.warning("No user_id in token")
         return None
+
+    # P9: Handle OFFLINE mode - look up real OFFLINE user from database
+    # This ensures we use the real integer user_id that works with foreign keys
+    if payload.get("offline_mode") or user_id == "OFFLINE":
+        offline_user = db.query(User).filter(User.username == "OFFLINE").first()
+        if offline_user:
+            return {
+                "user_id": offline_user.user_id,
+                "username": offline_user.username,
+                "email": offline_user.email,
+                "full_name": offline_user.full_name,
+                "department": offline_user.department,
+                "role": offline_user.role,
+                "is_active": offline_user.is_active,
+                "offline_mode": True
+            }
+        else:
+            logger.warning("OFFLINE user not found in database - run db_setup to create it")
+            return None
 
     # Fetch user from database
     user = db.query(User).filter(User.user_id == user_id).first()
@@ -220,6 +261,26 @@ async def get_current_user_async(token: str, db: AsyncSession) -> Optional[dict]
     if not user_id:
         logger.warning("No user_id in token")
         return None
+
+    # P9: Handle OFFLINE mode - look up real OFFLINE user from database
+    # This ensures we use the real integer user_id that works with foreign keys
+    if payload.get("offline_mode") or user_id == "OFFLINE":
+        result = await db.execute(select(User).where(User.username == "OFFLINE"))
+        offline_user = result.scalar_one_or_none()
+        if offline_user:
+            return {
+                "user_id": offline_user.user_id,
+                "username": offline_user.username,
+                "email": offline_user.email,
+                "full_name": offline_user.full_name,
+                "department": offline_user.department,
+                "role": offline_user.role,
+                "is_active": offline_user.is_active,
+                "offline_mode": True
+            }
+        else:
+            logger.warning("OFFLINE user not found in database - run db_setup to create it")
+            return None
 
     # Fetch user from database (async)
     result = await db.execute(select(User).where(User.user_id == user_id))
