@@ -923,10 +923,7 @@
   // ============== File Operations ==============
   // P9: These operations work for both 'file' (PostgreSQL) and 'local-file' (SQLite)
   // because the backend endpoints use unified fallback logic
-
-  function isFileType(item) {
-    return item && ['file', 'local-file'].includes(item.type);
-  }
+  // Note: isFileType() and isFolderType() helpers are defined at the top of the script
 
   // Download
   async function downloadFile() {
