@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-05 (Session 30) | **Build:** 453 (pending) | **Open:** 2
+**Last Updated:** 2026-01-05 (Session 31) | **Build:** 453 (pending) | **Open:** 0
 
 ---
 
@@ -8,9 +8,9 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 2 |
-| **FIXED/CLOSED** | 107 |
-| **NOT A BUG/BY DESIGN** | 3 |
+| **OPEN** | 0 |
+| **FIXED/CLOSED** | 108 |
+| **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
@@ -113,40 +113,49 @@
 
 ---
 
-### P9-FILE: File Rename in Offline Mode May Not Work
+### P9-FILE: File Rename in Offline Mode ✅ VERIFIED WORKING
 
 - **Reported:** 2026-01-05 (Session 29)
+- **Verified:** 2026-01-05 (Session 31)
 - **Severity:** MEDIUM
-- **Status:** OPEN - NEEDS TESTING
+- **Status:** ✅ VERIFIED WORKING (was NOT A BUG)
 - **Component:** files.py, sync.py, offline.py
 
 **Problem:** User reports can't rename files in offline mode.
 
-**Backend Analysis:**
-- `PATCH /files/{file_id}/rename` exists with SQLite fallback
-- `PUT /offline/storage/files/{file_id}/rename` exists for local files
-- `rename_local_file()` in offline.py only works for `sync_status='local'`
-- Synced files (downloaded from server) cannot be renamed
+**Testing Results (6/6 tests pass):**
+- ✅ Upload file to Offline Storage - WORKS
+- ✅ Rename local file in Offline Storage - WORKS
+- ✅ PATCH endpoint fallback to SQLite - WORKS
+- ✅ Reject rename of non-existent file - WORKS
+- ✅ Empty name validation - WORKS (added `min_length=1`)
+- ✅ Synced file rename rejection - WORKS (by design)
 
-**Possible Issue:** User may be trying to rename synced files, which is intentionally blocked.
+**Conclusion:** The code works correctly. The original report was likely about renaming **synced files** (downloaded from server), which is intentionally blocked because:
+- Synced files have a server path that shouldn't be changed locally
+- Renaming synced files would break the sync relationship
+- Only LOCAL files (created in Offline Storage) can be renamed
+
+**Test:** `locaNext/tests/offline-file-rename.spec.ts`
 
 ---
 
-### P3-PHASE5: Offline Storage Fallback Container
+### P3-PHASE5: Offline Storage Fallback Container ✅ RESOLVED
 
 - **Reported:** 2026-01-04 (Session 21)
+- **Resolved:** 2026-01-05 (Session 30 - P9-ARCH)
 - **Severity:** LOW (edge case)
-- **Status:** OPEN - Superseded by P9-ARCH
+- **Status:** ✅ RESOLVED BY P9-ARCH
 - **Component:** FilesPage.svelte, sync.js
 
 **Scenario:** User creates file while offline with no matching server path, or server path was deleted.
 
-**Solution (documented in OFFLINE_ONLINE_MODE.md):**
-- Create local "Offline Storage" container
+**Resolution:** P9-ARCH implemented Offline Storage as a real project:
+- Offline Storage platform/project now exists in both PostgreSQL (for TM FK) and SQLite
+- Local files are properly organized in Offline Storage
+- Users can upload files directly to Offline Storage via `storage=local`
 - Orphaned files auto-placed there on sync
 - User can Ctrl+X/V to move to proper location
-
-**Note:** This will be properly resolved by P9-ARCH (making Offline Storage a real project).
 
 ---
 
