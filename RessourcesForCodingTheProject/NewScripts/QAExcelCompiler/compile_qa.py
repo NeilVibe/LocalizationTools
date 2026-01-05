@@ -48,6 +48,9 @@ IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 # Valid STATUS values (only these count as "filled")
 VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED"]
 
+# Valid MANAGER STATUS values (for manager workflow)
+VALID_MANAGER_STATUS = ["FIXED", "REPORTED", "CHECKING"]
+
 # === TRACKER CONFIGURATION ===
 TRACKER_FILENAME = "LQA_Tester_ProgressTracker.xlsx"
 
@@ -354,6 +357,56 @@ def get_or_create_user_screenshot_column(ws, username, after_comment_col):
     return new_col
 
 
+def get_or_create_user_status_column(ws, username, after_comment_col):
+    """
+    Find or create STATUS_{username} column immediately after COMMENT_{username}.
+
+    This is for MANAGER workflow - managers mark FIXED/REPORTED/CHECKING.
+
+    Args:
+        ws: Worksheet
+        username: User identifier
+        after_comment_col: Column index of COMMENT_{username} (status goes right after)
+
+    Returns: Column index (1-based)
+    """
+    col_name = f"STATUS_{username}"
+
+    # Check if column already exists
+    for col in range(1, ws.max_column + 1):
+        header = ws.cell(row=1, column=col).value
+        if header and str(header).strip() == col_name:
+            return col
+
+    # Add new column at max_column + 1
+    new_col = ws.max_column + 1
+
+    cell = ws.cell(row=1, column=new_col)
+    cell.value = col_name
+
+    # Light green background for manager STATUS columns (distinct from tester columns)
+    cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+    # Bold font
+    cell.font = Font(bold=True, color="000000")
+    # Center alignment
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    # Nice border (green tint)
+    cell.border = Border(
+        left=Side(style='medium', color='228B22'),
+        right=Side(style='medium', color='228B22'),
+        top=Side(style='medium', color='228B22'),
+        bottom=Side(style='medium', color='228B22')
+    )
+
+    # Set column width
+    col_letter = get_column_letter(new_col)
+    ws.column_dimensions[col_letter].width = 15
+    ws.column_dimensions[col_letter].hidden = False
+
+    print(f"    Created column: {col_name} at {get_column_letter(new_col)} (manager status - green)")
+    return new_col
+
+
 def format_comment(new_comment, string_id=None, existing_comment=None, file_mod_time=None):
     """
     Format comment with StringID and file modification time.
@@ -459,17 +512,19 @@ def find_matching_row_fallback(master_ws, qa_signature, exclude_cols, start_row=
     return None
 
 
-def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx_path=None):
+def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx_path=None, manager_status=None):
     """
     Process a single sheet: copy COMMENT and SCREENSHOT from QA to master, collect STATUS stats.
 
     ROBUST VERSION:
     - Finds COMMENT/STATUS/STRINGID/SCREENSHOT columns dynamically by header name
     - Uses MAX_COLUMN + 1 for user comment and screenshot columns
+    - Creates columns in order: COMMENT_{User} → STATUS_{User} → SCREENSHOT_{User}
     - Falls back to 2+ cell matching if row counts differ
     - Applies beautiful styling to comment cells (blue fill + bold)
     - Transfers screenshots with hyperlink path transformation
     - Uses file modification time for comment timestamps
+    - Preserves manager STATUS values (FIXED/REPORTED/CHECKING) from preprocess
 
     Args:
         master_ws: Master worksheet
@@ -478,11 +533,14 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
         category: Category name
         image_mapping: Dict mapping original_name -> new_name (for hyperlink transformation)
         xlsx_path: Path to QA xlsx file (for file modification time)
+        manager_status: Dict of {row: {user: status}} for this sheet (from preprocess)
 
     Returns: Dict with {comments: n, screenshots: n, stats: {...}, fallback_used: n}
     """
     if image_mapping is None:
         image_mapping = {}
+    if manager_status is None:
+        manager_status = {}
 
     # Get file modification time for timestamp
     file_mod_time = None
@@ -506,28 +564,28 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
     if qa_stringid_col:
         qa_exclude_cols.add(qa_stringid_col)
 
-    # Find or create COMMENT_{username} in master (MAX_COLUMN + 1)
+    # Find or create user columns in master in correct order:
+    # COMMENT_{username} → STATUS_{username} → SCREENSHOT_{username}
     master_comment_col = get_or_create_user_comment_column(master_ws, username)
-
-    # Find or create SCREENSHOT_{username} in master (right after COMMENT_{username})
-    master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_comment_col)
+    master_user_status_col = get_or_create_user_status_column(master_ws, username, master_comment_col)
+    master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_user_status_col)
 
     # Build exclude set for master row matching
-    master_status_col = find_column_by_header(master_ws, "STATUS")
+    master_orig_status_col = find_column_by_header(master_ws, "STATUS")
     master_orig_comment_col = find_column_by_header(master_ws, "COMMENT")
     master_orig_screenshot_col = find_column_by_header(master_ws, "SCREENSHOT")
 
     master_exclude_cols = set()
-    if master_status_col:
-        master_exclude_cols.add(master_status_col)
+    if master_orig_status_col:
+        master_exclude_cols.add(master_orig_status_col)
     if master_orig_comment_col:
         master_exclude_cols.add(master_orig_comment_col)
     if master_orig_screenshot_col:
         master_exclude_cols.add(master_orig_screenshot_col)
-    # Also exclude all COMMENT_* and SCREENSHOT_* columns
+    # Also exclude all COMMENT_*, STATUS_*, and SCREENSHOT_* columns
     for col in range(1, master_ws.max_column + 1):
         header = master_ws.cell(row=1, column=col).value
-        if header and (str(header).startswith("COMMENT_") or str(header).startswith("SCREENSHOT_")):
+        if header and (str(header).startswith("COMMENT_") or str(header).startswith("STATUS_") or str(header).startswith("SCREENSHOT_")):
             master_exclude_cols.add(col)
 
     result = {
@@ -666,6 +724,24 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
 
                     result["screenshots"] += 1
 
+        # Restore manager STATUS_{username} value from preprocess
+        if manager_status and master_row in manager_status:
+            row_statuses = manager_status[master_row]
+            if username in row_statuses:
+                status_value = row_statuses[username]
+                status_cell = master_ws.cell(row=master_row, column=master_user_status_col)
+                # Only restore if currently empty (preserve manual edits)
+                if not status_cell.value:
+                    status_cell.value = status_value
+                    # Style based on status value
+                    status_cell.alignment = Alignment(horizontal='center', vertical='center')
+                    if status_value == "FIXED":
+                        status_cell.font = Font(bold=True, color="228B22")  # Forest green
+                    elif status_value == "REPORTED":
+                        status_cell.font = Font(bold=True, color="FF8C00")  # Dark orange
+                    elif status_value == "CHECKING":
+                        status_cell.font = Font(bold=True, color="0000FF")  # Blue
+
     return result
 
 
@@ -747,6 +823,137 @@ def update_status_sheet(wb, users, user_stats):
 
 
 # =============================================================================
+# MANAGER STATUS PREPROCESS FUNCTIONS
+# =============================================================================
+
+def collect_manager_status():
+    """
+    Read existing Master files and collect all STATUS_{User} values.
+
+    This is the PREPROCESS step - runs before compilation to preserve
+    manager-entered status values (FIXED/REPORTED/CHECKING).
+
+    Returns: Dict structure
+    {
+        "Quest": {
+            "Sheet1": {
+                row_number: {
+                    "John": "FIXED",
+                    "Alice": "REPORTED"
+                }
+            }
+        }
+    }
+    """
+    manager_status = {}
+
+    for category in CATEGORIES:
+        master_path = MASTER_FOLDER / f"Master_{category}.xlsx"
+        if not master_path.exists():
+            continue
+
+        try:
+            wb = openpyxl.load_workbook(master_path)
+            manager_status[category] = {}
+
+            for sheet_name in wb.sheetnames:
+                if sheet_name == "STATUS":
+                    continue
+
+                ws = wb[sheet_name]
+                manager_status[category][sheet_name] = {}
+
+                # Find all STATUS_{User} columns
+                status_cols = {}
+                for col in range(1, ws.max_column + 1):
+                    header = ws.cell(row=1, column=col).value
+                    if header and str(header).startswith("STATUS_"):
+                        username = str(header).replace("STATUS_", "")
+                        status_cols[username] = col
+
+                if not status_cols:
+                    continue
+
+                # Collect values per row
+                for row in range(2, ws.max_row + 1):
+                    row_status = {}
+                    for username, col in status_cols.items():
+                        value = ws.cell(row=row, column=col).value
+                        if value and str(value).strip().upper() in VALID_MANAGER_STATUS:
+                            row_status[username] = str(value).strip().upper()
+
+                    if row_status:
+                        manager_status[category][sheet_name][row] = row_status
+
+            wb.close()
+
+        except Exception as e:
+            print(f"  WARN: Error reading {master_path.name} for preprocess: {e}")
+
+    return manager_status
+
+
+def collect_manager_stats_for_tracker():
+    """
+    Read all Master files and count FIXED/REPORTED/CHECKING per user per category.
+
+    Returns: Dict structure
+    {
+        "Quest": {
+            "John": {"fixed": 5, "reported": 2, "checking": 1},
+            "Alice": {"fixed": 3, "reported": 1, "checking": 0}
+        }
+    }
+    """
+    manager_stats = defaultdict(lambda: defaultdict(lambda: {"fixed": 0, "reported": 0, "checking": 0}))
+
+    for category in CATEGORIES:
+        master_path = MASTER_FOLDER / f"Master_{category}.xlsx"
+        if not master_path.exists():
+            continue
+
+        try:
+            wb = openpyxl.load_workbook(master_path)
+
+            for sheet_name in wb.sheetnames:
+                if sheet_name == "STATUS":
+                    continue
+
+                ws = wb[sheet_name]
+
+                # Find all STATUS_{User} columns
+                status_cols = {}
+                for col in range(1, ws.max_column + 1):
+                    header = ws.cell(row=1, column=col).value
+                    if header and str(header).startswith("STATUS_"):
+                        username = str(header).replace("STATUS_", "")
+                        status_cols[username] = col
+
+                if not status_cols:
+                    continue
+
+                # Count status values per user
+                for row in range(2, ws.max_row + 1):
+                    for username, col in status_cols.items():
+                        value = ws.cell(row=row, column=col).value
+                        if value:
+                            status_upper = str(value).strip().upper()
+                            if status_upper == "FIXED":
+                                manager_stats[category][username]["fixed"] += 1
+                            elif status_upper == "REPORTED":
+                                manager_stats[category][username]["reported"] += 1
+                            elif status_upper == "CHECKING":
+                                manager_stats[category][username]["checking"] += 1
+
+            wb.close()
+
+        except Exception as e:
+            print(f"  WARN: Error reading {master_path.name} for manager stats: {e}")
+
+    return manager_stats
+
+
+# =============================================================================
 # TRACKER FUNCTIONS - LQA User Progress Tracker
 # =============================================================================
 
@@ -777,21 +984,25 @@ def get_or_create_tracker():
     return wb, tracker_path
 
 
-def update_daily_data_sheet(wb, daily_entries):
+def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
     """
-    Update hidden _DAILY_DATA sheet with new entries.
+    Update hidden _DAILY_DATA sheet with new entries including manager stats.
 
     Args:
         wb: Tracker workbook
         daily_entries: List of dicts with {date, user, category, done, issues, no_issue, blocked}
+        manager_stats: Dict of {category: {user: {fixed, reported, checking}}} from manager status
 
     Mode: REPLACE - same (date, user, category) overwrites existing row
     """
+    if manager_stats is None:
+        manager_stats = {}
+
     ws = wb["_DAILY_DATA"]
 
-    # Ensure headers exist
-    if ws.cell(1, 1).value != "Date":
-        headers = ["Date", "User", "Category", "Done", "Issues", "NoIssue", "Blocked"]
+    # Ensure headers exist (now includes Fixed, Reported, Checking)
+    if ws.cell(1, 1).value != "Date" or ws.max_column < 10:
+        headers = ["Date", "User", "Category", "Done", "Issues", "NoIssue", "Blocked", "Fixed", "Reported", "Checking"]
         for col, header in enumerate(headers, 1):
             ws.cell(1, col, header)
 
@@ -816,6 +1027,11 @@ def update_daily_data_sheet(wb, daily_entries):
             row = ws.max_row + 1
             existing[key] = row
 
+        # Get manager stats for this user/category
+        category = entry["category"]
+        user = entry["user"]
+        user_manager_stats = manager_stats.get(category, {}).get(user, {"fixed": 0, "reported": 0, "checking": 0})
+
         ws.cell(row, 1, entry["date"])
         ws.cell(row, 2, entry["user"])
         ws.cell(row, 3, entry["category"])
@@ -823,6 +1039,9 @@ def update_daily_data_sheet(wb, daily_entries):
         ws.cell(row, 5, entry["issues"])
         ws.cell(row, 6, entry["no_issue"])
         ws.cell(row, 7, entry["blocked"])
+        ws.cell(row, 8, user_manager_stats["fixed"])
+        ws.cell(row, 9, user_manager_stats["reported"])
+        ws.cell(row, 10, user_manager_stats["checking"])
 
 
 def build_daily_sheet(wb):
@@ -830,6 +1049,7 @@ def build_daily_sheet(wb):
     Build DAILY sheet from _DAILY_DATA.
 
     Aggregates by (date, user) - combines all categories.
+    Includes both Tester Stats (Done, Issues) and Manager Stats (Fixed, Reported, Checking, Pending).
     """
     # Delete and recreate sheet to handle merged cells properly
     if "DAILY" in wb.sheetnames:
@@ -839,7 +1059,10 @@ def build_daily_sheet(wb):
     data_ws = wb["_DAILY_DATA"]
 
     # Read raw data and aggregate by (date, user)
-    daily_data = defaultdict(lambda: defaultdict(lambda: {"done": 0, "issues": 0}))
+    # Now includes manager stats: fixed, reported, checking
+    daily_data = defaultdict(lambda: defaultdict(lambda: {
+        "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0
+    }))
     users = set()
 
     for row in range(2, data_ws.max_row + 1):
@@ -847,10 +1070,16 @@ def build_daily_sheet(wb):
         user = data_ws.cell(row, 2).value
         done = data_ws.cell(row, 4).value or 0
         issues = data_ws.cell(row, 5).value or 0
+        fixed = data_ws.cell(row, 8).value or 0
+        reported = data_ws.cell(row, 9).value or 0
+        checking = data_ws.cell(row, 10).value or 0
 
         if date and user:
             daily_data[date][user]["done"] += done
             daily_data[date][user]["issues"] += issues
+            daily_data[date][user]["fixed"] += fixed
+            daily_data[date][user]["reported"] += reported
+            daily_data[date][user]["checking"] += checking
             users.add(user)
 
     if not users:
@@ -863,6 +1092,7 @@ def build_daily_sheet(wb):
     # Styles
     title_fill = PatternFill(start_color=TRACKER_STYLES["title_color"], end_color=TRACKER_STYLES["title_color"], fill_type="solid")
     header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"], end_color=TRACKER_STYLES["header_color"], fill_type="solid")
+    manager_header_fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")  # Light green for manager
     subheader_fill = PatternFill(start_color=TRACKER_STYLES["subheader_color"], end_color=TRACKER_STYLES["subheader_color"], fill_type="solid")
     alt_fill = PatternFill(start_color=TRACKER_STYLES["alt_row_color"], end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid")
     total_fill = PatternFill(start_color=TRACKER_STYLES["total_row_color"], end_color=TRACKER_STYLES["total_row_color"], fill_type="solid")
@@ -875,18 +1105,42 @@ def build_daily_sheet(wb):
     center = Alignment(horizontal='center', vertical='center')
     bold = Font(bold=True)
 
+    # Layout: Date | Tester Stats (Done, Issues) | Manager Stats (Fixed, Reported, Checking, Pending)
+    # title_cols = Date(1) + Users*2 (tester) + 4 (manager stats)
+    tester_cols = len(users) * 2
+    manager_cols = 4  # Fixed, Reported, Checking, Pending
+    title_cols = 1 + tester_cols + manager_cols
+
     # Row 1: Title
-    title_cols = 1 + len(users) * 2  # Date + (Done, Issues) per user
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=title_cols)
     title_cell = ws.cell(1, 1, "DAILY PROGRESS")
     title_cell.fill = title_fill
     title_cell.font = Font(bold=True, size=14)
     title_cell.alignment = center
 
-    # Row 2: Empty
-
-    # Row 3: User names (merged across Done+Issues)
+    # Row 2: Section headers (Tester Stats | Manager Stats)
     ws.cell(3, 1, "")  # Date column header placeholder
+
+    # Tester Stats section header
+    if tester_cols > 0:
+        tester_start = 2
+        tester_end = 1 + tester_cols
+        ws.merge_cells(start_row=2, start_column=tester_start, end_row=2, end_column=tester_end)
+        tester_section = ws.cell(2, tester_start, "Tester Stats")
+        tester_section.fill = header_fill
+        tester_section.font = bold
+        tester_section.alignment = center
+
+    # Manager Stats section header
+    manager_start = 2 + tester_cols
+    manager_end = manager_start + manager_cols - 1
+    ws.merge_cells(start_row=2, start_column=manager_start, end_row=2, end_column=manager_end)
+    manager_section = ws.cell(2, manager_start, "Manager Stats")
+    manager_section.fill = manager_header_fill
+    manager_section.font = bold
+    manager_section.alignment = center
+
+    # Row 3: User names (merged across Done+Issues) for tester section
     col = 2
     for user in users:
         ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + 1)
@@ -897,11 +1151,21 @@ def build_daily_sheet(wb):
         ws.cell(3, col + 1).fill = header_fill  # Merged cell styling
         col += 2
 
-    # Row 4: Sub-headers (Date, Done, Issues, Done, Issues, ...)
-    ws.cell(4, 1, "Date").fill = subheader_fill
-    ws.cell(4, 1).font = bold
-    ws.cell(4, 1).alignment = center
-    ws.cell(4, 1).border = border
+    # Manager stats headers in row 3 (spans row 3-4 conceptually, but we put labels in row 3)
+    for i, label in enumerate(["Fixed", "Reported", "Checking", "Pending"]):
+        cell = ws.cell(3, manager_start + i, label)
+        cell.fill = manager_header_fill
+        cell.font = bold
+        cell.alignment = center
+        cell.border = border
+
+    # Row 4: Sub-headers (Date, Done, Issues per user)
+    date_cell = ws.cell(4, 1, "Date")
+    date_cell.fill = subheader_fill
+    date_cell.font = bold
+    date_cell.alignment = center
+    date_cell.border = border
+
     col = 2
     for user in users:
         done_cell = ws.cell(4, col, "Done")
@@ -917,9 +1181,17 @@ def build_daily_sheet(wb):
         issues_cell.border = border
         col += 2
 
+    # Manager sub-headers row 4 (repeat or empty - we'll leave empty as labels are in row 3)
+    for i in range(4):
+        cell = ws.cell(4, manager_start + i)
+        cell.fill = subheader_fill
+        cell.border = border
+
     # Row 5+: Data rows
     user_totals = {user: {"done": 0, "issues": 0} for user in users}
+    manager_totals = {"fixed": 0, "reported": 0, "checking": 0, "pending": 0}
     data_row = 5
+
     for idx, date in enumerate(dates):
         # Date column - format as MM/DD
         if isinstance(date, str) and len(date) >= 10:
@@ -933,11 +1205,23 @@ def build_daily_sheet(wb):
         if idx % 2 == 1:
             date_cell.fill = alt_fill
 
+        # Aggregate manager stats across all users for this date
+        day_fixed = 0
+        day_reported = 0
+        day_checking = 0
+        day_issues = 0
+
         col = 2
         for user in users:
-            user_data = daily_data[date].get(user, {"done": 0, "issues": 0})
+            user_data = daily_data[date].get(user, {"done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0})
             done_val = user_data["done"]
             issues_val = user_data["issues"]
+
+            # Aggregate for manager stats
+            day_fixed += user_data["fixed"]
+            day_reported += user_data["reported"]
+            day_checking += user_data["checking"]
+            day_issues += issues_val
 
             # Track totals
             user_totals[user]["done"] += done_val
@@ -960,6 +1244,24 @@ def build_daily_sheet(wb):
                 issues_cell.fill = alt_fill
 
             col += 2
+
+        # Manager stats for this day
+        day_pending = day_issues - day_fixed - day_reported - day_checking
+        if day_pending < 0:
+            day_pending = 0
+
+        manager_totals["fixed"] += day_fixed
+        manager_totals["reported"] += day_reported
+        manager_totals["checking"] += day_checking
+        manager_totals["pending"] += day_pending
+
+        manager_values = [day_fixed, day_reported, day_checking, day_pending]
+        for i, val in enumerate(manager_values):
+            cell = ws.cell(data_row, manager_start + i, val if val > 0 else "--")
+            cell.alignment = center
+            cell.border = border
+            if idx % 2 == 1:
+                cell.fill = alt_fill
 
         data_row += 1
 
@@ -985,10 +1287,22 @@ def build_daily_sheet(wb):
         issues_cell.border = border
         col += 2
 
+    # Manager totals
+    manager_total_values = [manager_totals["fixed"], manager_totals["reported"], manager_totals["checking"], manager_totals["pending"]]
+    for i, val in enumerate(manager_total_values):
+        cell = ws.cell(data_row, manager_start + i, val)
+        cell.fill = total_fill
+        cell.font = bold
+        cell.alignment = center
+        cell.border = border
+
     # Set column widths
     ws.column_dimensions['A'].width = 12
-    for i in range(len(users) * 2):
+    for i in range(tester_cols):
         col_letter = get_column_letter(2 + i)
+        ws.column_dimensions[col_letter].width = 10
+    for i in range(manager_cols):
+        col_letter = get_column_letter(manager_start + i)
         ws.column_dimensions[col_letter].width = 10
 
 
@@ -997,6 +1311,7 @@ def build_total_sheet(wb):
     Build TOTAL sheet from _DAILY_DATA.
 
     Aggregates by user across all dates and categories.
+    Includes both tester stats and manager stats (Fixed, Reported, Checking, Pending).
     """
     # Delete and recreate sheet to handle merged cells properly
     if "TOTAL" in wb.sheetnames:
@@ -1005,8 +1320,11 @@ def build_total_sheet(wb):
 
     data_ws = wb["_DAILY_DATA"]
 
-    # Read raw data and aggregate by user
-    user_data = defaultdict(lambda: {"done": 0, "issues": 0, "no_issue": 0, "blocked": 0})
+    # Read raw data and aggregate by user (now includes manager stats)
+    user_data = defaultdict(lambda: {
+        "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
+        "fixed": 0, "reported": 0, "checking": 0
+    })
 
     for row in range(2, data_ws.max_row + 1):
         user = data_ws.cell(row, 2).value
@@ -1014,12 +1332,18 @@ def build_total_sheet(wb):
         issues = data_ws.cell(row, 5).value or 0
         no_issue = data_ws.cell(row, 6).value or 0
         blocked = data_ws.cell(row, 7).value or 0
+        fixed = data_ws.cell(row, 8).value or 0
+        reported = data_ws.cell(row, 9).value or 0
+        checking = data_ws.cell(row, 10).value or 0
 
         if user:
             user_data[user]["done"] += done
             user_data[user]["issues"] += issues
             user_data[user]["no_issue"] += no_issue
             user_data[user]["blocked"] += blocked
+            user_data[user]["fixed"] += fixed
+            user_data[user]["reported"] += reported
+            user_data[user]["checking"] += checking
 
     if not user_data:
         ws.cell(1, 1, "No data yet")
@@ -1030,6 +1354,7 @@ def build_total_sheet(wb):
     # Styles
     title_fill = PatternFill(start_color=TRACKER_STYLES["title_color"], end_color=TRACKER_STYLES["title_color"], fill_type="solid")
     header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"], end_color=TRACKER_STYLES["header_color"], fill_type="solid")
+    manager_header_fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")  # Light green
     alt_fill = PatternFill(start_color=TRACKER_STYLES["alt_row_color"], end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid")
     total_fill = PatternFill(start_color=TRACKER_STYLES["total_row_color"], end_color=TRACKER_STYLES["total_row_color"], fill_type="solid")
     border = Border(
@@ -1041,8 +1366,11 @@ def build_total_sheet(wb):
     center = Alignment(horizontal='center', vertical='center')
     bold = Font(bold=True)
 
+    # Total columns: 6 tester + 4 manager = 10
+    total_cols = 10
+
     # Row 1: Title
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=6)
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=total_cols)
     title_cell = ws.cell(1, 1, "TOTAL SUMMARY")
     title_cell.fill = title_fill
     title_cell.font = Font(bold=True, size=14)
@@ -1050,17 +1378,31 @@ def build_total_sheet(wb):
 
     # Row 2: Empty
 
-    # Row 3: Headers
-    headers = ["User", "Completion %", "Total", "Issues", "No Issue", "Blocked"]
-    for col, header in enumerate(headers, 1):
+    # Row 3: Headers (Tester stats + Manager stats)
+    tester_headers = ["User", "Completion %", "Total", "Issues", "No Issue", "Blocked"]
+    manager_headers = ["Fixed", "Reported", "Checking", "Pending"]
+
+    # Tester headers
+    for col, header in enumerate(tester_headers, 1):
         cell = ws.cell(3, col, header)
         cell.fill = header_fill
         cell.font = bold
         cell.alignment = center
         cell.border = border
 
+    # Manager headers (columns 7-10)
+    for col, header in enumerate(manager_headers, 7):
+        cell = ws.cell(3, col, header)
+        cell.fill = manager_header_fill
+        cell.font = bold
+        cell.alignment = center
+        cell.border = border
+
     # Row 4+: Data rows
-    grand_total = {"done": 0, "issues": 0, "no_issue": 0, "blocked": 0}
+    grand_total = {
+        "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
+        "fixed": 0, "reported": 0, "checking": 0, "pending": 0
+    }
     data_row = 4
     for idx, user in enumerate(users):
         data = user_data[user]
@@ -1068,6 +1410,13 @@ def build_total_sheet(wb):
         issues = data["issues"]
         no_issue = data["no_issue"]
         blocked = data["blocked"]
+        fixed = data["fixed"]
+        reported = data["reported"]
+        checking = data["checking"]
+        pending = issues - fixed - reported - checking
+        if pending < 0:
+            pending = 0
+
         completion_pct = round((issues + no_issue + blocked) / total * 100, 1) if total > 0 else 0
 
         # Accumulate grand totals
@@ -1075,8 +1424,12 @@ def build_total_sheet(wb):
         grand_total["issues"] += issues
         grand_total["no_issue"] += no_issue
         grand_total["blocked"] += blocked
+        grand_total["fixed"] += fixed
+        grand_total["reported"] += reported
+        grand_total["checking"] += checking
+        grand_total["pending"] += pending
 
-        row_data = [user, f"{completion_pct}%", total, issues, no_issue, blocked]
+        row_data = [user, f"{completion_pct}%", total, issues, no_issue, blocked, fixed, reported, checking, pending]
 
         for col, value in enumerate(row_data, 1):
             cell = ws.cell(data_row, col, value)
@@ -1090,7 +1443,10 @@ def build_total_sheet(wb):
     # TOTAL row
     gt = grand_total
     gt_completion = round((gt["issues"] + gt["no_issue"] + gt["blocked"]) / gt["done"] * 100, 1) if gt["done"] > 0 else 0
-    total_row_data = ["TOTAL", f"{gt_completion}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"]]
+    total_row_data = [
+        "TOTAL", f"{gt_completion}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
+        gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
+    ]
 
     for col, value in enumerate(total_row_data, 1):
         cell = ws.cell(data_row, col, value)
@@ -1106,6 +1462,10 @@ def build_total_sheet(wb):
     ws.column_dimensions['D'].width = 10
     ws.column_dimensions['E'].width = 12
     ws.column_dimensions['F'].width = 10
+    ws.column_dimensions['G'].width = 10  # Fixed
+    ws.column_dimensions['H'].width = 10  # Reported
+    ws.column_dimensions['I'].width = 10  # Checking
+    ws.column_dimensions['J'].width = 10  # Pending
 
 
 def build_graphs_sheet(wb):
@@ -1266,18 +1626,73 @@ def build_graphs_sheet(wb):
 
         ws.add_chart(chart2, "A" + str(comp_start_row + 4 + num_users + 2))
 
+    # --- Chart 3: Issue Resolution Status ---
+    # Shows Fixed vs Reported vs Checking vs Pending (stacked bar)
+    from openpyxl.chart import PieChart
 
-def process_category(category, qa_folders):
+    resolution_start_row = comp_start_row + 4 + num_users + 15
+
+    ws.cell(resolution_start_row, 1, "Issue Resolution Chart Data")
+    ws.cell(resolution_start_row, 1).font = Font(bold=True)
+
+    # Headers
+    ws.cell(resolution_start_row + 2, 1, "Status")
+    ws.cell(resolution_start_row + 2, 2, "Count")
+
+    # Get totals from TOTAL sheet (last row has TOTAL)
+    # Find the TOTAL row in TOTAL sheet
+    total_row_idx = 4
+    while total_ws.cell(total_row_idx, 1).value and total_ws.cell(total_row_idx, 1).value != "TOTAL":
+        total_row_idx += 1
+
+    if total_ws.cell(total_row_idx, 1).value == "TOTAL":
+        # Columns: 7=Fixed, 8=Reported, 9=Checking, 10=Pending
+        fixed_total = total_ws.cell(total_row_idx, 7).value or 0
+        reported_total = total_ws.cell(total_row_idx, 8).value or 0
+        checking_total = total_ws.cell(total_row_idx, 9).value or 0
+        pending_total = total_ws.cell(total_row_idx, 10).value or 0
+
+        # Write data for pie chart
+        resolution_data = [
+            ("Fixed", fixed_total),
+            ("Reported", reported_total),
+            ("Checking", checking_total),
+            ("Pending", pending_total)
+        ]
+
+        for i, (label, val) in enumerate(resolution_data):
+            ws.cell(resolution_start_row + 3 + i, 1, label)
+            ws.cell(resolution_start_row + 3 + i, 2, val)
+
+        # Create pie chart for issue resolution
+        chart3 = PieChart()
+        chart3.title = "Issue Resolution Status"
+
+        data3 = Reference(ws, min_col=2, min_row=resolution_start_row + 2, max_row=resolution_start_row + 6)
+        cats3 = Reference(ws, min_col=1, min_row=resolution_start_row + 3, max_row=resolution_start_row + 6)
+
+        chart3.add_data(data3, titles_from_data=True)
+        chart3.set_categories(cats3)
+        chart3.width = 12
+        chart3.height = 10
+
+        ws.add_chart(chart3, "A" + str(resolution_start_row + 10))
+
+
+def process_category(category, qa_folders, manager_status=None):
     """
     Process all QA folders for one category.
 
     Args:
         category: Category name (Quest, Knowledge, etc.)
         qa_folders: List of dicts with {folder_path, xlsx_path, username, category, images}
+        manager_status: Dict of {sheet_name: {row: {user: status}}} from preprocess (optional)
 
     Returns:
         List of daily_entry dicts for tracker
     """
+    if manager_status is None:
+        manager_status = {}
     print(f"\n{'='*50}")
     print(f"Processing: {category} ({len(qa_folders)} folders)")
     print(f"{'='*50}")
@@ -1328,7 +1743,9 @@ def process_category(category, qa_folders):
                 continue
 
             # Process sheet with image mapping for hyperlink transformation + xlsx_path for mod time
-            result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username, category, image_mapping, xlsx_path)
+            # Also pass manager_status for this sheet to preserve manager entries
+            sheet_manager_status = manager_status.get(sheet_name, {})
+            result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username, category, image_mapping, xlsx_path, sheet_manager_status)
             stats = result["stats"]
 
             fallback_info = f", fallback:{result['fallback_used']}" if result.get('fallback_used', 0) > 0 else ""
@@ -1371,21 +1788,35 @@ def process_category(category, qa_folders):
 def main():
     """Main entry point."""
     print("="*60)
-    print("QA Excel Compiler (with Image Compilation)")
+    print("QA Excel Compiler (with Image Compilation + Manager Status)")
     print("="*60)
     print("Features:")
     print("  - Folder-based input: QAfolder/{Username}_{Category}/")
     print("  - Dynamic column detection (finds STATUS/COMMENT/SCREENSHOT by header)")
-    print("  - Paired COMMENT_{User} + SCREENSHOT_{User} columns")
+    print("  - Paired COMMENT_{User} + STATUS_{User} + SCREENSHOT_{User} columns")
+    print("  - Manager workflow: STATUS_{User} for FIXED/REPORTED/CHECKING")
     print("  - REPLACE mode: New comments replace old (no append)")
     print("  - Timestamp: Uses file's last modified time")
     print("  - Image consolidation to Masterfolder/Images/")
     print("  - Hyperlink transformation with unique naming")
     print("  - Fallback row matching (2+ cell match if row counts differ)")
+    print("  - Manager status preservation on re-compile")
     print()
 
     # Ensure folders exist
     ensure_master_folder()
+
+    # PREPROCESS: Collect manager status from existing Master files
+    print("Collecting manager status from existing Master files...")
+    all_manager_status = collect_manager_status()
+    if any(all_manager_status.values()):
+        total_statuses = sum(
+            sum(len(rows) for rows in sheets.values())
+            for sheets in all_manager_status.values()
+        )
+        print(f"  Found {total_statuses} manager status entries to preserve")
+    else:
+        print("  No existing manager status entries found")
 
     # Discover QA folders
     qa_folders = discover_qa_folders()
@@ -1414,7 +1845,9 @@ def main():
     all_daily_entries = []
     for category in CATEGORIES:
         if category in by_category:
-            entries = process_category(category, by_category[category])
+            # Get manager_status for this category (if any)
+            category_manager_status = all_manager_status.get(category, {})
+            entries = process_category(category, by_category[category], category_manager_status)
             all_daily_entries.extend(entries)
         else:
             print(f"\nSKIP: No folders for category '{category}'")
@@ -1425,15 +1858,18 @@ def main():
         print("Updating LQA User Progress Tracker...")
         print("="*60)
 
+        # Collect manager stats for tracker (FIXED/REPORTED/CHECKING counts)
+        manager_stats = collect_manager_stats_for_tracker()
+
         tracker_wb, tracker_path = get_or_create_tracker()
-        update_daily_data_sheet(tracker_wb, all_daily_entries)
+        update_daily_data_sheet(tracker_wb, all_daily_entries, manager_stats)
         build_daily_sheet(tracker_wb)
         build_total_sheet(tracker_wb)
         build_graphs_sheet(tracker_wb)
         tracker_wb.save(tracker_path)
 
         print(f"  Saved: {tracker_path}")
-        print(f"  Sheets: DAILY, TOTAL, GRAPHS")
+        print(f"  Sheets: DAILY, TOTAL, GRAPHS (with manager stats)")
 
     print("\n" + "="*60)
     print("Compilation complete!")
