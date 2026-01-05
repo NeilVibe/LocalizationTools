@@ -66,15 +66,25 @@ async def pretranslate_file(
     file = file_result.scalar_one_or_none()
 
     if not file:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Verify project access (DESIGN-001: Public by default)
-    if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=404, detail="File not found")
+        # P9: Check if it's a local file in SQLite Offline Storage
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+        local_file = offline_db.get_local_file(request.file_id)
+        if not local_file:
+            raise HTTPException(status_code=404, detail="File not found")
+        # Use local file info
+        file_name = local_file.get("name", "unknown")
+        is_local_file = True
+    else:
+        # Verify project access (DESIGN-001: Public by default)
+        if not await can_access_project(db, file.project_id, current_user):
+            raise HTTPException(status_code=404, detail="File not found")
+        file_name = file.name
+        is_local_file = False
 
     # Run pretranslation in threadpool to avoid blocking
     # TASK-001: Add TrackedOperation for progress tracking
-    file_name = file.name  # Capture for use in thread
+    # file_name already set above (from PostgreSQL file or SQLite local file)
     user_id = current_user["user_id"]
     username = current_user.get("username", "unknown")
 

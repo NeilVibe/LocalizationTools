@@ -801,4 +801,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-04 | Build 453 pending | P9 Launcher + Mode Switching COMPLETE*
+*Strategic Roadmap | Updated 2026-01-05 | Build 444+ | P9 Offline/Online Backend COMPLETE (Schema fixes + TM/Pretranslate)*

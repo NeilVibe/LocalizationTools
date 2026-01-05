@@ -15,25 +15,25 @@
     Renew
   } from 'carbon-icons-svelte';
 
-  export const data = {};
-  export let params = undefined;
+  // Svelte 5: Reactive state
+  let loading = $state(true);
+  let activeTab = $state('overview');
+  let autoRefresh = $state(true);
 
-  let loading = true;
-  let activeTab = 'overview';
-  let autoRefresh = true;
+  // Non-reactive
   let refreshInterval = null;
 
   // Data
-  let overview = null;
-  let installations = [];
-  let sessions = [];
-  let errorLogs = [];
-  let dailyStats = [];
+  let overview = $state(null);
+  let installations = $state([]);
+  let sessions = $state([]);
+  let errorLogs = $state([]);
+  let dailyStats = $state([]);
 
   // Filters
-  let showInactive = false;
-  let sessionDays = 7;
-  let errorHours = 24;
+  let showInactive = $state(false);
+  let sessionDays = $state(7);
+  let errorHours = $state(24);
 
   onMount(async () => {
     await loadAllData();
@@ -131,11 +131,11 @@
         <p class="page-subtitle">Monitor remote desktop installations and sessions</p>
       </div>
       <div class="header-actions">
-        <button class="refresh-btn" class:active={autoRefresh} on:click={toggleAutoRefresh}>
+        <button class="refresh-btn" class:active={autoRefresh} onclick={toggleAutoRefresh}>
           <Renew size={16} />
           {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
         </button>
-        <button class="refresh-btn" on:click={loadAllData}>
+        <button class="refresh-btn" onclick={loadAllData}>
           <Renew size={16} />
           Refresh Now
         </button>
@@ -145,19 +145,19 @@
 
   <!-- Tab Navigation -->
   <div class="tab-nav">
-    <button class="tab-btn" class:active={activeTab === 'overview'} on:click={() => activeTab = 'overview'}>
+    <button class="tab-btn" class:active={activeTab === 'overview'} onclick={() => activeTab = 'overview'}>
       <ChartLine size={16} />
       Overview
     </button>
-    <button class="tab-btn" class:active={activeTab === 'installations'} on:click={() => activeTab = 'installations'}>
+    <button class="tab-btn" class:active={activeTab === 'installations'} onclick={() => activeTab = 'installations'}>
       <Installations size={16} />
       Installations
     </button>
-    <button class="tab-btn" class:active={activeTab === 'sessions'} on:click={() => activeTab = 'sessions'}>
+    <button class="tab-btn" class:active={activeTab === 'sessions'} onclick={() => activeTab = 'sessions'}>
       <Activity size={16} />
       Sessions
     </button>
-    <button class="tab-btn" class:active={activeTab === 'errors'} on:click={() => activeTab = 'errors'}>
+    <button class="tab-btn" class:active={activeTab === 'errors'} onclick={() => activeTab = 'errors'}>
       <Warning size={16} />
       Errors
     </button>
@@ -266,7 +266,7 @@
     {#if activeTab === 'installations'}
       <div class="filter-bar">
         <label class="filter-toggle">
-          <input type="checkbox" bind:checked={showInactive} on:change={loadAllData} />
+          <input type="checkbox" bind:checked={showInactive} onchange={loadAllData} />
           Show inactive installations
         </label>
       </div>
@@ -322,7 +322,7 @@
       <div class="filter-bar">
         <label class="filter-label">
           Show sessions from last:
-          <select bind:value={sessionDays} on:change={loadAllData}>
+          <select bind:value={sessionDays} onchange={loadAllData}>
             <option value={1}>1 day</option>
             <option value={7}>7 days</option>
             <option value={14}>14 days</option>
@@ -377,7 +377,7 @@
       <div class="filter-bar">
         <label class="filter-label">
           Show errors from last:
-          <select bind:value={errorHours} on:change={loadAllData}>
+          <select bind:value={errorHours} onchange={loadAllData}>
             <option value={6}>6 hours</option>
             <option value={24}>24 hours</option>
             <option value={48}>48 hours</option>

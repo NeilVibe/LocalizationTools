@@ -2,12 +2,12 @@
   import { onMount, onDestroy } from 'svelte';
   import { adminAPI } from '$lib/api/client.js';
 
-  // SvelteKit auto-passes these props - declare them to avoid warnings
-  export let params = undefined;
+  // Svelte 5: Reactive state
+  let serverStats = $state(null);
+  let loading = $state(true);
+  let error = $state(null);
 
-  let serverStats = null;
-  let loading = true;
-  let error = null;
+  // Non-reactive
   let refreshInterval;
 
   async function loadServerStats() {
@@ -73,7 +73,7 @@
         <strong>Error loading server stats</strong>
         <p>{error}</p>
       </div>
-      <button class="retry-btn" on:click={loadServerStats}>Retry</button>
+      <button class="retry-btn" onclick={loadServerStats}>Retry</button>
     </div>
   {:else if serverStats}
     <!-- Stats Cards -->

@@ -48,6 +48,7 @@ class PretranslationEngine:
     ) -> Dict[str, Any]:
         """
         Pretranslate a file using selected engine.
+        P9: Supports both PostgreSQL and SQLite (local) files.
 
         Args:
             file_id: LDM file ID to pretranslate
@@ -63,21 +64,33 @@ class PretranslationEngine:
         from datetime import datetime
         start_time = datetime.now()
 
-        # Verify file exists
+        # Try PostgreSQL first
         file = self.db.query(LDMFile).filter(LDMFile.id == file_id).first()
+        is_local_file = False
+
         if not file:
-            raise ValueError(f"File not found: id={file_id}")
+            # P9: Fallback to SQLite for local files
+            from server.database.offline import get_offline_db
+            offline_db = get_offline_db()
+            local_file = offline_db.get_local_file(file_id)
+            if not local_file:
+                raise ValueError(f"File not found: id={file_id}")
+            is_local_file = True
 
-        # Get rows to pretranslate
-        rows_query = self.db.query(LDMRow).filter(LDMRow.file_id == file_id)
+        if is_local_file:
+            # P9: Get rows from SQLite
+            rows = self._get_local_rows(file_id, skip_existing)
+        else:
+            # Get rows from PostgreSQL
+            rows_query = self.db.query(LDMRow).filter(LDMRow.file_id == file_id)
 
-        if skip_existing:
-            # Skip rows with non-empty target
-            rows_query = rows_query.filter(
-                (LDMRow.target == None) | (LDMRow.target == "")
-            )
+            if skip_existing:
+                # Skip rows with non-empty target
+                rows_query = rows_query.filter(
+                    (LDMRow.target == None) | (LDMRow.target == "")
+                )
 
-        rows = rows_query.order_by(LDMRow.row_num).all()
+            rows = rows_query.order_by(LDMRow.row_num).all()
 
         if not rows:
             return {
@@ -482,6 +495,49 @@ class PretranslationEngine:
             "total": total,
             "threshold": threshold
         }
+
+    def _get_local_rows(self, file_id: int, skip_existing: bool) -> List:
+        """
+        P9: Get rows from SQLite for local files.
+        Returns row-like objects compatible with the pretranslation engines.
+        """
+        from server.database.offline import get_offline_db
+
+        offline_db = get_offline_db()
+        rows_data = offline_db.get_rows_for_file(file_id)
+
+        if skip_existing:
+            rows_data = [r for r in rows_data if not r.get("target")]
+
+        # Sort by row_num
+        rows_data.sort(key=lambda x: x.get("row_num", 0))
+
+        # Create row-like objects
+        class RowLike:
+            def __init__(self, data, offline_db):
+                self.id = data.get("id")
+                self.file_id = data.get("file_id")
+                self.row_num = data.get("row_num", 0)
+                self.string_id = data.get("string_id", "")
+                self.source = data.get("source", "")
+                self.target = data.get("target", "")
+                self.status = data.get("status", "pending")
+                self._offline_db = offline_db
+                self._is_local = True
+
+            def __setattr__(self, name, value):
+                if name.startswith('_') or name in ('id', 'file_id', 'row_num', 'string_id', 'source', 'status'):
+                    object.__setattr__(self, name, value)
+                elif name == 'target':
+                    object.__setattr__(self, name, value)
+                    # P9: Immediately save to SQLite when target is updated
+                    if hasattr(self, '_is_local') and self._is_local:
+                        try:
+                            self._offline_db.update_row_in_local_file(self.id, target=value)
+                        except Exception as e:
+                            logger.warning(f"P9: Failed to save target to SQLite: {e}")
+
+        return [RowLike(r, offline_db) for r in rows_data]
 
 
 def pretranslate_file(

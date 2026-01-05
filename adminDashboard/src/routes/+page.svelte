@@ -6,18 +6,19 @@
   import TerminalLog from '$lib/components/TerminalLog.svelte';
   import { Apps, Function as FunctionIcon, User, Activity, ChartLine } from 'carbon-icons-svelte';
 
-  export const data = {};
-  export let params = undefined;
+  // Svelte 5: Reactive state
+  let loading = $state(true);
+  let isLive = $state(false);
+  let overviewStats = $state(null);
+  let appRankings = $state([]);
+  let functionRankings = $state([]);
+  let recentLogs = $state([]);
 
-  let loading = true;
-  let isLive = false;
+  // Svelte 5: Derived value
+  let totalOps = $derived(appRankings.reduce((sum, app) => sum + (app.usage_count || 0), 0));
+
+  // Non-reactive
   let unsubscribe;
-
-  // Data
-  let overviewStats = null;
-  let appRankings = [];
-  let functionRankings = [];
-  let recentLogs = [];
 
   onMount(async () => {
     await loadData();
@@ -64,10 +65,6 @@
       loading = false;
     }
   }
-
-  function getTotalOps() {
-    return appRankings.reduce((sum, app) => sum + (app.usage_count || 0), 0);
-  }
 </script>
 
 <div class="admin-content">
@@ -107,7 +104,7 @@
       <div class="compact-stat">
         <div class="compact-stat-icon"><ChartLine size={20} /></div>
         <div>
-          <div class="compact-stat-value">{getTotalOps()}</div>
+          <div class="compact-stat-value">{totalOps}</div>
           <div class="compact-stat-label">Total Operations</div>
         </div>
       </div>

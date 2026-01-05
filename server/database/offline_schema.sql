@@ -108,8 +108,10 @@ CREATE TABLE IF NOT EXISTS offline_files (
     created_at TEXT,
     updated_at TEXT,
     downloaded_at TEXT DEFAULT (datetime('now')),
-    sync_status TEXT DEFAULT 'synced',  -- 'synced', 'modified', 'new', 'orphaned'
-    error_message TEXT,                 -- P3-PHASE5: Reason for orphan status
+    sync_status TEXT DEFAULT 'synced',  -- 'synced', 'modified', 'new', 'local', 'orphaned'
+                                        -- 'local' = created in Offline Storage, never synced
+                                        -- 'orphaned' = was synced but lost server link
+    error_message TEXT,                 -- P3-PHASE5: Reason for orphan/error status
     FOREIGN KEY (project_id) REFERENCES offline_projects(id) ON DELETE CASCADE,
     FOREIGN KEY (folder_id) REFERENCES offline_folders(id) ON DELETE SET NULL
 );

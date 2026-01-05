@@ -16,8 +16,8 @@ class ProjectResponse(BaseModel):
     description: Optional[str]
     owner_id: int
     platform_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None  # P9: Optional for SQLite compatibility
+    updated_at: Optional[datetime] = None  # P9: Optional for SQLite compatibility
     is_restricted: bool = False  # DESIGN-001
 
     class Config:

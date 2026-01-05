@@ -4,21 +4,19 @@
   import ExpandableCard from '$lib/components/ExpandableCard.svelte';
   import { Apps, Function as FunctionIcon, ChartLine, User, Trophy, Activity, UserMultiple, Language } from 'carbon-icons-svelte';
 
-  export const data = {};
-  export let params = undefined;
-
-  let loading = true;
-  let selectedPeriod = 'monthly';
+  // Svelte 5: Reactive state
+  let loading = $state(true);
+  let selectedPeriod = $state('monthly');
 
   // Data
-  let overviewStats = null;
-  let appRankings = [];
-  let functionRankings = [];
-  let userRankings = [];
-  let dailyStats = [];
-  let teamStats = [];
-  let languageStats = [];
-  let userRankingsWithProfile = [];
+  let overviewStats = $state(null);
+  let appRankings = $state([]);
+  let functionRankings = $state([]);
+  let userRankings = $state([]);
+  let dailyStats = $state([]);
+  let teamStats = $state([]);
+  let languageStats = $state([]);
+  let userRankingsWithProfile = $state([]);
 
   onMount(async () => {
     await loadData();
@@ -86,10 +84,10 @@
 
   <!-- Period Selector -->
   <div class="period-selector">
-    <button class="period-btn {selectedPeriod === 'daily' ? 'active' : ''}" on:click={() => changePeriod('daily')}>Daily</button>
-    <button class="period-btn {selectedPeriod === 'weekly' ? 'active' : ''}" on:click={() => changePeriod('weekly')}>Weekly</button>
-    <button class="period-btn {selectedPeriod === 'monthly' ? 'active' : ''}" on:click={() => changePeriod('monthly')}>Monthly</button>
-    <button class="period-btn {selectedPeriod === 'all_time' ? 'active' : ''}" on:click={() => changePeriod('all_time')}>All Time</button>
+    <button class="period-btn {selectedPeriod === 'daily' ? 'active' : ''}" onclick={() => changePeriod('daily')}>Daily</button>
+    <button class="period-btn {selectedPeriod === 'weekly' ? 'active' : ''}" onclick={() => changePeriod('weekly')}>Weekly</button>
+    <button class="period-btn {selectedPeriod === 'monthly' ? 'active' : ''}" onclick={() => changePeriod('monthly')}>Monthly</button>
+    <button class="period-btn {selectedPeriod === 'all_time' ? 'active' : ''}" onclick={() => changePeriod('all_time')}>All Time</button>
   </div>
 
   {#if loading}

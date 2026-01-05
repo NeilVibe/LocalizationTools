@@ -7,9 +7,8 @@
   import { Dashboard, UserMultiple, Activity, ChartLine, Trophy, Search, Logout, WatsonHealthStackedScrolling_1 as Telemetry, DataBase, Meter } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
 
-  // SvelteKit auto-passes these props - declare them to avoid warnings
-  export const data = {};
-  export let params = undefined;
+  // Svelte 5: Get children slot
+  let { children } = $props();
 
   const navItems = [
     { href: '/', label: 'Overview', icon: Dashboard },
@@ -21,10 +20,13 @@
     { href: '/server', label: 'Server', icon: Meter }
   ];
 
-  let wsConnected = false;
+  // Svelte 5: Reactive state
+  let wsConnected = $state(false);
+  let isAuthenticated = $state(false);
+
+  // Non-reactive cleanup functions
   let unsubscribeConnected;
   let unsubscribeDisconnected;
-  let isAuthenticated = false;
 
   // Auto-login for internal admin dashboard
   async function ensureAuthenticated() {
@@ -94,9 +96,9 @@
 
     <nav style="padding: 1rem 0; flex: 1;">
       {#each navItems as item}
-        <a 
-          href={item.href} 
-          class="nav-link" 
+        <a
+          href={item.href}
+          class="nav-link"
           class:active={$page.url.pathname === item.href}
         >
           <svelte:component this={item.icon} size={20} />
@@ -120,6 +122,6 @@
   </aside>
 
   <main class="admin-main">
-    <slot />
+    {@render children()}
   </main>
 </div>

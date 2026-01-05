@@ -86,16 +86,29 @@ async def check_grammar(
     result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
     file = result.scalar_one_or_none()
 
+    # P9: Fallback to SQLite for local files
     if not file:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Get file rows
-    result = await db.execute(
-        select(LDMRow)
-        .where(LDMRow.file_id == file_id)
-        .order_by(LDMRow.row_num)
-    )
-    rows = result.scalars().all()
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+        file_info = offline_db.get_local_file(file_id)
+        if not file_info:
+            raise HTTPException(status_code=404, detail="File not found")
+        rows_data = offline_db.get_rows_for_file(file_id)
+        # Create row-like objects
+        class RowLike:
+            def __init__(self, data):
+                self.id = data.get("id")
+                self.row_num = data.get("row_num", 0)
+                self.target = data.get("target", "")
+        rows = [RowLike(r) for r in rows_data]
+    else:
+        # Get file rows from PostgreSQL
+        result = await db.execute(
+            select(LDMRow)
+            .where(LDMRow.file_id == file_id)
+            .order_by(LDMRow.row_num)
+        )
+        rows = result.scalars().all()
 
     if not rows:
         return GrammarCheckResponse(
@@ -173,8 +186,19 @@ async def check_row_grammar(
     result = await db.execute(select(LDMRow).where(LDMRow.id == row_id))
     row = result.scalar_one_or_none()
 
+    # P9: Fallback to SQLite for local files
     if not row:
-        raise HTTPException(status_code=404, detail="Row not found")
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+        row_data = offline_db.get_row(row_id)
+        if not row_data:
+            raise HTTPException(status_code=404, detail="Row not found")
+        # Create row-like object
+        class RowLike:
+            def __init__(self, data):
+                self.id = data.get("id")
+                self.target = data.get("target", "")
+        row = RowLike(row_data)
 
     if not row.target or not row.target.strip():
         return {"row_id": row_id, "matches": [], "checked": False}

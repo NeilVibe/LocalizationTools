@@ -17,14 +17,74 @@ router = APIRouter(prefix="/search", tags=["search"])
 @router.get("")
 async def search_explorer(
     q: str = Query(..., min_length=1, description="Search query"),
+    mode: str = Query("online", description="Search mode: 'online' (search all), 'offline' (local files only)"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Full recursive search across all entities.
     Returns matches with complete Linux-style paths.
+
+    Mode:
+    - 'online' (default): Search PostgreSQL + Offline Storage
+    - 'offline': Only search Offline Storage (local files)
     """
     results = []
+
+    # P9: In offline mode, search ALL SQLite data (synced + local)
+    if mode == "offline":
+        try:
+            from server.database.offline import get_offline_db
+            offline_db = get_offline_db()
+
+            # Use the clean search_all method from offline.py
+            data = offline_db.search_all(q)
+
+            # Transform to search results format
+            for p in data["platforms"]:
+                results.append({
+                    'type': 'platform', 'id': p['id'], 'name': p['name'],
+                    'path': [{'type': 'platform', 'id': p['id'], 'name': p['name']}],
+                    'pathString': f"/{p['name']}"
+                })
+
+            for p in data["projects"]:
+                path_str = f"/{p['platform_name']}/{p['name']}" if p.get('platform_name') else f"/{p['name']}"
+                results.append({
+                    'type': 'project', 'id': p['id'], 'name': p['name'],
+                    'path': [], 'pathString': path_str
+                })
+
+            for f in data["folders"]:
+                path_str = f"/{f['project_name']}/{f['name']}" if f.get('project_name') else f"/{f['name']}"
+                results.append({
+                    'type': 'folder', 'id': f['id'], 'name': f['name'],
+                    'path': [], 'pathString': path_str
+                })
+
+            for f in data["files"]:
+                if f['sync_status'] == 'local':
+                    path_str = f"/Offline Storage/{f['name']}"
+                    file_type = 'local-file'
+                else:
+                    path_str = f"/{f['project_name']}/{f['name']}" if f.get('project_name') else f"/{f['name']}"
+                    file_type = 'file'
+                results.append({
+                    'type': file_type, 'id': f['id'], 'name': f['name'],
+                    'path': [], 'pathString': path_str
+                })
+
+        except Exception as e:
+            pass
+
+        results.sort(key=lambda x: x['pathString'].lower())
+        return {
+            'query': q,
+            'count': len(results),
+            'results': results[:100]
+        }
+
+    # Online mode: search PostgreSQL + Offline Storage
     search_term = f"%{q.lower()}%"
 
     # Pre-fetch all data for fast path building (cached in memory)
@@ -169,6 +229,29 @@ async def search_explorer(
             'path': path,
             'pathString': path_to_string(path)
         })
+
+    # P9: Also search Offline Storage (SQLite local files)
+    try:
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+
+        # Search local files in Offline Storage
+        local_files = offline_db.search_local_files(q)
+        for f in local_files:
+            path = [
+                {'type': 'offline-storage', 'id': 0, 'name': 'Offline Storage'},
+                {'type': 'local-file', 'id': f['id'], 'name': f['name']}
+            ]
+            results.append({
+                'type': 'local-file',
+                'id': f['id'],
+                'name': f['name'],
+                'path': path,
+                'pathString': f"/Offline Storage/{f['name']}"
+            })
+    except Exception as e:
+        # Don't fail search if offline DB unavailable
+        pass
 
     # Sort by path for beautiful grouping
     results.sort(key=lambda x: x['pathString'].lower())

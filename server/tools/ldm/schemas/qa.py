@@ -31,7 +31,7 @@ class QAIssue(BaseModel):
     severity: str  # 'error', 'warning', 'info'
     message: str
     details: Optional[Dict[str, Any]] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None  # P9: Optional for SQLite compatibility
     resolved_at: Optional[datetime] = None
 
     class Config:

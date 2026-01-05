@@ -13,7 +13,7 @@ class RowResponse(BaseModel):
     source: Optional[str]
     target: Optional[str]
     status: str
-    updated_at: datetime
+    updated_at: Optional[datetime] = None  # P9: Optional for SQLite compatibility
     # QA fields (P2: Auto-LQA)
     qa_checked_at: Optional[datetime] = None
     qa_flag_count: int = 0

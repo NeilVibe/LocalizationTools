@@ -1,18 +1,29 @@
 <script>
-  export let logs = [];
-  export let title = 'System Logs';
-  export let height = '500px';
-  export let live = false;
+  import { onMount } from 'svelte';
 
+  // Svelte 5: Props
+  let {
+    logs = [],
+    title = 'System Logs',
+    height = '500px',
+    live = false
+  } = $props();
+
+  // Svelte 5: Reactive state
+  let autoScroll = $state(true);
+  let expandedLogs = $state({});
+
+  // Non-reactive DOM ref
   let terminalEl;
-  let autoScroll = true;
-  let expandedLogs = {};
 
-  $: if (terminalEl && autoScroll && logs.length > 0) {
-    setTimeout(() => {
-      terminalEl.scrollTop = terminalEl.scrollHeight;
-    }, 50);
-  }
+  // Svelte 5: Effect for auto-scroll
+  $effect(() => {
+    if (terminalEl && autoScroll && logs.length > 0) {
+      setTimeout(() => {
+        terminalEl.scrollTop = terminalEl.scrollHeight;
+      }, 50);
+    }
+  });
 
   function getLogClass(log) {
     if (log.status === 'error' || log.error_message || log.level === 'ERROR') return 'log-error';
@@ -65,6 +76,12 @@
     }
     return params;
   }
+
+  function handleKeydown(e, index) {
+    if (e.key === 'Enter' && hasDetails(logs[index])) {
+      toggleExpand(index);
+    }
+  }
 </script>
 
 <div class="terminal-container">
@@ -90,7 +107,14 @@
     {:else}
       {#each logs as log, i}
         <div class="terminal-line {getLogClass(log)}">
-          <div class="log-main" on:click={() => hasDetails(log) && toggleExpand(i)} on:keydown={(e) => e.key === 'Enter' && hasDetails(log) && toggleExpand(i)} role={hasDetails(log) ? 'button' : 'listitem'} tabindex={hasDetails(log) ? 0 : -1} class:expandable={hasDetails(log)}>
+          <div
+            class="log-main"
+            onclick={() => hasDetails(log) && toggleExpand(i)}
+            onkeydown={(e) => handleKeydown(e, i)}
+            role={hasDetails(log) ? 'button' : 'listitem'}
+            tabindex={hasDetails(log) ? 0 : -1}
+            class:expandable={hasDetails(log)}
+          >
             <span class="log-timestamp">[{formatTimestamp(log.timestamp)}]</span>
             <span class="log-icon">{getLogIcon(log)}</span>
             {#if log.level}

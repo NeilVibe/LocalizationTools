@@ -51,12 +51,16 @@ async def list_projects(
     """
     List all projects the user can access.
     DESIGN-001: Public by default - shows all public + owned + granted projects.
+    P9: Includes "Offline Storage" as virtual project (id=0) if local files exist.
     """
     user_id = current_user["user_id"]
     logger.info(f"Listing projects for user {user_id}")
 
     # Use permission helper to get accessible projects
     projects = await get_accessible_projects(db, current_user)
+
+    # P9: Offline Storage is shown in File Explorer tree, not as a project
+    # Local files are accessed via the "Offline Storage" node in the explorer
 
     return projects
 

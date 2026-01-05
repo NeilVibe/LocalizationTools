@@ -24,7 +24,7 @@
   let API_BASE = $derived(getApiBase());
 
   // Svelte 5: Props
-  let { fileId = $bindable(null), fileName = "", activeTMs = [] } = $props();
+  let { fileId = $bindable(null), fileName = "", activeTMs = [], isLocalFile = false } = $props();
 
   // Virtual scrolling constants
   const MIN_ROW_HEIGHT = 48; // Minimum row height (base)
@@ -413,6 +413,7 @@
         params.append('filter', activeFilter);
       }
 
+      // P9: Unified endpoint - backend handles both PostgreSQL and SQLite
       const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
         headers: getAuthHeaders()
       });
@@ -563,6 +564,7 @@
         logger.info("loadRows with search", { searchTerm, searchMode, searchFields });
       }
 
+      // P9: Unified endpoint - backend handles both PostgreSQL and SQLite
       const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
         headers: getAuthHeaders()
       });
@@ -946,19 +948,22 @@
   async function startInlineEdit(row) {
     if (!row) return;
 
-    // Check if row is locked by another user
-    const lock = isRowLocked(parseInt(row.id));
-    if (lock && lock.locked_by) {
-      logger.warning("Row locked by another user", { rowId: row.id, lockedBy: lock.locked_by });
-      return;
-    }
-
-    // Request row lock for editing
-    if (fileId) {
-      const granted = await lockRow(fileId, parseInt(row.id));
-      if (!granted) {
-        logger.warning("Could not acquire lock for inline edit", { rowId: row.id });
+    // P9: Skip locking for orphaned files (Offline Storage) - no multi-user sync
+    if (!isLocalFile) {
+      // Check if row is locked by another user
+      const lock = isRowLocked(parseInt(row.id));
+      if (lock && lock.locked_by) {
+        logger.warning("Row locked by another user", { rowId: row.id, lockedBy: lock.locked_by });
         return;
+      }
+
+      // Request row lock for editing
+      if (fileId) {
+        const granted = await lockRow(fileId, parseInt(row.id));
+        if (!granted) {
+          logger.warning("Could not acquire lock for inline edit", { rowId: row.id });
+          return;
+        }
       }
     }
 
@@ -1008,6 +1013,7 @@
     // Only save if value changed (compare formatted values)
     if (textToSave !== row.target) {
       try {
+        // P9: Unified endpoint - backend handles both PostgreSQL and SQLite
         const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
           method: 'PUT',
           headers: {
@@ -1032,7 +1038,7 @@
             rebuildCumulativeHeights(); // Recalculate all positions
           }
 
-          logger.success("Inline edit saved", { rowId: row.id });
+          logger.success("Inline edit saved", { rowId: row.id, offline: isLocalFile });
           dispatch('rowUpdate', { rowId: row.id });
         } else {
           logger.error("Failed to save inline edit", { status: response.status });
@@ -1042,8 +1048,8 @@
       }
     }
 
-    // Release lock (fire-and-forget)
-    if (fileId) {
+    // Release lock (fire-and-forget) - skip for orphaned files (no locking)
+    if (fileId && !isLocalFile) {
       unlockRow(fileId, parseInt(row.id));
     }
 

@@ -4,7 +4,7 @@
  */
 
 import { get } from 'svelte/store';
-import { serverUrl, user, isAuthenticated } from '$lib/stores/app.js';
+import { serverUrl, user, isAuthenticated, offlineMode } from '$lib/stores/app.js';
 
 class APIClient {
   constructor() {
@@ -45,6 +45,7 @@ class APIClient {
     }
     isAuthenticated.set(false);
     user.set(null);
+    offlineMode.set(false);  // P9: Clear offline mode flag on logout
   }
 
   /**
@@ -150,7 +151,8 @@ class APIClient {
 
   /**
    * P9: Start offline mode without server authentication
-   * Creates a local session for offline work
+   * User works in local "Offline Storage" only - no admin rights needed.
+   * When going online later, they can move files to proper locations.
    * @returns {boolean} - true if offline mode started successfully
    */
   async startOfflineMode() {
@@ -171,14 +173,15 @@ class APIClient {
         this.setToken('OFFLINE_MODE_' + Date.now());
       }
 
-      // Set user info for offline mode
+      // Set user info for offline mode (regular user, not admin)
       user.set({
         user_id: 'OFFLINE',
         username: 'Offline User',
-        role: 'admin',
+        role: 'user',  // Regular user - works in Offline Storage only
         email: 'offline@localhost'
       });
       isAuthenticated.set(true);
+      offlineMode.set(true);  // P9: Flag that we're in offline mode
 
       console.log('[Auth] Offline mode started successfully');
       return true;
@@ -533,6 +536,87 @@ class APIClient {
 
     // Return blob for file download (sync operations only)
     return await response.blob();
+  }
+
+  // ==================== P9: OFFLINE STORAGE API ====================
+
+  /**
+   * Get count of local files in Offline Storage
+   * @returns {Promise<{count: number}>}
+   */
+  async getLocalFileCount() {
+    return await this.request('/api/ldm/offline/local-file-count');
+  }
+
+  /**
+   * List local files (files in Offline Storage)
+   * @returns {Promise<{files: Array, total_count: number}>}
+   */
+  async getLocalFiles() {
+    return await this.request('/api/ldm/offline/local-files');
+  }
+
+  /**
+   * Upload a file to Offline Storage
+   * P9: Uses unified upload endpoint with storage=local
+   * @param {File} file - File object to upload
+   * @returns {Promise<{id: number, name: string, row_count: number, ...}>}
+   */
+  async uploadToOfflineStorage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('storage', 'local');
+
+    // Use raw fetch since request() adds Content-Type which breaks FormData
+    const response = await fetch(`${this.baseURL}/api/ldm/files/upload`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: formData
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Upload failed');
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Delete a file from Offline Storage
+   * @param {number} fileId - File ID
+   * @returns {Promise<{success: boolean, message: string}>}
+   */
+  async deleteOfflineStorageFile(fileId) {
+    return await this.request(`/api/ldm/offline/storage/files/${fileId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  /**
+   * Rename a file in Offline Storage
+   * @param {number} fileId - File ID
+   * @param {string} newName - New file name
+   * @returns {Promise<{success: boolean, message: string}>}
+   */
+  async renameOfflineStorageFile(fileId, newName) {
+    return await this.request(`/api/ldm/offline/storage/files/${fileId}/rename`, {
+      method: 'PUT',
+      body: JSON.stringify({ new_name: newName })
+    });
+  }
+
+  /**
+   * Add rows to a file in Offline Storage
+   * @param {number} fileId - File ID
+   * @param {Array} rows - Rows to add
+   * @returns {Promise<{success: boolean, rows_added: number, message: string}>}
+   */
+  async addRowsToOfflineFile(fileId, rows) {
+    return await this.request(`/api/ldm/offline/storage/files/${fileId}/rows`, {
+      method: 'POST',
+      body: JSON.stringify(rows)
+    });
   }
 }
 

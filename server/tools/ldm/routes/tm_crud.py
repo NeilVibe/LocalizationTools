@@ -138,13 +138,50 @@ async def list_tms(
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """List all Translation Memories accessible to current user (DESIGN-001: Public by default)."""
+    """
+    List all Translation Memories accessible to current user.
+    P9: Also includes TMs stored in SQLite (offline).
+    DESIGN-001: Public by default.
+    """
     # DESIGN-001: Use permission helper for accessible TMs
     tms = await get_accessible_tms(db, current_user)
 
     # Debug: Log actual status values from DB
     for tm in tms:
         logger.debug(f"TM {tm.id} '{tm.name}': status='{tm.status}', entry_count={tm.entry_count}")
+
+    # P9: Include offline TMs from SQLite
+    try:
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+        offline_tms = offline_db.get_tms()
+
+        # Create TM-like objects for SQLite TMs
+        class TMLike:
+            def __init__(self, data):
+                self.id = data.get("id")
+                self.name = data.get("name")
+                self.description = data.get("description")
+                self.source_lang = data.get("source_lang", "ko")
+                self.target_lang = data.get("target_lang", "en")
+                self.entry_count = data.get("entry_count", 0)
+                self.status = data.get("status", "ready")
+                self.mode = data.get("mode", "standard")
+                self.owner_id = data.get("owner_id") or current_user["user_id"]
+                self.created_at = None
+                self.updated_at = None
+                self.indexed_at = None
+
+        for otm in offline_tms:
+            # Avoid duplicates (check by server_id)
+            server_id = otm.get("server_id")
+            if server_id and any(tm.id == server_id for tm in tms):
+                continue
+            tms.append(TMLike(otm))
+
+        logger.debug(f"P9: Added {len(offline_tms)} offline TMs")
+    except Exception as e:
+        logger.debug(f"P9: Could not get offline TMs: {e}")
 
     logger.info(f"Listed {len(tms)} TMs for user {current_user['user_id']}")
     return tms
