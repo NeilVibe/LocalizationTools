@@ -1157,10 +1157,11 @@ def build_daily_sheet(wb):
     center = Alignment(horizontal='center', vertical='center')
     bold = Font(bold=True)
 
-    # Layout: Date | Tester Stats (Done, Issues, Comp %) | Manager Stats (Fixed, Reported, Checking, Pending, Actual Issues)
-    # title_cols = Date(1) + Users*3 (tester) + 5 (manager stats)
-    tester_cols = len(users) * 3  # Done, Issues, Comp % per user
-    manager_cols = 5  # Fixed, Reported, Checking, Pending, Actual Issues
+    # Layout: Date | Tester Stats (Done, Issues, Comp %, Actual Issues per user) | Manager Stats (Fixed, Reported, Checking, Pending)
+    # title_cols = Date(1) + Users*4 (tester) + 4 (manager stats)
+    tester_cols_per_user = 4  # Done, Issues, Comp %, Actual Issues
+    tester_cols = len(users) * tester_cols_per_user
+    manager_cols = 4  # Fixed, Reported, Checking, Pending
     title_cols = 1 + tester_cols + manager_cols
 
     # Row 1: Title
@@ -1192,27 +1193,27 @@ def build_daily_sheet(wb):
     manager_section.font = bold
     manager_section.alignment = center
 
-    # Row 3: User names (merged across Done+Issues+Comp%) for tester section
+    # Row 3: User names (merged across Done+Issues+Comp%+Actual Issues) for tester section
     col = 2
     for user in users:
-        ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + 2)
+        ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + 3)
         cell = ws.cell(3, col, user)
         cell.fill = header_fill
         cell.font = bold
         cell.alignment = center
-        ws.cell(3, col + 1).fill = header_fill  # Merged cell styling
-        ws.cell(3, col + 2).fill = header_fill  # Merged cell styling
-        col += 3
+        for offset in range(1, 4):  # Merged cell styling
+            ws.cell(3, col + offset).fill = header_fill
+        col += tester_cols_per_user
 
-    # Manager stats headers in row 3 (spans row 3-4 conceptually, but we put labels in row 3)
-    for i, label in enumerate(["Fixed", "Reported", "Checking", "Pending", "Actual Issues"]):
+    # Manager stats headers in row 3
+    for i, label in enumerate(["Fixed", "Reported", "Checking", "Pending"]):
         cell = ws.cell(3, manager_start + i, label)
         cell.fill = manager_header_fill
         cell.font = bold
         cell.alignment = center
         cell.border = border
 
-    # Row 4: Sub-headers (Date, Done, Issues, Comp % per user)
+    # Row 4: Sub-headers (Date, Done, Issues, Comp %, Actual Issues per user)
     date_cell = ws.cell(4, 1, "Date")
     date_cell.fill = subheader_fill
     date_cell.font = bold
@@ -1221,34 +1222,23 @@ def build_daily_sheet(wb):
 
     col = 2
     for user in users:
-        done_cell = ws.cell(4, col, "Done")
-        done_cell.fill = subheader_fill
-        done_cell.font = bold
-        done_cell.alignment = center
-        done_cell.border = border
+        for label in ["Done", "Issues", "Comp %", "Actual Issues"]:
+            cell = ws.cell(4, col, label)
+            cell.fill = subheader_fill
+            cell.font = bold
+            cell.alignment = center
+            cell.border = border
+            col += 1
 
-        issues_cell = ws.cell(4, col + 1, "Issues")
-        issues_cell.fill = subheader_fill
-        issues_cell.font = bold
-        issues_cell.alignment = center
-        issues_cell.border = border
-
-        comp_cell = ws.cell(4, col + 2, "Comp %")
-        comp_cell.fill = subheader_fill
-        comp_cell.font = bold
-        comp_cell.alignment = center
-        comp_cell.border = border
-        col += 3
-
-    # Manager sub-headers row 4 (repeat or empty - we'll leave empty as labels are in row 3)
-    for i in range(5):
+    # Manager sub-headers row 4 (empty as labels are in row 3)
+    for i in range(manager_cols):
         cell = ws.cell(4, manager_start + i)
         cell.fill = subheader_fill
         cell.border = border
 
     # Row 5+: Data rows
-    user_totals = {user: {"total_rows": 0, "done": 0, "issues": 0} for user in users}
-    manager_totals = {"fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0, "total_issues": 0}
+    user_totals = {user: {"total_rows": 0, "done": 0, "issues": 0, "nonissue": 0} for user in users}
+    manager_totals = {"fixed": 0, "reported": 0, "checking": 0, "pending": 0}
     data_row = 5
 
     for idx, date in enumerate(dates):
@@ -1269,7 +1259,6 @@ def build_daily_sheet(wb):
         day_reported = 0
         day_checking = 0
         day_issues = 0
-        day_nonissue = 0
 
         col = 2
         for user in users:
@@ -1277,65 +1266,55 @@ def build_daily_sheet(wb):
             total_rows_val = user_data["total_rows"]
             done_val = user_data["done"]
             issues_val = user_data["issues"]
+            nonissue_val = user_data["nonissue"]
 
             # Aggregate for manager stats
             day_fixed += user_data["fixed"]
             day_reported += user_data["reported"]
             day_checking += user_data["checking"]
             day_issues += issues_val
-            day_nonissue += user_data["nonissue"]
 
-            # Track totals
+            # Track totals per user
             user_totals[user]["total_rows"] += total_rows_val
             user_totals[user]["done"] += done_val
             user_totals[user]["issues"] += issues_val
+            user_totals[user]["nonissue"] += nonissue_val
 
-            # Calculate completion % for this user on this day
+            # Calculate completion % and actual issues % for this user on this day
             comp_pct = round(done_val / total_rows_val * 100, 1) if total_rows_val > 0 else 0
+            actual_pct = round((issues_val - nonissue_val) / issues_val * 100, 1) if issues_val > 0 else 0
 
             # Display value or "--" for zero/no data
             done_display = done_val if done_val > 0 else "--"
             issues_display = issues_val if issues_val > 0 else "--"
             comp_display = f"{comp_pct}%" if total_rows_val > 0 else "--"
+            actual_display = f"{actual_pct}%" if issues_val > 0 else "--"
 
-            done_cell = ws.cell(data_row, col, done_display)
-            done_cell.alignment = center
-            done_cell.border = border
-            if idx % 2 == 1:
-                done_cell.fill = alt_fill
+            # Write 4 cells per user: Done, Issues, Comp %, Actual Issues
+            for i, (val, fill_alt) in enumerate([
+                (done_display, True), (issues_display, True), (comp_display, True), (actual_display, True)
+            ]):
+                cell = ws.cell(data_row, col + i, val)
+                cell.alignment = center
+                cell.border = border
+                if idx % 2 == 1:
+                    cell.fill = alt_fill
 
-            issues_cell = ws.cell(data_row, col + 1, issues_display)
-            issues_cell.alignment = center
-            issues_cell.border = border
-            if idx % 2 == 1:
-                issues_cell.fill = alt_fill
+            col += tester_cols_per_user
 
-            comp_cell = ws.cell(data_row, col + 2, comp_display)
-            comp_cell.alignment = center
-            comp_cell.border = border
-            if idx % 2 == 1:
-                comp_cell.fill = alt_fill
-
-            col += 3
-
-        # Manager stats for this day
+        # Manager stats for this day (aggregated across all users)
         day_pending = day_issues - day_fixed - day_reported - day_checking
         if day_pending < 0:
             day_pending = 0
-
-        # Calculate Actual Issues % = (Issues - NonIssue) / Issues * 100
-        day_actual_pct = round((day_issues - day_nonissue) / day_issues * 100, 1) if day_issues > 0 else 0
 
         manager_totals["fixed"] += day_fixed
         manager_totals["reported"] += day_reported
         manager_totals["checking"] += day_checking
         manager_totals["pending"] += day_pending
-        manager_totals["nonissue"] += day_nonissue
-        manager_totals["total_issues"] += day_issues
 
-        manager_values = [day_fixed, day_reported, day_checking, day_pending, f"{day_actual_pct}%"]
+        manager_values = [day_fixed, day_reported, day_checking, day_pending]
         for i, val in enumerate(manager_values):
-            display_val = val if (isinstance(val, str) or val > 0) else "--"
+            display_val = val if val > 0 else "--"
             cell = ws.cell(data_row, manager_start + i, display_val)
             cell.alignment = center
             cell.border = border
@@ -1356,30 +1335,21 @@ def build_daily_sheet(wb):
         user_total_rows = user_totals[user]["total_rows"]
         user_done = user_totals[user]["done"]
         user_issues = user_totals[user]["issues"]
+        user_nonissue = user_totals[user]["nonissue"]
         user_comp_pct = round(user_done / user_total_rows * 100, 1) if user_total_rows > 0 else 0
+        user_actual_pct = round((user_issues - user_nonissue) / user_issues * 100, 1) if user_issues > 0 else 0
 
-        done_cell = ws.cell(data_row, col, user_done)
-        done_cell.fill = total_fill
-        done_cell.font = bold
-        done_cell.alignment = center
-        done_cell.border = border
-
-        issues_cell = ws.cell(data_row, col + 1, user_issues)
-        issues_cell.fill = total_fill
-        issues_cell.font = bold
-        issues_cell.alignment = center
-        issues_cell.border = border
-
-        comp_cell = ws.cell(data_row, col + 2, f"{user_comp_pct}%")
-        comp_cell.fill = total_fill
-        comp_cell.font = bold
-        comp_cell.alignment = center
-        comp_cell.border = border
-        col += 3
+        # Write 4 cells per user: Done, Issues, Comp %, Actual Issues
+        for val in [user_done, user_issues, f"{user_comp_pct}%", f"{user_actual_pct}%"]:
+            cell = ws.cell(data_row, col, val)
+            cell.fill = total_fill
+            cell.font = bold
+            cell.alignment = center
+            cell.border = border
+            col += 1
 
     # Manager totals
-    total_actual_pct = round((manager_totals["total_issues"] - manager_totals["nonissue"]) / manager_totals["total_issues"] * 100, 1) if manager_totals["total_issues"] > 0 else 0
-    manager_total_values = [manager_totals["fixed"], manager_totals["reported"], manager_totals["checking"], manager_totals["pending"], f"{total_actual_pct}%"]
+    manager_total_values = [manager_totals["fixed"], manager_totals["reported"], manager_totals["checking"], manager_totals["pending"]]
     for i, val in enumerate(manager_total_values):
         cell = ws.cell(data_row, manager_start + i, val)
         cell.fill = total_fill
@@ -1387,61 +1357,101 @@ def build_daily_sheet(wb):
         cell.alignment = center
         cell.border = border
 
-    # Set column widths
-    ws.column_dimensions['A'].width = 12
-    for i in range(tester_cols):
-        col_letter = get_column_letter(2 + i)
-        ws.column_dimensions[col_letter].width = 10
-    for i in range(manager_cols):
-        col_letter = get_column_letter(manager_start + i)
-        ws.column_dimensions[col_letter].width = 10
+    # Set column widths with auto-sizing + padding
+    PADDING = 2  # Small padding for edge cases
+    ws.column_dimensions['A'].width = len("Date") + PADDING + 2  # Date column
 
-    # === Add simple chart below table ===
+    # Tester columns - auto-width based on header length
+    col = 2
+    for user in users:
+        headers = ["Done", "Issues", "Comp %", "Actual Issues"]
+        for header in headers:
+            col_letter = get_column_letter(col)
+            ws.column_dimensions[col_letter].width = len(header) + PADDING
+            col += 1
+
+    # Manager columns
+    manager_headers = ["Fixed", "Reported", "Checking", "Pending"]
+    for i, header in enumerate(manager_headers):
+        col_letter = get_column_letter(manager_start + i)
+        ws.column_dimensions[col_letter].width = len(header) + PADDING
+
+    # === Add two charts side by side below table ===
     if len(dates) > 0 and len(users) > 0:
         from openpyxl.chart import BarChart, Reference
+        from openpyxl.chart.series import SeriesLabel
+        from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
 
-        # Build mini data table for chart (below main table)
-        chart_data_row = data_row + 3  # Skip some rows after TOTAL
+        # Unique colors for each user (vibrant, distinct)
+        USER_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "7030A0", "C00000", "00B0F0"]
 
-        # Headers
-        ws.cell(chart_data_row, 1, "Date")
+        # Build data tables for charts (below main table)
+        chart_data_row = data_row + 3
+
+        # --- Data Table 1: Completion % per user ---
+        ws.cell(chart_data_row, 1, "User")
+        ws.cell(chart_data_row, 2, "Completion %")
         for i, user in enumerate(users):
-            ws.cell(chart_data_row, 2 + i, user)
+            ws.cell(chart_data_row + 1 + i, 1, user)
+            total_rows = user_totals[user]["total_rows"]
+            done = user_totals[user]["done"]
+            comp_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
+            ws.cell(chart_data_row + 1 + i, 2, comp_pct)
 
-        # Data: cumulative done per user
-        cumulative = {user: 0 for user in users}
-        row_offset = 1
-        for date in sorted(dates):
-            if isinstance(date, str) and len(date) >= 10:
-                display_date = date[5:7] + "/" + date[8:10]
-            else:
-                display_date = str(date)
+        # --- Data Table 2: Actual Issues % per user (offset to the right) ---
+        data2_col = 5  # Start second data table at column E
+        ws.cell(chart_data_row, data2_col, "User")
+        ws.cell(chart_data_row, data2_col + 1, "Actual Issues %")
+        for i, user in enumerate(users):
+            ws.cell(chart_data_row + 1 + i, data2_col, user)
+            issues = user_totals[user]["issues"]
+            nonissue = user_totals[user]["nonissue"]
+            actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
+            ws.cell(chart_data_row + 1 + i, data2_col + 1, actual_pct)
 
-            ws.cell(chart_data_row + row_offset, 1, display_date)
-            for i, user in enumerate(users):
-                user_done = daily_data[date].get(user, {"done": 0})["done"]
-                cumulative[user] += user_done
-                ws.cell(chart_data_row + row_offset, 2 + i, cumulative[user])
-            row_offset += 1
+        num_users = len(users)
 
-        num_chart_rows = row_offset
+        # --- Chart 1: Completion % (horizontal bar) ---
+        chart1 = BarChart()
+        chart1.type = "bar"  # Horizontal bars
+        chart1.title = "Completion %"
+        chart1.style = 10
+        chart1.width = 10
+        chart1.height = 6
 
-        # Create simple bar chart
-        chart = BarChart()
-        chart.type = "col"
-        chart.title = "Progress by User"
-        chart.style = 10
-        chart.width = 12
-        chart.height = 8
+        data1_ref = Reference(ws, min_col=2, min_row=chart_data_row, max_row=chart_data_row + num_users)
+        cats1_ref = Reference(ws, min_col=1, min_row=chart_data_row + 1, max_row=chart_data_row + num_users)
+        chart1.add_data(data1_ref, titles_from_data=True)
+        chart1.set_categories(cats1_ref)
+        chart1.legend = None  # Hide legend for cleaner look
 
-        data_ref = Reference(ws, min_col=2, min_row=chart_data_row, max_col=1 + len(users), max_row=chart_data_row + num_chart_rows - 1)
-        cats_ref = Reference(ws, min_col=1, min_row=chart_data_row + 1, max_row=chart_data_row + num_chart_rows - 1)
+        # Apply unique colors to bars
+        for i, series in enumerate(chart1.series):
+            color = USER_COLORS[i % len(USER_COLORS)]
+            series.graphicalProperties.solidFill = color
 
-        chart.add_data(data_ref, titles_from_data=True)
-        chart.set_categories(cats_ref)
-        chart.legend.position = 'b'
+        # --- Chart 2: Actual Issues % (horizontal bar) ---
+        chart2 = BarChart()
+        chart2.type = "bar"
+        chart2.title = "Actual Issues %"
+        chart2.style = 10
+        chart2.width = 10
+        chart2.height = 6
 
-        ws.add_chart(chart, f"A{chart_data_row + num_chart_rows + 1}")
+        data2_ref = Reference(ws, min_col=data2_col + 1, min_row=chart_data_row, max_row=chart_data_row + num_users)
+        cats2_ref = Reference(ws, min_col=data2_col, min_row=chart_data_row + 1, max_row=chart_data_row + num_users)
+        chart2.add_data(data2_ref, titles_from_data=True)
+        chart2.set_categories(cats2_ref)
+        chart2.legend = None
+
+        for i, series in enumerate(chart2.series):
+            color = USER_COLORS[i % len(USER_COLORS)]
+            series.graphicalProperties.solidFill = color
+
+        # Place charts side by side
+        chart_row = chart_data_row + num_users + 2
+        ws.add_chart(chart1, f"A{chart_row}")
+        ws.add_chart(chart2, f"H{chart_row}")  # Offset to the right
 
 
 def build_total_sheet(wb):
@@ -1509,8 +1519,10 @@ def build_total_sheet(wb):
     center = Alignment(horizontal='center', vertical='center')
     bold = Font(bold=True)
 
-    # Total columns: 6 tester + 5 manager = 11
-    total_cols = 11
+    # Total columns: 7 tester + 4 manager = 11
+    tester_headers = ["User", "Comp %", "Actual Issues", "Total", "Issues", "No Issue", "Blocked"]
+    manager_headers = ["Fixed", "Reported", "Checking", "Pending"]
+    total_cols = len(tester_headers) + len(manager_headers)
 
     # Row 1: Title
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=total_cols)
@@ -1522,9 +1534,6 @@ def build_total_sheet(wb):
     # Row 2: Empty
 
     # Row 3: Headers (Tester stats + Manager stats)
-    tester_headers = ["User", "Completion %", "Total", "Issues", "No Issue", "Blocked"]
-    manager_headers = ["Fixed", "Reported", "Checking", "Pending", "Actual Issues"]
-
     # Tester headers
     for col, header in enumerate(tester_headers, 1):
         cell = ws.cell(3, col, header)
@@ -1533,8 +1542,9 @@ def build_total_sheet(wb):
         cell.alignment = center
         cell.border = border
 
-    # Manager headers (columns 7-10)
-    for col, header in enumerate(manager_headers, 7):
+    # Manager headers
+    manager_start_col = len(tester_headers) + 1
+    for col, header in enumerate(manager_headers, manager_start_col):
         cell = ws.cell(3, col, header)
         cell.fill = manager_header_fill
         cell.font = bold
@@ -1580,7 +1590,8 @@ def build_total_sheet(wb):
         grand_total["pending"] += pending
         grand_total["nonissue"] += nonissue
 
-        row_data = [user, f"{completion_pct}%", done, issues, no_issue, blocked, fixed, reported, checking, pending, f"{actual_pct}%"]
+        # Order matches headers: User, Comp %, Actual Issues, Total, Issues, No Issue, Blocked, Fixed, Reported, Checking, Pending
+        row_data = [user, f"{completion_pct}%", f"{actual_pct}%", done, issues, no_issue, blocked, fixed, reported, checking, pending]
 
         for col, value in enumerate(row_data, 1):
             cell = ws.cell(data_row, col, value)
@@ -1597,9 +1608,10 @@ def build_total_sheet(wb):
     gt_completion = round(gt["done"] / gt["total_rows"] * 100, 1) if gt["total_rows"] > 0 else 0
     # Actual Issues % for grand total
     gt_actual_pct = round((gt["issues"] - gt["nonissue"]) / gt["issues"] * 100, 1) if gt["issues"] > 0 else 0
+    # Order matches headers: User, Comp %, Actual Issues, Total, Issues, No Issue, Blocked, Fixed, Reported, Checking, Pending
     total_row_data = [
-        "TOTAL", f"{gt_completion}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
-        gt["fixed"], gt["reported"], gt["checking"], gt["pending"], f"{gt_actual_pct}%"
+        "TOTAL", f"{gt_completion}%", f"{gt_actual_pct}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
+        gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
     ]
 
     for col, value in enumerate(total_row_data, 1):
@@ -1609,31 +1621,26 @@ def build_total_sheet(wb):
         cell.alignment = center
         cell.border = border
 
-    # Set column widths
-    ws.column_dimensions['A'].width = 15
-    ws.column_dimensions['B'].width = 14
-    ws.column_dimensions['C'].width = 10
-    ws.column_dimensions['D'].width = 10
-    ws.column_dimensions['E'].width = 12
-    ws.column_dimensions['F'].width = 10
-    ws.column_dimensions['G'].width = 10  # Fixed
-    ws.column_dimensions['H'].width = 10  # Reported
-    ws.column_dimensions['I'].width = 10  # Checking
-    ws.column_dimensions['J'].width = 10  # Pending
-    ws.column_dimensions['K'].width = 13  # Actual Issues
+    # Set column widths with auto-sizing + padding
+    PADDING = 2
+    all_headers = tester_headers + manager_headers
+    for col, header in enumerate(all_headers, 1):
+        col_letter = get_column_letter(col)
+        ws.column_dimensions[col_letter].width = len(header) + PADDING
 
-    # === Add simple chart below table ===
+    # === Add two charts side by side below table ===
     if len(users) > 0:
         from openpyxl.chart import BarChart, Reference
 
-        # Build mini data for chart (below main table)
+        # Unique colors for each user
+        USER_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "7030A0", "C00000", "00B0F0"]
+
+        # Build data tables for charts
         chart_data_row = data_row + 3
 
-        # Headers
+        # --- Data Table 1: Completion % per user ---
         ws.cell(chart_data_row, 1, "User")
         ws.cell(chart_data_row, 2, "Completion %")
-
-        # Data: completion % per user
         for i, user in enumerate(users):
             ws.cell(chart_data_row + 1 + i, 1, user)
             total_rows = user_data[user]["total_rows"]
@@ -1641,23 +1648,59 @@ def build_total_sheet(wb):
             comp = round(done / total_rows * 100, 1) if total_rows > 0 else 0
             ws.cell(chart_data_row + 1 + i, 2, comp)
 
+        # --- Data Table 2: Actual Issues % per user ---
+        data2_col = 5
+        ws.cell(chart_data_row, data2_col, "User")
+        ws.cell(chart_data_row, data2_col + 1, "Actual Issues %")
+        for i, user in enumerate(users):
+            ws.cell(chart_data_row + 1 + i, data2_col, user)
+            issues = user_data[user]["issues"]
+            nonissue = user_data[user]["nonissue"]
+            actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
+            ws.cell(chart_data_row + 1 + i, data2_col + 1, actual_pct)
+
         num_users = len(users)
 
-        # Create simple bar chart
-        chart = BarChart()
-        chart.type = "bar"  # Horizontal bars
-        chart.title = "Completion by User"
-        chart.style = 10
-        chart.width = 10
-        chart.height = 6
+        # --- Chart 1: Completion % (horizontal bar) ---
+        chart1 = BarChart()
+        chart1.type = "bar"
+        chart1.title = "Completion %"
+        chart1.style = 10
+        chart1.width = 10
+        chart1.height = 6
 
-        data_ref = Reference(ws, min_col=2, min_row=chart_data_row, max_row=chart_data_row + num_users)
-        cats_ref = Reference(ws, min_col=1, min_row=chart_data_row + 1, max_row=chart_data_row + num_users)
+        data1_ref = Reference(ws, min_col=2, min_row=chart_data_row, max_row=chart_data_row + num_users)
+        cats1_ref = Reference(ws, min_col=1, min_row=chart_data_row + 1, max_row=chart_data_row + num_users)
+        chart1.add_data(data1_ref, titles_from_data=True)
+        chart1.set_categories(cats1_ref)
+        chart1.legend = None
 
-        chart.add_data(data_ref, titles_from_data=True)
-        chart.set_categories(cats_ref)
+        for i, series in enumerate(chart1.series):
+            color = USER_COLORS[i % len(USER_COLORS)]
+            series.graphicalProperties.solidFill = color
 
-        ws.add_chart(chart, f"A{chart_data_row + num_users + 2}")
+        # --- Chart 2: Actual Issues % (horizontal bar) ---
+        chart2 = BarChart()
+        chart2.type = "bar"
+        chart2.title = "Actual Issues %"
+        chart2.style = 10
+        chart2.width = 10
+        chart2.height = 6
+
+        data2_ref = Reference(ws, min_col=data2_col + 1, min_row=chart_data_row, max_row=chart_data_row + num_users)
+        cats2_ref = Reference(ws, min_col=data2_col, min_row=chart_data_row + 1, max_row=chart_data_row + num_users)
+        chart2.add_data(data2_ref, titles_from_data=True)
+        chart2.set_categories(cats2_ref)
+        chart2.legend = None
+
+        for i, series in enumerate(chart2.series):
+            color = USER_COLORS[i % len(USER_COLORS)]
+            series.graphicalProperties.solidFill = color
+
+        # Place charts side by side
+        chart_row = chart_data_row + num_users + 2
+        ws.add_chart(chart1, f"A{chart_row}")
+        ws.add_chart(chart2, f"H{chart_row}")
 
 
 # build_graphs_sheet removed - charts now embedded in DAILY/TOTAL
