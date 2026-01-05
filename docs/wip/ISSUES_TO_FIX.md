@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-05 (Session 31) | **Build:** 453 (pending) | **Open:** 0
+**Last Updated:** 2026-01-05 (Session 32) | **Build:** 453 (pending) | **Open:** 1
 
 ---
 
@@ -8,10 +8,71 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 0 |
+| **OPEN** | 1 |
 | **FIXED/CLOSED** | 108 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
+
+---
+
+## OPEN ISSUES
+
+### P9-BIN-001: Offline Storage Has No Recycle Bin
+
+- **Reported:** 2026-01-05 (Session 32)
+- **Severity:** MEDIUM
+- **Status:** OPEN
+- **Component:** offline.py, sync.py
+
+**Problem:** When deleting local files/folders in Offline Storage, they are PERMANENTLY deleted. No soft delete to recycle bin.
+
+**Current Behavior:**
+- `delete_local_file()` in offline.py does `DELETE FROM offline_files WHERE id = ?`
+- `delete_local_folder()` in offline.py does `DELETE FROM offline_folders WHERE id = ?`
+- No serialization, no trash table, immediate permanent delete
+
+**Expected Behavior:**
+- Should match ONLINE mode: soft delete to trash, 30-day retention, restore capability
+
+**Comparison:**
+| Mode | Soft Delete | Trash Table | Restore | Auto-Purge |
+|------|-------------|-------------|---------|------------|
+| **ONLINE** | ✅ Yes | LDMTrash (PostgreSQL) | ✅ Yes | ✅ Yes (daily) |
+| **OFFLINE** | ❌ No | None | ❌ No | N/A |
+
+**Solution Required:**
+1. Create `offline_trash` table in SQLite schema
+2. Modify `delete_local_file()` to serialize and soft delete
+3. Modify `delete_local_folder()` to serialize and soft delete
+4. Add `restore_local_file()`, `restore_local_folder()` methods
+5. Add `purge_expired_local_trash()` method
+6. Add API endpoints for local trash operations
+7. Update frontend to show local trash items in Recycle Bin
+
+**Priority:** MEDIUM - Users can lose data unexpectedly
+
+---
+
+## RECENTLY FIXED (Session 32)
+
+### Recycle Bin Auto-Purge Missing ✅ FIXED
+
+- **Reported:** 2026-01-05 (Session 32)
+- **Fixed:** 2026-01-05 (Session 32)
+- **Severity:** LOW
+- **Status:** ✅ FIXED
+- **Component:** background_tasks.py
+
+**Problem:** `expires_at` was set on trash items but nothing deleted them after 30 days.
+
+**Fix Applied:**
+- Added `purge_expired_trash()` Celery task
+- Runs daily via Celery Beat
+- Deletes `LDMTrash` items where `expires_at < now` and `status == 'trashed'`
+
+**Files Modified:**
+- `server/tasks/background_tasks.py` - Added task and schedule
+- `server/tasks/__init__.py` - Added export
 
 ---
 
