@@ -714,18 +714,20 @@
     }
   }
 
-  // EXPLORER-008: Load Recycle Bin contents
+  // EXPLORER-008 + P9-BIN-001: Load Recycle Bin contents (both PostgreSQL and SQLite)
   async function loadTrashContents() {
     loading = true;
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/trash`, {
+      let allTrashItems = [];
+
+      // 1. Fetch PostgreSQL trash (online items)
+      const pgResponse = await fetch(`${API_BASE}/api/ldm/trash`, {
         headers: getAuthHeaders()
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Convert trash items to display format
-        currentItems = data.items.map(item => ({
+      if (pgResponse.ok) {
+        const pgData = await pgResponse.json();
+        const pgItems = pgData.items.map(item => ({
           type: 'trash-item',
           id: item.id,
           trash_id: item.id,
@@ -735,15 +737,43 @@
           deleted_at: item.deleted_at,
           expires_at: item.expires_at,
           parent_project_id: item.parent_project_id,
-          parent_folder_id: item.parent_folder_id
+          parent_folder_id: item.parent_folder_id,
+          isLocal: false  // PostgreSQL trash
         }));
-
-        currentPath = [{ type: 'recycle-bin', id: 'trash', name: 'Recycle Bin' }];
-        selectedProjectId = null;
-        selectedPlatformId = null;
-
-        logger.info('Loaded trash contents', { count: data.count });
+        allTrashItems = allTrashItems.concat(pgItems);
       }
+
+      // 2. P9-BIN-001: Fetch SQLite trash (local Offline Storage items)
+      const localResponse = await fetch(`${API_BASE}/api/ldm/offline/trash`, {
+        headers: getAuthHeaders()
+      });
+
+      if (localResponse.ok) {
+        const localData = await localResponse.json();
+        const localItems = localData.items.map(item => ({
+          type: 'trash-item',
+          id: `local-${item.id}`,  // Prefix to avoid ID collision
+          trash_id: item.id,
+          item_type: item.item_type,
+          item_id: item.item_id,
+          name: item.item_name,
+          deleted_at: item.deleted_at,
+          expires_at: item.expires_at,
+          parent_folder_id: item.parent_folder_id,
+          isLocal: true  // SQLite trash (Offline Storage)
+        }));
+        allTrashItems = allTrashItems.concat(localItems);
+      }
+
+      // Sort by deleted_at (newest first)
+      allTrashItems.sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
+
+      currentItems = allTrashItems;
+      currentPath = [{ type: 'recycle-bin', id: 'trash', name: 'Recycle Bin' }];
+      selectedProjectId = null;
+      selectedPlatformId = null;
+
+      logger.info('Loaded trash contents', { count: allTrashItems.length });
     } catch (err) {
       logger.error('Failed to load trash', { error: err.message });
     } finally {
@@ -754,22 +784,31 @@
   /**
    * EXPLORER-008: Restore item from trash
    * OPTIMISTIC UI: Item disappears from trash immediately
+   * P9-BIN-001: Supports both PostgreSQL and SQLite trash
    */
   async function restoreFromTrash(trashId) {
     // OPTIMISTIC UI: Store original and remove immediately
-    const restoredItem = currentItems.find(item => item.id === trashId);
+    const restoredItem = currentItems.find(item => item.id === trashId || item.trash_id === trashId);
     const originalItems = [...currentItems];
-    currentItems = currentItems.filter(item => item.id !== trashId);
+    currentItems = currentItems.filter(item => item.id !== trashId && item.trash_id !== trashId);
+
+    // P9-BIN-001: Check if this is a local (SQLite) trash item
+    const isLocal = restoredItem?.isLocal === true;
+    const actualTrashId = isLocal ? restoredItem.trash_id : trashId;
+    const endpoint = isLocal
+      ? `${API_BASE}/api/ldm/offline/trash/${actualTrashId}/restore`
+      : `${API_BASE}/api/ldm/trash/${trashId}/restore`;
 
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/trash/${trashId}/restore`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: getAuthHeaders()
       });
 
       if (response.ok) {
         const result = await response.json();
-        logger.success(`${result.item_type} restored`, { id: result.restored_id });
+        const itemType = isLocal ? result.item_type : result.item_type;
+        logger.success(`${itemType} restored`, { id: result.restored_id || result.item_id });
       } else {
         // OPTIMISTIC UI: Rollback on failure
         currentItems = originalItems;
@@ -786,14 +825,23 @@
   /**
    * EXPLORER-008: Permanently delete from trash
    * OPTIMISTIC UI: Item disappears immediately
+   * P9-BIN-001: Supports both PostgreSQL and SQLite trash
    */
   async function permanentDeleteFromTrash(trashId) {
     // OPTIMISTIC UI: Store original and remove immediately
+    const deletedItem = currentItems.find(item => item.id === trashId || item.trash_id === trashId);
     const originalItems = [...currentItems];
-    currentItems = currentItems.filter(item => item.id !== trashId);
+    currentItems = currentItems.filter(item => item.id !== trashId && item.trash_id !== trashId);
+
+    // P9-BIN-001: Check if this is a local (SQLite) trash item
+    const isLocal = deletedItem?.isLocal === true;
+    const actualTrashId = isLocal ? deletedItem.trash_id : trashId;
+    const endpoint = isLocal
+      ? `${API_BASE}/api/ldm/offline/trash/${actualTrashId}`
+      : `${API_BASE}/api/ldm/trash/${trashId}`;
 
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/trash/${trashId}`, {
+      const response = await fetch(endpoint, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -816,26 +864,59 @@
   /**
    * EXPLORER-008: Empty entire trash
    * OPTIMISTIC UI: All items disappear immediately
+   * P9-BIN-001: Empties both PostgreSQL and SQLite trash
    */
   async function emptyTrash() {
     // OPTIMISTIC UI: Store original and clear immediately
     const originalItems = [...currentItems];
     currentItems = [];
 
-    try {
-      const response = await fetch(`${API_BASE}/api/ldm/trash/empty`, {
-        method: 'POST',
-        headers: getAuthHeaders()
-      });
+    // P9-BIN-001: Check which trash sources have items
+    const hasPostgresItems = originalItems.some(item => !item.isLocal);
+    const hasLocalItems = originalItems.some(item => item.isLocal);
 
-      if (response.ok) {
-        const result = await response.json();
-        logger.success(result.message);
+    let pgSuccess = true;
+    let localSuccess = true;
+    let pgResult = null;
+    let localResult = null;
+
+    try {
+      // Empty PostgreSQL trash if it has items
+      if (hasPostgresItems) {
+        const pgResponse = await fetch(`${API_BASE}/api/ldm/trash/empty`, {
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+        pgSuccess = pgResponse.ok;
+        if (pgSuccess) {
+          pgResult = await pgResponse.json();
+        }
+      }
+
+      // P9-BIN-001: Empty SQLite trash if it has items
+      if (hasLocalItems) {
+        const localResponse = await fetch(`${API_BASE}/api/ldm/offline/trash`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+        localSuccess = localResponse.ok;
+        if (localSuccess) {
+          localResult = await localResponse.json();
+        }
+      }
+
+      if (pgSuccess && localSuccess) {
+        const totalDeleted = (pgResult?.deleted_count || 0) + (localResult?.deleted_count || 0);
+        logger.success(`Recycle Bin emptied (${totalDeleted} items deleted)`);
       } else {
-        // OPTIMISTIC UI: Rollback on failure
-        currentItems = originalItems;
-        const error = await response.json();
-        logger.error('Empty trash failed', { error: error.detail });
+        // OPTIMISTIC UI: Partial rollback - keep items that failed to delete
+        if (!pgSuccess) {
+          currentItems = originalItems.filter(item => !item.isLocal);
+        }
+        if (!localSuccess) {
+          currentItems = [...currentItems, ...originalItems.filter(item => item.isLocal)];
+        }
+        logger.error('Empty trash partially failed');
       }
     } catch (err) {
       // OPTIMISTIC UI: Rollback on error

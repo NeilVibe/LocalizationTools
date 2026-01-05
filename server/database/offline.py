@@ -1852,11 +1852,11 @@ class OfflineDatabase:
             ).fetchone()
             return dict(row) if row else None
 
-    def restore_from_local_trash(self, trash_id: int) -> bool:
+    def restore_from_local_trash(self, trash_id: int) -> dict:
         """
         P9-BIN-001: Restore an item from local trash.
 
-        Returns True if restored, False if not found or restore failed.
+        Returns dict with item_type and item_id, or None if not found/failed.
         """
         with self._get_connection() as conn:
             trash_row = conn.execute(
@@ -1866,9 +1866,10 @@ class OfflineDatabase:
 
             if not trash_row:
                 logger.warning(f"Cannot restore: trash item {trash_id} not found or not trashed")
-                return False
+                return None
 
             item_type = trash_row['item_type']
+            item_id = trash_row['item_id']
             item_data = json.loads(trash_row['item_data'])
 
             try:
@@ -1878,7 +1879,7 @@ class OfflineDatabase:
                     self._restore_local_folder(conn, item_data)
                 else:
                     logger.error(f"Unknown trash item type: {item_type}")
-                    return False
+                    return None
 
                 # Mark as restored
                 conn.execute(
@@ -1887,11 +1888,14 @@ class OfflineDatabase:
                 )
                 conn.commit()
                 logger.info(f"Restored {item_type} '{trash_row['item_name']}' from trash")
-                return True
+                return {
+                    "item_type": item_type,
+                    "item_id": item_id
+                }
 
             except Exception as e:
                 logger.error(f"Failed to restore from trash: {e}")
-                return False
+                return None
 
     def _restore_local_file(self, conn, item_data: dict):
         """P9-BIN-001: Restore a local file from trash data."""
