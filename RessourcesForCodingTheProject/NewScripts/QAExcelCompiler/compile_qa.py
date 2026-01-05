@@ -40,7 +40,7 @@ SCRIPT_DIR = Path(__file__).parent
 QA_FOLDER = SCRIPT_DIR / "QAfolder"
 MASTER_FOLDER = SCRIPT_DIR / "Masterfolder"
 IMAGES_FOLDER = MASTER_FOLDER / "Images"
-CATEGORIES = ["Quest", "Knowledge", "Item", "Node", "System"]
+CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System"]
 
 # Supported image extensions
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
