@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, create_engine
 from sqlalchemy.orm import Session
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
@@ -1079,7 +1079,7 @@ class DeleteOfflineFileResponse(BaseModel):
 
 
 class RenameOfflineFileRequest(BaseModel):
-    new_name: str
+    new_name: str = Field(..., min_length=1, description="New filename (cannot be empty)")
 
 
 class RenameOfflineFileResponse(BaseModel):
