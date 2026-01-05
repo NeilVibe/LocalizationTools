@@ -113,15 +113,20 @@ This is necessary because TM assignments have FK constraints to PostgreSQL table
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| **P9** | **Offline/Online Mode** | ✅ TM INTEGRATION COMPLETE |
+| **P9** | **Offline/Online Mode** | ✅ COMPLETE |
 | P8 | Dashboard Overhaul | PLANNED |
 
-### P9 Remaining Tasks
+### P9 Status: COMPLETE ✅
 
 1. ✅ Unified endpoints (done)
-2. ✅ TM assignment to Offline Storage (done)
+2. ✅ TM assignment to Offline Storage (done - Session 30)
 3. ✅ Folder CRUD in Offline Storage (done - Session 31)
-4. ⬜ Sync flow improvements (push changes to server)
+4. ✅ Push changes to server (done - Session 21)
+
+**Future polish (optional, not blocking):**
+- Enhanced sync preview dialog
+- File status icons in explorer
+- Bulk download progress bars
 
 ---
 
@@ -163,4 +168,4 @@ echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN:
 
 ---
 
-*Session 31 | Build 453 | P9 Offline Storage Folder CRUD COMPLETE*
+*Session 31 | Build 453 | P9 COMPLETE - Ready for P8 Dashboard Overhaul*
