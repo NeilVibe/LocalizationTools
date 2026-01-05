@@ -236,7 +236,7 @@
       currentPath = [];
       selectedProjectId = null;
       selectedPlatformId = null;
-      logger.info('Loaded root', { platforms: platformList.length, unassigned: unassignedProjects.length, localFiles: localFileCount, offlineMode: isOffline });
+      logger.info('Loaded root', { platforms: platformList.length, localFiles: localFileCount, offlineMode: isOffline });
     } catch (err) {
       logger.error('Failed to load root', { error: err.message });
     } finally {
@@ -2486,7 +2486,7 @@
         <TrashCan size={16} /> Empty Recycle Bin
       </button>
     {:else if currentPath[0]?.type === 'offline-storage'}
-      <!-- P9: Inside Offline Storage: import files (flat structure, no folders) -->
+      <!-- P9: Inside Offline Storage: full CRUD (Session 31) -->
       {#if clipboardItems.length > 0}
         <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>
           Paste {clipboardItems.length} item{clipboardItems.length > 1 ? 's' : ''} (Ctrl+V)
@@ -2494,6 +2494,7 @@
         <div class="context-menu-divider"></div>
       {/if}
       <button class="context-menu-item" onclick={bgUploadFile}><DocumentAdd size={16} /> Import File</button>
+      <button class="context-menu-item" onclick={bgCreateFolder}><FolderAdd size={16} /> New Folder</button>
     {:else if currentPath[0]?.type === 'platform' && currentPath.length === 1}
       <!-- Inside a platform: can only create project (but NOT in offline mode) -->
       {#if $offlineMode}
