@@ -1364,6 +1364,108 @@ async def rename_offline_storage_folder(
 
 
 # =============================================================================
+# P9: Move Operations for Offline Storage
+# =============================================================================
+
+class MoveOfflineFileRequest(BaseModel):
+    target_folder_id: Optional[int] = Field(None, description="Target folder ID (null for root)")
+
+
+class MoveOfflineFileResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class MoveOfflineFolderRequest(BaseModel):
+    target_parent_id: Optional[int] = Field(None, description="Target parent folder ID (null for root)")
+
+
+class MoveOfflineFolderResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.patch("/offline/storage/files/{file_id}/move", response_model=MoveOfflineFileResponse)
+async def move_offline_storage_file(
+    file_id: int,
+    target_folder_id: Optional[int] = None,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9: Move a file within Offline Storage.
+
+    Only works for local files (files in Offline Storage).
+    target_folder_id can be:
+    - null/omitted: Move to root of Offline Storage
+    - int: Move into the specified local folder
+    """
+    target_desc = f"folder {target_folder_id}" if target_folder_id else "root"
+    logger.info(f"Moving file in Offline Storage: {file_id} -> {target_desc}")
+
+    try:
+        offline_db = get_offline_db()
+        success = offline_db.move_local_file(file_id, target_folder_id)
+
+        if success:
+            return MoveOfflineFileResponse(
+                success=True,
+                message=f"File moved to {target_desc}"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot move: file not found, not in Offline Storage, or target folder invalid"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to move file in Offline Storage: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to move file: {str(e)}")
+
+
+@router.patch("/offline/storage/folders/{folder_id}/move", response_model=MoveOfflineFolderResponse)
+async def move_offline_storage_folder(
+    folder_id: int,
+    target_parent_id: Optional[int] = None,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9: Move a folder within Offline Storage.
+
+    Only works for local folders (folders in Offline Storage).
+    target_parent_id can be:
+    - null/omitted: Move to root of Offline Storage
+    - int: Move into the specified local folder
+
+    Cannot move a folder into itself or its descendants.
+    """
+    target_desc = f"folder {target_parent_id}" if target_parent_id else "root"
+    logger.info(f"Moving folder in Offline Storage: {folder_id} -> {target_desc}")
+
+    try:
+        offline_db = get_offline_db()
+        success = offline_db.move_local_folder(folder_id, target_parent_id)
+
+        if success:
+            return MoveOfflineFolderResponse(
+                success=True,
+                message=f"Folder moved to {target_desc}"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot move: folder not found, not in Offline Storage, or target invalid (cannot move into self/descendants)"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to move folder in Offline Storage: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to move folder: {str(e)}")
+
+
+# =============================================================================
 # Download for Offline
 # =============================================================================
 

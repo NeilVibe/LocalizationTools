@@ -112,6 +112,14 @@
   let isInOfflineStorage = $derived(currentPath[0]?.type === 'offline-storage');
   let canModifyStructure = $derived(!$offlineMode || isInOfflineStorage);
 
+  // P9: Helper to check if item is any folder type (regular or local)
+  function isFolderType(item) {
+    return item?.type === 'folder' || item?.type === 'local-folder';
+  }
+  function isFileType(item) {
+    return item?.type === 'file' || item?.type === 'local-file';
+  }
+
   // P9: Track offline mode changes to reload root (show/hide Offline Storage)
   let prevOfflineMode = $state(false);
   $effect(() => {
@@ -513,7 +521,16 @@
     const { items, targetFolder } = event.detail;
     if (!items || items.length === 0 || !targetFolder) return;
 
-    const targetId = targetFolder.type === 'project' ? null : targetFolder.id;
+    // P9: Determine target ID based on target folder type
+    // For regular folders: use folder ID or null for project root
+    // For local-folder: use folder ID or null for Offline Storage root
+    // For offline-storage root: target is null
+    let targetId;
+    if (targetFolder.type === 'project' || targetFolder.type === 'offline-storage') {
+      targetId = null;  // Root level
+    } else {
+      targetId = targetFolder.id;
+    }
 
     try {
       for (const item of items) {
@@ -521,7 +538,7 @@
         let response;
 
         if (item.type === 'file') {
-          // File move: PATCH with query param
+          // Regular file move: PATCH with query param
           const params = targetId !== null ? `?folder_id=${targetId}` : '';
           url = `${API_BASE}/api/ldm/files/${item.id}/move${params}`;
           response = await fetch(url, {
@@ -529,9 +546,25 @@
             headers: getAuthHeaders()
           });
         } else if (item.type === 'folder') {
-          // Folder move: PATCH with query param
+          // Regular folder move: PATCH with query param
           const params = targetId !== null ? `?parent_folder_id=${targetId}` : '';
           url = `${API_BASE}/api/ldm/folders/${item.id}/move${params}`;
+          response = await fetch(url, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+          });
+        } else if (item.type === 'local-file') {
+          // P9: Local file move within Offline Storage
+          const params = targetId !== null ? `?target_folder_id=${targetId}` : '';
+          url = `${API_BASE}/api/ldm/offline/storage/files/${item.id}/move${params}`;
+          response = await fetch(url, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+          });
+        } else if (item.type === 'local-folder') {
+          // P9: Local folder move within Offline Storage
+          const params = targetId !== null ? `?target_parent_id=${targetId}` : '';
+          url = `${API_BASE}/api/ldm/offline/storage/folders/${item.id}/move${params}`;
           response = await fetch(url, {
             method: 'PATCH',
             headers: getAuthHeaders()
@@ -551,6 +584,9 @@
         await loadRoot();
       } else if (currentPath.length === 1) {
         await loadProjectContents(selectedProjectId);
+      } else if (isInOfflineStorage) {
+        // P9: Inside Offline Storage - reload
+        await loadOfflineStorageContents();
       } else {
         // Inside a folder - reload without modifying path
         const currentFolder = currentPath[currentPath.length - 1];
