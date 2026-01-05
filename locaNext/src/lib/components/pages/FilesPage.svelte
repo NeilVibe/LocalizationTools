@@ -1287,7 +1287,7 @@
 
     // OPTIMISTIC UI: Add folder immediately with temp ID
     const optimisticFolder = {
-      type: 'folder',
+      type: isInOfflineStorage ? 'local-folder' : 'folder',  // P9: Use correct type
       id: tempId,
       name: folderName,
       file_count: 0,
