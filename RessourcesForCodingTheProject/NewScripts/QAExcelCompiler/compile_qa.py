@@ -48,6 +48,20 @@ IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 # Valid STATUS values (only these count as "filled")
 VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED"]
 
+# === TRACKER CONFIGURATION ===
+TRACKER_FILENAME = "LQA_UserProgress_Tracker.xlsx"
+
+TRACKER_STYLES = {
+    "title_color": "FFD700",       # Gold
+    "header_color": "87CEEB",      # Light blue
+    "subheader_color": "D3D3D3",   # Light gray
+    "alt_row_color": "F5F5F5",     # Alternating gray
+    "total_row_color": "E6E6E6",   # Total row gray
+    "border_color": "000000",      # Black
+}
+
+CHART_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "A5A5A5"]
+
 
 def discover_qa_folders():
     """
@@ -732,6 +746,533 @@ def update_status_sheet(wb, users, user_stats):
     print(f"  Updated STATUS sheet with {len(users)} users (first tab, yellow header)")
 
 
+# =============================================================================
+# TRACKER FUNCTIONS - LQA User Progress Tracker
+# =============================================================================
+
+def get_or_create_tracker():
+    """
+    Load existing tracker or create new one with 4 sheets.
+
+    Returns: (workbook, path)
+    """
+    tracker_path = MASTER_FOLDER / TRACKER_FILENAME
+
+    if tracker_path.exists():
+        wb = openpyxl.load_workbook(tracker_path)
+    else:
+        wb = openpyxl.Workbook()
+        # Remove default sheet
+        default_sheet = wb.active
+        # Create sheets in order
+        wb.create_sheet("DAILY", 0)
+        wb.create_sheet("TOTAL", 1)
+        wb.create_sheet("GRAPHS", 2)
+        wb.create_sheet("_DAILY_DATA", 3)
+        # Remove default sheet
+        wb.remove(default_sheet)
+        # Hide data sheet
+        wb["_DAILY_DATA"].sheet_state = 'hidden'
+
+    return wb, tracker_path
+
+
+def update_daily_data_sheet(wb, daily_entries):
+    """
+    Update hidden _DAILY_DATA sheet with new entries.
+
+    Args:
+        wb: Tracker workbook
+        daily_entries: List of dicts with {date, user, category, done, issues, no_issue, blocked}
+
+    Mode: REPLACE - same (date, user, category) overwrites existing row
+    """
+    ws = wb["_DAILY_DATA"]
+
+    # Ensure headers exist
+    if ws.cell(1, 1).value != "Date":
+        headers = ["Date", "User", "Category", "Done", "Issues", "NoIssue", "Blocked"]
+        for col, header in enumerate(headers, 1):
+            ws.cell(1, col, header)
+
+    # Build index of existing rows: (date, user, category) -> row_number
+    existing = {}
+    for row in range(2, ws.max_row + 1):
+        key = (
+            ws.cell(row, 1).value,  # Date
+            ws.cell(row, 2).value,  # User
+            ws.cell(row, 3).value   # Category
+        )
+        if key[0] is not None:  # Only index non-empty rows
+            existing[key] = row
+
+    # Update or insert entries
+    for entry in daily_entries:
+        key = (entry["date"], entry["user"], entry["category"])
+
+        if key in existing:
+            row = existing[key]
+        else:
+            row = ws.max_row + 1
+            existing[key] = row
+
+        ws.cell(row, 1, entry["date"])
+        ws.cell(row, 2, entry["user"])
+        ws.cell(row, 3, entry["category"])
+        ws.cell(row, 4, entry["done"])
+        ws.cell(row, 5, entry["issues"])
+        ws.cell(row, 6, entry["no_issue"])
+        ws.cell(row, 7, entry["blocked"])
+
+
+def build_daily_sheet(wb):
+    """
+    Build DAILY sheet from _DAILY_DATA.
+
+    Aggregates by (date, user) - combines all categories.
+    """
+    ws = wb["DAILY"]
+    data_ws = wb["_DAILY_DATA"]
+
+    # Clear existing content
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.value = None
+
+    # Read raw data and aggregate by (date, user)
+    daily_data = defaultdict(lambda: defaultdict(lambda: {"done": 0, "issues": 0}))
+    users = set()
+
+    for row in range(2, data_ws.max_row + 1):
+        date = data_ws.cell(row, 1).value
+        user = data_ws.cell(row, 2).value
+        done = data_ws.cell(row, 4).value or 0
+        issues = data_ws.cell(row, 5).value or 0
+
+        if date and user:
+            daily_data[date][user]["done"] += done
+            daily_data[date][user]["issues"] += issues
+            users.add(user)
+
+    if not users:
+        ws.cell(1, 1, "No data yet")
+        return
+
+    users = sorted(users)
+    dates = sorted(daily_data.keys())
+
+    # Styles
+    title_fill = PatternFill(start_color=TRACKER_STYLES["title_color"], end_color=TRACKER_STYLES["title_color"], fill_type="solid")
+    header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"], end_color=TRACKER_STYLES["header_color"], fill_type="solid")
+    subheader_fill = PatternFill(start_color=TRACKER_STYLES["subheader_color"], end_color=TRACKER_STYLES["subheader_color"], fill_type="solid")
+    alt_fill = PatternFill(start_color=TRACKER_STYLES["alt_row_color"], end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid")
+    total_fill = PatternFill(start_color=TRACKER_STYLES["total_row_color"], end_color=TRACKER_STYLES["total_row_color"], fill_type="solid")
+    border = Border(
+        left=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        right=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        top=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        bottom=Side(style='thin', color=TRACKER_STYLES["border_color"])
+    )
+    center = Alignment(horizontal='center', vertical='center')
+    bold = Font(bold=True)
+
+    # Row 1: Title
+    title_cols = 1 + len(users) * 2  # Date + (Done, Issues) per user
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=title_cols)
+    title_cell = ws.cell(1, 1, "DAILY PROGRESS")
+    title_cell.fill = title_fill
+    title_cell.font = Font(bold=True, size=14)
+    title_cell.alignment = center
+
+    # Row 2: Empty
+
+    # Row 3: User names (merged across Done+Issues)
+    ws.cell(3, 1, "")  # Date column header placeholder
+    col = 2
+    for user in users:
+        ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + 1)
+        cell = ws.cell(3, col, user)
+        cell.fill = header_fill
+        cell.font = bold
+        cell.alignment = center
+        ws.cell(3, col + 1).fill = header_fill  # Merged cell styling
+        col += 2
+
+    # Row 4: Sub-headers (Date, Done, Issues, Done, Issues, ...)
+    ws.cell(4, 1, "Date").fill = subheader_fill
+    ws.cell(4, 1).font = bold
+    ws.cell(4, 1).alignment = center
+    ws.cell(4, 1).border = border
+    col = 2
+    for user in users:
+        done_cell = ws.cell(4, col, "Done")
+        done_cell.fill = subheader_fill
+        done_cell.font = bold
+        done_cell.alignment = center
+        done_cell.border = border
+
+        issues_cell = ws.cell(4, col + 1, "Issues")
+        issues_cell.fill = subheader_fill
+        issues_cell.font = bold
+        issues_cell.alignment = center
+        issues_cell.border = border
+        col += 2
+
+    # Row 5+: Data rows
+    user_totals = {user: {"done": 0, "issues": 0} for user in users}
+    data_row = 5
+    for idx, date in enumerate(dates):
+        # Date column - format as MM/DD
+        if isinstance(date, str) and len(date) >= 10:
+            display_date = date[5:7] + "/" + date[8:10]  # YYYY-MM-DD -> MM/DD
+        else:
+            display_date = str(date)
+
+        date_cell = ws.cell(data_row, 1, display_date)
+        date_cell.alignment = center
+        date_cell.border = border
+        if idx % 2 == 1:
+            date_cell.fill = alt_fill
+
+        col = 2
+        for user in users:
+            user_data = daily_data[date].get(user, {"done": 0, "issues": 0})
+            done_val = user_data["done"]
+            issues_val = user_data["issues"]
+
+            # Track totals
+            user_totals[user]["done"] += done_val
+            user_totals[user]["issues"] += issues_val
+
+            # Display value or "--" for zero
+            done_display = done_val if done_val > 0 else "--"
+            issues_display = issues_val if issues_val > 0 else "--"
+
+            done_cell = ws.cell(data_row, col, done_display)
+            done_cell.alignment = center
+            done_cell.border = border
+            if idx % 2 == 1:
+                done_cell.fill = alt_fill
+
+            issues_cell = ws.cell(data_row, col + 1, issues_display)
+            issues_cell.alignment = center
+            issues_cell.border = border
+            if idx % 2 == 1:
+                issues_cell.fill = alt_fill
+
+            col += 2
+
+        data_row += 1
+
+    # TOTAL row
+    total_cell = ws.cell(data_row, 1, "TOTAL")
+    total_cell.fill = total_fill
+    total_cell.font = bold
+    total_cell.alignment = center
+    total_cell.border = border
+
+    col = 2
+    for user in users:
+        done_cell = ws.cell(data_row, col, user_totals[user]["done"])
+        done_cell.fill = total_fill
+        done_cell.font = bold
+        done_cell.alignment = center
+        done_cell.border = border
+
+        issues_cell = ws.cell(data_row, col + 1, user_totals[user]["issues"])
+        issues_cell.fill = total_fill
+        issues_cell.font = bold
+        issues_cell.alignment = center
+        issues_cell.border = border
+        col += 2
+
+    # Set column widths
+    ws.column_dimensions['A'].width = 12
+    for i in range(len(users) * 2):
+        col_letter = get_column_letter(2 + i)
+        ws.column_dimensions[col_letter].width = 10
+
+
+def build_total_sheet(wb):
+    """
+    Build TOTAL sheet from _DAILY_DATA.
+
+    Aggregates by user across all dates and categories.
+    """
+    ws = wb["TOTAL"]
+    data_ws = wb["_DAILY_DATA"]
+
+    # Clear existing content
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.value = None
+
+    # Read raw data and aggregate by user
+    user_data = defaultdict(lambda: {"done": 0, "issues": 0, "no_issue": 0, "blocked": 0})
+
+    for row in range(2, data_ws.max_row + 1):
+        user = data_ws.cell(row, 2).value
+        done = data_ws.cell(row, 4).value or 0
+        issues = data_ws.cell(row, 5).value or 0
+        no_issue = data_ws.cell(row, 6).value or 0
+        blocked = data_ws.cell(row, 7).value or 0
+
+        if user:
+            user_data[user]["done"] += done
+            user_data[user]["issues"] += issues
+            user_data[user]["no_issue"] += no_issue
+            user_data[user]["blocked"] += blocked
+
+    if not user_data:
+        ws.cell(1, 1, "No data yet")
+        return
+
+    users = sorted(user_data.keys())
+
+    # Styles
+    title_fill = PatternFill(start_color=TRACKER_STYLES["title_color"], end_color=TRACKER_STYLES["title_color"], fill_type="solid")
+    header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"], end_color=TRACKER_STYLES["header_color"], fill_type="solid")
+    alt_fill = PatternFill(start_color=TRACKER_STYLES["alt_row_color"], end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid")
+    total_fill = PatternFill(start_color=TRACKER_STYLES["total_row_color"], end_color=TRACKER_STYLES["total_row_color"], fill_type="solid")
+    border = Border(
+        left=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        right=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        top=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        bottom=Side(style='thin', color=TRACKER_STYLES["border_color"])
+    )
+    center = Alignment(horizontal='center', vertical='center')
+    bold = Font(bold=True)
+
+    # Row 1: Title
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=6)
+    title_cell = ws.cell(1, 1, "TOTAL SUMMARY")
+    title_cell.fill = title_fill
+    title_cell.font = Font(bold=True, size=14)
+    title_cell.alignment = center
+
+    # Row 2: Empty
+
+    # Row 3: Headers
+    headers = ["User", "Completion %", "Total", "Issues", "No Issue", "Blocked"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(3, col, header)
+        cell.fill = header_fill
+        cell.font = bold
+        cell.alignment = center
+        cell.border = border
+
+    # Row 4+: Data rows
+    grand_total = {"done": 0, "issues": 0, "no_issue": 0, "blocked": 0}
+    data_row = 4
+    for idx, user in enumerate(users):
+        data = user_data[user]
+        total = data["done"]
+        issues = data["issues"]
+        no_issue = data["no_issue"]
+        blocked = data["blocked"]
+        completion_pct = round((issues + no_issue + blocked) / total * 100, 1) if total > 0 else 0
+
+        # Accumulate grand totals
+        grand_total["done"] += total
+        grand_total["issues"] += issues
+        grand_total["no_issue"] += no_issue
+        grand_total["blocked"] += blocked
+
+        row_data = [user, f"{completion_pct}%", total, issues, no_issue, blocked]
+
+        for col, value in enumerate(row_data, 1):
+            cell = ws.cell(data_row, col, value)
+            cell.alignment = center
+            cell.border = border
+            if idx % 2 == 1:
+                cell.fill = alt_fill
+
+        data_row += 1
+
+    # TOTAL row
+    gt = grand_total
+    gt_completion = round((gt["issues"] + gt["no_issue"] + gt["blocked"]) / gt["done"] * 100, 1) if gt["done"] > 0 else 0
+    total_row_data = ["TOTAL", f"{gt_completion}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"]]
+
+    for col, value in enumerate(total_row_data, 1):
+        cell = ws.cell(data_row, col, value)
+        cell.fill = total_fill
+        cell.font = bold
+        cell.alignment = center
+        cell.border = border
+
+    # Set column widths
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 14
+    ws.column_dimensions['C'].width = 10
+    ws.column_dimensions['D'].width = 10
+    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['F'].width = 10
+
+
+def build_graphs_sheet(wb):
+    """
+    Build GRAPHS sheet with charts.
+
+    Uses openpyxl.chart module.
+    """
+    from openpyxl.chart import BarChart, Reference
+    from openpyxl.chart.series import DataPoint
+    from openpyxl.chart.label import DataLabelList
+
+    ws = wb["GRAPHS"]
+    daily_ws = wb["DAILY"]
+    total_ws = wb["TOTAL"]
+
+    # Clear existing content and charts
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.value = None
+
+    # Remove existing charts
+    ws._charts = []
+
+    # Check if we have data
+    if daily_ws.cell(1, 1).value == "No data yet" or total_ws.cell(1, 1).value == "No data yet":
+        ws.cell(1, 1, "No data available for charts")
+        return
+
+    # --- Chart 1: Daily Progress (Done per user per day) ---
+    # Find data range in DAILY sheet
+    # Row 4 has headers (Date, Done, Issues, Done, Issues, ...)
+    # Row 5+ has data
+
+    # Count users and dates
+    daily_max_row = daily_ws.max_row
+    daily_max_col = daily_ws.max_column
+
+    if daily_max_row < 5 or daily_max_col < 2:
+        ws.cell(1, 1, "Not enough data for charts")
+        return
+
+    # Build a mini data table for charting in GRAPHS sheet
+    # Copy DAILY data for chart reference
+    ws.cell(1, 1, "Daily Progress Chart Data")
+    ws.cell(1, 1).font = Font(bold=True)
+
+    # Copy headers and data from DAILY sheet (simplified: just Date and Done values)
+    # We'll create a simpler structure for the chart
+
+    # Get users from row 3 of DAILY
+    users = []
+    col = 2
+    while col <= daily_max_col:
+        user = daily_ws.cell(3, col).value
+        if user:
+            users.append(user)
+        col += 2  # Skip Issues column
+
+    if not users:
+        ws.cell(2, 1, "No users found")
+        return
+
+    # Build chart data table in GRAPHS sheet
+    # Row 3: Headers (Date, User1, User2, ...)
+    ws.cell(3, 1, "Date")
+    for i, user in enumerate(users):
+        ws.cell(3, 2 + i, user)
+
+    # Row 4+: Data (date, done values per user)
+    chart_row = 4
+    for daily_row in range(5, daily_max_row):  # Exclude TOTAL row
+        date = daily_ws.cell(daily_row, 1).value
+        if date == "TOTAL":
+            break
+
+        ws.cell(chart_row, 1, date)
+        for i, user in enumerate(users):
+            done_col = 2 + i * 2  # Done columns are at 2, 4, 6, ...
+            done_val = daily_ws.cell(daily_row, done_col).value
+            if done_val == "--":
+                done_val = 0
+            ws.cell(chart_row, 2 + i, done_val)
+        chart_row += 1
+
+    num_dates = chart_row - 4
+
+    if num_dates > 0:
+        # Create bar chart for daily progress
+        chart1 = BarChart()
+        chart1.type = "col"
+        chart1.grouping = "clustered"
+        chart1.title = "Daily Progress by User"
+        chart1.y_axis.title = "Rows Completed"
+        chart1.x_axis.title = "Date"
+
+        # Data reference (user columns)
+        data = Reference(ws, min_col=2, min_row=3, max_col=1 + len(users), max_row=3 + num_dates)
+        # Categories (dates)
+        cats = Reference(ws, min_col=1, min_row=4, max_row=3 + num_dates)
+
+        chart1.add_data(data, titles_from_data=True)
+        chart1.set_categories(cats)
+        chart1.shape = 4
+        chart1.width = 18
+        chart1.height = 10
+
+        # Apply colors to series
+        for i, series in enumerate(chart1.series):
+            color = CHART_COLORS[i % len(CHART_COLORS)]
+            series.graphicalProperties.solidFill = color
+
+        ws.add_chart(chart1, "A" + str(chart_row + 2))
+
+    # --- Chart 2: User Completion Rate ---
+    # Build data table for completion chart
+    comp_start_row = chart_row + 15
+
+    ws.cell(comp_start_row, 1, "User Completion Chart Data")
+    ws.cell(comp_start_row, 1).font = Font(bold=True)
+
+    ws.cell(comp_start_row + 2, 1, "User")
+    ws.cell(comp_start_row + 2, 2, "Completion %")
+
+    # Copy from TOTAL sheet
+    total_data_row = 4
+    comp_row = comp_start_row + 3
+    while True:
+        user = total_ws.cell(total_data_row, 1).value
+        if not user or user == "TOTAL":
+            break
+        completion = total_ws.cell(total_data_row, 2).value
+        # Convert "95.0%" to 95.0
+        if isinstance(completion, str) and completion.endswith("%"):
+            completion = float(completion.rstrip("%"))
+
+        ws.cell(comp_row, 1, user)
+        ws.cell(comp_row, 2, completion)
+        comp_row += 1
+        total_data_row += 1
+
+    num_users = comp_row - (comp_start_row + 3)
+
+    if num_users > 0:
+        chart2 = BarChart()
+        chart2.type = "bar"  # Horizontal bar
+        chart2.title = "User Completion Rate"
+        chart2.y_axis.title = "User"
+        chart2.x_axis.title = "Completion %"
+
+        data2 = Reference(ws, min_col=2, min_row=comp_start_row + 2, max_row=comp_start_row + 2 + num_users)
+        cats2 = Reference(ws, min_col=1, min_row=comp_start_row + 3, max_row=comp_start_row + 2 + num_users)
+
+        chart2.add_data(data2, titles_from_data=True)
+        chart2.set_categories(cats2)
+        chart2.width = 14
+        chart2.height = 8
+
+        # Color the bars
+        if chart2.series:
+            chart2.series[0].graphicalProperties.solidFill = CHART_COLORS[0]
+
+        ws.add_chart(chart2, "A" + str(comp_start_row + 4 + num_users + 2))
+
+
 def process_category(category, qa_folders):
     """
     Process all QA folders for one category.
@@ -739,17 +1280,22 @@ def process_category(category, qa_folders):
     Args:
         category: Category name (Quest, Knowledge, etc.)
         qa_folders: List of dicts with {folder_path, xlsx_path, username, category, images}
+
+    Returns:
+        List of daily_entry dicts for tracker
     """
     print(f"\n{'='*50}")
     print(f"Processing: {category} ({len(qa_folders)} folders)")
     print(f"{'='*50}")
+
+    daily_entries = []  # NEW: Collect entries for tracker
 
     # Get or create master
     first_xlsx = qa_folders[0]["xlsx_path"]
     master_wb, master_path = get_or_create_master(category, first_xlsx)
 
     if master_wb is None:
-        return
+        return daily_entries
 
     # Track users and aggregated stats
     all_users = set()
@@ -765,6 +1311,10 @@ def process_category(category, qa_folders):
         all_users.add(username)
 
         print(f"\n  Folder: {folder_path.name}")
+
+        # Get file modification date for tracker
+        file_mod_time = datetime.fromtimestamp(xlsx_path.stat().st_mtime)
+        file_mod_date = file_mod_time.strftime("%Y-%m-%d")
 
         # Copy images with unique names
         image_mapping = copy_images_with_unique_names(qf)
@@ -801,6 +1351,17 @@ def process_category(category, qa_folders):
 
         qa_wb.close()
 
+        # NEW: Collect entry for tracker (after processing all sheets for this user)
+        daily_entries.append({
+            "date": file_mod_date,
+            "user": username,
+            "category": category,
+            "done": user_stats[username]["issue"] + user_stats[username]["no_issue"] + user_stats[username]["blocked"],
+            "issues": user_stats[username]["issue"],
+            "no_issue": user_stats[username]["no_issue"],
+            "blocked": user_stats[username]["blocked"]
+        })
+
     # Update STATUS sheet (first tab, with stats)
     update_status_sheet(master_wb, all_users, user_stats)
 
@@ -809,6 +1370,8 @@ def process_category(category, qa_folders):
     print(f"\n  Saved: {master_path}")
     if total_images > 0:
         print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
+
+    return daily_entries  # NEW: Return entries for tracker
 
 
 def main():
@@ -853,18 +1416,38 @@ def main():
     for qf in qa_folders:
         by_category[qf["category"]].append(qf)
 
-    # Process each category
+    # Process each category and collect daily entries for tracker
+    all_daily_entries = []
     for category in CATEGORIES:
         if category in by_category:
-            process_category(category, by_category[category])
+            entries = process_category(category, by_category[category])
+            all_daily_entries.extend(entries)
         else:
             print(f"\nSKIP: No folders for category '{category}'")
+
+    # Update LQA User Progress Tracker
+    if all_daily_entries:
+        print("\n" + "="*60)
+        print("Updating LQA User Progress Tracker...")
+        print("="*60)
+
+        tracker_wb, tracker_path = get_or_create_tracker()
+        update_daily_data_sheet(tracker_wb, all_daily_entries)
+        build_daily_sheet(tracker_wb)
+        build_total_sheet(tracker_wb)
+        build_graphs_sheet(tracker_wb)
+        tracker_wb.save(tracker_path)
+
+        print(f"  Saved: {tracker_path}")
+        print(f"  Sheets: DAILY, TOTAL, GRAPHS")
 
     print("\n" + "="*60)
     print("Compilation complete!")
     print(f"Output: {MASTER_FOLDER}")
     if total_images > 0:
         print(f"Images: {IMAGES_FOLDER}")
+    if all_daily_entries:
+        print(f"Tracker: {TRACKER_FILENAME}")
     print("="*60)
 
 
