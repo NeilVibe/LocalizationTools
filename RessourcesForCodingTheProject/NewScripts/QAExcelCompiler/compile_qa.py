@@ -50,7 +50,7 @@ IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED"]
 
 # Valid MANAGER STATUS values (for manager workflow)
-VALID_MANAGER_STATUS = ["FIXED", "REPORTED", "CHECKING"]
+VALID_MANAGER_STATUS = ["FIXED", "REPORTED", "CHECKING", "NON-ISSUE"]
 
 # === TRACKER CONFIGURATION ===
 TRACKER_FILENAME = "LQA_Tester_ProgressTracker.xlsx"
@@ -378,25 +378,27 @@ def get_or_create_user_status_column(ws, username, after_comment_col):
     for col in range(1, ws.max_column + 1):
         header = ws.cell(row=1, column=col).value
         if header and str(header).strip() == col_name:
-            # Ensure dropdown validation exists (might be missing from older files)
+            # Ensure dropdown validation is up-to-date (might be old formula without NON-ISSUE)
             col_letter = get_column_letter(col)
-            has_validation = False
+            # Remove any existing validation for this column
+            to_remove = []
             for existing_dv in ws.data_validations.dataValidation:
                 if col_letter in str(existing_dv.sqref):
-                    has_validation = True
-                    break
-            if not has_validation:
-                dv = DataValidation(
-                    type="list",
-                    formula1='"FIXED,REPORTED,CHECKING"',
-                    allow_blank=True,
-                    showDropDown=False,
-                    showErrorMessage=True,
-                    errorTitle="Invalid Status",
-                    error="Please select: FIXED, REPORTED, or CHECKING"
-                )
-                dv.add(f"{col_letter}2:{col_letter}1000")
-                ws.add_data_validation(dv)
+                    to_remove.append(existing_dv)
+            for dv in to_remove:
+                ws.data_validations.dataValidation.remove(dv)
+            # Add fresh validation with current options (includes NON-ISSUE)
+            dv = DataValidation(
+                type="list",
+                formula1='"FIXED,REPORTED,CHECKING,NON-ISSUE"',
+                allow_blank=True,
+                showDropDown=False,
+                showErrorMessage=True,
+                errorTitle="Invalid Status",
+                error="Please select: FIXED, REPORTED, CHECKING, or NON-ISSUE"
+            )
+            dv.add(f"{col_letter}2:{col_letter}1000")
+            ws.add_data_validation(dv)
             return col
 
     # Add new column at max_column + 1
@@ -424,18 +426,18 @@ def get_or_create_user_status_column(ws, username, after_comment_col):
     ws.column_dimensions[col_letter].width = 15
     ws.column_dimensions[col_letter].hidden = False
 
-    # Add dropdown data validation for FIXED/REPORTED/CHECKING
+    # Add dropdown data validation for FIXED/REPORTED/CHECKING/NON-ISSUE
     # Range: from row 2 to row 1000 (covers most files)
     dv = DataValidation(
         type="list",
-        formula1='"FIXED,REPORTED,CHECKING"',
+        formula1='"FIXED,REPORTED,CHECKING,NON-ISSUE"',
         allow_blank=True,
         showDropDown=False,  # False = show dropdown arrow, True = hide it (confusing API)
         showErrorMessage=True,
         errorTitle="Invalid Status",
-        error="Please select: FIXED, REPORTED, or CHECKING",
+        error="Please select: FIXED, REPORTED, CHECKING, or NON-ISSUE",
         promptTitle="Manager Status",
-        prompt="Select status: FIXED, REPORTED, or CHECKING"
+        prompt="Select status: FIXED, REPORTED, CHECKING, or NON-ISSUE"
     )
     dv.add(f"{col_letter}2:{col_letter}1000")
     ws.add_data_validation(dv)
@@ -651,20 +653,23 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
         else:
             master_row = qa_row  # Direct index matching
 
-        # Get QA STATUS (for stats only, not copied to master)
+        # Get QA STATUS (for stats AND to filter which comments to compile)
+        is_issue = False
         if qa_status_col:
             qa_status = qa_ws.cell(row=qa_row, column=qa_status_col).value
             if qa_status:
                 status_upper = str(qa_status).strip().upper()
                 if status_upper == "ISSUE":
                     result["stats"]["issue"] += 1
+                    is_issue = True
                 elif status_upper == "NO ISSUE":
                     result["stats"]["no_issue"] += 1
                 elif status_upper == "BLOCKED":
                     result["stats"]["blocked"] += 1
 
         # Get QA COMMENT and STRINGID, copy to master with styling
-        if qa_comment_col:
+        # ONLY compile comments where STATUS = ISSUE (for Actual Issues % calculation)
+        if qa_comment_col and is_issue:
             qa_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
             if qa_comment and str(qa_comment).strip():
                 # Get StringID if available
@@ -932,17 +937,17 @@ def collect_manager_status():
 
 def collect_manager_stats_for_tracker():
     """
-    Read all Master files and count FIXED/REPORTED/CHECKING per user per category.
+    Read all Master files and count FIXED/REPORTED/CHECKING/NON-ISSUE per user per category.
 
     Returns: Dict structure
     {
         "Quest": {
-            "John": {"fixed": 5, "reported": 2, "checking": 1},
-            "Alice": {"fixed": 3, "reported": 1, "checking": 0}
+            "John": {"fixed": 5, "reported": 2, "checking": 1, "nonissue": 0},
+            "Alice": {"fixed": 3, "reported": 1, "checking": 0, "nonissue": 2}
         }
     }
     """
-    manager_stats = defaultdict(lambda: defaultdict(lambda: {"fixed": 0, "reported": 0, "checking": 0}))
+    manager_stats = defaultdict(lambda: defaultdict(lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}))
 
     for category in CATEGORIES:
         master_path = MASTER_FOLDER / f"Master_{category}.xlsx"
@@ -981,6 +986,8 @@ def collect_manager_stats_for_tracker():
                                 manager_stats[category][username]["reported"] += 1
                             elif status_upper == "CHECKING":
                                 manager_stats[category][username]["checking"] += 1
+                            elif status_upper == "NON-ISSUE":
+                                manager_stats[category][username]["nonissue"] += 1
 
             wb.close()
 
@@ -1008,11 +1015,10 @@ def get_or_create_tracker():
         wb = openpyxl.Workbook()
         # Remove default sheet
         default_sheet = wb.active
-        # Create sheets in order
+        # Create sheets in order (no GRAPHS - charts embedded in DAILY/TOTAL)
         wb.create_sheet("DAILY", 0)
         wb.create_sheet("TOTAL", 1)
-        wb.create_sheet("GRAPHS", 2)
-        wb.create_sheet("_DAILY_DATA", 3)
+        wb.create_sheet("_DAILY_DATA", 2)
         # Remove default sheet
         wb.remove(default_sheet)
         # Hide data sheet
@@ -1037,10 +1043,10 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
 
     ws = wb["_DAILY_DATA"]
 
-    # Ensure headers exist (now includes TotalRows, Fixed, Reported, Checking)
-    # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking
-    if ws.cell(1, 1).value != "Date" or ws.max_column < 11:
-        headers = ["Date", "User", "Category", "TotalRows", "Done", "Issues", "NoIssue", "Blocked", "Fixed", "Reported", "Checking"]
+    # Ensure headers exist (now includes TotalRows, Fixed, Reported, Checking, NonIssue)
+    # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue
+    if ws.cell(1, 1).value != "Date" or ws.max_column < 12:
+        headers = ["Date", "User", "Category", "TotalRows", "Done", "Issues", "NoIssue", "Blocked", "Fixed", "Reported", "Checking", "NonIssue"]
         for col, header in enumerate(headers, 1):
             ws.cell(1, col, header)
 
@@ -1068,9 +1074,9 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
         # Get manager stats for this user/category
         category = entry["category"]
         user = entry["user"]
-        user_manager_stats = manager_stats.get(category, {}).get(user, {"fixed": 0, "reported": 0, "checking": 0})
+        user_manager_stats = manager_stats.get(category, {}).get(user, {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
 
-        # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking
+        # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue
         ws.cell(row, 1, entry["date"])
         ws.cell(row, 2, entry["user"])
         ws.cell(row, 3, entry["category"])
@@ -1082,6 +1088,7 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
         ws.cell(row, 9, user_manager_stats["fixed"])
         ws.cell(row, 10, user_manager_stats["reported"])
         ws.cell(row, 11, user_manager_stats["checking"])
+        ws.cell(row, 12, user_manager_stats["nonissue"])
 
 
 def build_daily_sheet(wb):
@@ -1099,13 +1106,13 @@ def build_daily_sheet(wb):
     data_ws = wb["_DAILY_DATA"]
 
     # Read raw data and aggregate by (date, user)
-    # Now includes manager stats: fixed, reported, checking + total_rows for completion %
+    # Now includes manager stats: fixed, reported, checking, nonissue + total_rows for completion %
     daily_data = defaultdict(lambda: defaultdict(lambda: {
-        "total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0
+        "total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0
     }))
     users = set()
 
-    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11)
+    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11), NonIssue(12)
     for row in range(2, data_ws.max_row + 1):
         date = data_ws.cell(row, 1).value
         user = data_ws.cell(row, 2).value
@@ -1115,6 +1122,7 @@ def build_daily_sheet(wb):
         fixed = data_ws.cell(row, 9).value or 0       # Column 9 now
         reported = data_ws.cell(row, 10).value or 0   # Column 10 now
         checking = data_ws.cell(row, 11).value or 0   # Column 11 now
+        nonissue = data_ws.cell(row, 12).value or 0   # Column 12: NON-ISSUE count
 
         if date and user:
             daily_data[date][user]["total_rows"] += total_rows
@@ -1123,6 +1131,7 @@ def build_daily_sheet(wb):
             daily_data[date][user]["fixed"] += fixed
             daily_data[date][user]["reported"] += reported
             daily_data[date][user]["checking"] += checking
+            daily_data[date][user]["nonissue"] += nonissue
             users.add(user)
 
     if not users:
@@ -1148,10 +1157,10 @@ def build_daily_sheet(wb):
     center = Alignment(horizontal='center', vertical='center')
     bold = Font(bold=True)
 
-    # Layout: Date | Tester Stats (Done, Issues, Comp %) | Manager Stats (Fixed, Reported, Checking, Pending)
-    # title_cols = Date(1) + Users*3 (tester) + 4 (manager stats)
+    # Layout: Date | Tester Stats (Done, Issues, Comp %) | Manager Stats (Fixed, Reported, Checking, Pending, Actual Issues)
+    # title_cols = Date(1) + Users*3 (tester) + 5 (manager stats)
     tester_cols = len(users) * 3  # Done, Issues, Comp % per user
-    manager_cols = 4  # Fixed, Reported, Checking, Pending
+    manager_cols = 5  # Fixed, Reported, Checking, Pending, Actual Issues
     title_cols = 1 + tester_cols + manager_cols
 
     # Row 1: Title
@@ -1196,7 +1205,7 @@ def build_daily_sheet(wb):
         col += 3
 
     # Manager stats headers in row 3 (spans row 3-4 conceptually, but we put labels in row 3)
-    for i, label in enumerate(["Fixed", "Reported", "Checking", "Pending"]):
+    for i, label in enumerate(["Fixed", "Reported", "Checking", "Pending", "Actual Issues"]):
         cell = ws.cell(3, manager_start + i, label)
         cell.fill = manager_header_fill
         cell.font = bold
@@ -1232,14 +1241,14 @@ def build_daily_sheet(wb):
         col += 3
 
     # Manager sub-headers row 4 (repeat or empty - we'll leave empty as labels are in row 3)
-    for i in range(4):
+    for i in range(5):
         cell = ws.cell(4, manager_start + i)
         cell.fill = subheader_fill
         cell.border = border
 
     # Row 5+: Data rows
     user_totals = {user: {"total_rows": 0, "done": 0, "issues": 0} for user in users}
-    manager_totals = {"fixed": 0, "reported": 0, "checking": 0, "pending": 0}
+    manager_totals = {"fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0, "total_issues": 0}
     data_row = 5
 
     for idx, date in enumerate(dates):
@@ -1260,10 +1269,11 @@ def build_daily_sheet(wb):
         day_reported = 0
         day_checking = 0
         day_issues = 0
+        day_nonissue = 0
 
         col = 2
         for user in users:
-            user_data = daily_data[date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0})
+            user_data = daily_data[date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
             total_rows_val = user_data["total_rows"]
             done_val = user_data["done"]
             issues_val = user_data["issues"]
@@ -1273,6 +1283,7 @@ def build_daily_sheet(wb):
             day_reported += user_data["reported"]
             day_checking += user_data["checking"]
             day_issues += issues_val
+            day_nonissue += user_data["nonissue"]
 
             # Track totals
             user_totals[user]["total_rows"] += total_rows_val
@@ -1312,14 +1323,20 @@ def build_daily_sheet(wb):
         if day_pending < 0:
             day_pending = 0
 
+        # Calculate Actual Issues % = (Issues - NonIssue) / Issues * 100
+        day_actual_pct = round((day_issues - day_nonissue) / day_issues * 100, 1) if day_issues > 0 else 0
+
         manager_totals["fixed"] += day_fixed
         manager_totals["reported"] += day_reported
         manager_totals["checking"] += day_checking
         manager_totals["pending"] += day_pending
+        manager_totals["nonissue"] += day_nonissue
+        manager_totals["total_issues"] += day_issues
 
-        manager_values = [day_fixed, day_reported, day_checking, day_pending]
+        manager_values = [day_fixed, day_reported, day_checking, day_pending, f"{day_actual_pct}%"]
         for i, val in enumerate(manager_values):
-            cell = ws.cell(data_row, manager_start + i, val if val > 0 else "--")
+            display_val = val if (isinstance(val, str) or val > 0) else "--"
+            cell = ws.cell(data_row, manager_start + i, display_val)
             cell.alignment = center
             cell.border = border
             if idx % 2 == 1:
@@ -1361,7 +1378,8 @@ def build_daily_sheet(wb):
         col += 3
 
     # Manager totals
-    manager_total_values = [manager_totals["fixed"], manager_totals["reported"], manager_totals["checking"], manager_totals["pending"]]
+    total_actual_pct = round((manager_totals["total_issues"] - manager_totals["nonissue"]) / manager_totals["total_issues"] * 100, 1) if manager_totals["total_issues"] > 0 else 0
+    manager_total_values = [manager_totals["fixed"], manager_totals["reported"], manager_totals["checking"], manager_totals["pending"], f"{total_actual_pct}%"]
     for i, val in enumerate(manager_total_values):
         cell = ws.cell(data_row, manager_start + i, val)
         cell.fill = total_fill
@@ -1378,6 +1396,53 @@ def build_daily_sheet(wb):
         col_letter = get_column_letter(manager_start + i)
         ws.column_dimensions[col_letter].width = 10
 
+    # === Add simple chart below table ===
+    if len(dates) > 0 and len(users) > 0:
+        from openpyxl.chart import BarChart, Reference
+
+        # Build mini data table for chart (below main table)
+        chart_data_row = data_row + 3  # Skip some rows after TOTAL
+
+        # Headers
+        ws.cell(chart_data_row, 1, "Date")
+        for i, user in enumerate(users):
+            ws.cell(chart_data_row, 2 + i, user)
+
+        # Data: cumulative done per user
+        cumulative = {user: 0 for user in users}
+        row_offset = 1
+        for date in sorted(dates):
+            if isinstance(date, str) and len(date) >= 10:
+                display_date = date[5:7] + "/" + date[8:10]
+            else:
+                display_date = str(date)
+
+            ws.cell(chart_data_row + row_offset, 1, display_date)
+            for i, user in enumerate(users):
+                user_done = daily_data[date].get(user, {"done": 0})["done"]
+                cumulative[user] += user_done
+                ws.cell(chart_data_row + row_offset, 2 + i, cumulative[user])
+            row_offset += 1
+
+        num_chart_rows = row_offset
+
+        # Create simple bar chart
+        chart = BarChart()
+        chart.type = "col"
+        chart.title = "Progress by User"
+        chart.style = 10
+        chart.width = 12
+        chart.height = 8
+
+        data_ref = Reference(ws, min_col=2, min_row=chart_data_row, max_col=1 + len(users), max_row=chart_data_row + num_chart_rows - 1)
+        cats_ref = Reference(ws, min_col=1, min_row=chart_data_row + 1, max_row=chart_data_row + num_chart_rows - 1)
+
+        chart.add_data(data_ref, titles_from_data=True)
+        chart.set_categories(cats_ref)
+        chart.legend.position = 'b'
+
+        ws.add_chart(chart, f"A{chart_data_row + num_chart_rows + 1}")
+
 
 def build_total_sheet(wb):
     """
@@ -1393,13 +1458,13 @@ def build_total_sheet(wb):
 
     data_ws = wb["_DAILY_DATA"]
 
-    # Read raw data and aggregate by user (now includes manager stats + total_rows)
+    # Read raw data and aggregate by user (now includes manager stats + total_rows + nonissue)
     user_data = defaultdict(lambda: {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
-        "fixed": 0, "reported": 0, "checking": 0
+        "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0
     })
 
-    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11)
+    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11), NonIssue(12)
     for row in range(2, data_ws.max_row + 1):
         user = data_ws.cell(row, 2).value
         total_rows = data_ws.cell(row, 4).value or 0  # TotalRows (universe)
@@ -1410,6 +1475,7 @@ def build_total_sheet(wb):
         fixed = data_ws.cell(row, 9).value or 0
         reported = data_ws.cell(row, 10).value or 0
         checking = data_ws.cell(row, 11).value or 0
+        nonissue = data_ws.cell(row, 12).value or 0   # Manager NON-ISSUE count
 
         if user:
             user_data[user]["total_rows"] += total_rows
@@ -1420,6 +1486,7 @@ def build_total_sheet(wb):
             user_data[user]["fixed"] += fixed
             user_data[user]["reported"] += reported
             user_data[user]["checking"] += checking
+            user_data[user]["nonissue"] += nonissue
 
     if not user_data:
         ws.cell(1, 1, "No data yet")
@@ -1442,8 +1509,8 @@ def build_total_sheet(wb):
     center = Alignment(horizontal='center', vertical='center')
     bold = Font(bold=True)
 
-    # Total columns: 6 tester + 4 manager = 10
-    total_cols = 10
+    # Total columns: 6 tester + 5 manager = 11
+    total_cols = 11
 
     # Row 1: Title
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=total_cols)
@@ -1456,7 +1523,7 @@ def build_total_sheet(wb):
 
     # Row 3: Headers (Tester stats + Manager stats)
     tester_headers = ["User", "Completion %", "Total", "Issues", "No Issue", "Blocked"]
-    manager_headers = ["Fixed", "Reported", "Checking", "Pending"]
+    manager_headers = ["Fixed", "Reported", "Checking", "Pending", "Actual Issues"]
 
     # Tester headers
     for col, header in enumerate(tester_headers, 1):
@@ -1477,7 +1544,7 @@ def build_total_sheet(wb):
     # Row 4+: Data rows
     grand_total = {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
-        "fixed": 0, "reported": 0, "checking": 0, "pending": 0
+        "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0
     }
     data_row = 4
     for idx, user in enumerate(users):
@@ -1490,12 +1557,16 @@ def build_total_sheet(wb):
         fixed = data["fixed"]
         reported = data["reported"]
         checking = data["checking"]
+        nonissue = data["nonissue"]
         pending = issues - fixed - reported - checking
         if pending < 0:
             pending = 0
 
         # Completion % = Completed rows / Total rows in universe
         completion_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
+
+        # Actual Issues % = (Issues - NonIssue) / Issues * 100
+        actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
 
         # Accumulate grand totals
         grand_total["total_rows"] += total_rows
@@ -1507,8 +1578,9 @@ def build_total_sheet(wb):
         grand_total["reported"] += reported
         grand_total["checking"] += checking
         grand_total["pending"] += pending
+        grand_total["nonissue"] += nonissue
 
-        row_data = [user, f"{completion_pct}%", done, issues, no_issue, blocked, fixed, reported, checking, pending]
+        row_data = [user, f"{completion_pct}%", done, issues, no_issue, blocked, fixed, reported, checking, pending, f"{actual_pct}%"]
 
         for col, value in enumerate(row_data, 1):
             cell = ws.cell(data_row, col, value)
@@ -1523,9 +1595,11 @@ def build_total_sheet(wb):
     gt = grand_total
     # Completion % = Total completed / Total universe
     gt_completion = round(gt["done"] / gt["total_rows"] * 100, 1) if gt["total_rows"] > 0 else 0
+    # Actual Issues % for grand total
+    gt_actual_pct = round((gt["issues"] - gt["nonissue"]) / gt["issues"] * 100, 1) if gt["issues"] > 0 else 0
     total_row_data = [
         "TOTAL", f"{gt_completion}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
-        gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
+        gt["fixed"], gt["reported"], gt["checking"], gt["pending"], f"{gt_actual_pct}%"
     ]
 
     for col, value in enumerate(total_row_data, 1):
@@ -1546,186 +1620,49 @@ def build_total_sheet(wb):
     ws.column_dimensions['H'].width = 10  # Reported
     ws.column_dimensions['I'].width = 10  # Checking
     ws.column_dimensions['J'].width = 10  # Pending
+    ws.column_dimensions['K'].width = 13  # Actual Issues
 
+    # === Add simple chart below table ===
+    if len(users) > 0:
+        from openpyxl.chart import BarChart, Reference
 
-def build_graphs_sheet(wb):
-    """
-    Build GRAPHS sheet with ONE big line chart dashboard.
+        # Build mini data for chart (below main table)
+        chart_data_row = data_row + 3
 
-    Features:
-    - Single spacious line chart
-    - Dots connected by lines
-    - Series: Each user (cumulative Done) + TOTAL + Fixed
-    - Legend click-to-toggle (Excel built-in)
-    - Data table hidden below chart
-    """
-    from openpyxl.chart import LineChart, Reference
-    from openpyxl.chart.marker import Marker
+        # Headers
+        ws.cell(chart_data_row, 1, "User")
+        ws.cell(chart_data_row, 2, "Completion %")
 
-    # Delete and recreate sheet
-    if "GRAPHS" in wb.sheetnames:
-        del wb["GRAPHS"]
-    ws = wb.create_sheet("GRAPHS", 2)
-
-    daily_ws = wb["DAILY"]
-    data_ws = wb["_DAILY_DATA"]
-
-    # Check if we have data
-    if daily_ws.cell(1, 1).value == "No data yet":
-        ws.cell(1, 1, "No data available for charts")
-        return
-
-    # === STEP 1: Build cumulative data from _DAILY_DATA ===
-    # Read raw daily data and compute cumulative sums per user
-    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9)
-
-    from collections import defaultdict
-
-    # Aggregate by (date, user) - sum across categories
-    daily_by_date_user = defaultdict(lambda: defaultdict(lambda: {"done": 0, "fixed": 0}))
-    users = set()
-    dates = set()
-
-    for row in range(2, data_ws.max_row + 1):
-        date = data_ws.cell(row, 1).value
-        user = data_ws.cell(row, 2).value
-        done = data_ws.cell(row, 5).value or 0
-        fixed = data_ws.cell(row, 9).value or 0
-
-        if date and user:
-            daily_by_date_user[date][user]["done"] += done
-            daily_by_date_user[date][user]["fixed"] += fixed
-            users.add(user)
-            dates.add(date)
-
-    if not users or not dates:
-        ws.cell(1, 1, "No data available for charts")
-        return
-
-    users = sorted(users)
-    dates = sorted(dates)
-
-    # === STEP 2: Build cumulative data table (hidden at row 50+) ===
-    DATA_START_ROW = 50
-
-    # Headers: Date, User1, User2, ..., TOTAL, Fixed
-    ws.cell(DATA_START_ROW, 1, "Date")
-    for i, user in enumerate(users):
-        ws.cell(DATA_START_ROW, 2 + i, user)
-    ws.cell(DATA_START_ROW, 2 + len(users), "TOTAL")
-    ws.cell(DATA_START_ROW, 3 + len(users), "Fixed")
-
-    # Calculate cumulative values
-    cumulative = {user: 0 for user in users}
-    cumulative["TOTAL"] = 0
-    cumulative["Fixed"] = 0
-
-    data_row = DATA_START_ROW + 1
-    for date in dates:
-        # Format date as MM/DD for display
-        if isinstance(date, str) and len(date) >= 10:
-            display_date = date[5:7] + "/" + date[8:10]
-        else:
-            display_date = str(date)
-
-        ws.cell(data_row, 1, display_date)
-
-        day_total = 0
-        day_fixed = 0
-
+        # Data: completion % per user
         for i, user in enumerate(users):
-            user_data = daily_by_date_user[date].get(user, {"done": 0, "fixed": 0})
-            cumulative[user] += user_data["done"]
-            day_total += user_data["done"]
-            day_fixed += user_data["fixed"]
-            ws.cell(data_row, 2 + i, cumulative[user])
+            ws.cell(chart_data_row + 1 + i, 1, user)
+            total_rows = user_data[user]["total_rows"]
+            done = user_data[user]["done"]
+            comp = round(done / total_rows * 100, 1) if total_rows > 0 else 0
+            ws.cell(chart_data_row + 1 + i, 2, comp)
 
-        cumulative["TOTAL"] += day_total
-        cumulative["Fixed"] += day_fixed
+        num_users = len(users)
 
-        ws.cell(data_row, 2 + len(users), cumulative["TOTAL"])
-        ws.cell(data_row, 3 + len(users), cumulative["Fixed"])
+        # Create simple bar chart
+        chart = BarChart()
+        chart.type = "bar"  # Horizontal bars
+        chart.title = "Completion by User"
+        chart.style = 10
+        chart.width = 10
+        chart.height = 6
 
-        data_row += 1
+        data_ref = Reference(ws, min_col=2, min_row=chart_data_row, max_row=chart_data_row + num_users)
+        cats_ref = Reference(ws, min_col=1, min_row=chart_data_row + 1, max_row=chart_data_row + num_users)
 
-    num_dates = data_row - DATA_START_ROW - 1
-    num_series = len(users) + 2  # users + TOTAL + Fixed
+        chart.add_data(data_ref, titles_from_data=True)
+        chart.set_categories(cats_ref)
 
-    if num_dates < 1:
-        ws.cell(1, 1, "Not enough data for charts")
-        return
+        ws.add_chart(chart, f"A{chart_data_row + num_users + 2}")
 
-    # === STEP 3: Create ONE BIG line chart ===
-    chart = LineChart()
-    chart.title = "LQA PROGRESS TRACKER"
-    chart.style = 10  # Clean style
-    chart.y_axis.title = "Cumulative Count"
-    chart.x_axis.title = "Date"
 
-    # Make it BIG and SPACIOUS
-    chart.width = 22  # ~22 columns wide
-    chart.height = 14  # ~14 rows tall
+# build_graphs_sheet removed - charts now embedded in DAILY/TOTAL
 
-    # Data reference (all series: users + TOTAL + Fixed)
-    data = Reference(
-        ws,
-        min_col=2,
-        min_row=DATA_START_ROW,
-        max_col=1 + num_series,
-        max_row=DATA_START_ROW + num_dates
-    )
 
-    # Categories (dates)
-    cats = Reference(
-        ws,
-        min_col=1,
-        min_row=DATA_START_ROW + 1,
-        max_row=DATA_START_ROW + num_dates
-    )
-
-    chart.add_data(data, titles_from_data=True)
-    chart.set_categories(cats)
-
-    # === STEP 4: Style each series (colors + markers) ===
-    # Colors: users get standard colors, TOTAL gets gold, Fixed gets green
-    user_colors = ["4472C4", "ED7D31", "70AD47", "5B9BD5", "7030A0", "A5A5A5"]
-
-    for i, series in enumerate(chart.series):
-        # Add marker (dot) to each point
-        series.marker = Marker(symbol="circle", size=7)
-        series.graphicalProperties.line.width = 25000  # 2.5pt line
-
-        if i < len(users):
-            # User series
-            color = user_colors[i % len(user_colors)]
-            series.graphicalProperties.line.solidFill = color
-            series.marker.graphicalProperties.solidFill = color
-            series.marker.graphicalProperties.line.solidFill = color
-        elif i == len(users):
-            # TOTAL series - Gold, thicker
-            series.graphicalProperties.line.solidFill = "FFC000"
-            series.graphicalProperties.line.width = 35000  # 3.5pt
-            series.marker.graphicalProperties.solidFill = "FFC000"
-            series.marker.graphicalProperties.line.solidFill = "FFC000"
-            series.marker.size = 9
-        else:
-            # Fixed series - Forest green
-            series.graphicalProperties.line.solidFill = "228B22"
-            series.marker.graphicalProperties.solidFill = "228B22"
-            series.marker.graphicalProperties.line.solidFill = "228B22"
-
-    # Legend at bottom
-    chart.legend.position = 'b'
-
-    # Place chart at A1 (top of sheet, big and spacious)
-    ws.add_chart(chart, "A1")
-
-    # === STEP 5: Hide the data table rows ===
-    # Hide rows from DATA_START_ROW onwards
-    for row_num in range(DATA_START_ROW, data_row + 1):
-        ws.row_dimensions[row_num].hidden = True
-
-    print(f"  GRAPHS: Created line chart with {len(users)} users + TOTAL + Fixed ({num_dates} dates)")
 
 
 def process_category(category, qa_folders, manager_status=None):
@@ -1915,11 +1852,15 @@ def main():
         update_daily_data_sheet(tracker_wb, all_daily_entries, manager_stats)
         build_daily_sheet(tracker_wb)
         build_total_sheet(tracker_wb)
-        build_graphs_sheet(tracker_wb)
+
+        # Remove GRAPHS sheet if it exists (deprecated)
+        if "GRAPHS" in tracker_wb.sheetnames:
+            del tracker_wb["GRAPHS"]
+
         tracker_wb.save(tracker_path)
 
         print(f"  Saved: {tracker_path}")
-        print(f"  Sheets: DAILY, TOTAL, GRAPHS (with manager stats)")
+        print(f"  Sheets: DAILY (with chart), TOTAL (with chart)")
 
     print("\n" + "="*60)
     print("Compilation complete!")
