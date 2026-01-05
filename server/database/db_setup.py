@@ -556,7 +556,7 @@ def setup_database(
 
         # P33/P9: Create OFFLINE user for offline mode
         # This user enables "Start Offline" from the launcher without credentials
-        # User works in Offline Storage only - no admin rights needed
+        # Works for both SQLite and PostgreSQL backends - user role for Offline Storage only
         existing_offline = SessionLocal.query(User).filter(User.username == "OFFLINE").first()
         if not existing_offline:
             logger.info("Creating OFFLINE user for offline mode...")
