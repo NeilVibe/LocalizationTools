@@ -1013,24 +1013,54 @@ class OrphanedFileInfo(BaseModel):
     updated_at: Optional[str]
 
 
+class LocalFolderInfo(BaseModel):
+    id: int
+    name: str
+    parent_id: Optional[int]
+    created_at: Optional[str]
+
+
 class OrphanedFilesResponse(BaseModel):
     files: list[OrphanedFileInfo]
+    folders: list[LocalFolderInfo] = []  # P9: Added folders support
     total_count: int
 
 
 @router.get("/offline/local-files", response_model=OrphanedFilesResponse)
 async def list_local_files(
+    parent_id: Optional[int] = None,
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    List local files (files in Offline Storage, never synced to server).
+    List local files and folders in Offline Storage.
 
-    These files are displayed in the "Offline Storage" virtual folder.
+    P9: Now supports folders! Pass parent_id to get contents of a subfolder.
+
+    These items are displayed in the "Offline Storage" virtual folder.
     User can move them to proper locations via Ctrl+X/V when online.
     """
     try:
         offline_db = get_offline_db()
-        local_files = offline_db.get_local_files()
+
+        # Get local folders (at root or in specified parent)
+        local_folders = offline_db.get_local_folders(parent_id)
+        folders = [
+            LocalFolderInfo(
+                id=f["id"],
+                name=f["name"],
+                parent_id=f.get("parent_id"),
+                created_at=f.get("created_at")
+            )
+            for f in local_folders
+        ]
+
+        # Get local files (at root or in specified parent)
+        if parent_id is None:
+            # Root level: get files with no folder
+            local_files = [f for f in offline_db.get_local_files() if f.get("folder_id") is None]
+        else:
+            # Inside a folder: get files in that folder
+            local_files = [f for f in offline_db.get_local_files() if f.get("folder_id") == parent_id]
 
         files = [
             OrphanedFileInfo(
@@ -1046,11 +1076,12 @@ async def list_local_files(
 
         return OrphanedFilesResponse(
             files=files,
-            total_count=len(files)
+            folders=folders,
+            total_count=len(files) + len(folders)
         )
     except Exception as e:
         logger.error(f"Failed to list local files: {e}")
-        return OrphanedFilesResponse(files=[], total_count=0)
+        return OrphanedFilesResponse(files=[], folders=[], total_count=0)
 
 
 @router.get("/offline/local-file-count")
@@ -1201,6 +1232,135 @@ async def add_rows_to_offline_file(
     except Exception as e:
         logger.error(f"Failed to add rows to offline file: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to add rows: {str(e)}")
+
+
+# =============================================================================
+# Offline Storage Folder Operations (P9)
+# =============================================================================
+
+class CreateOfflineFolderRequest(BaseModel):
+    name: str = Field(..., min_length=1, description="Folder name (cannot be empty)")
+    parent_id: Optional[int] = Field(None, description="Parent folder ID (null for root)")
+
+
+class CreateOfflineFolderResponse(BaseModel):
+    success: bool
+    id: int
+    name: str
+    message: str
+
+
+class DeleteOfflineFolderResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class RenameOfflineFolderRequest(BaseModel):
+    new_name: str = Field(..., min_length=1, description="New folder name (cannot be empty)")
+
+
+class RenameOfflineFolderResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/offline/storage/folders", response_model=CreateOfflineFolderResponse)
+async def create_offline_storage_folder(
+    request: CreateOfflineFolderRequest,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9: Create a folder in Offline Storage.
+
+    Creates a local folder that exists only in SQLite Offline Storage.
+    These folders can later be moved to a real project when going online.
+    """
+    logger.info(f"Creating folder in Offline Storage: name='{request.name}', parent={request.parent_id}")
+
+    try:
+        offline_db = get_offline_db()
+        folder_id, final_name = offline_db.create_local_folder(request.name, request.parent_id)
+
+        return CreateOfflineFolderResponse(
+            success=True,
+            id=folder_id,
+            name=final_name,
+            message=f"Folder '{final_name}' created in Offline Storage"
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to create folder in Offline Storage: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create folder: {str(e)}")
+
+
+@router.delete("/offline/storage/folders/{folder_id}", response_model=DeleteOfflineFolderResponse)
+async def delete_offline_storage_folder(
+    folder_id: int,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9: Delete a folder from Offline Storage.
+
+    Only works for local folders (folders in Offline Storage).
+    Also deletes all files and subfolders inside.
+    """
+    logger.info(f"Deleting folder from Offline Storage: {folder_id}")
+
+    try:
+        offline_db = get_offline_db()
+        success = offline_db.delete_local_folder(folder_id)
+
+        if success:
+            return DeleteOfflineFolderResponse(
+                success=True,
+                message="Folder deleted from Offline Storage"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete: folder not found or not in Offline Storage"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete folder from Offline Storage: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to delete folder: {str(e)}")
+
+
+@router.put("/offline/storage/folders/{folder_id}/rename", response_model=RenameOfflineFolderResponse)
+async def rename_offline_storage_folder(
+    folder_id: int,
+    request: RenameOfflineFolderRequest,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9: Rename a folder in Offline Storage.
+
+    Only works for local folders (folders in Offline Storage).
+    """
+    logger.info(f"Renaming folder in Offline Storage: {folder_id} -> {request.new_name}")
+
+    try:
+        offline_db = get_offline_db()
+        success = offline_db.rename_local_folder(folder_id, request.new_name)
+
+        if success:
+            return RenameOfflineFolderResponse(
+                success=True,
+                message=f"Folder renamed to '{request.new_name}'"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot rename: folder not found or not in Offline Storage"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to rename folder in Offline Storage: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to rename folder: {str(e)}")
 
 
 # =============================================================================

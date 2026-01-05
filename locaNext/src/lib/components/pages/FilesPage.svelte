@@ -379,6 +379,9 @@
     } else if (index === 0 && currentPath[0]?.type === 'project') {
       // Go to project root
       loadProjectContents(currentPath[0].id);
+    } else if (index === 0 && currentPath[0]?.type === 'offline-storage') {
+      // P9: Go to Offline Storage root
+      loadOfflineStorageContents();
     } else if (index === 1 && currentPath[0]?.type === 'platform' && currentPath[1]?.type === 'project') {
       // Go to project inside platform - preserve platform context
       const projectId = currentPath[1].id;
@@ -390,6 +393,10 @@
       currentPath = currentPath.slice(0, index);
       if (target.type === 'folder') {
         loadFolderContents(target.id, target.name);
+      } else if (target.type === 'local-folder') {
+        // P9: Navigate into local folder, update path first
+        currentPath = [...currentPath, target];
+        loadOfflineStorageContents(target.id);
       }
     }
   }
@@ -598,6 +605,9 @@
       loadProjectContents(item.id, insidePlatform);
     } else if (item.type === 'folder') {
       loadFolderContents(item.id, item.name);
+    } else if (item.type === 'local-folder') {
+      // P9: Navigate into local folder in Offline Storage
+      loadLocalFolderContents(item.id, item.name);
     } else if (item.type === 'recycle-bin') {
       // EXPLORER-008: Enter Recycle Bin
       loadTrashContents();
@@ -607,19 +617,40 @@
     }
   }
 
-  // P9: Load Offline Storage contents (local files)
-  async function loadOfflineStorageContents() {
+  // P9: Load local folder contents in Offline Storage
+  async function loadLocalFolderContents(folderId, folderName) {
+    // Add folder to path
+    currentPath = [...currentPath, { type: 'local-folder', id: folderId, name: folderName }];
+    await loadOfflineStorageContents(folderId);
+  }
+
+  // P9: Load Offline Storage contents (local files and folders)
+  async function loadOfflineStorageContents(parentId = null) {
     loading = true;
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/offline/local-files`, {
+      const url = parentId
+        ? `${API_BASE}/api/ldm/offline/local-files?parent_id=${parentId}`
+        : `${API_BASE}/api/ldm/offline/local-files`;
+
+      const response = await fetch(url, {
         headers: getAuthHeaders()
       });
 
       if (response.ok) {
         const data = await response.json();
+
+        // Convert local folders to display format
+        const folders = (data.folders || []).map(f => ({
+          type: 'local-folder',  // P9: Local folder in Offline Storage
+          id: f.id,
+          name: f.name,
+          parent_id: f.parent_id,
+          created_at: f.created_at
+        }));
+
         // Convert local files to display format
-        currentItems = data.files.map(f => ({
-          type: 'local-file',  // P9: Renamed from 'orphaned-file' for clarity
+        const files = data.files.map(f => ({
+          type: 'local-file',  // P9: Local file in Offline Storage
           id: f.id,
           name: f.name,
           format: f.format,
@@ -628,11 +659,17 @@
           updated_at: f.updated_at
         }));
 
-        currentPath = [{ type: 'offline-storage', id: 'offline-storage', name: 'Offline Storage' }];
+        currentItems = [...folders, ...files];
+
+        // Update path only if at root (not navigating into subfolder)
+        if (parentId === null) {
+          currentPath = [{ type: 'offline-storage', id: 'offline-storage', name: 'Offline Storage' }];
+        }
+
         selectedProjectId = null;
         selectedPlatformId = null;
 
-        logger.info('Loaded offline storage', { count: data.total_count });
+        logger.info('Loaded offline storage', { folders: folders.length, files: files.length });
       }
     } catch (err) {
       logger.error('Failed to load offline storage', { error: err.message });
@@ -1236,9 +1273,13 @@
 
   /**
    * OPTIMISTIC UI: Folder appears immediately, rollback on failure
+   * P9: Uses offline endpoint when in Offline Storage
    */
   async function createFolder() {
-    if (!newFolderName.trim() || !selectedProjectId) return;
+    if (!newFolderName.trim()) return;
+
+    // P9: In Offline Storage, we don't need selectedProjectId
+    if (!isInOfflineStorage && !selectedProjectId) return;
 
     const folderName = newFolderName.trim();
     const parentFolderId = currentPath.length > 1 ? currentPath[currentPath.length - 1].id : null;
@@ -1259,24 +1300,50 @@
     newFolderName = '';
 
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/folders`, {
-        method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: folderName,
-          project_id: selectedProjectId,
-          parent_id: parentFolderId
-        })
-      });
+      let response;
+
+      if (isInOfflineStorage) {
+        // P9: Create folder in SQLite Offline Storage
+        response = await fetch(`${API_BASE}/api/ldm/offline/storage/folders`, {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: folderName,
+            parent_id: parentFolderId
+          })
+        });
+      } else {
+        // Standard PostgreSQL folder creation
+        response = await fetch(`${API_BASE}/api/ldm/folders`, {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: folderName,
+            project_id: selectedProjectId,
+            parent_id: parentFolderId
+          })
+        });
+      }
 
       if (response.ok) {
-        logger.success('Folder created', { name: folderName });
-        // Refresh to get real ID from server
-        if (currentPath.length === 1) {
-          await loadProjectContents(selectedProjectId);
+        const data = await response.json();
+        logger.success('Folder created', { name: data.name || folderName });
+
+        if (isInOfflineStorage) {
+          // P9: Update optimistic folder with real ID from server
+          currentItems = currentItems.map(item =>
+            item.id === tempId
+              ? { ...item, id: data.id, name: data.name, _optimistic: false }
+              : item
+          );
         } else {
-          const currentFolder = currentPath[currentPath.length - 1];
-          await reloadCurrentFolderContents(currentFolder.id);
+          // Refresh to get real ID from server (PostgreSQL)
+          if (currentPath.length === 1) {
+            await loadProjectContents(selectedProjectId);
+          } else {
+            const currentFolder = currentPath[currentPath.length - 1];
+            await reloadCurrentFolderContents(currentFolder.id);
+          }
         }
       } else {
         // OPTIMISTIC UI: Rollback on failure
@@ -1621,6 +1688,9 @@
       } else if (type === 'local-file') {
         // P9: Delete local file from Offline Storage
         url = `${API_BASE}/api/ldm/offline/storage/files/${id}`;
+      } else if (type === 'local-folder') {
+        // P9: Delete local folder from Offline Storage
+        url = `${API_BASE}/api/ldm/offline/storage/folders/${id}`;
       }
 
       try {
