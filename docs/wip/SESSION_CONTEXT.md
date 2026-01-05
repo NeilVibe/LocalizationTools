@@ -1,22 +1,69 @@
 # Session Context
 
-> Last Updated: 2026-01-05 (Session 31 - P9 Offline Storage Folder CRUD)
+> Last Updated: 2026-01-05 (Session 32 - P9 Move + Recycle Bin Audit)
 
 ---
 
 ## STABLE CHECKPOINT
 
-**Post-Session 31:** Build 453 (pending) | **Date:** 2026-01-05
+**Post-Session 32:** Build 453 (pending) | **Date:** 2026-01-05
 
-Offline Storage now supports full folder CRUD - create, rename, delete, and nested navigation.
+Offline Storage now supports move operations. Recycle Bin works for ONLINE, missing for OFFLINE.
 
 ---
 
 ## Current State
 
-**Build:** 453 (pending) | **Open Issues:** 0
-**Tests:** All Offline Storage tests passing (file + folder)
-**Status:** P9 Offline Storage CRUD COMPLETE!
+**Build:** 453 (pending) | **Open Issues:** 1 (P9-BIN-001)
+**Tests:** Move functionality needs E2E testing
+**Status:** P9 Move COMPLETE, Recycle Bin PARTIAL
+
+---
+
+## SESSION 32 IN PROGRESS
+
+### P9: Move Files/Folders in Offline Storage ✅ DONE
+
+**Problem:** Users couldn't drag-drop files into folders in Offline Storage.
+
+**Solution Implemented:**
+
+| Component | Change |
+|-----------|--------|
+| **Backend offline.py** | Added `move_local_file()`, `move_local_folder()` with cycle detection |
+| **Backend sync.py** | Added `PATCH /offline/storage/files/{id}/move`, `PATCH /offline/storage/folders/{id}/move` |
+| **Frontend FilesPage** | Updated `handleMoveItems()` to call new endpoints for local-file/local-folder |
+| **Frontend ExplorerGrid** | Fixed `handleDragOver()`, `handleDrop()` to accept `local-folder` as drop target |
+
+### Recycle Bin Auto-Purge ✅ DONE
+
+**Problem:** Expired trash items (30 days) were never auto-deleted.
+
+**Solution Implemented:**
+
+| Component | Change |
+|-----------|--------|
+| **background_tasks.py** | Added `purge_expired_trash()` task running daily |
+| **beat_schedule** | Added `purge-expired-trash` to Celery Beat |
+
+### Recycle Bin Status
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| **ONLINE** | ✅ Working | Items go to LDMTrash, 30-day retention, restore works |
+| **OFFLINE** | ❌ Missing | Local files/folders permanently deleted, no soft delete |
+
+**Finding:** `delete_local_file()` and `delete_local_folder()` in offline.py do HARD DELETE, not soft delete to trash.
+
+---
+
+## SESSION 32 COMMITS
+
+| Commit | Description |
+|--------|-------------|
+| `09b6907` | P9: Add move support for files/folders in Offline Storage |
+| `e585fea` | Fix: Remove duplicate isFileType() function declaration |
+| `a581c02` | Add auto-purge scheduled task for expired trash items |
 
 ---
 
@@ -91,14 +138,6 @@ This is necessary because TM assignments have FK constraints to PostgreSQL table
 
 ---
 
-## SESSION 28-29 FIXES
-
-- Schema DateTime fixes for SQLite compatibility
-- Additional endpoint SQLite fallbacks
-- TM in Offline Mode (hybrid approach)
-
----
-
 ## File Scenarios (MEMORIZE)
 
 | Scenario | sync_status | Permissions |
@@ -113,7 +152,8 @@ This is necessary because TM assignments have FK constraints to PostgreSQL table
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| **P9** | **Offline/Online Mode** | ✅ COMPLETE |
+| **P9** | **Offline/Online Mode** | ✅ COMPLETE (move, CRUD) |
+| **P9-BIN** | **Offline Recycle Bin** | ❌ MISSING |
 | P8 | Dashboard Overhaul | PLANNED |
 
 ### P9 Status: COMPLETE ✅
@@ -121,12 +161,19 @@ This is necessary because TM assignments have FK constraints to PostgreSQL table
 1. ✅ Unified endpoints (done)
 2. ✅ TM assignment to Offline Storage (done - Session 30)
 3. ✅ Folder CRUD in Offline Storage (done - Session 31)
-4. ✅ Push changes to server (done - Session 21)
+4. ✅ Move files/folders in Offline Storage (done - Session 32)
+5. ✅ Push changes to server (done - Session 21)
 
-**Future polish (optional, not blocking):**
-- Enhanced sync preview dialog
-- File status icons in explorer
-- Bulk download progress bars
+### P9-BIN: Offline Recycle Bin (NEW)
+
+**Status:** Not implemented
+
+**Required:**
+1. Create `offline_trash` table in SQLite
+2. Modify `delete_local_file()` to soft delete
+3. Modify `delete_local_folder()` to soft delete
+4. Add restore functionality
+5. Add local trash purge (30 days)
 
 ---
 
@@ -159,8 +206,8 @@ Offline files in SQLite (project_id=-1) → Uses Offline Storage TMs
 # Check servers
 ./scripts/check_servers.sh
 
-# Run TM tests
-cd locaNext && npx playwright test tests/tm-*.spec.ts
+# Run tests
+cd locaNext && npx playwright test tests/offline-*.spec.ts
 
 # Build trigger
 echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN: Description" && git push origin main && git push gitea main
@@ -168,4 +215,4 @@ echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN:
 
 ---
 
-*Session 31 | Build 453 | P9 COMPLETE - Ready for P8 Dashboard Overhaul*
+*Session 32 | Build 453 | P9 Move COMPLETE - Offline Recycle Bin MISSING*
