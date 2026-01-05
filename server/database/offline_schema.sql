@@ -314,6 +314,27 @@ LEFT JOIN offline_rows r ON r.file_id = f.id
 GROUP BY f.id, f.name;
 
 -- -----------------------------------------------------------------------------
+-- Offline Trash (P9-BIN-001: Recycle Bin for local files/folders)
+-- Mirrors PostgreSQL LDMTrash structure for consistency
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS offline_trash (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_type TEXT NOT NULL,              -- 'local-file', 'local-folder'
+    item_id INTEGER NOT NULL,             -- Original file/folder ID before deletion
+    item_name TEXT NOT NULL,              -- Name for display
+    item_data TEXT NOT NULL,              -- JSON: full serialization for restore
+    parent_folder_id INTEGER,             -- Parent folder at time of deletion
+    deleted_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,             -- Auto-delete after 30 days
+    status TEXT DEFAULT 'trashed'         -- 'trashed', 'restored', 'expired'
+);
+
+CREATE INDEX IF NOT EXISTS idx_offline_trash_status ON offline_trash(status);
+CREATE INDEX IF NOT EXISTS idx_offline_trash_expires ON offline_trash(expires_at);
+CREATE INDEX IF NOT EXISTS idx_offline_trash_item ON offline_trash(item_type, item_id);
+
+-- -----------------------------------------------------------------------------
 -- Schema version for migrations
 -- -----------------------------------------------------------------------------
 
@@ -322,4 +343,4 @@ CREATE TABLE IF NOT EXISTS schema_version (
     applied_at TEXT DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO schema_version (version) VALUES (2);  -- SYNC-008: Added TM tables
+INSERT OR IGNORE INTO schema_version (version) VALUES (3);  -- P9-BIN-001: Added offline_trash

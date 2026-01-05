@@ -9,7 +9,7 @@ import sqlite3
 import json
 import os
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from loguru import logger
 
@@ -386,28 +386,43 @@ class OfflineDatabase:
                 ).fetchall()
             return [dict(row) for row in rows]
 
-    def delete_local_folder(self, folder_id: int) -> bool:
+    def delete_local_folder(self, folder_id: int, permanent: bool = False) -> bool:
         """
-        P9: Delete a local folder from Offline Storage.
+        P9-BIN-001: Delete a local folder from Offline Storage.
 
         Only works for local folders (sync_status='local').
+        By default, moves to trash (soft delete). Use permanent=True for hard delete.
         Also deletes all files and subfolders inside.
         Returns True if deleted, False if folder not found or not local.
         """
         with self._get_connection() as conn:
             # Verify folder is local before deleting
-            row = conn.execute(
-                "SELECT sync_status FROM offline_folders WHERE id = ?",
+            folder_row = conn.execute(
+                "SELECT * FROM offline_folders WHERE id = ?",
                 (folder_id,)
             ).fetchone()
 
-            if not row:
+            if not folder_row:
                 logger.warning(f"Cannot delete: folder {folder_id} not found")
                 return False
 
-            if row["sync_status"] != "local":
-                logger.warning(f"Cannot delete: folder {folder_id} is not local (status={row['sync_status']})")
+            if folder_row["sync_status"] != "local":
+                logger.warning(f"Cannot delete: folder {folder_id} is not local (status={folder_row['sync_status']})")
                 return False
+
+            if not permanent:
+                # P9-BIN-001: Soft delete - serialize folder and contents to trash
+                folder_data = self._serialize_local_folder_for_trash(conn, folder_id)
+                expires_at = (datetime.now() + timedelta(days=30)).isoformat()
+
+                conn.execute(
+                    """INSERT INTO offline_trash
+                       (item_type, item_id, item_name, item_data, parent_folder_id, expires_at, status)
+                       VALUES (?, ?, ?, ?, ?, ?, 'trashed')""",
+                    ('local-folder', folder_id, folder_row['name'], json.dumps(folder_data),
+                     folder_row['parent_id'], expires_at)
+                )
+                logger.info(f"Moved local folder {folder_id} ('{folder_row['name']}') to trash")
 
             # Delete files in this folder first
             conn.execute("DELETE FROM offline_rows WHERE file_id IN (SELECT id FROM offline_files WHERE folder_id = ?)", (folder_id,))
@@ -419,8 +434,50 @@ class OfflineDatabase:
             # Delete the folder itself
             conn.execute("DELETE FROM offline_folders WHERE id = ?", (folder_id,))
             conn.commit()
-            logger.info(f"Deleted local folder {folder_id} from Offline Storage")
+
+            action = "permanently deleted" if permanent else "moved to trash"
+            logger.info(f"Local folder {folder_id} {action}")
             return True
+
+    def _serialize_local_folder_for_trash(self, conn, folder_id: int) -> dict:
+        """P9-BIN-001: Serialize a local folder and all its contents for trash storage."""
+        folder_row = conn.execute(
+            "SELECT * FROM offline_folders WHERE id = ?",
+            (folder_id,)
+        ).fetchone()
+
+        # Get all files in this folder
+        files = conn.execute(
+            "SELECT * FROM offline_files WHERE folder_id = ?",
+            (folder_id,)
+        ).fetchall()
+
+        files_data = []
+        for file in files:
+            rows = conn.execute(
+                "SELECT * FROM offline_rows WHERE file_id = ? ORDER BY row_num",
+                (file['id'],)
+            ).fetchall()
+            files_data.append({
+                "file": dict(file),
+                "rows": [dict(r) for r in rows]
+            })
+
+        # Get subfolders (recursive)
+        subfolders = conn.execute(
+            "SELECT * FROM offline_folders WHERE parent_id = ?",
+            (folder_id,)
+        ).fetchall()
+
+        subfolders_data = []
+        for subfolder in subfolders:
+            subfolders_data.append(self._serialize_local_folder_for_trash(conn, subfolder['id']))
+
+        return {
+            "folder": dict(folder_row),
+            "files": files_data,
+            "subfolders": subfolders_data
+        }
 
     def rename_local_folder(self, folder_id: int, new_name: str) -> bool:
         """
@@ -1440,35 +1497,69 @@ class OfflineDatabase:
             logger.info(f"Updated row {row_id} in local file")
             return True
 
-    def delete_local_file(self, file_id: int) -> bool:
+    def delete_local_file(self, file_id: int, permanent: bool = False) -> bool:
         """
-        P9: Delete a local file from Offline Storage.
+        P9-BIN-001: Delete a local file from Offline Storage.
 
         Only works for local files (sync_status='local').
+        By default, moves to trash (soft delete). Use permanent=True for hard delete.
         Returns True if deleted, False if file not found or not local.
         """
         with self._get_connection() as conn:
             # Verify file is local before deleting
-            row = conn.execute(
-                "SELECT sync_status FROM offline_files WHERE id = ?",
+            file_row = conn.execute(
+                "SELECT * FROM offline_files WHERE id = ?",
                 (file_id,)
             ).fetchone()
 
-            if not row:
+            if not file_row:
                 logger.warning(f"Cannot delete: file {file_id} not found")
                 return False
 
-            if row["sync_status"] != "local":
-                logger.warning(f"Cannot delete: file {file_id} is not local (status={row['sync_status']})")
+            if file_row["sync_status"] != "local":
+                logger.warning(f"Cannot delete: file {file_id} is not local (status={file_row['sync_status']})")
                 return False
+
+            if not permanent:
+                # P9-BIN-001: Soft delete - serialize and move to trash
+                file_data = self._serialize_local_file_for_trash(conn, file_id)
+                expires_at = (datetime.now() + timedelta(days=30)).isoformat()
+
+                conn.execute(
+                    """INSERT INTO offline_trash
+                       (item_type, item_id, item_name, item_data, parent_folder_id, expires_at, status)
+                       VALUES (?, ?, ?, ?, ?, ?, 'trashed')""",
+                    ('local-file', file_id, file_row['name'], json.dumps(file_data),
+                     file_row['folder_id'], expires_at)
+                )
+                logger.info(f"Moved local file {file_id} ('{file_row['name']}') to trash")
 
             # Delete rows first (cascade)
             conn.execute("DELETE FROM offline_rows WHERE file_id = ?", (file_id,))
             # Delete file
             conn.execute("DELETE FROM offline_files WHERE id = ?", (file_id,))
             conn.commit()
-            logger.info(f"Deleted local file {file_id} from Offline Storage")
+
+            action = "permanently deleted" if permanent else "moved to trash"
+            logger.info(f"Local file {file_id} {action}")
             return True
+
+    def _serialize_local_file_for_trash(self, conn, file_id: int) -> dict:
+        """P9-BIN-001: Serialize a local file and its rows for trash storage."""
+        file_row = conn.execute(
+            "SELECT * FROM offline_files WHERE id = ?",
+            (file_id,)
+        ).fetchone()
+
+        rows = conn.execute(
+            "SELECT * FROM offline_rows WHERE file_id = ? ORDER BY row_num",
+            (file_id,)
+        ).fetchall()
+
+        return {
+            "file": dict(file_row),
+            "rows": [dict(r) for r in rows]
+        }
 
     def rename_local_file(self, file_id: int, new_name: str) -> bool:
         """
@@ -1735,6 +1826,176 @@ class OfflineDatabase:
                 })
 
         return result
+
+    # =========================================================================
+    # P9-BIN-001: Local Trash Operations
+    # =========================================================================
+
+    def list_local_trash(self) -> List[Dict]:
+        """P9-BIN-001: List all items in local trash (not expired)."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """SELECT id, item_type, item_id, item_name, parent_folder_id,
+                          deleted_at, expires_at, status
+                   FROM offline_trash
+                   WHERE status = 'trashed'
+                   ORDER BY deleted_at DESC"""
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    def get_local_trash_item(self, trash_id: int) -> Optional[Dict]:
+        """P9-BIN-001: Get a specific trash item."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM offline_trash WHERE id = ?",
+                (trash_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def restore_from_local_trash(self, trash_id: int) -> bool:
+        """
+        P9-BIN-001: Restore an item from local trash.
+
+        Returns True if restored, False if not found or restore failed.
+        """
+        with self._get_connection() as conn:
+            trash_row = conn.execute(
+                "SELECT * FROM offline_trash WHERE id = ? AND status = 'trashed'",
+                (trash_id,)
+            ).fetchone()
+
+            if not trash_row:
+                logger.warning(f"Cannot restore: trash item {trash_id} not found or not trashed")
+                return False
+
+            item_type = trash_row['item_type']
+            item_data = json.loads(trash_row['item_data'])
+
+            try:
+                if item_type == 'local-file':
+                    self._restore_local_file(conn, item_data)
+                elif item_type == 'local-folder':
+                    self._restore_local_folder(conn, item_data)
+                else:
+                    logger.error(f"Unknown trash item type: {item_type}")
+                    return False
+
+                # Mark as restored
+                conn.execute(
+                    "UPDATE offline_trash SET status = 'restored' WHERE id = ?",
+                    (trash_id,)
+                )
+                conn.commit()
+                logger.info(f"Restored {item_type} '{trash_row['item_name']}' from trash")
+                return True
+
+            except Exception as e:
+                logger.error(f"Failed to restore from trash: {e}")
+                return False
+
+    def _restore_local_file(self, conn, item_data: dict):
+        """P9-BIN-001: Restore a local file from trash data."""
+        file_info = item_data['file']
+        rows_info = item_data['rows']
+
+        # Re-insert file
+        conn.execute(
+            """INSERT INTO offline_files
+               (id, server_id, name, original_filename, format, row_count,
+                source_language, target_language, project_id, server_project_id,
+                folder_id, server_folder_id, extra_data, created_at, updated_at,
+                downloaded_at, sync_status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (file_info['id'], file_info['server_id'], file_info['name'],
+             file_info['original_filename'], file_info['format'], file_info['row_count'],
+             file_info['source_language'], file_info['target_language'],
+             file_info['project_id'], file_info['server_project_id'],
+             file_info['folder_id'], file_info['server_folder_id'],
+             file_info['extra_data'], file_info['created_at'], file_info['updated_at'],
+             file_info['downloaded_at'], file_info['sync_status'])
+        )
+
+        # Re-insert rows
+        for row in rows_info:
+            conn.execute(
+                """INSERT INTO offline_rows
+                   (id, server_id, file_id, server_file_id, row_num, string_id,
+                    source, target, memo, status, extra_data, created_at, updated_at,
+                    downloaded_at, sync_status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (row['id'], row['server_id'], row['file_id'], row['server_file_id'],
+                 row['row_num'], row['string_id'], row['source'], row['target'],
+                 row['memo'], row['status'], row['extra_data'], row['created_at'],
+                 row['updated_at'], row['downloaded_at'], row['sync_status'])
+            )
+
+    def _restore_local_folder(self, conn, item_data: dict):
+        """P9-BIN-001: Restore a local folder from trash data (recursive)."""
+        folder_info = item_data['folder']
+        files_data = item_data.get('files', [])
+        subfolders_data = item_data.get('subfolders', [])
+
+        # Re-insert folder
+        conn.execute(
+            """INSERT INTO offline_folders
+               (id, server_id, name, project_id, server_project_id,
+                parent_id, server_parent_id, created_at, downloaded_at, sync_status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (folder_info['id'], folder_info['server_id'], folder_info['name'],
+             folder_info['project_id'], folder_info['server_project_id'],
+             folder_info['parent_id'], folder_info['server_parent_id'],
+             folder_info['created_at'], folder_info['downloaded_at'], folder_info['sync_status'])
+        )
+
+        # Restore files in this folder
+        for file_data in files_data:
+            self._restore_local_file(conn, file_data)
+
+        # Restore subfolders recursively
+        for subfolder_data in subfolders_data:
+            self._restore_local_folder(conn, subfolder_data)
+
+    def permanent_delete_from_local_trash(self, trash_id: int) -> bool:
+        """P9-BIN-001: Permanently delete an item from local trash."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT item_name FROM offline_trash WHERE id = ?",
+                (trash_id,)
+            ).fetchone()
+
+            if not row:
+                return False
+
+            conn.execute("DELETE FROM offline_trash WHERE id = ?", (trash_id,))
+            conn.commit()
+            logger.info(f"Permanently deleted '{row['item_name']}' from local trash")
+            return True
+
+    def empty_local_trash(self) -> int:
+        """P9-BIN-001: Empty all items from local trash. Returns count of deleted items."""
+        with self._get_connection() as conn:
+            result = conn.execute(
+                "DELETE FROM offline_trash WHERE status = 'trashed'"
+            )
+            count = result.rowcount
+            conn.commit()
+            logger.info(f"Emptied local trash: {count} items permanently deleted")
+            return count
+
+    def purge_expired_local_trash(self) -> int:
+        """P9-BIN-001: Delete expired trash items (past 30 days). Returns count deleted."""
+        with self._get_connection() as conn:
+            now = datetime.now().isoformat()
+            result = conn.execute(
+                """DELETE FROM offline_trash
+                   WHERE status = 'trashed' AND expires_at < ?""",
+                (now,)
+            )
+            count = result.rowcount
+            conn.commit()
+            if count > 0:
+                logger.info(f"Purged {count} expired items from local trash")
+            return count
 
 
 # Singleton instance
