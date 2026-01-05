@@ -45,6 +45,7 @@
   function getIcon(item) {
     if (item.type === 'platform') return Application;
     if (item.type === 'folder') return Folder;
+    if (item.type === 'local-folder') return Folder;  // P9: Local folder in Offline Storage
     if (item.type === 'project') return Folder;
     // EXPLORER-008: Recycle Bin types
     if (item.type === 'recycle-bin') return TrashCan;
@@ -83,7 +84,7 @@
       const count = item.project_count || 0;
       return count === 1 ? '1 project' : `${count} projects`;
     }
-    if (item.type === 'folder' || item.type === 'project') {
+    if (item.type === 'folder' || item.type === 'local-folder' || item.type === 'project') {
       const count = item.file_count || item.children?.length || 0;
       return count === 1 ? '1 item' : `${count} items`;
     }
@@ -183,7 +184,7 @@
    * Handle double click (open/enter)
    */
   function handleDoubleClick(item) {
-    if (item.type === 'folder' || item.type === 'project' || item.type === 'platform' || item.type === 'recycle-bin' || item.type === 'offline-storage') {
+    if (item.type === 'folder' || item.type === 'local-folder' || item.type === 'project' || item.type === 'platform' || item.type === 'recycle-bin' || item.type === 'offline-storage') {
       dispatch('enterFolder', { item });
     } else if (item.type === 'trash-item') {
       // EXPLORER-008: Double-click on trash item does nothing (use context menu to restore)
@@ -439,7 +440,7 @@
         <button
           class="grid-row"
           class:selected={isSelected(item)}
-          class:folder={item.type === 'folder'}
+          class:folder={item.type === 'folder' || item.type === 'local-folder'}
           class:project={item.type === 'project'}
           class:platform={item.type === 'platform'}
           class:drop-target={dropTargetId === item.id}
@@ -473,7 +474,7 @@
             {formatDate(item.updated_at || item.created_at)}
           </div>
           <div class="grid-cell type-cell" role="gridcell">
-            {#if item.type === 'folder'}
+            {#if item.type === 'folder' || item.type === 'local-folder'}
               Folder
             {:else if item.type === 'project'}
               Project
