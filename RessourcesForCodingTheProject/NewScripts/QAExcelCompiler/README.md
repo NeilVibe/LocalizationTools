@@ -52,7 +52,7 @@ QAfolder/
     └── bug.png
 ```
 
-**Valid categories:** Quest, Knowledge, Item, Region, System
+**Valid categories:** Quest, Knowledge, Item, Region, System, Character
 
 ### 2. Run the compiler
 
@@ -70,6 +70,7 @@ Masterfolder/
 ├── Master_Item.xlsx
 ├── Master_Region.xlsx
 ├── Master_System.xlsx
+├── Master_Character.xlsx
 ├── LQA_UserProgress_Tracker.xlsx  # Combined progress tracker
 │   ├── DAILY                      # Daily progress per user
 │   ├── TOTAL                      # Cumulative stats
