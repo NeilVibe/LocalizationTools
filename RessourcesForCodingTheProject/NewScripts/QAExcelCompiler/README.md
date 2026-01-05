@@ -363,7 +363,42 @@ QA files should have these columns (detected dynamically by header name):
 
 ---
 
+---
+
+## GRAPHS Tab (Dashboard)
+
+**Status:** ✅ IMPLEMENTED | **Docs:** [docs/GRAPHS_REDESIGN_PLAN.md](docs/GRAPHS_REDESIGN_PLAN.md)
+
+ONE big spacious line chart showing cumulative progress:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         LQA PROGRESS TRACKER                             │
+│                                                                          │
+│  Rows ▲                                                  ●──── TOTAL     │
+│       │                                                ╱                 │
+│  100  │                                  ●────────────●   ●──── Alice    │
+│       │                                ╱                                 │
+│   50  │                    ●──────────●                   ●──── Bob      │
+│       │                  ╱                                               │
+│    0  ├──●──────────────●──────────────────────────────→  ●──── Fixed    │
+│          01/03         01/04         01/05      Date                     │
+│                                                                          │
+│   ● Alice    ● Bob    ● John    ● TOTAL    ● Fixed                      │
+│                    ↑ click legend to toggle                              │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Features:**
+- Dots connected by lines (clean, agreeable UIUX)
+- Cumulative data (lines go UP)
+- Click legend to show/hide any series (Excel built-in)
+- Data tables hidden (not cluttered)
+
+---
+
 *Created: 2025-12-30*
 *Updated: 2026-01-05 - Added LQA User Progress Tracker with DAILY/TOTAL/GRAPHS tabs*
 *Updated: 2026-01-05 - Added Manager Status feature (STATUS_{User} columns with FIXED/REPORTED/CHECKING)*
 *Updated: 2026-01-05 - Added Comp % column to DAILY tab (shows completion per user per day)*
+*Updated: 2026-01-05 - Redesigned GRAPHS tab: ONE big line chart with dots, cumulative data, toggleable legend*

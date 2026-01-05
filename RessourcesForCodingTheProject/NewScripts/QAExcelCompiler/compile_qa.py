@@ -1550,213 +1550,182 @@ def build_total_sheet(wb):
 
 def build_graphs_sheet(wb):
     """
-    Build GRAPHS sheet with charts.
+    Build GRAPHS sheet with ONE big line chart dashboard.
 
-    Uses openpyxl.chart module.
+    Features:
+    - Single spacious line chart
+    - Dots connected by lines
+    - Series: Each user (cumulative Done) + TOTAL + Fixed
+    - Legend click-to-toggle (Excel built-in)
+    - Data table hidden below chart
     """
-    from openpyxl.chart import BarChart, Reference
-    from openpyxl.chart.series import DataPoint
-    from openpyxl.chart.label import DataLabelList
+    from openpyxl.chart import LineChart, Reference
+    from openpyxl.chart.marker import Marker
 
-    # Delete and recreate sheet to handle charts properly
+    # Delete and recreate sheet
     if "GRAPHS" in wb.sheetnames:
         del wb["GRAPHS"]
     ws = wb.create_sheet("GRAPHS", 2)
 
     daily_ws = wb["DAILY"]
-    total_ws = wb["TOTAL"]
+    data_ws = wb["_DAILY_DATA"]
 
     # Check if we have data
-    if daily_ws.cell(1, 1).value == "No data yet" or total_ws.cell(1, 1).value == "No data yet":
+    if daily_ws.cell(1, 1).value == "No data yet":
         ws.cell(1, 1, "No data available for charts")
         return
 
-    # --- Chart 1: Daily Progress (Done per user per day) ---
-    # Find data range in DAILY sheet
-    # Row 4 has headers (Date, Done, Issues, Done, Issues, ...)
-    # Row 5+ has data
+    # === STEP 1: Build cumulative data from _DAILY_DATA ===
+    # Read raw daily data and compute cumulative sums per user
+    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9)
 
-    # Count users and dates
-    daily_max_row = daily_ws.max_row
-    daily_max_col = daily_ws.max_column
+    from collections import defaultdict
 
-    if daily_max_row < 5 or daily_max_col < 2:
+    # Aggregate by (date, user) - sum across categories
+    daily_by_date_user = defaultdict(lambda: defaultdict(lambda: {"done": 0, "fixed": 0}))
+    users = set()
+    dates = set()
+
+    for row in range(2, data_ws.max_row + 1):
+        date = data_ws.cell(row, 1).value
+        user = data_ws.cell(row, 2).value
+        done = data_ws.cell(row, 5).value or 0
+        fixed = data_ws.cell(row, 9).value or 0
+
+        if date and user:
+            daily_by_date_user[date][user]["done"] += done
+            daily_by_date_user[date][user]["fixed"] += fixed
+            users.add(user)
+            dates.add(date)
+
+    if not users or not dates:
+        ws.cell(1, 1, "No data available for charts")
+        return
+
+    users = sorted(users)
+    dates = sorted(dates)
+
+    # === STEP 2: Build cumulative data table (hidden at row 50+) ===
+    DATA_START_ROW = 50
+
+    # Headers: Date, User1, User2, ..., TOTAL, Fixed
+    ws.cell(DATA_START_ROW, 1, "Date")
+    for i, user in enumerate(users):
+        ws.cell(DATA_START_ROW, 2 + i, user)
+    ws.cell(DATA_START_ROW, 2 + len(users), "TOTAL")
+    ws.cell(DATA_START_ROW, 3 + len(users), "Fixed")
+
+    # Calculate cumulative values
+    cumulative = {user: 0 for user in users}
+    cumulative["TOTAL"] = 0
+    cumulative["Fixed"] = 0
+
+    data_row = DATA_START_ROW + 1
+    for date in dates:
+        # Format date as MM/DD for display
+        if isinstance(date, str) and len(date) >= 10:
+            display_date = date[5:7] + "/" + date[8:10]
+        else:
+            display_date = str(date)
+
+        ws.cell(data_row, 1, display_date)
+
+        day_total = 0
+        day_fixed = 0
+
+        for i, user in enumerate(users):
+            user_data = daily_by_date_user[date].get(user, {"done": 0, "fixed": 0})
+            cumulative[user] += user_data["done"]
+            day_total += user_data["done"]
+            day_fixed += user_data["fixed"]
+            ws.cell(data_row, 2 + i, cumulative[user])
+
+        cumulative["TOTAL"] += day_total
+        cumulative["Fixed"] += day_fixed
+
+        ws.cell(data_row, 2 + len(users), cumulative["TOTAL"])
+        ws.cell(data_row, 3 + len(users), cumulative["Fixed"])
+
+        data_row += 1
+
+    num_dates = data_row - DATA_START_ROW - 1
+    num_series = len(users) + 2  # users + TOTAL + Fixed
+
+    if num_dates < 1:
         ws.cell(1, 1, "Not enough data for charts")
         return
 
-    # Build a mini data table for charting in GRAPHS sheet
-    # Copy DAILY data for chart reference
-    ws.cell(1, 1, "Daily Progress Chart Data")
-    ws.cell(1, 1).font = Font(bold=True)
+    # === STEP 3: Create ONE BIG line chart ===
+    chart = LineChart()
+    chart.title = "LQA PROGRESS TRACKER"
+    chart.style = 10  # Clean style
+    chart.y_axis.title = "Cumulative Count"
+    chart.x_axis.title = "Date"
 
-    # Copy headers and data from DAILY sheet (simplified: just Date and Done values)
-    # We'll create a simpler structure for the chart
+    # Make it BIG and SPACIOUS
+    chart.width = 22  # ~22 columns wide
+    chart.height = 14  # ~14 rows tall
 
-    # Get users from row 3 of DAILY
-    users = []
-    col = 2
-    while col <= daily_max_col:
-        user = daily_ws.cell(3, col).value
-        if user:
-            users.append(user)
-        col += 2  # Skip Issues column
+    # Data reference (all series: users + TOTAL + Fixed)
+    data = Reference(
+        ws,
+        min_col=2,
+        min_row=DATA_START_ROW,
+        max_col=1 + num_series,
+        max_row=DATA_START_ROW + num_dates
+    )
 
-    if not users:
-        ws.cell(2, 1, "No users found")
-        return
+    # Categories (dates)
+    cats = Reference(
+        ws,
+        min_col=1,
+        min_row=DATA_START_ROW + 1,
+        max_row=DATA_START_ROW + num_dates
+    )
 
-    # Build chart data table in GRAPHS sheet
-    # Row 3: Headers (Date, User1, User2, ...)
-    ws.cell(3, 1, "Date")
-    for i, user in enumerate(users):
-        ws.cell(3, 2 + i, user)
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(cats)
 
-    # Row 4+: Data (date, done values per user)
-    chart_row = 4
-    for daily_row in range(5, daily_max_row):  # Exclude TOTAL row
-        date = daily_ws.cell(daily_row, 1).value
-        if date == "TOTAL":
-            break
+    # === STEP 4: Style each series (colors + markers) ===
+    # Colors: users get standard colors, TOTAL gets gold, Fixed gets green
+    user_colors = ["4472C4", "ED7D31", "70AD47", "5B9BD5", "7030A0", "A5A5A5"]
 
-        ws.cell(chart_row, 1, date)
-        for i, user in enumerate(users):
-            done_col = 2 + i * 2  # Done columns are at 2, 4, 6, ...
-            done_val = daily_ws.cell(daily_row, done_col).value
-            if done_val == "--":
-                done_val = 0
-            ws.cell(chart_row, 2 + i, done_val)
-        chart_row += 1
+    for i, series in enumerate(chart.series):
+        # Add marker (dot) to each point
+        series.marker = Marker(symbol="circle", size=7)
+        series.graphicalProperties.line.width = 25000  # 2.5pt line
 
-    num_dates = chart_row - 4
+        if i < len(users):
+            # User series
+            color = user_colors[i % len(user_colors)]
+            series.graphicalProperties.line.solidFill = color
+            series.marker.graphicalProperties.solidFill = color
+            series.marker.graphicalProperties.line.solidFill = color
+        elif i == len(users):
+            # TOTAL series - Gold, thicker
+            series.graphicalProperties.line.solidFill = "FFC000"
+            series.graphicalProperties.line.width = 35000  # 3.5pt
+            series.marker.graphicalProperties.solidFill = "FFC000"
+            series.marker.graphicalProperties.line.solidFill = "FFC000"
+            series.marker.size = 9
+        else:
+            # Fixed series - Forest green
+            series.graphicalProperties.line.solidFill = "228B22"
+            series.marker.graphicalProperties.solidFill = "228B22"
+            series.marker.graphicalProperties.line.solidFill = "228B22"
 
-    if num_dates > 0:
-        # Create bar chart for daily progress
-        chart1 = BarChart()
-        chart1.type = "col"
-        chart1.grouping = "clustered"
-        chart1.title = "Daily Progress by User"
-        chart1.y_axis.title = "Rows Completed"
-        chart1.x_axis.title = "Date"
+    # Legend at bottom
+    chart.legend.position = 'b'
 
-        # Data reference (user columns)
-        data = Reference(ws, min_col=2, min_row=3, max_col=1 + len(users), max_row=3 + num_dates)
-        # Categories (dates)
-        cats = Reference(ws, min_col=1, min_row=4, max_row=3 + num_dates)
+    # Place chart at A1 (top of sheet, big and spacious)
+    ws.add_chart(chart, "A1")
 
-        chart1.add_data(data, titles_from_data=True)
-        chart1.set_categories(cats)
-        chart1.shape = 4
-        chart1.width = 18
-        chart1.height = 10
+    # === STEP 5: Hide the data table rows ===
+    # Hide rows from DATA_START_ROW onwards
+    for row_num in range(DATA_START_ROW, data_row + 1):
+        ws.row_dimensions[row_num].hidden = True
 
-        # Apply colors to series
-        for i, series in enumerate(chart1.series):
-            color = CHART_COLORS[i % len(CHART_COLORS)]
-            series.graphicalProperties.solidFill = color
-
-        ws.add_chart(chart1, "A" + str(chart_row + 2))
-
-    # --- Chart 2: User Completion Rate ---
-    # Build data table for completion chart
-    comp_start_row = chart_row + 15
-
-    ws.cell(comp_start_row, 1, "User Completion Chart Data")
-    ws.cell(comp_start_row, 1).font = Font(bold=True)
-
-    ws.cell(comp_start_row + 2, 1, "User")
-    ws.cell(comp_start_row + 2, 2, "Completion %")
-
-    # Copy from TOTAL sheet
-    total_data_row = 4
-    comp_row = comp_start_row + 3
-    while True:
-        user = total_ws.cell(total_data_row, 1).value
-        if not user or user == "TOTAL":
-            break
-        completion = total_ws.cell(total_data_row, 2).value
-        # Convert "95.0%" to 95.0
-        if isinstance(completion, str) and completion.endswith("%"):
-            completion = float(completion.rstrip("%"))
-
-        ws.cell(comp_row, 1, user)
-        ws.cell(comp_row, 2, completion)
-        comp_row += 1
-        total_data_row += 1
-
-    num_users = comp_row - (comp_start_row + 3)
-
-    if num_users > 0:
-        chart2 = BarChart()
-        chart2.type = "bar"  # Horizontal bar
-        chart2.title = "User Completion Rate"
-        chart2.y_axis.title = "User"
-        chart2.x_axis.title = "Completion %"
-
-        data2 = Reference(ws, min_col=2, min_row=comp_start_row + 2, max_row=comp_start_row + 2 + num_users)
-        cats2 = Reference(ws, min_col=1, min_row=comp_start_row + 3, max_row=comp_start_row + 2 + num_users)
-
-        chart2.add_data(data2, titles_from_data=True)
-        chart2.set_categories(cats2)
-        chart2.width = 14
-        chart2.height = 8
-
-        # Color the bars
-        if chart2.series:
-            chart2.series[0].graphicalProperties.solidFill = CHART_COLORS[0]
-
-        ws.add_chart(chart2, "A" + str(comp_start_row + 4 + num_users + 2))
-
-    # --- Chart 3: Issue Resolution Status ---
-    # Shows Fixed vs Reported vs Checking vs Pending (stacked bar)
-    from openpyxl.chart import PieChart
-
-    resolution_start_row = comp_start_row + 4 + num_users + 15
-
-    ws.cell(resolution_start_row, 1, "Issue Resolution Chart Data")
-    ws.cell(resolution_start_row, 1).font = Font(bold=True)
-
-    # Headers
-    ws.cell(resolution_start_row + 2, 1, "Status")
-    ws.cell(resolution_start_row + 2, 2, "Count")
-
-    # Get totals from TOTAL sheet (last row has TOTAL)
-    # Find the TOTAL row in TOTAL sheet
-    total_row_idx = 4
-    while total_ws.cell(total_row_idx, 1).value and total_ws.cell(total_row_idx, 1).value != "TOTAL":
-        total_row_idx += 1
-
-    if total_ws.cell(total_row_idx, 1).value == "TOTAL":
-        # Columns: 7=Fixed, 8=Reported, 9=Checking, 10=Pending
-        fixed_total = total_ws.cell(total_row_idx, 7).value or 0
-        reported_total = total_ws.cell(total_row_idx, 8).value or 0
-        checking_total = total_ws.cell(total_row_idx, 9).value or 0
-        pending_total = total_ws.cell(total_row_idx, 10).value or 0
-
-        # Write data for pie chart
-        resolution_data = [
-            ("Fixed", fixed_total),
-            ("Reported", reported_total),
-            ("Checking", checking_total),
-            ("Pending", pending_total)
-        ]
-
-        for i, (label, val) in enumerate(resolution_data):
-            ws.cell(resolution_start_row + 3 + i, 1, label)
-            ws.cell(resolution_start_row + 3 + i, 2, val)
-
-        # Create pie chart for issue resolution
-        chart3 = PieChart()
-        chart3.title = "Issue Resolution Status"
-
-        data3 = Reference(ws, min_col=2, min_row=resolution_start_row + 2, max_row=resolution_start_row + 6)
-        cats3 = Reference(ws, min_col=1, min_row=resolution_start_row + 3, max_row=resolution_start_row + 6)
-
-        chart3.add_data(data3, titles_from_data=True)
-        chart3.set_categories(cats3)
-        chart3.width = 12
-        chart3.height = 10
-
-        ws.add_chart(chart3, "A" + str(resolution_start_row + 10))
+    print(f"  GRAPHS: Created line chart with {len(users)} users + TOTAL + Fixed ({num_dates} dates)")
 
 
 def process_category(category, qa_folders, manager_status=None):
