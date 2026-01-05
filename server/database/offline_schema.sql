@@ -71,15 +71,15 @@ CREATE INDEX IF NOT EXISTS idx_offline_projects_platform ON offline_projects(pla
 
 CREATE TABLE IF NOT EXISTS offline_folders (
     id INTEGER PRIMARY KEY,
-    server_id INTEGER NOT NULL,
+    server_id INTEGER,                -- NULL for local folders (sync_status='local')
     name TEXT NOT NULL,
     project_id INTEGER NOT NULL,
-    server_project_id INTEGER NOT NULL,
+    server_project_id INTEGER,        -- NULL for local folders
     parent_id INTEGER,                -- Local parent folder ID
     server_parent_id INTEGER,         -- Server's parent folder ID
     created_at TEXT,
     downloaded_at TEXT DEFAULT (datetime('now')),
-    sync_status TEXT DEFAULT 'synced',
+    sync_status TEXT DEFAULT 'synced', -- 'synced', 'local', 'modified'
     FOREIGN KEY (project_id) REFERENCES offline_projects(id) ON DELETE CASCADE,
     FOREIGN KEY (parent_id) REFERENCES offline_folders(id) ON DELETE CASCADE
 );

@@ -297,6 +297,161 @@ class OfflineDatabase:
                 ).fetchall()
             return [dict(row) for row in rows]
 
+    def create_local_folder(self, name: str, parent_id: int = None) -> int:
+        """
+        P9: Create a new folder directly in Offline Storage (local-only).
+
+        This is for folders created while working in Offline Storage.
+        They have no server reference and live only in Offline Storage
+        until the user goes online and moves them to a real project.
+
+        sync_status='local' means "never been on server".
+
+        Returns the new folder ID (negative to avoid conflicts with server IDs).
+        """
+        import time
+        from datetime import datetime
+
+        now = datetime.now().isoformat()
+        offline_project_id = self.OFFLINE_STORAGE_PROJECT_ID
+
+        with self._get_connection() as conn:
+            # Check for duplicate names in same parent
+            if parent_id is None:
+                cursor = conn.execute(
+                    """SELECT name FROM offline_folders
+                       WHERE project_id = ? AND parent_id IS NULL AND name = ?""",
+                    (offline_project_id, name)
+                )
+            else:
+                cursor = conn.execute(
+                    """SELECT name FROM offline_folders
+                       WHERE project_id = ? AND parent_id = ? AND name = ?""",
+                    (offline_project_id, parent_id, name)
+                )
+
+            # Auto-rename if duplicate exists
+            final_name = name
+            if cursor.fetchone():
+                counter = 1
+                while True:
+                    final_name = f"{name}_{counter}"
+                    if parent_id is None:
+                        cursor = conn.execute(
+                            """SELECT name FROM offline_folders
+                               WHERE project_id = ? AND parent_id IS NULL AND name = ?""",
+                            (offline_project_id, final_name)
+                        )
+                    else:
+                        cursor = conn.execute(
+                            """SELECT name FROM offline_folders
+                               WHERE project_id = ? AND parent_id = ? AND name = ?""",
+                            (offline_project_id, parent_id, final_name)
+                        )
+                    if not cursor.fetchone():
+                        break
+                    counter += 1
+                logger.info(f"Auto-renamed duplicate folder: '{name}' → '{final_name}'")
+
+            # Use negative IDs to avoid conflicts with real server IDs
+            folder_id = -int(time.time() * 1000) % 1000000000
+
+            conn.execute(
+                """INSERT INTO offline_folders
+                   (id, server_id, name, project_id, server_project_id,
+                    parent_id, server_parent_id, created_at, downloaded_at, sync_status)
+                   VALUES (?, NULL, ?, ?, NULL, ?, NULL, ?, datetime('now'), 'local')""",
+                (folder_id, final_name, offline_project_id, parent_id, now)
+            )
+            conn.commit()
+            logger.info(f"Created local folder: id={folder_id}, name='{final_name}', parent={parent_id}")
+            return folder_id, final_name
+
+    def get_local_folders(self, parent_id: int = None) -> List[Dict]:
+        """Get local folders in Offline Storage."""
+        with self._get_connection() as conn:
+            if parent_id is None:
+                rows = conn.execute(
+                    """SELECT * FROM offline_folders
+                       WHERE project_id = ? AND parent_id IS NULL AND sync_status = 'local'
+                       ORDER BY name""",
+                    (self.OFFLINE_STORAGE_PROJECT_ID,)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """SELECT * FROM offline_folders
+                       WHERE project_id = ? AND parent_id = ? AND sync_status = 'local'
+                       ORDER BY name""",
+                    (self.OFFLINE_STORAGE_PROJECT_ID, parent_id)
+                ).fetchall()
+            return [dict(row) for row in rows]
+
+    def delete_local_folder(self, folder_id: int) -> bool:
+        """
+        P9: Delete a local folder from Offline Storage.
+
+        Only works for local folders (sync_status='local').
+        Also deletes all files and subfolders inside.
+        Returns True if deleted, False if folder not found or not local.
+        """
+        with self._get_connection() as conn:
+            # Verify folder is local before deleting
+            row = conn.execute(
+                "SELECT sync_status FROM offline_folders WHERE id = ?",
+                (folder_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning(f"Cannot delete: folder {folder_id} not found")
+                return False
+
+            if row["sync_status"] != "local":
+                logger.warning(f"Cannot delete: folder {folder_id} is not local (status={row['sync_status']})")
+                return False
+
+            # Delete files in this folder first
+            conn.execute("DELETE FROM offline_rows WHERE file_id IN (SELECT id FROM offline_files WHERE folder_id = ?)", (folder_id,))
+            conn.execute("DELETE FROM offline_files WHERE folder_id = ?", (folder_id,))
+
+            # Delete subfolders recursively (simplified - deletes all with this parent)
+            conn.execute("DELETE FROM offline_folders WHERE parent_id = ?", (folder_id,))
+
+            # Delete the folder itself
+            conn.execute("DELETE FROM offline_folders WHERE id = ?", (folder_id,))
+            conn.commit()
+            logger.info(f"Deleted local folder {folder_id} from Offline Storage")
+            return True
+
+    def rename_local_folder(self, folder_id: int, new_name: str) -> bool:
+        """
+        P9: Rename a local folder in Offline Storage.
+
+        Only works for local folders (sync_status='local').
+        Returns True if renamed, False if folder not found or not local.
+        """
+        with self._get_connection() as conn:
+            # Verify folder is local before renaming
+            row = conn.execute(
+                "SELECT sync_status FROM offline_folders WHERE id = ?",
+                (folder_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning(f"Cannot rename: folder {folder_id} not found")
+                return False
+
+            if row["sync_status"] != "local":
+                logger.warning(f"Cannot rename: folder {folder_id} is not local (status={row['sync_status']})")
+                return False
+
+            conn.execute(
+                "UPDATE offline_folders SET name = ? WHERE id = ?",
+                (new_name, folder_id)
+            )
+            conn.commit()
+            logger.info(f"Renamed local folder {folder_id} to '{new_name}'")
+            return True
+
     # =========================================================================
     # File Operations
     # =========================================================================
