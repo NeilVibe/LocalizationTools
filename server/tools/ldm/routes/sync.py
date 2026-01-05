@@ -521,6 +521,44 @@ async def sync_subscription(
 # Internal Sync Helpers
 # =============================================================================
 
+def _platform_to_dict(platform) -> dict:
+    """Convert a platform ORM object to a dict for offline storage."""
+    return {
+        "id": platform.id,
+        "name": platform.name,
+        "description": platform.description,
+        "owner_id": platform.owner_id,
+        "is_restricted": platform.is_restricted,
+        "created_at": platform.created_at.isoformat() if platform.created_at else None,
+        "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
+    }
+
+
+def _project_to_dict(project) -> dict:
+    """Convert a project ORM object to a dict for offline storage."""
+    return {
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "platform_id": project.platform_id,
+        "owner_id": project.owner_id,
+        "is_restricted": project.is_restricted,
+        "created_at": project.created_at.isoformat() if project.created_at else None,
+        "updated_at": project.updated_at.isoformat() if project.updated_at else None
+    }
+
+
+def _folder_to_dict(folder) -> dict:
+    """Convert a folder ORM object to a dict for offline storage."""
+    return {
+        "id": folder.id,
+        "name": folder.name,
+        "project_id": folder.project_id,
+        "parent_id": folder.parent_id,
+        "created_at": folder.created_at.isoformat() if folder.created_at else None
+    }
+
+
 async def _sync_folder_hierarchy(db: AsyncSession, folder, offline_db):
     """
     Sync a folder and its parent folders recursively.
@@ -536,13 +574,7 @@ async def _sync_folder_hierarchy(db: AsyncSession, folder, offline_db):
             await _sync_folder_hierarchy(db, parent, offline_db)
 
     # Now save this folder
-    offline_db.save_folder({
-        "id": folder.id,
-        "name": folder.name,
-        "project_id": folder.project_id,
-        "parent_id": folder.parent_id,
-        "created_at": folder.created_at.isoformat() if folder.created_at else None
-    })
+    offline_db.save_folder(_folder_to_dict(folder))
     logger.debug(f"Synced folder: {folder.name}")
 
 
@@ -567,27 +599,10 @@ async def _sync_folder_to_offline(db: AsyncSession, folder_id: int, offline_db):
         platform_result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == project.platform_id))
         platform = platform_result.scalar_one_or_none()
         if platform:
-            offline_db.save_platform({
-                "id": platform.id,
-                "name": platform.name,
-                "description": platform.description,
-                "owner_id": platform.owner_id,
-                "is_restricted": platform.is_restricted,
-                "created_at": platform.created_at.isoformat() if platform.created_at else None,
-                "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
-            })
+            offline_db.save_platform(_platform_to_dict(platform))
 
         # Save project
-        offline_db.save_project({
-            "id": project.id,
-            "name": project.name,
-            "description": project.description,
-            "platform_id": project.platform_id,
-            "owner_id": project.owner_id,
-            "is_restricted": project.is_restricted,
-            "created_at": project.created_at.isoformat() if project.created_at else None,
-            "updated_at": project.updated_at.isoformat() if project.updated_at else None
-        })
+        offline_db.save_project(_project_to_dict(project))
 
     # Sync folder hierarchy (including this folder and parents)
     await _sync_folder_hierarchy(db, folder, offline_db)
@@ -647,28 +662,11 @@ async def _sync_file_to_offline(db: AsyncSession, file_id: int, offline_db):
         platform_result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == project.platform_id))
         platform = platform_result.scalar_one_or_none()
         if platform:
-            offline_db.save_platform({
-                "id": platform.id,
-                "name": platform.name,
-                "description": platform.description,
-                "owner_id": platform.owner_id,
-                "is_restricted": platform.is_restricted,
-                "created_at": platform.created_at.isoformat() if platform.created_at else None,
-                "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
-            })
+            offline_db.save_platform(_platform_to_dict(platform))
             logger.debug(f"Synced platform: {platform.name}")
 
         # Save project
-        offline_db.save_project({
-            "id": project.id,
-            "name": project.name,
-            "description": project.description,
-            "platform_id": project.platform_id,
-            "owner_id": project.owner_id,
-            "is_restricted": project.is_restricted,
-            "created_at": project.created_at.isoformat() if project.created_at else None,
-            "updated_at": project.updated_at.isoformat() if project.updated_at else None
-        })
+        offline_db.save_project(_project_to_dict(project))
         logger.debug(f"Synced project: {project.name}")
 
     # 3. Get and sync Folder (optional - file may be at project root)
@@ -813,27 +811,10 @@ async def _sync_project_to_offline(db: AsyncSession, project_id: int, offline_db
     platform_result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == project.platform_id))
     platform = platform_result.scalar_one_or_none()
     if platform:
-        offline_db.save_platform({
-            "id": platform.id,
-            "name": platform.name,
-            "description": platform.description,
-            "owner_id": platform.owner_id,
-            "is_restricted": platform.is_restricted,
-            "created_at": platform.created_at.isoformat() if platform.created_at else None,
-            "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
-        })
+        offline_db.save_platform(_platform_to_dict(platform))
 
     # Save project
-    offline_db.save_project({
-        "id": project.id,
-        "name": project.name,
-        "description": project.description,
-        "platform_id": project.platform_id,
-        "owner_id": project.owner_id,
-        "is_restricted": project.is_restricted,
-        "created_at": project.created_at.isoformat() if project.created_at else None,
-        "updated_at": project.updated_at.isoformat() if project.updated_at else None
-    })
+    offline_db.save_project(_project_to_dict(project))
 
     # Sync all root folders in project (which recursively sync subfolders and files)
     folders_result = await db.execute(
@@ -873,15 +854,7 @@ async def _sync_platform_to_offline(db: AsyncSession, platform_id: int, offline_
         raise HTTPException(status_code=404, detail=f"Platform {platform_id} not found")
 
     # Save platform
-    offline_db.save_platform({
-        "id": platform.id,
-        "name": platform.name,
-        "description": platform.description,
-        "owner_id": platform.owner_id,
-        "is_restricted": platform.is_restricted,
-        "created_at": platform.created_at.isoformat() if platform.created_at else None,
-        "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
-    })
+    offline_db.save_platform(_platform_to_dict(platform))
 
     # Get all projects in platform
     projects_result = await db.execute(
@@ -1045,19 +1018,19 @@ class OrphanedFilesResponse(BaseModel):
     total_count: int
 
 
-@router.get("/offline/orphaned-files", response_model=OrphanedFilesResponse)
-async def list_orphaned_files(
+@router.get("/offline/local-files", response_model=OrphanedFilesResponse)
+async def list_local_files(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    List orphaned files (files whose server path doesn't exist).
+    List local files (files in Offline Storage, never synced to server).
 
     These files are displayed in the "Offline Storage" virtual folder.
-    User can move them to proper locations via Ctrl+X/V.
+    User can move them to proper locations via Ctrl+X/V when online.
     """
     try:
         offline_db = get_offline_db()
-        orphaned = offline_db.get_orphaned_files()
+        local_files = offline_db.get_local_files()
 
         files = [
             OrphanedFileInfo(
@@ -1068,7 +1041,7 @@ async def list_orphaned_files(
                 error_message=f.get("error_message"),
                 updated_at=f.get("updated_at")
             )
-            for f in orphaned
+            for f in local_files
         ]
 
         return OrphanedFilesResponse(
@@ -1076,22 +1049,158 @@ async def list_orphaned_files(
             total_count=len(files)
         )
     except Exception as e:
-        logger.error(f"Failed to list orphaned files: {e}")
+        logger.error(f"Failed to list local files: {e}")
         return OrphanedFilesResponse(files=[], total_count=0)
 
 
-@router.get("/offline/orphaned-file-count")
-async def get_orphaned_file_count(
+@router.get("/offline/local-file-count")
+async def get_local_file_count(
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Get count of orphaned files (for UI indicator)."""
+    """Get count of local files in Offline Storage (for UI indicator)."""
     try:
         offline_db = get_offline_db()
-        count = offline_db.get_orphaned_file_count()
+        count = offline_db.get_local_file_count()
         return {"count": count}
     except Exception as e:
-        logger.error(f"Failed to get orphaned file count: {e}")
+        logger.error(f"Failed to get local file count: {e}")
         return {"count": 0}
+
+
+# =============================================================================
+# P9: Offline Storage Operations
+# Note: File CREATION uses unified /api/ldm/files/upload?storage=local
+# These endpoints handle DELETE, RENAME, and ADD ROWS for offline files
+# =============================================================================
+
+class DeleteOfflineFileResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class RenameOfflineFileRequest(BaseModel):
+    new_name: str
+
+
+class RenameOfflineFileResponse(BaseModel):
+    success: bool
+    message: str
+
+
+# NOTE: File CREATION endpoint was removed - use unified /api/ldm/files/upload?storage=local
+# This ensures proper parsing via backend file handlers (txt_handler, xml_handler, excel_handler)
+
+
+@router.delete("/offline/storage/files/{file_id}", response_model=DeleteOfflineFileResponse)
+async def delete_offline_storage_file(
+    file_id: int,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9: Delete a file from Offline Storage.
+
+    Only works for local files (files in Offline Storage).
+    Downloaded files from the server cannot be deleted this way.
+    """
+    logger.info(f"Deleting file from Offline Storage: {file_id}")
+
+    try:
+        offline_db = get_offline_db()
+        success = offline_db.delete_local_file(file_id)
+
+        if success:
+            return DeleteOfflineFileResponse(
+                success=True,
+                message="File deleted from Offline Storage"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete: file not found or not in Offline Storage"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete file from Offline Storage: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
+
+
+@router.put("/offline/storage/files/{file_id}/rename", response_model=RenameOfflineFileResponse)
+async def rename_offline_storage_file(
+    file_id: int,
+    request: RenameOfflineFileRequest,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9: Rename a file in Offline Storage.
+
+    Only works for local files (files in Offline Storage).
+    Downloaded files from the server cannot be renamed this way.
+    """
+    logger.info(f"Renaming file in Offline Storage: {file_id} -> {request.new_name}")
+
+    try:
+        offline_db = get_offline_db()
+        success = offline_db.rename_local_file(file_id, request.new_name)
+
+        if success:
+            return RenameOfflineFileResponse(
+                success=True,
+                message=f"File renamed to '{request.new_name}'"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot rename: file not found or not in Offline Storage"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to rename file in Offline Storage: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}")
+
+
+@router.post("/offline/storage/files/{file_id}/rows")
+async def add_rows_to_offline_file(
+    file_id: int,
+    rows: list,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9: Add rows to a file in Offline Storage.
+
+    Only works for local files (files in Offline Storage).
+    """
+    logger.info(f"Adding {len(rows)} rows to offline file {file_id}")
+
+    try:
+        offline_db = get_offline_db()
+
+        # Verify file exists and is local (in Offline Storage)
+        file_info = offline_db.get_file(file_id)
+        if not file_info:
+            raise HTTPException(status_code=404, detail="File not found")
+        if file_info.get("sync_status") != "local":
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot add rows: file is not in Offline Storage"
+            )
+
+        offline_db.add_rows_to_local_file(file_id, rows)
+
+        return {
+            "success": True,
+            "rows_added": len(rows),
+            "message": f"Added {len(rows)} rows to file"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add rows to offline file: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to add rows: {str(e)}")
 
 
 # =============================================================================
@@ -1144,16 +1253,7 @@ async def download_file_for_offline(
 
         # Save project (needed for foreign key)
         if project:
-            offline_db.save_project({
-                "id": project.id,
-                "name": project.name,
-                "description": project.description,
-                "platform_id": project.platform_id,
-                "owner_id": project.owner_id,
-                "is_restricted": project.is_restricted,
-                "created_at": project.created_at.isoformat() if project.created_at else None,
-                "updated_at": project.updated_at.isoformat() if project.updated_at else None
-            })
+            offline_db.save_project(_project_to_dict(project))
 
         # Use merge-aware sync
         await _sync_file_to_offline(db, file_id, offline_db)
@@ -1183,24 +1283,22 @@ async def sync_file_to_central(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Sync a file from local SQLite to central PostgreSQL.
+    Sync a file from Offline Storage (SQLite) to central PostgreSQL.
 
     This endpoint:
-    1. Reads file metadata + all rows from local SQLite
-    2. Creates new file record in PostgreSQL (destination project)
+    1. Reads file metadata + all rows from Offline Storage (SQLite)
+    2. Creates new file record in PostgreSQL (destination project/folder)
     3. Bulk inserts all rows to PostgreSQL
     4. Returns the new file_id in central DB
 
     Use this when:
-    - User worked offline (SQLite mode)
-    - User reconnected (went online)
-    - User wants to upload local work to central server
-
-    The file data is passed as JSON (not re-read from disk).
+    - User imported a file to Offline Storage
+    - User wants to upload local work to a server project
     """
     from server.config import ACTIVE_DATABASE_TYPE
+    from server.database.offline import get_offline_db
 
-    logger.info(f"Sync to central: file_id={request.file_id}, dest_project={request.destination_project_id}")
+    logger.info(f"Sync to central: file_id={request.file_id}, dest_project={request.destination_project_id}, dest_folder={request.destination_folder_id}")
 
     # Verify we're online (connected to PostgreSQL)
     if ACTIVE_DATABASE_TYPE != "postgresql":
@@ -1213,81 +1311,84 @@ async def sync_file_to_central(
     if not await can_access_project(db, request.destination_project_id, current_user):
         raise HTTPException(status_code=404, detail="Destination project not found")
 
-    # Read from local SQLite database
-    # The SQLite file is at server/data/locanext.db
-    sqlite_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
-        "data", "locanext.db"
-    )
-
-    if not os.path.exists(sqlite_path):
-        raise HTTPException(
-            status_code=400,
-            detail="No local database found. You may not have worked offline."
+    # Verify destination folder if specified
+    if request.destination_folder_id:
+        folder_result = await db.execute(
+            select(LDMFolder).where(
+                LDMFolder.id == request.destination_folder_id,
+                LDMFolder.project_id == request.destination_project_id
+            )
         )
+        if not folder_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Destination folder not found")
 
     try:
-        # Create SQLite engine and session
-        sqlite_engine = create_engine(f"sqlite:///{sqlite_path}")
-        sqlite_session = Session(sqlite_engine)
+        # Read from Offline Storage using offline.py
+        offline_db = get_offline_db()
+        local_file = offline_db.get_local_file(request.file_id)
 
-        try:
-            # Read the file from SQLite
-            local_file = sqlite_session.query(LDMFile).filter(LDMFile.id == request.file_id).first()
+        if not local_file:
+            raise HTTPException(status_code=404, detail="File not found in Offline Storage")
 
-            if not local_file:
-                raise HTTPException(status_code=404, detail="File not found in local database")
+        local_rows = offline_db.get_rows_for_file(request.file_id)
+        logger.info(f"Read {len(local_rows)} rows from Offline Storage for file {request.file_id}")
 
-            # Read all rows for this file from SQLite
-            local_rows = sqlite_session.query(LDMRow).filter(
-                LDMRow.file_id == request.file_id
-            ).order_by(LDMRow.row_num).all()
+        # Parse extra_data if it's a JSON string
+        import json
+        extra_data = local_file.get("extra_data")
+        if extra_data and isinstance(extra_data, str):
+            try:
+                extra_data = json.loads(extra_data)
+            except (json.JSONDecodeError, TypeError):
+                extra_data = None
 
-            logger.info(f"Read {len(local_rows)} rows from local SQLite for file {request.file_id}")
+        # Create new file in PostgreSQL
+        new_file = LDMFile(
+            project_id=request.destination_project_id,
+            folder_id=request.destination_folder_id,  # Can be None for project root
+            name=local_file.get("name", "unknown"),
+            original_filename=local_file.get("original_filename") or local_file.get("name"),
+            format=local_file.get("format", "txt"),
+            row_count=len(local_rows),
+            source_language=local_file.get("source_language"),
+            target_language=local_file.get("target_language"),
+            extra_data=extra_data,
+            created_by=current_user["user_id"]
+        )
+        db.add(new_file)
+        await db.flush()
 
-            # Create new file in PostgreSQL
-            new_file = LDMFile(
-                project_id=request.destination_project_id,
-                folder_id=None,  # Goes to project root
-                name=local_file.name,
-                original_filename=local_file.original_filename,
-                format=local_file.format,
-                row_count=len(local_rows),
-                source_language=local_file.source_language,
-                target_language=local_file.target_language,
-                extra_data=local_file.extra_data,
-                created_by=current_user["user_id"]
+        # Create rows in PostgreSQL
+        for local_row in local_rows:
+            # Parse extra_data for rows too
+            row_extra = local_row.get("extra_data")
+            if row_extra and isinstance(row_extra, str):
+                try:
+                    row_extra = json.loads(row_extra)
+                except (json.JSONDecodeError, TypeError):
+                    row_extra = None
+
+            new_row = LDMRow(
+                file_id=new_file.id,
+                row_num=local_row.get("row_num", 0),
+                string_id=local_row.get("string_id"),
+                source=local_row.get("source"),
+                target=local_row.get("target"),
+                status=local_row.get("status", "pending"),
+                extra_data=row_extra
             )
-            db.add(new_file)
-            await db.flush()
+            db.add(new_row)
 
-            # Create rows in PostgreSQL
-            for local_row in local_rows:
-                new_row = LDMRow(
-                    file_id=new_file.id,
-                    row_num=local_row.row_num,
-                    string_id=local_row.string_id,
-                    source=local_row.source,
-                    target=local_row.target,
-                    status=local_row.status,
-                    extra_data=local_row.extra_data
-                )
-                db.add(new_row)
+        await db.commit()
 
-            await db.commit()
+        logger.success(f"Synced file to central: local_id={request.file_id} → central_id={new_file.id}, rows={len(local_rows)}")
 
-            logger.success(f"Synced file to central: local_id={request.file_id} → central_id={new_file.id}, rows={len(local_rows)}")
-
-            return SyncFileToCentralResponse(
-                success=True,
-                new_file_id=new_file.id,
-                rows_synced=len(local_rows),
-                message=f"Successfully synced {len(local_rows)} rows to central server"
-            )
-
-        finally:
-            sqlite_session.close()
-            sqlite_engine.dispose()
+        return SyncFileToCentralResponse(
+            success=True,
+            new_file_id=new_file.id,
+            rows_synced=len(local_rows),
+            message=f"Successfully synced {len(local_rows)} rows to central server"
+        )
 
     except HTTPException:
         raise

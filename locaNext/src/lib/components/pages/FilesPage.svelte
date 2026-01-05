@@ -12,6 +12,7 @@
    * - Breadcrumb navigation
    */
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import { Modal, TextInput, Select, SelectItem, TextArea, ProgressBar, InlineLoading } from 'carbon-components-svelte';
   import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, CloudDownload, Edit, TrashCan, Merge, Application, Archive, Locked, Copy, Cut } from 'carbon-icons-svelte';
   import ExplorerGrid from '$lib/components/ldm/ExplorerGrid.svelte';
@@ -22,7 +23,7 @@
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import { preferences } from '$lib/stores/preferences.js';
   import { savedFilesState } from '$lib/stores/navigation.js';
-  import { user } from '$lib/stores/app.js';
+  import { user, offlineMode } from '$lib/stores/app.js';
   import AccessControl from '$lib/components/admin/AccessControl.svelte';
   import { subscribeForOffline, unsubscribeFromOffline, isSubscribed, autoSyncFileOnOpen, connectionMode as syncConnectionMode } from '$lib/stores/sync.js';
   import { clipboard, copyToClipboard, cutToClipboard, clearClipboard, getClipboard, isItemCut } from '$lib/stores/clipboard.js';
@@ -105,6 +106,25 @@
   // Check if current user is admin
   let isAdmin = $derived($user?.role === 'admin' || $user?.role === 'superadmin');
 
+  // P9: Offline mode permission checks
+  // In offline mode, user can only work freely in Offline Storage
+  // Downloaded content is read-only structure (can edit row content, not rename/move/delete)
+  let isInOfflineStorage = $derived(currentPath[0]?.type === 'offline-storage');
+  let canModifyStructure = $derived(!$offlineMode || isInOfflineStorage);
+
+  // P9: Track offline mode changes to reload root (show/hide Offline Storage)
+  let prevOfflineMode = $state(false);
+  $effect(() => {
+    const currentOffline = $offlineMode;
+    if (currentOffline !== prevOfflineMode) {
+      prevOfflineMode = currentOffline;
+      // Reload root to show/hide Offline Storage
+      if (currentPath.length === 0) {
+        loadRoot();
+      }
+    }
+  });
+
   // Clipboard reactive state
   let clipboardItems = $derived($clipboard.items);
   let clipboardOperation = $derived($clipboard.operation);
@@ -120,75 +140,88 @@
   async function loadRoot() {
     loading = true;
     try {
-      // Fetch platforms, projects, and orphaned file count in parallel
-      const [platformsRes, projectsRes, orphanedRes] = await Promise.all([
+      // P9: Check offline mode first - in offline mode, show Offline Storage even if APIs fail
+      const isOffline = get(offlineMode);
+
+      // Fetch platforms, projects, and local file count in parallel
+      // Use Promise.allSettled to continue even if some fail (important for offline mode)
+      const [platformsResult, projectsResult, localFilesResult] = await Promise.allSettled([
         fetch(`${API_BASE}/api/ldm/platforms`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE}/api/ldm/projects`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/api/ldm/offline/orphaned-file-count`, { headers: getAuthHeaders() }).catch(() => null)
+        fetch(`${API_BASE}/api/ldm/offline/local-file-count`, { headers: getAuthHeaders() })
       ]);
 
       let platformList = [];
-      if (platformsRes.ok) {
-        const data = await platformsRes.json();
+      if (platformsResult.status === 'fulfilled' && platformsResult.value.ok) {
+        const data = await platformsResult.value.json();
         platformList = data.platforms || [];
         platforms = platformList;
       }
 
       let projectList = [];
-      if (projectsRes.ok) {
-        projectList = await projectsRes.json();
+      if (projectsResult.status === 'fulfilled' && projectsResult.value.ok) {
+        projectList = await projectsResult.value.json();
         projects = projectList;
       }
 
-      // P3-PHASE5: Check for orphaned files
-      let orphanedCount = 0;
-      if (orphanedRes && orphanedRes.ok) {
-        const data = await orphanedRes.json();
-        orphanedCount = data.count || 0;
+      // P9: Check for local files (files in Offline Storage)
+      let localFileCount = 0;
+      if (localFilesResult.status === 'fulfilled' && localFilesResult.value.ok) {
+        const data = await localFilesResult.value.json();
+        localFileCount = data.count || 0;
       }
 
       // Build root items: Unassigned section + Platforms
       const items = [];
 
-      // P3-PHASE5: Add Offline Storage if there are orphaned files
-      if (orphanedCount > 0) {
+      // P9: In offline mode, Offline Storage is ALWAYS visible (primary workspace)
+      // Otherwise, show it only if there are local files
+      logger.debug('loadRoot: isOffline =', isOffline, 'localFileCount =', localFileCount);
+      if (isOffline || localFileCount > 0) {
         items.push({
           type: 'offline-storage',
           id: 'offline-storage',
           name: 'Offline Storage',
-          description: `${orphanedCount} file${orphanedCount !== 1 ? 's' : ''} need${orphanedCount === 1 ? 's' : ''} a destination`,
-          file_count: orphanedCount
+          description: isOffline
+            ? 'Your offline workspace - work here, sync when online'
+            : `${localFileCount} file${localFileCount !== 1 ? 's' : ''} need${localFileCount === 1 ? 's' : ''} a destination`,
+          file_count: localFileCount,
+          isOfflineMode: isOffline  // Flag for special styling
         });
       }
 
-      // Add platforms
-      platformList.forEach(p => {
-        items.push({
-          type: 'platform',
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          project_count: p.project_count || 0,
-          is_restricted: p.is_restricted || false
-        });
-      });
-
-      // Add unassigned projects (projects without platform_id)
-      const unassignedProjects = projectList.filter(p => !p.platform_id);
-      if (unassignedProjects.length > 0 || platformList.length === 0) {
-        // If there are unassigned projects OR no platforms exist, show them at root
-        unassignedProjects.forEach(p => {
+      // P9: In offline mode, hide PostgreSQL data - only show Offline Storage
+      // User's sandbox is Offline Storage; PostgreSQL data is read-only and confusing to show
+      if (!isOffline) {
+        // Add platforms
+        platformList.forEach(p => {
           items.push({
-            type: 'project',
+            type: 'platform',
             id: p.id,
             name: p.name,
-            file_count: p.file_count || 0,
-            platform_id: null,
-            created_at: p.created_at,
-            updated_at: p.updated_at,
+            description: p.description,
+            project_count: p.project_count || 0,
             is_restricted: p.is_restricted || false
           });
         });
+
+        // Add unassigned projects (projects without platform_id)
+        const unassignedProjects = projectList.filter(p => !p.platform_id);
+        if (unassignedProjects.length > 0 || platformList.length === 0) {
+          // If there are unassigned projects OR no platforms exist, show them at root
+          unassignedProjects.forEach(p => {
+            items.push({
+              type: 'project',
+              id: p.id,
+              name: p.name,
+              file_count: p.file_count || 0,
+              platform_id: null,
+              created_at: p.created_at,
+              updated_at: p.updated_at,
+              is_restricted: p.is_restricted || false
+            });
+          });
+        }
       }
 
       // EXPLORER-008: Add Recycle Bin at the end
@@ -203,7 +236,7 @@
       currentPath = [];
       selectedProjectId = null;
       selectedPlatformId = null;
-      logger.info('Loaded root', { platforms: platformList.length, unassigned: unassignedProjects.length, orphaned: orphanedCount });
+      logger.info('Loaded root', { platforms: platformList.length, unassigned: unassignedProjects.length, localFiles: localFileCount, offlineMode: isOffline });
     } catch (err) {
       logger.error('Failed to load root', { error: err.message });
     } finally {
@@ -574,19 +607,19 @@
     }
   }
 
-  // P3-PHASE5: Load Offline Storage contents (orphaned files)
+  // P9: Load Offline Storage contents (local files)
   async function loadOfflineStorageContents() {
     loading = true;
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/offline/orphaned-files`, {
+      const response = await fetch(`${API_BASE}/api/ldm/offline/local-files`, {
         headers: getAuthHeaders()
       });
 
       if (response.ok) {
         const data = await response.json();
-        // Convert orphaned files to display format
+        // Convert local files to display format
         currentItems = data.files.map(f => ({
-          type: 'orphaned-file',
+          type: 'local-file',  // P9: Renamed from 'orphaned-file' for clarity
           id: f.id,
           name: f.name,
           format: f.format,
@@ -815,10 +848,16 @@
   }
 
   // ============== File Operations ==============
+  // P9: These operations work for both 'file' (PostgreSQL) and 'local-file' (SQLite)
+  // because the backend endpoints use unified fallback logic
+
+  function isFileType(item) {
+    return item && ['file', 'local-file'].includes(item.type);
+  }
 
   // Download
   async function downloadFile() {
-    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
+    if (!isFileType(contextMenuItem)) return;
     const file = { ...contextMenuItem };
     closeMenus();
 
@@ -881,7 +920,7 @@
 
   // Convert
   async function convertFile(targetFormat) {
-    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
+    if (!isFileType(contextMenuItem)) return;
     const file = { ...contextMenuItem };
     closeMenus();
 
@@ -917,7 +956,7 @@
 
   // Pre-translate
   function openPretranslate() {
-    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
+    if (!isFileType(contextMenuItem)) return;
     pretranslateFile = {
       id: contextMenuItem.id,
       name: contextMenuItem.name,
@@ -939,7 +978,7 @@
 
   // Run QA
   function runQA() {
-    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
+    if (!isFileType(contextMenuItem)) return;
     const file = { ...contextMenuItem };
     closeMenus();
     dispatch('runQA', { fileId: file.id, type: 'all', fileName: file.name });
@@ -949,7 +988,7 @@
   let tmRegistrationFile = $state(null);
 
   function openTMRegistration() {
-    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
+    if (!isFileType(contextMenuItem)) return;
     tmRegistrationFile = { ...contextMenuItem }; // Store before closing menu
     tmName = tmRegistrationFile.name.replace(/\.[^.]+$/, '') + '_TM';
     tmLanguage = 'en';
@@ -988,7 +1027,7 @@
 
   // Extract Glossary
   async function extractGlossary() {
-    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
+    if (!isFileType(contextMenuItem)) return;
     const file = { ...contextMenuItem };
     closeMenus();
 
@@ -1021,7 +1060,7 @@
 
   // Merge
   function openMerge() {
-    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
+    if (!isFileType(contextMenuItem)) return;
     const format = contextMenuItem.format?.toLowerCase() || '';
     if (!['txt', 'xml'].includes(format)) {
       logger.warning('Merge not supported for this format', { format });
@@ -1086,7 +1125,7 @@
 
   // Upload to Server
   async function openUploadToServer() {
-    if (!contextMenuItem || contextMenuItem.type !== 'file') return;
+    if (!isFileType(contextMenuItem)) return;
     uploadToServerFile = { ...contextMenuItem };
     uploadToServerDestination = null;
     uploadToServerLoading = true;
@@ -1340,48 +1379,88 @@
 
   // Upload File
   function triggerFileUpload() {
-    if (!selectedProjectId) return;
+    // P9: Allow upload when in Offline Storage (no projectId needed)
+    const inOfflineStorage = currentPath[0]?.type === 'offline-storage';
+    if (!selectedProjectId && !inOfflineStorage) return;
+
     uploadTargetFolderId = currentPath.length > 1 ? currentPath[currentPath.length - 1].id : null;
     if (fileInput) fileInput.click();
   }
 
   async function handleFileUpload(event) {
     const files = event.target.files;
-    if (!files?.length || !selectedProjectId) return;
+    if (!files?.length) return;
 
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append('project_id', selectedProjectId);
-      if (uploadTargetFolderId) {
-        formData.append('folder_id', uploadTargetFolderId);
-      }
-      formData.append('file', file);
+    // P9: Check if uploading to Offline Storage
+    const inOfflineStorage = currentPath[0]?.type === 'offline-storage';
 
-      try {
-        const response = await fetch(`${API_BASE}/api/ldm/files/upload`, {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: formData
-        });
-        if (response.ok) {
-          const result = await response.json();
-          logger.success('File uploaded', { name: file.name, rows: result.row_count });
-        } else {
-          const error = await response.json();
-          logger.error('Upload failed', { name: file.name, error: error.detail });
+    if (inOfflineStorage) {
+      // P9: Upload to Offline Storage via unified endpoint with storage=local
+      // Backend parses the file properly (same as PostgreSQL upload)
+      for (const file of files) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('storage', 'local');
+
+          const response = await fetch(`${API_BASE}/api/ldm/files/upload`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: formData
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            logger.success('File imported to Offline Storage', { name: file.name, rows: result.row_count });
+          } else {
+            const error = await response.json();
+            logger.error('Import failed', { name: file.name, error: error.detail });
+          }
+        } catch (err) {
+          logger.error('Import error', { error: err.message });
         }
-      } catch (err) {
-        logger.error('Upload error', { error: err.message });
       }
-    }
 
-    // Refresh current view (stay in context)
-    if (currentPath.length === 1) {
-      await loadProjectContents(selectedProjectId);
-    } else if (currentPath.length > 1) {
-      // Inside a folder - reload without modifying path
-      const currentFolder = currentPath[currentPath.length - 1];
-      await reloadCurrentFolderContents(currentFolder.id);
+      // Refresh Offline Storage
+      await loadOfflineStorageContents();
+    } else {
+      // Normal upload to project/folder
+      if (!selectedProjectId) return;
+
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('project_id', selectedProjectId);
+        if (uploadTargetFolderId) {
+          formData.append('folder_id', uploadTargetFolderId);
+        }
+        formData.append('file', file);
+
+        try {
+          const response = await fetch(`${API_BASE}/api/ldm/files/upload`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: formData
+          });
+          if (response.ok) {
+            const result = await response.json();
+            logger.success('File uploaded', { name: file.name, rows: result.row_count });
+          } else {
+            const error = await response.json();
+            logger.error('Upload failed', { name: file.name, error: error.detail });
+          }
+        } catch (err) {
+          logger.error('Upload error', { error: err.message });
+        }
+      }
+
+      // Refresh current view (stay in context)
+      if (currentPath.length === 1) {
+        await loadProjectContents(selectedProjectId);
+      } else if (currentPath.length > 1) {
+        // Inside a folder - reload without modifying path
+        const currentFolder = currentPath[currentPath.length - 1];
+        await reloadCurrentFolderContents(currentFolder.id);
+      }
     }
 
     if (fileInput) fileInput.value = '';
@@ -1418,6 +1497,11 @@
       url = `${API_BASE}/api/ldm/folders/${id}/rename?name=${encodeURIComponent(newName)}`;
     } else if (type === 'file') {
       url = `${API_BASE}/api/ldm/files/${id}/rename?name=${encodeURIComponent(newName)}`;
+    } else if (type === 'local-file') {
+      // P9: Rename local file in Offline Storage
+      url = `${API_BASE}/api/ldm/offline/storage/files/${id}/rename`;
+      method = 'PUT';
+      body = JSON.stringify({ new_name: newName });
     }
 
     // OPTIMISTIC UI: Store original name for rollback
@@ -1483,6 +1567,8 @@
         return `Delete folder "${name}" and ALL its contents?`;
       case 'file':
         return `Delete file "${name}"?`;
+      case 'local-file':
+        return `Delete "${name}" from Offline Storage? This action is permanent.`;
       default:
         return `Delete "${name}"?`;
     }
@@ -1532,6 +1618,9 @@
         url = `${API_BASE}/api/ldm/folders/${id}`;
       } else if (type === 'file') {
         url = `${API_BASE}/api/ldm/files/${id}`;
+      } else if (type === 'local-file') {
+        // P9: Delete local file from Offline Storage
+        url = `${API_BASE}/api/ldm/offline/storage/files/${id}`;
       }
 
       try {
@@ -2123,6 +2212,7 @@
     <div class="search-wrapper">
       <ExplorerSearch
         apiBase={API_BASE}
+        isOfflineMode={$offlineMode}
         onnavigate={navigateToSearchResult}
         oncopy={handleSearchCopy}
         oncut={handleSearchCut}
@@ -2172,12 +2262,16 @@
   <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px" role="menu" onclick={(e) => e.stopPropagation()}>
     {#if contextMenuItem.type === 'file'}
       <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
-      <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
-      {#if clipboardItems.length > 0}
+      {#if canModifyStructure}
+        <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
+      {/if}
+      {#if clipboardItems.length > 0 && canModifyStructure}
         <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>Paste (Ctrl+V)</button>
       {/if}
       <div class="context-menu-divider"></div>
-      <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
+      {#if canModifyStructure}
+        <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
+      {/if}
       <button class="context-menu-item" onclick={downloadFile}><Download size={16} /> Download</button>
       {#if $syncConnectionMode === 'online'}
         <button class="context-menu-item" onclick={handleToggleOfflineSync}>
@@ -2199,55 +2293,93 @@
         <div class="context-menu-divider"></div>
         <button class="context-menu-item" onclick={openUploadToServer}><CloudUpload size={16} /> Upload to Server</button>
       {/if}
-      <div class="context-menu-divider"></div>
-      <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
+      {#if canModifyStructure}
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
+      {/if}
     {:else if contextMenuItem.type === 'folder'}
       <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
-      <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
-      {#if clipboardItems.length > 0}
+      {#if canModifyStructure}
+        <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
+      {/if}
+      {#if clipboardItems.length > 0 && canModifyStructure}
         <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>Paste Here (Ctrl+V)</button>
       {/if}
       <div class="context-menu-divider"></div>
-      <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
-      <button class="context-menu-item" onclick={bgUploadFile}><DocumentAdd size={16} /> Import File</button>
-      <button class="context-menu-item" onclick={bgCreateFolder}><FolderAdd size={16} /> New Subfolder</button>
-      <div class="context-menu-divider"></div>
-      <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
+      {#if canModifyStructure}
+        <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
+        <button class="context-menu-item" onclick={bgUploadFile}><DocumentAdd size={16} /> Import File</button>
+        <button class="context-menu-item" onclick={bgCreateFolder}><FolderAdd size={16} /> New Subfolder</button>
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
+      {/if}
     {:else if contextMenuItem.type === 'project'}
-      <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
-      <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
-      {#if clipboardItems.length > 0 && clipboardItems.every(i => i.type === 'project')}
-        <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>Paste Project Here</button>
-      {/if}
-      <div class="context-menu-divider"></div>
-      <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
-      <button class="context-menu-item" onclick={openAssignPlatform}><Application size={16} /> Assign to Platform...</button>
-      {#if $syncConnectionMode === 'online'}
-        <button class="context-menu-item" onclick={handleToggleOfflineSync}>
-          <CloudDownload size={16} />
-          {contextItemSubscribed ? 'Disable Offline Sync' : 'Enable Offline Sync'}
-        </button>
-      {/if}
-      {#if isAdmin}
+      {#if !$offlineMode}
+        <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
+        <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
+        {#if clipboardItems.length > 0 && clipboardItems.every(i => i.type === 'project')}
+          <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>Paste Project Here</button>
+        {/if}
         <div class="context-menu-divider"></div>
-        <button class="context-menu-item" onclick={openAccessControl}><Locked size={16} /> Manage Access...</button>
+        <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
+        <button class="context-menu-item" onclick={openAssignPlatform}><Application size={16} /> Assign to Platform...</button>
+        {#if $syncConnectionMode === 'online'}
+          <button class="context-menu-item" onclick={handleToggleOfflineSync}>
+            <CloudDownload size={16} />
+            {contextItemSubscribed ? 'Disable Offline Sync' : 'Enable Offline Sync'}
+          </button>
+        {/if}
+        {#if isAdmin}
+          <div class="context-menu-divider"></div>
+          <button class="context-menu-item" onclick={openAccessControl}><Locked size={16} /> Manage Access...</button>
+        {/if}
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
+      {:else}
+        <!-- P9: In offline mode, projects are read-only structure -->
+        <div class="context-menu-item disabled">Project structure is read-only offline</div>
       {/if}
-      <div class="context-menu-divider"></div>
-      <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
     {:else if contextMenuItem.type === 'platform'}
-      <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
-      {#if $syncConnectionMode === 'online'}
-        <button class="context-menu-item" onclick={handleToggleOfflineSync}>
-          <CloudDownload size={16} />
-          {contextItemSubscribed ? 'Disable Offline Sync' : 'Enable Offline Sync'}
-        </button>
-      {/if}
-      {#if isAdmin}
+      {#if !$offlineMode}
+        <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
+        {#if $syncConnectionMode === 'online'}
+          <button class="context-menu-item" onclick={handleToggleOfflineSync}>
+            <CloudDownload size={16} />
+            {contextItemSubscribed ? 'Disable Offline Sync' : 'Enable Offline Sync'}
+          </button>
+        {/if}
+        {#if isAdmin}
+          <div class="context-menu-divider"></div>
+          <button class="context-menu-item" onclick={openAccessControl}><Locked size={16} /> Manage Access...</button>
+        {/if}
         <div class="context-menu-divider"></div>
-        <button class="context-menu-item" onclick={openAccessControl}><Locked size={16} /> Manage Access...</button>
+        <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
+      {:else}
+        <!-- P9: In offline mode, platforms are read-only structure -->
+        <div class="context-menu-item disabled">Platform structure is read-only offline</div>
       {/if}
+    {:else if contextMenuItem.type === 'local-file'}
+      <!-- P9: Local file context menu - SAME as regular file (unified endpoints handle both) -->
+      <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" onclick={openRename}><Edit size={16} /> Rename</button>
+      <button class="context-menu-item" onclick={downloadFile}><Download size={16} /> Download</button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" onclick={() => convertFile('xlsx')}><Renew size={16} /> Convert to XLSX</button>
+      <button class="context-menu-item" onclick={() => convertFile('xml')}><Renew size={16} /> Convert to XML</button>
+      <button class="context-menu-item" onclick={() => convertFile('tmx')}><Renew size={16} /> Convert to TMX</button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item pretranslate" onclick={openPretranslate}><Translate size={16} /> Pre-translate...</button>
+      <button class="context-menu-item" onclick={runQA}><Flash size={16} /> Run QA</button>
+      <button class="context-menu-item" onclick={openTMRegistration}><DataBase size={16} /> Register as TM</button>
+      <button class="context-menu-item" onclick={extractGlossary}><TextMining size={16} /> Extract Glossary</button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" onclick={openUploadToServer}><CloudUpload size={16} /> Upload to Server</button>
       <div class="context-menu-divider"></div>
       <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
+    {:else if contextMenuItem.type === 'offline-storage'}
+      <!-- P9: Offline Storage - no context actions, just close menu -->
+      <div class="context-menu-item disabled">No actions available</div>
     {:else if contextMenuItem.type === 'trash-item'}
       <!-- EXPLORER-008: Trash item context menu -->
       <button class="context-menu-item" onclick={() => { restoreFromTrash(contextMenuItem.trash_id); closeMenus(); }}>
@@ -2266,27 +2398,60 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="context-menu" style="left: {bgMenuX}px; top: {bgMenuY}px" role="menu" onclick={(e) => e.stopPropagation()}>
     {#if currentPath.length === 0}
-      <!-- At root: can create platform or project -->
-      <button class="context-menu-item" onclick={bgCreatePlatform}><Application size={16} /> New Platform</button>
-      <button class="context-menu-item" onclick={bgCreateProject}><FolderAdd size={16} /> New Project</button>
+      <!-- At root: can create platform or project (but NOT in offline mode) -->
+      {#if $offlineMode}
+        <div class="context-menu-item disabled">
+          <Application size={16} /> New Platform (Online only)
+        </div>
+        <div class="context-menu-item disabled">
+          <FolderAdd size={16} /> New Project (Online only)
+        </div>
+      {:else}
+        <button class="context-menu-item" onclick={bgCreatePlatform}><Application size={16} /> New Platform</button>
+        <button class="context-menu-item" onclick={bgCreateProject}><FolderAdd size={16} /> New Project</button>
+      {/if}
     {:else if currentPath[0]?.type === 'recycle-bin'}
       <!-- EXPLORER-008: Inside Recycle Bin -->
       <button class="context-menu-item danger" onclick={() => { emptyTrash(); closeMenus(); }}>
         <TrashCan size={16} /> Empty Recycle Bin
       </button>
-    {:else if currentPath[0]?.type === 'platform' && currentPath.length === 1}
-      <!-- Inside a platform: can only create project -->
-      <button class="context-menu-item" onclick={bgCreateProject}><FolderAdd size={16} /> New Project</button>
-    {:else}
-      <!-- Inside project/folder: upload file or create folder -->
+    {:else if currentPath[0]?.type === 'offline-storage'}
+      <!-- P9: Inside Offline Storage: import files (flat structure, no folders) -->
       {#if clipboardItems.length > 0}
         <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>
           Paste {clipboardItems.length} item{clipboardItems.length > 1 ? 's' : ''} (Ctrl+V)
         </button>
         <div class="context-menu-divider"></div>
       {/if}
-      <button class="context-menu-item" onclick={bgUploadFile}><DocumentAdd size={16} /> Upload File</button>
-      <button class="context-menu-item" onclick={bgCreateFolder}><FolderAdd size={16} /> New Folder</button>
+      <button class="context-menu-item" onclick={bgUploadFile}><DocumentAdd size={16} /> Import File</button>
+    {:else if currentPath[0]?.type === 'platform' && currentPath.length === 1}
+      <!-- Inside a platform: can only create project (but NOT in offline mode) -->
+      {#if $offlineMode}
+        <div class="context-menu-item disabled">
+          <FolderAdd size={16} /> New Project (Online only)
+        </div>
+      {:else}
+        <button class="context-menu-item" onclick={bgCreateProject}><FolderAdd size={16} /> New Project</button>
+      {/if}
+    {:else}
+      <!-- Inside project/folder: upload file or create folder -->
+      {#if clipboardItems.length > 0 && canModifyStructure}
+        <button class="context-menu-item" onclick={() => { handlePaste(); closeMenus(); }}>
+          Paste {clipboardItems.length} item{clipboardItems.length > 1 ? 's' : ''} (Ctrl+V)
+        </button>
+        <div class="context-menu-divider"></div>
+      {/if}
+      {#if canModifyStructure}
+        <button class="context-menu-item" onclick={bgUploadFile}><DocumentAdd size={16} /> Upload File</button>
+        <button class="context-menu-item" onclick={bgCreateFolder}><FolderAdd size={16} /> New Folder</button>
+      {:else}
+        <div class="context-menu-item disabled">
+          <DocumentAdd size={16} /> Upload File (Offline Storage only)
+        </div>
+        <div class="context-menu-item disabled">
+          <FolderAdd size={16} /> New Folder (Offline Storage only)
+        </div>
+      {/if}
     {/if}
   </div>
 {/if}
@@ -2593,6 +2758,16 @@
   .context-menu-item.danger:hover {
     background: var(--cds-support-error);
     color: white;
+  }
+
+  .context-menu-item.disabled {
+    color: var(--cds-text-disabled);
+    cursor: not-allowed;
+    font-style: italic;
+  }
+
+  .context-menu-item.disabled:hover {
+    background: transparent;
   }
 
   .context-menu-divider {

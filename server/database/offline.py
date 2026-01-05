@@ -50,6 +50,10 @@ class OfflineDatabase:
         """Ensure database directory exists."""
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
+    # P9-ARCH: Well-known IDs for Offline Storage
+    OFFLINE_STORAGE_PLATFORM_ID = -1
+    OFFLINE_STORAGE_PROJECT_ID = -1
+
     def _init_schema(self):
         """Initialize database schema if needed."""
         schema_path = Path(__file__).parent / "offline_schema.sql"
@@ -65,6 +69,49 @@ class OfflineDatabase:
             conn.executescript(schema_sql)
             conn.commit()
             logger.debug(f"Offline database initialized: {self.db_path}")
+
+        # P9-ARCH: Create Offline Storage platform and project
+        self._ensure_offline_storage_project()
+
+    def _ensure_offline_storage_project(self):
+        """
+        P9-ARCH: Create the Offline Storage platform and project if they don't exist.
+
+        This makes Offline Storage a real project in the SQLite database,
+        so TMs can be assigned to it and all existing logic works naturally.
+        """
+        with self._get_connection() as conn:
+            # Check if Offline Storage platform exists
+            platform = conn.execute(
+                "SELECT id FROM offline_platforms WHERE id = ?",
+                (self.OFFLINE_STORAGE_PLATFORM_ID,)
+            ).fetchone()
+
+            if not platform:
+                # Create Offline Storage platform
+                now = datetime.now().isoformat()
+                conn.execute("""
+                    INSERT INTO offline_platforms (id, server_id, name, description, owner_id, is_restricted, created_at, updated_at, sync_status)
+                    VALUES (?, 0, 'Offline Storage', 'Local files stored offline', 0, 0, ?, ?, 'local')
+                """, (self.OFFLINE_STORAGE_PLATFORM_ID, now, now))
+                logger.info("P9-ARCH: Created Offline Storage platform")
+
+            # Check if Offline Storage project exists
+            project = conn.execute(
+                "SELECT id FROM offline_projects WHERE id = ?",
+                (self.OFFLINE_STORAGE_PROJECT_ID,)
+            ).fetchone()
+
+            if not project:
+                # Create Offline Storage project
+                now = datetime.now().isoformat()
+                conn.execute("""
+                    INSERT INTO offline_projects (id, server_id, name, description, platform_id, server_platform_id, owner_id, is_restricted, created_at, updated_at, sync_status)
+                    VALUES (?, 0, 'Offline Storage', 'Local files stored offline', ?, 0, 0, 0, ?, ?, 'local')
+                """, (self.OFFLINE_STORAGE_PROJECT_ID, self.OFFLINE_STORAGE_PLATFORM_ID, now, now))
+                logger.info("P9-ARCH: Created Offline Storage project")
+
+            conn.commit()
 
     def _get_connection(self) -> sqlite3.Connection:
         """Get database connection with row factory."""
@@ -93,6 +140,35 @@ class OfflineDatabase:
                 (key, value)
             )
             conn.commit()
+
+    # =========================================================================
+    # P9-ARCH: Offline Storage Project
+    # =========================================================================
+
+    def get_offline_storage_project(self) -> Dict:
+        """
+        P9-ARCH: Get the Offline Storage project info.
+
+        This is the "virtual" project that holds all local files.
+        TMs can be assigned to this project to work with offline files.
+        """
+        with self._get_connection() as conn:
+            project = conn.execute(
+                "SELECT * FROM offline_projects WHERE id = ?",
+                (self.OFFLINE_STORAGE_PROJECT_ID,)
+            ).fetchone()
+            return dict(project) if project else None
+
+    def get_offline_storage_platform(self) -> Dict:
+        """
+        P9-ARCH: Get the Offline Storage platform info.
+        """
+        with self._get_connection() as conn:
+            platform = conn.execute(
+                "SELECT * FROM offline_platforms WHERE id = ?",
+                (self.OFFLINE_STORAGE_PLATFORM_ID,)
+            ).fetchone()
+            return dict(platform) if platform else None
 
     def get_last_sync(self) -> Optional[str]:
         """Get last sync timestamp."""
@@ -953,28 +1029,58 @@ class OfflineDatabase:
             conn.commit()
             logger.info(f"Marked file {file_id} as orphaned: {reason}")
 
-    def get_orphaned_files(self) -> List[Dict]:
-        """Get all orphaned files (files without valid server path)."""
+    def get_local_files(self) -> List[Dict]:
+        """Get all local files (files in Offline Storage, never synced to server)."""
         with self._get_connection() as conn:
             rows = conn.execute(
                 """SELECT * FROM offline_files
-                   WHERE sync_status = 'orphaned'
+                   WHERE sync_status = 'local'
                    ORDER BY name"""
             ).fetchall()
             return [dict(row) for row in rows]
 
-    def get_orphaned_file_count(self) -> int:
-        """Get count of orphaned files."""
+    def get_local_file(self, file_id: int) -> Optional[Dict]:
+        """P9: Get a single local file by ID."""
         with self._get_connection() as conn:
             row = conn.execute(
-                "SELECT COUNT(*) as count FROM offline_files WHERE sync_status = 'orphaned'"
+                "SELECT * FROM offline_files WHERE id = ?",
+                (file_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def get_rows_for_file(self, file_id: int) -> List[Dict]:
+        """P9: Get all rows for a file from SQLite."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """SELECT * FROM offline_rows
+                   WHERE file_id = ?
+                   ORDER BY row_num""",
+                (file_id,)
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    def get_row(self, row_id: int) -> Optional[Dict]:
+        """P9: Get a single row by ID from SQLite."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM offline_rows WHERE id = ?",
+                (row_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def get_local_file_count(self) -> int:
+        """Get count of local files in Offline Storage."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) as count FROM offline_files WHERE sync_status = 'local'"
             ).fetchone()
             return row["count"]
 
-    def unorphan_file(self, file_id: int, project_id: int, folder_id: int = None):
+    def assign_local_file(self, file_id: int, project_id: int, folder_id: int = None):
         """
-        Move file out of orphaned state to a proper location.
+        Assign a local file to a server project/folder.
         Called when user moves file from Offline Storage to a real folder.
+        Changes sync_status from 'local' to 'modified' (ready to sync).
         """
         with self._get_connection() as conn:
             conn.execute(
@@ -987,7 +1093,258 @@ class OfflineDatabase:
                 (project_id, project_id, folder_id, folder_id, file_id)
             )
             conn.commit()
-            logger.info(f"Unorphaned file {file_id} to project {project_id}, folder {folder_id}")
+            logger.info(f"Assigned local file {file_id} to project {project_id}, folder {folder_id}")
+
+    def create_local_file(
+        self,
+        name: str,
+        original_filename: str,
+        file_format: str = "txt",
+        source_language: str = "ko",
+        target_language: str = None,
+        extra_data: Dict = None
+    ) -> int:
+        """
+        P9: Create a new file directly in Offline Storage (local-only).
+
+        This is for files created/imported while in offline mode.
+        They have no server reference and live only in Offline Storage
+        until the user goes online and moves them to a real project.
+
+        P9-ARCH: Uses OFFLINE_STORAGE_PROJECT_ID to properly assign files to the
+        Offline Storage project. This allows TMs to be assigned to this project.
+
+        sync_status='local' means "never been on server" (different from 'orphaned'
+        which means "was synced but lost server link").
+
+        P9-FIX: Enforces unique filename within Offline Storage (auto-rename if duplicate).
+        """
+        import time
+
+        extra_json = json.dumps(extra_data) if extra_data else None
+        now = datetime.now().isoformat()
+
+        # P9-ARCH: Use the Offline Storage project for local files
+        offline_project_id = self.OFFLINE_STORAGE_PROJECT_ID
+
+        with self._get_connection() as conn:
+            # P9-FIX: Check for duplicate names in Offline Storage
+            # Uses same pattern as naming.py: test.txt → test_1.txt → test_2.txt
+            final_name = name
+            cursor = conn.execute(
+                """SELECT name FROM offline_files
+                   WHERE project_id = ? AND sync_status = 'local' AND name = ?""",
+                (offline_project_id, name)
+            )
+            if cursor.fetchone():
+                # Duplicate exists, generate unique name matching naming.py pattern
+                if '.' in name and not name.startswith('.'):
+                    base_name, ext = name.rsplit('.', 1)
+                    ext = f".{ext}"
+                else:
+                    base_name = name
+                    ext = ""
+
+                counter = 1
+                while True:
+                    final_name = f"{base_name}_{counter}{ext}"
+                    cursor = conn.execute(
+                        """SELECT name FROM offline_files
+                           WHERE project_id = ? AND sync_status = 'local' AND name = ?""",
+                        (offline_project_id, final_name)
+                    )
+                    if not cursor.fetchone():
+                        break
+                    counter += 1
+                logger.info(f"Auto-renamed duplicate: '{name}' → '{final_name}'")
+
+            # Use negative IDs to avoid conflicts with real server IDs
+            # Each new local file gets a unique negative ID based on timestamp
+            file_id = -int(time.time() * 1000) % 1000000000  # Negative, unique
+
+            # P9-ARCH: Use the Offline Storage project ID instead of 0
+            conn.execute(
+                """INSERT INTO offline_files
+                   (id, server_id, name, original_filename, format, row_count,
+                    source_language, target_language, project_id, server_project_id,
+                    folder_id, server_folder_id, extra_data, created_at, updated_at,
+                    downloaded_at, sync_status)
+                   VALUES (?, 0, ?, ?, ?, 0, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, datetime('now'), 'local')""",
+                (
+                    file_id,
+                    final_name,  # P9-FIX: Use auto-renamed name
+                    original_filename,
+                    file_format,
+                    source_language,
+                    target_language,
+                    offline_project_id,  # P9-ARCH: Use Offline Storage project
+                    extra_json,
+                    now,
+                    now,
+                )
+            )
+            conn.commit()
+            logger.info(f"P9-ARCH: Created local file '{final_name}' in Offline Storage project (id={file_id})")
+            # P9-FIX: Return both id and name (name may be auto-renamed)
+            return {"id": file_id, "name": final_name}
+
+    def add_rows_to_local_file(self, file_id: int, rows: List[Dict]):
+        """
+        P9: Add rows to a local file in Offline Storage.
+
+        Rows are created with sync_status='new' since they don't exist on server.
+        """
+        import time
+
+        with self._get_connection() as conn:
+            for i, row in enumerate(rows):
+                # Use negative row IDs to avoid conflicts
+                row_id = -int(time.time() * 1000 + i) % 1000000000
+
+                extra_data = json.dumps(row.get("extra_data")) if row.get("extra_data") else None
+                now = datetime.now().isoformat()
+
+                conn.execute(
+                    """INSERT INTO offline_rows
+                       (id, server_id, file_id, server_file_id, row_num, string_id,
+                        source, target, memo, status, extra_data, created_at, updated_at,
+                        downloaded_at, sync_status)
+                       VALUES (?, 0, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'new')""",
+                    (
+                        row_id,
+                        file_id,
+                        row.get("row_num", i + 1),
+                        row.get("string_id"),
+                        row.get("source", ""),
+                        row.get("target", ""),
+                        row.get("memo", ""),
+                        row.get("status", "normal"),
+                        extra_data,
+                        now,
+                        now,
+                    )
+                )
+
+            # Update file row count
+            conn.execute(
+                "UPDATE offline_files SET row_count = row_count + ? WHERE id = ?",
+                (len(rows), file_id)
+            )
+            conn.commit()
+            logger.info(f"Added {len(rows)} rows to local file {file_id}")
+
+    def update_row_in_local_file(self, row_id: int, target: str = None, memo: str = None, status: str = None) -> bool:
+        """
+        P9: Update a row in a local file (Offline Storage).
+
+        Unlike update_row() for synced files, this doesn't set sync_status='modified'
+        because local files don't have a server counterpart to sync with.
+        """
+        with self._get_connection() as conn:
+            # Verify row exists and belongs to a local file
+            row = conn.execute(
+                """SELECT r.id, f.sync_status as file_sync_status
+                   FROM offline_rows r
+                   JOIN offline_files f ON r.file_id = f.id
+                   WHERE r.id = ?""",
+                (row_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning(f"Row {row_id} not found")
+                return False
+
+            if row["file_sync_status"] != "local":
+                logger.warning(f"Row {row_id} is not in a local file - use update_row() instead")
+                return False
+
+            # Build update
+            updates = []
+            params = []
+            if target is not None:
+                updates.append("target = ?")
+                params.append(target)
+            if memo is not None:
+                updates.append("memo = ?")
+                params.append(memo)
+            if status is not None:
+                updates.append("status = ?")
+                params.append(status)
+
+            if not updates:
+                return True  # Nothing to update
+
+            updates.append("updated_at = datetime('now')")
+            params.append(row_id)
+
+            conn.execute(
+                f"UPDATE offline_rows SET {', '.join(updates)} WHERE id = ?",
+                params
+            )
+            conn.commit()
+            logger.info(f"Updated row {row_id} in local file")
+            return True
+
+    def delete_local_file(self, file_id: int) -> bool:
+        """
+        P9: Delete a local file from Offline Storage.
+
+        Only works for local files (sync_status='local').
+        Returns True if deleted, False if file not found or not local.
+        """
+        with self._get_connection() as conn:
+            # Verify file is local before deleting
+            row = conn.execute(
+                "SELECT sync_status FROM offline_files WHERE id = ?",
+                (file_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning(f"Cannot delete: file {file_id} not found")
+                return False
+
+            if row["sync_status"] != "local":
+                logger.warning(f"Cannot delete: file {file_id} is not local (status={row['sync_status']})")
+                return False
+
+            # Delete rows first (cascade)
+            conn.execute("DELETE FROM offline_rows WHERE file_id = ?", (file_id,))
+            # Delete file
+            conn.execute("DELETE FROM offline_files WHERE id = ?", (file_id,))
+            conn.commit()
+            logger.info(f"Deleted local file {file_id} from Offline Storage")
+            return True
+
+    def rename_local_file(self, file_id: int, new_name: str) -> bool:
+        """
+        P9: Rename a local file in Offline Storage.
+
+        Only works for local files (sync_status='local').
+        Returns True if renamed, False if file not found or not local.
+        """
+        with self._get_connection() as conn:
+            # Verify file is local before renaming
+            row = conn.execute(
+                "SELECT sync_status FROM offline_files WHERE id = ?",
+                (file_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning(f"Cannot rename: file {file_id} not found")
+                return False
+
+            if row["sync_status"] != "local":
+                logger.warning(f"Cannot rename: file {file_id} is not local (status={row['sync_status']})")
+                return False
+
+            now = datetime.now().isoformat()
+            conn.execute(
+                "UPDATE offline_files SET name = ?, updated_at = ? WHERE id = ?",
+                (new_name, now, file_id)
+            )
+            conn.commit()
+            logger.info(f"Renamed local file {file_id} to '{new_name}'")
+            return True
 
     # =========================================================================
     # Utility
@@ -1013,6 +1370,96 @@ class OfflineDatabase:
                 conn.execute(f"DELETE FROM {table}")
             conn.commit()
             logger.warning("All offline data cleared")
+
+    def search_local_files(self, query: str) -> List[Dict]:
+        """
+        P9: Search ALL files in SQLite by name.
+
+        Used by the search endpoint in offline mode.
+        Searches all files: local, synced, and modified.
+        """
+        with self._get_connection() as conn:
+            # Case-insensitive LIKE search
+            search_term = f"%{query}%"
+            cursor = conn.execute(
+                """SELECT id, name, format, row_count, created_at, sync_status
+                   FROM offline_files
+                   WHERE name LIKE ? COLLATE NOCASE
+                   ORDER BY name
+                   LIMIT 50""",
+                (search_term,)
+            )
+            rows = cursor.fetchall()
+
+            return [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "format": row["format"],
+                    "row_count": row["row_count"],
+                    "created_at": row["created_at"],
+                    "sync_status": row["sync_status"]
+                }
+                for row in rows
+            ]
+
+    def search_all(self, query: str) -> Dict[str, List[Dict]]:
+        """
+        P9: Search ALL offline data - platforms, projects, folders, files.
+        Returns dict with keys: platforms, projects, folders, files
+        """
+        search_term = f"%{query}%"
+        result = {"platforms": [], "projects": [], "folders": [], "files": []}
+
+        with self._get_connection() as conn:
+            # Platforms
+            for row in conn.execute(
+                "SELECT id, name FROM offline_platforms WHERE name LIKE ? COLLATE NOCASE LIMIT 20",
+                (search_term,)
+            ).fetchall():
+                result["platforms"].append({"id": row["id"], "name": row["name"]})
+
+            # Projects with platform name
+            for row in conn.execute(
+                """SELECT p.id, p.name, p.platform_id, pl.name as platform_name
+                   FROM offline_projects p
+                   LEFT JOIN offline_platforms pl ON p.platform_id = pl.id
+                   WHERE p.name LIKE ? COLLATE NOCASE LIMIT 20""",
+                (search_term,)
+            ).fetchall():
+                result["projects"].append({
+                    "id": row["id"], "name": row["name"],
+                    "platform_id": row["platform_id"], "platform_name": row["platform_name"]
+                })
+
+            # Folders with project name
+            for row in conn.execute(
+                """SELECT f.id, f.name, f.project_id, p.name as project_name
+                   FROM offline_folders f
+                   LEFT JOIN offline_projects p ON f.project_id = p.id
+                   WHERE f.name LIKE ? COLLATE NOCASE LIMIT 20""",
+                (search_term,)
+            ).fetchall():
+                result["folders"].append({
+                    "id": row["id"], "name": row["name"],
+                    "project_id": row["project_id"], "project_name": row["project_name"]
+                })
+
+            # Files with project name
+            for row in conn.execute(
+                """SELECT f.id, f.name, f.sync_status, f.project_id, p.name as project_name
+                   FROM offline_files f
+                   LEFT JOIN offline_projects p ON f.project_id = p.id
+                   WHERE f.name LIKE ? COLLATE NOCASE LIMIT 50""",
+                (search_term,)
+            ).fetchall():
+                result["files"].append({
+                    "id": row["id"], "name": row["name"],
+                    "sync_status": row["sync_status"],
+                    "project_id": row["project_id"], "project_name": row["project_name"]
+                })
+
+        return result
 
 
 # Singleton instance

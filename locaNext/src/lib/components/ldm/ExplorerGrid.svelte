@@ -55,9 +55,9 @@
       if (item.item_type === 'folder') return Folder;
       return Document; // file
     }
-    // P3-PHASE5: Offline Storage types
+    // P9: Offline Storage types
     if (item.type === 'offline-storage') return CloudOffline;
-    if (item.type === 'orphaned-file') return Document;
+    if (item.type === 'local-file') return Document;
 
     // File icons based on format
     const format = (item.format || item.name?.split('.').pop() || '').toLowerCase();
@@ -97,10 +97,15 @@
     // P3-PHASE5: Offline Storage types
     if (item.type === 'offline-storage') {
       const count = item.file_count || 0;
-      return count === 1 ? '1 orphaned file' : `${count} orphaned files`;
+      // P9: User-friendly text, avoid technical "orphaned" term
+      return count === 0 ? 'Empty' : count === 1 ? '1 file' : `${count} files`;
     }
-    if (item.type === 'orphaned-file') {
-      return item.error_message || 'Needs destination';
+    if (item.type === 'local-file') {
+      // P9: Show row count for local files (they're editable in offline mode)
+      if (item.row_count) {
+        return `${item.row_count.toLocaleString()} rows`;
+      }
+      return item.error_message || 'Empty file';
     }
     if (item.row_count) {
       return `${item.row_count.toLocaleString()} rows`;
@@ -180,9 +185,12 @@
   function handleDoubleClick(item) {
     if (item.type === 'folder' || item.type === 'project' || item.type === 'platform' || item.type === 'recycle-bin' || item.type === 'offline-storage') {
       dispatch('enterFolder', { item });
-    } else if (item.type === 'trash-item' || item.type === 'orphaned-file') {
-      // EXPLORER-008/P3-PHASE5: Double-click on trash/orphaned item does nothing (use context menu to move)
+    } else if (item.type === 'trash-item') {
+      // EXPLORER-008: Double-click on trash item does nothing (use context menu to restore)
       return;
+    } else if (item.type === 'local-file') {
+      // P9: Local files ARE openable - they're real files in Offline Storage
+      dispatch('openFile', { item });
     } else {
       dispatch('openFile', { item });
     }

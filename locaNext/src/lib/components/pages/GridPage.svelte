@@ -265,6 +265,7 @@
       {fileId}
       {fileName}
       {activeTMs}
+      isLocalFile={$openFile?.type === 'local-file'}
       on:rowSelect={handleRowSelect}
       on:confirmTranslation={handleConfirmTranslation}
       on:dismissQA={handleDismissQA}

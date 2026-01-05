@@ -11,6 +11,7 @@
 
   let {
     apiBase = '',
+    isOfflineMode = false,  // P9: When true, only search local files
     onnavigate = () => {},
     oncopy = () => {},
     oncut = () => {},
@@ -47,7 +48,9 @@
 
     loading = true;
     try {
-      const response = await fetch(`${apiBase}/api/ldm/search?q=${encodeURIComponent(q)}`, {
+      // P9: In offline mode, only search local files
+      const mode = isOfflineMode ? 'offline' : 'online';
+      const response = await fetch(`${apiBase}/api/ldm/search?q=${encodeURIComponent(q)}&mode=${mode}`, {
         headers: getAuthHeaders()
       });
       if (response.ok) {

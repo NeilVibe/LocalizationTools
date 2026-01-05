@@ -127,20 +127,17 @@ def verify_token(token: str) -> Optional[dict]:
         1
     """
     # P9: Handle OFFLINE_MODE tokens from launcher's "Start Offline" button
-    # SECURITY ANALYSIS:
-    # - Electron embedded backend runs on localhost only (same-machine access)
-    # - If attacker is on same machine, they already have full access
-    # - OFFLINE_MODE tokens don't expand the attack surface for local deployments
-    # - For exposed deployments, set ALLOW_OFFLINE_TOKENS=false in config
+    # User works in local SQLite "Offline Storage" only - no admin rights needed.
+    # When going online, they can move files to proper locations.
     if token and token.startswith("OFFLINE_MODE_"):
         # Check if offline tokens are allowed (default: True for Electron)
         allow_offline = getattr(config, 'ALLOW_OFFLINE_TOKENS', True)
         if allow_offline:
-            logger.debug("OFFLINE_MODE token accepted")
+            logger.debug("OFFLINE_MODE token accepted - user has Offline Storage access only")
             return {
                 "user_id": "OFFLINE",
                 "username": "Offline User",
-                "role": "admin",
+                "role": "user",  # Regular user - only Offline Storage access
                 "offline_mode": True
             }
         else:

@@ -23,6 +23,7 @@ from server.database.models import (
 from server.tools.ldm.schemas import PaginatedRows, RowResponse, RowUpdate
 from server.tools.ldm.websocket import broadcast_cell_update
 from server.tools.ldm.permissions import can_access_file, can_access_project
+from server.database.offline import get_offline_db
 
 router = APIRouter(tags=["LDM"])
 
@@ -234,6 +235,158 @@ def _auto_sync_tm_indexes(tm_id: int, user_id: int):
 
 
 # =============================================================================
+# P9: Offline Storage Helper
+# =============================================================================
+
+async def _get_offline_file_rows(
+    file_id: int,
+    page: int,
+    limit: int,
+    search: str = None,
+    search_mode: str = "contain",
+    search_fields: str = "source,target"
+):
+    """
+    P9: Get rows from SQLite offline storage.
+
+    This is the fallback when file is not found in PostgreSQL.
+    Supports basic search/pagination.
+    """
+    try:
+        offline_db = get_offline_db()
+
+        # Check if file exists in SQLite
+        file_info = offline_db.get_file(file_id)
+        if not file_info:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Get all rows from SQLite
+        all_rows = offline_db.get_rows(file_id)
+
+        # Apply search filter if provided
+        if search and search.strip():
+            search_lower = search.lower()
+            fields = [f.strip() for f in (search_fields or "source,target").split(",")]
+            valid_fields = {"string_id", "source", "target"}
+            fields = [f for f in fields if f in valid_fields]
+            if not fields:
+                fields = ["source", "target"]
+
+            filtered_rows = []
+            for row in all_rows:
+                match = False
+                for field in fields:
+                    value = row.get(field, "") or ""
+                    if search_mode == "exact":
+                        if value.lower() == search_lower:
+                            match = True
+                            break
+                    elif search_mode == "not_contain":
+                        if search_lower not in value.lower():
+                            match = True
+                        else:
+                            match = False
+                            break
+                    else:  # contain (default)
+                        if search_lower in value.lower():
+                            match = True
+                            break
+
+                if search_mode == "not_contain":
+                    if match:
+                        filtered_rows.append(row)
+                elif match:
+                    filtered_rows.append(row)
+
+            all_rows = filtered_rows
+
+        # Paginate
+        total = len(all_rows)
+        start = (page - 1) * limit
+        end = start + limit
+        page_rows = all_rows[start:end]
+
+        # Transform SQLite rows to match RowResponse schema
+        from datetime import datetime as dt
+        now = dt.utcnow()
+        transformed_rows = []
+        for row in page_rows:
+            transformed_rows.append({
+                "id": row.get("id"),
+                "file_id": row.get("file_id") or file_id,
+                "row_num": row.get("row_num", 0),
+                "string_id": row.get("string_id"),
+                "source": row.get("source"),
+                "target": row.get("target"),
+                "status": row.get("status") or "pending",
+                "updated_at": row.get("updated_at") or now,
+                "qa_checked_at": row.get("qa_checked_at"),
+                "qa_flag_count": row.get("qa_flag_count") or 0
+            })
+
+        return PaginatedRows(
+            rows=transformed_rows,
+            total=total,
+            page=page,
+            limit=limit,
+            total_pages=(total + limit - 1) // limit if limit > 0 else 1
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get offline file rows: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get rows: {str(e)}")
+
+
+async def _update_offline_row(row_id: int, update):
+    """
+    P9: Update a row in SQLite offline storage.
+
+    This is the fallback when row is not found in PostgreSQL.
+    Uses offline.py's update_row_in_local_file() method.
+    """
+    try:
+        offline_db = get_offline_db()
+
+        # Use the offline.py method which validates the row belongs to a local file
+        success = offline_db.update_row_in_local_file(
+            row_id=row_id,
+            target=update.target,
+            status=update.status
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Row not found")
+
+        # Get the updated row to return proper RowResponse
+        row_data = offline_db.get_row(row_id)
+        if not row_data:
+            raise HTTPException(status_code=404, detail="Row not found after update")
+
+        # Return RowResponse-compatible dict (no broadcast, no TM auto-add for offline)
+        from datetime import datetime
+        return {
+            "id": row_data["id"],
+            "file_id": row_data["file_id"],
+            "row_num": row_data.get("row_num", 0),
+            "string_id": row_data.get("string_id"),
+            "source": row_data.get("source"),
+            "target": row_data.get("target"),
+            "status": row_data.get("status", "pending"),
+            "updated_at": datetime.utcnow(),
+            "qa_checked_at": None,
+            "qa_flag_count": 0
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update offline row: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update row: {str(e)}")
+
+
+# =============================================================================
 # Row Endpoints
 # =============================================================================
 
@@ -267,10 +420,7 @@ async def list_rows(
     - unconfirmed: status = 'pending' or 'translated'
     - qa_flagged: qa_flag_count > 0
     """
-    # Verify file access (DESIGN-001: Public by default)
-    if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
+    # First check PostgreSQL
     result = await db.execute(
         select(LDMFile).options(selectinload(LDMFile.project)).where(
             LDMFile.id == file_id
@@ -279,7 +429,13 @@ async def list_rows(
     file = result.scalar_one_or_none()
 
     if not file:
-        raise HTTPException(status_code=404, detail="File not found")
+        # P9: Fallback to SQLite for local files (Offline Storage)
+        # No access check needed - local files are user's own files
+        return await _get_offline_file_rows(file_id, page, limit, search, search_mode, search_fields)
+
+    # Verify file access for PostgreSQL files (DESIGN-001: Public by default)
+    if not await can_access_file(db, file_id, current_user):
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     # P5: Fuzzy search - use dedicated pg_trgm similarity search
     if search and search_mode == "fuzzy":
@@ -443,7 +599,8 @@ async def update_row(
     row = result.scalar_one_or_none()
 
     if not row:
-        raise HTTPException(status_code=404, detail="Row not found")
+        # P9: Fallback to SQLite for local files (Offline Storage)
+        return await _update_offline_row(row_id, update)
 
     # Verify file access (DESIGN-001: Public by default)
     if not await can_access_file(db, row.file_id, current_user):

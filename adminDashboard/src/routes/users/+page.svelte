@@ -3,22 +3,20 @@
   import adminAPI from '$lib/api/client.js';
   import { UserMultiple, Add, Edit, TrashCan, Password, Checkmark, Close, Renew, Search } from 'carbon-icons-svelte';
 
-  export const data = {};
-  export let params = undefined;
-
-  let users = [];
-  let loading = true;
-  let error = null;
-  let searchQuery = '';
+  // Svelte 5: Reactive state
+  let users = $state([]);
+  let loading = $state(true);
+  let error = $state(null);
+  let searchQuery = $state('');
 
   // Modal states
-  let showCreateModal = false;
-  let showEditModal = false;
-  let showResetPasswordModal = false;
-  let selectedUser = null;
+  let showCreateModal = $state(false);
+  let showEditModal = $state(false);
+  let showResetPasswordModal = $state(false);
+  let selectedUser = $state(null);
 
   // Form data
-  let createForm = {
+  let createForm = $state({
     username: '',
     password: '',
     email: '',
@@ -28,9 +26,9 @@
     department: '',
     role: 'user',
     must_change_password: true
-  };
+  });
 
-  let editForm = {
+  let editForm = $state({
     email: '',
     full_name: '',
     team: '',
@@ -38,15 +36,15 @@
     department: '',
     role: 'user',
     is_active: true
-  };
+  });
 
-  let resetPasswordForm = {
+  let resetPasswordForm = $state({
     new_password: '',
     must_change_password: true
-  };
+  });
 
-  let formError = null;
-  let formSuccess = null;
+  let formError = $state(null);
+  let formSuccess = $state(null);
 
   onMount(async () => {
     await loadUsers();
@@ -64,7 +62,8 @@
     }
   }
 
-  $: filteredUsers = users.filter(user => {
+  // Svelte 5: Derived value for filtered users
+  let filteredUsers = $derived(users.filter(user => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -74,7 +73,7 @@
       user.team?.toLowerCase().includes(query) ||
       user.department?.toLowerCase().includes(query)
     );
-  });
+  }));
 
   // Create User
   function openCreateModal() {
@@ -216,7 +215,7 @@
       </h1>
       <p class="page-subtitle">Manage user accounts and permissions</p>
     </div>
-    <button class="btn btn-primary" on:click={openCreateModal}>
+    <button class="btn btn-primary" onclick={openCreateModal}>
       <Add size={16} />
       Create User
     </button>
@@ -245,7 +244,7 @@
   {:else if error}
     <div class="error-container">
       <p>Error: {error}</p>
-      <button class="btn btn-secondary" on:click={loadUsers}>
+      <button class="btn btn-secondary" onclick={loadUsers}>
         <Renew size={16} />
         Retry
       </button>
@@ -282,16 +281,16 @@
               </td>
               <td class="date">{formatDate(user.last_login)}</td>
               <td class="actions">
-                <button class="btn-icon" title="Edit" on:click={() => openEditModal(user)}>
+                <button class="btn-icon" title="Edit" onclick={() => openEditModal(user)}>
                   <Edit size={16} />
                 </button>
-                <button class="btn-icon" title="Reset Password" on:click={() => openResetPasswordModal(user)}>
+                <button class="btn-icon" title="Reset Password" onclick={() => openResetPasswordModal(user)}>
                   <Password size={16} />
                 </button>
                 <button
                   class="btn-icon"
                   title="{user.is_active ? 'Deactivate' : 'Activate'}"
-                  on:click={() => toggleUserStatus(user)}
+                  onclick={() => toggleUserStatus(user)}
                 >
                   {#if user.is_active}
                     <Close size={16} />
@@ -314,11 +313,11 @@
 
 <!-- Create User Modal -->
 {#if showCreateModal}
-  <div class="modal-overlay" on:click={() => showCreateModal = false}>
-    <div class="modal" on:click|stopPropagation>
+  <div class="modal-overlay" onclick={() => showCreateModal = false}>
+    <div class="modal" onclick={(e) => e.stopPropagation()}>
       <div class="modal-header">
         <h2>Create New User</h2>
-        <button class="btn-close" on:click={() => showCreateModal = false}>
+        <button class="btn-close" onclick={() => showCreateModal = false}>
           <Close size={20} />
         </button>
       </div>
@@ -327,7 +326,7 @@
         <div class="alert alert-error">{formError}</div>
       {/if}
 
-      <form on:submit|preventDefault={createUser}>
+      <form onsubmit={(e) => { e.preventDefault(); createUser(); }}>
         <div class="form-grid">
           <div class="form-group">
             <label for="username">Username *</label>
@@ -370,7 +369,7 @@
           <label for="must_change">Require password change on first login</label>
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" on:click={() => showCreateModal = false}>Cancel</button>
+          <button type="button" class="btn btn-secondary" onclick={() => showCreateModal = false}>Cancel</button>
           <button type="submit" class="btn btn-primary">Create User</button>
         </div>
       </form>
@@ -380,11 +379,11 @@
 
 <!-- Edit User Modal -->
 {#if showEditModal && selectedUser}
-  <div class="modal-overlay" on:click={() => showEditModal = false}>
-    <div class="modal" on:click|stopPropagation>
+  <div class="modal-overlay" onclick={() => showEditModal = false}>
+    <div class="modal" onclick={(e) => e.stopPropagation()}>
       <div class="modal-header">
         <h2>Edit User: {selectedUser.username}</h2>
-        <button class="btn-close" on:click={() => showEditModal = false}>
+        <button class="btn-close" onclick={() => showEditModal = false}>
           <Close size={20} />
         </button>
       </div>
@@ -393,7 +392,7 @@
         <div class="alert alert-error">{formError}</div>
       {/if}
 
-      <form on:submit|preventDefault={updateUser}>
+      <form onsubmit={(e) => { e.preventDefault(); updateUser(); }}>
         <div class="form-grid">
           <div class="form-group">
             <label for="edit_email">Email</label>
@@ -428,7 +427,7 @@
           <label for="edit_active">Account Active</label>
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" on:click={() => showEditModal = false}>Cancel</button>
+          <button type="button" class="btn btn-secondary" onclick={() => showEditModal = false}>Cancel</button>
           <button type="submit" class="btn btn-primary">Save Changes</button>
         </div>
       </form>
@@ -438,11 +437,11 @@
 
 <!-- Reset Password Modal -->
 {#if showResetPasswordModal && selectedUser}
-  <div class="modal-overlay" on:click={() => showResetPasswordModal = false}>
-    <div class="modal modal-small" on:click|stopPropagation>
+  <div class="modal-overlay" onclick={() => showResetPasswordModal = false}>
+    <div class="modal modal-small" onclick={(e) => e.stopPropagation()}>
       <div class="modal-header">
         <h2>Reset Password: {selectedUser.username}</h2>
-        <button class="btn-close" on:click={() => showResetPasswordModal = false}>
+        <button class="btn-close" onclick={() => showResetPasswordModal = false}>
           <Close size={20} />
         </button>
       </div>
@@ -451,7 +450,7 @@
         <div class="alert alert-error">{formError}</div>
       {/if}
 
-      <form on:submit|preventDefault={resetPassword}>
+      <form onsubmit={(e) => { e.preventDefault(); resetPassword(); }}>
         <div class="form-group">
           <label for="new_password">New Password *</label>
           <input type="password" id="new_password" bind:value={resetPasswordForm.new_password} required />
@@ -461,7 +460,7 @@
           <label for="reset_must_change">Require password change on next login</label>
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" on:click={() => showResetPasswordModal = false}>Cancel</button>
+          <button type="button" class="btn btn-secondary" onclick={() => showResetPasswordModal = false}>Cancel</button>
           <button type="submit" class="btn btn-primary">Reset Password</button>
         </div>
       </form>

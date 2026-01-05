@@ -2,13 +2,11 @@
   import { onMount } from 'svelte';
   import { adminAPI } from '$lib/api/client.js';
 
-  // SvelteKit auto-passes these props - declare them to avoid warnings
-  export let params = undefined;
-
-  let dbStats = null;
-  let loading = true;
-  let error = null;
-  let expandedTables = {};
+  // Svelte 5: Reactive state
+  let dbStats = $state(null);
+  let loading = $state(true);
+  let error = $state(null);
+  let expandedTables = $state({});
 
   async function loadDatabaseStats() {
     loading = true;
@@ -61,7 +59,7 @@
         <strong>Error loading database stats</strong>
         <p>{error}</p>
       </div>
-      <button class="retry-btn" on:click={loadDatabaseStats}>Retry</button>
+      <button class="retry-btn" onclick={loadDatabaseStats}>Retry</button>
     </div>
   {:else if dbStats}
     <!-- Overview Stats -->
@@ -110,8 +108,8 @@
               <div class="table-item">
                 <div
                   class="table-header"
-                  on:click={() => toggleTable(table.name)}
-                  on:keydown={(e) => e.key === 'Enter' && toggleTable(table.name)}
+                  onclick={() => toggleTable(table.name)}
+                  onkeydown={(e) => e.key === 'Enter' && toggleTable(table.name)}
                   role="button"
                   tabindex="0"
                 >

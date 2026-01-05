@@ -1,6 +1,6 @@
 # Offline/Online Mode - Complete Specification
 
-**Priority:** P3 | **Status:** PLANNING | **Created:** 2025-12-28 | **Updated:** 2026-01-02
+**Priority:** P3 | **Status:** IN PROGRESS | **Created:** 2025-12-28 | **Updated:** 2026-01-05
 
 ---
 
@@ -13,6 +13,143 @@
 - **Add/Edit only:** No deletions synced between modes
 - **Recycle Bin:** 30-day soft delete before permanent removal
 - **Beautiful UI:** Sync Dashboard, Toast notifications, Info bars, Status icons
+
+---
+
+## P9 Backend Implementation (2026-01-05)
+
+### Pattern: PostgreSQL First, SQLite Fallback
+
+All endpoints now follow this pattern:
+
+```python
+# Try PostgreSQL first
+result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
+file = result.scalar_one_or_none()
+
+if not file:
+    # Fallback to SQLite
+    from server.database.offline import get_offline_db
+    offline_db = get_offline_db()
+    file_data = offline_db.get_local_file(file_id)
+    if not file_data:
+        raise HTTPException(status_code=404, detail="Not found")
+    # Use SQLite data...
+```
+
+### Endpoints with SQLite Fallback (Completed)
+
+| Endpoint | Fallback | Notes |
+|----------|----------|-------|
+| `GET /files/{id}` | ✅ | Returns local file info |
+| `GET /files/{id}/rows` | ✅ | Returns local rows |
+| `PUT /rows/{id}` | ✅ | Saves to SQLite |
+| `GET /files/{id}/convert` | ✅ | Converts local file |
+| `GET /files/{id}/extract-glossary` | ✅ | Extracts from local |
+| `POST /files/{id}/check-qa` | ✅ | QA check on local |
+| `POST /files/{id}/register-as-tm` | ✅ | Creates TM from local |
+| `POST /pretranslate` | ✅ | Pretranslates local rows |
+| `GET /search` | ✅ | Searches SQLite in offline mode |
+| `GET /projects` | ✅ | Includes "Offline Storage" virtual project |
+| `GET /tm` | ✅ | Includes SQLite TMs |
+
+### Schema Compatibility (Optional Datetime)
+
+All response schemas have optional datetime fields for SQLite compatibility:
+
+```python
+class ProjectResponse(BaseModel):
+    id: int
+    name: str
+    created_at: Optional[datetime] = None  # P9: Optional for SQLite
+    updated_at: Optional[datetime] = None  # P9: Optional for SQLite
+```
+
+This allows SQLite data (which may have NULL timestamps) to pass validation.
+
+### Virtual "Offline Storage" Project
+
+When local files exist, the projects list includes a virtual project:
+
+```python
+# Virtual project in /api/ldm/projects
+{
+    "id": 0,  # Special ID for Offline Storage
+    "name": "Offline Storage",
+    "description": "X local file(s)",
+    "platform_id": null
+}
+```
+
+### Search Mode Parameter
+
+The `/api/ldm/search` endpoint accepts `mode` parameter:
+
+```
+GET /api/ldm/search?q=test&mode=online   # Search PostgreSQL + local files
+GET /api/ldm/search?q=test&mode=offline  # Search SQLite only
+```
+
+---
+
+## P9 Launcher Integration (2026-01-04)
+
+### Launcher "Start Offline" Mode
+
+The P9 Launcher adds a **game-launcher style** startup:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    [LocaNext Logo]                      │
+│                      v26.104.1600                       │
+│                                                         │
+│        ╭─────────────────╮  ╭─────────────────╮         │
+│        │  Start Offline  │  │     Login       │         │
+│        │  Work locally   │  │  Connect to     │         │
+│        │  No account     │  │  server         │         │
+│        ╰─────────────────╯  ╰─────────────────╯         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Offline Mode Permissions (CRITICAL)
+
+**Offline Storage = Your Sandbox** (full control)
+**Downloaded Content = Read Structure, Edit Content Only**
+
+```
+OFFLINE MODE VIEW
+─────────────────────────────────────────────────────
+📁 Offline Storage          ← FULL CONTROL
+   📁 My Drafts             ← Can create folders
+      📄 new_work.txt       ← Can import/create files
+   📄 imported.xlsx         ← Can edit, delete, move
+
+📁 Nintendo (downloaded)    ← READ-ONLY STRUCTURE
+   📁 Mario Kart            ← Can't rename/delete/move
+      📄 menu.txt           ← Can EDIT CONTENT (rows)
+                            ← Can't rename/move file
+```
+
+| Area | Create | Read | Edit Content | Rename/Move/Delete |
+|------|--------|------|--------------|-------------------|
+| **Offline Storage** | ✅ Folders, Files | ✅ | ✅ | ✅ |
+| **Downloaded paths** | ❌ | ✅ | ✅ (rows only) | ❌ |
+
+### Key Technical Details
+
+- **No admin rights** - OFFLINE user has `role: "user"`
+- **Token format** - `OFFLINE_MODE_<timestamp>` (recognized by backend)
+- **Storage location** - `~/.local/share/locanext/offline.db` (Linux)
+- **Offline Storage visible** - Always shows when `$offlineMode === true`
+
+### Going Online from Offline
+
+1. Click "Go Online" button
+2. Login modal appears
+3. Enter credentials → authenticate against PostgreSQL
+4. Now see BOTH: Offline Storage + PostgreSQL tree
+5. Move files from Offline Storage to desired projects (Ctrl+X/V)
+6. Files sync to PostgreSQL at new location
 
 ---
 

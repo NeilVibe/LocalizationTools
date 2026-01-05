@@ -32,6 +32,7 @@
     syncFileToServer
   } from '$lib/stores/sync.js';
   import { launcherMode, startOnline } from '$lib/stores/launcher.js';
+  import { offlineMode } from '$lib/stores/app.js';
   import { api } from '$lib/api/client.js';
   import { logger } from '$lib/utils/logger.js';
 
@@ -136,6 +137,7 @@
 
       // Switch to online mode
       connectionMode.set('online');
+      offlineMode.set(false);  // P9: Clear offline mode flag
       startOnline();
 
       // Reset form and close
@@ -250,16 +252,19 @@
   class:syncing={$displayStatus === 'syncing'}
   class:online={$displayStatus === 'online'}
   class:offline={$displayStatus === 'offline'}
+  class:launcher-offline={isLauncherOffline}
   style="--status-color: {statusColor}"
   onclick={openDashboard}
-  title="Click to open Sync Dashboard"
+  title={isLauncherOffline ? "Click to switch to Online mode" : "Click to open Sync Dashboard"}
 >
   <span class="status-dot" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}></span>
   <span class="status-icon">
     <svelte:component this={StatusIcon} size={16} />
   </span>
   <span class="status-label">{$statusLabel}</span>
-  {#if $pendingChanges > 0}
+  {#if isLauncherOffline}
+    <span class="go-online-hint">Click to Go Online</span>
+  {:else if $pendingChanges > 0}
     <span class="pending-badge">{$pendingChanges}</span>
   {/if}
 </button>
@@ -369,7 +374,7 @@
               labelText="Password"
               placeholder="Enter password"
               disabled={loginLoading}
-              on:keydown={(e) => e.key === 'Enter' && handleLoginForOnline()}
+              onkeydown={(e) => e.key === 'Enter' && handleLoginForOnline()}
             />
 
             <Checkbox
@@ -512,6 +517,33 @@
   .sync-status-button.offline {
     border-color: #da1e28;
     background: rgba(218, 30, 40, 0.08);
+  }
+
+  /* P9: Enhanced offline button when started from launcher - more inviting */
+  .sync-status-button.launcher-offline {
+    border-color: #0f62fe;
+    background: rgba(15, 98, 254, 0.1);
+    animation: pulse-invite 2s ease-in-out infinite;
+  }
+
+  .sync-status-button.launcher-offline:hover {
+    background: rgba(15, 98, 254, 0.2);
+    border-color: #0043ce;
+  }
+
+  @keyframes pulse-invite {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(15, 98, 254, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(15, 98, 254, 0); }
+  }
+
+  .go-online-hint {
+    font-size: 0.7rem;
+    color: #0f62fe;
+    font-weight: 500;
+    padding: 0.125rem 0.5rem;
+    background: rgba(15, 98, 254, 0.15);
+    border-radius: 8px;
+    white-space: nowrap;
   }
 
   @keyframes pulse {

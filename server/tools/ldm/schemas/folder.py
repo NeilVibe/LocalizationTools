@@ -16,7 +16,7 @@ class FolderResponse(BaseModel):
     project_id: int
     parent_id: Optional[int]
     name: str
-    created_at: datetime
+    created_at: Optional[datetime] = None  # P9: Optional for SQLite compatibility
 
     class Config:
         from_attributes = True

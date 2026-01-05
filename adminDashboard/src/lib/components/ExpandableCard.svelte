@@ -1,18 +1,25 @@
 <script>
-  export let title = '';
-  export let icon = null;
-  export let stat = null;
-  export let label = '';
-  export let expanded = false;
-  export let highlight = false;
+  // Svelte 5: Props with children slot
+  let {
+    title = '',
+    icon = null,
+    stat = null,
+    label = '',
+    expanded = false,
+    highlight = false,
+    children
+  } = $props();
+
+  // Svelte 5: Local reactive state for expanded
+  let isExpanded = $state(expanded);
 
   function toggleExpand() {
-    expanded = !expanded;
+    isExpanded = !isExpanded;
   }
 </script>
 
-<div class="expandable-card" class:highlight class:expanded>
-  <button class="card-header" on:click={toggleExpand}>
+<div class="expandable-card" class:highlight class:expanded={isExpanded}>
+  <button class="card-header" onclick={toggleExpand}>
     <div class="header-content">
       {#if icon}
         <div class="card-icon">
@@ -26,14 +33,14 @@
         <div class="stat-label">{label || title}</div>
       </div>
     </div>
-    <div class="expand-indicator" class:rotated={expanded}>
+    <div class="expand-indicator" class:rotated={isExpanded}>
       ▼
     </div>
   </button>
 
-  {#if expanded}
+  {#if isExpanded}
     <div class="card-body">
-      <slot />
+      {@render children()}
     </div>
   {/if}
 </div>

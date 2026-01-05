@@ -10,9 +10,10 @@
  * - pending: Has local changes not yet synced
  */
 
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { getApiBase, getAuthHeaders } from '$lib/utils/api.js';
 import { logger } from '$lib/utils/logger.js';
+import { offlineMode } from '$lib/stores/app.js';
 
 // =============================================================================
 // Core State
@@ -105,8 +106,15 @@ const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
 
 /**
  * Check server connectivity
+ * P9: Respects user's explicit offline mode choice - won't auto-switch to online
  */
 export async function checkConnection() {
+  // P9: If user explicitly chose "Start Offline", don't auto-reconnect
+  if (get(offlineMode)) {
+    logger.debug('Skipping connection check - user is in explicit offline mode');
+    return false;
+  }
+
   const url = getApiBase();
 
   try {

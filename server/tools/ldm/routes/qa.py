@@ -291,6 +291,7 @@ async def check_row_qa(
 ):
     """
     Run QA checks on a single row (LIVE mode).
+    P9: Falls back to SQLite for local files.
 
     Used when user confirms a cell with "Use QA" enabled.
     """
@@ -301,7 +302,8 @@ async def check_row_qa(
     row = result.scalar_one_or_none()
 
     if not row:
-        raise HTTPException(status_code=404, detail="Row not found")
+        # P9: Fallback to SQLite for local files
+        return await _check_local_row_qa(row_id, request)
 
     # Get all rows in file for line check
     file_rows = None
@@ -352,6 +354,7 @@ async def get_row_qa_results(
 ):
     """
     Get QA results for a single row (Edit Modal).
+    P9: Returns empty for local files (QA results are ephemeral).
     """
     # Get unresolved QA results for this row
     result = await db.execute(
@@ -363,6 +366,13 @@ async def get_row_qa_results(
         .order_by(LDMQAResult.created_at)
     )
     qa_results = result.scalars().all()
+
+    # P9: If no results found, check if it's a local file row (return empty)
+    if not qa_results:
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+        if offline_db.get_row(row_id):
+            return RowQAResultsResponse(row_id=row_id, issues=[], total_count=0)
 
     return RowQAResultsResponse(
         row_id=row_id,
@@ -394,6 +404,7 @@ async def check_file_qa(
 ):
     """
     Run QA checks on entire file (Full File QA mode).
+    P9: Falls back to SQLite for local files.
 
     Used when user right-clicks file → "Run Full QA".
     """
@@ -404,7 +415,8 @@ async def check_file_qa(
     file = result.scalar_one_or_none()
 
     if not file:
-        raise HTTPException(status_code=404, detail="File not found")
+        # P9: Fallback to SQLite for local files
+        return await _check_local_file_qa(file_id, request)
 
     # Get all rows
     result = await db.execute(
@@ -474,6 +486,7 @@ async def get_file_qa_results(
 ):
     """
     Get QA results for a file (QA Menu).
+    P9: Returns empty for local files (QA results are ephemeral).
 
     Optionally filter by check_type.
     """
@@ -494,6 +507,13 @@ async def get_file_qa_results(
 
     result = await db.execute(query)
     rows = result.all()
+
+    # P9: If no results, check if it's a local file (return empty)
+    if not rows:
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+        if offline_db.get_local_file(file_id):
+            return FileQAResultsResponse(file_id=file_id, check_type=check_type, issues=[], total_count=0)
 
     issues = []
     for qa_result, row in rows:
@@ -527,6 +547,7 @@ async def get_file_qa_summary(
 ):
     """
     Get QA summary for a file.
+    P9: Returns zeros for local files (QA results are ephemeral).
 
     Returns count of issues per check type.
     """
@@ -550,6 +571,16 @@ async def get_file_qa_summary(
         .where(LDMRow.file_id == file_id)
     )
     last_checked = result.scalar()
+
+    # P9: If no counts and no last_checked, check if local file (return zeros)
+    if not counts and not last_checked:
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+        if offline_db.get_local_file(file_id):
+            return QASummary(
+                file_id=file_id, line=0, term=0, pattern=0,
+                character=0, grammar=0, total=0, last_checked=None
+            )
 
     total = sum(counts.values())
 
@@ -616,3 +647,142 @@ async def resolve_qa_issue(
     logger.info(f"QA issue {result_id} resolved by user {current_user.user_id}")
 
     return {"status": "resolved", "result_id": result_id}
+
+
+# =============================================================================
+# P9: SQLite Local File QA Helpers
+# =============================================================================
+
+async def _check_local_row_qa(row_id: int, request: QACheckRequest) -> RowQACheckResponse:
+    """
+    P9: Run QA checks on a local file row.
+    Uses same QA logic but with SQLite data. Results are ephemeral (not saved).
+    """
+    from server.database.offline import get_offline_db
+
+    offline_db = get_offline_db()
+    row_data = offline_db.get_row(row_id)
+
+    if not row_data:
+        raise HTTPException(status_code=404, detail="Row not found")
+
+    # Create row-like object for existing QA check functions
+    class RowLike:
+        def __init__(self, data):
+            self.id = data.get("id")
+            self.file_id = data.get("file_id")
+            self.row_num = data.get("row_num", 0)
+            self.string_id = data.get("string_id", "")
+            self.source = data.get("source", "")
+            self.target = data.get("target", "")
+            self.status = data.get("status", "pending")
+
+    row = RowLike(row_data)
+
+    # Run pattern check (no database needed)
+    issues = []
+    if "pattern" in request.checks:
+        pattern_issue = check_pattern_match(row.source, row.target)
+        if pattern_issue:
+            source_patterns = pattern_issue.get("source_patterns", [])
+            target_patterns = pattern_issue.get("target_patterns", [])
+            missing = set(source_patterns) - set(target_patterns)
+            extra = set(target_patterns) - set(source_patterns)
+
+            if missing and extra:
+                message = f"Pattern mismatch: missing {missing}, extra {extra}"
+            elif missing:
+                message = f"Missing patterns: {', '.join(sorted(missing))}"
+            else:
+                message = f"Extra patterns: {', '.join(sorted(extra))}"
+
+            issues.append({
+                "id": 0,  # No persistence for local files
+                "check_type": "pattern",
+                "severity": "error",
+                "message": message,
+                "details": pattern_issue,
+                "created_at": datetime.utcnow(),
+                "resolved_at": None
+            })
+
+    checked_at = datetime.utcnow()
+    logger.info(f"P9: Local QA check row {row_id}: {len(issues)} issues found")
+
+    return RowQACheckResponse(
+        row_id=row_id,
+        issues=[QAIssue(**issue) for issue in issues],
+        issue_count=len(issues),
+        checked_at=checked_at
+    )
+
+
+async def _check_local_file_qa(file_id: int, request: QACheckRequest) -> FileQACheckResponse:
+    """
+    P9: Run QA checks on a local file.
+    Uses same QA logic but with SQLite data. Results are ephemeral (not saved).
+    """
+    from server.database.offline import get_offline_db
+
+    offline_db = get_offline_db()
+    file_info = offline_db.get_local_file(file_id)
+
+    if not file_info:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    rows_data = offline_db.get_rows_for_file(file_id)
+
+    # Create row-like objects
+    class RowLike:
+        def __init__(self, data):
+            self.id = data.get("id")
+            self.file_id = data.get("file_id")
+            self.row_num = data.get("row_num", 0)
+            self.string_id = data.get("string_id", "")
+            self.source = data.get("source", "")
+            self.target = data.get("target", "")
+            self.status = data.get("status", "pending")
+            self.qa_checked_at = None
+
+    rows = [RowLike(r) for r in rows_data]
+
+    # Summary counters
+    summary = {check: {"issue_count": 0, "severity": "ok"} for check in request.checks}
+    total_issues = 0
+    rows_checked = 0
+
+    # Check each row
+    for row in rows:
+        if not row.source or not row.target:
+            continue
+
+        row_issues = []
+
+        # Pattern check
+        if "pattern" in request.checks:
+            pattern_issue = check_pattern_match(row.source, row.target)
+            if pattern_issue:
+                row_issues.append({"check_type": "pattern", "severity": "error"})
+
+        rows_checked += 1
+        total_issues += len(row_issues)
+
+        # Update summary
+        for issue in row_issues:
+            check_type = issue["check_type"]
+            if check_type in summary:
+                summary[check_type]["issue_count"] += 1
+                if issue["severity"] == "error":
+                    summary[check_type]["severity"] = "error"
+
+    checked_at = datetime.utcnow()
+    logger.info(f"P9: Local QA check file {file_id}: {rows_checked} rows, {total_issues} issues")
+
+    return FileQACheckResponse(
+        file_id=file_id,
+        total_rows=len(rows),
+        rows_checked=rows_checked,
+        summary=summary,
+        total_issues=total_issues,
+        checked_at=checked_at
+    )

@@ -9,7 +9,7 @@ from .row import RowResponse
 
 class FileResponse(BaseModel):
     id: int
-    project_id: int
+    project_id: Optional[int]  # P9: None for local files in Offline Storage
     folder_id: Optional[int]
     name: str
     original_filename: str
@@ -17,8 +17,8 @@ class FileResponse(BaseModel):
     row_count: int
     source_language: str
     target_language: Optional[str]
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None  # P9: Optional for SQLite compatibility
+    updated_at: Optional[datetime] = None  # P9: Optional for SQLite compatibility
 
     class Config:
         from_attributes = True

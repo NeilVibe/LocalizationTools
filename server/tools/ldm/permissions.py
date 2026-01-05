@@ -173,7 +173,10 @@ async def get_accessible_platforms(
         # Admins see everything
         query = select(LDMPlatform)
         if include_projects:
-            query = query.options(selectinload(LDMPlatform.projects))
+            # P9: Also load project.folders to avoid lazy loading in TM tree
+            query = query.options(
+                selectinload(LDMPlatform.projects).selectinload(LDMProject.folders)
+            )
         result = await db.execute(query.order_by(LDMPlatform.name))
         return list(result.scalars().all())
 
@@ -200,7 +203,10 @@ async def get_accessible_platforms(
     )
 
     if include_projects:
-        query = query.options(selectinload(LDMPlatform.projects))
+        # P9: Also load project.folders to avoid lazy loading in TM tree
+        query = query.options(
+            selectinload(LDMPlatform.projects).selectinload(LDMProject.folders)
+        )
 
     result = await db.execute(query.order_by(LDMPlatform.name))
     return list(result.scalars().unique().all())

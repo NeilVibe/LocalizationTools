@@ -41,6 +41,10 @@
   let loading = $state(false);
   let expandedNodes = $state(new Set(['unassigned'])); // Track expanded nodes
 
+  // TM-002: Multi-select state
+  let selectedTMIds = $state(new Set());
+  let lastSelectedTMId = $state(null); // For shift-click range selection
+
   // Context menu state
   let contextMenu = $state({ show: false, x: 0, y: 0, tm: null, scope: null });
 
@@ -124,6 +128,34 @@
     }
   }
 
+  async function deleteTM(tm) {
+    // Confirm before deleting
+    const confirmDelete = confirm(`Delete TM "${tm.tm_name}"? This will remove all entries and cannot be undone.`);
+    if (!confirmDelete) return;
+
+    try {
+      logger.apiCall(`/api/ldm/tm/${tm.tm_id}`, 'DELETE');
+      const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.tm_id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      logger.success('TM deleted', { tmId: tm.tm_id, name: tm.tm_name });
+
+      // Clear selection if deleted TM was selected
+      if (selectedTMId === tm.tm_id) {
+        selectedTMId = null;
+      }
+
+      await loadTree();
+    } catch (err) {
+      logger.error('Failed to delete TM', { error: err.message });
+      alert(`Failed to delete TM: ${err.message}`);
+    }
+  }
+
   // ========================================
   // Node Expansion
   // ========================================
@@ -146,10 +178,154 @@
   // Selection & Events
   // ========================================
 
-  function selectTM(tm) {
-    selectedTMId = tm.tm_id;
+  /**
+   * TM-002: Get all TMs as a flat list for range selection
+   */
+  function getAllTMsFlat() {
+    const tms = [];
+    // Unassigned TMs
+    for (const tm of treeData.unassigned || []) {
+      tms.push(tm);
+    }
+    // Platform TMs
+    for (const platform of treeData.platforms || []) {
+      for (const tm of platform.tms || []) {
+        tms.push(tm);
+      }
+      for (const project of platform.projects || []) {
+        for (const tm of project.tms || []) {
+          tms.push(tm);
+        }
+        for (const folder of project.folders || []) {
+          for (const tm of folder.tms || []) {
+            tms.push(tm);
+          }
+        }
+      }
+    }
+    return tms;
+  }
+
+  /**
+   * TM-002: Handle TM selection with multi-select support
+   */
+  function selectTM(tm, event = null) {
+    const tmId = tm.tm_id;
+
+    if (event?.ctrlKey || event?.metaKey) {
+      // Ctrl+click: Toggle selection
+      const newSet = new Set(selectedTMIds);
+      if (newSet.has(tmId)) {
+        newSet.delete(tmId);
+      } else {
+        newSet.add(tmId);
+      }
+      selectedTMIds = newSet;
+      lastSelectedTMId = tmId;
+    } else if (event?.shiftKey && lastSelectedTMId !== null) {
+      // Shift+click: Range selection
+      const allTMs = getAllTMsFlat();
+      const startIdx = allTMs.findIndex(t => t.tm_id === lastSelectedTMId);
+      const endIdx = allTMs.findIndex(t => t.tm_id === tmId);
+
+      if (startIdx !== -1 && endIdx !== -1) {
+        const [from, to] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+        const newSet = new Set(selectedTMIds);
+        for (let i = from; i <= to; i++) {
+          newSet.add(allTMs[i].tm_id);
+        }
+        selectedTMIds = newSet;
+      }
+    } else {
+      // Regular click: Single selection
+      selectedTMIds = new Set([tmId]);
+      lastSelectedTMId = tmId;
+    }
+
+    // Update single selection for backwards compatibility
+    selectedTMId = tmId;
     dispatch('select', { tm });
     if (onTMSelect) onTMSelect(tm);
+  }
+
+  /**
+   * TM-002: Check if a TM is selected
+   */
+  function isSelected(tmId) {
+    return selectedTMIds.has(tmId);
+  }
+
+  /**
+   * TM-002: Bulk delete selected TMs
+   */
+  async function deleteSelectedTMs() {
+    const count = selectedTMIds.size;
+    if (count === 0) return;
+
+    const confirmDelete = confirm(`Delete ${count} selected TM${count > 1 ? 's' : ''}? This will remove all entries and cannot be undone.`);
+    if (!confirmDelete) return;
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const tmId of selectedTMIds) {
+      try {
+        const response = await fetch(`${API_BASE}/api/ldm/tm/${tmId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        failCount++;
+        logger.error('Failed to delete TM', { tmId, error: err.message });
+      }
+    }
+
+    if (successCount > 0) {
+      logger.success(`Deleted ${successCount} TM(s)`);
+      selectedTMIds = new Set();
+      selectedTMId = null;
+      await loadTree();
+    }
+
+    if (failCount > 0) {
+      alert(`Failed to delete ${failCount} TM(s)`);
+    }
+  }
+
+  /**
+   * TM-002: Bulk activate/deactivate selected TMs
+   */
+  async function toggleSelectedTMs(active) {
+    const count = selectedTMIds.size;
+    if (count === 0) return;
+
+    let successCount = 0;
+
+    for (const tmId of selectedTMIds) {
+      try {
+        const response = await fetch(`${API_BASE}/api/ldm/tm/${tmId}/activate?active=${active}`, {
+          method: 'PATCH',
+          headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+          successCount++;
+        }
+      } catch (err) {
+        logger.error('Failed to toggle TM activation', { tmId, error: err.message });
+      }
+    }
+
+    if (successCount > 0) {
+      logger.success(`${active ? 'Activated' : 'Deactivated'} ${successCount} TM(s)`);
+      await loadTree();
+    }
   }
 
   function handleDoubleClick(tm) {
@@ -271,10 +447,10 @@
             {#each treeData.unassigned || [] as tm (tm.tm_id)}
               <button
                 class="tm-item"
-                class:selected={selectedTMId === tm.tm_id}
+                class:selected={isSelected(tm.tm_id)}
                 class:active={tm.is_active}
                 draggable="true"
-                onclick={() => selectTM(tm)}
+                onclick={(e) => selectTM(tm, e)}
                 ondblclick={() => handleDoubleClick(tm)}
                 oncontextmenu={(e) => openContextMenu(e, tm, 'unassigned')}
                 ondragstart={(e) => handleDragStart(e, tm)}
@@ -323,12 +499,12 @@
               {#each platform.tms || [] as tm (tm.tm_id)}
                 <div
                   class="tm-item"
-                  class:selected={selectedTMId === tm.tm_id}
+                  class:selected={isSelected(tm.tm_id)}
                   class:active={tm.is_active}
                   draggable="true"
                   role="button"
                   tabindex="0"
-                  onclick={() => selectTM(tm)}
+                  onclick={(e) => selectTM(tm, e)}
                   ondblclick={() => handleDoubleClick(tm)}
                   oncontextmenu={(e) => openContextMenu(e, tm, { type: 'platform', id: platform.id })}
                   ondragstart={(e) => handleDragStart(e, tm)}
@@ -379,12 +555,12 @@
                       {#each project.tms || [] as tm (tm.tm_id)}
                         <div
                           class="tm-item"
-                          class:selected={selectedTMId === tm.tm_id}
+                          class:selected={isSelected(tm.tm_id)}
                           class:active={tm.is_active}
                           draggable="true"
                           role="button"
                           tabindex="0"
-                          onclick={() => selectTM(tm)}
+                          onclick={(e) => selectTM(tm, e)}
                           ondblclick={() => handleDoubleClick(tm)}
                           oncontextmenu={(e) => openContextMenu(e, tm, { type: 'project', id: project.id })}
                           ondragstart={(e) => handleDragStart(e, tm)}
@@ -435,12 +611,12 @@
                               {#each folder.tms || [] as tm (tm.tm_id)}
                                 <div
                                   class="tm-item"
-                                  class:selected={selectedTMId === tm.tm_id}
+                                  class:selected={isSelected(tm.tm_id)}
                                   class:active={tm.is_active}
                                   draggable="true"
                                   role="button"
                                   tabindex="0"
-                                  onclick={() => selectTM(tm)}
+                                  onclick={(e) => selectTM(tm, e)}
                                   ondblclick={() => handleDoubleClick(tm)}
                                   oncontextmenu={(e) => openContextMenu(e, tm, { type: 'folder', id: folder.id })}
                                   ondragstart={(e) => handleDragStart(e, tm)}
@@ -492,22 +668,47 @@
     style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
     role="menu"
   >
-    <button class="context-menu-item" onclick={() => { handleDoubleClick(contextMenu.tm); closeContextMenu(); }}>
-      View Entries
-    </button>
-    {#if contextMenu.tm?.is_active}
-      <button class="context-menu-item" onclick={() => { activateTM(contextMenu.tm, false); closeContextMenu(); }}>
-        Deactivate
+    {#if selectedTMIds.size > 1}
+      <!-- TM-002: Multi-select context menu -->
+      <div class="context-menu-header">
+        {selectedTMIds.size} TMs selected
+      </div>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" onclick={() => { toggleSelectedTMs(true); closeContextMenu(); }}>
+        Activate All
+      </button>
+      <button class="context-menu-item" onclick={() => { toggleSelectedTMs(false); closeContextMenu(); }}>
+        Deactivate All
+      </button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item danger" onclick={() => { deleteSelectedTMs(); closeContextMenu(); }}>
+        Delete All Selected
       </button>
     {:else}
-      <button class="context-menu-item" onclick={() => { activateTM(contextMenu.tm, true); closeContextMenu(); }}>
-        Activate
+      <!-- Single TM context menu -->
+      <button class="context-menu-item" onclick={() => { handleDoubleClick(contextMenu.tm); closeContextMenu(); }}>
+        View Entries
+      </button>
+      {#if contextMenu.tm?.is_active}
+        <button class="context-menu-item" onclick={() => { activateTM(contextMenu.tm, false); closeContextMenu(); }}>
+          Deactivate
+        </button>
+      {:else}
+        <button class="context-menu-item" onclick={() => { activateTM(contextMenu.tm, true); closeContextMenu(); }}>
+          Activate
+        </button>
+      {/if}
+      {#if contextMenu.scope !== 'unassigned'}
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" onclick={() => { assignTM(contextMenu.tm.tm_id, {}); closeContextMenu(); }}>
+          Move to Unassigned
+        </button>
+      {/if}
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item danger" onclick={() => { deleteTM(contextMenu.tm); closeContextMenu(); }}>
+        Delete TM
       </button>
     {/if}
-    <div class="context-menu-divider"></div>
-    <button class="context-menu-item" onclick={() => { assignTM(contextMenu.tm.tm_id, {}); closeContextMenu(); }}>
-      Move to Unassigned
-    </button>
   </div>
 {/if}
 
@@ -759,5 +960,21 @@
     height: 1px;
     background: var(--cds-border-subtle-01);
     margin: 0.25rem 0;
+  }
+
+  .context-menu-header {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--cds-text-02);
+    background: var(--cds-layer-02);
+  }
+
+  .context-menu-item.danger {
+    color: var(--cds-support-error);
+  }
+
+  .context-menu-item.danger:hover {
+    background: rgba(218, 30, 40, 0.1);
   }
 </style>

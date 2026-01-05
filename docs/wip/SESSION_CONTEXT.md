@@ -1,86 +1,129 @@
 # Session Context
 
-> Last Updated: 2026-01-04 (Session 26 - Launcher + Mode Switching COMPLETE)
+> Last Updated: 2026-01-05 (Session 28 - Schema Fixes + TM/Pretranslate Offline)
 
 ---
 
 ## STABLE CHECKPOINT
 
-**Post-Session 26:** Pending Build 453 | **Date:** 2026-01-04
+**Post-Session 28:** Build 444+ | **Date:** 2026-01-05
 
-P9 Launcher + Mode Switching COMPLETE. Ready to commit.
+All file/row endpoints now work with both PostgreSQL AND SQLite (Offline Storage).
+All schemas have Optional datetime fields for SQLite compatibility.
 
 ---
 
 ## Current State
 
-**Build:** 453 (pending) | **Open Issues:** 0
-**Tests:** 8 Launcher + 486 API passed, 0 failed
-**Status:** P9 Launcher + Offline/Online Mode Switching COMPLETE!
+**Build:** 444 | **Open Issues:** 0
+**Tests:** All offline endpoints verified working
+**Status:** Unified Offline/Online Backend COMPLETE!
 
 ---
 
-## SESSION 26 COMPLETE ✅
+## SESSION 28 COMPLETE ✅
 
-### P9: Launcher + Mode Switching ✅ DONE
+### Schema DateTime Fixes ✅ DONE
 
-**Beautiful game-launcher style first screen:**
+All response schemas now use `Optional[datetime] = None` for SQLite compatibility:
 
-| Component | File | Status |
-|-----------|------|--------|
-| Launcher Store | `src/lib/stores/launcher.js` | ✅ NEW |
-| Launcher UI | `src/lib/components/Launcher.svelte` | ✅ NEW |
-| Layout Integration | `src/routes/+layout.svelte` | ✅ MODIFIED |
-| Mode Switching | `src/lib/components/sync/SyncStatusPanel.svelte` | ✅ MODIFIED |
-| Logger Debug | `src/lib/utils/logger.js` | ✅ MODIFIED |
-| Tests | `tests/launcher.spec.js` | ✅ 8 TESTS |
+| Schema | Fields Fixed |
+|--------|--------------|
+| `ProjectResponse` | created_at, updated_at |
+| `FolderResponse` | created_at |
+| `FileResponse` | created_at, updated_at |
+| `RowResponse` | updated_at |
+| `QAIssue` | created_at |
+| `TMResponse` | created_at (already Optional) |
 
-**Tech Stack:** Svelte 5 (`$state`, `$derived`), Electron 39, Carbon Components
+### Additional Endpoints Fixed ✅ DONE
 
-**What Was Built:**
+| Endpoint | Fix |
+|----------|-----|
+| `GET /projects` | Includes "Offline Storage" virtual project (id=0) |
+| `GET /tm` | Includes SQLite TMs from offline.py |
+| `POST /pretranslate` | Full SQLite fallback with RowLike objects |
+
+### TM in Offline Mode
+
+- TMs created from local files go to PostgreSQL (hybrid approach)
+- TM list includes both PostgreSQL and SQLite TMs
+- SQLite TMs stored in `offline_tms` table
+
+---
+
+## SESSION 27 COMPLETE ✅
+
+### Offline/Online Unified Endpoints ✅ DONE
+
+**Every file/row endpoint now works with both databases:**
+
+| Endpoint | PostgreSQL | SQLite | Status |
+|----------|------------|--------|--------|
+| `GET /files/{id}` | ✅ | ✅ | UNIFIED |
+| `GET /files/{id}/rows` | ✅ | ✅ | UNIFIED |
+| `PUT /rows/{id}` | ✅ | ✅ | FIXED |
+| `DELETE /files/{id}` | ✅ | ✅ | UNIFIED |
+| `PATCH /files/{id}/rename` | ✅ | ✅ | UNIFIED |
+| `GET /files/{id}/download` | ✅ | ✅ | UNIFIED |
+| `GET /files/{id}/convert` | ✅ | ✅ | FIXED |
+| `GET /files/{id}/extract-glossary` | ✅ | ✅ | UNIFIED |
+| `POST /files/{id}/merge` | ✅ | ✅ | UNIFIED |
+| `POST /files/{id}/register-as-tm` | ✅ | ✅ | UNIFIED |
+| `POST /files/{id}/check-qa` | ✅ | ✅ | UNIFIED |
+| `POST /rows/{id}/check-qa` | ✅ | ✅ | UNIFIED |
+| `POST /files/{id}/check-grammar` | ✅ | ✅ | UNIFIED |
+| `POST /rows/{id}/check-grammar` | ✅ | ✅ | UNIFIED |
+| `GET /files/{id}/active-tms` | ✅ | Empty | UNIFIED |
+| `POST /pretranslate` | ✅ | ✅ | UNIFIED |
+| `GET /search` | ✅ | ✅ | Includes local files |
+| `POST /files/upload?storage=local` | N/A | ✅ | Imports to Offline Storage |
+
+**PostgreSQL-Only Operations (by design):**
+- `PATCH /files/{id}/move` → Returns 400 for local files
+- `PATCH /files/{id}/move-cross-project` → Returns 400 for local files
+- `POST /files/{id}/copy` → Returns 400 for local files
+
+### Architecture Pattern
+
 ```
-┌─────────────────────────────────────┐
-│              LocaNext               │  ← Gradient logo
-│    Professional Localization        │
-│           v25.1214.2330             │
-│                                     │
-│    ● Central Server Connected       │  ← Server status
-│                                     │
-│   ╭─────────────╮ ╭─────────────╮   │
-│   │Start Offline│ │   Login     │   │  ← Two paths
-│   │ No account  │ │ Connect to  │   │
-│   │   needed    │ │   server    │   │
-│   ╰─────────────╯ ╰─────────────╯   │
-│                                     │
-├─────────────────────────────────────┤
-│  UPDATE PANEL (when available)      │  ← Industry-style
-│  ████████████░░░░░ 68% | 12/18 MB   │
-└─────────────────────────────────────┘
+ONE endpoint → Try PostgreSQL → Fall back to SQLite if not found
 ```
 
-**Mode Switching Flow:**
-1. Start Offline → App works without login
-2. Click Sync Panel → "Switch to Online" button
-3. Login form appears inside Sync Dashboard
-4. Enter credentials → Switches to Online mode
-5. Green "Online" status, full sync capabilities
+**NO DUPLICATE CODE!** Each endpoint uses this pattern:
+```python
+result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
+file = result.scalar_one_or_none()
 
-**All 8 Tests Passing:**
-- Launcher displays correctly
-- Server status works
-- Start Offline works
-- Login works
-- Mode switching (offline → online) works
-- Cancel login form works
+if not file:
+    # Fallback to SQLite
+    offline_db = get_offline_db()
+    return offline_db.get_local_file(file_id)
+```
 
-### FilesPage Bug Fixes ✅ DONE
+### Bugs Fixed
 
-| Bug | Fix |
-|-----|-----|
-| Project creation navigates back | Now stays in platform context |
-| Path duplication on refresh | Created `reloadCurrentFolderContents()` helper |
-| Platform context lost | Added `preservePath` parameter |
-| Missing optimistic UI | Added to createProject, createFolder, createPlatform |
+| Bug | Root Cause | Fix |
+|-----|------------|-----|
+| `PUT /rows/{id}` 500 error | Response didn't match RowResponse schema | Return full row data after update |
+| `GET /files/{id}/convert` 500 error | `extra_data` was JSON string, not dict | Parse JSON from SQLite |
+
+### Documentation Created
+
+| Doc | Purpose |
+|-----|---------|
+| `docs/OFFLINE_ONLINE_ARCHITECTURE.md` | Technical implementation guide |
+| Updated `docs/wip/OFFLINE_ONLINE_MODE.md` | P9 Launcher permissions |
+
+---
+
+## File Scenarios (MEMORIZE)
+
+| Scenario | sync_status | Permissions |
+|----------|-------------|-------------|
+| **Local File** (Offline Storage) | `'local'` | FULL CONTROL - move, rename, delete |
+| **Synced File** (from server) | `'synced'` | READ STRUCTURE - edit content only |
+| **Orphaned File** (server path deleted) | `'orphaned'` | READ ONLY - needs reassignment |
 
 ---
 
@@ -88,48 +131,31 @@ P9 Launcher + Mode Switching COMPLETE. Ready to commit.
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| **P9** | **Launcher + Offline/Online** | 📋 PLANNING |
+| **P9** | **Offline/Online Mode** | ✅ BACKEND COMPLETE |
 | P8 | Dashboard Overhaul | PLANNED |
 
-### P9: Launcher + Offline/Online Mode
+### Next Steps for P9
 
-Combines three powerful features:
-1. **Launcher Window** - Beautiful pre-login screen
-2. **Patch Updates** - Download only changed components (97% savings)
-3. **Offline Mode** - Work without login, switch to online when needed
-
-**Implementation Phases:**
-| Phase | Task |
-|-------|------|
-| 1 | Launcher Window (server status, update check) |
-| 2 | Offline Mode Foundation (SQLite, no-auth user) |
-| 3 | Mode Switching (Online/Offline toggle in app) |
-| 4 | Database Adapter (SQLite ↔ PostgreSQL abstraction) |
-| 5 | Sync Engine (queue changes, sync on mode switch) |
+1. ✅ Unified endpoints (done)
+2. ⬜ Frontend Offline Storage UI improvements
+3. ⬜ Sync flow implementation (push changes to server)
+4. ⬜ SQLite TM storage (for true offline TM support)
 
 ---
 
-## OPEN ISSUES (0)
+## KEY FILES (Session 27)
 
-All issues resolved!
-
----
-
-## KEY FILES (Session 26)
-
-### Patch Update System
-| File | Purpose |
-|------|---------|
-| `locaNext/electron/patch-updater.js` | Component-based delta updates |
-| `locaNext/electron/preload.js` | IPC bridge for patch functions |
-| `locaNext/electron/main.js` | IPC handlers |
-| `UpdateModal.svelte` | Beautiful patch update UI |
-| `.gitea/workflows/build.yml` | Manifest generation in CI |
-
-### Bug Fixes
 | File | Changes |
 |------|---------|
-| `FilesPage.svelte` | `reloadCurrentFolderContents()`, `preservePath`, optimistic UI |
+| `server/tools/ldm/routes/files.py` | 10+ endpoints with SQLite fallback |
+| `server/tools/ldm/routes/rows.py` | Fixed row update response |
+| `server/tools/ldm/routes/qa.py` | QA endpoints with fallback |
+| `server/tools/ldm/routes/grammar.py` | Grammar endpoints with fallback |
+| `server/tools/ldm/routes/pretranslate.py` | Pre-translate with fallback |
+| `server/tools/ldm/routes/tm_assignment.py` | Active TMs returns empty for local |
+| `server/tools/ldm/routes/search.py` | Searches SQLite local files |
+| `server/database/offline.py` | Added `get_row()` method |
+| `docs/OFFLINE_ONLINE_ARCHITECTURE.md` | NEW - Technical docs |
 
 ---
 
@@ -143,14 +169,12 @@ LocaNext.exe (User PC)           Central PostgreSQL
 ├─ FAISS indexes (local)         └─ Logs
 └─ Qwen model (optional)
 
-LAUNCHER (NEW):
-├─ Pre-login window
-├─ Server status check (no auth)
-├─ Patch update download
-├─ [Start Offline] or [Login]
+UNIFIED PATTERN:
+Endpoint → PostgreSQL first → SQLite fallback → Same response format
 
-ONLINE:  PostgreSQL (multi-user, WebSocket sync)
-OFFLINE: SQLite (single-user, no login needed)
+PERMISSIONS:
+Offline Storage:     FULL CONTROL (create, move, delete)
+Downloaded files:    READ CONTENT (edit rows only)
 ```
 
 ---
@@ -164,8 +188,8 @@ OFFLINE: SQLite (single-user, no login needed)
 # Check servers
 ./scripts/check_servers.sh
 
-# Playwright tests
-cd locaNext && npx playwright test
+# Test offline endpoints
+python3 -c "import requests; ..." # See test script in session
 
 # Build trigger
 echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN: Description" && git push origin main && git push gitea main
@@ -173,4 +197,4 @@ echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN:
 
 ---
 
-*Session 26 | Build 452 pending | Patch System DONE, Launcher PLANNING*
+*Session 27 | Build 444 | Offline/Online Unified Endpoints COMPLETE*

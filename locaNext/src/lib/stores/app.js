@@ -11,6 +11,10 @@ export const currentView = writable('app');
 export const user = writable(null);
 export const isAuthenticated = writable(false);
 
+// P9: Offline mode flag (set when "Start Offline" is clicked)
+// When true, user works in local Offline Storage only
+export const offlineMode = writable(false);
+
 // Server connection
 export const serverUrl = writable('http://localhost:8888');
 export const isConnected = writable(false);

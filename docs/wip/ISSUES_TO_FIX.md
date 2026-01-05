@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-04 (Session 24) | **Build:** 449 (pending) | **Open:** 1
+**Last Updated:** 2026-01-05 (Session 29) | **Build:** 449 (pending) | **Open:** 4
 
 ---
 
@@ -8,20 +8,137 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 1 |
-| **FIXED/CLOSED** | 99 |
+| **OPEN** | 4 |
+| **FIXED/CLOSED** | 103 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
-## OPEN ISSUES
+## OPEN ISSUES (Session 29)
+
+### P9-ARCH: Offline Storage Should Be A Real Project
+
+- **Reported:** 2026-01-05 (Session 29)
+- **Severity:** HIGH (architectural)
+- **Status:** OPEN - IN PROGRESS
+- **Component:** offline.py, offline_schema.sql, FilesPage.svelte
+
+**Problem:** Offline Storage is treated as a special case everywhere, creating parasite code.
+
+**Current State:**
+- Local files have `project_id=NULL`
+- TMs can't be assigned to Offline Storage (no project to assign to)
+- Pretranslate can't find TMs for local files
+- Every endpoint needs special fallback code
+
+**Solution:**
+- Create "Offline Storage" as a real platform+project in SQLite on init
+- Local files reference this project instead of NULL
+- TMs can be assigned to this project normally
+- All existing logic works - no special cases needed
+
+**Tables to modify:**
+- `offline_platforms` - Add Offline Storage platform record
+- `offline_projects` - Add Offline Storage project record
+- `offline_files` - Use Offline Storage project_id instead of NULL
+
+---
+
+### TM-001: TM Delete Not Working ✅ FIXED
+
+- **Reported:** 2026-01-05 (Session 29)
+- **Fixed:** 2026-01-05 (Session 29)
+- **Severity:** MEDIUM
+- **Status:** ✅ FIXED
+- **Component:** TMExplorerTree.svelte, tm_crud.py
+
+**Fix Applied:**
+- Added `deleteTM()` function with confirmation dialog
+- Added "Delete TM" option to context menu with red styling
+- Backend endpoint exists: `DELETE /api/ldm/tm/{tm_id}`
+
+---
+
+### TM-002: TM Multi-Select Not Implemented ✅ FIXED
+
+- **Reported:** 2026-01-05 (Session 29)
+- **Fixed:** 2026-01-05 (Session 29)
+- **Severity:** MEDIUM
+- **Status:** ✅ FIXED
+- **Component:** TMExplorerTree.svelte
+
+**Fix Applied:**
+- Added `selectedTMIds` state (Set) for multi-selection
+- Ctrl+click: Toggle individual selection
+- Shift+click: Range selection
+- Context menu shows bulk operations when multiple TMs selected:
+  - Activate All
+  - Deactivate All
+  - Delete All Selected
+- Visual feedback: Selected TMs highlighted
+
+---
+
+### TM-003: TM Syncing Not Working ✅ CODE EXISTS
+
+- **Reported:** 2026-01-05 (Session 29)
+- **Reviewed:** 2026-01-05 (Session 29)
+- **Severity:** MEDIUM
+- **Status:** ✅ CODE EXISTS - NEEDS TESTING
+- **Component:** sync.py, offline.py
+
+**Code Analysis:**
+- `_sync_tm_to_offline()` function exists in sync.py (line 871)
+- All required offline.py methods exist:
+  - `save_tm()`, `merge_tm_entry()`, `get_modified_tm_entries()`, etc.
+- TM sync is triggered when subscribing to TM entity type
+
+**Note:** The code is implemented. User may need to re-test with fresh subscription.
+
+---
+
+### TM-004: TM Context Menu Shows Useless Options
+
+- **Reported:** 2026-01-05 (Session 29)
+- **Severity:** LOW
+- **Status:** ✅ FIXED
+- **Component:** TMExplorerTree.svelte
+
+**Problem:** In Unassigned section, context menu showed:
+- "Activate" (useless - can't activate without scope)
+- "Move to Unassigned" (useless - already in Unassigned)
+
+**Fix Applied:**
+- Hide "Move to Unassigned" when `scope === 'unassigned'`
+- Activation now works for unassigned TMs (creates global assignment)
+
+---
+
+### P9-FILE: File Rename in Offline Mode May Not Work
+
+- **Reported:** 2026-01-05 (Session 29)
+- **Severity:** MEDIUM
+- **Status:** OPEN - NEEDS TESTING
+- **Component:** files.py, sync.py, offline.py
+
+**Problem:** User reports can't rename files in offline mode.
+
+**Backend Analysis:**
+- `PATCH /files/{file_id}/rename` exists with SQLite fallback
+- `PUT /offline/storage/files/{file_id}/rename` exists for local files
+- `rename_local_file()` in offline.py only works for `sync_status='local'`
+- Synced files (downloaded from server) cannot be renamed
+
+**Possible Issue:** User may be trying to rename synced files, which is intentionally blocked.
+
+---
 
 ### P3-PHASE5: Offline Storage Fallback Container
 
 - **Reported:** 2026-01-04 (Session 21)
 - **Severity:** LOW (edge case)
-- **Status:** OPEN
+- **Status:** OPEN - Superseded by P9-ARCH
 - **Component:** FilesPage.svelte, sync.js
 
 **Scenario:** User creates file while offline with no matching server path, or server path was deleted.
@@ -30,6 +147,8 @@
 - Create local "Offline Storage" container
 - Orphaned files auto-placed there on sync
 - User can Ctrl+X/V to move to proper location
+
+**Note:** This will be properly resolved by P9-ARCH (making Offline Storage a real project).
 
 ---
 

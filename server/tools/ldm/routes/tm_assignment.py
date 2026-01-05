@@ -18,6 +18,73 @@ from server.tools.ldm.permissions import can_access_platform, can_access_project
 
 router = APIRouter(tags=["LDM"])
 
+# =============================================================================
+# P9-ARCH: Offline Storage Platform Support in PostgreSQL
+# =============================================================================
+
+OFFLINE_STORAGE_PLATFORM_NAME = "Offline Storage"
+OFFLINE_STORAGE_PROJECT_NAME = "Offline Storage"
+
+
+async def ensure_offline_storage_platform(db: AsyncSession):
+    """
+    Ensure the Offline Storage platform exists in PostgreSQL.
+    This allows TMs to be assigned to Offline Storage files.
+    Returns the platform record.
+    """
+    # Check if it already exists
+    result = await db.execute(
+        select(LDMPlatform).where(LDMPlatform.name == OFFLINE_STORAGE_PLATFORM_NAME)
+    )
+    platform = result.scalar_one_or_none()
+
+    if not platform:
+        # Create the Offline Storage platform
+        platform = LDMPlatform(
+            name=OFFLINE_STORAGE_PLATFORM_NAME,
+            description="Local files stored offline for translation",
+            owner_id=1,  # System owner
+            is_restricted=False
+        )
+        db.add(platform)
+        await db.flush()  # Get the ID
+        logger.info(f"P9-ARCH: Created Offline Storage platform in PostgreSQL (id={platform.id})")
+
+    return platform
+
+
+async def ensure_offline_storage_project(db: AsyncSession):
+    """
+    Ensure the Offline Storage project exists in PostgreSQL.
+    Returns the project record.
+    """
+    platform = await ensure_offline_storage_platform(db)
+
+    # Check if project exists
+    result = await db.execute(
+        select(LDMProject).where(
+            and_(
+                LDMProject.platform_id == platform.id,
+                LDMProject.name == OFFLINE_STORAGE_PROJECT_NAME
+            )
+        )
+    )
+    project = result.scalar_one_or_none()
+
+    if not project:
+        project = LDMProject(
+            name=OFFLINE_STORAGE_PROJECT_NAME,
+            description="Local files stored offline",
+            platform_id=platform.id,
+            owner_id=1,
+            is_restricted=False
+        )
+        db.add(project)
+        await db.flush()
+        logger.info(f"P9-ARCH: Created Offline Storage project in PostgreSQL (id={project.id})")
+
+    return project
+
 
 # =============================================================================
 # Schemas
@@ -284,7 +351,12 @@ async def get_active_tms_for_file(
     )
     file = result.scalar_one_or_none()
 
+    # P9: Local files have no TM assignments (return empty)
     if not file:
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+        if offline_db.get_local_file(file_id):
+            return []  # Local files don't have TMs
         raise HTTPException(status_code=404, detail="File not found")
 
     # Verify file access (DESIGN-001: Public by default)
@@ -494,5 +566,48 @@ async def get_tm_tree(
             platform_data["projects"].append(project_data)
 
         tree["platforms"].append(platform_data)
+
+    # P9-ARCH: Ensure Offline Storage platform is always in the tree
+    # This allows users to assign TMs to offline files
+    offline_platform = await ensure_offline_storage_platform(db)
+    await db.commit()  # Commit if created
+
+    # Check if Offline Storage is already in the tree
+    offline_in_tree = any(p["name"] == OFFLINE_STORAGE_PLATFORM_NAME for p in tree["platforms"])
+
+    if not offline_in_tree:
+        # Add Offline Storage platform with its project
+        offline_project = await ensure_offline_storage_project(db)
+        await db.commit()
+
+        offline_platform_data = {
+            "id": offline_platform.id,
+            "name": offline_platform.name,
+            "tms": [
+                {
+                    "tm_id": a.tm_id,
+                    "tm_name": a.tm.name,
+                    "is_active": a.is_active
+                }
+                for a in assignments if a.platform_id == offline_platform.id
+            ],
+            "projects": [
+                {
+                    "id": offline_project.id,
+                    "name": offline_project.name,
+                    "tms": [
+                        {
+                            "tm_id": a.tm_id,
+                            "tm_name": a.tm.name,
+                            "is_active": a.is_active
+                        }
+                        for a in assignments if a.project_id == offline_project.id
+                    ],
+                    "folders": []
+                }
+            ]
+        }
+        # Insert at beginning so it's prominent
+        tree["platforms"].insert(0, offline_platform_data)
 
     return tree
