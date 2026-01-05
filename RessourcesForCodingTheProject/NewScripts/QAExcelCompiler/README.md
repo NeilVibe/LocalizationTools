@@ -224,26 +224,27 @@ Images/
 
 A separate `LQA_Tester_ProgressTracker.xlsx` file tracks progress across ALL categories:
 
-**DAILY Tab** - Shows daily progress per user:
+**DAILY Tab** - Shows daily progress per user with completion percentage:
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      DAILY PROGRESS                             │
-├─────────┬───────────────┬───────────────┬───────────────────────┤
-│         │     Alice     │     Bob       │      John             │
-├─────────┼───────┬───────┼───────┬───────┼───────┬───────────────┤
-│  Date   │ Done  │Issues │ Done  │Issues │ Done  │ Issues        │
-├─────────┼───────┼───────┼───────┼───────┼───────┼───────────────┤
-│  01/03  │  --   │  --   │  --   │  --   │  45   │   8           │
-│  01/04  │  32   │   5   │  --   │  --   │  --   │  --           │
-│  01/05  │  --   │  --   │  28   │   6   │  15   │   3           │
-├─────────┼───────┼───────┼───────┼───────┼───────┼───────────────┤
-│  TOTAL  │  32   │   5   │  28   │   6   │  60   │  11           │
-└─────────┴───────┴───────┴───────┴───────┴───────┴───────────────┘
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│                              DAILY PROGRESS                                       │
+├─────────┬─────────────────────┬─────────────────────┬─────────────────────────────┤
+│         │        Alice        │        Bob          │          John               │
+├─────────┼──────┬───────┬──────┼──────┬───────┬──────┼──────┬───────┬──────────────┤
+│  Date   │ Done │Issues │Comp %│ Done │Issues │Comp %│ Done │Issues │ Comp %       │
+├─────────┼──────┼───────┼──────┼──────┼───────┼──────┼──────┼───────┼──────────────┤
+│  01/03  │  --  │  --   │  --  │  --  │  --   │  --  │  45  │   8   │  90.0%       │
+│  01/04  │  32  │   5   │100.0%│  --  │  --   │  --  │  --  │  --   │   --         │
+│  01/05  │  --  │  --   │  --  │  28  │   6   │100.0%│  15  │   3   │  75.0%       │
+├─────────┼──────┼───────┼──────┼──────┼───────┼──────┼──────┼───────┼──────────────┤
+│  TOTAL  │  32  │   5   │100.0%│  28  │   6   │100.0%│  60  │  11   │  85.7%       │
+└─────────┴──────┴───────┴──────┴──────┴───────┴──────┴──────┴───────┴──────────────┘
 ```
 
 - **Date**: From file modification time (auto-detected)
 - **Done**: Rows with STATUS filled (ISSUE + NO ISSUE + BLOCKED)
 - **Issues**: Rows with STATUS = "ISSUE"
+- **Comp %**: Completion percentage (Done / Total Rows × 100)
 - **`--`**: No submission that day
 
 **TOTAL Tab** - Cumulative stats per user (includes Manager Stats):
@@ -365,3 +366,4 @@ QA files should have these columns (detected dynamically by header name):
 *Created: 2025-12-30*
 *Updated: 2026-01-05 - Added LQA User Progress Tracker with DAILY/TOTAL/GRAPHS tabs*
 *Updated: 2026-01-05 - Added Manager Status feature (STATUS_{User} columns with FIXED/REPORTED/CHECKING)*
+*Updated: 2026-01-05 - Added Comp % column to DAILY tab (shows completion per user per day)*
