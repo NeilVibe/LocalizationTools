@@ -1027,7 +1027,7 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
 
     Args:
         wb: Tracker workbook
-        daily_entries: List of dicts with {date, user, category, done, issues, no_issue, blocked}
+        daily_entries: List of dicts with {date, user, category, total_rows, done, issues, no_issue, blocked}
         manager_stats: Dict of {category: {user: {fixed, reported, checking}}} from manager status
 
     Mode: REPLACE - same (date, user, category) overwrites existing row
@@ -1037,9 +1037,10 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
 
     ws = wb["_DAILY_DATA"]
 
-    # Ensure headers exist (now includes Fixed, Reported, Checking)
-    if ws.cell(1, 1).value != "Date" or ws.max_column < 10:
-        headers = ["Date", "User", "Category", "Done", "Issues", "NoIssue", "Blocked", "Fixed", "Reported", "Checking"]
+    # Ensure headers exist (now includes TotalRows, Fixed, Reported, Checking)
+    # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking
+    if ws.cell(1, 1).value != "Date" or ws.max_column < 11:
+        headers = ["Date", "User", "Category", "TotalRows", "Done", "Issues", "NoIssue", "Blocked", "Fixed", "Reported", "Checking"]
         for col, header in enumerate(headers, 1):
             ws.cell(1, col, header)
 
@@ -1069,16 +1070,18 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
         user = entry["user"]
         user_manager_stats = manager_stats.get(category, {}).get(user, {"fixed": 0, "reported": 0, "checking": 0})
 
+        # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking
         ws.cell(row, 1, entry["date"])
         ws.cell(row, 2, entry["user"])
         ws.cell(row, 3, entry["category"])
-        ws.cell(row, 4, entry["done"])
-        ws.cell(row, 5, entry["issues"])
-        ws.cell(row, 6, entry["no_issue"])
-        ws.cell(row, 7, entry["blocked"])
-        ws.cell(row, 8, user_manager_stats["fixed"])
-        ws.cell(row, 9, user_manager_stats["reported"])
-        ws.cell(row, 10, user_manager_stats["checking"])
+        ws.cell(row, 4, entry.get("total_rows", 0))  # TotalRows (universe)
+        ws.cell(row, 5, entry["done"])               # Done (completed)
+        ws.cell(row, 6, entry["issues"])
+        ws.cell(row, 7, entry["no_issue"])
+        ws.cell(row, 8, entry["blocked"])
+        ws.cell(row, 9, user_manager_stats["fixed"])
+        ws.cell(row, 10, user_manager_stats["reported"])
+        ws.cell(row, 11, user_manager_stats["checking"])
 
 
 def build_daily_sheet(wb):
@@ -1102,14 +1105,15 @@ def build_daily_sheet(wb):
     }))
     users = set()
 
+    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11)
     for row in range(2, data_ws.max_row + 1):
         date = data_ws.cell(row, 1).value
         user = data_ws.cell(row, 2).value
-        done = data_ws.cell(row, 4).value or 0
-        issues = data_ws.cell(row, 5).value or 0
-        fixed = data_ws.cell(row, 8).value or 0
-        reported = data_ws.cell(row, 9).value or 0
-        checking = data_ws.cell(row, 10).value or 0
+        done = data_ws.cell(row, 5).value or 0       # Column 5 now
+        issues = data_ws.cell(row, 6).value or 0     # Column 6 now
+        fixed = data_ws.cell(row, 9).value or 0      # Column 9 now
+        reported = data_ws.cell(row, 10).value or 0  # Column 10 now
+        checking = data_ws.cell(row, 11).value or 0  # Column 11 now
 
         if date and user:
             daily_data[date][user]["done"] += done
@@ -1357,23 +1361,26 @@ def build_total_sheet(wb):
 
     data_ws = wb["_DAILY_DATA"]
 
-    # Read raw data and aggregate by user (now includes manager stats)
+    # Read raw data and aggregate by user (now includes manager stats + total_rows)
     user_data = defaultdict(lambda: {
-        "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
+        "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
         "fixed": 0, "reported": 0, "checking": 0
     })
 
+    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11)
     for row in range(2, data_ws.max_row + 1):
         user = data_ws.cell(row, 2).value
-        done = data_ws.cell(row, 4).value or 0
-        issues = data_ws.cell(row, 5).value or 0
-        no_issue = data_ws.cell(row, 6).value or 0
-        blocked = data_ws.cell(row, 7).value or 0
-        fixed = data_ws.cell(row, 8).value or 0
-        reported = data_ws.cell(row, 9).value or 0
-        checking = data_ws.cell(row, 10).value or 0
+        total_rows = data_ws.cell(row, 4).value or 0  # TotalRows (universe)
+        done = data_ws.cell(row, 5).value or 0        # Done (completed)
+        issues = data_ws.cell(row, 6).value or 0
+        no_issue = data_ws.cell(row, 7).value or 0
+        blocked = data_ws.cell(row, 8).value or 0
+        fixed = data_ws.cell(row, 9).value or 0
+        reported = data_ws.cell(row, 10).value or 0
+        checking = data_ws.cell(row, 11).value or 0
 
         if user:
+            user_data[user]["total_rows"] += total_rows
             user_data[user]["done"] += done
             user_data[user]["issues"] += issues
             user_data[user]["no_issue"] += no_issue
@@ -1437,13 +1444,14 @@ def build_total_sheet(wb):
 
     # Row 4+: Data rows
     grand_total = {
-        "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
+        "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
         "fixed": 0, "reported": 0, "checking": 0, "pending": 0
     }
     data_row = 4
     for idx, user in enumerate(users):
         data = user_data[user]
-        total = data["done"]
+        total_rows = data["total_rows"]  # Total universe of rows
+        done = data["done"]              # Completed (issues + no_issue + blocked)
         issues = data["issues"]
         no_issue = data["no_issue"]
         blocked = data["blocked"]
@@ -1454,10 +1462,12 @@ def build_total_sheet(wb):
         if pending < 0:
             pending = 0
 
-        completion_pct = round((issues + no_issue + blocked) / total * 100, 1) if total > 0 else 0
+        # Completion % = Completed rows / Total rows in universe
+        completion_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
 
         # Accumulate grand totals
-        grand_total["done"] += total
+        grand_total["total_rows"] += total_rows
+        grand_total["done"] += done
         grand_total["issues"] += issues
         grand_total["no_issue"] += no_issue
         grand_total["blocked"] += blocked
@@ -1466,7 +1476,7 @@ def build_total_sheet(wb):
         grand_total["checking"] += checking
         grand_total["pending"] += pending
 
-        row_data = [user, f"{completion_pct}%", total, issues, no_issue, blocked, fixed, reported, checking, pending]
+        row_data = [user, f"{completion_pct}%", done, issues, no_issue, blocked, fixed, reported, checking, pending]
 
         for col, value in enumerate(row_data, 1):
             cell = ws.cell(data_row, col, value)
@@ -1479,7 +1489,8 @@ def build_total_sheet(wb):
 
     # TOTAL row
     gt = grand_total
-    gt_completion = round((gt["issues"] + gt["no_issue"] + gt["blocked"]) / gt["done"] * 100, 1) if gt["done"] > 0 else 0
+    # Completion % = Total completed / Total universe
+    gt_completion = round(gt["done"] / gt["total_rows"] * 100, 1) if gt["total_rows"] > 0 else 0
     total_row_data = [
         "TOTAL", f"{gt_completion}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
         gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
@@ -1804,6 +1815,7 @@ def process_category(category, qa_folders, manager_status=None):
             "date": file_mod_date,
             "user": username,
             "category": category,
+            "total_rows": user_stats[username]["total"],  # Total universe of rows
             "done": user_stats[username]["issue"] + user_stats[username]["no_issue"] + user_stats[username]["blocked"],
             "issues": user_stats[username]["issue"],
             "no_issue": user_stats[username]["no_issue"],
