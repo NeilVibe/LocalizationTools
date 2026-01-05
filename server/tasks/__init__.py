@@ -9,7 +9,8 @@ from server.tasks.background_tasks import (
     aggregate_daily_stats,
     cleanup_old_logs,
     send_daily_report,
-    process_large_batch
+    process_large_batch,
+    purge_expired_trash
 )
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     'aggregate_daily_stats',
     'cleanup_old_logs',
     'send_daily_report',
-    'process_large_batch'
+    'process_large_batch',
+    'purge_expired_trash'
 ]

@@ -105,6 +105,50 @@ def process_large_batch(batch_data: dict):
         return {"status": "error", "error": str(e)}
 
 
+@celery_app.task(name="purge_expired_trash")
+def purge_expired_trash():
+    """
+    Permanently delete trash items that have expired (past 30-day retention).
+
+    Runs as a scheduled task (daily).
+    EXPLORER-008: Recycle Bin auto-purge feature.
+    """
+    logger.info("Starting expired trash purge...")
+
+    try:
+        from sqlalchemy import create_engine, delete
+        from sqlalchemy.orm import Session
+        from server.database.models import LDMTrash
+        from server.config import get_settings
+
+        settings = get_settings()
+        engine = create_engine(settings.DATABASE_URL)
+
+        with Session(engine) as db:
+            now = datetime.utcnow()
+
+            # Find and delete expired trash items
+            result = db.execute(
+                delete(LDMTrash).where(
+                    LDMTrash.expires_at < now,
+                    LDMTrash.status == "trashed"
+                )
+            )
+            deleted_count = result.rowcount
+            db.commit()
+
+        if deleted_count > 0:
+            logger.success(f"Purged {deleted_count} expired trash items")
+        else:
+            logger.info("No expired trash items to purge")
+
+        return {"status": "success", "deleted_count": deleted_count}
+
+    except Exception as e:
+        logger.exception(f"Trash purge failed: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 # Periodic task schedule (configure with Celery Beat)
 celery_app.conf.beat_schedule = {
     'aggregate-daily-stats': {
@@ -117,6 +161,11 @@ celery_app.conf.beat_schedule = {
         'schedule': 3600.0 * 24,  # Every 24 hours
         # 'options': {'queue': 'maintenance'}
     },
+    'purge-expired-trash': {
+        'task': 'purge_expired_trash',
+        'schedule': 3600.0 * 24,  # Every 24 hours
+        # 'options': {'queue': 'maintenance'}
+    },
 }
 
 logger.info("Background tasks registered with Celery")
@@ -125,5 +174,6 @@ __all__ = [
     'aggregate_daily_stats',
     'cleanup_old_logs',
     'send_daily_report',
-    'process_large_batch'
+    'process_large_batch',
+    'purge_expired_trash'
 ]
