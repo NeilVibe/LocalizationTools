@@ -15,7 +15,7 @@ from sqlalchemy import select, create_engine
 from sqlalchemy.orm import Session
 from loguru import logger
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
 from server.database.models import (
@@ -1488,6 +1488,8 @@ class ListLocalTrashResponse(BaseModel):
 class RestoreLocalTrashResponse(BaseModel):
     success: bool
     message: str
+    item_type: Optional[str] = None
+    item_id: Optional[int] = None
 
 
 class EmptyLocalTrashResponse(BaseModel):
@@ -1532,12 +1534,14 @@ async def restore_from_local_trash(
 
     try:
         offline_db = get_offline_db()
-        success = offline_db.restore_from_local_trash(trash_id)
+        result = offline_db.restore_from_local_trash(trash_id)
 
-        if success:
+        if result:
             return RestoreLocalTrashResponse(
                 success=True,
-                message="Item restored successfully"
+                message="Item restored successfully",
+                item_type=result.get("item_type"),
+                item_id=result.get("item_id")
             )
         else:
             raise HTTPException(
