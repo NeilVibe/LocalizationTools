@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-05 (Session 32) | **Build:** 453 (pending) | **Open:** 1
+**Last Updated:** 2026-01-05 (Session 32) | **Build:** 454 (pending) | **Open:** 0
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 1 |
-| **FIXED/CLOSED** | 108 |
+| **OPEN** | 0 |
+| **FIXED/CLOSED** | 109 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
@@ -17,43 +17,39 @@
 
 ## OPEN ISSUES
 
-### P9-BIN-001: Offline Storage Has No Recycle Bin
-
-- **Reported:** 2026-01-05 (Session 32)
-- **Severity:** MEDIUM
-- **Status:** OPEN
-- **Component:** offline.py, sync.py
-
-**Problem:** When deleting local files/folders in Offline Storage, they are PERMANENTLY deleted. No soft delete to recycle bin.
-
-**Current Behavior:**
-- `delete_local_file()` in offline.py does `DELETE FROM offline_files WHERE id = ?`
-- `delete_local_folder()` in offline.py does `DELETE FROM offline_folders WHERE id = ?`
-- No serialization, no trash table, immediate permanent delete
-
-**Expected Behavior:**
-- Should match ONLINE mode: soft delete to trash, 30-day retention, restore capability
-
-**Comparison:**
-| Mode | Soft Delete | Trash Table | Restore | Auto-Purge |
-|------|-------------|-------------|---------|------------|
-| **ONLINE** | ✅ Yes | LDMTrash (PostgreSQL) | ✅ Yes | ✅ Yes (daily) |
-| **OFFLINE** | ❌ No | None | ❌ No | N/A |
-
-**Solution Required:**
-1. Create `offline_trash` table in SQLite schema
-2. Modify `delete_local_file()` to serialize and soft delete
-3. Modify `delete_local_folder()` to serialize and soft delete
-4. Add `restore_local_file()`, `restore_local_folder()` methods
-5. Add `purge_expired_local_trash()` method
-6. Add API endpoints for local trash operations
-7. Update frontend to show local trash items in Recycle Bin
-
-**Priority:** MEDIUM - Users can lose data unexpectedly
+None currently.
 
 ---
 
 ## RECENTLY FIXED (Session 32)
+
+### P9-BIN-001: Offline Storage Has No Recycle Bin ✅ FIXED
+
+- **Reported:** 2026-01-05 (Session 32)
+- **Fixed:** 2026-01-05 (Session 32)
+- **Severity:** MEDIUM
+- **Status:** ✅ FIXED
+- **Component:** offline.py, sync.py, FilesPage.svelte
+
+**Problem:** When deleting local files/folders in Offline Storage, they were PERMANENTLY deleted. No soft delete to recycle bin.
+
+**Fix Applied:**
+1. Created `offline_trash` table in SQLite schema (30-day retention)
+2. Modified `delete_local_file()`, `delete_local_folder()` to soft delete
+3. Added serialization helpers, trash operations (list, restore, permanent delete, empty, purge)
+4. Added `/api/ldm/offline/trash` endpoints
+5. Updated frontend to show local trash in unified Recycle Bin view
+6. Updated `restoreFromTrash()`, `permanentDeleteFromTrash()`, `emptyTrash()` for local items
+
+**Files Modified:**
+- `server/database/offline_schema.sql` - Added offline_trash table
+- `server/database/offline.py` - Soft delete + trash operations
+- `server/tools/ldm/routes/sync.py` - API endpoints
+- `locaNext/src/lib/components/pages/FilesPage.svelte` - Frontend handlers
+
+**Test Results:** All passing - soft delete, 30-day retention, restore, permanent delete.
+
+---
 
 ### Recycle Bin Auto-Purge Missing ✅ FIXED
 

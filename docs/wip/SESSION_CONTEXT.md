@@ -1,26 +1,26 @@
 # Session Context
 
-> Last Updated: 2026-01-05 (Session 32 - P9 Move + Recycle Bin Audit)
+> Last Updated: 2026-01-05 (Session 32 - P9 Move + Recycle Bin COMPLETE)
 
 ---
 
 ## STABLE CHECKPOINT
 
-**Post-Session 32:** Build 453 (pending) | **Date:** 2026-01-05
+**Post-Session 32:** Build 454 (pending) | **Date:** 2026-01-05
 
-Offline Storage now supports move operations. Recycle Bin works for ONLINE, missing for OFFLINE.
+Offline Storage now supports move operations. Recycle Bin works for BOTH Online and Offline modes.
 
 ---
 
 ## Current State
 
-**Build:** 453 (pending) | **Open Issues:** 1 (P9-BIN-001)
-**Tests:** Move functionality needs E2E testing
-**Status:** P9 Move COMPLETE, Recycle Bin PARTIAL
+**Build:** 454 (pending) | **Open Issues:** 0
+**Tests:** All P9-BIN-001 tests passing
+**Status:** P9 FULLY COMPLETE (Move + Recycle Bin)
 
 ---
 
-## SESSION 32 IN PROGRESS
+## SESSION 32 COMPLETE ✅
 
 ### P9: Move Files/Folders in Offline Storage ✅ DONE
 
@@ -46,14 +46,29 @@ Offline Storage now supports move operations. Recycle Bin works for ONLINE, miss
 | **background_tasks.py** | Added `purge_expired_trash()` task running daily |
 | **beat_schedule** | Added `purge-expired-trash` to Celery Beat |
 
+### P9-BIN-001: Local Recycle Bin ✅ DONE
+
+**Problem:** Offline Storage files/folders were PERMANENTLY deleted - no Recycle Bin support.
+
+**Solution Implemented:**
+
+| Component | Change |
+|-----------|--------|
+| **Schema offline_schema.sql** | Added `offline_trash` table with 30-day retention |
+| **Backend offline.py** | Modified `delete_local_file()`, `delete_local_folder()` for soft delete |
+| **Backend offline.py** | Added serialization helpers, trash operations (list, restore, permanent delete, empty, purge) |
+| **Backend sync.py** | Added `/api/ldm/offline/trash` endpoints (GET, POST restore, DELETE) |
+| **Frontend FilesPage** | Updated `loadTrashContents()` to fetch both PG and SQLite trash |
+| **Frontend FilesPage** | Updated `restoreFromTrash()`, `permanentDeleteFromTrash()`, `emptyTrash()` for local items |
+
 ### Recycle Bin Status
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| **ONLINE** | ✅ Working | Items go to LDMTrash, 30-day retention, restore works |
-| **OFFLINE** | ❌ Missing | Local files/folders permanently deleted, no soft delete |
+| **ONLINE** | ✅ Working | Items go to LDMTrash (PostgreSQL), 30-day retention |
+| **OFFLINE** | ✅ Working | Items go to offline_trash (SQLite), 30-day retention |
 
-**Finding:** `delete_local_file()` and `delete_local_folder()` in offline.py do HARD DELETE, not soft delete to trash.
+**Test Results:** All passing - soft delete, 30-day retention, restore, permanent delete.
 
 ---
 
@@ -64,6 +79,10 @@ Offline Storage now supports move operations. Recycle Bin works for ONLINE, miss
 | `09b6907` | P9: Add move support for files/folders in Offline Storage |
 | `e585fea` | Fix: Remove duplicate isFileType() function declaration |
 | `a581c02` | Add auto-purge scheduled task for expired trash items |
+| `a3862ff` | Docs: Update for Session 32 |
+| `5c575ce` | P9-BIN-001: Add Recycle Bin for Offline Storage (backend) |
+| `bfc04c7` | P9-BIN-001: Add API endpoints for local Recycle Bin |
+| `049458f` | P9-BIN-001: Complete frontend for local Recycle Bin |
 
 ---
 
