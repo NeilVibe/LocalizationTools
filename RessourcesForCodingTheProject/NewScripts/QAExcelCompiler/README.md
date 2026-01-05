@@ -11,7 +11,10 @@
 3. **Compiles** into master files with:
    - `COMMENT_{Username}` columns for each tester
    - `STATUS` sheet tracking completion % per user
-4. **Compiles MasterUI** - All rows with screenshots into one file
+4. **Generates Progress Tracker** with:
+   - **DAILY** tab - per-user daily progress based on file modification dates
+   - **TOTAL** tab - cumulative stats per user across all categories
+   - **GRAPHS** tab - visual charts for progress tracking
 5. **Saves** to `Masterfolder/`
 
 ---
@@ -62,14 +65,17 @@ python3 compile_qa.py
 Output structure:
 ```
 Masterfolder/
-├── Master_Quest.xlsx         # Hyperlinks point to Images/
+├── Master_Quest.xlsx              # QA data + STATUS per category
 ├── Master_Knowledge.xlsx
 ├── Master_Item.xlsx
 ├── Master_Node.xlsx
 ├── Master_System.xlsx
-└── Images/                   # ALL images consolidated here
-    ├── John_Quest_10034.png  # Renamed: {User}_{Category}_{original}
-    ├── Alice_Quest_10034.png # No collision with John's
+├── LQA_UserProgress_Tracker.xlsx  # Combined progress tracker
+│   ├── DAILY                      # Daily progress per user
+│   ├── TOTAL                      # Cumulative stats
+│   └── GRAPHS                     # Visual charts
+└── Images/                        # ALL images consolidated
+    ├── John_Quest_10034.png       # {User}_{Category}_{original}
     └── ...
 ```
 
@@ -94,12 +100,14 @@ QAExcelCompiler/
 │   ├── Master_Quest.xlsx
 │   ├── Master_Knowledge.xlsx
 │   ├── ...
+│   ├── LQA_UserProgress_Tracker.xlsx  # Progress tracker
 │   └── Images/           # ALL images consolidated
 │       ├── John_Quest_10034.png
 │       └── Alice_Quest_10034.png
 └── docs/
     ├── ROADMAP.md        # Project plan
-    └── WIP.md            # Technical details
+    ├── WIP.md            # Technical details
+    └── DAILY_STATUS_PLAN.md  # Tracker implementation plan
 ```
 
 ---
@@ -178,6 +186,52 @@ Images/
 - **Unique naming** - `{Username}_{Category}_{original}` prevents duplicates
 - **Hyperlinks updated** - Automatically point to new `Images/` location
 - **Click to open** - Hyperlinks work directly from master file
+
+### User Progress Tracker
+
+A separate `LQA_UserProgress_Tracker.xlsx` file tracks progress across ALL categories:
+
+**DAILY Tab** - Shows daily progress per user:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      DAILY PROGRESS                             │
+├─────────┬───────────────┬───────────────┬───────────────────────┤
+│         │     Alice     │     Bob       │      John             │
+├─────────┼───────┬───────┼───────┬───────┼───────┬───────────────┤
+│  Date   │ Done  │Issues │ Done  │Issues │ Done  │ Issues        │
+├─────────┼───────┼───────┼───────┼───────┼───────┼───────────────┤
+│  01/03  │  --   │  --   │  --   │  --   │  45   │   8           │
+│  01/04  │  32   │   5   │  --   │  --   │  --   │  --           │
+│  01/05  │  --   │  --   │  28   │   6   │  15   │   3           │
+├─────────┼───────┼───────┼───────┼───────┼───────┼───────────────┤
+│  TOTAL  │  32   │   5   │  28   │   6   │  60   │  11           │
+└─────────┴───────┴───────┴───────┴───────┴───────┴───────────────┘
+```
+
+- **Date**: From file modification time (auto-detected)
+- **Done**: Rows with STATUS filled (ISSUE + NO ISSUE + BLOCKED)
+- **Issues**: Rows with STATUS = "ISSUE"
+- **`--`**: No submission that day
+
+**TOTAL Tab** - Cumulative stats per user:
+
+| User  | Completion % | Total | Issues | No Issue | Blocked |
+|-------|--------------|-------|--------|----------|---------|
+| Alice | 100.0%       | 32    | 5      | 25       | 2       |
+| Bob   | 95.0%        | 28    | 6      | 20       | 2       |
+| John  | 98.0%        | 60    | 11     | 45       | 4       |
+| TOTAL | 97.5%        | 120   | 22     | 90       | 8       |
+
+**GRAPHS Tab** - Visual charts:
+- **Daily Progress Chart**: Bar chart showing Done per user per day
+- **User Completion Chart**: Horizontal bar chart showing Completion % per user
+
+**Key Features:**
+- **File modification date** determines which day work is tracked
+- **Combines all categories** (Quest, Knowledge, Item, etc.) per user
+- **REPLACE mode**: Re-running updates existing entries (no duplicates)
+- **Persistent data**: Hidden `_DAILY_DATA` sheet stores raw data
+- **Beautiful styling**: Gold headers, alternating rows, borders
 
 ---
 
@@ -268,4 +322,4 @@ QA files should have these columns (detected dynamically by header name):
 ---
 
 *Created: 2025-12-30*
-*Updated: 2026-01-03 - Clean comment format, unified blue styling for COMMENT/SCREENSHOT*
+*Updated: 2026-01-05 - Added LQA User Progress Tracker with DAILY/TOTAL/GRAPHS tabs*
