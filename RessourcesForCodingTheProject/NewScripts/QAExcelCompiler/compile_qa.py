@@ -831,13 +831,12 @@ def build_daily_sheet(wb):
 
     Aggregates by (date, user) - combines all categories.
     """
-    ws = wb["DAILY"]
-    data_ws = wb["_DAILY_DATA"]
+    # Delete and recreate sheet to handle merged cells properly
+    if "DAILY" in wb.sheetnames:
+        del wb["DAILY"]
+    ws = wb.create_sheet("DAILY", 0)
 
-    # Clear existing content
-    for row in ws.iter_rows():
-        for cell in row:
-            cell.value = None
+    data_ws = wb["_DAILY_DATA"]
 
     # Read raw data and aggregate by (date, user)
     daily_data = defaultdict(lambda: defaultdict(lambda: {"done": 0, "issues": 0}))
@@ -999,13 +998,12 @@ def build_total_sheet(wb):
 
     Aggregates by user across all dates and categories.
     """
-    ws = wb["TOTAL"]
-    data_ws = wb["_DAILY_DATA"]
+    # Delete and recreate sheet to handle merged cells properly
+    if "TOTAL" in wb.sheetnames:
+        del wb["TOTAL"]
+    ws = wb.create_sheet("TOTAL", 1)
 
-    # Clear existing content
-    for row in ws.iter_rows():
-        for cell in row:
-            cell.value = None
+    data_ws = wb["_DAILY_DATA"]
 
     # Read raw data and aggregate by user
     user_data = defaultdict(lambda: {"done": 0, "issues": 0, "no_issue": 0, "blocked": 0})
@@ -1120,17 +1118,13 @@ def build_graphs_sheet(wb):
     from openpyxl.chart.series import DataPoint
     from openpyxl.chart.label import DataLabelList
 
-    ws = wb["GRAPHS"]
+    # Delete and recreate sheet to handle charts properly
+    if "GRAPHS" in wb.sheetnames:
+        del wb["GRAPHS"]
+    ws = wb.create_sheet("GRAPHS", 2)
+
     daily_ws = wb["DAILY"]
     total_ws = wb["TOTAL"]
-
-    # Clear existing content and charts
-    for row in ws.iter_rows():
-        for cell in row:
-            cell.value = None
-
-    # Remove existing charts
-    ws._charts = []
 
     # Check if we have data
     if daily_ws.cell(1, 1).value == "No data yet" or total_ws.cell(1, 1).value == "No data yet":
