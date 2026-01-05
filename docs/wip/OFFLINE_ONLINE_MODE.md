@@ -221,6 +221,84 @@ async def ensure_offline_storage_platform(db):
 
 ---
 
+## P9: Offline Storage CRUD API (2026-01-05)
+
+### Folder Operations
+
+Users can create, rename, delete, and navigate folders within Offline Storage.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/ldm/offline/storage/folders` | POST | Create folder in Offline Storage |
+| `/api/ldm/offline/storage/folders/{id}` | DELETE | Delete folder (and contents) |
+| `/api/ldm/offline/storage/folders/{id}/rename` | PUT | Rename folder |
+| `/api/ldm/offline/local-files?parent_id={id}` | GET | List folders/files (supports nesting) |
+
+**Request/Response Examples:**
+
+```json
+// POST /api/ldm/offline/storage/folders
+// Request:
+{ "name": "My Folder", "parent_id": null }
+
+// Response:
+{ "success": true, "id": 417205778, "name": "My Folder", "message": "..." }
+```
+
+### File Operations
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/ldm/files/upload?storage=local` | POST | Upload file to Offline Storage |
+| `/api/ldm/offline/storage/files/{id}` | DELETE | Delete local file |
+| `/api/ldm/offline/storage/files/{id}/rename` | PUT | Rename local file |
+| `/api/ldm/offline/local-files` | GET | List all local files/folders |
+
+### Key Implementation Details
+
+**Folder IDs:** Local folders use negative IDs (e.g., `-417205778`) to avoid conflicts with server IDs.
+
+**sync_status values:**
+- `'local'` - Created in Offline Storage, never synced
+- `'synced'` - Downloaded from server
+- `'modified'` - Local changes pending sync
+
+**Validation:**
+- Folder/file names cannot be empty (`min_length=1`)
+- Duplicate names auto-rename: `folder` → `folder_1` → `folder_2`
+- Only `sync_status='local'` items can be renamed/deleted
+
+### Frontend Integration
+
+The frontend automatically uses offline endpoints when in Offline Storage:
+
+```javascript
+// FilesPage.svelte createFolder()
+if (isInOfflineStorage) {
+  // Uses POST /api/ldm/offline/storage/folders
+} else {
+  // Uses POST /api/ldm/folders (PostgreSQL)
+}
+```
+
+**Item Types:**
+- `'local-folder'` - Folder in Offline Storage
+- `'local-file'` - File in Offline Storage
+- `'folder'` / `'file'` - Server items
+
+### Files Modified (Session 31)
+
+- `server/database/offline.py` - create_local_folder, get_local_folders, delete_local_folder, rename_local_folder
+- `server/database/offline_schema.sql` - Allow NULL server_id for local folders
+- `server/tools/ldm/routes/sync.py` - Folder CRUD endpoints, updated list_local_files
+- `locaNext/src/lib/components/pages/FilesPage.svelte` - local-folder support
+
+### Tests
+
+`locaNext/tests/offline-folder.spec.ts` - 7 tests covering all folder CRUD operations.
+
+---
+
 ## Core Principles
 
 | Principle | Description |

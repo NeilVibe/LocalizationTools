@@ -1,22 +1,52 @@
 # Session Context
 
-> Last Updated: 2026-01-05 (Session 30 - P9-ARCH TM + Offline Storage)
+> Last Updated: 2026-01-05 (Session 31 - P9 Offline Storage Folder CRUD)
 
 ---
 
 ## STABLE CHECKPOINT
 
-**Post-Session 30:** Build 453 (pending) | **Date:** 2026-01-05
+**Post-Session 31:** Build 453 (pending) | **Date:** 2026-01-05
 
-TM system now fully supports Offline Storage - users can assign, activate, and manage TMs for offline files.
+Offline Storage now supports full folder CRUD - create, rename, delete, and nested navigation.
 
 ---
 
 ## Current State
 
 **Build:** 453 (pending) | **Open Issues:** 0
-**Tests:** All TM + Offline Storage tests passing
-**Status:** P9-ARCH TM Integration COMPLETE!
+**Tests:** All Offline Storage tests passing (file + folder)
+**Status:** P9 Offline Storage CRUD COMPLETE!
+
+---
+
+## SESSION 31 COMPLETE ✅
+
+### P9: Offline Storage Folder CRUD ✅ DONE
+
+**Problem:** Users couldn't create folders in Offline Storage - only files were supported.
+
+**Solution Implemented:**
+
+| Component | Change |
+|-----------|--------|
+| **Backend offline.py** | Added `create_local_folder()`, `get_local_folders()`, `delete_local_folder()`, `rename_local_folder()` |
+| **Backend sync.py** | Added `POST/DELETE/PUT /api/ldm/offline/storage/folders` endpoints |
+| **Backend sync.py** | Updated `/api/ldm/offline/local-files` to return folders with `parent_id` support |
+| **Schema** | Updated `offline_folders` to allow NULL `server_id` for local folders |
+| **Frontend** | Added `local-folder` type with navigation, create, delete support |
+
+### API Endpoints Added
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/ldm/offline/storage/folders` | POST | Create folder |
+| `/api/ldm/offline/storage/folders/{id}` | DELETE | Delete folder |
+| `/api/ldm/offline/storage/folders/{id}/rename` | PUT | Rename folder |
+
+### Tests Created
+
+- `tests/offline-folder.spec.ts` - 7 tests (create, list, delete, rename, nested, validation)
 
 ---
 
@@ -90,8 +120,8 @@ This is necessary because TM assignments have FK constraints to PostgreSQL table
 
 1. ✅ Unified endpoints (done)
 2. ✅ TM assignment to Offline Storage (done)
-3. ⬜ Frontend Offline Storage UI improvements
-4. ⬜ Sync flow improvements (push changes)
+3. ✅ Folder CRUD in Offline Storage (done - Session 31)
+4. ⬜ Sync flow improvements (push changes to server)
 
 ---
 
@@ -133,4 +163,4 @@ echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN:
 
 ---
 
-*Session 30 | Build 453 | P9-ARCH TM + Offline Storage COMPLETE*
+*Session 31 | Build 453 | P9 Offline Storage Folder CRUD COMPLETE*
