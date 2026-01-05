@@ -49,7 +49,7 @@ IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED"]
 
 # === TRACKER CONFIGURATION ===
-TRACKER_FILENAME = "LQA_UserProgress_Tracker.xlsx"
+TRACKER_FILENAME = "LQA_Tester_ProgressTracker.xlsx"
 
 TRACKER_STYLES = {
     "title_color": "FFD700",       # Gold

@@ -71,7 +71,7 @@ Masterfolder/
 ├── Master_Region.xlsx
 ├── Master_System.xlsx
 ├── Master_Character.xlsx
-├── LQA_UserProgress_Tracker.xlsx  # Combined progress tracker
+├── LQA_Tester_ProgressTracker.xlsx  # Combined progress tracker
 │   ├── DAILY                      # Daily progress per user
 │   ├── TOTAL                      # Cumulative stats
 │   └── GRAPHS                     # Visual charts
@@ -190,7 +190,7 @@ Images/
 
 ### User Progress Tracker
 
-A separate `LQA_UserProgress_Tracker.xlsx` file tracks progress across ALL categories:
+A separate `LQA_Tester_ProgressTracker.xlsx` file tracks progress across ALL categories:
 
 **DAILY Tab** - Shows daily progress per user:
 ```
