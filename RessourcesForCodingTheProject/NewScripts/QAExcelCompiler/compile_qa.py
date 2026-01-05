@@ -1099,9 +1099,9 @@ def build_daily_sheet(wb):
     data_ws = wb["_DAILY_DATA"]
 
     # Read raw data and aggregate by (date, user)
-    # Now includes manager stats: fixed, reported, checking
+    # Now includes manager stats: fixed, reported, checking + total_rows for completion %
     daily_data = defaultdict(lambda: defaultdict(lambda: {
-        "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0
+        "total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0
     }))
     users = set()
 
@@ -1109,13 +1109,15 @@ def build_daily_sheet(wb):
     for row in range(2, data_ws.max_row + 1):
         date = data_ws.cell(row, 1).value
         user = data_ws.cell(row, 2).value
-        done = data_ws.cell(row, 5).value or 0       # Column 5 now
-        issues = data_ws.cell(row, 6).value or 0     # Column 6 now
-        fixed = data_ws.cell(row, 9).value or 0      # Column 9 now
-        reported = data_ws.cell(row, 10).value or 0  # Column 10 now
-        checking = data_ws.cell(row, 11).value or 0  # Column 11 now
+        total_rows = data_ws.cell(row, 4).value or 0  # Column 4: TotalRows
+        done = data_ws.cell(row, 5).value or 0        # Column 5 now
+        issues = data_ws.cell(row, 6).value or 0      # Column 6 now
+        fixed = data_ws.cell(row, 9).value or 0       # Column 9 now
+        reported = data_ws.cell(row, 10).value or 0   # Column 10 now
+        checking = data_ws.cell(row, 11).value or 0   # Column 11 now
 
         if date and user:
+            daily_data[date][user]["total_rows"] += total_rows
             daily_data[date][user]["done"] += done
             daily_data[date][user]["issues"] += issues
             daily_data[date][user]["fixed"] += fixed
@@ -1146,9 +1148,9 @@ def build_daily_sheet(wb):
     center = Alignment(horizontal='center', vertical='center')
     bold = Font(bold=True)
 
-    # Layout: Date | Tester Stats (Done, Issues) | Manager Stats (Fixed, Reported, Checking, Pending)
-    # title_cols = Date(1) + Users*2 (tester) + 4 (manager stats)
-    tester_cols = len(users) * 2
+    # Layout: Date | Tester Stats (Done, Issues, Comp %) | Manager Stats (Fixed, Reported, Checking, Pending)
+    # title_cols = Date(1) + Users*3 (tester) + 4 (manager stats)
+    tester_cols = len(users) * 3  # Done, Issues, Comp % per user
     manager_cols = 4  # Fixed, Reported, Checking, Pending
     title_cols = 1 + tester_cols + manager_cols
 
@@ -1181,16 +1183,17 @@ def build_daily_sheet(wb):
     manager_section.font = bold
     manager_section.alignment = center
 
-    # Row 3: User names (merged across Done+Issues) for tester section
+    # Row 3: User names (merged across Done+Issues+Comp%) for tester section
     col = 2
     for user in users:
-        ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + 1)
+        ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + 2)
         cell = ws.cell(3, col, user)
         cell.fill = header_fill
         cell.font = bold
         cell.alignment = center
         ws.cell(3, col + 1).fill = header_fill  # Merged cell styling
-        col += 2
+        ws.cell(3, col + 2).fill = header_fill  # Merged cell styling
+        col += 3
 
     # Manager stats headers in row 3 (spans row 3-4 conceptually, but we put labels in row 3)
     for i, label in enumerate(["Fixed", "Reported", "Checking", "Pending"]):
@@ -1200,7 +1203,7 @@ def build_daily_sheet(wb):
         cell.alignment = center
         cell.border = border
 
-    # Row 4: Sub-headers (Date, Done, Issues per user)
+    # Row 4: Sub-headers (Date, Done, Issues, Comp % per user)
     date_cell = ws.cell(4, 1, "Date")
     date_cell.fill = subheader_fill
     date_cell.font = bold
@@ -1220,7 +1223,13 @@ def build_daily_sheet(wb):
         issues_cell.font = bold
         issues_cell.alignment = center
         issues_cell.border = border
-        col += 2
+
+        comp_cell = ws.cell(4, col + 2, "Comp %")
+        comp_cell.fill = subheader_fill
+        comp_cell.font = bold
+        comp_cell.alignment = center
+        comp_cell.border = border
+        col += 3
 
     # Manager sub-headers row 4 (repeat or empty - we'll leave empty as labels are in row 3)
     for i in range(4):
@@ -1229,7 +1238,7 @@ def build_daily_sheet(wb):
         cell.border = border
 
     # Row 5+: Data rows
-    user_totals = {user: {"done": 0, "issues": 0} for user in users}
+    user_totals = {user: {"total_rows": 0, "done": 0, "issues": 0} for user in users}
     manager_totals = {"fixed": 0, "reported": 0, "checking": 0, "pending": 0}
     data_row = 5
 
@@ -1254,7 +1263,8 @@ def build_daily_sheet(wb):
 
         col = 2
         for user in users:
-            user_data = daily_data[date].get(user, {"done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0})
+            user_data = daily_data[date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0})
+            total_rows_val = user_data["total_rows"]
             done_val = user_data["done"]
             issues_val = user_data["issues"]
 
@@ -1265,12 +1275,17 @@ def build_daily_sheet(wb):
             day_issues += issues_val
 
             # Track totals
+            user_totals[user]["total_rows"] += total_rows_val
             user_totals[user]["done"] += done_val
             user_totals[user]["issues"] += issues_val
 
-            # Display value or "--" for zero
+            # Calculate completion % for this user on this day
+            comp_pct = round(done_val / total_rows_val * 100, 1) if total_rows_val > 0 else 0
+
+            # Display value or "--" for zero/no data
             done_display = done_val if done_val > 0 else "--"
             issues_display = issues_val if issues_val > 0 else "--"
+            comp_display = f"{comp_pct}%" if total_rows_val > 0 else "--"
 
             done_cell = ws.cell(data_row, col, done_display)
             done_cell.alignment = center
@@ -1284,7 +1299,13 @@ def build_daily_sheet(wb):
             if idx % 2 == 1:
                 issues_cell.fill = alt_fill
 
-            col += 2
+            comp_cell = ws.cell(data_row, col + 2, comp_display)
+            comp_cell.alignment = center
+            comp_cell.border = border
+            if idx % 2 == 1:
+                comp_cell.fill = alt_fill
+
+            col += 3
 
         # Manager stats for this day
         day_pending = day_issues - day_fixed - day_reported - day_checking
@@ -1315,18 +1336,29 @@ def build_daily_sheet(wb):
 
     col = 2
     for user in users:
-        done_cell = ws.cell(data_row, col, user_totals[user]["done"])
+        user_total_rows = user_totals[user]["total_rows"]
+        user_done = user_totals[user]["done"]
+        user_issues = user_totals[user]["issues"]
+        user_comp_pct = round(user_done / user_total_rows * 100, 1) if user_total_rows > 0 else 0
+
+        done_cell = ws.cell(data_row, col, user_done)
         done_cell.fill = total_fill
         done_cell.font = bold
         done_cell.alignment = center
         done_cell.border = border
 
-        issues_cell = ws.cell(data_row, col + 1, user_totals[user]["issues"])
+        issues_cell = ws.cell(data_row, col + 1, user_issues)
         issues_cell.fill = total_fill
         issues_cell.font = bold
         issues_cell.alignment = center
         issues_cell.border = border
-        col += 2
+
+        comp_cell = ws.cell(data_row, col + 2, f"{user_comp_pct}%")
+        comp_cell.fill = total_fill
+        comp_cell.font = bold
+        comp_cell.alignment = center
+        comp_cell.border = border
+        col += 3
 
     # Manager totals
     manager_total_values = [manager_totals["fixed"], manager_totals["reported"], manager_totals["checking"], manager_totals["pending"]]
