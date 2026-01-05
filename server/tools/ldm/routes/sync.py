@@ -1466,6 +1466,150 @@ async def move_offline_storage_folder(
 
 
 # =============================================================================
+# P9-BIN-001: Local Trash (Recycle Bin for Offline Storage)
+# =============================================================================
+
+class LocalTrashItem(BaseModel):
+    id: int
+    item_type: str  # 'local-file' or 'local-folder'
+    item_id: int
+    item_name: str
+    parent_folder_id: Optional[int]
+    deleted_at: str
+    expires_at: str
+    status: str
+
+
+class ListLocalTrashResponse(BaseModel):
+    items: List[LocalTrashItem]
+    count: int
+
+
+class RestoreLocalTrashResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class EmptyLocalTrashResponse(BaseModel):
+    success: bool
+    deleted_count: int
+
+
+@router.get("/offline/trash", response_model=ListLocalTrashResponse)
+async def list_local_trash(
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9-BIN-001: List items in local Recycle Bin (Offline Storage trash).
+
+    Returns all trashed local files and folders with their metadata.
+    """
+    try:
+        offline_db = get_offline_db()
+        items = offline_db.list_local_trash()
+
+        return ListLocalTrashResponse(
+            items=[LocalTrashItem(**item) for item in items],
+            count=len(items)
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to list local trash: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to list local trash: {str(e)}")
+
+
+@router.post("/offline/trash/{trash_id}/restore", response_model=RestoreLocalTrashResponse)
+async def restore_from_local_trash(
+    trash_id: int,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9-BIN-001: Restore an item from local Recycle Bin.
+
+    Restores the file/folder and all its contents back to Offline Storage.
+    """
+    logger.info(f"Restoring from local trash: trash_id={trash_id}")
+
+    try:
+        offline_db = get_offline_db()
+        success = offline_db.restore_from_local_trash(trash_id)
+
+        if success:
+            return RestoreLocalTrashResponse(
+                success=True,
+                message="Item restored successfully"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot restore: item not found or already restored"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to restore from local trash: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to restore: {str(e)}")
+
+
+@router.delete("/offline/trash/{trash_id}")
+async def permanent_delete_from_local_trash(
+    trash_id: int,
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9-BIN-001: Permanently delete an item from local Recycle Bin.
+
+    This action cannot be undone.
+    """
+    logger.info(f"Permanently deleting from local trash: trash_id={trash_id}")
+
+    try:
+        offline_db = get_offline_db()
+        success = offline_db.permanent_delete_from_local_trash(trash_id)
+
+        if success:
+            return {"success": True, "message": "Item permanently deleted"}
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail="Trash item not found"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to permanently delete from local trash: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to delete: {str(e)}")
+
+
+@router.delete("/offline/trash", response_model=EmptyLocalTrashResponse)
+async def empty_local_trash(
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    P9-BIN-001: Empty the entire local Recycle Bin.
+
+    Permanently deletes all trashed local files and folders.
+    This action cannot be undone.
+    """
+    logger.info("Emptying local trash")
+
+    try:
+        offline_db = get_offline_db()
+        count = offline_db.empty_local_trash()
+
+        return EmptyLocalTrashResponse(
+            success=True,
+            deleted_count=count
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to empty local trash: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to empty trash: {str(e)}")
+
+
+# =============================================================================
 # Download for Offline
 # =============================================================================
 
