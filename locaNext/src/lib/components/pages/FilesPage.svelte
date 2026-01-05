@@ -2206,7 +2206,8 @@
 
   function bgCreateFolder() {
     closeMenus();
-    if (selectedProjectId) {
+    // P9: Allow folder creation in Offline Storage (no projectId needed)
+    if (selectedProjectId || isInOfflineStorage) {
       showCreateFolderModal = true;
     }
   }
