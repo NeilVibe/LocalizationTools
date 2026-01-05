@@ -279,11 +279,20 @@ cp /tmp/test_*.png /mnt/c/Users/neil/Desktop/
 import { test, expect } from '@playwright/test';
 
 test('search and color display', async ({ page }) => {
-  // Login
+  // Login - IMPORTANT: New launcher screen requires clicking Login button first!
   await page.goto('http://localhost:5173');
-  await page.fill('input[placeholder*="username"]', 'admin');
-  await page.fill('input[placeholder*="password"]', 'admin123');
-  await page.click('button[type="submit"]');
+
+  // P9: Handle launcher screen (Start Offline / Login buttons)
+  const loginButton = page.getByRole('button', { name: 'Login' });
+  if (await loginButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await loginButton.click();
+    await page.waitForTimeout(500);
+  }
+
+  // Use getByLabel for reliable selectors (NOT input[type="text"])
+  await page.getByLabel('Username').fill('admin');
+  await page.getByLabel('Password').fill('admin123');
+  await page.getByRole('button', { name: /sign in|login/i }).click();
   await page.waitForTimeout(2000);
 
   // Navigate to LDM
@@ -297,6 +306,31 @@ test('search and color display', async ({ page }) => {
   const coloredSpans = await page.$$('span[style*="color"]');
   console.log(`Found ${coloredSpans.length} colored spans`);
 });
+```
+
+### 5.5 Launcher Screen (P9 Mode)
+
+**IMPORTANT:** As of P9 (Offline/Online Mode), the app shows a launcher screen before login:
+
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│         [Start Offline]                 │
+│                                         │
+│         [Login]  ← Click this first!    │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**Tests must handle this:**
+```javascript
+// Check for launcher screen and click Login
+const loginButton = page.getByRole('button', { name: 'Login' });
+if (await loginButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+  await loginButton.click();
+  await page.waitForTimeout(500);
+}
+// Then fill credentials...
 ```
 
 ---
@@ -774,6 +808,37 @@ sudo systemctl stop gitea
 
 # Check resource usage
 htop
+```
+
+### Post-Test Cleanup Protocol (CRITICAL!)
+
+**ALWAYS run these after Playwright tests:**
+
+```bash
+# 1. Check for zombie browser processes
+ps aux | grep -E "(chromium|chrome|playwright)" | grep -v grep
+
+# 2. Kill orphaned browser instances
+pkill -f "chromium" 2>/dev/null
+pkill -f ".local/share/ms-playwright" 2>/dev/null
+
+# 3. Clean up test artifacts
+rm -rf locaNext/test-results/
+rm -f /tmp/test_*.png
+
+# 4. Check for zombie node processes
+ps aux | grep "node" | grep -v grep | grep -v "vscode"
+```
+
+**Why This Matters:**
+- Playwright launches Chromium browsers for each test
+- Failed tests may leave browser processes running
+- These zombies consume RAM (100-500MB each)
+- Multiple test runs can accumulate many zombies
+
+**Quick One-Liner:**
+```bash
+pkill -f "chromium" 2>/dev/null; rm -rf locaNext/test-results/ 2>/dev/null; echo "Cleaned"
 ```
 
 ---
@@ -1266,6 +1331,8 @@ Both use `flex: 0 0 {percent}%` but:
 | **BROWSER FREEZE (CRITICAL)** | **Effect calling function without previousValue tracking** |
 | Bash `$()` syntax errors | Use heredoc + separate commands (CS-017) |
 | TM "active" but "No active TM" | Check if assignment has NULL scope IDs (CS-018) |
+| Login form not found | Click "Login" button first on P9 launcher (CS-019) |
+| `input[type="text"]` timeout | Use `page.getByLabel()` instead (CS-019) |
 
 ---
 
@@ -1460,6 +1527,47 @@ Claude: "No. That empty gray space on the right is a bug."
 
 ---
 
+### ⚠️ CS-019: P9 Launcher Screen Blocking Login (2026-01-05)
+
+**Tests must handle the P9 launcher screen before login form is accessible.**
+
+**Symptoms:**
+- `page.fill('input[type="text"]', 'admin')` times out
+- `page.getByLabel('Username')` not found
+- Login form selectors fail immediately after `page.goto()`
+
+**Root Cause:**
+P9 Offline/Online Mode added a launcher screen with "Start Offline" and "Login" buttons:
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│         [Start Offline]                 │
+│                                         │
+│         [Login]  ← Must click first!    │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+The login form doesn't appear until user clicks "Login".
+
+**Fix:**
+```javascript
+// Always check for launcher screen first
+const loginButton = page.getByRole('button', { name: 'Login' });
+if (await loginButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+  await loginButton.click();
+  await page.waitForTimeout(500);
+}
+
+// Now login form is visible
+await page.getByLabel('Username').fill('admin');
+await page.getByLabel('Password').fill('admin123');
+```
+
+**Also Fixed:** Use `page.getByLabel()` instead of fragile `input[type="text"]` selectors.
+
+---
+
 ### ⚠️ CS-017: Bash Command Substitution Mangling (2026-01-01)
 
 **NEVER use `$()` command substitution in complex bash commands.**
@@ -1531,4 +1639,4 @@ EOF
 ---
 
 *Dev Mode Protocol | Fast UI Testing | No Build Required*
-*Updated: 2026-01-01 with CS-017 Bash Mangling + CS-018 TM Scope Validation*
+*Updated: 2026-01-05 with CS-019 P9 Launcher Screen + Post-Test Cleanup Protocol*
