@@ -33,6 +33,7 @@ from collections import defaultdict
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+from openpyxl.worksheet.datavalidation import DataValidation
 
 
 # === CONFIGURATION ===
@@ -362,6 +363,7 @@ def get_or_create_user_status_column(ws, username, after_comment_col):
     Find or create STATUS_{username} column immediately after COMMENT_{username}.
 
     This is for MANAGER workflow - managers mark FIXED/REPORTED/CHECKING.
+    Adds a dropdown list (data validation) so managers can only select valid values.
 
     Args:
         ws: Worksheet
@@ -376,6 +378,25 @@ def get_or_create_user_status_column(ws, username, after_comment_col):
     for col in range(1, ws.max_column + 1):
         header = ws.cell(row=1, column=col).value
         if header and str(header).strip() == col_name:
+            # Ensure dropdown validation exists (might be missing from older files)
+            col_letter = get_column_letter(col)
+            has_validation = False
+            for existing_dv in ws.data_validations.dataValidation:
+                if col_letter in str(existing_dv.sqref):
+                    has_validation = True
+                    break
+            if not has_validation:
+                dv = DataValidation(
+                    type="list",
+                    formula1='"FIXED,REPORTED,CHECKING"',
+                    allow_blank=True,
+                    showDropDown=False,
+                    showErrorMessage=True,
+                    errorTitle="Invalid Status",
+                    error="Please select: FIXED, REPORTED, or CHECKING"
+                )
+                dv.add(f"{col_letter}2:{col_letter}1000")
+                ws.add_data_validation(dv)
             return col
 
     # Add new column at max_column + 1
@@ -403,7 +424,23 @@ def get_or_create_user_status_column(ws, username, after_comment_col):
     ws.column_dimensions[col_letter].width = 15
     ws.column_dimensions[col_letter].hidden = False
 
-    print(f"    Created column: {col_name} at {get_column_letter(new_col)} (manager status - green)")
+    # Add dropdown data validation for FIXED/REPORTED/CHECKING
+    # Range: from row 2 to row 1000 (covers most files)
+    dv = DataValidation(
+        type="list",
+        formula1='"FIXED,REPORTED,CHECKING"',
+        allow_blank=True,
+        showDropDown=False,  # False = show dropdown arrow, True = hide it (confusing API)
+        showErrorMessage=True,
+        errorTitle="Invalid Status",
+        error="Please select: FIXED, REPORTED, or CHECKING",
+        promptTitle="Manager Status",
+        prompt="Select status: FIXED, REPORTED, or CHECKING"
+    )
+    dv.add(f"{col_letter}2:{col_letter}1000")
+    ws.add_data_validation(dv)
+
+    print(f"    Created column: {col_name} at {get_column_letter(new_col)} (manager status - dropdown)")
     return new_col
 
 
