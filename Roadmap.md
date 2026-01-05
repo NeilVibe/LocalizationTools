@@ -529,6 +529,14 @@ TMs can now be assigned to Offline Storage:
 - TM Tree shows Offline Storage as first platform
 - Full TM operations: Assign, Activate, Deactivate, Delete, Multi-select
 
+### P9: Folder CRUD in Offline Storage (Session 31)
+
+Full folder management in Offline Storage:
+- Create folders with nested navigation
+- Rename and delete folders
+- API endpoints: POST/DELETE/PUT for folders
+- 7 Playwright tests covering all operations
+
 ### What Was Built
 
 | Component | File | Status |
@@ -787,4 +795,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-05 | Build 453 | P9-ARCH TM + Offline Storage COMPLETE*
+*Strategic Roadmap | Updated 2026-01-05 | Build 453 | P9 Offline Storage CRUD COMPLETE (Session 31)*
