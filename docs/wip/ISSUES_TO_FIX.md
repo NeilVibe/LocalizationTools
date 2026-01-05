@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-05 (Session 29) | **Build:** 449 (pending) | **Open:** 4
+**Last Updated:** 2026-01-05 (Session 30) | **Build:** 453 (pending) | **Open:** 2
 
 ---
 
@@ -8,40 +8,36 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 4 |
-| **FIXED/CLOSED** | 103 |
+| **OPEN** | 2 |
+| **FIXED/CLOSED** | 107 |
 | **NOT A BUG/BY DESIGN** | 3 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
-## OPEN ISSUES (Session 29)
+## RECENTLY FIXED (Session 30)
 
-### P9-ARCH: Offline Storage Should Be A Real Project
+### P9-ARCH: Offline Storage Should Be A Real Project ✅ FIXED
 
 - **Reported:** 2026-01-05 (Session 29)
+- **Fixed:** 2026-01-05 (Session 30)
 - **Severity:** HIGH (architectural)
-- **Status:** OPEN - IN PROGRESS
-- **Component:** offline.py, offline_schema.sql, FilesPage.svelte
+- **Status:** ✅ FIXED
+- **Component:** offline.py, tm_assignment.py, TMExplorerTree.svelte
 
-**Problem:** Offline Storage is treated as a special case everywhere, creating parasite code.
+**Problem:** Offline Storage was treated as a special case everywhere.
 
-**Current State:**
-- Local files have `project_id=NULL`
-- TMs can't be assigned to Offline Storage (no project to assign to)
-- Pretranslate can't find TMs for local files
-- Every endpoint needs special fallback code
+**Solution Implemented:**
+- **SQLite:** Created Offline Storage platform/project with well-known ID=-1
+- **PostgreSQL:** Created Offline Storage platform/project for TM assignment FK support
+- **TM Tree:** Updated to include Offline Storage as first platform
+- **TM Assignment:** Drag-drop to Offline Storage works
+- **TM Activation:** Works after assignment to Offline Storage
 
-**Solution:**
-- Create "Offline Storage" as a real platform+project in SQLite on init
-- Local files reference this project instead of NULL
-- TMs can be assigned to this project normally
-- All existing logic works - no special cases needed
-
-**Tables to modify:**
-- `offline_platforms` - Add Offline Storage platform record
-- `offline_projects` - Add Offline Storage project record
-- `offline_files` - Use Offline Storage project_id instead of NULL
+**Files Modified:**
+- `server/database/offline.py` - Added `OFFLINE_STORAGE_PLATFORM_ID = -1`, `_ensure_offline_storage_project()`
+- `server/tools/ldm/routes/tm_assignment.py` - Added `ensure_offline_storage_platform/project()`, updated `get_tm_tree()`
+- `locaNext/src/lib/components/ldm/TMExplorerTree.svelte` - TM delete, multi-select, context menu fixes
 
 ---
 
@@ -98,9 +94,10 @@
 
 ---
 
-### TM-004: TM Context Menu Shows Useless Options
+### TM-004: TM Context Menu Shows Useless Options ✅ FIXED
 
 - **Reported:** 2026-01-05 (Session 29)
+- **Fixed:** 2026-01-05 (Session 30)
 - **Severity:** LOW
 - **Status:** ✅ FIXED
 - **Component:** TMExplorerTree.svelte
@@ -111,7 +108,8 @@
 
 **Fix Applied:**
 - Hide "Move to Unassigned" when `scope === 'unassigned'`
-- Activation now works for unassigned TMs (creates global assignment)
+- Activation still requires scope assignment (no global activation - too dangerous)
+- Users should drag TMs to Offline Storage or other platforms, then activate
 
 ---
 

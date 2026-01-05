@@ -1,6 +1,6 @@
 # Offline/Online Mode - Complete Specification
 
-**Priority:** P3 | **Status:** IN PROGRESS | **Created:** 2025-12-28 | **Updated:** 2026-01-05
+**Priority:** P9 | **Status:** IN PROGRESS | **Created:** 2025-12-28 | **Updated:** 2026-01-05
 
 ---
 
@@ -74,12 +74,14 @@ When local files exist, the projects list includes a virtual project:
 ```python
 # Virtual project in /api/ldm/projects
 {
-    "id": 0,  # Special ID for Offline Storage
+    "id": -1,  # Special ID for Offline Storage (SQLite uses -1)
     "name": "Offline Storage",
     "description": "X local file(s)",
-    "platform_id": null
+    "platform_id": -1  # Virtual platform ID
 }
 ```
+
+**Note:** SQLite stores files with `project_id = -1`. PostgreSQL has a separate Offline Storage platform/project record (auto-generated ID) for TM assignment foreign keys.
 
 ### Search Mode Parameter
 
@@ -150,6 +152,72 @@ OFFLINE MODE VIEW
 4. Now see BOTH: Offline Storage + PostgreSQL tree
 5. Move files from Offline Storage to desired projects (Ctrl+X/V)
 6. Files sync to PostgreSQL at new location
+
+---
+
+## P9-ARCH: TM + Offline Storage (2026-01-05)
+
+### Problem: TM Couldn't Be Assigned to Offline Storage
+
+Offline Storage wasn't a "real" project in PostgreSQL, so TMs couldn't be assigned to it (FK constraint failure).
+
+### Solution: Dual Database Records
+
+| Database | ID | Purpose |
+|----------|---|---------|
+| **SQLite** | `-1` | File storage (`project_id = -1`) |
+| **PostgreSQL** | Auto (e.g., 31) | TM assignment FK target |
+
+This separation is necessary because:
+- TM assignments have foreign key constraints to PostgreSQL `ldm_projects`
+- SQLite files use `project_id = -1` (virtual ID, not in PostgreSQL)
+- TM tree needs a real PostgreSQL project to drag TMs onto
+
+### Implementation
+
+**Backend** (`server/tools/ldm/routes/tm_assignment.py`):
+
+```python
+OFFLINE_STORAGE_PLATFORM_NAME = "Offline Storage"
+OFFLINE_STORAGE_PROJECT_NAME = "Offline Storage"
+
+async def ensure_offline_storage_platform(db):
+    """Create Offline Storage platform in PostgreSQL if not exists."""
+    result = await db.execute(
+        select(LDMPlatform).where(LDMPlatform.name == OFFLINE_STORAGE_PLATFORM_NAME)
+    )
+    platform = result.scalar_one_or_none()
+    if not platform:
+        platform = LDMPlatform(
+            name=OFFLINE_STORAGE_PLATFORM_NAME,
+            description="Local files stored offline for translation",
+            owner_id=1, is_restricted=False
+        )
+        db.add(platform)
+        await db.flush()
+    return platform
+```
+
+**TM Tree** includes Offline Storage as the first platform:
+- Appears at top of tree with folder icon
+- TMs can be dragged onto it
+- Context menu: Activate, Deactivate, Delete
+
+### TM Features for Offline Storage
+
+| Feature | Works? | Notes |
+|---------|--------|-------|
+| **Assign TM** | ✅ | Drag from Unassigned to Offline Storage |
+| **Activate TM** | ✅ | Right-click → Activate |
+| **Deactivate TM** | ✅ | Right-click → Deactivate |
+| **Delete Assignment** | ✅ | Right-click → Delete |
+| **Multi-select** | ✅ | Ctrl+click, Shift+click |
+| **Bulk Operations** | ✅ | Delete/Activate multiple TMs |
+
+### Files Modified (Session 30)
+
+- `server/tools/ldm/routes/tm_assignment.py` - ensure_offline_storage_platform/project, updated get_tm_tree
+- `locaNext/src/lib/components/ldm/TMExplorerTree.svelte` - Delete, multi-select, context menu
 
 ---
 
