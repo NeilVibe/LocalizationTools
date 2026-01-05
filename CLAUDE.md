@@ -13,7 +13,7 @@
 | **Current task?** | [Roadmap.md](Roadmap.md) |
 | **Session context?** | [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
 | **Open bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
-| **P3 Offline/Online spec?** | [docs/wip/OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) ← NEXT PHASE |
+| **P9 Offline/Online spec?** | [docs/wip/OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) ← IN PROGRESS |
 | **WIP docs?** | [docs/wip/README.md](docs/wip/README.md) |
 | **Build → Test (Windows)** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) |
 | **CI/CD debug?** | [docs/cicd/TROUBLESHOOTING.md](docs/cicd/TROUBLESHOOTING.md) |
@@ -310,7 +310,7 @@ testing_toolkit/          # ← PRIMARY TESTING DOCS
 docs/
 ├── wip/                  # Active work
 │   ├── SESSION_CONTEXT.md      ← Current state + next steps
-│   ├── ISSUES_TO_FIX.md        ← Bug tracker (7 open, 0 critical)
+│   ├── ISSUES_TO_FIX.md        ← Bug tracker (2 open, 0 critical)
 │   └── P36_COVERAGE_GAPS.md    ← Coverage analysis + test plan
 ├── cicd/                 # CI/CD documentation (ALL CI/CD HERE)
 │   ├── CI_CD_HUB.md            ← Pipeline overview

@@ -94,7 +94,7 @@ File Explorer (structure owner)     TM Explorer (READ-ONLY mirror)
 
 ## MAJOR FEATURE: Offline/Online Sync System
 
-**Status:** PLANNED | **Priority:** HIGH | **Doc:** `docs/wip/OFFLINE_ONLINE_SYNC.md`
+**Status:** ✅ COMPLETE | **Priority:** HIGH | **Doc:** `docs/wip/OFFLINE_ONLINE_MODE.md`
 
 Manual on-demand synchronization between Online (PostgreSQL) and Offline (SQLite) modes.
 
@@ -521,6 +521,14 @@ Transformed LDM from "private by default" to "public by default with optional re
 
 Beautiful game-launcher style first screen with mode switching.
 
+### P9-ARCH: TM + Offline Storage (Session 30)
+
+TMs can now be assigned to Offline Storage:
+- Offline Storage platform/project created in PostgreSQL for TM FK constraints
+- SQLite files use `project_id = -1`
+- TM Tree shows Offline Storage as first platform
+- Full TM operations: Assign, Activate, Deactivate, Delete, Multi-select
+
 ### What Was Built
 
 | Component | File | Status |
@@ -680,28 +688,6 @@ Font customization now available:
 - Font Family: System, Inter, Roboto, Noto Sans (CJK), Source Han (CJK), Consolas
 - Text Contrast: Default, High Contrast, Soft
 
-### P3: Offline/Online Mode (COMPLEX)
-Work offline when central server unavailable:
-- Local SQLite for changes while offline
-- Auto-sync and merge when reconnecting
-- Conflict resolution (reviewed rows protected)
-- Merge modes: Full (add + edit) vs Edit-only
-
-### P4: Color Parser Extension
-Current parser supports PAColor format only. Document how to add:
-- `{Color(#hex)}text{/Color}` format
-- `<color=name>text</color>` format
-- Auto-detection of format per file
-
-### P5: Advanced Search
-Add search mode options: Contain, Exact, Not Contain, Fuzzy (Model2Vec semantic)
-- Search by: StringID, Source, Target (extensible for future metadata)
-
-### P6: File Delete + Recycle Bin
-- Right-click → Delete file
-- Deleted files go to "Bin" (soft delete)
-- Bin view to recover or permanently delete
-
 ---
 
 ## Quick Navigation
@@ -801,4 +787,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-05 | Build 444+ | P9 Offline/Online Backend COMPLETE (Schema fixes + TM/Pretranslate)*
+*Strategic Roadmap | Updated 2026-01-05 | Build 453 | P9-ARCH TM + Offline Storage COMPLETE*

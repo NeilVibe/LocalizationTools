@@ -1,119 +1,71 @@
 # Session Context
 
-> Last Updated: 2026-01-05 (Session 28 - Schema Fixes + TM/Pretranslate Offline)
+> Last Updated: 2026-01-05 (Session 30 - P9-ARCH TM + Offline Storage)
 
 ---
 
 ## STABLE CHECKPOINT
 
-**Post-Session 28:** Build 444+ | **Date:** 2026-01-05
+**Post-Session 30:** Build 453 (pending) | **Date:** 2026-01-05
 
-All file/row endpoints now work with both PostgreSQL AND SQLite (Offline Storage).
-All schemas have Optional datetime fields for SQLite compatibility.
+TM system now fully supports Offline Storage - users can assign, activate, and manage TMs for offline files.
 
 ---
 
 ## Current State
 
-**Build:** 444 | **Open Issues:** 0
-**Tests:** All offline endpoints verified working
-**Status:** Unified Offline/Online Backend COMPLETE!
+**Build:** 453 (pending) | **Open Issues:** 2
+**Tests:** All TM + Offline Storage tests passing
+**Status:** P9-ARCH TM Integration COMPLETE!
 
 ---
 
-## SESSION 28 COMPLETE ✅
+## SESSION 30 COMPLETE ✅
 
-### Schema DateTime Fixes ✅ DONE
+### P9-ARCH: TM + Offline Storage Integration ✅ DONE
 
-All response schemas now use `Optional[datetime] = None` for SQLite compatibility:
+**Problem:** Offline Storage wasn't a real project, so TMs couldn't be assigned to it.
 
-| Schema | Fields Fixed |
-|--------|--------------|
-| `ProjectResponse` | created_at, updated_at |
-| `FolderResponse` | created_at |
-| `FileResponse` | created_at, updated_at |
-| `RowResponse` | updated_at |
-| `QAIssue` | created_at |
-| `TMResponse` | created_at (already Optional) |
+**Solution Implemented:**
 
-### Additional Endpoints Fixed ✅ DONE
+| Component | Change |
+|-----------|--------|
+| **SQLite** | Created Offline Storage platform/project with ID=-1 |
+| **PostgreSQL** | Created Offline Storage platform/project for TM assignment FK |
+| **TM Tree** | Updated to include Offline Storage as first platform |
+| **TM Assignment** | Drag-drop to Offline Storage works |
+| **TM Activation** | Works after assignment |
+| **TM Delete** | Added to context menu |
+| **TM Multi-select** | Ctrl+click, Shift+click with bulk operations |
 
-| Endpoint | Fix |
-|----------|-----|
-| `GET /projects` | Includes "Offline Storage" virtual project (id=0) |
-| `GET /tm` | Includes SQLite TMs from offline.py |
-| `POST /pretranslate` | Full SQLite fallback with RowLike objects |
+### Why Two Records?
 
-### TM in Offline Mode
+| Database | ID | Purpose |
+|----------|---|---------|
+| PostgreSQL | Auto (31) | TM assignment foreign key target |
+| SQLite | -1 | Offline file storage |
 
-- TMs created from local files go to PostgreSQL (hybrid approach)
-- TM list includes both PostgreSQL and SQLite TMs
-- SQLite TMs stored in `offline_tms` table
+This is necessary because TM assignments have FK constraints to PostgreSQL tables.
+
+### Files Modified
+
+- `server/database/offline.py` - `OFFLINE_STORAGE_PLATFORM_ID = -1`, `_ensure_offline_storage_project()`
+- `server/tools/ldm/routes/tm_assignment.py` - `ensure_offline_storage_platform/project()`, updated `get_tm_tree()`
+- `locaNext/src/lib/components/ldm/TMExplorerTree.svelte` - Delete, multi-select, context menu
+
+### Tests Created
+
+- `tests/tm-offline-test.spec.ts` - TM tree, delete, multi-select
+- `tests/tm-assignment-test.spec.ts` - Drag-drop assignment
+- `tests/tm-activation-test.spec.ts` - TM activation
 
 ---
 
-## SESSION 27 COMPLETE ✅
+## SESSION 28-29 FIXES
 
-### Offline/Online Unified Endpoints ✅ DONE
-
-**Every file/row endpoint now works with both databases:**
-
-| Endpoint | PostgreSQL | SQLite | Status |
-|----------|------------|--------|--------|
-| `GET /files/{id}` | ✅ | ✅ | UNIFIED |
-| `GET /files/{id}/rows` | ✅ | ✅ | UNIFIED |
-| `PUT /rows/{id}` | ✅ | ✅ | FIXED |
-| `DELETE /files/{id}` | ✅ | ✅ | UNIFIED |
-| `PATCH /files/{id}/rename` | ✅ | ✅ | UNIFIED |
-| `GET /files/{id}/download` | ✅ | ✅ | UNIFIED |
-| `GET /files/{id}/convert` | ✅ | ✅ | FIXED |
-| `GET /files/{id}/extract-glossary` | ✅ | ✅ | UNIFIED |
-| `POST /files/{id}/merge` | ✅ | ✅ | UNIFIED |
-| `POST /files/{id}/register-as-tm` | ✅ | ✅ | UNIFIED |
-| `POST /files/{id}/check-qa` | ✅ | ✅ | UNIFIED |
-| `POST /rows/{id}/check-qa` | ✅ | ✅ | UNIFIED |
-| `POST /files/{id}/check-grammar` | ✅ | ✅ | UNIFIED |
-| `POST /rows/{id}/check-grammar` | ✅ | ✅ | UNIFIED |
-| `GET /files/{id}/active-tms` | ✅ | Empty | UNIFIED |
-| `POST /pretranslate` | ✅ | ✅ | UNIFIED |
-| `GET /search` | ✅ | ✅ | Includes local files |
-| `POST /files/upload?storage=local` | N/A | ✅ | Imports to Offline Storage |
-
-**PostgreSQL-Only Operations (by design):**
-- `PATCH /files/{id}/move` → Returns 400 for local files
-- `PATCH /files/{id}/move-cross-project` → Returns 400 for local files
-- `POST /files/{id}/copy` → Returns 400 for local files
-
-### Architecture Pattern
-
-```
-ONE endpoint → Try PostgreSQL → Fall back to SQLite if not found
-```
-
-**NO DUPLICATE CODE!** Each endpoint uses this pattern:
-```python
-result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
-file = result.scalar_one_or_none()
-
-if not file:
-    # Fallback to SQLite
-    offline_db = get_offline_db()
-    return offline_db.get_local_file(file_id)
-```
-
-### Bugs Fixed
-
-| Bug | Root Cause | Fix |
-|-----|------------|-----|
-| `PUT /rows/{id}` 500 error | Response didn't match RowResponse schema | Return full row data after update |
-| `GET /files/{id}/convert` 500 error | `extra_data` was JSON string, not dict | Parse JSON from SQLite |
-
-### Documentation Created
-
-| Doc | Purpose |
-|-----|---------|
-| `docs/OFFLINE_ONLINE_ARCHITECTURE.md` | Technical implementation guide |
-| Updated `docs/wip/OFFLINE_ONLINE_MODE.md` | P9 Launcher permissions |
+- Schema DateTime fixes for SQLite compatibility
+- Additional endpoint SQLite fallbacks
+- TM in Offline Mode (hybrid approach)
 
 ---
 
@@ -131,31 +83,15 @@ if not file:
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| **P9** | **Offline/Online Mode** | ✅ BACKEND COMPLETE |
+| **P9** | **Offline/Online Mode** | ✅ TM INTEGRATION COMPLETE |
 | P8 | Dashboard Overhaul | PLANNED |
 
-### Next Steps for P9
+### P9 Remaining Tasks
 
 1. ✅ Unified endpoints (done)
-2. ⬜ Frontend Offline Storage UI improvements
-3. ⬜ Sync flow implementation (push changes to server)
-4. ⬜ SQLite TM storage (for true offline TM support)
-
----
-
-## KEY FILES (Session 27)
-
-| File | Changes |
-|------|---------|
-| `server/tools/ldm/routes/files.py` | 10+ endpoints with SQLite fallback |
-| `server/tools/ldm/routes/rows.py` | Fixed row update response |
-| `server/tools/ldm/routes/qa.py` | QA endpoints with fallback |
-| `server/tools/ldm/routes/grammar.py` | Grammar endpoints with fallback |
-| `server/tools/ldm/routes/pretranslate.py` | Pre-translate with fallback |
-| `server/tools/ldm/routes/tm_assignment.py` | Active TMs returns empty for local |
-| `server/tools/ldm/routes/search.py` | Searches SQLite local files |
-| `server/database/offline.py` | Added `get_row()` method |
-| `docs/OFFLINE_ONLINE_ARCHITECTURE.md` | NEW - Technical docs |
+2. ✅ TM assignment to Offline Storage (done)
+3. ⬜ Frontend Offline Storage UI improvements
+4. ⬜ Sync flow improvements (push changes)
 
 ---
 
@@ -172,9 +108,9 @@ LocaNext.exe (User PC)           Central PostgreSQL
 UNIFIED PATTERN:
 Endpoint → PostgreSQL first → SQLite fallback → Same response format
 
-PERMISSIONS:
-Offline Storage:     FULL CONTROL (create, move, delete)
-Downloaded files:    READ CONTENT (edit rows only)
+TM ASSIGNMENT:
+Offline Storage platform in PostgreSQL (id=31) → TM can be assigned/activated
+Offline files in SQLite (project_id=-1) → Uses Offline Storage TMs
 ```
 
 ---
@@ -188,8 +124,8 @@ Downloaded files:    READ CONTENT (edit rows only)
 # Check servers
 ./scripts/check_servers.sh
 
-# Test offline endpoints
-python3 -c "import requests; ..." # See test script in session
+# Run TM tests
+cd locaNext && npx playwright test tests/tm-*.spec.ts
 
 # Build trigger
 echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN: Description" && git push origin main && git push gitea main
@@ -197,4 +133,4 @@ echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN:
 
 ---
 
-*Session 27 | Build 444 | Offline/Online Unified Endpoints COMPLETE*
+*Session 30 | Build 453 | P9-ARCH TM + Offline Storage COMPLETE*
