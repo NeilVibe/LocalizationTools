@@ -108,7 +108,8 @@ QAExcelCompiler/
 └── docs/
     ├── ROADMAP.md        # Project plan
     ├── WIP.md            # Technical details
-    └── DAILY_STATUS_PLAN.md  # Tracker implementation plan
+    ├── DAILY_STATUS_PLAN.md   # Tracker implementation plan
+    └── MANAGER_STATUS_PLAN.md # Manager status feature plan
 ```
 
 ---
@@ -170,6 +171,37 @@ Each master file gets a `STATUS` sheet as the **first tab** (yellow header):
 - Existing comments preserved
 - **Team's custom formatting preserved** (colors added to cells won't be overwritten)
 - **Hidden columns stay hidden** (column visibility preserved on updates)
+- **Manager status values preserved** (FIXED/REPORTED/CHECKING entries persist on re-compile)
+
+### Manager Status Workflow
+
+Managers can track issue resolution in Master files using `STATUS_{User}` columns:
+
+```
+| COMMENT_John | STATUS_John | SCREENSHOT_John | COMMENT_Alice | STATUS_Alice | ...
+|--------------|-------------|-----------------|---------------|--------------|-----
+| "Bug here"   | FIXED       | img.png         | "Typo found"  | REPORTED     |
+| "Wrong text" |             |                 | "Missing"     | CHECKING     |
+```
+
+**Valid Manager STATUS values:**
+- **FIXED**: Issue has been fixed
+- **REPORTED**: Issue has been reported to dev team
+- **CHECKING**: Issue is being investigated
+- *(empty)*: No manager action yet
+
+**Column styling:**
+- `STATUS_{User}` headers: Light green (`90EE90`) background
+- FIXED: Forest green text
+- REPORTED: Orange text
+- CHECKING: Blue text
+
+**Workflow:**
+1. Compiler creates Master files with empty `STATUS_{User}` columns
+2. Manager opens Master file in Excel
+3. Manager enters FIXED/REPORTED/CHECKING for each issue
+4. On next compile, these values are **preserved automatically**
+5. Manager stats appear in Progress Tracker (Fixed, Reported, Checking, Pending)
 
 ### Image Consolidation
 
@@ -214,18 +246,25 @@ A separate `LQA_Tester_ProgressTracker.xlsx` file tracks progress across ALL cat
 - **Issues**: Rows with STATUS = "ISSUE"
 - **`--`**: No submission that day
 
-**TOTAL Tab** - Cumulative stats per user:
+**TOTAL Tab** - Cumulative stats per user (includes Manager Stats):
 
-| User  | Completion % | Total | Issues | No Issue | Blocked |
-|-------|--------------|-------|--------|----------|---------|
-| Alice | 100.0%       | 32    | 5      | 25       | 2       |
-| Bob   | 95.0%        | 28    | 6      | 20       | 2       |
-| John  | 98.0%        | 60    | 11     | 45       | 4       |
-| TOTAL | 97.5%        | 120   | 22     | 90       | 8       |
+| User  | Completion % | Total | Issues | No Issue | Blocked | Fixed | Reported | Checking | Pending |
+|-------|--------------|-------|--------|----------|---------|-------|----------|----------|---------|
+| Alice | 100.0%       | 32    | 5      | 25       | 2       | 3     | 1        | 0        | 1       |
+| Bob   | 95.0%        | 28    | 6      | 20       | 2       | 2     | 2        | 1        | 1       |
+| John  | 98.0%        | 60    | 11     | 45       | 4       | 5     | 3        | 2        | 1       |
+| TOTAL | 97.5%        | 120   | 22     | 90       | 8       | 10    | 6        | 3        | 3       |
+
+**Manager Stats columns:**
+- **Fixed**: Count of issues marked as FIXED by manager
+- **Reported**: Count of issues marked as REPORTED by manager
+- **Checking**: Count of issues marked as CHECKING by manager
+- **Pending**: Issues with no manager action (Issues - Fixed - Reported - Checking)
 
 **GRAPHS Tab** - Visual charts:
 - **Daily Progress Chart**: Bar chart showing Done per user per day
 - **User Completion Chart**: Horizontal bar chart showing Completion % per user
+- **Issue Resolution Chart**: Pie chart showing Fixed vs Reported vs Checking vs Pending
 
 **Key Features:**
 - **File modification date** determines which day work is tracked
@@ -233,6 +272,7 @@ A separate `LQA_Tester_ProgressTracker.xlsx` file tracks progress across ALL cat
 - **REPLACE mode**: Re-running updates existing entries (no duplicates)
 - **Persistent data**: Hidden `_DAILY_DATA` sheet stores raw data
 - **Beautiful styling**: Gold headers, alternating rows, borders
+- **Manager stats tracking**: Fixed, Reported, Checking, Pending per user
 
 ---
 
@@ -324,3 +364,4 @@ QA files should have these columns (detected dynamically by header name):
 
 *Created: 2025-12-30*
 *Updated: 2026-01-05 - Added LQA User Progress Tracker with DAILY/TOTAL/GRAPHS tabs*
+*Updated: 2026-01-05 - Added Manager Status feature (STATUS_{User} columns with FIXED/REPORTED/CHECKING)*
