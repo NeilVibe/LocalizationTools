@@ -1501,6 +1501,126 @@ class OfflineDatabase:
             logger.info(f"Renamed local file {file_id} to '{new_name}'")
             return True
 
+    def move_local_file(self, file_id: int, target_folder_id: int = None) -> bool:
+        """
+        P9: Move a local file to a different folder within Offline Storage.
+
+        Only works for local files (sync_status='local').
+        target_folder_id can be:
+        - None: Move to root of Offline Storage
+        - int: Move into the specified local folder
+
+        Returns True if moved, False if file not found or not local.
+        """
+        with self._get_connection() as conn:
+            # Verify file is local before moving
+            row = conn.execute(
+                "SELECT sync_status, name FROM offline_files WHERE id = ?",
+                (file_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning(f"Cannot move: file {file_id} not found")
+                return False
+
+            if row["sync_status"] != "local":
+                logger.warning(f"Cannot move: file {file_id} is not local (status={row['sync_status']})")
+                return False
+
+            # Verify target folder exists and is local (if specified)
+            if target_folder_id is not None:
+                folder_row = conn.execute(
+                    "SELECT sync_status FROM offline_folders WHERE id = ?",
+                    (target_folder_id,)
+                ).fetchone()
+
+                if not folder_row:
+                    logger.warning(f"Cannot move: target folder {target_folder_id} not found")
+                    return False
+
+                if folder_row["sync_status"] != "local":
+                    logger.warning(f"Cannot move: target folder {target_folder_id} is not local")
+                    return False
+
+            now = datetime.now().isoformat()
+            conn.execute(
+                "UPDATE offline_files SET folder_id = ?, updated_at = ? WHERE id = ?",
+                (target_folder_id, now, file_id)
+            )
+            conn.commit()
+            target_desc = f"folder {target_folder_id}" if target_folder_id else "root"
+            logger.info(f"Moved local file {file_id} ('{row['name']}') to {target_desc}")
+            return True
+
+    def move_local_folder(self, folder_id: int, target_parent_id: int = None) -> bool:
+        """
+        P9: Move a local folder to a different parent folder within Offline Storage.
+
+        Only works for local folders (sync_status='local').
+        target_parent_id can be:
+        - None: Move to root of Offline Storage
+        - int: Move into the specified local folder
+
+        Returns True if moved, False if folder not found or not local.
+        """
+        with self._get_connection() as conn:
+            # Verify folder is local before moving
+            row = conn.execute(
+                "SELECT sync_status, name FROM offline_folders WHERE id = ?",
+                (folder_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning(f"Cannot move: folder {folder_id} not found")
+                return False
+
+            if row["sync_status"] != "local":
+                logger.warning(f"Cannot move: folder {folder_id} is not local (status={row['sync_status']})")
+                return False
+
+            # Prevent moving folder into itself or its descendants
+            if target_parent_id is not None:
+                if target_parent_id == folder_id:
+                    logger.warning(f"Cannot move: folder {folder_id} cannot be moved into itself")
+                    return False
+
+                # Check if target is a descendant of this folder
+                check_id = target_parent_id
+                while check_id is not None:
+                    check_row = conn.execute(
+                        "SELECT parent_id FROM offline_folders WHERE id = ?",
+                        (check_id,)
+                    ).fetchone()
+                    if not check_row:
+                        break
+                    if check_row["parent_id"] == folder_id:
+                        logger.warning(f"Cannot move: folder {folder_id} cannot be moved into its descendant")
+                        return False
+                    check_id = check_row["parent_id"]
+
+                # Verify target folder exists and is local
+                folder_row = conn.execute(
+                    "SELECT sync_status FROM offline_folders WHERE id = ?",
+                    (target_parent_id,)
+                ).fetchone()
+
+                if not folder_row:
+                    logger.warning(f"Cannot move: target folder {target_parent_id} not found")
+                    return False
+
+                if folder_row["sync_status"] != "local":
+                    logger.warning(f"Cannot move: target folder {target_parent_id} is not local")
+                    return False
+
+            conn.execute(
+                "UPDATE offline_folders SET parent_id = ? WHERE id = ?",
+                (target_parent_id, folder_id)
+            )
+            conn.commit()
+            target_desc = f"folder {target_parent_id}" if target_parent_id else "root"
+            logger.info(f"Moved local folder {folder_id} ('{row['name']}') to {target_desc}")
+            return True
+
     # =========================================================================
     # Utility
     # =========================================================================

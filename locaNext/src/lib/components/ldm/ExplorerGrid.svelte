@@ -234,8 +234,8 @@
    * Handle drag over (for drop targets)
    */
   function handleDragOver(event, item) {
-    // Folders, projects, and platforms can be drop targets
-    if (item.type !== 'folder' && item.type !== 'project' && item.type !== 'platform') return;
+    // Folders, projects, and platforms can be drop targets (including local-folder)
+    if (item.type !== 'folder' && item.type !== 'local-folder' && item.type !== 'project' && item.type !== 'platform') return;
 
     // Can't drop on self
     if (draggedItems.some(d => d.id === item.id)) return;
@@ -266,7 +266,8 @@
   function handleDrop(event, targetItem) {
     event.preventDefault();
 
-    if (targetItem.type !== 'folder' && targetItem.type !== 'project' && targetItem.type !== 'platform') return;
+    // P9: Allow dropping on local-folder too
+    if (targetItem.type !== 'folder' && targetItem.type !== 'local-folder' && targetItem.type !== 'project' && targetItem.type !== 'platform') return;
     if (draggedItems.length === 0) return;
 
     // Platforms can only accept projects
