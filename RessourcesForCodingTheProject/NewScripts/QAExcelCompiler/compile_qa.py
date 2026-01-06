@@ -914,9 +914,14 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
 
         # If NO comments in entire sheet, hide the sheet tab
         if not rows_with_comments:
+            if debug:
+                print(f"    [DEBUG] Sheet '{sheet_name}' has {len(comment_cols)} COMMENT_ columns but ALL are empty - HIDING SHEET")
             ws.sheet_state = 'hidden'
             hidden_sheets.append(sheet_name)
             continue
+        else:
+            if debug:
+                print(f"    [DEBUG] Sheet '{sheet_name}' has {len(rows_with_comments)} rows with comments - keeping visible")
 
         # Second pass: Build set of rows to keep visible (comments + context)
         rows_to_show = set(rows_with_comments)
