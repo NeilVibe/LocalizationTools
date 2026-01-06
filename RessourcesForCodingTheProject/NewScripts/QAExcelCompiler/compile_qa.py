@@ -855,20 +855,22 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
 
 def hide_empty_comment_rows(wb, context_rows=1):
     """
-    Post-process: Hide rows where ALL COMMENT_{User} columns are empty.
+    Post-process: Hide rows/sheets where ALL COMMENT_{User} columns are empty.
 
     This allows focusing on issues right away while preserving all data.
     Rows are hidden (not deleted) so they can be unhidden in Excel if needed.
 
     Adjacent context rows are kept visible to provide surrounding context.
+    Sheets with NO comments at all are hidden entirely.
 
     Args:
         wb: Master workbook
         context_rows: Number of rows above/below visible rows to keep visible (default: 1)
 
-    Returns: Number of rows hidden
+    Returns: Tuple of (rows_hidden, sheets_hidden)
     """
-    hidden_count = 0
+    hidden_rows = 0
+    hidden_sheets = []
 
     for sheet_name in wb.sheetnames:
         if sheet_name == "STATUS":
@@ -895,6 +897,12 @@ def hide_empty_comment_rows(wb, context_rows=1):
                     rows_with_comments.add(row)
                     break
 
+        # If NO comments in entire sheet, hide the sheet tab
+        if not rows_with_comments:
+            ws.sheet_state = 'hidden'
+            hidden_sheets.append(sheet_name)
+            continue
+
         # Second pass: Build set of rows to keep visible (comments + context)
         rows_to_show = set(rows_with_comments)
         for row in rows_with_comments:
@@ -911,9 +919,9 @@ def hide_empty_comment_rows(wb, context_rows=1):
         for row in range(2, ws.max_row + 1):
             if row not in rows_to_show:
                 ws.row_dimensions[row].hidden = True
-                hidden_count += 1
+                hidden_rows += 1
 
-    return hidden_count
+    return hidden_rows, hidden_sheets
 
 
 def update_status_sheet(wb, users, user_stats):
@@ -2109,12 +2117,14 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
     # Update STATUS sheet (first tab, with stats)
     update_status_sheet(master_wb, all_users, user_stats)
 
-    # Post-process: Hide rows with no comments (focus on issues)
-    hidden_rows = hide_empty_comment_rows(master_wb)
+    # Post-process: Hide rows/sheets with no comments (focus on issues)
+    hidden_rows, hidden_sheets = hide_empty_comment_rows(master_wb)
 
     # Save master
     master_wb.save(master_path)
     print(f"\n  Saved: {master_path}")
+    if hidden_sheets:
+        print(f"  Hidden sheets (no comments): {', '.join(hidden_sheets)}")
     if hidden_rows > 0:
         print(f"  Hidden: {hidden_rows} rows with no comments (unhide in Excel if needed)")
     if total_images > 0:
@@ -2177,8 +2187,12 @@ def main():
     # Group by category AND language
     by_category_en = defaultdict(list)
     by_category_cn = defaultdict(list)
+    print("\nRouting testers by language:")
     for qf in qa_folders:
-        lang = tester_mapping.get(qf["username"], "EN")
+        username = qf["username"].strip()  # Strip whitespace for safety
+        lang = tester_mapping.get(username, "EN")
+        in_mapping = username in tester_mapping
+        print(f"  {username} ({qf['category']}) -> {lang}{'' if in_mapping else ' (not in mapping, default)'}")
         if lang == "CN":
             by_category_cn[qf["category"]].append(qf)
         else:
