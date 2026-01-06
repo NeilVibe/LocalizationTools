@@ -921,6 +921,13 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
 
         ws = wb[sheet_name]
 
+        # CRITICAL: Clear any AutoFilter from QA files before applying our logic
+        # Testers may have filters/sorting applied - we want clean output
+        if ws.auto_filter.ref:
+            ws.auto_filter.ref = None
+            if debug:
+                print(f"    [DEBUG] Cleared AutoFilter from sheet: {sheet_name}")
+
         # Find all COMMENT_{User} columns
         comment_cols = []
         for col in range(1, ws.max_column + 1):
@@ -970,7 +977,12 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
                 if row + offset <= ws.max_row:
                     rows_to_show.add(row + offset)
 
-        # Third pass: Hide rows not in the show set
+        # Third pass: First UNHIDE all rows (clear any tester hiding), then hide our target rows
+        for row in range(2, ws.max_row + 1):
+            # Reset: unhide all rows first
+            ws.row_dimensions[row].hidden = False
+
+        # Fourth pass: Hide rows not in the show set
         for row in range(2, ws.max_row + 1):
             if row not in rows_to_show:
                 ws.row_dimensions[row].hidden = True
