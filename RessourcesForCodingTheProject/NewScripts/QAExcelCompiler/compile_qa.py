@@ -155,14 +155,13 @@ def copy_images_with_unique_names(qa_folder_info):
 
     for img_path in images:
         original_name = img_path.name
-        new_name = f"{username}_{category}_{original_name}"
+        # Keep original name - hyperlink depends on it
+        dest_path = IMAGES_FOLDER / original_name
 
-        dest_path = IMAGES_FOLDER / new_name
-
-        # Copy image (overwrite if same user re-submits)
+        # Copy image (overwrite if exists - same image from different users)
         shutil.copy2(img_path, dest_path)
 
-        image_mapping[original_name] = new_name
+        image_mapping[original_name] = original_name  # Same name
 
     if image_mapping:
         print(f"    Copied {len(image_mapping)} images to Images/")
