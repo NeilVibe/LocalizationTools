@@ -25,6 +25,7 @@
   } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
+  import ConfirmModal from '$lib/components/common/ConfirmModal.svelte';
 
   // Props
   let {
@@ -47,6 +48,16 @@
 
   // Context menu state
   let contextMenu = $state({ show: false, x: 0, y: 0, tm: null, scope: null });
+
+  // Confirm modal state (Svelte 5 runes - replaces ugly browser confirm())
+  let confirmModal = $state({
+    open: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Delete',
+    pendingAction: null,  // Function to call on confirm
+    pendingData: null     // Data to pass to action
+  });
 
   // Drag state
   let draggedTM = $state(null);
@@ -128,11 +139,24 @@
     }
   }
 
-  async function deleteTM(tm) {
-    // Confirm before deleting
-    const confirmDelete = confirm(`Delete TM "${tm.tm_name}"? This will remove all entries and cannot be undone.`);
-    if (!confirmDelete) return;
+  /**
+   * Show delete confirmation modal for single TM
+   */
+  function deleteTM(tm) {
+    confirmModal = {
+      open: true,
+      title: 'Delete Translation Memory',
+      message: `Delete "${tm.tm_name}"? This will remove all ${tm.entry_count || 0} entries and cannot be undone.`,
+      confirmLabel: 'Delete TM',
+      pendingAction: 'deleteSingle',
+      pendingData: tm
+    };
+  }
 
+  /**
+   * Execute single TM deletion after confirmation
+   */
+  async function executeDeleteTM(tm) {
     try {
       logger.apiCall(`/api/ldm/tm/${tm.tm_id}`, 'DELETE');
       const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.tm_id}`, {
@@ -148,11 +172,11 @@
       if (selectedTMId === tm.tm_id) {
         selectedTMId = null;
       }
+      selectedTMIds = new Set();
 
       await loadTree();
     } catch (err) {
       logger.error('Failed to delete TM', { error: err.message });
-      alert(`Failed to delete TM: ${err.message}`);
     }
   }
 
@@ -256,19 +280,30 @@
   }
 
   /**
-   * TM-002: Bulk delete selected TMs
+   * TM-002: Show delete confirmation modal for multiple TMs
    */
-  async function deleteSelectedTMs() {
+  function deleteSelectedTMs() {
     const count = selectedTMIds.size;
     if (count === 0) return;
 
-    const confirmDelete = confirm(`Delete ${count} selected TM${count > 1 ? 's' : ''}? This will remove all entries and cannot be undone.`);
-    if (!confirmDelete) return;
+    confirmModal = {
+      open: true,
+      title: 'Delete Selected Translation Memories',
+      message: `Delete ${count} selected TM${count > 1 ? 's' : ''}? This will remove all entries and cannot be undone.`,
+      confirmLabel: `Delete ${count} TM${count > 1 ? 's' : ''}`,
+      pendingAction: 'deleteMultiple',
+      pendingData: new Set(selectedTMIds)  // Copy the set
+    };
+  }
 
+  /**
+   * TM-002: Execute bulk TM deletion after confirmation
+   */
+  async function executeDeleteSelectedTMs(tmIds) {
     let successCount = 0;
     let failCount = 0;
 
-    for (const tmId of selectedTMIds) {
+    for (const tmId of tmIds) {
       try {
         const response = await fetch(`${API_BASE}/api/ldm/tm/${tmId}`, {
           method: 'DELETE',
@@ -294,8 +329,28 @@
     }
 
     if (failCount > 0) {
-      alert(`Failed to delete ${failCount} TM(s)`);
+      logger.error(`Failed to delete ${failCount} TM(s)`);
     }
+  }
+
+  /**
+   * Handle confirm modal confirmation - dispatch to appropriate action
+   */
+  function handleModalConfirm() {
+    if (confirmModal.pendingAction === 'deleteSingle' && confirmModal.pendingData) {
+      executeDeleteTM(confirmModal.pendingData);
+    } else if (confirmModal.pendingAction === 'deleteMultiple' && confirmModal.pendingData) {
+      executeDeleteSelectedTMs(confirmModal.pendingData);
+    }
+    // Reset modal state
+    confirmModal = { ...confirmModal, open: false, pendingAction: null, pendingData: null };
+  }
+
+  /**
+   * Handle confirm modal cancellation
+   */
+  function handleModalCancel() {
+    confirmModal = { ...confirmModal, open: false, pendingAction: null, pendingData: null };
   }
 
   /**
@@ -711,6 +766,18 @@
     {/if}
   </div>
 {/if}
+
+<!-- Delete Confirmation Modal (Svelte 5 - replaces ugly browser confirm()) -->
+<ConfirmModal
+  bind:open={confirmModal.open}
+  title={confirmModal.title}
+  message={confirmModal.message}
+  confirmLabel={confirmModal.confirmLabel}
+  cancelLabel="Cancel"
+  danger={true}
+  onConfirm={handleModalConfirm}
+  onCancel={handleModalCancel}
+/>
 
 <style>
   .tm-explorer-tree {
