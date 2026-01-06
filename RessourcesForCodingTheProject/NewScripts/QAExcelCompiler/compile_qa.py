@@ -697,19 +697,54 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
         "comments": 0,
         "screenshots": 0,
         "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "total": 0},
-        "fallback_used": 0
+        "fallback_used": 0,
+        "stringid_matched": 0
     }
 
-    # Determine if we need fallback matching
-    use_fallback = (master_ws.max_row != qa_ws.max_row)
-    if use_fallback:
-        print(f"      Row count differs (master:{master_ws.max_row}, qa:{qa_ws.max_row}), using fallback matching")
+    # --- STRINGID MATCHING FOR ITEM CATEGORY ---
+    # For "Item" category, testers may sort their files A-Z which changes row indices
+    # Use STRINGID matching instead of row index matching to handle sorted files
+    use_stringid_matching = (category.lower() == "item")
+    master_stringid_map = {}  # {stringid: master_row}
+
+    if use_stringid_matching:
+        # Find STRINGID column in master
+        master_stringid_col = find_column_by_header(master_ws, "STRINGID")
+        if master_stringid_col and qa_stringid_col:
+            # Build mapping: stringid -> row number
+            for row in range(2, master_ws.max_row + 1):
+                sid = master_ws.cell(row=row, column=master_stringid_col).value
+                if sid:
+                    master_stringid_map[str(sid).strip()] = row
+            print(f"      [Item] Using STRINGID matching ({len(master_stringid_map)} IDs mapped)")
+        else:
+            print(f"      [Item] WARNING: No STRINGID column found, falling back to row matching")
+            use_stringid_matching = False
+
+    # Determine if we need fallback matching (only if not using STRINGID)
+    use_fallback = False
+    if not use_stringid_matching:
+        use_fallback = (master_ws.max_row != qa_ws.max_row)
+        if use_fallback:
+            print(f"      Row count differs (master:{master_ws.max_row}, qa:{qa_ws.max_row}), using fallback matching")
 
     for qa_row in range(2, qa_ws.max_row + 1):  # Skip header
         result["stats"]["total"] += 1
 
-        # Determine master row (index match or fallback)
-        if use_fallback:
+        # Determine master row (STRINGID match for Item, index match, or fallback)
+        if use_stringid_matching:
+            # Item category: match by STRINGID (handles sorted files)
+            qa_sid = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
+            if qa_sid:
+                master_row = master_stringid_map.get(str(qa_sid).strip())
+                if master_row is None:
+                    # STRINGID not found in master, skip this row
+                    continue
+                result["stringid_matched"] += 1
+            else:
+                # No STRINGID in QA row, skip
+                continue
+        elif use_fallback:
             qa_sig = get_row_signature(qa_ws, qa_row, qa_exclude_cols)
             master_row = find_matching_row_fallback(master_ws, qa_sig, master_exclude_cols)
             if master_row is None:
