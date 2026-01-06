@@ -97,6 +97,7 @@ Compile QA tester Excel files into master sheets with automatic STATUS tracking,
 |------|-------------|--------|
 | 7.1 | Auto-hide rows with no comments (focus on issues) | ✅ DONE |
 | 7.2 | Adjacent row context (keep rows near comments visible) | ✅ DONE |
+| 7.3 | Auto-hide sheets with no comments (entire tab hidden) | ✅ DONE |
 
 ### Phase 8: EN/CN Language Separation ✅ (NEW)
 | Task | Description | Status |
