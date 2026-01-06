@@ -272,6 +272,7 @@ def calculate_completion(df, status_column='STATUS'):
 
 ```
 openpyxl>=3.1.0    # Excel read/write with formatting
+pyinstaller        # For building executable (optional)
 ```
 
 ---
@@ -279,9 +280,41 @@ openpyxl>=3.1.0    # Excel read/write with formatting
 ## Usage
 
 ```bash
-# Run the compiler
+# Run as Python script
 python3 compile_qa.py
+
+# Or run as executable (Windows)
+compile_qa.exe
 ```
+
+---
+
+## Building Executable (PyInstaller)
+
+```bash
+# Build single-file executable
+pyinstaller --onefile --name compile_qa compile_qa.py
+```
+
+### PyInstaller Path Handling
+
+**Problem:** When PyInstaller builds an exe, code is unpacked to a temp directory (`sys._MEIPASS`). `__file__` points to temp dir, not the exe location. Reading/writing files relative to script will fail.
+
+**Solution:** Detect frozen state and use exe's actual location:
+
+```python
+import sys
+from pathlib import Path
+
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable (.exe)
+    SCRIPT_DIR = Path(sys.executable).parent
+else:
+    # Running as normal Python script
+    SCRIPT_DIR = Path(__file__).parent
+```
+
+This ensures `QAfolder/`, `Masterfolder_EN/`, etc. are found next to the `.exe` file.
 
 **What it does:**
 1. Scans `QAfolder/` for `{Username}_{Category}/` folders
