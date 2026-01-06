@@ -860,7 +860,7 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
     return result
 
 
-def hide_empty_comment_rows(wb, context_rows=1):
+def hide_empty_comment_rows(wb, context_rows=1, debug=False):
     """
     Post-process: Hide rows/sheets where ALL COMMENT_{User} columns are empty.
 
@@ -873,6 +873,7 @@ def hide_empty_comment_rows(wb, context_rows=1):
     Args:
         wb: Master workbook
         context_rows: Number of rows above/below visible rows to keep visible (default: 1)
+        debug: If True, print debug info about what's being detected
 
     Returns: Tuple of (rows_hidden, sheets_hidden)
     """
@@ -891,8 +892,12 @@ def hide_empty_comment_rows(wb, context_rows=1):
             header = ws.cell(row=1, column=col).value
             if header and str(header).startswith("COMMENT_"):
                 comment_cols.append(col)
+                if debug:
+                    print(f"    [DEBUG] Found comment column: {header} at col {col}")
 
         if not comment_cols:
+            if debug:
+                print(f"    [DEBUG] No COMMENT_ columns found in {sheet_name}")
             continue
 
         # First pass: Find rows that have comments
@@ -900,8 +905,11 @@ def hide_empty_comment_rows(wb, context_rows=1):
         for row in range(2, ws.max_row + 1):
             for col in comment_cols:
                 value = ws.cell(row=row, column=col).value
-                if value and str(value).strip():
+                # Check for any content (not just whitespace)
+                if value is not None and str(value).strip():
                     rows_with_comments.add(row)
+                    if debug and row <= 10:  # Only debug first 10 rows
+                        print(f"    [DEBUG] Row {row} has comment in col {col}: {repr(str(value)[:30])}")
                     break
 
         # If NO comments in entire sheet, hide the sheet tab
