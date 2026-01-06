@@ -173,11 +173,29 @@
     }
   }
 
-  // Svelte 5: Effect - Connect websocket when authenticated
+  // Svelte 5: Track if sync has been initialized (prevent double init)
+  let syncInitialized = false;
+
+  // Svelte 5: Effect - Connect websocket AND init sync when authenticated
   $effect(() => {
-    if ($isAuthenticated && !websocket.isConnected()) {
-      logger.info("Connecting WebSocket after authentication");
-      websocket.connect();
+    if ($isAuthenticated) {
+      // Connect WebSocket
+      if (!websocket.isConnected()) {
+        logger.info("Connecting WebSocket after authentication");
+        websocket.connect();
+      }
+      // Initialize sync system (only once)
+      if (!syncInitialized) {
+        syncInitialized = true;
+        logger.info("Initializing sync system after authentication");
+        initSync();
+      }
+    } else {
+      // User logged out - cleanup sync
+      if (syncInitialized) {
+        syncInitialized = false;
+        cleanupSync();
+      }
     }
   });
 
@@ -185,8 +203,7 @@
     // Initialize global error monitoring
     remoteLogger.init();
 
-    // P3: Initialize sync system
-    initSync();
+    // P3: Sync system now initializes in $effect after authentication (not here)
 
     logger.component("Layout", "mounted");
     checkAuth();

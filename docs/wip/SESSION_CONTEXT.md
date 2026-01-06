@@ -1,22 +1,47 @@
 # Session Context
 
-> Last Updated: 2026-01-05 (Session 32 - P9 Move + Recycle Bin COMPLETE)
+> Last Updated: 2026-01-06 (Session 33 - SYNC-009 FIXED)
+
+---
+
+## SESSION 33 COMPLETE ✅
+
+### SYNC-009: Continuous Sync Causes Server Hang ✅ FIXED
+
+**Problem:** After login, the continuous sync system hung the server.
+
+**Root Cause:** The sync was calling `merge_row()` per row instead of using the optimized `merge_rows_batch()` function. With 1000+ row files, this meant 1000+ separate database operations.
+
+**All Fixes Applied:**
+1. ✅ Moved `initSync()` to only run AFTER authentication
+2. ✅ Added guard to prevent duplicate `setTimeout` calls
+3. ✅ Fixed bad `subscribe()()` pattern → use `get()` instead
+4. ✅ Added `cleanupSync()` call on logout
+5. ✅ **KEY FIX:** Use `merge_rows_batch()` instead of per-row `merge_row()`
+
+**Files Modified:**
+- `locaNext/src/routes/+layout.svelte` - initSync() timing
+- `locaNext/src/lib/stores/sync.js` - Guard fixes, get() usage, cleanup
+- `server/tools/ldm/routes/sync.py` - **Use batch merge**
+
+**New Rule Added to CLAUDE.md:**
+- Rule 15: **NO GREP FOR DEBUG** - Never use grep when debugging logs. Read FULL logs.
 
 ---
 
 ## STABLE CHECKPOINT
 
-**Post-Session 32:** Build 454 (pending) | **Date:** 2026-01-05
+**Post-Session 33:** Build 454 (pending) | **Date:** 2026-01-06
 
-Offline Storage now supports move operations. Recycle Bin works for BOTH Online and Offline modes.
+All sync issues fixed. App loads correctly, syncs work without hanging.
 
 ---
 
 ## Current State
 
 **Build:** 454 (pending) | **Open Issues:** 0
-**Tests:** All P9-BIN-001 tests passing
-**Status:** P9 FULLY COMPLETE (Move + Recycle Bin)
+**Tests:** All passing
+**Status:** All P9 features complete, sync system fixed
 
 ---
 
