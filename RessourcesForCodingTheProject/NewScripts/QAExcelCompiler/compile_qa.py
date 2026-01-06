@@ -823,6 +823,22 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
         else:
             master_row = qa_row  # Direct index matching
 
+        # Refresh base data columns from QA to master
+        # Copy ALL columns EXCEPT: STATUS, COMMENT, SCREENSHOT, and user-specific columns
+        for col in range(1, qa_ws.max_column + 1):
+            # Skip columns we handle specially
+            if col in qa_exclude_cols:
+                continue
+            # Skip user-specific columns (COMMENT_{User}, SCREENSHOT_{User}, STATUS_{User})
+            header = qa_ws.cell(row=1, column=col).value
+            if header:
+                header_str = str(header)
+                if header_str.startswith("COMMENT_") or header_str.startswith("SCREENSHOT_") or header_str.startswith("STATUS_"):
+                    continue
+            # Copy value from QA to master (refresh base data)
+            qa_value = qa_ws.cell(row=qa_row, column=col).value
+            master_ws.cell(row=master_row, column=col).value = qa_value
+
         # Get QA STATUS (for stats AND to filter which comments to compile)
         is_issue = False
         if qa_status_col:
