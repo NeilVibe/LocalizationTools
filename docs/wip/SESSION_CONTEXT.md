@@ -1,6 +1,41 @@
 # Session Context
 
-> Last Updated: 2026-01-06 (Session 33 - SYNC-009 FIXED)
+> Last Updated: 2026-01-07 (Session 34 - TM Delete Modal)
+
+---
+
+## SESSION 34 COMPLETE ✅
+
+### UI: TM Delete Modal (Clean UX) ✅ DONE
+
+**Problem:** TM deletion used ugly browser `confirm()` dialog instead of clean UI.
+
+**Solution Implemented:**
+
+| Component | Change |
+|-----------|--------|
+| **TMExplorerTree.svelte** | Added `ConfirmModal` import and state |
+| **TMExplorerTree.svelte** | Replaced `deleteTM()` to show modal instead of `confirm()` |
+| **TMExplorerTree.svelte** | Replaced `deleteSelectedTMs()` for bulk delete modal |
+| **TMExplorerTree.svelte** | Added `handleModalConfirm()` / `handleModalCancel()` handlers |
+
+### Features:
+
+| Feature | Before | After |
+|---------|--------|-------|
+| **Single TM delete** | Browser `confirm()` | Carbon modal with TM name + entry count |
+| **Multi-select delete** | Browser `confirm()` | Carbon modal with selection count ("Delete 2 TMs") |
+| **Multi-selection** | Already working | Verified: Ctrl+click, Shift+click |
+
+### Tests Created
+
+- `tests/tm-delete-modal.spec.ts` - Modal appearance, multi-select modal
+
+### Commit
+
+| Commit | Description |
+|--------|-------------|
+| `0d9dbef` | UI: Replace browser confirm() with Carbon modal for TM deletion |
 
 ---
 
@@ -31,17 +66,17 @@
 
 ## STABLE CHECKPOINT
 
-**Post-Session 33:** Build 454 (pending) | **Date:** 2026-01-06
+**Post-Session 34:** Build 454 | **Date:** 2026-01-07
 
-All sync issues fixed. App loads correctly, syncs work without hanging.
+All sync issues fixed. TM delete modal now uses clean Carbon UI.
 
 ---
 
 ## Current State
 
-**Build:** 454 (pending) | **Open Issues:** 0
+**Build:** 454 | **Open Issues:** 0
 **Tests:** All passing
-**Status:** All P9 features complete, sync system fixed
+**Status:** All P9 features complete, TM UX improved
 
 ---
 
@@ -196,8 +231,9 @@ This is necessary because TM assignments have FK constraints to PostgreSQL table
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| **P9** | **Offline/Online Mode** | ✅ COMPLETE (move, CRUD) |
-| **P9-BIN** | **Offline Recycle Bin** | ❌ MISSING |
+| **P9** | **Offline/Online Mode** | ✅ COMPLETE |
+| **P9-BIN** | **Offline Recycle Bin** | ✅ COMPLETE (Session 32) |
+| **P9-UI** | **TM Delete Modal** | ✅ COMPLETE (Session 34) |
 | P8 | Dashboard Overhaul | PLANNED |
 
 ### P9 Status: COMPLETE ✅
@@ -207,17 +243,8 @@ This is necessary because TM assignments have FK constraints to PostgreSQL table
 3. ✅ Folder CRUD in Offline Storage (done - Session 31)
 4. ✅ Move files/folders in Offline Storage (done - Session 32)
 5. ✅ Push changes to server (done - Session 21)
-
-### P9-BIN: Offline Recycle Bin (NEW)
-
-**Status:** Not implemented
-
-**Required:**
-1. Create `offline_trash` table in SQLite
-2. Modify `delete_local_file()` to soft delete
-3. Modify `delete_local_folder()` to soft delete
-4. Add restore functionality
-5. Add local trash purge (30 days)
+6. ✅ Offline Recycle Bin (done - Session 32)
+7. ✅ TM delete modal - clean UX (done - Session 34)
 
 ---
 
@@ -259,4 +286,4 @@ echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN:
 
 ---
 
-*Session 32 | Build 453 | P9 Move COMPLETE - Offline Recycle Bin MISSING*
+*Session 34 | Build 454 | P9 COMPLETE - TM Delete Modal added*
