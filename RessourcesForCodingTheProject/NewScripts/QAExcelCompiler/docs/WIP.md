@@ -31,17 +31,26 @@ ZHO-CN
 
 ---
 
-## DONE: Auto-Hide Empty Rows with Context ✅ (2026-01-06)
+## DONE: Auto-Hide Empty Rows & Sheets ✅ (2026-01-06)
 
-**Goal:** Focus on issues by hiding rows with no comments, while keeping context
+**Goal:** Focus on issues by hiding rows/sheets with no comments
 
 **Implementation:**
 - Post-process `hide_empty_comment_rows(wb, context_rows=1)` runs after compilation
-- Rows with ALL `COMMENT_{User}` columns empty are **hidden** (not deleted)
-- **Context rows** (adjacent to commented rows) remain visible for context
-- `context_rows=1` means 1 row above and below each commented row stays visible
-- Data preserved - can unhide in Excel: `Home > Format > Hide & Unhide > Unhide Rows`
-- Output shows: `Hidden: N rows with no comments (unhide in Excel if needed)`
+- **Sheet hiding:** Sheets with NO comments at all are hidden entirely (tab hidden)
+- **Row hiding:** Rows with ALL `COMMENT_{User}` columns empty are hidden
+- **Context rows:** Adjacent rows (1 above/below) to commented rows stay visible
+- Data preserved - nothing deleted, just hidden
+
+**Output:**
+```
+  Hidden sheets (no comments): Sheet2, Sheet3
+  Hidden: 5 rows with no comments (unhide in Excel if needed)
+```
+
+**To unhide in Excel:**
+- Sheets: Right-click any tab → "Unhide" → select sheet
+- Rows: `Home > Format > Hide & Unhide > Unhide Rows`
 
 ---
 
