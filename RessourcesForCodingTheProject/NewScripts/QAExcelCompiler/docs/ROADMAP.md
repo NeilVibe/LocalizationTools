@@ -92,6 +92,11 @@ Compile QA tester Excel files into master sheets with automatic STATUS tracking,
 
 **Chart Details:** See [GRAPHS_REDESIGN_PLAN.md](GRAPHS_REDESIGN_PLAN.md)
 
+### Phase 7: UX Improvements ✅ (NEW)
+| Task | Description | Status |
+|------|-------------|--------|
+| 7.1 | Auto-hide rows with no comments (focus on issues) | ✅ DONE |
+
 ---
 
 ## Categories (Fixed)

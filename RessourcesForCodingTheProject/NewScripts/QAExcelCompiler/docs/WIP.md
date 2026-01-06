@@ -4,6 +4,18 @@
 
 ---
 
+## DONE: Auto-Hide Empty Rows ✅ (2026-01-06)
+
+**Goal:** Focus on issues by hiding rows with no comments
+
+**Implementation:**
+- Post-process `hide_empty_comment_rows()` runs after compilation
+- Rows with ALL `COMMENT_{User}` columns empty are **hidden** (not deleted)
+- Data preserved - can unhide in Excel: `Home > Format > Hide & Unhide > Unhide Rows`
+- Output shows: `Hidden: N rows with no comments (unhide in Excel if needed)`
+
+---
+
 ## DONE: Chart Standardization ✅ (2026-01-06)
 
 **Goal:** Make DAILY and TOTAL sheets use identical clustered bar chart style
