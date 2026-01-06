@@ -1,19 +1,47 @@
 # QA Excel Compiler - Implementation Details
 
-**Created:** 2025-12-30 | **Status:** ✅ IMPLEMENTED | **Updated:** 2026-01-05
+**Created:** 2025-12-30 | **Status:** ✅ IMPLEMENTED | **Updated:** 2026-01-06
 
 ---
 
-## DONE: GRAPHS Tab Redesign ✅
+## DONE: Chart Standardization ✅ (2026-01-06)
 
-**Status:** IMPLEMENTED | **Plan:** [GRAPHS_REDESIGN_PLAN.md](GRAPHS_REDESIGN_PLAN.md)
+**Goal:** Make DAILY and TOTAL sheets use identical clustered bar chart style
 
-**What was done:**
-- ONE big spacious line chart (not multiple cluttered charts)
-- Dots connected by lines
-- Series: Users (cumulative Done) + TOTAL + Fixed
-- Legend click-to-toggle filtering (Excel built-in)
-- Hidden data tables (clean look)
+### DAILY Sheet Charts ✅
+1. **Chart 1: "Daily Progress: Done by Tester"**
+   - X-axis: Dates (MM/DD)
+   - Y-axis: Done count
+   - Series: Each tester as colored bar
+   - Dynamic width: `max(15, 6 + num_dates * 2)`
+
+2. **Chart 2: "Daily Progress: Actual Issues % by Tester"**
+   - X-axis: Dates (MM/DD)
+   - Y-axis: Actual Issues %
+   - Placed BELOW first chart (15 rows spacing)
+
+### TOTAL Sheet Charts ✅
+1. **Chart 1: "Total Progress: Done by Tester"**
+   - X-axis: Tester names
+   - Y-axis: Done count (cumulative)
+   - Dynamic width: `max(15, 6 + num_users * 2)`
+
+2. **Chart 2: "Total Progress: Actual Issues % by Tester"**
+   - X-axis: Tester names
+   - Y-axis: Actual Issues %
+   - Placed BELOW first chart (15 rows spacing)
+
+### Key Principle
+Both sheets use **identical chart style** - clustered vertical bars that expand horizontally.
+Only difference: DAILY uses dates on X-axis, TOTAL uses tester names.
+
+---
+
+## DONE: GRAPHS Tab Redesign ✅ (DEPRECATED)
+
+**Status:** SUPERSEDED by embedded charts in DAILY/TOTAL
+
+**Old plan:** [GRAPHS_REDESIGN_PLAN.md](GRAPHS_REDESIGN_PLAN.md) - no longer applies
 
 ---
 
