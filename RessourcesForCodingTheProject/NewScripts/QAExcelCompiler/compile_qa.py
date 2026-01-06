@@ -1114,6 +1114,48 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
     return hidden_rows, hidden_sheets, hidden_columns_total
 
 
+def autofit_rows_with_wordwrap(wb, default_row_height=15, chars_per_line=50):
+    """
+    Apply word wrap to all cells and autofit row heights based on content.
+
+    Args:
+        wb: Workbook
+        default_row_height: Default height for single-line rows
+        chars_per_line: Estimated characters per line (for height calculation)
+    """
+    for sheet_name in wb.sheetnames:
+        if sheet_name == "STATUS":
+            continue
+
+        ws = wb[sheet_name]
+
+        for row in range(1, ws.max_row + 1):
+            max_lines = 1  # Track max lines needed for this row
+
+            for col in range(1, ws.max_column + 1):
+                cell = ws.cell(row=row, column=col)
+
+                # Apply word wrap to all cells
+                cell.alignment = Alignment(wrap_text=True, vertical='top')
+
+                # Calculate lines needed based on content
+                if cell.value:
+                    content = str(cell.value)
+                    # Count explicit line breaks
+                    explicit_lines = content.count('\n') + 1
+                    # Estimate wrapped lines based on length
+                    longest_line = max(len(line) for line in content.split('\n')) if content else 0
+                    wrapped_lines = max(1, (longest_line // chars_per_line) + 1)
+                    # Total lines needed
+                    total_lines = explicit_lines + wrapped_lines - 1
+                    max_lines = max(max_lines, total_lines)
+
+            # Set row height based on content (15 points per line is standard)
+            calculated_height = max_lines * default_row_height
+            # Cap at reasonable max (300 points)
+            ws.row_dimensions[row].height = min(calculated_height, 300)
+
+
 def update_status_sheet(wb, users, user_stats):
     """
     Create/update STATUS sheet with completion tracking and detailed stats.
@@ -2324,6 +2366,9 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
 
     # Post-process: Hide rows/sheets/columns with no comments (focus on issues)
     hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(master_wb)
+
+    # Apply word wrap and autofit row heights
+    autofit_rows_with_wordwrap(master_wb)
 
     # Save master
     master_wb.save(master_path)
