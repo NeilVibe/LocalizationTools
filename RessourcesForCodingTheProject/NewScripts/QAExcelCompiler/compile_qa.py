@@ -617,6 +617,56 @@ def find_matching_row_fallback(master_ws, qa_signature, exclude_cols, start_row=
     return None
 
 
+def sort_worksheet_az(ws, sort_column=1):
+    """
+    Sort worksheet rows A-Z by specified column.
+
+    Used for EN Item category to match tester's A-Z sorted files.
+    Preserves header row (row 1), sorts data rows (row 2+).
+
+    Args:
+        ws: Worksheet to sort
+        sort_column: Column index to sort by (1-based, default=1 for column A)
+    """
+    # Get all data rows (skip header)
+    data_rows = []
+    for row in range(2, ws.max_row + 1):
+        row_data = []
+        for col in range(1, ws.max_column + 1):
+            cell = ws.cell(row=row, column=col)
+            row_data.append({
+                'value': cell.value,
+                'font': cell.font.copy() if cell.font else None,
+                'fill': cell.fill.copy() if cell.fill else None,
+                'border': cell.border.copy() if cell.border else None,
+                'alignment': cell.alignment.copy() if cell.alignment else None,
+                'hyperlink': cell.hyperlink.target if cell.hyperlink else None
+            })
+        # Store sort key (first column value) and row data
+        sort_key = ws.cell(row=row, column=sort_column).value
+        sort_key = str(sort_key).lower() if sort_key else ""
+        data_rows.append((sort_key, row_data))
+
+    # Sort by first column (A-Z)
+    data_rows.sort(key=lambda x: x[0])
+
+    # Write back sorted data
+    for new_row_idx, (sort_key, row_data) in enumerate(data_rows, start=2):
+        for col_idx, cell_data in enumerate(row_data, start=1):
+            cell = ws.cell(row=new_row_idx, column=col_idx)
+            cell.value = cell_data['value']
+            if cell_data['font']:
+                cell.font = cell_data['font']
+            if cell_data['fill']:
+                cell.fill = cell_data['fill']
+            if cell_data['border']:
+                cell.border = cell_data['border']
+            if cell_data['alignment']:
+                cell.alignment = cell_data['alignment']
+            if cell_data['hyperlink']:
+                cell.hyperlink = cell_data['hyperlink']
+
+
 def find_matching_row_item_fallback(master_ws, qa_ws, qa_row, start_row=2):
     """
     Item category fallback: Match by 4+ of first 6 columns.
@@ -750,59 +800,18 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
         "item_fallback_used": 0
     }
 
-    # --- STRINGID MATCHING FOR ITEM CATEGORY ---
-    # For "Item" category, testers may sort their files A-Z which changes row indices
-    # Use STRINGID matching instead of row index matching to handle sorted files
-    # Fallback: If no STRINGID, match by 4+ of first 6 columns
-    is_item_category = (category.lower() == "item")
-    use_stringid_matching = is_item_category
-    master_stringid_map = {}  # {stringid: master_row}
-
-    if use_stringid_matching:
-        # Find STRINGID column in master
-        master_stringid_col = find_column_by_header(master_ws, "STRINGID")
-        if master_stringid_col and qa_stringid_col:
-            # Build mapping: stringid -> row number
-            for row in range(2, master_ws.max_row + 1):
-                sid = master_ws.cell(row=row, column=master_stringid_col).value
-                if sid:
-                    master_stringid_map[str(sid).strip()] = row
-            print(f"      [Item] Using STRINGID matching ({len(master_stringid_map)} IDs mapped)")
-        else:
-            print(f"      [Item] No STRINGID column, will use 4-of-6 column fallback matching")
-            use_stringid_matching = False
-
-    # Determine if we need fallback matching (only if not using STRINGID and not Item)
-    use_fallback = False
-    if not use_stringid_matching and not is_item_category:
-        use_fallback = (master_ws.max_row != qa_ws.max_row)
-        if use_fallback:
-            print(f"      Row count differs (master:{master_ws.max_row}, qa:{qa_ws.max_row}), using fallback matching")
+    # Determine if we need fallback matching
+    use_fallback = (master_ws.max_row != qa_ws.max_row)
+    if use_fallback:
+        print(f"      Row count differs (master:{master_ws.max_row}, qa:{qa_ws.max_row}), using fallback matching")
 
     for qa_row in range(2, qa_ws.max_row + 1):  # Skip header
         result["stats"]["total"] += 1
 
-        # Determine master row (STRINGID match for Item, index match, or fallback)
+        # Determine master row - simple index matching for all categories
         master_row = None
 
-        if is_item_category:
-            # Item category: Try STRINGID first, then 4-of-6 column fallback
-            if use_stringid_matching and qa_stringid_col:
-                qa_sid = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
-                if qa_sid:
-                    master_row = master_stringid_map.get(str(qa_sid).strip())
-                    if master_row:
-                        result["stringid_matched"] += 1
-
-            # Fallback: 4+ of first 6 columns match
-            if master_row is None:
-                master_row = find_matching_row_item_fallback(master_ws, qa_ws, qa_row)
-                if master_row:
-                    result["item_fallback_used"] += 1
-                else:
-                    # No match found, skip this row
-                    continue
-        elif use_fallback:
+        if use_fallback:
             qa_sig = get_row_signature(qa_ws, qa_row, qa_exclude_cols)
             master_row = find_matching_row_fallback(master_ws, qa_sig, master_exclude_cols)
             if master_row is None:
@@ -2207,6 +2216,14 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
 
     if master_wb is None:
         return daily_entries
+
+    # For EN Item category: Sort master A-Z to match tester's sorted files
+    # CN Item uses original indexing (no sorting)
+    if category.lower() == "item" and lang_label == "EN":
+        print("  [Item EN] Sorting master sheets A-Z to match tester order...")
+        for sheet_name in master_wb.sheetnames:
+            if sheet_name != "STATUS":
+                sort_worksheet_az(master_wb[sheet_name])
 
     # Track users and aggregated stats
     all_users = set()
