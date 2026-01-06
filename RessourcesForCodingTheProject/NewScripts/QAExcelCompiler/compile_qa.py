@@ -628,6 +628,8 @@ def sort_worksheet_az(ws, sort_column=1):
         ws: Worksheet to sort
         sort_column: Column index to sort by (1-based, default=1 for column A)
     """
+    from copy import copy
+
     # Get all data rows (skip header)
     data_rows = []
     for row in range(2, ws.max_row + 1):
@@ -636,10 +638,10 @@ def sort_worksheet_az(ws, sort_column=1):
             cell = ws.cell(row=row, column=col)
             row_data.append({
                 'value': cell.value,
-                'font': cell.font.copy() if cell.font else None,
-                'fill': cell.fill.copy() if cell.fill else None,
-                'border': cell.border.copy() if cell.border else None,
-                'alignment': cell.alignment.copy() if cell.alignment else None,
+                'font': copy(cell.font) if cell.font else None,
+                'fill': copy(cell.fill) if cell.fill else None,
+                'border': copy(cell.border) if cell.border else None,
+                'alignment': copy(cell.alignment) if cell.alignment else None,
                 'hyperlink': cell.hyperlink.target if cell.hyperlink else None
             })
         # Store sort key (first column value) and row data
