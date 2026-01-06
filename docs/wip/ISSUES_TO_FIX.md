@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-05 (Session 32) | **Build:** 454 (pending) | **Open:** 0
+**Last Updated:** 2026-01-06 (Session 33) | **Build:** 454 (pending) | **Open:** 0
 
 ---
 
@@ -9,7 +9,7 @@
 | Status | Count |
 |--------|-------|
 | **OPEN** | 0 |
-| **FIXED/CLOSED** | 109 |
+| **FIXED/CLOSED** | 113 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
@@ -18,6 +18,41 @@
 ## OPEN ISSUES
 
 None currently.
+
+---
+
+## RECENTLY FIXED (Session 33)
+
+### SYNC-009: Continuous Sync Causes Server Hang ✅ FIXED
+
+- **Reported:** 2026-01-06 (Session 33)
+- **Fixed:** 2026-01-06 (Session 33)
+- **Severity:** HIGH (blocks login/usage)
+- **Status:** ✅ FIXED
+- **Component:** sync.js, sync.py, offline.py
+
+**Problem:** After login, the continuous sync system hung the server.
+
+**Root Cause:** The sync was calling `merge_row()` per row instead of using the optimized `merge_rows_batch()` function. With files containing 1000+ rows, this meant 1000+ separate database operations with separate connections and commits. The batch function is "100x faster" because it uses a single connection, batch fetches local rows upfront, and does a single commit.
+
+**Fixes Applied (Session 33):**
+1. ✅ Moved `initSync()` to only run AFTER authentication (was running before login)
+2. ✅ Added guard to prevent duplicate `setTimeout` calls in `startContinuousSync()`
+3. ✅ Fixed bad `subscribe()()` pattern → use `get()` instead
+4. ✅ Added `cleanupSync()` call on logout
+5. ✅ **KEY FIX:** Changed `_sync_file_to_offline()` to use `merge_rows_batch()` instead of per-row `merge_row()`
+
+**Performance After Fix:**
+| File | Rows | Time | Status |
+|------|------|------|--------|
+| sample.txt | 5 | 991ms | ✓ |
+| 12az5za5za.txt | 1183 | Fast | ✓ |
+| NEWTESTFORverySMALL.xlsx | 476 | 1054ms | ✓ |
+
+**Files Modified:**
+- `locaNext/src/lib/stores/sync.js` - Guard fixes, get() usage, cleanup
+- `locaNext/src/routes/+layout.svelte` - initSync() timing
+- `server/tools/ldm/routes/sync.py` - **Use batch merge instead of per-row**
 
 ---
 

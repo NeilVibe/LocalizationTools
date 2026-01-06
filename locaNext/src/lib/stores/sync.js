@@ -464,6 +464,7 @@ export function getFileSyncStatus(fileId) {
 // =============================================================================
 
 let continuousSyncInterval = null;
+let initialSyncTimeout = null;  // Guard for initial sync timeout
 const CONTINUOUS_SYNC_INTERVAL = 60000; // 60 seconds
 
 /**
@@ -474,16 +475,12 @@ export async function syncAllSubscriptions() {
   const url = getApiBase();
 
   // Don't sync if offline or already syncing
-  let currentMode;
-  connectionMode.subscribe(v => currentMode = v)();
-  if (currentMode === 'offline') {
+  if (get(connectionMode) === 'offline') {
     logger.debug('Skipping sync - offline mode');
     return;
   }
 
-  let syncing;
-  isSyncing.subscribe(v => syncing = v)();
-  if (syncing) {
+  if (get(isSyncing)) {
     logger.debug('Skipping sync - already syncing');
     return;
   }
@@ -546,10 +543,15 @@ export async function syncAllSubscriptions() {
  * Start continuous background sync
  */
 export function startContinuousSync() {
-  if (continuousSyncInterval) return;
+  // Already running - don't create duplicate timers
+  if (continuousSyncInterval || initialSyncTimeout) {
+    logger.debug('Continuous sync already running, skipping duplicate start');
+    return;
+  }
 
   // Initial sync after 5 seconds
-  setTimeout(() => {
+  initialSyncTimeout = setTimeout(() => {
+    initialSyncTimeout = null;  // Clear so cleanup knows it fired
     syncAllSubscriptions();
   }, 5000);
 
@@ -562,11 +564,15 @@ export function startContinuousSync() {
  * Stop continuous background sync
  */
 export function stopContinuousSync() {
+  if (initialSyncTimeout) {
+    clearTimeout(initialSyncTimeout);
+    initialSyncTimeout = null;
+  }
   if (continuousSyncInterval) {
     clearInterval(continuousSyncInterval);
     continuousSyncInterval = null;
-    logger.info('Continuous sync stopped');
   }
+  logger.info('Continuous sync stopped');
 }
 
 /**

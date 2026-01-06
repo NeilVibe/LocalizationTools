@@ -1376,82 +1376,92 @@ def build_daily_sheet(wb):
         col_letter = get_column_letter(manager_start + i)
         ws.column_dimensions[col_letter].width = len(header) + PADDING
 
-    # === Add two charts side by side below table ===
+    # === Add clustered bar chart: Daily Done by User (time-series) ===
     if len(dates) > 0 and len(users) > 0:
         from openpyxl.chart import BarChart, Reference
-        from openpyxl.chart.series import SeriesLabel
+        from openpyxl.chart.series import DataPoint
         from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
 
         # Unique colors for each user (vibrant, distinct)
         USER_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "7030A0", "C00000", "00B0F0"]
 
-        # Build data tables for charts (below main table)
+        # Build data table for clustered chart (below main table)
+        # Format: Date | User1 | User2 | User3 | ...
         chart_data_row = data_row + 3
 
-        # --- Data Table 1: Completion % per user ---
-        ws.cell(chart_data_row, 1, "User")
-        ws.cell(chart_data_row, 2, "Completion %")
+        # Header row: Date + User names
+        ws.cell(chart_data_row, 1, "Date")
         for i, user in enumerate(users):
-            ws.cell(chart_data_row + 1 + i, 1, user)
-            total_rows = user_totals[user]["total_rows"]
-            done = user_totals[user]["done"]
-            comp_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
-            ws.cell(chart_data_row + 1 + i, 2, comp_pct)
+            cell = ws.cell(chart_data_row, 2 + i, user)
+            cell.font = bold
+            cell.alignment = center
 
-        # --- Data Table 2: Actual Issues % per user (offset to the right) ---
-        data2_col = 5  # Start second data table at column E
-        ws.cell(chart_data_row, data2_col, "User")
-        ws.cell(chart_data_row, data2_col + 1, "Actual Issues %")
-        for i, user in enumerate(users):
-            ws.cell(chart_data_row + 1 + i, data2_col, user)
-            issues = user_totals[user]["issues"]
-            nonissue = user_totals[user]["nonissue"]
-            actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
-            ws.cell(chart_data_row + 1 + i, data2_col + 1, actual_pct)
+        # Data rows: one row per date with Done values per user
+        for row_idx, date in enumerate(dates):
+            # Format date as MM/DD
+            if isinstance(date, str) and len(date) >= 10:
+                display_date = date[5:7] + "/" + date[8:10]
+            else:
+                display_date = str(date)
 
+            ws.cell(chart_data_row + 1 + row_idx, 1, display_date)
+
+            for col_idx, user in enumerate(users):
+                user_day_data = daily_data[date].get(user, {"done": 0})
+                done_val = user_day_data["done"]
+                ws.cell(chart_data_row + 1 + row_idx, 2 + col_idx, done_val if done_val > 0 else 0)
+
+        num_dates = len(dates)
         num_users = len(users)
 
-        # --- Chart 1: Completion % (horizontal bar) ---
-        chart1 = BarChart()
-        chart1.type = "bar"  # Horizontal bars
-        chart1.title = "Completion %"
-        chart1.style = 10
-        chart1.width = 10
-        chart1.height = 6
+        # --- Clustered Bar Chart: Daily Done by User ---
+        chart = BarChart()
+        chart.type = "col"  # Vertical bars (columns)
+        chart.grouping = "clustered"  # Bars side by side per category
+        chart.title = "Daily Progress: Done by User"
+        chart.style = 10
 
-        data1_ref = Reference(ws, min_col=2, min_row=chart_data_row, max_row=chart_data_row + num_users)
-        cats1_ref = Reference(ws, min_col=1, min_row=chart_data_row + 1, max_row=chart_data_row + num_users)
-        chart1.add_data(data1_ref, titles_from_data=True)
-        chart1.set_categories(cats1_ref)
-        chart1.legend = None  # Hide legend for cleaner look
+        # Dynamic width based on number of dates (expands horizontally)
+        # Base width + extra per date to accommodate growing data
+        chart.width = max(15, 6 + num_dates * 2)  # Min 15, grows with dates
+        chart.height = 10
 
-        # Apply unique colors to bars
-        for i, series in enumerate(chart1.series):
+        # Data reference: each user column is a series
+        # min_col=2 (User1), max_col=1+num_users (last user)
+        # min_row=chart_data_row (header), max_row=chart_data_row+num_dates (last data row)
+        data_ref = Reference(
+            ws,
+            min_col=2,
+            max_col=1 + num_users,
+            min_row=chart_data_row,
+            max_row=chart_data_row + num_dates
+        )
+
+        # Categories reference: dates in column 1
+        cats_ref = Reference(
+            ws,
+            min_col=1,
+            min_row=chart_data_row + 1,
+            max_row=chart_data_row + num_dates
+        )
+
+        chart.add_data(data_ref, titles_from_data=True)
+        chart.set_categories(cats_ref)
+
+        # Apply unique colors to each user's series
+        for i, series in enumerate(chart.series):
             color = USER_COLORS[i % len(USER_COLORS)]
             series.graphicalProperties.solidFill = color
 
-        # --- Chart 2: Actual Issues % (horizontal bar) ---
-        chart2 = BarChart()
-        chart2.type = "bar"
-        chart2.title = "Actual Issues %"
-        chart2.style = 10
-        chart2.width = 10
-        chart2.height = 6
+        # Chart formatting
+        chart.legend.position = "b"  # Legend at bottom
+        chart.y_axis.title = "Done"
+        chart.x_axis.title = "Date"
+        chart.x_axis.tickLblPos = "low"  # Labels below axis
 
-        data2_ref = Reference(ws, min_col=data2_col + 1, min_row=chart_data_row, max_row=chart_data_row + num_users)
-        cats2_ref = Reference(ws, min_col=data2_col, min_row=chart_data_row + 1, max_row=chart_data_row + num_users)
-        chart2.add_data(data2_ref, titles_from_data=True)
-        chart2.set_categories(cats2_ref)
-        chart2.legend = None
-
-        for i, series in enumerate(chart2.series):
-            color = USER_COLORS[i % len(USER_COLORS)]
-            series.graphicalProperties.solidFill = color
-
-        # Place charts side by side
-        chart_row = chart_data_row + num_users + 2
-        ws.add_chart(chart1, f"A{chart_row}")
-        ws.add_chart(chart2, f"H{chart_row}")  # Offset to the right
+        # Place chart below data table
+        chart_row = chart_data_row + num_dates + 3
+        ws.add_chart(chart, f"A{chart_row}")
 
 
 def build_total_sheet(wb):
@@ -1661,7 +1671,7 @@ def build_total_sheet(wb):
 
         num_users = len(users)
 
-        # --- Chart 1: Completion % (horizontal bar) ---
+        # --- Chart 1: Completion % (horizontal bar, max 100%) ---
         chart1 = BarChart()
         chart1.type = "bar"
         chart1.title = "Completion %"
@@ -1674,12 +1684,13 @@ def build_total_sheet(wb):
         chart1.add_data(data1_ref, titles_from_data=True)
         chart1.set_categories(cats1_ref)
         chart1.legend = None
+        chart1.x_axis.scaling.max = 100  # Cap at 100% for percentage
 
         for i, series in enumerate(chart1.series):
             color = USER_COLORS[i % len(USER_COLORS)]
             series.graphicalProperties.solidFill = color
 
-        # --- Chart 2: Actual Issues % (horizontal bar) ---
+        # --- Chart 2: Actual Issues % (horizontal bar, max 100%) ---
         chart2 = BarChart()
         chart2.type = "bar"
         chart2.title = "Actual Issues %"
@@ -1692,6 +1703,7 @@ def build_total_sheet(wb):
         chart2.add_data(data2_ref, titles_from_data=True)
         chart2.set_categories(cats2_ref)
         chart2.legend = None
+        chart2.x_axis.scaling.max = 100  # Cap at 100% for percentage
 
         for i, series in enumerate(chart2.series):
             color = USER_COLORS[i % len(USER_COLORS)]

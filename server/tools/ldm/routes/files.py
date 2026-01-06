@@ -154,7 +154,8 @@ async def upload_file(
             source_col=source_col,
             target_col=target_col,
             stringid_col=stringid_col,
-            has_header=has_header
+            has_header=has_header,
+            folder_id=folder_id  # P9-FIX: Pass folder_id for creating files inside local folders
         )
 
     # Server storage requires project_id
@@ -1574,13 +1575,17 @@ async def _upload_to_local_storage(
     source_col: Optional[int] = None,
     target_col: Optional[int] = None,
     stringid_col: Optional[int] = None,
-    has_header: Optional[bool] = True
+    has_header: Optional[bool] = True,
+    folder_id: Optional[int] = None  # P9-FIX: Support creating files inside local folders
 ) -> dict:
     """
     P9: Upload a file to SQLite Offline Storage with proper parsing.
 
     This uses the SAME file parsers as PostgreSQL upload, ensuring
     consistent parsing for both online and offline modes.
+
+    Args:
+        folder_id: Optional local folder ID to place file in. If None, file is at root.
 
     Returns a FileResponse-compatible dict.
     """
@@ -1636,12 +1641,14 @@ async def _upload_to_local_storage(
         offline_db = get_offline_db()
 
         # Create local file in Offline Storage (may auto-rename if duplicate)
+        # P9-FIX: Support placing files inside local folders
         result = offline_db.create_local_file(
             name=filename,
             original_filename=filename,
             file_format=file_format,
             source_language=source_lang,
-            target_language=None
+            target_language=None,
+            folder_id=folder_id  # P9-FIX: Place in specified folder
         )
         file_id = result["id"]
         final_name = result["name"]  # May be different from filename if renamed
@@ -1656,7 +1663,7 @@ async def _upload_to_local_storage(
         return {
             "id": file_id,
             "project_id": None,  # Local files have no project
-            "folder_id": None,
+            "folder_id": folder_id,  # P9-FIX: Include folder_id
             "name": final_name,  # P9-FIX: Use actual name (may be auto-renamed)
             "original_filename": filename,
             "format": file_format,

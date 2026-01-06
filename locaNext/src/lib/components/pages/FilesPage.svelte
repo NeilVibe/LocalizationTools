@@ -1578,11 +1578,22 @@
     if (inOfflineStorage) {
       // P9: Upload to Offline Storage via unified endpoint with storage=local
       // Backend parses the file properly (same as PostgreSQL upload)
+
+      // P9-FIX: Get current folder ID if inside a local folder
+      // Path structure: [offline-storage, local-folder?, local-folder?, ...]
+      const currentFolderId = currentPath.length > 1 && currentPath[currentPath.length - 1].type === 'local-folder'
+        ? currentPath[currentPath.length - 1].id
+        : null;
+
       for (const file of files) {
         try {
           const formData = new FormData();
           formData.append('file', file);
           formData.append('storage', 'local');
+          // P9-FIX: Include folder_id if inside a local folder
+          if (currentFolderId !== null) {
+            formData.append('folder_id', currentFolderId);
+          }
 
           const response = await fetch(`${API_BASE}/api/ldm/files/upload`, {
             method: 'POST',
