@@ -787,6 +787,54 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
     return result
 
 
+def hide_empty_comment_rows(wb):
+    """
+    Post-process: Hide rows where ALL COMMENT_{User} columns are empty.
+
+    This allows focusing on issues right away while preserving all data.
+    Rows are hidden (not deleted) so they can be unhidden in Excel if needed.
+
+    Args:
+        wb: Master workbook
+
+    Returns: Number of rows hidden
+    """
+    hidden_count = 0
+
+    for sheet_name in wb.sheetnames:
+        if sheet_name == "STATUS":
+            continue
+
+        ws = wb[sheet_name]
+
+        # Find all COMMENT_{User} columns
+        comment_cols = []
+        for col in range(1, ws.max_column + 1):
+            header = ws.cell(row=1, column=col).value
+            if header and str(header).startswith("COMMENT_"):
+                comment_cols.append(col)
+
+        if not comment_cols:
+            continue
+
+        # Check each data row (skip header)
+        for row in range(2, ws.max_row + 1):
+            # Check if ALL comment columns are empty for this row
+            has_any_comment = False
+            for col in comment_cols:
+                value = ws.cell(row=row, column=col).value
+                if value and str(value).strip():
+                    has_any_comment = True
+                    break
+
+            # Hide row if no comments
+            if not has_any_comment:
+                ws.row_dimensions[row].hidden = True
+                hidden_count += 1
+
+    return hidden_count
+
+
 def update_status_sheet(wb, users, user_stats):
     """
     Create/update STATUS sheet with completion tracking and detailed stats.
@@ -1909,9 +1957,14 @@ def process_category(category, qa_folders, manager_status=None):
     # Update STATUS sheet (first tab, with stats)
     update_status_sheet(master_wb, all_users, user_stats)
 
+    # Post-process: Hide rows with no comments (focus on issues)
+    hidden_rows = hide_empty_comment_rows(master_wb)
+
     # Save master
     master_wb.save(master_path)
     print(f"\n  Saved: {master_path}")
+    if hidden_rows > 0:
+        print(f"  Hidden: {hidden_rows} rows with no comments (unhide in Excel if needed)")
     if total_images > 0:
         print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
 
@@ -1934,6 +1987,7 @@ def main():
     print("  - Hyperlink transformation with unique naming")
     print("  - Fallback row matching (2+ cell match if row counts differ)")
     print("  - Manager status preservation on re-compile")
+    print("  - Auto-hide rows with no comments (focus on issues)")
     print()
 
     # Ensure folders exist
