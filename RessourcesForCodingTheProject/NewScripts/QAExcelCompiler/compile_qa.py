@@ -2235,13 +2235,20 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
     if master_wb is None:
         return daily_entries
 
-    # For EN Item category: Sort master A-Z to match tester's sorted files
+    # For EN Item category: Sort master A-Z by ItemName(ENG) column to match tester's sorted files
     # CN Item uses original indexing (no sorting)
     if category.lower() == "item" and lang_label == "EN":
-        print("  [Item EN] Sorting master sheets A-Z to match tester order...")
+        print("  [Item EN] Sorting master sheets A-Z by ItemName(ENG) column...")
         for sheet_name in master_wb.sheetnames:
             if sheet_name != "STATUS":
-                sort_worksheet_az(master_wb[sheet_name])
+                ws = master_wb[sheet_name]
+                # Find ItemName(ENG) column
+                sort_col = find_column_by_header(ws, "ItemName(ENG)")
+                if sort_col:
+                    sort_worksheet_az(ws, sort_column=sort_col)
+                    print(f"    Sorted {sheet_name} by column {sort_col} (ItemName(ENG))")
+                else:
+                    print(f"    WARNING: ItemName(ENG) column not found in {sheet_name}, skipping sort")
 
     # Track users and aggregated stats
     all_users = set()
