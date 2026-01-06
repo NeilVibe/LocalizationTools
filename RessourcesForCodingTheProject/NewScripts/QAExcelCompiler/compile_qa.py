@@ -617,6 +617,54 @@ def find_matching_row_fallback(master_ws, qa_signature, exclude_cols, start_row=
     return None
 
 
+def find_matching_row_item_fallback(master_ws, qa_ws, qa_row, start_row=2):
+    """
+    Item category fallback: Match by 4+ of first 6 columns.
+
+    Used when STRINGID is not available for Item category.
+    Compares first 6 columns between QA row and master rows.
+    If 4 or more values match, it's considered a match.
+
+    Args:
+        master_ws: Master worksheet
+        qa_ws: QA worksheet
+        qa_row: Row number in QA worksheet
+        start_row: Start searching from this row in master
+
+    Returns: Row number or None
+    """
+    # Get first 6 column values from QA row
+    qa_values = []
+    for col in range(1, 7):  # Columns 1-6
+        val = qa_ws.cell(row=qa_row, column=col).value
+        if val is not None:
+            qa_values.append((col, str(val).strip()))
+        else:
+            qa_values.append((col, None))
+
+    # Search master for matching row
+    for master_row in range(start_row, master_ws.max_row + 1):
+        matches = 0
+        for col, qa_val in qa_values:
+            master_val = master_ws.cell(row=master_row, column=col).value
+            if master_val is not None:
+                master_val = str(master_val).strip()
+            else:
+                master_val = None
+
+            # Both None or both equal = match
+            if qa_val == master_val:
+                matches += 1
+            elif qa_val and master_val and qa_val == master_val:
+                matches += 1
+
+        # 4+ matches out of 6 = found
+        if matches >= 4:
+            return master_row
+
+    return None
+
+
 def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx_path=None, manager_status=None):
     """
     Process a single sheet: copy COMMENT and SCREENSHOT from QA to master, collect STATUS stats.
@@ -698,13 +746,16 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
         "screenshots": 0,
         "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "total": 0},
         "fallback_used": 0,
-        "stringid_matched": 0
+        "stringid_matched": 0,
+        "item_fallback_used": 0
     }
 
     # --- STRINGID MATCHING FOR ITEM CATEGORY ---
     # For "Item" category, testers may sort their files A-Z which changes row indices
     # Use STRINGID matching instead of row index matching to handle sorted files
-    use_stringid_matching = (category.lower() == "item")
+    # Fallback: If no STRINGID, match by 4+ of first 6 columns
+    is_item_category = (category.lower() == "item")
+    use_stringid_matching = is_item_category
     master_stringid_map = {}  # {stringid: master_row}
 
     if use_stringid_matching:
@@ -718,12 +769,12 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                     master_stringid_map[str(sid).strip()] = row
             print(f"      [Item] Using STRINGID matching ({len(master_stringid_map)} IDs mapped)")
         else:
-            print(f"      [Item] WARNING: No STRINGID column found, falling back to row matching")
+            print(f"      [Item] No STRINGID column, will use 4-of-6 column fallback matching")
             use_stringid_matching = False
 
-    # Determine if we need fallback matching (only if not using STRINGID)
+    # Determine if we need fallback matching (only if not using STRINGID and not Item)
     use_fallback = False
-    if not use_stringid_matching:
+    if not use_stringid_matching and not is_item_category:
         use_fallback = (master_ws.max_row != qa_ws.max_row)
         if use_fallback:
             print(f"      Row count differs (master:{master_ws.max_row}, qa:{qa_ws.max_row}), using fallback matching")
@@ -732,18 +783,25 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
         result["stats"]["total"] += 1
 
         # Determine master row (STRINGID match for Item, index match, or fallback)
-        if use_stringid_matching:
-            # Item category: match by STRINGID (handles sorted files)
-            qa_sid = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
-            if qa_sid:
-                master_row = master_stringid_map.get(str(qa_sid).strip())
-                if master_row is None:
-                    # STRINGID not found in master, skip this row
+        master_row = None
+
+        if is_item_category:
+            # Item category: Try STRINGID first, then 4-of-6 column fallback
+            if use_stringid_matching and qa_stringid_col:
+                qa_sid = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
+                if qa_sid:
+                    master_row = master_stringid_map.get(str(qa_sid).strip())
+                    if master_row:
+                        result["stringid_matched"] += 1
+
+            # Fallback: 4+ of first 6 columns match
+            if master_row is None:
+                master_row = find_matching_row_item_fallback(master_ws, qa_ws, qa_row)
+                if master_row:
+                    result["item_fallback_used"] += 1
+                else:
+                    # No match found, skip this row
                     continue
-                result["stringid_matched"] += 1
-            else:
-                # No STRINGID in QA row, skip
-                continue
         elif use_fallback:
             qa_sig = get_row_signature(qa_ws, qa_row, qa_exclude_cols)
             master_row = find_matching_row_fallback(master_ws, qa_sig, master_exclude_cols)
