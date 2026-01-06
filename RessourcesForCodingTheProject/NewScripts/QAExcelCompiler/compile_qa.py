@@ -39,8 +39,19 @@ from openpyxl.worksheet.datavalidation import DataValidation
 # === CONFIGURATION ===
 SCRIPT_DIR = Path(__file__).parent
 QA_FOLDER = SCRIPT_DIR / "QAfolder"
-MASTER_FOLDER = SCRIPT_DIR / "Masterfolder"
-IMAGES_FOLDER = MASTER_FOLDER / "Images"
+
+# Language-separated Master folders
+MASTER_FOLDER_EN = SCRIPT_DIR / "Masterfolder_EN"
+MASTER_FOLDER_CN = SCRIPT_DIR / "Masterfolder_CN"
+IMAGES_FOLDER_EN = MASTER_FOLDER_EN / "Images"
+IMAGES_FOLDER_CN = MASTER_FOLDER_CN / "Images"
+
+# Tester→Language mapping file
+TESTER_MAPPING_FILE = SCRIPT_DIR / "languageTOtester_list.txt"
+
+# Progress Tracker at root level (combines all)
+TRACKER_PATH = SCRIPT_DIR / "LQA_Tester_ProgressTracker.xlsx"
+
 CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character"]
 
 # Supported image extensions
@@ -65,6 +76,63 @@ TRACKER_STYLES = {
 }
 
 CHART_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "A5A5A5"]
+
+
+def load_tester_mapping():
+    """
+    Load tester→language mapping from languageTOtester_list.txt.
+
+    File format:
+        ENG
+        김동헌
+        황하연
+        ...
+
+        ZHO-CN
+        김춘애
+        최문석
+        ...
+
+    Returns: Dict {tester_name: "EN" or "CN"}
+    """
+    mapping = {}
+    current_lang = None
+
+    if not TESTER_MAPPING_FILE.exists():
+        print(f"WARNING: Mapping file not found: {TESTER_MAPPING_FILE}")
+        return mapping
+
+    with open(TESTER_MAPPING_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            if line == "ENG":
+                current_lang = "EN"
+            elif line == "ZHO-CN":
+                current_lang = "CN"
+            elif current_lang:
+                mapping[line] = current_lang
+
+    print(f"  Loaded {len(mapping)} tester→language mappings")
+    return mapping
+
+
+def get_master_folder(username, tester_mapping):
+    """Get the correct master folder based on tester's language."""
+    lang = tester_mapping.get(username, "EN")  # Default to EN if not found
+    if lang == "CN":
+        return MASTER_FOLDER_CN, IMAGES_FOLDER_CN
+    return MASTER_FOLDER_EN, IMAGES_FOLDER_EN
+
+
+def ensure_master_folders():
+    """Create both EN and CN master folders if they don't exist."""
+    MASTER_FOLDER_EN.mkdir(exist_ok=True)
+    MASTER_FOLDER_CN.mkdir(exist_ok=True)
+    IMAGES_FOLDER_EN.mkdir(exist_ok=True)
+    IMAGES_FOLDER_CN.mkdir(exist_ok=True)
 
 
 def discover_qa_folders():
@@ -130,25 +198,16 @@ def discover_qa_folders():
     return results
 
 
-def ensure_master_folder():
-    """Create Masterfolder and Images subfolder if they don't exist."""
-    MASTER_FOLDER.mkdir(exist_ok=True)
-    IMAGES_FOLDER.mkdir(exist_ok=True)
-
-
-def copy_images_with_unique_names(qa_folder_info):
+def copy_images_with_unique_names(qa_folder_info, images_folder):
     """
-    Copy images from QA folder to Images/ with unique names.
-
-    Naming: {Username}_{Category}_{original_filename}
+    Copy images from QA folder to Images/ with original names.
 
     Args:
         qa_folder_info: Dict with {folder_path, username, category, images}
+        images_folder: Target Images folder (EN or CN)
 
-    Returns: Dict mapping original_name -> new_name
+    Returns: Dict mapping original_name -> original_name
     """
-    username = qa_folder_info["username"]
-    category = qa_folder_info["category"]
     images = qa_folder_info["images"]
 
     image_mapping = {}
@@ -156,7 +215,7 @@ def copy_images_with_unique_names(qa_folder_info):
     for img_path in images:
         original_name = img_path.name
         # Keep original name - hyperlink depends on it
-        dest_path = IMAGES_FOLDER / original_name
+        dest_path = images_folder / original_name
 
         # Copy image (overwrite if exists - same image from different users)
         shutil.copy2(img_path, dest_path)
@@ -193,7 +252,7 @@ def find_column_by_header(ws, header_name, case_insensitive=True):
     return None
 
 
-def get_or_create_master(category, template_file=None):
+def get_or_create_master(category, master_folder, template_file=None):
     """
     Load existing master file or create from template.
 
@@ -203,11 +262,12 @@ def get_or_create_master(category, template_file=None):
 
     Args:
         category: Category name (Quest, Knowledge, etc.)
+        master_folder: Target Master folder (EN or CN)
         template_file: Path to first QA file to use as template
 
-    Returns: openpyxl Workbook
+    Returns: openpyxl Workbook, master_path
     """
-    master_path = MASTER_FOLDER / f"Master_{category}.xlsx"
+    master_path = master_folder / f"Master_{category}.xlsx"
 
     if master_path.exists():
         print(f"  Loading existing: {master_path.name}")
@@ -793,15 +853,18 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
     return result
 
 
-def hide_empty_comment_rows(wb):
+def hide_empty_comment_rows(wb, context_rows=1):
     """
     Post-process: Hide rows where ALL COMMENT_{User} columns are empty.
 
     This allows focusing on issues right away while preserving all data.
     Rows are hidden (not deleted) so they can be unhidden in Excel if needed.
 
+    Adjacent context rows are kept visible to provide surrounding context.
+
     Args:
         wb: Master workbook
+        context_rows: Number of rows above/below visible rows to keep visible (default: 1)
 
     Returns: Number of rows hidden
     """
@@ -823,18 +886,30 @@ def hide_empty_comment_rows(wb):
         if not comment_cols:
             continue
 
-        # Check each data row (skip header)
+        # First pass: Find rows that have comments
+        rows_with_comments = set()
         for row in range(2, ws.max_row + 1):
-            # Check if ALL comment columns are empty for this row
-            has_any_comment = False
             for col in comment_cols:
                 value = ws.cell(row=row, column=col).value
                 if value and str(value).strip():
-                    has_any_comment = True
+                    rows_with_comments.add(row)
                     break
 
-            # Hide row if no comments
-            if not has_any_comment:
+        # Second pass: Build set of rows to keep visible (comments + context)
+        rows_to_show = set(rows_with_comments)
+        for row in rows_with_comments:
+            # Add context rows above
+            for offset in range(1, context_rows + 1):
+                if row - offset >= 2:  # Don't include header
+                    rows_to_show.add(row - offset)
+            # Add context rows below
+            for offset in range(1, context_rows + 1):
+                if row + offset <= ws.max_row:
+                    rows_to_show.add(row + offset)
+
+        # Third pass: Hide rows not in the show set
+        for row in range(2, ws.max_row + 1):
+            if row not in rows_to_show:
                 ws.row_dimensions[row].hidden = True
                 hidden_count += 1
 
@@ -922,12 +997,15 @@ def update_status_sheet(wb, users, user_stats):
 # MANAGER STATUS PREPROCESS FUNCTIONS
 # =============================================================================
 
-def collect_manager_status():
+def collect_manager_status(master_folder):
     """
     Read existing Master files and collect all STATUS_{User} values.
 
     This is the PREPROCESS step - runs before compilation to preserve
     manager-entered status values (FIXED/REPORTED/CHECKING).
+
+    Args:
+        master_folder: Which Master folder to scan (EN or CN)
 
     Returns: Dict structure
     {
@@ -944,7 +1022,7 @@ def collect_manager_status():
     manager_status = {}
 
     for category in CATEGORIES:
-        master_path = MASTER_FOLDER / f"Master_{category}.xlsx"
+        master_path = master_folder / f"Master_{category}.xlsx"
         if not master_path.exists():
             continue
 
@@ -991,62 +1069,69 @@ def collect_manager_status():
 
 def collect_manager_stats_for_tracker():
     """
-    Read all Master files and count FIXED/REPORTED/CHECKING/NON-ISSUE per user per category.
+    Read all Master files (EN + CN) and count FIXED/REPORTED/CHECKING/NON-ISSUE per user per category.
 
     Returns: Dict structure
     {
         "Quest": {
-            "John": {"fixed": 5, "reported": 2, "checking": 1, "nonissue": 0},
-            "Alice": {"fixed": 3, "reported": 1, "checking": 0, "nonissue": 2}
+            "John": {"fixed": 5, "reported": 2, "checking": 1, "nonissue": 0, "lang": "EN"},
+            "Alice": {"fixed": 3, "reported": 1, "checking": 0, "nonissue": 2, "lang": "CN"}
         }
     }
     """
-    manager_stats = defaultdict(lambda: defaultdict(lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}))
+    manager_stats = defaultdict(lambda: defaultdict(lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}))
 
-    for category in CATEGORIES:
-        master_path = MASTER_FOLDER / f"Master_{category}.xlsx"
-        if not master_path.exists():
-            continue
+    # Load tester mapping to get language
+    tester_mapping = load_tester_mapping()
 
-        try:
-            wb = openpyxl.load_workbook(master_path)
+    # Scan both EN and CN folders
+    for master_folder in [MASTER_FOLDER_EN, MASTER_FOLDER_CN]:
+        for category in CATEGORIES:
+            master_path = master_folder / f"Master_{category}.xlsx"
+            if not master_path.exists():
+                continue
 
-            for sheet_name in wb.sheetnames:
-                if sheet_name == "STATUS":
-                    continue
+            try:
+                wb = openpyxl.load_workbook(master_path)
 
-                ws = wb[sheet_name]
+                for sheet_name in wb.sheetnames:
+                    if sheet_name == "STATUS":
+                        continue
 
-                # Find all STATUS_{User} columns
-                status_cols = {}
-                for col in range(1, ws.max_column + 1):
-                    header = ws.cell(row=1, column=col).value
-                    if header and str(header).startswith("STATUS_"):
-                        username = str(header).replace("STATUS_", "")
-                        status_cols[username] = col
+                    ws = wb[sheet_name]
 
-                if not status_cols:
-                    continue
+                    # Find all STATUS_{User} columns
+                    status_cols = {}
+                    for col in range(1, ws.max_column + 1):
+                        header = ws.cell(row=1, column=col).value
+                        if header and str(header).startswith("STATUS_"):
+                            username = str(header).replace("STATUS_", "")
+                            status_cols[username] = col
 
-                # Count status values per user
-                for row in range(2, ws.max_row + 1):
-                    for username, col in status_cols.items():
-                        value = ws.cell(row=row, column=col).value
-                        if value:
-                            status_upper = str(value).strip().upper()
-                            if status_upper == "FIXED":
-                                manager_stats[category][username]["fixed"] += 1
-                            elif status_upper == "REPORTED":
-                                manager_stats[category][username]["reported"] += 1
-                            elif status_upper == "CHECKING":
-                                manager_stats[category][username]["checking"] += 1
-                            elif status_upper == "NON-ISSUE":
-                                manager_stats[category][username]["nonissue"] += 1
+                    if not status_cols:
+                        continue
 
-            wb.close()
+                    # Count status values per user
+                    for row in range(2, ws.max_row + 1):
+                        for username, col in status_cols.items():
+                            value = ws.cell(row=row, column=col).value
+                            if value:
+                                status_upper = str(value).strip().upper()
+                                if status_upper == "FIXED":
+                                    manager_stats[category][username]["fixed"] += 1
+                                elif status_upper == "REPORTED":
+                                    manager_stats[category][username]["reported"] += 1
+                                elif status_upper == "CHECKING":
+                                    manager_stats[category][username]["checking"] += 1
+                                elif status_upper == "NON-ISSUE":
+                                    manager_stats[category][username]["nonissue"] += 1
+                            # Set language from mapping
+                            manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")
 
-        except Exception as e:
-            print(f"  WARN: Error reading {master_path.name} for manager stats: {e}")
+                wb.close()
+
+            except Exception as e:
+                print(f"  WARN: Error reading {master_path.name} for manager stats: {e}")
 
     return manager_stats
 
@@ -1057,11 +1142,11 @@ def collect_manager_stats_for_tracker():
 
 def get_or_create_tracker():
     """
-    Load existing tracker or create new one with 4 sheets.
+    Load existing tracker or create new one with sheets.
 
     Returns: (workbook, path)
     """
-    tracker_path = MASTER_FOLDER / TRACKER_FILENAME
+    tracker_path = TRACKER_PATH  # Root level
 
     if tracker_path.exists():
         wb = openpyxl.load_workbook(tracker_path)
@@ -1591,6 +1676,7 @@ def build_total_sheet(wb):
 
     Aggregates by user across all dates and categories.
     Includes both tester stats and manager stats (Fixed, Reported, Checking, Pending).
+    Separates EN and CN testers into distinct sections.
     """
     # Delete and recreate sheet to handle merged cells properly
     if "TOTAL" in wb.sheetnames:
@@ -1598,6 +1684,9 @@ def build_total_sheet(wb):
     ws = wb.create_sheet("TOTAL", 1)
 
     data_ws = wb["_DAILY_DATA"]
+
+    # Load tester mapping to separate EN/CN
+    tester_mapping = load_tester_mapping()
 
     # Read raw data and aggregate by user (now includes manager stats + total_rows + nonissue)
     user_data = defaultdict(lambda: {
@@ -1633,10 +1722,15 @@ def build_total_sheet(wb):
         ws.cell(1, 1, "No data yet")
         return
 
-    users = sorted(user_data.keys())
+    # Separate users by language
+    en_users = sorted([u for u in user_data.keys() if tester_mapping.get(u, "EN") == "EN"])
+    cn_users = sorted([u for u in user_data.keys() if tester_mapping.get(u) == "CN"])
+    all_users = sorted(user_data.keys())
 
     # Styles
     title_fill = PatternFill(start_color=TRACKER_STYLES["title_color"], end_color=TRACKER_STYLES["title_color"], fill_type="solid")
+    en_title_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")  # Blue for EN
+    cn_title_fill = PatternFill(start_color="C00000", end_color="C00000", fill_type="solid")  # Red for CN
     header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"], end_color=TRACKER_STYLES["header_color"], fill_type="solid")
     manager_header_fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")  # Light green
     alt_fill = PatternFill(start_color=TRACKER_STYLES["alt_row_color"], end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid")
@@ -1649,108 +1743,156 @@ def build_total_sheet(wb):
     )
     center = Alignment(horizontal='center', vertical='center')
     bold = Font(bold=True)
+    white_bold = Font(bold=True, color="FFFFFF")
 
     # Total columns: 7 tester + 4 manager = 11
     tester_headers = ["User", "Comp %", "Actual Issues", "Total", "Issues", "No Issue", "Blocked"]
     manager_headers = ["Fixed", "Reported", "Checking", "Pending"]
     total_cols = len(tester_headers) + len(manager_headers)
 
-    # Row 1: Title
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=total_cols)
-    title_cell = ws.cell(1, 1, "TOTAL SUMMARY")
-    title_cell.fill = title_fill
-    title_cell.font = Font(bold=True, size=14)
-    title_cell.alignment = center
+    def build_section(ws, start_row, section_title, section_fill, users_list, user_data):
+        """Build a section (EN or CN) with title, headers, data rows, and subtotal."""
+        if not users_list:
+            return start_row  # No data for this section
 
-    # Row 2: Empty
+        current_row = start_row
 
-    # Row 3: Headers (Tester stats + Manager stats)
-    # Tester headers
-    for col, header in enumerate(tester_headers, 1):
-        cell = ws.cell(3, col, header)
-        cell.fill = header_fill
-        cell.font = bold
-        cell.alignment = center
-        cell.border = border
+        # Section Title
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
+        title_cell = ws.cell(current_row, 1, section_title)
+        title_cell.fill = section_fill
+        title_cell.font = white_bold
+        title_cell.alignment = center
+        current_row += 1
 
-    # Manager headers
-    manager_start_col = len(tester_headers) + 1
-    for col, header in enumerate(manager_headers, manager_start_col):
-        cell = ws.cell(3, col, header)
-        cell.fill = manager_header_fill
-        cell.font = bold
-        cell.alignment = center
-        cell.border = border
+        # Headers
+        for col, header in enumerate(tester_headers, 1):
+            cell = ws.cell(current_row, col, header)
+            cell.fill = header_fill
+            cell.font = bold
+            cell.alignment = center
+            cell.border = border
 
-    # Row 4+: Data rows
+        manager_start_col = len(tester_headers) + 1
+        for col, header in enumerate(manager_headers, manager_start_col):
+            cell = ws.cell(current_row, col, header)
+            cell.fill = manager_header_fill
+            cell.font = bold
+            cell.alignment = center
+            cell.border = border
+        current_row += 1
+
+        # Data rows
+        section_total = {
+            "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
+            "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0
+        }
+
+        for idx, user in enumerate(users_list):
+            data = user_data[user]
+            total_rows = data["total_rows"]
+            done = data["done"]
+            issues = data["issues"]
+            no_issue = data["no_issue"]
+            blocked = data["blocked"]
+            fixed = data["fixed"]
+            reported = data["reported"]
+            checking = data["checking"]
+            nonissue = data["nonissue"]
+            pending = issues - fixed - reported - checking
+            if pending < 0:
+                pending = 0
+
+            completion_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
+            actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
+
+            # Accumulate section totals
+            section_total["total_rows"] += total_rows
+            section_total["done"] += done
+            section_total["issues"] += issues
+            section_total["no_issue"] += no_issue
+            section_total["blocked"] += blocked
+            section_total["fixed"] += fixed
+            section_total["reported"] += reported
+            section_total["checking"] += checking
+            section_total["pending"] += pending
+            section_total["nonissue"] += nonissue
+
+            row_data = [user, f"{completion_pct}%", f"{actual_pct}%", done, issues, no_issue, blocked, fixed, reported, checking, pending]
+
+            for col, value in enumerate(row_data, 1):
+                cell = ws.cell(current_row, col, value)
+                cell.alignment = center
+                cell.border = border
+                if idx % 2 == 1:
+                    cell.fill = alt_fill
+            current_row += 1
+
+        # Section subtotal row
+        st = section_total
+        st_completion = round(st["done"] / st["total_rows"] * 100, 1) if st["total_rows"] > 0 else 0
+        st_actual_pct = round((st["issues"] - st["nonissue"]) / st["issues"] * 100, 1) if st["issues"] > 0 else 0
+        subtotal_data = [
+            "SUBTOTAL", f"{st_completion}%", f"{st_actual_pct}%", st["done"], st["issues"], st["no_issue"], st["blocked"],
+            st["fixed"], st["reported"], st["checking"], st["pending"]
+        ]
+
+        for col, value in enumerate(subtotal_data, 1):
+            cell = ws.cell(current_row, col, value)
+            cell.fill = total_fill
+            cell.font = bold
+            cell.alignment = center
+            cell.border = border
+        current_row += 1
+
+        return current_row, section_total
+
+    # Build EN section
+    current_row = 1
+    en_total = None
+    if en_users:
+        current_row, en_total = build_section(ws, current_row, "EN TESTER STATS", en_title_fill, en_users, user_data)
+        current_row += 1  # Empty row between sections
+
+    # Build CN section
+    cn_total = None
+    if cn_users:
+        current_row, cn_total = build_section(ws, current_row, "CN TESTER STATS", cn_title_fill, cn_users, user_data)
+        current_row += 1  # Empty row before grand total
+
+    # Grand total row (combines EN + CN)
     grand_total = {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
         "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0
     }
-    data_row = 4
-    for idx, user in enumerate(users):
-        data = user_data[user]
-        total_rows = data["total_rows"]  # Total universe of rows
-        done = data["done"]              # Completed (issues + no_issue + blocked)
-        issues = data["issues"]
-        no_issue = data["no_issue"]
-        blocked = data["blocked"]
-        fixed = data["fixed"]
-        reported = data["reported"]
-        checking = data["checking"]
-        nonissue = data["nonissue"]
-        pending = issues - fixed - reported - checking
-        if pending < 0:
-            pending = 0
+    for t in [en_total, cn_total]:
+        if t:
+            for key in grand_total:
+                grand_total[key] += t[key]
 
-        # Completion % = Completed rows / Total rows in universe
-        completion_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
+    if grand_total["total_rows"] > 0:
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
+        gt_title = ws.cell(current_row, 1, "GRAND TOTAL (ALL LANGUAGES)")
+        gt_title.fill = title_fill
+        gt_title.font = Font(bold=True, size=12)
+        gt_title.alignment = center
+        current_row += 1
 
-        # Actual Issues % = (Issues - NonIssue) / Issues * 100
-        actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
+        gt = grand_total
+        gt_completion = round(gt["done"] / gt["total_rows"] * 100, 1) if gt["total_rows"] > 0 else 0
+        gt_actual_pct = round((gt["issues"] - gt["nonissue"]) / gt["issues"] * 100, 1) if gt["issues"] > 0 else 0
+        total_row_data = [
+            "TOTAL", f"{gt_completion}%", f"{gt_actual_pct}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
+            gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
+        ]
 
-        # Accumulate grand totals
-        grand_total["total_rows"] += total_rows
-        grand_total["done"] += done
-        grand_total["issues"] += issues
-        grand_total["no_issue"] += no_issue
-        grand_total["blocked"] += blocked
-        grand_total["fixed"] += fixed
-        grand_total["reported"] += reported
-        grand_total["checking"] += checking
-        grand_total["pending"] += pending
-        grand_total["nonissue"] += nonissue
-
-        # Order matches headers: User, Comp %, Actual Issues, Total, Issues, No Issue, Blocked, Fixed, Reported, Checking, Pending
-        row_data = [user, f"{completion_pct}%", f"{actual_pct}%", done, issues, no_issue, blocked, fixed, reported, checking, pending]
-
-        for col, value in enumerate(row_data, 1):
-            cell = ws.cell(data_row, col, value)
+        for col, value in enumerate(total_row_data, 1):
+            cell = ws.cell(current_row, col, value)
+            cell.fill = total_fill
+            cell.font = bold
             cell.alignment = center
             cell.border = border
-            if idx % 2 == 1:
-                cell.fill = alt_fill
-
-        data_row += 1
-
-    # TOTAL row
-    gt = grand_total
-    # Completion % = Total completed / Total universe
-    gt_completion = round(gt["done"] / gt["total_rows"] * 100, 1) if gt["total_rows"] > 0 else 0
-    # Actual Issues % for grand total
-    gt_actual_pct = round((gt["issues"] - gt["nonissue"]) / gt["issues"] * 100, 1) if gt["issues"] > 0 else 0
-    # Order matches headers: User, Comp %, Actual Issues, Total, Issues, No Issue, Blocked, Fixed, Reported, Checking, Pending
-    total_row_data = [
-        "TOTAL", f"{gt_completion}%", f"{gt_actual_pct}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
-        gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
-    ]
-
-    for col, value in enumerate(total_row_data, 1):
-        cell = ws.cell(data_row, col, value)
-        cell.fill = total_fill
-        cell.font = bold
-        cell.alignment = center
-        cell.border = border
+        current_row += 1
 
     # Set column widths with auto-sizing + padding
     PADDING = 2
@@ -1760,21 +1902,21 @@ def build_total_sheet(wb):
         ws.column_dimensions[col_letter].width = len(header) + PADDING
 
     # === Add two clustered bar charts (same style as DAILY) ===
-    if len(users) > 0:
+    if len(all_users) > 0:
         from openpyxl.chart import BarChart, Reference
 
         # Unique colors for each user
         USER_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "7030A0", "C00000", "00B0F0"]
 
-        num_users = len(users)
+        num_users = len(all_users)
 
         # Build data table for Chart 1: Done by Tester
-        chart1_data_row = data_row + 3
+        chart1_data_row = current_row + 2
 
         # Header row: Tester | Done value (single series, testers as categories)
         ws.cell(chart1_data_row, 1, "Tester")
         ws.cell(chart1_data_row, 2, "Done")
-        for i, user in enumerate(users):
+        for i, user in enumerate(all_users):
             ws.cell(chart1_data_row + 1 + i, 1, user)
             done = user_data[user]["done"]
             ws.cell(chart1_data_row + 1 + i, 2, done)
@@ -1820,7 +1962,7 @@ def build_total_sheet(wb):
 
         ws.cell(chart2_data_row, 1, "Tester")
         ws.cell(chart2_data_row, 2, "Actual Issues %")
-        for i, user in enumerate(users):
+        for i, user in enumerate(all_users):
             ws.cell(chart2_data_row + 1 + i, 1, user)
             issues = user_data[user]["issues"]
             nonissue = user_data[user]["nonissue"]
@@ -1865,13 +2007,16 @@ def build_total_sheet(wb):
 
 
 
-def process_category(category, qa_folders, manager_status=None):
+def process_category(category, qa_folders, master_folder, images_folder, lang_label, manager_status=None):
     """
     Process all QA folders for one category.
 
     Args:
         category: Category name (Quest, Knowledge, etc.)
         qa_folders: List of dicts with {folder_path, xlsx_path, username, category, images}
+        master_folder: Target Master folder (EN or CN)
+        images_folder: Target Images folder (EN or CN)
+        lang_label: Language label for display ("EN" or "CN")
         manager_status: Dict of {sheet_name: {row: {user: status}}} from preprocess (optional)
 
     Returns:
@@ -1880,14 +2025,14 @@ def process_category(category, qa_folders, manager_status=None):
     if manager_status is None:
         manager_status = {}
     print(f"\n{'='*50}")
-    print(f"Processing: {category} ({len(qa_folders)} folders)")
+    print(f"Processing: {category} [{lang_label}] ({len(qa_folders)} folders)")
     print(f"{'='*50}")
 
     daily_entries = []  # NEW: Collect entries for tracker
 
-    # Get or create master
+    # Get or create master (in correct language folder)
     first_xlsx = qa_folders[0]["xlsx_path"]
-    master_wb, master_path = get_or_create_master(category, first_xlsx)
+    master_wb, master_path = get_or_create_master(category, master_folder, first_xlsx)
 
     if master_wb is None:
         return daily_entries
@@ -1911,8 +2056,8 @@ def process_category(category, qa_folders, manager_status=None):
         file_mod_time = datetime.fromtimestamp(xlsx_path.stat().st_mtime)
         file_mod_date = file_mod_time.strftime("%Y-%m-%d")
 
-        # Copy images with unique names
-        image_mapping = copy_images_with_unique_names(qf)
+        # Copy images to correct language folder
+        image_mapping = copy_images_with_unique_names(qf, images_folder)
         total_images += len(image_mapping)
 
         # Load xlsx
@@ -1953,6 +2098,7 @@ def process_category(category, qa_folders, manager_status=None):
             "date": file_mod_date,
             "user": username,
             "category": category,
+            "lang": lang_label,  # EN or CN for tracker separation
             "total_rows": user_stats[username]["total"],  # Total universe of rows
             "done": user_stats[username]["issue"] + user_stats[username]["no_issue"] + user_stats[username]["blocked"],
             "issues": user_stats[username]["issue"],
@@ -1980,34 +2126,33 @@ def process_category(category, qa_folders, manager_status=None):
 def main():
     """Main entry point."""
     print("="*60)
-    print("QA Excel Compiler (with Image Compilation + Manager Status)")
+    print("QA Excel Compiler (EN/CN Separation + Manager Status)")
     print("="*60)
     print("Features:")
     print("  - Folder-based input: QAfolder/{Username}_{Category}/")
-    print("  - Dynamic column detection (finds STATUS/COMMENT/SCREENSHOT by header)")
-    print("  - Paired COMMENT_{User} + STATUS_{User} + SCREENSHOT_{User} columns")
+    print("  - Language separation: Masterfolder_EN/ and Masterfolder_CN/")
+    print("  - Auto-routing testers by language mapping")
     print("  - Manager workflow: STATUS_{User} for FIXED/REPORTED/CHECKING")
-    print("  - REPLACE mode: New comments replace old (no append)")
-    print("  - Timestamp: Uses file's last modified time")
-    print("  - Image consolidation to Masterfolder/Images/")
-    print("  - Hyperlink transformation with unique naming")
-    print("  - Fallback row matching (2+ cell match if row counts differ)")
     print("  - Manager status preservation on re-compile")
     print("  - Auto-hide rows with no comments (focus on issues)")
+    print("  - Combined Progress Tracker at root level")
     print()
 
-    # Ensure folders exist
-    ensure_master_folder()
+    # Load tester→language mapping
+    print("Loading tester→language mapping...")
+    tester_mapping = load_tester_mapping()
 
-    # PREPROCESS: Collect manager status from existing Master files
-    print("Collecting manager status from existing Master files...")
-    all_manager_status = collect_manager_status()
-    if any(all_manager_status.values()):
-        total_statuses = sum(
-            sum(len(rows) for rows in sheets.values())
-            for sheets in all_manager_status.values()
-        )
-        print(f"  Found {total_statuses} manager status entries to preserve")
+    # Ensure folders exist
+    ensure_master_folders()
+
+    # PREPROCESS: Collect manager status from existing Master files (both EN and CN)
+    print("\nCollecting manager status from existing Master files...")
+    manager_status_en = collect_manager_status(MASTER_FOLDER_EN)
+    manager_status_cn = collect_manager_status(MASTER_FOLDER_CN)
+    total_en = sum(sum(len(rows) for rows in sheets.values()) for sheets in manager_status_en.values())
+    total_cn = sum(sum(len(rows) for rows in sheets.values()) for sheets in manager_status_cn.values())
+    if total_en > 0 or total_cn > 0:
+        print(f"  Found {total_en} EN + {total_cn} CN manager status entries to preserve")
     else:
         print("  No existing manager status entries found")
 
@@ -2029,20 +2174,44 @@ def main():
     if total_images > 0:
         print(f"Total images to process: {total_images}")
 
-    # Group by category
-    by_category = defaultdict(list)
+    # Group by category AND language
+    by_category_en = defaultdict(list)
+    by_category_cn = defaultdict(list)
     for qf in qa_folders:
-        by_category[qf["category"]].append(qf)
-
-    # Process each category and collect daily entries for tracker
-    all_daily_entries = []
-    for category in CATEGORIES:
-        if category in by_category:
-            # Get manager_status for this category (if any)
-            category_manager_status = all_manager_status.get(category, {})
-            entries = process_category(category, by_category[category], category_manager_status)
-            all_daily_entries.extend(entries)
+        lang = tester_mapping.get(qf["username"], "EN")
+        if lang == "CN":
+            by_category_cn[qf["category"]].append(qf)
         else:
+            by_category_en[qf["category"]].append(qf)
+
+    # Process each category for EN and CN
+    all_daily_entries = []
+
+    # Process EN
+    for category in CATEGORIES:
+        if category in by_category_en:
+            category_manager_status = manager_status_en.get(category, {})
+            entries = process_category(
+                category, by_category_en[category],
+                MASTER_FOLDER_EN, IMAGES_FOLDER_EN, "EN",
+                category_manager_status
+            )
+            all_daily_entries.extend(entries)
+
+    # Process CN
+    for category in CATEGORIES:
+        if category in by_category_cn:
+            category_manager_status = manager_status_cn.get(category, {})
+            entries = process_category(
+                category, by_category_cn[category],
+                MASTER_FOLDER_CN, IMAGES_FOLDER_CN, "CN",
+                category_manager_status
+            )
+            all_daily_entries.extend(entries)
+
+    # Show skipped categories
+    for category in CATEGORIES:
+        if category not in by_category_en and category not in by_category_cn:
             print(f"\nSKIP: No folders for category '{category}'")
 
     # Update LQA User Progress Tracker
@@ -2070,11 +2239,10 @@ def main():
 
     print("\n" + "="*60)
     print("Compilation complete!")
-    print(f"Output: {MASTER_FOLDER}")
-    if total_images > 0:
-        print(f"Images: {IMAGES_FOLDER}")
+    print(f"Output EN: {MASTER_FOLDER_EN}")
+    print(f"Output CN: {MASTER_FOLDER_CN}")
     if all_daily_entries:
-        print(f"Tracker: {TRACKER_FILENAME}")
+        print(f"Tracker: {TRACKER_PATH}")
     print("="*60)
 
 

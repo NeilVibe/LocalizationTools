@@ -4,13 +4,42 @@
 
 ---
 
-## DONE: Auto-Hide Empty Rows ✅ (2026-01-06)
+## DONE: EN/CN Language Separation ✅ (2026-01-06)
 
-**Goal:** Focus on issues by hiding rows with no comments
+**Goal:** Separate Master files by language (EN vs CN)
 
 **Implementation:**
-- Post-process `hide_empty_comment_rows()` runs after compilation
+- Tester→Language mapping loaded from `languageTOtester_list.txt`
+- Two Master folders: `Masterfolder_EN/` and `Masterfolder_CN/`
+- Testers auto-routed based on mapping (defaults to EN if not found)
+- Progress Tracker at root level, combines all language data
+- TOTAL sheet shows separate sections: "EN TESTER STATS" (blue) and "CN TESTER STATS" (red)
+- Grand total row combines all languages
+
+**Mapping File Format (`languageTOtester_list.txt`):**
+```
+ENG
+김동헌
+황하연
+...
+
+ZHO-CN
+김춘애
+최문석
+...
+```
+
+---
+
+## DONE: Auto-Hide Empty Rows with Context ✅ (2026-01-06)
+
+**Goal:** Focus on issues by hiding rows with no comments, while keeping context
+
+**Implementation:**
+- Post-process `hide_empty_comment_rows(wb, context_rows=1)` runs after compilation
 - Rows with ALL `COMMENT_{User}` columns empty are **hidden** (not deleted)
+- **Context rows** (adjacent to commented rows) remain visible for context
+- `context_rows=1` means 1 row above and below each commented row stays visible
 - Data preserved - can unhide in Excel: `Home > Format > Hide & Unhide > Unhide Rows`
 - Output shows: `Hidden: N rows with no comments (unhide in Excel if needed)`
 
