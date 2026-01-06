@@ -96,6 +96,16 @@ Compile QA tester Excel files into master sheets with automatic STATUS tracking,
 | Task | Description | Status |
 |------|-------------|--------|
 | 7.1 | Auto-hide rows with no comments (focus on issues) | ✅ DONE |
+| 7.2 | Adjacent row context (keep rows near comments visible) | ✅ DONE |
+
+### Phase 8: EN/CN Language Separation ✅ (NEW)
+| Task | Description | Status |
+|------|-------------|--------|
+| 8.1 | Load tester→language mapping from `languageTOtester_list.txt` | ✅ DONE |
+| 8.2 | Create `Masterfolder_EN/` and `Masterfolder_CN/` | ✅ DONE |
+| 8.3 | Auto-route testers to correct folder based on language | ✅ DONE |
+| 8.4 | Progress Tracker at root level (combines all languages) | ✅ DONE |
+| 8.5 | TOTAL sheet EN/CN separation with colored headers | ✅ DONE |
 
 ---
 
@@ -150,21 +160,27 @@ QAfolder/
 
 **Row Matching:** By row index (all QA testers have identical structure per category)
 
-### Output: Master Files + Images
+### Output: Master Files + Images (EN/CN Separated)
 
 **Structure:**
 ```
-Masterfolder/
-├── Master_Quest.xlsx
-├── Master_Knowledge.xlsx
-├── Master_Item.xlsx
-├── Master_Node.xlsx
-├── Master_System.xlsx
-└── Images/
-    ├── John_Quest_bug1.png
-    ├── John_Quest_typo.png
-    ├── Alice_Quest_font_issue.png
-    └── Bob_Knowledge_term.png
+QAExcelCompiler/
+├── LQA_Tester_ProgressTracker.xlsx  # Combined progress (root level)
+├── languageTOtester_list.txt        # Tester→Language mapping
+├── Masterfolder_EN/                 # EN testers output
+│   ├── Master_Quest.xlsx
+│   ├── Master_Knowledge.xlsx
+│   ├── Master_Item.xlsx
+│   ├── Master_Node.xlsx
+│   ├── Master_System.xlsx
+│   └── Images/
+│       ├── bug1.png
+│       └── typo.png
+└── Masterfolder_CN/                 # CN testers output
+    ├── Master_Quest.xlsx
+    ├── Master_Knowledge.xlsx
+    └── Images/
+        └── screenshot.png
 ```
 
 **Master File Structure:**
