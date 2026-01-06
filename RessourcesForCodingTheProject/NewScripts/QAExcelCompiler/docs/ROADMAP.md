@@ -1,6 +1,6 @@
 # QA Excel Compiler - Roadmap
 
-**Created:** 2025-12-30 | **Status:** ✅ IMPLEMENTED | **Updated:** 2026-01-06
+**Created:** 2025-12-30 | **Status:** ✅ IMPLEMENTED | **Updated:** 2026-01-07
 
 ---
 
@@ -107,6 +107,20 @@ Compile QA tester Excel files into master sheets with automatic STATUS tracking,
 | 8.3 | Auto-route testers to correct folder based on language | ✅ DONE |
 | 8.4 | Progress Tracker at root level (combines all languages) | ✅ DONE |
 | 8.5 | TOTAL sheet EN/CN separation with colored headers | ✅ DONE |
+
+### Phase 9: Data Refresh & Clean Output ✅ (NEW - 2026-01-07)
+| Task | Description | Status |
+|------|-------------|--------|
+| 9.1 | Clear tester AutoFilters (clean output) | ✅ DONE |
+| 9.2 | Reset hidden rows before applying our hiding | ✅ DONE |
+| 9.3 | Hide empty COMMENT_{User} columns per sheet | ✅ DONE |
+| 9.4 | Refresh ALL base data columns from QA files | ✅ DONE |
+| 9.5 | A-Z sort for EN Item by ItemName(ENG) column | ✅ DONE |
+| 9.6 | Word wrap + autofit row heights | ✅ DONE |
+
+**Item Category Matching:**
+- EN Item: Sorted A-Z by `ItemName(ENG)` column, then index matching
+- CN Item: Original order, direct index matching
 
 ---
 

@@ -1,6 +1,43 @@
 # QA Excel Compiler - Implementation Details
 
-**Created:** 2025-12-30 | **Status:** ✅ IMPLEMENTED | **Updated:** 2026-01-06
+**Created:** 2025-12-30 | **Status:** ✅ IMPLEMENTED | **Updated:** 2026-01-07
+
+---
+
+## DONE: Data Refresh & Clean Output ✅ (2026-01-07)
+
+**Goal:** Ensure clean, consistent output regardless of tester's Excel settings
+
+**Implementation:**
+
+### 1. Clear Tester AutoFilters
+- Removes any filter dropdown/sorting from tester files
+- Master output is always clean
+
+### 2. Reset Hidden Rows
+- Unhides ALL rows first before applying our hiding logic
+- Prevents tester's hidden rows from affecting output
+
+### 3. Hide Empty User Columns
+- If `COMMENT_{User}` column is empty in a sheet, hide it
+- Also hides paired `SCREENSHOT_{User}` and `STATUS_{User}` columns
+- Per-sheet basis (user may have comments in Sheet1 but not Sheet2)
+
+### 4. Refresh Base Data Columns
+- ALL columns are refreshed from QA files EXCEPT:
+  - STATUS, COMMENT, SCREENSHOT (specially handled)
+  - COMMENT_{User}, SCREENSHOT_{User}, STATUS_{User} (user-specific)
+- Ensures master always has latest base data
+
+### 5. Item Category A-Z Sorting
+- **EN Item:** Sorted A-Z by `ItemName(ENG)` column to match tester order
+- **CN Item:** Original order (no sorting)
+- Testers sort their Item files A-Z, so master must match
+
+### 6. Word Wrap + Autofit Row Heights
+- All cells get `wrap_text=True`
+- Row heights calculated based on content (line breaks + text length)
+- Max height capped at 300 points
 
 ---
 
