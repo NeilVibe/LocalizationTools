@@ -955,13 +955,16 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
 
 def hide_empty_comment_rows(wb, context_rows=1, debug=False):
     """
-    Post-process: Hide rows/sheets where ALL COMMENT_{User} columns are empty.
+    Post-process: Hide rows/sheets/columns where ALL COMMENT_{User} columns are empty.
 
     This allows focusing on issues right away while preserving all data.
     Rows are hidden (not deleted) so they can be unhidden in Excel if needed.
 
-    Adjacent context rows are kept visible to provide surrounding context.
-    Sheets with NO comments at all are hidden entirely.
+    Features:
+    - Sheet hiding: Sheets with NO comments at all are hidden entirely
+    - Column hiding: COMMENT_{User} columns with no data in a sheet are hidden
+      (also hides paired SCREENSHOT_{User} and STATUS_{User} columns)
+    - Row hiding: Rows with no comments are hidden (with context rows kept visible)
 
     Args:
         wb: Master workbook
@@ -972,6 +975,7 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
     """
     hidden_rows = 0
     hidden_sheets = []
+    hidden_columns_total = 0
 
     for sheet_name in wb.sheetnames:
         if sheet_name == "STATUS":
@@ -1000,17 +1004,19 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
                 print(f"    [DEBUG] No COMMENT_ columns found in {sheet_name}")
             continue
 
-        # First pass: Find rows that have comments
+        # First pass: Find rows that have comments AND track which columns have comments
         rows_with_comments = set()
+        cols_with_comments = set()  # Track which COMMENT_ columns have data
+
         for row in range(2, ws.max_row + 1):
             for col in comment_cols:
                 value = ws.cell(row=row, column=col).value
                 # Check for any content (not just whitespace)
                 if value is not None and str(value).strip():
                     rows_with_comments.add(row)
+                    cols_with_comments.add(col)
                     if debug and row <= 10:  # Only debug first 10 rows
                         print(f"    [DEBUG] Row {row} has comment in col {col}: {repr(str(value)[:30])}")
-                    break
 
         # If NO comments in entire sheet, hide the sheet tab
         if not rows_with_comments:
@@ -1022,6 +1028,38 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
         else:
             if debug:
                 print(f"    [DEBUG] Sheet '{sheet_name}' has {len(rows_with_comments)} rows with comments - keeping visible")
+
+        # Column hiding: Hide COMMENT_{User} columns that are entirely empty in this sheet
+        # Also hide paired SCREENSHOT_{User} and STATUS_{User} columns
+        hidden_cols_this_sheet = 0
+        for col in comment_cols:
+            if col not in cols_with_comments:
+                # This COMMENT_ column is empty in this sheet - hide it
+                header = ws.cell(row=1, column=col).value
+                username = str(header).replace("COMMENT_", "") if header else ""
+
+                # Hide the COMMENT_{User} column
+                col_letter = ws.cell(row=1, column=col).column_letter
+                ws.column_dimensions[col_letter].hidden = True
+                hidden_cols_this_sheet += 1
+
+                # Find and hide paired SCREENSHOT_{User} and STATUS_{User} columns
+                for search_col in range(1, ws.max_column + 1):
+                    search_header = ws.cell(row=1, column=search_col).value
+                    if search_header:
+                        if str(search_header) == f"SCREENSHOT_{username}":
+                            search_col_letter = ws.cell(row=1, column=search_col).column_letter
+                            ws.column_dimensions[search_col_letter].hidden = True
+                            hidden_cols_this_sheet += 1
+                        elif str(search_header) == f"STATUS_{username}":
+                            search_col_letter = ws.cell(row=1, column=search_col).column_letter
+                            ws.column_dimensions[search_col_letter].hidden = True
+                            hidden_cols_this_sheet += 1
+
+                if debug:
+                    print(f"    [DEBUG] Hidden empty column group for user: {username}")
+
+        hidden_columns_total += hidden_cols_this_sheet
 
         # Second pass: Build set of rows to keep visible (comments + context)
         rows_to_show = set(rows_with_comments)
@@ -1046,7 +1084,7 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
                 ws.row_dimensions[row].hidden = True
                 hidden_rows += 1
 
-    return hidden_rows, hidden_sheets
+    return hidden_rows, hidden_sheets, hidden_columns_total
 
 
 def update_status_sheet(wb, users, user_stats):
@@ -2242,14 +2280,16 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
     # Update STATUS sheet (first tab, with stats)
     update_status_sheet(master_wb, all_users, user_stats)
 
-    # Post-process: Hide rows/sheets with no comments (focus on issues)
-    hidden_rows, hidden_sheets = hide_empty_comment_rows(master_wb)
+    # Post-process: Hide rows/sheets/columns with no comments (focus on issues)
+    hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(master_wb)
 
     # Save master
     master_wb.save(master_path)
     print(f"\n  Saved: {master_path}")
     if hidden_sheets:
         print(f"  Hidden sheets (no comments): {', '.join(hidden_sheets)}")
+    if hidden_columns > 0:
+        print(f"  Hidden: {hidden_columns} empty user columns (unhide in Excel if needed)")
     if hidden_rows > 0:
         print(f"  Hidden: {hidden_rows} rows with no comments (unhide in Excel if needed)")
     if total_images > 0:
