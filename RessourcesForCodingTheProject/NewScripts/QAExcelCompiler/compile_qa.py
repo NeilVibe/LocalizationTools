@@ -26,6 +26,7 @@ Comment Handling:
 """
 
 import os
+import sys
 import shutil
 from pathlib import Path
 from datetime import datetime
@@ -37,7 +38,13 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 
 # === CONFIGURATION ===
-SCRIPT_DIR = Path(__file__).parent
+# Handle PyInstaller frozen state - exe unpacks to temp dir, need exe's actual location
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable (.exe)
+    SCRIPT_DIR = Path(sys.executable).parent
+else:
+    # Running as normal Python script
+    SCRIPT_DIR = Path(__file__).parent
 QA_FOLDER = SCRIPT_DIR / "QAfolder"
 
 # Language-separated Master folders
