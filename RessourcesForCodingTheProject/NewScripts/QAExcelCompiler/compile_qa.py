@@ -721,15 +721,16 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                     original_target = screenshot_hyperlink.target
                     original_name = os.path.basename(original_target)
 
-                    # Transform to new path if image was copied
+                    # Transform to new path - ALWAYS use Images/ prefix
                     if original_name in image_mapping:
                         new_name = image_mapping[original_name]
                         new_screenshot_value = new_name
                         new_screenshot_target = f"Images/{new_name}"
                     else:
-                        # Image not found in mapping, preserve original
-                        new_screenshot_value = screenshot_value
-                        new_screenshot_target = original_target
+                        # Image not found in mapping - still use Images/ prefix
+                        # This handles case where image wasn't in QA folder
+                        new_screenshot_value = original_name
+                        new_screenshot_target = f"Images/{original_name}"
                         is_warning = True
                 else:
                     # No hyperlink, just copy value (might be just text)
@@ -739,10 +740,16 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                         new_screenshot_value = new_name
                         new_screenshot_target = f"Images/{new_name}"
                     else:
-                        new_screenshot_value = screenshot_value
+                        # No mapping - still use Images/ prefix
+                        new_screenshot_value = original_name
+                        new_screenshot_target = f"Images/{original_name}"
+                        is_warning = True
 
-                # ONLY write if value changed (preserve team's custom formatting!)
-                if new_screenshot_value != existing_screenshot:
+                # Check if hyperlink needs updating (value OR hyperlink different)
+                existing_hyperlink = master_screenshot_cell.hyperlink.target if master_screenshot_cell.hyperlink else None
+                needs_update = (new_screenshot_value != existing_screenshot) or (new_screenshot_target != existing_hyperlink)
+
+                if needs_update:
                     master_screenshot_cell.value = new_screenshot_value
                     if new_screenshot_target:
                         master_screenshot_cell.hyperlink = new_screenshot_target
