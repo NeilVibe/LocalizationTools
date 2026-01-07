@@ -2318,6 +2318,16 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
         # Load xlsx
         qa_wb = openpyxl.load_workbook(xlsx_path)
 
+        # For EN Item category: Sort input A-Z to match master ordering
+        # This ensures consistent row alignment regardless of tester's file order
+        if category.lower() == "item" and lang_label == "EN":
+            for sheet_name in qa_wb.sheetnames:
+                if sheet_name != "STATUS":
+                    qa_ws = qa_wb[sheet_name]
+                    sort_col = find_column_by_header(qa_ws, "ItemName(ENG)")
+                    if sort_col:
+                        sort_worksheet_az(qa_ws, sort_column=sort_col)
+
         for sheet_name in qa_wb.sheetnames:
             # Skip STATUS sheets
             if sheet_name == "STATUS":
