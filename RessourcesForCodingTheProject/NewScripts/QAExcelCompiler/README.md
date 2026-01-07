@@ -203,6 +203,27 @@ Managers can track issue resolution in Master files using `STATUS_{User}` column
 4. On next compile, these values are **preserved automatically**
 5. Manager stats appear in Progress Tracker (Fixed, Reported, Checking, Pending)
 
+### EN Item A-Z Sorting
+
+For the **EN Item** category specifically, both input and output are sorted A-Z:
+
+- **Input QA files**: Sorted A-Z by `ItemName(ENG)` column before processing
+- **Master output**: Sorted A-Z by `ItemName(ENG)` column
+
+**Why:** Ensures consistent row alignment regardless of how testers submit their files. Both files are in the same order before any matching happens.
+
+**Note:** CN Item and other categories (Quest, Knowledge, etc.) are NOT sorted - they preserve original row order.
+
+### Word Wrap + Autofit Row Heights
+
+All master files get automatic formatting:
+
+- **Word wrap enabled** on all cells
+- **Row heights auto-calculated** based on content (multi-line comments expand rows)
+- **Max height capped** at 300 points (prevents extreme rows)
+
+This applies to ALL categories, not just EN Item.
+
 ### Image Consolidation
 
 All images from QA folders are copied to `Masterfolder/Images/` with unique names:
@@ -360,6 +381,8 @@ QA files should have these columns (detected dynamically by header name):
 - STATUS sheet recreated on each run (always first tab)
 - **Image unique naming** - `{Username}_{Category}_{original}` prevents collisions
 - **Hyperlink transformation** - relative paths updated to point to `Images/` folder
+- **EN Item A-Z sorting** - both input and master sorted by `ItemName(ENG)` for consistent alignment
+- **Word wrap + autofit** - all master files get word wrap and auto row heights
 
 ---
 
@@ -402,3 +425,4 @@ ONE big spacious line chart showing cumulative progress:
 *Updated: 2026-01-05 - Added Manager Status feature (STATUS_{User} columns with FIXED/REPORTED/CHECKING)*
 *Updated: 2026-01-05 - Added Comp % column to DAILY tab (shows completion per user per day)*
 *Updated: 2026-01-05 - Redesigned GRAPHS tab: ONE big line chart with dots, cumulative data, toggleable legend*
+*Updated: 2026-01-07 - EN Item: Sort both input and master A-Z by ItemName(ENG) for consistent alignment*
