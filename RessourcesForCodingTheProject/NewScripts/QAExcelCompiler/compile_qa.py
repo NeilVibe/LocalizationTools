@@ -488,7 +488,9 @@ def get_or_create_user_status_column(ws, username, after_comment_col):
                 errorTitle="Invalid Status",
                 error="Please select: FIXED, REPORTED, CHECKING, or NON-ISSUE"
             )
-            dv.add(f"{col_letter}2:{col_letter}1000")
+            # Use actual row count + buffer instead of hardcoded 1000
+            last_row = max(ws.max_row, 10) + 50  # Buffer for future rows
+            dv.add(f"{col_letter}2:{col_letter}{last_row}")
             ws.add_data_validation(dv)
             return col
 
@@ -518,7 +520,8 @@ def get_or_create_user_status_column(ws, username, after_comment_col):
     ws.column_dimensions[col_letter].hidden = False
 
     # Add dropdown data validation for FIXED/REPORTED/CHECKING/NON-ISSUE
-    # Range: from row 2 to row 1000 (covers most files)
+    # Use actual row count + buffer instead of hardcoded 1000 (prevents Excel repair warnings)
+    last_row = max(ws.max_row, 10) + 50  # Buffer for future rows
     dv = DataValidation(
         type="list",
         formula1='"FIXED,REPORTED,CHECKING,NON-ISSUE"',
@@ -530,7 +533,7 @@ def get_or_create_user_status_column(ws, username, after_comment_col):
         promptTitle="Manager Status",
         prompt="Select status: FIXED, REPORTED, CHECKING, or NON-ISSUE"
     )
-    dv.add(f"{col_letter}2:{col_letter}1000")
+    dv.add(f"{col_letter}2:{col_letter}{last_row}")
     ws.add_data_validation(dv)
 
     print(f"    Created column: {col_name} at {get_column_letter(new_col)} (manager status - dropdown)")

@@ -477,6 +477,13 @@
   {#if loading}
     <div class="loading-state">Loading...</div>
   {:else}
+    <!-- Selection indicator bar -->
+    {#if selectedTMIds.size > 1}
+      <div class="selection-bar">
+        <span class="selection-count">{selectedTMIds.size} TMs selected</span>
+        <span class="selection-hint">Right-click for bulk actions</span>
+      </div>
+    {/if}
     <div class="tree-content">
       <!-- Unassigned Section -->
       <div
@@ -797,6 +804,27 @@
     color: var(--cds-text-02);
   }
 
+  /* Multi-selection indicator bar */
+  .selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: var(--cds-layer-selected-01);
+    border-bottom: 1px solid var(--cds-link-01);
+    font-size: 0.75rem;
+  }
+
+  .selection-count {
+    font-weight: 600;
+    color: var(--cds-link-01);
+  }
+
+  .selection-hint {
+    color: var(--cds-text-02);
+    font-style: italic;
+  }
+
   .tree-content {
     flex: 1;
     overflow-y: auto;
@@ -938,6 +966,8 @@
 
   .tm-item.selected {
     background: var(--cds-layer-selected-01);
+    outline: 2px solid var(--cds-link-01);
+    outline-offset: -2px;
   }
 
   .tm-item.active {
@@ -946,6 +976,13 @@
 
   .tm-item.active:hover {
     background: rgba(36, 161, 72, 0.15);
+  }
+
+  /* Selected takes precedence over active */
+  .tm-item.selected.active {
+    background: var(--cds-layer-selected-01);
+    outline: 2px solid var(--cds-link-01);
+    outline-offset: -2px;
   }
 
   .tm-name {
