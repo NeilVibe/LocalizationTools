@@ -84,6 +84,31 @@ TRACKER_STYLES = {
 
 CHART_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "A5A5A5"]
 
+# Characters that trigger Excel formula interpretation
+EXCEL_FORMULA_CHARS = ('=', '+', '@')
+
+
+def sanitize_for_excel(value):
+    """
+    Prevent Excel formula injection from user content.
+
+    Excel interprets cells starting with =, +, @ as formulas.
+    Prepending a single quote (') tells Excel to treat it as text.
+    The quote is invisible in the cell but prevents formula parsing.
+
+    Args:
+        value: Cell value to sanitize
+
+    Returns:
+        Sanitized value safe for Excel
+    """
+    if not value:
+        return value
+    text = str(value)
+    if text and text[0] in EXCEL_FORMULA_CHARS:
+        return "'" + text  # Excel's native escape - invisible in cell
+    return text
+
 
 def load_tester_mapping():
     """
@@ -872,7 +897,7 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                 # ONLY write if there's actually new content (preserve team's custom formatting!)
                 if new_value != existing:
                     cell = master_ws.cell(row=master_row, column=master_comment_col)
-                    cell.value = new_value
+                    cell.value = sanitize_for_excel(new_value)  # Prevent Excel formula injection
 
                     # Apply styling: light blue fill + bold for visibility
                     cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
@@ -936,7 +961,7 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                 needs_update = (new_screenshot_value != existing_screenshot) or (new_screenshot_target != existing_hyperlink)
 
                 if needs_update:
-                    master_screenshot_cell.value = new_screenshot_value
+                    master_screenshot_cell.value = sanitize_for_excel(new_screenshot_value)  # Prevent Excel formula injection
                     if new_screenshot_target:
                         master_screenshot_cell.hyperlink = new_screenshot_target
 
@@ -1004,6 +1029,15 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
     hidden_sheets = []
     hidden_columns_total = 0
 
+    # === PHASE 0: RESET all sheets to visible first (fixes re-run UNHIDE bug) ===
+    # Previously hidden sheets that now have content must be shown
+    for sheet_name in wb.sheetnames:
+        if sheet_name == "STATUS":
+            continue
+        wb[sheet_name].sheet_state = 'visible'
+        if debug:
+            print(f"    [DEBUG] Reset sheet '{sheet_name}' to visible")
+
     for sheet_name in wb.sheetnames:
         if sheet_name == "STATUS":
             continue
@@ -1030,6 +1064,24 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
             if debug:
                 print(f"    [DEBUG] No COMMENT_ columns found in {sheet_name}")
             continue
+
+        # === RESET all COMMENT_*, SCREENSHOT_*, STATUS_* columns to visible first ===
+        # Fixes re-run UNHIDE bug: previously hidden columns that now have content must be shown
+        for col in comment_cols:
+            header = ws.cell(row=1, column=col).value
+            username = str(header).replace("COMMENT_", "") if header else ""
+            col_letter = get_column_letter(col)
+            ws.column_dimensions[col_letter].hidden = False
+
+            # Also unhide paired SCREENSHOT_{User} and STATUS_{User} columns
+            for search_col in range(1, ws.max_column + 1):
+                search_header = ws.cell(row=1, column=search_col).value
+                if search_header:
+                    if str(search_header) == f"SCREENSHOT_{username}" or str(search_header) == f"STATUS_{username}":
+                        search_col_letter = get_column_letter(search_col)
+                        ws.column_dimensions[search_col_letter].hidden = False
+            if debug:
+                print(f"    [DEBUG] Reset column group for user '{username}' to visible")
 
         # First pass: Find rows that have comments AND track which columns have comments
         rows_with_comments = set()
@@ -1520,6 +1572,33 @@ def build_daily_sheet(wb):
     users = sorted(users)
     dates = sorted(daily_data.keys())
 
+    # === Calculate DAILY DELTAS from cumulative values ===
+    # Each date's data is cumulative - to get daily work, subtract previous day's cumulative
+    # daily_delta[date][user] = cumulative[date][user] - cumulative[prev_date][user]
+    daily_delta = defaultdict(lambda: defaultdict(lambda: {
+        "total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0
+    }))
+
+    for i, date in enumerate(dates):
+        for user in users:
+            current = daily_data[date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
+
+            if i == 0:
+                # First date: delta = cumulative (no previous)
+                prev = {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
+            else:
+                prev_date = dates[i - 1]
+                prev = daily_data[prev_date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
+
+            # Calculate delta (ensure non-negative)
+            daily_delta[date][user]["total_rows"] = current["total_rows"]  # total_rows is universe size, not cumulative
+            daily_delta[date][user]["done"] = max(0, current["done"] - prev["done"])
+            daily_delta[date][user]["issues"] = max(0, current["issues"] - prev["issues"])
+            daily_delta[date][user]["fixed"] = max(0, current["fixed"] - prev["fixed"])
+            daily_delta[date][user]["reported"] = max(0, current["reported"] - prev["reported"])
+            daily_delta[date][user]["checking"] = max(0, current["checking"] - prev["checking"])
+            daily_delta[date][user]["nonissue"] = max(0, current["nonissue"] - prev["nonissue"])
+
     # Styles
     title_fill = PatternFill(start_color=TRACKER_STYLES["title_color"], end_color=TRACKER_STYLES["title_color"], fill_type="solid")
     header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"], end_color=TRACKER_STYLES["header_color"], fill_type="solid")
@@ -1641,13 +1720,14 @@ def build_daily_sheet(wb):
 
         col = 2
         for user in users:
-            user_data = daily_data[date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
+            # Use DELTA values for daily display (not cumulative)
+            user_data = daily_delta[date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
             total_rows_val = user_data["total_rows"]
             done_val = user_data["done"]
             issues_val = user_data["issues"]
             nonissue_val = user_data["nonissue"]
 
-            # Aggregate for manager stats
+            # Aggregate for manager stats (also use delta values)
             day_fixed += user_data["fixed"]
             day_reported += user_data["reported"]
             day_checking += user_data["checking"]
@@ -1786,7 +1866,8 @@ def build_daily_sheet(wb):
             ws.cell(chart_data_row + 1 + row_idx, 1, display_date)
 
             for col_idx, user in enumerate(users):
-                user_day_data = daily_data[date].get(user, {"done": 0})
+                # Use DELTA values for chart (not cumulative)
+                user_day_data = daily_delta[date].get(user, {"done": 0})
                 done_val = user_day_data["done"]
                 ws.cell(chart_data_row + 1 + row_idx, 2 + col_idx, done_val if done_val > 0 else 0)
 
@@ -1861,7 +1942,8 @@ def build_daily_sheet(wb):
             ws.cell(chart2_data_row + 1 + row_idx, 1, display_date)
 
             for col_idx, user in enumerate(users):
-                user_day_data = daily_data[date].get(user, {"issues": 0, "nonissue": 0})
+                # Use DELTA values for chart (not cumulative)
+                user_day_data = daily_delta[date].get(user, {"issues": 0, "nonissue": 0})
                 issues = user_day_data.get("issues", 0)
                 nonissue = user_day_data.get("nonissue", 0)
                 actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
