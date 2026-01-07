@@ -367,6 +367,22 @@ QA files should have these columns (detected dynamically by header name):
 | ModuleNotFoundError | Run: `pip install -r requirements.txt` |
 | Permission error | Close Excel files before running |
 | Hyperlink not working | Check image exists in `Images/` folder |
+| Excel repair dialog on open | Regenerate with latest code (fixed in v2026-01-07) |
+| Hidden content not showing on re-run | Fixed: sheets/columns now reset to visible before processing |
+
+---
+
+## Known Warnings (Safe to Ignore)
+
+```
+UserWarning: Unknown type for MediaServiceImageTags
+```
+
+**What it means:** openpyxl found a Microsoft-specific property it doesn't understand (for image handling).
+
+**Is it a problem?** NO. The warning is harmless - openpyxl continues and works correctly. This happens when Excel adds its own internal properties to files.
+
+**Do I need to fix it?** No. Just ignore it. Your data is 100% safe.
 
 ---
 
@@ -382,6 +398,10 @@ QA files should have these columns (detected dynamically by header name):
 - **Image unique naming** - `{Username}_{Category}_{original}` prevents collisions
 - **Hyperlink transformation** - relative paths updated to point to `Images/` folder
 - **EN Item A-Z sorting** - both input and master sorted by `ItemName(ENG)` for consistent alignment
+- **Excel formula sanitization** - prevents `=`, `+`, `@` chars from being interpreted as formulas
+- **DAILY delta calculation** - shows daily work (today - yesterday), not cumulative totals
+- **Actual Issues % clamping** - prevents negative percentages (clamped to 0-100%)
+- **Smart data validation** - uses actual row count + buffer instead of hardcoded 1000 rows
 - **Word wrap + autofit** - all master files get word wrap and auto row heights
 
 ---
@@ -426,3 +446,7 @@ ONE big spacious line chart showing cumulative progress:
 *Updated: 2026-01-05 - Added Comp % column to DAILY tab (shows completion per user per day)*
 *Updated: 2026-01-05 - Redesigned GRAPHS tab: ONE big line chart with dots, cumulative data, toggleable legend*
 *Updated: 2026-01-07 - EN Item: Sort both input and master A-Z by ItemName(ENG) for consistent alignment*
+*Updated: 2026-01-07 - Excel safety: sanitization for formula chars, fixed data validation range*
+*Updated: 2026-01-07 - UNHIDE fix: sheets/columns reset to visible before re-processing*
+*Updated: 2026-01-07 - DAILY delta: shows daily work instead of cumulative totals*
+*Updated: 2026-01-07 - Actual Issues %: clamped to 0-100% to prevent negative values*
