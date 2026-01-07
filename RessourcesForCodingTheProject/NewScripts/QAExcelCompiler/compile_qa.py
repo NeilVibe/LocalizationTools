@@ -1744,7 +1744,8 @@ def build_daily_sheet(wb):
 
             # Calculate completion % and actual issues % for this user on this day
             comp_pct = round(done_val / total_rows_val * 100, 1) if total_rows_val > 0 else 0
-            actual_pct = round((issues_val - nonissue_val) / issues_val * 100, 1) if issues_val > 0 else 0
+            # Clamp to 0-100% to prevent negative values from delta calculation
+            actual_pct = max(0, min(100, round((issues_val - nonissue_val) / issues_val * 100, 1))) if issues_val > 0 else 0
 
             # Display value or "--" for zero/no data
             done_display = done_val if done_val > 0 else "--"
@@ -1799,7 +1800,8 @@ def build_daily_sheet(wb):
         user_issues = user_totals[user]["issues"]
         user_nonissue = user_totals[user]["nonissue"]
         user_comp_pct = round(user_done / user_total_rows * 100, 1) if user_total_rows > 0 else 0
-        user_actual_pct = round((user_issues - user_nonissue) / user_issues * 100, 1) if user_issues > 0 else 0
+        # Clamp to 0-100% to prevent negative values
+        user_actual_pct = max(0, min(100, round((user_issues - user_nonissue) / user_issues * 100, 1))) if user_issues > 0 else 0
 
         # Write 4 cells per user: Done, Issues, Comp %, Actual Issues
         for val in [user_done, user_issues, f"{user_comp_pct}%", f"{user_actual_pct}%"]:
@@ -1949,7 +1951,8 @@ def build_daily_sheet(wb):
                 user_day_data = daily_delta[date].get(user, {"issues": 0, "nonissue": 0})
                 issues = user_day_data.get("issues", 0)
                 nonissue = user_day_data.get("nonissue", 0)
-                actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
+                # Clamp to 0-100% to prevent negative values
+                actual_pct = max(0, min(100, round((issues - nonissue) / issues * 100, 1))) if issues > 0 else 0
                 ws.cell(chart2_data_row + 1 + row_idx, 2 + col_idx, actual_pct)
 
         # Create chart 2
@@ -2129,7 +2132,8 @@ def build_total_sheet(wb):
                 pending = 0
 
             completion_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
-            actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
+            # Clamp to 0-100% to prevent negative values
+            actual_pct = max(0, min(100, round((issues - nonissue) / issues * 100, 1))) if issues > 0 else 0
 
             # Accumulate section totals
             section_total["total_rows"] += total_rows
@@ -2156,7 +2160,8 @@ def build_total_sheet(wb):
         # Section subtotal row
         st = section_total
         st_completion = round(st["done"] / st["total_rows"] * 100, 1) if st["total_rows"] > 0 else 0
-        st_actual_pct = round((st["issues"] - st["nonissue"]) / st["issues"] * 100, 1) if st["issues"] > 0 else 0
+        # Clamp to 0-100% to prevent negative values
+        st_actual_pct = max(0, min(100, round((st["issues"] - st["nonissue"]) / st["issues"] * 100, 1))) if st["issues"] > 0 else 0
         subtotal_data = [
             "SUBTOTAL", f"{st_completion}%", f"{st_actual_pct}%", st["done"], st["issues"], st["no_issue"], st["blocked"],
             st["fixed"], st["reported"], st["checking"], st["pending"]
@@ -2205,7 +2210,8 @@ def build_total_sheet(wb):
 
         gt = grand_total
         gt_completion = round(gt["done"] / gt["total_rows"] * 100, 1) if gt["total_rows"] > 0 else 0
-        gt_actual_pct = round((gt["issues"] - gt["nonissue"]) / gt["issues"] * 100, 1) if gt["issues"] > 0 else 0
+        # Clamp to 0-100% to prevent negative values
+        gt_actual_pct = max(0, min(100, round((gt["issues"] - gt["nonissue"]) / gt["issues"] * 100, 1))) if gt["issues"] > 0 else 0
         total_row_data = [
             "TOTAL", f"{gt_completion}%", f"{gt_actual_pct}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
             gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
@@ -2291,7 +2297,8 @@ def build_total_sheet(wb):
             ws.cell(chart2_data_row + 1 + i, 1, user)
             issues = user_data[user]["issues"]
             nonissue = user_data[user]["nonissue"]
-            actual_pct = round((issues - nonissue) / issues * 100, 1) if issues > 0 else 0
+            # Clamp to 0-100% to prevent negative values
+            actual_pct = max(0, min(100, round((issues - nonissue) / issues * 100, 1))) if issues > 0 else 0
             ws.cell(chart2_data_row + 1 + i, 2, actual_pct)
 
         chart2 = BarChart()
