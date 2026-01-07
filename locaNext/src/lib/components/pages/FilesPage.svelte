@@ -532,8 +532,21 @@
       targetId = targetFolder.id;
     }
 
-    try {
-      for (const item of items) {
+    // OPTIMISTIC UI: Immediately remove items from current view
+    const movedItemIds = new Set(items.map(i => i.id));
+    const originalItems = [...currentItems];  // Backup for rollback
+    currentItems = currentItems.filter(item => !movedItemIds.has(item.id));
+
+    // Clear selection since items are "gone"
+    selectedIds = [];
+
+    logger.success('Items moved', { count: items.length, target: targetFolder.name });
+
+    // Background: Send API requests (don't block UI)
+    const failedItems = [];
+
+    for (const item of items) {
+      try {
         let url;
         let response;
 
@@ -572,28 +585,22 @@
         }
 
         if (response && !response.ok) {
+          failedItems.push(item);
           const error = await response.json().catch(() => ({}));
           logger.error('Move failed', { item: item.name, error: error.detail });
         }
+      } catch (err) {
+        failedItems.push(item);
+        logger.error('Move error', { item: item.name, error: err.message });
       }
+    }
 
-      logger.success('Items moved', { count: items.length, target: targetFolder.name });
-
-      // Refresh current view (stay in context)
-      if (currentPath.length === 0) {
-        await loadRoot();
-      } else if (currentPath.length === 1) {
-        await loadProjectContents(selectedProjectId);
-      } else if (isInOfflineStorage) {
-        // P9: Inside Offline Storage - reload
-        await loadOfflineStorageContents();
-      } else {
-        // Inside a folder - reload without modifying path
-        const currentFolder = currentPath[currentPath.length - 1];
-        await reloadCurrentFolderContents(currentFolder.id);
-      }
-    } catch (err) {
-      logger.error('Move error', { error: err.message });
+    // If any moves failed, restore those items to the view
+    if (failedItems.length > 0) {
+      const failedIds = new Set(failedItems.map(i => i.id));
+      const itemsToRestore = originalItems.filter(item => failedIds.has(item.id));
+      currentItems = [...currentItems, ...itemsToRestore];
+      logger.error(`${failedItems.length} item(s) failed to move`);
     }
   }
 
