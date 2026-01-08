@@ -2113,12 +2113,15 @@ def build_total_sheet(wb):
     white_bold = Font(bold=True, color="FFFFFF")
 
     # Total columns: 7 tester + 4 manager = 11
-    tester_headers = ["User", "Comp %", "Actual Issues", "Total", "Issues", "No Issue", "Blocked"]
+    tester_headers = ["User", "Completion", "Actual Issues", "Total", "Issues", "No Issue", "Blocked"]
     manager_headers = ["Fixed", "Reported", "Checking", "Pending"]
     total_cols = len(tester_headers) + len(manager_headers)
 
-    def build_section(ws, start_row, section_title, section_fill, users_list, user_data):
-        """Build a section (EN or CN) with title, headers, data rows, and subtotal."""
+    def build_section(ws, start_row, section_title, section_fill, users_list, user_data, user_row_tracker=None):
+        """Build a section (EN or CN) with title, headers, data rows, and subtotal.
+
+        user_row_tracker: Optional list to append (row_num, user) tuples for chart references.
+        """
         if not users_list:
             return start_row  # No data for this section
 
@@ -2194,6 +2197,11 @@ def build_total_sheet(wb):
                 cell.border = border
                 if idx % 2 == 1:
                     cell.fill = alt_fill
+
+            # Track this row for chart references
+            if user_row_tracker is not None:
+                user_row_tracker.append((current_row, user))
+
             current_row += 1
 
         # Section subtotal row
@@ -2219,14 +2227,15 @@ def build_total_sheet(wb):
     # Build EN section
     current_row = 1
     en_total = None
+    user_data_rows = []  # Track (row_num, user) for chart references to main table
     if en_users:
-        current_row, en_total = build_section(ws, current_row, "EN TESTER STATS", en_title_fill, en_users, user_data)
+        current_row, en_total = build_section(ws, current_row, "EN TESTER STATS", en_title_fill, en_users, user_data, user_data_rows)
         current_row += 1  # Empty row between sections
 
     # Build CN section
     cn_total = None
     if cn_users:
-        current_row, cn_total = build_section(ws, current_row, "CN TESTER STATS", cn_title_fill, cn_users, user_data)
+        current_row, cn_total = build_section(ws, current_row, "CN TESTER STATS", cn_title_fill, cn_users, user_data, user_data_rows)
         current_row += 1  # Empty row before grand total
 
     # Grand total row (combines EN + CN)
@@ -2271,75 +2280,63 @@ def build_total_sheet(wb):
         col_letter = get_column_letter(col)
         ws.column_dimensions[col_letter].width = len(header) + PADDING
 
-    # === Add two clustered bar charts (same style as DAILY) ===
-    if len(all_users) > 0:
+    # === Add clustered bar chart using MAIN TABLE data (no separate tables) ===
+    # Chart references user data rows directly from main table
+    # Column layout: User(1), Completion(2), Actual Issues(3), Total/Done(4), Issues(5), ...
+    if len(user_data_rows) > 0:
         from openpyxl.chart import BarChart, Reference
+        from openpyxl.chart.series import DataPoint
 
         # Unique colors for each user
         USER_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "7030A0", "C00000", "00B0F0"]
 
-        num_users = len(all_users)
+        num_users = len(user_data_rows)
 
-        # Build data table for Chart 1: Done by Tester
-        chart1_data_row = current_row + 2
-
-        # Header row: Tester | Done value (single series, testers as categories)
-        ws.cell(chart1_data_row, 1, "Tester")
-        ws.cell(chart1_data_row, 2, "Done")
-        for i, user in enumerate(all_users):
-            ws.cell(chart1_data_row + 1 + i, 1, user)
-            done = user_data[user]["done"]
-            ws.cell(chart1_data_row + 1 + i, 2, done)
-
-        # --- Chart 1: Total Done by Tester (clustered bar, vertical) ---
+        # --- Chart 1: Total Done by Tester (uses Column 4 = "Total" which is Done count) ---
         chart1 = BarChart()
-        chart1.type = "col"  # Vertical bars (columns) - same as DAILY
+        chart1.type = "col"
         chart1.grouping = "clustered"
         chart1.title = "Total Progress: Done by Tester"
         chart1.style = 10
 
-        # Dynamic width based on number of users (expands horizontally)
         chart1.width = max(15, 6 + num_users * 2)
         chart1.height = 10
 
-        data1_ref = Reference(ws, min_col=2, min_row=chart1_data_row, max_row=chart1_data_row + num_users)
-        cats1_ref = Reference(ws, min_col=1, min_row=chart1_data_row + 1, max_row=chart1_data_row + num_users)
-        chart1.add_data(data1_ref, titles_from_data=True)
-        chart1.set_categories(cats1_ref)
-        chart1.legend = None
+        # Add data points from main table - one series with multiple categories
+        # We need to manually build category/value lists since rows are non-contiguous
+        # Create a small reference area just for the chart (reuse tracked rows)
+        # Actually, for non-contiguous rows, we add each user as a data point
 
-        # Apply unique color per bar (each user gets their color)
-        if chart1.series:
-            for i, pt in enumerate(range(num_users)):
+        # For simplicity, add data for each user row individually
+        for i, (row_num, user_name) in enumerate(user_data_rows):
+            # Reference Done value (Column 4) for this user's row
+            data_ref = Reference(ws, min_col=4, max_col=4, min_row=row_num, max_row=row_num)
+            chart1.add_data(data_ref, titles_from_data=False)
+
+        # Set categories (user names) from Column 1
+        # Since rows are non-contiguous, manually set category labels
+        # Use first user row to last user row for categories
+        first_row = user_data_rows[0][0]
+        last_row = user_data_rows[-1][0]
+
+        # Apply colors and set series titles to user names
+        for i, series in enumerate(chart1.series):
+            if i < len(user_data_rows):
                 color = USER_COLORS[i % len(USER_COLORS)]
-                # For single series with multiple categories, color each point
-                from openpyxl.chart.series import DataPoint
-                from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
-                point = DataPoint(idx=i)
-                point.graphicalProperties.solidFill = color
-                chart1.series[0].data_points.append(point)
+                series.graphicalProperties.solidFill = color
+                # Set user name as series title
+                from openpyxl.chart.series import SeriesLabel
+                series.tx = SeriesLabel(v=user_data_rows[i][1])
 
+        chart1.legend.position = "b"
         chart1.y_axis.title = "Done"
-        chart1.x_axis.title = "Tester"
-        chart1.x_axis.tickLblPos = "low"
+        chart1.x_axis.delete = True  # Hide x-axis labels (shown in legend)
 
-        # Place chart 1 below data table
-        chart1_row = chart1_data_row + num_users + 3
+        # Place chart 1 below main table
+        chart1_row = current_row + 2
         ws.add_chart(chart1, f"A{chart1_row}")
 
-        # --- Chart 2: Actual Issues % by Tester ---
-        chart2_data_row = chart1_row + 15  # Leave space for chart1
-
-        ws.cell(chart2_data_row, 1, "Tester")
-        ws.cell(chart2_data_row, 2, "Actual Issues %")
-        for i, user in enumerate(all_users):
-            ws.cell(chart2_data_row + 1 + i, 1, user)
-            issues = user_data[user]["issues"]
-            nonissue = user_data[user]["nonissue"]
-            # Clamp to 0-100% to prevent negative values
-            actual_pct = max(0, min(100, round((issues - nonissue) / issues * 100, 1))) if issues > 0 else 0
-            ws.cell(chart2_data_row + 1 + i, 2, actual_pct)
-
+        # --- Chart 2: Actual Issues % by Tester (uses Column 3) ---
         chart2 = BarChart()
         chart2.type = "col"
         chart2.grouping = "clustered"
@@ -2349,27 +2346,25 @@ def build_total_sheet(wb):
         chart2.width = max(15, 6 + num_users * 2)
         chart2.height = 10
 
-        data2_ref = Reference(ws, min_col=2, min_row=chart2_data_row, max_row=chart2_data_row + num_users)
-        cats2_ref = Reference(ws, min_col=1, min_row=chart2_data_row + 1, max_row=chart2_data_row + num_users)
-        chart2.add_data(data2_ref, titles_from_data=True)
-        chart2.set_categories(cats2_ref)
-        chart2.legend = None
+        # Add data for each user from Column 3 (Actual Issues %)
+        for i, (row_num, user_name) in enumerate(user_data_rows):
+            data_ref = Reference(ws, min_col=3, max_col=3, min_row=row_num, max_row=row_num)
+            chart2.add_data(data_ref, titles_from_data=False)
 
-        # Apply unique color per bar
-        if chart2.series:
-            for i in range(num_users):
+        # Apply colors and set series titles
+        for i, series in enumerate(chart2.series):
+            if i < len(user_data_rows):
                 color = USER_COLORS[i % len(USER_COLORS)]
-                from openpyxl.chart.series import DataPoint
-                point = DataPoint(idx=i)
-                point.graphicalProperties.solidFill = color
-                chart2.series[0].data_points.append(point)
+                series.graphicalProperties.solidFill = color
+                from openpyxl.chart.series import SeriesLabel
+                series.tx = SeriesLabel(v=user_data_rows[i][1])
 
+        chart2.legend.position = "b"
         chart2.y_axis.title = "Actual Issues %"
-        chart2.x_axis.title = "Tester"
-        chart2.x_axis.tickLblPos = "low"
+        chart2.x_axis.delete = True
 
         # Place chart 2 below chart 1
-        chart2_row = chart2_data_row + num_users + 3
+        chart2_row = chart1_row + 15
         ws.add_chart(chart2, f"A{chart2_row}")
 
 
