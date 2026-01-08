@@ -2037,34 +2037,54 @@ def build_total_sheet(wb):
     tester_mapping = load_tester_mapping()
 
     # Read raw data and aggregate by user (now includes manager stats + total_rows + nonissue)
+    # IMPORTANT: _DAILY_DATA stores CUMULATIVE values per (date, user, category)
+    # We must only use the LATEST date's data for each (user, category) to avoid double-counting
+
+    # First pass: find the latest date for each (user, category)
+    latest_data = {}  # (user, category) -> {date, row_data}
+
+    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11), NonIssue(12)
+    for row in range(2, data_ws.max_row + 1):
+        date = data_ws.cell(row, 1).value
+        user = data_ws.cell(row, 2).value
+        category = data_ws.cell(row, 3).value
+
+        if not user or not date:
+            continue
+
+        key = (user, category)
+
+        # Keep the row with the latest date for each (user, category)
+        if key not in latest_data or str(date) > str(latest_data[key]["date"]):
+            latest_data[key] = {
+                "date": date,
+                "total_rows": data_ws.cell(row, 4).value or 0,
+                "done": data_ws.cell(row, 5).value or 0,
+                "issues": data_ws.cell(row, 6).value or 0,
+                "no_issue": data_ws.cell(row, 7).value or 0,
+                "blocked": data_ws.cell(row, 8).value or 0,
+                "fixed": data_ws.cell(row, 9).value or 0,
+                "reported": data_ws.cell(row, 10).value or 0,
+                "checking": data_ws.cell(row, 11).value or 0,
+                "nonissue": data_ws.cell(row, 12).value or 0
+            }
+
+    # Second pass: aggregate latest data by user (sum across categories)
     user_data = defaultdict(lambda: {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
         "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0
     })
 
-    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11), NonIssue(12)
-    for row in range(2, data_ws.max_row + 1):
-        user = data_ws.cell(row, 2).value
-        total_rows = data_ws.cell(row, 4).value or 0  # TotalRows (universe)
-        done = data_ws.cell(row, 5).value or 0        # Done (completed)
-        issues = data_ws.cell(row, 6).value or 0
-        no_issue = data_ws.cell(row, 7).value or 0
-        blocked = data_ws.cell(row, 8).value or 0
-        fixed = data_ws.cell(row, 9).value or 0
-        reported = data_ws.cell(row, 10).value or 0
-        checking = data_ws.cell(row, 11).value or 0
-        nonissue = data_ws.cell(row, 12).value or 0   # Manager NON-ISSUE count
-
-        if user:
-            user_data[user]["total_rows"] += total_rows
-            user_data[user]["done"] += done
-            user_data[user]["issues"] += issues
-            user_data[user]["no_issue"] += no_issue
-            user_data[user]["blocked"] += blocked
-            user_data[user]["fixed"] += fixed
-            user_data[user]["reported"] += reported
-            user_data[user]["checking"] += checking
-            user_data[user]["nonissue"] += nonissue
+    for (user, category), data in latest_data.items():
+        user_data[user]["total_rows"] += data["total_rows"]
+        user_data[user]["done"] += data["done"]
+        user_data[user]["issues"] += data["issues"]
+        user_data[user]["no_issue"] += data["no_issue"]
+        user_data[user]["blocked"] += data["blocked"]
+        user_data[user]["fixed"] += data["fixed"]
+        user_data[user]["reported"] += data["reported"]
+        user_data[user]["checking"] += data["checking"]
+        user_data[user]["nonissue"] += data["nonissue"]
 
     if not user_data:
         ws.cell(1, 1, "No data yet")
