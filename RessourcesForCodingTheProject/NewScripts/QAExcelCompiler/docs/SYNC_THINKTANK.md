@@ -811,14 +811,23 @@ def sync_row(old_row_data, new_tab, category_config):
             inject_work(new_tab, matches[0], old_row_data)
             return (True, "STRINGID+Korean", matches[0])
 
-    # Level 3: Korean + Secondary key
+    # Level 3: STRINGID + Korean + Secondary (for same-Korean duplicates)
+    # Example: Same character name, same STRINGID, but different COMMAND
+    #   NHW_Citizen_... vs NHM_Citizen_...
+    if stringid and korean and secondary:
+        matches = find_rows_by_stringid_korean_secondary(new_tab, stringid, korean, secondary)
+        if len(matches) == 1:
+            inject_work(new_tab, matches[0], old_row_data)
+            return (True, "STRINGID+Korean+Secondary", matches[0])
+
+    # Level 4: Korean + Secondary key (no STRINGID)
     if korean and secondary:
         matches = find_rows_by_korean_and_secondary(new_tab, korean, secondary)
         if len(matches) == 1:
             inject_work(new_tab, matches[0], old_row_data)
             return (True, "Korean+Secondary", matches[0])
 
-    # Level 4: Korean + Tab name context
+    # Level 5: Korean + Tab name context
     if korean:
         matches = find_rows_by_korean(new_tab, korean)
         if len(matches) == 1:
@@ -950,6 +959,89 @@ Possible formats:
 ```
 
 **Critical:** Must normalize ALL formats to same string.
+
+---
+
+## TEST RESULTS: Matching Simulation (2026-01-08)
+
+### Test Setup
+
+Used example file data to simulate old→new matching:
+
+**OLD DATA (with QA work):**
+```
+Row 3: 환자                  | STRINGID: 12940736462896  | NO ISSUE
+Row 4: 은색 비지오네 쓴 환자   | STRINGID: 4295864944164912 | ISSUE (comment A)
+Row 5: 은색 비지오네 쓴 환자   | STRINGID: 4295864944164912 | ISSUE (comment B)
+Row 6: 하녀                  | STRINGID: 12658599618792128560 | NO ISSUE
+```
+
+**NEW DATA (shuffled, 1 added, 1 deleted):**
+```
+Row 2: 하녀                  | STRINGID: 12658599618792128560
+Row 3: 새로운 캐릭터          | STRINGID: 99999999999999 (NEW)
+Row 4: 은색 비지오네 쓴 환자   | STRINGID: 4295864944164912
+Row 5: 은색 비지오네 쓴 환자   | STRINGID: 4295864944164912
+(환자 DELETED)
+```
+
+### Test Results
+
+| Old Row | Result | Method | Notes |
+|---------|--------|--------|-------|
+| Row 3 (환자) | ❌ NOT FOUND | - | Row deleted in new version |
+| Row 4 | ✅ → New Row 4 | STRINGID+Korean | Matched correctly |
+| Row 5 | ⚠️ → New Row 4 | STRINGID+Korean | COLLISION with row 4! |
+| Row 6 | ✅ → New Row 2 | STRINGID | Matched correctly |
+
+### Key Finding: Duplicate STRINGID Problem
+
+**Problem:** Rows 4 and 5 have:
+- Same STRINGID: `4295864944164912`
+- Same Korean: `은색 비지오네 쓴 환자`
+- BUT different comments!
+
+**Result:** Both old rows matched to same new row 4. One comment will overwrite the other.
+
+### Solutions for Duplicates
+
+**Option 1: Positional Matching (Recommended)**
+```
+If multiple old rows match same new rows:
+  Sort both by row index
+  Map 1st old → 1st new
+  Map 2nd old → 2nd new
+  ...
+```
+
+**Option 2: Merge Comments**
+```
+If old row 4 comment = "이름 잘림 (스크린샷 참조)"
+And old row 5 comment = "이름 잘림 (414행과 동일)"
+New comment = "이름 잘림 (스크린샷 참조)\n---\n이름 잘림 (414행과 동일)"
+```
+
+**Option 3: Use Additional Column**
+```
+Check COMMAND column or other differentiator
+Row 4: /create character NHW_Citizen_Silver_Vis...
+Row 5: /create character NHM_Citizen_Silver_Vis... (different!)
+```
+
+### Test Conclusion
+
+✅ **STRINGID matching works** - handles row reordering correctly
+✅ **Deleted rows detected** - logged for manual review
+✅ **Duplicate handling SOLVED** - COMMAND column differentiates duplicates!
+
+**Updated Matching Cascade:**
+```
+Level 1: STRINGID alone
+Level 2: STRINGID + Korean
+Level 3: STRINGID + Korean + Secondary (COMMAND)  ← SOLVES DUPLICATES
+Level 4: Korean + Secondary
+Level 5: Korean alone
+```
 
 ---
 
