@@ -2171,7 +2171,8 @@ def build_total_sheet(wb):
             section_total["pending"] += pending
             section_total["nonissue"] += nonissue
 
-            row_data = [user, f"{completion_pct}%", f"{actual_pct}%", done, issues, no_issue, blocked, fixed, reported, checking, pending]
+            # Store percentages as numbers (for charts) with display format
+            row_data = [user, completion_pct, actual_pct, done, issues, no_issue, blocked, fixed, reported, checking, pending]
 
             for col, value in enumerate(row_data, 1):
                 cell = ws.cell(current_row, col, value)
@@ -2179,6 +2180,9 @@ def build_total_sheet(wb):
                 cell.border = border
                 if idx % 2 == 1:
                     cell.fill = alt_fill
+                # Apply percentage display format to columns 2 and 3
+                if col in (2, 3):
+                    cell.number_format = '0.0"%"'
 
             # Track this row for chart references
             if user_row_tracker is not None:
@@ -2192,7 +2196,7 @@ def build_total_sheet(wb):
         # Clamp to 0-100% to prevent negative values
         st_actual_pct = max(0, min(100, round((st["issues"] - st["nonissue"]) / st["issues"] * 100, 1))) if st["issues"] > 0 else 0
         subtotal_data = [
-            "SUBTOTAL", f"{st_completion}%", f"{st_actual_pct}%", st["done"], st["issues"], st["no_issue"], st["blocked"],
+            "SUBTOTAL", st_completion, st_actual_pct, st["done"], st["issues"], st["no_issue"], st["blocked"],
             st["fixed"], st["reported"], st["checking"], st["pending"]
         ]
 
@@ -2202,6 +2206,9 @@ def build_total_sheet(wb):
             cell.font = bold
             cell.alignment = center
             cell.border = border
+            # Apply percentage display format to columns 2 and 3
+            if col in (2, 3):
+                cell.number_format = '0.0"%"'
         current_row += 1
 
         return current_row, section_total
@@ -2243,7 +2250,7 @@ def build_total_sheet(wb):
         # Clamp to 0-100% to prevent negative values
         gt_actual_pct = max(0, min(100, round((gt["issues"] - gt["nonissue"]) / gt["issues"] * 100, 1))) if gt["issues"] > 0 else 0
         total_row_data = [
-            "TOTAL", f"{gt_completion}%", f"{gt_actual_pct}%", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
+            "TOTAL", gt_completion, gt_actual_pct, gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
             gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
         ]
 
@@ -2253,6 +2260,9 @@ def build_total_sheet(wb):
             cell.font = bold
             cell.alignment = center
             cell.border = border
+            # Apply percentage display format to columns 2 and 3
+            if col in (2, 3):
+                cell.number_format = '0.0"%"'
         current_row += 1
 
     # Set column widths with auto-sizing + padding
@@ -2294,12 +2304,6 @@ def build_total_sheet(wb):
             # Reference Done value (Column 4) for this user's row
             data_ref = Reference(ws, min_col=4, max_col=4, min_row=row_num, max_row=row_num)
             chart1.add_data(data_ref, titles_from_data=False)
-
-        # Set categories (user names) from Column 1
-        # Since rows are non-contiguous, manually set category labels
-        # Use first user row to last user row for categories
-        first_row = user_data_rows[0][0]
-        last_row = user_data_rows[-1][0]
 
         # Apply colors and set series titles to user names
         for i, series in enumerate(chart1.series):
