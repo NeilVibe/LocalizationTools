@@ -1032,15 +1032,146 @@ Row 5: /create character NHM_Citizen_Silver_Vis... (different!)
 
 ✅ **STRINGID matching works** - handles row reordering correctly
 ✅ **Deleted rows detected** - logged for manual review
-✅ **Duplicate handling SOLVED** - COMMAND column differentiates duplicates!
+✅ **Duplicate handling available** - COMMAND column can differentiate if needed
 
-**Updated Matching Cascade:**
+---
+
+## FINAL SIMPLIFIED APPROACH (2026-01-08)
+
+After discussion, we simplified to a cleaner approach:
+
+### Matching Strategy: Translation + STRINGID
+
 ```
-Level 1: STRINGID alone
-Level 2: STRINGID + Korean
-Level 3: STRINGID + Korean + Secondary (COMMAND)  ← SOLVES DUPLICATES
-Level 4: Korean + Secondary
-Level 5: Korean alone
+Match criteria: Translation column + STRINGID column
+  - If MATCH → Transfer STATUS, COMMENT, SCREENSHOT
+  - If NO MATCH → Leave blank (tester must recheck anyway)
+```
+
+**Why this is better:**
+1. Simple and reliable
+2. If translation changed, tester needs to recheck anyway
+3. No complex fallback cascade needed
+4. STRINGID ensures uniqueness
+
+### Translation Column Names (by language)
+
+| Language | Column Header |
+|----------|---------------|
+| English | Translation (ENG) or English (ENG) |
+| Chinese | Translation (ZHO-CN) |
+
+### Columns to Sync
+
+```
+From QA files, sync these columns:
+  - Translation (language-specific header)
+  - STATUS
+  - COMMENT
+  - STRINGID (must be clean format)
+  - SCREENSHOT
+```
+
+### STRINGID Format Requirement
+
+STRINGID must be stored as TEXT, not number:
+- ✅ Good: `"12940736462896"` (string)
+- ❌ Bad: `12940736462896` (number, loses precision)
+- ❌ Bad: `1.29E+13` (scientific notation)
+
+---
+
+## MASTER SHEET SYNC PROCESS
+
+### The Flow
+
+```
+STEP 1: SYNC QA FILES
+────────────────────────────────────────────────────────
+  Old QA files (with work) + New blank templates
+           ↓
+  sync_qa.py (Translation + STRINGID matching)
+           ↓
+  New QA files (with transferred work)
+
+STEP 2: BUILD NEW MASTER SHEETS
+────────────────────────────────────────────────────────
+  New synced QA files
+           ↓
+  compile_qa.py (normal process, index-based)
+           ↓
+  New Master sheets (with COMMENT_{User}, SCREENSHOT_{User})
+
+STEP 3: TRANSFER MANAGER STATUS
+────────────────────────────────────────────────────────
+  Old Master sheets (have STATUS_{User} = FIXED/REPORTED/etc)
+  + New Master sheets (missing STATUS_{User})
+           ↓
+  Match by: COMMENT_{User} content (or COMMENT + STRINGID)
+           ↓
+  Transfer: STATUS_{User} values
+           ↓
+  Complete Master sheets
+```
+
+### Why This Works
+
+1. **compile_qa.py is index-based** - Works fine because QA files are synced first
+2. **Manager STATUS linked to COMMENT** - Same comment = same issue = same status
+3. **No match = new issue** - If comment didn't exist before, no status to transfer
+
+### Manager STATUS Transfer Logic
+
+```python
+def transfer_manager_status(old_master_ws, new_master_ws, user):
+    """
+    Transfer STATUS_{User} from old master to new master.
+    Match by COMMENT_{User} content.
+    """
+    comment_col = f"COMMENT_{user}"
+    status_col = f"STATUS_{user}"
+
+    # Build map: comment_text → status_value from old master
+    old_status_map = {}
+    for row in range(2, old_master_ws.max_row + 1):
+        comment = get_cell_value(old_master_ws, row, comment_col)
+        status = get_cell_value(old_master_ws, row, status_col)
+        if comment and status:
+            # Use comment text (or first 100 chars) as key
+            key = str(comment).strip()[:100]
+            old_status_map[key] = status
+
+    # Apply to new master
+    matched = 0
+    for row in range(2, new_master_ws.max_row + 1):
+        comment = get_cell_value(new_master_ws, row, comment_col)
+        if comment:
+            key = str(comment).strip()[:100]
+            if key in old_status_map:
+                set_cell_value(new_master_ws, row, status_col, old_status_map[key])
+                matched += 1
+
+    return matched
+```
+
+### Alternative: Use STRINGID for Manager STATUS
+
+If COMMENT matching is unreliable (comments might be edited):
+
+```python
+# Build map: STRINGID → STATUS_{User}
+old_status_by_stringid = {}
+for row in old_master:
+    stringid = get_stringid(row)
+    status = get_status(row, user)
+    if stringid and status:
+        old_status_by_stringid[stringid] = status
+
+# Apply to new master by STRINGID
+for row in new_master:
+    stringid = get_stringid(row)
+    if stringid in old_status_by_stringid:
+        set_status(row, user, old_status_by_stringid[stringid])
 ```
 
 ---
