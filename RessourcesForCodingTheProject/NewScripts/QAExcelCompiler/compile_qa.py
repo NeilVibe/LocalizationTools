@@ -110,6 +110,55 @@ def sanitize_for_excel(value):
     return text
 
 
+def safe_load_workbook(filepath, **kwargs):
+    """
+    Safely load an Excel workbook, handling common corruption issues.
+
+    Handles:
+    - Corrupted auto-filter values (ValueError: must be numerical or wildcard)
+    - Invalid XML in worksheets
+
+    Args:
+        filepath: Path to the Excel file
+        **kwargs: Additional arguments passed to safe_load_workbook
+
+    Returns:
+        Workbook object or None if file cannot be loaded
+
+    Raises:
+        Exception for unrecoverable errors (with clear message)
+    """
+    try:
+        # First attempt: normal load
+        return openpyxl.load_workbook(filepath, **kwargs)
+    except ValueError as e:
+        error_msg = str(e)
+
+        # Handle corrupted filter values
+        if "numerical or a string containing a wildcard" in error_msg or "could not read worksheets" in error_msg:
+            print(f"    WARNING: Excel file has corrupted filters, attempting repair...")
+
+            try:
+                # Try loading with data_only=True (ignores formulas, may help)
+                # Note: This won't fully fix filter issues, but worth trying
+                return openpyxl.load_workbook(filepath, data_only=True, **{k: v for k, v in kwargs.items() if k != 'data_only'})
+            except Exception:
+                pass
+
+            # If still failing, the file needs manual repair in Excel
+            print(f"    ERROR: Cannot load '{filepath.name}' - file has corrupted auto-filters.")
+            print(f"           FIX: Open file in Excel → Data → Clear filters → Save → Retry")
+            print(f"           Or: Select all (Ctrl+A) → Data → Clear → Save")
+            raise ValueError(f"Corrupted Excel file: {filepath.name}. Open in Excel, clear filters (Data → Clear), save, and retry.")
+
+        # Re-raise other ValueErrors
+        raise
+    except Exception as e:
+        # Log and re-raise other exceptions
+        print(f"    ERROR loading '{filepath}': {e}")
+        raise
+
+
 def load_tester_mapping():
     """
     Load tester→language mapping from languageTOtester_list.txt.
@@ -303,10 +352,10 @@ def get_or_create_master(category, master_folder, template_file=None):
 
     if master_path.exists():
         print(f"  Loading existing: {master_path.name}")
-        return openpyxl.load_workbook(master_path), master_path
+        return safe_load_workbook(master_path), master_path
     elif template_file:
         print(f"  Creating new master from: {template_file.name}")
-        wb = openpyxl.load_workbook(template_file)
+        wb = safe_load_workbook(template_file)
 
         # DELETE STATUS, COMMENT, SCREENSHOT, STRINGID columns entirely (CLEAN START)
         for sheet_name in wb.sheetnames:
@@ -1322,7 +1371,7 @@ def collect_manager_status(master_folder):
             continue
 
         try:
-            wb = openpyxl.load_workbook(master_path)
+            wb = safe_load_workbook(master_path)
             manager_status[category] = {}
 
             for sheet_name in wb.sheetnames:
@@ -1387,7 +1436,7 @@ def collect_manager_stats_for_tracker():
                 continue
 
             try:
-                wb = openpyxl.load_workbook(master_path)
+                wb = safe_load_workbook(master_path)
 
                 for sheet_name in wb.sheetnames:
                     if sheet_name == "STATUS":
@@ -1444,7 +1493,7 @@ def get_or_create_tracker():
     tracker_path = TRACKER_PATH  # Root level
 
     if tracker_path.exists():
-        wb = openpyxl.load_workbook(tracker_path)
+        wb = safe_load_workbook(tracker_path)
     else:
         wb = openpyxl.Workbook()
         # Remove default sheet
@@ -2342,7 +2391,7 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
         total_images += len(image_mapping)
 
         # Load xlsx
-        qa_wb = openpyxl.load_workbook(xlsx_path)
+        qa_wb = safe_load_workbook(xlsx_path)
 
         # For EN Item category: Sort input A-Z to match master ordering
         # This ensures consistent row alignment regardless of tester's file order
