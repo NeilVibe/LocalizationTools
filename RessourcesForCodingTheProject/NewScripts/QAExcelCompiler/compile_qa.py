@@ -1869,6 +1869,7 @@ def build_daily_sheet(wb):
         day_fixed = 0
         day_reported = 0
         day_checking = 0
+        day_nonissue = 0
         day_issues = 0
 
         col = 2
@@ -1884,6 +1885,7 @@ def build_daily_sheet(wb):
             day_fixed += user_data["fixed"]
             day_reported += user_data["reported"]
             day_checking += user_data["checking"]
+            day_nonissue += nonissue_val
             day_issues += issues_val
 
             # Track totals per user
@@ -1911,7 +1913,8 @@ def build_daily_sheet(wb):
             col += tester_cols_per_user
 
         # Manager stats for this day (aggregated across all users)
-        day_pending = day_issues - day_fixed - day_reported - day_checking
+        # Pending = Issues - Fixed - Reported - Checking - NonIssue
+        day_pending = day_issues - day_fixed - day_reported - day_checking - day_nonissue
         if day_pending < 0:
             day_pending = 0
 
@@ -2196,7 +2199,8 @@ def build_total_sheet(wb):
             reported = data["reported"]
             checking = data["checking"]
             nonissue = data["nonissue"]
-            pending = issues - fixed - reported - checking
+            # Pending = Issues - Fixed - Reported - Checking - NonIssue
+            pending = issues - fixed - reported - checking - nonissue
             if pending < 0:
                 pending = 0
 
