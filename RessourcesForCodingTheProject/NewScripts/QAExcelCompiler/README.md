@@ -454,3 +454,9 @@ ONE big spacious line chart showing cumulative progress:
 *Updated: 2026-01-07 - UNHIDE fix: sheets/columns reset to visible before re-processing*
 *Updated: 2026-01-07 - DAILY delta: shows daily work instead of cumulative totals*
 *Updated: 2026-01-07 - Actual Issues %: clamped to 0-100% to prevent negative values*
+*Updated: 2026-01-08 - Manager row hiding: rows with FIXED/REPORTED/NON-ISSUE status are auto-hidden in Master files*
+*Updated: 2026-01-08 - Pending formula fix: now correctly subtracts NON-ISSUE (Pending = Issues - Fixed - Reported - Checking - NonIssue)*
+*Updated: 2026-01-08 - DAILY tab: removed confusing TOTAL row; added NonIssue column to manager stats*
+*Updated: 2026-01-08 - TOTAL tab charts: fixed Actual Issues % chart (now uses numeric values instead of strings)*
+*Updated: 2026-01-08 - CRITICAL FIX: TOTAL tab was double-counting due to summing cumulative data across dates; now uses latest date only*
+*Updated: 2026-01-08 - ROBUST auto-repair for corrupted Excel filters (strips autoFilter XML from corrupted files)*
