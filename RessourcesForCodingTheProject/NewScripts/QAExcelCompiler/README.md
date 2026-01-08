@@ -245,28 +245,30 @@ Images/
 
 A separate `LQA_Tester_ProgressTracker.xlsx` file tracks progress across ALL categories:
 
-**DAILY Tab** - Shows daily progress per user with completion percentage:
+**DAILY Tab** - Shows daily progress per user with clear separation:
 ```
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│                              DAILY PROGRESS                                       │
-├─────────┬─────────────────────┬─────────────────────┬─────────────────────────────┤
-│         │        Alice        │        Bob          │          John               │
-├─────────┼──────┬───────┬──────┼──────┬───────┬──────┼──────┬───────┬──────────────┤
-│  Date   │ Done │Issues │Comp %│ Done │Issues │Comp %│ Done │Issues │ Comp %       │
-├─────────┼──────┼───────┼──────┼──────┼───────┼──────┼──────┼───────┼──────────────┤
-│  01/03  │  --  │  --   │  --  │  --  │  --   │  --  │  45  │   8   │  90.0%       │
-│  01/04  │  32  │   5   │100.0%│  --  │  --   │  --  │  --  │  --   │   --         │
-│  01/05  │  --  │  --   │  --  │  28  │   6   │100.0%│  15  │   3   │  75.0%       │
-├─────────┼──────┼───────┼──────┼──────┼───────┼──────┼──────┼───────┼──────────────┤
-│  TOTAL  │  32  │   5   │100.0%│  28  │   6   │100.0%│  60  │  11   │  85.7%       │
-└─────────┴──────┴───────┴──────┴──────┴───────┴──────┴──────┴───────┴──────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                              DAILY PROGRESS                                              │
+├─────────┬────────────────────╫────────────────────╫────────────────────╫─────────────────┤
+│         │       Alice        ║        Bob         ║       John         ║  Manager Stats  │
+├─────────┼──────┬─────────────╫──────┬─────────────╫──────┬─────────────╫─────┬─────┬─────┤
+│  Date   │ Done │   Issues    ║ Done │   Issues    ║ Done │   Issues    ║Fixed│Rept │Pend │
+├─────────┼──────┼─────────────╫──────┼─────────────╫──────┼─────────────╫─────┼─────┼─────┤
+│  01/03  │  --  │     --      ║  --  │     --      ║  45  │     8       ║  2  │  1  │  5  │
+│  01/04  │  32  │      5      ║  --  │     --      ║  --  │    --       ║  3  │  2  │  0  │
+│  01/05  │  --  │     --      ║  28  │      6      ║  15  │     3       ║  1  │  4  │  4  │
+├─────────┼──────┼─────────────╫──────┼─────────────╫──────┼─────────────╫─────┼─────┼─────┤
+│  TOTAL  │  32  │      5      ║  28  │      6      ║  60  │    11       ║  6  │  7  │  9  │
+└─────────┴──────┴─────────────╫──────┴─────────────╫──────┴─────────────╫─────┴─────┴─────┘
+                    ║ = THICK BORDER separating users
 ```
 
 - **Date**: From file modification time (auto-detected)
 - **Done**: Rows with STATUS filled (ISSUE + NO ISSUE + BLOCKED)
 - **Issues**: Rows with STATUS = "ISSUE"
-- **Comp %**: Completion percentage (Done / Total Rows × 100)
 - **`--`**: No submission that day
+- **Thick borders (║)**: Visually separate each tester and Manager Stats section
+- **Chart**: Uses main table data directly (no separate data table)
 
 **TOTAL Tab** - Cumulative stats per user (includes Manager Stats):
 
@@ -444,6 +446,7 @@ ONE big spacious line chart showing cumulative progress:
 *Updated: 2026-01-05 - Added LQA User Progress Tracker with DAILY/TOTAL/GRAPHS tabs*
 *Updated: 2026-01-05 - Added Manager Status feature (STATUS_{User} columns with FIXED/REPORTED/CHECKING)*
 *Updated: 2026-01-05 - Added Comp % column to DAILY tab (shows completion per user per day)*
+*Updated: 2026-01-08 - DAILY tab simplified: removed Comp%, Actual Issues columns (keep in TOTAL only); added thick borders between users; chart uses main table directly*
 *Updated: 2026-01-05 - Redesigned GRAPHS tab: ONE big line chart with dots, cumulative data, toggleable legend*
 *Updated: 2026-01-07 - EN Item: Sort both input and master A-Z by ItemName(ENG) for consistent alignment*
 *Updated: 2026-01-07 - Excel safety: sanitization for formula chars, fixed data validation range*

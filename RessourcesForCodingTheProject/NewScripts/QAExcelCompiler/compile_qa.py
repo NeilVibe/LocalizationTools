@@ -1618,12 +1618,16 @@ def build_daily_sheet(wb):
     center = Alignment(horizontal='center', vertical='center')
     bold = Font(bold=True)
 
-    # Layout: Date | Tester Stats (Done, Issues, Comp %, Actual Issues per user) | Manager Stats (Fixed, Reported, Checking, Pending)
-    # title_cols = Date(1) + Users*4 (tester) + 4 (manager stats)
-    tester_cols_per_user = 4  # Done, Issues, Comp %, Actual Issues
+    # Layout: Date | Tester Stats (Done, Issues per user) | Manager Stats (Fixed, Reported, Checking, Pending)
+    # title_cols = Date(1) + Users*2 (tester) + 4 (manager stats)
+    tester_cols_per_user = 2  # Done, Issues only (removed Comp %, Actual Issues - keep in TOTAL only)
     tester_cols = len(users) * tester_cols_per_user
     manager_cols = 4  # Fixed, Reported, Checking, Pending
     title_cols = 1 + tester_cols + manager_cols
+
+    # Border styles - thick borders to separate users
+    thick_side = Side(style='thick', color='000000')
+    thin_side = Side(style='thin', color=TRACKER_STYLES["border_color"])
 
     # Row 1: Title
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=title_cols)
@@ -1654,27 +1658,34 @@ def build_daily_sheet(wb):
     manager_section.font = bold
     manager_section.alignment = center
 
-    # Row 3: User names (merged across Done+Issues+Comp%+Actual Issues) for tester section
+    # Row 3: User names (merged across Done+Issues) for tester section - with thick border separation
     col = 2
-    for user in users:
-        ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + 3)
+    for user_idx, user in enumerate(users):
+        ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + 1)
         cell = ws.cell(3, col, user)
         cell.fill = header_fill
         cell.font = bold
         cell.alignment = center
-        for offset in range(1, 4):  # Merged cell styling
-            ws.cell(3, col + offset).fill = header_fill
+        # Thick border on LEFT side of first column for this user (separator)
+        cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
+        # Style the merged cell's second column
+        ws.cell(3, col + 1).fill = header_fill
+        ws.cell(3, col + 1).border = Border(left=thin_side, top=thin_side, bottom=thin_side, right=thin_side)
         col += tester_cols_per_user
 
-    # Manager stats headers in row 3
+    # Manager stats headers in row 3 - thick border on left side of first column
     for i, label in enumerate(["Fixed", "Reported", "Checking", "Pending"]):
         cell = ws.cell(3, manager_start + i, label)
         cell.fill = manager_header_fill
         cell.font = bold
         cell.alignment = center
-        cell.border = border
+        # Thick border on left side of "Fixed" (first manager column) to separate from testers
+        if i == 0:
+            cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
+        else:
+            cell.border = border
 
-    # Row 4: Sub-headers (Date, Done, Issues, Comp %, Actual Issues per user)
+    # Row 4: Sub-headers (Date, Done, Issues per user) - with thick border separators
     date_cell = ws.cell(4, 1, "Date")
     date_cell.fill = subheader_fill
     date_cell.font = bold
@@ -1682,20 +1693,27 @@ def build_daily_sheet(wb):
     date_cell.border = border
 
     col = 2
-    for user in users:
-        for label in ["Done", "Issues", "Comp %", "Actual Issues"]:
+    for user_idx, user in enumerate(users):
+        for label_idx, label in enumerate(["Done", "Issues"]):
             cell = ws.cell(4, col, label)
             cell.fill = subheader_fill
             cell.font = bold
             cell.alignment = center
-            cell.border = border
+            # Thick border on left side of "Done" (first column for each user)
+            if label_idx == 0:
+                cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
+            else:
+                cell.border = border
             col += 1
 
-    # Manager sub-headers row 4 (empty as labels are in row 3)
+    # Manager sub-headers row 4 (empty as labels are in row 3) - thick border on first column
     for i in range(manager_cols):
         cell = ws.cell(4, manager_start + i)
         cell.fill = subheader_fill
-        cell.border = border
+        if i == 0:
+            cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
+        else:
+            cell.border = border
 
     # Row 5+: Data rows
     user_totals = {user: {"total_rows": 0, "done": 0, "issues": 0, "nonissue": 0} for user in users}
@@ -1722,7 +1740,7 @@ def build_daily_sheet(wb):
         day_issues = 0
 
         col = 2
-        for user in users:
+        for user_idx, user in enumerate(users):
             # Use DELTA values for daily display (not cumulative)
             user_data = daily_delta[date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
             total_rows_val = user_data["total_rows"]
@@ -1742,24 +1760,19 @@ def build_daily_sheet(wb):
             user_totals[user]["issues"] += issues_val
             user_totals[user]["nonissue"] += nonissue_val
 
-            # Calculate completion % and actual issues % for this user on this day
-            comp_pct = round(done_val / total_rows_val * 100, 1) if total_rows_val > 0 else 0
-            # Clamp to 0-100% to prevent negative values from delta calculation
-            actual_pct = max(0, min(100, round((issues_val - nonissue_val) / issues_val * 100, 1))) if issues_val > 0 else 0
-
             # Display value or "--" for zero/no data
             done_display = done_val if done_val > 0 else "--"
             issues_display = issues_val if issues_val > 0 else "--"
-            comp_display = f"{comp_pct}%" if total_rows_val > 0 else "--"
-            actual_display = f"{actual_pct}%" if issues_val > 0 else "--"
 
-            # Write 4 cells per user: Done, Issues, Comp %, Actual Issues
-            for i, (val, fill_alt) in enumerate([
-                (done_display, True), (issues_display, True), (comp_display, True), (actual_display, True)
-            ]):
+            # Write 2 cells per user: Done, Issues (removed Comp%, Actual Issues - keep in TOTAL only)
+            for i, val in enumerate([done_display, issues_display]):
                 cell = ws.cell(data_row, col + i, val)
                 cell.alignment = center
-                cell.border = border
+                # Thick border on left side of "Done" (first column for each user)
+                if i == 0:
+                    cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
+                else:
+                    cell.border = border
                 if idx % 2 == 1:
                     cell.fill = alt_fill
 
@@ -1780,7 +1793,11 @@ def build_daily_sheet(wb):
             display_val = val if val > 0 else "--"
             cell = ws.cell(data_row, manager_start + i, display_val)
             cell.alignment = center
-            cell.border = border
+            # Thick border on left side of "Fixed" (first manager column)
+            if i == 0:
+                cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
+            else:
+                cell.border = border
             if idx % 2 == 1:
                 cell.fill = alt_fill
 
@@ -1794,41 +1811,43 @@ def build_daily_sheet(wb):
     total_cell.border = border
 
     col = 2
-    for user in users:
-        user_total_rows = user_totals[user]["total_rows"]
+    for user_idx, user in enumerate(users):
         user_done = user_totals[user]["done"]
         user_issues = user_totals[user]["issues"]
-        user_nonissue = user_totals[user]["nonissue"]
-        user_comp_pct = round(user_done / user_total_rows * 100, 1) if user_total_rows > 0 else 0
-        # Clamp to 0-100% to prevent negative values
-        user_actual_pct = max(0, min(100, round((user_issues - user_nonissue) / user_issues * 100, 1))) if user_issues > 0 else 0
 
-        # Write 4 cells per user: Done, Issues, Comp %, Actual Issues
-        for val in [user_done, user_issues, f"{user_comp_pct}%", f"{user_actual_pct}%"]:
+        # Write 2 cells per user: Done, Issues (removed Comp%, Actual Issues - keep in TOTAL tab only)
+        for i, val in enumerate([user_done, user_issues]):
             cell = ws.cell(data_row, col, val)
             cell.fill = total_fill
             cell.font = bold
             cell.alignment = center
-            cell.border = border
+            # Thick border on left side of "Done" (first column for each user)
+            if i == 0:
+                cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
+            else:
+                cell.border = border
             col += 1
 
-    # Manager totals
+    # Manager totals - thick border on first column
     manager_total_values = [manager_totals["fixed"], manager_totals["reported"], manager_totals["checking"], manager_totals["pending"]]
     for i, val in enumerate(manager_total_values):
         cell = ws.cell(data_row, manager_start + i, val)
         cell.fill = total_fill
         cell.font = bold
         cell.alignment = center
-        cell.border = border
+        if i == 0:
+            cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
+        else:
+            cell.border = border
 
     # Set column widths with auto-sizing + padding
     PADDING = 2  # Small padding for edge cases
     ws.column_dimensions['A'].width = len("Date") + PADDING + 2  # Date column
 
-    # Tester columns - auto-width based on header length
+    # Tester columns - auto-width based on header length (now only Done, Issues)
     col = 2
     for user in users:
-        headers = ["Done", "Issues", "Comp %", "Actual Issues"]
+        headers = ["Done", "Issues"]
         for header in headers:
             col_letter = get_column_letter(col)
             ws.column_dimensions[col_letter].width = len(header) + PADDING
@@ -1840,162 +1859,77 @@ def build_daily_sheet(wb):
         col_letter = get_column_letter(manager_start + i)
         ws.column_dimensions[col_letter].width = len(header) + PADDING
 
-    # === Add clustered bar chart: Daily Done by User (time-series) ===
+    # === Add clustered bar chart: Daily Done by User (uses main table directly) ===
     if len(dates) > 0 and len(users) > 0:
-        from openpyxl.chart import BarChart, Reference
-        from openpyxl.chart.series import DataPoint
-        from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
+        from openpyxl.chart import BarChart, Reference, Series
+        from openpyxl.chart.series import SeriesLabel
 
         # Unique colors for each user (vibrant, distinct)
         USER_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "7030A0", "C00000", "00B0F0"]
 
-        # Build data table for clustered chart (below main table)
-        # Format: Date | User1 | User2 | User3 | ...
-        chart_data_row = data_row + 3
-
-        # Header row: Date + User names
-        ws.cell(chart_data_row, 1, "Date")
-        for i, user in enumerate(users):
-            cell = ws.cell(chart_data_row, 2 + i, user)
-            cell.font = bold
-            cell.alignment = center
-
-        # Data rows: one row per date with Done values per user
-        for row_idx, date in enumerate(dates):
-            # Format date as MM/DD
-            if isinstance(date, str) and len(date) >= 10:
-                display_date = date[5:7] + "/" + date[8:10]
-            else:
-                display_date = str(date)
-
-            ws.cell(chart_data_row + 1 + row_idx, 1, display_date)
-
-            for col_idx, user in enumerate(users):
-                # Use DELTA values for chart (not cumulative)
-                user_day_data = daily_delta[date].get(user, {"done": 0})
-                done_val = user_day_data["done"]
-                ws.cell(chart_data_row + 1 + row_idx, 2 + col_idx, done_val if done_val > 0 else 0)
-
         num_dates = len(dates)
         num_users = len(users)
 
-        # --- Chart 1: Daily Done by Tester ---
-        chart1 = BarChart()
-        chart1.type = "col"  # Vertical bars (columns)
-        chart1.grouping = "clustered"  # Bars side by side per category
-        chart1.title = "Daily Progress: Done by Tester"
-        chart1.style = 10
+        # Chart uses main table directly - no separate data table needed
+        # Main table layout:
+        #   Row 4: Headers (Date | Done | Issues | Done | Issues | ...)
+        #   Row 5 to data_row-1: Data rows
+        #   Row data_row: TOTAL row (exclude from chart)
+        #
+        # Done columns are at: 2, 4, 6, ... (column 2 + user_index * 2)
+        # Dates are in column 1, rows 5 to data_row-1
+
+        chart = BarChart()
+        chart.type = "col"  # Vertical bars (columns)
+        chart.grouping = "clustered"  # Bars side by side per category
+        chart.title = "Daily Progress: Done by Tester"
+        chart.style = 10
 
         # Dynamic width based on number of dates (expands horizontally)
-        chart1.width = max(15, 6 + num_dates * 2)  # Min 15, grows with dates
-        chart1.height = 10
+        chart.width = max(15, 6 + num_dates * 2)  # Min 15, grows with dates
+        chart.height = 10
 
-        # Data reference: each user column is a series
-        data_ref = Reference(
-            ws,
-            min_col=2,
-            max_col=1 + num_users,
-            min_row=chart_data_row,
-            max_row=chart_data_row + num_dates
-        )
-
-        # Categories reference: dates in column 1
+        # Categories reference: dates in column 1, starting row 5 (first data row)
+        data_start_row = 5
+        data_end_row = data_row - 1  # Exclude TOTAL row
         cats_ref = Reference(
             ws,
             min_col=1,
-            min_row=chart_data_row + 1,
-            max_row=chart_data_row + num_dates
+            min_row=data_start_row,
+            max_row=data_end_row
         )
+        chart.set_categories(cats_ref)
 
-        chart1.add_data(data_ref, titles_from_data=True)
-        chart1.set_categories(cats_ref)
+        # Add each user's Done column as a separate series
+        for user_idx, user in enumerate(users):
+            done_col = 2 + user_idx * tester_cols_per_user  # Done is first column for each user
 
-        # Apply unique colors to each user's series
-        for i, series in enumerate(chart1.series):
+            # Reference the Done column for this user (data only, no header)
+            data_ref = Reference(
+                ws,
+                min_col=done_col,
+                max_col=done_col,
+                min_row=data_start_row,  # Start at row 5 (data rows)
+                max_row=data_end_row
+            )
+            chart.add_data(data_ref, titles_from_data=False)
+
+        # Apply unique colors and set user names as series titles
+        for i, series in enumerate(chart.series):
             color = USER_COLORS[i % len(USER_COLORS)]
             series.graphicalProperties.solidFill = color
+            # Set user name as series title (for legend) using SeriesLabel
+            series.tx = SeriesLabel(v=users[i])
 
         # Chart formatting
-        chart1.legend.position = "b"  # Legend at bottom
-        chart1.y_axis.title = "Done"
-        chart1.x_axis.title = "Date"
-        chart1.x_axis.tickLblPos = "low"  # Labels below axis
+        chart.legend.position = "b"  # Legend at bottom
+        chart.y_axis.title = "Done"
+        chart.x_axis.title = "Date"
+        chart.x_axis.tickLblPos = "low"  # Labels below axis
 
-        # Place chart 1 below data table
-        chart1_row = chart_data_row + num_dates + 3
-        ws.add_chart(chart1, f"A{chart1_row}")
-
-        # --- Chart 2: Actual Issues % by Tester ---
-        # Build data table for Actual Issues % (below first chart's data)
-        chart2_data_row = chart1_row + 15  # Leave space for chart1
-
-        # Header row: Date + User names
-        ws.cell(chart2_data_row, 1, "Date")
-        for i, user in enumerate(users):
-            cell = ws.cell(chart2_data_row, 2 + i, user)
-            cell.font = bold
-            cell.alignment = center
-
-        # Data rows: Actual Issues % per user per date
-        for row_idx, date in enumerate(dates):
-            # Format date as MM/DD
-            if isinstance(date, str) and len(date) >= 10:
-                display_date = date[5:7] + "/" + date[8:10]
-            else:
-                display_date = str(date)
-
-            ws.cell(chart2_data_row + 1 + row_idx, 1, display_date)
-
-            for col_idx, user in enumerate(users):
-                # Use DELTA values for chart (not cumulative)
-                user_day_data = daily_delta[date].get(user, {"issues": 0, "nonissue": 0})
-                issues = user_day_data.get("issues", 0)
-                nonissue = user_day_data.get("nonissue", 0)
-                # Clamp to 0-100% to prevent negative values
-                actual_pct = max(0, min(100, round((issues - nonissue) / issues * 100, 1))) if issues > 0 else 0
-                ws.cell(chart2_data_row + 1 + row_idx, 2 + col_idx, actual_pct)
-
-        # Create chart 2
-        chart2 = BarChart()
-        chart2.type = "col"
-        chart2.grouping = "clustered"
-        chart2.title = "Daily Progress: Actual Issues % by Tester"
-        chart2.style = 10
-
-        chart2.width = max(15, 6 + num_dates * 2)  # Same dynamic width as chart1
-        chart2.height = 10
-
-        data2_ref = Reference(
-            ws,
-            min_col=2,
-            max_col=1 + num_users,
-            min_row=chart2_data_row,
-            max_row=chart2_data_row + num_dates
-        )
-
-        cats2_ref = Reference(
-            ws,
-            min_col=1,
-            min_row=chart2_data_row + 1,
-            max_row=chart2_data_row + num_dates
-        )
-
-        chart2.add_data(data2_ref, titles_from_data=True)
-        chart2.set_categories(cats2_ref)
-
-        # Apply same colors as chart1
-        for i, series in enumerate(chart2.series):
-            color = USER_COLORS[i % len(USER_COLORS)]
-            series.graphicalProperties.solidFill = color
-
-        chart2.legend.position = "b"
-        chart2.y_axis.title = "Actual Issues %"
-        chart2.x_axis.title = "Date"
-        chart2.x_axis.tickLblPos = "low"
-
-        # Place chart 2 below chart 1
-        chart2_row = chart2_data_row + num_dates + 3
-        ws.add_chart(chart2, f"A{chart2_row}")
+        # Place chart below main table (after TOTAL row)
+        chart_row = data_row + 2
+        ws.add_chart(chart, f"A{chart_row}")
 
 
 def build_total_sheet(wb):
