@@ -110,9 +110,54 @@ def sanitize_for_excel(value):
     return text
 
 
+def repair_excel_filters(filepath):
+    """
+    Repair Excel file by stripping corrupted auto-filter XML.
+
+    Excel files are ZIP archives. This extracts, removes autoFilter
+    elements from worksheet XML, and repacks to a temp file.
+
+    Args:
+        filepath: Path to corrupted Excel file
+
+    Returns:
+        Path to repaired temp file, or None if repair failed
+    """
+    import zipfile
+    import tempfile
+    import re
+
+    try:
+        # Create temp file for repaired Excel
+        temp_fd, temp_path = tempfile.mkstemp(suffix='.xlsx')
+        os.close(temp_fd)
+
+        with zipfile.ZipFile(filepath, 'r') as zip_in:
+            with zipfile.ZipFile(temp_path, 'w', zipfile.ZIP_DEFLATED) as zip_out:
+                for item in zip_in.namelist():
+                    data = zip_in.read(item)
+
+                    # Strip autoFilter from worksheet XML files
+                    if item.startswith('xl/worksheets/') and item.endswith('.xml'):
+                        content = data.decode('utf-8')
+                        # Remove autoFilter elements (including corrupted ones)
+                        content = re.sub(r'<autoFilter[^>]*>.*?</autoFilter>', '', content, flags=re.DOTALL)
+                        content = re.sub(r'<autoFilter[^/]*/>', '', content)
+                        data = content.encode('utf-8')
+
+                    zip_out.writestr(item, data)
+
+        return Path(temp_path)
+    except Exception as e:
+        print(f"    Repair failed: {e}")
+        return None
+
+
 def safe_load_workbook(filepath, **kwargs):
     """
     Safely load an Excel workbook, handling common corruption issues.
+
+    ROBUST: Auto-repairs corrupted auto-filters by stripping them from XML.
 
     Handles:
     - Corrupted auto-filter values (ValueError: must be numerical or wildcard)
@@ -120,13 +165,13 @@ def safe_load_workbook(filepath, **kwargs):
 
     Args:
         filepath: Path to the Excel file
-        **kwargs: Additional arguments passed to safe_load_workbook
+        **kwargs: Additional arguments passed to openpyxl.load_workbook
 
     Returns:
-        Workbook object or None if file cannot be loaded
+        Workbook object
 
     Raises:
-        Exception for unrecoverable errors (with clear message)
+        Exception for unrecoverable errors
     """
     try:
         # First attempt: normal load
@@ -134,22 +179,33 @@ def safe_load_workbook(filepath, **kwargs):
     except ValueError as e:
         error_msg = str(e)
 
-        # Handle corrupted filter values
+        # Handle corrupted filter values - AUTO REPAIR
         if "numerical or a string containing a wildcard" in error_msg or "could not read worksheets" in error_msg:
-            print(f"    WARNING: Excel file has corrupted filters, attempting repair...")
+            print(f"    WARNING: Corrupted filters detected, auto-repairing...")
 
-            try:
-                # Try loading with data_only=True (ignores formulas, may help)
-                # Note: This won't fully fix filter issues, but worth trying
-                return openpyxl.load_workbook(filepath, data_only=True, **{k: v for k, v in kwargs.items() if k != 'data_only'})
-            except Exception:
-                pass
+            # Repair by stripping autoFilter XML
+            repaired_path = repair_excel_filters(filepath)
+            if repaired_path:
+                try:
+                    wb = openpyxl.load_workbook(repaired_path, **kwargs)
+                    # Clean up temp file
+                    try:
+                        os.unlink(repaired_path)
+                    except:
+                        pass
+                    print(f"    SUCCESS: File repaired and loaded (filters stripped)")
+                    return wb
+                except Exception as repair_error:
+                    print(f"    Repair load failed: {repair_error}")
+                    try:
+                        os.unlink(repaired_path)
+                    except:
+                        pass
 
-            # If still failing, the file needs manual repair in Excel
-            print(f"    ERROR: Cannot load '{filepath.name}' - file has corrupted auto-filters.")
-            print(f"           FIX: Open file in Excel → Data → Clear filters → Save → Retry")
-            print(f"           Or: Select all (Ctrl+A) → Data → Clear → Save")
-            raise ValueError(f"Corrupted Excel file: {filepath.name}. Open in Excel, clear filters (Data → Clear), save, and retry.")
+            # If repair failed, give manual instructions
+            print(f"    ERROR: Auto-repair failed for '{filepath.name}'")
+            print(f"           Manual fix: Open in Excel → Data → Clear → Save")
+            raise ValueError(f"Corrupted Excel file: {filepath.name}. Auto-repair failed.")
 
         # Re-raise other ValueErrors
         raise
