@@ -447,6 +447,7 @@ ONE big spacious line chart showing cumulative progress:
 *Updated: 2026-01-05 - Added Manager Status feature (STATUS_{User} columns with FIXED/REPORTED/CHECKING)*
 *Updated: 2026-01-05 - Added Comp % column to DAILY tab (shows completion per user per day)*
 *Updated: 2026-01-08 - DAILY tab simplified: removed Comp%, Actual Issues columns (keep in TOTAL only); added thick borders between users; chart uses main table directly*
+*Updated: 2026-01-08 - Added safe_load_workbook() to handle corrupted Excel filter errors; clear error message with fix instructions*
 *Updated: 2026-01-05 - Redesigned GRAPHS tab: ONE big line chart with dots, cumulative data, toggleable legend*
 *Updated: 2026-01-07 - EN Item: Sort both input and master A-Z by ItemName(ENG) for consistent alignment*
 *Updated: 2026-01-07 - Excel safety: sanitization for formula chars, fixed data validation range*
