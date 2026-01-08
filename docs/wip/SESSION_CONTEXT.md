@@ -21,13 +21,15 @@
 
 **Recommended Solution (Claude's Plan):**
 1. Hide PostgreSQL platform from File Explorer (`platformList.filter`)
-2. Rename TM tree platform: "Local Workspace"
-3. Use CloudOffline icon in TM tree
+2. Use CloudOffline icon in TM tree (consistent)
+3. Collapse nested project in TM tree (no duplicate)
+
+**Key Decision:** Keep name "Offline Storage" everywhere - the confusion was duplicates and different icons, not the name.
 
 **Files to Modify:**
 - `FilesPage.svelte:205` - Filter platformList
-- `tm_assignment.py:25-26` - Rename constants
 - `TMExplorerTree.svelte` - CloudOffline icon
+- `tm_assignment.py` - Collapse nested project
 
 **Documentation Updated:**
 - `ISSUES_TO_FIX.md` - UI-107 with full plan
@@ -38,7 +40,7 @@
 User asked about making TM Tree identical to File Explorer. Analysis:
 - Would require rewriting TM tree as grid component
 - Too much effort for the benefit
-- Simpler rename+hide solution addresses the confusion
+- Simpler hide+icon solution addresses the confusion
 
 ---
 

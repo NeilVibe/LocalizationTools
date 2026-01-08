@@ -237,8 +237,8 @@ TM assignments need foreign keys to platform_id/project_id, so PostgreSQL record
 
 **Planned Fix (UI-107):**
 1. Hide PostgreSQL platform from File Explorer (only CloudOffline visible)
-2. Rename TM tree: "Local Workspace" (not "Offline Storage")
-3. Use CloudOffline icon in TM tree
+2. Use CloudOffline icon in TM tree (consistent with File Explorer)
+3. Collapse nested project in TM tree (no duplicate "Offline Storage")
 
 See: `docs/wip/ISSUES_TO_FIX.md` → UI-107
 
