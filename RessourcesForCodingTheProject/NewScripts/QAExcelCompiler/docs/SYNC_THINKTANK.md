@@ -1271,6 +1271,193 @@ for row in new_master:
 
 ---
 
+## Critical Workflow Timing
+
+### The Danger Zone
+
+```
+⚠️  CRITICAL: Export MUST happen BEFORE update!
+
+Timeline:
+──────────────────────────────────────────────────────────────
+       SAFE ZONE              DANGER ZONE        SAFE ZONE
+      (can export)            (data loss!)      (can import)
+──────────────────────────────────────────────────────────────
+   QA files have work    →  Datasheets updated  →  New structure
+   Master has STATUS     →  Old files replaced  →  Work restored
+──────────────────────────────────────────────────────────────
+
+If you update datasheets BEFORE exporting:
+  - OLD structure gone
+  - QA work in OLD files cannot be read
+  - Manager STATUS in OLD master lost forever!
+```
+
+### Export Checklist (BEFORE Update)
+
+```
+Before running ANY datasheet script (fullcharacter1.py, etc.):
+
+□ Collect ALL tester QA files
+    - Every {User}_{Category}/ folder
+    - Both EN and CN if applicable
+
+□ Collect ALL Master files
+    - Master_Quest.xlsx
+    - Master_Character.xlsx
+    - etc.
+
+□ Run export commands
+    python3 sync_qa.py export-testers --source QAfolder
+    python3 sync_qa.py export-masters --source Masterfolder
+
+□ Verify snapshots created
+    - tester_work.json exists
+    - master_work.json exists
+    - Check row counts match expectations
+
+□ BACKUP the export files
+    - Copy to separate location
+    - These are your safety net!
+
+ONLY THEN: Run datasheet update scripts
+```
+
+---
+
+## Error Recovery Procedures
+
+### Scenario A: Export Failed Midway
+
+```
+Symptom: sync_qa.py crashed during export
+Problem: Incomplete snapshot
+
+Recovery:
+1. Check partial snapshot - may still have some data
+2. Re-run export with --continue flag (if implemented)
+3. Or: Re-run full export (safe - doesn't modify source files)
+
+Prevention:
+- Export is READ-ONLY operation
+- Can always re-run from same source
+```
+
+### Scenario B: Forgot to Export Before Update
+
+```
+Symptom: Datasheets updated, then realized export wasn't done
+Problem: Old files still exist but structure changed
+
+Recovery:
+1. DO NOT PANIC
+2. Old tester files likely still on testers' machines
+3. Collect old files from testers ASAP
+4. Run export on collected old files
+5. Proceed with import
+
+If old files truly gone:
+- Check for backups
+- Check email attachments
+- Check cloud sync history
+- Last resort: Manual re-work
+```
+
+### Scenario C: Import Matched Wrong Rows
+
+```
+Symptom: STATUS/COMMENT appears on wrong rows
+Problem: Matching algorithm failure
+
+Recovery:
+1. Import to NEW copies, not originals
+2. Keep original synced files untouched
+3. Review sync report - which rows were "forced matches"?
+4. Manual correction for problematic rows
+
+Prevention:
+- Run import on TEST copies first
+- Spot-check results before distribution
+```
+
+### Scenario D: Some Rows Not Found
+
+```
+Symptom: Sync report shows "NOT FOUND" rows
+Problem: Row deleted OR matching failed
+
+Analysis:
+1. Open old file at original row
+2. Check: Is STRINGID present?
+3. Check: Does STRINGID exist in new file?
+4. If STRINGID exists: Why didn't it match? (format issue?)
+5. If STRINGID missing: Manually locate by Korean text
+
+Decision:
+- If row DELETED: Note in report, tester doesn't need it
+- If row EXISTS but not matched: Manual transfer or fix matching
+```
+
+---
+
+## When Tester vs When Manager Runs Tool
+
+### Option A: Manager Runs Everything (Recommended)
+
+```
+Manager workflow:
+1. Collect all QA files from testers
+2. Run export on collected files
+3. Update datasheets (run fullXXX.py scripts)
+4. Create new blank QA files
+5. Run import (transfers work to new files)
+6. Distribute synced files back to testers
+7. Rebuild master from synced files
+8. Apply manager STATUS from old master
+
+Pros:
+- Centralized control
+- Consistent processing
+- Manager can review sync report
+- Easy to troubleshoot
+
+Cons:
+- Manager does all the work
+- Testers wait for files
+```
+
+### Option B: Testers Run Import Themselves
+
+```
+Manager workflow:
+1. Collect all QA files from testers
+2. Run export (creates portable snapshot)
+3. Update datasheets
+4. Create new blank QA files
+5. Distribute: snapshot + new blank files to testers
+
+Tester workflow:
+1. Receive: their_snapshot.json + new blank file
+2. Run: sync_qa.py import --snapshot their_snapshot.json --target new_file
+3. Verify their work transferred
+4. Continue QA
+
+Pros:
+- Testers can verify their own data
+- Parallel processing
+
+Cons:
+- Need to train testers
+- Testers need Python installed
+- More support requests
+```
+
+### Recommendation: Option A
+
+Manager runs everything. Simpler, fewer failure points, better control.
+
+---
+
 ## Questions Still Open
 
 1. **Do we have real tester files to test with?**
@@ -1287,6 +1474,90 @@ for row in new_master:
 
 5. **Where are Master files currently?**
    - Need to sync manager work too
+
+---
+
+## What-If Scenarios
+
+### What if STRINGID is missing from some rows?
+
+```
+Scenario: Old file has rows with empty STRINGID column
+
+Impact: Cannot use primary matching key
+
+Fallback strategy:
+  1. Try: Translation text + Korean text
+  2. Try: Korean text alone (if unique in sheet)
+  3. Log as "unmatched" - requires manual review
+
+Prevention for future:
+  - Ensure fullXXX.py scripts ALWAYS populate STRINGID
+  - Validate: Check for empty STRINGIDs before distribution
+```
+
+### What if translation text changed?
+
+```
+Scenario: English translation was updated in new datasheet
+
+Example:
+  Old: "Silver Patient" → STATUS: ISSUE
+  New: "Silver-Wearing Patient" → no match?
+
+Analysis:
+  - If STRINGID same → Should still match!
+  - Matching uses Translation + STRINGID
+  - Changed translation but same STRINGID = still matches
+
+Edge case:
+  - STRINGID changed AND translation changed = no match
+  - This means it's essentially a NEW string
+  - Old QA work may not apply anymore
+  - Log for review
+```
+
+### What if same STRINGID appears multiple times?
+
+```
+Scenario: Duplicate STRINGID in same sheet
+
+Example (from test):
+  Row 4: "은색 비지오네 쓴 환자" | 4295864944164912 | ISSUE (comment A)
+  Row 5: "은색 비지오네 쓴 환자" | 4295864944164912 | ISSUE (comment B)
+
+Problem: Which old row maps to which new row?
+
+Strategy:
+  1. Group by STRINGID
+  2. If same count old and new: Match by position
+     - Old row 4 → New row with same STRINGID (position 1)
+     - Old row 5 → New row with same STRINGID (position 2)
+  3. If different count: Log for manual review
+
+Alternative:
+  - Use additional column (COMMAND) to differentiate
+  - Row 4: NHW_Citizen_... (female)
+  - Row 5: NHM_Citizen_... (male)
+```
+
+### What if image file is missing?
+
+```
+Scenario: SCREENSHOT column references "bug.png" but file doesn't exist
+
+Impact: Hyperlink will be broken in new file
+
+Handling:
+  1. During export: Check if referenced images exist
+  2. Log: "Image not found: bug.png (row 45)"
+  3. During import: Still transfer the filename reference
+  4. Warn: Tester may need to re-take screenshot
+
+Prevention:
+  - Validate images exist before sync
+  - Provide list of missing images to testers
+```
 
 ---
 
@@ -1307,5 +1578,174 @@ for row in new_master:
 
 ---
 
+## Implementation Considerations
+
+### Dependencies
+
+```python
+# Required packages (same as compile_qa.py)
+openpyxl     # Excel read/write
+json         # Snapshot files
+os, shutil   # File operations
+datetime     # Timestamps
+argparse     # CLI interface
+```
+
+### File Structure
+
+```
+QAExcelCompiler/
+├── compile_qa.py           # Existing compiler (modify for COMMENT-based matching)
+├── sync_qa.py              # NEW - Main sync tool
+├── sync_utils.py           # NEW - Shared utilities (normalization, matching)
+├── docs/
+│   └── SYNC_THINKTANK.md   # This planning document
+└── tests/
+    └── test_sync.py        # NEW - Unit tests for sync logic
+```
+
+### Core Functions to Implement
+
+```python
+# sync_qa.py - Main commands
+def export_testers(source_folder, output_file):
+    """Export all tester work to JSON snapshot."""
+
+def export_masters(source_folder, output_file):
+    """Export all master work (including manager STATUS) to JSON snapshot."""
+
+def import_testers(snapshot_file, template_folder, output_folder):
+    """Import tester work from snapshot into new templates."""
+
+def import_masters(snapshot_file, master_folder):
+    """Import manager STATUS from snapshot by COMMENT matching."""
+
+def generate_report(snapshot_file, target_folder):
+    """Generate detailed sync report."""
+
+# sync_utils.py - Utilities
+def normalize_stringid(value):
+    """Convert any STRINGID format to clean string."""
+
+def find_row_by_stringid(ws, stringid, stringid_col):
+    """Find row in worksheet by STRINGID."""
+
+def find_row_by_stringid_and_translation(ws, stringid, translation, stringid_col, translation_col):
+    """Find row by STRINGID + Translation combo."""
+
+def get_column_index_by_header(ws, header_name):
+    """Find column index by header text."""
+
+def inject_work_data(ws, row_idx, status, comment, screenshot, col_map):
+    """Write STATUS, COMMENT, SCREENSHOT to row."""
+```
+
+### CLI Interface Design
+
+```bash
+# Tester file operations
+python3 sync_qa.py export-testers \
+    --source /path/to/QAfolder \
+    --output tester_work.json
+
+python3 sync_qa.py import-testers \
+    --snapshot tester_work.json \
+    --templates /path/to/new_templates \
+    --output /path/to/synced_output
+
+# Master file operations
+python3 sync_qa.py export-masters \
+    --source /path/to/Masterfolder_EN \
+    --output master_work.json
+
+python3 sync_qa.py import-masters \
+    --snapshot master_work.json \
+    --target /path/to/new_Masterfolder_EN
+
+# Report
+python3 sync_qa.py report \
+    --snapshot tester_work.json \
+    --target /path/to/synced_output \
+    --format text|json|excel
+```
+
+### Testing Strategy
+
+```
+Phase 1: Unit tests (no real files)
+────────────────────────────────────────
+- test_normalize_stringid()
+  - Handles: int, float, scientific, string
+- test_find_row_by_stringid()
+  - Found, not found, duplicate cases
+- test_inject_work_data()
+  - Writes to correct columns
+
+Phase 2: Integration tests (mock Excel files)
+────────────────────────────────────────
+- test_export_single_file()
+- test_import_single_file()
+- test_round_trip() - export then import, verify data intact
+
+Phase 3: Real data test (before production)
+────────────────────────────────────────
+- One real tester file
+- Manual verification of matched rows
+```
+
+### Performance Considerations
+
+```
+Scale estimates:
+- Testers: ~20-30
+- Categories: 6 (Character, Quest, Knowledge, Item, Region, Gimmick)
+- Rows per file: ~5,000-50,000
+- Total rows: ~600,000 - 6,000,000
+
+Processing time:
+- Export: ~1-5 min (read all files, build JSON)
+- Import: ~5-15 min (read templates, match rows, write output)
+
+Memory:
+- JSON snapshot: ~10-100 MB
+- Keep only one workbook open at a time
+- Process file by file, not all in memory
+```
+
+---
+
+## Summary: The Simple Version
+
+For anyone who skipped to the end:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    QA SYNC IN 30 SECONDS                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  PROBLEM:                                                       │
+│    Datasheets will be updated → row indices change              │
+│    QA work (STATUS, COMMENT, SCREENSHOT) tied to old rows       │
+│    Must transfer work to new structure                          │
+│                                                                  │
+│  SOLUTION:                                                       │
+│    Match rows by: Translation + STRINGID                        │
+│    Export work BEFORE update                                    │
+│    Import work AFTER update                                     │
+│                                                                  │
+│  COMMANDS:                                                       │
+│    1. sync_qa.py export-testers  (before update)                │
+│    2. Update datasheets          (fullXXX.py scripts)           │
+│    3. sync_qa.py import-testers  (after update)                 │
+│    4. sync_qa.py import-masters  (restore manager STATUS)       │
+│                                                                  │
+│  KEY RULE:                                                       │
+│    EXPORT FIRST! If you update before export, work is LOST.     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 *Document created for QA Compiler sync planning*
-*Updated: 2026-01-08 - Added testing strategy and workflow options*
+*Updated: 2026-01-08 - Added error recovery, what-if scenarios, implementation details*

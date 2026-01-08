@@ -504,3 +504,90 @@ If issues occur:
 
 *Plan finalized: 2026-01-05*
 *Ready for implementation*
+
+---
+
+## Update 2026-01-08: DAILY Tab Simplification
+
+### Changes Requested
+
+1. **Remove Comp% and Actual Issues columns from DAILY**
+   - Too confusing ("what is Comp%?")
+   - Keep only: Done, Issues per user
+   - Comp% and Actual Issues remain in TOTAL tab only
+
+2. **Add thick bold lines between users**
+   - Clear visual separation between testers
+   - Makes it easier to see whose data is whose
+
+3. **Chart uses main table directly**
+   - Currently: Separate hidden data table for chart
+   - New: Chart references main table columns
+   - Cleaner, no duplicate data
+
+### DAILY Tab - New Layout
+
+```
+Row 1: "DAILY PROGRESS" (merged, gold)
+Row 2: Section headers (Tester Stats | Manager Stats)
+Row 3: User names (merged) - THICK BORDER between each user
+Row 4: Sub-headers - Date | Done | Issues | Done | Issues | ... | Fixed | Reported | Checking | Pending
+Row 5+: Data rows
+Last:  TOTAL row
+
+   ║        Kim         ║        Lee         ║  Manager Stats  ║
+   ║────────────────────║────────────────────║─────────────────║
+   ║  Done  │  Issues   ║  Done  │  Issues   ║ Fix │ Rep │ ... ║
+───╬────────┼───────────╬────────┼───────────╬─────┼─────┼─────╬───
+01/05 ║   57   │    11     ║   45   │     5     ║  3  │  2  │ ... ║
+01/06 ║   23   │     4     ║   --   │    --     ║  1  │  0  │ ... ║
+
+THICK BORDER (║) between user columns and before Manager Stats
+Thin border (│) between columns within same user
+```
+
+### Columns Per User (DAILY)
+
+**Before:** 4 columns (Done, Issues, Comp %, Actual Issues)
+**After:** 2 columns (Done, Issues)
+
+### Border Styles
+
+```python
+# Thick border for user separation
+thick_side = Side(style='thick', color='000000')
+
+# Thin border for internal columns
+thin_side = Side(style='thin', color='000000')
+
+# Apply thick border to LEFT side of first column for each user
+# Apply thick border to LEFT side of Manager Stats section
+```
+
+### Chart Reference Change
+
+**Before:**
+```python
+# Build separate data table for chart
+chart_data_row = data_row + 3
+# ... populate separate table ...
+data_ref = Reference(ws, min_col=2, ..., min_row=chart_data_row, ...)
+```
+
+**After:**
+```python
+# Use main table directly for chart
+# Done columns are at: 2, 4, 6, ... (every 2nd column starting from 2)
+# Reference row 5 (first data row) to row before TOTAL
+data_ref = Reference(ws, min_col=2, max_col=num_users*2+1, min_row=4, max_row=data_row-1)
+```
+
+### Implementation Steps
+
+1. Update `tester_cols_per_user` from 4 to 2
+2. Remove Comp% and Actual Issues from header row
+3. Remove Comp% and Actual Issues from data rows
+4. Remove Comp% and Actual Issues from TOTAL row calculations
+5. Add thick border to left side of each user's first column
+6. Remove separate chart data table
+7. Update chart Reference to use main table columns
