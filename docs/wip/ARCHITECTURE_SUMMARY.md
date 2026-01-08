@@ -1,6 +1,6 @@
 # Architecture Summary - Complete Reference
 
-> Last Updated: 2026-01-07 (Session 34)
+> Last Updated: 2026-01-08 (Session 35)
 
 ---
 
@@ -215,6 +215,46 @@ Think of it like:
 - Same endpoints handle both online/offline
 - Fallback pattern: PostgreSQL → SQLite
 - No duplicate logic
+
+### Q: Why do I see TWO "Offline Storage" entries? ⚠️ KNOWN ISSUE (UI-107)
+
+**A:** This is a known UX issue. In Online Mode you see duplicates because two systems exist:
+
+| System | Purpose | DB ID | Operations |
+|--------|---------|-------|------------|
+| **CloudOffline** | File storage | String `'offline-storage'` | SQLite: create/move/delete files |
+| **Offline Storage Platform** | TM assignment | Integer `31` (PostgreSQL) | FK for TM assignments |
+
+**Why Two Systems?**
+```
+File Operations:              TM Assignments:
+SQLite + parent_id chain  vs  PostgreSQL + FK constraint
+No DB ID needed               Needs real DB ID
+```
+
+CloudOffline uses SQLite endpoints (`/api/ldm/offline/storage/*`) that don't need PostgreSQL IDs.
+TM assignments need foreign keys to platform_id/project_id, so PostgreSQL record is required.
+
+**Planned Fix (UI-107):**
+1. Hide PostgreSQL platform from File Explorer (only CloudOffline visible)
+2. Rename TM tree: "Local Workspace" (not "Offline Storage")
+3. Use CloudOffline icon in TM tree
+
+See: `docs/wip/ISSUES_TO_FIX.md` → UI-107
+
+### Q: Does CloudOffline have "DB ID power"?
+
+**A:** Yes! CloudOffline doesn't need a numeric PostgreSQL ID because it uses a **different paradigm**:
+
+| Operation | CloudOffline | Regular Platform |
+|-----------|--------------|------------------|
+| Create folder | SQLite `parent_id` | PostgreSQL `project_id` FK |
+| Move file | SQLite update `parent_id` | PostgreSQL FK update |
+| Upload file | SQLite insert | PostgreSQL insert |
+| TM assignment | ❌ Not supported | ✅ PostgreSQL FK |
+
+CloudOffline inherits its "power" from SQLite's simpler data model - no foreign key constraints needed.
+TM assignments require the PostgreSQL platform because `LDMTMAssignment.platform_id` is a FK.
 
 ---
 

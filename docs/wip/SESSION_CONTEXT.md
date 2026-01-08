@@ -1,6 +1,44 @@
 # Session Context
 
-> Last Updated: 2026-01-07 (Session 34 - TM Delete Modal)
+> Last Updated: 2026-01-08 (Session 35 - Documentation & Analysis)
+
+---
+
+## SESSION 35 COMPLETE ✅
+
+### Analysis: Offline Storage Duplication Confusion (UI-107)
+
+**Problem:** Users see 4 "Offline Storage" entries across File Explorer and TM Tree.
+
+**DB ID Analysis Completed:**
+
+| Entry | ID Type | Database | Needed For |
+|-------|---------|----------|------------|
+| CloudOffline | String `'offline-storage'` | Virtual → SQLite | File operations |
+| Offline Storage Platform | Integer `31` | PostgreSQL | TM assignment FK |
+
+**Key Finding:** CloudOffline does NOT need numeric DB ID - it uses SQLite `parent_id` chain.
+
+**Recommended Solution (Claude's Plan):**
+1. Hide PostgreSQL platform from File Explorer (`platformList.filter`)
+2. Rename TM tree platform: "Local Workspace"
+3. Use CloudOffline icon in TM tree
+
+**Files to Modify:**
+- `FilesPage.svelte:205` - Filter platformList
+- `tm_assignment.py:25-26` - Rename constants
+- `TMExplorerTree.svelte` - CloudOffline icon
+
+**Documentation Updated:**
+- `ISSUES_TO_FIX.md` - UI-107 with full plan
+- `ARCHITECTURE_SUMMARY.md` - DB ID FAQ
+
+### TM Tree vs File Explorer Unification
+
+User asked about making TM Tree identical to File Explorer. Analysis:
+- Would require rewriting TM tree as grid component
+- Too much effort for the benefit
+- Simpler rename+hide solution addresses the confusion
 
 ---
 
