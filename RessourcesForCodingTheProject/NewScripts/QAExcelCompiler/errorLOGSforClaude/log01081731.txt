@@ -1,0 +1,53 @@
+  Hidden sheets (no comments): DEV
+  Hidden: 30 empty user columns (unhide in Excel if needed)
+  Hidden: 6159 rows with no comments (unhide in Excel if needed)
+  Images: 30 copied to Images/, 0 hyperlinks updated
+
+==================================================
+Processing: Knowledge [CN] (2 folders)
+==================================================
+  Loading existing: Master_Knowledge.xlsx
+
+  Folder: 김춘애_Knowledge
+    Copied 2 images to Images/
+Traceback (most recent call last):
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\reader\excel.py", line 301, in read
+    self.read_worksheets()
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\reader\excel.py", line 237, in read_worksheets
+    ws_parser.bind_all()
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\worksheet\_reader.py", line 465, in bind_all
+    self.bind_cells()
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\worksheet\_reader.py", line 368, in bind_cells
+    for idx, row in self.parser.parse():
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\worksheet\_reader.py", line 163, in parse
+    obj = prop[1].from_tree(element)
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\descriptors\serialisable.py", line 87, in from_tree
+    obj = desc.expected_type.from_tree(el)
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\descriptors\serialisable.py", line 87, in from_tree
+    obj = desc.expected_type.from_tree(el)
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\descriptors\serialisable.py", line 87, in from_tree
+    obj = desc.expected_type.from_tree(el)
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\descriptors\serialisable.py", line 103, in from_tree
+    return cls(**attrib)
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\worksheet\filters.py", line 184, in __init__
+    self.val = val
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\worksheet\filters.py", line 165, in __set__
+    raise ValueError("Value must be either numerical or a string containing a wildcard")
+ValueError: Value must be either numerical or a string containing a wildcard
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\PEARL\Desktop\LION LQA COMPILE\compile_qa.py", line 2552, in <module>
+    main()
+  File "C:\Users\PEARL\Desktop\LION LQA COMPILE\compile_qa.py", line 2507, in main
+    entries = process_category(
+  File "C:\Users\PEARL\Desktop\LION LQA COMPILE\compile_qa.py", line 2345, in process_category
+    qa_wb = openpyxl.load_workbook(xlsx_path)
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\reader\excel.py", line 346, in load_workbook
+    reader.read()
+  File "C:\Users\PEARL\AppData\Local\Programs\Python\Python38\lib\site-packages\openpyxl\reader\excel.py", line 307, in read
+    raise ValueError(
+ValueError: Unable to read workbook: could not read worksheets from C:\Users\PEARL\Desktop\LION LQA COMPILE\QAfolder\김 춘애_Knowledge\김춘애_Knowledge_LQA_ZHO-CN.xlsx.
+This is most probably because the workbook source files contain some invalid XML.
+Please see the exception for more details.
