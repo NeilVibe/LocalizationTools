@@ -1083,35 +1083,130 @@ STRINGID must be stored as TEXT, not number:
 
 ## MASTER SHEET SYNC PROCESS
 
-### The Flow
+### Current compile_qa.py Behavior
+
+**Important to understand:**
 
 ```
-STEP 1: SYNC QA FILES
-────────────────────────────────────────────────────────
-  Old QA files (with work) + New blank templates
-           ↓
-  sync_qa.py (Translation + STRINGID matching)
-           ↓
-  New QA files (with transferred work)
+┌─────────────────────────────────────────────────────────────────┐
+│ Does Master_Quest.xlsx EXIST?                                   │
+├──────────────────┬──────────────────────────────────────────────┤
+│       YES        │                    NO                        │
+├──────────────────┼──────────────────────────────────────────────┤
+│ LOAD existing    │ CREATE from first QA file as template        │
+│ (keeps OLD       │ (deletes STATUS/COMMENT/SCREENSHOT cols,     │
+│  structure!)     │  starts clean)                               │
+└──────────────────┴──────────────────────────────────────────────┘
+```
 
-STEP 2: BUILD NEW MASTER SHEETS
-────────────────────────────────────────────────────────
-  New synced QA files
-           ↓
-  compile_qa.py (normal process, index-based)
-           ↓
-  New Master sheets (with COMMENT_{User}, SCREENSHOT_{User})
+**Current manager STATUS handling:**
+- `preprocess_manager_status()` reads old master BEFORE processing
+- Saves STATUS_{User} values **BY ROW INDEX** (not by COMMENT)
+- After processing, restores STATUS by row index
+- **Problem:** If row order changes, wrong STATUS applied to wrong row!
 
-STEP 3: TRANSFER MANAGER STATUS
+### The New Approach
+
+**Goal:** Extract COMMENT + STATUS pairs, rebuild fresh, apply STATUS by COMMENT match.
+
+```
+STEP 1: EXTRACT from old master
 ────────────────────────────────────────────────────────
-  Old Master sheets (have STATUS_{User} = FIXED/REPORTED/etc)
-  + New Master sheets (missing STATUS_{User})
+  Load Master_Quest.xlsx (old structure)
            ↓
-  Match by: COMMENT_{User} content (or COMMENT + STRINGID)
+  Build map: {COMMENT_text: STATUS_value}
+
+  Example:
+    {"이름 잘림 (스크린샷 참조)": "FIXED"}
+    {"번역 오류입니다": "REPORTED"}
+
+STEP 2: DELETE old master
+────────────────────────────────────────────────────────
+  Remove Master_Quest.xlsx
+  (forces fresh creation with new structure)
+
+STEP 3: BUILD fresh master from synced QA files
+────────────────────────────────────────────────────────
+  Synced QA files (new structure)
            ↓
-  Transfer: STATUS_{User} values
+  compile_qa.py creates Master_Quest.xlsx
            ↓
-  Complete Master sheets
+  New master has:
+    - New structure (from QA files)
+    - COMMENT_{User} columns populated
+    - STATUS_{User} columns EMPTY
+
+STEP 4: APPLY STATUS by COMMENT match
+────────────────────────────────────────────────────────
+  For each row in new master:
+    comment = COMMENT_{User}
+    if comment in extracted_map:
+      STATUS_{User} = extracted_map[comment]
+           ↓
+  Complete master with STATUS restored!
+```
+
+### Why Match by COMMENT (not STRINGID)?
+
+| Match by | Pros | Cons |
+|----------|------|------|
+| **COMMENT** | Direct link (STATUS is response to COMMENT) | If comment text edited, no match |
+| **STRINGID** | More stable identifier | STATUS might apply to different comment |
+
+**COMMENT is better because:**
+- Manager STATUS is a response to a specific COMMENT
+- Same comment = same issue = same manager response
+- If comment was edited/changed, manager should re-review anyway
+
+### Changes Needed to compile_qa.py
+
+```python
+# CURRENT (row index based):
+def preprocess_manager_status():
+    for row in old_master:
+        manager_status[row_index] = status_value  # ❌ By row
+
+# NEW (comment based):
+def preprocess_manager_status():
+    for row in old_master:
+        comment = get_comment(row)
+        manager_status[comment] = status_value    # ✅ By comment
+```
+
+```python
+# CURRENT restore:
+if row_index in manager_status:
+    apply_status(manager_status[row_index])       # ❌ By row
+
+# NEW restore:
+comment = get_comment(row)
+if comment in manager_status:
+    apply_status(manager_status[comment])         # ✅ By comment
+```
+
+### Full Sync Workflow (Updated)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ PHASE 1: SYNC QA FILES                                          │
+│                                                                  │
+│   Old QA files ──→ sync_qa.py ──→ New QA files                  │
+│   (Translation + STRINGID matching)                             │
+│                                                                  │
+│   ✓ Match → Transfer STATUS, COMMENT, SCREENSHOT                │
+│   ✗ No match → Leave blank (tester rechecks)                    │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ PHASE 2: REBUILD MASTER FILES                                   │
+│                                                                  │
+│   1. Load old master → Extract {COMMENT: STATUS} map            │
+│   2. Delete old master files                                    │
+│   3. Run compile_qa.py (creates fresh from synced QA)           │
+│   4. Apply STATUS by COMMENT matching                           │
+│                                                                  │
+│   Result: New structure + preserved manager work                │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Why This Works
