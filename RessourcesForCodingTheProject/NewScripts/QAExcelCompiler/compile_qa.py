@@ -1740,7 +1740,6 @@ def build_daily_sheet(wb):
     manager_header_fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")  # Light green for manager
     subheader_fill = PatternFill(start_color=TRACKER_STYLES["subheader_color"], end_color=TRACKER_STYLES["subheader_color"], fill_type="solid")
     alt_fill = PatternFill(start_color=TRACKER_STYLES["alt_row_color"], end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid")
-    total_fill = PatternFill(start_color=TRACKER_STYLES["total_row_color"], end_color=TRACKER_STYLES["total_row_color"], fill_type="solid")
     border = Border(
         left=Side(style='thin', color=TRACKER_STYLES["border_color"]),
         right=Side(style='thin', color=TRACKER_STYLES["border_color"]),
@@ -1754,7 +1753,7 @@ def build_daily_sheet(wb):
     # title_cols = Date(1) + Users*2 (tester) + 4 (manager stats)
     tester_cols_per_user = 2  # Done, Issues only (removed Comp %, Actual Issues - keep in TOTAL only)
     tester_cols = len(users) * tester_cols_per_user
-    manager_cols = 4  # Fixed, Reported, Checking, Pending
+    manager_cols = 5  # Fixed, Reported, NonIssue, Checking, Pending
     title_cols = 1 + tester_cols + manager_cols
 
     # Border styles - thick borders to separate users
@@ -1806,7 +1805,7 @@ def build_daily_sheet(wb):
         col += tester_cols_per_user
 
     # Manager stats headers in row 3 - thick border on left side of first column
-    for i, label in enumerate(["Fixed", "Reported", "Checking", "Pending"]):
+    for i, label in enumerate(["Fixed", "Reported", "NonIssue", "Checking", "Pending"]):
         cell = ws.cell(3, manager_start + i, label)
         cell.fill = manager_header_fill
         cell.font = bold
@@ -1848,8 +1847,6 @@ def build_daily_sheet(wb):
             cell.border = border
 
     # Row 5+: Data rows
-    user_totals = {user: {"total_rows": 0, "done": 0, "issues": 0, "nonissue": 0} for user in users}
-    manager_totals = {"fixed": 0, "reported": 0, "checking": 0, "pending": 0}
     data_row = 5
 
     for idx, date in enumerate(dates):
@@ -1888,12 +1885,6 @@ def build_daily_sheet(wb):
             day_nonissue += nonissue_val
             day_issues += issues_val
 
-            # Track totals per user
-            user_totals[user]["total_rows"] += total_rows_val
-            user_totals[user]["done"] += done_val
-            user_totals[user]["issues"] += issues_val
-            user_totals[user]["nonissue"] += nonissue_val
-
             # Display value or "--" for zero/no data
             done_display = done_val if done_val > 0 else "--"
             issues_display = issues_val if issues_val > 0 else "--"
@@ -1918,12 +1909,7 @@ def build_daily_sheet(wb):
         if day_pending < 0:
             day_pending = 0
 
-        manager_totals["fixed"] += day_fixed
-        manager_totals["reported"] += day_reported
-        manager_totals["checking"] += day_checking
-        manager_totals["pending"] += day_pending
-
-        manager_values = [day_fixed, day_reported, day_checking, day_pending]
+        manager_values = [day_fixed, day_reported, day_nonissue, day_checking, day_pending]
         for i, val in enumerate(manager_values):
             display_val = val if val > 0 else "--"
             cell = ws.cell(data_row, manager_start + i, display_val)
@@ -1938,42 +1924,7 @@ def build_daily_sheet(wb):
 
         data_row += 1
 
-    # TOTAL row
-    total_cell = ws.cell(data_row, 1, "TOTAL")
-    total_cell.fill = total_fill
-    total_cell.font = bold
-    total_cell.alignment = center
-    total_cell.border = border
-
-    col = 2
-    for user_idx, user in enumerate(users):
-        user_done = user_totals[user]["done"]
-        user_issues = user_totals[user]["issues"]
-
-        # Write 2 cells per user: Done, Issues (removed Comp%, Actual Issues - keep in TOTAL tab only)
-        for i, val in enumerate([user_done, user_issues]):
-            cell = ws.cell(data_row, col, val)
-            cell.fill = total_fill
-            cell.font = bold
-            cell.alignment = center
-            # Thick border on left side of "Done" (first column for each user)
-            if i == 0:
-                cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
-            else:
-                cell.border = border
-            col += 1
-
-    # Manager totals - thick border on first column
-    manager_total_values = [manager_totals["fixed"], manager_totals["reported"], manager_totals["checking"], manager_totals["pending"]]
-    for i, val in enumerate(manager_total_values):
-        cell = ws.cell(data_row, manager_start + i, val)
-        cell.fill = total_fill
-        cell.font = bold
-        cell.alignment = center
-        if i == 0:
-            cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
-        else:
-            cell.border = border
+    # Note: TOTAL row removed from DAILY tab (confusing) - totals are in TOTAL tab
 
     # Set column widths with auto-sizing + padding
     PADDING = 2  # Small padding for edge cases
@@ -1989,7 +1940,7 @@ def build_daily_sheet(wb):
             col += 1
 
     # Manager columns
-    manager_headers = ["Fixed", "Reported", "Checking", "Pending"]
+    manager_headers = ["Fixed", "Reported", "NonIssue", "Checking", "Pending"]
     for i, header in enumerate(manager_headers):
         col_letter = get_column_letter(manager_start + i)
         ws.column_dimensions[col_letter].width = len(header) + PADDING
@@ -2026,7 +1977,7 @@ def build_daily_sheet(wb):
 
         # Categories reference: dates in column 1, starting row 5 (first data row)
         data_start_row = 5
-        data_end_row = data_row - 1  # Exclude TOTAL row
+        data_end_row = data_row - 1  # Last data row
         cats_ref = Reference(
             ws,
             min_col=1,
@@ -2062,8 +2013,8 @@ def build_daily_sheet(wb):
         chart.x_axis.title = "Date"
         chart.x_axis.tickLblPos = "low"  # Labels below axis
 
-        # Place chart below main table (after TOTAL row)
-        chart_row = data_row + 2
+        # Place chart below main table
+        chart_row = data_row + 1
         ws.add_chart(chart, f"A{chart_row}")
 
 
