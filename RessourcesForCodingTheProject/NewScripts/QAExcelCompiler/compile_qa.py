@@ -1248,16 +1248,43 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
 
         hidden_columns_total += hidden_cols_this_sheet
 
-        # Second pass: Build set of rows to keep visible (comments + context)
-        rows_to_show = set(rows_with_comments)
-        for row in rows_with_comments:
-            # Add context rows above
+        # === NEW: Find STATUS_{User} columns for manager status hiding ===
+        # Hide rows where manager marked FIXED, REPORTED, or NON-ISSUE
+        # Only show: CHECKING or empty (pending)
+        manager_status_cols = []
+        for col in range(1, ws.max_column + 1):
+            header = ws.cell(row=1, column=col).value
+            if header and str(header).startswith("STATUS_"):
+                manager_status_cols.append(col)
+                if debug:
+                    print(f"    [DEBUG] Found manager status column: {header} at col {col}")
+
+        # Find rows to hide due to manager status (FIXED, REPORTED, NON-ISSUE)
+        rows_resolved_by_manager = set()
+        HIDE_STATUSES = {"FIXED", "REPORTED", "NON-ISSUE"}
+        for row in range(2, ws.max_row + 1):
+            for col in manager_status_cols:
+                value = ws.cell(row=row, column=col).value
+                if value and str(value).strip().upper() in HIDE_STATUSES:
+                    rows_resolved_by_manager.add(row)
+                    if debug and row <= 20:
+                        print(f"    [DEBUG] Row {row} has manager status '{value}' - will hide")
+                    break  # One resolved status is enough to hide
+
+        if debug and rows_resolved_by_manager:
+            print(f"    [DEBUG] {len(rows_resolved_by_manager)} rows resolved by manager (FIXED/REPORTED/NON-ISSUE)")
+
+        # Second pass: Build set of rows to keep visible (comments + context - resolved)
+        # Start with rows that have comments, then REMOVE resolved rows
+        rows_to_show = set(rows_with_comments) - rows_resolved_by_manager
+        for row in list(rows_to_show):  # Use list() to avoid modifying set during iteration
+            # Add context rows above (only if they're not resolved)
             for offset in range(1, context_rows + 1):
-                if row - offset >= 2:  # Don't include header
+                if row - offset >= 2 and row - offset not in rows_resolved_by_manager:
                     rows_to_show.add(row - offset)
-            # Add context rows below
+            # Add context rows below (only if they're not resolved)
             for offset in range(1, context_rows + 1):
-                if row + offset <= ws.max_row:
+                if row + offset <= ws.max_row and row + offset not in rows_resolved_by_manager:
                     rows_to_show.add(row + offset)
 
         # Third pass: First UNHIDE all rows (clear any tester hiding), then hide our target rows
