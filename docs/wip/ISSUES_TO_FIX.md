@@ -67,29 +67,30 @@ File Operations:      TM Assignments:
 
 #### RECOMMENDED SOLUTION (Claude's Optimal Plan)
 
-**Approach:** B + A + C (Hide + Rename + Match Icons)
+**Approach:** B + C (Hide duplicate + Match Icons) - NO rename, keep "Offline Storage" everywhere
 
 | Step | What | Where | Change |
 |------|------|-------|--------|
 | **1** | Hide PostgreSQL platform from File Explorer | `FilesPage.svelte` | `platformList.filter(p => p.name !== 'Offline Storage')` |
-| **2** | Rename TM tree platform | `tm_assignment.py` | Display name → "Local Workspace" |
-| **3** | Collapse TM tree project | `tm_assignment.py` | Either hide project OR use single "My Local TMs" |
-| **4** | Use CloudOffline icon in TM tree | `TMExplorerTree.svelte` | Match File Explorer icon |
+| **2** | Use CloudOffline icon in TM tree | `TMExplorerTree.svelte` | Match File Explorer icon |
+| **3** | Collapse nested project in TM tree | `tm_assignment.py` | Show TMs directly under platform (no duplicate nesting) |
 
 **Result (Clean):**
 ```
 FILE EXPLORER:
-├── ☁️ Offline Storage     ← Only one! SQLite local files
+├── ☁️ Offline Storage     ← Only one! (SQLite local files)
 ├── 🏢 TestPlatform
 └── ...
 
 TM TREE:
 ├── 📦 Unassigned
-├── ☁️ Local Workspace     ← Renamed, CloudOffline icon
-│   └── (TMs assigned here - no nested "Offline Storage")
+├── ☁️ Offline Storage     ← Same name! CloudOffline icon (consistent)
+│   └── my_tm.tm           ← TMs directly here, no nested "Offline Storage"
 ├── 🏢 TestPlatform
 └── ...
 ```
+
+**Key Decision:** Keep name "Offline Storage" everywhere for consistency. The confusion was from duplicates and different icons, not the name itself.
 
 ---
 
@@ -100,7 +101,7 @@ Making TM Tree identical to File Explorer would require:
 - Changing TM assignment UX from tree to grid
 - Breaking existing patterns users know
 
-**Verdict:** Too much work for low benefit. The simpler B+A+C approach solves the confusion.
+**Verdict:** Too much work for low benefit. The simpler B+C approach solves the confusion.
 
 ---
 
@@ -109,9 +110,8 @@ Making TM Tree identical to File Explorer would require:
 | File | Change |
 |------|--------|
 | `FilesPage.svelte:205` | Filter: `platformList.filter(p => p.name !== 'Offline Storage')` |
-| `tm_assignment.py:25-26` | Rename constants: `OFFLINE_STORAGE_PLATFORM_NAME = "Local Workspace"` |
-| `tm_assignment.py:583-609` | Update display names in tree response |
 | `TMExplorerTree.svelte` | Use `CloudOffline` icon for Offline Storage items |
+| `tm_assignment.py` | Collapse nested project (show TMs directly under platform) |
 
 ---
 
