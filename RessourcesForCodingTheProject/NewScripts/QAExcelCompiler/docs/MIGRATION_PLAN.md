@@ -205,6 +205,75 @@ def is_english_file(xlsx_path):
 
 **Reference:** See `datasheet_generators/*.py` for exact column structures per category.
 
+### STRINGID Sanitization (CRITICAL)
+
+**Problem:** STRINGID values can have formatting inconsistencies:
+- Stored as INT instead of STRING (breaks comparison: `123` ≠ `"123"`)
+- Scientific notation in Excel (e.g., `1.23E+15`)
+- Leading/trailing whitespace
+- Very large numbers with precision loss
+
+**Current issues found:**
+```
+Mike_Region/Demeniss row 13: INT 4297063242924560
+Paul_Region/Demeniss row 123: INT 4297063242924560
+```
+
+**Solution: Two-phase sanitization**
+
+**1. PRE-PROCESS (datasheet generators):**
+Fix datasheet generators to always write STRINGID as string:
+
+```python
+# In datasheet_generators/*.py - when writing STRINGID
+def sanitize_stringid_for_write(value):
+    """Ensure STRINGID is written as clean string."""
+    if value is None:
+        return ""
+    # Convert to string, strip whitespace
+    return str(value).strip()
+
+# Usage:
+c_stringid = ws.cell(row, col, sanitize_stringid_for_write(sid_value))
+c_stringid.number_format = '@'  # Force text format in Excel
+```
+
+**2. POST-PROCESS (transfer):**
+Sanitize when reading OLD/NEW files for matching:
+
+```python
+def sanitize_stringid_for_match(value):
+    """Normalize STRINGID for comparison."""
+    if value is None:
+        return ""
+    s = str(value).strip()
+    # Handle scientific notation (e.g., "1.23E+15" -> "1230000000000000")
+    if 'e' in s.lower():
+        try:
+            s = str(int(float(s)))
+        except:
+            pass
+    return s
+```
+
+**Matching logic uses sanitized values:**
+```python
+old_stringid = sanitize_stringid_for_match(old_row["STRINGID"])
+new_stringid = sanitize_stringid_for_match(new_row["STRINGID"])
+if old_stringid == new_stringid:  # Now compares as strings
+    # Match found
+```
+
+**Files to update:**
+| File | Change |
+|------|--------|
+| `datasheet_generators/fullquest15.py` | Add `sanitize_stringid_for_write()` |
+| `datasheet_generators/fullknowledge14.py` | Add `sanitize_stringid_for_write()` |
+| `datasheet_generators/fullitem25.py` | Add `sanitize_stringid_for_write()` |
+| `datasheet_generators/fullregion7.py` | Add `sanitize_stringid_for_write()` |
+| `datasheet_generators/fullcharacter1.py` | Add `sanitize_stringid_for_write()` |
+| `compile_qa.py` | Add `sanitize_stringid_for_match()` in transfer logic |
+
 ### Transfer Report (Terminal Output)
 
 After transfer completes, print a summary report showing success rate per tester:
@@ -482,4 +551,5 @@ AFTER BUILD:
 *Plan created: 2026-01-09*
 *Updated: 2026-01-09 - Added Column Detection section and Transfer Report terminal output*
 *Updated: 2026-01-09 - Detailed translation column positions per category (Item uses col 5-6/7-8, others use col 2/3)*
+*Updated: 2026-01-09 - Added STRINGID Sanitization section (pre-process in generators, post-process in transfer)*
 *Based on user requirements for structure migration without data loss*
