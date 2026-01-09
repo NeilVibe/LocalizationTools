@@ -954,7 +954,54 @@ def discover_qa_folders(qa_folder):
 
 ---
 
+---
+
+## UPCOMING: Migration Support (Phase 10) 🚧
+
+**Goal:** Transfer tester work when QA file structure changes (new columns, row reorder)
+
+**Status:** PLANNED - See [MIGRATION_PLAN.md](MIGRATION_PLAN.md)
+
+### GUI Addition
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    QA Excel Compiler                             │
+├─────────────────────────────────────────────────────────────────┤
+│   ┌─────────────────────────┐   ┌─────────────────────────┐     │
+│   │   Transfer QA Files     │   │   Build Masterfiles     │     │
+│   └─────────────────────────┘   └─────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### New Folders
+
+| Folder | Purpose |
+|--------|---------|
+| `QAfolderOLD/` | OLD structure QA files (with tester work) |
+| `QAfolderNEW/` | NEW structure QA files (empty) |
+| `QAfolder/` | Working folder (output of transfer, input for build) |
+
+### Matching Strategy
+
+**2-step cascade:**
+1. Translation + STRINGID → exact match
+2. Translation only → content match
+
+### Datasheet Generators
+
+Scripts that create QA source files moved to `datasheet_generators/`:
+- `fullquest15.py` - Quest data
+- `fullknowledge14.py` - Knowledge data
+- `fullitem25.py` - Item data
+- `fullregion7.py` - Region data
+- `fullcharacter1.py` - Character data
+- `fullgimmick1.py` - Gimmick data
+
+---
+
 *WIP created 2025-12-30*
 *Updated 2025-12-30: Added StringID parsing, column styling, future features*
 *Updated 2026-01-02: Added IMAGE COMPILATION SYSTEM - folder-based input, centralized Images/ output, duplicate naming strategy*
 *Updated 2026-01-03: Clean comment format with --- delimiter, unified blue styling for COMMENT/SCREENSHOT*
+*Updated 2026-01-09: Added Phase 10 Migration Support section, datasheet_generators folder*

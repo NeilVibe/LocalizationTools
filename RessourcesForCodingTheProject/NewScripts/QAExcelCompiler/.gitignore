@@ -1,6 +1,11 @@
 # Test data - don't commit
 QAfolder/
+QAfolderOLD/
+QAfolderNEW/
 Masterfolder/
+Masterfolder_EN/
+Masterfolder_CN/
+LQA_Tester_ProgressTracker.xlsx
 
 # Python
 __pycache__/

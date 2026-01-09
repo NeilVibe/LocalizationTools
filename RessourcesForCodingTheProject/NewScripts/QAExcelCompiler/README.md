@@ -60,24 +60,48 @@ QAfolder/
 python3 compile_qa.py
 ```
 
-### 3. Check `Masterfolder/` for results
+This launches a GUI with two buttons:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    QA Excel Compiler                             │
+├─────────────────────────────────────────────────────────────────┤
+│   ┌─────────────────────────┐   ┌─────────────────────────┐     │
+│   │   Transfer QA Files     │   │   Build Masterfiles     │     │
+│   └─────────────────────────┘   └─────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Transfer QA Files** - Use when QA file structure changes:
+1. Place OLD QA files in `QAfolderOLD/`
+2. Place NEW QA files (empty) in `QAfolderNEW/`
+3. Click "Transfer QA Files"
+4. Tester work (COMMENT/STATUS/SCREENSHOT) transfers to `QAfolder/`
+
+**Build Masterfiles** - Normal compilation:
+1. Place QA files in `QAfolder/`
+2. Click "Build Masterfiles"
+3. Master files created in `Masterfolder_EN/` and `Masterfolder_CN/`
+
+### 3. Check `Masterfolder_EN/` and `Masterfolder_CN/` for results
 
 Output structure:
 ```
-Masterfolder/
-├── Master_Quest.xlsx              # QA data + STATUS per category
-├── Master_Knowledge.xlsx
-├── Master_Item.xlsx
-├── Master_Region.xlsx
-├── Master_System.xlsx
-├── Master_Character.xlsx
-├── LQA_Tester_ProgressTracker.xlsx  # Combined progress tracker
-│   ├── DAILY                      # Daily progress per user
-│   ├── TOTAL                      # Cumulative stats
-│   └── GRAPHS                     # Visual charts
-└── Images/                        # ALL images consolidated
-    ├── John_Quest_10034.png       # {User}_{Category}_{original}
-    └── ...
+QAExcelCompiler/
+├── Masterfolder_EN/               # EN testers
+│   ├── Master_Quest.xlsx          # QA data + STATUS per category
+│   ├── Master_Knowledge.xlsx
+│   ├── Master_Item.xlsx
+│   └── Images/                    # EN images consolidated
+│
+├── Masterfolder_CN/               # CN testers
+│   ├── Master_Quest.xlsx
+│   └── Images/                    # CN images consolidated
+│
+└── LQA_Tester_ProgressTracker.xlsx  # Combined progress tracker
+    ├── DAILY                      # Daily progress per user
+    ├── TOTAL                      # Cumulative stats (EN + CN sections)
+    └── GRAPHS                     # Visual charts
 ```
 
 ---
@@ -86,10 +110,17 @@ Masterfolder/
 
 ```
 QAExcelCompiler/
-├── compile_qa.py         # Main script (standalone)
+├── compile_qa.py         # Main script with GUI
 ├── requirements.txt      # Dependencies (openpyxl)
 ├── README.md             # This file
-├── QAfolder/             # DROP QA FOLDERS HERE
+│
+├── QAfolderOLD/          # OLD structure QA files (for migration)
+│   └── {Username}_{Category}/
+│
+├── QAfolderNEW/          # NEW structure QA files (for migration)
+│   └── {Username}_{Category}/
+│
+├── QAfolder/             # WORKING folder (input for Build)
 │   ├── John_Quest/       # {Username}_{Category}/
 │   │   ├── LQA.xlsx      # 1 xlsx per folder
 │   │   └── *.png         # Images with relative hyperlinks
@@ -97,19 +128,32 @@ QAExcelCompiler/
 │   │   ├── LQA.xlsx
 │   │   └── *.png
 │   └── ...
-├── Masterfolder/         # OUTPUT GOES HERE
+│
+├── Masterfolder_EN/      # EN tester output
 │   ├── Master_Quest.xlsx
 │   ├── Master_Knowledge.xlsx
-│   ├── ...
-│   ├── LQA_UserProgress_Tracker.xlsx  # Progress tracker
-│   └── Images/           # ALL images consolidated
-│       ├── John_Quest_10034.png
-│       └── Alice_Quest_10034.png
+│   └── Images/
+│
+├── Masterfolder_CN/      # CN tester output
+│   ├── Master_Quest.xlsx
+│   └── Images/
+│
+├── LQA_Tester_ProgressTracker.xlsx  # Combined progress tracker
+│
+├── datasheet_generators/  # Scripts that create QA source files
+│   ├── fullquest15.py       # Quest data extractor
+│   ├── fullknowledge14.py   # Knowledge data extractor
+│   ├── fullitem25.py        # Item data extractor
+│   ├── fullregion7.py       # Region data extractor
+│   ├── fullcharacter1.py    # Character data extractor
+│   ├── fullgimmick1.py      # Gimmick data extractor
+│   └── README.md
+│
 └── docs/
     ├── ROADMAP.md        # Project plan
     ├── WIP.md            # Technical details
-    ├── DAILY_STATUS_PLAN.md   # Tracker implementation plan
-    └── MANAGER_STATUS_PLAN.md # Manager status feature plan
+    ├── MIGRATION_PLAN.md # Migration feature plan
+    └── ...
 ```
 
 ---
