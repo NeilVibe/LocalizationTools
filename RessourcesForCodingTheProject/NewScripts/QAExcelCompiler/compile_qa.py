@@ -59,7 +59,23 @@ TESTER_MAPPING_FILE = SCRIPT_DIR / "languageTOtester_list.txt"
 # Progress Tracker at root level (combines all)
 TRACKER_PATH = SCRIPT_DIR / "LQA_Tester_ProgressTracker.xlsx"
 
+# Migration folders (for Transfer feature)
+QA_FOLDER_OLD = SCRIPT_DIR / "QAfolderOLD"
+QA_FOLDER_NEW = SCRIPT_DIR / "QAfolderNEW"
+
 CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character"]
+
+# Translation column positions by category
+# For matching rows during transfer
+TRANSLATION_COLS = {
+    # Quest, Knowledge, Character, Region: Col 2 for ENG, Col 3 for other
+    "Quest": {"eng": 2, "other": 3},
+    "Knowledge": {"eng": 2, "other": 3},
+    "Character": {"eng": 2, "other": 3},
+    "Region": {"eng": 2, "other": 3},
+    # Item: Col 5-6 for ENG (ItemName), Col 7-8 for other
+    "Item": {"eng": 5, "other": 7},
+}
 
 # Supported image extensions
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
@@ -2377,6 +2393,473 @@ def build_total_sheet(wb):
 # build_graphs_sheet removed - charts now embedded in DAILY/TOTAL
 
 
+# =============================================================================
+# TRANSFER FEATURE - Migrate tester work from OLD to NEW QA file structures
+# =============================================================================
+
+def sanitize_stringid_for_match(value):
+    """
+    Normalize STRINGID for comparison during transfer.
+
+    Handles:
+    - None values
+    - INT vs STRING type mismatch
+    - Scientific notation (e.g., "1.23E+15")
+    - Leading/trailing whitespace
+    """
+    if value is None:
+        return ""
+    s = str(value).strip()
+    # Handle scientific notation
+    if 'e' in s.lower():
+        try:
+            s = str(int(float(s)))
+        except (ValueError, OverflowError):
+            pass
+    return s
+
+
+def is_english_file(xlsx_path):
+    """Detect if file is English based on filename."""
+    name = str(xlsx_path).upper()
+    # Check for explicit language markers
+    if "_ENG" in name or "_EN." in name or "ENG_" in name:
+        return True
+    # Check for non-English markers
+    non_eng = ["_FRE", "_ZHO", "_JPN", "_DEU", "_SPA", "_ITA", "_POR", "_RUS", "_KOR"]
+    for marker in non_eng:
+        if marker in name:
+            return False
+    # Default to English if no markers found
+    return True
+
+
+def get_translation_column(category, is_english):
+    """
+    Get translation column index based on category and language.
+
+    Returns:
+        int: 1-based column index for the translation column
+    """
+    cols = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3})
+    return cols["eng"] if is_english else cols["other"]
+
+
+def discover_qa_folders_in(base_folder):
+    """
+    Discover QA folders in a given base folder.
+
+    Returns:
+        list of dict: [{username, category, xlsx_path, folder_path, images}, ...]
+    """
+    folders = []
+    if not base_folder.exists():
+        return folders
+
+    for folder in base_folder.iterdir():
+        if not folder.is_dir():
+            continue
+
+        # Parse folder name: {Username}_{Category}
+        folder_name = folder.name
+        if "_" not in folder_name:
+            continue
+
+        parts = folder_name.rsplit("_", 1)
+        if len(parts) != 2:
+            continue
+
+        username, category = parts
+        if category not in CATEGORIES:
+            continue
+
+        # Find xlsx file (skip temp files starting with ~)
+        xlsx_files = [f for f in folder.glob("*.xlsx") if not f.name.startswith("~")]
+        if not xlsx_files:
+            continue
+
+        # Use the largest xlsx file (likely the real one)
+        xlsx_path = max(xlsx_files, key=lambda x: x.stat().st_size)
+
+        # Collect images
+        images = [f for f in folder.iterdir()
+                  if f.suffix.lower() in IMAGE_EXTENSIONS]
+
+        folders.append({
+            "username": username,
+            "category": category,
+            "xlsx_path": xlsx_path,
+            "folder_path": folder,
+            "images": images,
+        })
+
+    return folders
+
+
+def find_matching_row_for_transfer(old_row_data, new_ws, category, is_english):
+    """
+    Find matching row in NEW file for OLD row data.
+
+    Uses 2-step cascade:
+    1. STRINGID + Translation match (exact)
+    2. Translation only match (fallback)
+
+    Args:
+        old_row_data: dict with {stringid, translation, row_num}
+        new_ws: New worksheet to search in
+        category: Category name for column detection
+        is_english: Whether file is English
+
+    Returns:
+        tuple: (new_row_num, match_type) or (None, None)
+        match_type: "stringid+trans" or "trans_only"
+    """
+    old_stringid = sanitize_stringid_for_match(old_row_data.get("stringid"))
+    old_trans = str(old_row_data.get("translation", "")).strip()
+
+    if not old_trans:
+        return None, None
+
+    trans_col = get_translation_column(category, is_english)
+    stringid_col = find_column_by_header(new_ws, "STRINGID")
+
+    # Step 1: Try STRINGID + Translation match
+    if old_stringid and stringid_col:
+        for row in range(2, new_ws.max_row + 1):
+            new_stringid = sanitize_stringid_for_match(new_ws.cell(row, stringid_col).value)
+            new_trans = str(new_ws.cell(row, trans_col).value or "").strip()
+
+            if new_stringid == old_stringid and new_trans == old_trans:
+                return row, "stringid+trans"
+
+    # Step 2: Fall back to Translation only
+    for row in range(2, new_ws.max_row + 1):
+        new_trans = str(new_ws.cell(row, trans_col).value or "").strip()
+        if new_trans == old_trans:
+            return row, "trans_only"
+
+    return None, None
+
+
+def transfer_sheet_data(old_ws, new_ws, category, is_english):
+    """
+    Transfer COMMENT/STATUS/SCREENSHOT from old sheet to new sheet.
+
+    Returns:
+        dict: {total, stringid_match, trans_only, unmatched}
+    """
+    stats = {
+        "total": 0,
+        "stringid_match": 0,
+        "trans_only": 0,
+        "unmatched": 0,
+    }
+
+    # Find columns in OLD file
+    old_trans_col = get_translation_column(category, is_english)
+    old_stringid_col = find_column_by_header(old_ws, "STRINGID")
+    old_comment_col = find_column_by_header(old_ws, "COMMENT")
+    old_status_col = find_column_by_header(old_ws, "STATUS")
+    old_screenshot_col = find_column_by_header(old_ws, "SCREENSHOT")
+
+    # Find columns in NEW file
+    new_comment_col = find_column_by_header(new_ws, "COMMENT")
+    new_status_col = find_column_by_header(new_ws, "STATUS")
+    new_screenshot_col = find_column_by_header(new_ws, "SCREENSHOT")
+
+    if not old_comment_col and not old_status_col:
+        return stats  # Nothing to transfer
+
+    # Process each row in OLD file
+    for old_row in range(2, old_ws.max_row + 1):
+        old_comment = old_ws.cell(old_row, old_comment_col).value if old_comment_col else None
+        old_status = old_ws.cell(old_row, old_status_col).value if old_status_col else None
+        old_screenshot = old_ws.cell(old_row, old_screenshot_col).value if old_screenshot_col else None
+
+        # Skip rows with no work
+        if not old_comment and not old_status:
+            continue
+
+        stats["total"] += 1
+
+        # Build old row data for matching
+        old_row_data = {
+            "stringid": old_ws.cell(old_row, old_stringid_col).value if old_stringid_col else None,
+            "translation": old_ws.cell(old_row, old_trans_col).value,
+            "row_num": old_row,
+        }
+
+        # Find matching row in NEW file
+        new_row, match_type = find_matching_row_for_transfer(old_row_data, new_ws, category, is_english)
+
+        if new_row is None:
+            stats["unmatched"] += 1
+            continue
+
+        if match_type == "stringid+trans":
+            stats["stringid_match"] += 1
+        else:
+            stats["trans_only"] += 1
+
+        # Transfer data to NEW row
+        if new_comment_col and old_comment:
+            new_ws.cell(new_row, new_comment_col, old_comment)
+        if new_status_col and old_status:
+            new_ws.cell(new_row, new_status_col, old_status)
+        if new_screenshot_col and old_screenshot:
+            new_ws.cell(new_row, new_screenshot_col, old_screenshot)
+
+    return stats
+
+
+def transfer_folder_data(old_folder, new_folder, output_dir):
+    """
+    Transfer all sheet data from OLD folder to NEW folder, save to output.
+
+    Args:
+        old_folder: dict with folder info from discover_qa_folders_in()
+        new_folder: dict with folder info from discover_qa_folders_in()
+        output_dir: Path to QAfolder (output)
+
+    Returns:
+        dict: {(username, category): {total, stringid_match, trans_only, unmatched}}
+    """
+    username = old_folder["username"]
+    category = old_folder["category"]
+    is_english = is_english_file(old_folder["xlsx_path"])
+
+    # Load workbooks
+    old_wb = safe_load_workbook(old_folder["xlsx_path"])
+    new_wb = safe_load_workbook(new_folder["xlsx_path"])
+
+    combined_stats = {
+        "total": 0,
+        "stringid_match": 0,
+        "trans_only": 0,
+        "unmatched": 0,
+    }
+
+    # Process each sheet that exists in both
+    for sheet_name in old_wb.sheetnames:
+        if sheet_name not in new_wb.sheetnames:
+            print(f"    WARN: Sheet '{sheet_name}' not in NEW file, skipping")
+            continue
+
+        old_ws = old_wb[sheet_name]
+        new_ws = new_wb[sheet_name]
+
+        sheet_stats = transfer_sheet_data(old_ws, new_ws, category, is_english)
+
+        # Accumulate stats
+        for key in combined_stats:
+            combined_stats[key] += sheet_stats[key]
+
+        if sheet_stats["total"] > 0:
+            print(f"    Sheet '{sheet_name}': {sheet_stats['stringid_match']}+{sheet_stats['trans_only']} transferred, {sheet_stats['unmatched']} unmatched")
+
+    # Create output folder
+    output_folder = output_dir / f"{username}_{category}"
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    # Save the new workbook with transferred data
+    output_xlsx = output_folder / new_folder["xlsx_path"].name
+    new_wb.save(output_xlsx)
+
+    # Copy images from OLD folder
+    for img in old_folder["images"]:
+        dest = output_folder / img.name
+        shutil.copy2(img, dest)
+
+    old_wb.close()
+    new_wb.close()
+
+    return {(username, category): combined_stats}
+
+
+def print_transfer_report(stats):
+    """Print formatted transfer report to terminal."""
+    print()
+    print("═" * 79)
+    print("                              TRANSFER REPORT")
+    print("═" * 79)
+    print()
+    print(f"{'Tester':<20}{'Category':<14}{'Total':>7}{'STRINGID+Trans':>17}{'Trans Only':>13}{'Success %':>12}")
+    print("─" * 79)
+
+    grand_total = grand_stringid = grand_trans = 0
+
+    for (tester, category), data in sorted(stats.items()):
+        total = data["total"]
+        stringid = data["stringid_match"]
+        trans = data["trans_only"]
+        success = (stringid + trans) / total * 100 if total > 0 else 0
+
+        print(f"{tester:<20}{category:<14}{total:>7}{stringid:>17}{trans:>13}{success:>11.1f}%")
+
+        grand_total += total
+        grand_stringid += stringid
+        grand_trans += trans
+
+    print("─" * 79)
+    grand_success = (grand_stringid + grand_trans) / grand_total * 100 if grand_total > 0 else 0
+    print(f"{'TOTAL':<20}{'':<14}{grand_total:>7}{grand_stringid:>17}{grand_trans:>13}{grand_success:>11.1f}%")
+    print("═" * 79)
+    print()
+    print("Legend:")
+    print("  STRINGID+Trans = Matched by STRINGID + Translation text (exact)")
+    print("  Trans Only     = Matched by Translation text only (fallback)")
+    unmatched = grand_total - grand_stringid - grand_trans
+    print(f"  Unmatched      = {unmatched} rows (not transferred)")
+    print()
+
+
+def transfer_qa_files():
+    """
+    Main transfer function: QAfolderOLD -> QAfolderNEW -> QAfolder
+
+    Returns:
+        bool: True if transfer completed successfully
+    """
+    print()
+    print("=" * 60)
+    print("QA File Transfer (OLD -> NEW structure)")
+    print("=" * 60)
+
+    # Check folders exist
+    if not QA_FOLDER_OLD.exists():
+        print(f"ERROR: QAfolderOLD not found at {QA_FOLDER_OLD}")
+        print("Please create QAfolderOLD/ with your OLD QA files.")
+        return False
+
+    if not QA_FOLDER_NEW.exists():
+        print(f"ERROR: QAfolderNEW not found at {QA_FOLDER_NEW}")
+        print("Please create QAfolderNEW/ with your NEW (empty) QA files.")
+        return False
+
+    # Discover folders
+    old_folders = discover_qa_folders_in(QA_FOLDER_OLD)
+    new_folders = discover_qa_folders_in(QA_FOLDER_NEW)
+
+    if not old_folders:
+        print("ERROR: No valid QA folders found in QAfolderOLD/")
+        return False
+
+    if not new_folders:
+        print("ERROR: No valid QA folders found in QAfolderNEW/")
+        return False
+
+    print(f"Found {len(old_folders)} OLD folder(s), {len(new_folders)} NEW folder(s)")
+
+    # Build lookup for NEW folders
+    new_lookup = {f"{f['username']}_{f['category']}": f for f in new_folders}
+
+    # Transfer each OLD folder
+    all_stats = {}
+
+    for old_folder in old_folders:
+        key = f"{old_folder['username']}_{old_folder['category']}"
+        print(f"\nTransferring: {key}")
+
+        if key not in new_lookup:
+            print(f"  WARN: No matching NEW folder for {key}, skipping")
+            continue
+
+        new_folder = new_lookup[key]
+        folder_stats = transfer_folder_data(old_folder, new_folder, QA_FOLDER)
+        all_stats.update(folder_stats)
+
+    # Print report
+    if all_stats:
+        print_transfer_report(all_stats)
+
+    print("Transfer complete!")
+    print(f"Output: {QA_FOLDER}")
+    print("You can now run 'Build Masterfiles' to compile.")
+
+    return True
+
+
+# =============================================================================
+# GUI - Main application window with Transfer and Build buttons
+# =============================================================================
+
+def run_gui():
+    """Launch the GUI application."""
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+
+    class QACompilerGUI:
+        def __init__(self, root):
+            self.root = root
+            self.root.title("QA Excel Compiler")
+            self.root.geometry("450x250")
+            self.root.resizable(False, False)
+
+            # Title
+            title_label = tk.Label(
+                root,
+                text="QA Excel Compiler",
+                font=("Arial", 16, "bold")
+            )
+            title_label.pack(pady=15)
+
+            # Transfer button
+            transfer_btn = ttk.Button(
+                root,
+                text="Transfer QA Files\n(QAfolderOLD → QAfolder)",
+                command=self.do_transfer,
+                width=35
+            )
+            transfer_btn.pack(pady=10, ipady=10)
+
+            # Build button
+            build_btn = ttk.Button(
+                root,
+                text="Build Masterfiles\n(QAfolder → Masterfolder)",
+                command=self.do_build,
+                width=35
+            )
+            build_btn.pack(pady=10, ipady=10)
+
+            # Status label
+            self.status_var = tk.StringVar(value="Ready")
+            status_label = tk.Label(
+                root,
+                textvariable=self.status_var,
+                font=("Arial", 10),
+                fg="gray"
+            )
+            status_label.pack(pady=15)
+
+        def do_transfer(self):
+            self.status_var.set("Transferring...")
+            self.root.update()
+            try:
+                success = transfer_qa_files()
+                if success:
+                    self.status_var.set("Transfer complete!")
+                    messagebox.showinfo("Success", "Transfer completed!\nCheck console for details.")
+                else:
+                    self.status_var.set("Transfer failed - check console")
+                    messagebox.showerror("Error", "Transfer failed.\nCheck console for details.")
+            except Exception as e:
+                self.status_var.set("Error occurred")
+                messagebox.showerror("Error", f"Transfer failed:\n{str(e)}")
+
+        def do_build(self):
+            self.status_var.set("Building...")
+            self.root.update()
+            try:
+                main()
+                self.status_var.set("Build complete!")
+                messagebox.showinfo("Success", "Build completed!\nCheck console for details.")
+            except Exception as e:
+                self.status_var.set("Error occurred")
+                messagebox.showerror("Error", f"Build failed:\n{str(e)}")
+
+    root = tk.Tk()
+    app = QACompilerGUI(root)
+    root.mainloop()
 
 
 def process_category(category, qa_folders, master_folder, images_folder, lang_label, manager_status=None):
@@ -2655,4 +3138,23 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Check for command-line arguments
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].lower()
+        if arg in ("--build", "-b", "build"):
+            main()
+        elif arg in ("--transfer", "-t", "transfer"):
+            transfer_qa_files()
+        elif arg in ("--help", "-h", "help"):
+            print("QA Excel Compiler")
+            print()
+            print("Usage:")
+            print("  python compile_qa.py          Launch GUI")
+            print("  python compile_qa.py --build  Run build directly")
+            print("  python compile_qa.py --transfer  Run transfer directly")
+        else:
+            print(f"Unknown argument: {arg}")
+            print("Use --help for usage information")
+    else:
+        # Default: Launch GUI
+        run_gui()

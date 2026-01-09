@@ -385,6 +385,46 @@ def extract_comment_text(full_comment):
 
 ## Implementation Steps
 
+### Coding Plan (Step-by-Step)
+
+**Phase A: Setup**
+| Step | Task | Function/Code |
+|------|------|---------------|
+| A1 | Add tkinter GUI with Transfer/Build buttons | `QACompilerGUI` class |
+| A2 | Add QAfolderOLD, QAfolderNEW folder constants | Config section |
+| A3 | Detect folders for transfer | `discover_qa_folders_for_transfer()` |
+
+**Phase B: STRINGID Sanitization**
+| Step | Task | Function/Code |
+|------|------|---------------|
+| B1 | Sanitize STRINGID when reading for matching | `sanitize_stringid_for_match()` |
+
+**Phase C: Transfer Core Logic**
+| Step | Task | Function/Code |
+|------|------|---------------|
+| C1 | Detect translation column by category | `find_translation_column()` |
+| C2 | 2-step cascade row matching | `find_matching_row_for_transfer()` |
+| C3 | Copy COMMENT/STATUS/SCREENSHOT to new row | `transfer_row_data()` |
+| C4 | Transfer one folder (OLD→NEW→QAfolder) | `transfer_folder_data()` |
+| C5 | Main transfer orchestrator | `transfer_qa_files()` |
+
+**Phase D: Transfer Report**
+| Step | Task | Function/Code |
+|------|------|---------------|
+| D1 | Collect transfer stats per tester | `transfer_stats` dict |
+| D2 | Print formatted terminal report | `print_transfer_report()` |
+
+**Phase E: Integration**
+| Step | Task | Function/Code |
+|------|------|---------------|
+| E1 | Wire "Transfer" button to `transfer_qa_files()` | GUI callback |
+| E2 | Wire "Build" button to existing `main()` | GUI callback |
+| E3 | Test with real QA files | Manual testing |
+
+**Code Location:** All new code goes in `compile_qa.py` (monolith approach)
+
+---
+
 ### Step 1: Add GUI Framework
 
 ```python
