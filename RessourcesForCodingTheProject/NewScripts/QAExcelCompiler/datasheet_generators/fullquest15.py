@@ -408,6 +408,39 @@ def build_command(
 # ─────────────────────────────────────────────────────────────────────────────
 Row = Tuple[int, str, str, str, str, str, bool, bool, str, str, str, str]
 
+
+def dedupe_rows(rows: List[Row], is_eng: bool) -> List[Row]:
+    """
+    Remove duplicate rows based on (Korean, Translation, STRINGID).
+
+    For ENG: key = (orig, eng, sid) = indices (1, 2, 5)
+    For non-ENG: key = (orig, loc, sid) = indices (1, 3, 5)
+
+    Keeps first occurrence of each duplicate.
+    """
+    seen = set()
+    result = []
+    duplicates = 0
+
+    for row in rows:
+        orig = row[1]  # Korean
+        trans = row[2] if is_eng else row[3]  # ENG or LOC
+        sid = row[5]   # STRINGID
+
+        key = (orig, trans, sid)
+        if key in seen:
+            duplicates += 1
+            continue
+
+        seen.add(key)
+        result.append(row)
+
+    if duplicates > 0:
+        log.info("    Removed %d duplicate rows (Korean+Translation+STRINGID)", duplicates)
+
+    return result
+
+
 _depth_fill = {
     0: PatternFill("solid", fgColor="FFD966"),
     1: PatternFill("solid", fgColor="D9E1F2"),
@@ -1049,6 +1082,13 @@ def write_sheet(
     status_col_idx = headers.index("STATUS") + 1
     _add_status_validation(ws, status_col_idx, ws.max_row)
 
+    # ─────────────────────────────────────────────────────────────
+    # Force STRINGID column to text format (prevents scientific notation)
+    # ─────────────────────────────────────────────────────────────
+    stringid_col_idx = headers.index("STRINGID") + 1
+    for row in range(2, ws.max_row + 1):
+        ws.cell(row, stringid_col_idx).number_format = '@'
+
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1180,9 +1220,11 @@ def main() -> None:
         if "Minigame Quest" in sheet_data:
             ordered.append("Minigame Quest")
 
+        is_eng = code.lower().startswith("eng")
         for title in ordered:
             if title in sheet_data and sheet_data[title]:
-                write_sheet(wb, title, sheet_data[title], code)
+                deduped = dedupe_rows(sheet_data[title], is_eng)
+                write_sheet(wb, title, deduped, code)
 
         out = OUTPUT_FOLDER / f"Quest_LQA_{code.upper()}.xlsx"
         wb.save(out)

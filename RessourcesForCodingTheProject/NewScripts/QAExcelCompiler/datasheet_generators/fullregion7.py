@@ -895,15 +895,28 @@ def write_sheet_content(
         c.border = _border
     sheet.row_dimensions[1].height = 25
     
-    # Data rows
-    for r_idx, (depth, text, style_type, is_desc) in enumerate(rows, start=2):
+    # Data rows (with deduplication)
+    seen_keys = set()
+    duplicates_removed = 0
+    r_idx = 2
+
+    for (depth, text, style_type, is_desc) in rows:
         fill, font, row_height = get_style(style_type)
         normalized = normalize_placeholders(text)
-        
+
         trans_eng, sid_eng = eng_tbl.get(normalized, ("", ""))
         trans_other = sid_other = ""
         if not is_eng and lang_tbl:
             trans_other, sid_other = lang_tbl.get(normalized, ("", ""))
+
+        # Deduplication: skip if (Korean, Translation, STRINGID) already seen
+        trans = trans_eng if is_eng else trans_other
+        sid = sid_eng if is_eng else sid_other
+        dedup_key = (text, trans, sid)
+        if dedup_key in seen_keys:
+            duplicates_removed += 1
+            continue
+        seen_keys.add(dedup_key)
         
         # Original
         c_orig = sheet.cell(r_idx, 1, text)
@@ -935,7 +948,15 @@ def write_sheet_content(
         
         if row_height:
             sheet.row_dimensions[r_idx].height = row_height
-    
+
+        r_idx += 1
+
+    # Log duplicates removed
+    if duplicates_removed > 0:
+        log.info("    Removed %d duplicate rows (Korean+Translation+STRINGID)", duplicates_removed)
+
+    last_row = r_idx - 1  # Actual last row written
+
     # Column widths
     widths = [40, 80] + ([] if is_eng else [80]) + [15, 70, 25, 25]
     for idx, w in enumerate(widths, start=1):
@@ -953,8 +974,13 @@ def write_sheet_content(
         allow_blank=True,
     )
     col_letter = get_column_letter(status_col)
-    dv.add(f"{col_letter}2:{col_letter}{sheet.max_row}")
+    dv.add(f"{col_letter}2:{col_letter}{last_row}")
     sheet.add_data_validation(dv)
+
+    # Force STRINGID column to text format (prevents scientific notation)
+    stringid_col = 5 if is_eng else 6  # col_offset + 3
+    for row in range(2, last_row + 1):
+        sheet.cell(row, stringid_col).number_format = '@'
 
 
 def write_workbook(

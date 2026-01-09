@@ -697,8 +697,12 @@ def write_workbook(
             hcell.border = _border
         ws.row_dimensions[1].height = 25
 
-        # ─── Data rows ────────────────────────────────────────────────
-        for r_idx, (depth, text, needs_tr, is_icon, is_name_attr) in enumerate(rows, start=2):
+        # ─── Data rows (with deduplication) ───────────────────────────
+        seen_keys = set()
+        duplicates_removed = 0
+        r_idx = 2
+
+        for (depth, text, needs_tr, is_icon, is_name_attr) in rows:
             fill, font, rh = _get_style_for_depth(depth, is_icon)
             if depth >= 2:
                 if is_name_attr or fill != _no_colour_fill:
@@ -715,6 +719,15 @@ def write_workbook(
             other_tr, sid_other = ("", "")
             if needs_tr and not is_eng and lang_tbl is not None:
                 other_tr, sid_other = lang_tbl.get(norm_text, ("", ""))
+
+            # Deduplication: skip if (Korean, Translation, STRINGID) already seen
+            trans = eng_tr if is_eng else other_tr
+            sid = sid_eng if is_eng else sid_other
+            dedup_key = (text, trans, sid)
+            if dedup_key in seen_keys:
+                duplicates_removed += 1
+                continue
+            seen_keys.add(dedup_key)
 
             # Write core columns
             c_orig = ws.cell(r_idx, 1, text)
@@ -742,6 +755,12 @@ def write_workbook(
 
             if rh is not None:
                 ws.row_dimensions[r_idx].height = rh
+
+            r_idx += 1
+
+        # Log duplicates removed
+        if duplicates_removed > 0:
+            log.info("    Removed %d duplicate rows (Korean+Translation+STRINGID)", duplicates_removed)
 
         # ─── Column widths / visibility ───────────────────────────────
         ws.column_dimensions["A"].width = 40
@@ -774,10 +793,16 @@ def write_workbook(
             errorStyle="stop",
         )
         ws.add_data_validation(dv)
-        last_row = len(rows) + 1
+        last_row = r_idx - 1  # Actual last row written (after dedup)
         dv.add(f"${status_letter}$2:${status_letter}${last_row}")
 
-        log.info("  Sheet '%s': %d rows", title, len(rows))
+        # Force STRINGID column to text format (prevents scientific notation)
+        stringid_col_idx = 5 if is_eng else 6  # E for ENG, F for non-ENG
+        for row in range(2, last_row + 1):
+            ws.cell(row, stringid_col_idx).number_format = '@'
+
+        actual_rows = last_row - 1  # Rows written (excluding header)
+        log.info("  Sheet '%s': %d rows", title, actual_rows)
 
     if wb.worksheets:
         wb.save(out_path)

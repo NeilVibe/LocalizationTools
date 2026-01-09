@@ -122,14 +122,14 @@ Compile QA tester Excel files into master sheets with automatic STATUS tracking,
 - EN Item: Sorted A-Z by `ItemName(ENG)` column, then index matching
 - CN Item: Original order, direct index matching
 
-### Phase 10: Migration Support (NEW - 2026-01-09)
+### Phase 10: Migration Support ✅ (2026-01-09)
 | Task | Description | Status |
 |------|-------------|--------|
-| 10.1 | Add GUI with Transfer/Build buttons | ⏳ TODO |
-| 10.2 | Implement QA file transfer (QAfolderOLD → QAfolder) | ⏳ TODO |
-| 10.3 | Content-based matching (Translation + STRINGID cascade) | ⏳ TODO |
-| 10.4 | Manager status preservation (COMMENT → STATUS lookup) | ⏳ TODO |
-| 10.5 | Create QAfolderOLD/ and QAfolderNEW/ folder structure | ⏳ TODO |
+| 10.1 | Add GUI with Transfer/Build buttons | ✅ DONE |
+| 10.2 | Implement QA file transfer (QAfolderOLD → QAfolder) | ✅ DONE |
+| 10.3 | Content-based matching (Translation + STRINGID cascade) | ✅ DONE |
+| 10.4 | Manager status preservation (COMMENT → STATUS lookup) | ✅ DONE |
+| 10.5 | Create QAfolderOLD/ and QAfolderNEW/ folder structure | ✅ DONE |
 
 **Migration Workflow:**
 ```
@@ -359,4 +359,6 @@ This ensures `QAfolder/`, `Masterfolder_EN/`, etc. are found next to the `.exe` 
 
 *Roadmap created 2025-12-30*
 *Implemented 2026-01-02*
-*Updated 2026-01-09: Phase 10 Migration Support added*
+*Updated 2026-01-09: Phase 10 Migration Support completed*
+*Updated 2026-01-09: Added STRINGID sanitization + duplicate row filtering to all generators*
+*Updated 2026-01-09: Added duplicate translation report during Transfer*

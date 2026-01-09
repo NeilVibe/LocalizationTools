@@ -2612,6 +2612,113 @@ def transfer_sheet_data(old_ws, new_ws, category, is_english):
     return stats
 
 
+def detect_duplicate_translations(old_wb, category, is_english):
+    """
+    Detect translations that appear multiple times with DIFFERENT comments.
+
+    This helps identify potential data loss during Transfer Step 2 (translation-only match)
+    where we take the first match but other comments might be lost.
+
+    Args:
+        old_wb: OLD workbook
+        category: Category name
+        is_english: Whether file is English
+
+    Returns:
+        dict: {sheet_name: [(translation, [comment1, comment2, ...]), ...]}
+    """
+    duplicates = {}
+
+    for sheet_name in old_wb.sheetnames:
+        old_ws = old_wb[sheet_name]
+        trans_col = get_translation_column(category, is_english)
+        comment_col = find_column_by_header(old_ws, "COMMENT")
+
+        if not comment_col:
+            continue
+
+        # Group comments by translation
+        trans_to_comments = {}
+        for row in range(2, old_ws.max_row + 1):
+            trans = str(old_ws.cell(row, trans_col).value or "").strip()
+            comment = str(old_ws.cell(row, comment_col).value or "").strip()
+
+            if not trans or not comment:
+                continue
+
+            if trans not in trans_to_comments:
+                trans_to_comments[trans] = set()
+            trans_to_comments[trans].add(comment)
+
+        # Find translations with multiple different comments
+        sheet_duplicates = []
+        for trans, comments in trans_to_comments.items():
+            if len(comments) > 1:
+                sheet_duplicates.append((trans, sorted(comments)))
+
+        if sheet_duplicates:
+            duplicates[sheet_name] = sheet_duplicates
+
+    return duplicates
+
+
+def write_duplicate_translation_report(duplicates, output_folder, username, category):
+    """
+    Write a report file listing translations with different comments.
+
+    Args:
+        duplicates: dict from detect_duplicate_translations()
+        output_folder: Path to user's output folder
+        username: Tester username
+        category: Category name
+    """
+    if not duplicates:
+        return None
+
+    report_path = output_folder / "DUPLICATE_TRANSLATION_REPORT.txt"
+
+    total_count = sum(len(items) for items in duplicates.values())
+
+    lines = [
+        "=" * 70,
+        "DUPLICATE TRANSLATION REPORT",
+        "=" * 70,
+        f"Tester: {username}",
+        f"Category: {category}",
+        f"Total duplicates: {total_count}",
+        "",
+        "These translations appear multiple times with DIFFERENT comments.",
+        "During transfer, only the FIRST comment was kept.",
+        "Review this list to ensure no important feedback was lost.",
+        "",
+        "-" * 70,
+        "",
+    ]
+
+    for sheet_name, items in sorted(duplicates.items()):
+        lines.append(f"Sheet: {sheet_name}")
+        lines.append("-" * 40)
+
+        for trans, comments in items:
+            # Truncate long translations for readability
+            trans_display = trans[:80] + "..." if len(trans) > 80 else trans
+            lines.append(f"\nTranslation: {trans_display}")
+            lines.append("Comments:")
+            for i, comment in enumerate(comments, 1):
+                comment_display = comment[:100] + "..." if len(comment) > 100 else comment
+                lines.append(f"  {i}. {comment_display}")
+
+        lines.append("")
+
+    lines.append("=" * 70)
+    lines.append("End of report")
+
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    return report_path
+
+
 def transfer_folder_data(old_folder, new_folder, output_dir):
     """
     Transfer all sheet data from OLD folder to NEW folder, save to output.
@@ -2660,6 +2767,15 @@ def transfer_folder_data(old_folder, new_folder, output_dir):
     # Create output folder
     output_folder = output_dir / f"{username}_{category}"
     output_folder.mkdir(parents=True, exist_ok=True)
+
+    # Detect duplicate translations with different comments
+    duplicates = detect_duplicate_translations(old_wb, category, is_english)
+    if duplicates:
+        report_path = write_duplicate_translation_report(duplicates, output_folder, username, category)
+        if report_path:
+            total_dups = sum(len(items) for items in duplicates.values())
+            print(f"    WARNING: {total_dups} translations have different comments!")
+            print(f"    Report: {report_path.name}")
 
     # Save the new workbook with transferred data
     output_xlsx = output_folder / new_folder["xlsx_path"].name
