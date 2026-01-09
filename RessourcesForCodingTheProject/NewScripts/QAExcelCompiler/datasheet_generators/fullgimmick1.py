@@ -809,11 +809,8 @@ def main() -> None:
         wb = Workbook()
         wb.remove(wb.active)
 
-        # Sheet 1: Hierarchical DropItem view
+        # Sheet 1: Hierarchical DropItem view (only sheet needed)
         write_dropitem_sheet(wb, code, entries, items, tbl, eng_tbl, id_tbl)
-
-        # Sheet 2: Flat view
-        write_flat_sheet(wb, code, entries, items, tbl, eng_tbl, id_tbl)
 
         # Save
         out_path = OUTPUT_FOLDER / f"Gimmick_LQA_{code.upper()}.xlsx"
