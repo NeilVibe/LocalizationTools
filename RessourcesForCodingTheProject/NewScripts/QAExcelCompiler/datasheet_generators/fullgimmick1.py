@@ -527,8 +527,10 @@ def write_dropitem_sheet(
         if h in hidden_cols:
             ws.column_dimensions[get_column_letter(idx)].hidden = True
 
-    # Build hierarchical rows
+    # Build hierarchical rows (with deduplication for Item rows)
     rows_data: List[Tuple[List, int, str]] = []
+    seen_item_keys = set()
+    duplicates_removed = 0
     last_group = None
     last_gimmick = None
 
@@ -555,10 +557,21 @@ def write_dropitem_sheet(
             desc_loc = translate(lang_tbl if lang_code != "eng" else eng_tbl, item_desc_kor)
             cmd = f"/create item {item_key}"
             sid = get_string_id(lang_tbl, item_kor) or get_string_id(eng_tbl, item_kor)
+
+            # Deduplication: skip if (Korean, Translation, StringID) already seen
+            dedup_key = (item_kor, item_loc, sid)
+            if dedup_key in seen_item_keys:
+                duplicates_removed += 1
+                continue
+            seen_item_keys.add(dedup_key)
+
             row = [2, "Item", entry.group_name_kor, translate(lang_tbl if lang_code != "eng" else eng_tbl, entry.group_name_kor),
                    entry.gimmick_strkey, entry.gimmick_name_kor, translate(lang_tbl if lang_code != "eng" else eng_tbl, entry.gimmick_name_kor),
                    item_key, item_kor, item_loc, item_desc_kor, desc_loc, cmd, sid, ""]
             rows_data.append((row, 2, "Item"))
+
+    if duplicates_removed > 0:
+        log.info("    Removed %d duplicate Item rows (Korean+Translation+StringID)", duplicates_removed)
 
     # Write rows
     for r_idx, (row, depth, row_type) in enumerate(rows_data, start=2):
@@ -579,6 +592,11 @@ def write_dropitem_sheet(
     # Add STATUS validation
     status_col_idx = headers.index("STATUS") + 1
     _add_status_validation(ws, status_col_idx, ws.max_row)
+
+    # Force StringID column to text format (prevents scientific notation)
+    stringid_col_idx = headers.index("StringID") + 1
+    for row in range(2, ws.max_row + 1):
+        ws.cell(row, stringid_col_idx).number_format = '@'
 
     # Finalize
     last_col = get_column_letter(len(headers))

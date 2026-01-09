@@ -78,6 +78,16 @@ This launches a GUI with two buttons:
 3. Click "Transfer QA Files"
 4. Tester work (COMMENT/STATUS/SCREENSHOT) transfers to `QAfolder/`
 
+**Transfer Matching Logic:**
+- **Step 1:** STRINGID + Translation (exact match)
+- **Step 2:** Translation only (fallback for rows that didn't match in Step 1)
+
+**Duplicate Translation Report:**
+If same translation appears multiple times with different comments, a report is generated:
+- `QAfolder/{Username}_{Category}/DUPLICATE_TRANSLATION_REPORT.txt`
+- Lists translations where only the first comment was kept
+- Review to ensure no important feedback was lost
+
 **Build Masterfiles** - Normal compilation:
 1. Place QA files in `QAfolder/`
 2. Click "Build Masterfiles"

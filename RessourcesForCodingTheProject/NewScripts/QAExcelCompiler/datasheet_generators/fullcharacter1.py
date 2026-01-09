@@ -457,8 +457,12 @@ def write_workbook(
             c.border = _border
         sheet.row_dimensions[1].height = 25
 
-        # Write data rows
-        for r_idx, char in enumerate(characters, start=2):
+        # Write data rows (with deduplication)
+        seen_keys = set()
+        duplicates_removed = 0
+        r_idx = 2
+
+        for char in characters:
             fill = _row_fill_even if r_idx % 2 == 0 else _row_fill_odd
             normalized_name = normalize_placeholders(char.name)
 
@@ -466,6 +470,15 @@ def write_workbook(
             trans_other, sid_other = ("", "")
             if not is_eng and lang_tbl is not None:
                 trans_other, sid_other = lang_tbl.get(normalized_name, ("", ""))
+
+            # Deduplication: skip if (Korean, Translation, STRINGID) already seen
+            trans = trans_eng if is_eng else trans_other
+            sid = sid_eng if is_eng else sid_other
+            dedup_key = (char.name, trans, sid)
+            if dedup_key in seen_keys:
+                duplicates_removed += 1
+                continue
+            seen_keys.add(dedup_key)
 
             command = f"/create character {char.strkey}"
 
@@ -502,6 +515,14 @@ def write_workbook(
             c_screenshot = sheet.cell(r_idx, col, "")
             _apply_cell_style(c_screenshot, fill, _normal_font)
 
+            r_idx += 1
+
+        # Log duplicates removed
+        if duplicates_removed > 0:
+            log.info("    Removed %d duplicate rows (Korean+Translation+STRINGID)", duplicates_removed)
+
+        last_row = r_idx - 1  # Actual last row written
+
         # Column widths
         sheet.column_dimensions["A"].width = 30
         sheet.column_dimensions["B"].hidden = not is_eng
@@ -522,9 +543,15 @@ def write_workbook(
 
         # Add strict STATUS validation
         status_col_idx = 5 if not is_eng else 4
-        _add_status_validation(sheet, status_col_idx, sheet.max_row)
+        _add_status_validation(sheet, status_col_idx, last_row)
 
-        log.info("  Sheet '%s': %d rows", title, len(characters))
+        # Force STRINGID column to text format (prevents scientific notation)
+        stringid_col_idx = 7 if not is_eng else 6
+        for row in range(2, last_row + 1):
+            sheet.cell(row, stringid_col_idx).number_format = '@'
+
+        actual_rows = last_row - 1  # Rows written (excluding header)
+        log.info("  Sheet '%s': %d rows", title, actual_rows)
 
     if wb.worksheets:
         wb.save(out_path)

@@ -796,14 +796,27 @@ def write_primary_sheet(
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = _border
 
-    # -------------------- Write data rows --------------------
+    # -------------------- Write data rows (with deduplication) --------------------
+    is_eng = lang_code.lower() == "eng"
+    seen_keys = set()
+    duplicates_removed = 0
     r = 2
+
     for row in rows:
         (
             depth, gk, gkor, geng, gloc,
             ik, num, nkor, neng, nloc,
             dkor, deng, dloc, sid, is_group
         ) = row
+
+        # Deduplication: skip if (Korean, Translation, STRINGID) already seen
+        # nkor = ItemName(KOR), neng = ItemName(ENG), nloc = ItemName(LOC)
+        trans = neng if is_eng else nloc
+        dedup_key = (nkor, trans, sid)
+        if dedup_key in seen_keys:
+            duplicates_removed += 1
+            continue
+        seen_keys.add(dedup_key)
 
         vals = [depth, gk, gkor, geng]
         vals += [ik, num, nkor, neng]
@@ -836,6 +849,9 @@ def write_primary_sheet(
                 c.fill = _item_fill
         r += 1
 
+    if duplicates_removed > 0:
+        log.info("    Removed %d duplicate rows (Korean+Translation+STRINGID)", duplicates_removed)
+
     # -------------------- Sheet cosmetics --------------------
     last_col_letter = get_column_letter(len(headers))
     ws.auto_filter.ref = f"A1:{last_col_letter}{r-1}"
@@ -848,6 +864,11 @@ def write_primary_sheet(
     # -------------------- Add STATUS drop-down --------------------
     status_col_idx = headers.index("STATUS") + 1
     _add_status_validation(ws, status_col_idx, ws.max_row)
+
+    # Force STRINGID column to text format (prevents scientific notation)
+    stringid_col_idx = headers.index("STRINGID") + 1
+    for row in range(2, r):
+        ws.cell(row, stringid_col_idx).number_format = '@'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TEXT FILE GENERATION
@@ -989,6 +1010,10 @@ def write_secondary_excel(
                 ws.column_dimensions[get_column_letter(idx)].hidden = True
 
         rows_accum: List[Tuple[str, str, List[str]]] = []
+        seen_keys = set()
+        duplicates_removed = 0
+        is_eng = lang_code.lower() == "eng"
+
         for fn, subgroup_key, iks in flist:
             for ik in sorted(iks):
                 itm = items.get(ik)
@@ -1011,8 +1036,22 @@ def write_secondary_excel(
                 if lang_code != "eng":
                     data_map[f"ItemName({code})"] = t(lang_tbl, itm.item_name)
                     data_map[f"ItemDesc({code})"] = t(lang_tbl, itm.item_desc)
+
+                # Deduplication: skip if (Korean, Translation, STRINGID) already seen
+                korean = data_map["ItemName(KOR)"]
+                trans = data_map["ItemName(ENG)"] if is_eng else data_map.get(f"ItemName({code})", "")
+                sid = data_map["STRINGID"]
+                dedup_key = (korean, trans, sid)
+                if dedup_key in seen_keys:
+                    duplicates_removed += 1
+                    continue
+                seen_keys.add(dedup_key)
+
                 row_vals = [data_map.get(h, "") for h in headers]
                 rows_accum.append((sub_disp, ik, row_vals))
+
+        if duplicates_removed > 0:
+            log.info("    Removed %d duplicate rows (Korean+Translation+STRINGID)", duplicates_removed)
 
         rows_accum.sort(key=lambda x: (x[0], x[1]))
         fill_a = PatternFill("solid", fgColor="E2EFDA")
@@ -1047,6 +1086,11 @@ def write_secondary_excel(
         # -------------------- Add STATUS drop-down --------------------
         status_col_idx = headers.index("STATUS") + 1
         _add_status_validation(ws, status_col_idx, ws.max_row)
+
+        # Force STRINGID column to text format (prevents scientific notation)
+        stringid_col_idx = headers.index("STRINGID") + 1
+        for row in range(2, excel_row):
+            ws.cell(row, stringid_col_idx).number_format = '@'
 
         log.info("  Sheet '%s': %d rows", title, excel_row-2)
 

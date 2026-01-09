@@ -36,6 +36,19 @@ STRINGID comes from the `StringId` attribute in LanguageData XML files:
 
 The scripts extract this directly - no transformation needed.
 
+## Data Quality Features
+
+### STRINGID Sanitization
+All STRINGID cells are formatted as text (`number_format='@'`) to prevent:
+- Excel converting large numbers to scientific notation (e.g., `1.23E+15`)
+- Integer vs string type mismatches during matching
+
+### Duplicate Row Filtering
+Rows with identical **(Korean + Translation + STRINGID)** are automatically removed.
+- Keeps first occurrence, removes duplicates
+- Logs count of removed duplicates during generation
+- Prevents testers from reviewing the same content twice
+
 ## Usage
 
 1. Configure paths at top of script (RESOURCE_FOLDER, LANGUAGE_FOLDER)
