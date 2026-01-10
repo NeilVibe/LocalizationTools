@@ -856,7 +856,7 @@ def write_primary_sheet(
         col_letter = get_column_letter(status_col_idx)
         dv = DataValidation(
             type="list",
-            formula1='"ISSUE,NO ISSUE,BLOCKED"',
+            formula1='"ISSUE,NO ISSUE,BLOCKED,KOREAN"',
             allow_blank=True,
             showErrorMessage=True,
         )
@@ -1047,7 +1047,7 @@ def write_secondary_excel(
         col_letter = get_column_letter(status_col_idx)
         dv = DataValidation(
             type="list",
-            formula1='"ISSUE,NO ISSUE,BLOCKED"',
+            formula1='"ISSUE,NO ISSUE,BLOCKED,KOREAN"',
             allow_blank=True,
             showErrorMessage=True,
         )

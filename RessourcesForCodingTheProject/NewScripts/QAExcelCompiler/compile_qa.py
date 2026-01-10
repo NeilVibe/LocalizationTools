@@ -92,7 +92,7 @@ ITEM_DESC_COLS = {
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 
 # Valid STATUS values (only these count as "filled")
-VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED"]
+VALID_STATUS = ["ISSUE", "NO ISSUE", "BLOCKED", "KOREAN"]
 
 # Valid MANAGER STATUS values (for manager workflow)
 VALID_MANAGER_STATUS = ["FIXED", "REPORTED", "CHECKING", "NON-ISSUE"]
@@ -926,7 +926,7 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
     result = {
         "comments": 0,
         "screenshots": 0,
-        "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "total": 0},
+        "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "korean": 0, "total": 0},
         "manager_restored": 0
     }
 
@@ -948,6 +948,8 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                     result["stats"]["no_issue"] += 1
                 elif status_upper == "BLOCKED":
                     result["stats"]["blocked"] += 1
+                elif status_upper == "KOREAN":
+                    result["stats"]["korean"] += 1
 
         # Get QA COMMENT and STRINGID, copy to master with styling
         # ONLY compile comments where STATUS = ISSUE (for Actual Issues % calculation)
@@ -3114,7 +3116,7 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
 
     # Track users and aggregated stats
     all_users = set()
-    user_stats = defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0})
+    user_stats = defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0})
     total_images = 0
     total_screenshots = 0
 
@@ -3166,7 +3168,8 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
 
             manager_info = f", manager_restored:{result['manager_restored']}" if result.get('manager_restored', 0) > 0 else ""
             screenshot_info = f", screenshots:{result['screenshots']}" if result.get('screenshots', 0) > 0 else ""
-            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked{manager_info}{screenshot_info}")
+            korean_info = f", korean:{stats['korean']}" if stats.get('korean', 0) > 0 else ""
+            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked{korean_info}{manager_info}{screenshot_info}")
 
             total_screenshots += result.get('screenshots', 0)
 
@@ -3175,6 +3178,7 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
             user_stats[username]["issue"] += stats["issue"]
             user_stats[username]["no_issue"] += stats["no_issue"]
             user_stats[username]["blocked"] += stats["blocked"]
+            user_stats[username]["korean"] += stats.get("korean", 0)
 
         qa_wb.close()
 
@@ -3185,10 +3189,11 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
             "category": category,
             "lang": lang_label,  # EN or CN for tracker separation
             "total_rows": user_stats[username]["total"],  # Total universe of rows
-            "done": user_stats[username]["issue"] + user_stats[username]["no_issue"] + user_stats[username]["blocked"],
+            "done": user_stats[username]["issue"] + user_stats[username]["no_issue"] + user_stats[username]["blocked"] + user_stats[username]["korean"],
             "issues": user_stats[username]["issue"],
             "no_issue": user_stats[username]["no_issue"],
-            "blocked": user_stats[username]["blocked"]
+            "blocked": user_stats[username]["blocked"],
+            "korean": user_stats[username]["korean"]
         })
 
     # Update STATUS sheet (first tab, with stats)
