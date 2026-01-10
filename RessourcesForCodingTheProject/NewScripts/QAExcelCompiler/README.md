@@ -79,8 +79,15 @@ This launches a GUI with two buttons:
 4. Tester work (COMMENT/STATUS/SCREENSHOT) transfers to `QAfolder/`
 
 **Transfer Matching Logic:**
+
+For **Quest, Knowledge, Character, Region, System**:
 - **Step 1:** STRINGID + Translation (exact match)
-- **Step 2:** Translation only (fallback for rows that didn't match in Step 1)
+- **Step 2:** Translation only (fallback)
+
+For **Item** (stricter matching using ItemName + ItemDesc):
+- **Step 1:** ItemName + ItemDesc + STRINGID (all 3 must match)
+- **Step 2:** ItemName + ItemDesc only (fallback)
+- **No fallback to ItemName only** - requires both name and description to match
 
 **Duplicate Translation Report:**
 If same translation appears multiple times with different comments, a report is generated:
@@ -514,3 +521,5 @@ ONE big spacious line chart showing cumulative progress:
 *Updated: 2026-01-08 - TOTAL tab charts: fixed Actual Issues % chart (now uses numeric values instead of strings)*
 *Updated: 2026-01-08 - CRITICAL FIX: TOTAL tab was double-counting due to summing cumulative data across dates; now uses latest date only*
 *Updated: 2026-01-08 - ROBUST auto-repair for corrupted Excel filters (strips autoFilter XML from corrupted files)*
+*Updated: 2026-01-10 - fullitem25.py v3.13: ItemDesc now comes from KnowledgeKey->KnowledgeInfo.Desc (not ItemInfo.ItemDesc)*
+*Updated: 2026-01-10 - Item transfer: stricter matching using ItemName+ItemDesc+STRINGID (requires both name and description)*
