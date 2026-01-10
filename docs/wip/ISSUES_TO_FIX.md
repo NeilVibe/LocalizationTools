@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-10 (Session 36) | **Build:** 454 | **Open:** 2
+**Last Updated:** 2026-01-10 (Session 37) | **Build:** 454 | **Open:** 1
 
 ---
 
@@ -8,61 +8,14 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 2 |
-| **FIXED/CLOSED** | 117 |
+| **OPEN** | 1 |
+| **FIXED/CLOSED** | 118 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
 ## OPEN ISSUES
-
-### UI-108: TM Page Should Use Grid Style Like File Explorer
-
-- **Reported:** 2026-01-10 (Session 36)
-- **Severity:** HIGH (major UX inconsistency)
-- **Status:** OPEN - NEEDS IMPLEMENTATION
-- **Component:** TMExplorerTree.svelte → TMExplorerGrid.svelte (new)
-
-**Problem:** TM page uses collapsible tree/dropdown style with chevrons, while File Explorer uses beautiful grid view with rows. User wants SAME UI style.
-
-**Current (Bad):**
-```
-TM PAGE - Dropdown/Tree style:
-▼ Unassigned
-    No unassigned TMs
-▼ ☁️ Offline Storage
-    (click chevron to expand/collapse)
-```
-
-**Expected (Good) - Match File Explorer:**
-```
-TM PAGE - Grid style like File Explorer:
-┌──────────────────────────────────────────────┐
-│ Home > Offline Storage                        │  ← Breadcrumb
-├──────────────────────────────────────────────┤
-│ ☁️ Offline Storage    │        │ 2 TMs      │  ← Row
-│ 📄 my_tm.tm          │ 1,234  │ Active ✓   │  ← Row
-│ 📄 other.tm          │ 567    │ Inactive   │  ← Row
-└──────────────────────────────────────────────┘
-```
-
-**Key Features Needed:**
-1. Grid rows instead of tree dropdowns
-2. Breadcrumb navigation (click to go back)
-3. Double-click to enter folder/platform
-4. Right-click context menu (Create TM, Delete, Activate, etc.)
-5. Same visual styling as File Explorer
-
-**Implementation:**
-- Create new `TMExplorerGrid.svelte` based on `ExplorerGrid.svelte`
-- Reuse grid row components and styles
-- Add TM-specific columns (entry count, active status)
-- Add TM-specific actions (activate, view entries)
-
-**NOT Phase 10** - This is a priority fix for UX consistency.
-
----
 
 ### UI-112: Breadcrumb Shows Folder Icon for Offline Storage (Should be Cloud)
 
@@ -72,6 +25,28 @@ TM PAGE - Grid style like File Explorer:
 - **Component:** FilesPage.svelte (breadcrumb)
 
 **Problem:** In File Explorer breadcrumb, "Offline Storage" shows folder icon 📁 instead of CloudOffline icon ☁️.
+
+---
+
+## RECENTLY FIXED (Session 37)
+
+### UI-108: TM Page Should Use Grid Style Like File Explorer ✅ FIXED
+
+- **Reported:** 2026-01-10 (Session 36)
+- **Fixed:** 2026-01-10 (Session 37)
+- **Component:** TMExplorerGrid.svelte (new), TMPage.svelte
+
+**Solution:** Complete rewrite of TM page UI:
+- Created `TMExplorerGrid.svelte` - Windows Explorer style grid
+- Breadcrumb navigation (Home > Platform > Project)
+- Grid rows with columns: Name, Entries, Status, Type
+- Double-click to enter Platform/Project, view TM details
+- Right-click shows custom context menu (Activate, Delete)
+- Drag-drop TM reassignment to platforms/projects
+- Multi-select (Ctrl+click, Shift+click)
+- Keyboard navigation (Enter, Backspace, Delete)
+
+**Tests:** `ui108_tm_grid.spec.ts` - 5 tests all passing
 
 ---
 

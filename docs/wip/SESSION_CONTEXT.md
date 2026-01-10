@@ -53,9 +53,9 @@ TM Tree (dropdown/tree with chevrons):
 
 | Issue | Description | Status |
 |-------|-------------|--------|
-| **UI-108** | TM page dropdown style → GRID style | 🔴 MAJOR WORK |
+| **UI-108** | TM page dropdown style → GRID style | ✅ COMPLETE |
 | **UI-109** | Nested "Offline Storage > Offline Storage" | ✅ Fixed |
-| **UI-110** | Browser right-click menu showing | 🟡 In Progress |
+| **UI-110** | Browser right-click menu showing | ✅ Fixed |
 | **UI-111** | Sync Dashboard modal too big | ✅ Fixed |
 | **UI-113** | Login form cut off in Sync Dashboard | ✅ Fixed |
 
