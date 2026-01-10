@@ -224,9 +224,9 @@ All sync issues fixed. TM delete modal now uses clean Carbon UI.
 
 ## Current State
 
-**Build:** 454 | **Open Issues:** 0
+**Build:** 454 | **Open Issues:** 1 (UX-003: TM move)
 **Tests:** All passing
-**Status:** All P9 features complete, TM UX improved
+**Status:** All P9 features complete, UX-001/UX-002 done, Session 38 complete
 
 ---
 
