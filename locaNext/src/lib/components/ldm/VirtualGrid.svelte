@@ -971,7 +971,7 @@
     inlineEditingRowId = row.id;
     // Convert file-format linebreaks to actual \n for editing, then to HTML for WYSIWYG
     const rawText = formatTextForDisplay(row.target || "");
-    inlineEditValue = paColorToHtml(rawText);
+    const htmlContent = paColorToHtml(rawText);
     selectedRowId = row.id;
 
     // Push initial state to undo stack
@@ -979,9 +979,11 @@
 
     logger.userAction("Inline edit started", { rowId: row.id });
 
-    // Focus the contenteditable after render
+    // Focus the contenteditable after render and set initial content
     await tick();
     if (inlineEditTextarea) {
+      // Set content directly (not via reactive binding to avoid cursor reset)
+      inlineEditTextarea.innerHTML = htmlContent;
       inlineEditTextarea.focus();
       // Move cursor to end using selection API
       const range = document.createRange();
@@ -1007,7 +1009,9 @@
     }
 
     // Convert from HTML (contenteditable) back to PAColor format, then to file format
-    const rawText = htmlToPaColor(inlineEditValue);
+    // Read directly from textarea to avoid cursor reset issue
+    const currentHtml = inlineEditTextarea?.innerHTML || "";
+    const rawText = htmlToPaColor(currentHtml);
     const textToSave = formatTextForSave(rawText);
 
     // Only save if value changed (compare formatted values)
@@ -1154,8 +1158,7 @@
     coloredSpan.appendChild(savedRange.extractContents());
     savedRange.insertNode(coloredSpan);
 
-    // Update inlineEditValue with new HTML
-    inlineEditValue = inlineEditTextarea.innerHTML;
+    // Note: Don't update inlineEditValue here - we read directly from textarea on save
 
     logger.userAction("Applied color to text", { color: color.name, text: textSelection.text });
     closeColorPicker();
@@ -1367,7 +1370,9 @@
     }
 
     // CRITICAL: Convert HTML spans back to PAColor tags FIRST, then format for file
-    const rawText = htmlToPaColor(inlineEditValue);
+    // Read directly from textarea to avoid cursor reset issue
+    const currentHtml = inlineEditTextarea?.innerHTML || "";
+    const rawText = htmlToPaColor(currentHtml);
     const textToSave = formatTextForSave(rawText);
 
     try {
@@ -1475,12 +1480,14 @@
     undoStack = undoStack.slice(0, -1);
 
     // Save current value to redo stack
-    if (inlineEditingRowId) {
-      redoStack = [...redoStack, { rowId: inlineEditingRowId, value: inlineEditValue }];
+    if (inlineEditingRowId && inlineEditTextarea) {
+      redoStack = [...redoStack, { rowId: inlineEditingRowId, value: inlineEditTextarea.innerHTML }];
     }
 
-    // Restore the previous value
-    inlineEditValue = lastState.value;
+    // Restore the previous value by setting innerHTML directly
+    if (inlineEditTextarea) {
+      inlineEditTextarea.innerHTML = lastState.value;
+    }
     logger.userAction("Undo", { rowId: lastState.rowId });
   }
 
@@ -1497,12 +1504,14 @@
     redoStack = redoStack.slice(0, -1);
 
     // Save current value to undo stack
-    if (inlineEditingRowId) {
-      undoStack = [...undoStack, { rowId: inlineEditingRowId, value: inlineEditValue }];
+    if (inlineEditingRowId && inlineEditTextarea) {
+      undoStack = [...undoStack, { rowId: inlineEditingRowId, value: inlineEditTextarea.innerHTML }];
     }
 
-    // Restore the redo value
-    inlineEditValue = redoState.value;
+    // Restore the redo value by setting innerHTML directly
+    if (inlineEditTextarea) {
+      inlineEditTextarea.innerHTML = redoState.value;
+    }
     logger.userAction("Redo", { rowId: redoState.rowId });
   }
 
@@ -2192,9 +2201,8 @@
                         onkeydown={handleInlineEditKeydown}
                         onblur={() => saveInlineEdit(false)}
                         oncontextmenu={handleEditContextMenu}
-                        oninput={(e) => { inlineEditValue = e.target.innerHTML; }}
                         data-placeholder="Enter translation..."
-                      >{@html inlineEditValue}</div>
+                      ></div>
                     </div>
                   {:else}
                     <!-- Display mode -->
