@@ -679,6 +679,59 @@ def get_or_create_user_status_column(ws, username, after_comment_col):
     return new_col
 
 
+def get_or_create_tester_status_column(ws, username, after_comment_col):
+    """
+    Find or create TESTER_STATUS_{username} column immediately after COMMENT_{username}.
+
+    This column stores the ORIGINAL status from the QA file (ISSUE, NO ISSUE, BLOCKED, KOREAN).
+    It is HIDDEN by default - used for filtering logic, not for manager review.
+
+    The column is placed between COMMENT_{username} and STATUS_{username} (manager status).
+
+    Args:
+        ws: Worksheet
+        username: User identifier
+        after_comment_col: Column index of COMMENT_{username} (tester status goes right after)
+
+    Returns: Column index (1-based)
+    """
+    col_name = f"TESTER_STATUS_{username}"
+
+    # Check if column already exists
+    for col in range(1, ws.max_column + 1):
+        header = ws.cell(row=1, column=col).value
+        if header and str(header).strip() == col_name:
+            return col
+
+    # Add new column at max_column + 1
+    new_col = ws.max_column + 1
+
+    cell = ws.cell(row=1, column=new_col)
+    cell.value = col_name
+
+    # Gray background for TESTER_STATUS columns (hidden, for filtering only)
+    cell.fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    # Bold font
+    cell.font = Font(bold=True, color="000000")
+    # Center alignment
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    # Subtle border
+    cell.border = Border(
+        left=Side(style='thin', color='808080'),
+        right=Side(style='thin', color='808080'),
+        top=Side(style='thin', color='808080'),
+        bottom=Side(style='thin', color='808080')
+    )
+
+    # Set column width and HIDE IT
+    col_letter = get_column_letter(new_col)
+    ws.column_dimensions[col_letter].width = 15
+    ws.column_dimensions[col_letter].hidden = True  # HIDDEN by default
+
+    print(f"    Created column: {col_name} at {get_column_letter(new_col)} (tester status - HIDDEN)")
+    return new_col
+
+
 def format_comment(new_comment, string_id=None, existing_comment=None, file_mod_time=None):
     """
     Format comment with StringID and file modification time.
@@ -926,8 +979,9 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
     qa_stringid_col = find_column_by_header(qa_ws, "STRINGID")
 
     # Find or create user columns in master in correct order:
-    # COMMENT_{username} → STATUS_{username} → SCREENSHOT_{username}
+    # COMMENT_{username} → TESTER_STATUS_{username} (hidden) → STATUS_{username} → SCREENSHOT_{username}
     master_comment_col = get_or_create_user_comment_column(master_ws, username)
+    master_tester_status_col = get_or_create_tester_status_column(master_ws, username, master_comment_col)
     master_user_status_col = get_or_create_user_status_column(master_ws, username, master_comment_col)
     master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_user_status_col)
 
@@ -943,26 +997,41 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
         result["stats"]["total"] += 1
         master_row = qa_row  # Direct index matching (always works - fresh rebuild)
 
-        # Get QA STATUS (for stats AND to filter which comments to compile)
-        is_issue = False
+        # Get QA STATUS (for stats AND to determine which rows to show/hide)
+        # Compile comments for ALL statuses: ISSUE (visible), BLOCKED/KOREAN/NO ISSUE (hidden)
+        should_compile_comment = False
+        status_type = None
         if qa_status_col:
             qa_status = qa_ws.cell(row=qa_row, column=qa_status_col).value
             if qa_status:
                 status_upper = str(qa_status).strip().upper()
                 if status_upper == "ISSUE":
                     result["stats"]["issue"] += 1
-                    is_issue = True
+                    should_compile_comment = True
+                    status_type = "ISSUE"
                 elif status_upper == "NO ISSUE":
                     result["stats"]["no_issue"] += 1
+                    should_compile_comment = True
+                    status_type = "NO ISSUE"
                 elif status_upper == "BLOCKED":
                     result["stats"]["blocked"] += 1
+                    should_compile_comment = True
+                    status_type = "BLOCKED"
                 elif status_upper == "KOREAN":
                     result["stats"]["korean"] += 1
+                    should_compile_comment = True
+                    status_type = "KOREAN"
+
+        # Write TESTER STATUS to hidden column (for filtering/hiding logic)
+        if status_type:
+            tester_status_cell = master_ws.cell(row=master_row, column=master_tester_status_col)
+            tester_status_cell.value = status_type
+            tester_status_cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # Get QA COMMENT and STRINGID, copy to master with styling
-        # ONLY compile comments where STATUS = ISSUE (for Actual Issues % calculation)
+        # Compile comments for ALL statuses: ISSUE (visible), BLOCKED/KOREAN/NO ISSUE (hidden)
         comment_text_for_lookup = None  # For manager status lookup
-        if qa_comment_col and is_issue:
+        if qa_comment_col and should_compile_comment:
             qa_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
             if qa_comment and str(qa_comment).strip():
                 # Extract comment text for manager status lookup
@@ -979,14 +1048,32 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                 # Format and update (REPLACE mode, includes stringid + file mod time)
                 new_value = format_comment(qa_comment, string_id, existing, file_mod_time)
 
+                # NO prefix needed - TESTER_STATUS column handles status info
+                # Styling distinguishes status types visually
+
                 # ONLY write if there's actually new content
                 if new_value != existing:
                     cell = master_ws.cell(row=master_row, column=master_comment_col)
                     cell.value = sanitize_for_excel(new_value)  # Prevent Excel formula injection
 
-                    # Apply styling: light blue fill + bold for visibility
-                    cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
-                    cell.font = Font(bold=True)
+                    # Apply styling based on status type
+                    if status_type == "ISSUE":
+                        # Light blue fill for ISSUE (visible)
+                        cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
+                        cell.font = Font(bold=True)
+                    elif status_type == "BLOCKED":
+                        # Orange fill for BLOCKED (will be hidden)
+                        cell.fill = PatternFill(start_color="FFE4B5", end_color="FFE4B5", fill_type="solid")
+                        cell.font = Font(bold=True, color="FF8C00")
+                    elif status_type == "KOREAN":
+                        # Purple fill for KOREAN (will be hidden)
+                        cell.fill = PatternFill(start_color="E6E6FA", end_color="E6E6FA", fill_type="solid")
+                        cell.font = Font(bold=True, color="800080")
+                    elif status_type == "NO ISSUE":
+                        # Light green fill for NO ISSUE (will be hidden)
+                        cell.fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+                        cell.font = Font(bold=True, color="2E7D32")
+
                     cell.alignment = Alignment(wrap_text=True, vertical='top')
                     cell.border = Border(
                         left=Side(style='thin', color='87CEEB'),
@@ -1093,23 +1180,30 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
 
 def hide_empty_comment_rows(wb, context_rows=1, debug=False):
     """
-    Post-process: Hide rows/sheets/columns where ALL COMMENT_{User} columns are empty.
+    Post-process: Hide rows/sheets/columns based on tester and manager status.
 
-    This allows focusing on issues right away while preserving all data.
+    This allows focusing on ISSUE rows that need attention while preserving all data.
     Rows are hidden (not deleted) so they can be unhidden in Excel if needed.
 
     Features:
     - Sheet hiding: Sheets with NO comments at all are hidden entirely
     - Column hiding: COMMENT_{User} columns with no data in a sheet are hidden
-      (also hides paired SCREENSHOT_{User} and STATUS_{User} columns)
-    - Row hiding: Rows with no comments are hidden (with context rows kept visible)
+      (also hides paired SCREENSHOT_{User}, STATUS_{User}, and TESTER_STATUS_{User} columns)
+    - TESTER_STATUS columns: Always hidden (internal use for filtering)
+    - Row hiding based on TESTER STATUS:
+      - ISSUE rows: Visible (these are the active issues)
+      - BLOCKED/KOREAN/NO ISSUE rows: Hidden
+    - Row hiding based on MANAGER STATUS:
+      - FIXED/NON-ISSUE: Hidden (issue resolved)
+      - REPORTED/CHECKING: Visible (still being tracked)
+      - Empty: Visible (pending manager review)
 
     Args:
         wb: Master workbook
         context_rows: Number of rows above/below visible rows to keep visible (default: 1)
         debug: If True, print debug info about what's being detected
 
-    Returns: Tuple of (rows_hidden, sheets_hidden)
+    Returns: Tuple of (rows_hidden, sheets_hidden, hidden_columns_total)
     """
     hidden_rows = 0
     hidden_sheets = []
@@ -1153,6 +1247,7 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
 
         # === RESET all COMMENT_*, SCREENSHOT_*, STATUS_* columns to visible first ===
         # Fixes re-run UNHIDE bug: previously hidden columns that now have content must be shown
+        # NOTE: TESTER_STATUS_* columns STAY HIDDEN (they're internal for filtering only)
         for col in comment_cols:
             header = ws.cell(row=1, column=col).value
             username = str(header).replace("COMMENT_", "") if header else ""
@@ -1160,14 +1255,19 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
             ws.column_dimensions[col_letter].hidden = False
 
             # Also unhide paired SCREENSHOT_{User} and STATUS_{User} columns
+            # But keep TESTER_STATUS_{User} hidden!
             for search_col in range(1, ws.max_column + 1):
                 search_header = ws.cell(row=1, column=search_col).value
                 if search_header:
                     if str(search_header) == f"SCREENSHOT_{username}" or str(search_header) == f"STATUS_{username}":
                         search_col_letter = get_column_letter(search_col)
                         ws.column_dimensions[search_col_letter].hidden = False
+                    # TESTER_STATUS always stays hidden
+                    elif str(search_header) == f"TESTER_STATUS_{username}":
+                        search_col_letter = get_column_letter(search_col)
+                        ws.column_dimensions[search_col_letter].hidden = True
             if debug:
-                print(f"    [DEBUG] Reset column group for user '{username}' to visible")
+                print(f"    [DEBUG] Reset column group for user '{username}' to visible (TESTER_STATUS stays hidden)")
 
         # First pass: Find rows that have comments AND track which columns have comments
         rows_with_comments = set()
@@ -1208,7 +1308,7 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
                 ws.column_dimensions[col_letter].hidden = True
                 hidden_cols_this_sheet += 1
 
-                # Find and hide paired SCREENSHOT_{User} and STATUS_{User} columns
+                # Find and hide paired SCREENSHOT_{User}, STATUS_{User}, and TESTER_STATUS_{User} columns
                 for search_col in range(1, ws.max_column + 1):
                     search_header = ws.cell(row=1, column=search_col).value
                     if search_header:
@@ -1220,57 +1320,97 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
                             search_col_letter = ws.cell(row=1, column=search_col).column_letter
                             ws.column_dimensions[search_col_letter].hidden = True
                             hidden_cols_this_sheet += 1
+                        elif str(search_header) == f"TESTER_STATUS_{username}":
+                            search_col_letter = ws.cell(row=1, column=search_col).column_letter
+                            ws.column_dimensions[search_col_letter].hidden = True
+                            hidden_cols_this_sheet += 1
 
                 if debug:
                     print(f"    [DEBUG] Hidden empty column group for user: {username}")
 
         hidden_columns_total += hidden_cols_this_sheet
 
-        # === NEW: Find STATUS_{User} columns for manager status hiding ===
-        # Hide rows where manager marked FIXED, REPORTED, or NON-ISSUE
-        # Only show: CHECKING or empty (pending)
+        # === FIND TESTER_STATUS_{User} columns for tester status hiding ===
+        # Hide rows where tester marked BLOCKED, KOREAN, or NO ISSUE
+        # Only show: ISSUE rows
+        tester_status_cols = []
+        for col in range(1, ws.max_column + 1):
+            header = ws.cell(row=1, column=col).value
+            if header and str(header).startswith("TESTER_STATUS_"):
+                tester_status_cols.append(col)
+                if debug:
+                    print(f"    [DEBUG] Found tester status column: {header} at col {col}")
+
+        # Find rows to hide due to tester status (BLOCKED, KOREAN, NO ISSUE)
+        # These are non-ISSUE rows that should be hidden by default
+        rows_non_issue_by_tester = set()
+        TESTER_HIDE_STATUSES = {"BLOCKED", "KOREAN", "NO ISSUE"}
+        for row in range(2, ws.max_row + 1):
+            for col in tester_status_cols:
+                value = ws.cell(row=row, column=col).value
+                if value and str(value).strip().upper() in TESTER_HIDE_STATUSES:
+                    rows_non_issue_by_tester.add(row)
+                    if debug and row <= 20:
+                        print(f"    [DEBUG] Row {row} has tester status '{value}' - will hide (non-ISSUE)")
+                    break  # One non-ISSUE status is enough to hide
+
+        if debug and rows_non_issue_by_tester:
+            print(f"    [DEBUG] {len(rows_non_issue_by_tester)} rows with non-ISSUE tester status (BLOCKED/KOREAN/NO ISSUE)")
+
+        # === FIND STATUS_{User} columns for manager status hiding ===
+        # Hide rows where manager marked FIXED or NON-ISSUE
+        # Keep visible: REPORTED, CHECKING, or empty (pending)
         manager_status_cols = []
         for col in range(1, ws.max_column + 1):
             header = ws.cell(row=1, column=col).value
-            if header and str(header).startswith("STATUS_"):
+            # STATUS_ but NOT TESTER_STATUS_
+            if header and str(header).startswith("STATUS_") and not str(header).startswith("TESTER_STATUS_"):
                 manager_status_cols.append(col)
                 if debug:
                     print(f"    [DEBUG] Found manager status column: {header} at col {col}")
 
-        # Find rows to hide due to manager status (FIXED, REPORTED, NON-ISSUE)
+        # Find rows to hide due to manager status (FIXED, NON-ISSUE only)
+        # REPORTED and CHECKING stay visible!
         rows_resolved_by_manager = set()
-        HIDE_STATUSES = {"FIXED", "REPORTED", "NON-ISSUE"}
+        MANAGER_HIDE_STATUSES = {"FIXED", "NON-ISSUE"}  # NOT REPORTED - that stays visible!
         for row in range(2, ws.max_row + 1):
             for col in manager_status_cols:
                 value = ws.cell(row=row, column=col).value
-                if value and str(value).strip().upper() in HIDE_STATUSES:
+                if value and str(value).strip().upper() in MANAGER_HIDE_STATUSES:
                     rows_resolved_by_manager.add(row)
                     if debug and row <= 20:
                         print(f"    [DEBUG] Row {row} has manager status '{value}' - will hide")
                     break  # One resolved status is enough to hide
 
         if debug and rows_resolved_by_manager:
-            print(f"    [DEBUG] {len(rows_resolved_by_manager)} rows resolved by manager (FIXED/REPORTED/NON-ISSUE)")
+            print(f"    [DEBUG] {len(rows_resolved_by_manager)} rows resolved by manager (FIXED/NON-ISSUE)")
 
-        # Second pass: Build set of rows to keep visible (comments + context - resolved)
-        # Start with rows that have comments, then REMOVE resolved rows
-        rows_to_show = set(rows_with_comments) - rows_resolved_by_manager
+        # === COMBINE HIDING RULES ===
+        # Hide if:
+        #   1. Row has non-ISSUE tester status (BLOCKED/KOREAN/NO ISSUE)
+        #   2. OR row has manager status FIXED or NON-ISSUE
+        # Show if:
+        #   - Row has ISSUE tester status AND manager status is empty/REPORTED/CHECKING
+        rows_to_hide = rows_non_issue_by_tester | rows_resolved_by_manager
+
+        # Build set of rows to keep visible
+        # Start with rows that have comments and are ISSUE status, minus resolved rows
+        rows_to_show = (rows_with_comments - rows_non_issue_by_tester) - rows_resolved_by_manager
         for row in list(rows_to_show):  # Use list() to avoid modifying set during iteration
-            # Add context rows above (only if they're not resolved)
+            # Add context rows above (only if they're not in hide set)
             for offset in range(1, context_rows + 1):
-                if row - offset >= 2 and row - offset not in rows_resolved_by_manager:
+                if row - offset >= 2 and row - offset not in rows_to_hide:
                     rows_to_show.add(row - offset)
-            # Add context rows below (only if they're not resolved)
+            # Add context rows below (only if they're not in hide set)
             for offset in range(1, context_rows + 1):
-                if row + offset <= ws.max_row and row + offset not in rows_resolved_by_manager:
+                if row + offset <= ws.max_row and row + offset not in rows_to_hide:
                     rows_to_show.add(row + offset)
 
-        # Third pass: First UNHIDE all rows (clear any tester hiding), then hide our target rows
+        # Pass 1: UNHIDE all rows first (clear any previous hiding)
         for row in range(2, ws.max_row + 1):
-            # Reset: unhide all rows first
             ws.row_dimensions[row].hidden = False
 
-        # Fourth pass: Hide rows not in the show set
+        # Pass 2: Hide rows not in the show set
         for row in range(2, ws.max_row + 1):
             if row not in rows_to_show:
                 ws.row_dimensions[row].hidden = True
