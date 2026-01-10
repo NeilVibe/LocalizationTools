@@ -3,13 +3,16 @@
 # -*- coding: utf-8 -*-
 
 """
-Item-data extractor / LQA helper – COMPLETE REBUILD v3.13
-(NEW: ItemDesc now comes from KnowledgeKey mapping, not ItemInfo.ItemDesc)
+Item-data extractor / LQA helper – COMPLETE REBUILD v3.14
+(NEW: ItemDesc from KnowledgeKey with fallback to ItemInfo.ItemDesc)
+
+v3.14 Changes:
+- ItemDesc priority: KnowledgeKey -> KnowledgeInfo.Desc
+- ItemDesc fallback: ItemInfo.ItemDesc (if no KnowledgeKey or Desc not found)
 
 v3.13 Changes:
 - ItemName: from ItemInfo.ItemName (unchanged)
 - ItemDesc: from KnowledgeKey -> KnowledgeInfo.Desc (NEW!)
-- If no KnowledgeKey present, ItemDesc is left BLANK
 """
 
 from __future__ import annotations
@@ -533,15 +536,22 @@ def scan_resource_folder(
                 ik = item.get("StrKey") or ""
                 name = item.get("ItemName") or ""
 
-                # NEW: Get description from KnowledgeKey, NOT from ItemDesc
+                # Get description: KnowledgeKey priority, fallback to ItemDesc
                 knowledge_key = item.get("KnowledgeKey") or ""
+                item_desc_attr = item.get("ItemDesc") or ""
+
                 if knowledge_key:
-                    # Look up description from knowledge map
+                    # Priority: Look up description from KnowledgeKey
                     desc = knowledge_desc_map.get(knowledge_key, "")
-                    items_with_knowledge += 1
+                    if desc:
+                        items_with_knowledge += 1
+                    else:
+                        # KnowledgeKey exists but no Desc found, fallback to ItemDesc
+                        desc = item_desc_attr
+                        items_without_knowledge += 1
                 else:
-                    # No KnowledgeKey = leave description BLANK
-                    desc = ""
+                    # No KnowledgeKey: fallback to ItemDesc attribute
+                    desc = item_desc_attr
                     items_without_knowledge += 1
 
                 if ik:
@@ -555,7 +565,7 @@ def scan_resource_folder(
         len(group_items), total_items,
     )
     log.info(
-        "  Items with KnowledgeKey: %d  |  Items without (blank desc): %d",
+        "  Items with KnowledgeKey desc: %d  |  Items using ItemDesc fallback: %d",
         items_with_knowledge, items_without_knowledge
     )
     return group_items, scanned_group_names

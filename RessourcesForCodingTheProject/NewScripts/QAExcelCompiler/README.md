@@ -80,7 +80,12 @@ This launches a GUI with two buttons:
 
 **Transfer Matching Logic:**
 
-For **Quest, Knowledge, Character, Region, System**:
+For **Quest, Knowledge, Character, Region**:
+- **Step 1:** STRINGID + Translation (exact match)
+- **Step 2:** Translation only (fallback)
+
+For **System** (manually created sheets):
+- **Column structure:** Col1=Translation, Col2=STATUS, Col3=COMMENT, Col4=STRINGID, Col5=SCREENSHOT
 - **Step 1:** STRINGID + Translation (exact match)
 - **Step 2:** Translation only (fallback)
 
@@ -521,5 +526,7 @@ ONE big spacious line chart showing cumulative progress:
 *Updated: 2026-01-08 - TOTAL tab charts: fixed Actual Issues % chart (now uses numeric values instead of strings)*
 *Updated: 2026-01-08 - CRITICAL FIX: TOTAL tab was double-counting due to summing cumulative data across dates; now uses latest date only*
 *Updated: 2026-01-08 - ROBUST auto-repair for corrupted Excel filters (strips autoFilter XML from corrupted files)*
-*Updated: 2026-01-10 - fullitem25.py v3.13: ItemDesc now comes from KnowledgeKey->KnowledgeInfo.Desc (not ItemInfo.ItemDesc)*
+*Updated: 2026-01-10 - fullitem25.py v3.13: ItemDesc from KnowledgeKey->KnowledgeInfo.Desc*
+*Updated: 2026-01-10 - fullitem25.py v3.14: KnowledgeKey priority, fallback to ItemInfo.ItemDesc if no KnowledgeKey*
 *Updated: 2026-01-10 - Item transfer: stricter matching using ItemName+ItemDesc+STRINGID (requires both name and description)*
+*Updated: 2026-01-10 - System category: supports manually created sheets with Translation in Column 1*
