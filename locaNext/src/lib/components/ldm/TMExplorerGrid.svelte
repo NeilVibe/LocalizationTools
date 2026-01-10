@@ -28,6 +28,7 @@
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import ConfirmModal from '$lib/components/common/ConfirmModal.svelte';
+  import { clipboard, copyToClipboard, cutToClipboard, clearClipboard, isItemCut } from '$lib/stores/clipboard.js';
 
   // Props
   let {
@@ -71,6 +72,10 @@
   let draggedItems = $state([]);
   let dropTargetId = $state(null);
   let isDragging = $state(false);
+
+  // UX-003: Clipboard state (derived from store)
+  let clipboardItems = $derived($clipboard.items);
+  let clipboardOperation = $derived($clipboard.operation);
 
   // ========================================
   // Data Loading
@@ -603,6 +608,151 @@
   }
 
   // ========================================
+  // UX-003: Clipboard Operations (Cut/Copy/Paste)
+  // ========================================
+
+  /**
+   * Copy selected TMs to clipboard
+   */
+  function handleCopy() {
+    const tmsToClipboard = getSelectedTMs();
+    if (tmsToClipboard.length === 0) return;
+
+    copyToClipboard(tmsToClipboard.map(tm => ({
+      type: 'tm',
+      id: tm.id,
+      name: tm.name,
+      tm_data: tm.tm_data
+    })));
+    logger.info('TMs copied to clipboard', { count: tmsToClipboard.length });
+  }
+
+  /**
+   * Cut selected TMs to clipboard (for move operation)
+   */
+  function handleCut() {
+    const tmsToClipboard = getSelectedTMs();
+    if (tmsToClipboard.length === 0) return;
+
+    cutToClipboard(tmsToClipboard.map(tm => ({
+      type: 'tm',
+      id: tm.id,
+      name: tm.name,
+      tm_data: tm.tm_data
+    })));
+    logger.info('TMs cut to clipboard', { count: tmsToClipboard.length });
+  }
+
+  /**
+   * Get selected TMs from currentItems
+   */
+  function getSelectedTMs() {
+    return currentItems.filter(item => item.type === 'tm' && selectedIds.has(item.id));
+  }
+
+  /**
+   * Paste clipboard items to current location
+   */
+  async function handlePaste() {
+    if (clipboardItems.length === 0) return;
+
+    // Only TMs can be pasted
+    const tmsToPaste = clipboardItems.filter(item => item.type === 'tm');
+    if (tmsToPaste.length === 0) {
+      logger.info('No TMs in clipboard to paste');
+      return;
+    }
+
+    // Determine target based on current breadcrumb position
+    const currentLocation = breadcrumb[breadcrumb.length - 1];
+    let assignmentData = {};
+
+    if (currentLocation.type === 'home') {
+      // Pasting at home = move to unassigned
+      assignmentData = { platform_id: null, project_id: null, folder_id: null };
+    } else if (currentLocation.type === 'platform') {
+      assignmentData = { platform_id: currentLocation.id, project_id: null, folder_id: null };
+    } else if (currentLocation.type === 'project') {
+      assignmentData = { project_id: currentLocation.id, folder_id: null };
+    } else if (currentLocation.type === 'folder') {
+      assignmentData = { folder_id: currentLocation.id };
+    }
+
+    // Move each TM
+    let successCount = 0;
+    for (const tm of tmsToPaste) {
+      try {
+        logger.apiCall(`/api/ldm/tm/${tm.id}/assign`, 'PATCH');
+        const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.id}/assign`, {
+          method: 'PATCH',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(assignmentData)
+        });
+
+        if (response.ok) {
+          successCount++;
+        } else {
+          logger.error('Failed to paste TM', { tmId: tm.id, status: response.status });
+        }
+      } catch (err) {
+        logger.error('Error pasting TM', { error: err.message, tmId: tm.id });
+      }
+    }
+
+    if (successCount > 0) {
+      logger.success('TMs pasted', { count: successCount, target: currentLocation.name });
+      clearClipboard();
+      await loadTree();
+    }
+  }
+
+  /**
+   * Check if a TM is in the clipboard (for cut visual feedback)
+   */
+  function isTMCut(tmId) {
+    if (clipboardOperation !== 'cut') return false;
+    return clipboardItems.some(item => item.type === 'tm' && item.id === tmId);
+  }
+
+  /**
+   * Global keyboard handler for clipboard operations
+   */
+  function handleKeyDown(event) {
+    // Escape clears clipboard
+    if (event.key === 'Escape') {
+      if (clipboardItems.length > 0) {
+        clearClipboard();
+        logger.info('Clipboard cleared');
+        return;
+      }
+      // Clear selection
+      selectedIds = new Set();
+      return;
+    }
+
+    // Ctrl+C: Copy
+    if (event.ctrlKey && event.key === 'c') {
+      event.preventDefault();
+      handleCopy();
+      return;
+    }
+
+    // Ctrl+X: Cut
+    if (event.ctrlKey && event.key === 'x') {
+      event.preventDefault();
+      handleCut();
+      return;
+    }
+
+    // Ctrl+V: Paste
+    if (event.ctrlKey && event.key === 'v') {
+      event.preventDefault();
+      handlePaste();
+      return;
+    }
+  }
+
+  // ========================================
   // Drag and Drop
   // ========================================
 
@@ -778,7 +928,22 @@
   }
 </script>
 
+<!-- UX-003: Global keyboard handler -->
+<svelte:window onkeydown={handleKeyDown} />
+
 <div class="tm-explorer-grid" oncontextmenu={handleBackgroundContextMenu}>
+  <!-- UX-003: Clipboard indicator -->
+  {#if clipboardItems.length > 0}
+    <div class="clipboard-indicator">
+      {#if clipboardOperation === 'cut'}
+        <span class="clipboard-icon">✂</span>
+      {:else}
+        <span class="clipboard-icon">📋</span>
+      {/if}
+      <span>{clipboardItems.length} TM{clipboardItems.length > 1 ? 's' : ''} {clipboardOperation === 'cut' ? 'cut' : 'copied'}</span>
+      <button class="clipboard-clear" onclick={() => clearClipboard()} title="Clear clipboard (Esc)">×</button>
+    </div>
+  {/if}
   <!-- Breadcrumb -->
   <nav class="breadcrumb" aria-label="TM navigation">
     {#each breadcrumb as crumb, i (i)}
@@ -832,6 +997,7 @@
           class:folder={item.type === 'folder'}
           class:drop-target={dropTargetId === item.id}
           class:dragging={isDragging && isSelected(item.id)}
+          class:cut={item.type === 'tm' && isTMCut(item.id)}
           role="row"
           draggable={item.type === 'tm' ? 'true' : 'false'}
           onclick={(e) => handleClick(e, item, index)}
@@ -889,23 +1055,48 @@
     role="menu"
   >
     {#if contextMenu.isBackground}
-      <!-- Background right-click: show Upload option -->
+      <!-- Background right-click: Upload + Paste -->
       <button class="context-item" onclick={() => { if (onUploadTM) onUploadTM(); closeContextMenu(); }}>
         Upload TM
       </button>
+      {#if clipboardItems.length > 0 && clipboardItems.some(i => i.type === 'tm')}
+        <div class="context-divider"></div>
+        <button class="context-item" onclick={() => { handlePaste(); closeContextMenu(); }}>
+          Paste (Ctrl+V)
+        </button>
+      {/if}
     {:else if contextMenu.item?.type === 'tm'}
-      <!-- TM right-click: Activate/Delete -->
+      <!-- TM right-click: Activate, Cut/Copy, Delete -->
       <button class="context-item" onclick={handleActivateFromMenu}>
         {contextMenu.item.is_active ? 'Deactivate' : 'Activate'}
       </button>
+      <div class="context-divider"></div>
+      <button class="context-item" onclick={() => { handleCut(); closeContextMenu(); }}>
+        Cut (Ctrl+X)
+      </button>
+      <button class="context-item" onclick={() => { handleCopy(); closeContextMenu(); }}>
+        Copy (Ctrl+C)
+      </button>
+      {#if clipboardItems.length > 0 && clipboardItems.some(i => i.type === 'tm')}
+        <button class="context-item" onclick={() => { handlePaste(); closeContextMenu(); }}>
+          Paste (Ctrl+V)
+        </button>
+      {/if}
+      <div class="context-divider"></div>
       <button class="context-item danger" onclick={handleDeleteFromMenu}>
         Delete
       </button>
     {:else}
-      <!-- Platform/Project right-click: Open -->
+      <!-- Platform/Project right-click: Open + Paste -->
       <button class="context-item" onclick={() => { navigateTo(contextMenu.item); closeContextMenu(); }}>
         Open
       </button>
+      {#if clipboardItems.length > 0 && clipboardItems.some(i => i.type === 'tm')}
+        <div class="context-divider"></div>
+        <button class="context-item" onclick={() => { handlePaste(); closeContextMenu(); }}>
+          Paste Here (Ctrl+V)
+        </button>
+      {/if}
     {/if}
   </div>
 {/if}
@@ -1200,6 +1391,58 @@
 
   .context-item.danger:hover {
     background: rgba(250, 77, 86, 0.1);
+  }
+
+  /* UX-003: Context menu divider */
+  .context-divider {
+    height: 1px;
+    background: var(--cds-border-subtle-01);
+    margin: 0.25rem 0;
+  }
+
+  /* UX-003: Clipboard indicator */
+  .clipboard-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--cds-layer-02, #262626);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    font-size: 0.875rem;
+    color: var(--cds-text-02);
+  }
+
+  .clipboard-icon {
+    font-size: 1rem;
+  }
+
+  .clipboard-clear {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--cds-text-02);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .clipboard-clear:hover {
+    background: var(--cds-layer-hover-01);
+    color: var(--cds-text-01);
+  }
+
+  /* UX-003: Cut visual feedback - striped/faded appearance */
+  .grid-row.cut {
+    opacity: 0.5;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 5px,
+      rgba(100, 100, 100, 0.1) 5px,
+      rgba(100, 100, 100, 0.1) 10px
+    );
   }
 
   /* Responsive */
