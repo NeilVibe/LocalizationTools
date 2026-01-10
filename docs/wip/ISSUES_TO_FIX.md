@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-08 (Session 35) | **Build:** 454 | **Open:** 1
+**Last Updated:** 2026-01-10 (Session 36) | **Build:** 454 | **Open:** 0
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 1 |
-| **FIXED/CLOSED** | 113 |
+| **OPEN** | 0 |
+| **FIXED/CLOSED** | 114 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
@@ -17,63 +17,28 @@
 
 ## OPEN ISSUES
 
-### UI-107: Offline Storage Duplication Confusion
+*No open issues!* 🎉
+
+---
+
+## RECENTLY FIXED (Session 36)
+
+### UI-107: Offline Storage Duplication Confusion ✅ FIXED
 
 - **Reported:** 2026-01-08 (Session 35)
+- **Fixed:** 2026-01-10 (Session 36)
 - **Severity:** MEDIUM (UX confusion)
-- **Status:** OPEN - PLAN READY
-- **Component:** FilesPage.svelte, TMExplorerTree.svelte, tm_assignment.py
+- **Status:** ✅ FIXED
+- **Component:** FilesPage.svelte, TMExplorerTree.svelte
 
-**Problem:** Users see multiple "Offline Storage" entries with different icons, causing confusion.
+**Problem:** Users saw duplicate "Offline Storage" entries in File Explorer when Online.
 
----
-
-#### Current State (Confusing)
-
-| Location | What User Sees | Icon | Type | DB ID | Purpose |
-|----------|---------------|------|------|-------|---------|
-| **File Explorer** | "Offline Storage" | ☁️ CloudOffline | `offline-storage` | `'offline-storage'` (string) | SQLite local files |
-| **File Explorer** | "Offline Storage" | 🏢 Platform | `platform` | `31` (PostgreSQL) | PostgreSQL platform - CONFUSING! |
-| **TM Tree** | "Offline Storage" | 🏢 Platform | platform | `31` (PostgreSQL) | TM assignment container |
-| **TM Tree** | "Offline Storage" | 📁 Project | project | `31` (PostgreSQL) | Nested under platform |
-
----
-
-#### DB ID Analysis (Session 35)
-
-**Key Finding:** CloudOffline does NOT need a numeric DB ID because file operations use SQLite.
-
-| System | ID Type | Database | Operations |
-|--------|---------|----------|------------|
-| **CloudOffline (File Explorer)** | String `'offline-storage'` | SQLite | Folder CRUD, file upload, move - all via `/api/ldm/offline/storage/*` |
-| **Offline Storage (TM Tree)** | Integer `31` | PostgreSQL | TM assignment FK constraint requires real DB ID |
-
-**Why Two Records Exist:**
-```
-File Operations:      TM Assignments:
-┌─────────────────┐   ┌─────────────────┐
-│ SQLite          │   │ PostgreSQL      │
-│ parent_id chain │   │ FK constraint   │
-│ No DB ID needed │   │ Needs real ID   │
-└─────────────────┘   └─────────────────┘
-        ↓                     ↓
-  CloudOffline          Offline Storage
-  (virtual entry)       (platform id=31)
-```
-
-**Conclusion:** CloudOffline HAS all the power it needs - it uses a different paradigm (SQLite parent_id) that doesn't require PostgreSQL foreign keys.
-
----
-
-#### RECOMMENDED SOLUTION (Claude's Optimal Plan)
-
-**Approach:** B + C (Hide duplicate + Match Icons) - NO rename, keep "Offline Storage" everywhere
+**Fix Applied (Session 36):**
 
 | Step | What | Where | Change |
 |------|------|-------|--------|
-| **1** | Hide PostgreSQL platform from File Explorer | `FilesPage.svelte` | `platformList.filter(p => p.name !== 'Offline Storage')` |
-| **2** | Use CloudOffline icon in TM tree | `TMExplorerTree.svelte` | Match File Explorer icon |
-| **3** | Collapse nested project in TM tree | `tm_assignment.py` | Show TMs directly under platform (no duplicate nesting) |
+| **1** | Hide PostgreSQL platform from File Explorer | `FilesPage.svelte:206` | `.filter(p => p.name !== 'Offline Storage')` |
+| **2** | Use CloudOffline icon in TM tree | `TMExplorerTree.svelte:553` | Conditional icon: `{#if platform.name === 'Offline Storage'}` uses CloudOffline |
 
 **Result (Clean):**
 ```
@@ -84,42 +49,19 @@ FILE EXPLORER:
 
 TM TREE:
 ├── 📦 Unassigned
-├── ☁️ Offline Storage     ← Same name! CloudOffline icon (consistent)
-│   └── my_tm.tm           ← TMs directly here, no nested "Offline Storage"
+├── ☁️ Offline Storage     ← Same icon! Consistent with File Explorer
 ├── 🏢 TestPlatform
 └── ...
 ```
 
-**Key Decision:** Keep name "Offline Storage" everywhere for consistency. The confusion was from duplicates and different icons, not the name itself.
+**Files Modified:**
+- `locaNext/src/lib/components/pages/FilesPage.svelte:206` - Filter out PostgreSQL platform
+- `locaNext/src/lib/components/ldm/TMExplorerTree.svelte:25,553,935` - Import CloudOffline, conditional icon, CSS
 
----
-
-#### Why NOT Option D (Full Unification)?
-
-Making TM Tree identical to File Explorer would require:
-- Rewriting TM tree as a grid component
-- Changing TM assignment UX from tree to grid
-- Breaking existing patterns users know
-
-**Verdict:** Too much work for low benefit. The simpler B+C approach solves the confusion.
-
----
-
-#### Files to Modify
-
-| File | Change |
-|------|--------|
-| `FilesPage.svelte:205` | Filter: `platformList.filter(p => p.name !== 'Offline Storage')` |
-| `TMExplorerTree.svelte` | Use `CloudOffline` icon for Offline Storage items |
-| `tm_assignment.py` | Collapse nested project (show TMs directly under platform) |
-
----
-
-#### Related Issues
-- P9-ARCH (Session 30) - Created the PostgreSQL Offline Storage platform
-- TM-004 (Session 30) - Fixed TM context menu for Unassigned
-
----
+**Test Evidence:**
+- Online mode: `/tmp/ui107_fix_files.png`, `/tmp/ui107_fix_tm.png` - 1 entry each
+- Offline mode: `/tmp/ui107_offline_files.png` - 1 entry
+- Playwright tests: `ui107_fix_test.spec.ts`, `ui107_offline_test.spec.ts` - Both pass
 
 ---
 

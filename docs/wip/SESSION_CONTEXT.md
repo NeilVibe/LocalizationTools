@@ -1,6 +1,41 @@
 # Session Context
 
-> Last Updated: 2026-01-08 (Session 35 - Documentation & Analysis)
+> Last Updated: 2026-01-10 (Session 36 - UI-107 Fix Complete)
+
+---
+
+## SESSION 36 COMPLETE ✅
+
+### UI-107: Offline Storage Duplication Confusion ✅ FIXED
+
+**Problem:** Users saw duplicate "Offline Storage" entries in File Explorer when Online.
+
+**Fix Applied:**
+
+| Step | What | Where | Change |
+|------|------|-------|--------|
+| **1** | Hide PostgreSQL platform from File Explorer | `FilesPage.svelte:206` | `.filter(p => p.name !== 'Offline Storage')` |
+| **2** | Use CloudOffline icon in TM tree | `TMExplorerTree.svelte:553` | Conditional icon for "Offline Storage" platform |
+
+**Result:**
+```
+FILE EXPLORER:
+├── ☁️ Offline Storage     ← Only one! (SQLite local files)
+├── 🏢 TestPlatform
+└── ...
+
+TM TREE:
+├── 📦 Unassigned
+├── ☁️ Offline Storage     ← Same icon! Consistent with File Explorer
+├── 🏢 TestPlatform
+└── ...
+```
+
+**Test Evidence:**
+- Online mode: Both File Explorer and TM Tree show 1 "Offline Storage" with CloudOffline icon
+- Offline mode: File Explorer shows 1 "Offline Storage" with CloudOffline icon
+- Screenshots: `/tmp/ui107_fix_files.png`, `/tmp/ui107_fix_tm.png`, `/tmp/ui107_offline_files.png`
+- Tests: `ui107_fix_test.spec.ts`, `ui107_offline_test.spec.ts` - Both pass
 
 ---
 
@@ -8,39 +43,29 @@
 
 ### Analysis: Offline Storage Duplication Confusion (UI-107)
 
-**Problem:** Users see 4 "Offline Storage" entries across File Explorer and TM Tree.
+**Problem:** Users see duplicate "Offline Storage" entries in File Explorer when Online.
+
+**BUG CONFIRMED WITH TESTING (2026-01-08):**
+
+| Location | Count | What's Shown |
+|----------|-------|--------------|
+| File Explorer (Online) | **2 entries** | ☁️ CloudOffline (SQLite) + 🏢 Platform (PostgreSQL) |
+| TM Tree | 1 entry | 🏢 Platform icon (should be ☁️) |
+
+**Test Evidence:**
+- Clean DB → Visit TM page → PostgreSQL platform auto-created → File Explorer shows duplicates
+- Screenshots: `/tmp/dup_01_tm_page.png`, `/tmp/dup_02_files_page.png`
 
 **DB ID Analysis Completed:**
 
 | Entry | ID Type | Database | Needed For |
 |-------|---------|----------|------------|
 | CloudOffline | String `'offline-storage'` | Virtual → SQLite | File operations |
-| Offline Storage Platform | Integer `31` | PostgreSQL | TM assignment FK |
+| Offline Storage Platform | Auto-generated int | PostgreSQL | TM assignment FK |
 
 **Key Finding:** CloudOffline does NOT need numeric DB ID - it uses SQLite `parent_id` chain.
 
-**Recommended Solution (Claude's Plan):**
-1. Hide PostgreSQL platform from File Explorer (`platformList.filter`)
-2. Use CloudOffline icon in TM tree (consistent)
-3. Collapse nested project in TM tree (no duplicate)
-
 **Key Decision:** Keep name "Offline Storage" everywhere - the confusion was duplicates and different icons, not the name.
-
-**Files to Modify:**
-- `FilesPage.svelte:205` - Filter platformList
-- `TMExplorerTree.svelte` - CloudOffline icon
-- `tm_assignment.py` - Collapse nested project
-
-**Documentation Updated:**
-- `ISSUES_TO_FIX.md` - UI-107 with full plan
-- `ARCHITECTURE_SUMMARY.md` - DB ID FAQ
-
-### TM Tree vs File Explorer Unification
-
-User asked about making TM Tree identical to File Explorer. Analysis:
-- Would require rewriting TM tree as grid component
-- Too much effort for the benefit
-- Simpler hide+icon solution addresses the confusion
 
 ---
 

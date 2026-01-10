@@ -21,7 +21,8 @@
     Application,
     CheckmarkFilled,
     RadioButton,
-    Archive
+    Archive,
+    CloudOffline
   } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
@@ -548,7 +549,12 @@
             {:else}
               <ChevronRight size={16} />
             {/if}
-            <Application size={18} class="section-icon platform-icon" />
+            <!-- UI-107: Use CloudOffline icon for Offline Storage, Application for other platforms -->
+            {#if platform.name === 'Offline Storage'}
+              <CloudOffline size={18} class="section-icon offline-storage-icon" />
+            {:else}
+              <Application size={18} class="section-icon platform-icon" />
+            {/if}
             <span class="section-name">{platform.name}</span>
             {#if platform.tms?.length > 0}
               <span class="section-count tm-count">{platform.tms.length} TM</span>
@@ -924,6 +930,10 @@
 
   :global(.platform-icon) {
     color: #0f62fe; /* Blue for platforms */
+  }
+
+  :global(.offline-storage-icon) {
+    color: #6929c4; /* Purple for Offline Storage - matches CloudOffline icon in File Explorer */
   }
 
   :global(.project-icon) {
