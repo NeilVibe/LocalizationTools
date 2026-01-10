@@ -201,17 +201,19 @@
       // P9: In offline mode, hide PostgreSQL data - only show Offline Storage
       // User's sandbox is Offline Storage; PostgreSQL data is read-only and confusing to show
       if (!isOffline) {
-        // Add platforms
-        platformList.forEach(p => {
-          items.push({
-            type: 'platform',
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            project_count: p.project_count || 0,
-            is_restricted: p.is_restricted || false
+        // Add platforms (UI-107: Filter out "Offline Storage" platform to avoid duplicate with CloudOffline entry)
+        platformList
+          .filter(p => p.name !== 'Offline Storage')  // UI-107: Hide PostgreSQL platform, keep only CloudOffline
+          .forEach(p => {
+            items.push({
+              type: 'platform',
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              project_count: p.project_count || 0,
+              is_restricted: p.is_restricted || false
+            });
           });
-        });
 
         // Add unassigned projects (projects without platform_id)
         const unassignedProjects = projectList.filter(p => !p.platform_id);
