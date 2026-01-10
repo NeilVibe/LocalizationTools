@@ -39,10 +39,10 @@ from openpyxl.worksheet.datavalidation import DataValidation
 # CONFIGURATION
 # ──────────────────────────────────────────────────────────────────────
 RESOURCE_FOLDER = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\StaticInfo"
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo"
 )
 LANGUAGE_FOLDER = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\loc"
+    r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"
 )
 
 if getattr(sys, "frozen", False):
