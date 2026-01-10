@@ -447,6 +447,10 @@ def get_or_create_master(category, master_folder, template_file=None):
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
 
+            # CRITICAL: Clear any AutoFilter from QA file (testers may have filters applied)
+            if ws.auto_filter.ref:
+                ws.auto_filter.ref = None
+
             # Find columns to delete (must delete from right to left to preserve indices)
             cols_to_delete = []
 
@@ -792,6 +796,10 @@ def sort_worksheet_az(ws, sort_column=1):
         sort_column: Column index to sort by (1-based, default=1 for column A)
     """
     from copy import copy
+
+    # CRITICAL: Clear any AutoFilter before sorting (testers may have filters applied)
+    if ws.auto_filter.ref:
+        ws.auto_filter.ref = None
 
     # Get all data rows (skip header)
     data_rows = []
