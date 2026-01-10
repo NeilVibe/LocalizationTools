@@ -572,6 +572,26 @@ async def get_tm_tree(
     offline_platform = await ensure_offline_storage_platform(db)
     await db.commit()  # Commit if created
 
+    # P9: Get local folders from SQLite to include in TM tree
+    from server.database.offline import get_offline_db
+    offline_db = get_offline_db()
+
+    def build_local_folder_tree(parent_id=None):
+        """Build folder tree from SQLite local_folders table."""
+        local_folders = offline_db.get_local_folders(parent_id)
+        result = []
+        for folder in local_folders:
+            folder_data = {
+                "id": f"local-{folder['id']}",  # Prefix to distinguish from PostgreSQL IDs
+                "name": folder["name"],
+                "tms": [],  # Local folders don't have TM assignments yet
+                "children": build_local_folder_tree(folder["id"])
+            }
+            result.append(folder_data)
+        return result
+
+    local_folders_tree = build_local_folder_tree()
+
     # Check if Offline Storage is already in the tree
     offline_in_tree = any(p["name"] == OFFLINE_STORAGE_PLATFORM_NAME for p in tree["platforms"])
 
@@ -603,11 +623,19 @@ async def get_tm_tree(
                         }
                         for a in assignments if a.project_id == offline_project.id
                     ],
-                    "folders": []
+                    "folders": local_folders_tree  # P9: Include local folders from SQLite
                 }
             ]
         }
         # Insert at beginning so it's prominent
         tree["platforms"].insert(0, offline_platform_data)
+    else:
+        # P9: Offline Storage exists in tree, update its folders with local folders
+        for platform in tree["platforms"]:
+            if platform["name"] == OFFLINE_STORAGE_PLATFORM_NAME:
+                for project in platform.get("projects", []):
+                    if project["name"] == OFFLINE_STORAGE_PROJECT_NAME:
+                        project["folders"] = local_folders_tree
+                break
 
     return tree

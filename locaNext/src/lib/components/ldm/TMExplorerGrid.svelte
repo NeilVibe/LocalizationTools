@@ -222,17 +222,47 @@
 
       const items = [];
 
-      // Projects in platform (filter out nested Offline Storage)
-      for (const project of platform.projects || []) {
-        if (platform.name === 'Offline Storage' && project.name === 'Offline Storage') continue;
+      // P9: Special handling for Offline Storage - show folders directly
+      // (skip the nested "Offline Storage" project to avoid UI-109 duplicate)
+      if (platform.name === 'Offline Storage') {
+        // Find the Offline Storage project and show its folders directly
+        const offlineProject = platform.projects?.find(p => p.name === 'Offline Storage');
+        if (offlineProject) {
+          // Show folders from the Offline Storage project
+          for (const folder of offlineProject.folders || []) {
+            items.push({
+              type: 'folder',
+              id: folder.id,
+              name: folder.name,
+              tm_count: countTMsInFolder(folder),
+              icon: 'folder',
+              folder_data: folder
+            });
+          }
 
-        items.push({
-          type: 'project',
-          id: project.id,
-          name: project.name,
-          tm_count: project.tms?.length || 0,
-          icon: 'folder'
-        });
+          // Show TMs from the Offline Storage project
+          for (const tm of offlineProject.tms || []) {
+            items.push({
+              type: 'tm',
+              id: tm.tm_id,
+              name: tm.tm_name,
+              entry_count: tm.entry_count || 0,
+              is_active: tm.is_active,
+              tm_data: tm
+            });
+          }
+        }
+      } else {
+        // Normal platform: show projects
+        for (const project of platform.projects || []) {
+          items.push({
+            type: 'project',
+            id: project.id,
+            name: project.name,
+            tm_count: project.tms?.length || 0,
+            icon: 'folder'
+          });
+        }
       }
 
       // Platform-level TMs
