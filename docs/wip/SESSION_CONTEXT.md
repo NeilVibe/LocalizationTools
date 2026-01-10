@@ -1,10 +1,10 @@
 # Session Context
 
-> Last Updated: 2026-01-11 (Session 38 - Bug Fixes + UX Planning)
+> Last Updated: 2026-01-11 (Session 38 - Bug Fixes + UX Enhancements)
 
 ---
 
-## SESSION 38 IN PROGRESS
+## SESSION 38 COMPLETE
 
 ### Bugs Fixed
 
@@ -14,37 +14,49 @@
 | **BUG-039** | Cell editor cursor jumping to beginning | ✅ Fixed |
 | **TM Folders** | TM page now shows folders from Files page | ✅ Fixed |
 
-### UX Enhancements Planned
+### UX Enhancements Implemented
 
-| Issue | Description | Priority |
-|-------|-------------|----------|
-| **UX-001** | Unconfirm cell hotkey (Ctrl+U?) | MEDIUM |
-| **UX-002** | Right-click context menus in file viewer cells | HIGH |
-| **UX-003** | TM move functionality (cut/paste + "Move to...") | HIGH |
+| Issue | Description | Status |
+|-------|-------------|--------|
+| **UX-001** | Revert row status hotkey (Ctrl+U) | ✅ DONE |
+| **UX-002** | Right-click context menus in file viewer cells | ✅ DONE |
+| **UX-003** | TM move functionality (cut/paste + "Move to...") | PLANNED |
 
-### Discussion: Right-Click Everywhere
+### UX-001: Revert Row Status (Ctrl+U)
 
-**Problem:** Right-click doesn't work consistently across the app:
-- ✅ File Explorer - works
-- ✅ TM Explorer - works
-- ❌ File Viewer (cells) - shows browser default
+**Implementation:**
+- Added `revertRowStatus()` function in VirtualGrid.svelte
+- Ctrl+U sets row status to "untranslated" (reverts from confirmed/translated)
+- Works in both edit mode and selection mode
+- Makes API call to update backend
 
-**Proposed Cell Context Menu:**
+### UX-002: Cell Context Menu
+
+**Implementation:**
+- Right-click on any row in file viewer shows context menu
+- Prevents browser default context menu
+
+**Menu Options:**
 ```
-┌─────────────────────────┐
-│ ✓ Confirm (Ctrl+S)      │
-│ ↶ Unconfirm             │
-│ ─────────────────────── │
-│ ⚠ Run QA on Row         │
-│ + Add to TM             │
-│ ─────────────────────── │
-│ 📋 Copy Source          │
-│ 📋 Copy Target          │
-│ 📋 Copy Row             │
-└─────────────────────────┘
+┌─────────────────────────────┐
+│ ✓ Confirm         Ctrl+S   │
+│ 📝 Set as Translated       │
+│ ↩ Set as Untranslated Ctrl+U│
+│ ─────────────────────────── │
+│ ⚠ Run QA on Row            │
+│ ✗ Dismiss QA Issues  Ctrl+D │
+│ + Add to TM                │
+│ ─────────────────────────── │
+│ 📋 Copy Source             │
+│ 📋 Copy Target             │
+│ 📋 Copy Row                │
+└─────────────────────────────┘
 ```
 
-### Discussion: TM Management
+**Files Modified:**
+- `VirtualGrid.svelte` - Context menu state, handlers, UI, CSS
+
+### Discussion: TM Management (UX-003 - PLANNED)
 
 **Problem:** Can't move TMs after creation - stuck in UNASSIGNED.
 

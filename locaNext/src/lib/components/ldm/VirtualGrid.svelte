@@ -146,6 +146,11 @@
   let qaLoading = $state(false);
   let lastQaResult = $state(null); // Latest QA check result (for QA badge updates)
 
+  // UX-002: Cell context menu state
+  let showContextMenu = $state(false);
+  let contextMenuPosition = $state({ x: 0, y: 0 });
+  let contextMenuRowId = $state(null);
+
   // ============================================================
   // UNIFIED COLUMN RESIZE SYSTEM (UI-083)
   // All columns use full-height resize bars, factorized logic
@@ -1326,6 +1331,13 @@
       return;
     }
 
+    // Ctrl+U: Revert to untranslated (reset status)
+    if (e.ctrlKey && e.key === 'u') {
+      e.preventDefault();
+      revertRowStatus();
+      return;
+    }
+
     // Ctrl+Z: Undo
     if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
@@ -1452,6 +1464,177 @@
 
     dispatch('dismissQA', { rowId: row.id });
     logger.userAction("QA issues dismissed", { rowId: row.id });
+  }
+
+  /**
+   * Revert row status to untranslated (Ctrl+U)
+   * Works in both edit mode and selection mode
+   */
+  async function revertRowStatus() {
+    const targetRowId = inlineEditingRowId || selectedRowId;
+    if (!targetRowId) return;
+
+    const row = getRowById(targetRowId);
+    if (!row) return;
+
+    // Already untranslated? Nothing to do
+    if (row.status === 'untranslated') {
+      logger.info("Row already untranslated", { rowId: row.id });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: 'untranslated'
+        })
+      });
+
+      if (response.ok) {
+        row.status = 'untranslated';
+        logger.success("Row reverted to untranslated", { rowId: row.id });
+        dispatch('rowUpdate', { rowId: row.id });
+      } else {
+        logger.error("Failed to revert row status", { rowId: row.id, status: response.status });
+      }
+    } catch (err) {
+      logger.error("Error reverting row status", { error: err.message });
+    }
+  }
+
+  // ============================================================
+  // UX-002: CELL CONTEXT MENU
+  // ============================================================
+
+  /**
+   * Handle right-click on cell row
+   */
+  function handleCellContextMenu(e, rowId) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    contextMenuRowId = rowId;
+    contextMenuPosition = { x: e.clientX, y: e.clientY };
+    showContextMenu = true;
+
+    // Also select the row
+    selectedRowId = rowId;
+    const row = getRowById(rowId);
+    if (row) {
+      dispatch('rowSelect', { row });
+    }
+  }
+
+  /**
+   * Close context menu
+   */
+  function closeContextMenu() {
+    showContextMenu = false;
+    contextMenuRowId = null;
+  }
+
+  /**
+   * Set row status via context menu
+   */
+  async function setRowStatus(status) {
+    closeContextMenu();
+    if (!contextMenuRowId) return;
+
+    const row = getRowById(contextMenuRowId);
+    if (!row || row.status === status) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (response.ok) {
+        row.status = status;
+        logger.success(`Row status set to ${status}`, { rowId: row.id });
+        dispatch('rowUpdate', { rowId: row.id });
+
+        // If confirming, also dispatch for TM auto-add
+        if (status === 'reviewed') {
+          dispatch('confirmTranslation', {
+            rowId: row.id,
+            source: row.source,
+            target: row.target
+          });
+        }
+      }
+    } catch (err) {
+      logger.error("Error setting row status", { error: err.message });
+    }
+  }
+
+  /**
+   * Copy text to clipboard
+   */
+  async function copyToClipboard(text, label) {
+    closeContextMenu();
+    try {
+      await navigator.clipboard.writeText(text);
+      logger.success(`${label} copied to clipboard`);
+    } catch (err) {
+      logger.error("Failed to copy to clipboard", { error: err.message });
+    }
+  }
+
+  /**
+   * Run QA on row via context menu
+   */
+  function runQAOnRow() {
+    closeContextMenu();
+    if (!contextMenuRowId) return;
+
+    const row = getRowById(contextMenuRowId);
+    if (!row) return;
+
+    // Dispatch QA request event
+    dispatch('runQA', { rowId: row.id, source: row.source, target: row.target });
+    logger.userAction("QA check requested from context menu", { rowId: row.id });
+  }
+
+  /**
+   * Dismiss QA via context menu
+   */
+  function dismissQAFromContextMenu() {
+    closeContextMenu();
+    if (!contextMenuRowId) return;
+
+    dispatch('dismissQA', { rowId: contextMenuRowId });
+    logger.userAction("QA dismissed from context menu", { rowId: contextMenuRowId });
+  }
+
+  /**
+   * Add row to TM via context menu
+   */
+  function addToTMFromContextMenu() {
+    closeContextMenu();
+    if (!contextMenuRowId) return;
+
+    const row = getRowById(contextMenuRowId);
+    if (!row) return;
+
+    dispatch('addToTM', { rowId: row.id, source: row.source, target: row.target });
+    logger.userAction("Add to TM requested from context menu", { rowId: row.id });
+  }
+
+  // Close context menu on click outside
+  function handleGlobalClick(e) {
+    if (showContextMenu) {
+      closeContextMenu();
+    }
   }
 
   // Undo/Redo state
@@ -2116,6 +2299,7 @@
               style="top: {getRowTop(rowIndex)}px; min-height: {getRowHeight(rowIndex)}px;"
               use:measureRowHeight={{ index: rowIndex }}
               onclick={(e) => handleCellClick(row, e)}
+              oncontextmenu={(e) => !row.placeholder && handleCellContextMenu(e, row.id)}
               onmouseleave={handleRowMouseLeave}
               role="row"
             >
@@ -2293,7 +2477,86 @@
       </div>
     </div>
   {/if}
+
+  <!-- UX-002: Cell Context Menu -->
+  {#if showContextMenu}
+    {@const contextRow = getRowById(contextMenuRowId)}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="context-menu"
+      style="left: {contextMenuPosition.x}px; top: {contextMenuPosition.y}px;"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <div class="context-menu-section">
+        <button
+          class="context-item"
+          onclick={() => setRowStatus('reviewed')}
+          disabled={contextRow?.status === 'reviewed'}
+        >
+          <span class="context-icon">✓</span>
+          <span>Confirm</span>
+          <span class="context-shortcut">Ctrl+S</span>
+        </button>
+        <button
+          class="context-item"
+          onclick={() => setRowStatus('translated')}
+          disabled={contextRow?.status === 'translated'}
+        >
+          <span class="context-icon">📝</span>
+          <span>Set as Translated</span>
+        </button>
+        <button
+          class="context-item"
+          onclick={() => setRowStatus('untranslated')}
+          disabled={contextRow?.status === 'untranslated'}
+        >
+          <span class="context-icon">↩</span>
+          <span>Set as Untranslated</span>
+          <span class="context-shortcut">Ctrl+U</span>
+        </button>
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-section">
+        <button class="context-item" onclick={runQAOnRow}>
+          <span class="context-icon">⚠</span>
+          <span>Run QA on Row</span>
+        </button>
+        <button
+          class="context-item"
+          onclick={dismissQAFromContextMenu}
+          disabled={!contextRow?.qa_flag_count}
+        >
+          <span class="context-icon">✗</span>
+          <span>Dismiss QA Issues</span>
+          <span class="context-shortcut">Ctrl+D</span>
+        </button>
+        <button class="context-item" onclick={addToTMFromContextMenu}>
+          <span class="context-icon">+</span>
+          <span>Add to TM</span>
+        </button>
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-section">
+        <button class="context-item" onclick={() => copyToClipboard(contextRow?.source || '', 'Source')}>
+          <span class="context-icon">📋</span>
+          <span>Copy Source</span>
+        </button>
+        <button class="context-item" onclick={() => copyToClipboard(contextRow?.target || '', 'Target')}>
+          <span class="context-icon">📋</span>
+          <span>Copy Target</span>
+        </button>
+        <button class="context-item" onclick={() => copyToClipboard(`${contextRow?.source || ''}\t${contextRow?.target || ''}`, 'Row')}>
+          <span class="context-icon">📋</span>
+          <span>Copy Row</span>
+        </button>
+      </div>
+    </div>
+  {/if}
 </div>
+
+<!-- svelte:window for closing context menu -->
+<svelte:window onclick={handleGlobalClick} />
 
 <!-- Phase 2: Edit Modal REMOVED - replaced by inline editing
      Double-click Target cell = inline edit
@@ -3193,4 +3456,65 @@
      - Inline editing (double-click Target cell)
      - TMQAPanel.svelte (side panel for TM/QA)
      ======================================== */
+
+  /* ========================================
+     UX-002: Cell Context Menu
+     ======================================== */
+  .context-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 200px;
+    background: var(--cds-layer-02, #262626);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    padding: 0.25rem 0;
+  }
+
+  .context-menu-section {
+    padding: 0.25rem 0;
+  }
+
+  .context-menu-divider {
+    height: 1px;
+    background: var(--cds-border-subtle-01);
+    margin: 0.25rem 0;
+  }
+
+  .context-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: none;
+    text-align: left;
+    color: var(--cds-text-01);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background 0.1s ease;
+    gap: 0.75rem;
+  }
+
+  .context-item:hover:not(:disabled) {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .context-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .context-icon {
+    width: 1rem;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .context-shortcut {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    opacity: 0.7;
+  }
 </style>
