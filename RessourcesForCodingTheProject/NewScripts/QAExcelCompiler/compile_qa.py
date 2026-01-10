@@ -418,11 +418,12 @@ def find_column_by_header(ws, header_name, case_insensitive=True):
 
 def get_or_create_master(category, master_folder, template_file=None):
     """
-    Load existing master file or create from template.
+    ALWAYS create fresh master from template file.
 
-    CLEAN START: When creating new master, DELETE STATUS/COMMENT/SCREENSHOT
-    columns entirely (not just clear values). Master starts clean with only
-    data columns, then COMMENT_{User} columns are added at MAX_COLUMN + 1.
+    FULL REBUILD: Delete old master and create fresh from first QA file.
+    This ensures structure is always up-to-date with latest QA files.
+
+    Manager status is preserved via dict (extracted before this function runs).
 
     Args:
         category: Category name (Quest, Knowledge, etc.)
@@ -433,10 +434,12 @@ def get_or_create_master(category, master_folder, template_file=None):
     """
     master_path = master_folder / f"Master_{category}.xlsx"
 
+    # ALWAYS delete old master and create fresh
     if master_path.exists():
-        print(f"  Loading existing: {master_path.name}")
-        return safe_load_workbook(master_path), master_path
-    elif template_file:
+        print(f"  Deleting old master: {master_path.name} (rebuilding fresh)")
+        master_path.unlink()
+
+    if template_file:
         print(f"  Creating new master from: {template_file.name}")
         wb = safe_load_workbook(template_file)
 
@@ -881,15 +884,11 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
     """
     Process a single sheet: copy COMMENT and SCREENSHOT from QA to master, collect STATUS stats.
 
-    ROBUST VERSION:
-    - Finds COMMENT/STATUS/STRINGID/SCREENSHOT columns dynamically by header name
-    - Uses MAX_COLUMN + 1 for user comment and screenshot columns
-    - Creates columns in order: COMMENT_{User} → STATUS_{User} → SCREENSHOT_{User}
-    - Falls back to 2+ cell matching if row counts differ
-    - Applies beautiful styling to comment cells (blue fill + bold)
-    - Transfers screenshots with hyperlink path transformation
-    - Uses file modification time for comment timestamps
-    - Preserves manager STATUS values (FIXED/REPORTED/CHECKING) from preprocess
+    FULL REBUILD VERSION:
+    - Master is ALWAYS fresh from first QA file (same structure)
+    - Uses INDEX for row matching (no fallback needed)
+    - Applies manager status by looking up COMMENT TEXT in dict
+    - Creates columns: COMMENT_{User} → STATUS_{User} → SCREENSHOT_{User}
 
     Args:
         master_ws: Master worksheet
@@ -898,9 +897,9 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
         category: Category name
         image_mapping: Dict mapping original_name -> new_name (for hyperlink transformation)
         xlsx_path: Path to QA xlsx file (for file modification time)
-        manager_status: Dict of {row: {user: status}} for this sheet (from preprocess)
+        manager_status: Dict of {comment_text: {user: status}} for this sheet (keyed by comment text)
 
-    Returns: Dict with {comments: n, screenshots: n, stats: {...}, fallback_used: n}
+    Returns: Dict with {comments: n, screenshots: n, stats: {...}, manager_restored: n}
     """
     if image_mapping is None:
         image_mapping = {}
@@ -918,86 +917,23 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
     qa_screenshot_col = find_column_by_header(qa_ws, "SCREENSHOT")
     qa_stringid_col = find_column_by_header(qa_ws, "STRINGID")
 
-    # Build exclude set for row signature matching
-    qa_exclude_cols = set()
-    if qa_status_col:
-        qa_exclude_cols.add(qa_status_col)
-    if qa_comment_col:
-        qa_exclude_cols.add(qa_comment_col)
-    if qa_screenshot_col:
-        qa_exclude_cols.add(qa_screenshot_col)
-    if qa_stringid_col:
-        qa_exclude_cols.add(qa_stringid_col)
-
     # Find or create user columns in master in correct order:
     # COMMENT_{username} → STATUS_{username} → SCREENSHOT_{username}
     master_comment_col = get_or_create_user_comment_column(master_ws, username)
     master_user_status_col = get_or_create_user_status_column(master_ws, username, master_comment_col)
     master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_user_status_col)
 
-    # Build exclude set for master row matching
-    master_orig_status_col = find_column_by_header(master_ws, "STATUS")
-    master_orig_comment_col = find_column_by_header(master_ws, "COMMENT")
-    master_orig_screenshot_col = find_column_by_header(master_ws, "SCREENSHOT")
-
-    master_exclude_cols = set()
-    if master_orig_status_col:
-        master_exclude_cols.add(master_orig_status_col)
-    if master_orig_comment_col:
-        master_exclude_cols.add(master_orig_comment_col)
-    if master_orig_screenshot_col:
-        master_exclude_cols.add(master_orig_screenshot_col)
-    # Also exclude all COMMENT_*, STATUS_*, and SCREENSHOT_* columns
-    for col in range(1, master_ws.max_column + 1):
-        header = master_ws.cell(row=1, column=col).value
-        if header and (str(header).startswith("COMMENT_") or str(header).startswith("STATUS_") or str(header).startswith("SCREENSHOT_")):
-            master_exclude_cols.add(col)
-
     result = {
         "comments": 0,
         "screenshots": 0,
         "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "total": 0},
-        "fallback_used": 0,
-        "stringid_matched": 0,
-        "item_fallback_used": 0
+        "manager_restored": 0
     }
 
-    # Determine if we need fallback matching
-    use_fallback = (master_ws.max_row != qa_ws.max_row)
-    if use_fallback:
-        print(f"      Row count differs (master:{master_ws.max_row}, qa:{qa_ws.max_row}), using fallback matching")
-
+    # Process each row by INDEX (master is fresh from QA, same structure)
     for qa_row in range(2, qa_ws.max_row + 1):  # Skip header
         result["stats"]["total"] += 1
-
-        # Determine master row - simple index matching for all categories
-        master_row = None
-
-        if use_fallback:
-            qa_sig = get_row_signature(qa_ws, qa_row, qa_exclude_cols)
-            master_row = find_matching_row_fallback(master_ws, qa_sig, master_exclude_cols)
-            if master_row is None:
-                # No match found, skip this row
-                continue
-            result["fallback_used"] += 1
-        else:
-            master_row = qa_row  # Direct index matching
-
-        # Refresh base data columns from QA to master
-        # Copy ALL columns EXCEPT: STATUS, COMMENT, SCREENSHOT, and user-specific columns
-        for col in range(1, qa_ws.max_column + 1):
-            # Skip columns we handle specially
-            if col in qa_exclude_cols:
-                continue
-            # Skip user-specific columns (COMMENT_{User}, SCREENSHOT_{User}, STATUS_{User})
-            header = qa_ws.cell(row=1, column=col).value
-            if header:
-                header_str = str(header)
-                if header_str.startswith("COMMENT_") or header_str.startswith("SCREENSHOT_") or header_str.startswith("STATUS_"):
-                    continue
-            # Copy value from QA to master (refresh base data)
-            qa_value = qa_ws.cell(row=qa_row, column=col).value
-            master_ws.cell(row=master_row, column=col).value = qa_value
+        master_row = qa_row  # Direct index matching (always works - fresh rebuild)
 
         # Get QA STATUS (for stats AND to filter which comments to compile)
         is_issue = False
@@ -1015,9 +951,13 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
 
         # Get QA COMMENT and STRINGID, copy to master with styling
         # ONLY compile comments where STATUS = ISSUE (for Actual Issues % calculation)
+        comment_text_for_lookup = None  # For manager status lookup
         if qa_comment_col and is_issue:
             qa_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
             if qa_comment and str(qa_comment).strip():
+                # Extract comment text for manager status lookup
+                comment_text_for_lookup = extract_comment_text(qa_comment)
+
                 # Get StringID if available
                 string_id = None
                 if qa_stringid_col:
@@ -1029,7 +969,7 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                 # Format and update (REPLACE mode, includes stringid + file mod time)
                 new_value = format_comment(qa_comment, string_id, existing, file_mod_time)
 
-                # ONLY write if there's actually new content (preserve team's custom formatting!)
+                # ONLY write if there's actually new content
                 if new_value != existing:
                     cell = master_ws.cell(row=master_row, column=master_comment_col)
                     cell.value = sanitize_for_excel(new_value)  # Prevent Excel formula injection
@@ -1074,7 +1014,6 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                         new_screenshot_target = f"Images/{new_name}"
                     else:
                         # Image not found in mapping - still use Images/ prefix
-                        # This handles case where image wasn't in QA folder
                         new_screenshot_value = original_name
                         new_screenshot_target = f"Images/{original_name}"
                         is_warning = True
@@ -1091,16 +1030,16 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                         new_screenshot_target = f"Images/{original_name}"
                         is_warning = True
 
-                # Check if hyperlink needs updating (value OR hyperlink different)
+                # Check if hyperlink needs updating
                 existing_hyperlink = master_screenshot_cell.hyperlink.target if master_screenshot_cell.hyperlink else None
                 needs_update = (new_screenshot_value != existing_screenshot) or (new_screenshot_target != existing_hyperlink)
 
                 if needs_update:
-                    master_screenshot_cell.value = sanitize_for_excel(new_screenshot_value)  # Prevent Excel formula injection
+                    master_screenshot_cell.value = sanitize_for_excel(new_screenshot_value)
                     if new_screenshot_target:
                         master_screenshot_cell.hyperlink = new_screenshot_target
 
-                    # Apply styling: blue fill + blue border (matching COMMENT style)
+                    # Apply styling: blue fill + blue border
                     master_screenshot_cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
                     master_screenshot_cell.alignment = Alignment(horizontal='left', vertical='center')
                     master_screenshot_cell.border = Border(
@@ -1113,20 +1052,19 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                     # Hyperlink font: blue for valid, orange for warning
                     if new_screenshot_target:
                         if is_warning:
-                            master_screenshot_cell.font = Font(color="FF6600", underline="single")  # Orange = warning
+                            master_screenshot_cell.font = Font(color="FF6600", underline="single")
                         else:
-                            master_screenshot_cell.font = Font(color="0000FF", underline="single")  # Blue = valid
+                            master_screenshot_cell.font = Font(color="0000FF", underline="single")
 
                     result["screenshots"] += 1
 
-        # Restore manager STATUS_{username} value from preprocess
-        if manager_status and master_row in manager_status:
-            row_statuses = manager_status[master_row]
-            if username in row_statuses:
-                status_value = row_statuses[username]
-                status_cell = master_ws.cell(row=master_row, column=master_user_status_col)
-                # Only restore if currently empty (preserve manual edits)
-                if not status_cell.value:
+        # Apply manager STATUS by looking up COMMENT TEXT in dict
+        if comment_text_for_lookup and manager_status:
+            if comment_text_for_lookup in manager_status:
+                user_statuses = manager_status[comment_text_for_lookup]
+                if username in user_statuses:
+                    status_value = user_statuses[username]
+                    status_cell = master_ws.cell(row=master_row, column=master_user_status_col)
                     status_cell.value = status_value
                     # Style based on status value
                     status_cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -1136,6 +1074,9 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                         status_cell.font = Font(bold=True, color="FF8C00")  # Dark orange
                     elif status_value == "CHECKING":
                         status_cell.font = Font(bold=True, color="0000FF")  # Blue
+                    elif status_value == "NON-ISSUE":
+                        status_cell.font = Font(bold=True, color="808080")  # Gray
+                    result["manager_restored"] += 1
 
     return result
 
@@ -1451,9 +1392,26 @@ def update_status_sheet(wb, users, user_stats):
 # MANAGER STATUS PREPROCESS FUNCTIONS
 # =============================================================================
 
+def extract_comment_text(full_comment):
+    """
+    Extract the actual comment text from formatted comment.
+
+    Comment format: "comment text\n---\nstringid:\n10001\n(updated: ...)"
+    Returns: Just the comment text before "---"
+    """
+    if not full_comment:
+        return ""
+    comment_str = str(full_comment).strip()
+    if "---" in comment_str:
+        return comment_str.split("---")[0].strip()
+    return comment_str
+
+
 def collect_manager_status(master_folder):
     """
     Read existing Master files and collect all STATUS_{User} values.
+
+    KEYED BY COMMENT TEXT - so we can match after rebuild.
 
     This is the PREPROCESS step - runs before compilation to preserve
     manager-entered status values (FIXED/REPORTED/CHECKING).
@@ -1465,7 +1423,7 @@ def collect_manager_status(master_folder):
     {
         "Quest": {
             "Sheet1": {
-                row_number: {
+                "comment text here": {
                     "John": "FIXED",
                     "Alice": "REPORTED"
                 }
@@ -1491,27 +1449,38 @@ def collect_manager_status(master_folder):
                 ws = wb[sheet_name]
                 manager_status[category][sheet_name] = {}
 
-                # Find all STATUS_{User} columns
-                status_cols = {}
+                # Find all COMMENT_{User} and STATUS_{User} columns
+                comment_cols = {}  # username -> col
+                status_cols = {}   # username -> col
                 for col in range(1, ws.max_column + 1):
                     header = ws.cell(row=1, column=col).value
-                    if header and str(header).startswith("STATUS_"):
-                        username = str(header).replace("STATUS_", "")
-                        status_cols[username] = col
+                    if header:
+                        header_str = str(header)
+                        if header_str.startswith("COMMENT_"):
+                            username = header_str.replace("COMMENT_", "")
+                            comment_cols[username] = col
+                        elif header_str.startswith("STATUS_"):
+                            username = header_str.replace("STATUS_", "")
+                            status_cols[username] = col
 
                 if not status_cols:
                     continue
 
-                # Collect values per row
+                # Collect values per row, keyed by comment text
                 for row in range(2, ws.max_row + 1):
-                    row_status = {}
-                    for username, col in status_cols.items():
-                        value = ws.cell(row=row, column=col).value
-                        if value and str(value).strip().upper() in VALID_MANAGER_STATUS:
-                            row_status[username] = str(value).strip().upper()
-
-                    if row_status:
-                        manager_status[category][sheet_name][row] = row_status
+                    for username, status_col in status_cols.items():
+                        status_value = ws.cell(row=row, column=status_col).value
+                        if status_value and str(status_value).strip().upper() in VALID_MANAGER_STATUS:
+                            # Get the paired comment
+                            comment_col = comment_cols.get(username)
+                            if comment_col:
+                                full_comment = ws.cell(row=row, column=comment_col).value
+                                comment_text = extract_comment_text(full_comment)
+                                if comment_text:
+                                    # Store: dict[comment_text][user] = status
+                                    if comment_text not in manager_status[category][sheet_name]:
+                                        manager_status[category][sheet_name][comment_text] = {}
+                                    manager_status[category][sheet_name][comment_text][username] = str(status_value).strip().upper()
 
             wb.close()
 
@@ -3195,9 +3164,9 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
             result = process_sheet(master_wb[sheet_name], qa_wb[sheet_name], username, category, image_mapping, xlsx_path, sheet_manager_status)
             stats = result["stats"]
 
-            fallback_info = f", fallback:{result['fallback_used']}" if result.get('fallback_used', 0) > 0 else ""
+            manager_info = f", manager_restored:{result['manager_restored']}" if result.get('manager_restored', 0) > 0 else ""
             screenshot_info = f", screenshots:{result['screenshots']}" if result.get('screenshots', 0) > 0 else ""
-            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked{fallback_info}{screenshot_info}")
+            print(f"    {sheet_name}: {result['comments']} comments, {stats['issue']} issues, {stats['no_issue']} OK, {stats['blocked']} blocked{manager_info}{screenshot_info}")
 
             total_screenshots += result.get('screenshots', 0)
 
@@ -3269,11 +3238,13 @@ def main():
     ensure_master_folders()
 
     # PREPROCESS: Collect manager status from existing Master files (both EN and CN)
+    # Keyed by comment text for matching after rebuild
     print("\nCollecting manager status from existing Master files...")
     manager_status_en = collect_manager_status(MASTER_FOLDER_EN)
     manager_status_cn = collect_manager_status(MASTER_FOLDER_CN)
-    total_en = sum(sum(len(rows) for rows in sheets.values()) for sheets in manager_status_en.values())
-    total_cn = sum(sum(len(rows) for rows in sheets.values()) for sheets in manager_status_cn.values())
+    # Count unique comment-status pairs
+    total_en = sum(sum(len(statuses) for statuses in sheets.values()) for sheets in manager_status_en.values())
+    total_cn = sum(sum(len(statuses) for statuses in sheets.values()) for sheets in manager_status_cn.values())
     if total_en > 0 or total_cn > 0:
         print(f"  Found {total_en} EN + {total_cn} CN manager status entries to preserve")
     else:
