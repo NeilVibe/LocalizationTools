@@ -277,6 +277,7 @@
         bind:selectedTMId={selectedTMId}
         onTMSelect={handleTMSelect}
         onViewEntries={handleViewEntries}
+        onUploadTM={() => showUploadModal = true}
       />
     </div>
 

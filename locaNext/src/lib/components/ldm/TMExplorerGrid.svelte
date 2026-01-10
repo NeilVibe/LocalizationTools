@@ -33,7 +33,8 @@
   let {
     selectedTMId = $bindable(null),
     onTMSelect = null,
-    onViewEntries = null
+    onViewEntries = null,
+    onUploadTM = null  // Callback when user wants to upload TM
   } = $props();
 
   const API_BASE = getApiBase();
@@ -54,7 +55,7 @@
   let lastSelectedIndex = $state(-1);
 
   // Context menu state
-  let contextMenu = $state({ show: false, x: 0, y: 0, item: null });
+  let contextMenu = $state({ show: false, x: 0, y: 0, item: null, isBackground: false });
 
   // Confirm modal state
   let confirmModal = $state({
@@ -387,7 +388,8 @@
       show: true,
       x: event.clientX,
       y: event.clientY,
-      item
+      item,
+      isBackground: false
     };
   }
 
@@ -395,11 +397,18 @@
     if (event.target.closest('.grid-row')) return;
     event.preventDefault();
     event.stopPropagation();
-    contextMenu = { show: false, x: 0, y: 0, item: null };
+    // Show background context menu with Upload option
+    contextMenu = {
+      show: true,
+      x: event.clientX,
+      y: event.clientY,
+      item: null,
+      isBackground: true
+    };
   }
 
   function closeContextMenu() {
-    contextMenu = { show: false, x: 0, y: 0, item: null };
+    contextMenu = { show: false, x: 0, y: 0, item: null, isBackground: false };
   }
 
   function handleActivateFromMenu() {
@@ -695,7 +704,13 @@
     style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
     role="menu"
   >
-    {#if contextMenu.item?.type === 'tm'}
+    {#if contextMenu.isBackground}
+      <!-- Background right-click: show Upload option -->
+      <button class="context-item" onclick={() => { if (onUploadTM) onUploadTM(); closeContextMenu(); }}>
+        Upload TM
+      </button>
+    {:else if contextMenu.item?.type === 'tm'}
+      <!-- TM right-click: Activate/Delete -->
       <button class="context-item" onclick={handleActivateFromMenu}>
         {contextMenu.item.is_active ? 'Deactivate' : 'Activate'}
       </button>
@@ -703,6 +718,7 @@
         Delete
       </button>
     {:else}
+      <!-- Platform/Project right-click: Open -->
       <button class="context-item" onclick={() => { navigateTo(contextMenu.item); closeContextMenu(); }}>
         Open
       </button>
