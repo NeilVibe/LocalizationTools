@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-11 (Session 38) | **Build:** 454 | **Open:** 1
+**Last Updated:** 2026-01-11 (Session 38) | **Build:** 454 | **Open:** 0
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 1 |
-| **FIXED/CLOSED** | 124 |
+| **OPEN** | 0 |
+| **FIXED/CLOSED** | 125 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
@@ -17,46 +17,31 @@
 
 ## OPEN ISSUES
 
-### UX-003: Cannot Move TMs in TM Explorer
-
-- **Reported:** 2026-01-11 (Session 38)
-- **Severity:** HIGH (Missing feature)
-- **Component:** TMExplorerGrid.svelte, TMPage.svelte
-
-**Problem:** When registering a file as TM, it gets created in UNASSIGNED. User cannot move the TM afterward:
-- No drag-drop targets (folders don't exist in TM view until created in Files)
-- No cut/copy/paste support
-- No "Move to..." context menu option
-
-**Current State:**
-- TMs created from files → go to UNASSIGNED
-- Can drag TM to Platform/Project (if they exist)
-- ❌ Cannot create folders in TM view
-- ❌ Cannot cut/paste TMs like files
-- ❌ No "Move to..." modal to browse and select destination
-
-**Proposed Solutions (implement BOTH):**
-
-**Solution A: Cut/Copy/Paste Support**
-- `Ctrl+X` - Cut TM (mark for move)
-- `Ctrl+C` - Copy TM (for duplicate)
-- `Ctrl+V` - Paste in current location
-- Maintain cut/copy state across navigation
-- Visual feedback: Cut items show grayed/striped
-
-**Solution B: "Move to..." Context Menu**
-- Right-click TM → "Move to..."
-- Opens folder browser modal (like FilePickerDialog)
-- Shows hierarchy: Platform > Project > Folder
-- User selects destination → TM moves there
-
-**Backend Changes Needed:**
-- `PUT /api/ldm/tm/{id}/move` - Move TM to new platform/project/folder
-- Update `tm_assignment` record with new IDs
+*None! All issues fixed.*
 
 ---
 
 ## RECENTLY FIXED (Session 38)
+
+### UX-003: TM Cut/Copy/Paste ✅ FIXED
+
+- **Reported:** 2026-01-11 (Session 38)
+- **Fixed:** 2026-01-11 (Session 38)
+- **Component:** TMExplorerGrid.svelte
+
+**Problem:** TMs created from files got stuck in UNASSIGNED with no way to move them.
+
+**Solution:**
+- Added Cut/Copy/Paste functionality (same pattern as File Explorer)
+- Ctrl+X cuts, Ctrl+C copies, Ctrl+V pastes, Escape clears clipboard
+- Visual feedback: cut items show striped/faded
+- Clipboard indicator shows count and operation
+- Context menu includes Cut/Copy/Paste options
+- Uses existing `PATCH /api/ldm/tm/{id}/assign` endpoint
+
+**Tests:** 3 Playwright tests (all passing)
+
+---
 
 ### UX-001: Revert Row Status Hotkey (Ctrl+U) ✅ FIXED
 
