@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-10 (Session 37) | **Build:** 454 | **Open:** 1
+**Last Updated:** 2026-01-10 (Session 37) | **Build:** 454 | **Open:** 0
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 1 |
-| **FIXED/CLOSED** | 118 |
+| **OPEN** | 0 |
+| **FIXED/CLOSED** | 119 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
@@ -17,18 +17,21 @@
 
 ## OPEN ISSUES
 
-### UI-112: Breadcrumb Shows Folder Icon for Offline Storage (Should be Cloud)
-
-- **Reported:** 2026-01-10 (Session 36)
-- **Severity:** LOW (cosmetic)
-- **Status:** OPEN
-- **Component:** FilesPage.svelte (breadcrumb)
-
-**Problem:** In File Explorer breadcrumb, "Offline Storage" shows folder icon 📁 instead of CloudOffline icon ☁️.
+*None! All issues resolved.*
 
 ---
 
 ## RECENTLY FIXED (Session 37)
+
+### UI-112: Breadcrumb Shows Folder Icon for Offline Storage ✅ FIXED
+
+- **Reported:** 2026-01-10 (Session 36)
+- **Fixed:** 2026-01-10 (Session 37)
+- **Component:** FilesPage.svelte (breadcrumb)
+
+**Solution:** Added CloudOffline icon check in breadcrumb. Now shows ☁️ instead of 📁 for "Offline Storage".
+
+---
 
 ### UI-108: TM Page Should Use Grid Style Like File Explorer ✅ FIXED
 
