@@ -75,6 +75,9 @@ TRANSLATION_COLS = {
     "Region": {"eng": 2, "other": 3},
     # Item: Col 5 for ENG (ItemName), Col 7 for other
     "Item": {"eng": 5, "other": 7},
+    # System: Manually created sheets, Translation in Col 1
+    # Structure: Col1=Translation, Col2=STATUS, Col3=COMMENT, Col4=STRINGID, Col5=SCREENSHOT
+    "System": {"eng": 1, "other": 1},
 }
 
 # Item Description column positions (for Item-specific matching)
