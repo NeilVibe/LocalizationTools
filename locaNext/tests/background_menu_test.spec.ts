@@ -23,8 +23,22 @@ test('Right-click on empty space in TM grid shows Upload TM', async ({ page }) =
   await page.locator('.grid-row').first().dblclick();
   await page.waitForTimeout(1000);
 
+  // Enter first folder (which should be empty)
+  const firstFolder = page.locator('.grid-row.folder').first();
+  if (await firstFolder.isVisible()) {
+    await firstFolder.dblclick();
+    await page.waitForTimeout(500);
+  }
+
   // Right-click on empty area (use specific selector for TM grid)
-  await page.locator('.tm-explorer-grid .empty-state').click({ button: 'right' });
+  // Try empty-state first, fallback to grid-body
+  const emptyState = page.locator('.tm-explorer-grid .empty-state');
+  if (await emptyState.isVisible()) {
+    await emptyState.click({ button: 'right' });
+  } else {
+    // Right-click on grid body (not on a row)
+    await page.locator('.tm-explorer-grid .grid-body').click({ button: 'right', position: { x: 10, y: 300 } });
+  }
   await page.waitForTimeout(500);
 
   // Screenshot
