@@ -269,12 +269,12 @@
   {/if}
 </button>
 
-<!-- Sync Dashboard Modal -->
+<!-- Sync Dashboard Modal - UI-111: Compact size -->
 <Modal
   bind:open={showDashboard}
   modalHeading="Sync Dashboard"
   passiveModal
-  size="lg"
+  size="sm"
 >
   <div class="dashboard-content">
     <!-- Connection Status -->
@@ -601,19 +601,19 @@
     color: var(--cds-text-inverse);
   }
 
-  /* Dashboard styles - SPACIOUS and EXPLORER-STYLE */
+  /* Dashboard styles - UI-111: COMPACT layout */
   .dashboard-content {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
-    padding: 0.5rem;
+    gap: 1rem;
+    padding: 0.25rem;
   }
 
   .status-section {
     text-align: center;
-    padding: 1.5rem 2rem;
+    padding: 0.75rem 1rem;
     background: var(--cds-layer-02);
-    border-radius: 12px;
+    border-radius: 8px;
   }
 
   .status-header {
@@ -624,8 +624,8 @@
   }
 
   .status-indicator {
-    width: 18px;
-    height: 18px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     background: var(--cds-text-02);
   }
@@ -647,10 +647,10 @@
   }
 
   .status-text {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1rem;
+    font-weight: 600;
     color: var(--cds-text-01);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
   }
 
   .status-text.online {
@@ -681,27 +681,27 @@
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1.25rem;
+    gap: 0.75rem;
   }
 
   .stat-card {
-    padding: 1.25rem 1.5rem;
+    padding: 0.75rem 1rem;
     background: var(--cds-layer-02);
-    border-radius: 12px;
+    border-radius: 8px;
     text-align: center;
     border: 1px solid var(--cds-border-subtle-01);
   }
 
   .stat-label {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     color: var(--cds-text-02);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
     font-weight: 500;
   }
 
   .stat-value {
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 1.25rem;
+    font-weight: 600;
     color: var(--cds-text-01);
   }
 
@@ -709,11 +709,11 @@
     color: var(--cds-support-warning);
   }
 
-  /* Subscriptions section - EXPLORER STYLE */
+  /* Subscriptions section - UI-111: COMPACT */
   .subscriptions-section {
     background: var(--cds-layer-02);
-    border-radius: 12px;
-    padding: 1.25rem 1.5rem;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
     border: 1px solid var(--cds-border-subtle-01);
   }
 
@@ -721,42 +721,41 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
   }
 
   .section-title {
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--cds-text-01);
-    letter-spacing: 0.01em;
   }
 
   .section-count {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #24a148;
     background: rgba(36, 161, 72, 0.15);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
+    padding: 0.125rem 0.5rem;
+    border-radius: 8px;
   }
 
   .loading-text, .empty-text {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: var(--cds-text-02);
     text-align: center;
-    padding: 2rem 1rem;
-    line-height: 1.5;
+    padding: 1rem 0.5rem;
+    line-height: 1.4;
   }
 
   .subscriptions-list {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    max-height: 320px;
+    gap: 0.5rem;
+    max-height: 200px;
     overflow-y: auto;
-    padding-right: 0.5rem;
+    padding-right: 0.25rem;
   }
 
   /* Custom scrollbar for list */
@@ -774,14 +773,14 @@
     border-radius: 3px;
   }
 
-  /* EXPLORER-STYLE ITEM - larger, more visual */
+  /* UI-111: COMPACT subscription items */
   .subscription-item {
     display: flex;
     align-items: center;
-    gap: 0.875rem;
-    padding: 0.875rem 1rem;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
     background: var(--cds-layer-01);
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid transparent;
     transition: all 0.15s ease;
   }
@@ -795,10 +794,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 24px;
+    height: 24px;
     background: var(--cds-layer-02);
-    border-radius: 8px;
+    border-radius: 4px;
     color: var(--cds-icon-02);
   }
 
@@ -809,27 +808,26 @@
 
   .sub-name {
     display: block;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-weight: 500;
     color: var(--cds-text-01);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-bottom: 0.125rem;
   }
 
   .sub-type {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     color: var(--cds-text-02);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
     font-weight: 500;
   }
 
   .sub-status {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     color: var(--cds-text-02);
-    padding: 0.25rem 0.5rem;
+    padding: 0.125rem 0.375rem;
     background: var(--cds-layer-02);
     border-radius: 4px;
   }
@@ -844,11 +842,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     background: transparent;
     border: none;
-    border-radius: 6px;
+    border-radius: 4px;
     cursor: pointer;
     color: var(--cds-text-02);
     transition: all 0.15s;
@@ -862,32 +860,32 @@
   .actions-section {
     display: flex;
     justify-content: center;
-    gap: 1rem;
-    padding-top: 0.5rem;
+    gap: 0.75rem;
+    padding-top: 0.25rem;
   }
 
   .info-section {
-    padding: 1.25rem 1.5rem;
+    padding: 0.75rem 1rem;
     background: var(--cds-layer-02);
-    border-radius: 12px;
+    border-radius: 8px;
     text-align: center;
   }
 
   .info-text {
-    margin-top: 0.75rem;
-    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
     color: var(--cds-text-02);
-    line-height: 1.5;
+    line-height: 1.4;
   }
 
   .sync-progress {
     text-align: center;
-    padding: 1rem;
+    padding: 0.5rem;
   }
 
   .sync-text {
-    margin-top: 0.75rem;
-    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
     color: var(--cds-text-02);
   }
 

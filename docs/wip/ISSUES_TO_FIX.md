@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-10 (Session 36) | **Build:** 454 | **Open:** 0
+**Last Updated:** 2026-01-10 (Session 36) | **Build:** 454 | **Open:** 2
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 0 |
-| **FIXED/CLOSED** | 114 |
+| **OPEN** | 2 |
+| **FIXED/CLOSED** | 117 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
@@ -17,11 +17,84 @@
 
 ## OPEN ISSUES
 
-*No open issues!* 🎉
+### UI-108: TM Tree Uses Dropdown Style Instead of File Explorer Grid
+
+- **Reported:** 2026-01-10 (Session 36)
+- **Severity:** MEDIUM (UX inconsistency)
+- **Status:** OPEN - Phase 10 scope
+- **Component:** TMExplorerTree.svelte
+
+**Problem:** TM page uses collapsible tree/dropdown style, while File Explorer uses grid view.
+
+**Scope:** This is a significant UI overhaul - deferred to Phase 10.
+
+---
+
+### UI-112: Breadcrumb Shows Folder Icon for Offline Storage (Should be Cloud)
+
+- **Reported:** 2026-01-10 (Session 36)
+- **Severity:** LOW (cosmetic)
+- **Status:** OPEN
+- **Component:** FilesPage.svelte (breadcrumb)
+
+**Problem:** In File Explorer breadcrumb, "Offline Storage" shows folder icon 📁 instead of CloudOffline icon ☁️.
 
 ---
 
 ## RECENTLY FIXED (Session 36)
+
+### UI-109: TM Tree Shows "Offline Storage > Offline Storage" Nesting ✅ FIXED
+
+- **Reported:** 2026-01-10 (Session 36)
+- **Fixed:** 2026-01-10 (Session 36)
+- **Status:** ✅ FIXED
+
+**Fix:** Added filter in TMExplorerTree.svelte line 616:
+```javascript
+.filter(p => !(platform.name === 'Offline Storage' && p.name === 'Offline Storage'))
+```
+
+**Test:** `/tmp/ui109_tm_tree.png` - Only 1 "Offline Storage" shown
+
+---
+
+### UI-110: TM Tree Right-Click Shows Browser Menu ✅ FIXED
+
+- **Reported:** 2026-01-10 (Session 36)
+- **Fixed:** 2026-01-10 (Session 36)
+- **Status:** ✅ FIXED
+
+**Fix:** Added `oncontextmenu` handlers to all tree header buttons with `event.preventDefault()`.
+
+**Files Modified:** TMExplorerTree.svelte lines 509, 562, 626, 686
+
+**Test:** `/tmp/ui110_context_menu.png` - No browser menu appears
+
+---
+
+### UI-111: Sync Dashboard Modal Too Big and Ugly ✅ FIXED
+
+- **Reported:** 2026-01-10 (Session 36)
+- **Fixed:** 2026-01-10 (Session 36)
+- **Status:** ✅ FIXED
+
+**Fix:** Compacted SyncStatusPanel.svelte CSS:
+- Modal size: `lg` → `sm`
+- Reduced paddings, gaps, font sizes throughout
+- Subscription list max-height: 320px → 200px
+
+**Test:** `/tmp/ui111_sync_modal.png` - Compact, shows all info
+
+---
+
+### Code Cleanup: Removed Svelte 4 Pattern ✅
+
+- **Fixed:** 2026-01-10 (Session 36)
+- **Component:** TMExplorerTree.svelte
+
+**Fix:** Removed obsolete `createEventDispatcher()` and duplicate `dispatch()` calls. Now uses callback props only (Svelte 5 pattern).
+
+---
 
 ### UI-107: Offline Storage Duplication Confusion ✅ FIXED
 
