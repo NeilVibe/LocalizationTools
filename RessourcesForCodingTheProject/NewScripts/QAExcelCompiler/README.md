@@ -228,7 +228,7 @@ Each master file gets a `STATUS` sheet as the **first tab** (yellow header):
 - **NO ISSUE %**: Percentage of NO ISSUE statuses
 - **BLOCKED %**: Percentage of BLOCKED statuses
 
-**Valid STATUS values:** ISSUE, NO ISSUE, BLOCKED
+**Valid STATUS values:** ISSUE, NO ISSUE, BLOCKED, KOREAN
 
 ### Re-run Safe
 
@@ -239,35 +239,77 @@ Each master file gets a `STATUS` sheet as the **first tab** (yellow header):
 - **Hidden columns stay hidden** (column visibility preserved on updates)
 - **Manager status values preserved** (FIXED/REPORTED/CHECKING entries persist on re-compile)
 
-### Manager Status Workflow
+### Two-Status System (Tester + Manager)
 
-Managers can track issue resolution in Master files using `STATUS_{User}` columns:
+Master files have **two status columns per user**:
 
 ```
-| COMMENT_John | STATUS_John | SCREENSHOT_John | COMMENT_Alice | STATUS_Alice | ...
-|--------------|-------------|-----------------|---------------|--------------|-----
-| "Bug here"   | FIXED       | img.png         | "Typo found"  | REPORTED     |
-| "Wrong text" |             |                 | "Missing"     | CHECKING     |
+| COMMENT_John | TESTER_STATUS_John | STATUS_John | SCREENSHOT_John |
+|--------------|-------------------|-------------|-----------------|
+| "Bug here"   | ISSUE             | FIXED       | img.png         |
+| "Wrong text" | BLOCKED           |             |                 |
+| "Looks OK"   | NO ISSUE          |             |                 |
 ```
 
-**Valid Manager STATUS values:**
-- **FIXED**: Issue has been fixed
-- **REPORTED**: Issue has been reported to dev team
-- **CHECKING**: Issue is being investigated
-- *(empty)*: No manager action yet
+**Column structure per user:**
+1. `COMMENT_{User}` - QA feedback (visible)
+2. `TESTER_STATUS_{User}` - Original QA status (**HIDDEN** - for filtering)
+3. `STATUS_{User}` - Manager status (visible, dropdown)
+4. `SCREENSHOT_{User}` - Image hyperlink (visible)
+
+**Tester STATUS values** (from QA file):
+- **ISSUE**: Problem found (rows visible by default)
+- **NO ISSUE**: No problem (rows hidden)
+- **BLOCKED**: Cannot test (rows hidden)
+- **KOREAN**: Korean-only issue (rows hidden)
+
+**Manager STATUS values** (set in Master file):
+- **FIXED**: Issue has been fixed (rows hidden)
+- **REPORTED**: Issue reported to dev team (rows visible)
+- **CHECKING**: Issue being investigated (rows visible)
+- **NON-ISSUE**: Not actually an issue (rows hidden)
+- *(empty)*: Pending manager review (rows visible)
+
+### Row Visibility Rules
+
+| Tester Status | Manager Status | Row Visible? |
+|---------------|----------------|--------------|
+| ISSUE | (empty) | ✅ YES |
+| ISSUE | REPORTED | ✅ YES |
+| ISSUE | CHECKING | ✅ YES |
+| ISSUE | FIXED | ❌ NO |
+| ISSUE | NON-ISSUE | ❌ NO |
+| BLOCKED | (any) | ❌ NO |
+| KOREAN | (any) | ❌ NO |
+| NO ISSUE | (any) | ❌ NO |
+
+**Key points:**
+- Comments are compiled for **ALL** tester statuses (not just ISSUE)
+- Only ISSUE rows are shown by default
+- Manager can resolve ISSUE rows → they become hidden
+- TESTER_STATUS column always stays hidden (internal use)
+- If ANY user has ISSUE status on a row, row is visible
+
+### Sheet Hiding Rules
+
+Sheets are hidden when:
+- Sheet has NO comments at all
+- Sheet has comments but NO visible ISSUE rows after filtering
+
+### Manager Workflow
+
+1. Compiler creates Master files with empty `STATUS_{User}` columns
+2. Manager opens Master file in Excel
+3. Manager enters FIXED/REPORTED/CHECKING/NON-ISSUE for each issue
+4. On next compile, these values are **preserved automatically** (matched by comment text)
+5. Manager stats appear in Progress Tracker (Fixed, Reported, Checking, Pending)
 
 **Column styling:**
 - `STATUS_{User}` headers: Light green (`90EE90`) background
 - FIXED: Forest green text
 - REPORTED: Orange text
 - CHECKING: Blue text
-
-**Workflow:**
-1. Compiler creates Master files with empty `STATUS_{User}` columns
-2. Manager opens Master file in Excel
-3. Manager enters FIXED/REPORTED/CHECKING for each issue
-4. On next compile, these values are **preserved automatically**
-5. Manager stats appear in Progress Tracker (Fixed, Reported, Checking, Pending)
+- NON-ISSUE: Gray text
 
 ### EN Item A-Z Sorting
 
@@ -363,6 +405,19 @@ A separate `LQA_Tester_ProgressTracker.xlsx` file tracks progress across ALL cat
 - **Persistent data**: Hidden `_DAILY_DATA` sheet stores raw data
 - **Beautiful styling**: Gold headers, alternating rows, borders
 - **Manager stats tracking**: Fixed, Reported, Checking, Pending per user
+
+**Cross-Category Progress:**
+
+When a tester completes one category and gets assigned a new one:
+
+| Scenario | Total Rows | Done | Completion |
+|----------|------------|------|------------|
+| Quest only (100%) | 1000 | 1000 | 100% |
+| Quest + Knowledge (new) | 1500 | 1000 | 66.7% |
+
+- TOTAL tab aggregates **latest data** per (user, category)
+- Adding new category increases total rows → completion % drops
+- This correctly reflects overall progress across all assignments
 
 ---
 
@@ -530,3 +585,9 @@ ONE big spacious line chart showing cumulative progress:
 *Updated: 2026-01-10 - fullitem25.py v3.14: KnowledgeKey priority, fallback to ItemInfo.ItemDesc if no KnowledgeKey*
 *Updated: 2026-01-10 - Item transfer: stricter matching using ItemName+ItemDesc+STRINGID (requires both name and description)*
 *Updated: 2026-01-10 - System category: supports manually created sheets with Translation in Column 1*
+*Updated: 2026-01-10 - KOREAN status: added as valid tester status (rows hidden like BLOCKED)*
+*Updated: 2026-01-10 - Two-status system: TESTER_STATUS (hidden) + STATUS (manager) columns per user*
+*Updated: 2026-01-10 - Compile ALL statuses: comments compiled for ISSUE/BLOCKED/KOREAN/NO ISSUE (not just ISSUE)*
+*Updated: 2026-01-10 - Row visibility: show if ANY user has ISSUE, hide if manager marks FIXED/NON-ISSUE*
+*Updated: 2026-01-10 - Sheet hiding: hide sheets with no visible ISSUE rows after filtering*
+*Updated: 2026-01-10 - REPORTED status: now stays VISIBLE (was incorrectly hidden before)*
