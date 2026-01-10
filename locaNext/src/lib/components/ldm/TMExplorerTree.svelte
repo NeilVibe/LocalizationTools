@@ -483,7 +483,7 @@
   }
 </script>
 
-<div class="tm-explorer-tree">
+<div class="tm-explorer-tree" oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); }}>
   {#if loading}
     <div class="loading-state">Loading...</div>
   {:else}
