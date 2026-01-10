@@ -11,7 +11,7 @@
    * - Drag-drop TM reassignment
    * - Context menu (Activate, Move, Delete)
    */
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import {
     ChevronDown,
     ChevronRight,
@@ -35,7 +35,6 @@
     onViewEntries = null
   } = $props();
 
-  const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
 
   // State
@@ -269,7 +268,6 @@
 
     // Update single selection for backwards compatibility
     selectedTMId = tmId;
-    dispatch('select', { tm });
     if (onTMSelect) onTMSelect(tm);
   }
 
@@ -385,7 +383,6 @@
   }
 
   function handleDoubleClick(tm) {
-    dispatch('viewEntries', { tm });
     if (onViewEntries) onViewEntries(tm);
   }
 
@@ -403,6 +400,18 @@
       tm,
       scope
     };
+  }
+
+  /**
+   * UI-110: Handle right-click on tree headers (platform/project/folder)
+   * Prevents browser context menu from appearing
+   */
+  function handleHeaderContextMenu(event, headerType, headerId, headerName) {
+    event.preventDefault();
+    event.stopPropagation();
+    // For now, just prevent browser menu - future: add header-specific actions
+    // Could add: "Create TM here", "Activate All TMs", etc.
+    logger.debug('Header context menu', { headerType, headerId, headerName });
   }
 
   function closeContextMenu() {
@@ -494,7 +503,11 @@
         ondragleave={handleDragLeave}
         ondrop={(e) => handleDrop(e, null, 'unassigned')}
       >
-        <button class="tree-header" onclick={() => toggleNode('unassigned')}>
+        <button
+          class="tree-header"
+          onclick={() => toggleNode('unassigned')}
+          oncontextmenu={(e) => handleHeaderContextMenu(e, 'unassigned', null, 'Unassigned')}
+        >
           {#if isExpanded('unassigned')}
             <ChevronDown size={16} />
           {:else}
@@ -543,7 +556,11 @@
           ondragleave={handleDragLeave}
           ondrop={(e) => handleDrop(e, platform.id, 'platform')}
         >
-          <button class="tree-header platform" onclick={() => toggleNode(`platform-${platform.id}`)}>
+          <button
+            class="tree-header platform"
+            onclick={() => toggleNode(`platform-${platform.id}`)}
+            oncontextmenu={(e) => handleHeaderContextMenu(e, 'platform', platform.id, platform.name)}
+          >
             {#if isExpanded(`platform-${platform.id}`)}
               <ChevronDown size={16} />
             {:else}
@@ -595,7 +612,8 @@
               {/each}
 
               <!-- Projects under platform -->
-              {#each platform.projects || [] as project (project.id)}
+              <!-- UI-109: Filter out nested "Offline Storage" project when parent platform is also "Offline Storage" -->
+              {#each (platform.projects || []).filter(p => !(platform.name === 'Offline Storage' && p.name === 'Offline Storage')) as project (project.id)}
                 <div
                   class="tree-subsection"
                   class:drop-target={dropTargetId === `project-${project.id}`}
@@ -603,7 +621,11 @@
                   ondragleave={handleDragLeave}
                   ondrop={(e) => handleDrop(e, project.id, 'project')}
                 >
-                  <button class="tree-header project" onclick={() => toggleNode(`project-${project.id}`)}>
+                  <button
+                    class="tree-header project"
+                    onclick={() => toggleNode(`project-${project.id}`)}
+                    oncontextmenu={(e) => handleHeaderContextMenu(e, 'project', project.id, project.name)}
+                  >
                     {#if isExpanded(`project-${project.id}`)}
                       <ChevronDown size={16} />
                       <FolderOpen size={18} class="section-icon project-icon" />
@@ -659,7 +681,11 @@
                           ondragleave={handleDragLeave}
                           ondrop={(e) => handleDrop(e, folder.id, 'folder')}
                         >
-                          <button class="tree-header folder" onclick={() => toggleNode(`folder-${folder.id}`)}>
+                          <button
+                            class="tree-header folder"
+                            onclick={() => toggleNode(`folder-${folder.id}`)}
+                            oncontextmenu={(e) => handleHeaderContextMenu(e, 'folder', folder.id, folder.name)}
+                          >
                             {#if isExpanded(`folder-${folder.id}`)}
                               <ChevronDown size={16} />
                               <FolderOpen size={18} class="section-icon folder-icon" />
