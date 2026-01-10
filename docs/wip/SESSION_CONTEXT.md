@@ -1,6 +1,56 @@
 # Session Context
 
-> Last Updated: 2026-01-10 (Session 37 - UI Fixes Complete)
+> Last Updated: 2026-01-11 (Session 38 - Bug Fixes + UX Planning)
+
+---
+
+## SESSION 38 IN PROGRESS
+
+### Bugs Fixed
+
+| Bug | Description | Status |
+|-----|-------------|--------|
+| **BUG-038** | parent_id bug creating folders/uploading at project root | ✅ Fixed |
+| **BUG-039** | Cell editor cursor jumping to beginning | ✅ Fixed |
+| **TM Folders** | TM page now shows folders from Files page | ✅ Fixed |
+
+### UX Enhancements Planned
+
+| Issue | Description | Priority |
+|-------|-------------|----------|
+| **UX-001** | Unconfirm cell hotkey (Ctrl+U?) | MEDIUM |
+| **UX-002** | Right-click context menus in file viewer cells | HIGH |
+| **UX-003** | TM move functionality (cut/paste + "Move to...") | HIGH |
+
+### Discussion: Right-Click Everywhere
+
+**Problem:** Right-click doesn't work consistently across the app:
+- ✅ File Explorer - works
+- ✅ TM Explorer - works
+- ❌ File Viewer (cells) - shows browser default
+
+**Proposed Cell Context Menu:**
+```
+┌─────────────────────────┐
+│ ✓ Confirm (Ctrl+S)      │
+│ ↶ Unconfirm             │
+│ ─────────────────────── │
+│ ⚠ Run QA on Row         │
+│ + Add to TM             │
+│ ─────────────────────── │
+│ 📋 Copy Source          │
+│ 📋 Copy Target          │
+│ 📋 Copy Row             │
+└─────────────────────────┘
+```
+
+### Discussion: TM Management
+
+**Problem:** Can't move TMs after creation - stuck in UNASSIGNED.
+
+**Solutions to implement:**
+1. **Cut/Copy/Paste** - Same pattern as File Explorer
+2. **"Move to..."** - Context menu → folder browser modal
 
 ---
 

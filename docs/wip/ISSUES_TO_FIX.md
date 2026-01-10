@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-10 (Session 37) | **Build:** 454 | **Open:** 0
+**Last Updated:** 2026-01-11 (Session 38) | **Build:** 454 | **Open:** 3
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 0 |
-| **FIXED/CLOSED** | 119 |
+| **OPEN** | 3 |
+| **FIXED/CLOSED** | 122 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
@@ -17,7 +17,146 @@
 
 ## OPEN ISSUES
 
-*None! All issues resolved.*
+### UX-001: Unconfirm Cell Hotkey Needed
+
+- **Reported:** 2026-01-11 (Session 38)
+- **Severity:** MEDIUM (UX enhancement)
+- **Component:** VirtualGrid.svelte
+
+**Problem:** Currently `Ctrl+S` confirms a cell (marks as reviewed + adds to TM), but there's no way to UNCONFIRM a cell.
+
+**Current Hotkeys:**
+- `Ctrl+S` - Confirm (save as reviewed + add to TM)
+- `Ctrl+D` - Dismiss QA issues
+- `Ctrl+Z/Y` - Undo/Redo
+- `Enter` - Save and move to next
+- `Escape` - Cancel edit
+
+**Proposed Solution:** Add `Ctrl+U` or `Ctrl+Shift+S` for Unconfirm:
+- Sets status back to "translated" (from "reviewed")
+- Does NOT remove from TM (TM entries are permanent)
+- Visual feedback: cell loses "reviewed" styling
+
+---
+
+### UX-002: Right-Click Context Menus Missing in File Viewer
+
+- **Reported:** 2026-01-11 (Session 38)
+- **Severity:** HIGH (UX gap)
+- **Component:** VirtualGrid.svelte
+
+**Problem:** Right-click in file viewer (cells) shows browser default menu, not custom context menu.
+
+**Current State:**
+- ✅ File Explorer (FilesPage) - has context menus
+- ✅ TM Explorer (TMExplorerGrid) - has context menus
+- ❌ File Viewer cells (VirtualGrid) - NO context menus
+
+**Proposed Context Menu Options for Cells:**
+| Action | Description |
+|--------|-------------|
+| **Confirm** | Mark as reviewed + add to TM (Ctrl+S) |
+| **Unconfirm** | Revert to translated status |
+| **Run QA** | Run QA check on this specific row |
+| **Add to TM** | Add source/target pair to TM (with stringid if available) |
+| **Copy Source** | Copy source text |
+| **Copy Target** | Copy target text |
+| **Copy Row** | Copy full row data |
+
+**Implementation Notes:**
+- Prevent browser default with `event.preventDefault()`
+- Reuse context menu pattern from ExplorerGrid
+- Consider: Different menu for Source vs Target cells?
+
+---
+
+### UX-003: Cannot Move TMs in TM Explorer
+
+- **Reported:** 2026-01-11 (Session 38)
+- **Severity:** HIGH (Missing feature)
+- **Component:** TMExplorerGrid.svelte, TMPage.svelte
+
+**Problem:** When registering a file as TM, it gets created in UNASSIGNED. User cannot move the TM afterward:
+- No drag-drop targets (folders don't exist in TM view until created in Files)
+- No cut/copy/paste support
+- No "Move to..." context menu option
+
+**Current State:**
+- TMs created from files → go to UNASSIGNED
+- Can drag TM to Platform/Project (if they exist)
+- ❌ Cannot create folders in TM view
+- ❌ Cannot cut/paste TMs like files
+- ❌ No "Move to..." modal to browse and select destination
+
+**Proposed Solutions (implement BOTH):**
+
+**Solution A: Cut/Copy/Paste Support**
+- `Ctrl+X` - Cut TM (mark for move)
+- `Ctrl+C` - Copy TM (for duplicate)
+- `Ctrl+V` - Paste in current location
+- Maintain cut/copy state across navigation
+- Visual feedback: Cut items show grayed/striped
+
+**Solution B: "Move to..." Context Menu**
+- Right-click TM → "Move to..."
+- Opens folder browser modal (like FilePickerDialog)
+- Shows hierarchy: Platform > Project > Folder
+- User selects destination → TM moves there
+
+**Backend Changes Needed:**
+- `PUT /api/ldm/tm/{id}/move` - Move TM to new platform/project/folder
+- Update `tm_assignment` record with new IDs
+
+---
+
+## RECENTLY FIXED (Session 38)
+
+### BUG-038: parent_id Bug Creating Folders/Uploading at Project Root ✅ FIXED
+
+- **Reported:** 2026-01-11 (Session 38)
+- **Fixed:** 2026-01-11 (Session 38)
+- **Component:** FilesPage.svelte
+
+**Problem:** When at project root (not inside a folder), creating a folder or uploading a file sent `parent_id = projectId` instead of `null`. This caused FK violation because `parent_id` references `ldm_folders`, not `ldm_projects`.
+
+**Root Cause:** Code checked `currentPath.length > 1` to set parent_id, but at project root the path is `[platform, project]` (length=2), so it used the project ID.
+
+**Fix:** Now checks if `lastPathItem.type === 'folder'` before using its ID.
+
+**Files Modified:** FilesPage.svelte (3 locations: createFolder, triggerUpload, handlePaste)
+
+---
+
+### BUG-039: Cell Editor Cursor Jumping to Beginning ✅ FIXED
+
+- **Reported:** 2026-01-11 (Session 38)
+- **Fixed:** 2026-01-11 (Session 38)
+- **Component:** VirtualGrid.svelte
+
+**Problem:** Any keystroke in cell editor (typing, delete, Shift+Enter) caused cursor to jump to beginning of cell.
+
+**Root Cause:** `oninput` handler updated `inlineEditValue` on every keystroke, which triggered Svelte to re-render `{@html inlineEditValue}`, resetting cursor position.
+
+**Fix:** Removed reactive binding during editing:
+- Set `innerHTML` directly when starting edit
+- Read `innerHTML` directly when saving
+- Undo/redo work with `innerHTML` directly
+
+---
+
+### TM Folders Now Mirror Files Structure ✅ FIXED
+
+- **Reported:** 2026-01-11 (Session 38)
+- **Fixed:** 2026-01-11 (Session 38)
+- **Component:** tm_assignment.py, TMExplorerGrid.svelte
+
+**Problem:** TM page didn't show folders created in Files page. Offline Storage showed "No items" even when folders existed.
+
+**Root Cause:** TM tree endpoint only queried PostgreSQL for folders, but Offline Storage folders are in SQLite.
+
+**Fix:**
+1. Backend: `tm-tree` endpoint now queries SQLite for local folders
+2. Frontend: Offline Storage shows folders directly (not nested project)
 
 ---
 
