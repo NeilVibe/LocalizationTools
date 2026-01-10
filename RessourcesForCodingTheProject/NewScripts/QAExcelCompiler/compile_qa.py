@@ -73,8 +73,16 @@ TRANSLATION_COLS = {
     "Knowledge": {"eng": 2, "other": 3},
     "Character": {"eng": 2, "other": 3},
     "Region": {"eng": 2, "other": 3},
-    # Item: Col 5-6 for ENG (ItemName), Col 7-8 for other
+    # Item: Col 5 for ENG (ItemName), Col 7 for other
     "Item": {"eng": 5, "other": 7},
+}
+
+# Item Description column positions (for Item-specific matching)
+# Used alongside TRANSLATION_COLS for stricter Item matching
+ITEM_DESC_COLS = {
+    # Item: Col 6 for ENG (ItemDesc), Col 8 for other
+    "eng": 6,
+    "other": 8,
 }
 
 # Supported image extensions
@@ -2541,19 +2549,87 @@ def find_matching_row_for_transfer(old_row_data, new_ws, category, is_english):
     return None, None
 
 
+def find_matching_row_for_item_transfer(old_row_data, new_ws, is_english):
+    """
+    Item-specific matching: requires BOTH ItemName AND ItemDesc to match.
+
+    Uses 2-step cascade:
+    1. ItemName + ItemDesc + STRINGID (all 3 must match)
+    2. ItemName + ItemDesc (both translations must match, fallback)
+    3. No match -> return None
+
+    This is stricter than the generic transfer because Item descriptions
+    now come from KnowledgeKey (not ItemDesc attribute), so we need both
+    ItemName and ItemDesc to identify the correct row.
+
+    Args:
+        old_row_data: dict with {stringid, item_name, item_desc, row_num}
+        new_ws: New worksheet to search in
+        is_english: Whether file is English
+
+    Returns:
+        tuple: (new_row_num, match_type) or (None, None)
+        match_type: "name+desc+stringid" or "name+desc"
+    """
+    old_stringid = sanitize_stringid_for_match(old_row_data.get("stringid"))
+    old_item_name = str(old_row_data.get("item_name", "")).strip()
+    old_item_desc = str(old_row_data.get("item_desc", "")).strip()
+
+    # Need at least ItemName to match
+    if not old_item_name:
+        return None, None
+
+    # Get column positions for Item
+    name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
+    desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
+    stringid_col = find_column_by_header(new_ws, "STRINGID")
+
+    # Step 1: ItemName + ItemDesc + STRINGID (strictest match)
+    if old_stringid and stringid_col:
+        for row in range(2, new_ws.max_row + 1):
+            new_stringid = sanitize_stringid_for_match(new_ws.cell(row, stringid_col).value)
+            new_item_name = str(new_ws.cell(row, name_col).value or "").strip()
+            new_item_desc = str(new_ws.cell(row, desc_col).value or "").strip()
+
+            if (new_stringid == old_stringid and
+                new_item_name == old_item_name and
+                new_item_desc == old_item_desc):
+                return row, "name+desc+stringid"
+
+    # Step 2: ItemName + ItemDesc only (fallback)
+    for row in range(2, new_ws.max_row + 1):
+        new_item_name = str(new_ws.cell(row, name_col).value or "").strip()
+        new_item_desc = str(new_ws.cell(row, desc_col).value or "").strip()
+
+        if new_item_name == old_item_name and new_item_desc == old_item_desc:
+            return row, "name+desc"
+
+    # Step 3: No match
+    return None, None
+
+
 def transfer_sheet_data(old_ws, new_ws, category, is_english):
     """
     Transfer COMMENT/STATUS/SCREENSHOT from old sheet to new sheet.
 
+    For Item category: Uses stricter matching with ItemName + ItemDesc + STRINGID.
+    For other categories: Uses STRINGID + Translation matching.
+
     Returns:
-        dict: {total, stringid_match, trans_only, unmatched}
+        dict: {total, stringid_match, trans_only, unmatched,
+               name_desc_stringid_match, name_desc_match} (Item-specific stats)
     """
     stats = {
         "total": 0,
         "stringid_match": 0,
         "trans_only": 0,
         "unmatched": 0,
+        # Item-specific stats
+        "name_desc_stringid_match": 0,
+        "name_desc_match": 0,
     }
+
+    is_item_category = category.lower() == "item"
 
     # Find columns in OLD file
     old_trans_col = get_translation_column(category, is_english)
@@ -2561,6 +2637,11 @@ def transfer_sheet_data(old_ws, new_ws, category, is_english):
     old_comment_col = find_column_by_header(old_ws, "COMMENT")
     old_status_col = find_column_by_header(old_ws, "STATUS")
     old_screenshot_col = find_column_by_header(old_ws, "SCREENSHOT")
+
+    # For Item category, also get ItemDesc column
+    old_desc_col = None
+    if is_item_category:
+        old_desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
 
     # Find columns in NEW file
     new_comment_col = find_column_by_header(new_ws, "COMMENT")
@@ -2589,17 +2670,32 @@ def transfer_sheet_data(old_ws, new_ws, category, is_english):
             "row_num": old_row,
         }
 
+        # For Item category, add ItemName and ItemDesc for stricter matching
+        if is_item_category:
+            old_row_data["item_name"] = old_ws.cell(old_row, old_trans_col).value
+            old_row_data["item_desc"] = old_ws.cell(old_row, old_desc_col).value if old_desc_col else ""
+
         # Find matching row in NEW file
-        new_row, match_type = find_matching_row_for_transfer(old_row_data, new_ws, category, is_english)
+        if is_item_category:
+            # Use Item-specific matching (ItemName + ItemDesc + STRINGID)
+            new_row, match_type = find_matching_row_for_item_transfer(old_row_data, new_ws, is_english)
+        else:
+            # Use generic matching (STRINGID + Translation)
+            new_row, match_type = find_matching_row_for_transfer(old_row_data, new_ws, category, is_english)
 
         if new_row is None:
             stats["unmatched"] += 1
             continue
 
+        # Track match type stats
         if match_type == "stringid+trans":
             stats["stringid_match"] += 1
-        else:
+        elif match_type == "trans_only":
             stats["trans_only"] += 1
+        elif match_type == "name+desc+stringid":
+            stats["name_desc_stringid_match"] += 1
+        elif match_type == "name+desc":
+            stats["name_desc_match"] += 1
 
         # Transfer data to NEW row
         if new_comment_col and old_comment:
@@ -2729,11 +2825,13 @@ def transfer_folder_data(old_folder, new_folder, output_dir):
         output_dir: Path to QAfolder (output)
 
     Returns:
-        dict: {(username, category): {total, stringid_match, trans_only, unmatched}}
+        dict: {(username, category): {total, stringid_match, trans_only, unmatched,
+               name_desc_stringid_match, name_desc_match}}
     """
     username = old_folder["username"]
     category = old_folder["category"]
     is_english = is_english_file(old_folder["xlsx_path"])
+    is_item_category = category.lower() == "item"
 
     # Load workbooks
     old_wb = safe_load_workbook(old_folder["xlsx_path"])
@@ -2744,6 +2842,9 @@ def transfer_folder_data(old_folder, new_folder, output_dir):
         "stringid_match": 0,
         "trans_only": 0,
         "unmatched": 0,
+        # Item-specific stats
+        "name_desc_stringid_match": 0,
+        "name_desc_match": 0,
     }
 
     # Process each sheet that exists in both
@@ -2759,10 +2860,15 @@ def transfer_folder_data(old_folder, new_folder, output_dir):
 
         # Accumulate stats
         for key in combined_stats:
-            combined_stats[key] += sheet_stats[key]
+            combined_stats[key] += sheet_stats.get(key, 0)
 
         if sheet_stats["total"] > 0:
-            print(f"    Sheet '{sheet_name}': {sheet_stats['stringid_match']}+{sheet_stats['trans_only']} transferred, {sheet_stats['unmatched']} unmatched")
+            if is_item_category:
+                # Item-specific output: name+desc+stringid and name+desc matches
+                print(f"    Sheet '{sheet_name}': {sheet_stats['name_desc_stringid_match']}+{sheet_stats['name_desc_match']} transferred, {sheet_stats['unmatched']} unmatched")
+            else:
+                # Generic output: stringid+trans and trans_only matches
+                print(f"    Sheet '{sheet_name}': {sheet_stats['stringid_match']}+{sheet_stats['trans_only']} transferred, {sheet_stats['unmatched']} unmatched")
 
     # Create output folder
     output_folder = output_dir / f"{username}_{category}"
@@ -2799,33 +2905,44 @@ def print_transfer_report(stats):
     print("                              TRANSFER REPORT")
     print("═" * 79)
     print()
-    print(f"{'Tester':<20}{'Category':<14}{'Total':>7}{'STRINGID+Trans':>17}{'Trans Only':>13}{'Success %':>12}")
+    print(f"{'Tester':<20}{'Category':<12}{'Total':>7}{'Exact':>10}{'Fallback':>10}{'Success %':>12}")
     print("─" * 79)
 
-    grand_total = grand_stringid = grand_trans = 0
+    grand_total = 0
+    grand_exact = 0
+    grand_fallback = 0
 
     for (tester, category), data in sorted(stats.items()):
         total = data["total"]
-        stringid = data["stringid_match"]
-        trans = data["trans_only"]
-        success = (stringid + trans) / total * 100 if total > 0 else 0
+        is_item = category.lower() == "item"
 
-        print(f"{tester:<20}{category:<14}{total:>7}{stringid:>17}{trans:>13}{success:>11.1f}%")
+        if is_item:
+            # Item uses name+desc+stringid and name+desc matching
+            exact = data.get("name_desc_stringid_match", 0)
+            fallback = data.get("name_desc_match", 0)
+        else:
+            # Others use stringid+trans and trans_only matching
+            exact = data.get("stringid_match", 0)
+            fallback = data.get("trans_only", 0)
+
+        success = (exact + fallback) / total * 100 if total > 0 else 0
+
+        print(f"{tester:<20}{category:<12}{total:>7}{exact:>10}{fallback:>10}{success:>11.1f}%")
 
         grand_total += total
-        grand_stringid += stringid
-        grand_trans += trans
+        grand_exact += exact
+        grand_fallback += fallback
 
     print("─" * 79)
-    grand_success = (grand_stringid + grand_trans) / grand_total * 100 if grand_total > 0 else 0
-    print(f"{'TOTAL':<20}{'':<14}{grand_total:>7}{grand_stringid:>17}{grand_trans:>13}{grand_success:>11.1f}%")
+    grand_success = (grand_exact + grand_fallback) / grand_total * 100 if grand_total > 0 else 0
+    print(f"{'TOTAL':<20}{'':<12}{grand_total:>7}{grand_exact:>10}{grand_fallback:>10}{grand_success:>11.1f}%")
     print("═" * 79)
     print()
     print("Legend:")
-    print("  STRINGID+Trans = Matched by STRINGID + Translation text (exact)")
-    print("  Trans Only     = Matched by Translation text only (fallback)")
-    unmatched = grand_total - grand_stringid - grand_trans
-    print(f"  Unmatched      = {unmatched} rows (not transferred)")
+    print("  Exact    = Strong match (STRINGID+Trans for most, ItemName+ItemDesc+STRINGID for Item)")
+    print("  Fallback = Weaker match (Trans only for most, ItemName+ItemDesc for Item)")
+    unmatched = grand_total - grand_exact - grand_fallback
+    print(f"  Unmatched = {unmatched} rows (not transferred)")
     print()
 
 

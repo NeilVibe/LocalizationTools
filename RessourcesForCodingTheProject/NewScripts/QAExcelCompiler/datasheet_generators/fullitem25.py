@@ -3,9 +3,13 @@
 # -*- coding: utf-8 -*-
 
 """
-Item-data extractor / LQA helper – COMPLETE REBUILD v3.12
-(fixed: uses openpyxl.utils.get_column_letter instead of the removed
- lxml.etree._getQName helper)
+Item-data extractor / LQA helper – COMPLETE REBUILD v3.13
+(NEW: ItemDesc now comes from KnowledgeKey mapping, not ItemInfo.ItemDesc)
+
+v3.13 Changes:
+- ItemName: from ItemInfo.ItemName (unchanged)
+- ItemDesc: from KnowledgeKey -> KnowledgeInfo.Desc (NEW!)
+- If no KnowledgeKey present, ItemDesc is left BLANK
 """
 
 from __future__ import annotations
@@ -39,6 +43,11 @@ LANGUAGE_FOLDER = Path(
 )
 STRINGKEYTABLE_FILE = Path(
     r"F:\perforce\cd\cd_lambda\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml"
+)
+
+# NEW: Knowledge folder for ItemDesc lookup via KnowledgeKey
+KNOWLEDGE_FOLDER = Path(
+    r"F:\perforce\cd\cd_lambda\resource\GameData\StaticInfo\knowledgeinfo"
 )
 
 
@@ -96,8 +105,8 @@ log.propagate = False
 class ItemData:
     """Complete data for a single item."""
     strkey: str
-    item_name: str       # KOR original
-    item_desc: str       # KOR original
+    item_name: str       # KOR original (from ItemInfo.ItemName)
+    item_desc: str       # KOR original (from KnowledgeKey -> KnowledgeInfo.Desc)
     group_key: str
     group_name_kor: str  # KOR original
 
@@ -393,6 +402,49 @@ def load_string_key_table(path: Path) -> Dict[str, str]:
     return tbl
 
 # ─────────────────────────────────────────────────────────────────────────────
+# KNOWLEDGE DESCRIPTIONS (NEW in v3.13)
+# ─────────────────────────────────────────────────────────────────────────────
+def load_knowledge_descriptions(folder: Path) -> Dict[str, str]:
+    """
+    Parse knowledge XML files and build KnowledgeKey -> Desc mapping.
+
+    Looks for KnowledgeInfo elements with StrKey and Desc attributes.
+    Example:
+        <KnowledgeInfo StrKey="Knowledge_Collection_Prop_Viewingstone"
+                       Name="수석"
+                       Desc="바람과 물, 그리고 오랜 세월이 빚어낸..." />
+
+    Returns:
+        Dict mapping KnowledgeKey (StrKey) to Desc text
+    """
+    log.info("Loading knowledge descriptions from: %s", folder)
+    knowledge_map: Dict[str, str] = {}
+
+    if not folder.exists():
+        log.warning("Knowledge folder does not exist: %s", folder)
+        return knowledge_map
+
+    file_count = 0
+    for path in iter_xml_files(folder):
+        root = parse_xml_file(path)
+        if root is None:
+            continue
+        file_count += 1
+
+        # Find all KnowledgeInfo elements
+        for el in root.iter("KnowledgeInfo"):
+            strkey = el.get("StrKey") or ""
+            desc = el.get("Desc") or ""
+
+            if strkey and strkey not in knowledge_map:
+                # Store the description (can be empty if no Desc attribute)
+                knowledge_map[strkey] = desc
+
+    log.info("Knowledge descriptions loaded: %d entries from %d files",
+             len(knowledge_map), file_count)
+    return knowledge_map
+
+# ─────────────────────────────────────────────────────────────────────────────
 # MASTER ITEM-GROUP INFO – FIRST OCCURRENCE WINS
 # ─────────────────────────────────────────────────────────────────────────────
 def parse_master_groups(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -436,12 +488,35 @@ def parse_master_groups(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
     return group_name, parent_of
 
 # ─────────────────────────────────────────────────────────────────────────────
-# RESOURCE SCAN
+# RESOURCE SCAN (UPDATED in v3.13 - uses KnowledgeKey for ItemDesc)
 # ─────────────────────────────────────────────────────────────────────────────
-def scan_resource_folder(folder: Path) -> Tuple[Dict[str, List[Tuple[str, str, str]]], Dict[str, str]]:
+def scan_resource_folder(
+    folder: Path,
+    knowledge_desc_map: Dict[str, str]
+) -> Tuple[Dict[str, List[Tuple[str, str, str]]], Dict[str, str]]:
+    """
+    Scan resource folder for items.
+
+    NEW in v3.13:
+    - ItemName: from ItemInfo.ItemName (unchanged)
+    - ItemDesc: from KnowledgeKey -> knowledge_desc_map lookup
+    - If no KnowledgeKey or KnowledgeKey not found, ItemDesc is BLANK
+
+    Args:
+        folder: Path to item resource folder
+        knowledge_desc_map: Dict mapping KnowledgeKey -> Desc
+
+    Returns:
+        Tuple of (group_items, scanned_group_names)
+    """
     log.info("Scanning resource folder for items: %s", folder)
     group_items: Dict[str, List[Tuple[str, str, str]]] = {}
     scanned_group_names: Dict[str, str] = {}
+
+    # Stats for logging
+    items_with_knowledge = 0
+    items_without_knowledge = 0
+
     for idx, path in enumerate(iter_xml_files(folder), 1):
         root = parse_xml_file(path)
         if root is None:
@@ -457,14 +532,31 @@ def scan_resource_folder(folder: Path) -> Tuple[Dict[str, List[Tuple[str, str, s
             for item in g_el.iter("ItemInfo"):
                 ik = item.get("StrKey") or ""
                 name = item.get("ItemName") or ""
-                desc = item.get("ItemDesc") or ""
+
+                # NEW: Get description from KnowledgeKey, NOT from ItemDesc
+                knowledge_key = item.get("KnowledgeKey") or ""
+                if knowledge_key:
+                    # Look up description from knowledge map
+                    desc = knowledge_desc_map.get(knowledge_key, "")
+                    items_with_knowledge += 1
+                else:
+                    # No KnowledgeKey = leave description BLANK
+                    desc = ""
+                    items_without_knowledge += 1
+
                 if ik:
                     bucket.append((ik, name, desc))
         if idx % 200 == 0:
             log.debug("... scanned %d XML files", idx)
+
+    total_items = sum(len(v) for v in group_items.values())
     log.info(
         "Group-item mapping built: Groups=%d  Total items=%d",
-        len(group_items), sum(len(v) for v in group_items.values()),
+        len(group_items), total_items,
+    )
+    log.info(
+        "  Items with KnowledgeKey: %d  |  Items without (blank desc): %d",
+        items_with_knowledge, items_without_knowledge
     )
     return group_items, scanned_group_names
 
@@ -1102,7 +1194,7 @@ def write_secondary_excel(
 # ─────────────────────────────────────────────────────────────────────────────
 def main() -> None:
     log.info("="*70)
-    log.info("Item LQA Extractor – v3.12 (3-language output)")
+    log.info("Item LQA Extractor – v3.13 (KnowledgeKey-based ItemDesc)")
     log.info("="*70)
 
     OUTPUT_FOLDER.mkdir(exist_ok=True)
@@ -1121,7 +1213,12 @@ def main() -> None:
         sys.exit("No language files found!")
     id_tbl = load_string_key_table(STRINGKEYTABLE_FILE)
     master_names, parent_of = parse_master_groups(ITEMGROUPINFO_FILE)
-    group_items, scanned_names = scan_resource_folder(RESOURCE_FOLDER)
+
+    # NEW: Load knowledge descriptions BEFORE scanning resources
+    knowledge_desc_map = load_knowledge_descriptions(KNOWLEDGE_FOLDER)
+
+    # Pass knowledge_desc_map to scan_resource_folder
+    group_items, scanned_names = scan_resource_folder(RESOURCE_FOLDER, knowledge_desc_map)
 
     all_names = {**scanned_names, **master_names}
     all_names[OTHERS_KEY] = "Others"
