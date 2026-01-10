@@ -1405,7 +1405,9 @@
     if (!isInOfflineStorage && !selectedProjectId) return;
 
     const folderName = newFolderName.trim();
-    const parentFolderId = currentPath.length > 1 ? currentPath[currentPath.length - 1].id : null;
+    // FIX: Only use parent_id if we're inside a folder, not just inside a project
+    const lastPathItem = currentPath[currentPath.length - 1];
+    const parentFolderId = (lastPathItem?.type === 'folder' || lastPathItem?.type === 'local-folder') ? lastPathItem.id : null;
     const tempId = `temp_folder_${Date.now()}`;
 
     // OPTIMISTIC UI: Add folder immediately with temp ID
@@ -1573,7 +1575,9 @@
     const inOfflineStorage = currentPath[0]?.type === 'offline-storage';
     if (!selectedProjectId && !inOfflineStorage) return;
 
-    uploadTargetFolderId = currentPath.length > 1 ? currentPath[currentPath.length - 1].id : null;
+    // FIX: Only set folder_id if we're inside a folder, not just inside a project
+    const lastItem = currentPath[currentPath.length - 1];
+    uploadTargetFolderId = (lastItem?.type === 'folder' || lastItem?.type === 'local-folder') ? lastItem.id : null;
     if (fileInput) fileInput.click();
   }
 
@@ -2119,7 +2123,9 @@
     }
 
     // Determine target folder/project
-    const targetFolderId = currentPath.length > 1 ? currentPath[currentPath.length - 1].id : null;
+    // FIX: Only set folder_id if we're inside a folder, not just inside a project
+    const lastPathItem = currentPath[currentPath.length - 1];
+    const targetFolderId = (lastPathItem?.type === 'folder' || lastPathItem?.type === 'local-folder') ? lastPathItem.id : null;
     const targetProjectId = selectedProjectId;
 
     if (!targetProjectId && currentPath.length > 0 && currentPath[0].type !== 'platform') {
