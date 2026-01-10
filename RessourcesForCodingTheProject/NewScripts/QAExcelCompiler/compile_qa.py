@@ -1342,20 +1342,34 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
                     print(f"    [DEBUG] Found tester status column: {header} at col {col}")
 
         # Find rows to hide due to tester status (BLOCKED, KOREAN, NO ISSUE)
-        # These are non-ISSUE rows that should be hidden by default
+        # A row is hidden only if ALL tester statuses are non-ISSUE (or empty)
+        # If ANY user marked it as ISSUE, the row should be visible
         rows_non_issue_by_tester = set()
+        rows_with_issue_status = set()
         TESTER_HIDE_STATUSES = {"BLOCKED", "KOREAN", "NO ISSUE"}
         for row in range(2, ws.max_row + 1):
+            has_issue = False
+            has_any_status = False
             for col in tester_status_cols:
                 value = ws.cell(row=row, column=col).value
-                if value and str(value).strip().upper() in TESTER_HIDE_STATUSES:
-                    rows_non_issue_by_tester.add(row)
-                    if debug and row <= 20:
-                        print(f"    [DEBUG] Row {row} has tester status '{value}' - will hide (non-ISSUE)")
-                    break  # One non-ISSUE status is enough to hide
+                if value and str(value).strip():
+                    has_any_status = True
+                    status_upper = str(value).strip().upper()
+                    if status_upper == "ISSUE":
+                        has_issue = True
+                        rows_with_issue_status.add(row)
+                        break  # Found ISSUE, no need to check more columns
+            # Only hide if has status but NO ISSUE status found
+            if has_any_status and not has_issue:
+                rows_non_issue_by_tester.add(row)
+                if debug and row <= 20:
+                    print(f"    [DEBUG] Row {row} has tester status but no ISSUE - will hide")
 
-        if debug and rows_non_issue_by_tester:
-            print(f"    [DEBUG] {len(rows_non_issue_by_tester)} rows with non-ISSUE tester status (BLOCKED/KOREAN/NO ISSUE)")
+        if debug:
+            if rows_with_issue_status:
+                print(f"    [DEBUG] {len(rows_with_issue_status)} rows with ISSUE tester status (will show)")
+            if rows_non_issue_by_tester:
+                print(f"    [DEBUG] {len(rows_non_issue_by_tester)} rows with only non-ISSUE tester status (will hide)")
 
         # === FIND STATUS_{User} columns for manager status hiding ===
         # Hide rows where manager marked FIXED or NON-ISSUE
@@ -1405,6 +1419,15 @@ def hide_empty_comment_rows(wb, context_rows=1, debug=False):
             for offset in range(1, context_rows + 1):
                 if row + offset <= ws.max_row and row + offset not in rows_to_hide:
                     rows_to_show.add(row + offset)
+
+        # === SHEET HIDING: If NO rows to show after filtering, hide entire sheet ===
+        # This catches sheets where ALL comments are non-ISSUE or all resolved by manager
+        if not rows_to_show:
+            if debug:
+                print(f"    [DEBUG] Sheet '{sheet_name}' has comments but NONE are visible ISSUE rows - HIDING SHEET")
+            ws.sheet_state = 'hidden'
+            hidden_sheets.append(sheet_name)
+            continue  # Skip row hiding for this sheet
 
         # Pass 1: UNHIDE all rows first (clear any previous hiding)
         for row in range(2, ws.max_row + 1):
