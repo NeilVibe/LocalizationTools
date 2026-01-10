@@ -86,9 +86,20 @@ File Explorer (structure owner)     TM Explorer (READ-ONLY mirror)
 
 1. Database: platforms table, tm_assignments
 2. Backend: TM resolution logic (cascade inheritance)
-3. Frontend: TM Explorer tree UI
+3. **Frontend: TM Explorer GRID UI** ← SAME as File Explorer (NOT tree/dropdown!)
 4. Frontend: File viewer TM indicator
 5. Frontend: Platform management
+
+### CRITICAL UI REQUIREMENT (UI-108)
+
+```
+TM PAGE MUST USE SAME UI AS FILE EXPLORER:
+- Grid rows (NOT dropdown/tree chevrons)
+- Breadcrumb navigation
+- Double-click to enter
+- Right-click context menu
+- Same visual styling
+```
 
 ---
 

@@ -269,42 +269,44 @@
   {/if}
 </button>
 
-<!-- Sync Dashboard Modal - UI-111: Compact size -->
+<!-- Sync Dashboard Modal - UI-111: Compact size, larger when login form shown -->
 <Modal
   bind:open={showDashboard}
   modalHeading="Sync Dashboard"
   passiveModal
-  size="sm"
+  size={showLoginForm ? "md" : "sm"}
 >
   <div class="dashboard-content">
-    <!-- Connection Status -->
-    <div class="status-section" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}>
-      <div class="status-header">
-        <div class="status-indicator" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}></div>
-        <span class="status-text" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}>{$statusLabel}</span>
+    <!-- UI-113: Hide main content when login form is shown -->
+    {#if !showLoginForm}
+      <!-- Connection Status -->
+      <div class="status-section" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}>
+        <div class="status-header">
+          <div class="status-indicator" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}></div>
+          <span class="status-text" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}>{$statusLabel}</span>
+        </div>
+
+        {#if $connectionError && $connectionMode === 'offline'}
+          <p class="error-message">{$connectionError}</p>
+        {/if}
       </div>
 
-      {#if $connectionError && $connectionMode === 'offline'}
-        <p class="error-message">{$connectionError}</p>
-      {/if}
-    </div>
-
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Last Sync</div>
-        <div class="stat-value">{formatLastSync($lastSync)}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Pending Changes</div>
-        <div class="stat-value" class:has-pending={$pendingChanges > 0}>
-          {$pendingChanges}
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Last Sync</div>
+          <div class="stat-value">{formatLastSync($lastSync)}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending Changes</div>
+          <div class="stat-value" class:has-pending={$pendingChanges > 0}>
+            {$pendingChanges}
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Synced for Offline Section -->
-    <div class="subscriptions-section">
+      <!-- Synced for Offline Section -->
+      <div class="subscriptions-section">
       <div class="section-header">
         <span class="section-title">Synced for Offline</span>
         <span class="section-count">{visibleSubscriptions.length}</span>
@@ -343,7 +345,9 @@
           {/each}
         </div>
       {/if}
-    </div>
+      </div>
+    {/if}
+    <!-- End of {#if !showLoginForm} wrapper -->
 
     <!-- P9: Login Form Overlay (for switching offline → online) -->
     {#if showLoginForm}
@@ -889,29 +893,29 @@
     color: var(--cds-text-02);
   }
 
-  /* P9: Login Form Overlay Styles */
+  /* P9: Login Form Overlay Styles - UI-113: Compact to fit small modal */
   .login-overlay {
-    padding: 1rem;
+    padding: 0.5rem;
   }
 
   .login-form-card {
     background: var(--cds-layer-02);
-    border-radius: 12px;
-    padding: 2rem;
+    border-radius: 8px;
+    padding: 1rem;
     border: 1px solid var(--cds-border-subtle-01);
   }
 
   .login-title {
-    margin: 0 0 0.5rem;
-    font-size: 1.25rem;
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--cds-text-01);
     text-align: center;
   }
 
   .login-subtitle {
-    margin: 0 0 1.5rem;
-    font-size: 0.875rem;
+    margin: 0 0 0.75rem;
+    font-size: 0.75rem;
     color: var(--cds-text-02);
     text-align: center;
   }
@@ -919,17 +923,33 @@
   .login-fields {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
   }
 
   .login-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 1rem;
+    gap: 0.5rem;
   }
 
   .login-form-card :global(.bx--inline-notification) {
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Make Carbon form fields smaller in login form */
+  .login-form-card :global(.bx--label) {
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .login-form-card :global(.bx--text-input),
+  .login-form-card :global(.bx--password-input) {
+    height: 2rem;
+    font-size: 0.8rem;
+  }
+
+  .login-form-card :global(.bx--checkbox-label-text) {
+    font-size: 0.75rem;
   }
 </style>

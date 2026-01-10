@@ -17,16 +17,50 @@
 
 ## OPEN ISSUES
 
-### UI-108: TM Tree Uses Dropdown Style Instead of File Explorer Grid
+### UI-108: TM Page Should Use Grid Style Like File Explorer
 
 - **Reported:** 2026-01-10 (Session 36)
-- **Severity:** MEDIUM (UX inconsistency)
-- **Status:** OPEN - Phase 10 scope
-- **Component:** TMExplorerTree.svelte
+- **Severity:** HIGH (major UX inconsistency)
+- **Status:** OPEN - NEEDS IMPLEMENTATION
+- **Component:** TMExplorerTree.svelte → TMExplorerGrid.svelte (new)
 
-**Problem:** TM page uses collapsible tree/dropdown style, while File Explorer uses grid view.
+**Problem:** TM page uses collapsible tree/dropdown style with chevrons, while File Explorer uses beautiful grid view with rows. User wants SAME UI style.
 
-**Scope:** This is a significant UI overhaul - deferred to Phase 10.
+**Current (Bad):**
+```
+TM PAGE - Dropdown/Tree style:
+▼ Unassigned
+    No unassigned TMs
+▼ ☁️ Offline Storage
+    (click chevron to expand/collapse)
+```
+
+**Expected (Good) - Match File Explorer:**
+```
+TM PAGE - Grid style like File Explorer:
+┌──────────────────────────────────────────────┐
+│ Home > Offline Storage                        │  ← Breadcrumb
+├──────────────────────────────────────────────┤
+│ ☁️ Offline Storage    │        │ 2 TMs      │  ← Row
+│ 📄 my_tm.tm          │ 1,234  │ Active ✓   │  ← Row
+│ 📄 other.tm          │ 567    │ Inactive   │  ← Row
+└──────────────────────────────────────────────┘
+```
+
+**Key Features Needed:**
+1. Grid rows instead of tree dropdowns
+2. Breadcrumb navigation (click to go back)
+3. Double-click to enter folder/platform
+4. Right-click context menu (Create TM, Delete, Activate, etc.)
+5. Same visual styling as File Explorer
+
+**Implementation:**
+- Create new `TMExplorerGrid.svelte` based on `ExplorerGrid.svelte`
+- Reuse grid row components and styles
+- Add TM-specific columns (entry count, active status)
+- Add TM-specific actions (activate, view entries)
+
+**NOT Phase 10** - This is a priority fix for UX consistency.
 
 ---
 
