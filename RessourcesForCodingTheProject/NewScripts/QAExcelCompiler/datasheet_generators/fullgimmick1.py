@@ -37,13 +37,13 @@ from openpyxl.worksheet.datavalidation import DataValidation
 # CONFIGURATION – FOLDERS / FILES
 # ─────────────────────────────────────────────────────────────────────────────
 STATICINFO_FOLDER = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\StaticInfo"
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo"
 )
 LANGUAGE_FOLDER = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\loc"
+    r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"
 )
 STRINGKEYTABLE_FILE = Path(
-    r"F:\perforce\cd\cd_lambda\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml"
+    r"F:\perforce\cd\mainline\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml"
 )
 
 if getattr(sys, "frozen", False):

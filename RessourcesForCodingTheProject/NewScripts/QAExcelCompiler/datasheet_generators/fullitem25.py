@@ -36,21 +36,21 @@ from openpyxl.worksheet.datavalidation import DataValidation
 # CONFIGURATION – FOLDERS / FILES
 # ─────────────────────────────────────────────────────────────────────────────
 RESOURCE_FOLDER = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\StaticInfo\iteminfo"
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\iteminfo"
 )
 ITEMGROUPINFO_FILE = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\StaticInfo\iteminfo\itemgroupinfo.staticinfo.xml"
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\iteminfo\itemgroupinfo.staticinfo.xml"
 )
 LANGUAGE_FOLDER = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\loc"
+    r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"
 )
 STRINGKEYTABLE_FILE = Path(
-    r"F:\perforce\cd\cd_lambda\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml"
+    r"F:\perforce\cd\mainline\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml"
 )
 
 # NEW: Knowledge folder for ItemDesc lookup via KnowledgeKey
 KNOWLEDGE_FOLDER = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\StaticInfo\knowledgeinfo"
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\knowledgeinfo"
 )
 
 

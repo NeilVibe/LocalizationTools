@@ -62,33 +62,33 @@ from openpyxl.worksheet.datavalidation import DataValidation
 # CONFIGURATION – FOLDERS / FILES
 # ─────────────────────────────────────────────────────────────────────────────
 QUESTGROUPINFO_FILE = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\staticinfo_quest\questgroupinfo.staticinfo.xml"
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\questgroupinfo.staticinfo.xml"
 )
 SCENARIO_FOLDER   = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\staticinfo_quest\scenario"
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\scenario"
 )
 FACTION_FOLDER    = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\staticinfo_quest\quest\faction"
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\quest\faction"
 )
 CHALLENGE_FOLDER  = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\staticinfo_quest\Challenge"
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\Challenge"
 )
 LANGUAGE_FOLDER   = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\loc"
+    r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"
 )
 STRINGKEYTABLE_FILE = Path(
-    r"F:\perforce\cd\cd_lambda\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml"
+    r"F:\perforce\cd\mainline\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml"
 )
 SEQUENCER_FOLDER  = Path(
-    r"F:\perforce\cd\cd_lambda\resource\sequencer\stageseq"
+    r"F:\perforce\cd\mainline\resource\sequencer\stageseq"
 )
 FACTIONINFO_FOLDER = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\StaticInfo\factioninfo"
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo"
 )
 
 # ── minigame file ───────────────────────────────────────────────────────────
 MINIGAME_FILE = Path(
-    r"F:\perforce\cd\cd_lambda\resource\GameData\staticinfo_quest\contents\contents_minigame.staticinfo.xml"
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\contents\contents_minigame.staticinfo.xml"
 )
 
 # ── teleport lookup ─────────────────────────────────────────────────────────
