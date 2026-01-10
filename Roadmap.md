@@ -86,20 +86,19 @@ File Explorer (structure owner)     TM Explorer (READ-ONLY mirror)
 
 1. Database: platforms table, tm_assignments
 2. Backend: TM resolution logic (cascade inheritance)
-3. **Frontend: TM Explorer GRID UI** ← SAME as File Explorer (NOT tree/dropdown!)
+3. ✅ **Frontend: TM Explorer GRID UI** - DONE (Session 37)
 4. Frontend: File viewer TM indicator
 5. Frontend: Platform management
 
-### CRITICAL UI REQUIREMENT (UI-108)
+### UI-108: COMPLETE ✅
 
-```
-TM PAGE MUST USE SAME UI AS FILE EXPLORER:
-- Grid rows (NOT dropdown/tree chevrons)
-- Breadcrumb navigation
-- Double-click to enter
-- Right-click context menu
-- Same visual styling
-```
+TM page now uses Windows Explorer grid style:
+- Grid rows with columns (Name, Entries, Status, Type)
+- Breadcrumb navigation (Home > Platform > Project)
+- Double-click to enter Platform/Project
+- Right-click custom context menu
+- Drag-drop TM reassignment
+- Multi-select support
 
 ---
 
