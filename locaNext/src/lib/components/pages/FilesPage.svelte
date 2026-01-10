@@ -14,7 +14,7 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import { Modal, TextInput, Select, SelectItem, TextArea, ProgressBar, InlineLoading } from 'carbon-components-svelte';
-  import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, CloudDownload, Edit, TrashCan, Merge, Application, Archive, Locked, Copy, Cut } from 'carbon-icons-svelte';
+  import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, CloudDownload, Edit, TrashCan, Merge, Application, Archive, Locked, Copy, Cut, CloudOffline } from 'carbon-icons-svelte';
   import ExplorerGrid from '$lib/components/ldm/ExplorerGrid.svelte';
   import PretranslateModal from '$lib/components/ldm/PretranslateModal.svelte';
   import InputModal from '$lib/components/common/InputModal.svelte';
@@ -2404,7 +2404,9 @@
     {#each currentPath as crumb, i}
       <ChevronRight size={16} class="breadcrumb-sep" />
       <button class="breadcrumb-item" onclick={() => navigateTo(i)}>
-        {#if crumb.type === 'platform'}
+        {#if crumb.type === 'offline-storage' || crumb.name === 'Offline Storage'}
+          <CloudOffline size={16} />
+        {:else if crumb.type === 'platform'}
           <Application size={16} />
         {:else}
           <Folder size={16} />
