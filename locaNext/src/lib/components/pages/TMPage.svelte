@@ -20,7 +20,7 @@
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import { openTMInGrid } from '$lib/stores/navigation.js';
-  import TMExplorerTree from '$lib/components/ldm/TMExplorerTree.svelte';
+  import TMExplorerGrid from '$lib/components/ldm/TMExplorerGrid.svelte';
   import TMUploadModal from '$lib/components/ldm/TMUploadModal.svelte';
   import ConfirmModal from '$lib/components/common/ConfirmModal.svelte';
 
@@ -40,7 +40,7 @@
   let selectedTM = $state(null);
 
   // Component reference
-  let tmTreeRef = $state(null);
+  let tmGridRef = $state(null);
 
   // Modals
   let showUploadModal = $state(false);
@@ -214,9 +214,9 @@
   function handleUploadComplete() {
     showUploadModal = false;
     loadTMs();
-    // Refresh tree after upload
-    if (tmTreeRef?.refresh) {
-      tmTreeRef.refresh();
+    // Refresh grid after upload
+    if (tmGridRef?.reload) {
+      tmGridRef.reload();
     }
   }
 
@@ -270,10 +270,10 @@
 
   <!-- Main Content -->
   <div class="tm-content">
-    <!-- TM Explorer Tree (Hierarchical view mirroring File Explorer) -->
+    <!-- TM Explorer Grid (Windows Explorer style - UI-108) -->
     <div class="tm-explorer">
-      <TMExplorerTree
-        bind:this={tmTreeRef}
+      <TMExplorerGrid
+        bind:this={tmGridRef}
         bind:selectedTMId={selectedTMId}
         onTMSelect={handleTMSelect}
         onViewEntries={handleViewEntries}
@@ -307,7 +307,7 @@
   </div>
 </div>
 
-<!-- Context menu handled by TMExplorerTree -->
+<!-- Context menu handled by TMExplorerGrid -->
 
 <!-- Upload Modal -->
 <TMUploadModal
