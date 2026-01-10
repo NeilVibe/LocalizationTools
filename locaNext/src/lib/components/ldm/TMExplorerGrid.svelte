@@ -1,245 +1,686 @@
 <script>
   /**
-   * TMExplorerGrid.svelte - Phase 10 UI Overhaul
+   * TMExplorerGrid.svelte - UI-108 Grid View for TMs
    *
-   * Windows Explorer style grid for Translation Memories.
-   * Matches the ExplorerGrid pattern for consistency.
+   * Windows/SharePoint style grid for Translation Memories.
+   * Replaces the old dropdown tree style (TMExplorerTree).
    *
-   * Keyboard shortcuts:
-   * - Arrow Up/Down: Navigate TMs
-   * - Enter: View entries
-   * - Delete: Delete selected TM
-   * - F2: Rename selected TM
-   * - Home/End: Go to first/last TM
+   * Features:
+   * - Breadcrumb navigation (Home > Platform > Project)
+   * - Grid rows with columns: Name, Entries, Status, Type
+   * - Double-click to enter Platform/Project, view TM details
+   * - Right-click context menu (Activate, Move, Delete)
+   * - Drag-drop TM reassignment
    */
-  import { createEventDispatcher } from 'svelte';
-  import { DataBase, CheckmarkFilled } from 'carbon-icons-svelte';
-  import { Tag } from 'carbon-components-svelte';
+  import { onMount } from 'svelte';
+  import {
+    Home,
+    ChevronRight,
+    DataBase,
+    Folder,
+    Application,
+    CheckmarkFilled,
+    RadioButton,
+    Archive,
+    CloudOffline,
+    DocumentBlank
+  } from 'carbon-icons-svelte';
+  import { logger } from '$lib/utils/logger.js';
+  import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
+  import ConfirmModal from '$lib/components/common/ConfirmModal.svelte';
 
   // Props
   let {
-    items = [],           // Array of TM objects
-    selectedId = null,    // Currently selected TM ID
-    activeId = null,      // Active TM ID
-    loading = false
+    selectedTMId = $bindable(null),
+    onTMSelect = null,
+    onViewEntries = null
   } = $props();
 
-  const dispatch = createEventDispatcher();
+  const API_BASE = getApiBase();
 
-  // Track grid body for focus management
-  let gridBody = $state(null);
+  // State
+  let treeData = $state({ unassigned: [], platforms: [] });
+  let loading = $state(false);
 
-  /**
-   * Format entry count
-   */
-  function formatEntries(count) {
-    if (!count) return '0 entries';
-    return `${count.toLocaleString()} entries`;
-  }
+  // Navigation state - breadcrumb path
+  // Each item: { type: 'home'|'platform'|'project', id, name }
+  let breadcrumb = $state([{ type: 'home', id: null, name: 'Home' }]);
 
-  /**
-   * Format date
-   */
-  function formatDate(dateStr) {
-    if (!dateStr) return '';
+  // Current view items (what's displayed in the grid)
+  let currentItems = $state([]);
+
+  // Multi-select state
+  let selectedIds = $state(new Set());
+  let lastSelectedIndex = $state(-1);
+
+  // Context menu state
+  let contextMenu = $state({ show: false, x: 0, y: 0, item: null });
+
+  // Confirm modal state
+  let confirmModal = $state({
+    open: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Delete',
+    pendingAction: null,
+    pendingData: null
+  });
+
+  // Drag state
+  let draggedItems = $state([]);
+  let dropTargetId = $state(null);
+  let isDragging = $state(false);
+
+  // ========================================
+  // Data Loading
+  // ========================================
+
+  async function loadTree() {
+    loading = true;
     try {
-      const date = new Date(dateStr);
-      const now = new Date();
-      const diff = now - date;
+      logger.apiCall('/api/ldm/tm-tree', 'GET');
+      const response = await fetch(`${API_BASE}/api/ldm/tm-tree`, {
+        headers: getAuthHeaders()
+      });
 
-      if (diff < 86400000) {
-        const hours = Math.floor(diff / 3600000);
-        if (hours < 1) return 'Just now';
-        return `${hours}h ago`;
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      if (diff < 604800000) {
-        const days = Math.floor(diff / 86400000);
-        return `${days}d ago`;
-      }
+      treeData = await response.json();
+      logger.success('TM tree loaded', {
+        unassigned: treeData.unassigned?.length || 0,
+        platforms: treeData.platforms?.length || 0
+      });
 
-      return date.toLocaleDateString();
-    } catch {
-      return '';
+      // Update current view based on breadcrumb
+      updateCurrentItems();
+    } catch (err) {
+      logger.error('Failed to load TM tree', { error: err.message });
+      treeData = { unassigned: [], platforms: [] };
+      currentItems = [];
+    } finally {
+      loading = false;
     }
   }
 
-  /**
-   * Handle single click (select)
-   */
-  function handleClick(tm) {
-    dispatch('select', { tm });
+  // ========================================
+  // Navigation & View Updates
+  // ========================================
+
+  function updateCurrentItems() {
+    const currentLevel = breadcrumb[breadcrumb.length - 1];
+
+    if (currentLevel.type === 'home') {
+      // Home level: Show Unassigned section + all platforms
+      const items = [];
+
+      // Unassigned section (if has TMs)
+      if (treeData.unassigned?.length > 0) {
+        items.push({
+          type: 'unassigned',
+          id: 'unassigned',
+          name: 'Unassigned',
+          tm_count: treeData.unassigned.length,
+          icon: 'archive'
+        });
+      }
+
+      // Platforms
+      for (const platform of treeData.platforms || []) {
+        // Count TMs in platform (including in projects)
+        let tmCount = platform.tms?.length || 0;
+        for (const project of platform.projects || []) {
+          tmCount += project.tms?.length || 0;
+        }
+
+        items.push({
+          type: 'platform',
+          id: platform.id,
+          name: platform.name,
+          tm_count: tmCount,
+          project_count: platform.projects?.length || 0,
+          icon: platform.name === 'Offline Storage' ? 'cloud-offline' : 'application'
+        });
+      }
+
+      currentItems = items;
+    } else if (currentLevel.type === 'unassigned') {
+      // Unassigned level: Show all unassigned TMs
+      currentItems = (treeData.unassigned || []).map(tm => ({
+        type: 'tm',
+        id: tm.tm_id,
+        name: tm.tm_name,
+        entry_count: tm.entry_count || 0,
+        is_active: tm.is_active,
+        tm_data: tm
+      }));
+    } else if (currentLevel.type === 'platform') {
+      // Platform level: Show projects + platform-level TMs
+      const platform = treeData.platforms?.find(p => p.id === currentLevel.id);
+      if (!platform) {
+        currentItems = [];
+        return;
+      }
+
+      const items = [];
+
+      // Projects in platform (filter out nested Offline Storage)
+      for (const project of platform.projects || []) {
+        if (platform.name === 'Offline Storage' && project.name === 'Offline Storage') continue;
+
+        items.push({
+          type: 'project',
+          id: project.id,
+          name: project.name,
+          tm_count: project.tms?.length || 0,
+          icon: 'folder'
+        });
+      }
+
+      // Platform-level TMs
+      for (const tm of platform.tms || []) {
+        items.push({
+          type: 'tm',
+          id: tm.tm_id,
+          name: tm.tm_name,
+          entry_count: tm.entry_count || 0,
+          is_active: tm.is_active,
+          tm_data: tm
+        });
+      }
+
+      currentItems = items;
+    } else if (currentLevel.type === 'project') {
+      // Project level: Show TMs in project
+      // Find the project
+      let project = null;
+      for (const platform of treeData.platforms || []) {
+        project = platform.projects?.find(p => p.id === currentLevel.id);
+        if (project) break;
+      }
+
+      if (!project) {
+        currentItems = [];
+        return;
+      }
+
+      currentItems = (project.tms || []).map(tm => ({
+        type: 'tm',
+        id: tm.tm_id,
+        name: tm.tm_name,
+        entry_count: tm.entry_count || 0,
+        is_active: tm.is_active,
+        tm_data: tm
+      }));
+    }
   }
 
-  /**
-   * Handle double click (view entries)
-   */
-  function handleDoubleClick(tm) {
-    dispatch('viewEntries', { tm });
+  function navigateTo(item) {
+    if (item.type === 'home') {
+      breadcrumb = [{ type: 'home', id: null, name: 'Home' }];
+    } else if (item.type === 'unassigned') {
+      breadcrumb = [
+        { type: 'home', id: null, name: 'Home' },
+        { type: 'unassigned', id: 'unassigned', name: 'Unassigned' }
+      ];
+    } else if (item.type === 'platform') {
+      breadcrumb = [
+        { type: 'home', id: null, name: 'Home' },
+        { type: 'platform', id: item.id, name: item.name }
+      ];
+    } else if (item.type === 'project') {
+      // Find parent platform
+      let parentPlatform = null;
+      for (const platform of treeData.platforms || []) {
+        if (platform.projects?.some(p => p.id === item.id)) {
+          parentPlatform = platform;
+          break;
+        }
+      }
+
+      breadcrumb = [
+        { type: 'home', id: null, name: 'Home' },
+        { type: 'platform', id: parentPlatform?.id, name: parentPlatform?.name || 'Platform' },
+        { type: 'project', id: item.id, name: item.name }
+      ];
+    }
+
+    updateCurrentItems();
+    // Clear selection when navigating
+    selectedIds = new Set();
+    lastSelectedIndex = -1;
   }
 
-  /**
-   * Handle right click (context menu)
-   */
-  function handleContextMenu(event, tm) {
+  function navigateToBreadcrumb(index) {
+    breadcrumb = breadcrumb.slice(0, index + 1);
+    updateCurrentItems();
+    selectedIds = new Set();
+    lastSelectedIndex = -1;
+  }
+
+  function goUp() {
+    if (breadcrumb.length > 1) {
+      navigateToBreadcrumb(breadcrumb.length - 2);
+    }
+  }
+
+  // ========================================
+  // Selection & Click Handlers
+  // ========================================
+
+  function handleClick(event, item, index) {
+    if (event.ctrlKey || event.metaKey) {
+      // Ctrl+click: toggle selection
+      const newSet = new Set(selectedIds);
+      if (newSet.has(item.id)) {
+        newSet.delete(item.id);
+      } else {
+        newSet.add(item.id);
+      }
+      selectedIds = newSet;
+      lastSelectedIndex = index;
+    } else if (event.shiftKey && lastSelectedIndex >= 0) {
+      // Shift+click: range selection
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const newSet = new Set(selectedIds);
+      for (let i = start; i <= end; i++) {
+        newSet.add(currentItems[i].id);
+      }
+      selectedIds = newSet;
+    } else {
+      // Normal click: single select
+      selectedIds = new Set([item.id]);
+      lastSelectedIndex = index;
+    }
+
+    // If TM selected, notify parent
+    if (item.type === 'tm') {
+      selectedTMId = item.id;
+      if (onTMSelect) onTMSelect(item.tm_data);
+    }
+  }
+
+  function handleDoubleClick(item) {
+    if (item.type === 'tm') {
+      // Double-click TM: view entries
+      if (onViewEntries) onViewEntries(item.tm_data);
+    } else {
+      // Double-click folder-like item: navigate into it
+      navigateTo(item);
+    }
+  }
+
+  function isSelected(id) {
+    return selectedIds.has(id);
+  }
+
+  // ========================================
+  // TM Operations
+  // ========================================
+
+  async function activateTM(tm, active = true) {
+    try {
+      logger.apiCall(`/api/ldm/tm/${tm.tm_id}/activate`, 'PATCH');
+      const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.tm_id}/activate`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active })
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      logger.success(`TM ${active ? 'activated' : 'deactivated'}`, { tmId: tm.tm_id });
+      await loadTree(); // Reload to show updated state
+    } catch (err) {
+      logger.error('Failed to toggle TM activation', { error: err.message });
+    }
+  }
+
+  async function deleteTM(tm) {
+    try {
+      logger.apiCall(`/api/ldm/tm/${tm.tm_id}`, 'DELETE');
+      const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.tm_id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      logger.success('TM deleted', { tmId: tm.tm_id });
+      await loadTree();
+    } catch (err) {
+      logger.error('Failed to delete TM', { error: err.message });
+    }
+  }
+
+  function showDeleteConfirm(item) {
+    closeContextMenu();
+    confirmModal = {
+      open: true,
+      title: 'Delete Translation Memory',
+      message: `Are you sure you want to delete "${item.name}"? This will permanently remove ${item.entry_count?.toLocaleString() || 0} entries.`,
+      confirmLabel: 'Delete',
+      pendingAction: 'delete',
+      pendingData: item
+    };
+  }
+
+  function handleModalConfirm() {
+    if (confirmModal.pendingAction === 'delete' && confirmModal.pendingData?.tm_data) {
+      deleteTM(confirmModal.pendingData.tm_data);
+    }
+    confirmModal.open = false;
+  }
+
+  function handleModalCancel() {
+    confirmModal.open = false;
+  }
+
+  // ========================================
+  // Context Menu
+  // ========================================
+
+  function handleContextMenu(event, item) {
     event.preventDefault();
-    dispatch('contextMenu', { event, tm });
+    event.stopPropagation();
+    contextMenu = {
+      show: true,
+      x: event.clientX,
+      y: event.clientY,
+      item
+    };
   }
 
-  /**
-   * Get current selected index
-   */
-  function getSelectedIndex() {
-    if (!selectedId || items.length === 0) return -1;
-    return items.findIndex(tm => tm.id === selectedId);
+  function handleBackgroundContextMenu(event) {
+    if (event.target.closest('.grid-row')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    contextMenu = { show: false, x: 0, y: 0, item: null };
   }
 
-  /**
-   * Select TM by index and focus its row
-   */
-  function selectByIndex(index) {
-    if (index < 0 || index >= items.length) return;
-    const tm = items[index];
-    dispatch('select', { tm });
+  function closeContextMenu() {
+    contextMenu = { show: false, x: 0, y: 0, item: null };
+  }
 
-    // Focus the row button
-    if (gridBody) {
-      const rows = gridBody.querySelectorAll('.grid-row');
-      if (rows[index]) {
-        rows[index].focus();
-      }
+  function handleActivateFromMenu() {
+    if (contextMenu.item?.type === 'tm') {
+      activateTM(contextMenu.item.tm_data, !contextMenu.item.is_active);
+    }
+    closeContextMenu();
+  }
+
+  function handleDeleteFromMenu() {
+    if (contextMenu.item?.type === 'tm') {
+      showDeleteConfirm(contextMenu.item);
+    }
+    closeContextMenu();
+  }
+
+  // ========================================
+  // Drag and Drop
+  // ========================================
+
+  function handleDragStart(event, item) {
+    if (item.type !== 'tm') return;
+
+    if (!isSelected(item.id)) {
+      selectedIds = new Set([item.id]);
+    }
+
+    draggedItems = currentItems.filter(i => i.type === 'tm' && selectedIds.has(i.id));
+    isDragging = true;
+
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', JSON.stringify(draggedItems.map(i => ({
+      id: i.id,
+      name: i.name,
+      type: 'tm'
+    }))));
+
+    event.target.classList.add('dragging');
+  }
+
+  function handleDragEnd(event) {
+    isDragging = false;
+    draggedItems = [];
+    dropTargetId = null;
+    event.target.classList.remove('dragging');
+  }
+
+  function handleDragOver(event, item) {
+    // Only platforms and projects can be drop targets
+    if (item.type !== 'platform' && item.type !== 'project') return;
+    if (draggedItems.length === 0) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    dropTargetId = item.id;
+  }
+
+  function handleDragLeave(event, item) {
+    if (dropTargetId === item.id) {
+      dropTargetId = null;
     }
   }
 
-  /**
-   * Handle keyboard navigation
-   */
-  function handleKeydown(event, tm) {
-    const currentIndex = getSelectedIndex();
+  async function handleDrop(event, targetItem) {
+    event.preventDefault();
 
+    if (targetItem.type !== 'platform' && targetItem.type !== 'project') return;
+    if (draggedItems.length === 0) return;
+
+    // Move TMs to target
+    for (const tm of draggedItems) {
+      try {
+        const assignmentData = targetItem.type === 'platform'
+          ? { platform_id: targetItem.id, project_id: null }
+          : { project_id: targetItem.id };
+
+        logger.apiCall(`/api/ldm/tm/${tm.id}/assign`, 'PATCH');
+        await fetch(`${API_BASE}/api/ldm/tm/${tm.id}/assign`, {
+          method: 'PATCH',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(assignmentData)
+        });
+      } catch (err) {
+        logger.error('Failed to reassign TM', { error: err.message, tmId: tm.id });
+      }
+    }
+
+    logger.success('TMs reassigned', { count: draggedItems.length, target: targetItem.name });
+    await loadTree();
+
+    isDragging = false;
+    draggedItems = [];
+    dropTargetId = null;
+  }
+
+  // ========================================
+  // Keyboard Navigation
+  // ========================================
+
+  function handleKeydown(event, item, index) {
     switch (event.key) {
       case 'Enter':
-        handleDoubleClick(tm);
+        handleDoubleClick(item);
         break;
-
-      case 'ArrowUp':
+      case 'Backspace':
         event.preventDefault();
-        if (currentIndex > 0) {
-          selectByIndex(currentIndex - 1);
-        }
+        goUp();
         break;
-
-      case 'ArrowDown':
-        event.preventDefault();
-        if (currentIndex < items.length - 1) {
-          selectByIndex(currentIndex + 1);
-        }
-        break;
-
-      case 'Home':
-        event.preventDefault();
-        selectByIndex(0);
-        break;
-
-      case 'End':
-        event.preventDefault();
-        selectByIndex(items.length - 1);
-        break;
-
       case 'Delete':
-        event.preventDefault();
-        dispatch('delete', { tm });
-        break;
-
-      case 'F2':
-        event.preventDefault();
-        dispatch('rename', { tm });
+        if (item.type === 'tm') {
+          event.preventDefault();
+          showDeleteConfirm(item);
+        }
         break;
     }
   }
 
-  /**
-   * Handle grid-level keydown
-   */
-  function handleGridKeydown(event) {
-    if (items.length === 0) return;
+  // ========================================
+  // Icon Helpers
+  // ========================================
 
-    if (getSelectedIndex() === -1) {
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home') {
-        event.preventDefault();
-        selectByIndex(0);
-      } else if (event.key === 'End') {
-        event.preventDefault();
-        selectByIndex(items.length - 1);
-      }
+  function getIcon(item) {
+    if (item.type === 'unassigned') return Archive;
+    if (item.type === 'platform') {
+      return item.icon === 'cloud-offline' ? CloudOffline : Application;
     }
+    if (item.type === 'project') return Folder;
+    if (item.type === 'tm') {
+      return item.is_active ? CheckmarkFilled : DataBase;
+    }
+    return DocumentBlank;
+  }
+
+  function formatEntryCount(item) {
+    if (item.type === 'tm') {
+      const count = item.entry_count || 0;
+      return count === 0 ? 'Empty' : `${count.toLocaleString()} entries`;
+    }
+    if (item.type === 'platform') {
+      if (item.tm_count > 0) return `${item.tm_count} TM${item.tm_count > 1 ? 's' : ''}`;
+      return 'No TMs';
+    }
+    if (item.type === 'project') {
+      if (item.tm_count > 0) return `${item.tm_count} TM${item.tm_count > 1 ? 's' : ''}`;
+      return 'No TMs';
+    }
+    if (item.type === 'unassigned') {
+      return `${item.tm_count} TM${item.tm_count > 1 ? 's' : ''}`;
+    }
+    return '';
+  }
+
+  function formatStatus(item) {
+    if (item.type === 'tm') {
+      return item.is_active ? 'Active' : 'Inactive';
+    }
+    return '';
+  }
+
+  function formatType(item) {
+    if (item.type === 'tm') return 'TM';
+    if (item.type === 'platform') return 'Platform';
+    if (item.type === 'project') return 'Project';
+    if (item.type === 'unassigned') return 'Section';
+    return '';
+  }
+
+  // ========================================
+  // Lifecycle
+  // ========================================
+
+  onMount(() => {
+    loadTree();
+
+    // Close context menu on click outside
+    const handleClickOutside = () => closeContextMenu();
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  });
+
+  // Expose reload for parent components
+  export function reload() {
+    return loadTree();
   }
 </script>
 
-<div class="tm-explorer-grid" role="grid" aria-label="Translation Memories">
+<div class="tm-explorer-grid" oncontextmenu={handleBackgroundContextMenu}>
+  <!-- Breadcrumb -->
+  <nav class="breadcrumb" aria-label="TM navigation">
+    {#each breadcrumb as crumb, i (i)}
+      {#if i > 0}
+        <ChevronRight size={16} class="breadcrumb-separator" />
+      {/if}
+      <button
+        class="breadcrumb-item"
+        class:current={i === breadcrumb.length - 1}
+        onclick={() => navigateToBreadcrumb(i)}
+      >
+        {#if crumb.type === 'home'}
+          <Home size={16} />
+        {/if}
+        <span>{crumb.name}</span>
+      </button>
+    {/each}
+  </nav>
+
+  <!-- Grid -->
   {#if loading}
     <div class="loading-state">
       <span>Loading...</span>
     </div>
-  {:else if items.length === 0}
+  {:else if currentItems.length === 0}
     <div class="empty-state">
-      <DataBase size={48} />
-      <p>No Translation Memories</p>
-      <span>Upload a TM to get started</span>
+      <DocumentBlank size={48} />
+      <p>No items here</p>
+      <span>Right-click to create a new TM or upload</span>
     </div>
   {:else}
     <!-- Header row -->
     <div class="grid-header" role="row">
       <div class="grid-cell name-cell" role="columnheader">Name</div>
-      <div class="grid-cell entries-cell" role="columnheader">Entries</div>
+      <div class="grid-cell size-cell" role="columnheader">Entries</div>
       <div class="grid-cell status-cell" role="columnheader">Status</div>
-      <div class="grid-cell date-cell" role="columnheader">Modified</div>
+      <div class="grid-cell type-cell" role="columnheader">Type</div>
     </div>
 
     <!-- Items -->
-    <div
-      class="grid-body"
-      bind:this={gridBody}
-      onkeydown={handleGridKeydown}
-      tabindex="-1"
-    >
-      {#each items as tm (tm.id)}
-        {@const isActive = activeId === tm.id}
+    <div class="grid-body">
+      {#each currentItems as item, index (`${item.type}-${item.id}`)}
+        {@const Icon = getIcon(item)}
         <button
           class="grid-row"
-          class:selected={selectedId === tm.id}
-          class:active={isActive}
+          class:selected={isSelected(item.id)}
+          class:tm={item.type === 'tm'}
+          class:active-tm={item.type === 'tm' && item.is_active}
+          class:platform={item.type === 'platform'}
+          class:project={item.type === 'project'}
+          class:drop-target={dropTargetId === item.id}
+          class:dragging={isDragging && isSelected(item.id)}
           role="row"
-          onclick={() => handleClick(tm)}
-          ondblclick={() => handleDoubleClick(tm)}
-          oncontextmenu={(e) => handleContextMenu(e, tm)}
-          onkeydown={(e) => handleKeydown(e, tm)}
+          draggable={item.type === 'tm' ? 'true' : 'false'}
+          onclick={(e) => handleClick(e, item, index)}
+          ondblclick={() => handleDoubleClick(item)}
+          oncontextmenu={(e) => handleContextMenu(e, item)}
+          onkeydown={(e) => handleKeydown(e, item, index)}
+          ondragstart={(e) => handleDragStart(e, item)}
+          ondragend={handleDragEnd}
+          ondragover={(e) => handleDragOver(e, item)}
+          ondragleave={(e) => handleDragLeave(e, item)}
+          ondrop={(e) => handleDrop(e, item)}
         >
           <div class="grid-cell name-cell" role="gridcell">
-            {#if isActive}
-              <CheckmarkFilled size={20} class="tm-icon active-icon" />
+            {#if item.type === 'tm'}
+              <button
+                class="activation-toggle"
+                onclick={(e) => { e.stopPropagation(); activateTM(item.tm_data, !item.is_active); }}
+                title={item.is_active ? 'Deactivate TM' : 'Activate TM'}
+              >
+                {#if item.is_active}
+                  <CheckmarkFilled size={18} class="tm-icon active" />
+                {:else}
+                  <RadioButton size={18} class="tm-icon inactive" />
+                {/if}
+              </button>
             {:else}
-              <DataBase size={20} class="tm-icon" />
+              <Icon size={20} class="item-icon" />
             {/if}
-            <span class="tm-name">{tm.name}</span>
-            {#if isActive}
-              <Tag type="green" size="sm">Active</Tag>
-            {/if}
+            <span class="item-name">{item.name}</span>
           </div>
-          <div class="grid-cell entries-cell" role="gridcell">
-            {formatEntries(tm.entry_count)}
+          <div class="grid-cell size-cell" role="gridcell">
+            {formatEntryCount(item)}
           </div>
           <div class="grid-cell status-cell" role="gridcell">
-            {#if tm.status === 'ready'}
-              <span class="status-ready">Ready</span>
-            {:else if tm.status === 'indexing'}
-              <span class="status-indexing">Indexing...</span>
-            {:else}
-              <span class="status-pending">Pending</span>
+            {#if item.type === 'tm'}
+              <span class="status-badge" class:active={item.is_active}>
+                {formatStatus(item)}
+              </span>
             {/if}
           </div>
-          <div class="grid-cell date-cell" role="gridcell">
-            {formatDate(tm.updated_at || tm.created_at)}
+          <div class="grid-cell type-cell" role="gridcell">
+            {formatType(item)}
           </div>
         </button>
       {/each}
@@ -247,18 +688,95 @@
   {/if}
 </div>
 
+<!-- Context Menu -->
+{#if contextMenu.show}
+  <div
+    class="context-menu"
+    style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
+    role="menu"
+  >
+    {#if contextMenu.item?.type === 'tm'}
+      <button class="context-item" onclick={handleActivateFromMenu}>
+        {contextMenu.item.is_active ? 'Deactivate' : 'Activate'}
+      </button>
+      <button class="context-item danger" onclick={handleDeleteFromMenu}>
+        Delete
+      </button>
+    {:else}
+      <button class="context-item" onclick={() => { navigateTo(contextMenu.item); closeContextMenu(); }}>
+        Open
+      </button>
+    {/if}
+  </div>
+{/if}
+
+<!-- Confirm Modal -->
+<ConfirmModal
+  bind:open={confirmModal.open}
+  title={confirmModal.title}
+  message={confirmModal.message}
+  confirmLabel={confirmModal.confirmLabel}
+  danger={true}
+  onConfirm={handleModalConfirm}
+  onCancel={handleModalCancel}
+/>
+
 <style>
   .tm-explorer-grid {
     display: flex;
     flex-direction: column;
     width: 100%;
     height: 100%;
-    flex: 1; /* Expand in flex container */
-    min-height: 0; /* Allow flex shrink */
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
     background: var(--cds-background);
   }
 
+  /* Breadcrumb */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    background: var(--cds-layer-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    flex-shrink: 0;
+  }
+
+  .breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--cds-link-01, #78a9ff);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .breadcrumb-item:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .breadcrumb-item.current {
+    color: var(--cds-text-01);
+    cursor: default;
+  }
+
+  .breadcrumb-item.current:hover {
+    background: transparent;
+  }
+
+  :global(.breadcrumb-separator) {
+    color: var(--cds-text-02);
+    flex-shrink: 0;
+  }
+
+  /* Loading / Empty states */
   .loading-state,
   .empty-state {
     display: flex;
@@ -292,6 +810,7 @@
     text-transform: uppercase;
     color: var(--cds-text-02);
     user-select: none;
+    flex-shrink: 0;
   }
 
   /* Grid body */
@@ -305,30 +824,44 @@
   .grid-row {
     display: flex;
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.625rem 1rem;
     background: transparent;
     border: none;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01, #393939);
     cursor: pointer;
     text-align: left;
-    transition: background 0.1s ease;
+    transition: background 0.15s ease;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
   }
 
   .grid-row:hover {
-    background: var(--cds-layer-hover-01);
+    background: var(--cds-layer-hover-01, rgba(141, 141, 141, 0.16));
   }
 
   .grid-row:focus {
-    outline: 2px solid var(--cds-focus);
+    outline: 2px solid var(--cds-focus, #0f62fe);
     outline-offset: -2px;
   }
 
   .grid-row.selected {
-    background: var(--cds-layer-selected-01);
+    background: var(--cds-layer-selected-01, rgba(141, 141, 141, 0.24));
   }
 
-  .grid-row.active {
-    border-left: 3px solid var(--cds-support-success);
+  .grid-row.selected:hover {
+    background: var(--cds-layer-selected-hover-01, rgba(141, 141, 141, 0.32));
+  }
+
+  .grid-row.drop-target {
+    background: rgba(15, 98, 254, 0.25) !important;
+    outline: 2px dashed var(--cds-link-01, #78a9ff);
+    outline-offset: -2px;
+  }
+
+  .grid-row.dragging {
+    opacity: 0.5;
+    background: rgba(100, 100, 100, 0.3);
   }
 
   /* Grid cells */
@@ -344,58 +877,129 @@
     gap: 0.75rem;
   }
 
-  .entries-cell {
+  .size-cell {
     width: 120px;
     color: var(--cds-text-02);
     font-size: 0.875rem;
   }
 
   .status-cell {
-    width: 100px;
-    font-size: 0.875rem;
+    width: 80px;
   }
 
-  .date-cell {
-    width: 100px;
+  .type-cell {
+    width: 80px;
     color: var(--cds-text-02);
-    font-size: 0.875rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
   }
 
-  /* TM styling */
-  .tm-icon {
+  /* Item icons */
+  .grid-row :global(.item-icon) {
     flex-shrink: 0;
-    color: var(--cds-icon-secondary);
+    color: #a8b0b8;
   }
 
-  .tm-icon.active-icon {
-    color: var(--cds-support-success);
+  .grid-row.platform :global(.item-icon) {
+    color: #4589ff;
   }
 
-  .tm-name {
+  .grid-row.project :global(.item-icon) {
+    color: #5a9a6e;
+  }
+
+  /* TM activation toggle */
+  .activation-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .activation-toggle:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  :global(.tm-icon.active) {
+    color: #24a148 !important;
+  }
+
+  :global(.tm-icon.inactive) {
+    color: #6f6f6f !important;
+  }
+
+  .item-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 0.875rem;
-    font-weight: 500;
     color: var(--cds-text-01);
   }
 
-  /* Status colors */
-  .status-ready {
-    color: var(--cds-support-success);
+  .grid-row.platform .item-name,
+  .grid-row.project .item-name {
+    font-weight: 500;
   }
 
-  .status-indexing {
-    color: var(--cds-support-warning);
-  }
-
-  .status-pending {
+  /* Status badge */
+  .status-badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    background: var(--cds-layer-02);
     color: var(--cds-text-02);
+  }
+
+  .status-badge.active {
+    background: rgba(36, 161, 72, 0.2);
+    color: #24a148;
+  }
+
+  /* Context menu */
+  .context-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 150px;
+    background: var(--cds-layer-02, #262626);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    padding: 0.25rem 0;
+  }
+
+  .context-item {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: none;
+    text-align: left;
+    color: var(--cds-text-01);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+
+  .context-item:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .context-item.danger {
+    color: var(--cds-support-error, #fa4d56);
+  }
+
+  .context-item.danger:hover {
+    background: rgba(250, 77, 86, 0.1);
   }
 
   /* Responsive */
   @media (max-width: 768px) {
-    .date-cell {
+    .type-cell {
       display: none;
     }
   }
