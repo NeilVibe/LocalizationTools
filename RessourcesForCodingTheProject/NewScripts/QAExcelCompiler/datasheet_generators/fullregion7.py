@@ -970,7 +970,7 @@ def write_sheet_content(
     status_col = 3 if is_eng else 4
     dv = DataValidation(
         type="list",
-        formula1='"ISSUE,NO ISSUE,BLOCKED"',
+        formula1='"ISSUE,NO ISSUE,BLOCKED,KOREAN"',
         allow_blank=True,
     )
     col_letter = get_column_letter(status_col)

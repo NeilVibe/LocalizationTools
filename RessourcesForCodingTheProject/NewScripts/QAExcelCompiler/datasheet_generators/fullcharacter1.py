@@ -413,7 +413,7 @@ def write_workbook(
         col_letter = get_column_letter(status_col_idx)
         dv = DataValidation(
             type="list",
-            formula1='"ISSUE,NO ISSUE,BLOCKED"',
+            formula1='"ISSUE,NO ISSUE,BLOCKED,KOREAN"',
             allow_blank=True,
             showErrorMessage=True,
             errorStyle="stop",
