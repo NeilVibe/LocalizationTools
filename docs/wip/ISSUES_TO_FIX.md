@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-11 (Session 38) | **Build:** 454 | **Open:** 3
+**Last Updated:** 2026-01-11 (Session 38) | **Build:** 454 | **Open:** 1
 
 ---
 
@@ -8,67 +8,14 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 3 |
-| **FIXED/CLOSED** | 122 |
+| **OPEN** | 1 |
+| **FIXED/CLOSED** | 124 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
 ## OPEN ISSUES
-
-### UX-001: Unconfirm Cell Hotkey Needed
-
-- **Reported:** 2026-01-11 (Session 38)
-- **Severity:** MEDIUM (UX enhancement)
-- **Component:** VirtualGrid.svelte
-
-**Problem:** Currently `Ctrl+S` confirms a cell (marks as reviewed + adds to TM), but there's no way to UNCONFIRM a cell.
-
-**Current Hotkeys:**
-- `Ctrl+S` - Confirm (save as reviewed + add to TM)
-- `Ctrl+D` - Dismiss QA issues
-- `Ctrl+Z/Y` - Undo/Redo
-- `Enter` - Save and move to next
-- `Escape` - Cancel edit
-
-**Proposed Solution:** Add `Ctrl+U` or `Ctrl+Shift+S` for Unconfirm:
-- Sets status back to "translated" (from "reviewed")
-- Does NOT remove from TM (TM entries are permanent)
-- Visual feedback: cell loses "reviewed" styling
-
----
-
-### UX-002: Right-Click Context Menus Missing in File Viewer
-
-- **Reported:** 2026-01-11 (Session 38)
-- **Severity:** HIGH (UX gap)
-- **Component:** VirtualGrid.svelte
-
-**Problem:** Right-click in file viewer (cells) shows browser default menu, not custom context menu.
-
-**Current State:**
-- ✅ File Explorer (FilesPage) - has context menus
-- ✅ TM Explorer (TMExplorerGrid) - has context menus
-- ❌ File Viewer cells (VirtualGrid) - NO context menus
-
-**Proposed Context Menu Options for Cells:**
-| Action | Description |
-|--------|-------------|
-| **Confirm** | Mark as reviewed + add to TM (Ctrl+S) |
-| **Unconfirm** | Revert to translated status |
-| **Run QA** | Run QA check on this specific row |
-| **Add to TM** | Add source/target pair to TM (with stringid if available) |
-| **Copy Source** | Copy source text |
-| **Copy Target** | Copy target text |
-| **Copy Row** | Copy full row data |
-
-**Implementation Notes:**
-- Prevent browser default with `event.preventDefault()`
-- Reuse context menu pattern from ExplorerGrid
-- Consider: Different menu for Source vs Target cells?
-
----
 
 ### UX-003: Cannot Move TMs in TM Explorer
 
@@ -110,6 +57,38 @@
 ---
 
 ## RECENTLY FIXED (Session 38)
+
+### UX-001: Revert Row Status Hotkey (Ctrl+U) ✅ FIXED
+
+- **Reported:** 2026-01-11 (Session 38)
+- **Fixed:** 2026-01-11 (Session 38)
+- **Component:** VirtualGrid.svelte
+
+**Problem:** No way to revert a cell's status back to untranslated.
+
+**Solution:**
+- Added `revertRowStatus()` function
+- Ctrl+U reverts status to "untranslated" from any state
+- Works in both edit mode and selection mode
+- Makes API call to update backend
+
+---
+
+### UX-002: Right-Click Context Menu in File Viewer ✅ FIXED
+
+- **Reported:** 2026-01-11 (Session 38)
+- **Fixed:** 2026-01-11 (Session 38)
+- **Component:** VirtualGrid.svelte
+
+**Problem:** Right-click in file viewer showed browser default menu instead of custom context menu.
+
+**Solution:**
+- Added context menu state and handlers
+- Right-click on any row shows professional context menu
+- Menu options: Confirm, Set as Translated/Untranslated, Run QA, Dismiss QA, Add to TM, Copy Source/Target/Row
+- Click outside or on option closes menu
+
+---
 
 ### BUG-038: parent_id Bug Creating Folders/Uploading at Project Root ✅ FIXED
 
