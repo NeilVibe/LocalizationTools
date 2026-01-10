@@ -2179,8 +2179,9 @@ def build_daily_sheet(wb):
         # Chart formatting
         chart.legend.position = "b"  # Legend at bottom
         chart.y_axis.title = "Done"
+        chart.y_axis.tickLblPos = "low"  # Show Y-axis numbers
         chart.x_axis.title = "Date"
-        chart.x_axis.tickLblPos = "low"  # Labels below axis
+        chart.x_axis.tickLblPos = "low"  # Show X-axis labels
 
         # Place chart below main table
         chart_row = data_row + 1
@@ -2505,7 +2506,8 @@ def build_total_sheet(wb):
 
         chart1.legend.position = "b"
         chart1.y_axis.title = "Done"
-        chart1.x_axis.delete = True  # Hide x-axis labels (shown in legend)
+        chart1.y_axis.tickLblPos = "low"  # Show Y-axis numbers
+        chart1.x_axis.tickLblPos = "low"  # Show X-axis labels
 
         # Place chart 1 below main table
         chart1_row = current_row + 2
@@ -2536,7 +2538,8 @@ def build_total_sheet(wb):
 
         chart2.legend.position = "b"
         chart2.y_axis.title = "Actual Issues %"
-        chart2.x_axis.delete = True
+        chart2.y_axis.tickLblPos = "low"  # Show Y-axis numbers
+        chart2.x_axis.tickLblPos = "low"  # Show X-axis labels
 
         # Place chart 2 below chart 1
         chart2_row = chart1_row + 15
