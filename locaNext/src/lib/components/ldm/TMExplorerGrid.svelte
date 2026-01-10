@@ -107,6 +107,64 @@
   // Navigation & View Updates
   // ========================================
 
+  // Helper: count TMs in a folder (including children)
+  function countTMsInFolder(folder) {
+    let count = folder.tms?.length || 0;
+    for (const child of folder.children || []) {
+      count += countTMsInFolder(child);
+    }
+    return count;
+  }
+
+  // Helper: find folder by ID in the tree
+  function findFolderById(folderId) {
+    for (const platform of treeData.platforms || []) {
+      for (const project of platform.projects || []) {
+        const folder = findFolderInTree(project.folders || [], folderId);
+        if (folder) return folder;
+      }
+    }
+    return null;
+  }
+
+  function findFolderInTree(folders, folderId) {
+    for (const folder of folders) {
+      if (folder.id === folderId) return folder;
+      const found = findFolderInTree(folder.children || [], folderId);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  // Helper: find parent project/folder for a folder
+  function findFolderParent(folderId) {
+    for (const platform of treeData.platforms || []) {
+      for (const project of platform.projects || []) {
+        // Check if folder is direct child of project
+        if ((project.folders || []).some(f => f.id === folderId)) {
+          return { type: 'project', project, platform };
+        }
+        // Check nested folders
+        const parent = findParentFolderInTree(project.folders || [], folderId);
+        if (parent) {
+          return { type: 'folder', folder: parent, project, platform };
+        }
+      }
+    }
+    return null;
+  }
+
+  function findParentFolderInTree(folders, folderId) {
+    for (const folder of folders) {
+      if ((folder.children || []).some(c => c.id === folderId)) {
+        return folder;
+      }
+      const found = findParentFolderInTree(folder.children || [], folderId);
+      if (found) return found;
+    }
+    return null;
+  }
+
   function updateCurrentItems() {
     const currentLevel = breadcrumb[breadcrumb.length - 1];
 
@@ -191,7 +249,7 @@
 
       currentItems = items;
     } else if (currentLevel.type === 'project') {
-      // Project level: Show TMs in project
+      // Project level: Show folders + TMs in project
       // Find the project
       let project = null;
       for (const platform of treeData.platforms || []) {
@@ -204,14 +262,69 @@
         return;
       }
 
-      currentItems = (project.tms || []).map(tm => ({
-        type: 'tm',
-        id: tm.tm_id,
-        name: tm.tm_name,
-        entry_count: tm.entry_count || 0,
-        is_active: tm.is_active,
-        tm_data: tm
-      }));
+      const items = [];
+
+      // Folders in project (top-level folders only)
+      for (const folder of project.folders || []) {
+        items.push({
+          type: 'folder',
+          id: folder.id,
+          name: folder.name,
+          tm_count: countTMsInFolder(folder),
+          icon: 'folder',
+          folder_data: folder
+        });
+      }
+
+      // Project-level TMs
+      for (const tm of project.tms || []) {
+        items.push({
+          type: 'tm',
+          id: tm.tm_id,
+          name: tm.tm_name,
+          entry_count: tm.entry_count || 0,
+          is_active: tm.is_active,
+          tm_data: tm
+        });
+      }
+
+      currentItems = items;
+    } else if (currentLevel.type === 'folder') {
+      // Folder level: Show child folders + TMs in folder
+      const folder = findFolderById(currentLevel.id);
+
+      if (!folder) {
+        currentItems = [];
+        return;
+      }
+
+      const items = [];
+
+      // Child folders
+      for (const childFolder of folder.children || []) {
+        items.push({
+          type: 'folder',
+          id: childFolder.id,
+          name: childFolder.name,
+          tm_count: countTMsInFolder(childFolder),
+          icon: 'folder',
+          folder_data: childFolder
+        });
+      }
+
+      // Folder-level TMs
+      for (const tm of folder.tms || []) {
+        items.push({
+          type: 'tm',
+          id: tm.tm_id,
+          name: tm.tm_name,
+          entry_count: tm.entry_count || 0,
+          is_active: tm.is_active,
+          tm_data: tm
+        });
+      }
+
+      currentItems = items;
     }
   }
 
@@ -243,6 +356,40 @@
         { type: 'platform', id: parentPlatform?.id, name: parentPlatform?.name || 'Platform' },
         { type: 'project', id: item.id, name: item.name }
       ];
+    } else if (item.type === 'folder') {
+      // Build full breadcrumb path for folder
+      const parentInfo = findFolderParent(item.id);
+      if (!parentInfo) {
+        // Fallback - shouldn't happen
+        breadcrumb = [{ type: 'home', id: null, name: 'Home' }];
+      } else {
+        const newBreadcrumb = [
+          { type: 'home', id: null, name: 'Home' },
+          { type: 'platform', id: parentInfo.platform.id, name: parentInfo.platform.name },
+          { type: 'project', id: parentInfo.project.id, name: parentInfo.project.name }
+        ];
+
+        // Add parent folders if folder is nested
+        if (parentInfo.type === 'folder') {
+          // Build folder path
+          const folderPath = [];
+          let currentFolder = parentInfo.folder;
+          folderPath.unshift({ type: 'folder', id: currentFolder.id, name: currentFolder.name });
+
+          // Walk up to find more parent folders
+          let parentCheck = findFolderParent(currentFolder.id);
+          while (parentCheck?.type === 'folder') {
+            folderPath.unshift({ type: 'folder', id: parentCheck.folder.id, name: parentCheck.folder.name });
+            parentCheck = findFolderParent(parentCheck.folder.id);
+          }
+
+          newBreadcrumb.push(...folderPath);
+        }
+
+        // Add the target folder
+        newBreadcrumb.push({ type: 'folder', id: item.id, name: item.name });
+        breadcrumb = newBreadcrumb;
+      }
     }
 
     updateCurrentItems();
@@ -536,6 +683,7 @@
       return item.icon === 'cloud-offline' ? CloudOffline : Application;
     }
     if (item.type === 'project') return Folder;
+    if (item.type === 'folder') return Folder;
     if (item.type === 'tm') {
       return item.is_active ? CheckmarkFilled : DataBase;
     }
@@ -552,6 +700,10 @@
       return 'No TMs';
     }
     if (item.type === 'project') {
+      if (item.tm_count > 0) return `${item.tm_count} TM${item.tm_count > 1 ? 's' : ''}`;
+      return 'No TMs';
+    }
+    if (item.type === 'folder') {
       if (item.tm_count > 0) return `${item.tm_count} TM${item.tm_count > 1 ? 's' : ''}`;
       return 'No TMs';
     }
@@ -572,6 +724,7 @@
     if (item.type === 'tm') return 'TM';
     if (item.type === 'platform') return 'Platform';
     if (item.type === 'project') return 'Project';
+    if (item.type === 'folder') return 'Folder';
     if (item.type === 'unassigned') return 'Section';
     return '';
   }
@@ -646,6 +799,7 @@
           class:active-tm={item.type === 'tm' && item.is_active}
           class:platform={item.type === 'platform'}
           class:project={item.type === 'project'}
+          class:folder={item.type === 'folder'}
           class:drop-target={dropTargetId === item.id}
           class:dragging={isDragging && isSelected(item.id)}
           role="row"
@@ -924,6 +1078,10 @@
     color: #5a9a6e;
   }
 
+  .grid-row.folder :global(.item-icon) {
+    color: #d4a574;
+  }
+
   /* TM activation toggle */
   .activation-toggle {
     display: flex;
@@ -958,7 +1116,8 @@
   }
 
   .grid-row.platform .item-name,
-  .grid-row.project .item-name {
+  .grid-row.project .item-name,
+  .grid-row.folder .item-name {
     font-weight: 500;
   }
 
