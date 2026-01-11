@@ -513,16 +513,36 @@ Transformed LDM from "private by default" to "public by default with optional re
 
 ## Current Priorities
 
-| Priority | Feature | WIP Doc | Status |
-|----------|---------|---------|--------|
-| **P10** | **DB Abstraction Layer** | [P10_DB_ABSTRACTION.md](docs/wip/P10_DB_ABSTRACTION.md) | ✅ **COMPLETE** |
-| P9 | Launcher + Offline/Online | [LAUNCHER_PLAN.md](docs/wip/LAUNCHER_PLAN.md) | ✅ COMPLETE |
-| P8 | Dashboard Overhaul | [DASHBOARD_OVERHAUL_PLAN.md](docs/wip/DASHBOARD_OVERHAUL_PLAN.md) | PLANNED |
-| P7 | Endpoint Audit System | [ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) | ✅ DONE |
-| P5 | Advanced Search | [ADVANCED_SEARCH.md](docs/wip/ADVANCED_SEARCH.md) | ✅ DONE |
-| P3 | Offline/Online Mode | [OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) | ✅ COMPLETE |
-| P2 | Font Settings Enhancement | [FONT_SETTINGS_ENHANCEMENT.md](docs/wip/FONT_SETTINGS_ENHANCEMENT.md) | ✅ DONE |
-| P1 | QA UIUX Overhaul | [QA_UIUX_OVERHAUL.md](docs/wip/QA_UIUX_OVERHAUL.md) | ✅ DONE |
+| Priority | Feature | Status | Notes |
+|----------|---------|--------|-------|
+| **P11** | **Platform Stability** | **ACTIVE** | Ensure everything works before new features |
+| P10 | DB Abstraction Layer | ✅ COMPLETE | All repositories + routes migrated |
+| P9 | Launcher + Offline/Online | ✅ COMPLETE | Mode switching works |
+| P8 | Dashboard Overhaul | LOW PRIORITY | After platform stability |
+
+### P11: Platform Stability (ACTIVE)
+
+**Goal:** Ensure the platform is rock-solid before adding new features.
+
+| Task | Status | Description |
+|------|--------|-------------|
+| TM Tree Folder Mirroring | TODO | `get_tree()` returns `folders: []` - needs to mirror File Explorer |
+| P10 Permission Gap | TODO | Routes check PostgreSQL for permissions even in offline mode |
+| Windows PATH Tests | TODO | 7 path tests for Windows builds (downloads, uploads, models, etc.) |
+| CI/CD Health | TODO | Verify all tests pass, builds succeed |
+| Playwright Test Fixes | TODO | 67 UI tests failing due to login selector mismatch |
+
+### Completed Priorities
+
+| Priority | Feature | Status |
+|----------|---------|--------|
+| P10 | DB Abstraction Layer | ✅ COMPLETE |
+| P9 | Launcher + Offline/Online | ✅ COMPLETE |
+| P7 | Endpoint Audit System | ✅ DONE |
+| P5 | Advanced Search | ✅ DONE |
+| P3 | Offline/Online Mode | ✅ COMPLETE |
+| P2 | Font Settings Enhancement | ✅ DONE |
+| P1 | QA UIUX Overhaul | ✅ DONE |
 
 ---
 
