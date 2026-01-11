@@ -573,7 +573,7 @@ Complete DB Abstraction Layer across entire backend using Repository Pattern.
 - [x] ~~Dead Code Audit~~ - **DONE** (removed 700+ lines)
 - [x] ~~Post-P10 Code Review (qa.py)~~ - **DONE** (migrated to RowRepository)
 - [x] ~~Granular Audit~~ - **DONE** (logging prefixes, dead code, unused files/folders)
-- [ ] Minor files not migrated (search.py, pretranslate.py, tm_linking.py) - LOW PRIORITY
+- [x] ~~Minor files migrated (search.py, pretranslate.py, tm_linking.py)~~ - **DONE**
 
 ### Bugs Fixed During Testing (Session 50)
 
@@ -871,4 +871,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-11 | P10 DB Abstraction COMPLETE (Session 50)*
+*Strategic Roadmap | Updated 2026-01-12 | P10 DB Abstraction COMPLETE (Session 50)*
