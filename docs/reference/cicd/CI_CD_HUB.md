@@ -381,8 +381,8 @@ releaseDate: '2026-01-02T10:20:06.387Z'
 | No update detected | 'latest' tag missing | CI creates it automatically, or run manual release |
 | Version compare fails | Semver format issue | Use `%-m%d` format (no leading zeros) |
 
-See `docs/cicd/TROUBLESHOOTING.md` for detailed auto-updater debugging.
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed auto-updater debugging.
 
 ---
 
-*Last updated: 2026-01-02*
+*Last updated: 2026-01-11*

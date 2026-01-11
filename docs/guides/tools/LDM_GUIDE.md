@@ -1,8 +1,8 @@
 # LDM (LanguageData Manager) - Complete Guide
 
 **Created:** 2025-12-08
-**Status:** 96% Complete (Phase 5 mostly done)
-**Task Tracking:** [docs/wip/P17_LDM_TASKS.md](../wip/P17_LDM_TASKS.md)
+**Status:** Production Ready
+**Updated:** 2026-01-11
 
 ---
 
@@ -295,11 +295,9 @@ COMPUTED FILES → Local disk (heavy, rebuildable)
 
 ## Related Documents
 
-- [P17_LDM_TASKS.md](../wip/P17_LDM_TASKS.md) - Detailed task tracking
-- [Roadmap.md](../../Roadmap.md) - Project roadmap (P17 section)
-- [QuickSearch parser.py](../../server/tools/quicksearch/parser.py) - Similar TXT/XML parsing
-- [KR Similar](../../server/tools/kr_similar/) - Fuzzy matching (for TM)
-- [QA Tools](../../server/tools/quicksearch/qa_tools.py) - Glossary checking
+- [Architecture Summary](../../architecture/ARCHITECTURE_SUMMARY.md) - System design
+- [Roadmap.md](../../../Roadmap.md) - Project roadmap
+- [XLSTransfer Guide](./XLSTRANSFER_GUIDE.md) - XLSTransfer tool
 
 ---
 

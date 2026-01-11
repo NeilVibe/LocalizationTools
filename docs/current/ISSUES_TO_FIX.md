@@ -937,7 +937,7 @@ for (const segment of segments) {
 - Updated 13 route files (77+ locations) to use permission helpers
 - Added admin endpoints for restriction management
 
-**Spec:** See `docs/wip/PUBLIC_PERMISSIONS_SPEC.md`
+**Spec:** See `docs/archive/PUBLIC_PERMISSIONS_SPEC.md`
 
 ---
 
@@ -1980,4 +1980,4 @@ The following fixes have been coded but need manual DEV testing:
 
 ---
 
-*Updated 2026-01-05 | 108 Issues FIXED | 0 OPEN*
+*Updated 2026-01-11 | 127 Issues FIXED | 0 OPEN*

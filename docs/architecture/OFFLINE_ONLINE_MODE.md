@@ -1,41 +1,48 @@
 # Offline/Online Mode - Complete Specification
 
-**Priority:** P9 | **Status:** COMPLETE ✅ | **Created:** 2025-12-28 | **Updated:** 2026-01-05
+**Priority:** P9 | **Status:** IN PROGRESS | **Created:** 2025-12-28 | **Updated:** 2026-01-11
 
 ---
 
 ## Executive Summary
 
-**Automatic connection with manual sync** between Online (PostgreSQL) and Offline (SQLite) modes.
+**Full offline parity** with automatic connection and manual sync.
 
+- **Full Offline:** EVERYTHING works offline (except network-dependent features)
+- **TM Operations:** Cut/Copy/Paste, Assignment work in SQLite (not just PostgreSQL)
+- **DB Abstraction:** Same API, same code, different database underneath
 - **Auto-connect:** Always online if server reachable, auto-fallback to offline
 - **Manual sync:** Users choose WHAT to sync and WHEN (right-click)
 - **Add/Edit only:** No deletions synced between modes
 - **Recycle Bin:** 30-day soft delete before permanent removal
-- **Beautiful UI:** Sync Dashboard, Toast notifications, Info bars, Status icons
 
 ---
 
-## P9 Backend Implementation (2026-01-05)
+## Architecture: DB Abstraction Layer
 
-### Pattern: PostgreSQL First, SQLite Fallback
+> See also: [ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md) for full abstraction design
 
-All endpoints now follow this pattern:
+### Target Pattern: One API, Two Databases
 
 ```python
-# Try PostgreSQL first
-result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
-file = result.scalar_one_or_none()
+# NEW pattern (DB Abstraction):
+repo = get_repository(current_mode)  # PostgreSQL or SQLite adapter
+result = await repo.operation(...)   # Same call, right DB
 
-if not file:
-    # Fallback to SQLite
-    from server.database.offline import get_offline_db
-    offline_db = get_offline_db()
-    file_data = offline_db.get_local_file(file_id)
-    if not file_data:
-        raise HTTPException(status_code=404, detail="Not found")
-    # Use SQLite data...
+# OLD pattern (Fallback - being phased out):
+result = await db.execute(select(...))  # PostgreSQL first
+if not result:
+    offline_db.get_local_xxx()  # SQLite fallback
 ```
+
+### Why Abstraction > Fallback
+
+| Fallback Pattern | Abstraction Pattern |
+|------------------|---------------------|
+| PostgreSQL-first, SQLite second-class | Both databases equal |
+| TM assignment online-only | TM assignment works everywhere |
+| Different code paths, different bugs | Same code, unified testing |
+| Hard to reason about | Clear, predictable behavior |
 
 ### Endpoints with SQLite Fallback (Completed)
 
@@ -155,23 +162,55 @@ OFFLINE MODE VIEW
 
 ---
 
-## P9-ARCH: TM + Offline Storage (2026-01-05)
+## Full Offline TM Operations (Target)
 
-### Problem: TM Couldn't Be Assigned to Offline Storage
+### Goal: TM Works Identically Online and Offline
 
-Offline Storage wasn't a "real" project in PostgreSQL, so TMs couldn't be assigned to it (FK constraint failure).
+The user workflow should be identical regardless of mode:
+1. Create folder in Offline Storage
+2. Upload file → TM auto-created
+3. Assign TM to folder → TM becomes active in that scope
+4. Work with TM (search, add entries, pretranslate)
 
-### Solution: Dual Database Records
+### SQLite TM Schema (Required)
 
-| Database | ID | Purpose |
-|----------|---|---------|
-| **SQLite** | `-1` | File storage (`project_id = -1`) |
-| **PostgreSQL** | Auto (e.g., 31) | TM assignment FK target |
+SQLite needs tables mirroring PostgreSQL's TM structure:
 
-This separation is necessary because:
-- TM assignments have foreign key constraints to PostgreSQL `ldm_projects`
-- SQLite files use `project_id = -1` (virtual ID, not in PostgreSQL)
-- TM tree needs a real PostgreSQL project to drag TMs onto
+```sql
+-- offline_tm_assignments (mirrors ldm_tm_assignments)
+CREATE TABLE offline_tm_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tm_id INTEGER NOT NULL,
+    platform_id INTEGER,
+    project_id INTEGER,
+    folder_id INTEGER,
+    is_active INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- offline_tms (mirrors ldm_tms)
+CREATE TABLE offline_tms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    source_lang TEXT,
+    target_lang TEXT,
+    entry_count INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### TM Repository Interface
+
+```python
+class TMRepository:
+    async def assign(self, tm_id: int, target: AssignmentTarget) -> TM
+    async def unassign(self, tm_id: int) -> TM
+    async def activate(self, tm_id: int) -> TM
+    async def deactivate(self, tm_id: int) -> TM
+    async def get_active_tms(self, scope: Scope) -> List[TM]
+```
+
+Both `PostgreSQLTMRepository` and `SQLiteTMRepository` implement this interface.
 
 ### Implementation
 
@@ -1068,6 +1107,9 @@ Server changes also have timestamps. **Most recent wins** (unless conflict).
 | Save changes | ✅ (to SQLite) | ✅ (to PostgreSQL) | |
 | TM search (FAISS) | ✅ | ✅ | Local indexes |
 | TM add entry | ✅ (local TM) | ✅ | |
+| **TM assignment** | ✅ | ✅ | Via DB abstraction |
+| **TM cut/copy/paste** | ✅ | ✅ | Same API, different DB |
+| **TM activate/deactivate** | ✅ | ✅ | Works in SQLite |
 | Pretranslation | ✅ | ✅ | Model2Vec/Qwen local |
 | QA: Pattern check | ✅ | ✅ | Regex-based, local |
 | QA: Character check | ✅ | ✅ | Rule-based, local |
@@ -1329,7 +1371,7 @@ Response:
 
 ## Implementation Phases
 
-### Phase 1: Foundation (Week 1-2)
+### Phase 1: Foundation
 
 **Goal:** Basic offline file viewing and editing
 
@@ -1347,7 +1389,7 @@ Response:
 
 ---
 
-### Phase 2: Change Tracking (Week 3-4)
+### Phase 2: Change Tracking
 
 **Goal:** Track all local changes for later sync
 
@@ -1364,7 +1406,7 @@ Response:
 
 ---
 
-### Phase 3: Sync Engine (Week 5-6)
+### Phase 3: Sync Engine
 
 **Goal:** Push local changes to server
 
@@ -1381,7 +1423,7 @@ Response:
 
 ---
 
-### Phase 4: Conflict Resolution (Week 7-8)
+### Phase 4: Conflict Resolution
 
 **Goal:** Handle conflicts gracefully
 
@@ -1398,7 +1440,7 @@ Response:
 
 ---
 
-### Phase 5: File Dialog for New Files (Week 9)
+### Phase 5: File Dialog for New Files
 
 **Goal:** Beautiful path selection for new files
 
@@ -1414,7 +1456,7 @@ Response:
 
 ---
 
-### Phase 6: Polish & Edge Cases (Week 10)
+### Phase 6: Polish & Edge Cases
 
 **Goal:** Robust, production-ready
 
@@ -1561,8 +1603,6 @@ Same behavior as Windows Explorer - no user intervention needed.
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**10 weeks to production-ready Offline/Online mode.**
-
 ---
 
-*Robust, elegant, automatic connection with manual sync. Beautiful UI/UX. No data loss.*
+*Updated 2026-01-11 | Full Offline Parity + DB Abstraction Layer*

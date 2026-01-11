@@ -8,17 +8,17 @@
 
 | Need | Go To |
 |------|-------|
-| **DEV Testing (PRIMARY!)** | [testing_toolkit/DEV_MODE_PROTOCOL.md](testing_toolkit/DEV_MODE_PROTOCOL.md) ← USE THIS |
-| **Endpoint testing?** | [testing_toolkit/ENDPOINT_PROTOCOL.md](testing_toolkit/ENDPOINT_PROTOCOL.md) |
+| **Docs hub** | [docs/INDEX.md](docs/INDEX.md) ← START HERE |
+| **Session context?** | [docs/current/SESSION_CONTEXT.md](docs/current/SESSION_CONTEXT.md) |
+| **Open bugs?** | [docs/current/ISSUES_TO_FIX.md](docs/current/ISSUES_TO_FIX.md) |
 | **Current task?** | [Roadmap.md](Roadmap.md) |
-| **Session context?** | [docs/wip/SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md) |
-| **Open bugs?** | [docs/wip/ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md) |
-| **P9 Offline/Online spec?** | [docs/wip/OFFLINE_ONLINE_MODE.md](docs/wip/OFFLINE_ONLINE_MODE.md) ← IN PROGRESS |
-| **WIP docs?** | [docs/wip/README.md](docs/wip/README.md) |
-| **Build → Test (Windows)** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) |
-| **CI/CD debug?** | [docs/cicd/TROUBLESHOOTING.md](docs/cicd/TROUBLESHOOTING.md) |
-| **Enterprise deploy?** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
-| **Mini-projects?** | [RessourcesForCodingTheProject/NewScripts/README.md](RessourcesForCodingTheProject/NewScripts/README.md) |
+| **Architecture?** | [docs/architecture/ARCHITECTURE_SUMMARY.md](docs/architecture/ARCHITECTURE_SUMMARY.md) |
+| **Offline/Online?** | [docs/architecture/OFFLINE_ONLINE_MODE.md](docs/architecture/OFFLINE_ONLINE_MODE.md) |
+| **Bug hunting?** | [docs/protocols/GRANULAR_DEBUG_PROTOCOL.md](docs/protocols/GRANULAR_DEBUG_PROTOCOL.md) ← GDP |
+| **DEV Testing** | [testing_toolkit/DEV_MODE_PROTOCOL.md](testing_toolkit/DEV_MODE_PROTOCOL.md) |
+| **Build → Test** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) |
+| **CI/CD debug?** | [docs/reference/cicd/TROUBLESHOOTING.md](docs/reference/cicd/TROUBLESHOOTING.md) |
+| **Enterprise?** | [docs/reference/enterprise/HUB.md](docs/reference/enterprise/HUB.md) |
 | **DB Management?** | `./scripts/db_manager.sh help` |
 
 ---
@@ -28,10 +28,11 @@
 | Term | Meaning |
 |------|---------|
 | **CCAD** | **Check Claude.md And Docs** - When confused, ALWAYS check docs first! |
+| **GDP** | **Granular Debug Protocol** - Microscopic logging for autonomous bug hunting. See `docs/protocols/` |
 | **SW** | Shell Wrapper - `./scripts/gitea_control.sh` for Gitea management |
 | **DBM** | DB Manager - `./scripts/db_manager.sh` for database operations |
 | **RM** | Roadmap.md - global priorities |
-| **WIP** | docs/wip/*.md - active task files |
+| **WIP** | `docs/current/` - active work (issues, session) |
 | **IL** | Issue List (ISSUES_TO_FIX.md) |
 | **TDL** | To Do List (TodoWrite tool tracking) |
 | **LDM** | Language Data Manager (CAT tool, App #4) |
@@ -318,19 +319,18 @@ testing_toolkit/          # ← PRIMARY TESTING DOCS
 └── README.md                ← Testing overview
 
 docs/
-├── wip/                  # Active work
-│   ├── SESSION_CONTEXT.md      ← Current state + next steps
-│   ├── ISSUES_TO_FIX.md        ← Bug tracker (2 open, 0 critical)
-│   └── P36_COVERAGE_GAPS.md    ← Coverage analysis + test plan
-├── cicd/                 # CI/CD documentation (ALL CI/CD HERE)
-│   ├── CI_CD_HUB.md            ← Pipeline overview
-│   ├── TROUBLESHOOTING.md      ← ⭐ EFFECTIVE DEBUGGING (use this!)
-│   ├── GITEA_SAFETY_PROTOCOL.md ← CPU issues, runner safety
-│   ├── HOW_TO_BUILD.md         ← Trigger builds
-│   └── RUNNER_SERVICE_SETUP.md ← Runner config
-├── enterprise/           # Company deployment
-│   └── HUB.md
-└── history/              # Archives
+├── INDEX.md              # Docs navigation hub
+├── architecture/         # System design docs
+├── protocols/            # Claude protocols (GDP, etc.)
+├── current/              # Active work
+│   ├── SESSION_CONTEXT.md
+│   └── ISSUES_TO_FIX.md
+├── reference/            # Stable reference
+│   ├── enterprise/       # Enterprise deployment
+│   ├── cicd/             # CI/CD docs
+│   └── security/         # Security docs
+├── guides/               # User guides
+└── archive/              # Old docs
 ```
 
 ---
@@ -339,8 +339,8 @@ docs/
 
 1. `./scripts/check_servers.sh`
 2. Read [Roadmap.md](Roadmap.md)
-3. Read [SESSION_CONTEXT.md](docs/wip/SESSION_CONTEXT.md)
-4. Check [ISSUES_TO_FIX.md](docs/wip/ISSUES_TO_FIX.md)
+3. Read [SESSION_CONTEXT.md](docs/current/SESSION_CONTEXT.md)
+4. Check [ISSUES_TO_FIX.md](docs/current/ISSUES_TO_FIX.md)
 5. Ask user what to do
 
 ---

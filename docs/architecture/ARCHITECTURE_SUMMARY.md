@@ -1,6 +1,19 @@
 # Architecture Summary - Complete Reference
 
-> Last Updated: 2026-01-08 (Session 35)
+> Last Updated: 2026-01-11 (DB Abstraction Vision)
+
+---
+
+## Design Principles
+
+### 1. Full Offline Parity
+Every feature available online MUST work offline (except network-dependent ones like real-time collab).
+
+### 2. No Duplicate Code
+Same code path, different database underneath. Abstraction layer handles routing.
+
+### 3. Optimistic UI
+UI updates instantly. Server syncs in background. Revert on failure.
 
 ---
 
@@ -16,6 +29,7 @@
 | **Data source** | Central DB | Local DB |
 | **File storage** | Server filesystem | Local filesystem |
 | **TM search** | PostgreSQL + FAISS | SQLite + FAISS |
+| **TM assignment** | PostgreSQL | SQLite (full support) |
 | **Real-time sync** | WebSocket | N/A |
 | **Multi-user** | Yes | Single user |
 | **Grammar check** | Yes (LanguageTool) | No |
@@ -29,6 +43,8 @@
 | Save changes | ✅ | ✅ | Saves to respective DB |
 | TM search | ✅ | ✅ | FAISS is local |
 | TM add entry | ✅ | ✅ | |
+| **TM assignment** | ✅ | ✅ | Via DB abstraction layer |
+| **TM cut/copy/paste** | ✅ | ✅ | Same API, different DB |
 | Pretranslation | ✅ | ✅ | Qwen model local |
 | QA checks | ✅ | ✅ | Pattern-based, local |
 | File upload | ✅ | ✅ | |
@@ -144,20 +160,84 @@ When editing a file, active TMs are resolved in order:
 
 ---
 
-## Code Architecture
+## DB Abstraction Layer (Target Architecture)
 
-### No Duplicates
+### The Vision: One API, Two Databases
 
-The codebase follows **unified endpoints with fallback**:
+```
+┌─────────────────────────────────────┐
+│         Application Layer           │
+│   (Same API calls everywhere)       │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│      DB Abstraction Interface       │
+│  tm.assign(), tm.search(), etc.     │
+└──────────────┬──────────────────────┘
+               │
+       ┌───────┴───────┐
+       │               │
+┌──────▼─────┐  ┌──────▼─────┐
+│ PostgreSQL │  │   SQLite   │
+│  Adapter   │  │   Adapter  │
+└────────────┘  └────────────┘
+```
+
+### Abstraction Interface
 
 ```python
-# Pattern used everywhere:
+class TMRepository:
+    """Unified TM operations - same interface, different backends."""
+
+    async def assign(self, tm_id: int, target: AssignmentTarget) -> TM:
+        """Assign TM to platform/project/folder."""
+        pass
+
+    async def search(self, query: str, scope: Scope) -> List[TMMatch]:
+        """Search TM entries within scope."""
+        pass
+
+    async def add_entry(self, tm_id: int, source: str, target: str) -> TMEntry:
+        """Add entry to TM."""
+        pass
+
+# Runtime selection
+def get_tm_repository(mode: Mode) -> TMRepository:
+    if mode == Mode.ONLINE:
+        return PostgreSQLTMRepository(db_session)
+    else:
+        return SQLiteTMRepository(offline_db)
+```
+
+### Why This Matters
+
+| OLD Pattern (Fallback) | NEW Pattern (Abstraction) |
+|------------------------|---------------------------|
+| PostgreSQL-first, SQLite fallback | Equal citizens |
+| TM assignment online-only | TM assignment anywhere |
+| Different code paths | Same code path |
+| Bugs in fallback logic | Unified testing |
+
+---
+
+## Code Architecture
+
+### Current State (Being Refactored)
+
+The codebase currently uses **fallback pattern** (transitioning to abstraction):
+
+```python
+# OLD pattern (fallback):
 result = await db.execute(select(...))  # Try PostgreSQL first
 if not result:
     offline_db.get_local_xxx()  # Fallback to SQLite
+
+# NEW pattern (abstraction):
+repo = get_repository(current_mode)
+result = await repo.operation(...)  # Same call, right DB
 ```
 
-This is NOT duplicate code - it's a fallback pattern.
+The goal: Replace fallback patterns with abstraction layer.
 
 ### Key Files
 
@@ -240,21 +320,20 @@ TM assignments need foreign keys to platform_id/project_id, so PostgreSQL record
 2. Use CloudOffline icon in TM tree (consistent with File Explorer)
 3. Collapse nested project in TM tree (no duplicate "Offline Storage")
 
-See: `docs/wip/ISSUES_TO_FIX.md` → UI-107
+See: `docs/current/ISSUES_TO_FIX.md` → UI-107
 
 ### Q: Does CloudOffline have "DB ID power"?
 
-**A:** Yes! CloudOffline doesn't need a numeric PostgreSQL ID because it uses a **different paradigm**:
+**A:** Yes! With the DB abstraction layer, CloudOffline has FULL parity with online platforms:
 
 | Operation | CloudOffline | Regular Platform |
 |-----------|--------------|------------------|
 | Create folder | SQLite `parent_id` | PostgreSQL `project_id` FK |
 | Move file | SQLite update `parent_id` | PostgreSQL FK update |
 | Upload file | SQLite insert | PostgreSQL insert |
-| TM assignment | ❌ Not supported | ✅ PostgreSQL FK |
+| TM assignment | ✅ SQLite tables | ✅ PostgreSQL FK |
 
-CloudOffline inherits its "power" from SQLite's simpler data model - no foreign key constraints needed.
-TM assignments require the PostgreSQL platform because `LDMTMAssignment.platform_id` is a FK.
+Both databases support the same operations through the abstraction layer. SQLite uses its own `offline_tm_assignments` table that mirrors PostgreSQL's FK structure.
 
 ---
 
@@ -273,4 +352,4 @@ cd locaNext && npx playwright test tests/offline-*.spec.ts
 
 ---
 
-*Session 34 | Complete Architecture Reference*
+*Updated 2026-01-11 | DB Abstraction Layer + Full Offline Parity*

@@ -1,6 +1,8 @@
 # Documentation Index
 
-**Updated**: 2025-12-26 | **Build:** 896
+**Updated**: 2026-01-11
+
+> **Main Hub:** See [INDEX.md](INDEX.md) for complete navigation
 
 ---
 
@@ -8,50 +10,31 @@
 
 ```
 docs/
-├── README.md                         # THIS FILE
+├── INDEX.md                  ← MAIN NAVIGATION HUB
+├── README.md                 ← This file
 │
-├── wip/                              # Active work
-│   ├── SESSION_CONTEXT.md            # Session handoff
-│   ├── ISSUES_TO_FIX.md              # Bug tracker (0 open)
-│   └── P25_LDM_UX_OVERHAUL.md        # Current project
+├── architecture/             # System design
+│   ├── ARCHITECTURE_SUMMARY.md
+│   ├── OFFLINE_ONLINE_MODE.md
+│   └── TM_HIERARCHY_PLAN.md
 │
-├── testing/                          # Test guides
-│   ├── README.md                     # Testing hub
-│   ├── DEBUG_AND_TEST_HUB.md         # Quick reference
-│   └── PYTEST_GUIDE.md               # Backend tests
+├── protocols/                # Claude protocols
+│   └── GRANULAR_DEBUG_PROTOCOL.md
 │
-├── cicd/                             # CI/CD Pipeline (ALL CI/CD HERE)
-│   ├── CI_CD_HUB.md                  # CI/CD navigation
-│   ├── TROUBLESHOOTING.md            # ⭐ EFFECTIVE DEBUGGING
-│   ├── GITEA_SAFETY_PROTOCOL.md      # CPU issues, runner safety
-│   ├── HOW_TO_BUILD.md               # Trigger builds
-│   └── RUNNER_SERVICE_SETUP.md       # Runner config
+├── current/                  # Active work (2 files)
+│   ├── SESSION_CONTEXT.md
+│   └── ISSUES_TO_FIX.md
 │
-├── build/                            # Build & Distribution
-│   ├── BUILD_AND_DISTRIBUTION.md     # Versioning, builds
-│   └── BUILD_TROUBLESHOOTING.md      # Failed builds
+├── reference/                # Stable reference docs
+│   ├── cicd/                 # CI/CD pipeline
+│   ├── enterprise/           # Enterprise deployment
+│   └── security/             # Security docs
 │
-├── development/                      # Coding guides
-│   ├── CODING_STANDARDS.md           # Conventions
-│   └── ADD_NEW_APP_GUIDE.md          # Add new tools
+├── guides/                   # User guides
+│   ├── tools/                # LDM, XLSTransfer
+│   └── getting-started/      # Onboarding
 │
-├── deployment/                       # Deploy & Ops
-│   └── GITEA_SETUP.md                # Self-hosted Git
-│
-├── security/                         # Security
-│   └── SECURITY_HARDENING.md         # Full guide (86 tests)
-│
-├── troubleshooting/                  # Debug guides
-│   └── WINDOWS_TROUBLESHOOTING.md    # Windows/WSL issues
-│
-├── enterprise/                       # Company deployment
-│   └── HUB.md                        # Enterprise setup
-│
-├── history/                          # Archives
-│   ├── ROADMAP_ARCHIVE.md            # Completed priorities
-│   └── wip-archive/                  # Completed WIP docs
-│
-└── (other specialized folders)
+└── archive/                  # Old docs (134 files)
 ```
 
 ---
@@ -60,13 +43,11 @@ docs/
 
 | I want to... | Go to... |
 |--------------|----------|
-| Start a session | [wip/SESSION_CONTEXT.md](wip/SESSION_CONTEXT.md) |
-| See open bugs | [wip/ISSUES_TO_FIX.md](wip/ISSUES_TO_FIX.md) |
+| Start a session | [current/SESSION_CONTEXT.md](current/SESSION_CONTEXT.md) |
+| See open bugs | [current/ISSUES_TO_FIX.md](current/ISSUES_TO_FIX.md) |
 | Test Windows app (CDP) | [testing_toolkit/cdp/README.md](../testing_toolkit/cdp/README.md) |
-| Run backend tests | [testing/PYTEST_GUIDE.md](testing/PYTEST_GUIDE.md) |
-| Fix CI/CD issues | [cicd/TROUBLESHOOTING.md](cicd/TROUBLESHOOTING.md) |
-| Build the app | [build/BUILD_AND_DISTRIBUTION.md](build/BUILD_AND_DISTRIBUTION.md) |
-| Deploy enterprise | [enterprise/HUB.md](enterprise/HUB.md) |
+| Fix CI/CD issues | [reference/cicd/TROUBLESHOOTING.md](reference/cicd/TROUBLESHOOTING.md) |
+| Deploy enterprise | [reference/enterprise/HUB.md](reference/enterprise/HUB.md) |
 
 ---
 
@@ -74,7 +55,7 @@ docs/
 
 1. **CLAUDE.md** (project root) - Master navigation
 2. **Roadmap.md** (project root) - Current priorities
-3. **docs/wip/SESSION_CONTEXT.md** - Session state
+3. **docs/current/SESSION_CONTEXT.md** - Session state
 4. **testing_toolkit/cdp/README.md** - CDP testing
 
 ---

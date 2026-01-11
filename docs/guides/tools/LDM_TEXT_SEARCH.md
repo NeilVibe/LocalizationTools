@@ -550,10 +550,9 @@ GET  /api/ldm/tm/suggest          # Search with 5-tier cascade
 
 ## Related Documentation
 
-- [P17_LDM_TASKS.md](../wip/P17_LDM_TASKS.md) - Implementation task list
 - [LDM_GUIDE.md](LDM_GUIDE.md) - General LDM usage guide
-- [WebTranslatorNew Reference](../../RessourcesForCodingTheProject/WebTranslatorNew/) - Source architecture
+- [Architecture Summary](../../architecture/ARCHITECTURE_SUMMARY.md) - System design
 
 ---
 
-*Document version 1.0 - Based on WebTranslatorNew 5-tier cascade architecture*
+*Updated 2026-01-11*

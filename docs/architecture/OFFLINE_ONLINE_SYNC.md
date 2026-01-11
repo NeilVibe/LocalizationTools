@@ -326,10 +326,10 @@ CREATE TABLE sync_metadata (
 
 ## Related Documents
 
-- [Phase 10 UI/UX Overhaul](./PHASE_10_MAJOR_UIUX_OVERHAUL.md)
-- [Session Context](./SESSION_CONTEXT.md)
-- [P33 Offline Mode Implementation](../history/wip-archive/P33_OFFLINE_MODE.md)
+- [Offline/Online Mode](./OFFLINE_ONLINE_MODE.md)
+- [Session Context](../current/SESSION_CONTEXT.md)
+- [Architecture Summary](./ARCHITECTURE_SUMMARY.md)
 
 ---
 
-*Document created: 2026-01-01 | Feature Status: Planning*
+*Document created: 2026-01-01 | Updated: 2026-01-11*

@@ -1,6 +1,8 @@
 # Offline/Online Architecture - Technical Implementation
 
-**Status:** PRODUCTION | **Last Updated:** 2026-01-05
+**Status:** Current Implementation | **Last Updated:** 2026-01-11
+
+> ⚠️ **PLANNED CHANGE:** This doc describes the current **fallback pattern**. We're transitioning to a **DB abstraction layer** pattern. See [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md) for the target architecture.
 
 ---
 
@@ -8,16 +10,19 @@
 
 LocaNext supports **both online (PostgreSQL) and offline (SQLite)** modes through a unified architecture. Every endpoint works with both databases using a **single implementation pattern** - no duplicate code.
 
-### Core Principle
+### Current Pattern (Fallback)
 
 ```
 ONE endpoint → Try PostgreSQL → Fall back to SQLite if not found
 ```
 
-**NOT:**
+### Target Pattern (DB Abstraction - Planned)
+
 ```
-TWO endpoints → One for PostgreSQL, one for SQLite (DUPLICATE CODE)
+ONE endpoint → Get repository for current mode → Use that database
 ```
+
+See [ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md#db-abstraction-layer-target-architecture) for the abstraction design.
 
 ---
 
@@ -671,4 +676,4 @@ The backend code is **IDENTICAL** for online and offline. The difference is in t
 
 ---
 
-*Technical implementation document. For user-facing specification, see [docs/wip/OFFLINE_ONLINE_MODE.md](wip/OFFLINE_ONLINE_MODE.md).*
+*Technical implementation document. For user-facing specification, see [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md).*

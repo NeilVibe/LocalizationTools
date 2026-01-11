@@ -1,8 +1,22 @@
 # TM Hierarchy & Assignment System
 
-> **Status:** Planning Phase
+> **Status:** Partially Implemented | **Updated:** 2026-01-11
 > **Created:** 2026-01-01
 > **Priority:** HIGH - Core feature for production workflow
+
+---
+
+## Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Platform table | ✅ Done | `ldm_platforms` in PostgreSQL |
+| TM assignment table | ✅ Done | `ldm_tm_assignments` |
+| TM Explorer Tree | ✅ Done | TMExplorerTree.svelte |
+| Cut/Copy/Paste | ✅ Done | Keyboard + context menu |
+| Offline Storage support | ✅ Done | PostgreSQL platform for TM FK |
+| **SQLite TM assignment** | 🔲 Pending | Needed for full offline support |
+| **DB abstraction layer** | 🔲 Pending | Same API for PostgreSQL + SQLite |
 
 ---
 
@@ -343,5 +357,39 @@ If TM entry conflicts (same source, different target):
 
 ---
 
-*Document created: 2026-01-01*
-*Next: Review with user, then start Sprint 1*
+## Offline TM Support (Target)
+
+> See: [ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md) and [OFFLINE_ONLINE_MODE.md](OFFLINE_ONLINE_MODE.md)
+
+### Goal: TM Works Identically Offline
+
+SQLite needs equivalent tables:
+
+```sql
+-- offline_tm_assignments (mirrors ldm_tm_assignments)
+CREATE TABLE offline_tm_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tm_id INTEGER NOT NULL,
+    platform_id INTEGER,
+    project_id INTEGER,
+    folder_id INTEGER,
+    is_active INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### DB Abstraction Pattern
+
+```python
+class TMRepository:
+    """Same interface for PostgreSQL and SQLite."""
+    async def assign(self, tm_id: int, target: AssignmentTarget) -> TM
+    async def get_active_tms(self, scope: Scope) -> List[TM]
+
+# Runtime selection
+repo = PostgreSQLTMRepository() if online else SQLiteTMRepository()
+```
+
+---
+
+*Updated 2026-01-11 | DB Abstraction for Full Offline Support*
