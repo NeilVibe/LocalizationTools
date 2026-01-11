@@ -44,7 +44,7 @@ async def build_tm_indexes(
     from server.tools.ldm.tm_indexer import TMIndexer
     from server.utils.progress_tracker import TrackedOperation
 
-    logger.info(f"Building TM indexes: tm_id={tm_id}, user={current_user['user_id']}")
+    logger.info(f"[TM-INDEX] Building TM indexes: tm_id={tm_id}, user={current_user['user_id']}")
 
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, tm_id, current_user):
@@ -83,7 +83,7 @@ async def build_tm_indexes(
                 indexer = TMIndexer(sync_db)
                 result = indexer.build_indexes(tm_id, progress_callback=progress_callback)
 
-                logger.success(f"TM indexes built: tm_id={tm_id}, entries={result['entry_count']}")
+                logger.success(f"[TM-INDEX] TM indexes built: tm_id={tm_id}, entries={result['entry_count']}")
                 return result
         finally:
             sync_db.close()
@@ -95,7 +95,7 @@ async def build_tm_indexes(
     except ValueError as e:
         raise HTTPException(status_code=400, detail="Invalid TM configuration")
     except Exception as e:
-        logger.error(f"TM index build failed: {e}", exc_info=True)
+        logger.error(f"[TM-INDEX] [TM-INDEX] TM index build failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Index build failed. Check server logs.")
 
 
@@ -190,7 +190,7 @@ async def get_tm_sync_status(
             last_synced = metadata.get("synced_at")
             synced_entry_count = metadata.get("entry_count", 0)
         except Exception as e:
-            logger.warning(f"Failed to read TM metadata: {e}")
+            logger.warning(f"[TM-INDEX] [TM-INDEX] Failed to read TM metadata: {e}")
 
     # Get current DB entry count
     result = await db.execute(
@@ -268,7 +268,7 @@ async def sync_tm_indexes(
     user_id = current_user["user_id"]
     username = current_user["username"]
 
-    logger.info(f"Starting TM sync for TM {tm_id} (user: {username})")
+    logger.info(f"[TM-INDEX] Starting TM sync for TM {tm_id} (user: {username})")
 
     # Run sync in threadpool to avoid blocking
     # BUG-033: Also update TM status after successful sync
@@ -323,7 +323,7 @@ async def sync_tm_indexes(
         import traceback
         error_detail = f"TM sync failed: {str(e)}"
         error_traceback = traceback.format_exc()
-        logger.error(f"TM sync failed for TM {tm_id}: {e}\n{error_traceback}")
+        logger.error(f"[TM-INDEX] [TM-INDEX] TM sync failed for TM {tm_id}: {e}\n{error_traceback}")
         # Include traceback in response for debugging (CI can see this in test output)
         raise HTTPException(
             status_code=500,

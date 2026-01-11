@@ -7,13 +7,13 @@ Migrated from api.py lines 2313-2434
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
-from server.database.models import LDMFile, LDMProject
 from server.tools.ldm.schemas import PretranslateRequest, PretranslateResponse
 from server.tools.ldm.permissions import can_access_project
+from server.repositories.interfaces.file_repository import FileRepository
+from server.repositories.factory import get_file_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -22,6 +22,7 @@ router = APIRouter(tags=["LDM"])
 async def pretranslate_file(
     request: PretranslateRequest,
     background_tasks: BackgroundTasks,
+    file_repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -48,7 +49,7 @@ async def pretranslate_file(
     """
     from server.tools.ldm.pretranslate import pretranslate_file as do_pretranslate
 
-    logger.info(f"Pretranslate request: file_id={request.file_id}, engine={request.engine}, "
+    logger.info(f"[PRETRANS] Pretranslate request: file_id={request.file_id}, engine={request.engine}, "
                 f"dict_id={request.dictionary_id}, threshold={request.threshold}")
 
     # Validate engine
@@ -59,28 +60,20 @@ async def pretranslate_file(
             detail=f"Invalid engine. Must be one of: {valid_engines}"
         )
 
-    # Verify file exists
-    file_result = await db.execute(
-        select(LDMFile).where(LDMFile.id == request.file_id)
-    )
-    file = file_result.scalar_one_or_none()
+    # P10-REPO: Verify file exists using Repository Pattern
+    # Repository automatically selects PostgreSQL or SQLite based on mode
+    file = await file_repo.get(request.file_id)
 
     if not file:
-        # P9: Check if it's a local file in SQLite Offline Storage
-        from server.database.offline import get_offline_db
-        offline_db = get_offline_db()
-        local_file = offline_db.get_local_file(request.file_id)
-        if not local_file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    file_name = file.get("name", "unknown")
+    is_local_file = file.get("sync_status") == "local"
+
+    # Verify project access for non-local files (DESIGN-001: Public by default)
+    if not is_local_file and file.get("project_id"):
+        if not await can_access_project(db, file["project_id"], current_user):
             raise HTTPException(status_code=404, detail="File not found")
-        # Use local file info
-        file_name = local_file.get("name", "unknown")
-        is_local_file = True
-    else:
-        # Verify project access (DESIGN-001: Public by default)
-        if not await can_access_project(db, file.project_id, current_user):
-            raise HTTPException(status_code=404, detail="File not found")
-        file_name = file.name
-        is_local_file = False
 
     # Run pretranslation in threadpool to avoid blocking
     # TASK-001: Add TrackedOperation for progress tracking
@@ -137,8 +130,8 @@ async def pretranslate_file(
         )
 
     except ValueError as e:
-        logger.error(f"Pretranslation validation error: {e}")
+        logger.error(f"[PRETRANS] Pretranslation validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Pretranslation failed: {e}", exc_info=True)
+        logger.error(f"[PRETRANS] Pretranslation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Pretranslation failed. Check server logs.")

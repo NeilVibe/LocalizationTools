@@ -1,6 +1,7 @@
 """
 Sync endpoints - Online/Offline synchronization.
 
+P10: Uses SyncService for all sync operations.
 Includes:
 - sync-to-central: Push local SQLite changes to PostgreSQL
 - download-for-offline: Pull file from PostgreSQL to local SQLite
@@ -8,26 +9,22 @@ Includes:
 Migrated from api.py lines 2786-3042
 """
 
-import os
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, create_engine
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 from loguru import logger
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import (
-    LDMProject, LDMFile, LDMRow,
-    LDMTranslationMemory, LDMTMEntry
-)
+from server.database.models import LDMProject, LDMFolder, LDMFile, LDMTMEntry
 from server.tools.ldm.schemas import (
     SyncFileToCentralRequest, SyncFileToCentralResponse,
     SyncTMToCentralRequest, SyncTMToCentralResponse
 )
-from server.tools.ldm.permissions import can_access_project, can_access_file, get_accessible_projects
+from server.tools.ldm.permissions import can_access_project, can_access_file
 from server.database.offline import get_offline_db
+from server.services import SyncService
 
 router = APIRouter(tags=["LDM"])
 
@@ -131,7 +128,7 @@ async def get_offline_status(
             last_sync=last_sync
         )
     except Exception as e:
-        logger.error(f"Failed to get offline status: {e}")
+        logger.error(f"[SYNC] Failed to get offline status: {e}")
         return OfflineStatusResponse(
             mode="online",
             offline_available=False,
@@ -175,7 +172,7 @@ async def list_offline_files(
             total_count=len(all_files)
         )
     except Exception as e:
-        logger.error(f"Failed to list offline files: {e}")
+        logger.error(f"[SYNC] Failed to list offline files: {e}")
         return OfflineFilesResponse(files=[], total_count=0)
 
 
@@ -222,7 +219,7 @@ async def list_subscriptions(
                 offline_db.remove_subscription(entity_type, entity_id)
                 logger.info(f"Cleaned up stale subscription: {entity_type}={entity_id}")
             except Exception as cleanup_error:
-                logger.warning(f"Failed to clean up stale subscription: {cleanup_error}")
+                logger.warning(f"[SYNC] Failed to clean up stale subscription: {cleanup_error}")
 
         subscriptions = [
             SyncSubscription(
@@ -243,7 +240,7 @@ async def list_subscriptions(
             total_count=len(subscriptions)
         )
     except Exception as e:
-        logger.error(f"Failed to list subscriptions: {e}")
+        logger.error(f"[SYNC] Failed to list subscriptions: {e}")
         return SubscriptionsResponse(subscriptions=[], total_count=0)
 
 
@@ -256,18 +253,20 @@ async def subscribe_for_offline(
     """
     Enable offline sync for a platform, project, or file.
 
+    P10: Uses SyncService for sync operations.
     This creates a subscription and triggers initial download.
     Subsequent syncs happen automatically.
     """
     from server.config import ACTIVE_DATABASE_TYPE
 
-    logger.info(f"Subscribe for offline: {request.entity_type}={request.entity_id}")
+    logger.info(f"[SYNC] subscribe_for_offline: {request.entity_type}={request.entity_id}")
 
     if ACTIVE_DATABASE_TYPE != "postgresql":
         raise HTTPException(status_code=400, detail="Already in offline mode")
 
     try:
         offline_db = get_offline_db()
+        sync_service = SyncService(db, offline_db)
 
         # Create subscription
         sub_id = offline_db.add_subscription(
@@ -277,27 +276,24 @@ async def subscribe_for_offline(
             auto_subscribed=request.auto_subscribed
         )
 
-        # Trigger initial sync based on entity type
+        # P10: Trigger initial sync using SyncService
         if request.entity_type == "file":
-            # Download single file (includes path hierarchy)
-            await _sync_file_to_offline(db, request.entity_id, offline_db)
+            await sync_service.sync_file_to_offline(request.entity_id)
         elif request.entity_type == "folder":
-            # Download folder and all files in it (includes path hierarchy)
-            await _sync_folder_to_offline(db, request.entity_id, offline_db)
+            await sync_service.sync_folder_to_offline(request.entity_id)
         elif request.entity_type == "project":
-            # Download all folders and files in project (includes platform)
-            await _sync_project_to_offline(db, request.entity_id, offline_db)
+            await sync_service.sync_project_to_offline(request.entity_id)
         elif request.entity_type == "platform":
-            # Download all projects, folders, and files in platform
-            await _sync_platform_to_offline(db, request.entity_id, offline_db)
+            await sync_service.sync_platform_to_offline(request.entity_id)
         elif request.entity_type == "tm":
-            # SYNC-008: Download TM and all entries (with last-write-wins merge)
-            await _sync_tm_to_offline(db, request.entity_id, offline_db)
+            await sync_service.sync_tm_to_offline(request.entity_id)
 
         # Mark subscription as synced
         offline_db.update_subscription_status(
             request.entity_type, request.entity_id, "synced"
         )
+
+        logger.info(f"[SYNC] subscribe_for_offline complete: {request.entity_type}={request.entity_id}")
 
         return SubscribeResponse(
             success=True,
@@ -306,7 +302,7 @@ async def subscribe_for_offline(
         )
 
     except Exception as e:
-        logger.error(f"Subscribe failed: {e}", exc_info=True)
+        logger.error(f"[SYNC] [SYNC] Subscribe failed: {e}", exc_info=True)
         # Mark as error
         try:
             offline_db.update_subscription_status(
@@ -334,7 +330,7 @@ async def unsubscribe_from_offline(
 
         return {"success": True, "message": f"Disabled offline sync for {entity_type} {entity_id}"}
     except Exception as e:
-        logger.error(f"Unsubscribe failed: {e}")
+        logger.error(f"[SYNC] Unsubscribe failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -407,7 +403,7 @@ async def get_push_preview(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Push preview failed: {e}")
+        logger.error(f"[SYNC] Push preview failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -420,6 +416,7 @@ async def push_changes_to_server(
     """
     Push local changes for a file to the server (P3 Phase 3).
 
+    P10: Uses SyncService for sync operations.
     This endpoint:
     1. Gets modified rows from local SQLite
     2. Pushes them to PostgreSQL
@@ -429,7 +426,7 @@ async def push_changes_to_server(
     """
     from server.config import ACTIVE_DATABASE_TYPE
 
-    logger.info(f"Push changes to server: file_id={request.file_id}")
+    logger.info(f"[SYNC] push_changes_to_server: file_id={request.file_id}")
 
     # Verify we're online
     if ACTIVE_DATABASE_TYPE != "postgresql":
@@ -440,19 +437,20 @@ async def push_changes_to_server(
 
     try:
         offline_db = get_offline_db()
+        sync_service = SyncService(db, offline_db)
 
         # Get file info
         file_info = offline_db.get_file(request.file_id)
         if not file_info:
             raise HTTPException(status_code=404, detail="File not found in offline storage")
 
-        # Push changes
-        pushed_count = await _push_local_changes_for_file(db, request.file_id, offline_db)
+        # P10: Push changes using SyncService
+        pushed_count = await sync_service.push_file_changes_to_server(request.file_id)
 
         # Update last sync time
         offline_db.set_last_sync()
 
-        logger.success(f"Pushed {pushed_count} changes for file {request.file_id}")
+        logger.success(f"[SYNC] [SYNC] Pushed {pushed_count} changes for file {request.file_id}")
 
         return PushChangesResponse(
             success=True,
@@ -464,7 +462,7 @@ async def push_changes_to_server(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Push changes failed: {e}", exc_info=True)
+        logger.error(f"[SYNC] [SYNC] Push changes failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -477,18 +475,20 @@ async def sync_subscription(
     """
     Sync a single subscription (refresh from server).
 
+    P10: Uses SyncService for sync operations.
     This endpoint is called periodically by the continuous sync mechanism
     to keep offline data fresh with server changes.
     """
     from server.config import ACTIVE_DATABASE_TYPE
 
-    logger.debug(f"Sync subscription: {request.entity_type}={request.entity_id}")
+    logger.debug(f"[SYNC] sync_subscription: {request.entity_type}={request.entity_id}")
 
     if ACTIVE_DATABASE_TYPE != "postgresql":
         raise HTTPException(status_code=400, detail="Already in offline mode")
 
     try:
         offline_db = get_offline_db()
+        sync_service = SyncService(db, offline_db)
 
         # Check if subscription exists
         if not offline_db.is_subscribed(request.entity_type, request.entity_id):
@@ -496,9 +496,9 @@ async def sync_subscription(
 
         updated_count = 0
 
-        # Re-sync based on entity type
+        # P10: Re-sync based on entity type using SyncService
         if request.entity_type == "file":
-            await _sync_file_to_offline(db, request.entity_id, offline_db)
+            await sync_service.sync_file_to_offline(request.entity_id)
             updated_count = 1
         elif request.entity_type == "project":
             # Count files in project
@@ -507,7 +507,7 @@ async def sync_subscription(
             )
             files = files_result.scalars().all()
             updated_count = len(files)
-            await _sync_project_to_offline(db, request.entity_id, offline_db)
+            await sync_service.sync_project_to_offline(request.entity_id)
         elif request.entity_type == "platform":
             # Count projects in platform
             projects_result = await db.execute(
@@ -515,7 +515,7 @@ async def sync_subscription(
             )
             projects = projects_result.scalars().all()
             updated_count = len(projects)
-            await _sync_platform_to_offline(db, request.entity_id, offline_db)
+            await sync_service.sync_platform_to_offline(request.entity_id)
         elif request.entity_type == "tm":
             # SYNC-008: Sync TM with entries
             entries_result = await db.execute(
@@ -523,12 +523,14 @@ async def sync_subscription(
             )
             entries = entries_result.scalars().all()
             updated_count = len(entries)
-            await _sync_tm_to_offline(db, request.entity_id, offline_db)
+            await sync_service.sync_tm_to_offline(request.entity_id)
 
         # Update subscription status
         offline_db.update_subscription_status(
             request.entity_type, request.entity_id, "synced"
         )
+
+        logger.debug(f"[SYNC] sync_subscription complete: {request.entity_type}={request.entity_id}")
 
         return SyncSubscriptionResponse(
             success=True,
@@ -541,491 +543,8 @@ async def sync_subscription(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Sync subscription failed: {e}", exc_info=True)
+        logger.error(f"[SYNC] [SYNC] Sync subscription failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# =============================================================================
-# Internal Sync Helpers
-# =============================================================================
-
-def _platform_to_dict(platform) -> dict:
-    """Convert a platform ORM object to a dict for offline storage."""
-    return {
-        "id": platform.id,
-        "name": platform.name,
-        "description": platform.description,
-        "owner_id": platform.owner_id,
-        "is_restricted": platform.is_restricted,
-        "created_at": platform.created_at.isoformat() if platform.created_at else None,
-        "updated_at": platform.updated_at.isoformat() if platform.updated_at else None
-    }
-
-
-def _project_to_dict(project) -> dict:
-    """Convert a project ORM object to a dict for offline storage."""
-    return {
-        "id": project.id,
-        "name": project.name,
-        "description": project.description,
-        "platform_id": project.platform_id,
-        "owner_id": project.owner_id,
-        "is_restricted": project.is_restricted,
-        "created_at": project.created_at.isoformat() if project.created_at else None,
-        "updated_at": project.updated_at.isoformat() if project.updated_at else None
-    }
-
-
-def _folder_to_dict(folder) -> dict:
-    """Convert a folder ORM object to a dict for offline storage."""
-    return {
-        "id": folder.id,
-        "name": folder.name,
-        "project_id": folder.project_id,
-        "parent_id": folder.parent_id,
-        "created_at": folder.created_at.isoformat() if folder.created_at else None
-    }
-
-
-async def _sync_folder_hierarchy(db: AsyncSession, folder, offline_db):
-    """
-    Sync a folder and its parent folders recursively.
-    Ensures the full path exists in offline storage.
-    """
-    from server.database.models import LDMFolder
-
-    # If folder has a parent, sync parent first (recursive)
-    if folder.parent_id:
-        parent_result = await db.execute(select(LDMFolder).where(LDMFolder.id == folder.parent_id))
-        parent = parent_result.scalar_one_or_none()
-        if parent:
-            await _sync_folder_hierarchy(db, parent, offline_db)
-
-    # Now save this folder
-    offline_db.save_folder(_folder_to_dict(folder))
-    logger.debug(f"Synced folder: {folder.name}")
-
-
-async def _sync_folder_to_offline(db: AsyncSession, folder_id: int, offline_db):
-    """
-    Sync a folder and all its files to offline storage.
-    Also syncs parent hierarchy (platform/project/parent folders).
-    """
-    from server.database.models import LDMPlatform, LDMFolder
-
-    # Get folder
-    result = await db.execute(select(LDMFolder).where(LDMFolder.id == folder_id))
-    folder = result.scalar_one_or_none()
-    if not folder:
-        raise HTTPException(status_code=404, detail=f"Folder {folder_id} not found")
-
-    # Get and sync project
-    project_result = await db.execute(select(LDMProject).where(LDMProject.id == folder.project_id))
-    project = project_result.scalar_one_or_none()
-    if project:
-        # Get and sync platform
-        platform_result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == project.platform_id))
-        platform = platform_result.scalar_one_or_none()
-        if platform:
-            offline_db.save_platform(_platform_to_dict(platform))
-
-        # Save project
-        offline_db.save_project(_project_to_dict(project))
-
-    # Sync folder hierarchy (including this folder and parents)
-    await _sync_folder_hierarchy(db, folder, offline_db)
-
-    # Sync all files in this folder
-    files_result = await db.execute(
-        select(LDMFile).where(LDMFile.folder_id == folder_id)
-    )
-    files = files_result.scalars().all()
-
-    for file in files:
-        await _sync_file_to_offline(db, file.id, offline_db)
-
-    # Sync subfolders recursively
-    subfolders_result = await db.execute(
-        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
-    )
-    subfolders = subfolders_result.scalars().all()
-
-    for subfolder in subfolders:
-        await _sync_folder_to_offline(db, subfolder.id, offline_db)
-
-    logger.info(f"Synced folder {folder.name} with {len(files)} files and {len(subfolders)} subfolders")
-
-
-async def _sync_file_to_offline(db: AsyncSession, file_id: int, offline_db):
-    """
-    Sync a single file to offline storage with merge logic.
-
-    IMPORTANT: Server is source of truth for PATH (platform/project/folder).
-    This function syncs the full path hierarchy before syncing file content.
-
-    Merge Rules (last-write-wins):
-    - Local synced + server newer → take server
-    - Local modified + server newer → server wins, discard local
-    - Local modified + local newer → keep local, push later
-    - Server has row we don't → insert
-    - We have row server deleted → delete local
-    """
-    from server.database.models import LDMPlatform, LDMFolder
-
-    result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
-    file = result.scalar_one_or_none()
-    if not file:
-        raise HTTPException(status_code=404, detail=f"File {file_id} not found")
-
-    # =========================================================================
-    # SYNC PATH HIERARCHY FIRST (Server = Source of Truth for structure)
-    # Order: Platform → Project → Folder → File
-    # =========================================================================
-
-    # 1. Get and sync Project (required)
-    project_result = await db.execute(select(LDMProject).where(LDMProject.id == file.project_id))
-    project = project_result.scalar_one_or_none()
-    if project:
-        # 2. Get and sync Platform (required for project)
-        platform_result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == project.platform_id))
-        platform = platform_result.scalar_one_or_none()
-        if platform:
-            offline_db.save_platform(_platform_to_dict(platform))
-            logger.debug(f"Synced platform: {platform.name}")
-
-        # Save project
-        offline_db.save_project(_project_to_dict(project))
-        logger.debug(f"Synced project: {project.name}")
-
-    # 3. Get and sync Folder (optional - file may be at project root)
-    if file.folder_id:
-        folder_result = await db.execute(select(LDMFolder).where(LDMFolder.id == file.folder_id))
-        folder = folder_result.scalar_one_or_none()
-        if folder:
-            # Sync parent folders recursively if nested
-            await _sync_folder_hierarchy(db, folder, offline_db)
-
-    # =========================================================================
-    # SYNC FILE CONTENT
-    # =========================================================================
-
-    # Get server rows
-    rows_result = await db.execute(
-        select(LDMRow).where(LDMRow.file_id == file_id).order_by(LDMRow.row_num)
-    )
-    server_rows = rows_result.scalars().all()
-
-    # Save/update file metadata
-    offline_db.save_file({
-        "id": file.id,
-        "name": file.name,
-        "original_filename": file.original_filename,
-        "format": file.format,
-        "row_count": file.row_count,
-        "source_language": file.source_language,
-        "target_language": file.target_language,
-        "project_id": file.project_id,
-        "folder_id": file.folder_id,
-        "extra_data": file.extra_data,
-        "created_at": file.created_at.isoformat() if file.created_at else None,
-        "updated_at": file.updated_at.isoformat() if file.updated_at else None
-    })
-
-    # Convert server rows to dicts for batch processing
-    server_row_data = []
-    server_row_ids = set()
-    for row in server_rows:
-        server_row_ids.add(row.id)
-        server_row_data.append({
-            "id": row.id,
-            "row_num": row.row_num,
-            "string_id": row.string_id,
-            "source": row.source,
-            "target": row.target,
-            "memo": row.memo if hasattr(row, 'memo') else None,
-            "status": row.status,
-            "extra_data": row.extra_data,
-            "updated_at": row.updated_at.isoformat() if row.updated_at else None
-        })
-
-    # Use BATCH merge - 100x faster than per-row merge
-    stats = offline_db.merge_rows_batch(server_row_data, file.id)
-    stats["deleted"] = 0  # Will count below
-
-    # Delete local rows that no longer exist on server
-    local_row_ids = offline_db.get_local_row_server_ids(file.id)
-    deleted_ids = local_row_ids - server_row_ids
-    for deleted_id in deleted_ids:
-        offline_db.delete_row(deleted_id)
-        stats["deleted"] += 1
-
-    # Push local changes to server
-    pushed = await _push_local_changes_for_file(db, file_id, offline_db)
-
-    logger.info(f"Synced file {file.name}: inserted={stats['inserted']}, updated={stats['updated']}, "
-                f"skipped={stats['skipped']}, deleted={stats['deleted']}, pushed={pushed}")
-
-
-async def _push_local_changes_for_file(db: AsyncSession, file_id: int, offline_db) -> int:
-    """
-    Push local changes for a file to the server.
-
-    Returns: number of rows pushed
-    """
-    pushed_count = 0
-
-    # Get modified rows
-    modified_rows = offline_db.get_modified_rows(file_id)
-    for local_row in modified_rows:
-        server_id = local_row.get("server_id")
-        if server_id:
-            # Update existing row on server
-            await db.execute(
-                LDMRow.__table__.update()
-                .where(LDMRow.id == server_id)
-                .values(
-                    target=local_row.get("target"),
-                    memo=local_row.get("memo"),
-                    status=local_row.get("status"),
-                )
-            )
-            offline_db.mark_row_synced(local_row["id"])
-            pushed_count += 1
-
-    # Get new rows (created offline)
-    new_rows = offline_db.get_new_rows(file_id)
-    for local_row in new_rows:
-        # Create new row on server
-        new_row = LDMRow(
-            file_id=file_id,
-            row_num=local_row.get("row_num", 0),
-            string_id=local_row.get("string_id"),
-            source=local_row.get("source"),
-            target=local_row.get("target"),
-            status=local_row.get("status", "normal"),
-            extra_data=local_row.get("extra_data"),
-        )
-        db.add(new_row)
-        await db.flush()
-
-        # Update local row with new server ID
-        offline_db.mark_row_synced(local_row["id"])
-        pushed_count += 1
-
-    if pushed_count > 0:
-        await db.commit()
-        # Mark changes as synced
-        for change in offline_db.get_pending_changes():
-            if change.get("entity_type") == "row":
-                offline_db.mark_change_synced(change["id"])
-
-    return pushed_count
-
-
-async def _sync_project_to_offline(db: AsyncSession, project_id: int, offline_db):
-    """
-    Sync all folders and files in a project to offline storage.
-    Also syncs the parent platform.
-    """
-    from server.database.models import LDMPlatform, LDMFolder
-
-    # Get project
-    result = await db.execute(select(LDMProject).where(LDMProject.id == project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
-
-    # Sync platform first
-    platform_result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == project.platform_id))
-    platform = platform_result.scalar_one_or_none()
-    if platform:
-        offline_db.save_platform(_platform_to_dict(platform))
-
-    # Save project
-    offline_db.save_project(_project_to_dict(project))
-
-    # Sync all root folders in project (which recursively sync subfolders and files)
-    folders_result = await db.execute(
-        select(LDMFolder).where(LDMFolder.project_id == project_id, LDMFolder.parent_id == None)
-    )
-    root_folders = folders_result.scalars().all()
-
-    for folder in root_folders:
-        await _sync_folder_to_offline(db, folder.id, offline_db)
-
-    # Sync files at project root (no folder)
-    files_result = await db.execute(
-        select(LDMFile).where(LDMFile.project_id == project_id, LDMFile.folder_id == None)
-    )
-    root_files = files_result.scalars().all()
-
-    for file in root_files:
-        await _sync_file_to_offline(db, file.id, offline_db)
-
-    # Count total files synced
-    all_files_result = await db.execute(
-        select(LDMFile).where(LDMFile.project_id == project_id)
-    )
-    all_files = all_files_result.scalars().all()
-
-    logger.info(f"Synced project {project.name} with {len(root_folders)} folders and {len(all_files)} files")
-
-
-async def _sync_platform_to_offline(db: AsyncSession, platform_id: int, offline_db):
-    """Sync all projects in a platform to offline storage."""
-    from server.database.models import LDMPlatform
-
-    # Get platform
-    result = await db.execute(select(LDMPlatform).where(LDMPlatform.id == platform_id))
-    platform = result.scalar_one_or_none()
-    if not platform:
-        raise HTTPException(status_code=404, detail=f"Platform {platform_id} not found")
-
-    # Save platform
-    offline_db.save_platform(_platform_to_dict(platform))
-
-    # Get all projects in platform
-    projects_result = await db.execute(
-        select(LDMProject).where(LDMProject.platform_id == platform_id)
-    )
-    projects = projects_result.scalars().all()
-
-    for project in projects:
-        await _sync_project_to_offline(db, project.id, offline_db)
-
-    logger.info(f"Synced platform {platform.name} with {len(projects)} projects")
-
-
-async def _sync_tm_to_offline(db: AsyncSession, tm_id: int, offline_db):
-    """
-    Sync a Translation Memory to offline storage with merge logic.
-
-    SYNC-008: TM offline sync support with last-write-wins merge.
-
-    Merge Rules (same as file rows):
-    - Local synced + server newer → take server
-    - Local modified + server newer → server wins
-    - Local modified + local newer → keep local
-    - Server has entry we don't → insert
-    - We have entry server deleted → delete local
-    """
-    # Get TM from PostgreSQL
-    result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = result.scalar_one_or_none()
-    if not tm:
-        raise HTTPException(status_code=404, detail=f"Translation Memory {tm_id} not found")
-
-    # Get all entries for this TM
-    entries_result = await db.execute(
-        select(LDMTMEntry).where(LDMTMEntry.tm_id == tm_id)
-    )
-    server_entries = entries_result.scalars().all()
-
-    # Save TM metadata to offline storage
-    local_tm_id = offline_db.save_tm({
-        "id": tm.id,
-        "name": tm.name,
-        "description": tm.description,
-        "source_lang": tm.source_lang,
-        "target_lang": tm.target_lang,
-        "entry_count": tm.entry_count,
-        "status": tm.status,
-        "mode": tm.mode if hasattr(tm, 'mode') else 'standard',
-        "owner_id": tm.owner_id,
-        "created_at": tm.created_at.isoformat() if tm.created_at else None,
-        "updated_at": tm.updated_at.isoformat() if tm.updated_at else None,
-        "indexed_at": tm.indexed_at.isoformat() if tm.indexed_at else None
-    })
-
-    # Track merge stats
-    stats = {"inserted": 0, "updated": 0, "skipped": 0, "deleted": 0}
-    server_entry_ids = set()
-
-    # Merge each server entry using last-write-wins
-    for entry in server_entries:
-        server_entry_ids.add(entry.id)
-        entry_data = {
-            "id": entry.id,
-            "source_text": entry.source_text,
-            "target_text": entry.target_text,
-            "source_hash": entry.source_hash,
-            "string_id": entry.string_id if hasattr(entry, 'string_id') else None,
-            "created_by": entry.created_by,
-            "change_date": entry.change_date.isoformat() if entry.change_date else None,
-            "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
-            "updated_by": entry.updated_by if hasattr(entry, 'updated_by') else None,
-            "is_confirmed": entry.is_confirmed if hasattr(entry, 'is_confirmed') else False,
-            "confirmed_by": entry.confirmed_by if hasattr(entry, 'confirmed_by') else None,
-            "confirmed_at": entry.confirmed_at.isoformat() if hasattr(entry, 'confirmed_at') and entry.confirmed_at else None
-        }
-        result = offline_db.merge_tm_entry(entry_data, local_tm_id)
-        stats[result] += 1
-
-    # Delete local entries that no longer exist on server
-    local_entry_ids = offline_db.get_local_tm_entry_server_ids(local_tm_id)
-    deleted_ids = local_entry_ids - server_entry_ids
-    for deleted_id in deleted_ids:
-        offline_db.delete_tm_entry(deleted_id)
-        stats["deleted"] += 1
-
-    # Push local TM entry changes to server
-    pushed = await _push_tm_changes_to_server(db, local_tm_id, tm_id, offline_db)
-
-    logger.info(f"Synced TM {tm.name}: inserted={stats['inserted']}, updated={stats['updated']}, "
-                f"skipped={stats['skipped']}, deleted={stats['deleted']}, pushed={pushed}")
-
-
-async def _push_tm_changes_to_server(db: AsyncSession, local_tm_id: int, server_tm_id: int, offline_db) -> int:
-    """
-    Push local TM entry changes to the server.
-
-    Returns: number of entries pushed
-    """
-    pushed_count = 0
-
-    # Get modified entries
-    modified_entries = offline_db.get_modified_tm_entries(local_tm_id)
-    for local_entry in modified_entries:
-        server_id = local_entry.get("server_id")
-        if server_id:
-            # Update existing entry on server
-            await db.execute(
-                LDMTMEntry.__table__.update()
-                .where(LDMTMEntry.id == server_id)
-                .values(
-                    target_text=local_entry.get("target_text"),
-                    is_confirmed=local_entry.get("is_confirmed", False),
-                    confirmed_by=local_entry.get("confirmed_by"),
-                )
-            )
-            offline_db.mark_tm_entry_synced(local_entry["id"])
-            pushed_count += 1
-
-    # Get new entries (created offline)
-    new_entries = offline_db.get_new_tm_entries(local_tm_id)
-    for local_entry in new_entries:
-        # Create new entry on server
-        import hashlib
-        source_hash = hashlib.sha256(local_entry.get("source_text", "").encode()).hexdigest()
-        new_entry = LDMTMEntry(
-            tm_id=server_tm_id,
-            source_text=local_entry.get("source_text"),
-            target_text=local_entry.get("target_text"),
-            source_hash=source_hash,
-            created_by=local_entry.get("created_by"),
-        )
-        db.add(new_entry)
-        await db.flush()
-
-        offline_db.mark_tm_entry_synced(local_entry["id"])
-        pushed_count += 1
-
-    if pushed_count > 0:
-        await db.commit()
-
-    return pushed_count
 
 
 # =============================================================================
@@ -1108,7 +627,7 @@ async def list_local_files(
             total_count=len(files) + len(folders)
         )
     except Exception as e:
-        logger.error(f"Failed to list local files: {e}")
+        logger.error(f"[SYNC] Failed to list local files: {e}")
         return OrphanedFilesResponse(files=[], folders=[], total_count=0)
 
 
@@ -1122,7 +641,7 @@ async def get_local_file_count(
         count = offline_db.get_local_file_count()
         return {"count": count}
     except Exception as e:
-        logger.error(f"Failed to get local file count: {e}")
+        logger.error(f"[SYNC] Failed to get local file count: {e}")
         return {"count": 0}
 
 
@@ -1181,7 +700,7 @@ async def delete_offline_storage_file(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to delete file from Offline Storage: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to delete file from Offline Storage: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
 
 
@@ -1217,7 +736,7 @@ async def rename_offline_storage_file(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to rename file in Offline Storage: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to rename file in Offline Storage: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}")
 
 
@@ -1258,7 +777,7 @@ async def add_rows_to_offline_file(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to add rows to offline file: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to add rows to offline file: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to add rows: {str(e)}")
 
 
@@ -1317,7 +836,7 @@ async def create_offline_storage_folder(
         )
 
     except Exception as e:
-        logger.error(f"Failed to create folder in Offline Storage: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to create folder in Offline Storage: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to create folder: {str(e)}")
 
 
@@ -1352,7 +871,7 @@ async def delete_offline_storage_folder(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to delete folder from Offline Storage: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to delete folder from Offline Storage: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to delete folder: {str(e)}")
 
 
@@ -1387,7 +906,7 @@ async def rename_offline_storage_folder(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to rename folder in Offline Storage: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to rename folder in Offline Storage: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to rename folder: {str(e)}")
 
 
@@ -1448,7 +967,7 @@ async def move_offline_storage_file(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to move file in Offline Storage: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to move file in Offline Storage: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to move file: {str(e)}")
 
 
@@ -1489,7 +1008,7 @@ async def move_offline_storage_folder(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to move folder in Offline Storage: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to move folder in Offline Storage: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to move folder: {str(e)}")
 
 
@@ -1544,7 +1063,7 @@ async def list_local_trash(
         )
 
     except Exception as e:
-        logger.error(f"Failed to list local trash: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to list local trash: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to list local trash: {str(e)}")
 
 
@@ -1580,7 +1099,7 @@ async def restore_from_local_trash(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to restore from local trash: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to restore from local trash: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to restore: {str(e)}")
 
 
@@ -1611,7 +1130,7 @@ async def permanent_delete_from_local_trash(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to permanently delete from local trash: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to permanently delete from local trash: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to delete: {str(e)}")
 
 
@@ -1625,7 +1144,7 @@ async def empty_local_trash(
     Permanently deletes all trashed local files and folders.
     This action cannot be undone.
     """
-    logger.info("Emptying local trash")
+    logger.info("[SYNC] Emptying local trash")
 
     try:
         offline_db = get_offline_db()
@@ -1637,7 +1156,7 @@ async def empty_local_trash(
         )
 
     except Exception as e:
-        logger.error(f"Failed to empty local trash: {e}", exc_info=True)
+        logger.error(f"[SYNC] Failed to empty local trash: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to empty trash: {str(e)}")
 
 
@@ -1654,6 +1173,7 @@ async def download_file_for_offline(
     """
     Download/sync a file from PostgreSQL to local SQLite for offline use.
 
+    P10: Uses SyncService for sync operations.
     Uses merge logic (last-write-wins):
     - Server rows are merged with local (doesn't overwrite local changes)
     - Local changes are pushed to server if newer
@@ -1661,7 +1181,7 @@ async def download_file_for_offline(
     """
     from server.config import ACTIVE_DATABASE_TYPE
 
-    logger.info(f"Download for offline: file_id={file_id}")
+    logger.info(f"[SYNC] download_file_for_offline: file_id={file_id}")
 
     # Verify we're online (connected to PostgreSQL)
     if ACTIVE_DATABASE_TYPE != "postgresql":
@@ -1681,25 +1201,18 @@ async def download_file_for_offline(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Get the project info
-    project_result = await db.execute(select(LDMProject).where(LDMProject.id == file.project_id))
-    project = project_result.scalar_one_or_none()
-
     try:
         # Get offline database instance
         offline_db = get_offline_db()
+        sync_service = SyncService(db, offline_db)
 
-        # Save project (needed for foreign key)
-        if project:
-            offline_db.save_project(_project_to_dict(project))
-
-        # Use merge-aware sync
-        await _sync_file_to_offline(db, file_id, offline_db)
+        # P10: Use SyncService for merge-aware sync (handles hierarchy)
+        await sync_service.sync_file_to_offline(file_id)
 
         # Update sync metadata
         offline_db.set_last_sync()
 
-        logger.success(f"Downloaded for offline: file={file.name}")
+        logger.success(f"[SYNC] [SYNC] Downloaded for offline: file={file.name}")
 
         return DownloadForOfflineResponse(
             success=True,
@@ -1710,7 +1223,7 @@ async def download_file_for_offline(
         )
 
     except Exception as e:
-        logger.error(f"Download for offline failed: {e}", exc_info=True)
+        logger.error(f"[SYNC] [SYNC] Download for offline failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to save for offline: {str(e)}")
 
 
@@ -1723,6 +1236,7 @@ async def sync_file_to_central(
     """
     Sync a file from Offline Storage (SQLite) to central PostgreSQL.
 
+    P10: Uses SyncService for sync operations.
     This endpoint:
     1. Reads file metadata + all rows from Offline Storage (SQLite)
     2. Creates new file record in PostgreSQL (destination project/folder)
@@ -1734,9 +1248,9 @@ async def sync_file_to_central(
     - User wants to upload local work to a server project
     """
     from server.config import ACTIVE_DATABASE_TYPE
-    from server.database.offline import get_offline_db
 
-    logger.info(f"Sync to central: file_id={request.file_id}, dest_project={request.destination_project_id}, dest_folder={request.destination_folder_id}")
+    logger.info(f"[SYNC] sync_file_to_central: file_id={request.file_id}, "
+                f"dest_project={request.destination_project_id}, dest_folder={request.destination_folder_id}")
 
     # Verify we're online (connected to PostgreSQL)
     if ACTIVE_DATABASE_TYPE != "postgresql":
@@ -1761,77 +1275,32 @@ async def sync_file_to_central(
             raise HTTPException(status_code=404, detail="Destination folder not found")
 
     try:
-        # Read from Offline Storage using offline.py
+        # P10: Use SyncService for sync-to-central
         offline_db = get_offline_db()
-        local_file = offline_db.get_local_file(request.file_id)
+        sync_service = SyncService(db, offline_db)
 
-        if not local_file:
-            raise HTTPException(status_code=404, detail="File not found in Offline Storage")
-
-        local_rows = offline_db.get_rows_for_file(request.file_id)
-        logger.info(f"Read {len(local_rows)} rows from Offline Storage for file {request.file_id}")
-
-        # Parse extra_data if it's a JSON string
-        import json
-        extra_data = local_file.get("extra_data")
-        if extra_data and isinstance(extra_data, str):
-            try:
-                extra_data = json.loads(extra_data)
-            except (json.JSONDecodeError, TypeError):
-                extra_data = None
-
-        # Create new file in PostgreSQL
-        new_file = LDMFile(
-            project_id=request.destination_project_id,
-            folder_id=request.destination_folder_id,  # Can be None for project root
-            name=local_file.get("name", "unknown"),
-            original_filename=local_file.get("original_filename") or local_file.get("name"),
-            format=local_file.get("format", "txt"),
-            row_count=len(local_rows),
-            source_language=local_file.get("source_language"),
-            target_language=local_file.get("target_language"),
-            extra_data=extra_data,
-            created_by=current_user["user_id"]
+        result = await sync_service.sync_file_to_central(
+            local_file_id=request.file_id,
+            destination_project_id=request.destination_project_id,
+            destination_folder_id=request.destination_folder_id,
+            user_id=current_user["user_id"]
         )
-        db.add(new_file)
-        await db.flush()
 
-        # Create rows in PostgreSQL
-        for local_row in local_rows:
-            # Parse extra_data for rows too
-            row_extra = local_row.get("extra_data")
-            if row_extra and isinstance(row_extra, str):
-                try:
-                    row_extra = json.loads(row_extra)
-                except (json.JSONDecodeError, TypeError):
-                    row_extra = None
-
-            new_row = LDMRow(
-                file_id=new_file.id,
-                row_num=local_row.get("row_num", 0),
-                string_id=local_row.get("string_id"),
-                source=local_row.get("source"),
-                target=local_row.get("target"),
-                status=local_row.get("status", "pending"),
-                extra_data=row_extra
-            )
-            db.add(new_row)
-
-        await db.commit()
-
-        logger.success(f"Synced file to central: local_id={request.file_id} → central_id={new_file.id}, rows={len(local_rows)}")
+        logger.success(f"[SYNC] [SYNC] sync_file_to_central complete: file_id={request.file_id}")
 
         return SyncFileToCentralResponse(
             success=True,
-            new_file_id=new_file.id,
-            rows_synced=len(local_rows),
-            message=f"Successfully synced {len(local_rows)} rows to central server"
+            new_file_id=result["new_file_id"],
+            rows_synced=result["rows_synced"],
+            message=f"Successfully synced {result['rows_synced']} rows to central server"
         )
 
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Sync to central failed: {e}", exc_info=True)
+        logger.error(f"[SYNC] [SYNC] Sync to central failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Sync failed. Check server logs.")
 
 
@@ -1844,6 +1313,7 @@ async def sync_tm_to_central(
     """
     Sync a Translation Memory from local SQLite to central PostgreSQL.
 
+    P10: Uses SyncService for sync operations.
     This endpoint:
     1. Reads TM metadata + all entries from local SQLite
     2. Creates new TM record in PostgreSQL
@@ -1852,7 +1322,7 @@ async def sync_tm_to_central(
     """
     from server.config import ACTIVE_DATABASE_TYPE
 
-    logger.info(f"Sync TM to central: tm_id={request.tm_id}")
+    logger.info(f"[SYNC] sync_tm_to_central: tm_id={request.tm_id}")
 
     # Verify we're online (connected to PostgreSQL)
     if ACTIVE_DATABASE_TYPE != "postgresql":
@@ -1861,81 +1331,29 @@ async def sync_tm_to_central(
             detail="Cannot sync to central server while in offline mode. Connect to server first."
         )
 
-    # Read from local SQLite database
-    sqlite_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
-        "data", "locanext.db"
-    )
+    try:
+        # P10: Use SyncService for sync-to-central
+        offline_db = get_offline_db()
+        sync_service = SyncService(db, offline_db)
 
-    if not os.path.exists(sqlite_path):
-        raise HTTPException(
-            status_code=400,
-            detail="No local database found. You may not have worked offline."
+        result = await sync_service.sync_tm_to_central(
+            local_tm_id=request.tm_id,
+            user_id=current_user["user_id"]
         )
 
-    try:
-        # Create SQLite engine and session
-        sqlite_engine = create_engine(f"sqlite:///{sqlite_path}")
-        sqlite_session = Session(sqlite_engine)
+        logger.success(f"[SYNC] [SYNC] sync_tm_to_central complete: tm_id={request.tm_id}")
 
-        try:
-            # Read the TM from SQLite
-            local_tm = sqlite_session.query(LDMTranslationMemory).filter(
-                LDMTranslationMemory.id == request.tm_id
-            ).first()
+        return SyncTMToCentralResponse(
+            success=True,
+            new_tm_id=result["new_tm_id"],
+            entries_synced=result["entries_synced"],
+            message=f"Successfully synced {result['entries_synced']} TM entries to central server. Run 'Build Indexes' on the server to enable semantic search."
+        )
 
-            if not local_tm:
-                raise HTTPException(status_code=404, detail="Translation Memory not found in local database")
-
-            # Read all entries for this TM from SQLite
-            local_entries = sqlite_session.query(LDMTMEntry).filter(
-                LDMTMEntry.tm_id == request.tm_id
-            ).all()
-
-            logger.info(f"Read {len(local_entries)} entries from local SQLite for TM {request.tm_id}")
-
-            # Create new TM in PostgreSQL
-            new_tm = LDMTranslationMemory(
-                name=local_tm.name,
-                description=local_tm.description,
-                owner_id=current_user["user_id"],
-                source_lang=local_tm.source_lang,
-                target_lang=local_tm.target_lang,
-                entry_count=len(local_entries),
-                status="pending"  # Will need re-indexing on server
-            )
-            db.add(new_tm)
-            await db.flush()
-
-            # Bulk insert entries to PostgreSQL
-            for local_entry in local_entries:
-                new_entry = LDMTMEntry(
-                    tm_id=new_tm.id,
-                    source_text=local_entry.source_text,
-                    target_text=local_entry.target_text,
-                    source_hash=local_entry.source_hash,
-                    created_by=local_entry.created_by,
-                    change_date=local_entry.change_date
-                )
-                db.add(new_entry)
-
-            await db.commit()
-
-            logger.success(f"Synced TM to central: local_id={request.tm_id} → central_id={new_tm.id}, entries={len(local_entries)}")
-
-            return SyncTMToCentralResponse(
-                success=True,
-                new_tm_id=new_tm.id,
-                entries_synced=len(local_entries),
-                message=f"Successfully synced {len(local_entries)} TM entries to central server. Run 'Build Indexes' on the server to enable semantic search."
-            )
-
-        finally:
-            sqlite_session.close()
-            sqlite_engine.dispose()
-
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"TM sync to central failed: {e}", exc_info=True)
+        logger.error(f"[SYNC] [SYNC] TM sync to central failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="TM sync failed. Check server logs.")

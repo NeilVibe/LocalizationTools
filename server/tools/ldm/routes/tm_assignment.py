@@ -5,21 +5,18 @@ P9-ARCH: Uses Repository Pattern for database abstraction.
 - Online mode: PostgreSQLTMRepository (PostgreSQL)
 - Offline mode: SQLiteTMRepository (local SQLite)
 
+Routes use ONLY the repository interface. No direct DB access.
 The repository is automatically selected based on user's mode (token-based detection).
 """
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from pydantic import BaseModel
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import LDMFolder
-from server.tools.ldm.permissions import can_access_platform, can_access_project
+from server.utils.dependencies import get_current_active_user_async
 
-# Repository Pattern imports
+# Repository Pattern - ONLY import interface and factory
 from server.repositories import TMRepository, AssignmentTarget, get_tm_repository
 
 router = APIRouter(tags=["LDM"])
@@ -124,7 +121,6 @@ async def assign_tm(
     project_id: Optional[int] = None,
     folder_id: Optional[int] = None,
     repo: TMRepository = Depends(get_tm_repository),
-    db: AsyncSession = Depends(get_async_db),  # For scope validation (TODO: make mode-aware)
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -132,10 +128,12 @@ async def assign_tm(
     Only ONE scope can be set - others must be None.
     If all are None, TM is moved to "Unassigned".
 
-    P9-ARCH: Uses Repository Pattern for TM operations.
-    TODO: Scope validation (platform/project/folder) needs to be mode-aware for full offline support.
+    P9-ARCH: Uses Repository Pattern.
+    - Online mode: PostgreSQL
+    - Offline mode: SQLite
+    Routes don't know which database - repository handles it.
     """
-    # Get TM from repository (handles both PostgreSQL and SQLite)
+    # Get TM from repository
     tm = await repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="TM not found")
@@ -151,37 +149,22 @@ async def assign_tm(
     if target.scope_count() > 1:
         raise HTTPException(status_code=400, detail="Only one scope can be set (platform, project, or folder)")
 
-    # Validate scope exists and user has access (DESIGN-001: Public by default)
-    # TODO: This validation uses PostgreSQL directly. For full offline support,
-    # scope validation should also be mode-aware.
-    scope_name = "unassigned"
-    if folder_id:
-        from server.tools.ldm.permissions import can_access_folder
-        if not await can_access_folder(db, folder_id, current_user):
-            raise HTTPException(status_code=404, detail="Folder not found")
-        result = await db.execute(
-            select(LDMFolder).where(LDMFolder.id == folder_id)
-        )
-        folder = result.scalar_one_or_none()
-        if not folder:
-            raise HTTPException(status_code=404, detail="Folder not found")
-        scope_name = f"folder:{folder.name}"
-    elif project_id:
-        if not await can_access_project(db, project_id, current_user):
-            raise HTTPException(status_code=404, detail="Project not found")
-        scope_name = f"project:{project_id}"
-    elif platform_id:
-        if not await can_access_platform(db, platform_id, current_user):
-            raise HTTPException(status_code=404, detail="Platform not found")
-        scope_name = f"platform:{platform_id}"
-
-    # Use repository for assignment (handles PostgreSQL or SQLite)
+    # Use repository for assignment - it handles validation internally
     try:
         result = await repo.assign(tm_id, target)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    logger.success(f"TM {tm_id} assigned to {scope_name}")
+    # Determine scope name for logging
+    scope_name = "unassigned"
+    if folder_id:
+        scope_name = f"folder:{folder_id}"
+    elif project_id:
+        scope_name = f"project:{project_id}"
+    elif platform_id:
+        scope_name = f"platform:{platform_id}"
+
+    logger.success(f"[TM-ASSIGN] TM {tm_id} assigned to {scope_name}")
 
     return {
         "success": True,
@@ -219,7 +202,7 @@ async def activate_tm(
         raise HTTPException(status_code=400, detail=str(e))
 
     status = "activated" if active else "deactivated"
-    logger.success(f"TM {tm_id} {status}")
+    logger.success(f"[TM-ASSIGN] TM {tm_id} {status}")
 
     return {"success": True, "tm_id": tm_id, "is_active": active}
 
@@ -247,9 +230,6 @@ async def get_active_tms_for_file(
     """
     # Get active TMs from repository (handles scope chain resolution)
     active_tms = await repo.get_active_for_file(file_id)
-
-    # Repository returns empty list for local files (P9 offline mode)
-    # or raises error for non-existent files
 
     # Convert to response model
     return [

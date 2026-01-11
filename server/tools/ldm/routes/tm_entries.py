@@ -11,11 +11,10 @@ database access for now - these can be migrated to repository pattern later.
 Migrated from api.py lines 1366-1722, 1820-1870, 2153-2201
 """
 
-import asyncio
 import hashlib
 from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Form, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, Form, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, or_
 from loguru import logger
@@ -56,7 +55,7 @@ def _auto_sync_tm_indexes(tm_id: int, user_id: int):
         ).first()
 
         if not tm:
-            logger.warning(f"Auto-sync skipped: TM {tm_id} not found")
+            logger.warning(f"[TM-ENTRY] [TM-ENTRY] Auto-sync skipped: TM {tm_id} not found")
             return
 
         # TASK-002: Track auto-sync with silent=True (no toast, but visible in Task Manager)
@@ -83,7 +82,7 @@ def _auto_sync_tm_indexes(tm_id: int, user_id: int):
             f"UPDATE={result['stats']['update']}, time={result['time_seconds']:.2f}s, status=ready"
         )
     except Exception as e:
-        logger.error(f"Auto-sync failed for TM {tm_id}: {e}")
+        logger.error(f"[TM-ENTRY] [TM-ENTRY] Auto-sync failed for TM {tm_id}: {e}")
     finally:
         sync_db.close()
 
@@ -213,7 +212,7 @@ async def add_tm_entry(
     DESIGN-001: Public by default.
     Q-001: Auto-syncs TM indexes after add.
     """
-    logger.info(f"Adding TM entry: tm_id={tm_id}, source={source_text[:30]}...")
+    logger.info(f"[TM-ENTRY] Adding TM entry: tm_id={tm_id}, source={source_text[:30]}...")
 
     # Verify TM exists using repository
     tm = await repo.get(tm_id)
@@ -235,7 +234,7 @@ async def add_tm_entry(
     updated_tm = await repo.get(tm_id)
     entry_count = updated_tm.get("entry_count", 0) if updated_tm else 0
 
-    logger.success(f"TM entry added: tm_id={tm_id}, total entries={entry_count}")
+    logger.success(f"[TM-ENTRY] [TM-ENTRY] TM entry added: tm_id={tm_id}, total entries={entry_count}")
 
     # Q-001: Auto-sync indexes in background (only for PostgreSQL mode)
     # TODO: Add index sync for SQLite mode
@@ -310,7 +309,7 @@ async def update_tm_entry(
     await db.commit()
     await db.refresh(entry)
 
-    logger.info(f"Updated TM entry: tm_id={tm_id}, entry_id={entry_id}, by={current_user.get('username')}")
+    logger.info(f"[TM-ENTRY] Updated TM entry: tm_id={tm_id}, entry_id={entry_id}, by={current_user.get('username')}")
 
     # Q-001: Auto-sync indexes in background
     if background_tasks:
@@ -356,7 +355,7 @@ async def delete_tm_entry(
     if not deleted:
         raise HTTPException(status_code=404, detail="Entry not found")
 
-    logger.info(f"Deleted TM entry: tm_id={tm_id}, entry_id={entry_id}")
+    logger.info(f"[TM-ENTRY] Deleted TM entry: tm_id={tm_id}, entry_id={entry_id}")
 
     # Q-001: Auto-sync indexes in background (only for PostgreSQL mode)
     if background_tasks:
@@ -411,7 +410,7 @@ async def confirm_tm_entry(
     await db.commit()
     await db.refresh(entry)
 
-    logger.info(f"{'Confirmed' if confirm else 'Unconfirmed'} TM entry: tm_id={tm_id}, entry_id={entry_id}, by={username}")
+    logger.info(f"[TM-ENTRY] {'Confirmed' if confirm else 'Unconfirmed'} TM entry: tm_id={tm_id}, entry_id={entry_id}, by={username}")
 
     return {
         "id": entry.id,
@@ -466,7 +465,7 @@ async def bulk_confirm_tm_entries(
 
     updated_count = result.rowcount
 
-    logger.info(f"Bulk {'confirmed' if confirm else 'unconfirmed'} {updated_count} TM entries: tm_id={tm_id}, by={username}")
+    logger.info(f"[TM-ENTRY] Bulk {'confirmed' if confirm else 'unconfirmed'} {updated_count} TM entries: tm_id={tm_id}, by={username}")
 
     return {
         "updated_count": updated_count,

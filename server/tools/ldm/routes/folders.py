@@ -1,4 +1,7 @@
-"""Folder CRUD endpoints."""
+"""Folder CRUD endpoints.
+
+Repository Pattern: Uses FolderRepository for database abstraction.
+"""
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,9 +11,10 @@ from sqlalchemy.orm import selectinload
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import LDMProject, LDMFolder
+from server.database.models import LDMFolder
 from server.tools.ldm.schemas import FolderCreate, FolderResponse, DeleteResponse
-from server.tools.ldm.permissions import can_access_project, can_access_folder
+from server.tools.ldm.permissions import can_access_project
+from server.repositories import FolderRepository, get_folder_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -19,25 +23,19 @@ router = APIRouter(tags=["LDM"])
 async def list_folders(
     project_id: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: FolderRepository = Depends(get_folder_repository)
 ):
-    """List all folders in a project."""
-    # Verify project exists
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    if not result.scalar_one_or_none():
+    """List all folders in a project.
+
+    Repository Pattern: Uses FolderRepository for database abstraction.
+    """
+    # Check access permission (includes project existence check)
+    if not await can_access_project(db, project_id, current_user):
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Check access permission
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    result = await db.execute(
-        select(LDMFolder).where(LDMFolder.project_id == project_id)
-    )
-    folders = result.scalars().all()
-
+    # Use repository to get folders
+    folders = await repo.get_all(project_id)
     return folders
 
 
@@ -45,39 +43,25 @@ async def list_folders(
 async def create_folder(
     folder: FolderCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: FolderRepository = Depends(get_folder_repository)
 ):
-    """Create a new folder in a project."""
-    # Verify project exists
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == folder.project_id)
-    )
-    if not result.scalar_one_or_none():
+    """Create a new folder in a project.
+
+    Repository Pattern: Uses FolderRepository for database abstraction.
+    """
+    # Check access permission (includes project existence check)
+    if not await can_access_project(db, folder.project_id, current_user):
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Check access permission
-    if not await can_access_project(db, folder.project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # DB-002: Per-parent unique names with auto-rename
-    from server.tools.ldm.utils.naming import generate_unique_name
-    folder_name = await generate_unique_name(
-        db, LDMFolder, folder.name,
+    # Use repository to create folder (handles auto-rename for duplicates)
+    new_folder = await repo.create(
+        name=folder.name,
         project_id=folder.project_id,
         parent_id=folder.parent_id
     )
 
-    new_folder = LDMFolder(
-        project_id=folder.project_id,
-        parent_id=folder.parent_id,
-        name=folder_name  # DB-002: Use auto-renamed name
-    )
-
-    db.add(new_folder)
-    await db.commit()
-    await db.refresh(new_folder)
-
-    logger.info(f"Folder created: id={new_folder.id}, name='{new_folder.name}'")
+    logger.info(f"[FOLDERS] Folder created: id={new_folder['id']}, name='{new_folder['name']}'")
     return new_folder
 
 
@@ -85,52 +69,24 @@ async def create_folder(
 async def get_folder_contents(
     folder_id: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: FolderRepository = Depends(get_folder_repository)
 ):
-    """Get folder details and its contents (subfolders + files)."""
-    from server.database.models import LDMFile
+    """Get folder details and its contents (subfolders + files).
 
-    # Get folder with project info
-    result = await db.execute(
-        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
-            LDMFolder.id == folder_id
-        )
-    )
-    folder = result.scalar_one_or_none()
+    Repository Pattern: Uses FolderRepository for database abstraction.
+    """
+    # Use repository to get folder with contents
+    folder = await repo.get_with_contents(folder_id)
 
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if not await can_access_project(db, folder.project_id, current_user):
+    # Check access permission
+    if not await can_access_project(db, folder["project_id"], current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Get subfolders
-    result = await db.execute(
-        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
-    )
-    subfolders = result.scalars().all()
-
-    # Get files in this folder
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.folder_id == folder_id)
-    )
-    files = result.scalars().all()
-
-    return {
-        "id": folder.id,
-        "name": folder.name,
-        "project_id": folder.project_id,
-        "parent_id": folder.parent_id,
-        "subfolders": [
-            {"id": f.id, "name": f.name, "created_at": f.created_at.isoformat() if f.created_at else None}
-            for f in subfolders
-        ],
-        "files": [
-            {"id": f.id, "name": f.name, "format": f.format, "row_count": f.row_count,
-             "created_at": f.created_at.isoformat() if f.created_at else None}
-            for f in files
-        ]
-    }
+    return folder
 
 
 @router.patch("/folders/{folder_id}/rename")
@@ -138,39 +94,28 @@ async def rename_folder(
     folder_id: int,
     name: str,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: FolderRepository = Depends(get_folder_repository)
 ):
-    """Rename a folder."""
-    # Get folder with project info
-    result = await db.execute(
-        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
-            LDMFolder.id == folder_id
-        )
-    )
-    folder = result.scalar_one_or_none()
+    """Rename a folder.
 
+    Repository Pattern: Uses FolderRepository for database abstraction.
+    """
+    # First get folder to check access
+    folder = await repo.get(folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if not await can_access_project(db, folder.project_id, current_user):
+    if not await can_access_project(db, folder["project_id"], current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # DB-002: Per-parent unique names
-    from server.tools.ldm.utils.naming import check_name_exists
-    if await check_name_exists(
-        db, LDMFolder, name,
-        project_id=folder.project_id,
-        parent_id=folder.parent_id,
-        exclude_id=folder_id
-    ):
-        raise HTTPException(status_code=400, detail=f"A folder named '{name}' already exists in this location. Please use a different name.")
-
-    old_name = folder.name
-    folder.name = name
-    await db.commit()
-
-    logger.success(f"Folder renamed: id={folder_id}, '{old_name}' -> '{name}'")
-    return {"success": True, "folder_id": folder_id, "name": name}
+    try:
+        # Use repository to rename (handles uniqueness check)
+        await repo.rename(folder_id, name)
+        logger.success(f"[FOLDERS] Folder renamed: id={folder_id}, '{folder['name']}' -> '{name}'")
+        return {"success": True, "folder_id": folder_id, "name": name}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.patch("/folders/{folder_id}/move")
@@ -178,61 +123,31 @@ async def move_folder(
     folder_id: int,
     parent_folder_id: Optional[int] = None,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: FolderRepository = Depends(get_folder_repository)
 ):
     """
     Move a folder to a different parent folder (or root of project if parent_folder_id is None).
 
     Used for drag-and-drop folder organization in FileExplorer.
-    """
-    # Get folder with project info
-    result = await db.execute(
-        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
-            LDMFolder.id == folder_id
-        )
-    )
-    folder = result.scalar_one_or_none()
 
+    Repository Pattern: Uses FolderRepository for database abstraction.
+    """
+    # First get folder to check access
+    folder = await repo.get(folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if not await can_access_project(db, folder.project_id, current_user):
+    if not await can_access_project(db, folder["project_id"], current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Prevent moving folder into itself or its descendants
-    if parent_folder_id is not None:
-        # Check if target is the folder itself
-        if parent_folder_id == folder_id:
-            raise HTTPException(status_code=400, detail="Cannot move folder into itself")
-
-        # Check if target folder exists and belongs to same project
-        result = await db.execute(
-            select(LDMFolder).where(
-                LDMFolder.id == parent_folder_id,
-                LDMFolder.project_id == folder.project_id
-            )
-        )
-        target_folder = result.scalar_one_or_none()
-        if not target_folder:
-            raise HTTPException(status_code=404, detail="Target folder not found or invalid")
-
-        # Check if target is a descendant of the folder being moved
-        # (prevent circular references)
-        current_parent = target_folder.parent_id
-        while current_parent is not None:
-            if current_parent == folder_id:
-                raise HTTPException(status_code=400, detail="Cannot move folder into its own subfolder")
-            result = await db.execute(
-                select(LDMFolder.parent_id).where(LDMFolder.id == current_parent)
-            )
-            current_parent = result.scalar_one_or_none()
-
-    # Update folder's parent_id
-    folder.parent_id = parent_folder_id
-    await db.commit()
-
-    logger.success(f"Folder moved: id={folder_id}, new_parent={parent_folder_id}")
-    return {"success": True, "folder_id": folder_id, "parent_folder_id": parent_folder_id}
+    try:
+        # Use repository to move (handles validation and circular reference checks)
+        await repo.move(folder_id, parent_folder_id)
+        logger.success(f"[FOLDERS] Folder moved: id={folder_id}, new_parent={parent_folder_id}")
+        return {"success": True, "folder_id": folder_id, "parent_folder_id": parent_folder_id}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.patch("/folders/{folder_id}/move-cross-project")
@@ -241,28 +156,23 @@ async def move_folder_cross_project(
     target_project_id: int,
     target_parent_id: Optional[int] = None,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: FolderRepository = Depends(get_folder_repository)
 ):
     """
     EXPLORER-005: Move a folder to a different project.
     Updates the folder and all its contents (subfolders, files) to the new project.
     EXPLORER-009: Requires 'cross_project_move' capability.
+
+    Repository Pattern: Uses FolderRepository for database abstraction.
     """
-    from server.database.models import LDMFile, LDMRow
-
     # Get source folder
-    result = await db.execute(
-        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
-            LDMFolder.id == folder_id
-        )
-    )
-    folder = result.scalar_one_or_none()
-
+    folder = await repo.get(folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
     # Check access to source project
-    if not await can_access_project(db, folder.project_id, current_user):
+    if not await can_access_project(db, folder["project_id"], current_user):
         raise HTTPException(status_code=404, detail="Folder not found")
 
     # Check access to destination project
@@ -273,70 +183,22 @@ async def move_folder_cross_project(
     from ..permissions import require_capability
     await require_capability(db, current_user, "cross_project_move")
 
-    # Validate target parent folder if specified
-    if target_parent_id is not None:
-        result = await db.execute(
-            select(LDMFolder).where(
-                LDMFolder.id == target_parent_id,
-                LDMFolder.project_id == target_project_id
-            )
-        )
-        target_folder = result.scalar_one_or_none()
-        if not target_folder:
-            raise HTTPException(status_code=404, detail="Target parent folder not found")
+    source_project_id = folder["project_id"]
 
-    source_project_id = folder.project_id
+    try:
+        # Use repository to move cross-project (handles validation and recursive updates)
+        result = await repo.move_cross_project(folder_id, target_project_id, target_parent_id)
 
-    # DB-002: Check for naming conflicts and auto-rename if needed
-    from server.tools.ldm.utils.naming import generate_unique_name
-    new_name = await generate_unique_name(
-        db, LDMFolder, folder.name,
-        project_id=target_project_id,
-        parent_id=target_parent_id
-    )
-
-    # Update the folder
-    folder.name = new_name
-    folder.project_id = target_project_id
-    folder.parent_id = target_parent_id
-
-    # Recursively update all subfolders and files
-    await _update_folder_project_recursive(db, folder_id, target_project_id)
-
-    await db.commit()
-
-    logger.success(f"Folder moved cross-project: id={folder_id}, from project {source_project_id} to {target_project_id}")
-    return {
-        "success": True,
-        "folder_id": folder_id,
-        "new_name": new_name,
-        "target_project_id": target_project_id,
-        "target_parent_id": target_parent_id
-    }
-
-
-async def _update_folder_project_recursive(db, folder_id: int, new_project_id: int):
-    """
-    Recursively update all subfolders and files to the new project.
-    """
-    from server.database.models import LDMFile
-
-    # Update all files in this folder
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.folder_id == folder_id)
-    )
-    files = result.scalars().all()
-    for file in files:
-        file.project_id = new_project_id
-
-    # Get subfolders and recursively update
-    result = await db.execute(
-        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
-    )
-    subfolders = result.scalars().all()
-    for subfolder in subfolders:
-        subfolder.project_id = new_project_id
-        await _update_folder_project_recursive(db, subfolder.id, new_project_id)
+        logger.success(f"[FOLDERS] Folder moved cross-project: id={folder_id}, from project {source_project_id} to {target_project_id}")
+        return {
+            "success": True,
+            "folder_id": folder_id,
+            "new_name": result.get("new_name", result.get("name")),
+            "target_project_id": target_project_id,
+            "target_parent_id": target_parent_id
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/folders/{folder_id}/copy")
@@ -345,7 +207,8 @@ async def copy_folder(
     target_project_id: Optional[int] = None,
     target_parent_id: Optional[int] = None,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: FolderRepository = Depends(get_folder_repository)
 ):
     """
     Copy a folder and all its contents to a different location.
@@ -354,198 +217,38 @@ async def copy_folder(
     If target_project_id is None, copies to same project.
     If target_parent_id is None, copies to project root.
     Auto-renames if duplicate name exists.
+
+    Repository Pattern: Uses FolderRepository for database abstraction.
     """
     # Get source folder
-    result = await db.execute(
-        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
-            LDMFolder.id == folder_id
-        )
-    )
-    source_folder = result.scalar_one_or_none()
-
+    source_folder = await repo.get(folder_id)
     if not source_folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if not await can_access_project(db, source_folder.project_id, current_user):
+    if not await can_access_project(db, source_folder["project_id"], current_user):
         raise HTTPException(status_code=404, detail="Folder not found")
 
     # Determine target project
-    dest_project_id = target_project_id or source_folder.project_id
+    dest_project_id = target_project_id or source_folder["project_id"]
 
     # Check access permission for destination
-    if target_project_id and target_project_id != source_folder.project_id:
+    if target_project_id and target_project_id != source_folder["project_id"]:
         if not await can_access_project(db, target_project_id, current_user):
             raise HTTPException(status_code=404, detail="Destination project not found")
 
-    # Generate unique name for copy
-    from server.tools.ldm.utils.naming import generate_unique_name
-    new_name = await generate_unique_name(
-        db, LDMFolder, source_folder.name,
-        project_id=dest_project_id,
-        parent_id=target_parent_id
-    )
+    # Use repository to copy folder (handles recursive copying)
+    result = await repo.copy(folder_id, dest_project_id, target_parent_id)
 
-    # Create copy of folder
-    new_folder = LDMFolder(
-        name=new_name,
-        project_id=dest_project_id,
-        parent_id=target_parent_id
-    )
-    db.add(new_folder)
-    await db.flush()
+    if not result:
+        raise HTTPException(status_code=500, detail="Failed to copy folder")
 
-    # Copy all files in this folder
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.folder_id == folder_id)
-    )
-    files = result.scalars().all()
-
-    copied_files = 0
-    for file in files:
-        # Generate unique name for each file
-        file_name = await generate_unique_name(
-            db, LDMFile, file.name,
-            project_id=dest_project_id,
-            folder_id=new_folder.id
-        )
-
-        new_file = LDMFile(
-            name=file_name,
-            original_filename=file.original_filename,
-            format=file.format,
-            source_language=file.source_language,
-            target_language=file.target_language,
-            row_count=file.row_count,
-            project_id=dest_project_id,
-            folder_id=new_folder.id,
-            extra_data=file.extra_data
-        )
-        db.add(new_file)
-        await db.flush()
-
-        # Copy rows for this file
-        from server.database.models import LDMRow
-        result = await db.execute(
-            select(LDMRow).where(LDMRow.file_id == file.id)
-        )
-        rows = result.scalars().all()
-        for row in rows:
-            new_row = LDMRow(
-                file_id=new_file.id,
-                row_num=row.row_num,
-                string_id=row.string_id,
-                source=row.source,
-                target=row.target,
-                memo=row.memo,
-                status=row.status,
-                extra_data=row.extra_data
-            )
-            db.add(new_row)
-        copied_files += 1
-
-    # Recursively copy subfolders
-    result = await db.execute(
-        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
-    )
-    subfolders = result.scalars().all()
-
-    for subfolder in subfolders:
-        # Recursive copy (simplified - calls this same logic)
-        await _copy_folder_recursive(db, subfolder.id, dest_project_id, new_folder.id, current_user)
-
-    await db.commit()
-    await db.refresh(new_folder)
-
-    logger.success(f"Folder copied: {source_folder.name} -> {new_folder.name}, id={new_folder.id}, files={copied_files}")
+    logger.success(f"[FOLDERS] Folder copied: {source_folder['name']} -> {result['name']}, id={result['new_folder_id']}, files={result['files_copied']}")
     return {
         "success": True,
-        "new_folder_id": new_folder.id,
-        "name": new_folder.name,
-        "files_copied": copied_files
+        "new_folder_id": result["new_folder_id"],
+        "name": result["name"],
+        "files_copied": result["files_copied"]
     }
-
-
-async def _copy_folder_recursive(db, folder_id: int, dest_project_id: int, dest_parent_id: int, current_user: dict):
-    """Helper function to recursively copy folder contents."""
-    from server.tools.ldm.utils.naming import generate_unique_name
-    from server.database.models import LDMRow
-
-    result = await db.execute(
-        select(LDMFolder).where(LDMFolder.id == folder_id)
-    )
-    source_folder = result.scalar_one_or_none()
-    if not source_folder:
-        return
-
-    # Generate unique name
-    new_name = await generate_unique_name(
-        db, LDMFolder, source_folder.name,
-        project_id=dest_project_id,
-        parent_id=dest_parent_id
-    )
-
-    # Create copy
-    new_folder = LDMFolder(
-        name=new_name,
-        project_id=dest_project_id,
-        parent_id=dest_parent_id
-    )
-    db.add(new_folder)
-    await db.flush()
-
-    # Copy files
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.folder_id == folder_id)
-    )
-    files = result.scalars().all()
-
-    for file in files:
-        file_name = await generate_unique_name(
-            db, LDMFile, file.name,
-            project_id=dest_project_id,
-            folder_id=new_folder.id
-        )
-
-        new_file = LDMFile(
-            name=file_name,
-            original_filename=file.original_filename,
-            format=file.format,
-            source_language=file.source_language,
-            target_language=file.target_language,
-            row_count=file.row_count,
-            project_id=dest_project_id,
-            folder_id=new_folder.id,
-            extra_data=file.extra_data
-        )
-        db.add(new_file)
-        await db.flush()
-
-        # Copy rows
-        result = await db.execute(
-            select(LDMRow).where(LDMRow.file_id == file.id)
-        )
-        rows = result.scalars().all()
-        for row in rows:
-            new_row = LDMRow(
-                file_id=new_file.id,
-                row_num=row.row_num,
-                string_id=row.string_id,
-                source=row.source,
-                target=row.target,
-                memo=row.memo,
-                status=row.status,
-                extra_data=row.extra_data
-            )
-            db.add(new_row)
-
-    # Copy subfolders
-    result = await db.execute(
-        select(LDMFolder).where(LDMFolder.parent_id == folder_id)
-    )
-    subfolders = result.scalars().all()
-
-    for subfolder in subfolders:
-        await _copy_folder_recursive(db, subfolder.id, dest_project_id, new_folder.id, current_user)
 
 
 @router.delete("/folders/{folder_id}", response_model=DeleteResponse)
@@ -553,49 +256,56 @@ async def delete_folder(
     folder_id: int,
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: FolderRepository = Depends(get_folder_repository)
 ):
     """
     Delete a folder and all its contents.
     EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
-    """
-    result = await db.execute(
-        select(LDMFolder).options(selectinload(LDMFolder.project)).where(
-            LDMFolder.id == folder_id
-        )
-    )
-    folder = result.scalar_one_or_none()
 
+    Repository Pattern: Uses FolderRepository for database abstraction.
+    Note: Trash serialization remains here as it needs SQLAlchemy objects for complex nesting.
+    """
+    # Get folder for trash serialization
+    folder = await repo.get(folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    if not await can_access_project(db, folder.project_id, current_user):
+    if not await can_access_project(db, folder["project_id"], current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    folder_name = folder.name
+    folder_name = folder["name"]
 
     if not permanent:
         # EXPLORER-008: Soft delete - move to trash
+        # Note: Trash requires SQLAlchemy objects for serialization, so we get it again
         from .trash import move_to_trash, serialize_folder_for_trash
-
-        # Serialize folder data for restore
-        folder_data = await serialize_folder_for_trash(db, folder)
-
-        # Move to trash
-        await move_to_trash(
-            db,
-            item_type="folder",
-            item_id=folder.id,
-            item_name=folder.name,
-            item_data=folder_data,
-            parent_project_id=folder.project_id,
-            parent_folder_id=folder.parent_id,
-            deleted_by=current_user["user_id"]
+        result = await db.execute(
+            select(LDMFolder).options(selectinload(LDMFolder.project)).where(
+                LDMFolder.id == folder_id
+            )
         )
+        folder_obj = result.scalar_one_or_none()
 
-    await db.delete(folder)
-    await db.commit()
+        if folder_obj:
+            # Serialize folder data for restore
+            folder_data = await serialize_folder_for_trash(db, folder_obj)
+
+            # Move to trash
+            await move_to_trash(
+                db,
+                item_type="folder",
+                item_id=folder_obj.id,
+                item_name=folder_obj.name,
+                item_data=folder_data,
+                parent_project_id=folder_obj.project_id,
+                parent_folder_id=folder_obj.parent_id,
+                deleted_by=current_user["user_id"]
+            )
+
+    # Use repository to delete
+    await repo.delete(folder_id)
 
     action = "permanently deleted" if permanent else "moved to trash"
-    logger.info(f"Folder {action}: id={folder_id}, name='{folder_name}'")
+    logger.info(f"[FOLDERS] Folder {action}: id={folder_id}, name='{folder_name}'")
     return {"message": f"Folder {action}"}

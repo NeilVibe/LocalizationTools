@@ -15,7 +15,7 @@ from loguru import logger
 from server.repositories.interfaces.tm_repository import TMRepository, AssignmentTarget
 from server.database.models import (
     LDMTranslationMemory, LDMTMAssignment, LDMTMEntry,
-    LDMPlatform, LDMProject, LDMFolder, LDMFile
+    LDMPlatform, LDMProject, LDMFile
 )
 
 

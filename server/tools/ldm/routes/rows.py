@@ -2,28 +2,32 @@
 Row endpoints - List rows, update row, project tree.
 
 Migrated from api.py lines 660-933
+P10: DB Abstraction Layer - Uses repositories for FULL PARITY.
 """
 
 import asyncio
-from datetime import datetime
 from collections import defaultdict
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, func, text
+from sqlalchemy import select
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
-from server.database.db_utils import is_postgresql
 from server.database.models import (
-    LDMProject, LDMFile, LDMFolder, LDMRow, LDMEditHistory,
+    LDMFile, LDMRow,
     LDMActiveTM, LDMTranslationMemory
 )
 from server.tools.ldm.schemas import PaginatedRows, RowResponse, RowUpdate
 from server.tools.ldm.websocket import broadcast_cell_update
 from server.tools.ldm.permissions import can_access_file, can_access_project
-from server.database.offline import get_offline_db
+from server.repositories import (
+    RowRepository, get_row_repository,
+    ProjectRepository, get_project_repository,
+    FolderRepository, get_folder_repository,
+    FileRepository, get_file_repository
+)
 
 router = APIRouter(tags=["LDM"])
 
@@ -32,142 +36,6 @@ router = APIRouter(tags=["LDM"])
 # Helper Functions
 # =============================================================================
 
-# P5: Fuzzy search threshold (0.0-1.0, lower = more fuzzy)
-FUZZY_SEARCH_THRESHOLD = 0.3
-
-
-async def _fuzzy_search_rows(
-    db: AsyncSession,
-    file_id: int,
-    search: str,
-    fields: list,
-    page: int,
-    limit: int
-) -> tuple:
-    """
-    Perform fuzzy search using PostgreSQL pg_trgm similarity.
-
-    Uses trigram matching for fuzzy text search with similarity ranking.
-    Falls back to ILIKE for SQLite.
-
-    Args:
-        db: Async database session
-        file_id: File ID to search within
-        search: Search term
-        fields: List of field names to search (source, target, string_id)
-        page: Page number (1-indexed)
-        limit: Results per page
-
-    Returns:
-        Tuple of (rows, total_count)
-    """
-    offset = (page - 1) * limit
-
-    if not is_postgresql():
-        # SQLite fallback: Use ILIKE (contain mode)
-        logger.debug(f"Fuzzy search fallback to ILIKE for SQLite")
-        from sqlalchemy import or_
-
-        query = select(LDMRow).where(LDMRow.file_id == file_id)
-        field_conditions = []
-        search_pattern = f"%{search}%"
-
-        for field in fields:
-            column = getattr(LDMRow, field, None)
-            if column:
-                field_conditions.append(column.ilike(search_pattern))
-
-        if field_conditions:
-            query = query.where(or_(*field_conditions))
-
-        # Count
-        count_query = select(func.count(LDMRow.id)).where(LDMRow.file_id == file_id)
-        if field_conditions:
-            count_query = count_query.where(or_(*field_conditions))
-        count_result = await db.execute(count_query)
-        total = count_result.scalar()
-
-        # Paginated results
-        query = query.order_by(LDMRow.row_num).offset(offset).limit(limit)
-        result = await db.execute(query)
-        rows = result.scalars().all()
-
-        return rows, total
-
-    # PostgreSQL: Use pg_trgm similarity
-    logger.debug(f"Fuzzy search using pg_trgm similarity, threshold={FUZZY_SEARCH_THRESHOLD}")
-
-    # Build similarity conditions for each field
-    sim_expressions = []
-    for field in fields:
-        if field == "source":
-            sim_expressions.append(f"similarity(lower(source), lower(:search))")
-        elif field == "target":
-            sim_expressions.append(f"similarity(lower(target), lower(:search))")
-        elif field == "string_id":
-            sim_expressions.append(f"similarity(lower(string_id), lower(:search))")
-
-    if not sim_expressions:
-        sim_expressions = ["similarity(lower(source), lower(:search))"]
-
-    # Use GREATEST to get max similarity across fields
-    max_sim = f"GREATEST({', '.join(sim_expressions)})"
-
-    # Count query
-    count_sql = text(f"""
-        SELECT COUNT(*) FROM ldm_rows
-        WHERE file_id = :file_id
-        AND {max_sim} >= :threshold
-    """)
-
-    count_result = await db.execute(count_sql, {
-        "file_id": file_id,
-        "search": search,
-        "threshold": FUZZY_SEARCH_THRESHOLD
-    })
-    total = count_result.scalar()
-
-    # Main query - order by similarity DESC
-    search_sql = text(f"""
-        SELECT id, file_id, row_num, string_id, source, target, status,
-               qa_flag_count, updated_at, updated_by,
-               {max_sim} as sim_score
-        FROM ldm_rows
-        WHERE file_id = :file_id
-        AND {max_sim} >= :threshold
-        ORDER BY sim_score DESC, row_num ASC
-        OFFSET :offset LIMIT :limit
-    """)
-
-    result = await db.execute(search_sql, {
-        "file_id": file_id,
-        "search": search,
-        "threshold": FUZZY_SEARCH_THRESHOLD,
-        "offset": offset,
-        "limit": limit
-    })
-
-    # Convert raw results to LDMRow-like objects
-    raw_rows = result.fetchall()
-    rows = []
-    for r in raw_rows:
-        # Create a simple object with the row data
-        row = LDMRow(
-            id=r.id,
-            file_id=r.file_id,
-            row_num=r.row_num,
-            string_id=r.string_id,
-            source=r.source,
-            target=r.target,
-            status=r.status,
-            qa_flag_count=r.qa_flag_count,
-            updated_at=r.updated_at,
-            updated_by=r.updated_by
-        )
-        rows.append(row)
-
-    logger.info(f"Fuzzy search found {len(rows)} rows (total={total}) for '{search}'")
-    return rows, total
 
 
 async def _get_project_linked_tm(db: AsyncSession, project_id: int, user_id: int) -> Optional[int]:
@@ -188,202 +56,7 @@ async def _get_project_linked_tm(db: AsyncSession, project_id: int, user_id: int
     return result.scalar_one_or_none()
 
 
-def _auto_sync_tm_indexes(tm_id: int, user_id: int):
-    """
-    Background task to auto-sync TM indexes after entry modifications.
-    Model2Vec is fast (~29k sentences/sec), so this runs quickly.
-    """
-    from server.tools.ldm.tm_indexer import TMSyncManager
-    from server.utils.progress_tracker import TrackedOperation
 
-    sync_db = next(get_db())
-    try:
-        tm = sync_db.query(LDMTranslationMemory).filter(
-            LDMTranslationMemory.id == tm_id,
-            LDMTranslationMemory.owner_id == user_id
-        ).first()
-
-        if not tm:
-            logger.warning(f"Auto-sync skipped: TM {tm_id} not found or not owned by user {user_id}")
-            return
-
-        with TrackedOperation(
-            f"Auto-sync TM: {tm.name}",
-            user_id,
-            tool_name="LDM",
-            function_name="auto_sync_tm",
-            silent=True,
-            parameters={"tm_id": tm_id, "tm_name": tm.name}
-        ) as op:
-            sync_manager = TMSyncManager(sync_db, tm_id)
-            result = sync_manager.sync()
-
-            tm.status = "ready"
-            tm.updated_at = datetime.utcnow()
-            sync_db.commit()
-
-            op.update(100, f"Synced: +{result['stats']['insert']} entries")
-
-        logger.info(
-            f"Auto-sync TM {tm_id}: INSERT={result['stats']['insert']}, "
-            f"UPDATE={result['stats']['update']}, time={result['time_seconds']:.2f}s"
-        )
-    except Exception as e:
-        logger.error(f"Auto-sync failed for TM {tm_id}: {e}")
-    finally:
-        sync_db.close()
-
-
-# =============================================================================
-# P9: Offline Storage Helper
-# =============================================================================
-
-async def _get_offline_file_rows(
-    file_id: int,
-    page: int,
-    limit: int,
-    search: str = None,
-    search_mode: str = "contain",
-    search_fields: str = "source,target"
-):
-    """
-    P9: Get rows from SQLite offline storage.
-
-    This is the fallback when file is not found in PostgreSQL.
-    Supports basic search/pagination.
-    """
-    try:
-        offline_db = get_offline_db()
-
-        # Check if file exists in SQLite
-        file_info = offline_db.get_file(file_id)
-        if not file_info:
-            raise HTTPException(status_code=404, detail="File not found")
-
-        # Get all rows from SQLite
-        all_rows = offline_db.get_rows(file_id)
-
-        # Apply search filter if provided
-        if search and search.strip():
-            search_lower = search.lower()
-            fields = [f.strip() for f in (search_fields or "source,target").split(",")]
-            valid_fields = {"string_id", "source", "target"}
-            fields = [f for f in fields if f in valid_fields]
-            if not fields:
-                fields = ["source", "target"]
-
-            filtered_rows = []
-            for row in all_rows:
-                match = False
-                for field in fields:
-                    value = row.get(field, "") or ""
-                    if search_mode == "exact":
-                        if value.lower() == search_lower:
-                            match = True
-                            break
-                    elif search_mode == "not_contain":
-                        if search_lower not in value.lower():
-                            match = True
-                        else:
-                            match = False
-                            break
-                    else:  # contain (default)
-                        if search_lower in value.lower():
-                            match = True
-                            break
-
-                if search_mode == "not_contain":
-                    if match:
-                        filtered_rows.append(row)
-                elif match:
-                    filtered_rows.append(row)
-
-            all_rows = filtered_rows
-
-        # Paginate
-        total = len(all_rows)
-        start = (page - 1) * limit
-        end = start + limit
-        page_rows = all_rows[start:end]
-
-        # Transform SQLite rows to match RowResponse schema
-        from datetime import datetime as dt
-        now = dt.utcnow()
-        transformed_rows = []
-        for row in page_rows:
-            transformed_rows.append({
-                "id": row.get("id"),
-                "file_id": row.get("file_id") or file_id,
-                "row_num": row.get("row_num", 0),
-                "string_id": row.get("string_id"),
-                "source": row.get("source"),
-                "target": row.get("target"),
-                "status": row.get("status") or "pending",
-                "updated_at": row.get("updated_at") or now,
-                "qa_checked_at": row.get("qa_checked_at"),
-                "qa_flag_count": row.get("qa_flag_count") or 0
-            })
-
-        return PaginatedRows(
-            rows=transformed_rows,
-            total=total,
-            page=page,
-            limit=limit,
-            total_pages=(total + limit - 1) // limit if limit > 0 else 1
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get offline file rows: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get rows: {str(e)}")
-
-
-async def _update_offline_row(row_id: int, update):
-    """
-    P9: Update a row in SQLite offline storage.
-
-    This is the fallback when row is not found in PostgreSQL.
-    Uses offline.py's update_row_in_local_file() method.
-    """
-    try:
-        offline_db = get_offline_db()
-
-        # Use the offline.py method which validates the row belongs to a local file
-        success = offline_db.update_row_in_local_file(
-            row_id=row_id,
-            target=update.target,
-            status=update.status
-        )
-
-        if not success:
-            raise HTTPException(status_code=404, detail="Row not found")
-
-        # Get the updated row to return proper RowResponse
-        row_data = offline_db.get_row(row_id)
-        if not row_data:
-            raise HTTPException(status_code=404, detail="Row not found after update")
-
-        # Return RowResponse-compatible dict (no broadcast, no TM auto-add for offline)
-        from datetime import datetime
-        return {
-            "id": row_data["id"],
-            "file_id": row_data["file_id"],
-            "row_num": row_data.get("row_num", 0),
-            "string_id": row_data.get("string_id"),
-            "source": row_data.get("source"),
-            "target": row_data.get("target"),
-            "status": row_data.get("status", "pending"),
-            "updated_at": datetime.utcnow(),
-            "qa_checked_at": None,
-            "qa_flag_count": 0
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to update offline row: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to update row: {str(e)}")
 
 
 # =============================================================================
@@ -401,7 +74,8 @@ async def list_rows(
     status: Optional[str] = None,
     filter: Optional[str] = Query(None, description="Filter: all, confirmed, unconfirmed, qa_flagged"),
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: RowRepository = Depends(get_row_repository)
 ):
     """Get paginated rows for a file.
 
@@ -419,37 +93,25 @@ async def list_rows(
     - confirmed: status = 'approved' or 'reviewed'
     - unconfirmed: status = 'pending' or 'translated'
     - qa_flagged: qa_flag_count > 0
+
+    Repository Pattern: Uses RowRepository for database abstraction.
     """
-    # First check PostgreSQL
-    result = await db.execute(
-        select(LDMFile).options(selectinload(LDMFile.project)).where(
-            LDMFile.id == file_id
+    # P9: Local files (negative IDs) skip permission checks - user's own files
+    if file_id < 0:
+        # Use SQLite repository directly for local files
+        from server.repositories.sqlite.row_repo import SQLiteRowRepository
+        local_repo = SQLiteRowRepository()
+        rows, total = await local_repo.get_for_file(
+            file_id=file_id,
+            page=page,
+            limit=limit,
+            search=search,
+            search_mode=search_mode or "contain",
+            search_fields=search_fields or "source,target",
+            status=status,
+            filter_type=filter
         )
-    )
-    file = result.scalar_one_or_none()
-
-    if not file:
-        # P9: Fallback to SQLite for local files (Offline Storage)
-        # No access check needed - local files are user's own files
-        return await _get_offline_file_rows(file_id, page, limit, search, search_mode, search_fields)
-
-    # Verify file access for PostgreSQL files (DESIGN-001: Public by default)
-    if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # P5: Fuzzy search - use dedicated pg_trgm similarity search
-    if search and search_mode == "fuzzy":
-        # Parse search fields
-        fields = [f.strip() for f in (search_fields or "source,target").split(",")]
-        valid_fields = {"string_id", "source", "target"}
-        fields = [f for f in fields if f in valid_fields]
-        if not fields:
-            fields = ["source", "target"]
-
-        # Use dedicated fuzzy search function
-        rows, total = await _fuzzy_search_rows(db, file_id, search, fields, page, limit)
-        total_pages = (total + limit - 1) // limit
-
+        total_pages = (total + limit - 1) // limit if limit > 0 else 1
         return PaginatedRows(
             rows=rows,
             total=total,
@@ -458,119 +120,32 @@ async def list_rows(
             total_pages=total_pages
         )
 
-    # Build query
-    query = select(LDMRow).where(LDMRow.file_id == file_id)
+    # Check file exists in PostgreSQL for permission verification
+    result = await db.execute(
+        select(LDMFile).where(LDMFile.id == file_id)
+    )
+    file = result.scalar_one_or_none()
 
-    # PERF: Track if we need to run COUNT query or can use cached row_count
-    needs_count_query = False
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
 
-    if search:
-        needs_count_query = True
-        # Parse search fields
-        fields = [f.strip() for f in (search_fields or "source,target").split(",")]
-        valid_fields = {"string_id", "source", "target"}
-        fields = [f for f in fields if f in valid_fields]
-        if not fields:
-            fields = ["source", "target"]  # Default fallback
+    # Verify file access for PostgreSQL files (DESIGN-001: Public by default)
+    if not await can_access_file(db, file_id, current_user):
+        raise HTTPException(status_code=404, detail="Resource not found")
 
-        # Build field conditions based on search mode
-        field_conditions = []
-        for field in fields:
-            column = getattr(LDMRow, field, None)
-            if column is None:
-                continue
+    # Use Repository Pattern for all row queries
+    rows, total = await repo.get_for_file(
+        file_id=file_id,
+        page=page,
+        limit=limit,
+        search=search,
+        search_mode=search_mode or "contain",
+        search_fields=search_fields or "source,target",
+        status=status,
+        filter_type=filter
+    )
 
-            if search_mode == "exact":
-                # Exact match (case-insensitive)
-                field_conditions.append(func.lower(column) == func.lower(search))
-            elif search_mode == "not_contain":
-                # Does not contain (case-insensitive)
-                search_pattern = f"%{search}%"
-                field_conditions.append(~column.ilike(search_pattern))
-            else:  # "contain" (default)
-                search_pattern = f"%{search}%"
-                field_conditions.append(column.ilike(search_pattern))
-
-        # Combine conditions: OR for contain/exact/fuzzy, AND for not_contain
-        if field_conditions:
-            if search_mode == "not_contain":
-                # For "not contain", ALL fields must not contain the term
-                from sqlalchemy import and_
-                query = query.where(and_(*field_conditions))
-            else:
-                # For other modes, ANY field can match
-                from sqlalchemy import or_
-                query = query.where(or_(*field_conditions))
-
-    if status:
-        needs_count_query = True
-        query = query.where(LDMRow.status == status)
-
-    # P2: Auto-LQA - Additional filters
-    if filter == "confirmed":
-        needs_count_query = True
-        query = query.where(LDMRow.status.in_(["approved", "reviewed"]))
-    elif filter == "unconfirmed":
-        needs_count_query = True
-        query = query.where(LDMRow.status.in_(["pending", "translated"]))
-    elif filter == "qa_flagged":
-        needs_count_query = True
-        query = query.where(LDMRow.qa_flag_count > 0)
-
-    # PERF: Use cached row_count when no filters, avoid slow COUNT(*) on 500K+ rows
-    if needs_count_query:
-        count_query = select(func.count(LDMRow.id)).where(LDMRow.file_id == file_id)
-        if search:
-            # Rebuild same search conditions for count query
-            fields = [f.strip() for f in (search_fields or "source,target").split(",")]
-            valid_fields = {"string_id", "source", "target"}
-            fields = [f for f in fields if f in valid_fields]
-            if not fields:
-                fields = ["source", "target"]
-
-            field_conditions = []
-            for field in fields:
-                column = getattr(LDMRow, field, None)
-                if column is None:
-                    continue
-                if search_mode == "exact":
-                    field_conditions.append(func.lower(column) == func.lower(search))
-                elif search_mode == "not_contain":
-                    search_pattern = f"%{search}%"
-                    field_conditions.append(~column.ilike(search_pattern))
-                else:  # contain (fuzzy handled separately above)
-                    search_pattern = f"%{search}%"
-                    field_conditions.append(column.ilike(search_pattern))
-
-            if field_conditions:
-                if search_mode == "not_contain":
-                    from sqlalchemy import and_
-                    count_query = count_query.where(and_(*field_conditions))
-                else:
-                    from sqlalchemy import or_
-                    count_query = count_query.where(or_(*field_conditions))
-        if status:
-            count_query = count_query.where(LDMRow.status == status)
-        if filter == "confirmed":
-            count_query = count_query.where(LDMRow.status.in_(["approved", "reviewed"]))
-        elif filter == "unconfirmed":
-            count_query = count_query.where(LDMRow.status.in_(["pending", "translated"]))
-        elif filter == "qa_flagged":
-            count_query = count_query.where(LDMRow.qa_flag_count > 0)
-        total_result = await db.execute(count_query)
-        total = total_result.scalar()
-    else:
-        # PERF: Use cached count - O(1) instead of COUNT(*) on 500K rows
-        total = file.row_count
-
-    # Get paginated rows
-    offset = (page - 1) * limit
-    query = query.order_by(LDMRow.row_num).offset(offset).limit(limit)
-
-    result = await db.execute(query)
-    rows = result.scalars().all()
-
-    total_pages = (total + limit - 1) // limit
+    total_pages = (total + limit - 1) // limit if limit > 0 else 1
 
     return PaginatedRows(
         rows=rows,
@@ -587,10 +162,28 @@ async def update_row(
     update: RowUpdate,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: RowRepository = Depends(get_row_repository)
 ):
-    """Update a row's target text or status (source is READ-ONLY)."""
-    # Get row with file and project
+    """Update a row's target text or status (source is READ-ONLY).
+
+    Repository Pattern: Uses RowRepository for database abstraction.
+    """
+    # P9: Local rows (negative IDs) skip permission checks - user's own files
+    if row_id < 0:
+        # Use SQLite repository directly for local rows
+        from server.repositories.sqlite.row_repo import SQLiteRowRepository
+        local_repo = SQLiteRowRepository()
+        updated_row = await local_repo.update(
+            row_id=row_id,
+            target=update.target,
+            status=update.status
+        )
+        if not updated_row:
+            raise HTTPException(status_code=404, detail="Row not found")
+        return updated_row
+
+    # Get row with file info for permission check and TM auto-add
     result = await db.execute(
         select(LDMRow).options(
             selectinload(LDMRow.file).selectinload(LDMFile.project)
@@ -599,8 +192,7 @@ async def update_row(
     row = result.scalar_one_or_none()
 
     if not row:
-        # P9: Fallback to SQLite for local files (Offline Storage)
-        return await _update_offline_row(row_id, update)
+        raise HTTPException(status_code=404, detail="Row not found")
 
     # Verify file access (DESIGN-001: Public by default)
     if not await can_access_file(db, row.file_id, current_user):
@@ -610,51 +202,51 @@ async def update_row(
     old_target = row.target
     old_status = row.status
 
-    # Update row
-    if update.target is not None:
-        row.target = update.target
-        # Auto-set status to translated if target is set and was pending
-        if row.status == "pending" and update.target:
-            row.status = "translated"
+    # Use repository to update the row
+    updated_row = await repo.update(
+        row_id=row_id,
+        target=update.target,
+        status=update.status,
+        updated_by=current_user["user_id"]
+    )
 
-    if update.status is not None:
-        row.status = update.status
+    if not updated_row:
+        raise HTTPException(status_code=404, detail="Row not found")
 
-    row.updated_by = current_user["user_id"]
-    row.updated_at = datetime.utcnow()
-
-    # Create edit history
-    history = LDMEditHistory(
+    # Add edit history via repository
+    await repo.add_edit_history(
         row_id=row_id,
         user_id=current_user["user_id"],
         old_target=old_target,
-        new_target=row.target,
+        new_target=updated_row.get("target"),
         old_status=old_status,
-        new_status=row.status
+        new_status=updated_row.get("status")
     )
-    db.add(history)
 
+    # Commit the history
     await db.commit()
-    await db.refresh(row)
 
     # Broadcast cell update to all viewers (real-time sync)
     try:
         await broadcast_cell_update(
-            file_id=row.file_id,
-            row_id=row.id,
-            row_num=row.row_num,
-            target=row.target,
-            status=row.status,
+            file_id=updated_row.get("file_id"),
+            row_id=updated_row.get("id"),
+            row_num=updated_row.get("row_num"),
+            target=updated_row.get("target"),
+            status=updated_row.get("status"),
             updated_by=current_user["user_id"],
             updated_by_username=current_user["username"]
         )
     except Exception as e:
         # WebSocket broadcast failure shouldn't fail the API call
-        logger.warning(f"WebSocket broadcast failed for row {row_id}: {e}")
+        logger.warning(f"[ROWS] WebSocket broadcast failed for row {row_id}: {e}")
 
     # FEAT-001: Auto-add to linked TM if status is 'reviewed'
     tm_updated = False
-    if row.status == "reviewed" and row.source and row.target:
+    new_status = updated_row.get("status")
+    source = updated_row.get("source")
+    target = updated_row.get("target")
+    if new_status == "reviewed" and source and target:
         try:
             # Get project's linked TM
             project_id = row.file.project_id
@@ -667,7 +259,7 @@ async def update_row(
                     try:
                         from server.tools.ldm.tm_manager import TMManager
                         tm_manager = TMManager(sync_db)
-                        return tm_manager.add_entry(linked_tm_id, row.source, row.target)
+                        return tm_manager.add_entry(linked_tm_id, source, target)
                     finally:
                         sync_db.close()
 
@@ -684,11 +276,11 @@ async def update_row(
                     logger.info(f"FEAT-001: Auto-added to TM {linked_tm_id}: row_id={row_id}")
         except Exception as e:
             # Don't fail the row update, just log warning
-            logger.warning(f"FEAT-001: Auto-add to TM failed: {e}")
+            logger.warning(f"[ROWS] FEAT-001: Auto-add to TM failed: {e}")
 
     user_id = current_user["user_id"]
     logger.info(f"Row updated: id={row_id}, user={user_id}, tm_updated={tm_updated}")
-    return row
+    return updated_row
 
 
 # =============================================================================
@@ -699,41 +291,40 @@ async def update_row(
 async def get_project_tree(
     project_id: int,
     db: AsyncSession = Depends(get_async_db),
+    project_repo: ProjectRepository = Depends(get_project_repository),
+    folder_repo: FolderRepository = Depends(get_folder_repository),
+    file_repo: FileRepository = Depends(get_file_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Get full project tree structure (folders + files) for File Explorer."""
+    """
+    Get full project tree structure (folders + files) for File Explorer.
+    P10: Uses repository pattern - works with both PostgreSQL and SQLite.
+    """
+    logger.debug(f"[ROWS] get_project_tree: project_id={project_id}")
+
     # Verify project access (DESIGN-001: Public by default)
     if not await can_access_project(db, project_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    project = result.scalar_one_or_none()
-
+    # Get project using repository
+    project = await project_repo.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Get all folders
-    result = await db.execute(
-        select(LDMFolder).where(LDMFolder.project_id == project_id)
-    )
-    folders = result.scalars().all()
+    # Get all folders using repository
+    folders = await folder_repo.get_all(project_id)
 
-    # Get all files
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.project_id == project_id)
-    )
-    files = result.scalars().all()
+    # Get all files using repository (high limit to get all files)
+    files = await file_repo.get_all(project_id=project_id, limit=10000)
 
     # Build lookup dicts for O(n) tree building instead of O(n*m)
     folders_by_parent = defaultdict(list)
     files_by_folder = defaultdict(list)
 
     for folder in folders:
-        folders_by_parent[folder.parent_id].append(folder)
+        folders_by_parent[folder.get("parent_id")].append(folder)
     for file in files:
-        files_by_folder[file.folder_id].append(file)
+        files_by_folder[file.get("folder_id")].append(file)
 
     def build_tree(parent_id=None):
         tree = []
@@ -742,28 +333,30 @@ async def get_project_tree(
         for folder in folders_by_parent.get(parent_id, []):
             tree.append({
                 "type": "folder",
-                "id": folder.id,
-                "name": folder.name,
-                "children": build_tree(folder.id)
+                "id": folder.get("id"),
+                "name": folder.get("name"),
+                "children": build_tree(folder.get("id"))
             })
 
         # Add files at this level (O(1) lookup)
         for file in files_by_folder.get(parent_id, []):
             tree.append({
                 "type": "file",
-                "id": file.id,
-                "name": file.name,
-                "format": file.format,
-                "row_count": file.row_count
+                "id": file.get("id"),
+                "name": file.get("name"),
+                "format": file.get("format"),
+                "row_count": file.get("row_count")
             })
 
         return tree
 
+    logger.debug(f"[ROWS] get_project_tree complete: project_id={project_id}, folders={len(folders)}, files={len(files)}")
+
     return {
         "project": {
-            "id": project.id,
-            "name": project.name,
-            "description": project.description
+            "id": project.get("id"),
+            "name": project.get("name"),
+            "description": project.get("description")
         },
         "tree": build_tree(None)
     }

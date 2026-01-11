@@ -9,7 +9,7 @@ router = APIRouter(tags=["LDM"])
 @router.get("/health")
 async def health():
     """Health check endpoint for LDM module."""
-    logger.info("LDM health check requested")
+    logger.info("[HEALTH] LDM health check requested")
     return {
         "status": "ok",
         "module": "LDM (LanguageData Manager)",

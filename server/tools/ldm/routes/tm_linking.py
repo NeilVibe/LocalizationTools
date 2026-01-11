@@ -12,9 +12,12 @@ from sqlalchemy import select
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import LDMProject, LDMTranslationMemory, LDMActiveTM
+from server.database.models import LDMTranslationMemory, LDMActiveTM
 from server.tools.ldm.schemas import LinkTMRequest
 from server.tools.ldm.permissions import can_access_project, can_access_tm
+from server.repositories.interfaces.project_repository import ProjectRepository
+from server.repositories.interfaces.tm_repository import TMRepository
+from server.repositories.factory import get_project_repository, get_tm_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -49,38 +52,36 @@ async def get_project_linked_tm(db: AsyncSession, project_id: int, user_id: int)
 async def link_tm_to_project(
     project_id: int,
     request: LinkTMRequest,
+    project_repo: ProjectRepository = Depends(get_project_repository),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     FEAT-001: Link a TM to a project for auto-add on confirm.
     All confirmed cells (Ctrl+S) in this project will auto-add to this TM.
+
+    P10-REPO: Uses Repository Pattern for project and TM access.
     """
     user_id = current_user["user_id"]
+
+    # P10-REPO: Get project using Repository Pattern
+    project = await project_repo.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     # Verify project access (DESIGN-001: Public by default)
     if not await can_access_project(db, project_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Get project for response
-    project_result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    project = project_result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    # P10-REPO: Get TM using Repository Pattern
+    tm = await tm_repo.get(request.tm_id)
+    if not tm:
+        raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Verify TM access (DESIGN-001: Public by default)
     if not await can_access_tm(db, request.tm_id, current_user):
         raise HTTPException(status_code=404, detail="TM not found")
-
-    # Get TM for response
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == request.tm_id)
-    )
-    tm = tm_result.scalar_one_or_none()
-    if not tm:
-        raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Check if link already exists
     existing_result = await db.execute(
@@ -104,19 +105,29 @@ async def link_tm_to_project(
     db.add(link)
     await db.commit()
 
-    logger.info(f"FEAT-001: Linked TM to project: project={project_id}, tm={request.tm_id}, priority={request.priority}")
-    return {"status": "linked", "project_id": project_id, "tm_id": request.tm_id, "tm_name": tm.name, "priority": request.priority}
+    logger.info(f"[TM-LINK] FEAT-001: Linked TM to project: project={project_id}, tm={request.tm_id}, priority={request.priority}")
+    return {"status": "linked", "project_id": project_id, "tm_id": request.tm_id, "tm_name": tm["name"], "priority": request.priority}
 
 
 @router.delete("/projects/{project_id}/link-tm/{tm_id}")
 async def unlink_tm_from_project(
     project_id: int,
     tm_id: int,
+    project_repo: ProjectRepository = Depends(get_project_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """FEAT-001: Remove TM link from project."""
+    """
+    FEAT-001: Remove TM link from project.
+
+    P10-REPO: Uses Repository Pattern for project access.
+    """
     user_id = current_user["user_id"]
+
+    # P10-REPO: Verify project exists using Repository Pattern
+    project = await project_repo.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     # Verify project access (DESIGN-001: Public by default)
     if not await can_access_project(db, project_id, current_user):
@@ -136,18 +147,28 @@ async def unlink_tm_from_project(
     await db.delete(link)
     await db.commit()
 
-    logger.info(f"FEAT-001: Unlinked TM from project: project={project_id}, tm={tm_id}")
+    logger.info(f"[TM-LINK] FEAT-001: Unlinked TM from project: project={project_id}, tm={tm_id}")
     return {"status": "unlinked", "message": "TM unlinked from project", "project_id": project_id, "tm_id": tm_id}
 
 
 @router.get("/projects/{project_id}/linked-tms")
 async def get_linked_tms(
     project_id: int,
+    project_repo: ProjectRepository = Depends(get_project_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """FEAT-001: Get all TMs linked to a project, ordered by priority."""
+    """
+    FEAT-001: Get all TMs linked to a project, ordered by priority.
+
+    P10-REPO: Uses Repository Pattern for project access.
+    """
     user_id = current_user["user_id"]
+
+    # P10-REPO: Verify project exists using Repository Pattern
+    project = await project_repo.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     # Verify project access (DESIGN-001: Public by default)
     if not await can_access_project(db, project_id, current_user):

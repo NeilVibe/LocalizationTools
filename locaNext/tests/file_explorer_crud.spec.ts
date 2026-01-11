@@ -47,9 +47,10 @@ test.describe('File Explorer CRUD Operations', () => {
       await newPlatformOption.click();
       await page.waitForTimeout(500);
 
-      // Fill platform name
-      await page.locator('input[placeholder*="platform"], input[placeholder*="name"]').fill('TestPlatform_' + Date.now());
-      await page.locator('button:has-text("Create"), button:has-text("Submit")').click();
+      // Fill platform name (specific placeholder)
+      await page.locator('input[placeholder^="Enter platform name"]').fill('TestPlatform_' + Date.now());
+      // Click Create in the visible modal
+      await page.locator('.bx--modal.is-visible button:has-text("Create")').click();
       await page.waitForTimeout(1000);
     }
 

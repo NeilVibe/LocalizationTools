@@ -10,13 +10,24 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Platform table | ✅ Done | `ldm_platforms` in PostgreSQL |
-| TM assignment table | ✅ Done | `ldm_tm_assignments` |
+| Platform table | ✅ Done | `ldm_platforms` + `offline_platforms` |
+| TM assignment table | ✅ Done | `ldm_tm_assignments` + `offline_tm_assignments` |
 | TM Explorer Tree | ✅ Done | TMExplorerTree.svelte |
 | Cut/Copy/Paste | ✅ Done | Keyboard + context menu |
 | Offline Storage support | ✅ Done | PostgreSQL platform for TM FK |
-| **SQLite TM assignment** | 🔲 Pending | Needed for full offline support |
-| **DB abstraction layer** | 🔲 Pending | Same API for PostgreSQL + SQLite |
+| SQLite TM assignment | ✅ Done | Table exists, TMRepository works |
+| DB abstraction layer | ✅ Done | TMRepository (PostgreSQL + SQLite) |
+| **TM tree folder mirroring** | 🔲 Pending | `get_tree()` doesn't query folders yet |
+
+### Known Gap: TM Tree Folder Mirroring
+
+Both `PostgreSQLTMRepository.get_tree()` and `SQLiteTMRepository.get_tree()` have:
+```python
+"folders": []  # TODO: Add folder support
+```
+
+**TM assignment to folders WORKS** - data stored correctly in both DBs.
+**TM Explorer UI doesn't SHOW folders** - need to add folder queries to `get_tree()`.
 
 ---
 
