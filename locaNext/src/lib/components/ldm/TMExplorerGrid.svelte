@@ -616,15 +616,29 @@
    */
   function handleCopy() {
     const tmsToClipboard = getSelectedTMs();
-    if (tmsToClipboard.length === 0) return;
+    logger.info('handleCopy called', {
+      selectedCount: selectedIds.size,
+      tmsFound: tmsToClipboard.length,
+      currentItems: currentItems.length
+    });
 
-    copyToClipboard(tmsToClipboard.map(tm => ({
+    if (tmsToClipboard.length === 0) {
+      logger.warning('handleCopy: no TMs selected');
+      return;
+    }
+
+    const items = tmsToClipboard.map(tm => ({
       type: 'tm',
       id: tm.id,
       name: tm.name,
       tm_data: tm.tm_data
-    })));
-    logger.info('TMs copied to clipboard', { count: tmsToClipboard.length });
+    }));
+
+    copyToClipboard(items);
+    logger.success('TMs copied to clipboard', {
+      count: items.length,
+      tms: items.map(t => ({ id: t.id, name: t.name }))
+    });
   }
 
   /**
@@ -632,15 +646,29 @@
    */
   function handleCut() {
     const tmsToClipboard = getSelectedTMs();
-    if (tmsToClipboard.length === 0) return;
+    logger.info('handleCut called', {
+      selectedCount: selectedIds.size,
+      tmsFound: tmsToClipboard.length,
+      currentItems: currentItems.length
+    });
 
-    cutToClipboard(tmsToClipboard.map(tm => ({
+    if (tmsToClipboard.length === 0) {
+      logger.warning('handleCut: no TMs selected');
+      return;
+    }
+
+    const items = tmsToClipboard.map(tm => ({
       type: 'tm',
       id: tm.id,
       name: tm.name,
       tm_data: tm.tm_data
-    })));
-    logger.info('TMs cut to clipboard', { count: tmsToClipboard.length });
+    }));
+
+    cutToClipboard(items);
+    logger.success('TMs cut to clipboard', {
+      count: items.length,
+      tms: items.map(t => ({ id: t.id, name: t.name }))
+    });
   }
 
   /**
@@ -654,7 +682,16 @@
    * Paste clipboard items to current location
    */
   async function handlePaste() {
-    if (clipboardItems.length === 0) return;
+    logger.info('handlePaste called', {
+      clipboardLength: clipboardItems.length,
+      clipboardOperation,
+      breadcrumb: breadcrumb.map(b => ({ type: b.type, id: b.id, name: b.name }))
+    });
+
+    if (clipboardItems.length === 0) {
+      logger.warning('handlePaste: clipboard is empty');
+      return;
+    }
 
     // Only TMs can be pasted
     const tmsToPaste = clipboardItems.filter(item => item.type === 'tm');
@@ -663,8 +700,19 @@
       return;
     }
 
+    logger.info('TMs to paste', {
+      count: tmsToPaste.length,
+      tms: tmsToPaste.map(t => ({ id: t.id, name: t.name }))
+    });
+
     // Determine target based on current breadcrumb position
     const currentLocation = breadcrumb[breadcrumb.length - 1];
+    logger.info('Current paste target location', {
+      type: currentLocation.type,
+      id: currentLocation.id,
+      name: currentLocation.name
+    });
+
     let assignmentData = {};
 
     if (currentLocation.type === 'home') {
@@ -675,34 +723,101 @@
     } else if (currentLocation.type === 'project') {
       assignmentData = { project_id: currentLocation.id, folder_id: null };
     } else if (currentLocation.type === 'folder') {
-      assignmentData = { folder_id: currentLocation.id };
+      // Check if this is a local folder (SQLite) - IDs start with "local-"
+      const folderId = currentLocation.id;
+      if (typeof folderId === 'string' && folderId.startsWith('local-')) {
+        // Local folders (Offline Storage) can't have TMs assigned directly
+        // They're stored in SQLite, not PostgreSQL
+        logger.warning('Cannot paste TMs to local Offline Storage folders', {
+          folderId,
+          folderName: currentLocation.name
+        });
+        // For local folders, assign to the Offline Storage project instead
+        // This keeps TMs accessible in Offline Storage context
+        const offlineStoragePlatform = treeData.platforms?.find(p => p.name === 'Offline Storage');
+        const offlineStorageProject = offlineStoragePlatform?.projects?.find(p => p.name === 'Offline Storage');
+        if (offlineStorageProject) {
+          logger.info('Redirecting local folder paste to Offline Storage project', {
+            projectId: offlineStorageProject.id,
+            originalFolderId: folderId
+          });
+          assignmentData = { project_id: offlineStorageProject.id, folder_id: null };
+        } else {
+          logger.error('Offline Storage project not found - pasting to unassigned', {
+            platformFound: !!offlineStoragePlatform
+          });
+          // Fall back to unassigned if project not found
+          assignmentData = { platform_id: null, project_id: null, folder_id: null };
+        }
+      } else {
+        // Regular PostgreSQL folder
+        assignmentData = { folder_id: folderId };
+      }
+    } else if (currentLocation.type === 'unassigned') {
+      // Pasting in unassigned section = move to unassigned
+      assignmentData = { platform_id: null, project_id: null, folder_id: null };
+    } else {
+      logger.warning('handlePaste: Unknown location type', { type: currentLocation.type });
+      assignmentData = { platform_id: null, project_id: null, folder_id: null };
     }
+
+    logger.info('Assignment data for paste', { assignmentData });
 
     // Move each TM
     let successCount = 0;
+    let failCount = 0;
     for (const tm of tmsToPaste) {
       try {
-        logger.apiCall(`/api/ldm/tm/${tm.id}/assign`, 'PATCH');
-        const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.id}/assign`, {
+        // Build URL with query parameters (backend expects query params, not body)
+        const params = new URLSearchParams();
+        if (assignmentData.platform_id !== undefined && assignmentData.platform_id !== null) {
+          params.append('platform_id', assignmentData.platform_id.toString());
+        }
+        if (assignmentData.project_id !== undefined && assignmentData.project_id !== null) {
+          params.append('project_id', assignmentData.project_id.toString());
+        }
+        if (assignmentData.folder_id !== undefined && assignmentData.folder_id !== null) {
+          params.append('folder_id', assignmentData.folder_id.toString());
+        }
+        const queryString = params.toString();
+        const url = `${API_BASE}/api/ldm/tm/${tm.id}/assign${queryString ? '?' + queryString : ''}`;
+        logger.apiCall(url, 'PATCH', { params: assignmentData });
+        const response = await fetch(url, {
           method: 'PATCH',
-          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(assignmentData)
+          headers: { ...getAuthHeaders() }
         });
 
         if (response.ok) {
+          const result = await response.json();
+          logger.success('TM paste API success', { tmId: tm.id, result });
           successCount++;
         } else {
-          logger.error('Failed to paste TM', { tmId: tm.id, status: response.status });
+          const errorText = await response.text();
+          logger.error('Failed to paste TM', {
+            tmId: tm.id,
+            status: response.status,
+            error: errorText
+          });
+          failCount++;
         }
       } catch (err) {
         logger.error('Error pasting TM', { error: err.message, tmId: tm.id });
+        failCount++;
       }
     }
 
+    logger.info('Paste operation complete', {
+      successCount,
+      failCount,
+      target: currentLocation.name
+    });
+
     if (successCount > 0) {
-      logger.success('TMs pasted', { count: successCount, target: currentLocation.name });
+      logger.success('TMs pasted successfully', { count: successCount, target: currentLocation.name });
       clearClipboard();
       await loadTree();
+    } else {
+      logger.warning('Paste operation failed - no TMs were moved');
     }
   }
 

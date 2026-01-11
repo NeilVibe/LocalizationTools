@@ -259,8 +259,8 @@ After getting everything running:
 
 1. **Read Core Documentation:**
    - `CLAUDE.md` - Master navigation hub
-   - `DEPLOYMENT_ARCHITECTURE.md` - Understand architecture
-   - `docs/wip/SESSION_CONTEXT.md` - Current session state
+   - `docs/architecture/ARCHITECTURE_SUMMARY.md` - Understand architecture
+   - `docs/current/SESSION_CONTEXT.md` - Current session state
 
 2. **Explore the Codebase:**
    - `server/main.py` - Server entry point

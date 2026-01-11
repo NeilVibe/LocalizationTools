@@ -163,8 +163,8 @@ Use INSTALL only for:
 - Clean slate testing
 - Major version upgrades
 
-**See [DOC-001: Install vs Update Confusion](../wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md) for details.**
+**See CLAUDE.md "INSTALL vs UPDATE" section for details.**
 
 ---
 
-*Last updated: 2025-12-28*
+*Last updated: 2026-01-11*

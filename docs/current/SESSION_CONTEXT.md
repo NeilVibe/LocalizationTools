@@ -1,6 +1,91 @@
 # Session Context
 
-> Last Updated: 2026-01-11 (Session 39 - Bug Fixes Continued)
+> Last Updated: 2026-01-11 (Session 40 - Docs Reorganization + DB Abstraction Design)
+
+---
+
+## SESSION 40 IN PROGRESS
+
+### Docs Reorganization Complete ✅
+
+Reorganized 179 docs into clean structure:
+
+```
+docs/
+├── INDEX.md              ← Navigation hub (NEW)
+├── architecture/         ← System design (6 docs)
+├── protocols/            ← Claude protocols (GDP)
+├── current/              ← Active work (2 docs)
+├── reference/            ← enterprise, cicd, security
+├── guides/               ← tools, getting-started
+└── archive/              ← 134 old docs
+```
+
+### Granular Debug Protocol (GDP) ✅
+
+New debugging methodology documented after TM paste bug investigation.
+
+**Key insight:** Bugs hide in gaps between what you THINK code does vs what it ACTUALLY does.
+
+**5 Logging Levels:**
+1. Entry Point - Function called?
+2. Decision Point - Which branch?
+3. Variable State - Actual values?
+4. Pre-Action - What's about to happen?
+5. Post-Action - What happened?
+
+**Location:** `docs/protocols/GRANULAR_DEBUG_PROTOCOL.md`
+
+### TM Paste Bug Root Cause Found ✅
+
+**Problem:** TM paste went to "unassigned" instead of Offline Storage project.
+
+**Root Cause:** Frontend sent JSON body, backend expected query parameters:
+```javascript
+// WRONG
+fetch(url, { body: JSON.stringify({project_id: 66}) })
+
+// RIGHT
+fetch(`${url}?project_id=66`, { method: 'PATCH' })
+```
+
+**Fixed in:** `TMExplorerGrid.svelte`
+
+### DB Abstraction Layer Vision
+
+User requirement: **Full offline TM support** - TM assignment must work in SQLite too.
+
+**Architecture:**
+```
+┌─────────────────────────────────────┐
+│      DB Abstraction Interface       │
+│   tm.assign(), tm.search(), etc.    │
+└──────────────┬──────────────────────┘
+               │
+       ┌───────┴───────┐
+       │               │
+┌──────▼─────┐  ┌──────▼─────┐
+│ PostgreSQL │  │   SQLite   │
+│  Adapter   │  │   Adapter  │
+└────────────┘  └────────────┘
+```
+
+**Docs Updated:**
+- `architecture/ARCHITECTURE_SUMMARY.md` - Added DB abstraction design
+- `architecture/OFFLINE_ONLINE_MODE.md` - Added full offline TM support
+- `architecture/TM_HIERARCHY_PLAN.md` - Added SQLite TM schema
+
+### Docs Review Progress
+
+| Doc | Status |
+|-----|--------|
+| ARCHITECTURE_SUMMARY.md | ✅ Updated with DB abstraction |
+| OFFLINE_ONLINE_MODE.md | ✅ Updated with full offline TM |
+| TM_HIERARCHY_PLAN.md | ✅ Updated with SQLite support |
+| ISSUES_TO_FIX.md | ✅ Cleaned up |
+| SESSION_CONTEXT.md | ✅ Updating now |
+| reference/cicd/* | 🔲 Pending |
+| guides/* | 🔲 Pending |
 
 ---
 
@@ -447,20 +532,22 @@ This is necessary because TM assignments have FK constraints to PostgreSQL table
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| **P9** | **Offline/Online Mode** | ✅ COMPLETE |
-| **P9-BIN** | **Offline Recycle Bin** | ✅ COMPLETE (Session 32) |
-| **P9-UI** | **TM Delete Modal** | ✅ COMPLETE (Session 34) |
+| **P9** | **Offline/Online Mode** | ✅ Core COMPLETE |
+| **P9-TM** | **Full Offline TM (DB Abstraction)** | 🔲 PLANNED |
 | P8 | Dashboard Overhaul | PLANNED |
 
-### P9 Status: COMPLETE ✅
+### P9-TM: Full Offline TM Support (Next Major Feature)
 
-1. ✅ Unified endpoints (done)
-2. ✅ TM assignment to Offline Storage (done - Session 30)
-3. ✅ Folder CRUD in Offline Storage (done - Session 31)
-4. ✅ Move files/folders in Offline Storage (done - Session 32)
-5. ✅ Push changes to server (done - Session 21)
-6. ✅ Offline Recycle Bin (done - Session 32)
-7. ✅ TM delete modal - clean UX (done - Session 34)
+**Goal:** TM assignment works identically online and offline.
+
+**Required:**
+1. 🔲 SQLite TM schema (`offline_tm_assignments`, `offline_tms`)
+2. 🔲 DB abstraction layer (`TMRepository` interface)
+3. 🔲 PostgreSQL adapter
+4. 🔲 SQLite adapter
+5. 🔲 Frontend uses abstraction (no fallback pattern)
+
+**Docs Updated:** ARCHITECTURE_SUMMARY.md, OFFLINE_ONLINE_MODE.md, TM_HIERARCHY_PLAN.md
 
 ---
 
@@ -502,4 +589,4 @@ echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN:
 
 ---
 
-*Session 34 | Build 454 | P9 COMPLETE - TM Delete Modal added*
+*Session 40 | Build 454 | Docs Reorganization + DB Abstraction Vision*

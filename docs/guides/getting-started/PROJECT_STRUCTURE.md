@@ -102,16 +102,18 @@ LocalizationTools/
 └── DOCS (DOCUMENTATION)
     └── docs/
         ├── getting-started/ - Onboarding guides
-        ├── architecture/ - Design patterns
-        ├── deployment/ - Production deployment
-        ├── development/ - Coding guides
-        ├── testing/ - Test procedures
-        ├── tools/ - Tool-specific docs
-        ├── wip/ - Work in progress
+        ├── INDEX.md - Navigation hub
+        ├── architecture/ - System design (6 docs)
+        ├── protocols/ - Claude protocols (GDP)
+        ├── current/ - Active work
         │   ├── SESSION_CONTEXT.md - Session state
         │   └── ISSUES_TO_FIX.md - Bug tracker
-        ├── history/wip-archive/ - Completed projects
-        └── troubleshooting/ - Debug guides
+        ├── reference/ - Stable reference docs
+        │   ├── cicd/ - CI/CD pipeline
+        │   ├── enterprise/ - Deployment
+        │   └── security/ - Security docs
+        ├── guides/ - User guides
+        └── archive/ - Old docs (kept for reference)
 ```
 
 ---
