@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-11 (Session 38) | **Build:** 454 | **Open:** 0
+**Last Updated:** 2026-01-11 (Session 39) | **Build:** 454 | **Open:** 0
 
 ---
 
@@ -9,7 +9,7 @@
 | Status | Count |
 |--------|-------|
 | **OPEN** | 0 |
-| **FIXED/CLOSED** | 125 |
+| **FIXED/CLOSED** | 127 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
@@ -18,6 +18,43 @@
 ## OPEN ISSUES
 
 *None! All issues fixed.*
+
+---
+
+## RECENTLY FIXED (Session 39)
+
+### BUG-041: Sync Dashboard Showing Deleted Files ✅ FIXED
+
+- **Reported:** 2026-01-11 (Session 39)
+- **Fixed:** 2026-01-11 (Session 39)
+- **Component:** sync.py, files.py
+
+**Problem:** When files were deleted, their sync subscriptions remained in the database, causing the Sync Dashboard to display entries for files that no longer exist.
+
+**Solution:**
+1. Added subscription cleanup when files are deleted (both PostgreSQL and SQLite)
+2. Added validation when fetching subscriptions - auto-removes stale entries for deleted files
+
+**Files Modified:**
+- `server/tools/ldm/routes/files.py`
+- `server/tools/ldm/routes/sync.py`
+
+---
+
+### BUG-040: logger.warn is not a function ✅ FIXED
+
+- **Reported:** 2026-01-11 (Session 39)
+- **Fixed:** 2026-01-11 (Session 39)
+- **Component:** Multiple frontend files
+
+**Problem:** Frontend code used `logger.warn()` but the logger API only has `logger.warning()`. This caused runtime errors that broke continuous sync, TM clipboard, and various error handlers.
+
+**Solution:**
+Changed all `logger.warn()` → `logger.warning()` in:
+- `sync.js` (3 occurrences)
+- `TaskManager.svelte` (1 occurrence)
+- `TMDataGrid.svelte` (3 occurrences)
+- `LDM.svelte` (1 occurrence)
 
 ---
 
