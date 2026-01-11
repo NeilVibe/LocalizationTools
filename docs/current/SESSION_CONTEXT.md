@@ -533,19 +533,36 @@ This is necessary because TM assignments have FK constraints to PostgreSQL table
 | Priority | Feature | Status |
 |----------|---------|--------|
 | **P9** | **Offline/Online Mode** | ✅ Core COMPLETE |
-| **P9-TM** | **Full Offline TM (DB Abstraction)** | 🔲 PLANNED |
+| **P9-TM** | **Full Offline TM (DB Abstraction)** | ✅ COMPLETE |
 | P8 | Dashboard Overhaul | PLANNED |
 
-### P9-TM: Full Offline TM Support (Next Major Feature)
+### P9-TM: Full Offline TM Support ✅ COMPLETE
 
 **Goal:** TM assignment works identically online and offline.
 
-**Required:**
-1. 🔲 SQLite TM schema (`offline_tm_assignments`, `offline_tms`)
-2. 🔲 DB abstraction layer (`TMRepository` interface)
-3. 🔲 PostgreSQL adapter
-4. 🔲 SQLite adapter
-5. 🔲 Frontend uses abstraction (no fallback pattern)
+**Completed (Session 41):**
+1. ✅ SQLite TM schema (`offline_tm_assignments`, `offline_tms`) - Already existed
+2. ✅ DB abstraction layer (`TMRepository` interface) - `server/repositories/interfaces/tm_repository.py`
+3. ✅ PostgreSQL adapter - `server/repositories/postgresql/tm_repo.py` (~400 lines)
+4. ✅ SQLite adapter - `server/repositories/sqlite/tm_repo.py` (~280 lines)
+5. ✅ Frontend uses abstraction - Token prefix `OFFLINE_MODE_` triggers SQLite adapter
+
+**Architecture:**
+```
+server/repositories/
+├── __init__.py                    # Exports TMRepository, AssignmentTarget, get_tm_repository
+├── factory.py                     # Auto-selects PostgreSQL/SQLite based on auth token
+├── interfaces/
+│   └── tm_repository.py           # Abstract interface (15+ methods)
+├── postgresql/
+│   └── tm_repo.py                 # PostgreSQLTMRepository
+└── sqlite/
+    └── tm_repo.py                 # SQLiteTMRepository
+```
+
+**Commits:**
+- `789c04b` - P9-ARCH: Implement Repository Pattern for TM database abstraction
+- `4f60acb` - P9-ARCH: Fix SQLite schema for local-only TM entries
 
 **Docs Updated:** ARCHITECTURE_SUMMARY.md, OFFLINE_ONLINE_MODE.md, TM_HIERARCHY_PLAN.md
 
