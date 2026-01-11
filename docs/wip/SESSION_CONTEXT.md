@@ -8,6 +8,22 @@
 
 ## Current Focus
 
+### P11: Platform Stability (ACTIVE)
+
+**Status:** ACTIVE | **Priority:** HIGH
+
+**Goal:** Ensure the platform is rock-solid before adding new features.
+
+| Task | Status | Description |
+|------|--------|-------------|
+| TM Tree Folder Mirroring | TODO | `get_tree()` returns `folders: []` - needs to mirror File Explorer |
+| P10 Permission Gap | TODO | Routes check PostgreSQL for permissions even in offline mode |
+| Windows PATH Tests | TODO | 7 path tests for Windows builds |
+| CI/CD Health | TODO | Verify all tests pass, builds succeed |
+| Playwright Test Fixes | TODO | 67 UI tests failing due to login selector mismatch |
+
+---
+
 ### P10: DB Abstraction Layer ✅ COMPLETE
 
 **Status:** COMPLETE (Session 50)
