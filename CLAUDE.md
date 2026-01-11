@@ -19,6 +19,7 @@
 | **CI/CD debug?** | [docs/cicd/TROUBLESHOOTING.md](docs/cicd/TROUBLESHOOTING.md) |
 | **Enterprise deploy?** | [docs/enterprise/HUB.md](docs/enterprise/HUB.md) |
 | **Mini-projects?** | [RessourcesForCodingTheProject/NewScripts/README.md](RessourcesForCodingTheProject/NewScripts/README.md) |
+| **DB Management?** | `./scripts/db_manager.sh help` |
 
 ---
 
@@ -28,6 +29,7 @@
 |------|---------|
 | **CCAD** | **Check Claude.md And Docs** - When confused, ALWAYS check docs first! |
 | **SW** | Shell Wrapper - `./scripts/gitea_control.sh` for Gitea management |
+| **DBM** | DB Manager - `./scripts/db_manager.sh` for database operations |
 | **RM** | Roadmap.md - global priorities |
 | **WIP** | docs/wip/*.md - active task files |
 | **IL** | Issue List (ISSUES_TO_FIX.md) |
@@ -248,6 +250,13 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 # Playground install (FRESH install only!)
 ./scripts/playground_install.sh --launch --auto-login
+
+# === DB Manager ===
+./scripts/db_manager.sh status -v      # Full DB status (SQLite + PostgreSQL)
+./scripts/db_manager.sh sqlite-reinit  # Fresh SQLite reset
+./scripts/db_manager.sh sqlite-analyze # Analyze SQLite contents
+./scripts/db_manager.sh pg-analyze     # Analyze PostgreSQL contents
+./scripts/db_manager.sh backup         # Backup all databases
 ```
 
 ---
