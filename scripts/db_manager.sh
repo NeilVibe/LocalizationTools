@@ -525,6 +525,70 @@ full_reset() {
     ok "Full reset complete"
 }
 
+nuke() {
+    print_header
+    echo -e "${RED}=== NUKE MODE: Complete Clean Slate ===${NC}"
+    echo ""
+
+    # 1. Clear backups
+    info "Clearing all backups..."
+    rm -rf "$BACKUP_DIR"/* 2>/dev/null
+    ok "Backups cleared"
+
+    # 2. Remove SQLite databases
+    info "Removing SQLite databases..."
+    rm -f "$SQLITE_DB" 2>/dev/null
+    rm -f "$SQLITE_SERVER" 2>/dev/null
+    ok "SQLite databases removed"
+
+    # 3. Reset PostgreSQL LDM
+    info "Resetting PostgreSQL LDM tables..."
+    PGPASSWORD="$PG_PASSWORD" psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d "$PG_DB" -q -c "
+        TRUNCATE TABLE
+            ldm_tm_assignments, ldm_active_tms, ldm_tm_entries, ldm_tm_indexes,
+            ldm_translation_memories, ldm_qa_results, ldm_edit_history, ldm_rows,
+            ldm_files, ldm_folders, ldm_projects, ldm_platforms, ldm_trash, ldm_backups
+        CASCADE;
+    " 2>/dev/null
+    ok "PostgreSQL LDM tables reset"
+
+    # 4. Reinitialize SQLite
+    info "Reinitializing SQLite..."
+    python3 -c "
+from server.database.offline import get_offline_db
+from server.database import offline
+offline._offline_db = None
+db = get_offline_db()
+import sqlite3
+conn = sqlite3.connect(db.db_path)
+tables = len(conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall())
+print(f'  Created {db.db_path}')
+print(f'  Tables: {tables}')
+conn.close()
+" 2>/dev/null
+
+    ok "SQLite reinitialized"
+
+    echo ""
+    echo -e "${GREEN}=== NUKE COMPLETE: Clean Slate Ready ===${NC}"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Refresh your browser"
+    echo "  2. Login: admin / admin123"
+    echo "  3. Start testing!"
+}
+
+clear_backups() {
+    print_section "Clear Backups"
+
+    if [[ -d "$BACKUP_DIR" ]]; then
+        rm -rf "$BACKUP_DIR"/*
+        ok "All backups cleared"
+    else
+        info "No backups to clear"
+    fi
+}
+
 # ============================================
 # List Backups
 # ============================================
@@ -581,9 +645,12 @@ show_help() {
     echo ""
     echo -e "${CYAN}Combined Commands:${NC}"
     echo "  full-reset         Reset both SQLite and PostgreSQL LDM data"
+    echo "  nuke               Complete clean slate (no confirmation!)"
+    echo "  clear-backups      Delete all backup files"
     echo ""
     echo -e "${CYAN}Examples:${NC}"
     echo "  ./scripts/db_manager.sh status -v"
+    echo "  ./scripts/db_manager.sh nuke              # Quick full reset"
     echo "  ./scripts/db_manager.sh sqlite-reinit"
     echo "  ./scripts/db_manager.sh sqlite-query \"SELECT * FROM offline_files\""
     echo "  ./scripts/db_manager.sh pg-analyze"
@@ -607,6 +674,12 @@ case "${1:-}" in
         ;;
     full-reset)
         full_reset
+        ;;
+    nuke)
+        nuke
+        ;;
+    clear-backups)
+        clear_backups
         ;;
 
     # SQLite
