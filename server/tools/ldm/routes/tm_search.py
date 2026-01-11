@@ -51,7 +51,7 @@ async def get_tm_suggestions(
         List of TM suggestions with source, target, similarity, etc.
     """
     # ENHANCED DEBUG LOGGING
-    logger.info(f"[TM-SUGGEST] START | source='{source[:50]}...' | tm_id={tm_id} | file_id={file_id} | threshold={threshold}")
+    logger.info(f"[TM-SEARCH] [TM-SUGGEST] START | source='{source[:50]}...' | tm_id={tm_id} | file_id={file_id} | threshold={threshold}")
 
     try:
         sql_params = {
@@ -59,15 +59,15 @@ async def get_tm_suggestions(
             'threshold': threshold,
             'max_results': max_results
         }
-        logger.debug(f"[TM-SUGGEST] SQL params: {sql_params}")
+        logger.debug(f"[TM-SEARCH] [TM-SUGGEST] SQL params: {sql_params}")
 
         # If tm_id is provided, search the TM entries table
         if tm_id:
-            logger.info(f"[TM-SUGGEST] MODE: TM entries search (tm_id={tm_id})")
+            logger.info(f"[TM-SEARCH] [TM-SUGGEST] MODE: TM entries search (tm_id={tm_id})")
             # DESIGN-001: Use permission helper for TM access check
-            logger.debug(f"[TM-SUGGEST] Verifying TM access for user_id={current_user['user_id']}")
+            logger.debug(f"[TM-SEARCH] [TM-SUGGEST] Verifying TM access for user_id={current_user['user_id']}")
             if not await can_access_tm(db, tm_id, current_user):
-                logger.warning(f"[TM-SUGGEST] TM {tm_id} not accessible by user {current_user['user_id']}")
+                logger.warning(f"[TM-SEARCH] [TM-SUGGEST] TM {tm_id} not accessible by user {current_user['user_id']}")
                 raise HTTPException(status_code=404, detail="Translation Memory not found")
 
             tm_result = await db.execute(
@@ -75,14 +75,14 @@ async def get_tm_suggestions(
             )
             tm = tm_result.scalar_one_or_none()
             if not tm:
-                logger.warning(f"[TM-SUGGEST] TM {tm_id} not found")
+                logger.warning(f"[TM-SEARCH] [TM-SUGGEST] TM {tm_id} not found")
                 raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-            logger.debug(f"[TM-SUGGEST] TM verified: name='{tm.name}', entries={tm.entry_count}, status={tm.status}")
+            logger.debug(f"[TM-SEARCH] [TM-SUGGEST] TM verified: name='{tm.name}', entries={tm.entry_count}, status={tm.status}")
             sql_params['tm_id'] = tm_id
 
             # Search TM entries with pg_trgm similarity
-            logger.debug(f"[TM-SUGGEST] Executing TM entry search with pg_trgm...")
+            logger.debug(f"[TM-SEARCH] [TM-SUGGEST] Executing TM entry search with pg_trgm...")
             sql = text("""
                 SELECT
                     e.id,
@@ -114,22 +114,22 @@ async def get_tm_suggestions(
                 for row in rows
             ]
 
-            logger.info(f"[TM-SUGGEST] SUCCESS | Found {len(suggestions)} matches from TM {tm_id}")
+            logger.info(f"[TM-SEARCH] [TM-SUGGEST] SUCCESS | Found {len(suggestions)} matches from TM {tm_id}")
             for i, s in enumerate(suggestions[:3]):  # Log first 3
-                logger.debug(f"[TM-SUGGEST] Match {i+1}: sim={s['similarity']:.2f} | src='{s['source'][:30]}...'")
+                logger.debug(f"[TM-SEARCH] [TM-SUGGEST] Match {i+1}: sim={s['similarity']:.2f} | src='{s['source'][:30]}...'")
             return {"suggestions": suggestions, "count": len(suggestions)}
 
         # Otherwise, search project rows (original behavior)
-        logger.info(f"[TM-SUGGEST] MODE: Project rows search (no tm_id)")
+        logger.info(f"[TM-SEARCH] [TM-SUGGEST] MODE: Project rows search (no tm_id)")
         conditions = ["r.target IS NOT NULL", "r.target != ''"]
         if file_id:
             conditions.append("r.file_id = :file_id")
             sql_params['file_id'] = file_id
-            logger.debug(f"[TM-SUGGEST] Filter: file_id={file_id}")
+            logger.debug(f"[TM-SEARCH] [TM-SUGGEST] Filter: file_id={file_id}")
         elif project_id:
             conditions.append("f.project_id = :project_id")
             sql_params['project_id'] = project_id
-            logger.debug(f"[TM-SUGGEST] Filter: project_id={project_id}")
+            logger.debug(f"[TM-SEARCH] [TM-SUGGEST] Filter: project_id={project_id}")
         if exclude_row_id:
             conditions.append("r.id != :exclude_row_id")
             sql_params['exclude_row_id'] = exclude_row_id
@@ -166,15 +166,15 @@ async def get_tm_suggestions(
             for row in rows
         ]
 
-        logger.info(f"[TM-SUGGEST] SUCCESS | Found {len(suggestions)} matches from project rows")
+        logger.info(f"[TM-SEARCH] [TM-SUGGEST] SUCCESS | Found {len(suggestions)} matches from project rows")
         for i, s in enumerate(suggestions[:3]):  # Log first 3
-            logger.debug(f"[TM-SUGGEST] Match {i+1}: sim={s['similarity']:.2f} | file='{s['file_name']}' | src='{s['source'][:30]}...'")
+            logger.debug(f"[TM-SEARCH] [TM-SUGGEST] Match {i+1}: sim={s['similarity']:.2f} | file='{s['file_name']}' | src='{s['source'][:30]}...'")
         return {"suggestions": suggestions, "count": len(suggestions)}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[TM-SUGGEST] ERROR | {type(e).__name__}: {e}", exc_info=True)
+        logger.error(f"[TM-SEARCH] [TM-SUGGEST] ERROR | {type(e).__name__}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="TM search failed. Check server logs.")
 
 
@@ -190,7 +190,7 @@ async def search_tm_exact(
 
     Uses hash-based O(1) lookup for maximum speed.
     """
-    logger.info(f"TM exact search: tm_id={tm_id}, source={source[:30]}...")
+    logger.info(f"[TM-SEARCH] TM exact search: tm_id={tm_id}, source={source[:30]}...")
 
     # DESIGN-001: Use permission helper for TM access check
     if not await can_access_tm(db, tm_id, current_user):
@@ -235,7 +235,7 @@ async def search_tm(
 
     For fuzzy/similar text searching (not exact match).
     """
-    logger.info(f"TM search: tm_id={tm_id}, pattern={pattern[:30]}...")
+    logger.info(f"[TM-SEARCH] TM search: tm_id={tm_id}, pattern={pattern[:30]}...")
 
     # DESIGN-001: Use permission helper for TM access check
     if not await can_access_tm(db, tm_id, current_user):

@@ -2,6 +2,7 @@
 File endpoints - Upload, download, list, preview files.
 
 Migrated from api.py lines 392-658, 2448-2779
+P10: DB Abstraction Layer - Uses repositories for FULL PARITY.
 """
 
 import asyncio
@@ -10,14 +11,18 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
-from server.database.models import LDMProject, LDMFile, LDMFolder, LDMRow
+from server.database.models import LDMFile, LDMRow
 from server.tools.ldm.schemas import FileResponse, FileToTMRequest
 from server.tools.ldm.permissions import can_access_project, can_access_file
+from server.repositories import (
+    FileRepository, get_file_repository,
+    ProjectRepository, get_project_repository,
+    FolderRepository, get_folder_repository
+)
 
 router = APIRouter(tags=["LDM"])
 
@@ -30,28 +35,31 @@ router = APIRouter(tags=["LDM"])
 async def list_files(
     project_id: int,
     folder_id: Optional[int] = None,
+    repo: FileRepository = Depends(get_file_repository),
+    project_repo: ProjectRepository = Depends(get_project_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """List files in a project, optionally filtered by folder."""
-    # Verify project exists
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Project not found")
+    """
+    List files in a project, optionally filtered by folder.
 
-    # Check access permission
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
+    P10: Uses Repository Pattern for database operations.
+    """
+    logger.debug(f"[FILES] list_files: project_id={project_id}, folder_id={folder_id}")
 
-    query = select(LDMFile).where(LDMFile.project_id == project_id)
-    if folder_id is not None:
-        query = query.where(LDMFile.folder_id == folder_id)
+    # P10: Verify project exists using repository (online mode)
+    if project_id > 0:
+        project = await project_repo.get(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
 
-    result = await db.execute(query)
-    files = result.scalars().all()
+        if not await can_access_project(db, project_id, current_user):
+            raise HTTPException(status_code=404, detail="Resource not found")
 
+    # Get files via repository
+    files = await repo.get_all(project_id=project_id, folder_id=folder_id)
+
+    logger.debug(f"[FILES] list_files complete: project_id={project_id}, files={len(files)}")
     return files
 
 
@@ -59,12 +67,16 @@ async def list_files(
 async def list_all_files(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     UI-074 FIX: List all files across all accessible projects.
     Used by ReferenceSettingsModal to show available reference files.
+
+    DB Abstraction: Uses FileRepository for database operations.
+    Permission filtering is done at route level (requires project access check).
     """
     from server.tools.ldm.permissions import get_accessible_projects
 
@@ -75,39 +87,42 @@ async def list_all_files(
     if not project_ids:
         return []
 
-    # Get files from all accessible projects
-    query = (
-        select(LDMFile)
-        .where(LDMFile.project_id.in_(project_ids))
-        .order_by(LDMFile.updated_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
+    # Get files from all accessible projects via repository
+    # Note: We need to get files for multiple projects, so we iterate
+    all_files = []
+    for project_id in project_ids:
+        files = await repo.get_all(project_id=project_id, limit=limit, offset=0)
+        all_files.extend(files)
 
-    result = await db.execute(query)
-    files = result.scalars().all()
-
-    return files
+    # Sort by updated_at descending and apply pagination
+    all_files.sort(key=lambda f: f.get("updated_at") or "", reverse=True)
+    return all_files[offset:offset + limit]
 
 
 @router.get("/files/{file_id}", response_model=FileResponse)
 async def get_file(
     file_id: int,
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Get file metadata by ID. P9: Falls back to SQLite for local files."""
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    file = result.scalar_one_or_none()
+    """
+    Get file metadata by ID.
+
+    P10-REPO: Uses Repository Pattern - automatically selects PostgreSQL or SQLite
+    based on user's online/offline mode.
+    """
+    # Repository handles both PostgreSQL and SQLite
+    file = await repo.get(file_id)
 
     if not file:
-        # P9: Fallback to SQLite for local files
-        return await _get_local_file_metadata(file_id)
+        raise HTTPException(status_code=404, detail="File not found")
 
-    if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
+    # Permission check (online mode only - offline is single user)
+    # Local files have negative IDs, skip permission check
+    if file_id > 0:
+        if not await can_access_file(db, file_id, current_user):
+            raise HTTPException(status_code=404, detail="Resource not found")
 
     return file
 
@@ -125,6 +140,9 @@ async def upload_file(
     stringid_col: Optional[int] = Form(None),    # Column index for StringID (None = 2-column mode)
     has_header: Optional[bool] = Form(True),     # Whether first row is header
     db: AsyncSession = Depends(get_async_db),
+    project_repo: ProjectRepository = Depends(get_project_repository),
+    folder_repo: FolderRepository = Depends(get_folder_repository),
+    file_repo: FileRepository = Depends(get_file_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -133,6 +151,8 @@ async def upload_file(
     P9: Unified endpoint for both online (PostgreSQL) and offline (SQLite) storage.
     - storage='server' (default): Saves to PostgreSQL, requires project_id
     - storage='local': Saves to SQLite Offline Storage, project_id optional
+
+    P10: Uses repository pattern for verification steps.
 
     Supported formats:
     - TXT/TSV: Tab-delimited, columns 0-4=StringID, 5=Source(KR), 6=Target, 7+=extra
@@ -146,6 +166,8 @@ async def upload_file(
     - Row-level extra data stored in LDMRow.extra_data (extra columns/attributes)
     - Enables FULL reconstruction of original file format
     """
+    logger.debug(f"[FILES] upload_file: storage={storage}, project_id={project_id}, folder_id={folder_id}")
+
     # P9: Route to local storage if requested
     storage_type = storage or "server"
     if storage_type == "local":
@@ -162,33 +184,25 @@ async def upload_file(
     if not project_id:
         raise HTTPException(status_code=400, detail="project_id is required for server storage")
 
-    # Verify project exists
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    if not result.scalar_one_or_none():
+    # P10: Verify project exists using repository
+    project = await project_repo.get(project_id)
+    if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     # Check access permission
     if not await can_access_project(db, project_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Verify folder exists (if provided)
+    # P10: Verify folder exists using repository (if provided)
     if folder_id:
-        result = await db.execute(
-            select(LDMFolder).where(
-                LDMFolder.id == folder_id,
-                LDMFolder.project_id == project_id
-            )
-        )
-        if not result.scalar_one_or_none():
+        folder = await folder_repo.get(folder_id)
+        if not folder or folder.get("project_id") != project_id:
             raise HTTPException(status_code=404, detail="Folder not found")
 
-    # DB-002: Per-parent unique names with auto-rename
-    from server.tools.ldm.utils.naming import generate_unique_name
+    # P10: DB-002 unique names using repository
     filename = file.filename or "unknown"
-    filename = await generate_unique_name(
-        db, LDMFile, filename,
+    filename = await file_repo.generate_unique_name(
+        base_name=filename,
         project_id=project_id,
         folder_id=folder_id
     )
@@ -313,7 +327,7 @@ async def upload_file(
 
     result = await asyncio.to_thread(_insert_file_and_rows)
 
-    logger.success(f"File uploaded: id={result['id']}, name='{filename}', rows={total_rows}, has_metadata={file_metadata is not None}")
+    logger.success(f"[FILES] File uploaded: id={result['id']}, name='{filename}', rows={total_rows}, has_metadata={file_metadata is not None}")
 
     # Return FileResponse-compatible dict
     return result
@@ -323,6 +337,7 @@ async def upload_file(
 async def move_file_to_folder(
     file_id: int,
     folder_id: Optional[int] = None,
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -330,46 +345,26 @@ async def move_file_to_folder(
     Move a file to a different folder (or root of project if folder_id is None).
 
     Used for drag-and-drop file organization in FileExplorer.
+    P10-REPO: Uses Repository Pattern for database operations.
     """
-    from pydantic import BaseModel
-
-    # Get file
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    file = result.scalar_one_or_none()
+    # Get file via repository
+    file = await repo.get(file_id)
 
     if not file:
-        # P9: Check if it's a local file - move not supported for local files
-        from server.database.offline import get_offline_db
-        offline_db = get_offline_db()
-        if offline_db.get_local_file(file_id):
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot move local files to folders. Upload to server first."
-            )
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Check access permission
-    if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Not authorized to modify this file")
+    # Permission check (online mode only - local files have negative IDs)
+    if file_id > 0:
+        if not await can_access_project(db, file["project_id"], current_user):
+            raise HTTPException(status_code=403, detail="Not authorized to modify this file")
 
-    # If folder_id provided, verify folder exists and belongs to same project
-    if folder_id is not None:
-        result = await db.execute(
-            select(LDMFolder).where(
-                LDMFolder.id == folder_id,
-                LDMFolder.project_id == file.project_id
-            )
-        )
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=404, detail="Target folder not found or invalid")
+    # Move via repository (handles folder validation)
+    try:
+        updated_file = await repo.move(file_id, folder_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    # Update file's folder_id
-    file.folder_id = folder_id
-    await db.commit()
-
-    logger.success(f"File moved: id={file_id}, new_folder={folder_id}")
+    logger.success(f"[FILES] File moved: id={file_id}, new_folder={folder_id}")
 
     return {"success": True, "file_id": file_id, "folder_id": folder_id}
 
@@ -379,32 +374,32 @@ async def move_file_cross_project(
     file_id: int,
     target_project_id: int,
     target_folder_id: Optional[int] = None,
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     EXPLORER-005: Move a file to a different project.
     EXPLORER-009: Requires 'cross_project_move' capability.
+
+    P10-REPO: Uses Repository Pattern for database operations.
+    Note: Cross-project move not supported for local files.
     """
-    # Get file
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    file = result.scalar_one_or_none()
+    # Get file via repository
+    file = await repo.get(file_id)
 
     if not file:
-        # P9: Check if it's a local file - cross-project move not supported
-        from server.database.offline import get_offline_db
-        offline_db = get_offline_db()
-        if offline_db.get_local_file(file_id):
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot move local files between projects. Upload to server first."
-            )
         raise HTTPException(status_code=404, detail="File not found")
 
+    # Local files can't be moved cross-project
+    if file_id < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot move local files between projects. Upload to server first."
+        )
+
     # Check access to source project
-    if not await can_access_project(db, file.project_id, current_user):
+    if not await can_access_project(db, file["project_id"], current_user):
         raise HTTPException(status_code=404, detail="File not found")
 
     # Check access to destination project
@@ -415,39 +410,19 @@ async def move_file_cross_project(
     from ..permissions import require_capability
     await require_capability(db, current_user, "cross_project_move")
 
-    # Validate target folder if specified
-    if target_folder_id is not None:
-        result = await db.execute(
-            select(LDMFolder).where(
-                LDMFolder.id == target_folder_id,
-                LDMFolder.project_id == target_project_id
-            )
-        )
-        target_folder = result.scalar_one_or_none()
-        if not target_folder:
-            raise HTTPException(status_code=404, detail="Target folder not found")
+    source_project_id = file["project_id"]
 
-    source_project_id = file.project_id
+    # Move via repository (handles folder validation and auto-rename)
+    try:
+        updated_file = await repo.move_cross_project(file_id, target_project_id, target_folder_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    # DB-002: Check for naming conflicts and auto-rename if needed
-    from server.tools.ldm.utils.naming import generate_unique_name
-    new_name = await generate_unique_name(
-        db, LDMFile, file.name,
-        project_id=target_project_id,
-        folder_id=target_folder_id
-    )
-
-    # Update file
-    file.name = new_name
-    file.project_id = target_project_id
-    file.folder_id = target_folder_id
-    await db.commit()
-
-    logger.success(f"File moved cross-project: id={file_id}, from project {source_project_id} to {target_project_id}")
+    logger.success(f"[FILES] File moved cross-project: id={file_id}, from project {source_project_id} to {target_project_id}")
     return {
         "success": True,
         "file_id": file_id,
-        "new_name": new_name,
+        "new_name": updated_file["name"],
         "target_project_id": target_project_id,
         "target_folder_id": target_folder_id
     }
@@ -458,6 +433,7 @@ async def copy_file(
     file_id: int,
     target_project_id: Optional[int] = None,
     target_folder_id: Optional[int] = None,
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -468,88 +444,39 @@ async def copy_file(
     If target_project_id is None, copies to same project.
     If target_folder_id is None, copies to project root.
     Auto-renames if duplicate name exists.
+
+    P10-REPO: Uses Repository Pattern for database operations.
     """
-    # Get source file
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    source_file = result.scalar_one_or_none()
+    # Get source file via repository
+    source_file = await repo.get(file_id)
 
     if not source_file:
-        # P9: Check if it's a local file - copy to project not supported
-        from server.database.offline import get_offline_db
-        offline_db = get_offline_db()
-        if offline_db.get_local_file(file_id):
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot copy local files to projects. Upload to server first."
-            )
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Check access permission for source
-    if not await can_access_project(db, source_file.project_id, current_user):
-        raise HTTPException(status_code=404, detail="File not found")
+    # Permission checks (online mode only)
+    if file_id > 0:
+        # Check access permission for source
+        if not await can_access_project(db, source_file["project_id"], current_user):
+            raise HTTPException(status_code=404, detail="File not found")
 
-    # Determine target project
-    dest_project_id = target_project_id or source_file.project_id
+        # Check access permission for destination
+        dest_project_id = target_project_id or source_file["project_id"]
+        if target_project_id and target_project_id != source_file["project_id"]:
+            if not await can_access_project(db, target_project_id, current_user):
+                raise HTTPException(status_code=404, detail="Destination project not found")
 
-    # Check access permission for destination
-    if target_project_id and target_project_id != source_file.project_id:
-        if not await can_access_project(db, target_project_id, current_user):
-            raise HTTPException(status_code=404, detail="Destination project not found")
+    # Copy via repository (handles unique naming and row copying)
+    try:
+        new_file = await repo.copy(file_id, target_project_id, target_folder_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    # Generate unique name for copy
-    from server.tools.ldm.utils.naming import generate_unique_name
-    new_name = await generate_unique_name(
-        db, LDMFile, source_file.name,
-        project_id=dest_project_id,
-        folder_id=target_folder_id
-    )
-
-    # Create copy of file metadata
-    new_file = LDMFile(
-        name=new_name,
-        original_filename=source_file.original_filename,
-        format=source_file.format,
-        source_language=source_file.source_language,
-        target_language=source_file.target_language,
-        row_count=source_file.row_count,
-        project_id=dest_project_id,
-        folder_id=target_folder_id,
-        extra_data=source_file.extra_data
-    )
-    db.add(new_file)
-    await db.flush()
-
-    # Copy all rows
-    from server.database.models import LDMRow
-    result = await db.execute(
-        select(LDMRow).where(LDMRow.file_id == file_id)
-    )
-    source_rows = result.scalars().all()
-
-    for row in source_rows:
-        new_row = LDMRow(
-            file_id=new_file.id,
-            row_num=row.row_num,
-            string_id=row.string_id,
-            source=row.source,
-            target=row.target,
-            memo=row.memo,
-            status=row.status,
-            extra_data=row.extra_data
-        )
-        db.add(new_row)
-
-    await db.commit()
-    await db.refresh(new_file)
-
-    logger.success(f"File copied: {source_file.name} -> {new_file.name}, id={new_file.id}")
+    logger.success(f"[FILES] File copied: {source_file['name']} -> {new_file['name']}, id={new_file['id']}")
     return {
         "success": True,
-        "new_file_id": new_file.id,
-        "name": new_file.name,
-        "row_count": len(source_rows)
+        "new_file_id": new_file["id"],
+        "name": new_file["name"],
+        "row_count": new_file.get("row_count", 0)
     }
 
 
@@ -557,88 +484,98 @@ async def copy_file(
 async def rename_file(
     file_id: int,
     name: str,
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Rename a file. P9: Falls back to SQLite for local files."""
-    # Get file
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    file = result.scalar_one_or_none()
+    """
+    Rename a file.
+
+    P10-REPO: Uses Repository Pattern for database operations.
+    """
+    # Get file via repository
+    file = await repo.get(file_id)
 
     if not file:
-        # P9: Fallback to SQLite for local files
-        return await _rename_local_file(file_id, name)
+        raise HTTPException(status_code=404, detail="File not found")
 
-    # Check access permission
-    if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Not authorized to modify this file")
+    old_name = file["name"]
 
-    # DB-002: Per-parent unique names
-    from server.tools.ldm.utils.naming import check_name_exists
-    if await check_name_exists(
-        db, LDMFile, name,
-        project_id=file.project_id,
-        folder_id=file.folder_id,
-        exclude_id=file_id
-    ):
-        raise HTTPException(status_code=400, detail=f"A file named '{name}' already exists in this folder. Please use a different name.")
+    # Permission check (online mode only - local files have negative IDs)
+    if file_id > 0:
+        if not await can_access_project(db, file["project_id"], current_user):
+            raise HTTPException(status_code=403, detail="Not authorized to modify this file")
 
-    old_name = file.name
-    file.name = name
-    await db.commit()
+    # Rename via repository (handles uniqueness check)
+    try:
+        updated_file = await repo.rename(file_id, name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    logger.success(f"File renamed: id={file_id}, '{old_name}' -> '{name}'")
-    return {"success": True, "file_id": file_id, "name": name}
+    logger.success(f"[FILES] File renamed: id={file_id}, '{old_name}' -> '{name}'")
+    return {"success": True, "file_id": file_id, "name": updated_file["name"]}
 
 
 @router.delete("/files/{file_id}")
 async def delete_file(
     file_id: int,
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Delete a file and all its rows.
     EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
-    P9: Falls back to SQLite for local files.
+
+    P10-REPO: Uses Repository Pattern for database operations.
     """
-    # Get file
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    file = result.scalar_one_or_none()
+    # Get file via repository
+    file = await repo.get(file_id)
 
     if not file:
-        # P9: Fallback to SQLite for local files
-        return await _delete_local_file(file_id)
+        raise HTTPException(status_code=404, detail="File not found")
 
-    # Check access permission
-    if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=403, detail="Not authorized to delete this file")
+    # Permission check (online mode only - local files have negative IDs)
+    if file_id > 0:
+        if not await can_access_project(db, file["project_id"], current_user):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this file")
 
-    file_name = file.name
+    file_name = file["name"]
 
+    # Local files (negative ID) - repository handles trash
+    if file_id < 0:
+        success = await repo.delete(file_id, permanent=permanent)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete file")
+        action = "permanently deleted" if permanent else "moved to trash"
+        logger.info(f"Local file {action}: id={file_id}, name='{file_name}'")
+        return {"message": f"File {action}", "file_id": file_id}
+
+    # Server files - use trash serialization (requires SQLAlchemy model)
     if not permanent:
         # EXPLORER-008: Soft delete - move to trash
         from .trash import move_to_trash, serialize_file_for_trash
 
-        # Serialize file data for restore
-        file_data = await serialize_file_for_trash(db, file)
+        # Get SQLAlchemy model for trash serialization
+        result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
+        file_model = result.scalar_one_or_none()
 
-        # Move to trash
-        await move_to_trash(
-            db,
-            item_type="file",
-            item_id=file.id,
-            item_name=file.name,
-            item_data=file_data,
-            parent_project_id=file.project_id,
-            parent_folder_id=file.folder_id,
-            deleted_by=current_user["user_id"]
-        )
+        if file_model:
+            # Serialize file data for restore
+            file_data = await serialize_file_for_trash(db, file_model)
+
+            # Move to trash
+            await move_to_trash(
+                db,
+                item_type="file",
+                item_id=file_model.id,
+                item_name=file_model.name,
+                item_data=file_data,
+                parent_project_id=file_model.project_id,
+                parent_folder_id=file_model.folder_id,
+                deleted_by=current_user["user_id"]
+            )
 
     # Clean up sync subscription if it exists
     try:
@@ -649,9 +586,8 @@ async def delete_file(
     except Exception as e:
         logger.debug(f"No subscription to clean up for file {file_id}: {e}")
 
-    # Hard delete the original
-    await db.delete(file)
-    await db.commit()
+    # Delete via repository
+    await repo.delete(file_id, permanent=True)  # Already serialized to trash
 
     action = "permanently deleted" if permanent else "moved to trash"
     logger.info(f"File {action}: id={file_id}, name='{file_name}'")
@@ -691,7 +627,7 @@ async def excel_preview(
         preview = get_excel_preview(file_content, max_rows=max_rows)
         return preview
     except Exception as e:
-        logger.error(f"Excel preview failed: {e}")
+        logger.error(f"[FILES] Excel preview failed: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -703,49 +639,44 @@ async def excel_preview(
 async def register_file_as_tm(
     file_id: int,
     request: FileToTMRequest,
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Convert an LDM file into a Translation Memory.
 
+    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
+
     Takes all source/target pairs from the file and creates a new TM.
     """
-    # Get file info
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    file = result.scalar_one_or_none()
+    # Get file info via repository
+    file = await repo.get(file_id)
 
-    # P9: Fallback to SQLite for local files
     if not file:
-        return await _register_local_file_as_tm(file_id, request, current_user)
+        raise HTTPException(status_code=404, detail="File not found")
 
-    # Check access permission
-    if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
+    # Check access permission (online mode only - local files have negative IDs)
+    if file_id > 0:
+        if not await can_access_file(db, file_id, current_user):
+            raise HTTPException(status_code=404, detail="Resource not found")
 
+    file_name = file.get("name") or "unknown"
     logger.info(f"Converting file to TM: file_id={file_id}, name={request.name}")
 
     try:
-        # Get all rows from the file
-        result = await db.execute(
-            select(LDMRow).where(
-                LDMRow.file_id == file_id,
-                LDMRow.source.isnot(None),
-                LDMRow.source != "",
-                LDMRow.target.isnot(None),
-                LDMRow.target != ""
-            ).order_by(LDMRow.row_num)
-        )
-        rows = result.scalars().all()
+        # Get all rows from the file via repository
+        rows = await repo.get_rows_for_export(file_id)
+
+        # Filter to only rows with both source and target
+        rows = [r for r in rows if r.get("source") and r.get("target")]
 
         if not rows:
             raise HTTPException(status_code=400, detail="File has no translatable rows")
 
         # Create TM entries data
         entries_data = [
-            {"source": row.source, "target": row.target}
+            {"source": row.get("source"), "target": row.get("target")}
             for row in rows
         ]
 
@@ -762,7 +693,7 @@ async def register_file_as_tm(
                     owner_id=current_user["user_id"],
                     source_lang="ko",  # Default, can be extended
                     target_lang=request.language,
-                    description=request.description or f"Created from file: {file.name}"
+                    description=request.description or f"Created from file: {file_name}"
                 )
 
                 # Add entries in bulk
@@ -778,7 +709,7 @@ async def register_file_as_tm(
                     "status": tm.status,
                     "time_seconds": round(elapsed, 2),
                     "rate_per_second": int(entry_count / elapsed) if elapsed > 0 else 0,
-                    "source_file": file.name
+                    "source_file": file_name
                 }
             finally:
                 sync_db.close()
@@ -791,7 +722,7 @@ async def register_file_as_tm(
     except ValueError as e:
         raise HTTPException(status_code=400, detail="Invalid file format or data")
     except Exception as e:
-        logger.error(f"File to TM conversion failed: {e}", exc_info=True)
+        logger.error(f"[FILES] File to TM conversion failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Conversion failed. Check server logs.")
 
 
@@ -803,6 +734,7 @@ async def register_file_as_tm(
 async def download_file(
     file_id: int,
     status_filter: Optional[str] = Query(None, description="Filter by status: reviewed, translated, all"),
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -812,69 +744,52 @@ async def download_file(
     Rebuilds the file from database rows in the original format.
     Uses extra_data for FULL structure preservation (extra columns, attributes, etc.)
 
-    P9: Unified endpoint - works for both PostgreSQL files and SQLite local files.
+    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
 
     Query params:
     - status_filter: "reviewed" (confirmed only), "translated" (translated+reviewed), "all" (everything)
     """
-    # Get file info from PostgreSQL
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    file = result.scalar_one_or_none()
+    # Get file info via repository (handles both PostgreSQL and SQLite)
+    file = await repo.get(file_id)
 
-    # P9: Fallback to SQLite for local files
     if not file:
-        return await _download_local_file(file_id, status_filter)
+        raise HTTPException(status_code=404, detail="File not found")
 
-    # Check access permission for PostgreSQL files
-    if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
+    # Check access permission (online mode only - local files have negative IDs)
+    if file_id > 0:
+        if not await can_access_file(db, file_id, current_user):
+            raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get file-level metadata for reconstruction
-    file_metadata = file.extra_data or {}
+    file_metadata = file.get("extra_data") or {}
 
-    # Get all rows for this file
-    status_conditions = []
-    if status_filter == "reviewed":
-        # Only confirmed/reviewed strings
-        status_conditions = ["reviewed", "approved"]
-    elif status_filter == "translated":
-        # Translated and reviewed
-        status_conditions = ["translated", "reviewed", "approved"]
-    # else: all rows
-
-    query = select(LDMRow).where(LDMRow.file_id == file_id).order_by(LDMRow.row_num)
-
-    if status_conditions:
-        query = query.where(LDMRow.status.in_(status_conditions))
-
-    result = await db.execute(query)
-    rows = result.scalars().all()
+    # Get all rows for export via repository
+    rows = await repo.get_rows_for_export(file_id, status_filter=status_filter)
 
     if not rows:
         raise HTTPException(status_code=404, detail="No rows found for this file")
 
     # Build file content based on format (case-insensitive)
-    # Pass file_metadata for full structure preservation
-    format_lower = file.format.lower() if file.format else ""
+    # Use _from_dicts builders since repository returns dicts
+    format_lower = (file.get("format") or "").lower()
     if format_lower == "txt":
-        content = _build_txt_file(rows, file_metadata)
+        content = _build_txt_file_from_dicts(rows, file_metadata)
         media_type = "text/plain"
         extension = ".txt"
     elif format_lower == "xml":
-        content = _build_xml_file(rows, file_metadata)
+        content = _build_xml_file_from_dicts(rows, file_metadata)
         media_type = "application/xml"
         extension = ".xml"
     elif format_lower in ["xlsx", "excel"]:
-        content = _build_excel_file(rows, file_metadata)
+        content = _build_excel_file_from_dicts(rows, file_metadata)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         extension = ".xlsx"
     else:
-        raise HTTPException(status_code=400, detail=f"Unsupported format: {file.format}")
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {file.get('format')}")
 
     # Create filename
-    base_name = file.original_filename.rsplit('.', 1)[0] if '.' in file.original_filename else file.original_filename
+    original_filename = file.get("original_filename") or file.get("name") or "file"
+    base_name = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
     download_name = f"{base_name}_export{extension}"
 
     logger.info(f"LDM: Downloading file {file_id} ({len(rows)} rows) as {download_name}")
@@ -894,11 +809,14 @@ async def download_file(
 async def merge_file(
     file_id: int,
     original_file: UploadFile = File(..., description="Original file to merge into"),
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Merge reviewed translations from LDM back into original file.
+
+    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
 
     Flow:
     1. User uploads original file (from LanguageData)
@@ -913,27 +831,24 @@ async def merge_file(
     from server.tools.ldm.file_handlers.txt_handler import parse_txt_file
     from server.tools.ldm.file_handlers.xml_handler import parse_xml_file
 
-    # Get LDM file info
-    result = await db.execute(
-        select(LDMFile).options(selectinload(LDMFile.project)).where(
-            LDMFile.id == file_id
-        )
-    )
-    file = result.scalar_one_or_none()
+    # Get LDM file info via repository
+    file = await repo.get(file_id)
 
-    # P9: Fallback to SQLite for local files
     if not file:
-        return await _merge_local_file(file_id, original_file)
+        raise HTTPException(status_code=404, detail="File not found")
 
-    if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
+    # Check access permission (online mode only - local files have negative IDs)
+    if file_id > 0:
+        project_id = file.get("project_id")
+        if project_id and not await can_access_project(db, project_id, current_user):
+            raise HTTPException(status_code=404, detail="Resource not found")
 
     # Check format compatibility
-    format_lower = file.format.lower() if file.format else ""
+    format_lower = (file.get("format") or "").lower()
     if format_lower not in ["txt", "xml"]:
         raise HTTPException(
             status_code=400,
-            detail=f"Merge not supported for format: {file.format}. Only TXT and XML supported."
+            detail=f"Merge not supported for format: {file.get('format')}. Only TXT and XML supported."
         )
 
     # Read original file content
@@ -958,14 +873,8 @@ async def merge_file(
     if not original_rows:
         raise HTTPException(status_code=400, detail="Could not parse original file or file is empty")
 
-    # Get reviewed rows from LDM database
-    result = await db.execute(
-        select(LDMRow).where(
-            LDMRow.file_id == file_id,
-            LDMRow.status.in_(["reviewed", "approved"])
-        ).order_by(LDMRow.row_num)
-    )
-    db_rows = result.scalars().all()
+    # Get reviewed rows from LDM database via repository
+    db_rows = await repo.get_rows_for_export(file_id, status_filter="reviewed")
 
     if not db_rows:
         raise HTTPException(status_code=400, detail="No reviewed rows to merge")
@@ -973,7 +882,7 @@ async def merge_file(
     # Build lookup from DB rows: (string_id, source) -> row
     db_lookup = {}
     for row in db_rows:
-        key = (row.string_id or "", row.source or "")
+        key = (row.get("string_id") or "", row.get("source") or "")
         db_lookup[key] = row
 
     # Track merge statistics
@@ -990,8 +899,8 @@ async def merge_file(
         if key in db_lookup:
             # EDIT: Replace target with reviewed translation
             db_row = db_lookup[key]
-            orig["target"] = db_row.target
-            orig["extra_data"] = db_row.extra_data or orig.get("extra_data")
+            orig["target"] = db_row.get("target")
+            orig["extra_data"] = db_row.get("extra_data") or orig.get("extra_data")
             edited_count += 1
 
         merged_rows.append(orig)
@@ -1001,20 +910,21 @@ async def merge_file(
         if key not in original_keys:
             merged_rows.append({
                 "row_num": len(merged_rows) + 1,
-                "string_id": db_row.string_id,
-                "source": db_row.source,
-                "target": db_row.target,
-                "extra_data": db_row.extra_data
+                "string_id": db_row.get("string_id"),
+                "source": db_row.get("source"),
+                "target": db_row.get("target"),
+                "extra_data": db_row.get("extra_data")
             })
             added_count += 1
 
     # Build merged file content
+    file_extra_data = file.get("extra_data") or {}
     if format_lower == "txt":
-        content = _build_txt_file_from_dicts(merged_rows, file.extra_data or {})
+        content = _build_txt_file_from_dicts(merged_rows, file_extra_data)
         media_type = "text/plain"
         extension = ".txt"
     else:  # xml
-        content = _build_xml_file_from_dicts(merged_rows, file.extra_data or {})
+        content = _build_xml_file_from_dicts(merged_rows, file_extra_data)
         media_type = "application/xml"
         extension = ".xml"
 
@@ -1044,12 +954,13 @@ async def merge_file(
 async def convert_file(
     file_id: int,
     format: str = Query(..., regex="^(xlsx|xml|txt|tmx)$", description="Target format"),
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Convert a file to a different format.
-    P9: Falls back to SQLite for local files.
+    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
 
     Supported conversions:
     - TXT → Excel, XML, TMX
@@ -1060,22 +971,19 @@ async def convert_file(
     - XML → TXT
     - Excel → TXT
     """
-    # Get file info
-    result = await db.execute(
-        select(LDMFile).options(selectinload(LDMFile.project)).where(
-            LDMFile.id == file_id
-        )
-    )
-    file = result.scalar_one_or_none()
+    # Get file info via repository
+    file = await repo.get(file_id)
 
     if not file:
-        # P9: Fallback to SQLite for local files
-        return await _convert_local_file(file_id, format)
+        raise HTTPException(status_code=404, detail="File not found")
 
-    if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
+    # Check access permission (online mode only - local files have negative IDs)
+    if file_id > 0:
+        project_id = file.get("project_id")
+        if project_id and not await can_access_project(db, project_id, current_user):
+            raise HTTPException(status_code=404, detail="Resource not found")
 
-    source_format = file.format.lower() if file.format else ""
+    source_format = (file.get("format") or "").lower()
     target_format = format.lower()
 
     # Validate conversion is allowed
@@ -1091,40 +999,44 @@ async def convert_file(
             detail=f"File is already in {target_format.upper()} format. Use Download instead."
         )
 
-    # Get all rows for this file
-    result = await db.execute(
-        select(LDMRow).where(LDMRow.file_id == file_id).order_by(LDMRow.row_num)
-    )
-    rows = result.scalars().all()
+    # Get all rows for this file via repository
+    rows = await repo.get_rows_for_export(file_id)
 
     if not rows:
         raise HTTPException(status_code=404, detail="No rows found for this file")
 
     # Get file metadata
-    file_metadata = file.extra_data or {}
+    file_metadata = file.get("extra_data") or {}
 
-    # Build file in target format
+    # Build file in target format (using _from_dicts builders)
     if target_format == "xlsx":
-        content = _build_excel_file(rows, file_metadata)
+        content = _build_excel_file_from_dicts(rows, file_metadata)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         extension = ".xlsx"
     elif target_format == "xml":
-        content = _build_xml_file(rows, file_metadata)
+        content = _build_xml_file_from_dicts(rows, file_metadata)
         media_type = "application/xml"
         extension = ".xml"
     elif target_format == "txt":
-        content = _build_txt_file(rows, file_metadata)
+        content = _build_txt_file_from_dicts(rows, file_metadata)
         media_type = "text/plain"
         extension = ".txt"
     elif target_format == "tmx":
-        content = _build_tmx_file(rows, file_metadata, file)
+        # _build_tmx_file already handles both obj and dict rows
+        # Create a simple object-like wrapper for language access
+        class FileInfo:
+            def __init__(self, file_dict):
+                self.source_language = file_dict.get("source_language")
+                self.target_language = file_dict.get("target_language")
+        content = _build_tmx_file(rows, file_metadata, FileInfo(file))
         media_type = "application/x-tmx+xml"
         extension = ".tmx"
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
 
     # Create filename
-    base_name = file.original_filename.rsplit('.', 1)[0] if '.' in file.original_filename else file.original_filename
+    original_filename = file.get("original_filename") or file.get("name") or "file"
+    base_name = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
     download_name = f"{base_name}_converted{extension}"
 
     logger.info(f"LDM CONVERT: file_id={file_id}, {source_format} → {target_format}, {len(rows)} rows")
@@ -1144,11 +1056,14 @@ async def convert_file(
 @router.get("/files/{file_id}/extract-glossary")
 async def extract_glossary(
     file_id: int,
+    repo: FileRepository = Depends(get_file_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Extract glossary terms from a file and download as Excel.
+
+    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
 
     Filtering rules:
     - Length ≤ 21 characters
@@ -1159,43 +1074,36 @@ async def extract_glossary(
     """
     from collections import Counter
 
-    # Get file info
-    result = await db.execute(
-        select(LDMFile).options(selectinload(LDMFile.project)).where(
-            LDMFile.id == file_id
-        )
-    )
-    file = result.scalar_one_or_none()
+    # Get file info via repository
+    file = await repo.get(file_id)
 
-    # P9: Fallback to SQLite for local files
     if not file:
-        return await _extract_local_glossary(file_id)
+        raise HTTPException(status_code=404, detail="File not found")
 
-    if not await can_access_project(db, file.project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
+    # Check access permission (online mode only - local files have negative IDs)
+    if file_id > 0:
+        project_id = file.get("project_id")
+        if project_id and not await can_access_project(db, project_id, current_user):
+            raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Get all rows for this file
-    result = await db.execute(
-        select(LDMRow).where(
-            LDMRow.file_id == file_id,
-            LDMRow.source.isnot(None),
-            LDMRow.source != ""
-        )
-    )
-    rows = result.scalars().all()
+    # Get all rows for this file via repository
+    rows = await repo.get_rows_for_export(file_id)
+
+    # Filter to only rows with source (repository returns all rows)
+    rows = [r for r in rows if r.get("source")]
 
     if not rows:
         raise HTTPException(status_code=404, detail="No rows found in file")
 
     # Count occurrences of each source term
-    source_counts = Counter(row.source.strip() for row in rows if row.source)
+    source_counts = Counter(row.get("source", "").strip() for row in rows if row.get("source"))
 
     # Build source → target mapping (first occurrence wins)
     source_to_target = {}
     for row in rows:
-        source = row.source.strip() if row.source else ""
+        source = (row.get("source") or "").strip()
         if source and source not in source_to_target:
-            source_to_target[source] = row.target.strip() if row.target else ""
+            source_to_target[source] = (row.get("target") or "").strip()
 
     # Filter glossary terms
     glossary = []
@@ -1240,7 +1148,8 @@ async def extract_glossary(
     output.seek(0)
 
     # Create filename
-    base_name = file.original_filename.rsplit('.', 1)[0] if '.' in file.original_filename else file.original_filename
+    original_filename = file.get("original_filename") or file.get("name") or "file"
+    base_name = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
     download_name = f"{base_name}_glossary.xlsx"
 
     logger.info(f"LDM: Extracted glossary from file {file_id}: {len(glossary)} terms")
@@ -1253,169 +1162,14 @@ async def extract_glossary(
 
 
 # =============================================================================
-# File Builder Helpers
-# =============================================================================
-
-def _build_txt_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
-    """
-    Rebuild TXT file from rows with FULL structure preservation.
-
-    TXT format: tab-separated columns
-    Original format: idx0\tidx1\tidx2\tidx3\tidx4\tsource\ttarget\t[extra columns...]
-
-    Uses:
-    - file_metadata.encoding: Original file encoding
-    - file_metadata.total_columns: Total column count
-    - row.extra_data: Extra columns beyond 0-6
-    """
-    file_metadata = file_metadata or {}
-    lines = []
-
-    for row in rows:
-        # Reconstruct string_id parts - stored with spaces, output with tabs
-        # Upload stores as "0 100 0 0 1" (space-joined), we need "0\t100\t0\t0\t1"
-        string_id_parts = row.string_id.split(' ') if row.string_id else [""] * 5
-
-        # Ensure we have 5 parts for the index
-        while len(string_id_parts) < 5:
-            string_id_parts.append("")
-
-        # Build base columns: idx0\tidx1\tidx2\tidx3\tidx4\tsource\ttarget
-        source = row.source or ""
-        target = row.target or ""
-
-        # Replace newlines back to actual newlines in the file
-        source = source.replace("↵", "\n")
-        target = target.replace("↵", "\n")
-
-        # Start with standard 7 columns
-        parts = string_id_parts[:5] + [source, target]
-
-        # Add extra columns from extra_data (col7, col8, etc.)
-        if row.extra_data:
-            # Get the total columns from file metadata, or calculate from extra_data
-            total_cols = file_metadata.get("total_columns", 7)
-            for i in range(7, total_cols):
-                col_key = f"col{i}"
-                parts.append(row.extra_data.get(col_key, ""))
-
-        line = "\t".join(parts)
-        lines.append(line)
-
-    content = "\n".join(lines)
-
-    # Use original encoding if available
-    encoding = file_metadata.get("encoding", "utf-8")
-    return content.encode(encoding)
-
-
-def _build_xml_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
-    """
-    Rebuild XML file from rows.
-
-    XML format:
-    <?xml version="1.0" encoding="UTF-8"?>
-    <LangData>
-        <String StrOrigin="source" Str="target" StringId="ID"/>
-    </LangData>
-
-    Output format (order matters):
-    - StrOrigin: Source text
-    - Str: Target/translated text
-    - StringId: Concatenated without spaces
-    """
-    import xml.etree.ElementTree as ET
-    from xml.dom import minidom
-
-    file_metadata = file_metadata or {}
-
-    # Use original root element or default to LangData
-    root_tag = file_metadata.get("root_element", "LangData")
-    root = ET.Element(root_tag)
-
-    # Use original element tag or default to String
-    element_tag = file_metadata.get("element_tag", "String")
-
-    for row in rows:
-        string_elem = ET.SubElement(root, element_tag)
-
-        # Set attributes in order: StrOrigin, Str, StringId (PascalCase)
-        # StringId should be concatenated without spaces
-        string_id = (row.string_id or "").replace(" ", "")
-
-        # Use ordered dict approach - XML attributes are ordered in Python 3.7+
-        string_elem.set("StrOrigin", row.source or "")
-        string_elem.set("Str", row.target or "")
-        string_elem.set("StringId", string_id)
-
-    # Pretty print with original encoding
-    encoding = file_metadata.get("encoding", "UTF-8")
-    xml_str = ET.tostring(root, encoding='unicode')
-    dom = minidom.parseString(xml_str)
-    pretty_xml = dom.toprettyxml(indent="  ", encoding=encoding)
-
-    return pretty_xml
-
-
-def _build_excel_file(rows: List[LDMRow], file_metadata: dict = None) -> bytes:
-    """
-    Rebuild Excel file from rows with FULL structure preservation.
-
-    Excel format: Source in column A, Target in column B, extra columns in C+
-
-    Uses:
-    - file_metadata.headers: Original column headers
-    - file_metadata.sheet_name: Original sheet name
-    - row.extra_data: Extra columns beyond A-B
-    """
-    import openpyxl
-
-    file_metadata = file_metadata or {}
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = file_metadata.get("sheet_name", "Translations")
-
-    # Get headers from metadata or use defaults
-    headers = file_metadata.get("headers", ["Source", "Target"])
-    if len(headers) < 2:
-        headers = ["Source", "Target"]
-
-    # Header row
-    for col_idx, header in enumerate(headers, start=1):
-        ws.cell(row=1, column=col_idx, value=header)
-
-    # Data rows
-    for row_idx, row in enumerate(rows, start=2):
-        ws.cell(row=row_idx, column=1, value=row.source or "")
-        ws.cell(row=row_idx, column=2, value=row.target or "")
-
-        # Add extra columns from extra_data (C, D, E, etc.)
-        if row.extra_data:
-            for col_letter, val in row.extra_data.items():
-                # Convert column letter to index (C=3, D=4, etc.)
-                if col_letter.isalpha() and len(col_letter) == 1:
-                    col_num = ord(col_letter.upper()) - ord('A') + 1
-                    if col_num > 2:  # Skip A and B (source/target)
-                        ws.cell(row=row_idx, column=col_num, value=val or "")
-
-    # Save to bytes
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    return output.read()
-
-
-# =============================================================================
-# Dict-based File Builders (for Merge)
+# Dict-based File Builders (for Repository Pattern)
 # =============================================================================
 
 def _build_txt_file_from_dicts(rows: List[dict], file_metadata: dict = None) -> bytes:
     """
-    Build TXT file from dict rows (used by merge).
+    Build TXT file from dict rows.
 
-    Same as _build_txt_file but works with dicts instead of LDMRow objects.
+    P10: Works with dict rows from Repository Pattern.
     """
     file_metadata = file_metadata or {}
     lines = []
@@ -1494,6 +1248,52 @@ def _build_xml_file_from_dicts(rows: List[dict], file_metadata: dict = None) -> 
     pretty_xml = dom.toprettyxml(indent="  ", encoding=encoding)
 
     return pretty_xml
+
+
+def _build_excel_file_from_dicts(rows: List[dict], file_metadata: dict = None) -> bytes:
+    """
+    Build Excel file from dict rows (used by Repository Pattern).
+
+    Same as _build_excel_file but works with dicts instead of LDMRow objects.
+    """
+    import openpyxl
+
+    file_metadata = file_metadata or {}
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = file_metadata.get("sheet_name", "Translations")
+
+    # Get headers from metadata or use defaults
+    headers = file_metadata.get("headers", ["Source", "Target"])
+    if len(headers) < 2:
+        headers = ["Source", "Target"]
+
+    # Header row
+    for col_idx, header in enumerate(headers, start=1):
+        ws.cell(row=1, column=col_idx, value=header)
+
+    # Data rows
+    for row_idx, row in enumerate(rows, start=2):
+        ws.cell(row=row_idx, column=1, value=row.get("source") or "")
+        ws.cell(row=row_idx, column=2, value=row.get("target") or "")
+
+        # Add extra columns from extra_data (C, D, E, etc.)
+        extra_data = row.get("extra_data")
+        if extra_data:
+            for col_letter, val in extra_data.items():
+                # Convert column letter to index (C=3, D=4, etc.)
+                if col_letter.isalpha() and len(col_letter) == 1:
+                    col_num = ord(col_letter.upper()) - ord('A') + 1
+                    if col_num > 2:  # Skip A and B (source/target)
+                        ws.cell(row=row_idx, column=col_num, value=val or "")
+
+    # Save to bytes
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return output.read()
 
 
 # =============================================================================
@@ -1665,7 +1465,7 @@ async def _upload_to_local_storage(
         # Add parsed rows to the local file
         offline_db.add_rows_to_local_file(file_id, rows_data)
 
-        logger.success(f"P9: File uploaded to Offline Storage: id={file_id}, name='{final_name}', rows={len(rows_data)}")
+        logger.success(f"[FILES] P9: File uploaded to Offline Storage: id={file_id}, name='{final_name}', rows={len(rows_data)}")
 
         # Return FileResponse-compatible dict
         now = datetime.utcnow()
@@ -1684,514 +1484,5 @@ async def _upload_to_local_storage(
         }
 
     except Exception as e:
-        logger.error(f"P9: Failed to upload to Offline Storage: {e}", exc_info=True)
+        logger.error(f"[FILES] P9: Failed to upload to Offline Storage: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
-
-
-async def _download_local_file(file_id: int, status_filter: Optional[str] = None):
-    """
-    P9: Download a local file from SQLite Offline Storage.
-
-    Same logic as download_file but reads from SQLite instead of PostgreSQL.
-    """
-    from server.database.offline import get_offline_db
-
-    offline_db = get_offline_db()
-
-    # Get file info from SQLite
-    file_info = offline_db.get_local_file(file_id)
-    if not file_info:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Get rows from SQLite
-    rows_data = offline_db.get_rows_for_file(file_id)
-    if not rows_data:
-        raise HTTPException(status_code=404, detail="No rows found for this file")
-
-    # Filter by status if requested
-    if status_filter:
-        if status_filter == "reviewed":
-            status_conditions = ["reviewed", "approved"]
-        elif status_filter == "translated":
-            status_conditions = ["translated", "reviewed", "approved"]
-        else:
-            status_conditions = None
-
-        if status_conditions:
-            rows_data = [r for r in rows_data if r.get("status") in status_conditions]
-
-    if not rows_data:
-        raise HTTPException(status_code=404, detail="No rows match the status filter")
-
-    # Convert to row-like objects for the builder functions
-    class RowLike:
-        def __init__(self, data):
-            self.row_num = data.get("row_num", 0)
-            self.string_id = data.get("string_id", "")
-            self.source = data.get("source", "")
-            self.target = data.get("target", "")
-            self.extra_data = data.get("extra_data")
-
-    rows = [RowLike(r) for r in rows_data]
-
-    # Build file content based on format
-    file_format = (file_info.get("format") or "txt").lower()
-    file_metadata = file_info.get("extra_data") or {}
-
-    if file_format == "txt":
-        content = _build_txt_file(rows, file_metadata)
-        media_type = "text/plain"
-        extension = ".txt"
-    elif file_format == "xml":
-        content = _build_xml_file(rows, file_metadata)
-        media_type = "application/xml"
-        extension = ".xml"
-    elif file_format in ["xlsx", "excel"]:
-        content = _build_excel_file(rows, file_metadata)
-        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        extension = ".xlsx"
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported format: {file_format}")
-
-    # Create filename
-    original_filename = file_info.get("original_filename") or file_info.get("name") or "file"
-    base_name = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
-    download_name = f"{base_name}_export{extension}"
-
-    logger.info(f"P9: Downloading local file {file_id} ({len(rows)} rows) as {download_name}")
-
-    return StreamingResponse(
-        BytesIO(content),
-        media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={download_name}"}
-    )
-
-
-async def _get_local_file_metadata(file_id: int) -> dict:
-    """
-    P9: Get file metadata from SQLite Offline Storage.
-    Returns FileResponse-compatible dict.
-    """
-    from server.database.offline import get_offline_db
-    from datetime import datetime
-
-    offline_db = get_offline_db()
-    file_info = offline_db.get_local_file(file_id)
-
-    if not file_info:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Return FileResponse-compatible dict
-    return {
-        "id": file_info.get("id"),
-        "project_id": None,
-        "folder_id": None,
-        "name": file_info.get("name"),
-        "original_filename": file_info.get("original_filename"),
-        "format": file_info.get("format"),
-        "row_count": file_info.get("row_count", 0),
-        "source_language": file_info.get("source_language"),
-        "target_language": file_info.get("target_language"),
-        "created_at": file_info.get("created_at") or datetime.utcnow(),
-        "updated_at": file_info.get("updated_at") or datetime.utcnow()
-    }
-
-
-async def _delete_local_file(file_id: int) -> dict:
-    """
-    P9: Delete a file from SQLite Offline Storage.
-    """
-    from server.database.offline import get_offline_db
-
-    offline_db = get_offline_db()
-    file_info = offline_db.get_local_file(file_id)
-
-    if not file_info:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    file_name = file_info.get("name")
-
-    # Clean up sync subscription if it exists
-    try:
-        offline_db.remove_subscription("file", file_id)
-        logger.debug(f"Cleaned up sync subscription for file {file_id}")
-    except Exception as e:
-        logger.debug(f"No subscription to clean up for file {file_id}: {e}")
-
-    # Delete from SQLite (offline.py method deletes rows + file)
-    success = offline_db.delete_local_file(file_id)
-
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to delete file")
-
-    logger.info(f"P9: Local file deleted: id={file_id}, name='{file_name}'")
-    return {"message": "File deleted", "file_id": file_id}
-
-
-async def _convert_local_file(file_id: int, target_format: str):
-    """
-    P9: Convert a local file from SQLite Offline Storage.
-    Same logic as convert_file but reads from SQLite.
-    """
-    from server.database.offline import get_offline_db
-
-    offline_db = get_offline_db()
-    file_info = offline_db.get_local_file(file_id)
-
-    if not file_info:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    source_format = (file_info.get("format") or "txt").lower()
-    target_format = target_format.lower()
-
-    # Validate conversion
-    if target_format == "txt" and source_format in ["xml", "xlsx", "excel"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot convert to TXT: StringID information would be lost"
-        )
-
-    if source_format == target_format:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File is already in {target_format.upper()} format. Use Download instead."
-        )
-
-    # Get rows from SQLite
-    rows_data = offline_db.get_rows_for_file(file_id)
-    if not rows_data:
-        raise HTTPException(status_code=404, detail="No rows found for this file")
-
-    # Convert to row-like objects for the builder functions
-    class RowLike:
-        def __init__(self, data):
-            self.row_num = data.get("row_num", 0)
-            self.string_id = data.get("string_id", "")
-            self.source = data.get("source", "")
-            self.target = data.get("target", "")
-            # P9: extra_data from SQLite is JSON string, need to parse it
-            extra = data.get("extra_data")
-            if extra and isinstance(extra, str):
-                import json
-                try:
-                    self.extra_data = json.loads(extra)
-                except (json.JSONDecodeError, TypeError):
-                    self.extra_data = None
-            else:
-                self.extra_data = extra
-
-    rows = [RowLike(r) for r in rows_data]
-    # P9: file metadata from SQLite is also JSON string
-    raw_metadata = file_info.get("extra_data")
-    if raw_metadata and isinstance(raw_metadata, str):
-        import json
-        try:
-            file_metadata = json.loads(raw_metadata)
-        except (json.JSONDecodeError, TypeError):
-            file_metadata = {}
-    else:
-        file_metadata = raw_metadata or {}
-
-    # Build file in target format
-    if target_format == "xlsx":
-        content = _build_excel_file(rows, file_metadata)
-        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        extension = ".xlsx"
-    elif target_format == "xml":
-        content = _build_xml_file(rows, file_metadata)
-        media_type = "application/xml"
-        extension = ".xml"
-    elif target_format == "txt":
-        content = _build_txt_file(rows, file_metadata)
-        media_type = "text/plain"
-        extension = ".txt"
-    elif target_format == "tmx":
-        # Create a file-like object for TMX builder
-        class FileLike:
-            source_language = file_info.get("source_language")
-            target_language = file_info.get("target_language")
-        content = _build_tmx_file(rows, file_metadata, FileLike())
-        media_type = "application/x-tmx+xml"
-        extension = ".tmx"
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported format: {target_format}")
-
-    # Create filename
-    original_filename = file_info.get("original_filename") or file_info.get("name") or "file"
-    base_name = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
-    download_name = f"{base_name}_converted{extension}"
-
-    logger.info(f"P9: Converting local file {file_id}: {source_format} → {target_format}, {len(rows)} rows")
-
-    return StreamingResponse(
-        BytesIO(content),
-        media_type=media_type,
-        headers={
-            "Content-Disposition": f"attachment; filename={download_name}",
-            "X-Source-Format": source_format,
-            "X-Target-Format": target_format,
-            "X-Row-Count": str(len(rows))
-        }
-    )
-
-
-async def _rename_local_file(file_id: int, new_name: str) -> dict:
-    """
-    P9: Rename a file in SQLite Offline Storage.
-    """
-    from server.database.offline import get_offline_db
-
-    offline_db = get_offline_db()
-    file_info = offline_db.get_local_file(file_id)
-
-    if not file_info:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    old_name = file_info.get("name")
-
-    # Use existing rename method
-    success = offline_db.rename_local_file(file_id, new_name)
-
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to rename file")
-
-    logger.success(f"P9: Local file renamed: id={file_id}, '{old_name}' -> '{new_name}'")
-    return {"success": True, "file_id": file_id, "name": new_name}
-
-
-async def _extract_local_glossary(file_id: int):
-    """
-    P9: Extract glossary from a local file in SQLite.
-    Same logic as extract_glossary but with SQLite data.
-    """
-    from collections import Counter
-    from server.database.offline import get_offline_db
-    import openpyxl
-
-    offline_db = get_offline_db()
-    file_info = offline_db.get_local_file(file_id)
-
-    if not file_info:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    rows_data = offline_db.get_rows_for_file(file_id)
-
-    if not rows_data:
-        raise HTTPException(status_code=404, detail="No rows found in file")
-
-    # Filter rows with source
-    rows_with_source = [r for r in rows_data if r.get("source")]
-
-    # Count occurrences
-    source_counts = Counter(r.get("source", "").strip() for r in rows_with_source)
-
-    # Build source → target mapping
-    source_to_target = {}
-    for row in rows_with_source:
-        source = row.get("source", "").strip()
-        if source and source not in source_to_target:
-            source_to_target[source] = row.get("target", "").strip() if row.get("target") else ""
-
-    # Filter glossary terms (same rules as PostgreSQL version)
-    glossary = []
-    for source, count in source_counts.items():
-        if len(source) > 21:
-            continue
-        if count < 2:
-            continue
-        if source.endswith(('.', '?', '!')):
-            continue
-        target = source_to_target.get(source, "")
-        glossary.append((source, target, count))
-
-    if not glossary:
-        raise HTTPException(status_code=404, detail="No glossary terms found")
-
-    glossary.sort(key=lambda x: -x[2])
-
-    # Build Excel
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Glossary"
-    ws.cell(row=1, column=1, value="Source")
-    ws.cell(row=1, column=2, value="Target")
-
-    for idx, (source, target, _) in enumerate(glossary, start=2):
-        ws.cell(row=idx, column=1, value=source)
-        ws.cell(row=idx, column=2, value=target)
-
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    original_filename = file_info.get("original_filename") or file_info.get("name") or "file"
-    base_name = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
-    download_name = f"{base_name}_glossary.xlsx"
-
-    logger.info(f"P9: Extracted glossary from local file {file_id}: {len(glossary)} terms")
-
-    return StreamingResponse(
-        output,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={download_name}"}
-    )
-
-
-async def _merge_local_file(file_id: int, original_file: UploadFile):
-    """
-    P9: Merge reviewed rows from a local SQLite file into an uploaded original.
-    Same logic as merge_file but reads from SQLite.
-    """
-    from server.database.offline import get_offline_db
-    from server.tools.ldm.file_handlers.txt_handler import parse_txt_file
-    from server.tools.ldm.file_handlers.xml_handler import parse_xml_file
-
-    offline_db = get_offline_db()
-    file_info = offline_db.get_local_file(file_id)
-
-    if not file_info:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    format_lower = (file_info.get("format") or "txt").lower()
-    if format_lower not in ["txt", "xml"]:
-        raise HTTPException(status_code=400, detail=f"Merge not supported for format: {format_lower}")
-
-    # Read original file
-    original_content = await original_file.read()
-    original_filename = original_file.filename or "merged_file"
-    original_ext = original_filename.rsplit('.', 1)[-1].lower() if '.' in original_filename else ""
-
-    # Parse original
-    if format_lower == "txt":
-        original_rows = parse_txt_file(original_content, original_filename)
-    else:
-        original_rows = parse_xml_file(original_content, original_filename)
-
-    if not original_rows:
-        raise HTTPException(status_code=400, detail="Could not parse original file")
-
-    # Get reviewed rows from SQLite
-    rows_data = offline_db.get_rows_for_file(file_id)
-    db_rows = [r for r in rows_data if r.get("status") in ["reviewed", "approved"]]
-
-    if not db_rows:
-        raise HTTPException(status_code=400, detail="No reviewed rows to merge")
-
-    # Build lookup
-    db_lookup = {}
-    for row in db_rows:
-        key = (row.get("string_id") or "", row.get("source") or "")
-        db_lookup[key] = row
-
-    # Merge
-    edited_count = 0
-    added_count = 0
-    original_keys = set()
-    merged_rows = []
-
-    for orig in original_rows:
-        key = (orig.get("string_id") or "", orig.get("source") or "")
-        original_keys.add(key)
-        if key in db_lookup:
-            db_row = db_lookup[key]
-            orig["target"] = db_row.get("target")
-            edited_count += 1
-        merged_rows.append(orig)
-
-    for key, db_row in db_lookup.items():
-        if key not in original_keys:
-            merged_rows.append({
-                "row_num": len(merged_rows) + 1,
-                "string_id": db_row.get("string_id"),
-                "source": db_row.get("source"),
-                "target": db_row.get("target"),
-                "extra_data": db_row.get("extra_data")
-            })
-            added_count += 1
-
-    # Build merged content
-    if format_lower == "txt":
-        content = _build_txt_file_from_dicts(merged_rows, file_info.get("extra_data") or {})
-        media_type = "text/plain"
-        extension = ".txt"
-    else:
-        content = _build_xml_file_from_dicts(merged_rows, file_info.get("extra_data") or {})
-        media_type = "application/xml"
-        extension = ".xml"
-
-    base_name = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
-    download_name = f"{base_name}_merged{extension}"
-
-    logger.info(f"P9: Merged local file {file_id}: edited={edited_count}, added={added_count}")
-
-    return StreamingResponse(
-        BytesIO(content),
-        media_type=media_type,
-        headers={
-            "Content-Disposition": f"attachment; filename={download_name}",
-            "X-Merge-Edited": str(edited_count),
-            "X-Merge-Added": str(added_count),
-            "X-Merge-Total": str(len(merged_rows))
-        }
-    )
-
-
-async def _register_local_file_as_tm(file_id: int, request, current_user: dict):
-    """
-    P9: Convert a local SQLite file into a TM in PostgreSQL.
-    Gets rows from SQLite, creates TM in PostgreSQL.
-    """
-    import time
-    from server.database.offline import get_offline_db
-
-    offline_db = get_offline_db()
-    file_info = offline_db.get_local_file(file_id)
-
-    if not file_info:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    rows_data = offline_db.get_rows_for_file(file_id)
-
-    # Filter valid rows
-    valid_rows = [r for r in rows_data if r.get("source") and r.get("target")]
-
-    if not valid_rows:
-        raise HTTPException(status_code=400, detail="File has no translatable rows")
-
-    entries_data = [{"source": r.get("source"), "target": r.get("target")} for r in valid_rows]
-
-    # Create TM using sync session
-    def _create_tm():
-        sync_db = next(get_db())
-        try:
-            from server.tools.ldm.tm_manager import TMManager
-            tm_manager = TMManager(sync_db)
-
-            tm = tm_manager.create_tm(
-                name=request.name,
-                owner_id=current_user["user_id"],
-                source_lang="ko",
-                target_lang=request.language,
-                description=request.description or f"Created from local file: {file_info.get('name')}"
-            )
-
-            start_time = time.time()
-            entry_count = tm_manager.add_entries_bulk(tm.id, entries_data)
-            elapsed = time.time() - start_time
-
-            return {
-                "tm_id": tm.id,
-                "name": tm.name,
-                "entry_count": entry_count,
-                "status": tm.status,
-                "time_seconds": round(elapsed, 2),
-                "rate_per_second": int(entry_count / elapsed) if elapsed > 0 else 0,
-                "source_file": file_info.get("name")
-            }
-        finally:
-            sync_db.close()
-
-    result = await asyncio.to_thread(_create_tm)
-
-    logger.info(f"P9: TM created from local file: tm_id={result['tm_id']}, entries={result['entry_count']}")
-    return result

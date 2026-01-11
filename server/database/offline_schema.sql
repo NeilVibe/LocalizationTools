@@ -320,11 +320,13 @@ GROUP BY f.id, f.name;
 
 CREATE TABLE IF NOT EXISTS offline_trash (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_type TEXT NOT NULL,              -- 'local-file', 'local-folder'
+    item_type TEXT NOT NULL,              -- 'file', 'folder', 'project', 'platform'
     item_id INTEGER NOT NULL,             -- Original file/folder ID before deletion
     item_name TEXT NOT NULL,              -- Name for display
     item_data TEXT NOT NULL,              -- JSON: full serialization for restore
+    parent_project_id INTEGER,            -- P10: Project it belonged to (for FULL PARITY)
     parent_folder_id INTEGER,             -- Parent folder at time of deletion
+    deleted_by INTEGER,                   -- P10: User who deleted (for FULL PARITY)
     deleted_at TEXT DEFAULT (datetime('now')),
     expires_at TEXT NOT NULL,             -- Auto-delete after 30 days
     status TEXT DEFAULT 'trashed'         -- 'trashed', 'restored', 'expired'
@@ -335,6 +337,31 @@ CREATE INDEX IF NOT EXISTS idx_offline_trash_expires ON offline_trash(expires_at
 CREATE INDEX IF NOT EXISTS idx_offline_trash_item ON offline_trash(item_type, item_id);
 
 -- -----------------------------------------------------------------------------
+-- QA Results (mirrors ldm_qa_results)
+-- P10: Full parity - QA results persist in SQLite too
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS offline_qa_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    row_id INTEGER NOT NULL,
+    file_id INTEGER NOT NULL,
+    check_type TEXT NOT NULL,         -- pattern, line, term, character, grammar
+    severity TEXT NOT NULL,            -- error, warning
+    message TEXT NOT NULL,
+    details TEXT,                      -- JSON for structured data
+    created_at TEXT DEFAULT (datetime('now')),
+    resolved_at TEXT,
+    resolved_by INTEGER,
+    FOREIGN KEY (row_id) REFERENCES offline_rows(id) ON DELETE CASCADE,
+    FOREIGN KEY (file_id) REFERENCES offline_files(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_offline_qa_results_row ON offline_qa_results(row_id);
+CREATE INDEX IF NOT EXISTS idx_offline_qa_results_file ON offline_qa_results(file_id);
+CREATE INDEX IF NOT EXISTS idx_offline_qa_results_type ON offline_qa_results(check_type);
+CREATE INDEX IF NOT EXISTS idx_offline_qa_results_unresolved ON offline_qa_results(resolved_at) WHERE resolved_at IS NULL;
+
+-- -----------------------------------------------------------------------------
 -- Schema version for migrations
 -- -----------------------------------------------------------------------------
 
@@ -343,4 +370,4 @@ CREATE TABLE IF NOT EXISTS schema_version (
     applied_at TEXT DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO schema_version (version) VALUES (3);  -- P9-BIN-001: Added offline_trash
+INSERT OR IGNORE INTO schema_version (version) VALUES (4);  -- P10: Added offline_qa_results

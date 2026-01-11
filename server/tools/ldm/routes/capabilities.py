@@ -9,9 +9,9 @@ Capabilities control access to privileged operations:
 - empty_trash: Can permanently empty entire trash
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from typing import Optional, List
 from datetime import datetime, timedelta
 from pydantic import BaseModel
@@ -132,7 +132,7 @@ async def grant_capability(
     await db.commit()
     await db.refresh(capability)
 
-    logger.success(f"Capability granted: {grant.capability_name} to user {grant.user_id} by admin {current_user['user_id']}")
+    logger.success(f"[CAPS] Capability granted: {grant.capability_name} to user {grant.user_id} by admin {current_user['user_id']}")
 
     return {
         "success": True,
@@ -166,7 +166,7 @@ async def revoke_capability(
     await db.delete(capability)
     await db.commit()
 
-    logger.success(f"Capability revoked: {capability_name} from user {user_id} by admin {current_user['user_id']}")
+    logger.success(f"[CAPS] Capability revoked: {capability_name} from user {user_id} by admin {current_user['user_id']}")
 
     return {
         "success": True,

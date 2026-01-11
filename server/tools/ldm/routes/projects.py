@@ -1,4 +1,7 @@
-"""Project CRUD endpoints."""
+"""Project CRUD endpoints.
+
+Repository Pattern: Uses ProjectRepository for database abstraction.
+"""
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -17,6 +20,7 @@ from server.tools.ldm.permissions import (
     revoke_project_access,
     get_project_access_list,
 )
+from server.repositories import ProjectRepository, get_project_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -54,7 +58,7 @@ async def list_projects(
     P9: Includes "Offline Storage" as virtual project (id=0) if local files exist.
     """
     user_id = current_user["user_id"]
-    logger.info(f"Listing projects for user {user_id}")
+    logger.info(f"[PROJECTS] Listing projects for user {user_id}")
 
     # Use permission helper to get accessible projects
     projects = await get_accessible_projects(db, current_user)
@@ -69,31 +73,26 @@ async def list_projects(
 async def create_project(
     project: ProjectCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: ProjectRepository = Depends(get_project_repository)
 ):
-    """Create a new project."""
+    """Create a new project.
+
+    Repository Pattern: Uses ProjectRepository for database abstraction.
+    """
     user_id = current_user["user_id"]
-    logger.info(f"Creating project '{project.name}' for user {user_id}")
+    logger.info(f"[PROJECTS] Creating project '{project.name}' for user {user_id}")
 
-    # DB-002: Per-parent unique names with auto-rename
-    from server.tools.ldm.utils.naming import generate_unique_name
-    project_name = await generate_unique_name(
-        db, LDMProject, project.name,
-        platform_id=project.platform_id if hasattr(project, 'platform_id') else None
-    )
-
-    new_project = LDMProject(
-        name=project_name,  # DB-002: Use auto-renamed name
+    # Use repository to create project (handles auto-rename for duplicates)
+    new_project = await repo.create(
+        name=project.name,
+        owner_id=user_id,
         description=project.description,
-        owner_id=current_user["user_id"],
+        platform_id=project.platform_id if hasattr(project, 'platform_id') else None,
         is_restricted=False  # DESIGN-001: Public by default
     )
 
-    db.add(new_project)
-    await db.commit()
-    await db.refresh(new_project)
-
-    logger.success(f"Project created: id={new_project.id}, name='{new_project.name}'")
+    logger.success(f"[PROJECTS] Project created: id={new_project['id']}, name='{new_project['name']}'")
     return new_project
 
 
@@ -101,18 +100,20 @@ async def create_project(
 async def get_project(
     project_id: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: ProjectRepository = Depends(get_project_repository)
 ):
-    """Get a project by ID."""
+    """Get a project by ID.
+
+    Repository Pattern: Uses ProjectRepository for database abstraction.
+    """
     # DESIGN-001: Check access using permission helper
     # Returns False for both non-existent AND no access (security: don't reveal existence)
     if not await can_access_project(db, project_id, current_user):
         raise HTTPException(status_code=404, detail="Project not found")
 
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    project = result.scalar_one_or_none()
+    # Use repository to get project
+    project = await repo.get(project_id)
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -125,37 +126,29 @@ async def rename_project(
     project_id: int,
     name: str,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: ProjectRepository = Depends(get_project_repository)
 ):
-    """Rename a project."""
+    """Rename a project.
+
+    Repository Pattern: Uses ProjectRepository for database abstraction.
+    """
     # DESIGN-001: Check access using permission helper
     # Returns False for both non-existent AND no access (security: don't reveal existence)
     if not await can_access_project(db, project_id, current_user):
         raise HTTPException(status_code=404, detail="Project not found")
 
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    project = result.scalar_one_or_none()
+    try:
+        # Use repository to rename (handles uniqueness check)
+        project = await repo.rename(project_id, name)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
 
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    # DB-002: Per-parent unique names
-    from server.tools.ldm.utils.naming import check_name_exists
-    if await check_name_exists(
-        db, LDMProject, name,
-        platform_id=project.platform_id,
-        exclude_id=project_id
-    ):
-        raise HTTPException(status_code=400, detail=f"A project named '{name}' already exists in this platform")
-
-    old_name = project.name
-    project.name = name
-    await db.commit()
-
-    logger.success(f"Project renamed: id={project_id}, '{old_name}' -> '{name}'")
-    return {"success": True, "project_id": project_id, "name": name}
+        logger.success(f"[PROJECTS] Project renamed: id={project_id}, new name='{name}'")
+        return {"success": True, "project_id": project_id, "name": name}
+    except ValueError as e:
+        # Raised when name already exists
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/projects/{project_id}", response_model=DeleteResponse)
@@ -163,12 +156,15 @@ async def delete_project(
     project_id: int,
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: ProjectRepository = Depends(get_project_repository)
 ):
     """
     Delete a project and all its contents.
     EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
     EXPLORER-009: Requires 'delete_project' capability.
+
+    Repository Pattern: Uses ProjectRepository for database abstraction.
     """
     # DESIGN-001: Check access using permission helper
     # Returns False for both non-existent AND no access (security: don't reveal existence)
@@ -179,6 +175,7 @@ async def delete_project(
     from ..permissions import require_capability
     await require_capability(db, current_user, "delete_project")
 
+    # Get project for trash serialization (needs full SQLAlchemy object for trash)
     result = await db.execute(
         select(LDMProject).where(LDMProject.id == project_id)
     )
@@ -208,11 +205,11 @@ async def delete_project(
             deleted_by=current_user["user_id"]
         )
 
-    await db.delete(project)
-    await db.commit()
+    # Use repository to delete
+    await repo.delete(project_id)
 
     action = "permanently deleted" if permanent else "moved to trash"
-    logger.info(f"Project {action}: id={project_id}, name='{project_name}'")
+    logger.info(f"[PROJECTS] Project {action}: id={project_id}, name='{project_name}'")
     return {"message": f"Project {action}"}
 
 
@@ -225,25 +222,23 @@ async def set_project_restriction(
     project_id: int,
     is_restricted: bool,
     db: AsyncSession = Depends(get_async_db),
-    admin: dict = Depends(require_admin_async)
+    admin: dict = Depends(require_admin_async),
+    repo: ProjectRepository = Depends(get_project_repository)
 ):
     """
     Toggle restriction on a project. Admin only.
     When restricted, only assigned users can access.
+
+    Repository Pattern: Uses ProjectRepository for database abstraction.
     """
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    project = result.scalar_one_or_none()
+    # Use repository to set restriction
+    project = await repo.set_restriction(project_id, is_restricted)
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    project.is_restricted = is_restricted
-    await db.commit()
-
     status = "restricted" if is_restricted else "public"
-    logger.success(f"Project {project_id} set to {status} by admin {admin['username']}")
+    logger.success(f"[PROJECTS] Project {project_id} set to {status} by admin {admin['username']}")
 
     return {
         "success": True,
@@ -256,15 +251,17 @@ async def set_project_restriction(
 async def list_project_access(
     project_id: int,
     db: AsyncSession = Depends(get_async_db),
-    admin: dict = Depends(require_admin_async)
+    admin: dict = Depends(require_admin_async),
+    repo: ProjectRepository = Depends(get_project_repository)
 ):
     """
     List users with access to a restricted project. Admin only.
+
+    Repository Pattern: Uses ProjectRepository for existence check.
     """
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    if not result.scalar_one_or_none():
+    # Use repository to verify project exists
+    project = await repo.get(project_id)
+    if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     access_list = await get_project_access_list(db, project_id)
@@ -276,15 +273,17 @@ async def grant_project_access_endpoint(
     project_id: int,
     request: AccessGrantRequest,
     db: AsyncSession = Depends(get_async_db),
-    admin: dict = Depends(require_admin_async)
+    admin: dict = Depends(require_admin_async),
+    repo: ProjectRepository = Depends(get_project_repository)
 ):
     """
     Grant users access to a restricted project. Admin only.
+
+    Repository Pattern: Uses ProjectRepository for existence check.
     """
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    if not result.scalar_one_or_none():
+    # Use repository to verify project exists
+    project = await repo.get(project_id)
+    if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     count = await grant_project_access(db, project_id, request.user_ids, admin["user_id"])
@@ -301,15 +300,17 @@ async def revoke_project_access_endpoint(
     project_id: int,
     user_id: int,
     db: AsyncSession = Depends(get_async_db),
-    admin: dict = Depends(require_admin_async)
+    admin: dict = Depends(require_admin_async),
+    repo: ProjectRepository = Depends(get_project_repository)
 ):
     """
     Revoke user access from a restricted project. Admin only.
+
+    Repository Pattern: Uses ProjectRepository for existence check.
     """
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    if not result.scalar_one_or_none():
+    # Use repository to verify project exists
+    project = await repo.get(project_id)
+    if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     revoked = await revoke_project_access(db, project_id, user_id)

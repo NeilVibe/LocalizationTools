@@ -18,8 +18,8 @@ test('Offline Storage move files to folders', async ({ page }) => {
   await page.screenshot({ path: 'test-results/root_view.png' });
 
   // 3. Double-click the FIRST "Offline Storage" row (the virtual folder with cloud icon)
-  // It's the first row in the grid
-  const firstRow = page.locator('.explorer-grid-row').first();
+  // It's the first row in the grid (class is grid-row, not explorer-grid-row)
+  const firstRow = page.locator('.grid-row').first();
   await firstRow.dblclick();
   await page.waitForTimeout(1500);
 
@@ -45,11 +45,12 @@ test('Offline Storage move files to folders', async ({ page }) => {
     await newFolderBtn.click();
     await page.waitForTimeout(500);
 
-    // Fill folder name in modal
-    const folderInput = page.locator('input[placeholder*="folder"], input[placeholder*="name"]');
+    // Fill folder name in modal - use specific placeholder
+    const folderInput = page.locator('input[placeholder="Enter folder name"]');
     if (await folderInput.isVisible()) {
       await folderInput.fill('TestMoveFolder');
-      await page.click('button:has-text("Create")');
+      // Click Create button in the visible modal (use .is-visible class for open modals)
+      await page.locator('.bx--modal.is-visible button:has-text("Create")').click();
       await page.waitForTimeout(1000);
       console.log('Created TestMoveFolder');
     }
@@ -63,14 +64,14 @@ test('Offline Storage move files to folders', async ({ page }) => {
   await page.screenshot({ path: 'test-results/after_folder_create.png' });
 
   // 5. Look for items to drag
-  const rows = await page.locator('.explorer-grid-row').all();
+  const rows = await page.locator('.grid-row').all();
   console.log('Found ' + rows.length + ' items');
 
   // Check each row's class
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const classList = await row.getAttribute('class') || '';
-    const text = await row.locator('.name-cell, [class*="name"]').first().textContent() || 'unknown';
+    const text = await row.locator('.item-name').first().textContent() || 'unknown';
     console.log('Row ' + i + ': ' + text.trim() + ' - classes: ' + classList);
   }
 

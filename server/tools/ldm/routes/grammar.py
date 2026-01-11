@@ -1,17 +1,18 @@
 """
 Grammar/spelling check routes for LDM.
 Uses central LanguageTool server for spell/grammar checking.
+
+P10: DB Abstraction Layer - Uses FileRepository and RowRepository for FULL PARITY.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.utils.languagetool import languagetool
 from loguru import logger
-from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import LDMRow, LDMFile
+from server.utils.dependencies import get_current_active_user_async
+from server.repositories import FileRepository, RowRepository, get_file_repository, get_row_repository
 
 router = APIRouter(tags=["ldm-grammar"])
 
@@ -64,16 +65,20 @@ async def grammar_status(
 async def check_grammar(
     file_id: int,
     language: str = Query("en-US", description="Language code (en-US, de-DE, fr, es, etc.)"),
-    db: AsyncSession = Depends(get_async_db),
+    file_repo: FileRepository = Depends(get_file_repository),
+    row_repo: RowRepository = Depends(get_row_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Check spelling/grammar for all target text in a file.
+    P10: Uses repository pattern - works with both PostgreSQL and SQLite.
     Uses central LanguageTool server.
 
     Supported languages: en-US, en-GB, de-DE, fr, es, pt-BR, pt-PT, ru, pl, nl, it, uk, zh-CN, ja
     Note: Korean (ko) is NOT supported.
     """
+    logger.debug(f"[GRAMMAR] check_grammar: file_id={file_id}, language={language}")
+
     # Check server availability
     if not await languagetool.is_available():
         raise HTTPException(
@@ -81,34 +86,13 @@ async def check_grammar(
             detail="LanguageTool server is not available. Grammar check requires network connection to central server."
         )
 
-    # Get file info
-    from sqlalchemy import select
-    result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
-    file = result.scalar_one_or_none()
-
-    # P9: Fallback to SQLite for local files
+    # Get file using repository
+    file = await file_repo.get(file_id)
     if not file:
-        from server.database.offline import get_offline_db
-        offline_db = get_offline_db()
-        file_info = offline_db.get_local_file(file_id)
-        if not file_info:
-            raise HTTPException(status_code=404, detail="File not found")
-        rows_data = offline_db.get_rows_for_file(file_id)
-        # Create row-like objects
-        class RowLike:
-            def __init__(self, data):
-                self.id = data.get("id")
-                self.row_num = data.get("row_num", 0)
-                self.target = data.get("target", "")
-        rows = [RowLike(r) for r in rows_data]
-    else:
-        # Get file rows from PostgreSQL
-        result = await db.execute(
-            select(LDMRow)
-            .where(LDMRow.file_id == file_id)
-            .order_by(LDMRow.row_num)
-        )
-        rows = result.scalars().all()
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Get rows using repository (no pagination for grammar check)
+    rows = await row_repo.get_for_file(file_id, limit=10000)
 
     if not rows:
         return GrammarCheckResponse(
@@ -122,14 +106,14 @@ async def check_grammar(
             server_available=True
         )
 
-    logger.info(f"LDM GRAMMAR CHECK: file_id={file_id}, language={language}, rows={len(rows)}")
+    logger.info(f"[GRAMMAR] check_grammar: file_id={file_id}, language={language}, rows={len(rows)}")
 
     errors = []
     rows_with_errors = set()
     rows_checked = 0
 
     for row in rows:
-        target_text = row.target
+        target_text = row.get("target", "")
         if not target_text or not target_text.strip():
             continue
 
@@ -139,8 +123,8 @@ async def check_grammar(
         for match in result.get("matches", []):
             rule = match.get("rule", {})
             errors.append(GrammarError(
-                row_id=row.id,
-                row_num=row.row_num,
+                row_id=row["id"],
+                row_num=row.get("row_num", 0),
                 text=target_text,
                 message=match.get("message", ""),
                 short_message=match.get("shortMessage"),
@@ -150,9 +134,9 @@ async def check_grammar(
                 rule_id=rule.get("id", "UNKNOWN"),
                 category=rule.get("category", {}).get("name", "Unknown")
             ))
-            rows_with_errors.add(row.id)
+            rows_with_errors.add(row["id"])
 
-    logger.info(f"LDM GRAMMAR CHECK complete: {len(errors)} errors in {len(rows_with_errors)} rows")
+    logger.info(f"[GRAMMAR] check_grammar complete: file_id={file_id}, errors={len(errors)}, rows_with_errors={len(rows_with_errors)}")
 
     return GrammarCheckResponse(
         file_id=file_id,
@@ -170,40 +154,31 @@ async def check_grammar(
 async def check_row_grammar(
     row_id: int,
     language: str = Query("en-US", description="Language code"),
-    db: AsyncSession = Depends(get_async_db),
+    row_repo: RowRepository = Depends(get_row_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Check spelling/grammar for a single row's target text.
+    P10: Uses repository pattern - works with both PostgreSQL and SQLite.
     """
+    logger.debug(f"[GRAMMAR] check_row_grammar: row_id={row_id}, language={language}")
+
     if not await languagetool.is_available():
         raise HTTPException(
             status_code=503,
             detail="LanguageTool server is not available"
         )
 
-    from sqlalchemy import select
-    result = await db.execute(select(LDMRow).where(LDMRow.id == row_id))
-    row = result.scalar_one_or_none()
-
-    # P9: Fallback to SQLite for local files
+    # Get row using repository
+    row = await row_repo.get(row_id)
     if not row:
-        from server.database.offline import get_offline_db
-        offline_db = get_offline_db()
-        row_data = offline_db.get_row(row_id)
-        if not row_data:
-            raise HTTPException(status_code=404, detail="Row not found")
-        # Create row-like object
-        class RowLike:
-            def __init__(self, data):
-                self.id = data.get("id")
-                self.target = data.get("target", "")
-        row = RowLike(row_data)
+        raise HTTPException(status_code=404, detail="Row not found")
 
-    if not row.target or not row.target.strip():
+    target_text = row.get("target", "")
+    if not target_text or not target_text.strip():
         return {"row_id": row_id, "matches": [], "checked": False}
 
-    result = await languagetool.check(row.target, language)
+    result = await languagetool.check(target_text, language)
 
     matches = []
     for match in result.get("matches", []):
@@ -218,9 +193,11 @@ async def check_row_grammar(
             "category": rule.get("category", {}).get("name", "Unknown")
         })
 
+    logger.debug(f"[GRAMMAR] check_row_grammar complete: row_id={row_id}, matches={len(matches)}")
+
     return {
         "row_id": row_id,
-        "text": row.target,
+        "text": target_text,
         "language": language,
         "matches": matches,
         "checked": True

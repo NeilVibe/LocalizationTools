@@ -1,122 +1,69 @@
 """
 EXPLORER-004: Explorer Search Endpoint
 Full recursive search like "Everything" - fast, beautiful paths
+
+P10-SEARCH: Refactored to use Repository Pattern with ONE code path.
+The repository factory selects PostgreSQL or SQLite based on mode.
 """
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
+from fastapi import APIRouter, Depends, Query, Request
 from typing import List, Dict, Any
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import LDMPlatform, LDMProject, LDMFolder, LDMFile
+from server.utils.dependencies import get_current_active_user_async
+from server.repositories import (
+    PlatformRepository, ProjectRepository, FolderRepository, FileRepository,
+    get_platform_repository, get_project_repository,
+    get_folder_repository, get_file_repository
+)
 
 router = APIRouter(prefix="/search", tags=["search"])
 
 
 @router.get("")
 async def search_explorer(
+    request: Request,
     q: str = Query(..., min_length=1, description="Search query"),
-    mode: str = Query("online", description="Search mode: 'online' (search all), 'offline' (local files only)"),
-    db: AsyncSession = Depends(get_async_db),
+    platform_repo: PlatformRepository = Depends(get_platform_repository),
+    project_repo: ProjectRepository = Depends(get_project_repository),
+    folder_repo: FolderRepository = Depends(get_folder_repository),
+    file_repo: FileRepository = Depends(get_file_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Full recursive search across all entities.
     Returns matches with complete Linux-style paths.
 
-    Mode:
-    - 'online' (default): Search PostgreSQL + Offline Storage
-    - 'offline': Only search Offline Storage (local files)
+    P10-SEARCH: Uses Repository Pattern - ONE code path for both online and offline.
+    The repository factory selects the appropriate adapter based on auth token.
     """
     results = []
 
-    # P9: In offline mode, search ALL SQLite data (synced + local)
-    if mode == "offline":
-        try:
-            from server.database.offline import get_offline_db
-            offline_db = get_offline_db()
+    # P10: ONE code path - repositories handle both PostgreSQL and SQLite
+    # Search all entity types using repository search() methods
+    platforms = await platform_repo.search(q)
+    projects = await project_repo.search(q)
+    folders = await folder_repo.search(q)
+    files = await file_repo.search(q)
 
-            # Use the clean search_all method from offline.py
-            data = offline_db.search_all(q)
-
-            # Transform to search results format
-            for p in data["platforms"]:
-                results.append({
-                    'type': 'platform', 'id': p['id'], 'name': p['name'],
-                    'path': [{'type': 'platform', 'id': p['id'], 'name': p['name']}],
-                    'pathString': f"/{p['name']}"
-                })
-
-            for p in data["projects"]:
-                path_str = f"/{p['platform_name']}/{p['name']}" if p.get('platform_name') else f"/{p['name']}"
-                results.append({
-                    'type': 'project', 'id': p['id'], 'name': p['name'],
-                    'path': [], 'pathString': path_str
-                })
-
-            for f in data["folders"]:
-                path_str = f"/{f['project_name']}/{f['name']}" if f.get('project_name') else f"/{f['name']}"
-                results.append({
-                    'type': 'folder', 'id': f['id'], 'name': f['name'],
-                    'path': [], 'pathString': path_str
-                })
-
-            for f in data["files"]:
-                if f['sync_status'] == 'local':
-                    path_str = f"/Offline Storage/{f['name']}"
-                    file_type = 'local-file'
-                else:
-                    path_str = f"/{f['project_name']}/{f['name']}" if f.get('project_name') else f"/{f['name']}"
-                    file_type = 'file'
-                results.append({
-                    'type': file_type, 'id': f['id'], 'name': f['name'],
-                    'path': [], 'pathString': path_str
-                })
-
-        except Exception as e:
-            pass
-
-        results.sort(key=lambda x: x['pathString'].lower())
-        return {
-            'query': q,
-            'count': len(results),
-            'results': results[:100]
-        }
-
-    # Online mode: search PostgreSQL + Offline Storage
-    search_term = f"%{q.lower()}%"
-
-    # Pre-fetch all data for fast path building (cached in memory)
-    platforms_cache = {}
+    # Build caches for path construction
+    # (repositories return normalized dicts, we can build paths from them)
+    platforms_cache = {p["id"]: p for p in await platform_repo.get_all()}
     projects_cache = {}
     folders_cache = {}
 
-    # Load all platforms
-    all_platforms = await db.execute(select(LDMPlatform))
-    for p in all_platforms.scalars():
-        platforms_cache[p.id] = {'id': p.id, 'name': p.name}
+    # Load all projects for path building
+    all_projects = await project_repo.get_all()
+    for proj in all_projects:
+        projects_cache[proj["id"]] = proj
 
-    # Load all projects
-    all_projects = await db.execute(select(LDMProject))
-    for proj in all_projects.scalars():
-        projects_cache[proj.id] = {
-            'id': proj.id,
-            'name': proj.name,
-            'platform_id': proj.platform_id
-        }
+    # Load all folders for path building (we need all folders, not just matching ones)
+    # This is necessary to build full paths from nested folders
+    for proj in all_projects:
+        proj_folders = await folder_repo.get_all(proj["id"])
+        for f in proj_folders:
+            folders_cache[f["id"]] = f
 
-    # Load all folders
-    all_folders = await db.execute(select(LDMFolder))
-    for f in all_folders.scalars():
-        folders_cache[f.id] = {
-            'id': f.id,
-            'name': f.name,
-            'parent_id': f.parent_id,
-            'project_id': f.project_id
-        }
-
-    def build_folder_path(folder_id: int) -> List[dict]:
+    def build_folder_path(folder_id: int) -> List[Dict[str, Any]]:
         """Build path from folder to root (recursive)"""
         path = []
         current_id = folder_id
@@ -132,19 +79,20 @@ async def search_explorer(
                 'id': folder['id'],
                 'name': folder['name']
             })
-            current_id = folder['parent_id']
+            current_id = folder.get('parent_id')
 
         return path
 
-    def build_full_path(project_id: int, folder_id: int = None) -> List[dict]:
+    def build_full_path(project_id: int, folder_id: int = None) -> List[Dict[str, Any]]:
         """Build complete path: platform / project / folders"""
         path = []
 
         # Add platform if exists
         project = projects_cache.get(project_id)
         if project:
-            if project['platform_id']:
-                platform = platforms_cache.get(project['platform_id'])
+            platform_id = project.get('platform_id')
+            if platform_id:
+                platform = platforms_cache.get(platform_id)
                 if platform:
                     path.append({
                         'type': 'platform',
@@ -165,93 +113,81 @@ async def search_explorer(
 
         return path
 
-    def path_to_string(path: List[dict]) -> str:
+    def path_to_string(path: List[Dict[str, Any]]) -> str:
         """Convert path to Linux-style string"""
+        if not path:
+            return "/"
         return '/' + '/'.join(p['name'] for p in path)
 
-    # Search platforms
-    matching_platforms = await db.execute(
-        select(LDMPlatform).where(LDMPlatform.name.ilike(search_term))
-    )
-    for p in matching_platforms.scalars():
-        path = [{'type': 'platform', 'id': p.id, 'name': p.name}]
+    # Process platform results
+    for p in platforms:
+        path = [{'type': 'platform', 'id': p['id'], 'name': p['name']}]
         results.append({
             'type': 'platform',
-            'id': p.id,
-            'name': p.name,
+            'id': p['id'],
+            'name': p['name'],
             'path': path,
             'pathString': path_to_string(path)
         })
 
-    # Search projects
-    matching_projects = await db.execute(
-        select(LDMProject).where(LDMProject.name.ilike(search_term))
-    )
-    for proj in matching_projects.scalars():
-        path = build_full_path(proj.id)
+    # Process project results
+    for proj in projects:
+        path = build_full_path(proj['id'])
         results.append({
             'type': 'project',
-            'id': proj.id,
-            'name': proj.name,
+            'id': proj['id'],
+            'name': proj['name'],
             'path': path,
             'pathString': path_to_string(path)
         })
 
-    # Search folders (full recursive)
-    matching_folders = await db.execute(
-        select(LDMFolder).where(LDMFolder.name.ilike(search_term))
-    )
-    for folder in matching_folders.scalars():
-        path = build_full_path(folder.project_id, folder.id)
+    # Process folder results
+    for folder in folders:
+        project_id = folder.get('project_id')
+        path = build_full_path(project_id, folder['id']) if project_id else []
         results.append({
             'type': 'folder',
-            'id': folder.id,
-            'name': folder.name,
-            'project_id': folder.project_id,
+            'id': folder['id'],
+            'name': folder['name'],
+            'project_id': project_id,
             'path': path,
             'pathString': path_to_string(path)
         })
 
-    # Search files (full recursive)
-    matching_files = await db.execute(
-        select(LDMFile).where(LDMFile.name.ilike(search_term))
-    )
-    for file in matching_files.scalars():
-        path = build_full_path(file.project_id, file.folder_id)
-        file_entry = {'type': 'file', 'id': file.id, 'name': file.name}
-        path.append(file_entry)
-        results.append({
-            'type': 'file',
-            'id': file.id,
-            'name': file.name,
-            'project_id': file.project_id,
-            'folder_id': file.folder_id,
-            'path': path,
-            'pathString': path_to_string(path)
-        })
+    # Process file results
+    for file in files:
+        project_id = file.get('project_id')
+        folder_id = file.get('folder_id')
 
-    # P9: Also search Offline Storage (SQLite local files)
-    try:
-        from server.database.offline import get_offline_db
-        offline_db = get_offline_db()
-
-        # Search local files in Offline Storage
-        local_files = offline_db.search_local_files(q)
-        for f in local_files:
+        # Check if it's a local file (SQLite offline mode)
+        sync_status = file.get('sync_status')
+        if sync_status == 'local':
+            # Local file in Offline Storage
             path = [
                 {'type': 'offline-storage', 'id': 0, 'name': 'Offline Storage'},
-                {'type': 'local-file', 'id': f['id'], 'name': f['name']}
+                {'type': 'local-file', 'id': file['id'], 'name': file['name']}
             ]
             results.append({
                 'type': 'local-file',
-                'id': f['id'],
-                'name': f['name'],
+                'id': file['id'],
+                'name': file['name'],
                 'path': path,
-                'pathString': f"/Offline Storage/{f['name']}"
+                'pathString': f"/Offline Storage/{file['name']}"
             })
-    except Exception as e:
-        # Don't fail search if offline DB unavailable
-        pass
+        else:
+            # Regular file
+            path = build_full_path(project_id, folder_id) if project_id else []
+            file_entry = {'type': 'file', 'id': file['id'], 'name': file['name']}
+            path.append(file_entry)
+            results.append({
+                'type': 'file',
+                'id': file['id'],
+                'name': file['name'],
+                'project_id': project_id,
+                'folder_id': folder_id,
+                'path': path,
+                'pathString': path_to_string(path)
+            })
 
     # Sort by path for beautiful grouping
     results.sort(key=lambda x: x['pathString'].lower())

@@ -16,13 +16,12 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
 from server.database.models import LDMTranslationMemory
 from server.tools.ldm.schemas import TMResponse, TMUploadResponse, DeleteResponse
-from server.tools.ldm.permissions import can_access_tm, get_accessible_tms
+from server.tools.ldm.permissions import can_access_tm
 
 # Repository Pattern imports
 from server.repositories import TMRepository, get_tm_repository
@@ -83,7 +82,7 @@ async def upload_tm(
             detail=f"Unsupported TM format: {ext}. Use TXT, TSV, XML, or XLSX."
         )
 
-    logger.info(f"TM upload started: name={name}, file={filename}, user={current_user['user_id']}")
+    logger.info(f"[TM] TM upload started: name={name}, file={filename}, user={current_user['user_id']}")
 
     # TASK-001: Add TrackedOperation for progress tracking
     user_id = current_user["user_id"]
@@ -139,7 +138,7 @@ async def upload_tm(
     except ValueError as e:
         raise HTTPException(status_code=400, detail="Invalid TM data provided")
     except Exception as e:
-        logger.error(f"TM upload failed: {e}", exc_info=True)
+        logger.error(f"[TM] TM upload failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="TM upload failed. Check server logs.")
 
 
@@ -175,7 +174,7 @@ async def list_tms(
             self.indexed_at = data.get("indexed_at")
 
     result = [TMLike(tm) if isinstance(tm, dict) else tm for tm in tms]
-    logger.info(f"Listed {len(result)} TMs for user {current_user['user_id']}")
+    logger.info(f"[TM] Listed {len(result)} TMs for user {current_user['user_id']}")
     return result
 
 
@@ -240,7 +239,7 @@ async def delete_tm(
     if not deleted:
         raise HTTPException(status_code=500, detail="Failed to delete Translation Memory")
 
-    logger.info(f"Deleted TM: id={tm_id}, entries={entry_count}")
+    logger.info(f"[TM] Deleted TM: id={tm_id}, entries={entry_count}")
     return {"message": "Translation Memory deleted", "entries_deleted": entry_count}
 
 
@@ -268,7 +267,7 @@ async def export_tm(
 
     Returns file download.
     """
-    logger.info(f"Exporting TM: tm_id={tm_id}, format={format}, columns={columns}")
+    logger.info(f"[TM] Exporting TM: tm_id={tm_id}, format={format}, columns={columns}")
 
     # DESIGN-001: Use permission helper for TM access check
     if not await can_access_tm(db, tm_id, current_user):
@@ -291,7 +290,7 @@ async def export_tm(
 
     result = await asyncio.to_thread(_export_tm)
 
-    logger.success(f"TM exported: tm_id={tm_id}, entries={result['entry_count']}, format={format}")
+    logger.success(f"[TM] TM exported: tm_id={tm_id}, entries={result['entry_count']}, format={format}")
 
     return Response(
         content=result["content"],

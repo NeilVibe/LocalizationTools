@@ -723,30 +723,22 @@
     } else if (currentLocation.type === 'project') {
       assignmentData = { project_id: currentLocation.id, folder_id: null };
     } else if (currentLocation.type === 'folder') {
-      // Check if this is a local folder (SQLite) - IDs start with "local-"
       const folderId = currentLocation.id;
       if (typeof folderId === 'string' && folderId.startsWith('local-')) {
-        // Local folders (Offline Storage) can't have TMs assigned directly
-        // They're stored in SQLite, not PostgreSQL
-        logger.warning('Cannot paste TMs to local Offline Storage folders', {
+        // P9-ARCH: Local folders are in SQLite, TM assignments are in PostgreSQL
+        // When ONLINE, assign to Offline Storage PROJECT instead
+        // When OFFLINE (full SQLite mode), this works via repository pattern
+        logger.info('Local folder detected - assigning to Offline Storage project', {
           folderId,
           folderName: currentLocation.name
         });
-        // For local folders, assign to the Offline Storage project instead
-        // This keeps TMs accessible in Offline Storage context
+        // Find Offline Storage project ID for assignment
         const offlineStoragePlatform = treeData.platforms?.find(p => p.name === 'Offline Storage');
         const offlineStorageProject = offlineStoragePlatform?.projects?.find(p => p.name === 'Offline Storage');
         if (offlineStorageProject) {
-          logger.info('Redirecting local folder paste to Offline Storage project', {
-            projectId: offlineStorageProject.id,
-            originalFolderId: folderId
-          });
-          assignmentData = { project_id: offlineStorageProject.id, folder_id: null };
+          assignmentData = { project_id: offlineStorageProject.id };
         } else {
-          logger.error('Offline Storage project not found - pasting to unassigned', {
-            platformFound: !!offlineStoragePlatform
-          });
-          // Fall back to unassigned if project not found
+          // Fallback to unassigned
           assignmentData = { platform_id: null, project_id: null, folder_id: null };
         }
       } else {

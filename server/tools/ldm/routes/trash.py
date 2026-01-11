@@ -1,16 +1,21 @@
-"""Trash/Recycle Bin endpoints for LDM - EXPLORER-008."""
+"""
+Trash/Recycle Bin endpoints for LDM - EXPLORER-008.
+
+P10: DB Abstraction Layer - Uses TrashRepository for FULL PARITY.
+"""
 
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
 from server.database.models import (
     LDMProject, LDMFolder, LDMFile, LDMRow, LDMTrash, LDMPlatform
 )
+from server.repositories import TrashRepository, get_trash_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -20,34 +25,31 @@ TRASH_RETENTION_DAYS = 30
 
 @router.get("/trash")
 async def list_trash(
-    db: AsyncSession = Depends(get_async_db),
+    trash_repo: TrashRepository = Depends(get_trash_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     List all items in the recycle bin for the current user.
+    P10: Uses repository pattern - works with both PostgreSQL and SQLite.
     Returns items sorted by deletion date (newest first).
     """
-    result = await db.execute(
-        select(LDMTrash)
-        .where(
-            LDMTrash.deleted_by == current_user["user_id"],
-            LDMTrash.status == "trashed"
-        )
-        .order_by(LDMTrash.deleted_at.desc())
-    )
-    items = result.scalars().all()
+    logger.debug(f"[TRASH] list_trash: user_id={current_user['user_id']}")
+
+    items = await trash_repo.get_for_user(current_user["user_id"])
+
+    logger.debug(f"[TRASH] list_trash complete: count={len(items)}")
 
     return {
         "items": [
             {
-                "id": item.id,
-                "item_type": item.item_type,
-                "item_id": item.item_id,
-                "item_name": item.item_name,
-                "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
-                "expires_at": item.expires_at.isoformat() if item.expires_at else None,
-                "parent_project_id": item.parent_project_id,
-                "parent_folder_id": item.parent_folder_id
+                "id": item["id"],
+                "item_type": item["item_type"],
+                "item_id": item["item_id"],
+                "item_name": item["item_name"],
+                "deleted_at": item.get("deleted_at"),
+                "expires_at": item.get("expires_at"),
+                "parent_project_id": item.get("parent_project_id"),
+                "parent_folder_id": item.get("parent_folder_id")
             }
             for item in items
         ],
@@ -59,59 +61,64 @@ async def list_trash(
 async def restore_from_trash(
     trash_id: int,
     db: AsyncSession = Depends(get_async_db),
+    trash_repo: TrashRepository = Depends(get_trash_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Restore an item from the recycle bin.
+    P10: Uses repository for trash lookup, restore creates actual entities.
     Recreates the item and all its contents from the stored snapshot.
     """
-    # Get trash item
-    result = await db.execute(
-        select(LDMTrash).where(
-            LDMTrash.id == trash_id,
-            LDMTrash.deleted_by == current_user["user_id"],
-            LDMTrash.status == "trashed"
-        )
-    )
-    trash_item = result.scalar_one_or_none()
+    logger.debug(f"[TRASH] restore_from_trash: trash_id={trash_id}")
+
+    # Get trash item using repository
+    trash_item = await trash_repo.get(trash_id)
 
     if not trash_item:
         raise HTTPException(status_code=404, detail="Trash item not found")
 
-    item_data = trash_item.item_data
-    item_type = trash_item.item_type
+    if trash_item.get("deleted_by") != current_user["user_id"]:
+        raise HTTPException(status_code=404, detail="Trash item not found")
+
+    if trash_item.get("status") != "trashed":
+        raise HTTPException(status_code=400, detail="Item is not in trash")
+
+    item_data = trash_item["item_data"]
+    item_type = trash_item["item_type"]
 
     try:
         if item_type == "file":
             # Restore file and rows
-            new_file = await _restore_file(db, item_data, trash_item.parent_project_id, trash_item.parent_folder_id)
-            logger.success(f"File restored from trash: {new_file.name}")
+            new_file = await _restore_file(db, item_data, trash_item.get("parent_project_id"), trash_item.get("parent_folder_id"))
+            logger.success(f"[TRASH] File restored: {new_file.name}")
             restored_id = new_file.id
 
         elif item_type == "folder":
             # Restore folder and all contents
-            new_folder = await _restore_folder(db, item_data, trash_item.parent_project_id, trash_item.parent_folder_id)
-            logger.success(f"Folder restored from trash: {new_folder.name}")
+            new_folder = await _restore_folder(db, item_data, trash_item.get("parent_project_id"), trash_item.get("parent_folder_id"))
+            logger.success(f"[TRASH] Folder restored: {new_folder.name}")
             restored_id = new_folder.id
 
         elif item_type == "project":
             # Restore project and all contents
             new_project = await _restore_project(db, item_data)
-            logger.success(f"Project restored from trash: {new_project.name}")
+            logger.success(f"[TRASH] Project restored: {new_project.name}")
             restored_id = new_project.id
 
         elif item_type == "platform":
             # Restore platform and all projects
             new_platform = await _restore_platform(db, item_data)
-            logger.success(f"Platform restored from trash: {new_platform.name}")
+            logger.success(f"[TRASH] Platform restored: {new_platform.name}")
             restored_id = new_platform.id
 
         else:
             raise HTTPException(status_code=400, detail=f"Unknown item type: {item_type}")
 
-        # Mark trash item as restored
-        trash_item.status = "restored"
+        # Mark trash item as restored using repository
+        await trash_repo.restore(trash_id, current_user["user_id"])
         await db.commit()
+
+        logger.info(f"[TRASH] restore_from_trash complete: trash_id={trash_id}, restored_id={restored_id}")
 
         return {
             "success": True,
@@ -122,62 +129,52 @@ async def restore_from_trash(
 
     except Exception as e:
         await db.rollback()
-        logger.error(f"Restore failed: {e}")
+        logger.error(f"[TRASH] Restore failed: {e}")
         raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}")
 
 
 @router.delete("/trash/{trash_id}")
 async def permanent_delete(
     trash_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    trash_repo: TrashRepository = Depends(get_trash_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Permanently delete an item from the recycle bin.
+    P10: Uses repository pattern - works with both PostgreSQL and SQLite.
     This cannot be undone.
     """
-    result = await db.execute(
-        select(LDMTrash).where(
-            LDMTrash.id == trash_id,
-            LDMTrash.deleted_by == current_user["user_id"],
-            LDMTrash.status == "trashed"
-        )
-    )
-    trash_item = result.scalar_one_or_none()
+    logger.debug(f"[TRASH] permanent_delete: trash_id={trash_id}")
 
-    if not trash_item:
+    deleted = await trash_repo.permanent_delete(trash_id, current_user["user_id"])
+
+    if not deleted:
         raise HTTPException(status_code=404, detail="Trash item not found")
 
-    await db.delete(trash_item)
-    await db.commit()
-
-    logger.info(f"Trash item permanently deleted: {trash_item.item_name}")
+    logger.info(f"[TRASH] permanent_delete complete: trash_id={trash_id}")
     return {"success": True, "message": "Item permanently deleted"}
 
 
 @router.post("/trash/empty")
 async def empty_trash(
     db: AsyncSession = Depends(get_async_db),
+    trash_repo: TrashRepository = Depends(get_trash_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Empty the entire recycle bin (permanently delete all items).
+    P10: Uses repository pattern - works with both PostgreSQL and SQLite.
     EXPLORER-009: Requires 'empty_trash' capability.
     """
+    logger.debug(f"[TRASH] empty_trash: user_id={current_user['user_id']}")
+
     # EXPLORER-009: Check capability for privileged operation
     from ..permissions import require_capability
     await require_capability(db, current_user, "empty_trash")
 
-    result = await db.execute(
-        delete(LDMTrash).where(
-            LDMTrash.deleted_by == current_user["user_id"],
-            LDMTrash.status == "trashed"
-        )
-    )
-    await db.commit()
+    count = await trash_repo.empty_for_user(current_user["user_id"])
 
-    count = result.rowcount
-    logger.info(f"Trash emptied: {count} items permanently deleted")
+    logger.info(f"[TRASH] empty_trash complete: count={count}")
     return {"success": True, "message": f"{count} items permanently deleted"}
 
 
@@ -237,7 +234,6 @@ async def serialize_file_for_trash(db: AsyncSession, file: LDMFile) -> dict:
                 "string_id": r.string_id,
                 "source": r.source,
                 "target": r.target,
-                "memo": r.memo,
                 "status": r.status,
                 "extra_data": r.extra_data
             }
