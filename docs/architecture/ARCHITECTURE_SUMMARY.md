@@ -160,63 +160,209 @@ When editing a file, active TMs are resolved in order:
 
 ---
 
-## DB Abstraction Layer (Target Architecture)
+## DB Abstraction Layer (Repository Pattern)
 
-### The Vision: One API, Two Databases
+### The Architecture
 
 ```
-┌─────────────────────────────────────┐
-│         Application Layer           │
-│   (Same API calls everywhere)       │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│      DB Abstraction Interface       │
-│  tm.assign(), tm.search(), etc.     │
-└──────────────┬──────────────────────┘
-               │
-       ┌───────┴───────┐
-       │               │
-┌──────▼─────┐  ┌──────▼─────┐
-│ PostgreSQL │  │   SQLite   │
-│  Adapter   │  │   Adapter  │
-└────────────┘  └────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    FastAPI Routes                        │
+│         (Inject repository via Depends())               │
+└────────────────────────┬────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│              Repository Interface (ABC)                  │
+│  TMRepository, FileRepository, FolderRepository, etc.   │
+└────────────────────────┬────────────────────────────────┘
+                         │
+         ┌───────────────┴───────────────┐
+         │                               │
+         ▼                               ▼
+┌─────────────────────┐       ┌─────────────────────┐
+│ PostgreSQLTMRepo    │       │   SQLiteTMRepo      │
+│ (uses SQLAlchemy)   │       │ (uses offline.py)   │
+└─────────────────────┘       └─────────────────────┘
+         │                               │
+         ▼                               ▼
+    PostgreSQL DB                   SQLite DB
 ```
 
-### Abstraction Interface
+### Folder Structure
+
+```
+server/
+├── repositories/                    ← NEW
+│   ├── __init__.py                  # Exports + factory
+│   ├── base.py                      # Generic Repository[T]
+│   │
+│   ├── interfaces/                  # Abstract interfaces
+│   │   ├── __init__.py
+│   │   ├── tm_repository.py         # TMRepository(ABC)
+│   │   ├── file_repository.py       # FileRepository(ABC)
+│   │   └── folder_repository.py     # FolderRepository(ABC)
+│   │
+│   ├── postgresql/                  # PostgreSQL adapters
+│   │   ├── __init__.py
+│   │   ├── tm_repo.py               # PostgreSQLTMRepository
+│   │   ├── file_repo.py
+│   │   └── folder_repo.py
+│   │
+│   └── sqlite/                      # SQLite adapters
+│       ├── __init__.py
+│       ├── tm_repo.py               # SQLiteTMRepository
+│       ├── file_repo.py
+│       └── folder_repo.py
+│
+├── database/
+│   ├── models.py                    # Existing SQLAlchemy models
+│   └── offline.py                   # Existing SQLite operations
+│
+└── tools/ldm/routes/                # Updated to use repos
+    ├── tm_assignment.py             # Uses TMRepository
+    └── ...
+```
+
+### Interface Definition
 
 ```python
-class TMRepository:
-    """Unified TM operations - same interface, different backends."""
+# server/repositories/interfaces/tm_repository.py
+from abc import ABC, abstractmethod
+from typing import List, Optional
+from dataclasses import dataclass
 
-    async def assign(self, tm_id: int, target: AssignmentTarget) -> TM:
+@dataclass
+class AssignmentTarget:
+    platform_id: Optional[int] = None
+    project_id: Optional[int] = None
+    folder_id: Optional[int] = None
+
+class TMRepository(ABC):
+    """
+    TM operations interface.
+    Both PostgreSQL and SQLite implement this EXACTLY.
+    """
+
+    @abstractmethod
+    async def get(self, tm_id: int) -> Optional[dict]:
+        """Get TM by ID."""
+        ...
+
+    @abstractmethod
+    async def get_all(self) -> List[dict]:
+        """Get all TMs."""
+        ...
+
+    @abstractmethod
+    async def create(self, name: str, source_lang: str, target_lang: str) -> dict:
+        """Create new TM."""
+        ...
+
+    @abstractmethod
+    async def delete(self, tm_id: int) -> bool:
+        """Delete TM."""
+        ...
+
+    @abstractmethod
+    async def assign(self, tm_id: int, target: AssignmentTarget) -> dict:
         """Assign TM to platform/project/folder."""
-        pass
+        ...
 
-    async def search(self, query: str, scope: Scope) -> List[TMMatch]:
-        """Search TM entries within scope."""
-        pass
+    @abstractmethod
+    async def unassign(self, tm_id: int) -> dict:
+        """Move TM to unassigned."""
+        ...
 
-    async def add_entry(self, tm_id: int, source: str, target: str) -> TMEntry:
+    @abstractmethod
+    async def activate(self, tm_id: int) -> dict:
+        """Activate TM (must be assigned first)."""
+        ...
+
+    @abstractmethod
+    async def deactivate(self, tm_id: int) -> dict:
+        """Deactivate TM."""
+        ...
+
+    @abstractmethod
+    async def get_for_scope(
+        self,
+        platform_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+        folder_id: Optional[int] = None
+    ) -> List[dict]:
+        """Get TMs assigned to scope."""
+        ...
+
+    @abstractmethod
+    async def add_entry(self, tm_id: int, source: str, target: str) -> dict:
         """Add entry to TM."""
-        pass
+        ...
 
-# Runtime selection
-def get_tm_repository(mode: Mode) -> TMRepository:
-    if mode == Mode.ONLINE:
-        return PostgreSQLTMRepository(db_session)
-    else:
-        return SQLiteTMRepository(offline_db)
+    @abstractmethod
+    async def search_entries(self, tm_id: int, query: str, limit: int = 10) -> List[dict]:
+        """Search TM entries."""
+        ...
 ```
 
-### Why This Matters
+### Dependency Injection
 
-| OLD Pattern (Fallback) | NEW Pattern (Abstraction) |
-|------------------------|---------------------------|
-| PostgreSQL-first, SQLite fallback | Equal citizens |
-| TM assignment online-only | TM assignment anywhere |
-| Different code paths | Same code path |
-| Bugs in fallback logic | Unified testing |
+```python
+# server/repositories/__init__.py
+from server.repositories.postgresql.tm_repo import PostgreSQLTMRepository
+from server.repositories.sqlite.tm_repo import SQLiteTMRepository
+
+def get_tm_repository(
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user_optional)
+) -> TMRepository:
+    """
+    Factory function - returns correct repository based on mode.
+    Used as FastAPI dependency.
+    """
+    # Check if offline mode
+    if current_user and current_user.get("token", "").startswith("OFFLINE_MODE_"):
+        return SQLiteTMRepository()
+    else:
+        return PostgreSQLTMRepository(db)
+```
+
+### Route Usage (Clean!)
+
+```python
+# BEFORE (Ugly Fallback Pattern)
+@router.patch("/tm/{tm_id}/assign")
+async def assign_tm(
+    tm_id: int,
+    project_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_async_db)
+):
+    # Try PostgreSQL
+    result = await db.execute(select(TM).where(TM.id == tm_id))
+    tm = result.scalar_one_or_none()
+    if not tm:
+        # Fallback to SQLite... messy!
+        offline_db = get_offline_db()
+        ...
+
+# AFTER (Clean Repository Pattern)
+@router.patch("/tm/{tm_id}/assign")
+async def assign_tm(
+    tm_id: int,
+    project_id: Optional[int] = None,
+    repo: TMRepository = Depends(get_tm_repository)  # ← Injected!
+):
+    return await repo.assign(tm_id, AssignmentTarget(project_id=project_id))
+```
+
+### Why This Pattern
+
+| Aspect | Fallback Pattern | Repository Pattern |
+|--------|------------------|-------------------|
+| **Code in routes** | 50+ lines per endpoint | 5 lines per endpoint |
+| **Testing** | Mock DB + mock offline | Mock one interface |
+| **New feature** | Add to PG, add to SQLite, add fallback | Add to interface, implement twice |
+| **Bug risk** | High (different code paths) | Low (same interface) |
+| **Offline parity** | "Did I add fallback?" | Guaranteed by interface |
 
 ---
 

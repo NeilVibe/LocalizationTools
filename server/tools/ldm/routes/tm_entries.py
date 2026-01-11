@@ -1,6 +1,13 @@
 """
 TM Entry endpoints - CRUD operations for individual TM entries.
 
+P9-ARCH: Uses Repository Pattern for database abstraction.
+- Online mode: PostgreSQLTMRepository
+- Offline mode: SQLiteTMRepository
+
+Note: Some complex operations (update, confirm, bulk-confirm) still use direct
+database access for now - these can be migrated to repository pattern later.
+
 Migrated from api.py lines 1366-1722, 1820-1870, 2153-2201
 """
 
@@ -17,6 +24,9 @@ from server.utils.dependencies import get_async_db, get_current_active_user_asyn
 from server.database.db_utils import normalize_text_for_hash
 from server.database.models import LDMTranslationMemory, LDMTMEntry
 from server.tools.ldm.permissions import can_access_tm
+
+# Repository Pattern imports
+from server.repositories import TMRepository, get_tm_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -192,43 +202,52 @@ async def add_tm_entry(
     source_text: str = Form(...),
     target_text: str = Form(...),
     background_tasks: BackgroundTasks = None,
-    db: AsyncSession = Depends(get_async_db),
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Add a single entry to a Translation Memory (Adaptive TM, DESIGN-001: Public by default).
+    Add a single entry to a Translation Memory (Adaptive TM).
 
-    Used to add translations as they're created during editing.
+    P9-ARCH: Uses Repository Pattern - adds to PostgreSQL (online)
+    or SQLite (offline) based on user's mode.
+    DESIGN-001: Public by default.
     Q-001: Auto-syncs TM indexes after add.
     """
     logger.info(f"Adding TM entry: tm_id={tm_id}, source={source_text[:30]}...")
 
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
+    # Verify TM exists using repository
+    tm = await repo.get(tm_id)
+    if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    # Run sync bulk_copy in threadpool to avoid blocking event loop
-    def _add_entry():
-        sync_db = next(get_db())
-        try:
-            from server.tools.ldm.tm_manager import TMManager
-            tm_manager = TMManager(sync_db)
-            return tm_manager.add_entry(tm_id, source_text, target_text)
-        finally:
-            sync_db.close()
+    # Add entry using repository
+    entry = await repo.add_entry(
+        tm_id=tm_id,
+        source=source_text,
+        target=target_text,
+        created_by=current_user.get("username", "unknown")
+    )
 
-    result = await asyncio.to_thread(_add_entry)
+    if not entry:
+        raise HTTPException(status_code=500, detail="Failed to add entry")
 
-    if not result:
-        raise HTTPException(status_code=404, detail="Translation Memory not found")
+    # Get updated TM to return entry count
+    updated_tm = await repo.get(tm_id)
+    entry_count = updated_tm.get("entry_count", 0) if updated_tm else 0
 
-    logger.success(f"TM entry added: tm_id={tm_id}, total entries={result['entry_count']}")
+    logger.success(f"TM entry added: tm_id={tm_id}, total entries={entry_count}")
 
-    # Q-001: Auto-sync indexes in background
+    # Q-001: Auto-sync indexes in background (only for PostgreSQL mode)
+    # TODO: Add index sync for SQLite mode
     if background_tasks:
         background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
 
-    return result
+    return {
+        "success": True,
+        "tm_id": tm_id,
+        "entry_id": entry.get("id"),
+        "entry_count": entry_count
+    }
 
 
 @router.put("/tm/{tm_id}/entries/{entry_id}")
@@ -316,46 +335,30 @@ async def delete_tm_entry(
     tm_id: int,
     entry_id: int,
     background_tasks: BackgroundTasks = None,
-    db: AsyncSession = Depends(get_async_db),
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Delete a single TM entry (DESIGN-001: Public by default).
+    Delete a single TM entry.
+
+    P9-ARCH: Uses Repository Pattern - deletes from PostgreSQL (online)
+    or SQLite (offline) based on user's mode.
+    DESIGN-001: Public by default.
     Q-001: Auto-syncs TM indexes after delete.
     """
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=404, detail="Translation Memory not found")
-
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = tm_result.scalar_one_or_none()
+    # Verify TM exists using repository
+    tm = await repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    # Find entry
-    entry_result = await db.execute(
-        select(LDMTMEntry).where(
-            LDMTMEntry.id == entry_id,
-            LDMTMEntry.tm_id == tm_id
-        )
-    )
-    entry = entry_result.scalar_one_or_none()
-    if not entry:
+    # Delete entry using repository
+    deleted = await repo.delete_entry(entry_id)
+    if not deleted:
         raise HTTPException(status_code=404, detail="Entry not found")
-
-    await db.delete(entry)
-
-    # Update TM entry count and updated_at
-    tm.entry_count = max(0, (tm.entry_count or 0) - 1)
-    tm.updated_at = datetime.utcnow()
-
-    await db.commit()
 
     logger.info(f"Deleted TM entry: tm_id={tm_id}, entry_id={entry_id}")
 
-    # Q-001: Auto-sync indexes in background
+    # Q-001: Auto-sync indexes in background (only for PostgreSQL mode)
     if background_tasks:
         background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
 

@@ -1326,6 +1326,176 @@ class OfflineDatabase:
             return [dict(row) for row in rows]
 
     # =========================================================================
+    # TM Assignment (Full Offline Support)
+    # =========================================================================
+
+    def assign_local_tm(
+        self,
+        tm_id: int,
+        platform_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+        folder_id: Optional[int] = None
+    ) -> Dict:
+        """
+        Assign a TM to a platform/project/folder in SQLite.
+        This enables full offline TM operations.
+        """
+        with self._get_connection() as conn:
+            now = datetime.now().isoformat()
+
+            # Check if assignment already exists
+            existing = conn.execute(
+                """SELECT id FROM offline_tm_assignments
+                   WHERE tm_id = ? AND
+                         (platform_id = ? OR (platform_id IS NULL AND ? IS NULL)) AND
+                         (project_id = ? OR (project_id IS NULL AND ? IS NULL)) AND
+                         (folder_id = ? OR (folder_id IS NULL AND ? IS NULL))""",
+                (tm_id, platform_id, platform_id, project_id, project_id, folder_id, folder_id)
+            ).fetchone()
+
+            if existing:
+                # Update existing assignment
+                conn.execute(
+                    """UPDATE offline_tm_assignments
+                       SET is_active = 1, sync_status = 'modified'
+                       WHERE id = ?""",
+                    (existing['id'],)
+                )
+                assignment_id = existing['id']
+            else:
+                # Create new assignment
+                cursor = conn.execute(
+                    """INSERT INTO offline_tm_assignments
+                       (server_id, tm_id, server_tm_id, platform_id, project_id, folder_id,
+                        is_active, priority, assigned_at, sync_status)
+                       VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, 'local')""",
+                    (0, tm_id, 0, platform_id, project_id, folder_id, now)
+                )
+                assignment_id = cursor.lastrowid
+
+            conn.commit()
+            logger.info(f"Assigned TM {tm_id} locally: platform={platform_id}, project={project_id}, folder={folder_id}")
+
+            return {
+                'id': assignment_id,
+                'tm_id': tm_id,
+                'platform_id': platform_id,
+                'project_id': project_id,
+                'folder_id': folder_id,
+                'is_active': True,
+                'sync_status': 'local'
+            }
+
+    def unassign_local_tm(self, tm_id: int) -> bool:
+        """Remove TM assignment (move to unassigned)."""
+        with self._get_connection() as conn:
+            result = conn.execute(
+                """UPDATE offline_tm_assignments
+                   SET platform_id = NULL, project_id = NULL, folder_id = NULL,
+                       is_active = 0, sync_status = 'modified'
+                   WHERE tm_id = ?""",
+                (tm_id,)
+            )
+            conn.commit()
+            if result.rowcount > 0:
+                logger.info(f"Unassigned TM {tm_id} locally")
+                return True
+            return False
+
+    def get_local_tm_assignment(self, tm_id: int) -> Optional[Dict]:
+        """Get the current assignment for a TM."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """SELECT * FROM offline_tm_assignments
+                   WHERE tm_id = ? AND is_active = 1
+                   ORDER BY id DESC LIMIT 1""",
+                (tm_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def get_local_tm_assignments_for_scope(
+        self,
+        platform_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+        folder_id: Optional[int] = None
+    ) -> List[Dict]:
+        """Get all TM assignments for a given scope."""
+        with self._get_connection() as conn:
+            # Build query based on scope
+            if folder_id:
+                rows = conn.execute(
+                    """SELECT a.*, t.name as tm_name, t.entry_count
+                       FROM offline_tm_assignments a
+                       JOIN offline_tms t ON a.tm_id = t.id
+                       WHERE a.folder_id = ? AND a.is_active = 1""",
+                    (folder_id,)
+                ).fetchall()
+            elif project_id:
+                rows = conn.execute(
+                    """SELECT a.*, t.name as tm_name, t.entry_count
+                       FROM offline_tm_assignments a
+                       JOIN offline_tms t ON a.tm_id = t.id
+                       WHERE a.project_id = ? AND a.is_active = 1""",
+                    (project_id,)
+                ).fetchall()
+            elif platform_id:
+                rows = conn.execute(
+                    """SELECT a.*, t.name as tm_name, t.entry_count
+                       FROM offline_tm_assignments a
+                       JOIN offline_tms t ON a.tm_id = t.id
+                       WHERE a.platform_id = ? AND a.is_active = 1""",
+                    (platform_id,)
+                ).fetchall()
+            else:
+                # Unassigned TMs
+                rows = conn.execute(
+                    """SELECT a.*, t.name as tm_name, t.entry_count
+                       FROM offline_tm_assignments a
+                       JOIN offline_tms t ON a.tm_id = t.id
+                       WHERE a.platform_id IS NULL AND a.project_id IS NULL
+                             AND a.folder_id IS NULL AND a.is_active = 1"""
+                ).fetchall()
+
+            return [dict(row) for row in rows]
+
+    def create_local_tm(self, name: str, source_lang: str = 'ko', target_lang: str = 'en') -> Dict:
+        """Create a new TM locally (for offline use)."""
+        with self._get_connection() as conn:
+            now = datetime.now().isoformat()
+            cursor = conn.execute(
+                """INSERT INTO offline_tms
+                   (server_id, name, source_lang, target_lang, entry_count,
+                    status, mode, created_at, updated_at, sync_status)
+                   VALUES (0, ?, ?, ?, 0, 'ready', 'standard', ?, ?, 'local')""",
+                (name, source_lang, target_lang, now, now)
+            )
+            tm_id = cursor.lastrowid
+            conn.commit()
+            logger.info(f"Created local TM: {name} (id={tm_id})")
+
+            return {
+                'id': tm_id,
+                'server_id': 0,
+                'name': name,
+                'source_lang': source_lang,
+                'target_lang': target_lang,
+                'entry_count': 0,
+                'status': 'ready',
+                'sync_status': 'local'
+            }
+
+    def get_all_local_tms(self) -> List[Dict]:
+        """Get all TMs (both synced and local-only)."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """SELECT t.*, a.platform_id, a.project_id, a.folder_id, a.is_active
+                   FROM offline_tms t
+                   LEFT JOIN offline_tm_assignments a ON t.id = a.tm_id AND a.is_active = 1
+                   ORDER BY t.name"""
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    # =========================================================================
     # Orphaned Files (P3-PHASE5: Offline Storage Fallback)
     # =========================================================================
 
