@@ -179,12 +179,12 @@ CREATE INDEX IF NOT EXISTS idx_offline_tms_server_id ON offline_tms(server_id);
 
 CREATE TABLE IF NOT EXISTS offline_tm_entries (
     id INTEGER PRIMARY KEY,
-    server_id INTEGER NOT NULL,       -- Server's entry ID
+    server_id INTEGER,                -- Server's entry ID (NULL for local-only entries)
     tm_id INTEGER NOT NULL,           -- Local TM ID
-    server_tm_id INTEGER NOT NULL,    -- Server's TM ID
+    server_tm_id INTEGER,             -- Server's TM ID (NULL for local-only entries)
     source_text TEXT NOT NULL,
     target_text TEXT,
-    source_hash TEXT NOT NULL,        -- SHA256 for O(1) lookup
+    source_hash TEXT,                 -- SHA256 for O(1) lookup (optional for local entries)
     string_id TEXT,                   -- For stringid mode
     created_by TEXT,
     change_date TEXT,
