@@ -1139,7 +1139,12 @@ class OfflineDatabase:
             return dict(row) if row else None
 
     def save_tm_entry(self, entry: Dict[str, Any], local_tm_id: int) -> int:
-        """Save a single TM entry. Returns local ID."""
+        """
+        Save a single TM entry. Returns local ID.
+
+        P9-ARCH: Works for both synced entries (from server) and local-only entries.
+        For local entries, server_id and server_tm_id will be None.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute("""
                 INSERT OR REPLACE INTO offline_tm_entries (
@@ -1148,13 +1153,20 @@ class OfflineDatabase:
                     updated_at, updated_by, is_confirmed, confirmed_by, confirmed_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                entry["server_id"], local_tm_id, entry["server_tm_id"],
-                entry["source_text"], entry.get("target_text"),
-                entry["source_hash"], entry.get("string_id"),
-                entry.get("created_by"), entry.get("change_date"),
-                entry.get("updated_at"), entry.get("updated_by"),
+                entry.get("server_id"),  # None for local entries
+                local_tm_id,
+                entry.get("server_tm_id"),  # None for local entries
+                entry.get("source_text"),
+                entry.get("target_text"),
+                entry.get("source_hash"),
+                entry.get("string_id"),
+                entry.get("created_by"),
+                entry.get("change_date"),
+                entry.get("updated_at"),
+                entry.get("updated_by"),
                 1 if entry.get("is_confirmed") else 0,
-                entry.get("confirmed_by"), entry.get("confirmed_at")
+                entry.get("confirmed_by"),
+                entry.get("confirmed_at")
             ))
             conn.commit()
             return cursor.lastrowid
