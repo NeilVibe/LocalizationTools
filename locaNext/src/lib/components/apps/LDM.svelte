@@ -170,7 +170,7 @@
         canSync: false,
         dbType: 'unknown'
       };
-      logger.warn("Could not fetch connection status", { error: err.message });
+      logger.warning("Could not fetch connection status", { error: err.message });
     }
   }
 

@@ -1,6 +1,50 @@
 # Session Context
 
-> Last Updated: 2026-01-11 (Session 38 - Bug Fixes + UX Enhancements)
+> Last Updated: 2026-01-11 (Session 39 - Bug Fixes Continued)
+
+---
+
+## SESSION 39 COMPLETE
+
+### Bugs Fixed
+
+| Bug | Description | Status |
+|-----|-------------|--------|
+| **BUG-040** | `logger.warn is not a function` breaking sync + clipboard | ✅ Fixed |
+| **BUG-041** | Sync Dashboard showing deleted files | ✅ Fixed |
+
+### BUG-040: logger.warn Not a Function
+
+**Problem:** Frontend code used `logger.warn()` but the logger API only has `logger.warning()`. This caused "logger.warn is not a function" errors that broke:
+- Continuous sync
+- TM clipboard operations
+- Various error handlers
+
+**Fix Applied:**
+Changed all `logger.warn()` → `logger.warning()` in 4 files:
+- `sync.js` (3 occurrences)
+- `TaskManager.svelte` (1 occurrence)
+- `TMDataGrid.svelte` (3 occurrences)
+- `LDM.svelte` (1 occurrence)
+
+### BUG-041: Stale Sync Subscriptions
+
+**Problem:** Sync Dashboard showed files that were deleted. When files are deleted, their sync subscriptions weren't cleaned up, causing stale entries in the dashboard.
+
+**Fix Applied:**
+
+1. **Cleanup on Delete (files.py):**
+   - Added subscription cleanup when files are deleted (PostgreSQL)
+   - Added subscription cleanup when local files are deleted (SQLite)
+
+2. **Auto-Cleanup on Fetch (sync.py):**
+   - When fetching subscriptions, validate if files still exist
+   - Automatically remove stale subscriptions for deleted files
+   - Only return valid subscriptions to the UI
+
+**Files Modified:**
+- `server/tools/ldm/routes/files.py` - Lines 643-650, 1814-1819
+- `server/tools/ldm/routes/sync.py` - Lines 200-225
 
 ---
 

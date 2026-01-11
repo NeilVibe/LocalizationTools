@@ -640,6 +640,15 @@ async def delete_file(
             deleted_by=current_user["user_id"]
         )
 
+    # Clean up sync subscription if it exists
+    try:
+        from server.database.offline import get_offline_db
+        offline_db = get_offline_db()
+        offline_db.remove_subscription("file", file_id)
+        logger.debug(f"Cleaned up sync subscription for file {file_id}")
+    except Exception as e:
+        logger.debug(f"No subscription to clean up for file {file_id}: {e}")
+
     # Hard delete the original
     await db.delete(file)
     await db.commit()
@@ -1801,6 +1810,13 @@ async def _delete_local_file(file_id: int) -> dict:
         raise HTTPException(status_code=404, detail="File not found")
 
     file_name = file_info.get("name")
+
+    # Clean up sync subscription if it exists
+    try:
+        offline_db.remove_subscription("file", file_id)
+        logger.debug(f"Cleaned up sync subscription for file {file_id}")
+    except Exception as e:
+        logger.debug(f"No subscription to clean up for file {file_id}: {e}")
 
     # Delete from SQLite (offline.py method deletes rows + file)
     success = offline_db.delete_local_file(file_id)

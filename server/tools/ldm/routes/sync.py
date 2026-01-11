@@ -191,10 +191,38 @@ async def list_subscriptions(
     List all active sync subscriptions.
 
     Shows what platforms/projects/files are enabled for offline sync.
+    Automatically cleans up stale subscriptions for deleted files.
     """
     try:
         offline_db = get_offline_db()
         subs = offline_db.get_subscriptions()
+
+        # Validate subscriptions - clean up stale ones for deleted files
+        valid_subscriptions = []
+        stale_subscription_ids = []
+
+        for s in subs:
+            is_valid = True
+
+            if s["entity_type"] == "file":
+                # Check if file exists (either in local SQLite or PostgreSQL)
+                file_exists = offline_db.get_local_file(s["entity_id"]) is not None
+                if not file_exists:
+                    # File was deleted, mark subscription as stale
+                    stale_subscription_ids.append((s["entity_type"], s["entity_id"]))
+                    is_valid = False
+                    logger.debug(f"Stale subscription found: file {s['entity_id']} no longer exists")
+
+            if is_valid:
+                valid_subscriptions.append(s)
+
+        # Clean up stale subscriptions in the background
+        for entity_type, entity_id in stale_subscription_ids:
+            try:
+                offline_db.remove_subscription(entity_type, entity_id)
+                logger.info(f"Cleaned up stale subscription: {entity_type}={entity_id}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to clean up stale subscription: {cleanup_error}")
 
         subscriptions = [
             SyncSubscription(
@@ -207,7 +235,7 @@ async def list_subscriptions(
                 last_sync_at=s.get("last_sync_at"),
                 created_at=s.get("created_at")
             )
-            for s in subs
+            for s in valid_subscriptions
         ]
 
         return SubscriptionsResponse(

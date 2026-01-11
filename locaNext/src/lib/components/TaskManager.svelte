@@ -229,7 +229,7 @@
     } catch (error) {
       const elapsed = performance.now() - startTime;
 
-      logger.warn("Task fetch failed (silent)", {
+      logger.warning("Task fetch failed (silent)", {
         error: error.message,
         error_type: error.name,
         elapsed_ms: elapsed.toFixed(2)

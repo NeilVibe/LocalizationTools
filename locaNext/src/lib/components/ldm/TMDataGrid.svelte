@@ -86,7 +86,7 @@
     // Check auth token exists
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
-      logger.warn("No auth token for loading entries");
+      logger.warning("No auth token for loading entries");
       return;
     }
 
@@ -184,7 +184,7 @@
     // Check auth token exists
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
-      logger.warn("No auth token for sync status check");
+      logger.warning("No auth token for sync status check");
       return;
     }
 
@@ -206,7 +206,7 @@
       } else {
         // Handle non-OK response (401, 404, 500, etc.)
         const errorText = await response.text().catch(() => "Unknown error");
-        logger.warn("Sync status check failed", { status: response.status, error: errorText });
+        logger.warning("Sync status check failed", { status: response.status, error: errorText });
         syncStatus.loading = false;
       }
     } catch (err) {

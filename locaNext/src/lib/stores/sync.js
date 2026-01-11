@@ -135,7 +135,7 @@ export async function checkConnection() {
       throw new Error(`Server returned ${response.status}`);
     }
   } catch (error) {
-    logger.warn('Server connection failed', { error: error.message });
+    logger.warning('Server connection failed', { error: error.message });
     connectionMode.set('offline');
     connectionError.set(error.message);
     return false;
@@ -518,10 +518,10 @@ export async function syncAllSubscriptions() {
             updated: result.updated_count
           });
         } else {
-          logger.warn(`Failed to sync ${sub.entity_type}:${sub.entity_id}`);
+          logger.warning(`Failed to sync ${sub.entity_type}:${sub.entity_id}`);
         }
       } catch (error) {
-        logger.warn(`Sync error for ${sub.entity_type}:${sub.entity_id}`, {
+        logger.warning(`Sync error for ${sub.entity_type}:${sub.entity_id}`, {
           error: error.message
         });
       }
