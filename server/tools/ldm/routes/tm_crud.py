@@ -1,6 +1,13 @@
 """
 TM CRUD endpoints - Translation Memory list, get, delete, upload, export.
 
+P9-ARCH: Uses Repository Pattern for database abstraction.
+- Online mode: PostgreSQLTMRepository
+- Offline mode: SQLiteTMRepository
+
+Note: Upload and Export operations use TMManager directly (complex file parsing).
+The Repository pattern handles simpler CRUD operations.
+
 Migrated from api.py lines 1195-1365, 1871-1936
 """
 
@@ -16,6 +23,9 @@ from server.utils.dependencies import get_async_db, get_current_active_user_asyn
 from server.database.models import LDMTranslationMemory
 from server.tools.ldm.schemas import TMResponse, TMUploadResponse, DeleteResponse
 from server.tools.ldm.permissions import can_access_tm, get_accessible_tms
+
+# Repository Pattern imports
+from server.repositories import TMRepository, get_tm_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -135,102 +145,100 @@ async def upload_tm(
 
 @router.get("/tm", response_model=List[TMResponse])
 async def list_tms(
-    db: AsyncSession = Depends(get_async_db),
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     List all Translation Memories accessible to current user.
-    P9: Also includes TMs stored in SQLite (offline).
+
+    P9-ARCH: Uses Repository Pattern - automatically returns TMs from
+    PostgreSQL (online) or SQLite (offline) based on user's mode.
     DESIGN-001: Public by default.
     """
-    # DESIGN-001: Use permission helper for accessible TMs
-    tms = await get_accessible_tms(db, current_user)
+    # Repository returns all accessible TMs for the appropriate database
+    tms = await repo.get_all()
 
-    # Debug: Log actual status values from DB
-    for tm in tms:
-        logger.debug(f"TM {tm.id} '{tm.name}': status='{tm.status}', entry_count={tm.entry_count}")
+    # Create TM-like objects for response model compatibility
+    class TMLike:
+        def __init__(self, data):
+            self.id = data.get("id")
+            self.name = data.get("name")
+            self.description = data.get("description")
+            self.source_lang = data.get("source_lang", "ko")
+            self.target_lang = data.get("target_lang", "en")
+            self.entry_count = data.get("entry_count", 0)
+            self.status = data.get("status", "ready")
+            self.mode = data.get("mode", "standard")
+            self.owner_id = data.get("owner_id") or current_user["user_id"]
+            self.created_at = data.get("created_at")
+            self.updated_at = data.get("updated_at")
+            self.indexed_at = data.get("indexed_at")
 
-    # P9: Include offline TMs from SQLite
-    try:
-        from server.database.offline import get_offline_db
-        offline_db = get_offline_db()
-        offline_tms = offline_db.get_tms()
-
-        # Create TM-like objects for SQLite TMs
-        class TMLike:
-            def __init__(self, data):
-                self.id = data.get("id")
-                self.name = data.get("name")
-                self.description = data.get("description")
-                self.source_lang = data.get("source_lang", "ko")
-                self.target_lang = data.get("target_lang", "en")
-                self.entry_count = data.get("entry_count", 0)
-                self.status = data.get("status", "ready")
-                self.mode = data.get("mode", "standard")
-                self.owner_id = data.get("owner_id") or current_user["user_id"]
-                self.created_at = None
-                self.updated_at = None
-                self.indexed_at = None
-
-        for otm in offline_tms:
-            # Avoid duplicates (check by server_id)
-            server_id = otm.get("server_id")
-            if server_id and any(tm.id == server_id for tm in tms):
-                continue
-            tms.append(TMLike(otm))
-
-        logger.debug(f"P9: Added {len(offline_tms)} offline TMs")
-    except Exception as e:
-        logger.debug(f"P9: Could not get offline TMs: {e}")
-
-    logger.info(f"Listed {len(tms)} TMs for user {current_user['user_id']}")
-    return tms
+    result = [TMLike(tm) if isinstance(tm, dict) else tm for tm in tms]
+    logger.info(f"Listed {len(result)} TMs for user {current_user['user_id']}")
+    return result
 
 
 @router.get("/tm/{tm_id}", response_model=TMResponse)
 async def get_tm(
     tm_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Get a Translation Memory by ID (DESIGN-001: Public by default)."""
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=404, detail="Translation Memory not found")
+    """
+    Get a Translation Memory by ID.
 
-    result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = result.scalar_one_or_none()
-
+    P9-ARCH: Uses Repository Pattern - fetches from PostgreSQL (online)
+    or SQLite (offline) based on user's mode.
+    DESIGN-001: Public by default.
+    """
+    tm = await repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    return tm
+    # Create TM-like object for response model compatibility
+    class TMLike:
+        def __init__(self, data):
+            self.id = data.get("id")
+            self.name = data.get("name")
+            self.description = data.get("description")
+            self.source_lang = data.get("source_lang", "ko")
+            self.target_lang = data.get("target_lang", "en")
+            self.entry_count = data.get("entry_count", 0)
+            self.status = data.get("status", "ready")
+            self.mode = data.get("mode", "standard")
+            self.owner_id = data.get("owner_id") or current_user["user_id"]
+            self.created_at = data.get("created_at")
+            self.updated_at = data.get("updated_at")
+            self.indexed_at = data.get("indexed_at")
+
+    return TMLike(tm) if isinstance(tm, dict) else tm
 
 
 @router.delete("/tm/{tm_id}", response_model=DeleteResponse)
 async def delete_tm(
     tm_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
-    """Delete a Translation Memory and all its entries (DESIGN-001: Public by default)."""
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=404, detail="Translation Memory not found")
+    """
+    Delete a Translation Memory and all its entries.
 
-    result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = result.scalar_one_or_none()
-
+    P9-ARCH: Uses Repository Pattern - deletes from PostgreSQL (online)
+    or SQLite (offline) based on user's mode.
+    DESIGN-001: Public by default.
+    """
+    # Get TM first to get entry count
+    tm = await repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    entry_count = tm.entry_count
-    await db.delete(tm)
-    await db.commit()
+    entry_count = tm.get("entry_count", 0) if isinstance(tm, dict) else getattr(tm, "entry_count", 0)
+
+    # Delete using repository
+    deleted = await repo.delete(tm_id)
+    if not deleted:
+        raise HTTPException(status_code=500, detail="Failed to delete Translation Memory")
 
     logger.info(f"Deleted TM: id={tm_id}, entries={entry_count}")
     return {"message": "Translation Memory deleted", "entries_deleted": entry_count}
