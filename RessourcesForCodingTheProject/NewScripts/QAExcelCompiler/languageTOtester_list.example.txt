@@ -1,9 +1,9 @@
 ENG
-John_Smith
-Alice_Brown
-Bob_Wilson
+김철수
+이영희
+박민수
 
 ZHO-CN
-Wang_Wei
-Li_Ming
-Zhang_Fang
+왕웨이
+리밍
+장팡
