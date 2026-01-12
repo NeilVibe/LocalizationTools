@@ -570,6 +570,20 @@ class PostgreSQLTMRepository(TMRepository):
         # Get all TMs with assignments
         all_tms = await self.get_all()
 
+        # P11-FIX: Transform TMs to use tm_id/tm_name format expected by frontend
+        def transform_tm(tm: Dict) -> Dict:
+            return {
+                "tm_id": tm.get("id"),
+                "tm_name": tm.get("name"),
+                "entry_count": tm.get("entry_count", 0),
+                "is_active": tm.get("is_active", False),
+                "platform_id": tm.get("platform_id"),
+                "project_id": tm.get("project_id"),
+                "folder_id": tm.get("folder_id"),
+                "source_lang": tm.get("source_lang"),
+                "target_lang": tm.get("target_lang"),
+            }
+
         # Group TMs by assignment
         unassigned = []
         by_platform = {}
@@ -577,14 +591,15 @@ class PostgreSQLTMRepository(TMRepository):
         by_folder = {}
 
         for tm in all_tms:
+            transformed = transform_tm(tm)
             if tm.get("folder_id"):
-                by_folder.setdefault(tm["folder_id"], []).append(tm)
+                by_folder.setdefault(tm["folder_id"], []).append(transformed)
             elif tm.get("project_id"):
-                by_project.setdefault(tm["project_id"], []).append(tm)
+                by_project.setdefault(tm["project_id"], []).append(transformed)
             elif tm.get("platform_id"):
-                by_platform.setdefault(tm["platform_id"], []).append(tm)
+                by_platform.setdefault(tm["platform_id"], []).append(transformed)
             else:
-                unassigned.append(tm)
+                unassigned.append(transformed)
 
         def build_folder_tree(folders: list, parent_id: int = None) -> list:
             """Build hierarchical folder structure."""
@@ -595,7 +610,7 @@ class PostgreSQLTMRepository(TMRepository):
                         "id": folder.id,
                         "name": folder.name,
                         "tms": by_folder.get(folder.id, []),
-                        "folders": build_folder_tree(folders, folder.id)
+                        "children": build_folder_tree(folders, folder.id)  # P11-FIX: Frontend expects 'children'
                     }
                     result.append(folder_dict)
             return result

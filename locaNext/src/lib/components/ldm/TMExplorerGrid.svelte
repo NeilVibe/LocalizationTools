@@ -31,8 +31,11 @@
   import { clipboard, copyToClipboard, cutToClipboard, clearClipboard, isItemCut } from '$lib/stores/clipboard.js';
 
   // Props
+  // P11-FIX: Remove fallback from $bindable() to fix Svelte 5 props_invalid_value error
+  // When parent binds to this prop, Svelte 5 throws if parent passes undefined
+  // and child has a fallback. Removing fallback allows binding to work properly.
   let {
-    selectedTMId = $bindable(null),
+    selectedTMId = $bindable(),
     onTMSelect = null,
     onViewEntries = null,
     onUploadTM = null  // Callback when user wants to upload TM
