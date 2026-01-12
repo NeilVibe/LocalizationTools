@@ -480,6 +480,24 @@ QA files should have these columns (detected dynamically by header name):
 
 ---
 
+## Utility Tools
+
+### Fix Hyperlinks GUI
+
+If SCREENSHOT cells have filename text but no clickable hyperlink, use this repair tool:
+
+```bash
+python3 fix_hyperlinks_gui.py
+```
+
+1. Click "Select Folder & Fix Hyperlinks"
+2. Choose folder containing Excel file(s) + images
+3. Tool finds all `.xlsx` files, fixes SCREENSHOT hyperlinks, saves in place
+
+**Use case:** After Transfer, if hyperlinks weren't properly transferred (fixed in 2026-01-12).
+
+---
+
 ## Troubleshooting
 
 | Issue | Solution |
@@ -489,7 +507,7 @@ QA files should have these columns (detected dynamically by header name):
 | "Unknown category" | Use: Quest, Knowledge, Item, Node, System |
 | ModuleNotFoundError | Run: `pip install -r requirements.txt` |
 | Permission error | Close Excel files before running |
-| Hyperlink not working | Check image exists in `Images/` folder |
+| Hyperlink not working | Check image exists in `Images/` folder, or run `fix_hyperlinks_gui.py` |
 | Excel repair dialog on open | Regenerate with latest code (fixed in v2026-01-07) |
 | Hidden content not showing on re-run | Fixed: sheets/columns now reset to visible before processing |
 
@@ -591,3 +609,5 @@ ONE big spacious line chart showing cumulative progress:
 *Updated: 2026-01-10 - Row visibility: show if ANY user has ISSUE, hide if manager marks FIXED/NON-ISSUE*
 *Updated: 2026-01-10 - Sheet hiding: hide sheets with no visible ISSUE rows after filtering*
 *Updated: 2026-01-10 - REPORTED status: now stays VISIBLE (was incorrectly hidden before)*
+*Updated: 2026-01-12 - FIX: Transfer now properly copies SCREENSHOT hyperlinks (not just display text)*
+*Updated: 2026-01-12 - Added fix_hyperlinks_gui.py utility to repair broken hyperlinks in existing files*
