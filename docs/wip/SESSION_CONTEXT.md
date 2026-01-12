@@ -29,7 +29,7 @@
 
 ### P10: DB Abstraction Layer - IN PROGRESS
 
-**Status:** PREPARATION PHASE COMPLETE | **Progress:** 15% files fully migrated
+**Status:** ACTIVE MIGRATION | **Progress:** 30% files fully migrated (6/20 route files CLEAN)
 
 **Goal:** Transform entire backend from inconsistent database patterns to unified Repository Pattern for FULL OFFLINE/ONLINE PARITY.
 
@@ -315,13 +315,13 @@ NOT "delete everything and hope for the best"
 | `search.py` | 4 | 0 | **CLEAN** | Fully migrated |
 | `tm_assignment.py` | 5 | 0 | **CLEAN** | Fully migrated |
 | `tm_entries.py` | 6 | 0 | **CLEAN** | Fully migrated (Session 52) |
+| `tm_linking.py` | 8 | 0 | **CLEAN** | Fully migrated (Session 53) |
 | `files.py` | 18 | 15 | MIXED | Permission checks use direct DB |
 | `folders.py` | 8 | 9 | MIXED | Permission checks use direct DB |
 | `platforms.py` | 9 | 11 | MIXED | Permission checks use direct DB |
 | `projects.py` | 8 | 10 | MIXED | Permission checks use direct DB |
 | `rows.py` | 5 | 4 | MIXED | Permission checks use direct DB |
 | `tm_crud.py` | 3 | 2 | MIXED | Permission checks use direct DB |
-| `tm_linking.py` | 4 | 4 | MIXED | Permission checks use direct DB |
 | `trash.py` | 4 | 3 | MIXED | restore helpers + permission checks |
 | `pretranslate.py` | 1 | 2 | MIXED | Permission checks |
 | `sync.py` | 0 | 7 | SERVICE | SyncService pattern |
@@ -332,8 +332,8 @@ NOT "delete everything and hope for the best"
 | `settings.py` | 0 | 0 | NO-DB | Settings management |
 
 **Summary:**
-- **CLEAN (100%):** 5 files (grammar.py, qa.py, search.py, tm_assignment.py, tm_entries.py)
-- **MIXED:** 9 files (remaining direct DB is for permission checks)
+- **CLEAN (100%):** 6 files (grammar.py, qa.py, search.py, tm_assignment.py, tm_entries.py, tm_linking.py)
+- **MIXED:** 8 files (remaining direct DB is for permission checks)
 - **SERVICE:** 1 file (sync.py - uses SyncService pattern)
 - **UTILITY:** 3 files (capabilities, tm_indexes, tm_search - specialized operations)
 - **NO-DB:** 2 files (health.py, settings.py)
@@ -386,9 +386,45 @@ Future work could create a `PermissionRepository` for full offline parity.
 - Added "What IS Repository Pattern" explanation
 - Added "SAFE Methodology" for incremental migration
 
-**Current State:**
+**Current State (after Session 52):**
 - 5 route files CLEAN (100% Repository): grammar, qa, search, tm_assignment, tm_entries
 - 9 route files MIXED (permission checks remain)
+- All 8 Repositories fully implemented
+
+### Session 53 (2026-01-13) - TM Linking Migration
+
+**Focus:** Continue Repository Pattern migration
+
+**tm_linking.py Migration (100% COMPLETE)**
+1. Added 4 new methods to TMRepository interface:
+   - `link_to_project(tm_id, project_id, priority)` - with `created` flag for duplicate detection
+   - `unlink_from_project(tm_id, project_id)` - returns bool
+   - `get_linked_for_project(project_id, user_id)` - highest priority TM
+   - `get_all_linked_for_project(project_id)` - all linked TMs with details
+
+2. Implemented in PostgreSQL adapter:
+   - Uses LDMActiveTM model with proper JOIN to LDMTranslationMemory
+   - Returns full TM details including linked_at timestamp
+
+3. Implemented in SQLite adapter:
+   - Uses offline_tm_assignments table with is_active flag
+   - Same interface, same behavior
+
+4. Updated tm_linking.py endpoints:
+   - `link_tm_to_project` - uses `tm_repo.link_to_project()`, checks `created` flag
+   - `unlink_tm_from_project` - uses `tm_repo.unlink_from_project()`
+   - `get_linked_tms` - uses `tm_repo.get_all_linked_for_project()`
+
+5. **Testing:** All 3 endpoints tested via curl:
+   - Link TM ✓
+   - Get linked TMs ✓
+   - Duplicate detection ✓ (returns 400)
+   - Unlink TM ✓
+   - Not found detection ✓ (returns 404)
+
+**Current State:**
+- 6 route files CLEAN (100% Repository): grammar, qa, search, tm_assignment, tm_entries, tm_linking
+- 8 route files MIXED (permission checks remain)
 - All 8 Repositories fully implemented
 
 ### Session 51 (2026-01-12) - P11 Platform Stability
