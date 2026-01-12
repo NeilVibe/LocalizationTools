@@ -411,7 +411,17 @@ Row = Tuple[int, str, str, str, str, str, bool, bool, str, str, str, str]
 
 def dedupe_rows(rows: List[Row], is_eng: bool) -> List[Row]:
     """
-    Remove duplicate rows based on (Korean, Translation, STRINGID).
+    DISABLED for Quest - keep all duplicates since quest content is important.
+
+    Quest text may appear multiple times in different contexts, and testers
+    need to review each occurrence separately.
+    """
+    # Return rows as-is without deduplication
+    return rows
+
+def _dedupe_rows_disabled(rows: List[Row], is_eng: bool) -> List[Row]:
+    """
+    [DISABLED] Remove duplicate rows based on (Korean, Translation, STRINGID).
 
     For ENG: key = (orig, eng, sid) = indices (1, 2, 5)
     For non-ENG: key = (orig, loc, sid) = indices (1, 3, 5)
