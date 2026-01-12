@@ -10,6 +10,9 @@ LQA_Tester_ProgressTracker.xlsx
 # Confidential - tester names (use languageTOtester_list.example.txt as template)
 languageTOtester_list.txt
 
+# Confidential - instruction files with game data
+INSTRUCTION*
+
 # Python
 __pycache__/
 *.pyc

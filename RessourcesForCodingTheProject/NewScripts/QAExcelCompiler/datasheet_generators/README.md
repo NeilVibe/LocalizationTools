@@ -81,6 +81,7 @@ All generators produce consistent columns:
 | `fullcharacter1.py` | Character | Extracts NPC/monster character data |
 | `fullgimmick1.py` | Gimmick | Extracts gimmick/interactable data |
 | `fullgameadvice1.py` | GameAdvice | Extracts tutorial/help tip entries (Title/Desc) |
+| `fullskill1.py` | Skill | Extracts skill data with linked KnowledgeInfo |
 
 ## Output Format
 
@@ -142,6 +143,49 @@ When structure changes:
 2. Use QA Compiler "Transfer QA Files" → OLD work → NEW structure
 3. Testers continue with new structure
 ```
+
+---
+
+## Skill Generator Special Logic
+
+The `fullskill1.py` generator has unique logic for linking Skills to Knowledge entries:
+
+### XML Structure
+
+```xml
+<!-- SkillInfo with LearnKnowledgeKey -->
+<SkillInfo Key="10280" StrKey="Skill_UnArmedMastery" SkillName="타격"
+           MaxLevel="5" LearnKnowledgeKey="Knowledge_UnArmedMastery_I"
+           SkillDesc="맨주먹으로 적과 싸우는 기술...">
+
+<!-- Linked KnowledgeInfo with nested children -->
+<KnowledgeInfo StrKey="Knowledge_UnArmedMastery_I" Name="타격" Desc="...">
+    <KnowledgeInfo StrKey="Knowledge_LegSwing" Name="낚아 차기" Desc="..."/>
+    <KnowledgeInfo StrKey="Knowledge_LowerKick" Name="쓸어 차기" Desc="..."/>
+    ...
+</KnowledgeInfo>
+```
+
+### Priority Rule (Duplicate LearnKnowledgeKey)
+
+When multiple SkillInfo share the same `LearnKnowledgeKey`:
+- **Winner**: Skill with highest `MaxLevel` gets the linked KnowledgeInfo
+- **Loser**: Uses its own `SkillDesc` instead
+
+Example:
+```
+Skill_UnArmedMastery (MaxLevel=5) → WINS → uses Knowledge_UnArmedMastery_I
+Skill_PushKick (MaxLevel=1)       → LOSES → uses its own SkillDesc
+```
+
+### Output Structure (ONE sheet)
+
+| Depth | Content | Color |
+|-------|---------|-------|
+| 0 | SkillName (parent skill) | Gold |
+| 1 | KnowledgeInfo Name (or SkillDesc if no link) | Light Blue |
+| 2 | KnowledgeInfo Desc | Light Green |
+| 3+ | Nested KnowledgeInfo children (sub-skills) | Alternating colors |
 
 ---
 
