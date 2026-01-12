@@ -400,6 +400,122 @@ class PostgreSQLTMRepository(TMRepository):
         return [self._tm_to_dict(tm, assignment) for assignment, tm in rows]
 
     # =========================================================================
+    # TM Linking (Active TMs for Projects)
+    # =========================================================================
+
+    async def link_to_project(
+        self,
+        tm_id: int,
+        project_id: int,
+        priority: int = 1
+    ) -> Dict[str, Any]:
+        """Link a TM to a project for auto-add on confirm."""
+        from server.database.models import LDMActiveTM
+
+        # Check if already linked
+        result = await self.db.execute(
+            select(LDMActiveTM).where(
+                LDMActiveTM.tm_id == tm_id,
+                LDMActiveTM.project_id == project_id
+            )
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # Update priority if already exists
+            existing.priority = priority
+            await self.db.commit()
+            return {"tm_id": tm_id, "project_id": project_id, "priority": priority, "created": False}
+
+        # Create new link
+        link = LDMActiveTM(
+            tm_id=tm_id,
+            project_id=project_id,
+            priority=priority
+        )
+        self.db.add(link)
+        await self.db.commit()
+
+        logger.info(f"[TM-REPO] Linked TM {tm_id} to project {project_id} with priority {priority}")
+        return {"tm_id": tm_id, "project_id": project_id, "priority": priority, "created": True}
+
+    async def unlink_from_project(self, tm_id: int, project_id: int) -> bool:
+        """Unlink a TM from a project."""
+        from server.database.models import LDMActiveTM
+
+        result = await self.db.execute(
+            select(LDMActiveTM).where(
+                LDMActiveTM.tm_id == tm_id,
+                LDMActiveTM.project_id == project_id
+            )
+        )
+        link = result.scalar_one_or_none()
+
+        if not link:
+            return False
+
+        await self.db.delete(link)
+        await self.db.commit()
+
+        logger.info(f"[TM-REPO] Unlinked TM {tm_id} from project {project_id}")
+        return True
+
+    async def get_linked_for_project(
+        self,
+        project_id: int,
+        user_id: Optional[int] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Get the highest-priority linked TM for a project."""
+        from server.database.models import LDMActiveTM
+
+        query = (
+            select(LDMTranslationMemory)
+            .join(LDMActiveTM, LDMActiveTM.tm_id == LDMTranslationMemory.id)
+            .where(LDMActiveTM.project_id == project_id)
+        )
+
+        # Filter by owner if user_id provided
+        if user_id is not None:
+            query = query.where(LDMTranslationMemory.owner_id == user_id)
+
+        query = query.order_by(LDMActiveTM.priority).limit(1)
+
+        result = await self.db.execute(query)
+        tm = result.scalar_one_or_none()
+
+        if not tm:
+            return None
+
+        return self._tm_to_dict(tm)
+
+    async def get_all_linked_for_project(
+        self,
+        project_id: int
+    ) -> List[Dict[str, Any]]:
+        """Get all TMs linked to a project, ordered by priority."""
+        from server.database.models import LDMActiveTM
+
+        result = await self.db.execute(
+            select(LDMActiveTM, LDMTranslationMemory)
+            .join(LDMTranslationMemory, LDMActiveTM.tm_id == LDMTranslationMemory.id)
+            .where(LDMActiveTM.project_id == project_id)
+            .order_by(LDMActiveTM.priority)
+        )
+        links = result.all()
+
+        return [
+            {
+                "tm_id": link.LDMActiveTM.tm_id,
+                "tm_name": link.LDMTranslationMemory.name,
+                "priority": link.LDMActiveTM.priority,
+                "status": link.LDMTranslationMemory.status,
+                "entry_count": link.LDMTranslationMemory.entry_count,
+                "linked_at": link.LDMActiveTM.activated_at.isoformat() if link.LDMActiveTM.activated_at else None
+            }
+            for link in links
+        ]
+
+    # =========================================================================
     # TM Entries
     # =========================================================================
 

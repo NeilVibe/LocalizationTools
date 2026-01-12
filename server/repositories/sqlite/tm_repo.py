@@ -216,6 +216,131 @@ class SQLiteTMRepository(TMRepository):
             conn.close()
 
     # =========================================================================
+    # TM Linking (Active TMs for Projects)
+    # =========================================================================
+
+    async def link_to_project(
+        self,
+        tm_id: int,
+        project_id: int,
+        priority: int = 1
+    ) -> Dict[str, Any]:
+        """Link a TM to a project for auto-add on confirm."""
+        conn = self._get_connection()
+        try:
+            # Check if already linked
+            existing = conn.execute(
+                """SELECT id FROM offline_tm_assignments
+                   WHERE tm_id = ? AND project_id = ? AND is_active = 1""",
+                [tm_id, project_id]
+            ).fetchone()
+
+            if existing:
+                # Update priority
+                conn.execute(
+                    """UPDATE offline_tm_assignments
+                       SET priority = ?, sync_status = 'modified'
+                       WHERE tm_id = ? AND project_id = ? AND is_active = 1""",
+                    [priority, tm_id, project_id]
+                )
+                conn.commit()
+                return {"tm_id": tm_id, "project_id": project_id, "priority": priority, "created": False}
+
+            # Create new assignment with is_active=1
+            conn.execute(
+                """INSERT INTO offline_tm_assignments
+                   (tm_id, project_id, priority, is_active, sync_status)
+                   VALUES (?, ?, ?, 1, 'local')""",
+                [tm_id, project_id, priority]
+            )
+            conn.commit()
+
+            logger.info(f"[TM-REPO-SQLITE] Linked TM {tm_id} to project {project_id}")
+            return {"tm_id": tm_id, "project_id": project_id, "priority": priority, "created": True}
+        finally:
+            conn.close()
+
+    async def unlink_from_project(self, tm_id: int, project_id: int) -> bool:
+        """Unlink a TM from a project."""
+        conn = self._get_connection()
+        try:
+            # Deactivate the assignment
+            result = conn.execute(
+                """UPDATE offline_tm_assignments
+                   SET is_active = 0, sync_status = 'modified'
+                   WHERE tm_id = ? AND project_id = ? AND is_active = 1""",
+                [tm_id, project_id]
+            )
+            conn.commit()
+
+            if result.rowcount > 0:
+                logger.info(f"[TM-REPO-SQLITE] Unlinked TM {tm_id} from project {project_id}")
+                return True
+            return False
+        finally:
+            conn.close()
+
+    async def get_linked_for_project(
+        self,
+        project_id: int,
+        user_id: Optional[int] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Get the highest-priority linked TM for a project."""
+        conn = self._get_connection()
+        try:
+            query = """
+                SELECT t.*
+                FROM offline_tms t
+                JOIN offline_tm_assignments a ON t.id = a.tm_id
+                WHERE a.project_id = ? AND a.is_active = 1
+            """
+            params = [project_id]
+
+            # Note: SQLite offline TMs don't have owner_id concept
+            # user_id filter is ignored for offline mode
+
+            query += " ORDER BY a.priority LIMIT 1"
+
+            row = conn.execute(query, params).fetchone()
+
+            if not row:
+                return None
+
+            return self._tm_row_to_dict(row)
+        finally:
+            conn.close()
+
+    async def get_all_linked_for_project(
+        self,
+        project_id: int
+    ) -> List[Dict[str, Any]]:
+        """Get all TMs linked to a project, ordered by priority."""
+        conn = self._get_connection()
+        try:
+            rows = conn.execute(
+                """SELECT t.*, a.priority, a.created_at as linked_at
+                   FROM offline_tms t
+                   JOIN offline_tm_assignments a ON t.id = a.tm_id
+                   WHERE a.project_id = ? AND a.is_active = 1
+                   ORDER BY a.priority""",
+                [project_id]
+            ).fetchall()
+
+            return [
+                {
+                    "tm_id": row["id"],
+                    "tm_name": row["name"],
+                    "priority": row["priority"],
+                    "status": row.get("status", "active"),
+                    "entry_count": row.get("entry_count", 0),
+                    "linked_at": row["linked_at"]
+                }
+                for row in rows
+            ]
+        finally:
+            conn.close()
+
+    # =========================================================================
     # TM Entries
     # =========================================================================
 

@@ -180,6 +180,81 @@ class TMRepository(ABC):
         ...
 
     # =========================================================================
+    # TM Linking (Active TMs for Projects)
+    # =========================================================================
+
+    @abstractmethod
+    async def link_to_project(
+        self,
+        tm_id: int,
+        project_id: int,
+        priority: int = 1
+    ) -> Dict[str, Any]:
+        """
+        Link a TM to a project for auto-add on confirm.
+
+        Creates an LDMActiveTM record linking the TM to the project.
+        If link already exists, updates priority.
+
+        Args:
+            tm_id: TM ID to link
+            project_id: Project ID to link to
+            priority: Priority order (lower = higher priority)
+
+        Returns:
+            Dict with link info: {tm_id, project_id, priority, created: bool}
+            'created' is True if new link, False if existing link was updated.
+        """
+        ...
+
+    @abstractmethod
+    async def unlink_from_project(self, tm_id: int, project_id: int) -> bool:
+        """
+        Unlink a TM from a project.
+
+        Deletes the LDMActiveTM record.
+
+        Returns:
+            True if unlinked, False if not found.
+        """
+        ...
+
+    @abstractmethod
+    async def get_linked_for_project(
+        self,
+        project_id: int,
+        user_id: Optional[int] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get the highest-priority linked TM for a project.
+
+        Args:
+            project_id: Project ID to get linked TM for
+            user_id: Optional user ID to filter by TM ownership
+
+        Returns:
+            TM dict or None if no TM linked.
+        """
+        ...
+
+    @abstractmethod
+    async def get_all_linked_for_project(
+        self,
+        project_id: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Get all TMs linked to a project, ordered by priority.
+
+        Args:
+            project_id: Project ID to get linked TMs for
+
+        Returns:
+            List of dicts with TM info and link details:
+            {tm_id, tm_name, priority, status, entry_count, linked_at}
+        """
+        ...
+
+    # =========================================================================
     # TM Entries
     # =========================================================================
 
