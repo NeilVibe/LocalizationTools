@@ -1,0 +1,374 @@
+<root>
+ <!-- 공통 스킬 -->
+ <SkillInfo Key="1201" StrKey="Passive_Player_BasicSkill" SkillName="플레이어 기본 패시브 스킬" ApplyType="Passive" MaxLevel="1" SkillIcon="Skill_1" SkillDesc="플레이어 기본 패시브 스킬">
+  <Buff SkillLevel="1" BuffNameForDev="피격 시 자원 회복" BuffType="registerconditionskill" ConditionSkillType="DamageToMe" ApplySkillKeyToSelf="Active_HitRecover(1)"  BuffTimeStyle="independent" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="뜨거워지면 곤충한테 둘러쌓인 버프 제거" BuffType="registerconditionskill" ConditionSkillType="BecomeHot" ApplySkillKeyToSelf="Active_AwayFromSwarm(1)"  BuffTimeStyle="independent" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="피격시 격노 증가" BuffType="registerconditionskill" ConditionSkillType="DamageToMe" Tag="HitCheck" ApplySkillKeyToSelf="Active_FuryUp(1)"  BuffTimeStyle="independent" BuffTargetType="actor"/>
+  <!-- <Buff SkillLevel="1" BuffNameForDev="기본 스태미나 회복" BuffType="changebuffLevel" BuffKey="BuffLevel_StaminaRegen" LevelChangeType="Add" Level="1" BuffTimeStyle="independent" BuffTargetType="actor"/> -->
+ </>
+
+ <SkillInfo Key="40011" StrKey="Active_HitRecover" SkillName="피격 시 자원 회복" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_40001" SkillDesc="MP, 스태미나 회복">
+  <Buff SkillLevel="1" BuffNameForDev="용기 회복" BuffType="varydatadefinedstat" StatusNameKey="Mp" Value="1" ApplyEffectKey="" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="스태미나 회복" BuffType="varydatadefinedstat" StatusNameKey="Stamina" Value="10" ApplyEffectKey="" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+
+ <SkillInfo Key="72" StrKey="Active_AwayFromSwarm" SkillName="곤충한테 둘러쌓인 버프 해제" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_40001" SkillDesc="불에 가까이 가면 거미들이 떨어져 나온다.">
+  <Buff SkillLevel="1" BuffNameForDev="벌 떼 즉시 풀어주기" BuffType="immune" TargetBuffType="BuffLevel" TargetBuffParam="BuffLevel_SwarmBee" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="거미 떼 즉시 풀어주기" BuffType="immune" TargetBuffType="BuffLevel" TargetBuffParam="BuffLevel_SwarmSpider" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="쥐 떼 즉시 풀어주기" BuffType="immune" TargetBuffType="BuffLevel" TargetBuffParam="BuffLevel_SwarmRat" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="메뚜기 떼 즉시 풀어주기" BuffType="immune" TargetBuffType="BuffLevel" TargetBuffParam="BuffLevel_SwarmLocust" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+
+ <SkillInfo Key="65418" StrKey="Active_FuryUp" SkillName="격노 수치 즉시 증가" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_1" SkillDesc="격노 수치 즉시 증가">
+  <Buff SkillLevel="1" BuffNameForDev="격노 수치 즉시 증가 (5)" BuffType="varydatadefinedstat" StatusNameKey="Fury" Value="5" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+
+ <SkillInfo Key="65499" StrKey="Passive_Player_Revive" SkillName="부활 상태 버프" ApplyType="Passive" MaxLevel="1" SkillIcon="Skill_1" SkillDesc="부활 상태 버프">  
+  <Buff SkillLevel="1" BuffNameForDev="Avoid Lv3" BuffType="defence" DefenceType="Avoid" DefenceLevel="3" BuffTimeStyle="independent" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="전체 적 탐지 제한" BuffType="detectpenalty" AllyTypeList="Enemy Ignore Exclusive" AllyGroupList="Monster_A Animal_Wild_NonBattle Animal_Wild_Battle Nature_Enemy Animal_Small_Common All_Enemy Exclusive_Common Player_Only" PenaltyRate="0" Tag="Revive" BuffTimeStyle="independent" BuffTargetType="actor"/>
+ </>
+
+ <!-- ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■-->
+ <!-- ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■-->
+ <!-- ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 클리프 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■-->
+ <!-- ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■-->
+ <!-- ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■-->
+
+ <SkillInfo Key="1035" StrKey="Skill_GuardSuccessRecovery" SkillName="방어 성공 : MP 회복" ApplyType="Active" MaxLevel="5" SkillIcon="Skill_1035" SkillDesc="방어 성공 : MP 회복">
+  <Buff SkillLevel="1" BuffNameForDev="MP 회복" BuffType="varydatadefinedstat" StatusNameKey="Mp" Value="0.5" ApplyEffectKey="" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="2" BuffNameForDev="MP 회복" BuffType="varydatadefinedstat" StatusNameKey="Mp" Value="1" ApplyEffectKey="" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="3" BuffNameForDev="MP 회복" BuffType="varydatadefinedstat" StatusNameKey="Mp" Value="1.5" ApplyEffectKey="" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="4" BuffNameForDev="MP 회복" BuffType="varydatadefinedstat" StatusNameKey="Mp" Value="2" ApplyEffectKey="" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="5" BuffNameForDev="MP 회복" BuffType="varydatadefinedstat" StatusNameKey="Mp" Value="5" ApplyEffectKey="" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="5" BuffNameForDev="스태미나 회복" BuffType="varydatadefinedstat" StatusNameKey="Stamina" Value="40" ApplyEffectKey="" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+
+ <SkillInfo Key="1080" StrKey="Passive_StaminaOnHit" SkillName="공격 성공 : 스태미나 회복" ApplyType="Passive" MaxLevel="5" SkillIcon="Skill_1035" SkillDesc="공격 성공 : 스태미나 회복">
+  <Buff SkillLevel="1" BuffNameForDev="타격 시 HP 회복" BuffType="registerconditionskill" ConditionSkillType="DamageToTarget" ApplySkillKeyToSelf="Active_Recovery_SP(2)" BuffTimeStyle="independent" BuffTargetType="actor"/>
+ </>
+
+ <!-- 확인 후 삭제 -->
+ <SkillInfo Key="10004" StrKey="Skill_10004" SkillName="DetectMode 지구력 지속 10 감소" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_10004" SkillDesc="DetectMode" UseResourceStat="Stamina(Regen_-10)"/>
+
+ <SkillInfo Key="10006" StrKey="Skill_WeaponMoveLv2" SkillName="무기 꺼내고 걷기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="무기 꺼내고 걷기" UseResourceStat="Stamina(Regen_80)"/>
+ <SkillInfo Key="10007" StrKey="Skill_WeaponMoveLv3" SkillName="무기 꺼내고 달리기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="무기 꺼내고 달리기" UseResourceStat="Stamina(Regen_40)"/>
+ <SkillInfo Key="10008" StrKey="Skill_WeaponMoveLv4" SkillName="무기 꺼내고 질주" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="무기 꺼내고 질주" UseResourceStat="Stamina(Regen_-8)"/>
+ <SkillInfo Key="10005" StrKey="Skill_WeaponMoveLv4_100" SkillName="무기 꺼내고 전력 질주" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="무기 꺼내고 전력 질주" UseResourceStat="Stamina(Regen_-12)"/>
+
+ <SkillInfo Key="10009" StrKey="Skill_Wait" SkillName="WAIT 상태" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="WAIT 상태" UseResourceStat="Stamina(Regen_100)"/>
+ <SkillInfo Key="10018" StrKey="Skill_Fall" SkillName="FALL 상태" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="FALL 상태" UseResourceStat="Stamina(Regen_20)"/>
+ <SkillInfo Key="10010" StrKey="Skill_Roll" SkillName="구르기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_10010" SkillDesc="구르기" UseResourceStat="Stamina(-20)" AllowSkillWithLowResource="True"/>
+ <SkillInfo Key="10031" StrKey="Skill_RollCancelRecovery" SkillName="피격캔슬 구르기 : 지구력 회복" ApplyType="Active" MaxLevel="1" SkillIcon="10011" SkillDesc="피격캔슬 구르기 : 지구력 회복">
+  <Buff SkillLevel="1" BuffNameForDev="지구력 회복" BuffType="varydatadefinedstat" StatusNameKey="Stamina" Value="100" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="사운드 CC 풀기" BuffType="releasebuffedactionrestriction" ActionRestrictionTypeList="SoundAttack" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+ <SkillInfo Key="10012" StrKey="Skill_CrouchMoveLv2" SkillName="앉아서 걷기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="앉아서 걷기" UseResourceStat="Stamina(Regen_80)"/>
+ <SkillInfo Key="10013" StrKey="Skill_CrouchMoveLv3" SkillName="앉아서 달리기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="앉아서 달리기" UseResourceStat="Stamina(Regen_80)"/>
+ <SkillInfo Key="10014" StrKey="Skill_BasicMoveLv2" SkillName="비전투 상태 걷기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="비전투 상태 걷기" UseResourceStat="Stamina(Regen_80)"/>
+ <SkillInfo Key="10015" StrKey="Skill_BasicMoveLv3" SkillName="비전투 상태 달리기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="비전투 상태 달리기" UseResourceStat="Stamina(Regen_40)"/>
+ <SkillInfo Key="10016" StrKey="Skill_BasicMoveLv4" SkillName="비전투 상태 질주" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="비전투 상태 질주" UseResourceStat="Stamina(Regen_-8)"/>
+ <SkillInfo Key="10017" StrKey="Skill_BasicMoveLv4_100" SkillName="전력 질주" ApplyType="Active" MaxLevel="1" UseResourceStat="Stamina(Regen_-12)" LearnKnowledgeKey="Knowledge_Sprint"
+  SkillIcon="Skill_BasicMoveLv4_100" SkillDesc="질주 중 {Key:Key_Run} 연타 <br/><br/> 전속력으로 달릴 수 있다.">
+  <Video CharacterKey="Kliff"  Path="ui/media/Skill_BasicMoveLv4_100.mp4"/>
+  <Video CharacterKey="Damian"  Path="ui/media/Skill_Damian_BasicMoveLv4_100.mp4"/>
+  <Video CharacterKey="Oongka"  Path="ui/media/Skill_Oongka_BasicMoveLv4_100.mp4"/>
+ </>
+ <SkillInfo Key="10021" StrKey="Skill_GuardWait" SkillName="가드 대기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="가드 대기" UseResourceStat="Stamina(Regen_40)"/>
+ <SkillInfo Key="10022" StrKey="Skill_GuardStride" SkillName="가드 스트라이드" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="가드 스트라이드" UseResourceStat="Stamina(Regen_40)"/>
+ <SkillInfo Key="10023" StrKey="Skill_MoveLv4Jump" SkillName="질주 중 점프" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="질주 중 점프" UseResourceStat="Stamina(-10)"/>
+ <SkillInfo Key="10025" StrKey="Skill_ContinuousAttack_10" SkillName="연속 공격 : 지구력 초당 10 감소" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="연속 공격 : 지구력 초당 10 감소" UseResourceStat="Stamina(Regen_-10)"/>
+ <SkillInfo Key="10026" StrKey="Skill_ContinuousAttack_20" SkillName="연속 공격 : 지구력 초당 20 감소" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="연속 공격 : 지구력 초당 20 감소" UseResourceStat="Stamina(Regen_-20)"/>
+ <SkillInfo Key="10027" StrKey="Skill_ContinuousAttack_30" SkillName="연속 공격 : 지구력 초당 30 감소" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="연속 공격 : 지구력 초당 30 감소" UseResourceStat="Stamina(Regen_-30)"/>
+ <SkillInfo Key="10028" StrKey="Skill_GuardCounterSuccessRecovery" SkillName="가드 카운터 성공 : 지구력 회복" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="가드 카운터 성공 : 지구력 회복">
+  <Buff SkillLevel="1" BuffNameForDev="지구력 회복" BuffType="varydatadefinedstat" StatusNameKey="Stamina" Value="80" SequencerName="baseseq/gamesystemfx/effect/cdfx_action_element_0003" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+ <SkillInfo Key="10029" StrKey="Active_Increase_CombatHigh" SkillName="잡기류 기술 성공" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="잡기류 기술 성공 : 최대치 증가">
+  <Buff SkillLevel="1" BuffNameForDev="고양" BuffType="changebuffLevel" BuffKey="BuffLevel_CombatHigh" LevelChangeType="Add" Level="1" BuffTimeStyle="remaintime" RemainTime="10000" BuffTargetType="actor"/>
+ </>
+ <SkillInfo Key="10030" StrKey="Skill_RushAttackBuff" SkillName="러쉬 공격 버프" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_60091" SkillDesc="러쉬 공격 버프" UseResourceStat="Mp(-10)">
+  <Buff SkillLevel="1" BuffNameForDev="3분 동안 공격력 2단계 증가" PatternDescription="DD_UP_TIME" BuffType="changebufflevel" BuffKey="BuffLevel_DDD" LevelChangeType="Add" Level="2" BuffTimeStyle="remaintime" RemainTime="180000" BuffTargetType="actor"/>
+ </>
+ <SkillInfo Key="10032" StrKey="Skill_Mount_Ing" SkillName="마운트 중 지구력 감소" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="마운트 중 지구력 감소" UseResourceStat="Stamina(Regen_-10)"/>
+ <SkillInfo Key="10033" StrKey="Skill_Mount_Attack_Lv1" SkillName="마운트 중 공격" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="마운트 중 공격" UseResourceStat="Stamina(-15)"/>
+ <SkillInfo Key="10034" StrKey="Skill_Mount_Attack_Lv2" SkillName="마운트 중 공격" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="마운트 중 공격" UseResourceStat="Stamina(-30)"/>
+ <SkillInfo Key="10035" StrKey="Skill_Mount_Attack_Lv3" SkillName="마운트 중 공격" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="마운트 중 공격" UseResourceStat="Stamina(-45)"/>
+
+ <!-- Climb 스테미나 관련 스킬 키 -->
+ <SkillInfo Key="10052" StrKey="Skill_PointClimbLv0" SkillName="PointClimb Lv0 이동" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="PointClimb Lv0 이동" UseResourceStat="Stamina(-10)"/>
+ <SkillInfo Key="10053" StrKey="Skill_PointClimbLv1" SkillName="PointClimb Lv1 이동" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="PointClimb Lv1 이동" UseResourceStat="Stamina(-25)"/>
+ <SkillInfo Key="10054" StrKey="Skill_PointClimbLv2" SkillName="PointClimb Lv2 이동" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="PointClimb Lv2 이동" UseResourceStat="Stamina(-50)"/>
+ <SkillInfo Key="10056" StrKey="Skill_RoofClimbLv0" SkillName="RoofClimb Lv0 이동" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="RoofClimb Lv0 이동" UseResourceStat="Stamina(-10)"/>
+ <!-- STRUGGLE -->
+ <SkillInfo Key="10057" StrKey="Skill_ClimbStruggle" SkillName="Struggle 매달리기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="Struggle 매달리기" UseResourceStat="Stamina(Regen_-40)"/>
+ <SkillInfo Key="10062" StrKey="Skill_ClimbBearStruggle" SkillName="곰 Struggle 매달리기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="곰 Struggle 매달리기" UseResourceStat="Stamina(-40)">
+  <Buff SkillLevel="1" BuffNameForDev="피해 100" BuffType="damage" AttackType="Direct" AdditionalDamage="100" DamagePercent="100" IgnoreStat="True" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+ <SkillInfo Key="10063" StrKey="Skill_ClimbBearStruggleCounter" SkillName="곰 Struggle 매달리기 카운터" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="곰 Struggle 매달리기 카운터" UseResourceStat="Mp(-10)"/>
+ <SkillInfo Key="10064" StrKey="Skill_ClimbBearStruggleCounterSuccess" SkillName="곰 Struggle 매달리기 카운터 성공 : 지구력 회복" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="곰 Struggle 매달리기 카운터 성공 : 지구력 회복">
+  <Buff SkillLevel="1" BuffNameForDev="지구력 회복" BuffType="varydatadefinedstat" StatusNameKey="Stamina" Value="60" SequencerName="baseseq/gamesystemfx/effect/cdfx_action_element_0003" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+ <SkillInfo Key="10099" StrKey="Skill_ClimbDragonStruggle" SkillName="드래곤 Struggle 매달리기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="드래곤 Struggle 매달리기" UseResourceStat="Stamina(Regen_-15)"/>
+ <!-- 메달리기 -->
+ <SkillInfo Key="10071" StrKey="Skill_CharacterClimb" SkillName="메달리기" ApplyType="Active" MaxLevel="1" UseResourceStat="Stamina(Regen_-10)" LearnKnowledgeKey="Knowledge_CharacterClimb"
+  SkillIcon="Skill_CharacterClimb" SkillDesc="특정 대상에게 메달려 공격을 하거나 위기를 모면 할 수 있다.">
+  <Video CharacterKey="Kliff"  Path="ui/media/Skill_CharacterClimb.mp4"/>
+  <Video CharacterKey="Damian"  Path="ui/media/Skill_CharacterClimb.mp4"/>
+  <Video CharacterKey="Oongka"  Path="ui/media/Skill_CharacterClimb.mp4"/>
+ </>
+
+ <SkillInfo Key="10066" StrKey="Skill_BattleAxeDash_30" SkillName="웅카 대시 : 지구력 30 감소" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="웅카 대시 : 지구력 30 감소" UseResourceStat="Stamina(-30)"/>
+ 
+ <!-- Rope Swing 관련 스킬 키-->
+ <SkillInfo Key="10080" StrKey="Skill_SwingLv0" SkillName="Swing 이동 Lv0" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="Swing 이동 Lv0" UseResourceStat="Stamina(Regen_-5)"/>
+ <SkillInfo Key="10081" StrKey="Skill_SwingLv1" SkillName="Swing 이동 Lv1" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="Swing 이동 Lv1" UseResourceStat="Stamina(Regen_-10)"/>
+ <SkillInfo Key="10082" StrKey="Skill_SwingLv2" SkillName="Swing 이동 Lv2" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="Swing 이동 Lv2" UseResourceStat="Stamina(Regen_-20)" />
+ <SkillInfo Key="10083" StrKey="Skill_SwingPull" SkillName="Swing Pull" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="Swing 중 당기기" UseResourceStat="Stamina(-50)" />
+ <!-- 붙잡기 -->
+ <SkillInfo Key="10058" StrKey="Skill_PointClimbHold" SkillName="PointClimb 붙잡기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="PointClimb 붙잡기" UseResourceStat="Stamina(Regen_-15)"/>
+ <SkillInfo Key="10098" StrKey="Skill_DragonClimbHold" SkillName="DragonClimb 붙잡기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="DragonClimb 붙잡기" UseResourceStat="Stamina(Regen_-2)"/>
+ <!-- 버티기 -->
+ <SkillInfo Key="10061" StrKey="Skill_RoofClimbHold" SkillName="RoofClimb 버티기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="RoofClimb 버티기" UseResourceStat="Stamina(Regen_40)"/>
+ <SkillInfo Key="10068" StrKey="Skill_ClimbSlide" SkillName="Climb 미끄러지기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_301" SkillDesc="Climb 미끄러지기" UseResourceStat="Stamina(Regen_-25)"/>
+ 
+ <!-- ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■-->
+ <!-- ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 스킬 트리 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■-->
+ <!-- ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■-->
+
+ <!-- 평타 -->
+ <SkillInfo Key="13001" StrKey="Skill_SwordMastery" SkillName="무기" ApplyType="Active" MaxLevel="1" LearnKnowledgeKey="Knowledge_SwordMastery_I"
+  SkillIcon="Skill_SwordMastery" VideoPath="ui/media/Skill_SwordMastery.mp4" SkillDesc="{Key:Key_NorAttack} 연속 입력<br/><br/>무기를 효과적으로 사용하는 방법이다.">
+ </>
+ <SkillInfo Key="13101" StrKey="Skill_Damian_SwordMastery" SkillName="무기" ApplyType="Active" MaxLevel="1" LearnKnowledgeKey="Knowledge_Damian_SwordMastery_I"
+  SkillIcon="Skill_SwordMastery" VideoPath="ui/media/Skill_Damian_SwordMastery.mp4" SkillDesc="{Key:Key_NorAttack} 연속 입력<br/><br/>무기를 효과적으로 사용하는 방법이다.">
+ </>
+ <SkillInfo Key="13201" StrKey="Skill_Oongka_SwordMastery" SkillName="무기" ApplyType="Active" MaxLevel="1" LearnKnowledgeKey="Knowledge_Oongka_SwordMastery_I"
+  SkillIcon="Skill_SwordMastery" VideoPath="ui/media/Skill_SwordMastery.mp4" SkillDesc="{Key:Key_NorAttack} 연속 입력<br/><br/>무기를 효과적으로 사용하는 방법이다.">
+ </>
+  <SkillInfo Key="13031" StrKey="Skill_SwordMastery_Attack_I" SkillName="일반 공격" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_Attack_I" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="100" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" BuffType="damagedactionrestriction" ActionRestrictionType="PushLight" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+  <SkillInfo Key="13032" StrKey="Skill_SwordMastery_Attack_II" SkillName="일반 공격" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_Attack_II" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="125" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" BuffType="damagedactionrestriction" ActionRestrictionType="PushNormal" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+  <SkillInfo Key="13033" StrKey="Skill_SwordMastery_RunAttack_NoDead" SkillName="달리기중 공격" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_RunAttack_NoDead" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지 - NoDead" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="50" NoDead="True" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" BuffType="damagedactionrestriction" ActionRestrictionType="PushNormal" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+  <SkillInfo Key="13034" StrKey="Skill_SwordMastery_RunAttack_IgnoreFatal" SkillName="달리기중 공격" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_RunAttack_IgnoreFatal" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지 - 페이탈 무시" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="50" IgnoreFatal="True" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" BuffType="damagedactionrestriction" ActionRestrictionType="PushNormal" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+  <SkillInfo Key="13035" StrKey="Skill_SwordMastery_DownAttack_I" SkillName="누워있는적 공격" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_DownAttack_I" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지 - NoDead" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="50" NoDead="True" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" PatternDescription="KNOCKDOWN" BuffType="damagedactionrestriction" ActionRestrictionType="KnockDown" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+  <SkillInfo Key="13036" StrKey="Skill_SwordMastery_DownAttack_II" SkillName="누워있는적 공격" ApplyType="Active" MaxLevel="1" Cooltime="10"
+   SkillIcon="Skill_SwordMastery_DownAttack_II" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지 - NoDead" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="100" NoDead="True" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" PatternDescription="KNOCKDOWN" BuffType="damagedactionrestriction" ActionRestrictionType="KnockDown" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+  <SkillInfo Key="13037" StrKey="Skill_SwordMastery_DownAttack_Pull_I" SkillName="누워있는적 공격 - Pull" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_DownAttack_Pull_I" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지 - 페이탈 무시" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="100" IgnoreFatal="True" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" PatternDescription="KNOCKDOWN" BuffType="damagedactionrestriction" ActionRestrictionType="KnockDown" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>  
+  <SkillInfo Key="13038" StrKey="Skill_SwordMastery_DownAttack_Pull_II" SkillName="누워있는적 공격 - Pull" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_DownAttack_Pull_II" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지 - 페이탈 무시" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="250" IgnoreFatal="True" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" PatternDescription="KNOCKDOWN" BuffType="damagedactionrestriction" ActionRestrictionType="KnockDown" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+  <SkillInfo Key="13039" StrKey="Skill_SwordMastery_JumpAttack_I" SkillName="점프 공격" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_JumpAttack_I" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="125" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" PatternDescription="KNOCKDOWN" BuffType="damagedactionrestriction" ActionRestrictionType="KnockDown" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+  <SkillInfo Key="13040" StrKey="Skill_SwordMastery_JumpAttack_II" SkillName="점프 공격" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_JumpAttack_II" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="200" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" PatternDescription="KNOCKDOWN" BuffType="damagedactionrestriction" ActionRestrictionType="KnockDown" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+  <SkillInfo Key="13041" StrKey="Skill_SwordMastery_LowAttack" SkillName="하단 공격" ApplyType="Active" MaxLevel="1"
+   SkillIcon="Skill_SwordMastery_LowAttack" SkillDesc="회색 갈기의 기본적인 검술 초식.">
+   <Buff SkillLevel="1" BuffNameForDev="데미지" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="100" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+   <Buff SkillLevel="1" BuffNameForDev="CC" BuffType="damagedactionrestriction" ActionRestrictionType="LowAttack" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  </>
+for those one  most of them are max level 1 right? 
+
+and then we have that
+
+ <SkillInfo Key="17003" StrKey="Skill_OneHandSwordAttack" SkillName="한손검 기본 공격" ApplyType="Active" MaxLevel="2" SkillIcon="Skill_1001" SkillDesc="한손검 기본 공격">
+  <Buff SkillLevel="1" BuffNameForDev="피해 100%" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="100" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="스킬 - 밀치기 (약)" BuffType="damagedactionrestriction" ActionRestrictionType="PushLight" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+
+  <Buff SkillLevel="2" BuffNameForDev="피해 100%" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="100" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="2" BuffNameForDev="스킬 - 밀치기 (중)" BuffType="damagedactionrestriction" ActionRestrictionType="PushNormal" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+
+ <SkillInfo Key="17005" StrKey="Skill_OneHandSwordRunAttack" SkillName="올려베기" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_1001" SkillDesc="올려베기" LearnExperience="300">
+  <Buff SkillLevel="1" BuffNameForDev="피해 - NoDead (Fatal 무시 즉사)" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="100" NoDead="True" IgnoreFatal="True" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="스킬 - 밀치기 (중)" BuffType="damagedactionrestriction" ActionRestrictionType="PushNormal" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+
+ <SkillInfo Key="17006" StrKey="Skill_OneHandSwordRunAttack_IgnoreFatal" SkillName="올려베기 마지막" ApplyType="Active" MaxLevel="1" SkillIcon="Skill_1001" SkillDesc="올려베기 마지막" LearnExperience="300">
+  <Buff SkillLevel="1" BuffNameForDev="페이탈 무시 - 피해 100%" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="100" IgnoreFatal="True" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="스킬 - 밀치기 (중)" BuffType="damagedactionrestriction" ActionRestrictionType="PushNormal" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+
+
+here max level 2 you see??
+ <SkillInfo Key="17003" StrKey="Skill_OneHandSwordAttack" SkillName="한손검 기본 공격" ApplyType="Active" MaxLevel="2" SkillIcon="Skill_1001" SkillDesc="한손검 기본 공격">
+  <Buff SkillLevel="1" BuffNameForDev="피해 100%" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="100" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="스킬 - 밀치기 (약)" BuffType="damagedactionrestriction" ActionRestrictionType="PushLight" BuffTimeStyle="immediately" BuffTargetType="actor"/>*
+
+
+hjere look 
+
+ <SkillInfo Key="10280" StrKey="Skill_UnArmedMastery" SkillName="타격" ApplyType="Passive" MaxLevel="5" LearnKnowledgeKey="Knowledge_UnArmedMastery_I"
+  SkillIcon="Skill_UnArmedMastery" VideoPath="ui/media/Skill_UnarmedMastery.mp4" SkillDesc="{Key:Key_FistAttack} 짧게 누른 후 연속 입력 혹은 길게 눌러 차징<br/>맨주먹으로 적과 싸우는 기술들을 다룬다.">
+
+  <Buff SkillLevel="1" BuffNameForDev="타격 스킬 공격력 증가" BuffType="VarySkillDamagePercentStat" TooltipType="percent" BuffType="varyskilldamagepercentstat" SkillGroupKey="UnArmed" DamagePercent="0" BuffTimeStyle="independent" BuffTargetType="actor"/>
+  <Buff SkillLevel="2" BuffNameForDev="타격 스킬 공격력 증가" BuffType="VarySkillDamagePercentStat" TooltipType="percent" BuffType="varyskilldamagepercentstat" SkillGroupKey="UnArmed" DamagePercent="10" BuffTimeStyle="independent" BuffTargetType="actor"/>
+  <Buff SkillLevel="3" BuffNameForDev="타격 스킬 공격력 증가" BuffType="VarySkillDamagePercentStat" TooltipType="percent" BuffType="varyskilldamagepercentstat" SkillGroupKey="UnArmed" DamagePercent="20" BuffTimeStyle="independent" BuffTargetType="actor"/>
+  <Buff SkillLevel="4" BuffNameForDev="타격 스킬 공격력 증가" BuffType="VarySkillDamagePercentStat" TooltipType="percent" BuffType="varyskilldamagepercentstat" SkillGroupKey="UnArmed" DamagePercent="30" BuffTimeStyle="independent" BuffTargetType="actor"/>
+  <Buff SkillLevel="5" BuffNameForDev="타격 스킬 공격력 증가" BuffType="VarySkillDamagePercentStat" TooltipType="percent" BuffType="varyskilldamagepercentstat" SkillGroupKey="UnArmed" DamagePercent="40" BuffTimeStyle="independent" BuffTargetType="actor"/>
+ </>
+
+
+max level 5 right?
+
+here we look for hte LEARNKNOWLEGEKEY
+LearnKnowledgeKey="Knowledge_UnArmedMastery_I"
+"Knowledge_UnArmedMastery_I"
+ok?
+
+and then look what we find :
+<KnowledgeInfo StrKey="Knowledge_UnArmedMastery_I" Name="타격" isDefault="True" UITextureName="cd_icon_Skill_UnArmedMastery_I" Desc="{Key:Key_FistAttack} 짧게 누른 후 연속 입력 혹은 길게 눌러 차징<br/>맨주먹으로 적과 싸우는 기술들을 다룬다." LocalizationDescription="" LearnApplySkillKey="Skill_UnArmedMastery">
+    <Dev Memo="기본 습득"/>
+    <UseMacroNode Name="Macro_Skill_SkillPoint_Follow_Level5_Basic_01"/>
+   </>
+    <!-- 낚아 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_LegSwing" Name="낚아 차기" UITextureName="cd_icon_Skill_LegSwing" Desc="앉은 자세에서{Key:Key_KickAttack}<br/><br/> 낮은 자세에서 적의 몸을 발로 감아 넘어뜨린다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(1)"/>
+    </>
+    <!-- 쓸어 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_LowerKick" Name="쓸어 차기" UITextureName="cd_icon_Skill_LowerKick" Desc="구르기 후 {Key:Key_KickAttack}<br/><br/>하단에서 적을 쓸어 찬다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(1)"/>
+    </>
+    <!-- 회피 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_EvadeKick" Name="회피 차기" UITextureName="cd_icon_Skill_EvadeKick" Desc="{Key:Key_Skill_17}<br/><br/>적의 공격을 회피하며 공격한다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(2)"/>
+    </>
+    <!-- 타격 연계 강화 -->
+    <KnowledgeInfo StrKey="Knowledge_UnArmedCombination" Name="타격 연계 강화" UITextureName="cd_icon_Skill_UnArmedCombination" Desc="맨손전투의 연계가 강화된다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(3)"/>
+    </>
+    <!-- 질풍 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_JumpDoubleKick" Name="질풍 차기" UITextureName="cd_icon_Skill_DoubleKick_Jump_I" Desc="특정 상황의 공중에서 {Key:Key_KickAttack}<br/><br/>적을 두 번 찍어 찬다.<br/>점프 중 사용이 가능하다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(4)"/>
+    </>
+    <!-- 벼락 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_SkyKick" Name="벼락 차기" UITextureName="cd_icon_Skill_DoubleKick_Jump_II" Desc="특정 상황의 공중에서 {Key:Key_KickAttack}<br/><br/> 높은 하늘에서 적을 향해 발에 날을 세워 내려찍는다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(5)"/>
+    </>
+    <!-- 타격의 대가 -->
+    <KnowledgeInfo StrKey="Knowledge_UnArmedMastery_Expert" Name="타격의 대가" UITextureName="cd_icon_Skill_UnArmedMastery_Expert" Desc="타격술의 극에 다다라, 적에게 더욱 강한 공격을 퍼붓는다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(5)"/>
+    </>
+
+
+
+so here you see then we get the key and when mapped we get this info 
+
+you see the info?
+
+and you sde how the node is NESTED? with the top part and then sub part for each level (1) (2) (3) (4) etc.?
+
+yeah i think we can do something about that and have a great thing SUPER NEAT with also nest for TITLE and DESC  , Name and Desc right?
+
+
+check other sheet generator how they NEST and WRITE EXCEL with bueatiful indentation and colors please.
+
+
+and so you udnerstand the order? you ahve first the 
+
+<SkillInfo Key="10280" StrKey="Skill_UnArmedMastery" SkillName="타격" ApplyType="Passive" MaxLevel="5" LearnKnowledgeKey="Knowledge_UnArmedMastery_I"
+thats the mega parent
+
+and then u just check
+LearnKnowledgeKey="Knowledge_UnArmedMastery_I"
+and hten you have
+the other stuff
+
+look
+<KnowledgeInfo StrKey="Knowledge_UnArmedMastery_I" Name="타격" isDefault="True" UITextureName="cd_icon_Skill_UnArmedMastery_I" Desc="{Key:Key_FistAttack} 짧게 누른 후 연속 입력 혹은 길게 눌러 차징<br/>맨주먹으로 적과 싸우는 기술들을 다룬다." LocalizationDescription="" LearnApplySkillKey="Skill_UnArmedMastery">
+    <Dev Memo="기본 습득"/>
+    <UseMacroNode Name="Macro_Skill_SkillPoint_Follow_Level5_Basic_01"/>
+   </>
+    <!-- 낚아 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_LegSwing" Name="낚아 차기" UITextureName="cd_icon_Skill_LegSwing" Desc="앉은 자세에서{Key:Key_KickAttack}<br/><br/> 낮은 자세에서 적의 몸을 발로 감아 넘어뜨린다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(1)"/>
+    </>
+    <!-- 쓸어 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_LowerKick" Name="쓸어 차기" UITextureName="cd_icon_Skill_LowerKick" Desc="구르기 후 {Key:Key_KickAttack}<br/><br/>하단에서 적을 쓸어 찬다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(1)"/>
+    </>
+    <!-- 회피 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_EvadeKick" Name="회피 차기" UITextureName="cd_icon_Skill_EvadeKick" Desc="{Key:Key_Skill_17}<br/><br/>적의 공격을 회피하며 공격한다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(2)"/>
+    </>
+    <!-- 타격 연계 강화 -->
+    <KnowledgeInfo StrKey="Knowledge_UnArmedCombination" Name="타격 연계 강화" UITextureName="cd_icon_Skill_UnArmedCombination" Desc="맨손전투의 연계가 강화된다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(3)"/>
+    </>
+    <!-- 질풍 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_JumpDoubleKick" Name="질풍 차기" UITextureName="cd_icon_Skill_DoubleKick_Jump_I" Desc="특정 상황의 공중에서 {Key:Key_KickAttack}<br/><br/>적을 두 번 찍어 찬다.<br/>점프 중 사용이 가능하다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(4)"/>
+    </>
+    <!-- 벼락 차기 -->
+    <KnowledgeInfo StrKey="Knowledge_SkyKick" Name="벼락 차기" UITextureName="cd_icon_Skill_DoubleKick_Jump_II" Desc="특정 상황의 공중에서 {Key:Key_KickAttack}<br/><br/> 높은 하늘에서 적을 향해 발에 날을 세워 내려찍는다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(5)"/>
+    </>
+    <!-- 타격의 대가 -->
+    <KnowledgeInfo StrKey="Knowledge_UnArmedMastery_Expert" Name="타격의 대가" UITextureName="cd_icon_Skill_UnArmedMastery_Expert" Desc="타격술의 극에 다다라, 적에게 더욱 강한 공격을 퍼붓는다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_UnArmedMastery_I(5)"/>
+    </>
+
+
+
+so the MEGA parent ist his : Name="타격" <SkillInfo Key="10280" StrKey="Skill_UnArmedMastery" SkillName="타격"
+
+and then you have children right? and sub children for hte dfescripction rihg in term of IDENTATION
+
+and ALSO i found something look :
+
+ <SkillInfo Key="10101" StrKey="Skill_PushKick" SkillName="발차기" ApplyType="Active" MaxLevel="1" LearnKnowledgeKey="Knowledge_UnArmedMastery_I"
+
+
+this is a d uplicate! look, same LearnKnowledgeKey="Knowledge_UnArmedMastery_I" but differnet StrKey. You see? for that i think we can make a simple rule:
+
+if there is a LearnKnowledgeKey duplicate we PRIORITIZE thje oen with the HIGHEST  MaxLevel
+
+as you can see this one ahas only maxlevel= 1 yeah? so int hat case it LOSES and we wont use knwoelgekey for this one (int he case where ther is a duplciate knwoledgekey). INSTEAD we will just use the ALREADY availble DESC of that skill IF available.
+
+
+ <SkillInfo Key="10101" StrKey="Skill_PushKick" SkillName="발차기" ApplyType="Active" MaxLevel="1" LearnKnowledgeKey="Knowledge_UnArmedMastery_I"
+  SkillIcon="Skill_PushKick" VideoPath="ui/media/cd_skill_PushKick.mp4" SkillDesc="회색 갈기의 기본적인 발차기 공격.">
+  <Buff SkillLevel="1" BuffNameForDev="데미지" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="30" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+
+ SkillDesc="회색 갈기의 기본적인 발차기 공격."
+
+
+see?
+
+
+ok can we do that? kgive me the full SKILL sheet generator.
+
+and like the GameADVICE we need everyhting in ONE SHEET. can you do that?
