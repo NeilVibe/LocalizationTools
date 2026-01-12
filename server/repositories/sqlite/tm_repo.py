@@ -520,6 +520,36 @@ class SQLiteTMRepository(TMRepository):
         finally:
             conn.close()
 
+    async def get_glossary_terms(
+        self,
+        tm_ids: List[int],
+        max_length: int = 20,
+        limit: int = 1000
+    ) -> List[tuple]:
+        """Get short TM entries as glossary terms for QA checks."""
+        if not tm_ids:
+            return []
+
+        conn = self._get_connection()
+        try:
+            placeholders = ",".join("?" * len(tm_ids))
+            rows = conn.execute(
+                f"""
+                SELECT source_text, target_text
+                FROM offline_tm_entries
+                WHERE tm_id IN ({placeholders})
+                  AND LENGTH(source_text) <= ?
+                  AND source_text IS NOT NULL
+                  AND target_text IS NOT NULL
+                LIMIT ?
+                """,
+                tm_ids + [max_length, limit]
+            ).fetchall()
+
+            return [(row["source_text"], row["target_text"]) for row in rows]
+        finally:
+            conn.close()
+
     # =========================================================================
     # Tree Structure
     # =========================================================================

@@ -673,6 +673,31 @@ class PostgreSQLTMRepository(TMRepository):
         logger.info(f"Bulk {'confirmed' if confirm else 'unconfirmed'} {updated_count} entries in TM {tm_id} by {confirmed_by}")
         return updated_count
 
+    async def get_glossary_terms(
+        self,
+        tm_ids: List[int],
+        max_length: int = 20,
+        limit: int = 1000
+    ) -> List[tuple]:
+        """Get short TM entries as glossary terms for QA checks."""
+        from sqlalchemy import func
+
+        if not tm_ids:
+            return []
+
+        result = await self.db.execute(
+            select(LDMTMEntry.source_text, LDMTMEntry.target_text)
+            .where(
+                LDMTMEntry.tm_id.in_(tm_ids),
+                func.length(LDMTMEntry.source_text) <= max_length,
+                LDMTMEntry.source_text.isnot(None),
+                LDMTMEntry.target_text.isnot(None)
+            )
+            .limit(limit)
+        )
+
+        return [(row[0], row[1]) for row in result.all()]
+
     # =========================================================================
     # Tree Structure
     # =========================================================================

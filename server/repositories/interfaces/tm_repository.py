@@ -328,6 +328,26 @@ class TMRepository(ABC):
         """
         ...
 
+    @abstractmethod
+    async def get_glossary_terms(
+        self,
+        tm_ids: List[int],
+        max_length: int = 20,
+        limit: int = 1000
+    ) -> List[tuple]:
+        """
+        Get short TM entries as glossary terms for QA checks.
+
+        Args:
+            tm_ids: List of TM IDs to get terms from
+            max_length: Maximum source text length for glossary terms
+            limit: Maximum number of terms to return
+
+        Returns:
+            List of (source, target) tuples
+        """
+        ...
+
     # =========================================================================
     # Tree Structure (for UI)
     # =========================================================================
