@@ -3,7 +3,33 @@ import { test, expect } from '@playwright/test';
 /**
  * Login Component E2E Tests
  * Tests the login flow, form validation, and authentication
+ *
+ * NOTE: LocaNext now has a Mode Selection screen before login form.
+ * Tests need to click "Login" button first to get to the login form.
  */
+
+// Helper to navigate from Mode Selection to Login form
+async function goToLoginForm(page: any) {
+  // Wait for page to be fully loaded
+  await page.waitForLoadState('domcontentloaded');
+
+  // Wait for Mode Selection screen to appear (Start Offline button)
+  const startOfflineBtn = page.locator('button:has-text("Start Offline")');
+  await expect(startOfflineBtn).toBeVisible({ timeout: 10000 });
+
+  // Wait for server to be connected
+  await expect(page.locator('text=Central Server Connected')).toBeVisible({ timeout: 10000 });
+
+  // Find the Login button and wait for it to be enabled
+  const loginBtn = page.locator('button.login-btn');
+  await expect(loginBtn).toBeEnabled({ timeout: 5000 });
+
+  // Click the button
+  await loginBtn.click();
+
+  // Wait for login form to appear (password input visible)
+  await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 5000 });
+}
 
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -15,120 +41,124 @@ test.describe('Login Page', () => {
     await page.reload();
   });
 
-  test('should display login form with all elements', async ({ page }) => {
+  test('should display mode selection screen first', async ({ page }) => {
     await page.goto('/');
 
-    // Check title and branding
-    await expect(page.locator('h1')).toContainText('LocaNext');
-    await expect(page.locator('text=Localization Tools Platform')).toBeVisible();
+    // Check Mode Selection screen elements
+    await expect(page.locator('text=LocaNext')).toBeVisible();
+    await expect(page.locator('button:has-text("Start Offline")')).toBeVisible();
+    await expect(page.locator('button:has-text("Login")')).toBeVisible();
+  });
+
+  test('should display login form after clicking Login button', async ({ page }) => {
+    await page.goto('/');
+    await goToLoginForm(page);
 
     // Check form elements exist
-    await expect(page.getByLabel('Username')).toBeVisible();
-    await expect(page.getByLabel('Password')).toBeVisible();
-    await expect(page.locator('text=Remember me')).toBeVisible();
+    await expect(page.locator('input').first()).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
     await expect(page.getByRole('button', { name: /login/i })).toBeVisible();
-
-    // Check footer text
-    await expect(page.locator('text=Contact your administrator for access')).toBeVisible();
   });
 
   test('should require credentials to login', async ({ page }) => {
     await page.goto('/');
+    await goToLoginForm(page);
 
-    // Click login without entering credentials
-    await page.getByRole('button', { name: /login/i }).click();
+    // Login button should be disabled without credentials
+    const loginBtn = page.getByRole('button', { name: /login/i });
+    await expect(loginBtn).toBeDisabled();
 
-    // Either shows error OR stays on login page (HTML5 validation)
-    // The important thing is user can't proceed without credentials
-    await page.waitForTimeout(1000);
-
-    // Should still be on login page (not logged in)
-    const stillOnLogin = await page.locator('.login-container, h1:has-text("LocaNext")').first().isVisible();
+    // Should still be on login page
+    const stillOnLogin = await page.locator('input[type="password"]').isVisible();
     expect(stillOnLogin).toBe(true);
   });
 
   test('should show error for invalid credentials', async ({ page }) => {
     await page.goto('/');
+    await goToLoginForm(page);
 
     // Enter invalid credentials
-    await page.getByLabel('Username').fill('wronguser');
-    await page.getByLabel('Password').fill('wrongpassword');
+    await page.locator('input').first().fill('wronguser');
+    await page.locator('input[type="password"]').fill('wrongpassword');
     await page.getByRole('button', { name: /login/i }).click();
 
-    // Wait for error message - use broader selector
+    // Wait for error message
     await expect(page.locator('[class*="notification"], [class*="error"], [role="alert"]').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should login successfully with valid credentials', async ({ page }) => {
     await page.goto('/');
+    await goToLoginForm(page);
 
     // Enter valid credentials (admin/admin123 is the default)
-    await page.getByLabel('Username').fill('admin');
-    await page.getByLabel('Password').fill('admin123');
+    await page.locator('input').first().fill('admin');
+    await page.locator('input[type="password"]').fill('admin123');
     await page.getByRole('button', { name: /login/i }).click();
 
-    // Wait for successful login - should navigate away from login
-    // or show the main app content
-    await expect(page.locator('.login-container')).not.toBeVisible({ timeout: 10000 });
+    // Wait for successful login - main app navigation should appear
+    await expect(page.getByRole('button', { name: 'Files' })).toBeVisible({ timeout: 10000 });
   });
 
   test('should show loading state during login', async ({ page }) => {
     await page.goto('/');
+    await goToLoginForm(page);
 
     // Fill in credentials
-    await page.getByLabel('Username').fill('admin');
-    await page.getByLabel('Password').fill('admin123');
+    await page.locator('input').first().fill('admin');
+    await page.locator('input[type="password"]').fill('admin123');
 
     // Click login and check for loading state
     await page.getByRole('button', { name: /login/i }).click();
 
-    // Should briefly show loading indicator
-    // Note: This may be too fast to catch, so we check it doesn't error
+    // Should briefly show loading indicator (may be too fast to catch)
   });
 
   test('should allow login via Enter key', async ({ page }) => {
     await page.goto('/');
+    await goToLoginForm(page);
 
     // Enter credentials
-    await page.getByLabel('Username').fill('admin');
-    await page.getByLabel('Password').fill('admin123');
+    await page.locator('input').first().fill('admin');
+    await page.locator('input[type="password"]').fill('admin123');
 
     // Press Enter to submit
-    await page.getByLabel('Password').press('Enter');
+    await page.locator('input[type="password"]').press('Enter');
 
-    // Should navigate away from login on success
-    await expect(page.locator('.login-container')).not.toBeVisible({ timeout: 10000 });
+    // Wait for successful login - main app navigation should appear
+    await expect(page.getByRole('button', { name: 'Files' })).toBeVisible({ timeout: 10000 });
   });
 
   test('should have remember me checkbox', async ({ page }) => {
     await page.goto('/');
+    await goToLoginForm(page);
 
-    // Check remember me checkbox exists using text
+    // Check remember me checkbox exists
     const checkboxLabel = page.locator('text=Remember me');
     await expect(checkboxLabel).toBeVisible();
 
-    // Click the label to toggle (Carbon Components style)
+    // Click the label to toggle
     await checkboxLabel.click();
 
-    // Verify checkbox state changed (check the actual input)
+    // Verify checkbox state changed
     const checkbox = page.locator('input[type="checkbox"]').first();
     await expect(checkbox).toBeChecked();
   });
 
   test('should save credentials when remember me is checked', async ({ page }) => {
     await page.goto('/');
+    await goToLoginForm(page);
 
     // Login with remember me checked
-    await page.getByLabel('Username').fill('admin');
-    await page.getByLabel('Password').fill('admin123');
+    await page.locator('input').first().fill('admin');
+    await page.locator('input[type="password"]').fill('admin123');
 
-    // Click the Remember me label (Carbon style)
+    // Click the Remember me label
     await page.locator('text=Remember me').click();
 
     await page.getByRole('button', { name: /login/i }).click();
 
-    // Wait for successful login
-    await expect(page.locator('.login-container')).not.toBeVisible({ timeout: 10000 });
+    // Wait for successful login - main app navigation should appear
+    await expect(page.getByRole('button', { name: 'Files' })).toBeVisible({ timeout: 10000 });
 
     // Check localStorage has saved credentials
     const hasCredentials = await page.evaluate(() => {
@@ -141,10 +171,11 @@ test.describe('Login Page', () => {
 
   test('should show and dismiss error notification', async ({ page }) => {
     await page.goto('/');
+    await goToLoginForm(page);
 
     // Enter invalid credentials to trigger error
-    await page.getByLabel('Username').fill('wronguser');
-    await page.getByLabel('Password').fill('wrongpass');
+    await page.locator('input').first().fill('wronguser');
+    await page.locator('input[type="password"]').fill('wrongpass');
     await page.getByRole('button', { name: /login/i }).click();
 
     // Error should be visible

@@ -506,13 +506,17 @@ class PostgreSQLTMRepository(TMRepository):
     # =========================================================================
 
     async def get_tree(self) -> Dict[str, Any]:
-        """Get full TM tree for UI."""
+        """Get full TM tree for UI with folder hierarchy."""
+        from server.database.models import LDMFolder
+
         # Ensure Offline Storage exists
         await self._ensure_offline_storage_project()
 
-        # Get all platforms with projects
+        # Get all platforms with projects and their folders
         result = await self.db.execute(
-            select(LDMPlatform).options(selectinload(LDMPlatform.projects))
+            select(LDMPlatform).options(
+                selectinload(LDMPlatform.projects).selectinload(LDMProject.folders)
+            )
         )
         platforms = result.scalars().all()
 
@@ -535,6 +539,20 @@ class PostgreSQLTMRepository(TMRepository):
             else:
                 unassigned.append(tm)
 
+        def build_folder_tree(folders: list, parent_id: int = None) -> list:
+            """Build hierarchical folder structure."""
+            result = []
+            for folder in folders:
+                if folder.parent_id == parent_id:
+                    folder_dict = {
+                        "id": folder.id,
+                        "name": folder.name,
+                        "tms": by_folder.get(folder.id, []),
+                        "folders": build_folder_tree(folders, folder.id)
+                    }
+                    result.append(folder_dict)
+            return result
+
         # Build tree
         tree_platforms = []
         for p in platforms:
@@ -546,11 +564,14 @@ class PostgreSQLTMRepository(TMRepository):
             }
 
             for proj in p.projects:
+                # Build folder tree for this project (root folders have parent_id=None)
+                folder_tree = build_folder_tree(list(proj.folders), None)
+
                 project_dict = {
                     "id": proj.id,
                     "name": proj.name,
                     "tms": by_project.get(proj.id, []),
-                    "folders": []  # TODO: Add folder support
+                    "folders": folder_tree
                 }
                 platform_dict["projects"].append(project_dict)
 
