@@ -29,7 +29,7 @@
 
 ### P10: DB Abstraction Layer - IN PROGRESS
 
-**Status:** ACTIVE MIGRATION | **Progress:** 30% files fully migrated (6/20 route files CLEAN)
+**Status:** ACTIVE MIGRATION | **Progress:** 50% files fully migrated (10/20 route files CLEAN)
 
 **Goal:** Transform entire backend from inconsistent database patterns to unified Repository Pattern for FULL OFFLINE/ONLINE PARITY.
 
@@ -311,32 +311,31 @@ NOT "delete everything and hope for the best"
 | Route File | Repo Calls | Direct DB Calls | Status | Notes |
 |------------|------------|-----------------|--------|-------|
 | `grammar.py` | 3 | 0 | **CLEAN** | Fully migrated |
+| `health.py` | 0 | 0 | **CLEAN** | No DB (health check) |
+| `pretranslate.py` | 1 | 0 | **CLEAN** | P10-PERM-001 only |
 | `qa.py` | 11 | 0 | **CLEAN** | Fully migrated (Session 52) |
 | `search.py` | 4 | 0 | **CLEAN** | Fully migrated |
+| `settings.py` | 0 | 0 | **CLEAN** | No DB (settings) |
 | `tm_assignment.py` | 5 | 0 | **CLEAN** | Fully migrated |
+| `tm_crud.py` | 3 | 0 | **CLEAN** | P10-PERM-001 only |
 | `tm_entries.py` | 6 | 0 | **CLEAN** | Fully migrated (Session 52) |
 | `tm_linking.py` | 8 | 0 | **CLEAN** | Fully migrated (Session 53) |
-| `files.py` | 18 | 15 | MIXED | Permission checks use direct DB |
-| `folders.py` | 8 | 9 | MIXED | Permission checks use direct DB |
-| `platforms.py` | 9 | 11 | MIXED | Permission checks use direct DB |
-| `projects.py` | 8 | 10 | MIXED | Permission checks use direct DB |
-| `rows.py` | 5 | 4 | MIXED | Permission checks use direct DB |
-| `tm_crud.py` | 3 | 2 | MIXED | Permission checks use direct DB |
-| `trash.py` | 4 | 3 | MIXED | restore helpers + permission checks |
-| `pretranslate.py` | 1 | 2 | MIXED | Permission checks |
+| `files.py` | 18 | 15 | MIXED | Permission checks + CRUD |
+| `folders.py` | 8 | 9 | MIXED | Permission checks + CRUD |
+| `platforms.py` | 9 | 11 | MIXED | Permission checks + CRUD |
+| `projects.py` | 8 | 10 | MIXED | Permission checks + CRUD |
+| `rows.py` | 5 | 4 | MIXED | Permission checks + CRUD |
+| `trash.py` | 4 | 3 | MIXED | restore helpers + CRUD |
 | `sync.py` | 0 | 7 | SERVICE | SyncService pattern |
 | `capabilities.py` | 0 | 5 | UTILITY | User capability management |
 | `tm_indexes.py` | 0 | 5 | UTILITY | FAISS index management |
 | `tm_search.py` | 0 | 4 | UTILITY | FAISS search |
-| `health.py` | 0 | 0 | NO-DB | Just health check |
-| `settings.py` | 0 | 0 | NO-DB | Settings management |
 
 **Summary:**
-- **CLEAN (100%):** 6 files (grammar.py, qa.py, search.py, tm_assignment.py, tm_entries.py, tm_linking.py)
-- **MIXED:** 8 files (remaining direct DB is for permission checks)
+- **CLEAN (100%):** 10 files (no `from sqlalchemy import select`, no `await db.execute`)
+- **MIXED:** 6 files (have `from sqlalchemy import select` for CRUD, not just permission checks)
 - **SERVICE:** 1 file (sync.py - uses SyncService pattern)
 - **UTILITY:** 3 files (capabilities, tm_indexes, tm_search - specialized operations)
-- **NO-DB:** 2 files (health.py, settings.py)
 
 ### Permission Check Pattern (P10-PERM-001)
 
@@ -423,8 +422,9 @@ Future work could create a `PermissionRepository` for full offline parity.
    - Not found detection ✓ (returns 404)
 
 **Current State:**
-- 6 route files CLEAN (100% Repository): grammar, qa, search, tm_assignment, tm_entries, tm_linking
-- 8 route files MIXED (permission checks remain)
+- 10 route files CLEAN (100% Repository): grammar, health, pretranslate, qa, search, settings, tm_assignment, tm_crud, tm_entries, tm_linking
+- 6 route files MIXED (have actual CRUD operations with direct SQLAlchemy)
+- 4 route files SPECIAL (sync, capabilities, tm_indexes, tm_search)
 - All 8 Repositories fully implemented
 
 ### Session 51 (2026-01-12) - P11 Platform Stability
