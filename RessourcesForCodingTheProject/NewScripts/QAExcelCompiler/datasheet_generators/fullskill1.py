@@ -279,12 +279,16 @@ def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, Knowled
 
     log.info("Found %d KnowledgeInfo entries", len(knowledge_map))
 
-    # Second pass: collect all SkillInfo
-    for path in sorted(iter_xml_files(folder)):
-        root_el = parse_xml_file(path)
-        if root_el is None:
-            continue
+    # Second pass: collect SkillInfo from ONLY skillinfo_pc.staticinfo.xml
+    # This restricts output to player character skills only
+    skill_file = folder / "skillinfo" / "skillinfo_pc.staticinfo.xml"
+    if not skill_file.exists():
+        log.error("Skill file not found: %s", skill_file)
+        return skills, knowledge_map
 
+    log.info("Reading skills from: %s", skill_file.name)
+    root_el = parse_xml_file(skill_file)
+    if root_el is not None:
         for skill_el in root_el.iter("SkillInfo"):
             key = skill_el.get("Key") or ""
             strkey = skill_el.get("StrKey") or ""
