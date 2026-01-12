@@ -243,6 +243,40 @@ _border = Border(
 )
 
 
+def autofit_worksheet(ws, min_width: int = 10, max_width: int = 80, row_height_per_line: float = 15.0) -> None:
+    """
+    Auto-fit column widths and row heights based on cell content.
+    """
+    # Calculate optimal column widths
+    col_widths: Dict[str, float] = {}
+
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value:
+                col_letter = get_column_letter(cell.column)
+                content_len = len(str(cell.value))
+                width = min(max(content_len * 1.1 + 2, min_width), max_width)
+                col_widths[col_letter] = max(col_widths.get(col_letter, min_width), width)
+
+    # Apply column widths
+    for col_letter, width in col_widths.items():
+        ws.column_dimensions[col_letter].width = width
+
+    # Calculate optimal row heights (considering text wrap)
+    for row_idx, row in enumerate(ws.iter_rows(), start=1):
+        max_lines = 1
+        for cell in row:
+            if cell.value and cell.alignment and cell.alignment.wrap_text:
+                col_letter = get_column_letter(cell.column)
+                col_width = col_widths.get(col_letter, max_width)
+                chars_per_line = max(col_width * 0.9, 10)
+                content_len = len(str(cell.value))
+                lines = max(1, int(content_len / chars_per_line) + 1)
+                max_lines = max(max_lines, lines)
+        # Set row height (minimum 20, scale by lines)
+        ws.row_dimensions[row_idx].height = max(20, max_lines * row_height_per_line)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LANGUAGE TABLES
 # ─────────────────────────────────────────────────────────────────────────────
@@ -527,10 +561,9 @@ def write_dropitem_sheet(
         if h in hidden_cols:
             ws.column_dimensions[get_column_letter(idx)].hidden = True
 
-    # Build hierarchical rows (with deduplication for Item rows)
+    # Build hierarchical rows
+    # Deduplication DISABLED - keep all rows
     rows_data: List[Tuple[List, int, str]] = []
-    seen_item_keys = set()
-    duplicates_removed = 0
     last_group = None
     last_gimmick = None
 
@@ -558,20 +591,10 @@ def write_dropitem_sheet(
             cmd = f"/create item {item_key}"
             sid = get_string_id(lang_tbl, item_kor) or get_string_id(eng_tbl, item_kor)
 
-            # Deduplication: skip if (Korean, Translation, StringID) already seen
-            dedup_key = (item_kor, item_loc, sid)
-            if dedup_key in seen_item_keys:
-                duplicates_removed += 1
-                continue
-            seen_item_keys.add(dedup_key)
-
             row = [2, "Item", entry.group_name_kor, translate(lang_tbl if lang_code != "eng" else eng_tbl, entry.group_name_kor),
                    entry.gimmick_strkey, entry.gimmick_name_kor, translate(lang_tbl if lang_code != "eng" else eng_tbl, entry.gimmick_name_kor),
                    item_key, item_kor, item_loc, item_desc_kor, desc_loc, cmd, sid, ""]
             rows_data.append((row, 2, "Item"))
-
-    if duplicates_removed > 0:
-        log.info("    Removed %d duplicate Item rows (Korean+Translation+StringID)", duplicates_removed)
 
     # Write rows
     for r_idx, (row, depth, row_type) in enumerate(rows_data, start=2):
@@ -613,6 +636,9 @@ def write_dropitem_sheet(
     }
     for idx, h in enumerate(headers, 1):
         ws.column_dimensions[get_column_letter(idx)].width = width_map.get(h, 20)
+
+    # Auto-fit columns and rows
+    autofit_worksheet(ws)
 
     log.info("  Sheet GimmickDropItem: %d rows", len(rows_data))
 
@@ -753,6 +779,9 @@ def write_flat_sheet(
     }
     for idx, h in enumerate(headers, 1):
         ws.column_dimensions[get_column_letter(idx)].width = width_map.get(h, 20)
+
+    # Auto-fit columns and rows
+    autofit_worksheet(ws)
 
     log.info("  Sheet GimmickFlat: %d rows", len(rows_data))
 

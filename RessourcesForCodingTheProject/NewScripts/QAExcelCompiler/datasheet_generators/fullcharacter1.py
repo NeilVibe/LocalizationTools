@@ -375,6 +375,45 @@ def _apply_cell_style(cell, fill: PatternFill, font: Font, center: bool = False)
         cell.alignment = Alignment(vertical="center", wrap_text=True)
     cell.border = _border
 
+
+# ──────────────────────────────────────────────────────────────────────
+# AUTO-FIT HELPER
+# ──────────────────────────────────────────────────────────────────────
+def autofit_worksheet(ws, min_width: int = 10, max_width: int = 80, row_height_per_line: float = 15.0) -> None:
+    """
+    Auto-fit column widths and row heights based on cell content.
+    """
+    from typing import Dict
+    # Calculate optimal column widths
+    col_widths: Dict[str, float] = {}
+
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value:
+                col_letter = get_column_letter(cell.column)
+                content_len = len(str(cell.value))
+                width = min(max(content_len * 1.1 + 2, min_width), max_width)
+                col_widths[col_letter] = max(col_widths.get(col_letter, min_width), width)
+
+    # Apply column widths
+    for col_letter, width in col_widths.items():
+        ws.column_dimensions[col_letter].width = width
+
+    # Calculate optimal row heights (considering text wrap)
+    for row_idx, row in enumerate(ws.iter_rows(), start=1):
+        max_lines = 1
+        for cell in row:
+            if cell.value and cell.alignment and cell.alignment.wrap_text:
+                col_letter = get_column_letter(cell.column)
+                col_width = col_widths.get(col_letter, max_width)
+                chars_per_line = max(col_width * 0.9, 10)
+                content_len = len(str(cell.value))
+                lines = max(1, int(content_len / chars_per_line) + 1)
+                max_lines = max(max_lines, lines)
+        # Set row height (minimum 20, scale by lines)
+        ws.row_dimensions[row_idx].height = max(20, max_lines * row_height_per_line)
+
+
 # ──────────────────────────────────────────────────────────────────────
 # EXCEL WRITER
 # ──────────────────────────────────────────────────────────────────────
@@ -457,9 +496,8 @@ def write_workbook(
             c.border = _border
         sheet.row_dimensions[1].height = 25
 
-        # Write data rows (with deduplication)
-        seen_keys = set()
-        duplicates_removed = 0
+        # Write data rows
+        # Deduplication DISABLED - keep all rows
         r_idx = 2
 
         for char in characters:
@@ -471,14 +509,7 @@ def write_workbook(
             if not is_eng and lang_tbl is not None:
                 trans_other, sid_other = lang_tbl.get(normalized_name, ("", ""))
 
-            # Deduplication: skip if (Korean, Translation, STRINGID) already seen
-            trans = trans_eng if is_eng else trans_other
             sid = sid_eng if is_eng else sid_other
-            dedup_key = (char.name, trans, sid)
-            if dedup_key in seen_keys:
-                duplicates_removed += 1
-                continue
-            seen_keys.add(dedup_key)
 
             command = f"/create character {char.strkey}"
 
@@ -517,10 +548,6 @@ def write_workbook(
 
             r_idx += 1
 
-        # Log duplicates removed
-        if duplicates_removed > 0:
-            log.info("    Removed %d duplicate rows (Korean+Translation+STRINGID)", duplicates_removed)
-
         last_row = r_idx - 1  # Actual last row written
 
         # Column widths
@@ -549,6 +576,9 @@ def write_workbook(
         stringid_col_idx = 7 if not is_eng else 6
         for row in range(2, last_row + 1):
             sheet.cell(row, stringid_col_idx).number_format = '@'
+
+        # Auto-fit columns and rows
+        autofit_worksheet(sheet)
 
         actual_rows = last_row - 1  # Rows written (excluding header)
         log.info("  Sheet '%s': %d rows", title, actual_rows)
