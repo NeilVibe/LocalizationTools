@@ -7,6 +7,9 @@ Masterfolder_EN/
 Masterfolder_CN/
 LQA_Tester_ProgressTracker.xlsx
 
+# Confidential - tester names (use languageTOtester_list.example.txt as template)
+languageTOtester_list.txt
+
 # Python
 __pycache__/
 *.pyc
