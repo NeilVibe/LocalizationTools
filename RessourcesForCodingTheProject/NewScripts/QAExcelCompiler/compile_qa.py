@@ -2968,7 +2968,7 @@ def write_duplicate_translation_report(duplicates, output_folder, username, cate
     return report_path
 
 
-def transfer_folder_data(old_folder, new_folder, output_dir):
+def transfer_folder_data(old_folder, new_folder, output_dir, tester_mapping):
     """
     Transfer all sheet data from OLD folder to NEW folder, save to output.
 
@@ -2976,6 +2976,7 @@ def transfer_folder_data(old_folder, new_folder, output_dir):
         old_folder: dict with folder info from discover_qa_folders_in()
         new_folder: dict with folder info from discover_qa_folders_in()
         output_dir: Path to QAfolder (output)
+        tester_mapping: dict {tester_name: "EN" or "CN"} from load_tester_mapping()
 
     Returns:
         dict: {(username, category): {total, stringid_match, trans_only, unmatched,
@@ -2983,7 +2984,8 @@ def transfer_folder_data(old_folder, new_folder, output_dir):
     """
     username = old_folder["username"]
     category = old_folder["category"]
-    is_english = is_english_file(old_folder["xlsx_path"])
+    # Use tester mapping to determine language (not filename detection)
+    is_english = tester_mapping.get(username, "EN") == "EN"
     is_item_category = category.lower() == "item"
 
     # Load workbooks
@@ -3136,6 +3138,10 @@ def transfer_qa_files():
 
     print(f"Found {len(old_folders)} OLD folder(s), {len(new_folders)} NEW folder(s)")
 
+    # Load tester→language mapping (same as Build uses)
+    print("\nLoading tester→language mapping...")
+    tester_mapping = load_tester_mapping()
+
     # Build lookup for NEW folders
     new_lookup = {f"{f['username']}_{f['category']}": f for f in new_folders}
 
@@ -3144,14 +3150,17 @@ def transfer_qa_files():
 
     for old_folder in old_folders:
         key = f"{old_folder['username']}_{old_folder['category']}"
-        print(f"\nTransferring: {key}")
+        username = old_folder['username']
+        lang = tester_mapping.get(username, "EN")
+        in_mapping = username in tester_mapping
+        print(f"\nTransferring: {key} -> {lang}{'' if in_mapping else ' (not in mapping, default)'}")
 
         if key not in new_lookup:
             print(f"  WARN: No matching NEW folder for {key}, skipping")
             continue
 
         new_folder = new_lookup[key]
-        folder_stats = transfer_folder_data(old_folder, new_folder, QA_FOLDER)
+        folder_stats = transfer_folder_data(old_folder, new_folder, QA_FOLDER, tester_mapping)
         all_stats.update(folder_stats)
 
     # Print report
