@@ -646,8 +646,7 @@ def write_workbook(
     ws.add_data_validation(dv)
 
     # ─── Write data rows ──────────────────────────────────────────
-    seen_rows: set = set()  # Deduplication: (korean, translation, stringid)
-    written_rows = 0
+    # Deduplication DISABLED - keep all rows
 
     for row_idx, (depth, text, needs_trans) in enumerate(rows, start=2):
         normalized = normalize_placeholders(text)
@@ -656,14 +655,7 @@ def write_workbook(
         if lang_tbl:
             loc_tr, sid = lang_tbl.get(normalized, (loc_tr, sid))
 
-        # Deduplication
-        dedup_key = (text, eng_tr if is_eng else loc_tr, sid)
-        if dedup_key in seen_rows:
-            continue
-        seen_rows.add(dedup_key)
-
-        actual_row = written_rows + 2  # Start from row 2 (after header)
-        written_rows += 1
+        actual_row = row_idx  # Direct row index (no dedup skipping)
 
         fill, font, row_height = _get_style_for_depth(depth)
         indent = depth

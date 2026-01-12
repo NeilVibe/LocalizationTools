@@ -824,6 +824,40 @@ def apply_cell_style(cell, fill: PatternFill, indent: int, font: Font) -> None:
     cell.border = _border
 
 
+def autofit_worksheet(ws, min_width: int = 10, max_width: int = 80, row_height_per_line: float = 15.0) -> None:
+    """
+    Auto-fit column widths and row heights based on cell content.
+    """
+    # Calculate optimal column widths
+    col_widths: Dict[str, float] = {}
+
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value:
+                col_letter = get_column_letter(cell.column)
+                content_len = len(str(cell.value))
+                width = min(max(content_len * 1.1 + 2, min_width), max_width)
+                col_widths[col_letter] = max(col_widths.get(col_letter, min_width), width)
+
+    # Apply column widths
+    for col_letter, width in col_widths.items():
+        ws.column_dimensions[col_letter].width = width
+
+    # Calculate optimal row heights (considering text wrap)
+    for row_idx, row in enumerate(ws.iter_rows(), start=1):
+        max_lines = 1
+        for cell in row:
+            if cell.value and cell.alignment and cell.alignment.wrap_text:
+                col_letter = get_column_letter(cell.column)
+                col_width = col_widths.get(col_letter, max_width)
+                chars_per_line = max(col_width * 0.9, 10)
+                content_len = len(str(cell.value))
+                lines = max(1, int(content_len / chars_per_line) + 1)
+                max_lines = max(max_lines, lines)
+        # Set row height (minimum 20, scale by lines)
+        ws.row_dimensions[row_idx].height = max(20, max_lines * row_height_per_line)
+
+
 # ──────────────────────────────────────────────────────────────────────
 # HELPER: Get translated tab name
 # ──────────────────────────────────────────────────────────────────────
@@ -981,6 +1015,9 @@ def write_sheet_content(
     stringid_col = 5 if is_eng else 6  # col_offset + 3
     for row in range(2, last_row + 1):
         sheet.cell(row, stringid_col).number_format = '@'
+
+    # Auto-fit columns and rows
+    autofit_worksheet(sheet)
 
 
 def write_workbook(

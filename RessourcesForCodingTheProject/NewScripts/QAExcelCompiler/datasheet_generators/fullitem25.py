@@ -898,10 +898,9 @@ def write_primary_sheet(
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = _border
 
-    # -------------------- Write data rows (with deduplication) --------------------
+    # -------------------- Write data rows --------------------
+    # Deduplication DISABLED - keep all rows
     is_eng = lang_code.lower() == "eng"
-    seen_keys = set()
-    duplicates_removed = 0
     r = 2
 
     for row in rows:
@@ -910,15 +909,6 @@ def write_primary_sheet(
             ik, num, nkor, neng, nloc,
             dkor, deng, dloc, sid, is_group
         ) = row
-
-        # Deduplication: skip if (Korean, Translation, STRINGID) already seen
-        # nkor = ItemName(KOR), neng = ItemName(ENG), nloc = ItemName(LOC)
-        trans = neng if is_eng else nloc
-        dedup_key = (nkor, trans, sid)
-        if dedup_key in seen_keys:
-            duplicates_removed += 1
-            continue
-        seen_keys.add(dedup_key)
 
         vals = [depth, gk, gkor, geng]
         vals += [ik, num, nkor, neng]
@@ -950,9 +940,6 @@ def write_primary_sheet(
             else:
                 c.fill = _item_fill
         r += 1
-
-    if duplicates_removed > 0:
-        log.info("    Removed %d duplicate rows (Korean+Translation+STRINGID)", duplicates_removed)
 
     # -------------------- Sheet cosmetics --------------------
     last_col_letter = get_column_letter(len(headers))
@@ -1112,9 +1099,7 @@ def write_secondary_excel(
                 ws.column_dimensions[get_column_letter(idx)].hidden = True
 
         rows_accum: List[Tuple[str, str, List[str]]] = []
-        seen_keys = set()
-        duplicates_removed = 0
-        is_eng = lang_code.lower() == "eng"
+        # Deduplication DISABLED - keep all rows
 
         for fn, subgroup_key, iks in flist:
             for ik in sorted(iks):
@@ -1139,21 +1124,8 @@ def write_secondary_excel(
                     data_map[f"ItemName({code})"] = t(lang_tbl, itm.item_name)
                     data_map[f"ItemDesc({code})"] = t(lang_tbl, itm.item_desc)
 
-                # Deduplication: skip if (Korean, Translation, STRINGID) already seen
-                korean = data_map["ItemName(KOR)"]
-                trans = data_map["ItemName(ENG)"] if is_eng else data_map.get(f"ItemName({code})", "")
-                sid = data_map["STRINGID"]
-                dedup_key = (korean, trans, sid)
-                if dedup_key in seen_keys:
-                    duplicates_removed += 1
-                    continue
-                seen_keys.add(dedup_key)
-
                 row_vals = [data_map.get(h, "") for h in headers]
                 rows_accum.append((sub_disp, ik, row_vals))
-
-        if duplicates_removed > 0:
-            log.info("    Removed %d duplicate rows (Korean+Translation+STRINGID)", duplicates_removed)
 
         rows_accum.sort(key=lambda x: (x[0], x[1]))
         fill_a = PatternFill("solid", fgColor="E2EFDA")
