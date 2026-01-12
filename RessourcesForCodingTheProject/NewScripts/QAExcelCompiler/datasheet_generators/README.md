@@ -148,7 +148,13 @@ When structure changes:
 
 ## Skill Generator Special Logic
 
-The `fullskill1.py` generator has unique logic for linking Skills to Knowledge entries:
+The `fullskill1.py` generator has unique logic for linking Skills to Knowledge entries.
+
+### Source File Restriction
+
+Skills are extracted from **ONE file only**: `skillinfo/skillinfo_pc.staticinfo.xml`
+- This restricts output to player character skills
+- KnowledgeInfo is still scanned from ALL files for mapping
 
 ### XML Structure
 
