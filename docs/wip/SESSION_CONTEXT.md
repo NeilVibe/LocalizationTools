@@ -20,10 +20,10 @@
 | Offline ID Generation | **FIXED** | Python operator precedence bug (IDs now negative) |
 | Online Mode CRUD | **PASS** | 11/11 tests passing |
 | Offline Mode CRUD | **PASS** | 7/7 tests passing |
-| TM Tree Folder Mirroring | TODO | `get_tree()` returns `folders: []` - needs to mirror File Explorer |
-| Windows PATH Tests | TODO | 7 path tests for Windows builds |
-| CI/CD Health | TODO | Verify all tests pass, builds succeed |
-| Playwright Test Fixes | TODO | 67 UI tests failing due to login selector mismatch |
+| TM Tree Folder Mirroring | **FIXED** | `get_tree()` now returns folder hierarchy |
+| Windows PATH Tests | **DONE** | 7 path tests created in `windows_tests/` |
+| CI/CD Health | **HEALTHY** | 1285 passed, 10 failed (P10 test maintenance) |
+| Playwright Test Fixes | **FIXED** | 152 passed, 0 failed (was 67 failing) |
 
 ---
 

@@ -19,8 +19,8 @@ export const API_URL = 'http://localhost:8888';
 /**
  * Login to the application
  *
- * NOTE: LocaNext login form uses labels (Username, Password) not placeholders.
- * The form has two inputs: first is username, second is password (type="password").
+ * NOTE: LocaNext has a Mode Selection screen before login.
+ * Need to click "Login" button first to get to the login form.
  */
 export async function login(
   page: Page,
@@ -33,6 +33,18 @@ export async function login(
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(1000);
 
+  // Check if we're on Mode Selection screen (has "Start Offline" button)
+  const modeSelectionVisible = await page.locator('button:has-text("Start Offline")').isVisible().catch(() => false);
+  if (modeSelectionVisible) {
+    // Wait for server to be connected
+    await page.waitForSelector('text=Central Server Connected', { timeout: 10000 }).catch(() => {});
+    // Click "Login" button to get to login form
+    await page.locator('button.login-btn').click();
+    // Wait for login form to appear
+    await page.waitForSelector('input[type="password"]', { timeout: 5000 }).catch(() => {});
+  }
+
+  // Now on login form - fill credentials
   // LocaNext uses label-based form, not placeholders
   // First input is username, second (type=password) is password
   await page.locator('input').first().fill(credentials.username);

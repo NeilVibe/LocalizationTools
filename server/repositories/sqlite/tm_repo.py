@@ -311,7 +311,7 @@ class SQLiteTMRepository(TMRepository):
     # =========================================================================
 
     async def get_tree(self) -> Dict[str, Any]:
-        """Get TM tree structure for UI."""
+        """Get TM tree structure for UI with folder hierarchy."""
         all_tms = await self.get_all()
 
         # Group by assignment
@@ -329,6 +329,20 @@ class SQLiteTMRepository(TMRepository):
                 by_platform.setdefault(tm["platform_id"], []).append(tm)
             else:
                 unassigned.append(tm)
+
+        def build_folder_tree(folders: list, parent_id) -> list:
+            """Build hierarchical folder structure."""
+            result = []
+            for folder in folders:
+                if folder["parent_id"] == parent_id:
+                    folder_dict = {
+                        "id": folder["id"],
+                        "name": folder["name"],
+                        "tms": by_folder.get(folder["id"], []),
+                        "folders": build_folder_tree(folders, folder["id"])
+                    }
+                    result.append(folder_dict)
+            return result
 
         # Get platforms from SQLite
         conn = self.db._get_connection()
@@ -353,11 +367,23 @@ class SQLiteTMRepository(TMRepository):
                 ).fetchall()
 
                 for proj in projects:
+                    # Get all folders for this project
+                    folders = conn.execute(
+                        "SELECT * FROM offline_folders WHERE project_id = ?",
+                        (proj["id"],)
+                    ).fetchall()
+
+                    # Build folder tree (root folders have parent_id=None)
+                    folder_tree = build_folder_tree(
+                        [dict(f) for f in folders],
+                        None
+                    )
+
                     project_dict = {
                         "id": proj["id"],
                         "name": proj["name"],
                         "tms": by_project.get(proj["id"], []),
-                        "folders": []
+                        "folders": folder_tree
                     }
                     platform_dict["projects"].append(project_dict)
 
