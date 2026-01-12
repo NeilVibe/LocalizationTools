@@ -20,6 +20,7 @@
   import InputModal from '$lib/components/common/InputModal.svelte';
   import ConfirmModal from '$lib/components/common/ConfirmModal.svelte';
   import { logger } from '$lib/utils/logger.js';
+  import { createTracker } from '$lib/utils/trackedOperation.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import { preferences } from '$lib/stores/preferences.js';
   import { savedFilesState } from '$lib/stores/navigation.js';
@@ -38,6 +39,7 @@
     projects = $bindable([]),
     selectedProjectId = $bindable(null),
     selectedFileId = $bindable(null),
+    selectedTMId = $bindable(),  // P11-FIX: Add missing prop that LDM.svelte binds to
     linkedTM = $bindable(null),
     connectionMode = 'online'
   } = $props();
@@ -1599,7 +1601,13 @@
         : null;
 
       for (const file of files) {
+        // P11: Track upload in Task Manager
+        const tracker = createTracker('LDM', `Upload: ${file.name}`);
+        tracker.start();
+        tracker.setMetadata({ filename: file.name });
+
         try {
+          tracker.update(10, 'Preparing upload...');
           const formData = new FormData();
           formData.append('file', file);
           formData.append('storage', 'local');
@@ -1608,6 +1616,7 @@
             formData.append('folder_id', currentFolderId);
           }
 
+          tracker.update(30, 'Uploading to server...');
           const response = await fetch(`${API_BASE}/api/ldm/files/upload`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -1616,12 +1625,16 @@
 
           if (response.ok) {
             const result = await response.json();
+            tracker.setMetadata({ rowCount: result.row_count });
+            tracker.complete(`Imported ${result.row_count} rows`, { rowCount: result.row_count });
             logger.success('File imported to Offline Storage', { name: file.name, rows: result.row_count });
           } else {
             const error = await response.json();
+            tracker.fail(error.detail || 'Import failed');
             logger.error('Import failed', { name: file.name, error: error.detail });
           }
         } catch (err) {
+          tracker.fail(err.message);
           logger.error('Import error', { error: err.message });
         }
       }
@@ -1633,6 +1646,11 @@
       if (!selectedProjectId) return;
 
       for (const file of files) {
+        // P11: Track upload in Task Manager
+        const tracker = createTracker('LDM', `Upload: ${file.name}`);
+        tracker.start();
+        tracker.setMetadata({ filename: file.name });
+
         const formData = new FormData();
         formData.append('project_id', selectedProjectId);
         if (uploadTargetFolderId) {
@@ -1641,6 +1659,7 @@
         formData.append('file', file);
 
         try {
+          tracker.update(30, 'Uploading to server...');
           const response = await fetch(`${API_BASE}/api/ldm/files/upload`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -1648,12 +1667,16 @@
           });
           if (response.ok) {
             const result = await response.json();
+            tracker.setMetadata({ rowCount: result.row_count });
+            tracker.complete(`Uploaded ${result.row_count} rows`, { rowCount: result.row_count });
             logger.success('File uploaded', { name: file.name, rows: result.row_count });
           } else {
             const error = await response.json();
+            tracker.fail(error.detail || 'Upload failed');
             logger.error('Upload failed', { name: file.name, error: error.detail });
           }
         } catch (err) {
+          tracker.fail(err.message);
           logger.error('Upload error', { error: err.message });
         }
       }

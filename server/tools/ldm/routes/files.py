@@ -700,6 +700,18 @@ async def register_file_as_tm(
             # Bulk add entries (executemany = instant, like PostgreSQL COPY)
             entry_count = await tm_repo.add_entries_bulk(tm["id"], entries_data)
 
+            # P11-UX: Assign TM to same scope as source file for intuitive experience
+            # User registers file from a folder → TM appears in that folder
+            from server.repositories.interfaces.tm_repository import AssignmentTarget
+            file_folder_id = file.get("folder_id")
+            file_project_id = file.get("project_id")
+            if file_folder_id:
+                await tm_repo.assign(tm["id"], AssignmentTarget(folder_id=file_folder_id))
+                logger.info(f"Assigned TM {tm['id']} to folder {file_folder_id}")
+            elif file_project_id:
+                await tm_repo.assign(tm["id"], AssignmentTarget(project_id=file_project_id))
+                logger.info(f"Assigned TM {tm['id']} to project {file_project_id}")
+
             elapsed = time.time() - start_time
             result = {
                 "tm_id": tm["id"],
