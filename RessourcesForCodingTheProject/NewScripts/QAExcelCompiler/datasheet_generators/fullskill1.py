@@ -702,7 +702,7 @@ def write_workbook(
 
     # ─── Save ─────────────────────────────────────────────────────
     wb.save(out_path)
-    log.info("Saved: %s (%d rows)", out_path.name, written_rows)
+    log.info("Saved: %s (%d rows)", out_path.name, len(rows))
 
 # ──────────────────────────────────────────────────────────────────────
 # MAIN
