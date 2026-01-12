@@ -242,6 +242,59 @@ class SQLiteTMRepository(TMRepository):
         entry["tm_id"] = tm_id
         return entry
 
+    async def add_entries_bulk(
+        self,
+        tm_id: int,
+        entries: List[Dict[str, Any]]
+    ) -> int:
+        """
+        Bulk add entries to TM in SQLite using executemany.
+
+        Equivalent to PostgreSQL's COPY TEXT for performance.
+        Uses single transaction with executemany = instant for 1000s of entries.
+        """
+        if not entries:
+            return 0
+
+        conn = self.db._get_connection()
+        try:
+            now = datetime.now().isoformat()
+
+            # Prepare data for executemany
+            data = []
+            for e in entries:
+                source = e.get("source") or e.get("source_text", "")
+                target = e.get("target") or e.get("target_text", "")
+                data.append((
+                    tm_id,
+                    source,
+                    target,
+                    hashlib.sha256(source.encode()).hexdigest(),
+                    e.get("string_id"),
+                    now,
+                    False  # is_confirmed
+                ))
+
+            # Bulk insert with executemany (single transaction = fast!)
+            conn.executemany(
+                """INSERT INTO offline_tm_entries
+                   (tm_id, source_text, target_text, source_hash, string_id, change_date, is_confirmed)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                data
+            )
+
+            # Update entry count on TM
+            conn.execute(
+                "UPDATE offline_tms SET entry_count = entry_count + ? WHERE id = ?",
+                (len(data), tm_id)
+            )
+
+            conn.commit()
+            logger.info(f"Bulk added {len(data)} entries to SQLite TM {tm_id}")
+            return len(data)
+        finally:
+            conn.close()
+
     async def get_entries(
         self,
         tm_id: int,

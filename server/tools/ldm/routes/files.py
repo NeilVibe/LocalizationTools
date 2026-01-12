@@ -21,7 +21,8 @@ from server.tools.ldm.permissions import can_access_project, can_access_file
 from server.repositories import (
     FileRepository, get_file_repository,
     ProjectRepository, get_project_repository,
-    FolderRepository, get_folder_repository
+    FolderRepository, get_folder_repository,
+    TMRepository, get_tm_repository
 )
 
 router = APIRouter(tags=["LDM"])
@@ -640,13 +641,16 @@ async def register_file_as_tm(
     file_id: int,
     request: FileToTMRequest,
     repo: FileRepository = Depends(get_file_repository),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Convert an LDM file into a Translation Memory.
 
-    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
+    DB Abstraction: Uses FileRepository + TMRepository for FULL PARITY.
+    - Offline files (negative IDs) → SQLite TM
+    - Online files (positive IDs) → PostgreSQL TM
 
     Takes all source/target pairs from the file and creates a new TM.
     """
@@ -662,7 +666,8 @@ async def register_file_as_tm(
             raise HTTPException(status_code=404, detail="Resource not found")
 
     file_name = file.get("name") or "unknown"
-    logger.info(f"Converting file to TM: file_id={file_id}, name={request.name}")
+    is_offline = file_id < 0  # Local files have negative IDs
+    logger.info(f"Converting file to TM: file_id={file_id}, name={request.name}, offline={is_offline}")
 
     try:
         # Get all rows from the file via repository
@@ -680,43 +685,67 @@ async def register_file_as_tm(
             for row in rows
         ]
 
-        # Run sync TMManager in threadpool to avoid blocking event loop
-        def _create_tm():
-            sync_db = next(get_db())
-            try:
-                from server.tools.ldm.tm_manager import TMManager
-                tm_manager = TMManager(sync_db)
+        import time
+        start_time = time.time()
 
-                # Create TM
-                tm = tm_manager.create_tm(
-                    name=request.name,
-                    owner_id=current_user["user_id"],
-                    source_lang="ko",  # Default, can be extended
-                    target_lang=request.language,
-                    description=request.description or f"Created from file: {file_name}"
-                )
+        if is_offline:
+            # P10-FIX: Use SQLite TM repository for offline files
+            tm = await tm_repo.create(
+                name=request.name,
+                source_lang="ko",
+                target_lang=request.language,
+                owner_id=current_user.get("user_id")
+            )
 
-                # Add entries in bulk
-                import time
-                start_time = time.time()
-                entry_count = tm_manager.add_entries_bulk(tm.id, entries_data)
-                elapsed = time.time() - start_time
+            # Bulk add entries (executemany = instant, like PostgreSQL COPY)
+            entry_count = await tm_repo.add_entries_bulk(tm["id"], entries_data)
 
-                return {
-                    "tm_id": tm.id,
-                    "name": tm.name,
-                    "entry_count": entry_count,
-                    "status": tm.status,
-                    "time_seconds": round(elapsed, 2),
-                    "rate_per_second": int(entry_count / elapsed) if elapsed > 0 else 0,
-                    "source_file": file_name
-                }
-            finally:
-                sync_db.close()
+            elapsed = time.time() - start_time
+            result = {
+                "tm_id": tm["id"],
+                "name": tm["name"],
+                "entry_count": entry_count,
+                "status": tm.get("status", "active"),
+                "time_seconds": round(elapsed, 2),
+                "rate_per_second": int(entry_count / elapsed) if elapsed > 0 else 0,
+                "source_file": file_name
+            }
+        else:
+            # Online mode: Use PostgreSQL TMManager
+            def _create_tm():
+                sync_db = next(get_db())
+                try:
+                    from server.tools.ldm.tm_manager import TMManager
+                    tm_manager = TMManager(sync_db)
 
-        result = await asyncio.to_thread(_create_tm)
+                    # Create TM
+                    tm = tm_manager.create_tm(
+                        name=request.name,
+                        owner_id=current_user["user_id"],
+                        source_lang="ko",
+                        target_lang=request.language,
+                        description=request.description or f"Created from file: {file_name}"
+                    )
 
-        logger.info(f"TM created from file: tm_id={result['tm_id']}, entries={result['entry_count']}")
+                    # Add entries in bulk
+                    entry_count = tm_manager.add_entries_bulk(tm.id, entries_data)
+                    elapsed = time.time() - start_time
+
+                    return {
+                        "tm_id": tm.id,
+                        "name": tm.name,
+                        "entry_count": entry_count,
+                        "status": tm.status,
+                        "time_seconds": round(elapsed, 2),
+                        "rate_per_second": int(entry_count / elapsed) if elapsed > 0 else 0,
+                        "source_file": file_name
+                    }
+                finally:
+                    sync_db.close()
+
+            result = await asyncio.to_thread(_create_tm)
+
+        logger.info(f"TM created from file: tm_id={result['tm_id']}, entries={result['entry_count']}, offline={is_offline}")
         return result
 
     except ValueError as e:
