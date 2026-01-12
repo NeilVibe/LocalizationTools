@@ -84,11 +84,12 @@ async def create_project(
     logger.info(f"[PROJECTS] Creating project '{project.name}' for user {user_id}")
 
     # Use repository to create project (handles auto-rename for duplicates)
+    # P11-FIX: platform_id now properly passed from ProjectCreate schema
     new_project = await repo.create(
         name=project.name,
         owner_id=user_id,
         description=project.description,
-        platform_id=project.platform_id if hasattr(project, 'platform_id') else None,
+        platform_id=project.platform_id,  # Now correctly received from schema
         is_restricted=False  # DESIGN-001: Public by default
     )
 

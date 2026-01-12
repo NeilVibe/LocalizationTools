@@ -8,6 +8,7 @@ from pydantic import BaseModel
 class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    platform_id: Optional[int] = None  # P11-FIX: Allow creating project under a platform
 
 
 class ProjectResponse(BaseModel):

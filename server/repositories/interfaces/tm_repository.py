@@ -262,6 +262,72 @@ class TMRepository(ABC):
         """
         ...
 
+    @abstractmethod
+    async def update_entry(
+        self,
+        entry_id: int,
+        source_text: Optional[str] = None,
+        target_text: Optional[str] = None,
+        string_id: Optional[str] = None,
+        updated_by: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Update a TM entry.
+
+        Args:
+            entry_id: Entry to update
+            source_text: New source text (if provided)
+            target_text: New target text (if provided)
+            string_id: New string ID (if provided)
+            updated_by: Username who made the update
+
+        Returns:
+            Updated entry dict, or None if not found.
+        """
+        ...
+
+    @abstractmethod
+    async def confirm_entry(
+        self,
+        entry_id: int,
+        confirm: bool = True,
+        confirmed_by: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Confirm or unconfirm a TM entry (memoQ-style workflow).
+
+        Args:
+            entry_id: Entry to confirm/unconfirm
+            confirm: True to confirm, False to unconfirm
+            confirmed_by: Username who confirmed
+
+        Returns:
+            Updated entry dict, or None if not found.
+        """
+        ...
+
+    @abstractmethod
+    async def bulk_confirm_entries(
+        self,
+        tm_id: int,
+        entry_ids: List[int],
+        confirm: bool = True,
+        confirmed_by: Optional[str] = None
+    ) -> int:
+        """
+        Bulk confirm/unconfirm multiple TM entries.
+
+        Args:
+            tm_id: TM containing the entries
+            entry_ids: List of entry IDs to confirm/unconfirm
+            confirm: True to confirm, False to unconfirm
+            confirmed_by: Username who confirmed
+
+        Returns:
+            Number of entries updated.
+        """
+        ...
+
     # =========================================================================
     # Tree Structure (for UI)
     # =========================================================================

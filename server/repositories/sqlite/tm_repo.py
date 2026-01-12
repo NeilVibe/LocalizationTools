@@ -359,6 +359,167 @@ class SQLiteTMRepository(TMRepository):
         finally:
             conn.close()
 
+    async def update_entry(
+        self,
+        entry_id: int,
+        source_text: Optional[str] = None,
+        target_text: Optional[str] = None,
+        string_id: Optional[str] = None,
+        updated_by: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """P11-FIX: Update TM entry in SQLite via Repository Pattern."""
+        conn = self.db._get_connection()
+        try:
+            # Check if entry exists
+            row = conn.execute(
+                "SELECT * FROM offline_tm_entries WHERE id = ?",
+                (entry_id,)
+            ).fetchone()
+
+            if not row:
+                return None
+
+            # Build update query dynamically
+            updates = []
+            params = []
+
+            if source_text is not None:
+                updates.append("source_text = ?")
+                params.append(source_text)
+                updates.append("source_hash = ?")
+                params.append(hashlib.sha256(source_text.encode()).hexdigest())
+
+            if target_text is not None:
+                updates.append("target_text = ?")
+                params.append(target_text)
+
+            if string_id is not None:
+                updates.append("string_id = ?")
+                params.append(string_id)
+
+            updates.append("updated_at = ?")
+            params.append(datetime.now().isoformat())
+
+            if updated_by:
+                updates.append("updated_by = ?")
+                params.append(updated_by)
+
+            params.append(entry_id)
+
+            conn.execute(
+                f"UPDATE offline_tm_entries SET {', '.join(updates)} WHERE id = ?",
+                params
+            )
+
+            # Update TM timestamp
+            conn.execute(
+                "UPDATE offline_tms SET updated_at = datetime('now') WHERE id = ?",
+                (row["tm_id"],)
+            )
+
+            conn.commit()
+
+            # Fetch updated entry
+            updated_row = conn.execute(
+                "SELECT * FROM offline_tm_entries WHERE id = ?",
+                (entry_id,)
+            ).fetchone()
+
+            logger.info(f"Updated SQLite TM entry {entry_id} by {updated_by}")
+            return dict(updated_row) if updated_row else None
+        finally:
+            conn.close()
+
+    async def confirm_entry(
+        self,
+        entry_id: int,
+        confirm: bool = True,
+        confirmed_by: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """P11-FIX: Confirm/unconfirm TM entry in SQLite via Repository Pattern."""
+        conn = self.db._get_connection()
+        try:
+            # Check if entry exists
+            row = conn.execute(
+                "SELECT * FROM offline_tm_entries WHERE id = ?",
+                (entry_id,)
+            ).fetchone()
+
+            if not row:
+                return None
+
+            if confirm:
+                conn.execute(
+                    """UPDATE offline_tm_entries
+                       SET is_confirmed = 1, confirmed_at = datetime('now'), confirmed_by = ?
+                       WHERE id = ?""",
+                    (confirmed_by, entry_id)
+                )
+            else:
+                conn.execute(
+                    """UPDATE offline_tm_entries
+                       SET is_confirmed = 0, confirmed_at = NULL, confirmed_by = NULL
+                       WHERE id = ?""",
+                    (entry_id,)
+                )
+
+            conn.commit()
+
+            # Fetch updated entry
+            updated_row = conn.execute(
+                "SELECT * FROM offline_tm_entries WHERE id = ?",
+                (entry_id,)
+            ).fetchone()
+
+            logger.info(f"{'Confirmed' if confirm else 'Unconfirmed'} SQLite TM entry {entry_id} by {confirmed_by}")
+            return dict(updated_row) if updated_row else None
+        finally:
+            conn.close()
+
+    async def bulk_confirm_entries(
+        self,
+        tm_id: int,
+        entry_ids: List[int],
+        confirm: bool = True,
+        confirmed_by: Optional[str] = None
+    ) -> int:
+        """P11-FIX: Bulk confirm/unconfirm in SQLite via Repository Pattern."""
+        if not entry_ids:
+            return 0
+
+        conn = self.db._get_connection()
+        try:
+            placeholders = ",".join("?" * len(entry_ids))
+
+            if confirm:
+                conn.execute(
+                    f"""UPDATE offline_tm_entries
+                        SET is_confirmed = 1, confirmed_at = datetime('now'), confirmed_by = ?
+                        WHERE tm_id = ? AND id IN ({placeholders})""",
+                    [confirmed_by, tm_id] + entry_ids
+                )
+            else:
+                conn.execute(
+                    f"""UPDATE offline_tm_entries
+                        SET is_confirmed = 0, confirmed_at = NULL, confirmed_by = NULL
+                        WHERE tm_id = ? AND id IN ({placeholders})""",
+                    [tm_id] + entry_ids
+                )
+
+            conn.commit()
+
+            # Get actual updated count
+            result = conn.execute(
+                f"SELECT COUNT(*) as cnt FROM offline_tm_entries WHERE tm_id = ? AND id IN ({placeholders})",
+                [tm_id] + entry_ids
+            ).fetchone()
+            updated_count = result["cnt"] if result else 0
+
+            logger.info(f"Bulk {'confirmed' if confirm else 'unconfirmed'} {updated_count} entries in SQLite TM {tm_id} by {confirmed_by}")
+            return updated_count
+        finally:
+            conn.close()
+
     # =========================================================================
     # Tree Structure
     # =========================================================================

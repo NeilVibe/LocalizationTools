@@ -548,6 +548,131 @@ class PostgreSQLTMRepository(TMRepository):
         await self.db.commit()
         return True
 
+    async def update_entry(
+        self,
+        entry_id: int,
+        source_text: Optional[str] = None,
+        target_text: Optional[str] = None,
+        string_id: Optional[str] = None,
+        updated_by: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """P11-FIX: Update TM entry via Repository Pattern."""
+        import hashlib
+        from server.database.db_utils import normalize_text_for_hash
+
+        result = await self.db.execute(
+            select(LDMTMEntry).where(LDMTMEntry.id == entry_id)
+        )
+        entry = result.scalar_one_or_none()
+        if not entry:
+            return None
+
+        # Update fields if provided
+        if source_text is not None:
+            entry.source_text = source_text
+            normalized = normalize_text_for_hash(source_text)
+            entry.source_hash = hashlib.sha256(normalized.encode('utf-8')).hexdigest()
+
+        if target_text is not None:
+            entry.target_text = target_text
+
+        if string_id is not None:
+            entry.string_id = string_id
+
+        entry.updated_at = datetime.utcnow()
+        entry.updated_by = updated_by
+
+        # Mark TM as updated
+        result = await self.db.execute(
+            select(LDMTranslationMemory).where(LDMTranslationMemory.id == entry.tm_id)
+        )
+        tm = result.scalar_one_or_none()
+        if tm:
+            tm.updated_at = datetime.utcnow()
+
+        await self.db.commit()
+        await self.db.refresh(entry)
+
+        logger.info(f"Updated TM entry {entry_id} by {updated_by}")
+        return self._entry_to_dict(entry)
+
+    async def confirm_entry(
+        self,
+        entry_id: int,
+        confirm: bool = True,
+        confirmed_by: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """P11-FIX: Confirm/unconfirm TM entry via Repository Pattern."""
+        result = await self.db.execute(
+            select(LDMTMEntry).where(LDMTMEntry.id == entry_id)
+        )
+        entry = result.scalar_one_or_none()
+        if not entry:
+            return None
+
+        if confirm:
+            entry.is_confirmed = True
+            entry.confirmed_at = datetime.utcnow()
+            entry.confirmed_by = confirmed_by
+        else:
+            entry.is_confirmed = False
+            entry.confirmed_at = None
+            entry.confirmed_by = None
+
+        await self.db.commit()
+        await self.db.refresh(entry)
+
+        logger.info(f"{'Confirmed' if confirm else 'Unconfirmed'} TM entry {entry_id} by {confirmed_by}")
+
+        result = self._entry_to_dict(entry)
+        result.update({
+            "confirmed_at": entry.confirmed_at.isoformat() if entry.confirmed_at else None,
+            "confirmed_by": entry.confirmed_by
+        })
+        return result
+
+    async def bulk_confirm_entries(
+        self,
+        tm_id: int,
+        entry_ids: List[int],
+        confirm: bool = True,
+        confirmed_by: Optional[str] = None
+    ) -> int:
+        """P11-FIX: Bulk confirm/unconfirm via Repository Pattern."""
+        from sqlalchemy import update
+
+        now = datetime.utcnow()
+
+        if confirm:
+            stmt = update(LDMTMEntry).where(
+                and_(
+                    LDMTMEntry.tm_id == tm_id,
+                    LDMTMEntry.id.in_(entry_ids)
+                )
+            ).values(
+                is_confirmed=True,
+                confirmed_at=now,
+                confirmed_by=confirmed_by
+            )
+        else:
+            stmt = update(LDMTMEntry).where(
+                and_(
+                    LDMTMEntry.tm_id == tm_id,
+                    LDMTMEntry.id.in_(entry_ids)
+                )
+            ).values(
+                is_confirmed=False,
+                confirmed_at=None,
+                confirmed_by=None
+            )
+
+        result = await self.db.execute(stmt)
+        await self.db.commit()
+
+        updated_count = result.rowcount
+        logger.info(f"Bulk {'confirmed' if confirm else 'unconfirmed'} {updated_count} entries in TM {tm_id} by {confirmed_by}")
+        return updated_count
+
     # =========================================================================
     # Tree Structure
     # =========================================================================

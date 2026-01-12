@@ -724,6 +724,9 @@ async def register_file_as_tm(
             }
         else:
             # Online mode: Use PostgreSQL TMManager
+            file_folder_id = file.get("folder_id")  # Get before thread
+            file_project_id = file.get("project_id")
+
             def _create_tm():
                 sync_db = next(get_db())
                 try:
@@ -756,6 +759,16 @@ async def register_file_as_tm(
                     sync_db.close()
 
             result = await asyncio.to_thread(_create_tm)
+
+            # P11-FIX: Assign TM to same scope as source file (PARITY with offline mode)
+            # User registers file from a folder → TM appears in that folder
+            from server.repositories.interfaces.tm_repository import AssignmentTarget
+            if file_folder_id:
+                await tm_repo.assign(result["tm_id"], AssignmentTarget(folder_id=file_folder_id))
+                logger.info(f"[ONLINE] Assigned TM {result['tm_id']} to folder {file_folder_id}")
+            elif file_project_id:
+                await tm_repo.assign(result["tm_id"], AssignmentTarget(project_id=file_project_id))
+                logger.info(f"[ONLINE] Assigned TM {result['tm_id']} to project {file_project_id}")
 
         logger.info(f"TM created from file: tm_id={result['tm_id']}, entries={result['entry_count']}, offline={is_offline}")
         return result
