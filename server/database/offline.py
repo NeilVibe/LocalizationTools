@@ -354,7 +354,8 @@ class OfflineDatabase:
                 logger.info(f"Auto-renamed duplicate folder: '{name}' → '{final_name}'")
 
             # Use negative IDs to avoid conflicts with real server IDs
-            folder_id = -int(time.time() * 1000) % 1000000000
+            # Fix: Negate AFTER modulo (Python modulo with positive divisor returns positive)
+            folder_id = -(int(time.time() * 1000) % 1000000000)
 
             conn.execute(
                 """INSERT INTO offline_folders
@@ -1682,7 +1683,8 @@ class OfflineDatabase:
 
             # Use negative IDs to avoid conflicts with real server IDs
             # Each new local file gets a unique negative ID based on timestamp
-            file_id = -int(time.time() * 1000) % 1000000000  # Negative, unique
+            # Fix: Negate AFTER modulo (Python modulo with positive divisor returns positive)
+            file_id = -(int(time.time() * 1000) % 1000000000)  # Negative, unique
 
             # P9-ARCH: Use the Offline Storage project ID instead of 0
             # P9-FIX: Support placing files in local folders
@@ -1724,7 +1726,8 @@ class OfflineDatabase:
         with self._get_connection() as conn:
             for i, row in enumerate(rows):
                 # Use negative row IDs to avoid conflicts
-                row_id = -int(time.time() * 1000 + i) % 1000000000
+                # Fix: Negate AFTER modulo (Python modulo with positive divisor returns positive)
+                row_id = -(int(time.time() * 1000 + i) % 1000000000)
 
                 extra_data = json.dumps(row.get("extra_data")) if row.get("extra_data") else None
                 now = datetime.now().isoformat()

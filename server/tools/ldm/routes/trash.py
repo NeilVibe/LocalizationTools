@@ -366,7 +366,6 @@ async def _restore_file(db: AsyncSession, data: dict, project_id: int, folder_id
             string_id=row_data.get("string_id"),
             source=row_data.get("source"),
             target=row_data.get("target"),
-            memo=row_data.get("memo"),
             status=row_data.get("status"),
             extra_data=row_data.get("extra_data")
         )

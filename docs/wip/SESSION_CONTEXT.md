@@ -16,8 +16,11 @@
 
 | Task | Status | Description |
 |------|--------|-------------|
+| Trash Restore Bug | **FIXED** | `memo` field removed from LDMRow restore |
+| Offline ID Generation | **FIXED** | Python operator precedence bug (IDs now negative) |
+| Online Mode CRUD | **PASS** | 11/11 tests passing |
+| Offline Mode CRUD | **PASS** | 7/7 tests passing |
 | TM Tree Folder Mirroring | TODO | `get_tree()` returns `folders: []` - needs to mirror File Explorer |
-| P10 Permission Gap | TODO | Routes check PostgreSQL for permissions even in offline mode |
 | Windows PATH Tests | TODO | 7 path tests for Windows builds |
 | CI/CD Health | TODO | Verify all tests pass, builds succeed |
 | Playwright Test Fixes | TODO | 67 UI tests failing due to login selector mismatch |
@@ -131,6 +134,37 @@
 ---
 
 ## Recent Sessions
+
+### Session 51 (2026-01-12) - P11 Platform Stability
+
+**Focus:** Granular Debug Protocol - Testing both online and offline modes
+
+**Bugs Fixed:**
+1. **Trash Restore Memo Bug (CRITICAL)**
+   - `trash.py:369` referenced non-existent `memo` field on LDMRow
+   - `file_repo.py:357` same issue in `add_rows()`
+   - Fix: Removed `memo` field references from both files
+
+2. **Offline ID Generation Bug (CRITICAL)**
+   - `offline.py:1685` had Python operator precedence bug
+   - `-int(time.time() * 1000) % 1000000000` returns POSITIVE (wrong!)
+   - Should be `-(int(time.time() * 1000) % 1000000000)` for NEGATIVE
+   - Fix: Corrected 3 locations (file_id, folder_id, row_id generation)
+
+**Test Results (Post-Fix):**
+- **Online Mode: 11/11 PASS** (Create, Read, Update, Delete, Trash, Restore, Search)
+- **Offline Mode: 7/7 PASS** (Upload, Get, Read Rows, Update Row, Delete, Trash)
+
+**Sync Mechanism Documented:**
+- `POST /api/ldm/offline/subscribe` - Subscribe to entity for offline sync
+- `POST /api/ldm/offline/push-changes` - Push local changes to server
+- `POST /api/ldm/sync-to-central` - Sync file from local to central
+- `POST /api/ldm/tm/sync-to-central` - Sync TM from local to central
+- All endpoints return 422 (need parameters) when called without body - working as expected
+
+**Test Script Created:** `test_p11_stability.py` - Comprehensive API test suite
+
+---
 
 ### Session 50 (2026-01-11) - Continued
 - **P10 search.py Migration - ONE Code Path Implementation**
