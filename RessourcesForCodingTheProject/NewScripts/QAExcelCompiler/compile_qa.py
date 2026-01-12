@@ -2803,7 +2803,9 @@ def transfer_sheet_data(old_ws, new_ws, category, is_english):
     for old_row in range(2, old_ws.max_row + 1):
         old_comment = old_ws.cell(old_row, old_comment_col).value if old_comment_col else None
         old_status = old_ws.cell(old_row, old_status_col).value if old_status_col else None
-        old_screenshot = old_ws.cell(old_row, old_screenshot_col).value if old_screenshot_col else None
+        old_screenshot_cell = old_ws.cell(old_row, old_screenshot_col) if old_screenshot_col else None
+        old_screenshot = old_screenshot_cell.value if old_screenshot_cell else None
+        old_screenshot_hyperlink = old_screenshot_cell.hyperlink if old_screenshot_cell else None
 
         # Skip rows with no work
         if not old_comment and not old_status:
@@ -2851,7 +2853,10 @@ def transfer_sheet_data(old_ws, new_ws, category, is_english):
         if new_status_col and old_status:
             new_ws.cell(new_row, new_status_col, old_status)
         if new_screenshot_col and old_screenshot:
-            new_ws.cell(new_row, new_screenshot_col, old_screenshot)
+            new_cell = new_ws.cell(new_row, new_screenshot_col, old_screenshot)
+            # Also transfer the hyperlink (not just the display text)
+            if old_screenshot_hyperlink:
+                new_cell.hyperlink = old_screenshot_hyperlink.target
 
     return stats
 
