@@ -193,10 +193,32 @@ class TMRepository(ABC):
         created_by: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Add entry to TM.
+        Add single entry to TM.
 
         Returns:
             Created entry dict.
+        """
+        ...
+
+    @abstractmethod
+    async def add_entries_bulk(
+        self,
+        tm_id: int,
+        entries: List[Dict[str, Any]]
+    ) -> int:
+        """
+        Bulk add entries to TM.
+
+        High-performance bulk insert:
+        - PostgreSQL: Uses COPY TEXT (20k+ entries/sec)
+        - SQLite: Uses executemany (instant for 1000s)
+
+        Args:
+            tm_id: TM to add entries to
+            entries: List of dicts with 'source'/'source_text' and 'target'/'target_text'
+
+        Returns:
+            Number of entries inserted.
         """
         ...
 

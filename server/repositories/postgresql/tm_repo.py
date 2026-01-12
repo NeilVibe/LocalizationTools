@@ -437,6 +437,53 @@ class PostgreSQLTMRepository(TMRepository):
         await self.db.commit()
         return self._entry_to_dict(entry)
 
+    async def add_entries_bulk(
+        self,
+        tm_id: int,
+        entries: List[Dict[str, Any]]
+    ) -> int:
+        """
+        Bulk add entries to TM using COPY TEXT (20k+ entries/sec).
+
+        Uses PostgreSQL's COPY protocol for maximum performance.
+        """
+        import hashlib
+        from server.database.db_utils import bulk_copy_tm_entries
+
+        if not entries:
+            return 0
+
+        # Format entries for bulk_copy_tm_entries
+        formatted = []
+        for e in entries:
+            source = e.get("source") or e.get("source_text", "")
+            target = e.get("target") or e.get("target_text", "")
+            formatted.append({
+                "source_text": source,
+                "target_text": target,
+                "string_id": e.get("string_id")
+            })
+
+        # Use sync db session for COPY TEXT
+        from server.utils.dependencies import get_db
+        sync_db = next(get_db())
+        try:
+            inserted = bulk_copy_tm_entries(sync_db, tm_id, formatted)
+
+            # Update entry count on TM
+            from server.database.models import LDMTranslationMemory
+            tm = sync_db.query(LDMTranslationMemory).filter(
+                LDMTranslationMemory.id == tm_id
+            ).first()
+            if tm:
+                tm.entry_count = (tm.entry_count or 0) + inserted
+                sync_db.commit()
+
+            logger.info(f"Bulk added {inserted} entries to PostgreSQL TM {tm_id}")
+            return inserted
+        finally:
+            sync_db.close()
+
     async def get_entries(
         self,
         tm_id: int,
