@@ -354,7 +354,6 @@ class PostgreSQLFileRepository(FileRepository):
                 string_id=row_data.get("string_id"),
                 source=row_data.get("source", ""),
                 target=row_data.get("target", ""),
-                memo=row_data.get("memo"),
                 status=row_data.get("status", "normal"),
                 extra_data=row_data.get("extra_data")
             )
