@@ -412,6 +412,9 @@ def emit_rows(skills: List[SkillItem]) -> List[RowItem]:
     for skill in skills:
         rows.extend(emit_skill_rows(skill))
 
+    # Postprocess: drop empty rows (whitespace-only text)
+    rows = [(d, t, n) for (d, t, n) in rows if t and t.strip()]
+
     return rows
 
 # ──────────────────────────────────────────────────────────────────────
