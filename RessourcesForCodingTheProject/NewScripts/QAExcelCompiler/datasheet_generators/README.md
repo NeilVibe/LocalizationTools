@@ -114,10 +114,22 @@ All STRINGID cells are formatted as text (`number_format='@'`) to prevent:
 - Integer vs string type mismatches during matching
 
 ### Duplicate Row Filtering
-Rows with identical **(Korean + Translation + STRINGID)** are automatically removed.
-- Keeps first occurrence, removes duplicates
-- Logs count of removed duplicates during generation
-- Prevents testers from reviewing the same content twice
+
+**ONLY `fullregion7.py` has deduplication enabled.**
+
+All other generators output ALL rows (duplicates included) because:
+- Testers need to review each occurrence in context
+- Same text may appear in different quest/skill contexts
+- QA Compiler handles deduplication at master level if needed
+
+Region keeps deduplication because location names are truly duplicated.
+
+### Auto-fit Columns and Rows
+
+All generators include `autofit_worksheet()` which:
+- Auto-calculates column widths based on content (min 10, max 80 chars)
+- Auto-calculates row heights for wrapped text (min 20pt, 15pt per line)
+- Produces clean, readable Excel output
 
 ## Usage
 
@@ -196,3 +208,4 @@ Skill_PushKick (MaxLevel=1)       → LOSES → uses its own SkillDesc
 ---
 
 *Copied from DATASHEET SCRIPTS 0108 on 2026-01-09*
+*Updated: 2026-01-12 - Deduplication disabled (except Region), autofit added to all*
