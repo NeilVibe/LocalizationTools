@@ -374,6 +374,42 @@ def _get_style_for_depth(depth: int) -> Tuple[PatternFill, Font, Optional[float]
         return _depth2_fill, _depth2_font, _depth2_row_height
 
 # ──────────────────────────────────────────────────────────────────────
+# AUTO-FIT HELPER
+# ──────────────────────────────────────────────────────────────────────
+def autofit_worksheet(ws, min_width: int = 10, max_width: int = 80, row_height_per_line: float = 15.0) -> None:
+    """
+    Auto-fit column widths and row heights based on cell content.
+    """
+    # Calculate optimal column widths
+    col_widths: Dict[str, float] = {}
+
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value:
+                col_letter = get_column_letter(cell.column)
+                content_len = len(str(cell.value))
+                width = min(max(content_len * 1.1 + 2, min_width), max_width)
+                col_widths[col_letter] = max(col_widths.get(col_letter, min_width), width)
+
+    # Apply column widths
+    for col_letter, width in col_widths.items():
+        ws.column_dimensions[col_letter].width = width
+
+    # Calculate optimal row heights (considering text wrap)
+    for row_idx, row in enumerate(ws.iter_rows(), start=1):
+        max_lines = 1
+        for cell in row:
+            if cell.value and cell.alignment and cell.alignment.wrap_text:
+                col_letter = get_column_letter(cell.column)
+                col_width = col_widths.get(col_letter, max_width)
+                chars_per_line = max(col_width * 0.9, 10)
+                content_len = len(str(cell.value))
+                lines = max(1, int(content_len / chars_per_line) + 1)
+                max_lines = max(max_lines, lines)
+        # Set row height (minimum 20, scale by lines)
+        ws.row_dimensions[row_idx].height = max(20, max_lines * row_height_per_line)
+
+# ──────────────────────────────────────────────────────────────────────
 # EXCEL WRITER
 # ──────────────────────────────────────────────────────────────────────
 def write_workbook(
@@ -507,9 +543,8 @@ def write_workbook(
         # Apply STATUS data validation
         dv.add(ws.cell(row_idx, status_col))
 
-        # Row height
-        if row_height:
-            ws.row_dimensions[row_idx].height = row_height
+    # ─── Auto-fit columns and rows ────────────────────────────────
+    autofit_worksheet(ws)
 
     # ─── Save ─────────────────────────────────────────────────────
     wb.save(out_path)
