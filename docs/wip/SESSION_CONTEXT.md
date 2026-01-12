@@ -308,60 +308,88 @@ NOT "delete everything and hope for the best"
 
 ### Route Migration Status
 
-| Route File | Size | Repo Calls | Direct DB Calls | Migration % | Status |
-|------------|------|------------|-----------------|-------------|--------|
-| `tm_assignment.py` | 8KB | 12 | 0 | **100%** | CLEAN |
-| `grammar.py` | 5KB | 6 | 0 | **100%** | CLEAN |
-| `search.py` | 4KB | 8 | 0 | **100%** | CLEAN |
-| `tm_entries.py` | 7KB | 6 | 0 | **100%** | CLEAN |
-| `qa.py` | 11KB | 9 | 2 | 82% | MIXED |
-| `trash.py` | 15KB | 4 | 2 | 67% | MIXED |
-| `rows.py` | 28KB | 5 | 3 | 63% | MIXED |
-| `files.py` | 81KB | 18 | 14 | 56% | MIXED |
-| `projects.py` | 11KB | 8 | 9 | 47% | MIXED |
-| `folders.py` | 21KB | 8 | 8 | 50% | MIXED |
-| `platforms.py` | 15KB | 9 | 10 | 47% | MIXED |
-| `tm_crud.py` | 12KB | 8 | 9 | 47% | MIXED |
-| `tm_linking.py` | 18KB | 6 | 13 | 32% | MIXED |
-| `pretranslate.py` | 8KB | 2 | 9 | 18% | MIXED |
-| `sync.py` | 45KB | 0 | Many | 0% | SERVICE |
-| `capabilities.py` | 3KB | 0 | 2 | 0% | DIRECT |
-| `health.py` | 2KB | 0 | 1 | 0% | DIRECT |
-| `settings.py` | 4KB | 0 | 3 | 0% | DIRECT |
-| `tm_indexes.py` | 6KB | 0 | 5 | 0% | DIRECT |
-| `tm_search.py` | 5KB | 0 | 4 | 0% | DIRECT |
+| Route File | Repo Calls | Direct DB Calls | Status | Notes |
+|------------|------------|-----------------|--------|-------|
+| `grammar.py` | 3 | 0 | **CLEAN** | Fully migrated |
+| `qa.py` | 11 | 0 | **CLEAN** | Fully migrated (Session 52) |
+| `search.py` | 4 | 0 | **CLEAN** | Fully migrated |
+| `tm_assignment.py` | 5 | 0 | **CLEAN** | Fully migrated |
+| `tm_entries.py` | 6 | 0 | **CLEAN** | Fully migrated (Session 52) |
+| `files.py` | 18 | 15 | MIXED | Permission checks use direct DB |
+| `folders.py` | 8 | 9 | MIXED | Permission checks use direct DB |
+| `platforms.py` | 9 | 11 | MIXED | Permission checks use direct DB |
+| `projects.py` | 8 | 10 | MIXED | Permission checks use direct DB |
+| `rows.py` | 5 | 4 | MIXED | Permission checks use direct DB |
+| `tm_crud.py` | 3 | 2 | MIXED | Permission checks use direct DB |
+| `tm_linking.py` | 4 | 4 | MIXED | Permission checks use direct DB |
+| `trash.py` | 4 | 3 | MIXED | restore helpers + permission checks |
+| `pretranslate.py` | 1 | 2 | MIXED | Permission checks |
+| `sync.py` | 0 | 7 | SERVICE | SyncService pattern |
+| `capabilities.py` | 0 | 5 | UTILITY | User capability management |
+| `tm_indexes.py` | 0 | 5 | UTILITY | FAISS index management |
+| `tm_search.py` | 0 | 4 | UTILITY | FAISS search |
+| `health.py` | 0 | 0 | NO-DB | Just health check |
+| `settings.py` | 0 | 0 | NO-DB | Settings management |
 
 **Summary:**
-- **CLEAN (100%):** 4 files (tm_assignment.py, grammar.py, search.py, tm_entries.py)
-- **MIXED (partial):** 10 files (need cleanup)
-- **DIRECT (0%):** 5 files (need migration)
+- **CLEAN (100%):** 5 files (grammar.py, qa.py, search.py, tm_assignment.py, tm_entries.py)
+- **MIXED:** 9 files (remaining direct DB is for permission checks)
 - **SERVICE:** 1 file (sync.py - uses SyncService pattern)
+- **UTILITY:** 3 files (capabilities, tm_indexes, tm_search - specialized operations)
+- **NO-DB:** 2 files (health.py, settings.py)
+
+### Permission Check Pattern (P10-PERM-001)
+
+Most remaining direct DB calls are for **permission checks**:
+- `can_access_project()`, `can_access_folder()`, `can_access_file()`
+- `can_access_tm()`, `can_access_platform()`
+- `require_capability()`
+
+**Decision:** Keep permission checks as direct DB for now. They are business logic, not CRUD.
+Future work could create a `PermissionRepository` for full offline parity.
 
 ---
 
 ## Recent Sessions
 
-### Session 52 (2026-01-13) - DB Abstraction Layer Preparation
+### Session 52 (2026-01-13) - DB Abstraction Layer Migration
 
-**Focus:** Fix bugs found during testing, accurate documentation of P10 state
+**Focus:** Complete Repository Pattern migration for route files
 
-**Bugs Found & Fixed:**
-1. **tm_entries.py** - 3 endpoints used direct PostgreSQL, bypassed Repository Pattern
-   - Fix: Updated all 6 endpoints to use `TMRepository`
-   - Added 3 new methods: `update_entry`, `confirm_entry`, `bulk_confirm_entries`
+**Phase 1: Bug Fixes**
+1. **tm_entries.py** - 3 endpoints bypassed Repository Pattern
+   - Added 3 new methods to TMRepository: `update_entry`, `confirm_entry`, `bulk_confirm_entries`
+   - Now 100% Repository Pattern (6 repo calls, 0 direct DB)
 
 2. **projects.py** - `ProjectCreate` schema missing `platform_id` field
-   - Fix: Added `platform_id: Optional[int] = None` to schema
-   - Now projects properly associate with platforms
+   - Added `platform_id: Optional[int] = None` to schema
 
-3. **files.py** - Online mode missing TM folder assignment after register-as-tm
-   - Fix: Added assignment logic to match offline mode
-   - Now TM goes to same folder as source file (PARITY achieved)
+3. **files.py** - Online mode missing TM folder assignment
+   - Added assignment logic to match offline mode (PARITY achieved)
 
-**Documentation Updates:**
-- SESSION_CONTEXT.md corrected from "COMPLETE" to "IN PROGRESS (15%)"
-- Added comprehensive DB abstraction explanation
-- Created task tables for tracking
+**Phase 2: qa.py Migration (100% COMPLETE)**
+1. Added `get_glossary_terms(tm_ids, max_length)` to TMRepository interface
+2. Implemented in PostgreSQL adapter (uses `func.length()` and `IN` clause)
+3. Implemented in SQLite adapter (uses `LENGTH()` and `IN` clause)
+4. Updated `_get_glossary_terms()` to use TMRepository
+5. Removed direct DB from `check_row_qa()` and `check_file_qa()`
+6. qa.py now has 11 repo calls, 0 direct DB calls
+
+**Phase 3: Permission Check Analysis**
+- Discovered most remaining direct DB calls are permission checks
+- Decision: Keep permission checks as direct DB (business logic, not CRUD)
+- Documented as P10-PERM-001 for future consideration
+
+**Documentation Overhaul:**
+- SESSION_CONTEXT.md: Added TOC, task tables, architecture explanation
+- P10_DB_ABSTRACTION.md: Comprehensive implementation guide
+- Added "What IS Repository Pattern" explanation
+- Added "SAFE Methodology" for incremental migration
+
+**Current State:**
+- 5 route files CLEAN (100% Repository): grammar, qa, search, tm_assignment, tm_entries
+- 9 route files MIXED (permission checks remain)
+- All 8 Repositories fully implemented
 
 ### Session 51 (2026-01-12) - P11 Platform Stability
 
