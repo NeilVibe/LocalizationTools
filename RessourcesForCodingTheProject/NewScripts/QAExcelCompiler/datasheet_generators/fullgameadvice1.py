@@ -284,6 +284,9 @@ def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
             if item.desc:
                 rows.append((2, item.desc, True))
 
+    # Postprocess: drop empty rows (whitespace-only text)
+    rows = [(d, t, n) for (d, t, n) in rows if t and t.strip()]
+
     return rows
 
 # ──────────────────────────────────────────────────────────────────────
