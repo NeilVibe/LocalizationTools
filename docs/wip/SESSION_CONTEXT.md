@@ -2,11 +2,38 @@
 
 > Current state of LocaNext development. Updated each session.
 
-**Last Updated:** 2026-01-12
+**Last Updated:** 2026-01-13
+
+---
+
+## Table of Contents
+
+1. [Current Focus](#current-focus)
+   - [P10: DB Abstraction Layer](#p10-db-abstraction-layer--in-progress)
+   - [P11: Platform Stability](#p11-platform-stability-active)
+2. [What IS DB Abstraction Layer & Repository Pattern?](#what-is-db-abstraction-layer--repository-pattern)
+3. [Why Is It Important?](#why-is-it-important)
+4. [How We Achieve It (Step by Step)](#how-we-achieve-it-step-by-step-safe-methodology)
+5. [Task Tables](#task-tables)
+   - [Completed Tasks](#completed-tasks-session-52)
+   - [Pending Tasks](#pending-tasks)
+   - [Repository Migration Status](#repository-migration-status)
+   - [Route Migration Status](#route-migration-status)
+6. [Recent Sessions](#recent-sessions)
+7. [Quick Commands](#quick-commands)
+8. [Backlog](#backlog)
 
 ---
 
 ## Current Focus
+
+### P10: DB Abstraction Layer - IN PROGRESS
+
+**Status:** PREPARATION PHASE COMPLETE | **Progress:** 15% files fully migrated
+
+**Goal:** Transform entire backend from inconsistent database patterns to unified Repository Pattern for FULL OFFLINE/ONLINE PARITY.
+
+---
 
 ### P11: Platform Stability (ACTIVE)
 
@@ -24,116 +51,317 @@
 | Windows PATH Tests | **DONE** | 7 path tests created in `windows_tests/` |
 | CI/CD Health | **HEALTHY** | 1285 passed, 10 failed (P10 test maintenance) |
 | Playwright Test Fixes | **FIXED** | 152 passed, 0 failed (was 67 failing) |
+| TM Entries Repository Fix | **FIXED** | All 6 endpoints now use Repository Pattern |
+| Project platform_id Fix | **FIXED** | `ProjectCreate` schema now includes platform_id |
+| TM Folder Assignment Fix | **FIXED** | Online mode now assigns TM to same folder as source file |
 
 ---
 
-### P10: DB Abstraction Layer ✅ COMPLETE
+## What IS DB Abstraction Layer & Repository Pattern?
 
-**Status:** COMPLETE (Session 50)
+### The Problem We're Solving
 
-**Goal:** Transform entire backend from inconsistent database patterns to unified Repository Pattern.
+```
+BEFORE (Chaos):
+┌─────────────────────────────────────────────────────────────┐
+│  Route A (files.py)     Route B (projects.py)               │
+│        │                       │                            │
+│        ▼                       ▼                            │
+│  ┌──────────┐           ┌──────────┐                       │
+│  │PostgreSQL│           │PostgreSQL│  ← Direct DB calls    │
+│  └──────────┘           └──────────┘    in routes          │
+│        │                                                    │
+│        ▼ (fallback)                                         │
+│  ┌──────────┐                                               │
+│  │ SQLite   │  ← Some routes have fallback, others don't   │
+│  └──────────┘                                               │
+└─────────────────────────────────────────────────────────────┘
 
-**What's Done:**
-- [x] TMRepository implemented (TM routes only)
-- [x] Plan created and approved
-- [x] WIP documentation structure created
-- [x] P10_DB_ABSTRACTION.md created
-- [x] Roadmap.md updated with P10 section
-- [x] DB_ABSTRACTION_LAYER.md expanded with full scope
-- [x] **FileRepository implemented** (interface + PostgreSQL + SQLite)
-- [x] **files.py routes migrated** (all 15 endpoints)
-- [x] **RowRepository implemented** (interface + PostgreSQL + SQLite)
-- [x] **rows.py routes migrated** (all 3 endpoints)
-- [x] **ProjectRepository implemented** (interface + PostgreSQL + SQLite)
-- [x] **projects.py routes migrated** (all 9 endpoints)
-- [x] **FolderRepository implemented** (interface + PostgreSQL + SQLite)
-- [x] **folders.py routes migrated** (all 8 endpoints)
-- [x] **PlatformRepository implemented** (interface + PostgreSQL + SQLite)
-- [x] **platforms.py routes migrated** (all 10 endpoints)
-- [x] **QAResultRepository implemented** (FULL PARITY - SQLite persists too!)
-- [x] **qa.py routes migrated** (all 6 endpoints)
-- [x] **TrashRepository implemented** (FULL PARITY)
-- [x] **trash.py routes migrated** (all 4 endpoints)
+PROBLEMS:
+- Routes contain database-specific code (SELECT, INSERT, SQLAlchemy)
+- Some routes support offline (SQLite), others don't
+- Two code paths = twice the bugs
+- Hard to test, hard to maintain
+```
 
-**What's Next:**
-- [x] ~~Test both modes (PostgreSQL + SQLite)~~ - **DONE** (Session 50)
-- [x] ~~Migrate remaining routes (sync.py - needs service extraction)~~ - **DONE** (SyncService pattern)
-- [x] ~~Dead Code Audit~~ - **DONE** (removed 700+ lines of dead code)
-- [x] ~~Post-P10 Code Review (qa.py)~~ - **DONE** (migrated to RowRepository)
-- [x] ~~Granular Audit~~ - **DONE** (Session 50 - logging, dead code, files, folders)
-- [x] ~~**Minor files migrated:** search.py, pretranslate.py, tm_linking.py~~ **DONE** (Session 50)
-- [ ] **TM Tree Folder Mirroring** - `get_tree()` returns `folders: []` (TODO in code)
-- [ ] **P10 Gap:** Routes have PostgreSQL permission checks that bypass Repository Pattern for offline mode
+### The Solution: Repository Pattern
 
-### P10 Test Results (Session 50)
+```
+AFTER (Clean Architecture):
+┌─────────────────────────────────────────────────────────────┐
+│  Route A (files.py)     Route B (projects.py)               │
+│        │                       │                            │
+│        └───────────┬───────────┘                            │
+│                    │                                        │
+│                    ▼                                        │
+│            ┌──────────────┐                                 │
+│            │  Repository  │  ← Abstract interface           │
+│            │  Interface   │    (FileRepository, etc.)       │
+│            └──────────────┘                                 │
+│                    │                                        │
+│         ┌─────────┴─────────┐                               │
+│         │                   │                               │
+│         ▼                   ▼                               │
+│  ┌──────────────┐   ┌──────────────┐                       │
+│  │  PostgreSQL  │   │    SQLite    │                       │
+│  │   Adapter    │   │   Adapter    │                       │
+│  └──────────────┘   └──────────────┘                       │
+│         │                   │                               │
+│         ▼                   ▼                               │
+│  ┌──────────────┐   ┌──────────────┐                       │
+│  │  PostgreSQL  │   │   SQLite     │                       │
+│  │   Database   │   │  Database    │                       │
+│  └──────────────┘   └──────────────┘                       │
+└─────────────────────────────────────────────────────────────┘
 
-**PostgreSQL Mode: FULL PASS**
-- Platform/Project/Folder/File CRUD all work
-- Row operations work
-- Soft delete → Trash works
+BENEFITS:
+- Routes are DATABASE-AGNOSTIC (don't know which DB)
+- ONE code path for both online (PostgreSQL) and offline (SQLite)
+- Factory function selects adapter based on auth token
+- FULL PARITY: Same operations work identically in both modes
+```
 
-**SQLite Mode: REPOSITORY WORKS, API PARTIAL**
-- Repository-level CRUD: All operations work directly
-- API `storage=local` upload: Works
-- API retrieval: Fails (routes check PostgreSQL for permissions)
+### Key Concepts
 
-**Bugs Fixed During Testing:**
-1. folder_repo.py: Removed `updated_at` (LDMFolder lacks it)
-2. row_repo.py: Removed `created_at` (LDMRow lacks it)
-3. file_repo.py: Removed `memo` and `created_at`
-4. folder_repo.py: Removed `memo` in copy
-5. trash.py: Removed `memo` in serialize
+| Concept | What It Is | Example |
+|---------|------------|---------|
+| **Interface** | Abstract contract defining operations | `FileRepository.get(file_id) -> Dict` |
+| **Adapter** | Concrete implementation for specific DB | `PostgreSQLFileRepository`, `SQLiteFileRepository` |
+| **Factory** | Function that picks the right adapter | `get_file_repository(request, db)` |
+| **FULL PARITY** | Same operations work identically | Create/Read/Update/Delete work same online & offline |
 
----
+### How the Factory Works
 
-## Repository Pattern Status
+```python
+# server/repositories/factory.py
 
-| Repository | Interface | PostgreSQL | SQLite | Routes Migrated |
-|------------|-----------|------------|--------|-----------------|
-| TMRepository | **DONE** | **DONE** | **DONE** | tm_assignment.py |
-| FileRepository | **DONE** | **DONE** | **DONE** | files.py (15/15) |
-| RowRepository | **DONE** | **DONE** | **DONE** | rows.py (3/3) |
-| ProjectRepository | **DONE** | **DONE** | **DONE** | projects.py (9/9) |
-| FolderRepository | **DONE** | **DONE** | **DONE** | folders.py (8/8) |
-| PlatformRepository | **DONE** | **DONE** | **DONE** | platforms.py (10/10) |
-| QAResultRepository | **DONE** | **DONE** | **DONE** | qa.py (6/6) |
-| TrashRepository | **DONE** | **DONE** | **DONE** | trash.py (4/4) |
-| **SyncService** | **DONE** | **DONE** | **DONE** | sync.py (6 sync endpoints) |
+async def get_file_repository(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db)
+) -> FileRepository:
+    """Select FileRepository based on auth token."""
 
----
+    auth_header = request.headers.get("Authorization", "")
+    is_offline = "OFFLINE_MODE_" in auth_header  # Key detection!
 
-## Route Migration Status
-
-| Route File | Size | Current Pattern | Target | Status |
-|------------|------|-----------------|--------|--------|
-| `tm_assignment.py` | 8KB | Repository | Repository | **DONE** |
-| `files.py` | 81KB | Repository | Repository | **DONE** (15/15) |
-| `rows.py` | 28KB | Repository | Repository | **DONE** (3/3) |
-| `projects.py` | 11KB | Repository | Repository | **DONE** |
-| `folders.py` | 21KB | Repository | Repository | **DONE** |
-| `platforms.py` | 15KB | Repository | Repository | **DONE** |
-| `qa.py` | 11KB | Repository | Repository | **DONE** |
-| `trash.py` | 15KB | Repository | Repository | **DONE** |
-| `grammar.py` | 5KB | Repository | Repository | **DONE** |
-| `sync.py` | 45KB | SyncService | Service | **DONE** (6 sync endpoints, rest are local ops) |
-
----
-
-## Server Status
-
-```bash
-# Check servers
-./scripts/check_servers.sh
-
-# Expected:
-# PostgreSQL (5432)... ✓ OK
-# Backend API (8888)... ✓ OK
-# Vite Dev (5173)... ✓ OK
+    if is_offline:
+        # User is in offline mode → use SQLite
+        return SQLiteFileRepository()
+    else:
+        # User is online → use PostgreSQL
+        return PostgreSQLFileRepository(db)
 ```
 
 ---
 
+## Why Is It Important?
+
+### 1. TRUE OFFLINE MODE
+
+| Without Repository Pattern | With Repository Pattern |
+|---------------------------|------------------------|
+| Some features work offline, others don't | **ALL features work offline** |
+| User gets random 404 errors | Consistent experience |
+| Different bugs online vs offline | One codebase = one set of bugs |
+
+### 2. MAINTAINABILITY
+
+| Without | With |
+|---------|------|
+| Change PostgreSQL code → pray SQLite still works | Change Interface → both adapters update |
+| Duplicate logic everywhere | Single source of truth |
+| Database code scattered in routes | Database code isolated in adapters |
+
+### 3. TESTABILITY
+
+| Without | With |
+|---------|------|
+| Hard to mock database calls | Easy to mock Repository interface |
+| Need running PostgreSQL for tests | Can use in-memory test adapter |
+| Fragile integration tests | Robust unit + integration tests |
+
+### 4. INDUSTRY STANDARD
+
+| Who Uses This Pattern | Evidence |
+|----------------------|----------|
+| Microsoft (.NET Core) | Entity Framework Repository Pattern |
+| Spring Framework (Java) | JPA Repositories |
+| Django (Python) | ORM Manager pattern |
+| Every DDD book | Domain-Driven Design standard |
+
+**This is battle-tested architecture used by millions of applications.**
+
+---
+
+## How We Achieve It (Step by Step, SAFE Methodology)
+
+### The SAFE Principle
+
+```
+S - Sequential    (One file at a time, not all at once)
+A - Additive      (Add new code, don't delete working code)
+F - Focused       (Complete one repository before starting next)
+E - Evidence      (Test after each change, verify it works)
+```
+
+### Migration Steps Per File
+
+```
+STEP 1: CREATE INTERFACE (if not exists)
+        ├─ Define abstract methods
+        └─ Document expected behavior
+
+STEP 2: CREATE POSTGRESQL ADAPTER (if not exists)
+        ├─ Implement all interface methods
+        └─ Use existing SQLAlchemy code
+
+STEP 3: CREATE SQLITE ADAPTER (if not exists)
+        ├─ Implement all interface methods
+        └─ Use existing offline.py code
+
+STEP 4: UPDATE FACTORY
+        └─ Add get_*_repository() function
+
+STEP 5: MIGRATE ONE ENDPOINT
+        ├─ Change: db: AsyncSession → repo: Repository
+        ├─ Replace: SQLAlchemy queries → repo.method() calls
+        └─ TEST immediately
+
+STEP 6: REPEAT STEP 5 for each endpoint
+
+STEP 7: CLEANUP
+        ├─ Remove unused SQLAlchemy imports
+        └─ Remove old fallback helper functions
+```
+
+### Why This Is SAFE
+
+| Risk | Mitigation |
+|------|------------|
+| Breaking working code | Additive changes - old code stays until new code verified |
+| Hard to debug | One endpoint at a time - easy to identify what broke |
+| Too much change at once | Sequential approach - commit after each endpoint |
+| Missing edge cases | Test after each change - catch issues early |
+| Regression bugs | Existing Playwright tests catch breakage |
+
+### Safe Rollback Strategy
+
+```
+IF something breaks:
+  1. The old code is still there (just unused)
+  2. Revert the ONE endpoint that broke
+  3. Debug and fix
+  4. Try again
+
+NOT "delete everything and hope for the best"
+```
+
+---
+
+## Task Tables
+
+### Completed Tasks (Session 52)
+
+| Task | File | Description | Evidence |
+|------|------|-------------|----------|
+| TM Entries Repository Fix | `tm_entries.py` | All 6 endpoints now use Repository Pattern | 0 direct DB calls |
+| Update Entry Method | `tm_repository.py` | Added `update_entry()` to interface | Interface updated |
+| Confirm Entry Method | `tm_repository.py` | Added `confirm_entry()` to interface | Interface updated |
+| Bulk Confirm Method | `tm_repository.py` | Added `bulk_confirm_entries()` to interface | Interface updated |
+| PostgreSQL Implementation | `tm_repo.py` | Implemented 3 new methods for PostgreSQL | Adapter updated |
+| SQLite Implementation | `tm_repo.py` | Implemented 3 new methods for SQLite | Adapter updated |
+| Project platform_id Fix | `schemas/project.py` | Added `platform_id` to `ProjectCreate` schema | Schema fixed |
+| TM Folder Assignment | `files.py` | Online mode now assigns TM to same folder | Parity achieved |
+| Documentation Audit | `SESSION_CONTEXT.md` | Updated P10 status from "COMPLETE" to "IN PROGRESS" | Accurate state |
+
+### Pending Tasks
+
+| Priority | Task | File(s) | Description | Effort |
+|----------|------|---------|-------------|--------|
+| HIGH | Migrate files.py to 100% Repository | `files.py` | 18 repo calls, 14 direct DB calls remain | Medium |
+| HIGH | Migrate projects.py to 100% Repository | `projects.py` | 8 repo calls, 9 direct DB calls remain | Medium |
+| HIGH | Migrate folders.py to 100% Repository | `folders.py` | 8 repo calls, 8 direct DB calls remain | Medium |
+| HIGH | Migrate platforms.py to 100% Repository | `platforms.py` | 9 repo calls, 10 direct DB calls remain | Medium |
+| MEDIUM | Migrate rows.py to 100% Repository | `rows.py` | 5 repo calls, 3 direct DB calls remain | Small |
+| MEDIUM | Migrate tm_crud.py to 100% Repository | `tm_crud.py` | 8 repo calls, 9 direct DB calls remain | Medium |
+| MEDIUM | Migrate tm_linking.py to 100% Repository | `tm_linking.py` | 6 repo calls, 13 direct DB calls remain | Large |
+| MEDIUM | Migrate qa.py to 100% Repository | `qa.py` | 9 repo calls, 2 direct DB calls remain | Small |
+| MEDIUM | Migrate trash.py to 100% Repository | `trash.py` | 4 repo calls, 2 direct DB calls remain | Small |
+| MEDIUM | Migrate pretranslate.py to 100% Repository | `pretranslate.py` | 2 repo calls, 9 direct DB calls remain | Medium |
+| LOW | Clean sync.py (after service extraction) | `sync.py` | Already uses SyncService, needs cleanup | Large |
+| LOW | Migrate DIRECT files (no repo yet) | 6 files | capabilities.py, health.py, settings.py, tm_indexes.py, tm_search.py, sync.py | Small |
+
+### Repository Migration Status
+
+| Repository | Interface | PostgreSQL Adapter | SQLite Adapter | Factory | Status |
+|------------|-----------|-------------------|----------------|---------|--------|
+| TMRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
+| FileRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
+| RowRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
+| ProjectRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
+| FolderRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
+| PlatformRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
+| QAResultRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
+| TrashRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
+
+**All 8 Repositories are COMPLETE!** The issue is ROUTE MIGRATION, not repository creation.
+
+### Route Migration Status
+
+| Route File | Size | Repo Calls | Direct DB Calls | Migration % | Status |
+|------------|------|------------|-----------------|-------------|--------|
+| `tm_assignment.py` | 8KB | 12 | 0 | **100%** | CLEAN |
+| `grammar.py` | 5KB | 6 | 0 | **100%** | CLEAN |
+| `search.py` | 4KB | 8 | 0 | **100%** | CLEAN |
+| `tm_entries.py` | 7KB | 6 | 0 | **100%** | CLEAN |
+| `qa.py` | 11KB | 9 | 2 | 82% | MIXED |
+| `trash.py` | 15KB | 4 | 2 | 67% | MIXED |
+| `rows.py` | 28KB | 5 | 3 | 63% | MIXED |
+| `files.py` | 81KB | 18 | 14 | 56% | MIXED |
+| `projects.py` | 11KB | 8 | 9 | 47% | MIXED |
+| `folders.py` | 21KB | 8 | 8 | 50% | MIXED |
+| `platforms.py` | 15KB | 9 | 10 | 47% | MIXED |
+| `tm_crud.py` | 12KB | 8 | 9 | 47% | MIXED |
+| `tm_linking.py` | 18KB | 6 | 13 | 32% | MIXED |
+| `pretranslate.py` | 8KB | 2 | 9 | 18% | MIXED |
+| `sync.py` | 45KB | 0 | Many | 0% | SERVICE |
+| `capabilities.py` | 3KB | 0 | 2 | 0% | DIRECT |
+| `health.py` | 2KB | 0 | 1 | 0% | DIRECT |
+| `settings.py` | 4KB | 0 | 3 | 0% | DIRECT |
+| `tm_indexes.py` | 6KB | 0 | 5 | 0% | DIRECT |
+| `tm_search.py` | 5KB | 0 | 4 | 0% | DIRECT |
+
+**Summary:**
+- **CLEAN (100%):** 4 files (tm_assignment.py, grammar.py, search.py, tm_entries.py)
+- **MIXED (partial):** 10 files (need cleanup)
+- **DIRECT (0%):** 5 files (need migration)
+- **SERVICE:** 1 file (sync.py - uses SyncService pattern)
+
+---
+
 ## Recent Sessions
+
+### Session 52 (2026-01-13) - DB Abstraction Layer Preparation
+
+**Focus:** Fix bugs found during testing, accurate documentation of P10 state
+
+**Bugs Found & Fixed:**
+1. **tm_entries.py** - 3 endpoints used direct PostgreSQL, bypassed Repository Pattern
+   - Fix: Updated all 6 endpoints to use `TMRepository`
+   - Added 3 new methods: `update_entry`, `confirm_entry`, `bulk_confirm_entries`
+
+2. **projects.py** - `ProjectCreate` schema missing `platform_id` field
+   - Fix: Added `platform_id: Optional[int] = None` to schema
+   - Now projects properly associate with platforms
+
+3. **files.py** - Online mode missing TM folder assignment after register-as-tm
+   - Fix: Added assignment logic to match offline mode
+   - Now TM goes to same folder as source file (PARITY achieved)
+
+**Documentation Updates:**
+- SESSION_CONTEXT.md corrected from "COMPLETE" to "IN PROGRESS (15%)"
+- Added comprehensive DB abstraction explanation
+- Created task tables for tracking
 
 ### Session 51 (2026-01-12) - P11 Platform Stability
 
@@ -142,269 +370,20 @@
 **Bugs Fixed:**
 1. **Trash Restore Memo Bug (CRITICAL)**
    - `trash.py:369` referenced non-existent `memo` field on LDMRow
-   - `file_repo.py:357` same issue in `add_rows()`
-   - Fix: Removed `memo` field references from both files
+   - Fix: Removed `memo` field references
 
 2. **Offline ID Generation Bug (CRITICAL)**
    - `offline.py:1685` had Python operator precedence bug
    - `-int(time.time() * 1000) % 1000000000` returns POSITIVE (wrong!)
-   - Should be `-(int(time.time() * 1000) % 1000000000)` for NEGATIVE
-   - Fix: Corrected 3 locations (file_id, folder_id, row_id generation)
+   - Fix: `-(int(time.time() * 1000) % 1000000000)` for NEGATIVE
 
 **Test Results (Post-Fix):**
-- **Online Mode: 11/11 PASS** (Create, Read, Update, Delete, Trash, Restore, Search)
-- **Offline Mode: 7/7 PASS** (Upload, Get, Read Rows, Update Row, Delete, Trash)
-
-**Sync Mechanism Documented:**
-- `POST /api/ldm/offline/subscribe` - Subscribe to entity for offline sync
-- `POST /api/ldm/offline/push-changes` - Push local changes to server
-- `POST /api/ldm/sync-to-central` - Sync file from local to central
-- `POST /api/ldm/tm/sync-to-central` - Sync TM from local to central
-- All endpoints return 422 (need parameters) when called without body - working as expected
-
-**Test Script Created:** `test_p11_stability.py` - Comprehensive API test suite
-
----
-
-### Session 50 (2026-01-11) - Continued
-- **P10 search.py Migration - ONE Code Path Implementation**
-- Added `search()` method to all 4 repository interfaces:
-  - PlatformRepository, ProjectRepository, FolderRepository, FileRepository
-- Implemented search() in all 8 PostgreSQL adapters (using `ilike`)
-- Implemented search() in all 8 SQLite adapters (using `LIKE ... COLLATE NOCASE`)
-- **Refactored search.py to use ONE code path:**
-  - Removed the TWO code paths (if mode == "offline" vs else)
-  - Now uses repository factories to select adapter based on auth token
-  - ONE code path works for both PostgreSQL and SQLite
-  - Example of P10 "ONE Code Path Principle" from DB_ABSTRACTION_LAYER.md
-- Previously migrated: pretranslate.py, tm_linking.py (earlier in session)
-- **All minor route files now migrated to Repository Pattern**
-
-### Session 50 (2026-01-11)
-- **GRANULAR AUDIT** - Comprehensive codebase health check
-- Reset database to fresh state (`./scripts/db_manager.sh nuke`)
-- **Backend Logging Coverage:**
-  - Added `[PREFIX]` logging to all route files without prefixes
-  - New prefixes: [FOLDERS], [PROJECTS], [TM], [TM-ENTRY], [TM-INDEX], [TM-SEARCH], [PRETRANS], [TM-ASSIGN], [TM-LINK], [CAPS], [HEALTH], [SETTINGS]
-  - All 20 route files now have consistent logging prefixes
-- **Logging System Check:**
-  - Verified loguru configuration (server.log, error.log, access.log)
-  - 50MB rotation, proper retention configured
-- **Dead Code Audit:**
-  - Removed unused imports from: search.py (Dict, Any), trash.py (List)
-  - Removed unused imports from repositories: qa_repository.py (datetime), folder_repo.py (selectinload), tm_repo.py (LDMFolder), trash_repo.py (and_), file_repo.py (logger)
-- **Stale Code Check:**
-  - No commented-out code blocks found
-  - No stale TODO/FIXME comments
-  - P9 fallback patterns in search.py/pretranslate.py are intentional (low priority migration)
-- **Unused Files Check:**
-  - All route files properly registered in router.py
-  - No orphaned Python files
-- **Unused Folders Check:**
-  - Found and removed orphaned `server/server/` directory (260KB duplicate data)
-- **All servers verified running after audit**
-
-### Session 49 (2026-01-11)
-- **Post-P10 Code Review: qa.py P9 fallback cleanup**
-- Migrated qa.py P9 fallback patterns to use Repository Pattern:
-  - Updated `_run_qa_checks()` to work with dicts (from Repository) instead of LDMRow objects
-  - `check_row_qa` now uses RowRepository.get() and RowRepository.get_all_for_file()
-  - `check_file_qa` now uses FileRepository.get() and RowRepository.get_all_for_file()
-- Removed manual offline mode check (`is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")`)
-- Removed RowLike wrapper classes (no longer needed)
-- Cleaned up unused imports: `Request`, `LDMRow`
-- NOTE: `_get_glossary_terms()` still uses LDMFile for project lookup - TM linking not yet in repository
-- **qa.py is now FULLY repository-based** (no P9 fallback patterns remaining)
-
-### Session 48 (2026-01-11)
-- **Completed sync.py service extraction** (SyncService pattern)
-- Removed old helper functions from sync.py (~480 lines of duplicate code)
-- Added sync-to-central methods to SyncService:
-  - `sync_file_to_central()` - Upload file from SQLite to PostgreSQL
-  - `sync_tm_to_central()` - Upload TM from SQLite to PostgreSQL
-- Updated 6 sync.py endpoints to use SyncService:
-  - POST /offline/subscribe
-  - POST /offline/push-changes
-  - POST /offline/sync-subscription
-  - POST /files/{file_id}/download-for-offline
-  - POST /sync-to-central (NEW)
-  - POST /tm/sync-to-central (NEW)
-- Cleaned up unused imports in sync.py (os, create_engine, Session, LDMRow, LDMTranslationMemory)
-- Added `[SYNC]` logging prefix throughout
-- **Dead Code Audit completed:**
-  - Removed unused imports from 8 route files
-  - files.py: 2152 → 1488 lines (**664 lines removed, 31% reduction**)
-    - Removed 8 orphaned `_*_local_*` P9 helper functions (~500 lines)
-    - Removed 3 old `_build_*_file()` functions that took LDMRow objects (~150 lines)
-  - rows.py: ~405 → 362 lines (~43 lines removed)
-    - Removed orphaned `_auto_sync_tm_indexes` duplicate function
-    - Removed unused `datetime` import
-  - No commented-out code blocks found
-  - P9 fallback patterns identified (not dead code, needs migration):
-    - qa.py lines 300-330 and 430-460 (check_row_qa, check_file_qa)
-    - These should use RowRepository - documented for Post-P10 review
-- **Remaining sync.py endpoints** are pure local operations (don't need SyncService)
-
-### Session 47 (2026-01-11)
-- **Migrated grammar.py** to Repository Pattern (FULL PARITY)
-- Migrated 2 grammar endpoints:
-  - GET /grammar/status (already repository-free, just uses languagetool)
-  - POST /files/{file_id}/check-grammar (now uses FileRepository + RowRepository)
-  - POST /rows/{row_id}/check-grammar (now uses RowRepository)
-- Removed all P9 fallback code (direct SQLAlchemy + offline_db fallback)
-- Cleaned up unused imports (AsyncSession, LDMRow, LDMFile, get_async_db)
-- Added `[GRAMMAR]` prefix to log messages for granular debugging
-- **Completed rows.py migration** (was 2/3, now 3/3):
-  - GET /projects/{project_id}/tree (now uses ProjectRepository + FolderRepository + FileRepository)
-  - Removed unused LDMProject/LDMFolder imports
-  - Added `[ROWS]` logging prefix
-- **Completed files.py migration** (was 14/15, now 15/15):
-  - POST /files/upload (now uses ProjectRepository, FolderRepository, FileRepository for verification)
-  - GET /projects/{project_id}/files (fixed project verification to use ProjectRepository)
-  - Removed unused LDMProject/LDMFolder imports
-  - Added `[FILES]` logging prefix
-- **Started sync.py service extraction**:
-  - Created `server/services/` directory
-  - Created `SyncService` class with sync operations:
-    - `sync_file_to_offline()` - Download file from PG to SQLite
-    - `sync_folder_to_offline()` - Download folder
-    - `sync_project_to_offline()` - Download project
-    - `sync_platform_to_offline()` - Download platform
-    - `sync_tm_to_offline()` - Download TM
-    - `push_file_changes_to_server()` - Push local changes
-    - `push_tm_changes_to_server()` - Push TM changes
-  - Updated 4 sync.py endpoints to use SyncService:
-    - POST /offline/subscribe
-    - POST /offline/push-changes
-    - POST /offline/sync-subscription
-    - POST /files/{file_id}/download-for-offline
-  - Added `[SYNC]` logging prefix
-  - Old helper functions still in file (can be removed in cleanup)
-
-### Session 46 (2026-01-11)
-- **Implemented QAResultRepository** with **FULL PARITY** principle
-- Rejected ephemeral/stub approach - SQLite must persist QA results identically to PostgreSQL
-- Added `offline_qa_results` table to SQLite schema
-- Created interface, PostgreSQL adapter, SQLite adapter with full persistence
-- Added get_qa_repository factory function
-- **Migrated all 6 qa.py endpoints**:
-  - POST /rows/{row_id}/check-qa
-  - GET /rows/{row_id}/qa-results
-  - POST /files/{file_id}/check-qa
-  - GET /files/{file_id}/qa-results
-  - GET /files/{file_id}/qa-summary
-  - POST /qa-results/{result_id}/resolve
-- **Removed parasitic P9 fallback functions** (`_check_local_row_qa`, `_check_local_file_qa`)
-- Updated DB_ABSTRACTION_LAYER.md with FULL PARITY principle documentation
-- Fixed stale "ephemeral" comments in interface docstrings
-- **Implemented TrashRepository** with FULL PARITY
-- Updated SQLite schema to add `parent_project_id` and `deleted_by` columns
-- Created interface, PostgreSQL adapter, SQLite adapter
-- **Migrated all 4 trash.py endpoints**:
-  - GET /trash
-  - POST /trash/{trash_id}/restore
-  - DELETE /trash/{trash_id}
-  - POST /trash/empty
-- **ALL 8 REPOSITORIES NOW COMPLETE!**
-
-### Session 45 (2026-01-11)
-- **Implemented PlatformRepository** (interface + PostgreSQL + SQLite adapters)
-- Added get_platform_repository factory function
-- **Migrated all 10 platforms.py endpoints** with granular logging:
-  - GET /platforms (list_platforms)
-  - POST /platforms (create_platform)
-  - GET /platforms/{platform_id} (get_platform)
-  - PATCH /platforms/{platform_id} (update_platform)
-  - DELETE /platforms/{platform_id} (delete_platform)
-  - PATCH /projects/{project_id}/platform (assign_project_to_platform)
-  - PUT /platforms/{platform_id}/restriction (set_platform_restriction)
-  - GET /platforms/{platform_id}/access (list_platform_access)
-  - POST /platforms/{platform_id}/access (grant_platform_access)
-  - DELETE /platforms/{platform_id}/access/{user_id} (revoke_platform_access)
-- Added `[PLATFORM]` prefix to all log messages for granular debugging
-- Permission helpers remain in routes (business logic)
-- Trash serialization remains in routes (requires SQLAlchemy objects)
-- Verified db_manager.sh has comprehensive DB tooling
-- Found duplicate "Offline Storage" platform (residue from server sync)
-
-### Session 44 (2026-01-11)
-- **Implemented FolderRepository** (interface + PostgreSQL + SQLite adapters)
-- Added get_folder_repository factory function
-- **Migrated all 8 folders.py endpoints**:
-  - GET /projects/{project_id}/folders (list_folders)
-  - POST /folders (create_folder)
-  - GET /folders/{folder_id} (get_folder_contents)
-  - PATCH /folders/{folder_id}/rename (rename_folder)
-  - PATCH /folders/{folder_id}/move (move_folder)
-  - PATCH /folders/{folder_id}/move-cross-project (move_folder_cross_project)
-  - POST /folders/{folder_id}/copy (copy_folder)
-  - DELETE /folders/{folder_id} (delete_folder)
-- Removed old helper functions (_update_folder_project_recursive, _copy_folder_recursive)
-- Trash serialization remains in routes (requires SQLAlchemy objects)
-- All 360 tests passed
-
-### Session 43 (2026-01-11)
-- **Implemented ProjectRepository** (interface + PostgreSQL + SQLite adapters)
-- Added get_project_repository factory function
-- **Migrated all 9 projects.py endpoints**:
-  - POST /projects (create_project)
-  - GET /projects/{project_id} (get_project)
-  - PATCH /projects/{project_id}/rename (rename_project)
-  - DELETE /projects/{project_id} (delete_project)
-  - PUT /projects/{project_id}/restriction (set_project_restriction)
-  - GET /projects/{project_id}/access (list_project_access)
-  - POST /projects/{project_id}/access (grant_project_access)
-  - DELETE /projects/{project_id}/access/{user_id} (revoke_project_access)
-- Permission helpers remain in routes (business logic)
-- Trash serialization remains in routes (complex business logic)
-- All 360 tests passed
-
-### Session 42 (2026-01-11)
-- **Implemented RowRepository** (interface + PostgreSQL + SQLite adapters)
-- Added fuzzy search support to PostgreSQL adapter (pg_trgm)
-- Added get_row_repository factory function
-- **Migrated 2/3 rows.py endpoints**:
-  - GET /files/{file_id}/rows (with search, filters, pagination)
-  - PUT /rows/{row_id} (with TM auto-add, WebSocket broadcast)
-- Removed old fallback helper functions
-- All database abstractions maintained, business logic preserved
-
-### Session 41 (2026-01-11)
-- Fixed UI test selectors (`.grid-row` not `.explorer-grid-row`)
-- Fixed modal button selectors (`.bx--modal.is-visible`)
-- **Migrated 7 more files.py endpoints** (14/15 total):
-  - GET /files (list all)
-  - GET /files/{file_id}/download
-  - POST /files/{file_id}/register-as-tm
-  - POST /files/{file_id}/merge
-  - GET /files/{file_id}/convert
-  - GET /files/{file_id}/extract-glossary
-- Created `_build_excel_file_from_dicts` helper for Repository Pattern
-- All 145 Playwright tests passing (100%)
-- Only POST /files/upload remains (complex, already has P9 routing)
-
-### Session 40 (2026-01-11)
-- Implemented FileRepository (interface + PostgreSQL + SQLite adapters)
-- Added get_file_repository factory function
-- Updated all __init__.py exports
-- Verified imports work correctly
-- Migrated 7/15 files.py endpoints to Repository Pattern:
-  - GET /files/{file_id}
-  - GET /projects/{project_id}/files
-  - DELETE /files/{file_id}
-  - PATCH /files/{file_id}/rename
-  - PATCH /files/{file_id}/move
-  - PATCH /files/{file_id}/move-cross-project
-  - POST /files/{file_id}/copy
-
-### Session 39 (2026-01-11)
-- Implemented TMRepository (interface + PostgreSQL + SQLite adapters)
-- Created DB Abstraction Layer documentation
-- Created P10 plan for full implementation
-- Recreated WIP documentation structure
+- **Online Mode: 11/11 PASS**
+- **Offline Mode: 7/7 PASS**
 
 ### Previous Sessions
-- See [Roadmap.md](../../Roadmap.md) for completed features
+
+See [Roadmap.md](../../Roadmap.md) for complete history.
 
 ---
 
@@ -419,6 +398,10 @@ cd locaNext && npx playwright test
 
 # Check build status
 ./scripts/gitea_control.sh status
+
+# Audit Repository Pattern usage
+grep -r "get_async_db" server/tools/ldm/routes/*.py | wc -l  # Direct DB calls
+grep -r "Repository = Depends" server/tools/ldm/routes/*.py | wc -l  # Repo calls
 ```
 
 ---

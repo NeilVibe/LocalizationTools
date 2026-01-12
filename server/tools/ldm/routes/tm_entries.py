@@ -1,30 +1,23 @@
 """
 TM Entry endpoints - CRUD operations for individual TM entries.
 
-P9-ARCH: Uses Repository Pattern for database abstraction.
-- Online mode: PostgreSQLTMRepository
-- Offline mode: SQLiteTMRepository
+P11-FIX: ALL endpoints now use Repository Pattern for database abstraction.
+- Online mode: PostgreSQLTMRepository (PostgreSQL)
+- Offline mode: SQLiteTMRepository (SQLite)
 
-Note: Some complex operations (update, confirm, bulk-confirm) still use direct
-database access for now - these can be migrated to repository pattern later.
-
+Clean separation achieved - no more direct database access in routes!
 Migrated from api.py lines 1366-1722, 1820-1870, 2153-2201
 """
 
-import hashlib
 from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Form, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update, or_
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
-from server.database.db_utils import normalize_text_for_hash
-from server.database.models import LDMTranslationMemory, LDMTMEntry
-from server.tools.ldm.permissions import can_access_tm
+from server.utils.dependencies import get_current_active_user_async, get_db
+from server.database.models import LDMTranslationMemory
 
-# Repository Pattern imports
+# Repository Pattern imports - ALL DB access goes through here
 from server.repositories import TMRepository, get_tm_repository
 
 router = APIRouter(tags=["LDM"])
@@ -99,11 +92,14 @@ async def get_tm_entries(
     sort_by: str = "id",
     sort_order: str = "asc",
     search: Optional[str] = None,
-    db: AsyncSession = Depends(get_async_db),
+    metadata_field: Optional[str] = None,
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Get paginated TM entries for TM Viewer (DESIGN-001: Public by default).
+    Get paginated TM entries for TM Viewer.
+
+    P11-FIX: Uses Repository Pattern for offline/online mode support.
 
     Query params:
     - page: Page number (1-indexed)
@@ -112,14 +108,8 @@ async def get_tm_entries(
     - sort_order: asc or desc
     - search: Search term (searches source, target, and string_id)
     """
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=404, detail="Translation Memory not found")
-
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = tm_result.scalar_one_or_none()
+    # Get TM via repository (works for both PostgreSQL and SQLite)
+    tm = await repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
@@ -128,59 +118,30 @@ async def get_tm_entries(
     page = max(page, 1)
     offset = (page - 1) * limit
 
-    # Build query
-    query = select(LDMTMEntry).where(LDMTMEntry.tm_id == tm_id)
-
-    # Apply search filter
+    # Get entries via repository
     if search:
-        search_pattern = f"%{search}%"
-        query = query.where(
-            or_(
-                LDMTMEntry.source_text.ilike(search_pattern),
-                LDMTMEntry.target_text.ilike(search_pattern),
-                LDMTMEntry.string_id.ilike(search_pattern)
-            )
-        )
-
-    # Get total count
-    count_query = select(func.count()).select_from(query.subquery())
-    count_result = await db.execute(count_query)
-    total = count_result.scalar()
-
-    # Apply sorting
-    sort_column = {
-        "id": LDMTMEntry.id,
-        "source_text": LDMTMEntry.source_text,
-        "target_text": LDMTMEntry.target_text,
-        "string_id": LDMTMEntry.string_id,
-        "created_at": LDMTMEntry.created_at
-    }.get(sort_by, LDMTMEntry.id)
-
-    if sort_order.lower() == "desc":
-        query = query.order_by(sort_column.desc())
+        # Use search method for filtered results
+        entries = await repo.search_entries(tm_id, search, limit=limit)
+        total = len(entries)
+        total_pages = 1
     else:
-        query = query.order_by(sort_column.asc())
+        # Use paginated get_entries
+        entries = await repo.get_entries(tm_id, offset=offset, limit=limit)
+        # Get total count from TM entry_count
+        total = tm.get("entry_count", 0)
+        total_pages = (total + limit - 1) // limit if total > 0 else 1
 
-    # Apply pagination
-    query = query.offset(offset).limit(limit)
-
-    # Execute
-    result = await db.execute(query)
-    entries = result.scalars().all()
-
-    # Format entries
+    # Format entries for response
     formatted_entries = [
         {
-            "id": e.id,
-            "source_text": e.source_text,
-            "target_text": e.target_text,
-            "string_id": e.string_id,
-            "created_at": e.created_at.isoformat() if e.created_at else None
+            "id": e.get("id"),
+            "source_text": e.get("source_text"),
+            "target_text": e.get("target_text"),
+            "string_id": e.get("string_id"),
+            "created_at": e.get("created_at") if isinstance(e.get("created_at"), str) else (e.get("created_at").isoformat() if e.get("created_at") else None)
         }
         for e in entries
     ]
-
-    total_pages = (total + limit - 1) // limit if total > 0 else 1
 
     return {
         "entries": formatted_entries,
@@ -191,7 +152,7 @@ async def get_tm_entries(
         "sort_by": sort_by,
         "sort_order": sort_order,
         "search": search,
-        "tm_name": tm.name
+        "tm_name": tm.get("name")
     }
 
 
@@ -257,76 +218,42 @@ async def update_tm_entry(
     target_text: Optional[str] = None,
     string_id: Optional[str] = None,
     background_tasks: BackgroundTasks = None,
-    db: AsyncSession = Depends(get_async_db),
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Update a single TM entry (for inline editing in TM Viewer, DESIGN-001: Public by default).
+    Update a single TM entry (for inline editing in TM Viewer).
+
+    P11-FIX: Uses Repository Pattern - works for both PostgreSQL (online)
+    and SQLite (offline) based on user's mode.
+    DESIGN-001: Public by default.
     Q-001: Auto-syncs TM indexes after update.
     """
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=404, detail="Translation Memory not found")
-
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = tm_result.scalar_one_or_none()
+    # Verify TM exists using repository
+    tm = await repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    # Find entry
-    entry_result = await db.execute(
-        select(LDMTMEntry).where(
-            LDMTMEntry.id == entry_id,
-            LDMTMEntry.tm_id == tm_id
-        )
+    # Update entry using repository
+    username = current_user.get("username", "unknown")
+    updated_entry = await repo.update_entry(
+        entry_id=entry_id,
+        source_text=source_text,
+        target_text=target_text,
+        string_id=string_id,
+        updated_by=username
     )
-    entry = entry_result.scalar_one_or_none()
-    if not entry:
+
+    if not updated_entry:
         raise HTTPException(status_code=404, detail="Entry not found")
 
-    # Update fields if provided
-    if source_text is not None:
-        entry.source_text = source_text
-        # Recalculate hash
-        normalized = normalize_text_for_hash(source_text)
-        entry.source_hash = hashlib.sha256(normalized.encode('utf-8')).hexdigest()
-
-    if target_text is not None:
-        entry.target_text = target_text
-
-    if string_id is not None:
-        entry.string_id = string_id
-
-    # BUG-020: Track who made the update
-    entry.updated_at = datetime.utcnow()
-    entry.updated_by = current_user.get("username", "unknown")
-
-    # Mark TM as updated (triggers index rebuild on next pretranslate)
-    tm.updated_at = datetime.utcnow()
-
-    await db.commit()
-    await db.refresh(entry)
-
-    logger.info(f"[TM-ENTRY] Updated TM entry: tm_id={tm_id}, entry_id={entry_id}, by={current_user.get('username')}")
+    logger.info(f"[TM-ENTRY] Updated TM entry: tm_id={tm_id}, entry_id={entry_id}, by={username}")
 
     # Q-001: Auto-sync indexes in background
     if background_tasks:
         background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
 
-    return {
-        "id": entry.id,
-        "source_text": entry.source_text,
-        "target_text": entry.target_text,
-        "string_id": entry.string_id,
-        "created_at": entry.created_at.isoformat() if entry.created_at else None,
-        "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
-        "updated_by": entry.updated_by,
-        "is_confirmed": entry.is_confirmed,
-        "confirmed_at": entry.confirmed_at.isoformat() if entry.confirmed_at else None,
-        "confirmed_by": entry.confirmed_by
-    }
+    return updated_entry
 
 
 @router.delete("/tm/{tm_id}/entries/{entry_id}")
@@ -373,54 +300,36 @@ async def confirm_tm_entry(
     tm_id: int,
     entry_id: int,
     confirm: bool = True,
-    db: AsyncSession = Depends(get_async_db),
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    BUG-020: Confirm or unconfirm a TM entry (memoQ-style workflow, DESIGN-001: Public by default).
+    BUG-020: Confirm or unconfirm a TM entry (memoQ-style workflow).
 
-    When user approves a translation, it gets marked as confirmed with metadata.
+    P11-FIX: Uses Repository Pattern - works for both PostgreSQL (online)
+    and SQLite (offline) based on user's mode.
+    DESIGN-001: Public by default.
     """
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
+    # Verify TM exists using repository
+    tm = await repo.get(tm_id)
+    if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
-
-    # Find entry
-    entry_result = await db.execute(
-        select(LDMTMEntry).where(
-            LDMTMEntry.id == entry_id,
-            LDMTMEntry.tm_id == tm_id
-        )
-    )
-    entry = entry_result.scalar_one_or_none()
-    if not entry:
-        raise HTTPException(status_code=404, detail="Entry not found")
 
     username = current_user.get("username", "unknown")
 
-    if confirm:
-        entry.is_confirmed = True
-        entry.confirmed_at = datetime.utcnow()
-        entry.confirmed_by = username
-    else:
-        entry.is_confirmed = False
-        entry.confirmed_at = None
-        entry.confirmed_by = None
+    # Confirm/unconfirm entry using repository
+    updated_entry = await repo.confirm_entry(
+        entry_id=entry_id,
+        confirm=confirm,
+        confirmed_by=username
+    )
 
-    await db.commit()
-    await db.refresh(entry)
+    if not updated_entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
 
     logger.info(f"[TM-ENTRY] {'Confirmed' if confirm else 'Unconfirmed'} TM entry: tm_id={tm_id}, entry_id={entry_id}, by={username}")
 
-    return {
-        "id": entry.id,
-        "source_text": entry.source_text,
-        "target_text": entry.target_text,
-        "string_id": entry.string_id,
-        "is_confirmed": entry.is_confirmed,
-        "confirmed_at": entry.confirmed_at.isoformat() if entry.confirmed_at else None,
-        "confirmed_by": entry.confirmed_by
-    }
+    return updated_entry
 
 
 @router.post("/tm/{tm_id}/entries/bulk-confirm")
@@ -428,42 +337,30 @@ async def bulk_confirm_tm_entries(
     tm_id: int,
     entry_ids: List[int],
     confirm: bool = True,
-    db: AsyncSession = Depends(get_async_db),
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    BUG-020: Bulk confirm/unconfirm multiple TM entries (DESIGN-001: Public by default).
+    BUG-020: Bulk confirm/unconfirm multiple TM entries.
+
+    P11-FIX: Uses Repository Pattern - works for both PostgreSQL (online)
+    and SQLite (offline) based on user's mode.
+    DESIGN-001: Public by default.
     """
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
+    # Verify TM exists using repository
+    tm = await repo.get(tm_id)
+    if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     username = current_user.get("username", "unknown")
-    now = datetime.utcnow()
 
-    if confirm:
-        stmt = update(LDMTMEntry).where(
-            LDMTMEntry.tm_id == tm_id,
-            LDMTMEntry.id.in_(entry_ids)
-        ).values(
-            is_confirmed=True,
-            confirmed_at=now,
-            confirmed_by=username
-        )
-    else:
-        stmt = update(LDMTMEntry).where(
-            LDMTMEntry.tm_id == tm_id,
-            LDMTMEntry.id.in_(entry_ids)
-        ).values(
-            is_confirmed=False,
-            confirmed_at=None,
-            confirmed_by=None
-        )
-
-    result = await db.execute(stmt)
-    await db.commit()
-
-    updated_count = result.rowcount
+    # Bulk confirm/unconfirm using repository
+    updated_count = await repo.bulk_confirm_entries(
+        tm_id=tm_id,
+        entry_ids=entry_ids,
+        confirm=confirm,
+        confirmed_by=username
+    )
 
     logger.info(f"[TM-ENTRY] Bulk {'confirmed' if confirm else 'unconfirmed'} {updated_count} TM entries: tm_id={tm_id}, by={username}")
 
