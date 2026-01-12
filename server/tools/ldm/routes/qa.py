@@ -18,16 +18,15 @@ Uses QAResultRepository for database operations (PostgreSQL/SQLite)
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import LDMFile, User, LDMActiveTM, LDMTMEntry
+from server.utils.dependencies import get_current_active_user_async
+from server.database.models import User
 from server.repositories import (
     QAResultRepository, get_qa_repository,
     RowRepository, get_row_repository,
-    FileRepository, get_file_repository
+    FileRepository, get_file_repository,
+    TMRepository, get_tm_repository
 )
 from server.tools.ldm.schemas import (
     QACheckRequest,
@@ -58,55 +57,39 @@ router = APIRouter(tags=["LDM-QA"])
 # =============================================================================
 
 async def _get_glossary_terms(
-    db: AsyncSession,
     file_id: int,
+    tm_repo: TMRepository,
     max_length: int = 20
 ) -> List[tuple]:
     """
-    Get glossary terms from the project's linked TM.
+    Get glossary terms from the file's linked TMs.
+
+    P10: Uses Repository Pattern - works with both PostgreSQL and SQLite.
 
     Uses short TM entries (source < max_length chars) as glossary.
 
     Args:
-        db: Database session
-        file_id: File ID to get project from
+        file_id: File ID to get active TMs for
+        tm_repo: TM Repository (handles PostgreSQL/SQLite automatically)
         max_length: Max source length for glossary terms
 
     Returns:
         List of (source, target) tuples
     """
-    # Get file to find project_id
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    file = result.scalar_one_or_none()
-    if not file:
+    # Get active TMs for this file (inherits from folder/project/platform)
+    active_tms = await tm_repo.get_active_for_file(file_id)
+
+    if not active_tms:
         return []
 
-    # Get linked TMs for project
-    result = await db.execute(
-        select(LDMActiveTM.tm_id)
-        .where(LDMActiveTM.project_id == file.project_id)
-        .order_by(LDMActiveTM.priority)
-    )
-    tm_ids = [row[0] for row in result.all()]
+    # Extract TM IDs
+    tm_ids = [tm.get("id") for tm in active_tms if tm.get("id")]
 
     if not tm_ids:
         return []
 
-    # Get short TM entries as glossary
-    result = await db.execute(
-        select(LDMTMEntry.source, LDMTMEntry.target)
-        .where(
-            LDMTMEntry.tm_id.in_(tm_ids),
-            func.length(LDMTMEntry.source) <= max_length,
-            LDMTMEntry.source.isnot(None),
-            LDMTMEntry.target.isnot(None)
-        )
-        .limit(1000)  # Limit to prevent performance issues
-    )
-
-    return [(row[0], row[1]) for row in result.all()]
+    # Get glossary terms using repository
+    return await tm_repo.get_glossary_terms(tm_ids, max_length=max_length)
 
 
 async def _run_qa_checks(
@@ -296,9 +279,9 @@ async def _save_qa_results(
 async def check_row_qa(
     row_id: int,
     request: QACheckRequest,
-    db: AsyncSession = Depends(get_async_db),
     qa_repo: QAResultRepository = Depends(get_qa_repository),
     row_repo: RowRepository = Depends(get_row_repository),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: User = Depends(get_current_active_user_async)
 ):
     """
@@ -321,11 +304,10 @@ async def check_row_qa(
     if "line" in request.checks:
         file_rows = await row_repo.get_all_for_file(file_id)
 
-    # Get glossary terms for term check
-    # NOTE: Glossary terms still use PostgreSQL - TM linking not yet in repository
+    # Get glossary terms for term check (P10: Now uses Repository Pattern)
     glossary_terms = None
     if "term" in request.checks:
-        glossary_terms = await _get_glossary_terms(db, file_id)
+        glossary_terms = await _get_glossary_terms(file_id, tm_repo)
 
     # Run checks
     issues = await _run_qa_checks(row, request.checks, file_rows, glossary_terms)
@@ -397,10 +379,10 @@ async def get_row_qa_results(
 async def check_file_qa(
     file_id: int,
     request: QACheckRequest,
-    db: AsyncSession = Depends(get_async_db),
     qa_repo: QAResultRepository = Depends(get_qa_repository),
     file_repo: FileRepository = Depends(get_file_repository),
     row_repo: RowRepository = Depends(get_row_repository),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: User = Depends(get_current_active_user_async)
 ):
     """
@@ -419,11 +401,10 @@ async def check_file_qa(
     # Get all rows using repository
     rows = await row_repo.get_all_for_file(file_id)
 
-    # Get glossary terms for term check (once for all rows)
-    # NOTE: Glossary terms still use PostgreSQL - TM linking not yet in repository
+    # Get glossary terms for term check (P10: Now uses Repository Pattern)
     glossary_terms = None
     if "term" in request.checks:
-        glossary_terms = await _get_glossary_terms(db, file_id)
+        glossary_terms = await _get_glossary_terms(file_id, tm_repo)
 
     # Summary counters
     summary = {
