@@ -189,20 +189,14 @@ def iter_xml_files(root: Path) -> Iterable[Path]:
 # DATA STRUCTURES
 # ──────────────────────────────────────────────────────────────────────
 @dataclass
-class KnowledgeChild:
-    """Nested child inside KnowledgeInfo (sub-skill unlocked at certain level)"""
-    strkey: str
-    name: str
-    desc: str
-    children: List["KnowledgeChild"] = field(default_factory=list)
-
-@dataclass
 class KnowledgeNode:
-    """KnowledgeInfo node linked from SkillInfo via LearnKnowledgeKey"""
+    """KnowledgeInfo node - can be parent or child"""
     strkey: str
     name: str
     desc: str
-    children: List[KnowledgeChild] = field(default_factory=list)
+    parent_key: str = ""  # Reference to parent KnowledgeInfo (from LevelData.KnowledgeList)
+    unlock_level: int = 0  # Level at which this unlocks (from KnowledgeList like "Knowledge_X(2)")
+    children: List["KnowledgeNode"] = field(default_factory=list)
 
 @dataclass
 class SkillItem:
@@ -220,12 +214,20 @@ class SkillItem:
 # ──────────────────────────────────────────────────────────────────────
 # EXTRACTION
 # ──────────────────────────────────────────────────────────────────────
+# Regex to parse KnowledgeList like "Knowledge_UnArmedMastery_I(2)"
+_knowledge_list_re = re.compile(r'^([A-Za-z0-9_]+)\((\d+)\)$')
+
 def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, KnowledgeNode]]:
     """
     Scan StaticInfo folder for SkillInfo and KnowledgeInfo elements.
+
+    Knowledge parent-child relationships are determined by LevelData.KnowledgeList:
+    - KnowledgeList="Knowledge_UnArmedMastery_I(2)" means this knowledge
+      is a child of Knowledge_UnArmedMastery_I, unlocked at level 2
+
     Returns:
     - List of SkillItem
-    - Dict of KnowledgeNode by StrKey
+    - Dict of KnowledgeNode by StrKey (with children attached)
     """
     skills: List[SkillItem] = []
     knowledge_map: Dict[str, KnowledgeNode] = {}
@@ -233,32 +235,12 @@ def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, Knowled
 
     log.info("Scanning for Skill/Knowledge data in: %s", folder)
 
-    # First pass: collect all KnowledgeInfo
+    # First pass: collect all KnowledgeInfo (flat, with parent references)
     for path in sorted(iter_xml_files(folder)):
         root_el = parse_xml_file(path)
         if root_el is None:
             continue
 
-        def extract_knowledge_children(parent_el: ET._Element) -> List[KnowledgeChild]:
-            """Recursively extract nested KnowledgeInfo children"""
-            children: List[KnowledgeChild] = []
-            for child_el in parent_el:
-                if child_el.tag == "KnowledgeInfo":
-                    strkey = child_el.get("StrKey") or ""
-                    name = child_el.get("Name") or ""
-                    desc = child_el.get("Desc") or ""
-
-                    if name or desc:
-                        child_node = KnowledgeChild(
-                            strkey=strkey,
-                            name=name,
-                            desc=desc,
-                            children=extract_knowledge_children(child_el),
-                        )
-                        children.append(child_node)
-            return children
-
-        # Find all KnowledgeInfo elements
         for kn_el in root_el.iter("KnowledgeInfo"):
             strkey = kn_el.get("StrKey") or ""
             name = kn_el.get("Name") or ""
@@ -270,14 +252,42 @@ def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, Knowled
             if not name and not desc:
                 continue
 
+            # Check for parent reference in LevelData
+            parent_key = ""
+            unlock_level = 0
+            for level_data in kn_el.findall("LevelData"):
+                knowledge_list = level_data.get("KnowledgeList") or ""
+                if knowledge_list:
+                    # Parse "Knowledge_X(N)" format
+                    match = _knowledge_list_re.match(knowledge_list)
+                    if match:
+                        parent_key = match.group(1)
+                        unlock_level = int(match.group(2))
+                        break
+
             knowledge_map[strkey] = KnowledgeNode(
                 strkey=strkey,
                 name=name,
                 desc=desc,
-                children=extract_knowledge_children(kn_el),
+                parent_key=parent_key,
+                unlock_level=unlock_level,
             )
 
     log.info("Found %d KnowledgeInfo entries", len(knowledge_map))
+
+    # Build parent-child relationships
+    for kn in knowledge_map.values():
+        if kn.parent_key and kn.parent_key in knowledge_map:
+            parent = knowledge_map[kn.parent_key]
+            parent.children.append(kn)
+
+    # Sort children by unlock_level
+    for kn in knowledge_map.values():
+        kn.children.sort(key=lambda c: c.unlock_level)
+
+    # Count parents (nodes with children)
+    parents_with_children = sum(1 for kn in knowledge_map.values() if kn.children)
+    log.info("Built parent-child relationships: %d parents with children", parents_with_children)
 
     # Second pass: collect SkillInfo from ONLY skillinfo_pc.staticinfo.xml
     # This restricts output to player character skills only
@@ -361,11 +371,11 @@ def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, Knowled
 # (depth, text, needs_translation)
 RowItem = Tuple[int, str, bool]
 
-def emit_knowledge_child_rows(child: KnowledgeChild, depth: int) -> List[RowItem]:
-    """Recursively emit rows for knowledge children (sub-skills)"""
+def emit_knowledge_child_rows(child: KnowledgeNode, depth: int) -> List[RowItem]:
+    """Emit rows for a knowledge child (sub-skill unlocked at certain level)"""
     rows: List[RowItem] = []
 
-    # Child name
+    # Child name (with unlock level indicator)
     if child.name:
         rows.append((depth, child.name, True))
 
@@ -373,14 +383,22 @@ def emit_knowledge_child_rows(child: KnowledgeChild, depth: int) -> List[RowItem
     if child.desc:
         rows.append((depth + 1, child.desc, True))
 
-    # Nested children
+    # Recursively emit nested children (children of children)
     for nested in child.children:
         rows.extend(emit_knowledge_child_rows(nested, depth + 1))
 
     return rows
 
 def emit_skill_rows(skill: SkillItem) -> List[RowItem]:
-    """Generate rows for a single skill with proper nesting."""
+    """
+    Generate rows for a single skill with proper nesting.
+
+    Structure:
+    - Depth 0: SkillName (Gold - parent skill)
+    - Depth 1: Parent description (Light blue)
+    - Depth 1: Child knowledge Name (Light blue - sub-skills)
+    - Depth 2: Child knowledge Desc (Light green)
+    """
     rows: List[RowItem] = []
 
     # Depth 0: SkillName (parent)
@@ -388,20 +406,18 @@ def emit_skill_rows(skill: SkillItem) -> List[RowItem]:
         rows.append((0, skill.skill_name, True))
 
     if skill.knowledge and not skill.use_own_desc:
-        # Has linked KnowledgeInfo - use its Name and Desc
+        # Has linked KnowledgeInfo
         kn = skill.knowledge
 
-        # Depth 1: Knowledge Name
-        if kn.name:
-            rows.append((1, kn.name, True))
-
-        # Depth 2: Knowledge Desc
+        # Depth 1: Parent Knowledge Desc (or Skill Desc if different)
         if kn.desc:
-            rows.append((2, kn.desc, True))
+            rows.append((1, kn.desc, True))
+        elif skill.skill_desc:
+            rows.append((1, skill.skill_desc, True))
 
-        # Depth 3+: Nested children (sub-skills)
+        # Emit children (sub-skills) - these are other KnowledgeInfo that reference this one
         for child in kn.children:
-            rows.extend(emit_knowledge_child_rows(child, 3))
+            rows.extend(emit_knowledge_child_rows(child, 1))
     else:
         # No knowledge link or lost priority - use SkillDesc directly
         if skill.skill_desc:
