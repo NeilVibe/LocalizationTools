@@ -353,6 +353,12 @@ class SQLiteTMRepository(TMRepository):
 
             tree_platforms = []
             for p in platforms:
+                # P9-FIX: Skip duplicate "Offline Storage" platforms synced from PostgreSQL
+                # The real Offline Storage has id=-1 (well-known SQLite ID)
+                # Any other "Offline Storage" with positive ID was synced from PostgreSQL
+                if p["name"] == "Offline Storage" and p["id"] != -1:
+                    logger.debug(f"[TM-REPO] Skipping synced Offline Storage platform (id={p['id']})")
+                    continue
                 platform_dict = {
                     "id": p["id"],
                     "name": p["name"],
