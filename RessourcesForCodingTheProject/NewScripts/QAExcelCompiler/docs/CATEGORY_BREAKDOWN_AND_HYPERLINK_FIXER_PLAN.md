@@ -418,18 +418,19 @@ Processing: Quest [EN] (2 folders)
 
 ## Summary of Changes
 
-### TOTAL Tab Final Structure (6 Tables, No Charts)
+### TOTAL Tab Final Structure (7 Tables, No Charts)
 
 ```
 ┌─────────────────────────────────────────┐
 │ 1. EN TESTER STATS                      │
-│    - Per-user aggregated stats          │
+│    - Columns: User, Done, Issues,       │
+│      No Issue, Blocked + Manager cols   │
 │    - SUBTOTAL row                       │
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
 │ 2. CN TESTER STATS                      │
-│    - Per-user aggregated stats          │
+│    - Same columns as EN                 │
 │    - SUBTOTAL row                       │
 └─────────────────────────────────────────┘
            ↓
@@ -443,7 +444,6 @@ Processing: Quest [EN] (2 folders)
 │    - Per-category Done% + Word count    │
 │    - Blue title bar                     │
 │    - Only counts DONE rows              │
-│    - TOTAL row                          │
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
@@ -451,17 +451,26 @@ Processing: Quest [EN] (2 folders)
 │    - Per-category Done% + Char count    │
 │    - Red title bar                      │
 │    - Only counts DONE rows              │
-│    - TOTAL row                          │
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
-│ 6. RANKING TABLE                        │
-│    - Score = 70% Completion + 30% Issues│
+│ 6. EN RANKING                           │
+│    - Score = 70% Done + 30% ActualIssues│
+│    - SCALAR values, not percentages     │
 │    - Gold/Silver/Bronze top 3           │
-│    - Sorted by score (desc)             │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ 7. CN RANKING                           │
+│    - Same scoring as EN                 │
+│    - Separate medals per language       │
 └─────────────────────────────────────────┘
 
-(Charts REMOVED from both DAILY and TOTAL tabs)
+Notes:
+- Charts REMOVED (too confusing)
+- Completion% removed from stats tables (already in Category Breakdown)
+- "Total" renamed to "Done" for consistency
+- Ranking uses SCALAR values (Done count + Actual Issues count)
 ```
 
 ---
