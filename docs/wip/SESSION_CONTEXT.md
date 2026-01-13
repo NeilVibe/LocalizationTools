@@ -29,7 +29,7 @@
 
 ### P10: DB Abstraction Layer - IN PROGRESS
 
-**Status:** ACTIVE MIGRATION | **Progress:** 50% files fully migrated (10/20 route files CLEAN)
+**Status:** ACTIVE MIGRATION | **Progress:** 55% files fully migrated (11/20 route files CLEAN)
 
 **Goal:** Transform entire backend from inconsistent database patterns to unified Repository Pattern for FULL OFFLINE/ONLINE PARITY.
 
@@ -320,11 +320,11 @@ NOT "delete everything and hope for the best"
 | `tm_crud.py` | 3 | 0 | **CLEAN** | P10-PERM-001 only |
 | `tm_entries.py` | 6 | 0 | **CLEAN** | Fully migrated (Session 52) |
 | `tm_linking.py` | 8 | 0 | **CLEAN** | Fully migrated (Session 53) |
+| `rows.py` | 7 | 0 | **CLEAN** | Fully migrated (Session 53) |
 | `files.py` | 18 | 15 | MIXED | Permission checks + CRUD |
 | `folders.py` | 8 | 9 | MIXED | Permission checks + CRUD |
 | `platforms.py` | 9 | 11 | MIXED | Permission checks + CRUD |
 | `projects.py` | 8 | 10 | MIXED | Permission checks + CRUD |
-| `rows.py` | 5 | 4 | MIXED | Permission checks + CRUD |
 | `trash.py` | 4 | 3 | MIXED | restore helpers + CRUD |
 | `sync.py` | 0 | 7 | SERVICE | SyncService pattern |
 | `capabilities.py` | 0 | 5 | UTILITY | User capability management |
@@ -332,8 +332,8 @@ NOT "delete everything and hope for the best"
 | `tm_search.py` | 0 | 4 | UTILITY | FAISS search |
 
 **Summary:**
-- **CLEAN (100%):** 10 files (no `from sqlalchemy import select`, no `await db.execute`)
-- **MIXED:** 6 files (have `from sqlalchemy import select` for CRUD, not just permission checks)
+- **CLEAN (100%):** 11 files (no `from sqlalchemy import select`, no `await db.execute`)
+- **MIXED:** 5 files (have `from sqlalchemy import select` for CRUD, not just permission checks)
 - **SERVICE:** 1 file (sync.py - uses SyncService pattern)
 - **UTILITY:** 3 files (capabilities, tm_indexes, tm_search - specialized operations)
 
@@ -422,10 +422,18 @@ Future work could create a `PermissionRepository` for full offline parity.
    - Not found detection ✓ (returns 404)
 
 **Current State:**
-- 10 route files CLEAN (100% Repository): grammar, health, pretranslate, qa, search, settings, tm_assignment, tm_crud, tm_entries, tm_linking
-- 6 route files MIXED (have actual CRUD operations with direct SQLAlchemy)
+- 11 route files CLEAN (100% Repository): grammar, health, pretranslate, qa, rows, search, settings, tm_assignment, tm_crud, tm_entries, tm_linking
+- 5 route files MIXED (have actual CRUD operations with direct SQLAlchemy)
 - 4 route files SPECIAL (sync, capabilities, tm_indexes, tm_search)
 - All 8 Repositories fully implemented
+
+**rows.py Migration (100% COMPLETE)**
+1. Replaced `_get_project_linked_tm()` direct SQLAlchemy with `tm_repo.get_linked_for_project()`
+2. Replaced direct LDMFile query in `list_rows` with `file_repo.get()`
+3. Replaced direct LDMRow query in `update_row` with `repo.get_with_file()`
+4. Added `tm_repo` and `file_repo` dependencies to endpoints
+5. Removed all sqlalchemy imports and model imports
+6. Tested: `list_rows` ✓, `update_row` ✓
 
 ### Session 51 (2026-01-12) - P11 Platform Stability
 
