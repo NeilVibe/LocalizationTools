@@ -2,7 +2,11 @@
 File endpoints - Upload, download, list, preview files.
 
 Migrated from api.py lines 392-658, 2448-2779
-P10: DB Abstraction Layer - Uses repositories for FULL PARITY.
+
+P10-REPO: Migrated to Repository Pattern (2026-01-13)
+- All endpoint CRUD operations use Repository Pattern
+- Trash serialization uses repository-based helpers
+- Note: upload_file uses sync context (LDMFile, LDMRow) for progress tracking - online-only path
 """
 
 import asyncio
@@ -11,10 +15,10 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
+# P10-REPO: LDMFile, LDMRow used only in upload_file sync context (online-only)
 from server.database.models import LDMFile, LDMRow
 from server.tools.ldm.schemas import FileResponse, FileToTMRequest
 from server.tools.ldm.permissions import can_access_project, can_access_file
@@ -518,6 +522,42 @@ async def rename_file(
     return {"success": True, "file_id": file_id, "name": updated_file["name"]}
 
 
+# =============================================================================
+# Trash Serialization Helper (P10-REPO: Repository-based)
+# =============================================================================
+
+async def _serialize_file_for_trash_repo(
+    file_repo: FileRepository,
+    file_dict: dict
+) -> dict:
+    """
+    Serialize a file and its rows for trash storage.
+    P10-REPO: Uses FileRepository instead of direct SQLAlchemy.
+    """
+    rows = await file_repo.get_rows_for_export(file_dict["id"])
+
+    return {
+        "name": file_dict["name"],
+        "original_filename": file_dict.get("original_filename"),
+        "format": file_dict.get("format"),
+        "source_language": file_dict.get("source_language"),
+        "target_language": file_dict.get("target_language"),
+        "row_count": file_dict.get("row_count", len(rows)),
+        "extra_data": file_dict.get("extra_data"),
+        "rows": [
+            {
+                "row_num": r.get("row_num"),
+                "string_id": r.get("string_id"),
+                "source": r.get("source"),
+                "target": r.get("target"),
+                "status": r.get("status"),
+                "extra_data": r.get("extra_data")
+            }
+            for r in rows
+        ]
+    }
+
+
 @router.delete("/files/{file_id}")
 async def delete_file(
     file_id: int,
@@ -555,30 +595,25 @@ async def delete_file(
         logger.info(f"Local file {action}: id={file_id}, name='{file_name}'")
         return {"message": f"File {action}", "file_id": file_id}
 
-    # Server files - use trash serialization (requires SQLAlchemy model)
+    # Server files - use repository-based trash serialization (P10-REPO)
     if not permanent:
         # EXPLORER-008: Soft delete - move to trash
-        from .trash import move_to_trash, serialize_file_for_trash
+        from .trash import move_to_trash
 
-        # Get SQLAlchemy model for trash serialization
-        result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
-        file_model = result.scalar_one_or_none()
+        # Serialize file data using repository-based helper (P10-REPO)
+        file_data = await _serialize_file_for_trash_repo(repo, file)
 
-        if file_model:
-            # Serialize file data for restore
-            file_data = await serialize_file_for_trash(db, file_model)
-
-            # Move to trash (P10-REPO: uses TrashRepository)
-            await move_to_trash(
-                trash_repo,
-                item_type="file",
-                item_id=file_model.id,
-                item_name=file_model.name,
-                item_data=file_data,
-                parent_project_id=file_model.project_id,
-                parent_folder_id=file_model.folder_id,
-                deleted_by=current_user["user_id"]
-            )
+        # Move to trash (P10-REPO: uses TrashRepository)
+        await move_to_trash(
+            trash_repo,
+            item_type="file",
+            item_id=file["id"],
+            item_name=file["name"],
+            item_data=file_data,
+            parent_project_id=file["project_id"],
+            parent_folder_id=file.get("folder_id"),
+            deleted_by=current_user["user_id"]
+        )
 
     # Clean up sync subscription if it exists
     try:
@@ -1356,7 +1391,7 @@ def _build_excel_file_from_dicts(rows: List[dict], file_metadata: dict = None) -
 # TMX Builder (P4: File Conversions)
 # =============================================================================
 
-def _build_tmx_file(rows: List[LDMRow], file_metadata: dict = None, file: LDMFile = None) -> bytes:
+def _build_tmx_file(rows: list, file_metadata: dict = None, file: dict = None) -> bytes:
     """
     Build TMX (Translation Memory eXchange) file from rows.
 
