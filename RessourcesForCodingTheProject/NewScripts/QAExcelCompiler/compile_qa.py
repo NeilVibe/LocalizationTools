@@ -137,6 +137,100 @@ def sanitize_for_excel(value):
     return text
 
 
+def contains_korean(text):
+    """
+    Check if text contains Korean characters (Hangul).
+
+    Korean Unicode ranges:
+    - Hangul Syllables: U+AC00 to U+D7AF (most common, 11,172 chars)
+    - Hangul Jamo: U+1100 to U+11FF (archaic/combining)
+    - Hangul Compatibility Jamo: U+3130 to U+318F
+
+    Args:
+        text: Text to check
+
+    Returns:
+        True if text contains Korean characters, False otherwise
+    """
+    if not text:
+        return False
+    for char in str(text):
+        # Hangul Syllables (most common)
+        if '\uAC00' <= char <= '\uD7AF':
+            return True
+        # Hangul Jamo
+        if '\u1100' <= char <= '\u11FF':
+            return True
+        # Hangul Compatibility Jamo
+        if '\u3130' <= char <= '\u318F':
+            return True
+    return False
+
+
+def count_words_english(text):
+    """
+    Count words in English text.
+
+    Splits by whitespace and counts tokens.
+    Returns 0 if text contains Korean (untranslated).
+
+    Args:
+        text: Text to count words in
+
+    Returns:
+        int: Word count (0 if Korean detected or empty)
+    """
+    if not text or contains_korean(text):
+        return 0
+    return len(str(text).split())
+
+
+def count_chars_chinese(text):
+    """
+    Count characters in Chinese text (excluding whitespace).
+
+    For CJK languages, character count is more meaningful than word count.
+    Returns 0 if text contains Korean (untranslated).
+
+    Args:
+        text: Text to count characters in
+
+    Returns:
+        int: Character count excluding whitespace (0 if Korean detected or empty)
+    """
+    if not text or contains_korean(text):
+        return 0
+    # Remove all whitespace characters
+    cleaned = str(text).replace(" ", "").replace("\n", "").replace("\t", "").replace("\r", "")
+    return len(cleaned)
+
+
+def find_file_in_folder(filename, folder):
+    """
+    Search for file in folder (case-insensitive).
+
+    Used by hyperlink auto-fixer to find actual file when
+    only the filename text is present without a hyperlink.
+
+    Args:
+        filename: Filename to search for
+        folder: Path to folder to search in
+
+    Returns:
+        Actual filename if found (preserving case), None otherwise
+    """
+    if not folder or not Path(folder).exists():
+        return None
+    filename_lower = str(filename).lower()
+    try:
+        for f in os.listdir(folder):
+            if f.lower() == filename_lower:
+                return f
+    except OSError:
+        pass
+    return None
+
+
 def repair_excel_filters(filepath):
     """
     Repair Excel file by stripping corrupted auto-filter XML.
@@ -1105,27 +1199,51 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
                     original_name = os.path.basename(original_target)
 
                     # Transform to new path - ALWAYS use Images/ prefix
+                    # AUTO-FIX: Try case-insensitive match if exact match fails
                     if original_name in image_mapping:
                         new_name = image_mapping[original_name]
                         new_screenshot_value = new_name
                         new_screenshot_target = f"Images/{new_name}"
                     else:
-                        # Image not found in mapping - still use Images/ prefix
-                        new_screenshot_value = original_name
-                        new_screenshot_target = f"Images/{original_name}"
-                        is_warning = True
+                        # Try case-insensitive match
+                        matched_name = None
+                        for img_name in image_mapping.keys():
+                            if img_name.lower() == original_name.lower():
+                                matched_name = img_name
+                                break
+                        if matched_name:
+                            new_name = image_mapping[matched_name]
+                            new_screenshot_value = new_name
+                            new_screenshot_target = f"Images/{new_name}"
+                        else:
+                            # Image not found in mapping - still use Images/ prefix
+                            new_screenshot_value = original_name
+                            new_screenshot_target = f"Images/{original_name}"
+                            is_warning = True
                 else:
                     # No hyperlink, just copy value (might be just text)
+                    # AUTO-FIX: Try case-insensitive match if exact match fails
                     original_name = str(screenshot_value).strip()
                     if original_name in image_mapping:
                         new_name = image_mapping[original_name]
                         new_screenshot_value = new_name
                         new_screenshot_target = f"Images/{new_name}"
                     else:
-                        # No mapping - still use Images/ prefix
-                        new_screenshot_value = original_name
-                        new_screenshot_target = f"Images/{original_name}"
-                        is_warning = True
+                        # Try case-insensitive match in image_mapping
+                        matched_name = None
+                        for img_name in image_mapping.keys():
+                            if img_name.lower() == original_name.lower():
+                                matched_name = img_name
+                                break
+                        if matched_name:
+                            new_name = image_mapping[matched_name]
+                            new_screenshot_value = new_name
+                            new_screenshot_target = f"Images/{new_name}"
+                        else:
+                            # No mapping - still use Images/ prefix
+                            new_screenshot_value = original_name
+                            new_screenshot_target = f"Images/{original_name}"
+                            is_warning = True
 
                 # Check if hyperlink needs updating
                 existing_hyperlink = master_screenshot_cell.hyperlink.target if master_screenshot_cell.hyperlink else None
@@ -1778,10 +1896,10 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
 
     ws = wb["_DAILY_DATA"]
 
-    # Ensure headers exist (now includes TotalRows, Fixed, Reported, Checking, NonIssue)
-    # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue
-    if ws.cell(1, 1).value != "Date" or ws.max_column < 12:
-        headers = ["Date", "User", "Category", "TotalRows", "Done", "Issues", "NoIssue", "Blocked", "Fixed", "Reported", "Checking", "NonIssue"]
+    # Ensure headers exist (now includes TotalRows, Fixed, Reported, Checking, NonIssue, WordCount)
+    # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue, WordCount
+    if ws.cell(1, 1).value != "Date" or ws.max_column < 13:
+        headers = ["Date", "User", "Category", "TotalRows", "Done", "Issues", "NoIssue", "Blocked", "Fixed", "Reported", "Checking", "NonIssue", "WordCount"]
         for col, header in enumerate(headers, 1):
             ws.cell(1, col, header)
 
@@ -1811,7 +1929,7 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
         user = entry["user"]
         user_manager_stats = manager_stats.get(category, {}).get(user, {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
 
-        # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue
+        # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue, WordCount
         ws.cell(row, 1, entry["date"])
         ws.cell(row, 2, entry["user"])
         ws.cell(row, 3, entry["category"])
@@ -1824,6 +1942,7 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
         ws.cell(row, 10, user_manager_stats["reported"])
         ws.cell(row, 11, user_manager_stats["checking"])
         ws.cell(row, 12, user_manager_stats["nonissue"])
+        ws.cell(row, 13, entry.get("word_count", 0))  # WordCount (words for EN, chars for CN)
 
 
 def build_daily_sheet(wb):
@@ -2188,6 +2307,251 @@ def build_daily_sheet(wb):
         ws.add_chart(chart, f"A{chart_row}")
 
 
+def build_category_breakdown_section(ws, start_row, latest_data, users_list, is_english, tester_mapping):
+    """
+    Build Category Breakdown pivot table for EN or CN testers.
+
+    Shows per-category completion % and word/character count for each user.
+
+    Args:
+        ws: Worksheet to write to
+        start_row: Row to start building
+        latest_data: Dict of (user, category) -> {done, total_rows, word_count, ...}
+        users_list: List of usernames for this section (EN or CN)
+        is_english: True for EN (shows "Words"), False for CN (shows "Chars")
+        tester_mapping: Dict of username -> language
+
+    Returns:
+        next_row: Row after this section
+    """
+    if not users_list:
+        return start_row
+
+    # Styles
+    title_fill = PatternFill(start_color="4472C4" if is_english else "C00000",
+                             end_color="4472C4" if is_english else "C00000", fill_type="solid")
+    header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"],
+                              end_color=TRACKER_STYLES["header_color"], fill_type="solid")
+    alt_fill = PatternFill(start_color=TRACKER_STYLES["alt_row_color"],
+                           end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid")
+    total_fill = PatternFill(start_color=TRACKER_STYLES["total_row_color"],
+                             end_color=TRACKER_STYLES["total_row_color"], fill_type="solid")
+    border = Border(
+        left=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        right=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        top=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        bottom=Side(style='thin', color=TRACKER_STYLES["border_color"])
+    )
+    center = Alignment(horizontal='center', vertical='center')
+    bold = Font(bold=True)
+    white_bold = Font(bold=True, color="FFFFFF")
+
+    # Build pivot: user -> {category -> {done%, word_count}}
+    pivot = {}
+    for (user, category), data in latest_data.items():
+        if user not in users_list:
+            continue
+        if user not in pivot:
+            pivot[user] = {}
+        total_rows = data["total_rows"]
+        done = data["done"]
+        pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
+        pivot[user][category] = {
+            "pct": pct,
+            "count": data.get("word_count", 0)
+        }
+
+    # Categories to show (use global CATEGORIES)
+    categories = CATEGORIES
+
+    # Calculate column count: User + (Done%/Count) * categories + Total
+    # Each category has 2 sub-columns: Done% and Words/Chars
+    count_label = "Words" if is_english else "Chars"
+    total_cols = 1 + len(categories) * 2 + 1  # User + categories*2 + Total
+
+    current_row = start_row
+
+    # Title row
+    title_text = f"EN CATEGORY BREAKDOWN ({count_label})" if is_english else f"CN CATEGORY BREAKDOWN ({count_label})"
+    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
+    title_cell = ws.cell(current_row, 1, title_text)
+    title_cell.fill = title_fill
+    title_cell.font = white_bold
+    title_cell.alignment = center
+    current_row += 1
+
+    # Header row 1: Category names (merged across 2 columns each)
+    ws.cell(current_row, 1, "User").fill = header_fill
+    ws.cell(current_row, 1).font = bold
+    ws.cell(current_row, 1).alignment = center
+    ws.cell(current_row, 1).border = border
+
+    col = 2
+    for cat in categories:
+        # Merge 2 cells for category name
+        ws.merge_cells(start_row=current_row, start_column=col, end_row=current_row, end_column=col + 1)
+        cell = ws.cell(current_row, col, cat)
+        cell.fill = header_fill
+        cell.font = bold
+        cell.alignment = center
+        cell.border = border
+        ws.cell(current_row, col + 1).border = border
+        col += 2
+
+    # Total column header
+    ws.cell(current_row, col, f"Total {count_label}").fill = header_fill
+    ws.cell(current_row, col).font = bold
+    ws.cell(current_row, col).alignment = center
+    ws.cell(current_row, col).border = border
+    current_row += 1
+
+    # Header row 2: Done% / Words|Chars sub-headers
+    ws.cell(current_row, 1, "").border = border  # Empty under "User"
+
+    col = 2
+    for cat in categories:
+        cell1 = ws.cell(current_row, col, "Done%")
+        cell1.fill = header_fill
+        cell1.alignment = center
+        cell1.border = border
+        cell2 = ws.cell(current_row, col + 1, count_label)
+        cell2.fill = header_fill
+        cell2.alignment = center
+        cell2.border = border
+        col += 2
+
+    ws.cell(current_row, col, "").border = border  # Empty under Total
+    current_row += 1
+
+    # Data rows
+    category_totals = {cat: {"done": 0, "total_rows": 0, "count": 0} for cat in categories}
+    grand_total_count = 0
+
+    for idx, user in enumerate(sorted(users_list)):
+        user_total_count = 0
+
+        # User name
+        cell = ws.cell(current_row, 1, user)
+        cell.alignment = center
+        cell.border = border
+        if idx % 2 == 1:
+            cell.fill = alt_fill
+
+        col = 2
+        for cat in categories:
+            user_cat_data = pivot.get(user, {}).get(cat, None)
+
+            if user_cat_data:
+                pct = user_cat_data["pct"]
+                count = user_cat_data["count"]
+                user_total_count += count
+
+                # Aggregate for category totals
+                # Need original done/total_rows for accurate category total %
+                for (u, c), data in latest_data.items():
+                    if u == user and c == cat:
+                        category_totals[cat]["done"] += data["done"]
+                        category_totals[cat]["total_rows"] += data["total_rows"]
+                        category_totals[cat]["count"] += data.get("word_count", 0)
+                        break
+
+                # Done%
+                cell1 = ws.cell(current_row, col, pct)
+                cell1.number_format = '0.0"%"'
+                cell1.alignment = center
+                cell1.border = border
+                if idx % 2 == 1:
+                    cell1.fill = alt_fill
+
+                # Word/Char count
+                cell2 = ws.cell(current_row, col + 1, count)
+                cell2.number_format = '#,##0'
+                cell2.alignment = center
+                cell2.border = border
+                if idx % 2 == 1:
+                    cell2.fill = alt_fill
+            else:
+                # No data for this category - show "-"
+                cell1 = ws.cell(current_row, col, "-")
+                cell1.alignment = center
+                cell1.border = border
+                if idx % 2 == 1:
+                    cell1.fill = alt_fill
+
+                cell2 = ws.cell(current_row, col + 1, "-")
+                cell2.alignment = center
+                cell2.border = border
+                if idx % 2 == 1:
+                    cell2.fill = alt_fill
+
+            col += 2
+
+        # Total count for this user
+        grand_total_count += user_total_count
+        cell = ws.cell(current_row, col, user_total_count)
+        cell.number_format = '#,##0'
+        cell.alignment = center
+        cell.border = border
+        if idx % 2 == 1:
+            cell.fill = alt_fill
+
+        current_row += 1
+
+    # TOTAL row
+    cell = ws.cell(current_row, 1, "TOTAL")
+    cell.fill = total_fill
+    cell.font = bold
+    cell.alignment = center
+    cell.border = border
+
+    col = 2
+    for cat in categories:
+        cat_data = category_totals[cat]
+        if cat_data["total_rows"] > 0:
+            cat_pct = round(cat_data["done"] / cat_data["total_rows"] * 100, 1)
+            cell1 = ws.cell(current_row, col, cat_pct)
+            cell1.number_format = '0.0"%"'
+        else:
+            cell1 = ws.cell(current_row, col, "-")
+        cell1.fill = total_fill
+        cell1.font = bold
+        cell1.alignment = center
+        cell1.border = border
+
+        if cat_data["count"] > 0:
+            cell2 = ws.cell(current_row, col + 1, cat_data["count"])
+            cell2.number_format = '#,##0'
+        else:
+            cell2 = ws.cell(current_row, col + 1, "-")
+        cell2.fill = total_fill
+        cell2.font = bold
+        cell2.alignment = center
+        cell2.border = border
+
+        col += 2
+
+    # Grand total count
+    cell = ws.cell(current_row, col, grand_total_count)
+    cell.number_format = '#,##0'
+    cell.fill = total_fill
+    cell.font = bold
+    cell.alignment = center
+    cell.border = border
+
+    current_row += 1
+
+    # Set column widths
+    ws.column_dimensions['A'].width = 12  # User column
+    col_letter_idx = 2
+    for cat in categories:
+        ws.column_dimensions[get_column_letter(col_letter_idx)].width = 8  # Done%
+        ws.column_dimensions[get_column_letter(col_letter_idx + 1)].width = 10  # Words/Chars
+        col_letter_idx += 2
+    ws.column_dimensions[get_column_letter(col_letter_idx)].width = 12  # Total
+
+    return current_row
+
+
 def build_total_sheet(wb):
     """
     Build TOTAL sheet from _DAILY_DATA.
@@ -2213,7 +2577,7 @@ def build_total_sheet(wb):
     # First pass: find the latest date for each (user, category)
     latest_data = {}  # (user, category) -> {date, row_data}
 
-    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11), NonIssue(12)
+    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11), NonIssue(12), WordCount(13)
     for row in range(2, data_ws.max_row + 1):
         date = data_ws.cell(row, 1).value
         user = data_ws.cell(row, 2).value
@@ -2228,6 +2592,7 @@ def build_total_sheet(wb):
         if key not in latest_data or str(date) > str(latest_data[key]["date"]):
             latest_data[key] = {
                 "date": date,
+                "category": category,  # Store category for breakdown tables
                 "total_rows": data_ws.cell(row, 4).value or 0,
                 "done": data_ws.cell(row, 5).value or 0,
                 "issues": data_ws.cell(row, 6).value or 0,
@@ -2236,7 +2601,8 @@ def build_total_sheet(wb):
                 "fixed": data_ws.cell(row, 9).value or 0,
                 "reported": data_ws.cell(row, 10).value or 0,
                 "checking": data_ws.cell(row, 11).value or 0,
-                "nonissue": data_ws.cell(row, 12).value or 0
+                "nonissue": data_ws.cell(row, 12).value or 0,
+                "word_count": data_ws.cell(row, 13).value or 0  # Words (EN) or Chars (CN)
             }
 
     # Second pass: aggregate latest data by user (sum across categories)
@@ -2545,6 +2911,29 @@ def build_total_sheet(wb):
         chart2_row = chart1_row + 15
         ws.add_chart(chart2, f"A{chart2_row}")
 
+        # Track where charts end for category breakdown placement
+        breakdown_start_row = chart2_row + 18  # Leave space after chart 2
+    else:
+        breakdown_start_row = current_row + 2
+
+    # === Add Category Breakdown Tables (EN and CN) ===
+    # These show per-category completion % and word/char counts
+
+    # EN Category Breakdown (if there are EN users)
+    if en_users:
+        breakdown_start_row = build_category_breakdown_section(
+            ws, breakdown_start_row, latest_data, en_users,
+            is_english=True, tester_mapping=tester_mapping
+        )
+        breakdown_start_row += 2  # Gap between tables
+
+    # CN Category Breakdown (if there are CN users)
+    if cn_users:
+        breakdown_start_row = build_category_breakdown_section(
+            ws, breakdown_start_row, latest_data, cn_users,
+            is_english=False, tester_mapping=tester_mapping
+        )
+
 
 # build_graphs_sheet removed - charts now embedded in DAILY/TOTAL
 
@@ -2756,12 +3145,19 @@ def find_matching_row_for_item_transfer(old_row_data, new_ws, is_english):
     return None, None
 
 
-def transfer_sheet_data(old_ws, new_ws, category, is_english):
+def transfer_sheet_data(old_ws, new_ws, category, is_english, old_folder_path=None):
     """
     Transfer COMMENT/STATUS/SCREENSHOT from old sheet to new sheet.
 
     For Item category: Uses stricter matching with ItemName + ItemDesc + STRINGID.
     For other categories: Uses STRINGID + Translation matching.
+
+    Args:
+        old_ws: Source worksheet (OLD)
+        new_ws: Target worksheet (NEW)
+        category: Category name
+        is_english: Whether file is English
+        old_folder_path: Path to old folder (for hyperlink auto-fix)
 
     Returns:
         dict: {total, stringid_match, trans_only, unmatched,
@@ -2857,6 +3253,13 @@ def transfer_sheet_data(old_ws, new_ws, category, is_english):
             # Also transfer the hyperlink (not just the display text)
             if old_screenshot_hyperlink:
                 new_cell.hyperlink = old_screenshot_hyperlink.target
+            elif old_folder_path:
+                # AUTO-FIX: If no hyperlink, try to find file in old folder
+                filename = str(old_screenshot).strip()
+                actual_file = find_file_in_folder(filename, old_folder_path)
+                if actual_file:
+                    # Create hyperlink to the actual file
+                    new_cell.hyperlink = actual_file
 
     return stats
 
@@ -3011,7 +3414,8 @@ def transfer_folder_data(old_folder, new_folder, output_dir, tester_mapping):
         old_ws = old_wb[sheet_name]
         new_ws = new_wb[sheet_name]
 
-        sheet_stats = transfer_sheet_data(old_ws, new_ws, category, is_english)
+        # Pass old folder path for hyperlink auto-fix
+        sheet_stats = transfer_sheet_data(old_ws, new_ws, category, is_english, old_folder["folder_path"])
 
         # Accumulate stats
         for key in combined_stats:
@@ -3308,6 +3712,12 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
     total_images = 0
     total_screenshots = 0
 
+    # NEW: Track word/char counts per user for category breakdown
+    user_wordcount = defaultdict(int)  # username -> word count (EN) or char count (CN)
+    is_english = (lang_label == "EN")
+    trans_col_key = "eng" if is_english else "other"
+    trans_col = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3}).get(trans_col_key, 2)
+
     # Process each QA folder
     for qf in qa_folders:
         username = qf["username"]
@@ -3368,6 +3778,15 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
             user_stats[username]["blocked"] += stats["blocked"]
             user_stats[username]["korean"] += stats.get("korean", 0)
 
+            # NEW: Count words (EN) or characters (CN) from translation column
+            qa_ws = qa_wb[sheet_name]
+            for row in range(2, qa_ws.max_row + 1):
+                cell_value = qa_ws.cell(row, trans_col).value
+                if is_english:
+                    user_wordcount[username] += count_words_english(cell_value)
+                else:
+                    user_wordcount[username] += count_chars_chinese(cell_value)
+
         qa_wb.close()
 
         # NEW: Collect entry for tracker (after processing all sheets for this user)
@@ -3381,7 +3800,8 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
             "issues": user_stats[username]["issue"],
             "no_issue": user_stats[username]["no_issue"],
             "blocked": user_stats[username]["blocked"],
-            "korean": user_stats[username]["korean"]
+            "korean": user_stats[username]["korean"],
+            "word_count": user_wordcount[username]  # Words (EN) or Characters (CN)
         })
 
     # Update STATUS sheet (first tab, with stats)
