@@ -2757,8 +2757,8 @@ def build_total_sheet(wb):
     bold = Font(bold=True)
     white_bold = Font(bold=True, color="FFFFFF")
 
-    # Total columns: 7 tester + 4 manager = 11
-    tester_headers = ["User", "Completion", "Actual Issues", "Total", "Issues", "No Issue", "Blocked"]
+    # Total columns: 5 tester + 4 manager = 9 (removed Completion/Actual Issues - already in Category Breakdown)
+    tester_headers = ["User", "Done", "Issues", "No Issue", "Blocked"]
     manager_headers = ["Fixed", "Reported", "Checking", "Pending"]
     total_cols = len(tester_headers) + len(manager_headers)
 
@@ -2819,10 +2819,6 @@ def build_total_sheet(wb):
             if pending < 0:
                 pending = 0
 
-            completion_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
-            # Clamp to 0-100% to prevent negative values
-            actual_pct = max(0, min(100, round((issues - nonissue) / issues * 100, 1))) if issues > 0 else 0
-
             # Accumulate section totals
             section_total["total_rows"] += total_rows
             section_total["done"] += done
@@ -2835,8 +2831,8 @@ def build_total_sheet(wb):
             section_total["pending"] += pending
             section_total["nonissue"] += nonissue
 
-            # Store percentages as numbers (for charts) with display format
-            row_data = [user, completion_pct, actual_pct, done, issues, no_issue, blocked, fixed, reported, checking, pending]
+            # Row data: User, Done, Issues, No Issue, Blocked, Fixed, Reported, Checking, Pending
+            row_data = [user, done, issues, no_issue, blocked, fixed, reported, checking, pending]
 
             for col, value in enumerate(row_data, 1):
                 cell = ws.cell(current_row, col, value)
@@ -2844,9 +2840,6 @@ def build_total_sheet(wb):
                 cell.border = border
                 if idx % 2 == 1:
                     cell.fill = alt_fill
-                # Apply percentage display format to columns 2 and 3
-                if col in (2, 3):
-                    cell.number_format = '0.0"%"'
 
             # Track this row for chart references
             if user_row_tracker is not None:
@@ -2856,11 +2849,8 @@ def build_total_sheet(wb):
 
         # Section subtotal row
         st = section_total
-        st_completion = round(st["done"] / st["total_rows"] * 100, 1) if st["total_rows"] > 0 else 0
-        # Clamp to 0-100% to prevent negative values
-        st_actual_pct = max(0, min(100, round((st["issues"] - st["nonissue"]) / st["issues"] * 100, 1))) if st["issues"] > 0 else 0
         subtotal_data = [
-            "SUBTOTAL", st_completion, st_actual_pct, st["done"], st["issues"], st["no_issue"], st["blocked"],
+            "SUBTOTAL", st["done"], st["issues"], st["no_issue"], st["blocked"],
             st["fixed"], st["reported"], st["checking"], st["pending"]
         ]
 
@@ -2870,9 +2860,6 @@ def build_total_sheet(wb):
             cell.font = bold
             cell.alignment = center
             cell.border = border
-            # Apply percentage display format to columns 2 and 3
-            if col in (2, 3):
-                cell.number_format = '0.0"%"'
         current_row += 1
 
         return current_row, section_total
@@ -2910,11 +2897,8 @@ def build_total_sheet(wb):
         current_row += 1
 
         gt = grand_total
-        gt_completion = round(gt["done"] / gt["total_rows"] * 100, 1) if gt["total_rows"] > 0 else 0
-        # Clamp to 0-100% to prevent negative values
-        gt_actual_pct = max(0, min(100, round((gt["issues"] - gt["nonissue"]) / gt["issues"] * 100, 1))) if gt["issues"] > 0 else 0
         total_row_data = [
-            "TOTAL", gt_completion, gt_actual_pct, gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
+            "TOTAL", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
             gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
         ]
 
@@ -2924,9 +2908,6 @@ def build_total_sheet(wb):
             cell.font = bold
             cell.alignment = center
             cell.border = border
-            # Apply percentage display format to columns 2 and 3
-            if col in (2, 3):
-                cell.number_format = '0.0"%"'
         current_row += 1
 
     # Set column widths with auto-sizing + padding
