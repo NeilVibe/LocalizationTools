@@ -20,7 +20,7 @@ from server.tools.ldm.permissions import (
     revoke_project_access,
     get_project_access_list,
 )
-from server.repositories import ProjectRepository, get_project_repository
+from server.repositories import ProjectRepository, get_project_repository, TrashRepository, get_trash_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -158,7 +158,8 @@ async def delete_project(
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
-    repo: ProjectRepository = Depends(get_project_repository)
+    repo: ProjectRepository = Depends(get_project_repository),
+    trash_repo: TrashRepository = Depends(get_trash_repository)
 ):
     """
     Delete a project and all its contents.
@@ -194,9 +195,9 @@ async def delete_project(
         # Serialize project data for restore
         project_data = await serialize_project_for_trash(db, project)
 
-        # Move to trash
+        # Move to trash (P10-REPO: uses TrashRepository)
         await move_to_trash(
-            db,
+            trash_repo,
             item_type="project",
             item_id=project.id,
             item_name=project.name,

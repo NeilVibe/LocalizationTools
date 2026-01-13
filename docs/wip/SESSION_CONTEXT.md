@@ -29,7 +29,7 @@
 
 ### P10: DB Abstraction Layer - IN PROGRESS
 
-**Status:** ACTIVE MIGRATION | **Progress:** 55% files fully migrated (11/20 route files CLEAN)
+**Status:** ACTIVE MIGRATION | **Progress:** 60% files fully migrated (12/20 route files CLEAN)
 
 **Goal:** Transform entire backend from inconsistent database patterns to unified Repository Pattern for FULL OFFLINE/ONLINE PARITY.
 
@@ -321,19 +321,20 @@ NOT "delete everything and hope for the best"
 | `tm_entries.py` | 6 | 0 | **CLEAN** | Fully migrated (Session 52) |
 | `tm_linking.py` | 8 | 0 | **CLEAN** | Fully migrated (Session 53) |
 | `rows.py` | 7 | 0 | **CLEAN** | Fully migrated (Session 53) |
+| `trash.py` | 12 | 6* | **CLEAN** | move_to_trash + restore (Session 53) |
 | `files.py` | 18 | 15 | MIXED | Permission checks + CRUD |
-| `folders.py` | 8 | 9 | MIXED | Permission checks + CRUD |
-| `platforms.py` | 9 | 11 | MIXED | Permission checks + CRUD |
-| `projects.py` | 8 | 10 | MIXED | Permission checks + CRUD |
-| `trash.py` | 4 | 3 | MIXED | restore helpers + CRUD |
+| `folders.py` | 9 | 8 | MIXED | Permission checks + CRUD |
+| `platforms.py` | 10 | 10 | MIXED | Permission checks + CRUD |
+| `projects.py` | 9 | 9 | MIXED | Permission checks + CRUD |
 | `sync.py` | 0 | 7 | SERVICE | SyncService pattern |
 | `capabilities.py` | 0 | 5 | UTILITY | User capability management |
 | `tm_indexes.py` | 0 | 5 | UTILITY | FAISS index management |
 | `tm_search.py` | 0 | 4 | UTILITY | FAISS search |
 
 **Summary:**
-- **CLEAN (100%):** 11 files (no `from sqlalchemy import select`, no `await db.execute`)
-- **MIXED:** 5 files (have `from sqlalchemy import select` for CRUD, not just permission checks)
+- **CLEAN (100%):** 12 files (no direct SQLAlchemy in endpoints, only Repository Pattern)
+  - Note: trash.py has 6 `db.execute` in `serialize_*_for_trash` - these are READ-ONLY helpers called from OTHER routes
+- **MIXED:** 4 files (have `from sqlalchemy import select` for CRUD, not just permission checks)
 - **SERVICE:** 1 file (sync.py - uses SyncService pattern)
 - **UTILITY:** 3 files (capabilities, tm_indexes, tm_search - specialized operations)
 
@@ -422,8 +423,8 @@ Future work could create a `PermissionRepository` for full offline parity.
    - Not found detection ✓ (returns 404)
 
 **Current State:**
-- 11 route files CLEAN (100% Repository): grammar, health, pretranslate, qa, rows, search, settings, tm_assignment, tm_crud, tm_entries, tm_linking
-- 5 route files MIXED (have actual CRUD operations with direct SQLAlchemy)
+- 12 route files CLEAN (100% Repository): grammar, health, pretranslate, qa, rows, search, settings, tm_assignment, tm_crud, tm_entries, tm_linking, trash
+- 4 route files MIXED (have actual CRUD operations with direct SQLAlchemy)
 - 4 route files SPECIAL (sync, capabilities, tm_indexes, tm_search)
 - All 8 Repositories fully implemented
 
@@ -434,6 +435,32 @@ Future work could create a `PermissionRepository` for full offline parity.
 4. Added `tm_repo` and `file_repo` dependencies to endpoints
 5. Removed all sqlalchemy imports and model imports
 6. Tested: `list_rows` ✓, `update_row` ✓
+
+**trash.py Migration (100% COMPLETE)**
+1. Updated `move_to_trash()` helper function:
+   - Changed signature from `db: AsyncSession` to `trash_repo: TrashRepository`
+   - Uses `trash_repo.create()` instead of direct `LDMTrash()` model
+
+2. Updated all 4 callers (files.py, folders.py, projects.py, platforms.py):
+   - Added `trash_repo: TrashRepository = Depends(get_trash_repository)` to delete endpoints
+   - Updated calls to pass `trash_repo` instead of `db`
+
+3. Updated `_restore_file()`, `_restore_folder()`, `_restore_project()`, `_restore_platform()`:
+   - All now accept entity repositories instead of `db: AsyncSession`
+   - Use `file_repo.generate_unique_name()` and `file_repo.create()` and `file_repo.add_rows()`
+   - Use `folder_repo.generate_unique_name()` and `folder_repo.create()`
+   - Use `project_repo.generate_unique_name()` and `project_repo.create()`
+   - Use `platform_repo.check_name_exists()` (no generate_unique_name, manual logic)
+
+4. Updated `restore_from_trash` endpoint:
+   - Added all 4 entity repositories as dependencies
+   - Passes repos to appropriate `_restore_*` functions based on item_type
+
+5. Note: `serialize_*_for_trash` functions still use direct SQLAlchemy
+   - These are READ-ONLY helpers called from OTHER routes before delete
+   - Callers pass SQLAlchemy model objects - not worth changing now
+
+6. Tested: `list_trash` ✓ (returns empty list), imports ✓
 
 ### Session 51 (2026-01-12) - P11 Platform Stability
 

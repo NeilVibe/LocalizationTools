@@ -20,7 +20,7 @@ from server.tools.ldm.permissions import (
     revoke_platform_access,
     get_platform_access_list,
 )
-from server.repositories import PlatformRepository, get_platform_repository
+from server.repositories import PlatformRepository, get_platform_repository, TrashRepository, get_trash_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -234,7 +234,8 @@ async def delete_platform(
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
-    repo: PlatformRepository = Depends(get_platform_repository)
+    repo: PlatformRepository = Depends(get_platform_repository),
+    trash_repo: TrashRepository = Depends(get_trash_repository)
 ):
     """
     Delete a platform.
@@ -281,9 +282,9 @@ async def delete_platform(
             # Serialize platform data for restore (includes project references)
             platform_data = await serialize_platform_for_trash(db, platform_obj)
 
-            # Move to trash
+            # Move to trash (P10-REPO: uses TrashRepository)
             await move_to_trash(
-                db,
+                trash_repo,
                 item_type="platform",
                 item_id=platform_obj.id,
                 item_name=platform_obj.name,
