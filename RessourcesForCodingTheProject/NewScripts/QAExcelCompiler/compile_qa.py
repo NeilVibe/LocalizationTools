@@ -1088,6 +1088,11 @@ def process_sheet(master_ws, qa_ws, username, category, image_mapping=None, xlsx
 
     # Process each row by INDEX (master is fresh from QA, same structure)
     for qa_row in range(2, qa_ws.max_row + 1):  # Skip header
+        # Skip empty rows - check column 1 (first column always has data if row is valid)
+        first_col_value = qa_ws.cell(row=qa_row, column=1).value
+        if first_col_value is None or str(first_col_value).strip() == "":
+            continue  # Skip empty rows
+
         result["stats"]["total"] += 1
         master_row = qa_row  # Direct index matching (always works - fresh rebuild)
 
