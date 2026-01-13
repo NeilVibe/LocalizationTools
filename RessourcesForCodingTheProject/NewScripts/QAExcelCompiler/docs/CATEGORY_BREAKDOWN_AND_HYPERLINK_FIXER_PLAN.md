@@ -424,7 +424,8 @@ Processing: Quest [EN] (2 folders)
 ┌─────────────────────────────────────────┐
 │ 1. EN TESTER STATS                      │
 │    - Columns: User, Done, Issues,       │
-│      No Issue, Blocked + Manager cols   │
+│      No Issue, Blocked, Korean          │
+│      + Manager cols                     │
 │    - SUBTOTAL row                       │
 └─────────────────────────────────────────┘
            ↓
