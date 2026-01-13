@@ -2238,7 +2238,7 @@ def build_daily_sheet(wb):
 
 def build_ranking_table(ws, start_row, user_data, tester_mapping):
     """
-    Build Ranking Table with weighted scoring.
+    Build Ranking Tables with weighted scoring - separate EN and CN rankings.
 
     Score = 70% Completion + 30% Actual Issues
     - Completion = Done / TotalRows * 100
@@ -2257,7 +2257,8 @@ def build_ranking_table(ws, start_row, user_data, tester_mapping):
         return start_row
 
     # Styles
-    title_fill = PatternFill(start_color="5B2C6F", end_color="5B2C6F", fill_type="solid")  # Purple
+    en_title_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")  # Blue for EN
+    cn_title_fill = PatternFill(start_color="C00000", end_color="C00000", fill_type="solid")  # Red for CN
     header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"],
                               end_color=TRACKER_STYLES["header_color"], fill_type="solid")
     gold_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")  # Gold for #1
@@ -2276,7 +2277,8 @@ def build_ranking_table(ws, start_row, user_data, tester_mapping):
     white_bold = Font(bold=True, color="FFFFFF")
 
     # Calculate scores for each user
-    user_scores = []
+    en_scores = []
+    cn_scores = []
     for user, data in user_data.items():
         total_rows = data.get("total_rows", 0)
         done = data.get("done", 0)
@@ -2295,109 +2297,124 @@ def build_ranking_table(ws, start_row, user_data, tester_mapping):
         score = round(0.7 * completion_pct + 0.3 * actual_issues_pct, 1)
 
         lang = tester_mapping.get(user, "EN")
-        user_scores.append({
+        user_score = {
             "user": user,
             "lang": lang,
             "completion": completion_pct,
             "actual_issues": actual_issues_pct,
             "score": score,
             "done": done
-        })
+        }
 
-    # Sort by score descending
-    user_scores.sort(key=lambda x: (-x["score"], -x["done"], x["user"]))
+        # Split by language
+        if lang == "CN":
+            cn_scores.append(user_score)
+        else:
+            en_scores.append(user_score)
+
+    # Sort each list by score descending
+    en_scores.sort(key=lambda x: (-x["score"], -x["done"], x["user"]))
+    cn_scores.sort(key=lambda x: (-x["score"], -x["done"], x["user"]))
 
     current_row = start_row
+    total_cols = 5  # Rank, User, Completion%, Actual Issues%, Score (no Lang column needed)
+    headers = ["Rank", "User", "Completion", "Actual Issues", "Score"]
 
-    # Title row
-    total_cols = 6  # Rank, User, Lang, Completion%, Actual Issues%, Score
-    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
-    title_cell = ws.cell(current_row, 1, "TESTER RANKING (70% Completion + 30% Actual Issues)")
-    title_cell.fill = title_fill
-    title_cell.font = white_bold
-    title_cell.alignment = center
-    current_row += 1
+    def build_ranking_section(scores_list, title, title_fill):
+        """Build a single ranking section (EN or CN)."""
+        nonlocal current_row
 
-    # Header row
-    headers = ["Rank", "User", "Lang", "Completion", "Actual Issues", "Score"]
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(current_row, col, header)
-        cell.fill = header_fill
-        cell.font = bold
-        cell.alignment = center
-        cell.border = border
-    current_row += 1
+        if not scores_list:
+            return
 
-    # Data rows
-    for idx, user_data in enumerate(user_scores):
-        rank = idx + 1
-
-        # Rank cell with medal colors
-        rank_cell = ws.cell(current_row, 1, rank)
-        rank_cell.alignment = center
-        rank_cell.border = border
-        if rank == 1:
-            rank_cell.fill = gold_fill
-            rank_cell.font = bold
-        elif rank == 2:
-            rank_cell.fill = silver_fill
-            rank_cell.font = bold
-        elif rank == 3:
-            rank_cell.fill = bronze_fill
-            rank_cell.font = bold
-        elif idx % 2 == 1:
-            rank_cell.fill = alt_fill
-
-        # User
-        user_cell = ws.cell(current_row, 2, user_data["user"])
-        user_cell.alignment = center
-        user_cell.border = border
-        if rank <= 3:
-            user_cell.font = bold
-        if idx % 2 == 1 and rank > 3:
-            user_cell.fill = alt_fill
-
-        # Lang
-        lang_cell = ws.cell(current_row, 3, user_data["lang"])
-        lang_cell.alignment = center
-        lang_cell.border = border
-        if idx % 2 == 1 and rank > 3:
-            lang_cell.fill = alt_fill
-
-        # Completion %
-        comp_cell = ws.cell(current_row, 4, user_data["completion"])
-        comp_cell.number_format = '0.0"%"'
-        comp_cell.alignment = center
-        comp_cell.border = border
-        if idx % 2 == 1 and rank > 3:
-            comp_cell.fill = alt_fill
-
-        # Actual Issues %
-        ai_cell = ws.cell(current_row, 5, user_data["actual_issues"])
-        ai_cell.number_format = '0.0"%"'
-        ai_cell.alignment = center
-        ai_cell.border = border
-        if idx % 2 == 1 and rank > 3:
-            ai_cell.fill = alt_fill
-
-        # Score
-        score_cell = ws.cell(current_row, 6, user_data["score"])
-        score_cell.number_format = '0.0'
-        score_cell.alignment = center
-        score_cell.border = border
-        score_cell.font = bold
-        if idx % 2 == 1 and rank > 3:
-            score_cell.fill = alt_fill
-
+        # Title row
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
+        title_cell = ws.cell(current_row, 1, title)
+        title_cell.fill = title_fill
+        title_cell.font = white_bold
+        title_cell.alignment = center
         current_row += 1
+
+        # Header row
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(current_row, col, header)
+            cell.fill = header_fill
+            cell.font = bold
+            cell.alignment = center
+            cell.border = border
+        current_row += 1
+
+        # Data rows
+        for idx, user_score in enumerate(scores_list):
+            rank = idx + 1
+
+            # Rank cell with medal colors
+            rank_cell = ws.cell(current_row, 1, rank)
+            rank_cell.alignment = center
+            rank_cell.border = border
+            if rank == 1:
+                rank_cell.fill = gold_fill
+                rank_cell.font = bold
+            elif rank == 2:
+                rank_cell.fill = silver_fill
+                rank_cell.font = bold
+            elif rank == 3:
+                rank_cell.fill = bronze_fill
+                rank_cell.font = bold
+            elif idx % 2 == 1:
+                rank_cell.fill = alt_fill
+
+            # User
+            user_cell = ws.cell(current_row, 2, user_score["user"])
+            user_cell.alignment = center
+            user_cell.border = border
+            if rank <= 3:
+                user_cell.font = bold
+            if idx % 2 == 1 and rank > 3:
+                user_cell.fill = alt_fill
+
+            # Completion %
+            comp_cell = ws.cell(current_row, 3, user_score["completion"])
+            comp_cell.number_format = '0.0"%"'
+            comp_cell.alignment = center
+            comp_cell.border = border
+            if idx % 2 == 1 and rank > 3:
+                comp_cell.fill = alt_fill
+
+            # Actual Issues %
+            ai_cell = ws.cell(current_row, 4, user_score["actual_issues"])
+            ai_cell.number_format = '0.0"%"'
+            ai_cell.alignment = center
+            ai_cell.border = border
+            if idx % 2 == 1 and rank > 3:
+                ai_cell.fill = alt_fill
+
+            # Score
+            score_cell = ws.cell(current_row, 5, user_score["score"])
+            score_cell.number_format = '0.0'
+            score_cell.alignment = center
+            score_cell.border = border
+            score_cell.font = bold
+            if idx % 2 == 1 and rank > 3:
+                score_cell.fill = alt_fill
+
+            current_row += 1
+
+    # Build EN Ranking
+    build_ranking_section(en_scores, "EN RANKING (70% Completion + 30% Actual Issues)", en_title_fill)
+
+    if en_scores and cn_scores:
+        current_row += 1  # Gap between tables
+
+    # Build CN Ranking
+    build_ranking_section(cn_scores, "CN RANKING (70% Completion + 30% Actual Issues)", cn_title_fill)
 
     # Set column widths
     ws.column_dimensions[get_column_letter(1)].width = 6   # Rank
     ws.column_dimensions[get_column_letter(2)].width = 12  # User
-    ws.column_dimensions[get_column_letter(3)].width = 6   # Lang
-    ws.column_dimensions[get_column_letter(4)].width = 12  # Completion
-    ws.column_dimensions[get_column_letter(5)].width = 14  # Actual Issues
-    ws.column_dimensions[get_column_letter(6)].width = 8   # Score
+    ws.column_dimensions[get_column_letter(3)].width = 12  # Completion
+    ws.column_dimensions[get_column_letter(4)].width = 14  # Actual Issues
+    ws.column_dimensions[get_column_letter(5)].width = 8   # Score
 
     return current_row
 
