@@ -2233,78 +2233,173 @@ def build_daily_sheet(wb):
         col_letter = get_column_letter(manager_start + i)
         ws.column_dimensions[col_letter].width = len(header) + PADDING
 
-    # === Add clustered bar chart: Daily Done by User (uses main table directly) ===
-    if len(dates) > 0 and len(users) > 0:
-        from openpyxl.chart import BarChart, Reference, Series
-        from openpyxl.chart.series import SeriesLabel
+    # NOTE: Charts removed from DAILY tab - too confusing with many dates/users
 
-        # Unique colors for each user (vibrant, distinct)
-        USER_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "7030A0", "C00000", "00B0F0"]
 
-        num_dates = len(dates)
-        num_users = len(users)
+def build_ranking_table(ws, start_row, user_data, tester_mapping):
+    """
+    Build Ranking Table with weighted scoring.
 
-        # Chart uses main table directly - no separate data table needed
-        # Main table layout:
-        #   Row 4: Headers (Date | Done | Issues | Done | Issues | ...)
-        #   Row 5 to data_row-1: Data rows
-        #   Row data_row: TOTAL row (exclude from chart)
-        #
-        # Done columns are at: 2, 4, 6, ... (column 2 + user_index * 2)
-        # Dates are in column 1, rows 5 to data_row-1
+    Score = 70% Completion + 30% Actual Issues
+    - Completion = Done / TotalRows * 100
+    - Actual Issues = (Issues - NonIssue) / Issues * 100 (clamped 0-100)
 
-        chart = BarChart()
-        chart.type = "col"  # Vertical bars (columns)
-        chart.grouping = "clustered"  # Bars side by side per category
-        chart.title = "Daily Progress: Done by Tester"
-        chart.style = 10
+    Args:
+        ws: Worksheet to write to
+        start_row: Row to start building
+        user_data: Dict of user -> {total_rows, done, issues, nonissue, ...}
+        tester_mapping: Dict of username -> language
 
-        # Dynamic width based on number of dates (expands horizontally)
-        chart.width = max(15, 6 + num_dates * 2)  # Min 15, grows with dates
-        chart.height = 10
+    Returns:
+        next_row: Row after this section
+    """
+    if not user_data:
+        return start_row
 
-        # Categories reference: dates in column 1, starting row 5 (first data row)
-        data_start_row = 5
-        data_end_row = data_row - 1  # Last data row
-        cats_ref = Reference(
-            ws,
-            min_col=1,
-            min_row=data_start_row,
-            max_row=data_end_row
-        )
-        chart.set_categories(cats_ref)
+    # Styles
+    title_fill = PatternFill(start_color="5B2C6F", end_color="5B2C6F", fill_type="solid")  # Purple
+    header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"],
+                              end_color=TRACKER_STYLES["header_color"], fill_type="solid")
+    gold_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")  # Gold for #1
+    silver_fill = PatternFill(start_color="C0C0C0", end_color="C0C0C0", fill_type="solid")  # Silver for #2
+    bronze_fill = PatternFill(start_color="CD7F32", end_color="CD7F32", fill_type="solid")  # Bronze for #3
+    alt_fill = PatternFill(start_color=TRACKER_STYLES["alt_row_color"],
+                           end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid")
+    border = Border(
+        left=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        right=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        top=Side(style='thin', color=TRACKER_STYLES["border_color"]),
+        bottom=Side(style='thin', color=TRACKER_STYLES["border_color"])
+    )
+    center = Alignment(horizontal='center', vertical='center')
+    bold = Font(bold=True)
+    white_bold = Font(bold=True, color="FFFFFF")
 
-        # Add each user's Done column as a separate series
-        for user_idx, user in enumerate(users):
-            done_col = 2 + user_idx * tester_cols_per_user  # Done is first column for each user
+    # Calculate scores for each user
+    user_scores = []
+    for user, data in user_data.items():
+        total_rows = data.get("total_rows", 0)
+        done = data.get("done", 0)
+        issues = data.get("issues", 0)
+        nonissue = data.get("nonissue", 0)
 
-            # Reference the Done column for this user (data only, no header)
-            data_ref = Reference(
-                ws,
-                min_col=done_col,
-                max_col=done_col,
-                min_row=data_start_row,  # Start at row 5 (data rows)
-                max_row=data_end_row
-            )
-            chart.add_data(data_ref, titles_from_data=False)
+        # Completion %
+        completion_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
 
-        # Apply unique colors and set user names as series titles
-        for i, series in enumerate(chart.series):
-            color = USER_COLORS[i % len(USER_COLORS)]
-            series.graphicalProperties.solidFill = color
-            # Set user name as series title (for legend) using SeriesLabel
-            series.tx = SeriesLabel(v=users[i])
+        # Actual Issues % (clamped 0-100)
+        actual_issues_pct = 0
+        if issues > 0:
+            actual_issues_pct = max(0, min(100, round((issues - nonissue) / issues * 100, 1)))
 
-        # Chart formatting
-        chart.legend.position = "b"  # Legend at bottom
-        chart.y_axis.title = "Done"
-        chart.y_axis.tickLblPos = "low"  # Show Y-axis numbers
-        chart.x_axis.title = "Date"
-        chart.x_axis.tickLblPos = "low"  # Show X-axis labels
+        # Weighted score: 70% Completion + 30% Actual Issues
+        score = round(0.7 * completion_pct + 0.3 * actual_issues_pct, 1)
 
-        # Place chart below main table
-        chart_row = data_row + 1
-        ws.add_chart(chart, f"A{chart_row}")
+        lang = tester_mapping.get(user, "EN")
+        user_scores.append({
+            "user": user,
+            "lang": lang,
+            "completion": completion_pct,
+            "actual_issues": actual_issues_pct,
+            "score": score,
+            "done": done
+        })
+
+    # Sort by score descending
+    user_scores.sort(key=lambda x: (-x["score"], -x["done"], x["user"]))
+
+    current_row = start_row
+
+    # Title row
+    total_cols = 6  # Rank, User, Lang, Completion%, Actual Issues%, Score
+    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
+    title_cell = ws.cell(current_row, 1, "TESTER RANKING (70% Completion + 30% Actual Issues)")
+    title_cell.fill = title_fill
+    title_cell.font = white_bold
+    title_cell.alignment = center
+    current_row += 1
+
+    # Header row
+    headers = ["Rank", "User", "Lang", "Completion", "Actual Issues", "Score"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(current_row, col, header)
+        cell.fill = header_fill
+        cell.font = bold
+        cell.alignment = center
+        cell.border = border
+    current_row += 1
+
+    # Data rows
+    for idx, user_data in enumerate(user_scores):
+        rank = idx + 1
+
+        # Rank cell with medal colors
+        rank_cell = ws.cell(current_row, 1, rank)
+        rank_cell.alignment = center
+        rank_cell.border = border
+        if rank == 1:
+            rank_cell.fill = gold_fill
+            rank_cell.font = bold
+        elif rank == 2:
+            rank_cell.fill = silver_fill
+            rank_cell.font = bold
+        elif rank == 3:
+            rank_cell.fill = bronze_fill
+            rank_cell.font = bold
+        elif idx % 2 == 1:
+            rank_cell.fill = alt_fill
+
+        # User
+        user_cell = ws.cell(current_row, 2, user_data["user"])
+        user_cell.alignment = center
+        user_cell.border = border
+        if rank <= 3:
+            user_cell.font = bold
+        if idx % 2 == 1 and rank > 3:
+            user_cell.fill = alt_fill
+
+        # Lang
+        lang_cell = ws.cell(current_row, 3, user_data["lang"])
+        lang_cell.alignment = center
+        lang_cell.border = border
+        if idx % 2 == 1 and rank > 3:
+            lang_cell.fill = alt_fill
+
+        # Completion %
+        comp_cell = ws.cell(current_row, 4, user_data["completion"])
+        comp_cell.number_format = '0.0"%"'
+        comp_cell.alignment = center
+        comp_cell.border = border
+        if idx % 2 == 1 and rank > 3:
+            comp_cell.fill = alt_fill
+
+        # Actual Issues %
+        ai_cell = ws.cell(current_row, 5, user_data["actual_issues"])
+        ai_cell.number_format = '0.0"%"'
+        ai_cell.alignment = center
+        ai_cell.border = border
+        if idx % 2 == 1 and rank > 3:
+            ai_cell.fill = alt_fill
+
+        # Score
+        score_cell = ws.cell(current_row, 6, user_data["score"])
+        score_cell.number_format = '0.0'
+        score_cell.alignment = center
+        score_cell.border = border
+        score_cell.font = bold
+        if idx % 2 == 1 and rank > 3:
+            score_cell.fill = alt_fill
+
+        current_row += 1
+
+    # Set column widths
+    ws.column_dimensions[get_column_letter(1)].width = 6   # Rank
+    ws.column_dimensions[get_column_letter(2)].width = 12  # User
+    ws.column_dimensions[get_column_letter(3)].width = 6   # Lang
+    ws.column_dimensions[get_column_letter(4)].width = 12  # Completion
+    ws.column_dimensions[get_column_letter(5)].width = 14  # Actual Issues
+    ws.column_dimensions[get_column_letter(6)].width = 8   # Score
+
+    return current_row
 
 
 def build_category_breakdown_section(ws, start_row, latest_data, users_list, is_english, tester_mapping):
@@ -2828,93 +2923,9 @@ def build_total_sheet(wb):
         col_letter = get_column_letter(col)
         ws.column_dimensions[col_letter].width = len(header) + PADDING
 
-    # === Add clustered bar chart using MAIN TABLE data (no separate tables) ===
-    # Chart references user data rows directly from main table
-    # Column layout: User(1), Completion(2), Actual Issues(3), Total/Done(4), Issues(5), ...
-    if len(user_data_rows) > 0:
-        from openpyxl.chart import BarChart, Reference
-        from openpyxl.chart.series import DataPoint
+    # NOTE: Charts removed from TOTAL tab - replaced with Ranking Table
 
-        # Unique colors for each user
-        USER_COLORS = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "7030A0", "C00000", "00B0F0"]
-
-        num_users = len(user_data_rows)
-
-        # --- Chart 1: Total Done by Tester (uses Column 4 = "Total" which is Done count) ---
-        chart1 = BarChart()
-        chart1.type = "col"
-        chart1.grouping = "clustered"
-        chart1.title = "Total Progress: Done by Tester"
-        chart1.style = 10
-
-        chart1.width = max(15, 6 + num_users * 2)
-        chart1.height = 10
-
-        # Add data points from main table - one series with multiple categories
-        # We need to manually build category/value lists since rows are non-contiguous
-        # Create a small reference area just for the chart (reuse tracked rows)
-        # Actually, for non-contiguous rows, we add each user as a data point
-
-        # For simplicity, add data for each user row individually
-        for i, (row_num, user_name) in enumerate(user_data_rows):
-            # Reference Done value (Column 4) for this user's row
-            data_ref = Reference(ws, min_col=4, max_col=4, min_row=row_num, max_row=row_num)
-            chart1.add_data(data_ref, titles_from_data=False)
-
-        # Apply colors and set series titles to user names
-        for i, series in enumerate(chart1.series):
-            if i < len(user_data_rows):
-                color = USER_COLORS[i % len(USER_COLORS)]
-                series.graphicalProperties.solidFill = color
-                # Set user name as series title
-                from openpyxl.chart.series import SeriesLabel
-                series.tx = SeriesLabel(v=user_data_rows[i][1])
-
-        chart1.legend.position = "b"
-        chart1.y_axis.title = "Done"
-        chart1.y_axis.tickLblPos = "low"  # Show Y-axis numbers
-        chart1.x_axis.tickLblPos = "low"  # Show X-axis labels
-
-        # Place chart 1 below main table
-        chart1_row = current_row + 2
-        ws.add_chart(chart1, f"A{chart1_row}")
-
-        # --- Chart 2: Actual Issues % by Tester (uses Column 3) ---
-        chart2 = BarChart()
-        chart2.type = "col"
-        chart2.grouping = "clustered"
-        chart2.title = "Total Progress: Actual Issues % by Tester"
-        chart2.style = 10
-
-        chart2.width = max(15, 6 + num_users * 2)
-        chart2.height = 10
-
-        # Add data for each user from Column 3 (Actual Issues %)
-        for i, (row_num, user_name) in enumerate(user_data_rows):
-            data_ref = Reference(ws, min_col=3, max_col=3, min_row=row_num, max_row=row_num)
-            chart2.add_data(data_ref, titles_from_data=False)
-
-        # Apply colors and set series titles
-        for i, series in enumerate(chart2.series):
-            if i < len(user_data_rows):
-                color = USER_COLORS[i % len(USER_COLORS)]
-                series.graphicalProperties.solidFill = color
-                from openpyxl.chart.series import SeriesLabel
-                series.tx = SeriesLabel(v=user_data_rows[i][1])
-
-        chart2.legend.position = "b"
-        chart2.y_axis.title = "Actual Issues %"
-        chart2.y_axis.tickLblPos = "low"  # Show Y-axis numbers
-        chart2.x_axis.tickLblPos = "low"  # Show X-axis labels
-
-        # Place chart 2 below chart 1
-        chart2_row = chart1_row + 15
-        ws.add_chart(chart2, f"A{chart2_row}")
-
-        # Track where charts end for category breakdown placement
-        breakdown_start_row = chart2_row + 18  # Leave space after chart 2
-    else:
-        breakdown_start_row = current_row + 2
+    breakdown_start_row = current_row + 2
 
     # === Add Category Breakdown Tables (EN and CN) ===
     # These show per-category completion % and word/char counts
@@ -2933,6 +2944,11 @@ def build_total_sheet(wb):
             ws, breakdown_start_row, latest_data, cn_users,
             is_english=False, tester_mapping=tester_mapping
         )
+        breakdown_start_row += 2  # Gap before ranking
+
+    # === Add Ranking Table ===
+    # Shows tester ranking based on 70% Completion + 30% Actual Issues
+    breakdown_start_row = build_ranking_table(ws, breakdown_start_row, user_data, tester_mapping)
 
 
 # build_graphs_sheet removed - charts now embedded in DAILY/TOTAL
@@ -3779,8 +3795,15 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
             user_stats[username]["korean"] += stats.get("korean", 0)
 
             # NEW: Count words (EN) or characters (CN) from translation column
+            # ONLY count rows where STATUS is filled (DONE rows)
             qa_ws = qa_wb[sheet_name]
+            qa_status_col = find_column_by_header(qa_ws, "STATUS")
             for row in range(2, qa_ws.max_row + 1):
+                # Only count if STATUS is filled (row is DONE)
+                if qa_status_col:
+                    status_val = qa_ws.cell(row, qa_status_col).value
+                    if not status_val or str(status_val).strip().upper() not in ["ISSUE", "NO ISSUE", "BLOCKED", "KOREAN"]:
+                        continue  # Skip rows not marked as done
                 cell_value = qa_ws.cell(row, trans_col).value
                 if is_english:
                     user_wordcount[username] += count_words_english(cell_value)
