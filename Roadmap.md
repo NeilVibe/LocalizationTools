@@ -577,15 +577,15 @@ Complete DB Abstraction Layer across entire backend using Repository Pattern.
 
 | Repository | Interface | PostgreSQL | SQLite | Routes |
 |------------|-----------|------------|--------|--------|
-| TMRepository | ✅ | ✅ | ✅ | tm_assignment.py |
-| FileRepository | ✅ | ✅ | ✅ | files.py (15/15) |
-| RowRepository | ✅ | ✅ | ✅ | rows.py (3/3) |
-| ProjectRepository | ✅ | ✅ | ✅ | projects.py (9/9) |
-| FolderRepository | ✅ | ✅ | ✅ | folders.py (8/8) |
-| PlatformRepository | ✅ | ✅ | ✅ | platforms.py (10/10) |
-| QAResultRepository | ✅ | ✅ | ✅ | qa.py (6/6) |
-| TrashRepository | ✅ | ✅ | ✅ | trash.py (4/4) |
-| **SyncService** | ✅ | ✅ | ✅ | sync.py (6 sync endpoints) |
+| TMRepository | ✅ | ✅ | ✅ | tm_assignment, tm_crud, tm_entries, tm_indexes, tm_search, tm_linking |
+| FileRepository | ✅ | ✅ | ✅ | files.py, sync.py, pretranslate.py |
+| RowRepository | ✅ | ✅ | ✅ | rows.py, qa.py, grammar.py, tm_search.py |
+| ProjectRepository | ✅ | ✅ | ✅ | projects.py, sync.py |
+| FolderRepository | ✅ | ✅ | ✅ | folders.py, sync.py |
+| PlatformRepository | ✅ | ✅ | ✅ | platforms.py |
+| QAResultRepository | ✅ | ✅ | ✅ | qa.py |
+| TrashRepository | ✅ | ✅ | ✅ | trash.py |
+| CapabilityRepository | ✅ | ✅ | ✅ | capabilities.py |
 
 ### Remaining Tasks
 
@@ -891,4 +891,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-12 | P10 DB Abstraction COMPLETE (Session 50)*
+*Strategic Roadmap | Updated 2026-01-13 | P10 DB Abstraction 100% COMPLETE (9 Repositories, 20 Routes)*
