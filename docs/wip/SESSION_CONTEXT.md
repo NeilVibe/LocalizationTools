@@ -278,8 +278,7 @@ NOT "delete everything and hope for the best"
 
 | Priority | Task | File(s) | Description | Effort |
 |----------|------|---------|-------------|--------|
-| LOW | Clean sync.py (after service extraction) | `sync.py` | Already uses SyncService, needs cleanup | Large |
-| LOW | Migrate UTILITY files | 3 files | capabilities.py, tm_indexes.py, tm_search.py | Small |
+| - | No pending tasks | - | P10 is COMPLETE | - |
 
 ### Repository Migration Status
 
@@ -293,41 +292,40 @@ NOT "delete everything and hope for the best"
 | PlatformRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
 | QAResultRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
 | TrashRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
+| CapabilityRepository | DONE | DONE | DONE | DONE | **COMPLETE** |
 
-**All 8 Repositories are COMPLETE!** The issue is ROUTE MIGRATION, not repository creation.
+**All 9 Repositories are COMPLETE!** Route migration is also 100% complete.
 
 ### Route Migration Status
 
 | Route File | Repo Calls | Direct DB Calls | Status | Notes |
 |------------|------------|-----------------|--------|-------|
+| `capabilities.py` | 4 | 0 | **CLEAN** | Uses CapabilityRepository |
+| `files.py` | 19 | 0 | **CLEAN** | Fully migrated |
+| `folders.py` | 12 | 0 | **CLEAN** | Fully migrated |
 | `grammar.py` | 3 | 0 | **CLEAN** | Fully migrated |
 | `health.py` | 0 | 0 | **CLEAN** | No DB (health check) |
-| `pretranslate.py` | 1 | 0 | **CLEAN** | P10-PERM-001 only |
-| `qa.py` | 11 | 0 | **CLEAN** | Fully migrated (Session 52) |
+| `platforms.py` | 14 | 0 | **CLEAN** | Fully migrated |
+| `pretranslate.py` | 1 | 0 | **CLEAN** | Uses FileRepository |
+| `projects.py` | 12 | 0 | **CLEAN** | Fully migrated |
+| `qa.py` | 11 | 0 | **CLEAN** | Fully migrated |
+| `rows.py` | 7 | 0 | **CLEAN** | Fully migrated |
 | `search.py` | 4 | 0 | **CLEAN** | Fully migrated |
 | `settings.py` | 0 | 0 | **CLEAN** | No DB (settings) |
+| `sync.py` | 4 | 0 | **CLEAN** | Uses FileRepository, ProjectRepository, TMRepository |
 | `tm_assignment.py` | 5 | 0 | **CLEAN** | Fully migrated |
-| `tm_crud.py` | 3 | 0 | **CLEAN** | P10-PERM-001 only |
-| `tm_entries.py` | 6 | 0 | **CLEAN** | Fully migrated (Session 52) |
-| `tm_linking.py` | 8 | 0 | **CLEAN** | Fully migrated (Session 53) |
-| `rows.py` | 7 | 0 | **CLEAN** | Fully migrated (Session 53) |
-| `trash.py` | 12 | 6* | **CLEAN** | move_to_trash + restore (Session 53) |
-| `folders.py` | 12 | 0 | **CLEAN** | Fully migrated (Session 53) |
-| `projects.py` | 12 | 0 | **CLEAN** | Fully migrated (Session 53) |
-| `platforms.py` | 14 | 0 | **CLEAN** | Fully migrated (Session 53) |
-| `files.py` | 19 | 0* | **CLEAN** | Fully migrated (Session 53) |
-| `sync.py` | 0 | 7 | SERVICE | SyncService pattern |
-| `capabilities.py` | 0 | 5 | UTILITY | User capability management |
-| `tm_indexes.py` | 0 | 5 | UTILITY | FAISS index management |
-| `tm_search.py` | 0 | 4 | UTILITY | FAISS search |
+| `tm_crud.py` | 3 | 0 | **CLEAN** | Uses TMRepository |
+| `tm_entries.py` | 6 | 0 | **CLEAN** | Fully migrated |
+| `tm_indexes.py` | 3 | 0 | **CLEAN** | Uses TMRepository |
+| `tm_linking.py` | 8 | 0 | **CLEAN** | Fully migrated |
+| `tm_search.py` | 5 | 0 | **CLEAN** | Uses TMRepository, RowRepository |
+| `trash.py` | 12 | 6* | **CLEAN** | Internal serialize helpers use db |
 
 **Summary:**
-- **CLEAN (100%):** 16 files (no direct SQLAlchemy in endpoints, only Repository Pattern)
-  - Note: trash.py has 6 `db.execute` in `serialize_*_for_trash` - READ-ONLY helpers called from OTHER routes
-  - Note: files.py has `LDMFile/LDMRow` in upload_file sync context - online-only progress tracking
-- **MIXED:** 0 files (all CRUD routes migrated!)
-- **SERVICE:** 1 file (sync.py - uses SyncService pattern)
-- **UTILITY:** 3 files (capabilities, tm_indexes, tm_search - specialized operations)
+- **CLEAN: 20/20 route files (100%)** - All route handlers use Repository Pattern
+  - Note: trash.py has 6 `db.execute` in internal `serialize_*_for_trash` helpers (not route handlers)
+  - Note: Permission checks still use db for `can_access_*` functions
+- **Background Tasks:** TMIndexer, TMSyncManager use sync DB internally (intentional)
 
 ### Permission Check Pattern (P10-PERM-001)
 

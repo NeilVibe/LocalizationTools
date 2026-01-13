@@ -290,18 +290,24 @@ The **token prefix** determines the mode:
 
 | Route File | Repository | Status |
 |------------|------------|--------|
-| `tm_assignment.py` | TMRepository | ✅ |
+| `capabilities.py` | CapabilityRepository | ✅ |
 | `files.py` | FileRepository | ✅ |
-| `rows.py` | RowRepository | ✅ |
-| `projects.py` | ProjectRepository | ✅ |
 | `folders.py` | FolderRepository | ✅ |
+| `grammar.py` | RowRepository | ✅ |
 | `platforms.py` | PlatformRepository | ✅ |
-| `qa.py` | QAResultRepository | ✅ |
-| `trash.py` | TrashRepository | ✅ |
-| `sync.py` | SyncService | ✅ |
 | `pretranslate.py` | FileRepository | ✅ |
-| `tm_linking.py` | ProjectRepository + TMRepository | ✅ |
-| `search.py` | All repositories (search methods) | ✅ |
+| `projects.py` | ProjectRepository | ✅ |
+| `qa.py` | QAResultRepository, RowRepository | ✅ |
+| `rows.py` | RowRepository, FileRepository, TMRepository | ✅ |
+| `search.py` | RowRepository, FileRepository | ✅ |
+| `sync.py` | FileRepository, ProjectRepository, TMRepository | ✅ |
+| `tm_assignment.py` | TMRepository | ✅ |
+| `tm_crud.py` | TMRepository | ✅ |
+| `tm_entries.py` | TMRepository | ✅ |
+| `tm_indexes.py` | TMRepository | ✅ |
+| `tm_linking.py` | TMRepository | ✅ |
+| `tm_search.py` | TMRepository, RowRepository | ✅ |
+| `trash.py` | TrashRepository | ✅ |
 
 ### All Repositories Implemented ✅
 
@@ -315,6 +321,7 @@ The **token prefix** determines the mode:
 | PlatformRepository | ✅ | ✅ | ✅ |
 | QAResultRepository | ✅ | ✅ | ✅ |
 | TrashRepository | ✅ | ✅ | ✅ |
+| CapabilityRepository | ✅ | ✅ | ✅ |
 
 ---
 
@@ -539,4 +546,4 @@ No degradation.
 
 ---
 
-*Updated 2026-01-11 | P10 DB Abstraction Layer COMPLETE | Session 50*
+*Updated 2026-01-13 | P10 DB Abstraction Layer 100% COMPLETE | 9 Repositories, 18 Route Files*
