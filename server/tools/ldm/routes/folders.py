@@ -1,20 +1,25 @@
 """Folder CRUD endpoints.
 
 Repository Pattern: Uses FolderRepository for database abstraction.
+
+P10-REPO: Migrated to Repository Pattern (2026-01-13)
+- All endpoints use Repository Pattern
+- Trash serialization uses repository-based helpers
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import LDMFolder
 from server.tools.ldm.schemas import FolderCreate, FolderResponse, DeleteResponse
 from server.tools.ldm.permissions import can_access_project
-from server.repositories import FolderRepository, get_folder_repository, TrashRepository, get_trash_repository
+from server.repositories import (
+    FolderRepository, get_folder_repository,
+    FileRepository, get_file_repository,
+    TrashRepository, get_trash_repository
+)
 
 router = APIRouter(tags=["LDM"])
 
@@ -251,6 +256,88 @@ async def copy_folder(
     }
 
 
+# =============================================================================
+# Trash Serialization Helpers (P10-REPO: Repository-based)
+# =============================================================================
+
+async def _serialize_file_for_trash_repo(
+    file_repo: FileRepository,
+    file_dict: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Serialize a file and its rows for trash storage.
+    P10-REPO: Uses FileRepository instead of direct SQLAlchemy.
+    """
+    # Get all rows for this file using repository
+    rows = await file_repo.get_rows_for_export(file_dict["id"])
+
+    return {
+        "name": file_dict["name"],
+        "original_filename": file_dict.get("original_filename"),
+        "format": file_dict.get("format"),
+        "source_language": file_dict.get("source_language"),
+        "target_language": file_dict.get("target_language"),
+        "row_count": file_dict.get("row_count", len(rows)),
+        "extra_data": file_dict.get("extra_data"),
+        "rows": [
+            {
+                "row_num": r.get("row_num"),
+                "string_id": r.get("string_id"),
+                "source": r.get("source"),
+                "target": r.get("target"),
+                "status": r.get("status"),
+                "extra_data": r.get("extra_data")
+            }
+            for r in rows
+        ]
+    }
+
+
+async def _serialize_folder_for_trash_repo(
+    folder_repo: FolderRepository,
+    file_repo: FileRepository,
+    folder_id: int,
+    folder_name: str
+) -> Dict[str, Any]:
+    """
+    Serialize a folder and all its contents for trash storage.
+    P10-REPO: Uses FolderRepository and FileRepository instead of direct SQLAlchemy.
+    """
+    # Get folder with contents using repository
+    folder_with_contents = await folder_repo.get_with_contents(folder_id)
+
+    if not folder_with_contents:
+        return {"name": folder_name, "files": [], "subfolders": []}
+
+    # Serialize each file
+    files_data = []
+    for file_dict in folder_with_contents.get("files", []):
+        # Get full file data for serialization
+        full_file = await file_repo.get(file_dict["id"])
+        if full_file:
+            file_data = await _serialize_file_for_trash_repo(file_repo, full_file)
+            files_data.append(file_data)
+
+    # Recursively serialize subfolders
+    subfolders_data = []
+    for subfolder in folder_with_contents.get("subfolders", []):
+        subfolder_data = await _serialize_folder_for_trash_repo(
+            folder_repo, file_repo,
+            subfolder["id"], subfolder["name"]
+        )
+        subfolders_data.append(subfolder_data)
+
+    return {
+        "name": folder_name,
+        "files": files_data,
+        "subfolders": subfolders_data
+    }
+
+
+# =============================================================================
+# Delete Endpoint
+# =============================================================================
+
 @router.delete("/folders/{folder_id}", response_model=DeleteResponse)
 async def delete_folder(
     folder_id: int,
@@ -258,16 +345,16 @@ async def delete_folder(
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: FolderRepository = Depends(get_folder_repository),
+    file_repo: FileRepository = Depends(get_file_repository),
     trash_repo: TrashRepository = Depends(get_trash_repository)
 ):
     """
     Delete a folder and all its contents.
     EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
 
-    Repository Pattern: Uses FolderRepository for database abstraction.
-    Note: Trash serialization remains here as it needs SQLAlchemy objects for complex nesting.
+    P10-REPO: Uses Repository Pattern for all operations including trash serialization.
     """
-    # Get folder for trash serialization
+    # Get folder using repository
     folder = await repo.get(folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
@@ -279,30 +366,24 @@ async def delete_folder(
 
     if not permanent:
         # EXPLORER-008: Soft delete - move to trash
-        # Note: Trash requires SQLAlchemy objects for serialization, so we get it again
-        from .trash import move_to_trash, serialize_folder_for_trash
-        result = await db.execute(
-            select(LDMFolder).options(selectinload(LDMFolder.project)).where(
-                LDMFolder.id == folder_id
-            )
+        from .trash import move_to_trash
+
+        # Serialize folder data using repository-based helper (P10-REPO)
+        folder_data = await _serialize_folder_for_trash_repo(
+            repo, file_repo, folder_id, folder_name
         )
-        folder_obj = result.scalar_one_or_none()
 
-        if folder_obj:
-            # Serialize folder data for restore
-            folder_data = await serialize_folder_for_trash(db, folder_obj)
-
-            # Move to trash (P10-REPO: uses TrashRepository)
-            await move_to_trash(
-                trash_repo,
-                item_type="folder",
-                item_id=folder_obj.id,
-                item_name=folder_obj.name,
-                item_data=folder_data,
-                parent_project_id=folder_obj.project_id,
-                parent_folder_id=folder_obj.parent_id,
-                deleted_by=current_user["user_id"]
-            )
+        # Move to trash (P10-REPO: uses TrashRepository)
+        await move_to_trash(
+            trash_repo,
+            item_type="folder",
+            item_id=folder["id"],
+            item_name=folder["name"],
+            item_data=folder_data,
+            parent_project_id=folder["project_id"],
+            parent_folder_id=folder.get("parent_id"),
+            deleted_by=current_user["user_id"]
+        )
 
     # Use repository to delete
     await repo.delete(folder_id)
