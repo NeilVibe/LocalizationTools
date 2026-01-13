@@ -1,6 +1,7 @@
 # Feature Plan: Category Breakdown Table + Hyperlink Auto-Fixer
 
 **Date:** 2026-01-13
+**Updated:** 2026-01-13 (v2 - Added word/character count, separate EN/CN tables)
 **Status:** PLANNED
 **Target File:** `compile_qa.py`
 
@@ -10,51 +11,143 @@
 
 Two new features for QAExcelCompiler:
 
-1. **Category Breakdown Table** - Show per-category completion % for each tester in the TOTAL tab
+1. **Category Breakdown Tables** - Show per-category completion % AND translated word/character count for each tester in the TOTAL tab (separate EN and CN tables)
 2. **Hyperlink Auto-Fixer** - Automatically fix missing hyperlinks in SCREENSHOT column during compile
 
 ---
 
-## Feature 1: Category Breakdown Table
+## Feature 1: Category Breakdown Tables
 
 ### Problem
 
 Currently, the TOTAL tab aggregates all category data into a single row per user. Managers cannot see:
 - Which categories each tester has been working on
 - The completion percentage per category
+- **The translated word/character count per category**
 - Category-level progress tracking
 
 ### Solution
 
-Add a **4th table** in the TOTAL tab showing a pivot-style breakdown:
+Add **TWO new tables** (4th and 5th) in the TOTAL tab:
+
+1. **EN CATEGORY BREAKDOWN** - For English testers (shows WORD count)
+2. **CN CATEGORY BREAKDOWN** - For Chinese testers (shows CHARACTER count)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ CATEGORY BREAKDOWN                                                          │
-├──────────┬────────┬───────────┬────────┬────────┬────────┬───────┬─────────┤
-│ User     │ Quest  │ Knowledge │ Item   │ Region │ System │ Char  │ Total   │
-├──────────┼────────┼───────────┼────────┼────────┼────────┼───────┼─────────┤
-│ John     │ 85.0%  │ 90.5%     │ -      │ -      │ -      │ -     │ 87.2%   │
-│ Eric     │ 72.3%  │ -         │ -      │ -      │ -      │ -     │ 72.3%   │
-│ Lisa     │ -      │ -         │ -      │ 75.2%  │ -      │ -     │ 75.2%   │
-│ Mike     │ -      │ -         │ -      │ 68.9%  │ -      │ -     │ 68.9%   │
-│ Doni     │ -      │ 82.1%     │ -      │ -      │ -      │ -     │ 82.1%   │
-│ Jojo     │ -      │ -         │ -      │ -      │ -      │ 91.0% │ 91.0%   │
-├──────────┼────────┼───────────┼────────┼────────┼────────┼───────┼─────────┤
-│ TOTAL    │ 78.6%  │ 86.3%     │ -      │ 72.0%  │ -      │ 91.0% │ 81.4%   │
-└──────────┴────────┴───────────┴────────┴────────┴────────┴───────┴─────────┘
+┌───────────────────────────────────────────────────────────────────────────────────────────────┐
+│ EN CATEGORY BREAKDOWN                                                                         │
+├──────────┬─────────────────┬─────────────────┬─────────────────┬─────────────────┬───────────┤
+│ User     │ Quest           │ Knowledge       │ Item            │ Region          │ Total     │
+│          │ Done% │ Words   │ Done% │ Words   │ Done% │ Words   │ Done% │ Words   │ Words     │
+├──────────┼───────┼─────────┼───────┼─────────┼───────┼─────────┼───────┼─────────┼───────────┤
+│ John     │ 85.0% │ 12,450  │ 90.5% │ 8,320   │ -     │ -       │ -     │ -       │ 20,770    │
+│ Eric     │ 72.3% │ 9,100   │ -     │ -       │ -     │ -       │ -     │ -       │ 9,100     │
+├──────────┼───────┼─────────┼───────┼─────────┼───────┼─────────┼───────┼─────────┼───────────┤
+│ TOTAL    │ 78.6% │ 21,550  │ 90.5% │ 8,320   │ -     │ -       │ -     │ -       │ 29,870    │
+└──────────┴───────┴─────────┴───────┴─────────┴───────┴─────────┴───────┴─────────┴───────────┘
+
+┌───────────────────────────────────────────────────────────────────────────────────────────────┐
+│ CN CATEGORY BREAKDOWN                                                                         │
+├──────────┬─────────────────┬─────────────────┬─────────────────┬─────────────────┬───────────┤
+│ User     │ Quest           │ Knowledge       │ Item            │ Region          │ Total     │
+│          │ Done% │ Chars   │ Done% │ Chars   │ Done% │ Chars   │ Done% │ Chars   │ Chars     │
+├──────────┼───────┼─────────┼───────┼─────────┼───────┼─────────┼───────┼─────────┼───────────┤
+│ Lisa     │ -     │ -       │ -     │ -       │ -     │ -       │ 75.2% │ 45,200  │ 45,200    │
+│ Mike     │ -     │ -       │ -     │ -       │ -     │ -       │ 68.9% │ 38,100  │ 38,100    │
+├──────────┼───────┼─────────┼───────┼─────────┼───────┼─────────┼───────┼─────────┼───────────┤
+│ TOTAL    │ -     │ -       │ -     │ -       │ -     │ -       │ 72.0% │ 83,300  │ 83,300    │
+└──────────┴───────┴─────────┴───────┴─────────┴───────┴─────────┴───────┴─────────┴───────────┘
 ```
 
-### Data Source
+### Word/Character Count Logic
 
-The data already exists in `_DAILY_DATA` sheet:
-```
-Schema: Date | User | Category | TotalRows | Done | Issues | NoIssue | Blocked | ...
+#### Translation Column Detection
+Use existing `TRANSLATION_COLS` mapping:
+```python
+TRANSLATION_COLS = {
+    "Quest": {"eng": 2, "other": 3},
+    "Knowledge": {"eng": 2, "other": 3},
+    "Character": {"eng": 2, "other": 3},
+    "Region": {"eng": 2, "other": 3},
+    "Item": {"eng": 5, "other": 7},
+    "System": {"eng": 1, "other": 1},
+}
 ```
 
-Currently, `build_total_sheet()` aggregates this by user (summing across categories). We will:
-1. Keep the existing per-user aggregation (tables 1-3)
-2. Add a new section using the per-category data from `latest_data[(user, category)]`
+#### Korean Detection & Filtering
+**IMPORTANT:** Cells containing Korean text must be EXCLUDED from word/character count.
+
+Korean Unicode detection (simple and reliable):
+```python
+def contains_korean(text):
+    """Check if text contains Korean characters (Hangul)."""
+    if not text:
+        return False
+    for char in str(text):
+        # Hangul Syllables: U+AC00 to U+D7AF (most common)
+        # Hangul Jamo: U+1100 to U+11FF
+        # Hangul Compatibility Jamo: U+3130 to U+318F
+        if '\uAC00' <= char <= '\uD7AF':
+            return True
+        if '\u1100' <= char <= '\u11FF':
+            return True
+        if '\u3130' <= char <= '\u318F':
+            return True
+    return False
+```
+
+#### Counting Methods
+```python
+def count_words_english(text):
+    """Count words in English text (split by whitespace)."""
+    if not text or contains_korean(text):
+        return 0
+    return len(str(text).split())
+
+def count_chars_chinese(text):
+    """Count characters in Chinese text (excluding whitespace)."""
+    if not text or contains_korean(text):
+        return 0
+    # Remove whitespace, count remaining characters
+    return len(str(text).replace(" ", "").replace("\n", "").replace("\t", ""))
+```
+
+#### Language Detection per Tester
+Use `languageTOtester_list.txt`:
+```
+ENG
+김동헌
+황하연
+...
+
+ZHO-CN
+김춘애
+최문석
+...
+```
+
+Parse to determine: `tester_name -> "EN"` or `"CN"`
+
+### Data Collection
+
+Word/character counts must be collected **during compile** (when reading Master files), not from `_DAILY_DATA`.
+
+New data structure needed:
+```python
+# Collected during process_category() when reading Master files
+category_wordcount = {
+    (user, category): {
+        "word_count": 12450,  # For EN testers
+        "char_count": 0,      # For CN testers (mutually exclusive)
+    }
+}
+```
+
+**Where to collect:**
+- In `process_category()` after processing each user's folder
+- Read the Master file's translation column
+- Sum word/char counts (excluding Korean cells)
+- Store in new data structure
 
 ### TOTAL Tab Structure (After Change)
 
@@ -73,56 +166,104 @@ Row N+2:    CN TESTER STATS table (existing)
 
 Row N+4:    GRAND TOTAL row (existing)
 
-Row N+6:    CATEGORY BREAKDOWN table (NEW)
-            - Title row
-            - Header row (User | Quest | Knowledge | Item | Region | System | Character | Total)
-            - Data rows (1 per user, all users combined)
-            - TOTAL row (category totals)
+Row N+6:    EN CATEGORY BREAKDOWN table (NEW - table 4)
+            - Title row (blue)
+            - Header row (User | Quest Done%/Words | Knowledge Done%/Words | ... | Total Words)
+            - Data rows (1 per EN user)
+            - TOTAL row
 
-Row N+X:    Charts (existing, repositioned)
+Row N+X:    CN CATEGORY BREAKDOWN table (NEW - table 5)
+            - Title row (red)
+            - Header row (User | Quest Done%/Chars | Knowledge Done%/Chars | ... | Total Chars)
+            - Data rows (1 per CN user)
+            - TOTAL row
+
+Row N+Y:    Charts (existing, repositioned)
 ```
 
 ### Implementation Details
 
-#### Location in Code
-- Function: `build_total_sheet()` (line ~2191)
-- Add new section after GRAND TOTAL, before charts
-
-#### Logic
+#### New Helper Functions
 ```python
-def build_category_breakdown_section(ws, start_row, latest_data, all_users):
+def contains_korean(text):
+    """Check if text contains Korean characters."""
+    ...
+
+def count_translated_content(ws, trans_col, is_english):
     """
-    Build Category Breakdown pivot table.
+    Count words (EN) or characters (CN) in translation column.
+    Excludes cells containing Korean.
+
+    Args:
+        ws: Worksheet
+        trans_col: Translation column index
+        is_english: True for word count, False for character count
+
+    Returns:
+        int: Total word count (EN) or character count (CN)
+    """
+    total = 0
+    for row in range(2, ws.max_row + 1):
+        cell_value = ws.cell(row, trans_col).value
+        if not cell_value or contains_korean(cell_value):
+            continue
+        if is_english:
+            total += len(str(cell_value).split())
+        else:
+            total += len(str(cell_value).replace(" ", "").replace("\n", ""))
+    return total
+```
+
+#### New Data Collection in process_category()
+```python
+# After processing user's sheets, collect word/char count
+def process_category(category, qa_folders, master_folder, ...):
+    ...
+    # NEW: Collect word/char counts per user
+    wordcount_data = {}
+    for qf in qa_folders:
+        username = qf["username"]
+        is_english = tester_mapping.get(username, "EN") == "EN"
+        trans_col = get_translation_column(category, is_english)
+
+        # Read master file and count
+        master_path = master_folder / f"Master_{category}.xlsx"
+        # Count from user's translation column in master...
+        count = count_translated_content(master_ws, trans_col, is_english)
+        wordcount_data[(username, category)] = count
+
+    return daily_entries, wordcount_data  # Modified return
+```
+
+#### New Section Builder
+```python
+def build_category_breakdown_section(ws, start_row, latest_data, wordcount_data, users, is_english, tester_mapping):
+    """
+    Build EN or CN Category Breakdown pivot table.
 
     Args:
         ws: Worksheet
         start_row: Row to start building
         latest_data: Dict of (user, category) -> {done, total_rows, ...}
-        all_users: List of all usernames
+        wordcount_data: Dict of (user, category) -> word/char count
+        users: List of usernames for this section
+        is_english: True for EN (words), False for CN (chars)
+        tester_mapping: Dict of username -> language
 
     Returns:
         next_row: Row after this section
     """
-    CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character"]
-
-    # Build pivot: user -> {category -> completion %}
-    pivot = {}
-    for (user, category), data in latest_data.items():
-        if user not in pivot:
-            pivot[user] = {}
-        total_rows = data["total_rows"]
-        done = data["done"]
-        pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
-        pivot[user][category] = pct
-
-    # Write table...
+    ...
 ```
 
 #### Styling
-- Title: Dark purple fill (#5B2C6F), white bold text
+- EN Title: Blue fill (#4472C4), white bold text
+- CN Title: Red fill (#C00000), white bold text
 - Headers: Light gray fill, bold
-- Data cells: Center aligned, percentage format
-- "-" for categories not worked on (empty/no data)
+- Data cells: Center aligned
+- Percentage format for Done%
+- Number format with thousands separator for word/char counts
+- "-" for categories not worked on
 - TOTAL row: Yellow fill, bold
 
 ---
@@ -230,12 +371,20 @@ Processing: Quest [EN] (2 folders)
 
 ## Testing Plan
 
-### Category Breakdown Table
+### Category Breakdown Tables
 1. Run compile with existing test data
-2. Verify TOTAL tab has 4 tables
-3. Check percentages match manual calculation
-4. Verify "-" shows for unused categories
-5. Check TOTAL row sums correctly
+2. Verify TOTAL tab has **5 tables**:
+   - EN TESTER STATS (existing)
+   - CN TESTER STATS (existing)
+   - GRAND TOTAL (existing)
+   - EN CATEGORY BREAKDOWN (new)
+   - CN CATEGORY BREAKDOWN (new)
+3. Check Done% percentages match `_DAILY_DATA` values
+4. Verify word counts for EN testers (manual spot-check)
+5. Verify character counts for CN testers (manual spot-check)
+6. Confirm Korean cells are excluded from counts
+7. Verify "-" shows for unused categories
+8. Check TOTAL row sums correctly
 
 ### Hyperlink Auto-Fixer
 1. Create test file with:
@@ -252,14 +401,59 @@ Processing: Quest [EN] (2 folders)
 
 | File | Changes |
 |------|---------|
-| `compile_qa.py` | Add `build_category_breakdown_section()`, modify `build_total_sheet()`, add `find_file_in_folder()`, modify `process_sheet()`, modify `transfer_sheet_data()` |
+| `compile_qa.py` | Add `contains_korean()`, `count_translated_content()`, `build_category_breakdown_section()`, modify `build_total_sheet()`, modify `process_category()`, add `find_file_in_folder()`, modify `process_sheet()`, modify `transfer_sheet_data()` |
+
+---
+
+## Summary of Changes
+
+### TOTAL Tab Final Structure (5 Tables + Charts)
+
+```
+┌─────────────────────────────────────────┐
+│ 1. EN TESTER STATS (existing)           │
+│    - Per-user aggregated stats          │
+│    - SUBTOTAL row                       │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ 2. CN TESTER STATS (existing)           │
+│    - Per-user aggregated stats          │
+│    - SUBTOTAL row                       │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ 3. GRAND TOTAL (existing)               │
+│    - Combined EN + CN totals            │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ 4. EN CATEGORY BREAKDOWN (NEW)          │
+│    - Per-category Done% + Word count    │
+│    - Blue title bar                     │
+│    - TOTAL row                          │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ 5. CN CATEGORY BREAKDOWN (NEW)          │
+│    - Per-category Done% + Char count    │
+│    - Red title bar                      │
+│    - TOTAL row                          │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ Charts (existing, repositioned)         │
+│    - Done by Tester bar chart           │
+│    - Actual Issues % bar chart          │
+└─────────────────────────────────────────┘
+```
 
 ---
 
 ## Rollback Plan
 
 Both features are additive:
-- Category Breakdown: New section, doesn't modify existing tables
+- Category Breakdown: New sections, doesn't modify existing tables
 - Hyperlink Fixer: Only adds hyperlinks, never removes
 
 If issues arise, simply remove the new code sections.
@@ -269,7 +463,10 @@ If issues arise, simply remove the new code sections.
 ## Timeline
 
 1. **Phase 1**: Documentation (this file) - DONE
-2. **Phase 2**: Implement Category Breakdown table
-3. **Phase 3**: Implement Hyperlink Auto-Fixer
-4. **Phase 4**: Test with real data
-5. **Phase 5**: Commit final version
+2. **Phase 2**: Implement word/char counting helpers + Korean detection
+3. **Phase 3**: Modify `process_category()` to collect word/char counts
+4. **Phase 4**: Implement `build_category_breakdown_section()` for EN and CN
+5. **Phase 5**: Modify `build_total_sheet()` to add both breakdown tables
+6. **Phase 6**: Implement Hyperlink Auto-Fixer
+7. **Phase 7**: Test with real data
+8. **Phase 8**: Commit final version
