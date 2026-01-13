@@ -504,3 +504,72 @@ class PostgreSQLRowRepository(RowRepository):
             }
             for h in history
         ]
+
+    # =========================================================================
+    # Similarity Search (P10-REPO: TM-style suggestions from project rows)
+    # =========================================================================
+
+    async def suggest_similar(
+        self,
+        source: str,
+        file_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+        exclude_row_id: Optional[int] = None,
+        threshold: float = 0.5,
+        max_results: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for similar rows using pg_trgm similarity.
+        Used for TM-style suggestions from project rows.
+        """
+        from sqlalchemy import text
+
+        conditions = ["r.target IS NOT NULL", "r.target != ''"]
+        sql_params = {
+            'search_text': source.strip(),
+            'threshold': threshold,
+            'max_results': max_results
+        }
+
+        if file_id:
+            conditions.append("r.file_id = :file_id")
+            sql_params['file_id'] = file_id
+        elif project_id:
+            conditions.append("f.project_id = :project_id")
+            sql_params['project_id'] = project_id
+
+        if exclude_row_id:
+            conditions.append("r.id != :exclude_row_id")
+            sql_params['exclude_row_id'] = exclude_row_id
+
+        where_clause = " AND ".join(conditions)
+
+        sql = text(f"""
+            SELECT
+                r.id,
+                r.source,
+                r.target,
+                r.file_id,
+                f.name as file_name,
+                similarity(lower(r.source), lower(:search_text)) as sim
+            FROM ldm_rows r
+            JOIN ldm_files f ON r.file_id = f.id
+            WHERE {where_clause}
+              AND similarity(lower(r.source), lower(:search_text)) >= :threshold
+            ORDER BY sim DESC
+            LIMIT :max_results
+        """)
+
+        result = await self.db.execute(sql, sql_params)
+        rows = result.fetchall()
+
+        return [
+            {
+                'source': row.source,
+                'target': row.target,
+                'similarity': round(float(row.sim), 3),
+                'row_id': row.id,
+                'file_name': row.file_name
+            }
+            for row in rows
+        ]

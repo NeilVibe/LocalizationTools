@@ -424,6 +424,77 @@ class TMRepository(ABC):
         ...
 
     # =========================================================================
+    # Index Operations (P10-REPO)
+    # =========================================================================
+
+    @abstractmethod
+    async def get_indexes(self, tm_id: int) -> List[Dict[str, Any]]:
+        """
+        Get index status for a TM.
+
+        Returns:
+            List of index dicts with type, status, file_size, built_at.
+        """
+        ...
+
+    @abstractmethod
+    async def count_entries(self, tm_id: int) -> int:
+        """
+        Count entries in a TM.
+
+        Returns:
+            Entry count.
+        """
+        ...
+
+    # =========================================================================
+    # Advanced Search (P10-REPO: PostgreSQL-specific features)
+    # =========================================================================
+
+    @abstractmethod
+    async def search_exact(
+        self,
+        tm_id: int,
+        source: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Search for exact match in TM using hash-based O(1) lookup.
+
+        Args:
+            tm_id: TM to search in
+            source: Source text to find exact match for
+
+        Returns:
+            Entry dict with source_text, target_text, or None if not found.
+        """
+        ...
+
+    @abstractmethod
+    async def search_similar(
+        self,
+        tm_id: int,
+        source: str,
+        threshold: float = 0.5,
+        max_results: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for similar entries using pg_trgm similarity.
+
+        Note: PostgreSQL-specific feature (pg_trgm extension).
+        SQLite adapter returns empty list (similarity search not available offline).
+
+        Args:
+            tm_id: TM to search in
+            source: Source text to find similar matches for
+            threshold: Minimum similarity score (0.0-1.0)
+            max_results: Maximum results to return
+
+        Returns:
+            List of entry dicts with source, target, similarity score.
+        """
+        ...
+
+    # =========================================================================
     # Tree Structure (for UI)
     # =========================================================================
 

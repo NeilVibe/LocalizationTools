@@ -785,3 +785,70 @@ class SQLiteTMRepository(TMRepository):
             }
         finally:
             conn.close()
+
+    # =========================================================================
+    # Index Operations (P10-REPO)
+    # =========================================================================
+
+    async def get_indexes(self, tm_id: int) -> List[Dict[str, Any]]:
+        """Get index status for a TM - not applicable in SQLite (indexes are local)."""
+        # Offline mode doesn't use PostgreSQL index tracking
+        return []
+
+    async def count_entries(self, tm_id: int) -> int:
+        """Count entries in a TM."""
+        conn = self.db._get_connection()
+        try:
+            result = conn.execute(
+                "SELECT COUNT(*) FROM offline_tm_entries WHERE tm_id = ?",
+                (tm_id,)
+            ).fetchone()
+            return result[0] if result else 0
+        finally:
+            conn.close()
+
+    # =========================================================================
+    # Advanced Search (P10-REPO: PostgreSQL-specific - stubs for SQLite)
+    # =========================================================================
+
+    async def search_exact(
+        self,
+        tm_id: int,
+        source: str
+    ) -> Optional[Dict[str, Any]]:
+        """Hash-based exact match search in SQLite."""
+        source_hash = hashlib.sha256(source.encode()).hexdigest()
+
+        conn = self.db._get_connection()
+        try:
+            row = conn.execute(
+                """SELECT source_text, target_text FROM offline_tm_entries
+                   WHERE tm_id = ? AND source_hash = ?""",
+                (tm_id, source_hash)
+            ).fetchone()
+
+            if row:
+                return {
+                    "source_text": row["source_text"],
+                    "target_text": row["target_text"],
+                    "similarity": 1.0,
+                    "tier": 1,
+                    "strategy": "perfect_whole_match"
+                }
+            return None
+        finally:
+            conn.close()
+
+    async def search_similar(
+        self,
+        tm_id: int,
+        source: str,
+        threshold: float = 0.5,
+        max_results: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Similarity search - not available in SQLite (pg_trgm is PostgreSQL-specific).
+        Returns empty list for offline mode.
+        """
+        logger.debug(f"[TM-REPO] Similarity search not available in SQLite (tm_id={tm_id})")
+        return []

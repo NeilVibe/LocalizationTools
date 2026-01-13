@@ -8,7 +8,7 @@ This is the online mode adapter.
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, delete
+from sqlalchemy import select, and_, or_, delete, text
 from sqlalchemy.orm import selectinload
 from loguru import logger
 
@@ -909,3 +909,113 @@ class PostgreSQLTMRepository(TMRepository):
             "unassigned": unassigned,
             "platforms": tree_platforms
         }
+
+    # =========================================================================
+    # Index Operations (P10-REPO)
+    # =========================================================================
+
+    async def get_indexes(self, tm_id: int) -> List[Dict[str, Any]]:
+        """Get index status for a TM."""
+        from server.database.models import LDMTMIndex
+
+        result = await self.db.execute(
+            select(LDMTMIndex).where(LDMTMIndex.tm_id == tm_id)
+        )
+        indexes = result.scalars().all()
+
+        return [
+            {
+                "type": idx.index_type,
+                "status": idx.status,
+                "file_size": idx.file_size,
+                "built_at": idx.built_at.isoformat() if idx.built_at else None
+            }
+            for idx in indexes
+        ]
+
+    async def count_entries(self, tm_id: int) -> int:
+        """Count entries in a TM."""
+        from sqlalchemy import func
+
+        result = await self.db.execute(
+            select(func.count()).select_from(LDMTMEntry).where(LDMTMEntry.tm_id == tm_id)
+        )
+        return result.scalar() or 0
+
+    # =========================================================================
+    # Advanced Search (P10-REPO)
+    # =========================================================================
+
+    async def search_exact(
+        self,
+        tm_id: int,
+        source: str
+    ) -> Optional[Dict[str, Any]]:
+        """Hash-based exact match search."""
+        import hashlib
+        from server.database.db_utils import normalize_text_for_hash
+
+        normalized = normalize_text_for_hash(source)
+        source_hash = hashlib.sha256(normalized.encode('utf-8')).hexdigest()
+
+        result = await self.db.execute(
+            select(LDMTMEntry).where(
+                LDMTMEntry.tm_id == tm_id,
+                LDMTMEntry.source_hash == source_hash
+            )
+        )
+        entry = result.scalar_one_or_none()
+
+        if entry:
+            return {
+                "source_text": entry.source_text,
+                "target_text": entry.target_text,
+                "similarity": 1.0,
+                "tier": 1,
+                "strategy": "perfect_whole_match"
+            }
+        return None
+
+    async def search_similar(
+        self,
+        tm_id: int,
+        source: str,
+        threshold: float = 0.5,
+        max_results: int = 5
+    ) -> List[Dict[str, Any]]:
+        """pg_trgm similarity search."""
+        sql = text("""
+            SELECT
+                e.id,
+                e.source_text as source,
+                e.target_text as target,
+                e.tm_id,
+                similarity(lower(e.source_text), lower(:search_text)) as sim
+            FROM ldm_tm_entries e
+            WHERE e.tm_id = :tm_id
+              AND e.target_text IS NOT NULL
+              AND e.target_text != ''
+              AND similarity(lower(e.source_text), lower(:search_text)) >= :threshold
+            ORDER BY sim DESC
+            LIMIT :max_results
+        """)
+
+        result = await self.db.execute(sql, {
+            'tm_id': tm_id,
+            'search_text': source.strip(),
+            'threshold': threshold,
+            'max_results': max_results
+        })
+        rows = result.fetchall()
+
+        return [
+            {
+                'source': row.source,
+                'target': row.target,
+                'similarity': round(float(row.sim), 3),
+                'entry_id': row.id,
+                'tm_id': row.tm_id,
+                'file_name': 'TM'
+            }
+            for row in rows
+        ]
