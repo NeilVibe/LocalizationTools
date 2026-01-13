@@ -1901,10 +1901,10 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
 
     ws = wb["_DAILY_DATA"]
 
-    # Ensure headers exist (now includes TotalRows, Fixed, Reported, Checking, NonIssue, WordCount)
-    # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue, WordCount
-    if ws.cell(1, 1).value != "Date" or ws.max_column < 13:
-        headers = ["Date", "User", "Category", "TotalRows", "Done", "Issues", "NoIssue", "Blocked", "Fixed", "Reported", "Checking", "NonIssue", "WordCount"]
+    # Ensure headers exist (now includes TotalRows, Fixed, Reported, Checking, NonIssue, WordCount, Korean)
+    # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue, WordCount, Korean
+    if ws.cell(1, 1).value != "Date" or ws.max_column < 14:
+        headers = ["Date", "User", "Category", "TotalRows", "Done", "Issues", "NoIssue", "Blocked", "Fixed", "Reported", "Checking", "NonIssue", "WordCount", "Korean"]
         for col, header in enumerate(headers, 1):
             ws.cell(1, col, header)
 
@@ -1934,7 +1934,7 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
         user = entry["user"]
         user_manager_stats = manager_stats.get(category, {}).get(user, {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
 
-        # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue, WordCount
+        # Schema: Date, User, Category, TotalRows, Done, Issues, NoIssue, Blocked, Fixed, Reported, Checking, NonIssue, WordCount, Korean
         ws.cell(row, 1, entry["date"])
         ws.cell(row, 2, entry["user"])
         ws.cell(row, 3, entry["category"])
@@ -1948,6 +1948,7 @@ def update_daily_data_sheet(wb, daily_entries, manager_stats=None):
         ws.cell(row, 11, user_manager_stats["checking"])
         ws.cell(row, 12, user_manager_stats["nonissue"])
         ws.cell(row, 13, entry.get("word_count", 0))  # WordCount (words for EN, chars for CN)
+        ws.cell(row, 14, entry.get("korean", 0))      # Korean status count
 
 
 def build_daily_sheet(wb):
@@ -2710,13 +2711,14 @@ def build_total_sheet(wb):
                 "reported": data_ws.cell(row, 10).value or 0,
                 "checking": data_ws.cell(row, 11).value or 0,
                 "nonissue": data_ws.cell(row, 12).value or 0,
-                "word_count": data_ws.cell(row, 13).value or 0  # Words (EN) or Chars (CN)
+                "word_count": data_ws.cell(row, 13).value or 0,  # Words (EN) or Chars (CN)
+                "korean": data_ws.cell(row, 14).value or 0  # Korean status count
             }
 
     # Second pass: aggregate latest data by user (sum across categories)
     user_data = defaultdict(lambda: {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
-        "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0
+        "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "korean": 0
     })
 
     for (user, category), data in latest_data.items():
@@ -2729,6 +2731,7 @@ def build_total_sheet(wb):
         user_data[user]["reported"] += data["reported"]
         user_data[user]["checking"] += data["checking"]
         user_data[user]["nonissue"] += data["nonissue"]
+        user_data[user]["korean"] += data.get("korean", 0)
 
     if not user_data:
         ws.cell(1, 1, "No data yet")
@@ -2757,8 +2760,8 @@ def build_total_sheet(wb):
     bold = Font(bold=True)
     white_bold = Font(bold=True, color="FFFFFF")
 
-    # Total columns: 5 tester + 4 manager = 9 (removed Completion/Actual Issues - already in Category Breakdown)
-    tester_headers = ["User", "Done", "Issues", "No Issue", "Blocked"]
+    # Total columns: 6 tester + 4 manager = 10 (removed Completion/Actual Issues - already in Category Breakdown)
+    tester_headers = ["User", "Done", "Issues", "No Issue", "Blocked", "Korean"]
     manager_headers = ["Fixed", "Reported", "Checking", "Pending"]
     total_cols = len(tester_headers) + len(manager_headers)
 
@@ -2799,7 +2802,7 @@ def build_total_sheet(wb):
 
         # Data rows
         section_total = {
-            "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
+            "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
             "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0
         }
 
@@ -2810,6 +2813,7 @@ def build_total_sheet(wb):
             issues = data["issues"]
             no_issue = data["no_issue"]
             blocked = data["blocked"]
+            korean = data.get("korean", 0)
             fixed = data["fixed"]
             reported = data["reported"]
             checking = data["checking"]
@@ -2825,14 +2829,15 @@ def build_total_sheet(wb):
             section_total["issues"] += issues
             section_total["no_issue"] += no_issue
             section_total["blocked"] += blocked
+            section_total["korean"] += korean
             section_total["fixed"] += fixed
             section_total["reported"] += reported
             section_total["checking"] += checking
             section_total["pending"] += pending
             section_total["nonissue"] += nonissue
 
-            # Row data: User, Done, Issues, No Issue, Blocked, Fixed, Reported, Checking, Pending
-            row_data = [user, done, issues, no_issue, blocked, fixed, reported, checking, pending]
+            # Row data: User, Done, Issues, No Issue, Blocked, Korean, Fixed, Reported, Checking, Pending
+            row_data = [user, done, issues, no_issue, blocked, korean, fixed, reported, checking, pending]
 
             for col, value in enumerate(row_data, 1):
                 cell = ws.cell(current_row, col, value)
@@ -2850,7 +2855,7 @@ def build_total_sheet(wb):
         # Section subtotal row
         st = section_total
         subtotal_data = [
-            "SUBTOTAL", st["done"], st["issues"], st["no_issue"], st["blocked"],
+            "SUBTOTAL", st["done"], st["issues"], st["no_issue"], st["blocked"], st["korean"],
             st["fixed"], st["reported"], st["checking"], st["pending"]
         ]
 
@@ -2880,7 +2885,7 @@ def build_total_sheet(wb):
 
     # Grand total row (combines EN + CN)
     grand_total = {
-        "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
+        "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
         "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0
     }
     for t in [en_total, cn_total]:
@@ -2898,7 +2903,7 @@ def build_total_sheet(wb):
 
         gt = grand_total
         total_row_data = [
-            "TOTAL", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"],
+            "TOTAL", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"], gt["korean"],
             gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
         ]
 
