@@ -29,7 +29,7 @@
 
 ### P10: DB Abstraction Layer - IN PROGRESS
 
-**Status:** ACTIVE MIGRATION | **Progress:** 60% files fully migrated (12/20 route files CLEAN)
+**Status:** ACTIVE MIGRATION | **Progress:** 65% files fully migrated (13/20 route files CLEAN)
 
 **Goal:** Transform entire backend from inconsistent database patterns to unified Repository Pattern for FULL OFFLINE/ONLINE PARITY.
 
@@ -322,8 +322,8 @@ NOT "delete everything and hope for the best"
 | `tm_linking.py` | 8 | 0 | **CLEAN** | Fully migrated (Session 53) |
 | `rows.py` | 7 | 0 | **CLEAN** | Fully migrated (Session 53) |
 | `trash.py` | 12 | 6* | **CLEAN** | move_to_trash + restore (Session 53) |
+| `folders.py` | 12 | 0 | **CLEAN** | Fully migrated (Session 53) |
 | `files.py` | 18 | 15 | MIXED | Permission checks + CRUD |
-| `folders.py` | 9 | 8 | MIXED | Permission checks + CRUD |
 | `platforms.py` | 10 | 10 | MIXED | Permission checks + CRUD |
 | `projects.py` | 9 | 9 | MIXED | Permission checks + CRUD |
 | `sync.py` | 0 | 7 | SERVICE | SyncService pattern |
@@ -332,9 +332,9 @@ NOT "delete everything and hope for the best"
 | `tm_search.py` | 0 | 4 | UTILITY | FAISS search |
 
 **Summary:**
-- **CLEAN (100%):** 12 files (no direct SQLAlchemy in endpoints, only Repository Pattern)
+- **CLEAN (100%):** 13 files (no direct SQLAlchemy in endpoints, only Repository Pattern)
   - Note: trash.py has 6 `db.execute` in `serialize_*_for_trash` - these are READ-ONLY helpers called from OTHER routes
-- **MIXED:** 4 files (have `from sqlalchemy import select` for CRUD, not just permission checks)
+- **MIXED:** 3 files (have `from sqlalchemy import select` for CRUD, not just permission checks)
 - **SERVICE:** 1 file (sync.py - uses SyncService pattern)
 - **UTILITY:** 3 files (capabilities, tm_indexes, tm_search - specialized operations)
 
@@ -423,8 +423,8 @@ Future work could create a `PermissionRepository` for full offline parity.
    - Not found detection ✓ (returns 404)
 
 **Current State:**
-- 12 route files CLEAN (100% Repository): grammar, health, pretranslate, qa, rows, search, settings, tm_assignment, tm_crud, tm_entries, tm_linking, trash
-- 4 route files MIXED (have actual CRUD operations with direct SQLAlchemy)
+- 13 route files CLEAN (100% Repository): grammar, health, pretranslate, qa, rows, search, settings, tm_assignment, tm_crud, tm_entries, tm_linking, trash, folders
+- 3 route files MIXED (have actual CRUD operations with direct SQLAlchemy)
 - 4 route files SPECIAL (sync, capabilities, tm_indexes, tm_search)
 - All 8 Repositories fully implemented
 
@@ -461,6 +461,26 @@ Future work could create a `PermissionRepository` for full offline parity.
    - Callers pass SQLAlchemy model objects - not worth changing now
 
 6. Tested: `list_trash` ✓ (returns empty list), imports ✓
+
+**folders.py Migration (100% COMPLETE)**
+1. Created repository-based trash serialization helpers:
+   - `_serialize_file_for_trash_repo(file_repo, file_dict)` - uses `file_repo.get_rows_for_export()`
+   - `_serialize_folder_for_trash_repo(folder_repo, file_repo, folder_id, folder_name)` - recursive
+
+2. Updated `delete_folder` endpoint:
+   - Added `file_repo: FileRepository` dependency
+   - Uses new `_serialize_folder_for_trash_repo()` instead of SQLAlchemy-based serialize
+   - Removed direct `db.execute(select(LDMFolder)...)` call
+
+3. Removed all SQLAlchemy imports:
+   - Removed `from sqlalchemy import select`
+   - Removed `from sqlalchemy.orm import selectinload`
+   - Removed `from server.database.models import LDMFolder`
+
+4. Tested:
+   - `list_folders` ✓
+   - `create_folder` ✓
+   - `delete_folder` (soft delete) ✓ - folder serialized and moved to trash
 
 ### Session 51 (2026-01-12) - P11 Platform Stability
 
