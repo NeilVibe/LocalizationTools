@@ -1955,8 +1955,9 @@ def build_daily_sheet(wb):
     """
     Build DAILY sheet from _DAILY_DATA.
 
-    Aggregates by (date, user) - combines all categories.
-    Includes both Tester Stats (Done, Issues) and Manager Stats (Fixed, Reported, Checking, Pending).
+    Separate EN and CN sections with full status breakdown:
+    - Done, Issues, No Issue, Blocked, Korean, Words/Chars
+    Plus Manager Stats (Fixed, Reported, Checking, Pending).
     """
     # Delete and recreate sheet to handle merged cells properly
     if "DAILY" in wb.sheetnames:
@@ -1965,73 +1966,92 @@ def build_daily_sheet(wb):
 
     data_ws = wb["_DAILY_DATA"]
 
+    # Load tester mapping for EN/CN separation
+    tester_mapping = load_tester_mapping()
+
     # Read raw data and aggregate by (date, user)
-    # Now includes manager stats: fixed, reported, checking, nonissue + total_rows for completion %
+    # Full schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8),
+    #              Fixed(9), Reported(10), Checking(11), NonIssue(12), WordCount(13), Korean(14)
     daily_data = defaultdict(lambda: defaultdict(lambda: {
-        "total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0
+        "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
+        "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "word_count": 0
     }))
     users = set()
 
-    # Schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8), Fixed(9), Reported(10), Checking(11), NonIssue(12)
     for row in range(2, data_ws.max_row + 1):
         date = data_ws.cell(row, 1).value
         user = data_ws.cell(row, 2).value
-        total_rows = data_ws.cell(row, 4).value or 0  # Column 4: TotalRows
-        done = data_ws.cell(row, 5).value or 0        # Column 5 now
-        issues = data_ws.cell(row, 6).value or 0      # Column 6 now
-        fixed = data_ws.cell(row, 9).value or 0       # Column 9 now
-        reported = data_ws.cell(row, 10).value or 0   # Column 10 now
-        checking = data_ws.cell(row, 11).value or 0   # Column 11 now
-        nonissue = data_ws.cell(row, 12).value or 0   # Column 12: NON-ISSUE count
+        total_rows = data_ws.cell(row, 4).value or 0
+        done = data_ws.cell(row, 5).value or 0
+        issues = data_ws.cell(row, 6).value or 0
+        no_issue = data_ws.cell(row, 7).value or 0
+        blocked = data_ws.cell(row, 8).value or 0
+        fixed = data_ws.cell(row, 9).value or 0
+        reported = data_ws.cell(row, 10).value or 0
+        checking = data_ws.cell(row, 11).value or 0
+        nonissue = data_ws.cell(row, 12).value or 0
+        word_count = data_ws.cell(row, 13).value or 0
+        korean = data_ws.cell(row, 14).value or 0
 
         if date and user:
             daily_data[date][user]["total_rows"] += total_rows
             daily_data[date][user]["done"] += done
             daily_data[date][user]["issues"] += issues
+            daily_data[date][user]["no_issue"] += no_issue
+            daily_data[date][user]["blocked"] += blocked
+            daily_data[date][user]["korean"] += korean
             daily_data[date][user]["fixed"] += fixed
             daily_data[date][user]["reported"] += reported
             daily_data[date][user]["checking"] += checking
             daily_data[date][user]["nonissue"] += nonissue
+            daily_data[date][user]["word_count"] += word_count
             users.add(user)
 
     if not users:
         ws.cell(1, 1, "No data yet")
         return
 
-    users = sorted(users)
+    # Separate EN and CN users
+    en_users = sorted([u for u in users if tester_mapping.get(u, "EN") == "EN"])
+    cn_users = sorted([u for u in users if tester_mapping.get(u) == "CN"])
     dates = sorted(daily_data.keys())
 
     # === Calculate DAILY DELTAS from cumulative values ===
     # Each date's data is cumulative - to get daily work, subtract previous day's cumulative
-    # daily_delta[date][user] = cumulative[date][user] - cumulative[prev_date][user]
-    daily_delta = defaultdict(lambda: defaultdict(lambda: {
-        "total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0
-    }))
+    default_data = {
+        "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
+        "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "word_count": 0
+    }
+    daily_delta = defaultdict(lambda: defaultdict(lambda: default_data.copy()))
 
     for i, date in enumerate(dates):
         for user in users:
-            current = daily_data[date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
+            current = daily_data[date].get(user, default_data.copy())
 
             if i == 0:
-                # First date: delta = cumulative (no previous)
-                prev = {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
+                prev = default_data.copy()
             else:
                 prev_date = dates[i - 1]
-                prev = daily_data[prev_date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
+                prev = daily_data[prev_date].get(user, default_data.copy())
 
             # Calculate delta (ensure non-negative)
-            daily_delta[date][user]["total_rows"] = current["total_rows"]  # total_rows is universe size, not cumulative
+            daily_delta[date][user]["total_rows"] = current["total_rows"]
             daily_delta[date][user]["done"] = max(0, current["done"] - prev["done"])
             daily_delta[date][user]["issues"] = max(0, current["issues"] - prev["issues"])
+            daily_delta[date][user]["no_issue"] = max(0, current["no_issue"] - prev["no_issue"])
+            daily_delta[date][user]["blocked"] = max(0, current["blocked"] - prev["blocked"])
+            daily_delta[date][user]["korean"] = max(0, current["korean"] - prev["korean"])
             daily_delta[date][user]["fixed"] = max(0, current["fixed"] - prev["fixed"])
             daily_delta[date][user]["reported"] = max(0, current["reported"] - prev["reported"])
             daily_delta[date][user]["checking"] = max(0, current["checking"] - prev["checking"])
             daily_delta[date][user]["nonissue"] = max(0, current["nonissue"] - prev["nonissue"])
+            daily_delta[date][user]["word_count"] = max(0, current["word_count"] - prev["word_count"])
 
     # Styles
-    title_fill = PatternFill(start_color=TRACKER_STYLES["title_color"], end_color=TRACKER_STYLES["title_color"], fill_type="solid")
+    en_title_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")  # Blue for EN
+    cn_title_fill = PatternFill(start_color="C00000", end_color="C00000", fill_type="solid")  # Red for CN
+    manager_title_fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")  # Light green
     header_fill = PatternFill(start_color=TRACKER_STYLES["header_color"], end_color=TRACKER_STYLES["header_color"], fill_type="solid")
-    manager_header_fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")  # Light green for manager
     subheader_fill = PatternFill(start_color=TRACKER_STYLES["subheader_color"], end_color=TRACKER_STYLES["subheader_color"], fill_type="solid")
     alt_fill = PatternFill(start_color=TRACKER_STYLES["alt_row_color"], end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid")
     border = Border(
@@ -2040,206 +2060,189 @@ def build_daily_sheet(wb):
         top=Side(style='thin', color=TRACKER_STYLES["border_color"]),
         bottom=Side(style='thin', color=TRACKER_STYLES["border_color"])
     )
-    center = Alignment(horizontal='center', vertical='center')
-    bold = Font(bold=True)
-
-    # Layout: Date | Tester Stats (Done, Issues per user) | Manager Stats (Fixed, Reported, Checking, Pending)
-    # title_cols = Date(1) + Users*2 (tester) + 4 (manager stats)
-    tester_cols_per_user = 2  # Done, Issues only (removed Comp %, Actual Issues - keep in TOTAL only)
-    tester_cols = len(users) * tester_cols_per_user
-    manager_cols = 5  # Fixed, Reported, NonIssue, Checking, Pending
-    title_cols = 1 + tester_cols + manager_cols
-
-    # Border styles - thick borders to separate users
     thick_side = Side(style='thick', color='000000')
     thin_side = Side(style='thin', color=TRACKER_STYLES["border_color"])
+    center = Alignment(horizontal='center', vertical='center')
+    bold = Font(bold=True)
+    white_bold = Font(bold=True, color="FFFFFF")
 
-    # Row 1: Title
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=title_cols)
-    title_cell = ws.cell(1, 1, "DAILY PROGRESS")
-    title_cell.fill = title_fill
-    title_cell.font = Font(bold=True, size=14)
-    title_cell.alignment = center
+    # Columns per user: Done, Issues, No Issue, Blocked, Korean, Words/Chars
+    tester_headers = ["Done", "Issues", "NoIssue", "Blocked", "Korean"]
+    cols_per_user = len(tester_headers) + 1  # +1 for Words/Chars
 
-    # Row 2: Section headers (Tester Stats | Manager Stats)
-    ws.cell(3, 1, "")  # Date column header placeholder
+    def build_daily_section(ws, start_row, section_title, title_fill, users_list, is_english):
+        """Build a daily stats section for EN or CN users."""
+        if not users_list:
+            return start_row
 
-    # Tester Stats section header
-    if tester_cols > 0:
-        tester_start = 2
-        tester_end = 1 + tester_cols
-        ws.merge_cells(start_row=2, start_column=tester_start, end_row=2, end_column=tester_end)
-        tester_section = ws.cell(2, tester_start, "Tester Stats")
-        tester_section.fill = header_fill
-        tester_section.font = bold
-        tester_section.alignment = center
+        current_row = start_row
+        word_label = "Words" if is_english else "Chars"
 
-    # Manager Stats section header
-    manager_start = 2 + tester_cols
-    manager_end = manager_start + manager_cols - 1
-    ws.merge_cells(start_row=2, start_column=manager_start, end_row=2, end_column=manager_end)
-    manager_section = ws.cell(2, manager_start, "Manager Stats")
-    manager_section.fill = manager_header_fill
-    manager_section.font = bold
-    manager_section.alignment = center
+        # Calculate total columns: Date(1) + users * cols_per_user
+        total_cols = 1 + len(users_list) * cols_per_user
 
-    # Row 3: User names (merged across Done+Issues) for tester section - with thick border separation
-    col = 2
-    for user_idx, user in enumerate(users):
-        ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + 1)
-        cell = ws.cell(3, col, user)
-        cell.fill = header_fill
-        cell.font = bold
-        cell.alignment = center
-        # Thick border on LEFT side of first column for this user (separator)
-        cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
-        # Style the merged cell's second column
-        ws.cell(3, col + 1).fill = header_fill
-        ws.cell(3, col + 1).border = Border(left=thin_side, top=thin_side, bottom=thin_side, right=thin_side)
-        col += tester_cols_per_user
+        # Title row
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
+        title_cell = ws.cell(current_row, 1, section_title)
+        title_cell.fill = title_fill
+        title_cell.font = white_bold
+        title_cell.alignment = center
+        current_row += 1
 
-    # Manager stats headers in row 3 - thick border on left side of first column
-    for i, label in enumerate(["Fixed", "Reported", "NonIssue", "Checking", "Pending"]):
-        cell = ws.cell(3, manager_start + i, label)
-        cell.fill = manager_header_fill
-        cell.font = bold
-        cell.alignment = center
-        # Thick border on left side of "Fixed" (first manager column) to separate from testers
-        if i == 0:
-            cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
-        else:
-            cell.border = border
-
-    # Row 4: Sub-headers (Date, Done, Issues per user) - with thick border separators
-    date_cell = ws.cell(4, 1, "Date")
-    date_cell.fill = subheader_fill
-    date_cell.font = bold
-    date_cell.alignment = center
-    date_cell.border = border
-
-    col = 2
-    for user_idx, user in enumerate(users):
-        for label_idx, label in enumerate(["Done", "Issues"]):
-            cell = ws.cell(4, col, label)
-            cell.fill = subheader_fill
+        # User names row (merged across their columns)
+        ws.cell(current_row, 1, "")  # Empty cell above Date
+        col = 2
+        for user in users_list:
+            ws.merge_cells(start_row=current_row, start_column=col, end_row=current_row, end_column=col + cols_per_user - 1)
+            cell = ws.cell(current_row, col, user)
+            cell.fill = header_fill
             cell.font = bold
             cell.alignment = center
-            # Thick border on left side of "Done" (first column for each user)
-            if label_idx == 0:
-                cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
-            else:
-                cell.border = border
-            col += 1
-
-    # Manager sub-headers row 4 (empty as labels are in row 3) - thick border on first column
-    for i in range(manager_cols):
-        cell = ws.cell(4, manager_start + i)
-        cell.fill = subheader_fill
-        if i == 0:
             cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
-        else:
-            cell.border = border
+            # Style merged cells
+            for c in range(col + 1, col + cols_per_user):
+                ws.cell(current_row, c).fill = header_fill
+                ws.cell(current_row, c).border = border
+            col += cols_per_user
+        current_row += 1
 
-    # Row 5+: Data rows
-    data_row = 5
-
-    for idx, date in enumerate(dates):
-        # Date column - format as MM/DD
-        if isinstance(date, str) and len(date) >= 10:
-            display_date = date[5:7] + "/" + date[8:10]  # YYYY-MM-DD -> MM/DD
-        else:
-            display_date = str(date)
-
-        date_cell = ws.cell(data_row, 1, display_date)
+        # Sub-headers row: Date, then per user columns
+        date_cell = ws.cell(current_row, 1, "Date")
+        date_cell.fill = subheader_fill
+        date_cell.font = bold
         date_cell.alignment = center
         date_cell.border = border
-        if idx % 2 == 1:
-            date_cell.fill = alt_fill
-
-        # Aggregate manager stats across all users for this date
-        day_fixed = 0
-        day_reported = 0
-        day_checking = 0
-        day_nonissue = 0
-        day_issues = 0
 
         col = 2
-        for user_idx, user in enumerate(users):
-            # Use DELTA values for daily display (not cumulative)
-            user_data = daily_delta[date].get(user, {"total_rows": 0, "done": 0, "issues": 0, "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
-            total_rows_val = user_data["total_rows"]
-            done_val = user_data["done"]
-            issues_val = user_data["issues"]
-            nonissue_val = user_data["nonissue"]
-
-            # Aggregate for manager stats (also use delta values)
-            day_fixed += user_data["fixed"]
-            day_reported += user_data["reported"]
-            day_checking += user_data["checking"]
-            day_nonissue += nonissue_val
-            day_issues += issues_val
-
-            # Display value or "--" for zero/no data
-            done_display = done_val if done_val > 0 else "--"
-            issues_display = issues_val if issues_val > 0 else "--"
-
-            # Write 2 cells per user: Done, Issues (removed Comp%, Actual Issues - keep in TOTAL only)
-            for i, val in enumerate([done_display, issues_display]):
-                cell = ws.cell(data_row, col + i, val)
+        for user in users_list:
+            user_headers = tester_headers + [word_label]
+            for i, header in enumerate(user_headers):
+                cell = ws.cell(current_row, col + i, header)
+                cell.fill = subheader_fill
+                cell.font = bold
                 cell.alignment = center
-                # Thick border on left side of "Done" (first column for each user)
                 if i == 0:
                     cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
                 else:
                     cell.border = border
+            col += cols_per_user
+        current_row += 1
+
+        # Data rows
+        for idx, date in enumerate(dates):
+            # Date column - format as MM/DD
+            if isinstance(date, str) and len(date) >= 10:
+                display_date = date[5:7] + "/" + date[8:10]
+            else:
+                display_date = str(date)
+
+            date_cell = ws.cell(current_row, 1, display_date)
+            date_cell.alignment = center
+            date_cell.border = border
+            if idx % 2 == 1:
+                date_cell.fill = alt_fill
+
+            col = 2
+            for user in users_list:
+                user_data = daily_delta[date].get(user, default_data.copy())
+                done_val = user_data["done"]
+                issues_val = user_data["issues"]
+                no_issue_val = user_data["no_issue"]
+                blocked_val = user_data["blocked"]
+                korean_val = user_data["korean"]
+                word_val = user_data["word_count"]
+
+                values = [done_val, issues_val, no_issue_val, blocked_val, korean_val, word_val]
+                for i, val in enumerate(values):
+                    display_val = val if val > 0 else "--"
+                    cell = ws.cell(current_row, col + i, display_val)
+                    cell.alignment = center
+                    if i == 0:
+                        cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
+                    else:
+                        cell.border = border
+                    if idx % 2 == 1:
+                        cell.fill = alt_fill
+                col += cols_per_user
+
+            current_row += 1
+
+        return current_row + 1  # Extra row for spacing
+
+    def build_manager_section(ws, start_row):
+        """Build manager stats section (aggregated across all users)."""
+        current_row = start_row
+        manager_headers = ["Date", "Fixed", "Reported", "NonIssue", "Checking", "Pending"]
+        total_cols = len(manager_headers)
+
+        # Title row
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
+        title_cell = ws.cell(current_row, 1, "MANAGER STATS")
+        title_cell.fill = manager_title_fill
+        title_cell.font = bold
+        title_cell.alignment = center
+        current_row += 1
+
+        # Headers row
+        for i, header in enumerate(manager_headers, 1):
+            cell = ws.cell(current_row, i, header)
+            cell.fill = header_fill
+            cell.font = bold
+            cell.alignment = center
+            cell.border = border
+        current_row += 1
+
+        # Data rows
+        for idx, date in enumerate(dates):
+            if isinstance(date, str) and len(date) >= 10:
+                display_date = date[5:7] + "/" + date[8:10]
+            else:
+                display_date = str(date)
+
+            # Aggregate manager stats across ALL users for this date
+            day_fixed = sum(daily_delta[date].get(u, default_data.copy())["fixed"] for u in users)
+            day_reported = sum(daily_delta[date].get(u, default_data.copy())["reported"] for u in users)
+            day_checking = sum(daily_delta[date].get(u, default_data.copy())["checking"] for u in users)
+            day_nonissue = sum(daily_delta[date].get(u, default_data.copy())["nonissue"] for u in users)
+            day_issues = sum(daily_delta[date].get(u, default_data.copy())["issues"] for u in users)
+            day_pending = max(0, day_issues - day_fixed - day_reported - day_checking - day_nonissue)
+
+            row_values = [display_date, day_fixed, day_reported, day_nonissue, day_checking, day_pending]
+            for i, val in enumerate(row_values, 1):
+                display_val = val if (i == 1 or val > 0) else "--"
+                cell = ws.cell(current_row, i, display_val)
+                cell.alignment = center
+                cell.border = border
                 if idx % 2 == 1:
                     cell.fill = alt_fill
 
-            col += tester_cols_per_user
+            current_row += 1
 
-        # Manager stats for this day (aggregated across all users)
-        # Pending = Issues - Fixed - Reported - Checking - NonIssue
-        day_pending = day_issues - day_fixed - day_reported - day_checking - day_nonissue
-        if day_pending < 0:
-            day_pending = 0
+        return current_row + 1
 
-        manager_values = [day_fixed, day_reported, day_nonissue, day_checking, day_pending]
-        for i, val in enumerate(manager_values):
-            display_val = val if val > 0 else "--"
-            cell = ws.cell(data_row, manager_start + i, display_val)
-            cell.alignment = center
-            # Thick border on left side of "Fixed" (first manager column)
-            if i == 0:
-                cell.border = Border(left=thick_side, top=thin_side, bottom=thin_side, right=thin_side)
-            else:
-                cell.border = border
-            if idx % 2 == 1:
-                cell.fill = alt_fill
+    # Build sections
+    current_row = 1
 
-        data_row += 1
+    # EN DAILY STATS
+    if en_users:
+        current_row = build_daily_section(ws, current_row, "EN DAILY STATS", en_title_fill, en_users, is_english=True)
 
-    # Note: TOTAL row removed from DAILY tab (confusing) - totals are in TOTAL tab
+    # CN DAILY STATS
+    if cn_users:
+        current_row = build_daily_section(ws, current_row, "CN DAILY STATS", cn_title_fill, cn_users, is_english=False)
 
-    # Set column widths with auto-sizing + padding
-    PADDING = 2  # Small padding for edge cases
-    ws.column_dimensions['A'].width = len("Date") + PADDING + 2  # Date column
+    # MANAGER STATS
+    current_row = build_manager_section(ws, current_row)
 
-    # Tester columns - auto-width based on header length (now only Done, Issues)
-    col = 2
-    for user in users:
-        headers = ["Done", "Issues"]
-        for header in headers:
-            col_letter = get_column_letter(col)
-            ws.column_dimensions[col_letter].width = len(header) + PADDING
-            col += 1
+    # Set column widths
+    PADDING = 2
+    ws.column_dimensions['A'].width = 8  # Date column
 
-    # Manager columns
-    manager_headers = ["Fixed", "Reported", "NonIssue", "Checking", "Pending"]
-    for i, header in enumerate(manager_headers):
-        col_letter = get_column_letter(manager_start + i)
-        ws.column_dimensions[col_letter].width = len(header) + PADDING
-
-    # NOTE: Charts removed from DAILY tab - too confusing with many dates/users
+    # Auto-width for other columns based on max users
+    max_users = max(len(en_users), len(cn_users)) if en_users or cn_users else 1
+    for col_idx in range(2, 2 + max_users * cols_per_user):
+        col_letter = get_column_letter(col_idx)
+        ws.column_dimensions[col_letter].width = 8  # Compact width for numbers
 
 
 def build_ranking_table(ws, start_row, user_data, tester_mapping):
