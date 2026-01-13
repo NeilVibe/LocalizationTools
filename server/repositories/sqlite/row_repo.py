@@ -418,3 +418,23 @@ class SQLiteRowRepository(RowRepository):
         """
         # Edit history is only available in online mode
         return []
+
+    # =========================================================================
+    # Similarity Search (P10-REPO: PostgreSQL-specific - stub for SQLite)
+    # =========================================================================
+
+    async def suggest_similar(
+        self,
+        source: str,
+        file_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+        exclude_row_id: Optional[int] = None,
+        threshold: float = 0.5,
+        max_results: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Similarity search - not available in SQLite (pg_trgm is PostgreSQL-specific).
+        Returns empty list for offline mode.
+        """
+        logger.debug(f"[ROW-REPO] Similarity search not available in SQLite")
+        return []

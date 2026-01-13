@@ -227,3 +227,36 @@ class RowRepository(ABC):
             List of history entries, newest first.
         """
         ...
+
+    # =========================================================================
+    # Similarity Search (P10-REPO: PostgreSQL-specific features)
+    # =========================================================================
+
+    @abstractmethod
+    async def suggest_similar(
+        self,
+        source: str,
+        file_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+        exclude_row_id: Optional[int] = None,
+        threshold: float = 0.5,
+        max_results: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for similar rows using pg_trgm similarity.
+
+        Note: PostgreSQL-specific feature (pg_trgm extension).
+        SQLite adapter returns empty list (similarity search not available offline).
+
+        Args:
+            source: Source text to find similar matches for
+            file_id: Limit search to specific file (optional)
+            project_id: Limit search to specific project (optional)
+            exclude_row_id: Exclude this row from results (optional)
+            threshold: Minimum similarity score (0.0-1.0)
+            max_results: Maximum results to return
+
+        Returns:
+            List of row dicts with source, target, similarity, file_name.
+        """
+        ...

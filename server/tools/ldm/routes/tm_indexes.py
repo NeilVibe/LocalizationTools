@@ -2,6 +2,10 @@
 TM Index endpoints - Build indexes, sync indexes, check status.
 
 Migrated from api.py lines 1937-2015, 2017-2149, 2207-2306
+
+P10-REPO: Migrated to Repository Pattern (2026-01-13)
+- Uses TMRepository for TM lookups and index status
+- Note: Background tasks (TMIndexer, TMSyncManager) use sync DB internally
 """
 
 import asyncio
@@ -10,11 +14,10 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
-from server.database.models import LDMTranslationMemory, LDMTMEntry, LDMTMIndex
+from server.repositories import TMRepository, get_tm_repository
 from server.tools.ldm.permissions import can_access_tm
 
 router = APIRouter(tags=["LDM"])
@@ -25,6 +28,7 @@ async def build_tm_indexes(
     tm_id: int,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_async_db),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -39,6 +43,9 @@ async def build_tm_indexes(
     This is required before using the 5-Tier Cascade TM search.
     Building indexes can take several minutes for large TMs (50k+ entries).
 
+    P10-REPO: Uses TMRepository for TM lookup.
+    Note: TMIndexer uses sync DB internally for index building.
+
     Returns operation_id for progress tracking via WebSocket/TaskManager.
     """
     from server.tools.ldm.tm_indexer import TMIndexer
@@ -50,16 +57,12 @@ async def build_tm_indexes(
     if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Get TM
-    tm_result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = tm_result.scalar_one_or_none()
-
+    # Get TM via repository
+    tm = await tm_repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    tm_name = tm.name  # Capture for use in executor
+    tm_name = tm.get("name")  # Capture for use in executor
 
     # Run indexing in threadpool to avoid blocking event loop
     def _build_indexes():
@@ -103,10 +106,13 @@ async def build_tm_indexes(
 async def get_tm_index_status(
     tm_id: int,
     db: AsyncSession = Depends(get_async_db),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Get index status for a Translation Memory.
+
+    P10-REPO: Uses TMRepository for database operations.
 
     Returns list of indexes and their status.
     """
@@ -114,33 +120,18 @@ async def get_tm_index_status(
     if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Get TM
-    result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = result.scalar_one_or_none()
-
+    # Get TM via repository
+    tm = await tm_repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    # Get indexes
-    result = await db.execute(
-        select(LDMTMIndex).where(LDMTMIndex.tm_id == tm_id)
-    )
-    indexes = result.scalars().all()
+    # Get indexes via repository
+    indexes = await tm_repo.get_indexes(tm_id)
 
     return {
         "tm_id": tm_id,
-        "tm_status": tm.status,
-        "indexes": [
-            {
-                "type": idx.index_type,
-                "status": idx.status,
-                "file_size": idx.file_size,
-                "built_at": idx.built_at.isoformat() if idx.built_at else None
-            }
-            for idx in indexes
-        ]
+        "tm_status": tm.get("status"),
+        "indexes": indexes
     }
 
 
@@ -152,10 +143,13 @@ async def get_tm_index_status(
 async def get_tm_sync_status(
     tm_id: int,
     db: AsyncSession = Depends(get_async_db),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Check if TM indexes are stale (DB has newer changes than local indexes).
+
+    P10-REPO: Uses TMRepository for database operations.
 
     Returns:
         - is_stale: True if DB was updated after last sync
@@ -167,12 +161,8 @@ async def get_tm_sync_status(
     if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Get TM
-    result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = result.scalar_one_or_none()
-
+    # Get TM via repository
+    tm = await tm_repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
@@ -192,27 +182,30 @@ async def get_tm_sync_status(
         except Exception as e:
             logger.warning(f"[TM-INDEX] [TM-INDEX] Failed to read TM metadata: {e}")
 
-    # Get current DB entry count
-    result = await db.execute(
-        select(func.count()).select_from(LDMTMEntry).where(LDMTMEntry.tm_id == tm_id)
-    )
-    db_entry_count = result.scalar() or 0
+    # Get current DB entry count via repository
+    db_entry_count = await tm_repo.count_entries(tm_id)
 
     # Determine if stale
     is_stale = False
     pending_changes = 0
 
+    tm_updated_at = tm.get("updated_at")
+
     if last_synced is None:
         # Never synced
         is_stale = True
         pending_changes = db_entry_count
-    elif tm.updated_at:
+    elif tm_updated_at:
         # Compare timestamps
         try:
             synced_dt = datetime.fromisoformat(last_synced.replace('Z', '+00:00'))
-            if tm.updated_at.replace(tzinfo=None) > synced_dt.replace(tzinfo=None):
+            # tm_updated_at might be string or datetime depending on repository
+            if isinstance(tm_updated_at, str):
+                tm_dt = datetime.fromisoformat(tm_updated_at.replace('Z', '+00:00'))
+            else:
+                tm_dt = tm_updated_at
+            if tm_dt.replace(tzinfo=None) > synced_dt.replace(tzinfo=None):
                 is_stale = True
-                # Estimate pending changes (rough: diff in counts + assume some updates)
                 pending_changes = max(1, abs(db_entry_count - synced_entry_count))
         except Exception:
             is_stale = True
@@ -223,7 +216,7 @@ async def get_tm_sync_status(
         "is_stale": is_stale,
         "pending_changes": pending_changes,
         "last_synced": last_synced,
-        "tm_updated_at": tm.updated_at.isoformat() if tm.updated_at else None,
+        "tm_updated_at": tm_updated_at if isinstance(tm_updated_at, str) else (tm_updated_at.isoformat() if tm_updated_at else None),
         "db_entry_count": db_entry_count,
         "synced_entry_count": synced_entry_count
     }
@@ -233,6 +226,7 @@ async def get_tm_sync_status(
 async def sync_tm_indexes(
     tm_id: int,
     db: AsyncSession = Depends(get_async_db),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -242,6 +236,9 @@ async def sync_tm_indexes(
     - Only re-embeds INSERT/UPDATE entries
     - Copies existing embeddings for UNCHANGED entries
     - Rebuilds FAISS/hash indexes at the end
+
+    P10-REPO: Uses TMRepository for TM lookup.
+    Note: TMSyncManager uses sync DB internally.
 
     TASK-002: Tracked with toast (manual operation).
 
@@ -255,16 +252,12 @@ async def sync_tm_indexes(
     if not await can_access_tm(db, tm_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Get TM
-    result = await db.execute(
-        select(LDMTranslationMemory).where(LDMTranslationMemory.id == tm_id)
-    )
-    tm = result.scalar_one_or_none()
-
+    # Get TM via repository
+    tm = await tm_repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    tm_name = tm.name
+    tm_name = tm.get("name")
     user_id = current_user["user_id"]
     username = current_user["username"]
 

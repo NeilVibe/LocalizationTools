@@ -7,17 +7,24 @@ Includes:
 - download-for-offline: Pull file from PostgreSQL to local SQLite
 
 Migrated from api.py lines 2786-3042
+
+P10-REPO: Migrated to Repository Pattern (2026-01-13)
+- Uses FileRepository, FolderRepository, TMRepository for entity lookups
 """
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from loguru import logger
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
-from server.database.models import LDMProject, LDMFolder, LDMFile, LDMTMEntry
+from server.repositories import (
+    FileRepository, get_file_repository,
+    FolderRepository, get_folder_repository,
+    TMRepository, get_tm_repository,
+    ProjectRepository, get_project_repository
+)
 from server.tools.ldm.schemas import (
     SyncFileToCentralRequest, SyncFileToCentralResponse,
     SyncTMToCentralRequest, SyncTMToCentralResponse
@@ -470,12 +477,17 @@ async def push_changes_to_server(
 async def sync_subscription(
     request: SyncSubscriptionRequest,
     db: AsyncSession = Depends(get_async_db),
+    file_repo: FileRepository = Depends(get_file_repository),
+    project_repo: ProjectRepository = Depends(get_project_repository),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Sync a single subscription (refresh from server).
 
     P10: Uses SyncService for sync operations.
+    P10-REPO: Uses repositories for entity counts.
+
     This endpoint is called periodically by the continuous sync mechanism
     to keep offline data fresh with server changes.
     """
@@ -501,28 +513,18 @@ async def sync_subscription(
             await sync_service.sync_file_to_offline(request.entity_id)
             updated_count = 1
         elif request.entity_type == "project":
-            # Count files in project
-            files_result = await db.execute(
-                select(LDMFile).where(LDMFile.project_id == request.entity_id)
-            )
-            files = files_result.scalars().all()
-            updated_count = len(files)
+            # Count files in project via repository
+            files = await file_repo.get_all(project_id=request.entity_id, limit=10000)
+            updated_count = len(files) if files else 0
             await sync_service.sync_project_to_offline(request.entity_id)
         elif request.entity_type == "platform":
-            # Count projects in platform
-            projects_result = await db.execute(
-                select(LDMProject).where(LDMProject.platform_id == request.entity_id)
-            )
-            projects = projects_result.scalars().all()
-            updated_count = len(projects)
+            # Count projects in platform via repository
+            projects = await project_repo.get_all(platform_id=request.entity_id)
+            updated_count = len(projects) if projects else 0
             await sync_service.sync_platform_to_offline(request.entity_id)
         elif request.entity_type == "tm":
-            # SYNC-008: Sync TM with entries
-            entries_result = await db.execute(
-                select(LDMTMEntry).where(LDMTMEntry.tm_id == request.entity_id)
-            )
-            entries = entries_result.scalars().all()
-            updated_count = len(entries)
+            # SYNC-008: Sync TM with entries via repository
+            updated_count = await tm_repo.count_entries(request.entity_id)
             await sync_service.sync_tm_to_offline(request.entity_id)
 
         # Update subscription status
@@ -1168,12 +1170,15 @@ async def empty_local_trash(
 async def download_file_for_offline(
     file_id: int,
     db: AsyncSession = Depends(get_async_db),
+    file_repo: FileRepository = Depends(get_file_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Download/sync a file from PostgreSQL to local SQLite for offline use.
 
     P10: Uses SyncService for sync operations.
+    P10-REPO: Uses FileRepository for file lookup.
+
     Uses merge logic (last-write-wins):
     - Server rows are merged with local (doesn't overwrite local changes)
     - Local changes are pushed to server if newer
@@ -1194,10 +1199,8 @@ async def download_file_for_offline(
     if not await can_access_file(db, file_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # Get file from PostgreSQL
-    result = await db.execute(select(LDMFile).where(LDMFile.id == file_id))
-    file = result.scalar_one_or_none()
-
+    # Get file via repository
+    file = await file_repo.get(file_id)
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -1212,14 +1215,14 @@ async def download_file_for_offline(
         # Update sync metadata
         offline_db.set_last_sync()
 
-        logger.success(f"[SYNC] [SYNC] Downloaded for offline: file={file.name}")
+        logger.success(f"[SYNC] [SYNC] Downloaded for offline: file={file.get('name')}")
 
         return DownloadForOfflineResponse(
             success=True,
-            file_id=file.id,
-            file_name=file.name,
-            row_count=file.row_count,
-            message=f"Synced {file.name} for offline use (merge applied)"
+            file_id=file.get("id"),
+            file_name=file.get("name"),
+            row_count=file.get("row_count", 0),
+            message=f"Synced {file.get('name')} for offline use (merge applied)"
         )
 
     except Exception as e:
@@ -1231,12 +1234,15 @@ async def download_file_for_offline(
 async def sync_file_to_central(
     request: SyncFileToCentralRequest,
     db: AsyncSession = Depends(get_async_db),
+    folder_repo: FolderRepository = Depends(get_folder_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Sync a file from Offline Storage (SQLite) to central PostgreSQL.
 
     P10: Uses SyncService for sync operations.
+    P10-REPO: Uses FolderRepository for folder validation.
+
     This endpoint:
     1. Reads file metadata + all rows from Offline Storage (SQLite)
     2. Creates new file record in PostgreSQL (destination project/folder)
@@ -1263,15 +1269,10 @@ async def sync_file_to_central(
     if not await can_access_project(db, request.destination_project_id, current_user):
         raise HTTPException(status_code=404, detail="Destination project not found")
 
-    # Verify destination folder if specified
+    # Verify destination folder if specified via repository
     if request.destination_folder_id:
-        folder_result = await db.execute(
-            select(LDMFolder).where(
-                LDMFolder.id == request.destination_folder_id,
-                LDMFolder.project_id == request.destination_project_id
-            )
-        )
-        if not folder_result.scalar_one_or_none():
+        folder = await folder_repo.get(request.destination_folder_id)
+        if not folder or folder.get("project_id") != request.destination_project_id:
             raise HTTPException(status_code=404, detail="Destination folder not found")
 
     try:

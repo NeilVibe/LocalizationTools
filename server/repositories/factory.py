@@ -22,6 +22,7 @@ from server.repositories.interfaces.folder_repository import FolderRepository
 from server.repositories.interfaces.platform_repository import PlatformRepository
 from server.repositories.interfaces.qa_repository import QAResultRepository
 from server.repositories.interfaces.trash_repository import TrashRepository
+from server.repositories.interfaces.capability_repository import CapabilityRepository
 
 
 async def get_current_user_optional(request: Request) -> Optional[dict]:
@@ -315,3 +316,38 @@ def get_trash_repository(
         return SQLiteTrashRepository()
     else:
         return PostgreSQLTrashRepository(db)
+
+
+def get_capability_repository(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db)
+) -> CapabilityRepository:
+    """
+    Factory function - returns correct Capability repository based on mode.
+
+    Used as FastAPI dependency:
+        @router.post("/capabilities")
+        async def grant_capability(
+            repo: CapabilityRepository = Depends(get_capability_repository)
+        ):
+            return await repo.grant_capability(...)
+
+    Logic:
+    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite (stub)
+    - Otherwise → PostgreSQL
+
+    Note: Capabilities are admin-only and primarily online functionality.
+    SQLite adapter returns empty results gracefully for offline mode.
+    """
+    # Import here to avoid circular imports
+    from server.repositories.postgresql.capability_repo import PostgreSQLCapabilityRepository
+    from server.repositories.sqlite.capability_repo import SQLiteCapabilityRepository
+
+    # Check if offline mode from Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
+
+    if is_offline:
+        return SQLiteCapabilityRepository()
+    else:
+        return PostgreSQLCapabilityRepository(db)

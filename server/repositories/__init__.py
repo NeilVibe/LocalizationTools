@@ -32,7 +32,12 @@ from server.repositories.interfaces.folder_repository import FolderRepository
 from server.repositories.interfaces.platform_repository import PlatformRepository
 from server.repositories.interfaces.qa_repository import QAResultRepository
 from server.repositories.interfaces.trash_repository import TrashRepository
-from server.repositories.factory import get_tm_repository, get_file_repository, get_row_repository, get_project_repository, get_folder_repository, get_platform_repository, get_qa_repository, get_trash_repository
+from server.repositories.interfaces.capability_repository import CapabilityRepository
+from server.repositories.factory import (
+    get_tm_repository, get_file_repository, get_row_repository,
+    get_project_repository, get_folder_repository, get_platform_repository,
+    get_qa_repository, get_trash_repository, get_capability_repository
+)
 
 __all__ = [
     # TM Repository
@@ -60,4 +65,7 @@ __all__ = [
     # Trash Repository
     "TrashRepository",
     "get_trash_repository",
+    # Capability Repository
+    "CapabilityRepository",
+    "get_capability_repository",
 ]
