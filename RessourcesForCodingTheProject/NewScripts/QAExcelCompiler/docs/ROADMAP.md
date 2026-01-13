@@ -1,6 +1,6 @@
 # QA Excel Compiler - Roadmap
 
-**Created:** 2025-12-30 | **Status:** ✅ IMPLEMENTED | **Updated:** 2026-01-07
+**Created:** 2025-12-30 | **Status:** ✅ ACTIVE | **Updated:** 2026-01-13
 
 ---
 
@@ -139,17 +139,118 @@ Compile QA tester Excel files into master sheets with automatic STATUS tracking,
 
 **Docs:** [MIGRATION_PLAN.md](MIGRATION_PLAN.md)
 
+### Phase 11: Category Clustering ✅ (2026-01-13)
+| Task | Description | Status |
+|------|-------------|--------|
+| 11.1 | Add CATEGORY_TO_MASTER mapping config | ✅ DONE |
+| 11.2 | Track processed masters per language | ✅ DONE |
+| 11.3 | Skill → Master_System.xlsx clustering | ✅ DONE |
+| 11.4 | Help (GameAdvice) → Master_System.xlsx clustering | ✅ DONE |
+| 11.5 | Fix DAILY delta calculation for multi-category users | ✅ DONE |
+
+**Category Clustering:**
+Multiple input categories can merge into one master file:
+```python
+CATEGORY_TO_MASTER = {
+    "Skill": "System",   # Skill → Master_System.xlsx
+    "Help": "System",    # Help (GameAdvice) → Master_System.xlsx
+}
+```
+
+**How it works:**
+1. First category targeting a master (e.g., System) rebuilds it fresh
+2. Subsequent categories (Skill, Help) append their sheets to existing master
+3. Each category keeps its own sheets, just combined into one file
+
 ---
 
-## Categories (Fixed)
+## Categories
 
-| Category | Master File | Description |
-|----------|-------------|-------------|
+| Input Category | Target Master | Description |
+|----------------|---------------|-------------|
 | Quest | Master_Quest.xlsx | Quest-related strings |
 | Knowledge | Master_Knowledge.xlsx | Knowledge/lore strings |
 | Item | Master_Item.xlsx | Item descriptions |
-| Node | Master_Node.xlsx | Node/location strings |
+| Region | Master_Region.xlsx | Location/faction strings |
+| Character | Master_Character.xlsx | NPC/character strings |
 | System | Master_System.xlsx | System/UI strings |
+| Skill | Master_System.xlsx | Skill data (clustered) |
+| Help | Master_System.xlsx | Help/tutorial tips (clustered) |
+
+**Clustering enables:**
+- Related categories in one file for easier manager review
+- Flexible grouping (can add more clusters as needed)
+- Configurable via `CATEGORY_TO_MASTER` dict
+
+---
+
+## Future Plans
+
+### A. Code Modularization (For Claude Code)
+
+**Purpose:** Optimize codebase for AI-assisted development. Structure code so Claude Code can understand, navigate, and modify it with confidence.
+
+**Current Pain Points:**
+- `compile_qa.py` is ~4000 lines (too large to read at once)
+- Functions are interleaved (GUI, data processing, Excel ops mixed)
+- Hard to find specific functionality quickly
+
+**Proposed Structure:**
+```
+QAExcelCompiler/
+├── compile_qa.py           # Main entry + CLI (slim)
+├── core/
+│   ├── __init__.py
+│   ├── discovery.py        # QA folder detection
+│   ├── excel_ops.py        # Workbook read/write/styling
+│   ├── processing.py       # Sheet processing, comment aggregation
+│   ├── matching.py         # Row matching (index, translation, STRINGID)
+│   └── clustering.py       # Category clustering logic
+├── tracker/
+│   ├── __init__.py
+│   ├── daily.py            # DAILY sheet builder
+│   ├── total.py            # TOTAL sheet builder
+│   └── data.py             # _DAILY_DATA operations
+├── gui/
+│   ├── __init__.py
+│   └── tkinter_app.py      # GUI wrapper
+└── config.py               # CATEGORIES, paths, mappings
+```
+
+**Benefits for Claude Code:**
+- Read one module at a time (< 500 lines each)
+- Clear function locations (search `discovery.py` for folder logic)
+- Isolated changes (modify `daily.py` without touching processing)
+- Easier testing (import individual modules)
+
+### B. Unified Program (Compiler + Generators)
+
+**Vision:** Single program with GUI that handles:
+1. **Generate** - Create QA sheets from game XML (datasheet generators)
+2. **Transfer** - Migrate old QA work to new structure
+3. **Build** - Compile QA files into master sheets
+
+**GUI Framework Options:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Tkinter | Built-in, no deps | Basic UI |
+| PyQt/PySide | Professional UI | Heavy deps |
+| DearPyGui | Modern, fast | Less common |
+| Textual | Terminal UI, lightweight | Less visual |
+
+**Recommendation:** Start with Tkinter (current), migrate to PyQt if needed.
+
+**Installation:**
+- PyInstaller for single `.exe` distribution
+- Simple setup wizard (select game data path, output path)
+- Store config in `~/.qacompiler/config.json`
+
+### C. Implementation Priority
+
+1. **Modularization first** - Split code into modules (enables everything else)
+2. **Generator integration** - Import generators as modules
+3. **Unified GUI** - Single interface with tabs (Generate/Transfer/Build)
+4. **Installer** - PyInstaller + setup wizard
 
 ---
 

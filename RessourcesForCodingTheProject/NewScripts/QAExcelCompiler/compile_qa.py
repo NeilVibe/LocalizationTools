@@ -63,7 +63,16 @@ TRACKER_PATH = SCRIPT_DIR / "LQA_Tester_ProgressTracker.xlsx"
 QA_FOLDER_OLD = SCRIPT_DIR / "QAfolderOLD"
 QA_FOLDER_NEW = SCRIPT_DIR / "QAfolderNEW"
 
-CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character"]
+CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character", "Skill", "Help"]
+
+# Category Clustering: Multiple input categories can merge into one master file
+# Key = input category from folder name, Value = target master file category
+# Categories not listed here go to their own Master_{Category}.xlsx
+CATEGORY_TO_MASTER = {
+    "Skill": "System",   # Skill → Master_System.xlsx (as "Skill" sheet)
+    "Help": "System",    # Help (GameAdvice) → Master_System.xlsx (as "Help" sheet)
+    # All others map to themselves (Quest→Quest, Knowledge→Knowledge, etc.)
+}
 
 # Translation column positions by category
 # For matching rows during transfer
@@ -75,9 +84,10 @@ TRANSLATION_COLS = {
     "Region": {"eng": 2, "other": 3},
     # Item: Col 5 for ENG (ItemName), Col 7 for other
     "Item": {"eng": 5, "other": 7},
-    # System: Manually created sheets, Translation in Col 1
-    # Structure: Col1=Translation, Col2=STATUS, Col3=COMMENT, Col4=STRINGID, Col5=SCREENSHOT
-    "System": {"eng": 1, "other": 1},
+    # System/Skill/Help: Translation in Col 2 (standard format)
+    "System": {"eng": 2, "other": 3},
+    "Skill": {"eng": 2, "other": 3},
+    "Help": {"eng": 2, "other": 3},
 }
 
 # Item Description column positions (for Item-specific matching)
@@ -510,26 +520,45 @@ def find_column_by_header(ws, header_name, case_insensitive=True):
     return None
 
 
-def get_or_create_master(category, master_folder, template_file=None):
+def get_target_master_category(category):
+    """Get the target master file category for a given input category.
+
+    Uses CATEGORY_TO_MASTER for clustering (e.g., Skill → System).
+    Categories not in the mapping go to their own master.
     """
-    ALWAYS create fresh master from template file.
+    return CATEGORY_TO_MASTER.get(category, category)
 
-    FULL REBUILD: Delete old master and create fresh from first QA file.
-    This ensures structure is always up-to-date with latest QA files.
 
-    Manager status is preserved via dict (extracted before this function runs).
+def get_or_create_master(category, master_folder, template_file=None, rebuild=True):
+    """
+    Get or create master workbook for a category.
 
     Args:
-        category: Category name (Quest, Knowledge, etc.)
+        category: Category name (Quest, Knowledge, etc.) - this is the INPUT category
         master_folder: Target Master folder (EN or CN)
         template_file: Path to first QA file to use as template
+        rebuild: If True, delete old and create fresh. If False, load existing or create.
+                 Use rebuild=False for clustered categories after the first one.
 
     Returns: openpyxl Workbook, master_path
-    """
-    master_path = master_folder / f"Master_{category}.xlsx"
 
-    # ALWAYS delete old master and create fresh
-    if master_path.exists():
+    Category Clustering:
+        Multiple input categories can target the same master file.
+        E.g., Skill and Help both go to Master_System.xlsx
+        The first category to process triggers rebuild=True, subsequent use rebuild=False.
+    """
+    # Get target master category (handles clustering)
+    target_category = get_target_master_category(category)
+    master_path = master_folder / f"Master_{target_category}.xlsx"
+
+    # If not rebuilding and master exists, load it (for clustered categories)
+    if not rebuild and master_path.exists():
+        print(f"  Loading existing master: {master_path.name} (appending {category} sheets)")
+        wb = safe_load_workbook(master_path)
+        return wb, master_path
+
+    # Rebuild mode: delete old master and create fresh
+    if rebuild and master_path.exists():
         print(f"  Deleting old master: {master_path.name} (rebuilding fresh)")
         master_path.unlink()
 
@@ -3723,7 +3752,7 @@ def run_gui():
     root.mainloop()
 
 
-def process_category(category, qa_folders, master_folder, images_folder, lang_label, manager_status=None):
+def process_category(category, qa_folders, master_folder, images_folder, lang_label, manager_status=None, rebuild=True):
     """
     Process all QA folders for one category.
 
@@ -3734,21 +3763,27 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
         images_folder: Target Images folder (EN or CN)
         lang_label: Language label for display ("EN" or "CN")
         manager_status: Dict of {sheet_name: {row: {user: status}}} from preprocess (optional)
+        rebuild: If True, rebuild master from scratch. If False, append to existing master.
+                 Used for category clustering (e.g., Skill/Help append to System master).
 
     Returns:
         List of daily_entry dicts for tracker
     """
     if manager_status is None:
         manager_status = {}
+
+    target_master = get_target_master_category(category)
+    cluster_info = f" → Master_{target_master}" if target_master != category else ""
+
     print(f"\n{'='*50}")
-    print(f"Processing: {category} [{lang_label}] ({len(qa_folders)} folders)")
+    print(f"Processing: {category} [{lang_label}] ({len(qa_folders)} folders){cluster_info}")
     print(f"{'='*50}")
 
     daily_entries = []  # NEW: Collect entries for tracker
 
     # Get or create master (in correct language folder)
     first_xlsx = qa_folders[0]["xlsx_path"]
-    master_wb, master_path = get_or_create_master(category, master_folder, first_xlsx)
+    master_wb, master_path = get_or_create_master(category, master_folder, first_xlsx, rebuild=rebuild)
 
     if master_wb is None:
         return daily_entries
@@ -3970,25 +4005,38 @@ def main():
     # Process each category for EN and CN
     all_daily_entries = []
 
+    # Track which target masters have been processed (for clustering)
+    # First category targeting a master rebuilds it, subsequent append
+    processed_masters_en = set()
+    processed_masters_cn = set()
+
     # Process EN
     for category in CATEGORIES:
         if category in by_category_en:
+            target_master = get_target_master_category(category)
+            rebuild = target_master not in processed_masters_en
+            processed_masters_en.add(target_master)
+
             category_manager_status = manager_status_en.get(category, {})
             entries = process_category(
                 category, by_category_en[category],
                 MASTER_FOLDER_EN, IMAGES_FOLDER_EN, "EN",
-                category_manager_status
+                category_manager_status, rebuild=rebuild
             )
             all_daily_entries.extend(entries)
 
     # Process CN
     for category in CATEGORIES:
         if category in by_category_cn:
+            target_master = get_target_master_category(category)
+            rebuild = target_master not in processed_masters_cn
+            processed_masters_cn.add(target_master)
+
             category_manager_status = manager_status_cn.get(category, {})
             entries = process_category(
                 category, by_category_cn[category],
                 MASTER_FOLDER_CN, IMAGES_FOLDER_CN, "CN",
-                category_manager_status
+                category_manager_status, rebuild=rebuild
             )
             all_daily_entries.extend(entries)
 
