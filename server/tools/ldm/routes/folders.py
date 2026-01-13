@@ -14,7 +14,7 @@ from server.utils.dependencies import get_async_db, get_current_active_user_asyn
 from server.database.models import LDMFolder
 from server.tools.ldm.schemas import FolderCreate, FolderResponse, DeleteResponse
 from server.tools.ldm.permissions import can_access_project
-from server.repositories import FolderRepository, get_folder_repository
+from server.repositories import FolderRepository, get_folder_repository, TrashRepository, get_trash_repository
 
 router = APIRouter(tags=["LDM"])
 
@@ -257,7 +257,8 @@ async def delete_folder(
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
-    repo: FolderRepository = Depends(get_folder_repository)
+    repo: FolderRepository = Depends(get_folder_repository),
+    trash_repo: TrashRepository = Depends(get_trash_repository)
 ):
     """
     Delete a folder and all its contents.
@@ -291,9 +292,9 @@ async def delete_folder(
             # Serialize folder data for restore
             folder_data = await serialize_folder_for_trash(db, folder_obj)
 
-            # Move to trash
+            # Move to trash (P10-REPO: uses TrashRepository)
             await move_to_trash(
-                db,
+                trash_repo,
                 item_type="folder",
                 item_id=folder_obj.id,
                 item_name=folder_obj.name,

@@ -22,7 +22,8 @@ from server.repositories import (
     FileRepository, get_file_repository,
     ProjectRepository, get_project_repository,
     FolderRepository, get_folder_repository,
-    TMRepository, get_tm_repository
+    TMRepository, get_tm_repository,
+    TrashRepository, get_trash_repository
 )
 
 router = APIRouter(tags=["LDM"])
@@ -522,6 +523,7 @@ async def delete_file(
     file_id: int,
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     repo: FileRepository = Depends(get_file_repository),
+    trash_repo: TrashRepository = Depends(get_trash_repository),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -566,9 +568,9 @@ async def delete_file(
             # Serialize file data for restore
             file_data = await serialize_file_for_trash(db, file_model)
 
-            # Move to trash
+            # Move to trash (P10-REPO: uses TrashRepository)
             await move_to_trash(
-                db,
+                trash_repo,
                 item_type="file",
                 item_id=file_model.id,
                 item_name=file_model.name,
