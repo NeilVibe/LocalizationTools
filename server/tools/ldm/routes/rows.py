@@ -3,6 +3,10 @@ Row endpoints - List rows, update row, project tree.
 
 Migrated from api.py lines 660-933
 P10: DB Abstraction Layer - Uses repositories for FULL PARITY.
+
+P10-REPO: Migrated to Repository Pattern (2026-01-13)
+- Direct DB calls replaced with Repository methods
+- Permission checks (can_access_*) remain as P10-PERM-001
 """
 
 import asyncio
@@ -10,15 +14,9 @@ from collections import defaultdict
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from sqlalchemy import select
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
-from server.database.models import (
-    LDMFile, LDMRow,
-    LDMActiveTM, LDMTranslationMemory
-)
 from server.tools.ldm.schemas import PaginatedRows, RowResponse, RowUpdate
 from server.tools.ldm.websocket import broadcast_cell_update
 from server.tools.ldm.permissions import can_access_file, can_access_project
@@ -26,7 +24,8 @@ from server.repositories import (
     RowRepository, get_row_repository,
     ProjectRepository, get_project_repository,
     FolderRepository, get_folder_repository,
-    FileRepository, get_file_repository
+    FileRepository, get_file_repository,
+    TMRepository, get_tm_repository
 )
 
 router = APIRouter(tags=["LDM"])
@@ -38,22 +37,15 @@ router = APIRouter(tags=["LDM"])
 
 
 
-async def _get_project_linked_tm(db: AsyncSession, project_id: int, user_id: int) -> Optional[int]:
+async def _get_project_linked_tm(tm_repo: TMRepository, project_id: int, user_id: int) -> Optional[int]:
     """
     FEAT-001: Get the highest-priority linked TM for a project.
     Returns tm_id or None if no TM linked.
+
+    P10-REPO: Now uses TMRepository instead of direct DB.
     """
-    result = await db.execute(
-        select(LDMActiveTM.tm_id)
-        .join(LDMTranslationMemory, LDMActiveTM.tm_id == LDMTranslationMemory.id)
-        .where(
-            LDMActiveTM.project_id == project_id,
-            LDMTranslationMemory.owner_id == user_id  # User must own the TM
-        )
-        .order_by(LDMActiveTM.priority)
-        .limit(1)
-    )
-    return result.scalar_one_or_none()
+    tm = await tm_repo.get_linked_for_project(project_id, user_id)
+    return tm["id"] if tm else None
 
 
 
@@ -75,7 +67,8 @@ async def list_rows(
     filter: Optional[str] = Query(None, description="Filter: all, confirmed, unconfirmed, qa_flagged"),
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
-    repo: RowRepository = Depends(get_row_repository)
+    repo: RowRepository = Depends(get_row_repository),
+    file_repo: FileRepository = Depends(get_file_repository)
 ):
     """Get paginated rows for a file.
 
@@ -95,6 +88,7 @@ async def list_rows(
     - qa_flagged: qa_flag_count > 0
 
     Repository Pattern: Uses RowRepository for database abstraction.
+    P10-REPO: Uses FileRepository for file existence check.
     """
     # P9: Local files (negative IDs) skip permission checks - user's own files
     if file_id < 0:
@@ -120,16 +114,13 @@ async def list_rows(
             total_pages=total_pages
         )
 
-    # Check file exists in PostgreSQL for permission verification
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.id == file_id)
-    )
-    file = result.scalar_one_or_none()
+    # P10-REPO: Check file exists via Repository Pattern
+    file = await file_repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Verify file access for PostgreSQL files (DESIGN-001: Public by default)
+    # P10-PERM-001: Verify file access (permission check remains as direct DB)
     if not await can_access_file(db, file_id, current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
@@ -163,11 +154,13 @@ async def update_row(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
-    repo: RowRepository = Depends(get_row_repository)
+    repo: RowRepository = Depends(get_row_repository),
+    tm_repo: TMRepository = Depends(get_tm_repository)
 ):
     """Update a row's target text or status (source is READ-ONLY).
 
     Repository Pattern: Uses RowRepository for database abstraction.
+    P10-REPO: Uses TMRepository for TM linking.
     """
     # P9: Local rows (negative IDs) skip permission checks - user's own files
     if row_id < 0:
@@ -183,24 +176,19 @@ async def update_row(
             raise HTTPException(status_code=404, detail="Row not found")
         return updated_row
 
-    # Get row with file info for permission check and TM auto-add
-    result = await db.execute(
-        select(LDMRow).options(
-            selectinload(LDMRow.file).selectinload(LDMFile.project)
-        ).where(LDMRow.id == row_id)
-    )
-    row = result.scalar_one_or_none()
+    # P10-REPO: Get row with file info via Repository Pattern
+    row = await repo.get_with_file(row_id)
 
     if not row:
         raise HTTPException(status_code=404, detail="Row not found")
 
-    # Verify file access (DESIGN-001: Public by default)
-    if not await can_access_file(db, row.file_id, current_user):
+    # P10-PERM-001: Verify file access (permission check remains as direct DB)
+    if not await can_access_file(db, row["file_id"], current_user):
         raise HTTPException(status_code=404, detail="Resource not found")
 
     # Save history before update
-    old_target = row.target
-    old_status = row.status
+    old_target = row["target"]
+    old_status = row["status"]
 
     # Use repository to update the row
     updated_row = await repo.update(
@@ -248,9 +236,9 @@ async def update_row(
     target = updated_row.get("target")
     if new_status == "reviewed" and source and target:
         try:
-            # Get project's linked TM
-            project_id = row.file.project_id
-            linked_tm_id = await _get_project_linked_tm(db, project_id, current_user["user_id"])
+            # P10-REPO: Get project's linked TM via Repository Pattern
+            project_id = row["project_id"]
+            linked_tm_id = await _get_project_linked_tm(tm_repo, project_id, current_user["user_id"])
 
             if linked_tm_id:
                 # Add entry to TM in background thread
