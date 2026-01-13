@@ -2281,34 +2281,27 @@ def build_ranking_table(ws, start_row, user_data, tester_mapping):
     bold = Font(bold=True)
     white_bold = Font(bold=True, color="FFFFFF")
 
-    # Calculate scores for each user
+    # Calculate scores for each user (SCALAR based, not percentage)
     en_scores = []
     cn_scores = []
     for user, data in user_data.items():
-        total_rows = data.get("total_rows", 0)
         done = data.get("done", 0)
         issues = data.get("issues", 0)
         nonissue = data.get("nonissue", 0)
 
-        # Completion %
-        completion_pct = round(done / total_rows * 100, 1) if total_rows > 0 else 0
+        # Actual Issues (scalar) = Issues - NonIssue
+        actual_issues = max(0, issues - nonissue)
 
-        # Actual Issues % (clamped 0-100)
-        actual_issues_pct = 0
-        if issues > 0:
-            actual_issues_pct = max(0, min(100, round((issues - nonissue) / issues * 100, 1)))
-
-        # Weighted score: 70% Completion + 30% Actual Issues
-        score = round(0.7 * completion_pct + 0.3 * actual_issues_pct, 1)
+        # Weighted score: 70% Done + 30% Actual Issues (SCALAR values)
+        score = round(0.7 * done + 0.3 * actual_issues, 1)
 
         lang = tester_mapping.get(user, "EN")
         user_score = {
             "user": user,
             "lang": lang,
-            "completion": completion_pct,
-            "actual_issues": actual_issues_pct,
-            "score": score,
-            "done": done
+            "done": done,
+            "actual_issues": actual_issues,
+            "score": score
         }
 
         # Split by language
@@ -2322,8 +2315,8 @@ def build_ranking_table(ws, start_row, user_data, tester_mapping):
     cn_scores.sort(key=lambda x: (-x["score"], -x["done"], x["user"]))
 
     current_row = start_row
-    total_cols = 5  # Rank, User, Completion%, Actual Issues%, Score (no Lang column needed)
-    headers = ["Rank", "User", "Completion", "Actual Issues", "Score"]
+    total_cols = 5  # Rank, User, Done, Actual Issues, Score
+    headers = ["Rank", "User", "Done", "Actual Issues", "Score"]
 
     def build_ranking_section(scores_list, title, title_fill):
         """Build a single ranking section (EN or CN)."""
@@ -2378,17 +2371,15 @@ def build_ranking_table(ws, start_row, user_data, tester_mapping):
             if idx % 2 == 1 and rank > 3:
                 user_cell.fill = alt_fill
 
-            # Completion %
-            comp_cell = ws.cell(current_row, 3, user_score["completion"])
-            comp_cell.number_format = '0.0"%"'
-            comp_cell.alignment = center
-            comp_cell.border = border
+            # Done (scalar)
+            done_cell = ws.cell(current_row, 3, user_score["done"])
+            done_cell.alignment = center
+            done_cell.border = border
             if idx % 2 == 1 and rank > 3:
-                comp_cell.fill = alt_fill
+                done_cell.fill = alt_fill
 
-            # Actual Issues %
+            # Actual Issues (scalar)
             ai_cell = ws.cell(current_row, 4, user_score["actual_issues"])
-            ai_cell.number_format = '0.0"%"'
             ai_cell.alignment = center
             ai_cell.border = border
             if idx % 2 == 1 and rank > 3:
@@ -2406,13 +2397,13 @@ def build_ranking_table(ws, start_row, user_data, tester_mapping):
             current_row += 1
 
     # Build EN Ranking
-    build_ranking_section(en_scores, "EN RANKING (70% Completion + 30% Actual Issues)", en_title_fill)
+    build_ranking_section(en_scores, "EN RANKING (70% Done + 30% Actual Issues)", en_title_fill)
 
     if en_scores and cn_scores:
         current_row += 1  # Gap between tables
 
     # Build CN Ranking
-    build_ranking_section(cn_scores, "CN RANKING (70% Completion + 30% Actual Issues)", cn_title_fill)
+    build_ranking_section(cn_scores, "CN RANKING (70% Done + 30% Actual Issues)", cn_title_fill)
 
     # Set column widths
     ws.column_dimensions[get_column_letter(1)].width = 6   # Rank
