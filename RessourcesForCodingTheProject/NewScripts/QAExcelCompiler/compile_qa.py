@@ -1969,18 +1969,21 @@ def build_daily_sheet(wb):
     # Load tester mapping for EN/CN separation
     tester_mapping = load_tester_mapping()
 
-    # Read raw data and aggregate by (date, user)
+    # Read raw data by (date, user, category) - KEEP CATEGORY SEPARATE for correct delta calculation
     # Full schema: Date(1), User(2), Category(3), TotalRows(4), Done(5), Issues(6), NoIssue(7), Blocked(8),
     #              Fixed(9), Reported(10), Checking(11), NonIssue(12), WordCount(13), Korean(14)
-    daily_data = defaultdict(lambda: defaultdict(lambda: {
+    # Structure: raw_data[date][user][category] = {...stats...}
+    raw_data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
         "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "word_count": 0
-    }))
+    })))
     users = set()
+    categories = set()
 
     for row in range(2, data_ws.max_row + 1):
         date = data_ws.cell(row, 1).value
         user = data_ws.cell(row, 2).value
+        category = data_ws.cell(row, 3).value or "Unknown"
         total_rows = data_ws.cell(row, 4).value or 0
         done = data_ws.cell(row, 5).value or 0
         issues = data_ws.cell(row, 6).value or 0
@@ -1994,18 +1997,20 @@ def build_daily_sheet(wb):
         korean = data_ws.cell(row, 14).value or 0
 
         if date and user:
-            daily_data[date][user]["total_rows"] += total_rows
-            daily_data[date][user]["done"] += done
-            daily_data[date][user]["issues"] += issues
-            daily_data[date][user]["no_issue"] += no_issue
-            daily_data[date][user]["blocked"] += blocked
-            daily_data[date][user]["korean"] += korean
-            daily_data[date][user]["fixed"] += fixed
-            daily_data[date][user]["reported"] += reported
-            daily_data[date][user]["checking"] += checking
-            daily_data[date][user]["nonissue"] += nonissue
-            daily_data[date][user]["word_count"] += word_count
+            # Store per-category data (don't aggregate across categories yet)
+            raw_data[date][user][category]["total_rows"] = total_rows
+            raw_data[date][user][category]["done"] = done
+            raw_data[date][user][category]["issues"] = issues
+            raw_data[date][user][category]["no_issue"] = no_issue
+            raw_data[date][user][category]["blocked"] = blocked
+            raw_data[date][user][category]["korean"] = korean
+            raw_data[date][user][category]["fixed"] = fixed
+            raw_data[date][user][category]["reported"] = reported
+            raw_data[date][user][category]["checking"] = checking
+            raw_data[date][user][category]["nonissue"] = nonissue
+            raw_data[date][user][category]["word_count"] = word_count
             users.add(user)
+            categories.add(category)
 
     if not users:
         ws.cell(1, 1, "No data yet")
@@ -2014,38 +2019,77 @@ def build_daily_sheet(wb):
     # Separate EN and CN users
     en_users = sorted([u for u in users if tester_mapping.get(u, "EN") == "EN"])
     cn_users = sorted([u for u in users if tester_mapping.get(u) == "CN"])
-    dates = sorted(daily_data.keys())
+    all_dates = sorted(raw_data.keys())
 
-    # === Calculate DAILY DELTAS from cumulative values ===
-    # Each date's data is cumulative - to get daily work, subtract previous day's cumulative
+    # === Calculate DAILY DELTAS per (user, category) FIRST, then aggregate ===
+    # This prevents cross-category contamination in delta calculation
     default_data = {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
         "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "word_count": 0
     }
     daily_delta = defaultdict(lambda: defaultdict(lambda: default_data.copy()))
 
-    for i, date in enumerate(dates):
-        for user in users:
-            current = daily_data[date].get(user, default_data.copy())
+    # DEBUG: Print what was read from _DAILY_DATA
+    print(f"\n[DEBUG] build_daily_sheet: dates={all_dates}")
+    print(f"[DEBUG] build_daily_sheet: users={sorted(users)}")
+    print(f"[DEBUG] build_daily_sheet: categories={sorted(categories)}")
+    for date in all_dates:
+        for user in sorted(raw_data[date].keys()):
+            for cat in sorted(raw_data[date][user].keys()):
+                d = raw_data[date][user][cat]
+                print(f"[DEBUG] raw_data[{date}][{user}][{cat}]: done={d['done']}, issues={d['issues']}")
 
-            if i == 0:
-                prev = default_data.copy()
-            else:
-                prev_date = dates[i - 1]
-                prev = daily_data[prev_date].get(user, default_data.copy())
+    # For each (user, category), find dates where that combo has data and compute deltas
+    for user in users:
+        for category in categories:
+            # Get all dates where this user+category has data
+            user_cat_dates = sorted([d for d in all_dates if category in raw_data[d][user]])
 
-            # Calculate delta (ensure non-negative)
-            daily_delta[date][user]["total_rows"] = current["total_rows"]
-            daily_delta[date][user]["done"] = max(0, current["done"] - prev["done"])
-            daily_delta[date][user]["issues"] = max(0, current["issues"] - prev["issues"])
-            daily_delta[date][user]["no_issue"] = max(0, current["no_issue"] - prev["no_issue"])
-            daily_delta[date][user]["blocked"] = max(0, current["blocked"] - prev["blocked"])
-            daily_delta[date][user]["korean"] = max(0, current["korean"] - prev["korean"])
-            daily_delta[date][user]["fixed"] = max(0, current["fixed"] - prev["fixed"])
-            daily_delta[date][user]["reported"] = max(0, current["reported"] - prev["reported"])
-            daily_delta[date][user]["checking"] = max(0, current["checking"] - prev["checking"])
-            daily_delta[date][user]["nonissue"] = max(0, current["nonissue"] - prev["nonissue"])
-            daily_delta[date][user]["word_count"] = max(0, current["word_count"] - prev["word_count"])
+            for i, date in enumerate(user_cat_dates):
+                current = raw_data[date][user][category]
+
+                if i == 0:
+                    prev = default_data.copy()
+                else:
+                    prev_date = user_cat_dates[i - 1]
+                    prev = raw_data[prev_date][user][category]
+
+                # Calculate delta for this category (ensure non-negative)
+                cat_delta_total_rows = current["total_rows"]  # total_rows is not cumulative, just current
+                cat_delta_done = max(0, current["done"] - prev["done"])
+                cat_delta_issues = max(0, current["issues"] - prev["issues"])
+                cat_delta_no_issue = max(0, current["no_issue"] - prev["no_issue"])
+                cat_delta_blocked = max(0, current["blocked"] - prev["blocked"])
+                cat_delta_korean = max(0, current["korean"] - prev["korean"])
+                cat_delta_fixed = max(0, current["fixed"] - prev["fixed"])
+                cat_delta_reported = max(0, current["reported"] - prev["reported"])
+                cat_delta_checking = max(0, current["checking"] - prev["checking"])
+                cat_delta_nonissue = max(0, current["nonissue"] - prev["nonissue"])
+                cat_delta_word_count = max(0, current["word_count"] - prev["word_count"])
+
+                # Aggregate this category's delta into the (date, user) totals
+                daily_delta[date][user]["total_rows"] += cat_delta_total_rows
+                daily_delta[date][user]["done"] += cat_delta_done
+                daily_delta[date][user]["issues"] += cat_delta_issues
+                daily_delta[date][user]["no_issue"] += cat_delta_no_issue
+                daily_delta[date][user]["blocked"] += cat_delta_blocked
+                daily_delta[date][user]["korean"] += cat_delta_korean
+                daily_delta[date][user]["fixed"] += cat_delta_fixed
+                daily_delta[date][user]["reported"] += cat_delta_reported
+                daily_delta[date][user]["checking"] += cat_delta_checking
+                daily_delta[date][user]["nonissue"] += cat_delta_nonissue
+                daily_delta[date][user]["word_count"] += cat_delta_word_count
+
+    # Use all_dates for display (renamed from dates for clarity)
+    dates = all_dates
+
+    # DEBUG: Print computed deltas
+    print(f"\n[DEBUG] Computed deltas (per-category then aggregated):")
+    for date in dates:
+        for user in sorted(users):
+            d = daily_delta[date][user]
+            if d["done"] > 0 or d["issues"] > 0:  # Only print non-zero
+                print(f"[DEBUG] delta[{date}][{user}]: done={d['done']}, issues={d['issues']}")
 
     # Styles
     en_title_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")  # Blue for EN
@@ -3815,7 +3859,7 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
         qa_wb.close()
 
         # NEW: Collect entry for tracker (after processing all sheets for this user)
-        daily_entries.append({
+        entry = {
             "date": file_mod_date,
             "user": username,
             "category": category,
@@ -3827,7 +3871,10 @@ def process_category(category, qa_folders, master_folder, images_folder, lang_la
             "blocked": user_stats[username]["blocked"],
             "korean": user_stats[username]["korean"],
             "word_count": user_wordcount[username]  # Words (EN) or Characters (CN)
-        })
+        }
+        # DEBUG: Print what's being collected for tracker
+        print(f"    [DEBUG] daily_entry: {entry['date']} | {entry['user']} | {entry['category']} | done={entry['done']}, issues={entry['issues']}")
+        daily_entries.append(entry)
 
     # Update STATUS sheet (first tab, with stats)
     update_status_sheet(master_wb, all_users, user_stats)
