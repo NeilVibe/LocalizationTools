@@ -1,18 +1,23 @@
-# Feature Plan: Category Breakdown Table + Hyperlink Auto-Fixer
+# Feature Plan: Category Breakdown Table + Hyperlink Auto-Fixer + Ranking Table
 
 **Date:** 2026-01-13
-**Updated:** 2026-01-13 (v2 - Added word/character count, separate EN/CN tables)
-**Status:** PLANNED
+**Updated:** 2026-01-13 (v3 - Implementation complete)
+**Status:** ✅ IMPLEMENTED
 **Target File:** `compile_qa.py`
 
 ---
 
 ## Overview
 
-Two new features for QAExcelCompiler:
+Three features implemented for QAExcelCompiler:
 
 1. **Category Breakdown Tables** - Show per-category completion % AND translated word/character count for each tester in the TOTAL tab (separate EN and CN tables)
 2. **Hyperlink Auto-Fixer** - Automatically fix missing hyperlinks in SCREENSHOT column during compile
+3. **Ranking Table** - Weighted scoring (70% Completion + 30% Actual Issues) with Gold/Silver/Bronze styling
+
+**Additional Changes:**
+- Charts removed from both DAILY and TOTAL tabs (too confusing)
+- Word/character counts only include DONE rows (rows with STATUS filled)
 
 ---
 
@@ -149,36 +154,42 @@ category_wordcount = {
 - Sum word/char counts (excluding Korean cells)
 - Store in new data structure
 
-### TOTAL Tab Structure (After Change)
+### TOTAL Tab Structure (Final)
 
 ```
-Row 1-N:    EN TESTER STATS table (existing)
+Row 1-N:    EN TESTER STATS table
             - Title row
             - Header row
             - Data rows (1 per EN user)
             - SUBTOTAL row
 
-Row N+2:    CN TESTER STATS table (existing)
+Row N+2:    CN TESTER STATS table
             - Title row
             - Header row
             - Data rows (1 per CN user)
             - SUBTOTAL row
 
-Row N+4:    GRAND TOTAL row (existing)
+Row N+4:    GRAND TOTAL row
 
-Row N+6:    EN CATEGORY BREAKDOWN table (NEW - table 4)
+Row N+6:    EN CATEGORY BREAKDOWN table
             - Title row (blue)
             - Header row (User | Quest Done%/Words | Knowledge Done%/Words | ... | Total Words)
             - Data rows (1 per EN user)
             - TOTAL row
 
-Row N+X:    CN CATEGORY BREAKDOWN table (NEW - table 5)
+Row N+X:    CN CATEGORY BREAKDOWN table
             - Title row (red)
             - Header row (User | Quest Done%/Chars | Knowledge Done%/Chars | ... | Total Chars)
             - Data rows (1 per CN user)
             - TOTAL row
 
-Row N+Y:    Charts (existing, repositioned)
+Row N+Y:    RANKING TABLE
+            - Title row (gold gradient)
+            - Header row (Rank | User | Lang | Completion% | Actual Issues% | Score)
+            - Data rows (sorted by score)
+            - Top 3 highlighted: Gold (#FFD700), Silver (#C0C0C0), Bronze (#CD7F32)
+
+(Charts REMOVED - too confusing for stakeholders)
 ```
 
 ### Implementation Details
@@ -407,45 +418,50 @@ Processing: Quest [EN] (2 folders)
 
 ## Summary of Changes
 
-### TOTAL Tab Final Structure (5 Tables + Charts)
+### TOTAL Tab Final Structure (6 Tables, No Charts)
 
 ```
 ┌─────────────────────────────────────────┐
-│ 1. EN TESTER STATS (existing)           │
+│ 1. EN TESTER STATS                      │
 │    - Per-user aggregated stats          │
 │    - SUBTOTAL row                       │
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
-│ 2. CN TESTER STATS (existing)           │
+│ 2. CN TESTER STATS                      │
 │    - Per-user aggregated stats          │
 │    - SUBTOTAL row                       │
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
-│ 3. GRAND TOTAL (existing)               │
+│ 3. GRAND TOTAL                          │
 │    - Combined EN + CN totals            │
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
-│ 4. EN CATEGORY BREAKDOWN (NEW)          │
+│ 4. EN CATEGORY BREAKDOWN                │
 │    - Per-category Done% + Word count    │
 │    - Blue title bar                     │
+│    - Only counts DONE rows              │
 │    - TOTAL row                          │
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
-│ 5. CN CATEGORY BREAKDOWN (NEW)          │
+│ 5. CN CATEGORY BREAKDOWN                │
 │    - Per-category Done% + Char count    │
 │    - Red title bar                      │
+│    - Only counts DONE rows              │
 │    - TOTAL row                          │
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
-│ Charts (existing, repositioned)         │
-│    - Done by Tester bar chart           │
-│    - Actual Issues % bar chart          │
+│ 6. RANKING TABLE                        │
+│    - Score = 70% Completion + 30% Issues│
+│    - Gold/Silver/Bronze top 3           │
+│    - Sorted by score (desc)             │
 └─────────────────────────────────────────┘
+
+(Charts REMOVED from both DAILY and TOTAL tabs)
 ```
 
 ---
@@ -460,13 +476,20 @@ If issues arise, simply remove the new code sections.
 
 ---
 
-## Timeline
+## Implementation Status
 
-1. **Phase 1**: Documentation (this file) - DONE
-2. **Phase 2**: Implement word/char counting helpers + Korean detection
-3. **Phase 3**: Modify `process_category()` to collect word/char counts
-4. **Phase 4**: Implement `build_category_breakdown_section()` for EN and CN
-5. **Phase 5**: Modify `build_total_sheet()` to add both breakdown tables
-6. **Phase 6**: Implement Hyperlink Auto-Fixer
-7. **Phase 7**: Test with real data
-8. **Phase 8**: Commit final version
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Documentation (this file) | ✅ DONE |
+| 2 | Word/char counting helpers + Korean detection | ✅ DONE |
+| 3 | Modify `process_category()` to collect word/char counts (DONE rows only) | ✅ DONE |
+| 4 | Implement `build_category_breakdown_section()` for EN and CN | ✅ DONE |
+| 5 | Modify `build_total_sheet()` to add both breakdown tables | ✅ DONE |
+| 6 | Implement Hyperlink Auto-Fixer | ✅ DONE |
+| 7 | Remove charts from DAILY and TOTAL tabs | ✅ DONE |
+| 8 | Implement `build_ranking_table()` with weighted scoring | ✅ DONE |
+| 9 | Test with real data | ✅ DONE |
+| 10 | Segmented code review | ✅ DONE |
+| 11 | Final commit | ✅ DONE |
+
+**All phases complete. Feature fully implemented and tested.**
