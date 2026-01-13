@@ -28,6 +28,7 @@ Comment Handling:
 import os
 import sys
 import shutil
+from copy import copy
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
@@ -551,10 +552,60 @@ def get_or_create_master(category, master_folder, template_file=None, rebuild=Tr
     target_category = get_target_master_category(category)
     master_path = master_folder / f"Master_{target_category}.xlsx"
 
-    # If not rebuilding and master exists, load it (for clustered categories)
+    # If not rebuilding and master exists, load it and add new sheets from template
     if not rebuild and master_path.exists():
         print(f"  Loading existing master: {master_path.name} (appending {category} sheets)")
         wb = safe_load_workbook(master_path)
+
+        # CRITICAL: Copy sheets from template that don't exist in master yet
+        # This enables clustering - Skill/Help sheets get added to System master
+        if template_file:
+            template_wb = safe_load_workbook(template_file)
+            sheets_added = []
+
+            for sheet_name in template_wb.sheetnames:
+                if sheet_name == "STATUS":
+                    continue  # Skip STATUS sheets
+                if sheet_name not in wb.sheetnames:
+                    # Copy sheet from template to master
+                    source_ws = template_wb[sheet_name]
+                    target_ws = wb.create_sheet(sheet_name)
+
+                    # Copy all cells (values, styles, etc.)
+                    for row in source_ws.iter_rows():
+                        for cell in row:
+                            new_cell = target_ws.cell(row=cell.row, column=cell.column, value=cell.value)
+                            if cell.has_style:
+                                new_cell.font = copy(cell.font)
+                                new_cell.border = copy(cell.border)
+                                new_cell.fill = copy(cell.fill)
+                                new_cell.number_format = cell.number_format
+                                new_cell.alignment = copy(cell.alignment)
+
+                    # Copy column widths
+                    for col_letter, col_dim in source_ws.column_dimensions.items():
+                        target_ws.column_dimensions[col_letter].width = col_dim.width
+
+                    # Copy row heights
+                    for row_num, row_dim in source_ws.row_dimensions.items():
+                        target_ws.row_dimensions[row_num].height = row_dim.height
+
+                    # Clean the new sheet (remove STATUS/COMMENT/SCREENSHOT/STRINGID columns)
+                    cols_to_delete = []
+                    for col in [find_column_by_header(target_ws, h) for h in ["STATUS", "COMMENT", "SCREENSHOT", "STRINGID"]]:
+                        if col:
+                            cols_to_delete.append(col)
+                    cols_to_delete.sort(reverse=True)
+                    for col in cols_to_delete:
+                        target_ws.delete_cols(col)
+
+                    sheets_added.append(sheet_name)
+
+            template_wb.close()
+
+            if sheets_added:
+                print(f"    Added {len(sheets_added)} new sheets from {category}: {', '.join(sheets_added)}")
+
         return wb, master_path
 
     # Rebuild mode: delete old master and create fresh
