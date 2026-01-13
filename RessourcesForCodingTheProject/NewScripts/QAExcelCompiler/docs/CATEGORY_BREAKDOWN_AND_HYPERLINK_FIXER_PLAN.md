@@ -474,6 +474,37 @@ Notes:
 - Ranking uses SCALAR values (Done count + Actual Issues count)
 ```
 
+### DAILY Tab Structure (3 Sections)
+
+```
+┌─────────────────────────────────────────┐
+│ 1. EN DAILY STATS (Blue title)          │
+│    - Columns per user:                  │
+│      Done, Issues, NoIssue, Blocked,    │
+│      Korean, Words                      │
+│    - One row per date (delta values)    │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ 2. CN DAILY STATS (Red title)           │
+│    - Same columns but "Chars" not Words │
+│    - One row per date (delta values)    │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ 3. MANAGER STATS (Green title)          │
+│    - Date, Fixed, Reported, NonIssue,   │
+│      Checking, Pending                  │
+│    - Aggregated across all users        │
+└─────────────────────────────────────────┘
+```
+
+**Daily Data Notes:**
+- Values are DELTAS (work done that day), not cumulative
+- Words = word count for EN testers
+- Chars = character count for CN testers
+- `--` displayed for zero values
+
 ---
 
 ## Rollback Plan
@@ -501,5 +532,7 @@ If issues arise, simply remove the new code sections.
 | 9 | Test with real data | ✅ DONE |
 | 10 | Segmented code review | ✅ DONE |
 | 11 | Final commit | ✅ DONE |
+| 12 | Add Korean column to TOTAL TESTER STATS | ✅ DONE |
+| 13 | Revamp DAILY tab: EN/CN sections + all statuses + word/char count | ✅ DONE |
 
 **All phases complete. Feature fully implemented and tested.**
