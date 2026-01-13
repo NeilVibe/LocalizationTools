@@ -1,17 +1,19 @@
 """Project CRUD endpoints.
 
 Repository Pattern: Uses ProjectRepository for database abstraction.
+
+P10-REPO: Migrated to Repository Pattern (2026-01-13)
+- All endpoints use Repository Pattern
+- Trash serialization uses repository-based helpers
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from pydantic import BaseModel
 from loguru import logger
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async, require_admin_async
-from server.database.models import LDMProject
 from server.tools.ldm.schemas import ProjectCreate, ProjectResponse, DeleteResponse
 from server.tools.ldm.permissions import (
     get_accessible_projects,
@@ -20,7 +22,12 @@ from server.tools.ldm.permissions import (
     revoke_project_access,
     get_project_access_list,
 )
-from server.repositories import ProjectRepository, get_project_repository, TrashRepository, get_trash_repository
+from server.repositories import (
+    ProjectRepository, get_project_repository,
+    FolderRepository, get_folder_repository,
+    FileRepository, get_file_repository,
+    TrashRepository, get_trash_repository
+)
 
 router = APIRouter(tags=["LDM"])
 
@@ -152,6 +159,135 @@ async def rename_project(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# =============================================================================
+# Trash Serialization Helpers (P10-REPO: Repository-based)
+# =============================================================================
+
+async def _serialize_file_for_trash_repo(
+    file_repo: FileRepository,
+    file_dict: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Serialize a file and its rows for trash storage.
+    P10-REPO: Uses FileRepository instead of direct SQLAlchemy.
+    """
+    rows = await file_repo.get_rows_for_export(file_dict["id"])
+
+    return {
+        "name": file_dict["name"],
+        "original_filename": file_dict.get("original_filename"),
+        "format": file_dict.get("format"),
+        "source_language": file_dict.get("source_language"),
+        "target_language": file_dict.get("target_language"),
+        "row_count": file_dict.get("row_count", len(rows)),
+        "extra_data": file_dict.get("extra_data"),
+        "rows": [
+            {
+                "row_num": r.get("row_num"),
+                "string_id": r.get("string_id"),
+                "source": r.get("source"),
+                "target": r.get("target"),
+                "status": r.get("status"),
+                "extra_data": r.get("extra_data")
+            }
+            for r in rows
+        ]
+    }
+
+
+async def _serialize_folder_for_trash_repo(
+    folder_repo: FolderRepository,
+    file_repo: FileRepository,
+    folder_id: int,
+    folder_name: str
+) -> Dict[str, Any]:
+    """
+    Serialize a folder and all its contents for trash storage.
+    P10-REPO: Uses FolderRepository and FileRepository.
+    """
+    folder_with_contents = await folder_repo.get_with_contents(folder_id)
+
+    if not folder_with_contents:
+        return {"name": folder_name, "files": [], "subfolders": []}
+
+    files_data = []
+    for file_dict in folder_with_contents.get("files", []):
+        full_file = await file_repo.get(file_dict["id"])
+        if full_file:
+            file_data = await _serialize_file_for_trash_repo(file_repo, full_file)
+            files_data.append(file_data)
+
+    subfolders_data = []
+    for subfolder in folder_with_contents.get("subfolders", []):
+        subfolder_data = await _serialize_folder_for_trash_repo(
+            folder_repo, file_repo,
+            subfolder["id"], subfolder["name"]
+        )
+        subfolders_data.append(subfolder_data)
+
+    return {
+        "name": folder_name,
+        "files": files_data,
+        "subfolders": subfolders_data
+    }
+
+
+async def _serialize_project_for_trash_repo(
+    project_repo: ProjectRepository,
+    folder_repo: FolderRepository,
+    file_repo: FileRepository,
+    project_id: int
+) -> Dict[str, Any]:
+    """
+    Serialize a project and all its contents for trash storage.
+    P10-REPO: Uses all entity repositories.
+    """
+    # Get project details
+    project = await project_repo.get(project_id)
+    if not project:
+        return {}
+
+    # Get all folders in project
+    all_folders = await folder_repo.get_all(project_id)
+
+    # Filter for root folders (parent_id is None)
+    root_folders = [f for f in all_folders if f.get("parent_id") is None]
+
+    # Serialize root folders
+    folders_data = []
+    for folder in root_folders:
+        folder_data = await _serialize_folder_for_trash_repo(
+            folder_repo, file_repo,
+            folder["id"], folder["name"]
+        )
+        folders_data.append(folder_data)
+
+    # Get all files in project
+    all_files = await file_repo.get_all(project_id=project_id, limit=10000)
+
+    # Filter for root files (folder_id is None)
+    root_files = [f for f in all_files if f.get("folder_id") is None]
+
+    # Serialize root files
+    files_data = []
+    for file_dict in root_files:
+        file_data = await _serialize_file_for_trash_repo(file_repo, file_dict)
+        files_data.append(file_data)
+
+    return {
+        "name": project["name"],
+        "description": project.get("description"),
+        "platform_id": project.get("platform_id"),
+        "is_restricted": project.get("is_restricted", False),
+        "folders": folders_data,
+        "files": files_data
+    }
+
+
+# =============================================================================
+# Delete Endpoint
+# =============================================================================
+
 @router.delete("/projects/{project_id}", response_model=DeleteResponse)
 async def delete_project(
     project_id: int,
@@ -159,6 +295,8 @@ async def delete_project(
     db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: ProjectRepository = Depends(get_project_repository),
+    folder_repo: FolderRepository = Depends(get_folder_repository),
+    file_repo: FileRepository = Depends(get_file_repository),
     trash_repo: TrashRepository = Depends(get_trash_repository)
 ):
     """
@@ -166,10 +304,9 @@ async def delete_project(
     EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
     EXPLORER-009: Requires 'delete_project' capability.
 
-    Repository Pattern: Uses ProjectRepository for database abstraction.
+    P10-REPO: Uses Repository Pattern for all operations including trash serialization.
     """
     # DESIGN-001: Check access using permission helper
-    # Returns False for both non-existent AND no access (security: don't reveal existence)
     if not await can_access_project(db, project_id, current_user):
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -177,30 +314,28 @@ async def delete_project(
     from ..permissions import require_capability
     await require_capability(db, current_user, "delete_project")
 
-    # Get project for trash serialization (needs full SQLAlchemy object for trash)
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.id == project_id)
-    )
-    project = result.scalar_one_or_none()
-
+    # Get project using repository
+    project = await repo.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    project_name = project.name
+    project_name = project["name"]
 
     if not permanent:
         # EXPLORER-008: Soft delete - move to trash
-        from .trash import move_to_trash, serialize_project_for_trash
+        from .trash import move_to_trash
 
-        # Serialize project data for restore
-        project_data = await serialize_project_for_trash(db, project)
+        # Serialize project data using repository-based helper (P10-REPO)
+        project_data = await _serialize_project_for_trash_repo(
+            repo, folder_repo, file_repo, project_id
+        )
 
         # Move to trash (P10-REPO: uses TrashRepository)
         await move_to_trash(
             trash_repo,
             item_type="project",
-            item_id=project.id,
-            item_name=project.name,
+            item_id=project["id"],
+            item_name=project["name"],
             item_data=project_data,
             parent_project_id=None,
             parent_folder_id=None,
