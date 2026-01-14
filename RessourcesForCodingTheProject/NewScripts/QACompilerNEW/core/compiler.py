@@ -245,7 +245,7 @@ def process_category(
         return daily_entries
 
     # EN Item category: Sort master sheets A-Z by ItemName(ENG) for consistent matching
-    if category == "Item" and lang_label == "EN":
+    if category.lower() == "item" and lang_label == "EN":
         for sheet_name in master_wb.sheetnames:
             if sheet_name == "STATUS":
                 continue
@@ -290,7 +290,7 @@ def process_category(
         qa_wb = safe_load_workbook(xlsx_path)
 
         # EN Item category: Sort QA workbook sheets A-Z for consistent matching
-        if category == "Item" and lang_label == "EN":
+        if category.lower() == "item" and lang_label == "EN":
             for sheet_name in qa_wb.sheetnames:
                 if sheet_name == "STATUS":
                     continue
@@ -306,9 +306,10 @@ def process_category(
 
             qa_ws = qa_wb[sheet_name]
 
-            # Ensure sheet exists in master
+            # Check if sheet exists in master
             if sheet_name not in master_wb.sheetnames:
-                master_wb.create_sheet(sheet_name)
+                print(f"    WARN: Sheet '{sheet_name}' not in master, skipping")
+                continue
 
             master_ws = master_wb[sheet_name]
 

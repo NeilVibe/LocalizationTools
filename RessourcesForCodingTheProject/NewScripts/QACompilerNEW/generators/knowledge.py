@@ -475,7 +475,7 @@ def write_workbook(
         for (depth, text, needs_tr, is_icon, is_name_attr) in rows:
             fill, font, rh = _get_style_for_depth(depth, is_icon)
             if depth >= 2:
-                if is_name_attr:
+                if is_name_attr or fill != _no_colour_fill:
                     font = _bold_font
                 else:
                     font = _normal_font
