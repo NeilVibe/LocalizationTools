@@ -288,14 +288,37 @@ def load_korean_strings_from_datasheets(datasheet_folder: Path) -> Dict[str, Set
             wb = load_workbook(excel_file, read_only=True, data_only=True)
 
             for sheet in wb.worksheets:
-                # Read column A (Original KR) starting from row 2
-                for row in sheet.iter_rows(min_row=2, max_col=1, values_only=True):
-                    if row and row[0]:
-                        text = str(row[0]).strip()
-                        if text:
-                            normalized = normalize_placeholders(text)
-                            if normalized:
-                                korean_strings.add(normalized)
+                # Find Korean columns from header row
+                # Look for: "Original (KR)", "(KOR)", or column A as fallback
+                korean_cols = []
+                header_row = None
+                for row in sheet.iter_rows(min_row=1, max_row=1, values_only=True):
+                    header_row = row
+                    break
+
+                if header_row:
+                    for idx, header in enumerate(header_row):
+                        if header:
+                            h = str(header)
+                            # Match Korean columns
+                            if "(KOR)" in h or "(KR)" in h or h == "Original (KR)":
+                                korean_cols.append(idx)
+
+                # Fallback to column A if no Korean columns found
+                if not korean_cols:
+                    korean_cols = [0]
+
+                # Read data from Korean columns
+                for row in sheet.iter_rows(min_row=2, values_only=True):
+                    if not row:
+                        continue
+                    for col_idx in korean_cols:
+                        if col_idx < len(row) and row[col_idx]:
+                            text = str(row[col_idx]).strip()
+                            if text:
+                                normalized = normalize_placeholders(text)
+                                if normalized:
+                                    korean_strings.add(normalized)
 
             wb.close()
 
