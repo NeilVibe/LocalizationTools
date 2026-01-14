@@ -156,30 +156,16 @@ def _iter_quest_xml_files(folder: Path) -> Iterable[Path]:
 # =============================================================================
 
 def load_string_key_table(path: Path) -> Dict[str, str]:
-    """
-    Load StringKeyTable: StrKey -> numeric ID mapping.
-
-    Returns:
-        Dict mapping strkey.lower() to numeric key
-    """
     log.info("Loading StringKeyTable: %s", path)
-
-    if not path.exists():
-        log.warning("StringKeyTable not found: %s", path)
-        return {}
-
     root = parse_xml_file(path)
     if root is None:
-        log.error("Failed to parse StringKeyTable")
-        return {}
-
+        sys.exit("Cannot parse StringKeyTable")
     tbl: Dict[str, str] = {}
     for el in root.iter("StringKeyMap"):
         num = el.get("Key") or ""
-        sk = el.get("StrKey") or ""
+        sk  = el.get("StrKey") or ""
         if num and sk:
             tbl[sk.lower()] = num
-
     log.info("StringKeyTable entries: %d", len(tbl))
     return tbl
 
