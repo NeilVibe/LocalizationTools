@@ -210,18 +210,23 @@ For TRUE OFFLINE deployments:
 | tm_crud.py | 46% | OK |
 | tm_search.py | 46% | OK |
 
-### Test Counts (Build 424)
+### Test Counts (Session 43 - 2026-01-14)
 
 | Stage | Tests |
 |-------|-------|
-| Unit Tests | 801 |
+| Unit Tests | **871** (33 skipped) |
 | Integration | 198 |
 | E2E | 97 |
 | API | 131 |
 | Security | 86 |
 | Fixtures | 74 |
 | Performance | 12 |
-| **Total** | **1,399** |
+| **Total** | **~1,400+** |
+
+**Session 43 Update:** All unit tests now use Repository Pattern mocking instead of DB mocking.
+- `test_mocked_full.py`: 52/52 passed
+- `test_routes_qa.py`: 16/16 passed
+- All LDM unit tests: 131/131 passed
 
 **What's done:** Core CRUD routes fully mocked (68-98% coverage)
 **What's fine:** Complex routes tested via 145+ E2E tests
@@ -603,6 +608,24 @@ Complete DB Abstraction Layer across entire backend using Repository Pattern.
 | row_repo.py | Removed `created_at` (LDMRow lacks it) |
 | file_repo.py | Removed `memo` and `created_at` |
 | trash.py | Removed `memo` in serialize |
+
+### Test Pattern Update (Session 43)
+
+All unit tests migrated from DB mocking to Repository Pattern mocking:
+
+**OLD Pattern (broken after P10):**
+```python
+fastapi_app.dependency_overrides[get_async_db] = override_get_db
+mock_db.execute = AsyncMock(return_value=mock_result)
+```
+
+**NEW Pattern (correct):**
+```python
+fastapi_app.dependency_overrides[get_project_repository] = lambda: mock_project_repo
+repos["project_repo"].get.return_value = sample_project
+```
+
+See `docs/wip/P10_DB_ABSTRACTION.md` for full test fixture patterns.
 
 ### Key Decisions
 
