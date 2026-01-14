@@ -178,25 +178,24 @@ def parse_xml_file(path: Path):
 # DATA LOADING
 # =============================================================================
 
-def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int, Dict[str, str]]:
+def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int]:
     """Load all StrOrigin values from language data.
 
     Returns:
-        (master_strings set, word_count, origin_to_stringid mapping)
+        (master_strings set, word_count)
     """
     print(f"Loading master language data from: {language_folder}")
 
     master_strings: Set[str] = set()
-    origin_to_stringid: Dict[str, str] = {}
 
     if not language_folder.exists():
         print(f"  ERROR: Language folder not found")
-        return master_strings, 0, origin_to_stringid
+        return master_strings, 0
 
     lang_files = sorted(language_folder.glob("languagedata_*.xml"))
     if not lang_files:
         print(f"  ERROR: No language data files found")
-        return master_strings, 0, origin_to_stringid
+        return master_strings, 0
 
     # Prefer English
     target_file = None
@@ -212,23 +211,19 @@ def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int, Dic
     root = parse_xml_file(target_file)
     if root is None:
         print(f"  ERROR: Failed to parse language file")
-        return master_strings, 0, origin_to_stringid
+        return master_strings, 0
 
     for loc in root.iter("LocStr"):
         origin = loc.get("StrOrigin") or ""
-        sid = loc.get("StringId") or ""
         if origin:
             normalized = normalize_placeholders(origin)
             if normalized:
                 master_strings.add(normalized)
-                if sid:
-                    origin_to_stringid[normalized] = sid
 
     total_words = count_words_in_set(master_strings)
     print(f"  Loaded {len(master_strings):,} unique strings ({total_words:,} words)")
-    print(f"  Mapped {len(origin_to_stringid):,} strings to StringIds")
 
-    return master_strings, total_words, origin_to_stringid
+    return master_strings, total_words
 
 
 def load_voice_recording_sheet(folder: Path) -> Set[str]:
@@ -493,14 +488,14 @@ def print_coverage_report(report: CoverageReport) -> None:
 # =============================================================================
 
 def build_export_index(export_folder: Path, depth: int = 2) -> Dict[str, str]:
-    """Build index mapping StringId → category (folder path with subfolder).
+    """Build index mapping Korean string → category (folder path with subfolder).
 
     Args:
         export_folder: Path to export folder
         depth: How many folder levels to include (default 2 = TopFolder/SubFolder)
 
     Returns:
-        Dict mapping StringId → category path (e.g., "World/NPC", "System/UI")
+        Dict mapping normalized Korean string → category path (e.g., "World/NPC", "System/UI")
     """
     print(f"\nBuilding export index from: {export_folder}")
     print(f"  Category depth: {depth} levels")
@@ -539,12 +534,15 @@ def build_export_index(export_folder: Path, depth: int = 2) -> Dict[str, str]:
             if subfolder in NON_PRIORITY_FOLDERS:
                 cat = "Non-Priority"
 
+        # Index by Korean string (StrOrigin), not StringId
         for loc in root.iter("LocStr"):
-            sid = loc.get("StringId")
-            if sid:
-                idx[sid] = cat
+            origin = loc.get("StrOrigin") or ""
+            if origin:
+                normalized = normalize_placeholders(origin)
+                if normalized:
+                    idx[normalized] = cat
 
-    print(f"  Indexed {len(idx):,} StringIds from {xml_count:,} XML files")
+    print(f"  Indexed {len(idx):,} Korean strings from {xml_count:,} XML files")
     return idx
 
 
@@ -555,20 +553,17 @@ class UnconsumedAnalysis:
     category_words: Dict[str, int] = field(default_factory=dict)
     total_strings: int = 0
     total_words: int = 0
-    unmapped_strings: int = 0  # Strings with no StringId
 
 
 def analyze_unconsumed(
     remaining: Set[str],
-    origin_to_stringid: Dict[str, str],
     export_index: Dict[str, str],
 ) -> UnconsumedAnalysis:
-    """Analyze unconsumed strings by looking up their StringIds in export.
+    """Analyze unconsumed strings by looking up their category in export.
 
     Args:
-        remaining: Set of unconsumed StrOrigin strings
-        origin_to_stringid: Mapping from StrOrigin → StringId
-        export_index: Mapping from StringId → category (from export folder)
+        remaining: Set of unconsumed Korean strings
+        export_index: Mapping from Korean string → category (from export folder)
 
     Returns:
         UnconsumedAnalysis with breakdown by category
@@ -583,12 +578,7 @@ def analyze_unconsumed(
     category_strings: Dict[str, Set[str]] = {}
 
     for origin in remaining:
-        sid = origin_to_stringid.get(origin)
-        if not sid:
-            analysis.unmapped_strings += 1
-            cat = "No StringId"
-        else:
-            cat = export_index.get(sid, "Not in Export")
+        cat = export_index.get(origin, "Not in Export")
 
         if cat not in category_strings:
             category_strings[cat] = set()
@@ -607,12 +597,12 @@ def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
 
     Shows TWO reports:
     - RAW REPORT: All unconsumed strings
-    - CLEAN REPORT: Excludes "None", "No StringId", "Not in Export", "Non-Priority"
+    - CLEAN REPORT: Excludes "Not in Export", "Non-Priority"
     """
     width = 90
 
     # Categories to exclude from CLEAN report
-    excluded_cats = {"None", "No StringId", "Not in Export", "Non-Priority"}
+    excluded_cats = {"Not in Export", "Non-Priority"}
 
     # Calculate CLEAN totals
     clean_strings = 0
@@ -641,8 +631,6 @@ def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
     print()
 
     print(f"Total unconsumed (RAW): {analysis.total_strings:,} unique strings ({analysis.total_words:,} words)")
-    if analysis.unmapped_strings > 0:
-        print(f"  (includes {analysis.unmapped_strings:,} strings with no StringId in language data)")
     print()
 
     print(f"{'Folder/Subfolder':<45} {'Strings':>12} {'Words':>12} {'% of RAW':>15}")
@@ -667,7 +655,7 @@ def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
     print("              UNCONSUMED STRINGS - CLEAN REPORT (Priority Only)")
     print("=" * width)
     print()
-    print("EXCLUDED: None, No StringId, Not in Export, Non-Priority")
+    print("EXCLUDED: Not in Export, Non-Priority")
     print("          (Non-Priority = System/ItemGroup, System/Gimmick, System/MultiChange)")
     print()
 
@@ -703,8 +691,8 @@ def main():
     print(f"Script location: {SCRIPT_DIR}")
     print()
 
-    # 1. Load master language data (with StrOrigin → StringId mapping)
-    master_strings, master_word_count, origin_to_stringid = load_master_language_data(LANGUAGE_FOLDER)
+    # 1. Load master language data (Korean strings only)
+    master_strings, master_word_count = load_master_language_data(LANGUAGE_FOLDER)
     if not master_strings:
         print("ERROR: No master language data - cannot calculate coverage")
         sys.exit(1)
@@ -736,11 +724,7 @@ def main():
         export_index = build_export_index(EXPORT_FOLDER)
 
         # Analyze where unconsumed strings come from
-        unconsumed_analysis = analyze_unconsumed(
-            remaining,
-            origin_to_stringid,
-            export_index,
-        )
+        unconsumed_analysis = analyze_unconsumed(remaining, export_index)
 
         # Print unconsumed report
         print_unconsumed_report(unconsumed_analysis)
