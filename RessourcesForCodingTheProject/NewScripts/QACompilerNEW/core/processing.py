@@ -61,47 +61,52 @@ def extract_comment_text(comment: str) -> str:
     return parts[0].strip()
 
 
-def format_comment(comment: str, string_id: str = None, existing: str = None, file_mod_time: datetime = None) -> str:
+def format_comment(new_comment, string_id=None, existing_comment=None, file_mod_time=None):
     """
-    Format a comment with metadata (stringid, timestamp).
+    Format comment with StringID and file modification time.
 
-    REPLACE mode: New comments replace old entirely.
+    Format (with stringid):
+        <comment text>
+        ---
+        stringid:
+        <stringid value>
+        (updated: YYMMDD HHMM)
 
-    Args:
-        comment: Raw comment text
-        string_id: StringID to embed
-        existing: Existing comment in master (for duplicate check)
-        file_mod_time: File modification time for timestamp
+    Format (without stringid):
+        <comment text>
+        ---
+        (updated: YYMMDD HHMM)
 
-    Returns:
-        Formatted comment string
+    REPLACE MODE: If comment text differs, REPLACE entirely (no append).
+    DUPLICATE CHECK: Split on '---' delimiter to extract original comment for comparison.
     """
-    if not comment:
-        return ""
+    if not new_comment or str(new_comment).strip() == "":
+        return existing_comment  # Return existing if no new comment
 
-    comment = str(comment).strip()
+    new_text = str(new_comment).strip()
 
-    # Extract just the comment text (remove old metadata)
-    original_text = extract_comment_text(comment)
+    # Check if this exact comment text already exists (avoid re-update on re-run)
+    if existing_comment:
+        existing_str = str(existing_comment)
+        # Split on --- delimiter to extract original comment
+        if "\n---\n" in existing_str:
+            existing_original = existing_str.split("\n---\n")[0].strip()
+            if existing_original == new_text:
+                return existing_comment  # Duplicate, skip
 
-    # Build new formatted comment
-    parts = [original_text, "---"]
-
-    if string_id:
-        # Format STRINGID as text to prevent scientific notation
-        sid_str = str(string_id).strip()
-        if 'e' in sid_str.lower():
-            try:
-                sid_str = str(int(float(sid_str)))
-            except (ValueError, OverflowError):
-                pass
-        parts.append(f"stringid:\n{sid_str}")
-
+    # Format timestamp from file modification time (or fallback to now)
     if file_mod_time:
         timestamp = file_mod_time.strftime("%y%m%d %H%M")
-        parts.append(f"(updated: {timestamp})")
+    else:
+        timestamp = datetime.now().strftime("%y%m%d %H%M")
 
-    return "\n".join(parts)
+    # Build formatted comment: text + delimiter + metadata
+    if string_id and str(string_id).strip():
+        # With stringid: comment -> --- -> stringid: -> value -> (updated)
+        return f"{new_text}\n---\nstringid:\n{str(string_id).strip()}\n(updated: {timestamp})"
+    else:
+        # Without stringid: comment -> --- -> (updated)
+        return f"{new_text}\n---\n(updated: {timestamp})"
 
 
 # =============================================================================
@@ -234,6 +239,113 @@ def add_user_columns(ws, username: str) -> Tuple[int, int, int, int]:
 
 
 # =============================================================================
+# ROW MATCHING FALLBACK
+# =============================================================================
+
+def get_row_signature(ws, row: int, exclude_cols: set = None) -> Tuple:
+    """
+    Get a signature for a row based on non-empty cells (excluding specified columns).
+    Used for fallback row matching.
+
+    Args:
+        ws: Worksheet
+        row: Row number
+        exclude_cols: Set of column indices to exclude (STATUS, COMMENT, SCREENSHOT)
+
+    Returns: Tuple of (col_index, value) for non-empty cells
+    """
+    if exclude_cols is None:
+        exclude_cols = set()
+
+    signature = []
+    for col in range(1, ws.max_column + 1):
+        if col in exclude_cols:
+            continue
+        val = ws.cell(row=row, column=col).value
+        if val and str(val).strip():
+            signature.append((col, str(val).strip()))
+
+    return tuple(signature)
+
+
+def find_matching_row_fallback(master_ws, qa_signature: Tuple, exclude_cols: set, start_row: int = 2) -> Optional[int]:
+    """
+    Find a row in master that matches QA row by 2+ cell matching.
+
+    Args:
+        master_ws: Master worksheet
+        qa_signature: Signature from QA row
+        exclude_cols: Columns to exclude from matching
+        start_row: Start searching from this row
+
+    Returns: Row number or None
+    """
+    if len(qa_signature) < 2:
+        return None  # Need at least 2 cells to match
+
+    for row in range(start_row, master_ws.max_row + 1):
+        master_sig = get_row_signature(master_ws, row, exclude_cols)
+
+        # Count matching cells
+        matches = 0
+        for (col, val) in qa_signature:
+            if (col, val) in master_sig:
+                matches += 1
+
+        # 2+ cell match = found
+        if matches >= 2:
+            return row
+
+    return None
+
+
+def find_matching_row_item_fallback(master_ws, qa_ws, qa_row: int, start_row: int = 2) -> Optional[int]:
+    """
+    Item category fallback: Match by 4+ of first 6 columns.
+
+    Used when STRINGID is not available for Item category.
+    Compares first 6 columns between QA row and master rows.
+    If 4 or more values match, it's considered a match.
+
+    Args:
+        master_ws: Master worksheet
+        qa_ws: QA worksheet
+        qa_row: Row number in QA worksheet
+        start_row: Start searching from this row in master
+
+    Returns: Row number or None
+    """
+    # Get first 6 column values from QA row
+    qa_values = []
+    for col in range(1, 7):  # Columns 1-6
+        val = qa_ws.cell(row=qa_row, column=col).value
+        if val is not None:
+            qa_values.append((col, str(val).strip()))
+        else:
+            qa_values.append((col, None))
+
+    # Search master for matching row
+    for master_row in range(start_row, master_ws.max_row + 1):
+        matches = 0
+        for col, qa_val in qa_values:
+            master_val = master_ws.cell(row=master_row, column=col).value
+            if master_val is not None:
+                master_val = str(master_val).strip()
+            else:
+                master_val = None
+
+            # Both None or both equal = match
+            if qa_val == master_val:
+                matches += 1
+
+        # 4+ matches out of 6 = found
+        if matches >= 4:
+            return master_row
+
+    return None
+
+
+# =============================================================================
 # SHEET PROCESSING
 # =============================================================================
 
@@ -287,10 +399,20 @@ def process_sheet(
         "comments": 0,
         "screenshots": 0,
         "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "korean": 0, "total": 0},
-        "manager_restored": 0
+        "manager_restored": 0,
+        "unmatched_rows": 0
     }
 
-    # Process each row by INDEX
+    # Build exclude columns set for row matching
+    exclude_cols = set()
+    if qa_status_col:
+        exclude_cols.add(qa_status_col)
+    if qa_comment_col:
+        exclude_cols.add(qa_comment_col)
+    if qa_screenshot_col:
+        exclude_cols.add(qa_screenshot_col)
+
+    # Process each row with 3-step fallback matching
     for qa_row in range(2, qa_ws.max_row + 1):
         # Skip empty rows
         first_col_value = qa_ws.cell(row=qa_row, column=1).value
@@ -298,7 +420,27 @@ def process_sheet(
             continue
 
         result["stats"]["total"] += 1
-        master_row = qa_row  # Direct index matching
+
+        # Step 1: Try INDEX matching (row 2 = row 2)
+        master_row = None
+        if qa_row <= master_ws.max_row:
+            master_first = master_ws.cell(row=qa_row, column=1).value
+            if master_first and str(master_first).strip() == str(first_col_value).strip():
+                master_row = qa_row  # Match!
+
+        # Step 2: Fallback to 2+ cell match
+        if master_row is None:
+            qa_sig = get_row_signature(qa_ws, qa_row, exclude_cols)
+            master_row = find_matching_row_fallback(master_ws, qa_sig, exclude_cols)
+
+        # Step 3: Item-specific fallback (4 of first 6 columns)
+        if master_row is None and category.lower() == "item":
+            master_row = find_matching_row_item_fallback(master_ws, qa_ws, qa_row)
+
+        # If still no match, skip this row
+        if master_row is None:
+            result["unmatched_rows"] += 1
+            continue
 
         # Get QA STATUS
         should_compile_comment = False
@@ -470,72 +612,79 @@ def process_sheet(
 # STATUS SHEET
 # =============================================================================
 
-def update_status_sheet(wb: Workbook, users: set, user_stats: Dict):
+def update_status_sheet(wb, users, user_stats):
     """
-    Update the STATUS sheet with user completion statistics.
+    Create/update STATUS sheet with completion tracking and detailed stats.
 
     Args:
         wb: Master workbook
         users: Set of usernames
-        user_stats: Dict of {username: {total, issue, no_issue, blocked, korean}}
+        user_stats: {username: {total: n, issue: n, no_issue: n, blocked: n}}
     """
-    # Create or get STATUS sheet
+    # Create or clear STATUS sheet
     if "STATUS" in wb.sheetnames:
-        ws = wb["STATUS"]
-        # Clear existing content
-        for row in ws.iter_rows():
-            for cell in row:
-                cell.value = None
-    else:
-        ws = wb.create_sheet("STATUS", 0)
+        del wb["STATUS"]
+
+    ws = wb.create_sheet("STATUS", 0)  # Insert at position 0 (first tab)
+
+    # Styles
+    header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")  # Gold/Yellow
+    header_font = Font(bold=True)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    center = Alignment(horizontal='center')
 
     # Headers
-    headers = ["User", "Completion %", "Total Rows", "ISSUE #", "NO ISSUE %", "BLOCKED %", "KOREAN %"]
+    headers = ["User", "Completion %", "Total Rows", "ISSUE #", "NO ISSUE %", "BLOCKED %"]
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
-        cell.fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal='center')
-        cell.border = THIN_BORDER
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = border
+        cell.alignment = center
 
     # Data rows
-    row = 2
-    for username in sorted(users):
-        stats = user_stats.get(username, {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0})
+    for row_idx, user in enumerate(sorted(users), 2):
+        stats = user_stats.get(user, {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0})
+
         total = stats["total"]
-        done = stats["issue"] + stats["no_issue"] + stats["blocked"] + stats.get("korean", 0)
+        issue = stats["issue"]
+        no_issue = stats["no_issue"]
+        blocked = stats["blocked"]
+        completed = issue + no_issue + blocked
 
-        completion = (done / total * 100) if total > 0 else 0
-        no_issue_pct = (stats["no_issue"] / total * 100) if total > 0 else 0
-        blocked_pct = (stats["blocked"] / total * 100) if total > 0 else 0
-        korean_pct = (stats.get("korean", 0) / total * 100) if total > 0 else 0
+        # Calculate percentages
+        completion_pct = round(completed / total * 100, 1) if total > 0 else 0
+        no_issue_pct = round(no_issue / total * 100, 1) if total > 0 else 0
+        blocked_pct = round(blocked / total * 100, 1) if total > 0 else 0
 
-        data = [
-            username,
-            f"{completion:.1f}%",
+        # Write data
+        row_data = [
+            user,
+            f"{completion_pct}%",
             total,
-            stats["issue"],
-            f"{no_issue_pct:.1f}%",
-            f"{blocked_pct:.1f}%",
-            f"{korean_pct:.1f}%"
+            issue,  # Raw number for ISSUE
+            f"{no_issue_pct}%",
+            f"{blocked_pct}%"
         ]
 
-        for col, value in enumerate(data, 1):
-            cell = ws.cell(row=row, column=col, value=value)
-            cell.border = THIN_BORDER
-            if col == 1:
-                cell.font = Font(bold=True)
-
-        row += 1
+        for col, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_idx, column=col, value=value)
+            cell.border = border
+            if col > 1:
+                cell.alignment = center
 
     # Adjust column widths
     ws.column_dimensions['A'].width = 15
-    ws.column_dimensions['B'].width = 12
+    ws.column_dimensions['B'].width = 14
     ws.column_dimensions['C'].width = 12
     ws.column_dimensions['D'].width = 10
-    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['E'].width = 14
     ws.column_dimensions['F'].width = 12
-    ws.column_dimensions['G'].width = 12
 
     print(f"  Updated STATUS sheet with {len(users)} users (first tab, yellow header)")
 

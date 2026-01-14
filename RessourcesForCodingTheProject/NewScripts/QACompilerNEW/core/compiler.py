@@ -46,24 +46,19 @@ VALID_MANAGER_STATUS = {"FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE
 # MANAGER STATUS COLLECTION
 # =============================================================================
 
-def extract_comment_text(comment_value) -> str:
+def extract_comment_text(full_comment) -> str:
     """
-    Extract just the comment text, removing timestamps and separators.
+    Extract the actual comment text from formatted comment.
 
-    Example: "2024-01-15 | This is a comment" -> "This is a comment"
+    Comment format: "comment text\n---\nstringid:\n10001\n(updated: ...)"
+    Returns: Just the comment text before "---"
     """
-    if not comment_value:
+    if not full_comment:
         return ""
-
-    text = str(comment_value).strip()
-
-    # Remove timestamp prefix if present (format: "YYYY-MM-DD | ...")
-    if " | " in text:
-        parts = text.split(" | ", 1)
-        if len(parts) > 1 and len(parts[0]) == 10:
-            text = parts[1]
-
-    return text.strip()
+    comment_str = str(full_comment).strip()
+    if "---" in comment_str:
+        return comment_str.split("---")[0].strip()
+    return comment_str
 
 
 def collect_manager_status(master_folder: Path) -> Dict:

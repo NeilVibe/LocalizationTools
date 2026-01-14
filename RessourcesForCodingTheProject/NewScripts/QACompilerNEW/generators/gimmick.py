@@ -23,7 +23,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT, STATUS_OPTIONS
+from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT, STATUS_OPTIONS, STRINGKEYTABLE_FILE
 from generators.base import (
     get_logger,
     parse_xml_file,
@@ -135,6 +135,27 @@ def index_iteminfo(static_folder: Path) -> Dict[str, ItemData]:
 
     log.info("Indexed %d ItemInfo entries from %d files", len(items), file_count)
     return items
+
+
+# =============================================================================
+# STRING KEY TABLE
+# =============================================================================
+
+def load_string_key_table(path: Path) -> Dict[str, str]:
+    """Load StringKeyTable mapping StrKey -> numeric StringID."""
+    log.info("Loading StringKeyTable: %s", path)
+    root = parse_xml_file(path)
+    if root is None:
+        log.error("Cannot parse StringKeyTable")
+        return {}
+    tbl: Dict[str, str] = {}
+    for el in root.iter("StringKeyMap"):
+        num = el.get("Key") or ""
+        sk = el.get("StrKey") or ""
+        if num and sk:
+            tbl[sk.lower()] = num
+    log.info("StringKeyTable entries: %d", len(tbl))
+    return tbl
 
 
 # =============================================================================
@@ -269,6 +290,7 @@ def write_dropitem_sheet(
     items: Dict[str, ItemData],
     lang_tbl: Dict[str, Tuple[str, str]],
     eng_tbl: Dict[str, Tuple[str, str]],
+    id_tbl: Dict[str, str],
 ) -> None:
     """
     Sheet 1: GimmickDropItem with STATUS column
@@ -401,6 +423,150 @@ def write_dropitem_sheet(
 
 
 # =============================================================================
+# SHEET 2: GIMMICK FLAT VIEW
+# =============================================================================
+
+def write_flat_sheet(
+    wb: Workbook,
+    lang_code: str,
+    entries: List[GimmickEntry],
+    items: Dict[str, ItemData],
+    lang_tbl: Dict[str, Tuple[str, str]],
+    eng_tbl: Dict[str, Tuple[str, str]],
+    id_tbl: Dict[str, str],
+) -> None:
+    """
+    Sheet 2: GimmickFlat
+
+    One row per Gimmick→Item pair, flat view for easy filtering.
+
+    Columns:
+    - GroupName(KOR) [hidden]
+    - GroupName(LOC)
+    - GimmickKey
+    - GimmickName(KOR) [hidden]
+    - GimmickName(LOC)
+    - ItemKey
+    - ItemName(KOR) [hidden]
+    - ItemName(LOC)
+    - ItemDesc(KOR) [hidden]
+    - ItemDesc(LOC)
+    - Command
+    - StringID
+    """
+    code = lang_code.upper()
+    ws = wb.create_sheet(title="GimmickFlat")
+
+    # Build headers
+    headers = [
+        "GroupName(KOR)",
+        f"GroupName({code})" if lang_code != "eng" else "GroupName(ENG)",
+        "GimmickKey",
+        "GimmickName(KOR)",
+        f"GimmickName({code})" if lang_code != "eng" else "GimmickName(ENG)",
+        "ItemKey",
+        "ItemName(KOR)",
+        f"ItemName({code})" if lang_code != "eng" else "ItemName(ENG)",
+        "ItemDesc(KOR)",
+        f"ItemDesc({code})" if lang_code != "eng" else "ItemDesc(ENG)",
+        "Command",
+        "StringID",
+    ]
+
+    # Write headers
+    for col, txt in enumerate(headers, start=1):
+        cell = ws.cell(1, col, txt)
+        cell.font = _header_font
+        cell.fill = _header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = THIN_BORDER
+
+    # Hidden columns
+    hidden_cols = {"GroupName(KOR)", "GimmickName(KOR)", "ItemName(KOR)", "ItemDesc(KOR)"}
+    for idx, h in enumerate(headers, 1):
+        if h in hidden_cols:
+            ws.column_dimensions[get_column_letter(idx)].hidden = True
+
+    # Build flat rows
+    rows_data: List[List] = []
+
+    for entry in entries:
+        group_loc = translate(lang_tbl if lang_code != "eng" else eng_tbl, entry.group_name_kor)
+        gim_loc = translate(lang_tbl if lang_code != "eng" else eng_tbl, entry.gimmick_name_kor)
+
+        for item_key in entry.drop_item_keys:
+            itm = items.get(item_key)
+            item_kor = itm.item_name if itm else ""
+            item_desc_kor = itm.item_desc if itm else ""
+
+            item_loc = translate(lang_tbl if lang_code != "eng" else eng_tbl, item_kor)
+            desc_loc = translate(lang_tbl if lang_code != "eng" else eng_tbl, item_desc_kor)
+            cmd = f"/create item {item_key}"
+            sid = get_string_id(lang_tbl, item_kor) or get_string_id(eng_tbl, item_kor)
+
+            row = [
+                entry.group_name_kor, group_loc,
+                entry.gimmick_strkey,
+                entry.gimmick_name_kor, gim_loc,
+                item_key,
+                item_kor, item_loc,
+                item_desc_kor, desc_loc,
+                cmd, sid
+            ]
+            rows_data.append(row)
+
+    # Write rows with alternating colors
+    fill_a = PatternFill("solid", fgColor="E2EFDA")
+    fill_b = PatternFill("solid", fgColor="FCE4D6")
+    current_fill = fill_a
+    last_gimmick = None
+
+    for r_idx, row in enumerate(rows_data, start=2):
+        gim_key = row[2]  # GimmickKey
+        if last_gimmick is not None and gim_key != last_gimmick:
+            current_fill = fill_b if current_fill == fill_a else fill_a
+        last_gimmick = gim_key
+
+        for c_idx, val in enumerate(row, start=1):
+            cell = ws.cell(r_idx, c_idx, val)
+            cell.fill = current_fill
+            cell.border = THIN_BORDER
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+    # Finalize
+    last_col = get_column_letter(len(headers))
+    ws.auto_filter.ref = f"A1:{last_col}{len(rows_data)+1}"
+    ws.freeze_panes = "A2"
+
+    # Column widths
+    width_map = {
+        "GroupName(KOR)": 20,
+        f"GroupName({code})": 25,
+        "GroupName(ENG)": 25,
+        "GimmickKey": 40,
+        "GimmickName(KOR)": 20,
+        f"GimmickName({code})": 25,
+        "GimmickName(ENG)": 25,
+        "ItemKey": 30,
+        "ItemName(KOR)": 20,
+        f"ItemName({code})": 25,
+        "ItemName(ENG)": 25,
+        "ItemDesc(KOR)": 25,
+        f"ItemDesc({code})": 35,
+        "ItemDesc(ENG)": 35,
+        "Command": 35,
+        "StringID": 15,
+    }
+    for idx, h in enumerate(headers, 1):
+        ws.column_dimensions[get_column_letter(idx)].width = width_map.get(h, 20)
+
+    # Auto-fit columns and rows
+    autofit_worksheet(ws)
+
+    log.info("  Sheet GimmickFlat: %d rows", len(rows_data))
+
+
+# =============================================================================
 # MAIN GENERATOR FUNCTION
 # =============================================================================
 
@@ -452,10 +618,13 @@ def generate_gimmick_datasheets() -> Dict:
         if not eng_tbl:
             log.warning("English language table not found!")
 
-        # 2. Index items
+        # 2. Load StringKeyTable
+        id_tbl = load_string_key_table(STRINGKEYTABLE_FILE)
+
+        # 3. Index items
         items = index_iteminfo(RESOURCE_FOLDER)
 
-        # 3. Index gimmicks
+        # 4. Index gimmicks
         entries = index_gimmicks(RESOURCE_FOLDER)
 
         if not entries:
@@ -463,7 +632,7 @@ def generate_gimmick_datasheets() -> Dict:
             log.warning("No valid gimmick entries found!")
             return result
 
-        # 4. Generate workbooks for each language
+        # 5. Generate workbooks for each language
         log.info("Processing languages...")
         total = len(lang_tables)
 
@@ -474,7 +643,10 @@ def generate_gimmick_datasheets() -> Dict:
             wb.remove(wb.active)
 
             # Sheet 1: Hierarchical DropItem view
-            write_dropitem_sheet(wb, code, entries, items, tbl, eng_tbl)
+            write_dropitem_sheet(wb, code, entries, items, tbl, eng_tbl, id_tbl)
+
+            # Sheet 2: Flat view for easy filtering
+            write_flat_sheet(wb, code, entries, items, tbl, eng_tbl, id_tbl)
 
             # Save
             out_path = output_folder / f"Gimmick_LQA_{code.upper()}.xlsx"

@@ -109,13 +109,15 @@ class GroupNode:
 # STYLING
 # =============================================================================
 
-# Depth 0: Master group (tab name)
+# Depth 0: Master group (tab name) - GOLD, BIGGEST
 _depth0_fill = PatternFill("solid", fgColor="FFD700")
 _depth0_font = Font(bold=True, size=14)
+_depth0_row_height = 40
 
-# Depth 1: Sub-group
+# Depth 1: Sub-group just below master - BRIGHT PURPLE, BIG
 _depth1_fill = PatternFill("solid", fgColor="9966FF")
 _depth1_font = Font(bold=True, size=12, color="FFFFFF")
+_depth1_row_height = 35
 
 # Other depths
 _depth_fills: Dict[int, PatternFill] = {
@@ -133,19 +135,22 @@ _bold_font = Font(bold=True)
 _normal_font = Font()
 
 
-def _get_style_for_depth(depth: int, is_icon: bool) -> Tuple[PatternFill, Font]:
-    """Get style for a given depth level."""
+def _get_style_for_depth(depth: int, is_icon: bool) -> Tuple[PatternFill, Font, Optional[float]]:
+    """
+    Returns (fill, font, row_height) for a given depth.
+    row_height is None for default height.
+    """
     if depth == 0:
-        return _depth0_fill, _depth0_font
+        return _depth0_fill, _depth0_font, _depth0_row_height
     elif depth == 1:
-        return _depth1_fill, _depth1_font
+        return _depth1_fill, _depth1_font, _depth1_row_height
     else:
         fill = _depth_fills.get(depth)
         if fill is None and is_icon:
             fill = _icon_fill
         if fill is None:
             fill = _no_colour_fill
-        return fill, _bold_font
+        return fill, _bold_font, None
 
 
 # =============================================================================
@@ -468,7 +473,7 @@ def write_workbook(
         r_idx = 2
 
         for (depth, text, needs_tr, is_icon, is_name_attr) in rows:
-            fill, font = _get_style_for_depth(depth, is_icon)
+            fill, font, rh = _get_style_for_depth(depth, is_icon)
             if depth >= 2:
                 if is_name_attr:
                     font = _bold_font
@@ -528,6 +533,10 @@ def write_workbook(
             c_stringid.number_format = '@'
             c_screenshot.fill = fill
             c_screenshot.border = THIN_BORDER
+
+            # Apply row height for depth 0 and 1
+            if rh is not None:
+                ws.row_dimensions[r_idx].height = rh
 
             r_idx += 1
 

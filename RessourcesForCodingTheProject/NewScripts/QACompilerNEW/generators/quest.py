@@ -689,7 +689,7 @@ def build_rows_faction(
                 continue
 
             kor = q.get("Name") or ""
-        _collect_korean_string(kor)
+            _collect_korean_string(kor)
             rows: List[Row] = []
 
             rows.append((
@@ -703,7 +703,7 @@ def build_rows_faction(
 
             for m in q.findall("Mission"):
                 mk = m.get("Name") or ""
-            _collect_korean_string(mk)
+                _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
                 rows.append((
@@ -716,7 +716,7 @@ def build_rows_faction(
 
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
-                _collect_korean_string(sk)
+                    _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                     rows.append((
@@ -764,7 +764,7 @@ def build_rows_daily(
                 continue
 
             kor = q.get("Name") or ""
-        _collect_korean_string(kor)
+            _collect_korean_string(kor)
             rows.append((
                 0,
                 kor, _tr(kor, eng_tbl), _tr(kor, lang_tbl),
@@ -776,7 +776,7 @@ def build_rows_daily(
 
             for m in q.findall("Mission"):
                 mk = m.get("Name") or ""
-            _collect_korean_string(mk)
+                _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
                 rows.append((
@@ -789,7 +789,7 @@ def build_rows_daily(
 
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
-                _collect_korean_string(sk)
+                    _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                     rows.append((
@@ -860,7 +860,7 @@ def build_rows_challenge(
             ))
 
             kor = q.get("Name") or ""
-        _collect_korean_string(kor)
+            _collect_korean_string(kor)
             use_tp = group_name in _CHT_TP
             cmd = build_command(q, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(q)
 
@@ -874,7 +874,7 @@ def build_rows_challenge(
 
             for m in q.findall("Mission"):
                 mk = m.get("Name") or ""
-            _collect_korean_string(mk)
+                _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd2 = build_command(m, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(m)
                 rows.append((
@@ -887,7 +887,7 @@ def build_rows_challenge(
 
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
-                _collect_korean_string(sk)
+                    _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd3 = build_command(s, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(s)
                     rows.append((
@@ -961,7 +961,7 @@ def build_rows_minigame(
 
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
-                _collect_korean_string(sk)
+                    _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                     rows.append((
