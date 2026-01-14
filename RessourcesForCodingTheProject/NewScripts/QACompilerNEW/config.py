@@ -43,6 +43,11 @@ TESTER_MAPPING_FILE = SCRIPT_DIR / "languageTOtester_list.txt"
 # Default paths - can be overridden via GUI or config file
 RESOURCE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\StaticInfo")
 LANGUAGE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
+EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+
+# Additional export paths for coverage (strings inherently tested but not in Excel)
+EXPORT_LOOKAT_FOLDER = EXPORT_FOLDER / "System" / "LookAt"   # Additional for Item
+EXPORT_QUEST_FOLDER = EXPORT_FOLDER / "System" / "Quest"     # Additional for Quest
 
 # Output folder for generated datasheets
 DATASHEET_OUTPUT = SCRIPT_DIR / "GeneratedDatasheets"

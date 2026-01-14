@@ -19,6 +19,7 @@ from openpyxl import load_workbook
 from lxml import etree as ET
 
 from generators.base import normalize_placeholders, parse_xml_file, get_logger
+from config import EXPORT_LOOKAT_FOLDER, EXPORT_QUEST_FOLDER
 
 log = get_logger("CoverageTracker")
 
@@ -214,6 +215,117 @@ def load_voice_recording_sheet(folder: Path) -> Set[str]:
 
 
 # =============================================================================
+# LOAD ADDITIONAL STRINGS FROM EXPORT FOLDERS
+# =============================================================================
+
+def load_export_string_ids(export_folder: Path) -> Set[str]:
+    """
+    Load StringIds from export XML files.
+
+    These are strings inherently tested but not in the Excel datasheets.
+    We collect StringIds to later map them to LOC ENG for word counts.
+
+    Args:
+        export_folder: Path to export subfolder (e.g., System/LookAt)
+
+    Returns:
+        Set of StringIds found in export XML files
+    """
+    log.info("Loading StringIds from export folder: %s", export_folder)
+
+    string_ids: Set[str] = set()
+
+    if not export_folder.exists():
+        log.warning("Export folder not found: %s", export_folder)
+        return string_ids
+
+    # Find all XML files in the folder
+    xml_files = list(export_folder.rglob("*.xml"))
+    if not xml_files:
+        log.warning("No XML files found in %s", export_folder)
+        return string_ids
+
+    for xml_file in xml_files:
+        try:
+            root = parse_xml_file(xml_file)
+            if root is None:
+                continue
+
+            for loc in root.iter("LocStr"):
+                sid = loc.get("StringId")
+                if sid:
+                    string_ids.add(sid)
+
+        except Exception as e:
+            log.error("Failed to parse %s: %s", xml_file.name, e)
+
+    log.info("Loaded %d StringIds from export folder", len(string_ids))
+    return string_ids
+
+
+def map_string_ids_to_master(
+    string_ids: Set[str],
+    language_folder: Path,
+) -> Tuple[Set[str], Dict[str, str]]:
+    """
+    Map StringIds from export to master language data (LOC ENG).
+
+    Reads the LOC ENG file and finds matching StringIds to get Korean text.
+
+    Args:
+        string_ids: Set of StringIds to look up
+        language_folder: Path to stringtable/loc folder
+
+    Returns:
+        Tuple of (set of Korean strings, dict of Korean->Translation)
+    """
+    log.info("Mapping %d StringIds to master language data", len(string_ids))
+
+    korean_strings: Set[str] = set()
+    translations: Dict[str, str] = {}
+
+    if not language_folder.exists():
+        log.error("Language folder not found: %s", language_folder)
+        return korean_strings, translations
+
+    # Find ENG language file
+    lang_files = sorted(language_folder.glob("languagedata_*.xml"))
+    target_file = None
+    for f in lang_files:
+        if "eng" in f.stem.lower():
+            target_file = f
+            break
+    if target_file is None and lang_files:
+        target_file = lang_files[0]
+
+    if target_file is None:
+        log.error("No language data file found")
+        return korean_strings, translations
+
+    log.info("Using language file: %s", target_file.name)
+
+    # Parse and find matching StringIds
+    root = parse_xml_file(target_file)
+    if root is None:
+        return korean_strings, translations
+
+    for loc in root.iter("LocStr"):
+        sid = loc.get("StringId")
+        if sid and sid in string_ids:
+            origin = loc.get("StrOrigin") or ""
+            translation = loc.get("StrValue") or ""
+            if origin:
+                normalized = normalize_placeholders(origin)
+                if normalized:
+                    korean_strings.add(normalized)
+                    if translation:
+                        translations[normalized] = translation
+
+    log.info("Mapped %d StringIds to Korean strings", len(korean_strings))
+    return korean_strings, translations
+
+
+# =============================================================================
 # LOAD FROM EXISTING GENERATED DATASHEETS
 # =============================================================================
 
@@ -348,6 +460,10 @@ def calculate_coverage(
     translations: Dict[str, str],
     category_strings: Dict[str, Set[str]],
     voice_sheet_strings: Optional[Set[str]] = None,
+    item_additional_strings: Optional[Set[str]] = None,
+    item_additional_translations: Optional[Dict[str, str]] = None,
+    quest_additional_strings: Optional[Set[str]] = None,
+    quest_additional_translations: Optional[Dict[str, str]] = None,
 ) -> CoverageReport:
     """
     Calculate coverage using the consume technique.
@@ -362,6 +478,10 @@ def calculate_coverage(
         translations: Dict mapping Korean text to translation text
         category_strings: Dict mapping category name to set of Korean strings
         voice_sheet_strings: Optional set of strings from VoiceRecordingSheet
+        item_additional_strings: Optional set of strings from export/System/LookAt
+        item_additional_translations: Optional translations for LookAt strings
+        quest_additional_strings: Optional set of strings from export/System/Quest
+        quest_additional_translations: Optional translations for Quest export strings
 
     Returns:
         CoverageReport with per-category and total statistics
@@ -409,25 +529,69 @@ def calculate_coverage(
             translation_word_count=translation_words,
         )
 
-        # Special handling for Quest: add voice sheet as sub-category
-        if category_name == "Quest" and voice_sheet_strings:
-            voice_consumed = voice_sheet_strings & remaining
-            remaining -= voice_consumed
-            voice_korean_words = count_words_in_set(voice_consumed)
-            voice_translation_words = sum(count_korean_words(translations.get(s, "")) for s in voice_consumed)
+        # Special handling for Quest: add voice sheet and System/Quest as sub-categories
+        if category_name == "Quest":
+            # Voice Sheet sub-category
+            if voice_sheet_strings:
+                voice_consumed = voice_sheet_strings & remaining
+                remaining -= voice_consumed
+                voice_korean_words = count_words_in_set(voice_consumed)
+                voice_translation_words = sum(count_korean_words(translations.get(s, "")) for s in voice_consumed)
 
-            voice_coverage = CategoryCoverage(
-                name="Voice Sheet",
-                unique_strings=len(voice_consumed),
-                korean_word_count=voice_korean_words,
-                translation_word_count=voice_translation_words,
+                voice_coverage = CategoryCoverage(
+                    name="Voice Sheet",
+                    unique_strings=len(voice_consumed),
+                    korean_word_count=voice_korean_words,
+                    translation_word_count=voice_translation_words,
+                )
+                cat_coverage.sub_categories.append(voice_coverage)
+
+                # Add to totals
+                report.total_covered_strings += len(voice_consumed)
+                report.total_covered_korean_words += voice_korean_words
+                report.total_covered_translation_words += voice_translation_words
+
+            # Additional: System/Quest export (inherent testing data)
+            if quest_additional_strings:
+                quest_add_consumed = quest_additional_strings & remaining
+                remaining -= quest_add_consumed
+                quest_add_korean_words = count_words_in_set(quest_add_consumed)
+                quest_add_trans = quest_additional_translations or {}
+                quest_add_translation_words = sum(count_korean_words(quest_add_trans.get(s, "")) for s in quest_add_consumed)
+
+                quest_add_coverage = CategoryCoverage(
+                    name="Additional (System/Quest)",
+                    unique_strings=len(quest_add_consumed),
+                    korean_word_count=quest_add_korean_words,
+                    translation_word_count=quest_add_translation_words,
+                )
+                cat_coverage.sub_categories.append(quest_add_coverage)
+
+                # Add to totals
+                report.total_covered_strings += len(quest_add_consumed)
+                report.total_covered_korean_words += quest_add_korean_words
+                report.total_covered_translation_words += quest_add_translation_words
+
+        # Special handling for Item: add LookAt as sub-category
+        if category_name == "Item" and item_additional_strings:
+            item_add_consumed = item_additional_strings & remaining
+            remaining -= item_add_consumed
+            item_add_korean_words = count_words_in_set(item_add_consumed)
+            item_add_trans = item_additional_translations or {}
+            item_add_translation_words = sum(count_korean_words(item_add_trans.get(s, "")) for s in item_add_consumed)
+
+            item_add_coverage = CategoryCoverage(
+                name="Additional (LookAt)",
+                unique_strings=len(item_add_consumed),
+                korean_word_count=item_add_korean_words,
+                translation_word_count=item_add_translation_words,
             )
-            cat_coverage.sub_categories.append(voice_coverage)
+            cat_coverage.sub_categories.append(item_add_coverage)
 
             # Add to totals
-            report.total_covered_strings += len(voice_consumed)
-            report.total_covered_korean_words += voice_korean_words
-            report.total_covered_translation_words += voice_translation_words
+            report.total_covered_strings += len(item_add_consumed)
+            report.total_covered_korean_words += item_add_korean_words
+            report.total_covered_translation_words += item_add_translation_words
 
         report.categories.append(cat_coverage)
         report.total_covered_strings += len(consumed)
@@ -541,7 +705,20 @@ def run_coverage_analysis(
     # 2. Load voice recording sheet
     voice_strings = load_voice_recording_sheet(voice_sheet_folder)
 
-    # 3. Calculate coverage
+    # 3. Load additional export data (inherent testing data not in Excel)
+    # Item: LookAt folder
+    lookat_string_ids = load_export_string_ids(EXPORT_LOOKAT_FOLDER)
+    item_additional_strings, item_additional_translations = map_string_ids_to_master(
+        lookat_string_ids, language_folder
+    )
+
+    # Quest: System/Quest folder
+    quest_export_string_ids = load_export_string_ids(EXPORT_QUEST_FOLDER)
+    quest_additional_strings, quest_additional_translations = map_string_ids_to_master(
+        quest_export_string_ids, language_folder
+    )
+
+    # 4. Calculate coverage
     report = calculate_coverage(
         master_strings,
         korean_words,
@@ -549,9 +726,13 @@ def run_coverage_analysis(
         translations,
         category_strings,
         voice_strings,
+        item_additional_strings,
+        item_additional_translations,
+        quest_additional_strings,
+        quest_additional_translations,
     )
 
-    # 4. Print report
+    # 5. Print report
     print_coverage_report(report)
 
     return report
