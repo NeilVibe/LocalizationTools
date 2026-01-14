@@ -600,49 +600,6 @@ def build_category_breakdown_section(
 
         current_row += 1
 
-    # TOTAL row
-    cell = ws.cell(current_row, 1, "TOTAL")
-    cell.fill = styles["total_fill"]
-    cell.font = styles["bold"]
-    cell.alignment = styles["center"]
-    cell.border = styles["border"]
-
-    col = 2
-    for cat in categories:
-        cat_data = category_totals[cat]
-        if cat_data["total_rows"] > 0:
-            cat_pct = round(cat_data["done"] / cat_data["total_rows"] * 100, 1)
-            cell1 = ws.cell(current_row, col, cat_pct)
-            cell1.number_format = '0.0"%"'
-        else:
-            cell1 = ws.cell(current_row, col, "-")
-        cell1.fill = styles["total_fill"]
-        cell1.font = styles["bold"]
-        cell1.alignment = styles["center"]
-        cell1.border = styles["border"]
-
-        if cat_data["count"] > 0:
-            cell2 = ws.cell(current_row, col + 1, cat_data["count"])
-            cell2.number_format = '#,##0'
-        else:
-            cell2 = ws.cell(current_row, col + 1, "-")
-        cell2.fill = styles["total_fill"]
-        cell2.font = styles["bold"]
-        cell2.alignment = styles["center"]
-        cell2.border = styles["border"]
-
-        col += 2
-
-    # Grand total count
-    cell = ws.cell(current_row, col, grand_total_count)
-    cell.number_format = '#,##0'
-    cell.fill = styles["total_fill"]
-    cell.font = styles["bold"]
-    cell.alignment = styles["center"]
-    cell.border = styles["border"]
-
-    current_row += 1
-
     # Set column widths
     ws.column_dimensions['A'].width = 12  # User column
     col_letter_idx = 2
