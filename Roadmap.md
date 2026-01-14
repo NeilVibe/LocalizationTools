@@ -532,10 +532,26 @@ Transformed LDM from "private by default" to "public by default with optional re
 | Task | Status | Description |
 |------|--------|-------------|
 | TM Tree Folder Mirroring | ✅ FIXED | Session 38 - TM tree now queries SQLite for local folders |
-| P10 Permission Gap | ✅ FIXED | Routes now use Repository Pattern with perms baked in (Session 51) |
-| Windows PATH Tests | TODO | 7 path tests for Windows builds (downloads, uploads, models, etc.) |
-| CI/CD Health | TODO | Verify all tests pass, builds succeed |
+| P10 Permission Gap | ✅ FIXED | Routes now use Repository Pattern with perms baked in |
 | Playwright Test Fixes | ✅ FIXED | 154 passed, 17 skipped, 0 failed |
+| **P10 CI Verification** | ⏳ PENDING | **Build 454** - Verify Repository Pattern tests pass in CI |
+| Windows PATH Tests | TODO | 7 path tests for Windows builds (downloads, uploads, models, etc.) |
+| CI/CD Health | TODO | Full CI pipeline health check after P10 verification |
+
+#### P10 CI Verification (NEXT ACTION)
+
+**Why:** All mocked tests were rewritten to use Repository Pattern after P10. Tests pass locally but have NOT been verified in CI yet.
+
+**Last CI Build:** Run 451 (Build 453) - P9 Launcher (BEFORE P10 completion)
+
+**Trigger:**
+```bash
+echo "Build QA" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Build 454: Verify P10 Repository Pattern in CI"
+git push origin main && git push gitea main
+```
+
+**Watch For:** Import errors, mock mismatches, async issues in test files.
 
 ### Completed Priorities
 
