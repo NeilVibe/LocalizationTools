@@ -81,6 +81,14 @@ FACTIONINFO_FOLDER = Path(
 TELEPORT_SOURCE_FILE = SCRIPT_DIR / "Quest_LQA_ENG_1231_seon_final_final.xlsx"
 
 # =============================================================================
+# VOICE RECORDING SHEET PATH (for Quest coverage calculation)
+# =============================================================================
+
+VOICE_RECORDING_SHEET_FOLDER = Path(
+    r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__"
+)
+
+# =============================================================================
 # CATEGORIES
 # =============================================================================
 

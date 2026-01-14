@@ -36,6 +36,32 @@ from generators.base import (
 
 log = get_logger("ItemGenerator")
 
+# =============================================================================
+# KOREAN STRING COLLECTION (for coverage tracking)
+# =============================================================================
+
+_collected_korean_strings: set = set()
+
+
+def reset_korean_collection() -> None:
+    """Reset the Korean string collection before a new run."""
+    global _collected_korean_strings
+    _collected_korean_strings = set()
+
+
+def get_collected_korean_strings() -> set:
+    """Return a copy of collected Korean strings."""
+    return _collected_korean_strings.copy()
+
+
+def _collect_korean_string(text: str) -> None:
+    """Add a Korean string to the collection (normalized)."""
+    if text:
+        normalized = normalize_placeholders(text)
+        if normalized:
+            _collected_korean_strings.add(normalized)
+
+
 # Clustering settings
 MERGE_UP_THRESHOLD = 50       # Groups with < this many items merge into parent
 MIN_FOLDER_DEPTH = 1          # Minimum folder depth
@@ -264,6 +290,9 @@ def scan_resource_folder(
                     desc = item_desc_attr
 
                 if ik:
+                    # Collect Korean strings for coverage tracking
+                    _collect_korean_string(name)
+                    _collect_korean_string(desc)
                     bucket.append((ik, name, desc))
 
     total_items = sum(len(v) for v in group_items.values())
@@ -469,6 +498,9 @@ def generate_item_datasheets() -> Dict:
         "files_created": 0,
         "errors": [],
     }
+
+    # Reset Korean string collection
+    reset_korean_collection()
 
     log.info("=" * 70)
     log.info("Item Datasheet Generator")

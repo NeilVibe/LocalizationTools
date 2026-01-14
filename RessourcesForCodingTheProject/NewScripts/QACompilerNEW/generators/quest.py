@@ -53,6 +53,40 @@ from generators.base import (
 log = get_logger("QuestGenerator")
 
 # =============================================================================
+# KOREAN STRING COLLECTION (for coverage tracking)
+# =============================================================================
+
+_collected_korean_strings: set = set()
+
+
+def reset_korean_collection() -> None:
+    """Reset the Korean string collection before a new run."""
+    global _collected_korean_strings
+    _collected_korean_strings = set()
+
+
+def get_collected_korean_strings() -> set:
+    """Return a copy of collected Korean strings."""
+    return _collected_korean_strings.copy()
+
+
+def _collect_korean_string(text: str) -> None:
+    """Add a Korean string to the collection (normalized)."""
+    if text:
+        normalized = normalize_placeholders(text)
+        if normalized:
+            _collected_korean_strings.add(normalized)
+
+
+def _get_name_and_collect(element, attr: str = "Name") -> str:
+    """Get Name attribute from element and collect for coverage tracking."""
+    name = element.get(attr) or ""
+    if name:
+        _collect_korean_string(name)
+    return name
+
+
+# =============================================================================
 # TYPE ALIASES
 # =============================================================================
 
@@ -547,6 +581,7 @@ def build_rows_main(
 
         # Quest row
         kor = q.get("Name") or ""
+        _collect_korean_string(kor)
         skn = id_tbl.get(qk.lower(), "")
         rows.append((
             1,
@@ -562,6 +597,7 @@ def build_rows_main(
         # Mission rows
         for m in q.findall("Mission"):
             mk = m.get("Name") or ""
+            _collect_korean_string(mk)
             msk = m.get("StrKey") or ""
             cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
             rows.append((
@@ -578,6 +614,7 @@ def build_rows_main(
             # SubMission rows
             for s in m.findall("SubMission"):
                 sk = s.get("Name") or ""
+                _collect_korean_string(sk)
                 ssk = s.get("StrKey") or ""
                 cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                 rows.append((
@@ -652,6 +689,7 @@ def build_rows_faction(
                 continue
 
             kor = q.get("Name") or ""
+        _collect_korean_string(kor)
             rows: List[Row] = []
 
             rows.append((
@@ -665,6 +703,7 @@ def build_rows_faction(
 
             for m in q.findall("Mission"):
                 mk = m.get("Name") or ""
+            _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
                 rows.append((
@@ -677,6 +716,7 @@ def build_rows_faction(
 
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
+                _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                     rows.append((
@@ -724,6 +764,7 @@ def build_rows_daily(
                 continue
 
             kor = q.get("Name") or ""
+        _collect_korean_string(kor)
             rows.append((
                 0,
                 kor, _tr(kor, eng_tbl), _tr(kor, lang_tbl),
@@ -735,6 +776,7 @@ def build_rows_daily(
 
             for m in q.findall("Mission"):
                 mk = m.get("Name") or ""
+            _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
                 rows.append((
@@ -747,6 +789,7 @@ def build_rows_daily(
 
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
+                _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                     rows.append((
@@ -817,6 +860,7 @@ def build_rows_challenge(
             ))
 
             kor = q.get("Name") or ""
+        _collect_korean_string(kor)
             use_tp = group_name in _CHT_TP
             cmd = build_command(q, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(q)
 
@@ -830,6 +874,7 @@ def build_rows_challenge(
 
             for m in q.findall("Mission"):
                 mk = m.get("Name") or ""
+            _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd2 = build_command(m, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(m)
                 rows.append((
@@ -842,6 +887,7 @@ def build_rows_challenge(
 
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
+                _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd3 = build_command(s, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(s)
                     rows.append((
@@ -887,6 +933,8 @@ def build_rows_minigame(
         if not name:
             continue
 
+        _collect_korean_string(name)
+
         # Type 1: Mission-based minigames (Challenge_Minigame)
         if "_mission" in tag.lower() and el.get("StartMission"):
             rows.append((
@@ -900,6 +948,7 @@ def build_rows_minigame(
 
             for m in el.findall("Mission"):
                 mk = m.get("Name") or ""
+                _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
                 rows.append((
@@ -912,6 +961,7 @@ def build_rows_minigame(
 
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
+                _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                     rows.append((
@@ -935,6 +985,7 @@ def build_rows_minigame(
 
             for stage in el.findall("Stage"):
                 stage_name = stage.get("Name") or ""
+                _collect_korean_string(stage_name)
                 stage_sk = stage.get("StrKey") or ""
 
                 # Build teleport command from StagePosition if available
@@ -1099,6 +1150,9 @@ def generate_quest_datasheets() -> Dict:
         "files_created": 0,
         "errors": [],
     }
+
+    # Reset Korean string collection
+    reset_korean_collection()
 
     log.info("=" * 70)
     log.info("Quest Datasheet Generator")
