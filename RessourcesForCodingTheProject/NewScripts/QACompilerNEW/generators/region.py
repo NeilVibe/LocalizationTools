@@ -113,6 +113,7 @@ class ShopStage:
     description: str
     category: str = ""
     npc_key: str = ""
+    dev_comment: str = ""
 
 
 @dataclass
@@ -132,30 +133,37 @@ STYLES = {
     "Faction": {
         "fill": PatternFill("solid", fgColor="4472C4"),  # Dark blue
         "font": Font(bold=True, size=12, color="FFFFFF"),
+        "row_height": 35,
     },
     "FactionNode_Main": {
         "fill": PatternFill("solid", fgColor="5B9BD5"),  # Medium blue
         "font": Font(bold=True, size=11, color="FFFFFF"),
+        "row_height": 30,
     },
     "FactionNode_Sub": {
         "fill": PatternFill("solid", fgColor="B4C6E7"),  # Light blue
         "font": Font(bold=True),
+        "row_height": None,
     },
     "FactionNode": {
         "fill": PatternFill("solid", fgColor="D6DCE4"),  # Very light blue
         "font": Font(),
+        "row_height": None,
     },
     "Description": {
         "fill": PatternFill("solid", fgColor="F5F5F5"),  # Light gray
-        "font": Font(),
+        "font": Font(italic=False),
+        "row_height": None,
     },
     "ShopGroup": {
         "fill": PatternFill("solid", fgColor="00B0B0"),  # Teal
         "font": Font(bold=True, size=12, color="FFFFFF"),
+        "row_height": 35,
     },
     "ShopStage": {
         "fill": PatternFill("solid", fgColor="E0F7FA"),  # Light cyan
         "font": Font(bold=True),
+        "row_height": None,
     },
 }
 
@@ -165,12 +173,13 @@ _default_font = Font()
 _default_fill = PatternFill("solid", fgColor="FFFFFF")
 
 
-def get_style(style_type: str) -> Tuple[PatternFill, Font]:
-    """Get style for a row type."""
+def get_style(style_type: str) -> Tuple[PatternFill, Font, Optional[float]]:
+    """Get style for a row type. Returns (fill, font, row_height)."""
     style = STYLES.get(style_type, {})
     return (
         style.get("fill", _default_fill),
         style.get("font", _default_font),
+        style.get("row_height"),
     )
 
 
@@ -508,8 +517,8 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
 # ROW GENERATION
 # =============================================================================
 
-# Row format: (depth, text, style_type)
-RowItem = Tuple[int, str, str]
+# Row format: (depth, text, style_type, is_description)
+RowItem = Tuple[int, str, str, bool]
 
 
 def emit_faction_node_rows(node: FactionNodeData, depth: int) -> List[RowItem]:
@@ -517,10 +526,10 @@ def emit_faction_node_rows(node: FactionNodeData, depth: int) -> List[RowItem]:
     rows: List[RowItem] = []
 
     style = f"FactionNode_{node.node_type}" if node.node_type else "FactionNode"
-    rows.append((depth, node.name, style))
+    rows.append((depth, node.name, style, False))
 
     if node.description:
-        rows.append((depth + 1, node.description, "Description"))
+        rows.append((depth + 1, node.description, "Description", True))
 
     for child in node.children:
         rows.extend(emit_faction_node_rows(child, depth + 1))
@@ -532,7 +541,7 @@ def emit_faction_rows(faction: FactionData, depth: int = 0) -> List[RowItem]:
     """Generate rows for a Faction and all its FactionNodes."""
     rows: List[RowItem] = []
 
-    rows.append((depth, faction.name, "Faction"))
+    rows.append((depth, faction.name, "Faction", False))
 
     for node in faction.nodes:
         rows.extend(emit_faction_node_rows(node, depth + 1))
@@ -555,7 +564,7 @@ def emit_standalone_faction_rows(standalone_factions: List[FactionData]) -> List
     rows: List[RowItem] = []
 
     for faction in standalone_factions:
-        rows.append((0, faction.name, "Faction"))
+        rows.append((0, faction.name, "Faction", False))
         for node in faction.nodes:
             rows.extend(emit_faction_node_rows(node, 1))
 
@@ -567,11 +576,11 @@ def emit_shop_rows(shop_groups: List[ShopGroup]) -> List[RowItem]:
     rows: List[RowItem] = []
 
     for group in shop_groups:
-        rows.append((0, group.name, "ShopGroup"))
+        rows.append((0, group.name, "ShopGroup", False))
         for stage in group.stages:
-            rows.append((1, stage.name, "ShopStage"))
+            rows.append((1, stage.name, "ShopStage", False))
             if stage.description:
-                rows.append((2, stage.description, "Description"))
+                rows.append((2, stage.description, "Description", True))
 
     return rows
 
@@ -649,8 +658,8 @@ def write_sheet_content(
     seen_keys = set()
     r_idx = 2
 
-    for (depth, text, style_type) in rows:
-        fill, font = get_style(style_type)
+    for (depth, text, style_type, is_desc) in rows:
+        fill, font, row_height = get_style(style_type)
         normalized = normalize_placeholders(text)
 
         trans_eng, sid_eng = eng_tbl.get(normalized, ("", ""))
@@ -709,6 +718,10 @@ def write_sheet_content(
         c_screenshot = sheet.cell(r_idx, col_offset + 4, "")
         c_screenshot.fill = fill
         c_screenshot.border = THIN_BORDER
+
+        # Apply row height if specified
+        if row_height:
+            sheet.row_dimensions[r_idx].height = row_height
 
         r_idx += 1
 

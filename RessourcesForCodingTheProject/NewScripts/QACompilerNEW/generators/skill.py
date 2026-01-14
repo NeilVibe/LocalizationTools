@@ -100,12 +100,15 @@ class SkillItem:
 
 _depth0_fill = PatternFill("solid", fgColor="FFD700")  # Gold for skill names
 _depth0_font = Font(bold=True, size=12)
+_depth0_row_height = 35
 
 _depth1_fill = PatternFill("solid", fgColor="B4C6E7")  # Light blue for knowledge names
 _depth1_font = Font(bold=True, size=11)
+_depth1_row_height = 25
 
 _depth2_fill = PatternFill("solid", fgColor="E2EFDA")  # Light green for descriptions
 _depth2_font = Font(size=10)
+_depth2_row_height = None  # Auto
 
 _depth3_fill = PatternFill("solid", fgColor="FCE4D6")  # Light orange for sub-skills
 _depth3_font = Font(bold=True, size=10)
@@ -117,18 +120,18 @@ _header_font = Font(bold=True, color="FFFFFF", size=11)
 _header_fill = PatternFill("solid", fgColor="4F81BD")
 
 
-def _get_style_for_depth(depth: int) -> Tuple[PatternFill, Font]:
-    """Get style for a given depth level."""
+def _get_style_for_depth(depth: int) -> Tuple[PatternFill, Font, Optional[float]]:
+    """Get style for a given depth level. Returns (fill, font, row_height)."""
     if depth == 0:
-        return _depth0_fill, _depth0_font
+        return _depth0_fill, _depth0_font, _depth0_row_height
     elif depth == 1:
-        return _depth1_fill, _depth1_font
+        return _depth1_fill, _depth1_font, _depth1_row_height
     elif depth == 2:
-        return _depth2_fill, _depth2_font
+        return _depth2_fill, _depth2_font, _depth2_row_height
     elif depth == 3:
-        return _depth3_fill, _depth3_font
+        return _depth3_fill, _depth3_font, None
     else:
-        return _depth4_fill, _depth4_font
+        return _depth4_fill, _depth4_font, None
 
 
 # =============================================================================
@@ -416,7 +419,7 @@ def write_workbook(
         if lang_tbl:
             loc_tr, sid = lang_tbl.get(normalized, (loc_tr, sid))
 
-        fill, font = _get_style_for_depth(depth)
+        fill, font, row_height = _get_style_for_depth(depth)
         indent = depth
 
         # Column A: Original (KR)
