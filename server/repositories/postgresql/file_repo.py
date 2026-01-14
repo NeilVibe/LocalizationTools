@@ -1,29 +1,107 @@
 """
 PostgreSQL File Repository.
 
+P10: FULL ABSTRACT + REPO Pattern
+
 Implements FileRepository interface using SQLAlchemy async operations.
-This is the online mode adapter.
+This is the online mode adapter with PERMISSIONS BAKED IN.
+
+User context is passed via constructor - no direct DB calls needed in routes.
 """
 
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, or_
 from loguru import logger
 
 from server.repositories.interfaces.file_repository import FileRepository
-from server.database.models import LDMFile, LDMRow, LDMProject, LDMFolder
+from server.database.models import LDMFile, LDMRow, LDMProject, LDMFolder, LDMResourceAccess
 
 
 class PostgreSQLFileRepository(FileRepository):
     """
     PostgreSQL implementation of FileRepository.
 
-    Uses SQLAlchemy async session for all operations.
+    P10: FULL ABSTRACT - Permissions are checked INSIDE the repository.
+    Routes never need to call permission functions directly.
+
+    User context is stored in self.user and used for all access checks.
     """
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
         self.db = db
+        self.user = user or {}
+
+    # =========================================================================
+    # Permission Helpers (P10: Baked into repository)
+    # =========================================================================
+
+    def _is_admin(self) -> bool:
+        """Check if current user is admin/superadmin."""
+        return self.user.get("role") in ["admin", "superadmin"]
+
+    async def _can_access_project(self, project_id: int) -> bool:
+        """
+        Check if current user can access project.
+
+        P10: Permission check baked into repository.
+        """
+        if not self.user:
+            return False
+
+        # Admins can access everything
+        if self._is_admin():
+            return True
+
+        user_id = self.user.get("user_id")
+        if not user_id:
+            return False
+
+        # Get project
+        result = await self.db.execute(
+            select(LDMProject.is_restricted, LDMProject.owner_id, LDMProject.platform_id)
+            .where(LDMProject.id == project_id)
+        )
+        row = result.first()
+        if not row:
+            return False
+
+        is_restricted, owner_id, platform_id = row
+
+        # Owner always has access
+        if owner_id == user_id:
+            return True
+
+        # Public projects are accessible by all
+        if not is_restricted:
+            return True
+
+        # Check explicit access grant for restricted projects
+        result = await self.db.execute(
+            select(LDMResourceAccess.id)
+            .where(
+                LDMResourceAccess.project_id == project_id,
+                LDMResourceAccess.user_id == user_id
+            )
+        )
+        return result.first() is not None
+
+    async def _can_access_file(self, file_id: int) -> bool:
+        """
+        Check if current user can access file (via project access).
+
+        P10: Permission check baked into repository.
+        """
+        # Get file's project
+        result = await self.db.execute(
+            select(LDMFile.project_id).where(LDMFile.id == file_id)
+        )
+        row = result.first()
+        if not row:
+            return False
+
+        return await self._can_access_project(row[0])
 
     # =========================================================================
     # Helper Methods
@@ -70,11 +148,24 @@ class PostgreSQLFileRepository(FileRepository):
     # =========================================================================
 
     async def get(self, file_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get file by ID with permission check.
+
+        P10: Permission check baked in - returns None if user lacks access.
+        """
         result = await self.db.execute(
             select(LDMFile).where(LDMFile.id == file_id)
         )
         file = result.scalar_one_or_none()
-        return self._file_to_dict(file) if file else None
+        if not file:
+            return None
+
+        # P10: Check permission
+        if not await self._can_access_file(file_id):
+            logger.debug(f"[FILE_REPO] Access denied: user {self.user.get('user_id')} cannot access file {file_id}")
+            return None
+
+        return self._file_to_dict(file)
 
     async def get_all(
         self,
@@ -83,6 +174,17 @@ class PostgreSQLFileRepository(FileRepository):
         limit: int = 100,
         offset: int = 0
     ) -> List[Dict[str, Any]]:
+        """
+        Get files with permission filtering.
+
+        P10: Only returns files from projects user can access.
+        """
+        # P10: If project_id specified, check access first
+        if project_id is not None:
+            if not await self._can_access_project(project_id):
+                logger.debug(f"[FILE_REPO] Access denied: user {self.user.get('user_id')} cannot access project {project_id}")
+                return []
+
         query = select(LDMFile)
 
         if project_id is not None:
@@ -108,6 +210,15 @@ class PostgreSQLFileRepository(FileRepository):
         target_language: str = "en",
         extra_data: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
+        """
+        Create file with permission check.
+
+        P10: Only creates file if user can access the project.
+        """
+        # P10: Check project access
+        if not await self._can_access_project(project_id):
+            raise PermissionError(f"User cannot access project {project_id}")
+
         file = LDMFile(
             name=name,
             original_filename=original_filename,
@@ -126,6 +237,16 @@ class PostgreSQLFileRepository(FileRepository):
         return self._file_to_dict(file)
 
     async def delete(self, file_id: int, permanent: bool = False) -> bool:
+        """
+        Delete file with permission check.
+
+        P10: Only deletes if user can access the file.
+        """
+        # P10: Check access
+        if not await self._can_access_file(file_id):
+            logger.debug(f"[FILE_REPO] Delete denied: user {self.user.get('user_id')} cannot access file {file_id}")
+            return False
+
         result = await self.db.execute(
             select(LDMFile).where(LDMFile.id == file_id)
         )
@@ -213,6 +334,16 @@ class PostgreSQLFileRepository(FileRepository):
         target_project_id: int,
         target_folder_id: Optional[int] = None
     ) -> Dict[str, Any]:
+        """
+        Move file to a different project.
+
+        P10: Permission checks baked in - checks access to source file AND target project.
+        Note: Capability check (cross_project_move) is done at route level.
+        """
+        # P10: Check access to source file
+        if not await self._can_access_file(file_id):
+            raise PermissionError(f"Cannot access file {file_id}")
+
         result = await self.db.execute(
             select(LDMFile).where(LDMFile.id == file_id)
         )
@@ -220,7 +351,11 @@ class PostgreSQLFileRepository(FileRepository):
         if not file:
             raise ValueError(f"File {file_id} not found")
 
-        # Validate target project
+        # P10: Check access to target project
+        if not await self._can_access_project(target_project_id):
+            raise PermissionError(f"Cannot access target project {target_project_id}")
+
+        # Validate target project exists
         result = await self.db.execute(
             select(LDMProject).where(LDMProject.id == target_project_id)
         )

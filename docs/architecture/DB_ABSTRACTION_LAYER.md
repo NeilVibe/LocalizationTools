@@ -201,23 +201,50 @@ class TMRepository(ABC):
 ```python
 # server/repositories/factory.py
 
-async def get_tm_repository(
+def get_tm_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)  # P10: User context!
 ) -> TMRepository:
     """
     Select repository based on user's mode.
 
-    - OFFLINE_MODE_* token → SQLiteTMRepository
-    - Regular token → PostgreSQLTMRepository
+    P10: Passes current_user to PostgreSQL repos for permission checks.
+    - OFFLINE_MODE_* token → SQLiteTMRepository (no perms - single user)
+    - Regular token → PostgreSQLTMRepository(db, current_user) (perms baked in!)
     """
-    token = request.headers.get("Authorization", "")
-
-    if "OFFLINE_MODE_" in token:
+    if _is_offline_mode(request):
         return SQLiteTMRepository()
     else:
-        return PostgreSQLTMRepository(db)
+        return PostgreSQLTMRepository(db, current_user)  # User baked in!
 ```
+
+### P10: Permissions Baked Into Repositories
+
+```python
+# PostgreSQL repos have permissions INSIDE
+class PostgreSQLTMRepository(TMRepository):
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
+        self.db = db
+        self.user = user or {}
+
+    def _is_admin(self) -> bool:
+        return self.user.get("role") in ["admin", "superadmin"]
+
+    async def _can_access_tm(self, tm_id: int) -> bool:
+        # Permission check happens HERE, not in routes
+        if self._is_admin():
+            return True
+        # Check ownership or public access
+        ...
+
+    async def get(self, tm_id: int) -> Optional[dict]:
+        if not await self._can_access_tm(tm_id):
+            return None  # No access = return None
+        # Fetch and return TM...
+```
+
+**Routes don't check permissions - repositories do it internally!**
 
 ### The Route (Clean!)
 

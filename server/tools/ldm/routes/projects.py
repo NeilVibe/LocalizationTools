@@ -1,10 +1,8 @@
 """Project CRUD endpoints.
 
-Repository Pattern: Uses ProjectRepository for database abstraction.
-
-P10-REPO: Migrated to Repository Pattern (2026-01-13)
-- All endpoints use Repository Pattern
-- Trash serialization uses repository-based helpers
+P10: FULL ABSTRACT + REPO Pattern
+- Main endpoints use Repository Pattern with permissions baked in
+- Admin access management endpoints use get_async_db (complex access grants)
 """
 
 from typing import List, Optional, Dict, Any
@@ -13,11 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from loguru import logger
 
+# P10: get_async_db only needed for admin access management routes (3 remaining)
 from server.utils.dependencies import get_async_db, get_current_active_user_async, require_admin_async
 from server.tools.ldm.schemas import ProjectCreate, ProjectResponse, DeleteResponse
+# P10: Access management functions still use db directly (admin-only)
 from server.tools.ldm.permissions import (
-    get_accessible_projects,
-    can_access_project,
     grant_project_access,
     revoke_project_access,
     get_project_access_list,
@@ -26,7 +24,8 @@ from server.repositories import (
     ProjectRepository, get_project_repository,
     FolderRepository, get_folder_repository,
     FileRepository, get_file_repository,
-    TrashRepository, get_trash_repository
+    TrashRepository, get_trash_repository,
+    CapabilityRepository, get_capability_repository
 )
 
 router = APIRouter(tags=["LDM"])
@@ -56,19 +55,21 @@ class AccessUserResponse(BaseModel):
 
 @router.get("/projects", response_model=List[ProjectResponse])
 async def list_projects(
-    db: AsyncSession = Depends(get_async_db),
+    repo: ProjectRepository = Depends(get_project_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     List all projects the user can access.
     DESIGN-001: Public by default - shows all public + owned + granted projects.
     P9: Includes "Offline Storage" as virtual project (id=0) if local files exist.
+
+    P10: FULL ABSTRACT - Uses ProjectRepository.get_accessible() with permissions baked in.
     """
     user_id = current_user["user_id"]
     logger.info(f"[PROJECTS] Listing projects for user {user_id}")
 
-    # Use permission helper to get accessible projects
-    projects = await get_accessible_projects(db, current_user)
+    # P10: Use repository to get accessible projects (permissions baked in)
+    projects = await repo.get_accessible()
 
     # P9: Offline Storage is shown in File Explorer tree, not as a project
     # Local files are accessed via the "Offline Storage" node in the explorer
@@ -79,13 +80,12 @@ async def list_projects(
 @router.post("/projects", response_model=ProjectResponse)
 async def create_project(
     project: ProjectCreate,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: ProjectRepository = Depends(get_project_repository)
 ):
     """Create a new project.
 
-    Repository Pattern: Uses ProjectRepository for database abstraction.
+    P10: FULL ABSTRACT - Uses ProjectRepository for all operations.
     """
     user_id = current_user["user_id"]
     logger.info(f"[PROJECTS] Creating project '{project.name}' for user {user_id}")
@@ -107,20 +107,14 @@ async def create_project(
 @router.get("/projects/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: int,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: ProjectRepository = Depends(get_project_repository)
 ):
     """Get a project by ID.
 
-    Repository Pattern: Uses ProjectRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    # DESIGN-001: Check access using permission helper
-    # Returns False for both non-existent AND no access (security: don't reveal existence)
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    # Use repository to get project
+    # P10: Get project via repository (permissions checked inside - returns None if no access)
     project = await repo.get(project_id)
 
     if not project:
@@ -133,17 +127,16 @@ async def get_project(
 async def rename_project(
     project_id: int,
     name: str,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: ProjectRepository = Depends(get_project_repository)
 ):
     """Rename a project.
 
-    Repository Pattern: Uses ProjectRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    # DESIGN-001: Check access using permission helper
-    # Returns False for both non-existent AND no access (security: don't reveal existence)
-    if not await can_access_project(db, project_id, current_user):
+    # P10: First check access via repository
+    existing = await repo.get(project_id)
+    if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
 
     try:
@@ -292,32 +285,30 @@ async def _serialize_project_for_trash_repo(
 async def delete_project(
     project_id: int,
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: ProjectRepository = Depends(get_project_repository),
     folder_repo: FolderRepository = Depends(get_folder_repository),
     file_repo: FileRepository = Depends(get_file_repository),
-    trash_repo: TrashRepository = Depends(get_trash_repository)
+    trash_repo: TrashRepository = Depends(get_trash_repository),
+    capability_repo: CapabilityRepository = Depends(get_capability_repository)
 ):
     """
     Delete a project and all its contents.
     EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
     EXPLORER-009: Requires 'delete_project' capability.
 
-    P10-REPO: Uses Repository Pattern for all operations including trash serialization.
+    P10: FULL ABSTRACT - Uses Repository Pattern with permissions baked in.
     """
-    # DESIGN-001: Check access using permission helper
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    # EXPLORER-009: Check capability for privileged operation
-    from ..permissions import require_capability
-    await require_capability(db, current_user, "delete_project")
-
-    # Get project using repository
+    # P10: Check access via repository (permissions baked in)
     project = await repo.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # EXPLORER-009: Check capability for privileged operation via repository
+    user_id = current_user.get("user_id")
+    has_capability = await capability_repo.get_user_capability(user_id, "delete_project")
+    if not has_capability and current_user.get("role") not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="delete_project capability required")
 
     project_name = project["name"]
 
@@ -358,7 +349,6 @@ async def delete_project(
 async def set_project_restriction(
     project_id: int,
     is_restricted: bool,
-    db: AsyncSession = Depends(get_async_db),
     admin: dict = Depends(require_admin_async),
     repo: ProjectRepository = Depends(get_project_repository)
 ):
@@ -366,7 +356,7 @@ async def set_project_restriction(
     Toggle restriction on a project. Admin only.
     When restricted, only assigned users can access.
 
-    Repository Pattern: Uses ProjectRepository for database abstraction.
+    P10: FULL ABSTRACT - Admin routes bypass permission checks but use repository.
     """
     # Use repository to set restriction
     project = await repo.set_restriction(project_id, is_restricted)

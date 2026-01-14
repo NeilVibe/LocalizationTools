@@ -1,7 +1,10 @@
 """
 PostgreSQL Project Repository Implementation.
 
+P10: FULL ABSTRACT + REPO Pattern
+
 Implements ProjectRepository interface using SQLAlchemy async.
+Permissions are baked INTO the repository.
 """
 
 from datetime import datetime
@@ -10,15 +13,65 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
 
-from server.database.models import LDMProject, LDMFile, LDMFolder
+from server.database.models import LDMProject, LDMFile, LDMFolder, LDMResourceAccess
 from server.repositories.interfaces.project_repository import ProjectRepository
 
 
 class PostgreSQLProjectRepository(ProjectRepository):
-    """PostgreSQL implementation of ProjectRepository."""
+    """
+    PostgreSQL implementation of ProjectRepository.
 
-    def __init__(self, db: AsyncSession):
+    P10: FULL ABSTRACT - Permissions are checked INSIDE the repository.
+    """
+
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
         self.db = db
+        self.user = user or {}
+
+    # =========================================================================
+    # Permission Helpers (P10: Baked into repository)
+    # =========================================================================
+
+    def _is_admin(self) -> bool:
+        """Check if current user is admin/superadmin."""
+        return self.user.get("role") in ["admin", "superadmin"]
+
+    async def _can_access_project(self, project_id: int) -> bool:
+        """Check if current user can access project."""
+        if not self.user:
+            return False
+
+        if self._is_admin():
+            return True
+
+        user_id = self.user.get("user_id")
+        if not user_id:
+            return False
+
+        result = await self.db.execute(
+            select(LDMProject.is_restricted, LDMProject.owner_id)
+            .where(LDMProject.id == project_id)
+        )
+        row = result.first()
+        if not row:
+            return False
+
+        is_restricted, owner_id = row
+
+        if owner_id == user_id:
+            return True
+
+        if not is_restricted:
+            return True
+
+        result = await self.db.execute(
+            select(LDMResourceAccess.id)
+            .where(
+                LDMResourceAccess.project_id == project_id,
+                LDMResourceAccess.user_id == user_id
+            )
+        )
+        return result.first() is not None
 
     def _project_to_dict(self, project: LDMProject) -> Dict[str, Any]:
         """Convert SQLAlchemy project to dict."""
@@ -38,7 +91,16 @@ class PostgreSQLProjectRepository(ProjectRepository):
     # =========================================================================
 
     async def get(self, project_id: int) -> Optional[Dict[str, Any]]:
-        """Get project by ID."""
+        """
+        Get project by ID with permission check.
+
+        P10: FULL ABSTRACT - Permission check baked in. Returns None if user lacks access.
+        """
+        # P10: Check permission first
+        if not await self._can_access_project(project_id):
+            logger.debug(f"[PROJECT_REPO] Access denied: user {self.user.get('user_id')} cannot access project {project_id}")
+            return None
+
         result = await self.db.execute(
             select(LDMProject).where(LDMProject.id == project_id)
         )
@@ -268,6 +330,52 @@ class PostgreSQLProjectRepository(ProjectRepository):
         result = await self.db.execute(
             select(LDMProject).where(LDMProject.name.ilike(search_term))
         )
+        projects = result.scalars().all()
+
+        return [self._project_to_dict(p) for p in projects]
+
+    async def get_accessible(self) -> List[Dict[str, Any]]:
+        """
+        Get all projects accessible by the current user.
+
+        P10: FULL ABSTRACT - Returns projects the user can access:
+        - Admins: All projects
+        - Regular users: Public projects + owned projects + projects with explicit access
+        """
+        from sqlalchemy import or_
+
+        # Admins see all projects
+        if self._is_admin():
+            return await self.get_all()
+
+        user_id = self.user.get("user_id")
+        if not user_id:
+            # No user = only public projects
+            result = await self.db.execute(
+                select(LDMProject)
+                .where(LDMProject.is_restricted == False)
+                .order_by(LDMProject.name)
+            )
+            projects = result.scalars().all()
+            return [self._project_to_dict(p) for p in projects]
+
+        # Get project IDs user has explicit access to
+        access_result = await self.db.execute(
+            select(LDMResourceAccess.project_id)
+            .where(LDMResourceAccess.user_id == user_id)
+        )
+        accessible_ids = [row[0] for row in access_result.all()]
+
+        # Build query: public OR owned OR explicit access
+        query = select(LDMProject).where(
+            or_(
+                LDMProject.is_restricted == False,  # Public projects
+                LDMProject.owner_id == user_id,     # Owned projects
+                LDMProject.id.in_(accessible_ids) if accessible_ids else False  # Explicit access
+            )
+        ).order_by(LDMProject.name)
+
+        result = await self.db.execute(query)
         projects = result.scalars().all()
 
         return [self._project_to_dict(p) for p in projects]

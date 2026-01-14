@@ -1,19 +1,24 @@
 """
 Repository Factory.
 
+P10: FULL ABSTRACT + REPO + FACTORY Pattern
+
 Provides dependency injection functions for FastAPI routes.
 Automatically selects PostgreSQL or SQLite based on user's mode.
 
-P9-ARCH: The repository pattern abstracts database access so that:
-- Online mode uses PostgreSQL (multi-user, real-time sync)
-- Offline mode uses SQLite (single-user, local storage)
+Architecture:
+- Online mode → PostgreSQL repos (with user context for permissions)
+- Offline mode → SQLite repos (no permissions, single user)
+
+Routes ONLY use repositories. No direct DB access. Ever.
+Permissions are baked INTO PostgreSQL repositories.
 """
 
-from typing import Optional
+from typing import Optional, Tuple
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.utils.dependencies import get_async_db
+from server.utils.dependencies import get_async_db, get_current_active_user_async
 from server.repositories.interfaces.tm_repository import TMRepository
 from server.repositories.interfaces.file_repository import FileRepository
 from server.repositories.interfaces.row_repository import RowRepository
@@ -23,6 +28,20 @@ from server.repositories.interfaces.platform_repository import PlatformRepositor
 from server.repositories.interfaces.qa_repository import QAResultRepository
 from server.repositories.interfaces.trash_repository import TrashRepository
 from server.repositories.interfaces.capability_repository import CapabilityRepository
+
+
+# =============================================================================
+# Mode Detection
+# =============================================================================
+
+def _is_offline_mode(request: Request) -> bool:
+    """
+    Detect if request is in offline mode.
+
+    Offline mode is indicated by Authorization header starting with "OFFLINE_MODE_".
+    """
+    auth_header = request.headers.get("Authorization", "")
+    return auth_header.startswith("Bearer OFFLINE_MODE_")
 
 
 async def get_current_user_optional(request: Request) -> Optional[dict]:
@@ -48,32 +67,31 @@ async def get_current_user_optional(request: Request) -> Optional[dict]:
 
 def get_tm_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> TMRepository:
     """
     Factory function - returns correct TM repository based on mode.
 
+    P10: FULL ABSTRACT - Passes user context to PostgreSQL repos for permission checks.
+
     Used as FastAPI dependency:
         @router.get("/tms")
         async def get_tms(repo: TMRepository = Depends(get_tm_repository)):
-            return await repo.get_all()
+            return await repo.get_all()  # Permissions checked inside!
 
     Logic:
-    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite
-    - Otherwise → PostgreSQL
+    - Offline mode → SQLite repo (no permissions, single user)
+    - Online mode → PostgreSQL repo (with user context for permissions)
     """
     # Import here to avoid circular imports
     from server.repositories.postgresql.tm_repo import PostgreSQLTMRepository
     from server.repositories.sqlite.tm_repo import SQLiteTMRepository
 
-    # Check if offline mode from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
-
-    if is_offline:
+    if _is_offline_mode(request):
         return SQLiteTMRepository()
     else:
-        return PostgreSQLTMRepository(db)
+        return PostgreSQLTMRepository(db, current_user)
 
 
 def is_offline_mode(current_user: Optional[dict]) -> bool:
@@ -86,10 +104,13 @@ def is_offline_mode(current_user: Optional[dict]) -> bool:
 
 def get_file_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> FileRepository:
     """
     Factory function - returns correct File repository based on mode.
+
+    P10: FULL ABSTRACT - Passes user context to PostgreSQL repos for permission checks.
 
     Used as FastAPI dependency:
         @router.get("/files/{file_id}")
@@ -97,32 +118,31 @@ def get_file_repository(
             file_id: int,
             repo: FileRepository = Depends(get_file_repository)
         ):
-            return await repo.get(file_id)
+            return await repo.get(file_id)  # Permissions checked inside!
 
     Logic:
-    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite
-    - Otherwise → PostgreSQL
+    - Offline mode → SQLite repo (no permissions, single user)
+    - Online mode → PostgreSQL repo (with user context for permissions)
     """
     # Import here to avoid circular imports
     from server.repositories.postgresql.file_repo import PostgreSQLFileRepository
     from server.repositories.sqlite.file_repo import SQLiteFileRepository
 
-    # Check if offline mode from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
-
-    if is_offline:
+    if _is_offline_mode(request):
         return SQLiteFileRepository()
     else:
-        return PostgreSQLFileRepository(db)
+        return PostgreSQLFileRepository(db, current_user)
 
 
 def get_row_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> RowRepository:
     """
     Factory function - returns correct Row repository based on mode.
+
+    P10: FULL ABSTRACT - Passes user context to PostgreSQL repos for permission checks.
 
     Used as FastAPI dependency:
         @router.get("/files/{file_id}/rows")
@@ -130,32 +150,31 @@ def get_row_repository(
             file_id: int,
             repo: RowRepository = Depends(get_row_repository)
         ):
-            return await repo.get_for_file(file_id)
+            return await repo.get_for_file(file_id)  # Permissions checked inside!
 
     Logic:
-    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite
-    - Otherwise → PostgreSQL
+    - Offline mode → SQLite repo (no permissions, single user)
+    - Online mode → PostgreSQL repo (with user context for permissions)
     """
     # Import here to avoid circular imports
     from server.repositories.postgresql.row_repo import PostgreSQLRowRepository
     from server.repositories.sqlite.row_repo import SQLiteRowRepository
 
-    # Check if offline mode from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
-
-    if is_offline:
+    if _is_offline_mode(request):
         return SQLiteRowRepository()
     else:
-        return PostgreSQLRowRepository(db)
+        return PostgreSQLRowRepository(db, current_user)
 
 
 def get_project_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> ProjectRepository:
     """
     Factory function - returns correct Project repository based on mode.
+
+    P10: FULL ABSTRACT - Passes user context to PostgreSQL repos for permission checks.
 
     Used as FastAPI dependency:
         @router.get("/projects/{project_id}")
@@ -163,32 +182,31 @@ def get_project_repository(
             project_id: int,
             repo: ProjectRepository = Depends(get_project_repository)
         ):
-            return await repo.get(project_id)
+            return await repo.get(project_id)  # Permissions checked inside!
 
     Logic:
-    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite
-    - Otherwise → PostgreSQL
+    - Offline mode → SQLite repo (no permissions, single user)
+    - Online mode → PostgreSQL repo (with user context for permissions)
     """
     # Import here to avoid circular imports
     from server.repositories.postgresql.project_repo import PostgreSQLProjectRepository
     from server.repositories.sqlite.project_repo import SQLiteProjectRepository
 
-    # Check if offline mode from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
-
-    if is_offline:
+    if _is_offline_mode(request):
         return SQLiteProjectRepository()
     else:
-        return PostgreSQLProjectRepository(db)
+        return PostgreSQLProjectRepository(db, current_user)
 
 
 def get_folder_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> FolderRepository:
     """
     Factory function - returns correct Folder repository based on mode.
+
+    P10: FULL ABSTRACT - Passes user context to PostgreSQL repos for permission checks.
 
     Used as FastAPI dependency:
         @router.get("/folders/{folder_id}")
@@ -196,32 +214,31 @@ def get_folder_repository(
             folder_id: int,
             repo: FolderRepository = Depends(get_folder_repository)
         ):
-            return await repo.get(folder_id)
+            return await repo.get(folder_id)  # Permissions checked inside!
 
     Logic:
-    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite
-    - Otherwise → PostgreSQL
+    - Offline mode → SQLite repo (no permissions, single user)
+    - Online mode → PostgreSQL repo (with user context for permissions)
     """
     # Import here to avoid circular imports
     from server.repositories.postgresql.folder_repo import PostgreSQLFolderRepository
     from server.repositories.sqlite.folder_repo import SQLiteFolderRepository
 
-    # Check if offline mode from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
-
-    if is_offline:
+    if _is_offline_mode(request):
         return SQLiteFolderRepository()
     else:
-        return PostgreSQLFolderRepository(db)
+        return PostgreSQLFolderRepository(db, current_user)
 
 
 def get_platform_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> PlatformRepository:
     """
     Factory function - returns correct Platform repository based on mode.
+
+    P10: FULL ABSTRACT - Passes user context to PostgreSQL repos for permission checks.
 
     Used as FastAPI dependency:
         @router.get("/platforms/{platform_id}")
@@ -229,32 +246,31 @@ def get_platform_repository(
             platform_id: int,
             repo: PlatformRepository = Depends(get_platform_repository)
         ):
-            return await repo.get(platform_id)
+            return await repo.get(platform_id)  # Permissions checked inside!
 
     Logic:
-    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite
-    - Otherwise → PostgreSQL
+    - Offline mode → SQLite repo (no permissions, single user)
+    - Online mode → PostgreSQL repo (with user context for permissions)
     """
     # Import here to avoid circular imports
     from server.repositories.postgresql.platform_repo import PostgreSQLPlatformRepository
     from server.repositories.sqlite.platform_repo import SQLitePlatformRepository
 
-    # Check if offline mode from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
-
-    if is_offline:
+    if _is_offline_mode(request):
         return SQLitePlatformRepository()
     else:
-        return PostgreSQLPlatformRepository(db)
+        return PostgreSQLPlatformRepository(db, current_user)
 
 
 def get_qa_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> QAResultRepository:
     """
     Factory function - returns correct QA repository based on mode.
+
+    P10: FULL ABSTRACT - Passes user context to PostgreSQL repos for permission checks.
 
     Used as FastAPI dependency:
         @router.get("/files/{file_id}/qa")
@@ -262,92 +278,115 @@ def get_qa_repository(
             file_id: int,
             repo: QAResultRepository = Depends(get_qa_repository)
         ):
-            return await repo.get_for_file(file_id)
+            return await repo.get_for_file(file_id)  # Permissions checked inside!
 
     Logic:
-    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite
-    - Otherwise → PostgreSQL
-
-    P10: FULL PARITY - Both databases persist QA results identically.
+    - Offline mode → SQLite repo (no permissions, single user)
+    - Online mode → PostgreSQL repo (with user context for permissions)
     """
     # Import here to avoid circular imports
     from server.repositories.postgresql.qa_repo import PostgreSQLQAResultRepository
     from server.repositories.sqlite.qa_repo import SQLiteQAResultRepository
 
-    # Check if offline mode from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
-
-    if is_offline:
+    if _is_offline_mode(request):
         return SQLiteQAResultRepository()
     else:
-        return PostgreSQLQAResultRepository(db)
+        return PostgreSQLQAResultRepository(db, current_user)
 
 
 def get_trash_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> TrashRepository:
     """
     Factory function - returns correct Trash repository based on mode.
+
+    P10: FULL ABSTRACT - Passes user context to PostgreSQL repos for permission checks.
 
     Used as FastAPI dependency:
         @router.get("/trash")
         async def list_trash(
             repo: TrashRepository = Depends(get_trash_repository)
         ):
-            return await repo.get_for_user(user_id)
+            return await repo.get_for_user()  # User context already in repo!
 
     Logic:
-    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite
-    - Otherwise → PostgreSQL
-
-    P10: FULL PARITY - Both databases persist trash identically.
+    - Offline mode → SQLite repo (no permissions, single user)
+    - Online mode → PostgreSQL repo (with user context for permissions)
     """
     # Import here to avoid circular imports
     from server.repositories.postgresql.trash_repo import PostgreSQLTrashRepository
     from server.repositories.sqlite.trash_repo import SQLiteTrashRepository
 
-    # Check if offline mode from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
-
-    if is_offline:
+    if _is_offline_mode(request):
         return SQLiteTrashRepository()
     else:
-        return PostgreSQLTrashRepository(db)
+        return PostgreSQLTrashRepository(db, current_user)
 
 
 def get_capability_repository(
     request: Request,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> CapabilityRepository:
     """
     Factory function - returns correct Capability repository based on mode.
+
+    P10: FULL ABSTRACT - Passes user context to PostgreSQL repos for permission checks.
 
     Used as FastAPI dependency:
         @router.post("/capabilities")
         async def grant_capability(
             repo: CapabilityRepository = Depends(get_capability_repository)
         ):
-            return await repo.grant_capability(...)
+            return await repo.grant_capability(...)  # Admin check inside!
 
     Logic:
-    - If Authorization header token starts with "OFFLINE_MODE_" → SQLite (stub)
-    - Otherwise → PostgreSQL
-
-    Note: Capabilities are admin-only and primarily online functionality.
-    SQLite adapter returns empty results gracefully for offline mode.
+    - Offline mode → SQLite repo (stub, returns empty - offline = single user)
+    - Online mode → PostgreSQL repo (admin-only, checks user role)
     """
     # Import here to avoid circular imports
     from server.repositories.postgresql.capability_repo import PostgreSQLCapabilityRepository
     from server.repositories.sqlite.capability_repo import SQLiteCapabilityRepository
 
-    # Check if offline mode from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    is_offline = auth_header.startswith("Bearer OFFLINE_MODE_")
-
-    if is_offline:
+    if _is_offline_mode(request):
         return SQLiteCapabilityRepository()
     else:
-        return PostgreSQLCapabilityRepository(db)
+        return PostgreSQLCapabilityRepository(db, current_user)
+
+
+# =============================================================================
+# Sync Repositories - For dual-repo operations
+# =============================================================================
+
+def get_sync_repositories(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+) -> Tuple[FileRepository, FileRepository]:
+    """
+    Get BOTH PostgreSQL and SQLite file repositories for sync operations.
+
+    P10: FULL ABSTRACT - Used when online user needs to sync local ↔ server.
+
+    Returns:
+        Tuple of (server_repo, local_repo) for sync operations.
+
+    Usage:
+        @router.post("/sync/push")
+        async def push_local_to_server(
+            repos: Tuple[FileRepository, FileRepository] = Depends(get_sync_repositories)
+        ):
+            server_repo, local_repo = repos
+            local_files = await local_repo.get_all()
+            for file in local_files:
+                await server_repo.create(**file)
+    """
+    from server.repositories.postgresql.file_repo import PostgreSQLFileRepository
+    from server.repositories.sqlite.file_repo import SQLiteFileRepository
+
+    server_repo = PostgreSQLFileRepository(db, current_user)
+    local_repo = SQLiteFileRepository()
+
+    return (server_repo, local_repo)

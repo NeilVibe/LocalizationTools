@@ -222,3 +222,17 @@ class ProjectRepository(ABC):
             List of matching project dicts with platform_id for path building.
         """
         ...
+
+    @abstractmethod
+    async def get_accessible(self) -> List[Dict[str, Any]]:
+        """
+        Get all projects accessible by the current user.
+
+        P10: FULL ABSTRACT - Returns projects the user can access:
+        - Admins: All projects
+        - Regular users: Public projects + owned projects + projects with explicit access
+
+        Returns:
+            List of accessible project dicts.
+        """
+        ...

@@ -1,7 +1,10 @@
 """
 PostgreSQL Platform Repository Implementation.
 
+P10: FULL ABSTRACT + REPO Pattern
+
 Implements PlatformRepository interface using SQLAlchemy async.
+Permissions are baked INTO the repository.
 """
 
 from datetime import datetime
@@ -11,15 +14,57 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from loguru import logger
 
-from server.database.models import LDMPlatform, LDMProject
+from server.database.models import LDMPlatform, LDMProject, LDMResourceAccess
 from server.repositories.interfaces.platform_repository import PlatformRepository
 
 
 class PostgreSQLPlatformRepository(PlatformRepository):
-    """PostgreSQL implementation of PlatformRepository."""
+    """
+    PostgreSQL implementation of PlatformRepository.
 
-    def __init__(self, db: AsyncSession):
+    P10: FULL ABSTRACT - Permissions are checked INSIDE the repository.
+    """
+
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
         self.db = db
+        self.user = user or {}
+
+    def _is_admin(self) -> bool:
+        return self.user.get("role") in ["admin", "superadmin"]
+
+    async def _can_access_platform(self, platform_id: int) -> bool:
+        """Check if current user can access platform."""
+        if not self.user:
+            return False
+        if self._is_admin():
+            return True
+
+        user_id = self.user.get("user_id")
+        if not user_id:
+            return False
+
+        result = await self.db.execute(
+            select(LDMPlatform.is_restricted, LDMPlatform.owner_id)
+            .where(LDMPlatform.id == platform_id)
+        )
+        row = result.first()
+        if not row:
+            return False
+
+        is_restricted, owner_id = row
+        if owner_id == user_id:
+            return True
+        if not is_restricted:
+            return True
+
+        result = await self.db.execute(
+            select(LDMResourceAccess.id)
+            .where(
+                LDMResourceAccess.platform_id == platform_id,
+                LDMResourceAccess.user_id == user_id
+            )
+        )
+        return result.first() is not None
 
     def _platform_to_dict(self, platform: LDMPlatform, project_count: int = 0) -> Dict[str, Any]:
         """Convert SQLAlchemy platform to dict."""
@@ -39,7 +84,16 @@ class PostgreSQLPlatformRepository(PlatformRepository):
     # =========================================================================
 
     async def get(self, platform_id: int) -> Optional[Dict[str, Any]]:
-        """Get platform by ID."""
+        """
+        Get platform by ID with permission check.
+
+        P10: FULL ABSTRACT - Permission check baked in. Returns None if user lacks access.
+        """
+        # P10: Check permission first
+        if not await self._can_access_platform(platform_id):
+            logger.debug(f"[PLATFORM_REPO] Access denied: user {self.user.get('user_id')} cannot access platform {platform_id}")
+            return None
+
         result = await self.db.execute(
             select(LDMPlatform).where(LDMPlatform.id == platform_id)
         )
@@ -132,7 +186,16 @@ class PostgreSQLPlatformRepository(PlatformRepository):
     # =========================================================================
 
     async def get_with_project_count(self, platform_id: int) -> Optional[Dict[str, Any]]:
-        """Get platform with project count."""
+        """
+        Get platform with project count.
+
+        P10: FULL ABSTRACT - Permission check baked in. Returns None if user lacks access.
+        """
+        # P10: Check permission first
+        if not await self._can_access_platform(platform_id):
+            logger.debug(f"[PLATFORM_REPO] Access denied for get_with_project_count: platform_id={platform_id}")
+            return None
+
         result = await self.db.execute(
             select(LDMPlatform)
             .options(selectinload(LDMPlatform.projects))
@@ -255,4 +318,67 @@ class PostgreSQLPlatformRepository(PlatformRepository):
         )
         platforms = result.scalars().all()
 
+        return [self._platform_to_dict(p) for p in platforms]
+
+    async def get_accessible(self, include_projects: bool = False) -> List[Dict[str, Any]]:
+        """
+        Get all platforms accessible by the current user.
+
+        P10: FULL ABSTRACT - Returns platforms the user can access:
+        - Admins: All platforms
+        - Regular users: Public platforms + owned platforms + platforms with explicit access
+        """
+        from sqlalchemy import or_
+
+        # Admins see all platforms
+        if self._is_admin():
+            if include_projects:
+                result = await self.db.execute(
+                    select(LDMPlatform)
+                    .options(selectinload(LDMPlatform.projects))
+                    .order_by(LDMPlatform.name)
+                )
+                platforms = result.scalars().all()
+                return [self._platform_to_dict(p, len(p.projects) if p.projects else 0) for p in platforms]
+            else:
+                return await self.get_all()
+
+        user_id = self.user.get("user_id")
+        if not user_id:
+            # No user = only public platforms
+            query = select(LDMPlatform).where(LDMPlatform.is_restricted == False)
+            if include_projects:
+                query = query.options(selectinload(LDMPlatform.projects))
+            query = query.order_by(LDMPlatform.name)
+
+            result = await self.db.execute(query)
+            platforms = result.scalars().all()
+            if include_projects:
+                return [self._platform_to_dict(p, len(p.projects) if p.projects else 0) for p in platforms]
+            return [self._platform_to_dict(p) for p in platforms]
+
+        # Get platform IDs user has explicit access to
+        access_result = await self.db.execute(
+            select(LDMResourceAccess.platform_id)
+            .where(LDMResourceAccess.user_id == user_id)
+        )
+        accessible_ids = [row[0] for row in access_result.all() if row[0] is not None]
+
+        # Build query: public OR owned OR explicit access
+        query = select(LDMPlatform).where(
+            or_(
+                LDMPlatform.is_restricted == False,  # Public platforms
+                LDMPlatform.owner_id == user_id,     # Owned platforms
+                LDMPlatform.id.in_(accessible_ids) if accessible_ids else False  # Explicit access
+            )
+        )
+        if include_projects:
+            query = query.options(selectinload(LDMPlatform.projects))
+        query = query.order_by(LDMPlatform.name)
+
+        result = await self.db.execute(query)
+        platforms = result.scalars().all()
+
+        if include_projects:
+            return [self._platform_to_dict(p, len(p.projects) if p.projects else 0) for p in platforms]
         return [self._platform_to_dict(p) for p in platforms]

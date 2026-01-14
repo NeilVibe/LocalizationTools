@@ -1,17 +1,19 @@
 """
 Pretranslation endpoints - Match TM entries to file rows.
 
+P10: FULL ABSTRACT + REPO Pattern
+- Uses FileRepository with permissions baked in
+- No direct DB access in routes
+
 Migrated from api.py lines 2313-2434
 """
 
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
+from server.utils.dependencies import get_current_active_user_async, get_db
 from server.tools.ldm.schemas import PretranslateRequest, PretranslateResponse
-from server.tools.ldm.permissions import can_access_project
 from server.repositories.interfaces.file_repository import FileRepository
 from server.repositories.factory import get_file_repository
 
@@ -23,7 +25,6 @@ async def pretranslate_file(
     request: PretranslateRequest,
     background_tasks: BackgroundTasks,
     file_repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -60,20 +61,13 @@ async def pretranslate_file(
             detail=f"Invalid engine. Must be one of: {valid_engines}"
         )
 
-    # P10-REPO: Verify file exists using Repository Pattern
-    # Repository automatically selects PostgreSQL or SQLite based on mode
+    # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await file_repo.get(request.file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
     file_name = file.get("name", "unknown")
-    is_local_file = file.get("sync_status") == "local"
-
-    # Verify project access for non-local files (DESIGN-001: Public by default)
-    if not is_local_file and file.get("project_id"):
-        if not await can_access_project(db, file["project_id"], current_user):
-            raise HTTPException(status_code=404, detail="File not found")
 
     # Run pretranslation in threadpool to avoid blocking
     # TASK-001: Add TrackedOperation for progress tracking

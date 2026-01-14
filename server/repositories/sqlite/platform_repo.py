@@ -290,3 +290,20 @@ class SQLitePlatformRepository(PlatformRepository):
             ).fetchall()
 
             return [self._normalize_platform(dict(row)) for row in rows]
+
+    async def get_accessible(self, include_projects: bool = False) -> List[Dict[str, Any]]:
+        """
+        Get all platforms accessible by the current user.
+
+        P10: FULL ABSTRACT - In offline mode, all platforms are accessible (single user).
+        """
+        # Offline mode = single user = all platforms are accessible
+        platforms = await self.get_all()
+
+        if include_projects:
+            # Add project count to each platform
+            for p in platforms:
+                projects = await self.get_projects(p["id"])
+                p["project_count"] = len(projects)
+
+        return platforms

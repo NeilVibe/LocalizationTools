@@ -168,10 +168,11 @@ def client_with_auth(mock_user, mock_db):
     fastapi_app.dependency_overrides[get_current_active_user_async] = override_get_user
     fastapi_app.dependency_overrides[get_async_db] = override_get_db
 
-    # Patch permission functions at both source and import locations
-    # This ensures permission checks pass for unit tests focused on endpoint logic
+    # P10: Permission checks now happen INSIDE repositories via self.user
+    # Route-level permission patches removed - P10 cleanup moved perms into repositories
+    # Only patch the source permissions module (for any routes that still import)
     patches = [
-        # Source module patches
+        # Source module patches (permissions.py still exists for admin routes)
         patch('server.tools.ldm.permissions.can_access_platform', new_callable=AsyncMock, return_value=True),
         patch('server.tools.ldm.permissions.can_access_project', new_callable=AsyncMock, return_value=True),
         patch('server.tools.ldm.permissions.can_access_file', new_callable=AsyncMock, return_value=True),
@@ -179,25 +180,6 @@ def client_with_auth(mock_user, mock_db):
         patch('server.tools.ldm.permissions.get_accessible_platforms', new_callable=AsyncMock, return_value=[]),
         patch('server.tools.ldm.permissions.get_accessible_projects', new_callable=AsyncMock, return_value=[]),
         patch('server.tools.ldm.permissions.get_accessible_tms', new_callable=AsyncMock, return_value=[]),
-        # Route module patches (where functions are imported)
-        patch('server.tools.ldm.routes.projects.can_access_project', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.projects.get_accessible_projects', new_callable=AsyncMock, return_value=[]),
-        patch('server.tools.ldm.routes.platforms.can_access_platform', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.platforms.get_accessible_platforms', new_callable=AsyncMock, return_value=[]),
-        patch('server.tools.ldm.routes.folders.can_access_project', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.files.can_access_project', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.files.can_access_file', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.rows.can_access_file', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.rows.can_access_project', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.tm_crud.can_access_tm', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.tm_entries.can_access_tm', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.tm_search.can_access_tm', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.tm_indexes.can_access_tm', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.tm_linking.can_access_project', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.tm_linking.can_access_tm', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.pretranslate.can_access_project', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.sync.can_access_project', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.routes.sync.can_access_file', new_callable=AsyncMock, return_value=True),
     ]
 
     # Start all patches

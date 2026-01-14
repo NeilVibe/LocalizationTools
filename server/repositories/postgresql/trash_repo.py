@@ -15,10 +15,22 @@ from server.database.models import LDMTrash
 
 
 class PostgreSQLTrashRepository(TrashRepository):
-    """PostgreSQL implementation of TrashRepository."""
+    """
+    PostgreSQL implementation of TrashRepository.
 
-    def __init__(self, db: AsyncSession):
+    P10: FULL ABSTRACT - User context baked in for ownership checks.
+    Trash items are user-scoped (users only see their own trash).
+    """
+
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
         self.db = db
+        self.user = user or {}
+
+    def _is_admin(self) -> bool:
+        return self.user.get("role") in ["admin", "superadmin"]
+
+    def _get_user_id(self) -> Optional[int]:
+        return self.user.get("user_id")
 
     def _trash_to_dict(self, item: LDMTrash) -> Dict[str, Any]:
         """Convert SQLAlchemy model to dict."""

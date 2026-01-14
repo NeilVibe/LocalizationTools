@@ -1,6 +1,10 @@
 """
 TM CRUD endpoints - Translation Memory list, get, delete, upload, export.
 
+P10: FULL ABSTRACT + REPO Pattern
+- All endpoints use Repository Pattern with permissions baked in
+- No direct DB access in routes
+
 P9-ARCH: Uses Repository Pattern for database abstraction.
 - Online mode: PostgreSQLTMRepository
 - Offline mode: SQLiteTMRepository
@@ -15,13 +19,11 @@ import asyncio
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import Response
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
+from server.utils.dependencies import get_current_active_user_async, get_db
 from server.database.models import LDMTranslationMemory
 from server.tools.ldm.schemas import TMResponse, TMUploadResponse, DeleteResponse
-from server.tools.ldm.permissions import can_access_tm
 
 # Repository Pattern imports
 from server.repositories import TMRepository, get_tm_repository
@@ -248,8 +250,8 @@ async def export_tm(
     tm_id: int,
     format: str = Query("text", regex="^(text|excel|tmx)$"),
     columns: Optional[str] = Query(None, description="Comma-separated list of columns: source_text,target_text,string_id,created_at"),
-    db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    tm_repo: TMRepository = Depends(get_tm_repository)
 ):
     """
     Export a Translation Memory in specified format (DESIGN-001: Public by default).
@@ -265,12 +267,14 @@ async def export_tm(
     - string_id
     - created_at
 
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     Returns file download.
     """
     logger.info(f"[TM] Exporting TM: tm_id={tm_id}, format={format}, columns={columns}")
 
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
+    # P10: Get TM via repository (permissions checked inside - returns None if no access)
+    tm = await tm_repo.get(tm_id)
+    if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Parse columns if provided

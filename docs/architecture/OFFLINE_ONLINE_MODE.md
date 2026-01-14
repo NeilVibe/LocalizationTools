@@ -1,6 +1,58 @@
 # Offline/Online Mode - Complete Specification
 
-**Priority:** P9 | **Status:** IN PROGRESS | **Created:** 2025-12-28 | **Updated:** 2026-01-11
+**Priority:** P9 | **Status:** IN PROGRESS | **Created:** 2025-12-28 | **Updated:** 2026-01-14
+
+---
+
+## Auto-Sync on File Open (IMPORTANT!)
+
+**When working ONLINE and opening a file, the file + its full path hierarchy gets auto-synced to offline storage.**
+
+### What Happens
+
+```
+User opens file online
+        │
+        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  autoSyncFileOnOpen(fileId, fileName)                           │
+│  (locaNext/src/lib/stores/sync.js:341)                          │
+│                                                                 │
+│  1. Check if already subscribed → skip if yes                   │
+│  2. Call POST /api/ldm/offline/subscribe                        │
+│  3. Backend syncs FULL PATH HIERARCHY:                          │
+│     ┌─────────────────────────────────────────────────────────┐ │
+│     │  Platform → Project → Folder(s) → File → Rows           │ │
+│     └─────────────────────────────────────────────────────────┘ │
+│  4. File now available offline                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### SyncService.sync_file_to_offline() (server/services/sync_service.py:143)
+
+```python
+async def sync_file_to_offline(self, file_id: int):
+    """
+    IMPORTANT: Server is source of truth for PATH (platform/project/folder).
+    This function syncs the full path hierarchy before syncing file content.
+    """
+    # 1. Get and sync Platform
+    # 2. Get and sync Project
+    # 3. Sync Folder hierarchy (recursive if nested)
+    # 4. Sync File metadata
+    # 5. Sync all Rows (batch merge)
+```
+
+### Why This Matters
+
+| Scenario | Result |
+|----------|--------|
+| Work online, open file | File + path auto-synced to SQLite |
+| Go offline later | File accessible at same path |
+| Edit offline | Changes tracked for later sync |
+| Come back online | Can push changes to server |
+
+**Path hierarchy is preserved!** The offline structure mirrors the online structure.
 
 ---
 
