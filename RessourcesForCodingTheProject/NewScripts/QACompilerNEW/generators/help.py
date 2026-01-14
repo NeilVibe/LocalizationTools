@@ -124,8 +124,6 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
         List of AdviceGroup with nested AdviceItems
     """
     groups: List[AdviceGroup] = []
-    seen_group_keys: set = set()
-    seen_item_keys: set = set()
 
     log.info("Scanning for GameAdvice data in: %s", folder)
 
@@ -139,12 +137,6 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
             strkey = group_el.get("StrKey") or ""
             group_name = group_el.get("GroupName") or ""
 
-            # Skip duplicates
-            if strkey and strkey in seen_group_keys:
-                continue
-            if strkey:
-                seen_group_keys.add(strkey)
-
             # Collect Korean string for coverage tracking
             _collect_korean_string(group_name)
 
@@ -155,12 +147,6 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
                 item_strkey = item_el.get("StrKey") or ""
                 title = item_el.get("Title") or ""
                 desc = item_el.get("Desc") or ""
-
-                # Skip duplicates
-                if item_strkey and item_strkey in seen_item_keys:
-                    continue
-                if item_strkey:
-                    seen_item_keys.add(item_strkey)
 
                 # Skip if no content
                 if not title and not desc:

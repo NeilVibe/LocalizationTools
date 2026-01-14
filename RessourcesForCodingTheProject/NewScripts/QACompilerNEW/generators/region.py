@@ -350,7 +350,6 @@ def parse_all_faction_groups(
     log.info("Parsing FactionGroup → Faction → FactionNode hierarchy...")
 
     faction_groups: List[FactionGroupData] = []
-    seen_group_strkeys: Set[str] = set()
 
     total_factions = 0
     total_nodes = 0
@@ -361,14 +360,6 @@ def parse_all_faction_groups(
             continue
 
         for fg_elem in root_el.iter("FactionGroup"):
-            strkey = fg_elem.get("StrKey") or ""
-
-            # Skip duplicate FactionGroups
-            if strkey and strkey in seen_group_strkeys:
-                continue
-            if strkey:
-                seen_group_strkeys.add(strkey)
-
             fg = parse_faction_group_element(fg_elem, knowledge_lookup, global_seen)
             if fg and fg.factions:
                 faction_groups.append(fg)
@@ -400,7 +391,6 @@ def parse_standalone_factions(
     log.info("Parsing standalone Factions (not in any FactionGroup)...")
 
     standalone_factions: List[FactionData] = []
-    seen_faction_strkeys: Set[str] = set()
 
     for path in sorted(iter_xml_files(folder)):
         root_el = parse_xml_file(path)
@@ -420,13 +410,9 @@ def parse_standalone_factions(
             if child.tag == "Faction":
                 strkey = child.get("StrKey") or ""
 
-                if strkey and strkey in seen_faction_strkeys:
-                    continue
+                # Skip factions already in groups (avoid double counting)
                 if strkey and strkey in factions_in_groups:
                     continue
-
-                if strkey:
-                    seen_faction_strkeys.add(strkey)
 
                 faction = parse_faction_element(child, knowledge_lookup, global_seen)
                 if faction and faction.nodes:
@@ -654,8 +640,7 @@ def write_sheet_content(
         c.border = THIN_BORDER
     sheet.row_dimensions[1].height = 25
 
-    # Data rows with deduplication
-    seen_keys = set()
+    # Data rows (raw data, no deduplication)
     r_idx = 2
 
     for (depth, text, style_type, is_desc) in rows:
@@ -666,14 +651,6 @@ def write_sheet_content(
         trans_other = sid_other = ""
         if not is_eng and lang_tbl:
             trans_other, sid_other = lang_tbl.get(normalized, ("", ""))
-
-        # Deduplication: skip if (Korean, Translation, STRINGID) already seen
-        trans = trans_eng if is_eng else trans_other
-        sid = sid_eng if is_eng else sid_other
-        dedup_key = (text, trans, sid)
-        if dedup_key in seen_keys:
-            continue
-        seen_keys.add(dedup_key)
 
         # Original
         c_orig = sheet.cell(r_idx, 1, text)

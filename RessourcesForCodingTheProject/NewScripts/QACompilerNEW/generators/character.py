@@ -156,7 +156,6 @@ def build_character_groups(folder: Path) -> Dict[str, List[CharacterItem]]:
         Dict mapping group_key (e.g., 'npc', 'monster') to list of CharacterItems
     """
     groups: Dict[str, List[CharacterItem]] = defaultdict(list)
-    seen_strkeys: set = set()  # Deduplication
 
     log.info("Scanning for characterinfo files...")
 
@@ -167,15 +166,10 @@ def build_character_groups(folder: Path) -> Dict[str, List[CharacterItem]]:
 
         characters = extract_characters_from_file(path)
 
-        added = 0
         for char in characters:
-            if char.strkey in seen_strkeys:
-                continue
-            seen_strkeys.add(char.strkey)
             groups[group_key].append(char)
-            added += 1
 
-        log.debug("  %s → %s: %d characters", path.name, group_key.upper(), added)
+        log.debug("  %s → %s: %d characters", path.name, group_key.upper(), len(characters))
 
     log.info("Scanned %d files, found %d groups", file_count, len(groups))
     for key, items in sorted(groups.items()):

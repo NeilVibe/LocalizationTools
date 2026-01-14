@@ -154,7 +154,6 @@ def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, Knowled
     """
     skills: List[SkillItem] = []
     knowledge_map: Dict[str, KnowledgeNode] = {}
-    seen_skill_keys: Set[str] = set()
 
     log.info("Scanning for Skill/Knowledge data in: %s", folder)
 
@@ -227,11 +226,6 @@ def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, Knowled
                 max_level = int(max_level_str)
             except ValueError:
                 max_level = 1
-
-            if strkey and strkey in seen_skill_keys:
-                continue
-            if strkey:
-                seen_skill_keys.add(strkey)
 
             if not skill_name and not skill_desc:
                 continue

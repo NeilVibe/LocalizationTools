@@ -22,8 +22,8 @@ from config import CATEGORIES, ensure_folders_exist
 # =============================================================================
 
 WINDOW_TITLE = "QA Compiler Suite v2.0"
-WINDOW_WIDTH = 700
-WINDOW_HEIGHT = 700
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 800
 BUTTON_WIDTH = 50
 
 
@@ -42,6 +42,9 @@ class QACompilerSuiteGUI:
 
         # Category checkboxes state
         self.category_vars = {}
+
+        # Store last generation results for coverage analysis
+        self.last_korean_strings = {}
 
         # Build UI
         self._build_ui()
@@ -123,6 +126,24 @@ class QACompilerSuiteGUI:
         )
         build_btn.pack(pady=5, ipady=8)
 
+        # === Section 4: Coverage Analysis ===
+        section4_frame = ttk.LabelFrame(self.root, text="4. Coverage Analysis", padding=10)
+        section4_frame.pack(fill="x", padx=15, pady=5)
+
+        coverage_desc = ttk.Label(
+            section4_frame,
+            text="Calculate coverage of language data by generated datasheets.\nRun after 'Generate Datasheets' to see coverage statistics."
+        )
+        coverage_desc.pack(pady=5)
+
+        coverage_btn = ttk.Button(
+            section4_frame,
+            text="Run Coverage Analysis",
+            command=self._do_coverage,
+            width=BUTTON_WIDTH
+        )
+        coverage_btn.pack(pady=5, ipady=8)
+
         # === Status Bar ===
         self.status_var = tk.StringVar(value="Ready")
         status_frame = ttk.Frame(self.root)
@@ -202,9 +223,11 @@ class QACompilerSuiteGUI:
         """Handle generate completion."""
         self._stop_progress()
         self._set_status("Generation complete!")
+        # Store korean_strings for coverage analysis
+        self.last_korean_strings = results.get("korean_strings", {})
         messagebox.showinfo(
             "Success",
-            f"Datasheets generated!\n\nCategories: {', '.join(results.get('categories', []))}\nCheck console for details."
+            f"Datasheets generated!\n\nCategories: {', '.join(results.get('categories_processed', []))}\nCheck console for details."
         )
 
     def _on_generate_error(self, error_msg):
@@ -294,6 +317,62 @@ class QACompilerSuiteGUI:
         self._stop_progress()
         self._set_status("Build failed - check console")
         messagebox.showerror("Error", f"Build failed:\n{error_msg}")
+
+    def _do_coverage(self):
+        """Run coverage analysis on generated datasheets."""
+        if not self.last_korean_strings:
+            messagebox.showwarning(
+                "No Data",
+                "No datasheet generation results found.\nPlease run 'Generate Datasheets' first."
+            )
+            return
+
+        self._set_status("Running coverage analysis...")
+        self._start_progress()
+
+        def run():
+            try:
+                from config import LANGUAGE_FOLDER, VOICE_RECORDING_SHEET_FOLDER
+                from tracker.coverage import run_coverage_analysis
+
+                report = run_coverage_analysis(
+                    LANGUAGE_FOLDER,
+                    VOICE_RECORDING_SHEET_FOLDER,
+                    self.last_korean_strings,
+                )
+
+                self.root.after(0, lambda: self._on_coverage_complete(report))
+            except ImportError as e:
+                self.root.after(0, lambda: self._on_coverage_error(f"Coverage module not available: {e}"))
+            except Exception as e:
+                self.root.after(0, lambda: self._on_coverage_error(str(e)))
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+
+    def _on_coverage_complete(self, report):
+        """Handle coverage analysis completion."""
+        self._stop_progress()
+        self._set_status("Coverage analysis complete!")
+
+        # Format summary for dialog
+        if report.total_master_strings > 0:
+            pct = report.total_covered_strings / report.total_master_strings * 100
+            summary = (
+                f"Coverage: {report.total_covered_strings:,} / {report.total_master_strings:,} strings ({pct:.1f}%)\n\n"
+                f"Categories analyzed: {len(report.categories)}\n\n"
+                "See console for detailed report."
+            )
+        else:
+            summary = "No master language data found.\nCheck LANGUAGE_FOLDER in config.py."
+
+        messagebox.showinfo("Coverage Analysis", summary)
+
+    def _on_coverage_error(self, error_msg):
+        """Handle coverage analysis error."""
+        self._stop_progress()
+        self._set_status("Coverage analysis failed - check console")
+        messagebox.showerror("Error", f"Coverage analysis failed:\n{error_msg}")
 
 
 # =============================================================================
