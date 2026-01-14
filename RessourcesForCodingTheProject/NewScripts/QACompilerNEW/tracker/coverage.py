@@ -270,10 +270,11 @@ def load_korean_strings_from_datasheets(datasheet_folder: Path) -> Dict[str, Set
 
         korean_strings: Set[str] = set()
 
-        # Find Excel files (prefer ENG version for consistency)
-        excel_files = list(subfolder.glob("*_ENG.xlsx"))
+        # Find Excel files RECURSIVELY (some generators have nested subfolders)
+        # Prefer ENG version for consistency
+        excel_files = list(subfolder.rglob("*_ENG.xlsx"))
         if not excel_files:
-            excel_files = list(subfolder.glob("*.xlsx"))
+            excel_files = list(subfolder.rglob("*.xlsx"))
 
         if not excel_files:
             log.warning("    No Excel files found in %s", folder_name)
