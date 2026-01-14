@@ -64,10 +64,10 @@ KOREAN_COLUMN = {
 }
 
 # Language data folder
-LANGUAGE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\stringtable\loc")
+LANGUAGE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
 
 # Export folder (for analyzing unconsumed strings)
-EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\stringtable\export__")
+EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
 
 # Voice Recording Sheet folder
 VOICE_RECORDING_FOLDER = Path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
