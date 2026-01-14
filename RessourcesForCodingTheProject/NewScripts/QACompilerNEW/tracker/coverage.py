@@ -405,40 +405,36 @@ def load_korean_strings_from_datasheets(output_folder: Path) -> Dict[str, Set[st
         print(f"  ERROR: Output folder not found")
         return category_strings
 
-    # Scan subfolders matching our category patterns
-    for category, folder_name in [
-        ("Character", "Character_LQA_All"),
-        ("Quest", "QuestData_Map_All"),
-        ("Item", "ItemData_Map_All"),
-        ("Knowledge", "Knowledge_LQA_All"),
-        ("Skill", "Skill_LQA_All"),
-        ("Region", "Region_LQA_v3"),
-        ("Gimmick", "Gimmick_LQA_Output"),
-        ("Help", "GameAdvice_LQA_All"),
-    ]:
-        folder = output_folder / folder_name
-        if not folder.exists():
-            # Try direct subfolders
-            for subfolder in output_folder.iterdir():
-                if subfolder.is_dir() and category.lower() in subfolder.name.lower():
-                    folder = subfolder
-                    break
+    # Exact folder names from generators + file patterns
+    # NOTE: Item uses nested folder (ItemData_Map_All/Item_Full_LQA)
+    CATEGORY_CONFIG = [
+        ("Character", "Character_LQA_All", "Character_LQA_ENG.xlsx"),
+        ("Quest", "QuestData_Map_All", "Quest_LQA_ENG.xlsx"),
+        ("Item", "ItemData_Map_All/Item_Full_LQA", "*_ENG*.xlsx"),
+        ("Knowledge", "Knowledge_LQA_All", "Knowledge_LQA_ENG.xlsx"),
+        ("Skill", "Skill_LQA_All", "LQA_Skill_ENG.xlsx"),
+        ("Region", "Region_LQA_v3", "Region_LQA_ENG.xlsx"),
+        ("Gimmick", "Gimmick_LQA_Output", "Gimmick_LQA_ENG.xlsx"),
+        ("Help", "GameAdvice_LQA_All", "LQA_GameAdvice_ENG.xlsx"),
+    ]
+
+    for category, folder_path, file_pattern in CATEGORY_CONFIG:
+        folder = output_folder / folder_path
 
         if not folder.exists():
             continue
 
-        pattern = ENG_FILE_PATTERNS.get(category, "*.xlsx")
         korean_col = KOREAN_COLUMN.get(category, 1)
 
         # Find ENG files
-        if "*" in pattern:
-            files = list(folder.glob(pattern))
+        if "*" in file_pattern:
+            files = list(folder.glob(file_pattern))
         else:
-            files = [folder / pattern] if (folder / pattern).exists() else []
+            files = [folder / file_pattern] if (folder / file_pattern).exists() else []
 
+        # Also search recursively (for Item which may have multiple files)
         if not files:
-            # Try any ENG xlsx
-            files = list(folder.glob("*ENG*.xlsx"))
+            files = list(folder.rglob("*ENG*.xlsx"))
 
         if not files:
             continue
@@ -573,8 +569,15 @@ def load_strings_from_export_folder(export_folder: Path, language_folder: Path =
     return korean_strings
 
 
-def collect_category_wordcounts() -> Dict[str, CategoryWordCount]:
-    """Collect word counts (Korean + Translation) from all category Excel files."""
+def collect_category_wordcounts(output_folder: Path) -> Dict[str, CategoryWordCount]:
+    """Collect word counts (Korean + Translation) from all category Excel files.
+
+    Args:
+        output_folder: Path to GeneratedDatasheets folder (REQUIRED)
+
+    Returns:
+        Dict of category -> CategoryWordCount
+    """
     print()
     print("=" * 70)
     print("Collecting word counts from datasheet outputs")
@@ -582,25 +585,48 @@ def collect_category_wordcounts() -> Dict[str, CategoryWordCount]:
 
     category_counts: Dict[str, CategoryWordCount] = {}
 
-    for category, folder in OUTPUT_FOLDERS.items():
-        print(f"\n{category}:")
+    if not output_folder or not output_folder.exists():
+        print(f"  ERROR: Output folder not found: {output_folder}")
+        return category_counts
+
+    print(f"Scanning: {output_folder}")
+
+    # Exact folder names from generators + file patterns
+    # NOTE: Item uses nested folder (ItemData_Map_All/Item_Full_LQA)
+    CATEGORY_CONFIG = [
+        ("Character", "Character_LQA_All", "Character_LQA_ENG.xlsx"),
+        ("Quest", "QuestData_Map_All", "Quest_LQA_ENG.xlsx"),
+        ("Item", "ItemData_Map_All/Item_Full_LQA", "*_ENG*.xlsx"),
+        ("Knowledge", "Knowledge_LQA_All", "Knowledge_LQA_ENG.xlsx"),
+        ("Skill", "Skill_LQA_All", "LQA_Skill_ENG.xlsx"),
+        ("Region", "Region_LQA_v3", "Region_LQA_ENG.xlsx"),
+        ("Gimmick", "Gimmick_LQA_Output", "Gimmick_LQA_ENG.xlsx"),
+        ("Help", "GameAdvice_LQA_All", "LQA_GameAdvice_ENG.xlsx"),
+    ]
+
+    for category, folder_path, file_pattern in CATEGORY_CONFIG:
+        folder = output_folder / folder_path
 
         if not folder.exists():
-            print(f"  SKIP: Folder not found: {folder.name}")
             continue
 
-        pattern = ENG_FILE_PATTERNS.get(category, "*.xlsx")
+        print(f"\n{category}:")
+
         korean_col = KOREAN_COLUMN.get(category, 1)
         translation_col = TRANSLATION_COLUMN.get(category, 2)
 
-        # Find matching files
-        if "*" in pattern:
-            files = list(folder.glob(pattern))
+        # Find ENG files
+        if "*" in file_pattern:
+            files = list(folder.glob(file_pattern))
         else:
-            files = [folder / pattern] if (folder / pattern).exists() else []
+            files = [folder / file_pattern] if (folder / file_pattern).exists() else []
+
+        # Also search recursively for Item (may have multiple files)
+        if not files:
+            files = list(folder.rglob("*ENG*.xlsx"))
 
         if not files:
-            print(f"  SKIP: No ENG files found matching {pattern}")
+            print(f"  SKIP: No ENG files found")
             continue
 
         total_kr = 0
@@ -1450,8 +1476,8 @@ def run_coverage_analysis(
     print("         WORD COUNT TABLE (Korean + Translation)")
     print("=" * 70)
 
-    # Collect word counts from Excel
-    category_wordcounts = collect_category_wordcounts()
+    # Collect word counts from Excel (MUST use same output folder as coverage)
+    category_wordcounts = collect_category_wordcounts(out_folder)
 
     # Load additional word counts from export folders
     print("\nLoading additional word counts from export folders...")
@@ -1570,8 +1596,11 @@ def main():
     print("         WORD COUNT TABLE (Korean + Translation)")
     print("=" * 70)
 
+    # Output folder for datasheets (SCRIPT_DIR.parent = QACompilerNEW, then GeneratedDatasheets)
+    datasheet_output = SCRIPT_DIR.parent / "GeneratedDatasheets"
+
     # Collect word counts from Excel
-    category_wordcounts = collect_category_wordcounts()
+    category_wordcounts = collect_category_wordcounts(datasheet_output)
 
     # Load additional word counts from export folders
     print("\nLoading additional word counts from export folders...")
@@ -1584,7 +1613,7 @@ def main():
     print_wordcount_table(category_wordcounts, quest_additional, item_additional)
 
     # Export word count table to Excel
-    export_wordcount_to_excel(category_wordcounts, quest_additional, item_additional)
+    export_wordcount_to_excel(category_wordcounts, quest_additional, item_additional, datasheet_output)
 
     print("\nDone!")
 
