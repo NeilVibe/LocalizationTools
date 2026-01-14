@@ -204,21 +204,40 @@ def ensure_folders_exist():
 def load_tester_mapping() -> dict:
     """Load tester -> language mapping from file.
 
-    File format: one entry per line, "TesterName=LANG" (e.g., "John=EN")
+    File format (section-based):
+        ENG
+        김동헌
+        황하연
+        ...
+
+        ZHO-CN
+        김춘애
+        최문석
+        ...
 
     Returns:
         Dict mapping tester names to language codes (EN/CN)
     """
     mapping = {}
-    if TESTER_MAPPING_FILE.exists():
-        with open(TESTER_MAPPING_FILE, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if '=' in line and not line.startswith('#'):
-                    parts = line.split('=', 1)
-                    if len(parts) == 2:
-                        name, lang = parts[0].strip(), parts[1].strip().upper()
-                        if lang in ('EN', 'CN'):
-                            mapping[name] = lang
-        print(f"  Loaded {len(mapping)} tester->language mappings")
+    current_lang = None
+
+    if not TESTER_MAPPING_FILE.exists():
+        print(f"  WARNING: Mapping file not found: {TESTER_MAPPING_FILE}")
+        print(f"           All testers will default to EN.")
+        return mapping
+
+    with open(TESTER_MAPPING_FILE, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            if line == "ENG":
+                current_lang = "EN"
+            elif line == "ZHO-CN":
+                current_lang = "CN"
+            elif current_lang:
+                mapping[line] = current_lang
+
+    print(f"  Loaded {len(mapping)} tester->language mappings")
     return mapping
