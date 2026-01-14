@@ -763,15 +763,17 @@ def print_wordcount_table(
     print()
 
 
-def export_wordcount_to_excel(
+def export_report_to_excel(
+    report: "CoverageReport",
     category_counts: Dict[str, CategoryWordCount],
     quest_additional: CategoryWordCount = None,
     item_additional: CategoryWordCount = None,
     output_folder: Path = None,
 ) -> Path:
-    """Export word count table to a nicely formatted Excel file.
+    """Export coverage + word count tables to a nicely formatted Excel file.
 
     Args:
+        report: CoverageReport with coverage data
         category_counts: Dict of category -> CategoryWordCount
         quest_additional: Additional word count for Quest (System/Quest)
         item_additional: Additional word count for Item (LookAt)
@@ -784,8 +786,92 @@ def export_wordcount_to_excel(
         output_folder = SCRIPT_DIR
 
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Word Count by Category"
+
+    # =========================================================================
+    # SHEET 1: COVERAGE REPORT
+    # =========================================================================
+    ws_cov = wb.active
+    ws_cov.title = "Coverage Report"
+
+    # Styles
+    header_fill = PatternFill("solid", fgColor="4472C4")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    total_fill = PatternFill("solid", fgColor="FFC000")
+    total_font = Font(bold=True, size=11)
+    subtotal_fill = PatternFill("solid", fgColor="E2EFDA")
+    subtotal_font = Font(bold=True, size=10)
+    sub_item_fill = PatternFill("solid", fgColor="F2F2F2")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    # Title
+    ws_cov.cell(1, 1, "COVERAGE REPORT").font = Font(bold=True, size=14)
+    ws_cov.cell(2, 1, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    ws_cov.merge_cells('A1:D1')
+    ws_cov.merge_cells('A2:D2')
+
+    # Headers
+    cov_headers = ["Category", "Unique Strings", "Words Covered", "% Coverage"]
+    for col, header in enumerate(cov_headers, 1):
+        cell = ws_cov.cell(4, col, header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal='center')
+
+    ws_cov.column_dimensions['A'].width = 35
+    ws_cov.column_dimensions['B'].width = 18
+    ws_cov.column_dimensions['C'].width = 18
+    ws_cov.column_dimensions['D'].width = 15
+
+    row = 5
+    for cat in report.categories:
+        pct = (cat.unique_strings / report.total_master_strings * 100) if report.total_master_strings > 0 else 0
+
+        for col in range(1, 5):
+            ws_cov.cell(row, col).border = thin_border
+        ws_cov.cell(row, 1, cat.name)
+        ws_cov.cell(row, 2, cat.unique_strings).number_format = '#,##0'
+        ws_cov.cell(row, 3, cat.word_count).number_format = '#,##0'
+        ws_cov.cell(row, 4, pct / 100).number_format = '0.0%'
+        row += 1
+
+        # Sub-categories
+        for sub in cat.sub_categories:
+            sub_pct = (sub.unique_strings / report.total_master_strings * 100) if report.total_master_strings > 0 else 0
+            for col in range(1, 5):
+                ws_cov.cell(row, col).fill = sub_item_fill
+                ws_cov.cell(row, col).border = thin_border
+            ws_cov.cell(row, 1, f"  └─ {sub.name}")
+            ws_cov.cell(row, 2, sub.unique_strings).number_format = '#,##0'
+            ws_cov.cell(row, 3, sub.word_count).number_format = '#,##0'
+            ws_cov.cell(row, 4, sub_pct / 100).number_format = '0.0%'
+            row += 1
+
+    # Total row
+    row += 1
+    string_pct = (report.total_covered_strings / report.total_master_strings) if report.total_master_strings > 0 else 0
+    for col in range(1, 5):
+        ws_cov.cell(row, col).fill = total_fill
+        ws_cov.cell(row, col).font = total_font
+        ws_cov.cell(row, col).border = thin_border
+    ws_cov.cell(row, 1, "TOTAL COVERAGE")
+    ws_cov.cell(row, 2, report.total_covered_strings).number_format = '#,##0'
+    ws_cov.cell(row, 3, report.total_covered_words).number_format = '#,##0'
+    ws_cov.cell(row, 4, string_pct).number_format = '0.0%'
+
+    # Master total info
+    row += 2
+    ws_cov.cell(row, 1, f"Master Total: {report.total_master_strings:,} strings ({report.total_master_words:,} words)")
+
+    # =========================================================================
+    # SHEET 2: WORD COUNT
+    # =========================================================================
+    ws = wb.create_sheet("Word Count by Category")
 
     # Styles
     header_fill = PatternFill("solid", fgColor="4472C4")
@@ -925,10 +1011,12 @@ def export_wordcount_to_excel(
 
     # Save
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = output_folder / f"WordCount_Report_{timestamp}.xlsx"
+    output_file = output_folder / f"Coverage_Report_{timestamp}.xlsx"
     wb.save(output_file)
 
     print(f"\n📊 Excel report saved: {output_file}")
+    print(f"   Sheet 1: Coverage Report")
+    print(f"   Sheet 2: Word Count by Category")
     return output_file
 
 
@@ -1489,8 +1577,8 @@ def run_coverage_analysis(
     # Print word count table
     print_wordcount_table(category_wordcounts, quest_additional, item_additional)
 
-    # Export word count table to Excel
-    export_wordcount_to_excel(category_wordcounts, quest_additional, item_additional, out_folder)
+    # Export coverage + word count to Excel
+    export_report_to_excel(report, category_wordcounts, quest_additional, item_additional, out_folder)
 
     return report
 
@@ -1612,8 +1700,8 @@ def main():
     # Print word count table
     print_wordcount_table(category_wordcounts, quest_additional, item_additional)
 
-    # Export word count table to Excel
-    export_wordcount_to_excel(category_wordcounts, quest_additional, item_additional, datasheet_output)
+    # Export coverage + word count to Excel
+    export_report_to_excel(report, category_wordcounts, quest_additional, item_additional, datasheet_output)
 
     print("\nDone!")
 
