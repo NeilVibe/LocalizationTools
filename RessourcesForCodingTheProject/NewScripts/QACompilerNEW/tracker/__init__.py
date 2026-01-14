@@ -6,6 +6,7 @@ Progress tracker modules for QA Compiler.
 - data.py: Core tracker operations (_DAILY_DATA sheet)
 - daily.py: DAILY sheet builder
 - total.py: TOTAL sheet builder with rankings
+- coverage.py: Language data coverage analysis
 """
 
 from tracker.data import (
@@ -20,6 +21,15 @@ from tracker.daily import build_daily_sheet
 
 from tracker.total import build_total_sheet
 
+from tracker.coverage import (
+    run_coverage_analysis,
+    calculate_coverage,
+    load_master_language_data,
+    load_voice_recording_sheet,
+    CoverageReport,
+    CategoryCoverage,
+)
+
 __all__ = [
     # Data operations
     "get_or_create_tracker",
@@ -30,4 +40,11 @@ __all__ = [
     # Sheet builders
     "build_daily_sheet",
     "build_total_sheet",
+    # Coverage analysis
+    "run_coverage_analysis",
+    "calculate_coverage",
+    "load_master_language_data",
+    "load_voice_recording_sheet",
+    "CoverageReport",
+    "CategoryCoverage",
 ]

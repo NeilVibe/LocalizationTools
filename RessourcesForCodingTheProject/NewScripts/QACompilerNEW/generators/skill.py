@@ -40,6 +40,32 @@ from generators.base import (
 log = get_logger("SkillGenerator")
 
 # =============================================================================
+# KOREAN STRING COLLECTION (for coverage tracking)
+# =============================================================================
+
+_collected_korean_strings: set = set()
+
+
+def reset_korean_collection() -> None:
+    """Reset the Korean string collection before a new run."""
+    global _collected_korean_strings
+    _collected_korean_strings = set()
+
+
+def get_collected_korean_strings() -> set:
+    """Return a copy of collected Korean strings."""
+    return _collected_korean_strings.copy()
+
+
+def _collect_korean_string(text: str) -> None:
+    """Add a Korean string to the collection (normalized)."""
+    if text:
+        normalized = normalize_placeholders(text)
+        if normalized:
+            _collected_korean_strings.add(normalized)
+
+
+# =============================================================================
 # DATA STRUCTURES
 # =============================================================================
 
@@ -206,6 +232,10 @@ def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, Knowled
 
             if not skill_name and not skill_desc:
                 continue
+
+            # Collect Korean strings for coverage tracking
+            _collect_korean_string(skill_name)
+            _collect_korean_string(skill_desc)
 
             skills.append(SkillItem(
                 key=key,
@@ -453,6 +483,9 @@ def generate_skill_datasheets() -> Dict:
         "files_created": 0,
         "errors": [],
     }
+
+    # Reset Korean string collection
+    reset_korean_collection()
 
     log.info("=" * 70)
     log.info("Skill Datasheet Generator")

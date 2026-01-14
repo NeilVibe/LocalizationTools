@@ -36,7 +36,7 @@ from typing import List
 # Ensure package imports work
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import CATEGORIES, ensure_folders_exist, DATASHEET_OUTPUT
+from config import CATEGORIES, ensure_folders_exist, DATASHEET_OUTPUT, LANGUAGE_FOLDER, VOICE_RECORDING_SHEET_FOLDER
 
 # =============================================================================
 # VERSION INFO
@@ -158,6 +158,21 @@ def cli_generate(categories: List[str]) -> bool:
             for err in results["errors"]:
                 print(f"  - {err}")
             return False
+
+        # Run coverage analysis if we have Korean strings collected
+        korean_strings = results.get("korean_strings", {})
+        if korean_strings:
+            try:
+                from tracker.coverage import run_coverage_analysis
+                print()
+                print_section("Language Data Coverage Analysis")
+                run_coverage_analysis(
+                    LANGUAGE_FOLDER,
+                    VOICE_RECORDING_SHEET_FOLDER,
+                    korean_strings,
+                )
+            except Exception as e:
+                print_info(f"Coverage analysis skipped: {e}")
 
         print()
         print_success("Generation complete!")

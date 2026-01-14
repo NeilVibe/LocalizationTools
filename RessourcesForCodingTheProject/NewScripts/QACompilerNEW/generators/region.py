@@ -42,6 +42,32 @@ from generators.base import (
 
 log = get_logger("RegionGenerator")
 
+# =============================================================================
+# KOREAN STRING COLLECTION (for coverage tracking)
+# =============================================================================
+
+_collected_korean_strings: set = set()
+
+
+def reset_korean_collection() -> None:
+    """Reset the Korean string collection before a new run."""
+    global _collected_korean_strings
+    _collected_korean_strings = set()
+
+
+def get_collected_korean_strings() -> set:
+    """Return a copy of collected Korean strings."""
+    return _collected_korean_strings.copy()
+
+
+def _collect_korean_string(text: str) -> None:
+    """Add a Korean string to the collection (normalized)."""
+    if text:
+        normalized = normalize_placeholders(text)
+        if normalized:
+            _collected_korean_strings.add(normalized)
+
+
 # Empty Faction identifier (Korean)
 EMPTY_FACTION_NAME = "세력 없음"
 
@@ -217,6 +243,10 @@ def parse_faction_node_recursive(
             return None
         global_seen.add(strkey)
 
+    # Collect Korean strings for coverage tracking
+    _collect_korean_string(display_name)
+    _collect_korean_string(description)
+
     node = FactionNodeData(
         strkey=strkey,
         name=display_name,
@@ -251,6 +281,9 @@ def parse_faction_element(
     if not name:
         return None
 
+    # Collect Korean string for coverage tracking
+    _collect_korean_string(name)
+
     faction = FactionData(
         strkey=strkey,
         name=name,
@@ -279,6 +312,9 @@ def parse_faction_group_element(
 
     if not group_name:
         return None
+
+    # Collect Korean string for coverage tracking
+    _collect_korean_string(group_name)
 
     faction_group = FactionGroupData(
         strkey=strkey,
@@ -787,6 +823,9 @@ def generate_region_datasheets() -> Dict:
         "files_created": 0,
         "errors": [],
     }
+
+    # Reset Korean string collection
+    reset_korean_collection()
 
     log.info("=" * 70)
     log.info("Region Datasheet Generator")

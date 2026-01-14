@@ -37,6 +37,32 @@ from generators.base import (
 
 log = get_logger("KnowledgeGenerator")
 
+# =============================================================================
+# KOREAN STRING COLLECTION (for coverage tracking)
+# =============================================================================
+
+_collected_korean_strings: set = set()
+
+
+def reset_korean_collection() -> None:
+    """Reset the Korean string collection before a new run."""
+    global _collected_korean_strings
+    _collected_korean_strings = set()
+
+
+def get_collected_korean_strings() -> set:
+    """Return a copy of collected Korean strings."""
+    return _collected_korean_strings.copy()
+
+
+def _collect_korean_string(text: str) -> None:
+    """Add a Korean string to the collection (normalized)."""
+    if text:
+        normalized = normalize_placeholders(text)
+        if normalized:
+            _collected_korean_strings.add(normalized)
+
+
 # Text to ignore
 IGNORE_LIST = {
     "해제/면역 연금 포션",
@@ -135,6 +161,10 @@ def extract_knowledge_info(node) -> Optional[KnowledgeItem]:
     if not name and not desc:
         return None
 
+    # Collect Korean strings for coverage tracking
+    _collect_korean_string(name)
+    _collect_korean_string(desc)
+
     ki = KnowledgeItem(strkey=strkey, name=name, desc=desc)
 
     for lvl in node.findall("LevelData"):
@@ -154,6 +184,10 @@ def extract_character_knowledge(node) -> Optional[KnowledgeItem]:
 
     if not name and not desc:
         return None
+
+    # Collect Korean strings for coverage tracking
+    _collect_korean_string(name)
+    _collect_korean_string(desc)
 
     ki = KnowledgeItem(strkey=strkey, name=name, desc=desc)
 
@@ -201,6 +235,10 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
             name = node.get("GroupName") or ""
             desc = node.get("Desc") or ""
             icon = bool(node.get("KnowledgeGroupIcon"))
+
+            # Collect Korean strings for coverage tracking
+            _collect_korean_string(name)
+            _collect_korean_string(desc)
 
             # Skip if already processed
             if strkey and strkey in groups_by_key:
@@ -553,6 +591,9 @@ def generate_knowledge_datasheets() -> Dict:
         "files_created": 0,
         "errors": [],
     }
+
+    # Reset Korean string collection
+    reset_korean_collection()
 
     log.info("=" * 70)
     log.info("Knowledge Datasheet Generator")

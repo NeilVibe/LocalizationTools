@@ -38,6 +38,32 @@ from generators.base import (
 log = get_logger("GimmickGenerator")
 
 # =============================================================================
+# KOREAN STRING COLLECTION (for coverage tracking)
+# =============================================================================
+
+_collected_korean_strings: set = set()
+
+
+def reset_korean_collection() -> None:
+    """Reset the Korean string collection before a new run."""
+    global _collected_korean_strings
+    _collected_korean_strings = set()
+
+
+def get_collected_korean_strings() -> set:
+    """Return a copy of collected Korean strings."""
+    return _collected_korean_strings.copy()
+
+
+def _collect_korean_string(text: str) -> None:
+    """Add a Korean string to the collection (normalized)."""
+    if text:
+        normalized = normalize_placeholders(text)
+        if normalized:
+            _collected_korean_strings.add(normalized)
+
+
+# =============================================================================
 # DATA STRUCTURES
 # =============================================================================
 
@@ -182,6 +208,10 @@ def index_gimmicks(static_folder: Path) -> List[GimmickEntry]:
 
             # Find parent GimmickAttributeGroup with GimmickName
             group_name, _ = find_parent_attribute_group(gim_el)
+
+            # Collect Korean strings for coverage tracking
+            _collect_korean_string(gim_name)
+            _collect_korean_string(group_name)
 
             entry = GimmickEntry(
                 group_name_kor=group_name,
@@ -390,6 +420,9 @@ def generate_gimmick_datasheets() -> Dict:
         "files_created": 0,
         "errors": [],
     }
+
+    # Reset Korean string collection
+    reset_korean_collection()
 
     log.info("=" * 70)
     log.info("Gimmick Datasheet Generator")
