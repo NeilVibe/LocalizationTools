@@ -217,15 +217,15 @@ def load_voice_recording_sheet(folder: Path) -> Set[str]:
 # LOAD FROM EXISTING GENERATED DATASHEETS
 # =============================================================================
 
-# Map folder names to category names
+# Map folder names to category names (EXACT names from generators)
 FOLDER_TO_CATEGORY = {
     "Character_LQA_All": "Character",
-    "Quest_LQA_All": "Quest",
-    "Item_LQA_All": "Item",
+    "QuestData_Map_All": "Quest",
+    "ItemData_Map_All": "Item",
     "Knowledge_LQA_All": "Knowledge",
     "Skill_LQA_All": "Skill",
-    "Region_LQA_All": "Region",
-    "Gimmick_LQA_All": "Gimmick",
+    "Region_LQA_v3": "Region",
+    "Gimmick_LQA_Output": "Gimmick",
     "GameAdvice_LQA_All": "Help",
 }
 

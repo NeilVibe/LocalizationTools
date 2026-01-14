@@ -328,11 +328,8 @@ class QACompilerSuiteGUI:
                 from config import LANGUAGE_FOLDER, VOICE_RECORDING_SHEET_FOLDER, DATASHEET_OUTPUT
                 from tracker.coverage import run_coverage_analysis, load_korean_strings_from_datasheets
 
-                # Use last generation results, or load from existing Excel files
-                category_strings = self.last_korean_strings
-                if not category_strings:
-                    # Load from existing GeneratedDatasheets folder
-                    category_strings = load_korean_strings_from_datasheets(DATASHEET_OUTPUT)
+                # ALWAYS load from existing Excel files in GeneratedDatasheets folder
+                category_strings = load_korean_strings_from_datasheets(DATASHEET_OUTPUT)
 
                 if not category_strings:
                     self.root.after(0, lambda: self._on_coverage_error(
