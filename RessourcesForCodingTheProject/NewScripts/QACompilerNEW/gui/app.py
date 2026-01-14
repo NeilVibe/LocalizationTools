@@ -320,25 +320,30 @@ class QACompilerSuiteGUI:
 
     def _do_coverage(self):
         """Run coverage analysis on generated datasheets."""
-        if not self.last_korean_strings:
-            messagebox.showwarning(
-                "No Data",
-                "No datasheet generation results found.\nPlease run 'Generate Datasheets' first."
-            )
-            return
-
         self._set_status("Running coverage analysis...")
         self._start_progress()
 
         def run():
             try:
-                from config import LANGUAGE_FOLDER, VOICE_RECORDING_SHEET_FOLDER
-                from tracker.coverage import run_coverage_analysis
+                from config import LANGUAGE_FOLDER, VOICE_RECORDING_SHEET_FOLDER, DATASHEET_OUTPUT
+                from tracker.coverage import run_coverage_analysis, load_korean_strings_from_datasheets
+
+                # Use last generation results, or load from existing Excel files
+                category_strings = self.last_korean_strings
+                if not category_strings:
+                    # Load from existing GeneratedDatasheets folder
+                    category_strings = load_korean_strings_from_datasheets(DATASHEET_OUTPUT)
+
+                if not category_strings:
+                    self.root.after(0, lambda: self._on_coverage_error(
+                        f"No datasheets found in:\n{DATASHEET_OUTPUT}\n\nPlace generated Excel files there first."
+                    ))
+                    return
 
                 report = run_coverage_analysis(
                     LANGUAGE_FOLDER,
                     VOICE_RECORDING_SHEET_FOLDER,
-                    self.last_korean_strings,
+                    category_strings,
                 )
 
                 self.root.after(0, lambda: self._on_coverage_complete(report))

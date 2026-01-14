@@ -214,6 +214,103 @@ def load_voice_recording_sheet(folder: Path) -> Set[str]:
 
 
 # =============================================================================
+# LOAD FROM EXISTING GENERATED DATASHEETS
+# =============================================================================
+
+# Map folder names to category names
+FOLDER_TO_CATEGORY = {
+    "Character_LQA_All": "Character",
+    "Quest_LQA_All": "Quest",
+    "Item_LQA_All": "Item",
+    "Knowledge_LQA_All": "Knowledge",
+    "Skill_LQA_All": "Skill",
+    "Region_LQA_All": "Region",
+    "Gimmick_LQA_All": "Gimmick",
+    "GameAdvice_LQA_All": "Help",
+}
+
+
+def load_korean_strings_from_datasheets(datasheet_folder: Path) -> Dict[str, Set[str]]:
+    """
+    Load Korean strings from existing generated datasheet Excel files.
+
+    Scans GeneratedDatasheets folder for category subfolders and reads
+    column A (Original KR) from each Excel file.
+
+    Args:
+        datasheet_folder: Path to GeneratedDatasheets folder
+
+    Returns:
+        Dict mapping category name to set of Korean strings
+    """
+    log.info("Loading Korean strings from existing datasheets: %s", datasheet_folder)
+
+    category_strings: Dict[str, Set[str]] = {}
+
+    if not datasheet_folder.exists():
+        log.error("Datasheet folder not found: %s", datasheet_folder)
+        return category_strings
+
+    # Scan for category subfolders
+    for subfolder in sorted(datasheet_folder.iterdir()):
+        if not subfolder.is_dir():
+            continue
+
+        folder_name = subfolder.name
+        category = FOLDER_TO_CATEGORY.get(folder_name)
+
+        if not category:
+            # Try to extract category from folder name pattern
+            if "_LQA_" in folder_name:
+                category = folder_name.split("_LQA_")[0]
+            else:
+                continue
+
+        log.info("  Scanning %s -> %s", folder_name, category)
+
+        korean_strings: Set[str] = set()
+
+        # Find Excel files (prefer ENG version for consistency)
+        excel_files = list(subfolder.glob("*_ENG.xlsx"))
+        if not excel_files:
+            excel_files = list(subfolder.glob("*.xlsx"))
+
+        if not excel_files:
+            log.warning("    No Excel files found in %s", folder_name)
+            continue
+
+        # Use first file found
+        excel_file = excel_files[0]
+        log.info("    Reading: %s", excel_file.name)
+
+        try:
+            wb = load_workbook(excel_file, read_only=True, data_only=True)
+
+            for sheet in wb.worksheets:
+                # Read column A (Original KR) starting from row 2
+                for row in sheet.iter_rows(min_row=2, max_col=1, values_only=True):
+                    if row and row[0]:
+                        text = str(row[0]).strip()
+                        if text:
+                            normalized = normalize_placeholders(text)
+                            if normalized:
+                                korean_strings.add(normalized)
+
+            wb.close()
+
+        except Exception as e:
+            log.error("    Failed to read %s: %s", excel_file.name, e)
+            continue
+
+        if korean_strings:
+            category_strings[category] = korean_strings
+            log.info("    Loaded %d Korean strings for %s", len(korean_strings), category)
+
+    log.info("Loaded %d categories from existing datasheets", len(category_strings))
+    return category_strings
+
+
+# =============================================================================
 # COVERAGE CALCULATION
 # =============================================================================
 
