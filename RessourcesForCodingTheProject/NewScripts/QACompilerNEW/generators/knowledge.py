@@ -610,7 +610,7 @@ def generate_knowledge_datasheets() -> Dict:
 
     # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
-    output_folder = DATASHEET_OUTPUT / "Knowledge_LQA"
+    output_folder = DATASHEET_OUTPUT / "Knowledge_LQA_All"
     output_folder.mkdir(exist_ok=True)
 
     # Check paths

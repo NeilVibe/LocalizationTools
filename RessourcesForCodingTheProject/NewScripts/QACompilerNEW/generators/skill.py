@@ -496,7 +496,7 @@ def generate_skill_datasheets() -> Dict:
 
     # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
-    output_folder = DATASHEET_OUTPUT / "Skill_LQA"
+    output_folder = DATASHEET_OUTPUT / "Skill_LQA_All"
     output_folder.mkdir(exist_ok=True)
 
     # Check paths

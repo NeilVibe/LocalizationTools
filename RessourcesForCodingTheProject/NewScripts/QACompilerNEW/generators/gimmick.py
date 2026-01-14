@@ -595,7 +595,7 @@ def generate_gimmick_datasheets() -> Dict:
 
     # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
-    output_folder = DATASHEET_OUTPUT / "Gimmick_LQA"
+    output_folder = DATASHEET_OUTPUT / "Gimmick_LQA_Output"
     output_folder.mkdir(exist_ok=True)
 
     # Check paths

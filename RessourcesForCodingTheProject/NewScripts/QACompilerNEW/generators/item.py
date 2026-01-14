@@ -964,7 +964,7 @@ def generate_item_datasheets() -> Dict:
 
     # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
-    output_folder = DATASHEET_OUTPUT / "Item_LQA"
+    output_folder = DATASHEET_OUTPUT / "ItemData_Map_All"
     output_folder.mkdir(exist_ok=True)
 
     # Check paths
