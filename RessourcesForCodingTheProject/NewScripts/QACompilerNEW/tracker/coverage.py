@@ -12,10 +12,12 @@ Features:
 
 import re
 from pathlib import Path
+from datetime import datetime
 from typing import Dict, Set, Tuple, Optional, List
 from dataclasses import dataclass, field
 
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from lxml import etree as ET
 
 from generators.base import normalize_placeholders, parse_xml_file, get_logger
@@ -689,6 +691,217 @@ def print_coverage_report(report: CoverageReport) -> None:
 
 
 # =============================================================================
+# EXCEL EXPORT
+# =============================================================================
+
+# Style definitions
+HEADER_FILL = PatternFill("solid", fgColor="4472C4")
+HEADER_FONT = Font(bold=True, color="FFFFFF")
+TOTAL_FILL = PatternFill("solid", fgColor="FFF2CC")
+SUBTOTAL_FILL = PatternFill("solid", fgColor="E2EFDA")
+SUB_ITEM_FILL = PatternFill("solid", fgColor="F2F2F2")
+THIN_BORDER = Border(
+    left=Side(style='thin', color='B4B4B4'),
+    right=Side(style='thin', color='B4B4B4'),
+    top=Side(style='thin', color='B4B4B4'),
+    bottom=Side(style='thin', color='B4B4B4')
+)
+
+
+def style_header_row(ws, row: int, headers: List[str], widths: List[int] = None):
+    """Apply header styling to a row."""
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row, col, header)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.border = THIN_BORDER
+        cell.alignment = Alignment(horizontal='center')
+        if widths and col <= len(widths):
+            ws.column_dimensions[cell.column_letter].width = widths[col - 1]
+
+
+def export_coverage_to_excel(report: CoverageReport, output_folder: Path = None) -> Path:
+    """
+    Export coverage report to a clean Excel file.
+
+    Creates multiple sheets:
+    - Coverage Summary: Overall coverage statistics
+    - Word Count by Category: Korean and Translation word counts
+
+    Args:
+        report: CoverageReport with all statistics
+        output_folder: Optional output folder (defaults to current directory)
+
+    Returns:
+        Path to the generated Excel file
+    """
+    wb = Workbook()
+
+    # =========================================================================
+    # SHEET 1: Coverage Summary
+    # =========================================================================
+    ws1 = wb.active
+    ws1.title = "Coverage Summary"
+
+    # Title
+    ws1.cell(1, 1, "LANGUAGE DATA COVERAGE REPORT").font = Font(bold=True, size=14)
+    ws1.cell(2, 1, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    ws1.merge_cells('A1:D1')
+    ws1.merge_cells('A2:D2')
+
+    # Headers
+    headers = ["Category", "Unique Strings", "Korean Words", "Coverage %"]
+    widths = [30, 18, 18, 15]
+    style_header_row(ws1, 4, headers, widths)
+
+    row = 5
+    for cat in report.categories:
+        # Category row
+        pct = (cat.unique_strings / report.total_master_strings * 100) if report.total_master_strings > 0 else 0
+        ws1.cell(row, 1, cat.name).border = THIN_BORDER
+        ws1.cell(row, 2, cat.unique_strings).border = THIN_BORDER
+        ws1.cell(row, 3, cat.korean_word_count).border = THIN_BORDER
+        ws1.cell(row, 4, f"{pct:.1f}%").border = THIN_BORDER
+        ws1.cell(row, 2).number_format = '#,##0'
+        ws1.cell(row, 3).number_format = '#,##0'
+        row += 1
+
+        # Sub-categories
+        for sub in cat.sub_categories:
+            sub_pct = (sub.unique_strings / report.total_master_strings * 100) if report.total_master_strings > 0 else 0
+            cell = ws1.cell(row, 1, f"  └─ {sub.name}")
+            cell.border = THIN_BORDER
+            cell.fill = SUB_ITEM_FILL
+            for col in [2, 3, 4]:
+                ws1.cell(row, col).fill = SUB_ITEM_FILL
+                ws1.cell(row, col).border = THIN_BORDER
+            ws1.cell(row, 2, sub.unique_strings).number_format = '#,##0'
+            ws1.cell(row, 3, sub.korean_word_count).number_format = '#,##0'
+            ws1.cell(row, 4, f"{sub_pct:.1f}%")
+            row += 1
+
+    # Total row
+    row += 1
+    string_pct = (report.total_covered_strings / report.total_master_strings * 100) if report.total_master_strings > 0 else 0
+    for col in range(1, 5):
+        ws1.cell(row, col).fill = TOTAL_FILL
+        ws1.cell(row, col).border = THIN_BORDER
+        ws1.cell(row, col).font = Font(bold=True)
+    ws1.cell(row, 1, "TOTAL COVERED")
+    ws1.cell(row, 2, report.total_covered_strings).number_format = '#,##0'
+    ws1.cell(row, 3, report.total_covered_korean_words).number_format = '#,##0'
+    ws1.cell(row, 4, f"{string_pct:.1f}%")
+
+    row += 1
+    for col in range(1, 5):
+        ws1.cell(row, col).fill = TOTAL_FILL
+        ws1.cell(row, col).border = THIN_BORDER
+        ws1.cell(row, col).font = Font(bold=True)
+    ws1.cell(row, 1, "MASTER TOTAL")
+    ws1.cell(row, 2, report.total_master_strings).number_format = '#,##0'
+    ws1.cell(row, 3, report.total_master_korean_words).number_format = '#,##0'
+    ws1.cell(row, 4, "100%")
+
+    # =========================================================================
+    # SHEET 2: Word Count by Category
+    # =========================================================================
+    ws2 = wb.create_sheet("Word Count by Category")
+
+    # Title
+    ws2.cell(1, 1, "WORD COUNT BY CATEGORY").font = Font(bold=True, size=14)
+    ws2.cell(2, 1, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    ws2.merge_cells('A1:C1')
+    ws2.merge_cells('A2:C2')
+
+    # Headers
+    headers = ["Category", "Korean Words", "Translation Words"]
+    widths = [35, 20, 20]
+    style_header_row(ws2, 4, headers, widths)
+
+    row = 5
+    grand_total_kr = 0
+    grand_total_tr = 0
+
+    for cat in report.categories:
+        # Calculate category total (main + sub-categories)
+        cat_total_kr = cat.korean_word_count
+        cat_total_tr = cat.translation_word_count
+        for sub in cat.sub_categories:
+            cat_total_kr += sub.korean_word_count
+            cat_total_tr += sub.translation_word_count
+
+        if cat.sub_categories:
+            # Category TOTAL row (highlighted)
+            for col in range(1, 4):
+                ws2.cell(row, col).fill = SUBTOTAL_FILL
+                ws2.cell(row, col).border = THIN_BORDER
+                ws2.cell(row, col).font = Font(bold=True)
+            ws2.cell(row, 1, f"{cat.name} (TOTAL)")
+            ws2.cell(row, 2, cat_total_kr).number_format = '#,##0'
+            ws2.cell(row, 3, cat_total_tr).number_format = '#,##0'
+            row += 1
+
+            # Main category detail
+            ws2.cell(row, 1, f"  ├─ {cat.name} (main)").border = THIN_BORDER
+            ws2.cell(row, 1).fill = SUB_ITEM_FILL
+            ws2.cell(row, 2, cat.korean_word_count).number_format = '#,##0'
+            ws2.cell(row, 2).border = THIN_BORDER
+            ws2.cell(row, 2).fill = SUB_ITEM_FILL
+            ws2.cell(row, 3, cat.translation_word_count).number_format = '#,##0'
+            ws2.cell(row, 3).border = THIN_BORDER
+            ws2.cell(row, 3).fill = SUB_ITEM_FILL
+            row += 1
+
+            # Sub-categories
+            for i, sub in enumerate(cat.sub_categories):
+                prefix = "└─" if i == len(cat.sub_categories) - 1 else "├─"
+                ws2.cell(row, 1, f"  {prefix} {sub.name}").border = THIN_BORDER
+                ws2.cell(row, 1).fill = SUB_ITEM_FILL
+                ws2.cell(row, 2, sub.korean_word_count).number_format = '#,##0'
+                ws2.cell(row, 2).border = THIN_BORDER
+                ws2.cell(row, 2).fill = SUB_ITEM_FILL
+                ws2.cell(row, 3, sub.translation_word_count).number_format = '#,##0'
+                ws2.cell(row, 3).border = THIN_BORDER
+                ws2.cell(row, 3).fill = SUB_ITEM_FILL
+                row += 1
+        else:
+            # Simple category (no sub-categories)
+            ws2.cell(row, 1, cat.name).border = THIN_BORDER
+            ws2.cell(row, 2, cat.korean_word_count).number_format = '#,##0'
+            ws2.cell(row, 2).border = THIN_BORDER
+            ws2.cell(row, 3, cat.translation_word_count).number_format = '#,##0'
+            ws2.cell(row, 3).border = THIN_BORDER
+            row += 1
+
+        grand_total_kr += cat_total_kr
+        grand_total_tr += cat_total_tr
+
+    # Grand Total row
+    row += 1
+    for col in range(1, 4):
+        ws2.cell(row, col).fill = TOTAL_FILL
+        ws2.cell(row, col).border = THIN_BORDER
+        ws2.cell(row, col).font = Font(bold=True)
+    ws2.cell(row, 1, "GRAND TOTAL")
+    ws2.cell(row, 2, grand_total_kr).number_format = '#,##0'
+    ws2.cell(row, 3, grand_total_tr).number_format = '#,##0'
+
+    # =========================================================================
+    # Save workbook
+    # =========================================================================
+    if output_folder is None:
+        output_folder = Path.cwd()
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = output_folder / f"Coverage_Report_{timestamp}.xlsx"
+    wb.save(output_file)
+
+    log.info("Excel report saved: %s", output_file)
+    return output_file
+
+
+# =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================
 
@@ -745,7 +958,11 @@ def run_coverage_analysis(
         quest_additional_translations,
     )
 
-    # 5. Print report
+    # 5. Print report to terminal
     print_coverage_report(report)
+
+    # 6. Export to Excel
+    excel_path = export_coverage_to_excel(report)
+    print(f"\n📊 Excel report saved: {excel_path}\n")
 
     return report
