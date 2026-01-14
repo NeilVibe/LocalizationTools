@@ -530,7 +530,7 @@ def generate_skill_datasheets() -> Dict:
         # Always write English
         write_workbook(
             rows, eng_tbl, None, "eng",
-            output_folder / "Skill_LQA_ENG.xlsx"
+            output_folder / "LQA_Skill_ENG.xlsx"
         )
         result["files_created"] += 1
 
@@ -540,7 +540,7 @@ def generate_skill_datasheets() -> Dict:
                 continue
             write_workbook(
                 rows, eng_tbl, lang_tbl, lang_code,
-                output_folder / f"Skill_LQA_{lang_code.upper()}.xlsx"
+                output_folder / f"LQA_Skill_{lang_code.upper()}.xlsx"
             )
             result["files_created"] += 1
 
