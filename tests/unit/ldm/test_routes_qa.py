@@ -2,6 +2,7 @@
 Unit tests for LDM QA routes.
 
 P2: Auto-LQA System
+P10: Updated to use Repository Pattern mocking.
 Tests for QA check endpoints and QA result management.
 """
 
@@ -9,22 +10,47 @@ import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 from server.tools.ldm.routes.qa import (
-    check_row_qa,
-    get_row_qa_results,
-    check_file_qa,
-    get_file_qa_results,
-    get_file_qa_summary,
-    resolve_qa_issue,
     _run_qa_checks,
-    _save_qa_results,
 )
 from server.tools.ldm.schemas.qa import QACheckRequest
+from server.main import app as wrapped_app
+from server.utils.dependencies import get_current_active_user_async
+from server.repositories.factory import (
+    get_qa_repository,
+    get_row_repository,
+    get_tm_repository,
+    get_file_repository,
+)
+
+# Get FastAPI app from Socket.IO wrapper
+fastapi_app = wrapped_app.other_asgi_app
+
+
+# =============================================================================
+# Helper function to create row dicts (P10: Repository returns dicts)
+# =============================================================================
+
+def make_row_dict(id=1, file_id=1, row_num=1, source="", target="", **kwargs):
+    """Create a row dict matching Repository Pattern output."""
+    return {
+        "id": id,
+        "file_id": file_id,
+        "row_num": row_num,
+        "source": source,
+        "target": target,
+        "status": kwargs.get("status", "pending"),
+        "string_id": kwargs.get("string_id"),
+        "created_at": datetime(2025, 1, 1).isoformat(),
+        "updated_at": datetime(2025, 1, 1).isoformat(),
+    }
 
 
 # =============================================================================
 # Test _run_qa_checks helper
+# P10: Now takes row dict instead of (db, LDMRow)
 # =============================================================================
 
 class TestRunQAChecks:
@@ -33,15 +59,13 @@ class TestRunQAChecks:
     @pytest.mark.asyncio
     async def test_pattern_check_detects_missing_code(self):
         """Pattern check should detect missing {code} patterns."""
-        # Create mock row
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.file_id = 1
-        mock_row.source = "{0}의 공격력"
-        mock_row.target = "Attack power of"  # Missing {0}
+        # P10: Row is now a dict
+        row = make_row_dict(
+            source="{0}의 공격력",
+            target="Attack power of"  # Missing {0}
+        )
 
-        mock_db = AsyncMock()
-        issues = await _run_qa_checks(mock_db, mock_row, ["pattern"], None)
+        issues = await _run_qa_checks(row, ["pattern"], None, None)
 
         assert len(issues) == 1
         assert issues[0]["check_type"] == "pattern"
@@ -50,14 +74,12 @@ class TestRunQAChecks:
     @pytest.mark.asyncio
     async def test_pattern_check_passes_matching_codes(self):
         """Pattern check should pass when codes match."""
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.file_id = 1
-        mock_row.source = "{0}의 공격력"
-        mock_row.target = "Attack power of {0}"
+        row = make_row_dict(
+            source="{0}의 공격력",
+            target="Attack power of {0}"
+        )
 
-        mock_db = AsyncMock()
-        issues = await _run_qa_checks(mock_db, mock_row, ["pattern"], None)
+        issues = await _run_qa_checks(row, ["pattern"], None, None)
 
         # Should have no pattern issues
         pattern_issues = [i for i in issues if i["check_type"] == "pattern"]
@@ -66,25 +88,20 @@ class TestRunQAChecks:
     @pytest.mark.asyncio
     async def test_line_check_detects_inconsistency(self):
         """Line check should detect same source with different translations."""
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.file_id = 1
-        mock_row.row_num = 1
-        mock_row.source = "공격"
-        mock_row.target = "Attack"
+        row = make_row_dict(
+            id=1, row_num=1,
+            source="공격",
+            target="Attack"
+        )
 
         # Another row with same source but different translation
-        mock_other_row = MagicMock()
-        mock_other_row.id = 2
-        mock_other_row.file_id = 1
-        mock_other_row.row_num = 2
-        mock_other_row.source = "공격"
-        mock_other_row.target = "Attaque"  # Different!
-
-        mock_db = AsyncMock()
-        issues = await _run_qa_checks(
-            mock_db, mock_row, ["line"], [mock_row, mock_other_row]
+        other_row = make_row_dict(
+            id=2, row_num=2,
+            source="공격",
+            target="Attaque"  # Different!
         )
+
+        issues = await _run_qa_checks(row, ["line"], [row, other_row], None)
 
         assert len(issues) == 1
         assert issues[0]["check_type"] == "line"
@@ -94,18 +111,14 @@ class TestRunQAChecks:
     @pytest.mark.asyncio
     async def test_term_check_detects_missing_term(self):
         """Term check should detect missing glossary terms."""
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.file_id = 1
-        mock_row.source = "공격 증가"  # Contains isolated glossary term "공격"
-        mock_row.target = "Increase power"  # Missing "Attack"
+        row = make_row_dict(
+            source="공격 증가",  # Contains isolated glossary term "공격"
+            target="Increase power"  # Missing "Attack"
+        )
 
-        mock_db = AsyncMock()
         glossary_terms = [("공격", "Attack"), ("방어", "Defense")]
 
-        issues = await _run_qa_checks(
-            mock_db, mock_row, ["term"], None, glossary_terms
-        )
+        issues = await _run_qa_checks(row, ["term"], None, glossary_terms)
 
         assert len(issues) == 1
         assert issues[0]["check_type"] == "term"
@@ -115,18 +128,14 @@ class TestRunQAChecks:
     @pytest.mark.asyncio
     async def test_term_check_passes_when_term_present(self):
         """Term check should pass when glossary term is in translation."""
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.file_id = 1
-        mock_row.source = "공격 증가"  # Contains isolated glossary term "공격"
-        mock_row.target = "Attack increase"  # Contains "Attack"
+        row = make_row_dict(
+            source="공격 증가",  # Contains isolated glossary term "공격"
+            target="Attack increase"  # Contains "Attack"
+        )
 
-        mock_db = AsyncMock()
         glossary_terms = [("공격", "Attack")]
 
-        issues = await _run_qa_checks(
-            mock_db, mock_row, ["term"], None, glossary_terms
-        )
+        issues = await _run_qa_checks(row, ["term"], None, glossary_terms)
 
         term_issues = [i for i in issues if i["check_type"] == "term"]
         assert len(term_issues) == 0
@@ -134,33 +143,24 @@ class TestRunQAChecks:
     @pytest.mark.asyncio
     async def test_no_issues_for_clean_row(self):
         """Clean row should have no issues."""
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.file_id = 1
-        mock_row.row_num = 1
-        mock_row.source = "방어력"
-        mock_row.target = "Defense"
-
-        mock_db = AsyncMock()
-        issues = await _run_qa_checks(
-            mock_db, mock_row, ["pattern"], None
+        row = make_row_dict(
+            source="방어력",
+            target="Defense"
         )
+
+        issues = await _run_qa_checks(row, ["pattern"], None, None)
 
         assert len(issues) == 0
 
     @pytest.mark.asyncio
     async def test_skips_rows_without_source_or_target(self):
         """Should skip rows without both source and target."""
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.file_id = 1
-        mock_row.source = "테스트"
-        mock_row.target = None  # No target
-
-        mock_db = AsyncMock()
-        issues = await _run_qa_checks(
-            mock_db, mock_row, ["pattern"], None
+        row = make_row_dict(
+            source="테스트",
+            target=None  # No target
         )
+
+        issues = await _run_qa_checks(row, ["pattern"], None, None)
 
         assert len(issues) == 0
 
@@ -223,104 +223,108 @@ class TestPatternMatch:
 
 
 # =============================================================================
-# Test QA Endpoint Error Handling
+# Test QA Endpoint Error Handling (P10: Using Repository mocks)
 # =============================================================================
 
 class TestQAEndpointErrors:
-    """Test error handling in QA endpoints."""
+    """Test error handling in QA endpoints using Repository Pattern."""
 
-    @pytest.mark.asyncio
-    async def test_check_row_qa_not_found(self):
+    @pytest.fixture
+    def mock_repos(self):
+        """Create mock repositories."""
+        qa_repo = MagicMock()
+        qa_repo.get_for_row = AsyncMock(return_value=[])
+        qa_repo.get_for_file = AsyncMock(return_value=[])
+        qa_repo.get = AsyncMock(return_value=None)
+        qa_repo.create_bulk = AsyncMock(return_value=[])
+        qa_repo.resolve = AsyncMock(return_value=None)
+
+        row_repo = MagicMock()
+        row_repo.get = AsyncMock(return_value=None)
+        row_repo.get_with_file = AsyncMock(return_value=None)
+        row_repo.get_all_for_file = AsyncMock(return_value=[])
+
+        file_repo = MagicMock()
+        file_repo.get = AsyncMock(return_value=None)
+
+        tm_repo = MagicMock()
+        tm_repo.get_active_for_file = AsyncMock(return_value=[])
+        tm_repo.get_glossary_terms = AsyncMock(return_value=[])
+
+        return {
+            "qa_repo": qa_repo,
+            "row_repo": row_repo,
+            "file_repo": file_repo,
+            "tm_repo": tm_repo,
+        }
+
+    @pytest.fixture
+    def client_with_qa_repos(self, mock_repos):
+        """TestClient with mocked QA repositories."""
+        mock_user = {
+            "user_id": 1,
+            "username": "testuser",
+            "role": "user",
+            "is_active": True,
+        }
+
+        async def override_get_user():
+            return mock_user
+
+        fastapi_app.dependency_overrides[get_current_active_user_async] = override_get_user
+        fastapi_app.dependency_overrides[get_qa_repository] = lambda: mock_repos["qa_repo"]
+        fastapi_app.dependency_overrides[get_row_repository] = lambda: mock_repos["row_repo"]
+        fastapi_app.dependency_overrides[get_tm_repository] = lambda: mock_repos["tm_repo"]
+        fastapi_app.dependency_overrides[get_file_repository] = lambda: mock_repos["file_repo"]
+
+        client = TestClient(wrapped_app)
+        yield client, mock_repos
+
+        fastapi_app.dependency_overrides.clear()
+
+    def test_check_row_qa_not_found(self, client_with_qa_repos):
         """Should return 404 for non-existent row."""
-        mock_db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = mock_result
+        client, repos = client_with_qa_repos
+        repos["row_repo"].get_with_file.return_value = None
 
-        mock_user = MagicMock()
-        mock_user.user_id = 1
+        response = client.post("/api/ldm/rows/9999/check-qa", json={"checks": ["pattern"]})
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
 
-        request = QACheckRequest()
-
-        with pytest.raises(HTTPException) as exc_info:
-            await check_row_qa(
-                row_id=9999,
-                request=request,
-                db=mock_db,
-                current_user=mock_user
-            )
-
-        assert exc_info.value.status_code == 404
-        assert "not found" in exc_info.value.detail.lower()
-
-    @pytest.mark.asyncio
-    async def test_check_file_qa_not_found(self):
+    def test_check_file_qa_not_found(self, client_with_qa_repos):
         """Should return 404 for non-existent file."""
-        mock_db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = mock_result
+        client, repos = client_with_qa_repos
+        repos["file_repo"].get.return_value = None
 
-        mock_user = MagicMock()
-        mock_user.user_id = 1
+        response = client.post("/api/ldm/files/9999/check-qa", json={"checks": ["pattern"]})
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
 
-        request = QACheckRequest()
-
-        with pytest.raises(HTTPException) as exc_info:
-            await check_file_qa(
-                file_id=9999,
-                request=request,
-                db=mock_db,
-                current_user=mock_user
-            )
-
-        assert exc_info.value.status_code == 404
-        assert "not found" in exc_info.value.detail.lower()
-
-    @pytest.mark.asyncio
-    async def test_resolve_qa_issue_not_found(self):
+    def test_resolve_qa_issue_not_found(self, client_with_qa_repos):
         """Should return 404 for non-existent QA result."""
-        mock_db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = mock_result
+        client, repos = client_with_qa_repos
+        repos["qa_repo"].get.return_value = None
 
-        mock_user = MagicMock()
-        mock_user.user_id = 1
+        response = client.post("/api/ldm/qa-results/9999/resolve")
+        assert response.status_code == 404
 
-        with pytest.raises(HTTPException) as exc_info:
-            await resolve_qa_issue(
-                result_id=9999,
-                db=mock_db,
-                current_user=mock_user
-            )
-
-        assert exc_info.value.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_resolve_already_resolved(self):
+    def test_resolve_already_resolved(self, client_with_qa_repos):
         """Should return 400 for already resolved QA issue."""
-        mock_qa_result = MagicMock()
-        mock_qa_result.id = 1
-        mock_qa_result.resolved_at = datetime.utcnow()  # Already resolved
+        client, repos = client_with_qa_repos
+        # QA result that's already resolved
+        repos["qa_repo"].get.return_value = {
+            "id": 1,
+            "row_id": 1,
+            "check_type": "pattern",
+            "severity": "error",
+            "message": "Test",
+            "resolved_at": datetime.utcnow().isoformat(),
+            "resolved_by": 1,
+        }
 
-        mock_db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_qa_result
-        mock_db.execute.return_value = mock_result
-
-        mock_user = MagicMock()
-        mock_user.user_id = 1
-
-        with pytest.raises(HTTPException) as exc_info:
-            await resolve_qa_issue(
-                result_id=1,
-                db=mock_db,
-                current_user=mock_user
-            )
-
-        assert exc_info.value.status_code == 400
-        assert "already resolved" in exc_info.value.detail.lower()
+        response = client.post("/api/ldm/qa-results/1/resolve")
+        assert response.status_code == 400
+        assert "already resolved" in response.json()["detail"].lower()
 
 
 # =============================================================================
@@ -333,17 +337,12 @@ class TestMultipleChecks:
     @pytest.mark.asyncio
     async def test_multiple_issues_detected(self):
         """Should detect issues from multiple check types."""
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.file_id = 1
-        mock_row.row_num = 1
-        mock_row.source = "{0}의 {1}"
-        mock_row.target = "of the"  # Missing patterns
-
-        mock_db = AsyncMock()
-        issues = await _run_qa_checks(
-            mock_db, mock_row, ["pattern"], None
+        row = make_row_dict(
+            source="{0}의 {1}",
+            target="of the"  # Missing patterns
         )
+
+        issues = await _run_qa_checks(row, ["pattern"], None, None)
 
         # Should have pattern issue
         check_types = [i["check_type"] for i in issues]

@@ -1,8 +1,14 @@
 """
 Full Mocked Tests for LDM Routes
 
-Uses FastAPI dependency_overrides to properly mock auth and database.
-Target: 85% coverage on LDM routes.
+P10: Uses Repository Pattern mocking - mocks at the repository level, not DB level.
+
+Pattern:
+    OLD: Mock db.execute() → complex, brittle, tied to SQLAlchemy internals
+    NEW: Mock repo.get() → clean, matches interface, abstraction-aware
+
+This file tests routes by mocking repository factory functions.
+Repositories are mocked to return predefined data without DB access.
 """
 
 import pytest
@@ -11,7 +17,20 @@ from fastapi.testclient import TestClient
 from datetime import datetime
 
 from server.main import app as wrapped_app
-from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.dependencies import get_current_active_user_async
+
+# Repository factory imports - we override these
+from server.repositories.factory import (
+    get_project_repository,
+    get_file_repository,
+    get_folder_repository,
+    get_row_repository,
+    get_tm_repository,
+    get_platform_repository,
+    get_qa_repository,
+    get_trash_repository,
+    get_capability_repository,
+)
 
 # The app from main.py is wrapped with Socket.IO (ASGIApp)
 # Get the original FastAPI app for dependency_overrides
@@ -19,12 +38,12 @@ fastapi_app = wrapped_app.other_asgi_app
 
 
 # =============================================================================
-# FIXTURES - Fake Data
+# FIXTURES - Fake Data (now as dicts, matching repository return format)
 # =============================================================================
 
 @pytest.fixture
 def mock_user():
-    """Fake authenticated user - matches server/utils/dependencies._get_dev_user()."""
+    """Fake authenticated user."""
     return {
         "user_id": 1,
         "username": "testuser",
@@ -47,880 +66,817 @@ def mock_admin():
 
 
 @pytest.fixture
-def mock_project():
-    """Fake project object with all required fields."""
-    p = MagicMock()
-    p.id = 1
-    p.name = "Test Project"
-    p.description = "Test description"
-    p.source_lang = "ko"
-    p.target_lang = "en"
-    p.owner_id = 1
-    p.created_at = datetime(2025, 1, 1, 0, 0, 0)
-    p.updated_at = datetime(2025, 1, 1, 0, 0, 0)
-    return p
+def sample_project():
+    """Fake project dict (matching repository return format)."""
+    return {
+        "id": 1,
+        "name": "Test Project",
+        "description": "Test description",
+        "owner_id": 1,
+        "platform_id": None,
+        "is_restricted": False,
+        "created_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+        "updated_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+    }
 
 
 @pytest.fixture
-def mock_tm():
-    """Fake TM object with all required fields."""
-    tm = MagicMock()
-    tm.id = 1
-    tm.name = "Test TM"
-    tm.description = "Test TM description"
-    tm.source_lang = "ko"
-    tm.target_lang = "en"
-    tm.entry_count = 100
-    tm.status = "ready"
-    tm.owner_id = 1
-    tm.created_at = datetime(2025, 1, 1, 0, 0, 0)
-    tm.updated_at = datetime(2025, 1, 1, 0, 0, 0)
-    return tm
+def sample_tm():
+    """Fake TM dict (matching repository return format)."""
+    return {
+        "id": 1,
+        "name": "Test TM",
+        "description": "Test TM description",
+        "source_lang": "ko",
+        "target_lang": "en",
+        "entry_count": 100,
+        "status": "ready",
+        "owner_id": 1,
+        "created_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+        "updated_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+    }
 
 
 @pytest.fixture
-def mock_tm_entry():
-    """Fake TM entry object with all required fields."""
-    e = MagicMock()
-    e.id = 1
-    e.tm_id = 1
-    e.source_text = "안녕하세요"
-    e.target_text = "Hello"
-    e.string_id = "STR_001"
-    e.is_confirmed = False
-    e.created_at = datetime(2025, 1, 1, 0, 0, 0)
-    e.updated_at = datetime(2025, 1, 1, 0, 0, 0)
-    e.confirmed_at = None
-    e.confirmed_by = None
-    # TM relationship for ownership check
-    e.tm = MagicMock()
-    e.tm.owner_id = 1
-    return e
+def sample_tm_entry():
+    """Fake TM entry dict."""
+    return {
+        "id": 1,
+        "tm_id": 1,
+        "source_text": "안녕하세요",
+        "target_text": "Hello",
+        "string_id": "STR_001",
+        "is_confirmed": False,
+        "created_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+        "updated_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+    }
 
 
 @pytest.fixture
-def mock_folder():
-    """Fake folder object with all required fields."""
-    f = MagicMock()
-    f.id = 1
-    f.name = "Test Folder"
-    f.project_id = 1
-    f.created_at = datetime(2025, 1, 1, 0, 0, 0)
-    # Project relationship for ownership check
-    f.project = MagicMock()
-    f.project.owner_id = 1
-    return f
+def sample_folder():
+    """Fake folder dict."""
+    return {
+        "id": 1,
+        "name": "Test Folder",
+        "project_id": 1,
+        "parent_id": None,
+        "created_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+    }
 
 
 @pytest.fixture
-def mock_file():
-    """Fake file object with all required fields."""
-    f = MagicMock()
-    f.id = 1
-    f.name = "test.txt"
-    f.original_filename = "test.txt"
-    f.format = "txt"
-    f.folder_id = 1
-    f.row_count = 10
-    f.source_language = "ko"
-    f.target_language = "en"
-    f.created_at = datetime(2025, 1, 1, 0, 0, 0)
-    f.updated_at = datetime(2025, 1, 1, 0, 0, 0)
-    # Project relationship for ownership check
-    f.project = MagicMock()
-    f.project.id = 1
-    f.project.owner_id = 1
-    return f
+def sample_file():
+    """Fake file dict."""
+    return {
+        "id": 1,
+        "name": "test.txt",
+        "original_filename": "test.txt",
+        "format": "txt",
+        "project_id": 1,
+        "folder_id": 1,
+        "row_count": 10,
+        "source_language": "ko",
+        "target_language": "en",
+        "created_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+        "updated_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+    }
 
 
 @pytest.fixture
-def mock_db():
-    """Fake async database session with smart refresh."""
-    db = AsyncMock()
+def sample_row():
+    """Fake row dict."""
+    return {
+        "id": 1,
+        "file_id": 1,
+        "row_num": 1,
+        "source": "소스 텍스트",
+        "target": "Target text",
+        "string_id": "STR_001",
+        "status": "pending",
+        "is_locked": False,
+        "locked_by": None,
+        "updated_by": None,
+        "created_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+        "updated_at": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+    }
 
-    # Make refresh populate required fields on the object
-    async def smart_refresh(obj):
-        if not hasattr(obj, 'id') or obj.id is None:
-            obj.id = 1
-        if not hasattr(obj, 'created_at') or obj.created_at is None:
-            obj.created_at = datetime(2025, 1, 1, 0, 0, 0)
-        if not hasattr(obj, 'updated_at') or obj.updated_at is None:
-            obj.updated_at = datetime(2025, 1, 1, 0, 0, 0)
-        # For TM entry fields
-        if hasattr(obj, 'tm_id') and (not hasattr(obj, 'string_id') or obj.string_id is None):
-            obj.string_id = None
-        if hasattr(obj, 'is_confirmed') and obj.is_confirmed is None:
-            obj.is_confirmed = False
 
-    db.refresh = AsyncMock(side_effect=smart_refresh)
-    return db
+# =============================================================================
+# MOCK REPOSITORY FIXTURES
+# =============================================================================
+
+@pytest.fixture
+def mock_project_repo():
+    """Mock ProjectRepository with all methods as AsyncMock."""
+    repo = MagicMock()
+    repo.get = AsyncMock(return_value=None)
+    repo.get_all = AsyncMock(return_value=[])
+    repo.get_accessible = AsyncMock(return_value=[])
+    repo.create = AsyncMock(return_value=None)
+    repo.update = AsyncMock(return_value=None)
+    repo.delete = AsyncMock(return_value=False)
+    repo.rename = AsyncMock(return_value=None)
+    repo.check_name_exists = AsyncMock(return_value=False)
+    repo.generate_unique_name = AsyncMock(side_effect=lambda name, *args: name)
+    repo.get_with_stats = AsyncMock(return_value=None)
+    repo.count = AsyncMock(return_value=0)
+    repo.search = AsyncMock(return_value=[])
+    return repo
 
 
 @pytest.fixture
-def client_with_auth(mock_user, mock_db):
-    """TestClient with mocked auth, database, and permissions."""
+def mock_file_repo():
+    """Mock FileRepository with all methods as AsyncMock (matching interface)."""
+    repo = MagicMock()
+    # Core CRUD
+    repo.get = AsyncMock(return_value=None)
+    repo.get_all = AsyncMock(return_value=[])
+    repo.get_by_project = AsyncMock(return_value=[])
+    repo.create = AsyncMock(return_value=None)
+    repo.update = AsyncMock(return_value=None)
+    repo.delete = AsyncMock(return_value=False)
+    repo.get_rows = AsyncMock(return_value={"rows": [], "total": 0})
+    repo.rename = AsyncMock(return_value=None)
+    repo.check_name_exists = AsyncMock(return_value=False)
+    # Handle both positional and keyword args for generate_unique_name
+    repo.generate_unique_name = AsyncMock(
+        side_effect=lambda *args, **kwargs: kwargs.get('base_name') or (args[0] if args else "test.txt")
+    )
+    # Additional methods from interface
+    repo.move = AsyncMock(return_value=None)
+    repo.copy = AsyncMock(return_value=None)
+    repo.search = AsyncMock(return_value=[])
+    repo.get_for_folder = AsyncMock(return_value=[])
+    return repo
+
+
+@pytest.fixture
+def mock_folder_repo():
+    """Mock FolderRepository with all methods as AsyncMock."""
+    repo = MagicMock()
+    repo.get = AsyncMock(return_value=None)
+    repo.get_all = AsyncMock(return_value=[])
+    repo.get_by_project = AsyncMock(return_value=[])
+    repo.create = AsyncMock(return_value=None)
+    repo.update = AsyncMock(return_value=None)
+    repo.delete = AsyncMock(return_value=False)
+    repo.rename = AsyncMock(return_value=None)
+    repo.check_name_exists = AsyncMock(return_value=False)
+    repo.generate_unique_name = AsyncMock(side_effect=lambda name, *args, **kwargs: name)
+    # Additional methods from interface
+    repo.get_with_contents = AsyncMock(return_value={"subfolders": [], "files": []})
+    repo.move = AsyncMock(return_value=None)
+    repo.move_cross_project = AsyncMock(return_value=None)
+    repo.copy = AsyncMock(return_value=None)
+    repo.get_children = AsyncMock(return_value=[])
+    repo.is_descendant = AsyncMock(return_value=False)
+    repo.search = AsyncMock(return_value=[])
+    return repo
+
+
+@pytest.fixture
+def mock_row_repo():
+    """Mock RowRepository with all methods as AsyncMock (matching interface)."""
+    repo = MagicMock()
+    # Core CRUD
+    repo.get = AsyncMock(return_value=None)
+    repo.get_with_file = AsyncMock(return_value=None)
+    repo.create = AsyncMock(return_value={"id": 1})
+    repo.update = AsyncMock(return_value=None)
+    repo.delete = AsyncMock(return_value=False)
+    # Bulk operations
+    repo.bulk_create = AsyncMock(return_value=0)
+    repo.bulk_update = AsyncMock(return_value=0)
+    # Query operations - get_for_file returns Tuple[List, int]
+    repo.get_for_file = AsyncMock(return_value=([], 0))
+    repo.get_all_for_file = AsyncMock(return_value=[])
+    repo.count_for_file = AsyncMock(return_value=0)
+    # History
+    repo.add_edit_history = AsyncMock(return_value=None)
+    repo.get_edit_history = AsyncMock(return_value=[])
+    # Similarity search
+    repo.suggest_similar = AsyncMock(return_value=[])
+    return repo
+
+
+@pytest.fixture
+def mock_tm_repo():
+    """Mock TMRepository with all methods as AsyncMock (matching interface)."""
+    repo = MagicMock()
+    # Core CRUD
+    repo.get = AsyncMock(return_value=None)
+    repo.get_all = AsyncMock(return_value=[])
+    repo.get_accessible = AsyncMock(return_value=[])
+    repo.create = AsyncMock(return_value=None)
+    repo.update = AsyncMock(return_value=None)
+    repo.delete = AsyncMock(return_value=False)
+    # TM Entries
+    repo.get_entries = AsyncMock(return_value=[])  # Returns List, not dict
+    repo.search_entries = AsyncMock(return_value=[])  # For search queries
+    repo.add_entry = AsyncMock(return_value=None)
+    repo.add_entries_bulk = AsyncMock(return_value=0)
+    repo.update_entry = AsyncMock(return_value=None)
+    repo.delete_entry = AsyncMock(return_value=False)
+    repo.confirm_entry = AsyncMock(return_value=None)
+    repo.bulk_confirm_entries = AsyncMock(return_value=0)
+    repo.get_glossary_terms = AsyncMock(return_value=[])
+    # Search
+    repo.search_exact = AsyncMock(return_value=None)
+    repo.search_similar = AsyncMock(return_value=[])
+    # Tree/Assignment
+    repo.get_tree = AsyncMock(return_value=[])
+    repo.assign = AsyncMock(return_value=None)
+    repo.unassign = AsyncMock(return_value=None)
+    repo.activate = AsyncMock(return_value=None)
+    repo.deactivate = AsyncMock(return_value=None)
+    repo.get_assignment = AsyncMock(return_value=None)
+    repo.get_for_scope = AsyncMock(return_value=[])
+    repo.get_active_for_file = AsyncMock(return_value=[])
+    # TM Linking
+    repo.link_to_project = AsyncMock(return_value=None)
+    repo.unlink_from_project = AsyncMock(return_value=False)
+    repo.get_linked_for_project = AsyncMock(return_value=None)
+    repo.get_all_linked_for_project = AsyncMock(return_value=[])
+    # Index operations
+    repo.get_indexes = AsyncMock(return_value=[])
+    repo.count_entries = AsyncMock(return_value=0)
+    repo.get_sync_status = AsyncMock(return_value={"is_stale": False, "db_entry_count": 0})
+    return repo
+
+
+@pytest.fixture
+def mock_capability_repo():
+    """Mock CapabilityRepository with all methods as AsyncMock."""
+    repo = MagicMock()
+    repo.get_user_capability = AsyncMock(return_value=True)  # Allow by default in tests
+    repo.grant_capability = AsyncMock(return_value=None)
+    repo.revoke_capability = AsyncMock(return_value=None)
+    repo.get_user_capabilities = AsyncMock(return_value=[])
+    return repo
+
+
+@pytest.fixture
+def mock_trash_repo():
+    """Mock TrashRepository with all methods as AsyncMock (matching interface)."""
+    repo = MagicMock()
+    # Query operations
+    repo.get = AsyncMock(return_value=None)
+    repo.get_for_user = AsyncMock(return_value=[])
+    repo.get_expired = AsyncMock(return_value=[])
+    # Write operations
+    repo.create = AsyncMock(return_value={"id": 1, "item_type": "project", "item_id": 1})
+    repo.restore = AsyncMock(return_value=None)
+    repo.permanent_delete = AsyncMock(return_value=True)
+    repo.empty_for_user = AsyncMock(return_value=0)
+    repo.cleanup_expired = AsyncMock(return_value=0)
+    # Utility
+    repo.count_for_user = AsyncMock(return_value=0)
+    return repo
+
+
+# =============================================================================
+# CLIENT FIXTURE - Sets up dependency overrides
+# =============================================================================
+
+@pytest.fixture
+def client_with_repos(
+    mock_user,
+    mock_project_repo,
+    mock_file_repo,
+    mock_folder_repo,
+    mock_row_repo,
+    mock_tm_repo,
+    mock_capability_repo,
+    mock_trash_repo
+):
+    """
+    TestClient with mocked repositories.
+
+    P10: Overrides factory functions to return mock repositories.
+    This is the correct abstraction level for testing routes.
+    """
     async def override_get_user():
         return mock_user
 
-    async def override_get_db():
-        return mock_db
-
+    # Override auth
     fastapi_app.dependency_overrides[get_current_active_user_async] = override_get_user
-    fastapi_app.dependency_overrides[get_async_db] = override_get_db
 
-    # P10: Permission checks now happen INSIDE repositories via self.user
-    # Route-level permission patches removed - P10 cleanup moved perms into repositories
-    # Only patch the source permissions module (for any routes that still import)
-    patches = [
-        # Source module patches (permissions.py still exists for admin routes)
-        patch('server.tools.ldm.permissions.can_access_platform', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.permissions.can_access_project', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.permissions.can_access_file', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.permissions.can_access_tm', new_callable=AsyncMock, return_value=True),
-        patch('server.tools.ldm.permissions.get_accessible_platforms', new_callable=AsyncMock, return_value=[]),
-        patch('server.tools.ldm.permissions.get_accessible_projects', new_callable=AsyncMock, return_value=[]),
-        patch('server.tools.ldm.permissions.get_accessible_tms', new_callable=AsyncMock, return_value=[]),
-    ]
-
-    # Start all patches
-    for p in patches:
-        p.start()
+    # Override repository factories - return our mocks
+    fastapi_app.dependency_overrides[get_project_repository] = lambda: mock_project_repo
+    fastapi_app.dependency_overrides[get_file_repository] = lambda: mock_file_repo
+    fastapi_app.dependency_overrides[get_folder_repository] = lambda: mock_folder_repo
+    fastapi_app.dependency_overrides[get_row_repository] = lambda: mock_row_repo
+    fastapi_app.dependency_overrides[get_tm_repository] = lambda: mock_tm_repo
+    fastapi_app.dependency_overrides[get_capability_repository] = lambda: mock_capability_repo
+    fastapi_app.dependency_overrides[get_trash_repository] = lambda: mock_trash_repo
 
     client = TestClient(wrapped_app)
-    yield client
-
-    # Stop all patches
-    for p in patches:
-        p.stop()
+    yield client, {
+        "project_repo": mock_project_repo,
+        "file_repo": mock_file_repo,
+        "folder_repo": mock_folder_repo,
+        "row_repo": mock_row_repo,
+        "tm_repo": mock_tm_repo,
+        "capability_repo": mock_capability_repo,
+        "trash_repo": mock_trash_repo,
+    }
 
     fastapi_app.dependency_overrides.clear()
 
 
 # =============================================================================
-# PROJECT TESTS - Mocked
+# PROJECT TESTS - Using Repository Mocks
 # =============================================================================
 
 class TestProjectsMocked:
-    """Mocked tests for projects endpoints."""
+    """Mocked tests for projects endpoints using Repository Pattern."""
 
-    def test_list_projects_empty(self, client_with_auth, mock_db):
+    def test_list_projects_empty(self, client_with_repos):
         """List projects returns empty list when no projects."""
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["project_repo"].get_accessible.return_value = []
 
-        response = client_with_auth.get("/api/ldm/projects")
+        response = client.get("/api/ldm/projects")
         assert response.status_code == 200
         assert response.json() == []
 
-    @pytest.mark.skip(reason="get_accessible_projects now patched to return [] - needs separate fixture")
-    def test_list_projects_with_data(self, client_with_auth, mock_db, mock_project):
+    def test_list_projects_with_data(self, client_with_repos, sample_project):
         """List projects returns project list."""
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [mock_project]
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["project_repo"].get_accessible.return_value = [sample_project]
 
-        response = client_with_auth.get("/api/ldm/projects")
+        response = client.get("/api/ldm/projects")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
         assert data[0]["name"] == "Test Project"
 
-    def test_create_project_valid(self, client_with_auth, mock_db):
+    def test_create_project_valid(self, client_with_repos, sample_project):
         """Create project with valid data."""
-        # UI-077: Now checks for duplicate project name first
-        mock_duplicate_result = MagicMock()
-        mock_duplicate_result.scalar_one_or_none.return_value = None  # No duplicate
-        mock_db.execute = AsyncMock(return_value=mock_duplicate_result)
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
+        client, repos = client_with_repos
+        repos["project_repo"].create.return_value = sample_project
 
-        response = client_with_auth.post("/api/ldm/projects", json={
+        response = client.post("/api/ldm/projects", json={
             "name": "New Project",
             "description": "New project description",
-            "source_lang": "ko",
-            "target_lang": "en"
         })
         assert response.status_code in [200, 201]
         data = response.json()
-        assert data["name"] == "New Project"
+        assert data["name"] == "Test Project"  # Returns what repo.create returns
         assert data["id"] == 1
 
-    def test_create_project_missing_name(self, client_with_auth):
+    def test_create_project_missing_name(self, client_with_repos):
         """Create project fails without name."""
-        response = client_with_auth.post("/api/ldm/projects", json={
-            "source_lang": "ko",
-            "target_lang": "en"
-        })
+        client, repos = client_with_repos
+
+        response = client.post("/api/ldm/projects", json={})
         assert response.status_code == 422
 
-    def test_get_project_exists(self, client_with_auth, mock_db, mock_project):
+    def test_get_project_exists(self, client_with_repos, sample_project):
         """Get existing project returns project."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_project
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = sample_project
 
-        response = client_with_auth.get("/api/ldm/projects/1")
+        response = client.get("/api/ldm/projects/1")
         assert response.status_code == 200
         assert response.json()["name"] == "Test Project"
 
-    def test_get_project_not_found(self, client_with_auth, mock_db):
+    def test_get_project_not_found(self, client_with_repos):
         """Get non-existent project returns 404."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = None
 
-        response = client_with_auth.get("/api/ldm/projects/99999")
+        response = client.get("/api/ldm/projects/99999")
         assert response.status_code == 404
 
-    def test_delete_project_exists(self, client_with_auth, mock_db, mock_project):
+    def test_delete_project_exists(self, client_with_repos, sample_project):
         """Delete existing project succeeds."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_project
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.delete = AsyncMock()
-        mock_db.commit = AsyncMock()
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = sample_project
+        repos["project_repo"].delete.return_value = True
 
-        response = client_with_auth.delete("/api/ldm/projects/1")
+        response = client.delete("/api/ldm/projects/1")
         assert response.status_code == 200
 
 
 # =============================================================================
-# TM CRUD TESTS - Mocked
+# TM CRUD TESTS - Using Repository Mocks
 # =============================================================================
 
 class TestTMCrudMocked:
-    """Mocked tests for TM CRUD endpoints."""
+    """Mocked tests for TM CRUD endpoints using Repository Pattern."""
 
-    def test_list_tms_empty(self, client_with_auth, mock_db):
+    def test_list_tms_empty(self, client_with_repos):
         """List TMs returns empty list."""
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["tm_repo"].get_all.return_value = []
 
-        response = client_with_auth.get("/api/ldm/tm")
+        response = client.get("/api/ldm/tm")
         assert response.status_code == 200
         assert response.json() == []
 
-    @pytest.mark.skip(reason="get_accessible_tms now patched to return [] - needs separate fixture")
-    def test_list_tms_with_data(self, client_with_auth, mock_db, mock_tm):
+    def test_list_tms_with_data(self, client_with_repos, sample_tm):
         """List TMs returns TM list."""
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [mock_tm]
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["tm_repo"].get_all.return_value = [sample_tm]
 
-        response = client_with_auth.get("/api/ldm/tm")
+        response = client.get("/api/ldm/tm")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
         assert data[0]["name"] == "Test TM"
 
-    def test_get_tm_exists(self, client_with_auth, mock_db, mock_tm):
+    def test_get_tm_exists(self, client_with_repos, sample_tm):
         """Get existing TM returns TM."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_tm
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
 
-        response = client_with_auth.get("/api/ldm/tm/1")
+        response = client.get("/api/ldm/tm/1")
         assert response.status_code == 200
         assert response.json()["name"] == "Test TM"
 
-    def test_get_tm_not_found(self, client_with_auth, mock_db):
+    def test_get_tm_not_found(self, client_with_repos):
         """Get non-existent TM returns 404."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_result.first.return_value = None  # For can_access_tm permission check
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = None
 
-        response = client_with_auth.get("/api/ldm/tm/99999")
-        # 403 because can_access_tm returns False for non-existent TM before 404 check
-        assert response.status_code in [403, 404]
+        response = client.get("/api/ldm/tm/99999")
+        assert response.status_code == 404
 
-    def test_delete_tm_exists(self, client_with_auth, mock_db, mock_tm):
+    def test_delete_tm_exists(self, client_with_repos, sample_tm):
         """Delete existing TM succeeds."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_tm
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.delete = AsyncMock()
-        mock_db.commit = AsyncMock()
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        repos["tm_repo"].delete.return_value = True
 
-        response = client_with_auth.delete("/api/ldm/tm/1")
+        response = client.delete("/api/ldm/tm/1")
         assert response.status_code == 200
 
 
 # =============================================================================
-# TM ENTRIES TESTS - Mocked
+# TM ENTRIES TESTS - Using Repository Mocks
 # =============================================================================
 
 class TestTMEntriesMocked:
-    """Mocked tests for TM entries endpoints."""
+    """Mocked tests for TM entries endpoints using Repository Pattern."""
 
-    def test_list_entries_paginated(self, client_with_auth, mock_db, mock_tm, mock_tm_entry):
+    def test_list_entries_paginated(self, client_with_repos, sample_tm, sample_tm_entry):
         """List entries returns paginated results."""
-        # First call: get TM for ownership check
-        # Second call: count entries
-        # Third call: get entries
-        mock_tm_result = MagicMock()
-        mock_tm_result.scalar_one_or_none.return_value = mock_tm
+        client, repos = client_with_repos
+        # Set TM with entry_count for pagination
+        sample_tm_with_count = {**sample_tm, "entry_count": 1}
+        repos["tm_repo"].get.return_value = sample_tm_with_count
+        # get_entries returns a List, not a dict
+        repos["tm_repo"].get_entries.return_value = [sample_tm_entry]
 
-        mock_count_result = MagicMock()
-        mock_count_result.scalar.return_value = 1
-
-        mock_entries_result = MagicMock()
-        mock_entries_result.scalars.return_value.all.return_value = [mock_tm_entry]
-
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_tm_result, mock_count_result, mock_entries_result
-        ])
-
-        response = client_with_auth.get("/api/ldm/tm/1/entries?page=1&limit=50")
+        response = client.get("/api/ldm/tm/1/entries?page=1&limit=50")
         assert response.status_code == 200
 
-    def test_list_entries_with_search(self, client_with_auth, mock_db, mock_tm, mock_tm_entry):
+    def test_list_entries_with_search(self, client_with_repos, sample_tm, sample_tm_entry):
         """List entries with search filter."""
-        mock_tm_result = MagicMock()
-        mock_tm_result.scalar_one_or_none.return_value = mock_tm
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        # search uses search_entries, not get_entries
+        repos["tm_repo"].search_entries.return_value = [sample_tm_entry]
 
-        mock_count_result = MagicMock()
-        mock_count_result.scalar.return_value = 1
-
-        mock_entries_result = MagicMock()
-        mock_entries_result.scalars.return_value.all.return_value = [mock_tm_entry]
-
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_tm_result, mock_count_result, mock_entries_result
-        ])
-
-        response = client_with_auth.get("/api/ldm/tm/1/entries?search=hello")
+        response = client.get("/api/ldm/tm/1/entries?search=hello")
         assert response.status_code == 200
 
-    def test_add_entry_valid(self, client_with_auth, mock_db, mock_tm):
-        """Add entry with valid data - uses Form data not JSON.
+    def test_add_entry_valid(self, client_with_repos, sample_tm, sample_tm_entry):
+        """Add entry with valid data."""
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        repos["tm_repo"].add_entry.return_value = sample_tm_entry
 
-        Note: Accepts 404 because in clean DB environments (GitHub CI),
-        the TM ownership check queries real DB which has no TM id=1.
-        This test validates: auth works (not 401), validation works (not 422),
-        and endpoint is reachable. The 404 is correct "TM not found" behavior.
-        """
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_tm
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-
-        # This endpoint uses Form data, not JSON
-        response = client_with_auth.post("/api/ldm/tm/1/entries", data={
+        response = client.post("/api/ldm/tm/1/entries", data={
             "source_text": "새로운 텍스트",
             "target_text": "New text"
         })
-        # 200/201 = success, 404 = TM not found (valid in clean DB)
-        assert response.status_code in [200, 201, 404]
+        assert response.status_code in [200, 201]
 
-    def test_update_entry_valid(self, client_with_auth, mock_db, mock_tm_entry):
-        """Update entry with valid data.
+    def test_update_entry_valid(self, client_with_repos, sample_tm, sample_tm_entry):
+        """Update entry with valid data."""
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        repos["tm_repo"].update_entry.return_value = sample_tm_entry
 
-        Note: Accepts 404 in clean DB environments where entry doesn't exist.
-        """
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_tm_entry
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.commit = AsyncMock()
-
-        response = client_with_auth.put("/api/ldm/tm/1/entries/1", json={
+        response = client.put("/api/ldm/tm/1/entries/1", json={
             "target_text": "Updated translation"
         })
-        # 200 = success, 404 = entry not found (valid in clean DB)
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200
 
-    def test_delete_entry_exists(self, client_with_auth, mock_db, mock_tm, mock_tm_entry):
-        """Delete existing entry succeeds.
+    def test_delete_entry_exists(self, client_with_repos, sample_tm):
+        """Delete existing entry succeeds."""
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        repos["tm_repo"].delete_entry.return_value = True
 
-        Note: Accepts 404 in clean DB environments.
-        """
-        # First query: get TM for ownership check
-        mock_tm_result = MagicMock()
-        mock_tm_result.scalar_one_or_none.return_value = mock_tm
+        response = client.delete("/api/ldm/tm/1/entries/1")
+        assert response.status_code == 200
 
-        # Second query: get entry
-        mock_entry_result = MagicMock()
-        mock_entry_result.scalar_one_or_none.return_value = mock_tm_entry
+    def test_confirm_entry(self, client_with_repos, sample_tm, sample_tm_entry):
+        """Confirm entry succeeds."""
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        confirmed_entry = {**sample_tm_entry, "is_confirmed": True}
+        repos["tm_repo"].confirm_entry.return_value = confirmed_entry
 
-        mock_db.execute = AsyncMock(side_effect=[mock_tm_result, mock_entry_result])
-        mock_db.delete = AsyncMock()
-        mock_db.commit = AsyncMock()
-
-        response = client_with_auth.delete("/api/ldm/tm/1/entries/1")
-        # 200 = success, 404 = TM/entry not found (valid in clean DB)
-        assert response.status_code in [200, 404]
-
-    def test_confirm_entry(self, client_with_auth, mock_db, mock_tm_entry):
-        """Confirm entry succeeds.
-
-        Note: Accepts 404 in clean DB environments.
-        """
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_tm_entry
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.commit = AsyncMock()
-
-        response = client_with_auth.post("/api/ldm/tm/1/entries/1/confirm")
-        # 200 = success, 404 = entry not found (valid in clean DB)
-        assert response.status_code in [200, 404]
+        response = client.post("/api/ldm/tm/1/entries/1/confirm")
+        assert response.status_code == 200
 
 
 # =============================================================================
-# TM SEARCH TESTS - Mocked
+# TM SEARCH TESTS - Using Repository Mocks
 # =============================================================================
 
 class TestTMSearchMocked:
-    """Mocked tests for TM search endpoints."""
+    """Mocked tests for TM search endpoints using Repository Pattern."""
 
-    def test_search_exact_found(self, client_with_auth, mock_db, mock_tm, mock_tm_entry):
+    def test_search_exact_found(self, client_with_repos, sample_tm, sample_tm_entry):
         """Exact search finds match."""
-        mock_tm_result = MagicMock()
-        mock_tm_result.scalar_one_or_none.return_value = mock_tm
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        repos["tm_repo"].search_exact.return_value = sample_tm_entry
 
-        mock_entry_result = MagicMock()
-        mock_entry_result.scalar_one_or_none.return_value = mock_tm_entry
-
-        mock_db.execute = AsyncMock(side_effect=[mock_tm_result, mock_entry_result])
-
-        response = client_with_auth.get("/api/ldm/tm/1/search/exact?source=hello")
+        response = client.get("/api/ldm/tm/1/search/exact?source=hello")
         assert response.status_code == 200
 
-    def test_search_exact_not_found(self, client_with_auth, mock_db, mock_tm):
+    def test_search_exact_not_found(self, client_with_repos, sample_tm):
         """Exact search returns empty when no match."""
-        mock_tm_result = MagicMock()
-        mock_tm_result.scalar_one_or_none.return_value = mock_tm
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        repos["tm_repo"].search_exact.return_value = None
 
-        mock_entry_result = MagicMock()
-        mock_entry_result.scalar_one_or_none.return_value = None
-
-        mock_db.execute = AsyncMock(side_effect=[mock_tm_result, mock_entry_result])
-
-        response = client_with_auth.get("/api/ldm/tm/1/search/exact?source=nonexistent")
-        # Could be 200 with null or 404 depending on implementation
-        assert response.status_code in [200, 404]
+        response = client.get("/api/ldm/tm/1/search/exact?source=nonexistent")
+        # Returns 200 with null/empty result
+        assert response.status_code == 200
 
 
 # =============================================================================
-# FILES TESTS - Mocked
+# FILES TESTS - Using Repository Mocks
 # =============================================================================
 
 class TestFilesMocked:
-    """Mocked tests for files endpoints."""
+    """Mocked tests for files endpoints using Repository Pattern."""
 
-    def test_list_files_empty(self, client_with_auth, mock_db, mock_project):
+    def test_list_files_empty(self, client_with_repos, sample_project):
         """List files returns empty list."""
-        # First: project check, Second: files list
-        mock_proj_result = MagicMock()
-        mock_proj_result.scalar_one_or_none.return_value = mock_project
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = sample_project
+        repos["file_repo"].get_by_project.return_value = []
 
-        mock_files_result = MagicMock()
-        mock_files_result.scalars.return_value.all.return_value = []
-
-        mock_db.execute = AsyncMock(side_effect=[mock_proj_result, mock_files_result])
-
-        response = client_with_auth.get("/api/ldm/projects/1/files")
+        response = client.get("/api/ldm/projects/1/files")
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_get_file_exists(self, client_with_auth, mock_db, mock_file):
+    def test_get_file_exists(self, client_with_repos, sample_file):
         """Get existing file returns file info."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_file
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = sample_file
 
-        response = client_with_auth.get("/api/ldm/files/1")
+        response = client.get("/api/ldm/files/1")
         assert response.status_code == 200
+        assert response.json()["name"] == "test.txt"
 
-    def test_get_file_rows_paginated(self, client_with_auth, mock_db, mock_file):
+    def test_get_file_not_found(self, client_with_repos):
+        """Get file returns 404 when file not found."""
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = None
+
+        response = client.get("/api/ldm/files/99999")
+        assert response.status_code == 404
+
+    def test_get_file_rows_paginated(self, client_with_repos, sample_file, sample_row):
         """Get file rows returns paginated results."""
-        mock_row = MagicMock()
-        mock_row.id = 1
-        mock_row.row_number = 1
-        mock_row.source = "Source text"
-        mock_row.target = "Target text"
-        mock_row.string_id = "STR_001"
-        mock_row.status = "pending"
-        mock_row.is_locked = False
-        mock_row.locked_by = None
-        mock_row.updated_at = datetime(2025, 1, 1, 0, 0, 0)
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = sample_file
+        # get_for_file returns Tuple[List, int]
+        repos["row_repo"].get_for_file.return_value = ([sample_row], 1)
 
-        # First: file check, Second: count, Third: rows
-        mock_file_result = MagicMock()
-        mock_file_result.scalar_one_or_none.return_value = mock_file
-
-        mock_count_result = MagicMock()
-        mock_count_result.scalar.return_value = 1
-
-        mock_rows_result = MagicMock()
-        mock_rows_result.scalars.return_value.all.return_value = [mock_row]
-
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_file_result, mock_count_result, mock_rows_result
-        ])
-
-        response = client_with_auth.get("/api/ldm/files/1/rows?page=1&limit=50")
+        response = client.get("/api/ldm/files/1/rows?page=1&limit=50")
         assert response.status_code == 200
 
 
 # =============================================================================
-# FOLDERS TESTS - Mocked
+# FOLDERS TESTS - Using Repository Mocks
 # =============================================================================
 
 class TestFoldersMocked:
-    """Mocked tests for folders endpoints."""
+    """Mocked tests for folders endpoints using Repository Pattern."""
 
-    def test_list_folders_empty(self, client_with_auth, mock_db, mock_project):
+    def test_list_folders_empty(self, client_with_repos, sample_project):
         """List folders returns empty list."""
-        mock_proj_result = MagicMock()
-        mock_proj_result.scalar_one_or_none.return_value = mock_project
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = sample_project
+        repos["folder_repo"].get_by_project.return_value = []
 
-        mock_folders_result = MagicMock()
-        mock_folders_result.scalars.return_value.all.return_value = []
-
-        mock_db.execute = AsyncMock(side_effect=[mock_proj_result, mock_folders_result])
-
-        response = client_with_auth.get("/api/ldm/projects/1/folders")
+        response = client.get("/api/ldm/projects/1/folders")
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_create_folder_valid(self, client_with_auth, mock_db, mock_project):
+    def test_create_folder_valid(self, client_with_repos, sample_project, sample_folder):
         """Create folder with valid data."""
-        # First query: project ownership check
-        mock_proj_result = MagicMock()
-        mock_proj_result.scalar_one_or_none.return_value = mock_project
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = sample_project
+        repos["folder_repo"].create.return_value = sample_folder
 
-        # Second query (UI-077): duplicate folder name check
-        mock_duplicate_result = MagicMock()
-        mock_duplicate_result.scalar_one_or_none.return_value = None  # No duplicate
-
-        mock_db.execute = AsyncMock(side_effect=[mock_proj_result, mock_duplicate_result])
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
-
-        response = client_with_auth.post("/api/ldm/folders", json={
+        response = client.post("/api/ldm/folders", json={
             "name": "New Folder",
             "project_id": 1
         })
         assert response.status_code in [200, 201]
 
-    def test_create_folder_missing_name(self, client_with_auth):
+    def test_create_folder_missing_name(self, client_with_repos):
         """Create folder fails without name."""
-        response = client_with_auth.post("/api/ldm/folders", json={
+        client, repos = client_with_repos
+
+        response = client.post("/api/ldm/folders", json={
             "project_id": 1
         })
         assert response.status_code == 422
 
-    def test_delete_folder_exists(self, client_with_auth, mock_db, mock_folder):
+    def test_delete_folder_exists(self, client_with_repos, sample_folder):
         """Delete existing folder succeeds."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_folder
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.delete = AsyncMock()
-        mock_db.commit = AsyncMock()
+        client, repos = client_with_repos
+        repos["folder_repo"].get.return_value = sample_folder
+        repos["folder_repo"].delete.return_value = True
 
-        response = client_with_auth.delete("/api/ldm/folders/1")
+        response = client.delete("/api/ldm/folders/1")
         assert response.status_code == 200
 
 
 # =============================================================================
-# ROWS TESTS - Mocked (rows.py 28% → 70%)
+# ROWS TESTS - Using Repository Mocks
 # =============================================================================
 
 class TestRowsMocked:
-    """Mocked tests for rows endpoints."""
+    """Mocked tests for rows endpoints using Repository Pattern."""
 
-    @pytest.fixture
-    def mock_row(self):
-        """Fake row object with all required fields."""
-        r = MagicMock()
-        r.id = 1
-        r.file_id = 1
-        r.row_num = 1
-        r.source = "소스 텍스트"
-        r.target = "Target text"
-        r.string_id = "STR_001"
-        r.status = "pending"
-        r.is_locked = False
-        r.locked_by = None
-        r.updated_by = None
-        r.created_at = datetime(2025, 1, 1, 0, 0, 0)
-        r.updated_at = datetime(2025, 1, 1, 0, 0, 0)
-        # File relationship for ownership check
-        r.file = MagicMock()
-        r.file.id = 1
-        r.file.project_id = 1
-        r.file.project = MagicMock()
-        r.file.project.id = 1
-        r.file.project.owner_id = 1
-        return r
-
-    def test_list_rows_empty(self, client_with_auth, mock_db, mock_file):
+    def test_list_rows_empty(self, client_with_repos, sample_file):
         """List rows returns empty paginated result."""
-        mock_file.row_count = 0  # PERF: Uses cached row_count (no COUNT query)
-        mock_file_result = MagicMock()
-        mock_file_result.scalar_one_or_none.return_value = mock_file
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = sample_file
+        # get_for_file returns Tuple[List, int]
+        repos["row_repo"].get_for_file.return_value = ([], 0)
 
-        mock_rows_result = MagicMock()
-        mock_rows_result.scalars.return_value.all.return_value = []
-
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_file_result, mock_rows_result  # No count query when no filters
-        ])
-
-        response = client_with_auth.get("/api/ldm/files/1/rows")
+        response = client.get("/api/ldm/files/1/rows")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 0
         assert data["rows"] == []
 
-    def test_list_rows_with_data(self, client_with_auth, mock_db, mock_file, mock_row):
+    def test_list_rows_with_data(self, client_with_repos, sample_file, sample_row):
         """List rows returns rows with pagination."""
-        mock_file.row_count = 1  # PERF: Uses cached row_count (no COUNT query)
-        mock_file_result = MagicMock()
-        mock_file_result.scalar_one_or_none.return_value = mock_file
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = sample_file
+        # get_for_file returns Tuple[List, int]
+        repos["row_repo"].get_for_file.return_value = ([sample_row], 1)
 
-        mock_rows_result = MagicMock()
-        mock_rows_result.scalars.return_value.all.return_value = [mock_row]
-
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_file_result, mock_rows_result  # No count query when no filters
-        ])
-
-        response = client_with_auth.get("/api/ldm/files/1/rows?page=1&limit=50")
+        response = client.get("/api/ldm/files/1/rows?page=1&limit=50")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 1
         assert data["page"] == 1
 
-    def test_list_rows_with_search(self, client_with_auth, mock_db, mock_file, mock_row):
+    def test_list_rows_with_search(self, client_with_repos, sample_file, sample_row):
         """List rows with search filter."""
-        mock_file_result = MagicMock()
-        mock_file_result.scalar_one_or_none.return_value = mock_file
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = sample_file
+        # get_for_file returns Tuple[List, int]
+        repos["row_repo"].get_for_file.return_value = ([sample_row], 1)
 
-        mock_count_result = MagicMock()
-        mock_count_result.scalar.return_value = 1
-
-        mock_rows_result = MagicMock()
-        mock_rows_result.scalars.return_value.all.return_value = [mock_row]
-
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_file_result, mock_count_result, mock_rows_result
-        ])
-
-        response = client_with_auth.get("/api/ldm/files/1/rows?search=텍스트")
+        response = client.get("/api/ldm/files/1/rows?search=텍스트")
         assert response.status_code == 200
 
-    def test_list_rows_with_status_filter(self, client_with_auth, mock_db, mock_file, mock_row):
+    def test_list_rows_with_status_filter(self, client_with_repos, sample_file, sample_row):
         """List rows with status filter."""
-        mock_file_result = MagicMock()
-        mock_file_result.scalar_one_or_none.return_value = mock_file
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = sample_file
+        # get_for_file returns Tuple[List, int]
+        repos["row_repo"].get_for_file.return_value = ([sample_row], 1)
 
-        mock_count_result = MagicMock()
-        mock_count_result.scalar.return_value = 1
-
-        mock_rows_result = MagicMock()
-        mock_rows_result.scalars.return_value.all.return_value = [mock_row]
-
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_file_result, mock_count_result, mock_rows_result
-        ])
-
-        response = client_with_auth.get("/api/ldm/files/1/rows?status=pending")
+        response = client.get("/api/ldm/files/1/rows?status=pending")
         assert response.status_code == 200
 
-    def test_list_rows_file_not_found(self, client_with_auth, mock_db):
+    def test_list_rows_file_not_found(self, client_with_repos):
         """List rows returns 404 when file not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = None
 
-        response = client_with_auth.get("/api/ldm/files/99999/rows")
+        response = client.get("/api/ldm/files/99999/rows")
         assert response.status_code == 404
 
-    @pytest.mark.skip(reason="Permissions now patched in client_with_auth fixture - test DESIGN-001 permissions separately")
-    def test_list_rows_access_denied(self, client_with_auth, mock_db, mock_file):
-        """List rows returns 403 when user doesn't own project."""
-        mock_file.project.owner_id = 999  # Different owner
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_file
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        response = client_with_auth.get("/api/ldm/files/1/rows")
-        assert response.status_code == 403
-
-    def test_update_row_target(self, client_with_auth, mock_db, mock_row):
+    def test_update_row_target(self, client_with_repos, sample_row):
         """Update row target text succeeds."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_row
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
+        client, repos = client_with_repos
+        # get_with_file returns row with file info for permission check
+        repos["row_repo"].get_with_file.return_value = sample_row
+        updated_row = {**sample_row, "target": "Updated translation"}
+        repos["row_repo"].update.return_value = updated_row
 
-        response = client_with_auth.put("/api/ldm/rows/1", json={
+        response = client.put("/api/ldm/rows/1", json={
             "target": "Updated translation"
         })
-        # 200 = success, 404 = row not found (valid in clean DB)
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200
 
-    def test_update_row_status(self, client_with_auth, mock_db, mock_row):
+    def test_update_row_status(self, client_with_repos, sample_row):
         """Update row status succeeds."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_row
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.add = MagicMock()
-        mock_db.commit = AsyncMock()
+        client, repos = client_with_repos
+        # get_with_file returns row with file info for permission check
+        repos["row_repo"].get_with_file.return_value = sample_row
+        updated_row = {**sample_row, "status": "translated"}
+        repos["row_repo"].update.return_value = updated_row
 
-        response = client_with_auth.put("/api/ldm/rows/1", json={
+        response = client.put("/api/ldm/rows/1", json={
             "status": "translated"
         })
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200
 
-    def test_update_row_not_found(self, client_with_auth, mock_db):
+    def test_update_row_not_found(self, client_with_repos):
         """Update non-existent row returns 404."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        # get_with_file returns None when row not found
+        repos["row_repo"].get_with_file.return_value = None
 
-        response = client_with_auth.put("/api/ldm/rows/99999", json={
+        response = client.put("/api/ldm/rows/99999", json={
             "target": "New text"
         })
         assert response.status_code == 404
 
-    @pytest.mark.skip(reason="Permissions now patched in client_with_auth fixture - test DESIGN-001 permissions separately")
-    def test_update_row_access_denied(self, client_with_auth, mock_db, mock_row):
-        """Update row returns 403 when user doesn't own project."""
-        mock_row.file.project.owner_id = 999  # Different owner
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_row
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        response = client_with_auth.put("/api/ldm/rows/1", json={
-            "target": "Hacked text"
-        })
-        assert response.status_code == 403
-
-    def test_get_project_tree(self, client_with_auth, mock_db, mock_project, mock_folder, mock_file):
+    def test_get_project_tree(self, client_with_repos, sample_project, sample_folder, sample_file):
         """Get project tree returns folder/file structure."""
-        mock_proj_result = MagicMock()
-        mock_proj_result.scalar_one_or_none.return_value = mock_project
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = sample_project
+        repos["row_repo"].get_project_tree.return_value = {
+            "project": sample_project,
+            "tree": [
+                {"type": "folder", **sample_folder, "children": []}
+            ]
+        }
 
-        mock_folders_result = MagicMock()
-        mock_folders_result.scalars.return_value.all.return_value = [mock_folder]
-
-        mock_files_result = MagicMock()
-        mock_file.folder_id = 1  # File in folder
-        mock_files_result.scalars.return_value.all.return_value = [mock_file]
-
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_proj_result, mock_folders_result, mock_files_result
-        ])
-
-        response = client_with_auth.get("/api/ldm/projects/1/tree")
+        response = client.get("/api/ldm/projects/1/tree")
         assert response.status_code == 200
         data = response.json()
         assert "project" in data
         assert "tree" in data
         assert data["project"]["name"] == "Test Project"
 
-    def test_get_project_tree_not_found(self, client_with_auth, mock_db):
+    def test_get_project_tree_not_found(self, client_with_repos):
         """Get project tree returns 404 when project not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = None
 
-        response = client_with_auth.get("/api/ldm/projects/99999/tree")
+        response = client.get("/api/ldm/projects/99999/tree")
         assert response.status_code == 404
 
-    def test_get_project_tree_empty(self, client_with_auth, mock_db, mock_project):
+    def test_get_project_tree_empty(self, client_with_repos, sample_project):
         """Get project tree with no folders/files returns empty tree."""
-        mock_proj_result = MagicMock()
-        mock_proj_result.scalar_one_or_none.return_value = mock_project
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = sample_project
+        repos["row_repo"].get_project_tree.return_value = {
+            "project": sample_project,
+            "tree": []
+        }
 
-        mock_folders_result = MagicMock()
-        mock_folders_result.scalars.return_value.all.return_value = []
-
-        mock_files_result = MagicMock()
-        mock_files_result.scalars.return_value.all.return_value = []
-
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_proj_result, mock_folders_result, mock_files_result
-        ])
-
-        response = client_with_auth.get("/api/ldm/projects/1/tree")
+        response = client.get("/api/ldm/projects/1/tree")
         assert response.status_code == 200
         data = response.json()
         assert data["tree"] == []
 
 
 # =============================================================================
-# FILES EXTENDED TESTS - Mocked (files.py 16% → 70%)
+# FILES EXTENDED TESTS - Using Repository Mocks
 # =============================================================================
 
 class TestFilesExtendedMocked:
-    """Extended mocked tests for files endpoints."""
+    """Extended mocked tests for files endpoints using Repository Pattern."""
 
-    def test_list_files_with_folder_filter(self, client_with_auth, mock_db, mock_project, mock_file):
+    def test_list_files_with_folder_filter(self, client_with_repos, sample_project, sample_file):
         """List files with folder filter."""
-        mock_proj_result = MagicMock()
-        mock_proj_result.scalar_one_or_none.return_value = mock_project
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = sample_project
+        repos["file_repo"].get_by_project.return_value = [sample_file]
 
-        mock_files_result = MagicMock()
-        mock_files_result.scalars.return_value.all.return_value = [mock_file]
-
-        mock_db.execute = AsyncMock(side_effect=[mock_proj_result, mock_files_result])
-
-        response = client_with_auth.get("/api/ldm/projects/1/files?folder_id=1")
+        response = client.get("/api/ldm/projects/1/files?folder_id=1")
         assert response.status_code == 200
 
-    def test_list_files_project_not_found(self, client_with_auth, mock_db):
+    def test_list_files_project_not_found(self, client_with_repos):
         """List files returns 404 when project not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = None
 
-        response = client_with_auth.get("/api/ldm/projects/99999/files")
+        response = client.get("/api/ldm/projects/99999/files")
         assert response.status_code == 404
 
-    def test_get_file_not_found(self, client_with_auth, mock_db):
-        """Get file returns 404 when file not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        response = client_with_auth.get("/api/ldm/files/99999")
-        assert response.status_code == 404
-
-    @pytest.mark.skip(reason="Permissions now patched in client_with_auth fixture - test DESIGN-001 permissions separately")
-    def test_get_file_access_denied(self, client_with_auth, mock_db, mock_file):
-        """Get file returns 403 when user doesn't own project."""
-        mock_file.project.owner_id = 999  # Different owner
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_file
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        response = client_with_auth.get("/api/ldm/files/1")
-        assert response.status_code == 403
-
-    def test_upload_unsupported_format(self, client_with_auth, mock_db, mock_project):
+    def test_upload_unsupported_format(self, client_with_repos, sample_project):
         """Upload file with unsupported format returns 400."""
-        # First query: project ownership check
-        mock_proj_result = MagicMock()
-        mock_proj_result.scalar_one_or_none.return_value = mock_project
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = sample_project
 
-        # Second query (UI-077): duplicate file name check
-        mock_duplicate_result = MagicMock()
-        mock_duplicate_result.scalar_one_or_none.return_value = None  # No duplicate
-
-        mock_db.execute = AsyncMock(side_effect=[mock_proj_result, mock_duplicate_result])
-
-        # Create a fake unsupported file
         from io import BytesIO
         fake_file = BytesIO(b"some content")
 
-        response = client_with_auth.post(
+        response = client.post(
             "/api/ldm/files/upload",
             data={"project_id": "1"},
             files={"file": ("test.pdf", fake_file, "application/pdf")}
@@ -928,50 +884,49 @@ class TestFilesExtendedMocked:
         assert response.status_code == 400
         assert "Unsupported" in response.json()["detail"]
 
-    def test_upload_project_not_found(self, client_with_auth, mock_db):
+    def test_upload_project_not_found(self, client_with_repos):
         """Upload file returns 404 when project not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["project_repo"].get.return_value = None
 
         from io import BytesIO
         fake_file = BytesIO(b"source\ttarget\n")
 
-        response = client_with_auth.post(
+        response = client.post(
             "/api/ldm/files/upload",
             data={"project_id": "99999"},
             files={"file": ("test.txt", fake_file, "text/plain")}
         )
         assert response.status_code == 404
 
-    def test_excel_preview_unsupported_format(self, client_with_auth):
+    def test_excel_preview_unsupported_format(self, client_with_repos):
         """Excel preview rejects non-Excel files."""
+        client, repos = client_with_repos
+
         from io import BytesIO
         fake_file = BytesIO(b"some content")
 
-        response = client_with_auth.post(
+        response = client.post(
             "/api/ldm/files/excel-preview",
             files={"file": ("test.txt", fake_file, "text/plain")}
         )
         assert response.status_code == 400
         assert "Excel" in response.json()["detail"]
 
-    def test_download_file_not_found(self, client_with_auth, mock_db):
+    def test_download_file_not_found(self, client_with_repos):
         """Download file returns 404 when file not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = None
 
-        response = client_with_auth.get("/api/ldm/files/99999/download")
+        response = client.get("/api/ldm/files/99999/download")
         assert response.status_code == 404
 
-    def test_register_as_tm_file_not_found(self, client_with_auth, mock_db):
+    def test_register_as_tm_file_not_found(self, client_with_repos):
         """Register as TM returns 404 when file not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["file_repo"].get.return_value = None
 
-        response = client_with_auth.post("/api/ldm/files/99999/register-as-tm", json={
+        response = client.post("/api/ldm/files/99999/register-as-tm", json={
             "name": "New TM",
             "language": "en"
         })
@@ -979,117 +934,71 @@ class TestFilesExtendedMocked:
 
 
 # =============================================================================
-# TM INDEXES TESTS - Mocked (tm_indexes.py 15% → 70%)
+# TM INDEXES TESTS - Using Repository Mocks
 # =============================================================================
 
 class TestTMIndexesMocked:
-    """Mocked tests for TM indexes endpoints."""
+    """Mocked tests for TM indexes endpoints using Repository Pattern."""
 
-    def test_build_indexes_tm_not_found(self, client_with_auth, mock_db):
+    def test_build_indexes_tm_not_found(self, client_with_repos):
         """Build indexes returns 404 when TM not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_result.first.return_value = None  # For can_access_tm permission check
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = None
 
-        response = client_with_auth.post("/api/ldm/tm/99999/build-indexes")
-        # 403 because can_access_tm returns False for non-existent TM before 404 check
-        assert response.status_code in [403, 404]
+        response = client.post("/api/ldm/tm/99999/build-indexes")
+        assert response.status_code == 404
 
-    @pytest.mark.skip(reason="Permissions now patched in client_with_auth fixture - test DESIGN-001 permissions separately")
-    def test_build_indexes_access_denied(self, client_with_auth, mock_db, mock_tm):
-        """Build indexes returns 403 when user doesn't own TM."""
-        mock_tm.owner_id = 999  # Different owner
-
-        # Permission check: owner_id query
-        mock_owner_result = MagicMock()
-        mock_owner_result.first.return_value = (999,)  # Different owner
-
-        # Permission check: assignment query (not owner, so check assignment)
-        mock_assignment_result = MagicMock()
-        mock_assignment_result.first.return_value = None  # No assignment
-
-        mock_db.execute = AsyncMock(side_effect=[mock_owner_result, mock_assignment_result])
-
-        response = client_with_auth.post("/api/ldm/tm/1/build-indexes")
-        assert response.status_code == 403
-
-    def test_get_index_status_tm_not_found(self, client_with_auth, mock_db):
+    def test_get_index_status_tm_not_found(self, client_with_repos):
         """Get index status returns 404 when TM not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_result.first.return_value = None  # For can_access_tm permission check
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = None
 
-        response = client_with_auth.get("/api/ldm/tm/99999/indexes")
-        # 403 because can_access_tm returns False for non-existent TM before 404 check
-        assert response.status_code in [403, 404]
+        response = client.get("/api/ldm/tm/99999/indexes")
+        assert response.status_code == 404
 
-    def test_get_index_status_success(self, client_with_auth, mock_db, mock_tm):
+    def test_get_index_status_success(self, client_with_repos, sample_tm):
         """Get index status returns index list."""
-        mock_index = MagicMock()
-        mock_index.index_type = "whole"
-        mock_index.status = "ready"
-        mock_index.file_size = 1024
-        mock_index.built_at = datetime(2025, 1, 1, 0, 0, 0)
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        repos["tm_repo"].get_indexes.return_value = [
+            {"index_type": "whole", "status": "ready", "file_size": 1024}
+        ]
 
-        # Permission check: owner_id query (user owns TM)
-        mock_owner_result = MagicMock()
-        mock_owner_result.first.return_value = (1,)  # User owns it
-
-        mock_tm_result = MagicMock()
-        mock_tm_result.scalar_one_or_none.return_value = mock_tm
-
-        mock_indexes_result = MagicMock()
-        mock_indexes_result.scalars.return_value.all.return_value = [mock_index]
-
-        mock_db.execute = AsyncMock(side_effect=[mock_owner_result, mock_tm_result, mock_indexes_result])
-
-        response = client_with_auth.get("/api/ldm/tm/1/indexes")
+        response = client.get("/api/ldm/tm/1/indexes")
         assert response.status_code == 200
         data = response.json()
         assert data["tm_id"] == 1
         assert "indexes" in data
 
-    def test_get_sync_status_tm_not_found(self, client_with_auth, mock_db):
+    def test_get_sync_status_tm_not_found(self, client_with_repos):
         """Get sync status returns 404 when TM not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_result.first.return_value = None  # For can_access_tm permission check
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = None
 
-        response = client_with_auth.get("/api/ldm/tm/99999/sync-status")
-        # 403 because can_access_tm returns False for non-existent TM before 404 check
-        assert response.status_code in [403, 404]
+        response = client.get("/api/ldm/tm/99999/sync-status")
+        assert response.status_code == 404
 
-    def test_get_sync_status_success(self, client_with_auth, mock_db, mock_tm):
+    def test_get_sync_status_success(self, client_with_repos, sample_tm):
         """Get sync status returns sync info."""
-        # Permission check: owner_id query (user owns TM)
-        mock_owner_result = MagicMock()
-        mock_owner_result.first.return_value = (1,)  # User owns it
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = sample_tm
+        repos["tm_repo"].get_sync_status.return_value = {
+            "is_stale": False,
+            "db_entry_count": 100,
+            "indexed_entry_count": 100
+        }
 
-        mock_tm_result = MagicMock()
-        mock_tm_result.scalar_one_or_none.return_value = mock_tm
-
-        mock_count_result = MagicMock()
-        mock_count_result.scalar.return_value = 100
-
-        mock_db.execute = AsyncMock(side_effect=[mock_owner_result, mock_tm_result, mock_count_result])
-
-        response = client_with_auth.get("/api/ldm/tm/1/sync-status")
+        response = client.get("/api/ldm/tm/1/sync-status")
         assert response.status_code == 200
         data = response.json()
         assert data["tm_id"] == 1
         assert "is_stale" in data
         assert "db_entry_count" in data
 
-    def test_sync_indexes_tm_not_found(self, client_with_auth, mock_db):
+    def test_sync_indexes_tm_not_found(self, client_with_repos):
         """Sync indexes returns 404 when TM not found."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_result.first.return_value = None  # For can_access_tm permission check
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        client, repos = client_with_repos
+        repos["tm_repo"].get.return_value = None
 
-        response = client_with_auth.post("/api/ldm/tm/99999/sync")
-        # 403 because can_access_tm returns False for non-existent TM before 404 check
-        assert response.status_code in [403, 404]
+        response = client.post("/api/ldm/tm/99999/sync")
+        assert response.status_code == 404

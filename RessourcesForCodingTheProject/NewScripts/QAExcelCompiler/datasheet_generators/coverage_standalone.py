@@ -51,15 +51,16 @@ ENG_FILE_PATTERNS = {
 }
 
 # Korean column index (1-based) per category - column A = 1
+# Can be int for single column, or tuple for multiple columns
 KOREAN_COLUMN = {
-    "Character":  1,  # Original (KR)
-    "Quest":      1,  # Original
-    "Item":       1,  # Item # or ItemName column
-    "Knowledge":  1,  # Original (KR)
-    "Skill":      1,  # Original (KR)
-    "Region":     1,  # Original (KR)
-    "Gimmick":    1,  # Original (KR)
-    "Help":       1,  # Original (KR)
+    "Character":  1,       # Original (KR)
+    "Quest":      1,       # Original
+    "Item":       (6, 8),  # ItemName(KOR)=col F, ItemDesc(KOR)=col H
+    "Knowledge":  1,       # Original (KR)
+    "Skill":      1,       # Original (KR)
+    "Region":     1,       # Original (KR)
+    "Gimmick":    1,       # Original (KR)
+    "Help":       1,       # Original (KR)
 }
 
 # Language data folder
@@ -271,21 +272,35 @@ def load_voice_recording_sheet(folder: Path) -> Set[str]:
     return voice_strings
 
 
-def load_korean_from_excel(xlsx_path: Path, korean_col: int = 1) -> Set[str]:
-    """Load Korean strings from column A (or specified column) of Excel file."""
+def load_korean_from_excel(xlsx_path: Path, korean_cols = 1) -> Set[str]:
+    """Load Korean strings from specified column(s) of Excel file.
+
+    Args:
+        xlsx_path: Path to Excel file
+        korean_cols: int for single column, or tuple of ints for multiple columns (1-based)
+    """
     strings: Set[str] = set()
+
+    # Normalize to tuple
+    if isinstance(korean_cols, int):
+        cols = (korean_cols,)
+    else:
+        cols = korean_cols
 
     try:
         wb = load_workbook(xlsx_path, read_only=True, data_only=True)
 
         for sheet in wb.worksheets:
             for row in sheet.iter_rows(min_row=2, values_only=True):  # Skip header
-                if row and len(row) >= korean_col:
-                    value = row[korean_col - 1]  # Convert to 0-based
-                    if value:
-                        normalized = normalize_placeholders(str(value))
-                        if normalized:
-                            strings.add(normalized)
+                if not row:
+                    continue
+                for col in cols:
+                    if len(row) >= col:
+                        value = row[col - 1]  # Convert to 0-based
+                        if value:
+                            normalized = normalize_placeholders(str(value))
+                            if normalized:
+                                strings.add(normalized)
 
         wb.close()
 
