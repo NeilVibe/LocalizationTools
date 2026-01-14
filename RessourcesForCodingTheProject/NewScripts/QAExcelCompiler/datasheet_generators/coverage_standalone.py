@@ -72,6 +72,9 @@ EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\exp
 # Voice Recording Sheet folder
 VOICE_RECORDING_FOLDER = Path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
 
+# Non-priority folders (under System/) - excluded from CLEAN report
+NON_PRIORITY_FOLDERS = {"ItemGroup", "Gimmick", "MultiChange"}
+
 # =============================================================================
 # HELPERS
 # =============================================================================
@@ -530,6 +533,12 @@ def build_export_index(export_folder: Path, depth: int = 2) -> Dict[str, str]:
         else:
             cat = "Unknown"
 
+        # Remap System/ItemGroup, System/Gimmick, System/MultiChange → "Non-Priority"
+        if cat.startswith("System/"):
+            subfolder = cat.split("/", 1)[1] if "/" in cat else ""
+            if subfolder in NON_PRIORITY_FOLDERS:
+                cat = "Non-Priority"
+
         for loc in root.iter("LocStr"):
             sid = loc.get("StringId")
             if sid:
@@ -594,21 +603,24 @@ def analyze_unconsumed(
 
 
 def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
-    """Print formatted report of unconsumed strings by subfolder."""
+    """Print formatted report of unconsumed strings by subfolder.
+
+    Shows TWO reports:
+    - RAW REPORT: All unconsumed strings
+    - CLEAN REPORT: Excludes "None", "No StringId", "Not in Export", "Non-Priority"
+    """
     width = 90
 
-    print()
-    print("=" * width)
-    print("              UNCONSUMED STRINGS ANALYSIS (by Subfolder)")
-    print("=" * width)
-    print()
-    print("NOTE: All counts are UNIQUE strings (no duplicates)")
-    print()
+    # Categories to exclude from CLEAN report
+    excluded_cats = {"None", "No StringId", "Not in Export", "Non-Priority"}
 
-    print(f"Total unconsumed: {analysis.total_strings:,} unique strings ({analysis.total_words:,} words)")
-    if analysis.unmapped_strings > 0:
-        print(f"  (includes {analysis.unmapped_strings:,} strings with no StringId in language data)")
-    print()
+    # Calculate CLEAN totals
+    clean_strings = 0
+    clean_words = 0
+    for cat, count in analysis.category_breakdown.items():
+        if cat not in excluded_cats:
+            clean_strings += count
+            clean_words += analysis.category_words.get(cat, 0)
 
     # Sort by count descending
     sorted_cats = sorted(
@@ -617,12 +629,59 @@ def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
         reverse=True
     )
 
-    print(f"{'Folder/Subfolder':<45} {'Strings':>12} {'Words':>12} {'% of Unconsumed':>15}")
+    # =========================================================================
+    # RAW REPORT
+    # =========================================================================
+    print()
+    print("=" * width)
+    print("              UNCONSUMED STRINGS - RAW REPORT (All Categories)")
+    print("=" * width)
+    print()
+    print("NOTE: All counts are UNIQUE strings (no duplicates)")
+    print()
+
+    print(f"Total unconsumed (RAW): {analysis.total_strings:,} unique strings ({analysis.total_words:,} words)")
+    if analysis.unmapped_strings > 0:
+        print(f"  (includes {analysis.unmapped_strings:,} strings with no StringId in language data)")
+    print()
+
+    print(f"{'Folder/Subfolder':<45} {'Strings':>12} {'Words':>12} {'% of RAW':>15}")
     print("-" * width)
 
     for cat, count in sorted_cats:
         words = analysis.category_words.get(cat, 0)
         pct = (count / analysis.total_strings * 100) if analysis.total_strings > 0 else 0
+        # Truncate long paths
+        display_cat = cat if len(cat) <= 44 else cat[:41] + "..."
+        # Mark excluded categories
+        marker = " [EXCLUDED]" if cat in excluded_cats else ""
+        print(f"{display_cat:<45} {count:>12,} {words:>12,} {pct:>14.1f}%{marker}")
+
+    print("=" * width)
+
+    # =========================================================================
+    # CLEAN REPORT
+    # =========================================================================
+    print()
+    print("=" * width)
+    print("              UNCONSUMED STRINGS - CLEAN REPORT (Priority Only)")
+    print("=" * width)
+    print()
+    print("EXCLUDED: None, No StringId, Not in Export, Non-Priority")
+    print("          (Non-Priority = System/ItemGroup, System/Gimmick, System/MultiChange)")
+    print()
+
+    print(f"Total unconsumed (CLEAN): {clean_strings:,} unique strings ({clean_words:,} words)")
+    print()
+
+    print(f"{'Folder/Subfolder':<45} {'Strings':>12} {'Words':>12} {'% of CLEAN':>15}")
+    print("-" * width)
+
+    for cat, count in sorted_cats:
+        if cat in excluded_cats:
+            continue
+        words = analysis.category_words.get(cat, 0)
+        pct = (count / clean_strings * 100) if clean_strings > 0 else 0
         # Truncate long paths
         display_cat = cat if len(cat) <= 44 else cat[:41] + "..."
         print(f"{display_cat:<45} {count:>12,} {words:>12,} {pct:>14.1f}%")
