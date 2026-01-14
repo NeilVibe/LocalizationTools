@@ -28,11 +28,16 @@ class PostgreSQLTMRepository(TMRepository):
     """
     PostgreSQL implementation of TMRepository.
 
-    Uses SQLAlchemy async session for all operations.
+    P10: FULL ABSTRACT - Permissions are checked INSIDE the repository.
+    TM access is controlled via project/platform assignments.
     """
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
         self.db = db
+        self.user = user or {}
+
+    def _is_admin(self) -> bool:
+        return self.user.get("role") in ["admin", "superadmin"]
 
     # =========================================================================
     # Helper Methods

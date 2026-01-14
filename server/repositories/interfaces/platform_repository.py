@@ -211,3 +211,20 @@ class PlatformRepository(ABC):
             List of matching platform dicts.
         """
         ...
+
+    @abstractmethod
+    async def get_accessible(self, include_projects: bool = False) -> List[Dict[str, Any]]:
+        """
+        Get all platforms accessible by the current user.
+
+        P10: FULL ABSTRACT - Returns platforms the user can access:
+        - Admins: All platforms
+        - Regular users: Public platforms + owned platforms + platforms with explicit access
+
+        Args:
+            include_projects: If True, include project count for each platform
+
+        Returns:
+            List of accessible platform dicts.
+        """
+        ...

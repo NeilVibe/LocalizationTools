@@ -1,24 +1,23 @@
 """Folder CRUD endpoints.
 
-Repository Pattern: Uses FolderRepository for database abstraction.
-
-P10-REPO: Migrated to Repository Pattern (2026-01-13)
-- All endpoints use Repository Pattern
-- Trash serialization uses repository-based helpers
+P10: FULL ABSTRACT + REPO Pattern
+- All endpoints use Repository Pattern with permissions baked in
+- No direct DB access needed in routes
 """
 
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
+# P10: No get_async_db needed - routes use repositories, not direct DB
+from server.utils.dependencies import get_current_active_user_async
 from server.tools.ldm.schemas import FolderCreate, FolderResponse, DeleteResponse
-from server.tools.ldm.permissions import can_access_project
 from server.repositories import (
     FolderRepository, get_folder_repository,
     FileRepository, get_file_repository,
-    TrashRepository, get_trash_repository
+    TrashRepository, get_trash_repository,
+    ProjectRepository, get_project_repository,
+    CapabilityRepository, get_capability_repository
 )
 
 router = APIRouter(tags=["LDM"])
@@ -27,19 +26,14 @@ router = APIRouter(tags=["LDM"])
 @router.get("/projects/{project_id}/folders", response_model=List[FolderResponse])
 async def list_folders(
     project_id: int,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: FolderRepository = Depends(get_folder_repository)
 ):
     """List all folders in a project.
 
-    Repository Pattern: Uses FolderRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    # Check access permission (includes project existence check)
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    # Use repository to get folders
+    # P10: Get folders via repository (permissions checked inside - returns empty if no access)
     folders = await repo.get_all(project_id)
     return folders
 
@@ -47,16 +41,17 @@ async def list_folders(
 @router.post("/folders", response_model=FolderResponse)
 async def create_folder(
     folder: FolderCreate,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
-    repo: FolderRepository = Depends(get_folder_repository)
+    repo: FolderRepository = Depends(get_folder_repository),
+    project_repo: ProjectRepository = Depends(get_project_repository)
 ):
     """Create a new folder in a project.
 
-    Repository Pattern: Uses FolderRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission check via ProjectRepository.
     """
-    # Check access permission (includes project existence check)
-    if not await can_access_project(db, folder.project_id, current_user):
+    # P10: Check project access via repository
+    project = await project_repo.get(folder.project_id)
+    if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     # Use repository to create folder (handles auto-rename for duplicates)
@@ -73,23 +68,18 @@ async def create_folder(
 @router.get("/folders/{folder_id}")
 async def get_folder_contents(
     folder_id: int,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: FolderRepository = Depends(get_folder_repository)
 ):
     """Get folder details and its contents (subfolders + files).
 
-    Repository Pattern: Uses FolderRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    # Use repository to get folder with contents
+    # P10: Get folder with contents via repository (permissions checked inside - returns None if no access)
     folder = await repo.get_with_contents(folder_id)
 
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
-
-    # Check access permission
-    if not await can_access_project(db, folder["project_id"], current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
 
     return folder
 
@@ -98,21 +88,17 @@ async def get_folder_contents(
 async def rename_folder(
     folder_id: int,
     name: str,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: FolderRepository = Depends(get_folder_repository)
 ):
     """Rename a folder.
 
-    Repository Pattern: Uses FolderRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    # First get folder to check access
+    # P10: Get folder via repository (permissions checked inside - returns None if no access)
     folder = await repo.get(folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
-
-    if not await can_access_project(db, folder["project_id"], current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
 
     try:
         # Use repository to rename (handles uniqueness check)
@@ -127,7 +113,6 @@ async def rename_folder(
 async def move_folder(
     folder_id: int,
     parent_folder_id: Optional[int] = None,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: FolderRepository = Depends(get_folder_repository)
 ):
@@ -136,15 +121,12 @@ async def move_folder(
 
     Used for drag-and-drop folder organization in FileExplorer.
 
-    Repository Pattern: Uses FolderRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    # First get folder to check access
+    # P10: Get folder via repository (permissions checked inside - returns None if no access)
     folder = await repo.get(folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
-
-    if not await can_access_project(db, folder["project_id"], current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
 
     try:
         # Use repository to move (handles validation and circular reference checks)
@@ -160,33 +142,33 @@ async def move_folder_cross_project(
     folder_id: int,
     target_project_id: int,
     target_parent_id: Optional[int] = None,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
-    repo: FolderRepository = Depends(get_folder_repository)
+    repo: FolderRepository = Depends(get_folder_repository),
+    project_repo: ProjectRepository = Depends(get_project_repository),
+    capability_repo: CapabilityRepository = Depends(get_capability_repository)
 ):
     """
     EXPLORER-005: Move a folder to a different project.
     Updates the folder and all its contents (subfolders, files) to the new project.
     EXPLORER-009: Requires 'cross_project_move' capability.
 
-    Repository Pattern: Uses FolderRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission checks via repositories.
     """
-    # Get source folder
+    # P10: Get source folder via repository (permissions checked inside - returns None if no access)
     folder = await repo.get(folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    # Check access to source project
-    if not await can_access_project(db, folder["project_id"], current_user):
-        raise HTTPException(status_code=404, detail="Folder not found")
-
-    # Check access to destination project
-    if not await can_access_project(db, target_project_id, current_user):
+    # P10: Check access to destination project via repository
+    dest_project = await project_repo.get(target_project_id)
+    if not dest_project:
         raise HTTPException(status_code=404, detail="Destination project not found")
 
-    # EXPLORER-009: Check capability for cross-project move
-    from ..permissions import require_capability
-    await require_capability(db, current_user, "cross_project_move")
+    # EXPLORER-009: Check capability for cross-project move via repository
+    user_id = current_user.get("user_id")
+    has_capability = await capability_repo.get_user_capability(user_id, "cross_project_move")
+    if not has_capability and current_user.get("role") not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="cross_project_move capability required")
 
     source_project_id = folder["project_id"]
 
@@ -211,9 +193,9 @@ async def copy_folder(
     folder_id: int,
     target_project_id: Optional[int] = None,
     target_parent_id: Optional[int] = None,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
-    repo: FolderRepository = Depends(get_folder_repository)
+    repo: FolderRepository = Depends(get_folder_repository),
+    project_repo: ProjectRepository = Depends(get_project_repository)
 ):
     """
     Copy a folder and all its contents to a different location.
@@ -223,22 +205,20 @@ async def copy_folder(
     If target_parent_id is None, copies to project root.
     Auto-renames if duplicate name exists.
 
-    Repository Pattern: Uses FolderRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission checks via repositories.
     """
-    # Get source folder
+    # P10: Get source folder via repository (permissions checked inside - returns None if no access)
     source_folder = await repo.get(folder_id)
     if not source_folder:
-        raise HTTPException(status_code=404, detail="Folder not found")
-
-    if not await can_access_project(db, source_folder["project_id"], current_user):
         raise HTTPException(status_code=404, detail="Folder not found")
 
     # Determine target project
     dest_project_id = target_project_id or source_folder["project_id"]
 
-    # Check access permission for destination
+    # P10: Check access permission for destination via repository
     if target_project_id and target_project_id != source_folder["project_id"]:
-        if not await can_access_project(db, target_project_id, current_user):
+        dest_project = await project_repo.get(target_project_id)
+        if not dest_project:
             raise HTTPException(status_code=404, detail="Destination project not found")
 
     # Use repository to copy folder (handles recursive copying)
@@ -342,7 +322,6 @@ async def _serialize_folder_for_trash_repo(
 async def delete_folder(
     folder_id: int,
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: FolderRepository = Depends(get_folder_repository),
     file_repo: FileRepository = Depends(get_file_repository),
@@ -352,15 +331,12 @@ async def delete_folder(
     Delete a folder and all its contents.
     EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
 
-    P10-REPO: Uses Repository Pattern for all operations including trash serialization.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    # Get folder using repository
+    # P10: Get folder via repository (permissions checked inside - returns None if no access)
     folder = await repo.get(folder_id)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
-
-    if not await can_access_project(db, folder["project_id"], current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
 
     folder_name = folder["name"]
 

@@ -3,8 +3,9 @@ File endpoints - Upload, download, list, preview files.
 
 Migrated from api.py lines 392-658, 2448-2779
 
-P10-REPO: Migrated to Repository Pattern (2026-01-13)
+P10-REPO: FULL ABSTRACT + REPO Pattern (2026-01-14)
 - All endpoint CRUD operations use Repository Pattern
+- Permission checks are INSIDE repositories (no direct DB in routes)
 - Trash serialization uses repository-based helpers
 - Note: upload_file uses sync context (LDMFile, LDMRow) for progress tracking - online-only path
 """
@@ -14,20 +15,21 @@ from io import BytesIO
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
+# P10: FULL ABSTRACT - No AsyncSession or get_async_db needed - routes use repositories, not direct DB
+from server.utils.dependencies import get_current_active_user_async, get_db
 # P10-REPO: LDMFile, LDMRow used only in upload_file sync context (online-only)
 from server.database.models import LDMFile, LDMRow
 from server.tools.ldm.schemas import FileResponse, FileToTMRequest
-from server.tools.ldm.permissions import can_access_project, can_access_file
+# P10: FULL ABSTRACT - Permission checks are now INSIDE repositories. No direct permission imports needed.
 from server.repositories import (
     FileRepository, get_file_repository,
     ProjectRepository, get_project_repository,
     FolderRepository, get_folder_repository,
     TMRepository, get_tm_repository,
-    TrashRepository, get_trash_repository
+    TrashRepository, get_trash_repository,
+    CapabilityRepository, get_capability_repository
 )
 
 router = APIRouter(tags=["LDM"])
@@ -43,26 +45,22 @@ async def list_files(
     folder_id: Optional[int] = None,
     repo: FileRepository = Depends(get_file_repository),
     project_repo: ProjectRepository = Depends(get_project_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     List files in a project, optionally filtered by folder.
 
-    P10: Uses Repository Pattern for database operations.
+    P10: FULL ABSTRACT - Permission checks are INSIDE repositories.
     """
     logger.debug(f"[FILES] list_files: project_id={project_id}, folder_id={folder_id}")
 
-    # P10: Verify project exists using repository (online mode)
+    # P10: Verify project exists using repository (permissions checked inside)
     if project_id > 0:
         project = await project_repo.get(project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        if not await can_access_project(db, project_id, current_user):
-            raise HTTPException(status_code=404, detail="Resource not found")
-
-    # Get files via repository
+    # P10: Get files via repository (permissions checked inside for project access)
     files = await repo.get_all(project_id=project_id, folder_id=folder_id)
 
     logger.debug(f"[FILES] list_files complete: project_id={project_id}, files={len(files)}")
@@ -74,21 +72,18 @@ async def list_all_files(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
+    project_repo: ProjectRepository = Depends(get_project_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     UI-074 FIX: List all files across all accessible projects.
     Used by ReferenceSettingsModal to show available reference files.
 
-    DB Abstraction: Uses FileRepository for database operations.
-    Permission filtering is done at route level (requires project access check).
+    P10: FULL ABSTRACT - Uses ProjectRepository.get_accessible() for permission filtering.
     """
-    from server.tools.ldm.permissions import get_accessible_projects
-
-    # Get all accessible projects for user
-    accessible_projects = await get_accessible_projects(db, current_user)
-    project_ids = [p.id for p in accessible_projects]
+    # P10: Get accessible projects via repository (permissions baked in)
+    accessible_projects = await project_repo.get_accessible()
+    project_ids = [p["id"] for p in accessible_projects]
 
     if not project_ids:
         return []
@@ -109,26 +104,19 @@ async def list_all_files(
 async def get_file(
     file_id: int,
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Get file metadata by ID.
 
-    P10-REPO: Uses Repository Pattern - automatically selects PostgreSQL or SQLite
-    based on user's online/offline mode.
+    P10: FULL ABSTRACT - Permission checks are INSIDE repository.
+    Repository automatically selects PostgreSQL or SQLite based on mode.
     """
-    # Repository handles both PostgreSQL and SQLite
+    # P10: Repository handles both PostgreSQL and SQLite, permissions checked inside
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # Permission check (online mode only - offline is single user)
-    # Local files have negative IDs, skip permission check
-    if file_id > 0:
-        if not await can_access_file(db, file_id, current_user):
-            raise HTTPException(status_code=404, detail="Resource not found")
 
     return file
 
@@ -145,7 +133,6 @@ async def upload_file(
     target_col: Optional[int] = Form(None),      # Column index for target
     stringid_col: Optional[int] = Form(None),    # Column index for StringID (None = 2-column mode)
     has_header: Optional[bool] = Form(True),     # Whether first row is header
-    db: AsyncSession = Depends(get_async_db),
     project_repo: ProjectRepository = Depends(get_project_repository),
     folder_repo: FolderRepository = Depends(get_folder_repository),
     file_repo: FileRepository = Depends(get_file_repository),
@@ -190,14 +177,10 @@ async def upload_file(
     if not project_id:
         raise HTTPException(status_code=400, detail="project_id is required for server storage")
 
-    # P10: Verify project exists using repository
+    # P10: Verify project exists using repository (permissions checked inside)
     project = await project_repo.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-
-    # Check access permission
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
 
     # P10: Verify folder exists using repository (if provided)
     if folder_id:
@@ -344,25 +327,19 @@ async def move_file_to_folder(
     file_id: int,
     folder_id: Optional[int] = None,
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Move a file to a different folder (or root of project if folder_id is None).
 
     Used for drag-and-drop file organization in FileExplorer.
-    P10-REPO: Uses Repository Pattern for database operations.
+    P10: FULL ABSTRACT - Permission checks are INSIDE repository.
     """
-    # Get file via repository
+    # P10: Get file via repository (permissions checked inside)
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # Permission check (online mode only - local files have negative IDs)
-    if file_id > 0:
-        if not await can_access_project(db, file["project_id"], current_user):
-            raise HTTPException(status_code=403, detail="Not authorized to modify this file")
 
     # Move via repository (handles folder validation)
     try:
@@ -381,22 +358,17 @@ async def move_file_cross_project(
     target_project_id: int,
     target_folder_id: Optional[int] = None,
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
+    capability_repo = Depends(get_capability_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     EXPLORER-005: Move a file to a different project.
     EXPLORER-009: Requires 'cross_project_move' capability.
 
-    P10-REPO: Uses Repository Pattern for database operations.
+    P10: FULL ABSTRACT - Permission checks are INSIDE repository.
+    Capability check uses CapabilityRepository.
     Note: Cross-project move not supported for local files.
     """
-    # Get file via repository
-    file = await repo.get(file_id)
-
-    if not file:
-        raise HTTPException(status_code=404, detail="File not found")
-
     # Local files can't be moved cross-project
     if file_id < 0:
         raise HTTPException(
@@ -404,23 +376,24 @@ async def move_file_cross_project(
             detail="Cannot move local files between projects. Upload to server first."
         )
 
-    # Check access to source project
-    if not await can_access_project(db, file["project_id"], current_user):
+    # P10: Get file via repository (permissions checked inside)
+    file = await repo.get(file_id)
+    if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Check access to destination project
-    if not await can_access_project(db, target_project_id, current_user):
-        raise HTTPException(status_code=404, detail="Destination project not found")
-
-    # EXPLORER-009: Check capability for cross-project move
-    from ..permissions import require_capability
-    await require_capability(db, current_user, "cross_project_move")
+    # EXPLORER-009: Check capability for cross-project move via repository
+    user_id = current_user.get("user_id")
+    has_capability = await capability_repo.get_user_capability(user_id, "cross_project_move")
+    if not has_capability and current_user.get("role") not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="cross_project_move capability required")
 
     source_project_id = file["project_id"]
 
-    # Move via repository (handles folder validation and auto-rename)
+    # P10: Move via repository (permission checks + folder validation + auto-rename baked in)
     try:
         updated_file = await repo.move_cross_project(file_id, target_project_id, target_folder_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -440,7 +413,6 @@ async def copy_file(
     target_project_id: Optional[int] = None,
     target_folder_id: Optional[int] = None,
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -451,27 +423,15 @@ async def copy_file(
     If target_folder_id is None, copies to project root.
     Auto-renames if duplicate name exists.
 
-    P10-REPO: Uses Repository Pattern for database operations.
+    P10: FULL ABSTRACT - Permission checks are INSIDE repository.
     """
-    # Get source file via repository
+    # P10: Get source file via repository (permissions checked inside)
     source_file = await repo.get(file_id)
 
     if not source_file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Permission checks (online mode only)
-    if file_id > 0:
-        # Check access permission for source
-        if not await can_access_project(db, source_file["project_id"], current_user):
-            raise HTTPException(status_code=404, detail="File not found")
-
-        # Check access permission for destination
-        dest_project_id = target_project_id or source_file["project_id"]
-        if target_project_id and target_project_id != source_file["project_id"]:
-            if not await can_access_project(db, target_project_id, current_user):
-                raise HTTPException(status_code=404, detail="Destination project not found")
-
-    # Copy via repository (handles unique naming and row copying)
+    # Copy via repository (handles unique naming and row copying, permissions inside)
     try:
         new_file = await repo.copy(file_id, target_project_id, target_folder_id)
     except ValueError as e:
@@ -491,26 +451,20 @@ async def rename_file(
     file_id: int,
     name: str,
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Rename a file.
 
-    P10-REPO: Uses Repository Pattern for database operations.
+    P10: FULL ABSTRACT - Permission checks are INSIDE repository.
     """
-    # Get file via repository
+    # P10: Get file via repository (permissions checked inside)
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
     old_name = file["name"]
-
-    # Permission check (online mode only - local files have negative IDs)
-    if file_id > 0:
-        if not await can_access_project(db, file["project_id"], current_user):
-            raise HTTPException(status_code=403, detail="Not authorized to modify this file")
 
     # Rename via repository (handles uniqueness check)
     try:
@@ -564,25 +518,19 @@ async def delete_file(
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
     repo: FileRepository = Depends(get_file_repository),
     trash_repo: TrashRepository = Depends(get_trash_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Delete a file and all its rows.
     EXPLORER-008: By default, moves to trash (soft delete). Use permanent=true for hard delete.
 
-    P10-REPO: Uses Repository Pattern for database operations.
+    P10: FULL ABSTRACT - Permission checks are INSIDE repository.
     """
-    # Get file via repository
+    # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # Permission check (online mode only - local files have negative IDs)
-    if file_id > 0:
-        if not await can_access_project(db, file["project_id"], current_user):
-            raise HTTPException(status_code=403, detail="Not authorized to delete this file")
 
     file_name = file["name"]
 
@@ -679,28 +627,23 @@ async def register_file_as_tm(
     request: FileToTMRequest,
     repo: FileRepository = Depends(get_file_repository),
     tm_repo: TMRepository = Depends(get_tm_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Convert an LDM file into a Translation Memory.
 
-    DB Abstraction: Uses FileRepository + TMRepository for FULL PARITY.
+    P10: FULL ABSTRACT - Uses FileRepository + TMRepository.
     - Offline files (negative IDs) → SQLite TM
     - Online files (positive IDs) → PostgreSQL TM
 
+    Permission checks are INSIDE repositories.
     Takes all source/target pairs from the file and creates a new TM.
     """
-    # Get file info via repository
+    # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # Check access permission (online mode only - local files have negative IDs)
-    if file_id > 0:
-        if not await can_access_file(db, file_id, current_user):
-            raise HTTPException(status_code=404, detail="Resource not found")
 
     file_name = file.get("name") or "unknown"
     is_offline = file_id < 0  # Local files have negative IDs
@@ -826,7 +769,6 @@ async def download_file(
     file_id: int,
     status_filter: Optional[str] = Query(None, description="Filter by status: reviewed, translated, all"),
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -835,21 +777,17 @@ async def download_file(
     Rebuilds the file from database rows in the original format.
     Uses extra_data for FULL structure preservation (extra columns, attributes, etc.)
 
-    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
+    P10: FULL ABSTRACT - Uses FileRepository (works for both PostgreSQL and SQLite).
+    Permission checks are INSIDE repository.
 
     Query params:
     - status_filter: "reviewed" (confirmed only), "translated" (translated+reviewed), "all" (everything)
     """
-    # Get file info via repository (handles both PostgreSQL and SQLite)
+    # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # Check access permission (online mode only - local files have negative IDs)
-    if file_id > 0:
-        if not await can_access_file(db, file_id, current_user):
-            raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get file-level metadata for reconstruction
     file_metadata = file.get("extra_data") or {}
@@ -901,13 +839,13 @@ async def merge_file(
     file_id: int,
     original_file: UploadFile = File(..., description="Original file to merge into"),
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Merge reviewed translations from LDM back into original file.
 
-    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
+    P10: FULL ABSTRACT - Uses FileRepository (works for both PostgreSQL and SQLite).
+    Permission checks are INSIDE repository.
 
     Flow:
     1. User uploads original file (from LanguageData)
@@ -922,17 +860,11 @@ async def merge_file(
     from server.tools.ldm.file_handlers.txt_handler import parse_txt_file
     from server.tools.ldm.file_handlers.xml_handler import parse_xml_file
 
-    # Get LDM file info via repository
+    # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # Check access permission (online mode only - local files have negative IDs)
-    if file_id > 0:
-        project_id = file.get("project_id")
-        if project_id and not await can_access_project(db, project_id, current_user):
-            raise HTTPException(status_code=404, detail="Resource not found")
 
     # Check format compatibility
     format_lower = (file.get("format") or "").lower()
@@ -1046,12 +978,13 @@ async def convert_file(
     file_id: int,
     format: str = Query(..., regex="^(xlsx|xml|txt|tmx)$", description="Target format"),
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Convert a file to a different format.
-    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
+
+    P10: FULL ABSTRACT - Uses FileRepository (works for both PostgreSQL and SQLite).
+    Permission checks are INSIDE repository.
 
     Supported conversions:
     - TXT → Excel, XML, TMX
@@ -1062,17 +995,11 @@ async def convert_file(
     - XML → TXT
     - Excel → TXT
     """
-    # Get file info via repository
+    # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # Check access permission (online mode only - local files have negative IDs)
-    if file_id > 0:
-        project_id = file.get("project_id")
-        if project_id and not await can_access_project(db, project_id, current_user):
-            raise HTTPException(status_code=404, detail="Resource not found")
 
     source_format = (file.get("format") or "").lower()
     target_format = format.lower()
@@ -1148,13 +1075,13 @@ async def convert_file(
 async def extract_glossary(
     file_id: int,
     repo: FileRepository = Depends(get_file_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Extract glossary terms from a file and download as Excel.
 
-    DB Abstraction: Uses FileRepository - works for both PostgreSQL and SQLite.
+    P10: FULL ABSTRACT - Uses FileRepository (works for both PostgreSQL and SQLite).
+    Permission checks are INSIDE repository.
 
     Filtering rules:
     - Length ≤ 21 characters
@@ -1165,17 +1092,11 @@ async def extract_glossary(
     """
     from collections import Counter
 
-    # Get file info via repository
+    # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # Check access permission (online mode only - local files have negative IDs)
-    if file_id > 0:
-        project_id = file.get("project_id")
-        if project_id and not await can_access_project(db, project_id, current_user):
-            raise HTTPException(status_code=404, detail="Resource not found")
 
     # Get all rows for this file via repository
     rows = await repo.get_rows_for_export(file_id)

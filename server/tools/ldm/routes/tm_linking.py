@@ -1,22 +1,20 @@
 """
 TM Linking endpoints - Link TMs to projects for auto-add on confirm.
 
+P10: FULL ABSTRACT + REPO Pattern
+- All endpoints use Repository Pattern with permissions baked in
+- No direct DB access in routes
+
 FEAT-001: Project-TM Linking API
 Migrated from api.py lines 732-1086
-
-P10-REPO: Migrated to Repository Pattern (2026-01-13)
-- Direct DB calls replaced with TMRepository methods
-- Permission checks (can_access_*) remain as P10-PERM-001
 """
 
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.dependencies import get_current_active_user_async
 from server.tools.ldm.schemas import LinkTMRequest
-from server.tools.ldm.permissions import can_access_project, can_access_tm
 from server.repositories.interfaces.project_repository import ProjectRepository
 from server.repositories.interfaces.tm_repository import TMRepository
 from server.repositories.factory import get_project_repository, get_tm_repository
@@ -49,36 +47,25 @@ async def link_tm_to_project(
     request: LinkTMRequest,
     project_repo: ProjectRepository = Depends(get_project_repository),
     tm_repo: TMRepository = Depends(get_tm_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     FEAT-001: Link a TM to a project for auto-add on confirm.
     All confirmed cells (Ctrl+S) in this project will auto-add to this TM.
 
-    P10-REPO: Uses Repository Pattern for project, TM access, and linking.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    user_id = current_user["user_id"]
-
-    # P10-REPO: Get project using Repository Pattern
+    # P10: Get project via repository (permissions checked inside - returns None if no access)
     project = await project_repo.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # P10-PERM-001: Permission checks remain as direct DB
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # P10-REPO: Get TM using Repository Pattern
+    # P10: Get TM via repository (permissions checked inside - returns None if no access)
     tm = await tm_repo.get(request.tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-    # P10-PERM-001: Permission checks remain as direct DB
-    if not await can_access_tm(db, request.tm_id, current_user):
-        raise HTTPException(status_code=404, detail="TM not found")
-
-    # P10-REPO: Link TM to project using Repository
+    # P10: Link TM to project using Repository
     result = await tm_repo.link_to_project(request.tm_id, project_id, request.priority)
 
     # Check if link already existed
@@ -95,24 +82,19 @@ async def unlink_tm_from_project(
     tm_id: int,
     project_repo: ProjectRepository = Depends(get_project_repository),
     tm_repo: TMRepository = Depends(get_tm_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     FEAT-001: Remove TM link from project.
 
-    P10-REPO: Uses Repository Pattern for project access and unlinking.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    # P10-REPO: Verify project exists using Repository Pattern
+    # P10: Get project via repository (permissions checked inside - returns None if no access)
     project = await project_repo.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # P10-PERM-001: Permission checks remain as direct DB
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # P10-REPO: Unlink TM from project using Repository
+    # P10: Unlink TM from project using Repository
     unlinked = await tm_repo.unlink_from_project(tm_id, project_id)
     if not unlinked:
         raise HTTPException(status_code=404, detail="TM link not found")
@@ -126,24 +108,19 @@ async def get_linked_tms(
     project_id: int,
     project_repo: ProjectRepository = Depends(get_project_repository),
     tm_repo: TMRepository = Depends(get_tm_repository),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     FEAT-001: Get all TMs linked to a project, ordered by priority.
 
-    P10-REPO: Uses Repository Pattern for project access and TM listing.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
-    # P10-REPO: Verify project exists using Repository Pattern
+    # P10: Get project via repository (permissions checked inside - returns None if no access)
     project = await project_repo.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # P10-PERM-001: Permission checks remain as direct DB
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # P10-REPO: Get all linked TMs using Repository
+    # P10: Get all linked TMs using Repository
     linked_tms = await tm_repo.get_all_linked_for_project(project_id)
 
     return linked_tms

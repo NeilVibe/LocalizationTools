@@ -1,12 +1,14 @@
 """
 Trash/Recycle Bin endpoints for LDM - EXPLORER-008.
 
-P10: DB Abstraction Layer - Uses TrashRepository for FULL PARITY.
+P10: FULL ABSTRACT + REPO Pattern
+- All endpoints use Repository Pattern with permissions baked in
+- No direct DB access in route endpoints
 
 P10-REPO: Migrated to Repository Pattern (2026-01-13)
 - move_to_trash uses TrashRepository.create()
 - _restore_* functions use entity repositories
-- serialize_* functions still use SQLAlchemy (called from other routes)
+- serialize_* helper functions (legacy) - use _serialize_*_for_trash_repo in route files instead
 """
 
 from datetime import datetime, timedelta
@@ -16,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.dependencies import get_current_active_user_async
 from server.database.models import (
     LDMProject, LDMFolder, LDMFile, LDMRow, LDMTrash, LDMPlatform
 )
@@ -25,7 +27,8 @@ from server.repositories import (
     FileRepository, get_file_repository,
     FolderRepository, get_folder_repository,
     ProjectRepository, get_project_repository,
-    PlatformRepository, get_platform_repository
+    PlatformRepository, get_platform_repository,
+    CapabilityRepository, get_capability_repository
 )
 
 router = APIRouter(tags=["LDM"])
@@ -71,7 +74,6 @@ async def list_trash(
 @router.post("/trash/{trash_id}/restore")
 async def restore_from_trash(
     trash_id: int,
-    db: AsyncSession = Depends(get_async_db),
     trash_repo: TrashRepository = Depends(get_trash_repository),
     file_repo: FileRepository = Depends(get_file_repository),
     folder_repo: FolderRepository = Depends(get_folder_repository),
@@ -81,7 +83,8 @@ async def restore_from_trash(
 ):
     """
     Restore an item from the recycle bin.
-    P10-REPO: Uses repositories for all entity creation.
+
+    P10: FULL ABSTRACT - Uses repositories for all entity creation.
     Recreates the item and all its contents from the stored snapshot.
     """
     logger.debug(f"[TRASH] restore_from_trash: trash_id={trash_id}")
@@ -184,20 +187,23 @@ async def permanent_delete(
 
 @router.post("/trash/empty")
 async def empty_trash(
-    db: AsyncSession = Depends(get_async_db),
     trash_repo: TrashRepository = Depends(get_trash_repository),
+    capability_repo: CapabilityRepository = Depends(get_capability_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Empty the entire recycle bin (permanently delete all items).
-    P10: Uses repository pattern - works with both PostgreSQL and SQLite.
+
+    P10: FULL ABSTRACT - Uses repository pattern with permissions baked in.
     EXPLORER-009: Requires 'empty_trash' capability.
     """
     logger.debug(f"[TRASH] empty_trash: user_id={current_user['user_id']}")
 
-    # EXPLORER-009: Check capability for privileged operation
-    from ..permissions import require_capability
-    await require_capability(db, current_user, "empty_trash")
+    # EXPLORER-009: Check capability via repository
+    user_id = current_user.get("user_id")
+    has_capability = await capability_repo.get_user_capability(user_id, "empty_trash")
+    if not has_capability and current_user.get("role") not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="empty_trash capability required")
 
     count = await trash_repo.empty_for_user(current_user["user_id"])
 

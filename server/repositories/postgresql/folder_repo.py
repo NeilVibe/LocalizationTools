@@ -1,7 +1,10 @@
 """
 PostgreSQL Folder Repository Implementation.
 
+P10: FULL ABSTRACT + REPO Pattern
+
 Implements FolderRepository interface using SQLAlchemy async.
+Permissions are baked INTO the repository.
 """
 
 from datetime import datetime
@@ -10,15 +13,57 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
 
-from server.database.models import LDMFolder, LDMFile, LDMRow
+from server.database.models import LDMFolder, LDMFile, LDMRow, LDMProject, LDMResourceAccess
 from server.repositories.interfaces.folder_repository import FolderRepository
 
 
 class PostgreSQLFolderRepository(FolderRepository):
-    """PostgreSQL implementation of FolderRepository."""
+    """
+    PostgreSQL implementation of FolderRepository.
 
-    def __init__(self, db: AsyncSession):
+    P10: FULL ABSTRACT - Permissions are checked INSIDE the repository.
+    """
+
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
         self.db = db
+        self.user = user or {}
+
+    def _is_admin(self) -> bool:
+        return self.user.get("role") in ["admin", "superadmin"]
+
+    async def _can_access_project(self, project_id: int) -> bool:
+        """Check if current user can access project (folder's parent)."""
+        if not self.user:
+            return False
+        if self._is_admin():
+            return True
+
+        user_id = self.user.get("user_id")
+        if not user_id:
+            return False
+
+        result = await self.db.execute(
+            select(LDMProject.is_restricted, LDMProject.owner_id)
+            .where(LDMProject.id == project_id)
+        )
+        row = result.first()
+        if not row:
+            return False
+
+        is_restricted, owner_id = row
+        if owner_id == user_id:
+            return True
+        if not is_restricted:
+            return True
+
+        result = await self.db.execute(
+            select(LDMResourceAccess.id)
+            .where(
+                LDMResourceAccess.project_id == project_id,
+                LDMResourceAccess.user_id == user_id
+            )
+        )
+        return result.first() is not None
 
     def _folder_to_dict(self, folder: LDMFolder) -> Dict[str, Any]:
         """Convert SQLAlchemy folder to dict."""
@@ -35,15 +80,36 @@ class PostgreSQLFolderRepository(FolderRepository):
     # =========================================================================
 
     async def get(self, folder_id: int) -> Optional[Dict[str, Any]]:
-        """Get folder by ID."""
+        """
+        Get folder by ID with permission check.
+
+        P10: FULL ABSTRACT - Permission check baked in. Returns None if user lacks access.
+        """
         result = await self.db.execute(
             select(LDMFolder).where(LDMFolder.id == folder_id)
         )
         folder = result.scalar_one_or_none()
-        return self._folder_to_dict(folder) if folder else None
+        if not folder:
+            return None
+
+        # P10: Check permission via project access
+        if not await self._can_access_project(folder.project_id):
+            logger.debug(f"[FOLDER_REPO] Access denied: user {self.user.get('user_id')} cannot access folder {folder_id}")
+            return None
+
+        return self._folder_to_dict(folder)
 
     async def get_all(self, project_id: int) -> List[Dict[str, Any]]:
-        """Get all folders in a project."""
+        """
+        Get all folders in a project with permission check.
+
+        P10: FULL ABSTRACT - Permission check baked in. Returns empty list if no access.
+        """
+        # P10: Check project access first
+        if not await self._can_access_project(project_id):
+            logger.debug(f"[FOLDER_REPO] Access denied: user {self.user.get('user_id')} cannot access project {project_id}")
+            return []
+
         result = await self.db.execute(
             select(LDMFolder)
             .where(LDMFolder.project_id == project_id)
@@ -97,7 +163,11 @@ class PostgreSQLFolderRepository(FolderRepository):
     # =========================================================================
 
     async def get_with_contents(self, folder_id: int) -> Optional[Dict[str, Any]]:
-        """Get folder with its subfolders and files."""
+        """
+        Get folder with its subfolders and files.
+
+        P10: FULL ABSTRACT - Permission check baked in. Returns None if user lacks access.
+        """
         # Get folder
         result = await self.db.execute(
             select(LDMFolder).where(LDMFolder.id == folder_id)
@@ -105,6 +175,11 @@ class PostgreSQLFolderRepository(FolderRepository):
         folder = result.scalar_one_or_none()
 
         if not folder:
+            return None
+
+        # P10: Check permission via project access
+        if not await self._can_access_project(folder.project_id):
+            logger.debug(f"[FOLDER_REPO] Access denied for get_with_contents: folder_id={folder_id}")
             return None
 
         # Get subfolders
@@ -220,7 +295,12 @@ class PostgreSQLFolderRepository(FolderRepository):
         target_project_id: int,
         target_parent_id: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
-        """Move a folder to a different project."""
+        """
+        Move a folder to a different project.
+
+        P10: Permission checks baked in - checks access to source folder AND target project.
+        Note: Capability check (cross_project_move) is done at route level.
+        """
         result = await self.db.execute(
             select(LDMFolder).where(LDMFolder.id == folder_id)
         )
@@ -228,6 +308,14 @@ class PostgreSQLFolderRepository(FolderRepository):
 
         if not folder:
             return None
+
+        # P10: Check access to source folder's project
+        if not await self._can_access_project(folder.project_id):
+            raise PermissionError(f"Cannot access source folder {folder_id}")
+
+        # P10: Check access to target project
+        if not await self._can_access_project(target_project_id):
+            raise PermissionError(f"Cannot access target project {target_project_id}")
 
         # Validate target parent if specified
         if target_parent_id is not None:

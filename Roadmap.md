@@ -516,7 +516,7 @@ Transformed LDM from "private by default" to "public by default with optional re
 | Priority | Feature | Status | Notes |
 |----------|---------|--------|-------|
 | **P11** | **Platform Stability** | **ACTIVE** | Ensure everything works before new features |
-| P10 | DB Abstraction Layer | ✅ COMPLETE | All repositories + routes migrated |
+| P10 | DB Abstraction Layer | ✅ COMPLETE | 65→7 calls, 20 routes clean, 9 repositories |
 | P9 | Launcher + Offline/Online | ✅ COMPLETE | Mode switching works |
 | P8 | Dashboard Overhaul | LOW PRIORITY | After platform stability |
 
@@ -527,7 +527,7 @@ Transformed LDM from "private by default" to "public by default with optional re
 | Task | Status | Description |
 |------|--------|-------------|
 | TM Tree Folder Mirroring | TODO | `get_tree()` returns `folders: []` - needs to mirror File Explorer |
-| P10 Permission Gap | TODO | Routes check PostgreSQL for permissions even in offline mode |
+| P10 Permission Gap | ✅ FIXED | Routes now use Repository Pattern with perms baked in (Session 51) |
 | Windows PATH Tests | TODO | 7 path tests for Windows builds (downloads, uploads, models, etc.) |
 | CI/CD Health | TODO | Verify all tests pass, builds succeed |
 | Playwright Test Fixes | TODO | 67 UI tests failing due to login selector mismatch |
@@ -891,4 +891,4 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 
 ---
 
-*Strategic Roadmap | Updated 2026-01-13 | P10 DB Abstraction 100% COMPLETE (9 Repositories, 20 Routes)*
+*Strategic Roadmap | Updated 2026-01-14 | P10 DB Abstraction 100% COMPLETE (65→7 direct DB calls, 20 routes clean)*

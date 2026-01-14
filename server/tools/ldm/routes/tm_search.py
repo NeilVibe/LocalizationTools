@@ -1,23 +1,21 @@
 """
 TM Search endpoints - Suggest, exact search, pattern search.
 
-Migrated from api.py lines 1093-1189, 1723-1818
+P10: FULL ABSTRACT + REPO Pattern
+- All endpoints use Repository Pattern with permissions baked in
+- No direct DB access in routes
 
-P10-REPO: Migrated to Repository Pattern (2026-01-13)
-- Uses TMRepository for TM search operations
-- Uses RowRepository for project row similarity search
-- Note: Similarity search (pg_trgm) is PostgreSQL-specific, returns empty in offline
+Migrated from api.py lines 1093-1189, 1723-1818
+Note: Similarity search (pg_trgm) is PostgreSQL-specific, returns empty in offline
 """
 
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.dependencies import get_current_active_user_async
 from server.repositories import TMRepository, RowRepository, get_tm_repository, get_row_repository
 from server.tools.ldm.schemas import TMSuggestResponse
-from server.tools.ldm.permissions import can_access_tm
 
 router = APIRouter(tags=["LDM"])
 
@@ -31,7 +29,6 @@ async def get_tm_suggestions(
     exclude_row_id: Optional[int] = None,
     threshold: float = Query(0.50, ge=0.0, le=1.0, description="Similarity threshold (0.0-1.0)"),
     max_results: int = Query(5, ge=1, le=50, description="Maximum suggestions to return"),
-    db: AsyncSession = Depends(get_async_db),
     tm_repo: TMRepository = Depends(get_tm_repository),
     row_repo: RowRepository = Depends(get_row_repository),
     current_user: dict = Depends(get_current_active_user_async)
@@ -42,7 +39,7 @@ async def get_tm_suggestions(
     If tm_id is provided, searches the Translation Memory entries.
     Otherwise, searches within project rows for similar texts.
 
-    P10-REPO: Uses TMRepository and RowRepository for database operations.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
 
     Args:
         source: Korean source text to find matches for
@@ -63,16 +60,10 @@ async def get_tm_suggestions(
         if tm_id:
             logger.info(f"[TM-SEARCH] [TM-SUGGEST] MODE: TM entries search (tm_id={tm_id})")
 
-            # DESIGN-001: Use permission helper for TM access check
-            logger.debug(f"[TM-SEARCH] [TM-SUGGEST] Verifying TM access for user_id={current_user['user_id']}")
-            if not await can_access_tm(db, tm_id, current_user):
-                logger.warning(f"[TM-SEARCH] [TM-SUGGEST] TM {tm_id} not accessible by user {current_user['user_id']}")
-                raise HTTPException(status_code=404, detail="Translation Memory not found")
-
-            # Verify TM exists via repository
+            # P10: Get TM via repository (permissions checked inside - returns None if no access)
             tm = await tm_repo.get(tm_id)
             if not tm:
-                logger.warning(f"[TM-SEARCH] [TM-SUGGEST] TM {tm_id} not found")
+                logger.warning(f"[TM-SEARCH] [TM-SUGGEST] TM {tm_id} not found or not accessible")
                 raise HTTPException(status_code=404, detail="Translation Memory not found")
 
             logger.debug(f"[TM-SEARCH] [TM-SUGGEST] TM verified: name='{tm.get('name')}', entries={tm.get('entry_count')}")
@@ -118,7 +109,6 @@ async def get_tm_suggestions(
 async def search_tm_exact(
     tm_id: int,
     source: str,
-    db: AsyncSession = Depends(get_async_db),
     tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -127,12 +117,13 @@ async def search_tm_exact(
 
     Uses hash-based O(1) lookup for maximum speed.
 
-    P10-REPO: Uses TMRepository for database operations.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
     logger.info(f"[TM-SEARCH] TM exact search: tm_id={tm_id}, source={source[:30]}...")
 
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
+    # P10: Get TM via repository (permissions checked inside - returns None if no access)
+    tm = await tm_repo.get(tm_id)
+    if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Search via repository (handles hash generation internally)
@@ -148,7 +139,6 @@ async def search_tm(
     tm_id: int,
     pattern: str,
     limit: int = Query(10, ge=1, le=100),
-    db: AsyncSession = Depends(get_async_db),
     tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -157,12 +147,13 @@ async def search_tm(
 
     For fuzzy/similar text searching (not exact match).
 
-    P10-REPO: Uses TMRepository for database operations.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
     logger.info(f"[TM-SEARCH] TM search: tm_id={tm_id}, pattern={pattern[:30]}...")
 
-    # DESIGN-001: Use permission helper for TM access check
-    if not await can_access_tm(db, tm_id, current_user):
+    # P10: Get TM via repository (permissions checked inside - returns None if no access)
+    tm = await tm_repo.get(tm_id)
+    if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
     # Search via repository (uses existing search_entries method)

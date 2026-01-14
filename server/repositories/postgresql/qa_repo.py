@@ -15,10 +15,19 @@ from server.database.models import LDMQAResult, LDMRow
 
 
 class PostgreSQLQAResultRepository(QAResultRepository):
-    """PostgreSQL implementation of QAResultRepository."""
+    """
+    PostgreSQL implementation of QAResultRepository.
 
-    def __init__(self, db: AsyncSession):
+    P10: FULL ABSTRACT - Permissions are checked INSIDE the repository.
+    QA access is controlled via file/project access.
+    """
+
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
         self.db = db
+        self.user = user or {}
+
+    def _is_admin(self) -> bool:
+        return self.user.get("role") in ["admin", "superadmin"]
 
     def _result_to_dict(self, result: LDMQAResult, row: LDMRow = None) -> Dict[str, Any]:
         """Convert SQLAlchemy model to dict."""

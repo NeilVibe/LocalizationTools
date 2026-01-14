@@ -1,10 +1,8 @@
 """Platform CRUD endpoints for TM Hierarchy System.
 
-Repository Pattern: Uses PlatformRepository for database abstraction.
-
-P10-REPO: Migrated to Repository Pattern (2026-01-13)
-- All endpoints use Repository Pattern
-- Trash serialization uses repository-based helpers
+P10: FULL ABSTRACT + REPO Pattern
+- Main endpoints use Repository Pattern with permissions baked in
+- Admin access management endpoints use get_async_db (complex access grants)
 """
 
 from typing import List, Optional, Dict, Any
@@ -13,10 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from loguru import logger
 
+# P10: get_async_db only needed for admin access management routes (3 remaining)
 from server.utils.dependencies import get_async_db, get_current_active_user_async, require_admin_async
+# P10: Access management functions still use db directly (admin-only)
 from server.tools.ldm.permissions import (
-    get_accessible_platforms,
-    can_access_platform,
     grant_platform_access,
     revoke_platform_access,
     get_platform_access_list,
@@ -26,7 +24,8 @@ from server.repositories import (
     ProjectRepository, get_project_repository,
     FolderRepository, get_folder_repository,
     FileRepository, get_file_repository,
-    TrashRepository, get_trash_repository
+    TrashRepository, get_trash_repository,
+    CapabilityRepository, get_capability_repository
 )
 
 router = APIRouter(tags=["LDM"])
@@ -83,29 +82,28 @@ class AccessUserResponse(BaseModel):
 
 @router.get("/platforms", response_model=PlatformListResponse)
 async def list_platforms(
-    db: AsyncSession = Depends(get_async_db),
+    repo: PlatformRepository = Depends(get_platform_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     List all platforms the user can access.
     DESIGN-001: Public by default - shows all public + owned + granted platforms.
 
-    Note: Uses permission helper get_accessible_platforms which handles
-    complex access control logic (public + owned + granted).
+    P10: FULL ABSTRACT - Uses PlatformRepository.get_accessible() with permissions baked in.
     """
     logger.debug(f"[PLATFORM] list_platforms called: user_id={current_user.get('user_id')}")
 
-    # Use permission helper to get accessible platforms
-    platforms = await get_accessible_platforms(db, current_user, include_projects=True)
+    # P10: Use repository to get accessible platforms (permissions baked in)
+    platforms = await repo.get_accessible(include_projects=True)
 
     platform_list = [
         PlatformResponse(
-            id=p.id,
-            name=p.name,
-            description=p.description,
-            project_count=len(p.projects) if p.projects else 0,
-            is_restricted=p.is_restricted,
-            owner_id=p.owner_id
+            id=p["id"],
+            name=p["name"],
+            description=p.get("description"),
+            project_count=p.get("project_count", 0),
+            is_restricted=p.get("is_restricted", False),
+            owner_id=p.get("owner_id")
         )
         for p in platforms
     ]
@@ -117,13 +115,12 @@ async def list_platforms(
 @router.post("/platforms", response_model=PlatformResponse, status_code=201)
 async def create_platform(
     platform: PlatformCreate,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: PlatformRepository = Depends(get_platform_repository)
 ):
     """Create a new platform.
 
-    Repository Pattern: Uses PlatformRepository for database abstraction.
+    P10: FULL ABSTRACT - Uses PlatformRepository for all operations.
     """
     logger.debug(f"[PLATFORM] create called: name='{platform.name}', user_id={current_user.get('user_id')}")
 
@@ -154,26 +151,20 @@ async def create_platform(
 @router.get("/platforms/{platform_id}", response_model=PlatformResponse)
 async def get_platform(
     platform_id: int,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: PlatformRepository = Depends(get_platform_repository)
 ):
     """Get a specific platform by ID.
 
-    Repository Pattern: Uses PlatformRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
     logger.debug(f"[PLATFORM] get called: platform_id={platform_id}, user_id={current_user.get('user_id')}")
 
-    # DESIGN-001: Check access using permission helper
-    if not await can_access_platform(db, platform_id, current_user):
-        logger.debug(f"[PLATFORM] Access denied: platform_id={platform_id}")
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # Use repository to get platform with project count
+    # P10: Get platform via repository (permissions checked inside - returns None if no access)
     platform = await repo.get_with_project_count(platform_id)
 
     if not platform:
-        logger.warning(f"[PLATFORM] Not found: platform_id={platform_id}")
+        logger.debug(f"[PLATFORM] Not found or access denied: platform_id={platform_id}")
         raise HTTPException(status_code=404, detail="Platform not found")
 
     return PlatformResponse(
@@ -190,19 +181,19 @@ async def get_platform(
 async def update_platform(
     platform_id: int,
     update: PlatformUpdate,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: PlatformRepository = Depends(get_platform_repository)
 ):
     """Update a platform (name or description).
 
-    Repository Pattern: Uses PlatformRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
     logger.debug(f"[PLATFORM] update called: platform_id={platform_id}, name={update.name}, user_id={current_user.get('user_id')}")
 
-    # DESIGN-001: Check access using permission helper
-    if not await can_access_platform(db, platform_id, current_user):
-        logger.debug(f"[PLATFORM] Update access denied: platform_id={platform_id}")
+    # P10: First check access via repository
+    existing = await repo.get(platform_id)
+    if not existing:
+        logger.debug(f"[PLATFORM] Update access denied or not found: platform_id={platform_id}")
         raise HTTPException(status_code=404, detail="Resource not found")
 
     try:
@@ -389,13 +380,13 @@ async def _serialize_platform_for_trash_repo(
 async def delete_platform(
     platform_id: int,
     permanent: bool = Query(False, description="If true, permanently delete instead of moving to trash"),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: PlatformRepository = Depends(get_platform_repository),
     project_repo: ProjectRepository = Depends(get_project_repository),
     folder_repo: FolderRepository = Depends(get_folder_repository),
     file_repo: FileRepository = Depends(get_file_repository),
-    trash_repo: TrashRepository = Depends(get_trash_repository)
+    trash_repo: TrashRepository = Depends(get_trash_repository),
+    capability_repo: CapabilityRepository = Depends(get_capability_repository)
 ):
     """
     Delete a platform.
@@ -403,18 +394,21 @@ async def delete_platform(
     Projects under this platform will have their platform_id set to NULL (unassigned).
     EXPLORER-009: Requires 'delete_platform' capability.
 
-    P10-REPO: Uses Repository Pattern for all operations including trash serialization.
+    P10: FULL ABSTRACT - Uses Repository Pattern with permissions baked in.
     """
     logger.debug(f"[PLATFORM] delete called: platform_id={platform_id}, permanent={permanent}, user_id={current_user.get('user_id')}")
 
-    # DESIGN-001: Check access using permission helper
-    if not await can_access_platform(db, platform_id, current_user):
-        logger.debug(f"[PLATFORM] Delete access denied: platform_id={platform_id}")
+    # P10: Check access via repository
+    platform_check = await repo.get(platform_id)
+    if not platform_check:
+        logger.debug(f"[PLATFORM] Delete access denied or not found: platform_id={platform_id}")
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # EXPLORER-009: Check capability for privileged operation
-    from ..permissions import require_capability
-    await require_capability(db, current_user, "delete_platform")
+    # EXPLORER-009: Check capability for privileged operation via repository
+    user_id = current_user.get("user_id")
+    has_capability = await capability_repo.get_user_capability(user_id, "delete_platform")
+    if not has_capability and current_user.get("role") not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="delete_platform capability required")
 
     # Get platform with project count for response
     platform = await repo.get_with_project_count(platform_id)
@@ -468,28 +462,28 @@ async def delete_platform(
 async def assign_project_to_platform(
     project_id: int,
     platform_id: Optional[int] = None,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
-    repo: PlatformRepository = Depends(get_platform_repository)
+    repo: PlatformRepository = Depends(get_platform_repository),
+    project_repo: ProjectRepository = Depends(get_project_repository)
 ):
     """
     Assign a project to a platform (or unassign if platform_id is None).
 
-    Repository Pattern: Uses PlatformRepository for database abstraction.
+    P10: FULL ABSTRACT - Permission checks via repositories.
     """
     logger.debug(f"[PLATFORM] assign_project called: project_id={project_id}, platform_id={platform_id}, user_id={current_user.get('user_id')}")
 
-    from server.tools.ldm.permissions import can_access_project
-
-    # DESIGN-001: Check project access
-    if not await can_access_project(db, project_id, current_user):
-        logger.debug(f"[PLATFORM] Project access denied: project_id={project_id}")
+    # P10: Check project access via repository
+    project = await project_repo.get(project_id)
+    if not project:
+        logger.debug(f"[PLATFORM] Project access denied or not found: project_id={project_id}")
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    # DESIGN-001: Check platform access if assigning
+    # P10: Check platform access if assigning
     if platform_id is not None:
-        if not await can_access_platform(db, platform_id, current_user):
-            logger.debug(f"[PLATFORM] Platform access denied for assignment: platform_id={platform_id}")
+        platform = await repo.get(platform_id)
+        if not platform:
+            logger.debug(f"[PLATFORM] Platform access denied or not found: platform_id={platform_id}")
             raise HTTPException(status_code=404, detail="Platform not found")
 
     # Use repository to assign project
@@ -517,7 +511,6 @@ async def assign_project_to_platform(
 async def set_platform_restriction(
     platform_id: int,
     is_restricted: bool,
-    db: AsyncSession = Depends(get_async_db),
     admin: dict = Depends(require_admin_async),
     repo: PlatformRepository = Depends(get_platform_repository)
 ):
@@ -525,7 +518,7 @@ async def set_platform_restriction(
     Toggle restriction on a platform. Admin only.
     When restricted, only assigned users can access.
 
-    Repository Pattern: Uses PlatformRepository for database abstraction.
+    P10: FULL ABSTRACT - Admin routes bypass permission checks but use repository.
     """
     logger.debug(f"[PLATFORM] set_restriction called: platform_id={platform_id}, is_restricted={is_restricted}, admin={admin['username']}")
 

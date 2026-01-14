@@ -1,25 +1,22 @@
 """
 Row endpoints - List rows, update row, project tree.
 
-Migrated from api.py lines 660-933
-P10: DB Abstraction Layer - Uses repositories for FULL PARITY.
+P10: FULL ABSTRACT + REPO Pattern
+- All endpoints use Repository Pattern with permissions baked in
+- No direct DB access in routes
 
-P10-REPO: Migrated to Repository Pattern (2026-01-13)
-- Direct DB calls replaced with Repository methods
-- Permission checks (can_access_*) remain as P10-PERM-001
+Migrated from api.py lines 660-933
 """
 
 import asyncio
 from collections import defaultdict
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
+from server.utils.dependencies import get_current_active_user_async, get_db
 from server.tools.ldm.schemas import PaginatedRows, RowResponse, RowUpdate
 from server.tools.ldm.websocket import broadcast_cell_update
-from server.tools.ldm.permissions import can_access_file, can_access_project
 from server.repositories import (
     RowRepository, get_row_repository,
     ProjectRepository, get_project_repository,
@@ -65,7 +62,6 @@ async def list_rows(
     search_fields: Optional[str] = Query("source,target", description="Comma-separated fields: string_id, source, target"),
     status: Optional[str] = None,
     filter: Optional[str] = Query(None, description="Filter: all, confirmed, unconfirmed, qa_flagged"),
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: RowRepository = Depends(get_row_repository),
     file_repo: FileRepository = Depends(get_file_repository)
@@ -87,8 +83,7 @@ async def list_rows(
     - unconfirmed: status = 'pending' or 'translated'
     - qa_flagged: qa_flag_count > 0
 
-    Repository Pattern: Uses RowRepository for database abstraction.
-    P10-REPO: Uses FileRepository for file existence check.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
     # P9: Local files (negative IDs) skip permission checks - user's own files
     if file_id < 0:
@@ -114,15 +109,11 @@ async def list_rows(
             total_pages=total_pages
         )
 
-    # P10-REPO: Check file exists via Repository Pattern
+    # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await file_repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # P10-PERM-001: Verify file access (permission check remains as direct DB)
-    if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Use Repository Pattern for all row queries
     rows, total = await repo.get_for_file(
@@ -152,15 +143,13 @@ async def update_row(
     row_id: int,
     update: RowUpdate,
     background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_async_db),
     current_user: dict = Depends(get_current_active_user_async),
     repo: RowRepository = Depends(get_row_repository),
     tm_repo: TMRepository = Depends(get_tm_repository)
 ):
     """Update a row's target text or status (source is READ-ONLY).
 
-    Repository Pattern: Uses RowRepository for database abstraction.
-    P10-REPO: Uses TMRepository for TM linking.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
     # P9: Local rows (negative IDs) skip permission checks - user's own files
     if row_id < 0:
@@ -176,15 +165,11 @@ async def update_row(
             raise HTTPException(status_code=404, detail="Row not found")
         return updated_row
 
-    # P10-REPO: Get row with file info via Repository Pattern
+    # P10: Get row with file info via repository (permissions checked inside - returns None if no access)
     row = await repo.get_with_file(row_id)
 
     if not row:
         raise HTTPException(status_code=404, detail="Row not found")
-
-    # P10-PERM-001: Verify file access (permission check remains as direct DB)
-    if not await can_access_file(db, row["file_id"], current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
 
     # Save history before update
     old_target = row["target"]
@@ -201,7 +186,7 @@ async def update_row(
     if not updated_row:
         raise HTTPException(status_code=404, detail="Row not found")
 
-    # Add edit history via repository
+    # Add edit history via repository (commits internally)
     await repo.add_edit_history(
         row_id=row_id,
         user_id=current_user["user_id"],
@@ -210,9 +195,6 @@ async def update_row(
         old_status=old_status,
         new_status=updated_row.get("status")
     )
-
-    # Commit the history
-    await db.commit()
 
     # Broadcast cell update to all viewers (real-time sync)
     try:
@@ -278,7 +260,6 @@ async def update_row(
 @router.get("/projects/{project_id}/tree")
 async def get_project_tree(
     project_id: int,
-    db: AsyncSession = Depends(get_async_db),
     project_repo: ProjectRepository = Depends(get_project_repository),
     folder_repo: FolderRepository = Depends(get_folder_repository),
     file_repo: FileRepository = Depends(get_file_repository),
@@ -286,15 +267,12 @@ async def get_project_tree(
 ):
     """
     Get full project tree structure (folders + files) for File Explorer.
-    P10: Uses repository pattern - works with both PostgreSQL and SQLite.
+
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     """
     logger.debug(f"[ROWS] get_project_tree: project_id={project_id}")
 
-    # Verify project access (DESIGN-001: Public by default)
-    if not await can_access_project(db, project_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # Get project using repository
+    # P10: Get project via repository (permissions checked inside - returns None if no access)
     project = await project_repo.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")

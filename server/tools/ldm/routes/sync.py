@@ -1,7 +1,11 @@
 """
 Sync endpoints - Online/Offline synchronization.
 
-P10: Uses SyncService for all sync operations.
+P10: FULL ABSTRACT + REPO Pattern
+- Uses SyncService factory for all sync operations
+- Permission checks via repositories (permissions baked in)
+- No direct DB access in routes
+
 Includes:
 - sync-to-central: Push local SQLite changes to PostgreSQL
 - download-for-offline: Pull file from PostgreSQL to local SQLite
@@ -18,6 +22,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
+# P10: get_async_db only needed for SyncService factory
 from server.utils.dependencies import get_async_db, get_current_active_user_async
 from server.repositories import (
     FileRepository, get_file_repository,
@@ -29,9 +34,25 @@ from server.tools.ldm.schemas import (
     SyncFileToCentralRequest, SyncFileToCentralResponse,
     SyncTMToCentralRequest, SyncTMToCentralResponse
 )
-from server.tools.ldm.permissions import can_access_project, can_access_file
 from server.database.offline import get_offline_db
 from server.services import SyncService
+
+
+# =============================================================================
+# P10: SyncService Factory (injects db internally)
+# =============================================================================
+
+def get_sync_service(
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_active_user_async)
+) -> SyncService:
+    """
+    Factory function for SyncService.
+
+    P10: DB is injected here, not in routes. Routes only use SyncService.
+    """
+    offline_db = get_offline_db()
+    return SyncService(db, offline_db)
 
 router = APIRouter(tags=["LDM"])
 
@@ -254,13 +275,13 @@ async def list_subscriptions(
 @router.post("/offline/subscribe", response_model=SubscribeResponse)
 async def subscribe_for_offline(
     request: SubscribeRequest,
-    db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    sync_service: SyncService = Depends(get_sync_service)
 ):
     """
     Enable offline sync for a platform, project, or file.
 
-    P10: Uses SyncService for sync operations.
+    P10: FULL ABSTRACT - Uses SyncService factory (db injected internally).
     This creates a subscription and triggers initial download.
     Subsequent syncs happen automatically.
     """
@@ -273,7 +294,6 @@ async def subscribe_for_offline(
 
     try:
         offline_db = get_offline_db()
-        sync_service = SyncService(db, offline_db)
 
         # Create subscription
         sub_id = offline_db.add_subscription(
@@ -417,13 +437,13 @@ async def get_push_preview(
 @router.post("/offline/push-changes", response_model=PushChangesResponse)
 async def push_changes_to_server(
     request: PushChangesRequest,
-    db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    sync_service: SyncService = Depends(get_sync_service)
 ):
     """
     Push local changes for a file to the server (P3 Phase 3).
 
-    P10: Uses SyncService for sync operations.
+    P10: FULL ABSTRACT - Uses SyncService factory (db injected internally).
     This endpoint:
     1. Gets modified rows from local SQLite
     2. Pushes them to PostgreSQL
@@ -444,7 +464,6 @@ async def push_changes_to_server(
 
     try:
         offline_db = get_offline_db()
-        sync_service = SyncService(db, offline_db)
 
         # Get file info
         file_info = offline_db.get_file(request.file_id)
@@ -476,16 +495,16 @@ async def push_changes_to_server(
 @router.post("/offline/sync-subscription", response_model=SyncSubscriptionResponse)
 async def sync_subscription(
     request: SyncSubscriptionRequest,
-    db: AsyncSession = Depends(get_async_db),
     file_repo: FileRepository = Depends(get_file_repository),
     project_repo: ProjectRepository = Depends(get_project_repository),
     tm_repo: TMRepository = Depends(get_tm_repository),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    sync_service: SyncService = Depends(get_sync_service)
 ):
     """
     Sync a single subscription (refresh from server).
 
-    P10: Uses SyncService for sync operations.
+    P10: FULL ABSTRACT - Uses SyncService factory (db injected internally).
     P10-REPO: Uses repositories for entity counts.
 
     This endpoint is called periodically by the continuous sync mechanism
@@ -500,7 +519,6 @@ async def sync_subscription(
 
     try:
         offline_db = get_offline_db()
-        sync_service = SyncService(db, offline_db)
 
         # Check if subscription exists
         if not offline_db.is_subscribed(request.entity_type, request.entity_id):
@@ -1169,15 +1187,15 @@ async def empty_local_trash(
 @router.post("/files/{file_id}/download-for-offline", response_model=DownloadForOfflineResponse)
 async def download_file_for_offline(
     file_id: int,
-    db: AsyncSession = Depends(get_async_db),
     file_repo: FileRepository = Depends(get_file_repository),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    sync_service: SyncService = Depends(get_sync_service)
 ):
     """
     Download/sync a file from PostgreSQL to local SQLite for offline use.
 
-    P10: Uses SyncService for sync operations.
-    P10-REPO: Uses FileRepository for file lookup.
+    P10: FULL ABSTRACT - Uses SyncService factory (db injected internally).
+    P10-REPO: Uses FileRepository for file lookup (permissions baked in).
 
     Uses merge logic (last-write-wins):
     - Server rows are merged with local (doesn't overwrite local changes)
@@ -1195,11 +1213,7 @@ async def download_file_for_offline(
             detail="Already in offline mode. File should already be available locally."
         )
 
-    # Verify file access (DESIGN-001: Public by default)
-    if not await can_access_file(db, file_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # Get file via repository
+    # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await file_repo.get(file_id)
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
@@ -1207,7 +1221,6 @@ async def download_file_for_offline(
     try:
         # Get offline database instance
         offline_db = get_offline_db()
-        sync_service = SyncService(db, offline_db)
 
         # P10: Use SyncService for merge-aware sync (handles hierarchy)
         await sync_service.sync_file_to_offline(file_id)
@@ -1233,15 +1246,16 @@ async def download_file_for_offline(
 @router.post("/sync-to-central", response_model=SyncFileToCentralResponse)
 async def sync_file_to_central(
     request: SyncFileToCentralRequest,
-    db: AsyncSession = Depends(get_async_db),
     folder_repo: FolderRepository = Depends(get_folder_repository),
-    current_user: dict = Depends(get_current_active_user_async)
+    project_repo: ProjectRepository = Depends(get_project_repository),
+    current_user: dict = Depends(get_current_active_user_async),
+    sync_service: SyncService = Depends(get_sync_service)
 ):
     """
     Sync a file from Offline Storage (SQLite) to central PostgreSQL.
 
-    P10: Uses SyncService for sync operations.
-    P10-REPO: Uses FolderRepository for folder validation.
+    P10: FULL ABSTRACT - Uses SyncService factory (db injected internally).
+    P10-REPO: Uses repositories for validation (permissions baked in).
 
     This endpoint:
     1. Reads file metadata + all rows from Offline Storage (SQLite)
@@ -1265,11 +1279,12 @@ async def sync_file_to_central(
             detail="Cannot sync to central server while in offline mode. Connect to server first."
         )
 
-    # Verify destination project access (DESIGN-001: Public by default)
-    if not await can_access_project(db, request.destination_project_id, current_user):
+    # P10: Verify destination project access via repository (permissions baked in)
+    dest_project = await project_repo.get(request.destination_project_id)
+    if not dest_project:
         raise HTTPException(status_code=404, detail="Destination project not found")
 
-    # Verify destination folder if specified via repository
+    # P10: Verify destination folder if specified via repository (permissions baked in)
     if request.destination_folder_id:
         folder = await folder_repo.get(request.destination_folder_id)
         if not folder or folder.get("project_id") != request.destination_project_id:
@@ -1278,7 +1293,6 @@ async def sync_file_to_central(
     try:
         # P10: Use SyncService for sync-to-central
         offline_db = get_offline_db()
-        sync_service = SyncService(db, offline_db)
 
         result = await sync_service.sync_file_to_central(
             local_file_id=request.file_id,
@@ -1308,13 +1322,13 @@ async def sync_file_to_central(
 @router.post("/tm/sync-to-central", response_model=SyncTMToCentralResponse)
 async def sync_tm_to_central(
     request: SyncTMToCentralRequest,
-    db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    current_user: dict = Depends(get_current_active_user_async),
+    sync_service: SyncService = Depends(get_sync_service)
 ):
     """
     Sync a Translation Memory from local SQLite to central PostgreSQL.
 
-    P10: Uses SyncService for sync operations.
+    P10: FULL ABSTRACT - Uses SyncService factory (db injected internally).
     This endpoint:
     1. Reads TM metadata + all entries from local SQLite
     2. Creates new TM record in PostgreSQL
@@ -1335,7 +1349,6 @@ async def sync_tm_to_central(
     try:
         # P10: Use SyncService for sync-to-central
         offline_db = get_offline_db()
-        sync_service = SyncService(db, offline_db)
 
         result = await sync_service.sync_tm_to_central(
             local_tm_id=request.tm_id,

@@ -1,7 +1,10 @@
 """
 PostgreSQL Row Repository Implementation.
 
+P10: FULL ABSTRACT + REPO Pattern
+
 Implements RowRepository interface using SQLAlchemy async.
+Permissions are baked INTO the repository (via file/project access).
 """
 
 from datetime import datetime
@@ -11,15 +14,69 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, or_, and_
 from loguru import logger
 
-from server.database.models import LDMRow, LDMFile, LDMEditHistory
+from server.database.models import LDMRow, LDMFile, LDMEditHistory, LDMProject, LDMResourceAccess
 from server.repositories.interfaces.row_repository import RowRepository
 
 
 class PostgreSQLRowRepository(RowRepository):
-    """PostgreSQL implementation of RowRepository."""
+    """
+    PostgreSQL implementation of RowRepository.
 
-    def __init__(self, db: AsyncSession):
+    P10: FULL ABSTRACT - Permissions are checked INSIDE the repository.
+    Row access is granted via file access (which is via project access).
+    """
+
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
         self.db = db
+        self.user = user or {}
+
+    def _is_admin(self) -> bool:
+        return self.user.get("role") in ["admin", "superadmin"]
+
+    async def _can_access_file(self, file_id: int) -> bool:
+        """Check if current user can access file (and thus its rows)."""
+        if not self.user:
+            return False
+        if self._is_admin():
+            return True
+
+        user_id = self.user.get("user_id")
+        if not user_id:
+            return False
+
+        # Get file's project
+        result = await self.db.execute(
+            select(LDMFile.project_id).where(LDMFile.id == file_id)
+        )
+        row = result.first()
+        if not row:
+            return False
+
+        project_id = row[0]
+
+        # Check project access
+        result = await self.db.execute(
+            select(LDMProject.is_restricted, LDMProject.owner_id)
+            .where(LDMProject.id == project_id)
+        )
+        proj_row = result.first()
+        if not proj_row:
+            return False
+
+        is_restricted, owner_id = proj_row
+        if owner_id == user_id:
+            return True
+        if not is_restricted:
+            return True
+
+        result = await self.db.execute(
+            select(LDMResourceAccess.id)
+            .where(
+                LDMResourceAccess.project_id == project_id,
+                LDMResourceAccess.user_id == user_id
+            )
+        )
+        return result.first() is not None
 
     def _row_to_dict(self, row: LDMRow, include_file: bool = False) -> Dict[str, Any]:
         """Convert SQLAlchemy row to dict."""

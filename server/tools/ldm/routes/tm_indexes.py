@@ -1,11 +1,13 @@
 """
 TM Index endpoints - Build indexes, sync indexes, check status.
 
+P10: FULL ABSTRACT + REPO Pattern
+- All endpoints use Repository Pattern with permissions baked in
+- No direct DB access in routes
+
 Migrated from api.py lines 1937-2015, 2017-2149, 2207-2306
 
-P10-REPO: Migrated to Repository Pattern (2026-01-13)
-- Uses TMRepository for TM lookups and index status
-- Note: Background tasks (TMIndexer, TMSyncManager) use sync DB internally
+Note: Background tasks (TMIndexer, TMSyncManager) use sync DB internally.
 """
 
 import asyncio
@@ -13,12 +15,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async, get_db
+from server.utils.dependencies import get_current_active_user_async, get_db
 from server.repositories import TMRepository, get_tm_repository
-from server.tools.ldm.permissions import can_access_tm
 
 router = APIRouter(tags=["LDM"])
 
@@ -27,7 +27,6 @@ router = APIRouter(tags=["LDM"])
 async def build_tm_indexes(
     tm_id: int,
     background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_async_db),
     tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -43,7 +42,7 @@ async def build_tm_indexes(
     This is required before using the 5-Tier Cascade TM search.
     Building indexes can take several minutes for large TMs (50k+ entries).
 
-    P10-REPO: Uses TMRepository for TM lookup.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     Note: TMIndexer uses sync DB internally for index building.
 
     Returns operation_id for progress tracking via WebSocket/TaskManager.
@@ -53,11 +52,7 @@ async def build_tm_indexes(
 
     logger.info(f"[TM-INDEX] Building TM indexes: tm_id={tm_id}, user={current_user['user_id']}")
 
-    # Verify TM access (DESIGN-001: Public by default)
-    if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # Get TM via repository
+    # P10: Get TM via repository (permissions checked inside - returns None if no access)
     tm = await tm_repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
@@ -105,22 +100,17 @@ async def build_tm_indexes(
 @router.get("/tm/{tm_id}/indexes")
 async def get_tm_index_status(
     tm_id: int,
-    db: AsyncSession = Depends(get_async_db),
     tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Get index status for a Translation Memory.
 
-    P10-REPO: Uses TMRepository for database operations.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
 
     Returns list of indexes and their status.
     """
-    # Verify TM access (DESIGN-001: Public by default)
-    if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # Get TM via repository
+    # P10: Get TM via repository (permissions checked inside - returns None if no access)
     tm = await tm_repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
@@ -142,14 +132,13 @@ async def get_tm_index_status(
 @router.get("/tm/{tm_id}/sync-status")
 async def get_tm_sync_status(
     tm_id: int,
-    db: AsyncSession = Depends(get_async_db),
     tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
     Check if TM indexes are stale (DB has newer changes than local indexes).
 
-    P10-REPO: Uses TMRepository for database operations.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
 
     Returns:
         - is_stale: True if DB was updated after last sync
@@ -157,11 +146,7 @@ async def get_tm_sync_status(
         - last_synced: When indexes were last synced
         - tm_updated_at: When TM was last modified in DB
     """
-    # Verify TM access (DESIGN-001: Public by default)
-    if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # Get TM via repository
+    # P10: Get TM via repository (permissions checked inside - returns None if no access)
     tm = await tm_repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
@@ -225,7 +210,6 @@ async def get_tm_sync_status(
 @router.post("/tm/{tm_id}/sync")
 async def sync_tm_indexes(
     tm_id: int,
-    db: AsyncSession = Depends(get_async_db),
     tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -237,7 +221,7 @@ async def sync_tm_indexes(
     - Copies existing embeddings for UNCHANGED entries
     - Rebuilds FAISS/hash indexes at the end
 
-    P10-REPO: Uses TMRepository for TM lookup.
+    P10: FULL ABSTRACT - Permission check is INSIDE repository.
     Note: TMSyncManager uses sync DB internally.
 
     TASK-002: Tracked with toast (manual operation).
@@ -248,11 +232,7 @@ async def sync_tm_indexes(
     from server.tools.ldm.tm_indexer import TMSyncManager
     from server.utils.progress_tracker import TrackedOperation
 
-    # Verify TM access (DESIGN-001: Public by default)
-    if not await can_access_tm(db, tm_id, current_user):
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-    # Get TM via repository
+    # P10: Get TM via repository (permissions checked inside - returns None if no access)
     tm = await tm_repo.get(tm_id)
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")

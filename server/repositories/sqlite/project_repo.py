@@ -309,3 +309,12 @@ class SQLiteProjectRepository(ProjectRepository):
             ).fetchall()
 
             return [self._normalize_project(dict(row)) for row in rows]
+
+    async def get_accessible(self) -> List[Dict[str, Any]]:
+        """
+        Get all projects accessible by the current user.
+
+        P10: FULL ABSTRACT - In offline mode, all projects are accessible (single user).
+        """
+        # Offline mode = single user = all projects are accessible
+        return await self.get_all()

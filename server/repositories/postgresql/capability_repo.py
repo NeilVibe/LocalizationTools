@@ -13,10 +13,19 @@ from server.repositories.interfaces.capability_repository import CapabilityRepos
 
 
 class PostgreSQLCapabilityRepository(CapabilityRepository):
-    """PostgreSQL implementation of CapabilityRepository."""
+    """
+    PostgreSQL implementation of CapabilityRepository.
 
-    def __init__(self, db: AsyncSession):
+    P10: FULL ABSTRACT - User context baked in for admin checks.
+    Capability management is admin-only.
+    """
+
+    def __init__(self, db: AsyncSession, user: Optional[dict] = None):
         self.db = db
+        self.user = user or {}
+
+    def _is_admin(self) -> bool:
+        return self.user.get("role") in ["admin", "superadmin"]
 
     async def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Get user by ID."""
