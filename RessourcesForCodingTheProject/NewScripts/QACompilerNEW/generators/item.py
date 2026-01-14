@@ -83,7 +83,7 @@ def get_depth_color(depth: int) -> str:
     elif depth == 2:
         return "GREEN"
     else:
-        return "PINK"
+        return "RED"
 
 # =============================================================================
 # DATA STRUCTURES
@@ -425,6 +425,7 @@ def parse_master_groups(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
 
     group_name: Dict[str, str] = {}
     parent_of: Dict[str, str] = {}
+    duplicate_count = 0
 
     for el in root.iter("ItemGroupInfo"):
         sk = el.get("StrKey") or ""
@@ -437,6 +438,8 @@ def parse_master_groups(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
                 parent_key = p.get("StrKey") or ""
                 if parent_key and sk not in parent_of:
                     parent_of[sk] = parent_key
+                elif parent_key:
+                    duplicate_count += 1
 
     for el in root.iter("ChildGroupInfo"):
         child = el.get("StrKey") or ""
@@ -449,8 +452,13 @@ def parse_master_groups(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
                 parent_key = p.get("StrKey") or ""
                 if parent_key and child not in parent_of:
                     parent_of[child] = parent_key
+                elif parent_key:
+                    duplicate_count += 1
 
-    log.info("Groups parsed: %d  |  parent links: %d", len(group_name), len(parent_of))
+    log.info(
+        "Groups parsed: %d  |  parent links: %d  |  duplicates ignored: %d",
+        len(group_name), len(parent_of), duplicate_count
+    )
     return group_name, parent_of
 
 
@@ -534,12 +542,28 @@ def build_item_data(
 # ROW GENERATION
 # =============================================================================
 
+def propagate_group_names(rows: List[PrimaryRow]) -> List[PrimaryRow]:
+    """Propagate group names from group rows to item rows that follow."""
+    result: List[PrimaryRow] = []
+    last = ["", "", ""]
+    for row in rows:
+        depth, gk, gkor, geng, gloc, ik, inum, nkor, neng, nloc, dkor, deng, dloc, sid, is_group = row
+        if gkor:
+            last = [gkor, geng, gloc]
+        else:
+            gkor, geng, gloc = last
+        result.append((depth, gk, gkor, geng, gloc,
+                       ik, inum, nkor, neng, nloc, dkor, deng, dloc, sid, is_group))
+    return result
+
+
 def build_rows_for_language(
     code: str,
     group_names: Dict[str, str],
     parent_of: Dict[str, str],
     group_items: Dict[str, List[Tuple[str, str, str]]],
     lang_tbl: Dict[str, Tuple[str, str]],
+    id_table: Dict[str, str],
     eng_tbl: Dict[str, Tuple[str, str]],
 ) -> List[PrimaryRow]:
     """Build rows for a specific language."""
@@ -572,9 +596,10 @@ def build_rows_for_language(
             iloc = t(lang_tbl, iname)
             deng = t(eng_tbl, idesc)
             dloc = t(lang_tbl, idesc)
+            num = id_table.get(ik.lower(), "<MISSING>")
             sid = lang_tbl.get(normalize_placeholders(iname), ("", ""))[1]
             rows.append((depth+1, gk, kor, eng, loc,
-                         ik, "", iname, ieng, iloc, idesc, deng, dloc, sid, False))
+                         ik, num, iname, ieng, iloc, idesc, deng, dloc, sid, False))
 
         for child in sorted(children_of.get(gk, [])):
             recurse(child)
@@ -603,9 +628,14 @@ def write_primary_sheet(
 
     # Build headers
     headers = [
-        "Depth", "GroupKey",
-        "GroupName(KOR)", "GroupName(ENG)",
-        "ItemKey", "ItemName(KOR)", "ItemName(ENG)",
+        "Depth",
+        "GroupKey",
+        "GroupName(KOR)",
+        "GroupName(ENG)",
+        "ItemKey",
+        "Item#",
+        "ItemName(KOR)",
+        "ItemName(ENG)",
     ]
     if lang_code != "eng":
         headers.append(f"ItemName({title})")
@@ -614,7 +644,10 @@ def write_primary_sheet(
     if lang_code != "eng":
         headers.append(f"ItemDesc({title})")
 
-    headers += ["StringID", "DebugCommand", "STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
+    headers += ["StringID", "DebugCommand"]
+
+    # Extra columns
+    headers += ["STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
 
     # Write header row
     for col, txt in enumerate(headers, start=1):
@@ -636,7 +669,7 @@ def write_primary_sheet(
         ) = row
 
         vals = [depth, gk, gkor, geng]
-        vals += [ik, nkor, neng]
+        vals += [ik, num, nkor, neng]
         if lang_code != "eng":
             vals.append(nloc)
         vals += [dkor, deng]
@@ -647,11 +680,14 @@ def write_primary_sheet(
 
         for cidx, val in enumerate(vals, start=1):
             c = ws.cell(r, cidx, val)
-            c.alignment = Alignment(
-                indent=(depth if cidx == 1 else 0),
-                wrap_text=True,
-                vertical="top",
-            )
+            if isinstance(val, int):
+                c.alignment = Alignment(horizontal="center")
+            else:
+                c.alignment = Alignment(
+                    indent=(depth if cidx == 1 else 0),
+                    wrap_text=True,
+                    vertical="top",
+                )
             c.border = THIN_BORDER
             if is_group:
                 c.fill = _depth_fill.get(depth, _depth_fill[2])
@@ -1013,7 +1049,8 @@ def generate_item_datasheets() -> Dict:
 
             # Primary Excel (full LQA sheet)
             rows = build_rows_for_language(code, all_names, parent_of,
-                                           group_items, tbl, eng_tbl)
+                                           group_items, tbl, id_tbl, eng_tbl)
+            rows = propagate_group_names(rows)
 
             wb = Workbook()
             wb.remove(wb.active)
@@ -1022,7 +1059,7 @@ def generate_item_datasheets() -> Dict:
             result["files_created"] += 1
 
             # Secondary Excel (sorted by folder)
-            secondary_path = secondary_lqa_folder / f"Item_Sorted_{code.upper()}.xlsx"
+            secondary_path = secondary_lqa_folder / f"ITEM_WORKING_LQA_{code.upper()}.xlsx"
             write_secondary_excel(secondary_path, folder_files, items, all_names, tbl, code, eng_tbl)
             result["files_created"] += 1
 
