@@ -110,6 +110,7 @@ CATEGORIES = [
 CATEGORY_TO_MASTER = {
     "Skill": "System",   # Skill -> Master_System.xlsx
     "Help": "System",    # Help (GameAdvice) -> Master_System.xlsx
+    "Gimmick": "Item",   # Gimmick -> Master_Item.xlsx
     # All others map to themselves (Quest->Quest, Knowledge->Knowledge, etc.)
 }
 

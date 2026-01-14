@@ -262,114 +262,6 @@ def add_user_columns(ws, username: str) -> Tuple[int, int, int, int]:
     """Alias for find_or_create_user_columns for backwards compatibility."""
     return find_or_create_user_columns(ws, username)
 
-
-# =============================================================================
-# ROW MATCHING FALLBACK
-# =============================================================================
-
-def get_row_signature(ws, row: int, exclude_cols: set = None) -> Tuple:
-    """
-    Get a signature for a row based on non-empty cells (excluding specified columns).
-    Used for fallback row matching.
-
-    Args:
-        ws: Worksheet
-        row: Row number
-        exclude_cols: Set of column indices to exclude (STATUS, COMMENT, SCREENSHOT)
-
-    Returns: Tuple of (col_index, value) for non-empty cells
-    """
-    if exclude_cols is None:
-        exclude_cols = set()
-
-    signature = []
-    for col in range(1, ws.max_column + 1):
-        if col in exclude_cols:
-            continue
-        val = ws.cell(row=row, column=col).value
-        if val and str(val).strip():
-            signature.append((col, str(val).strip()))
-
-    return tuple(signature)
-
-
-def find_matching_row_fallback(master_ws, qa_signature: Tuple, exclude_cols: set, start_row: int = 2) -> Optional[int]:
-    """
-    Find a row in master that matches QA row by 2+ cell matching.
-
-    Args:
-        master_ws: Master worksheet
-        qa_signature: Signature from QA row
-        exclude_cols: Columns to exclude from matching
-        start_row: Start searching from this row
-
-    Returns: Row number or None
-    """
-    if len(qa_signature) < 2:
-        return None  # Need at least 2 cells to match
-
-    for row in range(start_row, master_ws.max_row + 1):
-        master_sig = get_row_signature(master_ws, row, exclude_cols)
-
-        # Count matching cells
-        matches = 0
-        for (col, val) in qa_signature:
-            if (col, val) in master_sig:
-                matches += 1
-
-        # 2+ cell match = found
-        if matches >= 2:
-            return row
-
-    return None
-
-
-def find_matching_row_item_fallback(master_ws, qa_ws, qa_row: int, start_row: int = 2) -> Optional[int]:
-    """
-    Item category fallback: Match by 4+ of first 6 columns.
-
-    Used when STRINGID is not available for Item category.
-    Compares first 6 columns between QA row and master rows.
-    If 4 or more values match, it's considered a match.
-
-    Args:
-        master_ws: Master worksheet
-        qa_ws: QA worksheet
-        qa_row: Row number in QA worksheet
-        start_row: Start searching from this row in master
-
-    Returns: Row number or None
-    """
-    # Get first 6 column values from QA row
-    qa_values = []
-    for col in range(1, 7):  # Columns 1-6
-        val = qa_ws.cell(row=qa_row, column=col).value
-        if val is not None:
-            qa_values.append((col, str(val).strip()))
-        else:
-            qa_values.append((col, None))
-
-    # Search master for matching row
-    for master_row in range(start_row, master_ws.max_row + 1):
-        matches = 0
-        for col, qa_val in qa_values:
-            master_val = master_ws.cell(row=master_row, column=col).value
-            if master_val is not None:
-                master_val = str(master_val).strip()
-            else:
-                master_val = None
-
-            # Both None or both equal = match
-            if qa_val == master_val:
-                matches += 1
-
-        # 4+ matches out of 6 = found
-        if matches >= 4:
-            return master_row
-
-    return None
-
-
 # =============================================================================
 # SHEET PROCESSING
 # =============================================================================
@@ -424,48 +316,18 @@ def process_sheet(
         "comments": 0,
         "screenshots": 0,
         "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "korean": 0, "total": 0},
-        "manager_restored": 0,
-        "unmatched_rows": 0
+        "manager_restored": 0
     }
 
-    # Build exclude columns set for row matching
-    exclude_cols = set()
-    if qa_status_col:
-        exclude_cols.add(qa_status_col)
-    if qa_comment_col:
-        exclude_cols.add(qa_comment_col)
-    if qa_screenshot_col:
-        exclude_cols.add(qa_screenshot_col)
-
-    # Process each row with 3-step fallback matching
+    # Process each row by INDEX (master is fresh from QA, same structure)
     for qa_row in range(2, qa_ws.max_row + 1):
-        # Skip empty rows
+        # Skip empty rows - check column 1 (first column always has data if row is valid)
         first_col_value = qa_ws.cell(row=qa_row, column=1).value
         if first_col_value is None or str(first_col_value).strip() == "":
             continue
 
         result["stats"]["total"] += 1
-
-        # Step 1: Try INDEX matching (row 2 = row 2)
-        master_row = None
-        if qa_row <= master_ws.max_row:
-            master_first = master_ws.cell(row=qa_row, column=1).value
-            if master_first and str(master_first).strip() == str(first_col_value).strip():
-                master_row = qa_row  # Match!
-
-        # Step 2: Fallback to 2+ cell match
-        if master_row is None:
-            qa_sig = get_row_signature(qa_ws, qa_row, exclude_cols)
-            master_row = find_matching_row_fallback(master_ws, qa_sig, exclude_cols)
-
-        # Step 3: Item-specific fallback (4 of first 6 columns)
-        if master_row is None and category.lower() == "item":
-            master_row = find_matching_row_item_fallback(master_ws, qa_ws, qa_row)
-
-        # If still no match, skip this row
-        if master_row is None:
-            result["unmatched_rows"] += 1
-            continue
+        master_row = qa_row  # Direct index matching (always works - fresh rebuild)
 
         # Get QA STATUS
         should_compile_comment = False
