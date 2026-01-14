@@ -299,9 +299,12 @@ def load_korean_strings_from_datasheets(datasheet_folder: Path) -> Dict[str, Set
                 if header_row:
                     for idx, header in enumerate(header_row):
                         if header:
-                            h = str(header)
-                            # Match Korean columns
-                            if "(KOR)" in h or "(KR)" in h or h == "Original (KR)":
+                            h = str(header).strip()
+                            # Match Korean columns based on exact generator patterns:
+                            # - Quest: "Original"
+                            # - Character/Knowledge/Skill/Region/Help: "Original (KR)"
+                            # - Item/Gimmick: columns ending with "(KOR)"
+                            if h == "Original" or h == "Original (KR)" or "(KOR)" in h:
                                 korean_cols.append(idx)
 
                 # Fallback to column A if no Korean columns found
