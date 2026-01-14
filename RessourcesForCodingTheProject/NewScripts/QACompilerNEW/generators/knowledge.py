@@ -222,7 +222,6 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
     groups_by_key: Dict[str, GroupNode] = {}
     mega_roots_by_key: Dict[str, GroupNode] = {}
     pending_knowledges: List[Tuple[str, KnowledgeItem]] = []
-    seen_knowledge_keys: set = set()
 
     log.info("Phase 1: Building group hierarchy...")
 
@@ -251,10 +250,8 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
                 for ch in node:
                     if ch.tag == "KnowledgeInfo":
                         ki = extract_knowledge_info(ch)
-                        if ki and ki.strkey not in seen_knowledge_keys:
+                        if ki:
                             existing.knowledges.append(ki)
-                            if ki.strkey:
-                                seen_knowledge_keys.add(ki.strkey)
                 return None
 
             group = GroupNode(
@@ -276,11 +273,7 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
                 elif ch.tag == "KnowledgeInfo":
                     ki = extract_knowledge_info(ch)
                     if ki:
-                        if ki.strkey and ki.strkey in seen_knowledge_keys:
-                            continue
                         group.knowledges.append(ki)
-                        if ki.strkey:
-                            seen_knowledge_keys.add(ki.strkey)
 
             return group
 
@@ -304,28 +297,18 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
             for ch in node:
                 if ch.tag == "Knowledge":
                     group_key = ch.get("KnowledgeGroupKey") or ""
-                    strkey = ch.get("StrKey") or ""
                     if group_key:
-                        if strkey and strkey in seen_knowledge_keys:
-                            continue
                         ki = extract_character_knowledge(ch)
                         if ki:
                             pending_knowledges.append((group_key, ki))
-                            if strkey:
-                                seen_knowledge_keys.add(strkey)
                 if ch.tag == "CharacterInfo":
                     for inner in ch:
                         if inner.tag == "Knowledge":
                             group_key = inner.get("KnowledgeGroupKey") or ""
-                            strkey = inner.get("StrKey") or ""
                             if group_key:
-                                if strkey and strkey in seen_knowledge_keys:
-                                    continue
                                 ki = extract_character_knowledge(inner)
                                 if ki:
                                     pending_knowledges.append((group_key, ki))
-                                    if strkey:
-                                        seen_knowledge_keys.add(strkey)
                 find_character_knowledge(ch)
 
         find_top_level_groups(root_el)
