@@ -353,7 +353,9 @@ Coverage and word count read from these columns (1-based):
 
 ### Output
 - Terminal: Coverage report + Word count table
-- Excel: `WordCount_Report_YYYYMMDD_HHMMSS.xlsx` in GeneratedDatasheets folder
+- Excel: `Coverage_Report_YYYYMMDD_HHMMSS.xlsx` in GeneratedDatasheets folder
+  - Sheet 1: **Coverage Report** (unique strings, words covered, % coverage per category)
+  - Sheet 2: **Word Count by Category** (Korean words, Translation words per category)
 
 ### Usage
 ```bash
