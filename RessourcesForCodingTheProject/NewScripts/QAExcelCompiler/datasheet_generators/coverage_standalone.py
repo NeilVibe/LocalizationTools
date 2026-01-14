@@ -75,6 +75,12 @@ VOICE_RECORDING_FOLDER = Path(r"F:\perforce\cd\mainline\resource\editordata\Voic
 # Non-priority folders (under System/) - excluded from CLEAN report
 NON_PRIORITY_FOLDERS = {"ItemGroup", "Gimmick", "MultiChange"}
 
+# Output folder for missing strings XML files
+MISSING_STRINGS_OUTPUT = SCRIPT_DIR / "Missing_Strings"
+
+# Threshold for generating XML output (percentage of CLEAN total)
+XML_OUTPUT_THRESHOLD_PCT = 1.0
+
 # =============================================================================
 # HELPERS
 # =============================================================================
@@ -508,6 +514,10 @@ def build_export_index(export_folder: Path, depth: int = 2) -> Dict[str, str]:
 
     xml_count = 0
     for xml in export_folder.rglob("*.xml"):
+        # Skip languagedata.xml files - they contain ALL strings, not categorized
+        if xml.name.lower() == "languagedata.xml":
+            continue
+
         try:
             root = parse_xml_file(xml)
             if root is None:
@@ -551,6 +561,7 @@ class UnconsumedAnalysis:
     """Analysis of unconsumed strings by category."""
     category_breakdown: Dict[str, int] = field(default_factory=dict)
     category_words: Dict[str, int] = field(default_factory=dict)
+    category_strings: Dict[str, Set[str]] = field(default_factory=dict)  # Actual strings per category
     total_strings: int = 0
     total_words: int = 0
 
@@ -588,8 +599,127 @@ def analyze_unconsumed(
     for cat, strings in category_strings.items():
         analysis.category_breakdown[cat] = len(strings)
         analysis.category_words[cat] = count_words_in_set(strings)
+        analysis.category_strings[cat] = strings
 
     return analysis
+
+
+def load_languagedata_nodes(export_folder: Path) -> Dict[str, ET._Element]:
+    """Load languagedata.xml and build Korean string → LocStr element mapping.
+
+    Args:
+        export_folder: Path to export folder containing languagedata.xml
+
+    Returns:
+        Dict mapping normalized Korean string → LocStr XML element
+    """
+    print("\nLoading languagedata.xml for node extraction...")
+
+    nodes: Dict[str, ET._Element] = {}
+
+    # Find languagedata.xml in export folder
+    lang_file = export_folder / "languagedata.xml"
+    if not lang_file.exists():
+        # Try to find it recursively
+        lang_files = list(export_folder.rglob("languagedata.xml"))
+        if lang_files:
+            lang_file = lang_files[0]
+        else:
+            print("  WARNING: languagedata.xml not found in export folder")
+            return nodes
+
+    print(f"  Using: {lang_file}")
+
+    root = parse_xml_file(lang_file)
+    if root is None:
+        print("  ERROR: Failed to parse languagedata.xml")
+        return nodes
+
+    for loc in root.iter("LocStr"):
+        origin = loc.get("StrOrigin") or ""
+        if origin:
+            normalized = normalize_placeholders(origin)
+            if normalized:
+                nodes[normalized] = loc
+
+    print(f"  Loaded {len(nodes):,} LocStr nodes")
+    return nodes
+
+
+def generate_missing_xml_files(
+    analysis: UnconsumedAnalysis,
+    lang_nodes: Dict[str, ET._Element],
+    output_folder: Path,
+    threshold_pct: float = 1.0,
+) -> int:
+    """Generate XML files for categories above threshold percentage.
+
+    Args:
+        analysis: Unconsumed strings analysis
+        lang_nodes: Mapping from Korean string → LocStr element
+        output_folder: Output folder path
+        threshold_pct: Minimum percentage of CLEAN total to generate file
+
+    Returns:
+        Number of files generated
+    """
+    print(f"\nGenerating XML files for categories >= {threshold_pct}% of missing strings...")
+
+    # Categories to exclude (same as CLEAN report)
+    excluded_cats = {"Not in Export", "Non-Priority"}
+
+    # Calculate CLEAN total
+    clean_total = sum(
+        count for cat, count in analysis.category_breakdown.items()
+        if cat not in excluded_cats
+    )
+
+    if clean_total == 0:
+        print("  No CLEAN strings to process")
+        return 0
+
+    # Create output folder
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    files_created = 0
+
+    for cat, strings in analysis.category_strings.items():
+        if cat in excluded_cats:
+            continue
+
+        count = len(strings)
+        pct = (count / clean_total * 100) if clean_total > 0 else 0
+
+        if pct < threshold_pct:
+            continue
+
+        # Build XML with concatenated LocStr nodes
+        root = ET.Element("root")
+
+        nodes_added = 0
+        for korean_str in sorted(strings):
+            node = lang_nodes.get(korean_str)
+            if node is not None:
+                # Deep copy the node to avoid modifying original
+                root.append(node)
+                nodes_added += 1
+
+        if nodes_added == 0:
+            continue
+
+        # Generate filename from category (replace / with _)
+        safe_cat = cat.replace("/", "_").replace("\\", "_")
+        out_file = output_folder / f"{safe_cat}.xml"
+
+        # Write XML file
+        tree = ET.ElementTree(root)
+        tree.write(str(out_file), encoding="utf-8", xml_declaration=True, pretty_print=True)
+
+        print(f"  {safe_cat}.xml: {nodes_added:,} nodes ({pct:.1f}%)")
+        files_created += 1
+
+    print(f"  Generated {files_created} XML files in: {output_folder.name}/")
+    return files_created
 
 
 def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
@@ -662,7 +792,7 @@ def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
     print(f"Total unconsumed (CLEAN): {clean_strings:,} unique strings ({clean_words:,} words)")
     print()
 
-    print(f"{'Folder/Subfolder':<45} {'Strings':>12} {'Words':>12} {'% of CLEAN':>15}")
+    print(f"{'Folder/Subfolder':<45} {'Strings':>12} {'Words':>12} {'% Missing':>15}")
     print("-" * width)
 
     for cat, count in sorted_cats:
@@ -728,10 +858,50 @@ def main():
 
         # Print unconsumed report
         print_unconsumed_report(unconsumed_analysis)
+
+        # Calculate and print CLEAN COVERAGE SUMMARY
+        excluded_cats = {"Not in Export", "Non-Priority"}
+        excluded_count = sum(
+            count for cat, count in unconsumed_analysis.category_breakdown.items()
+            if cat in excluded_cats
+        )
+        excluded_words = sum(
+            unconsumed_analysis.category_words.get(cat, 0)
+            for cat in excluded_cats
+            if cat in unconsumed_analysis.category_breakdown
+        )
+
+        # CLEAN total = master total - excluded unconsumed
+        clean_master_total = report.total_master_strings - excluded_count
+        clean_master_words = report.total_master_words - excluded_words
+
+        print("=" * 75)
+        print("                         COVERAGE SUMMARY")
+        print("=" * 75)
+        print()
+
+        raw_pct = (report.total_covered_strings / report.total_master_strings * 100) if report.total_master_strings > 0 else 0
+        clean_pct = (report.total_covered_strings / clean_master_total * 100) if clean_master_total > 0 else 0
+
+        print(f"RAW COVERAGE:   {report.total_covered_strings:,} / {report.total_master_strings:,} strings ({raw_pct:.1f}%)")
+        print(f"CLEAN COVERAGE: {report.total_covered_strings:,} / {clean_master_total:,} strings ({clean_pct:.1f}%)")
+        print()
+        print(f"  (CLEAN excludes {excluded_count:,} strings from Non-Priority + Not in Export)")
+        print("=" * 75)
+
+        # 7. Generate XML files for missing strings (categories >= 1%)
+        lang_nodes = load_languagedata_nodes(EXPORT_FOLDER)
+        if lang_nodes:
+            generate_missing_xml_files(
+                unconsumed_analysis,
+                lang_nodes,
+                MISSING_STRINGS_OUTPUT,
+                XML_OUTPUT_THRESHOLD_PCT,
+            )
     else:
         print("\n*** 100% COVERAGE - No unconsumed strings! ***\n")
 
-    print("Done!")
+    print("\nDone!")
 
 
 if __name__ == "__main__":
