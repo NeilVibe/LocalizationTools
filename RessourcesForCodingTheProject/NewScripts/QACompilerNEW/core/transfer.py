@@ -85,7 +85,7 @@ def find_file_in_folder(filename: str, folder_path: Path) -> Optional[str]:
     """
     Find a file in a folder by name (case-insensitive).
 
-    Returns relative path if found, None otherwise.
+    Returns filename (not full path) if found, None otherwise.
     """
     if not folder_path or not folder_path.exists():
         return None
@@ -93,7 +93,7 @@ def find_file_in_folder(filename: str, folder_path: Path) -> Optional[str]:
     filename_lower = filename.lower()
     for f in folder_path.iterdir():
         if f.is_file() and f.name.lower() == filename_lower:
-            return str(f)
+            return f.name  # Return filename only, not full path
     return None
 
 
@@ -169,10 +169,11 @@ def find_matching_row_for_item_transfer(
         match_type: "name+desc+stringid" or "name+desc"
     """
     old_stringid = sanitize_stringid_for_match(old_row_data.get("stringid"))
-    old_name = str(old_row_data.get("item_name", "")).strip()
-    old_desc = str(old_row_data.get("item_desc", "")).strip()
+    old_item_name = str(old_row_data.get("item_name", "")).strip()
+    old_item_desc = str(old_row_data.get("item_desc", "")).strip()
 
-    if not old_name and not old_desc:
+    # Need at least ItemName to match
+    if not old_item_name:
         return None, None
 
     name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
@@ -186,7 +187,7 @@ def find_matching_row_for_item_transfer(
             new_name = str(new_ws.cell(row, name_col).value or "").strip()
             new_desc = str(new_ws.cell(row, desc_col).value or "").strip()
 
-            if new_stringid == old_stringid and new_name == old_name and new_desc == old_desc:
+            if new_stringid == old_stringid and new_name == old_item_name and new_desc == old_item_desc:
                 return row, "name+desc+stringid"
 
     # Step 2: Fall back to ItemName + ItemDesc only
@@ -194,7 +195,7 @@ def find_matching_row_for_item_transfer(
         new_name = str(new_ws.cell(row, name_col).value or "").strip()
         new_desc = str(new_ws.cell(row, desc_col).value or "").strip()
 
-        if new_name == old_name and new_desc == old_desc:
+        if new_name == old_item_name and new_desc == old_item_desc:
             return row, "name+desc"
 
     return None, None
