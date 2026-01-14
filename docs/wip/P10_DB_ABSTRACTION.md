@@ -249,7 +249,8 @@ async def list_files(
 
 ## Testing
 
-**API Verified Working (2026-01-14):**
+### API Verified Working (2026-01-14)
+
 - Projects endpoint ✅
 - Platforms endpoint ✅
 - Files endpoint ✅
@@ -258,6 +259,58 @@ async def list_files(
 - Trash endpoint ✅
 - Folders endpoint ✅
 - Sync endpoint ✅
+
+### Unit Test Mocking Pattern (Session 43)
+
+**Mock at Repository Level, NOT DB Level:**
+
+```python
+# ❌ OLD PATTERN (DB mocking - BROKEN after P10)
+fastapi_app.dependency_overrides[get_async_db] = override_get_db
+mock_db.execute = AsyncMock(return_value=mock_result)
+
+# ✅ NEW PATTERN (Repository mocking - CORRECT)
+fastapi_app.dependency_overrides[get_project_repository] = lambda: mock_project_repo
+repos["project_repo"].get.return_value = sample_project
+```
+
+**Fixture Structure:**
+
+```python
+@pytest.fixture
+def mock_file_repo():
+    """Mock FileRepository with all methods as AsyncMock."""
+    repo = MagicMock()
+    repo.get = AsyncMock(return_value=None)
+    repo.get_all = AsyncMock(return_value=[])
+    repo.create = AsyncMock(return_value=None)
+    repo.update = AsyncMock(return_value=None)
+    repo.delete = AsyncMock(return_value=False)
+    repo.get_for_file = AsyncMock(return_value=([], 0))  # Tuple!
+    repo.generate_unique_name = AsyncMock(
+        side_effect=lambda *args, **kwargs: kwargs.get('base_name') or args[0]
+    )
+    return repo
+```
+
+**Return Types Must Match Interface:**
+
+| Method | Return Type |
+|--------|-------------|
+| `get()` | `Optional[Dict]` |
+| `get_all()` | `List[Dict]` |
+| `get_for_file()` | `Tuple[List[Dict], int]` |
+| `create()` | `Dict` |
+| `delete()` | `bool` |
+
+### Test Files Updated
+
+| File | Tests | Status |
+|------|-------|--------|
+| `test_mocked_full.py` | 52 | ✅ All pass |
+| `test_routes_qa.py` | 16 | ✅ All pass |
+| All LDM unit tests | 131 | ✅ All pass |
+| All unit tests | 871 | ✅ All pass (33 skipped) |
 
 ---
 
@@ -268,4 +321,4 @@ async def list_files(
 
 ---
 
-*Last updated: 2026-01-14 - **100% COMPLETE** - All 20 routes now use Repository Pattern*
+*Last updated: 2026-01-14 - **100% COMPLETE** - All 20 routes + all tests now use Repository Pattern*

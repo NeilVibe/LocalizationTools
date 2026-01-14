@@ -22,9 +22,9 @@ from config import CATEGORIES, ensure_folders_exist
 # =============================================================================
 
 WINDOW_TITLE = "QA Compiler Suite v2.0"
-WINDOW_WIDTH = 500
-WINDOW_HEIGHT = 550
-BUTTON_WIDTH = 40
+WINDOW_WIDTH = 700
+WINDOW_HEIGHT = 700
+BUTTON_WIDTH = 50
 
 
 # =============================================================================
