@@ -129,7 +129,7 @@ def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int, Dic
 
     for loc in root.iter("LocStr"):
         origin = loc.get("StrOrigin") or ""
-        translation = loc.get("StrValue") or ""
+        translation = loc.get("Str") or ""
         if origin:
             normalized = normalize_placeholders(origin)
             if normalized:
@@ -315,7 +315,7 @@ def map_string_ids_to_master(
         sid = loc.get("StringId")
         if sid and sid in string_ids:
             origin = loc.get("StrOrigin") or ""
-            translation = loc.get("StrValue") or ""
+            translation = loc.get("Str") or ""
             if origin:
                 normalized = normalize_placeholders(origin)
                 if normalized:
