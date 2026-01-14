@@ -652,25 +652,38 @@ def print_coverage_report(report: CoverageReport) -> None:
     print("                    WORD COUNT BY CATEGORY")
     print("=" * width)
     print()
-    print(f"{'Category':<20} {'Korean Words':>18} {'Translation Words':>18}")
+    print(f"{'Category':<30} {'Korean Words':>18} {'Translation Words':>18}")
     print("-" * width)
 
     total_kr = 0
     total_tr = 0
 
     for cat in report.categories:
-        print(f"{cat.name:<20} {cat.korean_word_count:>18,} {cat.translation_word_count:>18,}")
-        total_kr += cat.korean_word_count
-        total_tr += cat.translation_word_count
-
-        # Sub-categories (indented)
+        # Calculate category total (main + all sub-categories)
+        cat_total_kr = cat.korean_word_count
+        cat_total_tr = cat.translation_word_count
         for sub in cat.sub_categories:
-            print(f"  {'└─ ' + sub.name:<17} {sub.korean_word_count:>18,} {sub.translation_word_count:>18,}")
-            total_kr += sub.korean_word_count
-            total_tr += sub.translation_word_count
+            cat_total_kr += sub.korean_word_count
+            cat_total_tr += sub.translation_word_count
+
+        # Show category with TOTAL if it has sub-categories
+        if cat.sub_categories:
+            print(f"{cat.name + ' (TOTAL)':<30} {cat_total_kr:>18,} {cat_total_tr:>18,}")
+            # Show main category detail
+            print(f"  {'├─ ' + cat.name + ' (main)':<27} {cat.korean_word_count:>18,} {cat.translation_word_count:>18,}")
+            # Show sub-categories
+            for i, sub in enumerate(cat.sub_categories):
+                prefix = "└─" if i == len(cat.sub_categories) - 1 else "├─"
+                print(f"  {prefix + ' ' + sub.name:<27} {sub.korean_word_count:>18,} {sub.translation_word_count:>18,}")
+        else:
+            # No sub-categories, just show the category
+            print(f"{cat.name:<30} {cat.korean_word_count:>18,} {cat.translation_word_count:>18,}")
+
+        total_kr += cat_total_kr
+        total_tr += cat_total_tr
 
     print("-" * width)
-    print(f"{'TOTAL':<20} {total_kr:>18,} {total_tr:>18,}")
+    print(f"{'GRAND TOTAL':<30} {total_kr:>18,} {total_tr:>18,}")
     print("=" * width)
     print()
 
