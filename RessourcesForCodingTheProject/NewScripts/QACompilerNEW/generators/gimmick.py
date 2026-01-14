@@ -142,7 +142,6 @@ def index_iteminfo(static_folder: Path) -> Dict[str, ItemData]:
 # =============================================================================
 
 def load_string_key_table(path: Path) -> Dict[str, str]:
-    """Load StringKeyTable mapping StrKey -> numeric StringID."""
     log.info("Loading StringKeyTable: %s", path)
     root = parse_xml_file(path)
     if root is None:

@@ -12,6 +12,7 @@ Contains:
 - Common styles
 """
 
+import os
 import re
 import logging
 from pathlib import Path
@@ -85,79 +86,90 @@ def is_good_translation(text: str) -> bool:
 
 
 # =============================================================================
-# XML SANITIZATION
+# XML SANITIZATION (EXACT COPY FROM MONOLITH)
 # =============================================================================
 
-_bad_entity_re = re.compile(r"&(?!lt;|gt;|amp;|apos;|quot;)")
+_bad_entity_re = re.compile(r'&(?!lt;|gt;|amp;|apos;|quot;)')
 
 
-def _fix_entities(txt: str) -> str:
-    """Replace unescaped ampersands with &amp;"""
+def _fix_bad_entities(txt: str) -> str:
     return _bad_entity_re.sub("&amp;", txt)
 
 
-def _escape_newlines_in_seg(txt: str) -> str:
-    """Escape newlines inside <seg> tags."""
+def _preprocess_newlines(raw: str) -> str:
     def repl(m: re.Match) -> str:
-        seg = m.group(1).replace("\n", "&lt;br/&gt;").replace("\r", "")
-        return f"<seg>{seg}</seg>"
-    return re.sub(r"<seg>(.*?)</seg>", repl, txt, flags=re.DOTALL)
+        inner = m.group(1).replace("\n", "&lt;br/&gt;").replace("\r\n", "&lt;br/&gt;")
+        return f"<seg>{inner}</seg>"
+    return re.sub(r"<seg>(.*?)</seg>", repl, raw, flags=re.DOTALL)
 
 
 def sanitize_xml(raw: str) -> str:
-    """
-    Sanitize XML content for parsing:
-    - Fix unescaped entities
-    - Escape newlines in <seg> tags
-    - Handle malformed attributes
-    """
-    raw = _fix_entities(raw)
-    raw = _escape_newlines_in_seg(raw)
-
-    # Fix < inside attribute values
-    raw = re.sub(
-        r'="([^"]*<[^"]*)"',
-        lambda m: '="' + m.group(1).replace("<", "&lt;") + '"',
-        raw
-    )
-
-    # Fix & inside attribute values
-    raw = re.sub(
-        r'="([^"]*&[^ltgapoqu][^"]*)"',
-        lambda m: '="' + m.group(1).replace("&", "&amp;") + '"',
-        raw
-    )
-
-    return raw
+    raw = _fix_bad_entities(raw)
+    raw = _preprocess_newlines(raw)
+    raw = re.sub(r'="([^"]*<[^"]*)"',
+                 lambda m: '="' + m.group(1).replace("<", "&lt;") + '"', raw)
+    raw = re.sub(r'="([^"]*&[^ltgapoqu][^"]*)"',
+                 lambda m: '="' + m.group(1).replace("&", "&amp;") + '"', raw)
+    # Tag stack repair for malformed XML
+    tag_open  = re.compile(r"<([A-Za-z0-9_]+)(\s[^>]*)?>")
+    tag_close = re.compile(r"</([A-Za-z0-9_]+)>")
+    stack: List[str] = []
+    out:   List[str] = []
+    for line in raw.splitlines():
+        stripped = line.strip()
+        mo = tag_open.match(stripped)
+        if mo:
+            stack.append(mo.group(1)); out.append(line); continue
+        mc = tag_close.match(stripped)
+        if mc:
+            if stack and stack[-1] == mc.group(1):
+                stack.pop(); out.append(line)
+            else:
+                out.append(stack and f"</{stack.pop()}>" or line)
+            continue
+        if stripped.startswith("</>"):
+            out.append(stack and line.replace("</>", f"</{stack.pop()}>") or line)
+            continue
+        out.append(line)
+    while stack:
+        out.append(f"</{stack.pop()}>")
+    return "\n".join(out)
 
 
 def parse_xml_file(path: Path) -> Optional[ET._Element]:
-    """
-    Parse an XML file with sanitization.
-
-    Returns:
-        Root element or None if parsing fails
-    """
     try:
         raw = path.read_text(encoding="utf-8")
     except Exception:
         return None
-
-    raw = sanitize_xml(raw)
-
+    cleaned = sanitize_xml(raw)
+    wrapped = f"<ROOT>\n{cleaned}\n</ROOT>"
     try:
-        return ET.fromstring(raw.encode("utf-8"))
+        return ET.fromstring(
+            wrapped.encode("utf-8"),
+            parser=ET.XMLParser(huge_tree=True)
+        )
     except ET.XMLSyntaxError:
-        return None
+        try:
+            return ET.fromstring(
+                wrapped.encode("utf-8"),
+                parser=ET.XMLParser(recover=True, huge_tree=True)
+            )
+        except ET.XMLSyntaxError:
+            return None
 
 
-def iter_xml_files(folder: Path, pattern: str = "*.xml") -> Iterator[Path]:
+def iter_xml_files(
+    root: Path,
+    suffixes: Tuple[str, ...] = (".xml", ".seqc")
+) -> Iterator[Path]:
     """Recursively iterate over XML files in a folder."""
-    if not folder.exists():
+    if not root.exists():
         return
-    for path in folder.rglob(pattern):
-        if path.is_file():
-            yield path
+    for dp, _, files in os.walk(root):
+        for fn in files:
+            low = fn.lower()
+            if any(low.endswith(suf) for suf in suffixes):
+                yield Path(dp) / fn
 
 
 # =============================================================================

@@ -192,24 +192,16 @@ def get_display_name(
 # =============================================================================
 
 def load_string_key_table(path: Path) -> Dict[str, str]:
-    """Load StringKeyTable for StringID lookup."""
     log.info("Loading StringKeyTable: %s", path)
-    if not path.exists():
-        log.warning("StringKeyTable file not found: %s", path)
-        return {}
-
     root = parse_xml_file(path)
     if root is None:
-        log.error("Cannot parse StringKeyTable")
-        return {}
-
+        sys.exit("Aborting – cannot parse StringKeyTable")
     tbl: Dict[str, str] = {}
     for el in root.iter("StringKeyMap"):
         num = el.get("Key") or ""
         sk = el.get("StrKey") or ""
         if num and sk:
             tbl[sk.lower()] = num
-
     log.info("StringKeyTable entries: %d", len(tbl))
     return tbl
 
