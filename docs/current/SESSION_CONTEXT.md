@@ -1,6 +1,54 @@
 # Session Context
 
-> Last Updated: 2026-01-14 (Session 41 - P10 DB Abstraction Layer 100% COMPLETE)
+> Last Updated: 2026-01-14 (Session 42 - QACompilerNEW 1:1 Monolith Alignment)
+
+---
+
+## SESSION 42 COMPLETE ✅
+
+### QACompilerNEW - 1:1 Monolith Alignment
+
+**Goal:** Ensure QACompilerNEW is functionally identical to the monolith (QAExcelCompiler).
+
+**Fixes Applied:**
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `config.py` | Missing Gimmick clustering | Added `"Gimmick": "Item"` |
+| `compiler.py` | Case-sensitive Item check | Changed to `category.lower() == "item"` |
+| `compiler.py` | Created missing sheets | Changed to skip with warning (like monolith) |
+| `processing.py` | Complex fallback matching | Simplified to direct index matching only |
+| `knowledge.py` | Font styling incomplete | Added `fill != _no_colour_fill` check |
+
+**Code Removed (unused fallback logic):**
+- `get_row_signature()` - 24 lines
+- `find_matching_row_fallback()` - 29 lines
+- `find_matching_row_item_fallback()` - 44 lines
+- `unmatched_rows` tracking
+
+**Verified 1:1 Identical:**
+
+| Module | Status |
+|--------|--------|
+| Transfer (QA old → new) | ✓ All 7 functions identical |
+| Compiler | ✓ Fixed (2 issues) |
+| Processing | ✓ Direct index matching |
+| Discovery | ✓ Folder patterns identical |
+| Excel ops | ✓ Master creation identical |
+| All 8 generators | ✓ Aligned |
+
+**Clustering Confirmed:**
+```
+Master_System.xlsx = System + Skill + Help
+Master_Item.xlsx   = Item + Gimmick
+```
+
+**Commits:**
+
+| Commit | Description |
+|--------|-------------|
+| `6224ddd` | Fix: QACompilerNEW 1:1 alignment with monolith |
+| `d2cd32b` | Chore: Update QACompilerNEW.zip |
 
 ---
 
