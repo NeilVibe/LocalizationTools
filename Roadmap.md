@@ -526,11 +526,11 @@ Transformed LDM from "private by default" to "public by default with optional re
 
 | Task | Status | Description |
 |------|--------|-------------|
-| TM Tree Folder Mirroring | TODO | `get_tree()` returns `folders: []` - needs to mirror File Explorer |
+| TM Tree Folder Mirroring | ✅ FIXED | Session 38 - TM tree now queries SQLite for local folders |
 | P10 Permission Gap | ✅ FIXED | Routes now use Repository Pattern with perms baked in (Session 51) |
 | Windows PATH Tests | TODO | 7 path tests for Windows builds (downloads, uploads, models, etc.) |
 | CI/CD Health | TODO | Verify all tests pass, builds succeed |
-| Playwright Test Fixes | TODO | 67 UI tests failing due to login selector mismatch |
+| Playwright Test Fixes | ✅ FIXED | 154 passed, 17 skipped, 0 failed |
 
 ### Completed Priorities
 
