@@ -210,6 +210,10 @@ CATEGORY_TO_MASTER = {
 │     QAfolder → Masterfolder_EN / Masterfolder_CN │
 │     [Build Master Files]                         │
 ├──────────────────────────────────────────────────┤
+│  4. Coverage Analysis                            │
+│     Calculate coverage + word counts             │
+│     [Run Coverage Analysis]                      │
+├──────────────────────────────────────────────────┤
 │  Status: Ready                                   │
 │  [═══════════════════════════════════════]       │
 └──────────────────────────────────────────────────┘
@@ -220,17 +224,27 @@ CATEGORY_TO_MASTER = {
 ### Generated Datasheets
 ```
 GeneratedDatasheets/
-├── Quest_LQA/
+├── Character_LQA_All/
+│   ├── Character_LQA_ENG.xlsx
+│   └── Character_LQA_*.xlsx
+├── QuestData_Map_All/
 │   ├── Quest_LQA_ENG.xlsx
-│   ├── Quest_LQA_FRE.xlsx
-│   └── ...
-├── Knowledge_LQA/
-├── Item_LQA/
-├── Region_LQA/
-├── Character_LQA/
-├── Skill_LQA/
-├── Help_LQA/
-└── Gimmick_LQA/
+│   └── Quest_LQA_*.xlsx
+├── ItemData_Map_All/
+│   ├── Item_Full_LQA/           ← ENG files here (nested!)
+│   │   ├── Item_LQA_ENG.xlsx
+│   │   └── Item_LQA_*.xlsx
+│   └── Item_Sorted_LQA/
+├── Knowledge_LQA_All/
+│   └── Knowledge_LQA_ENG.xlsx
+├── Skill_LQA_All/
+│   └── LQA_Skill_ENG.xlsx
+├── Region_LQA_v3/
+│   └── Region_LQA_ENG.xlsx
+├── Gimmick_LQA_Output/
+│   └── Gimmick_LQA_ENG.xlsx
+└── GameAdvice_LQA_All/
+    └── LQA_GameAdvice_ENG.xlsx
 ```
 
 ### Excel Columns (per sheet)
@@ -302,6 +316,51 @@ python -c "from generators import generate_datasheets; print('OK')"
 # CLI test
 python main.py --list
 python main.py --version
+```
+
+## Coverage Analysis (`tracker/coverage.py`)
+
+Calculates coverage of language data by generated datasheets and produces word count reports.
+
+### Features
+1. **Coverage Report** - Match Excel Korean strings against LOC master using consume technique
+2. **Word Count Table** - Count Korean + Translation words from Excel columns
+3. **Additional Coverage** - Quest includes System/Quest, Item includes System/LookAt
+4. **Excel Export** - Formatted word count report with colors
+
+### Column Configuration
+
+Coverage and word count read from these columns (1-based):
+
+| Category | Korean Columns | Translation Columns |
+|----------|----------------|---------------------|
+| Character | 1 | 2 |
+| Quest | 1 | 2 |
+| Knowledge | 1 | 2 |
+| Skill | 1 | 2 |
+| Region | 1 | 2 |
+| Help | 1 | 2 |
+| Item | 6, 8 (Name, Desc) | 7, 9 |
+| Gimmick | 6, 9, 11 (GimmickName, ItemName, ItemDesc) | 7, 10, 12 |
+
+### Additional Sources (for Coverage)
+
+| Category | Additional Source | Description |
+|----------|-------------------|-------------|
+| Quest | System/Quest | Quest system strings from export folder |
+| Quest | VoiceRecordingSheet | Voice recording strings |
+| Item | System/LookAt | LookAt strings from export folder |
+
+### Output
+- Terminal: Coverage report + Word count table
+- Excel: `WordCount_Report_YYYYMMDD_HHMMSS.xlsx` in GeneratedDatasheets folder
+
+### Usage
+```bash
+# Via GUI: Click "Run Coverage Analysis" button
+
+# Standalone (from tracker folder):
+python coverage.py
 ```
 
 ## Notes
