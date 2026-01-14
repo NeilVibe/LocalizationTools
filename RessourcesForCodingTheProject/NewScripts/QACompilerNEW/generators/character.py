@@ -391,7 +391,7 @@ def generate_character_datasheets() -> Dict:
 
     # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
-    output_folder = DATASHEET_OUTPUT / "Character_LQA"
+    output_folder = DATASHEET_OUTPUT / "Character_LQA_All"
     output_folder.mkdir(exist_ok=True)
 
     # Check paths

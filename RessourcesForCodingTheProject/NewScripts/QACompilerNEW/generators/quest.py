@@ -1146,7 +1146,7 @@ def generate_quest_datasheets() -> Dict:
 
     # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
-    output_folder = DATASHEET_OUTPUT / "Quest_LQA"
+    output_folder = DATASHEET_OUTPUT / "QuestData_Map_All"
     output_folder.mkdir(exist_ok=True)
 
     # Check critical paths
