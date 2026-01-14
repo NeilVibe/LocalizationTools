@@ -1213,6 +1213,11 @@ def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
 # MAIN
 # =============================================================================
 
+def run_coverage_analysis():
+    """Alias for main() - for backwards compatibility with tracker package."""
+    main()
+
+
 def main():
     print()
     print("=" * 70)
