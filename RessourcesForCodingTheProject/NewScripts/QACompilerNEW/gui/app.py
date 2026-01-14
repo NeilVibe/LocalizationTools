@@ -214,7 +214,8 @@ class QACompilerSuiteGUI:
                     "Generator modules not yet implemented.\nPlease run from original scripts."
                 ))
             except Exception as e:
-                self.root.after(0, lambda: self._on_generate_error(str(e)))
+                err_msg = str(e)
+                self.root.after(0, lambda msg=err_msg: self._on_generate_error(msg))
 
         thread = threading.Thread(target=run, daemon=True)
         thread.start()
@@ -256,9 +257,11 @@ class QACompilerSuiteGUI:
                     success = transfer_qa_files()
                     self.root.after(0, lambda: self._on_transfer_complete(success))
                 except Exception as e:
-                    self.root.after(0, lambda: self._on_transfer_error(str(e)))
+                    err_msg = str(e)
+                    self.root.after(0, lambda msg=err_msg: self._on_transfer_error(msg))
             except Exception as e:
-                self.root.after(0, lambda: self._on_transfer_error(str(e)))
+                err_msg = str(e)
+                self.root.after(0, lambda msg=err_msg: self._on_transfer_error(msg))
 
         thread = threading.Thread(target=run, daemon=True)
         thread.start()
@@ -299,9 +302,11 @@ class QACompilerSuiteGUI:
                     compile_main()
                     self.root.after(0, self._on_build_complete)
                 except Exception as e:
-                    self.root.after(0, lambda: self._on_build_error(str(e)))
+                    err_msg = str(e)
+                    self.root.after(0, lambda msg=err_msg: self._on_build_error(msg))
             except Exception as e:
-                self.root.after(0, lambda: self._on_build_error(str(e)))
+                err_msg = str(e)
+                self.root.after(0, lambda msg=err_msg: self._on_build_error(msg))
 
         thread = threading.Thread(target=run, daemon=True)
         thread.start()
@@ -345,9 +350,11 @@ class QACompilerSuiteGUI:
 
                 self.root.after(0, lambda: self._on_coverage_complete(report))
             except ImportError as e:
-                self.root.after(0, lambda: self._on_coverage_error(f"Coverage module not available: {e}"))
+                err_msg = f"Coverage module not available: {e}"
+                self.root.after(0, lambda msg=err_msg: self._on_coverage_error(msg))
             except Exception as e:
-                self.root.after(0, lambda: self._on_coverage_error(str(e)))
+                err_msg = str(e)
+                self.root.after(0, lambda msg=err_msg: self._on_coverage_error(msg))
 
         thread = threading.Thread(target=run, daemon=True)
         thread.start()
