@@ -511,6 +511,68 @@ def load_wordcount_from_excel(xlsx_path: Path, korean_cols, translation_cols) ->
     return CategoryWordCount(korean_words=korean_words, translation_words=translation_words)
 
 
+def load_strings_from_export_folder(export_folder: Path, language_folder: Path = None) -> Set[str]:
+    """Load Korean strings from export XML folder by mapping StringID to LOC.
+
+    Args:
+        export_folder: Path to export subfolder (e.g., System/Quest)
+        language_folder: Path to language data folder (default: LANGUAGE_FOLDER)
+
+    Returns:
+        Set of normalized Korean strings
+    """
+    if not export_folder.exists():
+        return set()
+
+    lang_folder = language_folder or LANGUAGE_FOLDER
+
+    korean_strings: Set[str] = set()
+
+    # Build StringID set from export XML
+    string_ids: Set[str] = set()
+    for xml_file in export_folder.rglob("*.xml"):
+        if xml_file.name.lower() == "languagedata.xml":
+            continue
+        root = parse_xml_file(xml_file)
+        if root is None:
+            continue
+        for loc in root.iter("LocStr"):
+            sid = loc.get("StringId")
+            if sid:
+                string_ids.add(sid)
+
+    if not string_ids:
+        return korean_strings
+
+    # Map StringIDs to LOC ENG to get Korean text
+    lang_files = sorted(lang_folder.glob("languagedata_*.xml"))
+    target_file = None
+    for f in lang_files:
+        if "eng" in f.stem.lower():
+            target_file = f
+            break
+    if target_file is None and lang_files:
+        target_file = lang_files[0]
+
+    if target_file is None:
+        return korean_strings
+
+    root = parse_xml_file(target_file)
+    if root is None:
+        return korean_strings
+
+    for loc in root.iter("LocStr"):
+        sid = loc.get("StringId")
+        if sid and sid in string_ids:
+            origin = loc.get("StrOrigin") or ""
+            if origin:
+                normalized = normalize_placeholders(origin)
+                if normalized:
+                    korean_strings.add(normalized)
+
+    return korean_strings
+
+
 def collect_category_wordcounts() -> Dict[str, CategoryWordCount]:
     """Collect word counts (Korean + Translation) from all category Excel files."""
     print()
@@ -556,17 +618,20 @@ def collect_category_wordcounts() -> Dict[str, CategoryWordCount]:
     return category_counts
 
 
-def load_additional_wordcount(export_folder: Path) -> CategoryWordCount:
+def load_additional_wordcount(export_folder: Path, language_folder: Path = None) -> CategoryWordCount:
     """Load word counts from export XML folder by mapping to LOC ENG.
 
     Args:
         export_folder: Path to export subfolder (e.g., System/Quest)
+        language_folder: Path to language data folder (default: LANGUAGE_FOLDER)
 
     Returns:
         CategoryWordCount with Korean and Translation word totals
     """
     if not export_folder.exists():
         return CategoryWordCount()
+
+    lang_folder = language_folder or LANGUAGE_FOLDER
 
     korean_words = 0
     translation_words = 0
@@ -588,7 +653,7 @@ def load_additional_wordcount(export_folder: Path) -> CategoryWordCount:
         return CategoryWordCount()
 
     # Map StringIDs to LOC ENG to get Korean + Translation text
-    lang_files = sorted(LANGUAGE_FOLDER.glob("languagedata_*.xml"))
+    lang_files = sorted(lang_folder.glob("languagedata_*.xml"))
     target_file = None
     for f in lang_files:
         if "eng" in f.stem.lower():
@@ -867,12 +932,21 @@ def calculate_coverage(
     master_word_count: int,
     category_strings: Dict[str, Set[str]],
     voice_sheet_strings: Set[str],
+    language_folder: Path = None,
 ) -> Tuple[CoverageReport, Set[str]]:
     """Calculate coverage using consume technique.
+
+    Args:
+        master_strings: Set of all Korean strings from LOC master
+        master_word_count: Total word count of master strings
+        category_strings: Dict of category -> set of Korean strings
+        voice_sheet_strings: Set of Korean strings from voice recording sheet
+        language_folder: Path to language folder (for loading export strings)
 
     Returns:
         (CoverageReport, remaining unconsumed strings)
     """
+    lang_folder = language_folder or LANGUAGE_FOLDER
     print()
     print("Calculating coverage with consume technique...")
 
@@ -904,21 +978,55 @@ def calculate_coverage(
             word_count=word_count,
         )
 
-        # Quest: add voice sheet as sub-category
-        if category_name == "Quest" and voice_sheet_strings:
-            voice_consumed = voice_sheet_strings & remaining
-            remaining -= voice_consumed
-            voice_word_count = count_words_in_set(voice_consumed)
+        # Quest: add voice sheet + System/Quest as sub-categories
+        if category_name == "Quest":
+            # Voice Sheet
+            if voice_sheet_strings:
+                voice_consumed = voice_sheet_strings & remaining
+                remaining -= voice_consumed
+                voice_word_count = count_words_in_set(voice_consumed)
 
-            voice_coverage = CategoryCoverage(
-                name="Voice Sheet",
-                unique_strings=len(voice_consumed),
-                word_count=voice_word_count,
-            )
-            cat_coverage.sub_categories.append(voice_coverage)
+                voice_coverage = CategoryCoverage(
+                    name="Voice Sheet",
+                    unique_strings=len(voice_consumed),
+                    word_count=voice_word_count,
+                )
+                cat_coverage.sub_categories.append(voice_coverage)
+                report.total_covered_strings += len(voice_consumed)
+                report.total_covered_words += voice_word_count
 
-            report.total_covered_strings += len(voice_consumed)
-            report.total_covered_words += voice_word_count
+            # System/Quest (additional)
+            quest_system_strings = load_strings_from_export_folder(EXPORT_QUEST_FOLDER, lang_folder)
+            if quest_system_strings:
+                quest_sys_consumed = quest_system_strings & remaining
+                remaining -= quest_sys_consumed
+                quest_sys_word_count = count_words_in_set(quest_sys_consumed)
+
+                quest_sys_coverage = CategoryCoverage(
+                    name="System/Quest",
+                    unique_strings=len(quest_sys_consumed),
+                    word_count=quest_sys_word_count,
+                )
+                cat_coverage.sub_categories.append(quest_sys_coverage)
+                report.total_covered_strings += len(quest_sys_consumed)
+                report.total_covered_words += quest_sys_word_count
+
+        # Item: add System/LookAt as sub-category
+        if category_name == "Item":
+            lookat_strings = load_strings_from_export_folder(EXPORT_LOOKAT_FOLDER, lang_folder)
+            if lookat_strings:
+                lookat_consumed = lookat_strings & remaining
+                remaining -= lookat_consumed
+                lookat_word_count = count_words_in_set(lookat_consumed)
+
+                lookat_coverage = CategoryCoverage(
+                    name="System/LookAt",
+                    unique_strings=len(lookat_consumed),
+                    word_count=lookat_word_count,
+                )
+                cat_coverage.sub_categories.append(lookat_coverage)
+                report.total_covered_strings += len(lookat_consumed)
+                report.total_covered_words += lookat_word_count
 
         report.categories.append(cat_coverage)
         report.total_covered_strings += len(consumed)
@@ -1289,6 +1397,7 @@ def run_coverage_analysis(
     language_folder: Path = None,
     voice_sheet_folder: Path = None,
     category_strings: Dict[str, Set[str]] = None,
+    output_folder: Path = None,
 ) -> CoverageReport:
     """Run coverage analysis with provided data.
 
@@ -1296,6 +1405,7 @@ def run_coverage_analysis(
         language_folder: Path to language data folder (default: LANGUAGE_FOLDER)
         voice_sheet_folder: Path to voice recording sheet folder (default: VOICE_RECORDING_FOLDER)
         category_strings: Pre-loaded category strings (if None, loads from OUTPUT_FOLDERS)
+        output_folder: Path to save Excel reports (default: SCRIPT_DIR)
 
     Returns:
         CoverageReport with coverage results
@@ -1303,6 +1413,7 @@ def run_coverage_analysis(
     # Use defaults if not provided
     lang_folder = language_folder or LANGUAGE_FOLDER
     voice_folder = voice_sheet_folder or VOICE_RECORDING_FOLDER
+    out_folder = output_folder or SCRIPT_DIR
 
     # Load master language data
     master_strings, master_word_count = load_master_language_data(lang_folder)
@@ -1325,10 +1436,35 @@ def run_coverage_analysis(
         master_word_count,
         category_strings,
         voice_strings,
+        lang_folder,
     )
 
-    # Print report
+    # Print coverage report
     print_coverage_report(report)
+
+    # ==========================================================================
+    # WORD COUNT TABLE (Korean + Translation from Excel + Additional exports)
+    # ==========================================================================
+    print()
+    print("=" * 70)
+    print("         WORD COUNT TABLE (Korean + Translation)")
+    print("=" * 70)
+
+    # Collect word counts from Excel
+    category_wordcounts = collect_category_wordcounts()
+
+    # Load additional word counts from export folders
+    print("\nLoading additional word counts from export folders...")
+    quest_additional = load_additional_wordcount(EXPORT_QUEST_FOLDER, lang_folder)
+    print(f"  System/Quest: {quest_additional.korean_words:,} KR / {quest_additional.translation_words:,} TR words")
+    item_additional = load_additional_wordcount(EXPORT_LOOKAT_FOLDER, lang_folder)
+    print(f"  System/LookAt: {item_additional.korean_words:,} KR / {item_additional.translation_words:,} TR words")
+
+    # Print word count table
+    print_wordcount_table(category_wordcounts, quest_additional, item_additional)
+
+    # Export word count table to Excel
+    export_wordcount_to_excel(category_wordcounts, quest_additional, item_additional, out_folder)
 
     return report
 
@@ -1342,8 +1478,11 @@ def main():
     print(f"Script location: {SCRIPT_DIR}")
     print()
 
+    # Use default language folder
+    lang_folder = LANGUAGE_FOLDER
+
     # 1. Load master language data (Korean strings only)
-    master_strings, master_word_count = load_master_language_data(LANGUAGE_FOLDER)
+    master_strings, master_word_count = load_master_language_data(lang_folder)
     if not master_strings:
         print("ERROR: No master language data - cannot calculate coverage")
         sys.exit(1)
@@ -1364,6 +1503,7 @@ def main():
         master_word_count,
         category_strings,
         voice_strings,
+        LANGUAGE_FOLDER,
     )
 
     # 5. Print coverage report
@@ -1435,9 +1575,9 @@ def main():
 
     # Load additional word counts from export folders
     print("\nLoading additional word counts from export folders...")
-    quest_additional = load_additional_wordcount(EXPORT_QUEST_FOLDER)
+    quest_additional = load_additional_wordcount(EXPORT_QUEST_FOLDER, lang_folder)
     print(f"  System/Quest: {quest_additional.korean_words:,} KR / {quest_additional.translation_words:,} TR words")
-    item_additional = load_additional_wordcount(EXPORT_LOOKAT_FOLDER)
+    item_additional = load_additional_wordcount(EXPORT_LOOKAT_FOLDER, lang_folder)
     print(f"  System/LookAt: {item_additional.korean_words:,} KR / {item_additional.translation_words:,} TR words")
 
     # Print word count table
