@@ -85,25 +85,28 @@ class AdviceGroup:
 
 _depth0_fill = PatternFill("solid", fgColor="FFD700")  # Gold for groups
 _depth0_font = Font(bold=True, size=12)
+_depth0_row_height = 35
 
 _depth1_fill = PatternFill("solid", fgColor="B4C6E7")  # Light blue for titles
 _depth1_font = Font(bold=True, size=11)
+_depth1_row_height = 25
 
 _depth2_fill = PatternFill("solid", fgColor="E2EFDA")  # Light green for descriptions
 _depth2_font = Font(size=10)
+_depth2_row_height = None  # Auto
 
 _header_font = Font(bold=True, color="FFFFFF", size=11)
 _header_fill = PatternFill("solid", fgColor="4F81BD")
 
 
-def _get_style_for_depth(depth: int) -> Tuple[PatternFill, Font]:
-    """Get fill and font for a given depth level."""
+def _get_style_for_depth(depth: int) -> Tuple[PatternFill, Font, Optional[float]]:
+    """Get fill, font, and row_height for a given depth level."""
     if depth == 0:
-        return _depth0_fill, _depth0_font
+        return _depth0_fill, _depth0_font, _depth0_row_height
     elif depth == 1:
-        return _depth1_fill, _depth1_font
+        return _depth1_fill, _depth1_font, _depth1_row_height
     else:
-        return _depth2_fill, _depth2_font
+        return _depth2_fill, _depth2_font, _depth2_row_height
 
 
 # =============================================================================
@@ -187,8 +190,8 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
 # ROW GENERATION
 # =============================================================================
 
-# (depth, text, strkey)
-RowItem = Tuple[int, str, str]
+# (depth, text, needs_translation)
+RowItem = Tuple[int, str, bool]
 
 
 def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
@@ -198,20 +201,20 @@ def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
     for group in groups:
         # Emit group name (depth 0)
         if group.group_name:
-            rows.append((0, group.group_name, group.strkey))
+            rows.append((0, group.group_name, True))
 
         # Emit items
         for item in group.items:
             # Title (depth 1)
             if item.title:
-                rows.append((1, item.title, item.strkey))
+                rows.append((1, item.title, True))
 
             # Description (depth 2)
             if item.desc:
-                rows.append((2, item.desc, item.strkey))
+                rows.append((2, item.desc, True))
 
     # Postprocess: drop empty rows (whitespace-only text)
-    rows = [(d, t, s) for (d, t, s) in rows if t and t.strip()]
+    rows = [(d, t, n) for (d, t, n) in rows if t and t.strip()]
 
     return rows
 
@@ -296,14 +299,14 @@ def write_workbook(
     ws.add_data_validation(dv)
 
     # Write data rows
-    for row_idx, (depth, text, strkey) in enumerate(rows, start=2):
+    for row_idx, (depth, text, needs_trans) in enumerate(rows, start=2):
         normalized = normalize_placeholders(text)
         eng_tr, sid = eng_tbl.get(normalized, ("", ""))
         loc_tr = ""
         if lang_tbl:
             loc_tr, sid = lang_tbl.get(normalized, (loc_tr, sid))
 
-        fill, font = _get_style_for_depth(depth)
+        fill, font, row_height = _get_style_for_depth(depth)
         indent = depth
 
         # Column A: Original (KR)
@@ -381,7 +384,7 @@ def generate_help_datasheets() -> Dict:
 
     # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
-    output_folder = DATASHEET_OUTPUT / "Help_LQA"
+    output_folder = DATASHEET_OUTPUT / "GameAdvice_LQA_All"
     output_folder.mkdir(exist_ok=True)
 
     # Check paths
@@ -418,7 +421,7 @@ def generate_help_datasheets() -> Dict:
         # Always write English
         write_workbook(
             rows, eng_tbl, None, "eng",
-            output_folder / "Help_LQA_ENG.xlsx"
+            output_folder / "LQA_GameAdvice_ENG.xlsx"
         )
         result["files_created"] += 1
 
@@ -428,7 +431,7 @@ def generate_help_datasheets() -> Dict:
                 continue
             write_workbook(
                 rows, eng_tbl, lang_tbl, lang_code,
-                output_folder / f"Help_LQA_{lang_code.upper()}.xlsx"
+                output_folder / f"LQA_GameAdvice_{lang_code.upper()}.xlsx"
             )
             result["files_created"] += 1
 
