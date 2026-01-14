@@ -386,6 +386,78 @@ def collect_category_strings() -> Dict[str, Set[str]]:
     return category_strings
 
 
+def load_korean_strings_from_datasheets(output_folder: Path) -> Dict[str, Set[str]]:
+    """Load Korean strings from datasheet Excel files in output folder.
+
+    This is a wrapper for GUI compatibility - scans subfolders for ENG Excel files.
+
+    Args:
+        output_folder: Path to GeneratedDatasheets folder
+
+    Returns:
+        Dict mapping category name -> set of Korean strings
+    """
+    print(f"\nLoading Korean strings from: {output_folder}")
+
+    category_strings: Dict[str, Set[str]] = {}
+
+    if not output_folder.exists():
+        print(f"  ERROR: Output folder not found")
+        return category_strings
+
+    # Scan subfolders matching our category patterns
+    for category, folder_name in [
+        ("Character", "Character_LQA_All"),
+        ("Quest", "QuestData_Map_All"),
+        ("Item", "ItemData_Map_All"),
+        ("Knowledge", "Knowledge_LQA_All"),
+        ("Skill", "Skill_LQA_All"),
+        ("Region", "Region_LQA_v3"),
+        ("Gimmick", "Gimmick_LQA_Output"),
+        ("Help", "GameAdvice_LQA_All"),
+    ]:
+        folder = output_folder / folder_name
+        if not folder.exists():
+            # Try direct subfolders
+            for subfolder in output_folder.iterdir():
+                if subfolder.is_dir() and category.lower() in subfolder.name.lower():
+                    folder = subfolder
+                    break
+
+        if not folder.exists():
+            continue
+
+        pattern = ENG_FILE_PATTERNS.get(category, "*.xlsx")
+        korean_col = KOREAN_COLUMN.get(category, 1)
+
+        # Find ENG files
+        if "*" in pattern:
+            files = list(folder.glob(pattern))
+        else:
+            files = [folder / pattern] if (folder / pattern).exists() else []
+
+        if not files:
+            # Try any ENG xlsx
+            files = list(folder.glob("*ENG*.xlsx"))
+
+        if not files:
+            continue
+
+        category_set: Set[str] = set()
+        for xlsx_file in files:
+            strings = load_korean_from_excel(xlsx_file, korean_col)
+            category_set.update(strings)
+            print(f"  {category}/{xlsx_file.name}: {len(strings):,} strings")
+
+        if category_set:
+            category_strings[category] = category_set
+
+    total = sum(len(s) for s in category_strings.values())
+    print(f"  TOTAL: {total:,} unique strings across {len(category_strings)} categories")
+
+    return category_strings
+
+
 # =============================================================================
 # WORD COUNT TABLE (Korean + Translation from Excel + Additional exports)
 # =============================================================================
@@ -1213,9 +1285,52 @@ def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
 # MAIN
 # =============================================================================
 
-def run_coverage_analysis():
-    """Alias for main() - for backwards compatibility with tracker package."""
-    main()
+def run_coverage_analysis(
+    language_folder: Path = None,
+    voice_sheet_folder: Path = None,
+    category_strings: Dict[str, Set[str]] = None,
+) -> CoverageReport:
+    """Run coverage analysis with provided data.
+
+    Args:
+        language_folder: Path to language data folder (default: LANGUAGE_FOLDER)
+        voice_sheet_folder: Path to voice recording sheet folder (default: VOICE_RECORDING_FOLDER)
+        category_strings: Pre-loaded category strings (if None, loads from OUTPUT_FOLDERS)
+
+    Returns:
+        CoverageReport with coverage results
+    """
+    # Use defaults if not provided
+    lang_folder = language_folder or LANGUAGE_FOLDER
+    voice_folder = voice_sheet_folder or VOICE_RECORDING_FOLDER
+
+    # Load master language data
+    master_strings, master_word_count = load_master_language_data(lang_folder)
+    if not master_strings:
+        return CoverageReport()
+
+    # Load voice recording sheet
+    voice_strings = load_voice_recording_sheet(voice_folder)
+
+    # Use provided category strings or collect from folders
+    if category_strings is None:
+        category_strings = collect_category_strings()
+
+    if not category_strings:
+        return CoverageReport()
+
+    # Calculate coverage
+    report, remaining = calculate_coverage(
+        master_strings,
+        master_word_count,
+        category_strings,
+        voice_strings,
+    )
+
+    # Print report
+    print_coverage_report(report)
+
+    return report
 
 
 def main():
