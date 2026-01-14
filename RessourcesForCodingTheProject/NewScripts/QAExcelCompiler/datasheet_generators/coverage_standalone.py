@@ -66,6 +66,9 @@ KOREAN_COLUMN = {
 # Language data folder
 LANGUAGE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\stringtable\loc")
 
+# Export folder (for analyzing unconsumed strings)
+EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\stringtable\export__")
+
 # Voice Recording Sheet folder
 VOICE_RECORDING_FOLDER = Path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
 
@@ -172,20 +175,25 @@ def parse_xml_file(path: Path):
 # DATA LOADING
 # =============================================================================
 
-def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int]:
-    """Load all StrOrigin values from language data."""
+def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int, Dict[str, str]]:
+    """Load all StrOrigin values from language data.
+
+    Returns:
+        (master_strings set, word_count, origin_to_stringid mapping)
+    """
     print(f"Loading master language data from: {language_folder}")
 
     master_strings: Set[str] = set()
+    origin_to_stringid: Dict[str, str] = {}
 
     if not language_folder.exists():
         print(f"  ERROR: Language folder not found")
-        return master_strings, 0
+        return master_strings, 0, origin_to_stringid
 
     lang_files = sorted(language_folder.glob("languagedata_*.xml"))
     if not lang_files:
         print(f"  ERROR: No language data files found")
-        return master_strings, 0
+        return master_strings, 0, origin_to_stringid
 
     # Prefer English
     target_file = None
@@ -201,19 +209,23 @@ def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int]:
     root = parse_xml_file(target_file)
     if root is None:
         print(f"  ERROR: Failed to parse language file")
-        return master_strings, 0
+        return master_strings, 0, origin_to_stringid
 
     for loc in root.iter("LocStr"):
         origin = loc.get("StrOrigin") or ""
+        sid = loc.get("StringId") or ""
         if origin:
             normalized = normalize_placeholders(origin)
             if normalized:
                 master_strings.add(normalized)
+                if sid:
+                    origin_to_stringid[normalized] = sid
 
     total_words = count_words_in_set(master_strings)
     print(f"  Loaded {len(master_strings):,} unique strings ({total_words:,} words)")
+    print(f"  Mapped {len(origin_to_stringid):,} strings to StringIds")
 
-    return master_strings, total_words
+    return master_strings, total_words, origin_to_stringid
 
 
 def load_voice_recording_sheet(folder: Path) -> Set[str]:
@@ -378,8 +390,12 @@ def calculate_coverage(
     master_word_count: int,
     category_strings: Dict[str, Set[str]],
     voice_sheet_strings: Set[str],
-) -> CoverageReport:
-    """Calculate coverage using consume technique."""
+) -> Tuple[CoverageReport, Set[str]]:
+    """Calculate coverage using consume technique.
+
+    Returns:
+        (CoverageReport, remaining unconsumed strings)
+    """
     print()
     print("Calculating coverage with consume technique...")
 
@@ -431,7 +447,7 @@ def calculate_coverage(
         report.total_covered_strings += len(consumed)
         report.total_covered_words += word_count
 
-    return report
+    return report, remaining
 
 
 def print_coverage_report(report: CoverageReport) -> None:
@@ -468,6 +484,140 @@ def print_coverage_report(report: CoverageReport) -> None:
 
 
 # =============================================================================
+# UNCONSUMED STRINGS ANALYSIS
+# =============================================================================
+
+def build_export_index(export_folder: Path) -> Dict[str, str]:
+    """Build index mapping StringId → category (folder path).
+
+    Similar to wordcount5.py's build_export_index.
+    """
+    print(f"\nBuilding export index from: {export_folder}")
+
+    idx: Dict[str, str] = {}
+
+    if not export_folder.exists():
+        print(f"  WARNING: Export folder not found")
+        return idx
+
+    xml_count = 0
+    for xml in export_folder.rglob("*.xml"):
+        try:
+            root = parse_xml_file(xml)
+            if root is None:
+                continue
+        except Exception:
+            continue
+
+        xml_count += 1
+        parts = xml.relative_to(export_folder).parts
+
+        # Categorize based on folder structure
+        if parts and parts[0].lower() == "dialog" and len(parts) > 1:
+            cat = f"Dialog/{parts[1]}"
+        elif parts and parts[0].lower() == "sequencer" and len(parts) > 1:
+            cat = f"Sequencer/{parts[1]}"
+        else:
+            cat = parts[0] if parts else "Unknown"
+
+        for loc in root.iter("LocStr"):
+            sid = loc.get("StringId")
+            if sid:
+                idx[sid] = cat
+
+    print(f"  Indexed {len(idx):,} StringIds from {xml_count:,} XML files")
+    return idx
+
+
+@dataclass
+class UnconsumedAnalysis:
+    """Analysis of unconsumed strings by category."""
+    category_breakdown: Dict[str, int] = field(default_factory=dict)
+    category_words: Dict[str, int] = field(default_factory=dict)
+    total_strings: int = 0
+    total_words: int = 0
+    unmapped_strings: int = 0  # Strings with no StringId
+
+
+def analyze_unconsumed(
+    remaining: Set[str],
+    origin_to_stringid: Dict[str, str],
+    export_index: Dict[str, str],
+) -> UnconsumedAnalysis:
+    """Analyze unconsumed strings by looking up their StringIds in export.
+
+    Args:
+        remaining: Set of unconsumed StrOrigin strings
+        origin_to_stringid: Mapping from StrOrigin → StringId
+        export_index: Mapping from StringId → category (from export folder)
+
+    Returns:
+        UnconsumedAnalysis with breakdown by category
+    """
+    print("\nAnalyzing unconsumed strings...")
+
+    analysis = UnconsumedAnalysis(
+        total_strings=len(remaining),
+        total_words=count_words_in_set(remaining),
+    )
+
+    category_strings: Dict[str, Set[str]] = {}
+
+    for origin in remaining:
+        sid = origin_to_stringid.get(origin)
+        if not sid:
+            analysis.unmapped_strings += 1
+            cat = "No StringId"
+        else:
+            cat = export_index.get(sid, "Not in Export")
+
+        if cat not in category_strings:
+            category_strings[cat] = set()
+        category_strings[cat].add(origin)
+
+    # Calculate counts and words per category
+    for cat, strings in category_strings.items():
+        analysis.category_breakdown[cat] = len(strings)
+        analysis.category_words[cat] = count_words_in_set(strings)
+
+    return analysis
+
+
+def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
+    """Print formatted report of unconsumed strings."""
+    width = 75
+
+    print()
+    print("=" * width)
+    print("                   UNCONSUMED STRINGS ANALYSIS")
+    print("=" * width)
+    print()
+
+    print(f"Total unconsumed: {analysis.total_strings:,} strings ({analysis.total_words:,} words)")
+    if analysis.unmapped_strings > 0:
+        print(f"  (includes {analysis.unmapped_strings:,} strings with no StringId)")
+    print()
+
+    # Sort by count descending
+    sorted_cats = sorted(
+        analysis.category_breakdown.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    print(f"{'Category':<35} {'Strings':>12} {'Words':>12} {'% of Unconsumed':>15}")
+    print("-" * width)
+
+    for cat, count in sorted_cats:
+        words = analysis.category_words.get(cat, 0)
+        pct = (count / analysis.total_strings * 100) if analysis.total_strings > 0 else 0
+        print(f"{cat:<35} {count:>12,} {words:>12,} {pct:>14.1f}%")
+
+    print("=" * width)
+    print()
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -480,8 +630,8 @@ def main():
     print(f"Script location: {SCRIPT_DIR}")
     print()
 
-    # 1. Load master language data
-    master_strings, master_word_count = load_master_language_data(LANGUAGE_FOLDER)
+    # 1. Load master language data (with StrOrigin → StringId mapping)
+    master_strings, master_word_count, origin_to_stringid = load_master_language_data(LANGUAGE_FOLDER)
     if not master_strings:
         print("ERROR: No master language data - cannot calculate coverage")
         sys.exit(1)
@@ -496,16 +646,33 @@ def main():
         print("\nERROR: No category data found - make sure datasheets are generated first")
         sys.exit(1)
 
-    # 4. Calculate coverage
-    report = calculate_coverage(
+    # 4. Calculate coverage (returns report + remaining unconsumed)
+    report, remaining = calculate_coverage(
         master_strings,
         master_word_count,
         category_strings,
         voice_strings,
     )
 
-    # 5. Print report
+    # 5. Print coverage report
     print_coverage_report(report)
+
+    # 6. Analyze unconsumed strings (if any)
+    if remaining:
+        # Build export index to categorize unconsumed strings
+        export_index = build_export_index(EXPORT_FOLDER)
+
+        # Analyze where unconsumed strings come from
+        unconsumed_analysis = analyze_unconsumed(
+            remaining,
+            origin_to_stringid,
+            export_index,
+        )
+
+        # Print unconsumed report
+        print_unconsumed_report(unconsumed_analysis)
+    else:
+        print("\n*** 100% COVERAGE - No unconsumed strings! ***\n")
 
     print("Done!")
 
