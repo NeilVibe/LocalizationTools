@@ -459,6 +459,8 @@ def print_coverage_report(report: CoverageReport) -> None:
     print("                    LANGUAGE DATA COVERAGE REPORT")
     print("=" * width)
     print()
+    print("NOTE: All counts are UNIQUE strings (duplicates removed via normalization)")
+    print()
 
     print(f"{'Category':<20} {'Unique Strings':>15} {'Words Covered':>15} {'% Coverage':>12}")
     print("-" * width)
@@ -487,12 +489,18 @@ def print_coverage_report(report: CoverageReport) -> None:
 # UNCONSUMED STRINGS ANALYSIS
 # =============================================================================
 
-def build_export_index(export_folder: Path) -> Dict[str, str]:
-    """Build index mapping StringId → category (folder path).
+def build_export_index(export_folder: Path, depth: int = 2) -> Dict[str, str]:
+    """Build index mapping StringId → category (folder path with subfolder).
 
-    Similar to wordcount5.py's build_export_index.
+    Args:
+        export_folder: Path to export folder
+        depth: How many folder levels to include (default 2 = TopFolder/SubFolder)
+
+    Returns:
+        Dict mapping StringId → category path (e.g., "World/NPC", "System/UI")
     """
     print(f"\nBuilding export index from: {export_folder}")
+    print(f"  Category depth: {depth} levels")
 
     idx: Dict[str, str] = {}
 
@@ -512,13 +520,15 @@ def build_export_index(export_folder: Path) -> Dict[str, str]:
         xml_count += 1
         parts = xml.relative_to(export_folder).parts
 
-        # Categorize based on folder structure
-        if parts and parts[0].lower() == "dialog" and len(parts) > 1:
-            cat = f"Dialog/{parts[1]}"
-        elif parts and parts[0].lower() == "sequencer" and len(parts) > 1:
-            cat = f"Sequencer/{parts[1]}"
+        # Build category from folder path up to specified depth
+        # e.g., depth=2 gives "World/NPC" or "Dialog/MainQuest"
+        if parts:
+            # Take up to 'depth' folder parts (excluding the filename)
+            folder_parts = parts[:-1] if len(parts) > 1 else parts[:1]
+            cat_parts = folder_parts[:depth]
+            cat = "/".join(cat_parts) if cat_parts else parts[0]
         else:
-            cat = parts[0] if parts else "Unknown"
+            cat = "Unknown"
 
         for loc in root.iter("LocStr"):
             sid = loc.get("StringId")
@@ -584,18 +594,20 @@ def analyze_unconsumed(
 
 
 def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
-    """Print formatted report of unconsumed strings."""
-    width = 75
+    """Print formatted report of unconsumed strings by subfolder."""
+    width = 90
 
     print()
     print("=" * width)
-    print("                   UNCONSUMED STRINGS ANALYSIS")
+    print("              UNCONSUMED STRINGS ANALYSIS (by Subfolder)")
     print("=" * width)
     print()
+    print("NOTE: All counts are UNIQUE strings (no duplicates)")
+    print()
 
-    print(f"Total unconsumed: {analysis.total_strings:,} strings ({analysis.total_words:,} words)")
+    print(f"Total unconsumed: {analysis.total_strings:,} unique strings ({analysis.total_words:,} words)")
     if analysis.unmapped_strings > 0:
-        print(f"  (includes {analysis.unmapped_strings:,} strings with no StringId)")
+        print(f"  (includes {analysis.unmapped_strings:,} strings with no StringId in language data)")
     print()
 
     # Sort by count descending
@@ -605,13 +617,15 @@ def print_unconsumed_report(analysis: UnconsumedAnalysis) -> None:
         reverse=True
     )
 
-    print(f"{'Category':<35} {'Strings':>12} {'Words':>12} {'% of Unconsumed':>15}")
+    print(f"{'Folder/Subfolder':<45} {'Strings':>12} {'Words':>12} {'% of Unconsumed':>15}")
     print("-" * width)
 
     for cat, count in sorted_cats:
         words = analysis.category_words.get(cat, 0)
         pct = (count / analysis.total_strings * 100) if analysis.total_strings > 0 else 0
-        print(f"{cat:<35} {count:>12,} {words:>12,} {pct:>14.1f}%")
+        # Truncate long paths
+        display_cat = cat if len(cat) <= 44 else cat[:41] + "..."
+        print(f"{display_cat:<45} {count:>12,} {words:>12,} {pct:>14.1f}%")
 
     print("=" * width)
     print()
