@@ -130,8 +130,16 @@ def get_or_create_user_comment_column(ws, username: str) -> int:
     # Create new column at the end
     new_col = ws.max_column + 1
     cell = ws.cell(row=1, column=new_col, value=target_header)
-    style_header_cell(cell)
+    # Style: Light blue fill with MEDIUM blue borders (match monolith)
     cell.fill = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
+    cell.font = Font(bold=True, color="000000")
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.border = Border(
+        left=Side(style='medium', color='4472C4'),
+        right=Side(style='medium', color='4472C4'),
+        top=Side(style='medium', color='4472C4'),
+        bottom=Side(style='medium', color='4472C4')
+    )
     print(f"    Created column: {target_header} at {get_column_letter(new_col)} (styled)")
     return new_col
 
@@ -178,11 +186,20 @@ def get_or_create_user_status_column(ws, username: str, after_col: int) -> int:
     # Create new column
     new_col = ws.max_column + 1
     cell = ws.cell(row=1, column=new_col, value=target_header)
-    style_header_cell(cell)
+    # Style: Light green fill with MEDIUM green borders (match monolith)
     cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+    cell.font = Font(bold=True, color="000000")
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.border = Border(
+        left=Side(style='medium', color='228B22'),
+        right=Side(style='medium', color='228B22'),
+        top=Side(style='medium', color='228B22'),
+        bottom=Side(style='medium', color='228B22')
+    )
 
-    # Add dropdown
-    add_manager_dropdown(ws, new_col)
+    # Add dropdown with 50-row buffer (match monolith)
+    last_row = max(ws.max_row, 10) + 50
+    add_manager_dropdown(ws, new_col, end_row=last_row)
     print(f"    Created column: {target_header} at {get_column_letter(new_col)} (manager status - dropdown)")
     return new_col
 
@@ -204,8 +221,16 @@ def get_or_create_user_screenshot_column(ws, username: str, after_col: int) -> i
     # Create new column
     new_col = ws.max_column + 1
     cell = ws.cell(row=1, column=new_col, value=target_header)
-    style_header_cell(cell)
+    # Style: Light blue fill with MEDIUM blue borders (match monolith)
     cell.fill = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
+    cell.font = Font(bold=True, color="000000")
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.border = Border(
+        left=Side(style='medium', color='4472C4'),
+        right=Side(style='medium', color='4472C4'),
+        top=Side(style='medium', color='4472C4'),
+        bottom=Side(style='medium', color='4472C4')
+    )
     print(f"    Created column: {target_header} at {get_column_letter(new_col)} (styled)")
     return new_col
 
@@ -550,15 +575,27 @@ def process_sheet(
                             new_screenshot_target = f"Images/{original_name}"
                             is_warning = True
                 else:
+                    # No hyperlink - just value
                     original_name = str(screenshot_value).strip()
                     if original_name in image_mapping:
                         new_name = image_mapping[original_name]
                         new_screenshot_value = new_name
                         new_screenshot_target = f"Images/{new_name}"
                     else:
-                        new_screenshot_value = original_name
-                        new_screenshot_target = f"Images/{original_name}"
-                        is_warning = True
+                        # Case-insensitive match (match monolith)
+                        matched_name = None
+                        for img_name in image_mapping.keys():
+                            if img_name.lower() == original_name.lower():
+                                matched_name = img_name
+                                break
+                        if matched_name:
+                            new_name = image_mapping[matched_name]
+                            new_screenshot_value = new_name
+                            new_screenshot_target = f"Images/{new_name}"
+                        else:
+                            new_screenshot_value = original_name
+                            new_screenshot_target = f"Images/{original_name}"
+                            is_warning = True
 
                 existing_hyperlink = master_screenshot_cell.hyperlink.target if master_screenshot_cell.hyperlink else None
                 existing_screenshot = master_screenshot_cell.value
