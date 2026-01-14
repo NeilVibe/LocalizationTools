@@ -346,6 +346,7 @@ class QACompilerSuiteGUI:
                     LANGUAGE_FOLDER,
                     VOICE_RECORDING_SHEET_FOLDER,
                     category_strings,
+                    DATASHEET_OUTPUT,  # Output folder for word count
                 )
 
                 self.root.after(0, lambda: self._on_coverage_complete(report))
