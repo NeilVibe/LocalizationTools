@@ -67,6 +67,35 @@ QACompilerNEW/
     └── app.py               # Unified Tkinter GUI
 ```
 
+## Standalone Tools
+
+### System Sheet Localizer (`system_localizer.py`)
+
+**Purpose:** Creates localized versions of manually-created System datasheets.
+
+**System Datasheet Structure:**
+The System category is special - it's created **manually** (not auto-generated) and contains:
+- **Translation** column - The localized text
+- **English** column - English reference text
+- **StringID** column - Unique identifier for lookup
+
+**2-Step Matching Process:**
+1. **StringID Match** - First tries to find translation by StringID → Korean → Target Language
+2. **Text Match (Fallback)** - If no StringID match: English → Korean → Target Language
+
+**Usage:**
+```bash
+# GUI mode (file dialogs)
+python system_localizer.py
+
+# CLI mode
+python system_localizer.py --cli <input.xlsx> <language_folder>
+```
+
+**Output:** Creates `System_LQA_All/` folder with `System_{LANG}.xlsx` for each language.
+
+---
+
 ## Available Categories
 
 | # | Category | Generator | Description |
