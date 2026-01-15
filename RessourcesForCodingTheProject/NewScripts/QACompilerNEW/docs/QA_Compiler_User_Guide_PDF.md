@@ -290,11 +290,21 @@ Game XML Files                    Excel Datasheets
 | ENG | English translation |
 | {Language} | Target language (hidden for ENG) |
 | StringKey | For /complete commands |
-| Command | /complete and /teleport |
+| Command | Cheat commands (see below) |
 | STATUS | Dropdown: ISSUE, NO ISSUE, BLOCKED, KOREAN |
 | COMMENT | Tester notes |
 | STRINGID | Unique identifier |
 | SCREENSHOT | Image reference |
+
+#### Quest Command Structure (Daily/Politics/Region Quest)
+
+```
+/complete mission Mission_A && Mission_B    ← Prerequisites first
+/complete prevmission Mission_X             ← Progress command
+/teleport 1234 567 89                       ← Teleport last
+```
+
+*Auto-generated from factioninfo Condition + Branch Execute*
 
 #### Usage
 

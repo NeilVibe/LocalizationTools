@@ -124,6 +124,16 @@ python main.py --all
 | Tracker | `tracker/*.py` |
 | Config | `config.py` |
 
+## Quest Command Column (Daily/Politics/Region Quest)
+
+```
+/complete mission Mission_A && Mission_B    ← Prerequisites first
+/complete prevmission Mission_X             ← Progress command
+/teleport 1234 567 89                       ← Teleport last
+```
+
+*Auto-generated from factioninfo Condition + Branch Execute*
+
 ## Ranking Formula
 
 ```
@@ -132,4 +142,4 @@ Score = 80% × Done + 20% × Actual Issues
 
 ---
 
-*QA Compiler Suite v2.0 | Quick Reference | v1.0*
+*QA Compiler Suite v2.0 | Quick Reference | v1.1*

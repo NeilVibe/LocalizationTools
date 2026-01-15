@@ -460,11 +460,25 @@ h3. Generated Datasheet Columns
 |ENG|English translation|
 |\{Language\}|Target language (hidden for ENG)|
 |StringKey|Identifier for /complete commands|
-|Command|/complete and /teleport commands|
+|Command|Cheat commands (see Quest Command Structure)|
 |STATUS|Dropdown: ISSUE, NO ISSUE, BLOCKED, KOREAN|
 |COMMENT|Tester notes|
 |STRINGID|Unique string identifier|
 |SCREENSHOT|Image filename|
+
+h3. Quest Command Structure (Daily/Politics/Region Quest tabs)
+
+The Command column contains cheat commands in this order:
+
+{code:title=Example Command}
+/complete mission Mission_A && Mission_B    ← Prerequisites first
+/complete prevmission Mission_X             ← Progress command
+/teleport 1234 567 89                       ← Teleport last
+{code}
+
+*Auto-generated from:*
+* Factioninfo {{<Quest Condition="...">}} attributes
+* Quest XML {{<Branch Condition="..." Execute="...">}} elements
 
 h3. Progress Tracker Sheets
 
