@@ -314,28 +314,48 @@ def get_master_folder(username: str, tester_mapping: Dict[str, str]) -> Tuple[Pa
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 
 
-def copy_images_with_unique_names(qa_folder_info: Dict, images_folder: Path) -> Dict[str, str]:
+def copy_images_with_unique_names(
+    qa_folder_info: Dict,
+    images_folder: Path,
+    skip_images: set = None
+) -> Dict[str, str]:
     """
     Copy images from QA folder to Images/ with original names.
+
+    Optimization: Skip images in skip_images set (e.g., FIXED screenshots).
 
     Args:
         qa_folder_info: Dict with {folder_path, username, category, images}
         images_folder: Target Images folder
+        skip_images: Set of image filenames to skip (case-insensitive)
 
     Returns:
         Dict mapping original_name -> original_name
     """
     images = qa_folder_info["images"]
     image_mapping = {}
+    skipped = 0
+
+    # Normalize skip list for case-insensitive matching
+    skip_set = {s.lower() for s in (skip_images or set())}
 
     for img_path in images:
         original_name = img_path.name
+
+        # Skip FIXED images
+        if original_name.lower() in skip_set:
+            skipped += 1
+            continue
+
         dest_path = images_folder / original_name
         shutil.copy2(img_path, dest_path)
         image_mapping[original_name] = original_name
 
-    if image_mapping:
-        print(f"    Copied {len(image_mapping)} images to Images/")
+    if image_mapping or skipped:
+        msg = f"    Copied {len(image_mapping)} images to Images/"
+        if skipped:
+            msg += f" (skipped {skipped} FIXED)"
+        print(msg)
 
     return image_mapping
 

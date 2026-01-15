@@ -43,6 +43,70 @@ VALID_MANAGER_STATUS = {"FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE
 
 
 # =============================================================================
+# FIXED SCREENSHOTS COLLECTION
+# =============================================================================
+
+def collect_fixed_screenshots(master_folder: Path) -> set:
+    """
+    Collect all screenshot filenames where STATUS_{User} = FIXED.
+
+    Used to skip copying these images during rebuild (optimization).
+
+    Args:
+        master_folder: Master folder to scan (EN or CN)
+
+    Returns:
+        Set of screenshot filenames that are FIXED
+    """
+    fixed_screenshots = set()
+
+    for master_file in master_folder.glob("Master_*.xlsx"):
+        try:
+            wb = safe_load_workbook(master_file)
+
+            for sheet_name in wb.sheetnames:
+                if sheet_name == "STATUS":
+                    continue
+
+                ws = wb[sheet_name]
+
+                # Find all SCREENSHOT_{User} and STATUS_{User} columns
+                screenshot_cols = {}  # username -> col
+                status_cols = {}      # username -> col
+
+                for col in range(1, ws.max_column + 1):
+                    header = ws.cell(row=1, column=col).value
+                    if header:
+                        header_str = str(header)
+                        if header_str.startswith("SCREENSHOT_"):
+                            username = header_str.replace("SCREENSHOT_", "")
+                            screenshot_cols[username] = col
+                        elif header_str.startswith("STATUS_"):
+                            username = header_str.replace("STATUS_", "")
+                            status_cols[username] = col
+
+                # Collect screenshots where status is FIXED
+                for row in range(2, ws.max_row + 1):
+                    for username in screenshot_cols:
+                        screenshot_col = screenshot_cols[username]
+                        status_col = status_cols.get(username)
+
+                        screenshot_val = ws.cell(row=row, column=screenshot_col).value
+                        if screenshot_val and status_col:
+                            status_val = ws.cell(row=row, column=status_col).value
+                            if status_val and str(status_val).strip().upper() == "FIXED":
+                                # Add the screenshot filename
+                                fixed_screenshots.add(str(screenshot_val).strip())
+
+            wb.close()
+
+        except Exception as e:
+            print(f"  WARN: Error reading {master_file.name} for fixed screenshots: {e}")
+
+    return fixed_screenshots
+
+
+# =============================================================================
 # MANAGER STATUS COLLECTION
 # =============================================================================
 
@@ -208,7 +272,8 @@ def process_category(
     images_folder: Path,
     lang_label: str,
     manager_status: Dict = None,
-    rebuild: bool = True
+    rebuild: bool = True,
+    fixed_screenshots: set = None
 ) -> List[Dict]:
     """
     Process all QA folders for one category.
@@ -221,12 +286,15 @@ def process_category(
         lang_label: "EN" or "CN"
         manager_status: Pre-collected manager status to restore
         rebuild: If True, rebuild master. If False, append (for clustering)
+        fixed_screenshots: Set of screenshot filenames to skip (FIXED optimization)
 
     Returns:
         List of daily_entry dicts for tracker
     """
     if manager_status is None:
         manager_status = {}
+    if fixed_screenshots is None:
+        fixed_screenshots = set()
 
     target_master = get_target_master_category(category)
     cluster_info = f" -> Master_{target_master}" if target_master != category else ""
@@ -283,7 +351,7 @@ def process_category(
         print(f"\n  Processing: {username}")
 
         # Copy images FIRST to get mapping for screenshot links
-        image_mapping = copy_images_with_unique_names(qf, images_folder)
+        image_mapping = copy_images_with_unique_names(qf, images_folder, skip_images=fixed_screenshots)
         total_images += len(image_mapping)
 
         # Load QA workbook
@@ -432,6 +500,14 @@ def run_compiler():
     else:
         print("  No existing manager status entries found")
 
+    # Collect FIXED screenshots to skip during image copy (optimization)
+    print("\nCollecting FIXED screenshots to skip...")
+    fixed_screenshots_en = collect_fixed_screenshots(MASTER_FOLDER_EN)
+    fixed_screenshots_cn = collect_fixed_screenshots(MASTER_FOLDER_CN)
+    total_fixed = len(fixed_screenshots_en) + len(fixed_screenshots_cn)
+    if total_fixed > 0:
+        print(f"  Found {len(fixed_screenshots_en)} EN + {len(fixed_screenshots_cn)} CN FIXED screenshots to skip")
+
     # Discover QA folders
     qa_folders = discover_qa_folders()
 
@@ -471,7 +547,8 @@ def run_compiler():
             entries = process_category(
                 category, by_category_en[category],
                 MASTER_FOLDER_EN, IMAGES_FOLDER_EN, "EN",
-                category_manager_status, rebuild=rebuild
+                category_manager_status, rebuild=rebuild,
+                fixed_screenshots=fixed_screenshots_en
             )
             all_daily_entries.extend(entries)
 
@@ -486,7 +563,8 @@ def run_compiler():
             entries = process_category(
                 category, by_category_cn[category],
                 MASTER_FOLDER_CN, IMAGES_FOLDER_CN, "CN",
-                category_manager_status, rebuild=rebuild
+                category_manager_status, rebuild=rebuild,
+                fixed_screenshots=fixed_screenshots_cn
             )
             all_daily_entries.extend(entries)
 
