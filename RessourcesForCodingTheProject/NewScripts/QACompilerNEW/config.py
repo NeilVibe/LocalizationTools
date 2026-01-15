@@ -150,7 +150,7 @@ TRACKER_STYLES = {
     "header_color": "4472C4",      # Blue header
     "subheader_color": "D9E2F3",   # Light blue subheader
     "alt_row_color": "F2F2F2",     # Alternating row color
-    "border_color": "B4B4B4",      # Gray borders
+    "border_color": "808080",      # Dark gray borders (more visible)
     "total_row_color": "FFF2CC",   # Yellow for totals
     "title_color": "70AD47",       # Green for section titles
 }
