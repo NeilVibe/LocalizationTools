@@ -201,6 +201,9 @@ def collect_manager_stats_for_tracker() -> Dict:
     """
     Read all Master files (EN + CN) and count FIXED/REPORTED/CHECKING/NON-ISSUE per user per category.
 
+    IMPORTANT: Each master file is only read ONCE to avoid double-counting when
+    multiple categories map to the same master (e.g., Skill/Help -> Master_System).
+
     Returns:
         {category: {user: {fixed, reported, checking, nonissue, lang}}}
     """
@@ -211,11 +214,20 @@ def collect_manager_stats_for_tracker() -> Dict:
 
     # Scan both EN and CN folders
     for master_folder in [MASTER_FOLDER_EN, MASTER_FOLDER_CN]:
+        # Track processed master files to avoid double-counting
+        processed_masters = set()
+
         for category in CATEGORIES:
             target_category = get_target_master_category(category)
             master_path = master_folder / f"Master_{target_category}.xlsx"
+
+            # Skip if already processed or doesn't exist
+            if str(master_path) in processed_masters:
+                continue
             if not master_path.exists():
                 continue
+
+            processed_masters.add(str(master_path))
 
             try:
                 wb = safe_load_workbook(master_path)
@@ -237,21 +249,21 @@ def collect_manager_stats_for_tracker() -> Dict:
                     if not status_cols:
                         continue
 
-                    # Count status values per user
+                    # Count status values per user (use target_category as the key)
                     for row in range(2, ws.max_row + 1):
                         for username, col in status_cols.items():
                             value = ws.cell(row=row, column=col).value
                             if value:
                                 status_upper = str(value).strip().upper()
                                 if status_upper == "FIXED":
-                                    manager_stats[category][username]["fixed"] += 1
+                                    manager_stats[target_category][username]["fixed"] += 1
                                 elif status_upper == "REPORTED":
-                                    manager_stats[category][username]["reported"] += 1
+                                    manager_stats[target_category][username]["reported"] += 1
                                 elif status_upper == "CHECKING":
-                                    manager_stats[category][username]["checking"] += 1
+                                    manager_stats[target_category][username]["checking"] += 1
                                 elif status_upper in ("NON-ISSUE", "NON ISSUE"):
-                                    manager_stats[category][username]["nonissue"] += 1
-                            manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")
+                                    manager_stats[target_category][username]["nonissue"] += 1
+                            manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
 
                 wb.close()
 
