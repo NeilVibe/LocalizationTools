@@ -680,11 +680,37 @@ Some categories merge into others for Master files:
 | ENG | English translation |
 | {Language} | Target language (hidden for ENG files) |
 | StringKey | Identifier for /complete commands |
-| Command | /complete and /teleport commands |
+| Command | Cheat commands (see Quest Command Structure below) |
 | STATUS | Dropdown: ISSUE, NO ISSUE, BLOCKED, KOREAN |
 | COMMENT | Tester notes |
 | STRINGID | Unique string identifier |
 | SCREENSHOT | Image filename |
+
+### Quest Command Structure
+
+The Command column in Quest datasheets contains cheat commands in this order:
+
+1. **Prerequisite Commands** (Daily, Politics, Region Quest tabs only):
+   - `/complete mission Mission_A && Mission_B` - Complete prerequisite missions
+   - `/complete quest Quest_A && Quest_B` - Complete prerequisite quests
+
+2. **Progress Command**:
+   - `/complete prevquest {StringKey}` - Complete previous quest
+   - `/complete prevmission {StrKey}` - Complete previous mission
+
+3. **Teleport Command**:
+   - `/teleport X Y Z` - Teleport to quest location
+
+**Example multi-line Command:**
+```
+/complete mission Mission_IcemoorCastleRuins_Block_DeerKing_Boss && Mission_BluemontManor_Rupert_Normal_Trust
+/complete prevmission Mission_HernandCastle_Finale_IcemoorCastleRuins
+/teleport 1234 567 89
+```
+
+**Note**: Prerequisite commands are auto-generated from:
+- Factioninfo `<Quest Condition="...">` attributes
+- Quest XML `<Branch Condition="..." Execute="...">` elements
 
 ### Master File Columns
 

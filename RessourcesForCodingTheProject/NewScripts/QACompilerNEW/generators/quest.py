@@ -153,6 +153,51 @@ def _iter_quest_xml_files(folder: Path) -> Iterable[Path]:
         yield path
 
 
+# Regex patterns for extracting conditions
+_complete_mission_re = re.compile(r'CompleteMission\(([A-Za-z0-9_]+)\)')
+_complete_quest_re = re.compile(r'CompleteQuest\(([A-Za-z0-9_]+)\)')
+
+
+def _extract_conditions(condition_str: str) -> Tuple[List[str], List[str]]:
+    """
+    Extract mission and quest prerequisites from a condition string.
+
+    Args:
+        condition_str: e.g. "CompleteMission(Mission_A) && CompleteQuest(Quest_B)"
+
+    Returns:
+        (missions, quests) - lists of prerequisite mission/quest keys
+    """
+    if not condition_str:
+        return [], []
+
+    missions = _complete_mission_re.findall(condition_str)
+    quests = _complete_quest_re.findall(condition_str)
+    return missions, quests
+
+
+def _build_prereq_command(missions: List[str], quests: List[str]) -> str:
+    """
+    Build /complete command from prerequisite missions and quests.
+
+    Args:
+        missions: List of prerequisite mission keys
+        quests: List of prerequisite quest keys
+
+    Returns:
+        Command string like "/complete mission M1 && M2" or "/complete quest Q1 && Q2"
+    """
+    parts = []
+
+    if missions:
+        parts.append("/complete mission " + " && ".join(missions))
+
+    if quests:
+        parts.append("/complete quest " + " && ".join(quests))
+
+    return "\n".join(parts)
+
+
 # =============================================================================
 # STRING KEY TABLE LOADING
 # =============================================================================
@@ -269,7 +314,7 @@ def build_seq_position_map(root_folder: Path) -> Dict[str, Tuple[float, float, f
 
 def parse_faction_info(
     folder: Path
-) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, str], Dict[str, str], Dict[str, str]]:
+) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, str], Dict[str, str], Dict[str, str], Dict[str, Tuple[List[str], List[str]]]]:
     """
     Parse faction info files for quest grouping.
 
@@ -278,6 +323,7 @@ def parse_faction_info(
         quest_to_fac: questKey.lower() → faction_strkey.lower()
         node_to_fac: factionnode_strkey.lower() → faction_strkey.lower()
         all_factions: faction_strkey.lower() → faction_name [ALL factions for leftover classification]
+        quest_conditions: questKey.lower() → (missions, quests) prereqs from Condition attribute
     """
     log.info("Scanning faction info folder: %s", folder)
 
@@ -285,10 +331,11 @@ def parse_faction_info(
     all_factions: Dict[str, str] = {}  # ALL factions: strkey → name
     quest_to_faction: Dict[str, str] = {}
     node_to_faction: Dict[str, str] = {}
+    quest_conditions: Dict[str, Tuple[List[str], List[str]]] = {}  # QuestKey → (missions, quests)
 
     if not folder.exists():
         log.warning("Faction info folder not found")
-        return faction_map, quest_to_faction, node_to_faction, all_factions
+        return faction_map, quest_to_faction, node_to_faction, all_factions, quest_conditions
 
     for p in iter_xml_files(folder, "*.xml"):
         rt = parse_xml_file(p)
@@ -314,11 +361,18 @@ def parse_faction_info(
                 faction_map[fac_sk] = (fac_name, order)
 
             if fac_sk:
-                # Map quests to faction
+                # Map quests to faction AND collect conditions
                 for qel in fac.iter("Quest"):
                     qk = (qel.get("QuestKey") or "").lower()
                     if qk:
                         quest_to_faction[qk] = fac_sk
+
+                        # Collect Condition attribute for prereqs
+                        cond = qel.get("Condition") or ""
+                        if cond:
+                            missions, quests = _extract_conditions(cond)
+                            if missions or quests:
+                                quest_conditions[qk] = (missions, quests)
 
                 # Map faction nodes to faction
                 for fn in fac.iter("FactionNode"):
@@ -326,9 +380,58 @@ def parse_faction_info(
                     if node_sk:
                         node_to_faction[node_sk] = fac_sk
 
-    log.info("Faction infos: %d primary, %d total ; Quests→Faction: %d ; Nodes→Faction: %d",
-             len(faction_map), len(all_factions), len(quest_to_faction), len(node_to_faction))
-    return faction_map, quest_to_faction, node_to_faction, all_factions
+    log.info("Faction infos: %d primary, %d total ; Quests→Faction: %d ; Nodes→Faction: %d ; Quest conditions: %d",
+             len(faction_map), len(all_factions), len(quest_to_faction), len(node_to_faction), len(quest_conditions))
+    return faction_map, quest_to_faction, node_to_faction, all_factions, quest_conditions
+
+
+def parse_branch_conditions(folder: Path) -> Dict[str, Tuple[List[str], List[str]]]:
+    """
+    Parse Branch conditions from quest XML files.
+
+    Collects Branch elements with Condition + Execute attributes:
+    <Branch Condition="CompleteMission(Mission_A)" Execute="Mission_X"/>
+
+    This means Mission_X requires Mission_A to be completed first.
+
+    Returns:
+        mission_conditions: execute_target.lower() → (missions, quests) prereqs
+    """
+    log.info("Parsing Branch conditions from: %s", folder)
+
+    mission_conditions: Dict[str, Tuple[List[str], List[str]]] = {}
+
+    if not folder.exists():
+        return mission_conditions
+
+    for p in _iter_quest_xml_files(folder):
+        rt = parse_xml_file(p)
+        if rt is None:
+            continue
+
+        # Find all Branch elements with Condition and Execute
+        for branch in rt.iter("Branch"):
+            cond = branch.get("Condition") or ""
+            execute = (branch.get("Execute") or "").lower()
+
+            if cond and execute:
+                missions, quests = _extract_conditions(cond)
+                if missions or quests:
+                    # Merge with existing if already found
+                    if execute in mission_conditions:
+                        existing_m, existing_q = mission_conditions[execute]
+                        # Extend with new unique values
+                        for m in missions:
+                            if m not in existing_m:
+                                existing_m.append(m)
+                        for q in quests:
+                            if q not in existing_q:
+                                existing_q.append(q)
+                    else:
+                        mission_conditions[execute] = (missions, quests)
+
+    log.info("Branch conditions: %d mission prereqs found", len(mission_conditions))
+    return mission_conditions
 
 
 # =============================================================================
@@ -504,6 +607,76 @@ def load_teleport_map(path: Path) -> Tuple[Dict[str, Dict[str, str]], Dict[str, 
     log.info("Teleport entries loaded: %d sheets, %d total entries, %d unique StringKeys",
              len(per_sheet), sum(len(v) for v in per_sheet.values()), len(global_map))
     return per_sheet, global_map
+
+
+def apply_prereq_commands(
+    sheet_data: Dict[str, List[Row]],
+    quest_conditions: Dict[str, Tuple[List[str], List[str]]],
+    branch_conditions: Dict[str, Tuple[List[str], List[str]]],
+    target_tabs: List[str]
+) -> Tuple[Dict[str, List[Row]], int]:
+    """
+    Prepend /complete commands for prerequisite quests/missions.
+
+    Only applies to specified tabs (Daily, Politics, Region Quest).
+
+    Args:
+        sheet_data: { sheet_name : [rows] }
+        quest_conditions: QuestKey.lower() → (missions, quests) from factioninfo
+        branch_conditions: MissionKey.lower() → (missions, quests) from Branch elements
+        target_tabs: List of tab names to process
+
+    Returns:
+        Tuple of (updated_sheet_data, count of commands added)
+    """
+    updated: Dict[str, List[Row]] = {}
+    count = 0
+
+    for sheet_name, rows in sheet_data.items():
+        # Only process target tabs
+        if sheet_name not in target_tabs:
+            updated[sheet_name] = rows
+            continue
+
+        new_rows: List[Row] = []
+        for row in rows:
+            # Row: (depth, orig, eng, loc, stringkey, stringid, icon, bold, cmd, status, comment, screenshot)
+            depth, orig, eng, loc, sk, sid, icon, bold, cmd, status, comment, shot = row
+
+            prereq_cmd = ""
+
+            # Check quest conditions (from factioninfo)
+            # StringKey might be the quest tag name (e.g., quest_node_her_xxx)
+            sk_lower = sk.lower() if sk else ""
+            if sk_lower in quest_conditions:
+                missions, quests = quest_conditions[sk_lower]
+                prereq_cmd = _build_prereq_command(missions, quests)
+
+            # Check branch conditions (from Branch Execute)
+            # StringKey might be the mission StrKey
+            if sk_lower in branch_conditions:
+                missions, quests = branch_conditions[sk_lower]
+                branch_prereq = _build_prereq_command(missions, quests)
+                if branch_prereq:
+                    if prereq_cmd:
+                        prereq_cmd = prereq_cmd + "\n" + branch_prereq
+                    else:
+                        prereq_cmd = branch_prereq
+
+            # Prepend prereq command to existing command
+            if prereq_cmd:
+                if cmd:
+                    cmd = prereq_cmd + "\n" + cmd
+                else:
+                    cmd = prereq_cmd
+                count += 1
+
+            new_rows.append((depth, orig, eng, loc, sk, sid, icon, bold, cmd, status, comment, shot))
+
+        updated[sheet_name] = new_rows
+
+    log.info("Prereq commands: %d added to tabs %s", count, target_tabs)
+    return updated, count
 
 
 def apply_teleport_two_pass(
@@ -1072,17 +1245,19 @@ def build_rows_minigame(
 # =============================================================================
 
 def autofit(ws) -> None:
-    """Auto-fit column widths with fixed widths for specific columns."""
+    """Auto-fit column widths and row heights."""
     fixed_widths = {
         "COMMENT": 50,
         "SCREENSHOT": 20,
         "STRINGID": 25,
         "StringKey": 13,
-        "ENG": 40
+        "ENG": 40,
+        "Command": 60,  # Wider for prereq + teleport commands
     }
 
     headers = [c.value for c in ws[1]]
 
+    # === PHASE 1: Column widths ===
     for col_idx, col in enumerate(ws.columns, start=1):
         letter = col[0].column_letter
         header_name = headers[col_idx - 1] if col_idx - 1 < len(headers) else None
@@ -1098,6 +1273,21 @@ def autofit(ws) -> None:
                     max_len = max(max_len, len(line))
 
         ws.column_dimensions[letter].width = 10 if max_len == 0 else min(max_len + 2, 80)
+
+    # === PHASE 2: Row heights (for multi-line Command cells) ===
+    default_row_height = 15
+    for row_idx in range(1, ws.max_row + 1):
+        max_lines = 1
+        for col_idx in range(1, ws.max_column + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            if cell.value:
+                content = str(cell.value)
+                lines = content.count('\n') + 1
+                max_lines = max(max_lines, lines)
+
+        # Set row height based on number of lines
+        if max_lines > 1:
+            ws.row_dimensions[row_idx].height = min(max_lines * default_row_height, 300)
 
 
 def write_sheet(
@@ -1249,8 +1439,11 @@ def generate_quest_datasheets() -> Dict:
         ])
         seq_pos = build_seq_position_map(SEQUENCER_FOLDER)
 
-        # 6. Parse faction info
-        faction_info_map, quest2fac_map, node2fac_map, all_factions_map = parse_faction_info(FACTIONINFO_FOLDER)
+        # 6. Parse faction info and conditions
+        faction_info_map, quest2fac_map, node2fac_map, all_factions_map, quest_conditions = parse_faction_info(FACTIONINFO_FOLDER)
+
+        # 7. Parse Branch conditions from quest XML
+        branch_conditions = parse_branch_conditions(FACTION_QUEST_FOLDER)
 
         # 7. Process each language
         log.info("Generating Excel workbooks...")
@@ -1377,6 +1570,14 @@ def generate_quest_datasheets() -> Dict:
 
             if rows_minigame:
                 sheet_data["Minigame Quest"] = rows_minigame
+
+            # Apply prerequisite commands (only for Daily, Politics, Region Quest)
+            prereq_target_tabs = ["Daily", "Politics", "Region Quest"]
+            sheet_data, prereq_count = apply_prereq_commands(
+                sheet_data, quest_conditions, branch_conditions, prereq_target_tabs
+            )
+            if prereq_count:
+                log.info("  Prereq commands: %d added", prereq_count)
 
             # Apply teleport data (two-pass: strict tab match first, then global fallback)
             sheet_data, tp_pass1, tp_pass2 = apply_teleport_two_pass(
