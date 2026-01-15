@@ -23,6 +23,9 @@ from tracker.data import read_daily_data, compute_daily_deltas
 
 def get_daily_styles():
     """Get all styles used in DAILY sheet."""
+    thin = Side(style='thin', color=TRACKER_STYLES["border_color"])
+    thick = Side(style='medium', color='000000')  # Bold black line
+
     return {
         "en_title_fill": PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid"),
         "cn_title_fill": PatternFill(start_color="C00000", end_color="C00000", fill_type="solid"),
@@ -33,18 +36,53 @@ def get_daily_styles():
                                       end_color=TRACKER_STYLES["subheader_color"], fill_type="solid"),
         "alt_fill": PatternFill(start_color=TRACKER_STYLES["alt_row_color"],
                                 end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid"),
-        "border": Border(
-            left=Side(style='thin', color=TRACKER_STYLES["border_color"]),
-            right=Side(style='thin', color=TRACKER_STYLES["border_color"]),
-            top=Side(style='thin', color=TRACKER_STYLES["border_color"]),
-            bottom=Side(style='thin', color=TRACKER_STYLES["border_color"])
-        ),
-        "thick_side": Side(style='thick', color='000000'),
-        "thin_side": Side(style='thin', color=TRACKER_STYLES["border_color"]),
-        "center": Alignment(horizontal='center', vertical='center'),
+        # Standard thin border
+        "border": Border(left=thin, right=thin, top=thin, bottom=thin),
+        # Thick borders for section separation
+        "thick_top": Border(left=thin, right=thin, top=thick, bottom=thin),
+        "thick_bottom": Border(left=thin, right=thin, top=thin, bottom=thick),
+        "thick_all": Border(left=thick, right=thick, top=thick, bottom=thick),
+        "thick_side": thick,
+        "thin_side": thin,
+        "center": Alignment(horizontal='center', vertical='center', wrap_text=True),
         "bold": Font(bold=True),
         "white_bold": Font(bold=True, color="FFFFFF"),
     }
+
+
+def autofit_columns(ws, min_width: int = 8, max_width: int = 50):
+    """Autofit column widths based on content."""
+    for col_idx in range(1, ws.max_column + 1):
+        max_len = 0
+        col_letter = get_column_letter(col_idx)
+
+        for row_idx in range(1, min(ws.max_row + 1, 100)):
+            cell = ws.cell(row_idx, col_idx)
+            if cell.value:
+                cell_len = len(str(cell.value))
+                max_len = max(max_len, cell_len)
+
+        width = min(max(max_len + 2, min_width), max_width)
+        ws.column_dimensions[col_letter].width = width
+
+
+def autofit_row_heights(ws, default_height: int = 15, line_height: int = 15):
+    """Autofit row heights based on content with word wrap."""
+    for row_idx in range(1, ws.max_row + 1):
+        max_lines = 1
+        for col_idx in range(1, ws.max_column + 1):
+            cell = ws.cell(row_idx, col_idx)
+            if cell.value:
+                text = str(cell.value)
+                col_letter = get_column_letter(col_idx)
+                col_width = ws.column_dimensions[col_letter].width or 10
+
+                lines = text.count('\n') + 1
+                chars_per_line = max(int(col_width * 1.2), 10)
+                wrapped_lines = max(1, len(text) // chars_per_line + 1)
+                max_lines = max(max_lines, lines, wrapped_lines)
+
+        ws.row_dimensions[row_idx].height = max(default_height, max_lines * line_height)
 
 
 # Tester columns: Done, Issues, NoIssue, Blocked, Korean, Words/Chars
@@ -328,11 +366,6 @@ def build_daily_sheet(wb: openpyxl.Workbook) -> None:
     # MANAGER STATS
     current_row = build_manager_section(ws, current_row, dates, daily_delta, users, styles)
 
-    # Set column widths
-    ws.column_dimensions['A'].width = 8  # Date column
-
-    # Auto-width for other columns based on max users
-    max_users = max(len(en_users), len(cn_users)) if en_users or cn_users else 1
-    for col_idx in range(2, 2 + max_users * COLS_PER_USER):
-        col_letter = get_column_letter(col_idx)
-        ws.column_dimensions[col_letter].width = 8  # Compact width for numbers
+    # Autofit columns and rows
+    autofit_columns(ws, min_width=8, max_width=40)
+    autofit_row_heights(ws)
