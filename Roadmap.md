@@ -540,13 +540,20 @@ Transformed LDM from "private by default" to "public by default with optional re
 
 #### P10 CI Verification - COMPLETE ✅
 
-**Build 455 SUCCESS** - 2026-01-16
+**BOTH CI SYSTEMS VERIFIED** - 2026-01-16
 
-Loop debug iterations:
+| CI System | Build | Result | Duration |
+|-----------|-------|--------|----------|
+| Gitea | 455 | ✅ SUCCESS | ~20 min |
+| GitHub | 456 | ✅ SUCCESS | 17m14s |
+
+**Gitea Loop Protocol:**
 1. Build 454: FAILED - Missing `LDMTranslationMemory` import in tm_indexes.py
 2. Build 455: SUCCESS - All tests passed (1000+ tests, 7 stages)
 
-Added GDP-P10 checkpoints to CI workflow:
+**GitHub:** Passed on first try
+
+Added GDP-P10 checkpoints to BOTH CI workflows:
 - GDP-P10-1: Repository Imports Check
 - GDP-P10-2: Factory Pattern Test
 - GDP-P10-3: Abstract Interface Test
