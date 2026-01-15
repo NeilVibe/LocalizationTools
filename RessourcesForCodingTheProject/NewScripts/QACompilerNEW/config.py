@@ -130,7 +130,7 @@ TRANSLATION_COLS = {
     "Character": {"eng": 2, "other": 3},
     "Region": {"eng": 2, "other": 3},
     "Item": {"eng": 5, "other": 7},  # ItemName column
-    "System": {"eng": 2, "other": 3},
+    "System": {"eng": 1, "other": 1},  # CONTENT column (single column for all languages)
     "Skill": {"eng": 2, "other": 3},
     "Help": {"eng": 2, "other": 3},
     "Gimmick": {"eng": 2, "other": 3},

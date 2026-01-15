@@ -190,6 +190,19 @@ CATEGORY_TO_MASTER = {
 }
 ```
 
+### Transfer Column Mapping
+System category has a unique column layout (CONTENT in col 1):
+```python
+TRANSLATION_COLS = {
+    "Quest": {"eng": 2, "other": 3},      # Standard layout
+    "Knowledge": {"eng": 2, "other": 3},
+    "Item": {"eng": 5, "other": 7},       # ItemName column
+    "System": {"eng": 1, "other": 1},     # CONTENT column (single)
+    # ... other categories use standard 2/3
+}
+```
+System Excel layout: `CONTENT | STATUS | COMMENT | STRINGID | SCREENSHOT`
+
 ## GUI Layout
 
 ```
