@@ -897,19 +897,68 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
 
 def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line: int = 50):
     """
-    Apply word wrap to all cells and autofit row heights based on content.
+    Apply word wrap to all cells and autofit column widths + row heights based on content.
+
+    Features:
+    - Auto-width for COMMENT_{User} columns (min 40, max 80)
+    - Fixed widths for other user columns (SCREENSHOT, STATUS, TESTER_STATUS)
+    - Auto-height for all rows based on content
 
     Args:
         wb: Workbook
         default_row_height: Default height for single-line rows
         chars_per_line: Estimated characters per line (for height calculation)
     """
+    # Column width settings
+    COMMENT_MIN_WIDTH = 40
+    COMMENT_MAX_WIDTH = 80
+    SCREENSHOT_WIDTH = 25
+    STATUS_WIDTH = 12
+
     for sheet_name in wb.sheetnames:
         if sheet_name == "STATUS":
             continue
 
         ws = wb[sheet_name]
 
+        # === PHASE 1: Auto-fit column widths ===
+        # Find COMMENT_{User} columns and calculate optimal width
+        for col in range(1, ws.max_column + 1):
+            header = ws.cell(row=1, column=col).value
+            if not header:
+                continue
+
+            header_str = str(header)
+            col_letter = get_column_letter(col)
+
+            # COMMENT_{User} columns: auto-width based on content
+            if header_str.startswith("COMMENT_"):
+                max_content_len = len(header_str)  # Start with header length
+                for row in range(2, ws.max_row + 1):
+                    cell_value = ws.cell(row=row, column=col).value
+                    if cell_value:
+                        # Get longest line in cell (for multi-line content)
+                        lines = str(cell_value).split('\n')
+                        longest_line = max(len(line) for line in lines) if lines else 0
+                        max_content_len = max(max_content_len, longest_line)
+
+                # Apply width with min/max bounds
+                width = min(max(max_content_len * 1.1 + 2, COMMENT_MIN_WIDTH), COMMENT_MAX_WIDTH)
+                ws.column_dimensions[col_letter].width = width
+
+            # SCREENSHOT_{User} columns: fixed width
+            elif header_str.startswith("SCREENSHOT_"):
+                ws.column_dimensions[col_letter].width = SCREENSHOT_WIDTH
+
+            # STATUS_{User} columns: fixed width
+            elif header_str.startswith("STATUS_") and not header_str.startswith("TESTER_STATUS_"):
+                ws.column_dimensions[col_letter].width = STATUS_WIDTH
+
+            # TESTER_STATUS_{User} columns: fixed width (hidden anyway)
+            elif header_str.startswith("TESTER_STATUS_"):
+                ws.column_dimensions[col_letter].width = STATUS_WIDTH
+
+        # === PHASE 2: Auto-fit row heights ===
         for row in range(1, ws.max_row + 1):
             max_lines = 1
 
@@ -923,8 +972,14 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
                 if cell.value:
                     content = str(cell.value)
                     explicit_lines = content.count('\n') + 1
+
+                    # Get column width for wrap calculation
+                    col_letter = get_column_letter(col)
+                    col_width = ws.column_dimensions[col_letter].width or chars_per_line
+                    effective_chars_per_line = max(int(col_width * 0.9), 10)
+
                     longest_line = max(len(line) for line in content.split('\n')) if content else 0
-                    wrapped_lines = max(1, (longest_line // chars_per_line) + 1)
+                    wrapped_lines = max(1, (longest_line // effective_chars_per_line) + 1)
                     total_lines = explicit_lines + wrapped_lines - 1
                     max_lines = max(max_lines, total_lines)
 
