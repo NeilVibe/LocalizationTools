@@ -22,6 +22,9 @@ from config import TRACKER_STYLES, CATEGORIES, load_tester_mapping
 
 def get_total_styles():
     """Get all styles used in TOTAL sheet."""
+    thin = Side(style='thin', color=TRACKER_STYLES["border_color"])
+    thick = Side(style='medium', color='000000')  # Bold black line
+
     return {
         "title_fill": PatternFill(start_color=TRACKER_STYLES["title_color"],
                                   end_color=TRACKER_STYLES["title_color"], fill_type="solid"),
@@ -34,17 +37,74 @@ def get_total_styles():
                                 end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid"),
         "total_fill": PatternFill(start_color=TRACKER_STYLES["total_row_color"],
                                   end_color=TRACKER_STYLES["total_row_color"], fill_type="solid"),
-        # Medal colors removed per boss request
-        "border": Border(
-            left=Side(style='thin', color=TRACKER_STYLES["border_color"]),
-            right=Side(style='thin', color=TRACKER_STYLES["border_color"]),
-            top=Side(style='thin', color=TRACKER_STYLES["border_color"]),
-            bottom=Side(style='thin', color=TRACKER_STYLES["border_color"])
-        ),
-        "center": Alignment(horizontal='center', vertical='center'),
+        # Standard thin border
+        "border": Border(left=thin, right=thin, top=thin, bottom=thin),
+        # Thick borders for section separation
+        "thick_top": Border(left=thin, right=thin, top=thick, bottom=thin),
+        "thick_bottom": Border(left=thin, right=thin, top=thin, bottom=thick),
+        "thick_all": Border(left=thick, right=thick, top=thick, bottom=thick),
+        "thick_left": Border(left=thick, right=thin, top=thin, bottom=thin),
+        "thick_right": Border(left=thin, right=thick, top=thin, bottom=thin),
+        "thick_top_left": Border(left=thick, right=thin, top=thick, bottom=thin),
+        "thick_top_right": Border(left=thin, right=thick, top=thick, bottom=thin),
+        "thick_bottom_left": Border(left=thick, right=thin, top=thin, bottom=thick),
+        "thick_bottom_right": Border(left=thin, right=thick, top=thin, bottom=thick),
+        "center": Alignment(horizontal='center', vertical='center', wrap_text=True),
         "bold": Font(bold=True),
         "white_bold": Font(bold=True, color="FFFFFF"),
     }
+
+
+def autofit_columns(ws, min_width: int = 8, max_width: int = 50):
+    """
+    Autofit column widths based on content.
+
+    Args:
+        ws: Worksheet
+        min_width: Minimum column width
+        max_width: Maximum column width
+    """
+    for col_idx in range(1, ws.max_column + 1):
+        max_len = 0
+        col_letter = get_column_letter(col_idx)
+
+        for row_idx in range(1, min(ws.max_row + 1, 100)):  # Sample first 100 rows
+            cell = ws.cell(row_idx, col_idx)
+            if cell.value:
+                cell_len = len(str(cell.value))
+                max_len = max(max_len, cell_len)
+
+        # Add padding and apply constraints
+        width = min(max(max_len + 2, min_width), max_width)
+        ws.column_dimensions[col_letter].width = width
+
+
+def autofit_row_heights(ws, default_height: int = 15, line_height: int = 15):
+    """
+    Autofit row heights based on content with word wrap.
+
+    Args:
+        ws: Worksheet
+        default_height: Default row height
+        line_height: Height per line of text
+    """
+    for row_idx in range(1, ws.max_row + 1):
+        max_lines = 1
+        for col_idx in range(1, ws.max_column + 1):
+            cell = ws.cell(row_idx, col_idx)
+            if cell.value:
+                # Count lines based on newlines and column width
+                text = str(cell.value)
+                col_letter = get_column_letter(col_idx)
+                col_width = ws.column_dimensions[col_letter].width or 10
+
+                lines = text.count('\n') + 1
+                # Estimate wrapped lines
+                chars_per_line = max(int(col_width * 1.2), 10)
+                wrapped_lines = max(1, len(text) // chars_per_line + 1)
+                max_lines = max(max_lines, lines, wrapped_lines)
+
+        ws.row_dimensions[row_idx].height = max(default_height, max_lines * line_height)
 
 
 # Headers for tester stats
@@ -166,13 +226,13 @@ def build_tester_section(
     title_cell.alignment = styles["center"]
     current_row += 1
 
-    # Headers
+    # Headers (with thick top border for separation)
     for col, header in enumerate(TESTER_HEADERS, 1):
         cell = ws.cell(current_row, col, header)
         cell.fill = styles["header_fill"]
         cell.font = styles["bold"]
         cell.alignment = styles["center"]
-        cell.border = styles["border"]
+        cell.border = styles["thick_top"]
 
     manager_start_col = len(TESTER_HEADERS) + 1
     for col, header in enumerate(MANAGER_HEADERS, manager_start_col):
@@ -180,7 +240,7 @@ def build_tester_section(
         cell.fill = styles["manager_header_fill"]
         cell.font = styles["bold"]
         cell.alignment = styles["center"]
-        cell.border = styles["border"]
+        cell.border = styles["thick_top"]
     current_row += 1
 
     # Data rows
@@ -233,7 +293,7 @@ def build_tester_section(
 
         current_row += 1
 
-    # Section subtotal row
+    # Section subtotal row (with thick bottom border for separation)
     st = section_total
     subtotal_data = [
         "SUBTOTAL", st["done"], st["issues"], st["no_issue"], st["blocked"], st["korean"],
@@ -245,7 +305,7 @@ def build_tester_section(
         cell.fill = styles["total_fill"]
         cell.font = styles["bold"]
         cell.alignment = styles["center"]
-        cell.border = styles["border"]
+        cell.border = styles["thick_bottom"]
     current_row += 1
 
     return current_row, section_total
@@ -717,3 +777,7 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
 
     # Add Ranking Table
     build_ranking_table(ws, breakdown_start_row, user_data, tester_mapping, styles)
+
+    # Autofit columns and rows
+    autofit_columns(ws, min_width=10, max_width=40)
+    autofit_row_heights(ws)
