@@ -1,0 +1,17 @@
+# Real tester data - keep only example file
+languageTOtester_list.txt
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Generated output
+*.xlsx
+GeneratedDatasheets/
+Masterfolder_EN/*.xlsx
+Masterfolder_CN/*.xlsx
+
+# Images (large files)
+*.png
+*.jpg
+*.jpeg
