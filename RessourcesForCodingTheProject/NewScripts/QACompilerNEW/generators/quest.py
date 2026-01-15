@@ -11,10 +11,12 @@ Extracts quest data from multiple sources:
 Tab Organization:
   - Main Quest (scenario-based)
   - Faction tabs (ordered by OrderByString from factioninfo)
-  - Others (leftover faction quests)
-  - Daily Quest
+  - Region Quest (leftover factions with *_Request StrKey)
+  - Daily (leftover *_Daily + Group="daily" merged)
+  - Politics (leftover factions with *_Situation StrKey)
   - Challenge Quest
   - Minigame Quest
+  - Others (leftover factions without pattern match - at end)
 
 Output per-language Excel files with:
   - One sheet per quest type/faction
@@ -267,24 +269,26 @@ def build_seq_position_map(root_folder: Path) -> Dict[str, Tuple[float, float, f
 
 def parse_faction_info(
     folder: Path
-) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, str], Dict[str, str]]:
+) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, str], Dict[str, str], Dict[str, str]]:
     """
     Parse faction info files for quest grouping.
 
     Returns:
-        faction_map: faction_strkey.lower() → (faction_name, orderByString)
+        faction_map: faction_strkey.lower() → (faction_name, orderByString) [only with OrderByString]
         quest_to_fac: questKey.lower() → faction_strkey.lower()
         node_to_fac: factionnode_strkey.lower() → faction_strkey.lower()
+        all_factions: faction_strkey.lower() → faction_name [ALL factions for leftover classification]
     """
     log.info("Scanning faction info folder: %s", folder)
 
-    faction_map: Dict[str, Tuple[str, str]] = {}
+    faction_map: Dict[str, Tuple[str, str]] = {}  # Only factions with OrderByString
+    all_factions: Dict[str, str] = {}  # ALL factions: strkey → name
     quest_to_faction: Dict[str, str] = {}
     node_to_faction: Dict[str, str] = {}
 
     if not folder.exists():
         log.warning("Faction info folder not found")
-        return faction_map, quest_to_faction, node_to_faction
+        return faction_map, quest_to_faction, node_to_faction, all_factions
 
     for p in iter_xml_files(folder, "*.xml"):
         rt = parse_xml_file(p)
@@ -294,6 +298,10 @@ def parse_faction_info(
         for fac in rt.iter("Faction"):
             fac_sk = (fac.get("StrKey") or "").lower()
             fac_name = fac.get("Name") or ""
+
+            # Store ALL factions for leftover classification
+            if fac_sk and fac_name:
+                all_factions[fac_sk] = fac_name
 
             # Get OrderByString from Dev node
             order = None
@@ -318,9 +326,9 @@ def parse_faction_info(
                     if node_sk:
                         node_to_faction[node_sk] = fac_sk
 
-    log.info("Faction infos: %d ; Quests→Faction: %d ; Nodes→Faction: %d",
-             len(faction_map), len(quest_to_faction), len(node_to_faction))
-    return faction_map, quest_to_faction, node_to_faction
+    log.info("Faction infos: %d primary, %d total ; Quests→Faction: %d ; Nodes→Faction: %d",
+             len(faction_map), len(all_factions), len(quest_to_faction), len(node_to_faction))
+    return faction_map, quest_to_faction, node_to_faction, all_factions
 
 
 # =============================================================================
@@ -445,29 +453,32 @@ def parse_group_meta(path: Path) -> Dict[str, str]:
 
 
 # =============================================================================
-# TELEPORT LOOKUP (per-sheet mapping)
+# TELEPORT LOOKUP (two-pass matching)
 # =============================================================================
 
-def load_teleport_map(path: Path) -> Dict[str, Dict[str, str]]:
+def load_teleport_map(path: Path) -> Tuple[Dict[str, Dict[str, str]], Dict[str, str]]:
     """
     Load teleport data from reference Excel file.
 
     Returns:
-        { sheet_title_trimmed_to_31 : { StringKey : teleport_string } }
+        Tuple of:
+        - per_sheet: { sheet_title[:31] : { StringKey : teleport_string } }
+        - global_map: { StringKey : teleport_string } (all entries for fallback)
     """
     log.info("Loading teleport lookup from: %s", path)
 
     if not path.is_file():
         log.info("Teleport source file not found - skipping teleport lookup")
-        return {}
+        return {}, {}
 
     try:
         wb = load_workbook(path, data_only=True)
     except Exception as e:
         log.warning("Failed to load teleport file: %s", e)
-        return {}
+        return {}, {}
 
-    mapping: Dict[str, Dict[str, str]] = {}
+    per_sheet: Dict[str, Dict[str, str]] = {}
+    global_map: Dict[str, str] = {}
 
     for ws in wb.worksheets:
         sheet_key = ws.title[:31]
@@ -485,28 +496,73 @@ def load_teleport_map(path: Path) -> Dict[str, Dict[str, str]]:
             teleport = str(tele_cell).strip()
             if sk and teleport:
                 sub_map.setdefault(sk, teleport)
+                global_map.setdefault(sk, teleport)  # Also add to global
 
         if sub_map:
-            mapping[sheet_key] = sub_map
+            per_sheet[sheet_key] = sub_map
 
-    log.info("Teleport entries loaded: %d sheets, %d total rows",
-             len(mapping), sum(len(v) for v in mapping.values()))
-    return mapping
+    log.info("Teleport entries loaded: %d sheets, %d total entries, %d unique StringKeys",
+             len(per_sheet), sum(len(v) for v in per_sheet.values()), len(global_map))
+    return per_sheet, global_map
 
 
-def apply_teleport_map(rows: List[Row], tp_submap: Dict[str, str]) -> List[Row]:
+def apply_teleport_two_pass(
+    sheet_data: Dict[str, List[Row]],
+    per_sheet_map: Dict[str, Dict[str, str]],
+    global_map: Dict[str, str]
+) -> Tuple[Dict[str, List[Row]], int, int]:
     """
-    Append teleport strings to Command field when StringKey matches.
+    Apply teleport data with two-pass matching.
+
+    Pass 1: Match by tab name + StringKey (strict, consume entries)
+    Pass 2: Match remaining by StringKey only (lenient fallback)
+
+    Args:
+        sheet_data: { sheet_name : [rows] }
+        per_sheet_map: { sheet_name : { StringKey : teleport } }
+        global_map: { StringKey : teleport }
+
+    Returns:
+        Tuple of (updated_sheet_data, pass1_count, pass2_count)
     """
-    out: List[Row] = []
-    for (depth, orig, eng, loc, sk, sid, icon, bold, cmd, status, comment, shot) in rows:
-        new_cmd = cmd
-        if sk:
-            tele = tp_submap.get(sk)
-            if tele and tele not in (cmd or ""):
-                new_cmd = f"{cmd}\n{tele}" if cmd else tele
-        out.append((depth, orig, eng, loc, sk, sid, icon, bold, new_cmd, status, comment, shot))
-    return out
+    consumed: set = set()  # Track consumed StringKeys
+    pass1_count = 0
+    pass2_count = 0
+
+    # PASS 1: Strict match by tab name + StringKey
+    for sheet_name, rows in sheet_data.items():
+        sub_map = per_sheet_map.get(sheet_name, {})
+        if not sub_map:
+            continue
+
+        new_rows: List[Row] = []
+        for (depth, orig, eng, loc, sk, sid, icon, bold, cmd, status, comment, shot) in rows:
+            new_cmd = cmd
+            if sk and sk in sub_map:
+                tele = sub_map[sk]
+                if tele and tele not in (cmd or ""):
+                    new_cmd = f"{cmd}\n{tele}" if cmd else tele
+                    consumed.add(sk)
+                    pass1_count += 1
+            new_rows.append((depth, orig, eng, loc, sk, sid, icon, bold, new_cmd, status, comment, shot))
+        sheet_data[sheet_name] = new_rows
+
+    # PASS 2: Lenient fallback - match by StringKey only (not consumed)
+    for sheet_name, rows in sheet_data.items():
+        new_rows: List[Row] = []
+        for (depth, orig, eng, loc, sk, sid, icon, bold, cmd, status, comment, shot) in rows:
+            new_cmd = cmd
+            # Only try fallback if not already has teleport and StringKey not consumed
+            if sk and sk not in consumed and sk in global_map:
+                tele = global_map[sk]
+                if tele and tele not in (cmd or ""):
+                    new_cmd = f"{cmd}\n{tele}" if cmd else tele
+                    consumed.add(sk)
+                    pass2_count += 1
+            new_rows.append((depth, orig, eng, loc, sk, sid, icon, bold, new_cmd, status, comment, shot))
+        sheet_data[sheet_name] = new_rows
+
+    return sheet_data, pass1_count, pass2_count
 
 
 # =============================================================================
@@ -1156,8 +1212,8 @@ def generate_quest_datasheets() -> Dict:
         return result
 
     try:
-        # 1. Load teleport lookup
-        teleport_map = load_teleport_map(TELEPORT_SOURCE_FILE)
+        # 1. Load teleport lookup (per-sheet + global for fallback)
+        teleport_per_sheet, teleport_global = load_teleport_map(TELEPORT_SOURCE_FILE)
 
         # 2. Load language tables
         lang_tables = load_language_tables(LANGUAGE_FOLDER)
@@ -1189,7 +1245,7 @@ def generate_quest_datasheets() -> Dict:
         seq_pos = build_seq_position_map(SEQUENCER_FOLDER)
 
         # 6. Parse faction info
-        faction_info_map, quest2fac_map, node2fac_map = parse_faction_info(FACTIONINFO_FOLDER)
+        faction_info_map, quest2fac_map, node2fac_map, all_factions_map = parse_faction_info(FACTIONINFO_FOLDER)
 
         # 7. Process each language
         log.info("Generating Excel workbooks...")
@@ -1261,28 +1317,68 @@ def generate_quest_datasheets() -> Dict:
                 sheet_data.setdefault(sheet_name, []).append(header_row)
                 sheet_data[sheet_name].extend(rows)
 
-            # Handle leftover faction quests
+            # Handle leftover faction quests - classify by StrKey pattern
             leftover_keys = set(faction_groups) - set(faction_info_map)
             if leftover_keys:
-                others_rows: List[Row] = []
-                for fk in leftover_keys:
-                    others_rows.extend(faction_groups[fk])
-                sheet_data["Others"] = [
-                    (0, "Others", "", "", "", "", False, True, "", "", "", "")
-                ] + others_rows
+                # Group leftovers by StrKey pattern: Request, Daily, Situation, or Others
+                region_quest_rows: List[Row] = []  # *_Request
+                daily_rows: List[Row] = []          # *_Daily
+                politics_rows: List[Row] = []       # *_Situation
+                true_others_rows: List[Row] = []    # No pattern match
 
+                for fk in leftover_keys:
+                    rows = faction_groups[fk]
+                    fac_name = all_factions_map.get(fk, fk)
+
+                    # Create header row for this faction group
+                    header_row: Row = (
+                        0, fac_name, _tr(fac_name, eng_tbl), _tr(fac_name, lang_tbl),
+                        "", _sid(fac_name, eng_tbl),
+                        False, True, "", "", "", ""
+                    )
+
+                    # Classify by StrKey pattern
+                    if "_request" in fk:
+                        region_quest_rows.append(header_row)
+                        region_quest_rows.extend(rows)
+                    elif "_daily" in fk:
+                        daily_rows.append(header_row)
+                        daily_rows.extend(rows)
+                    elif "_situation" in fk:
+                        politics_rows.append(header_row)
+                        politics_rows.extend(rows)
+                    else:
+                        true_others_rows.append(header_row)
+                        true_others_rows.extend(rows)
+
+                # Add classified tabs
+                if region_quest_rows:
+                    sheet_data["Region Quest"] = region_quest_rows
+                if daily_rows:
+                    sheet_data["Daily"] = daily_rows
+                if politics_rows:
+                    sheet_data["Politics"] = politics_rows
+                if true_others_rows:
+                    sheet_data["Others"] = true_others_rows
+
+            # Merge Daily Quest (Group="daily") into Daily tab
             if rows_daily:
-                sheet_data["Daily Quest"] = rows_daily
+                if "Daily" in sheet_data:
+                    sheet_data["Daily"].extend(rows_daily)
+                else:
+                    sheet_data["Daily"] = rows_daily
 
             sheet_data["Challenge Quest"] = rows_chal
 
             if rows_minigame:
                 sheet_data["Minigame Quest"] = rows_minigame
 
-            # Apply teleport data per-sheet
-            for sheet_name in list(sheet_data.keys()):
-                sub_map = teleport_map.get(sheet_name, {})
-                sheet_data[sheet_name] = apply_teleport_map(sheet_data[sheet_name], sub_map)
+            # Apply teleport data (two-pass: strict tab match first, then global fallback)
+            sheet_data, tp_pass1, tp_pass2 = apply_teleport_two_pass(
+                sheet_data, teleport_per_sheet, teleport_global
+            )
+            if tp_pass1 or tp_pass2:
+                log.info("  Teleport applied: %d by tab match, %d by fallback", tp_pass1, tp_pass2)
 
             # Write workbook
             wb = Workbook()
@@ -1290,13 +1386,20 @@ def generate_quest_datasheets() -> Dict:
 
             ordered = ["Main Quest"]
             ordered += sorted(faction_sheet_ordstr, key=lambda sn: parse_order(faction_sheet_ordstr[sn]))
-            if "Others" in sheet_data:
-                ordered.append("Others")
-            if "Daily Quest" in sheet_data:
-                ordered.append("Daily Quest")
+            # Leftover classification tabs (from StrKey patterns)
+            if "Region Quest" in sheet_data:
+                ordered.append("Region Quest")
+            if "Daily" in sheet_data:
+                ordered.append("Daily")
+            if "Politics" in sheet_data:
+                ordered.append("Politics")
+            # Quest type tabs
             ordered.append("Challenge Quest")
             if "Minigame Quest" in sheet_data:
                 ordered.append("Minigame Quest")
+            # Others at the end
+            if "Others" in sheet_data:
+                ordered.append("Others")
 
             for title in ordered:
                 if title in sheet_data and sheet_data[title]:
