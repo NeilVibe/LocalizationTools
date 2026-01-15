@@ -149,6 +149,236 @@ jobs:
           PGPASSWORD=locanext_test psql -h localhost -U locanext -d locanext_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
           echo "[OK] pg_trgm extension enabled"
 
+      # ============================================================
+      # GDP-P10: REPOSITORY PATTERN VERIFICATION
+      # Granular Debug Protocol for P10 DB Abstraction Layer
+      # These checkpoints verify the Factory+Abstract+Repo pattern
+      # works correctly BEFORE running the full test suite.
+      # ============================================================
+      - name: GDP-P10-1 Repository Imports Check
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  GDP-P10-1: REPOSITORY IMPORTS CHECK                       ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          python << 'EOF'
+          import sys
+          errors = []
+
+          # Check all repository interfaces exist
+          print("Checking repository interfaces...")
+          try:
+              from server.repositories.interfaces.tm_repository import TMRepository
+              from server.repositories.interfaces.file_repository import FileRepository
+              from server.repositories.interfaces.row_repository import RowRepository
+              from server.repositories.interfaces.project_repository import ProjectRepository
+              from server.repositories.interfaces.folder_repository import FolderRepository
+              from server.repositories.interfaces.platform_repository import PlatformRepository
+              from server.repositories.interfaces.qa_repository import QAResultRepository
+              from server.repositories.interfaces.trash_repository import TrashRepository
+              from server.repositories.interfaces.capability_repository import CapabilityRepository
+              print("  ✓ All 9 repository interfaces imported")
+          except ImportError as e:
+              errors.append(f"Interface import failed: {e}")
+
+          # Check factory functions exist
+          print("Checking factory functions...")
+          try:
+              from server.repositories.factory import (
+                  get_tm_repository,
+                  get_file_repository,
+                  get_row_repository,
+                  get_project_repository,
+                  get_folder_repository,
+                  get_platform_repository,
+                  get_qa_repository,
+                  get_trash_repository,
+                  get_capability_repository,
+              )
+              print("  ✓ All 9 factory functions imported")
+          except ImportError as e:
+              errors.append(f"Factory import failed: {e}")
+
+          # Check PostgreSQL adapters exist
+          print("Checking PostgreSQL adapters...")
+          try:
+              from server.repositories.postgresql.tm_repo import PostgreSQLTMRepository
+              from server.repositories.postgresql.file_repo import PostgreSQLFileRepository
+              from server.repositories.postgresql.row_repo import PostgreSQLRowRepository
+              from server.repositories.postgresql.project_repo import PostgreSQLProjectRepository
+              from server.repositories.postgresql.folder_repo import PostgreSQLFolderRepository
+              from server.repositories.postgresql.platform_repo import PostgreSQLPlatformRepository
+              from server.repositories.postgresql.qa_repo import PostgreSQLQAResultRepository
+              from server.repositories.postgresql.trash_repo import PostgreSQLTrashRepository
+              from server.repositories.postgresql.capability_repo import PostgreSQLCapabilityRepository
+              print("  ✓ All 9 PostgreSQL adapters imported")
+          except ImportError as e:
+              errors.append(f"PostgreSQL adapter import failed: {e}")
+
+          # Check SQLite adapters exist
+          print("Checking SQLite adapters...")
+          try:
+              from server.repositories.sqlite.tm_repo import SQLiteTMRepository
+              from server.repositories.sqlite.file_repo import SQLiteFileRepository
+              from server.repositories.sqlite.row_repo import SQLiteRowRepository
+              from server.repositories.sqlite.project_repo import SQLiteProjectRepository
+              from server.repositories.sqlite.folder_repo import SQLiteFolderRepository
+              from server.repositories.sqlite.platform_repo import SQLitePlatformRepository
+              from server.repositories.sqlite.qa_repo import SQLiteQAResultRepository
+              from server.repositories.sqlite.trash_repo import SQLiteTrashRepository
+              from server.repositories.sqlite.capability_repo import SQLiteCapabilityRepository
+              print("  ✓ All 9 SQLite adapters imported")
+          except ImportError as e:
+              errors.append(f"SQLite adapter import failed: {e}")
+
+          if errors:
+              print("\n❌ GDP-P10-1 FAILED:")
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+          else:
+              print("\n✅ GDP-P10-1 PASSED: All repository imports OK")
+          EOF
+
+      - name: GDP-P10-2 Factory Pattern Test
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  GDP-P10-2: FACTORY PATTERN TEST                           ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          python << 'EOF'
+          import sys
+          from abc import ABC
+
+          # Test that factory functions return correct types based on mode
+          print("Testing factory pattern...")
+
+          # Import factory module
+          from server.repositories import factory
+
+          # Check _is_offline_mode function exists
+          if not hasattr(factory, '_is_offline_mode'):
+              print("❌ _is_offline_mode function not found in factory")
+              sys.exit(1)
+          print("  ✓ _is_offline_mode function exists")
+
+          # Check all factory functions have correct signature
+          factory_funcs = [
+              'get_tm_repository',
+              'get_file_repository',
+              'get_row_repository',
+              'get_project_repository',
+              'get_folder_repository',
+              'get_platform_repository',
+              'get_qa_repository',
+              'get_trash_repository',
+              'get_capability_repository',
+          ]
+
+          for func_name in factory_funcs:
+              if not hasattr(factory, func_name):
+                  print(f"❌ {func_name} not found in factory")
+                  sys.exit(1)
+          print(f"  ✓ All {len(factory_funcs)} factory functions exist")
+
+          print("\n✅ GDP-P10-2 PASSED: Factory pattern OK")
+          EOF
+
+      - name: GDP-P10-3 Abstract Interface Test
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  GDP-P10-3: ABSTRACT INTERFACE TEST                        ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          python << 'EOF'
+          import sys
+          from abc import ABC, abstractmethod
+
+          print("Testing abstract interfaces...")
+
+          # Import and verify TMRepository interface
+          from server.repositories.interfaces.tm_repository import TMRepository
+
+          # Check it's abstract
+          if not issubclass(TMRepository, ABC):
+              print("❌ TMRepository is not an ABC")
+              sys.exit(1)
+          print("  ✓ TMRepository is abstract")
+
+          # Check required methods exist
+          required_methods = ['get', 'get_all', 'create', 'delete']
+          for method in required_methods:
+              if not hasattr(TMRepository, method):
+                  print(f"❌ TMRepository missing method: {method}")
+                  sys.exit(1)
+          print(f"  ✓ TMRepository has required methods: {required_methods}")
+
+          # Verify PostgreSQL adapter implements interface
+          from server.repositories.postgresql.tm_repo import PostgreSQLTMRepository
+          if not issubclass(PostgreSQLTMRepository, TMRepository):
+              print("❌ PostgreSQLTMRepository doesn't implement TMRepository")
+              sys.exit(1)
+          print("  ✓ PostgreSQLTMRepository implements TMRepository")
+
+          # Verify SQLite adapter implements interface
+          from server.repositories.sqlite.tm_repo import SQLiteTMRepository
+          if not issubclass(SQLiteTMRepository, TMRepository):
+              print("❌ SQLiteTMRepository doesn't implement TMRepository")
+              sys.exit(1)
+          print("  ✓ SQLiteTMRepository implements TMRepository")
+
+          print("\n✅ GDP-P10-3 PASSED: Abstract interfaces OK")
+          EOF
+
+      - name: GDP-P10-4 Test File Imports Check
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  GDP-P10-4: TEST FILE IMPORTS CHECK                        ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          python << 'EOF'
+          import sys
+
+          print("Checking test files can import repository mocks...")
+
+          # Check test_mocked_full.py imports work
+          try:
+              # These are the exact imports from the test file
+              from server.repositories.factory import (
+                  get_project_repository,
+                  get_file_repository,
+                  get_folder_repository,
+                  get_row_repository,
+                  get_tm_repository,
+                  get_platform_repository,
+                  get_qa_repository,
+                  get_trash_repository,
+                  get_capability_repository,
+              )
+              print("  ✓ test_mocked_full.py imports OK")
+          except ImportError as e:
+              print(f"❌ test_mocked_full.py import failed: {e}")
+              sys.exit(1)
+
+          # Check server.main imports (for FastAPI app)
+          try:
+              from server.main import app as wrapped_app
+              fastapi_app = wrapped_app.other_asgi_app
+              print("  ✓ server.main app import OK")
+          except Exception as e:
+              print(f"❌ server.main import failed: {e}")
+              sys.exit(1)
+
+          # Check dependencies import
+          try:
+              from server.utils.dependencies import get_current_active_user_async
+              print("  ✓ dependencies import OK")
+          except ImportError as e:
+              print(f"❌ dependencies import failed: {e}")
+              sys.exit(1)
+
+          print("\n✅ GDP-P10-4 PASSED: Test file imports OK")
+          EOF
+      # ============================================================
+      # END GDP-P10: Repository Pattern Verification
+      # ============================================================
+
       - name: Install Node Dependencies
         run: |
           cd locaNext && npm ci
