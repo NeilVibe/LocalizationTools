@@ -694,7 +694,19 @@ def build_rows_faction(
     log.info("Building rows for FACTION quests...")
 
     def find_faction(el: ET._Element) -> str:
-        # Try FactionNodeKeyList first
+        # 1. FIRST: Authoritative Quest mapping from factioninfo <Quest QuestKey="..."/>
+        fk = quest2fac.get(el.tag.lower())
+        if fk:
+            return fk
+
+        # 2. Fallback: FactionKeyList in quest XML (explicit declaration)
+        for sub in el.iter():
+            if "FactionKeyList" in sub.attrib:
+                parts = [v.strip() for v in (sub.get("FactionKeyList") or "").split(",") if v.strip()]
+                if parts:
+                    return parts[0].lower()
+
+        # 3. Last resort: FactionNodeKeyList (derived from node mapping)
         for sub in el.iter():
             if "FactionNodeKeyList" in sub.attrib:
                 parts = [v.strip() for v in (sub.get("FactionNodeKeyList") or "").split() if v.strip()]
@@ -703,14 +715,7 @@ def build_rows_faction(
                     if fk:
                         return fk
 
-        # Try FactionKeyList
-        for sub in el.iter():
-            if "FactionKeyList" in sub.attrib:
-                parts = [v.strip() for v in (sub.get("FactionKeyList") or "").split(",") if v.strip()]
-                if parts:
-                    return parts[0].lower()
-
-        return quest2fac.get(el.tag.lower(), "")
+        return ""
 
     grouping: Dict[str, List[Row]] = {}
 
