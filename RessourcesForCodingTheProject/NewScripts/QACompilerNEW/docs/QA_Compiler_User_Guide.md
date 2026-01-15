@@ -854,7 +854,39 @@ python main.py --build 2>&1 | tee build.log
 
 ---
 
-## 15. Appendix
+## 15. Quick Update Protocol
+
+### Updating Individual Files (Instead of Full Zip)
+
+When updates are made, you don't need to re-download the entire zip. Just replace the specific file(s) that changed.
+
+### File-to-Function Mapping
+
+| If this changes... | Replace this file |
+|--------------------|-------------------|
+| Quest datasheets | `generators/quest.py` |
+| Knowledge datasheets | `generators/knowledge.py` |
+| Item datasheets | `generators/item.py` |
+| Region datasheets | `generators/region.py` |
+| Skill datasheets | `generators/skill.py` |
+| Character datasheets | `generators/character.py` |
+| Help datasheets | `generators/help.py` |
+| Gimmick datasheets | `generators/gimmick.py` |
+| Transfer logic | `core/transfer.py` |
+| Build/Compile logic | `core/compiler.py` |
+| Progress Tracker | `tracker/total.py`, `tracker/daily.py`, `tracker/data.py` |
+| Configuration | `config.py` |
+| GUI | `gui/app.py` |
+
+### Update Steps
+
+1. Download only the changed file(s) from the repository
+2. Replace in your local installation
+3. Run to verify: `python main.py --list`
+
+---
+
+## 16. Appendix
 
 ### Status Values
 
