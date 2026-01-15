@@ -34,9 +34,7 @@ def get_total_styles():
                                 end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid"),
         "total_fill": PatternFill(start_color=TRACKER_STYLES["total_row_color"],
                                   end_color=TRACKER_STYLES["total_row_color"], fill_type="solid"),
-        "gold_fill": PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid"),
-        "silver_fill": PatternFill(start_color="C0C0C0", end_color="C0C0C0", fill_type="solid"),
-        "bronze_fill": PatternFill(start_color="CD7F32", end_color="CD7F32", fill_type="solid"),
+        # Medal colors removed per boss request
         "border": Border(
             left=Side(style='thin', color=TRACKER_STYLES["border_color"]),
             right=Side(style='thin', color=TRACKER_STYLES["border_color"]),
@@ -348,20 +346,13 @@ def build_ranking_table(
         for idx, user_score in enumerate(scores_list):
             rank = idx + 1
 
-            # Rank cell with medal colors
+            # Rank cell (no medal colors per boss request)
             rank_cell = ws.cell(current_row, 1, rank)
             rank_cell.alignment = styles["center"]
             rank_cell.border = styles["border"]
-            if rank == 1:
-                rank_cell.fill = styles["gold_fill"]
+            if rank <= 3:
                 rank_cell.font = styles["bold"]
-            elif rank == 2:
-                rank_cell.fill = styles["silver_fill"]
-                rank_cell.font = styles["bold"]
-            elif rank == 3:
-                rank_cell.fill = styles["bronze_fill"]
-                rank_cell.font = styles["bold"]
-            elif idx % 2 == 1:
+            if idx % 2 == 1:
                 rank_cell.fill = styles["alt_fill"]
 
             # User
