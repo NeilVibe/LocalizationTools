@@ -7,10 +7,12 @@ Uses a 2-step matching process:
   1. StringID → Target Language (DIRECT lookup in each language's data)
   2. English → Korean → Target Language (fallback if no StringID match)
 
-Expected columns in System Excel:
-  - CONTENT (or Translation) - The text to localize
-  - English (or ENG) - English reference text (for fallback matching)
-  - StringID (or ID) - Unique identifier for direct lookup
+System Excel Column Layout:
+  - Column A (1): CONTENT - The text to localize
+  - Column B (2): STATUS
+  - Column C (3): COMMENT
+  - Column D (4): STRINGID - Unique identifier for direct lookup
+  - Column E (5): SCREENSHOT
 
 Usage:
   python system_localizer.py
@@ -260,17 +262,17 @@ def localize_system_sheet(
             ws_in = wb_in[sheet_name]
             ws_out = wb_out.create_sheet(sheet_name)
 
-            # Find key columns (CONTENT, English, StringID)
-            columns = find_columns(ws_in, ["content", "translation", "english", "eng", "stringid", "string id", "id"])
+            # System datasheet layout (hardcoded):
+            # Column A (1): CONTENT - text to localize
+            # Column B (2): STATUS
+            # Column C (3): COMMENT
+            # Column D (4): STRINGID - for lookup
+            # Column E (5): SCREENSHOT
+            CONTENT_COL = 1
+            STRINGID_COL = 4
 
-            # Determine which columns we have
-            # CONTENT is the main translation column in System sheets
-            trans_col = columns.get("content") or columns.get("translation")
-            eng_col = columns.get("english") or columns.get("eng")
-            sid_col = columns.get("stringid") or columns.get("string id") or columns.get("id")
-
-            log.info("  Sheet '%s': content_col=%s, eng_col=%s, sid_col=%s",
-                     sheet_name, trans_col, eng_col, sid_col)
+            log.info("  Sheet '%s': CONTENT=col %d, STRINGID=col %d",
+                     sheet_name, CONTENT_COL, STRINGID_COL)
 
             # Copy all cells, replacing translation column
             for row in range(1, ws_in.max_row + 1):
@@ -288,41 +290,40 @@ def localize_system_sheet(
                 if row <= 1:
                     continue
 
-                # Try to find translation for this row
-                if trans_col:
-                    english_text = ws_in.cell(row, eng_col).value if eng_col else None
-                    string_id = ws_in.cell(row, sid_col).value if sid_col else None
+                # Get STRINGID and current CONTENT for matching
+                string_id = ws_in.cell(row, STRINGID_COL).value
+                current_content = ws_in.cell(row, CONTENT_COL).value
 
-                    translation = None
-                    match_type = None
+                translation = None
+                match_type = None
 
-                    # Step 1: DIRECT StringID → Target Language (no Korean intermediary!)
-                    if string_id and str(string_id).strip():
-                        sid_clean = str(string_id).strip()
-                        translation = sid_tbl.get(sid_clean)
-                        if translation:
-                            match_type = "sid"
-
-                    # Step 2: Fallback - English → Korean → Target Language
-                    if not translation and english_text and str(english_text).strip():
-                        eng_clean = str(english_text).strip()
-                        korean = eng_to_korean.get(eng_clean)
-                        if korean and korean in lang_tbl:
-                            translation, _ = lang_tbl[korean]
-                            if translation:
-                                match_type = "text"
-
-                    # Update translation column
+                # Step 1: DIRECT StringID → Target Language
+                if string_id and str(string_id).strip():
+                    sid_clean = str(string_id).strip()
+                    translation = sid_tbl.get(sid_clean)
                     if translation:
-                        ws_out.cell(row, trans_col).value = translation
-                        if match_type == "sid":
-                            lang_stats["matched_by_sid"] += 1
-                        else:
-                            lang_stats["matched_by_text"] += 1
-                    else:
-                        lang_stats["no_match"] += 1
+                        match_type = "sid"
 
-                    lang_stats["total_rows"] += 1
+                # Step 2: Fallback - English (CONTENT) → Korean → Target Language
+                if not translation and current_content and str(current_content).strip():
+                    eng_clean = str(current_content).strip()
+                    korean = eng_to_korean.get(eng_clean)
+                    if korean and korean in lang_tbl:
+                        translation, _ = lang_tbl[korean]
+                        if translation:
+                            match_type = "text"
+
+                # Update CONTENT column with translation
+                if translation:
+                    ws_out.cell(row, CONTENT_COL).value = translation
+                    if match_type == "sid":
+                        lang_stats["matched_by_sid"] += 1
+                    else:
+                        lang_stats["matched_by_text"] += 1
+                else:
+                    lang_stats["no_match"] += 1
+
+                lang_stats["total_rows"] += 1
 
             # Copy column widths
             for col in range(1, ws_in.max_column + 1):
@@ -394,9 +395,9 @@ class SystemLocalizerGUI:
                           font=("Helvetica", 14, "bold"))
         title.pack(pady=(0, 10))
 
-        desc = ttk.Label(main_frame, text="Create localized versions of a System datasheet for all languages.\n"
-                                          "Step 1: StringID → Target Language (DIRECT)\n"
-                                          "Step 2: English → Korean → Target Language (fallback)",
+        desc = ttk.Label(main_frame, text="Create localized versions of System datasheet for all languages.\n"
+                                          "Columns: CONTENT (A) | STATUS (B) | COMMENT (C) | STRINGID (D) | SCREENSHOT (E)\n"
+                                          "Match: StringID→Translation (direct) or CONTENT→Korean→Translation (fallback)",
                          justify=tk.CENTER)
         desc.pack(pady=(0, 15))
 
