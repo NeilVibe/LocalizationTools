@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import TRACKER_PATH
+from config import TRACKER_PATH, get_target_master_category
 from core.excel_ops import safe_load_workbook
 
 
@@ -122,12 +122,22 @@ def update_daily_data_sheet(
             existing[key] = row
 
         # Get manager stats for this user/category
+        # IMPORTANT: Only assign manager stats to entries where category == target_category
+        # This prevents double-counting when Skill/Help cluster into System
         category = entry["category"]
+        target_category = get_target_master_category(category)
         user = entry["user"]
-        user_manager_stats = manager_stats.get(category, {}).get(
-            user,
-            {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
-        )
+
+        if category == target_category:
+            # This is the main category (e.g., System, Quest) - gets real stats
+            user_manager_stats = manager_stats.get(target_category, {}).get(
+                user,
+                {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
+            )
+        else:
+            # This is a clustered category (e.g., Skill -> System) - no manager stats
+            # to avoid double-counting in aggregation
+            user_manager_stats = {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
 
         # Write row data according to schema
         ws.cell(row, 1, entry["date"])
