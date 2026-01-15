@@ -389,49 +389,58 @@ def parse_branch_conditions(folder: Path) -> Dict[str, Tuple[List[str], List[str
     """
     Parse Branch conditions from quest XML files.
 
-    Collects Branch elements with Condition + Execute attributes:
-    <Branch Condition="CompleteMission(Mission_A)" Execute="Mission_X"/>
+    For each Quest Node element, collects ALL Branch conditions from nested Missions.
+    All prereqs are combined into one list per Quest Node.
 
-    This means Mission_X requires Mission_A to be completed first.
+    Example:
+        <Quest_Node_Her_HernandCastle_FinaleStory>
+          <Mission StrKey="...">
+            <Branch Condition="CompleteMission(Mission_A)" Execute="..."/>
+            <Branch Condition="CompleteMission(Mission_B)" Execute="..."/>
+          </Mission>
+        </Quest_Node_Her_HernandCastle_FinaleStory>
 
     Returns:
-        mission_conditions: execute_target.lower() → (missions, quests) prereqs
+        quest_node_conditions: quest_node_tag.lower() → (all_missions, all_quests)
     """
     log.info("Parsing Branch conditions from: %s", folder)
 
-    mission_conditions: Dict[str, Tuple[List[str], List[str]]] = {}
+    quest_node_conditions: Dict[str, Tuple[List[str], List[str]]] = {}
 
     if not folder.exists():
-        return mission_conditions
+        return quest_node_conditions
 
     for p in _iter_quest_xml_files(folder):
         rt = parse_xml_file(p)
         if rt is None:
             continue
 
-        # Find all Branch elements with Condition and Execute
-        for branch in rt.iter("Branch"):
-            cond = branch.get("Condition") or ""
-            execute = (branch.get("Execute") or "").lower()
+        # Find Quest Node elements (top-level elements with Name and StartMission)
+        for quest_node in rt:
+            if not (quest_node.get("Name") and (quest_node.get("StartMission") or quest_node.get("QuestStart"))):
+                continue
 
-            if cond and execute:
-                missions, quests = _extract_conditions(cond)
-                if missions or quests:
-                    # Merge with existing if already found
-                    if execute in mission_conditions:
-                        existing_m, existing_q = mission_conditions[execute]
-                        # Extend with new unique values
-                        for m in missions:
-                            if m not in existing_m:
-                                existing_m.append(m)
-                        for q in quests:
-                            if q not in existing_q:
-                                existing_q.append(q)
-                    else:
-                        mission_conditions[execute] = (missions, quests)
+            quest_tag = quest_node.tag.lower()
+            all_missions: List[str] = []
+            all_quests: List[str] = []
 
-    log.info("Branch conditions: %d mission prereqs found", len(mission_conditions))
-    return mission_conditions
+            # Collect ALL Branch conditions from ALL nested elements
+            for branch in quest_node.iter("Branch"):
+                cond = branch.get("Condition") or ""
+                if cond:
+                    missions, quests = _extract_conditions(cond)
+                    for m in missions:
+                        if m not in all_missions:
+                            all_missions.append(m)
+                    for q in quests:
+                        if q not in all_quests:
+                            all_quests.append(q)
+
+            if all_missions or all_quests:
+                quest_node_conditions[quest_tag] = (all_missions, all_quests)
+
+    log.info("Branch conditions: %d Quest Nodes with prereqs found", len(quest_node_conditions))
+    return quest_node_conditions
 
 
 # =============================================================================
@@ -862,9 +871,21 @@ def build_rows_faction(
     seq_pos: Dict[str, Tuple[float, float, float]],
     quest2fac: Dict[str, str],
     node2fac: Dict[str, str],
+    quest_conditions: Dict[str, Tuple[List[str], List[str]]] = None,
+    branch_conditions: Dict[str, Tuple[List[str], List[str]]] = None,
 ) -> Dict[str, List[Row]]:
-    """Build rows for Faction Quest sheets."""
+    """Build rows for Faction Quest sheets.
+
+    Args:
+        quest_conditions: QuestKey.lower() → (missions, quests) from factioninfo Condition
+        branch_conditions: QuestTag.lower() → (missions, quests) from Branch Conditions
+    """
     log.info("Building rows for FACTION quests...")
+
+    if quest_conditions is None:
+        quest_conditions = {}
+    if branch_conditions is None:
+        branch_conditions = {}
 
     def find_faction(el: ET._Element) -> str:
         # 1. FIRST: Authoritative Quest mapping from factioninfo <Quest QuestKey="..."/>
@@ -912,13 +933,32 @@ def build_rows_faction(
             _collect_korean_string(kor)
             rows: List[Row] = []
 
+            # Build prereq command for quest node row
+            quest_tag = q.tag.lower()
+            prereq_cmd = ""
+
+            # Check factioninfo quest conditions (keyed by QuestKey)
+            if quest_tag in quest_conditions:
+                missions, quests = quest_conditions[quest_tag]
+                prereq_cmd = _build_prereq_command(missions, quests)
+
+            # Check branch conditions (keyed by quest tag)
+            if quest_tag in branch_conditions:
+                missions, quests = branch_conditions[quest_tag]
+                branch_prereq = _build_prereq_command(missions, quests)
+                if branch_prereq:
+                    if prereq_cmd:
+                        prereq_cmd = prereq_cmd + "\n" + branch_prereq
+                    else:
+                        prereq_cmd = branch_prereq
+
             rows.append((
                 0,
                 kor, _tr(kor, eng_tbl), _tr(kor, lang_tbl),
-                id_tbl.get(q.tag.lower(), ""),
+                id_tbl.get(quest_tag, ""),
                 _sid(kor, eng_tbl),
                 bool(q.get("StageIcon")), True,
-                "", "", "", ""
+                prereq_cmd, "", "", ""
             ))
 
             for m in q.findall("Mission"):
@@ -1463,7 +1503,8 @@ def generate_quest_datasheets() -> Dict:
             faction_groups = build_rows_faction(
                 FACTION_QUEST_FOLDER, lang_tbl, eng_tbl,
                 id_tbl, stage2seq, name_map, seq_pos,
-                quest2fac_map, node2fac_map
+                quest2fac_map, node2fac_map,
+                quest_conditions, branch_conditions
             )
 
             rows_daily = build_rows_daily(
@@ -1570,14 +1611,6 @@ def generate_quest_datasheets() -> Dict:
 
             if rows_minigame:
                 sheet_data["Minigame Quest"] = rows_minigame
-
-            # Apply prerequisite commands (only for Daily, Politics, Region Quest)
-            prereq_target_tabs = ["Daily", "Politics", "Region Quest"]
-            sheet_data, prereq_count = apply_prereq_commands(
-                sheet_data, quest_conditions, branch_conditions, prereq_target_tabs
-            )
-            if prereq_count:
-                log.info("  Prereq commands: %d added", prereq_count)
 
             # Apply teleport data (two-pass: strict tab match first, then global fallback)
             sheet_data, tp_pass1, tp_pass2 = apply_teleport_two_pass(
