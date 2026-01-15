@@ -325,7 +325,7 @@ def build_ranking_table(
     """
     Build Ranking Tables with weighted scoring - separate EN and CN rankings.
 
-    Score = 70% Done + 30% Actual Issues (SCALAR values, not percentages)
+    Score = 80% Done + 20% Actual Issues (SCALAR values, not percentages)
     - Actual Issues = Issues - NonIssue
 
     Args:
@@ -352,8 +352,8 @@ def build_ranking_table(
         # Actual Issues (scalar) = Issues - NonIssue
         actual_issues = max(0, issues - nonissue)
 
-        # Weighted score: 70% Done + 30% Actual Issues (SCALAR values)
-        score = round(0.7 * done + 0.3 * actual_issues, 1)
+        # Weighted score: 80% Done + 20% Actual Issues (SCALAR values)
+        score = round(0.8 * done + 0.2 * actual_issues, 1)
 
         lang = tester_mapping.get(user, "EN")
         user_score = {
@@ -450,13 +450,13 @@ def build_ranking_table(
             current_row += 1
 
     # Build EN Ranking
-    build_ranking_section(en_scores, "EN RANKING (70% Done + 30% Actual Issues)", styles["en_title_fill"])
+    build_ranking_section(en_scores, "EN RANKING (80% Done + 20% Actual Issues)", styles["en_title_fill"])
 
     if en_scores and cn_scores:
         current_row += 1  # Gap between tables
 
     # Build CN Ranking
-    build_ranking_section(cn_scores, "CN RANKING (70% Done + 30% Actual Issues)", styles["cn_title_fill"])
+    build_ranking_section(cn_scores, "CN RANKING (80% Done + 20% Actual Issues)", styles["cn_title_fill"])
 
     # Set column widths
     ws.column_dimensions[get_column_letter(1)].width = 6   # Rank
