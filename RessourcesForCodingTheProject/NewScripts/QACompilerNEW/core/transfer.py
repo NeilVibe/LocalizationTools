@@ -427,7 +427,133 @@ def write_duplicate_translation_report(
 
 
 # =============================================================================
-# FOLDER TRANSFER
+# GLOBAL INDEX BUILDING
+# =============================================================================
+
+def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
+    """
+    Build a global index of ALL rows in NEW workbook across ALL sheets.
+
+    Returns dict with:
+        - stringid_trans_index: {(stringid, trans): (sheet_name, row, consumed)}
+        - trans_index: {trans: [(sheet_name, row, consumed), ...]}
+    """
+    trans_col = get_translation_column(category, is_english)
+    is_item = category.lower() == "item"
+
+    # For Item category, use different columns
+    if is_item:
+        name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
+        desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
+
+    # Index by (STRINGID + Translation) - exact match
+    stringid_trans_index = {}
+    # Index by Translation only - fallback (list because dupes possible)
+    trans_index = defaultdict(list)
+    # For Item: index by (ItemName + ItemDesc + STRINGID) and (ItemName + ItemDesc)
+    item_full_index = {}
+    item_name_desc_index = defaultdict(list)
+
+    for sheet_name in new_wb.sheetnames:
+        ws = new_wb[sheet_name]
+        stringid_col = find_column_by_header(ws, "STRINGID")
+
+        for row in range(2, ws.max_row + 1):
+            stringid = sanitize_stringid_for_match(ws.cell(row, stringid_col).value) if stringid_col else ""
+
+            if is_item:
+                item_name = str(ws.cell(row, name_col).value or "").strip()
+                item_desc = str(ws.cell(row, desc_col).value or "").strip()
+
+                if item_name:
+                    # Full index: name + desc + stringid
+                    if stringid:
+                        key = (item_name, item_desc, stringid)
+                        if key not in item_full_index:
+                            item_full_index[key] = {"sheet": sheet_name, "row": row, "consumed": False}
+
+                    # Fallback: name + desc only
+                    key2 = (item_name, item_desc)
+                    item_name_desc_index[key2].append({"sheet": sheet_name, "row": row, "consumed": False})
+            else:
+                trans = str(ws.cell(row, trans_col).value or "").strip()
+
+                if trans:
+                    # Full index: stringid + trans
+                    if stringid:
+                        key = (stringid, trans)
+                        if key not in stringid_trans_index:
+                            stringid_trans_index[key] = {"sheet": sheet_name, "row": row, "consumed": False}
+
+                    # Fallback: trans only
+                    trans_index[trans].append({"sheet": sheet_name, "row": row, "consumed": False})
+
+    return {
+        "stringid_trans": stringid_trans_index,
+        "trans_only": trans_index,
+        "item_full": item_full_index,
+        "item_name_desc": item_name_desc_index,
+    }
+
+
+def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[Dict]:
+    """
+    Collect ALL rows from OLD workbook that have data to transfer.
+
+    Returns list of dicts with row data including sheet name.
+    """
+    trans_col = get_translation_column(category, is_english)
+    is_item = category.lower() == "item"
+
+    if is_item:
+        name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
+        desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
+
+    rows = []
+
+    for sheet_name in old_wb.sheetnames:
+        ws = old_wb[sheet_name]
+
+        comment_col = find_column_by_header(ws, "COMMENT")
+        status_col = find_column_by_header(ws, "STATUS")
+        screenshot_col = find_column_by_header(ws, "SCREENSHOT")
+        stringid_col = find_column_by_header(ws, "STRINGID")
+
+        for row in range(2, ws.max_row + 1):
+            comment = ws.cell(row, comment_col).value if comment_col else None
+            status = ws.cell(row, status_col).value if status_col else None
+            screenshot = ws.cell(row, screenshot_col).value if screenshot_col else None
+            screenshot_hyperlink = ws.cell(row, screenshot_col).hyperlink if screenshot_col else None
+
+            # Skip rows with no data
+            if not any([comment, status, screenshot]):
+                continue
+
+            stringid = sanitize_stringid_for_match(ws.cell(row, stringid_col).value) if stringid_col else ""
+
+            row_data = {
+                "sheet": sheet_name,
+                "row": row,
+                "stringid": stringid,
+                "comment": comment,
+                "status": status,
+                "screenshot": screenshot,
+                "screenshot_hyperlink": screenshot_hyperlink,
+            }
+
+            if is_item:
+                row_data["item_name"] = str(ws.cell(row, name_col).value or "").strip()
+                row_data["item_desc"] = str(ws.cell(row, desc_col).value or "").strip()
+            else:
+                row_data["translation"] = str(ws.cell(row, trans_col).value or "").strip()
+
+            rows.append(row_data)
+
+    return rows
+
+
+# =============================================================================
+# FOLDER TRANSFER (GLOBAL MATCHING)
 # =============================================================================
 
 def transfer_folder_data(
@@ -437,7 +563,13 @@ def transfer_folder_data(
     tester_mapping: Dict
 ) -> Dict:
     """
-    Transfer all sheet data from OLD folder to NEW folder.
+    Transfer all data from OLD folder to NEW folder using GLOBAL matching.
+
+    NO per-sheet restriction - matches across ALL sheets in the workbook.
+
+    Two-pass matching:
+    1. STRINGID + Translation (or ItemName+ItemDesc+STRINGID for Item)
+    2. Translation only fallback (or ItemName+ItemDesc for Item)
 
     Args:
         old_folder: dict with folder info
@@ -451,13 +583,13 @@ def transfer_folder_data(
     username = old_folder["username"]
     category = old_folder["category"]
     is_english = tester_mapping.get(username, "EN") == "EN"
-    is_item_category = category.lower() == "item"
+    is_item = category.lower() == "item"
 
     # Load workbooks
     old_wb = safe_load_workbook(old_folder["xlsx_path"])
     new_wb = safe_load_workbook(new_folder["xlsx_path"])
 
-    combined_stats = {
+    stats = {
         "total": 0,
         "stringid_match": 0,
         "trans_only": 0,
@@ -466,34 +598,110 @@ def transfer_folder_data(
         "name_desc_match": 0,
     }
 
-    # Process each sheet
-    for sheet_name in old_wb.sheetnames:
-        if sheet_name not in new_wb.sheetnames:
-            print(f"    WARN: Sheet '{sheet_name}' not in NEW file, skipping")
-            continue
+    # Build global index of NEW workbook
+    print("    Building global index...")
+    new_index = build_new_workbook_index(new_wb, category, is_english)
 
-        old_ws = old_wb[sheet_name]
-        new_ws = new_wb[sheet_name]
+    # Collect all OLD rows with data
+    old_rows = collect_old_rows_with_data(old_wb, category, is_english)
+    stats["total"] = len(old_rows)
+    print(f"    Found {len(old_rows)} rows with data to transfer")
 
-        sheet_stats = transfer_sheet_data(
-            old_ws, new_ws, category, is_english, old_folder["folder_path"]
-        )
+    # Track matches for writing
+    matches = []  # [(old_row_data, new_sheet, new_row, match_type), ...]
+    unmatched_rows = []
 
-        # Accumulate stats
-        for key in combined_stats:
-            combined_stats[key] += sheet_stats.get(key, 0)
+    # PASS 1: Exact match (STRINGID + Translation or ItemName+ItemDesc+STRINGID)
+    for old_row in old_rows:
+        matched = False
 
-        if sheet_stats["total"] > 0:
-            if is_item_category:
-                print(f"    Sheet '{sheet_name}': {sheet_stats['name_desc_stringid_match']}+{sheet_stats['name_desc_match']} transferred, {sheet_stats['unmatched']} unmatched")
-            else:
-                print(f"    Sheet '{sheet_name}': {sheet_stats['stringid_match']}+{sheet_stats['trans_only']} transferred, {sheet_stats['unmatched']} unmatched")
+        if is_item:
+            key = (old_row["item_name"], old_row["item_desc"], old_row["stringid"])
+            if old_row["stringid"] and key in new_index["item_full"]:
+                entry = new_index["item_full"][key]
+                if not entry["consumed"]:
+                    entry["consumed"] = True
+                    matches.append((old_row, entry["sheet"], entry["row"], "name+desc+stringid"))
+                    stats["name_desc_stringid_match"] += 1
+                    matched = True
+        else:
+            key = (old_row["stringid"], old_row["translation"])
+            if old_row["stringid"] and old_row["translation"] and key in new_index["stringid_trans"]:
+                entry = new_index["stringid_trans"][key]
+                if not entry["consumed"]:
+                    entry["consumed"] = True
+                    matches.append((old_row, entry["sheet"], entry["row"], "stringid+trans"))
+                    stats["stringid_match"] += 1
+                    matched = True
+
+        if not matched:
+            unmatched_rows.append(old_row)
+
+    # PASS 2: Fallback match (Translation only or ItemName+ItemDesc)
+    still_unmatched = []
+    for old_row in unmatched_rows:
+        matched = False
+
+        if is_item:
+            key = (old_row["item_name"], old_row["item_desc"])
+            if key in new_index["item_name_desc"]:
+                for entry in new_index["item_name_desc"][key]:
+                    if not entry["consumed"]:
+                        entry["consumed"] = True
+                        matches.append((old_row, entry["sheet"], entry["row"], "name+desc"))
+                        stats["name_desc_match"] += 1
+                        matched = True
+                        break
+        else:
+            trans = old_row["translation"]
+            if trans and trans in new_index["trans_only"]:
+                for entry in new_index["trans_only"][trans]:
+                    if not entry["consumed"]:
+                        entry["consumed"] = True
+                        matches.append((old_row, entry["sheet"], entry["row"], "trans_only"))
+                        stats["trans_only"] += 1
+                        matched = True
+                        break
+
+        if not matched:
+            still_unmatched.append(old_row)
+
+    stats["unmatched"] = len(still_unmatched)
+
+    # Write matches to NEW workbook
+    print(f"    Writing {len(matches)} matches to NEW workbook...")
+    for old_row, new_sheet, new_row_num, match_type in matches:
+        ws = new_wb[new_sheet]
+
+        comment_col = find_column_by_header(ws, "COMMENT")
+        status_col = find_column_by_header(ws, "STATUS")
+        screenshot_col = find_column_by_header(ws, "SCREENSHOT")
+
+        if comment_col and old_row["comment"]:
+            ws.cell(new_row_num, comment_col, old_row["comment"])
+        if status_col and old_row["status"]:
+            ws.cell(new_row_num, status_col, old_row["status"])
+        if screenshot_col and old_row["screenshot"]:
+            cell = ws.cell(new_row_num, screenshot_col, old_row["screenshot"])
+            if old_row["screenshot_hyperlink"]:
+                cell.hyperlink = old_row["screenshot_hyperlink"].target
+            elif old_folder.get("folder_path"):
+                filename = str(old_row["screenshot"]).strip()
+                actual_file = find_file_in_folder(filename, old_folder["folder_path"])
+                if actual_file:
+                    cell.hyperlink = actual_file
+
+    # Print summary
+    if is_item:
+        print(f"    Matched: {stats['name_desc_stringid_match']} exact + {stats['name_desc_match']} fallback, {stats['unmatched']} unmatched")
+    else:
+        print(f"    Matched: {stats['stringid_match']} exact + {stats['trans_only']} fallback, {stats['unmatched']} unmatched")
 
     # Create output folder
     output_folder = output_dir / f"{username}_{category}"
     output_folder.mkdir(parents=True, exist_ok=True)
 
-    # Detect duplicates
+    # Detect duplicates (still useful for warnings)
     duplicates = detect_duplicate_translations(old_wb, category, is_english)
     if duplicates:
         report_path = write_duplicate_translation_report(duplicates, output_folder, username, category)
@@ -514,7 +722,7 @@ def transfer_folder_data(
     old_wb.close()
     new_wb.close()
 
-    return {(username, category): combined_stats}
+    return {(username, category): stats}
 
 
 # =============================================================================
