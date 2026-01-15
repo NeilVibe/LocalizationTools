@@ -1059,7 +1059,7 @@ def build_rows_minigame(
                     stage_name, _tr(stage_name, eng_tbl), _tr(stage_name, lang_tbl),
                     id_tbl.get(stage_sk.lower(), stage_sk),
                     _sid(stage_name, eng_tbl),
-                    bool(stage.get("StageIcon")), False,
+                    bool(stage.get("StageIcon")), True,
                     cmd, "", "", ""
                 ))
 
