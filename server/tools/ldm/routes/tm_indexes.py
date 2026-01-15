@@ -19,6 +19,7 @@ from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async, get_db
 from server.repositories import TMRepository, get_tm_repository
+from server.database.models import LDMTranslationMemory
 
 router = APIRouter(tags=["LDM"])
 
