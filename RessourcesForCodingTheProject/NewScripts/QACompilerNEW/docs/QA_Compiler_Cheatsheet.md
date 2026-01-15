@@ -112,6 +112,18 @@ python main.py --all
 | Low transfer rate | Normal if content changed significantly |
 | Images missing | Check Images/ folder, avoid special chars |
 
+## Quick Update (Don't Re-download Full Zip!)
+
+| Change | Replace File |
+|--------|--------------|
+| Quest | `generators/quest.py` |
+| Item | `generators/item.py` |
+| Knowledge | `generators/knowledge.py` |
+| Transfer | `core/transfer.py` |
+| Build | `core/compiler.py` |
+| Tracker | `tracker/*.py` |
+| Config | `config.py` |
+
 ## Ranking Formula
 
 ```
