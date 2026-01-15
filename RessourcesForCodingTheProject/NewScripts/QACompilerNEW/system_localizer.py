@@ -4,8 +4,13 @@ System Sheet Localizer - Standalone Tool
 
 Creates localized versions of a System datasheet for all languages.
 Uses a 2-step matching process:
-  1. First try to match by StringID
-  2. Fallback: English → Korean → Target Language
+  1. StringID → Target Language (DIRECT lookup in each language's data)
+  2. English → Korean → Target Language (fallback if no StringID match)
+
+Expected columns in System Excel:
+  - CONTENT (or Translation) - The text to localize
+  - English (or ENG) - English reference text (for fallback matching)
+  - StringID (or ID) - Unique identifier for direct lookup
 
 Usage:
   python system_localizer.py
@@ -82,20 +87,20 @@ def parse_xml_file(path: Path) -> Optional[ET._Element]:
 
 def load_all_language_data(folder: Path) -> Tuple[
     Dict[str, Dict[str, Tuple[str, str]]],  # lang_code → {korean: (translation, stringid)}
-    Dict[str, str],                          # english → korean (reverse lookup)
-    Dict[str, str]                           # stringid → korean (reverse lookup)
+    Dict[str, Dict[str, str]],               # lang_code → {stringid: translation} (DIRECT lookup)
+    Dict[str, str]                           # english → korean (for fallback)
 ]:
     """
-    Load all language tables and build reverse lookup indexes.
+    Load all language tables and build lookup indexes.
 
     Returns:
-        lang_tables: {lang_code: {korean: (translation, stringid)}}
-        eng_to_korean: {english_text: korean_text}
-        sid_to_korean: {stringid: korean_text}
+        lang_tables: {lang_code: {korean: (translation, stringid)}} - for text matching
+        sid_tables: {lang_code: {stringid: translation}} - for DIRECT StringID lookup
+        eng_to_korean: {english_text: korean_text} - for fallback matching
     """
     lang_tables: Dict[str, Dict[str, Tuple[str, str]]] = {}
+    sid_tables: Dict[str, Dict[str, str]] = {}  # DIRECT: StringID → Translation per language
     eng_to_korean: Dict[str, str] = {}
-    sid_to_korean: Dict[str, str] = {}
 
     for path in iter_xml_files(folder):
         stem = path.stem.lower()
@@ -108,6 +113,7 @@ def load_all_language_data(folder: Path) -> Tuple[
             continue
 
         tbl: Dict[str, Tuple[str, str]] = {}
+        sid_tbl: Dict[str, str] = {}  # StringID → Translation for THIS language
 
         for loc in root_el.iter("LocStr"):
             korean = loc.get("StrOrigin") or ""
@@ -117,19 +123,22 @@ def load_all_language_data(folder: Path) -> Tuple[
             if not korean:
                 continue
 
-            # Store in language table
+            # Store in language table (korean → translation)
             tbl[korean] = (translation, sid)
 
-            # Build reverse lookups for English
+            # Store DIRECT StringID → Translation for this language
+            if sid and translation:
+                sid_tbl[sid] = translation
+
+            # Build English → Korean reverse lookup (for fallback)
             if lang == "eng" and translation:
                 eng_to_korean[translation] = korean
-                if sid:
-                    sid_to_korean[sid] = korean
 
         lang_tables[lang] = tbl
-        log.info("  Loaded %s: %d entries", lang, len(tbl))
+        sid_tables[lang] = sid_tbl
+        log.info("  Loaded %s: %d entries, %d StringIDs", lang, len(tbl), len(sid_tbl))
 
-    return lang_tables, eng_to_korean, sid_to_korean
+    return lang_tables, sid_tables, eng_to_korean
 
 
 # =============================================================================
@@ -202,16 +211,15 @@ def localize_system_sheet(
     if progress_callback:
         progress_callback(0, 100, "Loading language data...")
 
-    lang_tables, eng_to_korean, sid_to_korean = load_all_language_data(lang_folder)
+    lang_tables, sid_tables, eng_to_korean = load_all_language_data(lang_folder)
 
     if "eng" not in lang_tables:
         result["success"] = False
         result["errors"].append("English language data not found!")
         return result
 
-    eng_tbl = lang_tables["eng"]
-    log.info("Loaded %d languages, %d English→Korean mappings, %d StringID→Korean mappings",
-             len(lang_tables), len(eng_to_korean), len(sid_to_korean))
+    log.info("Loaded %d languages, %d English→Korean mappings",
+             len(lang_tables), len(eng_to_korean))
 
     # 2. Load input Excel
     log.info("Loading input file: %s", input_path)
@@ -234,6 +242,7 @@ def localize_system_sheet(
 
     for idx, lang_code in enumerate(languages):
         lang_tbl = lang_tables[lang_code]
+        sid_tbl = sid_tables.get(lang_code, {})  # DIRECT StringID → Translation for this language
         progress_pct = 10 + int(80 * (idx + 1) / total_langs)
 
         if progress_callback:
@@ -251,15 +260,16 @@ def localize_system_sheet(
             ws_in = wb_in[sheet_name]
             ws_out = wb_out.create_sheet(sheet_name)
 
-            # Find key columns (Translation, English, StringID)
-            columns = find_columns(ws_in, ["translation", "english", "eng", "stringid", "string id", "id"])
+            # Find key columns (CONTENT, English, StringID)
+            columns = find_columns(ws_in, ["content", "translation", "english", "eng", "stringid", "string id", "id"])
 
             # Determine which columns we have
-            trans_col = columns.get("translation")
+            # CONTENT is the main translation column in System sheets
+            trans_col = columns.get("content") or columns.get("translation")
             eng_col = columns.get("english") or columns.get("eng")
             sid_col = columns.get("stringid") or columns.get("string id") or columns.get("id")
 
-            log.info("  Sheet '%s': trans_col=%s, eng_col=%s, sid_col=%s",
+            log.info("  Sheet '%s': content_col=%s, eng_col=%s, sid_col=%s",
                      sheet_name, trans_col, eng_col, sid_col)
 
             # Copy all cells, replacing translation column
@@ -286,16 +296,14 @@ def localize_system_sheet(
                     translation = None
                     match_type = None
 
-                    # Step 1: Try StringID lookup
+                    # Step 1: DIRECT StringID → Target Language (no Korean intermediary!)
                     if string_id and str(string_id).strip():
                         sid_clean = str(string_id).strip()
-                        korean = sid_to_korean.get(sid_clean)
-                        if korean and korean in lang_tbl:
-                            translation, _ = lang_tbl[korean]
-                            if translation:
-                                match_type = "sid"
+                        translation = sid_tbl.get(sid_clean)
+                        if translation:
+                            match_type = "sid"
 
-                    # Step 2: Fallback - English → Korean → Target
+                    # Step 2: Fallback - English → Korean → Target Language
                     if not translation and english_text and str(english_text).strip():
                         eng_clean = str(english_text).strip()
                         korean = eng_to_korean.get(eng_clean)
@@ -387,7 +395,8 @@ class SystemLocalizerGUI:
         title.pack(pady=(0, 10))
 
         desc = ttk.Label(main_frame, text="Create localized versions of a System datasheet for all languages.\n"
-                                          "Uses StringID matching first, then English→Korean→Target fallback.",
+                                          "Step 1: StringID → Target Language (DIRECT)\n"
+                                          "Step 2: English → Korean → Target Language (fallback)",
                          justify=tk.CENTER)
         desc.pack(pady=(0, 15))
 
