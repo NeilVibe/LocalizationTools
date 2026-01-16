@@ -23,7 +23,7 @@ from config import CATEGORIES, ensure_folders_exist
 
 WINDOW_TITLE = "QA Compiler Suite v2.0"
 WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 800
+WINDOW_HEIGHT = 880
 BUTTON_WIDTH = 50
 
 
@@ -143,6 +143,24 @@ class QACompilerSuiteGUI:
             width=BUTTON_WIDTH
         )
         coverage_btn.pack(pady=5, ipady=8)
+
+        # === Section 5: System Localizer ===
+        section5_frame = ttk.LabelFrame(self.root, text="5. System Sheet Localizer", padding=10)
+        section5_frame.pack(fill="x", padx=15, pady=5)
+
+        localizer_desc = ttk.Label(
+            section5_frame,
+            text="Create localized versions of System datasheet for all languages.\nSelect System Excel file → Creates System_LQA_All/ with all language versions."
+        )
+        localizer_desc.pack(pady=5)
+
+        localizer_btn = ttk.Button(
+            section5_frame,
+            text="Localize System Sheet",
+            command=self._do_system_localizer,
+            width=BUTTON_WIDTH
+        )
+        localizer_btn.pack(pady=5, ipady=8)
 
         # === Status Bar ===
         self.status_var = tk.StringVar(value="Ready")
@@ -383,6 +401,73 @@ class QACompilerSuiteGUI:
         self._stop_progress()
         self._set_status("Coverage analysis failed - check console")
         messagebox.showerror("Error", f"Coverage analysis failed:\n{error_msg}")
+
+    def _do_system_localizer(self):
+        """Run System Sheet Localizer - create localized versions for all languages."""
+        from tkinter import filedialog
+
+        # Ask user to select System Excel file
+        input_file = filedialog.askopenfilename(
+            title="Select System Excel File",
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")]
+        )
+
+        if not input_file:
+            return  # User cancelled
+
+        self._set_status("Localizing System sheet...")
+        self._start_progress()
+
+        def run():
+            try:
+                from config import LANGUAGE_FOLDER
+                from system_localizer import process_system_sheet
+
+                input_path = Path(input_file)
+                output_folder = input_path.parent / "System_LQA_All"
+
+                result = process_system_sheet(
+                    input_path=input_path,
+                    lang_folder=LANGUAGE_FOLDER,
+                    output_folder=output_folder
+                )
+
+                self.root.after(0, lambda: self._on_localizer_complete(result, output_folder))
+            except Exception as e:
+                err_msg = str(e)
+                self.root.after(0, lambda msg=err_msg: self._on_localizer_error(msg))
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+
+    def _on_localizer_complete(self, result, output_folder):
+        """Handle localizer completion."""
+        self._stop_progress()
+
+        if result.get("success", False):
+            files_created = result.get("files_created", 0)
+            languages = result.get("languages", [])
+            self._set_status(f"Localization complete! {files_created} files created.")
+            messagebox.showinfo(
+                "Success",
+                f"System Localization Complete!\n\n"
+                f"Files created: {files_created}\n"
+                f"Languages: {', '.join(languages[:10])}{'...' if len(languages) > 10 else ''}\n\n"
+                f"Output: {output_folder}"
+            )
+        else:
+            errors = result.get("errors", ["Unknown error"])
+            self._set_status("Localization completed with errors")
+            messagebox.showwarning(
+                "Completed with Errors",
+                f"Localization completed but with errors:\n\n" + "\n".join(errors[:5])
+            )
+
+    def _on_localizer_error(self, error_msg):
+        """Handle localizer error."""
+        self._stop_progress()
+        self._set_status("Localization failed - check console")
+        messagebox.showerror("Error", f"System localization failed:\n{error_msg}")
 
 
 # =============================================================================
