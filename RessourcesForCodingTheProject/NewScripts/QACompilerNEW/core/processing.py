@@ -731,21 +731,24 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
 
         # === RESET all COMMENT_*, SCREENSHOT_*, STATUS_* columns to visible first ===
         # NOTE: TESTER_STATUS_* columns STAY HIDDEN (they're internal for filtering only)
+        # Uses case-insensitive matching for consistency with hide logic
         for col in comment_cols:
             header = ws.cell(row=1, column=col).value
             username = str(header).replace("COMMENT_", "") if header else ""
+            username_upper = username.upper()
             col_letter = get_column_letter(col)
             ws.column_dimensions[col_letter].hidden = False
 
-            # Also unhide paired SCREENSHOT_{User} and STATUS_{User} columns
+            # Also unhide paired SCREENSHOT_{User} and STATUS_{User} columns (case-insensitive)
             for search_col in range(1, ws.max_column + 1):
                 search_header = ws.cell(row=1, column=search_col).value
                 if search_header:
-                    if str(search_header) == f"SCREENSHOT_{username}" or str(search_header) == f"STATUS_{username}":
+                    search_header_upper = str(search_header).upper()
+                    if search_header_upper == f"SCREENSHOT_{username_upper}" or search_header_upper == f"STATUS_{username_upper}":
                         search_col_letter = get_column_letter(search_col)
                         ws.column_dimensions[search_col_letter].hidden = False
                     # TESTER_STATUS always stays hidden
-                    elif str(search_header) == f"TESTER_STATUS_{username}":
+                    elif search_header_upper == f"TESTER_STATUS_{username_upper}":
                         search_col_letter = get_column_letter(search_col)
                         ws.column_dimensions[search_col_letter].hidden = True
             if debug:
@@ -925,8 +928,8 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
         ws = wb[sheet_name]
 
         # === PHASE 1: Auto-fit column widths ===
-        # Find COMMENT_{User} columns and calculate optimal width
-        # SKIP hidden columns - preserve their hidden state
+        # Autofit ALL columns - hiding happens AFTER this, so no need to check hidden state
+        # Bonus: if user unhides a column in Excel later, it already has proper width
         for col in range(1, ws.max_column + 1):
             header = ws.cell(row=1, column=col).value
             if not header:
@@ -934,10 +937,6 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
 
             header_str = str(header)
             col_letter = get_column_letter(col)
-
-            # Skip hidden columns - don't modify them
-            if ws.column_dimensions[col_letter].hidden:
-                continue
 
             # COMMENT_{User} columns: auto-width based on content
             if header_str.startswith("COMMENT_"):
