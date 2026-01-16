@@ -389,14 +389,17 @@ def localize_system_sheet(
 class SystemLocalizerGUI:
     """Simple GUI for System Sheet Localizer."""
 
+    # Default LOC folder (same as main QA compiler)
+    DEFAULT_LOC_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"
+
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("System Sheet Localizer")
-        self.root.geometry("600x400")
+        self.root.geometry("850x550")
         self.root.resizable(True, True)
 
         self.input_path = tk.StringVar()
-        self.lang_folder = tk.StringVar()
+        self.lang_folder = tk.StringVar(value=self.DEFAULT_LOC_FOLDER)
         self.output_folder = tk.StringVar(value="System_LQA_All")
 
         self._build_ui()
@@ -421,14 +424,14 @@ class SystemLocalizerGUI:
         input_frame = ttk.LabelFrame(main_frame, text="1. Select System Excel File", padding="5")
         input_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Entry(input_frame, textvariable=self.input_path, width=60).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Entry(input_frame, textvariable=self.input_path, width=80).pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(input_frame, text="Browse...", command=self._browse_input).pack(side=tk.RIGHT, padx=(5, 0))
 
         # Language folder
         lang_frame = ttk.LabelFrame(main_frame, text="2. Select Language Data Folder", padding="5")
         lang_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Entry(lang_frame, textvariable=self.lang_folder, width=60).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Entry(lang_frame, textvariable=self.lang_folder, width=80).pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(lang_frame, text="Browse...", command=self._browse_lang).pack(side=tk.RIGHT, padx=(5, 0))
 
         # Output info
@@ -455,7 +458,7 @@ class SystemLocalizerGUI:
         ttk.Button(btn_frame, text="Exit", command=self.root.quit).pack(side=tk.LEFT, padx=5)
 
         # Status
-        self.status_text = tk.Text(main_frame, height=8, width=70, state=tk.DISABLED)
+        self.status_text = tk.Text(main_frame, height=12, width=90, state=tk.DISABLED)
         self.status_text.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
 
     def _browse_input(self):
