@@ -569,6 +569,10 @@ class SystemLocalizerGUI:
         self.root.mainloop()
 
 
+# Alias for GUI import
+process_system_sheet = localize_system_sheet
+
+
 # =============================================================================
 # MAIN
 # =============================================================================
