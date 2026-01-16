@@ -1,6 +1,6 @@
 # Session Context
 
-> Last Updated: 2026-01-16 (Session 45 - Implementation Complete)
+> Last Updated: 2026-01-16 (Session 45 - TM Hierarchy Complete)
 
 ---
 
@@ -15,6 +15,7 @@
 | **Toast Redesign** | ✅ DONE | GlobalToast.svelte, toastStore.js |
 | **Windows PATH Tests** | ✅ DONE | tests/unit/test_windows_paths.py (30 tests) |
 | **TM Source in Matches** | ✅ DONE | tm.py, tm_search.py, TMQAPanel.svelte |
+| **TM Hierarchy Sprint 5** | ✅ DONE | TMExplorerGrid.svelte, TMUploadModal.svelte, TMPage.svelte |
 
 ### Changes Made
 
@@ -44,6 +45,13 @@
 - Added `tm_name` to TMSuggestion schema
 - Backend now returns TM name with each match
 - UI shows blue badge with TM name in match results
+
+**6. TM Hierarchy Sprint 5 - Platform Management UI**
+- Added "Upload TM Here" to platform/project/folder context menu
+- TMUploadModal now accepts `targetScope` prop
+- After upload, TM auto-assigns to the selected scope
+- Modal heading shows target: "Upload TM to {name}"
+- Complete TM Hierarchy system now finished (all 5 sprints)
 
 ---
 

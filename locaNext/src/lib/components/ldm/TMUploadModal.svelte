@@ -24,7 +24,11 @@
   const API_BASE = getApiBase();
 
   // Svelte 5: Props
-  let { open = $bindable(false) } = $props();
+  // targetScope: { type: 'platform'|'project'|'folder', id: number, name: string } - optional
+  let {
+    open = $bindable(false),
+    targetScope = null  // Sprint 5: Where to assign TM after upload
+  } = $props();
 
   // Svelte 5: Form state
   let tmName = $state("");
@@ -119,6 +123,32 @@
           rate: uploadResult.rate_per_second
         });
 
+        // Sprint 5: Auto-assign to target scope if specified
+        if (targetScope && uploadResult.tm_id) {
+          try {
+            const assignParams = new URLSearchParams();
+            if (targetScope.type === 'platform') assignParams.set('platform_id', targetScope.id);
+            else if (targetScope.type === 'project') assignParams.set('project_id', targetScope.id);
+            else if (targetScope.type === 'folder') assignParams.set('folder_id', targetScope.id);
+
+            const assignResponse = await fetch(
+              `${API_BASE}/api/ldm/tm/${uploadResult.tm_id}/assign?${assignParams.toString()}`,
+              {
+                method: 'PATCH',
+                headers: getAuthHeaders()
+              }
+            );
+
+            if (assignResponse.ok) {
+              logger.success("TM assigned to scope", { tmId: uploadResult.tm_id, scope: targetScope });
+            } else {
+              logger.warn("TM uploaded but assignment failed", { tmId: uploadResult.tm_id, scope: targetScope });
+            }
+          } catch (assignErr) {
+            logger.warn("TM uploaded but assignment failed", { error: assignErr.message });
+          }
+        }
+
         // Dispatch event and close after delay
         setTimeout(() => {
           dispatch('uploaded', uploadResult);
@@ -167,7 +197,7 @@
 
 <Modal
   bind:open
-  modalHeading="Upload Translation Memory"
+  modalHeading={targetScope ? `Upload TM to ${targetScope.name}` : "Upload Translation Memory"}
   primaryButtonText={uploadStatus === "uploading" ? "Uploading..." : "Upload TM"}
   primaryButtonDisabled={uploadStatus === "uploading" || uploadStatus === "success"}
   secondaryButtonText="Cancel"

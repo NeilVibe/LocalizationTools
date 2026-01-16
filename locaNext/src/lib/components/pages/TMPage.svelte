@@ -44,6 +44,7 @@
 
   // Modals
   let showUploadModal = $state(false);
+  let uploadTargetScope = $state(null);  // Sprint 5: Target scope for upload
 
   // Context menu
   let contextMenu = $state({ show: false, x: 0, y: 0, tm: null, isBackground: false });
@@ -277,7 +278,10 @@
         bind:selectedTMId={selectedTMId}
         onTMSelect={handleTMSelect}
         onViewEntries={handleViewEntries}
-        onUploadTM={() => showUploadModal = true}
+        onUploadTM={(scope) => {
+          uploadTargetScope = scope || null;  // Sprint 5: Store target scope
+          showUploadModal = true;
+        }}
       />
     </div>
 
@@ -313,7 +317,12 @@
 <!-- Upload Modal -->
 <TMUploadModal
   bind:open={showUploadModal}
-  on:uploaded={handleUploadComplete}
+  targetScope={uploadTargetScope}
+  on:uploaded={(e) => {
+    uploadTargetScope = null;  // Reset scope after upload
+    handleUploadComplete(e);
+  }}
+  on:close={() => uploadTargetScope = null}
 />
 
 <!-- TM Viewer removed - now uses full-page navigation via openTMInGrid -->
