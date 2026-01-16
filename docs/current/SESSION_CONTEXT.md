@@ -1,6 +1,104 @@
 # Session Context
 
-> Last Updated: 2026-01-16 (Session 44 - CI Verification COMPLETE)
+> Last Updated: 2026-01-16 (Session 45 - Planning)
+
+---
+
+## SESSION 45: Planning & Prioritization
+
+### What We Have (Clarified)
+
+| Feature | Status | How to Access |
+|---------|--------|---------------|
+| **TM Entry Viewer** | ✅ EXISTS | TM Page → Double-click TM → TMDataGrid (full-page) |
+| **TM Entry Editing** | ✅ EXISTS | Double-click any row → Edit inline → Auto-saves |
+| **TM Entry Add/Delete** | ✅ EXISTS | API endpoints exist, UI has context menu |
+| **TM Auto-Sync** | ✅ EXISTS | Background task syncs indexes after changes |
+
+### TM Repository Pattern - VERIFIED ✅
+
+**Holy Trinity working for TM:**
+```
+        FACTORY (get_tm_repository)
+              /\
+             /  \
+            /    \
+    PostgreSQL    SQLite
+      Repo          Repo
+```
+
+| TM Operation | Repository? | Both Modes? |
+|--------------|-------------|-------------|
+| List TMs | ✅ YES | ✅ YES |
+| Get TM | ✅ YES | ✅ YES |
+| Delete TM | ✅ YES | ✅ YES |
+| **Get Entries** | ✅ YES | ✅ YES |
+| **Add Entry** | ✅ YES | ✅ YES |
+| **Update Entry** | ✅ YES | ✅ YES |
+| **Delete Entry** | ✅ YES | ✅ YES |
+| **Confirm Entry** | ✅ YES | ✅ YES |
+| **Bulk Confirm** | ✅ YES | ✅ YES |
+| Upload TM (file) | ❌ TMManager | ⚠️ Online only |
+| Export TM (file) | ❌ TMManager | ⚠️ Online only |
+
+**Why Upload/Export use TMManager:**
+- Complex file parsing (TXT, XML, XLSX formats)
+- Bulk insert with progress tracking
+- File generation with multiple export formats
+- Documented design decision (tm_crud.py line 12)
+
+**UX Flow for TM Editing:**
+```
+TM Page → Navigate to TM → Double-click → TMDataGrid opens
+         ├── Infinite scroll (200 entries/batch)
+         ├── Double-click row = Edit inline
+         ├── Optimistic UI (instant visual feedback)
+         ├── Search bar for filtering
+         ├── 8 metadata column options
+         └── Changes auto-save to backend
+```
+
+### Priorities Confirmed
+
+| Priority | Task | Status | Notes |
+|----------|------|--------|-------|
+| **P11-A** | Windows PATH Tests | TODO | 7 tests for Windows-specific paths |
+| **P11-B** | TM UX Polish | TODO | Make TM entry editing more discoverable |
+| **LOW** | Dashboard Overhaul | PLANNED | Stronger, better, more organized |
+
+### Windows PATH Tests (P11-A)
+
+Tests to add for Windows builds:
+
+| Test | Description |
+|------|-------------|
+| Download Path | File downloads go to correct location |
+| Upload Path | File uploads work from Windows paths |
+| Model Path | Qwen/embeddings load from AppData |
+| PKL Path | Index files save/load correctly |
+| Embeddings Path | Vector indexes stored properly |
+| Install Path | App installs to Program Files |
+| Merge Path | Merged files export to correct location |
+
+### TM UX Polish (P11-B)
+
+Current issue: Users don't know TM entry editor exists.
+
+**Possible improvements:**
+1. Add "Edit Entries" button/label more prominently in TM grid
+2. Visual hint on TM items ("double-click to view entries")
+3. Better onboarding/tooltips
+4. Right-click context menu with "Edit Entries" option
+
+### Dashboard Overhaul (P8)
+
+**Status:** LOW PRIORITY (after platform stability)
+
+**Goals:**
+- Svelte 5 upgrade for adminDashboard
+- Translation activity logging
+- QA analytics
+- Cleaner, more organized layout
 
 ---
 
