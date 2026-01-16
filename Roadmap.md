@@ -202,8 +202,8 @@ File Explorer (structure owner)     TM Explorer (READ-ONLY mirror)
 | 1 | Database: platforms table, tm_assignments | ✅ DONE |
 | 2 | Backend: TM resolution logic | ✅ DONE |
 | 3 | Frontend: TM Explorer GRID UI | ✅ DONE |
-| 4 | Frontend: File viewer TM indicator | PLANNED |
-| 5 | Frontend: Platform management | PLANNED |
+| 4 | Frontend: File viewer TM indicator + TM source in matches | ✅ DONE (Session 45) |
+| 5 | Frontend: Platform management UI | PLANNED |
 
 ---
 

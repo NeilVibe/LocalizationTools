@@ -127,8 +127,11 @@
                 </div>
                 <div class="tm-item-source">{match.source}</div>
                 <div class="tm-item-target">{match.target}</div>
-                {#if match.source_type || match.created_by}
+                {#if match.tm_name || match.source_type || match.created_by}
                   <div class="tm-item-meta">
+                    {#if match.tm_name}
+                      <span class="meta-tm">{match.tm_name}</span>
+                    {/if}
                     {#if match.source_type}
                       <span class="meta-tag">{match.source_type}</span>
                     {/if}
@@ -345,6 +348,14 @@
     font-size: 0.625rem;
     color: var(--cds-text-02);
     margin-top: 4px;
+  }
+
+  .meta-tm {
+    background: var(--cds-support-info, #4589ff);
+    color: #fff;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-weight: 500;
   }
 
   .meta-tag {

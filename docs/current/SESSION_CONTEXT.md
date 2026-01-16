@@ -1,6 +1,49 @@
 # Session Context
 
-> Last Updated: 2026-01-16 (Session 45 - Planning)
+> Last Updated: 2026-01-16 (Session 45 - Implementation Complete)
+
+---
+
+## SESSION 45: Implementation Summary
+
+### Work Completed
+
+| Task | Status | Files Changed |
+|------|--------|---------------|
+| **Roadmap Cleanup** | ✅ DONE | Roadmap.md (957→369 lines) |
+| **TM UX Polish** | ✅ DONE | TMExplorerGrid.svelte |
+| **Toast Redesign** | ✅ DONE | GlobalToast.svelte, toastStore.js |
+| **Windows PATH Tests** | ✅ DONE | tests/unit/test_windows_paths.py (30 tests) |
+| **TM Source in Matches** | ✅ DONE | tm.py, tm_search.py, TMQAPanel.svelte |
+
+### Changes Made
+
+**1. Roadmap.md - Major Cleanup**
+- Reduced from 957 → 369 lines (61% reduction)
+- Added Repository Pattern verification table
+- Collapsed completed milestones into `<details>` sections
+- Clear current priorities at top
+
+**2. TM UX Polish**
+- Added "View Entries" to TM context menu (was missing!)
+- Added tooltip: "Double-click to view/edit entries"
+- TM entries now accessible via right-click menu
+
+**3. Toast Redesign**
+- Replaced bulky Carbon ToastNotification with custom minimal toast
+- Moved from top-right to bottom-right (less invasive)
+- Shorter durations (2-6s vs 3-8s)
+- Added `silent` flag check (FAISS auto-sync no longer spams toasts)
+
+**4. Windows PATH Tests**
+- Created 30 new tests for cross-platform path handling
+- Tests cover: normalization, download, upload, model, PKL, long paths, special chars
+- Auto-included in CI (tests/unit/ already in workflow)
+
+**5. TM Source in Matches**
+- Added `tm_name` to TMSuggestion schema
+- Backend now returns TM name with each match
+- UI shows blue badge with TM name in match results
 
 ---
 
