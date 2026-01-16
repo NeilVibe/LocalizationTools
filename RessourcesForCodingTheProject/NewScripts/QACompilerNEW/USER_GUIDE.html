@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Compiler Suite - User Guide</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 10px;
+                color: #666;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            font-size: 11pt;
+        }
+
+        /* Cover Page */
+        .cover {
+            text-align: center;
+            padding: 100px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            page-break-after: always;
+            min-height: 100vh;
+        }
+
+        .cover h1 {
+            font-size: 42pt;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .cover .subtitle {
+            font-size: 18pt;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+
+        .cover .version-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-size: 14pt;
+            margin: 10px;
+        }
+
+        /* Headers */
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            page-break-after: avoid;
+        }
+
+        h2 {
+            color: #764ba2;
+            border-left: 4px solid #764ba2;
+            padding-left: 15px;
+            margin-top: 30px;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            color: #5a67d8;
+            page-break-after: avoid;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 10pt;
+            page-break-inside: avoid;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f7fafc;
+        }
+
+        tr:hover {
+            background-color: #edf2f7;
+        }
+
+        /* Code blocks */
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 9pt;
+            color: #e53e3e;
+        }
+
+        pre {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 9pt;
+            line-height: 1.4;
+            page-break-inside: avoid;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* Callout boxes */
+        .tip {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .tip::before {
+            content: "Tip";
+            font-weight: bold;
+            color: #28a745;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warning::before {
+            content: "Important";
+            font-weight: bold;
+            color: #856404;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .danger {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Flow diagrams */
+        .flow-diagram {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .flow-box {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin: 10px;
+            font-weight: 500;
+        }
+
+        .flow-arrow {
+            display: block;
+            font-size: 24pt;
+            color: #667eea;
+            margin: 5px 0;
+        }
+
+        /* Status badges */
+        .status-issue { background: #dc3545; color: white; padding: 3px 10px; border-radius: 12px; font-size: 9pt; }
+        .status-ok { background: #28a745; color: white; padding: 3px 10px; border-radius: 12px; font-size: 9pt; }
+        .status-blocked { background: #ffc107; color: #333; padding: 3px 10px; border-radius: 12px; font-size: 9pt; }
+        .status-korean { background: #fd7e14; color: white; padding: 3px 10px; border-radius: 12px; font-size: 9pt; }
+
+        /* Section icons */
+        .section-icon {
+            font-size: 24pt;
+            margin-right: 10px;
+        }
+
+        /* TOC */
+        .toc {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .toc h2 {
+            border: none;
+            padding-left: 0;
+            color: #667eea;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .toc li {
+            padding: 8px 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .toc li:last-child {
+            border-bottom: none;
+        }
+
+        .toc a {
+            color: #5a67d8;
+            text-decoration: none;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+        }
+
+        /* Page breaks */
+        .page-break {
+            page-break-before: always;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+
+        li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Cover Page -->
+<div class="cover">
+    <h1>QA Compiler Suite</h1>
+    <div class="subtitle">User Guide</div>
+    <div class="version-badge">Version 2.0</div>
+    <div class="version-badge">Windows</div>
+    <div class="version-badge">Production Ready</div>
+    <div style="margin-top: 60px; opacity: 0.8;">
+        <p>Your Complete Guide to QA Localization Workflow</p>
+    </div>
+</div>
+
+<!-- Table of Contents -->
+<div class="toc">
+    <h2>Table of Contents</h2>
+    <ul>
+        <li><strong>1.</strong> <a href="#getting-started">Getting Started</a> - Installation and first launch</li>
+        <li><strong>2.</strong> <a href="#main-interface">Main Interface</a> - Understanding the GUI</li>
+        <li><strong>3.</strong> <a href="#generate-datasheets">Generate Datasheets</a> - Create LQA worksheets</li>
+        <li><strong>4.</strong> <a href="#transfer-qa">Transfer QA Files</a> - Merge tester work</li>
+        <li><strong>5.</strong> <a href="#build-master">Build Master Files</a> - Compile final documents</li>
+        <li><strong>6.</strong> <a href="#coverage">Coverage Analysis</a> - Check translation coverage</li>
+        <li><strong>7.</strong> <a href="#system-localizer">System Localizer</a> - Create localized sheets</li>
+        <li><strong>8.</strong> <a href="#folders">Folder Structure</a> - Where files go</li>
+        <li><strong>9.</strong> <a href="#troubleshooting">Troubleshooting</a> - Common issues</li>
+    </ul>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Getting Started -->
+<h1 id="getting-started">1. Getting Started</h1>
+
+<h2>Installation</h2>
+
+<table>
+    <tr>
+        <th>Step</th>
+        <th>Action</th>
+    </tr>
+    <tr>
+        <td><strong>1</strong></td>
+        <td>Download the latest <code>QACompiler.exe</code> package</td>
+    </tr>
+    <tr>
+        <td><strong>2</strong></td>
+        <td>Extract to your preferred location (e.g., <code>C:\Tools\QACompiler\</code>)</td>
+    </tr>
+    <tr>
+        <td><strong>3</strong></td>
+        <td>Double-click <code>QACompiler.exe</code> to launch</td>
+    </tr>
+</table>
+
+<div class="tip">
+    Keep the folder structure intact - don't move files around!
+</div>
+
+<h2>First Launch Checklist</h2>
+
+<p>Before using the tool, verify these paths exist on your system:</p>
+
+<table>
+    <tr>
+        <th>Path</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td><code>F:\perforce\cd\mainline\resource\GameData\StaticInfo\</code></td>
+        <td>Game XML data</td>
+    </tr>
+    <tr>
+        <td><code>F:\perforce\cd\mainline\resource\GameData\stringtable\loc\</code></td>
+        <td>Language files</td>
+    </tr>
+</table>
+
+<div class="warning">
+    <strong>Different Drive?</strong> If your Perforce is on D: or E: drive, see the "Building for Different Drives" section at the end of this guide.
+</div>
+
+<div class="page-break"></div>
+
+<!-- Main Interface -->
+<h1 id="main-interface">2. Main Interface</h1>
+
+<p>When you launch QA Compiler Suite, you'll see the main interface with 5 sections:</p>
+
+<div class="flow-diagram">
+    <div class="flow-box">1. Generate Datasheets</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-box">2. Transfer QA Files</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-box">3. Build Master Files</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-box">4. Coverage Analysis</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-box">5. System Localizer</div>
+</div>
+
+<p>Each section handles a specific part of the QA workflow. The status bar at the bottom shows current operation progress.</p>
+
+<div class="page-break"></div>
+
+<!-- Generate Datasheets -->
+<h1 id="generate-datasheets">3. Generate Datasheets</h1>
+
+<p><strong>Purpose:</strong> Create fresh LQA worksheets from game XML data for testers to work on.</p>
+
+<h2>When to Use</h2>
+<ul>
+    <li>Starting a new QA cycle</li>
+    <li>Game data has been updated</li>
+    <li>Need worksheets for specific categories</li>
+</ul>
+
+<h2>How to Use</h2>
+
+<table>
+    <tr>
+        <th>Step</th>
+        <th>Action</th>
+    </tr>
+    <tr>
+        <td><strong>1</strong></td>
+        <td>Select categories by checking the boxes</td>
+    </tr>
+    <tr>
+        <td><strong>2</strong></td>
+        <td>Click <strong>[Generate Selected]</strong></td>
+    </tr>
+    <tr>
+        <td><strong>3</strong></td>
+        <td>Wait for progress bar to complete</td>
+    </tr>
+    <tr>
+        <td><strong>4</strong></td>
+        <td>Find files in <code>GeneratedDatasheets/</code> folder</td>
+    </tr>
+</table>
+
+<h2>Category Guide</h2>
+
+<table>
+    <tr>
+        <th>Category</th>
+        <th>Contains</th>
+        <th>Output Folder</th>
+    </tr>
+    <tr>
+        <td><strong>Quest</strong></td>
+        <td>Main story, faction, daily quests</td>
+        <td><code>QuestData_Map_All/</code></td>
+    </tr>
+    <tr>
+        <td><strong>Knowledge</strong></td>
+        <td>Encyclopedia entries</td>
+        <td><code>Knowledge_LQA_All/</code></td>
+    </tr>
+    <tr>
+        <td><strong>Item</strong></td>
+        <td>Items, equipment, consumables</td>
+        <td><code>ItemData_Map_All/</code></td>
+    </tr>
+    <tr>
+        <td><strong>Region</strong></td>
+        <td>Areas, locations, POIs</td>
+        <td><code>Region_LQA_v3/</code></td>
+    </tr>
+    <tr>
+        <td><strong>Character</strong></td>
+        <td>NPCs, monsters</td>
+        <td><code>Character_LQA_All/</code></td>
+    </tr>
+    <tr>
+        <td><strong>Skill</strong></td>
+        <td>Player abilities</td>
+        <td><code>Skill_LQA_All/</code></td>
+    </tr>
+    <tr>
+        <td><strong>Help</strong></td>
+        <td>Tutorial, tips</td>
+        <td><code>GameAdvice_LQA_All/</code></td>
+    </tr>
+    <tr>
+        <td><strong>Gimmick</strong></td>
+        <td>Interactive objects</td>
+        <td><code>Gimmick_LQA_Output/</code></td>
+    </tr>
+</table>
+
+<h2>Output Excel Structure</h2>
+
+<p>Each generated file contains these columns:</p>
+
+<table>
+    <tr>
+        <th>Column</th>
+        <th>Description</th>
+        <th>Editable?</th>
+    </tr>
+    <tr>
+        <td><strong>Original (KR)</strong></td>
+        <td>Korean source text</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td><strong>English (ENG)</strong></td>
+        <td>English translation</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td><strong>Translation</strong></td>
+        <td>Target language text</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td><strong>STATUS</strong></td>
+        <td>Issue status dropdown</td>
+        <td><strong>Yes</strong></td>
+    </tr>
+    <tr>
+        <td><strong>COMMENT</strong></td>
+        <td>Tester notes</td>
+        <td><strong>Yes</strong></td>
+    </tr>
+    <tr>
+        <td><strong>STRINGID</strong></td>
+        <td>Unique identifier</td>
+        <td>No</td>
+    </tr>
+    <tr>
+        <td><strong>SCREENSHOT</strong></td>
+        <td>Screenshot reference</td>
+        <td><strong>Yes</strong></td>
+    </tr>
+</table>
+
+<h2>STATUS Options</h2>
+
+<table>
+    <tr>
+        <th>Status</th>
+        <th>Meaning</th>
+        <th>Visual</th>
+    </tr>
+    <tr>
+        <td><code>ISSUE</code></td>
+        <td>Problem found - needs fix</td>
+        <td><span class="status-issue">ISSUE</span></td>
+    </tr>
+    <tr>
+        <td><code>NO ISSUE</code></td>
+        <td>Checked, looks good</td>
+        <td><span class="status-ok">NO ISSUE</span></td>
+    </tr>
+    <tr>
+        <td><code>BLOCKED</code></td>
+        <td>Cannot test</td>
+        <td><span class="status-blocked">BLOCKED</span></td>
+    </tr>
+    <tr>
+        <td><code>KOREAN</code></td>
+        <td>Still in Korean</td>
+        <td><span class="status-korean">KOREAN</span></td>
+    </tr>
+</table>
+
+<div class="tip">
+    Use <strong>Select All</strong> then uncheck what you don't need - faster than selecting one by one!
+</div>
+
+<div class="page-break"></div>
+
+<!-- Transfer QA Files -->
+<h1 id="transfer-qa">4. Transfer QA Files</h1>
+
+<p><strong>Purpose:</strong> Merge completed tester work from OLD and NEW folders into the main QAfolder.</p>
+
+<h2>The Flow</h2>
+
+<div class="flow-diagram">
+    <div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap;">
+        <div class="flow-box">QAfolderOLD<br><small>(Previous QA)</small></div>
+        <span style="font-size: 24pt; margin: 0 20px;">+</span>
+        <div class="flow-box">QAfolderNEW<br><small>(Current QA)</small></div>
+    </div>
+    <div class="flow-arrow">&#8595;</div>
+    <div class="flow-box" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">QAfolder<br><small>(Combined)</small></div>
+</div>
+
+<h2>How to Use</h2>
+
+<table>
+    <tr>
+        <th>Step</th>
+        <th>Action</th>
+    </tr>
+    <tr>
+        <td><strong>1</strong></td>
+        <td>Place OLD tester files in <code>QAfolderOLD/</code></td>
+    </tr>
+    <tr>
+        <td><strong>2</strong></td>
+        <td>Place NEW tester files in <code>QAfolderNEW/</code></td>
+    </tr>
+    <tr>
+        <td><strong>3</strong></td>
+        <td>Click <strong>[Transfer QA Files]</strong></td>
+    </tr>
+    <tr>
+        <td><strong>4</strong></td>
+        <td>Combined files appear in <code>QAfolder/</code></td>
+    </tr>
+</table>
+
+<div class="warning">
+    Files in QAfolder will be overwritten! Backup if needed.
+</div>
+
+<div class="page-break"></div>
+
+<!-- Build Master Files -->
+<h1 id="build-master">5. Build Master Files</h1>
+
+<p><strong>Purpose:</strong> Compile all QA files into final master documents with progress tracking.</p>
+
+<h2>The Build Process</h2>
+
+<div class="flow-diagram">
+    <div class="flow-box">QAfolder<br><small>(All QA work)</small></div>
+    <div class="flow-arrow">&#8595;</div>
+    <div style="background: #f0f4f8; padding: 15px; border-radius: 8px; margin: 10px auto; max-width: 400px; text-align: left;">
+        <strong>BUILD PROCESS:</strong>
+        <ul style="margin: 10px 0;">
+            <li>Merge all tester sheets</li>
+            <li>Calculate progress</li>
+            <li>Generate DAILY/TOTAL trackers</li>
+            <li>Hide completed rows</li>
+            <li>Auto-fit columns</li>
+        </ul>
+    </div>
+    <div class="flow-arrow">&#8595;</div>
+    <div style="display: flex; justify-content: center; gap: 20px;">
+        <div class="flow-box" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">Masterfolder_EN<br><small>(English)</small></div>
+        <div class="flow-box" style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);">Masterfolder_CN<br><small>(Chinese)</small></div>
+    </div>
+</div>
+
+<h2>Output Contents</h2>
+
+<table>
+    <tr>
+        <th>File</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td><code>Master_Quest.xlsx</code></td>
+        <td>All quest QA combined</td>
+    </tr>
+    <tr>
+        <td><code>Master_Knowledge.xlsx</code></td>
+        <td>All knowledge QA combined</td>
+    </tr>
+    <tr>
+        <td><code>Master_Item.xlsx</code></td>
+        <td>All item QA combined</td>
+    </tr>
+    <tr>
+        <td><code>Master_Region.xlsx</code></td>
+        <td>All region QA combined</td>
+    </tr>
+    <tr>
+        <td><code>Master_System.xlsx</code></td>
+        <td>Combined Skill + Help</td>
+    </tr>
+    <tr>
+        <td><code>Master_Character.xlsx</code></td>
+        <td>All character QA combined</td>
+    </tr>
+    <tr>
+        <td><code>Master_Gimmick.xlsx</code></td>
+        <td>All gimmick QA combined</td>
+    </tr>
+    <tr>
+        <td><code>_TRACKER.xlsx</code></td>
+        <td>Progress tracking sheets</td>
+    </tr>
+</table>
+
+<h2>Progress Tracker Sheets</h2>
+
+<p>The <code>_TRACKER.xlsx</code> contains:</p>
+
+<table>
+    <tr>
+        <th>Sheet</th>
+        <th>Shows</th>
+    </tr>
+    <tr>
+        <td><strong>DAILY</strong></td>
+        <td>Day-by-day progress per tester</td>
+    </tr>
+    <tr>
+        <td><strong>TOTAL</strong></td>
+        <td>Overall statistics and rankings</td>
+    </tr>
+    <tr>
+        <td><strong>_DAILY_DATA</strong></td>
+        <td>Raw data (hidden)</td>
+    </tr>
+</table>
+
+<h2>Automatic Row Hiding</h2>
+
+<p>Rows marked with these statuses are <strong>automatically hidden</strong> in master files:</p>
+
+<table>
+    <tr>
+        <th>Status</th>
+        <th>Hidden?</th>
+    </tr>
+    <tr>
+        <td><code>FIXED</code></td>
+        <td><span class="status-ok">YES</span></td>
+    </tr>
+    <tr>
+        <td><code>NON ISSUE</code></td>
+        <td><span class="status-ok">YES</span></td>
+    </tr>
+    <tr>
+        <td><code>NON-ISSUE</code></td>
+        <td><span class="status-ok">YES</span></td>
+    </tr>
+    <tr>
+        <td><code>ISSUE</code></td>
+        <td><span class="status-issue">NO</span> (needs attention)</td>
+    </tr>
+    <tr>
+        <td><code>BLOCKED</code></td>
+        <td><span class="status-blocked">NO</span> (needs attention)</td>
+    </tr>
+</table>
+
+<div class="tip">
+    This helps managers focus on remaining issues!
+</div>
+
+<div class="page-break"></div>
+
+<!-- Coverage Analysis -->
+<h1 id="coverage">6. Coverage Analysis</h1>
+
+<p><strong>Purpose:</strong> Calculate how much of the game's text is covered by your datasheets.</p>
+
+<h2>When to Use</h2>
+<ul>
+    <li>After generating datasheets</li>
+    <li>To verify translation coverage</li>
+    <li>For reporting to stakeholders</li>
+</ul>
+
+<h2>How to Use</h2>
+
+<table>
+    <tr>
+        <th>Step</th>
+        <th>Action</th>
+    </tr>
+    <tr>
+        <td><strong>1</strong></td>
+        <td>Generate datasheets first (Section 3)</td>
+    </tr>
+    <tr>
+        <td><strong>2</strong></td>
+        <td>Click <strong>[Run Coverage Analysis]</strong></td>
+    </tr>
+    <tr>
+        <td><strong>3</strong></td>
+        <td>View summary popup</td>
+    </tr>
+    <tr>
+        <td><strong>4</strong></td>
+        <td>Check <code>GeneratedDatasheets/</code> for detailed Excel report</td>
+    </tr>
+</table>
+
+<h2>Output Report</h2>
+
+<p>Creates <code>Coverage_Report_YYYYMMDD_HHMMSS.xlsx</code> with:</p>
+
+<table>
+    <tr>
+        <th>Sheet</th>
+        <th>Contents</th>
+    </tr>
+    <tr>
+        <td><strong>Coverage Report</strong></td>
+        <td>Strings covered per category</td>
+    </tr>
+    <tr>
+        <td><strong>Word Count</strong></td>
+        <td>Korean + Translation word counts</td>
+    </tr>
+</table>
+
+<h2>Understanding Coverage</h2>
+
+<pre>
+Coverage = (Strings in Datasheets / Total Strings in Game) x 100%
+
+Example:
+  Quest:     12,500 / 15,000 = 83.3%
+  Knowledge:  8,200 /  8,500 = 96.5%
+  Item:       5,100 /  6,000 = 85.0%
+  ----------------------------------------
+  Total:     25,800 / 29,500 = 87.5%
+</pre>
+
+<div class="page-break"></div>
+
+<!-- System Localizer -->
+<h1 id="system-localizer">7. System Localizer</h1>
+
+<p><strong>Purpose:</strong> Create localized versions of System datasheets for ALL languages automatically.</p>
+
+<h2>When to Use</h2>
+<ul>
+    <li>You have a manually-created System Excel file</li>
+    <li>Need to generate versions for all languages</li>
+    <li>System UI text needs QA across languages</li>
+</ul>
+
+<h2>How to Use</h2>
+
+<table>
+    <tr>
+        <th>Step</th>
+        <th>Action</th>
+    </tr>
+    <tr>
+        <td><strong>1</strong></td>
+        <td>Click <strong>[Localize System Sheet]</strong></td>
+    </tr>
+    <tr>
+        <td><strong>2</strong></td>
+        <td>Select your System Excel file</td>
+    </tr>
+    <tr>
+        <td><strong>3</strong></td>
+        <td>Wait for processing</td>
+    </tr>
+    <tr>
+        <td><strong>4</strong></td>
+        <td>Find output in <code>System_LQA_All/</code> folder</td>
+    </tr>
+</table>
+
+<h2>Output Structure</h2>
+
+<pre>
+System_LQA_All/
+  |- System_ENG.xlsx    (English)
+  |- System_DEU.xlsx    (German)
+  |- System_FRA.xlsx    (French)
+  |- System_JPN.xlsx    (Japanese)
+  |- System_CHT.xlsx    (Chinese Traditional)
+  |- ... (all supported languages)
+</pre>
+
+<h2>How Matching Works</h2>
+
+<p>The localizer uses a <strong>2-step matching process</strong>:</p>
+
+<div class="flow-diagram">
+    <div style="text-align: left; max-width: 500px; margin: 0 auto;">
+        <p><strong>Step 1: StringID Match</strong> (Most accurate)</p>
+        <code>StringID &#8594; Korean &#8594; Target Language</code>
+        <br><br>
+        <p><strong>Step 2: Text Match</strong> (Fallback)</p>
+        <code>English Text &#8594; Korean &#8594; Target Language</code>
+    </div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Folder Structure -->
+<h1 id="folders">8. Folder Structure</h1>
+
+<h2>Application Folders</h2>
+
+<pre>
+QACompiler/
+  |- QACompiler.exe           &lt;-- Main application
+  |
+  |- QAfolderOLD/             &lt;-- Put OLD tester files here
+  |- QAfolderNEW/             &lt;-- Put NEW tester files here
+  |- QAfolder/                &lt;-- Combined files (auto-generated)
+  |
+  |- GeneratedDatasheets/     &lt;-- Output from "Generate Datasheets"
+  |    |- QuestData_Map_All/
+  |    |- Knowledge_LQA_All/
+  |    |- ItemData_Map_All/
+  |    +- ...
+  |
+  |- Masterfolder_EN/         &lt;-- Output from "Build Master Files"
+  |    |- Master_Quest.xlsx
+  |    |- Master_Knowledge.xlsx
+  |    |- _TRACKER.xlsx
+  |    +- Images/
+  |
+  +- Masterfolder_CN/         &lt;-- Chinese master output
+       +- ...
+</pre>
+
+<h2>File Naming Convention</h2>
+
+<table>
+    <tr>
+        <th>Pattern</th>
+        <th>Meaning</th>
+    </tr>
+    <tr>
+        <td><code>Quest_LQA_ENG.xlsx</code></td>
+        <td>Quest datasheet, English</td>
+    </tr>
+    <tr>
+        <td><code>Item_LQA_DEU.xlsx</code></td>
+        <td>Item datasheet, German</td>
+    </tr>
+    <tr>
+        <td><code>Master_Quest.xlsx</code></td>
+        <td>Combined quest master</td>
+    </tr>
+    <tr>
+        <td><code>_TRACKER.xlsx</code></td>
+        <td>Progress tracking</td>
+    </tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- Troubleshooting -->
+<h1 id="troubleshooting">9. Troubleshooting</h1>
+
+<h2>Common Issues</h2>
+
+<div class="danger">
+    <strong>"Generator modules not yet implemented"</strong><br><br>
+    <strong>Cause:</strong> Generator files are missing or import failed.<br><br>
+    <strong>Solution:</strong>
+    <ol>
+        <li>Verify all files are present in the installation</li>
+        <li>Check the <code>generators/</code> folder exists</li>
+        <li>Re-extract from the original package</li>
+    </ol>
+</div>
+
+<div class="danger">
+    <strong>"No datasheets found in GeneratedDatasheets"</strong><br><br>
+    <strong>Cause:</strong> Coverage analysis needs datasheets first.<br><br>
+    <strong>Solution:</strong>
+    <ol>
+        <li>Run "Generate Datasheets" first (Section 3)</li>
+        <li>Verify files exist in <code>GeneratedDatasheets/</code> folder</li>
+        <li>Then run Coverage Analysis</li>
+    </ol>
+</div>
+
+<div class="danger">
+    <strong>Path errors mentioning F: drive</strong><br><br>
+    <strong>Cause:</strong> Your Perforce is on a different drive.<br><br>
+    <strong>Solution:</strong> See "Building for Different Drives" below.
+</div>
+
+<div class="danger">
+    <strong>Excel file is corrupted or won't open</strong><br><br>
+    <strong>Cause:</strong> Process was interrupted during write.<br><br>
+    <strong>Solution:</strong>
+    <ol>
+        <li>Delete the corrupted file</li>
+        <li>Run the operation again</li>
+        <li>Don't close the app while progress bar is active</li>
+    </ol>
+</div>
+
+<h2>Building for Different Drives</h2>
+
+<p>If your Perforce is on <strong>D:</strong> or <strong>E:</strong> drive instead of <strong>F:</strong>:</p>
+
+<h3>Option 1: Use Build Script (Recommended)</h3>
+<ol>
+    <li>Run <code>build_exe.bat</code></li>
+    <li>When prompted, enter your drive letter:<br>
+        <code>Enter drive letter (F/D/E/etc.) [F]: D</code></li>
+    <li>The executable will be built with correct paths</li>
+</ol>
+
+<h3>Option 2: Manual Path Update</h3>
+<p>Edit <code>config.py</code> and change all paths from <code>F:\</code> to your drive letter.</p>
+
+<!-- Footer -->
+<div class="footer">
+    <h2 style="color: white; border: none;">QA Compiler Suite v2.0</h2>
+    <p>Making localization QA easier, one datasheet at a time.</p>
+    <p style="opacity: 0.8; font-size: 10pt;">Made with Python | Excel Support | Windows Platform</p>
+</div>
+
+</body>
+</html>
