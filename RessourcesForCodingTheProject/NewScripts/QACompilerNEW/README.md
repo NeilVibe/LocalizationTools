@@ -407,6 +407,64 @@ Coverage and word count read from these columns (1-based):
 python coverage.py
 ```
 
+## Building Executable
+
+### Using `build_exe.bat`
+
+The build script creates a standalone Windows executable that doesn't require Python.
+
+```batch
+# Double-click build_exe.bat or run from command line:
+build_exe.bat
+```
+
+### Drive Selection Feature
+
+**Problem:** The default LOC path uses F: drive (`F:\perforce\cd\mainline\...`), but some users have Perforce on a different drive (D:, E:, etc.).
+
+**Solution:** The build script prompts for drive selection before building:
+
+```
+========================================
+  QA Compiler Suite - Build Executable
+========================================
+
+Current default LOC path uses F: drive
+(F:\perforce\cd\mainline\resource\GameData\stringtable\loc)
+
+If your Perforce is on a different drive, enter the drive letter.
+Otherwise, just press Enter to keep F: drive.
+
+Enter drive letter (F/D/E/etc.) [F]: D
+
+Selected drive: D:
+```
+
+**What happens:**
+1. If you enter a different drive (e.g., `D`), the script automatically:
+   - Backs up `config.py` and `system_localizer.py`
+   - Replaces all `F:\` paths with `D:\`
+   - Builds the executable with the new paths
+   - Restores the original source files (keeps your repo clean)
+
+2. If you press Enter (keep F:), no path changes are made.
+
+**Output:**
+```
+dist\QACompiler\
+├── QACompiler.exe          # Main executable
+├── QAfolder\               # Input folder for QA files
+├── Masterfolder_EN\        # Output for EN masters
+├── Masterfolder_CN\        # Output for CN masters
+└── ...
+```
+
+### Requirements
+- Python 3.8+ with pip
+- PyInstaller (auto-installed by script)
+
+---
+
 ## Notes
 
 - Generators require access to game resource paths (Perforce)

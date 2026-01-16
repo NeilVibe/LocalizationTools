@@ -1,22 +1,40 @@
 <script>
   /**
-   * GlobalToast - BUG-016 Task Manager Toast Notifications
+   * GlobalToast - Minimal, Slick Toast Notifications (Svelte 5)
    *
-   * Displays global toast notifications for Task Manager operations.
-   * Should be placed in the root layout to appear on any page.
+   * Redesigned for minimal footprint - users can check Task Manager for details.
+   * Shows brief notifications that auto-dismiss quickly.
    */
-  import { ToastNotification } from "carbon-components-svelte";
   import { toasts, removeToast } from "$lib/stores/toastStore.js";
   import { websocket } from "$lib/api/websocket.js";
   import { isAuthenticated } from "$lib/stores/app.js";
   import { toast } from "$lib/stores/toastStore.js";
   import { logger } from "$lib/utils/logger.js";
   import { onMount, onDestroy } from "svelte";
+  import {
+    CheckmarkFilled,
+    ErrorFilled,
+    WarningFilled,
+    InformationFilled,
+    Close
+  } from "carbon-icons-svelte";
 
   // WebSocket unsubscribe functions
   let unsubscribeOperationStart;
   let unsubscribeOperationComplete;
   let unsubscribeOperationFailed;
+
+  /**
+   * Get icon component based on toast kind
+   */
+  function getIcon(kind) {
+    switch (kind) {
+      case 'success': return CheckmarkFilled;
+      case 'error': return ErrorFilled;
+      case 'warning': return WarningFilled;
+      default: return InformationFilled;
+    }
+  }
 
   /**
    * Format duration from milliseconds to human readable
@@ -60,6 +78,12 @@
         return;
       }
 
+      // Skip silent operations (e.g., FAISS auto-sync)
+      if (data.silent) {
+        logger.debug("GlobalToast: Skipping silent operation", { operation_name: data.operation_name });
+        return;
+      }
+
       logger.info("GlobalToast: Operation started", {
         operation_id: data.operation_id,
         operation_name: data.operation_name,
@@ -79,6 +103,12 @@
         return;
       }
 
+      // Skip silent operations (e.g., FAISS auto-sync)
+      if (data.silent) {
+        logger.debug("GlobalToast: Skipping silent operation complete", { operation_name: data.operation_name });
+        return;
+      }
+
       logger.info("GlobalToast: Operation completed", {
         operation_id: data.operation_id,
         operation_name: data.operation_name,
@@ -93,7 +123,7 @@
       );
     });
 
-    // Listen for operation_failed - always show errors
+    // Listen for operation_failed - always show errors (never skip)
     unsubscribeOperationFailed = websocket.on('operation_failed', (data) => {
       logger.error("GlobalToast: Operation failed", {
         operation_id: data.operation_id,
@@ -118,39 +148,121 @@
   });
 </script>
 
-<!-- Toast Container - Fixed position in top-right corner -->
-<div class="global-toast-container">
+<!-- Minimal Toast Container - Fixed position bottom-right -->
+<div class="toast-container">
   {#each $toasts as t (t.id)}
-    <div class="toast-wrapper" style="animation: slideIn 0.3s ease-out;">
-      <ToastNotification
-        kind={t.kind}
-        title={t.title}
-        subtitle={t.message}
-        lowContrast
-        on:close={() => removeToast(t.id)}
-      />
+    <div class="toast toast-{t.kind}">
+      <div class="toast-icon">
+        <svelte:component this={getIcon(t.kind)} size={16} />
+      </div>
+      <div class="toast-content">
+        <span class="toast-message">{t.message}</span>
+      </div>
+      <button class="toast-close" onclick={() => removeToast(t.id)} aria-label="Dismiss">
+        <Close size={14} />
+      </button>
     </div>
   {/each}
 </div>
 
 <style>
-  .global-toast-container {
+  .toast-container {
     position: fixed;
-    top: 60px;  /* Below header */
+    bottom: 16px;
     right: 16px;
     z-index: 9999;
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse;
     gap: 8px;
-    max-width: 400px;
-    pointer-events: none;  /* Allow clicking through empty space */
+    pointer-events: none;
   }
 
-  .toast-wrapper {
-    pointer-events: auto;  /* Make toasts clickable */
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--cds-layer-02, #262626);
+    border-left: 3px solid;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    pointer-events: auto;
+    max-width: 320px;
+    animation: slideIn 0.2s ease-out;
+    font-size: 0.8125rem;
   }
 
-  /* Slide in animation */
+  .toast-success {
+    border-left-color: #42be65;
+  }
+
+  .toast-error {
+    border-left-color: #fa4d56;
+  }
+
+  .toast-warning {
+    border-left-color: #f1c21b;
+  }
+
+  .toast-info {
+    border-left-color: #4589ff;
+  }
+
+  .toast-icon {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .toast-success .toast-icon {
+    color: #42be65;
+  }
+
+  .toast-error .toast-icon {
+    color: #fa4d56;
+  }
+
+  .toast-warning .toast-icon {
+    color: #f1c21b;
+  }
+
+  .toast-info .toast-icon {
+    color: #4589ff;
+  }
+
+  .toast-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .toast-message {
+    color: var(--cds-text-primary, #f4f4f4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  .toast-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--cds-text-secondary, #c6c6c6);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .toast-close:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
   @keyframes slideIn {
     from {
       transform: translateX(100%);
@@ -162,14 +274,15 @@
     }
   }
 
-  /* Override Carbon toast styles for better dark mode */
-  .global-toast-container :global(.bx--toast-notification) {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    border-radius: 4px;
-  }
+  /* Responsive - even smaller on mobile */
+  @media (max-width: 480px) {
+    .toast-container {
+      left: 16px;
+      right: 16px;
+    }
 
-  .global-toast-container :global(.bx--toast-notification__subtitle) {
-    max-width: 300px;
-    word-wrap: break-word;
+    .toast {
+      max-width: none;
+    }
   }
 </style>
