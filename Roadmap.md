@@ -103,19 +103,18 @@ OFFLINE: SQLite (single-user, auto-fallback)
 | Playwright Tests | ✅ 154 passed |
 | P10 CI Verification | ✅ Gitea 455, GitHub 456 |
 | TM Repository Pattern | ✅ VERIFIED (Session 45) |
-| Windows PATH Tests | TODO |
+| Windows PATH Tests | ✅ DONE (30 tests) |
+| TM Hierarchy Sprint 5 | ✅ DONE (Upload TM Here) |
 
-#### Windows PATH Tests (TODO)
+#### Windows PATH Tests (DONE - 30 tests)
 
-| Test | Description |
-|------|-------------|
-| Download Path | File downloads go to correct location |
-| Upload Path | File uploads work from Windows paths |
-| Model Path | Qwen/embeddings load from AppData |
-| PKL Path | Index files save/load correctly |
-| Embeddings Path | Vector indexes stored properly |
-| Install Path | App installs to Program Files |
-| Merge Path | Merged files export to correct location |
+Tests created in `tests/unit/test_windows_paths.py`:
+- Path normalization (5 tests)
+- Download/Upload paths (7 tests)
+- Model/PKL paths (6 tests)
+- Long paths & special chars (6 tests)
+- Merge/Export paths (3 tests)
+- Install paths (3 tests)
 
 ### P8: Dashboard Overhaul (LOW PRIORITY)
 
@@ -203,7 +202,7 @@ File Explorer (structure owner)     TM Explorer (READ-ONLY mirror)
 | 2 | Backend: TM resolution logic | ✅ DONE |
 | 3 | Frontend: TM Explorer GRID UI | ✅ DONE |
 | 4 | Frontend: File viewer TM indicator + TM source in matches | ✅ DONE (Session 45) |
-| 5 | Frontend: Platform management UI | PLANNED |
+| 5 | Frontend: Platform management UI | ✅ DONE (Session 45) |
 
 ---
 

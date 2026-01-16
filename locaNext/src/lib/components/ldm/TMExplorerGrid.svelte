@@ -1202,9 +1202,21 @@
         Delete
       </button>
     {:else}
-      <!-- Platform/Project right-click: Open + Paste -->
+      <!-- Platform/Project/Folder right-click: Open + Upload + Paste -->
       <button class="context-item" onclick={() => { navigateTo(contextMenu.item); closeContextMenu(); }}>
         Open
+      </button>
+      <div class="context-divider"></div>
+      <button class="context-item" onclick={() => {
+        const scope = {
+          type: contextMenu.item.type,
+          id: contextMenu.item.id,
+          name: contextMenu.item.name
+        };
+        if (onUploadTM) onUploadTM(scope);
+        closeContextMenu();
+      }}>
+        Upload TM Here
       </button>
       {#if clipboardItems.length > 0 && clipboardItems.some(i => i.type === 'tm')}
         <div class="context-divider"></div>
