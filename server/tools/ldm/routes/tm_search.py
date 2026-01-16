@@ -76,7 +76,12 @@ async def get_tm_suggestions(
                 max_results=max_results
             )
 
-            logger.info(f"[TM-SEARCH] [TM-SUGGEST] SUCCESS | Found {len(suggestions)} matches from TM {tm_id}")
+            # P11-B: Add tm_name to each suggestion for UI display
+            tm_name = tm.get('name', 'Unknown TM')
+            for s in suggestions:
+                s['tm_name'] = tm_name
+
+            logger.info(f"[TM-SEARCH] [TM-SUGGEST] SUCCESS | Found {len(suggestions)} matches from TM '{tm_name}'")
             for i, s in enumerate(suggestions[:3]):
                 logger.debug(f"[TM-SEARCH] [TM-SUGGEST] Match {i+1}: sim={s['similarity']:.2f} | src='{s['source'][:30]}...'")
             return {"suggestions": suggestions, "count": len(suggestions)}

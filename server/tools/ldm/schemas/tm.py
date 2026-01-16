@@ -52,6 +52,7 @@ class TMSuggestion(BaseModel):
     # TM-based suggestion fields
     entry_id: Optional[int] = None
     tm_id: Optional[int] = None
+    tm_name: Optional[str] = None  # P11-B: Show TM source in match results
 
 
 class TMSuggestResponse(BaseModel):

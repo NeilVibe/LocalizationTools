@@ -1109,6 +1109,7 @@
           class:dragging={isDragging && isSelected(item.id)}
           class:cut={item.type === 'tm' && isTMCut(item.id)}
           role="row"
+          title={item.type === 'tm' ? 'Double-click to view/edit entries' : item.type === 'platform' || item.type === 'project' || item.type === 'folder' ? 'Double-click to open' : ''}
           draggable={item.type === 'tm' ? 'true' : 'false'}
           onclick={(e) => handleClick(e, item, index)}
           ondblclick={() => handleDoubleClick(item)}
@@ -1176,7 +1177,11 @@
         </button>
       {/if}
     {:else if contextMenu.item?.type === 'tm'}
-      <!-- TM right-click: Activate, Cut/Copy, Delete -->
+      <!-- TM right-click: View Entries, Activate, Cut/Copy, Delete -->
+      <button class="context-item" onclick={() => { if (onViewEntries) onViewEntries(contextMenu.item.tm_data); closeContextMenu(); }}>
+        View Entries
+      </button>
+      <div class="context-divider"></div>
       <button class="context-item" onclick={handleActivateFromMenu}>
         {contextMenu.item.is_active ? 'Deactivate' : 'Activate'}
       </button>
