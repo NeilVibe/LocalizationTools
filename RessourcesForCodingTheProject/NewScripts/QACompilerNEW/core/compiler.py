@@ -438,11 +438,13 @@ def process_category(
     # Update STATUS sheet with user stats
     update_status_sheet(master_wb, all_users, dict(user_stats))
 
-    # Post-process: Hide rows/sheets/columns with no comments (focus on issues)
-    hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(master_wb)
-
-    # Apply word wrap and autofit row heights
+    # Apply word wrap and autofit FIRST (before hiding)
+    # This way all columns get proper widths, even if hidden later
+    # Bonus: if user unhides a column in Excel, it already looks good
     autofit_rows_with_wordwrap(master_wb)
+
+    # THEN hide empty rows/sheets/columns (focus on issues)
+    hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(master_wb)
 
     # Save master
     master_wb.save(master_path)
