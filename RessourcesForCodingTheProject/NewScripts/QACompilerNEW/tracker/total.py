@@ -22,8 +22,9 @@ from config import TRACKER_STYLES, CATEGORIES, load_tester_mapping
 
 def get_total_styles():
     """Get all styles used in TOTAL sheet."""
-    thin = Side(style='thin', color=TRACKER_STYLES["border_color"])
-    thick = Side(style='medium', color='000000')  # Bold black line
+    # Use medium borders for better visibility in tables
+    thin = Side(style='medium', color=TRACKER_STYLES["border_color"])
+    thick = Side(style='thick', color='000000')  # Bold black line for section separators
 
     return {
         "title_fill": PatternFill(start_color=TRACKER_STYLES["title_color"],
@@ -55,7 +56,7 @@ def get_total_styles():
     }
 
 
-def autofit_columns(ws, min_width: int = 8, max_width: int = 50):
+def autofit_columns(ws, min_width: int = 8, max_width: int = 50, skip_columns: set = None):
     """
     Autofit column widths based on content.
 
@@ -63,10 +64,19 @@ def autofit_columns(ws, min_width: int = 8, max_width: int = 50):
         ws: Worksheet
         min_width: Minimum column width
         max_width: Maximum column width
+        skip_columns: Set of column letters to skip (e.g., {'A', 'B'})
     """
+    if skip_columns is None:
+        skip_columns = set()
+
     for col_idx in range(1, ws.max_column + 1):
-        max_len = 0
         col_letter = get_column_letter(col_idx)
+
+        # Skip specified columns (preserve their manually set widths)
+        if col_letter in skip_columns:
+            continue
+
+        max_len = 0
 
         for row_idx in range(1, min(ws.max_row + 1, 100)):  # Sample first 100 rows
             cell = ws.cell(row_idx, col_idx)
@@ -109,7 +119,7 @@ def autofit_row_heights(ws, default_height: int = 15, line_height: int = 15):
 
 # Headers for tester stats
 TESTER_HEADERS = ["User", "Done", "Issues", "No Issue", "Blocked", "Korean"]
-MANAGER_HEADERS = ["Fixed", "Reported", "Checking", "Pending"]
+MANAGER_HEADERS = ["Fixed", "Reported", "NonIssue", "Checking", "Pending"]
 
 
 # =============================================================================
@@ -277,8 +287,8 @@ def build_tester_section(
         section_total["pending"] += pending
         section_total["nonissue"] += nonissue
 
-        # Row data: User, Done, Issues, No Issue, Blocked, Korean, Fixed, Reported, Checking, Pending
-        row_data = [user, done, issues, no_issue, blocked, korean, fixed, reported, checking, pending]
+        # Row data: User, Done, Issues, No Issue, Blocked, Korean, Fixed, Reported, NonIssue, Checking, Pending
+        row_data = [user, done, issues, no_issue, blocked, korean, fixed, reported, nonissue, checking, pending]
 
         for col, value in enumerate(row_data, 1):
             cell = ws.cell(current_row, col, value)
@@ -297,7 +307,7 @@ def build_tester_section(
     st = section_total
     subtotal_data = [
         "SUBTOTAL", st["done"], st["issues"], st["no_issue"], st["blocked"], st["korean"],
-        st["fixed"], st["reported"], st["checking"], st["pending"]
+        st["fixed"], st["reported"], st["nonissue"], st["checking"], st["pending"]
     ]
 
     for col, value in enumerate(subtotal_data, 1):
@@ -740,7 +750,7 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
         gt = grand_total
         total_row_data = [
             "TOTAL", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"], gt["korean"],
-            gt["fixed"], gt["reported"], gt["checking"], gt["pending"]
+            gt["fixed"], gt["reported"], gt["nonissue"], gt["checking"], gt["pending"]
         ]
 
         for col, value in enumerate(total_row_data, 1):
@@ -778,6 +788,6 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
     # Add Ranking Table
     build_ranking_table(ws, breakdown_start_row, user_data, tester_mapping, styles)
 
-    # Autofit columns and rows
-    autofit_columns(ws, min_width=10, max_width=40)
+    # Autofit columns and rows (skip column A - User column has fixed width)
+    autofit_columns(ws, min_width=10, max_width=40, skip_columns={'A'})
     autofit_row_heights(ws)
