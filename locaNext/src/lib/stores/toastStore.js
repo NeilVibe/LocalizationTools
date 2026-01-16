@@ -113,26 +113,26 @@ export const toast = {
   warning: (message, title = 'Warning') => addToast({ message, kind: 'warning', title }),
   info: (message, title = 'Info') => addToast({ message, kind: 'info', title }),
 
-  // Task Manager specific toasts
+  // Task Manager specific toasts (minimal - check Task Manager for details)
   operationStarted: (operationName, toolName) => addToast({
-    message: `${operationName}`,
+    message: operationName,
     kind: 'info',
-    title: `${toolName} Started`,
-    duration: 3000  // Shorter duration for start notifications
+    title: `${toolName}`,
+    duration: 2000  // Very short - just a heads up
   }),
 
   operationCompleted: (operationName, toolName, duration) => addToast({
     message: duration ? `${operationName} (${duration})` : operationName,
     kind: 'success',
-    title: `${toolName} Complete`,
-    duration: 5000
+    title: `${toolName}`,
+    duration: 3000  // Brief success notification
   }),
 
   operationFailed: (operationName, toolName, error) => addToast({
-    message: error ? `${operationName}: ${error}` : operationName,
+    message: error ? `${error}` : operationName,
     kind: 'error',
     title: `${toolName} Failed`,
-    duration: 8000  // Longer duration for errors
+    duration: 6000  // Longer for errors - user needs to see this
   })
 };
 

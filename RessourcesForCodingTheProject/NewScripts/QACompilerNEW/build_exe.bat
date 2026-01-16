@@ -50,11 +50,9 @@ if /i not "%DRIVE_LETTER%"=="F" (
     copy /Y "config.py" "config.py.bak" >nul 2>&1
     copy /Y "system_localizer.py" "system_localizer.py.bak" >nul 2>&1
 
-    REM Update config.py - replace F:\ with selected drive
-    powershell -Command "(Get-Content 'config.py') -replace 'F:\\', '%DRIVE_LETTER%:\' | Set-Content 'config.py'"
-
-    REM Update system_localizer.py - replace F:\ with selected drive
-    powershell -Command "(Get-Content 'system_localizer.py') -replace 'F:\\', '%DRIVE_LETTER%:\' | Set-Content 'system_localizer.py'"
+    REM Update paths using Python (no PowerShell needed - avoids security policy issues)
+    python -c "f=open('config.py','r',encoding='utf-8');c=f.read();f.close();c=c.replace('F:\\','%DRIVE_LETTER%:\\');f=open('config.py','w',encoding='utf-8');f.write(c);f.close()"
+    python -c "f=open('system_localizer.py','r',encoding='utf-8');c=f.read();f.close();c=c.replace('F:\\','%DRIVE_LETTER%:\\');f=open('system_localizer.py','w',encoding='utf-8');f.write(c);f.close()"
 
     echo      Paths updated to use %DRIVE_LETTER%: drive
     echo.
