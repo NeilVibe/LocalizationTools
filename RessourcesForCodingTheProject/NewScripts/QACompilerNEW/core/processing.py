@@ -500,7 +500,7 @@ def process_sheet(
                         status_cell.font = Font(bold=True, color="FF8C00")
                     elif status_value == "CHECKING":
                         status_cell.font = Font(bold=True, color="0000FF")
-                    elif status_value == "NON-ISSUE":
+                    elif status_value in ("NON-ISSUE", "NON ISSUE"):
                         status_cell.font = Font(bold=True, color="808080")
                     result["manager_restored"] += 1
 
@@ -847,8 +847,9 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
                     print(f"    [DEBUG] Found manager status column: {header} at col {col}")
 
         # Find rows to hide due to manager status (FIXED, NON-ISSUE only)
+        # Accept both "NON-ISSUE" (hyphen) and "NON ISSUE" (space) for backwards compatibility
         rows_resolved_by_manager = set()
-        MANAGER_HIDE_STATUSES = {"FIXED", "NON-ISSUE"}
+        MANAGER_HIDE_STATUSES = {"FIXED", "NON-ISSUE", "NON ISSUE"}
         for row in range(2, ws.max_row + 1):
             for col in manager_status_cols:
                 value = ws.cell(row=row, column=col).value

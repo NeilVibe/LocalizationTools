@@ -23,8 +23,9 @@ from tracker.data import read_daily_data, compute_daily_deltas
 
 def get_daily_styles():
     """Get all styles used in DAILY sheet."""
-    thin = Side(style='thin', color=TRACKER_STYLES["border_color"])
-    thick = Side(style='medium', color='000000')  # Bold black line
+    # Use medium borders for better visibility in tables
+    thin = Side(style='medium', color=TRACKER_STYLES["border_color"])
+    thick = Side(style='thick', color='000000')  # Bold black line for section separators
 
     return {
         "en_title_fill": PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid"),
