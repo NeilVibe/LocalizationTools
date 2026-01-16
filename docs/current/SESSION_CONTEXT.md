@@ -58,12 +58,68 @@ TM Page → Navigate to TM → Double-click → TMDataGrid opens
          └── Changes auto-save to backend
 ```
 
+### Task Manager & Toast Review ✅
+
+**Task Manager Status:**
+- ✅ TrackedOperation context manager works
+- ✅ WebSocket events emit properly
+- ✅ Frontend polls every 3s as fallback
+- ✅ Silent operations tracked but don't spam toasts
+- ❌ ActiveOperation NOT using Repository Pattern (by design - infrastructure code)
+
+**Toast Redesign (Session 45):**
+
+| Before | After |
+|--------|-------|
+| Carbon ToastNotification (bulky) | Custom minimal toast |
+| Top-right position | Bottom-right position |
+| 400px max width | 320px max width |
+| 3-8 second durations | 2-6 second durations |
+| Missing silent flag check | ✅ Respects `silent: true` |
+
+**New Toast Design:**
+```
+┌─────────────────────────────────┐
+│ ● Upload: data.xlsx         ✕  │  ← Slim, minimal
+└─────────────────────────────────┘
+   ↑ Icon    Message          Close
+```
+
+**Key Fixes:**
+1. `GlobalToast.svelte` - Added `data.silent` check for operation_start/complete
+2. Replaced Carbon ToastNotification with custom minimal component
+3. Shorter durations (users check Task Manager for details)
+4. Bottom-right positioning (less invasive)
+
+### TM Upload/Export Gap
+
+**Current State:**
+- `POST /tm/upload` - Uses TMManager directly (PostgreSQL only)
+- `GET /tm/{id}/export` - Uses TMManager directly (PostgreSQL only)
+
+**Why This Gap Exists:**
+1. Complex file parsing (TXT, XML, XLSX)
+2. Bulk insert with progress tracking
+3. File generation with multiple formats
+4. Documented at `tm_crud.py:12`
+
+**Options:**
+1. **Accept gap** - Offline users can't upload/export TM files (current)
+2. **Add SQLite support to TMManager** - Complex, needs offline file handling
+3. **Create OfflineTMManager** - Separate implementation for SQLite
+
+**Recommendation:** Accept gap for now. Offline mode is for working with synced data, not creating new TMs from files. Users can:
+- Upload TMs in online mode
+- Sync TMs to offline
+- Edit/add entries offline (works via Repository Pattern)
+
 ### Priorities Confirmed
 
 | Priority | Task | Status | Notes |
 |----------|------|--------|-------|
 | **P11-A** | Windows PATH Tests | TODO | 7 tests for Windows-specific paths |
 | **P11-B** | TM UX Polish | TODO | Make TM entry editing more discoverable |
+| **P11-C** | Toast Redesign | ✅ DONE | Minimal, slick, non-invasive |
 | **LOW** | Dashboard Overhaul | PLANNED | Stronger, better, more organized |
 
 ### Windows PATH Tests (P11-A)
