@@ -787,11 +787,13 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
                 ws.column_dimensions[col_letter].hidden = True
                 hidden_cols_this_sheet += 1
 
-                # Find and hide paired columns
+                # Find and hide paired columns (case-insensitive match)
                 for search_col in range(1, ws.max_column + 1):
                     search_header = ws.cell(row=1, column=search_col).value
                     if search_header:
-                        if str(search_header) in [f"SCREENSHOT_{username}", f"STATUS_{username}", f"TESTER_STATUS_{username}"]:
+                        search_header_upper = str(search_header).upper()
+                        username_upper = username.upper()
+                        if search_header_upper in [f"SCREENSHOT_{username_upper}", f"STATUS_{username_upper}", f"TESTER_STATUS_{username_upper}"]:
                             search_col_letter = ws.cell(row=1, column=search_col).column_letter
                             ws.column_dimensions[search_col_letter].hidden = True
                             hidden_cols_this_sheet += 1
@@ -924,6 +926,7 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
 
         # === PHASE 1: Auto-fit column widths ===
         # Find COMMENT_{User} columns and calculate optimal width
+        # SKIP hidden columns - preserve their hidden state
         for col in range(1, ws.max_column + 1):
             header = ws.cell(row=1, column=col).value
             if not header:
@@ -931,6 +934,10 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
 
             header_str = str(header)
             col_letter = get_column_letter(col)
+
+            # Skip hidden columns - don't modify them
+            if ws.column_dimensions[col_letter].hidden:
+                continue
 
             # COMMENT_{User} columns: auto-width based on content
             if header_str.startswith("COMMENT_"):
