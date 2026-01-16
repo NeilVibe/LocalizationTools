@@ -42,6 +42,7 @@ try:
     from openpyxl import load_workbook, Workbook
     from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
     from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
 except ImportError:
     print("ERROR: openpyxl not installed. Run: pip install openpyxl")
     sys.exit(1)
@@ -335,6 +336,21 @@ def localize_system_sheet(
             for row in range(1, ws_in.max_row + 1):
                 if ws_in.row_dimensions[row].height:
                     ws_out.row_dimensions[row].height = ws_in.row_dimensions[row].height
+
+            # Add STATUS dropdown (Column B) - same as main QA compiler
+            STATUS_COL = 2  # Column B
+            last_row = max(ws_out.max_row, 10) + 50  # Buffer for future rows
+            status_dv = DataValidation(
+                type="list",
+                formula1='"ISSUE,NO ISSUE,BLOCKED,KOREAN"',
+                allow_blank=True,
+                showDropDown=False,
+                showErrorMessage=True,
+                errorTitle="Invalid Status",
+                error="Please select: ISSUE, NO ISSUE, BLOCKED, or KOREAN"
+            )
+            ws_out.add_data_validation(status_dv)
+            status_dv.add(f"B2:B{last_row}")
 
         # Save output file
         output_name = f"System_{lang_code.upper()}.xlsx"
