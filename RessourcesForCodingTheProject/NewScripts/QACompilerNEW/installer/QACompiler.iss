@@ -196,8 +196,9 @@ begin
       if FileExists(ConfigPath) then
       begin
         LoadStringFromFile(ConfigPath, ConfigContent);
-        NewContent := StringReplace(String(ConfigContent), 'F:\perforce', DriveLetter + ':\perforce', [rfReplaceAll]);
-        NewContent := StringReplace(NewContent, 'F:\\perforce', DriveLetter + ':\\perforce', [rfReplaceAll]);
+        NewContent := String(ConfigContent);
+        StringChange(NewContent, 'F:\perforce', DriveLetter + ':\perforce');
+        StringChange(NewContent, 'F:\\perforce', DriveLetter + ':\\perforce');
         SaveStringToFile(ConfigPath, AnsiString(NewContent), False);
       end;
     end;
