@@ -240,113 +240,132 @@ function fetchJson(url) {
 }
 
 /**
- * Download file with progress callback
+ * Download file using PowerShell (workaround for Node.js http blocking in Electron)
+ * Node.js http.get stalls after first chunk on Windows + Electron.
+ * PowerShell Invoke-WebRequest works reliably.
  */
 function downloadFile(url, destPath, onProgress) {
-  // GDP Level 1: Entry point
-  debugLog('downloadFile CALLED', { url, destPath });
+  debugLog('downloadFile CALLED (PowerShell method)', { url, destPath });
 
   return new Promise((resolve, reject) => {
-    const isHttps = url.startsWith('https');
-    const client = isHttps ? https : http;
-    debugLog('Client selected', { protocol: isHttps ? 'HTTPS' : 'HTTP' });
+    const { spawn } = require('child_process');
 
-    // GDP Level 4: Pre-action - ensure directory
+    // Ensure directory exists
     const dir = path.dirname(destPath);
-    debugLog('Ensuring directory', { dir });
-
     try {
       fs.mkdirSync(dir, { recursive: true });
-      debugLog('Directory created/verified', { dir, exists: fs.existsSync(dir) });
+      debugLog('Directory ensured', { dir });
     } catch (err) {
       debugLog('DIRECTORY CREATE FAILED', { error: err.message });
       return reject(err);
     }
 
-    // GDP Level 4: Pre-action - create file stream
-    let file;
-    try {
-      file = fs.createWriteStream(destPath);
-      debugLog('File stream created', { destPath });
-    } catch (err) {
-      debugLog('FILE STREAM FAILED', { error: err.message });
-      return reject(err);
-    }
-
-    debugLog('Starting HTTP request', { url, timeout: 120000 });
-
-    const req = client.get(url, { timeout: 120000 }, (res) => {
-      // GDP Level 5: Response logging
-      debugLog('HTTP RESPONSE received', {
-        statusCode: res.statusCode,
-        contentLength: res.headers['content-length'],
-        contentType: res.headers['content-type']
-      });
-
-      if (res.statusCode !== 200) {
-        try { fs.unlinkSync(destPath); } catch (e) { }
-        debugLog('HTTP ERROR - non-200 status', { statusCode: res.statusCode });
-        return reject(new Error(`HTTP ${res.statusCode}`));
+    // Use PowerShell to download (works reliably on Windows)
+    const psScript = `
+      $ProgressPreference = 'SilentlyContinue'
+      try {
+        Invoke-WebRequest -Uri '${url}' -OutFile '${destPath.replace(/\\/g, '\\\\')}' -UseBasicParsing
+        $size = (Get-Item '${destPath.replace(/\\/g, '\\\\')}').Length
+        Write-Output "SUCCESS:$size"
+      } catch {
+        Write-Output "ERROR:$($_.Exception.Message)"
       }
+    `;
 
-      const totalSize = parseInt(res.headers['content-length'], 10);
-      let downloadedSize = 0;
-      let lastLogPercent = 0;
-      let chunkCount = 0;
+    debugLog('Spawning PowerShell download', { url });
 
-      res.on('data', chunk => {
-        chunkCount++;
-        downloadedSize += chunk.length;
-        const percent = (downloadedSize / totalSize) * 100;
-
-        // GDP: Log first chunk and every 20%
-        if (chunkCount === 1 || percent - lastLogPercent >= 20) {
-          debugLog('Download progress', {
-            percent: percent.toFixed(1),
-            downloadedMB: (downloadedSize / 1024 / 1024).toFixed(2),
-            totalMB: (totalSize / 1024 / 1024).toFixed(2),
-            chunks: chunkCount
-          });
-          lastLogPercent = Math.floor(percent / 20) * 20;
-        }
-
-        if (onProgress) {
-          onProgress({ percent, transferred: downloadedSize, total: totalSize });
-        }
-      });
-
-      res.pipe(file);
-
-      file.on('finish', () => {
-        file.close();
-        debugLog('DOWNLOAD COMPLETE', {
-          destPath,
-          finalSize: downloadedSize,
-          chunks: chunkCount
-        });
-        resolve(destPath);
-      });
-
-      file.on('error', (err) => {
-        debugLog('FILE WRITE ERROR', { error: err.message, code: err.code });
-        try { fs.unlinkSync(destPath); } catch (e) { }
-        reject(err);
-      });
-
+    const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psScript], {
+      stdio: ['ignore', 'pipe', 'pipe']
     });
 
-    req.on('error', err => {
-      debugLog('REQUEST ERROR', { error: err.message, code: err.code });
-      try { fs.unlinkSync(destPath); } catch (e) { }
+    let stdout = '';
+    let stderr = '';
+
+    ps.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    ps.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    // Progress polling (since PowerShell doesn't give us streaming progress)
+    let progressInterval = null;
+    let lastSize = 0;
+
+    // Try to read Content-Length first for progress
+    const getContentLength = new Promise((res) => {
+      const client = url.startsWith('https') ? https : http;
+      const req = client.request(url, { method: 'HEAD' }, (response) => {
+        res(parseInt(response.headers['content-length'], 10) || 0);
+        req.destroy();
+      });
+      req.on('error', () => res(0));
+      req.end();
+    });
+
+    getContentLength.then((totalSize) => {
+      if (totalSize > 0 && onProgress) {
+        progressInterval = setInterval(() => {
+          try {
+            if (fs.existsSync(destPath)) {
+              const stats = fs.statSync(destPath);
+              if (stats.size !== lastSize) {
+                lastSize = stats.size;
+                const percent = (stats.size / totalSize) * 100;
+                debugLog('Download progress', {
+                  percent: percent.toFixed(1),
+                  sizeMB: (stats.size / 1024 / 1024).toFixed(2),
+                  totalMB: (totalSize / 1024 / 1024).toFixed(2)
+                });
+                onProgress({
+                  percent,
+                  transferred: stats.size,
+                  total: totalSize
+                });
+              }
+            }
+          } catch (e) {
+            // Ignore errors during progress check
+          }
+        }, 500);
+      }
+    });
+
+    ps.on('close', (code) => {
+      if (progressInterval) clearInterval(progressInterval);
+
+      debugLog('PowerShell exit', { code, stdout: stdout.trim(), stderr: stderr.trim() });
+
+      if (stdout.includes('SUCCESS:')) {
+        const sizeMatch = stdout.match(/SUCCESS:(\d+)/);
+        const size = sizeMatch ? parseInt(sizeMatch[1], 10) : 0;
+        debugLog('DOWNLOAD COMPLETE (PowerShell)', { destPath, size, sizeMB: (size / 1024 / 1024).toFixed(2) });
+        resolve(destPath);
+      } else {
+        const errorMsg = stdout.includes('ERROR:')
+          ? stdout.split('ERROR:')[1].trim()
+          : stderr || `PowerShell exit code ${code}`;
+        debugLog('DOWNLOAD FAILED (PowerShell)', { error: errorMsg });
+        try { fs.unlinkSync(destPath); } catch (e) { }
+        reject(new Error(`Download failed: ${errorMsg}`));
+      }
+    });
+
+    ps.on('error', (err) => {
+      if (progressInterval) clearInterval(progressInterval);
+      debugLog('PowerShell spawn error', { error: err.message });
       reject(err);
     });
 
-    req.on('timeout', () => {
-      debugLog('REQUEST TIMEOUT');
-      req.destroy();
+    // Timeout after 3 minutes
+    setTimeout(() => {
+      if (progressInterval) clearInterval(progressInterval);
+      debugLog('PowerShell TIMEOUT (3 min)');
+      ps.kill();
       try { fs.unlinkSync(destPath); } catch (e) { }
-      reject(new Error('Download timeout'));
-    });
+      reject(new Error('Download timeout (3 minutes)'));
+    }, 180000);
   });
 }
 
