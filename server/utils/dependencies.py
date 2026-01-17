@@ -30,6 +30,118 @@ _async_session_maker = None
 _async_engine_loop = None  # Track which event loop the async engine was created in
 
 
+class AsyncSessionWrapper:
+    """
+    Wrapper to make sync Session compatible with async await patterns.
+
+    When SQLite fallback is used, we get a sync Session but async endpoints
+    use `await db.execute()`. This wrapper makes the sync session work with
+    async code by returning awaitables that immediately resolve.
+
+    Usage:
+        # In async endpoint
+        result = await db.execute(query)  # Works with both AsyncSession and wrapped Session
+    """
+
+    def __init__(self, sync_session: Session):
+        self._session = sync_session
+
+    def execute(self, *args, **kwargs):
+        """Execute query and return awaitable result."""
+        import asyncio
+        result = self._session.execute(*args, **kwargs)
+        # Return a coroutine that immediately returns the result
+        async def _awaitable():
+            return result
+        return _awaitable()
+
+    def add(self, *args, **kwargs):
+        """Add object to session."""
+        return self._session.add(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Delete object from session."""
+        return self._session.delete(*args, **kwargs)
+
+    def refresh(self, *args, **kwargs):
+        """Refresh object from database and return awaitable."""
+        import asyncio
+        result = self._session.refresh(*args, **kwargs)
+        async def _awaitable():
+            return result
+        return _awaitable()
+
+    def flush(self, *args, **kwargs):
+        """Flush and return awaitable."""
+        import asyncio
+        self._session.flush(*args, **kwargs)
+        async def _awaitable():
+            pass
+        return _awaitable()
+
+    def commit(self):
+        """Commit and return awaitable."""
+        import asyncio
+        self._session.commit()
+        async def _awaitable():
+            pass
+        return _awaitable()
+
+    def rollback(self):
+        """Rollback and return awaitable."""
+        import asyncio
+        self._session.rollback()
+        async def _awaitable():
+            pass
+        return _awaitable()
+
+    def close(self):
+        """Close and return awaitable."""
+        import asyncio
+        self._session.close()
+        async def _awaitable():
+            pass
+        return _awaitable()
+
+    def begin(self):
+        """Begin transaction and return async context manager."""
+        sync_ctx = self._session.begin()
+
+        class AsyncBeginContext:
+            def __init__(self, sync_ctx):
+                self._sync_ctx = sync_ctx
+
+            async def __aenter__(self):
+                self._sync_ctx.__enter__()
+                return self
+
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return self._sync_ctx.__exit__(exc_type, exc_val, exc_tb)
+
+        return AsyncBeginContext(sync_ctx)
+
+    def begin_nested(self):
+        """Begin nested transaction and return async context manager."""
+        sync_ctx = self._session.begin_nested()
+
+        class AsyncBeginContext:
+            def __init__(self, sync_ctx):
+                self._sync_ctx = sync_ctx
+
+            async def __aenter__(self):
+                self._sync_ctx.__enter__()
+                return self
+
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return self._sync_ctx.__exit__(exc_type, exc_val, exc_tb)
+
+        return AsyncBeginContext(sync_ctx)
+
+    def __getattr__(self, name):
+        """Forward other attributes to underlying session."""
+        return getattr(self._session, name)
+
+
 def initialize_database():
     """
     Initialize database engine, session maker, and create tables (call once at startup).
@@ -218,22 +330,22 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     if _async_session_maker is None:
         initialize_async_database()
 
-    # SQLite mode: async_session_maker is None, use sync session
+    # SQLite mode: async_session_maker is None, use sync session wrapped for async
     if _async_session_maker is None:
         # Fallback to sync session for SQLite mode
-        # Note: This works because sync sessions can be used in async context
-        # but won't benefit from async I/O
+        # Wrap in AsyncSessionWrapper so `await db.execute()` works
         if _session_maker is None:
             initialize_database()
-        session = _session_maker()
+        sync_session = _session_maker()
+        wrapper = AsyncSessionWrapper(sync_session)
         try:
-            yield session
-            session.commit()
+            yield wrapper
+            sync_session.commit()
         except Exception:
-            session.rollback()
+            sync_session.rollback()
             raise
         finally:
-            session.close()
+            sync_session.close()
         return
 
     async with _async_session_maker() as session:

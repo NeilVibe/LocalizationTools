@@ -229,13 +229,16 @@ def get_current_user(token: str, db) -> Optional[dict]:
     }
 
 
-async def get_current_user_async(token: str, db: AsyncSession) -> Optional[dict]:
+async def get_current_user_async(token: str, db) -> Optional[dict]:
     """
     Get current user from JWT token (ASYNC version).
 
+    Supports both AsyncSession (PostgreSQL) and AsyncSessionWrapper (SQLite fallback).
+    The wrapper makes sync sessions compatible with async await patterns.
+
     Args:
         token: JWT token string.
-        db: Async database session.
+        db: Database session (AsyncSession or AsyncSessionWrapper).
 
     Returns:
         User data dict if valid, None otherwise.
@@ -279,7 +282,7 @@ async def get_current_user_async(token: str, db: AsyncSession) -> Optional[dict]
             logger.warning("OFFLINE user not found in database - run db_setup to create it")
             return None
 
-    # Fetch user from database (async)
+    # Fetch user from database (works with both AsyncSession and AsyncSessionWrapper)
     result = await db.execute(select(User).where(User.user_id == user_id))
     user = result.scalar_one_or_none()
 
