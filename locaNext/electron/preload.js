@@ -188,9 +188,14 @@ contextBridge.exposeInMainWorld('electronUpdate', {
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
 
   /**
-   * Quit and install the downloaded update
+   * Quit and install the downloaded update (FULL update - runs NSIS)
    */
   quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
+
+  /**
+   * Restart app after patch update (no NSIS needed - files already swapped)
+   */
+  restartApp: () => ipcRenderer.invoke('restart-app'),
 
   /**
    * Check for updates manually

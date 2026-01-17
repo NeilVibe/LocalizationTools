@@ -261,7 +261,20 @@
 
   function handleRestartNow() {
     logger.userAction('Launcher: User clicked restart now');
-    window.electronUpdate?.quitAndInstall();
+
+    const state = get(updateState);
+
+    if (state.mode === 'patch') {
+      // PATCH update: Files already hot-swapped, just restart the app
+      // NO NSIS installer needed!
+      logger.info('Launcher: Patch update - restarting app (no NSIS)');
+      window.electronUpdate?.restartApp();
+    } else {
+      // FULL update: Need NSIS installer to apply the update
+      // Use silent mode to avoid wizard
+      logger.info('Launcher: Full update - running silent NSIS installer');
+      window.electronUpdate?.quitAndInstall();
+    }
   }
 
   function handleSkipUpdate() {
