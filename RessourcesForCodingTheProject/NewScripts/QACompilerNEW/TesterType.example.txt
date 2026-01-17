@@ -1,0 +1,15 @@
+# Tester Type Mapping
+# Format: Type header, then tester names (one per line)
+# Double line break between types
+#
+# Types: Text, Gameplay
+
+Text
+김민영
+황하연
+박지훈
+
+Gameplay
+김춘애
+최문석
+이승현
