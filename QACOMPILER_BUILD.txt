@@ -1,0 +1,16 @@
+# QA Compiler Build Trigger
+# Add a line "Build X" to trigger a build
+# This is separate from GITEA_TRIGGER.txt (for LocaNext)
+#
+# Examples:
+#   Build 1
+#   Build 2.0.1
+#
+# Build is triggered by:
+# 1. Adding a "Build X" line here
+# 2. Changes to QACompilerNEW folder
+# 3. Manual workflow_dispatch
+#
+# The version is auto-generated as MMDDHHMM (Korean time)
+# unless specified in workflow_dispatch input.
+

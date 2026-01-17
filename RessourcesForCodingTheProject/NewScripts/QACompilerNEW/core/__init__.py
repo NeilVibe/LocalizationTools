@@ -7,6 +7,7 @@ Compiler core modules.
 - excel_ops.py: Workbook operations
 - processing.py: Sheet processing
 - transfer.py: File transfer operations
+- populate_new.py: Auto-populate QAfolderNEW helper
 - compiler.py: Main compilation orchestration
 """
 
@@ -28,6 +29,12 @@ from core.excel_ops import (
 
 from core.transfer import transfer_qa_files
 
+from core.populate_new import (
+    populate_qa_folder_new,
+    check_datasheet_freshness,
+    find_latest_datasheet,
+)
+
 from core.compiler import run_compiler
 
 __all__ = [
@@ -45,6 +52,10 @@ __all__ = [
     "copy_images_with_unique_names",
     # Transfer
     "transfer_qa_files",
+    # Populate NEW
+    "populate_qa_folder_new",
+    "check_datasheet_freshness",
+    "find_latest_datasheet",
     # Compiler
     "run_compiler",
 ]
