@@ -15,3 +15,4 @@
 Build 001: Workload Analysis columns, MANAGER_COMMENT, SCREENSHOT auto-hide, User Guide
 Build 491: Fix System localizer output path
 Build 492: Fix System category populate/transfer
+Build 493
