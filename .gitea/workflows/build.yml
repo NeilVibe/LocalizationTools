@@ -56,7 +56,7 @@ jobs:
           # - "Build QA FULL" = QA FULL mode (all tests, offline installer)
           # - "TROUBLESHOOT" = checkpoint mode
           # ============================================================
-          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build( QA)?( FULL)?$|^TROUBLESHOOT" | tail -1)
+          TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build.*$|^TROUBLESHOOT" | tail -1)
           echo "Trigger line: $TRIGGER"
 
           if [ -n "$TRIGGER" ]; then
