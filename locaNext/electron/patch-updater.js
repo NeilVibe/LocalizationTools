@@ -23,6 +23,11 @@ import crypto from 'crypto';
 import https from 'https';
 import http from 'http';
 
+// CRITICAL: Use original-fs to bypass Electron's ASAR interception
+// When running inside app.asar, regular fs.readFileSync('app.asar') tries to
+// read from INSIDE the archive, which fails. original-fs reads the actual file.
+import originalFs from 'original-fs';
+
 // GDP: Debug log file for granular visibility into main process
 const DEBUG_LOG_FILE = path.join(app.getPath('userData'), 'patch-updater-debug.log');
 
@@ -116,15 +121,17 @@ function generateInitialState() {
   });
 
   // GDP Level 2: Decision point - does asar exist?
-  if (fs.existsSync(asarPath)) {
-    debugLog('app.asar EXISTS - attempting hash', { asarPath });
+  // CRITICAL: Use originalFs to bypass ASAR interception!
+  if (originalFs.existsSync(asarPath)) {
+    debugLog('app.asar EXISTS - attempting hash with original-fs', { asarPath });
 
     try {
       // GDP Level 4: Pre-action logging
-      debugLog('Starting hash computation');
+      debugLog('Starting hash computation (using original-fs to bypass ASAR)');
 
       const hash = crypto.createHash('sha256');
-      const content = fs.readFileSync(asarPath);
+      // Use originalFs to read the actual app.asar file, not from inside it
+      const content = originalFs.readFileSync(asarPath);
 
       debugLog('File read complete', {
         bytesRead: content.length,
@@ -133,7 +140,7 @@ function generateInitialState() {
 
       hash.update(content);
       const sha256 = hash.digest('hex');
-      const stats = fs.statSync(asarPath);
+      const stats = originalFs.statSync(asarPath);
 
       // GDP Level 5: Post-action logging
       debugLog('Hash computed successfully', {
@@ -165,9 +172,9 @@ function generateInitialState() {
     debugLog('app.asar NOT FOUND', {
       checkedPath: asarPath,
       RESOURCES_PATH,
-      parentExists: fs.existsSync(path.dirname(asarPath)),
-      parentContents: fs.existsSync(path.dirname(asarPath)) ?
-        fs.readdirSync(path.dirname(asarPath)).slice(0, 10) : []
+      parentExists: originalFs.existsSync(path.dirname(asarPath)),
+      parentContents: originalFs.existsSync(path.dirname(asarPath)) ?
+        originalFs.readdirSync(path.dirname(asarPath)).slice(0, 10) : []
     });
   }
 
