@@ -256,26 +256,47 @@ class QACompilerSuiteGUI:
         messagebox.showerror("Error", f"Generation failed:\n{error_msg}")
 
     def _do_transfer(self):
-        """Transfer QA files from OLD/NEW to QAfolder."""
-        self._set_status("Transferring QA files...")
+        """
+        Transfer QA files from OLD/NEW to QAfolder.
+
+        SEAMLESS FLOW (one button does everything):
+        1. Auto-populate QAfolderNEW with fresh datasheets
+        2. Transfer data from QAfolderOLD → merge with QAfolderNEW → output to QAfolder
+
+        STRICT MODE: If any datasheet is missing or stale, stops immediately.
+        """
+        self._set_status("Checking datasheets & populating QAfolderNEW...")
         self._start_progress()
 
         def run():
             try:
-                # Import transfer function
+                # STEP 1: Auto-populate QAfolderNEW (STRICT MODE)
+                from core.populate_new import populate_qa_folder_new
+
+                populate_success, populate_msg = populate_qa_folder_new()
+
+                if not populate_success:
+                    # Datasheets missing or stale - stop immediately
+                    self.root.after(0, lambda msg=populate_msg: self._on_populate_failed(msg))
+                    return
+
+                # STEP 2: Transfer (merge OLD data with NEW sheets)
+                self._set_status_safe("Transferring QA data...")
+
                 from core.transfer import transfer_qa_files
                 success = transfer_qa_files()
 
                 self.root.after(0, lambda: self._on_transfer_complete(success))
-            except ImportError:
+
+            except ImportError as e:
                 # Fallback to original compile_qa
                 try:
                     sys.path.insert(0, str(Path(__file__).parent.parent.parent / "QAExcelCompiler"))
                     from compile_qa import transfer_qa_files
                     success = transfer_qa_files()
                     self.root.after(0, lambda: self._on_transfer_complete(success))
-                except Exception as e:
-                    err_msg = str(e)
+                except Exception as e2:
+                    err_msg = str(e2)
                     self.root.after(0, lambda msg=err_msg: self._on_transfer_error(msg))
             except Exception as e:
                 err_msg = str(e)
@@ -283,6 +304,21 @@ class QACompilerSuiteGUI:
 
         thread = threading.Thread(target=run, daemon=True)
         thread.start()
+
+    def _set_status_safe(self, text):
+        """Thread-safe status update."""
+        self.root.after(0, lambda: self._set_status(text))
+
+    def _on_populate_failed(self, message):
+        """Handle populate failure - datasheets missing or stale."""
+        self._stop_progress()
+        self._set_status("Transfer stopped - datasheets need refresh")
+        messagebox.showwarning(
+            "Datasheets Not Ready",
+            f"{message}\n\n"
+            "Please run 'Generate Datasheets' first (select ALL categories),\n"
+            "then try Transfer again."
+        )
 
     def _on_transfer_complete(self, success):
         """Handle transfer completion."""
