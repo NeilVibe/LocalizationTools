@@ -12,4 +12,4 @@
 #
 # Build History:
 # -----------------------
-
+Build 001: Workload Analysis columns, MANAGER_COMMENT, SCREENSHOT auto-hide, User Guide
