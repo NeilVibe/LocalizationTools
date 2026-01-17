@@ -11,7 +11,7 @@ import fs from 'fs';
 import http from 'http';
 import { logger } from './logger.js';
 import { autoUpdaterConfig, isAutoUpdateEnabled } from './updater.js';
-import { checkForPatchUpdate, applyPatchUpdate, initPatchUpdater } from './patch-updater.js';
+import { checkForPatchUpdate, applyPatchUpdate, initPatchUpdater, hasPendingUpdates, applyPendingUpdates, createSwapScript } from './patch-updater.js';
 import { isFirstRunNeeded, runFirstRunSetup, setupFirstRunIPC } from './first-run-setup.js';
 import { performHealthCheck, quickHealthCheck, wasRecentlyRepaired, HealthStatus } from './health-check.js';
 import { runRepair } from './repair.js';
@@ -430,13 +430,10 @@ ipcMain.handle('quit-and-install', async () => {
 /**
  * IPC: Restart app (PATCH update only)
  *
- * For PATCH updates, files are already hot-swapped in place.
- * No NSIS installer needed - just restart the app!
- *
- * This is the PROPER way to complete a patch update:
- * - app.relaunch() schedules a restart
- * - app.quit() exits current instance
- * - New instance starts with updated files
+ * For PATCH updates with pending file swaps:
+ * 1. Create swap script (PowerShell on Windows)
+ * 2. Launch script (waits for app to close, swaps files, restarts)
+ * 3. Quit app
  */
 ipcMain.handle('restart-app', async () => {
   logger.info('Restarting app after patch update...');
@@ -444,7 +441,37 @@ ipcMain.handle('restart-app', async () => {
   // Stop backend server before restart
   stopBackendServer();
 
-  // Schedule restart and quit
+  // Check if we have pending updates that need swapping
+  if (hasPendingUpdates()) {
+    logger.info('Pending updates found - using swap script');
+
+    const scriptPath = createSwapScript();
+    if (scriptPath) {
+      logger.info(`Created swap script: ${scriptPath}`);
+
+      // Launch the swap script
+      if (process.platform === 'win32') {
+        const { spawn } = require('child_process');
+        spawn('powershell.exe', ['-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true
+        }).unref();
+      } else {
+        const { spawn } = require('child_process');
+        spawn('bash', [scriptPath], {
+          detached: true,
+          stdio: 'ignore'
+        }).unref();
+      }
+
+      // Quit without relaunch - script will restart us
+      app.quit();
+      return { success: true };
+    }
+  }
+
+  // No pending updates - regular relaunch
   app.relaunch();
   app.quit();
 
@@ -1074,6 +1101,20 @@ app.whenReady().then(async () => {
     isDev,
     paths: paths
   });
+
+  // Check for pending updates that weren't applied (swap script may have failed)
+  if (hasPendingUpdates()) {
+    logger.warning('Found pending updates on startup - swap script may have failed');
+    // Try to apply them now (will fail for app.asar but might work for other components)
+    try {
+      const applied = applyPendingUpdates();
+      if (applied) {
+        logger.info('Pending updates applied on startup');
+      }
+    } catch (err) {
+      logger.error('Failed to apply pending updates', { error: err.message });
+    }
+  }
 
   // Register the 'app' protocol handler for serving build files
   // This creates clean URLs (app://./path) instead of file:// URLs

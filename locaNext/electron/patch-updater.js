@@ -276,20 +276,25 @@ export async function checkForPatchUpdate() {
   }
 }
 
+// Staging directory for pending updates (in AppData, survives restarts)
+const STAGING_DIR = path.join(USER_DATA_PATH, 'pending-updates');
+const PENDING_FILE = path.join(USER_DATA_PATH, 'pending-update.json');
+
 /**
- * Download and apply patch updates
+ * Download and stage patch updates (don't apply yet - files are locked)
+ * The actual swap happens on restart via applyPendingUpdates()
  */
 export async function applyPatchUpdate(updates, onProgress) {
-  console.log('[PatchUpdater] Applying patch update...');
+  console.log('[PatchUpdater] Downloading patch update to staging...');
 
-  // Clean temp directory
-  if (fs.existsSync(TEMP_DIR)) {
-    fs.rmSync(TEMP_DIR, { recursive: true });
+  // Clean staging directory
+  if (fs.existsSync(STAGING_DIR)) {
+    fs.rmSync(STAGING_DIR, { recursive: true });
   }
-  fs.mkdirSync(TEMP_DIR, { recursive: true });
+  fs.mkdirSync(STAGING_DIR, { recursive: true });
 
-  const localState = loadLocalState();
   const results = { success: [], failed: [] };
+  const pendingUpdates = [];
 
   let completedSize = 0;
   const totalSize = updates.reduce((sum, u) => sum + u.size, 0);
@@ -303,10 +308,10 @@ export async function applyPatchUpdate(updates, onProgress) {
         ? update.url
         : `${UPDATE_BASE_URL}/${REPO_PATH}/releases/download/latest/${update.url}`;
 
-      const tempPath = path.join(TEMP_DIR, update.name);
+      const stagingPath = path.join(STAGING_DIR, update.name);
 
       // Download with progress
-      await downloadFile(url, tempPath, (progress) => {
+      await downloadFile(url, stagingPath, (progress) => {
         if (onProgress) {
           const overallProgress = ((completedSize + progress.transferred) / totalSize) * 100;
           onProgress({
@@ -320,33 +325,22 @@ export async function applyPatchUpdate(updates, onProgress) {
       });
 
       // Verify hash
-      const hash = await hashFile(tempPath);
+      const hash = await hashFile(stagingPath);
       if (hash !== update.sha256) {
         throw new Error(`Hash mismatch: expected ${update.sha256.substring(0, 16)}..., got ${hash.substring(0, 16)}...`);
       }
 
-      console.log(`[PatchUpdater] Verified: ${update.name}`);
+      console.log(`[PatchUpdater] Verified and staged: ${update.name}`);
 
-      // Apply update
-      const destPath = path.join(RESOURCES_PATH, update.name);
-
-      // Backup original (in case we need to rollback)
-      const backupPath = path.join(TEMP_DIR, `${update.name}.backup`);
-      if (fs.existsSync(destPath)) {
-        fs.copyFileSync(destPath, backupPath);
-      }
-
-      // Copy new file
-      fs.copyFileSync(tempPath, destPath);
-
-      console.log(`[PatchUpdater] Applied: ${update.name}`);
-
-      // Update local state
-      localState.components[update.name] = {
-        version: update.version,
+      // Record pending update
+      pendingUpdates.push({
+        name: update.name,
+        stagingPath,
+        destPath: path.join(RESOURCES_PATH, update.name),
         sha256: update.sha256,
-        updatedAt: new Date().toISOString()
-      };
+        version: update.version,
+        size: update.size
+      });
 
       results.success.push(update.name);
       completedSize += update.size;
@@ -357,22 +351,203 @@ export async function applyPatchUpdate(updates, onProgress) {
     }
   }
 
-  // Update version if all succeeded
-  if (results.failed.length === 0) {
-    localState.version = updates[0].version;
-    localState.lastUpdate = new Date().toISOString();
-  }
-
-  saveLocalState(localState);
-
-  // Cleanup temp directory
-  try {
-    fs.rmSync(TEMP_DIR, { recursive: true });
-  } catch (err) {
-    // Ignore cleanup errors
+  // Save pending updates info (applied on restart)
+  if (pendingUpdates.length > 0 && results.failed.length === 0) {
+    const pendingInfo = {
+      version: updates[0].version,
+      createdAt: new Date().toISOString(),
+      updates: pendingUpdates,
+      resourcesPath: RESOURCES_PATH
+    };
+    fs.writeFileSync(PENDING_FILE, JSON.stringify(pendingInfo, null, 2));
+    console.log(`[PatchUpdater] Staged ${pendingUpdates.length} update(s) - will apply on restart`);
+    results.needsRestart = true;
   }
 
   return results;
+}
+
+/**
+ * Check if there are pending updates to apply
+ */
+export function hasPendingUpdates() {
+  return fs.existsSync(PENDING_FILE);
+}
+
+/**
+ * Apply pending updates (call this EARLY in startup, before loading heavy resources)
+ * Returns true if updates were applied and app should restart
+ */
+export function applyPendingUpdates() {
+  if (!fs.existsSync(PENDING_FILE)) {
+    return false;
+  }
+
+  console.log('[PatchUpdater] Found pending updates, applying...');
+
+  try {
+    const pending = JSON.parse(fs.readFileSync(PENDING_FILE, 'utf8'));
+    const localState = loadLocalState();
+
+    for (const update of pending.updates) {
+      console.log(`[PatchUpdater] Applying: ${update.name}`);
+
+      if (!fs.existsSync(update.stagingPath)) {
+        console.error(`[PatchUpdater] Staging file missing: ${update.stagingPath}`);
+        continue;
+      }
+
+      // Verify hash again
+      const hash = crypto.createHash('sha256');
+      hash.update(fs.readFileSync(update.stagingPath));
+      if (hash.digest('hex') !== update.sha256) {
+        console.error(`[PatchUpdater] Hash mismatch for ${update.name}`);
+        continue;
+      }
+
+      // Backup and replace
+      const backupPath = update.destPath + '.backup';
+      if (fs.existsSync(update.destPath)) {
+        try {
+          fs.copyFileSync(update.destPath, backupPath);
+        } catch (err) {
+          console.log(`[PatchUpdater] Could not backup (file may be locked): ${err.message}`);
+        }
+      }
+
+      try {
+        fs.copyFileSync(update.stagingPath, update.destPath);
+        console.log(`[PatchUpdater] Applied: ${update.name}`);
+
+        // Update state
+        localState.components[update.name] = {
+          sha256: update.sha256,
+          version: update.version,
+          updatedAt: new Date().toISOString()
+        };
+
+        // Remove backup
+        if (fs.existsSync(backupPath)) {
+          fs.unlinkSync(backupPath);
+        }
+      } catch (err) {
+        console.error(`[PatchUpdater] Failed to apply ${update.name}: ${err.message}`);
+        // Restore backup if apply failed
+        if (fs.existsSync(backupPath)) {
+          fs.copyFileSync(backupPath, update.destPath);
+          fs.unlinkSync(backupPath);
+        }
+      }
+    }
+
+    // Update version
+    localState.version = pending.version;
+    localState.lastUpdate = new Date().toISOString();
+    saveLocalState(localState);
+
+    // Cleanup
+    fs.unlinkSync(PENDING_FILE);
+    if (fs.existsSync(STAGING_DIR)) {
+      fs.rmSync(STAGING_DIR, { recursive: true });
+    }
+
+    console.log('[PatchUpdater] Pending updates applied successfully');
+    return true;
+  } catch (err) {
+    console.error('[PatchUpdater] Failed to apply pending updates:', err.message);
+    // Cleanup failed state
+    try {
+      if (fs.existsSync(PENDING_FILE)) fs.unlinkSync(PENDING_FILE);
+      if (fs.existsSync(STAGING_DIR)) fs.rmSync(STAGING_DIR, { recursive: true });
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+    return false;
+  }
+}
+
+/**
+ * Get path to the update swap script (for restart)
+ */
+export function getSwapScriptPath() {
+  if (process.platform === 'win32') {
+    return path.join(USER_DATA_PATH, 'apply-update.ps1');
+  }
+  return path.join(USER_DATA_PATH, 'apply-update.sh');
+}
+
+/**
+ * Create the update swap script for restart
+ * This script waits for the app to close, then swaps files
+ */
+export function createSwapScript() {
+  if (!fs.existsSync(PENDING_FILE)) {
+    return null;
+  }
+
+  const pending = JSON.parse(fs.readFileSync(PENDING_FILE, 'utf8'));
+  const scriptPath = getSwapScriptPath();
+
+  if (process.platform === 'win32') {
+    // PowerShell script for Windows
+    const exePath = process.execPath;
+    const script = `
+# LocaNext Update Swap Script
+# Waits for app to close, swaps files, restarts
+
+$ErrorActionPreference = "SilentlyContinue"
+
+# Wait for main process to exit
+$processName = "LocaNext"
+$maxWait = 30
+$waited = 0
+while ((Get-Process -Name $processName -ErrorAction SilentlyContinue) -and $waited -lt $maxWait) {
+    Start-Sleep -Milliseconds 500
+    $waited++
+}
+
+# Small extra delay to ensure file handles are released
+Start-Sleep -Seconds 1
+
+# Apply updates
+${pending.updates.map(u => `
+try {
+    Copy-Item -Path "${u.stagingPath.replace(/\\/g, '\\\\')}" -Destination "${u.destPath.replace(/\\/g, '\\\\')}" -Force
+    Write-Host "Applied: ${u.name}"
+} catch {
+    Write-Host "Failed: ${u.name}: $_"
+}`).join('\n')}
+
+# Cleanup
+Remove-Item -Path "${PENDING_FILE.replace(/\\/g, '\\\\')}" -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "${STAGING_DIR.replace(/\\/g, '\\\\')}" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "${scriptPath.replace(/\\/g, '\\\\')}" -Force -ErrorAction SilentlyContinue
+
+# Restart app
+Start-Process -FilePath "${exePath.replace(/\\/g, '\\\\')}"
+`;
+    fs.writeFileSync(scriptPath, script, 'utf8');
+  } else {
+    // Bash script for Linux/Mac
+    const script = `#!/bin/bash
+# Wait for app to close
+sleep 2
+
+# Apply updates
+${pending.updates.map(u => `cp "${u.stagingPath}" "${u.destPath}" && echo "Applied: ${u.name}"`).join('\n')}
+
+# Cleanup
+rm -f "${PENDING_FILE}"
+rm -rf "${STAGING_DIR}"
+rm -f "${scriptPath}"
+
+# Restart
+"${process.execPath}" &
+`;
+    fs.writeFileSync(scriptPath, script, { mode: 0o755 });
+  }
+
+  return scriptPath;
 }
 
 /**
@@ -406,5 +581,9 @@ export function initPatchUpdater() {
 export default {
   checkForPatchUpdate,
   applyPatchUpdate,
-  initPatchUpdater
+  initPatchUpdater,
+  hasPendingUpdates,
+  applyPendingUpdates,
+  createSwapScript,
+  getSwapScriptPath
 };
