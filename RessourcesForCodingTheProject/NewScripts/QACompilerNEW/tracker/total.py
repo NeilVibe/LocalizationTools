@@ -126,6 +126,59 @@ WORKLOAD_HEADERS = ["Actual Done", "Daily Avg", "Type", "Days Worked", "Tester A
 
 
 # =============================================================================
+# PREPROCESSING - PRESERVE MANUAL DATA
+# =============================================================================
+
+def read_existing_workload_data(wb: openpyxl.Workbook) -> Dict[str, Dict]:
+    """
+    Read existing Days Worked and Tester Assessment from TOTAL sheet before rebuild.
+
+    Scans EN TESTER STATS and CN TESTER STATS tables to preserve manual entries.
+
+    Returns:
+        Dict mapping username -> {"days_worked": value, "assessment": value}
+    """
+    existing_data = {}
+
+    if "TOTAL" not in wb.sheetnames:
+        return existing_data
+
+    ws = wb["TOTAL"]
+
+    # Find all rows with user data by looking for rows where column 1 has a name
+    # and there are workload columns (Days Worked at offset, Assessment after)
+    # The structure is: User | Tester Stats... | Manager Stats... | Workload Analysis...
+
+    # Calculate column positions
+    user_col = 1
+    days_worked_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 4  # "Days Worked" is 4th in WORKLOAD_HEADERS
+    assessment_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 5   # "Tester Assessment" is 5th
+
+    for row in range(1, ws.max_row + 1):
+        user_value = ws.cell(row, user_col).value
+
+        # Skip headers, section titles, totals, empty rows
+        if not user_value:
+            continue
+        user_str = str(user_value).strip()
+        if user_str in ["User", "TOTAL", ""] or "TESTER STATS" in user_str or "GRAND TOTAL" in user_str:
+            continue
+
+        # This looks like a user row - extract workload data
+        days_worked = ws.cell(row, days_worked_col).value
+        assessment = ws.cell(row, assessment_col).value
+
+        # Only store if there's actual data
+        if days_worked is not None or assessment is not None:
+            existing_data[user_str] = {
+                "days_worked": days_worked,
+                "assessment": assessment
+            }
+
+    return existing_data
+
+
+# =============================================================================
 # DATA READING
 # =============================================================================
 
@@ -208,7 +261,8 @@ def build_tester_section(
     user_data: Dict,
     styles: Dict,
     user_row_tracker: List = None,
-    tester_type_mapping: Dict = None
+    tester_type_mapping: Dict = None,
+    existing_workload_data: Dict = None
 ) -> Tuple[int, Dict]:
     """
     Build a tester section (EN or CN) with title, headers, data rows, and subtotal.
@@ -217,8 +271,8 @@ def build_tester_section(
     - Actual Done = Done - Blocked - Korean
     - Daily Avg = Actual Done / Days Worked
     - Type = Text/Gameplay from TesterType.txt
-    - Days Worked = Manual entry
-    - Tester Assessment = Manual entry
+    - Days Worked = Manual entry (PRESERVED from previous build)
+    - Tester Assessment = Manual entry (PRESERVED from previous build)
 
     Args:
         ws: Worksheet to write to
@@ -230,6 +284,7 @@ def build_tester_section(
         styles: Style dict
         user_row_tracker: Optional list to append (row_num, user) tuples
         tester_type_mapping: Dict of username -> type ("Text" or "Gameplay")
+        existing_workload_data: Dict of username -> {"days_worked", "assessment"} (preserved)
 
     Returns:
         Tuple of (next_row, section_total_dict)
@@ -239,6 +294,8 @@ def build_tester_section(
 
     if tester_type_mapping is None:
         tester_type_mapping = {}
+    if existing_workload_data is None:
+        existing_workload_data = {}
 
     total_cols = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + len(WORKLOAD_HEADERS)
     current_row = start_row
@@ -304,9 +361,17 @@ def build_tester_section(
         # Workload Analysis calculations
         actual_done = done - blocked - korean  # Actual productive work
         tester_type = tester_type_mapping.get(user, "Unknown")
-        days_worked = ""  # Manual entry - leave blank
-        daily_avg = ""  # Will be calculated when Days Worked is filled
-        assessment = ""  # Manual entry - leave blank
+
+        # Restore preserved manual data OR leave blank for new users
+        preserved = existing_workload_data.get(user, {})
+        days_worked = preserved.get("days_worked", "")
+        assessment = preserved.get("assessment", "")
+
+        # Calculate daily average if days_worked is filled
+        if days_worked and isinstance(days_worked, (int, float)) and days_worked > 0:
+            daily_avg = round(actual_done / days_worked, 1)
+        else:
+            daily_avg = ""  # Will be calculated when Days Worked is filled
 
         # Accumulate section totals
         section_total["total_rows"] += total_rows
@@ -745,6 +810,11 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
     Separates EN and CN testers into distinct sections.
     Includes Category Breakdown and Ranking tables.
     """
+    # PREPROCESS: Read existing manual data BEFORE deleting sheet
+    existing_workload_data = read_existing_workload_data(wb)
+    if existing_workload_data:
+        print(f"    Preserving workload data for {len(existing_workload_data)} users")
+
     # Delete and recreate sheet to handle merged cells properly
     if "TOTAL" in wb.sheetnames:
         del wb["TOTAL"]
@@ -777,7 +847,8 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
     if en_users:
         current_row, en_total = build_tester_section(
             ws, current_row, "EN TESTER STATS", styles["en_title_fill"],
-            en_users, user_data, styles, user_data_rows, tester_type_mapping
+            en_users, user_data, styles, user_data_rows, tester_type_mapping,
+            existing_workload_data
         )
         current_row += 1  # Empty row between sections
 
@@ -786,7 +857,8 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
     if cn_users:
         current_row, cn_total = build_tester_section(
             ws, current_row, "CN TESTER STATS", styles["cn_title_fill"],
-            cn_users, user_data, styles, user_data_rows, tester_type_mapping
+            cn_users, user_data, styles, user_data_rows, tester_type_mapping,
+            existing_workload_data
         )
         current_row += 1  # Empty row before grand total
 

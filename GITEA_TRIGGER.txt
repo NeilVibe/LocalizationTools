@@ -157,3 +157,4 @@ Build skip_linux 484: Fix patch updater - fetchJson net module + restart logic
 Build skip_linux 485: Test patch updater with confirmed fixes
 Build skip_linux 486: Patch update test target
 Build skip_linux 487: Fix patch download - wait for file flush before hash verification
+Build skip_linux 488: Test patch update with file flush fix

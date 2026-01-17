@@ -89,6 +89,10 @@ Source: "..\dist\QACompiler\Masterfolder_CN\*"; DestDir: "{app}\Masterfolder_CN"
 Source: "..\languageTOtester_list.example.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\languageTOtester_list.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
+; Tester type configuration (Text/Gameplay)
+Source: "..\TesterType.example.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\TesterType.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+
 ; Documentation (optional component)
 Source: "..\USER_GUIDE.pdf"; DestDir: "{app}"; Components: docs; Flags: ignoreversion
 Source: "..\USER_GUIDE.html"; DestDir: "{app}"; Components: docs; Flags: ignoreversion
