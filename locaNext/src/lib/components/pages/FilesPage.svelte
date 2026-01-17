@@ -184,21 +184,22 @@
       // Build root items: Unassigned section + Platforms
       const items = [];
 
-      // P9: In offline mode, Offline Storage is ALWAYS visible (primary workspace)
-      // Otherwise, show it only if there are local files
+      // BUG-043: Always show Offline Storage so users can create folders even when empty
+      // P9: In offline mode, it's the primary workspace
+      // In online mode, it's for local/offline work
       logger.debug('loadRoot: isOffline =', isOffline, 'localFileCount =', localFileCount);
-      if (isOffline || localFileCount > 0) {
-        items.push({
-          type: 'offline-storage',
-          id: 'offline-storage',
-          name: 'Offline Storage',
-          description: isOffline
-            ? 'Your offline workspace - work here, sync when online'
-            : `${localFileCount} file${localFileCount !== 1 ? 's' : ''} need${localFileCount === 1 ? 's' : ''} a destination`,
-          file_count: localFileCount,
-          isOfflineMode: isOffline  // Flag for special styling
-        });
-      }
+      items.push({
+        type: 'offline-storage',
+        id: 'offline-storage',
+        name: 'Offline Storage',
+        description: isOffline
+          ? 'Your offline workspace - work here, sync when online'
+          : localFileCount > 0
+            ? `${localFileCount} file${localFileCount !== 1 ? 's' : ''} synced for offline`
+            : 'Your local workspace for offline files',
+        file_count: localFileCount,
+        isOfflineMode: isOffline  // Flag for special styling
+      });
 
       // P9: In offline mode, hide PostgreSQL data - only show Offline Storage
       // User's sandbox is Offline Storage; PostgreSQL data is read-only and confusing to show
