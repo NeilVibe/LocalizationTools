@@ -141,11 +141,7 @@ begin
   DriveSelectionPage := CreateInputQueryPage(wpWelcome,
     'Perforce Drive Selection',
     'Select the drive where your Perforce workspace is located.',
-    'The QA Compiler needs to know where your Perforce LOC folder is.' + #13#10 +
-    #13#10 +
-    'Default path: F:\perforce\cd\mainline\resource\GameData\stringtable\loc' + #13#10 +
-    #13#10 +
-    'If your Perforce is on a different drive (D:, E:, etc.), enter just the letter.'
+    'The QA Compiler needs to know where your Perforce LOC folder is.' + #13#10 + #13#10 + 'Default path: F:\perforce\cd\mainline\resource\GameData\stringtable\loc' + #13#10 + #13#10 + 'If your Perforce is on a different drive (D:, E:, etc.), enter just the letter.'
   );
   DriveSelectionPage.Add('Drive Letter (e.g., F, D, E):', False);
   DriveSelectionPage.Values[0] := 'F';
