@@ -227,11 +227,31 @@ jobs:
           Write-Host "  Size: $([math]::Round($size, 1)) MB"
         shell: pwsh
 
+      - name: Create portable ZIP
+        run: |
+          $version = "${{ needs.check-trigger.outputs.version }}"
+          $distPath = "${{ env.QACOMPILER_PATH }}\dist\QACompiler"
+          $zipPath = "${{ env.QACOMPILER_PATH }}\installer_output\QACompiler_v${version}_Portable.zip"
+
+          Write-Host "Creating portable ZIP..."
+          Compress-Archive -Path "$distPath\*" -DestinationPath $zipPath -Force
+
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Portable ZIP created: $([math]::Round($size, 1)) MB"
+        shell: pwsh
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: QACompiler_Setup
           path: ${{ env.QACOMPILER_PATH }}/installer_output/*.exe
+          retention-days: 30
+
+      - name: Upload portable ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QACompiler_Portable
+          path: ${{ env.QACOMPILER_PATH }}/installer_output/*.zip
           retention-days: 30
 
   create-release:
@@ -250,6 +270,12 @@ jobs:
           name: QACompiler_Setup
           path: ./artifacts
 
+      - name: Download portable ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: QACompiler_Portable
+          path: ./artifacts
+
       - name: List artifacts
         run: |
           echo "Downloaded artifacts:"
@@ -265,7 +291,8 @@ jobs:
 
             ## Download
 
-            **QACompiler_v${{ needs.check-trigger.outputs.version }}_Setup.exe**
+            - **QACompiler_v${{ needs.check-trigger.outputs.version }}_Setup.exe** - Installer (recommended)
+            - **QACompiler_v${{ needs.check-trigger.outputs.version }}_Portable.zip** - Portable ZIP (no install needed)
 
             ## Features
 
@@ -301,6 +328,7 @@ jobs:
           prerelease: false
           files: |
             artifacts/*.exe
+            artifacts/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
