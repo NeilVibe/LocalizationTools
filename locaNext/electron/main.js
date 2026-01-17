@@ -468,8 +468,14 @@ ipcMain.handle('check-for-updates', async () => {
   }
 
   try {
-    const result = await autoUpdater.checkForUpdates();
-    return { success: true, updateInfo: result?.updateInfo };
+    await autoUpdater.checkForUpdates();
+    // Don't return updateInfo blindly - it's always present!
+    // Only return updateInfo if update-available event was fired (sets updateState='available')
+    // This prevents showing "Update Available" when we're already at the latest version
+    if (updateState === 'available' && pendingUpdateInfo) {
+      return { success: true, updateInfo: pendingUpdateInfo };
+    }
+    return { success: true, updateInfo: null };
   } catch (error) {
     return { success: false, error: error.message };
   }
