@@ -833,8 +833,24 @@ def transfer_qa_files() -> bool:
         print(f"\nTransferring: {key} -> {lang}{'' if in_mapping else ' (not in mapping, default)'}")
 
         if key not in new_lookup:
-            print(f"  WARN: No matching NEW folder for {key}, skipping")
-            continue
+            # Special handling for System: copy directly (System isn't auto-regenerated)
+            if old_folder['category'] == "System":
+                print(f"  System category: copying directly (no regeneration needed)")
+                output_folder = QA_FOLDER / key
+                output_folder.mkdir(parents=True, exist_ok=True)
+
+                # Copy xlsx file
+                shutil.copy2(old_folder['xlsx_path'], output_folder / old_folder['xlsx_path'].name)
+
+                # Copy images
+                for img in old_folder.get('images', []):
+                    shutil.copy2(img, output_folder / img.name)
+
+                print(f"  Copied to: {output_folder}")
+                continue
+            else:
+                print(f"  WARN: No matching NEW folder for {key}, skipping")
+                continue
 
         new_folder = new_lookup[key]
         folder_stats = transfer_folder_data(old_folder, new_folder, QA_FOLDER, tester_mapping)
