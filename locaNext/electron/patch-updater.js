@@ -59,11 +59,13 @@ const TEMP_DIR = path.join(app.getPath('temp'), 'locanext-patch-update');
 
 /**
  * Calculate SHA256 hash of a file
+ * CRITICAL: Uses originalFs to bypass Electron's ASAR interception for .asar files
  */
 function hashFile(filePath) {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('sha256');
-    const stream = fs.createReadStream(filePath);
+    // Use originalFs.createReadStream to read .asar files without ASAR interception
+    const stream = originalFs.createReadStream(filePath);
     stream.on('data', data => hash.update(data));
     stream.on('end', () => resolve(hash.digest('hex')));
     stream.on('error', reject);
@@ -292,15 +294,19 @@ function downloadFile(url, destPath, onProgress) {
     // Ensure directory exists
     const dir = path.dirname(destPath);
     try {
-      fs.mkdirSync(dir, { recursive: true });
-      debugLog('Directory ensured', { dir });
+      // CRITICAL: Use originalFs to bypass Electron's ASAR interception
+      // Regular fs.mkdirSync fails if destPath contains ".asar" in the name
+      originalFs.mkdirSync(dir, { recursive: true });
+      debugLog('Directory ensured (using original-fs)', { dir });
     } catch (err) {
       debugLog('DIRECTORY CREATE FAILED', { error: err.message });
       return reject(err);
     }
 
-    // Create write stream
-    const fileStream = fs.createWriteStream(destPath);
+    // CRITICAL: Use originalFs.createWriteStream to bypass ASAR interception
+    // Electron's patched fs.createWriteStream throws "Invalid package" for .asar files
+    const fileStream = originalFs.createWriteStream(destPath);
+    debugLog('WriteStream created (using original-fs)', { destPath });
     let totalSize = 0;
     let downloadedSize = 0;
     let lastProgressLog = 0;
@@ -315,15 +321,15 @@ function downloadFile(url, destPath, onProgress) {
         destPath,
         size: downloadedSize,
         sizeMB: (downloadedSize / 1024 / 1024).toFixed(2),
-        fileExists: fs.existsSync(destPath),
-        fileSize: fs.existsSync(destPath) ? fs.statSync(destPath).size : 0
+        fileExists: originalFs.existsSync(destPath),
+        fileSize: originalFs.existsSync(destPath) ? originalFs.statSync(destPath).size : 0
       });
       resolve(destPath);
     });
 
     fileStream.on('error', (err) => {
       debugLog('FileStream error', { error: err.message });
-      try { fs.unlinkSync(destPath); } catch (e) { }
+      try { originalFs.unlinkSync(destPath); } catch (e) { }
       reject(err);
     });
 
@@ -338,7 +344,7 @@ function downloadFile(url, destPath, onProgress) {
 
       if (response.statusCode !== 200) {
         fileStream.close();
-        try { fs.unlinkSync(destPath); } catch (e) { }
+        try { originalFs.unlinkSync(destPath); } catch (e) { }
         reject(new Error(`HTTP ${response.statusCode}`));
         return;
       }
@@ -383,7 +389,7 @@ function downloadFile(url, destPath, onProgress) {
       response.on('error', (err) => {
         fileStream.close();
         debugLog('Response error', { error: err.message });
-        try { fs.unlinkSync(destPath); } catch (e) { }
+        try { originalFs.unlinkSync(destPath); } catch (e) { }
         reject(err);
       });
     });
@@ -391,7 +397,7 @@ function downloadFile(url, destPath, onProgress) {
     request.on('error', (err) => {
       fileStream.close();
       debugLog('Request error', { error: err.message });
-      try { fs.unlinkSync(destPath); } catch (e) { }
+      try { originalFs.unlinkSync(destPath); } catch (e) { }
       reject(err);
     });
 
@@ -400,7 +406,7 @@ function downloadFile(url, destPath, onProgress) {
       debugLog('DOWNLOAD TIMEOUT (3 min)');
       request.abort();
       fileStream.close();
-      try { fs.unlinkSync(destPath); } catch (e) { }
+      try { originalFs.unlinkSync(destPath); } catch (e) { }
       reject(new Error('Download timeout (3 minutes)'));
     }, 180000);
 
@@ -520,10 +526,11 @@ export async function applyPatchUpdate(updates, onProgress) {
   }
 
   // GDP Level 4: Pre-action - clean staging
-  debugLog('Cleaning staging directory', { exists: fs.existsSync(STAGING_DIR) });
-  if (fs.existsSync(STAGING_DIR)) {
+  // CRITICAL: Use originalFs to bypass ASAR interception for .asar files
+  debugLog('Cleaning staging directory', { exists: originalFs.existsSync(STAGING_DIR) });
+  if (originalFs.existsSync(STAGING_DIR)) {
     try {
-      fs.rmSync(STAGING_DIR, { recursive: true });
+      originalFs.rmSync(STAGING_DIR, { recursive: true });
       debugLog('Staging cleaned');
     } catch (err) {
       debugLog('STAGING CLEAN FAILED', { error: err.message });
@@ -531,8 +538,8 @@ export async function applyPatchUpdate(updates, onProgress) {
   }
 
   try {
-    fs.mkdirSync(STAGING_DIR, { recursive: true });
-    debugLog('Staging directory created', { STAGING_DIR, exists: fs.existsSync(STAGING_DIR) });
+    originalFs.mkdirSync(STAGING_DIR, { recursive: true });
+    debugLog('Staging directory created', { STAGING_DIR, exists: originalFs.existsSync(STAGING_DIR) });
   } catch (err) {
     debugLog('STAGING MKDIR FAILED', { error: err.message });
     return { success: [], failed: [{ name: 'staging', error: err.message }] };
@@ -585,11 +592,12 @@ export async function applyPatchUpdate(updates, onProgress) {
       });
 
       // GDP Level 5: Post-download
+      // Use originalFs for .asar files
       debugLog('Download COMPLETE', {
         name: update.name,
         stagingPath,
-        fileExists: fs.existsSync(stagingPath),
-        fileSize: fs.existsSync(stagingPath) ? fs.statSync(stagingPath).size : 0
+        fileExists: originalFs.existsSync(stagingPath),
+        fileSize: originalFs.existsSync(stagingPath) ? originalFs.statSync(stagingPath).size : 0
       });
 
       // Verify hash
@@ -672,6 +680,7 @@ export function hasPendingUpdates() {
 /**
  * Apply pending updates (call this EARLY in startup, before loading heavy resources)
  * Returns true if updates were applied and app should restart
+ * CRITICAL: Uses originalFs for all .asar file operations to bypass ASAR interception
  */
 export function applyPendingUpdates() {
   if (!fs.existsSync(PENDING_FILE)) {
@@ -687,31 +696,32 @@ export function applyPendingUpdates() {
     for (const update of pending.updates) {
       console.log(`[PatchUpdater] Applying: ${update.name}`);
 
-      if (!fs.existsSync(update.stagingPath)) {
+      // Use originalFs for .asar files
+      if (!originalFs.existsSync(update.stagingPath)) {
         console.error(`[PatchUpdater] Staging file missing: ${update.stagingPath}`);
         continue;
       }
 
-      // Verify hash again
+      // Verify hash again (using originalFs)
       const hash = crypto.createHash('sha256');
-      hash.update(fs.readFileSync(update.stagingPath));
+      hash.update(originalFs.readFileSync(update.stagingPath));
       if (hash.digest('hex') !== update.sha256) {
         console.error(`[PatchUpdater] Hash mismatch for ${update.name}`);
         continue;
       }
 
-      // Backup and replace
+      // Backup and replace (using originalFs for .asar)
       const backupPath = update.destPath + '.backup';
-      if (fs.existsSync(update.destPath)) {
+      if (originalFs.existsSync(update.destPath)) {
         try {
-          fs.copyFileSync(update.destPath, backupPath);
+          originalFs.copyFileSync(update.destPath, backupPath);
         } catch (err) {
           console.log(`[PatchUpdater] Could not backup (file may be locked): ${err.message}`);
         }
       }
 
       try {
-        fs.copyFileSync(update.stagingPath, update.destPath);
+        originalFs.copyFileSync(update.stagingPath, update.destPath);
         console.log(`[PatchUpdater] Applied: ${update.name}`);
 
         // Update state
@@ -722,15 +732,15 @@ export function applyPendingUpdates() {
         };
 
         // Remove backup
-        if (fs.existsSync(backupPath)) {
-          fs.unlinkSync(backupPath);
+        if (originalFs.existsSync(backupPath)) {
+          originalFs.unlinkSync(backupPath);
         }
       } catch (err) {
         console.error(`[PatchUpdater] Failed to apply ${update.name}: ${err.message}`);
         // Restore backup if apply failed
-        if (fs.existsSync(backupPath)) {
-          fs.copyFileSync(backupPath, update.destPath);
-          fs.unlinkSync(backupPath);
+        if (originalFs.existsSync(backupPath)) {
+          originalFs.copyFileSync(backupPath, update.destPath);
+          originalFs.unlinkSync(backupPath);
         }
       }
     }
@@ -740,10 +750,10 @@ export function applyPendingUpdates() {
     localState.lastUpdate = new Date().toISOString();
     saveLocalState(localState);
 
-    // Cleanup
+    // Cleanup (use originalFs for staging dir that contains .asar)
     fs.unlinkSync(PENDING_FILE);
-    if (fs.existsSync(STAGING_DIR)) {
-      fs.rmSync(STAGING_DIR, { recursive: true });
+    if (originalFs.existsSync(STAGING_DIR)) {
+      originalFs.rmSync(STAGING_DIR, { recursive: true });
     }
 
     console.log('[PatchUpdater] Pending updates applied successfully');
@@ -753,7 +763,7 @@ export function applyPendingUpdates() {
     // Cleanup failed state
     try {
       if (fs.existsSync(PENDING_FILE)) fs.unlinkSync(PENDING_FILE);
-      if (fs.existsSync(STAGING_DIR)) fs.rmSync(STAGING_DIR, { recursive: true });
+      if (originalFs.existsSync(STAGING_DIR)) originalFs.rmSync(STAGING_DIR, { recursive: true });
     } catch (e) {
       // Ignore cleanup errors
     }
