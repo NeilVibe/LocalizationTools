@@ -138,3 +138,4 @@ Build skip_linux 465
 Build skip_linux 466
 Build skip_linux 467
 Build skip_linux 468: Fix patch updater - stage files instead of replacing locked app.asar
+Build 469: Full build with patch updater fix
