@@ -180,41 +180,79 @@ def populate_qa_folder_new(
     """
     Auto-populate QAfolderNEW with fresh datasheets based on QAfolderOLD structure.
 
+    STRICT MODE (all-or-nothing):
+    - If ANY datasheet is missing or outdated -> STOP, don't do anything
+    - Only proceeds when ALL required sheets are present AND fresh
+    - This prevents partial updates that could cause data loss
+
     This function:
-    1. Checks if generated datasheets are fresh enough
+    1. Checks if ALL generated datasheets exist and are fresh
     2. Discovers folders in QAfolderOLD
     3. Creates matching folders in QAfolderNEW
     4. Copies the correct language sheet for each tester
 
     Args:
-        force: If True, skip freshness check and populate anyway
-        max_age_hours: Maximum acceptable age for datasheets
+        force: If True, skip freshness check and populate anyway (DANGEROUS)
+        max_age_hours: Maximum acceptable age for datasheets (default: 10 hours)
 
     Returns:
         Tuple of (success, message)
     """
     print()
     print("=" * 60)
-    print("Auto-Populate QAfolderNEW")
+    print("Auto-Populate QAfolderNEW (STRICT MODE)")
     print("=" * 60)
+    print()
+    print("STRICT MODE: ALL datasheets must be present AND fresh.")
+    print("             If ANY is missing or outdated -> STOP immediately.")
+    print()
 
-    # Step 1: Check freshness (unless forced)
+    # Step 1: STRICT freshness check (unless forced - which is dangerous)
     if not force:
-        print("\n[1/4] Checking datasheet freshness...")
+        print("[1/4] Checking ALL datasheets (strict mode)...")
+        print(f"      Max age: {max_age_hours} hours")
+        print()
+
         all_fresh, status = check_datasheet_freshness(max_age_hours)
 
-        for category, status_msg in status.items():
-            marker = "[OK]" if "Fresh" in status_msg or "skip" in status_msg else "[!!]"
+        # Show status for ALL categories
+        missing_or_stale = []
+        for category, status_msg in sorted(status.items()):
+            if "Fresh" in status_msg or "skip" in status_msg:
+                marker = "[OK]"
+            else:
+                marker = "[!!]"
+                if category != "System":  # System is manual, don't count it
+                    missing_or_stale.append(f"{category}: {status_msg}")
             print(f"  {marker} {category}: {status_msg}")
 
+        # STRICT: If ANY is bad, stop immediately
         if not all_fresh:
+            print()
+            print("=" * 60)
+            print("STOPPED: Cannot proceed with missing or stale datasheets!")
+            print("=" * 60)
+            print()
+            print("The following datasheets need attention:")
+            for item in missing_or_stale:
+                print(f"  - {item}")
+            print()
+            print("ACTION REQUIRED:")
+            print("  1. Run 'Generate Datasheets' (select ALL categories)")
+            print("  2. Wait for generation to complete")
+            print("  3. Try 'Transfer' again")
+            print()
             return False, (
-                f"Some datasheets are stale or missing.\n"
-                f"Please run 'Generate Datasheets' first.\n"
-                f"(Or use force=True to skip this check)"
+                f"STRICT MODE: {len(missing_or_stale)} datasheet(s) missing or stale.\n"
+                f"Run 'Generate Datasheets' first, then try again."
             )
+
+        print()
+        print("[OK] All datasheets are present and fresh!")
     else:
-        print("\n[1/4] Freshness check skipped (force=True)")
+        print("[1/4] Freshness check SKIPPED (force=True)")
+        print("      WARNING: This may cause issues if datasheets are stale!")
+        print()
 
     # Step 2: Discover OLD folders
     print("\n[2/4] Discovering QAfolderOLD structure...")
