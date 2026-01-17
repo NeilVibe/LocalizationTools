@@ -152,3 +152,4 @@ Build 479: Exclude CDP tests from CI
 Build 480: Exclude e2e tests from CI
 Build 481: AsyncSessionWrapper for sync/async database compatibility
 Build skip_linux 482: Test patch updater with Electron net module
+Build skip_linux 483: Test patch update with Electron net module
