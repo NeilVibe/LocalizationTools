@@ -48,9 +48,9 @@ DATASHEET_LOCATIONS = {
         "cn_pattern": "Knowledge_LQA_ZHO-CN*.xlsx",
     },
     "Item": {
-        "folder": "ItemData_Map_All/Item_Full_LQA",  # Nested structure
-        "eng_pattern": "Item_LQA_ENG*.xlsx",
-        "cn_pattern": "Item_LQA_ZHO-CN*.xlsx",
+        "folder": "ItemData_Map_All/Item_Sorted_LQA",  # Sorted version (not Full)
+        "eng_pattern": "ITEM_WORKING_LQA_ENG*.xlsx",
+        "cn_pattern": "ITEM_WORKING_LQA_ZHO-CN*.xlsx",
     },
     "Region": {
         "folder": "Region_LQA_v3",
