@@ -16,6 +16,7 @@
    */
   import { createEventDispatcher } from 'svelte';
   import { Folder, Document, DocumentBlank, Table, Code, Application, Locked, TrashCan, CloudOffline } from 'carbon-icons-svelte';
+  import { logger } from '$lib/utils/logger.js';
 
   // Props
   let {
@@ -184,7 +185,15 @@
    * Handle double click (open/enter)
    */
   function handleDoubleClick(item) {
+    // GDP: BUG-042 Debug
+    logger.warning('GDP: ExplorerGrid handleDoubleClick', {
+      itemType: item.type,
+      itemId: item.id,
+      itemName: item.name
+    });
+
     if (item.type === 'folder' || item.type === 'local-folder' || item.type === 'project' || item.type === 'platform' || item.type === 'recycle-bin' || item.type === 'offline-storage') {
+      logger.warning('GDP: Dispatching enterFolder event', { itemType: item.type });
       dispatch('enterFolder', { item });
     } else if (item.type === 'trash-item') {
       // EXPLORER-008: Double-click on trash item does nothing (use context menu to restore)
