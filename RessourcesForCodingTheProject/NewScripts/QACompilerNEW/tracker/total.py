@@ -13,7 +13,7 @@ from collections import defaultdict
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import TRACKER_STYLES, CATEGORIES, load_tester_mapping
+from config import TRACKER_STYLES, CATEGORIES, load_tester_mapping, load_tester_type_mapping
 
 
 # =============================================================================
@@ -34,6 +34,7 @@ def get_total_styles():
         "header_fill": PatternFill(start_color=TRACKER_STYLES["header_color"],
                                    end_color=TRACKER_STYLES["header_color"], fill_type="solid"),
         "manager_header_fill": PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid"),
+        "workload_header_fill": PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid"),  # Light orange
         "alt_fill": PatternFill(start_color=TRACKER_STYLES["alt_row_color"],
                                 end_color=TRACKER_STYLES["alt_row_color"], fill_type="solid"),
         "total_fill": PatternFill(start_color=TRACKER_STYLES["total_row_color"],
@@ -120,6 +121,8 @@ def autofit_row_heights(ws, default_height: int = 15, line_height: int = 15):
 # Headers for tester stats
 TESTER_HEADERS = ["User", "Done", "Issues", "No Issue", "Blocked", "Korean"]
 MANAGER_HEADERS = ["Fixed", "Reported", "NonIssue", "Checking", "Pending"]
+# Workload Analysis headers (light orange section)
+WORKLOAD_HEADERS = ["Actual Done", "Daily Avg", "Type", "Days Worked", "Tester Assessment"]
 
 
 # =============================================================================
@@ -204,10 +207,18 @@ def build_tester_section(
     users_list: List[str],
     user_data: Dict,
     styles: Dict,
-    user_row_tracker: List = None
+    user_row_tracker: List = None,
+    tester_type_mapping: Dict = None
 ) -> Tuple[int, Dict]:
     """
     Build a tester section (EN or CN) with title, headers, data rows, and subtotal.
+
+    Includes Workload Analysis section (light orange):
+    - Actual Done = Done - Blocked - Korean
+    - Daily Avg = Actual Done / Days Worked
+    - Type = Text/Gameplay from TesterType.txt
+    - Days Worked = Manual entry
+    - Tester Assessment = Manual entry
 
     Args:
         ws: Worksheet to write to
@@ -218,6 +229,7 @@ def build_tester_section(
         user_data: Dict of user -> stats
         styles: Style dict
         user_row_tracker: Optional list to append (row_num, user) tuples
+        tester_type_mapping: Dict of username -> type ("Text" or "Gameplay")
 
     Returns:
         Tuple of (next_row, section_total_dict)
@@ -225,7 +237,10 @@ def build_tester_section(
     if not users_list:
         return start_row, None
 
-    total_cols = len(TESTER_HEADERS) + len(MANAGER_HEADERS)
+    if tester_type_mapping is None:
+        tester_type_mapping = {}
+
+    total_cols = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + len(WORKLOAD_HEADERS)
     current_row = start_row
 
     # Section Title
@@ -237,6 +252,7 @@ def build_tester_section(
     current_row += 1
 
     # Headers (with thick top border for separation)
+    # Blue: Tester stats
     for col, header in enumerate(TESTER_HEADERS, 1):
         cell = ws.cell(current_row, col, header)
         cell.fill = styles["header_fill"]
@@ -244,10 +260,20 @@ def build_tester_section(
         cell.alignment = styles["center"]
         cell.border = styles["thick_top"]
 
+    # Green: Manager stats
     manager_start_col = len(TESTER_HEADERS) + 1
     for col, header in enumerate(MANAGER_HEADERS, manager_start_col):
         cell = ws.cell(current_row, col, header)
         cell.fill = styles["manager_header_fill"]
+        cell.font = styles["bold"]
+        cell.alignment = styles["center"]
+        cell.border = styles["thick_top"]
+
+    # Light Orange: Workload Analysis
+    workload_start_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 1
+    for col, header in enumerate(WORKLOAD_HEADERS, workload_start_col):
+        cell = ws.cell(current_row, col, header)
+        cell.fill = styles["workload_header_fill"]
         cell.font = styles["bold"]
         cell.alignment = styles["center"]
         cell.border = styles["thick_top"]
@@ -256,7 +282,8 @@ def build_tester_section(
     # Data rows
     section_total = {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
-        "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0
+        "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0,
+        "actual_done": 0
     }
 
     for idx, user in enumerate(users_list):
@@ -274,6 +301,13 @@ def build_tester_section(
         # Pending = Issues - Fixed - Reported - Checking - NonIssue
         pending = max(0, issues - fixed - reported - checking - nonissue)
 
+        # Workload Analysis calculations
+        actual_done = done - blocked - korean  # Actual productive work
+        tester_type = tester_type_mapping.get(user, "Unknown")
+        days_worked = ""  # Manual entry - leave blank
+        daily_avg = ""  # Will be calculated when Days Worked is filled
+        assessment = ""  # Manual entry - leave blank
+
         # Accumulate section totals
         section_total["total_rows"] += total_rows
         section_total["done"] += done
@@ -286,16 +320,29 @@ def build_tester_section(
         section_total["checking"] += checking
         section_total["pending"] += pending
         section_total["nonissue"] += nonissue
+        section_total["actual_done"] += actual_done
 
-        # Row data: User, Done, Issues, No Issue, Blocked, Korean, Fixed, Reported, NonIssue, Checking, Pending
+        # Row data: Tester Stats + Manager Stats
         row_data = [user, done, issues, no_issue, blocked, korean, fixed, reported, nonissue, checking, pending]
 
+        # Write Tester + Manager columns
         for col, value in enumerate(row_data, 1):
             cell = ws.cell(current_row, col, value)
             cell.alignment = styles["center"]
             cell.border = styles["border"]
             if idx % 2 == 1:
                 cell.fill = styles["alt_fill"]
+
+        # Write Workload Analysis columns (light orange background)
+        workload_data = [actual_done, daily_avg, tester_type, days_worked, assessment]
+        workload_start = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 1
+        for col_offset, value in enumerate(workload_data):
+            col = workload_start + col_offset
+            cell = ws.cell(current_row, col, value)
+            cell.alignment = styles["center"]
+            cell.border = styles["border"]
+            # Light orange for workload columns (keep even on alternating rows for distinction)
+            cell.fill = styles["workload_header_fill"]
 
         # Track this row for chart references
         if user_row_tracker is not None:
@@ -316,6 +363,18 @@ def build_tester_section(
         cell.font = styles["bold"]
         cell.alignment = styles["center"]
         cell.border = styles["thick_bottom"]
+
+    # Workload Analysis subtotals (only Actual Done has meaningful sum)
+    workload_subtotal = [st["actual_done"], "", "", "", ""]
+    workload_start = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 1
+    for col_offset, value in enumerate(workload_subtotal):
+        col = workload_start + col_offset
+        cell = ws.cell(current_row, col, value)
+        cell.fill = styles["total_fill"]
+        cell.font = styles["bold"]
+        cell.alignment = styles["center"]
+        cell.border = styles["thick_bottom"]
+
     current_row += 1
 
     return current_row, section_total
@@ -694,6 +753,9 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
     # Load tester mapping to separate EN/CN
     tester_mapping = load_tester_mapping()
 
+    # Load tester type mapping (Text/Gameplay)
+    tester_type_mapping = load_tester_type_mapping()
+
     # Read latest data
     latest_data, user_data = read_latest_data_for_total(wb)
 
@@ -715,7 +777,7 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
     if en_users:
         current_row, en_total = build_tester_section(
             ws, current_row, "EN TESTER STATS", styles["en_title_fill"],
-            en_users, user_data, styles, user_data_rows
+            en_users, user_data, styles, user_data_rows, tester_type_mapping
         )
         current_row += 1  # Empty row between sections
 
@@ -724,20 +786,21 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
     if cn_users:
         current_row, cn_total = build_tester_section(
             ws, current_row, "CN TESTER STATS", styles["cn_title_fill"],
-            cn_users, user_data, styles, user_data_rows
+            cn_users, user_data, styles, user_data_rows, tester_type_mapping
         )
         current_row += 1  # Empty row before grand total
 
     # Grand total row (combines EN + CN)
-    total_cols = len(TESTER_HEADERS) + len(MANAGER_HEADERS)
+    total_cols = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + len(WORKLOAD_HEADERS)
     grand_total = {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
-        "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0
+        "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0, "actual_done": 0
     }
     for t in [en_total, cn_total]:
         if t:
             for key in grand_total:
-                grand_total[key] += t[key]
+                if key in t:
+                    grand_total[key] += t[key]
 
     if grand_total["total_rows"] > 0 or grand_total["done"] > 0:
         ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
@@ -754,6 +817,16 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
         ]
 
         for col, value in enumerate(total_row_data, 1):
+            cell = ws.cell(current_row, col, value)
+            cell.fill = styles["total_fill"]
+            cell.font = styles["bold"]
+            cell.alignment = styles["center"]
+
+        # Workload Analysis grand totals (only Actual Done has meaningful sum)
+        workload_grand = [gt["actual_done"], "", "", "", ""]
+        workload_start = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 1
+        for col_offset, value in enumerate(workload_grand):
+            col = workload_start + col_offset
             cell = ws.cell(current_row, col, value)
             cell.fill = styles["total_fill"]
             cell.font = styles["bold"]

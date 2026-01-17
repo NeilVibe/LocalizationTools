@@ -127,7 +127,7 @@ def extract_comment_text(full_comment) -> str:
 
 def collect_manager_status(master_folder: Path) -> Dict:
     """
-    Read existing Master files and collect all STATUS_{User} values.
+    Read existing Master files and collect all STATUS_{User} and MANAGER_COMMENT_{User} values.
 
     KEYED BY COMMENT TEXT for matching after rebuild.
 
@@ -135,7 +135,7 @@ def collect_manager_status(master_folder: Path) -> Dict:
         master_folder: Which Master folder to scan (EN or CN)
 
     Returns:
-        {category: {sheet_name: {comment_text: {user: status}}}}
+        {category: {sheet_name: {comment_text: {user: {"status": val, "manager_comment": val}}}}}
     """
     manager_status = {}
 
@@ -157,9 +157,10 @@ def collect_manager_status(master_folder: Path) -> Dict:
                 ws = wb[sheet_name]
                 manager_status[category][sheet_name] = {}
 
-                # Find all COMMENT_{User} and STATUS_{User} columns
-                comment_cols = {}  # username -> col
-                status_cols = {}   # username -> col
+                # Find all COMMENT_{User}, STATUS_{User}, and MANAGER_COMMENT_{User} columns
+                comment_cols = {}          # username -> col (tester comment)
+                status_cols = {}           # username -> col (manager status)
+                manager_comment_cols = {}  # username -> col (manager comment)
                 for col in range(1, ws.max_column + 1):
                     header = ws.cell(row=1, column=col).value
                     if header:
@@ -170,6 +171,9 @@ def collect_manager_status(master_folder: Path) -> Dict:
                         elif header_str.startswith("STATUS_"):
                             username = header_str.replace("STATUS_", "")
                             status_cols[username] = col
+                        elif header_str.startswith("MANAGER_COMMENT_"):
+                            username = header_str.replace("MANAGER_COMMENT_", "")
+                            manager_comment_cols[username] = col
 
                 if not status_cols:
                     continue
@@ -178,7 +182,16 @@ def collect_manager_status(master_folder: Path) -> Dict:
                 for row in range(2, ws.max_row + 1):
                     for username, status_col in status_cols.items():
                         status_value = ws.cell(row=row, column=status_col).value
-                        if status_value and str(status_value).strip().upper() in VALID_MANAGER_STATUS:
+                        manager_comment_col = manager_comment_cols.get(username)
+                        manager_comment_value = None
+                        if manager_comment_col:
+                            manager_comment_value = ws.cell(row=row, column=manager_comment_col).value
+
+                        # Only store if there's a status or manager comment
+                        has_status = status_value and str(status_value).strip().upper() in VALID_MANAGER_STATUS
+                        has_manager_comment = manager_comment_value and str(manager_comment_value).strip()
+
+                        if has_status or has_manager_comment:
                             comment_col = comment_cols.get(username)
                             if comment_col:
                                 full_comment = ws.cell(row=row, column=comment_col).value
@@ -186,8 +199,10 @@ def collect_manager_status(master_folder: Path) -> Dict:
                                 if comment_text:
                                     if comment_text not in manager_status[category][sheet_name]:
                                         manager_status[category][sheet_name][comment_text] = {}
-                                    manager_status[category][sheet_name][comment_text][username] = \
-                                        str(status_value).strip().upper()
+                                    manager_status[category][sheet_name][comment_text][username] = {
+                                        "status": str(status_value).strip().upper() if has_status else None,
+                                        "manager_comment": str(manager_comment_value).strip() if has_manager_comment else None
+                                    }
 
             wb.close()
 

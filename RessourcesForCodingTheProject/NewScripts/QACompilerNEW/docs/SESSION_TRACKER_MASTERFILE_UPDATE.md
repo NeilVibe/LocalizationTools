@@ -1,7 +1,7 @@
 # SESSION: Progress Tracker & Master File Updates
 
 **Date:** 2026-01-17
-**Status:** PLANNING (not yet implemented)
+**Status:** IMPLEMENTED (pending testing)
 
 ---
 
@@ -262,12 +262,12 @@ for each SCREENSHOT_{User} column:
 
 1. ✅ Create this planning document
 2. ✅ Create TesterType.example.txt
-3. ⬜ Update config.py with new loader (load_tester_type_mapping)
-4. ⬜ Update tracker/total.py with Workload Analysis columns
-5. ⬜ Update core/compiler.py - collect_manager_status with MANAGER_COMMENT
-6. ⬜ Update core/processing.py - add MANAGER_COMMENT column creation/restoration
-7. ⬜ Update core/processing.py - add screenshot hiding in hide_unused_columns
-8. ⬜ Ensure hide happens AFTER autofit (check order)
+3. ✅ Update config.py with new loader (load_tester_type_mapping)
+4. ✅ Update tracker/total.py with Workload Analysis columns
+5. ✅ Update core/compiler.py - collect_manager_status with MANAGER_COMMENT
+6. ✅ Update core/processing.py - add MANAGER_COMMENT column creation/restoration
+7. ✅ Update core/processing.py - add screenshot hiding in hide_unused_columns
+8. ✅ Ensure hide happens AFTER autofit (verified: order correct in compiler.py)
 9. ⬜ Test all changes
-10. ⬜ Update USER_GUIDE.md and README.md
+10. ✅ Update USER_GUIDE.md and README.md
 11. ⬜ Update ZIP and push

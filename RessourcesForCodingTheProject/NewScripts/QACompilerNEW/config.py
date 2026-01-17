@@ -33,8 +33,9 @@ IMAGES_FOLDER_CN = MASTER_FOLDER_CN / "Images"
 # Progress tracker
 TRACKER_PATH = SCRIPT_DIR / "LQA_Tester_ProgressTracker.xlsx"
 
-# Tester mapping file
+# Tester mapping files
 TESTER_MAPPING_FILE = SCRIPT_DIR / "languageTOtester_list.txt"
+TESTER_TYPE_FILE = SCRIPT_DIR / "TesterType.txt"
 
 # =============================================================================
 # GENERATOR PATHS (for datasheet generators)
@@ -240,4 +241,46 @@ def load_tester_mapping() -> dict:
                 mapping[line] = current_lang
 
     print(f"  Loaded {len(mapping)} tester->language mappings")
+    return mapping
+
+
+def load_tester_type_mapping() -> dict:
+    """Load tester -> type mapping from file.
+
+    File format (section-based):
+        Text
+        김민영
+        황하연
+        ...
+
+        Gameplay
+        김춘애
+        최문석
+        ...
+
+    Returns:
+        Dict mapping tester names to type ("Text" or "Gameplay")
+    """
+    mapping = {}
+    current_type = None
+
+    if not TESTER_TYPE_FILE.exists():
+        print(f"  WARNING: Tester type file not found: {TESTER_TYPE_FILE}")
+        print(f"           All testers will default to 'Unknown'.")
+        return mapping
+
+    with open(TESTER_TYPE_FILE, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+
+            if line == "Text":
+                current_type = "Text"
+            elif line == "Gameplay":
+                current_type = "Gameplay"
+            elif current_type:
+                mapping[line] = current_type
+
+    print(f"  Loaded {len(mapping)} tester->type mappings")
     return mapping
