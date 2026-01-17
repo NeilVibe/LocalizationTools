@@ -308,6 +308,25 @@ function downloadFile(url, destPath, onProgress) {
     // Use Electron's net module (Chromium networking stack)
     const request = net.request(url);
 
+    // CRITICAL: Wait for fileStream 'finish' event before resolving
+    // fileStream.end() is async - file isn't flushed until 'finish' fires
+    fileStream.on('finish', () => {
+      debugLog('DOWNLOAD COMPLETE - file flushed to disk', {
+        destPath,
+        size: downloadedSize,
+        sizeMB: (downloadedSize / 1024 / 1024).toFixed(2),
+        fileExists: fs.existsSync(destPath),
+        fileSize: fs.existsSync(destPath) ? fs.statSync(destPath).size : 0
+      });
+      resolve(destPath);
+    });
+
+    fileStream.on('error', (err) => {
+      debugLog('FileStream error', { error: err.message });
+      try { fs.unlinkSync(destPath); } catch (e) { }
+      reject(err);
+    });
+
     request.on('response', (response) => {
       debugLog('Response received', {
         statusCode: response.statusCode,
@@ -357,13 +376,8 @@ function downloadFile(url, destPath, onProgress) {
       });
 
       response.on('end', () => {
-        fileStream.end();
-        debugLog('DOWNLOAD COMPLETE (Electron net)', {
-          destPath,
-          size: downloadedSize,
-          sizeMB: (downloadedSize / 1024 / 1024).toFixed(2)
-        });
-        resolve(destPath);
+        debugLog('Response ended, calling fileStream.end()');
+        fileStream.end();  // This triggers 'finish' event when buffer is flushed
       });
 
       response.on('error', (err) => {
