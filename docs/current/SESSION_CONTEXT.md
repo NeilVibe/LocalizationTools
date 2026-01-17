@@ -1,81 +1,111 @@
 # Session Context
 
-> Last Updated: 2026-01-17 (Session 46 - Patch Updater Fix)
+> Last Updated: 2026-01-17 (Session 46 - Patch Updater GDP Debug)
 
 ---
 
-## SESSION 46: Patch Updater - Finding the Truth
+## SESSION 46: Patch Updater - GDP Debug to Root Cause
 
-### The Lies I Told (And How I Found Them)
-
-| Lie | Truth | How I Found It |
-|-----|-------|----------------|
-| "Hot-swap will work" | Windows locks files in use - can't overwrite | User said "blocked at app.asar" |
-| "Just need to fix the download" | Download worked fine, swap failed | Tested curl from Windows - worked |
-| "Reordering code will fix it" | Old app has old (broken) code | Realized installed app != new build |
-| "skip_linux builds have installer" | skip_linux skips Windows build too | 404 on LocaNext-Setup.exe |
-
-### Root Cause Chain
+### THE ISSUE
 
 ```
-1. ATTEMPT: Replace app.asar while Electron running
-   ↓
-2. FAIL: Windows file locking prevents overwrite
-   ↓
-3. SYMPTOM: "blocked at app.asar" - download completes, swap fails
-   ↓
-4. HIDDEN: Error swallowed in try/catch, no visible feedback
+Patch update download STALLS at "13.3 KB / 17.9 MB" → timeout after 2 min → FAILS
 ```
 
-### The Real Fix (Build 468+)
+Users had to uninstall/reinstall the entire app instead of getting smooth patch updates.
 
-**Before (Broken):**
+### ROOT CAUSES FOUND (via GDP)
+
+| # | Bug | GDP Log Evidence | Fix |
+|---|-----|------------------|-----|
+| 1 | **ASAR Interception** | `ENOENT, not found in ...app.asar` + `readFileFromArchiveSync` stack | Use `original-fs` module |
+| 2 | **Node.js HTTP Blocking** | Only 1 chunk received, then 2 min silence | Use PowerShell `Invoke-WebRequest` |
+
+### GDP Debug Journey
+
+| Phase | What I Did | What I Found |
+|-------|-----------|--------------|
+| 1 | Added debug log file to main process | Can't see main process console from CDP |
+| 2 | Logged `generateInitialState()` | **ASAR interception bug discovered!** |
+| 3 | Fixed ASAR with original-fs | Hash now computes correctly |
+| 4 | Logged `downloadFile()` | HTTP 200 received, first chunk OK |
+| 5 | Logged every data chunk | Only first chunk received, then NOTHING |
+| 6 | Added inactivity timer | Confirmed: data flow stops after first chunk |
+| 7 | Tested PowerShell download | Works perfectly (12.8s for 18MB) |
+| 8 | Root cause: Node.js http blocks in Electron | **Use PowerShell as workaround** |
+
+### Bug 1: ASAR Interception
+
 ```javascript
-// In applyPatchUpdate():
-fs.copyFileSync(tempPath, destPath);  // ← FAILS: destPath is LOCKED
+// WRONG - Electron intercepts and tries to read from INSIDE app.asar
+const content = fs.readFileSync('path/to/app.asar');
+
+// RIGHT - Use original-fs to bypass ASAR module
+import originalFs from 'original-fs';
+const content = originalFs.readFileSync('path/to/app.asar');
 ```
 
-**After (Fixed):**
+GDP log that revealed it:
+```
+HASH FAILED {"error":"ENOENT, not found in ...app.asar",
+"stack":"at readFileFromArchiveSync..."}
+```
+
+### Bug 2: Node.js HTTP Blocking
+
+GDP log showing the stall:
+```
+[08:07:36.398] Download progress {"percent":"0.1","chunks":1}
+... NO MORE LOGS FOR 2 MINUTES ...
+[08:09:36.412] REQUEST TIMEOUT
+```
+
+**Root cause:** Unknown - Node.js http socket stalls after first chunk inside Electron main process on Windows.
+
+**Workaround:** Use PowerShell via child_process:
 ```javascript
-// 1. Download to staging folder (not locked)
-const stagingPath = path.join(STAGING_DIR, update.name);
-await downloadFile(url, stagingPath);
-
-// 2. Save pending update info
-fs.writeFileSync(PENDING_FILE, JSON.stringify(pendingInfo));
-
-// 3. On restart, PowerShell script swaps files AFTER app closes
-spawn('powershell.exe', ['-File', scriptPath], { detached: true });
-app.quit();
+const ps = spawn('powershell.exe', ['-NoProfile', '-Command', `
+  $ProgressPreference = 'SilentlyContinue'
+  Invoke-WebRequest -Uri '${url}' -OutFile '${destPath}' -UseBasicParsing
+`]);
 ```
 
 ### Files Changed
 
-| File | What |
-|------|------|
-| `electron/patch-updater.js` | Staging dir, pending file, swap script generation |
-| `electron/main.js` | Check pending on startup, spawn swap script on restart |
+| File | Changes |
+|------|---------|
+| `electron/patch-updater.js` | GDP debug logging, original-fs fix, PowerShell download |
+| `docs/protocols/GRANULAR_DEBUG_PROTOCOL.md` | Case Study 2: Patch Updater Download Bug |
 
-### Chicken-and-Egg Problem
+### Builds
 
-**Issue:** Old installed app has broken patch updater. New build has fix, but old app can't apply it.
+| Build | What |
+|-------|------|
+| 473 | Added GDP debug logging |
+| 474 | Fixed ASAR interception with original-fs |
+| 475 | Tested download (still stalling) |
+| 476 | PowerShell download workaround |
 
-**Solution:** Fresh install from new build. Then future updates work.
+### Testing Protocol
 
-### Testing Protocol (MUST DO)
+1. **Fresh install** Build 476
+2. Wait for first-time setup (model download)
+3. Check `component-state.json` has correct hash (ASAR fix works)
+4. Trigger patch update check
+5. Verify download completes (PowerShell fix works)
+6. Verify swap script works on restart
 
-1. **Fresh install** from new build (not update from old)
-2. Make a code change and build again
-3. Open app - should detect update
-4. Click "Restart Now" - should:
-   - Create swap script
-   - Close app
-   - Script waits, swaps, restarts
-5. Verify new version running
+### Key Lessons: Windows/Electron Quirks
 
-### Key Insight
+1. **Main process logs** - Write to file in userData since console isn't visible
+2. **ASAR traps** - Any `fs` operation on files in resources/ might be intercepted
+3. **Native alternatives** - PowerShell/curl can bypass Node.js networking issues
+4. **Test outside Electron** - Verify operation works in pure Node.js first
 
-**Never trust "it should work" - always verify the actual behavior.** The code looked correct but Windows file locking made it impossible. Had to test from Windows to find the truth.
+### Documentation
+
+- **GDP Protocol:** `docs/protocols/GRANULAR_DEBUG_PROTOCOL.md` (lines 329-391)
+- **Debug Log:** `%APPDATA%/LocaNext/patch-updater-debug.log`
 
 ---
 
