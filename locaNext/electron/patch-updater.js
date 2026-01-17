@@ -12,6 +12,8 @@
  * 5. Apply updates (hot-swap)
  * 6. Update local state
  * 7. Restart app
+ *
+ * Build 471: Test staging + swap script approach
  */
 
 import { app } from 'electron';

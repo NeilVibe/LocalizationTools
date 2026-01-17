@@ -1,6 +1,81 @@
 # Session Context
 
-> Last Updated: 2026-01-16 (Session 45 - TM Hierarchy Complete)
+> Last Updated: 2026-01-17 (Session 46 - Patch Updater Fix)
+
+---
+
+## SESSION 46: Patch Updater - Finding the Truth
+
+### The Lies I Told (And How I Found Them)
+
+| Lie | Truth | How I Found It |
+|-----|-------|----------------|
+| "Hot-swap will work" | Windows locks files in use - can't overwrite | User said "blocked at app.asar" |
+| "Just need to fix the download" | Download worked fine, swap failed | Tested curl from Windows - worked |
+| "Reordering code will fix it" | Old app has old (broken) code | Realized installed app != new build |
+| "skip_linux builds have installer" | skip_linux skips Windows build too | 404 on LocaNext-Setup.exe |
+
+### Root Cause Chain
+
+```
+1. ATTEMPT: Replace app.asar while Electron running
+   ↓
+2. FAIL: Windows file locking prevents overwrite
+   ↓
+3. SYMPTOM: "blocked at app.asar" - download completes, swap fails
+   ↓
+4. HIDDEN: Error swallowed in try/catch, no visible feedback
+```
+
+### The Real Fix (Build 468+)
+
+**Before (Broken):**
+```javascript
+// In applyPatchUpdate():
+fs.copyFileSync(tempPath, destPath);  // ← FAILS: destPath is LOCKED
+```
+
+**After (Fixed):**
+```javascript
+// 1. Download to staging folder (not locked)
+const stagingPath = path.join(STAGING_DIR, update.name);
+await downloadFile(url, stagingPath);
+
+// 2. Save pending update info
+fs.writeFileSync(PENDING_FILE, JSON.stringify(pendingInfo));
+
+// 3. On restart, PowerShell script swaps files AFTER app closes
+spawn('powershell.exe', ['-File', scriptPath], { detached: true });
+app.quit();
+```
+
+### Files Changed
+
+| File | What |
+|------|------|
+| `electron/patch-updater.js` | Staging dir, pending file, swap script generation |
+| `electron/main.js` | Check pending on startup, spawn swap script on restart |
+
+### Chicken-and-Egg Problem
+
+**Issue:** Old installed app has broken patch updater. New build has fix, but old app can't apply it.
+
+**Solution:** Fresh install from new build. Then future updates work.
+
+### Testing Protocol (MUST DO)
+
+1. **Fresh install** from new build (not update from old)
+2. Make a code change and build again
+3. Open app - should detect update
+4. Click "Restart Now" - should:
+   - Create swap script
+   - Close app
+   - Script waits, swaps, restarts
+5. Verify new version running
+
+### Key Insight
+
+**Never trust "it should work" - always verify the actual behavior.** The code looked correct but Windows file locking made it impossible. Had to test from Windows to find the truth.
 
 ---
 
