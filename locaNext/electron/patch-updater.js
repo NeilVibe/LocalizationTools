@@ -14,6 +14,8 @@
  * 7. Restart app
  *
  * Build 471: Test staging + swap script approach
+ * Build 474: Fix ASAR interception with original-fs
+ * Build 475: Test patch update download
  */
 
 import { app } from 'electron';
