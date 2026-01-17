@@ -149,3 +149,4 @@ Build skip_linux 476: PowerShell download workaround
 Build 477: Electron net module for downloads
 Build 478: Skip CDP test in CI
 Build 479: Exclude CDP tests from CI
+Build 480: Exclude e2e tests from CI
