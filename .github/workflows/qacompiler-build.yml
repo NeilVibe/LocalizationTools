@@ -45,6 +45,11 @@ jobs:
       - name: Check build trigger
         id: check
         run: |
+          # ============================================================
+          # VERSION FORMAT: YY.MMDD.HHMM (same as LocaNext - semver-compatible)
+          # Build number in trigger file is just for tracking
+          # ============================================================
+
           # Check if QACOMPILER_BUILD.txt was modified
           if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -q "QACOMPILER_BUILD.txt"; then
             TRIGGER=$(cat QACOMPILER_BUILD.txt 2>/dev/null | grep -E "^Build" | tail -1 || echo "")
@@ -69,14 +74,11 @@ jobs:
             fi
           fi
 
-          # Version: use input, or auto-generate MMDDHHMM
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION=$(TZ='Asia/Seoul' date '+%m%d%H%M')
-          fi
+          # AUTO-GENERATE VERSION: YY.MMDD.HHMM format (semver-compatible, Korean time)
+          # Same format as LocaNext for consistency
+          VERSION=$(TZ='Asia/Seoul' date '+%y.%-m%d.%H%M')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+          echo "[OK] Auto-generated version: $VERSION (YY.MMDD.HHMM format)"
 
   build-installer:
     name: Build Windows Installer
@@ -102,19 +104,36 @@ jobs:
           pip install pyinstaller
         shell: pwsh
 
-      - name: Update version in files
+      - name: Inject Version (Pipeline Executive Power)
         run: |
           $version = "${{ needs.check-trigger.outputs.version }}"
           $qaPath = "${{ env.QACOMPILER_PATH }}"
 
-          Write-Host "Updating version to: $version"
+          Write-Host "=== PIPELINE EXECUTIVE POWER ==="
+          Write-Host "Injecting version: $version (YY.MMDD.HHMM format)"
 
           # Update installer script version
           $issPath = "$qaPath\installer\QACompiler.iss"
           if (Test-Path $issPath) {
             (Get-Content $issPath) -replace '#define MyAppVersion "[^"]*"', "#define MyAppVersion `"$version`"" | Set-Content $issPath
-            Write-Host "Updated: $issPath"
+            Write-Host "[OK] Updated: $issPath"
           }
+
+          # Update config.py with version
+          $configPath = "$qaPath\config.py"
+          if (Test-Path $configPath) {
+            $content = Get-Content $configPath -Raw
+            if ($content -match 'VERSION\s*=') {
+              $content = $content -replace 'VERSION\s*=\s*"[^"]*"', "VERSION = `"$version`""
+            } else {
+              # Add VERSION if not present
+              $content = "VERSION = `"$version`"`n" + $content
+            }
+            Set-Content $configPath $content
+            Write-Host "[OK] Updated: $configPath"
+          }
+
+          Write-Host "[OK] Version injection complete"
         shell: pwsh
 
       - name: Build executable with PyInstaller
