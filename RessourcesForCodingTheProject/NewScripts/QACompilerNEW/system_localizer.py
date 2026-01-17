@@ -19,7 +19,7 @@ Usage:
   (Opens file dialogs for input selection)
 
 Output:
-  Creates System_LQA_All/ folder with Excel files for each language.
+  Creates GeneratedDatasheets/System_LQA_All/ folder with Excel files for each language.
 """
 
 import os
@@ -28,6 +28,10 @@ import logging
 from pathlib import Path
 from typing import Dict, Tuple, Optional, List
 from copy import copy
+
+# Add parent to path for config import
+sys.path.insert(0, str(Path(__file__).parent))
+from config import DATASHEET_OUTPUT
 
 # GUI imports
 try:
@@ -438,7 +442,7 @@ class SystemLocalizerGUI:
         output_frame = ttk.LabelFrame(main_frame, text="3. Output", padding="5")
         output_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Label(output_frame, text="Output folder: System_LQA_All/ (created next to input file)").pack(anchor=tk.W)
+        ttk.Label(output_frame, text="Output folder: GeneratedDatasheets/System_LQA_All/").pack(anchor=tk.W)
 
         # Progress
         self.progress_var = tk.DoubleVar()
@@ -512,8 +516,8 @@ class SystemLocalizerGUI:
             messagebox.showerror("Error", f"Language folder not found: {lang_folder}")
             return
 
-        # Output folder next to input file
-        output_folder = input_path.parent / "System_LQA_All"
+        # Output folder in GeneratedDatasheets
+        output_folder = DATASHEET_OUTPUT / "System_LQA_All"
 
         # Clear status
         self.status_text.config(state=tk.NORMAL)
@@ -590,7 +594,7 @@ def main():
 
         input_path = Path(sys.argv[2])
         lang_folder = Path(sys.argv[3])
-        output_folder = input_path.parent / "System_LQA_All"
+        output_folder = DATASHEET_OUTPUT / "System_LQA_All"
 
         result = localize_system_sheet(input_path, lang_folder, output_folder)
 

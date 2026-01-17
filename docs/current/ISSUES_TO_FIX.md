@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-17 (Session 47) | **Build:** 483 | **Open:** 4
+**Last Updated:** 2026-01-17 (Session 48) | **Build:** 490 | **Open:** 2
 
 ---
 
@@ -8,66 +8,67 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 4 |
-| **FIXED/CLOSED** | 127 |
+| **OPEN** | 2 |
+| **FIXED/CLOSED** | 129 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
+## RECENTLY FIXED (Session 48)
+
+### PATCH-001: Patch Updater Downloads Full Installer Instead of Patch ✅ FIXED
+
+- **Reported:** 2026-01-17 (Session 47)
+- **Fixed:** 2026-01-17 (Session 48, Build 490)
+- **Severity:** CRITICAL
+- **Status:** ✅ FIXED
+- **Component:** electron/patch-updater.js
+
+**Problem:** The patch updater downloaded the FULL INSTALLER (624MB) instead of just the app.asar (~18MB).
+
+**Root Causes & Fixes:**
+
+| Bug | Root Cause | Fix |
+|-----|------------|-----|
+| fetchJson failed | Node.js `http` module doesn't work in packaged Electron | Use Electron `net` module |
+| Hash verification failed | `fileStream.end()` async - resolved before flush | Wait for 'finish' event |
+| ASAR interception | Electron patches `fs` to intercept `.asar` files | Use `original-fs` module |
+
+**Final Result:**
+- ✅ Downloads only 17.92 MB (app.asar patch)
+- ✅ Hash verified correctly
+- ✅ Staging works
+- ✅ Restart triggers update application
+
+---
+
+### PATCH-002: Install/Swap Logic Fails After Download ✅ FIXED
+
+- **Reported:** 2026-01-17 (Session 47)
+- **Fixed:** 2026-01-17 (Session 48, Build 490)
+- **Severity:** CRITICAL
+- **Status:** ✅ FIXED
+- **Component:** electron/patch-updater.js
+
+**Problem:** After clicking "Restart Now", the old app was deleted but the new version wasn't installed.
+
+**Root Cause:** ASAR interception - Electron's patched `fs` module treats ANY file with `.asar` in name as an archive, even in AppData.
+
+**Fix:** Use `original-fs` module for all `.asar` file operations:
+```javascript
+const originalFs = require('original-fs');
+originalFs.copyFileSync(stagingPath, destPath);  // Works!
+```
+
+**Verified Working:**
+- Version before: 26.117.2338
+- Version after restart: 26.117.2359 ✅
+- `component-state.json` updated correctly
+
+---
+
 ## OPEN ISSUES
-
-### PATCH-001: Patch Updater Downloads Full Installer Instead of Patch ⚠️ CRITICAL
-
-- **Reported:** 2026-01-17 (Session 47)
-- **Severity:** CRITICAL (defeats entire purpose of patch updater)
-- **Status:** OPEN
-- **Component:** electron/patch-updater.js
-
-**Problem:** The patch updater downloads the FULL INSTALLER (624MB) instead of just the app.asar (~18MB).
-
-**Expected Behavior:**
-- Compare local file hashes with server
-- Download ONLY changed files (primarily app.asar)
-- Game-launcher style delta updates
-
-**Actual Behavior:**
-```
-/mnt/c/Users/MYCOM/AppData/Local/locanext-updater/pending/
-├── LocaNext_v26.117.1932_Light_Setup.exe  → 624MB (FULL INSTALLER!)
-└── update-info.json                        → SHA512 verified
-```
-
-**Root Cause:** Core patch logic to identify and download only changed files was never implemented or isn't working.
-
-**Location to investigate:** `electron/patch-updater.js`
-
----
-
-### PATCH-002: Install/Swap Logic Fails After Download ⚠️ CRITICAL
-
-- **Reported:** 2026-01-17 (Session 47)
-- **Severity:** CRITICAL (breaks update flow)
-- **Status:** OPEN
-- **Component:** electron/patch-updater.js
-
-**Problem:** After clicking "Restart Now", the old app is deleted but the new version isn't installed.
-
-**Expected Behavior:**
-1. Download completes
-2. User clicks "Restart Now"
-3. Old files backed up or replaced
-4. New files installed
-5. App restarts with new version
-
-**Actual Behavior:**
-```
-C:\...\Playground\LocaNext\  → EMPTY DIRECTORY
-```
-
-Old app deleted, new app NOT installed. User left with broken installation.
-
----
 
 ### BUG-042: Trash Bin Cannot Be Accessed ⚠️ LOW (WINDOWS-SPECIFIC)
 

@@ -1,66 +1,67 @@
 # Session Context
 
-> Last Updated: 2026-01-17 (Session 47 - Patch Updater + DB Review)
+> Last Updated: 2026-01-17 (Session 48 - Patch Updater SUCCESS!)
 
 ---
 
-## SESSION 47: Patch Updater Testing + DB Factory Review
+## SESSION 48: Patch Updater COMPLETE ✅
 
-### THE GOAL (Not Achieved)
+### THE GOAL (ACHIEVED!)
 
 ```
 Game-launcher style PATCH updates:
-- Download ONLY changed files (~18MB app.asar)
-- NOT the full 624MB installer
+✅ Download ONLY changed files (~18MB app.asar)
+✅ NOT the full 624MB installer
+✅ Restart and apply update automatically
 ```
 
-### WHAT WAS DONE
+### WHAT WAS FIXED
 
-| Task | Status | Notes |
-|------|--------|-------|
-| GDP debug - ASAR interception | ✅ DONE | Found via granular logging |
-| Fix ASAR with original-fs | ✅ DONE | Hash computation works |
-| GDP debug - Node.js HTTP blocking | ✅ DONE | Found data stall after 1st chunk |
-| Switch to Electron net module | ✅ DONE | Uses Chromium networking |
-| AsyncSessionWrapper for CI tests | ⚠️ HACK | Should use aiosqlite instead |
-| Build 482 with net module | ✅ DONE | Installed on Playground |
-| Build 483 for update test | ✅ DONE | Update detected |
-| Test patch update download | ✅ PARTIAL | Downloaded 624MB, not 18MB patch! |
+| Bug | Root Cause | Fix | Build |
+|-----|------------|-----|-------|
+| fetchJson failed | Node.js `http` module doesn't work reliably in packaged Electron | Use Electron `net` module | 484 |
+| Hash verification failed | `fileStream.end()` is async - resolved before file flushed | Wait for 'finish' event | 487 |
+| ASAR interception | Electron's patched `fs` intercepts ALL `.asar` file operations | Use `original-fs` module | 489 |
 
-### KEY FINDING: NOT A REAL PATCH
-
-The "patch updater" is downloading the **FULL INSTALLER** (624MB), not a small patch:
+### FINAL TEST RESULTS (Build 490)
 
 ```
-/mnt/c/Users/MYCOM/AppData/Local/locanext-updater/pending/
-├── LocaNext_v26.117.1932_Light_Setup.exe  → 624MB (FULL INSTALLER!)
-└── update-info.json                        → SHA512 verified
+=== Before Restart ===
+Version: 26.117.2338
+
+=== After Restart ===
+Version: 26.117.2359  ✅ UPDATE APPLIED!
 ```
 
-**What should happen:** Download only `app.asar` (~18MB)
-**What actually happens:** Download full installer (~624MB)
+**Debug log confirms:**
+- Downloaded: 17.92 MB (NOT 624 MB!)
+- Hash verified: `87beef60f5693993...` ✅
+- File staged to `pending-updates/app.asar` ✅
+- Restart triggered ✅
+- Update applied on restart ✅
+- `component-state.json` updated ✅
 
-### REMAINING ISSUES
+### KEY FIX: ASAR Interception
 
-#### 1. Patch Logic Missing (CRITICAL)
+**Problem:** Electron patches Node.js `fs` module to intercept ANY file with `.asar` in the name - even in AppData!
 
-The core patch logic to download only changed files was never implemented or isn't working.
+```javascript
+// WRONG - fs is patched by Electron
+const fs = require('fs');
+fs.createWriteStream('path/to/app.asar');  // → "Invalid package" error
 
-**Location to investigate:** `electron/patch-updater.js`
-
-#### 2. Install/Swap Failed
-
-After "Restart Now", the old app was deleted but new version wasn't installed:
+// CORRECT - bypass Electron's ASAR interception
+const originalFs = require('original-fs');
+originalFs.createWriteStream('path/to/app.asar');  // → Works!
 ```
-C:\...\Playground\LocaNext\  → EMPTY DIRECTORY
-```
 
-#### 3. AsyncSessionWrapper is a Hack (Technical Debt)
+**Files Modified:** `electron/patch-updater.js`
+- All `fs.*` calls for `.asar` files now use `originalFs`
 
-**Current:** Wraps sync SQLite session to fake async behavior
-**Should be:** Use `aiosqlite` for true async SQLite operations
+### CLOSED ISSUES
 
-See: DB Factory Review below
+- **PATCH-001:** ✅ FIXED - Downloads ~18MB patch, not 624MB installer
+- **PATCH-002:** ✅ FIXED - Install/swap works correctly on restart
 
 ---
 
