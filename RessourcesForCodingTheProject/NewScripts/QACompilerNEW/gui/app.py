@@ -456,11 +456,11 @@ class QACompilerSuiteGUI:
 
         def run():
             try:
-                from config import LANGUAGE_FOLDER
+                from config import LANGUAGE_FOLDER, DATASHEET_OUTPUT
                 from system_localizer import process_system_sheet
 
                 input_path = Path(input_file)
-                output_folder = input_path.parent / "System_LQA_All"
+                output_folder = DATASHEET_OUTPUT / "System_LQA_All"
 
                 result = process_system_sheet(
                     input_path=input_path,
