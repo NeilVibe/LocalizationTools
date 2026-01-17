@@ -154,3 +154,4 @@ Build 481: AsyncSessionWrapper for sync/async database compatibility
 Build skip_linux 482: Test patch updater with Electron net module
 Build skip_linux 483: Test patch update with Electron net module
 Build skip_linux 484: Fix patch updater - fetchJson net module + restart logic
+Build skip_linux 485: Test patch updater with confirmed fixes
