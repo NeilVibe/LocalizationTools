@@ -6,11 +6,14 @@ Verifies that:
 1. Original file can be uploaded
 2. Edits can be made
 3. Downloaded file has EXACT same format as original with edits applied
+
+NOTE: Requires running backend server - skip in CI
 """
 
 import requests
 import tempfile
 import os
+import pytest
 
 API_BASE = "http://localhost:8888"
 
@@ -31,6 +34,10 @@ def get_auth_token():
     return response.json().get("access_token")
 
 
+@pytest.mark.skipif(
+    os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true",
+    reason="Requires running backend server - skip in CI"
+)
 def test_download_format_verification():
     """Test that downloaded file matches original format with edits"""
     print("=" * 60)
