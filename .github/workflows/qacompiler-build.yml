@@ -7,7 +7,7 @@
 # 3. Creates Inno Setup installer with drive selection
 # 4. Uploads to GitHub Releases
 #
-# NO CONFLICT with main LocaNext build - completely independent
+# SINGLE JOB - No fragmented runs
 
 name: QA Compiler Build
 
@@ -31,86 +31,80 @@ env:
   QACOMPILER_PATH: RessourcesForCodingTheProject/NewScripts/QACompilerNEW
 
 jobs:
-  check-trigger:
-    name: Check Build Trigger
-    runs-on: ubuntu-latest
-    outputs:
-      should_build: ${{ steps.check.outputs.should_build }}
-      version: ${{ steps.check.outputs.version }}
+  build-and-release:
+    name: Build & Release QA Compiler
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need history for diff
 
-      - name: Check build trigger
+      - name: Check build trigger and generate version
         id: check
+        shell: pwsh
         run: |
           # ============================================================
           # VERSION FORMAT: YY.MMDD.HHMM (same as LocaNext - semver-compatible)
-          # Build number in trigger file is just for tracking
           # ============================================================
 
+          $shouldBuild = $false
+
           # Check if QACOMPILER_BUILD.txt was modified
-          if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -q "QACOMPILER_BUILD.txt"; then
-            TRIGGER=$(cat QACOMPILER_BUILD.txt 2>/dev/null | grep -E "^Build" | tail -1 || echo "")
-            if [ -n "$TRIGGER" ]; then
-              echo "should_build=true" >> $GITHUB_OUTPUT
-              echo "Trigger: $TRIGGER"
-            else
-              echo "should_build=false" >> $GITHUB_OUTPUT
-              echo "No valid build trigger"
-            fi
-          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "should_build=true" >> $GITHUB_OUTPUT
-            echo "Manual trigger via workflow_dispatch"
-          else
-            # Check if QACompilerNEW files changed
-            if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -q "QACompilerNEW"; then
-              echo "should_build=true" >> $GITHUB_OUTPUT
-              echo "QACompilerNEW files changed"
-            else
-              echo "should_build=false" >> $GITHUB_OUTPUT
-              echo "No QACompiler changes detected"
-            fi
-          fi
+          $diffOutput = git diff --name-only HEAD~1 HEAD 2>$null
+          if ($diffOutput -match "QACOMPILER_BUILD.txt") {
+            $trigger = Get-Content QACOMPILER_BUILD.txt | Select-String -Pattern "^Build" | Select-Object -Last 1
+            if ($trigger) {
+              $shouldBuild = $true
+              Write-Host "Trigger: $trigger"
+            }
+          } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $shouldBuild = $true
+            Write-Host "Manual trigger via workflow_dispatch"
+          } elseif ($diffOutput -match "QACompilerNEW") {
+            $shouldBuild = $true
+            Write-Host "QACompilerNEW files changed"
+          }
 
-          # AUTO-GENERATE VERSION: YY.MMDD.HHMM format (semver-compatible, Korean time)
-          # Same format as LocaNext for consistency
-          VERSION=$(TZ='Asia/Seoul' date '+%y.%-m%d.%H%M')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "[OK] Auto-generated version: $VERSION (YY.MMDD.HHMM format)"
+          if (-not $shouldBuild) {
+            Write-Host "No QACompiler changes detected - skipping build"
+            echo "should_build=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
 
-  build-installer:
-    name: Build Windows Installer
-    runs-on: windows-latest
-    needs: check-trigger
-    if: needs.check-trigger.outputs.should_build == 'true'
+          echo "should_build=true" >> $env:GITHUB_OUTPUT
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+          # AUTO-GENERATE VERSION: YY.MMDD.HHMM format (Korean time)
+          $version = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::UtcNow, 'Korea Standard Time').ToString("yy.Mdd.HHmm")
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "[OK] Auto-generated version: $version (YY.MMDD.HHMM format)"
 
       - name: Setup Python 3.10
+        if: steps.check.outputs.should_build == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
 
       - name: Install dependencies
+        if: steps.check.outputs.should_build == 'true'
+        shell: pwsh
         run: |
           cd ${{ env.QACOMPILER_PATH }}
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-        shell: pwsh
 
-      - name: Inject Version (Pipeline Executive Power)
+      - name: Inject Version
+        if: steps.check.outputs.should_build == 'true'
+        shell: pwsh
         run: |
-          $version = "${{ needs.check-trigger.outputs.version }}"
+          $version = "${{ steps.check.outputs.version }}"
           $qaPath = "${{ env.QACOMPILER_PATH }}"
 
-          Write-Host "=== PIPELINE EXECUTIVE POWER ==="
-          Write-Host "Injecting version: $version (YY.MMDD.HHMM format)"
+          Write-Host "=== VERSION INJECTION ==="
+          Write-Host "Version: $version"
 
           # Update installer script version
           $issPath = "$qaPath\installer\QACompiler.iss"
@@ -126,262 +120,147 @@ jobs:
             if ($content -match 'VERSION\s*=') {
               $content = $content -replace 'VERSION\s*=\s*"[^"]*"', "VERSION = `"$version`""
             } else {
-              # Add VERSION if not present
               $content = "VERSION = `"$version`"`n" + $content
             }
             Set-Content $configPath $content
             Write-Host "[OK] Updated: $configPath"
           }
 
-          Write-Host "[OK] Version injection complete"
-        shell: pwsh
-
       - name: Build executable with PyInstaller
+        if: steps.check.outputs.should_build == 'true'
+        shell: pwsh
         run: |
           cd ${{ env.QACOMPILER_PATH }}
           pyinstaller QACompiler.spec --clean --noconfirm
-        shell: pwsh
 
       - name: Verify build
+        if: steps.check.outputs.should_build == 'true'
+        shell: pwsh
         run: |
           $exePath = "${{ env.QACOMPILER_PATH }}\dist\QACompiler\QACompiler.exe"
           if (!(Test-Path $exePath)) {
-            Write-Error "Build failed - QACompiler.exe not found at: $exePath"
-            Get-ChildItem "${{ env.QACOMPILER_PATH }}\dist" -Recurse | Select-Object -First 20
+            Write-Error "Build failed - QACompiler.exe not found"
             exit 1
           }
-          Write-Host "Build successful!"
           $size = (Get-Item $exePath).length / 1MB
-          Write-Host "  Executable size: $([math]::Round($size, 1)) MB"
-        shell: pwsh
+          Write-Host "Build successful! Size: $([math]::Round($size, 1)) MB"
 
-      - name: Create working folders in dist
+      - name: Create working folders
+        if: steps.check.outputs.should_build == 'true'
+        shell: pwsh
         run: |
           $distPath = "${{ env.QACOMPILER_PATH }}\dist\QACompiler"
 
-          # Create all required folders
           $folders = @(
-            "QAfolder",
-            "QAfolderOLD",
-            "QAfolderNEW",
-            "GeneratedDatasheets",
-            "Masterfolder_EN",
-            "Masterfolder_EN\Images",
-            "Masterfolder_CN",
-            "Masterfolder_CN\Images"
+            "QAfolder", "QAfolderOLD", "QAfolderNEW", "GeneratedDatasheets",
+            "Masterfolder_EN", "Masterfolder_EN\Images",
+            "Masterfolder_CN", "Masterfolder_CN\Images"
           )
 
           foreach ($folder in $folders) {
             $path = "$distPath\$folder"
-            if (!(Test-Path $path)) {
-              New-Item -ItemType Directory -Path $path -Force | Out-Null
-              Write-Host "Created: $folder"
-            }
-            # Add .gitkeep to ensure empty folders are included in ZIP
-            $gitkeep = "$path\.gitkeep"
-            if (!(Test-Path $gitkeep)) {
-              New-Item -ItemType File -Path $gitkeep -Force | Out-Null
-            }
+            New-Item -ItemType Directory -Path $path -Force | Out-Null
+            # Add .gitkeep for empty folder preservation
+            New-Item -ItemType File -Path "$path\.gitkeep" -Force | Out-Null
           }
 
           # Copy config files
           Copy-Item "${{ env.QACOMPILER_PATH }}\languageTOtester_list.example.txt" "$distPath\" -ErrorAction SilentlyContinue
-          if (Test-Path "${{ env.QACOMPILER_PATH }}\languageTOtester_list.txt") {
-            Copy-Item "${{ env.QACOMPILER_PATH }}\languageTOtester_list.txt" "$distPath\"
-          }
-
-          # Copy TesterType config files
           Copy-Item "${{ env.QACOMPILER_PATH }}\TesterType.example.txt" "$distPath\" -ErrorAction SilentlyContinue
-          if (Test-Path "${{ env.QACOMPILER_PATH }}\TesterType.txt") {
-            Copy-Item "${{ env.QACOMPILER_PATH }}\TesterType.txt" "$distPath\"
-          }
-        shell: pwsh
+
+          Write-Host "Working folders created"
 
       - name: Install Inno Setup
-        run: |
-          choco install innosetup -y
+        if: steps.check.outputs.should_build == 'true'
         shell: pwsh
+        run: choco install innosetup -y
 
       - name: Compile installer
+        if: steps.check.outputs.should_build == 'true'
+        shell: pwsh
         run: |
           $issPath = "${{ env.QACOMPILER_PATH }}\installer\QACompiler.iss"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" $issPath
-        shell: pwsh
-
-      - name: Verify installer
-        run: |
-          $version = "${{ needs.check-trigger.outputs.version }}"
-          $outputDir = "${{ env.QACOMPILER_PATH }}\installer_output"
-
-          Write-Host "Looking for installer in: $outputDir"
-
-          if (!(Test-Path $outputDir)) {
-            Write-Error "Installer output directory not found!"
-            exit 1
-          }
-
-          $installer = Get-ChildItem "$outputDir\*.exe" | Select-Object -First 1
-          if (!$installer) {
-            Write-Error "No installer .exe found!"
-            exit 1
-          }
-
-          Write-Host "Installer compiled successfully!"
-          Write-Host "  File: $($installer.Name)"
-          $size = $installer.Length / 1MB
-          Write-Host "  Size: $([math]::Round($size, 1)) MB"
-        shell: pwsh
 
       - name: Create portable ZIP
+        if: steps.check.outputs.should_build == 'true'
+        shell: pwsh
         run: |
-          $version = "${{ needs.check-trigger.outputs.version }}"
+          $version = "${{ steps.check.outputs.version }}"
           $distPath = "${{ env.QACOMPILER_PATH }}\dist\QACompiler"
           $zipPath = "${{ env.QACOMPILER_PATH }}\installer_output\QACompiler_v${version}_Portable.zip"
 
-          Write-Host "Creating portable ZIP..."
           Compress-Archive -Path "$distPath\*" -DestinationPath $zipPath -Force
-
           $size = (Get-Item $zipPath).Length / 1MB
-          Write-Host "Portable ZIP created: $([math]::Round($size, 1)) MB"
-        shell: pwsh
+          Write-Host "Portable ZIP: $([math]::Round($size, 1)) MB"
 
       - name: Create source code ZIP
+        if: steps.check.outputs.should_build == 'true'
+        shell: pwsh
         run: |
-          $version = "${{ needs.check-trigger.outputs.version }}"
+          $version = "${{ steps.check.outputs.version }}"
           $sourcePath = "${{ env.QACOMPILER_PATH }}"
           $zipPath = "${{ env.QACOMPILER_PATH }}\installer_output\QACompiler_v${version}_Source.zip"
 
-          Write-Host "Creating source code ZIP..."
-          # Exclude build artifacts, cache, etc.
+          $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\QACompiler_Source" -Force
           $excludes = @("dist", "build", "__pycache__", "*.pyc", "installer_output", ".pytest_cache")
 
-          # Create temp folder with clean source
-          $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\QACompiler_Source" -Force
-
-          # Copy source files excluding build artifacts
           Get-ChildItem -Path $sourcePath -Exclude $excludes | Copy-Item -Destination $tempDir -Recurse -Force
-
-          # Remove any __pycache__ folders that got copied
           Get-ChildItem -Path $tempDir -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
-          # Create ZIP
           Compress-Archive -Path "$tempDir\*" -DestinationPath $zipPath -Force
-
-          # Cleanup
           Remove-Item -Path $tempDir -Recurse -Force
 
           $size = (Get-Item $zipPath).Length / 1MB
-          Write-Host "Source ZIP created: $([math]::Round($size, 1)) MB"
-        shell: pwsh
+          Write-Host "Source ZIP: $([math]::Round($size, 1)) MB"
 
-      - name: Upload installer artifact
+      - name: Upload artifacts
+        if: steps.check.outputs.should_build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: QACompiler_Setup
-          path: ${{ env.QACOMPILER_PATH }}/installer_output/*.exe
+          name: QACompiler_Release
+          path: |
+            ${{ env.QACOMPILER_PATH }}/installer_output/*.exe
+            ${{ env.QACOMPILER_PATH }}/installer_output/*.zip
           retention-days: 30
 
-      - name: Upload portable ZIP artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: QACompiler_Portable
-          path: ${{ env.QACOMPILER_PATH }}/installer_output/*_Portable.zip
-          retention-days: 30
-
-      - name: Upload source ZIP artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: QACompiler_Source
-          path: ${{ env.QACOMPILER_PATH }}/installer_output/*_Source.zip
-          retention-days: 30
-
-  create-release:
-    name: Create GitHub Release
-    runs-on: ubuntu-latest
-    needs: [check-trigger, build-installer]
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download installer
-        uses: actions/download-artifact@v4
-        with:
-          name: QACompiler_Setup
-          path: ./artifacts
-
-      - name: Download portable ZIP
-        uses: actions/download-artifact@v4
-        with:
-          name: QACompiler_Portable
-          path: ./artifacts
-
-      - name: Download source ZIP
-        uses: actions/download-artifact@v4
-        with:
-          name: QACompiler_Source
-          path: ./artifacts
-
-      - name: List artifacts
-        run: |
-          echo "Downloaded artifacts:"
-          ls -lh artifacts/
-
-      - name: Create Release
+      - name: Create GitHub Release
+        if: steps.check.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: qacompiler-v${{ needs.check-trigger.outputs.version }}
-          name: QA Compiler Suite v${{ needs.check-trigger.outputs.version }}
+          tag_name: qacompiler-v${{ steps.check.outputs.version }}
+          name: QA Compiler Suite v${{ steps.check.outputs.version }}
           body: |
-            # QA Compiler Suite v${{ needs.check-trigger.outputs.version }}
+            # QA Compiler Suite v${{ steps.check.outputs.version }}
 
             ## Download
 
-            - **QACompiler_v${{ needs.check-trigger.outputs.version }}_Setup.exe** - Installer (recommended)
-            - **QACompiler_v${{ needs.check-trigger.outputs.version }}_Portable.zip** - Portable ZIP (no install needed)
-            - **QACompiler_v${{ needs.check-trigger.outputs.version }}_Source.zip** - Source code
+            - **QACompiler_v${{ steps.check.outputs.version }}_Setup.exe** - Installer (recommended)
+            - **QACompiler_v${{ steps.check.outputs.version }}_Portable.zip** - Portable ZIP (no install)
+            - **QACompiler_v${{ steps.check.outputs.version }}_Source.zip** - Source code
 
             ## Features
 
-            - Generate datasheets for all categories (Quest, Knowledge, Item, Region, Skill, Help, Character, Gimmick)
+            - Generate datasheets for all categories
             - Transfer QA files with automatic merging
             - Build master files with issue tracking
             - Coverage analysis and word count reports
             - Portable installation (Desktop by default)
-            - Drive selection for Perforce path (F:, D:, E:, etc.)
-            - No Python required - fully standalone
-
-            ## Installation
-
-            1. Download the installer
-            2. Run the setup
-            3. Select your Perforce drive (F: is default)
-            4. Choose install location (Desktop recommended)
-            5. Launch QA Compiler Suite
-
-            ## Workflows
-
-            **Daily:** Download from Redmine -> Put in QAfolder -> Done!
-
-            **Weekly:**
-            1. Move QAfolder contents to QAfolderOLD
-            2. Generate fresh datasheets
-            3. Click Transfer (auto-populates QAfolderNEW)
-            4. Build master files
+            - Drive selection for Perforce path
 
             ---
             *Portable installation - no admin rights required*
           draft: false
           prerelease: false
           files: |
-            artifacts/*.exe
-            artifacts/*.zip
+            ${{ env.QACOMPILER_PATH }}/installer_output/*.exe
+            ${{ env.QACOMPILER_PATH }}/installer_output/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Release summary
+      - name: Summary
+        if: steps.check.outputs.should_build == 'true'
         run: |
-          echo "Release v${{ needs.check-trigger.outputs.version }} created successfully!"
-          echo ""
-          echo "Download: QACompiler_v${{ needs.check-trigger.outputs.version }}_Setup.exe"
+          echo "=== QA Compiler Build Complete ==="
+          echo "Version: ${{ steps.check.outputs.version }}"
+          echo "Release: qacompiler-v${{ steps.check.outputs.version }}"
