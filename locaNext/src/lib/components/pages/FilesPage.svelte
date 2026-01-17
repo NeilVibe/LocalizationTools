@@ -644,6 +644,14 @@
 
   function handleEnterFolder(event) {
     const item = event.detail.item;
+
+    // GDP: BUG-042 Debug
+    logger.warning('GDP: FilesPage handleEnterFolder received', {
+      itemType: item.type,
+      itemId: item.id,
+      itemName: item.name
+    });
+
     if (item.type === 'platform') {
       loadPlatformContents(item.id, item.name);
     } else if (item.type === 'project') {
@@ -727,6 +735,8 @@
 
   // EXPLORER-008 + P9-BIN-001: Load Recycle Bin contents (both PostgreSQL and SQLite)
   async function loadTrashContents() {
+    // GDP: BUG-042 Debug
+    logger.warning('GDP: loadTrashContents called');
     loading = true;
     try {
       let allTrashItems = [];
@@ -1401,10 +1411,24 @@
    * P9: Uses offline endpoint when in Offline Storage
    */
   async function createFolder() {
-    if (!newFolderName.trim()) return;
+    // GDP: BUG-043 Debug
+    logger.warning('GDP: createFolder called', {
+      folderName: newFolderName,
+      isInOfflineStorage,
+      selectedProjectId,
+      currentPath: currentPath.map(p => ({ type: p.type, id: p.id, name: p.name }))
+    });
+
+    if (!newFolderName.trim()) {
+      logger.warning('GDP: createFolder - empty name, returning');
+      return;
+    }
 
     // P9: In Offline Storage, we don't need selectedProjectId
-    if (!isInOfflineStorage && !selectedProjectId) return;
+    if (!isInOfflineStorage && !selectedProjectId) {
+      logger.warning('GDP: createFolder - not in offline storage and no project selected, returning');
+      return;
+    }
 
     const folderName = newFolderName.trim();
     // FIX: Only use parent_id if we're inside a folder, not just inside a project
@@ -1431,6 +1455,7 @@
 
       if (isInOfflineStorage) {
         // P9: Create folder in SQLite Offline Storage
+        logger.warning('GDP: Creating folder in Offline Storage', { folderName, parentFolderId });
         response = await fetch(`${API_BASE}/api/ldm/offline/storage/folders`, {
           method: 'POST',
           headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
@@ -1439,6 +1464,7 @@
             parent_id: parentFolderId
           })
         });
+        logger.warning('GDP: Offline folder API response', { status: response.status, ok: response.ok });
       } else {
         // Standard PostgreSQL folder creation
         response = await fetch(`${API_BASE}/api/ldm/folders`, {

@@ -210,32 +210,67 @@ function saveLocalState(state) {
 }
 
 /**
- * Fetch JSON from URL
+ * Fetch JSON from URL using Electron's net module
+ * Uses Chromium networking stack - reliable on Windows
  */
 function fetchJson(url) {
-  return new Promise((resolve, reject) => {
-    const client = url.startsWith('https') ? https : http;
+  debugLog('fetchJson CALLED', { url });
 
-    client.get(url, { timeout: 10000 }, (res) => {
-      if (res.statusCode === 404) {
+  return new Promise((resolve, reject) => {
+    const request = net.request(url);
+    let data = '';
+
+    request.on('response', (response) => {
+      debugLog('fetchJson response', { statusCode: response.statusCode });
+
+      if (response.statusCode === 404) {
         // Manifest not found - patch updates not available yet
+        debugLog('fetchJson: 404 - manifest not found');
         return resolve(null);
       }
 
-      if (res.statusCode !== 200) {
-        return reject(new Error(`HTTP ${res.statusCode}`));
+      if (response.statusCode !== 200) {
+        return reject(new Error(`HTTP ${response.statusCode}`));
       }
 
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
+      response.on('data', (chunk) => {
+        data += chunk.toString();
+      });
+
+      response.on('end', () => {
         try {
-          resolve(JSON.parse(data));
+          const parsed = JSON.parse(data);
+          debugLog('fetchJson SUCCESS', { version: parsed.version, componentCount: Object.keys(parsed.components || {}).length });
+          resolve(parsed);
         } catch (err) {
+          debugLog('fetchJson PARSE ERROR', { error: err.message, dataLength: data.length });
           reject(new Error('Invalid JSON'));
         }
       });
-    }).on('error', reject);
+
+      response.on('error', (err) => {
+        debugLog('fetchJson response error', { error: err.message });
+        reject(err);
+      });
+    });
+
+    request.on('error', (err) => {
+      debugLog('fetchJson request error', { error: err.message });
+      reject(err);
+    });
+
+    // Timeout after 10 seconds
+    const timeout = setTimeout(() => {
+      debugLog('fetchJson TIMEOUT');
+      request.abort();
+      reject(new Error('Request timeout'));
+    }, 10000);
+
+    request.on('close', () => {
+      clearTimeout(timeout);
+    });
+
+    request.end();
   });
 }
 
@@ -368,21 +403,33 @@ function downloadFile(url, destPath, onProgress) {
  * Returns: { available: boolean, updates: [], totalSize: number, version: string }
  */
 export async function checkForPatchUpdate() {
-  console.log('[PatchUpdater] Checking for patch updates...');
+  debugLog('========== checkForPatchUpdate CALLED ==========', { MANIFEST_URL });
 
   try {
     // Fetch remote manifest
+    debugLog('Fetching manifest...');
     const manifest = await fetchJson(MANIFEST_URL);
 
     if (!manifest) {
-      console.log('[PatchUpdater] No manifest found - patch updates not available');
+      debugLog('No manifest found - patch updates not available');
       return { available: false, reason: 'no-manifest' };
     }
 
+    debugLog('Manifest fetched', {
+      version: manifest.version,
+      minVersion: manifest.minVersion,
+      components: Object.keys(manifest.components || {})
+    });
+
     // Load local state
+    debugLog('Loading local state...');
     const localState = loadLocalState();
 
-    console.log(`[PatchUpdater] Local: ${localState.version}, Remote: ${manifest.version}`);
+    debugLog('Version comparison', {
+      local: localState.version,
+      remote: manifest.version,
+      localComponents: Object.keys(localState.components || {})
+    });
 
     // Compare versions
     if (localState.version === manifest.version) {

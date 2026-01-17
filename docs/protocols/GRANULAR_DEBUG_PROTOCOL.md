@@ -321,6 +321,88 @@ When debugging: Log MORE than you think you need. You can always remove logs lat
 
 ---
 
+## Frontend UI Debugging (Svelte Components)
+
+For bugs where "clicking does nothing" or "action doesn't work":
+
+### Step 1: Add Entry Point Logging
+
+```javascript
+// In the click handler
+function handleTrashBinClick() {
+  logger.warning('GDP: Trash bin clicked', {
+    currentPath: breadcrumb.map(b => ({ type: b.type, id: b.id })),
+    isRecycleBin: showRecycleBin
+  });
+  // ... rest of function
+}
+```
+
+### Step 2: Trace State Changes
+
+```javascript
+// Log state BEFORE and AFTER changes
+logger.warning('GDP: Before state change', { showRecycleBin, currentView });
+showRecycleBin = true;
+logger.warning('GDP: After state change', { showRecycleBin, currentView });
+```
+
+### Step 3: Trace API Calls
+
+```javascript
+// Before fetch
+logger.warning('GDP: API call starting', { endpoint, method, body });
+
+const response = await fetch(endpoint);
+
+// After fetch
+logger.warning('GDP: API response', {
+  status: response.status,
+  ok: response.ok,
+  data: await response.clone().json()
+});
+```
+
+### Step 4: Check Svelte Reactivity
+
+```javascript
+// In $effect or $derived
+$effect(() => {
+  logger.warning('GDP: Effect triggered', {
+    dependency1: value1,
+    dependency2: value2
+  });
+});
+```
+
+### Quick Checklist for "Nothing Happens" Bugs
+
+```
+□ 1. Is the click handler attached? (check onclick in template)
+□ 2. Is the handler being called? (add logger.warning at top)
+□ 3. What state changes should happen? (log before/after)
+□ 4. Is an API call involved? (log request/response)
+□ 5. Does the UI depend on state correctly? ({#if} conditions)
+□ 6. Are logs appearing in backend? (check /api/v1/remote-logs)
+□ 7. Check browser Network tab for failed requests
+□ 8. Check browser Console for JS errors
+```
+
+### Remote Logger Quick Reference
+
+```javascript
+// Import
+import { logger } from '$lib/utils/remote-logger.js';
+
+// WARNING level = visible in backend logs
+logger.warning('GDP: Debug message', { data });
+
+// After debugging, downgrade to INFO
+logger.info('Normal flow message', { data });
+```
+
+---
+
 *Protocol established: 2026-01-11*
 *Case study: TM Paste Bug - Query Params vs Body*
 

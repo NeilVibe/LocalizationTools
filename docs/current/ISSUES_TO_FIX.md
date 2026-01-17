@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-11 (Session 39) | **Build:** 454 | **Open:** 0
+**Last Updated:** 2026-01-17 (Session 47) | **Build:** 483 | **Open:** 4
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 0 |
+| **OPEN** | 4 |
 | **FIXED/CLOSED** | 127 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
@@ -17,7 +17,138 @@
 
 ## OPEN ISSUES
 
-*None! All issues fixed.*
+### PATCH-001: Patch Updater Downloads Full Installer Instead of Patch ⚠️ CRITICAL
+
+- **Reported:** 2026-01-17 (Session 47)
+- **Severity:** CRITICAL (defeats entire purpose of patch updater)
+- **Status:** OPEN
+- **Component:** electron/patch-updater.js
+
+**Problem:** The patch updater downloads the FULL INSTALLER (624MB) instead of just the app.asar (~18MB).
+
+**Expected Behavior:**
+- Compare local file hashes with server
+- Download ONLY changed files (primarily app.asar)
+- Game-launcher style delta updates
+
+**Actual Behavior:**
+```
+/mnt/c/Users/MYCOM/AppData/Local/locanext-updater/pending/
+├── LocaNext_v26.117.1932_Light_Setup.exe  → 624MB (FULL INSTALLER!)
+└── update-info.json                        → SHA512 verified
+```
+
+**Root Cause:** Core patch logic to identify and download only changed files was never implemented or isn't working.
+
+**Location to investigate:** `electron/patch-updater.js`
+
+---
+
+### PATCH-002: Install/Swap Logic Fails After Download ⚠️ CRITICAL
+
+- **Reported:** 2026-01-17 (Session 47)
+- **Severity:** CRITICAL (breaks update flow)
+- **Status:** OPEN
+- **Component:** electron/patch-updater.js
+
+**Problem:** After clicking "Restart Now", the old app is deleted but the new version isn't installed.
+
+**Expected Behavior:**
+1. Download completes
+2. User clicks "Restart Now"
+3. Old files backed up or replaced
+4. New files installed
+5. App restarts with new version
+
+**Actual Behavior:**
+```
+C:\...\Playground\LocaNext\  → EMPTY DIRECTORY
+```
+
+Old app deleted, new app NOT installed. User left with broken installation.
+
+---
+
+### BUG-042: Trash Bin Cannot Be Accessed ⚠️ LOW (WINDOWS-SPECIFIC)
+
+- **Reported:** 2026-01-17 (Session 47)
+- **Severity:** LOW (works in DEV mode - Windows-specific)
+- **Status:** NEEDS WINDOWS TESTING
+- **Component:** FilesPage.svelte
+
+**Problem:** Clicking on Trash Bin in File Explorer does nothing on Windows Electron app.
+
+**DEV Mode Testing (2026-01-17):**
+- ✅ **WORKS IN DEV MODE** - Tested with Playwright
+- GDP logging shows complete chain:
+  ```
+  handleDoubleClick → dispatch('enterFolder') → handleEnterFolder → loadTrashContents()
+  ```
+- Trash items correctly displayed in DEV mode
+- Screenshot shows breadcrumb "Home > Recycle Bin" with trash items listed
+
+**Conclusion:** Bug is **Windows Electron-specific**, not in core functionality.
+
+**Next Steps:** Test on Windows with GDP logging enabled in backend.
+
+---
+
+### BUG-043: Offline Storage Folder Creation Broken ⚠️ LOW (WINDOWS-SPECIFIC)
+
+- **Reported:** 2026-01-17 (Session 47)
+- **Severity:** LOW (works in DEV mode - Windows-specific)
+- **Status:** NEEDS WINDOWS TESTING
+- **Component:** FilesPage.svelte, offline.py
+
+**Problem:** Cannot create folders in Offline Storage on Windows Electron app.
+
+**DEV Mode Testing (2026-01-17):**
+- ✅ **Offline Storage navigation WORKS** - Tested with Playwright
+- GDP logging shows:
+  ```
+  handleDoubleClick → dispatch('enterFolder') → handleEnterFolder → loadOfflineStorageContents()
+  ```
+- Screenshot shows breadcrumb "Home > Offline Storage" with folders listed
+- GDP logging added to `createFolder()` function for Windows debugging
+
+**Conclusion:** Navigation works. Creation not tested due to test selector issues.
+Bug may be **Windows Electron-specific** or **API-related**.
+
+**Next Steps:** Test folder creation on Windows with GDP logging enabled.
+
+---
+
+### TECH-DEBT-001: AsyncSessionWrapper Should Be aiosqlite ⚠️ HIGH
+
+- **Reported:** 2026-01-17 (Session 47)
+- **Severity:** HIGH (architectural debt)
+- **Status:** OPEN
+- **Component:** server/utils/dependencies.py:33-143
+
+**Problem:** AsyncSessionWrapper is a HACK that wraps sync SQLite sessions to fake async behavior.
+
+**Current Implementation:**
+```python
+def execute(self, *args, **kwargs):
+    result = self._session.execute(*args)
+    async def _awaitable():
+        return result  # Resolves INSTANTLY - not true async!
+    return _awaitable()
+```
+
+**Issues:**
+- No actual concurrency - blocks event loop
+- GIL blocking with SQLite in async context
+- Misleading type signature
+- Hides the real problem
+
+**Proper Solution:** Replace with `aiosqlite` library for true async SQLite operations.
+
+**Related Leaks Found in DB Factory Review:**
+1. SQLite repos access `_get_connection()` directly (private method)
+2. Bulk operations break out to sync session in async methods
+
+**Effort Estimate:** 2-3 days
 
 ---
 

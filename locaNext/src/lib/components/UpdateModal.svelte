@@ -116,32 +116,51 @@
 
   // Check if patch update is available
   async function checkPatchUpdate() {
+    logger.info('UpdateModal: Checking for patch update...');
+
     if (!window.electronUpdate?.checkPatchUpdate) {
+      logger.warning('UpdateModal: checkPatchUpdate API not available');
       patchAvailable = false;
       return;
     }
 
     try {
       const result = await window.electronUpdate.checkPatchUpdate();
+      logger.info('UpdateModal: Patch check result', {
+        success: result.success,
+        available: result.available,
+        reason: result.reason,
+        version: result.version,
+        updateCount: result.updates?.length,
+        totalSize: result.totalSize,
+        error: result.error
+      });
+
       if (result.success && result.available) {
         patchAvailable = true;
         updateMode = 'patch';
         patchComponents = result.updates || [];
         totalPatchSize = result.totalSize || 0;
-        logger.info('UpdateModal: Patch update available', {
-          components: patchComponents.length,
+        logger.success('UpdateModal: PATCH UPDATE AVAILABLE!', {
+          components: patchComponents.map(c => c.name),
           size: formatBytes(totalPatchSize),
           savings: savingsPercent + '%'
         });
       } else {
         patchAvailable = false;
         updateMode = 'full';
-        logger.info('UpdateModal: No patch available, will use full update', { reason: result.reason });
+        logger.info('UpdateModal: No patch available, will use full update', {
+          reason: result.reason,
+          error: result.error
+        });
       }
     } catch (err) {
       patchAvailable = false;
       updateMode = 'full';
-      logger.warning('UpdateModal: Patch check failed', { error: err.message });
+      logger.error('UpdateModal: Patch check EXCEPTION', {
+        error: err.message,
+        stack: err.stack?.split('\n').slice(0, 3).join(' | ')
+      });
     }
   }
 
@@ -250,8 +269,17 @@
   }
 
   function handleRestartNow() {
-    logger.userAction('User clicked restart now');
-    window.electronUpdate?.quitAndInstall();
+    logger.userAction('User clicked restart now', { mode: updateMode });
+
+    if (updateMode === 'patch') {
+      // PATCH update: Use restartApp which handles pending file swaps
+      logger.info('Using restartApp for PATCH update');
+      window.electronUpdate?.restartApp?.() || window.electronUpdate?.quitAndInstall();
+    } else {
+      // FULL update: Use quitAndInstall (runs NSIS installer)
+      logger.info('Using quitAndInstall for FULL update');
+      window.electronUpdate?.quitAndInstall();
+    }
   }
 
   function handleLater() {
