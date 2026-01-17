@@ -165,28 +165,46 @@ function fetchJson(url) {
  * Download file with progress callback
  */
 function downloadFile(url, destPath, onProgress) {
+  console.log(`[PatchUpdater:download] Starting download from: ${url}`);
+  console.log(`[PatchUpdater:download] Destination: ${destPath}`);
+
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
+    console.log(`[PatchUpdater:download] Using ${url.startsWith('https') ? 'HTTPS' : 'HTTP'} client`);
 
     // Ensure temp directory exists
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    console.log(`[PatchUpdater:download] Directory ensured: ${path.dirname(destPath)}`);
 
     const file = fs.createWriteStream(destPath);
+    console.log(`[PatchUpdater:download] File stream created`);
 
-    client.get(url, { timeout: 60000 }, (res) => {
+    const req = client.get(url, { timeout: 120000 }, (res) => {
+      console.log(`[PatchUpdater:download] Response status: ${res.statusCode}`);
+      console.log(`[PatchUpdater:download] Content-Length: ${res.headers['content-length']}`);
+
       if (res.statusCode !== 200) {
-        fs.unlinkSync(destPath);
+        try { fs.unlinkSync(destPath); } catch (e) { }
         return reject(new Error(`HTTP ${res.statusCode}`));
       }
 
       const totalSize = parseInt(res.headers['content-length'], 10);
       let downloadedSize = 0;
+      let lastLogPercent = 0;
 
       res.on('data', chunk => {
         downloadedSize += chunk.length;
+        const percent = (downloadedSize / totalSize) * 100;
+
+        // Log every 20%
+        if (percent - lastLogPercent >= 20) {
+          console.log(`[PatchUpdater:download] ${percent.toFixed(0)}% (${(downloadedSize / 1024 / 1024).toFixed(1)} MB)`);
+          lastLogPercent = percent;
+        }
+
         if (onProgress) {
           onProgress({
-            percent: (downloadedSize / totalSize) * 100,
+            percent,
             transferred: downloadedSize,
             total: totalSize
           });
@@ -197,11 +215,29 @@ function downloadFile(url, destPath, onProgress) {
 
       file.on('finish', () => {
         file.close();
+        console.log(`[PatchUpdater:download] Download complete: ${destPath}`);
         resolve(destPath);
       });
-    }).on('error', err => {
-      fs.unlinkSync(destPath);
+
+      file.on('error', (err) => {
+        console.error(`[PatchUpdater:download] File write error: ${err.message}`);
+        try { fs.unlinkSync(destPath); } catch (e) { }
+        reject(err);
+      });
+
+    });
+
+    req.on('error', err => {
+      console.error(`[PatchUpdater:download] Request error: ${err.message}`);
+      try { fs.unlinkSync(destPath); } catch (e) { }
       reject(err);
+    });
+
+    req.on('timeout', () => {
+      console.error(`[PatchUpdater:download] Request timeout`);
+      req.destroy();
+      try { fs.unlinkSync(destPath); } catch (e) { }
+      reject(new Error('Download timeout'));
     });
   });
 }
@@ -287,7 +323,10 @@ const PENDING_FILE = path.join(USER_DATA_PATH, 'pending-update.json');
  * The actual swap happens on restart via applyPendingUpdates()
  */
 export async function applyPatchUpdate(updates, onProgress) {
-  console.log('[PatchUpdater] Downloading patch update to staging...');
+  console.log('[PatchUpdater] ========== PATCH UPDATE START ==========');
+  console.log('[PatchUpdater] Updates to process:', updates?.length);
+  console.log('[PatchUpdater] STAGING_DIR:', STAGING_DIR);
+  console.log('[PatchUpdater] RESOURCES_PATH:', RESOURCES_PATH);
 
   // Clean staging directory
   if (fs.existsSync(STAGING_DIR)) {
@@ -302,7 +341,8 @@ export async function applyPatchUpdate(updates, onProgress) {
   const totalSize = updates.reduce((sum, u) => sum + u.size, 0);
 
   for (const update of updates) {
-    console.log(`[PatchUpdater] Downloading: ${update.name}`);
+    console.log(`[PatchUpdater] ===== Processing: ${update.name} =====`);
+    console.log(`[PatchUpdater] Update size: ${(update.size / 1024 / 1024).toFixed(2)} MB`);
 
     try {
       // Build full URL
@@ -310,10 +350,18 @@ export async function applyPatchUpdate(updates, onProgress) {
         ? update.url
         : `${UPDATE_BASE_URL}/${REPO_PATH}/releases/download/latest/${update.url}`;
 
+      console.log(`[PatchUpdater] Download URL: ${url}`);
+
       const stagingPath = path.join(STAGING_DIR, update.name);
+      console.log(`[PatchUpdater] Staging path: ${stagingPath}`);
+      console.log(`[PatchUpdater] Starting download...`);
 
       // Download with progress
       await downloadFile(url, stagingPath, (progress) => {
+        // Log progress every 10%
+        if (Math.floor(progress.percent) % 10 === 0) {
+          console.log(`[PatchUpdater] Progress: ${progress.percent.toFixed(0)}%`);
+        }
         if (onProgress) {
           const overallProgress = ((completedSize + progress.transferred) / totalSize) * 100;
           onProgress({
@@ -326,11 +374,15 @@ export async function applyPatchUpdate(updates, onProgress) {
         }
       });
 
+      console.log(`[PatchUpdater] Download completed for: ${update.name}`);
+
       // Verify hash
+      console.log(`[PatchUpdater] Verifying hash...`);
       const hash = await hashFile(stagingPath);
       if (hash !== update.sha256) {
         throw new Error(`Hash mismatch: expected ${update.sha256.substring(0, 16)}..., got ${hash.substring(0, 16)}...`);
       }
+      console.log(`[PatchUpdater] Hash verified: ${hash.substring(0, 16)}...`);
 
       console.log(`[PatchUpdater] Verified and staged: ${update.name}`);
 

@@ -141,3 +141,4 @@ Build skip_linux 468: Fix patch updater - stage files instead of replacing locke
 Build 469: Full build with patch updater fix
 Build skip_linux 470: Bypass flaky user mgmt tests
 Build skip_linux 471: Test patch updater staging+swap
+Build skip_linux 472: Add patch updater debug logging
