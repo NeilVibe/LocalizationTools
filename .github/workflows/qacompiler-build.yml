@@ -213,14 +213,28 @@ jobs:
           $size = (Get-Item $zipPath).Length / 1MB
           Write-Host "Source ZIP: $([math]::Round($size, 1)) MB"
 
-      - name: Upload artifacts
+      - name: Upload Setup
         if: steps.check.outputs.should_build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: QACompiler_Release
-          path: |
-            ${{ env.QACOMPILER_PATH }}/installer_output/*.exe
-            ${{ env.QACOMPILER_PATH }}/installer_output/*.zip
+          name: QACompiler-Setup
+          path: ${{ env.QACOMPILER_PATH }}/installer_output/*.exe
+          retention-days: 30
+
+      - name: Upload Portable
+        if: steps.check.outputs.should_build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: QACompiler-Portable
+          path: ${{ env.QACOMPILER_PATH }}/installer_output/*_Portable.zip
+          retention-days: 30
+
+      - name: Upload Source
+        if: steps.check.outputs.should_build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: QACompiler-Source
+          path: ${{ env.QACOMPILER_PATH }}/installer_output/*_Source.zip
           retention-days: 30
 
       - name: Create GitHub Release
