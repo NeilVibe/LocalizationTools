@@ -77,6 +77,11 @@ jobs:
               echo "skip_build=yes" >> $GITHUB_OUTPUT
               echo "skip_linux=no" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT] Smart checkpoint mode"
+            elif echo "$TRIGGER" | grep -qi "skip_linux\|skiplinux"; then
+              echo "mode=official" >> $GITHUB_OUTPUT
+              echo "skip_build=false" >> $GITHUB_OUTPUT
+              echo "skip_linux=yes" >> $GITHUB_OUTPUT
+              echo "[SKIP_LINUX] Skipping Safety Checks - direct Windows build"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=false" >> $GITHUB_OUTPUT
