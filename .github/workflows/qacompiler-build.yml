@@ -177,6 +177,11 @@ jobs:
               New-Item -ItemType Directory -Path $path -Force | Out-Null
               Write-Host "Created: $folder"
             }
+            # Add .gitkeep to ensure empty folders are included in ZIP
+            $gitkeep = "$path\.gitkeep"
+            if (!(Test-Path $gitkeep)) {
+              New-Item -ItemType File -Path $gitkeep -Force | Out-Null
+            }
           }
 
           # Copy config files
