@@ -204,6 +204,38 @@ def get_or_create_user_status_column(ws, username: str, after_col: int) -> int:
     return new_col
 
 
+def get_or_create_user_manager_comment_column(ws, username: str, after_col: int) -> int:
+    """
+    Find or create MANAGER_COMMENT_{username} column.
+
+    This column is paired with STATUS_{username} for manager notes.
+    Returns: Column index (1-based)
+    """
+    target_header = f"MANAGER_COMMENT_{username}"
+
+    # Search for existing column
+    for col in range(1, ws.max_column + 1):
+        header = ws.cell(row=1, column=col).value
+        if header and str(header).strip().upper() == target_header.upper():
+            return col
+
+    # Create new column
+    new_col = ws.max_column + 1
+    cell = ws.cell(row=1, column=new_col, value=target_header)
+    # Style: Light green fill with MEDIUM green borders (match manager status)
+    cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+    cell.font = Font(bold=True, color="000000")
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.border = Border(
+        left=Side(style='medium', color='228B22'),
+        right=Side(style='medium', color='228B22'),
+        top=Side(style='medium', color='228B22'),
+        bottom=Side(style='medium', color='228B22')
+    )
+    print(f"    Created column: {target_header} at {get_column_letter(new_col)} (manager comment)")
+    return new_col
+
+
 def get_or_create_user_screenshot_column(ws, username: str, after_col: int) -> int:
     """
     Find or create SCREENSHOT_{username} column.
@@ -239,26 +271,27 @@ def get_or_create_user_screenshot_column(ws, username: str, after_col: int) -> i
 # USER COLUMN HELPERS
 # =============================================================================
 
-def find_or_create_user_columns(ws, username: str) -> Tuple[int, int, int, int]:
+def find_or_create_user_columns(ws, username: str) -> Tuple[int, int, int, int, int]:
     """
     Find or create all user columns in order:
-    COMMENT_{user} -> TESTER_STATUS_{user} (hidden) -> STATUS_{user} -> SCREENSHOT_{user}
+    COMMENT_{user} -> TESTER_STATUS_{user} (hidden) -> STATUS_{user} -> MANAGER_COMMENT_{user} -> SCREENSHOT_{user}
 
     Args:
         ws: Worksheet
         username: Tester username
 
     Returns:
-        Tuple of (comment_col, tester_status_col, status_col, screenshot_col)
+        Tuple of (comment_col, tester_status_col, status_col, manager_comment_col, screenshot_col)
     """
     comment_col = get_or_create_user_comment_column(ws, username)
     tester_status_col = get_or_create_tester_status_column(ws, username, comment_col)
     status_col = get_or_create_user_status_column(ws, username, comment_col)
-    screenshot_col = get_or_create_user_screenshot_column(ws, username, status_col)
-    return comment_col, tester_status_col, status_col, screenshot_col
+    manager_comment_col = get_or_create_user_manager_comment_column(ws, username, status_col)
+    screenshot_col = get_or_create_user_screenshot_column(ws, username, manager_comment_col)
+    return comment_col, tester_status_col, status_col, manager_comment_col, screenshot_col
 
 
-def add_user_columns(ws, username: str) -> Tuple[int, int, int, int]:
+def add_user_columns(ws, username: str) -> Tuple[int, int, int, int, int]:
     """Alias for find_or_create_user_columns for backwards compatibility."""
     return find_or_create_user_columns(ws, username)
 
@@ -310,7 +343,8 @@ def process_sheet(
     master_comment_col = get_or_create_user_comment_column(master_ws, username)
     master_tester_status_col = get_or_create_tester_status_column(master_ws, username, master_comment_col)
     master_user_status_col = get_or_create_user_status_column(master_ws, username, master_comment_col)
-    master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_user_status_col)
+    master_manager_comment_col = get_or_create_user_manager_comment_column(master_ws, username, master_user_status_col)
+    master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_manager_comment_col)
 
     result = {
         "comments": 0,
@@ -485,24 +519,49 @@ def process_sheet(
 
                     result["screenshots"] += 1
 
-        # Apply manager STATUS
+        # Apply manager STATUS and MANAGER_COMMENT
         if comment_text_for_lookup and manager_status:
             if comment_text_for_lookup in manager_status:
-                user_statuses = manager_status[comment_text_for_lookup]
-                if username in user_statuses:
-                    status_value = user_statuses[username]
-                    status_cell = master_ws.cell(row=master_row, column=master_user_status_col)
-                    status_cell.value = status_value
-                    status_cell.alignment = Alignment(horizontal='center', vertical='center')
-                    if status_value == "FIXED":
-                        status_cell.font = Font(bold=True, color="228B22")
-                    elif status_value == "REPORTED":
-                        status_cell.font = Font(bold=True, color="FF8C00")
-                    elif status_value == "CHECKING":
-                        status_cell.font = Font(bold=True, color="0000FF")
-                    elif status_value in ("NON-ISSUE", "NON ISSUE"):
-                        status_cell.font = Font(bold=True, color="808080")
-                    result["manager_restored"] += 1
+                user_data = manager_status[comment_text_for_lookup]
+                if username in user_data:
+                    manager_info = user_data[username]
+                    # Handle both old format (string) and new format (dict)
+                    if isinstance(manager_info, dict):
+                        status_value = manager_info.get("status")
+                        manager_comment_value = manager_info.get("manager_comment")
+                    else:
+                        # Backwards compatibility: old format was just the status string
+                        status_value = manager_info
+                        manager_comment_value = None
+
+                    # Apply status
+                    if status_value:
+                        status_cell = master_ws.cell(row=master_row, column=master_user_status_col)
+                        status_cell.value = status_value
+                        status_cell.alignment = Alignment(horizontal='center', vertical='center')
+                        if status_value == "FIXED":
+                            status_cell.font = Font(bold=True, color="228B22")
+                        elif status_value == "REPORTED":
+                            status_cell.font = Font(bold=True, color="FF8C00")
+                        elif status_value == "CHECKING":
+                            status_cell.font = Font(bold=True, color="0000FF")
+                        elif status_value in ("NON-ISSUE", "NON ISSUE"):
+                            status_cell.font = Font(bold=True, color="808080")
+                        result["manager_restored"] += 1
+
+                    # Apply manager comment
+                    if manager_comment_value:
+                        manager_comment_cell = master_ws.cell(row=master_row, column=master_manager_comment_col)
+                        manager_comment_cell.value = manager_comment_value
+                        manager_comment_cell.alignment = Alignment(wrap_text=True, vertical='top')
+                        # Light green background to match manager status theme
+                        manager_comment_cell.fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+                        manager_comment_cell.border = Border(
+                            left=Side(style='thin', color='228B22'),
+                            right=Side(style='thin', color='228B22'),
+                            top=Side(style='thin', color='228B22'),
+                            bottom=Side(style='thin', color='228B22')
+                        )
 
     return result
 
@@ -739,12 +798,12 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
             col_letter = get_column_letter(col)
             ws.column_dimensions[col_letter].hidden = False
 
-            # Also unhide paired SCREENSHOT_{User} and STATUS_{User} columns (case-insensitive)
+            # Also unhide paired SCREENSHOT_{User}, STATUS_{User}, and MANAGER_COMMENT_{User} columns (case-insensitive)
             for search_col in range(1, ws.max_column + 1):
                 search_header = ws.cell(row=1, column=search_col).value
                 if search_header:
                     search_header_upper = str(search_header).upper()
-                    if search_header_upper == f"SCREENSHOT_{username_upper}" or search_header_upper == f"STATUS_{username_upper}":
+                    if search_header_upper in [f"SCREENSHOT_{username_upper}", f"STATUS_{username_upper}", f"MANAGER_COMMENT_{username_upper}"]:
                         search_col_letter = get_column_letter(search_col)
                         ws.column_dimensions[search_col_letter].hidden = False
                     # TESTER_STATUS always stays hidden
@@ -796,7 +855,7 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
                     if search_header:
                         search_header_upper = str(search_header).upper()
                         username_upper = username.upper()
-                        if search_header_upper in [f"SCREENSHOT_{username_upper}", f"STATUS_{username_upper}", f"TESTER_STATUS_{username_upper}"]:
+                        if search_header_upper in [f"SCREENSHOT_{username_upper}", f"STATUS_{username_upper}", f"TESTER_STATUS_{username_upper}", f"MANAGER_COMMENT_{username_upper}"]:
                             search_col_letter = ws.cell(row=1, column=search_col).column_letter
                             ws.column_dimensions[search_col_letter].hidden = True
                             hidden_cols_this_sheet += 1
@@ -805,6 +864,30 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
                     print(f"    [DEBUG] Hidden empty column group for user: {username}")
 
         hidden_columns_total += hidden_cols_this_sheet
+
+        # === HIDE EMPTY SCREENSHOT_{User} COLUMNS ===
+        # Even if user has comments, hide SCREENSHOT column if ALL cells are empty
+        for col in range(1, ws.max_column + 1):
+            header = ws.cell(row=1, column=col).value
+            if header and str(header).startswith("SCREENSHOT_"):
+                # Check if column is already hidden
+                col_letter = get_column_letter(col)
+                if ws.column_dimensions[col_letter].hidden:
+                    continue  # Skip already hidden columns
+
+                # Check if any cell has content
+                has_content = False
+                for row in range(2, ws.max_row + 1):
+                    cell_value = ws.cell(row=row, column=col).value
+                    if cell_value is not None and str(cell_value).strip():
+                        has_content = True
+                        break
+
+                if not has_content:
+                    ws.column_dimensions[col_letter].hidden = True
+                    hidden_columns_total += 1
+                    if debug:
+                        print(f"    [DEBUG] Hidden empty SCREENSHOT column: {header}")
 
         # === FIND TESTER_STATUS_{User} columns for tester status hiding ===
         tester_status_cols = []

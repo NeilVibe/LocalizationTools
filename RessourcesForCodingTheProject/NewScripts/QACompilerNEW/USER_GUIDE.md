@@ -292,7 +292,7 @@ QAfolder/
 | **Help** | Tutorial, tips | `GameAdvice_LQA_All/` |
 | **Gimmick** | Interactive objects | `Gimmick_LQA_Output/` |
 
-### Output Excel Columns
+### Tester Sheet Columns (Generated Datasheets)
 
 | Column | Description | Editable? |
 |--------|-------------|-----------|
@@ -303,6 +303,18 @@ QAfolder/
 | **COMMENT** | Tester notes | ✅ Yes |
 | **STRINGID** | Unique identifier | ❌ No |
 | **SCREENSHOT** | Screenshot reference | ✅ Yes |
+
+### Master File Columns (After Build)
+
+Master files include additional columns per tester:
+
+| Column | Description | Editable? |
+|--------|-------------|-----------|
+| **COMMENT_{User}** | Tester's comment (from QA) | ❌ Preserved |
+| **TESTER_STATUS_{User}** | Original tester status | ❌ Hidden |
+| **STATUS_{User}** | Manager review status | ✅ Yes |
+| **MANAGER_COMMENT_{User}** | Manager's notes | ✅ Yes |
+| **SCREENSHOT_{User}** | Screenshot reference | ❌ Preserved |
 
 ### Tester STATUS Options
 
@@ -390,6 +402,28 @@ The `_TRACKER.xlsx` contains:
 | **TOTAL** | Overall statistics and rankings |
 | **_DAILY_DATA** | Raw data (hidden) |
 
+#### TOTAL Tab Structure
+
+The TOTAL tab displays per-tester statistics in three color-coded sections:
+
+| Section | Color | Columns |
+|---------|-------|---------|
+| **Tester Stats** | 🔵 Blue | Done, Issues, No Issue, Blocked, Korean |
+| **Manager Stats** | 🟢 Green | Fixed, Reported, NonIssue, Checking, Pending |
+| **Workload Analysis** | 🟠 Light Orange | Actual Done, Daily Avg, Type, Days Worked, Tester Assessment |
+
+##### Workload Analysis Columns
+
+| Column | Formula/Source | Description |
+|--------|----------------|-------------|
+| **Actual Done** | `Done - Blocked - Korean` | Real completed work count |
+| **Daily Avg** | `Actual Done / Days Worked` | Daily productivity metric |
+| **Type** | From `TesterType.txt` | "Text" or "Gameplay" |
+| **Days Worked** | Manual entry | Manager fills in days |
+| **Tester Assessment** | Manual entry | Manager's quality notes |
+
+> **Note:** Configure tester types in `TesterType.txt` (same format as `languageTOtester_list.txt`)
+
 ### Automatic Row Hiding
 
 Rows are automatically hidden based on two status columns:
@@ -417,7 +451,21 @@ This is the **manager's review status** (dropdown in Master file):
 | `CHECKING` | ❌ No | Under investigation |
 | *(empty)* | ❌ No | Pending manager review |
 
+#### MANAGER COMMENT (`MANAGER_COMMENT_{User}` - visible column)
+
+Manager notes paired with manager status. Both are preserved when master files are rebuilt.
+
+| Feature | Description |
+|---------|-------------|
+| **Paired with** | `STATUS_{User}` |
+| **Preserved on rebuild** | ✅ Yes - keyed by tester comment |
+| **Use case** | Track why status was set, additional notes |
+
 **Summary:** Only `ISSUE` rows that haven't been resolved by manager are visible.
+
+#### SCREENSHOT Column Auto-Hide
+
+`SCREENSHOT_{User}` columns are automatically hidden if ALL cells in the column are empty.
 
 ---
 
