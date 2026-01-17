@@ -122,8 +122,8 @@ def autofit_row_heights(ws, default_height: int = 15, line_height: int = 15):
 TESTER_HEADERS = ["User", "Done", "Issues", "No Issue", "Blocked", "Korean"]
 MANAGER_HEADERS = ["Fixed", "Reported", "NonIssue", "Checking", "Pending"]
 # Workload Analysis headers (light orange section)
-# Order: Actual Done (auto) | Days Worked (manual) | Daily Avg (auto) | Type (auto) | Tester Assessment (manual)
-WORKLOAD_HEADERS = ["Actual Done", "Days Worked", "Daily Avg", "Type", "Tester Assessment"]
+# Order: Actual Done (auto) | Days Worked (manual) | Daily Avg (auto) | Type (auto) | Comment (manual)
+WORKLOAD_HEADERS = ["Actual Done", "Days Worked", "Daily Avg", "Type", "Comment"]
 
 
 # =============================================================================
