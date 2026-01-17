@@ -16,44 +16,208 @@
 
 | Section | Description |
 |---------|-------------|
-| [Getting Started](#-getting-started) | Installation and first launch |
+| [Installation](#-installation) | Build and setup |
+| [Workflows Overview](#-workflows-overview) | Weekly vs Daily tasks |
+| [Weekly Workflow](#-weekly-workflow-friday-refresh) | Generate → Transfer → Build |
+| [Daily Workflow](#-daily-workflow) | Download and organize tester files |
 | [Main Interface](#-main-interface) | Understanding the GUI |
-| [Generate Datasheets](#-1-generate-datasheets) | Create LQA worksheets from game data |
-| [Transfer QA Files](#-2-transfer-qa-files) | Merge tester work into QAfolder |
-| [Build Master Files](#-3-build-master-files) | Compile final master documents |
-| [Coverage Analysis](#-4-coverage-analysis) | Check translation coverage |
-| [System Localizer](#-5-system-localizer) | Create localized System sheets |
+| [1. Generate Datasheets](#-1-generate-datasheets) | Create LQA worksheets |
+| [2. Transfer QA Files](#-2-transfer-qa-files) | Merge tester work |
+| [3. Build Master Files](#-3-build-master-files) | Compile master documents |
+| [4. Coverage Analysis](#-4-coverage-analysis) | Check translation coverage |
+| [5. System Localizer](#-5-system-localizer) | Localize System sheets |
 | [Folder Structure](#-folder-structure) | Where files go |
-| [Troubleshooting](#-troubleshooting) | Common issues and solutions |
+| [Folder Naming Convention](#folder-naming-convention) | How to name tester folders |
+| [Troubleshooting](#-troubleshooting) | Common issues |
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Installation
 
-### Installation
+### Build Your Own Executable
 
-1. **Download** the latest `QACompiler.exe` package
-2. **Extract** to your preferred location (e.g., `C:\Tools\QACompiler\`)
-3. **Double-click** `QACompiler.exe` to launch
+Each user builds their own executable to match their Perforce drive location.
 
-> 💡 **Tip:** Keep the folder structure intact - don't move files around!
+| Step | Action |
+|------|--------|
+| 1 | **Extract** the QACompilerNEW.zip to a folder |
+| 2 | **Run** `build_exe.bat` |
+| 3 | When prompted, **enter your drive letter** (F, D, E, etc.) |
+| 4 | Wait for build to complete |
+| 5 | Find executable in `dist\QACompiler\QACompiler.exe` |
 
-### First Launch Checklist
+```
+Enter drive letter (F/D/E/etc.) [F]: D
+```
 
-Before using the tool, verify these paths exist on your system:
+### Why Build Yourself?
 
-| Path | Purpose |
-|------|---------|
-| `F:\perforce\cd\mainline\resource\GameData\StaticInfo\` | Game XML data |
-| `F:\perforce\cd\mainline\resource\GameData\stringtable\loc\` | Language files |
+- **Different drives**: Perforce can be on F:, D:, E: etc.
+- **Correct paths**: Build process configures paths for YOUR system
+- **No manual editing**: Drive selection is automatic
 
-> ⚠️ **Different Drive?** If your Perforce is on D: or E: drive, see [Building for Different Drives](#building-for-different-drives).
+### Requirements
+
+| Requirement | Details |
+|-------------|---------|
+| Python | 3.8 or higher |
+| pip | Comes with Python |
+| Perforce | Must be synced to your machine |
+
+### After Building
+
+Copy the entire `dist\QACompiler\` folder to your preferred location:
+
+```
+C:\Tools\QACompiler\
+├── QACompiler.exe      ← Double-click to run
+├── QAfolder\
+├── QAfolderOLD\
+├── QAfolderNEW\
+└── ...
+```
+
+---
+
+## 📋 Workflows Overview
+
+The QA Compiler supports two main workflows:
+
+| Workflow | Frequency | Purpose |
+|----------|-----------|---------|
+| **Weekly (Friday Refresh)** | Every Friday | Refresh all datasheets with new game data |
+| **Daily** | Every day | Process tester submissions |
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    WEEKLY WORKFLOW (Friday)                      │
+│  Generate Datasheets → Transfer QA Files → Build Master Files   │
+└─────────────────────────────────────────────────────────────────┘
+                              ↑
+                              │ feeds into
+                              │
+┌─────────────────────────────────────────────────────────────────┐
+│                    DAILY WORKFLOW                                │
+│  Download from Redmine → Organize into QAfolderOLD/NEW          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📅 Weekly Workflow (Friday Refresh)
+
+Every Friday, refresh the QA files with the latest game data.
+
+### Step 1: Generate Datasheets
+
+Creates fresh LQA worksheets from game XML data.
+
+| Action | Details |
+|--------|---------|
+| Click | **[Generate Selected]** (or select specific categories) |
+| Output | `GeneratedDatasheets/` folder |
+| When | Game data has been updated |
+
+### Step 2: Transfer QA Files
+
+Merges tester work from OLD/NEW folders into QAfolder.
+
+| Action | Details |
+|--------|---------|
+| Ensure | `QAfolderOLD/` and `QAfolderNEW/` have tester folders |
+| Click | **[Transfer QA Files]** |
+| Output | `QAfolder/` (combined) |
+
+### Step 3: Build Master Files
+
+Compiles everything into final master documents.
+
+| Action | Details |
+|--------|---------|
+| Click | **[Build Master Files]** |
+| Output | `Masterfolder_EN/` and `Masterfolder_CN/` |
+| Includes | Progress tracker (`_TRACKER.xlsx`) |
+
+### Weekly Workflow Summary
+
+```
+1. Generate Datasheets     →  Fresh worksheets from game XML
+2. Transfer QA Files       →  Merge tester work into QAfolder
+3. Build Master Files      →  Compile into Master files + Tracker
+```
+
+---
+
+## 📆 Daily Workflow
+
+Every day, collect and organize tester submissions.
+
+### Step 1: Download from Redmine
+
+Testers upload their QA files to Redmine. Download them daily.
+
+| Source | What to Download |
+|--------|------------------|
+| Redmine | Tester-submitted QA folders |
+| Format | `이름_Category` folders (see naming convention below) |
+
+### Step 2: Organize into Folders
+
+Place downloaded folders into the appropriate location:
+
+| Folder | What Goes Here |
+|--------|----------------|
+| `QAfolderOLD/` | **Previous round** - tester's last submitted work |
+| `QAfolderNEW/` | **Current round** - tester's new empty datasheets |
+
+### Step 3: Run Transfer (When Ready)
+
+Once you have both OLD and NEW files for a category:
+
+1. Click **[Transfer QA Files]**
+2. Combined output appears in `QAfolder/`
+
+---
+
+## 📁 QAfolder Behavior (Important!)
+
+The `QAfolder/` is the **master collection** of all QA work.
+
+### Golden Rules
+
+| Rule | Explanation |
+|------|-------------|
+| **Never delete manually** | Files are managed by Transfer process |
+| **Only add/edit** | New categories get added, existing ones get updated |
+| **Auto-updated** | Transfer process handles all merging |
+| **Keeps history** | Completed categories stay until next refresh |
+
+### How It Works
+
+```
+Before Transfer:
+QAfolder/
+├── 김민영_Quest/      ← Completed last week, KEEP IT
+├── 박지훈_Knowledge/  ← Completed last week, KEEP IT
+└── (empty for new categories)
+
+After Transfer:
+QAfolder/
+├── 김민영_Quest/      ← Still there (untouched)
+├── 박지훈_Knowledge/  ← Still there (untouched)
+├── 이수진_Item/       ← NEW - just transferred
+└── 최영희_Region/     ← NEW - just transferred
+```
+
+### Why This Matters
+
+- **Completed work is preserved** until weekly refresh
+- **No accidental deletions** - Transfer only adds/updates
+- **Incremental updates** - Add new categories as testers finish
 
 ---
 
 ## 🖥️ Main Interface
-
-When you launch QA Compiler Suite, you'll see this interface:
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -86,39 +250,23 @@ When you launch QA Compiler Suite, you'll see this interface:
 
 ## 📋 1. Generate Datasheets
 
-**Purpose:** Create fresh LQA worksheets from game XML data for testers to work on.
-
-### When to Use
-- Starting a new QA cycle
-- Game data has been updated
-- Need worksheets for specific categories
-
-### How to Use
-
-| Step | Action |
-|------|--------|
-| 1 | **Select categories** by checking the boxes |
-| 2 | Click **[Generate Selected]** |
-| 3 | Wait for progress bar to complete |
-| 4 | Find files in `GeneratedDatasheets/` folder |
+**Purpose:** Create fresh LQA worksheets from game XML data.
 
 ### Category Guide
 
-| Category | Contains | Output Folder |
-|----------|----------|---------------|
+| Category | Contains | Output |
+|----------|----------|--------|
 | **Quest** | Main story, faction, daily quests | `QuestData_Map_All/` |
 | **Knowledge** | Encyclopedia entries | `Knowledge_LQA_All/` |
 | **Item** | Items, equipment, consumables | `ItemData_Map_All/` |
 | **Region** | Areas, locations, POIs | `Region_LQA_v3/` |
-| **System** | UI text, menus | *(via Skill+Help)* |
+| **System** | UI text, menus | *(via Skill+Help merge)* |
 | **Character** | NPCs, monsters | `Character_LQA_All/` |
 | **Skill** | Player abilities | `Skill_LQA_All/` |
 | **Help** | Tutorial, tips | `GameAdvice_LQA_All/` |
 | **Gimmick** | Interactive objects | `Gimmick_LQA_Output/` |
 
-### Output Excel Structure
-
-Each generated file contains these columns:
+### Output Excel Columns
 
 | Column | Description | Editable? |
 |--------|-------------|-----------|
@@ -130,7 +278,7 @@ Each generated file contains these columns:
 | **STRINGID** | Unique identifier | ❌ No |
 | **SCREENSHOT** | Screenshot reference | ✅ Yes |
 
-### STATUS Options
+### Tester STATUS Options
 
 | Status | Meaning | Color |
 |--------|---------|-------|
@@ -139,13 +287,11 @@ Each generated file contains these columns:
 | `BLOCKED` | Cannot test | 🟡 Yellow |
 | `KOREAN` | Still in Korean | 🟠 Orange |
 
-> 💡 **Tip:** Use `Select All` then uncheck what you don't need - faster than selecting one by one!
-
 ---
 
 ## 📁 2. Transfer QA Files
 
-**Purpose:** Merge completed tester work from OLD and NEW folders into the main QAfolder.
+**Purpose:** Merge tester work from OLD/NEW folders into QAfolder.
 
 ### The Flow
 
@@ -164,68 +310,51 @@ Each generated file contains these columns:
             └─────────────────┘
 ```
 
-### When to Use
-- Testers have submitted their completed files
-- Need to combine work from multiple rounds
-
 ### How to Use
 
 | Step | Action |
 |------|--------|
-| 1 | Place OLD tester files in `QAfolderOLD/` |
-| 2 | Place NEW tester files in `QAfolderNEW/` |
+| 1 | Place OLD tester folders in `QAfolderOLD/` |
+| 2 | Place NEW tester folders in `QAfolderNEW/` |
 | 3 | Click **[Transfer QA Files]** |
-| 4 | Combined files appear in `QAfolder/` |
-
-> ⚠️ **Important:** Files in QAfolder will be overwritten! Backup if needed.
+| 4 | Combined output appears in `QAfolder/` |
 
 ---
 
 ## 🔨 3. Build Master Files
 
-**Purpose:** Compile all QA files into final master documents with progress tracking.
+**Purpose:** Compile all QA files into master documents with progress tracking.
 
-### The Flow
+### Category Merging
+
+Some categories are **merged** into combined master files:
+
+| Input Category | Output Master File |
+|----------------|-------------------|
+| Quest | `Master_Quest.xlsx` |
+| Knowledge | `Master_Knowledge.xlsx` |
+| Item | `Master_Item.xlsx` |
+| Region | `Master_Region.xlsx` |
+| Character | `Master_Character.xlsx` |
+| **Skill** | `Master_System.xlsx` ← *merged* |
+| **Help** | `Master_System.xlsx` ← *merged* |
+| **Gimmick** | `Master_Item.xlsx` ← *merged* |
+
+### Output Structure
 
 ```
-┌─────────────────┐
-│    QAfolder     │
-│  (All QA work)  │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│           BUILD PROCESS                  │
-│  • Merge all tester sheets              │
-│  • Calculate progress                    │
-│  • Generate DAILY/TOTAL trackers        │
-│  • Hide completed rows (NON ISSUE)      │
-│  • Auto-fit columns                      │
-└─────────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────┐     ┌─────────────────┐
-│ Masterfolder_EN │     │ Masterfolder_CN │
-│  (English)      │     │  (Chinese)      │
-└─────────────────┘     └─────────────────┘
+Masterfolder_EN/
+├── Master_Quest.xlsx
+├── Master_Knowledge.xlsx
+├── Master_Item.xlsx        ← includes Gimmick
+├── Master_Region.xlsx
+├── Master_System.xlsx      ← includes Skill + Help
+├── Master_Character.xlsx
+├── _TRACKER.xlsx           ← Progress tracking
+└── Images/
 ```
 
-### Output Contents
-
-Each Master folder contains:
-
-| File | Description |
-|------|-------------|
-| `Master_Quest.xlsx` | All quest QA combined |
-| `Master_Knowledge.xlsx` | All knowledge QA combined |
-| `Master_Item.xlsx` | All item QA combined |
-| `Master_Region.xlsx` | All region QA combined |
-| `Master_System.xlsx` | Combined Skill + Help |
-| `Master_Character.xlsx` | All character QA combined |
-| `Master_Gimmick.xlsx` | All gimmick QA combined |
-| `_TRACKER.xlsx` | Progress tracking sheets |
-
-### Progress Tracker Sheets
+### Progress Tracker
 
 The `_TRACKER.xlsx` contains:
 
@@ -237,39 +366,38 @@ The `_TRACKER.xlsx` contains:
 
 ### Automatic Row Hiding
 
-Rows marked as these statuses are **automatically hidden** in master files:
+Rows are automatically hidden based on two status columns:
 
-| Status | Hidden? |
-|--------|---------|
-| `FIXED` | ✅ Yes |
-| `NON ISSUE` | ✅ Yes |
-| `NON-ISSUE` | ✅ Yes |
-| `ISSUE` | ❌ No (needs attention) |
-| `BLOCKED` | ❌ No (needs attention) |
+#### TESTER STATUS (`TESTER_STATUS_{User}` - hidden column)
 
-> 💡 **Tip:** This helps managers focus on remaining issues!
+This is the **tester's original status** (from their QA work):
+
+| Status | Hidden? | Reason |
+|--------|---------|--------|
+| `ISSUE` | ❌ No | Active issue - needs attention |
+| `BLOCKED` | ✅ Yes | Tester couldn't test |
+| `KOREAN` | ✅ Yes | Still in Korean |
+| `NO ISSUE` | ✅ Yes | No problem found |
+
+#### MANAGER STATUS (`STATUS_{User}` - visible column)
+
+This is the **manager's review status** (dropdown in Master file):
+
+| Status | Hidden? | Reason |
+|--------|---------|--------|
+| `FIXED` | ✅ Yes | Issue resolved |
+| `NON-ISSUE` | ✅ Yes | Not actually an issue |
+| `REPORTED` | ❌ No | Reported to dev team |
+| `CHECKING` | ❌ No | Under investigation |
+| *(empty)* | ❌ No | Pending manager review |
+
+**Summary:** Only `ISSUE` rows that haven't been resolved by manager are visible.
 
 ---
 
 ## 📊 4. Coverage Analysis
 
-**Purpose:** Calculate how much of the game's text is covered by your datasheets.
-
-### When to Use
-- After generating datasheets
-- To verify translation coverage
-- For reporting to stakeholders
-
-### How to Use
-
-| Step | Action |
-|------|--------|
-| 1 | Generate datasheets first (Section 1) |
-| 2 | Click **[Run Coverage Analysis]** |
-| 3 | View summary popup |
-| 4 | Check `GeneratedDatasheets/` for detailed Excel report |
-
-### Output Report
+**Purpose:** Calculate translation coverage.
 
 Creates `Coverage_Report_YYYYMMDD_HHMMSS.xlsx` with:
 
@@ -278,119 +406,113 @@ Creates `Coverage_Report_YYYYMMDD_HHMMSS.xlsx` with:
 | **Coverage Report** | Strings covered per category |
 | **Word Count** | Korean + Translation word counts |
 
-### Understanding Coverage
-
-```
-Coverage = (Strings in Datasheets / Total Strings in Game) × 100%
-
-Example:
-  Quest:     12,500 / 15,000 = 83.3%
-  Knowledge:  8,200 /  8,500 = 96.5%
-  Item:       5,100 /  6,000 = 85.0%
-  ─────────────────────────────────
-  Total:     25,800 / 29,500 = 87.5%
-```
-
 ---
 
 ## 🌐 5. System Localizer
 
-**Purpose:** Create localized versions of System datasheets for ALL languages automatically.
+**Purpose:** Create localized System sheets for all languages.
 
-### When to Use
-- You have a manually-created System Excel file
-- Need to generate versions for all languages
-- System UI text needs QA across languages
-
-### How to Use
-
-| Step | Action |
-|------|--------|
-| 1 | Click **[Localize System Sheet]** |
-| 2 | Select your System Excel file |
-| 3 | Wait for processing |
-| 4 | Find output in `System_LQA_All/` folder |
-
-### Output Structure
+### Output
 
 ```
 System_LQA_All/
-├── System_ENG.xlsx    (English)
-├── System_DEU.xlsx    (German)
-├── System_FRA.xlsx    (French)
-├── System_JPN.xlsx    (Japanese)
-├── System_CHT.xlsx    (Chinese Traditional)
-└── ... (all supported languages)
+├── System_ENG.xlsx
+├── System_DEU.xlsx
+├── System_FRA.xlsx
+├── System_JPN.xlsx
+└── ... (all languages)
 ```
 
-### How Matching Works
-
-The localizer uses a **2-step matching process**:
+### Matching Process
 
 ```
-Step 1: StringID Match
-  StringID → Korean → Target Language
-  (Most accurate)
-
-Step 2: Text Match (Fallback)
-  English Text → Korean → Target Language
-  (When no StringID available)
+Step 1: StringID → Korean → Target Language (most accurate)
+Step 2: English Text → Korean → Target Language (fallback)
 ```
 
 ---
 
 ## 📂 Folder Structure
 
-### Application Folders
-
 ```
 QACompiler/
 ├── QACompiler.exe           ← Main application
 │
-├── QAfolderOLD/             ← Put OLD tester files here
-├── QAfolderNEW/             ← Put NEW tester files here
-├── QAfolder/                ← Combined files (auto-generated)
+├── QAfolderOLD/             ← Previous round tester files
+│   ├── 김민영_Quest/
+│   └── 박지훈_Item/
 │
-├── GeneratedDatasheets/     ← Output from "Generate Datasheets"
-│   ├── QuestData_Map_All/
-│   ├── Knowledge_LQA_All/
-│   ├── ItemData_Map_All/
-│   └── ...
+├── QAfolderNEW/             ← Current round tester files
+│   ├── 김민영_Quest/
+│   └── 박지훈_Item/
 │
-├── Masterfolder_EN/         ← Output from "Build Master Files"
+├── QAfolder/                ← Combined (auto-generated)
+│   ├── 김민영_Quest/
+│   └── 박지훈_Item/
+│
+├── GeneratedDatasheets/     ← From "Generate Datasheets"
+│
+├── Masterfolder_EN/         ← English master output
 │   ├── Master_Quest.xlsx
-│   ├── Master_Knowledge.xlsx
 │   ├── _TRACKER.xlsx
 │   └── Images/
 │
 └── Masterfolder_CN/         ← Chinese master output
-    └── ...
 ```
 
-### File Naming Convention
+### Folder Naming Convention
 
-| Pattern | Meaning |
-|---------|---------|
-| `Quest_LQA_ENG.xlsx` | Quest datasheet, English |
-| `Item_LQA_DEU.xlsx` | Item datasheet, German |
-| `Master_Quest.xlsx` | Combined quest master |
-| `_TRACKER.xlsx` | Progress tracking |
+Tester folders must follow this format: **`이름_Category`**
+
+| Format | Example | Explanation |
+|--------|---------|-------------|
+| `이름_Category` | `김민영_Quest` | Name + underscore + Category |
+
+#### Valid Examples
+
+| Folder Name | Tester | Category |
+|-------------|--------|----------|
+| `김민영_Quest` | 김민영 | Quest |
+| `박지훈_Item` | 박지훈 | Item |
+| `이수진_Knowledge` | 이수진 | Knowledge |
+| `최영희_Region` | 최영희 | Region |
+| `John_Quest` | John | Quest |
+
+#### Valid Categories
+
+| Category |
+|----------|
+| Quest |
+| Knowledge |
+| Item |
+| Region |
+| System |
+| Character |
+| Skill |
+| Help |
+| Gimmick |
+
+#### Rules
+
+| Rule | Correct | Wrong |
+|------|---------|-------|
+| Single underscore | `김민영_Quest` | `김_민_영_Quest` |
+| Category at end | `김민영_Quest` | `Quest_김민영` |
+| Exact category name | `김민영_Quest` | `김민영_quest` |
 
 ---
 
 ## 🔧 Troubleshooting
 
-### Common Issues
-
 <details>
 <summary><b>❌ "Generator modules not yet implemented"</b></summary>
 
-**Cause:** Generator files are missing or import failed.
+**Cause:** Generator files missing or import failed.
 
 **Solution:**
-1. Verify all files are present in the installation
-2. Check the `generators/` folder exists
-3. Re-extract from the original package
+1. Verify all files present
+2. Check `generators/` folder exists
+3. Re-extract from package
 
 </details>
 
@@ -400,71 +522,47 @@ QACompiler/
 **Cause:** Coverage analysis needs datasheets first.
 
 **Solution:**
-1. Run "Generate Datasheets" first (Section 1)
-2. Verify files exist in `GeneratedDatasheets/` folder
+1. Run "Generate Datasheets" first
+2. Verify files in `GeneratedDatasheets/`
 3. Then run Coverage Analysis
 
 </details>
 
 <details>
-<summary><b>❌ Path errors mentioning F: drive</b></summary>
+<summary><b>❌ Path errors mentioning wrong drive</b></summary>
 
-**Cause:** Your Perforce is on a different drive.
+**Cause:** Executable built for different drive.
 
 **Solution:**
-See [Building for Different Drives](#building-for-different-drives) below.
+1. Re-run `build_exe.bat`
+2. Enter YOUR drive letter when prompted
+3. Use the new executable
 
 </details>
 
 <details>
-<summary><b>❌ Excel file is corrupted or won't open</b></summary>
+<summary><b>❌ Excel file corrupted</b></summary>
 
-**Cause:** Process was interrupted during write.
+**Cause:** Process interrupted during write.
 
 **Solution:**
-1. Delete the corrupted file
-2. Run the operation again
-3. Don't close the app while progress bar is active
+1. Delete corrupted file
+2. Run operation again
+3. Don't close app while progress bar active
 
 </details>
 
 <details>
-<summary><b>❌ STATUS dropdown not appearing</b></summary>
+<summary><b>❌ Folder not recognized</b></summary>
 
-**Cause:** Data validation may not have applied.
+**Cause:** Folder name doesn't match `이름_Category` format.
 
 **Solution:**
-1. Click on the STATUS cell
-2. Look for small dropdown arrow
-3. If missing, the file may need regeneration
+1. Check folder name format: `김민영_Quest`
+2. Verify category is valid (Quest, Item, etc.)
+3. Use single underscore only
 
 </details>
-
----
-
-## 🔨 Building for Different Drives
-
-If your Perforce is on **D:** or **E:** drive instead of **F:**:
-
-### Option 1: Use Build Script (Recommended)
-
-1. Run `build_exe.bat`
-2. When prompted, enter your drive letter:
-   ```
-   Enter drive letter (F/D/E/etc.) [F]: D
-   ```
-3. The executable will be built with correct paths
-
-### Option 2: Manual Path Update
-
-Edit `config.py` and change all paths:
-```python
-# Change FROM:
-RESOURCE_FOLDER = Path(r"F:\perforce\cd\mainline\...")
-
-# Change TO:
-RESOURCE_FOLDER = Path(r"D:\perforce\cd\mainline\...")
-```
 
 ---
 
