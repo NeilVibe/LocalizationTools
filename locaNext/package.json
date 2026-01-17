@@ -65,7 +65,7 @@
       {
         "from": "../server",
         "to": "server",
-        "filter": ["**/*.py", "**/*.json", "**/*.txt", "**/*.md", "!**/__pycache__/**", "!**/*.pyc", "!**/*.pyo"]
+        "filter": ["**/*.py", "**/*.json", "**/*.txt", "**/*.md", "**/*.sql", "!**/__pycache__/**", "!**/*.pyc", "!**/*.pyo"]
       },
       {
         "from": "../tools",
