@@ -16,14 +16,14 @@
  * Build 471: Test staging + swap script approach
  * Build 474: Fix ASAR interception with original-fs
  * Build 475: Test patch update download
+ * Build 476: PowerShell download workaround
+ * Build 477: Switch to Electron net module (better than PowerShell)
  */
 
-import { app } from 'electron';
+import { app, net } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import https from 'https';
-import http from 'http';
 
 // CRITICAL: Use original-fs to bypass Electron's ASAR interception
 // When running inside app.asar, regular fs.readFileSync('app.asar') tries to
@@ -240,16 +240,20 @@ function fetchJson(url) {
 }
 
 /**
- * Download file using PowerShell (workaround for Node.js http blocking in Electron)
- * Node.js http.get stalls after first chunk on Windows + Electron.
- * PowerShell Invoke-WebRequest works reliably.
+ * Download file using Electron's net module (Chromium networking stack)
+ *
+ * Why net module instead of Node.js http:
+ * - Node.js http.get stalls after first chunk on Windows + Electron
+ * - PowerShell works but is blocked in corporate environments
+ * - Electron net uses Chromium's proven networking stack
+ * - Not blocked by corporate policies
+ *
+ * Build 477: Switched from PowerShell to Electron net module
  */
 function downloadFile(url, destPath, onProgress) {
-  debugLog('downloadFile CALLED (PowerShell method)', { url, destPath });
+  debugLog('downloadFile CALLED (Electron net module)', { url, destPath });
 
   return new Promise((resolve, reject) => {
-    const { spawn } = require('child_process');
-
     // Ensure directory exists
     const dir = path.dirname(destPath);
     try {
@@ -260,112 +264,102 @@ function downloadFile(url, destPath, onProgress) {
       return reject(err);
     }
 
-    // Use PowerShell to download (works reliably on Windows)
-    const psScript = `
-      $ProgressPreference = 'SilentlyContinue'
-      try {
-        Invoke-WebRequest -Uri '${url}' -OutFile '${destPath.replace(/\\/g, '\\\\')}' -UseBasicParsing
-        $size = (Get-Item '${destPath.replace(/\\/g, '\\\\')}').Length
-        Write-Output "SUCCESS:$size"
-      } catch {
-        Write-Output "ERROR:$($_.Exception.Message)"
-      }
-    `;
+    // Create write stream
+    const fileStream = fs.createWriteStream(destPath);
+    let totalSize = 0;
+    let downloadedSize = 0;
+    let lastProgressLog = 0;
 
-    debugLog('Spawning PowerShell download', { url });
+    // Use Electron's net module (Chromium networking stack)
+    const request = net.request(url);
 
-    const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psScript], {
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    ps.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    ps.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    // Progress polling (since PowerShell doesn't give us streaming progress)
-    let progressInterval = null;
-    let lastSize = 0;
-
-    // Try to read Content-Length first for progress
-    const getContentLength = new Promise((res) => {
-      const client = url.startsWith('https') ? https : http;
-      const req = client.request(url, { method: 'HEAD' }, (response) => {
-        res(parseInt(response.headers['content-length'], 10) || 0);
-        req.destroy();
+    request.on('response', (response) => {
+      debugLog('Response received', {
+        statusCode: response.statusCode,
+        headers: {
+          contentLength: response.headers['content-length'],
+          contentType: response.headers['content-type']
+        }
       });
-      req.on('error', () => res(0));
-      req.end();
-    });
 
-    getContentLength.then((totalSize) => {
-      if (totalSize > 0 && onProgress) {
-        progressInterval = setInterval(() => {
-          try {
-            if (fs.existsSync(destPath)) {
-              const stats = fs.statSync(destPath);
-              if (stats.size !== lastSize) {
-                lastSize = stats.size;
-                const percent = (stats.size / totalSize) * 100;
-                debugLog('Download progress', {
-                  percent: percent.toFixed(1),
-                  sizeMB: (stats.size / 1024 / 1024).toFixed(2),
-                  totalMB: (totalSize / 1024 / 1024).toFixed(2)
-                });
-                onProgress({
-                  percent,
-                  transferred: stats.size,
-                  total: totalSize
-                });
-              }
-            }
-          } catch (e) {
-            // Ignore errors during progress check
-          }
-        }, 500);
-      }
-    });
-
-    ps.on('close', (code) => {
-      if (progressInterval) clearInterval(progressInterval);
-
-      debugLog('PowerShell exit', { code, stdout: stdout.trim(), stderr: stderr.trim() });
-
-      if (stdout.includes('SUCCESS:')) {
-        const sizeMatch = stdout.match(/SUCCESS:(\d+)/);
-        const size = sizeMatch ? parseInt(sizeMatch[1], 10) : 0;
-        debugLog('DOWNLOAD COMPLETE (PowerShell)', { destPath, size, sizeMB: (size / 1024 / 1024).toFixed(2) });
-        resolve(destPath);
-      } else {
-        const errorMsg = stdout.includes('ERROR:')
-          ? stdout.split('ERROR:')[1].trim()
-          : stderr || `PowerShell exit code ${code}`;
-        debugLog('DOWNLOAD FAILED (PowerShell)', { error: errorMsg });
+      if (response.statusCode !== 200) {
+        fileStream.close();
         try { fs.unlinkSync(destPath); } catch (e) { }
-        reject(new Error(`Download failed: ${errorMsg}`));
+        reject(new Error(`HTTP ${response.statusCode}`));
+        return;
       }
+
+      // Get total size for progress
+      const contentLength = response.headers['content-length'];
+      if (contentLength) {
+        totalSize = parseInt(Array.isArray(contentLength) ? contentLength[0] : contentLength, 10);
+        debugLog('Content-Length', { totalSize, totalMB: (totalSize / 1024 / 1024).toFixed(2) });
+      }
+
+      response.on('data', (chunk) => {
+        downloadedSize += chunk.length;
+        fileStream.write(chunk);
+
+        // Progress callback and logging (every 5%)
+        if (totalSize > 0) {
+          const percent = (downloadedSize / totalSize) * 100;
+          if (percent - lastProgressLog >= 5 || percent >= 100) {
+            lastProgressLog = percent;
+            debugLog('Download progress', {
+              percent: percent.toFixed(1),
+              downloadedMB: (downloadedSize / 1024 / 1024).toFixed(2),
+              totalMB: (totalSize / 1024 / 1024).toFixed(2)
+            });
+          }
+          if (onProgress) {
+            onProgress({
+              percent,
+              transferred: downloadedSize,
+              total: totalSize
+            });
+          }
+        }
+      });
+
+      response.on('end', () => {
+        fileStream.end();
+        debugLog('DOWNLOAD COMPLETE (Electron net)', {
+          destPath,
+          size: downloadedSize,
+          sizeMB: (downloadedSize / 1024 / 1024).toFixed(2)
+        });
+        resolve(destPath);
+      });
+
+      response.on('error', (err) => {
+        fileStream.close();
+        debugLog('Response error', { error: err.message });
+        try { fs.unlinkSync(destPath); } catch (e) { }
+        reject(err);
+      });
     });
 
-    ps.on('error', (err) => {
-      if (progressInterval) clearInterval(progressInterval);
-      debugLog('PowerShell spawn error', { error: err.message });
+    request.on('error', (err) => {
+      fileStream.close();
+      debugLog('Request error', { error: err.message });
+      try { fs.unlinkSync(destPath); } catch (e) { }
       reject(err);
     });
 
     // Timeout after 3 minutes
-    setTimeout(() => {
-      if (progressInterval) clearInterval(progressInterval);
-      debugLog('PowerShell TIMEOUT (3 min)');
-      ps.kill();
+    const timeout = setTimeout(() => {
+      debugLog('DOWNLOAD TIMEOUT (3 min)');
+      request.abort();
+      fileStream.close();
       try { fs.unlinkSync(destPath); } catch (e) { }
       reject(new Error('Download timeout (3 minutes)'));
     }, 180000);
+
+    request.on('close', () => {
+      clearTimeout(timeout);
+    });
+
+    request.end();
   });
 }
 
