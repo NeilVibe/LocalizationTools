@@ -15,9 +15,7 @@
             }
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -29,7 +27,6 @@
             font-size: 11pt;
         }
 
-        /* Cover Page */
         .cover {
             text-align: center;
             padding: 100px 20px;
@@ -43,15 +40,10 @@
         .cover h1 {
             font-size: 42pt;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
             border: none;
         }
 
-        .cover .subtitle {
-            font-size: 18pt;
-            opacity: 0.9;
-            margin-bottom: 40px;
-        }
+        .cover .subtitle { font-size: 18pt; opacity: 0.9; margin-bottom: 40px; }
 
         .cover .version-badge {
             display: inline-block;
@@ -62,177 +54,43 @@
             margin: 10px;
         }
 
-        /* Headers */
-        h1 {
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
-            page-break-after: avoid;
-        }
+        h1 { color: #667eea; border-bottom: 3px solid #667eea; padding-bottom: 10px; page-break-after: avoid; }
+        h2 { color: #764ba2; border-left: 4px solid #764ba2; padding-left: 15px; margin-top: 30px; page-break-after: avoid; }
+        h3 { color: #5a67d8; page-break-after: avoid; }
+        h4 { color: #667eea; page-break-after: avoid; }
 
-        h2 {
-            color: #764ba2;
-            border-left: 4px solid #764ba2;
-            padding-left: 15px;
-            margin-top: 30px;
-            page-break-after: avoid;
-        }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 10pt; page-break-inside: avoid; }
+        th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 10px; text-align: left; font-weight: 600; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+        tr:nth-child(even) { background: #f8fafc; }
+        tr:hover { background: #eef2ff; }
 
-        h3 {
-            color: #5a67d8;
-            page-break-after: avoid;
-        }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 9pt; page-break-inside: avoid; }
+        code { font-family: 'Consolas', 'Monaco', monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 9pt; }
+        pre code { background: none; padding: 0; }
 
-        h4 {
-            color: #667eea;
-            page-break-after: avoid;
-        }
+        .info-box { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border-left: 4px solid #667eea; padding: 15px; margin: 15px 0; border-radius: 0 8px 8px 0; }
+        .warning-box { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; border-radius: 0 8px 8px 0; }
 
-        /* Tables */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-            font-size: 10pt;
-            page-break-inside: avoid;
-        }
-
-        th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 10px;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        td {
-            padding: 10px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        tr:nth-child(even) {
-            background: #f8fafc;
-        }
-
-        tr:hover {
-            background: #eef2ff;
-        }
-
-        /* Code blocks */
-        pre {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 15px;
-            border-radius: 8px;
-            overflow-x: auto;
-            font-size: 9pt;
-            page-break-inside: avoid;
-        }
-
-        code {
-            font-family: 'Consolas', 'Monaco', monospace;
-            background: #f1f5f9;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 9pt;
-        }
-
-        pre code {
-            background: none;
-            padding: 0;
-        }
-
-        /* Info boxes */
-        .info-box {
-            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 0 8px 8px 0;
-        }
-
-        .warning-box {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border-left: 4px solid #f59e0b;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 0 8px 8px 0;
-        }
-
-        /* Status colors */
         .status-issue { color: #dc2626; font-weight: bold; }
         .status-noissue { color: #16a34a; font-weight: bold; }
         .status-blocked { color: #ca8a04; font-weight: bold; }
         .status-korean { color: #ea580c; font-weight: bold; }
 
-        /* Page breaks */
-        .page-break {
-            page-break-after: always;
-        }
+        .page-break { page-break-after: always; }
 
-        /* TOC */
-        .toc {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
+        .toc { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .toc h2 { color: #667eea; border: none; padding: 0; margin-top: 0; }
 
-        .toc h2 {
-            color: #667eea;
-            border: none;
-            padding: 0;
-            margin-top: 0;
-        }
+        .workflow-box { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #22c55e; padding: 20px; border-radius: 12px; margin: 20px 0; }
+        .workflow-box h3 { color: #16a34a; margin-top: 0; }
+        .workflow-daily { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-color: #3b82f6; }
+        .workflow-daily h3 { color: #1d4ed8; }
+        .workflow-weekly { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #f59e0b; }
+        .workflow-weekly h3 { color: #b45309; }
 
-        .toc ul {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        .toc li {
-            padding: 5px 0;
-            border-bottom: 1px dashed #e2e8f0;
-        }
-
-        .toc a {
-            color: #5a67d8;
-            text-decoration: none;
-        }
-
-        /* Workflow boxes */
-        .workflow-box {
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            border: 2px solid #22c55e;
-            padding: 20px;
-            border-radius: 12px;
-            margin: 20px 0;
-        }
-
-        .workflow-box h3 {
-            color: #16a34a;
-            margin-top: 0;
-        }
-
-        /* Section styling */
-        section {
-            margin-bottom: 30px;
-        }
-
-        /* Lists */
-        ul, ol {
-            margin: 10px 0;
-            padding-left: 25px;
-        }
-
-        li {
-            margin: 5px 0;
-        }
-
-        /* Emoji fix */
-        .emoji {
-            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-        }
+        ul, ol { margin: 10px 0; padding-left: 25px; }
+        li { margin: 5px 0; }
     </style>
 </head>
 <body>
@@ -247,25 +105,23 @@
     <div style="margin-top: 60px; font-size: 14pt;">
         Your Complete Guide to QA Localization Workflow
     </div>
-    <div style="margin-top: 100px; opacity: 0.8;">
-        January 2025
-    </div>
+    <div style="margin-top: 100px; opacity: 0.8;">January 2025</div>
 </div>
 
 <!-- Table of Contents -->
 <div class="toc">
     <h2>Table of Contents</h2>
     <table>
-        <tr><td><strong>1. Installation</strong></td><td>Build and setup</td></tr>
-        <tr><td><strong>2. Workflows Overview</strong></td><td>Weekly vs Daily tasks</td></tr>
-        <tr><td><strong>3. Weekly Workflow</strong></td><td>Generate → Transfer → Build</td></tr>
-        <tr><td><strong>4. Daily Workflow</strong></td><td>Download and organize tester files</td></tr>
-        <tr><td><strong>5. Main Interface</strong></td><td>Understanding the GUI</td></tr>
+        <tr><td><strong>1. Installation</strong></td><td>Simple installer setup</td></tr>
+        <tr><td><strong>2. Workflows Overview</strong></td><td>Daily vs Weekly tasks</td></tr>
+        <tr><td><strong>3. Daily Workflow</strong></td><td>Download → QAfolder</td></tr>
+        <tr><td><strong>4. Weekly Workflow</strong></td><td>Move → Generate → Transfer → Build</td></tr>
+        <tr><td><strong>5. QAfolder Behavior</strong></td><td>Never delete, auto-update</td></tr>
         <tr><td><strong>6. Generate Datasheets</strong></td><td>Create LQA worksheets</td></tr>
-        <tr><td><strong>7. Transfer QA Files</strong></td><td>Merge tester work</td></tr>
-        <tr><td><strong>8. Build Master Files</strong></td><td>Compile master documents</td></tr>
+        <tr><td><strong>7. Transfer QA Files</strong></td><td>Auto-merge tester work</td></tr>
+        <tr><td><strong>8. Build Master Files</strong></td><td>Compile + row hiding</td></tr>
         <tr><td><strong>9. Folder Structure</strong></td><td>Where files go</td></tr>
-        <tr><td><strong>10. Folder Naming</strong></td><td>How to name tester folders</td></tr>
+        <tr><td><strong>10. Folder Naming</strong></td><td>이름_Category format</td></tr>
         <tr><td><strong>11. Troubleshooting</strong></td><td>Common issues</td></tr>
     </table>
 </div>
@@ -275,34 +131,35 @@
 <!-- Installation -->
 <h1>1. Installation</h1>
 
-<h2>Build Your Own Executable</h2>
-<p>Each user builds their own executable to match their Perforce drive location.</p>
+<h2>Simple Portable Install</h2>
+<p>Download, extract, and run. <strong>No admin rights needed!</strong></p>
 
 <table>
     <tr><th>Step</th><th>Action</th></tr>
-    <tr><td>1</td><td><strong>Extract</strong> the QACompilerNEW.zip to a folder</td></tr>
-    <tr><td>2</td><td><strong>Run</strong> <code>build_exe.bat</code></td></tr>
-    <tr><td>3</td><td>When prompted, <strong>enter your drive letter</strong> (F, D, E, etc.)</td></tr>
-    <tr><td>4</td><td>Wait for build to complete</td></tr>
-    <tr><td>5</td><td>Find executable in <code>dist\QACompiler\QACompiler.exe</code></td></tr>
+    <tr><td>1</td><td><strong>Download</strong> <code>QACompiler_Setup.exe</code></td></tr>
+    <tr><td>2</td><td><strong>Run</strong> the installer</td></tr>
+    <tr><td>3</td><td><strong>Select your Perforce drive</strong> (F:, D:, E:, etc.)</td></tr>
+    <tr><td>4</td><td><strong>Choose folder</strong> (default: same folder as installer)</td></tr>
+    <tr><td>5</td><td><strong>Done!</strong> Double-click <code>QACompiler.exe</code> to run</td></tr>
 </table>
 
-<pre>Enter drive letter (F/D/E/etc.) [F]: D</pre>
-
-<h3>Why Build Yourself?</h3>
-<ul>
-    <li><strong>Different drives</strong>: Perforce can be on F:, D:, E: etc.</li>
-    <li><strong>Correct paths</strong>: Build process configures paths for YOUR system</li>
-    <li><strong>No manual editing</strong>: Drive selection is automatic</li>
-</ul>
+<h3>During Installation</h3>
+<pre>Select your Perforce drive:
+  ○ F: drive (default)
+  ○ D: drive
+  ○ E: drive
+  ○ Other...</pre>
 
 <h3>Requirements</h3>
 <table>
     <tr><th>Requirement</th><th>Details</th></tr>
-    <tr><td>Python</td><td>3.8 or higher</td></tr>
-    <tr><td>pip</td><td>Comes with Python</td></tr>
+    <tr><td>Windows</td><td>10 or higher</td></tr>
     <tr><td>Perforce</td><td>Must be synced to your machine</td></tr>
 </table>
+
+<div class="info-box">
+    <strong>Note:</strong> No admin rights needed. No Python required. Portable install.
+</div>
 
 <div class="page-break"></div>
 
@@ -313,51 +170,96 @@
 
 <table>
     <tr><th>Workflow</th><th>Frequency</th><th>Purpose</th></tr>
-    <tr><td><strong>Weekly (Friday Refresh)</strong></td><td>Every Friday</td><td>Refresh all datasheets with new game data</td></tr>
-    <tr><td><strong>Daily</strong></td><td>Every day</td><td>Process tester submissions</td></tr>
+    <tr><td><strong>Daily</strong></td><td>Every day</td><td>Collect tester submissions into QAfolder</td></tr>
+    <tr><td><strong>Weekly (Friday)</strong></td><td>Every Friday</td><td>Refresh datasheets and compile masters</td></tr>
 </table>
 
-<div class="workflow-box">
-    <h3>WEEKLY WORKFLOW (Friday)</h3>
+<div class="workflow-box workflow-daily">
+    <h3>DAILY WORKFLOW (Simple)</h3>
     <p style="font-size: 14pt; text-align: center;">
-        <strong>Generate Datasheets</strong> → <strong>Transfer QA Files</strong> → <strong>Build Master Files</strong>
+        <strong>Download from Redmine</strong> → <strong>Put into QAfolder/</strong>
     </p>
+    <p style="text-align: center; opacity: 0.8;">That's it! Just accumulate work throughout the week.</p>
 </div>
 
-<div class="workflow-box" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #f59e0b;">
-    <h3 style="color: #b45309;">DAILY WORKFLOW</h3>
+<div class="workflow-box workflow-weekly">
+    <h3>WEEKLY WORKFLOW (Friday Refresh)</h3>
     <p style="font-size: 14pt; text-align: center;">
-        <strong>Download from Redmine</strong> → <strong>Organize into QAfolderOLD/NEW</strong>
+        <strong>Move QAfolder→OLD</strong> → <strong>Generate</strong> → <strong>Transfer</strong> → <strong>Build</strong>
     </p>
+    <p style="text-align: center; opacity: 0.8;">Full refresh with latest game data.</p>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Daily Workflow -->
+<h1>3. Daily Workflow</h1>
+
+<p>Every day, collect tester submissions. <strong>Simple!</strong></p>
+
+<h2>Step 1: Download from Redmine</h2>
+<p>Testers upload their completed QA files to Redmine.</p>
+<table>
+    <tr><th>Source</th><th>What to Download</th></tr>
+    <tr><td>Redmine</td><td>Tester-submitted QA folders</td></tr>
+    <tr><td>Format</td><td><code>이름_Category</code> folders</td></tr>
+</table>
+
+<h2>Step 2: Put into QAfolder</h2>
+<p>Put downloaded folders <strong>directly into <code>QAfolder/</code></strong>. That's it!</p>
+<table>
+    <tr><th>Action</th><th>Details</th></tr>
+    <tr><td>Download</td><td>Get tester folders from Redmine</td></tr>
+    <tr><td>Place</td><td>Put directly into <code>QAfolder/</code></td></tr>
+    <tr><td>Done</td><td>Files accumulate throughout the week</td></tr>
+</table>
+
+<div class="info-box">
+    <strong>Note:</strong> Daily workflow does NOT use QAfolderOLD or QAfolderNEW. Those are only for the weekly refresh.
 </div>
 
 <div class="page-break"></div>
 
 <!-- Weekly Workflow -->
-<h1>3. Weekly Workflow (Friday Refresh)</h1>
+<h1>4. Weekly Workflow (Friday Refresh)</h1>
 
-<p>Every Friday, refresh the QA files with the latest game data.</p>
+<p>Every Friday, refresh the QA files with latest game data.</p>
 
-<h2>Step 1: Generate Datasheets</h2>
+<h2>Step 1: Move QAfolder to OLD</h2>
+<p>Move ALL contents from <code>QAfolder/</code> to <code>QAfolderOLD/</code>.</p>
+<table>
+    <tr><th>Action</th><th>Details</th></tr>
+    <tr><td>Move</td><td>Everything in <code>QAfolder/</code> → <code>QAfolderOLD/</code></td></tr>
+    <tr><td>Result</td><td><code>QAfolder/</code> is now empty</td></tr>
+    <tr><td>Purpose</td><td>Preserve tester work for merging</td></tr>
+</table>
+
+<h2>Step 2: Generate Fresh Datasheets</h2>
 <p>Creates fresh LQA worksheets from game XML data.</p>
 <table>
     <tr><th>Action</th><th>Details</th></tr>
-    <tr><td>Click</td><td><strong>[Generate Selected]</strong> (or select specific categories)</td></tr>
+    <tr><td>Click</td><td><strong>[Generate Selected]</strong> (or select all)</td></tr>
     <tr><td>Output</td><td><code>GeneratedDatasheets/</code> folder</td></tr>
-    <tr><td>When</td><td>Game data has been updated</td></tr>
+    <tr><td>Important</td><td>Sheets must be freshly generated (&lt; 10 hours old)</td></tr>
 </table>
 
-<h2>Step 2: Transfer QA Files</h2>
-<p>Merges tester work from OLD/NEW folders into QAfolder.</p>
+<h2>Step 3: Transfer QA Files</h2>
+<p>The Transfer process will automatically:</p>
+<ol>
+    <li>Check that generated sheets are fresh</li>
+    <li>Create folders in <code>QAfolderNEW/</code> matching <code>QAfolderOLD/</code></li>
+    <li>Copy the correct generated sheet for each tester's language</li>
+    <li>Merge OLD tester work with NEW sheets</li>
+    <li>Output combined files to <code>QAfolder/</code></li>
+</ol>
 <table>
     <tr><th>Action</th><th>Details</th></tr>
-    <tr><td>Ensure</td><td><code>QAfolderOLD/</code> and <code>QAfolderNEW/</code> have tester folders</td></tr>
     <tr><td>Click</td><td><strong>[Transfer QA Files]</strong></td></tr>
-    <tr><td>Output</td><td><code>QAfolder/</code> (combined)</td></tr>
+    <tr><td>Auto-does</td><td>Creates QAfolderNEW folders + copies sheets</td></tr>
+    <tr><td>Output</td><td><code>QAfolder/</code> (merged OLD work + NEW sheets)</td></tr>
 </table>
 
-<h2>Step 3: Build Master Files</h2>
-<p>Compiles everything into final master documents.</p>
+<h2>Step 4: Build Master Files</h2>
 <table>
     <tr><th>Action</th><th>Details</th></tr>
     <tr><td>Click</td><td><strong>[Build Master Files]</strong></td></tr>
@@ -365,41 +267,27 @@
     <tr><td>Includes</td><td>Progress tracker (<code>_TRACKER.xlsx</code>)</td></tr>
 </table>
 
-<div class="page-break"></div>
-
-<!-- Daily Workflow -->
-<h1>4. Daily Workflow</h1>
-
-<p>Every day, collect and organize tester submissions.</p>
-
-<h2>Step 1: Download from Redmine</h2>
-<p>Testers upload their QA files to Redmine. Download them daily.</p>
-<table>
-    <tr><th>Source</th><th>What to Download</th></tr>
-    <tr><td>Redmine</td><td>Tester-submitted QA folders</td></tr>
-    <tr><td>Format</td><td><code>이름_Category</code> folders</td></tr>
-</table>
-
-<h2>Step 2: Organize into Folders</h2>
-<table>
-    <tr><th>Folder</th><th>What Goes Here</th></tr>
-    <tr><td><code>QAfolderOLD/</code></td><td><strong>Previous round</strong> - tester's last submitted work</td></tr>
-    <tr><td><code>QAfolderNEW/</code></td><td><strong>Current round</strong> - tester's new empty datasheets</td></tr>
-</table>
-
-<h2>Step 3: Run Transfer (When Ready)</h2>
-<p>Once you have both OLD and NEW files for a category:</p>
-<ol>
-    <li>Click <strong>[Transfer QA Files]</strong></li>
-    <li>Combined output appears in <code>QAfolder/</code></li>
-</ol>
+<h3>Weekly Workflow Summary</h3>
+<pre>1. Move QAfolder → OLD    →  Preserve all tester work
+2. Generate Datasheets    →  Fresh sheets from game XML
+3. Transfer QA Files      →  Auto-populate NEW + merge with OLD
+4. Build Master Files     →  Compile into Master files + Tracker</pre>
 
 <div class="page-break"></div>
 
 <!-- QAfolder Behavior -->
-<h1>5. QAfolder Behavior (Important!)</h1>
+<h1>5. QAfolder Behavior</h1>
 
 <p>The <code>QAfolder/</code> is the <strong>master collection</strong> of all QA work.</p>
+
+<h2>Tester Languages</h2>
+<p>Each tester is assigned a language in <code>languageTOtester_list.txt</code>:</p>
+<table>
+    <tr><th>Language Code</th><th>Language</th><th>Example</th></tr>
+    <tr><td><code>ENG</code></td><td>English</td><td>Most testers</td></tr>
+    <tr><td><code>ZHO-CN</code></td><td>Chinese (Simplified)</td><td>Chinese team</td></tr>
+</table>
+<p>The Transfer process uses this mapping to copy the correct generated datasheet.</p>
 
 <h2>Golden Rules</h2>
 <table>
@@ -423,15 +311,6 @@ QAfolder/
 ├── 박지훈_Knowledge/  ← Still there (untouched)
 ├── 이수진_Item/       ← NEW - just transferred
 └── 최영희_Region/     ← NEW - just transferred</pre>
-
-<div class="info-box">
-    <strong>Why This Matters:</strong>
-    <ul>
-        <li>Completed work is preserved until weekly refresh</li>
-        <li>No accidental deletions - Transfer only adds/updates</li>
-        <li>Incremental updates - Add new categories as testers finish</li>
-    </ul>
-</div>
 
 <div class="page-break"></div>
 
@@ -473,24 +352,37 @@ QAfolder/
 <h2>The Flow</h2>
 <pre>┌─────────────────┐     ┌─────────────────┐
 │  QAfolderOLD    │     │  QAfolderNEW    │
-│  (Previous QA)  │     │  (Current QA)   │
+│  (Tester work)  │     │  (Fresh sheets) │
 └────────┬────────┘     └────────┬────────┘
          │                       │
          └───────────┬───────────┘
-                     │
+                     │ AUTO-MERGE
                      ▼
             ┌─────────────────┐
             │    QAfolder     │
             │   (Combined)    │
             └─────────────────┘</pre>
 
-<h2>How to Use</h2>
+<h2>Auto-Population (Helper)</h2>
+<p>The Transfer process automatically:</p>
+<ol>
+    <li><strong>Checks freshness</strong> - Generated sheets must be &lt; 10 hours old</li>
+    <li><strong>Creates folders</strong> - Mirrors QAfolderOLD structure in QAfolderNEW</li>
+    <li><strong>Copies sheets</strong> - Places correct language sheet for each tester</li>
+    <li><strong>Merges</strong> - Combines tester work with fresh sheets</li>
+</ol>
+
+<h2>Generated Sheet Mapping</h2>
 <table>
-    <tr><th>Step</th><th>Action</th></tr>
-    <tr><td>1</td><td>Place OLD tester folders in <code>QAfolderOLD/</code></td></tr>
-    <tr><td>2</td><td>Place NEW tester folders in <code>QAfolderNEW/</code></td></tr>
-    <tr><td>3</td><td>Click <strong>[Transfer QA Files]</strong></td></tr>
-    <tr><td>4</td><td>Combined output appears in <code>QAfolder/</code></td></tr>
+    <tr><th>Category</th><th>Folder</th><th>ENG File</th><th>ZHO-CN File</th></tr>
+    <tr><td>Quest</td><td><code>QuestData_Map_All/</code></td><td><code>Quest_LQA_ENG.xlsx</code></td><td><code>Quest_LQA_ZHO-CN.xlsx</code></td></tr>
+    <tr><td>Knowledge</td><td><code>Knowledge_LQA_All/</code></td><td><code>Knowledge_LQA_ENG.xlsx</code></td><td><code>Knowledge_LQA_ZHO-CN.xlsx</code></td></tr>
+    <tr><td>Item</td><td><code>ItemData_Map_All/</code></td><td><code>Item_LQA_ENG.xlsx</code></td><td><code>Item_LQA_ZHO-CN.xlsx</code></td></tr>
+    <tr><td>Region</td><td><code>Region_LQA_v3/</code></td><td><code>Region_LQA_ENG.xlsx</code></td><td><code>Region_LQA_ZHO-CN.xlsx</code></td></tr>
+    <tr><td>Character</td><td><code>Character_LQA_All/</code></td><td><code>Character_LQA_ENG.xlsx</code></td><td><code>Character_LQA_ZHO-CN.xlsx</code></td></tr>
+    <tr><td>Skill</td><td><code>Skill_LQA_All/</code></td><td><code>Skill_LQA_ENG.xlsx</code></td><td><code>Skill_LQA_ZHO-CN.xlsx</code></td></tr>
+    <tr><td>Help</td><td><code>GameAdvice_LQA_All/</code></td><td><code>LQA_GameAdvice_ENG.xlsx</code></td><td><code>LQA_GameAdvice_ZHO-CN.xlsx</code></td></tr>
+    <tr><td>Gimmick</td><td><code>Gimmick_LQA_Output/</code></td><td><code>Gimmick_LQA_ENG.xlsx</code></td><td><code>Gimmick_LQA_ZHO-CN.xlsx</code></td></tr>
 </table>
 
 <div class="page-break"></div>
@@ -550,19 +442,22 @@ QAfolder/
 <pre>QACompiler/
 ├── QACompiler.exe           ← Main application
 │
-├── QAfolderOLD/             ← Previous round tester files
+├── QAfolderOLD/             ← Weekly: tester work goes here
 │   ├── 김민영_Quest/
 │   └── 박지훈_Item/
 │
-├── QAfolderNEW/             ← Current round tester files
+├── QAfolderNEW/             ← Weekly: auto-populated with fresh sheets
 │   ├── 김민영_Quest/
 │   └── 박지훈_Item/
 │
-├── QAfolder/                ← Combined (auto-generated)
+├── QAfolder/                ← Daily: put tester work here
 │   ├── 김민영_Quest/
 │   └── 박지훈_Item/
 │
 ├── GeneratedDatasheets/     ← From "Generate Datasheets"
+│   ├── QuestData_Map_All/
+│   ├── Knowledge_LQA_All/
+│   └── ...
 │
 ├── Masterfolder_EN/         ← English master output
 │   ├── Master_Quest.xlsx
@@ -620,34 +515,24 @@ QAfolder/
 <!-- Troubleshooting -->
 <h1>11. Troubleshooting</h1>
 
+<h2>"Generated sheets too old"</h2>
+<p><strong>Cause:</strong> Sheets are older than 10 hours.</p>
+<p><strong>Solution:</strong> Run "Generate Datasheets" again before Transfer.</p>
+
 <h2>"Generator modules not yet implemented"</h2>
 <p><strong>Cause:</strong> Generator files missing or import failed.</p>
 <p><strong>Solution:</strong></p>
 <ol>
     <li>Verify all files present</li>
     <li>Check <code>generators/</code> folder exists</li>
-    <li>Re-extract from package</li>
+    <li>Re-install from setup</li>
 </ol>
 
-<h2>"No datasheets found in GeneratedDatasheets"</h2>
+<h2>"No datasheets found"</h2>
 <p><strong>Cause:</strong> Coverage analysis needs datasheets first.</p>
-<p><strong>Solution:</strong></p>
-<ol>
-    <li>Run "Generate Datasheets" first</li>
-    <li>Verify files in <code>GeneratedDatasheets/</code></li>
-    <li>Then run Coverage Analysis</li>
-</ol>
+<p><strong>Solution:</strong> Run "Generate Datasheets" first, then Coverage Analysis.</p>
 
-<h2>Path errors mentioning wrong drive</h2>
-<p><strong>Cause:</strong> Executable built for different drive.</p>
-<p><strong>Solution:</strong></p>
-<ol>
-    <li>Re-run <code>build_exe.bat</code></li>
-    <li>Enter YOUR drive letter when prompted</li>
-    <li>Use the new executable</li>
-</ol>
-
-<h2>Folder not recognized</h2>
+<h2>"Folder not recognized"</h2>
 <p><strong>Cause:</strong> Folder name doesn't match <code>이름_Category</code> format.</p>
 <p><strong>Solution:</strong></p>
 <ol>
@@ -655,6 +540,10 @@ QAfolder/
     <li>Verify category is valid (Quest, Item, etc.)</li>
     <li>Use single underscore only</li>
 </ol>
+
+<h2>Path errors</h2>
+<p><strong>Cause:</strong> Wrong Perforce drive selected during install.</p>
+<p><strong>Solution:</strong> Re-run installer and select correct drive.</p>
 
 <div class="page-break"></div>
 
