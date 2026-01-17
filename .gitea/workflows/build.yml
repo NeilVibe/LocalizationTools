@@ -1942,6 +1942,23 @@ jobs:
           $manifestJson = $manifest | ConvertTo-Json -Depth 5
           [System.IO.File]::WriteAllText("installer_output\manifest.json", $manifestJson)
           Write-Host "[OK] manifest.json generated"
+
+          # Generate component-state.json (same data, bundled with app for patch updates)
+          # This tells the installed app what version/components it has
+          $componentState = @{
+            version = $version
+            installedAt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            components = @{
+              "app.asar" = @{
+                sha256 = $asarHash
+                size = $asarSize
+                installedAt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+              }
+            }
+          }
+          $stateJson = $componentState | ConvertTo-Json -Depth 5
+          [System.IO.File]::WriteAllText("$resourcesDir\component-state.json", $stateJson)
+          Write-Host "[OK] component-state.json bundled with app"
           Write-Host ""
           Write-Host "=== PATCH UPDATE SAVINGS ==="
           Write-Host "  app.asar: $([math]::Round($asarSize/1MB, 2)) MB"

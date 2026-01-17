@@ -28,7 +28,9 @@ const MANIFEST_URL = `${UPDATE_BASE_URL}/${REPO_PATH}/releases/download/latest/m
 
 // Paths
 const RESOURCES_PATH = process.resourcesPath || path.join(app.getAppPath(), '..');
-const STATE_FILE = path.join(RESOURCES_PATH, 'component-state.json');
+// Store state in user's AppData (writable) not resources (might be read-only)
+const USER_DATA_PATH = app.getPath('userData');
+const STATE_FILE = path.join(USER_DATA_PATH, 'component-state.json');
 const TEMP_DIR = path.join(app.getPath('temp'), 'locanext-patch-update');
 
 /**
@@ -62,22 +64,55 @@ function loadLocalState() {
 
 /**
  * Generate initial state from installed files
+ * This is called when component-state.json doesn't exist (first run after install)
  */
 function generateInitialState() {
+  console.log('[PatchUpdater] Generating initial state from installed files...');
+
   const state = {
     version: 'unknown',
     installedAt: new Date().toISOString(),
     components: {}
   };
 
-  // Read version from version.py
-  const versionPath = path.join(RESOURCES_PATH, 'version.py');
-  if (fs.existsSync(versionPath)) {
-    const content = fs.readFileSync(versionPath, 'utf8');
-    const match = content.match(/VERSION\s*=\s*"([^"]+)"/);
-    if (match) {
-      state.version = match[1];
+  // Try to get version from package.json in app.asar
+  try {
+    const { app } = require('electron');
+    state.version = app.getVersion();
+    console.log(`[PatchUpdater] Got version from app: ${state.version}`);
+  } catch (err) {
+    console.log('[PatchUpdater] Could not get version from app');
+  }
+
+  // Hash app.asar if it exists
+  const asarPath = path.join(RESOURCES_PATH, 'app.asar');
+  if (fs.existsSync(asarPath)) {
+    try {
+      const hash = crypto.createHash('sha256');
+      const content = fs.readFileSync(asarPath);
+      hash.update(content);
+      const sha256 = hash.digest('hex');
+      const stats = fs.statSync(asarPath);
+
+      state.components['app.asar'] = {
+        sha256,
+        size: stats.size,
+        installedAt: new Date().toISOString()
+      };
+      console.log(`[PatchUpdater] Hashed app.asar: ${sha256.substring(0, 16)}... (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+    } catch (err) {
+      console.error('[PatchUpdater] Failed to hash app.asar:', err.message);
     }
+  } else {
+    console.log('[PatchUpdater] app.asar not found at:', asarPath);
+  }
+
+  // Save the generated state for future runs
+  try {
+    saveLocalState(state);
+    console.log('[PatchUpdater] Saved initial state');
+  } catch (err) {
+    console.error('[PatchUpdater] Failed to save initial state:', err.message);
   }
 
   return state;

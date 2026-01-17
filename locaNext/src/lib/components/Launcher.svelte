@@ -142,18 +142,15 @@
     updateState.update(s => ({ ...s, checking: true }));
 
     try {
-      // Check for pending updates first
-      const state = await window.electronUpdate.getUpdateState();
-
-      if (state.hasUpdate) {
-        // Update already available
-        await handleExistingUpdate(state);
-        return;
-      }
-
-      // Check for patch updates
+      // ALWAYS check for patch updates FIRST - this is the preferred method
+      // Patch updates are faster and don't require NSIS reinstall
       if (window.electronUpdate.checkPatchUpdate) {
         const patchResult = await window.electronUpdate.checkPatchUpdate();
+        logger.info('Launcher: Patch update check result', {
+          success: patchResult.success,
+          available: patchResult.available,
+          reason: patchResult.reason
+        });
 
         if (patchResult.success && patchResult.available) {
           setUpdateAvailable(
@@ -162,16 +159,27 @@
           );
 
           // Auto-download patch update
-          logger.info('Launcher: Auto-downloading patch update');
+          logger.info('Launcher: Using PATCH update (no NSIS reinstall)');
           startDownload();
           return;
         }
+      }
+
+      // Only fall back to full update if patch is not available
+      // Check for pending full updates
+      const state = await window.electronUpdate.getUpdateState();
+
+      if (state.hasUpdate) {
+        logger.info('Launcher: Using FULL update (patch not available)');
+        await handleExistingUpdate(state);
+        return;
       }
 
       // Check for full updates
       const result = await window.electronUpdate.checkForUpdates();
 
       if (result.updateInfo) {
+        logger.info('Launcher: Full update detected');
         setUpdateAvailable(result.updateInfo, null);
 
         // Auto-download full update
