@@ -240,6 +240,35 @@ jobs:
           Write-Host "Portable ZIP created: $([math]::Round($size, 1)) MB"
         shell: pwsh
 
+      - name: Create source code ZIP
+        run: |
+          $version = "${{ needs.check-trigger.outputs.version }}"
+          $sourcePath = "${{ env.QACOMPILER_PATH }}"
+          $zipPath = "${{ env.QACOMPILER_PATH }}\installer_output\QACompiler_v${version}_Source.zip"
+
+          Write-Host "Creating source code ZIP..."
+          # Exclude build artifacts, cache, etc.
+          $excludes = @("dist", "build", "__pycache__", "*.pyc", "installer_output", ".pytest_cache")
+
+          # Create temp folder with clean source
+          $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\QACompiler_Source" -Force
+
+          # Copy source files excluding build artifacts
+          Get-ChildItem -Path $sourcePath -Exclude $excludes | Copy-Item -Destination $tempDir -Recurse -Force
+
+          # Remove any __pycache__ folders that got copied
+          Get-ChildItem -Path $tempDir -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+          # Create ZIP
+          Compress-Archive -Path "$tempDir\*" -DestinationPath $zipPath -Force
+
+          # Cleanup
+          Remove-Item -Path $tempDir -Recurse -Force
+
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Source ZIP created: $([math]::Round($size, 1)) MB"
+        shell: pwsh
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -251,7 +280,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: QACompiler_Portable
-          path: ${{ env.QACOMPILER_PATH }}/installer_output/*.zip
+          path: ${{ env.QACOMPILER_PATH }}/installer_output/*_Portable.zip
+          retention-days: 30
+
+      - name: Upload source ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QACompiler_Source
+          path: ${{ env.QACOMPILER_PATH }}/installer_output/*_Source.zip
           retention-days: 30
 
   create-release:
@@ -276,6 +312,12 @@ jobs:
           name: QACompiler_Portable
           path: ./artifacts
 
+      - name: Download source ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: QACompiler_Source
+          path: ./artifacts
+
       - name: List artifacts
         run: |
           echo "Downloaded artifacts:"
@@ -293,6 +335,7 @@ jobs:
 
             - **QACompiler_v${{ needs.check-trigger.outputs.version }}_Setup.exe** - Installer (recommended)
             - **QACompiler_v${{ needs.check-trigger.outputs.version }}_Portable.zip** - Portable ZIP (no install needed)
+            - **QACompiler_v${{ needs.check-trigger.outputs.version }}_Source.zip** - Source code
 
             ## Features
 
