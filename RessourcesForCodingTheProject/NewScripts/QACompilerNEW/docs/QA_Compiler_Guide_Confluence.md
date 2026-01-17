@@ -487,6 +487,26 @@ h3. Progress Tracker Sheets
 |TOTAL|Cumulative totals, category breakdown, rankings|
 |_DAILY_DATA|Hidden raw data storage|
 
+h3. TOTAL Sheet - Column Structure
+
+||Section||Color||Columns||
+|Tester Stats|Blue|User, Done, Issues, No Issue, Blocked, Korean|
+|Manager Stats|Green|Fixed, Reported, NonIssue, Checking, Pending|
+|Workload Analysis|Orange|Actual Done, Days Worked, Daily Avg, Type, Comment|
+
+h4. Workload Analysis Columns
+
+||Column||Source||Description||
+|Actual Done|Auto|Done - Blocked - Korean|
+|Days Worked|Manual|Manager fills in (PRESERVED)|
+|Daily Avg|Auto|Actual Done ÷ Days Worked|
+|Type|TesterType.txt|"Text" or "Gameplay"|
+|Comment|Manual|Manager's notes (PRESERVED)|
+
+{tip:title=Preserved Data}
+*Days Worked* and *Comment* columns are automatically preserved when rebuilding the TOTAL sheet.
+{tip}
+
 h3. Ranking Formula
 
 {note}
