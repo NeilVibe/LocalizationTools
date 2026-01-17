@@ -184,6 +184,12 @@ jobs:
           if (Test-Path "${{ env.QACOMPILER_PATH }}\languageTOtester_list.txt") {
             Copy-Item "${{ env.QACOMPILER_PATH }}\languageTOtester_list.txt" "$distPath\"
           }
+
+          # Copy TesterType config files
+          Copy-Item "${{ env.QACOMPILER_PATH }}\TesterType.example.txt" "$distPath\" -ErrorAction SilentlyContinue
+          if (Test-Path "${{ env.QACOMPILER_PATH }}\TesterType.txt") {
+            Copy-Item "${{ env.QACOMPILER_PATH }}\TesterType.txt" "$distPath\"
+          }
         shell: pwsh
 
       - name: Install Inno Setup
