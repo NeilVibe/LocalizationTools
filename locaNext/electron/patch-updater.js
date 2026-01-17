@@ -23,6 +23,21 @@ import crypto from 'crypto';
 import https from 'https';
 import http from 'http';
 
+// GDP: Debug log file for granular visibility into main process
+const DEBUG_LOG_FILE = path.join(app.getPath('userData'), 'patch-updater-debug.log');
+
+function debugLog(message, data = {}) {
+  const timestamp = new Date().toISOString();
+  const dataStr = Object.keys(data).length > 0 ? ' ' + JSON.stringify(data) : '';
+  const logLine = `[${timestamp}] ${message}${dataStr}\n`;
+  console.log(logLine.trim());
+  try {
+    fs.appendFileSync(DEBUG_LOG_FILE, logLine);
+  } catch (e) {
+    // Ignore write errors
+  }
+}
+
 // Configuration
 const UPDATE_BASE_URL = process.env.GITEA_URL || 'http://172.28.150.120:3000';
 const REPO_PATH = 'neilvibe/LocaNext';
@@ -69,7 +84,14 @@ function loadLocalState() {
  * This is called when component-state.json doesn't exist (first run after install)
  */
 function generateInitialState() {
-  console.log('[PatchUpdater] Generating initial state from installed files...');
+  // GDP Level 1: Entry point
+  debugLog('generateInitialState CALLED', {
+    RESOURCES_PATH,
+    USER_DATA_PATH,
+    STATE_FILE,
+    processResourcesPath: process.resourcesPath,
+    appPath: app.getAppPath()
+  });
 
   const state = {
     version: 'unknown',
@@ -77,44 +99,91 @@ function generateInitialState() {
     components: {}
   };
 
-  // Try to get version from package.json in app.asar
+  // GDP Level 2: Decision point - getting version
   try {
-    const { app } = require('electron');
     state.version = app.getVersion();
-    console.log(`[PatchUpdater] Got version from app: ${state.version}`);
+    debugLog('Got version from app', { version: state.version });
   } catch (err) {
-    console.log('[PatchUpdater] Could not get version from app');
+    debugLog('FAILED to get version', { error: err.message, stack: err.stack });
   }
 
-  // Hash app.asar if it exists
+  // GDP Level 3: Variable state - check asar path
   const asarPath = path.join(RESOURCES_PATH, 'app.asar');
+  debugLog('Checking app.asar path', {
+    asarPath,
+    RESOURCES_PATH,
+    exists: fs.existsSync(asarPath)
+  });
+
+  // GDP Level 2: Decision point - does asar exist?
   if (fs.existsSync(asarPath)) {
+    debugLog('app.asar EXISTS - attempting hash', { asarPath });
+
     try {
+      // GDP Level 4: Pre-action logging
+      debugLog('Starting hash computation');
+
       const hash = crypto.createHash('sha256');
       const content = fs.readFileSync(asarPath);
+
+      debugLog('File read complete', {
+        bytesRead: content.length,
+        sizeMB: (content.length / 1024 / 1024).toFixed(2)
+      });
+
       hash.update(content);
       const sha256 = hash.digest('hex');
       const stats = fs.statSync(asarPath);
+
+      // GDP Level 5: Post-action logging
+      debugLog('Hash computed successfully', {
+        sha256: sha256.substring(0, 32) + '...',
+        size: stats.size,
+        sizeMB: (stats.size / 1024 / 1024).toFixed(2)
+      });
 
       state.components['app.asar'] = {
         sha256,
         size: stats.size,
         installedAt: new Date().toISOString()
       };
-      console.log(`[PatchUpdater] Hashed app.asar: ${sha256.substring(0, 16)}... (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+
+      debugLog('Component added to state', {
+        componentName: 'app.asar',
+        stateComponents: Object.keys(state.components)
+      });
     } catch (err) {
-      console.error('[PatchUpdater] Failed to hash app.asar:', err.message);
+      // GDP: Log failure with full context
+      debugLog('HASH FAILED', {
+        error: err.message,
+        code: err.code,
+        stack: err.stack?.split('\n').slice(0, 3).join(' | ')
+      });
     }
   } else {
-    console.log('[PatchUpdater] app.asar not found at:', asarPath);
+    // GDP: Log why we didn't hash
+    debugLog('app.asar NOT FOUND', {
+      checkedPath: asarPath,
+      RESOURCES_PATH,
+      parentExists: fs.existsSync(path.dirname(asarPath)),
+      parentContents: fs.existsSync(path.dirname(asarPath)) ?
+        fs.readdirSync(path.dirname(asarPath)).slice(0, 10) : []
+    });
   }
+
+  // GDP Level 4: Pre-save logging
+  debugLog('About to save initial state', {
+    version: state.version,
+    componentCount: Object.keys(state.components).length,
+    components: Object.keys(state.components)
+  });
 
   // Save the generated state for future runs
   try {
     saveLocalState(state);
-    console.log('[PatchUpdater] Saved initial state');
+    debugLog('Initial state SAVED', { file: STATE_FILE });
   } catch (err) {
-    console.error('[PatchUpdater] Failed to save initial state:', err.message);
+    debugLog('SAVE FAILED', { error: err.message });
   }
 
   return state;
@@ -165,49 +234,75 @@ function fetchJson(url) {
  * Download file with progress callback
  */
 function downloadFile(url, destPath, onProgress) {
-  console.log(`[PatchUpdater:download] Starting download from: ${url}`);
-  console.log(`[PatchUpdater:download] Destination: ${destPath}`);
+  // GDP Level 1: Entry point
+  debugLog('downloadFile CALLED', { url, destPath });
 
   return new Promise((resolve, reject) => {
-    const client = url.startsWith('https') ? https : http;
-    console.log(`[PatchUpdater:download] Using ${url.startsWith('https') ? 'HTTPS' : 'HTTP'} client`);
+    const isHttps = url.startsWith('https');
+    const client = isHttps ? https : http;
+    debugLog('Client selected', { protocol: isHttps ? 'HTTPS' : 'HTTP' });
 
-    // Ensure temp directory exists
-    fs.mkdirSync(path.dirname(destPath), { recursive: true });
-    console.log(`[PatchUpdater:download] Directory ensured: ${path.dirname(destPath)}`);
+    // GDP Level 4: Pre-action - ensure directory
+    const dir = path.dirname(destPath);
+    debugLog('Ensuring directory', { dir });
 
-    const file = fs.createWriteStream(destPath);
-    console.log(`[PatchUpdater:download] File stream created`);
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      debugLog('Directory created/verified', { dir, exists: fs.existsSync(dir) });
+    } catch (err) {
+      debugLog('DIRECTORY CREATE FAILED', { error: err.message });
+      return reject(err);
+    }
+
+    // GDP Level 4: Pre-action - create file stream
+    let file;
+    try {
+      file = fs.createWriteStream(destPath);
+      debugLog('File stream created', { destPath });
+    } catch (err) {
+      debugLog('FILE STREAM FAILED', { error: err.message });
+      return reject(err);
+    }
+
+    debugLog('Starting HTTP request', { url, timeout: 120000 });
 
     const req = client.get(url, { timeout: 120000 }, (res) => {
-      console.log(`[PatchUpdater:download] Response status: ${res.statusCode}`);
-      console.log(`[PatchUpdater:download] Content-Length: ${res.headers['content-length']}`);
+      // GDP Level 5: Response logging
+      debugLog('HTTP RESPONSE received', {
+        statusCode: res.statusCode,
+        contentLength: res.headers['content-length'],
+        contentType: res.headers['content-type']
+      });
 
       if (res.statusCode !== 200) {
         try { fs.unlinkSync(destPath); } catch (e) { }
+        debugLog('HTTP ERROR - non-200 status', { statusCode: res.statusCode });
         return reject(new Error(`HTTP ${res.statusCode}`));
       }
 
       const totalSize = parseInt(res.headers['content-length'], 10);
       let downloadedSize = 0;
       let lastLogPercent = 0;
+      let chunkCount = 0;
 
       res.on('data', chunk => {
+        chunkCount++;
         downloadedSize += chunk.length;
         const percent = (downloadedSize / totalSize) * 100;
 
-        // Log every 20%
-        if (percent - lastLogPercent >= 20) {
-          console.log(`[PatchUpdater:download] ${percent.toFixed(0)}% (${(downloadedSize / 1024 / 1024).toFixed(1)} MB)`);
-          lastLogPercent = percent;
+        // GDP: Log first chunk and every 20%
+        if (chunkCount === 1 || percent - lastLogPercent >= 20) {
+          debugLog('Download progress', {
+            percent: percent.toFixed(1),
+            downloadedMB: (downloadedSize / 1024 / 1024).toFixed(2),
+            totalMB: (totalSize / 1024 / 1024).toFixed(2),
+            chunks: chunkCount
+          });
+          lastLogPercent = Math.floor(percent / 20) * 20;
         }
 
         if (onProgress) {
-          onProgress({
-            percent,
-            transferred: downloadedSize,
-            total: totalSize
-          });
+          onProgress({ percent, transferred: downloadedSize, total: totalSize });
         }
       });
 
@@ -215,12 +310,16 @@ function downloadFile(url, destPath, onProgress) {
 
       file.on('finish', () => {
         file.close();
-        console.log(`[PatchUpdater:download] Download complete: ${destPath}`);
+        debugLog('DOWNLOAD COMPLETE', {
+          destPath,
+          finalSize: downloadedSize,
+          chunks: chunkCount
+        });
         resolve(destPath);
       });
 
       file.on('error', (err) => {
-        console.error(`[PatchUpdater:download] File write error: ${err.message}`);
+        debugLog('FILE WRITE ERROR', { error: err.message, code: err.code });
         try { fs.unlinkSync(destPath); } catch (e) { }
         reject(err);
       });
@@ -228,13 +327,13 @@ function downloadFile(url, destPath, onProgress) {
     });
 
     req.on('error', err => {
-      console.error(`[PatchUpdater:download] Request error: ${err.message}`);
+      debugLog('REQUEST ERROR', { error: err.message, code: err.code });
       try { fs.unlinkSync(destPath); } catch (e) { }
       reject(err);
     });
 
     req.on('timeout', () => {
-      console.error(`[PatchUpdater:download] Request timeout`);
+      debugLog('REQUEST TIMEOUT');
       req.destroy();
       try { fs.unlinkSync(destPath); } catch (e) { }
       reject(new Error('Download timeout'));
@@ -323,26 +422,56 @@ const PENDING_FILE = path.join(USER_DATA_PATH, 'pending-update.json');
  * The actual swap happens on restart via applyPendingUpdates()
  */
 export async function applyPatchUpdate(updates, onProgress) {
-  console.log('[PatchUpdater] ========== PATCH UPDATE START ==========');
-  console.log('[PatchUpdater] Updates to process:', updates?.length);
-  console.log('[PatchUpdater] STAGING_DIR:', STAGING_DIR);
-  console.log('[PatchUpdater] RESOURCES_PATH:', RESOURCES_PATH);
+  // GDP Level 1: Entry point with full context
+  debugLog('========== applyPatchUpdate CALLED ==========', {
+    updatesCount: updates?.length,
+    updateNames: updates?.map(u => u.name),
+    STAGING_DIR,
+    RESOURCES_PATH,
+    UPDATE_BASE_URL
+  });
 
-  // Clean staging directory
-  if (fs.existsSync(STAGING_DIR)) {
-    fs.rmSync(STAGING_DIR, { recursive: true });
+  if (!updates || updates.length === 0) {
+    debugLog('NO UPDATES - returning early');
+    return { success: [], failed: [], noUpdates: true };
   }
-  fs.mkdirSync(STAGING_DIR, { recursive: true });
+
+  // GDP Level 4: Pre-action - clean staging
+  debugLog('Cleaning staging directory', { exists: fs.existsSync(STAGING_DIR) });
+  if (fs.existsSync(STAGING_DIR)) {
+    try {
+      fs.rmSync(STAGING_DIR, { recursive: true });
+      debugLog('Staging cleaned');
+    } catch (err) {
+      debugLog('STAGING CLEAN FAILED', { error: err.message });
+    }
+  }
+
+  try {
+    fs.mkdirSync(STAGING_DIR, { recursive: true });
+    debugLog('Staging directory created', { STAGING_DIR, exists: fs.existsSync(STAGING_DIR) });
+  } catch (err) {
+    debugLog('STAGING MKDIR FAILED', { error: err.message });
+    return { success: [], failed: [{ name: 'staging', error: err.message }] };
+  }
 
   const results = { success: [], failed: [] };
   const pendingUpdates = [];
 
   let completedSize = 0;
   const totalSize = updates.reduce((sum, u) => sum + u.size, 0);
+  debugLog('Total download size', { totalMB: (totalSize / 1024 / 1024).toFixed(2) });
 
-  for (const update of updates) {
-    console.log(`[PatchUpdater] ===== Processing: ${update.name} =====`);
-    console.log(`[PatchUpdater] Update size: ${(update.size / 1024 / 1024).toFixed(2)} MB`);
+  for (let i = 0; i < updates.length; i++) {
+    const update = updates[i];
+
+    // GDP Level 2: Each iteration
+    debugLog(`Processing update ${i + 1}/${updates.length}`, {
+      name: update.name,
+      sizeMB: (update.size / 1024 / 1024).toFixed(2),
+      url: update.url,
+      sha256: update.sha256?.substring(0, 16) + '...'
+    });
 
     try {
       // Build full URL
@@ -350,18 +479,16 @@ export async function applyPatchUpdate(updates, onProgress) {
         ? update.url
         : `${UPDATE_BASE_URL}/${REPO_PATH}/releases/download/latest/${update.url}`;
 
-      console.log(`[PatchUpdater] Download URL: ${url}`);
+      debugLog('URL resolved', { originalUrl: update.url, resolvedUrl: url });
 
       const stagingPath = path.join(STAGING_DIR, update.name);
-      console.log(`[PatchUpdater] Staging path: ${stagingPath}`);
-      console.log(`[PatchUpdater] Starting download...`);
+      debugLog('Staging path', { stagingPath });
+
+      // GDP Level 4: Pre-download
+      debugLog('Starting download...');
 
       // Download with progress
       await downloadFile(url, stagingPath, (progress) => {
-        // Log progress every 10%
-        if (Math.floor(progress.percent) % 10 === 0) {
-          console.log(`[PatchUpdater] Progress: ${progress.percent.toFixed(0)}%`);
-        }
         if (onProgress) {
           const overallProgress = ((completedSize + progress.transferred) / totalSize) * 100;
           onProgress({
@@ -374,17 +501,28 @@ export async function applyPatchUpdate(updates, onProgress) {
         }
       });
 
-      console.log(`[PatchUpdater] Download completed for: ${update.name}`);
+      // GDP Level 5: Post-download
+      debugLog('Download COMPLETE', {
+        name: update.name,
+        stagingPath,
+        fileExists: fs.existsSync(stagingPath),
+        fileSize: fs.existsSync(stagingPath) ? fs.statSync(stagingPath).size : 0
+      });
 
       // Verify hash
-      console.log(`[PatchUpdater] Verifying hash...`);
+      debugLog('Starting hash verification');
       const hash = await hashFile(stagingPath);
+      debugLog('Hash computed', {
+        computed: hash.substring(0, 16) + '...',
+        expected: update.sha256.substring(0, 16) + '...',
+        match: hash === update.sha256
+      });
+
       if (hash !== update.sha256) {
         throw new Error(`Hash mismatch: expected ${update.sha256.substring(0, 16)}..., got ${hash.substring(0, 16)}...`);
       }
-      console.log(`[PatchUpdater] Hash verified: ${hash.substring(0, 16)}...`);
 
-      console.log(`[PatchUpdater] Verified and staged: ${update.name}`);
+      debugLog('Update VERIFIED and STAGED', { name: update.name });
 
       // Record pending update
       pendingUpdates.push({
@@ -400,10 +538,22 @@ export async function applyPatchUpdate(updates, onProgress) {
       completedSize += update.size;
 
     } catch (err) {
-      console.error(`[PatchUpdater] Failed: ${update.name}:`, err.message);
+      debugLog('UPDATE FAILED', {
+        name: update.name,
+        error: err.message,
+        code: err.code,
+        stack: err.stack?.split('\n').slice(0, 3).join(' | ')
+      });
       results.failed.push({ name: update.name, error: err.message });
     }
   }
+
+  // GDP Level 5: Final state
+  debugLog('Processing complete', {
+    successCount: results.success.length,
+    failedCount: results.failed.length,
+    pendingCount: pendingUpdates.length
+  });
 
   // Save pending updates info (applied on restart)
   if (pendingUpdates.length > 0 && results.failed.length === 0) {
@@ -413,11 +563,19 @@ export async function applyPatchUpdate(updates, onProgress) {
       updates: pendingUpdates,
       resourcesPath: RESOURCES_PATH
     };
-    fs.writeFileSync(PENDING_FILE, JSON.stringify(pendingInfo, null, 2));
-    console.log(`[PatchUpdater] Staged ${pendingUpdates.length} update(s) - will apply on restart`);
-    results.needsRestart = true;
+
+    debugLog('Saving pending update file', { PENDING_FILE, pendingInfo });
+
+    try {
+      fs.writeFileSync(PENDING_FILE, JSON.stringify(pendingInfo, null, 2));
+      debugLog('PENDING FILE SAVED');
+      results.needsRestart = true;
+    } catch (err) {
+      debugLog('PENDING FILE SAVE FAILED', { error: err.message });
+    }
   }
 
+  debugLog('========== applyPatchUpdate COMPLETE ==========', results);
   return results;
 }
 
