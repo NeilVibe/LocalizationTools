@@ -1,6 +1,37 @@
 # Session Context
 
-> Last Updated: 2026-01-17 (Session 48 - Patch Updater SUCCESS!)
+> Last Updated: 2026-01-18 (Session 49 - QACompiler Fixes)
+
+---
+
+## SESSION 49: QACompiler Fixes ✅
+
+### Progress Tracker - Workload Data Preservation Bug
+
+**Problem:** Days Worked and Comment columns (M and P) were losing user-entered data on rebuild.
+
+**Root Cause:** `read_existing_workload_data()` iterated through ALL rows including CATEGORY BREAKDOWN section. Since both tables have "User" in column A but different data in columns M and P:
+- Tester Stats row: M=Days Worked, P=Comment
+- Category Breakdown row: M=category data ("-"), P=category data ("-")
+
+Category breakdown rows came AFTER tester stats, so they OVERWROTE the preserved data.
+
+**Fix:** Stop reading when hitting "CATEGORY BREAKDOWN":
+```python
+if "CATEGORY BREAKDOWN" in user_str: break
+```
+
+**File:** `tracker/total.py` line ~168
+
+### Other QACompiler Fixes (Session 48-49)
+
+| Issue | Fix | File |
+|-------|-----|------|
+| System output path wrong | Use `DATASHEET_OUTPUT` not `input_path.parent` | `gui/app.py:463` |
+| System not in populate pipeline | Added System config to `DATASHEET_LOCATIONS` | `core/populate_new.py` |
+| System files showing stale | Use `shutil.copy()` not `shutil.copy2()` | `system_localizer.py` |
+| CI workflow fragmented | Consolidated 3 jobs into 1 | `.github/workflows/qacompiler-build.yml` |
+| Artifacts combined | Split into Setup, Portable, Source | `.github/workflows/qacompiler-build.yml` |
 
 ---
 

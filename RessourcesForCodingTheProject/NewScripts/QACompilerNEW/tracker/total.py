@@ -154,7 +154,7 @@ def read_existing_workload_data(wb: openpyxl.Workbook) -> Dict[str, Dict]:
     # New order: Actual Done (1) | Days Worked (2) | Daily Avg (3) | Type (4) | Tester Assessment (5)
     user_col = 1
     days_worked_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 2  # "Days Worked" is 2nd in WORKLOAD_HEADERS
-    assessment_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 5   # "Tester Assessment" is 5th
+    assessment_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 5   # "Comment" is 5th in WORKLOAD_HEADERS
 
     for row in range(1, ws.max_row + 1):
         user_value = ws.cell(row, user_col).value
@@ -163,7 +163,12 @@ def read_existing_workload_data(wb: openpyxl.Workbook) -> Dict[str, Dict]:
         if not user_value:
             continue
         user_str = str(user_value).strip()
-        if user_str in ["User", "TOTAL", ""] or "TESTER STATS" in user_str or "GRAND TOTAL" in user_str:
+
+        # STOP when we hit category breakdown section (different table structure)
+        if "CATEGORY BREAKDOWN" in user_str:
+            break
+
+        if user_str in ["User", "TOTAL", "SUBTOTAL", ""] or "TESTER STATS" in user_str or "GRAND TOTAL" in user_str:
             continue
 
         # This looks like a user row - extract workload data
@@ -365,7 +370,8 @@ def build_tester_section(
         tester_type = tester_type_mapping.get(user, "Unknown")
 
         # Restore preserved manual data OR leave blank for new users
-        preserved = existing_workload_data.get(user, {})
+        # Strip username to match how we read it in read_existing_workload_data
+        preserved = existing_workload_data.get(user.strip() if isinstance(user, str) else user, {})
         days_worked = preserved.get("days_worked", "")
         assessment = preserved.get("assessment", "")
 
@@ -401,7 +407,7 @@ def build_tester_section(
                 cell.fill = styles["alt_fill"]
 
         # Write Workload Analysis columns (light orange background)
-        # Order: Actual Done | Days Worked | Daily Avg | Type | Tester Assessment
+        # Order: Actual Done | Days Worked | Daily Avg | Type | Comment
         workload_data = [actual_done, days_worked, daily_avg, tester_type, assessment]
         workload_start = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 1
         for col_offset, value in enumerate(workload_data):
