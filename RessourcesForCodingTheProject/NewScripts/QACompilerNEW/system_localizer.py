@@ -375,7 +375,7 @@ def localize_system_sheet(
     try:
         import shutil
         eng_output = output_folder / "System_ENG.xlsx"
-        shutil.copy2(input_path, eng_output)
+        shutil.copy(input_path, eng_output)  # copy, not copy2 - don't preserve old timestamp
         log.info("Copied original English file")
     except Exception as e:
         log.warning("Failed to copy English file: %s", e)
