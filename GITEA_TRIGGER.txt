@@ -145,3 +145,4 @@ Build skip_linux 472: Add patch updater debug logging
 Build skip_linux 473: GDP granular debug logging for patch updater
 Build skip_linux 474: Fix ASAR interception bug
 Build skip_linux 475: Test patch download after ASAR fix
+Build skip_linux 476: PowerShell download workaround
