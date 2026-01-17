@@ -405,15 +405,49 @@ ipcMain.handle('download-update', async () => {
 });
 
 /**
- * IPC: Quit and install update
+ * IPC: Quit and install update (FULL update only)
+ *
+ * CRITICAL: Must pass (true, true) for silent update!
+ * - isSilent=true: Runs NSIS installer with /S flag (no wizard)
+ * - isForceRunAfter=true: Launches app after silent install
+ *
+ * Without these flags, user sees full NSIS wizard on every auto-update!
+ * See: https://www.electron.build/electron-updater.Class.AppUpdater.html
+ *
+ * NOTE: For PATCH updates, use 'restart-app' instead - no NSIS needed!
  */
 ipcMain.handle('quit-and-install', async () => {
   if (!autoUpdater) {
     return { success: false, error: 'Auto-updater not available' };
   }
 
-  logger.info('Quitting and installing update...');
-  autoUpdater.quitAndInstall();
+  logger.info('Quitting and installing update (silent mode)...');
+  // isSilent=true: No NSIS wizard, isForceRunAfter=true: Launch app after install
+  autoUpdater.quitAndInstall(true, true);
+  return { success: true };
+});
+
+/**
+ * IPC: Restart app (PATCH update only)
+ *
+ * For PATCH updates, files are already hot-swapped in place.
+ * No NSIS installer needed - just restart the app!
+ *
+ * This is the PROPER way to complete a patch update:
+ * - app.relaunch() schedules a restart
+ * - app.quit() exits current instance
+ * - New instance starts with updated files
+ */
+ipcMain.handle('restart-app', async () => {
+  logger.info('Restarting app after patch update...');
+
+  // Stop backend server before restart
+  stopBackendServer();
+
+  // Schedule restart and quit
+  app.relaunch();
+  app.quit();
+
   return { success: true };
 });
 
