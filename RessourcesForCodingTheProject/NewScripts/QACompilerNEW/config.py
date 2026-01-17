@@ -6,6 +6,9 @@ Central configuration for all modules.
 All paths, constants, categories, and mappings in one place.
 """
 
+# Version - auto-injected by CI pipeline
+VERSION = "2.0.0"
+
 import sys
 from pathlib import Path
 
