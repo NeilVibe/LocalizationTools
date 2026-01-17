@@ -78,10 +78,9 @@ DATASHEET_LOCATIONS = {
         "cn_pattern": "Gimmick_LQA_ZHO-CN*.xlsx",
     },
     "System": {
-        # System is special - manually created, no auto-generated sheets
-        "folder": None,
-        "eng_pattern": None,
-        "cn_pattern": None,
+        "folder": "System_LQA_All",
+        "eng_pattern": "System_ENG*.xlsx",
+        "cn_pattern": "System_ZHO-CN*.xlsx",
     },
 }
 
@@ -142,10 +141,6 @@ def check_datasheet_freshness(max_age_hours: int = MAX_AGE_HOURS) -> Tuple[bool,
     all_fresh = True
 
     for category in CATEGORIES:
-        if category == "System":
-            status[category] = "Manual (skip)"
-            continue
-
         config = DATASHEET_LOCATIONS.get(category)
         if not config or not config["folder"]:
             status[category] = "Not configured"
@@ -222,8 +217,7 @@ def populate_qa_folder_new(
                 marker = "[OK]"
             else:
                 marker = "[!!]"
-                if category != "System":  # System is manual, don't count it
-                    missing_or_stale.append(f"{category}: {status_msg}")
+                missing_or_stale.append(f"{category}: {status_msg}")
             print(f"  {marker} {category}: {status_msg}")
 
         # STRICT: If ANY is bad, stop immediately
@@ -297,12 +291,6 @@ def populate_qa_folder_new(
         is_english = tester_mapping.get(username, "EN") == "EN"
         lang_code = "ENG" if is_english else "ZHO-CN"
 
-        # Skip System category (manual)
-        if category == "System":
-            print(f"  [SKIP] {folder_name}: System is manual")
-            skip_count += 1
-            continue
-
         # Find source datasheet
         source_file = find_latest_datasheet(category, is_english)
 
@@ -328,7 +316,7 @@ def populate_qa_folder_new(
     print("POPULATE SUMMARY")
     print("=" * 60)
     print(f"  Populated: {success_count}")
-    print(f"  Skipped:   {skip_count} (System)")
+    print(f"  Skipped:   {skip_count}")
     print(f"  Failed:    {len(errors)}")
 
     if errors:
