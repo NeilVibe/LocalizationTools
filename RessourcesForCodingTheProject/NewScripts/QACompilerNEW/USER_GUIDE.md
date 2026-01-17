@@ -34,47 +34,52 @@
 
 ## 🚀 Installation
 
-### Build Your Own Executable
+### Simple Portable Install
 
-Each user builds their own executable to match their Perforce drive location.
+Download, extract, and run. No admin rights needed!
 
 | Step | Action |
 |------|--------|
-| 1 | **Extract** the QACompilerNEW.zip to a folder |
-| 2 | **Run** `build_exe.bat` |
-| 3 | When prompted, **enter your drive letter** (F, D, E, etc.) |
-| 4 | Wait for build to complete |
-| 5 | Find executable in `dist\QACompiler\QACompiler.exe` |
+| 1 | **Download** `QACompiler_Setup.exe` |
+| 2 | **Run** the installer |
+| 3 | **Select your Perforce drive** (F:, D:, E:, etc.) |
+| 4 | **Choose folder** (default: same folder as installer) |
+| 5 | **Done!** Double-click `QACompiler.exe` to run |
+
+### During Installation
+
+The installer will ask for your Perforce drive letter:
 
 ```
-Enter drive letter (F/D/E/etc.) [F]: D
+Select your Perforce drive:
+  ○ F: drive (default)
+  ○ D: drive
+  ○ E: drive
+  ○ Other...
 ```
-
-### Why Build Yourself?
-
-- **Different drives**: Perforce can be on F:, D:, E: etc.
-- **Correct paths**: Build process configures paths for YOUR system
-- **No manual editing**: Drive selection is automatic
 
 ### Requirements
 
 | Requirement | Details |
 |-------------|---------|
-| Python | 3.8 or higher |
-| pip | Comes with Python |
+| Windows | 10 or higher |
 | Perforce | Must be synced to your machine |
 
-### After Building
+> **Note:** No admin rights needed. No Python required. Portable install.
 
-Copy the entire `dist\QACompiler\` folder to your preferred location:
+### Installation Folder
+
+Installs in the same folder (portable):
 
 ```
-C:\Tools\QACompiler\
-├── QACompiler.exe      ← Double-click to run
+C:\MyTools\QACompiler\       ← Your chosen folder
+├── QACompiler.exe           ← Main application
 ├── QAfolder\
 ├── QAfolderOLD\
 ├── QAfolderNEW\
-└── ...
+├── GeneratedDatasheets\
+├── Masterfolder_EN\
+└── Masterfolder_CN\
 ```
 
 ---
@@ -85,50 +90,90 @@ The QA Compiler supports two main workflows:
 
 | Workflow | Frequency | Purpose |
 |----------|-----------|---------|
-| **Weekly (Friday Refresh)** | Every Friday | Refresh all datasheets with new game data |
-| **Daily** | Every day | Process tester submissions |
+| **Daily** | Every day | Collect tester submissions into QAfolder |
+| **Weekly (Friday Refresh)** | Every Friday | Refresh datasheets and compile masters |
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    WEEKLY WORKFLOW (Friday)                      │
-│  Generate Datasheets → Transfer QA Files → Build Master Files   │
+│                    DAILY WORKFLOW (Simple)                       │
+│         Download from Redmine → Put into QAfolder/              │
 └─────────────────────────────────────────────────────────────────┘
-                              ↑
-                              │ feeds into
-                              │
+
 ┌─────────────────────────────────────────────────────────────────┐
-│                    DAILY WORKFLOW                                │
-│  Download from Redmine → Organize into QAfolderOLD/NEW          │
+│                    WEEKLY WORKFLOW (Friday)                      │
+│  Move QAfolder→OLD → Generate → Transfer → Build Master Files   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
+## 📆 Daily Workflow
+
+Every day, collect tester submissions. Simple!
+
+### Step 1: Download from Redmine
+
+Testers upload their completed QA files to Redmine.
+
+| Source | What to Download |
+|--------|------------------|
+| Redmine | Tester-submitted QA folders |
+| Format | `이름_Category` folders |
+
+### Step 2: Put into QAfolder
+
+Put downloaded folders **directly into `QAfolder/`**. That's it!
+
+| Action | Details |
+|--------|---------|
+| Download | Get tester folders from Redmine |
+| Place | Put directly into `QAfolder/` |
+| Done | Files accumulate throughout the week |
+
+> **Note:** Daily workflow does NOT use QAfolderOLD or QAfolderNEW. Those are only for the weekly refresh.
+
+---
+
 ## 📅 Weekly Workflow (Friday Refresh)
 
-Every Friday, refresh the QA files with the latest game data.
+Every Friday, refresh the QA files with latest game data.
 
-### Step 1: Generate Datasheets
+### Step 1: Move QAfolder to OLD
+
+Move ALL contents from `QAfolder/` to `QAfolderOLD/`.
+
+| Action | Details |
+|--------|---------|
+| Move | Everything in `QAfolder/` → `QAfolderOLD/` |
+| Result | `QAfolder/` is now empty |
+| Purpose | Preserve tester work for merging |
+
+### Step 2: Generate Fresh Datasheets
 
 Creates fresh LQA worksheets from game XML data.
 
 | Action | Details |
 |--------|---------|
-| Click | **[Generate Selected]** (or select specific categories) |
+| Click | **[Generate Selected]** (or select all) |
 | Output | `GeneratedDatasheets/` folder |
-| When | Game data has been updated |
+| Important | Sheets must be freshly generated (< 10 hours old) |
 
-### Step 2: Transfer QA Files
+### Step 3: Transfer QA Files
 
-Merges tester work from OLD/NEW folders into QAfolder.
+The Transfer process will:
+1. Check that generated sheets are fresh
+2. Auto-create folders in `QAfolderNEW/` matching `QAfolderOLD/`
+3. Auto-copy the correct generated sheet for each tester's language
+4. Merge OLD tester work with NEW sheets
+5. Output combined files to `QAfolder/`
 
 | Action | Details |
 |--------|---------|
-| Ensure | `QAfolderOLD/` and `QAfolderNEW/` have tester folders |
 | Click | **[Transfer QA Files]** |
-| Output | `QAfolder/` (combined) |
+| Auto-does | Creates QAfolderNEW folders + copies sheets |
+| Output | `QAfolder/` (merged OLD work + NEW sheets) |
 
-### Step 3: Build Master Files
+### Step 4: Build Master Files
 
 Compiles everything into final master documents.
 
@@ -141,47 +186,28 @@ Compiles everything into final master documents.
 ### Weekly Workflow Summary
 
 ```
-1. Generate Datasheets     →  Fresh worksheets from game XML
-2. Transfer QA Files       →  Merge tester work into QAfolder
-3. Build Master Files      →  Compile into Master files + Tracker
+1. Move QAfolder → OLD    →  Preserve all tester work
+2. Generate Datasheets    →  Fresh sheets from game XML
+3. Transfer QA Files      →  Auto-populate NEW + merge with OLD
+4. Build Master Files     →  Compile into Master files + Tracker
 ```
-
----
-
-## 📆 Daily Workflow
-
-Every day, collect and organize tester submissions.
-
-### Step 1: Download from Redmine
-
-Testers upload their QA files to Redmine. Download them daily.
-
-| Source | What to Download |
-|--------|------------------|
-| Redmine | Tester-submitted QA folders |
-| Format | `이름_Category` folders (see naming convention below) |
-
-### Step 2: Organize into Folders
-
-Place downloaded folders into the appropriate location:
-
-| Folder | What Goes Here |
-|--------|----------------|
-| `QAfolderOLD/` | **Previous round** - tester's last submitted work |
-| `QAfolderNEW/` | **Current round** - tester's new empty datasheets |
-
-### Step 3: Run Transfer (When Ready)
-
-Once you have both OLD and NEW files for a category:
-
-1. Click **[Transfer QA Files]**
-2. Combined output appears in `QAfolder/`
 
 ---
 
 ## 📁 QAfolder Behavior (Important!)
 
 The `QAfolder/` is the **master collection** of all QA work.
+
+### Tester Languages
+
+Each tester is assigned a language in `languageTOtester_list.txt`:
+
+| Language Code | Language | Example |
+|---------------|----------|---------|
+| `ENG` | English | Most testers |
+| `ZHO-CN` | Chinese (Simplified) | Chinese team |
+
+The Transfer process uses this mapping to copy the correct generated datasheet.
 
 ### Golden Rules
 
