@@ -15,7 +15,6 @@ on:
   push:
     branches: [main]
     paths:
-      - 'RessourcesForCodingTheProject/NewScripts/QACompilerNEW/**'
       - 'QACOMPILER_BUILD.txt'
   workflow_dispatch:
     inputs:
