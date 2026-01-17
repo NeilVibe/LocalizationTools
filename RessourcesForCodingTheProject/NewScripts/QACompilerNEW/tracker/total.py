@@ -122,7 +122,8 @@ def autofit_row_heights(ws, default_height: int = 15, line_height: int = 15):
 TESTER_HEADERS = ["User", "Done", "Issues", "No Issue", "Blocked", "Korean"]
 MANAGER_HEADERS = ["Fixed", "Reported", "NonIssue", "Checking", "Pending"]
 # Workload Analysis headers (light orange section)
-WORKLOAD_HEADERS = ["Actual Done", "Daily Avg", "Type", "Days Worked", "Tester Assessment"]
+# Order: Actual Done (auto) | Days Worked (manual) | Daily Avg (auto) | Type (auto) | Tester Assessment (manual)
+WORKLOAD_HEADERS = ["Actual Done", "Days Worked", "Daily Avg", "Type", "Tester Assessment"]
 
 
 # =============================================================================
@@ -150,8 +151,9 @@ def read_existing_workload_data(wb: openpyxl.Workbook) -> Dict[str, Dict]:
     # The structure is: User | Tester Stats... | Manager Stats... | Workload Analysis...
 
     # Calculate column positions
+    # New order: Actual Done (1) | Days Worked (2) | Daily Avg (3) | Type (4) | Tester Assessment (5)
     user_col = 1
-    days_worked_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 4  # "Days Worked" is 4th in WORKLOAD_HEADERS
+    days_worked_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 2  # "Days Worked" is 2nd in WORKLOAD_HEADERS
     assessment_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 5   # "Tester Assessment" is 5th
 
     for row in range(1, ws.max_row + 1):
@@ -399,7 +401,8 @@ def build_tester_section(
                 cell.fill = styles["alt_fill"]
 
         # Write Workload Analysis columns (light orange background)
-        workload_data = [actual_done, daily_avg, tester_type, days_worked, assessment]
+        # Order: Actual Done | Days Worked | Daily Avg | Type | Tester Assessment
+        workload_data = [actual_done, days_worked, daily_avg, tester_type, assessment]
         workload_start = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 1
         for col_offset, value in enumerate(workload_data):
             col = workload_start + col_offset
