@@ -1,6 +1,6 @@
 # LocaNext Roadmap
 
-> **Last Updated:** 2026-01-16 (Session 45) | **CI:** Gitea 455 ✅ GitHub 456 ✅
+> **Last Updated:** 2026-01-18 (Session 52) | **CI:** Gitea 495 ⏳ GitHub ✅
 
 ---
 
@@ -166,13 +166,14 @@ Tests created in `tests/unit/test_windows_paths.py`:
 | **Gitea** | QA | 1,399 | 455 ✅ |
 | **GitHub** | QA | 1,399 | 456 ✅ |
 
-### Build Modes
+### Build Mode
 
 | Mode | Tests | Installer | Platform |
 |------|-------|-----------|----------|
-| `QA` | ALL 1000+ | ~150MB | Both (default) |
-| `QA FULL` | ALL 1000+ | ~2GB+ | Gitea only |
+| `Build` / `Build QA` | ALL 1000+ | ~150MB | Both (default) |
 | `TROUBLESHOOT` | Resume | Debug | Both |
+
+**Architecture:** Small installer (~150MB) + first-run setup downloads deps + AI model
 
 ---
 

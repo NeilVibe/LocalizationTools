@@ -1,6 +1,35 @@
 # Session Context
 
-> Last Updated: 2026-01-18 (Session 51 - Verification + BUILD-001 Investigation)
+> Last Updated: 2026-01-18 (Session 52 - BUILD-001 Implementation)
+
+---
+
+## SESSION 52: BUILD-001 Implementation ✅
+
+### BUILD-001: IMPLEMENTED
+
+**Problem:** Installer 595 MB instead of expected 150 MB
+
+**Root Cause:** Wrong architecture - tried to create LIGHT/FULL build distinction
+
+**Solution:** ONE BUILD ONLY architecture:
+- Small installer (~150MB)
+- First-run setup downloads deps + model automatically
+- Code already correct in `first-run-setup.js`
+
+**Changes Made:**
+| File | Change |
+|------|--------|
+| `requirements-light.txt` | DELETED |
+| `.gitea/workflows/build.yml` | Removed all LIGHT/FULL logic |
+| `.github/workflows/build-electron.yml` | Removed LIGHT references |
+| `BUILD_TRIGGER.txt` | Simplified |
+| `GITEA_TRIGGER.txt` | Simplified |
+| `first-run-setup.js` | Fixed comments |
+| `HOW_TO_BUILD.md` | Updated |
+| `Roadmap.md` | Updated |
+
+**Build Status:** Gitea Run 495 ⏳ RUNNING
 
 ---
 
@@ -13,22 +42,6 @@
 | **UI-113** | ✅ Code Verified | VirtualGrid.svelte has edit context menu (lines 1149-1248, 2530-2590) |
 | **BUG-044** | ✅ PASSED | `auth_token` key exists, Bearer auth in API requests |
 | **UI-114** | ✅ PASSED | Toast: `position:fixed`, `bottom:16px`, `zIndex:9999` |
-
-### BUILD-001: FIXED ✅
-
-**Problem:** Installer 595 MB instead of expected 150 MB
-
-**Root Cause:** Wrong architecture - tried to create LIGHT/FULL build distinction
-
-**Fix:** Removed LIGHT/FULL distinction entirely. ONE BUILD ONLY:
-- Small installer (~150MB)
-- First-run setup downloads deps + model automatically
-- Code already correct in `first-run-setup.js`
-
-**Changes:**
-- Deleted `requirements-light.txt`
-- Fixed `.gitea/workflows/build.yml` and `.github/workflows/build-electron.yml`
-- Updated trigger files and documentation
 
 ### BUILD-002: Dual-Release Architecture IMPLEMENTED
 

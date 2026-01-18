@@ -104,79 +104,26 @@
 
 ---
 
-### BUILD-001: Gitea vs GitHub Release Size Discrepancy ⚠️ MEDIUM (ROOT CAUSE FOUND)
+### BUILD-001: Installer Size Discrepancy ✅ FIXED (Session 52)
 
 - **Reported:** 2026-01-18 (Session 50)
-- **Investigated:** 2026-01-18 (Session 51)
-- **Severity:** MEDIUM (affects download time and storage)
-- **Status:** ROOT CAUSE FOUND - NEEDS FIX
-- **Component:** CI/CD workflows, requirements.txt
+- **Fixed:** 2026-01-18 (Session 52)
+- **Status:** ✅ FIXED
 
-**Problem:** Gitea LIGHT installer is 595 MB, but expected ~150 MB.
+**Problem:** Installer was 595 MB instead of expected ~150 MB.
 
-**ROOT CAUSE IDENTIFIED:**
+**Root Cause:** Wrong architecture - tried to create LIGHT/FULL build distinction which was unnecessary.
 
-Line 1509 of `.gitea/workflows/build.yml` installs **FULL requirements.txt** into embedded Python for ALL builds (including LIGHT):
-```powershell
-& "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
-```
+**Solution:** ONE BUILD ONLY architecture:
+- Small installer (~150MB)
+- First-run setup downloads deps + model automatically
+- `first-run-setup.js` already had correct logic
 
-This includes:
-- `torch==2.3.1` (~800 MB installed)
-- `torchvision==0.18.1` (~200 MB)
-- `sentence-transformers==2.7.0` (~100 MB)
-- `transformers>=4.46.0` (~500 MB)
-- Plus all other ML/data packages
-
-**Size Breakdown:**
-| Component | Size | Notes |
-|-----------|------|-------|
-| Electron + Chromium | ~150 MB | Expected base size |
-| Python 3.11 embedded | ~50 MB | Embeddable distribution |
-| PyTorch + dependencies | ~800 MB | **THE PROBLEM** |
-| Other pip packages | ~100 MB | FastAPI, etc. |
-| **Total** | **~1.1 GB** | After compression: 595 MB |
-
-**FIX OPTIONS:**
-
-1. **Option A: Create `requirements-light.txt`** (RECOMMENDED)
-   - Excludes: torch, torchvision, sentence-transformers, transformers, faiss-cpu
-   - LIGHT builds use this file
-   - First-run setup installs ML packages if user wants AI features
-
-2. **Option B: Skip embedded Python for LIGHT builds**
-   - LIGHT builds have NO Python bundled
-   - First-run setup installs everything
-   - Slower first launch but smaller download
-
-3. **Option C: Lazy-load ML packages**
-   - Keep minimal Python in LIGHT
-   - Download ML packages on first AI feature use
-
-**RECOMMENDED FIX (Option A):**
-
-Create `requirements-light.txt`:
-```
-# Core server only (no ML)
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-sqlalchemy==2.0.32
-aiosqlite==0.20.0
-psycopg2-binary==2.9.9
-asyncpg>=0.29.0
-# ... other non-ML packages
-```
-
-Modify Gitea workflow:
-```powershell
-if ($env:BUILD_TYPE -eq "FULL") {
-  & "$targetDir\python.exe" -m pip install -r requirements.txt
-} else {
-  & "$targetDir\python.exe" -m pip install -r requirements-light.txt
-}
-```
-
-**Expected Result:** LIGHT build ~150-200 MB instead of 595 MB
+**Changes Made:**
+- Deleted `requirements-light.txt`
+- Fixed `.gitea/workflows/build.yml` - removed all LIGHT/FULL logic
+- Fixed `.github/workflows/build-electron.yml` - removed LIGHT references
+- Updated trigger files and documentation
 
 ---
 
