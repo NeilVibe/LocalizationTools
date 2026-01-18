@@ -1,6 +1,24 @@
 # Session Context
 
-> Last Updated: 2026-01-18 (Session 49 - QACompiler Fixes)
+> Last Updated: 2026-01-18 (Session 50 - BUG-043 Fix)
+
+---
+
+## SESSION 50: BUG-043 Offline Storage Fix ✅
+
+### THE FIX
+
+**Problem:** Folder creation in Offline Storage failed on Windows with "no such table: offline_folders"
+
+**Root Cause:** `offline_schema.sql` was NOT bundled in Windows build - package.json extraResources filter was missing `.sql` files!
+
+**Fix:** Added `"**/*.sql"` to `locaNext/package.json` line 68
+
+**GDP Verification:** Full test passed - folder `BUG043_FINAL_1768676336725` created successfully
+
+**Builds:**
+- Gitea Build 492 ✅ SUCCESS
+- GitHub Build 493 ⏳ IN PROGRESS (Windows + macOS)
 
 ---
 
@@ -180,16 +198,18 @@ async def add_entries_bulk(self, ...):
 - Screenshot proof: Breadcrumb shows "Home > Recycle Bin" with trash items displayed
 - **Conclusion:** Bug is Windows Electron-specific, not in core functionality
 
-### BUG-043: Offline Storage - Navigation WORKS ✅
+### BUG-043: Offline Storage - FIXED ✅
 
 **Original Symptom:** Folder creation fails (Windows app)
 
-**DEV Mode Testing Result:**
-- ✅ **Navigation WORKS** - Verified via GDP logging:
-  - `handleDoubleClick` → `dispatch('enterFolder')` → `loadOfflineStorageContents()`
-- Screenshot proof: Breadcrumb shows "Home > Offline Storage" with folders listed
-- GDP logging added to `createFolder()` for Windows debugging
-- **Conclusion:** May be Windows-specific or API-related
+**Root Cause Found (Session 50):**
+- `offline_schema.sql` NOT bundled in Windows build
+- package.json extraResources filter missing `.sql` files
+- API returned "no such table: offline_folders"
+
+**Fix:** Added `"**/*.sql"` to package.json extraResources filter
+
+**Verification:** GDP test passed - folder created and visible in UI
 
 ### GDP Frontend Logging - ADDED ✅
 
@@ -269,12 +289,13 @@ SHOULD BE:
 
 | Priority | Task | Status |
 |----------|------|--------|
-| **CRITICAL** | Patch updater - download only app.asar | NOT DONE |
-| **CRITICAL** | Patch updater - fix install/swap logic | NOT DONE |
 | **HIGH** | Replace AsyncSessionWrapper with aiosqlite | TODO |
 | **MEDIUM** | Fix BUG-042 (Trash Bin access) | TODO |
-| **MEDIUM** | Fix BUG-043 (Folder creation) | TODO |
 | **LOW** | SQLite repo encapsulation cleanup | TODO |
+
+### RECENTLY COMPLETED
+- ✅ BUG-043 (Folder creation) - Session 50
+- ✅ Patch updater - Session 48
 
 ---
 

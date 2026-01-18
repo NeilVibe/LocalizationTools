@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-17 (Session 48) | **Build:** 490 | **Open:** 2
+**Last Updated:** 2026-01-18 (Session 50) | **Build:** 492 | **Open:** 1
 
 ---
 
@@ -8,63 +8,28 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 2 |
-| **FIXED/CLOSED** | 129 |
+| **OPEN** | 1 |
+| **FIXED/CLOSED** | 130 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
-## RECENTLY FIXED (Session 48)
+## RECENTLY FIXED (Session 48-50)
 
-### PATCH-001: Patch Updater Downloads Full Installer Instead of Patch ✅ FIXED
+### BUG-043: Offline Storage Folder Creation ✅ FIXED (Session 50)
 
-- **Reported:** 2026-01-17 (Session 47)
-- **Fixed:** 2026-01-17 (Session 48, Build 490)
-- **Severity:** CRITICAL
-- **Status:** ✅ FIXED
-- **Component:** electron/patch-updater.js
+- **Fixed:** 2026-01-18 (Build 492)
+- **Root Cause:** `offline_schema.sql` NOT bundled in Windows build - package.json missing `.sql` in extraResources filter
+- **Fix:** Added `"**/*.sql"` to `locaNext/package.json` line 68
+- **GDP Verified:** Folder `BUG043_FINAL_1768676336725` created successfully
 
-**Problem:** The patch updater downloaded the FULL INSTALLER (624MB) instead of just the app.asar (~18MB).
+### PATCH-001 & PATCH-002: Patch Updater ✅ FIXED (Session 48)
 
-**Root Causes & Fixes:**
-
-| Bug | Root Cause | Fix |
-|-----|------------|-----|
-| fetchJson failed | Node.js `http` module doesn't work in packaged Electron | Use Electron `net` module |
-| Hash verification failed | `fileStream.end()` async - resolved before flush | Wait for 'finish' event |
-| ASAR interception | Electron patches `fs` to intercept `.asar` files | Use `original-fs` module |
-
-**Final Result:**
-- ✅ Downloads only 17.92 MB (app.asar patch)
-- ✅ Hash verified correctly
-- ✅ Staging works
-- ✅ Restart triggers update application
-
----
-
-### PATCH-002: Install/Swap Logic Fails After Download ✅ FIXED
-
-- **Reported:** 2026-01-17 (Session 47)
-- **Fixed:** 2026-01-17 (Session 48, Build 490)
-- **Severity:** CRITICAL
-- **Status:** ✅ FIXED
-- **Component:** electron/patch-updater.js
-
-**Problem:** After clicking "Restart Now", the old app was deleted but the new version wasn't installed.
-
-**Root Cause:** ASAR interception - Electron's patched `fs` module treats ANY file with `.asar` in name as an archive, even in AppData.
-
-**Fix:** Use `original-fs` module for all `.asar` file operations:
-```javascript
-const originalFs = require('original-fs');
-originalFs.copyFileSync(stagingPath, destPath);  // Works!
-```
-
-**Verified Working:**
-- Version before: 26.117.2338
-- Version after restart: 26.117.2359 ✅
-- `component-state.json` updated correctly
+- **Fixed:** 2026-01-17 (Build 490)
+- **Root Causes:** Node.js `http` doesn't work in packaged Electron, ASAR interception
+- **Fix:** Use Electron `net` module + `original-fs` for `.asar` files
+- **Result:** Downloads ~18MB patch instead of 624MB installer
 
 ---
 
@@ -73,49 +38,10 @@ originalFs.copyFileSync(stagingPath, destPath);  // Works!
 ### BUG-042: Trash Bin Cannot Be Accessed ⚠️ LOW (WINDOWS-SPECIFIC)
 
 - **Reported:** 2026-01-17 (Session 47)
-- **Severity:** LOW (works in DEV mode - Windows-specific)
+- **Severity:** LOW (works in DEV mode)
 - **Status:** NEEDS WINDOWS TESTING
-- **Component:** FilesPage.svelte
 
-**Problem:** Clicking on Trash Bin in File Explorer does nothing on Windows Electron app.
-
-**DEV Mode Testing (2026-01-17):**
-- ✅ **WORKS IN DEV MODE** - Tested with Playwright
-- GDP logging shows complete chain:
-  ```
-  handleDoubleClick → dispatch('enterFolder') → handleEnterFolder → loadTrashContents()
-  ```
-- Trash items correctly displayed in DEV mode
-- Screenshot shows breadcrumb "Home > Recycle Bin" with trash items listed
-
-**Conclusion:** Bug is **Windows Electron-specific**, not in core functionality.
-
-**Next Steps:** Test on Windows with GDP logging enabled in backend.
-
----
-
-### BUG-043: Offline Storage Folder Creation Broken ⚠️ LOW (WINDOWS-SPECIFIC)
-
-- **Reported:** 2026-01-17 (Session 47)
-- **Severity:** LOW (works in DEV mode - Windows-specific)
-- **Status:** NEEDS WINDOWS TESTING
-- **Component:** FilesPage.svelte, offline.py
-
-**Problem:** Cannot create folders in Offline Storage on Windows Electron app.
-
-**DEV Mode Testing (2026-01-17):**
-- ✅ **Offline Storage navigation WORKS** - Tested with Playwright
-- GDP logging shows:
-  ```
-  handleDoubleClick → dispatch('enterFolder') → handleEnterFolder → loadOfflineStorageContents()
-  ```
-- Screenshot shows breadcrumb "Home > Offline Storage" with folders listed
-- GDP logging added to `createFolder()` function for Windows debugging
-
-**Conclusion:** Navigation works. Creation not tested due to test selector issues.
-Bug may be **Windows Electron-specific** or **API-related**.
-
-**Next Steps:** Test folder creation on Windows with GDP logging enabled.
+**Problem:** Clicking Trash Bin does nothing on Windows Electron app. Works in DEV mode.
 
 ---
 
@@ -152,6 +78,9 @@ def execute(self, *args, **kwargs):
 **Effort Estimate:** 2-3 days
 
 ---
+
+<details>
+<summary><strong>📁 HISTORICAL FIXES (Sessions 9-39) - Click to expand</strong></summary>
 
 ## RECENTLY FIXED (Session 39)
 
@@ -2110,6 +2039,8 @@ The following fixes have been coded but need manual DEV testing:
 
 </details>
 
+</details>
+
 ---
 
-*Updated 2026-01-11 | 127 Issues FIXED | 0 OPEN*
+*Updated 2026-01-18 | 130 Issues FIXED | 1 OPEN*
