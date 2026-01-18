@@ -12,3 +12,4 @@ Architecture: Small installer + first-run setup downloads deps + AI model
 Build History (last 5):
 -----------------------
 Build 497: Remove LIGHT/FULL - ONE BUILD ONLY
+Build 498: Fix PowerShell variable syntax

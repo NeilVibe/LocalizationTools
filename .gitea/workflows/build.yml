@@ -1225,9 +1225,9 @@ jobs:
 
           if (Test-Path $reqFile) {
             $reqHash = (Get-FileHash $reqFile -Algorithm SHA256).Hash.Substring(0, 12)
-            Write-Host "[HASH] $reqFile: $reqHash" -ForegroundColor Cyan
+            Write-Host "[HASH] ${reqFile}: $reqHash" -ForegroundColor Cyan
           } else {
-            Write-Host "[WARN] $reqFile not found - using fallback hash" -ForegroundColor Yellow
+            Write-Host "[WARN] ${reqFile} not found - using fallback hash" -ForegroundColor Yellow
             $pipPackages = "fastapi uvicorn sqlalchemy asyncpg psycopg2-binary pydantic loguru lxml"
             $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
           }
