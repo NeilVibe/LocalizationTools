@@ -164,3 +164,4 @@ Build skip_linux 491: BUG-043 Always show Offline Storage
 Build 492: BUG-043 Include .sql files in Windows build
 Build 494: Test LIGHT requirements + PATCH support
 Build 495: Fix YAML syntax + retry
+Build 496: Fix LIGHT build - remove huggingface_hub check
