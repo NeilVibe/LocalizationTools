@@ -1242,16 +1242,21 @@ jobs:
           # SMART HASH COMPUTATION - Invalidate when dependencies change
           # ============================================================
 
-          # Compute requirements.txt hash (for pip packages)
+          # Compute requirements hash based on BUILD_TYPE (LIGHT vs FULL)
+          # LIGHT uses requirements-light.txt, FULL uses requirements.txt
+          $buildType = $env:BUILD_TYPE
+          if ([string]::IsNullOrEmpty($buildType)) { $buildType = "LIGHT" }
+
+          $reqFile = if ($buildType -eq "FULL") { "requirements.txt" } else { "requirements-light.txt" }
           $reqHash = ""
-          if (Test-Path "requirements.txt") {
-            $reqHash = (Get-FileHash "requirements.txt" -Algorithm SHA256).Hash.Substring(0, 12)
-            Write-Host "[HASH] requirements.txt: $reqHash" -ForegroundColor Cyan
+
+          if (Test-Path $reqFile) {
+            $reqHash = (Get-FileHash $reqFile -Algorithm SHA256).Hash.Substring(0, 12)
+            Write-Host "[HASH] $reqFile ($buildType): $reqHash" -ForegroundColor Cyan
           } else {
-            Write-Host "[WARN] requirements.txt not found - using package list hash" -ForegroundColor Yellow
-            # Fallback: hash the pip install command packages
-            # P36: Updated to include ALL critical packages (faiss-cpu, lxml, asyncpg)
-            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite psycopg2-binary asyncpg PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub faiss-cpu lxml"
+            Write-Host "[WARN] $reqFile not found - using fallback hash" -ForegroundColor Yellow
+            # Fallback: hash build type + basic package list
+            $pipPackages = "fastapi uvicorn sqlalchemy asyncpg psycopg2-binary pydantic loguru lxml $buildType"
             $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
           }
 
@@ -1416,19 +1421,28 @@ jobs:
 
           # ============================================================
           # SMART HASH COMPUTATION - Same logic as Initialize step
+          # Uses requirements-light.txt for LIGHT builds, requirements.txt for FULL
           # ============================================================
+          $buildType = $env:BUILD_TYPE
+          if ([string]::IsNullOrEmpty($buildType)) { $buildType = "LIGHT" }
+
+          $reqFile = if ($buildType -eq "FULL") { "requirements.txt" } else { "requirements-light.txt" }
           $reqHash = ""
-          if (Test-Path "requirements.txt") {
-            $reqHash = (Get-FileHash "requirements.txt" -Algorithm SHA256).Hash.Substring(0, 12)
+
+          if (Test-Path $reqFile) {
+            $reqHash = (Get-FileHash $reqFile -Algorithm SHA256).Hash.Substring(0, 12)
           } else {
-            # P36: Added asyncpg, faiss-cpu, lxml - CRITICAL packages
-            $pipPackages = "fastapi uvicorn python-multipart python-socketio sqlalchemy aiosqlite psycopg2-binary asyncpg PyJWT python-jose passlib python-dotenv bcrypt pydantic pydantic-settings email-validator pandas openpyxl xlrd httpx requests loguru tqdm pyyaml huggingface_hub faiss-cpu lxml"
+            # Fallback hash
+            $pipPackages = "fastapi uvicorn sqlalchemy asyncpg psycopg2-binary pydantic loguru lxml $buildType"
             $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
           }
 
-          # List of required packages for existence validation (fallback check)
-          # P36: Added faiss, lxml, asyncpg - CORE packages that must be installed
-          $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "huggingface_hub", "faiss", "lxml", "asyncpg")
+          # Required packages for validation - LIGHT excludes faiss/huggingface
+          if ($buildType -eq "FULL") {
+            $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "faiss", "lxml", "asyncpg")
+          } else {
+            $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "lxml", "asyncpg")
+          }
 
           # Load manifest to check cached hash
           $cachedReqHash = ""
@@ -1503,15 +1517,24 @@ jobs:
             & "$targetDir\python.exe" "$targetDir\get-pip.py" --no-warn-script-location
             Remove-Item "$targetDir\get-pip.py"
 
-            # Install all packages from requirements.txt (SINGLE SOURCE OF TRUTH)
-            # This ensures build always matches requirements.txt - no more missing packages!
-            Write-Host "Installing backend dependencies from requirements.txt..."
-            & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
+            # Install packages based on build type (LIGHT vs FULL)
+            # LIGHT: ~50MB Python (no ML) → 150MB installer
+            # FULL: ~800MB Python (with ML) → 600MB+ installer
+            $buildType = $env:BUILD_TYPE
+            if ([string]::IsNullOrEmpty($buildType)) { $buildType = "LIGHT" }
+
+            if ($buildType -eq "FULL") {
+              Write-Host "Installing FULL dependencies (including ML packages)..." -ForegroundColor Cyan
+              & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
+              $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru", "faiss", "lxml", "torch")
+            } else {
+              Write-Host "Installing LIGHT dependencies (no ML packages - ~800MB smaller)..." -ForegroundColor Cyan
+              & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements-light.txt
+              $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru", "lxml")
+            }
 
             # P36: Verify CRITICAL packages are installed (prevents asyncpg-style crashes)
-            # NOTE: faiss and lxml are REQUIRED for TM indexing and XML QA - NOT optional!
             Write-Host "Verifying critical packages..."
-            $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru", "faiss", "lxml")
             $failed = @()
             foreach ($pkg in $criticalPackages) {
               $result = & "$targetDir\python.exe" -c "import $pkg" 2>&1
