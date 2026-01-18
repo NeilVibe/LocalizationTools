@@ -1598,7 +1598,9 @@ jobs:
           & "tools\python\python.exe" -c "import pydantic; print(f'[OK] pydantic v{pydantic.__version__}')"
           & "tools\python\python.exe" -c "import pandas; print(f'[OK] pandas v{pandas.__version__}')"
           & "tools\python\python.exe" -c "import openpyxl; print('[OK] openpyxl ready')"
-          & "tools\python\python.exe" -c "import huggingface_hub; print(f'[OK] huggingface_hub v{huggingface_hub.__version__}')"
+
+          # Note: huggingface_hub is NOT checked - it's only needed for ML model downloads (FULL build)
+          # LIGHT builds don't include ML packages, so skip this check
 
           # Check required files
           if (!(Test-Path "version.py")) { Write-Error "[ERROR] version.py not found"; exit 1 }
