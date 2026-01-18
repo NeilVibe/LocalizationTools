@@ -1220,7 +1220,8 @@ jobs:
           # ============================================================
 
           # Compute requirements hash for cache invalidation
-          $reqFile = "requirements.txt"
+          # USE requirements-build.txt (slim installer - no PyTorch)
+          $reqFile = "requirements-build.txt"
           $reqHash = ""
 
           if (Test-Path $reqFile) {
@@ -1291,7 +1292,7 @@ jobs:
               if ($manifest.components.python_embedded.version -ne $expectedPythonVersion) {
                 Write-Host "  [STALE] Python version changed ($($manifest.components.python_embedded.version) -> $expectedPythonVersion)" -ForegroundColor Yellow
               } elseif ($cachedReqHash -ne $reqHash) {
-                Write-Host "  [STALE] requirements.txt changed (cached: $cachedReqHash, current: $reqHash)" -ForegroundColor Yellow
+                Write-Host "  [STALE] requirements-build.txt changed (cached: $cachedReqHash, current: $reqHash)" -ForegroundColor Yellow
               }
             } else {
               Write-Host "  [MISS] Python not cached" -ForegroundColor Yellow
@@ -1381,7 +1382,7 @@ jobs:
 
       # ============================================================
       # STEP 2: Python Embedded + Packages (SMART CACHE v2.0)
-      # Invalidates if: Python version changes OR requirements.txt hash changes
+      # Invalidates if: Python version changes OR requirements-build.txt hash changes
       # ============================================================
       - name: Get Python Embedded (Smart Cache)
         run: |
@@ -1393,8 +1394,9 @@ jobs:
 
           # ============================================================
           # SMART HASH COMPUTATION - Same logic as Initialize step
+          # USE requirements-build.txt (slim installer - no PyTorch)
           # ============================================================
-          $reqFile = "requirements.txt"
+          $reqFile = "requirements-build.txt"
           $reqHash = ""
 
           if (Test-Path $reqFile) {
@@ -1442,7 +1444,7 @@ jobs:
                 $useCache = $true
               }
             } else {
-              $cacheInvalidReason = "requirements.txt changed (cached: $cachedReqHash, current: $reqHash)"
+              $cacheInvalidReason = "requirements-build.txt changed (cached: $cachedReqHash, current: $reqHash)"
             }
           } else {
             $cacheInvalidReason = "Python not cached"
